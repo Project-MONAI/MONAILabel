@@ -1,0 +1,10 @@
+monai[all]
+
+uvicorn
+fastapi
+aiofiles
+
+grpcio
+grpcio-tools
+
+watchdog
