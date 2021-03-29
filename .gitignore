@@ -135,4 +135,5 @@ ENV/
 
 # IDE
 .idea/
+.vscode/
 
