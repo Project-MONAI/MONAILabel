@@ -73,6 +73,7 @@ class InferenceEngine(object):
             self._networks[device] = network
 
         inferer = self.inferer()
+        logger.info("Inferer:: {}".format(inferer.__class__.__name__))
         with torch.no_grad():
             outputs = inferer(inputs, network)
         if device == 'cuda':
