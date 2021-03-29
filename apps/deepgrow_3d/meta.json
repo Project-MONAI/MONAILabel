@@ -1,8 +1,8 @@
 {
   "version": 1.0,
-  "description": "2D DeepGrow model based on UNET",
+  "description": "3D DeepGrow model based on UNET",
   "type": "deepgorw",
-  "dimension": 2,
+  "dimension": 3,
   "engines": [
     "infer"
   ],
