@@ -137,3 +137,7 @@ ENV/
 .idea/
 .vscode/
 
+# workspace
+server/workspace/logs
+server/workspace/datasets
+

@@ -17,7 +17,7 @@
     "file_handler": {
       "class": "logging.handlers.RotatingFileHandler",
       "formatter": "simple",
-      "filename": "${LOGDIR}/${LOGFILE}",
+      "filename": "/workspace/dlmed/MONAI-label/server/workspace/apps/segmentation_spleen/logs/app.log",
       "backupCount": 10,
       "maxBytes": 10485760,
       "encoding": "utf-8"

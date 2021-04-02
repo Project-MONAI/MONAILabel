@@ -8,10 +8,10 @@ import shutil
 
 from main import SpleenApp
 
+logger = logging.getLogger(__name__)
+
 
 def test_inference(args):
-    logger = logging.getLogger(__name__)
-
     output_path = os.path.dirname(args.output)
     os.makedirs(output_path, exist_ok=True)
 
@@ -40,8 +40,6 @@ def test_inference(args):
 
 
 def test_train(args):
-    logger = logging.getLogger(__name__)
-
     output_path = os.path.dirname(args.output)
     os.makedirs(output_path, exist_ok=True)
 
@@ -101,7 +99,6 @@ def run_main():
         level=(logging.DEBUG if args.debug else logging.INFO),
         format='[%(asctime)s.%(msecs)03d][%(levelname)5s](%(name)s) - %(message)s',
         datefmt='%Y-%m-%d %H:%M:%S')
-    logger = logging.getLogger(__name__)
 
     for arg in vars(args):
         logger.info('USING:: {} = {}'.format(arg, getattr(args, arg)))

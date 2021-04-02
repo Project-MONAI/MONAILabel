@@ -19,7 +19,7 @@ DESCRIPTOR = _descriptor.FileDescriptor(
   syntax='proto3',
   serialized_options=None,
   create_key=_descriptor._internal_create_key,
-  serialized_pb=b'\n\tapp.proto\"1\n\x10InferenceRequest\x12\r\n\x05image\x18\x01 \x01(\t\x12\x0e\n\x06params\x18\x02 \x01(\t\"2\n\x11InferenceResponse\x12\r\n\x05label\x18\x01 \x01(\t\x12\x0e\n\x06params\x18\x02 \x01(\t\"\x1f\n\x0cTrainRequest\x12\x0f\n\x07request\x18\x01 \x01(\t\"\x1f\n\rTrainResponse\x12\x0e\n\x06result\x18\x01 \x01(\t2n\n\x03\x41pp\x12\x37\n\x0cRunInference\x12\x11.InferenceRequest\x1a\x12.InferenceResponse\"\x00\x12.\n\x0bRunTraining\x12\r.TrainRequest\x1a\x0e.TrainResponse\"\x00\x62\x06proto3'
+  serialized_pb=b'\n\tapp.proto\">\n\x10InferenceRequest\x12\x0b\n\x03\x61pp\x18\x01 \x01(\t\x12\r\n\x05image\x18\x02 \x01(\t\x12\x0e\n\x06params\x18\x03 \x01(\t\"2\n\x11InferenceResponse\x12\r\n\x05label\x18\x01 \x01(\t\x12\x0e\n\x06params\x18\x02 \x01(\t\",\n\x0cTrainRequest\x12\x0b\n\x03\x61pp\x18\x01 \x01(\t\x12\x0f\n\x07request\x18\x02 \x01(\t\"\x1f\n\rTrainResponse\x12\x0e\n\x06result\x18\x01 \x01(\t2n\n\x03\x41pp\x12\x37\n\x0cRunInference\x12\x11.InferenceRequest\x1a\x12.InferenceResponse\"\x00\x12.\n\x0bRunTraining\x12\r.TrainRequest\x1a\x0e.TrainResponse\"\x00\x62\x06proto3'
 )
 
 
@@ -34,15 +34,22 @@ _INFERENCEREQUEST = _descriptor.Descriptor(
   create_key=_descriptor._internal_create_key,
   fields=[
     _descriptor.FieldDescriptor(
-      name='image', full_name='InferenceRequest.image', index=0,
+      name='app', full_name='InferenceRequest.app', index=0,
       number=1, type=9, cpp_type=9, label=1,
       has_default_value=False, default_value=b"".decode('utf-8'),
       message_type=None, enum_type=None, containing_type=None,
       is_extension=False, extension_scope=None,
       serialized_options=None, file=DESCRIPTOR,  create_key=_descriptor._internal_create_key),
     _descriptor.FieldDescriptor(
-      name='params', full_name='InferenceRequest.params', index=1,
+      name='image', full_name='InferenceRequest.image', index=1,
       number=2, type=9, cpp_type=9, label=1,
+      has_default_value=False, default_value=b"".decode('utf-8'),
+      message_type=None, enum_type=None, containing_type=None,
+      is_extension=False, extension_scope=None,
+      serialized_options=None, file=DESCRIPTOR,  create_key=_descriptor._internal_create_key),
+    _descriptor.FieldDescriptor(
+      name='params', full_name='InferenceRequest.params', index=2,
+      number=3, type=9, cpp_type=9, label=1,
       has_default_value=False, default_value=b"".decode('utf-8'),
       message_type=None, enum_type=None, containing_type=None,
       is_extension=False, extension_scope=None,
@@ -60,7 +67,7 @@ _INFERENCEREQUEST = _descriptor.Descriptor(
   oneofs=[
   ],
   serialized_start=13,
-  serialized_end=62,
+  serialized_end=75,
 )
 
 
@@ -98,8 +105,8 @@ _INFERENCERESPONSE = _descriptor.Descriptor(
   extension_ranges=[],
   oneofs=[
   ],
-  serialized_start=64,
-  serialized_end=114,
+  serialized_start=77,
+  serialized_end=127,
 )
 
 
@@ -112,8 +119,15 @@ _TRAINREQUEST = _descriptor.Descriptor(
   create_key=_descriptor._internal_create_key,
   fields=[
     _descriptor.FieldDescriptor(
-      name='request', full_name='TrainRequest.request', index=0,
+      name='app', full_name='TrainRequest.app', index=0,
       number=1, type=9, cpp_type=9, label=1,
+      has_default_value=False, default_value=b"".decode('utf-8'),
+      message_type=None, enum_type=None, containing_type=None,
+      is_extension=False, extension_scope=None,
+      serialized_options=None, file=DESCRIPTOR,  create_key=_descriptor._internal_create_key),
+    _descriptor.FieldDescriptor(
+      name='request', full_name='TrainRequest.request', index=1,
+      number=2, type=9, cpp_type=9, label=1,
       has_default_value=False, default_value=b"".decode('utf-8'),
       message_type=None, enum_type=None, containing_type=None,
       is_extension=False, extension_scope=None,
@@ -130,8 +144,8 @@ _TRAINREQUEST = _descriptor.Descriptor(
   extension_ranges=[],
   oneofs=[
   ],
-  serialized_start=116,
-  serialized_end=147,
+  serialized_start=129,
+  serialized_end=173,
 )
 
 
@@ -162,8 +176,8 @@ _TRAINRESPONSE = _descriptor.Descriptor(
   extension_ranges=[],
   oneofs=[
   ],
-  serialized_start=149,
-  serialized_end=180,
+  serialized_start=175,
+  serialized_end=206,
 )
 
 DESCRIPTOR.message_types_by_name['InferenceRequest'] = _INFERENCEREQUEST
@@ -209,8 +223,8 @@ _APP = _descriptor.ServiceDescriptor(
   index=0,
   serialized_options=None,
   create_key=_descriptor._internal_create_key,
-  serialized_start=182,
-  serialized_end=292,
+  serialized_start=208,
+  serialized_end=318,
   methods=[
   _descriptor.MethodDescriptor(
     name='RunInference',

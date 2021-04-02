@@ -1,6 +1,10 @@
+import logging
+
 from fastapi import APIRouter, HTTPException
 
 from server.utils.scanning import scan_apps
+
+logger = logging.getLogger(__name__)
 
 router = APIRouter(
     prefix="/app",
@@ -12,7 +16,9 @@ router = APIRouter(
 # TODO:: Activate the Apps on go.. And save the App Port when it's deployed
 @router.get("/", summary="List All Apps")
 async def get_apps():
-    return list(scan_apps().keys())
+    apps = list(scan_apps().keys())
+    logger.debug(f"APPS: {apps}")
+    return apps
 
 
 @router.get("/{app}", summary="Get More details for an APP that exists in server")
@@ -20,6 +26,8 @@ async def get_app(app: str):
     apps = scan_apps()
     if app not in apps:
         raise HTTPException(status_code=404, detail=f"App '{app}' NOT Found")
+
+    logger.debug(f"APP: {apps[app]}")
     return apps[app]["meta"]
 
 

@@ -1,6 +1,7 @@
 import asyncio
 import json
 import logging
+import os
 
 import grpc
 
@@ -26,12 +27,20 @@ async def inference(image, params, port=50051) -> None:
         # Please refer gRPC Python documents for more detail. https://grpc.io/grpc/python/grpc.html
         request = app_pb2.InferenceRequest(image=image, params=json.dumps(params))
         response = await stub.RunInference(request, timeout=30)
-    logger.debug("Inference Response received: " + response.message)
+    logger.info("Label: {}".format(response.label))
+    logger.info("Params: {}".format(json.loads(response.params) if response.params else None))
+
+    if os.path.exists(response.label):
+        os.unlink(response.label)
 
 
 if __name__ == '__main__':
-    logging.basicConfig()
+    logging.basicConfig(
+        level=logging.DEBUG,
+        format='[%(asctime)s.%(msecs)03d][%(levelname)5s](%(name)s) - %(message)s',
+        datefmt='%Y-%m-%d %H:%M:%S'
+    )
 
     image = '/workspace/Data/_image.nii.gz'
     params = {}
-    asyncio.run(inference())
+    asyncio.run(inference(image, params))

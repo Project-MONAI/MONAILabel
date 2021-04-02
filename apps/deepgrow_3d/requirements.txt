@@ -1,2 +1,0 @@
-monai[all]
-# monai-label
