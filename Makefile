@@ -23,3 +23,6 @@ clean:
 	@echo "Running clean up...."
 	@rm -rf build dist *.egg-info
 	@find . -type d -name  "__pycache__" -exec rm -r {} +
+	@rm -rf server/workspace/apps/*/logs
+	@rm -rf server/workspace/apps/*/.port
+	@rm -rf server/workspace/apps/*/.venv
