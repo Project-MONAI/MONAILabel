@@ -5,7 +5,7 @@ init:
 	pip3 install -r requirements.txt
 
 proto:
-	cd server/internal/grpc/protos && rm *.py && python3 -m grpc_tools.protoc -I. --python_out=. --grpc_python_out=. *.proto
+	cd server/internal/grpc/protos && python3 -m grpc_tools.protoc -I. --python_out=. --grpc_python_out=. *.proto
 
 docker: clean
 	DOCKER_BUILDKIT=1 docker build --network=host -t $(IMAGE):$(TAG) -f Dockerfile .
