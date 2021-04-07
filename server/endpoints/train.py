@@ -1,12 +1,12 @@
 import logging
 import os
 
-from fastapi import APIRouter
+from fastapi import APIRouter, HTTPException
 from starlette.background import BackgroundTasks
 
 from server.core.config import settings
-from server.utils.app_utils import get_app_instance
-from server.utils.generic import run_command
+from server.internal.grpc.request import grpc_train
+from server.utils.app_utils import app_info, get_grpc_port
 
 logger = logging.getLogger(__name__)
 
@@ -19,14 +19,9 @@ router = APIRouter(
 
 @router.post("/{app}", summary="Run Train action for an existing App")
 async def run_train(app: str, background_tasks: BackgroundTasks):
-    instance, app_info = get_app_instance(app, background_tasks)
+    info = app_info(app)
+    app_dir = info['path']
 
-    # TODO:: Fix this.. some weird issue wrt Exception: Can't pickle (multi-processing related in dataloader)
-    if 1 == 1:
-        run_command(f"python {app_info['path']}/test.py train")
-        return {"training": "success"}
-
-    app_dir = app_info['path']
     output_dir = os.path.join(app_dir, "model", "run_0")
     dataset_root = os.path.join(settings.WORKSPACE, "datasets", "Task09_Spleen")
 
@@ -41,4 +36,10 @@ async def run_train(app: str, background_tasks: BackgroundTasks):
         'val': {},
     }
 
-    return instance.train(request=request)
+    logger.info(f"Train Request: {request}")
+    result = await grpc_train(request, get_grpc_port(app))
+    logger.info(f"Train Result: {result}")
+
+    if result is None:
+        raise HTTPException(status_code=500, detail=f"Failed to execute train for {app}")
+    return result

@@ -1,4 +1,6 @@
+import datetime
 import logging
+import time
 from abc import abstractmethod
 
 from monai.engines import SupervisedTrainer, SupervisedEvaluator
@@ -110,8 +112,12 @@ class TrainEngine(object):
         )
 
         logger.info(f"Running Training.  Epochs: {max_epochs}; AMP: {amp}")
+        start = time.time()
         trainer.run()
+        lapsed = str(datetime.timedelta(seconds=int(time.time() - start)))
+        logger.info(f"++ Total Train Time:: {lapsed}")
 
         stats = trainer.get_train_stats()
+        stats['total_time'] = lapsed
         logger.info(f"Train Stats: {stats}")
         return stats

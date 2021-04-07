@@ -13,12 +13,11 @@ from server.internal.grpc.protos import app_pb2, app_pb2_grpc
 from server.utils.class_utils import get_class_of_subclass_from_file
 from server.utils.generic import init_log_config
 
-logger = logging.getLogger(__name__)
-
 
 class AppService(app_pb2_grpc.AppServicer):
 
     def __init__(self, app, app_dir):
+        logger = logging.getLogger(app)
         logger.info(f"Initializing App:: {app} => {app_dir}")
 
         self.app = app
@@ -53,53 +52,39 @@ class AppService(app_pb2_grpc.AppServicer):
 
     async def RunInference(
             self,
-            request: app_pb2.InferenceRequest,
-            context: grpc.aio.ServicerContext) -> app_pb2.InferenceResponse:
+            request: app_pb2.Request,
+            context: grpc.aio.ServicerContext) -> app_pb2.Response:
 
-        # TODO:: Process actual request
-        request = {
-            "image": "/workspace/Data/_image.nii.gz",
-            "params": {}
-        }
-
+        request = json.loads(request.request)
         result = self.app_instance.infer(request=request)
-        return app_pb2.InferenceResponse() if result is None else app_pb2.InferenceResponse(
-            label=result[0], params=json.dumps(result[1]))
+        response = None if result is None else {
+            "label": result[0],
+            "params": result[1]
+        }
+        return app_pb2.Response(response=json.dumps(response) if response else None)
 
     async def RunTraining(
             self,
-            request: app_pb2.TrainRequest,
-            context: grpc.aio.ServicerContext) -> app_pb2.TrainResponse:
+            request: app_pb2.Request,
+            context: grpc.aio.ServicerContext) -> app_pb2.Response:
 
-        next_run_id = 0  # TODO:: Scan run directories and get the next one
-        output_dir = os.path.join(self.app_dir, "model", f"run_{next_run_id}")
-
-        # TODO:: Process actual request
-        workspace = os.path.realpath(os.path.join(os.path.dirname(__file__), '..', '..', 'workspace'))
-        dataset_root = os.path.join(workspace, "datasets", "Task09_Spleen")
-
-        request = {
-            'output_dir': output_dir,
-            'data_list': os.path.join(dataset_root, "dataset.json"),
-            'data_root': dataset_root,
-            'device': "cuda",
-            'epochs': 1,
-            'amp': True,
-            'train': {},
-            'val': {},
-        }
-
-        result = self.app_instance.train(request=request)
-        return app_pb2.TrainResponse(response=json.dumps(result) if not result else None)
+        request = json.loads(request.request)
+        response = self.app_instance.train(request=request)
+        return app_pb2.Response(response=json.dumps(response) if response else None)
 
 
 async def serve(args) -> None:
+    logger = logging.getLogger(args.name)
+
     server = grpc.aio.server()
     app_pb2_grpc.add_AppServicer_to_server(AppService(args.name, args.path), server)
 
-    listen_addr = '[::]:' + str(args.port)
-    server.add_insecure_port(listen_addr)
-    logger.info("Starting server on %s", listen_addr)
+    port = server.add_insecure_port('[::]:{}'.format(args.port))
+    logger.info("Starting '{}' on port: {}".format(args.name, port))
+
+    port_file = os.path.join(args.path, '.port')
+    with open(port_file, 'w') as f:
+        f.write(str(port))
 
     await server.start()
     try:
@@ -112,15 +97,10 @@ def run_main():
     parser = argparse.ArgumentParser()
     parser.add_argument('-n', '--name', required=True)
     parser.add_argument('-a', '--path', required=True)
-    parser.add_argument('-d', '--debug', action='store_true')
     parser.add_argument('-p', '--port', default=50051, type=int)
 
     args = parser.parse_args()
     args.path = os.path.realpath(args.path)
-
-    for arg in vars(args):
-        logger.info('USING:: {} = {}'.format(arg, getattr(args, arg)))
-    print("")
 
     logs_dir = os.path.join(args.path, "logs")
     os.makedirs(logs_dir, exist_ok=True)

@@ -20,13 +20,3 @@ def scan_apps():
             else:
                 logger.warning(f"{f.name} exists but meta.json is missing.  App is not ready yet!")
     return apps
-
-
-def init_apps():
-    apps = scan_apps()
-    for app in apps:
-        print(f"init {app}")
-
-
-if __name__ == '__main__':
-    init_apps()

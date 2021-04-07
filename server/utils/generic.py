@@ -1,31 +1,33 @@
 import logging
 import os
-import shlex
 import shutil
 import subprocess
 
 logger = logging.getLogger(__name__)
 
 
-def run_command(command, log_prefix='CMD:: '):
+def run_command(command, args=None, plogger=None):
+    plogger = plogger if plogger else logger
+    cmd = [command]
+    if args:
+        args = [str(a) for a in args]
+        cmd.extend(args)
+
+    plogger.info('Running Command:: {}'.format(' '.join(cmd)))
     process = subprocess.Popen(
-        shlex.split(command),
+        cmd,
+        # stderr=subprocess.PIPE,
         stdout=subprocess.PIPE,
         universal_newlines=True,
         env=os.environ.copy()
     )
-    logger.info('Running Command: {}'.format(command))
 
     while process.poll() is None:
         line = process.stdout.readline()
         if line:
-            logger.info('{}{}'.format(log_prefix, line.rstrip()))
+            plogger.info(line.rstrip())
 
-    # with io.TextIOWrapper(process.stdout, encoding="utf-8") as f:
-    #    for line in f:
-    #        logger.info('{}{}'.format(log_prefix, line.rstrip()))
-
-    logger.info('{}Return code: {}'.format(log_prefix, process.returncode))
+    plogger.info('Return code: {}'.format(process.returncode))
     process.stdout.close()
     return process.returncode
 

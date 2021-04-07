@@ -1,81 +1,63 @@
-import json
 import logging
-import mimetypes
 import os
-import sys
+import threading
 
-from fastapi import HTTPException
-from fastapi.responses import FileResponse, Response
-from requests_toolbelt import MultipartEncoder
-
-from server.interface import MONAIApp
-from server.utils.class_utils import get_class_of_subclass_from_file
+from server.interface import ServerException, ServerError
+from server.utils.generic import run_command
 from server.utils.scanning import scan_apps
 
 logger = logging.getLogger(__name__)
 
 
-def remove_file(path: str) -> None:
-    os.unlink(path)
-
-
-def remove_path(paths):
-    for p in paths:
-        sys.path.remove(p)
-
-
-# TODO:: Get it done through GRPC
-def get_app_instance(app, background_tasks):
+def app_info(app):
     apps = scan_apps()
     if app not in apps:
-        raise HTTPException(status_code=404, detail=f"App '{app}' NOT Found")
-
-    app_dir = apps[app]['path']
-    app_dir_lib = os.path.join(app_dir, 'lib')
-    logger.info('Using app dir: {}'.format(app_dir))
-
-    sys.path.append(app_dir)
-    sys.path.append(app_dir_lib)
-    background_tasks.add_task(remove_path, [app_dir_lib, app_dir])
-
-    main_py = os.path.join(app_dir, 'main.py')
-    if not os.path.exists(main_py):
-        raise HTTPException(status_code=404, detail=f"App '{app}' Does NOT have main.py")
-
-    c = get_class_of_subclass_from_file("main", main_py, MONAIApp)
-    if c is None:
-        raise HTTPException(status_code=404, detail=f"App '{app}' Does NOT Implement MONAIApp in main.py")
-
-    o = c(name=app, app_dir=app_dir)
-    if not hasattr(o, "infer"):
-        raise HTTPException(status_code=404, detail=f"App '{app}' Does NOT Implement 'infer' method in main.py")
-    return o, apps[app]
+        raise ServerException(ServerError.APP_NOT_FOUND, f"{app} Not Found")
+    return apps[app]
 
 
-def send_response(app, result, output, background_tasks):
-    if result is None:
-        raise HTTPException(status_code=500, detail=f"Failed to execute infer for {app}")
+def init_app(app, app_dir, port=0):
+    class AppT(threading.Thread):
+        def __init__(self, name, path):
+            threading.Thread.__init__(self)
 
-    res_img, res_json = result
-    if res_img is None or output == 'json':
-        return res_json
+            self.cmd = os.path.realpath(os.path.join(os.path.dirname(__file__), '..', 'internal', 'grpc', 'worker.sh'))
+            self.name = name
+            self.path = path
+            self.port = port
 
-    background_tasks.add_task(remove_file, res_img)
-    m_type = mimetypes.guess_type(res_img, strict=False)
-    logger.debug(f"Guessed Mime Type for Image: {m_type}")
+        def run(self):
+            logger.info(f"Init App: {self.name}; path: {self.path}")
+            run_command(self.cmd, [self.name, self.path, self.port], logging.getLogger(self.name))
 
-    if m_type is None or m_type[0] is None:
-        m_type = "application/octet-stream"
-    else:
-        m_type = f"{m_type[0]}/{m_type[1]}"
-    logger.debug(f"Final Mime Type: {m_type}")
+    t = AppT(app, app_dir)
+    t.start()
+    return t
 
-    if res_json is None or not len(res_json) or output == 'image':
-        return FileResponse(res_img, media_type=m_type)
 
-    res_fields = dict()
-    res_fields['params'] = (None, json.dumps(res_json), 'application/json')
-    res_fields['image'] = (os.path.basename(res_img), open(res_img, 'rb'), m_type)
+def init_apps():
+    apps = scan_apps()
+    return [init_app(app, apps[app]['path']) for counter, app in enumerate(apps)]
 
-    return_message = MultipartEncoder(fields=res_fields)
-    return Response(content=return_message.to_string(), media_type=return_message.content_type)
+
+def get_grpc_port(app):
+    info = app_info(app)
+    port_file = os.path.join(info['path'], '.port')
+
+    if os.path.isfile(port_file):
+        with open(port_file, 'r') as f:
+            return int(f.read())
+    return None
+
+
+if __name__ == '__main__':
+    logging.basicConfig(
+        level=logging.DEBUG,
+        format='[%(asctime)s.%(msecs)03d][%(levelname)5s](%(name)s) - %(message)s',
+        datefmt='%Y-%m-%d %H:%M:%S')
+
+    try:
+        app_threads = init_apps()
+        [t.join() for t in app_threads]
+    except KeyboardInterrupt:
+        exit(0)

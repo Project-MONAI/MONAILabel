@@ -1,26 +1,15 @@
 syntax = "proto3";
 
 service App {
-  rpc RunInference (InferenceRequest) returns (InferenceResponse) {}
-  rpc RunTraining (TrainRequest) returns (TrainResponse) {}
+  rpc RunInference (Request) returns (Response) {}
+  rpc RunTraining (Request) returns (Response) {}
+  rpc StatusCheck (Request) returns (Response) {}
 }
 
-message InferenceRequest {
-  string app = 1;
-  string image = 2;
-  string params = 3;
+message Request {
+  string request = 1;
 }
 
-message InferenceResponse {
-  string label = 1;
-  string params = 2;
-}
-
-message TrainRequest {
-  string app = 1;
-  string request = 2;
-}
-
-message TrainResponse {
-  string result = 1;
+message Response {
+  string response = 1;
 }

@@ -16,13 +16,18 @@ class AppStub(object):
         """
         self.RunInference = channel.unary_unary(
                 '/App/RunInference',
-                request_serializer=app__pb2.InferenceRequest.SerializeToString,
-                response_deserializer=app__pb2.InferenceResponse.FromString,
+                request_serializer=app__pb2.Request.SerializeToString,
+                response_deserializer=app__pb2.Response.FromString,
                 )
         self.RunTraining = channel.unary_unary(
                 '/App/RunTraining',
-                request_serializer=app__pb2.TrainRequest.SerializeToString,
-                response_deserializer=app__pb2.TrainResponse.FromString,
+                request_serializer=app__pb2.Request.SerializeToString,
+                response_deserializer=app__pb2.Response.FromString,
+                )
+        self.StatusCheck = channel.unary_unary(
+                '/App/StatusCheck',
+                request_serializer=app__pb2.Request.SerializeToString,
+                response_deserializer=app__pb2.Response.FromString,
                 )
 
 
@@ -41,18 +46,29 @@ class AppServicer(object):
         context.set_details('Method not implemented!')
         raise NotImplementedError('Method not implemented!')
 
+    def StatusCheck(self, request, context):
+        """Missing associated documentation comment in .proto file."""
+        context.set_code(grpc.StatusCode.UNIMPLEMENTED)
+        context.set_details('Method not implemented!')
+        raise NotImplementedError('Method not implemented!')
+
 
 def add_AppServicer_to_server(servicer, server):
     rpc_method_handlers = {
             'RunInference': grpc.unary_unary_rpc_method_handler(
                     servicer.RunInference,
-                    request_deserializer=app__pb2.InferenceRequest.FromString,
-                    response_serializer=app__pb2.InferenceResponse.SerializeToString,
+                    request_deserializer=app__pb2.Request.FromString,
+                    response_serializer=app__pb2.Response.SerializeToString,
             ),
             'RunTraining': grpc.unary_unary_rpc_method_handler(
                     servicer.RunTraining,
-                    request_deserializer=app__pb2.TrainRequest.FromString,
-                    response_serializer=app__pb2.TrainResponse.SerializeToString,
+                    request_deserializer=app__pb2.Request.FromString,
+                    response_serializer=app__pb2.Response.SerializeToString,
+            ),
+            'StatusCheck': grpc.unary_unary_rpc_method_handler(
+                    servicer.StatusCheck,
+                    request_deserializer=app__pb2.Request.FromString,
+                    response_serializer=app__pb2.Response.SerializeToString,
             ),
     }
     generic_handler = grpc.method_handlers_generic_handler(
@@ -76,8 +92,8 @@ class App(object):
             timeout=None,
             metadata=None):
         return grpc.experimental.unary_unary(request, target, '/App/RunInference',
-            app__pb2.InferenceRequest.SerializeToString,
-            app__pb2.InferenceResponse.FromString,
+            app__pb2.Request.SerializeToString,
+            app__pb2.Response.FromString,
             options, channel_credentials,
             insecure, call_credentials, compression, wait_for_ready, timeout, metadata)
 
@@ -93,7 +109,24 @@ class App(object):
             timeout=None,
             metadata=None):
         return grpc.experimental.unary_unary(request, target, '/App/RunTraining',
-            app__pb2.TrainRequest.SerializeToString,
-            app__pb2.TrainResponse.FromString,
+            app__pb2.Request.SerializeToString,
+            app__pb2.Response.FromString,
+            options, channel_credentials,
+            insecure, call_credentials, compression, wait_for_ready, timeout, metadata)
+
+    @staticmethod
+    def StatusCheck(request,
+            target,
+            options=(),
+            channel_credentials=None,
+            call_credentials=None,
+            insecure=False,
+            compression=None,
+            wait_for_ready=None,
+            timeout=None,
+            metadata=None):
+        return grpc.experimental.unary_unary(request, target, '/App/StatusCheck',
+            app__pb2.Request.SerializeToString,
+            app__pb2.Response.FromString,
             options, channel_credentials,
             insecure, call_credentials, compression, wait_for_ready, timeout, metadata)

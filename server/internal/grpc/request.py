@@ -1,7 +1,6 @@
 import asyncio
 import json
 import logging
-import os
 
 import grpc
 
@@ -17,21 +16,20 @@ CHANNEL_OPTIONS = [
 logger = logging.getLogger(__name__)
 
 
-async def inference(image, params, port=50051) -> None:
-    async with grpc.aio.insecure_channel(
-            target='localhost:' + str(port),
-            options=CHANNEL_OPTIONS) as channel:
+async def grpc_inference(request, port, timeout=30) -> None:
+    async with grpc.aio.insecure_channel(target=f"localhost:{port}", options=CHANNEL_OPTIONS) as channel:
         stub = app_pb2_grpc.AppStub(channel)
 
-        # Timeout in seconds.
-        # Please refer gRPC Python documents for more detail. https://grpc.io/grpc/python/grpc.html
-        request = app_pb2.InferenceRequest(image=image, params=json.dumps(params))
-        response = await stub.RunInference(request, timeout=30)
-    logger.info("Label: {}".format(response.label))
-    logger.info("Params: {}".format(json.loads(response.params) if response.params else None))
+        response = await stub.RunInference(app_pb2.Request(request=json.dumps(request)), timeout=timeout)
+        return json.loads(response.response) if response else None
 
-    if os.path.exists(response.label):
-        os.unlink(response.label)
+
+async def grpc_train(request, port, timeout=None) -> None:
+    async with grpc.aio.insecure_channel(target=f"localhost:{port}", options=CHANNEL_OPTIONS) as channel:
+        stub = app_pb2_grpc.AppStub(channel)
+
+        response = await stub.RunTraining(app_pb2.Request(request=json.dumps(request)), timeout=timeout)
+        return json.loads(response.response) if response else None
 
 
 if __name__ == '__main__':
@@ -41,6 +39,8 @@ if __name__ == '__main__':
         datefmt='%Y-%m-%d %H:%M:%S'
     )
 
-    image = '/workspace/Data/_image.nii.gz'
-    params = {}
-    asyncio.run(inference(image, params))
+    request = {
+        "image": '/workspace/Data/_image.nii.gz',
+        "params": {}
+    }
+    asyncio.run(grpc_inference(request, 50051))

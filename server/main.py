@@ -1,5 +1,4 @@
 import argparse
-import logging
 import os
 
 import uvicorn
@@ -9,10 +8,9 @@ from starlette.middleware.cors import CORSMiddleware
 from starlette.responses import HTMLResponse
 
 from server.core.config import settings
-from server.endpoints import activelearning, inference, logs, train, apps, dataset
+from server.endpoints import activelearning, inference, logs, train, apps, dataset, tools
+from server.utils.app_utils import init_apps
 from server.utils.generic import init_log_config
-
-logger = logging.getLogger(__name__)
 
 app = FastAPI(
     title=settings.PROJECT_NAME,
@@ -37,6 +35,7 @@ app.include_router(activelearning.router)
 app.include_router(apps.router)
 app.include_router(dataset.router)
 app.include_router(logs.router)
+app.include_router(tools.router)
 
 
 @app.get("/", include_in_schema=False)
@@ -48,6 +47,11 @@ async def custom_swagger_ui_html():
     body = html.body.decode("utf-8")
     body = body.replace('showExtensions: true,', 'showExtensions: true, defaultModelsExpandDepth: -1,')
     return HTMLResponse(body)
+
+
+@app.on_event("startup")
+async def startup_event():
+    init_apps()
 
 
 def run_main():
@@ -65,7 +69,7 @@ def run_main():
     args.workspace = os.path.realpath(args.workspace)
 
     for arg in vars(args):
-        logger.info('USING:: {} = {}'.format(arg, getattr(args, arg)))
+        print('USING:: {} = {}'.format(arg, getattr(args, arg)))
     print("")
 
     # Prepare the workspace
@@ -85,6 +89,7 @@ def run_main():
         reload=args.reload,
         log_config=init_log_config(args.log_config, args.workspace, "server.log"),
         use_colors=True,
+        access_log=args.debug,
     )
 
 

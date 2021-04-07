@@ -27,15 +27,23 @@
     "level": "INFO",
     "propagate": false,
     "handlers": [
-      "console"
+      "console",
+      "file_handler"
     ]
   },
   "loggers": {
-    "server": {
+    "uvicorn": {
       "level": "INFO",
       "propagate": false,
       "handlers": [
-        "file_handler"
+        "console"
+      ]
+    },
+    "uvicorn.access": {
+      "level": "WARNING",
+      "propagate": false,
+      "handlers": [
+        "console"
       ]
     }
   }
