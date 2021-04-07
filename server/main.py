@@ -59,7 +59,7 @@ def run_main():
     parser.add_argument('-w', '--workspace', required=True)
     parser.add_argument('-d', '--debug', action='store_true')
 
-    parser.add_argument('-i', '--host', default="127.0.0.1", type=str)
+    parser.add_argument('-i', '--host', default="0.0.0.0", type=str)
     parser.add_argument('-p', '--port', default=8000, type=int)
     parser.add_argument('-r', '--reload', action='store_true')
     parser.add_argument('-l', '--log_config', default=None, type=str)
