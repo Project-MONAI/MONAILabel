@@ -1,5 +1,6 @@
 import argparse
 import os
+import sys
 
 import uvicorn
 from fastapi import FastAPI
@@ -8,8 +9,8 @@ from starlette.middleware.cors import CORSMiddleware
 from starlette.responses import HTMLResponse
 
 from server.core.config import settings
-from server.endpoints import activelearning, inference, logs, train, apps, dataset, tools
-from server.utils.app_utils import init_apps
+from server.endpoints import activelearning, inference, logs, train, info
+from server.utils.app_utils import get_app_instance
 from server.utils.generic import init_log_config
 
 app = FastAPI(
@@ -32,10 +33,8 @@ if settings.BACKEND_CORS_ORIGINS:
 app.include_router(inference.router)
 app.include_router(train.router)
 app.include_router(activelearning.router)
-app.include_router(apps.router)
-app.include_router(dataset.router)
+app.include_router(info.router)
 app.include_router(logs.router)
-app.include_router(tools.router)
 
 
 @app.get("/", include_in_schema=False)
@@ -51,12 +50,13 @@ async def custom_swagger_ui_html():
 
 @app.on_event("startup")
 async def startup_event():
-    init_apps()
+    get_app_instance()
 
 
 def run_main():
     parser = argparse.ArgumentParser()
-    parser.add_argument('-w', '--workspace', required=True)
+    parser.add_argument('-n', '--name', required=True)
+    parser.add_argument('-a', '--app', required=True)
     parser.add_argument('-d', '--debug', action='store_true')
 
     parser.add_argument('-i', '--host', default="0.0.0.0", type=str)
@@ -65,21 +65,26 @@ def run_main():
     parser.add_argument('-l', '--log_config', default=None, type=str)
 
     args = parser.parse_args()
-    os.makedirs(args.workspace, exist_ok=True)
-    args.workspace = os.path.realpath(args.workspace)
+    if not os.path.exists(args.app):
+        print(f"APP Directory {args.app} NOT Found")
+        exit(1)
+
+    args.app = os.path.realpath(args.app)
 
     for arg in vars(args):
         print('USING:: {} = {}'.format(arg, getattr(args, arg)))
     print("")
 
-    # Prepare the workspace
-    settings.WORKSPACE = args.workspace
-    os.putenv("WORKSPACE", args.workspace)
+    settings.PROJECT_NAME = f"MONAI-Label - {args.name}"
+    settings.APP = args.name
+    settings.APP_DIR = args.app
 
-    os.makedirs(args.workspace, exist_ok=True)
-    os.makedirs(os.path.join(args.workspace, "apps"), exist_ok=True)
-    os.makedirs(os.path.join(args.workspace, "datasets"), exist_ok=True)
-    os.makedirs(os.path.join(args.workspace, "logs"), exist_ok=True)
+    os.putenv("PROJECT_NAME", settings.PROJECT_NAME)
+    os.putenv("APP", settings.APP)
+    os.putenv("APP_DIR", settings.APP_DIR)
+
+    sys.path.append(args.app)
+    sys.path.append(os.path.join(args.app, 'lib'))
 
     uvicorn.run(
         "main:app" if args.reload else app,
@@ -87,7 +92,7 @@ def run_main():
         port=args.port,
         log_level="debug" if args.debug else "info",
         reload=args.reload,
-        log_config=init_log_config(args.log_config, args.workspace, "server.log"),
+        log_config=init_log_config(args.log_config, args.app, "app.log"),
         use_colors=True,
         access_log=args.debug,
     )

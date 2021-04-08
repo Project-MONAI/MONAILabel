@@ -1,4 +1,5 @@
 import os
+import subprocess
 from collections import deque
 from typing import Optional
 
@@ -6,7 +7,6 @@ from fastapi import APIRouter, HTTPException
 from fastapi.responses import Response, FileResponse
 
 from server.core.config import settings
-from server.utils.scanning import scan_apps
 
 router = APIRouter(
     prefix="/logs",
@@ -74,26 +74,17 @@ def send_logs(logger_file, lines, html, text, refresh):
     return FileResponse(logger_file, media_type='text/plain')
 
 
-@router.get("/", summary="Get Server Logs")
+@router.get("/", summary="Get Logs")
 async def get_logs(
-        logfile: Optional[str] = "server.log",
-        lines: Optional[int] = 300,
-        html: Optional[bool] = True,
-        text: Optional[bool] = False,
-        refresh: Optional[int] = 0):
-    return send_logs(os.path.join(settings.WORKSPACE, "logs", logfile), lines, html, text, refresh)
-
-
-@router.get("/{app}", summary="Get Logs specific to an App")
-async def get_app_logs(
-        app: str,
         logfile: Optional[str] = "app.log",
         lines: Optional[int] = 300,
         html: Optional[bool] = True,
         text: Optional[bool] = False,
         refresh: Optional[int] = 0):
-    apps = scan_apps()
-    if app not in apps:
-        raise HTTPException(status_code=404, detail=f"App '{app}' NOT Found")
+    return send_logs(os.path.join(settings.APP_DIR, "logs", logfile), lines, html, text, refresh)
 
-    return send_logs(os.path.join(apps[app]['path'], "logs", logfile), lines, html, text, refresh)
+
+@router.get("/gpu", summary="Get GPU Info (nvidia-smi)")
+async def gpu_info():
+    response = subprocess.run(['nvidia-smi'], stdout=subprocess.PIPE).stdout.decode('utf-8')
+    return Response(content=response, media_type='text/plain')

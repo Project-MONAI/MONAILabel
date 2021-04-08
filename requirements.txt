@@ -1,8 +1,6 @@
 aiofiles==0.6.0
 fastapi==0.63.0
 monai[all]==0.4.0
-grpcio==1.36.1
-grpcio-tools==1.36.1
 requests-toolbelt==0.9.1
 uvicorn==0.13.4
 watchdog==2.0.2

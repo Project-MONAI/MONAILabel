@@ -1,6 +1,5 @@
 from monai.apps.deepgrow.transforms import (
     AddGuidanceFromPointsd,
-    Fetch2DSliced,
     SpatialCropGuidanced,
     ResizeGuidanced,
     AddGuidanceSignald,
@@ -24,7 +23,7 @@ from server.interface import InferenceEngine
 
 # In many cases people like to use something existing.. and only define, pre/post transforms + inferer
 # Or you can write your InferenceEngine (e.g. run multiple/chained inferences...)
-class DeepgrowInferenceEngine(InferenceEngine):
+class Deepgrow3D(InferenceEngine):
     def __init__(self, model):
         super().__init__(model=model)
 
@@ -32,15 +31,14 @@ class DeepgrowInferenceEngine(InferenceEngine):
         return [
             LoadImaged(keys='image'),
             AsChannelFirstd(keys='image'),
-            Spacingd(keys='image', pixdim=[1.0, 1.0], mode='bilinear'),
-            AddGuidanceFromPointsd(ref_image='image', guidance='guidance', dimensions=2),
-            Fetch2DSliced(keys='image', guidance='guidance'),
+            Spacingd(keys='image', pixdim=[1.0, 1.0, 1.0], mode='bilinear'),
+            AddGuidanceFromPointsd(ref_image='image', guidance='guidance', dimensions=3),
             AddChanneld(keys='image'),
-            SpatialCropGuidanced(keys='image', guidance='guidance', spatial_size=[256, 256]),
-            Resized(keys='image', spatial_size=[256, 256], mode='area'),
+            SpatialCropGuidanced(keys='image', guidance='guidance', spatial_size=[192, 192]),
+            Resized(keys='image', spatial_size=[128, 192, 192], mode='area'),
             ResizeGuidanced(guidance='guidance', ref_image='image'),
             NormalizeIntensityd(keys='image', subtrahend=208, divisor=388),
-            AddGuidanceSignald(image='image', guidance='guidance')
+            AddGuidanceSignald(image='image', guidance='guidance'),
         ]
 
     def inferer(self):

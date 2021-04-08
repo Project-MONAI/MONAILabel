@@ -11,14 +11,14 @@ from fastapi.responses import FileResponse, Response
 from requests_toolbelt import MultipartEncoder
 from starlette.background import BackgroundTasks
 
-from server.internal.grpc.request import grpc_inference
-from server.utils.app_utils import get_grpc_port
+from server.interface import MONAIApp
+from server.utils.app_utils import get_app_instance
 
 logger = logging.getLogger(__name__)
 
 router = APIRouter(
     prefix="/inference",
-    tags=["AppEngine"],
+    tags=["AppService"],
     responses={
         404: {"description": "Not found"},
         200: {
@@ -103,18 +103,20 @@ def send_response(result, output, background_tasks):
     return Response(content=return_message.to_string(), media_type=return_message.content_type)
 
 
-# TODO:: Run Inference for an item in dataset/session
-@router.post("/{app}", summary="Run Infer action for an existing App")
-async def run_inference(app: str, background_tasks: BackgroundTasks, output: Optional[ResultType] = None):
+# TODO:: Define request uri for (model, image, params)
+@router.post("/{model}", summary="Run Infer action")
+async def run_inference(background_tasks: BackgroundTasks, model, output: Optional[ResultType] = None):
     request = {
-        "image": "/workspace/Data/_image.nii.gz",
+        "model": model,
+        "image": "imagesTr/spleen_2.nii.gz",
         "params": {}
     }
 
     logger.info(f"Infer Request: {request}")
-    result = await grpc_inference(request, get_grpc_port(app))
-    logger.info(f"Infer Result: {result}")
+    instance: MONAIApp = get_app_instance()
+    result = instance.infer(request)
 
+    logger.info(f"Infer Result: {result}")
     if result is None:
-        raise HTTPException(status_code=500, detail=f"Failed to execute infer for {app}")
+        raise HTTPException(status_code=500, detail=f"Failed to execute infer")
     return send_response(result, output, background_tasks)

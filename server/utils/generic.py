@@ -32,10 +32,10 @@ def run_command(command, args=None, plogger=None):
     return process.returncode
 
 
-def init_log_config(log_config, workspace, log_file):
+def init_log_config(log_config, app_dir, log_file):
     if not log_config or not os.path.exists(log_config):
         default_config = os.path.realpath(os.path.join(os.path.dirname(__file__), '..', 'logging.json'))
-        log_dir = os.path.join(workspace, "logs")
+        log_dir = os.path.join(app_dir, "logs")
         log_config = os.path.join(log_dir, "logging.json")
         os.makedirs(log_dir, exist_ok=True)
 

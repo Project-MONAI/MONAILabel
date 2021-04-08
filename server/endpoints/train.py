@@ -1,45 +1,41 @@
 import logging
-import os
 
 from fastapi import APIRouter, HTTPException
 from starlette.background import BackgroundTasks
 
-from server.core.config import settings
-from server.internal.grpc.request import grpc_train
-from server.utils.app_utils import app_info, get_grpc_port
+from server.interface import MONAIApp
+from server.utils.app_utils import get_app_instance
 
 logger = logging.getLogger(__name__)
 
 router = APIRouter(
     prefix="/train",
-    tags=["AppEngine"],
+    tags=["AppService"],
     responses={404: {"description": "Not found"}},
 )
 
 
-@router.post("/{app}", summary="Run Train action for an existing App")
-async def run_train(app: str, background_tasks: BackgroundTasks):
-    info = app_info(app)
-    app_dir = info['path']
-
-    output_dir = os.path.join(app_dir, "model", "run_0")
-    dataset_root = os.path.join(settings.WORKSPACE, "datasets", "Task09_Spleen")
-
+@router.post("/", summary="Run Train action for an existing App")
+async def run_train(background_tasks: BackgroundTasks, epochs: int):
     request = {
-        'output_dir': output_dir,
-        'data_list': os.path.join(dataset_root, "dataset.json"),
-        'data_root': dataset_root,
         'device': "cuda",
-        'epochs': 1,
+        'epochs': epochs,
         'amp': True,
         'train': {},
         'val': {},
     }
 
     logger.info(f"Train Request: {request}")
-    result = await grpc_train(request, get_grpc_port(app))
-    logger.info(f"Train Result: {result}")
+    instance: MONAIApp = get_app_instance()
+    result = instance.train(request)
 
+    logger.info(f"Train Result: {result}")
     if result is None:
-        raise HTTPException(status_code=500, detail=f"Failed to execute train for {app}")
+        raise HTTPException(status_code=500, detail=f"Failed to execute train")
     return result
+
+
+@router.post("/stop", summary="Stop Train action for an existing App")
+async def stop_train(background_tasks: BackgroundTasks):
+    instance: MONAIApp = get_app_instance()
+    return instance.stop_train({})

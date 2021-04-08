@@ -1,63 +1,37 @@
 import logging
 import os
-import threading
 
-from server.interface import ServerException, ServerError
-from server.utils.generic import run_command
-from server.utils.scanning import scan_apps
+from server.core.config import settings
+from server.interface import MONAIApp
+from server.interface.exception import ServerError, ServerException
+from server.utils.class_utils import get_class_of_subclass_from_file
 
 logger = logging.getLogger(__name__)
+app_instance = None
 
 
-def app_info(app):
-    apps = scan_apps()
-    if app not in apps:
-        raise ServerException(ServerError.APP_NOT_FOUND, f"{app} Not Found")
-    return apps[app]
+def get_app_instance():
+    global app_instance
+    if app_instance is not None:
+        return app_instance
 
+    app = settings.APP
+    app_dir = settings.APP_DIR
+    logger.info(f"Initializing APP : {app}; App Dir: {app_dir}")
 
-def init_app(app, app_dir, port=0):
-    class AppT(threading.Thread):
-        def __init__(self, name, path):
-            threading.Thread.__init__(self)
+    main_py = os.path.join(app_dir, 'main.py')
+    if not os.path.exists(main_py):
+        raise ServerException(ServerError.APP_INIT_ERROR, f"App '{app}' Does NOT have main.py")
 
-            self.cmd = os.path.realpath(os.path.join(os.path.dirname(__file__), '..', 'internal', 'grpc', 'worker.sh'))
-            self.name = name
-            self.path = path
-            self.port = port
+    c = get_class_of_subclass_from_file("main", main_py, MONAIApp)
+    if c is None:
+        raise ServerException(ServerError.APP_INIT_ERROR, f"App '{app}' Does NOT Implement MONAIApp in main.py")
 
-        def run(self):
-            logger.info(f"Init App: {self.name}; path: {self.path}")
-            run_command(self.cmd, [self.name, self.path, self.port], logging.getLogger(self.name))
+    o = c(name=app, app_dir=app_dir)
+    methods = ["infer", "train", "info", "stop_train", "next_sample", "save_label"]
+    for m in methods:
+        if not hasattr(o, m):
+            raise ServerException(ServerError.APP_INIT_ERROR, f"App '{app}' Does NOT Implement '{m}' method in main.py")
 
-    t = AppT(app, app_dir)
-    t.start()
-    return t
-
-
-def init_apps():
-    apps = scan_apps()
-    return [init_app(app, apps[app]['path']) for counter, app in enumerate(apps)]
-
-
-def get_grpc_port(app):
-    info = app_info(app)
-    port_file = os.path.join(info['path'], '.port')
-
-    if os.path.isfile(port_file):
-        with open(port_file, 'r') as f:
-            return int(f.read())
-    return None
-
-
-if __name__ == '__main__':
-    logging.basicConfig(
-        level=logging.DEBUG,
-        format='[%(asctime)s.%(msecs)03d][%(levelname)5s](%(name)s) - %(message)s',
-        datefmt='%Y-%m-%d %H:%M:%S')
-
-    try:
-        app_threads = init_apps()
-        [t.join() for t in app_threads]
-    except KeyboardInterrupt:
-        exit(0)
+    app_instance = o
+    return app_instance

@@ -14,9 +14,7 @@ from server.interface import InferenceEngine
 from server.interface.utils import Restored, ExtremePointsd, BoundingBoxd
 
 
-# In many cases people like to use something existing.. and only define, pre/post transforms + inferer
-# Or you can write your InferenceEngine (e.g. run multiple/chained inferences...)
-class SpleenInferenceEngine(InferenceEngine):
+class SegmentationSpleen(InferenceEngine):
     def __init__(self, model):
         super().__init__(model=model)
 
