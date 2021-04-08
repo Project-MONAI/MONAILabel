@@ -11,13 +11,13 @@ router = APIRouter(
 
 
 # TODO:: Return both name and binary image in the response
-@router.post("/next_sample", summary="Run Active Learning strategy over Dataset to get next sample")
+@router.post("/next_sample", summary="Run Active Learning strategy to get next sample")
 async def next_sample():
     instance: MONAIApp = get_app_instance()
     return instance.next_sample({})
 
 
-@router.post("/save_label", summary="Save Label")
+@router.post("/save_label", summary="Save Finished Label")
 async def save_label():
     instance: MONAIApp = get_app_instance()
     return instance.save_label({})

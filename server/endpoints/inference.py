@@ -104,7 +104,7 @@ def send_response(result, output, background_tasks):
 
 
 # TODO:: Define request uri for (model, image, params)
-@router.post("/{model}", summary="Run Infer action")
+@router.post("/{model}", summary="Run Inference for supported model")
 async def run_inference(background_tasks: BackgroundTasks, model, output: Optional[ResultType] = None):
     request = {
         "model": model,

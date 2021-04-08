@@ -10,7 +10,7 @@ router = APIRouter(
 )
 
 
-@router.get("/", summary="App Info")
+@router.get("/", summary="Get App Info")
 async def app_info():
     instance: MONAIApp = get_app_instance()
     return instance.info()

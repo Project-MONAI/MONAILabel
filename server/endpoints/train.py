@@ -15,7 +15,7 @@ router = APIRouter(
 )
 
 
-@router.post("/", summary="Run Train action for an existing App")
+@router.post("/", summary="Run Training")
 async def run_train(background_tasks: BackgroundTasks, epochs: int):
     request = {
         'device': "cuda",
@@ -35,7 +35,7 @@ async def run_train(background_tasks: BackgroundTasks, epochs: int):
     return result
 
 
-@router.post("/stop", summary="Stop Train action for an existing App")
+@router.post("/stop", summary="Stop Training")
 async def stop_train(background_tasks: BackgroundTasks):
     instance: MONAIApp = get_app_instance()
     return instance.stop_train({})
