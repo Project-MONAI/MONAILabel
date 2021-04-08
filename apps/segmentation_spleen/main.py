@@ -11,8 +11,8 @@ logger = logging.getLogger(__name__)
 
 
 class SpleenApp(MONAIApp):
-    def __init__(self, name, app_dir, cache=True):
-        super().__init__(name=name, app_dir=app_dir)
+    def __init__(self, app_dir, cache=True):
+        super().__init__(app_dir=app_dir)
 
         self.studies = os.path.join(app_dir, "studies")
         self.cached = {} if cache else None

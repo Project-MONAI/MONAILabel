@@ -15,3 +15,6 @@ models:
   segmentation_spleen: A pre-trained model for volumetric (3D) segmentation of the spleen from CT image
   deepgrow_2d: A pre-trained 2D DeepGrow model based on UNET
   deepgrow_3d: A pre-trained 3D DeepGrow model based on UNET
+networks:
+  UNet: UNet with channels (16, 32, 64, 128, 256)
+  BasicUNet: Basic UNet with features (16, 32, 64, 128, 256)

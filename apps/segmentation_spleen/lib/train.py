@@ -12,7 +12,7 @@ from monai.handlers import (
 from monai.inferers import SlidingWindowInferer, SimpleInferer
 from monai.losses import DiceLoss
 from monai.networks.layers import Norm
-from monai.networks.nets import UNet
+from monai.networks.nets import UNet, BasicUNet
 from monai.transforms import (
     LoadImaged,
     AddChanneld,
@@ -41,15 +41,20 @@ class SpleenTrainEngine(TrainEngine):
         logger.info(f"Total Records for Validation: {len(self._val_datalist)}")
 
         self._device = torch.device(request.get('device', 'cuda'))
-        self._network = UNet(
-            dimensions=3,
-            in_channels=1,
-            out_channels=2,
-            channels=(16, 32, 64, 128, 256),
-            strides=(2, 2, 2, 2),
-            num_res_units=2,
-            norm=Norm.BATCH
-        )
+
+        if request.get("network") == "BasicUNET":
+            self._network = BasicUNet(dimensions=3, in_channels=1, out_channels=2, features=(16, 32, 64, 128, 256, 16))
+        else:
+            self._network = UNet(
+                dimensions=3,
+                in_channels=1,
+                out_channels=2,
+                channels=(16, 32, 64, 128, 256),
+                strides=(2, 2, 2, 2),
+                num_res_units=2,
+                norm=Norm.BATCH
+            )
+
         self._optimizer = torch.optim.Adam(self._network.parameters(), request.get('lr', 0.0001))
         self._loss_function = DiceLoss(to_onehot_y=True, softmax=True)
 

@@ -2,8 +2,7 @@ from abc import abstractmethod
 
 
 class MONAIApp(object):
-    def __init__(self, name, app_dir, **kwargs):
-        self.name = name
+    def __init__(self, app_dir, **kwargs):
         self.app_dir = app_dir
 
     @abstractmethod

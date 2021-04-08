@@ -16,9 +16,6 @@ test:
 dist:
 	python3 setup.py sdist bdist_wheel
 
-run:
-	cd server && uvicorn main:app --reload
-
 clean:
 	@echo "Running clean up...."
 	@rm -rf build dist *.egg-info

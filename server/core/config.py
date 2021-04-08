@@ -8,7 +8,6 @@ class Settings(BaseSettings):
     BACKEND_CORS_ORIGINS: List[AnyHttpUrl] = []
     PROJECT_NAME: str = "MONAI-Label"
 
-    APP: str = None
     APP_DIR: str = None
 
     @validator("BACKEND_CORS_ORIGINS", pre=True)

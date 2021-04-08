@@ -55,7 +55,6 @@ async def startup_event():
 
 def run_main():
     parser = argparse.ArgumentParser()
-    parser.add_argument('-n', '--name', required=True)
     parser.add_argument('-a', '--app', required=True)
     parser.add_argument('-d', '--debug', action='store_true')
 
@@ -63,6 +62,7 @@ def run_main():
     parser.add_argument('-p', '--port', default=8000, type=int)
     parser.add_argument('-r', '--reload', action='store_true')
     parser.add_argument('-l', '--log_config', default=None, type=str)
+    parser.add_argument('--dryrun', action='store_true')
 
     args = parser.parse_args()
     if not os.path.exists(args.app):
@@ -70,17 +70,15 @@ def run_main():
         exit(1)
 
     args.app = os.path.realpath(args.app)
+    if args.dryrun:
+        print(f"Using APP Directory={args.app}")
+        exit(0)
 
     for arg in vars(args):
         print('USING:: {} = {}'.format(arg, getattr(args, arg)))
     print("")
 
-    settings.PROJECT_NAME = f"MONAI-Label - {args.name}"
-    settings.APP = args.name
     settings.APP_DIR = args.app
-
-    os.putenv("PROJECT_NAME", settings.PROJECT_NAME)
-    os.putenv("APP", settings.APP)
     os.putenv("APP_DIR", settings.APP_DIR)
 
     sys.path.append(args.app)

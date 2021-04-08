@@ -18,7 +18,7 @@ def test_inference(args):
     output_path = args.output
     os.makedirs(output_path, exist_ok=True)
 
-    app = SpleenApp(name=args.name, app_dir=args.app_dir)
+    app = SpleenApp(app_dir=args.app_dir)
     logger.info('Running Inference: {}'.format(args.name))
 
     res_img = None
@@ -47,7 +47,7 @@ def test_train(args):
     output_path = os.path.dirname(args.output)
     os.makedirs(output_path, exist_ok=True)
 
-    app = SpleenApp(name=args.name, app_dir=args.app_dir)
+    app = SpleenApp(app_dir=args.app_dir)
     logger.info('Running Training: {}'.format(args.name))
 
     request = {
@@ -64,7 +64,7 @@ def test_train(args):
 
 
 def test_info(args):
-    app = SpleenApp(name=args.name, app_dir=args.app_dir)
+    app = SpleenApp(app_dir=args.app_dir)
     info = app.info()
 
     class MyDumper(yaml.Dumper):
@@ -83,7 +83,6 @@ def run_main():
     studies = os.path.realpath(os.path.join(app_dir, 'studies'))
 
     parser = argparse.ArgumentParser()
-    parser.add_argument('-n', '--name', default='spleen')
     parser.add_argument('-d', '--debug', action='store_true')
     parser.add_argument('-a', '--app_dir', default='.')
     parser.add_argument('--device', default='cuda')
@@ -99,6 +98,7 @@ def run_main():
     parser_a.set_defaults(test='infer')
 
     parser_b = subparsers.add_parser('train', help='train help')
+    parser_a.add_argument('-n', '--network', default='UNet')
     parser_b.add_argument('-i', '--input', default=f"{studies}/dataset.json")
     parser_b.add_argument('-o', '--output', default=f"{app_dir}/model/run_0")
     parser_b.add_argument('-r', '--dataset_root', default=studies)
