@@ -30,10 +30,10 @@ if settings.BACKEND_CORS_ORIGINS:
         allow_headers=["*"],
     )
 
+app.include_router(info.router)
 app.include_router(inference.router)
 app.include_router(train.router)
 app.include_router(activelearning.router)
-app.include_router(info.router)
 app.include_router(logs.router)
 
 
