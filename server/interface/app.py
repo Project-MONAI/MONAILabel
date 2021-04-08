@@ -18,10 +18,6 @@ class MONAIApp(object):
         pass
 
     @abstractmethod
-    def stop_train(self, request):
-        pass
-
-    @abstractmethod
     def next_sample(self, request):
         pass
 

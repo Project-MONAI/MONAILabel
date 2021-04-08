@@ -81,9 +81,6 @@ class SpleenApp(MONAIApp):
         stats = engine.run(max_epochs=epochs, amp=amp)
         return stats
 
-    def stop_train(self, request):
-        return {"status": "NOT IMPLEMENTED YET"}
-
     def next_sample(self, request):
         return {"image": os.path.join(self.studies, "imagesTr/spleen_2.nii.gz")}
 

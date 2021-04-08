@@ -27,7 +27,7 @@ def get_app_instance():
         raise ServerException(ServerError.APP_INIT_ERROR, f"App Does NOT Implement MONAIApp in main.py")
 
     o = c(app_dir=app_dir)
-    methods = ["infer", "train", "info", "stop_train", "next_sample", "save_label"]
+    methods = ["infer", "train", "info", "next_sample", "save_label"]
     for m in methods:
         if not hasattr(o, m):
             raise ServerException(ServerError.APP_INIT_ERROR, f"App Does NOT Implement '{m}' method in main.py")
