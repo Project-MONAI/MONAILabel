@@ -1,5 +1,6 @@
 import logging
 import os
+import random
 
 import yaml
 
@@ -10,7 +11,7 @@ from server.interface.app import MONAIApp
 logger = logging.getLogger(__name__)
 
 
-class SpleenApp(MONAIApp):
+class MyApp(MONAIApp):
     def __init__(self, app_dir, cache=True):
         super().__init__(app_dir=app_dir)
 
@@ -82,7 +83,11 @@ class SpleenApp(MONAIApp):
         return stats
 
     def next_sample(self, request):
-        return {"image": os.path.join(self.studies, "imagesTr/spleen_2.nii.gz")}
+        images_dir = os.path.join(self.studies, "imagesTr")
+        images = [f for f in os.listdir(images_dir) if os.path.isfile(os.path.join(images_dir, f))]
+
+        image = random.choice(images)
+        return {"image": image}
 
     def save_label(self, request):
         return {

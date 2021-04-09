@@ -9,7 +9,7 @@ import sys
 
 import yaml
 
-from main import SpleenApp
+from main import MyApp
 
 logger = logging.getLogger(__name__)
 
@@ -18,7 +18,7 @@ def test_inference(args):
     output_path = args.output
     os.makedirs(output_path, exist_ok=True)
 
-    app = SpleenApp(app_dir=args.app_dir)
+    app = MyApp(app_dir=args.app_dir)
     logger.info('Running Inference: {}'.format(args.name))
 
     res_img = None
@@ -47,7 +47,7 @@ def test_train(args):
     output_path = os.path.dirname(args.output)
     os.makedirs(output_path, exist_ok=True)
 
-    app = SpleenApp(app_dir=args.app_dir)
+    app = MyApp(app_dir=args.app_dir)
     logger.info('Running Training: {}'.format(args.name))
 
     request = {
@@ -64,7 +64,7 @@ def test_train(args):
 
 
 def test_info(args):
-    app = SpleenApp(app_dir=args.app_dir)
+    app = MyApp(app_dir=args.app_dir)
     info = app.info()
 
     class MyDumper(yaml.Dumper):
