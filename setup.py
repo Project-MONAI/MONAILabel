@@ -15,5 +15,5 @@ setup(
     author_email='label@monai.com',
     url='http://monai.com',
     license=license_desc,
-    packages=find_packages(exclude=('tests', 'docs'))
+    packages=find_packages(exclude=('tests', 'docs', 'apps'))
 )

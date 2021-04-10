@@ -137,8 +137,10 @@ ENV/
 .idea/
 .vscode/
 
-# workspace
-logs/
-datasets/
-.port
+# logs
+logs
+
+# docs build
+docs/build
+docs/source/apidocs
 

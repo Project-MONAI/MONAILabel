@@ -22,4 +22,4 @@ clean:
 	@find . -type d -name  "__pycache__" -exec rm -r {} +
 	@rm -rf apps/*/logs
 	@rm -rf apps/*/.venv
-	@rm -rf apps/*/model/run_*
+	@rm -rf apps/*/model/train_*
