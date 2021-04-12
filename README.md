@@ -23,7 +23,10 @@ unzip studies.zip && unzip models.zip
 # Run APP
 cd /workspace/MONAI-label/monailabel
 export PYTHONPATH=/workspace/dlmed/MONAI-label
-./start_monai_label.sh --app ../apps/my_app/
+./start_monai_label.sh --app ../apps/my_app/ # To run in virtual env for the app by install my_app/requirements.txt
+
+# python main.py --app ../apps/my_app # If you want to run in current env
+
 ```
 
 ## App basic structure
