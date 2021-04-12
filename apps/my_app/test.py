@@ -80,11 +80,12 @@ def strtobool(val):
 
 def run_main():
     app_dir = os.path.realpath(os.path.join(os.path.dirname(__file__)))
-    studies = os.path.realpath(os.path.join(app_dir, 'studies'))
+    studies = os.path.realpath(os.path.join(app_dir, '../../datasets/studies'))
 
     parser = argparse.ArgumentParser()
     parser.add_argument('-d', '--debug', action='store_true')
     parser.add_argument('-a', '--app_dir', default='.')
+    parser.add_argument('-s', '--studies', default=f"{studies}")
     parser.add_argument('--device', default='cuda')
 
     subparsers = parser.add_subparsers(help='sub-command help')

@@ -57,6 +57,7 @@ async def startup_event():
 def run_main():
     parser = argparse.ArgumentParser()
     parser.add_argument('-a', '--app', required=True)
+    parser.add_argument('-s', '--studies', required=True)
     parser.add_argument('-d', '--debug', action='store_true')
 
     parser.add_argument('-i', '--host', default="0.0.0.0", type=str)
@@ -69,10 +70,15 @@ def run_main():
     if not os.path.exists(args.app):
         print(f"APP Directory {args.app} NOT Found")
         exit(1)
+    if not os.path.exists(args.studies):
+        print(f"STUDIES Directory {args.studies} NOT Found")
+        exit(1)
 
     args.app = os.path.realpath(args.app)
+    args.studies = os.path.realpath(args.studies)
     if args.dryrun:
         print(f"Using APP Directory={args.app}")
+        print(f"Using STUDIES Directory={args.studies}")
         exit(0)
 
     for arg in vars(args):
@@ -80,7 +86,9 @@ def run_main():
     print("")
 
     settings.APP_DIR = args.app
+    settings.STUDIES = args.studies
     os.putenv("APP_DIR", settings.APP_DIR)
+    os.putenv("STUDIES", settings.STUDIES)
 
     sys.path.append(args.app)
     sys.path.append(os.path.join(args.app, 'lib'))

@@ -3,6 +3,7 @@
 set -e
 DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" >/dev/null 2>&1 && pwd)"
 app_dir=$(python3 ${DIR}/main.py --dryrun "$@" | grep "Using APP Directory" | cut -d'=' -f2)
+app_dir=$(python3 ${DIR}/main.py --dryrun "$@" | grep "Using STUDIES Directory" | cut -d'=' -f2)
 
 if [ "${app_dir}" == "" ]; then
   return
@@ -37,4 +38,4 @@ python3 ${DIR}/main.py "$@"
 deactivate
 
 # TEST::
-# ./start_monai_label.sh -a ../apps/my_app
+# ./start_monai_label.sh --app ../apps/my_app --studies ../datasets/studies

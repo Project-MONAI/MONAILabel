@@ -10,17 +10,17 @@ logger = logging.getLogger(__name__)
 
 
 class MyApp(MONAILabelApp):
-    def __init__(self, app_dir):
+    def __init__(self, app_dir, studies):
         super().__init__(
             app_dir=app_dir,
-            studies=os.path.join(app_dir, "studies"),
+            studies=studies,
             cache=True,
             infer_models={
                 "deepgrow_2d": (Deepgrow2D, "deepgrow_2d.ts"),
                 "deepgrow_3d": (Deepgrow3D, "deepgrow_2d.ts"),
                 "segmentation_spleen": (SegmentationSpleen, "segmentation_spleen.ts"),
                 # Add any more pre-trained models that you are shipping here...
-                "model": (MyInfer, "model.ts")
+                "my_model": (MyInfer, "model.ts")
             },
         )
 
@@ -86,7 +86,7 @@ class MyApp(MONAILabelApp):
         return {"image": image}
 
     ''' 
-    # Example Sae Label Request
+    # Example Save Label Request
     request = {
         "image": "file://xyz,
         "label": "file://label_xyz,

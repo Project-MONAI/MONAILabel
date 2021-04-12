@@ -4,6 +4,7 @@ from typing import Optional
 
 from fastapi import APIRouter
 
+from monailabel.core.config import settings
 from monailabel.interface import MONAILabelApp
 from monailabel.utils.app_utils import get_app_instance
 from monailabel.utils.generic import file_checksum
@@ -37,6 +38,7 @@ async def next_sample(config: Optional[dict] = {"strategy": "random"}):
     return {
         "name": name,
         "image": image,
+        "studies": settings.STUDIES,
         "checksum": checksum,
         "url": url,
     }

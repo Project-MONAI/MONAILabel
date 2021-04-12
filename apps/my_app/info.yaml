@@ -3,9 +3,18 @@ version: 1
 description: MONAI Label App to provide active learning solution to label Spleen Organ over 3D CT Images
 dimension: 3
 models:
-  segmentation_spleen: A pre-trained model for volumetric (3D) segmentation of the spleen from CT image
-  deepgrow_2d: A pre-trained 2D DeepGrow model based on UNET
-  deepgrow_3d: A pre-trained 3D DeepGrow model based on UNET
+  segmentation_spleen:
+    description: A pre-trained model for volumetric (3D) segmentation of the spleen from CT image
+    type: segmentation
+  deepgrow_2d:
+    description: A pre-trained 2D DeepGrow model based on UNET
+    type: deepgrow
+  deepgrow_3d:
+    description: A pre-trained 3D DeepGrow model based on UNET
+    type: deepgrow
+  my_model:
+    description: My model which is trained that got trained periodically using Active Learning solution
+    type: segmentation
 config:
   device: cuda
   train:
@@ -14,11 +23,11 @@ config:
     lr: 0.0001
     epochs: 1
     network:
-      UNet: UNet with channels (16, 32, 64, 128, 256)
+      UNet: UNet with channels (16, 32, 64, 128, 256) # default
       BasicUNet: Basic UNet with features (16, 32, 64, 128, 256)
   activelearning:
     strategy:
-      random: Use Random Strategy to get Next Sample
+      random: Use Random Strategy to get Next Sample # default
       first: Pick first available Sample (ordered by name)
       last: Pick last available Sample (ordered by name)
       unk: I Don't know yet

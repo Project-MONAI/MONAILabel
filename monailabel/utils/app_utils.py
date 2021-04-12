@@ -16,7 +16,8 @@ def get_app_instance():
         return app_instance
 
     app_dir = settings.APP_DIR
-    logger.info(f"Initializing App from: {app_dir}")
+    studies = settings.STUDIES
+    logger.info(f"Initializing App from: {app_dir}; studies: {studies}")
 
     main_py = os.path.join(app_dir, 'main.py')
     if not os.path.exists(main_py):
@@ -26,7 +27,7 @@ def get_app_instance():
     if c is None:
         raise MONAILabelException(MONAILabelError.APP_INIT_ERROR, f"App Does NOT Implement MONAILabelApp in main.py")
 
-    o = c(app_dir=app_dir)
+    o = c(app_dir=app_dir, studies=studies)
     methods = ["infer", "train", "info", "next_sample", "save_label"]
     for m in methods:
         if not hasattr(o, m):
