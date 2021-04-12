@@ -1,8 +1,7 @@
 import logging
 import os
-import random
 
-from lib import MyInfer, MyTrain
+from lib import MyInfer, MyTrain, MyActiveLearning
 from monailabel.engines.infer import Deepgrow2D, Deepgrow3D, SegmentationSpleen
 from monailabel.interface.app import MONAILabelApp
 
@@ -72,30 +71,9 @@ class MyApp(MONAILabelApp):
         images_dir = os.path.join(self.studies, "imagesTr")
         images = [os.path.join(images_dir, f) for f in os.listdir(images_dir) if
                   os.path.isfile(os.path.join(images_dir, f)) and (f.endswith(".nii.gz") or f.endswith(".nii"))]
-        images.sort()
 
-        strategy = request.get("strategy", "random")
-        if strategy == "first":
-            image = images[0]
-        elif strategy == "last":
-            image = images[-1]
-        else:
-            image = random.choice(images)
-
-        logger.info(f"Strategy: {strategy}; Selected Image: {image}")
+        image = MyActiveLearning.next_sample(request.get("strategy", "random"), images)
         return {"image": image}
 
-    ''' 
-    # Example Save Label Request
-    request = {
-        "image": "file://xyz,
-        "label": "file://label_xyz,
-        "params": {},
-    }
-    '''
-
     def save_label(self, request):
-        return {
-            "image": request.get("image"),
-            "label": request.get("label"),
-        }
+        return super().save_label(request)

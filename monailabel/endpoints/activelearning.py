@@ -3,6 +3,7 @@ import os
 from typing import Optional
 
 from fastapi import APIRouter
+from fastapi import File, UploadFile
 
 from monailabel.core.config import settings
 from monailabel.interface import MONAILabelApp
@@ -45,6 +46,9 @@ async def next_sample(config: Optional[dict] = {"strategy": "random"}):
 
 
 @router.post("/save_label", summary="Save Finished Label")
-async def save_label():
+async def save_label(image: str, label: UploadFile = File(...)):
     instance: MONAILabelApp = get_app_instance()
-    return instance.save_label({})
+    return instance.save_label({
+        "image": image,
+        "label": label.filename
+    })

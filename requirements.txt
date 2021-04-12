@@ -2,6 +2,7 @@ aiofiles==0.6.0
 fastapi==0.63.0
 monai-weekly[all]
 pyyaml==5.4.1
+python-multipart==0.0.5
 requests-toolbelt==0.9.1
 uvicorn==0.13.4
 watchdog==2.0.2

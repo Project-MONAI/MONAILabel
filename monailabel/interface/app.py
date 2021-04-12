@@ -142,7 +142,8 @@ class MONAILabelApp:
 
     @abstractmethod
     def save_label(self, request):
-        """
-        Save annotated Label and possibly kick off training
-        """
-        pass
+        # TODO:: Save label, trigger training (if condition is met)
+        return {
+            "image": request.get("image"),
+            "label": request.get("label"),
+        }
