@@ -35,7 +35,8 @@ export PYTHONPATH=/workspace/dlmed/MONAI-label
 
 ## App basic structure
 
-<img src="https://user-images.githubusercontent.com/7339051/114417165-438ca080-9ba9-11eb-8642-483a62e51e4d.png" width="200"/>
+<img src="https://user-images.githubusercontent.com/7339051/114428020-98cdaf80-9bb3-11eb-8010-40f47d1afcd6.png" width="200"/>
+
 
 ## Dry Run basic flow (without slicer)
 
