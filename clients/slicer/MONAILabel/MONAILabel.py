@@ -157,6 +157,8 @@ class MONAILabelWidget(ScriptedLoadableModuleWidget, VTKObservationMixin):
         self.ui.nextSampleButton.connect('clicked(bool)', self.onNextSampleButton)
 
         self.initializeParameterNode()
+        self.updateServerUrlGUIFromSettings()
+        # self.onClickFetchModels()
 
     def cleanup(self):
         self.removeObservers()
@@ -289,11 +291,9 @@ class MONAILabelWidget(ScriptedLoadableModuleWidget, VTKObservationMixin):
                     combo.setCurrentIndex(0)
                     table.setCellWidget(n, 2, combo)
                 elif isinstance(val, bool):
-                    combo = qt.QComboBox()
-                    combo.addItem('true')
-                    combo.addItem('false')
-                    combo.setCurrentIndex(0 if val else 1)
-                    table.setCellWidget(n, 2, combo)
+                    checkbox = qt.QCheckBox()
+                    checkbox.setChecked(val)
+                    table.setCellWidget(n, 2, checkbox)
                 else:
                     table.setItem(n, 2, qt.QTableWidgetItem(str(val)))
 
@@ -452,6 +452,7 @@ class MONAILabelWidget(ScriptedLoadableModuleWidget, VTKObservationMixin):
         # Save current server URL to the top of history
         settings = qt.QSettings()
         serverUrlHistory = settings.value("MONAI-Label/serverUrlHistory")
+        print(serverUrlHistory)
         wasBlocked = self.ui.serverComboBox.blockSignals(True)
         self.ui.serverComboBox.clear()
         if serverUrlHistory:
