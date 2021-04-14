@@ -100,6 +100,7 @@ class MONAILabelWidget(ScriptedLoadableModuleWidget, VTKObservationMixin):
         self._parameterNode = None
         self._updatingGUIFromParameterNode = False
 
+        self.info = {}
         self.models = OrderedDict()
         self.config = OrderedDict()
 
@@ -206,6 +207,8 @@ class MONAILabelWidget(ScriptedLoadableModuleWidget, VTKObservationMixin):
         self.updateSelector(self.ui.segmentationModelSelector, ['segmentation'], 'SegmentationModel', 0)
         self.updateSelector(self.ui.deepgrowModelSelector, ['deepgrow'], 'DeepgrowModel', 0)
         self.updateConfigTable(self.ui.configTable)
+        self.ui.appComboBox.clear()
+        self.ui.appComboBox.addItem(self.info.get("name", ""))
 
         # Enable/Disable
         self.ui.segmentationButton.setEnabled(self.ui.segmentationModelSelector.currentText)
@@ -354,6 +357,8 @@ class MONAILabelWidget(ScriptedLoadableModuleWidget, VTKObservationMixin):
         try:
             self.updateServerSettings()
             info = self.logic.info()
+            self.info = info
+
             models = info["models"]
         except:
             slicer.util.errorDisplay("Failed to fetch models from remote server. "

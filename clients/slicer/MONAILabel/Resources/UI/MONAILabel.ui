@@ -25,6 +25,26 @@
    </property>
    <item>
     <layout class="QGridLayout" name="serverSettings">
+     <item row="0" column="1">
+      <widget class="QComboBox" name="serverComboBox">
+       <property name="sizePolicy">
+        <sizepolicy hsizetype="Expanding" vsizetype="Fixed">
+         <horstretch>0</horstretch>
+         <verstretch>0</verstretch>
+        </sizepolicy>
+       </property>
+       <property name="editable">
+        <bool>true</bool>
+       </property>
+      </widget>
+     </item>
+     <item row="0" column="0">
+      <widget class="QLabel" name="label">
+       <property name="text">
+        <string>MONAI Label server:</string>
+       </property>
+      </widget>
+     </item>
      <item row="0" column="2">
       <widget class="QPushButton" name="fetchModelsButton">
        <property name="enabled">
@@ -42,23 +62,13 @@
        </property>
       </widget>
      </item>
-     <item row="0" column="0">
-      <widget class="QLabel" name="label">
-       <property name="text">
-        <string>MONAI Label server:</string>
-       </property>
-      </widget>
+     <item row="1" column="1">
+      <widget class="QComboBox" name="appComboBox"/>
      </item>
-     <item row="0" column="1">
-      <widget class="QComboBox" name="serverComboBox">
-       <property name="sizePolicy">
-        <sizepolicy hsizetype="Expanding" vsizetype="Fixed">
-         <horstretch>0</horstretch>
-         <verstretch>0</verstretch>
-        </sizepolicy>
-       </property>
-       <property name="editable">
-        <bool>true</bool>
+     <item row="1" column="0">
+      <widget class="QLabel" name="label_3">
+       <property name="text">
+        <string>App Name:</string>
        </property>
       </widget>
      </item>
