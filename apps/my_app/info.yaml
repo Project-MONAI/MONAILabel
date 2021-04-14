@@ -6,12 +6,17 @@ models:
   segmentation_spleen:
     description: A pre-trained model for volumetric (3D) segmentation of the spleen from CT image
     type: segmentation
+    dimension: 3
+    labels:
+      - spleen
   deepgrow_2d:
     description: A pre-trained 2D DeepGrow model based on UNET
     type: deepgrow
+    dimension: 2
   deepgrow_3d:
     description: A pre-trained 3D DeepGrow model based on UNET
     type: deepgrow
+    dimension: 3
   my_model:
     description: My model which is trained that got trained periodically using Active Learning solution
     type: segmentation

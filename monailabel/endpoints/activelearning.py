@@ -40,7 +40,7 @@ async def next_sample(config: Optional[dict] = {"strategy": "random"}):
         "name": name,
         "image": image,
         "studies": settings.STUDIES,
-        "checksum": checksum,
+        "checksum": f"SHA256:{checksum}",
         "url": url,
     }
 
