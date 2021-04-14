@@ -190,6 +190,7 @@ class InferenceEngine(object):
     def run_transforms(self, data, transforms, log_prefix='POST'):
         """
         Run Transforms
+
         :param data: Input data dictionary
         :param transforms: List of transforms to run
         :param log_prefix: Logging prefix (POST or PRE)

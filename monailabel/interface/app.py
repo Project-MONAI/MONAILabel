@@ -12,6 +12,26 @@ logger = logging.getLogger(__name__)
 
 class MONAILabelApp:
     def __init__(self, app_dir, studies, infer_models, cache=True):
+        """
+        Base Class for Any MONAI Label App
+
+        :param app_dir: path for your App directory
+        :param studies: path for studies/datalist
+        :param infer_models: list of pre-trained models with infer engines
+
+            For Example::
+
+                # List of (name, engine, model.ts)
+                infer_models={
+                    "deepgrow_2d": (monailabel.engines.infer.Deepgrow2D, "deepgrow_2d.ts"),
+                    "deepgrow_3d": (monailabel.engines.infer.Deepgrow3D, "deepgrow_2d.ts"),
+                    "spleen": (monailabel.engines.infer.SegmentationSpleen, "spleen.ts"),
+                    "my_model": (myapp.lib.MyInfer, "model.ts")
+                }
+
+        :param cache: enable caching for infer engines to accelerate inference for subsequent infer actions
+
+        """
         self.app_dir = app_dir
         self.studies = studies
         self.cached = {} if cache else None
@@ -49,8 +69,9 @@ class MONAILabelApp:
     def infer(self, request):
         """
         Run Inference for an exiting pre-trained model.
+
         Args:
-            request: Json object which contains `model`, `image`, `params` and `device`
+            request: JSON object which contains `model`, `image`, `params` and `device`
 
                 For example::
 
@@ -103,8 +124,9 @@ class MONAILabelApp:
     def train(self, request):
         """
         Run Training.  User APP has to implement this method to run training
+
         Args:
-            request: Json object which contains train configs that are part APP info
+            request: JSON object which contains train configs that are part APP info
 
                 For example::
 
@@ -125,8 +147,9 @@ class MONAILabelApp:
     def next_sample(self, request):
         """
         Run Active Learning selection.  User APP has to implement this method to provide next sample for labelling.
+
         Args:
-            request: Json object which contains active learning configs that are part APP info
+            request: JSON object which contains active learning configs that are part APP info
 
                 For example::
 
@@ -143,8 +166,9 @@ class MONAILabelApp:
     def save_label(self, request):
         """
         Saving New Label.  You can extend this has callback handler to run calibrations etc. over Active learning models
+
         Args:
-            request: Json object which contains Label and Image details
+            request: JSON object which contains Label and Image details
 
                 For example::
 
