@@ -11,7 +11,7 @@ Draft Repository for MONAI Label
 ```bash
 # One time setup (docker to pull nvidia gpus and pytorch)
 docker run -it --rm --gpus all --ipc=host --net=host -v /rapid/xyz:/workspace/ nvcr.io/nvidia/pytorch:21.02-py3 
-git clone clone git@github.com:SachidanandAlle/MONAI-label.git /workspace/MONAI-label
+git clone git@github.com:SachidanandAlle/MONAI-label.git /workspace/MONAI-label
 cd /workspace/MONAI-label
 
 pip install -r requirements.txt
@@ -49,3 +49,12 @@ export PYTHONPATH=/workspace/dlmed/MONAI-label
   edited)
 
 <img src="https://user-images.githubusercontent.com/7339051/114413387-d9263100-9ba5-11eb-825f-ad5f9d968da8.png" width="500"/>
+
+## Slicer
+Install Plugin in developer mode
+ - git clone git@github.com:SachidanandAlle/MONAI-label.git
+ - Open 3D Slicer: Go to Edit -> Application Settings -> Modules -> Additional Module Paths
+ - Add New Module Path: <FULL_PATH>/clients/slicer/MONAILabel
+ - Restart
+<img src="https://user-images.githubusercontent.com/7339051/114699253-f4b14900-9d17-11eb-811f-86e572f77224.png" width="400"/>
+
