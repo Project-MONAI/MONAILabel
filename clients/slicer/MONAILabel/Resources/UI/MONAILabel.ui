@@ -130,17 +130,31 @@
       <property name="rightMargin">
        <number>0</number>
       </property>
-      <item row="1" column="0">
+      <item row="2" column="1">
+       <widget class="QPushButton" name="saveLabelButton">
+        <property name="text">
+         <string>Submit Label</string>
+        </property>
+       </widget>
+      </item>
+      <item row="2" column="0">
        <widget class="QPushButton" name="nextSampleButton">
         <property name="text">
          <string>Fetch Sample</string>
         </property>
        </widget>
       </item>
-      <item row="1" column="1">
-       <widget class="QPushButton" name="saveLabelButton">
+      <item row="3" column="0">
+       <widget class="QPushButton" name="trainButton">
         <property name="text">
-         <string>Submit Label</string>
+         <string>Run Training</string>
+        </property>
+       </widget>
+      </item>
+      <item row="3" column="1">
+       <widget class="QPushButton" name="stopTrainButton">
+        <property name="text">
+         <string>Stop Training</string>
         </property>
        </widget>
       </item>

@@ -132,6 +132,8 @@ class MONAILabelWidget(ScriptedLoadableModuleWidget, VTKObservationMixin):
         self.ui.segmentationButton.setIcon(self.icon('segment.png'))
         self.ui.nextSampleButton.setIcon(self.icon('segment.png'))
         self.ui.saveLabelButton.setIcon(self.icon('save.png'))
+        self.ui.trainButton.setIcon(self.icon('training.png'))
+        self.ui.stopTrainButton.setIcon(self.icon('stop.png'))
 
         self.ui.dgPositiveFiducialPlacementWidget.setMRMLScene(slicer.mrmlScene)
         self.ui.dgPositiveFiducialPlacementWidget.placeButton().toolTip = "Select +ve points"
@@ -207,6 +209,7 @@ class MONAILabelWidget(ScriptedLoadableModuleWidget, VTKObservationMixin):
 
         # Enable/Disable
         self.ui.segmentationButton.setEnabled(self.ui.segmentationModelSelector.currentText)
+        self.ui.stopTrainButton.setEnabled(False)
 
         # All the GUI updates are done
         self._updatingGUIFromParameterNode = False
