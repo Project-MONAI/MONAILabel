@@ -140,8 +140,23 @@ class MONAILabelApp:
         """
         pass
 
-    @abstractmethod
     def save_label(self, request):
+        """
+        Saving New Label.  You can extend this has callback handler to run calibrations etc. over Active learning models
+        Args:
+            request: Json object which contains Label and Image details
+
+                For example::
+
+                    {
+                        "image": "file://xyz.com",
+                        "label": "file://label_xyz.com",
+                        "params": {},
+                    }
+
+        Returns:
+            JSON containing next image and label info
+        """
         # TODO:: Save label, trigger training (if condition is met)
         return {
             "image": request.get("image"),
