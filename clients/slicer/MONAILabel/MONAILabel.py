@@ -14,10 +14,12 @@ from urllib.parse import quote_plus
 from urllib.parse import urlparse
 
 import SampleData
+import SimpleITK as sitk
 import ctk
 import qt
 import vtk
 
+import sitkUtils
 import slicer
 from slicer.ScriptedLoadableModule import *
 from slicer.util import VTKObservationMixin
@@ -96,13 +98,17 @@ class MONAILabelWidget(ScriptedLoadableModuleWidget, VTKObservationMixin):
         """
         ScriptedLoadableModuleWidget.__init__(self, parent)
         VTKObservationMixin.__init__(self)  # needed for parameter node observation
+
         self.logic = None
         self._parameterNode = None
+        self._volumeNode = None
+        self._segmentationNode = None
         self._updatingGUIFromParameterNode = False
 
         self.info = {}
         self.models = OrderedDict()
         self.config = OrderedDict()
+        self.current_sample = None
 
         self.progressBar = None
 
@@ -122,6 +128,10 @@ class MONAILabelWidget(ScriptedLoadableModuleWidget, VTKObservationMixin):
         # "mrmlSceneChanged(vtkMRMLScene*)" signal in is connected to each MRML widget's.
         # "setMRMLScene(vtkMRMLScene*)" slot.
         uiWidget.setMRMLScene(slicer.mrmlScene)
+
+        # These connections ensure that we update parameter node when scene is closed
+        self.addObserver(slicer.mrmlScene, slicer.mrmlScene.StartCloseEvent, self.onSceneStartClose)
+        self.addObserver(slicer.mrmlScene, slicer.mrmlScene.EndCloseEvent, self.onSceneEndClose)
 
         # Create logic class. Logic implements all computations that should be possible to run
         # in batch mode, without a graphical user interface.
@@ -170,6 +180,8 @@ class MONAILabelWidget(ScriptedLoadableModuleWidget, VTKObservationMixin):
         self.removeObserver(self._parameterNode, vtk.vtkCommand.ModifiedEvent, self.updateGUIFromParameterNode)
 
     def onSceneStartClose(self, caller, event):
+        self._volumeNode = None
+        self._segmentationNode = None
         self.setParameterNode(None)
 
     def onSceneEndClose(self, caller, event):
@@ -213,7 +225,11 @@ class MONAILabelWidget(ScriptedLoadableModuleWidget, VTKObservationMixin):
         self.ui.appComboBox.addItem(self.info.get("name", ""))
 
         # Enable/Disable
-        self.ui.segmentationButton.setEnabled(self.ui.segmentationModelSelector.currentText)
+        self.ui.nextSampleButton.setEnabled(self.info)
+        self.ui.trainButton.setEnabled(self.info)
+        self.ui.segmentationButton.setEnabled(
+            self.ui.segmentationModelSelector.currentText and self._volumeNode is not None)
+        self.ui.saveLabelButton.setEnabled(self.getSegmentNode() is not None)
         self.ui.stopTrainButton.setEnabled(False)
 
         # All the GUI updates are done
@@ -417,20 +433,23 @@ class MONAILabelWidget(ScriptedLoadableModuleWidget, VTKObservationMixin):
             sample = self.logic.next_sample()
             logging.debug(sample)
 
-            image_file = sample["image"].replace("/workspace", "/raid/sachi")
-            print(image_file)
+            image_file = sample["path"].replace("/workspace", "/raid/sachi")
+            logging.info(f"Check if file exists/shared locally: {image_file}")
             if os.path.exists(image_file):
-                slicer.util.loadVolume(image_file)
+                self._volumeNode = slicer.util.loadVolume(image_file)
             else:
                 download_uri = f"{self.serverUrl()}{sample['url']}"
                 logging.info(download_uri)
 
                 sampleDataLogic = SampleData.SampleDataLogic()
-                sampleDataLogic.downloadFromURL(
+                self._volumeNode = sampleDataLogic.downloadFromURL(
                     nodeNames=sample["name"],
                     fileNames=sample["name"],
                     uris=download_uri,
-                    checksums=sample["checksum"])
+                    checksums=sample["checksum"])[0]
+
+            self.current_sample = sample
+            self.updateGUIFromParameterNode()
         except:
             slicer.util.errorDisplay("Failed to fetch Sample from MONAI Label Server",
                                      detailedText=traceback.format_exc())
@@ -440,7 +459,33 @@ class MONAILabelWidget(ScriptedLoadableModuleWidget, VTKObservationMixin):
         logging.info("Time consumed by next_sample: {0:3.1f}".format(time.time() - start))
 
     def onClickSegmentation(self):
-        pass
+        if not self.logic:  # or not self.current_sample:  # TODO:: Match currently display node vs current sample
+            return
+
+        start = time.time()
+        try:
+            qt.QApplication.setOverrideCursor(qt.Qt.WaitCursor)
+
+            self.updateServerSettings()
+
+            model = self.ui.segmentationModelSelector.currentText
+            labels = self.info.get("labels")
+
+            image_file = self.current_sample["id"]
+            result_file, params = self.logic.inference(model, image_file)
+
+            if self.updateSegmentationMask(result_file, labels):
+                self.updateGUIFromParameterNode()
+
+        except:
+            slicer.util.errorDisplay("Failed to fetch Sample from MONAI Label Server",
+                                     detailedText=traceback.format_exc())
+        finally:
+            qt.QApplication.restoreOverrideCursor()
+            if result_file and os.path.exists(result_file):
+                os.unlink(result_file)
+
+        logging.info("Time consumed by segmentation: {0:3.1f}".format(time.time() - start))
 
     def onClickDeepgrow(self, current_point):
         pass
@@ -448,11 +493,69 @@ class MONAILabelWidget(ScriptedLoadableModuleWidget, VTKObservationMixin):
     def createCursor(self, widget):
         return slicer.util.mainWindow().cursor
 
+    def getSegmentNode(self):
+        if self._volumeNode is None:
+            return None
+
+        name = 'Segmentation_' + self._volumeNode.GetName()
+        try:
+            return slicer.util.getNode(name)
+        except slicer.util.MRMLNodeNotFoundException:
+            segmentationNode = slicer.mrmlScene.AddNewNodeByClass('vtkMRMLSegmentationNode')
+            segmentationNode.SetReferenceImageGeometryParameterFromVolumeNode(self._volumeNode)
+            segmentationNode.SetName(name)
+            return segmentationNode
+
+    def updateSegmentationMask(self, in_file, labels, override=False):
+        start = time.time()
+        logging.debug('Update Segmentation Mask from: {}'.format(in_file))
+        if in_file is None or os.path.exists(in_file) is False:
+            return False
+
+        segmentationNode = self.getSegmentNode()
+        segmentation = segmentationNode.GetSegmentation()
+
+        labelImage = sitk.ReadImage(in_file)
+        labelmapVolumeNode = sitkUtils.PushVolumeToSlicer(labelImage, None, className='vtkMRMLLabelMapVolumeNode')
+        colors = {}
+
+        if segmentation.GetNumberOfSegments() > 0:
+            if not override:
+                for label in labels:
+                    id = segmentation.GetSegmentIdBySegmentName(label)
+                    print(f"Check {label} that exists as id: {id}")
+                    if id:
+                        colors[label] = segmentation.GetSegment(id).GetColor()
+                        segmentationNode.RemoveSegment(id)
+            else:
+                # TODO:: Implement for deepgrow-2D (update just one slice)
+                pass
+
+        numberOfExistingSegments = segmentation.GetNumberOfSegments()
+        slicer.modules.segmentations.logic().ImportLabelmapToSegmentationNode(labelmapVolumeNode, segmentationNode)
+        slicer.mrmlScene.RemoveNode(labelmapVolumeNode)
+
+        numberOfAddedSegments = segmentation.GetNumberOfSegments() - numberOfExistingSegments
+        logging.debug('Adding {} segments'.format(numberOfAddedSegments))
+
+        addedSegmentIds = [segmentation.GetNthSegmentID(numberOfExistingSegments + i)
+                           for i in range(numberOfAddedSegments)]
+        for i, segmentId in enumerate(addedSegmentIds):
+            segment = segmentation.GetSegment(segmentId)
+            logging.debug('Setting new segmentation with id: {} => {}'.format(segmentId, segment.GetName()))
+            name = labels[i] if i < len(labels) else "unknown {}".format(i)
+            segment.SetName(name)
+            if colors.get(labels[i]):
+                segment.SetColor(colors[labels[i]])
+
+        logging.info("Time consumed by updateSegmentationMask: {0:3.1f}".format(time.time() - start))
+        return True
+
     def updateServerUrlGUIFromSettings(self):
         # Save current server URL to the top of history
         settings = qt.QSettings()
         serverUrlHistory = settings.value("MONAI-Label/serverUrlHistory")
-        print(serverUrlHistory)
+
         wasBlocked = self.ui.serverComboBox.blockSignals(True)
         self.ui.serverComboBox.clear()
         if serverUrlHistory:
@@ -508,9 +611,6 @@ class MONAILabelLogic(ScriptedLoadableModuleLogic):
     def __del__(self):
         shutil.rmtree(self.tmpdir, ignore_errors=True)
 
-    def inputFileExtension(self):
-        return ".nii.gz" if self.useCompression else ".nii"
-
     def outputFileExtension(self):
         return ".nii.gz"
 
@@ -535,10 +635,11 @@ class MONAILabelLogic(ScriptedLoadableModuleLogic):
     def next_sample(self):
         return MONAILabelClient(self.server_url).next_sample()
 
-    def inference(self, image_in, model, params=None):
+    def inference(self, model, image_in, params=None):
         logging.debug('Preparing input data for segmentation')
         self.reportProgress(0)
 
+        # TODO:: Consume based on extension from result file from Server
         result_file = tempfile.NamedTemporaryFile(suffix=self.outputFileExtension(), dir=self.tmpdir).name
         client = MONAILabelClient(self.server_url)
         params = client.inference(
@@ -566,7 +667,7 @@ class MONAILabelClient:
 
     def info(self):
         selector = '/info/'
-        status, response = MONAILabelUtils.http_method('GET', self._server_url, selector)
+        status, response, _ = MONAILabelUtils.http_method('GET', self._server_url, selector)
         if status != 200:
             raise MONAILabelException(MONAILabelError.SERVER_ERROR, 'Status: {}; Response: {}'.format(status, response))
 
@@ -577,7 +678,7 @@ class MONAILabelClient:
     def next_sample(self, strategy="random"):
         selector = '/activelearning/next_sample'
         body = {'strategy': strategy}
-        status, response = MONAILabelUtils.http_method('POST', self._server_url, selector, body)
+        status, response, _ = MONAILabelUtils.http_method('POST', self._server_url, selector, body)
         if status != 200:
             raise MONAILabelException(MONAILabelError.SERVER_ERROR, 'Status: {}; Response: {}'.format(status, response))
 
@@ -586,12 +687,12 @@ class MONAILabelClient:
         return json.loads(response)
 
     def inference(self, model, params, image_in, image_out):
-        selector = '/infer/{}?image={}'.format(
+        selector = '/inference/{}?image={}'.format(
             MONAILabelUtils.urllib_quote_plus(model),
             MONAILabelUtils.urllib_quote_plus(image_in))
-        in_fields = {'params': params}
+        body = {'params': params}
 
-        status, form, files = MONAILabelUtils.http_multipart('POST', self._server_url, selector, in_fields, {})
+        status, form, files = MONAILabelUtils.http_method('POST', self._server_url, selector, body)
         if status != 200:
             raise MONAILabelException(MONAILabelError.SERVER_ERROR, 'Status: {}; Response: {}'.format(status, form))
 
@@ -628,12 +729,7 @@ class MONAILabelUtils:
         logging.debug('URI Path: {}'.format(selector))
 
         conn.request(method, selector, body=json.dumps(body) if body else None)
-        response = conn.getresponse()
-
-        logging.debug('HTTP Response Code: {}'.format(response.status))
-        logging.debug('HTTP Response Message: {}'.format(response.reason))
-        logging.debug('HTTP Response Headers: {}'.format(response.getheaders()))
-        return response.status, response.read()
+        return MONAILabelUtils.send_response(conn)
 
     @staticmethod
     def http_multipart(method, server_url, selector, fields, files):
@@ -650,7 +746,10 @@ class MONAILabelUtils:
         logging.debug('URI Path: {}'.format(selector))
 
         conn.request(method, selector, body, headers)
+        return MONAILabelUtils.send_response(conn, content_type)
 
+    @staticmethod
+    def send_response(conn, content_type="application/json"):
         response = conn.getresponse()
         logging.debug('HTTP Response Code: {}'.format(response.status))
         logging.debug('HTTP Response Message: {}'.format(response.reason))

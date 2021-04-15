@@ -21,7 +21,7 @@ cached_digest = dict()
 
 # TODO:: Return both name and binary image in the response
 @router.post("/next_sample", summary="Run Active Learning strategy to get next sample")
-async def next_sample(config: Optional[dict] = {"strategy": "random"}):
+async def next_sample(config: Optional[dict] = {"strategy": "random"}, checksum: Optional[bool] = True):
     request = config if config else dict()
 
     instance: MONAILabelApp = get_app_instance()
@@ -29,8 +29,11 @@ async def next_sample(config: Optional[dict] = {"strategy": "random"}):
     image = result["image"]
     name = os.path.basename(image)
 
-    checksum = cached_digest.get(image)
-    checksum = checksum if checksum is not None else file_checksum(image)
+    digest = None
+    if checksum:  # It's always costly operation (some clients to access directly from shared file-system)
+        digest = cached_digest.get(image)
+        digest = digest if digest is not None else file_checksum(image)
+        digest = f"SHA256:{digest}"
 
     encoded = base64.urlsafe_b64encode(image.encode('utf-8')).decode('utf-8')
     encoded = encoded.rstrip('=')
@@ -38,10 +41,11 @@ async def next_sample(config: Optional[dict] = {"strategy": "random"}):
 
     return {
         "name": name,
-        "image": image,
+        "id": image,
+        "path": image,
         "studies": settings.STUDIES,
-        "checksum": f"SHA256:{checksum}",
         "url": url,
+        "checksum": digest,
     }
 
 
