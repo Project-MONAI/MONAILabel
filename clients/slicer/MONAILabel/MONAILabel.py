@@ -175,6 +175,7 @@ class MONAILabelWidget(ScriptedLoadableModuleWidget, VTKObservationMixin):
 
     def enter(self):
         self.initializeParameterNode()
+        # TODO:: 
 
     def exit(self):
         self.removeObserver(self._parameterNode, vtk.vtkCommand.ModifiedEvent, self.updateGUIFromParameterNode)
