@@ -935,7 +935,7 @@ class MONAILabelClient:
         logging.debug('Response: {}'.format(response))
         return json.loads(response)
 
-    def next_sample(self, strategy="first"):
+    def next_sample(self, strategy="random"):
         selector = '/activelearning/next_sample'
         body = {'strategy': strategy}
         status, response, _ = MONAILabelUtils.http_method('POST', self._server_url, selector, body)

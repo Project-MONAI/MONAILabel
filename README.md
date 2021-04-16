@@ -28,6 +28,8 @@ export PYTHONPATH=/workspace/dlmed/MONAI-label
 # To run in virtual env for the app by installing my_app/requirements.txt
 ./start_monai_label.sh --app ../apps/my_app/ --studies ../datasets/studies 
 
+python main.py --app ../apps/my_app/ --studies ../apps/datasets/studies/
+
 # If you want to run in current env
 # python main.py --app ../apps/my_app --studies ../datasets/studies
 
