@@ -74,18 +74,19 @@ class ResultType(str, Enum):
 
 def send_response(result, output, background_tasks):
     def remove_file(path: str) -> None:
-        os.unlink(path)
+        if os.path.exists(path):
+            os.unlink(path)
 
     res_img = result.get('label')
     res_json = result.get('params')
 
-    if res_img is None or output == 'json':
+    if output == 'json':
         return res_json
 
     background_tasks.add_task(remove_file, res_img)
     m_type = get_mime_type(res_img)
 
-    if res_json is None or not len(res_json) or output == 'image':
+    if output == 'image':
         return FileResponse(res_img, media_type=m_type, filename=os.path.basename(res_img))
 
     res_fields = dict()

@@ -16,7 +16,7 @@ class MyApp(MONAILabelApp):
             cache=True,
             infer_models={
                 "deepgrow_2d": (Deepgrow2D, "deepgrow_2d.ts"),
-                "deepgrow_3d": (Deepgrow3D, "deepgrow_2d.ts"),
+                "deepgrow_3d": (Deepgrow3D, "deepgrow_3d.ts"),
                 "segmentation_spleen": (SegmentationSpleen, "segmentation_spleen.ts"),
                 # Add any more pre-trained models that you are shipping here...
                 "my_model": (MyInfer, "model.ts")

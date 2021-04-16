@@ -25,6 +25,33 @@
    </property>
    <item>
     <layout class="QGridLayout" name="serverSettings">
+     <item row="0" column="2">
+      <widget class="QPushButton" name="fetchModelsButton">
+       <property name="enabled">
+        <bool>true</bool>
+       </property>
+       <property name="toolTip">
+        <string>Fetch/Refresh models from Server</string>
+       </property>
+       <property name="text">
+        <string/>
+       </property>
+       <property name="icon">
+        <iconset>
+         <normaloff>refresh-icon.png</normaloff>refresh-icon.png</iconset>
+       </property>
+      </widget>
+     </item>
+     <item row="1" column="0">
+      <widget class="QLabel" name="label_3">
+       <property name="text">
+        <string>App Name:</string>
+       </property>
+      </widget>
+     </item>
+     <item row="1" column="1" colspan="2">
+      <widget class="QComboBox" name="appComboBox"/>
+     </item>
      <item row="0" column="1">
       <widget class="QComboBox" name="serverComboBox">
        <property name="sizePolicy">
@@ -45,30 +72,20 @@
        </property>
       </widget>
      </item>
-     <item row="0" column="2">
-      <widget class="QPushButton" name="fetchModelsButton">
-       <property name="enabled">
-        <bool>true</bool>
-       </property>
-       <property name="toolTip">
-        <string>Fetch/Refresh models from Server</string>
-       </property>
+     <item row="2" column="0">
+      <widget class="QLabel" name="label_4">
        <property name="text">
-        <string/>
-       </property>
-       <property name="icon">
-        <iconset>
-         <normaloff>refresh-icon.png</normaloff>refresh-icon.png</iconset>
+        <string>Master Volume:</string>
        </property>
       </widget>
      </item>
-     <item row="1" column="1">
-      <widget class="QComboBox" name="appComboBox"/>
-     </item>
-     <item row="1" column="0">
-      <widget class="QLabel" name="label_3">
-       <property name="text">
-        <string>App Name:</string>
+     <item row="2" column="1" colspan="2">
+      <widget class="QComboBox" name="inputSelector">
+       <property name="currentText">
+        <string>Select Node</string>
+       </property>
+       <property name="placeholderText">
+        <string>Select Node</string>
        </property>
       </widget>
      </item>
@@ -140,17 +157,10 @@
       <property name="rightMargin">
        <number>0</number>
       </property>
-      <item row="2" column="1">
-       <widget class="QPushButton" name="saveLabelButton">
+      <item row="3" column="1">
+       <widget class="QPushButton" name="stopTrainButton">
         <property name="text">
-         <string>Submit Label</string>
-        </property>
-       </widget>
-      </item>
-      <item row="2" column="0">
-       <widget class="QPushButton" name="nextSampleButton">
-        <property name="text">
-         <string>Fetch Sample</string>
+         <string>Stop Training</string>
         </property>
        </widget>
       </item>
@@ -161,10 +171,17 @@
         </property>
        </widget>
       </item>
-      <item row="3" column="1">
-       <widget class="QPushButton" name="stopTrainButton">
+      <item row="2" column="0">
+       <widget class="QPushButton" name="nextSampleButton">
         <property name="text">
-         <string>Stop Training</string>
+         <string>Next Sample</string>
+        </property>
+       </widget>
+      </item>
+      <item row="2" column="1">
+       <widget class="QPushButton" name="saveLabelButton">
+        <property name="text">
+         <string>Submit Label</string>
         </property>
        </widget>
       </item>
@@ -197,6 +214,9 @@
           <verstretch>0</verstretch>
          </sizepolicy>
         </property>
+        <property name="toolTip">
+         <string>Select pre-trained segmentation model</string>
+        </property>
        </widget>
       </item>
       <item row="1" column="0">
@@ -226,7 +246,7 @@
    <item>
     <widget class="ctkCollapsibleButton" name="deepgrowCollapsibleButton">
      <property name="text">
-      <string>DeepGrow</string>
+      <string>DeepGrow / DeepEdit</string>
      </property>
      <property name="collapsed">
       <bool>false</bool>
@@ -241,81 +261,82 @@
       <property name="rightMargin">
        <number>0</number>
       </property>
-      <item row="1" column="1">
-       <widget class="QLineEdit" name="deepgrowSpatialSize">
-        <property name="sizePolicy">
-         <sizepolicy hsizetype="Expanding" vsizetype="Fixed">
-          <horstretch>0</horstretch>
-          <verstretch>0</verstretch>
-         </sizepolicy>
-        </property>
-        <property name="toolTip">
-         <string>
-                                        Spatial size in array format.
-                                        Example: [128, 128] or [128, 256, 256]
-                                    </string>
-        </property>
-        <property name="text">
-         <string/>
-        </property>
-       </widget>
-      </item>
-      <item row="2" column="0">
-       <widget class="QLabel" name="label_2">
-        <property name="text">
-         <string/>
-        </property>
-       </widget>
-      </item>
-      <item row="0" column="0">
-       <widget class="QLabel" name="label_8">
-        <property name="text">
-         <string>Model:</string>
-        </property>
-       </widget>
-      </item>
-      <item row="1" column="0">
-       <widget class="QComboBox" name="deepgrowModelSelector">
-        <property name="sizePolicy">
-         <sizepolicy hsizetype="Expanding" vsizetype="Fixed">
-          <horstretch>0</horstretch>
-          <verstretch>0</verstretch>
-         </sizepolicy>
-        </property>
-       </widget>
-      </item>
-      <item row="0" column="1">
-       <widget class="QLabel" name="label_11">
-        <property name="text">
-         <string>Spatial Size:</string>
-        </property>
-       </widget>
-      </item>
-      <item row="3" column="0">
-       <widget class="QLabel" name="label_10">
-        <property name="text">
-         <string>Background (-ve) Points:</string>
-        </property>
-       </widget>
-      </item>
-      <item row="4" column="0">
+      <item row="6" column="0">
        <widget class="qSlicerMarkupsPlaceWidget" name="dgNegativeFiducialPlacementWidget">
         <property name="placeMultipleMarkups">
          <enum>qSlicerMarkupsPlaceWidget::ForcePlaceMultipleMarkups</enum>
         </property>
        </widget>
       </item>
-      <item row="3" column="1">
+      <item row="3" column="0" colspan="2">
+       <layout class="QGridLayout" name="gridLayout_2">
+        <item row="2" column="0">
+         <widget class="QLabel" name="label_8">
+          <property name="text">
+           <string>Model:</string>
+          </property>
+         </widget>
+        </item>
+        <item row="2" column="1">
+         <widget class="QComboBox" name="deepgrowModelSelector">
+          <property name="sizePolicy">
+           <sizepolicy hsizetype="Expanding" vsizetype="Fixed">
+            <horstretch>0</horstretch>
+            <verstretch>0</verstretch>
+           </sizepolicy>
+          </property>
+          <property name="toolTip">
+           <string>Select Deepgrow/DeepEdit Model</string>
+          </property>
+         </widget>
+        </item>
+        <item row="2" column="2">
+         <widget class="QLabel" name="label_6">
+          <property name="text">
+           <string>Label:</string>
+          </property>
+         </widget>
+        </item>
+        <item row="2" column="3">
+         <widget class="QComboBox" name="labelComboBox">
+          <property name="sizePolicy">
+           <sizepolicy hsizetype="Expanding" vsizetype="Fixed">
+            <horstretch>0</horstretch>
+            <verstretch>0</verstretch>
+           </sizepolicy>
+          </property>
+          <property name="editable">
+           <bool>false</bool>
+          </property>
+         </widget>
+        </item>
+       </layout>
+      </item>
+      <item row="5" column="0">
+       <widget class="QLabel" name="label_10">
+        <property name="text">
+         <string>Background (-ve) Points:</string>
+        </property>
+       </widget>
+      </item>
+      <item row="6" column="1">
+       <widget class="qSlicerMarkupsPlaceWidget" name="dgPositiveFiducialPlacementWidget">
+        <property name="placeMultipleMarkups">
+         <enum>qSlicerMarkupsPlaceWidget::ForcePlaceMultipleMarkups</enum>
+        </property>
+       </widget>
+      </item>
+      <item row="5" column="1">
        <widget class="QLabel" name="label_9">
         <property name="text">
          <string>Foreground (+ve) Points:</string>
         </property>
        </widget>
       </item>
-      <item row="4" column="1">
-       <widget class="qSlicerMarkupsPlaceWidget" name="dgPositiveFiducialPlacementWidget">
-        <property name="placeMultipleMarkups">
-         <enum>qSlicerMarkupsPlaceWidget::ForcePlaceMultipleMarkups</enum>
+      <item row="4" column="0">
+       <widget class="QLabel" name="label_2">
+        <property name="text">
+         <string/>
         </property>
        </widget>
       </item>

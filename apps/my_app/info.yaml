@@ -24,6 +24,7 @@ models:
 config:
   device: cuda
   train:
+    name: model_01
     device: cuda
     amp: false
     lr: 0.0001
