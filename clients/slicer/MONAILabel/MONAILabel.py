@@ -177,23 +177,6 @@ class MONAILabelWidget(ScriptedLoadableModuleWidget, VTKObservationMixin):
         self.updateServerUrlGUIFromSettings()
         # self.onClickFetchModels()
 
-        # Create empty markup fiducial node for deep grow +ve and -ve
-        if not self.dgPositiveFiducialNode:
-            self.dgPositiveFiducialNode, self.dgPositiveFiducialNodeObservers = self.createFiducialNode(
-                'P',
-                self.onDeepGrowFiducialNodeModified,
-                [0.5, 1, 0.5])
-            self.ui.dgPositiveFiducialPlacementWidget.setCurrentNode(self.dgPositiveFiducialNode)
-            self.ui.dgPositiveFiducialPlacementWidget.setPlaceModeEnabled(False)
-
-        if not self.dgNegativeFiducialNode:
-            self.dgNegativeFiducialNode, self.dgNegativeFiducialNodeObservers = self.createFiducialNode(
-                'N',
-                self.onDeepGrowFiducialNodeModified,
-                [0.5, 0.5, 1])
-            self.ui.dgNegativeFiducialPlacementWidget.setCurrentNode(self.dgNegativeFiducialNode)
-            self.ui.dgNegativeFiducialPlacementWidget.setPlaceModeEnabled(False)
-
     def cleanup(self):
         self.removeObservers()
 
@@ -288,6 +271,24 @@ class MONAILabelWidget(ScriptedLoadableModuleWidget, VTKObservationMixin):
             self.ui.segmentationModelSelector.currentText and self._volumeNode is not None)
         self.ui.saveLabelButton.setEnabled(self.getSegmentNode() is not None)
         self.ui.stopTrainButton.setEnabled(False)
+
+        # Create empty markup fiducial node for deep grow +ve and -ve
+        if self._volumeNode:
+            if not self.dgPositiveFiducialNode:
+                self.dgPositiveFiducialNode, self.dgPositiveFiducialNodeObservers = self.createFiducialNode(
+                    'P',
+                    self.onDeepGrowFiducialNodeModified,
+                    [0.5, 1, 0.5])
+                self.ui.dgPositiveFiducialPlacementWidget.setCurrentNode(self.dgPositiveFiducialNode)
+                self.ui.dgPositiveFiducialPlacementWidget.setPlaceModeEnabled(False)
+
+            if not self.dgNegativeFiducialNode:
+                self.dgNegativeFiducialNode, self.dgNegativeFiducialNodeObservers = self.createFiducialNode(
+                    'N',
+                    self.onDeepGrowFiducialNodeModified,
+                    [0.5, 0.5, 1])
+                self.ui.dgNegativeFiducialPlacementWidget.setCurrentNode(self.dgNegativeFiducialNode)
+                self.ui.dgNegativeFiducialPlacementWidget.setPlaceModeEnabled(False)
 
         self.ui.dgPositiveFiducialPlacementWidget.setEnabled(self.ui.deepgrowModelSelector.currentText)
         self.ui.dgNegativeFiducialPlacementWidget.setEnabled(self.ui.deepgrowModelSelector.currentText)
@@ -646,11 +647,11 @@ class MONAILabelWidget(ScriptedLoadableModuleWidget, VTKObservationMixin):
             image_file = self.current_sample["id"]
             result_file, params = self.logic.inference(model, image_file)
 
-            if self.updateSegmentationMask(result_file, self.info.get("labels")):
+            if self.updateSegmentationMask(result_file, self.models[model].get("labels")):
                 self.updateGUIFromParameterNode()
 
         except:
-            slicer.util.errorDisplay("Failed to fetch Sample from MONAI Label Server",
+            slicer.util.errorDisplay("Failed to run inference in MONAI Label Server",
                                      detailedText=traceback.format_exc())
         finally:
             qt.QApplication.restoreOverrideCursor()
@@ -714,9 +715,7 @@ class MONAILabelWidget(ScriptedLoadableModuleWidget, VTKObservationMixin):
             result_file, params = self.logic.inference(model, image_file, params)
             logging.debug('Params from deepgrow is {}'.format(params))
 
-            if deepgrow_3d and self.updateSegmentationMask(result_file, [label]):
-                result = 'SUCCESS'
-            elif not deepgrow_3d and self.updateSegmentationMask(result_file, [label], True, sliceIndex):
+            if self.updateSegmentationMask(result_file, [label], None if deepgrow_3d else sliceIndex):
                 result = 'SUCCESS'
         except MONAILabelException as ae:
             logging.exception("MONAILabel Exception")
@@ -760,7 +759,12 @@ class MONAILabelWidget(ScriptedLoadableModuleWidget, VTKObservationMixin):
             segmentationNode.SetName(name)
             return segmentationNode
 
-    def updateSegmentationMask(self, in_file, labels, override=False, sliceIndex=None):
+    def getLabelColor(self, name):
+        color = GenericAnatomyColors.get(name.lower())
+        color = GenericAnatomyColors.get("tissue") if color is None else color
+        return [c / 255.0 for c in color]
+
+    def updateSegmentationMask(self, in_file, labels, sliceIndex=None):
         start = time.time()
         logging.debug('Update Segmentation Mask from: {}'.format(in_file))
         if in_file and not os.path.exists(in_file):
@@ -772,27 +776,18 @@ class MONAILabelWidget(ScriptedLoadableModuleWidget, VTKObservationMixin):
         if in_file is None:
             for label in labels:
                 if not segmentation.GetSegmentIdBySegmentName(label):
-                    color = GenericAnatomyColors.get(label.lower())
-                    color = GenericAnatomyColors.get("tissue") if color is None else color
-                    color = [c / 255.0 for c in color]
-                    segmentation.AddEmptySegment(label, label, color)
+                    segmentation.AddEmptySegment(label, label, self.getLabelColor(label))
             return True
 
         # segmentId, segment = self.currentSegment()
         labelImage = sitk.ReadImage(in_file)
         labelmapVolumeNode = sitkUtils.PushVolumeToSlicer(labelImage, None, className='vtkMRMLLabelMapVolumeNode')
 
-        colors = {}
-        if segmentation.GetNumberOfSegments() > 0:
-            if not override:
-                for label in labels:
-                    id = segmentation.GetSegmentIdBySegmentName(label)
-                    if id:
-                        colors[label] = segmentation.GetSegment(id).GetColor()
-                        segmentationNode.RemoveSegment(id)
-            else:
-                # TODO:: Implement for deepgrow-2D (update just one slice)
-                pass
+        existing_label_ids = {}
+        for label in labels:
+            id = segmentation.GetSegmentIdBySegmentName(label)
+            if id:
+                existing_label_ids[label] = id
 
         numberOfExistingSegments = segmentation.GetNumberOfSegments()
         slicer.modules.segmentations.logic().ImportLabelmapToSegmentationNode(labelmapVolumeNode, segmentationNode)
@@ -806,17 +801,60 @@ class MONAILabelWidget(ScriptedLoadableModuleWidget, VTKObservationMixin):
         for i, segmentId in enumerate(addedSegmentIds):
             segment = segmentation.GetSegment(segmentId)
             logging.debug('Setting new segmentation with id: {} => {}'.format(segmentId, segment.GetName()))
-            name = labels[i] if i < len(labels) else "unknown {}".format(i)
-            segment.SetName(name)
-            if colors.get(labels[i]):
-                segment.SetColor(colors[labels[i]])
-            else:
-                color = GenericAnatomyColors.get(name.lower())
-                color = GenericAnatomyColors.get("tissue") if color is None else color
-                color = [c / 255.0 for c in color]
-                segment.SetColor(color)
+
+            label = labels[i] if i < len(labels) else "unknown {}".format(i)
+            segment.SetName(label)
+            segment.SetColor(self.getLabelColor(label))
+
+            if label in existing_label_ids:
+                segmentEditorWidget = slicer.modules.segmenteditor.widgetRepresentation().self().editor
+                segmentEditorWidget.setSegmentationNode(segmentationNode)
+                segmentEditorWidget.setMasterVolumeNode(self._volumeNode)
+
+                effect = segmentEditorWidget.effectByName("Logical operators")
+                labelmap = slicer.vtkOrientedImageData()
+                segmentationNode.GetBinaryLabelmapRepresentation(segmentId, labelmap)
+
+                if sliceIndex:
+                    selectedSegmentLabelmap = effect.selectedSegmentLabelmap()
+                    dims = selectedSegmentLabelmap.GetDimensions()
+                    count = 0
+                    for x in range(dims[0]):
+                        for y in range(dims[1]):
+                            v = selectedSegmentLabelmap.GetScalarComponentAsDouble(x, y, sliceIndex, 0)
+                            if v:
+                                count = count + 1
+                            selectedSegmentLabelmap.SetScalarComponentFromDouble(x, y, sliceIndex, 0, 0)
+
+                    logging.debug('Total Non Zero: {}'.format(count))
+
+                    # Clear the Slice
+                    if count:
+                        effect.modifySegmentByLabelmap(
+                            segmentationNode,
+                            existing_label_ids[label],
+                            selectedSegmentLabelmap,
+                            slicer.qSlicerSegmentEditorAbstractEffect.ModificationModeSet
+                        )
+
+                    # Union label map
+                    effect.modifySegmentByLabelmap(
+                        segmentationNode,
+                        existing_label_ids[label],
+                        labelmap,
+                        slicer.qSlicerSegmentEditorAbstractEffect.ModificationModeAdd
+                    )
+                else:
+                    effect.modifySegmentByLabelmap(
+                        segmentationNode,
+                        existing_label_ids[label],
+                        labelmap,
+                        slicer.qSlicerSegmentEditorAbstractEffect.ModificationModeSet)
+
+                segmentationNode.RemoveSegment(segmentId)
 
         logging.info("Time consumed by updateSegmentationMask: {0:3.1f}".format(time.time() - start))
+        self.updateGUIFromParameterNode()
         return True
 
     def updateServerUrlGUIFromSettings(self):

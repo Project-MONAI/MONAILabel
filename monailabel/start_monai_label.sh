@@ -32,7 +32,7 @@ if [ -f ${app_dir}/requirements.txt ]; then
   fi
 fi
 
-export PYTHONPATH=${PYTHONPATH}:${app_dir}:${app_dir}/lib
+export PYTHONPATH=${PYTHONPATH}:${DIR}:${app_dir}:${app_dir}/lib
 echo "Using PYTHONPATH:: ${PYTHONPATH}"
 python3 ${DIR}/main.py "$@"
 deactivate

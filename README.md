@@ -23,7 +23,7 @@ cd /workspace/MONAI-label/apps/datasets && unzip studies.zip
 
 # Run APP
 cd /workspace/MONAI-label/monailabel
-export PYTHONPATH=/workspace/dlmed/MONAI-label
+export PYTHONPATH=/workspace/MONAI-label
 
 # To run in virtual env for the app by installing my_app/requirements.txt
 ./start_monai_label.sh --app ../apps/my_app/ --studies ../datasets/studies 
@@ -47,8 +47,7 @@ python main.py --app ../apps/my_app/ --studies ../apps/datasets/studies/
 - post /inference/segmentation_spleen (image is the one which u got in step 2)
 - post /activelearning/save_label (not complete implemented yet.. but it will eventually save the label)
 - post /train (manually start training.. otherwise plan is to add a config to support auto-start after N samples saved)
-- If slicer is on remote it will use /download/ api to get it from server (u get the download link in sample details) (
-  edited)
+- If slicer is on remote it will use /download/ api to get it from server (u get the download link in sample details)
 
 <img src="https://user-images.githubusercontent.com/7339051/114413387-d9263100-9ba5-11eb-825f-ad5f9d968da8.png" width="500"/>
 

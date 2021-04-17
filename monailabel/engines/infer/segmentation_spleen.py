@@ -10,7 +10,7 @@ from monai.transforms import (
     ToNumpyd
 )
 
-from monailabel.interface import InferenceEngine
+from monailabel.interface import InferenceEngine, InferType
 from monailabel.interface.utils import Restored, ExtremePointsd, BoundingBoxd
 
 
@@ -19,8 +19,15 @@ class SegmentationSpleen(InferenceEngine):
     This provides Inference Engine for pre-trained spleen segmentation (UNet) model over MSD Dataset.
     """
 
-    def __init__(self, model):
-        super().__init__(model=model)
+    def __init__(self, path):
+        super().__init__(
+            path=path,
+            network=None,
+            type=InferType.SEGMENTATION,
+            labels=["spleen"],
+            dimension=3,
+            description='A pre-trained model for volumetric (3D) segmentation of the spleen from CT image'
+        )
 
     def pre_transforms(self):
         return [
