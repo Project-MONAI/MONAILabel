@@ -16,29 +16,30 @@ cd /workspace/MONAI-label
 
 pip install -r requirements.txt
 
-# Download sample pre-trained models and studies from
+# Download sample pre-trained models
 # https://drive.google.com/drive/folders/1QNEtb3InzpEve53xTWCmxe_HnR2cImUv?usp=sharing
-cd /workspace/MONAI-label/apps/my_app && unzip models.zip
-cd /workspace/MONAI-label/apps/datasets && unzip studies.zip
+cd /workspace/MONAI-label/apps/my_app
+unzip models.zip
+
+# Download MSD Datasets from
+# https://drive.google.com/drive/folders/1HqEgzS8BV2c7xYNrZdEAnrHk7osJJ--2
+mkdir -p /workspace/datasets
+cd /workspace/datasets
+tar xf MSD_Task09_Spleen.tar
 
 # Run APP
 cd /workspace/MONAI-label/monailabel
 export PYTHONPATH=/workspace/MONAI-label
 
+python main.py --app ../apps/my_app/ --studies /workspace/datasets/MSD_Task09_Spleen
+
 # To run in virtual env for the app by installing my_app/requirements.txt
-./start_monai_label.sh --app ../apps/my_app/ --studies ../datasets/studies 
-
-python main.py --app ../apps/my_app/ --studies ../apps/datasets/studies/
-
-# If you want to run in current env
-# python main.py --app ../apps/my_app --studies ../datasets/studies
-
+#./start_monai_label.sh --app ../apps/my_app/ --studies
 ```
 
 ## App basic structure
 
 <img src="https://user-images.githubusercontent.com/7339051/114428020-98cdaf80-9bb3-11eb-8010-40f47d1afcd6.png" width="200"/>
-
 
 ## Dry Run basic flow (without slicer)
 
@@ -52,10 +53,12 @@ python main.py --app ../apps/my_app/ --studies ../apps/datasets/studies/
 <img src="https://user-images.githubusercontent.com/7339051/114413387-d9263100-9ba5-11eb-825f-ad5f9d968da8.png" width="500"/>
 
 ## Slicer
+
 Install Plugin in developer mode
- - git clone git@github.com:SachidanandAlle/MONAI-label.git
- - Open 3D Slicer: Go to Edit -> Application Settings -> Modules -> Additional Module Paths
- - Add New Module Path: <FULL_PATH>/clients/slicer/MONAILabel
- - Restart
-<img src="https://user-images.githubusercontent.com/7339051/114699253-f4b14900-9d17-11eb-811f-86e572f77224.png" width="400"/>
+
+- git clone git@github.com:SachidanandAlle/MONAI-label.git
+- Open 3D Slicer: Go to Edit -> Application Settings -> Modules -> Additional Module Paths
+- Add New Module Path: <FULL_PATH>/clients/slicer/MONAILabel
+- Restart
+  <img src="https://user-images.githubusercontent.com/7339051/114699253-f4b14900-9d17-11eb-811f-86e572f77224.png" width="400"/>
 
