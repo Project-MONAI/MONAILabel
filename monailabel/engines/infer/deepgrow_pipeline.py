@@ -23,7 +23,7 @@ from monai.transforms import (
     AsChannelLastd, LoadImage, AsChannelFirst, ToTensor
 )
 from monailabel.interface import InferenceEngine, InferType
-from monailabel.interface.utils import LargestCCd, ExtremePointsd, BoundingBoxd
+from monailabel.interface.utils import LargestCCd, BoundingBoxd
 
 logger = logging.getLogger(__name__)
 
@@ -33,6 +33,11 @@ class DeepgrowPipeline(InferenceEngine):
             self,
             path,
             model_3d: InferenceEngine,
+            network=None,
+            type=InferType.DEEPGROW,
+            labels=[],
+            dimension=3,
+            description='Combines Deepgrow 2D model with any 3D segmentation/deepgrow model',
             spatial_size=(256, 256),
             model_size=(256, 256),
             batch_size=32,
@@ -43,11 +48,11 @@ class DeepgrowPipeline(InferenceEngine):
     ):
         super().__init__(
             path=path,
-            network=None,
-            type=InferType.DEEPGROW,
-            labels=[],
-            dimension=3,
-            description='Combines Deepgrow 2D model with any 3D segmentation/deepgrow model'
+            network=network,
+            type=type,
+            labels=labels,
+            dimension=dimension,
+            description=description
         )
         self.model_3d = model_3d
         self.spatial_size = spatial_size
@@ -81,7 +86,6 @@ class DeepgrowPipeline(InferenceEngine):
             LargestCCd(keys='pred'),
             RestoreLabeld(keys='pred', ref_image='image', mode='nearest'),
             AsChannelLastd(keys='pred'),
-            ExtremePointsd(keys='pred', result='result', points='points'),
             BoundingBoxd(keys='pred', result='result', bbox='bbox'),
         ]
 

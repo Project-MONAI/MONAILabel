@@ -168,8 +168,11 @@ class InferenceEngine(object):
 
         network = self._networks.get(device)
         if network is None:
-            network = self.network
-            network = network.load_state_dict(torch.load(self.path)) if network else torch.jit.load(self.path)
+            if self.network:
+                network = self.network
+                network.load_state_dict(torch.load(self.path))
+            else:
+                network = torch.jit.load(self.path)
 
             network = network.cuda() if device == 'cuda' else network
             network.eval()

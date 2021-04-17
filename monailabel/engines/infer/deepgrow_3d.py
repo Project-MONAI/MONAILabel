@@ -27,15 +27,26 @@ class Deepgrow3D(InferenceEngine):
     For More Details, Refer https://github.com/Project-MONAI/tutorials/tree/master/deepgrow/ignite
     """
 
-    def __init__(self, path, spatial_size=[256, 256], model_size=[128, 192, 192]):
-        super().__init__(
-            path=path,
+    def __init__(
+            self,
+            path,
             network=None,
             type=InferType.DEEPGROW,
             labels=[],
             dimension=3,
-            description='A pre-trained 3D DeepGrow model based on UNET'
+            description='A pre-trained 2D DeepGrow model based on UNET',
+            spatial_size=[256, 256],
+            model_size=[128, 192, 192]
+    ):
+        super().__init__(
+            path=path,
+            network=network,
+            type=type,
+            labels=labels,
+            dimension=dimension,
+            description=description
         )
+
         self.spatial_size = spatial_size
         self.model_size = model_size
 
