@@ -5,22 +5,6 @@ description: MONAI Label App to provide active learning solution to label heart 
 dimension: 3
 labels:
   - heart
-models:
-  segmentation_heart:
-    description: A pre-trained model for volumetric (3D) segmentation of the heart from heart image
-    type: segmentation
-    dimension: 3
-  deepgrow_2d:
-    description: A pre-trained 2D DeepGrow model based on UNET
-    type: deepgrow
-    dimension: 2
-  deepgrow_3d:
-    description: A pre-trained 3D DeepGrow model based on UNET
-    type: deepgrow
-    dimension: 3
-  my_model:
-    description: My model which is trained that got trained periodically using Active Learning solution
-    type: segmentation
 config:
   device: cuda
   train:
@@ -37,4 +21,3 @@ config:
       random: Use Random Strategy to get Next Sample # default
       first: Pick first available Sample (ordered by name)
       last: Pick last available Sample (ordered by name)
-      unk: I Don't know yet

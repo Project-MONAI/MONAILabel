@@ -10,8 +10,8 @@ from monai.transforms import (
     ToNumpyd
 )
 
-from monailabel.interface import InferenceEngine
-from monailabel.interface.utils import Restored, ExtremePointsd, BoundingBoxd
+from monailabel.interface import InferenceEngine, InferType
+from monailabel.interface.utils import Restored, BoundingBoxd
 
 
 class SegmentationHeart(InferenceEngine):
@@ -19,8 +19,23 @@ class SegmentationHeart(InferenceEngine):
     This provides Inference Engine for pre-trained heart segmentation (UNet) model over MSD Dataset.
     """
 
-    def __init__(self, model):
-        super().__init__(model=model)
+    def __init__(
+            self,
+            path,
+            network=None,
+            type=InferType.SEGMENTATION,
+            labels=["heart"],
+            dimension=3,
+            description='A pre-trained model for volumetric (3D) segmentation of the heart over 3D MR Images'
+    ):
+        super().__init__(
+            path=path,
+            network=network,
+            type=type,
+            labels=labels,
+            dimension=dimension,
+            description=description
+        )
 
     def pre_transforms(self):
         return [
@@ -41,6 +56,5 @@ class SegmentationHeart(InferenceEngine):
             SqueezeDimd(keys='pred', dim=0),
             ToNumpyd(keys='pred'),
             Restored(keys='pred', ref_image='image'),
-            ExtremePointsd(keys='pred', result='result', points='points'),
             BoundingBoxd(keys='pred', result='result', bbox='bbox'),
         ]
