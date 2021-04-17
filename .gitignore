@@ -144,3 +144,6 @@ logs
 docs/build
 docs/source/apidocs
 
+# MONAI-label
+*.nii.gz
+
