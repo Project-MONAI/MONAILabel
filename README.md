@@ -60,5 +60,6 @@ Install Plugin in developer mode
 - Open 3D Slicer: Go to Edit -> Application Settings -> Modules -> Additional Module Paths
 - Add New Module Path: <FULL_PATH>/clients/slicer/MONAILabel
 - Restart
-  <img src="https://user-images.githubusercontent.com/7339051/114699253-f4b14900-9d17-11eb-811f-86e572f77224.png" width="400"/>
+
+<img src="https://user-images.githubusercontent.com/7339051/114699253-f4b14900-9d17-11eb-811f-86e572f77224.png" width="400"/>
 

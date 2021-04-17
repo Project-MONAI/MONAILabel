@@ -18,7 +18,7 @@ def test_inference(args):
     output_path = args.output
     os.makedirs(output_path, exist_ok=True)
 
-    app = MyApp(app_dir=args.app_dir)
+    app = MyApp(app_dir=args.app_dir, studies=args.studies)
     logger.info('Running Inference: {}'.format(args.name))
 
     res_img = None
@@ -47,7 +47,7 @@ def test_train(args):
     output_path = os.path.dirname(args.output)
     os.makedirs(output_path, exist_ok=True)
 
-    app = MyApp(app_dir=args.app_dir)
+    app = MyApp(app_dir=args.app_dir, studies=args.studies)
     logger.info('Running Training: {}'.format(args.name))
 
     request = {
@@ -64,7 +64,7 @@ def test_train(args):
 
 
 def test_info(args):
-    app = MyApp(app_dir=args.app_dir)
+    app = MyApp(app_dir=args.app_dir, studies=args.studies)
     info = app.info()
 
     class MyDumper(yaml.Dumper):
