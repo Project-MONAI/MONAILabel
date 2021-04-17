@@ -12,7 +12,7 @@ from monai.data import write_nifti
 class Writer:
     def __init__(
             self,
-            image='pred',
+            label='pred',
             json=None,
             ref_image=None,
             key_extension='result_extension',
@@ -20,9 +20,9 @@ class Writer:
             key_compress='result_compress',
             meta_key_postfix="meta_dict"
     ):
-        self.image = image
+        self.label = label
         self.json = json
-        self.ref_image = ref_image if ref_image else image
+        self.ref_image = ref_image if ref_image else label
 
         # User can specify through params
         self.key_extension = key_extension
@@ -39,10 +39,10 @@ class Writer:
         file_ext = data.get(self.key_extension, file_ext)
         logger.debug('Result ext: {}'.format(file_ext))
 
-        image_np = data[self.image]
+        image_np = data[self.label]
         meta_dict = data.get(f"{self.ref_image}_{self.meta_key_postfix}")
         affine = meta_dict.get("affine") if meta_dict else None
-        logger.debug('Image: {}; Data Image: {}'.format(image_np.shape, data[self.image].shape))
+        logger.debug('Image: {}; Data Image: {}'.format(image_np.shape, data[self.label].shape))
 
         output_file = tempfile.NamedTemporaryFile(suffix=file_ext).name
         logger.debug('Saving Image to: {}'.format(output_file))
@@ -93,14 +93,14 @@ class Writer:
 class ClassificationWriter:
     def __init__(
             self,
-            image='pred',
+            label='pred',
             label_names=None
     ):
-        self.image = image
+        self.label = label
         self.label_names = label_names
 
     def __call__(self, data):
         result = []
-        for label in data[self.image]:
+        for label in data[self.label]:
             result.append(self.label_names[int(label)])
         return None, {'prediction': result}

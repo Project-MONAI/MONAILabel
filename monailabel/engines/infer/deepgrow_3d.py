@@ -18,7 +18,7 @@ from monai.transforms import (
     NormalizeIntensityd,
     AsChannelLastd
 )
-from monailabel.interface import InferenceEngine
+from monailabel.interface import InferenceEngine, InferType
 
 
 class Deepgrow3D(InferenceEngine):
@@ -27,8 +27,17 @@ class Deepgrow3D(InferenceEngine):
     For More Details, Refer https://github.com/Project-MONAI/tutorials/tree/master/deepgrow/ignite
     """
 
-    def __init__(self, model):
-        super().__init__(model=model)
+    def __init__(self, path, spatial_size=[256, 256], model_size=[128, 192, 192]):
+        super().__init__(
+            path=path,
+            network=None,
+            type=InferType.DEEPGROW,
+            labels=[],
+            dimension=3,
+            description='A pre-trained 3D DeepGrow model based on UNET'
+        )
+        self.spatial_size = spatial_size
+        self.model_size = model_size
 
     def pre_transforms(self):
         return [
@@ -37,8 +46,8 @@ class Deepgrow3D(InferenceEngine):
             Spacingd(keys='image', pixdim=[1.0, 1.0, 1.0], mode='bilinear'),
             AddGuidanceFromPointsd(ref_image='image', guidance='guidance', dimensions=3),
             AddChanneld(keys='image'),
-            SpatialCropGuidanced(keys='image', guidance='guidance', spatial_size=[192, 192]),
-            Resized(keys='image', spatial_size=[128, 192, 192], mode='area'),
+            SpatialCropGuidanced(keys='image', guidance='guidance', spatial_size=self.spatial_size),
+            Resized(keys='image', spatial_size=self.model_size, mode='area'),
             ResizeGuidanced(guidance='guidance', ref_image='image'),
             NormalizeIntensityd(keys='image', subtrahend=208, divisor=388),
             AddGuidanceSignald(image='image', guidance='guidance'),

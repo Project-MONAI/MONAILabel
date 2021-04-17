@@ -2,6 +2,7 @@ from typing import Optional, Sequence, Union
 
 import numpy as np
 import skimage.measure as measure
+
 from monai.config import KeysCollection
 from monai.transforms import (
     Resize,
@@ -24,7 +25,8 @@ class LargestCCd(MapTransform):
         super().__init__(keys)
         self.has_channel = has_channel
 
-    def get_largest_cc(self, label):
+    @staticmethod
+    def get_largest_cc(label):
         largest_cc = np.zeros(shape=label.shape, dtype=label.dtype)
         for i, item in enumerate(label):
             item = measure.label(item, connectivity=1)

@@ -19,7 +19,7 @@ from monai.transforms import (
     NormalizeIntensityd,
     AsChannelLastd
 )
-from monailabel.interface import InferenceEngine
+from monailabel.interface import InferenceEngine, InferType
 
 
 class Deepgrow2D(InferenceEngine):
@@ -27,8 +27,18 @@ class Deepgrow2D(InferenceEngine):
     This provides Inference Engine for Deepgrow-2D pre-trained model.
     For More Details, Refer https://github.com/Project-MONAI/tutorials/tree/master/deepgrow/ignite
     """
-    def __init__(self, model):
-        super().__init__(model=model)
+
+    def __init__(self, path, spatial_size=[256, 256], model_size=[256, 256, 256]):
+        super().__init__(
+            path=path,
+            network=None,
+            type=InferType.DEEPGROW,
+            labels=[],
+            dimension=2,
+            description='A pre-trained 2D DeepGrow model based on UNET'
+        )
+        self.spatial_size = spatial_size
+        self.model_size = model_size
 
     def pre_transforms(self):
         return [

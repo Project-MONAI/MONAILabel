@@ -4,38 +4,25 @@ from abc import abstractmethod
 
 import yaml
 
+from monailabel.interface.activelearning import ActiveLearning
 from monailabel.interface.exception import MONAILabelException, MONAILabelError
-from monailabel.interface.infer import InferenceEngine
 
 logger = logging.getLogger(__name__)
 
 
 class MONAILabelApp:
-    def __init__(self, app_dir, studies, infer_models, cache=True):
+    def __init__(self, app_dir, studies, infers):
         """
         Base Class for Any MONAI Label App
 
         :param app_dir: path for your App directory
         :param studies: path for studies/datalist
-        :param infer_models: list of pre-trained models with infer engines
-
-            For Example::
-
-                # List of (name, engine, model.ts)
-                infer_models={
-                    "deepgrow_2d": (monailabel.engines.infer.Deepgrow2D, "deepgrow_2d.ts"),
-                    "deepgrow_3d": (monailabel.engines.infer.Deepgrow3D, "deepgrow_2d.ts"),
-                    "spleen": (monailabel.engines.infer.SegmentationSpleen, "spleen.ts"),
-                    "my_model": (myapp.lib.MyInfer, "model.ts")
-                }
-
-        :param cache: enable caching for infer engines to accelerate inference for subsequent infer actions
+        :param infers: Dictionary of infer engines
 
         """
         self.app_dir = app_dir
         self.studies = studies
-        self.cached = {} if cache else None
-        self.infer_models = infer_models
+        self.infers = infers
 
     def info(self):
         """
@@ -52,17 +39,10 @@ class MONAILabelApp:
         with open(file, 'r') as fc:
             meta = yaml.full_load(fc)
 
-        # Update models dynamically
-        valid = set()
-        for model_name in self.infer_models:
-            _, file = self.infer_models[model_name]
-            if os.path.exists(os.path.join(self.app_dir, 'model', file)):
-                valid.add(model_name)
+        models = dict()
+        for name, engine in self.infers.items():
+            models[name] = engine.info()
 
-        models = {}
-        for m in meta.get("models"):
-            if m in valid:
-                models[m] = meta.get("models")[m]
         meta["models"] = models
         return meta
 
@@ -91,27 +71,12 @@ class MONAILabelApp:
         model_name = request.get('model')
         model_name = model_name if model_name else 'model'
 
-        engine = self.cached.get(model_name) if self.cached is not None else None
-        if engine is None:
-            if self.infer_models.get(model_name) is None:
-                raise MONAILabelException(
-                    MONAILabelError.INFERENCE_ERROR,
-                    f"Inference Engine for Model '{model_name}' Not Found"
-                )
-
-            c, model_file = self.infer_models[model_name]
-            model_file = os.path.join(self.app_dir, 'model', model_file)
-            if os.path.exists(model_file):
-                engine: InferenceEngine = c(model_file)
-
+        engine = self.infers.get(model_name)
         if engine is None:
             raise MONAILabelException(
                 MONAILabelError.INFERENCE_ERROR,
                 "Inference Engine is not Initialized. There is no pre-trained model available"
             )
-
-        if self.cached is not None:
-            self.cached[model_name] = engine
 
         image = request['image']
         params = request.get('params')
@@ -143,7 +108,6 @@ class MONAILabelApp:
         """
         pass
 
-    @abstractmethod
     def next_sample(self, request):
         """
         Run Active Learning selection.  User APP has to implement this method to provide next sample for labelling.
@@ -161,7 +125,13 @@ class MONAILabelApp:
         Returns:
             JSON containing next image info that is selected for labeling
         """
-        pass
+        logger.info(f"Active Learning request: {request}")
+        images_dir = os.path.join(self.studies, "imagesTr")
+        images = [os.path.join(images_dir, f) for f in os.listdir(images_dir) if
+                  os.path.isfile(os.path.join(images_dir, f)) and (f.endswith(".nii.gz") or f.endswith(".nii"))]
+
+        image = ActiveLearning().next(request.get("strategy", "random"), images)
+        return {"image": image}
 
     def save_label(self, request):
         """

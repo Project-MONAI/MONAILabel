@@ -1,42 +1,21 @@
-from monai.inferers import SlidingWindowInferer
-from monai.transforms import (
-    LoadImaged,
-    AddChanneld,
-    Spacingd,
-    ScaleIntensityRanged,
-    Activationsd,
-    AsDiscreted,
-    SqueezeDimd,
-    ToNumpyd
-)
-
-from monailabel.interface import InferenceEngine
-from monailabel.interface.utils import Restored, ExtremePointsd, BoundingBoxd
+from monailabel.interface import InferenceEngine, InferType
 
 
 class MyInfer(InferenceEngine):
-    def __init__(self, model):
-        super().__init__(model=model)
+    def __init__(self, path):
+        super().__init__(
+            path=path,
+            network=None,
+            type=InferType.SEGMENTATION,
+            dimension=3,
+            description='My Pre-Train model using XYZ Net'
+        )
 
     def pre_transforms(self):
-        return [
-            LoadImaged(keys='image'),
-            AddChanneld(keys='image'),
-            Spacingd(keys='image', pixdim=[1.0, 1.0, 1.0]),
-            ScaleIntensityRanged(keys='image', a_min=-57, a_max=164, b_min=0.0, b_max=1.0, clip=True),
-        ]
+        pass
 
     def inferer(self):
-        return SlidingWindowInferer(roi_size=[160, 160, 160])
+        pass
 
     def post_transforms(self):
-        return [
-            AddChanneld(keys='pred'),
-            Activationsd(keys='pred', softmax=True),
-            AsDiscreted(keys='pred', argmax=True),
-            SqueezeDimd(keys='pred', dim=0),
-            ToNumpyd(keys='pred'),
-            Restored(keys='pred', ref_image='image'),
-            ExtremePointsd(keys='pred', result='result', points='points'),
-            BoundingBoxd(keys='pred', result='result', bbox='bbox'),
-        ]
+        pass
