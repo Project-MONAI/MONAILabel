@@ -1,11 +1,11 @@
 from monai.inferers import SlidingWindowInferer
 from monai.transforms import (
-    LoadImaged,
-    AddChanneld,
-    Spacingd,
-    ScaleIntensityRanged,
     Activationsd,
+    AddChanneld,
     AsDiscreted,
+    LoadImaged,
+    ScaleIntensityRanged,
+    Spacingd,
     SqueezeDimd,
     ToNumpyd
 )
@@ -18,7 +18,6 @@ class SegmentationSpleen(InferenceEngine):
     """
     This provides Inference Engine for pre-trained spleen segmentation (UNet) model over MSD Dataset.
     """
-
     def __init__(
             self,
             path,
