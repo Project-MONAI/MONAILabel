@@ -15,7 +15,6 @@ from monai.transforms import (
     ToNumpyd,
     ToTensord,
 )
-
 from monailabel.interface import InferenceEngine, InferType
 from monailabel.interface.utils import Restored, BoundingBoxd
 
@@ -24,6 +23,7 @@ class SegmentationHeart(InferenceEngine):
     """
     This provides Inference Engine for pre-trained heart segmentation (UNet) model over MSD Dataset.
     """
+
     def __init__(
             self,
             path,

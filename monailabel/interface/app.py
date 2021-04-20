@@ -1,5 +1,6 @@
 import logging
 import os
+import shutil
 from abc import abstractmethod
 
 import yaml
@@ -152,7 +153,12 @@ class MONAILabelApp:
             JSON containing next image and label info
         """
         # TODO:: Save label, trigger training (if condition is met)
+        labels_dir = os.path.join(self.studies, "newLabelsTr")
+        os.makedirs(labels_dir, exist_ok=True)
+
+        label_file = os.path.join(labels_dir, os.path.basename(request["image"]))
+        shutil.move(request["label"], label_file)
         return {
             "image": request.get("image"),
-            "label": request.get("label"),
+            "label": label_file,
         }

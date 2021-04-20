@@ -18,6 +18,7 @@ class SegmentationSpleen(InferenceEngine):
     """
     This provides Inference Engine for pre-trained spleen segmentation (UNet) model over MSD Dataset.
     """
+
     def __init__(
             self,
             path,

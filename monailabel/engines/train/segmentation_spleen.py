@@ -2,7 +2,7 @@ import logging
 
 import torch
 
-from monai.data import load_decathlon_datalist, DataLoader, PersistentDataset
+from monai.data import load_decathlon_datalist, DataLoader, PersistentDataset, partition_dataset
 from monai.handlers import (
     StatsHandler,
     TensorBoardStatsHandler,
@@ -41,6 +41,7 @@ class SegmentationSpleen(TrainEngine):
             output_dir,
             data_list,
             data_root,
+            val_split=0.2,
             device='cuda',
             network=None,
             lr=0.0001,
@@ -56,6 +57,7 @@ class SegmentationSpleen(TrainEngine):
         :param output_dir: Output to save the model checkpoints, events etc...
         :param data_list: Dataset json which contains `training` and `validation` fields
         :param data_root: Root folder for datalist
+        :param val_split: Split ratio for validation dataset if `validation` field is not found in `data_list`
         :param device: device name
         :param network: If None then UNet with channels(16, 32, 64, 128, 256) is used
         :param lr: Learning Rate (LR)
@@ -70,7 +72,15 @@ class SegmentationSpleen(TrainEngine):
         self._output_dir = output_dir
 
         self._train_datalist = load_decathlon_datalist(data_list, True, "training", data_root)
-        self._val_datalist = load_decathlon_datalist(data_list, True, "validation", data_root)
+        try:
+            self._val_datalist = load_decathlon_datalist(data_list, True, "validation", data_root)
+        except ValueError:
+            self._train_datalist, self._val_datalist = partition_dataset(
+                self._train_datalist,
+                ratios=[(1 - val_split), val_split],
+                shuffle=True
+            )
+
         logger.info(f"Total Records for Training: {len(self._train_datalist)}")
         logger.info(f"Total Records for Validation: {len(self._val_datalist)}")
 
