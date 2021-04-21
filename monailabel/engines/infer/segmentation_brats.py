@@ -1,38 +1,34 @@
-
-import numpy as np
-
 from monai.inferers import SlidingWindowInferer
 from monai.transforms import (
-    Activationsd,
     AddChanneld,
+    Activationsd,
     AsDiscreted,
-    CastToTyped,
+    EnsureChannelFirstd,
     LoadImaged,
     NormalizeIntensityd,
     Orientationd,
     Spacingd,
-    SpatialPadd,
     SqueezeDimd,
     ToNumpyd,
     ToTensord,
 )
+
 from monailabel.interface import InferenceEngine, InferType
 from monailabel.interface.utils import Restored, BoundingBoxd
 
 
-class SegmentationHeart(InferenceEngine):
+class SegmentationBrats(InferenceEngine):
     """
-    This provides Inference Engine for pre-trained heart segmentation (UNet) model over MSD Dataset.
+    This provides Inference Engine for pre-trained brain tumour segmentation (UNet) model over MSD Dataset.
     """
-
     def __init__(
             self,
             path,
             network=None,
             type=InferType.SEGMENTATION,
-            labels=["heart"],
+            labels=["brain"],
             dimension=3,
-            description='A pre-trained model for volumetric (3D) segmentation of the heart over 3D MR Images'
+            description='A pre-trained model for volumetric (3D) segmentation of brain tumour over 3D MR Images'
     ):
         super().__init__(
             path=path,
@@ -44,22 +40,19 @@ class SegmentationHeart(InferenceEngine):
         )
 
     def pre_transforms(self):
-        pixdim = (0.79, 0.79, 1.24)
-        roi_size = [192, 160, 80]
+        pixdim = (1.5, 1.5, 2.0)
         pre_transforms = [
-            LoadImaged(keys=["image"]),
-            AddChanneld(keys=["image"]),
-            Spacingd(keys=["image"], pixdim=pixdim, mode="bilinear", ),
-            Orientationd(keys=["image"], axcodes="RAS"),
-            SpatialPadd(keys=["image"], spatial_size=tuple(roi_size)),
-            NormalizeIntensityd(keys=["image"], nonzero=False, channel_wise=True),
-            CastToTyped(keys=["image"], dtype=np.float32),
-            ToTensord(keys=["image"]),
-        ]
+                            LoadImaged(keys=["image"]),
+                            EnsureChannelFirstd(keys=["image"]),
+                            Spacingd(keys=["image"], pixdim=pixdim, mode="bilinear"),
+                            Orientationd(keys=["image"], axcodes="RAS"),
+                            NormalizeIntensityd(keys=["image"], nonzero=True, channel_wise=True),
+                            ToTensord(keys=["image"]),
+                        ]
         return pre_transforms
 
     def inferer(self):
-        return SlidingWindowInferer(roi_size=[192, 160, 80])
+        return SlidingWindowInferer(roi_size=[128, 128, 64])
 
     def post_transforms(self):
         return [
