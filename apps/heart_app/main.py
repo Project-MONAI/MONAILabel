@@ -3,7 +3,7 @@ import os
 
 from lib import MyTrain
 from monai.networks.layers import Norm
-from monai.networks.nets import BasicUNet, UNet
+from monai.networks.nets import UNet
 from monailabel.engines.infer import Deepgrow2D, Deepgrow3D, DeepgrowPipeline, SegmentationHeart
 from monailabel.interface.app import MONAILabelApp
 
@@ -13,16 +13,13 @@ logger = logging.getLogger(__name__)
 class MyApp(MONAILabelApp):
     def __init__(self, app_dir, studies):
         model_dir = os.path.join(app_dir, "model")
-        features = (32, 64, 128, 256, 512, 32)
         heart = SegmentationHeart(
-            path=os.path.join(model_dir, "segmentation_heart.pt"),
-            network=BasicUNet(dimensions=3, in_channels=3, out_channels=1, features=features)
-            # network=UNet(
-            #     dimensions=3, in_channels=3,
-            #     out_channels=2, channels=(16, 32, 64, 128, 256),
-            #     strides=(2, 2, 2, 2),
-            #     num_res_units=2, norm=Norm.BATCH, dropout=0.2)
-        )
+            path=os.path.join(model_dir, "segmentation_heart.pth"),
+            network=UNet(
+                dimensions=3, in_channels=1,
+                out_channels=2, channels=(16, 32, 64, 128, 256),
+                strides=(2, 2, 2, 2),
+                num_res_units=2, norm=Norm.BATCH, dropout=0.2))
         deepgrow_3d = Deepgrow3D(os.path.join(model_dir, "deepgrow_3d.ts"))
 
         super().__init__(

@@ -17,7 +17,7 @@ from monailabel.interface import InferenceEngine, InferType
 from monailabel.interface.utils import Restored, BoundingBoxd
 
 
-class SegmentationBratsSingleLabel(InferenceEngine):
+class SegmentationBrats(InferenceEngine):
     """
     This provides Inference Engine for pre-trained brain tumour segmentation (UNet) model over MSD Dataset.
     """
