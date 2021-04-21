@@ -272,4 +272,4 @@ class LocalDataset(Dataset):
 
     def _update_dataset(self):
         with open(self._dataset_config_path, 'w') as f:
-                json.dump(self._dataset_config, f)
+                json.dump(self._dataset_config, f, indent=2)
