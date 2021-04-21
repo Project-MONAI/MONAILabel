@@ -44,13 +44,14 @@ python main.py --app ../apps/my_app/ --studies /workspace/datasets/MSD_Task09_Sp
 ## Dry Run basic flow (without slicer)
 
 - get /info/ (you get list of pre-trained models available) and other configs you can see for client
-- post /activelearning/next_sample (you get sample image details)
+- post /activelearning/sample (you get next sample/image details)
 - post /inference/segmentation_spleen (image is the one which u got in step 2)
-- post /activelearning/save_label (not complete implemented yet.. but it will eventually save the label)
+- post /activelearning/label (not complete implemented yet.. but it will eventually save the label)
 - post /train (manually start training.. otherwise plan is to add a config to support auto-start after N samples saved)
 - If slicer is on remote it will use /download/ api to get it from server (u get the download link in sample details)
 
-<img src="https://user-images.githubusercontent.com/7339051/114413387-d9263100-9ba5-11eb-825f-ad5f9d968da8.png" width="500"/>
+<img src="https://user-images.githubusercontent.com/7339051/115477603-31ab9d00-a23c-11eb-85f0-0b8ac374a9a0.png" width="500"/>
+
 
 ## Slicer
 
@@ -61,5 +62,5 @@ Install Plugin in developer mode
 - Add New Module Path: <FULL_PATH>/clients/slicer/MONAILabel
 - Restart
 
-<img src="https://user-images.githubusercontent.com/7339051/114699253-f4b14900-9d17-11eb-811f-86e572f77224.png" width="400"/>
+<img src="https://user-images.githubusercontent.com/7339051/115478017-1725f380-a23d-11eb-9b60-19638187b8e6.png" width="400"/>
 
