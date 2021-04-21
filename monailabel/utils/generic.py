@@ -26,8 +26,9 @@ def run_command(command, args=None, plogger=None):
 
     while process.poll() is None:
         line = process.stdout.readline()
+        line = line.rstrip()
         if line:
-            plogger.info(line.rstrip())
+            plogger.info(line.rstrip()) if plogger else print(line)
 
     plogger.info('Return code: {}'.format(process.returncode))
     process.stdout.close()

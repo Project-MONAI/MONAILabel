@@ -44,7 +44,7 @@ class MyApp(MONAILabelApp):
         return super().infer(request)
 
     def train(self, request):
-        epochs = request['epochs']
+        epochs = request.get('epochs', 1)
         amp = request.get('amp', False)
         device = request.get('device', 'cuda')
         lr = request.get('lr', 0.0001)

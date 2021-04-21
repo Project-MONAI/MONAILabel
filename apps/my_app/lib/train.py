@@ -2,7 +2,7 @@ import logging
 
 import torch
 
-from monai.data import load_decathlon_datalist, DataLoader, PersistentDataset
+from monai.data import load_decathlon_datalist, DataLoader, PersistentDataset, partition_dataset
 from monai.handlers import (
     StatsHandler,
     TensorBoardStatsHandler,
@@ -36,6 +36,7 @@ class MyTrain(TrainEngine):
             output_dir,
             data_list,
             data_root,
+            val_split=0.2,
             device='cuda',
             network=BasicUNet(dimensions=3, in_channels=1, out_channels=2, features=(16, 32, 64, 128, 256, 16)),
             lr=0.0001,
@@ -50,7 +51,15 @@ class MyTrain(TrainEngine):
         self._output_dir = output_dir
 
         self._train_datalist = load_decathlon_datalist(data_list, True, "training", data_root)
-        self._val_datalist = load_decathlon_datalist(data_list, True, "validation", data_root)
+        try:
+            self._val_datalist = load_decathlon_datalist(data_list, True, "validation", data_root)
+        except ValueError:
+            self._train_datalist, self._val_datalist = partition_dataset(
+                self._train_datalist,
+                ratios=[(1 - val_split), val_split],
+                shuffle=True
+            )
+
         logger.info(f"Total Records for Training: {len(self._train_datalist)}")
         logger.info(f"Total Records for Validation: {len(self._val_datalist)}")
 

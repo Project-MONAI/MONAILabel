@@ -33,8 +33,8 @@ class MyApp(MONAILabelApp):
         return super().infer(request)
 
     def train(self, request):
-        epochs = request['epochs']
-        amp = request.get('amp', False)
+        epochs = request.get('epochs', 1)
+        amp = request.get('amp', True)
         device = request.get('device', 'cuda')
         lr = request.get('lr', 0.0001)
 

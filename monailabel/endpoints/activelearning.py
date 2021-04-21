@@ -1,5 +1,8 @@
 import base64
 import os
+import pathlib
+import shutil
+import tempfile
 from typing import Optional
 
 from fastapi import APIRouter
@@ -20,7 +23,7 @@ cached_digest = dict()
 
 
 # TODO:: Return both name and binary image in the response
-@router.post("/next_sample", summary="Run Active Learning strategy to get next sample")
+@router.post("/sample", summary="Run Active Learning strategy to get next sample")
 async def next_sample(config: Optional[dict] = {"strategy": "random"}, checksum: Optional[bool] = True):
     request = config if config else dict()
 
@@ -49,10 +52,16 @@ async def next_sample(config: Optional[dict] = {"strategy": "random"}, checksum:
     }
 
 
-@router.post("/save_label", summary="Save Finished Label")
+@router.put("/label", summary="Save Finished Label")
 async def save_label(image: str, label: UploadFile = File(...)):
+    file_ext = ''.join(pathlib.Path(image).suffixes)
+    label_file = tempfile.NamedTemporaryFile(suffix=file_ext).name
+
+    with open(label_file, "wb") as buffer:
+        shutil.copyfileobj(label.file, buffer)
+
     instance: MONAILabelApp = get_app_instance()
     return instance.save_label({
         "image": image,
-        "label": label.filename
+        "label": label_file
     })
