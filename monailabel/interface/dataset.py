@@ -1,12 +1,12 @@
 from abc import ABCMeta, abstractmethod
 import io
+import json
 import os
 import re
 
-import json
-
 from openapi_schema_validator import validate
 
+from monailabel.interface.exception import UnknownLabelIdException
 
 class Dataset(metaclass=ABCMeta):
 
@@ -94,11 +94,12 @@ class LocalDataset(Dataset):
         "properties": {
             "name": {
                 "type": "string",
-                "pattern": "^[^-][\w{5-15}-]$",
+                "pattern": "^[0-9a-zA-Z_-]{5,15}$",
             },
             "description": {
                 "type": "string",
-                "pattern": "^\w{5-256}$",
+                "nullable": True,
+                "pattern": "^[0-9a-zA-Z_-\s]{5,256}$",
             },
             "info": {
                 "type": "array",
@@ -106,11 +107,13 @@ class LocalDataset(Dataset):
                 "properties": {
                     "id": {
                         "type": "string",
-                        "pattern": "^\w{5-15}$",
+                        "nullable": False,
+                        "pattern": "^[0-9a-zA-Z_-]{5,15}$",
                     },
                     "description": {
                         "type": "string",
-                        "pattern": "^\w{5-256}$",
+                        "nullable": False,
+                        "pattern": "^[0-9a-zA-Z_-]{5,256}$",
                     },
                 }
             },
@@ -126,13 +129,13 @@ class LocalDataset(Dataset):
                         "type": "object",
                         "minItems": 0,
                         "properties": {
-                            "index": {
-                                "type": "integer",
-                                "pattern": "^\w{5-15}",
+                            "id": {
+                                "type": "string",
+                                "pattern": "^[0-9a-zA-Z_-]{5,15}",
                             },
                             "label": {
                                 "type": "string",
-                                "pattern": "^\w{2048}",
+                                "pattern": "^[0-9a-zA-Z_-]{2048}",
                             },
                         }
                     }
@@ -145,7 +148,9 @@ class LocalDataset(Dataset):
     def __init__(self, dataset_path: str, dataset_name: str=None, dataset_config: str='dataset.json'):
         self._dataset_path = dataset_path
         self._dataset_config_path = os.path.join(dataset_path, dataset_config)
-        self._dataset_config = None
+        self._dataset_config = {}
+        if dataset_name is None or len(dataset_config) == 0:
+            dataset_name = 'new-dataset'
         
         # check if dataset configuration file exists
         if os.path.exists(self._dataset_config_path):
@@ -154,15 +159,15 @@ class LocalDataset(Dataset):
             validate(self._dataset_config['objects'], LocalDataset._schema['properties']['objects'])
         else:
             files = LocalDataset._list_files(dataset_path)
-            self._dataset_config.name = dataset_name
-            self._dataset_config = {
+            self._dataset_config['name'] = dataset_name
+            self._dataset_config.update({
                     'objects': [{
                         'image': file,
                         'labels': [],
                     } for file in files],
-                }
+                })
 
-            validate(self._dataset_config['objects'], LocalDataset._schema['objects'])
+            validate(self._dataset_config, LocalDataset._schema)
             self._update_dataset()
 
     @property
@@ -185,7 +190,7 @@ class LocalDataset(Dataset):
         """
         standard_name = ''.join(c.lower() if not c.isspace() else '-' for c in name)
         self._dataset_config.update({'name': standard_name})
-        validate(self._dataset_config['name'], LocalDataset._schema['properties']['name'])
+        validate(self._dataset_config, LocalDataset._schema)
         self._update_dataset()
 
     @property
@@ -221,13 +226,16 @@ class LocalDataset(Dataset):
                 images.append(obj['image'])
         return images
     
-    def save_label(self, image: str, label_name: str, label: io.BytesIO):
+    def save_label(self, image: str, label_id: str, label: io.BytesIO):
+
+        if label_id not in self.info.keys():
+            raise UnknownLabelIdException("The label id to be saved does not match any of the label ids in the dataset `info` section")
         
         for obj in self._dataset_config['objects']:
         
             if image == self._dataset_config['image']:
                 label_path = self._dataset_config['image']
-                self._dataset_config['labels'].append(os.path.join(os.path.basename(self._dataset_config['image']), label_name))
+                self._dataset_config['labels'].append(os.path.join(os.path.basename(self._dataset_config['image']), label_id))
 
                 with open(self._dataset_config['label'][-1], 'wb') as f:
                     label.seek(0)
@@ -265,10 +273,3 @@ class LocalDataset(Dataset):
     def _update_dataset(self):
         with open(self._dataset_config_path, 'w') as f:
                 json.dump(self._dataset_config, f)
-
-if __name__ == "__main__":
-    ds = LocalDataset('/raid/datasets/Task09_Spleen/imagesTs')
-    ds.name = 'test dataset'
-    ds.description = 'my description'
-    ds.update_info('liver', 'Liver organ tissue')
-    ds.update_info('tumor', 'Liver tumor tissue')
