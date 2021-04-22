@@ -37,4 +37,4 @@ class MONAILabelException(Exception):
 class UnknownLabelIdException(MONAILabelException):
 
     def __init__(self, msg: str):
-        super().__init__(APP_ERROR, msg)
+        super().__init__(MONAILabelException.APP_ERROR, msg)
