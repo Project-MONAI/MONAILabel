@@ -12,7 +12,6 @@ from monailabel.core.config import settings
 from monailabel.endpoints import activelearning, inference, logs, train, info, download
 from monailabel.utils.app_utils import get_app_instance
 from monailabel.utils.generic import init_log_config
-from monailabel.interface import Dataset, LocalDataset
 
 app = FastAPI(
     title=settings.PROJECT_NAME,
@@ -20,8 +19,6 @@ app = FastAPI(
     docs_url=None,
     redoc_url="/docs"
 )
-
-dataset: Dataset = None
 
 # Set all CORS enabled origins
 if settings.BACKEND_CORS_ORIGINS:
@@ -83,8 +80,6 @@ def run_main():
         print(f"Using APP Directory={args.app}")
         print(f"Using STUDIES Directory={args.studies}")
         exit(0)
-
-    dataset = LocalDataset(args.studies)
 
     for arg in vars(args):
         print('USING:: {} = {}'.format(arg, getattr(args, arg)))
