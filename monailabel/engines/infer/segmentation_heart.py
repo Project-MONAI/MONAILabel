@@ -1,20 +1,25 @@
+import numpy as np
+
 from monai.inferers import SlidingWindowInferer
 from monai.transforms import (
-    LoadImaged,
-    AddChanneld,
-    Spacingd,
-    ScaleIntensityRanged,
     Activationsd,
+    AddChanneld,
     AsDiscreted,
+    CastToTyped,
+    LoadImaged,
+    NormalizeIntensityd,
+    Orientationd,
+    Spacingd,
+    SpatialPadd,
     SqueezeDimd,
-    ToNumpyd
+    ToNumpyd,
+    ToTensord,
 )
-
 from monailabel.interface import InferenceEngine, InferType
 from monailabel.interface.utils import Restored, BoundingBoxd
 
 
-class SegmentationHeart(InferenceEngine):
+class InferSegmentationHeart(InferenceEngine):
     """
     This provides Inference Engine for pre-trained heart segmentation (UNet) model over MSD Dataset.
     """
@@ -38,12 +43,19 @@ class SegmentationHeart(InferenceEngine):
         )
 
     def pre_transforms(self):
-        return [
-            LoadImaged(keys='image'),
-            AddChanneld(keys='image'),
-            Spacingd(keys='image', pixdim=[0.79, 0.79, 1.24]),
-            ScaleIntensityRanged(keys='image', a_min=-57, a_max=164, b_min=0.0, b_max=1.0, clip=True),
+        pixdim = (0.79, 0.79, 1.24)
+        roi_size = [192, 160, 80]
+        pre_transforms = [
+            LoadImaged(keys=["image"]),
+            AddChanneld(keys=["image"]),
+            Spacingd(keys=["image"], pixdim=pixdim, mode="bilinear", ),
+            Orientationd(keys=["image"], axcodes="RAS"),
+            SpatialPadd(keys=["image"], spatial_size=tuple(roi_size)),
+            NormalizeIntensityd(keys=["image"], nonzero=False, channel_wise=True),
+            CastToTyped(keys=["image"], dtype=np.float32),
+            ToTensord(keys=["image"]),
         ]
+        return pre_transforms
 
     def inferer(self):
         return SlidingWindowInferer(roi_size=[192, 160, 80])

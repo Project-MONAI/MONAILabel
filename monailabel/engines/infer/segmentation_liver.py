@@ -1,22 +1,25 @@
 from monai.inferers import SlidingWindowInferer
 from monai.transforms import (
-    Activationsd,
     AddChanneld,
+    Activationsd,
     AsDiscreted,
+    EnsureChannelFirstd,
     LoadImaged,
+    Orientationd,
     ScaleIntensityRanged,
     Spacingd,
     SqueezeDimd,
-    ToNumpyd
+    ToNumpyd,
+    ToTensord,
 )
 
 from monailabel.interface import InferenceEngine, InferType
 from monailabel.interface.utils import Restored, BoundingBoxd
 
 
-class InferSegmentationSpleen(InferenceEngine):
+class InferSegmentationLiver(InferenceEngine):
     """
-    This provides Inference Engine for pre-trained spleen segmentation (UNet) model over MSD Dataset.
+    This provides Inference Engine for pre-trained liver segmentation (UNet) model over MSD Dataset.
     """
 
     def __init__(
@@ -24,9 +27,9 @@ class InferSegmentationSpleen(InferenceEngine):
             path,
             network=None,
             type=InferType.SEGMENTATION,
-            labels=["spleen"],
+            labels=["liver"],
             dimension=3,
-            description='A pre-trained model for volumetric (3D) segmentation of the spleen from CT image'
+            description='A pre-trained model for volumetric (3D) segmentation of the heart over 3D CT Images'
     ):
         super().__init__(
             path=path,
@@ -38,15 +41,19 @@ class InferSegmentationSpleen(InferenceEngine):
         )
 
     def pre_transforms(self):
-        return [
-            LoadImaged(keys='image'),
-            AddChanneld(keys='image'),
-            Spacingd(keys='image', pixdim=[1.0, 1.0, 1.0]),
-            ScaleIntensityRanged(keys='image', a_min=-57, a_max=164, b_min=0.0, b_max=1.0, clip=True),
+        pixdim = (0.77, 0.77, 1.0)
+        pre_transforms = [
+            LoadImaged(keys=["image"]),
+            EnsureChannelFirstd(keys=["image"]),
+            Spacingd(keys=["image"], pixdim=pixdim, mode="bilinear"),
+            Orientationd(keys=["image"], axcodes="RAS"),
+            ScaleIntensityRanged(keys=["image"], a_min=-57, a_max=164, b_min=0.0, b_max=1.0, clip=True, ),
+            ToTensord(keys=["image"]),
         ]
+        return pre_transforms
 
     def inferer(self):
-        return SlidingWindowInferer(roi_size=[160, 160, 160])
+        return SlidingWindowInferer(roi_size=[128, 128, 128])
 
     def post_transforms(self):
         return [

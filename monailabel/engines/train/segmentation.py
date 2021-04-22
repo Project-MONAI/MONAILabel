@@ -1,8 +1,9 @@
 import logging
+from abc import abstractmethod
 
 import torch
 
-from monai.data import load_decathlon_datalist, DataLoader, PersistentDataset
+from monai.data import load_decathlon_datalist, DataLoader, PersistentDataset, partition_dataset
 from monai.handlers import (
     StatsHandler,
     TensorBoardStatsHandler,
@@ -10,34 +11,26 @@ from monai.handlers import (
     MeanDice,
     ValidationHandler,
     LrScheduleHandler)
-from monai.inferers import SlidingWindowInferer, SimpleInferer
+from monai.inferers import SimpleInferer
 from monai.losses import DiceLoss
-from monai.networks.nets import BasicUNet
-from monai.transforms import (
-    LoadImaged,
-    AddChanneld,
-    ScaleIntensityRanged,
-    Activationsd,
-    AsDiscreted,
-    Compose,
-    CropForegroundd,
-    RandCropByPosNegLabeld,
-    RandShiftIntensityd,
-    ToTensord
-)
 from monailabel.interface import TrainEngine
 
 logger = logging.getLogger(__name__)
 
 
-class MyTrain(TrainEngine):
+class TrainSegmentation(TrainEngine):
+    """
+    This provides Basic Train Engine to train segmentation models over MSD Dataset.
+    """
+
     def __init__(
             self,
             output_dir,
             data_list,
             data_root,
+            network,
+            val_split=0.2,
             device='cuda',
-            network=BasicUNet(dimensions=3, in_channels=1, out_channels=2, features=(16, 32, 64, 128, 256, 16)),
             lr=0.0001,
             train_batch_size=4,
             train_num_workers=4,
@@ -46,11 +39,35 @@ class MyTrain(TrainEngine):
             val_batch_size=1,
             val_num_workers=1,
     ):
+        """
+
+        :param output_dir: Output to save the model checkpoints, events etc...
+        :param data_list: Dataset json which contains `training` and `validation` fields
+        :param data_root: Root folder for datalist
+        :param network: If None then UNet with channels(16, 32, 64, 128, 256) is used
+        :param val_split: Split ratio for validation dataset if `validation` field is not found in `data_list`
+        :param device: device name
+        :param lr: Learning Rate (LR)
+        :param train_batch_size: train batch size
+        :param train_num_workers: number of workers for training
+        :param train_save_interval: checkpoint save interval for training
+        :param val_interval: validation interval (run every x epochs)
+        :param val_batch_size: batch size for validation step
+        :param val_num_workers: number of workers for validation step
+        """
         super().__init__()
         self._output_dir = output_dir
 
         self._train_datalist = load_decathlon_datalist(data_list, True, "training", data_root)
-        self._val_datalist = load_decathlon_datalist(data_list, True, "validation", data_root)
+        try:
+            self._val_datalist = load_decathlon_datalist(data_list, True, "validation", data_root)
+        except ValueError:
+            self._train_datalist, self._val_datalist = partition_dataset(
+                self._train_datalist,
+                ratios=[(1 - val_split), val_split],
+                shuffle=True
+            )
+
         logger.info(f"Total Records for Training: {len(self._train_datalist)}")
         logger.info(f"Total Records for Validation: {len(self._val_datalist)}")
 
@@ -79,24 +96,6 @@ class MyTrain(TrainEngine):
 
     def optimizer(self):
         return self._optimizer
-
-    def train_pre_transforms(self):
-        return Compose([
-            LoadImaged(keys=("image", "label")),
-            AddChanneld(keys=("image", "label")),
-            ScaleIntensityRanged(keys="image", a_min=-57, a_max=164, b_min=0.0, b_max=1.0, clip=True),
-            CropForegroundd(keys=("image", "label"), source_key="image"),
-            RandCropByPosNegLabeld(keys=("image", "label"), label_key="label", spatial_size=(96, 96, 96), pos=1,
-                                   neg=1, num_samples=4, image_key="image", image_threshold=0),
-            RandShiftIntensityd(keys="image", offsets=0.1, prob=0.5),
-            ToTensord(keys=("image", "label"))
-        ])
-
-    def train_post_transforms(self):
-        return Compose([
-            Activationsd(keys="pred", softmax=True),
-            AsDiscreted(keys=("pred", "label"), argmax=(True, False), to_onehot=True, n_classes=2)
-        ])
 
     def train_data_loader(self):
         return DataLoader(
@@ -127,27 +126,18 @@ class MyTrain(TrainEngine):
     def train_additional_metrics(self):
         return None
 
-    def val_pre_transforms(self):
-        return Compose([
-            LoadImaged(keys=("image", "label")),
-            AddChanneld(keys=("image", "label")),
-            ScaleIntensityRanged(keys="image", a_min=-57, a_max=164, b_min=0.0, b_max=1.0, clip=True),
-            CropForegroundd(keys=("image", "label"), source_key="image"),
-            ToTensord(keys=("image", "label"))
-        ])
-
-    def val_post_transforms(self):
-        return self.train_post_transforms()
-
-    def val_inferer(self):
-        return SlidingWindowInferer(roi_size=(160, 160, 160), sw_batch_size=1, overlap=0.25)
-
     def val_data_loader(self):
         return DataLoader(
             dataset=PersistentDataset(self._val_datalist, self.val_pre_transforms()),
             batch_size=self._val_batch_size,
             shuffle=False,
             num_workers=self._val_num_workers)
+
+    def val_pre_transforms(self):
+        return self.train_pre_transforms()
+
+    def val_post_transforms(self):
+        return self.train_post_transforms()
 
     def val_handlers(self):
         return [
@@ -161,3 +151,15 @@ class MyTrain(TrainEngine):
 
     def val_additional_metrics(self):
         return None
+
+    @abstractmethod
+    def train_pre_transforms(self):
+        pass
+
+    @abstractmethod
+    def train_post_transforms(self):
+        pass
+
+    @abstractmethod
+    def val_inferer(self):
+        pass

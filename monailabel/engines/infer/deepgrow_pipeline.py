@@ -28,7 +28,7 @@ from monailabel.interface.utils import LargestCCd, BoundingBoxd
 logger = logging.getLogger(__name__)
 
 
-class DeepgrowPipeline(InferenceEngine):
+class InferDeepgrowPipeline(InferenceEngine):
     def __init__(
             self,
             path,
@@ -201,43 +201,3 @@ class DeepgrowPipeline(InferenceEngine):
         slices = list(set((np.array(foreground_all)[:, 2]).astype(int).tolist()))
         logger.info('Total slices: {}; min: {}; max: {}'.format(len(slices), min(slices), max(slices)))
         return foreground_all, slices
-
-
-def test():
-    import pathlib
-    import shutil
-    from monailabel.engines.infer import SegmentationSpleen
-
-    logging.basicConfig(
-        level=logging.INFO,
-        format='[%(asctime)s.%(msecs)03d][%(levelname)5s](%(name)s:%(funcName)s) - %(message)s',
-        datefmt='%Y-%m-%d %H:%M:%S')
-
-    app_dir = "/workspace/dlmed/MONAI-label/apps/my_app"
-    model_dir = os.path.join(app_dir, "model")
-
-    image_file = "/workspace/Data/_image.nii.gz"
-    output_path = "."
-    pipeline = DeepgrowPipeline(
-        path=os.path.join(model_dir, "deepgrow_2d.ts"),
-        model_3d=SegmentationSpleen(os.path.join(model_dir, "segmentation_spleen.ts"))
-    )
-    params = {
-        "foreground": [[73, 177, 105], [66, 160, 105], [61, 200, 105]],
-        "background": []
-    }
-    result_file, result_json = pipeline.run(image_file, params, "cuda")
-
-    if result_file:
-        file_ext = ''.join(pathlib.Path(result_file).suffixes)
-        result_image = os.path.join(output_path, 'deepgrow_pipeline' + file_ext)
-
-        shutil.move(result_file, result_image)
-        os.chmod(result_image, 0o777)
-        print('Check Result file: {}'.format(result_image))
-
-    print('Check Result JSON: {}'.format(result_json))
-
-
-if __name__ == '__main__':
-    test()

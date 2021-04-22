@@ -158,23 +158,9 @@
        <number>0</number>
       </property>
       <item row="3" column="1">
-       <widget class="QPushButton" name="stopTrainButton">
+       <widget class="QPushButton" name="stopTrainingButton">
         <property name="text">
          <string>Stop Training</string>
-        </property>
-       </widget>
-      </item>
-      <item row="3" column="0">
-       <widget class="QPushButton" name="trainButton">
-        <property name="text">
-         <string>Run Training</string>
-        </property>
-       </widget>
-      </item>
-      <item row="2" column="0">
-       <widget class="QPushButton" name="nextSampleButton">
-        <property name="text">
-         <string>Next Sample</string>
         </property>
        </widget>
       </item>
@@ -185,16 +171,40 @@
         </property>
        </widget>
       </item>
+      <item row="2" column="0">
+       <widget class="QPushButton" name="nextSampleButton">
+        <property name="text">
+         <string>Next Sample</string>
+        </property>
+       </widget>
+      </item>
+      <item row="3" column="0">
+       <widget class="QPushButton" name="trainingButton">
+        <property name="text">
+         <string>Run Training</string>
+        </property>
+       </widget>
+      </item>
+      <item row="4" column="0">
+       <widget class="QCommandLinkButton" name="trainingStatusButton">
+        <property name="text">
+         <string>Training Status</string>
+        </property>
+        <property name="description">
+         <string/>
+        </property>
+       </widget>
+      </item>
      </layout>
     </widget>
    </item>
    <item>
     <widget class="ctkCollapsibleButton" name="segmentationCollapsibleButton">
      <property name="text">
-      <string>Pre-Trained Segmentation Models</string>
+      <string>Auto Segmentation</string>
      </property>
      <property name="collapsed">
-      <bool>false</bool>
+      <bool>true</bool>
      </property>
      <property name="collapsedHeight">
       <number>9</number>
@@ -246,7 +256,7 @@
    <item>
     <widget class="ctkCollapsibleButton" name="deepgrowCollapsibleButton">
      <property name="text">
-      <string>DeepGrow / DeepEdit</string>
+      <string>SmartEdit (Deepgrow)</string>
      </property>
      <property name="collapsed">
       <bool>false</bool>
@@ -261,19 +271,46 @@
       <property name="rightMargin">
        <number>0</number>
       </property>
-      <item row="6" column="0">
-       <widget class="qSlicerMarkupsPlaceWidget" name="dgNegativeFiducialPlacementWidget">
-        <property name="placeMultipleMarkups">
-         <enum>qSlicerMarkupsPlaceWidget::ForcePlaceMultipleMarkups</enum>
+      <item row="5" column="0">
+       <widget class="QLabel" name="label_2">
+        <property name="text">
+         <string/>
         </property>
        </widget>
       </item>
       <item row="3" column="0" colspan="2">
        <layout class="QGridLayout" name="gridLayout_2">
+        <item row="3" column="2">
+         <widget class="QLabel" name="label_10">
+          <property name="text">
+           <string>Background:</string>
+          </property>
+         </widget>
+        </item>
+        <item row="3" column="1">
+         <widget class="QComboBox" name="labelComboBox">
+          <property name="sizePolicy">
+           <sizepolicy hsizetype="Expanding" vsizetype="Fixed">
+            <horstretch>0</horstretch>
+            <verstretch>0</verstretch>
+           </sizepolicy>
+          </property>
+          <property name="editable">
+           <bool>false</bool>
+          </property>
+         </widget>
+        </item>
         <item row="2" column="0">
          <widget class="QLabel" name="label_8">
           <property name="text">
            <string>Model:</string>
+          </property>
+         </widget>
+        </item>
+        <item row="2" column="2">
+         <widget class="QLabel" name="label_9">
+          <property name="text">
+           <string>Foreground:</string>
           </property>
          </widget>
         </item>
@@ -290,7 +327,7 @@
           </property>
          </widget>
         </item>
-        <item row="2" column="2">
+        <item row="3" column="0">
          <widget class="QLabel" name="label_6">
           <property name="text">
            <string>Label:</string>
@@ -298,47 +335,20 @@
          </widget>
         </item>
         <item row="2" column="3">
-         <widget class="QComboBox" name="labelComboBox">
-          <property name="sizePolicy">
-           <sizepolicy hsizetype="Expanding" vsizetype="Fixed">
-            <horstretch>0</horstretch>
-            <verstretch>0</verstretch>
-           </sizepolicy>
+         <widget class="qSlicerMarkupsPlaceWidget" name="dgPositiveFiducialPlacementWidget">
+          <property name="placeMultipleMarkups">
+           <enum>qSlicerMarkupsPlaceWidget::ForcePlaceMultipleMarkups</enum>
           </property>
-          <property name="editable">
-           <bool>false</bool>
+         </widget>
+        </item>
+        <item row="3" column="3">
+         <widget class="qSlicerMarkupsPlaceWidget" name="dgNegativeFiducialPlacementWidget">
+          <property name="placeMultipleMarkups">
+           <enum>qSlicerMarkupsPlaceWidget::ForcePlaceMultipleMarkups</enum>
           </property>
          </widget>
         </item>
        </layout>
-      </item>
-      <item row="5" column="0">
-       <widget class="QLabel" name="label_10">
-        <property name="text">
-         <string>Background (-ve) Points:</string>
-        </property>
-       </widget>
-      </item>
-      <item row="6" column="1">
-       <widget class="qSlicerMarkupsPlaceWidget" name="dgPositiveFiducialPlacementWidget">
-        <property name="placeMultipleMarkups">
-         <enum>qSlicerMarkupsPlaceWidget::ForcePlaceMultipleMarkups</enum>
-        </property>
-       </widget>
-      </item>
-      <item row="5" column="1">
-       <widget class="QLabel" name="label_9">
-        <property name="text">
-         <string>Foreground (+ve) Points:</string>
-        </property>
-       </widget>
-      </item>
-      <item row="4" column="0">
-       <widget class="QLabel" name="label_2">
-        <property name="text">
-         <string/>
-        </property>
-       </widget>
       </item>
      </layout>
     </widget>

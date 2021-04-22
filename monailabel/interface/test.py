@@ -9,7 +9,7 @@ import sys
 
 import yaml
 
-from main import MyApp
+from monailabel.utils.app_utils import app_instance
 
 logger = logging.getLogger(__name__)
 
@@ -18,7 +18,7 @@ def test_inference(args):
     output_path = args.output
     os.makedirs(output_path, exist_ok=True)
 
-    app = MyApp(app_dir=args.app_dir, studies=args.studies)
+    app = app_instance(app_dir=args.app_dir, studies=args.studies)
     logger.info('Running Inference: {}'.format(args.name))
 
     res_img = None
@@ -47,7 +47,7 @@ def test_train(args):
     output_path = os.path.dirname(args.output)
     os.makedirs(output_path, exist_ok=True)
 
-    app = MyApp(app_dir=args.app_dir, studies=args.studies)
+    app = app_instance(app_dir=args.app_dir, studies=args.studies)
     logger.info('Running Training: {}'.format(args.name))
 
     request = {
@@ -64,7 +64,7 @@ def test_train(args):
 
 
 def test_info(args):
-    app = MyApp(app_dir=args.app_dir, studies=args.studies)
+    app = app_instance(app_dir=args.app_dir, studies=args.studies)
     info = app.info()
 
     class MyDumper(yaml.Dumper):
@@ -78,33 +78,29 @@ def strtobool(val):
     return bool(distutils.util.strtobool(val))
 
 
-def run_main():
-    app_dir = os.path.realpath(os.path.join(os.path.dirname(__file__)))
-    studies = os.path.realpath(os.path.join(app_dir, '../../datasets/studies'))
-
+def test_main():
     parser = argparse.ArgumentParser()
     parser.add_argument('-d', '--debug', action='store_true')
-    parser.add_argument('-a', '--app_dir', default='.')
-    parser.add_argument('-s', '--studies', default=f"{studies}")
+    parser.add_argument('-a', '--app_dir', required=True)
+    parser.add_argument('-s', '--studies', required=True)
     parser.add_argument('--device', default='cuda')
 
     subparsers = parser.add_subparsers(help='sub-command help')
 
     parser_a = subparsers.add_parser('infer', help='infer help')
-    parser_a.add_argument('-m', '--model', default='segmentation_spleen')
-    parser_a.add_argument('-i', '--input', default=f"{studies}/imagesTr/spleen_2.nii.gz")
-    parser_a.add_argument('-o', '--output', default='/tmp/')
-    parser_a.add_argument('-p', '--params', default='{}')
-    parser_a.add_argument('-r', '--runs', type=int, default=1)
+    parser_a.add_argument('-m', '--model', required=True, help="Pre-Trained Model for inference")
+    parser_a.add_argument('-i', '--input', required=True, help="Input Image file")
+    parser_a.add_argument('-o', '--output', required=True, help="Output Label file")
+    parser_a.add_argument('-p', '--params', default='{}', help="Input Params for inference")
+    parser_a.add_argument('-r', '--runs', type=int, default=1, help="Number of times to run same inference")
     parser_a.set_defaults(test='infer')
 
     parser_b = subparsers.add_parser('train', help='train help')
-    parser_a.add_argument('-n', '--network', default='UNet')
-    parser_b.add_argument('-i', '--input', default=f"{studies}/dataset.json")
-    parser_b.add_argument('-o', '--output', default=f"{app_dir}/model/run_0")
-    parser_b.add_argument('-r', '--dataset_root', default=studies)
-    parser_b.add_argument('-e', '--epochs', type=int, default=1)
-    parser_b.add_argument('--amp', type=strtobool, default='true')
+    parser_b.add_argument('-i', '--input', required=True, help="Dataset JSON")
+    parser_b.add_argument('-o', '--output', required=True, help="Train output folder")
+    parser_b.add_argument('-r', '--dataset_root', required=True, help="Dataset ROOT Folder")
+    parser_b.add_argument('-e', '--epochs', type=int, default=1, help="Number of epochs")
+    parser_b.add_argument('--amp', type=strtobool, default='true', help="Use AMP")
     parser_b.set_defaults(test='train')
 
     parser_c = subparsers.add_parser('info', help='info help')
@@ -132,7 +128,3 @@ def run_main():
         test_info(args)
     else:
         parser.print_help()
-
-
-if __name__ == '__main__':
-    run_main()
