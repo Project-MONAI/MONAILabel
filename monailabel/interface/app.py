@@ -12,18 +12,20 @@ logger = logging.getLogger(__name__)
 
 
 class MONAILabelApp:
-    def __init__(self, app_dir, studies, infers):
+    def __init__(self, app_dir, studies, infers=dict(), active_learning: ActiveLearning = ActiveLearning()):
         """
         Base Class for Any MONAI Label App
 
         :param app_dir: path for your App directory
         :param studies: path for studies/datalist
         :param infers: Dictionary of infer engines
+        :param active_learning: ActiveLearning implementation to get next sample
 
         """
         self.app_dir = app_dir
         self.studies = studies
         self.infers = infers
+        self.active_learning = active_learning
 
     def info(self):
         """
@@ -129,9 +131,10 @@ class MONAILabelApp:
         logger.info(f"Active Learning request: {request}")
         images_dir = os.path.join(self.studies, "imagesTr")
         images = [os.path.join(images_dir, f) for f in os.listdir(images_dir) if
-                  os.path.isfile(os.path.join(images_dir, f)) and (f.endswith(".nii.gz") or f.endswith(".nii"))]
+                  os.path.isfile(os.path.join(images_dir, f)) and not f.startswith(".") and (
+                              f.endswith(".nii.gz") or f.endswith(".nii"))]
 
-        image = ActiveLearning().next(request.get("strategy", "random"), images)
+        image = self.active_learning.next(request.get("strategy", "random"), images)
         return {"image": image}
 
     def save_label(self, request):

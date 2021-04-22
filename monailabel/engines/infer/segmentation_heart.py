@@ -1,4 +1,3 @@
-
 import numpy as np
 
 from monai.inferers import SlidingWindowInferer
@@ -20,7 +19,7 @@ from monailabel.interface import InferenceEngine, InferType
 from monailabel.interface.utils import Restored, BoundingBoxd
 
 
-class SegmentationHeart(InferenceEngine):
+class InferSegmentationHeart(InferenceEngine):
     """
     This provides Inference Engine for pre-trained heart segmentation (UNet) model over MSD Dataset.
     """

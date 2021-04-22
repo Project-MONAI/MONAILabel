@@ -17,10 +17,11 @@ from monailabel.interface import InferenceEngine, InferType
 from monailabel.interface.utils import Restored, BoundingBoxd
 
 
-class SegmentationHippocampus(InferenceEngine):
+class InferSegmentationHippocampus(InferenceEngine):
     """
     This provides Inference Engine for pre-trained hippocampus segmentation (UNet) model over MSD Dataset.
     """
+
     def __init__(
             self,
             path,
@@ -42,13 +43,13 @@ class SegmentationHippocampus(InferenceEngine):
     def pre_transforms(self):
         pixdim = (1.0, 1.0, 1.0)
         pre_transforms = [
-                            LoadImaged(keys=["image"]),
-                            EnsureChannelFirstd(keys=["image"]),
-                            Spacingd(keys=["image"], pixdim=pixdim, mode="bilinear"),
-                            Orientationd(keys=["image"], axcodes="RAS"),
-                            NormalizeIntensityd(keys=["image"], nonzero=True, channel_wise=True),
-                            ToTensord(keys=["image"]),
-                        ]
+            LoadImaged(keys=["image"]),
+            EnsureChannelFirstd(keys=["image"]),
+            Spacingd(keys=["image"], pixdim=pixdim, mode="bilinear"),
+            Orientationd(keys=["image"], axcodes="RAS"),
+            NormalizeIntensityd(keys=["image"], nonzero=True, channel_wise=True),
+            ToTensord(keys=["image"]),
+        ]
         return pre_transforms
 
     def inferer(self):

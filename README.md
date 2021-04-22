@@ -18,23 +18,25 @@ pip install -r requirements.txt
 
 # Download sample pre-trained models
 # https://drive.google.com/drive/folders/1QNEtb3InzpEve53xTWCmxe_HnR2cImUv?usp=sharing
-cd /workspace/MONAI-label/apps/my_app
+cd /workspace/MONAI-label/apps/segmentation_spleen
 unzip models.zip
 
 # Download MSD Datasets from
-# https://drive.google.com/drive/folders/1HqEgzS8BV2c7xYNrZdEAnrHk7osJJ--2
+# https://github.com/Project-MONAI/MONAI/blob/master/monai/apps/datasets.py#L213-L224
+
 mkdir -p /workspace/datasets
 cd /workspace/datasets
-tar xf MSD_Task09_Spleen.tar
+wget https://msd-for-monai.s3-us-west-2.amazonaws.com/Task09_Spleen.tar
+tar xf Task09_Spleen.tar
 
 # Run APP
 cd /workspace/MONAI-label/monailabel
 export PYTHONPATH=/workspace/MONAI-label
 
-python main.py --app ../apps/my_app/ --studies /workspace/datasets/MSD_Task09_Spleen
+python main.py --app ../apps/segmentation_spleen/ --studies /workspace/datasets/Task09_Spleen
 
-# To run in virtual env for the app by installing my_app/requirements.txt
-#./start_monai_label.sh --app ../apps/my_app/ --studies
+# To run in virtual env for the app by installing segmentation_spleen/requirements.txt
+#./start_monai_label.sh --app ../apps/segmentation_spleen/ --studies
 ```
 
 ## App basic structure

@@ -276,7 +276,6 @@ class MONAILabelWidget(ScriptedLoadableModuleWidget, VTKObservationMixin):
         self.ui.nextSampleButton.setEnabled(self.info)
 
         is_training_running = True if self.info and self.isTrainingRunning() else False
-        print(f"Training is running: {is_training_running}")
         self.ui.trainingButton.setEnabled(self.info and not is_training_running)
         self.ui.stopTrainingButton.setEnabled(is_training_running)
         self.ui.trainingStatusButton.setEnabled(self.info)
@@ -406,8 +405,6 @@ class MONAILabelWidget(ScriptedLoadableModuleWidget, VTKObservationMixin):
         logging.debug("Markup point added; point ID = {}".format(movingMarkupIndex))
 
         current_point = self.getFiducialPointXYZ(markupsNode, movingMarkupIndex)
-        print("Current Point: {}".format(current_point))
-
         self.onClickDeepgrow(current_point)
 
         self.ignoreFiducialNodeAddEvent = True
@@ -760,7 +757,6 @@ class MONAILabelWidget(ScriptedLoadableModuleWidget, VTKObservationMixin):
 
             slicer.util.saveNode(labelmapVolumeNode, label_in)
             self.reportProgress(30)
-            print(f"Label saved at: {label_in}")
 
             self.updateServerSettings()
             result = self.logic.save_label(self.current_sample["id"], label_in)
@@ -909,7 +905,6 @@ class MONAILabelWidget(ScriptedLoadableModuleWidget, VTKObservationMixin):
     def getLabelColor(self, name):
         color = GenericAnatomyColors.get(name.lower())
         color = GenericAnatomyColors.get("tissue") if color is None else color
-        print(f"Color for {name} is {color}")
         return [c / 255.0 for c in color]
 
     def updateSegmentationMask(self, in_file, labels, sliceIndex=None):
@@ -951,8 +946,8 @@ class MONAILabelWidget(ScriptedLoadableModuleWidget, VTKObservationMixin):
             logging.debug('Setting new segmentation with id: {} => {}'.format(segmentId, segment.GetName()))
 
             label = labels[i] if i < len(labels) else "unknown {}".format(i)
-            segment.SetName(label)
-            segment.SetColor(self.getLabelColor(label))
+            # segment.SetName(label)
+            # segment.SetColor(self.getLabelColor(label))
 
             if label in existing_label_ids:
                 segmentEditorWidget = slicer.modules.segmenteditor.widgetRepresentation().self().editor

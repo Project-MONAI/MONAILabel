@@ -22,7 +22,7 @@ from monai.transforms import (
 from monailabel.interface import InferenceEngine, InferType
 
 
-class Deepgrow2D(InferenceEngine):
+class InferDeepgrow2D(InferenceEngine):
     """
     This provides Inference Engine for Deepgrow-2D pre-trained model.
     For More Details, Refer https://github.com/Project-MONAI/tutorials/tree/master/deepgrow/ignite

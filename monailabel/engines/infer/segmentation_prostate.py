@@ -17,7 +17,7 @@ from monailabel.interface import InferenceEngine, InferType
 from monailabel.interface.utils import Restored, BoundingBoxd
 
 
-class SegmentationProstate(InferenceEngine):
+class InferSegmentationProstate(InferenceEngine):
     """
     This provides Inference Engine for pre-trained prostate segmentation (UNet) model over MSD Dataset.
     """
@@ -43,13 +43,13 @@ class SegmentationProstate(InferenceEngine):
     def pre_transforms(self):
         pixdim = (0.62, 0.62, 3.6)
         pre_transforms = [
-                            LoadImaged(keys=["image"]),
-                            EnsureChannelFirstd(keys=["image"]),
-                            Spacingd(keys=["image"], pixdim=pixdim, mode="bilinear"),
-                            Orientationd(keys=["image"], axcodes="RAS"),
-                            NormalizeIntensityd(keys=["image"], nonzero=True, channel_wise=True),
-                            ToTensord(keys=["image"]),
-                        ]
+            LoadImaged(keys=["image"]),
+            EnsureChannelFirstd(keys=["image"]),
+            Spacingd(keys=["image"], pixdim=pixdim, mode="bilinear"),
+            Orientationd(keys=["image"], axcodes="RAS"),
+            NormalizeIntensityd(keys=["image"], nonzero=True, channel_wise=True),
+            ToTensord(keys=["image"]),
+        ]
         return pre_transforms
 
     def inferer(self):

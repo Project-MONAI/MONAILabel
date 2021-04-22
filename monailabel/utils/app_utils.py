@@ -79,7 +79,6 @@ def run_main():
     parser.add_argument('-a', '--app', required=True)
     parser.add_argument('-s', '--studies', required=True)
     parser.add_argument('-o', '--output', type=str, default=None)
-    parser.add_argument('-l', '--logprefix', type=str, default='')
     parser.add_argument('-d', '--debug', action='store_true')
 
     subparsers = parser.add_subparsers(help='sub-command help')

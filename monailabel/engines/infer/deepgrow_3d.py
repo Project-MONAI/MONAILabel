@@ -21,7 +21,7 @@ from monai.transforms import (
 from monailabel.interface import InferenceEngine, InferType
 
 
-class Deepgrow3D(InferenceEngine):
+class InferDeepgrow3D(InferenceEngine):
     """
     This provides Inference Engine for Deepgrow-3D pre-trained model.
     For More Details, Refer https://github.com/Project-MONAI/tutorials/tree/master/deepgrow/ignite

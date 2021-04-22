@@ -14,10 +14,11 @@ from monailabel.interface import InferenceEngine, InferType
 from monailabel.interface.utils import Restored, BoundingBoxd
 
 
-class SegmentationSpleen(InferenceEngine):
+class InferSegmentationSpleen(InferenceEngine):
     """
     This provides Inference Engine for pre-trained spleen segmentation (UNet) model over MSD Dataset.
     """
+
     def __init__(
             self,
             path,

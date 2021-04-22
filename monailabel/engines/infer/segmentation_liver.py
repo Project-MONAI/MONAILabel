@@ -17,10 +17,11 @@ from monailabel.interface import InferenceEngine, InferType
 from monailabel.interface.utils import Restored, BoundingBoxd
 
 
-class SegmentationLiver(InferenceEngine):
+class InferSegmentationLiver(InferenceEngine):
     """
     This provides Inference Engine for pre-trained liver segmentation (UNet) model over MSD Dataset.
     """
+
     def __init__(
             self,
             path,
@@ -42,13 +43,13 @@ class SegmentationLiver(InferenceEngine):
     def pre_transforms(self):
         pixdim = (0.77, 0.77, 1.0)
         pre_transforms = [
-                            LoadImaged(keys=["image"]),
-                            EnsureChannelFirstd(keys=["image"]),
-                            Spacingd(keys=["image"], pixdim=pixdim, mode="bilinear"),
-                            Orientationd(keys=["image"], axcodes="RAS"),
-                            ScaleIntensityRanged(keys=["image"], a_min=-57, a_max=164, b_min=0.0, b_max=1.0, clip=True,),
-                            ToTensord(keys=["image"]),
-                        ]
+            LoadImaged(keys=["image"]),
+            EnsureChannelFirstd(keys=["image"]),
+            Spacingd(keys=["image"], pixdim=pixdim, mode="bilinear"),
+            Orientationd(keys=["image"], axcodes="RAS"),
+            ScaleIntensityRanged(keys=["image"], a_min=-57, a_max=164, b_min=0.0, b_max=1.0, clip=True, ),
+            ToTensord(keys=["image"]),
+        ]
         return pre_transforms
 
     def inferer(self):

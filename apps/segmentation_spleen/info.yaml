@@ -1,6 +1,6 @@
 ---
 version: 1
-name: MyApp
+name: Segmentation Spleen
 description: MONAI Label App to provide active learning solution to label Spleen Organ over 3D CT Images
 dimension: 3
 labels:
@@ -14,8 +14,8 @@ config:
     lr: 0.0001
     epochs: 1
     network:
+      UNet: UNet with channels (16, 32, 64, 128, 256)
       BasicUNet: Basic UNet with features (16, 32, 64, 128, 256)
-      UNet: UNet with channels (16, 32, 64, 128, 256) # default
   activelearning:
     strategy:
       random: Use Random Strategy to get Next Sample # default

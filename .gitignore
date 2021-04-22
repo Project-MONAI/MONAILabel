@@ -137,8 +137,9 @@ ENV/
 .idea/
 .vscode/
 
-# logs
-logs
+# apps
+apps/*/logs
+apps/*/train
 
 # docs build
 docs/build

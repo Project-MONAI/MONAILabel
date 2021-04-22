@@ -1,54 +1,38 @@
-import numpy as np
 from typing import Dict
 
+import numpy as np
+
 from monai.inferers import SlidingWindowInferer
-from monai.apps.deepgrow.transforms import (
-    AddGuidanceFromPointsd,
-    SpatialCropGuidanced,
-    ResizeGuidanced,
-    AddGuidanceSignald,
-    RestoreLabeld
-)
-from monai.transforms import (
-    LoadImaged,
-    AsChannelFirstd,
-    AddChanneld,
-    Spacingd,
-    Activationsd,
-    AsDiscreted,
-    ToNumpyd,
-    Resized,
-    NormalizeIntensityd,
-    AsChannelLastd
-)
 from monai.transforms import (
     Activationsd,
     AddChanneld,
     AsDiscreted,
-    CastToTyped,
     LoadImaged,
     NormalizeIntensityd,
-    Orientationd,
     Spacingd,
-    SpatialPadd,
     SqueezeDimd,
     ToNumpyd,
-    ToTensord,
 )
-
+from monai.transforms import (
+    AsChannelFirstd,
+    Resized
+)
+from monai.transforms.transform import Transform
 from monailabel.interface import InferenceEngine, InferType
 from monailabel.interface.utils import Restored, BoundingBoxd
-from monai.transforms.transform import MapTransform, Randomizable, Transform
+
 
 # Define a new transform to discard positive and negative points
 class DiscardAddGuidanced(Transform):
     """
     Discard positive and negative points randomly or Add the two channels for inference time
     """
-    def __init__(self, image: str = "image", batched: bool = False,):
+
+    def __init__(self, image: str = "image", batched: bool = False, ):
         self.image = image
         # What batched means/implies? I see that the dictionary is in the list form instead of numpy array
         self.batched = batched
+
     def __call__(self, data):
         d: Dict = dict(data)
         image = d[self.image]
@@ -59,10 +43,12 @@ class DiscardAddGuidanced(Transform):
         print('This is the output image shape: ', d[self.image].shape)
         return d
 
-class SegmentationDeepEdit(InferenceEngine):
+
+class InferSegmentationDeepEdit(InferenceEngine):
     """
     This provides Inference Engine for pre-trained heart segmentation (UNet) model over MSD Dataset.
     """
+
     def __init__(
             self,
             path,
@@ -110,4 +96,3 @@ class SegmentationDeepEdit(InferenceEngine):
             Restored(keys='pred', ref_image='image'),
             BoundingBoxd(keys='pred', result='result', bbox='bbox'),
         ]
-
