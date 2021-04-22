@@ -1,4 +1,5 @@
 from abc import ABCMeta, abstractmethod
+from enum import Enum
 import io
 import json
 import os
@@ -7,6 +8,7 @@ import re
 from openapi_schema_validator import validate
 
 from monailabel.interface.exception import UnknownLabelIdException
+
 
 class Dataset(metaclass=ABCMeta):
 
@@ -223,7 +225,7 @@ class LocalDataset(Dataset):
         images = []
         for obj in self._dataset_config['objects']:
             if obj.get('labels') is None or len(obj.get('labels')) == 0:
-                images.append(obj['image'])
+                images.append(os.path.join(self._dataset_path, obj['image']))
         return images
     
     def save_label(self, image: str, label_id: str, label: io.BytesIO):
