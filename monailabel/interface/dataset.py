@@ -4,6 +4,7 @@ import io
 import json
 import os
 import re
+from uuid import uuid4
 
 from openapi_schema_validator import validate
 
@@ -45,7 +46,7 @@ class Dataset(metaclass=ABCMeta):
     def find_objects(self, pattern: str, match_label: bool) -> list: pass
   
     @abstractmethod
-    def save_label(self, image: str, label_id: str, label: io.BytesIO): pass
+    def save_label(self, image: str, label_id: str, label: io.BytesIO) -> str: pass
 
     @abstractmethod
     def get_unlabeled_images(self) -> list: pass
@@ -215,9 +216,9 @@ class LocalDataset(Dataset):
         p = re.compile(pattern)
         matching_objects = []
         for obj in self._dataset_config['objects']:
-            if p.match(obj['image']):
+            if p.match(obj['image']) or p.match(os.path.join(self._dataset_path, obj['image'])):
                 matching_objects.append(obj)
-            if match_label and any([p.match(l) for l in obj['labels']]):
+            if match_label and any([p.match(l) or p.match(os.path.join(self._dataset_path, l)) for l in obj['labels']]):
                 matching_objects.append(obj)
         return matching_objects
 
@@ -228,23 +229,30 @@ class LocalDataset(Dataset):
                 images.append(os.path.join(self._dataset_path, obj['image']))
         return images
     
-    def save_label(self, image: str, label_id: str, label: io.BytesIO):
+    def save_label(self, image: str, label_id: str, label: io.BytesIO) -> str:
 
-        if label_id not in self.info.keys():
-            raise UnknownLabelIdException("The label id to be saved does not match any of the label ids in the dataset `info` section")
+        label_path = None
+        for i, obj in enumerate(self._dataset_config['objects']):
         
-        for obj in self._dataset_config['objects']:
-        
-            if image == self._dataset_config['image']:
-                label_path = self._dataset_config['image']
-                self._dataset_config['labels'].append(os.path.join(os.path.basename(self._dataset_config['image']), label_id))
+            if image == obj['image'] \
+                or image == os.path.join(self._dataset_path, obj['image']):
 
-                with open(self._dataset_config['label'][-1], 'wb') as f:
+                if label_id in obj['labels']:
+                    label_id = ''.join(str(uuid4().hex), os.path.splitext(label_id)[1:])
+
+                label_path = os.path.join(os.path.dirname(obj['image']), label_id)
+                self._dataset_config['objects'][i]['labels'].append(label_path)
+
+                with open(os.path.join(self._dataset_path, label_path), 'wb') as f:
                     label.seek(0)
                     f.write(label.getbuffer())
+
+                break
         
         validate(self._dataset_config, LocalDataset._schema)
         self._update_dataset()
+
+        return label_path
     
     @property
     def info(self) -> dict:
