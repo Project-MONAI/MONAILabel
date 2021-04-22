@@ -70,15 +70,14 @@ class _ui_MONAILabelSettingsPanel(object):
             "MONAI-Label/serverUrlHistory", serverUrlHistory,
             "text", str(qt.SIGNAL("textChanged(QString)")))
 
-        useSessionCheckBox = qt.QCheckBox()
-        useSessionCheckBox.checked = False
-        useSessionCheckBox.toolTip = (
-            "Enable this option to make use of sessions while bringing any external image."
-            " Volume is uploaded to MONAI Label as part of session once and it makes inference operations faster.")
-        groupLayout.addRow("Session:", useSessionCheckBox)
-        useSessionMapper = ctk.ctkBooleanMapper(useSessionCheckBox, "checked", str(qt.SIGNAL("toggled(bool)")))
+        autoRunSegmentationCheckBox = qt.QCheckBox()
+        autoRunSegmentationCheckBox.checked = True
+        autoRunSegmentationCheckBox.toolTip = (
+            "Enable this option to auto run segmentation if pre-trained model exists when Next Sample is fetched")
+        groupLayout.addRow("Auto-Run Pre-Trained Model:", autoRunSegmentationCheckBox)
+        autRunMapper = ctk.ctkBooleanMapper(autoRunSegmentationCheckBox, "checked", str(qt.SIGNAL("toggled(bool)")))
         parent.registerProperty(
-            "MONAI-Label/session", useSessionMapper,
+            "MONAI-Label/autoRunSegmentationOnNextSample", autRunMapper,
             "valueAsInt", str(qt.SIGNAL("valueAsIntChanged(int)")))
 
         vBoxLayout.addWidget(groupBox)
@@ -495,10 +494,6 @@ class MONAILabelWidget(ScriptedLoadableModuleWidget, VTKObservationMixin):
 
     def updateServerSettings(self):
         self.logic.setServer(self.serverUrl())
-        self.logic.setUseSession(slicer.util.settingsValue(
-            "MONAI-Label/session",
-            False, converter=slicer.util.toBool))
-
         self.saveServerUrl()
 
     def serverUrl(self):
@@ -731,6 +726,17 @@ class MONAILabelWidget(ScriptedLoadableModuleWidget, VTKObservationMixin):
             segmentEditorWidget = slicer.modules.segmenteditor.widgetRepresentation().self().editor
             segmentEditorWidget.setSegmentationNode(self.getSegmentNode())
             segmentEditorWidget.setMasterVolumeNode(self._volumeNode)
+
+            # Check if user wants to run auto-segmentation on new sample
+            if slicer.util.settingsValue("MONAI-Label/autoRunSegmentationOnNextSample", True,
+                                         converter=slicer.util.toBool):
+                for label in self.info.get("labels", []):
+                    for name, model in self.models.items():
+                        if label in model.get("labels", []):
+                            qt.QApplication.restoreOverrideCursor()
+                            self.ui.segmentationModelSelector.currentText = name
+                            self.onClickSegmentation()
+                            return
 
             self.updateGUIFromParameterNode()
         except:
@@ -1064,9 +1070,6 @@ class MONAILabelLogic(ScriptedLoadableModuleLogic):
         if not server_url:
             server_url = "http://127.0.0.1:8000"
         self.server_url = server_url
-
-    def setUseSession(self, useSession):
-        self.useSession = useSession
 
     def setProgressCallback(self, progress_callback=None):
         self.progress_callback = progress_callback

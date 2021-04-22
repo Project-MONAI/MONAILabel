@@ -201,10 +201,10 @@
    <item>
     <widget class="ctkCollapsibleButton" name="segmentationCollapsibleButton">
      <property name="text">
-      <string>Pre-Trained Segmentation Models</string>
+      <string>Auto Segmentation</string>
      </property>
      <property name="collapsed">
-      <bool>false</bool>
+      <bool>true</bool>
      </property>
      <property name="collapsedHeight">
       <number>9</number>
@@ -256,7 +256,7 @@
    <item>
     <widget class="ctkCollapsibleButton" name="deepgrowCollapsibleButton">
      <property name="text">
-      <string>DeepGrow / DeepEdit</string>
+      <string>SmartEdit (Deepgrow)</string>
      </property>
      <property name="collapsed">
       <bool>false</bool>
