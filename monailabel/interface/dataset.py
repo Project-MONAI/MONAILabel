@@ -149,6 +149,20 @@ class LocalDataset(Dataset):
     }
 
     def __init__(self, dataset_path: str, dataset_name: str=None, dataset_config: str='dataset.json'):
+        """
+        Creates a `LocalDataset` object
+
+        Parameters:
+
+        `dataset_path: str`
+            a string to the directory tree of the desired dataset
+
+        `dataset_name: str`
+            an optional name for the dataset
+
+        `dataset_config: str`
+            optional file name of the dataset configuration file (by default `dataset.json`)
+        """
         self._dataset_path = dataset_path
         self._dataset_config_path = os.path.join(dataset_path, dataset_config)
         self._dataset_config = {}
@@ -198,21 +212,55 @@ class LocalDataset(Dataset):
 
     @property
     def description(self) -> str:
+        """
+        Gets the description field for the dataset
+        """
         return self._dataset_config.get('description')
 
     @description.setter
     def description(self, description: str):
+        """
+        Set a description for the dataset
+        """
         self._dataset_config.update({'description': description})
         validate(self._dataset_config, LocalDataset._schema)
         self._update_dataset()
 
     def list_images(self) -> list:
+        """
+        List all the images in the dataset
+        """
         return [obj['image'] for obj in self._dataset_config['objects']]
 
     def list_labels(self) -> list:
+        """
+        List all the labels in the dataset
+        """
         return [obj['labels'] for obj in self._dataset_config['objects']]
 
     def find_objects(self, pattern: str, match_label: bool=False) -> list:
+        """
+        Find all the objects (image-[labels] pairings) that match the provided `pattern`
+
+        Parameters:
+
+        `pattern: str`
+            a string to search the `image` fields of the dataset
+
+        `match_label:bool`
+            a boolean which, if set to true, will search for the same pattern in the `labels` field as well (default `False`)
+
+        Returns:
+
+        a list of matching objects in the form of a list of dictionaries of the form
+        [{
+            'image': '...',
+            'labels': [
+                '...label1',
+                '...label2',
+            ]
+        },...]
+        """
         p = re.compile(pattern)
         matching_objects = []
         for obj in self._dataset_config['objects']:
@@ -223,6 +271,13 @@ class LocalDataset(Dataset):
         return matching_objects
 
     def get_unlabeled_images(self) -> list:
+        """
+        Get a list of all the images without an associated label
+
+        Returns:
+
+            a list of image paths that do not have corresponding labels
+        """
         images = []
         for obj in self._dataset_config['objects']:
             if obj.get('labels') is None or len(obj.get('labels')) == 0:
@@ -230,7 +285,26 @@ class LocalDataset(Dataset):
         return images
     
     def save_label(self, image: str, label_id: str, label: io.BytesIO) -> str:
+        """
+        Save the label for the given image in the dataset
 
+        Parameters:
+
+        `image: str`
+            the path of the image file in the dataset to which the provided `label_id` and `label` should be associated
+
+        `label_id`
+            the file name of the label (should contain file extension e.g. `.nii`); if the provided file name already exists it
+            will be updated
+
+        `label: io.BytesIO`
+            a byte stream of the file to be saved in the dataset
+
+        Returns:
+
+        the updated `label_id` (if there is a clash or the original `label_id` provided if not) prepended by any relative path
+        to the `image` path provided in the parameters
+        """
         label_path = None
         for i, obj in enumerate(self._dataset_config['objects']):
         
@@ -256,9 +330,15 @@ class LocalDataset(Dataset):
     
     @property
     def info(self) -> dict:
+        """
+        The `info` section of the dataset, containing any label information if available
+        """
         return self._dataset_config.get('info')
 
     def update_label_info(self, id: str, description: str) -> dict:
+        """
+        Update label info in the dataset
+        """
 
         standard_id = ''.join(c.lower() for c in id if not c.isspace())
         
