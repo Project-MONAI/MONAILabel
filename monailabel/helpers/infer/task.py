@@ -6,8 +6,8 @@ from abc import abstractmethod
 
 import torch
 
+from monailabel.helpers.others import Writer
 from monailabel.interface.exception import MONAILabelError, MONAILabelException
-from monailabel.interface.utils.writer import Writer
 
 logger = logging.getLogger(__name__)
 
@@ -21,9 +21,9 @@ class InferType:
     KNOWN_TYPES = [SEGMENTATION, CLASSIFICATION, DEEPGROW, OTHERS]
 
 
-class InferenceEngine(object):
+class InferenceTask(object):
     """
-    Basic Inference Engine Helper
+    Basic Inference Task Helper
     """
 
     def __init__(self, path, network, type: InferType, labels, dimension, description):
@@ -252,7 +252,7 @@ class InferenceEngine(object):
             name = t.__class__.__name__
             start = time.time()
 
-            InferenceEngine.dump_data(data)
+            InferenceTask.dump_data(data)
             if callable(t):
                 data = t(data)
             else:
@@ -260,8 +260,8 @@ class InferenceEngine(object):
                     t.__class__.__name__))
 
             logger.info("{} - Transform ({}): Time: {:.4f}; {}".format(
-                log_prefix, name, float(time.time() - start), InferenceEngine._shape_info(data)))
+                log_prefix, name, float(time.time() - start), InferenceTask._shape_info(data)))
             logger.debug('-----------------------------------------------------------------------------')
 
-        InferenceEngine.dump_data(data)
+        InferenceTask.dump_data(data)
         return data

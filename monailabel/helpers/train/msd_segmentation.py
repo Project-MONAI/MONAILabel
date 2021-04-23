@@ -13,12 +13,12 @@ from monai.handlers import (
     LrScheduleHandler)
 from monai.inferers import SimpleInferer
 from monai.losses import DiceLoss
-from monailabel.interface import TrainEngine
+from monailabel.helpers.train import TrainTask
 
 logger = logging.getLogger(__name__)
 
 
-class TrainSegmentation(TrainEngine):
+class MSDTrainSegmentationTask(TrainTask):
     """
     This provides Basic Train Engine to train segmentation models over MSD Dataset.
     """

@@ -12,7 +12,7 @@ from datetime import datetime
 from fastapi import APIRouter, HTTPException
 from fastapi import BackgroundTasks
 
-from monailabel.core.config import settings
+from monailabel.config import settings
 
 logger = logging.getLogger(__name__)
 train_tasks = []

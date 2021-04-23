@@ -10,7 +10,7 @@ logger = logging.getLogger(__name__)
 
 # TODO:: Think of some better abstraction/generalization here... few abstracts can be removed
 #  And support Multi GPU
-class TrainEngine(object):
+class TrainTask(object):
 
     @abstractmethod
     def device(self):

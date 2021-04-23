@@ -22,17 +22,17 @@ from monai.transforms import (
     NormalizeIntensityd,
     AsChannelLastd, LoadImage, AsChannelFirst, ToTensor
 )
-from monailabel.interface import InferenceEngine, InferType
-from monailabel.interface.utils import LargestCCd, BoundingBoxd
+from monailabel.helpers.infer import InferenceTask, InferType
+from monailabel.helpers.others import LargestCCd, BoundingBoxd
 
 logger = logging.getLogger(__name__)
 
 
-class InferDeepgrowPipeline(InferenceEngine):
+class InferDeepgrowPipeline(InferenceTask):
     def __init__(
             self,
             path,
-            model_3d: InferenceEngine,
+            model_3d: InferenceTask,
             network=None,
             type=InferType.DEEPGROW,
             labels=[],

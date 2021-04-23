@@ -18,8 +18,8 @@ from monai.transforms import (
     Resized
 )
 from monai.transforms.transform import Transform
-from monailabel.interface import InferenceEngine, InferType
-from monailabel.interface.utils import Restored, BoundingBoxd
+from monailabel.helpers.infer import InferenceTask, InferType
+from monailabel.helpers.others import Restored, BoundingBoxd
 
 
 # Define a new transform to discard positive and negative points
@@ -44,7 +44,7 @@ class DiscardAddGuidanced(Transform):
         return d
 
 
-class InferSegmentationDeepEdit(InferenceEngine):
+class InferDeepEdit(InferenceTask):
     """
     This provides Inference Engine for pre-trained heart segmentation (UNet) model over MSD Dataset.
     """

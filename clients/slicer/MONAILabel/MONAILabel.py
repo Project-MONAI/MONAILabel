@@ -771,16 +771,18 @@ class MONAILabelWidget(ScriptedLoadableModuleWidget, VTKObservationMixin):
             slicer.util.errorDisplay("Failed to save Label to MONAI Label Server",
                                      detailedText=traceback.format_exc())
         finally:
+            qt.QApplication.restoreOverrideCursor()
+            self.reportProgress(100)
+
             if labelmapVolumeNode:
                 slicer.mrmlScene.RemoveNode(labelmapVolumeNode)
             if result:
                 slicer.util.infoDisplay("Label-Mask saved into MONAI Label Server\t\t",
                                         detailedText=json.dumps(result, indent=2))
-            qt.QApplication.restoreOverrideCursor()
-            self.reportProgress(100)
-        logging.info("Time consumed by save label: {0:3.1f}".format(time.time() - start))
+                slicer.mrmlScene.Clear(0)
+                self.onNextSampleButton()
 
-        self.onNextSampleButton()
+        logging.info("Time consumed by save label: {0:3.1f}".format(time.time() - start))
 
     def onClickSegmentation(self):
         if not self.current_sample:

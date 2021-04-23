@@ -8,7 +8,7 @@ from fastapi.openapi.docs import get_swagger_ui_html
 from starlette.middleware.cors import CORSMiddleware
 from starlette.responses import HTMLResponse
 
-from monailabel.core.config import settings
+from monailabel.config import settings
 from monailabel.endpoints import activelearning, inference, logs, train, info, download
 from monailabel.utils.app_utils import get_app_instance
 from monailabel.utils.generic import init_log_config

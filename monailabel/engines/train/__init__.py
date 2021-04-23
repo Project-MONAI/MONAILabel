@@ -1,3 +1,0 @@
-from .segmentation import TrainSegmentation
-from .segmentation_heart import TrainSegmentationHeart
-from .segmentation_spleen import TrainSegmentationSpleen

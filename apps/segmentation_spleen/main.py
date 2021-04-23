@@ -1,16 +1,11 @@
 import logging
 import os
 
+from lib import MyInfer, MyTrain, MyActiveLearning
 from monai.networks.layers import Norm
 from monai.networks.nets import UNet, BasicUNet
-from monailabel.engines.infer import (
-    InferDeepgrow2D,
-    InferDeepgrow3D,
-    InferDeepgrowPipeline,
-    InferSegmentationSpleen
-)
-from monailabel.engines.train import TrainSegmentationSpleen
-from monailabel.interface import ActiveLearning
+from monailabel.helpers.infer.deepgrow_2d import InferDeepgrow2D
+from monailabel.helpers.infer.deepgrow_3d import InferDeepgrow3D
 from monailabel.interface.app import MONAILabelApp
 
 logger = logging.getLogger(__name__)
@@ -19,19 +14,17 @@ logger = logging.getLogger(__name__)
 class MyApp(MONAILabelApp):
     def __init__(self, app_dir, studies):
         model_dir = os.path.join(app_dir, "model")
-        spleen = InferSegmentationSpleen(os.path.join(model_dir, "segmentation_spleen.ts"))
-        deepgrow_3d = InferDeepgrow3D(os.path.join(model_dir, "deepgrow_3d.ts"))
+        infers = {
+            "deepgrow_2d": InferDeepgrow2D(os.path.join(model_dir, "deepgrow_2d.ts")),
+            "deepgrow_3d": InferDeepgrow3D(os.path.join(model_dir, "deepgrow_3d.ts")),
+            "segmentation_spleen": MyInfer(os.path.join(model_dir, "segmentation_spleen.ts")),
+        }
 
         super().__init__(
             app_dir=app_dir,
             studies=studies,
-            infers={
-                "deepgrow": InferDeepgrowPipeline(os.path.join(model_dir, "deepgrow_2d.ts"), deepgrow_3d),
-                "deepgrow_2d": InferDeepgrow2D(os.path.join(model_dir, "deepgrow_2d.ts")),
-                "deepgrow_3d": deepgrow_3d,
-                "segmentation_spleen": spleen,
-            },
-            active_learning=ActiveLearning()
+            infers=infers,
+            active_learning=MyActiveLearning()
         )
 
     def train(self, request):
@@ -53,7 +46,7 @@ class MyApp(MONAILabelApp):
             )
 
         logger.info(f"Training request: {request}")
-        engine = TrainSegmentationSpleen(
+        engine = MyTrain(
             output_dir=os.path.join(self.app_dir, "train", "train_0"),
             data_list=self.dataset().datalist(),
             network=network,

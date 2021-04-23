@@ -4,7 +4,7 @@ import logging
 import os
 import sys
 
-from monailabel.core.config import settings
+from monailabel.config import settings
 from monailabel.interface import MONAILabelApp
 from monailabel.interface.exception import MONAILabelError, MONAILabelException
 from monailabel.utils.class_utils import get_class_of_subclass_from_file
@@ -45,8 +45,8 @@ def app_instance(app_dir, studies):
 def save_result(result, output):
     print(json.dumps(result))
     if output:
-        with os.open(output, "w") as fp:
-            json.dumps(result, fp, indent=2)
+        with open(output, "w") as fp:
+            json.dump(result, fp, indent=2)
 
 
 def test_inference(args):

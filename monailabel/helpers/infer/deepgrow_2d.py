@@ -1,5 +1,6 @@
 from monai.apps.deepgrow.transforms import (
     AddGuidanceFromPointsd,
+    Fetch2DSliced,
     SpatialCropGuidanced,
     ResizeGuidanced,
     AddGuidanceSignald,
@@ -18,12 +19,12 @@ from monai.transforms import (
     NormalizeIntensityd,
     AsChannelLastd
 )
-from monailabel.interface import InferenceEngine, InferType
+from monailabel.helpers.infer import InferenceTask, InferType
 
 
-class InferDeepgrow3D(InferenceEngine):
+class InferDeepgrow2D(InferenceTask):
     """
-    This provides Inference Engine for Deepgrow-3D pre-trained model.
+    This provides Inference Engine for Deepgrow-2D pre-trained model.
     For More Details, Refer https://github.com/Project-MONAI/tutorials/tree/master/deepgrow/ignite
     """
 
@@ -33,10 +34,10 @@ class InferDeepgrow3D(InferenceEngine):
             network=None,
             type=InferType.DEEPGROW,
             labels=[],
-            dimension=3,
+            dimension=2,
             description='A pre-trained 2D DeepGrow model based on UNET',
             spatial_size=[256, 256],
-            model_size=[128, 192, 192]
+            model_size=[256, 256, 256]
     ):
         super().__init__(
             path=path,
@@ -54,14 +55,15 @@ class InferDeepgrow3D(InferenceEngine):
         return [
             LoadImaged(keys='image'),
             AsChannelFirstd(keys='image'),
-            Spacingd(keys='image', pixdim=[1.0, 1.0, 1.0], mode='bilinear'),
-            AddGuidanceFromPointsd(ref_image='image', guidance='guidance', dimensions=3),
+            Spacingd(keys='image', pixdim=[1.0, 1.0], mode='bilinear'),
+            AddGuidanceFromPointsd(ref_image='image', guidance='guidance', dimensions=2),
+            Fetch2DSliced(keys='image', guidance='guidance'),
             AddChanneld(keys='image'),
-            SpatialCropGuidanced(keys='image', guidance='guidance', spatial_size=self.spatial_size),
-            Resized(keys='image', spatial_size=self.model_size, mode='area'),
+            SpatialCropGuidanced(keys='image', guidance='guidance', spatial_size=[256, 256]),
+            Resized(keys='image', spatial_size=[256, 256], mode='area'),
             ResizeGuidanced(guidance='guidance', ref_image='image'),
             NormalizeIntensityd(keys='image', subtrahend=208, divisor=388),
-            AddGuidanceSignald(image='image', guidance='guidance'),
+            AddGuidanceSignald(image='image', guidance='guidance')
         ]
 
     def inferer(self):

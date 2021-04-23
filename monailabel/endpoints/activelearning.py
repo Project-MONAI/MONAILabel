@@ -8,7 +8,7 @@ from typing import Optional
 from fastapi import APIRouter
 from fastapi import File, UploadFile
 
-from monailabel.core.config import settings
+from monailabel.config import settings
 from monailabel.interface import MONAILabelApp
 from monailabel.utils.app_utils import get_app_instance
 from monailabel.utils.generic import file_checksum
