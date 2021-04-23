@@ -1,4 +1,5 @@
 import logging
+import io
 import os
 import shutil
 from abc import abstractmethod
@@ -7,6 +8,7 @@ import yaml
 
 from monailabel.interface.activelearning import ActiveLearning
 from monailabel.interface.exception import MONAILabelException, MONAILabelError
+from monailabel.interface.dataset import Dataset, LocalDataset
 
 logger = logging.getLogger(__name__)
 
@@ -26,6 +28,7 @@ class MONAILabelApp:
         self.studies = studies
         self.infers = infers
         self.active_learning = active_learning
+        self.dataset: Dataset = LocalDataset(studies)
 
     def info(self):
         """
@@ -129,10 +132,7 @@ class MONAILabelApp:
             JSON containing next image info that is selected for labeling
         """
         logger.info(f"Active Learning request: {request}")
-        images_dir = os.path.join(self.studies, "imagesTr")
-        images = [os.path.join(images_dir, f) for f in os.listdir(images_dir) if
-                  os.path.isfile(os.path.join(images_dir, f)) and not f.startswith(".") and (
-                              f.endswith(".nii.gz") or f.endswith(".nii"))]
+        images = self.dataset.get_unlabeled_images()
 
         image = self.active_learning.next(request.get("strategy", "random"), images)
         return {"image": image}
@@ -155,12 +155,10 @@ class MONAILabelApp:
         Returns:
             JSON containing next image and label info
         """
-        # TODO:: Save label, trigger training (if condition is met)
-        labels_dir = os.path.join(self.studies, "newLabelsTr")
-        os.makedirs(labels_dir, exist_ok=True)
-
-        label_file = os.path.join(labels_dir, os.path.basename(request["image"]))
-        shutil.move(request["label"], label_file)
+        
+        label = io.BytesIO(open(request['label'], 'rb').read())
+        label_file = self.dataset.save_label(request['image'], os.path.basename(request['label']), label)
+        
         return {
             "image": request.get("image"),
             "label": label_file,

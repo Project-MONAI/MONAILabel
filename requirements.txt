@@ -7,3 +7,4 @@ requests-toolbelt==0.9.1
 uvicorn==0.13.4
 watchdog==2.0.2
 SimpleITK==2.0.2
+openapi-schema-validator==0.1.5
