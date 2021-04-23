@@ -13,9 +13,6 @@ config:
     amp: false
     lr: 0.0001
     epochs: 1
-    network:
-      UNet: UNet with channels (16, 32, 64, 128, 256)
-      BasicUNet: Basic UNet with features (16, 32, 64, 128, 256)
   activelearning:
     strategy:
       random: Use Random Strategy to get Next Sample # default

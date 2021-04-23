@@ -40,7 +40,7 @@ class MyApp(MONAILabelApp):
         lr = request.get('lr', 0.0001)
 
         logger.info(f"Training request: {request}")
-        engine = MyTrain(
+        task = MyTrain(
             output_dir=os.path.join(self.app_dir, "train", "train_0"),
             data_list=self.dataset().datalist(),
             network=UNet(
@@ -56,4 +56,4 @@ class MyApp(MONAILabelApp):
             lr=lr
         )
 
-        return engine.run(max_epochs=epochs, amp=amp)
+        return task.run(max_epochs=epochs, amp=amp)

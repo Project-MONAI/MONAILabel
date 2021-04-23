@@ -3,7 +3,7 @@ import os
 
 from lib import MyInfer, MyTrain, MyActiveLearning
 from monai.networks.layers import Norm
-from monai.networks.nets import UNet, BasicUNet
+from monai.networks.nets import UNet
 from monailabel.helpers.infer.deepgrow_2d import InferDeepgrow2D
 from monailabel.helpers.infer.deepgrow_3d import InferDeepgrow3D
 from monailabel.interface.app import MONAILabelApp
@@ -32,10 +32,12 @@ class MyApp(MONAILabelApp):
         amp = request.get('amp', True)
         device = request.get('device', 'cuda')
         lr = request.get('lr', 0.0001)
-        if request.get('network', "UNet") == "BasicUNet":
-            network = BasicUNet(dimensions=3, in_channels=1, out_channels=2, features=(16, 32, 64, 128, 256, 16))
-        else:
-            network = UNet(
+
+        logger.info(f"Training request: {request}")
+        task = MyTrain(
+            output_dir=os.path.join(self.app_dir, "train", "train_0"),
+            data_list=self.dataset().datalist(),
+            network=UNet(
                 dimensions=3,
                 in_channels=1,
                 out_channels=2,
@@ -43,15 +45,9 @@ class MyApp(MONAILabelApp):
                 strides=(2, 2, 2, 2),
                 num_res_units=2,
                 norm=Norm.BATCH
-            )
-
-        logger.info(f"Training request: {request}")
-        engine = MyTrain(
-            output_dir=os.path.join(self.app_dir, "train", "train_0"),
-            data_list=self.dataset().datalist(),
-            network=network,
+            ),
             device=device,
             lr=lr
         )
 
-        return engine.run(max_epochs=epochs, amp=amp)
+        return task.run(max_epochs=epochs, amp=amp)
