@@ -62,8 +62,7 @@ class MyApp(MONAILabelApp):
         logger.info(f"Training request: {request}")
         engine = TrainSegmentationHeart(
             output_dir=os.path.join(self.app_dir, "train", "train_0"),
-            data_list=os.path.join(self.studies, "dataset.json"),
-            data_root=self.studies,
+            data_list=self.dataset().datalist(),
             network=network,
             device=device,
             lr=lr

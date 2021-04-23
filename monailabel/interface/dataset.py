@@ -1,14 +1,12 @@
-from abc import ABCMeta, abstractmethod
-from enum import Enum
 import io
 import json
 import os
+import pathlib
 import re
+from abc import ABCMeta, abstractmethod
 from uuid import uuid4
 
 from openapi_schema_validator import validate
-
-from monailabel.interface.exception import UnknownLabelIdException
 
 
 class Dataset(metaclass=ABCMeta):
@@ -41,15 +39,18 @@ class Dataset(metaclass=ABCMeta):
 
     @abstractmethod
     def list_labels(self) -> list: pass
- 
+
     @abstractmethod
     def find_objects(self, pattern: str, match_label: bool) -> list: pass
-  
+
     @abstractmethod
     def save_label(self, image: str, label_id: str, label: io.BytesIO) -> str: pass
 
     @abstractmethod
     def get_unlabeled_images(self) -> list: pass
+
+    @abstractmethod
+    def datalist(self, full_path=True, flatten_labels=True) -> list: pass
 
 
 class LocalDataset(Dataset):
@@ -148,7 +149,7 @@ class LocalDataset(Dataset):
         "additionalProperties": False,
     }
 
-    def __init__(self, dataset_path: str, dataset_name: str=None, dataset_config: str='dataset.json'):
+    def __init__(self, dataset_path: str, dataset_name: str = None, dataset_config: str = 'dataset.json'):
         """
         Creates a `LocalDataset` object
 
@@ -168,7 +169,7 @@ class LocalDataset(Dataset):
         self._dataset_config = {}
         if dataset_name is None or len(dataset_config) == 0:
             dataset_name = 'new-dataset'
-        
+
         # check if dataset configuration file exists
         if os.path.exists(self._dataset_config_path):
             with open(self._dataset_config_path) as f:
@@ -178,11 +179,11 @@ class LocalDataset(Dataset):
             files = LocalDataset._list_files(dataset_path)
             self._dataset_config['name'] = dataset_name
             self._dataset_config.update({
-                    'objects': [{
-                        'image': file,
-                        'labels': [],
-                    } for file in files],
-                })
+                'objects': [{
+                    'image': file,
+                    'labels': [],
+                } for file in files],
+            })
 
             validate(self._dataset_config, LocalDataset._schema)
             self._update_dataset()
@@ -238,7 +239,7 @@ class LocalDataset(Dataset):
         """
         return [obj['labels'] for obj in self._dataset_config['objects']]
 
-    def find_objects(self, pattern: str, match_label: bool=False) -> list:
+    def find_objects(self, pattern: str, match_label: bool = False) -> list:
         """
         Find all the objects (image-[labels] pairings) that match the provided `pattern`
 
@@ -283,7 +284,7 @@ class LocalDataset(Dataset):
             if obj.get('labels') is None or len(obj.get('labels')) == 0:
                 images.append(os.path.join(self._dataset_path, obj['image']))
         return images
-    
+
     def save_label(self, image: str, label_id: str, label: io.BytesIO) -> str:
         """
         Save the label for the given image in the dataset
@@ -307,12 +308,10 @@ class LocalDataset(Dataset):
         """
         label_path = None
         for i, obj in enumerate(self._dataset_config['objects']):
-        
-            if image == obj['image'] \
-                or image == os.path.join(self._dataset_path, obj['image']):
 
+            if image == obj['image'] or image == os.path.join(self._dataset_path, obj['image']):
                 if label_id in obj['labels']:
-                    label_id = ''.join(str(uuid4().hex), os.path.splitext(label_id)[1:])
+                    label_id = str(uuid4().hex) + ''.join(pathlib.Path(label_id).suffixes)
 
                 label_path = os.path.join(os.path.dirname(obj['image']), label_id)
                 self._dataset_config['objects'][i]['labels'].append(label_path)
@@ -322,12 +321,12 @@ class LocalDataset(Dataset):
                     f.write(label.getbuffer())
 
                 break
-        
+
         validate(self._dataset_config, LocalDataset._schema)
         self._update_dataset()
 
         return label_path
-    
+
     @property
     def info(self) -> dict:
         """
@@ -341,16 +340,16 @@ class LocalDataset(Dataset):
         """
 
         standard_id = ''.join(c.lower() for c in id if not c.isspace())
-        
+
         if self._dataset_config.get('info') is not None and id in self._dataset_config['info'].keys():
             self._dataset_config['info'][id] = description
-        
+
         else:
             self._dataset_config['info'].append({id: description})
         validate(self._dataset_config, LocalDataset._schema)
         self._update_dataset()
 
-        return {standard_id: _dataset_config['info'][standard_id]}
+        return {standard_id: self._dataset_config['info'][standard_id]}
 
     @staticmethod
     def _list_files(path: str):
@@ -362,4 +361,35 @@ class LocalDataset(Dataset):
 
     def _update_dataset(self):
         with open(self._dataset_config_path, 'w') as f:
-                json.dump(self._dataset_config, f, indent=2)
+            json.dump(self._dataset_config, f, indent=2)
+
+    def _get_path(self, path: str, full_path=True):
+        if not full_path or os.path.isabs(path):
+            return path
+        return os.path.realpath(os.path.join(self._dataset_path, path))
+
+    def datalist(self, full_path=True, flatten_labels=True) -> list:
+        """
+        Get Data List of image and valid/existing label pairs
+
+        :param full_path: Add full path for image/label objects
+        :param flatten_labels: Flatten labels
+        :return: List of dictionary objects.  Each dictionary contains `image` and (`label` or `labels`)
+        """
+        items = []
+        for obj in self._dataset_config['objects']:
+            image = self._get_path(obj["image"], full_path)
+            labels = obj.get('labels')
+            if labels and len(labels):
+                if flatten_labels:
+                    for label in labels:
+                        items.append({
+                            "image": image,
+                            "label": self._get_path(label, full_path)
+                        })
+                else:
+                    items.append({
+                        "image": image,
+                        "labels": [self._get_path(label, full_path) for label in labels]
+                    })
+        return items

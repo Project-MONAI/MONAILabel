@@ -3,7 +3,7 @@ from abc import abstractmethod
 
 import torch
 
-from monai.data import load_decathlon_datalist, DataLoader, PersistentDataset, partition_dataset
+from monai.data import DataLoader, PersistentDataset, partition_dataset
 from monai.handlers import (
     StatsHandler,
     TensorBoardStatsHandler,
@@ -27,7 +27,6 @@ class TrainSegmentation(TrainEngine):
             self,
             output_dir,
             data_list,
-            data_root,
             network,
             val_split=0.2,
             device='cuda',
@@ -42,8 +41,7 @@ class TrainSegmentation(TrainEngine):
         """
 
         :param output_dir: Output to save the model checkpoints, events etc...
-        :param data_list: Dataset json which contains `training` and `validation` fields
-        :param data_root: Root folder for datalist
+        :param data_list: List of dictionary that normally contains {image, label}
         :param network: If None then UNet with channels(16, 32, 64, 128, 256) is used
         :param val_split: Split ratio for validation dataset if `validation` field is not found in `data_list`
         :param device: device name
@@ -57,16 +55,11 @@ class TrainSegmentation(TrainEngine):
         """
         super().__init__()
         self._output_dir = output_dir
-
-        self._train_datalist = load_decathlon_datalist(data_list, True, "training", data_root)
-        try:
-            self._val_datalist = load_decathlon_datalist(data_list, True, "validation", data_root)
-        except ValueError:
-            self._train_datalist, self._val_datalist = partition_dataset(
-                self._train_datalist,
-                ratios=[(1 - val_split), val_split],
-                shuffle=True
-            )
+        self._train_datalist, self._val_datalist = partition_dataset(
+            data_list,
+            ratios=[(1 - val_split), val_split],
+            shuffle=True
+        )
 
         logger.info(f"Total Records for Training: {len(self._train_datalist)}")
         logger.info(f"Total Records for Validation: {len(self._val_datalist)}")

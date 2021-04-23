@@ -1,20 +1,20 @@
-import logging
 import io
+import logging
 import os
-import shutil
+import pathlib
 from abc import abstractmethod
 
 import yaml
 
 from monailabel.interface.activelearning import ActiveLearning
-from monailabel.interface.exception import MONAILabelException, MONAILabelError
 from monailabel.interface.dataset import Dataset, LocalDataset
+from monailabel.interface.exception import MONAILabelException, MONAILabelError
 
 logger = logging.getLogger(__name__)
 
 
 class MONAILabelApp:
-    def __init__(self, app_dir, studies, infers=dict(), active_learning: ActiveLearning = ActiveLearning()):
+    def __init__(self, app_dir, studies, infers=None, active_learning: ActiveLearning = ActiveLearning()):
         """
         Base Class for Any MONAI Label App
 
@@ -26,9 +26,9 @@ class MONAILabelApp:
         """
         self.app_dir = app_dir
         self.studies = studies
-        self.infers = infers
+        self.infers = dict() if infers is None else infers
         self.active_learning = active_learning
-        self.dataset: Dataset = LocalDataset(studies)
+        self._dataset: Dataset = LocalDataset(studies)
 
     def info(self):
         """
@@ -91,6 +91,9 @@ class MONAILabelApp:
         result_file_name, result_json = engine.run(image, params, device)
         return {"label": result_file_name, "params": result_json}
 
+    def dataset(self) -> Dataset:
+        return self._dataset
+
     @abstractmethod
     def train(self, request):
         """
@@ -132,7 +135,7 @@ class MONAILabelApp:
             JSON containing next image info that is selected for labeling
         """
         logger.info(f"Active Learning request: {request}")
-        images = self.dataset.get_unlabeled_images()
+        images = self.dataset().get_unlabeled_images()
 
         image = self.active_learning.next(request.get("strategy", "random"), images)
         return {"image": image}
@@ -149,16 +152,27 @@ class MONAILabelApp:
                     {
                         "image": "file://xyz.com",
                         "label": "file://label_xyz.com",
+                        "segments" ["spleen"],
                         "params": {},
                     }
 
         Returns:
             JSON containing next image and label info
         """
-        
+
         label = io.BytesIO(open(request['label'], 'rb').read())
-        label_file = self.dataset.save_label(request['image'], os.path.basename(request['label']), label)
-        
+
+        img_name = os.path.basename(request['image']).rsplit('.')[0]
+        file_ext = ''.join(pathlib.Path(request['label']).suffixes)
+        segments = request.get('segments')
+        if not segments:
+            segments = self.info().get("labels", [])
+        segments = [segments] if isinstance(segments, str) else segments
+        segments = "+".join(segments) if len(segments) else "unk"
+
+        label_id = f"label_{segments}_{img_name}{file_ext}"
+        label_file = self.dataset().save_label(request['image'], label_id, label)
+
         return {
             "image": request.get("image"),
             "label": label_file,
