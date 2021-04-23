@@ -181,7 +181,7 @@
       <item row="3" column="0">
        <widget class="QPushButton" name="trainingButton">
         <property name="text">
-         <string>Run Training</string>
+         <string>Update Model</string>
         </property>
        </widget>
       </item>

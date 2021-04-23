@@ -780,6 +780,8 @@ class MONAILabelWidget(ScriptedLoadableModuleWidget, VTKObservationMixin):
             self.reportProgress(100)
         logging.info("Time consumed by save label: {0:3.1f}".format(time.time() - start))
 
+        self.onNextSampleButton()
+
     def onClickSegmentation(self):
         if not self.current_sample:
             return
