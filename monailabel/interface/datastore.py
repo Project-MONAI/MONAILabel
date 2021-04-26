@@ -2,7 +2,7 @@ import io
 from abc import ABCMeta, abstractmethod
 
 
-class Studies(metaclass=ABCMeta):
+class Datastore(metaclass=ABCMeta):
 
     @property
     @abstractmethod

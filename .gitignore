@@ -138,8 +138,8 @@ ENV/
 .vscode/
 
 # apps
-apps/*/logs
-apps/*/train
+sample-apps/*/logs
+sample-apps/*/train
 
 # docs build
 docs/build

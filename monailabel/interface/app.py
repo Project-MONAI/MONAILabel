@@ -8,8 +8,8 @@ import yaml
 
 from monailabel.interface.activelearning import ActiveLearning
 from monailabel.interface.exception import MONAILabelException, MONAILabelError
-from monailabel.interface.studies import Studies
-from monailabel.interface.studies_local import LocalStudies
+from monailabel.interface.datastore import Datastore
+from monailabel.interface.datastore_local import LocalDatastore
 
 logger = logging.getLogger(__name__)
 
@@ -29,7 +29,7 @@ class MONAILabelApp:
         self.studies = studies
         self.infers = dict() if infers is None else infers
         self.active_learning = active_learning
-        self._dataset: Studies = LocalStudies(studies)
+        self._dataset: Datastore = LocalDatastore(studies)
 
     def info(self):
         """
@@ -88,7 +88,7 @@ class MONAILabelApp:
         result_file_name, result_json = task(request)
         return {"label": result_file_name, "params": result_json}
 
-    def dataset(self) -> Studies:
+    def dataset(self) -> Datastore:
         return self._dataset
 
     @abstractmethod

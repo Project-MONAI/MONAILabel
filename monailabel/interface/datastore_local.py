@@ -7,20 +7,20 @@ from uuid import uuid4
 
 from openapi_schema_validator import validate
 
-from monailabel.interface.studies import Studies
+from monailabel.interface.datastore import Datastore
 
 
-class LocalStudies(Studies):
+class LocalDatastore(Datastore):
     """
-    Class to represent a studies local to the MONAI-Label Server
+    Class to represent a datastore local to the MONAI-Label Server
 
     Attributes
     ----------
     `name: str`
-        The name of the studies
+        The name of the datastore
 
     `description: str`
-        The description of the studies
+        The description of the datastore
 
     `info: dict`
         A dictionary containing `{label_id: description}` map
@@ -131,9 +131,9 @@ class LocalStudies(Studies):
         if os.path.exists(self._dataset_config_path):
             with open(self._dataset_config_path) as f:
                 self._dataset_config = json.load(f)
-            validate(self._dataset_config['objects'], LocalStudies._schema['properties']['objects'])
+            validate(self._dataset_config['objects'], LocalDatastore._schema['properties']['objects'])
         else:
-            files = LocalStudies._list_files(dataset_path)
+            files = LocalDatastore._list_files(dataset_path)
             self._dataset_config['name'] = dataset_name
             self._dataset_config.update({
                 'objects': [{
@@ -142,7 +142,7 @@ class LocalStudies(Studies):
                 } for file in files],
             })
 
-            validate(self._dataset_config, LocalStudies._schema)
+            validate(self._dataset_config, LocalDatastore._schema)
             self._update_dataset()
 
     @property
@@ -165,7 +165,7 @@ class LocalStudies(Studies):
         """
         standard_name = ''.join(c.lower() if not c.isspace() else '-' for c in name)
         self._dataset_config.update({'name': standard_name})
-        validate(self._dataset_config, LocalStudies._schema)
+        validate(self._dataset_config, LocalDatastore._schema)
         self._update_dataset()
 
     @property
@@ -181,7 +181,7 @@ class LocalStudies(Studies):
         Set a description for the dataset
         """
         self._dataset_config.update({'description': description})
-        validate(self._dataset_config, LocalStudies._schema)
+        validate(self._dataset_config, LocalDatastore._schema)
         self._update_dataset()
 
     def list_images(self) -> list:
@@ -279,7 +279,7 @@ class LocalStudies(Studies):
 
                 break
 
-        validate(self._dataset_config, LocalStudies._schema)
+        validate(self._dataset_config, LocalDatastore._schema)
         self._update_dataset()
 
         return label_path
@@ -303,7 +303,7 @@ class LocalStudies(Studies):
 
         else:
             self._dataset_config['info'].append({id: description})
-        validate(self._dataset_config, LocalStudies._schema)
+        validate(self._dataset_config, LocalDatastore._schema)
         self._update_dataset()
 
         return {standard_id: self._dataset_config['info'][standard_id]}
