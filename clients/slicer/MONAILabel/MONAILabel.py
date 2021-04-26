@@ -358,16 +358,13 @@ class MONAILabelWidget(ScriptedLoadableModuleWidget, VTKObservationMixin):
         table.setHorizontalHeaderLabels(['section', 'name', 'value'])
 
         config = copy.deepcopy(self.config)
+        infer = config.get('infer', {})
         train = config.get('train', {})
         activelearning = config.get('activelearning', {})
-        if train:
-            config.pop('train')
-        if activelearning:
-            config.pop('activelearning')
+        table.setRowCount(len(infer) + len(activelearning) + len(train))
 
-        table.setRowCount(len(config) + len(activelearning) + len(train))
-        config = {"all": config, "activelearning": activelearning, "train": train}
-        colors = {"all": qt.QColor(255, 255, 255), "activelearning": qt.QColor(220, 220, 220),
+        config = {"infer": infer, "activelearning": activelearning, "train": train}
+        colors = {"infer": qt.QColor(255, 255, 255), "activelearning": qt.QColor(220, 220, 220),
                   "train": qt.QColor(255, 255, 255)}
 
         n = 0
@@ -789,6 +786,7 @@ class MONAILabelWidget(ScriptedLoadableModuleWidget, VTKObservationMixin):
             return
 
         start = time.time()
+        result_file = None
         try:
             qt.QApplication.setOverrideCursor(qt.Qt.WaitCursor)
 
@@ -1049,13 +1047,13 @@ class MONAILabelLogic(ScriptedLoadableModuleLogic):
     def info(self):
         return MONAILabelClient(self.server_url, self.tmpdir).info()
 
-    def next_sample(self):
-        return MONAILabelClient(self.server_url, self.tmpdir).next_sample()
+    def next_sample(self, params={}):
+        return MONAILabelClient(self.server_url, self.tmpdir).next_sample(params)
 
     def save_label(self, image_in, label_in):
         return MONAILabelClient(self.server_url, self.tmpdir).save_label(image_in, label_in)
 
-    def inference(self, model, image_in, params=None):
+    def inference(self, model, image_in, params={}):
         logging.debug('Preparing input data for segmentation')
         self.reportProgress(0)
 
@@ -1068,7 +1066,7 @@ class MONAILabelLogic(ScriptedLoadableModuleLogic):
         self.reportProgress(100)
         return result_file, params
 
-    def train_start(self, params):
+    def train_start(self, params={}):
         return MONAILabelClient(self.server_url, self.tmpdir).train_start(params)
 
     def train_status(self, check_if_running):
@@ -1099,10 +1097,9 @@ class MONAILabelClient:
         logging.debug('Response: {}'.format(response))
         return json.loads(response)
 
-    def next_sample(self, strategy="random"):
+    def next_sample(self, params):
         selector = '/activelearning/sample'
-        body = {'strategy': strategy}
-        status, response, _ = MONAILabelUtils.http_method('POST', self._server_url, selector, body)
+        status, response, _ = MONAILabelUtils.http_method('POST', self._server_url, selector, params)
         if status != 200:
             raise MONAILabelException(MONAILabelError.SERVER_ERROR, 'Status: {}; Response: {}'.format(status, response))
 
@@ -1128,9 +1125,8 @@ class MONAILabelClient:
         selector = '/inference/{}?image={}'.format(
             MONAILabelUtils.urllib_quote_plus(model),
             MONAILabelUtils.urllib_quote_plus(image_in))
-        body = {'params': params}
 
-        status, form, files = MONAILabelUtils.http_method('POST', self._server_url, selector, body)
+        status, form, files = MONAILabelUtils.http_method('POST', self._server_url, selector, params)
         if status != 200:
             raise MONAILabelException(MONAILabelError.SERVER_ERROR, 'Status: {}; Response: {}'.format(status, form))
 
@@ -1195,12 +1191,11 @@ class MONAILabelUtils:
         logging.debug('{} {}{}'.format(method, server_url, selector))
 
         parsed = urlparse(server_url)
-        conn = httplib.HTTPConnection(parsed.hostname, parsed.port)
-
         path = parsed.path.rstrip('/')
         selector = path + '/' + selector.lstrip('/')
         logging.debug('URI Path: {}'.format(selector))
 
+        conn = httplib.HTTPConnection(parsed.hostname, parsed.port)
         conn.request(method, selector, body=json.dumps(body) if body else None)
         return MONAILabelUtils.send_response(conn)
 
@@ -1208,16 +1203,15 @@ class MONAILabelUtils:
     def http_multipart(method, server_url, selector, fields, files):
         logging.debug('{} {}{}'.format(method, server_url, selector))
 
-        parsed = urlparse(server_url)
-        conn = httplib.HTTPConnection(parsed.hostname, parsed.port)
-
         content_type, body = MONAILabelUtils.encode_multipart_formdata(fields, files)
         headers = {'content-type': content_type, 'content-length': str(len(body))}
 
+        parsed = urlparse(server_url)
         path = parsed.path.rstrip('/')
         selector = path + '/' + selector.lstrip('/')
         logging.debug('URI Path: {}'.format(selector))
 
+        conn = httplib.HTTPConnection(parsed.hostname, parsed.port)
         conn.request(method, selector, body, headers)
         return MONAILabelUtils.send_response(conn, content_type)
 

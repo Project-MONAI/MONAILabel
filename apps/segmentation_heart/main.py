@@ -56,4 +56,4 @@ class MyApp(MONAILabelApp):
             lr=lr
         )
 
-        return task.run(max_epochs=epochs, amp=amp)
+        return task(max_epochs=epochs, amp=amp)

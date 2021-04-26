@@ -6,7 +6,8 @@ dimension: 3
 labels:
   - XYZ
 config:
-  device: cuda
+  infer:
+    device: cuda
   train:
     name: model_01
     device: cuda

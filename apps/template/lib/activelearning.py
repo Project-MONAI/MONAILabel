@@ -1,6 +1,8 @@
-from monailabel.interface import ActiveLearning
+import logging
+
+logger = logging.getLogger(__name__)
 
 
-class MyActiveLearning(ActiveLearning):
-    def next(self, strategy, images):
+class MyActiveLearning:
+    def __call__(self, request):
         pass

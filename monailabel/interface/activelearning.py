@@ -5,7 +5,14 @@ logger = logging.getLogger(__name__)
 
 
 class ActiveLearning:
-    def next(self, strategy, images):
+    def __call__(self, request):
+        strategy = request.get('strategy', 'random')
+        strategy = next(iter(strategy)) if not isinstance(strategy, str) else strategy
+
+        images = request.get('images', [])
+        if not len(images):
+            return None
+
         images.sort()
         if strategy == "first":
             image = images[0]

@@ -4,5 +4,5 @@ logger = logging.getLogger(__name__)
 
 
 class MyTrain:
-    def run(self, request):
+    def __call__(self, request):
         pass

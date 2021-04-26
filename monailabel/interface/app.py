@@ -78,18 +78,14 @@ class MONAILabelApp:
         model_name = request.get('model')
         model_name = model_name if model_name else 'model'
 
-        engine = self.infers.get(model_name)
-        if engine is None:
+        task = self.infers.get(model_name)
+        if task is None:
             raise MONAILabelException(
                 MONAILabelError.INFERENCE_ERROR,
-                "Inference Engine is not Initialized. There is no pre-trained model available"
+                "Inference Task is not Initialized. There is no pre-trained model available"
             )
 
-        image = request['image']
-        params = request.get('params')
-        device = request.get('device', 'cuda')
-
-        result_file_name, result_json = engine.run(image, params, device)
+        result_file_name, result_json = task(request)
         return {"label": result_file_name, "params": result_json}
 
     def dataset(self) -> Studies:
@@ -129,16 +125,16 @@ class MONAILabelApp:
 
                     {
                         "strategy": "random,
-                        "params": {},
+                        "images": {},
                     }
 
         Returns:
             JSON containing next image info that is selected for labeling
         """
-        logger.info(f"Active Learning request: {request}")
         images = self.dataset().get_unlabeled_images()
+        request["images"] = images
 
-        image = self.active_learning.next(request.get("strategy", "random"), images)
+        image = self.active_learning(request)
         return {"image": image}
 
     def save_label(self, request):

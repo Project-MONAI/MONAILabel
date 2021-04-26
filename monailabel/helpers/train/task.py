@@ -10,7 +10,7 @@ logger = logging.getLogger(__name__)
 
 # TODO:: Think of some better abstraction/generalization here... few abstracts can be removed
 #  And support Multi GPU
-class TrainTask(object):
+class TrainTask:
 
     @abstractmethod
     def device(self):
@@ -150,7 +150,7 @@ class TrainTask(object):
             val_handlers=self.val_handlers()
         )
 
-    def run(self, max_epochs, amp):
+    def __call__(self, max_epochs, amp):
         trainer = SupervisedTrainer(
             device=self.device(),
             max_epochs=max_epochs,

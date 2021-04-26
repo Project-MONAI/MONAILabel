@@ -21,7 +21,7 @@ class InferType:
     KNOWN_TYPES = [SEGMENTATION, CLASSIFICATION, DEEPGROW, OTHERS]
 
 
-class InferenceTask(object):
+class InferenceTask:
     """
     Basic Inference Task Helper
     """
@@ -101,7 +101,7 @@ class InferenceTask(object):
         """
         pass
 
-    def run(self, data_file, params, device):
+    def __call__(self, request):
         """
         It provides basic implementation to run the following in order
             - Run Pre Transforms
@@ -112,8 +112,10 @@ class InferenceTask(object):
         Returns: Label (File Path) and Result Params (JSON)
         """
         begin = time.time()
-        data = copy.deepcopy(params)
-        data.update({'image': data_file, 'image_path': data_file, 'params': params})
+
+        data = copy.deepcopy(request)
+        data.update({'image_path': request.get('image')})
+        device = request.get('device', 'cuda')
 
         start = time.time()
         data = self.run_pre_transforms(data, self.pre_transforms())

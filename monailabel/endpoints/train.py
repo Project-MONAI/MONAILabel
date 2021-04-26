@@ -8,11 +8,13 @@ import uuid
 from collections import deque
 from concurrent.futures import ThreadPoolExecutor
 from datetime import datetime
+from typing import Optional
 
 from fastapi import APIRouter, HTTPException
 from fastapi import BackgroundTasks
 
 from monailabel.config import settings
+from monailabel.utils.app_utils import get_app_instance
 
 logger = logging.getLogger(__name__)
 train_tasks = []
@@ -75,9 +77,16 @@ async def train_background_task(task) -> None:
 
 
 @router.post("/", summary="Run Training Task")
-async def run_train(background_tasks: BackgroundTasks, request: dict = {"epochs": 1, "amp": True}):
+async def run_train(background_tasks: BackgroundTasks, params: Optional[dict] = None):
     if len(train_process):
         raise HTTPException(status_code=429, detail=f"Training is Already Running")
+
+    request = {}
+    config = get_app_instance().info().get("config", {}).get("train", {})
+    request.update(config)
+
+    params = params if params is not None else {}
+    request.update(params)
 
     logger.info(f"Train Request: {request}")
     task = {

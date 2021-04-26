@@ -1,4 +1,5 @@
 import base64
+import logging
 import os
 import pathlib
 import shutil
@@ -13,6 +14,8 @@ from monailabel.interface import MONAILabelApp
 from monailabel.utils.app_utils import get_app_instance
 from monailabel.utils.generic import file_checksum
 
+logger = logging.getLogger(__name__)
+
 router = APIRouter(
     prefix="/activelearning",
     tags=["AppService"],
@@ -22,12 +25,18 @@ router = APIRouter(
 cached_digest = dict()
 
 
-# TODO:: Return both name and binary image in the response
 @router.post("/sample", summary="Run Active Learning strategy to get next sample")
-async def next_sample(config: Optional[dict] = {"strategy": "random"}, checksum: Optional[bool] = True):
-    request = config if config else dict()
+async def next_sample(params: Optional[dict] = None, checksum: Optional[bool] = True):
+    request = {}
 
     instance: MONAILabelApp = get_app_instance()
+    config = instance.info().get("config", {}).get("activelearning", {})
+    request.update(config)
+
+    params = params if params is not None else {}
+    request.update(params)
+
+    logger.info(f"Active Learning Request: {request}")
     result = instance.next_sample(request)
     image = result["image"]
     name = os.path.basename(image)

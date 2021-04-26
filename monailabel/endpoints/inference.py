@@ -104,22 +104,18 @@ async def run_inference(
         model: str,
         image: str,
         params: Optional[dict] = None,
-        config: Optional[dict] = None,
         output: Optional[ResultType] = None):
-    request = {
-        "model": model,
-        "image": image,
-        "params": params if params is not None else {}
-    }
+    request = {"model": model, "image": image}
 
-    if config is not None:
-        request.update(config)
+    instance: MONAILabelApp = get_app_instance()
+    config = instance.info().get("config", {}).get("infer", {})
+    request.update(config)
+
+    params = params if params is not None else {}
+    request.update(params)
 
     logger.info(f"Infer Request: {request}")
-    instance: MONAILabelApp = get_app_instance()
     result = instance.infer(request)
-
-    logger.info(f"Infer Result: {result}")
     if result is None:
         raise HTTPException(status_code=500, detail=f"Failed to execute infer")
     return send_response(result, output, background_tasks)
