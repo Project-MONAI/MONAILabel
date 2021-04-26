@@ -3,67 +3,24 @@ import json
 import os
 import pathlib
 import re
-from abc import ABCMeta, abstractmethod
 from uuid import uuid4
 
 from openapi_schema_validator import validate
 
-
-class Dataset(metaclass=ABCMeta):
-
-    @property
-    @abstractmethod
-    def name(self) -> str: pass
-
-    @name.setter
-    @abstractmethod
-    def name(self, name: str): pass
-
-    @property
-    @abstractmethod
-    def description(self) -> str: pass
-
-    @description.setter
-    @abstractmethod
-    def description(self, description: str): pass
-
-    @property
-    @abstractmethod
-    def info(self): pass
-
-    @abstractmethod
-    def update_label_info(self, label_id: str, description: str) -> dict: pass
-
-    @abstractmethod
-    def list_images(self) -> list: pass
-
-    @abstractmethod
-    def list_labels(self) -> list: pass
-
-    @abstractmethod
-    def find_objects(self, pattern: str, match_label: bool) -> list: pass
-
-    @abstractmethod
-    def save_label(self, image: str, label_id: str, label: io.BytesIO) -> str: pass
-
-    @abstractmethod
-    def get_unlabeled_images(self) -> list: pass
-
-    @abstractmethod
-    def datalist(self, full_path=True, flatten_labels=True) -> list: pass
+from monailabel.interface.studies import Studies
 
 
-class LocalDataset(Dataset):
+class LocalStudies(Studies):
     """
-    Class to represent a dataset local to the MONAI-Label Server
+    Class to represent a studies local to the MONAI-Label Server
 
     Attributes
     ----------
     `name: str`
-        The name of the dataset
+        The name of the studies
 
     `description: str`
-        The description of the dataset
+        The description of the studies
 
     `info: dict`
         A dictionary containing `{label_id: description}` map
@@ -174,9 +131,9 @@ class LocalDataset(Dataset):
         if os.path.exists(self._dataset_config_path):
             with open(self._dataset_config_path) as f:
                 self._dataset_config = json.load(f)
-            validate(self._dataset_config['objects'], LocalDataset._schema['properties']['objects'])
+            validate(self._dataset_config['objects'], LocalStudies._schema['properties']['objects'])
         else:
-            files = LocalDataset._list_files(dataset_path)
+            files = LocalStudies._list_files(dataset_path)
             self._dataset_config['name'] = dataset_name
             self._dataset_config.update({
                 'objects': [{
@@ -185,7 +142,7 @@ class LocalDataset(Dataset):
                 } for file in files],
             })
 
-            validate(self._dataset_config, LocalDataset._schema)
+            validate(self._dataset_config, LocalStudies._schema)
             self._update_dataset()
 
     @property
@@ -208,7 +165,7 @@ class LocalDataset(Dataset):
         """
         standard_name = ''.join(c.lower() if not c.isspace() else '-' for c in name)
         self._dataset_config.update({'name': standard_name})
-        validate(self._dataset_config, LocalDataset._schema)
+        validate(self._dataset_config, LocalStudies._schema)
         self._update_dataset()
 
     @property
@@ -224,7 +181,7 @@ class LocalDataset(Dataset):
         Set a description for the dataset
         """
         self._dataset_config.update({'description': description})
-        validate(self._dataset_config, LocalDataset._schema)
+        validate(self._dataset_config, LocalStudies._schema)
         self._update_dataset()
 
     def list_images(self) -> list:
@@ -322,7 +279,7 @@ class LocalDataset(Dataset):
 
                 break
 
-        validate(self._dataset_config, LocalDataset._schema)
+        validate(self._dataset_config, LocalStudies._schema)
         self._update_dataset()
 
         return label_path
@@ -346,7 +303,7 @@ class LocalDataset(Dataset):
 
         else:
             self._dataset_config['info'].append({id: description})
-        validate(self._dataset_config, LocalDataset._schema)
+        validate(self._dataset_config, LocalStudies._schema)
         self._update_dataset()
 
         return {standard_id: self._dataset_config['info'][standard_id]}

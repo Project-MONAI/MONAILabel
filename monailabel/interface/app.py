@@ -7,8 +7,9 @@ from abc import abstractmethod
 import yaml
 
 from monailabel.interface.activelearning import ActiveLearning
-from monailabel.interface.dataset import Dataset, LocalDataset
 from monailabel.interface.exception import MONAILabelException, MONAILabelError
+from monailabel.interface.studies import Studies
+from monailabel.interface.studies_local import LocalStudies
 
 logger = logging.getLogger(__name__)
 
@@ -28,7 +29,7 @@ class MONAILabelApp:
         self.studies = studies
         self.infers = dict() if infers is None else infers
         self.active_learning = active_learning
-        self._dataset: Dataset = LocalDataset(studies)
+        self._dataset: Studies = LocalStudies(studies)
 
     def info(self):
         """
@@ -91,7 +92,7 @@ class MONAILabelApp:
         result_file_name, result_json = engine.run(image, params, device)
         return {"label": result_file_name, "params": result_json}
 
-    def dataset(self) -> Dataset:
+    def dataset(self) -> Studies:
         return self._dataset
 
     @abstractmethod
