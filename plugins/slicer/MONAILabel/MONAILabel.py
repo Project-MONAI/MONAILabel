@@ -17,10 +17,9 @@ import SampleData
 import SimpleITK as sitk
 import ctk
 import qt
-import vtk
-
 import sitkUtils
 import slicer
+import vtk
 from slicer.ScriptedLoadableModule import *
 from slicer.util import VTKObservationMixin
 
@@ -408,7 +407,12 @@ class MONAILabelWidget(ScriptedLoadableModuleWidget, VTKObservationMixin):
                 value = int(value)
             elif isinstance(v, float):
                 value = float(value)
-            print(f"row: {row}, section: {section}, name: {name}, value: {value}, type: {type(v)}")
+
+            if config.get(section) is None:
+                config[section] = {}
+            config[section][name] = value
+            # print(f"row: {row}, section: {section}, name: {name}, value: {value}, type: {type(v)}")
+        return config
 
     def onDeepGrowFiducialNodeModified(self, observer, eventid):
         logging.debug('Deepgrow Point Event!!')
@@ -613,7 +617,8 @@ class MONAILabelWidget(ScriptedLoadableModuleWidget, VTKObservationMixin):
         try:
             qt.QApplication.setOverrideCursor(qt.Qt.WaitCursor)
             self.updateServerSettings()
-            status = self.logic.train_start({})
+            configs = self.getParamsFromConfig()
+            status = self.logic.train_start(configs.get('train'))
         except:
             slicer.util.errorDisplay("Failed to run training in MONAI Label Server",
                                      detailedText=traceback.format_exc())
@@ -666,10 +671,6 @@ class MONAILabelWidget(ScriptedLoadableModuleWidget, VTKObservationMixin):
         return self.logic.train_status(True)
 
     def onTrainingStatus(self):
-        if True:
-            self.getParamsFromConfig()
-            return
-
         if not self.logic:
             return
 
@@ -713,7 +714,8 @@ class MONAILabelWidget(ScriptedLoadableModuleWidget, VTKObservationMixin):
             qt.QApplication.setOverrideCursor(qt.Qt.WaitCursor)
 
             self.updateServerSettings()
-            sample = self.logic.next_sample()
+            configs = self.getParamsFromConfig()
+            sample = self.logic.next_sample(configs.get('activelearning'))
             logging.debug(sample)
 
             if self.samples.get(sample["id"]) is not None:
@@ -819,7 +821,9 @@ class MONAILabelWidget(ScriptedLoadableModuleWidget, VTKObservationMixin):
 
             model = self.ui.segmentationModelSelector.currentText
             image_file = self.current_sample["id"]
-            result_file, params = self.logic.inference(model, image_file)
+
+            configs = self.getParamsFromConfig()
+            result_file, params = self.logic.inference(model, image_file, configs.get('infer'))
 
             self.updateSegmentationMask(result_file, self.models[model].get("labels"))
         except:
@@ -881,6 +885,8 @@ class MONAILabelWidget(ScriptedLoadableModuleWidget, VTKObservationMixin):
                 "background": background,
             }
 
+            configs = self.getParamsFromConfig()
+            params.update(configs.get('infer', {}))
             result_file, params = self.logic.inference(model, image_file, params)
             logging.debug('Params from deepgrow is {}'.format(params))
 
