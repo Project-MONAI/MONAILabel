@@ -268,7 +268,6 @@ class MONAILabelWidget(ScriptedLoadableModuleWidget, VTKObservationMixin):
         currentLabel = self._parameterNode.GetParameter('CurrentLabel')
         self.ui.labelComboBox.setCurrentIndex(self.ui.labelComboBox.findText(currentLabel) if currentLabel else 0)
 
-        self.updateConfigTable(self.ui.configTable)
         self.ui.appComboBox.clear()
         self.ui.appComboBox.addItem(self.info.get("name", ""))
 
@@ -353,7 +352,8 @@ class MONAILabelWidget(ScriptedLoadableModuleWidget, VTKObservationMixin):
             selector.setToolTip("")
         selector.blockSignals(wasSelectorBlocked)
 
-    def updateConfigTable(self, table):
+    def updateConfigTable(self):
+        table = self.ui.configTable
         table.clear()
         table.setHorizontalHeaderLabels(['section', 'name', 'value'])
 
@@ -390,6 +390,25 @@ class MONAILabelWidget(ScriptedLoadableModuleWidget, VTKObservationMixin):
 
                 table.item(n, 0).setBackground(colors[section])
                 n = n + 1
+
+    def getParamsFromConfig(self):
+        config = {}
+        for row in range(self.ui.configTable.rowCount):
+            section = str(self.ui.configTable.item(row, 0).text())
+            name = str(self.ui.configTable.item(row, 1).text())
+            value = self.ui.configTable.item(row, 2)
+            if value is None:
+                value = self.ui.configTable.cellWidget(row, 2)
+                value = value.checked if isinstance(value, qt.QCheckBox) else value.currentText
+            else:
+                value = str(value.text())
+
+            v = self.config.get(section, {}).get(name, {})
+            if isinstance(v, int):
+                value = int(value)
+            elif isinstance(v, float):
+                value = float(value)
+            print(f"row: {row}, section: {section}, name: {name}, value: {value}, type: {type(v)}")
 
     def onDeepGrowFiducialNodeModified(self, observer, eventid):
         logging.debug('Deepgrow Point Event!!')
@@ -527,6 +546,8 @@ class MONAILabelWidget(ScriptedLoadableModuleWidget, VTKObservationMixin):
 
     def onClickFetchModels(self):
         self.fetchModels(showInfo=False)
+        self.updateConfigTable()
+
         # if self._volumeNode is None:
         #    self.onNextSampleButton()
 
@@ -645,6 +666,10 @@ class MONAILabelWidget(ScriptedLoadableModuleWidget, VTKObservationMixin):
         return self.logic.train_status(True)
 
     def onTrainingStatus(self):
+        if True:
+            self.getParamsFromConfig()
+            return
+
         if not self.logic:
             return
 

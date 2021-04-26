@@ -14,12 +14,12 @@ from monai.transforms import (
     RandShiftIntensityd,
     ToTensord
 )
-from monailabel.helpers.train.msd_segmentation import MSDTrainSegmentationTask
+from monailabel.helpers.train.basic_segmentation import BasicTrainSegmentationTask
 
 logger = logging.getLogger(__name__)
 
 
-class MyTrain(MSDTrainSegmentationTask):
+class MyTrain(BasicTrainSegmentationTask):
 
     def train_pre_transforms(self):
         return Compose([

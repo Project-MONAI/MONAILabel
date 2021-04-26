@@ -18,7 +18,7 @@ from monailabel.helpers.train import TrainTask
 logger = logging.getLogger(__name__)
 
 
-class MSDTrainSegmentationTask(TrainTask):
+class BasicTrainSegmentationTask(TrainTask):
     """
     This provides Basic Train Engine to train segmentation models over MSD Dataset.
     """
