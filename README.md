@@ -19,7 +19,7 @@ pip install -r requirements.txt
 # Download sample pre-trained models
 # https://drive.google.com/drive/folders/1QNEtb3InzpEve53xTWCmxe_HnR2cImUv?usp=sharing
 cd /workspace/MONAILabel/sample-apps/segmentation_spleen
-unzip models.zip
+unzip model.zip && rm model.zip
 
 # Download MSD Datasets from
 # https://github.com/Project-MONAI/MONAI/blob/master/monai/apps/datasets.py#L213-L224
