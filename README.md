@@ -1,6 +1,6 @@
-# MONAI-label
+# MONAILabel
 
-Draft Repository for MONAI Label
+Repository for the MONAILabel
 
 ## UseCase
 
@@ -11,14 +11,14 @@ Draft Repository for MONAI Label
 ```bash
 # One time setup (docker to pull nvidia gpus and pytorch)
 docker run -it --rm --gpus all --ipc=host --net=host -v /rapid/xyz:/workspace/ nvcr.io/nvidia/pytorch:21.02-py3 
-git clone git@github.com:SachidanandAlle/MONAI-label.git /workspace/MONAI-label
-cd /workspace/MONAI-label
+git clone git@github.com:Project-MONAI/MONAILabel.git /workspace/MONAILabel
+cd /workspace/MONAILabel
 
 pip install -r requirements.txt
 
 # Download sample pre-trained models
 # https://drive.google.com/drive/folders/1QNEtb3InzpEve53xTWCmxe_HnR2cImUv?usp=sharing
-cd /workspace/MONAI-label/apps/segmentation_spleen
+cd /workspace/MONAILabel/sample-apps/segmentation_spleen
 unzip models.zip
 
 # Download MSD Datasets from
@@ -30,10 +30,10 @@ wget https://msd-for-monai.s3-us-west-2.amazonaws.com/Task09_Spleen.tar
 tar xf Task09_Spleen.tar
 
 # Run APP
-cd /workspace/MONAI-label/monailabel
-export PYTHONPATH=/workspace/MONAI-label
+cd /workspace/MONAILabel/monailabel
+export PYTHONPATH=/workspace/MONAILabel
 
-python main.py --app ../apps/segmentation_spleen/ --studies /workspace/datasets/Task09_Spleen
+python main.py --app ../sample-apps/segmentation_spleen/ --studies /workspace/datasets/Task09_Spleen
 
 # To run in virtual env for the app by installing segmentation_spleen/requirements.txt
 #./start_monai_label.sh --app ../apps/segmentation_spleen/ --studies
@@ -59,7 +59,7 @@ python main.py --app ../apps/segmentation_spleen/ --studies /workspace/datasets/
 
 Install Plugin in developer mode
 
-- git clone git@github.com:SachidanandAlle/MONAI-label.git
+- git clone git@github.com:Project-MONAI/MONAILabel.git
 - Open 3D Slicer: Go to Edit -> Application Settings -> Modules -> Additional Module Paths
 - Add New Module Path: <FULL_PATH>/clients/slicer/MONAILabel
 - Restart
