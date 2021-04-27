@@ -10,7 +10,7 @@ Repository for the MONAILabel
 
 ```bash
 # One time setup (docker to pull nvidia gpus and pytorch)
-docker run -it --rm --gpus all --ipc=host --net=host -v /rapid/xyz:/workspace/ nvcr.io/nvidia/pytorch:21.02-py3 
+docker run -it --rm --gpus all --ipc=host --net=host -v /rapid/xyz:/workspace/ nvcr.io/nvidia/pytorch:21.02-py3
 git clone git@github.com:Project-MONAI/MONAILabel.git /workspace/MONAILabel
 cd /workspace/MONAILabel
 
@@ -33,7 +33,7 @@ tar xf Task09_Spleen.tar
 cd /workspace/MONAILabel/monailabel
 export PYTHONPATH=/workspace/MONAILabel
 
-python main.py --app ../sample-apps/segmentation_spleen/ --studies /workspace/datasets/Task09_Spleen
+python main.py --app ../sample-apps/segmentation_spleen/ --studies /workspace/datasets/Task09_Spleen/imagesTr
 
 # To run in virtual env for the app by installing segmentation_spleen/requirements.txt
 #./start_monai_label.sh --app ../apps/segmentation_spleen/ --studies
@@ -65,4 +65,3 @@ Install Plugin in developer mode
 - Restart
 
 <img src="https://user-images.githubusercontent.com/7339051/115478017-1725f380-a23d-11eb-9b60-19638187b8e6.png" width="400"/>
-
