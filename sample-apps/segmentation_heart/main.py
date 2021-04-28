@@ -6,6 +6,7 @@ from monai.networks.layers import Norm
 from monai.networks.nets import UNet
 from monailabel.helpers.infer.deepgrow_2d import InferDeepgrow2D
 from monailabel.helpers.infer.deepgrow_3d import InferDeepgrow3D
+from monailabel.interface import ActiveLearning
 from monailabel.interface.app import MONAILabelApp
 
 logger = logging.getLogger(__name__)
@@ -30,7 +31,7 @@ class MyApp(MONAILabelApp):
             app_dir=app_dir,
             studies=studies,
             infers=infers,
-            active_learning=MyActiveLearning()
+            active_learning=ActiveLearning()
         )
 
     def train(self, request):
@@ -57,3 +58,11 @@ class MyApp(MONAILabelApp):
         )
 
         return task(max_epochs=epochs, amp=amp)
+
+    def next_sample(self, request):
+        if request.get('strategy') == 'tta':
+            myActiveLearning = MyActiveLearning(os.path.join(self.app_dir, "model", "segmentation_heart.pth") )
+            return myActiveLearning(self.dataset().get_unlabeled_images())
+        else:
+            return super().next_sample(request)
+

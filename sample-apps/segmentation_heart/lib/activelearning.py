@@ -1,14 +1,9 @@
 '''
-Consider implementing a light version for TTA specified in this paper: https://arxiv.org/pdf/2007.00833.pdf
+Consider implementing a light version of TTA presented in this paper: https://arxiv.org/pdf/2007.00833.pdf
 '''
-import os
 import numpy as np
 import torch
-from glob import glob
 from functools import partial
-
-from monailabel.interface import ActiveLearning
-MyActiveLearning = ActiveLearning
 
 from monai.networks.nets import UNet
 import monai
@@ -17,7 +12,6 @@ from monai.inferers import sliding_window_inference
 from monai.data import (
     list_data_collate,
     DataLoader,
-    Dataset,
     TestTimeAugmentation,
 )
 from monai.transforms import (
@@ -32,13 +26,17 @@ from monai.transforms import (
 )
 
 
-class MyActiveLearning(ActiveLearning):
-    def __init__(self):
-        self.device = torch.device("cuda:0")
-        self.num_examples = num_examples
+class MyActiveLearning():
+    def __init__(self, bestModelPath):
 
-    def get_model(self, bestModelPath):
-        # Using unet
+        self.bestModelPath = bestModelPath
+        self.device = torch.device("cuda:0")
+        self.num_examples = 2 # Number of augmented samples
+
+    def get_model(self):
+
+        # Using UNet
+        # For most of the Active Learning techniques, this model is the same one we used for inference
         model = UNet(
             dimensions=3,
             in_channels=1,
@@ -48,40 +46,46 @@ class MyActiveLearning(ActiveLearning):
             num_res_units=2,
             norm=Norm.BATCH,
             dropout=0.2).to(self.device)
-        # Performing inference on the dataloader/image
-        model.load_state_dict(torch.load(bestModelPath))
+
+        model.load_state_dict(torch.load(self.bestModelPath))
         model.eval()
 
         return model
 
-    def __call__(self, request):
+    def __call__(self, images):
 
-        model = self.get_model(request.pretrainedModel)
+        # Creating dataloader
+        data_dicts = [{"image": image} for image in images]
+        ds_tta = monai.data.Dataset(data=data_dicts)
+        loader_tta = DataLoader(ds_tta, batch_size=1, num_workers=0, collate_fn=list_data_collate)
 
+        model = self.get_model()
+
+        # Defining transforms
         transforms = Compose([
           LoadImaged(keys=["image"]),
           EnsureChannelFirstd(keys=["image"]),
           RandAffined(keys=["image"], prob=1,
-                      rotate_range=(np.pi / 4, np.pi / 4, np.pi / 4),
+                      rotate_range=(np.pi/6, np.pi/6, np.pi/6),
                       padding_mode="zeros",
                       as_tensor_output=False),
           NormalizeIntensityd(keys="image", nonzero=True, channel_wise=True),
           ToTensord(keys=["image"]),
         ])
 
-        # Performing TTA
+        ##### Performing TTA ######
+
         post_trans = Compose([
           Activations(sigmoid=True),
           AsDiscrete(threshold_values=True),
         ])
 
-        # Function used in the TTA
+        # Inferer function used in the TTA
         def infer_seg(images, model, roi_size=(160, 192, 80), sw_batch_size=1):
           preds = sliding_window_inference(images, roi_size, sw_batch_size, model)
           post_pred = post_trans(preds)
           return post_pred
 
-        # TTA
         tt_aug = TestTimeAugmentation(
           transforms,
           label_key="image",
@@ -98,7 +102,5 @@ class MyActiveLearning(ActiveLearning):
             vvc_tta_all.append(vvc_tta)
             print('Volume Variation Coefficient: ', vvc_tta)
 
-        # Test images are sorted according to the volume variation coefficient (vvc_tta_all).
-        # The bigger the vvc, the more "uncertain" is the segmentation.
-
-        return image
+        # Returning image with higher VVC (Volume Variation Coefficient)
+        return {'image': images[np.array(vvc_tta_all).argmax()]}
