@@ -219,6 +219,9 @@ class LocalDatastore(Datastore):
             ]
         },...]
         """
+        if pattern is None:
+            return self._dataset_config
+
         p = re.compile(pattern)
         matching_objects = []
         for obj in self._dataset_config['objects']:

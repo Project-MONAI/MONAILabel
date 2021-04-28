@@ -18,3 +18,6 @@ class MyApp(MONAILabelApp):
 
     def next_sample(self, request):
         return MyActiveLearning()(request)
+
+    def save_label(self, request):
+        return super().save_label(request)

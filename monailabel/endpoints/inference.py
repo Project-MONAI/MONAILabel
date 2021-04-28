@@ -11,8 +11,8 @@ from requests_toolbelt import MultipartEncoder
 from starlette.background import BackgroundTasks
 
 from monailabel.interface import MONAILabelApp
-from monailabel.utils.app_utils import get_app_instance
-from monailabel.utils.generic import get_mime_type
+from monailabel.utils.others.app_utils import get_app_instance
+from monailabel.utils.others.generic import get_mime_type
 
 logger = logging.getLogger(__name__)
 

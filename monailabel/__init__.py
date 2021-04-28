@@ -35,7 +35,6 @@ if not (sys.version_info.major == PY_REQUIRED_MAJOR and sys.version_info.minor >
 
 __all__ = [
     "endpoints",
-    "helpers",
     "interface",
     "utils",
 ]

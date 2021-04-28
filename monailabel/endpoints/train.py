@@ -14,7 +14,7 @@ from fastapi import APIRouter, HTTPException
 from fastapi import BackgroundTasks
 
 from monailabel.config import settings
-from monailabel.utils.app_utils import get_app_instance
+from monailabel.utils.others.app_utils import get_app_instance
 
 logger = logging.getLogger(__name__)
 train_tasks = []
@@ -28,7 +28,7 @@ router = APIRouter(
 
 
 def train_func(task):
-    import monailabel.utils.app_utils as app_utils
+    import monailabel.utils.others.app_utils as app_utils
     cmd = [
         "python3",
         os.path.realpath(app_utils.__file__),

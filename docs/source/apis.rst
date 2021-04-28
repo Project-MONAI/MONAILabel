@@ -1,4 +1,4 @@
-:github_url: https://github.com/Project-MONAI/MONAI-Label
+:github_url: https://github.com/Project-MONAI/MONAILabel
 
 .. _apis:
 
@@ -10,8 +10,9 @@ MONAI APP
 .. autoclass:: MONAILabelApp
     :members:
 
-Others
-======
+.. automodule:: monailabel.interface.datastore
+.. autoclass:: Datastore
+    :members:
 
 .. automodule:: monailabel.interface.exception
 .. autoclass:: MONAILabelError
@@ -19,31 +20,17 @@ Others
 .. autoclass:: MONAILabelException
     :members:
 
-.. automodule:: monailabel.interface.infer
-.. autoclass:: InferenceEngine
+Utils
+======
+
+.. automodule:: monailabel.utils.infer.task
+.. autoclass:: InferenceTask
     :members:
 
-.. automodule:: monailabel.interface.train
-.. autoclass:: TrainEngine
+.. automodule:: monailabel.utils.train.task
+.. autoclass:: TrainTask
     :members:
 
-
-Engines
-=======
-
-Inference
----------
-.. automodule:: monailabel.engines.infer.deepgrow_2d
-.. autoclass:: Deepgrow2D
-
-.. automodule:: monailabel.engines.infer.deepgrow_3d
-.. autoclass:: Deepgrow3D
-
-.. automodule:: monailabel.engines.infer.segmentation_spleen
-.. autoclass:: SegmentationSpleen
-
-Train
------
-.. automodule:: monailabel.engines.train.segmentation_spleen
-.. autoclass:: SegmentationSpleen
-
+.. automodule:: monailabel.utils.train.basic_segmentation
+.. autoclass:: BasicTrainSegmentationTask
+    :members:

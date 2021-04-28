@@ -14,7 +14,7 @@ from monai.transforms import (
     RandShiftIntensityd,
     ToTensord
 )
-from monailabel.helpers.train.basic_segmentation import BasicTrainSegmentationTask
+from monailabel.utils.train.basic_segmentation import BasicTrainSegmentationTask
 
 logger = logging.getLogger(__name__)
 
