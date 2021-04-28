@@ -18,8 +18,8 @@ from monai.transforms import (
     Resized
 )
 from monai.transforms.transform import Transform
-from monailabel.helpers.infer import InferenceTask, InferType
-from monailabel.helpers.others import Restored, BoundingBoxd
+from monailabel.utils.infer import InferenceTask, InferType
+from monailabel.utils.others.post import Restored, BoundingBoxd
 
 
 # Define a new transform to discard positive and negative points

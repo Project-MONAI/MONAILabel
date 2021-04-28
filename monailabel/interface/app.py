@@ -7,9 +7,9 @@ from abc import abstractmethod
 import yaml
 
 from monailabel.interface.activelearning import ActiveLearning
-from monailabel.interface.exception import MONAILabelException, MONAILabelError
 from monailabel.interface.datastore import Datastore
 from monailabel.interface.datastore_local import LocalDatastore
+from monailabel.interface.exception import MONAILabelException, MONAILabelError
 
 logger = logging.getLogger(__name__)
 
@@ -29,7 +29,7 @@ class MONAILabelApp:
         self.studies = studies
         self.infers = dict() if infers is None else infers
         self.active_learning = active_learning
-        self._dataset: Datastore = LocalDatastore(studies)
+        self._datastore: Datastore = LocalDatastore(studies)
 
     def info(self):
         """
@@ -88,8 +88,8 @@ class MONAILabelApp:
         result_file_name, result_json = task(request)
         return {"label": result_file_name, "params": result_json}
 
-    def dataset(self) -> Datastore:
-        return self._dataset
+    def datastore(self) -> Datastore:
+        return self._datastore
 
     @abstractmethod
     def train(self, request):
@@ -131,7 +131,7 @@ class MONAILabelApp:
         Returns:
             JSON containing next image info that is selected for labeling
         """
-        images = self.dataset().get_unlabeled_images()
+        images = self.datastore().get_unlabeled_images()
         request["images"] = images
 
         image = self.active_learning(request)
@@ -168,7 +168,7 @@ class MONAILabelApp:
         segments = "+".join(segments) if len(segments) else "unk"
 
         label_id = f"label_{segments}_{img_name}{file_ext}"
-        label_file = self.dataset().save_label(request['image'], label_id, label)
+        label_file = self.datastore().save_label(request['image'], label_id, label)
 
         return {
             "image": request.get("image"),

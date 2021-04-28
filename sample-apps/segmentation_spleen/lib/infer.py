@@ -9,8 +9,8 @@ from monai.transforms import (
     SqueezeDimd,
     ToNumpyd,
 )
-from monailabel.helpers.infer import InferenceTask, InferType
-from monailabel.helpers.others import Restored, BoundingBoxd
+from monailabel.utils.infer import InferenceTask, InferType
+from monailabel.utils.others.post import Restored, BoundingBoxd
 
 
 class MyInfer(InferenceTask):

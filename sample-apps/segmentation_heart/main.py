@@ -4,8 +4,8 @@ import os
 from lib import MyInfer, MyTrain, MyActiveLearning
 from monai.networks.layers import Norm
 from monai.networks.nets import UNet
-from monailabel.helpers.infer.deepgrow_2d import InferDeepgrow2D
-from monailabel.helpers.infer.deepgrow_3d import InferDeepgrow3D
+from monailabel.utils.infer.deepgrow_2d import InferDeepgrow2D
+from monailabel.utils.infer.deepgrow_3d import InferDeepgrow3D
 from monailabel.interface.app import MONAILabelApp
 
 logger = logging.getLogger(__name__)
@@ -42,7 +42,7 @@ class MyApp(MONAILabelApp):
         logger.info(f"Training request: {request}")
         task = MyTrain(
             output_dir=os.path.join(self.app_dir, "train", "train_0"),
-            data_list=self.dataset().datalist(),
+            data_list=self.datastore().datalist(),
             network=UNet(
                 dimensions=3,
                 in_channels=1,

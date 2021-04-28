@@ -7,7 +7,7 @@ import sys
 from monailabel.config import settings
 from monailabel.interface import MONAILabelApp
 from monailabel.interface.exception import MONAILabelError, MONAILabelException
-from monailabel.utils.class_utils import get_class_of_subclass_from_file
+from monailabel.utils.others.class_utils import get_class_of_subclass_from_file
 
 logger = logging.getLogger(__name__)
 app = None
