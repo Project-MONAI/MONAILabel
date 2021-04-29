@@ -5,7 +5,7 @@ from math import ceil
 from fastapi import APIRouter, HTTPException
 from fastapi.responses import FileResponse
 
-from monailabel.utils.generic import get_mime_type
+from monailabel.utils.others.generic import get_mime_type
 
 router = APIRouter(
     prefix="/download",

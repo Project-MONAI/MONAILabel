@@ -9,7 +9,7 @@ import sys
 
 import yaml
 
-from monailabel.utils.app_utils import app_instance
+from monailabel.utils.others.app_utils import app_instance
 
 logger = logging.getLogger(__name__)
 

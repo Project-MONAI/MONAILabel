@@ -13,7 +13,7 @@ from monai.handlers import (
     LrScheduleHandler)
 from monai.inferers import SimpleInferer
 from monai.losses import DiceLoss
-from monailabel.helpers.train import TrainTask
+from monailabel.utils.train import TrainTask
 
 logger = logging.getLogger(__name__)
 
