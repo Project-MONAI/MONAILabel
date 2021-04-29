@@ -1,15 +1,17 @@
 import logging
 import random
 
+from monailabel.interface.datastore import Datastore
+
 logger = logging.getLogger(__name__)
 
 
 class ActiveLearning:
-    def __call__(self, request):
+    def __call__(self, request, datastore: Datastore):
         strategy = request.get('strategy', 'random')
         strategy = next(iter(strategy)) if not isinstance(strategy, str) else strategy
 
-        images = request.get('images', [])
+        images = datastore.get_unlabeled_images()
         if not len(images):
             return None
 

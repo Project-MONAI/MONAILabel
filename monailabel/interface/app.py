@@ -15,7 +15,7 @@ logger = logging.getLogger(__name__)
 
 
 class MONAILabelApp:
-    def __init__(self, app_dir, studies, infers=None, active_learning: ActiveLearning = ActiveLearning()):
+    def __init__(self, app_dir, studies, infers=None, train=None, active_learning: ActiveLearning = ActiveLearning()):
         """
         Base Class for Any MONAI Label App
 
@@ -29,6 +29,7 @@ class MONAILabelApp:
         self.studies = studies
         self.infers = dict() if infers is None else infers
         self.active_learning = active_learning
+        self.train = train
         self._datastore: Datastore = LocalDatastore(studies)
 
     def info(self):
@@ -47,8 +48,9 @@ class MONAILabelApp:
             meta = yaml.full_load(fc)
 
         models = dict()
-        for name, engine in self.infers.items():
-            models[name] = engine.info()
+        for name, infer in self.infers.items():
+            if infer.is_valid():
+                models[name] = infer.info()
 
         meta["models"] = models
         return meta
@@ -112,7 +114,7 @@ class MONAILabelApp:
         Returns:
             JSON containing train stats
         """
-        pass
+        return self.train(request)
 
     def next_sample(self, request):
         """
@@ -125,16 +127,12 @@ class MONAILabelApp:
 
                     {
                         "strategy": "random,
-                        "images": {},
                     }
 
         Returns:
             JSON containing next image info that is selected for labeling
         """
-        images = self.datastore().get_unlabeled_images()
-        request["images"] = images
-
-        image = self.active_learning(request)
+        image = self.active_learning(request, self.datastore())
         return {"image": image}
 
     def save_label(self, request):

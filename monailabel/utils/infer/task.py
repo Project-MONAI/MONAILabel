@@ -51,6 +51,9 @@ class InferenceTask:
             "description": self.description,
         }
 
+    def is_valid(self):
+        return os.path.exists(os.path.join(self.path))
+
     @abstractmethod
     def pre_transforms(self):
         """

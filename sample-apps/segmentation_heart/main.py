@@ -4,10 +4,9 @@ import os
 from lib import MyInfer, MyTrain, MyActiveLearning
 from monai.networks.layers import Norm
 from monai.networks.nets import UNet
+from monailabel.interface.app import MONAILabelApp
 from monailabel.utils.infer.deepgrow_2d import InferDeepgrow2D
 from monailabel.utils.infer.deepgrow_3d import InferDeepgrow3D
-from monailabel.interface import ActiveLearning
-from monailabel.interface.app import MONAILabelApp
 
 logger = logging.getLogger(__name__)
 
@@ -15,23 +14,26 @@ logger = logging.getLogger(__name__)
 class MyApp(MONAILabelApp):
     def __init__(self, app_dir, studies):
         model_dir = os.path.join(app_dir, "model")
+
+        # TODO:: We don't need network for inference (Use Torch JIT) and define network only for train
+        network = UNet(
+            dimensions=3, in_channels=1,
+            out_channels=2, channels=(16, 32, 64, 128, 256),
+            strides=(2, 2, 2, 2),
+            num_res_units=2, norm=Norm.BATCH, dropout=0.2)
+
         infers = {
             "deepgrow_2d": InferDeepgrow2D(os.path.join(model_dir, "deepgrow_2d.ts")),
             "deepgrow_3d": InferDeepgrow3D(os.path.join(model_dir, "deepgrow_3d.ts")),
-            "segmentation_heart": MyInfer(
-                path=os.path.join(model_dir, "segmentation_heart.pth"),
-                network=UNet(
-                    dimensions=3, in_channels=1,
-                    out_channels=2, channels=(16, 32, 64, 128, 256),
-                    strides=(2, 2, 2, 2),
-                    num_res_units=2, norm=Norm.BATCH, dropout=0.2)),
+            "segmentation_heart": MyInfer(os.path.join(model_dir, "segmentation_heart.pth"), network)
         }
 
+        # TODO:: Unification of same model/infer for active learning (how about transforms? they can be different)
         super().__init__(
             app_dir=app_dir,
             studies=studies,
             infers=infers,
-            active_learning=ActiveLearning()
+            active_learning=MyActiveLearning(os.path.join(model_dir, "segmentation_heart.pth"), network)
         )
 
     def train(self, request):
@@ -58,11 +60,3 @@ class MyApp(MONAILabelApp):
         )
 
         return task(max_epochs=epochs, amp=amp)
-
-    def next_sample(self, request):
-        if request.get('strategy') == 'tta':
-            myActiveLearning = MyActiveLearning(os.path.join(self.app_dir, "model", "segmentation_heart.pth") )
-            return myActiveLearning(self.dataset().get_unlabeled_images())
-        else:
-            return super().next_sample(request)
-
