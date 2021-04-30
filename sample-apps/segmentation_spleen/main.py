@@ -32,6 +32,7 @@ class MyApp(MONAILabelApp):
         amp = request.get('amp', True)
         device = request.get('device', 'cuda')
         lr = request.get('lr', 0.0001)
+        val_split = request.get('val_split', 0.2)
 
         logger.info(f"Training request: {request}")
         task = MyTrain(
@@ -47,7 +48,8 @@ class MyApp(MONAILabelApp):
                 norm=Norm.BATCH
             ),
             device=device,
-            lr=lr
+            lr=lr,
+            val_split=val_split
         )
 
         return task(max_epochs=epochs, amp=amp)

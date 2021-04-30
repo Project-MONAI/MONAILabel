@@ -14,6 +14,7 @@ config:
     amp: true
     lr: 0.0001
     epochs: 5
+    val_split: 0.2
   activelearning:
     strategy:
       random: Use Random Strategy to get Next Sample # default
