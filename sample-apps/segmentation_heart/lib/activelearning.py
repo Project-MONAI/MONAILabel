@@ -22,9 +22,9 @@ from monai.transforms import (
     RandAffined,
     ToTensord,
 )
-from monailabel.interface import ActiveLearning
-from monailabel.interface import Datastore
-from monailabel.interface.exception import MONAILabelError, MONAILabelException
+from monailabel.interfaces import ActiveLearning
+from monailabel.interfaces import Datastore
+from monailabel.interfaces.exception import MONAILabelError, MONAILabelException
 
 logger = logging.getLogger(__name__)
 

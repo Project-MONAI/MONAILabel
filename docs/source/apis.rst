@@ -6,15 +6,15 @@ MONAI APP
 =========
 
 
-.. automodule:: monailabel.interface.app
+.. automodule:: monailabel.interfaces.app
 .. autoclass:: MONAILabelApp
     :members:
 
-.. automodule:: monailabel.interface.datastore
+.. automodule:: monailabel.interfaces.datastore
 .. autoclass:: Datastore
     :members:
 
-.. automodule:: monailabel.interface.exception
+.. automodule:: monailabel.interfaces.exception
 .. autoclass:: MONAILabelError
     :members:
 .. autoclass:: MONAILabelException

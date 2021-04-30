@@ -1,7 +1,7 @@
 import logging
 
-from monailabel.interface import ActiveLearning
-from monailabel.interface import Datastore
+from monailabel.interfaces import ActiveLearning
+from monailabel.interfaces import Datastore
 
 logger = logging.getLogger(__name__)
 

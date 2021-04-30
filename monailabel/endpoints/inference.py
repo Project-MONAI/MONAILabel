@@ -10,7 +10,7 @@ from fastapi.responses import FileResponse, Response
 from requests_toolbelt import MultipartEncoder
 from starlette.background import BackgroundTasks
 
-from monailabel.interface import MONAILabelApp
+from monailabel.interfaces import MONAILabelApp
 from monailabel.utils.others.app_utils import get_app_instance
 from monailabel.utils.others.generic import get_mime_type
 

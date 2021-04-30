@@ -7,7 +7,7 @@ from uuid import uuid4
 
 from openapi_schema_validator import validate
 
-from monailabel.interface.datastore import Datastore
+from monailabel.interfaces.datastore import Datastore
 
 
 class LocalDatastore(Datastore):

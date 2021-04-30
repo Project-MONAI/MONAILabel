@@ -10,7 +10,7 @@ from fastapi import APIRouter
 from fastapi import File, UploadFile
 
 from monailabel.config import settings
-from monailabel.interface import MONAILabelApp
+from monailabel.interfaces import MONAILabelApp
 from monailabel.utils.others.app_utils import get_app_instance
 from monailabel.utils.others.generic import file_checksum
 

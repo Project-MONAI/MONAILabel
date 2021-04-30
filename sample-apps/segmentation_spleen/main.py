@@ -4,7 +4,7 @@ import os
 from lib import MyInfer, MyTrain, MyActiveLearning
 from monai.networks.layers import Norm
 from monai.networks.nets import UNet
-from monailabel.interface.app import MONAILabelApp
+from monailabel.interfaces.app import MONAILabelApp
 from monailabel.utils.infer.deepgrow_2d import InferDeepgrow2D
 from monailabel.utils.infer.deepgrow_3d import InferDeepgrow3D
 

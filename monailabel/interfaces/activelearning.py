@@ -1,7 +1,7 @@
 import logging
 import random
 
-from monailabel.interface.datastore import Datastore
+from monailabel.interfaces.datastore import Datastore
 
 logger = logging.getLogger(__name__)
 

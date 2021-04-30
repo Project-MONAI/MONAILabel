@@ -6,7 +6,7 @@ from abc import abstractmethod
 
 import torch
 
-from monailabel.interface.exception import MONAILabelError, MONAILabelException
+from monailabel.interfaces.exception import MONAILabelError, MONAILabelException
 from monailabel.utils.others.writer import Writer
 
 logger = logging.getLogger(__name__)

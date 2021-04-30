@@ -6,16 +6,16 @@ from abc import abstractmethod
 
 import yaml
 
-from monailabel.interface.activelearning import ActiveLearning
-from monailabel.interface.datastore import Datastore
-from monailabel.interface.datastore_local import LocalDatastore
-from monailabel.interface.exception import MONAILabelException, MONAILabelError
+from monailabel.interfaces.activelearning import ActiveLearning
+from monailabel.interfaces.datastore import Datastore
+from monailabel.interfaces.datastore_local import LocalDatastore
+from monailabel.interfaces.exception import MONAILabelException, MONAILabelError
 
 logger = logging.getLogger(__name__)
 
 
 class MONAILabelApp:
-    def __init__(self, app_dir, studies, infers=None, train=None, active_learning: ActiveLearning = ActiveLearning()):
+    def __init__(self, app_dir, studies, infers=None, active_learning: ActiveLearning = ActiveLearning()):
         """
         Base Class for Any MONAI Label App
 
@@ -29,7 +29,6 @@ class MONAILabelApp:
         self.studies = studies
         self.infers = dict() if infers is None else infers
         self.active_learning = active_learning
-        self.train = train
         self._datastore: Datastore = LocalDatastore(studies)
 
     def info(self):
@@ -114,7 +113,7 @@ class MONAILabelApp:
         Returns:
             JSON containing train stats
         """
-        return self.train(request)
+        pass
 
     def next_sample(self, request):
         """

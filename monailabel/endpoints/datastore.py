@@ -3,7 +3,7 @@ import logging
 from fastapi import APIRouter, HTTPException
 from fastapi import File, UploadFile
 
-from monailabel.interface import Datastore
+from monailabel.interfaces import Datastore
 from monailabel.utils.others.app_utils import get_app_instance
 
 logger = logging.getLogger(__name__)

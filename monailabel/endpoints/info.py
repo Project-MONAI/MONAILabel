@@ -1,6 +1,6 @@
 from fastapi import APIRouter
 
-from monailabel.interface import MONAILabelApp
+from monailabel.interfaces import MONAILabelApp
 from monailabel.utils.others.app_utils import get_app_instance
 
 router = APIRouter(
