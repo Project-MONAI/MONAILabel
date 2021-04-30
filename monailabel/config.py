@@ -6,7 +6,7 @@ from pydantic import AnyHttpUrl, BaseSettings, validator
 class Settings(BaseSettings):
     API_STR: str = ""
     BACKEND_CORS_ORIGINS: List[AnyHttpUrl] = []
-    PROJECT_NAME: str = "MONAI-Label"
+    PROJECT_NAME: str = "MONAILabel"
 
     APP_DIR: str = None
     STUDIES: str = None

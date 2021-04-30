@@ -681,7 +681,7 @@ class MONAILabelWidget(ScriptedLoadableModuleWidget, VTKObservationMixin):
             self.updateServerSettings()
             status = self.logic.train_status(False)
         except:
-            slicer.util.errorDisplay("Failed to fetch Training Status", detailedText=traceback.format_exc())
+            logging.debug("Failed to fetch Training Status\n{}".format(traceback.format_exc()))
         finally:
             qt.QApplication.restoreOverrideCursor()
 

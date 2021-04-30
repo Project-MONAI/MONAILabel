@@ -59,10 +59,10 @@ class BasicTrainSegmentationTask(TrainTask):
             data_list,
             ratios=[(1 - val_split), val_split],
             shuffle=True
-        )
+        ) if val_split > 0.0 else (data_list, [])
 
-        logger.info(f"Total Records for Training: {len(self._train_datalist)}")
-        logger.info(f"Total Records for Validation: {len(self._val_datalist)}")
+        logger.info(f"Total Records for Training: {len(self._train_datalist)}/{len(data_list)}")
+        logger.info(f"Total Records for Validation: {len(self._val_datalist)}/{len(data_list)}")
 
         self._device = torch.device(device)
         self._network = network
@@ -106,15 +106,19 @@ class BasicTrainSegmentationTask(TrainTask):
     def train_handlers(self):
         lr_scheduler = torch.optim.lr_scheduler.StepLR(self.optimizer(), step_size=5000, gamma=0.1)
 
-        return [
+        handlers = [
             LrScheduleHandler(lr_scheduler=lr_scheduler, print_lr=True),
-            ValidationHandler(validator=self.evaluator(), interval=self._val_interval, epoch_level=True),
             StatsHandler(tag_name="train_loss", output_transform=lambda x: x["loss"]),
             TensorBoardStatsHandler(log_dir=self._output_dir, tag_name="train_loss",
                                     output_transform=lambda x: x["loss"]),
             CheckpointSaver(save_dir=self._output_dir, save_dict={"net": self.network(), "opt": self.optimizer()},
                             save_interval=self._train_save_interval),
         ]
+
+        eval = self.evaluator()
+        if eval:
+            handlers.append(ValidationHandler(validator=eval, interval=self._val_interval, epoch_level=True))
+        return handlers
 
     def train_additional_metrics(self):
         return None
@@ -124,7 +128,7 @@ class BasicTrainSegmentationTask(TrainTask):
             dataset=PersistentDataset(self._val_datalist, self.val_pre_transforms()),
             batch_size=self._val_batch_size,
             shuffle=False,
-            num_workers=self._val_num_workers)
+            num_workers=self._val_num_workers) if self._val_datalist and len(self._val_datalist) > 0 else None
 
     def val_pre_transforms(self):
         return self.train_pre_transforms()

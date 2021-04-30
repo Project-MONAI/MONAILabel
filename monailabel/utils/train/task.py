@@ -148,7 +148,7 @@ class TrainTask:
             key_val_metric=self.val_key_metric(),
             additional_metrics=self.val_additional_metrics(),
             val_handlers=self.val_handlers()
-        )
+        ) if self.val_data_loader() else None
 
     def __call__(self, max_epochs, amp):
         trainer = SupervisedTrainer(
