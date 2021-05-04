@@ -4,12 +4,12 @@ project(MONAI-Label)
 
 #-----------------------------------------------------------------------------
 # Extension meta-information
-set(EXTENSION_HOMEPAGE "https://www.slicer.org/wiki/Documentation/Nightly/Extensions/MONAI-Label")
-set(EXTENSION_CATEGORY "Examples")
-set(EXTENSION_CONTRIBUTORS "John Doe (AnyWare Corp.)")
-set(EXTENSION_DESCRIPTION "This is an example of a simple extension")
-set(EXTENSION_ICONURL "http://www.example.com/Slicer/Extensions/MONAI-Label.png")
-set(EXTENSION_SCREENSHOTURLS "http://www.example.com/Slicer/Extensions/MONAI-Label/Screenshots/1.png")
+set(EXTENSION_HOMEPAGE "https://www.slicer.org/wiki/Documentation/Nightly/Extensions/MONAILabel")
+set(EXTENSION_CATEGORY "Active Learning")
+set(EXTENSION_CONTRIBUTORS "NVIDIA, KCL")
+set(EXTENSION_DESCRIPTION "This is Active Learning solution developed under project MONAILabel")
+set(EXTENSION_ICONURL "http://www.example.com/Slicer/Extensions/MONAILabel.png")
+set(EXTENSION_SCREENSHOTURLS "http://www.example.com/Slicer/Extensions/MONAILabel/Screenshots/1.png")
 set(EXTENSION_DEPENDS "NA") # Specified as a list or "NA" if no dependencies
 
 #-----------------------------------------------------------------------------
