@@ -4,7 +4,7 @@ from typing import Optional
 from fastapi import APIRouter, HTTPException
 
 from monailabel.interfaces.tasks import processes, tasks, background_task, stop_background_task
-from monailabel.utils.others.app_utils import get_app_instance
+from monailabel.utils.others.generic import get_app_instance
 
 logger = logging.getLogger(__name__)
 

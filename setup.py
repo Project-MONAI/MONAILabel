@@ -23,8 +23,10 @@ setup(
     entry_points={
         'console_scripts': [
             'monai-label = monailabel.main:run_main',
+            'monai-label-utils = monailabel.utils.others.app_utils:run_main'
         ]
     },
+    scripts=['monailabel/scripts/run_monailabel_user_app.sh'],
     include_package_data=True,
-    data_files=[('logconfig',['monailabel/logging.json'])],
+    data_files=[('logconfig', ['monailabel/logging.json'])],
 )
