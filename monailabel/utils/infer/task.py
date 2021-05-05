@@ -8,6 +8,10 @@ import torch
 
 from monailabel.interfaces.exception import MONAILabelError, MONAILabelException
 from monailabel.utils.others.writer import Writer
+from monai.transforms.utils import allow_missing_keys_mode
+from monai.transforms import (
+    Compose,
+)
 
 logger = logging.getLogger(__name__)
 
@@ -121,20 +125,35 @@ class InferenceTask:
         device = request.get('device', 'cuda')
 
         start = time.time()
-        data = self.run_pre_transforms(data, self.pre_transforms())
+        # Object pre transforms
+        xform = self.pre_transforms()
+        data = self.run_pre_transforms(data, xform)
         latency_pre = time.time() - start
 
         start = time.time()
         data = self.run_inferer(data, device=device)
         latency_inferer = time.time() - start
 
+        # Applying inverse transforms - 'pred' key is changed by 'image'
+        # data -- dict_keys(['model', 'image', 'device', 'image_path', 'image_meta_dict', 'image_transforms', 'foreground_start_coord', 'foreground_end_coord', 'pred'])
+        if isinstance(xform, Compose):
+            data['image'] = data['pred'].detach().cpu()
+            with allow_missing_keys_mode(xform):
+                data = xform.inverse(data)
+
         start = time.time()
         data = self.run_post_transforms(data, self.post_transforms())
         latency_post = time.time() - start
 
-        start = time.time()
-        result_file_name, result_json = self.writer(data)
-        latency_write = time.time() - start
+        # When using DeepGrow - Issue with the key in writer method
+        if isinstance(xform, Compose):
+            start = time.time()
+            result_file_name, result_json = self.writer(data, label='image')
+            latency_write = time.time() - start
+        else:
+            start = time.time()
+            result_file_name, result_json = self.writer(data, label='pred')
+            latency_write = time.time() - start
 
         latency_total = time.time() - begin
         logger.info(
@@ -188,6 +207,15 @@ class InferenceTask:
 
         with torch.no_grad():
             outputs = inferer(inputs, network)
+
+            # Saving predictions
+            print('Outputs size: ', outputs.shape)
+            import monai
+            import numpy as np
+            saver = monai.data.NiftiSaver(
+                output_dir='/home/adp20local/Documents/MONAILabel/sample-apps/segmentation_spleen/', mode="nearest")
+            saver.save(outputs[0,...], meta_data={'affine': np.eye(4), 'filename_or_obj': 'mask'})
+
         if device == 'cuda':
             torch.cuda.empty_cache()
 
@@ -252,6 +280,10 @@ class InferenceTask:
 
         if not transforms:
             return data
+
+        # This is for inference only - Non DeepGrow inference
+        if isinstance(transforms, Compose):
+            return transforms(data)
 
         for t in transforms:
             name = t.__class__.__name__

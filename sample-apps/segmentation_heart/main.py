@@ -4,6 +4,7 @@ import os
 from lib import MyInfer, MyTrain, MyActiveLearning
 from monai.networks.layers import Norm
 from monai.networks.nets import UNet
+from monai.networks.nets import DynUNet
 from monailabel.interfaces.app import MONAILabelApp
 from monailabel.utils.infer.deepgrow_2d import InferDeepgrow2D
 from monailabel.utils.infer.deepgrow_3d import InferDeepgrow3D
@@ -16,16 +17,21 @@ class MyApp(MONAILabelApp):
         model_dir = os.path.join(app_dir, "model")
 
         # TODO:: We don't need network for inference (Use Torch JIT) and define network only for train
-        network = UNet(
-            dimensions=3, in_channels=1,
-            out_channels=2, channels=(16, 32, 64, 128, 256),
-            strides=(2, 2, 2, 2),
-            num_res_units=2, norm=Norm.BATCH, dropout=0.2)
+        network = DynUNet(
+                        spatial_dims=3,
+                        in_channels=3,
+                        out_channels=1,
+                        kernel_size=[[3, 3, 3], [3, 3, 3], [3, 3, 3], [3, 3, 3], [3, 3, 3], [3, 3, 3]],
+                        strides=[[1, 1, 1], [2, 2, 2], [2, 2, 2], [2, 2, 2], [2, 2, 2], [2, 2, 1]],
+                        upsample_kernel_size=[[2, 2, 2], [2, 2, 2], [2, 2, 2], [2, 2, 2], [2, 2, 1]],
+                        norm_name="instance",
+                        deep_supervision=False,
+                        res_block=True)
 
         infers = {
-            "deepgrow_2d": InferDeepgrow2D(os.path.join(model_dir, "deepgrow_2d.ts")),
-            "deepgrow_3d": InferDeepgrow3D(os.path.join(model_dir, "deepgrow_3d.ts")),
-            "segmentation_heart": MyInfer(os.path.join(model_dir, "segmentation_heart.pth"), network)
+            # "deepgrow_2d": InferDeepgrow2D(os.path.join(model_dir, "deepgrow_2d.ts")),
+            "deepgrow_3d": InferDeepgrow3D(os.path.join(model_dir, "deep_edit.ts")),
+            "segmentation_heart": MyInfer(os.path.join(model_dir, "deep_edit.ts"))
         }
 
         # TODO:: Unification of same model/infer for active learning (how about transforms? they can be different)
@@ -33,7 +39,7 @@ class MyApp(MONAILabelApp):
             app_dir=app_dir,
             studies=studies,
             infers=infers,
-            active_learning=MyActiveLearning(os.path.join(model_dir, "segmentation_heart.pth"), network)
+            active_learning=MyActiveLearning(os.path.join(model_dir, "deep_edit.ts"), network)
         )
 
     def train(self, request):
