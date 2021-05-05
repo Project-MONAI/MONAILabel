@@ -25,7 +25,7 @@ background_processes = {
 
 def task_func(task, method):
     cmd = [
-        "run_monailabel_user_app.sh",
+        os.path.realpath(os.path.join(os.path.dirname(__file__), "..", "scripts", "run_monailabel_user_app.sh")),
         settings.APP_DIR,
         settings.STUDIES,
         method,

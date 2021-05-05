@@ -1,0 +1,3 @@
+pyyaml==5.4.1
+openapi-schema-validator==0.1.5
+SimpleITK==2.0.2

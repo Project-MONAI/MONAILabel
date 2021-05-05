@@ -11,6 +11,8 @@ if [[ "${app_dir}" == "" ]]; then
   exit 1
 fi
 
+requirements_uuid=$(uuidgen)
+
 pushd "$app_dir"
 
 if [[ -f requirements.txt ]]; then
@@ -24,7 +26,9 @@ if [[ -f requirements.txt ]]; then
 
   # always ensure the user packages are up to date
   python -m pip install --upgrade pip
-  python -m pip install -r requirements.txt
+  cat "$(dirname "$(readlink -f "$0")")/user-requirements.txt" <(echo) requirements.txt >> "requirements-${requirements_uuid}.txt"
+  python -m pip install -r "requirements-${requirements_uuid}.txt"
+  rm "requirements-${requirements_uuid}.txt"
 
   if [[ $? -ne 0 ]]; then
     echo "Failed to initialize APP venv"
@@ -39,8 +43,8 @@ export PYTHONPATH=${PYTHONPATH}:${DIR}:${app_dir}
 echo "Using PYTHONPATH:: ${PYTHONPATH}"
 if [[ -z "$output_dir" ]]
 then
-  monai-label-utils -a "$app_dir" -s "$study_dir" "$user_command" -r "$train_request"
+  python -m monailabel.utils.others.app_utils -a "$app_dir" -s "$study_dir" "$user_command" -r "$train_request"
 else
-  monai-label-utils -a "$app_dir" -s "$study_dir" "$user_command" -r "$train_request" -o "$output_dir"
+  python -m monailabel.utils.others.app_utils -a "$app_dir" -s "$study_dir" "$user_command" -r "$train_request" -o "$output_dir"
 fi
 deactivate
