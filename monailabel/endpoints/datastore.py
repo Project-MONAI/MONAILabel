@@ -4,7 +4,7 @@ from fastapi import APIRouter, HTTPException
 from fastapi import File, UploadFile
 
 from monailabel.interfaces import Datastore
-from monailabel.utils.others.app_utils import get_app_instance
+from monailabel.utils.others.generic import get_app_instance
 
 logger = logging.getLogger(__name__)
 train_tasks = []

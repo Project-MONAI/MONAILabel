@@ -24,17 +24,12 @@ background_processes = {
 
 
 def task_func(task, method):
-    import monailabel.utils.others.app_utils as app_utils
     cmd = [
-        "python3",
-        os.path.realpath(app_utils.__file__),
-        "-a",
+        os.path.realpath(os.path.join(os.path.dirname(__file__), "..", "scripts", "run_monailabel_user_app.sh")),
         settings.APP_DIR,
-        "-s",
         settings.STUDIES,
         method,
-        "-r",
-        json.dumps(task["request"])
+        json.dumps(task["request"]),
     ]
 
     process = subprocess.Popen(

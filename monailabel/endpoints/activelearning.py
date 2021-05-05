@@ -11,7 +11,7 @@ from fastapi import File, UploadFile
 
 from monailabel.config import settings
 from monailabel.interfaces import MONAILabelApp
-from monailabel.utils.others.app_utils import get_app_instance
+from monailabel.utils.others.generic import get_app_instance
 from monailabel.utils.others.generic import file_checksum
 
 logger = logging.getLogger(__name__)

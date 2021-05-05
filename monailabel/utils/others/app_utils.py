@@ -4,17 +4,12 @@ import logging
 import os
 import sys
 
-from monailabel.config import settings
 from monailabel.interfaces import MONAILabelApp
 from monailabel.interfaces.exception import MONAILabelError, MONAILabelException
 from monailabel.utils.others.class_utils import get_class_of_subclass_from_file
 
 logger = logging.getLogger(__name__)
 app = None
-
-
-def get_app_instance():
-    return app_instance(settings.APP_DIR, settings.STUDIES)
 
 
 def app_instance(app_dir, studies):

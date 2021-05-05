@@ -10,7 +10,7 @@ from starlette.responses import HTMLResponse
 
 from monailabel.config import settings
 from monailabel.endpoints import activelearning, inference, logs, train, info, download, datastore
-from monailabel.utils.others.app_utils import get_app_instance
+from monailabel.utils.others.generic import get_app_instance
 from monailabel.utils.others.generic import init_log_config
 
 app = FastAPI(
