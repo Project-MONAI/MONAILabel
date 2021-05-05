@@ -1,0 +1,22 @@
+---
+version: 1
+name: Segmentation Spleen
+description: MONAI Label App to provide active learning solution to label Spleen Organ over 3D CT Images
+dimension: 3
+labels:
+  - spleen
+config:
+  infer:
+    device: cuda
+  train:
+    name: model_01
+    device: cuda
+    amp: true
+    lr: 0.0001
+    epochs: 5
+    val_split: 0.2
+  activelearning:
+    strategy:
+      random: Use Random Strategy to get Next Sample # default
+      first: Pick first available Sample (ordered by name)
+      last: Pick last available Sample (ordered by name)

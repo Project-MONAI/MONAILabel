@@ -100,7 +100,8 @@ class MONAILabelWidget(ScriptedLoadableModuleWidget, VTKObservationMixin):
         self._segmentNode = None
         self._volumeNodes = []
         self._updatingGUIFromParameterNode = False
-
+        self._segmentEditorWidget = None
+        
         self.info = {}
         self.models = OrderedDict()
         self.config = OrderedDict()
@@ -174,6 +175,12 @@ class MONAILabelWidget(ScriptedLoadableModuleWidget, VTKObservationMixin):
         self.ui.stopTrainingButton.connect('clicked(bool)', self.onStopTraining)
         self.ui.trainingStatusButton.connect('clicked(bool)', self.onTrainingStatus)
         self.ui.saveLabelButton.connect('clicked(bool)', self.onSaveLabel)
+        
+        # Scribbles
+        self.ui.startScribblingButton.clicked.connect(self.onStartScribbling)
+        self.ui.updateScribblesButton.clicked.connect(self.onUpdateScribbles)
+        self.ui.addForegroundSCButton.clicked.connect(self.onAddForegroundScribbles)
+        self.ui.addBackgroundSCButton.clicked.connect(self.onAddBackgroundScribbles)
 
         self.initializeParameterNode()
         self.updateServerUrlGUIFromSettings()
@@ -188,6 +195,77 @@ class MONAILabelWidget(ScriptedLoadableModuleWidget, VTKObservationMixin):
 
     def exit(self):
         self.removeObserver(self._parameterNode, vtk.vtkCommand.ModifiedEvent, self.updateGUIFromParameterNode)
+    
+    def onStartScribbling(self):
+        print('Start scribbling pressed')
+        # nodes[0].__class__.__name__
+        # segmentationNode = slicer.mrmlScene.AddNewNodeByClass("vtkMRMLSegmentationNode")
+        # segmentationNode.CreateDefaultDisplayNodes()
+
+        # labelmapVolumeNode = slicer.util.getNodesByClass('vtkMRMLLabelMapVolumeNode')[0]
+        # slicer.modules.segmentations.logic().ImportLabelmapToSegmentationNode(labelmapVolumeNode, segmentationNode)
+        # data, affine = self.logic.volumeNodeToDataAffine(labelmapVolumeNode)
+        # print(affine)
+        
+        # masterVolumeNode = slicer.util.getNodesByClass('vtkMRMLScalarVolumeNode')[0]
+        # segmentationNode = slicer.util.getNodesByClass('vtkMRMLSegmentationNode')[0]
+        
+
+        # add foreground
+        # scribbles_segmentationNode = slicer.util.getNodesByClass('vtkMRMLSegmentationNode')[0]
+        self._segmentNode.GetSegmentation().AddEmptySegment('foreground_scribbles', 'foreground_scribbles', [0.0, 1.0, 0.0])
+        # add background
+        self._segmentNode.GetSegmentation().AddEmptySegment('background_scribbles', 'background_scribbles', [1.0, 0.0, 0.0])
+        
+        # qMRMLSegmentEditorWidget
+        # Create segment editor to get access to effects
+        self._segmentEditorWidget = slicer.qMRMLSegmentEditorWidget()
+        self._segmentEditorWidget.setMRMLScene(slicer.mrmlScene)
+        segmentEditorNode = slicer.vtkMRMLSegmentEditorNode()
+        slicer.mrmlScene.AddNode(segmentEditorNode)
+        self._segmentEditorWidget.setMRMLSegmentEditorNode(segmentEditorNode)
+        self._segmentEditorWidget.setSegmentationNode(self._segmentNode)
+
+        # masterVolumeNode = slicer.util.getNodesByClass('vtkMRMLScalarVolumeNode')[0]
+        self._segmentEditorWidget.setMasterVolumeNode(self._volumeNode)
+
+        self._segmentEditorWidget.setActiveEffectByName("Paint")
+        effect = self._segmentEditorWidget.activeEffect()
+        effect.setParameter('BrushAbsoluteDiameter', 5)
+
+        self.onAddForegroundScribbles()
+    
+    def onUpdateScribbles(self):
+        print('update scribbles pressed')
+        segmentationNode = slicer.util.getNodesByClass('vtkMRMLSegmentationNode')[0]
+        labelmapVolumeNode = slicer.mrmlScene.AddNewNodeByClass('vtkMRMLLabelMapVolumeNode')
+        slicer.modules.segmentations.logic().ExportVisibleSegmentsToLabelmapNode(
+            segmentationNode, labelmapVolumeNode, self._volumeNode)
+
+        label_in = tempfile.NamedTemporaryFile(suffix=".nii.gz", dir=self.tmpdir).name
+        # self.reportProgress(5)
+
+        slicer.util.saveNode(labelmapVolumeNode, label_in)
+        # self.reportProgress(30)
+
+        print(label_in)
+
+        widget = self._segmentEditorWidget
+        del widget
+
+        print(self._segmentEditorWidget)
+        self._segmentEditorWidget = None
+        print(self._segmentEditorWidget)
+
+    def onAddForegroundScribbles(self):
+        print('add foreground pressed')
+        self._segmentEditorWidget.setCurrentSegmentID('foreground_scribbles')
+        
+
+    def onAddBackgroundScribbles(self):
+        print('add background pressed')
+        self._segmentEditorWidget.setCurrentSegmentID('background_scribbles')
+
 
     def onSceneStartClose(self, caller, event):
         self._volumeNode = None
@@ -696,25 +774,30 @@ class MONAILabelWidget(ScriptedLoadableModuleWidget, VTKObservationMixin):
         logging.info("Time consumed by next_sample: {0:3.1f}".format(time.time() - start))
 
     def onNextSampleButton(self):
+        print('nextSampleButton button pressed')
         if not self.logic:
             return
 
+        print('Phase 1')
         if self._volumeNode or len(slicer.util.getNodesByClass('vtkMRMLScalarVolumeNode')):
-            if not slicer.util.confirmOkCancelDisplay(
-                    "This will close current scene.  Please make sure you have saved your current work.\n"
-                    "Are you sure to continue?"):
-                return
+            # if not slicer.util.confirmOkCancelDisplay(
+            #         "This will close current scene.  Please make sure you have saved your current work.\n"
+            #         "Are you sure to continue?"):
+            #     return
             slicer.mrmlScene.Clear(0)
 
         start = time.time()
+        print('Phase 2')
         try:
             qt.QApplication.setOverrideCursor(qt.Qt.WaitCursor)
-
+            
+            print('Phase 3')
             self.updateServerSettings()
+            print('Phase 4')
             configs = self.getParamsFromConfig()
             sample = self.logic.next_sample(configs.get('activelearning'))
             logging.debug(sample)
-
+            print('Phase 5')
             if self.samples.get(sample["id"]) is not None:
                 self.current_sample = self.samples[sample["id"]]
                 name = self.current_sample["VolumeNodeName"]
@@ -747,7 +830,7 @@ class MONAILabelWidget(ScriptedLoadableModuleWidget, VTKObservationMixin):
             segmentEditorWidget = slicer.modules.segmenteditor.widgetRepresentation().self().editor
             segmentEditorWidget.setSegmentationNode(self._segmentNode)
             segmentEditorWidget.setMasterVolumeNode(self._volumeNode)
-
+            print(self.info)
             self.updateSegmentationMask(None, self.info.get("labels"))
 
             # Check if user wants to run auto-segmentation on new sample
