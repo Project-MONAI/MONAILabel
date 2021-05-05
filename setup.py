@@ -28,5 +28,8 @@ setup(
     },
     scripts=['monailabel/scripts/run_monailabel_user_app.sh'],
     include_package_data=True,
-    data_files=[('logconfig', ['monailabel/logging.json'])],
+    data_files=[
+        ('logconfig', ['monailabel/logging.json']),
+        ('userapprequirements', ['monailabel/scripts/user-requirements.txt']),
+    ],
 )
