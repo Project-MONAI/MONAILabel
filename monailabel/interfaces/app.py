@@ -153,7 +153,6 @@ class MONAILabelApp:
         Returns:
             JSON containing next image and label info
         """
-
         label = io.BytesIO(open(request['label'], 'rb').read())
 
         img_name = os.path.basename(request['image']).rsplit('.')[0]

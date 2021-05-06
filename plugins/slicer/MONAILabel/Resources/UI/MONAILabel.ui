@@ -187,6 +187,11 @@
       </item>
       <item row="4" column="0">
        <widget class="QCommandLinkButton" name="trainingStatusButton">
+        <property name="font">
+         <font>
+          <kerning>true</kerning>
+         </font>
+        </property>
         <property name="text">
          <string>Training Status</string>
         </property>
@@ -356,34 +361,124 @@
    <item>
     <widget class="ctkCollapsibleButton" name="CollapsibleButton">
      <property name="text">
-      <string>CollapsibleButton</string>
+      <string>Post Processing Scribbles</string>
      </property>
      <layout class="QGridLayout" name="gridLayout_4">
-      <item row="0" column="2">
-       <widget class="QPushButton" name="addForegroundSCButton">
-        <property name="text">
-         <string>FG Scrib</string>
+      <item row="4" column="1" colspan="4">
+       <widget class="Line" name="line_2">
+        <property name="orientation">
+         <enum>Qt::Horizontal</enum>
         </property>
        </widget>
       </item>
-      <item row="0" column="0">
-       <widget class="QPushButton" name="startScribblingButton">
+      <item row="2" column="1" colspan="4">
+       <widget class="Line" name="line_3">
+        <property name="orientation">
+         <enum>Qt::Horizontal</enum>
+        </property>
+       </widget>
+      </item>
+      <item row="5" column="3">
+       <widget class="QPushButton" name="paintBackgroundSCButton">
         <property name="text">
-         <string>Start Scrib</string>
+         <string>Paint</string>
+        </property>
+       </widget>
+      </item>
+      <item row="1" column="4">
+       <widget class="QPushButton" name="selectedToolDisplay">
+        <property name="text">
+         <string/>
+        </property>
+       </widget>
+      </item>
+      <item row="6" column="1" colspan="4">
+       <widget class="Line" name="line">
+        <property name="orientation">
+         <enum>Qt::Horizontal</enum>
+        </property>
+       </widget>
+      </item>
+      <item row="5" column="4">
+       <widget class="QPushButton" name="eraseBackgroundSCButton">
+        <property name="text">
+         <string>Erase</string>
+        </property>
+       </widget>
+      </item>
+      <item row="3" column="1">
+       <widget class="QPushButton" name="FGScribblesLabel">
+        <property name="enabled">
+         <bool>true</bool>
+        </property>
+        <property name="text">
+         <string>Foreground Scribbles:</string>
+        </property>
+       </widget>
+      </item>
+      <item row="3" column="4">
+       <widget class="QPushButton" name="eraseForegroundSCButton">
+        <property name="text">
+         <string>Erase</string>
+        </property>
+       </widget>
+      </item>
+      <item row="1" column="1">
+       <widget class="QPushButton" name="updateScribblesButton">
+        <property name="text">
+         <string>Update</string>
         </property>
        </widget>
       </item>
       <item row="0" column="1">
-       <widget class="QPushButton" name="updateScribblesButton">
+       <widget class="QPushButton" name="startScribblingButton">
         <property name="text">
-         <string>Update Scrib</string>
+         <string>Start</string>
+        </property>
+       </widget>
+      </item>
+      <item row="0" column="4">
+       <widget class="QPushButton" name="selectedScribbleDisplay">
+        <property name="text">
+         <string/>
+        </property>
+       </widget>
+      </item>
+      <item row="3" column="3">
+       <widget class="QPushButton" name="paintForegroundSCButton">
+        <property name="text">
+         <string>Paint</string>
         </property>
        </widget>
       </item>
       <item row="0" column="3">
-       <widget class="QPushButton" name="addBackgroundSCButton">
+       <widget class="QLabel" name="label_7">
+        <property name="font">
+         <font>
+          <pointsize>10</pointsize>
+          <weight>75</weight>
+          <bold>true</bold>
+         </font>
+        </property>
         <property name="text">
-         <string>BK Scrib</string>
+         <string>Current selection: </string>
+        </property>
+        <property name="alignment">
+         <set>Qt::AlignRight|Qt::AlignTrailing|Qt::AlignVCenter</set>
+        </property>
+       </widget>
+      </item>
+      <item row="5" column="1">
+       <widget class="QPushButton" name="BGScribblesLabel">
+        <property name="text">
+         <string>Background Scribbles:</string>
+        </property>
+       </widget>
+      </item>
+      <item row="0" column="2" rowspan="2">
+       <widget class="Line" name="line_4">
+        <property name="orientation">
+         <enum>Qt::Vertical</enum>
         </property>
        </widget>
       </item>

@@ -9,7 +9,7 @@ from starlette.middleware.cors import CORSMiddleware
 from starlette.responses import HTMLResponse
 
 from monailabel.config import settings
-from monailabel.endpoints import activelearning, inference, logs, train, info, download, datastore
+from monailabel.endpoints import activelearning, postproc, inference, logs, train, info, download, datastore
 from monailabel.utils.others.app_utils import get_app_instance
 from monailabel.utils.others.generic import init_log_config
 
@@ -37,6 +37,7 @@ app.include_router(activelearning.router)
 app.include_router(datastore.router)
 app.include_router(download.router)
 app.include_router(logs.router)
+app.include_router(postproc.router)
 
 
 @app.get("/", include_in_schema=False)
