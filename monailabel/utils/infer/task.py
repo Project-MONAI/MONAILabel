@@ -130,9 +130,19 @@ class InferenceTask:
         data = self.run_pre_transforms(data, xform)
         latency_pre = time.time() - start
 
+        # # Save the input image
+        import monai
+        import numpy as np
+        saver = monai.data.NiftiSaver(
+            output_dir='/home/adp20local/Documents/MONAILabel/sample-apps/segmentation_spleen/', mode="nearest")
+        saver.save(data['image'], meta_data={'affine': np.eye(4), 'filename_or_obj': 'image'})
+
         start = time.time()
         data = self.run_inferer(data, device=device)
         latency_inferer = time.time() - start
+
+        print('Size pred after inferer: ', data['pred'].shape)
+        print('Size image after inferer: ', data['image'].shape)
 
         # Applying inverse transforms - 'pred' key is changed by 'image'
         # data -- dict_keys(['model', 'image', 'device', 'image_path', 'image_meta_dict', 'image_transforms', 'foreground_start_coord', 'foreground_end_coord', 'pred'])
@@ -145,7 +155,7 @@ class InferenceTask:
         data = self.run_post_transforms(data, self.post_transforms())
         latency_post = time.time() - start
 
-        # When using DeepGrow - Issue with the key in writer method
+        # When using DeepGrow - key swapping in writer method
         if isinstance(xform, Compose):
             start = time.time()
             result_file_name, result_json = self.writer(data, label='image')
@@ -209,12 +219,12 @@ class InferenceTask:
             outputs = inferer(inputs, network)
 
             # Saving predictions
-            print('Outputs size: ', outputs.shape)
+            print('Preds size: ', outputs.shape)
             import monai
             import numpy as np
             saver = monai.data.NiftiSaver(
                 output_dir='/home/adp20local/Documents/MONAILabel/sample-apps/segmentation_spleen/', mode="nearest")
-            saver.save(outputs[0,...], meta_data={'affine': np.eye(4), 'filename_or_obj': 'mask'})
+            saver.save(outputs[0,...], meta_data={'affine': np.eye(4), 'filename_or_obj': 'preds'})
 
         if device == 'cuda':
             torch.cuda.empty_cache()
