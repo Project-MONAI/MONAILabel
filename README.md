@@ -27,10 +27,8 @@ cd /workspace/MONAILabel
 
 pip install -r requirements.txt
 
-# Download sample pre-trained models
-# https://drive.google.com/drive/folders/1QNEtb3InzpEve53xTWCmxe_HnR2cImUv?usp=sharing
-cd /workspace/MONAILabel/sample-apps/segmentation_spleen
-unzip model.zip && rm model.zip
+cd /workspace/MONAILabel/sample-apps/segmentation_spleen/model
+# download models from g-drive and copy here...
 
 # Download MSD Datasets from
 mkdir -p /workspace/datasets

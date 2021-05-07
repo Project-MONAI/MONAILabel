@@ -34,7 +34,7 @@ class MyActiveLearning(ActiveLearning):
     Consider implementing a light version of TTA presented in this paper: https://arxiv.org/pdf/2007.00833.pdf
     """
 
-    def __init__(self, path, network):
+    def __init__(self, path, network=None):
         self.path = path
         self.network = network
         self.num_examples = 2  # Number of augmented samples

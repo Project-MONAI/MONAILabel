@@ -11,9 +11,8 @@ if [[ "${app_dir}" == "" ]]; then
   exit 1
 fi
 
-requirements_uuid=$(uuidgen)
 
-pushd "$app_dir"
+pushd "$app_dir" > /dev/null
 
 if [[ -f requirements.txt ]]; then
   if [[ ! -d .venv ]]; then
@@ -25,19 +24,23 @@ if [[ -f requirements.txt ]]; then
   source .venv/bin/activate || ( python3 -m venv .venv && source .venv/bin/activate )
 
   # always ensure the user packages are up to date
-  python -m pip install --upgrade pip
-  cat "$(dirname "$(readlink -f "$0")")/user-requirements.txt" <(echo) requirements.txt >> "requirements-${requirements_uuid}.txt"
-  python -m pip install -r "requirements-${requirements_uuid}.txt"
-  rm "requirements-${requirements_uuid}.txt"
+  python -m pip install --upgrade pip > /dev/null
 
+  tmpfile=$(mktemp /tmp/requirements_XXXXXX.txt)
+  cat "$(dirname "$(readlink -f "$0")")/user-requirements.txt" <(echo) requirements.txt >> ${tmpfile}
+
+  echo "Installing PIP requirements"
+  python -m pip install -r ${tmpfile} > /dev/null
   if [[ $? -ne 0 ]]; then
     echo "Failed to initialize APP venv"
+    rm ${tmpfile}
     deactivate
     exit 1
   fi
+  rm ${tmpfile}
 fi
 
-popd
+popd > /dev/null
 
 export PYTHONPATH=${PYTHONPATH}:${DIR}:${app_dir}
 echo "Using PYTHONPATH:: ${PYTHONPATH}"

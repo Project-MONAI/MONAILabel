@@ -1,4 +1,5 @@
 import logging
+import os
 from abc import abstractmethod
 
 import torch
@@ -10,7 +11,9 @@ from monai.handlers import (
     CheckpointSaver,
     MeanDice,
     ValidationHandler,
-    LrScheduleHandler)
+    LrScheduleHandler,
+    CheckpointLoader
+)
 from monai.inferers import SimpleInferer
 from monai.losses import DiceLoss
 from monailabel.utils.train import TrainTask
@@ -28,6 +31,8 @@ class BasicTrainSegmentationTask(TrainTask):
             output_dir,
             data_list,
             network,
+            load_path=None,
+            load_dict=None,
             val_split=0.2,
             device='cuda',
             lr=0.0001,
@@ -37,12 +42,16 @@ class BasicTrainSegmentationTask(TrainTask):
             val_interval=1,
             val_batch_size=1,
             val_num_workers=1,
+            final_filename='checkpoint_final.pt',
+            key_metric_filename="model.pt"
     ):
         """
 
         :param output_dir: Output to save the model checkpoints, events etc...
         :param data_list: List of dictionary that normally contains {image, label}
         :param network: If None then UNet with channels(16, 32, 64, 128, 256) is used
+        :param load_path: Initialize model from existing checkpoint
+        :param load_dict: Provide dictionary to load from checkpoint.  If None, then `net` will be loaded
         :param val_split: Split ratio for validation dataset if `validation` field is not found in `data_list`
         :param device: device name
         :param lr: Learning Rate (LR)
@@ -52,6 +61,7 @@ class BasicTrainSegmentationTask(TrainTask):
         :param val_interval: validation interval (run every x epochs)
         :param val_batch_size: batch size for validation step
         :param val_num_workers: number of workers for validation step
+        :param final_filename: name of final checkpoint that will be saved
         """
         super().__init__()
         self._output_dir = output_dir
@@ -66,6 +76,8 @@ class BasicTrainSegmentationTask(TrainTask):
 
         self._device = torch.device(device)
         self._network = network
+        self._load_path = load_path
+        self._load_dict = load_dict
 
         self._optimizer = torch.optim.Adam(self._network.parameters(), lr=lr)
         self._loss_function = DiceLoss(to_onehot_y=True, softmax=True)
@@ -77,6 +89,8 @@ class BasicTrainSegmentationTask(TrainTask):
         self._val_interval = val_interval
         self._val_batch_size = val_batch_size
         self._val_num_workers = val_num_workers
+        self._final_filename = final_filename
+        self._key_metric_filename = key_metric_filename
 
     def device(self):
         return self._device
@@ -109,15 +123,32 @@ class BasicTrainSegmentationTask(TrainTask):
         handlers = [
             LrScheduleHandler(lr_scheduler=lr_scheduler, print_lr=True),
             StatsHandler(tag_name="train_loss", output_transform=lambda x: x["loss"]),
-            TensorBoardStatsHandler(log_dir=self._output_dir, tag_name="train_loss",
-                                    output_transform=lambda x: x["loss"]),
-            CheckpointSaver(save_dir=self._output_dir, save_dict={"net": self.network(), "opt": self.optimizer()},
-                            save_interval=self._train_save_interval),
+            TensorBoardStatsHandler(
+                log_dir=self._output_dir,
+                tag_name="train_loss",
+                output_transform=lambda x: x["loss"]
+            ),
+            CheckpointSaver(
+                save_dir=self._output_dir,
+                save_dict={"model": self.network(), "optimizer": self.optimizer()},
+                save_interval=self._train_save_interval,
+                save_final=True,
+                final_filename=self._final_filename,
+                save_key_metric=True,
+                key_metric_filename=self._key_metric_filename,
+            ),
         ]
 
         eval = self.evaluator()
         if eval:
             handlers.append(ValidationHandler(validator=eval, interval=self._val_interval, epoch_level=True))
+
+        if self._load_path and os.path.exists(self._load_path):
+            handlers.append(CheckpointLoader(
+                load_path=self._load_path,
+                load_dict={"model": self.network()} if self._load_dict is None else self._load_dict
+            ))
+
         return handlers
 
     def train_additional_metrics(self):
