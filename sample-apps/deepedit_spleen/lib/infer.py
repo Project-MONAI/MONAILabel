@@ -58,16 +58,17 @@ class Segmentation(InferenceTask):
 
     def pre_transforms(self):
         return [
-                LoadImaged(keys=('image')),
-                AddChanneld(keys=('image')),
-                Spacingd(keys=["image"], pixdim=(1.0, 1.0, 1.0), mode=("bilinear")),
-                Orientationd(keys=["image"], axcodes="RAS"),
-                NormalizeIntensityd(keys='image'),
-                CropForegroundd(keys='image', source_key='image', select_fn=lambda x: x > 1.3, margin=3), # select_fn and margin are Task dependant
-                Resized(keys=('image'), spatial_size=(128,128,128), mode=('area')),
-                AddEmptyGuidanced(image='image'),
-                ToTensord(keys=('image'))
-               ]
+            LoadImaged(keys='image'),
+            AddChanneld(keys='image'),
+            Spacingd(keys="image", pixdim=(1.0, 1.0, 1.0), mode="bilinear"),
+            Orientationd(keys="image", axcodes="RAS"),
+            NormalizeIntensityd(keys='image'),
+            CropForegroundd(keys='image', source_key='image', select_fn=lambda x: x > 1.3, margin=3),
+            # select_fn and margin are Task dependant
+            Resized(keys='image', spatial_size=(128, 128, 128), mode='area'),
+            AddEmptyGuidanced(image='image'),
+            ToTensord(keys='image')
+        ]
 
     def inferer(self):
         return SimpleInferer()
@@ -82,6 +83,7 @@ class Segmentation(InferenceTask):
             AsDiscreted(keys='pred', threshold_values=True, logit_thresh=0.51),
             SqueezeDimd(keys='pred', dim=0),
             ToNumpyd(keys='pred'),
+            Restored(keys='pred', ref_image='image'),
         ]
 
 
@@ -116,19 +118,22 @@ class Deepgrow(InferenceTask):
     def pre_transforms(self):
         return [
             LoadImaged(keys='image'),
-            # Spacingd(keys='image', pixdim=[1.0, 1.0, 1.0], mode='bilinear'), # The inverse of this transform causes some issues
-            Orientationd(keys="image", axcodes="RAS"),
+            # The inverse of this transform causes some issues
+            # Spacingd(keys='image', pixdim=[1.0, 1.0, 1.0], mode='bilinear'),
             AddGuidanceFromPointsd(ref_image='image', guidance='guidance', dimensions=3),
             AddChanneld(keys='image'),
             NormalizeIntensityd(keys='image'),
-            # CropForegroundd(keys=('image'), source_key='image', select_fn=lambda x: x > 1.3, margin=3), # For Spleen -- NOT NEEDED - ITS DOESN'T CONTRIBUTE
             Resized(keys='image', spatial_size=self.model_size, mode='area'),
             ResizeGuidanceCustomd(guidance='guidance', ref_image='image'),
             AddGuidanceSignald(image='image', guidance='guidance'),
+            ToTensord(keys='image'),
         ]
 
     def inferer(self):
         return SimpleInferer()
+
+    def inverse_transforms(self):
+        return []  # Self-determine from the list of pre-transforms provided
 
     def post_transforms(self):
         return [
@@ -137,4 +142,5 @@ class Deepgrow(InferenceTask):
             AsDiscreted(keys='pred', threshold_values=True, logit_thresh=0.51),
             SqueezeDimd(keys='pred', dim=0),
             ToNumpyd(keys='pred'),
+            Restored(keys='pred', ref_image='image'),
         ]
