@@ -47,7 +47,7 @@
     ]
   },
   "loggers": {
-    "training": {
+    "task_train": {
       "level": "INFO",
       "propagate": false,
       "handlers": [

@@ -26,13 +26,17 @@ class InferenceTask:
     Basic Inference Task Helper
     """
 
-    def __init__(self, path, network, type: InferType, labels, dimension, description):
+    def __init__(self, path, network, type: InferType, labels, dimension, description, input_key='image',
+                 output_label_key='pred', output_json_key='result'):
         """
         :param path: Model File Path
         :param network: Model Network (e.g. monai.networks.xyz).  None in case if you use TorchScript (torch.jit).
         :param type: Type of Infer (segmentation, deepgrow etc..)
         :param dimension: Input dimension
         :param description: Description
+        :param input_key: Input key for running inference
+        :param output_label_key: Output key for storing result/label of inference
+        :param output_json_key: Output key for storing result/label of inference
         """
         self.path = path
         self.network = network
@@ -40,6 +44,9 @@ class InferenceTask:
         self.labels = labels
         self.dimension = dimension
         self.description = description
+        self.input_key = input_key
+        self.output_label_key = output_label_key
+        self.output_json_key = output_json_key
 
         self._networks = {}
 
@@ -71,6 +78,25 @@ class InferenceTask:
 
         """
         pass
+
+    def inverse_transforms(self):
+        """
+        Provide List of inverse-transforms.  They are normally subset of pre-transforms.
+        This task is performed on output_label (using the references from input_key)
+
+        Return one of the following.
+            - None: Return None to disable running any inverse transforms (default behavior).
+            - Empty: Return [] to run all applicable pre-transforms which has inverse method
+            - list: Return list of specific pre-transforms names/classes to run inverse method
+
+            For Example::
+
+                return [
+                    monai.transforms.Spacingd,
+                ]
+
+        """
+        return None
 
     @abstractmethod
     def post_transforms(self):
@@ -121,12 +147,17 @@ class InferenceTask:
         device = request.get('device', 'cuda')
 
         start = time.time()
-        data = self.run_pre_transforms(data, self.pre_transforms())
+        pre_transforms = self.pre_transforms()
+        data = self.run_pre_transforms(data, pre_transforms)
         latency_pre = time.time() - start
 
         start = time.time()
         data = self.run_inferer(data, device=device)
         latency_inferer = time.time() - start
+
+        start = time.time()
+        data = self.run_invert_transforms(data, pre_transforms, self.inverse_transforms())
+        latency_invert = time.time() - start
 
         start = time.time()
         data = self.run_post_transforms(data, self.post_transforms())
@@ -138,8 +169,9 @@ class InferenceTask:
 
         latency_total = time.time() - begin
         logger.info(
-            "++ Latencies => Total: {:.4f}; Pre: {:.4f}; Inferer: {:.4f}; Post: {:.4f}; Write: {:.4f}".format(
-                latency_total, latency_pre, latency_inferer, latency_post, latency_write))
+            "++ Latencies => Total: {:.4f}; "
+            "Pre: {:.4f}; Inferer: {:.4f}; Invert: {:.4f}; Post: {:.4f}; Write: {:.4f}".format(
+                latency_total, latency_pre, latency_inferer, latency_invert, latency_post, latency_write))
 
         logger.info('Result File: {}'.format(result_file_name))
         logger.info('Result Json: {}'.format(result_json))
@@ -148,10 +180,32 @@ class InferenceTask:
     def run_pre_transforms(self, data, transforms):
         return self.run_transforms(data, transforms, log_prefix='PRE')
 
+    def run_invert_transforms(self, data, pre_transforms, names):
+        if names is None:
+            return data
+
+        pre_names = dict()
+        transforms = []
+        for t in reversed(pre_transforms):
+            if hasattr(t, 'inverse'):
+                pre_names[t.__class__.__name__] = t
+                transforms.append(t)
+
+        # Run only selected/given
+        if len(names) > 0:
+            transforms = [pre_transforms[n if isinstance(n, str) else n.__name__] for n in names]
+
+        d = copy.deepcopy(dict(data))
+        d[self.input_key] = data[self.output_label_key]
+
+        d = self.run_transforms(d, transforms, inverse=True, log_prefix='INV')
+        data[self.output_label_key] = d[self.input_key]
+        return data
+
     def run_post_transforms(self, data, transforms):
         return self.run_transforms(data, transforms, log_prefix='POST')
 
-    def run_inferer(self, data, convert_to_batch=True, device='cuda', input_key='image', output_key='pred'):
+    def run_inferer(self, data, convert_to_batch=True, device='cuda'):
         """
         Run Inferer over pre-processed Data.  Derive this logic to customize the normal behavior.
         In some cases, you want to implement your own for running chained inferers over pre-processed data
@@ -159,19 +213,25 @@ class InferenceTask:
         :param data: pre-processed data
         :param convert_to_batch: convert input to batched input
         :param device: device type run load the model and run inferer
-        :param input_key: input key in data to feed it to inferer
-        :param output_key: output key to store the predictions
         :return: updated data with output_key stored that will be used for post-processing
         """
         if not os.path.exists(os.path.join(self.path)):
             raise MONAILabelException(MONAILabelError.INFERENCE_ERROR, f"Model Path ({self.path}) does not exist")
 
-        inputs = data[input_key]
+        inputs = data[self.input_key]
         inputs = inputs if torch.is_tensor(inputs) else torch.from_numpy(inputs)
         inputs = inputs[None] if convert_to_batch else inputs
         inputs = inputs.cuda() if device == 'cuda' else inputs
 
-        network = self._networks.get(device)
+        cached = self._networks.get(device)
+        statbuf = os.stat(self.path)
+        network = None
+        if cached:
+            if statbuf.st_mtime == cached[1]:
+                network = cached[0]
+            else:
+                logger.info(f"Reload model from cache.  Prev ts: {cached[1]}; Current ts: {statbuf.st_mtime}")
+
         if network is None:
             if self.network:
                 network = self.network
@@ -181,7 +241,7 @@ class InferenceTask:
 
             network = network.cuda() if device == 'cuda' else network
             network.eval()
-            self._networks[device] = network
+            self._networks[device] = (network, statbuf.st_mtime)
 
         inferer = self.inferer()
         logger.info("Running Inferer:: {}".format(inferer.__class__.__name__))
@@ -192,17 +252,15 @@ class InferenceTask:
             torch.cuda.empty_cache()
 
         outputs = outputs[0] if convert_to_batch else outputs
-        data[output_key] = outputs
+        data[self.output_label_key] = outputs
         return data
 
-    def writer(self, data, label='pred', text='result', extension=None, dtype=None):
+    def writer(self, data, extension=None, dtype=None):
         """
         You can provide your own writer.  However this writer saves the prediction/label mask to file
         and fetches result json
 
         :param data: typically it is post processed data
-        :param label: label that needs to be written
-        :param text: text field from data which represents result params
         :param extension: output label extension
         :param dtype: output label dtype
         :return: tuple of output_file and result_json
@@ -213,8 +271,11 @@ class InferenceTask:
         if dtype is not None:
             data['result_dtype'] = dtype
 
-        writer = Writer(label=label, json=text)
+        writer = Writer(label=self.output_label_key, json=self.output_json_key)
         return writer(data)
+
+    def clear(self):
+        self._networks.clear()
 
     @staticmethod
     def dump_data(data):
@@ -238,12 +299,13 @@ class InferenceTask:
         return '; '.join(shape_info)
 
     @staticmethod
-    def run_transforms(data, transforms, log_prefix='POST'):
+    def run_transforms(data, transforms, inverse=False, log_prefix='POST'):
         """
         Run Transforms
 
         :param data: Input data dictionary
         :param transforms: List of transforms to run
+        :param inverse: Run inverse instead of call/forward function
         :param log_prefix: Logging prefix (POST or PRE)
         :return: Processed data after running transforms
         """
@@ -258,11 +320,19 @@ class InferenceTask:
             start = time.time()
 
             InferenceTask.dump_data(data)
-            if callable(t):
+            if inverse:
+                if hasattr(t, 'inverse'):
+                    data = t.inverse(data)
+                else:
+                    raise MONAILabelException(
+                        MONAILabelError.INFERENCE_ERROR,
+                        "Transformer '{}' has no invert method".format(t.__class__.__name__))
+            elif callable(t):
                 data = t(data)
             else:
-                raise MONAILabelException(MONAILabelError.INFERENCE_ERROR, "Transformer '{}' is not callable".format(
-                    t.__class__.__name__))
+                raise MONAILabelException(
+                    MONAILabelError.INFERENCE_ERROR,
+                    "Transformer '{}' is not callable".format(t.__class__.__name__))
 
             logger.info("{} - Transform ({}): Time: {:.4f}; {}".format(
                 log_prefix, name, float(time.time() - start), InferenceTask._shape_info(data)))

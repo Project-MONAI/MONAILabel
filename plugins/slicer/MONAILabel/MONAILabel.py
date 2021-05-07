@@ -657,7 +657,7 @@ class MONAILabelWidget(ScriptedLoadableModuleWidget, VTKObservationMixin):
                 status.get("result", status.get("details", [])[-1])
             )
             slicer.util.infoDisplay(msg, detailedText=json.dumps(status, indent=2))
-            self.updateGUIFromParameterNode()
+        self.updateGUIFromParameterNode()
 
         logging.info("Time consumed by next_sample: {0:3.1f}".format(time.time() - start))
 
@@ -693,6 +693,7 @@ class MONAILabelWidget(ScriptedLoadableModuleWidget, VTKObservationMixin):
         else:
             slicer.util.errorDisplay("No Training Tasks Found\t")
 
+        self.updateGUIFromParameterNode()
         logging.info("Time consumed by next_sample: {0:3.1f}".format(time.time() - start))
 
     def onNextSampleButton(self):

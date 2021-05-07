@@ -45,7 +45,7 @@ def task_func(task, method):
     task["status"] = "RUNNING"
     task["details"] = deque(maxlen=20)
 
-    plogger = logging.getLogger("training")
+    plogger = logging.getLogger(f"task_{method}")
     while process.poll() is None:
         line = process.stdout.readline()
         line = line.rstrip()

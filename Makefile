@@ -4,9 +4,6 @@ IMAGE=monai/monai-label
 init:
 	pip3 install -r requirements.txt
 
-proto:
-	cd server/internal/grpc/protos && python3 -m grpc_tools.protoc -I. --python_out=. --grpc_python_out=. *.proto
-
 docker: clean
 	DOCKER_BUILDKIT=1 docker build --network=host -t $(IMAGE):$(TAG) -f Dockerfile .
 
@@ -20,6 +17,6 @@ clean:
 	@echo "Running clean up...."
 	@rm -rf build dist *.egg-info
 	@find . -type d -name  "__pycache__" -exec rm -r {} +
-	@rm -rf apps/*/logs
-	@rm -rf apps/*/.venv
-	@rm -rf apps/*/model/train_*
+	@rm -rf sample-apps/*/logs
+	@rm -rf sample-apps/*/.venv
+	@rm -rf sample-apps/*/model/*/

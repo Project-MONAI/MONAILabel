@@ -13,11 +13,12 @@ logger = logging.getLogger(__name__)
 
 class MyApp(MONAILabelApp):
     def __init__(self, app_dir, studies):
-        model_dir = os.path.join(app_dir, "model")
+        self.model_dir = os.path.join(app_dir, "model")
+
         infers = {
-            "deepgrow_2d": InferDeepgrow2D(os.path.join(model_dir, "deepgrow_2d.ts")),
-            "deepgrow_3d": InferDeepgrow3D(os.path.join(model_dir, "deepgrow_3d.ts")),
-            "segmentation_spleen": MyInfer(os.path.join(model_dir, "segmentation_spleen.ts")),
+            "deepgrow_2d": InferDeepgrow2D(os.path.join(self.model_dir, "deepgrow_2d.ts")),
+            "deepgrow_3d": InferDeepgrow3D(os.path.join(self.model_dir, "deepgrow_3d.ts")),
+            "segmentation_spleen": MyInfer(os.path.join(self.model_dir, "segmentation_spleen.ts")),
         }
 
         super().__init__(
@@ -28,6 +29,7 @@ class MyApp(MONAILabelApp):
         )
 
     def train(self, request):
+        name = request.get('name', 'model_01')
         epochs = request.get('epochs', 1)
         amp = request.get('amp', True)
         device = request.get('device', 'cuda')
@@ -36,7 +38,7 @@ class MyApp(MONAILabelApp):
 
         logger.info(f"Training request: {request}")
         task = MyTrain(
-            output_dir=os.path.join(self.app_dir, "train", "train_0"),
+            output_dir=os.path.join(self.model_dir, name),
             data_list=self.datastore().datalist(),
             network=UNet(
                 dimensions=3,
