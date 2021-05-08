@@ -5,16 +5,34 @@ import io
 import pathlib
 import atexit
 
+import torch
 import yaml
 
 
 from lib import MyInfer, MyTrain, MyActiveLearning
+from lib.transforms import AddUnaryTermd, ApplyCRFPostProcd
+from monai.transforms import (
+    LoadImaged,
+    AsChannelFirstd,
+    AddChanneld,
+    Spacingd,
+    Activationsd,
+    AsDiscreted,
+    ToNumpyd,
+    NormalizeIntensityd,
+    AsChannelLastd,
+    SqueezeDimd,
+    ScaleIntensityRanged,
+    ToTensord,
+    SaveImaged,
+)
 from monai.networks.layers import Norm
 from monai.networks.nets import UNet
 from monailabel.interfaces.app import MONAILabelApp
 from monailabel.utils.infer.deepgrow_2d import InferDeepgrow2D
 from monailabel.utils.infer.deepgrow_3d import InferDeepgrow3D
 from monailabel.interfaces.exception import MONAILabelException, MONAILabelError
+from monailabel.utils.others.post import Restored, BoundingBoxd
 
 logger = logging.getLogger(__name__)
 
@@ -146,22 +164,76 @@ class MyApp(MONAILabelApp):
         print('*'*100)
         # prepare data dictonary
         data = {}
-        # TODO: rename label to scribbles
-        label = io.BytesIO(open(request['label'], 'rb').read())
+        scribbles = io.BytesIO(open(request['scribbles'], 'rb').read())
 
-        scribbles_in = tempfile.NamedTemporaryFile(suffix=".nii.gz").name
-        with open(scribbles_in, 'wb') as f:
-            label.seek(0)
-            f.write(label.getbuffer())       
+        scribbles_file = tempfile.NamedTemporaryFile(suffix=".nii.gz").name
+        with open(scribbles_file, 'wb') as f:
+            scribbles.seek(0)
+            f.write(scribbles.getbuffer())       
         img_name = os.path.basename(request['image']).rsplit('.')[0]
         
-        data['scribbles'] = scribbles_in
+        data['scribbles'] = scribbles_file
         data['logits'] = self.logits_files[img_name]['file']
         data['image'] = request['image']
 
-        print('scribbles: {}\nlogits: {}\n img_name: {}\n\n'.format(data['scribbles'], data['logits'], data['image']))
+        print('scribbles: {}\nlogits: {}\nimg_name: {}\n\n'.format(data['scribbles'], data['logits'], data['image']))
 
-        # os.unlink(scribbles_in)
+        def apply_tx(_data, tx):
+            to_print = ''
+            print('Applying {}'.format(tx.__class__.__name__))
+            print('Before tx:')
+            for key in sorted(_data.keys()):
+                if hasattr(_data[key], 'shape'):
+                    to_print += '{}: {} | '.format(key, _data[key].shape)
+            print(to_print)
+            _data = tx(_data)
+            to_print = ''
+            print('After tx:')
+            for key in sorted(_data.keys()):
+                if hasattr(_data[key], 'shape'):
+                    to_print += '{}: {} | '.format(key, _data[key].shape)
+            print(to_print)
+            print()
+            return _data
+
+        pre_transforms = [
+            LoadImaged(keys=['image', 'logits', 'scribbles']),
+            AddChanneld(keys=['image', 'logits', 'scribbles']),
+            # Spacingd(keys=['image', 'logits', 'scribbles'], pixdim=[1.0, 1.0, 1.0]),
+            ScaleIntensityRanged(keys='image', a_min=-57, a_max=164, b_min=0.0, b_max=1.0, clip=True),
+            AddUnaryTermd(ref_prob='logits', unary="unary", scribbles="scribbles", channel_dim=0, scale_infty=1),
+            AddChanneld(keys=['image', 'unary']),
+            ToTensord(keys=['image', 'logits', 'unary'])
+
+        ]
+
+        post_transforms = [
+            ApplyCRFPostProcd(unary='unary', pairwise='image', post_proc_label='pred', device=torch.device('cuda')),
+            # AddChanneld(keys='pred'),
+            # CopyItemsd(keys='pred', times=1, names='logits'),
+            # Activationsd(keys='pred', softmax=True),
+            # AsDiscreted(keys='pred', argmax=True),
+            # SqueezeDimd(keys=['pred', 'logits'], dim=0),
+            # ToNumpyd(keys=['pred', 'logits']),
+            # Restored(keys='pred', ref_image='image'),
+            # BoundingBoxd(keys='pred', result='result', bbox='bbox'),
+            # SaveImaged(keys='pred', output_dir='/tmp', output_postfix='postproc', output_ext='.nii.gz', resample=False),
+        ]
+
+        for prtx in pre_transforms:
+            data = apply_tx(data, prtx)
+        import numpy as np
+        print(np.unique(data['scribbles']))
+        for potx in post_transforms:
+            data = apply_tx(data, potx)
+
+        # os.unlink(scribbles_file)
+        print(data['logits_meta_dict']['affine'])
+        print(data['scribbles_meta_dict']['affine'])
+        print(data['image_meta_dict']['affine'])
+        import nibabel as nib
+        results_img = nib.Nifti1Image(data['pred'], data['image_meta_dict']['affine'])
+        nib.save(results_img, '/tmp/postproclabel.nii.gz')
 
         # file_ext = ''.join(pathlib.Path(request['label']).suffixes)
         # segments = request.get('segments')
@@ -179,5 +251,4 @@ class MyApp(MONAILabelApp):
         #     "image": request.get("image"),
         #     "label": label_file,
         # }
-
-        return {"label": scribbles_in, "params": {'bbox': [[167, 10], [357, 83]]}}
+        return {"label": scribbles_file, "params": {'bbox': [[167, 10], [357, 83]]}}

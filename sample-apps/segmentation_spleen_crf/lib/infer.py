@@ -56,8 +56,8 @@ class MyInfer(InferenceTask):
     def post_transforms(self):
         return [
             AddChanneld(keys='pred'),
-            CopyItemsd(keys='pred', times=1, names='logits'),
             Activationsd(keys='pred', softmax=True),
+            CopyItemsd(keys='pred', times=1, names='logits'),
             AsDiscreted(keys='pred', argmax=True),
             SqueezeDimd(keys=['pred', 'logits'], dim=0),
             ToNumpyd(keys=['pred', 'logits']),
@@ -93,6 +93,9 @@ class MyInfer(InferenceTask):
         data = self.run_post_transforms(data, self.post_transforms())
         latency_post = time.time() - start
 
+        import numpy as np
+        print(np.unique(data['logits']))
+        print(data.keys())
         start = time.time()
         result_file_name, result_json = self.writer(data)
         # save logits file temporarily somewhere
@@ -113,3 +116,4 @@ class MyInfer(InferenceTask):
         result_json['logits_file_name'] = logits_file_name
         result_json['logits_json'] = logits_json
         return result_file_name, result_json
+    

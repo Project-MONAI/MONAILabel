@@ -8,6 +8,7 @@ from typing import Optional
 
 from fastapi import APIRouter
 from fastapi import File, UploadFile
+from fastapi import HTTPException
 
 from monailabel.config import settings
 from monailabel.interfaces import MONAILabelApp
@@ -62,17 +63,18 @@ cached_digest = dict()
 
 
 @router.post("/scrib", summary="Save Finished Label")
-async def postproc_label(method: str, image: str, label: UploadFile = File(...)):
+async def postproc_label(method: str, image: str, scribbles: UploadFile = File(...)):
     file_ext = ''.join(pathlib.Path(image).suffixes)
-    label_file = tempfile.NamedTemporaryFile(suffix=file_ext).name
+    scribbles_file = tempfile.NamedTemporaryFile(suffix=file_ext).name
 
-    with open(label_file, "wb") as buffer:
-        shutil.copyfileobj(label.file, buffer)
-
+    with open(scribbles_file, "wb") as buffer:
+        shutil.copyfileobj(scribbles.file, buffer)
+    print('HERE')
     instance: MONAILabelApp = get_app_instance()
     result = instance.postproc_label({
+        "method": method,
         "image": image,
-        "label": label_file
+        "scribbles": scribbles_file
     })
 
     if result is None:

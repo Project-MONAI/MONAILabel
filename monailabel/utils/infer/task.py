@@ -229,7 +229,7 @@ class InferenceTask:
             logger.debug('******************************************************************************')
 
     @staticmethod
-    def _shape_info(data, keys=('image', 'label', 'pred', 'model')):
+    def _shape_info(data, keys=('image', 'label', 'pred', 'model', 'logits')):
         shape_info = []
         for key in keys:
             val = data.get(key)

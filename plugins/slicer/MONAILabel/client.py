@@ -77,7 +77,7 @@ class MONAILabelClient:
             MONAILabelUtils.urllib_quote_plus(method),
             MONAILabelUtils.urllib_quote_plus(image_in))
         fields = {}
-        files = {'label': label_in}
+        files = {'scribbles': label_in}
 
         status, response, _ = MONAILabelUtils.http_multipart('POST', self._server_url, selector, fields, files)
         if status != 200:
