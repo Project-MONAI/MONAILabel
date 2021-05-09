@@ -72,7 +72,7 @@ class LocalDatastore(Datastore):
                     },
                     "labels": {
                         "type": "array",
-                        "minItems": "0",
+                        "minItems": 0,
                         "properties": {
                             "stage": {
                                 "type": "string",
