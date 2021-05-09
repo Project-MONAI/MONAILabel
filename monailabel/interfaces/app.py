@@ -125,16 +125,26 @@ class MONAILabelApp:
                 For example::
 
                     {
-                        "strategy": "random,
+                        "strategy": "random",
+                        "device": "cuda"
+                        "model": "segmentation_spleen",
+                        "params": {},
                     }
 
         Returns:
             JSON containing next image info that is selected for labeling
         """
-        image, label = self.active_learning(request, self.datastore())
+        image = self.active_learning(request, self.datastore())
         result = {
             "image": image,
         }
+
+        label = None
+        if request.get('infer'):
+            label = self.infer({
+                **request,
+                'image': image,
+            })
 
         if label is not None:
 
