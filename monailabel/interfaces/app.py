@@ -128,6 +128,7 @@ class MONAILabelApp:
                         "strategy": "random",
                         "device": "cuda"
                         "model": "segmentation_spleen",
+                        "infer": "true/false",
                         "params": {},
                     }
 
@@ -140,7 +141,7 @@ class MONAILabelApp:
         }
 
         label = None
-        if request.get('infer'):
+        if request.get('infer', "false") == "true":
             label = self.infer({
                 **request,
                 'image': image,
