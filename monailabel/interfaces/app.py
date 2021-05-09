@@ -7,7 +7,7 @@ from abc import abstractmethod
 import yaml
 
 from monailabel.interfaces.activelearning import ActiveLearning
-from monailabel.interfaces.datastore import Datastore
+from monailabel.interfaces.datastore import Datastore, LabelStage
 from monailabel.interfaces.datastore_local import LocalDatastore
 from monailabel.interfaces.exception import MONAILabelException, MONAILabelError
 
@@ -131,8 +131,24 @@ class MONAILabelApp:
         Returns:
             JSON containing next image info that is selected for labeling
         """
-        image = self.active_learning(request, self.datastore())
-        return {"image": image}
+        image, label = self.active_learning(request, self.datastore())
+        result = {
+            "image": image,
+        }
+
+        if label is not None:
+
+            img_name = os.path.basename(request['image']).rsplit('.')[0]
+            file_ext = ''.join(pathlib.Path(request['label']).suffixes)
+            segments = self.info().get("labels", [])
+
+            label_id = f"label_{segments}_{img_name}{file_ext}"
+            label_stream = io.BytesIO(open(label, 'rb').read())
+
+            self.datastore().save_label(image, LabelStage.ORIGINAL, label_id, label_stream)
+            result.update({"label": label})
+
+        return result
 
     def save_label(self, request):
         """
@@ -165,7 +181,7 @@ class MONAILabelApp:
         segments = "+".join(segments) if len(segments) else "unk"
 
         label_id = f"label_{segments}_{img_name}{file_ext}"
-        label_file = self.datastore().save_label(request['image'], label_id, label)
+        label_file = self.datastore().save_label(request['image'], LabelStage.SAVED, label_id, label)
 
         return {
             "image": request.get("image"),

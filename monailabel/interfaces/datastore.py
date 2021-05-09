@@ -1,5 +1,12 @@
+from enum import Enum
 import io
 from abc import ABCMeta, abstractmethod
+from typing import List, Union, Dict
+
+
+class LabelStage(Enum):
+    ORIGINAL='original'
+    SAVED='saved'
 
 
 class Datastore(metaclass=ABCMeta):
@@ -20,12 +27,20 @@ class Datastore(metaclass=ABCMeta):
     @abstractmethod
     def description(self, description: str): pass
 
-    @property
     @abstractmethod
-    def info(self): pass
+    def datalist(self, full_path=True, flatten_labels=True) -> list: pass
 
     @abstractmethod
-    def update_label_info(self, label_id: str, description: str) -> dict: pass
+    def find_data_by_image(self, pattern: str) -> list: pass
+
+    @abstractmethod
+    def find_data_by_label(self, pattern: str) -> list: pass
+
+    @abstractmethod
+    def get_label_scores(self, label_id: str) -> List[Dict[str, Union[int, float]]]: pass
+
+    @abstractmethod
+    def get_unlabeled_images(self) -> list: pass
 
     @abstractmethod
     def list_images(self) -> list: pass
@@ -34,13 +49,8 @@ class Datastore(metaclass=ABCMeta):
     def list_labels(self) -> list: pass
 
     @abstractmethod
-    def find_objects(self, pattern: str, match_label: bool) -> list: pass
+    def save_label(self, image: str, label_stage: LabelStage, label_id: str, label: io.BytesIO, scores: List[Dict[str, Union[int, float]]]=[]) -> str: pass
 
     @abstractmethod
-    def save_label(self, image: str, label_id: str, label: io.BytesIO) -> str: pass
+    def set_label_score(self, label_id: str, score_name: str, score_value: Union[int, float]) -> None: pass
 
-    @abstractmethod
-    def get_unlabeled_images(self) -> list: pass
-
-    @abstractmethod
-    def datalist(self, full_path=True, flatten_labels=True) -> list: pass

@@ -3,11 +3,14 @@ import json
 import os
 import pathlib
 import re
+from typing import List, Union, Dict
 from uuid import uuid4
+
 
 from openapi_schema_validator import validate
 
-from monailabel.interfaces.datastore import Datastore
+from monailabel.interfaces.datastore import Datastore, LabelStage
+from monailabel.interfaces.exception import ImageNotFoundException, LabelNotFoundException
 
 
 class LocalDatastore(Datastore):
@@ -42,9 +45,6 @@ class LocalDatastore(Datastore):
     `save_label(self, image: str, label_id: str, label: io.BytesIO):`
         Save a new label into the dataset with a given `label_id`.
         `label_id` saved with this method must match one of the `label_ids` in the dataset metadata
-
-    `update_label_info(self, label_id: str, description: str) -> dict:`
-        Update (or add if it does not exist) dataset label metadata as {id: description} map
     """
 
     _schema = {
@@ -62,22 +62,6 @@ class LocalDatastore(Datastore):
                 "nullable": True,
                 "pattern": "^[0-9a-zA-Z_-\s]{5,256}$",
             },
-            "info": {
-                "type": "array",
-                "minItems": 0,
-                "properties": {
-                    "id": {
-                        "type": "string",
-                        "nullable": False,
-                        "pattern": "^[0-9a-zA-Z_-]{5,15}$",
-                    },
-                    "description": {
-                        "type": "string",
-                        "nullable": False,
-                        "pattern": "^[0-9a-zA-Z_-]{5,256}$",
-                    },
-                }
-            },
             "objects": {
                 "type": "array",
                 "minItems": 1,
@@ -87,19 +71,39 @@ class LocalDatastore(Datastore):
                         "pattern": "^\w{2048}",
                     },
                     "labels": {
-                        "type": "object",
-                        "minItems": 0,
+                        "type": "array",
+                        "minItems": "0",
                         "properties": {
-                            "id": {
+                            "stage": {
                                 "type": "string",
                                 "pattern": "^[0-9a-zA-Z_-]{5,15}",
+                                "nullable": False,
                             },
-                            "label": {
+                            "id": {
                                 "type": "string",
                                 "pattern": "^[0-9a-zA-Z_-]{2048}",
+                                "nullable": False,
                             },
+                            "path": {
+                                "type": "string",
+                                "pattern": "^[0-9a-zA-Z_-]{4096}",
+                                "nullable": False,
+                            },
+                            "scores": {
+                                "type": "array",
+                                "minItems": 0,
+                                "properties": {
+                                    "score_name": {
+                                        "type": "string",
+                                        "pattern": "^[0-9a-zA-Z_-]{5,15}",
+                                    },
+                                    "score_value": {
+                                        "type": "number",
+                                    }
+                                }
+                            }
                         }
-                    }
+                    },
                 }
             }
         },
@@ -143,7 +147,7 @@ class LocalDatastore(Datastore):
             })
 
             validate(self._dataset_config, LocalDatastore._schema)
-            self._update_dataset()
+            self._update_datastore_file()
 
     @property
     def name(self) -> str:
@@ -166,7 +170,7 @@ class LocalDatastore(Datastore):
         standard_name = ''.join(c.lower() if not c.isspace() else '-' for c in name)
         self._dataset_config.update({'name': standard_name})
         validate(self._dataset_config, LocalDatastore._schema)
-        self._update_dataset()
+        self._update_datastore_file()
 
     @property
     def description(self) -> str:
@@ -182,7 +186,7 @@ class LocalDatastore(Datastore):
         """
         self._dataset_config.update({'description': description})
         validate(self._dataset_config, LocalDatastore._schema)
-        self._update_dataset()
+        self._update_datastore_file()
 
     def list_images(self) -> list:
         """
@@ -196,7 +200,7 @@ class LocalDatastore(Datastore):
         """
         return [obj['labels'] for obj in self._dataset_config['objects']]
 
-    def find_objects(self, pattern: str, match_label: bool = False) -> list:
+    def find_data_by_image(self, pattern: str) -> list:
         """
         Find all the objects (image-[labels] pairings) that match the provided `pattern`
 
@@ -205,19 +209,9 @@ class LocalDatastore(Datastore):
         `pattern: str`
             a string to search the `image` fields of the dataset
 
-        `match_label:bool`
-            a boolean which, if set to true, will search for the same pattern in the `labels` field as well (default `False`)
-
         Returns:
 
-        a list of matching objects in the form of a list of dictionaries of the form
-        [{
-            'image': '...',
-            'labels': [
-                '...label1',
-                '...label2',
-            ]
-        },...]
+        a list of matching objects in the form of a list of dictionaries
         """
         if pattern is None:
             return self._dataset_config
@@ -227,7 +221,28 @@ class LocalDatastore(Datastore):
         for obj in self._dataset_config['objects']:
             if p.match(obj['image']) or p.match(os.path.join(self._dataset_path, obj['image'])):
                 matching_objects.append(obj)
-            if match_label and any([p.match(l) or p.match(os.path.join(self._dataset_path, l)) for l in obj['labels']]):
+        return matching_objects
+
+    def find_data_by_label(self, pattern: str) -> list:
+        """
+        Find all the objects (image-[labels] pairings) that match the provided `pattern`
+
+        Parameters:
+
+        `pattern: str`
+            a string to search the `image` fields of the dataset
+
+        Returns:
+
+        a list of matching objects in the form of a list of dictionaries
+        """
+        if pattern is None:
+            return self._dataset_config
+
+        p = re.compile(pattern)
+        matching_objects = []
+        for obj in self._dataset_config['objects']:
+            if any([p.match(l['id']) for l in obj['labels']]):
                 matching_objects.append(obj)
         return matching_objects
 
@@ -245,7 +260,7 @@ class LocalDatastore(Datastore):
                 images.append(os.path.join(self._dataset_path, obj['image']))
         return images
 
-    def save_label(self, image: str, label_id: str, label: io.BytesIO) -> str:
+    def save_label(self, image: str, label_stage: LabelStage, label_id: str, label: io.BytesIO, scores: List[Dict[str, Union[int, float]]]=[]) -> str:
         """
         Save the label for the given image in the dataset
 
@@ -266,15 +281,43 @@ class LocalDatastore(Datastore):
         the updated `label_id` (if there is a clash or the original `label_id` provided if not) prepended by any relative path
         to the `image` path provided in the parameters
         """
+
         label_path = None
+        image_exists = False
+
         for i, obj in enumerate(self._dataset_config['objects']):
 
             if image == obj['image'] or image == os.path.join(self._dataset_path, obj['image']):
+
+                image_exists = True
+
                 if label_id in obj['labels']:
                     label_id = str(uuid4().hex) + ''.join(pathlib.Path(label_id).suffixes)
 
                 label_path = os.path.join(os.path.dirname(obj['image']), label_id)
-                self._dataset_config['objects'][i]['labels'].append(label_path)
+
+                # if the user is adding a label to save the keep track of it and add it as a `SAVED` label
+                if label_stage == LabelStage.SAVED:
+
+                    num_labels = len(self._dataset_config['objects'][i]['labels'])
+                    updated_label_stage = f'{LabelStage.SAVED}-{num_labels:06}'
+
+                    self._dataset_config['objects'][i]['labels'].append({
+                        "stage" : updated_label_stage,
+                        "id": label_id,
+                        "path": label_path,
+                        "scores": scores,
+                    })
+
+                # the user is adding an initial label to compare against and generate a score later on
+                # the original label is overwritten; one may not have more than one ORIGINAL labels
+                elif label_stage == LabelStage.ORIGINAL:
+
+                    self._dataset_config['objects'][i]['labels'] = {
+                        "stage": LabelStage.ORIGINAL,
+                        "id": label_path,
+                        "scores": [],
+                    }
 
                 with open(os.path.join(self._dataset_path, label_path), 'wb') as f:
                     label.seek(0)
@@ -282,34 +325,13 @@ class LocalDatastore(Datastore):
 
                 break
 
+        if not image_exists:
+            raise ImageNotFoundException(f"Image {image} not found")
+
         validate(self._dataset_config, LocalDatastore._schema)
-        self._update_dataset()
+        self._update_datastore_file()
 
         return label_path
-
-    @property
-    def info(self) -> dict:
-        """
-        The `info` section of the dataset, containing any label information if available
-        """
-        return self._dataset_config.get('info')
-
-    def update_label_info(self, id: str, description: str) -> dict:
-        """
-        Update label info in the dataset
-        """
-
-        standard_id = ''.join(c.lower() for c in id if not c.isspace())
-
-        if self._dataset_config.get('info') is not None and id in self._dataset_config['info'].keys():
-            self._dataset_config['info'][id] = description
-
-        else:
-            self._dataset_config['info'].append({id: description})
-        validate(self._dataset_config, LocalDatastore._schema)
-        self._update_dataset()
-
-        return {standard_id: self._dataset_config['info'][standard_id]}
 
     @staticmethod
     def _list_files(path: str):
@@ -319,7 +341,7 @@ class LocalDatastore(Datastore):
             relative_file_paths.extend([os.path.join(base_dir, file) for file in files])
         return relative_file_paths
 
-    def _update_dataset(self):
+    def _update_datastore_file(self):
         with open(self._dataset_config_path, 'w') as f:
             json.dump(self._dataset_config, f, indent=2)
 
@@ -345,11 +367,40 @@ class LocalDatastore(Datastore):
                     for label in labels:
                         items.append({
                             "image": image,
-                            "label": self._get_path(label, full_path)
+                            "label": self._get_path(label['path'], full_path)
                         })
                 else:
                     items.append({
                         "image": image,
-                        "labels": [self._get_path(label, full_path) for label in labels]
+                        "labels": [self._get_path(label['path'], full_path) for label in labels]
                     })
         return items
+
+    def get_label_scores(self, label_id: str) -> List[Dict[str, Union[int, float]]]:
+
+        for obj in self._dataset_config['objects']:
+            labels = obj.get('labels')
+            if labels and len(labels):
+                for label in labels:
+                    if label['id'] == label_id:
+                        return label['scores']
+
+        raise LabelNotFoundException(f"Label {label_id} not found")
+
+    def set_label_score(self, label_id: str, score_name: str, score_value: Union[int, float]) -> None:
+
+        label_id_exists = False
+
+        for obj in self._dataset_config['objects']:
+            labels = obj.get('labels')
+            if labels and len(labels):
+                for i, label in enumerate(labels):
+                    if label['id'] == label_id:
+                        label_id_exists = True
+                        labels[i]['scores'].update({
+                            "score_name": score_name,
+                            "score_value": score_value
+                        })
+
+        if not label_id_exists:
+            raise LabelNotFoundException(f"Label {label_id} not found")

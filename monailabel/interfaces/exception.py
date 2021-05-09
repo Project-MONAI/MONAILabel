@@ -34,7 +34,14 @@ class MONAILabelException(Exception):
         self.error = error
         self.msg = msg
 
-class UnknownLabelIdException(MONAILabelException):
+
+class ImageNotFoundException(MONAILabelException):
+
+    def __init__(self, msg: str):
+        super().__init__(MONAILabelException.APP_ERROR, msg)
+
+
+class LabelNotFoundException(MONAILabelException):
 
     def __init__(self, msg: str):
         super().__init__(MONAILabelException.APP_ERROR, msg)
