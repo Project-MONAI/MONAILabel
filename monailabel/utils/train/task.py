@@ -4,8 +4,7 @@ import time
 from abc import abstractmethod
 
 import torch
-
-from monai.engines import SupervisedTrainer, SupervisedEvaluator
+from monai.engines import SupervisedEvaluator, SupervisedTrainer
 
 logger = logging.getLogger(__name__)
 
@@ -13,7 +12,6 @@ logger = logging.getLogger(__name__)
 # TODO:: Think of some better abstraction/generalization here... few abstracts can be removed
 #  And support Multi GPU
 class TrainTask:
-
     @abstractmethod
     def device(self):
         """
@@ -141,16 +139,20 @@ class TrainTask:
         return None
 
     def evaluator(self):
-        self._evalutor = SupervisedEvaluator(
-            device=self.device(),
-            val_data_loader=self.val_data_loader(),
-            network=self.network().to(self.device()),
-            inferer=self.val_inferer(),
-            post_transform=self.val_post_transforms(),
-            key_val_metric=self.val_key_metric(),
-            additional_metrics=self.val_additional_metrics(),
-            val_handlers=self.val_handlers()
-        ) if self.val_data_loader() else None
+        self._evalutor = (
+            SupervisedEvaluator(
+                device=self.device(),
+                val_data_loader=self.val_data_loader(),
+                network=self.network().to(self.device()),
+                inferer=self.val_inferer(),
+                post_transform=self.val_post_transforms(),
+                key_val_metric=self.val_key_metric(),
+                additional_metrics=self.val_additional_metrics(),
+                val_handlers=self.val_handlers(),
+            )
+            if self.val_data_loader()
+            else None
+        )
         return self._evalutor
 
     def __call__(self, max_epochs, amp):
@@ -179,23 +181,23 @@ class TrainTask:
                 d[k] = v.tolist() if torch.is_tensor(v) else v
 
         stats = trainer.get_train_stats()
-        stats['total_time'] = lapsed
-        stats['train_metrics'] = trainer.state.metrics
-        stats['train_metric_details'] = trainer.state.metric_details
-        stats['train_key_metric_name'] = trainer.state.key_metric_name
-        stats['train_best_metric'] = trainer.state.best_metric_epoch
-        stats['train_best_metric_epoch'] = trainer.state.best_metric_epoch
-        tensor_to_list(stats['train_metrics'])
-        tensor_to_list(stats['train_metric_details'])
+        stats["total_time"] = lapsed
+        stats["train_metrics"] = trainer.state.metrics
+        stats["train_metric_details"] = trainer.state.metric_details
+        stats["train_key_metric_name"] = trainer.state.key_metric_name
+        stats["train_best_metric"] = trainer.state.best_metric_epoch
+        stats["train_best_metric_epoch"] = trainer.state.best_metric_epoch
+        tensor_to_list(stats["train_metrics"])
+        tensor_to_list(stats["train_metric_details"])
 
         if self._evalutor:
-            stats['val_metrics'] = self._evalutor.state.metrics
-            stats['val_metric_details'] = self._evalutor.state.metric_details
-            stats['val_key_metric_name'] = self._evalutor.state.key_metric_name
-            stats['val_best_metric'] = self._evalutor.state.best_metric_epoch
-            stats['val_best_metric_epoch'] = self._evalutor.state.best_metric_epoch
-            tensor_to_list(stats['val_metrics'])
-            tensor_to_list(stats['val_metric_details'])
+            stats["val_metrics"] = self._evalutor.state.metrics
+            stats["val_metric_details"] = self._evalutor.state.metric_details
+            stats["val_key_metric_name"] = self._evalutor.state.key_metric_name
+            stats["val_best_metric"] = self._evalutor.state.best_metric_epoch
+            stats["val_best_metric_epoch"] = self._evalutor.state.best_metric_epoch
+            tensor_to_list(stats["val_metrics"])
+            tensor_to_list(stats["val_metric_details"])
 
         logger.info(f"Train Task Stats: {stats}")
         return stats

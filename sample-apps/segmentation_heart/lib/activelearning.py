@@ -2,28 +2,23 @@ import logging
 import os
 from functools import partial
 
+import monai
 import numpy as np
 import torch
-
-import monai
-from monai.data import (
-    list_data_collate,
-    DataLoader,
-    TestTimeAugmentation,
-)
+from monai.data import DataLoader, TestTimeAugmentation, list_data_collate
 from monai.inferers import sliding_window_inference
 from monai.transforms import (
     Activations,
-    EnsureChannelFirstd,
     AsDiscrete,
     Compose,
+    EnsureChannelFirstd,
     LoadImaged,
     NormalizeIntensityd,
     RandAffined,
     ToTensord,
 )
-from monailabel.interfaces import ActiveLearning
-from monailabel.interfaces import Datastore
+
+from monailabel.interfaces import ActiveLearning, Datastore
 from monailabel.interfaces.exception import MONAILabelError, MONAILabelException
 
 logger = logging.getLogger(__name__)
@@ -41,28 +36,38 @@ class MyActiveLearning(ActiveLearning):
         self.max_images = 3
 
         # Defining transforms
-        self.pre_transforms = Compose([
-            LoadImaged(keys=["image"]),
-            EnsureChannelFirstd(keys=["image"]),
-            RandAffined(keys=["image"], prob=1,
-                        rotate_range=(np.pi / 6, np.pi / 6, np.pi / 6),
-                        padding_mode="zeros",
-                        as_tensor_output=False),
-            NormalizeIntensityd(keys="image", nonzero=True, channel_wise=True),
-            ToTensord(keys=["image"]),
-        ])
+        self.pre_transforms = Compose(
+            [
+                LoadImaged(keys=["image"]),
+                EnsureChannelFirstd(keys=["image"]),
+                RandAffined(
+                    keys=["image"],
+                    prob=1,
+                    rotate_range=(np.pi / 6, np.pi / 6, np.pi / 6),
+                    padding_mode="zeros",
+                    as_tensor_output=False,
+                ),
+                NormalizeIntensityd(keys="image", nonzero=True, channel_wise=True),
+                ToTensord(keys=["image"]),
+            ]
+        )
 
-        self.post_transforms = Compose([
-            Activations(sigmoid=True),
-            AsDiscrete(threshold_values=True),
-        ])
+        self.post_transforms = Compose(
+            [
+                Activations(sigmoid=True),
+                AsDiscrete(threshold_values=True),
+            ]
+        )
 
     def __call__(self, request, datastore: Datastore):
         return super().__call__(request, datastore)
 
     def get_model(self, device):
         if not os.path.exists(os.path.join(self.path)):
-            raise MONAILabelException(MONAILabelError.MODEL_IMPORT_ERROR, f"Model Path ({self.path}) does not exist")
+            raise MONAILabelException(
+                MONAILabelError.MODEL_IMPORT_ERROR,
+                f"Model Path ({self.path}) does not exist",
+            )
 
         if self.network:
             network = self.network
@@ -75,17 +80,19 @@ class MyActiveLearning(ActiveLearning):
         return network
 
     def __call__(self, request, datastore: Datastore):
-        if request.get('strategy') != 'tta':
+        if request.get("strategy") != "tta":
             return super().__call__(request, datastore)
 
         images = datastore.get_unlabeled_images()
-        images = images[:self.max_images]
+        images = images[: self.max_images]
         logger.info(f"Total Unlabeled Images: {len(images)}")
 
         # Creating dataloader
         data_dicts = [{"image": image} for image in images]
         ds_tta = monai.data.Dataset(data=data_dicts)
-        loader_tta = DataLoader(ds_tta, batch_size=1, num_workers=0, collate_fn=list_data_collate)
+        loader_tta = DataLoader(
+            ds_tta, batch_size=1, num_workers=0, collate_fn=list_data_collate
+        )
 
         device = torch.device(request.get("device", "cuda:0"))
         logger.info(f"Using device: {device}")
@@ -104,13 +111,15 @@ class MyActiveLearning(ActiveLearning):
             batch_size=1,
             num_workers=0,
             inferrer_fn=partial(infer_seg, model=model),
-            device=device
+            device=device,
         )
 
         vvc_tta_all = []
         for idx, file in enumerate(loader_tta):
-            logger.info(f'Processing image: {idx + 1}')
-            mode_tta, mean_tta, std_tta, vvc_tta = tt_aug(file, num_examples=self.num_examples)
+            logger.info(f"Processing image: {idx + 1}")
+            mode_tta, mean_tta, std_tta, vvc_tta = tt_aug(
+                file, num_examples=self.num_examples
+            )
             vvc_tta_all.append(vvc_tta)
             logger.info(f"Volume Variation Coefficient: {vvc_tta}")
 

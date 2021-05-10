@@ -1,5 +1,4 @@
 import numpy as np
-
 from monai.inferers import SlidingWindowInferer
 from monai.transforms import (
     Activationsd,
@@ -15,8 +14,9 @@ from monai.transforms import (
     ToNumpyd,
     ToTensord,
 )
+
 from monailabel.utils.infer import InferenceTask, InferType
-from monailabel.utils.others.post import Restored, BoundingBoxd
+from monailabel.utils.others.post import BoundingBoxd, Restored
 
 
 class MyInfer(InferenceTask):
@@ -25,13 +25,13 @@ class MyInfer(InferenceTask):
     """
 
     def __init__(
-            self,
-            path,
-            network=None,
-            type=InferType.SEGMENTATION,
-            labels=["heart"],
-            dimension=3,
-            description='A pre-trained model for volumetric (3D) segmentation of the heart over 3D MR Images'
+        self,
+        path,
+        network=None,
+        type=InferType.SEGMENTATION,
+        labels="heart",
+        dimension=3,
+        description="A pre-trained model for volumetric (3D) segmentation of the heart over 3D MR Images",
     ):
         super().__init__(
             path=path,
@@ -39,7 +39,7 @@ class MyInfer(InferenceTask):
             type=type,
             labels=labels,
             dimension=dimension,
-            description=description
+            description=description,
         )
 
     def pre_transforms(self):
@@ -48,7 +48,11 @@ class MyInfer(InferenceTask):
         pre_transforms = [
             LoadImaged(keys=["image"]),
             AddChanneld(keys=["image"]),
-            Spacingd(keys=["image"], pixdim=pixdim, mode="bilinear", ),
+            Spacingd(
+                keys=["image"],
+                pixdim=pixdim,
+                mode="bilinear",
+            ),
             Orientationd(keys=["image"], axcodes="RAS"),
             SpatialPadd(keys=["image"], spatial_size=tuple(roi_size)),
             NormalizeIntensityd(keys=["image"], nonzero=False, channel_wise=True),
@@ -62,11 +66,11 @@ class MyInfer(InferenceTask):
 
     def post_transforms(self):
         return [
-            AddChanneld(keys='pred'),
-            Activationsd(keys='pred', softmax=True),
-            AsDiscreted(keys='pred', argmax=True),
-            SqueezeDimd(keys='pred', dim=0),
-            ToNumpyd(keys='pred'),
-            Restored(keys='pred', ref_image='image'),
-            BoundingBoxd(keys='pred', result='result', bbox='bbox'),
+            AddChanneld(keys="pred"),
+            Activationsd(keys="pred", softmax=True),
+            AsDiscreted(keys="pred", argmax=True),
+            SqueezeDimd(keys="pred", dim=0),
+            ToNumpyd(keys="pred"),
+            Restored(keys="pred", ref_image="image"),
+            BoundingBoxd(keys="pred", result="result", bbox="bbox"),
         ]

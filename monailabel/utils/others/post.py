@@ -2,26 +2,17 @@ from typing import Optional, Sequence, Union
 
 import numpy as np
 import skimage.measure as measure
-
 from monai.config import KeysCollection
-from monai.transforms import (
-    Resize,
-    generate_spatial_bounding_box,
-    get_extreme_points
-)
+from monai.transforms import Resize, generate_spatial_bounding_box, get_extreme_points
 from monai.transforms.compose import MapTransform
 from monai.transforms.spatial.dictionary import InterpolateModeSequence
 from monai.utils import InterpolateMode, ensure_tuple_rep
 
-
 # TODO:: Move to MONAI ??
 
+
 class LargestCCd(MapTransform):
-    def __init__(
-            self,
-            keys: KeysCollection,
-            has_channel: bool = True
-    ):
+    def __init__(self, keys: KeysCollection, has_channel: bool = True):
         super().__init__(keys)
         self.has_channel = has_channel
 
@@ -37,17 +28,16 @@ class LargestCCd(MapTransform):
     def __call__(self, data):
         d = dict(data)
         for key in self.keys:
-            result = self.get_largest_cc(d[key] if self.has_channel else d[key][np.newaxis])
+            result = self.get_largest_cc(
+                d[key] if self.has_channel else d[key][np.newaxis]
+            )
             d[key] = result if self.has_channel else result[0]
         return d
 
 
 class ExtremePointsd(MapTransform):
     def __init__(
-            self,
-            keys: KeysCollection,
-            result: str = 'result',
-            points: str = 'points'
+        self, keys: KeysCollection, result: str = "result", points: str = "points"
     ):
         super().__init__(keys)
         self.result = result
@@ -65,10 +55,7 @@ class ExtremePointsd(MapTransform):
 
 class BoundingBoxd(MapTransform):
     def __init__(
-            self,
-            keys: KeysCollection,
-            result: str = 'result',
-            bbox: str = 'bbox'
+        self, keys: KeysCollection, result: str = "result", bbox: str = "bbox"
     ):
         super().__init__(keys)
         self.result = result
@@ -86,13 +73,13 @@ class BoundingBoxd(MapTransform):
 
 class Restored(MapTransform):
     def __init__(
-            self,
-            keys: KeysCollection,
-            ref_image: str,
-            has_channel: bool = True,
-            mode: InterpolateModeSequence = InterpolateMode.NEAREST,
-            align_corners: Union[Sequence[Optional[bool]], Optional[bool]] = None,
-            meta_key_postfix: str = "meta_dict",
+        self,
+        keys: KeysCollection,
+        ref_image: str,
+        has_channel: bool = True,
+        mode: InterpolateModeSequence = InterpolateMode.NEAREST,
+        align_corners: Union[Sequence[Optional[bool]], Optional[bool]] = None,
+        meta_key_postfix: str = "meta_dict",
     ):
         super().__init__(keys)
         self.ref_image = ref_image
@@ -108,12 +95,14 @@ class Restored(MapTransform):
             result = d[key]
             current_size = result.shape[1:] if self.has_channel else result.shape
             spatial_shape = meta_dict["spatial_shape"]
-            spatial_size = spatial_shape[-len(current_size):]
+            spatial_size = spatial_shape[-len(current_size) :]
 
             # Undo Spacing
             if np.any(np.not_equal(current_size, spatial_size)):
                 resizer = Resize(spatial_size=spatial_size, mode=self.mode[idx])
-                result = resizer(result, mode=self.mode[idx], align_corners=self.align_corners[idx])
+                result = resizer(
+                    result, mode=self.mode[idx], align_corners=self.align_corners[idx]
+                )
 
             d[key] = result if len(result.shape) <= 3 else result[0]
 

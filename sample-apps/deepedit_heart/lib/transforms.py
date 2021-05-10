@@ -1,7 +1,6 @@
 from typing import Dict
 
 import numpy as np
-
 from monai.transforms import Transform
 
 
@@ -18,6 +17,8 @@ class AddEmptyGuidanced(Transform):
         image = d[self.image]
 
         # For pure inference time - There is no positive neither negative points
-        signal = np.zeros((1, image.shape[-3], image.shape[-2], image.shape[-1]), dtype=np.float32)
+        signal = np.zeros(
+            (1, image.shape[-3], image.shape[-2], image.shape[-1]), dtype=np.float32
+        )
         d[self.image] = np.concatenate((image, signal, signal), axis=0)
         return d

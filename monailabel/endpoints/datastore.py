@@ -1,7 +1,6 @@
 import logging
 
-from fastapi import APIRouter, HTTPException
-from fastapi import File, UploadFile
+from fastapi import APIRouter, File, HTTPException, UploadFile
 
 from monailabel.interfaces import Datastore
 from monailabel.utils.others.generic import get_app_instance
@@ -20,7 +19,7 @@ router = APIRouter(
 @router.get("/", summary="Get All Images/Labels from datastore")
 async def datastore():
     d: Datastore = get_app_instance().datastore()
-    return d.find_objects(pattern=None)
+    return d.find_objects(pattern=None, match_label=False)
 
 
 @router.put("/", summary="Upload new Image")

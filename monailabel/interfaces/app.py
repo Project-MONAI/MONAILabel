@@ -9,13 +9,19 @@ import yaml
 from monailabel.interfaces.activelearning import ActiveLearning
 from monailabel.interfaces.datastore import Datastore
 from monailabel.interfaces.datastore_local import LocalDatastore
-from monailabel.interfaces.exception import MONAILabelException, MONAILabelError
+from monailabel.interfaces.exception import MONAILabelError, MONAILabelException
 
 logger = logging.getLogger(__name__)
 
 
 class MONAILabelApp:
-    def __init__(self, app_dir, studies, infers=None, active_learning: ActiveLearning = ActiveLearning()):
+    def __init__(
+        self,
+        app_dir,
+        studies,
+        infers=None,
+        active_learning: ActiveLearning = ActiveLearning(),
+    ):
         """
         Base Class for Any MONAI Label App
 
@@ -39,11 +45,10 @@ class MONAILabelApp:
         file = os.path.join(self.app_dir, "info.yaml")
         if not os.path.exists(file):
             raise MONAILabelException(
-                MONAILabelError.APP_ERROR,
-                "info.yaml NOT Found in the APP Folder"
+                MONAILabelError.APP_ERROR, "info.yaml NOT Found in the APP Folder"
             )
 
-        with open(file, 'r') as fc:
+        with open(file, "r") as fc:
             meta = yaml.full_load(fc)
 
         models = dict()
@@ -76,14 +81,14 @@ class MONAILabelApp:
         Returns:
             JSON containing `label` and `params`
         """
-        model_name = request.get('model')
-        model_name = model_name if model_name else 'model'
+        model_name = request.get("model")
+        model_name = model_name if model_name else "model"
 
         task = self.infers.get(model_name)
         if task is None:
             raise MONAILabelException(
                 MONAILabelError.INFERENCE_ERROR,
-                "Inference Task is not Initialized. There is no pre-trained model available"
+                "Inference Task is not Initialized. There is no pre-trained model available",
             )
 
         result_file_name, result_json = task(request)
@@ -154,18 +159,18 @@ class MONAILabelApp:
             JSON containing next image and label info
         """
 
-        label = io.BytesIO(open(request['label'], 'rb').read())
+        label = io.BytesIO(open(request["label"], "rb").read())
 
-        img_name = os.path.basename(request['image']).rsplit('.')[0]
-        file_ext = ''.join(pathlib.Path(request['label']).suffixes)
-        segments = request.get('segments')
+        img_name = os.path.basename(request["image"]).rsplit(".")[0]
+        file_ext = "".join(pathlib.Path(request["label"]).suffixes)
+        segments = request.get("segments")
         if not segments:
             segments = self.info().get("labels", [])
         segments = [segments] if isinstance(segments, str) else segments
         segments = "+".join(segments) if len(segments) else "unk"
 
         label_id = f"label_{segments}_{img_name}{file_ext}"
-        label_file = self.datastore().save_label(request['image'], label_id, label)
+        label_file = self.datastore().save_label(request["image"], label_id, label)
 
         return {
             "image": request.get("image"),

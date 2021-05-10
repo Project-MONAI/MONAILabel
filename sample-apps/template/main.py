@@ -1,6 +1,7 @@
 import logging
 
-from lib import MyInfer, MyTrain, MyActiveLearning
+from lib import MyActiveLearning, MyInfer, MyTrain
+
 from monailabel.interfaces.app import MONAILabelApp
 
 logger = logging.getLogger(__name__)

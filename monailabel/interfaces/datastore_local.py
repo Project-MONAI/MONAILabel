@@ -24,7 +24,7 @@ class LocalDatastore(Datastore):
 
     `info: dict`
         A dictionary containing `{label_id: description}` map
-    
+
     Methods:
     --------
     find_objects(self, pattern: str, match_label: bool=True) -> list:
@@ -76,7 +76,7 @@ class LocalDatastore(Datastore):
                         "nullable": False,
                         "pattern": "^[0-9a-zA-Z_-]{5,256}$",
                     },
-                }
+                },
             },
             "objects": {
                 "type": "array",
@@ -98,15 +98,20 @@ class LocalDatastore(Datastore):
                                 "type": "string",
                                 "pattern": "^[0-9a-zA-Z_-]{2048}",
                             },
-                        }
-                    }
-                }
-            }
+                        },
+                    },
+                },
+            },
         },
         "additionalProperties": False,
     }
 
-    def __init__(self, dataset_path: str, dataset_name: str = None, dataset_config: str = 'dataset.json'):
+    def __init__(
+        self,
+        dataset_path: str,
+        dataset_name: str = None,
+        dataset_config: str = "dataset.json",
+    ):
         """
         Creates a `LocalDataset` object
 
@@ -125,22 +130,30 @@ class LocalDatastore(Datastore):
         self._dataset_config_path = os.path.join(dataset_path, dataset_config)
         self._dataset_config = {}
         if dataset_name is None or len(dataset_config) == 0:
-            dataset_name = 'new-dataset'
+            dataset_name = "new-dataset"
 
         # check if dataset configuration file exists
         if os.path.exists(self._dataset_config_path):
             with open(self._dataset_config_path) as f:
                 self._dataset_config = json.load(f)
-            validate(self._dataset_config['objects'], LocalDatastore._schema['properties']['objects'])
+            validate(
+                self._dataset_config["objects"],
+                LocalDatastore._schema["properties"]["objects"],
+            )
         else:
             files = LocalDatastore._list_files(dataset_path)
-            self._dataset_config['name'] = dataset_name
-            self._dataset_config.update({
-                'objects': [{
-                    'image': file,
-                    'labels': [],
-                } for file in files],
-            })
+            self._dataset_config["name"] = dataset_name
+            self._dataset_config.update(
+                {
+                    "objects": [
+                        {
+                            "image": file,
+                            "labels": [],
+                        }
+                        for file in files
+                    ],
+                }
+            )
 
             validate(self._dataset_config, LocalDatastore._schema)
             self._update_dataset()
@@ -153,7 +166,7 @@ class LocalDatastore(Datastore):
         Returns:
             name (str): Dataset name as string
         """
-        return self._dataset_config.get('name')
+        return self._dataset_config.get("name")
 
     @name.setter
     def name(self, name: str):
@@ -163,8 +176,8 @@ class LocalDatastore(Datastore):
             Parameters:
                 name (str): Desired dataset name
         """
-        standard_name = ''.join(c.lower() if not c.isspace() else '-' for c in name)
-        self._dataset_config.update({'name': standard_name})
+        standard_name = "".join(c.lower() if not c.isspace() else "-" for c in name)
+        self._dataset_config.update({"name": standard_name})
         validate(self._dataset_config, LocalDatastore._schema)
         self._update_dataset()
 
@@ -173,14 +186,14 @@ class LocalDatastore(Datastore):
         """
         Gets the description field for the dataset
         """
-        return self._dataset_config.get('description')
+        return self._dataset_config.get("description")
 
     @description.setter
     def description(self, description: str):
         """
         Set a description for the dataset
         """
-        self._dataset_config.update({'description': description})
+        self._dataset_config.update({"description": description})
         validate(self._dataset_config, LocalDatastore._schema)
         self._update_dataset()
 
@@ -188,13 +201,13 @@ class LocalDatastore(Datastore):
         """
         List all the images in the dataset
         """
-        return [obj['image'] for obj in self._dataset_config['objects']]
+        return [obj["image"] for obj in self._dataset_config["objects"]]
 
     def list_labels(self) -> list:
         """
         List all the labels in the dataset
         """
-        return [obj['labels'] for obj in self._dataset_config['objects']]
+        return [obj["labels"] for obj in self._dataset_config["objects"]]
 
     def find_objects(self, pattern: str, match_label: bool = False) -> list:
         """
@@ -224,10 +237,17 @@ class LocalDatastore(Datastore):
 
         p = re.compile(pattern)
         matching_objects = []
-        for obj in self._dataset_config['objects']:
-            if p.match(obj['image']) or p.match(os.path.join(self._dataset_path, obj['image'])):
+        for obj in self._dataset_config["objects"]:
+            if p.match(obj["image"]) or p.match(
+                os.path.join(self._dataset_path, obj["image"])
+            ):
                 matching_objects.append(obj)
-            if match_label and any([p.match(l) or p.match(os.path.join(self._dataset_path, l)) for l in obj['labels']]):
+            if match_label and any(
+                [
+                    p.match(l) or p.match(os.path.join(self._dataset_path, l))
+                    for l in obj["labels"]
+                ]
+            ):
                 matching_objects.append(obj)
         return matching_objects
 
@@ -240,9 +260,9 @@ class LocalDatastore(Datastore):
             a list of image paths that do not have corresponding labels
         """
         images = []
-        for obj in self._dataset_config['objects']:
-            if obj.get('labels') is None or len(obj.get('labels')) == 0:
-                images.append(os.path.join(self._dataset_path, obj['image']))
+        for obj in self._dataset_config["objects"]:
+            if obj.get("labels") is None or len(obj.get("labels")) == 0:
+                images.append(os.path.join(self._dataset_path, obj["image"]))
         return images
 
     def save_label(self, image: str, label_id: str, label: io.BytesIO) -> str:
@@ -267,16 +287,20 @@ class LocalDatastore(Datastore):
         to the `image` path provided in the parameters
         """
         label_path = None
-        for i, obj in enumerate(self._dataset_config['objects']):
+        for i, obj in enumerate(self._dataset_config["objects"]):
 
-            if image == obj['image'] or image == os.path.join(self._dataset_path, obj['image']):
-                if label_id in obj['labels']:
-                    label_id = str(uuid4().hex) + ''.join(pathlib.Path(label_id).suffixes)
+            if image == obj["image"] or image == os.path.join(
+                self._dataset_path, obj["image"]
+            ):
+                if label_id in obj["labels"]:
+                    label_id = str(uuid4().hex) + "".join(
+                        pathlib.Path(label_id).suffixes
+                    )
 
-                label_path = os.path.join(os.path.dirname(obj['image']), label_id)
-                self._dataset_config['objects'][i]['labels'].append(label_path)
+                label_path = os.path.join(os.path.dirname(obj["image"]), label_id)
+                self._dataset_config["objects"][i]["labels"].append(label_path)
 
-                with open(os.path.join(self._dataset_path, label_path), 'wb') as f:
+                with open(os.path.join(self._dataset_path, label_path), "wb") as f:
                     label.seek(0)
                     f.write(label.getbuffer())
 
@@ -292,24 +316,27 @@ class LocalDatastore(Datastore):
         """
         The `info` section of the dataset, containing any label information if available
         """
-        return self._dataset_config.get('info')
+        return self._dataset_config.get("info")
 
     def update_label_info(self, id: str, description: str) -> dict:
         """
         Update label info in the dataset
         """
 
-        standard_id = ''.join(c.lower() for c in id if not c.isspace())
+        standard_id = "".join(c.lower() for c in id if not c.isspace())
 
-        if self._dataset_config.get('info') is not None and id in self._dataset_config['info'].keys():
-            self._dataset_config['info'][id] = description
+        if (
+            self._dataset_config.get("info") is not None
+            and id in self._dataset_config["info"].keys()
+        ):
+            self._dataset_config["info"][id] = description
 
         else:
-            self._dataset_config['info'].append({id: description})
+            self._dataset_config["info"].append({id: description})
         validate(self._dataset_config, LocalDatastore._schema)
         self._update_dataset()
 
-        return {standard_id: self._dataset_config['info'][standard_id]}
+        return {standard_id: self._dataset_config["info"][standard_id]}
 
     @staticmethod
     def _list_files(path: str):
@@ -320,7 +347,7 @@ class LocalDatastore(Datastore):
         return relative_file_paths
 
     def _update_dataset(self):
-        with open(self._dataset_config_path, 'w') as f:
+        with open(self._dataset_config_path, "w") as f:
             json.dump(self._dataset_config, f, indent=2)
 
     def _get_path(self, path: str, full_path=True):
@@ -337,19 +364,22 @@ class LocalDatastore(Datastore):
         :return: List of dictionary objects.  Each dictionary contains `image` and (`label` or `labels`)
         """
         items = []
-        for obj in self._dataset_config['objects']:
+        for obj in self._dataset_config["objects"]:
             image = self._get_path(obj["image"], full_path)
-            labels = obj.get('labels')
+            labels = obj.get("labels")
             if labels and len(labels):
                 if flatten_labels:
                     for label in labels:
-                        items.append({
-                            "image": image,
-                            "label": self._get_path(label, full_path)
-                        })
+                        items.append(
+                            {"image": image, "label": self._get_path(label, full_path)}
+                        )
                 else:
-                    items.append({
-                        "image": image,
-                        "labels": [self._get_path(label, full_path) for label in labels]
-                    })
+                    items.append(
+                        {
+                            "image": image,
+                            "labels": [
+                                self._get_path(label, full_path) for label in labels
+                            ],
+                        }
+                    )
         return items

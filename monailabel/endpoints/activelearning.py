@@ -6,13 +6,11 @@ import shutil
 import tempfile
 from typing import Optional
 
-from fastapi import APIRouter
-from fastapi import File, UploadFile
+from fastapi import APIRouter, File, UploadFile
 
 from monailabel.config import settings
 from monailabel.interfaces import MONAILabelApp
-from monailabel.utils.others.generic import get_app_instance
-from monailabel.utils.others.generic import file_checksum
+from monailabel.utils.others.generic import file_checksum, get_app_instance
 
 logger = logging.getLogger(__name__)
 
@@ -42,13 +40,15 @@ async def next_sample(params: Optional[dict] = None, checksum: Optional[bool] = 
     name = os.path.basename(image)
 
     digest = None
-    if checksum:  # It's always costly operation (some clients to access directly from shared file-system)
+    if (
+        checksum
+    ):  # It's always costly operation (some clients to access directly from shared file-system)
         digest = cached_digest.get(image)
         digest = digest if digest is not None else file_checksum(image)
         digest = f"SHA256:{digest}"
 
-    encoded = base64.urlsafe_b64encode(image.encode('utf-8')).decode('utf-8')
-    encoded = encoded.rstrip('=')
+    encoded = base64.urlsafe_b64encode(image.encode("utf-8")).decode("utf-8")
+    encoded = encoded.rstrip("=")
     url = "/download/{}".format(encoded)
 
     return {
@@ -63,14 +63,11 @@ async def next_sample(params: Optional[dict] = None, checksum: Optional[bool] = 
 
 @router.put("/label", summary="Save Finished Label")
 async def save_label(image: str, label: UploadFile = File(...)):
-    file_ext = ''.join(pathlib.Path(image).suffixes)
+    file_ext = "".join(pathlib.Path(image).suffixes)
     label_file = tempfile.NamedTemporaryFile(suffix=file_ext).name
 
     with open(label_file, "wb") as buffer:
         shutil.copyfileobj(label.file, buffer)
 
     instance: MONAILabelApp = get_app_instance()
-    return instance.save_label({
-        "image": image,
-        "label": label_file
-    })
+    return instance.save_label({"image": image, "label": label_file})

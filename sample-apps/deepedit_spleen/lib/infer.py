@@ -1,33 +1,24 @@
-from monai.apps.deepgrow.transforms import (
-    AddGuidanceFromPointsd,
-    SpatialCropGuidanced,
-    ResizeGuidanced,
-    AddGuidanceSignald,
-    RestoreLabeld
-)
+from monai.apps.deepgrow.transforms import AddGuidanceFromPointsd, AddGuidanceSignald
 from monai.inferers import SimpleInferer
 from monai.transforms import (
-    LoadImaged,
-    AsChannelFirstd,
-    AddChanneld,
     Activationsd,
+    AddChanneld,
     AsDiscreted,
     CropForegroundd,
-    ToNumpyd,
+    LoadImaged,
+    NormalizeIntensityd,
+    Orientationd,
     Resized,
     Spacingd,
-    Orientationd,
-    NormalizeIntensityd,
-    AsChannelLastd,
-    ToTensord,
     SqueezeDimd,
-    ScaleIntensityRanged,
+    ToNumpyd,
+    ToTensord,
 )
-from monailabel.utils.infer import InferenceTask, InferType
-from monailabel.utils.others.post import BoundingBoxd, Restored
-from .transforms import AddEmptyGuidanced, ResizeGuidanceCustomd
 
-from monai.transforms.transform import Transform, MapTransform
+from monailabel.utils.infer import InferenceTask, InferType
+from monailabel.utils.others.post import Restored
+
+from .transforms import AddEmptyGuidanced, ResizeGuidanceCustomd
 
 
 class Segmentation(InferenceTask):
@@ -36,13 +27,13 @@ class Segmentation(InferenceTask):
     """
 
     def __init__(
-            self,
-            path,
-            network=None,
-            type=InferType.SEGMENTATION,
-            labels=["spleen"],
-            dimension=3,
-            description='A pre-trained model for volumetric (3D) segmentation of the spleen over 3D CT Images'
+        self,
+        path,
+        network=None,
+        type=InferType.SEGMENTATION,
+        labels="spleen",
+        dimension=3,
+        description="A pre-trained model for volumetric (3D) segmentation of the spleen over 3D CT Images",
     ):
         super().__init__(
             path=path,
@@ -53,21 +44,23 @@ class Segmentation(InferenceTask):
             description=description,
             input_key="image",
             output_label_key="pred",
-            output_json_key="result"
+            output_json_key="result",
         )
 
     def pre_transforms(self):
         return [
-            LoadImaged(keys='image'),
-            AddChanneld(keys='image'),
+            LoadImaged(keys="image"),
+            AddChanneld(keys="image"),
             Spacingd(keys="image", pixdim=(1.0, 1.0, 1.0), mode="bilinear"),
             Orientationd(keys="image", axcodes="RAS"),
-            NormalizeIntensityd(keys='image'),
-            CropForegroundd(keys='image', source_key='image', select_fn=lambda x: x > 1.3, margin=3),
+            NormalizeIntensityd(keys="image"),
+            CropForegroundd(
+                keys="image", source_key="image", select_fn=lambda x: x > 1.3, margin=3
+            ),
             # select_fn and margin are Task dependant
-            Resized(keys='image', spatial_size=(128, 128, 128), mode='area'),
-            AddEmptyGuidanced(image='image'),
-            ToTensord(keys='image')
+            Resized(keys="image", spatial_size=(128, 128, 128), mode="area"),
+            AddEmptyGuidanced(image="image"),
+            ToTensord(keys="image"),
         ]
 
     def inferer(self):
@@ -78,12 +71,12 @@ class Segmentation(InferenceTask):
 
     def post_transforms(self):
         return [
-            ToTensord(keys='pred'),
-            Activationsd(keys='pred', sigmoid=True),
-            AsDiscreted(keys='pred', threshold_values=True, logit_thresh=0.51),
-            SqueezeDimd(keys='pred', dim=0),
-            ToNumpyd(keys='pred'),
-            Restored(keys='pred', ref_image='image'),
+            ToTensord(keys="pred"),
+            Activationsd(keys="pred", sigmoid=True),
+            AsDiscreted(keys="pred", threshold_values=True, logit_thresh=0.51),
+            SqueezeDimd(keys="pred", dim=0),
+            ToNumpyd(keys="pred"),
+            Restored(keys="pred", ref_image="image"),
         ]
 
 
@@ -93,15 +86,15 @@ class Deepgrow(InferenceTask):
     """
 
     def __init__(
-            self,
-            path,
-            network=None,
-            type=InferType.DEEPGROW,
-            labels=[],
-            dimension=3,
-            description='A pre-trained 3D DeepGrow model based on UNET',
-            spatial_size=[128, 128],
-            model_size=[128, 128, 128]
+        self,
+        path,
+        network=None,
+        type=InferType.DEEPGROW,
+        labels=[],
+        dimension=3,
+        description="A pre-trained 3D DeepGrow model based on UNET",
+        spatial_size=[128, 128],
+        model_size=[128, 128, 128],
     ):
         super().__init__(
             path=path,
@@ -109,7 +102,7 @@ class Deepgrow(InferenceTask):
             type=type,
             labels=labels,
             dimension=dimension,
-            description=description
+            description=description,
         )
 
         self.spatial_size = spatial_size
@@ -117,16 +110,18 @@ class Deepgrow(InferenceTask):
 
     def pre_transforms(self):
         return [
-            LoadImaged(keys='image'),
+            LoadImaged(keys="image"),
             # The inverse of this transform causes some issues
             # Spacingd(keys='image', pixdim=[1.0, 1.0, 1.0], mode='bilinear'),
-            AddGuidanceFromPointsd(ref_image='image', guidance='guidance', dimensions=3),
-            AddChanneld(keys='image'),
-            NormalizeIntensityd(keys='image'),
-            Resized(keys='image', spatial_size=self.model_size, mode='area'),
-            ResizeGuidanceCustomd(guidance='guidance', ref_image='image'),
-            AddGuidanceSignald(image='image', guidance='guidance'),
-            ToTensord(keys='image'),
+            AddGuidanceFromPointsd(
+                ref_image="image", guidance="guidance", dimensions=3
+            ),
+            AddChanneld(keys="image"),
+            NormalizeIntensityd(keys="image"),
+            Resized(keys="image", spatial_size=self.model_size, mode="area"),
+            ResizeGuidanceCustomd(guidance="guidance", ref_image="image"),
+            AddGuidanceSignald(image="image", guidance="guidance"),
+            ToTensord(keys="image"),
         ]
 
     def inferer(self):
@@ -137,10 +132,10 @@ class Deepgrow(InferenceTask):
 
     def post_transforms(self):
         return [
-            ToTensord(keys='pred'),
-            Activationsd(keys='pred', sigmoid=True),
-            AsDiscreted(keys='pred', threshold_values=True, logit_thresh=0.51),
-            SqueezeDimd(keys='pred', dim=0),
-            ToNumpyd(keys='pred'),
-            Restored(keys='pred', ref_image='image'),
+            ToTensord(keys="pred"),
+            Activationsd(keys="pred", sigmoid=True),
+            AsDiscreted(keys="pred", threshold_values=True, logit_thresh=0.51),
+            SqueezeDimd(keys="pred", dim=0),
+            ToNumpyd(keys="pred"),
+            Restored(keys="pred", ref_image="image"),
         ]

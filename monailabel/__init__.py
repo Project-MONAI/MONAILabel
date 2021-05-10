@@ -26,7 +26,10 @@ __copyright__ = "(c) 2020 - 2021 MONAI Consortium"
 
 __basedir__ = os.path.dirname(__file__)
 
-if not (sys.version_info.major == PY_REQUIRED_MAJOR and sys.version_info.minor >= PY_REQUIRED_MINOR):
+if not (
+        sys.version_info.major == PY_REQUIRED_MAJOR
+        and sys.version_info.minor >= PY_REQUIRED_MINOR
+):
     raise RuntimeError(
         "MONAI Label requires Python {}.{} or higher. But the current Python is: {}".format(
             PY_REQUIRED_MAJOR, PY_REQUIRED_MINOR, sys.version
@@ -38,3 +41,19 @@ __all__ = [
     "interfaces",
     "utils",
 ]
+
+
+def print_config(file=sys.stdout):
+    import numpy as np
+    import torch
+    import monailabel
+    from collections import OrderedDict
+
+    output = OrderedDict()
+    output["MONAILabel"] = monailabel.__version__
+    output["Numpy"] = np.version.full_version
+    output["Pytorch"] = torch.__version__
+
+    for k, v in output.items():
+        print(f"{k} version: {v}", file=file, flush=True)
+    print(f"MONAILabel rev id: {monailabel.__revision_id__}")
