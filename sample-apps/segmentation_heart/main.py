@@ -1,13 +1,13 @@
 import logging
 import os
 
-from lib import MyActiveLearning, MyInfer, MyTrain
+from lib import MyInfer, MyStrategy, MyTrain
 from monai.networks.layers import Norm
 from monai.networks.nets import UNet
 
-from monailabel.interfaces.app import MONAILabelApp
-from monailabel.utils.infer.deepgrow_2d import InferDeepgrow2D
-from monailabel.utils.infer.deepgrow_3d import InferDeepgrow3D
+from monailabel.interfaces import MONAILabelApp
+from monailabel.utils.activelearning import TTA, Random
+from monailabel.utils.infer import InferDeepgrow2D, InferDeepgrow3D
 
 logger = logging.getLogger(__name__)
 
@@ -17,24 +17,18 @@ class MyApp(MONAILabelApp):
         self.model_dir = os.path.join(app_dir, "model")
 
         infers = {
-            "deepgrow_2d": InferDeepgrow2D(
-                os.path.join(self.model_dir, "deepgrow_2d.ts")
-            ),
-            "deepgrow_3d": InferDeepgrow3D(
-                os.path.join(self.model_dir, "deepgrow_3d.ts")
-            ),
-            "segmentation_heart": MyInfer(
-                os.path.join(self.model_dir, "segmentation_heart.ts")
-            ),
+            "deepgrow_2d": InferDeepgrow2D(os.path.join(self.model_dir, "deepgrow_2d.ts")),
+            "deepgrow_3d": InferDeepgrow3D(os.path.join(self.model_dir, "deepgrow_3d.ts")),
+            "segmentation_heart": MyInfer(os.path.join(self.model_dir, "segmentation_heart.ts")),
         }
+
+        strategies = {"random": Random(), "first": MyStrategy(), "tta": TTA(os.path.join(self.model_dir, "deep_edit.ts"))}
 
         super().__init__(
             app_dir=app_dir,
             studies=studies,
             infers=infers,
-            active_learning=MyActiveLearning(
-                os.path.join(self.model_dir, "segmentation_heart.ts")
-            ),
+            strategies=strategies,
         )
 
     def train(self, request):
@@ -51,11 +45,7 @@ class MyApp(MONAILabelApp):
 
         # App Owner can decide which checkpoint to load (from existing output folder or from base checkpoint)
         load_path = os.path.join(output_dir, "model.pt")
-        load_path = (
-            load_path
-            if os.path.exists(load_path)
-            else os.path.join(self.model_dir, "segmentation_heart.pt")
-        )
+        load_path = load_path if os.path.exists(load_path) else os.path.join(self.model_dir, "segmentation_heart.pt")
 
         task = MyTrain(
             output_dir=output_dir,

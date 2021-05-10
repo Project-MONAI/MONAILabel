@@ -41,9 +41,7 @@ class Writer:
         image_np = data[self.label]
         meta_dict = data.get(f"{self.ref_image}_{self.meta_key_postfix}")
         affine = meta_dict.get("affine") if meta_dict else None
-        logger.debug(
-            "Image: {}; Data Image: {}".format(image_np.shape, data[self.label].shape)
-        )
+        logger.debug("Image: {}; Data Image: {}".format(image_np.shape, data[self.label].shape))
 
         output_file = tempfile.NamedTemporaryFile(suffix=file_ext).name
         logger.debug("Saving Image to: {}".format(output_file))

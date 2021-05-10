@@ -4,8 +4,7 @@ import logging
 import os
 import sys
 
-from monailabel.interfaces import MONAILabelApp
-from monailabel.interfaces.exception import MONAILabelError, MONAILabelException
+from monailabel.interfaces import MONAILabelApp, MONAILabelError, MONAILabelException
 from monailabel.utils.others.class_utils import get_class_of_subclass_from_file
 
 logger = logging.getLogger(__name__)
@@ -21,9 +20,7 @@ def app_instance(app_dir, studies):
 
     main_py = os.path.join(app_dir, "main.py")
     if not os.path.exists(main_py):
-        raise MONAILabelException(
-            MONAILabelError.APP_INIT_ERROR, f"App Does NOT have main.py"
-        )
+        raise MONAILabelException(MONAILabelError.APP_INIT_ERROR, f"App Does NOT have main.py")
 
     c = get_class_of_subclass_from_file("main", main_py, MONAILabelApp)
     if c is None:

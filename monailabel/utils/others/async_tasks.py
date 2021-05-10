@@ -19,11 +19,7 @@ background_processes = {"train": dict(), "infer": dict()}
 
 def task_func(task, method):
     cmd = [
-        os.path.realpath(
-            os.path.join(
-                os.path.dirname(__file__), "..", "scripts", "run_monailabel_user_app.sh"
-            )
-        ),
+        os.path.realpath(os.path.join(os.path.dirname(__file__), "../..", "scripts", "run_monailabel_user_app.sh")),
         settings.APP_DIR,
         settings.STUDIES,
         method,

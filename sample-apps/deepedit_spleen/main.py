@@ -1,10 +1,11 @@
 import logging
 import os
 
-from lib import Deepgrow, MyActiveLearning, MyTrain, Segmentation
+from lib import Deepgrow, MyStrategy, MyTrain, Segmentation
 from monai.networks.nets import DynUNet
 
-from monailabel.interfaces.app import MONAILabelApp
+from monailabel.interfaces import MONAILabelApp
+from monailabel.utils.activelearning import TTA, Random
 
 logger = logging.getLogger(__name__)
 
@@ -18,13 +19,13 @@ class MyApp(MONAILabelApp):
             "segmentation": Segmentation(os.path.join(self.model_dir, "deep_edit.ts")),
         }
 
+        strategies = {"random": Random(), "first": MyStrategy(), "tta": TTA(os.path.join(self.model_dir, "deep_edit.ts"))}
+
         super().__init__(
             app_dir=app_dir,
             studies=studies,
             infers=infers,
-            active_learning=MyActiveLearning(
-                os.path.join(self.model_dir, "deep_edit.ts")
-            ),
+            strategies=strategies,
         )
 
     def train(self, request):

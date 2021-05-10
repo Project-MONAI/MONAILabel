@@ -19,10 +19,10 @@ from monai.transforms import (
     ToNumpyd,
 )
 
-from monailabel.utils.infer import InferenceTask, InferType
+from monailabel.interfaces.tasks import InferTask, InferType
 
 
-class InferDeepgrow3D(InferenceTask):
+class InferDeepgrow3D(InferTask):
     """
     This provides Inference Engine for Deepgrow-3D pre-trained model.
     For More Details, Refer https://github.com/Project-MONAI/tutorials/tree/master/deepgrow/ignite
@@ -56,13 +56,9 @@ class InferDeepgrow3D(InferenceTask):
             LoadImaged(keys="image"),
             AsChannelFirstd(keys="image"),
             Spacingd(keys="image", pixdim=[1.0, 1.0, 1.0], mode="bilinear"),
-            AddGuidanceFromPointsd(
-                ref_image="image", guidance="guidance", dimensions=3
-            ),
+            AddGuidanceFromPointsd(ref_image="image", guidance="guidance", dimensions=3),
             AddChanneld(keys="image"),
-            SpatialCropGuidanced(
-                keys="image", guidance="guidance", spatial_size=self.spatial_size
-            ),
+            SpatialCropGuidanced(keys="image", guidance="guidance", spatial_size=self.spatial_size),
             Resized(keys="image", spatial_size=self.model_size, mode="area"),
             ResizeGuidanced(guidance="guidance", ref_image="image"),
             NormalizeIntensityd(keys="image", subtrahend=208, divisor=388),

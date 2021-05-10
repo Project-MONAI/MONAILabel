@@ -23,9 +23,7 @@ class MONAILabelClient:
 
     def info(self):
         selector = "/info/"
-        status, response, _ = MONAILabelUtils.http_method(
-            "GET", self._server_url, selector
-        )
+        status, response, _ = MONAILabelUtils.http_method("GET", self._server_url, selector)
         if status != 200:
             raise MONAILabelException(
                 MONAILabelError.SERVER_ERROR,
@@ -36,11 +34,9 @@ class MONAILabelClient:
         logging.debug("Response: {}".format(response))
         return json.loads(response)
 
-    def next_sample(self, params):
-        selector = "/activelearning/sample"
-        status, response, _ = MONAILabelUtils.http_method(
-            "POST", self._server_url, selector, params
-        )
+    def next_sample(self, strategy, params):
+        selector = "/activelearning/sample/{}".format(MONAILabelUtils.urllib_quote_plus(strategy))
+        status, response, _ = MONAILabelUtils.http_method("POST", self._server_url, selector, params)
         if status != 200:
             raise MONAILabelException(
                 MONAILabelError.SERVER_ERROR,
@@ -52,15 +48,11 @@ class MONAILabelClient:
         return json.loads(response)
 
     def save_label(self, image_in, label_in):
-        selector = "/activelearning/label?image={}".format(
-            MONAILabelUtils.urllib_quote_plus(image_in)
-        )
+        selector = "/activelearning/label?image={}".format(MONAILabelUtils.urllib_quote_plus(image_in))
         fields = {}
         files = {"label": label_in}
 
-        status, response, _ = MONAILabelUtils.http_multipart(
-            "PUT", self._server_url, selector, fields, files
-        )
+        status, response, _ = MONAILabelUtils.http_multipart("PUT", self._server_url, selector, fields, files)
         if status != 200:
             raise MONAILabelException(
                 MONAILabelError.SERVER_ERROR,
@@ -77,9 +69,7 @@ class MONAILabelClient:
             MONAILabelUtils.urllib_quote_plus(image_in),
         )
 
-        status, form, files = MONAILabelUtils.http_method(
-            "POST", self._server_url, selector, params
-        )
+        status, form, files = MONAILabelUtils.http_method("POST", self._server_url, selector, params)
         if status != 200:
             raise MONAILabelException(
                 MONAILabelError.SERVER_ERROR,
@@ -95,9 +85,7 @@ class MONAILabelClient:
 
     def train_start(self, params):
         selector = "/train/"
-        status, response, _ = MONAILabelUtils.http_method(
-            "POST", self._server_url, selector, params
-        )
+        status, response, _ = MONAILabelUtils.http_method("POST", self._server_url, selector, params)
         if status != 200:
             raise MONAILabelException(
                 MONAILabelError.SERVER_ERROR,
@@ -110,9 +98,7 @@ class MONAILabelClient:
 
     def train_stop(self):
         selector = "/train/"
-        status, response, _ = MONAILabelUtils.http_method(
-            "DELETE", self._server_url, selector
-        )
+        status, response, _ = MONAILabelUtils.http_method("DELETE", self._server_url, selector)
         if status != 200:
             raise MONAILabelException(
                 MONAILabelError.SERVER_ERROR,
@@ -127,9 +113,7 @@ class MONAILabelClient:
         selector = "/train/"
         if check_if_running:
             selector += "?check_if_running=true"
-        status, response, _ = MONAILabelUtils.http_method(
-            "GET", self._server_url, selector
-        )
+        status, response, _ = MONAILabelUtils.http_method("GET", self._server_url, selector)
         if check_if_running:
             return status == 200
 
@@ -198,9 +182,7 @@ class MONAILabelUtils:
 
         if "multipart" in response_content_type:
             if response.status == 200:
-                form, files = MONAILabelUtils.parse_multipart(
-                    response.fp if response.fp else response, response.msg
-                )
+                form, files = MONAILabelUtils.parse_multipart(response.fp if response.fp else response, response.msg)
                 logging.debug("Response FORM: {}".format(form))
                 logging.debug("Response FILES: {}".format(files.keys()))
                 return response.status, form, files
@@ -216,9 +198,7 @@ class MONAILabelUtils:
             data = files[name]
             result_file = os.path.join(tmpdir, name)
 
-            logging.debug(
-                "Saving {} to {}; Size: {}".format(name, result_file, len(data))
-            )
+            logging.debug("Saving {} to {}; Size: {}".format(name, result_file, len(data)))
             dir_path = os.path.dirname(os.path.realpath(result_file))
             if not os.path.exists(dir_path):
                 os.makedirs(dir_path)
@@ -243,13 +223,8 @@ class MONAILabelUtils:
             lines.append(value)
         for (key, filename) in files.items():
             lines.append("--" + limit)
-            lines.append(
-                'Content-Disposition: form-data; name="%s"; filename="%s"'
-                % (key, filename)
-            )
-            lines.append(
-                "Content-Type: %s" % MONAILabelUtils.get_content_type(filename)
-            )
+            lines.append('Content-Disposition: form-data; name="%s"; filename="%s"' % (key, filename))
+            lines.append("Content-Type: %s" % MONAILabelUtils.get_content_type(filename))
             lines.append("")
             with open(filename, mode="rb") as f:
                 data = f.read()
@@ -281,11 +256,7 @@ class MONAILabelUtils:
         files = {}
         if hasattr(fs, "list") and isinstance(fs.list, list):
             for f in fs.list:
-                logger.debug(
-                    "FILE-NAME: {}; NAME: {}; SIZE: {}".format(
-                        f.filename, f.name, len(f.value)
-                    )
-                )
+                logger.debug("FILE-NAME: {}; NAME: {}; SIZE: {}".format(f.filename, f.name, len(f.value)))
                 if f.filename:
                     files[f.filename] = f.value
                 else:

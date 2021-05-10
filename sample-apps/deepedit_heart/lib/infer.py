@@ -23,13 +23,12 @@ from monai.transforms import (
     ToTensord,
 )
 
-from monailabel.utils.infer import InferenceTask, InferType
+from monailabel.deepedit.transforms import DiscardAddGuidanced
+from monailabel.interfaces.tasks import InferTask, InferType
 from monailabel.utils.others.post import BoundingBoxd, Restored
 
-from .transforms import AddEmptyGuidanced
 
-
-class Segmentation(InferenceTask):
+class Segmentation(InferTask):
     """
     This provides Inference Engine for pre-trained heart segmentation (UNet) model over MSD Dataset.
     """
@@ -69,7 +68,7 @@ class Segmentation(InferenceTask):
                 margin=3,
             ),
             Resized(keys="image", spatial_size=(128, 128, 128), mode="area"),
-            AddEmptyGuidanced(image="image"),
+            DiscardAddGuidanced(image="image"),
             ToTensord(keys="image"),
         ]
 
@@ -91,7 +90,7 @@ class Segmentation(InferenceTask):
         ]
 
 
-class Deepgrow(InferenceTask):
+class Deepgrow(InferTask):
     """
     This provides Inference Engine for Deepgrow over DeepEdit model.
     """
@@ -124,13 +123,9 @@ class Deepgrow(InferenceTask):
             LoadImaged(keys="image"),
             AsChannelFirstd(keys="image"),
             Spacingd(keys="image", pixdim=[1.0, 1.0, 1.0], mode="bilinear"),
-            AddGuidanceFromPointsd(
-                ref_image="image", guidance="guidance", dimensions=3
-            ),
+            AddGuidanceFromPointsd(ref_image="image", guidance="guidance", dimensions=3),
             AddChanneld(keys="image"),
-            SpatialCropGuidanced(
-                keys="image", guidance="guidance", spatial_size=self.spatial_size
-            ),
+            SpatialCropGuidanced(keys="image", guidance="guidance", spatial_size=self.spatial_size),
             Resized(keys="image", spatial_size=self.model_size, mode="area"),
             ResizeGuidanced(guidance="guidance", ref_image="image"),
             NormalizeIntensityd(keys="image"),

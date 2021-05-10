@@ -56,6 +56,7 @@ doMypyFormat=false
 doCleanup=false
 
 NUM_PARALLEL=1
+LINE_LENGTH=127
 
 PY_EXE=${MONAILABEL_PY_EXE:-$(which python3)}
 
@@ -289,15 +290,6 @@ if [ $doCleanup = true ]; then
   exit
 fi
 
-if [ $doClangFormat = true ]; then
-  echo "${separator}${blue}clang-formatting${noColor}"
-
-  clang_format
-
-  echo "${green}done!${noColor}"
-  exit
-fi
-
 # unconditionally report on the state of monailabel
 print_version
 
@@ -316,9 +308,9 @@ if [ $doIsortFormat = true ]; then
   ${cmdPrefix}isort --version
 
   if [ $doIsortFix = true ]; then
-    ${cmdPrefix}${PY_EXE} -m isort "$(pwd)"
+    ${cmdPrefix}${PY_EXE} -m isort -l ${LINE_LENGTH} "$(pwd)"
   else
-    ${cmdPrefix}${PY_EXE} -m isort --check "$(pwd)"
+    ${cmdPrefix}${PY_EXE} -m isort -l ${LINE_LENGTH} --check "$(pwd)"
   fi
 
   isort_status=$?
@@ -346,9 +338,9 @@ if [ $doBlackFormat = true ]; then
   ${cmdPrefix}${PY_EXE} -m black --version
 
   if [ $doBlackFix = true ]; then
-    ${cmdPrefix}${PY_EXE} -m black "$(pwd)"
+    ${cmdPrefix}${PY_EXE} -m black -l ${LINE_LENGTH} "$(pwd)"
   else
-    ${cmdPrefix}${PY_EXE} -m black --check "$(pwd)"
+    ${cmdPrefix}${PY_EXE} -m black -l ${LINE_LENGTH} --check "$(pwd)"
   fi
 
   black_status=$?
@@ -371,7 +363,7 @@ if [ $doFlake8Format = true ]; then
   fi
   ${cmdPrefix}${PY_EXE} -m flake8 --version
 
-  ${cmdPrefix}${PY_EXE} -m flake8 "$(pwd)" --count --statistics
+  ${cmdPrefix}${PY_EXE} -m flake8 "$(pwd)" --count --statistics --max-line-length ${LINE_LENGTH}
 
   flake8_status=$?
   if [ ${flake8_status} -ne 0 ]; then

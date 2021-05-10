@@ -15,9 +15,3 @@ config:
     lr: 0.0001
     epochs: 5
     val_split: 0.2
-  activelearning:
-    strategy:
-      random: Use Random Strategy to get Next Sample # default
-      tta: Use Test Time Augmentation as Active Learning technique
-      first: Pick first available Sample (ordered by name)
-      last: Pick last available Sample (ordered by name)

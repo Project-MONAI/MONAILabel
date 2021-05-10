@@ -1,26 +1,27 @@
 import logging
+import random
 
-from monailabel.interfaces import Datastore
+from monailabel.interfaces.datastore import Datastore
 from monailabel.interfaces.tasks import Strategy
 
 logger = logging.getLogger(__name__)
 
 
-class MyStrategy(Strategy):
+class Random(Strategy):
     """
-    Consider implementing a first strategy for active learning
+    Consider implementing a random strategy for active learning
     """
 
     def __init__(self):
-        super().__init__("Get First Sample")
+        super().__init__("Random Strategy")
 
     def __call__(self, request, datastore: Datastore):
         images = datastore.get_unlabeled_images()
         if not len(images):
             return None
 
-        images.sort()
-        image = images[0]
+        # images.sort()
+        image = random.choice(images)
 
-        logger.info(f"First: Selected Image: {image}")
+        logger.info(f"Random: Selected Image: {image}")
         return image

@@ -31,9 +31,7 @@ class MyTrain(BasicTrainTask):
                     pixdim=(1.0, 1.0, 1.0),
                     mode=("bilinear", "nearest"),
                 ),
-                ScaleIntensityRanged(
-                    keys="image", a_min=-57, a_max=164, b_min=0.0, b_max=1.0, clip=True
-                ),
+                ScaleIntensityRanged(keys="image", a_min=-57, a_max=164, b_min=0.0, b_max=1.0, clip=True),
                 CropForegroundd(keys=("image", "label"), source_key="image"),
                 RandCropByPosNegLabeld(
                     keys=("image", "label"),
@@ -68,15 +66,11 @@ class MyTrain(BasicTrainTask):
             [
                 LoadImaged(keys=("image", "label")),
                 AddChanneld(keys=("image", "label")),
-                ScaleIntensityRanged(
-                    keys="image", a_min=-57, a_max=164, b_min=0.0, b_max=1.0, clip=True
-                ),
+                ScaleIntensityRanged(keys="image", a_min=-57, a_max=164, b_min=0.0, b_max=1.0, clip=True),
                 CropForegroundd(keys=("image", "label"), source_key="image"),
                 ToTensord(keys=("image", "label")),
             ]
         )
 
     def val_inferer(self):
-        return SlidingWindowInferer(
-            roi_size=(160, 160, 160), sw_batch_size=1, overlap=0.25
-        )
+        return SlidingWindowInferer(roi_size=(160, 160, 160), sw_batch_size=1, overlap=0.25)
