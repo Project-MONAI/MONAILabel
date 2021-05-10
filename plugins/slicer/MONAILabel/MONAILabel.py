@@ -8,17 +8,16 @@ import time
 import traceback
 from collections import OrderedDict
 
-import SampleData
-import SimpleITK as sitk
 import ctk
 import qt
+import SampleData
+import SimpleITK as sitk
 import sitkUtils
 import slicer
 import vtk
+from client import MONAILabelClient
 from slicer.ScriptedLoadableModule import *
 from slicer.util import VTKObservationMixin
-
-from client import MONAILabelClient
 
 
 class MONAILabel(ScriptedLoadableModule):
@@ -56,25 +55,24 @@ class _ui_MONAILabelSettingsPanel(object):
 
         serverUrl = qt.QLineEdit()
         groupLayout.addRow("Server address:", serverUrl)
-        parent.registerProperty(
-            "MONAI-Label/serverUrl", serverUrl,
-            "text", str(qt.SIGNAL("textChanged(QString)")))
+        parent.registerProperty("MONAI-Label/serverUrl", serverUrl, "text", str(qt.SIGNAL("textChanged(QString)")))
 
         serverUrlHistory = qt.QLineEdit()
         groupLayout.addRow("Server address history:", serverUrlHistory)
         parent.registerProperty(
-            "MONAI-Label/serverUrlHistory", serverUrlHistory,
-            "text", str(qt.SIGNAL("textChanged(QString)")))
+            "MONAI-Label/serverUrlHistory", serverUrlHistory, "text", str(qt.SIGNAL("textChanged(QString)"))
+        )
 
         autoRunSegmentationCheckBox = qt.QCheckBox()
         autoRunSegmentationCheckBox.checked = True
         autoRunSegmentationCheckBox.toolTip = (
-            "Enable this option to auto run segmentation if pre-trained model exists when Next Sample is fetched")
+            "Enable this option to auto run segmentation if pre-trained model exists when Next Sample is fetched"
+        )
         groupLayout.addRow("Auto-Run Pre-Trained Model:", autoRunSegmentationCheckBox)
         autRunMapper = ctk.ctkBooleanMapper(autoRunSegmentationCheckBox, "checked", str(qt.SIGNAL("toggled(bool)")))
         parent.registerProperty(
-            "MONAI-Label/autoRunSegmentationOnNextSample", autRunMapper,
-            "valueAsInt", str(qt.SIGNAL("valueAsIntChanged(int)")))
+            "MONAI-Label/autoRunSegmentationOnNextSample", autRunMapper, "valueAsInt", str(qt.SIGNAL("valueAsIntChanged(int)"))
+        )
 
         vBoxLayout.addWidget(groupBox)
         vBoxLayout.addStretch(1)
@@ -124,7 +122,7 @@ class MONAILabelWidget(ScriptedLoadableModuleWidget, VTKObservationMixin):
 
         # Load widget from .ui file (created by Qt Designer).
         # Additional widgets can be instantiated manually and added to self.layout.
-        uiWidget = slicer.util.loadUI(self.resourcePath('UI/MONAILabel.ui'))
+        uiWidget = slicer.util.loadUI(self.resourcePath("UI/MONAILabel.ui"))
         self.layout.addWidget(uiWidget)
         self.ui = slicer.util.childWidgetVariables(uiWidget)
 
@@ -139,17 +137,17 @@ class MONAILabelWidget(ScriptedLoadableModuleWidget, VTKObservationMixin):
 
         # Create logic class. Logic implements all computations that should be possible to run
         # in batch mode, without a graphical user interface.
-        self.tmpdir = slicer.util.tempDirectory('slicer-monai-label')
+        self.tmpdir = slicer.util.tempDirectory("slicer-monai-label")
         self.logic = MONAILabelLogic(self.tmpdir)
 
         # Set icons and tune widget properties
         self.ui.serverComboBox.lineEdit().setPlaceholderText("enter server address or leave empty to use default")
-        self.ui.fetchModelsButton.setIcon(self.icon('refresh-icon.png'))
-        self.ui.segmentationButton.setIcon(self.icon('segment.png'))
-        self.ui.nextSampleButton.setIcon(self.icon('segment.png'))
-        self.ui.saveLabelButton.setIcon(self.icon('save.png'))
-        self.ui.trainingButton.setIcon(self.icon('training.png'))
-        self.ui.stopTrainingButton.setIcon(self.icon('stop.png'))
+        self.ui.fetchModelsButton.setIcon(self.icon("refresh-icon.png"))
+        self.ui.segmentationButton.setIcon(self.icon("segment.png"))
+        self.ui.nextSampleButton.setIcon(self.icon("segment.png"))
+        self.ui.saveLabelButton.setIcon(self.icon("save.png"))
+        self.ui.trainingButton.setIcon(self.icon("training.png"))
+        self.ui.stopTrainingButton.setIcon(self.icon("stop.png"))
 
         self.ui.dgPositiveFiducialPlacementWidget.setMRMLScene(slicer.mrmlScene)
         self.ui.dgPositiveFiducialPlacementWidget.placeButton().toolTip = "Select +ve points"
@@ -164,16 +162,16 @@ class MONAILabelWidget(ScriptedLoadableModuleWidget, VTKObservationMixin):
         self.ui.dgNegativeFiducialPlacementWidget.deleteButton().show()
 
         # Connections
-        self.ui.fetchModelsButton.connect('clicked(bool)', self.onClickFetchModels)
-        self.ui.serverComboBox.connect('currentIndexChanged(int)', self.onClickFetchModels)
+        self.ui.fetchModelsButton.connect("clicked(bool)", self.onClickFetchModels)
+        self.ui.serverComboBox.connect("currentIndexChanged(int)", self.onClickFetchModels)
         self.ui.segmentationModelSelector.connect("currentIndexChanged(int)", self.updateParameterNodeFromGUI)
-        self.ui.segmentationButton.connect('clicked(bool)', self.onClickSegmentation)
+        self.ui.segmentationButton.connect("clicked(bool)", self.onClickSegmentation)
         self.ui.deepgrowModelSelector.connect("currentIndexChanged(int)", self.updateParameterNodeFromGUI)
-        self.ui.nextSampleButton.connect('clicked(bool)', self.onNextSampleButton)
-        self.ui.trainingButton.connect('clicked(bool)', self.onTraining)
-        self.ui.stopTrainingButton.connect('clicked(bool)', self.onStopTraining)
-        self.ui.trainingStatusButton.connect('clicked(bool)', self.onTrainingStatus)
-        self.ui.saveLabelButton.connect('clicked(bool)', self.onSaveLabel)
+        self.ui.nextSampleButton.connect("clicked(bool)", self.onNextSampleButton)
+        self.ui.trainingButton.connect("clicked(bool)", self.onTraining)
+        self.ui.stopTrainingButton.connect("clicked(bool)", self.onStopTraining)
+        self.ui.trainingStatusButton.connect("clicked(bool)", self.onTrainingStatus)
+        self.ui.saveLabelButton.connect("clicked(bool)", self.onSaveLabel)
 
         self.initializeParameterNode()
         self.updateServerUrlGUIFromSettings()
@@ -197,13 +195,13 @@ class MONAILabelWidget(ScriptedLoadableModuleWidget, VTKObservationMixin):
         self.current_sample = None
         self.samples.clear()
 
-        self.resetFiducial(self.ui.dgPositiveFiducialPlacementWidget,
-                           self.dgPositiveFiducialNode,
-                           self.dgPositiveFiducialNodeObservers)
+        self.resetFiducial(
+            self.ui.dgPositiveFiducialPlacementWidget, self.dgPositiveFiducialNode, self.dgPositiveFiducialNodeObservers
+        )
         self.dgPositiveFiducialNode = None
-        self.resetFiducial(self.ui.dgNegativeFiducialPlacementWidget,
-                           self.dgNegativeFiducialNode,
-                           self.dgNegativeFiducialNodeObservers)
+        self.resetFiducial(
+            self.ui.dgNegativeFiducialPlacementWidget, self.dgNegativeFiducialNode, self.dgNegativeFiducialNodeObservers
+        )
         self.dgNegativeFiducialNode = None
 
     def resetFiducial(self, fiducialWidget, fiducialNode, fiducialNodeObservers):
@@ -255,45 +253,48 @@ class MONAILabelWidget(ScriptedLoadableModuleWidget, VTKObservationMixin):
             self.ui.inputSelector.setCurrentIndex(self.ui.inputSelector.findText(self._volumeNode.GetName()))
         self.ui.inputSelector.setEnabled(self._volumeNode is not None)
 
-        self.updateSelector(self.ui.segmentationModelSelector, ['segmentation'], 'SegmentationModel', 0)
-        self.updateSelector(self.ui.deepgrowModelSelector, ['deepgrow'], 'DeepgrowModel', 0)
+        self.updateSelector(self.ui.segmentationModelSelector, ["segmentation"], "SegmentationModel", 0)
+        self.updateSelector(self.ui.deepgrowModelSelector, ["deepgrow"], "DeepgrowModel", 0)
 
         self.ui.labelComboBox.clear()
         for label in self.info.get("labels", {}):
             self.ui.labelComboBox.addItem(label)
-        currentLabel = self._parameterNode.GetParameter('CurrentLabel')
+        currentLabel = self._parameterNode.GetParameter("CurrentLabel")
         self.ui.labelComboBox.setCurrentIndex(self.ui.labelComboBox.findText(currentLabel) if currentLabel else 0)
 
         self.ui.appComboBox.clear()
         self.ui.appComboBox.addItem(self.info.get("name", ""))
 
+        self.ui.strategyBox.clear()
+        for strategy in self.info.get("strategies", {}):
+            self.ui.strategyBox.addItem(strategy)
+        currentStrategy = self._parameterNode.GetParameter("CurrentStrategy")
+        self.ui.strategyBox.setCurrentIndex(self.ui.strategyBox.findText(currentStrategy) if currentStrategy else 0)
+
         # Enable/Disable
-        self.ui.nextSampleButton.setEnabled(self.info)
+        self.ui.nextSampleButton.setEnabled(self.ui.strategyBox.count)
 
         is_training_running = True if self.info and self.isTrainingRunning() else False
         self.ui.trainingButton.setEnabled(self.info and not is_training_running)
         self.ui.stopTrainingButton.setEnabled(is_training_running)
         self.ui.trainingStatusButton.setEnabled(self.info)
 
-        self.ui.segmentationButton.setEnabled(
-            self.ui.segmentationModelSelector.currentText and self._volumeNode is not None)
+        self.ui.segmentationButton.setEnabled(self.ui.segmentationModelSelector.currentText and self._volumeNode is not None)
         self.ui.saveLabelButton.setEnabled(self._segmentNode is not None)
 
         # Create empty markup fiducial node for deep grow +ve and -ve
         if self._segmentNode:
             if not self.dgPositiveFiducialNode:
                 self.dgPositiveFiducialNode, self.dgPositiveFiducialNodeObservers = self.createFiducialNode(
-                    'P',
-                    self.onDeepGrowFiducialNodeModified,
-                    [0.5, 1, 0.5])
+                    "P", self.onDeepGrowFiducialNodeModified, [0.5, 1, 0.5]
+                )
                 self.ui.dgPositiveFiducialPlacementWidget.setCurrentNode(self.dgPositiveFiducialNode)
                 self.ui.dgPositiveFiducialPlacementWidget.setPlaceModeEnabled(False)
 
             if not self.dgNegativeFiducialNode:
                 self.dgNegativeFiducialNode, self.dgNegativeFiducialNodeObservers = self.createFiducialNode(
-                    'N',
-                    self.onDeepGrowFiducialNodeModified,
-                    [0.5, 0.5, 1])
+                    "N", self.onDeepGrowFiducialNodeModified, [0.5, 0.5, 1]
+                )
                 self.ui.dgNegativeFiducialPlacementWidget.setCurrentNode(self.dgNegativeFiducialNode)
                 self.ui.dgNegativeFiducialPlacementWidget.setPlaceModeEnabled(False)
 
@@ -324,6 +325,11 @@ class MONAILabelWidget(ScriptedLoadableModuleWidget, VTKObservationMixin):
             currentLabel = self.ui.labelComboBox.itemText(currentLabelIndex)
             self._parameterNode.SetParameter("CurrentLabel", currentLabel)
 
+        currentStrategyIndex = self.ui.strategyBox.currentIndex
+        if currentStrategyIndex >= 0:
+            currentStrategy = self.ui.strategyBox.itemText(currentStrategyIndex)
+            self._parameterNode.SetParameter("CurrentStrategy", currentStrategy)
+
         self._parameterNode.EndModify(wasModified)
 
     def updateSelector(self, selector, model_types, param, defaultIndex=0):
@@ -331,9 +337,9 @@ class MONAILabelWidget(ScriptedLoadableModuleWidget, VTKObservationMixin):
         selector.clear()
 
         for model_name, model in self.models.items():
-            if model['type'] in model_types:
+            if model["type"] in model_types:
                 selector.addItem(model_name)
-                selector.setItemData(selector.count - 1, model['description'], qt.Qt.ToolTipRole)
+                selector.setItemData(selector.count - 1, model["description"], qt.Qt.ToolTipRole)
 
         model = self._parameterNode.GetParameter(param)
         model = "" if not model else model
@@ -351,17 +357,20 @@ class MONAILabelWidget(ScriptedLoadableModuleWidget, VTKObservationMixin):
     def updateConfigTable(self):
         table = self.ui.configTable
         table.clear()
-        table.setHorizontalHeaderLabels(['section', 'name', 'value'])
+        table.setHorizontalHeaderLabels(["section", "name", "value"])
 
         config = copy.deepcopy(self.config)
-        infer = config.get('infer', {})
-        train = config.get('train', {})
-        activelearning = config.get('activelearning', {})
+        infer = config.get("infer", {})
+        train = config.get("train", {})
+        activelearning = config.get("activelearning", {})
         table.setRowCount(len(infer) + len(activelearning) + len(train))
 
         config = {"infer": infer, "activelearning": activelearning, "train": train}
-        colors = {"infer": qt.QColor(255, 255, 255), "activelearning": qt.QColor(220, 220, 220),
-                  "train": qt.QColor(255, 255, 255)}
+        colors = {
+            "infer": qt.QColor(255, 255, 255),
+            "activelearning": qt.QColor(220, 220, 220),
+            "train": qt.QColor(255, 255, 255),
+        }
 
         n = 0
         for section in config:
@@ -412,7 +421,7 @@ class MONAILabelWidget(ScriptedLoadableModuleWidget, VTKObservationMixin):
         return config
 
     def onDeepGrowFiducialNodeModified(self, observer, eventid):
-        logging.debug('Deepgrow Point Event!!')
+        logging.debug("Deepgrow Point Event!!")
 
         if self.ignoreFiducialNodeAddEvent:
             return
@@ -447,10 +456,10 @@ class MONAILabelWidget(ScriptedLoadableModuleWidget, VTKObservationMixin):
             p_Ijk = RasToIjkMatrix.MultiplyDoublePoint(p_Ras)
             p_Ijk = [round(i) for i in p_Ijk]
 
-            logging.debug('RAS: {}; WORLD: {}; IJK: '.format(coord, world, p_Ijk))
+            logging.debug("RAS: {}; WORLD: {}; IJK: ".format(coord, world, p_Ijk))
             point_set.append(p_Ijk[0:3])
 
-        logging.info('Current Fiducials-Points: {}'.format(point_set))
+        logging.info("Current Fiducials-Points: {}".format(point_set))
         return point_set
 
     def getFiducialPointXYZ(self, fiducialNode, index):
@@ -468,7 +477,7 @@ class MONAILabelWidget(ScriptedLoadableModuleWidget, VTKObservationMixin):
         p_Ijk = RasToIjkMatrix.MultiplyDoublePoint(p_Ras)
         p_Ijk = [round(i) for i in p_Ijk]
 
-        logging.debug('RAS: {}; WORLD: {}; IJK: '.format(coord, world, p_Ijk))
+        logging.debug("RAS: {}; WORLD: {}; IJK: ".format(coord, world, p_Ijk))
         return p_Ijk[0:3]
 
     def onEditFiducialPoints(self, fiducialNode, tagName):
@@ -485,14 +494,14 @@ class MONAILabelWidget(ScriptedLoadableModuleWidget, VTKObservationMixin):
             fPosStr = vtk.mutable("")
             segment.GetTag(tagName, fPosStr)
             pointset = str(fPosStr)
-            logging.debug('{} => {} Fiducial points are: {}'.format(segmentId, segment.GetName(), pointset))
+            logging.debug("{} => {} Fiducial points are: {}".format(segmentId, segment.GetName(), pointset))
 
             if fPosStr is not None and len(pointset) > 0:
                 points = json.loads(pointset)
                 for p in points:
                     p_Ijk = [p[0], p[1], p[2], 1.0]
                     p_Ras = IjkToRasMatrix.MultiplyDoublePoint(p_Ijk)
-                    logging.debug('Add Fiducial: {} => {}'.format(p_Ijk, p_Ras))
+                    logging.debug("Add Fiducial: {} => {}".format(p_Ijk, p_Ras))
                     fiducialNode.AddFiducialFromArray(p_Ras[0:3])
 
     def currentSegment(self):
@@ -500,10 +509,10 @@ class MONAILabelWidget(ScriptedLoadableModuleWidget, VTKObservationMixin):
         segmentId = segmentation.GetSegmentIdBySegmentName(self.ui.labelComboBox.currentText)
         segment = segmentation.GetSegment(segmentId)
 
-        logging.debug('Current SegmentID: {}; Segment: {}'.format(segmentId, segment))
+        logging.debug("Current SegmentID: {}; Segment: {}".format(segmentId, segment))
         return segmentId, segment
 
-    def icon(self, name='MONAILabel.png'):
+    def icon(self, name="MONAILabel.png"):
         # It should not be necessary to modify this method
         iconPath = os.path.join(os.path.dirname(__file__), "Resources", "Icons", name)
         if os.path.exists(iconPath):
@@ -564,34 +573,36 @@ class MONAILabelWidget(ScriptedLoadableModuleWidget, VTKObservationMixin):
 
             models = info["models"]
         except:
-            slicer.util.errorDisplay("Failed to fetch models from remote server. "
-                                     "Make sure server address is correct and <server_uri>/info/ "
-                                     "is accessible in browser",
-                                     detailedText=traceback.format_exc())
+            slicer.util.errorDisplay(
+                "Failed to fetch models from remote server. "
+                "Make sure server address is correct and <server_uri>/info/ "
+                "is accessible in browser",
+                detailedText=traceback.format_exc(),
+            )
             return
 
         self.models.clear()
         self.config = info["config"]
         model_count = {}
         for k, v in models.items():
-            model_type = v.get('type', 'segmentation')
+            model_type = v.get("type", "segmentation")
             model_count[model_type] = model_count.get(model_type, 0) + 1
 
-            logging.debug('{} = {}'.format(k, model_type))
+            logging.debug("{} = {}".format(k, model_type))
             self.models[k] = v
 
         self.updateGUIFromParameterNode()
 
-        msg = ''
-        msg += '-----------------------------------------------------\t\n'
-        msg += 'Total Models Available: \t' + str(len(models)) + '\t\n'
-        msg += '-----------------------------------------------------\t\n'
+        msg = ""
+        msg += "-----------------------------------------------------\t\n"
+        msg += "Total Models Available: \t" + str(len(models)) + "\t\n"
+        msg += "-----------------------------------------------------\t\n"
         for model_type in model_count.keys():
-            msg += model_type.capitalize() + ' Models: \t' + str(model_count[model_type]) + '\t\n'
-        msg += '-----------------------------------------------------\t\n'
+            msg += model_type.capitalize() + " Models: \t" + str(model_count[model_type]) + "\t\n"
+        msg += "-----------------------------------------------------\t\n"
 
         if showInfo:
-            qt.QMessageBox.information(slicer.util.mainWindow(), 'MONAI Label', msg)
+            qt.QMessageBox.information(slicer.util.mainWindow(), "MONAI Label", msg)
         logging.debug(msg)
         logging.info("Time consumed by fetch info: {0:3.1f}".format(time.time() - start))
 
@@ -615,10 +626,9 @@ class MONAILabelWidget(ScriptedLoadableModuleWidget, VTKObservationMixin):
             qt.QApplication.setOverrideCursor(qt.Qt.WaitCursor)
             self.updateServerSettings()
             configs = self.getParamsFromConfig()
-            status = self.logic.train_start(configs.get('train'))
+            status = self.logic.train_start(configs.get("train"))
         except:
-            slicer.util.errorDisplay("Failed to run training in MONAI Label Server",
-                                     detailedText=traceback.format_exc())
+            slicer.util.errorDisplay("Failed to run training in MONAI Label Server", detailedText=traceback.format_exc())
         finally:
             qt.QApplication.restoreOverrideCursor()
 
@@ -636,8 +646,7 @@ class MONAILabelWidget(ScriptedLoadableModuleWidget, VTKObservationMixin):
     def onStopTraining(self):
         start = time.time()
         status = None
-        if not slicer.util.confirmOkCancelDisplay(
-                "This will kill/stop current Training task.  Are you sure to continue?"):
+        if not slicer.util.confirmOkCancelDisplay("This will kill/stop current Training task.  Are you sure to continue?"):
             return
 
         try:
@@ -654,7 +663,7 @@ class MONAILabelWidget(ScriptedLoadableModuleWidget, VTKObservationMixin):
                 status.get("status"),
                 status.get("start_ts"),
                 status.get("end_ts"),
-                status.get("result", status.get("details", [])[-1])
+                status.get("result", status.get("details", [])[-1]),
             )
             slicer.util.infoDisplay(msg, detailedText=json.dumps(status, indent=2))
         self.updateGUIFromParameterNode()
@@ -683,11 +692,16 @@ class MONAILabelWidget(ScriptedLoadableModuleWidget, VTKObservationMixin):
             qt.QApplication.restoreOverrideCursor()
 
         if status:
+            result = status.get("details", [])[-1]
+            try:
+                result = json.loads(result)
+                result.pop("train_metric_details", None)
+                result.pop("val_metric_details", None)
+                result = json.dumps(result, indent=2)
+            except:
+                pass
             msg = "Status: {}\nStart Time: {}\nEnd Time: {}\nResult: {}".format(
-                status.get("status"),
-                status.get("start_ts"),
-                status.get("end_ts"),
-                status.get("result", status.get("details", [])[-1])
+                status.get("status"), status.get("start_ts"), status.get("end_ts"), status.get("result", result)
             )
             slicer.util.infoDisplay(msg, detailedText=json.dumps(status, indent=2))
         else:
@@ -700,10 +714,11 @@ class MONAILabelWidget(ScriptedLoadableModuleWidget, VTKObservationMixin):
         if not self.logic:
             return
 
-        if self._volumeNode or len(slicer.util.getNodesByClass('vtkMRMLScalarVolumeNode')):
+        if self._volumeNode or len(slicer.util.getNodesByClass("vtkMRMLScalarVolumeNode")):
             if not slicer.util.confirmOkCancelDisplay(
-                    "This will close current scene.  Please make sure you have saved your current work.\n"
-                    "Are you sure to continue?"):
+                "This will close current scene.  Please make sure you have saved your current work.\n"
+                "Are you sure to continue?"
+            ):
                 return
             slicer.mrmlScene.Clear(0)
 
@@ -713,7 +728,12 @@ class MONAILabelWidget(ScriptedLoadableModuleWidget, VTKObservationMixin):
 
             self.updateServerSettings()
             configs = self.getParamsFromConfig()
-            sample = self.logic.next_sample(configs.get('activelearning'))
+            strategy = self.ui.strategyBox.currentText
+            if not strategy:
+                slicer.util.errorDisplay("No Strategy Found/Selected\t")
+                return
+
+            sample = self.logic.next_sample(strategy, configs.get("activelearning"))
             logging.debug(sample)
 
             if self.samples.get(sample["id"]) is not None:
@@ -733,10 +753,8 @@ class MONAILabelWidget(ScriptedLoadableModuleWidget, VTKObservationMixin):
 
                 sampleDataLogic = SampleData.SampleDataLogic()
                 self._volumeNode = sampleDataLogic.downloadFromURL(
-                    nodeNames=sample["name"],
-                    fileNames=sample["name"],
-                    uris=download_uri,
-                    checksums=sample["checksum"])[0]
+                    nodeNames=sample["name"], fileNames=sample["name"], uris=download_uri, checksums=sample["checksum"]
+                )[0]
 
             sample["VolumeNodeName"] = self._volumeNode.GetName()
             self.current_sample = sample
@@ -752,8 +770,7 @@ class MONAILabelWidget(ScriptedLoadableModuleWidget, VTKObservationMixin):
             self.updateSegmentationMask(None, self.info.get("labels"))
 
             # Check if user wants to run auto-segmentation on new sample
-            if slicer.util.settingsValue("MONAI-Label/autoRunSegmentationOnNextSample", True,
-                                         converter=slicer.util.toBool):
+            if slicer.util.settingsValue("MONAI-Label/autoRunSegmentationOnNextSample", True, converter=slicer.util.toBool):
                 for label in self.info.get("labels", []):
                     for name, model in self.models.items():
                         if label in model.get("labels", []):
@@ -762,8 +779,7 @@ class MONAILabelWidget(ScriptedLoadableModuleWidget, VTKObservationMixin):
                             self.onClickSegmentation()
                             return
         except:
-            slicer.util.errorDisplay("Failed to fetch Sample from MONAI Label Server",
-                                     detailedText=traceback.format_exc())
+            slicer.util.errorDisplay("Failed to fetch Sample from MONAI Label Server", detailedText=traceback.format_exc())
         finally:
             qt.QApplication.restoreOverrideCursor()
 
@@ -777,9 +793,10 @@ class MONAILabelWidget(ScriptedLoadableModuleWidget, VTKObservationMixin):
         try:
             qt.QApplication.setOverrideCursor(qt.Qt.WaitCursor)
             segmentationNode = self._segmentNode
-            labelmapVolumeNode = slicer.mrmlScene.AddNewNodeByClass('vtkMRMLLabelMapVolumeNode')
+            labelmapVolumeNode = slicer.mrmlScene.AddNewNodeByClass("vtkMRMLLabelMapVolumeNode")
             slicer.modules.segmentations.logic().ExportVisibleSegmentsToLabelmapNode(
-                segmentationNode, labelmapVolumeNode, self._volumeNode)
+                segmentationNode, labelmapVolumeNode, self._volumeNode
+            )
 
             label_in = tempfile.NamedTemporaryFile(suffix=".nii.gz", dir=self.tmpdir).name
             self.reportProgress(5)
@@ -790,8 +807,7 @@ class MONAILabelWidget(ScriptedLoadableModuleWidget, VTKObservationMixin):
             self.updateServerSettings()
             result = self.logic.save_label(self.current_sample["id"], label_in)
         except:
-            slicer.util.errorDisplay("Failed to save Label to MONAI Label Server",
-                                     detailedText=traceback.format_exc())
+            slicer.util.errorDisplay("Failed to save Label to MONAI Label Server", detailedText=traceback.format_exc())
         finally:
             qt.QApplication.restoreOverrideCursor()
             self.reportProgress(100)
@@ -799,8 +815,9 @@ class MONAILabelWidget(ScriptedLoadableModuleWidget, VTKObservationMixin):
             if labelmapVolumeNode:
                 slicer.mrmlScene.RemoveNode(labelmapVolumeNode)
             if result:
-                slicer.util.infoDisplay("Label-Mask saved into MONAI Label Server\t\t",
-                                        detailedText=json.dumps(result, indent=2))
+                slicer.util.infoDisplay(
+                    "Label-Mask saved into MONAI Label Server\t\t", detailedText=json.dumps(result, indent=2)
+                )
                 slicer.mrmlScene.Clear(0)
                 self.onNextSampleButton()
 
@@ -821,12 +838,11 @@ class MONAILabelWidget(ScriptedLoadableModuleWidget, VTKObservationMixin):
             image_file = self.current_sample["id"]
 
             configs = self.getParamsFromConfig()
-            result_file, params = self.logic.inference(model, image_file, configs.get('infer'))
+            result_file, params = self.logic.inference(model, image_file, configs.get("infer"))
 
             self.updateSegmentationMask(result_file, self.models[model].get("labels"))
         except:
-            slicer.util.errorDisplay("Failed to run inference in MONAI Label Server",
-                                     detailedText=traceback.format_exc())
+            slicer.util.errorDisplay("Failed to run inference in MONAI Label Server", detailedText=traceback.format_exc())
         finally:
             qt.QApplication.restoreOverrideCursor()
             if result_file and os.path.exists(result_file):
@@ -857,14 +873,14 @@ class MONAILabelWidget(ScriptedLoadableModuleWidget, VTKObservationMixin):
         start = time.time()
 
         label = segment.GetName()
-        operationDescription = 'Run Deepgrow for segment: {}; model: {}; 3d {}'.format(label, model, deepgrow_3d)
+        operationDescription = "Run Deepgrow for segment: {}; model: {}; 3d {}".format(label, model, deepgrow_3d)
         logging.debug(operationDescription)
 
         try:
             qt.QApplication.setOverrideCursor(qt.Qt.WaitCursor)
 
             sliceIndex = current_point[2]
-            logging.debug('Slice Index: {}'.format(sliceIndex))
+            logging.debug("Slice Index: {}".format(sliceIndex))
 
             if deepgrow_3d:
                 foreground = foreground_all
@@ -873,9 +889,9 @@ class MONAILabelWidget(ScriptedLoadableModuleWidget, VTKObservationMixin):
                 foreground = [x for x in foreground_all if x[2] == sliceIndex]
                 background = [x for x in background_all if x[2] == sliceIndex]
 
-            logging.debug('Foreground: {}'.format(foreground))
-            logging.debug('Background: {}'.format(background))
-            logging.debug('Current point: {}'.format(current_point))
+            logging.debug("Foreground: {}".format(foreground))
+            logging.debug("Background: {}".format(background))
+            logging.debug("Current point: {}".format(current_point))
 
             image_file = self.current_sample["id"]
             params = {
@@ -884,9 +900,9 @@ class MONAILabelWidget(ScriptedLoadableModuleWidget, VTKObservationMixin):
             }
 
             configs = self.getParamsFromConfig()
-            params.update(configs.get('infer', {}))
+            params.update(configs.get("infer", {}))
             result_file, params = self.logic.inference(model, image_file, params)
-            logging.debug('Params from deepgrow is {}'.format(params))
+            logging.debug("Params from deepgrow is {}".format(params))
 
             self.updateSegmentationMask(result_file, [label], None if deepgrow_3d else sliceIndex)
         except:
@@ -905,8 +921,8 @@ class MONAILabelWidget(ScriptedLoadableModuleWidget, VTKObservationMixin):
         if self._volumeNode is None:
             return
         if self._segmentNode is None:
-            name = 'segmentation_' + self._volumeNode.GetName()
-            self._segmentNode = slicer.mrmlScene.AddNewNodeByClass('vtkMRMLSegmentationNode')
+            name = "segmentation_" + self._volumeNode.GetName()
+            self._segmentNode = slicer.mrmlScene.AddNewNodeByClass("vtkMRMLSegmentationNode")
             self._segmentNode.SetReferenceImageGeometryParameterFromVolumeNode(self._volumeNode)
             self._segmentNode.SetName(name)
 
@@ -917,7 +933,7 @@ class MONAILabelWidget(ScriptedLoadableModuleWidget, VTKObservationMixin):
 
     def updateSegmentationMask(self, in_file, labels, sliceIndex=None):
         start = time.time()
-        logging.debug('Update Segmentation Mask from: {}'.format(in_file))
+        logging.debug("Update Segmentation Mask from: {}".format(in_file))
         if in_file and not os.path.exists(in_file):
             return False
 
@@ -932,7 +948,7 @@ class MONAILabelWidget(ScriptedLoadableModuleWidget, VTKObservationMixin):
 
         # segmentId, segment = self.currentSegment()
         labelImage = sitk.ReadImage(in_file)
-        labelmapVolumeNode = sitkUtils.PushVolumeToSlicer(labelImage, None, className='vtkMRMLLabelMapVolumeNode')
+        labelmapVolumeNode = sitkUtils.PushVolumeToSlicer(labelImage, None, className="vtkMRMLLabelMapVolumeNode")
 
         existing_label_ids = {}
         for label in labels:
@@ -945,13 +961,12 @@ class MONAILabelWidget(ScriptedLoadableModuleWidget, VTKObservationMixin):
         slicer.mrmlScene.RemoveNode(labelmapVolumeNode)
 
         numberOfAddedSegments = segmentation.GetNumberOfSegments() - numberOfExistingSegments
-        logging.debug('Adding {} segments'.format(numberOfAddedSegments))
+        logging.debug("Adding {} segments".format(numberOfAddedSegments))
 
-        addedSegmentIds = [segmentation.GetNthSegmentID(numberOfExistingSegments + i)
-                           for i in range(numberOfAddedSegments)]
+        addedSegmentIds = [segmentation.GetNthSegmentID(numberOfExistingSegments + i) for i in range(numberOfAddedSegments)]
         for i, segmentId in enumerate(addedSegmentIds):
             segment = segmentation.GetSegment(segmentId)
-            print('Setting new segmentation with id: {} => {}'.format(segmentId, segment.GetName()))
+            print("Setting new segmentation with id: {} => {}".format(segmentId, segment.GetName()))
 
             label = labels[i] if i < len(labels) else "unknown {}".format(i)
             # segment.SetName(label)
@@ -977,24 +992,22 @@ class MONAILabelWidget(ScriptedLoadableModuleWidget, VTKObservationMixin):
                                 count = count + 1
                             selectedSegmentLabelmap.SetScalarComponentFromDouble(x, y, sliceIndex, 0, 0)
 
-                    logging.debug('Total Non Zero: {}'.format(count))
+                    logging.debug("Total Non Zero: {}".format(count))
 
                     # Clear the Slice
                     if count:
                         effect.modifySelectedSegmentByLabelmap(
-                            selectedSegmentLabelmap,
-                            slicer.qSlicerSegmentEditorAbstractEffect.ModificationModeSet
+                            selectedSegmentLabelmap, slicer.qSlicerSegmentEditorAbstractEffect.ModificationModeSet
                         )
 
                     # Union label map
                     effect.modifySelectedSegmentByLabelmap(
-                        labelmap,
-                        slicer.qSlicerSegmentEditorAbstractEffect.ModificationModeAdd
+                        labelmap, slicer.qSlicerSegmentEditorAbstractEffect.ModificationModeAdd
                     )
                 else:
                     effect.modifySelectedSegmentByLabelmap(
-                        labelmap,
-                        slicer.qSlicerSegmentEditorAbstractEffect.ModificationModeSet)
+                        labelmap, slicer.qSlicerSegmentEditorAbstractEffect.ModificationModeSet
+                    )
 
                 segmentationNode.RemoveSegment(segmentId)
 
@@ -1044,7 +1057,7 @@ class MONAILabelLogic(ScriptedLoadableModuleLogic):
     def __init__(self, tmpdir=None, server_url=None, progress_callback=None):
         ScriptedLoadableModuleLogic.__init__(self)
 
-        self.tmpdir = slicer.util.tempDirectory('slicer-monai-label') if tmpdir is None else tmpdir
+        self.tmpdir = slicer.util.tempDirectory("slicer-monai-label") if tmpdir is None else tmpdir
         self.volumeToSessions = dict()
         self.progress_callback = progress_callback
 
@@ -1076,14 +1089,14 @@ class MONAILabelLogic(ScriptedLoadableModuleLogic):
     def info(self):
         return MONAILabelClient(self.server_url, self.tmpdir).info()
 
-    def next_sample(self, params={}):
-        return MONAILabelClient(self.server_url, self.tmpdir).next_sample(params)
+    def next_sample(self, strategy, params={}):
+        return MONAILabelClient(self.server_url, self.tmpdir).next_sample(strategy, params)
 
     def save_label(self, image_in, label_in):
         return MONAILabelClient(self.server_url, self.tmpdir).save_label(image_in, label_in)
 
     def inference(self, model, image_in, params={}):
-        logging.debug('Preparing input data for segmentation')
+        logging.debug("Preparing input data for segmentation")
         self.reportProgress(0)
 
         client = MONAILabelClient(self.server_url, self.tmpdir)
@@ -1114,7 +1127,7 @@ class MONAILabelTest(ScriptedLoadableModuleTest):
         self.test_MONAILabel1()
 
     def test_MONAILabel1(self):
-        self.delayDisplay('Test passed')
+        self.delayDisplay("Test passed")
 
 
 GenericAnatomyColors = {
@@ -1427,5 +1440,5 @@ GenericAnatomyColors = {
     "region 14": (0, 0, 255),
     "region 15": (157, 0, 0),
     "unknown": (100, 100, 130),
-    "cyst": (205, 205, 100)
+    "cyst": (205, 205, 100),
 }

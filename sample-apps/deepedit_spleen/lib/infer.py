@@ -15,13 +15,12 @@ from monai.transforms import (
     ToTensord,
 )
 
-from monailabel.utils.infer import InferenceTask, InferType
+from monailabel.deepedit.transforms import DiscardAddGuidanced, ResizeGuidanceCustomd
+from monailabel.interfaces.tasks import InferTask, InferType
 from monailabel.utils.others.post import Restored
 
-from .transforms import AddEmptyGuidanced, ResizeGuidanceCustomd
 
-
-class Segmentation(InferenceTask):
+class Segmentation(InferTask):
     """
     This provides Inference Engine for pre-trained heart segmentation (UNet) model over MSD Dataset.
     """
@@ -54,12 +53,10 @@ class Segmentation(InferenceTask):
             Spacingd(keys="image", pixdim=(1.0, 1.0, 1.0), mode="bilinear"),
             Orientationd(keys="image", axcodes="RAS"),
             NormalizeIntensityd(keys="image"),
-            CropForegroundd(
-                keys="image", source_key="image", select_fn=lambda x: x > 1.3, margin=3
-            ),
+            CropForegroundd(keys="image", source_key="image", select_fn=lambda x: x > 1.3, margin=3),
             # select_fn and margin are Task dependant
             Resized(keys="image", spatial_size=(128, 128, 128), mode="area"),
-            AddEmptyGuidanced(image="image"),
+            DiscardAddGuidanced(image="image"),
             ToTensord(keys="image"),
         ]
 
@@ -80,7 +77,7 @@ class Segmentation(InferenceTask):
         ]
 
 
-class Deepgrow(InferenceTask):
+class Deepgrow(InferTask):
     """
     This provides Inference Engine for Deepgrow over DeepEdit model.
     """
@@ -113,9 +110,7 @@ class Deepgrow(InferenceTask):
             LoadImaged(keys="image"),
             # The inverse of this transform causes some issues
             # Spacingd(keys='image', pixdim=[1.0, 1.0, 1.0], mode='bilinear'),
-            AddGuidanceFromPointsd(
-                ref_image="image", guidance="guidance", dimensions=3
-            ),
+            AddGuidanceFromPointsd(ref_image="image", guidance="guidance", dimensions=3),
             AddChanneld(keys="image"),
             NormalizeIntensityd(keys="image"),
             Resized(keys="image", spatial_size=self.model_size, mode="area"),

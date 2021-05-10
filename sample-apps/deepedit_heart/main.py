@@ -1,10 +1,11 @@
 import logging
 import os
 
-from lib import Deepgrow, MyActiveLearning, MyTrain, Segmentation
+from lib import Deepgrow, MyStrategy, MyTrain, Segmentation
 from monai.networks.nets import DynUNet
 
-from monailabel.interfaces.app import MONAILabelApp
+from monailabel.interfaces import MONAILabelApp
+from monailabel.utils.activelearning import TTA, Random
 
 logger = logging.getLogger(__name__)
 
@@ -18,13 +19,13 @@ class MyApp(MONAILabelApp):
             "segmentation": Segmentation(os.path.join(self.model_dir, "deep_edit.ts")),
         }
 
+        strategies = {"random": Random(), "first": MyStrategy(), "tta": TTA(os.path.join(self.model_dir, "deep_edit.ts"))}
+
         super().__init__(
             app_dir=app_dir,
             studies=studies,
             infers=infers,
-            active_learning=MyActiveLearning(
-                os.path.join(self.model_dir, "deep_edit.ts")
-            ),
+            strategies=strategies,
         )
 
     def train(self, request):
@@ -36,8 +37,14 @@ class MyApp(MONAILabelApp):
         val_split = request.get("val_split", 0.2)
 
         logger.info(f"Training request: {request}")
+        output_dir = os.path.join(self.model_dir, name)
+
+        # App Owner can decide which checkpoint to load (from existing output folder or from base checkpoint)
+        load_path = os.path.join(output_dir, "model.pt")
+        load_path = load_path if os.path.exists(load_path) else os.path.join(self.model_dir, "deep_edit.pt")
+
         task = MyTrain(
-            output_dir=os.path.join(self.model_dir, name),
+            output_dir=output_dir,
             data_list=self.datastore().datalist(),
             network=DynUNet(
                 spatial_dims=3,
@@ -70,6 +77,7 @@ class MyApp(MONAILabelApp):
                 deep_supervision=False,
                 res_block=True,
             ),
+            load_path=load_path,
             device=device,
             lr=lr,
             val_split=val_split,

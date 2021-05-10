@@ -85,14 +85,10 @@ def test_main():
     subparsers = parser.add_subparsers(help="sub-command help")
 
     parser_a = subparsers.add_parser("infer", help="infer help")
-    parser_a.add_argument(
-        "-m", "--model", required=True, help="Pre-Trained Model for inference"
-    )
+    parser_a.add_argument("-m", "--model", required=True, help="Pre-Trained Model for inference")
     parser_a.add_argument("-i", "--input", required=True, help="Input Image file")
     parser_a.add_argument("-o", "--output", required=True, help="Output Label file")
-    parser_a.add_argument(
-        "-p", "--params", default="{}", help="Input Params for inference"
-    )
+    parser_a.add_argument("-p", "--params", default="{}", help="Input Params for inference")
     parser_a.add_argument(
         "-r",
         "--runs",
@@ -103,12 +99,8 @@ def test_main():
     parser_a.set_defaults(test="infer")
 
     parser_b = subparsers.add_parser("train", help="train help")
-    parser_b.add_argument(
-        "-n", "--name", required=True, help="Name of Train task/Output folder name"
-    )
-    parser_b.add_argument(
-        "-e", "--epochs", type=int, default=1, help="Number of epochs"
-    )
+    parser_b.add_argument("-n", "--name", required=True, help="Name of Train task/Output folder name")
+    parser_b.add_argument("-e", "--epochs", type=int, default=1, help="Number of epochs")
     parser_b.add_argument("--amp", type=strtobool, default="true", help="Use AMP")
     parser_b.set_defaults(test="train")
 

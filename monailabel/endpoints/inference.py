@@ -43,9 +43,7 @@ router = APIRouter(
                     },
                 },
                 "application/json": {"schema": {"type": "string", "example": "{}"}},
-                "application/octet-stream": {
-                    "schema": {"type": "string", "format": "binary"}
-                },
+                "application/octet-stream": {"schema": {"type": "string", "format": "binary"}},
             },
         },
     },
@@ -73,18 +71,14 @@ def send_response(result, output, background_tasks):
     m_type = get_mime_type(res_img)
 
     if output == "image":
-        return FileResponse(
-            res_img, media_type=m_type, filename=os.path.basename(res_img)
-        )
+        return FileResponse(res_img, media_type=m_type, filename=os.path.basename(res_img))
 
     res_fields = dict()
     res_fields["params"] = (None, json.dumps(res_json), "application/json")
     res_fields["image"] = (os.path.basename(res_img), open(res_img, "rb"), m_type)
 
     return_message = MultipartEncoder(fields=res_fields)
-    return Response(
-        content=return_message.to_string(), media_type=return_message.content_type
-    )
+    return Response(content=return_message.to_string(), media_type=return_message.content_type)
 
 
 # TODO:: Define request uri for (model, image, params)

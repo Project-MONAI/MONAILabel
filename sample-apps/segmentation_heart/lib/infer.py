@@ -15,11 +15,11 @@ from monai.transforms import (
     ToTensord,
 )
 
-from monailabel.utils.infer import InferenceTask, InferType
+from monailabel.interfaces.tasks import InferTask, InferType
 from monailabel.utils.others.post import BoundingBoxd, Restored
 
 
-class MyInfer(InferenceTask):
+class MyInfer(InferTask):
     """
     This provides Inference Engine for pre-trained heart segmentation (UNet) model over MSD Dataset.
     """

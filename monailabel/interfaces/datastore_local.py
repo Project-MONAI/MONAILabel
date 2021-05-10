@@ -238,16 +238,9 @@ class LocalDatastore(Datastore):
         p = re.compile(pattern)
         matching_objects = []
         for obj in self._dataset_config["objects"]:
-            if p.match(obj["image"]) or p.match(
-                os.path.join(self._dataset_path, obj["image"])
-            ):
+            if p.match(obj["image"]) or p.match(os.path.join(self._dataset_path, obj["image"])):
                 matching_objects.append(obj)
-            if match_label and any(
-                [
-                    p.match(l) or p.match(os.path.join(self._dataset_path, l))
-                    for l in obj["labels"]
-                ]
-            ):
+            if match_label and any([p.match(l) or p.match(os.path.join(self._dataset_path, l)) for l in obj["labels"]]):
                 matching_objects.append(obj)
         return matching_objects
 
@@ -289,13 +282,9 @@ class LocalDatastore(Datastore):
         label_path = None
         for i, obj in enumerate(self._dataset_config["objects"]):
 
-            if image == obj["image"] or image == os.path.join(
-                self._dataset_path, obj["image"]
-            ):
+            if image == obj["image"] or image == os.path.join(self._dataset_path, obj["image"]):
                 if label_id in obj["labels"]:
-                    label_id = str(uuid4().hex) + "".join(
-                        pathlib.Path(label_id).suffixes
-                    )
+                    label_id = str(uuid4().hex) + "".join(pathlib.Path(label_id).suffixes)
 
                 label_path = os.path.join(os.path.dirname(obj["image"]), label_id)
                 self._dataset_config["objects"][i]["labels"].append(label_path)
@@ -325,10 +314,7 @@ class LocalDatastore(Datastore):
 
         standard_id = "".join(c.lower() for c in id if not c.isspace())
 
-        if (
-            self._dataset_config.get("info") is not None
-            and id in self._dataset_config["info"].keys()
-        ):
+        if self._dataset_config.get("info") is not None and id in self._dataset_config["info"].keys():
             self._dataset_config["info"][id] = description
 
         else:
@@ -370,16 +356,12 @@ class LocalDatastore(Datastore):
             if labels and len(labels):
                 if flatten_labels:
                     for label in labels:
-                        items.append(
-                            {"image": image, "label": self._get_path(label, full_path)}
-                        )
+                        items.append({"image": image, "label": self._get_path(label, full_path)})
                 else:
                     items.append(
                         {
                             "image": image,
-                            "labels": [
-                                self._get_path(label, full_path) for label in labels
-                            ],
+                            "labels": [self._get_path(label, full_path) for label in labels],
                         }
                     )
         return items

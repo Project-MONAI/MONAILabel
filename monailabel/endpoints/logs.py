@@ -84,14 +84,10 @@ async def get_logs(
     text: Optional[bool] = False,
     refresh: Optional[int] = 0,
 ):
-    return send_logs(
-        os.path.join(settings.APP_DIR, "logs", logfile), lines, html, text, refresh
-    )
+    return send_logs(os.path.join(settings.APP_DIR, "logs", logfile), lines, html, text, refresh)
 
 
 @router.get("/gpu", summary="Get GPU Info (nvidia-smi)")
 async def gpu_info():
-    response = subprocess.run(["nvidia-smi"], stdout=subprocess.PIPE).stdout.decode(
-        "utf-8"
-    )
+    response = subprocess.run(["nvidia-smi"], stdout=subprocess.PIPE).stdout.decode("utf-8")
     return Response(content=response, media_type="text/plain")

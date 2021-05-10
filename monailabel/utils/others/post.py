@@ -28,17 +28,13 @@ class LargestCCd(MapTransform):
     def __call__(self, data):
         d = dict(data)
         for key in self.keys:
-            result = self.get_largest_cc(
-                d[key] if self.has_channel else d[key][np.newaxis]
-            )
+            result = self.get_largest_cc(d[key] if self.has_channel else d[key][np.newaxis])
             d[key] = result if self.has_channel else result[0]
         return d
 
 
 class ExtremePointsd(MapTransform):
-    def __init__(
-        self, keys: KeysCollection, result: str = "result", points: str = "points"
-    ):
+    def __init__(self, keys: KeysCollection, result: str = "result", points: str = "points"):
         super().__init__(keys)
         self.result = result
         self.points = points
@@ -54,9 +50,7 @@ class ExtremePointsd(MapTransform):
 
 
 class BoundingBoxd(MapTransform):
-    def __init__(
-        self, keys: KeysCollection, result: str = "result", bbox: str = "bbox"
-    ):
+    def __init__(self, keys: KeysCollection, result: str = "result", bbox: str = "bbox"):
         super().__init__(keys)
         self.result = result
         self.bbox = bbox
@@ -100,9 +94,7 @@ class Restored(MapTransform):
             # Undo Spacing
             if np.any(np.not_equal(current_size, spatial_size)):
                 resizer = Resize(spatial_size=spatial_size, mode=self.mode[idx])
-                result = resizer(
-                    result, mode=self.mode[idx], align_corners=self.align_corners[idx]
-                )
+                result = resizer(result, mode=self.mode[idx], align_corners=self.align_corners[idx])
 
             d[key] = result if len(result.shape) <= 3 else result[0]
 

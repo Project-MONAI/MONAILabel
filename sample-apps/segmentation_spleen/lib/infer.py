@@ -10,11 +10,11 @@ from monai.transforms import (
     ToNumpyd,
 )
 
-from monailabel.utils.infer import InferenceTask, InferType
+from monailabel.interfaces.tasks import InferTask, InferType
 from monailabel.utils.others.post import BoundingBoxd, Restored
 
 
-class MyInfer(InferenceTask):
+class MyInfer(InferTask):
     """
     This provides Inference Engine for pre-trained spleen segmentation (UNet) model over MSD Dataset.
     """
@@ -42,9 +42,7 @@ class MyInfer(InferenceTask):
             LoadImaged(keys="image"),
             AddChanneld(keys="image"),
             Spacingd(keys="image", pixdim=[1.0, 1.0, 1.0]),
-            ScaleIntensityRanged(
-                keys="image", a_min=-57, a_max=164, b_min=0.0, b_max=1.0, clip=True
-            ),
+            ScaleIntensityRanged(keys="image", a_min=-57, a_max=164, b_min=0.0, b_max=1.0, clip=True),
         ]
 
     def inferer(self):

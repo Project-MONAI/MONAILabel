@@ -90,6 +90,20 @@ class TrainTask:
         return None
 
     @abstractmethod
+    def train_iteration_update(self):
+        """
+        Provide iteration update while training
+        """
+        pass
+
+    @abstractmethod
+    def event_names(self):
+        """
+        Provide iteration update while training
+        """
+        pass
+
+    @abstractmethod
     def val_pre_transforms(self):
         """
         Provide List of Pre-Transforms for validation step
@@ -136,7 +150,14 @@ class TrainTask:
         """
         Provide any additional metrics to be collected while validation
         """
-        return None
+        pass
+
+    @abstractmethod
+    def val_iteration_update(self):
+        """
+        Provide iteration update while validation
+        """
+        pass
 
     def evaluator(self):
         self._evalutor = (
@@ -149,6 +170,8 @@ class TrainTask:
                 key_val_metric=self.val_key_metric(),
                 additional_metrics=self.val_additional_metrics(),
                 val_handlers=self.val_handlers(),
+                iteration_update=self.val_iteration_update(),
+                event_names=self.event_names(),
             )
             if self.val_data_loader()
             else None
@@ -168,6 +191,8 @@ class TrainTask:
             post_transform=self.train_post_transforms(),
             key_train_metric=self.train_key_metric(),
             train_handlers=self.train_handlers(),
+            iteration_update=self.train_iteration_update(),
+            event_names=self.event_names(),
         )
 
         logger.info(f"Running Training.  Epochs: {max_epochs}; AMP: {amp}")

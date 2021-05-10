@@ -3,12 +3,7 @@ from typing import Optional
 
 from fastapi import APIRouter, HTTPException
 
-from monailabel.interfaces.tasks import (
-    background_task,
-    processes,
-    stop_background_task,
-    tasks,
-)
+from monailabel.utils.others.async_tasks import background_task, processes, stop_background_task, tasks
 from monailabel.utils.others.generic import get_app_instance
 
 logger = logging.getLogger(__name__)
@@ -44,9 +39,7 @@ async def status(all: bool = False, check_if_running: bool = False):
 
     if check_if_running:
         if len(train_process) == 0:
-            raise HTTPException(
-                status_code=404, detail=f"No Training Tasks are currently Running"
-            )
+            raise HTTPException(status_code=404, detail=f"No Training Tasks are currently Running")
         task_id = next(iter(train_process))
         return [task for task in train_tasks if task["id"] == task_id][0]
 

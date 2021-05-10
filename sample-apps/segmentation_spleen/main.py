@@ -1,13 +1,13 @@
 import logging
 import os
 
-from lib import MyActiveLearning, MyInfer, MyTrain
+from lib import MyInfer, MyStrategy, MyTrain
 from monai.networks.layers import Norm
 from monai.networks.nets import UNet
 
-from monailabel.interfaces.app import MONAILabelApp
-from monailabel.utils.infer.deepgrow_2d import InferDeepgrow2D
-from monailabel.utils.infer.deepgrow_3d import InferDeepgrow3D
+from monailabel.interfaces import MONAILabelApp
+from monailabel.utils.activelearning import Random
+from monailabel.utils.infer import InferDeepgrow2D, InferDeepgrow3D
 
 logger = logging.getLogger(__name__)
 
@@ -17,22 +17,21 @@ class MyApp(MONAILabelApp):
         self.model_dir = os.path.join(app_dir, "model")
 
         infers = {
-            "deepgrow_2d": InferDeepgrow2D(
-                os.path.join(self.model_dir, "deepgrow_2d.ts")
-            ),
-            "deepgrow_3d": InferDeepgrow3D(
-                os.path.join(self.model_dir, "deepgrow_3d.ts")
-            ),
-            "segmentation_spleen": MyInfer(
-                os.path.join(self.model_dir, "segmentation_spleen.ts")
-            ),
+            "deepgrow_2d": InferDeepgrow2D(os.path.join(self.model_dir, "deepgrow_2d.ts")),
+            "deepgrow_3d": InferDeepgrow3D(os.path.join(self.model_dir, "deepgrow_3d.ts")),
+            "segmentation_spleen": MyInfer(os.path.join(self.model_dir, "segmentation_spleen.ts")),
+        }
+
+        strategies = {
+            "random": Random(),
+            "first": MyStrategy(),
         }
 
         super().__init__(
             app_dir=app_dir,
             studies=studies,
             infers=infers,
-            active_learning=MyActiveLearning(),
+            strategies=strategies,
         )
 
     def train(self, request):

@@ -21,7 +21,7 @@ class InferType:
     KNOWN_TYPES = [SEGMENTATION, CLASSIFICATION, DEEPGROW, OTHERS]
 
 
-class InferenceTask:
+class InferTask:
     """
     Basic Inference Task Helper
     """
@@ -51,9 +51,7 @@ class InferenceTask:
         self.path = path
         self.network = network
         self.type = type
-        self.labels = (
-            [] if labels is None else [labels] if isinstance(labels, str) else labels
-        )
+        self.labels = [] if labels is None else [labels] if isinstance(labels, str) else labels
         self.dimension = dimension
         self.description = description
         self.input_key = input_key
@@ -168,9 +166,7 @@ class InferenceTask:
         latency_inferer = time.time() - start
 
         start = time.time()
-        data = self.run_invert_transforms(
-            data, pre_transforms, self.inverse_transforms()
-        )
+        data = self.run_invert_transforms(data, pre_transforms, self.inverse_transforms())
         latency_invert = time.time() - start
 
         start = time.time()
@@ -214,9 +210,7 @@ class InferenceTask:
 
         # Run only selected/given
         if len(names) > 0:
-            transforms = [
-                pre_transforms[n if isinstance(n, str) else n.__name__] for n in names
-            ]
+            transforms = [pre_transforms[n if isinstance(n, str) else n.__name__] for n in names]
 
         d = copy.deepcopy(dict(data))
         d[self.input_key] = data[self.output_label_key]
@@ -256,9 +250,7 @@ class InferenceTask:
             if statbuf.st_mtime == cached[1]:
                 network = cached[0]
             else:
-                logger.info(
-                    f"Reload model from cache.  Prev ts: {cached[1]}; Current ts: {statbuf.st_mtime}"
-                )
+                logger.info(f"Reload model from cache.  Prev ts: {cached[1]}; Current ts: {statbuf.st_mtime}")
 
         if network is None:
             if self.network:
@@ -308,9 +300,7 @@ class InferenceTask:
     @staticmethod
     def dump_data(data):
         if logging.getLogger().level == logging.DEBUG:
-            logger.debug(
-                "**************************** DATA ********************************************"
-            )
+            logger.debug("**************************** DATA ********************************************")
             for k in data:
                 v = data[k]
                 logger.debug(
@@ -323,9 +313,7 @@ class InferenceTask:
                         else type(v),
                     )
                 )
-            logger.debug(
-                "******************************************************************************"
-            )
+            logger.debug("******************************************************************************")
 
     @staticmethod
     def _shape_info(data, keys=("image", "label", "pred", "model")):
@@ -357,16 +345,14 @@ class InferenceTask:
             name = t.__class__.__name__
             start = time.time()
 
-            InferenceTask.dump_data(data)
+            InferTask.dump_data(data)
             if inverse:
                 if hasattr(t, "inverse"):
                     data = t.inverse(data)
                 else:
                     raise MONAILabelException(
                         MONAILabelError.INFERENCE_ERROR,
-                        "Transformer '{}' has no invert method".format(
-                            t.__class__.__name__
-                        ),
+                        "Transformer '{}' has no invert method".format(t.__class__.__name__),
                     )
             elif callable(t):
                 data = t(data)
@@ -381,12 +367,10 @@ class InferenceTask:
                     log_prefix,
                     name,
                     float(time.time() - start),
-                    InferenceTask._shape_info(data),
+                    InferTask._shape_info(data),
                 )
             )
-            logger.debug(
-                "-----------------------------------------------------------------------------"
-            )
+            logger.debug("-----------------------------------------------------------------------------")
 
-        InferenceTask.dump_data(data)
+        InferTask.dump_data(data)
         return data

@@ -23,9 +23,9 @@ router = APIRouter(
 cached_digest = dict()
 
 
-@router.post("/sample", summary="Run Active Learning strategy to get next sample")
-async def next_sample(params: Optional[dict] = None, checksum: Optional[bool] = True):
-    request = {}
+@router.post("/sample/{stategy}", summary="Run Active Learning strategy to get next sample")
+async def next_sample(strategy: str = "random", params: Optional[dict] = None, checksum: Optional[bool] = True):
+    request = {"strategy": strategy}
 
     instance: MONAILabelApp = get_app_instance()
     config = instance.info().get("config", {}).get("activelearning", {})
@@ -40,9 +40,7 @@ async def next_sample(params: Optional[dict] = None, checksum: Optional[bool] = 
     name = os.path.basename(image)
 
     digest = None
-    if (
-        checksum
-    ):  # It's always costly operation (some clients to access directly from shared file-system)
+    if checksum:  # It's always costly operation (some clients to access directly from shared file-system)
         digest = cached_digest.get(image)
         digest = digest if digest is not None else file_checksum(image)
         digest = f"SHA256:{digest}"
