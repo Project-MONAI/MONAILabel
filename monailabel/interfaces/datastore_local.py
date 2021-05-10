@@ -123,8 +123,13 @@ class LocalDatastore(Datastore):
         the labels associated to the image
         """
         for obj in self._datastore.objects:
-            if obj.image.id == image_id:
-                return obj.labels
+            if obj.image.id == image_id and obj.labels:
+                labels = {}
+                if obj.labels.updated:
+                    labels.update({'label': os.path.join(self._datastore_path, obj.labels.updated.id)})
+                if obj.labels.original:
+                    labels.update({'original_label': os.path.join(self._datastore_path, obj.labels.original.id)})
+                return labels
         return None
 
     def get_unlabeled_images(self) -> List[str]:
