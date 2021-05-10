@@ -1,9 +1,10 @@
 import logging
 import os
 
-from lib import MyInfer, MyTrain, MyActiveLearning
+from lib import MyActiveLearning, MyInfer, MyTrain
 from monai.networks.layers import Norm
 from monai.networks.nets import UNet
+
 from monailabel.interfaces.app import MONAILabelApp
 from monailabel.utils.infer.deepgrow_2d import InferDeepgrow2D
 from monailabel.utils.infer.deepgrow_3d import InferDeepgrow3D
@@ -16,25 +17,31 @@ class MyApp(MONAILabelApp):
         self.model_dir = os.path.join(app_dir, "model")
 
         infers = {
-            "deepgrow_2d": InferDeepgrow2D(os.path.join(self.model_dir, "deepgrow_2d.ts")),
-            "deepgrow_3d": InferDeepgrow3D(os.path.join(self.model_dir, "deepgrow_3d.ts")),
-            "segmentation_spleen": MyInfer(os.path.join(self.model_dir, "segmentation_spleen.ts")),
+            "deepgrow_2d": InferDeepgrow2D(
+                os.path.join(self.model_dir, "deepgrow_2d.ts")
+            ),
+            "deepgrow_3d": InferDeepgrow3D(
+                os.path.join(self.model_dir, "deepgrow_3d.ts")
+            ),
+            "segmentation_spleen": MyInfer(
+                os.path.join(self.model_dir, "segmentation_spleen.ts")
+            ),
         }
 
         super().__init__(
             app_dir=app_dir,
             studies=studies,
             infers=infers,
-            active_learning=MyActiveLearning()
+            active_learning=MyActiveLearning(),
         )
 
     def train(self, request):
-        name = request.get('name', 'model_01')
-        epochs = request.get('epochs', 1)
-        amp = request.get('amp', True)
-        device = request.get('device', 'cuda')
-        lr = request.get('lr', 0.0001)
-        val_split = request.get('val_split', 0.2)
+        name = request.get("name", "model_01")
+        epochs = request.get("epochs", 1)
+        amp = request.get("amp", True)
+        device = request.get("device", "cuda")
+        lr = request.get("lr", 0.0001)
+        val_split = request.get("val_split", 0.2)
 
         logger.info(f"Training request: {request}")
         task = MyTrain(
@@ -47,11 +54,11 @@ class MyApp(MONAILabelApp):
                 channels=(16, 32, 64, 128, 256),
                 strides=(2, 2, 2, 2),
                 num_res_units=2,
-                norm=Norm.BATCH
+                norm=Norm.BATCH,
             ),
             device=device,
             lr=lr,
-            val_split=val_split
+            val_split=val_split,
         )
 
         return task(max_epochs=epochs, amp=amp)

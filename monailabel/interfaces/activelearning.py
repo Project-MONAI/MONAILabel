@@ -8,7 +8,7 @@ logger = logging.getLogger(__name__)
 
 class ActiveLearning:
     def __call__(self, request, datastore: Datastore):
-        strategy = request.get('strategy', 'random')
+        strategy = request.get("strategy", "random")
         strategy = next(iter(strategy)) if not isinstance(strategy, str) else strategy
 
         images = datastore.get_unlabeled_images()

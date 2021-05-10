@@ -4,7 +4,7 @@ from collections import deque
 from typing import Optional
 
 from fastapi import APIRouter, HTTPException
-from fastapi.responses import Response, FileResponse
+from fastapi.responses import FileResponse, Response
 
 from monailabel.config import settings
 
@@ -14,7 +14,7 @@ router = APIRouter(
     responses={404: {"description": "Not found"}},
 )
 
-HTML_TEMPLATE = r'''
+HTML_TEMPLATE = r"""
 <html>
 <head>
     <script type="text/javascript" src="https://ajax.googleapis.com/ajax/libs/jquery/3.5.1/jquery.min.js"></script>
@@ -51,7 +51,7 @@ HTML_TEMPLATE = r'''
 </div>
 </body>
 </html>
-'''
+"""
 
 
 def send_logs(logger_file, lines, html, text, refresh):
@@ -63,28 +63,35 @@ def send_logs(logger_file, lines, html, text, refresh):
         with open(logger_file) as fin:
             response_lines = list(deque(fin, lines))
             if html and not text:
-                response = HTML_TEMPLATE.replace('LINES_T', str(lines))
+                response = HTML_TEMPLATE.replace("LINES_T", str(lines))
                 response = response.replace(
-                    'REFRESH_T', 'setInterval(fetch, 1000*' + str(refresh) + ');' if refresh else '')
-                response_type = 'text/html'
+                    "REFRESH_T",
+                    "setInterval(fetch, 1000*" + str(refresh) + ");" if refresh else "",
+                )
+                response_type = "text/html"
             else:
-                response = ''.join(response_lines)
-                response_type = 'text/plain'
+                response = "".join(response_lines)
+                response_type = "text/plain"
             return Response(content=response, media_type=response_type)
-    return FileResponse(logger_file, media_type='text/plain')
+    return FileResponse(logger_file, media_type="text/plain")
 
 
 @router.get("/", summary="Get Logs")
 async def get_logs(
-        logfile: Optional[str] = "app.log",
-        lines: Optional[int] = 300,
-        html: Optional[bool] = True,
-        text: Optional[bool] = False,
-        refresh: Optional[int] = 0):
-    return send_logs(os.path.join(settings.APP_DIR, "logs", logfile), lines, html, text, refresh)
+    logfile: Optional[str] = "app.log",
+    lines: Optional[int] = 300,
+    html: Optional[bool] = True,
+    text: Optional[bool] = False,
+    refresh: Optional[int] = 0,
+):
+    return send_logs(
+        os.path.join(settings.APP_DIR, "logs", logfile), lines, html, text, refresh
+    )
 
 
 @router.get("/gpu", summary="Get GPU Info (nvidia-smi)")
 async def gpu_info():
-    response = subprocess.run(['nvidia-smi'], stdout=subprocess.PIPE).stdout.decode('utf-8')
-    return Response(content=response, media_type='text/plain')
+    response = subprocess.run(["nvidia-smi"], stdout=subprocess.PIPE).stdout.decode(
+        "utf-8"
+    )
+    return Response(content=response, media_type="text/plain")

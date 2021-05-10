@@ -1,7 +1,6 @@
 from typing import Dict
 
 import numpy as np
-
 from monai.transforms import Transform
 
 
@@ -18,9 +17,12 @@ class AddEmptyGuidanced(Transform):
         image = d[self.image]
 
         # For pure inference time - There is no positive neither negative points
-        signal = np.zeros((1, image.shape[-3], image.shape[-2], image.shape[-1]), dtype=np.float32)
+        signal = np.zeros(
+            (1, image.shape[-3], image.shape[-2], image.shape[-1]), dtype=np.float32
+        )
         d[self.image] = np.concatenate((image, signal, signal), axis=0)
         return d
+
 
 class ResizeGuidanceCustomd(Transform):
     """
@@ -43,17 +45,25 @@ class ResizeGuidanceCustomd(Transform):
         #            'guidance', 'foreground_start_coord', 'foreground_end_coord'])
         current_shape = d[self.ref_image].shape[1:]
 
-        print('foreground: ----', d['foreground'])
-        print('background: ----', d['background'])
-        print('guidance: -----', d['guidance'])
+        print("foreground: ----", d["foreground"])
+        print("background: ----", d["background"])
+        print("guidance: -----", d["guidance"])
 
-        factor = np.divide(current_shape, d['image_meta_dict']['dim'][1:4])
+        factor = np.divide(current_shape, d["image_meta_dict"]["dim"][1:4])
 
-        pos_clicks, neg_clicks = d['foreground'], d['background']
-        pos = np.multiply(pos_clicks, factor).astype(int).tolist() if len(pos_clicks) else []
-        neg = np.multiply(neg_clicks, factor).astype(int).tolist() if len(neg_clicks) else []
-        print('Reshape foreground: ----', pos)
-        print('Reshape background: ----', neg)
+        pos_clicks, neg_clicks = d["foreground"], d["background"]
+        pos = (
+            np.multiply(pos_clicks, factor).astype(int).tolist()
+            if len(pos_clicks)
+            else []
+        )
+        neg = (
+            np.multiply(neg_clicks, factor).astype(int).tolist()
+            if len(neg_clicks)
+            else []
+        )
+        print("Reshape foreground: ----", pos)
+        print("Reshape background: ----", neg)
 
         d[self.guidance] = [pos, neg]
 

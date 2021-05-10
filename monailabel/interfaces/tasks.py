@@ -13,19 +13,17 @@ from monailabel.config import settings
 
 logger = logging.getLogger(__name__)
 
-background_tasks = {
-    'train': [],
-    'infer': []
-}
-background_processes = {
-    'train': dict(),
-    'infer': dict()
-}
+background_tasks = {"train": [], "infer": []}
+background_processes = {"train": dict(), "infer": dict()}
 
 
 def task_func(task, method):
     cmd = [
-        os.path.realpath(os.path.join(os.path.dirname(__file__), "..", "scripts", "run_monailabel_user_app.sh")),
+        os.path.realpath(
+            os.path.join(
+                os.path.dirname(__file__), "..", "scripts", "run_monailabel_user_app.sh"
+            )
+        ),
         settings.APP_DIR,
         settings.STUDIES,
         method,
@@ -37,7 +35,7 @@ def task_func(task, method):
         stderr=subprocess.STDOUT,
         stdout=subprocess.PIPE,
         universal_newlines=True,
-        env=os.environ.copy()
+        env=os.environ.copy(),
     )
     task_id = task["id"]
     background_processes[method][task_id] = process
@@ -53,7 +51,7 @@ def task_func(task, method):
             plogger.info(line)
             task["details"].append(line)
 
-    logger.info('Return code: {}'.format(process.returncode))
+    logger.info("Return code: {}".format(process.returncode))
     background_processes[method].pop(task_id, None)
     process.stdout.close()
 

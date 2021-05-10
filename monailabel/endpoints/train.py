@@ -3,7 +3,12 @@ from typing import Optional
 
 from fastapi import APIRouter, HTTPException
 
-from monailabel.interfaces.tasks import processes, tasks, background_task, stop_background_task
+from monailabel.interfaces.tasks import (
+    background_task,
+    processes,
+    stop_background_task,
+    tasks,
+)
 from monailabel.utils.others.generic import get_app_instance
 
 logger = logging.getLogger(__name__)
@@ -17,7 +22,7 @@ router = APIRouter(
 
 @router.post("/", summary="Run Training Task")
 async def run_train(params: Optional[dict] = None):
-    train_process = processes('train')
+    train_process = processes("train")
     if len(train_process):
         raise HTTPException(status_code=429, detail=f"Training is Already Running")
 
@@ -29,17 +34,19 @@ async def run_train(params: Optional[dict] = None):
     request.update(params)
 
     logger.info(f"Train Request: {request}")
-    return background_task(request, 'train')
+    return background_task(request, "train")
 
 
 @router.get("/", summary="Get Status of Training Task")
 async def status(all: bool = False, check_if_running: bool = False):
-    train_process = processes('train')
-    train_tasks = tasks('train')
+    train_process = processes("train")
+    train_tasks = tasks("train")
 
     if check_if_running:
         if len(train_process) == 0:
-            raise HTTPException(status_code=404, detail=f"No Training Tasks are currently Running")
+            raise HTTPException(
+                status_code=404, detail=f"No Training Tasks are currently Running"
+            )
         task_id = next(iter(train_process))
         return [task for task in train_tasks if task["id"] == task_id][0]
 
@@ -52,4 +59,4 @@ async def status(all: bool = False, check_if_running: bool = False):
 
 @router.delete("/", summary="Stop Training Task")
 async def stop_train():
-    return stop_background_task('train')
+    return stop_background_task("train")
