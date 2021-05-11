@@ -1,4 +1,7 @@
-class MONAILabelError:
+from enum import Enum
+
+
+class MONAILabelError(Enum):
     """
     Attributes:
         SERVER_ERROR -            Server Error
@@ -36,12 +39,10 @@ class MONAILabelException(Exception):
 
 
 class ImageNotFoundException(MONAILabelException):
-
     def __init__(self, msg: str):
-        super().__init__(MONAILabelException.APP_ERROR, msg)
+        super().__init__(MONAILabelError.APP_ERROR, msg)
 
 
 class LabelNotFoundException(MONAILabelException):
-
     def __init__(self, msg: str):
-        super().__init__(MONAILabelException.APP_ERROR, msg)
+        super().__init__(MONAILabelError.APP_ERROR, msg)

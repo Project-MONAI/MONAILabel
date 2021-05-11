@@ -1,12 +1,13 @@
 import logging
 import os
 
-from lib import MyInfer, MyTrain, MyActiveLearning
+from lib import MyInfer, MyStrategy, MyTrain
 from monai.networks.layers import Norm
 from monai.networks.nets import UNet
-from monailabel.interfaces.app import MONAILabelApp
-from monailabel.utils.infer.deepgrow_2d import InferDeepgrow2D
-from monailabel.utils.infer.deepgrow_3d import InferDeepgrow3D
+
+from monailabel.interfaces import MONAILabelApp
+from monailabel.utils.activelearning import TTA, Random
+from monailabel.utils.infer import InferDeepgrow2D, InferDeepgrow3D
 
 logger = logging.getLogger(__name__)
 
@@ -18,23 +19,25 @@ class MyApp(MONAILabelApp):
         infers = {
             "deepgrow_2d": InferDeepgrow2D(os.path.join(self.model_dir, "deepgrow_2d.ts")),
             "deepgrow_3d": InferDeepgrow3D(os.path.join(self.model_dir, "deepgrow_3d.ts")),
-            "segmentation_heart": MyInfer(os.path.join(self.model_dir, "segmentation_heart.ts"))
+            "segmentation_heart": MyInfer(os.path.join(self.model_dir, "segmentation_heart.ts")),
         }
+
+        strategies = {"random": Random(), "first": MyStrategy(), "tta": TTA(os.path.join(self.model_dir, "deep_edit.ts"))}
 
         super().__init__(
             app_dir=app_dir,
             studies=studies,
             infers=infers,
-            active_learning=MyActiveLearning(os.path.join(self.model_dir, "segmentation_heart.ts"))
+            strategies=strategies,
         )
 
     def train(self, request):
-        name = request.get('name', 'model_01')
-        epochs = request.get('epochs', 1)
-        amp = request.get('amp', True)
-        device = request.get('device', 'cuda')
-        lr = request.get('lr', 0.0001)
-        val_split = request.get('val_split', 0.2)
+        name = request.get("name", "model_01")
+        epochs = request.get("epochs", 1)
+        amp = request.get("amp", True)
+        device = request.get("device", "cuda")
+        lr = request.get("lr", 0.0001)
+        val_split = request.get("val_split", 0.2)
 
         logger.info(f"Training request: {request}")
 
@@ -54,12 +57,12 @@ class MyApp(MONAILabelApp):
                 channels=(16, 32, 64, 128, 256),
                 strides=(2, 2, 2, 2),
                 num_res_units=2,
-                norm=Norm.BATCH
+                norm=Norm.BATCH,
             ),
             load_path=load_path,
             device=device,
             lr=lr,
-            val_split=val_split
+            val_split=val_split,
         )
 
         # TODO:: Publish model to use latest one in infer/activelearning tasks.  Any pre-conditions to publish?

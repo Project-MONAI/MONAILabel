@@ -1,34 +1,39 @@
-import io
 import logging
 import os
-import pathlib
 from abc import abstractmethod
 
 import yaml
 
-from monailabel.interfaces.activelearning import ActiveLearning
-from monailabel.interfaces.datastore import Datastore
-from monailabel.interfaces.datastore_local import LocalDatastore
-from monailabel.interfaces.exception import MONAILabelException, MONAILabelError
+from monailabel.interfaces.datastore import Datastore, LabelTag
+from monailabel.interfaces.exception import MONAILabelError, MONAILabelException
+from monailabel.utils.activelearning.random import Random
+from monailabel.utils.datastore import LocalDatastore
 
 logger = logging.getLogger(__name__)
 
 
 class MONAILabelApp:
-    def __init__(self, app_dir, studies, infers=None, active_learning: ActiveLearning = ActiveLearning()):
+    def __init__(
+        self,
+        app_dir,
+        studies,
+        infers=None,
+        strategies=None,
+    ):
         """
         Base Class for Any MONAI Label App
 
         :param app_dir: path for your App directory
         :param studies: path for studies/datalist
         :param infers: Dictionary of infer engines
-        :param active_learning: ActiveLearning implementation to get next sample
+        :param strategies: List of ActiveLearning strategies to get next sample
 
         """
         self.app_dir = app_dir
         self.studies = studies
         self.infers = dict() if infers is None else infers
-        self.active_learning = active_learning
+        self.strategies = {"random", Random()} if strategies is None else strategies
+
         self._datastore: Datastore = LocalDatastore(studies)
 
     def info(self):
@@ -38,20 +43,22 @@ class MONAILabelApp:
         """
         file = os.path.join(self.app_dir, "info.yaml")
         if not os.path.exists(file):
-            raise MONAILabelException(
-                MONAILabelError.APP_ERROR,
-                "info.yaml NOT Found in the APP Folder"
-            )
+            raise MONAILabelException(MONAILabelError.APP_ERROR, "info.yaml NOT Found in the APP Folder")
 
-        with open(file, 'r') as fc:
+        with open(file, "r") as fc:
             meta = yaml.full_load(fc)
 
         models = dict()
         for name, infer in self.infers.items():
             if infer.is_valid():
                 models[name] = infer.info()
-
         meta["models"] = models
+
+        strategies = dict()
+        for name, strategy in self.strategies.items():
+            strategies[name] = strategy.info()
+        meta["strategies"] = strategies
+
         return meta
 
     def infer(self, request):
@@ -67,9 +74,8 @@ class MONAILabelApp:
                         "device": "cuda"
                         "model": "segmentation_spleen",
                         "image": "file://xyz",
-                        "params": {
-                            "set_original": "true/false"
-                        },
+                        "save_label": true,
+                        "params": {},
                     }
 
         Raises:
@@ -78,21 +84,22 @@ class MONAILabelApp:
         Returns:
             JSON containing `label` and `params`
         """
-        model_name = request.get('model')
-        model_name = model_name if model_name else 'model'
+        model_name = request.get("model")
+        model_name = model_name if model_name else "model"
+
+        image = request["image"]
+        request["image"] = self.datastore().get_path(request["image"])
 
         task = self.infers.get(model_name)
         if task is None:
             raise MONAILabelException(
                 MONAILabelError.INFERENCE_ERROR,
-                "Inference Task is not Initialized. There is no pre-trained model available"
+                "Inference Task is not Initialized. There is no pre-trained model available",
             )
 
         result_file_name, result_json = task(request)
-
-        if request.get('params') and request['params'].get('set_original') == 'true':
-            label_stream = io.BytesIO(open(result_file_name, 'rb').read())
-            self.datastore().set_original_label(request['image'], label_stream)
+        if request.get("save_label", True):
+            self.datastore().save_label(image, result_file_name, tag=LabelTag.TEMP)
 
         return {"label": result_file_name, "params": result_json}
 
@@ -132,14 +139,24 @@ class MONAILabelApp:
                 For example::
 
                     {
-                        "strategy": "random"
+                        "strategy": "random,
                     }
 
         Returns:
             JSON containing next image info that is selected for labeling
         """
-        image = self.active_learning(request, self.datastore())
-        return {"image": image}
+        strategy = request.get("strategy")
+        strategy = strategy if strategy else "random"
+
+        task = self.strategies.get(strategy)
+        if task is None:
+            raise MONAILabelException(
+                MONAILabelError.APP_INIT_ERROR,
+                f"ActiveLearning Task is not Initialized. There is no such strategy '{strategy}' available",
+            )
+
+        image = task(request, self.datastore())
+        return {"image": image, "path": self.datastore().get_path(image) if image else None}
 
     def save_label(self, request):
         """
@@ -161,10 +178,8 @@ class MONAILabelApp:
             JSON containing next image and label info
         """
 
-        label = io.BytesIO(open(request['label'], 'rb').read())
-        label_file = self.datastore().save_updated_label(request['image'], label)
-
+        label = self.datastore().save_label(request["image"], request["label"], tag=LabelTag.FINAL)
         return {
             "image": request.get("image"),
-            "label": label_file,
+            "label": label,
         }

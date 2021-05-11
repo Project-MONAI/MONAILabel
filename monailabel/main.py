@@ -9,15 +9,14 @@ from starlette.middleware.cors import CORSMiddleware
 from starlette.responses import HTMLResponse
 
 from monailabel.config import settings
-from monailabel.endpoints import activelearning, inference, logs, train, info, download, datastore
-from monailabel.utils.others.generic import get_app_instance
-from monailabel.utils.others.generic import init_log_config
+from monailabel.endpoints import activelearning, datastore, download, inference, info, logs, train
+from monailabel.utils.others.generic import get_app_instance, init_log_config
 
 app = FastAPI(
     title=settings.PROJECT_NAME,
     openapi_url=f"{settings.API_STR}/openapi.json",
     docs_url=None,
-    redoc_url="/docs"
+    redoc_url="/docs",
 )
 
 # Set all CORS enabled origins
@@ -41,12 +40,10 @@ app.include_router(logs.router)
 
 @app.get("/", include_in_schema=False)
 async def custom_swagger_ui_html():
-    html = get_swagger_ui_html(
-        openapi_url=app.openapi_url,
-        title=app.title + " - APIs")
+    html = get_swagger_ui_html(openapi_url=app.openapi_url, title=app.title + " - APIs")
 
     body = html.body.decode("utf-8")
-    body = body.replace('showExtensions: true,', 'showExtensions: true, defaultModelsExpandDepth: -1,')
+    body = body.replace("showExtensions: true,", "showExtensions: true, defaultModelsExpandDepth: -1,")
     return HTMLResponse(body)
 
 
@@ -57,15 +54,15 @@ async def startup_event():
 
 def run_main():
     parser = argparse.ArgumentParser()
-    parser.add_argument('-a', '--app', required=True)
-    parser.add_argument('-s', '--studies', required=True)
-    parser.add_argument('-d', '--debug', action='store_true')
+    parser.add_argument("-a", "--app", required=True)
+    parser.add_argument("-s", "--studies", required=True)
+    parser.add_argument("-d", "--debug", action="store_true")
 
-    parser.add_argument('-i', '--host', default="0.0.0.0", type=str)
-    parser.add_argument('-p', '--port', default=8000, type=int)
-    parser.add_argument('-r', '--reload', action='store_true')
-    parser.add_argument('-l', '--log_config', default=None, type=str)
-    parser.add_argument('--dryrun', action='store_true')
+    parser.add_argument("-i", "--host", default="0.0.0.0", type=str)
+    parser.add_argument("-p", "--port", default=8000, type=int)
+    parser.add_argument("-r", "--reload", action="store_true")
+    parser.add_argument("-l", "--log_config", default=None, type=str)
+    parser.add_argument("--dryrun", action="store_true")
 
     args = parser.parse_args()
     if not os.path.exists(args.app):
@@ -83,7 +80,7 @@ def run_main():
         exit(0)
 
     for arg in vars(args):
-        print('USING:: {} = {}'.format(arg, getattr(args, arg)))
+        print("USING:: {} = {}".format(arg, getattr(args, arg)))
     print("")
 
     settings.APP_DIR = args.app
@@ -92,7 +89,7 @@ def run_main():
     os.putenv("STUDIES", settings.STUDIES)
 
     sys.path.append(args.app)
-    sys.path.append(os.path.join(args.app, 'lib'))
+    sys.path.append(os.path.join(args.app, "lib"))
 
     uvicorn.run(
         "main:app" if args.reload else app,
@@ -106,5 +103,5 @@ def run_main():
     )
 
 
-if __name__ == '__main__':
+if __name__ == "__main__":
     run_main()
