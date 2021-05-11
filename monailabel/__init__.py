@@ -38,3 +38,21 @@ __all__ = [
     "interfaces",
     "utils",
 ]
+
+
+def print_config(file=sys.stdout):
+    from collections import OrderedDict
+
+    import numpy as np
+    import torch
+
+    import monailabel
+
+    output = OrderedDict()
+    output["MONAILabel"] = monailabel.__version__
+    output["Numpy"] = np.version.full_version
+    output["Pytorch"] = torch.__version__
+
+    for k, v in output.items():
+        print(f"{k} version: {v}", file=file, flush=True)
+    print(f"MONAILabel rev id: {monailabel.__revision_id__}")

@@ -70,7 +70,7 @@ class Datastore(metaclass=ABCMeta):
         pass
 
     @abstractmethod
-    def get_image(self, image_id: str) -> Any:
+    def get_image(self, image_id: str) -> (Any, str):
         """
         Retrieve image object based on image id
 
@@ -110,7 +110,7 @@ class Datastore(metaclass=ABCMeta):
         pass
 
     @abstractmethod
-    def get_labeled_images(self) -> List[str]:
+    def get_labeled_images(self) -> Dict[str, Any]:
         """
         Get all images that have a corresponding label
 
@@ -119,7 +119,7 @@ class Datastore(metaclass=ABCMeta):
         pass
 
     @abstractmethod
-    def get_unlabeled_images(self) -> List[str]:
+    def get_unlabeled_images(self) -> Dict[str, Any]:
         """
         Get all images that have no corresponding label
 
@@ -128,7 +128,7 @@ class Datastore(metaclass=ABCMeta):
         pass
 
     @abstractmethod
-    def list_images(self) -> List[str]:
+    def list_images(self) -> Dict[str, Any]:
         """
         Return list of image ids available in the datastore
 

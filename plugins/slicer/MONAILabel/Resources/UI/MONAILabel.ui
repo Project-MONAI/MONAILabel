@@ -157,14 +157,28 @@
       <property name="rightMargin">
        <number>0</number>
       </property>
-      <item row="3" column="1">
+      <item row="4" column="0">
+       <widget class="QPushButton" name="nextSampleButton">
+        <property name="text">
+         <string>Next Sample</string>
+        </property>
+       </widget>
+      </item>
+      <item row="6" column="0">
+       <widget class="QPushButton" name="trainingButton">
+        <property name="text">
+         <string>Update Model</string>
+        </property>
+       </widget>
+      </item>
+      <item row="6" column="1">
        <widget class="QPushButton" name="stopTrainingButton">
         <property name="text">
          <string>Stop Training</string>
         </property>
        </widget>
       </item>
-      <item row="2" column="1">
+      <item row="4" column="1">
        <widget class="QPushButton" name="saveLabelButton">
         <property name="text">
          <string>Submit Label</string>
@@ -172,20 +186,13 @@
        </widget>
       </item>
       <item row="2" column="0">
-       <widget class="QPushButton" name="nextSampleButton">
+       <widget class="QLabel" name="label_7">
         <property name="text">
-         <string>Next Sample</string>
+         <string>Strategy:</string>
         </property>
        </widget>
       </item>
-      <item row="3" column="0">
-       <widget class="QPushButton" name="trainingButton">
-        <property name="text">
-         <string>Update Model</string>
-        </property>
-       </widget>
-      </item>
-      <item row="4" column="0">
+      <item row="7" column="0" colspan="2">
        <widget class="QCommandLinkButton" name="trainingStatusButton">
         <property name="text">
          <string>Training Status</string>
@@ -194,6 +201,9 @@
          <string/>
         </property>
        </widget>
+      </item>
+      <item row="3" column="0" colspan="2">
+       <widget class="QComboBox" name="strategyBox"/>
       </item>
      </layout>
     </widget>

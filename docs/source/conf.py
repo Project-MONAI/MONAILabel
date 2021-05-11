@@ -15,7 +15,7 @@ import sys
 #
 import sphinx_rtd_theme
 
-sys.path.insert(0, os.path.abspath('../'))
+sys.path.insert(0, os.path.abspath("../"))
 import monailabel
 
 # -- Project information -----------------------------------------------------
@@ -37,25 +37,25 @@ version = short_version
 # Add napoleon to the extensions list
 # source_parsers = {'.md': CommonMarkParser}
 
-templates_path = ['templates']
+templates_path = ["templates"]
 
 source_suffix = {
-    '.rst': 'restructuredtext',
-    '.txt': 'restructuredtext',
-    '.md': 'markdown',
+    ".rst": "restructuredtext",
+    ".txt": "restructuredtext",
+    ".md": "markdown",
 }
 
 extensions = [
-    'recommonmark',
-    'sphinx.ext.intersphinx',
-    'sphinx.ext.mathjax',
-    'sphinx.ext.napoleon',
-    'sphinx.ext.autodoc',
-    'sphinx.ext.autosectionlabel',
-    'sphinxcontrib.exceltable'
+    "recommonmark",
+    "sphinx.ext.intersphinx",
+    "sphinx.ext.mathjax",
+    "sphinx.ext.napoleon",
+    "sphinx.ext.autodoc",
+    "sphinx.ext.autosectionlabel",
+    "sphinxcontrib.exceltable",
 ]
 
-autoclass_content = 'both'
+autoclass_content = "both"
 add_module_names = False
 autosectionlabel_prefix_document = True
 
@@ -72,13 +72,13 @@ exclude_patterns = []
 # The theme to use for HTML and HTML Help pages.  See the documentation for
 # a list of builtin themes.
 #
-html_theme = 'sphinx_rtd_theme'
+html_theme = "sphinx_rtd_theme"
 html_theme_path = [sphinx_rtd_theme.get_html_theme_path()]
 html_theme_options = {
-    'collapse_navigation': True,
-    'display_version': True,
-    'navigation_depth': 5,
-    'sticky_navigation': True,  # Set to False to disable the sticky nav while scrolling.
+    "collapse_navigation": True,
+    "display_version": True,
+    "navigation_depth": 5,
+    "sticky_navigation": True,  # Set to False to disable the sticky nav while scrolling.
     # 'logo_only': True,  # if we have a html_logo below, this shows /only/ the logo with no title text
 }
 

@@ -1,12 +1,13 @@
 import logging
 import os
 
-from lib import MyInfer, MyTrain, MyActiveLearning
+from lib import MyInfer, MyStrategy, MyTrain
 from monai.networks.layers import Norm
 from monai.networks.nets import UNet
-from monailabel.interfaces.app import MONAILabelApp
-from monailabel.utils.infer.deepgrow_2d import InferDeepgrow2D
-from monailabel.utils.infer.deepgrow_3d import InferDeepgrow3D
+
+from monailabel.interfaces import MONAILabelApp
+from monailabel.utils.activelearning import Random
+from monailabel.utils.infer import InferDeepgrow2D, InferDeepgrow3D
 
 logger = logging.getLogger(__name__)
 
@@ -21,20 +22,25 @@ class MyApp(MONAILabelApp):
             "segmentation_spleen": MyInfer(os.path.join(self.model_dir, "segmentation_spleen.ts")),
         }
 
+        strategies = {
+            "random": Random(),
+            "first": MyStrategy(),
+        }
+
         super().__init__(
             app_dir=app_dir,
             studies=studies,
             infers=infers,
-            active_learning=MyActiveLearning()
+            strategies=strategies,
         )
 
     def train(self, request):
-        name = request.get('name', 'model_01')
-        epochs = request.get('epochs', 1)
-        amp = request.get('amp', True)
-        device = request.get('device', 'cuda')
-        lr = request.get('lr', 0.0001)
-        val_split = request.get('val_split', 0.2)
+        name = request.get("name", "model_01")
+        epochs = request.get("epochs", 1)
+        amp = request.get("amp", True)
+        device = request.get("device", "cuda")
+        lr = request.get("lr", 0.0001)
+        val_split = request.get("val_split", 0.2)
 
         logger.info(f"Training request: {request}")
         task = MyTrain(
@@ -47,11 +53,11 @@ class MyApp(MONAILabelApp):
                 channels=(16, 32, 64, 128, 256),
                 strides=(2, 2, 2, 2),
                 num_res_units=2,
-                norm=Norm.BATCH
+                norm=Norm.BATCH,
             ),
             device=device,
             lr=lr,
-            val_split=val_split
+            val_split=val_split,
         )
 
         return task(max_epochs=epochs, amp=amp)

@@ -131,15 +131,17 @@ class LocalDatastore(Datastore):
                     })
         return items
 
-    def get_image(self, image_id: str) -> io.BytesIO:
+    def get_image(self, image_id: str) -> (io.BytesIO, str):
 
         buf = None
+        image_path = None
         for obj in self._datastore.objects:
             if obj.image.id == image_id:
-                with open(os.path.join(self._datastore_path, obj.image.id), 'rb') as f:
+                image_path = os.path.join(self._datastore_path, obj.image.id)
+                with open(image_path, 'rb') as f:
                     buf = io.BytesIO(f.read())
                     break
-        return buf
+        return buf, image_path
 
     def get_image_info(self, image_id: str) -> Dict[str, Any]:
 
@@ -176,17 +178,17 @@ class LocalDatastore(Datastore):
 
         return {}
 
-    def get_labeled_images(self) -> List[str]:
+    def get_labeled_images(self) -> Dict[str, str]:
 
-        return [obj.image.id for obj in self._datastore.objects if obj.labels]
+        return {obj.image.id: os.path.join(self._datastore_path, obj.image.id) for obj in self._datastore.objects if obj.labels}
 
-    def get_unlabeled_images(self) -> List[str]:
+    def get_unlabeled_images(self) -> Dict[str, str]:
 
-        return [obj.image.id for obj in self._datastore.objects if not obj.labels]
+        return {obj.image.id: os.path.join(self._datastore_path, obj.image.id) for obj in self._datastore.objects if not obj.labels}
 
-    def list_images(self) -> List[str]:
+    def list_images(self) -> Dict[str, str]:
 
-        return [obj.image.id for obj in self._datastore.objects]
+        return {obj.image.id: os.path.join(self._datastore_path, obj.image.id) for obj in self._datastore.objects}
 
     def save_label(self, image_id: str, label_filename: str, label_tag: LabelTag) -> str:
 
