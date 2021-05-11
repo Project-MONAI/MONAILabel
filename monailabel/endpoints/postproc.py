@@ -118,7 +118,6 @@ async def postproc_label(
 
     with open(scribbles_file, "wb") as buffer:
         shutil.copyfileobj(scribbles.file, buffer)
-    print('HERE')
     instance: MONAILabelApp = get_app_instance()
     request = {"method": method, "image": image, "scribbles": scribbles_file}
 

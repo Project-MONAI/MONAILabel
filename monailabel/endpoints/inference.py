@@ -76,8 +76,6 @@ def send_response(result, output, background_tasks):
     def remove_file(path: str) -> None:
         if os.path.exists(path):
             os.unlink(path)
-    print(output)
-
     res_img = result.get('label')
     res_json = result.get('params')
 
@@ -117,7 +115,6 @@ async def run_inference(
 
     logger.info(f"Infer Request: {request}")
     result = instance.infer(request)
-    print(result)
     if result is None:
         raise HTTPException(status_code=500, detail=f"Failed to execute infer")
     return send_response(result, output, background_tasks)

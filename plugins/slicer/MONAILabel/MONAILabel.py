@@ -303,7 +303,7 @@ class MONAILabelWidget(ScriptedLoadableModuleWidget, VTKObservationMixin):
             self.reportProgress(30)
 
             self.updateServerSettings()
-            method = 'crf'
+            method = 'CRF'
             image_file = self.current_sample["id"]
             result_file, params = self.logic.postproc_label(method, image_file, scribbles_in)
             print('&'*80)
@@ -311,21 +311,17 @@ class MONAILabelWidget(ScriptedLoadableModuleWidget, VTKObservationMixin):
             print(params)
             print('&'*80)
             print('&'*80)
-
-            # widget = self._segmentEditorWidget
-            # del widget
-            # print(self._segmentEditorWidget)
-            # self._segmentEditorWidget = None
-            # print(self._segmentEditorWidget)
-            # self.ui.selectedScribbleDisplay.setIcon(self.icon('gray.svg'))
-            # self.ui.selectedToolDisplay.setIcon(self.icon('gray.svg'))
             
-            # result_file, params = self.logic.inference(model, image_file, params)
-            # logging.debug('Params from deepgrow is {}'.format(params))
             _, segment = self.currentSegment()
             label = segment.GetName()
             print(label)
             self.updateSegmentationMask(result_file, [label])
+
+            widget = self._segmentEditorWidget
+            del widget
+            self._segmentEditorWidget = None
+            self.ui.selectedScribbleDisplay.setIcon(self.icon('gray.svg'))
+            self.ui.selectedToolDisplay.setIcon(self.icon('gray.svg'))
         except:
             slicer.util.errorDisplay("Failed to save Label to MONAI Label Server",
                                      detailedText=traceback.format_exc())

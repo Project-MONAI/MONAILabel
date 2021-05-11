@@ -93,9 +93,6 @@ class MyInfer(InferenceTask):
         data = self.run_post_transforms(data, self.post_transforms())
         latency_post = time.time() - start
 
-        import numpy as np
-        print(np.unique(data['logits']))
-        print(data.keys())
         start = time.time()
         result_file_name, result_json = self.writer(data)
         # save logits file temporarily somewhere

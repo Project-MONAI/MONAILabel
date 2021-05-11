@@ -1,5 +1,4 @@
 import numpy as np
-# from numpy.lib.arraysetops import isin
 import torch
 import denseCRF3D
 
@@ -12,7 +11,7 @@ logger = logging.getLogger(__name__)
 
 # define epsilon for numerical stability
 # help from: https://stackoverflow.com/a/25155518
-EPS = 7./3 - 4./3 -1
+EPS = 7./3 - 4./3 - 1
 class AddUnaryTermd(Transform):
     def __init__(
         self,
@@ -221,13 +220,13 @@ class ApplyCRFPostProcd(Transform):
             # bits = 10
             # pairwise_term = (2**bits) * torch.round(pairwise_term * (2**bits))
 
-            print(unary_term.dtype)
-            print(unary_term.shape)
-            # print(torch.sum(unary_term, dim=1))
-            print()
-            print(pairwise_term.dtype)
-            print(pairwise_term.shape)
-            print()
+            # print(unary_term.dtype)
+            # print(unary_term.shape)
+            # # print(torch.sum(unary_term, dim=1))
+            # print()
+            # print(pairwise_term.dtype)
+            # print(pairwise_term.shape)
+            # print()
 
             # np.save('unary.npy', unary_term.cpu().detach().numpy())
             # np.save('pairwise.npy', pairwise_term.cpu().detach().numpy())
