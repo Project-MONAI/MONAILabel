@@ -195,35 +195,36 @@ class MyApp(MONAILabelApp):
             print(to_print)
             print()
             return _data
-
+        use_simplecrf = False
         pre_transforms = [
             LoadImaged(keys=['image', 'logits', 'scribbles']),
             AddChanneld(keys=['image', 'logits', 'scribbles']),
-            # Spacingd(keys=['image', 'logits', 'scribbles'], pixdim=[1.0, 1.0, 1.0]),
-            ScaleIntensityRanged(keys='image', a_min=-57, a_max=164, b_min=0.0, b_max=1.0, clip=True),
-            AddUnaryTermd(ref_prob='logits', unary="unary", scribbles="scribbles", channel_dim=0, scale_infty=1),
+            Spacingd(keys=['image', 'logits'], pixdim=[3.0, 3.0, 5.0]),
+            Spacingd(keys=['scribbles'], pixdim=[3.0, 3.0, 5.0], mode='nearest'),
+            ScaleIntensityRanged(keys='image', a_min=-164, a_max=164, b_min=0.0, b_max=1.0, clip=True),
+            AddUnaryTermd(ref_prob='logits', unary="unary", scribbles="scribbles", channel_dim=0, sc_background_label=2, sc_foreground_label=3, scale_infty=10, use_simplecrf=use_simplecrf),
             AddChanneld(keys=['image', 'unary']),
             ToTensord(keys=['image', 'logits', 'unary'])
 
         ]
 
         post_transforms = [
-            ApplyCRFPostProcd(unary='unary', pairwise='image', post_proc_label='pred', device=torch.device('cuda')),
+            ApplyCRFPostProcd(unary='unary', pairwise='image', post_proc_label='pred', device=torch.device('cpu'), use_simplecrf=use_simplecrf),
             # AddChanneld(keys='pred'),
             # CopyItemsd(keys='pred', times=1, names='logits'),
             # Activationsd(keys='pred', softmax=True),
             # AsDiscreted(keys='pred', argmax=True),
-            # SqueezeDimd(keys=['pred', 'logits'], dim=0),
-            # ToNumpyd(keys=['pred', 'logits']),
-            # Restored(keys='pred', ref_image='image'),
+            SqueezeDimd(keys=['pred', 'logits'], dim=0),
+            ToNumpyd(keys=['pred', 'logits']),
+            Restored(keys='pred', ref_image='image'),
             # BoundingBoxd(keys='pred', result='result', bbox='bbox'),
             # SaveImaged(keys='pred', output_dir='/tmp', output_postfix='postproc', output_ext='.nii.gz', resample=False),
         ]
 
         for prtx in pre_transforms:
             data = apply_tx(data, prtx)
-        import numpy as np
-        print(np.unique(data['scribbles']))
+        # import numpy as np
+        # print(np.unique(data['scribbles']))
         for potx in post_transforms:
             data = apply_tx(data, potx)
 
@@ -251,4 +252,4 @@ class MyApp(MONAILabelApp):
         #     "image": request.get("image"),
         #     "label": label_file,
         # }
-        return {"label": scribbles_file, "params": {'bbox': [[167, 10], [357, 83]]}}
+        return {"label": results_img, "params": {'bbox': [[167, 10], [357, 83]]}}

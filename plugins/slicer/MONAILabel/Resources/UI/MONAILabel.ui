@@ -7,7 +7,7 @@
     <x>0</x>
     <y>0</y>
     <width>425</width>
-    <height>602</height>
+    <height>621</height>
    </rect>
   </property>
   <layout class="QVBoxLayout" name="verticalLayout">
@@ -260,11 +260,14 @@
    </item>
    <item>
     <widget class="ctkCollapsibleButton" name="deepgrowCollapsibleButton">
+     <property name="enabled">
+      <bool>true</bool>
+     </property>
      <property name="text">
       <string>SmartEdit (Deepgrow)</string>
      </property>
      <property name="collapsed">
-      <bool>false</bool>
+      <bool>true</bool>
      </property>
      <property name="collapsedHeight">
       <number>9</number>

@@ -233,11 +233,13 @@ class MONAILabelWidget(ScriptedLoadableModuleWidget, VTKObservationMixin):
             # segmentationNode = slicer.util.getNodesByClass('vtkMRMLSegmentationNode')[0]
             
 
-            # add foreground
+            
             # scribbles_segmentationNode = slicer.util.getNodesByClass('vtkMRMLSegmentationNode')[0]
-            self._segmentNode.GetSegmentation().AddEmptySegment('foreground_scribbles', 'foreground_scribbles', [0.0, 1.0, 0.0])
-            # add background
+            
+            # add background # idx = 2
             self._segmentNode.GetSegmentation().AddEmptySegment('background_scribbles', 'background_scribbles', [1.0, 0.0, 0.0])
+            # add foreground # idx = 3
+            self._segmentNode.GetSegmentation().AddEmptySegment('foreground_scribbles', 'foreground_scribbles', [0.0, 1.0, 0.0])
             
             # qMRMLSegmentEditorWidget
             # Create segment editor to get access to effects
@@ -252,6 +254,7 @@ class MONAILabelWidget(ScriptedLoadableModuleWidget, VTKObservationMixin):
             self._segmentEditorWidget.setMasterVolumeNode(self._volumeNode)
             self._segmentEditorWidget.setActiveEffectByName("Paint")
             effect = self._segmentEditorWidget.activeEffect()
+            effect.setParameter("BrushSphere", 1) 
             effect.setParameter('BrushAbsoluteDiameter', 5)
             self.onPaintForegroundScribbles()
     
