@@ -5,7 +5,8 @@ import logging
 import os
 import pathlib
 import shutil
-from typing import List, Dict
+import time
+from typing import Dict, List
 
 from pydantic import BaseModel
 
@@ -137,9 +138,10 @@ class LocalDatastore(Datastore):
                 logger.info(f"Saving Label: {label_id} with tag: {tag} against image: {image_id}")
                 shutil.copy(label_file, os.path.join(self._datastore_path, label_id))
                 # If tag exists, update info
+
+                info.update({"timestamp": int(time.time())})
                 if obj.labels.get(tag):
-                    if info:
-                        obj.labels.get(tag).info.update(info)
+                    obj.labels.get(tag).info.update(info)
                 else:
                     obj.labels[tag] = BaseObject(id=label_id, info=info)
 
@@ -187,5 +189,5 @@ class LocalDatastore(Datastore):
 
     def _get_info(self, id, info):
         d = copy.deepcopy(info)
-        d['path'] = self.get_path(id)
+        d["path"] = self.get_path(id)
         return d

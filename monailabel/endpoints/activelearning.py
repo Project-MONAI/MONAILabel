@@ -6,7 +6,7 @@ import shutil
 import tempfile
 from typing import Optional
 
-from fastapi import APIRouter, File, UploadFile, HTTPException
+from fastapi import APIRouter, File, HTTPException, UploadFile
 
 from monailabel.interfaces import MONAILabelApp
 from monailabel.utils.others.generic import file_checksum, get_app_instance
