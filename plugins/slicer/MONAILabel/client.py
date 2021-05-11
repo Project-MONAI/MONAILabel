@@ -79,13 +79,25 @@ class MONAILabelClient:
         fields = {}
         files = {'scribbles': label_in}
 
-        status, response, _ = MONAILabelUtils.http_multipart('POST', self._server_url, selector, fields, files)
-        if status != 200:
-            raise MONAILabelException(MONAILabelError.SERVER_ERROR, 'Status: {}; Response: {}'.format(status, response))
+        # below, working without file being received
+        # status, response, _ = MONAILabelUtils.http_multipart('POST', self._server_url, selector, fields, files)
+        # if status != 200:
+        #     raise MONAILabelException(MONAILabelError.SERVER_ERROR, 'Status: {}; Response: {}'.format(status, response))
 
-        response = response.decode('utf-8') if isinstance(response, bytes) else response
-        logging.debug('Response: {}'.format(response))
-        return json.loads(response)
+        # response = response.decode('utf-8') if isinstance(response, bytes) else response
+        # logging.debug('Response: {}'.format(response))
+        # return json.loads(response)
+        status, form, files = MONAILabelUtils.http_multipart('POST', self._server_url, selector, fields, files)
+        
+        if status != 200:
+            raise MONAILabelException(MONAILabelError.SERVER_ERROR, 'Status: {}; Response: {}'.format(status, form))
+
+        form = json.loads(form) if isinstance(form, str) else form
+        params = form.get('params') if files else form
+        params = json.loads(params) if isinstance(params, str) else params
+
+        image_out = MONAILabelUtils.save_result(files, self.tmpdir)
+        return image_out, params
 
     def inference(self, model, image_in, params):
         selector = '/inference/{}?image={}'.format(

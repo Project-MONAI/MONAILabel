@@ -235,17 +235,42 @@ class MONAILabelWidget(ScriptedLoadableModuleWidget, VTKObservationMixin):
 
             
             # scribbles_segmentationNode = slicer.util.getNodesByClass('vtkMRMLSegmentationNode')[0]
+
+            segmentation=self._segmentNode.GetSegmentation()
+            segmentId=segmentation.GetSegmentIdBySegmentName('background_scribbles')    
+            if segmentId=='': # needs to be added
+                # add background # idx = 2
+                self._segmentNode.GetSegmentation().AddEmptySegment('background_scribbles', 'background_scribbles', [1.0, 0.0, 0.0])
             
-            # add background # idx = 2
-            self._segmentNode.GetSegmentation().AddEmptySegment('background_scribbles', 'background_scribbles', [1.0, 0.0, 0.0])
-            # add foreground # idx = 3
-            self._segmentNode.GetSegmentation().AddEmptySegment('foreground_scribbles', 'foreground_scribbles', [0.0, 1.0, 0.0])
+            segmentation=self._segmentNode.GetSegmentation()
+            segmentId=segmentation.GetSegmentIdBySegmentName('foreground_scribbles')
+            if segmentId=='': # needs to be added
+                # add foreground # idx = 3
+                self._segmentNode.GetSegmentation().AddEmptySegment('foreground_scribbles', 'foreground_scribbles', [0.0, 1.0, 0.0])
+
+            # Change one segment display properties
+            segmentationDisplayNode=self._segmentNode.GetDisplayNode()
+            segmentation=self._segmentNode.GetSegmentation()
+            # segmentId=segmentation.GetSegmentIdBySegmentName('background_scribbles')
+            segmentationDisplayNode.SetSegmentOpacity2DFill('background_scribbles', 0.2) # https://apidocs.slicer.org/master/classvtkMRMLSegmentationDisplayNode.html
+            segmentationDisplayNode.SetSegmentOpacity2DOutline('background_scribbles', 0.2)
+            
+            # segmentId=segmentation.GetSegmentIdBySegmentName('foreground_scribbles')
+            segmentationDisplayNode.SetSegmentOpacity2DFill('foreground_scribbles', 0.2)
+            segmentationDisplayNode.SetSegmentOpacity2DOutline('foreground_scribbles', 0.2)
+            
+            # segmentation.GetSegment(segmentId).SetColor(1,0,0)
             
             # qMRMLSegmentEditorWidget
             # Create segment editor to get access to effects
             self._segmentEditorWidget = slicer.qMRMLSegmentEditorWidget()
             self._segmentEditorWidget.setMRMLScene(slicer.mrmlScene)
             segmentEditorNode = slicer.vtkMRMLSegmentEditorNode()
+            
+            # Setting labels to overlay over previous labels:
+            # https://discourse.slicer.org/t/how-can-i-set-masking-settings-on-a-segment-editor-effect-in-python/4406/7
+            segmentEditorNode.SetOverwriteMode(slicer.vtkMRMLSegmentEditorNode.OverwriteNone)        
+
             slicer.mrmlScene.AddNode(segmentEditorNode)
             self._segmentEditorWidget.setMRMLSegmentEditorNode(segmentEditorNode)
             self._segmentEditorWidget.setSegmentationNode(self._segmentNode)
@@ -271,107 +296,42 @@ class MONAILabelWidget(ScriptedLoadableModuleWidget, VTKObservationMixin):
             slicer.modules.segmentations.logic().ExportVisibleSegmentsToLabelmapNode(
                 segmentationNode, labelmapVolumeNode, self._volumeNode)
 
-            label_in = tempfile.NamedTemporaryFile(suffix=".nii.gz", dir=self.tmpdir).name
+            scribbles_in = tempfile.NamedTemporaryFile(suffix=".nii.gz", dir=self.tmpdir).name
             self.reportProgress(5)
 
-            slicer.util.saveNode(labelmapVolumeNode, label_in)
+            slicer.util.saveNode(labelmapVolumeNode, scribbles_in)
             self.reportProgress(30)
 
             self.updateServerSettings()
             method = 'crf'
             image_file = self.current_sample["id"]
-            result_file, params = self.logic.postproc_label(method, image_file, label_in)
-            print(label_in)
+            result_file, params = self.logic.postproc_label(method, image_file, scribbles_in)
+            print('&'*80)
+            print(result_file)
+            print(params)
+            print('&'*80)
+            print('&'*80)
 
-            widget = self._segmentEditorWidget
-            del widget
-            print(self._segmentEditorWidget)
-            self._segmentEditorWidget = None
-            print(self._segmentEditorWidget)
-            self.ui.selectedScribbleDisplay.setIcon(self.icon('gray.svg'))
-            self.ui.selectedToolDisplay.setIcon(self.icon('gray.svg'))
+            # widget = self._segmentEditorWidget
+            # del widget
+            # print(self._segmentEditorWidget)
+            # self._segmentEditorWidget = None
+            # print(self._segmentEditorWidget)
+            # self.ui.selectedScribbleDisplay.setIcon(self.icon('gray.svg'))
+            # self.ui.selectedToolDisplay.setIcon(self.icon('gray.svg'))
             
             # result_file, params = self.logic.inference(model, image_file, params)
             # logging.debug('Params from deepgrow is {}'.format(params))
-            # _, segment = self.currentSegment()
-            # label = segment.GetName()
-            # self.updateSegmentationMask(result_file, [label], None if deepgrow_3d else sliceIndex)
+            _, segment = self.currentSegment()
+            label = segment.GetName()
+            print(label)
+            self.updateSegmentationMask(result_file, [label])
         except:
             slicer.util.errorDisplay("Failed to save Label to MONAI Label Server",
                                      detailedText=traceback.format_exc())
         finally:
             qt.QApplication.restoreOverrideCursor()
             self.reportProgress(100)
-
-            # if labelmapVolumeNode:
-            #     slicer.mrmlScene.RemoveNode(labelmapVolumeNode)
-            # if result:
-            #     slicer.util.infoDisplay("Label-Mask saved into MONAI Label Server\t\t",
-            #                             detailedText=json.dumps(result, indent=2))
-            #     # slicer.mrmlScene.Clear(0)
-            # self.onNextSampleButton()
-
-        # model = self.ui.deepgrowModelSelector.currentText
-        # if not model:
-        #     slicer.util.warningDisplay("Please select a deepgrow model")
-        #     return
-
-        # _, segment = self.currentSegment()
-        # if not segment:
-        #     slicer.util.warningDisplay("Please add the required label to run deepgrow")
-        #     return
-
-        # foreground_all = self.getFiducialPointsXYZ(self.dgPositiveFiducialNode)
-        # background_all = self.getFiducialPointsXYZ(self.dgNegativeFiducialNode)
-
-        # segment.SetTag("MONAILabel.ForegroundPoints", json.dumps(foreground_all))
-        # segment.SetTag("MONAILabel.BackgroundPoints", json.dumps(background_all))
-
-        # # use model info "deepgrow" to determine
-        # deepgrow_3d = False if self.models[model].get("dimension", 3) == 2 else True
-        # start = time.time()
-
-        # label = segment.GetName()
-        # operationDescription = 'Run Deepgrow for segment: {}; model: {}; 3d {}'.format(label, model, deepgrow_3d)
-        # logging.debug(operationDescription)
-
-        # try:
-        #     qt.QApplication.setOverrideCursor(qt.Qt.WaitCursor)
-
-        #     sliceIndex = current_point[2]
-        #     logging.debug('Slice Index: {}'.format(sliceIndex))
-
-        #     if deepgrow_3d:
-        #         foreground = foreground_all
-        #         background = background_all
-        #     else:
-        #         foreground = [x for x in foreground_all if x[2] == sliceIndex]
-        #         background = [x for x in background_all if x[2] == sliceIndex]
-
-        #     logging.debug('Foreground: {}'.format(foreground))
-        #     logging.debug('Background: {}'.format(background))
-        #     logging.debug('Current point: {}'.format(current_point))
-
-        #     image_file = self.current_sample["id"]
-        #     params = {
-        #         "foreground": foreground,
-        #         "background": background,
-        #     }
-
-        #     configs = self.getParamsFromConfig()
-        #     params.update(configs.get('infer', {}))
-        #     result_file, params = self.logic.inference(model, image_file, params)
-        #     logging.debug('Params from deepgrow is {}'.format(params))
-
-        #     self.updateSegmentationMask(result_file, [label], None if deepgrow_3d else sliceIndex)
-        # except:
-        #     logging.exception("Unknown Exception")
-        #     slicer.util.errorDisplay(operationDescription + " - unexpected error.", detailedText=traceback.format_exc())
-        # finally:
-        #     qt.QApplication.restoreOverrideCursor()
-
-        # self.updateGUIFromParameterNode()
-        # logging.info("Time consumed by Deepgrow: {0:3.1f}".format(time.time() - start))
 
 
     def initPainter(self):
@@ -924,7 +884,6 @@ class MONAILabelWidget(ScriptedLoadableModuleWidget, VTKObservationMixin):
         logging.info("Time consumed by next_sample: {0:3.1f}".format(time.time() - start))
 
     def onNextSampleButton(self):
-        print('nextSampleButton button pressed')
         if not self.logic:
             return
 
@@ -979,7 +938,6 @@ class MONAILabelWidget(ScriptedLoadableModuleWidget, VTKObservationMixin):
             segmentEditorWidget = slicer.modules.segmenteditor.widgetRepresentation().self().editor
             segmentEditorWidget.setSegmentationNode(self._segmentNode)
             segmentEditorWidget.setMasterVolumeNode(self._volumeNode)
-            print(self.info)
             self.updateSegmentationMask(None, self.info.get("labels"))
 
             # Check if user wants to run auto-segmentation on new sample
@@ -1313,19 +1271,34 @@ class MONAILabelLogic(ScriptedLoadableModuleLogic):
     def save_label(self, image_in, label_in):
         return MONAILabelClient(self.server_url, self.tmpdir).save_label(image_in, label_in)
 
-    def postproc_label(self, method, image_in, label_in):
+    def postproc_label(self, method, image_in, scribbles_in):
         # logging.debug('Preparing input data for segmentation')
         # self.reportProgress(0)
 
         # client = MONAILabelClient(self.server_url, self.tmpdir)
-        # result_file, params = client.postproc_label(method, image_in, label_in)
+        # result_file, params = client.postproc_label(method, image_in, scribbles_in)
 
         # logging.debug(f"Image Response: {result_file}")
         # logging.debug(f"JSON  Response: {params}")
 
         # self.reportProgress(100)
         # return result_file, params
-        return MONAILabelClient(self.server_url, self.tmpdir).postproc_label(method, image_in, label_in)
+
+        # this was before
+        # return MONAILabelClient(self.server_url, self.tmpdir).postproc_label(method, image_in, scribbles_in)
+
+        logging.debug('Applying post proc methd {} with scribbles'.format(method))
+        # self.reportProgress(0)
+
+        client = MONAILabelClient(self.server_url, self.tmpdir)
+        result_file, params = client.postproc_label(method, image_in, scribbles_in)
+        
+        logging.debug(f"Image Response: {result_file}")
+        logging.debug(f"JSON  Response: {params}")
+
+        # self.reportProgress(100)
+        return result_file, params
+
 
     def inference(self, model, image_in, params={}):
         logging.debug('Preparing input data for segmentation')

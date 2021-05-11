@@ -233,6 +233,7 @@ class MyApp(MONAILabelApp):
         print(data['scribbles_meta_dict']['affine'])
         print(data['image_meta_dict']['affine'])
         import nibabel as nib
+        result_img_file = '/tmp/postproclabel.nii.gz'
         results_img = nib.Nifti1Image(data['pred'], data['image_meta_dict']['affine'])
         nib.save(results_img, '/tmp/postproclabel.nii.gz')
 
@@ -252,4 +253,4 @@ class MyApp(MONAILabelApp):
         #     "image": request.get("image"),
         #     "label": label_file,
         # }
-        return {"label": results_img, "params": {'bbox': [[167, 10], [357, 83]]}}
+        return {"label": result_img_file, "params": {}}
