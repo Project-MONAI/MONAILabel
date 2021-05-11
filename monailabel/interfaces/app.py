@@ -1,14 +1,13 @@
 import io
 import logging
 import os
-import pathlib
 from abc import abstractmethod
 
 import yaml
 
 from monailabel.interfaces.activelearning import ActiveLearning
-from monailabel.interfaces.datastore import Datastore
-from monailabel.interfaces.datastore_local import LocalDatastore
+from monailabel.interfaces.datastore import Datastore, LabelTag
+from utils.datastore.local import LocalDatastore
 from monailabel.interfaces.exception import MONAILabelException, MONAILabelError
 
 logger = logging.getLogger(__name__)
@@ -91,8 +90,7 @@ class MONAILabelApp:
         result_file_name, result_json = task(request)
 
         if request.get('params') and request['params'].get('set_original') == 'true':
-            label_stream = io.BytesIO(open(result_file_name, 'rb').read())
-            self.datastore().set_original_label(request['image'], label_stream)
+            self.datastore().save_label(request['image'], result_file_name, LabelTag.ORIGINAL)
 
         return {"label": result_file_name, "params": result_json}
 
@@ -161,10 +159,9 @@ class MONAILabelApp:
             JSON containing next image and label info
         """
 
-        label = io.BytesIO(open(request['label'], 'rb').read())
-        label_file = self.datastore().save_updated_label(request['image'], label)
+        label_id = self.datastore().save_label(request['image'], request['label'], LabelTag.FINAL)
 
         return {
             "image": request.get("image"),
-            "label": label_file,
+            "label": label_id,
         }

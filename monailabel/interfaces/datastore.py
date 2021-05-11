@@ -1,81 +1,169 @@
 from abc import ABCMeta, abstractmethod
-from datetime import datetime
-import io
-from pydantic import BaseModel
-from typing import List, Union, Dict, Optional
+from enum import Enum
+from typing import List, Dict, Any
 
 
-class ImageModel(BaseModel):
-    id: str
-    access_timestamp: Optional[datetime]
-
-
-class ScoreModel(BaseModel):
-    name: str
-    value: Union[int, float]
-
-
-class OriginalLabelModel(BaseModel):
-    id: str
-    access_timestamp: datetime
-
-
-class UpdatedLabelModel(OriginalLabelModel):
-    scores: Optional[List[ScoreModel]]
-
-
-class LabelSetModel(BaseModel):
-    original: Optional[OriginalLabelModel]
-    updated: Optional[UpdatedLabelModel]
-
-
-class ObjectModel(BaseModel):
-    image: Optional[ImageModel]
-    labels: Optional[LabelSetModel]
+class LabelTag(Enum):
+    ORIGINAL = 'original'
+    FINAL = 'final'
 
 
 class Datastore(metaclass=ABCMeta):
 
     @property
     @abstractmethod
-    def name(self) -> str: pass
+    def name(self) -> str:
+        """
+        Return the human-readable name of the datastore
+
+        :return: the name of the dataset
+        """
+        pass
 
     @name.setter
     @abstractmethod
-    def name(self, name: str): pass
+    def name(self, name: str):
+        """
+        Set the name of the datastore
+
+        :param name: a human-readable name for the datastore
+        """
+        pass
 
     @property
     @abstractmethod
-    def description(self) -> str: pass
+    def description(self) -> str:
+        """
+        Return the user-set description of the dataset
+
+        :return: the user-set description of the dataset
+        """
+        pass
 
     @description.setter
     @abstractmethod
-    def description(self, description: str): pass
+    def description(self, description: str):
+        """
+        A human-readable description of the datastore
+
+        :param description: string for description
+        """
+        pass
 
     @abstractmethod
-    def datalist(self, full_path=True, flatten_labels=True) -> List[Dict[str, Dict[str, str]]]: pass
+    def datalist(self) -> List[Dict[str, str]]:
+        """
+        Return a dictionary of (image, label) pairs corresponding to the ('image', 'label) keys respectively
+
+        :return: the {'label': image, 'label': label} pairs for training
+        """
+        pass
 
     @abstractmethod
-    def get_labels_by_image_id(self, image_id: str) -> List[LabelSetModel]: pass
+    def get_labels_by_image_id(self, image_id: str) -> Dict[str, LabelTag]:
+        """
+        Retrieve all label ids for the given image id
+
+        :param image_id: the desired image's id
+        :return: label ids mapped to the appropriate `LabelTag` as Dict[str, LabelTag]
+        """
+        pass
 
     @abstractmethod
-    def get_label_scores(self, image_id: str) -> List[ScoreModel]: pass
+    def get_image(self, image_id: str) -> Any:
+        """
+        Retrieve image object based on image id
+
+        :param image_id: the desired image's id
+        :return: return the "image"
+        """
+        pass
 
     @abstractmethod
-    def get_unlabeled_images(self) -> List[str]: pass
+    def get_label(self, label_id: str) -> Any:
+        """
+        Retrieve image object based on label id
+
+        :param label_id: the desired label's id
+        :return: return the "label"
+        """
+        pass
 
     @abstractmethod
-    def list_images(self) -> List[ImageModel]: pass
+    def get_image_info(self, image_id: str) -> Dict[str, Any]:
+        """
+        Get the image information for the given image id
+
+        :param image_id: the desired image id
+        :return: image info as a list of dictionaries Dict[str, Any]
+        """
+        pass
 
     @abstractmethod
-    def list_labels(self) -> List[LabelSetModel]: pass
+    def get_label_info(self, label_id: str) -> Dict[str, Any]:
+        """
+        Get the label information for the given label id
+
+        :param label_id: the desired label id
+        :return: label info as a list of dictionaries Dict[str, Any]
+        """
+        pass
 
     @abstractmethod
-    def set_original_label(self, image: str, label: io.BytesIO) -> None: pass
+    def get_labeled_images(self) -> List[str]:
+        """
+        Get all images that have a corresponding label
+
+        :return: list of image ids List[str]
+        """
+        pass
 
     @abstractmethod
-    def save_updated_label(self, image: str, label: io.BytesIO, scores: List[ScoreModel]=[]) -> str: pass
+    def get_unlabeled_images(self) -> List[str]:
+        """
+        Get all images that have no corresponding label
+
+        :return: list of image ids List[str]
+        """
+        pass
 
     @abstractmethod
-    def set_label_score(self, label_id: str, score_name: str, score_value: Union[int, float]) -> None: pass
+    def list_images(self) -> List[str]:
+        """
+        Return list of image ids available in the datastore
 
+        :return: list of image ids List[str]
+        """
+        pass
+
+    @abstractmethod
+    def save_label(self, image_id: str, label_filename: str, label_tag: LabelTag) -> str:
+        """
+        Save a label for the given image id and return the newly saved label's id
+
+        :param image_id: the image id for the label
+        :param label_filename: the path to the label file
+        :param label_tag: the tag for the label
+        :return: the label id for the given label filename
+        """
+        pass
+
+    @abstractmethod
+    def update_image_info(self, image_id: str, info: Dict[str, Any]) -> None:
+        """
+        Update (or create a new) info tag for the desired image
+
+        :param image_id: the id of the image we want to add/update info
+        :param info: a dictionary of custom image information Dict[str, Any]
+        """
+        pass
+
+    @abstractmethod
+    def update_label_info(self, label_id: str, info: Dict[str, Any]) -> None:
+        """
+        Update (or create a new) info tag for the desired label
+
+        :param label_id: the id of the label we want to add/update info
+        :param info: a dictionary of custom label information Dict[str, Any]
+        """
+        pass
