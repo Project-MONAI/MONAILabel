@@ -805,7 +805,7 @@ class MONAILabelWidget(ScriptedLoadableModuleWidget, VTKObservationMixin):
             self.reportProgress(30)
 
             self.updateServerSettings()
-            result = self.logic.save_updated_label(self.current_sample["id"], label_in)
+            result = self.logic.save_label(self.current_sample["id"], label_in)
         except:
             slicer.util.errorDisplay("Failed to save Label to MONAI Label Server", detailedText=traceback.format_exc())
         finally:

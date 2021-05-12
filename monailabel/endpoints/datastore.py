@@ -19,7 +19,7 @@ router = APIRouter(
 @router.get("/", summary="Get All Images/Labels from datastore")
 async def datastore():
     d: Datastore = get_app_instance().datastore()
-    return d.find_objects(pattern=None, match_label=False)
+    return d.datalist()
 
 
 @router.put("/", summary="Upload new Image")

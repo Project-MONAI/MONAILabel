@@ -17,12 +17,10 @@ router = APIRouter(
 )
 
 
-@router.get("/{image_id}", summary="Download Image")
-async def download(image_id):
-
-    datastore: Datastore = LocalDatastore(settings.STUDIES)
-    _, image_path = datastore.get_image(image_id=image_id)
-
-    if not image_path:
+@router.get("/{image}", summary="Download Image")
+async def download(image):
+    image = image.ljust(ceil(len(image) / 4) * 4, "=")
+    image = base64.urlsafe_b64decode(image.encode("utf-8")).decode("utf-8")
+    if not os.path.isfile(image):
         raise HTTPException(status_code=404, detail=f"Image NOT Found")
-    return FileResponse(image_path, media_type=get_mime_type(image_path), filename=image_id)
+    return FileResponse(image, media_type=get_mime_type(image), filename=os.path.basename(image))

@@ -20,7 +20,7 @@ class ImageModel(BaseModel):
 
 class LabelModel(BaseModel):
     id: str
-    tag: LabelTag
+    tag: str
     info: Dict[str, Any]={}
 
 
@@ -124,24 +124,31 @@ class LocalDatastore(Datastore):
         for obj in self._datastore.objects:
             image_path = self._get_path(obj.image.id, full_path)
             for label in obj.labels:
-                if label.tag == LabelTag.FINAL:
+                if label.tag == LabelTag.FINAL.value:
                     items.append({
                         "image": image_path,
                         "label": self._get_path(label.id, full_path),
                     })
         return items
 
-    def get_image(self, image_id: str) -> (io.BytesIO, str):
+    def get_image(self, image_id: str) -> io.BytesIO:
 
         buf = None
+        for obj in self._datastore.objects:
+            if obj.image.id == image_id:
+                with open(os.path.join(self._datastore_path, obj.image.id), 'rb') as f:
+                    buf = io.BytesIO(f.read())
+                break
+        return buf
+
+    def get_image_uri(self, image_id: str) -> str:
+
         image_path = None
         for obj in self._datastore.objects:
             if obj.image.id == image_id:
                 image_path = os.path.join(self._datastore_path, obj.image.id)
-                with open(image_path, 'rb') as f:
-                    buf = io.BytesIO(f.read())
-                    break
-        return buf, image_path
+                break
+        return image_path
 
     def get_image_info(self, image_id: str) -> Dict[str, Any]:
 
@@ -161,6 +168,14 @@ class LocalDatastore(Datastore):
                         buf = io.BytesIO(f.read())
         return buf
 
+    def get_label_uri(self, label_id: str) -> str:
+
+        for obj in self._datastore.objects:
+            for label in obj.labels:
+                if label.id == label_id:
+                    return os.path.join(self._datastore_path, label.id)
+        return None
+
     def get_labels_by_image_id(self, image_id: str) -> LabelModel:
 
         for obj in self._datastore.objects:
@@ -178,36 +193,59 @@ class LocalDatastore(Datastore):
 
         return {}
 
-    def get_labeled_images(self) -> Dict[str, str]:
+    def get_labeled_images(self) -> List[str]:
 
-        return {obj.image.id: os.path.join(self._datastore_path, obj.image.id) for obj in self._datastore.objects if obj.labels}
+        image_ids = []
+        for obj in self._datastore.objects:
+            for label in obj.labels:
+                if label.tag == LabelTag.FINAL.value:
+                    image_ids.append(obj.image.id)
 
-    def get_unlabeled_images(self) -> Dict[str, str]:
+        return image_ids
 
-        return {obj.image.id: os.path.join(self._datastore_path, obj.image.id) for obj in self._datastore.objects if not obj.labels}
+    def get_unlabeled_images(self) -> List[str]:
 
-    def list_images(self) -> Dict[str, str]:
+        image_ids = []
+        for obj in self._datastore.objects:
+            if not obj.labels:
+                image_ids.append(obj.image.id)
 
-        return {obj.image.id: os.path.join(self._datastore_path, obj.image.id) for obj in self._datastore.objects}
+            for label in obj.labels:
+                if label.tag != LabelTag.FINAL.value:
+                    image_ids.append(obj.image.id)
+
+        return image_ids
+
+
+    def list_images(self) -> List[str]:
+
+        return [obj.image.id for obj in self._datastore.objects]
 
     def save_label(self, image_id: str, label_filename: str, label_tag: LabelTag) -> str:
 
-        for obj_index, obj in enumerate(self._datastore.objects):
+        for obj in self._datastore.objects:
 
             if obj.image.id == image_id:
 
-                label_file = pathlib.Path(label_filename).name
-                datastore_label_path = os.path.join(self._datastore_path, label_file)
-                shutil.copy(src=label_filename, dst=datastore_label_path, follow_symlinks=True)
-
-                obj.labels.append(LabelModel(
-                    id=label_file,
-                    tag=label_tag,
-                ))
-
                 image_ext = ''.join(pathlib.Path(image_id).suffixes)
                 label_ext = ''.join(pathlib.Path(label_filename).suffixes)
-                label_id = "label_" + label_tag + "_" + image_id.replace(image_ext, '') + label_ext
+                label_id = "label_" + label_tag.value + "_" + image_id.replace(image_ext, '') + label_ext
+
+                datastore_label_path = os.path.join(self._datastore_path, label_id)
+                shutil.copy(src=label_filename, dst=datastore_label_path, follow_symlinks=True)
+
+                if label_tag.value not in [label.tag for label in obj.labels]:
+                    obj.labels.append(LabelModel(
+                        id=label_id,
+                        tag=label_tag.value,
+                    ))
+                else:
+                    for label_index, label in enumerate(obj.labels):
+                        if label.tag == label_tag.value:
+                            obj.labels[label_index] = LabelModel(id=label_id, tag=label_tag.value)
+
+                self._update_datastore_file()
+
                 return label_id
 
         else:

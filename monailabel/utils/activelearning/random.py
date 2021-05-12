@@ -20,8 +20,7 @@ class Random(Strategy):
         if not len(images):
             return None
 
-        image_id = random.choice(list(images.keys()))
-        image_path = images[image_id]
+        image = random.choice(images)
 
-        logger.info(f"Random: Selected Image: {image_id}")
-        return image_id, image_path
+        logger.info(f"Random: Selected Image: {image}")
+        return image

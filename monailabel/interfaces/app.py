@@ -74,9 +74,8 @@ class MONAILabelApp:
                         "device": "cuda"
                         "model": "segmentation_spleen",
                         "image": "file://xyz",
-                        "params": {
-                            "set_original": "true/false"
-                        },
+                        "save_label": "true/false",
+                        "params": {},
                     }
 
         Raises:
@@ -95,10 +94,12 @@ class MONAILabelApp:
                 "Inference Task is not Initialized. There is no pre-trained model available",
             )
 
+        image_id = request['image']
+        request['image'] = self._datastore.get_image_uri(request['image'])
         result_file_name, result_json = task(request)
 
-        if request.get('params') and request['params'].get('set_original') == 'true':
-            self.datastore().save_label(request['image'], result_file_name, LabelTag.ORIGINAL)
+        if request.get('save_label', True):
+            self.datastore().save_label(image_id, result_file_name, LabelTag.ORIGINAL)
 
         return {"label": result_file_name, "params": result_json}
 
@@ -154,7 +155,8 @@ class MONAILabelApp:
                 f"ActiveLearning Task is not Initialized. There is no such strategy '{strategy}' available",
             )
 
-        image_id, image_path = task(request, self.datastore())
+        image_id = task(request, self.datastore())
+        image_path = self._datastore.get_image_uri(image_id)
         return {
             "id": image_id,
             "path": image_path,

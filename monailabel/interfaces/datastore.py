@@ -70,12 +70,22 @@ class Datastore(metaclass=ABCMeta):
         pass
 
     @abstractmethod
-    def get_image(self, image_id: str) -> (Any, str):
+    def get_image(self, image_id: str) -> Any:
         """
         Retrieve image object based on image id
 
         :param image_id: the desired image's id
         :return: return the "image"
+        """
+        pass
+
+    @abstractmethod
+    def get_image_uri(self, image_id: str) -> str:
+        """
+        Retrieve image uri based on image id
+
+        :param image_id: the desired image's id
+        :return: return the image uri
         """
         pass
 
@@ -86,6 +96,16 @@ class Datastore(metaclass=ABCMeta):
 
         :param label_id: the desired label's id
         :return: return the "label"
+        """
+        pass
+
+    @abstractmethod
+    def get_label_uri(self, label_id: str) -> str:
+        """
+        Retrieve label uri based on image id
+
+        :param label_id: the desired label's id
+        :return: return the label uri
         """
         pass
 
@@ -110,7 +130,7 @@ class Datastore(metaclass=ABCMeta):
         pass
 
     @abstractmethod
-    def get_labeled_images(self) -> Dict[str, Any]:
+    def get_labeled_images(self) -> List[str]:
         """
         Get all images that have a corresponding label
 
@@ -119,7 +139,7 @@ class Datastore(metaclass=ABCMeta):
         pass
 
     @abstractmethod
-    def get_unlabeled_images(self) -> Dict[str, Any]:
+    def get_unlabeled_images(self) -> List[str]:
         """
         Get all images that have no corresponding label
 
@@ -128,7 +148,7 @@ class Datastore(metaclass=ABCMeta):
         pass
 
     @abstractmethod
-    def list_images(self) -> Dict[str, Any]:
+    def list_images(self) -> List[str]:
         """
         Return list of image ids available in the datastore
 
