@@ -22,7 +22,11 @@ class MyApp(MONAILabelApp):
             "segmentation_heart": MyInfer(os.path.join(self.model_dir, "segmentation_heart.ts")),
         }
 
-        strategies = {"random": Random(), "first": MyStrategy(), "tta": TTA(os.path.join(self.model_dir, "deep_edit.ts"))}
+        strategies = {
+            "random": Random(),
+            "first": MyStrategy(),
+            "tta": TTA(os.path.join(self.model_dir, "deep_edit.ts")),
+        }
 
         super().__init__(
             app_dir=app_dir,

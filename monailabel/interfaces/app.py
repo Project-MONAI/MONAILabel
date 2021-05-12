@@ -4,10 +4,10 @@ from abc import abstractmethod
 
 import yaml
 
-from monailabel.utils.activelearning import Random
 from monailabel.interfaces.datastore import Datastore, LabelTag
+from monailabel.interfaces.exception import MONAILabelError, MONAILabelException
+from monailabel.utils.activelearning import Random
 from monailabel.utils.datastore import LocalDatastore
-from monailabel.interfaces.exception import MONAILabelException, MONAILabelError
 
 logger = logging.getLogger(__name__)
 
@@ -94,11 +94,11 @@ class MONAILabelApp:
                 "Inference Task is not Initialized. There is no pre-trained model available",
             )
 
-        image_id = request['image']
-        request['image'] = self._datastore.get_image_uri(request['image'])
+        image_id = request["image"]
+        request["image"] = self._datastore.get_image_uri(request["image"])
         result_file_name, result_json = task(request)
 
-        if request.get('save_label', True):
+        if request.get("save_label", True):
             self.datastore().save_label(image_id, result_file_name, LabelTag.ORIGINAL)
 
         return {"label": result_file_name, "params": result_json}
@@ -182,7 +182,7 @@ class MONAILabelApp:
             JSON containing next image and label info
         """
 
-        label_id = self.datastore().save_label(request['image'], request['label'], LabelTag.FINAL)
+        label_id = self.datastore().save_label(request["image"], request["label"], LabelTag.FINAL)
 
         return {
             "image": request.get("image"),

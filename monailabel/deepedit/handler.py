@@ -40,7 +40,11 @@ class SaveIterationOutput:
             pred = preds_data[bidx].detach().cpu().numpy()
 
             if self.images and len(image.shape) == 4:
-                samples = {"image": batch_data["image"][bidx].detach().cpu().numpy(), "label": label[0], "pred": pred[0]}
+                samples = {
+                    "image": batch_data["image"][bidx].detach().cpu().numpy(),
+                    "label": label[0],
+                    "pred": pred[0],
+                }
                 print("Saving image, label and pred for inner iteration: ", step_inner)
                 for sample in samples:
                     if sample != "image":
@@ -52,6 +56,8 @@ class SaveIterationOutput:
                         img,
                         os.path.join(
                             self.output_dir,
-                            "{}{}_{:0>4d}_{:0>2d}_inner_iter_{:0>2d}.nii.gz".format(tag, sample, step, step_inner, bidx),
+                            "{}{}_{:0>4d}_{:0>2d}_inner_iter_{:0>2d}.nii.gz".format(
+                                tag, sample, step, step_inner, bidx
+                            ),
                         ),
                     )

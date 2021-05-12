@@ -1,13 +1,12 @@
-from datetime import datetime
 import io
 import json
 import os
 import pathlib
-
 import shutil
-from pydantic import BaseModel
-from typing import List, Union, Dict, Any
+from datetime import datetime
+from typing import Any, Dict, List, Union
 
+from pydantic import BaseModel
 
 from monailabel.interfaces.datastore import Datastore, LabelTag
 from monailabel.interfaces.exception import ImageNotFoundException, LabelNotFoundException
@@ -15,24 +14,24 @@ from monailabel.interfaces.exception import ImageNotFoundException, LabelNotFoun
 
 class ImageModel(BaseModel):
     id: str
-    info: Dict[str, Any]={}
+    info: Dict[str, Any] = {}
 
 
 class LabelModel(BaseModel):
     id: str
     tag: str
-    info: Dict[str, Any]={}
+    info: Dict[str, Any] = {}
 
 
 class ObjectModel(BaseModel):
     image: ImageModel
-    labels: List[LabelModel]=[]
+    labels: List[LabelModel] = []
 
 
 class LocalDatastoreModel(BaseModel):
     name: str
     description: str
-    objects: List[ObjectModel]=[]
+    objects: List[ObjectModel] = []
 
 
 class LocalDatastore(Datastore):
@@ -47,7 +46,8 @@ class LocalDatastore(Datastore):
     `description: str`
         The description of the datastore
     """
-    def __init__(self, datastore_path: str, datastore_config: str = 'datastore.json'):
+
+    def __init__(self, datastore_path: str, datastore_config: str = "datastore.json"):
         """
         Creates a `LocalDataset` object
 
@@ -66,15 +66,12 @@ class LocalDatastore(Datastore):
         if os.path.exists(self._datastore_config_path):
             self._datastore = LocalDatastoreModel.parse_file(self._datastore_config_path)
         else:
-            self._datastore = LocalDatastoreModel(name="new-dataset",
-                                                  description="New Dataset")
+            self._datastore = LocalDatastoreModel(name="new-dataset", description="New Dataset")
 
             files = LocalDatastore._list_files(datastore_path)
 
             for file in files:
-                self._datastore.objects.append(
-                    ObjectModel(image=ImageModel(id=file))
-                )
+                self._datastore.objects.append(ObjectModel(image=ImageModel(id=file)))
 
             self._update_datastore_file()
 
@@ -125,10 +122,12 @@ class LocalDatastore(Datastore):
             image_path = self._get_path(obj.image.id, full_path)
             for label in obj.labels:
                 if label.tag == LabelTag.FINAL.value:
-                    items.append({
-                        "image": image_path,
-                        "label": self._get_path(label.id, full_path),
-                    })
+                    items.append(
+                        {
+                            "image": image_path,
+                            "label": self._get_path(label.id, full_path),
+                        }
+                    )
         return items
 
     def get_image(self, image_id: str) -> io.BytesIO:
@@ -136,7 +135,7 @@ class LocalDatastore(Datastore):
         buf = None
         for obj in self._datastore.objects:
             if obj.image.id == image_id:
-                with open(os.path.join(self._datastore_path, obj.image.id), 'rb') as f:
+                with open(os.path.join(self._datastore_path, obj.image.id), "rb") as f:
                     buf = io.BytesIO(f.read())
                 break
         return buf
@@ -216,7 +215,6 @@ class LocalDatastore(Datastore):
 
         return image_ids
 
-
     def list_images(self) -> List[str]:
 
         return [obj.image.id for obj in self._datastore.objects]
@@ -227,18 +225,20 @@ class LocalDatastore(Datastore):
 
             if obj.image.id == image_id:
 
-                image_ext = ''.join(pathlib.Path(image_id).suffixes)
-                label_ext = ''.join(pathlib.Path(label_filename).suffixes)
-                label_id = "label_" + label_tag.value + "_" + image_id.replace(image_ext, '') + label_ext
+                image_ext = "".join(pathlib.Path(image_id).suffixes)
+                label_ext = "".join(pathlib.Path(label_filename).suffixes)
+                label_id = "label_" + label_tag.value + "_" + image_id.replace(image_ext, "") + label_ext
 
                 datastore_label_path = os.path.join(self._datastore_path, label_id)
                 shutil.copy(src=label_filename, dst=datastore_label_path, follow_symlinks=True)
 
                 if label_tag.value not in [label.tag for label in obj.labels]:
-                    obj.labels.append(LabelModel(
-                        id=label_id,
-                        tag=label_tag.value,
-                    ))
+                    obj.labels.append(
+                        LabelModel(
+                            id=label_id,
+                            tag=label_tag.value,
+                        )
+                    )
                 else:
                     for label_index, label in enumerate(obj.labels):
                         if label.tag == label_tag.value:
@@ -279,7 +279,7 @@ class LocalDatastore(Datastore):
         return relative_file_paths
 
     def _update_datastore_file(self):
-        with open(self._datastore_config_path, 'w') as f:
+        with open(self._datastore_config_path, "w") as f:
             json.dump(self._datastore.dict(), f, indent=2, default=str)
 
     def _get_path(self, path: str, full_path=True):

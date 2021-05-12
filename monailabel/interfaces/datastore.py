@@ -1,15 +1,14 @@
 from abc import ABCMeta, abstractmethod
 from enum import Enum
-from typing import List, Dict, Any
+from typing import Any, Dict, List
 
 
 class LabelTag(Enum):
-    ORIGINAL = 'original'
-    FINAL = 'final'
+    ORIGINAL = "original"
+    FINAL = "final"
 
 
 class Datastore(metaclass=ABCMeta):
-
     @property
     @abstractmethod
     def name(self) -> str:

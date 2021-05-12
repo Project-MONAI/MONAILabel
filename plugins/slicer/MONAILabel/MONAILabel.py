@@ -71,7 +71,10 @@ class _ui_MONAILabelSettingsPanel(object):
         groupLayout.addRow("Auto-Run Pre-Trained Model:", autoRunSegmentationCheckBox)
         autRunMapper = ctk.ctkBooleanMapper(autoRunSegmentationCheckBox, "checked", str(qt.SIGNAL("toggled(bool)")))
         parent.registerProperty(
-            "MONAI-Label/autoRunSegmentationOnNextSample", autRunMapper, "valueAsInt", str(qt.SIGNAL("valueAsIntChanged(int)"))
+            "MONAI-Label/autoRunSegmentationOnNextSample",
+            autRunMapper,
+            "valueAsInt",
+            str(qt.SIGNAL("valueAsIntChanged(int)")),
         )
 
         vBoxLayout.addWidget(groupBox)
@@ -279,7 +282,9 @@ class MONAILabelWidget(ScriptedLoadableModuleWidget, VTKObservationMixin):
         self.ui.stopTrainingButton.setEnabled(is_training_running)
         self.ui.trainingStatusButton.setEnabled(self.info)
 
-        self.ui.segmentationButton.setEnabled(self.ui.segmentationModelSelector.currentText and self._volumeNode is not None)
+        self.ui.segmentationButton.setEnabled(
+            self.ui.segmentationModelSelector.currentText and self._volumeNode is not None
+        )
         self.ui.saveLabelButton.setEnabled(self._segmentNode is not None)
 
         # Create empty markup fiducial node for deep grow +ve and -ve
@@ -628,7 +633,9 @@ class MONAILabelWidget(ScriptedLoadableModuleWidget, VTKObservationMixin):
             configs = self.getParamsFromConfig()
             status = self.logic.train_start(configs.get("train"))
         except:
-            slicer.util.errorDisplay("Failed to run training in MONAI Label Server", detailedText=traceback.format_exc())
+            slicer.util.errorDisplay(
+                "Failed to run training in MONAI Label Server", detailedText=traceback.format_exc()
+            )
         finally:
             qt.QApplication.restoreOverrideCursor()
 
@@ -646,7 +653,9 @@ class MONAILabelWidget(ScriptedLoadableModuleWidget, VTKObservationMixin):
     def onStopTraining(self):
         start = time.time()
         status = None
-        if not slicer.util.confirmOkCancelDisplay("This will kill/stop current Training task.  Are you sure to continue?"):
+        if not slicer.util.confirmOkCancelDisplay(
+            "This will kill/stop current Training task.  Are you sure to continue?"
+        ):
             return
 
         try:
@@ -770,7 +779,9 @@ class MONAILabelWidget(ScriptedLoadableModuleWidget, VTKObservationMixin):
             self.updateSegmentationMask(None, self.info.get("labels"))
 
             # Check if user wants to run auto-segmentation on new sample
-            if slicer.util.settingsValue("MONAI-Label/autoRunSegmentationOnNextSample", True, converter=slicer.util.toBool):
+            if slicer.util.settingsValue(
+                "MONAI-Label/autoRunSegmentationOnNextSample", True, converter=slicer.util.toBool
+            ):
                 for label in self.info.get("labels", []):
                     for name, model in self.models.items():
                         if label in model.get("labels", []):
@@ -779,7 +790,9 @@ class MONAILabelWidget(ScriptedLoadableModuleWidget, VTKObservationMixin):
                             self.onClickSegmentation()
                             return
         except:
-            slicer.util.errorDisplay("Failed to fetch Sample from MONAI Label Server", detailedText=traceback.format_exc())
+            slicer.util.errorDisplay(
+                "Failed to fetch Sample from MONAI Label Server", detailedText=traceback.format_exc()
+            )
         finally:
             qt.QApplication.restoreOverrideCursor()
 
@@ -842,7 +855,9 @@ class MONAILabelWidget(ScriptedLoadableModuleWidget, VTKObservationMixin):
 
             self.updateSegmentationMask(result_file, self.models[model].get("labels"))
         except:
-            slicer.util.errorDisplay("Failed to run inference in MONAI Label Server", detailedText=traceback.format_exc())
+            slicer.util.errorDisplay(
+                "Failed to run inference in MONAI Label Server", detailedText=traceback.format_exc()
+            )
         finally:
             qt.QApplication.restoreOverrideCursor()
             if result_file and os.path.exists(result_file):
@@ -963,7 +978,9 @@ class MONAILabelWidget(ScriptedLoadableModuleWidget, VTKObservationMixin):
         numberOfAddedSegments = segmentation.GetNumberOfSegments() - numberOfExistingSegments
         logging.debug("Adding {} segments".format(numberOfAddedSegments))
 
-        addedSegmentIds = [segmentation.GetNthSegmentID(numberOfExistingSegments + i) for i in range(numberOfAddedSegments)]
+        addedSegmentIds = [
+            segmentation.GetNthSegmentID(numberOfExistingSegments + i) for i in range(numberOfAddedSegments)
+        ]
         for i, segmentId in enumerate(addedSegmentIds):
             segment = segmentation.GetSegment(segmentId)
             print("Setting new segmentation with id: {} => {}".format(segmentId, segment.GetName()))
