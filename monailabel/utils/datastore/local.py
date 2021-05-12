@@ -206,12 +206,8 @@ class LocalDatastore(Datastore):
 
         image_ids = []
         for obj in self._datastore.objects:
-            if not obj.labels:
+            if not obj.labels or LabelTag.FINAL.value not in [label.tag for label in obj.labels]:
                 image_ids.append(obj.image.id)
-
-            for label in obj.labels:
-                if label.tag != LabelTag.FINAL.value:
-                    image_ids.append(obj.image.id)
 
         return image_ids
 
