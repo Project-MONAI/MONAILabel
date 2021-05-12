@@ -20,7 +20,6 @@ class Random(Strategy):
         if not len(images):
             return None
 
-        # images.sort()
         image = random.choice(images)
 
         logger.info(f"Random: Selected Image: {image}")

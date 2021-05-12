@@ -56,7 +56,7 @@ doMypyFormat=false
 doCleanup=false
 
 NUM_PARALLEL=1
-LINE_LENGTH=127
+LINE_LENGTH=120
 
 PY_EXE=${MONAILABEL_PY_EXE:-$(which python3)}
 

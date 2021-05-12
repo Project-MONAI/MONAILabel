@@ -1,15 +1,13 @@
-import io
 import logging
 import os
-import pathlib
 from abc import abstractmethod
 
 import yaml
 
-from monailabel.interfaces.datastore import Datastore
-from monailabel.interfaces.datastore_local import LocalDatastore
+from monailabel.interfaces.datastore import Datastore, LabelTag
 from monailabel.interfaces.exception import MONAILabelError, MONAILabelException
-from monailabel.utils.activelearning.random import Random
+from monailabel.utils.activelearning import Random
+from monailabel.utils.datastore import LocalDatastore
 
 logger = logging.getLogger(__name__)
 
@@ -76,6 +74,7 @@ class MONAILabelApp:
                         "device": "cuda"
                         "model": "segmentation_spleen",
                         "image": "file://xyz",
+                        "save_label": "true/false",
                         "params": {},
                     }
 
@@ -95,7 +94,13 @@ class MONAILabelApp:
                 "Inference Task is not Initialized. There is no pre-trained model available",
             )
 
+        image_id = request["image"]
+        request["image"] = self._datastore.get_image_uri(request["image"])
         result_file_name, result_json = task(request)
+
+        if request.get("save_label", True):
+            self.datastore().save_label(image_id, result_file_name, LabelTag.ORIGINAL)
+
         return {"label": result_file_name, "params": result_json}
 
     def datastore(self) -> Datastore:
@@ -134,7 +139,7 @@ class MONAILabelApp:
                 For example::
 
                     {
-                        "strategy": "random,
+                        "strategy": "random"
                     }
 
         Returns:
@@ -150,8 +155,12 @@ class MONAILabelApp:
                 f"ActiveLearning Task is not Initialized. There is no such strategy '{strategy}' available",
             )
 
-        image = task(request, self.datastore())
-        return {"image": image}
+        image_id = task(request, self.datastore())
+        image_path = self._datastore.get_image_uri(image_id)
+        return {
+            "id": image_id,
+            "path": image_path,
+        }
 
     def save_label(self, request):
         """
@@ -173,20 +182,9 @@ class MONAILabelApp:
             JSON containing next image and label info
         """
 
-        label = io.BytesIO(open(request["label"], "rb").read())
-
-        img_name = os.path.basename(request["image"]).rsplit(".")[0]
-        file_ext = "".join(pathlib.Path(request["label"]).suffixes)
-        segments = request.get("segments")
-        if not segments:
-            segments = self.info().get("labels", [])
-        segments = [segments] if isinstance(segments, str) else segments
-        segments = "+".join(segments) if len(segments) else "unk"
-
-        label_id = f"label_{segments}_{img_name}{file_ext}"
-        label_file = self.datastore().save_label(request["image"], label_id, label)
+        label_id = self.datastore().save_label(request["image"], request["label"], LabelTag.FINAL)
 
         return {
             "image": request.get("image"),
-            "label": label_file,
+            "label": label_id,
         }
