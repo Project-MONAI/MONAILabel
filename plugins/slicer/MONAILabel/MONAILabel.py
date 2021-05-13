@@ -162,8 +162,8 @@ class MONAILabelWidget(ScriptedLoadableModuleWidget, VTKObservationMixin):
 
         # https://commons.wikimedia.org/wiki/File:Crystal128-reload-all-tabs.svg
         # https://commons.wikimedia.org/wiki/File:Crystal128-list-add.svg
-        self.ui.startScribblingButton.setIcon(self.icon('refresh-icon.png'))
-        self.ui.updateScribblesButton.setIcon(self.icon('list-add.svg'))
+        # self.ui.startScribblingButton.setIcon(self.icon('refresh-icon.png'))
+        self.ui.updateScribblesButton.setIcon(self.icon('refresh-icon.svg'))
 
         self.ui.FGScribblesLabel.setIcon(self.icon('fg_green.svg'))
         self.ui.BGScribblesLabel.setIcon(self.icon('bg_red.svg'))
@@ -195,7 +195,8 @@ class MONAILabelWidget(ScriptedLoadableModuleWidget, VTKObservationMixin):
         self.ui.saveLabelButton.connect('clicked(bool)', self.onSaveLabel)
         
         # Scribbles
-        self.ui.startScribblingButton.clicked.connect(self.onStartScribbling)
+        self.ui.brushSizeSlider.connect("valueChanged(double)", self.updateBrushSize)
+        # self.ui.startScribblingButton.clicked.connect(self.onStartScribbling)
         self.ui.updateScribblesButton.clicked.connect(self.onUpdateScribbles)
         self.ui.paintForegroundSCButton.clicked.connect(self.onPaintForegroundScribbles)
         self.ui.paintBackgroundSCButton.clicked.connect(self.onPaintBackgroundScribbles)
@@ -306,15 +307,9 @@ class MONAILabelWidget(ScriptedLoadableModuleWidget, VTKObservationMixin):
             method = 'CRF'
             image_file = self.current_sample["id"]
             result_file, params = self.logic.postproc_label(method, image_file, scribbles_in)
-            print('&'*80)
-            print(result_file)
-            print(params)
-            print('&'*80)
-            print('&'*80)
-            
+  
             _, segment = self.currentSegment()
             label = segment.GetName()
-            print(label)
             self.updateSegmentationMask(result_file, [label])
 
             widget = self._segmentEditorWidget
@@ -336,7 +331,8 @@ class MONAILabelWidget(ScriptedLoadableModuleWidget, VTKObservationMixin):
             self.onStartScribbling()
         self._segmentEditorWidget.setActiveEffectByName("Paint")
         effect = self._segmentEditorWidget.activeEffect()
-        effect.setParameter('BrushAbsoluteDiameter', 5)
+        effect.setParameter('BrushAbsoluteDiameter', self.ui.brushSizeSlider.value)
+        
     
     def initEraser(self):
         self.ui.selectedToolDisplay.setIcon(self.icon('eraser.svg'))
@@ -344,7 +340,13 @@ class MONAILabelWidget(ScriptedLoadableModuleWidget, VTKObservationMixin):
             self.onStartScribbling()
         self._segmentEditorWidget.setActiveEffectByName("Erase")
         effect = self._segmentEditorWidget.activeEffect()
-        effect.setParameter('BrushAbsoluteDiameter', 5)
+        effect.setParameter('BrushAbsoluteDiameter', self.ui.brushSizeSlider.value)
+    
+    def updateBrushSize(self, value):
+        if self._segmentEditorWidget == None:
+            self.onStartScribbling()
+        effect = self._segmentEditorWidget.activeEffect()
+        effect.setParameter('BrushAbsoluteDiameter', value)
 
     def onPaintForegroundScribbles(self):
         print('add foreground pressed')
@@ -1130,7 +1132,8 @@ class MONAILabelWidget(ScriptedLoadableModuleWidget, VTKObservationMixin):
         slicer.mrmlScene.RemoveNode(labelmapVolumeNode)
 
         numberOfAddedSegments = segmentation.GetNumberOfSegments() - numberOfExistingSegments
-        logging.debug('Adding {} segments'.format(numberOfAddedSegments))
+        # logging.debug('Adding {} segments'.format(numberOfAddedSegments))
+        print('Adding {} segments'.format(numberOfAddedSegments))
 
         addedSegmentIds = [segmentation.GetNthSegmentID(numberOfExistingSegments + i)
                            for i in range(numberOfAddedSegments)]
@@ -1143,6 +1146,7 @@ class MONAILabelWidget(ScriptedLoadableModuleWidget, VTKObservationMixin):
             # segment.SetColor(self.getLabelColor(label))
 
             if label in existing_label_ids:
+                print('modifying {} with {}'.format(segmentId, label))
                 segmentEditorWidget = slicer.modules.segmenteditor.widgetRepresentation().self().editor
                 segmentEditorWidget.setSegmentationNode(segmentationNode)
                 segmentEditorWidget.setMasterVolumeNode(self._volumeNode)
@@ -1182,9 +1186,19 @@ class MONAILabelWidget(ScriptedLoadableModuleWidget, VTKObservationMixin):
                         slicer.qSlicerSegmentEditorAbstractEffect.ModificationModeSet)
 
                 segmentationNode.RemoveSegment(segmentId)
-
+        
+        self.showSegmentationsIn3D()
         logging.info("Time consumed by updateSegmentationMask: {0:3.1f}".format(time.time() - start))
         return True
+    
+    def showSegmentationsIn3D(self):
+        # add closed surface representation
+        segmentationNode = self._segmentNode
+        segmentationNode.CreateClosedSurfaceRepresentation()
+        layoutManager = slicer.app.layoutManager()
+        threeDWidget = layoutManager.threeDWidget(0)
+        threeDView = threeDWidget.threeDView()
+        threeDView.resetFocalPoint()
 
     def updateServerUrlGUIFromSettings(self):
         # Save current server URL to the top of history
