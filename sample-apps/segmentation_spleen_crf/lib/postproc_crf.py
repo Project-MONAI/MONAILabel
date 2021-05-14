@@ -38,13 +38,14 @@ class MyCRF(PostProcessingTask):
             "dimension": self.dimension,
             "description": self.description,
         }
-    
+
     def pre_transforms(self):
         return [
             LoadImaged(keys=['image', 'logits', 'scribbles']),
             AddChanneld(keys=['image', 'logits', 'scribbles']),
             
-            # at the moment CRF implementation is bottleneck, therefore scaling non-isotropic with big spacing
+            # at the moment CRF implementation is bottleneck taking a long time, 
+            # therefore scaling non-isotropic with big spacing
             Spacingd(keys=['image', 'logits'], pixdim=[3.0, 3.0, 5.0]),
             Spacingd(keys=['scribbles'], pixdim=[3.0, 3.0, 5.0], mode='nearest'),
 
@@ -59,7 +60,7 @@ class MyCRF(PostProcessingTask):
         return [
             SqueezeDimd(keys=['pred', 'logits'], dim=0),
             ToNumpyd(keys=['pred', 'logits']),
-            Restored(keys='pred', ref_image='image'),
+            Restored(keys='pred', ref_image='image'), # undo Spacingd in pre-transform
             BoundingBoxd(keys='pred', result='result', bbox='bbox'),
         ]
 

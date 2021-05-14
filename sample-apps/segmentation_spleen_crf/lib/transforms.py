@@ -1,6 +1,6 @@
 import numpy as np
 import torch
-import denseCRF3D
+import denseCRF3D # pip install simplecrf
 
 import logging
 
@@ -12,6 +12,8 @@ logger = logging.getLogger(__name__)
 # define epsilon for numerical stability
 # help from: https://stackoverflow.com/a/25155518
 EPS = 7./3 - 4./3 - 1
+
+# Maybe these can go in MONAI, not sure at the moment
 class AddUnaryTermd(Transform):
     def __init__(
         self,
@@ -91,16 +93,19 @@ class AddUnaryTermd(Transform):
 
         prob_shape = list(prob.shape)
         scrib_shape = list(scrib.shape)
-        
+
         if prob_shape != scrib_shape:
             raise ValueError('shapes for prob and scribbles dont match')
 
         if prob_shape[self.channel_dim] == 1: # unfold a single prob for background into bg/fg prob
             prob = np.concatenate([(prob).copy(), (1.-prob).copy()], axis=self.channel_dim)
 
-        prob += EPS
+        # for numerical stability, get rid of zeros
+        # FIXME: find another way to do this only when needed
+        prob += EPS 
 
         scrib = np.squeeze(scrib) # 4d to 3d drop first dim in [1, x, y, z]
+
         # extract background/foreground points from image
         # help from: https://stackoverflow.com/a/58087561
         background_pts = np.argwhere(scrib == self.sc_background_label)
@@ -111,8 +116,6 @@ class AddUnaryTermd(Transform):
             d[self.unary] = self._apply(foreground_pts, background_pts, prob)
         else: # monai crf
             d[self.unary] = self._apply(background_pts, foreground_pts, prob)
-        # d[self.unary] = self._apply3(background_pts, foreground_pts, prob)
-        # d[self.unary] = self._apply_tmp(background_pts, foreground_pts, prob)
         return d
 
 class ApplyCRFPostProcd(Transform):
@@ -140,7 +143,6 @@ class ApplyCRFPostProcd(Transform):
             self.simplecrf_params['MaxIterations'] = iterations
             
             # Gaussian
-            # gaussian_weight = 10
             self.simplecrf_params['PosW'] = gaussian_weight 
             self.simplecrf_params['PosRStd'] = int(gaussian_spatial_sigma) # row
             self.simplecrf_params['PosCStd'] = int(gaussian_spatial_sigma) # col
@@ -181,9 +183,6 @@ class ApplyCRFPostProcd(Transform):
             # i.e. [1, 2, 144, 144, 144] or [1, 1, 144, 144, 144]
             # so we will convert it and also convert torch.Tensor to np array where applicable
 
-            print(unary_term.shape)
-            print(pairwise_term.shape)
-
             if isinstance(unary_term, torch.Tensor):
                 unary_term = unary_term.cpu().numpy()
             
@@ -193,43 +192,26 @@ class ApplyCRFPostProcd(Transform):
             unary_term = np.transpose(np.squeeze(unary_term, axis=0), (1, 2, 3, 0)) # channel last + squeeze
             pairwise_term = np.transpose(np.squeeze(pairwise_term, axis=0), (1, 2, 3, 0)) # channel last + squeeze
         
-            print(np.unique(pairwise_term))
             min_p = pairwise_term.min()
             max_p = pairwise_term.max()
             pairwise_term = (((pairwise_term-min_p)/(max_p-min_p)) * 255).astype(np.uint8)
-            print(np.unique(pairwise_term))
 
             out = denseCRF3D.densecrf3d(pairwise_term, unary_term, self.simplecrf_params).astype(np.float64)
             out = np.expand_dims(out, axis=0)
             out = np.expand_dims(out, axis=0)
-            # out = np.transpose(out, [0, 3, 1, 2])
+
             d[self.post_proc_label] = out
-
-            print(d[self.post_proc_label].dtype)
-            print(np.unique(d[self.post_proc_label]))
-
         else:
             unary_term = d[self.unary].to(self.device)
             pairwise_term = d[self.pairwise].to(self.device)
             
-            # # quantize pairwise term to 10 bits
+            # # Experimental, quantize pairwise term to N bits
             # min_p = pairwise_term.min()
             # max_p = pairwise_term.max()
 
             # pairwise_term = (pairwise_term-min_p)/(max_p - min_p) # in range (0, 1)
             # bits = 10
             # pairwise_term = (2**bits) * torch.round(pairwise_term * (2**bits))
-
-            # print(unary_term.dtype)
-            # print(unary_term.shape)
-            # # print(torch.sum(unary_term, dim=1))
-            # print()
-            # print(pairwise_term.dtype)
-            # print(pairwise_term.shape)
-            # print()
-
-            # np.save('unary.npy', unary_term.cpu().detach().numpy())
-            # np.save('pairwise.npy', pairwise_term.cpu().detach().numpy())
 
             d[self.post_proc_label] = torch.argmax(self.crf_layer(unary_term, pairwise_term), dim=1, keepdims=True)
         return d

@@ -56,22 +56,6 @@ class MONAILabelClient:
         logging.debug('Response: {}'.format(response))
         return json.loads(response)
 
-    # def postproc_label(self, method, image_in, label_in):
-    #     selector = '/postproc/{}?image={}'.format(
-    #         MONAILabelUtils.urllib_quote_plus(method),
-    #         MONAILabelUtils.urllib_quote_plus(image_in))
-
-    #     status, form, files = MONAILabelUtils.http_method('POST', self._server_url, selector, params)
-    #     if status != 200:
-    #         raise MONAILabelException(MONAILabelError.SERVER_ERROR, 'Status: {}; Response: {}'.format(status, form))
-
-    #     form = json.loads(form) if isinstance(form, str) else form
-    #     params = form.get('params') if files else form
-    #     params = json.loads(params) if isinstance(params, str) else params
-
-    #     image_out = MONAILabelUtils.save_result(files, self.tmpdir)
-    #     return image_out, params
-
     def postproc_label(self, method, image_in, label_in):
         selector = '/postproc/scrib?method={}&image={}'.format(
             MONAILabelUtils.urllib_quote_plus(method),
@@ -79,16 +63,7 @@ class MONAILabelClient:
         fields = {}
         files = {'scribbles': label_in}
 
-        # below, working without file being received
-        # status, response, _ = MONAILabelUtils.http_multipart('POST', self._server_url, selector, fields, files)
-        # if status != 200:
-        #     raise MONAILabelException(MONAILabelError.SERVER_ERROR, 'Status: {}; Response: {}'.format(status, response))
-
-        # response = response.decode('utf-8') if isinstance(response, bytes) else response
-        # logging.debug('Response: {}'.format(response))
-        # return json.loads(response)
         status, form, files = MONAILabelUtils.http_multipart('POST', self._server_url, selector, fields, files)
-        
         if status != 200:
             raise MONAILabelException(MONAILabelError.SERVER_ERROR, 'Status: {}; Response: {}'.format(status, form))
 

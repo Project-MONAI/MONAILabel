@@ -17,7 +17,6 @@ from starlette.background import BackgroundTasks
 from monailabel.config import settings
 from monailabel.interfaces import MONAILabelApp
 from monailabel.utils.others.app_utils import get_app_instance
-from monailabel.utils.others.generic import file_checksum
 from monailabel.utils.others.generic import get_mime_type
 
 logger = logging.getLogger(__name__)
@@ -76,9 +75,6 @@ class ResultType(str, Enum):
     json = "json"
     all = "all"
 
-# cached_digest = dict()
-
-
 def send_response(result, output, background_tasks):
     def remove_file(path: str) -> None:
         if os.path.exists(path):
@@ -103,8 +99,7 @@ def send_response(result, output, background_tasks):
     return_message = MultipartEncoder(fields=res_fields)
     return Response(content=return_message.to_string(), media_type=return_message.content_type)
 
-
-@router.post("/scrib", summary="Save Finished Label")
+@router.post("/scrib", summary="Post process segmentation using user scribbles")
 async def postproc_label(
     background_tasks: BackgroundTasks,
     method: str, 
@@ -127,5 +122,5 @@ async def postproc_label(
     result = instance.postproc_label(request)
 
     if result is None:
-        raise HTTPException(status_code=500, detail=f"Failed to execute infer")
+        raise HTTPException(status_code=500, detail=f"Failed to execute post processing")
     return send_response(result, output, background_tasks)

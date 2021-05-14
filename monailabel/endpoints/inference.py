@@ -76,6 +76,7 @@ def send_response(result, output, background_tasks):
     def remove_file(path: str) -> None:
         if os.path.exists(path):
             os.unlink(path)
+
     res_img = result.get('label')
     res_json = result.get('params')
 

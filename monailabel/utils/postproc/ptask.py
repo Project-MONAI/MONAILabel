@@ -11,7 +11,6 @@ from monailabel.utils.others.writer import Writer
 
 logger = logging.getLogger(__name__)
 
-
 class PostProcType:
     CRF = 'CRF'
     OTHERS = 'others'
@@ -86,15 +85,8 @@ class PostProcessingTask:
 
             For Example::
 
-                return monai.networks.blocks.CRF(
-                    iterations, 
-                    bilateral_weight,
-                    gaussian_weight,
-                    bilateral_spatial_sigma,
-                    bilateral_color_sigma,
-                    gaussian_spatial_sigma,
-                    compatibility_kernel_range
-                    )
+                return  ApplyCRFPostProcd(unary='unary', pairwise='image', post_proc_label='pred', use_simplecrf=False)
+
         """
         pass
 
