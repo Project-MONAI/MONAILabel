@@ -293,7 +293,13 @@ class MONAILabelWidget(ScriptedLoadableModuleWidget, VTKObservationMixin):
         finally:
             qt.QApplication.restoreOverrideCursor()
             self.reportProgress(100)
-    
+            
+            if os.path.exists(scribbles_in):
+                os.unlink(scribbles_in)
+            
+            if result_file and os.path.exists(result_file):
+                os.unlink(result_file)
+
     def onClearScribblesWidget(self):
         # clear previous editor widget
         self.scribblesMode = None # reset
@@ -866,10 +872,7 @@ class MONAILabelWidget(ScriptedLoadableModuleWidget, VTKObservationMixin):
                     "Are you sure to continue?"):
                 return
 
-            if self._segmentEditorWidget != None:
-                delnode = self._segmentEditorWidget
-                del delnode
-                self._segmentEditorWidget = None
+            self.onClearScribblesWidget()
             slicer.mrmlScene.Clear(0)
 
         start = time.time()

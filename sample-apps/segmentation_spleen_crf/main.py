@@ -20,7 +20,7 @@ from lib.transforms import AddUnaryTermd, ApplyCRFPostProcd
 logger = logging.getLogger(__name__)
 
 # Whether to save research data or not
-RESEARCH_MODE=True
+RESEARCH_MODE=False
 
 class MyApp(MONAILabelApp):
     def __init__(self, app_dir, studies):
@@ -48,6 +48,8 @@ class MyApp(MONAILabelApp):
             os.makedirs(self.save_research_path, exist_ok=True)
             with open(self.save_research_data, 'w') as fp:
                 json.dump({}, fp, indent=4)
+
+            logger.info('Running app in research mode, saving scribbles data to: {}'.format*self.save_research_path)
             
 
         # define a cleanup function if application abruptly temrinates, to clean tmp logit files
@@ -82,8 +84,10 @@ class MyApp(MONAILabelApp):
         Returns:
             JSON containing `label` and `params`
         """
-        # do a little cleanup
+        
+        # cleanup previous logits files
         self.cleanup_logits_files()
+
         model_name = request.get('model')
         model_name = model_name if model_name else 'model'
 
@@ -103,15 +107,6 @@ class MyApp(MONAILabelApp):
 
         return {"label": result_file_name, "params": result_json}
 
-    def cleanup_logits_files(self):
-        # clean residual logits help from: https://stackoverflow.com/a/32732654
-        for key in list(self.logits_files.keys()):
-            if key in self.logits_files.keys():
-                logger.info(f'removing temp logits file for: {key}')
-                cur_item = self.logits_files.pop(key)
-                # del file on disk
-                os.unlink(cur_item['file'])
-        
     def train(self, request):
         epochs = request.get('epochs', 1)
         amp = request.get('amp', True)
@@ -138,6 +133,30 @@ class MyApp(MONAILabelApp):
         )
 
         return task(max_epochs=epochs, amp=amp)
+
+    def postproc_label(self, request):
+        method = request.get('method')
+        task = self.postproc_methods.get(method)
+
+        # prepare data
+        data = {}
+        image_file = request.get('image')
+        scribbles_file = request.get('scribbles')
+        image_name = os.path.basename(image_file).rsplit('.')[0]
+        
+        data['image'] = image_file
+        data['scribbles'] = scribbles_file
+        data['logits'] = self.logits_files[image_name]['file']
+
+        # save scribbles/logits if in research mode
+        if RESEARCH_MODE:
+            self.backup_interaction_data(image_name, data['scribbles'], data['logits'])
+
+        logger.info('\n\timage_name: {}\n\tscribbles: {}\n\tlogits: {}'.format(data['image'], data['scribbles'], data['logits']))
+
+        # run post processing task
+        result_file_name, result_json = task(data)
+        return {'label': result_file_name, 'params': result_json}
 
     def backup_interaction_data(self, image_name, scribbles_file, logits_file):
         # To enable future research, we need to save every scribbles instance
@@ -186,26 +205,11 @@ class MyApp(MONAILabelApp):
         with open(self.save_research_data, 'w') as fp:
             json.dump(backup_data, fp, indent=4)
 
-    def postproc_label(self, request):
-        method = request.get('method')
-        task = self.postproc_methods.get(method)
-
-        # prepare data
-        data = {}
-        image_file = request.get('image')
-        scribbles_file = request.get('scribbles')
-        image_name = os.path.basename(image_file).rsplit('.')[0]
-        
-        data['image'] = image_file
-        data['scribbles'] = scribbles_file
-        data['logits'] = self.logits_files[image_name]['file']
-
-        # save scribbles/logits if in research mode
-        if RESEARCH_MODE:
-            self.backup_interaction_data(image_name, data['scribbles'], data['logits'])
-
-        logger.info('\n\timage_name: {}\n\tscribbles: {}\n\tlogits: {}'.format(data['image'], data['scribbles'], data['logits']))
-
-        # run post processing task
-        result_file_name, result_json = task(data)
-        return {'label': result_file_name, 'params': result_json}
+    def cleanup_logits_files(self):
+        # clean residual logits help from: https://stackoverflow.com/a/32732654
+        for key in list(self.logits_files.keys()):
+            if key in self.logits_files.keys():
+                logger.info(f'removing temp logits file for: {key}')
+                cur_item = self.logits_files.pop(key)
+                # del file on disk
+                os.unlink(cur_item['file'])
