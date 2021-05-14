@@ -2,7 +2,7 @@
 This is an initial prototype for incorporating user scribbles into a post processing method that can be used to improve segmentations from a deep learning model.
 
 The flow of this application is outlined below:
-
+![monailabel_crf](./docs/monailabel_crf.png)
 
 In the diagram, the neural network (inference) stage is run only once for a given sample. The logits for this run are saved and used throughout scribble based updates to the same sample.
 
@@ -28,6 +28,7 @@ Run server using:
 
 ### Client
 Run slicer and load monailabel extension:
+![scribble_ui](./docs/scribble_ui.png)
 
 Load a sample with its initial segmentation by clicking on *Next Sample* in Active Learning. Scribbles functionality is inside *Post Processing Scribbles* tab.
 Add scribbles by selecting *Painter/Eraser* and appropriate label and paint into regions as needed. Once done, click *Update* to update segmentations using user scribbles. 
