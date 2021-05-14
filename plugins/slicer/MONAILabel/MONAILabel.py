@@ -776,7 +776,8 @@ class MONAILabelWidget(ScriptedLoadableModuleWidget, VTKObservationMixin):
             segmentEditorWidget.setSegmentationNode(self._segmentNode)
             segmentEditorWidget.setMasterVolumeNode(self._volumeNode)
 
-            self.updateSegmentationMask(None, self.info.get("labels"))
+            if self.info.get("labels"):
+                self.updateSegmentationMask(None, self.info.get("labels"))
 
             # Check if user wants to run auto-segmentation on new sample
             if slicer.util.settingsValue(
