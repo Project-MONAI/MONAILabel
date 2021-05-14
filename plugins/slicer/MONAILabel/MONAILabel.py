@@ -861,10 +861,11 @@ class MONAILabelWidget(ScriptedLoadableModuleWidget, VTKObservationMixin):
             return
 
         if self._volumeNode or len(slicer.util.getNodesByClass('vtkMRMLScalarVolumeNode')):
-            # if not slicer.util.confirmOkCancelDisplay(
-            #         "This will close current scene.  Please make sure you have saved your current work.\n"
-            #         "Are you sure to continue?"):
-            #     return
+            if not slicer.util.confirmOkCancelDisplay(
+                    "This will close current scene.  Please make sure you have saved your current work.\n"
+                    "Are you sure to continue?"):
+                return
+
             if self._segmentEditorWidget != None:
                 delnode = self._segmentEditorWidget
                 del delnode
@@ -874,11 +875,12 @@ class MONAILabelWidget(ScriptedLoadableModuleWidget, VTKObservationMixin):
         start = time.time()
         try:
             qt.QApplication.setOverrideCursor(qt.Qt.WaitCursor)
-            
+
             self.updateServerSettings()
             configs = self.getParamsFromConfig()
             sample = self.logic.next_sample(configs.get('activelearning'))
             logging.debug(sample)
+
             if self.samples.get(sample["id"]) is not None:
                 self.current_sample = self.samples[sample["id"]]
                 name = self.current_sample["VolumeNodeName"]
@@ -911,6 +913,7 @@ class MONAILabelWidget(ScriptedLoadableModuleWidget, VTKObservationMixin):
             segmentEditorWidget = slicer.modules.segmenteditor.widgetRepresentation().self().editor
             segmentEditorWidget.setSegmentationNode(self._segmentNode)
             segmentEditorWidget.setMasterVolumeNode(self._volumeNode)
+
             self.updateSegmentationMask(None, self.info.get("labels"))
 
             # Check if user wants to run auto-segmentation on new sample
@@ -1107,8 +1110,7 @@ class MONAILabelWidget(ScriptedLoadableModuleWidget, VTKObservationMixin):
         slicer.mrmlScene.RemoveNode(labelmapVolumeNode)
 
         numberOfAddedSegments = segmentation.GetNumberOfSegments() - numberOfExistingSegments
-        # logging.debug('Adding {} segments'.format(numberOfAddedSegments))
-        print('Adding {} segments'.format(numberOfAddedSegments))
+        logging.debug('Adding {} segments'.format(numberOfAddedSegments))
 
         addedSegmentIds = [segmentation.GetNthSegmentID(numberOfExistingSegments + i)
                            for i in range(numberOfAddedSegments)]
@@ -1121,7 +1123,6 @@ class MONAILabelWidget(ScriptedLoadableModuleWidget, VTKObservationMixin):
             # segment.SetColor(self.getLabelColor(label))
 
             if label in existing_label_ids:
-                print('modifying {} with {}'.format(segmentId, label))
                 segmentEditorWidget = slicer.modules.segmenteditor.widgetRepresentation().self().editor
                 segmentEditorWidget.setSegmentationNode(segmentationNode)
                 segmentEditorWidget.setMasterVolumeNode(self._volumeNode)
@@ -1161,7 +1162,7 @@ class MONAILabelWidget(ScriptedLoadableModuleWidget, VTKObservationMixin):
                         slicer.qSlicerSegmentEditorAbstractEffect.ModificationModeSet)
 
                 segmentationNode.RemoveSegment(segmentId)
-        
+
         self.showSegmentationsIn3D()
         logging.info("Time consumed by updateSegmentationMask: {0:3.1f}".format(time.time() - start))
         return True
@@ -1257,33 +1258,15 @@ class MONAILabelLogic(ScriptedLoadableModuleLogic):
         return MONAILabelClient(self.server_url, self.tmpdir).save_label(image_in, label_in)
 
     def postproc_label(self, method, image_in, scribbles_in):
-        # logging.debug('Preparing input data for segmentation')
-        # self.reportProgress(0)
-
-        # client = MONAILabelClient(self.server_url, self.tmpdir)
-        # result_file, params = client.postproc_label(method, image_in, scribbles_in)
-
-        # logging.debug(f"Image Response: {result_file}")
-        # logging.debug(f"JSON  Response: {params}")
-
-        # self.reportProgress(100)
-        # return result_file, params
-
-        # this was before
-        # return MONAILabelClient(self.server_url, self.tmpdir).postproc_label(method, image_in, scribbles_in)
-
         logging.debug('Applying post proc methd {} with scribbles'.format(method))
-        # self.reportProgress(0)
 
         client = MONAILabelClient(self.server_url, self.tmpdir)
         result_file, params = client.postproc_label(method, image_in, scribbles_in)
-        
+
         logging.debug(f"Image Response: {result_file}")
         logging.debug(f"JSON  Response: {params}")
 
-        # self.reportProgress(100)
         return result_file, params
-
 
     def inference(self, model, image_in, params={}):
         logging.debug('Preparing input data for segmentation')

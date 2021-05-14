@@ -110,9 +110,9 @@ async def postproc_label(
 
     file_ext = ''.join(pathlib.Path(image).suffixes)
     scribbles_file = tempfile.NamedTemporaryFile(suffix=file_ext).name
-
     with open(scribbles_file, "wb") as buffer:
         shutil.copyfileobj(scribbles.file, buffer)
+    
     instance: MONAILabelApp = get_app_instance()
     request = {"method": method, "image": image, "scribbles": scribbles_file}
 
@@ -120,6 +120,8 @@ async def postproc_label(
     request.update(params)
     
     result = instance.postproc_label(request)
+    # scribbles no longer needed in client
+    os.unlink(scribbles_file)
 
     if result is None:
         raise HTTPException(status_code=500, detail=f"Failed to execute post processing")

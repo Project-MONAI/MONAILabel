@@ -1,17 +1,11 @@
-from monailabel.utils import postproc
-import tempfile
+import atexit
+import json
 import logging
 import os
-import io
 import pathlib
-import atexit
+from shutil import copyfile
+import time 
 
-import torch
-import yaml
-
-
-from lib import MyInfer, MyTrain, MyActiveLearning, MyCRF
-from lib.transforms import AddUnaryTermd, ApplyCRFPostProcd
 from monai.networks.layers import Norm
 from monai.networks.nets import UNet
 from monailabel.interfaces.app import MONAILabelApp
@@ -20,8 +14,13 @@ from monailabel.utils.infer.deepgrow_3d import InferDeepgrow3D
 from monailabel.interfaces.exception import MONAILabelException, MONAILabelError
 from monailabel.utils.others.post import Restored, BoundingBoxd
 
+from lib import MyInfer, MyTrain, MyActiveLearning, MyCRF
+from lib.transforms import AddUnaryTermd, ApplyCRFPostProcd
+
 logger = logging.getLogger(__name__)
 
+# Whether to save research data or not
+RESEARCH_MODE=True
 
 class MyApp(MONAILabelApp):
     def __init__(self, app_dir, studies):
@@ -40,6 +39,16 @@ class MyApp(MONAILabelApp):
         # define a dictionary to keep track of logits files
         # these are needed for postproc step
         self.logits_files = {}
+        if RESEARCH_MODE:
+            self.save_research_sessionid = time.strftime('%Y%m%d%H%M%S') # use current time as unique id of session
+            self.save_research_path = os.path.join(studies, 'research_data', self.save_research_sessionid)
+            self.save_research_data = os.path.join(self.save_research_path, 'session_data.json')
+            
+            # create folders/files
+            os.makedirs(self.save_research_path, exist_ok=True)
+            with open(self.save_research_data, 'w') as fp:
+                json.dump({}, fp, indent=4)
+            
 
         # define a cleanup function if application abruptly temrinates, to clean tmp logit files
         atexit.register(self.cleanup_logits_files)
@@ -130,13 +139,52 @@ class MyApp(MONAILabelApp):
 
         return task(max_epochs=epochs, amp=amp)
 
-    def save_scribbles(self, image_in, scribbles_in):
-        scribbles = io.BytesIO(open(scribbles_in, 'rb').read())
-        scribbles_file = tempfile.NamedTemporaryFile(suffix=".nii.gz").name
-        with open(scribbles_file, 'wb') as f:
-            scribbles.seek(0)
-            f.write(scribbles.getbuffer())
-        return scribbles_file
+    def backup_interaction_data(self, image_name, scribbles_file, logits_file):
+        # To enable future research, we need to save every scribbles instance
+        # That is saving all scribbles provided by user, along with the model logits
+        # and the name of input image from the given dataset
+        
+        # load current research database
+        with open(self.save_research_data, 'r') as fp:
+            backup_data = json.loads(fp.read())
+
+        scrib_ext = ''.join(pathlib.Path(scribbles_file).suffixes)
+        logits_ext = ''.join(pathlib.Path(logits_file).suffixes)
+
+        # parse data and see what needs to be done
+        if image_name in backup_data.keys():
+            current_count = backup_data[image_name]['count']
+            new_count = current_count + 1
+                        
+            scribbles_saved = os.path.join(self.save_research_path, '{}_sc_{}_{}{}'.format(image_name, 
+                self.save_research_sessionid, new_count, scrib_ext))
+            
+            backup_data[image_name]['count'] = new_count
+            backup_data[image_name]['scrib_files'] = \
+                backup_data[image_name]['scrib_files'] + [os.path.basename(scribbles_saved)]
+        else:
+            new_count = 1
+            scribbles_saved = os.path.join(self.save_research_path, '{}_sc_{}_{}{}'.format(image_name, 
+                self.save_research_sessionid, new_count, scrib_ext))
+            
+            logits_saved = os.path.join(self.save_research_path, '{}_lg_{}{}'.format(image_name, 
+                self.save_research_sessionid, logits_ext))
+            
+            backup_data[image_name] = {}
+            backup_data[image_name]['count'] = new_count
+            backup_data[image_name]['scrib_files'] = [os.path.basename(scribbles_saved)]
+            backup_data[image_name]['logits_file'] = os.path.basename(logits_saved)
+
+        if new_count == 1:
+            # copy logits only once
+            copyfile(logits_file, logits_saved)
+
+        # copy scribbles everytime       
+        copyfile(scribbles_file, scribbles_saved)
+
+        # write data back to data.json
+        with open(self.save_research_data, 'w') as fp:
+            json.dump(backup_data, fp, indent=4)
 
     def postproc_label(self, request):
         method = request.get('method')
@@ -144,15 +192,20 @@ class MyApp(MONAILabelApp):
 
         # prepare data
         data = {}
-        scribbles_raw = request['scribbles']
-        image_name = os.path.basename(request['image']).rsplit('.')[0]
-        scribbles_file = self.save_scribbles(image_name, scribbles_raw)
-
+        image_file = request.get('image')
+        scribbles_file = request.get('scribbles')
+        image_name = os.path.basename(image_file).rsplit('.')[0]
+        
+        data['image'] = image_file
         data['scribbles'] = scribbles_file
         data['logits'] = self.logits_files[image_name]['file']
-        data['image'] = request['image']
 
-        logger.info('scribbles: {}\n\tlogits: {}\n\timage_name: {}'.format(data['scribbles'], data['logits'], data['image']))
+        # save scribbles/logits if in research mode
+        if RESEARCH_MODE:
+            self.backup_interaction_data(image_name, data['scribbles'], data['logits'])
+
+        logger.info('\n\timage_name: {}\n\tscribbles: {}\n\tlogits: {}'.format(data['image'], data['scribbles'], data['logits']))
+
+        # run post processing task
         result_file_name, result_json = task(data)
-
         return {'label': result_file_name, 'params': result_json}

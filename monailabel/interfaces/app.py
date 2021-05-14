@@ -13,6 +13,7 @@ from monailabel.interfaces.exception import MONAILabelException, MONAILabelError
 
 logger = logging.getLogger(__name__)
 
+
 class MONAILabelApp:
     def __init__(self, app_dir, studies, infers=None, active_learning: ActiveLearning = ActiveLearning()):
         """

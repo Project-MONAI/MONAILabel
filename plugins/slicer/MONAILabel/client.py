@@ -149,12 +149,6 @@ class MONAILabelUtils:
         logging.debug('URI Path: {}'.format(selector))
 
         conn = http.client.HTTPConnection(parsed.hostname, parsed.port)
-        print()
-        print('http_method')
-        print(method)
-        print(selector)
-        print(body)
-        print()
         conn.request(method, selector, body=json.dumps(body) if body else None)
         return MONAILabelUtils.send_response(conn)
 
@@ -171,13 +165,6 @@ class MONAILabelUtils:
         logging.debug('URI Path: {}'.format(selector))
 
         conn = http.client.HTTPConnection(parsed.hostname, parsed.port)
-        print()
-        print('http_multipart')
-        print(method)
-        print(selector)
-        print(body)
-        print(headers)
-        print()
         conn.request(method, selector, body, headers)
         return MONAILabelUtils.send_response(conn, content_type)
 
