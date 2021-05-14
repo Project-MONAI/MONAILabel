@@ -1,3 +1,3 @@
 from .activelearning import MyStrategy
-from .infer import MyInfer
-from .train import MyTrain
+from .infer import InferDeepgrow, InferSpleen
+from .train import TrainDeepgrow, TrainSpleen
