@@ -9,6 +9,10 @@ config:
   infer:
     device: cuda
   train:
+    model:
+      deepgrow: Train deepgrow model
+      spleen: Train spleen model
+      all: Train all Deepgrow and Spleen models
     name: model_01
     device: cuda
     amp: true
