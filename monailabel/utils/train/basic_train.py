@@ -145,6 +145,7 @@ class BasicTrainTask(TrainTask):
             logger.info(f"Adding Validation Handler to run every '{self._val_interval}' interval")
             handlers.append(ValidationHandler(validator=eval, interval=self._val_interval, epoch_level=True))
 
+        logger.info(f"Load Path {self._load_path}")
         if self._load_path and os.path.exists(self._load_path):
             handlers.append(
                 CheckpointLoader(
