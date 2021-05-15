@@ -9,7 +9,7 @@ In the diagram, the neural network (inference) stage is run only once for a give
 ## Installing pre-requisites
 
 ### 1. Install MONAI with BUILD_MONAI=1
-Requires CRF layer from MONAI, which requires compiling the C/CUDA code following instructions from [MONAI docs](https://docs.monai.io/en/latest/installation.html#option-1-as-a-part-of-your-system-wide-module). 
+Uses CRF layer from MONAI, which requires compiling the C++/CUDA code following instructions from [MONAI docs](https://docs.monai.io/en/latest/installation.html#option-1-as-a-part-of-your-system-wide-module). 
 This can be done by uninstalling any previous monai/monai-weekly version and running the following command:
 
 `BUILD_MONAI=1 pip install git+https://github.com/Project-MONAI/MONAI#egg=monai`
