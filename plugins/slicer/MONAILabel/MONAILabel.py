@@ -254,8 +254,9 @@ class MONAILabelWidget(ScriptedLoadableModuleWidget, VTKObservationMixin):
             self._segmentEditorWidget.setSegmentationNode(self._segmentNode)
             self._segmentEditorWidget.setMasterVolumeNode(self._volumeNode)
 
-            self.onPaintScribbles()
-            self.updateBrushSize()
+            if self.scribblesMode == None:
+                self.onPaintScribbles()
+                self.onSelectForegroundScribbles()
 
     def onUpdateScribbles(self):
         logging.debug('Scribbles update event')
@@ -312,20 +313,22 @@ class MONAILabelWidget(ScriptedLoadableModuleWidget, VTKObservationMixin):
     def onPaintScribbles(self):
         if self._segmentEditorWidget == None:
             self.onStartScribbling()
-            self.onSelectForegroundScribbles()
+        
         self.scribblesMode = 'Paint'
-        self._segmentEditorWidget.setActiveEffectByName("Paint")
+        self._segmentEditorWidget.setActiveEffectByName(self.scribblesMode)
         effect = self._segmentEditorWidget.activeEffect()
         self.ui.selectedToolDisplay.setIcon(self.icon('tool-brush.svg'))
+        self.updateBrushSize()
     
     def onEraseScribbles(self):
         if self._segmentEditorWidget == None:
             self.onStartScribbling()
-            self.onSelectForegroundScribbles()
+
         self.scribblesMode = 'Erase'
-        self._segmentEditorWidget.setActiveEffectByName("Erase")
+        self._segmentEditorWidget.setActiveEffectByName(self.scribblesMode)
         effect = self._segmentEditorWidget.activeEffect()
         self.ui.selectedToolDisplay.setIcon(self.icon('eraser.svg'))
+        self.updateBrushSize()
     
     def updateBrushSize(self, value=None):
         if value==None:
@@ -334,12 +337,6 @@ class MONAILabelWidget(ScriptedLoadableModuleWidget, VTKObservationMixin):
         if self._segmentEditorWidget == None:
             self.onStartScribbling()
 
-        self._segmentEditorWidget.setActiveEffectByName("Paint")
-        effect = self._segmentEditorWidget.activeEffect()
-        effect.setParameter("BrushSphere", 1)  # enable scribbles in 3d using a sphere brush
-        effect.setParameter('BrushAbsoluteDiameter', value)
-
-        self._segmentEditorWidget.setActiveEffectByName("Erase")
         effect = self._segmentEditorWidget.activeEffect()
         effect.setParameter("BrushSphere", 1)  # enable scribbles in 3d using a sphere brush
         effect.setParameter('BrushAbsoluteDiameter', value)

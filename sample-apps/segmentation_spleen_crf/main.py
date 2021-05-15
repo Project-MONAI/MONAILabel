@@ -3,18 +3,19 @@ import json
 import logging
 import os
 import pathlib
+import time
 from shutil import copyfile
-import time 
 
 from monai.networks.layers import Norm
 from monai.networks.nets import UNet
 from monailabel.interfaces.app import MONAILabelApp
+from monailabel.interfaces.exception import (MONAILabelError,
+                                             MONAILabelException)
 from monailabel.utils.infer.deepgrow_2d import InferDeepgrow2D
 from monailabel.utils.infer.deepgrow_3d import InferDeepgrow3D
-from monailabel.interfaces.exception import MONAILabelException, MONAILabelError
-from monailabel.utils.others.post import Restored, BoundingBoxd
+from monailabel.utils.others.post import BoundingBoxd, Restored
 
-from lib import MyInfer, MyTrain, MyActiveLearning, MyCRF
+from lib import MyActiveLearning, MyCRF, MyInfer, MyTrain
 from lib.transforms import AddUnaryTermd, ApplyCRFPostProcd
 
 logger = logging.getLogger(__name__)
@@ -49,7 +50,7 @@ class MyApp(MONAILabelApp):
             with open(self.save_research_data, 'w') as fp:
                 json.dump({}, fp, indent=4)
 
-            logger.info('Running app in research mode, saving scribbles data to: {}'.format*self.save_research_path)
+            logger.info('Running app in research mode, saving scribbles data to: {}'.format(self.save_research_path))
             
 
         # define a cleanup function if application abruptly temrinates, to clean tmp logit files
