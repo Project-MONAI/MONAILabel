@@ -8,10 +8,10 @@ import time
 import traceback
 from collections import OrderedDict
 
-import SampleData
-import SimpleITK as sitk
 import ctk
 import qt
+import SampleData
+import SimpleITK as sitk
 import sitkUtils
 import slicer
 import vtk
@@ -195,6 +195,7 @@ class MONAILabelWidget(ScriptedLoadableModuleWidget, VTKObservationMixin):
         self.ui.eraseScribblesButton.clicked.connect(self.onEraseScribbles)
         self.ui.selectForegroundButton.clicked.connect(self.onSelectForegroundScribbles)
         self.ui.selectBackgroundButton.clicked.connect(self.onSelectBackgroundScribbles)
+        self.ui.brush3dCheckbox.stateChanged.connect(self.on3dBrushCheckbox)
 
         self.initializeParameterNode()
         self.updateServerUrlGUIFromSettings()
@@ -257,6 +258,16 @@ class MONAILabelWidget(ScriptedLoadableModuleWidget, VTKObservationMixin):
             if self.scribblesMode == None:
                 self.onPaintScribbles()
                 self.onSelectForegroundScribbles()
+
+    def on3dBrushCheckbox(self, state=None):
+        if state == None:
+            state = self.ui.brush3dCheckbox.isChecked()
+        
+        if self._segmentEditorWidget == None:
+            self.onStartScribbling()
+
+        effect = self._segmentEditorWidget.activeEffect()
+        effect.setParameter("BrushSphere", state)  # enable scribbles in 3d using a sphere brush
 
     def onUpdateScribbles(self):
         logging.debug('Scribbles update event')
@@ -338,8 +349,8 @@ class MONAILabelWidget(ScriptedLoadableModuleWidget, VTKObservationMixin):
             self.onStartScribbling()
 
         effect = self._segmentEditorWidget.activeEffect()
-        effect.setParameter("BrushSphere", 1)  # enable scribbles in 3d using a sphere brush
         effect.setParameter('BrushAbsoluteDiameter', value)
+        self.on3dBrushCheckbox()
         
     def onSelectForegroundScribbles(self):
         if self._segmentEditorWidget == None or self.scribblesMode == None:
