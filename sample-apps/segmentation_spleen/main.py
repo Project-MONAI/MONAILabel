@@ -4,6 +4,7 @@ import os
 from lib import MyInfer, MyStrategy, MyTrain
 from monai.networks.layers import Norm
 from monai.networks.nets import UNet
+
 from monailabel.interfaces import MONAILabelApp
 from monailabel.utils.activelearning import Random
 
@@ -70,8 +71,11 @@ class MyApp(MONAILabelApp):
         # Update/Publish latest model for infer/active learning use
         if os.path.exists(self.final_model) or os.path.islink(self.final_model):
             os.unlink(self.final_model)
-        os.symlink(os.path.join(os.path.basename(output_dir), "model.pt"), self.final_model,
-                   dir_fd=os.open(self.model_dir, os.O_RDONLY))
+        os.symlink(
+            os.path.join(os.path.basename(output_dir), "model.pt"),
+            self.final_model,
+            dir_fd=os.open(self.model_dir, os.O_RDONLY),
+        )
 
         task = MyTrain(
             output_dir=output_dir,

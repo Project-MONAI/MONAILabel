@@ -2,10 +2,9 @@ import logging
 import os
 from functools import partial
 
+import monai
 import numpy as np
 import torch
-
-import monai
 from monai.data import DataLoader, TestTimeAugmentation, list_data_collate
 from monai.inferers import sliding_window_inference
 from monai.transforms import (
@@ -18,6 +17,7 @@ from monai.transforms import (
     RandAffined,
     ToTensord,
 )
+
 from monailabel.interfaces.datastore import Datastore
 from monailabel.interfaces.exception import MONAILabelError, MONAILabelException
 from monailabel.interfaces.tasks import Strategy

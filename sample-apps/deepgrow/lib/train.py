@@ -29,7 +29,9 @@ from monai.transforms import (
     ToNumpyd,
     ToTensord,
 )
+
 from monailabel.utils.train.basic_train import BasicTrainTask
+
 from .handler import DeepgrowStatsHandler
 from .transforms import Random2DSlice
 
@@ -78,7 +80,7 @@ class TrainDeepgrow(BasicTrainTask):
             LoadImaged(keys=("image", "label")),
             AsChannelFirstd(keys=("image", "label")),
             Spacingd(keys=("image", "label"), pixdim=(1.0, 1.0, 1.0), mode=("bilinear", "nearest")),
-            Orientationd(keys=("image", "label"), axcodes="RAS")
+            Orientationd(keys=("image", "label"), axcodes="RAS"),
         ]
 
         # Pick random slice (run more epochs to cover max slices for 2D training)
@@ -86,18 +88,23 @@ class TrainDeepgrow(BasicTrainTask):
             t.append(Random2DSlice(image="image", label="label"))
 
         # Training
-        t.extend([
-            AddChanneld(keys=("image", "label")),
-            SpatialCropForegroundd(keys=("image", "label"), source_key="label", spatial_size=self.roi_size),
-            Resized(keys=("image", "label"), spatial_size=self.model_size, mode=("area", "nearest")),
-            NormalizeIntensityd(keys="image", subtrahend=208.0, divisor=388.0)])
+        t.extend(
+            [
+                AddChanneld(keys=("image", "label")),
+                SpatialCropForegroundd(keys=("image", "label"), source_key="label", spatial_size=self.roi_size),
+                Resized(keys=("image", "label"), spatial_size=self.model_size, mode=("area", "nearest")),
+                NormalizeIntensityd(keys="image", subtrahend=208.0, divisor=388.0),
+            ]
+        )
         if self.dimension == 3:
             t.append(FindAllValidSlicesd(label="label", sids="sids"))
-        t.extend([
-            AddInitialSeedPointd(label="label", guidance="guidance", sids="sids"),
-            AddGuidanceSignald(image="image", guidance="guidance"),
-            ToTensord(keys=("image", "label")),
-        ])
+        t.extend(
+            [
+                AddInitialSeedPointd(label="label", guidance="guidance", sids="sids"),
+                AddGuidanceSignald(image="image", guidance="guidance"),
+                ToTensord(keys=("image", "label")),
+            ]
+        )
 
         return Compose(t)
 

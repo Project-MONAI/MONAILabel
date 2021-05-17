@@ -4,6 +4,7 @@ import os
 from lib import InferDeepgrow, InferSpleen, MyStrategy, TrainDeepgrow, TrainSpleen
 from monai.networks.layers import Norm
 from monai.networks.nets import BasicUNet, UNet
+
 from monailabel.interfaces import MONAILabelApp
 from monailabel.utils.activelearning import Random
 
@@ -19,7 +20,7 @@ class MyApp(MONAILabelApp):
                 "network": BasicUNet(dimensions=2, in_channels=3, out_channels=1, features=(32, 64, 128, 256, 512, 32)),
                 "path": [
                     os.path.join(self.model_dir, "deepgrow_2d.pt"),
-                    os.path.join(self.model_dir, "deepgrow_2d_final.pt")
+                    os.path.join(self.model_dir, "deepgrow_2d_final.pt"),
                 ],
                 "url": "https://www.dropbox.com/s/t6kazwpvi2f1ppl/deepgrow_2d.pt?dl=1",
             },
@@ -27,7 +28,7 @@ class MyApp(MONAILabelApp):
                 "network": BasicUNet(dimensions=3, in_channels=3, out_channels=1, features=(32, 64, 128, 256, 512, 32)),
                 "path": [
                     os.path.join(self.model_dir, "deepgrow_3d.pt"),
-                    os.path.join(self.model_dir, "deepgrow_3d_final.pt")
+                    os.path.join(self.model_dir, "deepgrow_3d_final.pt"),
                 ],
                 "url": "https://www.dropbox.com/s/xgortm6ljd3dvhw/deepgrow_3d.pt?dl=1",
             },
@@ -43,10 +44,10 @@ class MyApp(MONAILabelApp):
                 ),
                 "path": [
                     os.path.join(self.model_dir, "segmentation_spleen.pt"),
-                    os.path.join(self.model_dir, "segmentation_spleen_final.pt")
+                    os.path.join(self.model_dir, "segmentation_spleen_final.pt"),
                 ],
                 "url": "https://www.dropbox.com/s/xc9wtssba63u7md/segmentation_spleen.pt?dl=1",
-            }
+            },
         }
 
         infers = {
@@ -54,15 +55,17 @@ class MyApp(MONAILabelApp):
                 path=self.data["deepgrow_2d"]["path"],
                 network=self.data["deepgrow_2d"]["network"],
                 dimension=2,
-                model_size=(256, 256)),
+                model_size=(256, 256),
+            ),
             "deepgrow_3d": InferDeepgrow(
                 path=self.data["deepgrow_3d"]["path"],
                 network=self.data["deepgrow_3d"]["network"],
                 dimension=3,
-                model_size=(128, 192, 192)),
+                model_size=(128, 192, 192),
+            ),
             "segmentation_spleen": InferSpleen(
-                path=self.data["segmentation_spleen"]["path"],
-                network=self.data["segmentation_spleen"]["network"]),
+                path=self.data["segmentation_spleen"]["path"], network=self.data["segmentation_spleen"]["network"]
+            ),
         }
 
         strategies = {
@@ -110,8 +113,11 @@ class MyApp(MONAILabelApp):
             final_model = data["path"][1]
             if os.path.exists(final_model) or os.path.islink(final_model):
                 os.unlink(final_model)
-            os.symlink(os.path.join(os.path.basename(output_dir), "model.pt"), final_model,
-                       dir_fd=os.open(self.model_dir, os.O_RDONLY))
+            os.symlink(
+                os.path.join(os.path.basename(output_dir), "model.pt"),
+                final_model,
+                dir_fd=os.open(self.model_dir, os.O_RDONLY),
+            )
 
             if model == "deepgrow_3d":
                 task = TrainDeepgrow(

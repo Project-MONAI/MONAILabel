@@ -1,9 +1,10 @@
 from monai.apps.deepgrow.transforms import (
     AddGuidanceFromPointsd,
     AddGuidanceSignald,
+    Fetch2DSliced,
     ResizeGuidanced,
     RestoreLabeld,
-    SpatialCropGuidanced, Fetch2DSliced,
+    SpatialCropGuidanced,
 )
 from monai.inferers import SimpleInferer, SlidingWindowInferer
 from monai.transforms import (
@@ -59,18 +60,20 @@ class InferDeepgrow(InferTask):
             LoadImaged(keys="image"),
             AsChannelFirstd(keys="image"),
             Spacingd(keys="image", pixdim=[1.0] * self.dimension, mode="bilinear"),
-            AddGuidanceFromPointsd(ref_image="image", guidance="guidance", dimensions=self.dimension)
+            AddGuidanceFromPointsd(ref_image="image", guidance="guidance", dimensions=self.dimension),
         ]
         if self.dimension == 2:
             t.append(Fetch2DSliced(keys="image", guidance="guidance"))
-        t.extend([
-            AddChanneld(keys="image"),
-            SpatialCropGuidanced(keys="image", guidance="guidance", spatial_size=self.spatial_size),
-            Resized(keys="image", spatial_size=self.model_size, mode="area"),
-            ResizeGuidanced(guidance="guidance", ref_image="image"),
-            NormalizeIntensityd(keys="image", subtrahend=208, divisor=388),
-            AddGuidanceSignald(image="image", guidance="guidance"),
-        ])
+        t.extend(
+            [
+                AddChanneld(keys="image"),
+                SpatialCropGuidanced(keys="image", guidance="guidance", spatial_size=self.spatial_size),
+                Resized(keys="image", spatial_size=self.model_size, mode="area"),
+                ResizeGuidanced(guidance="guidance", ref_image="image"),
+                NormalizeIntensityd(keys="image", subtrahend=208, divisor=388),
+                AddGuidanceSignald(image="image", guidance="guidance"),
+            ]
+        )
         return t
 
     def inferer(self):

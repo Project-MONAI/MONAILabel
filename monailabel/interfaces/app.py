@@ -4,8 +4,8 @@ import time
 from abc import abstractmethod
 
 import yaml
-
 from monai.apps import download_url
+
 from monailabel.interfaces.datastore import Datastore, LabelTag
 from monailabel.interfaces.exception import MONAILabelError, MONAILabelException
 from monailabel.utils.activelearning import Random
@@ -210,12 +210,16 @@ class MONAILabelApp:
         deepgrow_2d = os.path.join(self.app_dir, "model", "deepgrow_2d.ts")
         deepgrow_3d = os.path.join(self.model_dir, "model", "deepgrow_3d.ts")
 
-        self.infers.update({
-            "deepgrow_2d": InferDeepgrow2D(deepgrow_2d),
-            "deepgrow_3d": InferDeepgrow3D(deepgrow_3d),
-        })
+        self.infers.update(
+            {
+                "deepgrow_2d": InferDeepgrow2D(deepgrow_2d),
+                "deepgrow_3d": InferDeepgrow3D(deepgrow_3d),
+            }
+        )
 
-        self._download([
-            (deepgrow_2d, "https://www.dropbox.com/s/y9a7tqcos2n4lxf/deepgrow_2d.ts?dl=1"),
-            (deepgrow_3d, "https://www.dropbox.com/s/vs6l30mf6t3h3d0/deepgrow_3d.ts?dl=1"),
-        ])
+        self._download(
+            [
+                (deepgrow_2d, "https://www.dropbox.com/s/y9a7tqcos2n4lxf/deepgrow_2d.ts?dl=1"),
+                (deepgrow_3d, "https://www.dropbox.com/s/vs6l30mf6t3h3d0/deepgrow_3d.ts?dl=1"),
+            ]
+        )
