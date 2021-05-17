@@ -49,7 +49,7 @@ class MyTrain(BasicTrainTask):
         lr=0.0001,
         train_batch_size=1,
         train_num_workers=4,
-        train_save_interval=5,
+        train_save_interval=50,
         val_interval=1,
         val_batch_size=1,
         val_num_workers=1,

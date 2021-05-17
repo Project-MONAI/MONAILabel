@@ -10,9 +10,10 @@ config:
     device: cuda
   train:
     model:
-      deepgrow: Train deepgrow model
-      spleen: Train spleen model
       all: Train all Deepgrow and Spleen models
+      deepgrow_2d: Train deepgrow 2d model
+      deepgrow_3d: Train deepgrow 3d model
+      segmentation_spleen: Train UNet spleen model
     name: model_01
     device: cuda
     amp: true

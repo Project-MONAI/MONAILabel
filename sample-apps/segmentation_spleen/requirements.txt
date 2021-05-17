@@ -1,2 +1,2 @@
-#monai[all]
+monai-weekly[all]
 #monailabel
