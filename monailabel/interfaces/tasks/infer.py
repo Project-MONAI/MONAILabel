@@ -34,16 +34,18 @@ class InferTask:
         labels,
         dimension,
         description,
+        model_state_dict="model",
         input_key="image",
         output_label_key="pred",
         output_json_key="result",
     ):
         """
-        :param path: Model File Path
+        :param path: Model File Path. Supports multiple paths to support versions (Last item will be picked as latest)
         :param network: Model Network (e.g. monai.networks.xyz).  None in case if you use TorchScript (torch.jit).
         :param type: Type of Infer (segmentation, deepgrow etc..)
         :param dimension: Input dimension
         :param description: Description
+        :param model_state_dict: Key for loading the model state from checkpoint
         :param input_key: Input key for running inference
         :param output_label_key: Output key for storing result/label of inference
         :param output_json_key: Output key for storing result/label of inference
@@ -54,6 +56,7 @@ class InferTask:
         self.labels = [] if labels is None else [labels] if isinstance(labels, str) else labels
         self.dimension = dimension
         self.description = description
+        self.model_state_dict = model_state_dict
         self.input_key = input_key
         self.output_label_key = output_label_key
         self.output_json_key = output_json_key
@@ -69,7 +72,18 @@ class InferTask:
         }
 
     def is_valid(self):
-        return os.path.exists(os.path.join(self.path))
+        paths = [self.path] if isinstance(self.path, str) else self.path
+        for path in reversed(paths):
+            if os.path.exists(path):
+                return True
+        return False
+
+    def get_path(self):
+        paths = [self.path] if isinstance(self.path, str) else self.path
+        for path in reversed(paths):
+            if os.path.exists(path):
+                return path
+        return None
 
     @abstractmethod
     def pre_transforms(self):
@@ -232,10 +246,12 @@ class InferTask:
         :param device: device type run load the model and run inferer
         :return: updated data with output_key stored that will be used for post-processing
         """
-        if not os.path.exists(os.path.join(self.path)):
+        path = self.get_path()
+        logger.info("Infer model path: {}".format(path))
+        if not os.path.exists(path):
             raise MONAILabelException(
                 MONAILabelError.INFERENCE_ERROR,
-                f"Model Path ({self.path}) does not exist",
+                f"Model Path ({self.path}) does not exist/valid",
             )
 
         inputs = data[self.input_key]
@@ -244,7 +260,7 @@ class InferTask:
         inputs = inputs.cuda() if device == "cuda" else inputs
 
         cached = self._networks.get(device)
-        statbuf = os.stat(self.path)
+        statbuf = os.stat(path)
         network = None
         if cached:
             if statbuf.st_mtime == cached[1]:
@@ -255,9 +271,11 @@ class InferTask:
         if network is None:
             if self.network:
                 network = self.network
-                network.load_state_dict(torch.load(self.path))
+                checkpoint = torch.load(path)
+                model_state_dict = checkpoint.get(self.model_state_dict, checkpoint)
+                network.load_state_dict(model_state_dict)
             else:
-                network = torch.jit.load(self.path)
+                network = torch.jit.load(path)
 
             network = network.cuda() if device == "cuda" else network
             network.eval()

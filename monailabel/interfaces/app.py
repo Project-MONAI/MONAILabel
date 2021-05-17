@@ -1,13 +1,16 @@
 import logging
 import os
+import time
 from abc import abstractmethod
 
 import yaml
 
+from monai.apps import download_url
 from monailabel.interfaces.datastore import Datastore, LabelTag
 from monailabel.interfaces.exception import MONAILabelError, MONAILabelException
 from monailabel.utils.activelearning import Random
 from monailabel.utils.datastore import LocalDatastore
+from monailabel.utils.infer import InferDeepgrow2D, InferDeepgrow3D
 
 logger = logging.getLogger(__name__)
 
@@ -19,6 +22,7 @@ class MONAILabelApp:
         studies,
         infers=None,
         strategies=None,
+        resources=None,
     ):
         """
         Base Class for Any MONAI Label App
@@ -27,6 +31,7 @@ class MONAILabelApp:
         :param studies: path for studies/datalist
         :param infers: Dictionary of infer engines
         :param strategies: List of ActiveLearning strategies to get next sample
+        :param resources: List of Tuples (path, url) to be downloaded when not exists
 
         """
         self.app_dir = app_dir
@@ -35,6 +40,7 @@ class MONAILabelApp:
         self.strategies = {"random", Random()} if strategies is None else strategies
 
         self._datastore: Datastore = LocalDatastore(studies)
+        self._download(resources)
 
     def info(self):
         """
@@ -188,3 +194,28 @@ class MONAILabelApp:
             "image": request.get("image"),
             "label": label_id,
         }
+
+    def _download(self, resources):
+        if not resources:
+            return
+
+        for resource in resources:
+            if not os.path.exists(resource[0]):
+                os.makedirs(os.path.dirname(resource[0]), exist_ok=True)
+                logger.info(f"Downloading resource: {resource[0]} from {resource[1]}")
+                download_url(resource[1], resource[0])
+                time.sleep(1)
+
+    def add_deepgrow_infer_tasks(self):
+        deepgrow_2d = os.path.join(self.app_dir, "model", "deepgrow_2d.ts")
+        deepgrow_3d = os.path.join(self.model_dir, "model", "deepgrow_3d.ts")
+
+        self.infers.update({
+            "deepgrow_2d": InferDeepgrow2D(deepgrow_2d),
+            "deepgrow_3d": InferDeepgrow3D(deepgrow_3d),
+        })
+
+        self._download([
+            (deepgrow_2d, "https://www.dropbox.com/s/y9a7tqcos2n4lxf/deepgrow_2d.ts?dl=1"),
+            (deepgrow_3d, "https://www.dropbox.com/s/vs6l30mf6t3h3d0/deepgrow_3d.ts?dl=1"),
+        ])

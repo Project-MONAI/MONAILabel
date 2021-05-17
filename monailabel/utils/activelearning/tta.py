@@ -2,9 +2,10 @@ import logging
 import os
 from functools import partial
 
-import monai
 import numpy as np
 import torch
+
+import monai
 from monai.data import DataLoader, TestTimeAugmentation, list_data_collate
 from monai.inferers import sliding_window_inference
 from monai.transforms import (
@@ -17,7 +18,6 @@ from monai.transforms import (
     RandAffined,
     ToTensord,
 )
-
 from monailabel.interfaces.datastore import Datastore
 from monailabel.interfaces.exception import MONAILabelError, MONAILabelException
 from monailabel.interfaces.tasks import Strategy
@@ -30,9 +30,10 @@ class TTA(Strategy):
     Consider implementing a light version of TTA presented in this paper: https://arxiv.org/pdf/2007.00833.pdf
     """
 
-    def __init__(self, path, network=None):
+    def __init__(self, path, network=None, model_state_dict="model"):
         self.path = path
         self.network = network
+        self.model_state_dict = model_state_dict
         self.num_examples = 2  # Number of augmented samples
         self.max_images = 3
         self.roi_size = (160, 192, 80)
@@ -64,8 +65,16 @@ class TTA(Strategy):
             ]
         )
 
+    def get_path(self):
+        paths = [self.path] if isinstance(self.path, str) else self.path
+        for path in reversed(paths):
+            if os.path.exists(path):
+                return path
+        return None
+
     def get_model(self, device):
-        if not os.path.exists(os.path.join(self.path)):
+        path = self.get_path()
+        if not os.path.exists(path):
             raise MONAILabelException(
                 MONAILabelError.MODEL_IMPORT_ERROR,
                 f"Model Path ({self.path}) does not exist",
@@ -73,7 +82,9 @@ class TTA(Strategy):
 
         if self.network:
             network = self.network
-            network.load_state_dict(torch.load(self.path))
+            checkpoint = torch.load(path)
+            model_state_dict = checkpoint.get(self.model_state_dict, checkpoint)
+            network.load_state_dict(model_state_dict)
         else:
             network = torch.jit.load(self.path)
 
