@@ -384,15 +384,13 @@ class LocalDatastore(Datastore):
         image_id_files = [file for file in files if not file.startswith(self._label_store_path)]
         image_id_datastore = [obj.image.id for obj in self._datastore.objects]
         missing_file_image_id = list(set(image_id_datastore) - set(image_id_files))
+        self._datastore.objects = [obj for obj in self._datastore.objects if obj.image.id not in missing_file_image_id]
 
-        obj_idx = 0
-        deleted_items = 0
-        while len(missing_file_image_id) > deleted_items:
-            if self._datastore.objects[obj_idx].image.id in missing_file_image_id:
-                del self._datastore.objects[obj_idx]
-                deleted_items += 1
-            else:
-                obj_idx += 1
+        label_id_files = [file for file in files if file.startswith(self._label_store_path)]
+        label_id_datastore = [obj.labels for obj in self._datastore.objects]
+        missing_file_label_id = list(set(label_id_datastore) - set(label_id_files))
+        for obj in self._datastore.objects:
+            obj.labels = [label for label in obj.labels if label.id not in missing_file_label_id]
 
     def _add_object_with_present_file(self) -> None:
         """
