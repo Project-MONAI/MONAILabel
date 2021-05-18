@@ -401,28 +401,29 @@ class LocalDatastore(Datastore):
         this adds the image present in the datastore path and any corresponding labels for that image
         """
         files = LocalDatastore._list_files(self._datastore_path)
-        image_id_files = [file for file in files if not file.startswith(self._label_store_path)]
+        image_id_files = [file for file in files if not file.startswith(self._label_store_path) and file != pathlib.Path(self._datastore_config_path).name]
 
+        # add any missing image files and any corresponding labels
+        existing_image_ids = [obj.image.id for obj in self._datastore.objects]
         for image_id in image_id_files:
-            if (
-                image_id not in [obj.image.id for obj in self._datastore.objects]
-                and image_id != pathlib.Path(self._datastore_config_path).name
-            ):
+
+            image_ext = "".join(pathlib.Path(image_id).suffixes)
+            image_id_nosuffix = image_id.replace(image_ext, "")
+
+            # add the image i if not present
+            if image_id not in existing_image_ids:
                 self._datastore.objects.append(ObjectModel(image=ImageModel(id=image_id)))
 
-                image_ext = "".join(pathlib.Path(image_id).suffixes)
-                image_id_nosuffix = image_id.replace(image_ext, "")
-
-                # find label files related to the image id being added to the datastore
-                label_id_files = [
-                    pathlib.Path(file).name
-                    for file in files
-                    if file.startswith(self._label_store_path) and "label_" in file and image_id_nosuffix in file
-                ]
-                for label_id in label_id_files:
-                    label_parts = label_id.split(image_id_nosuffix)
-                    label_tag = label_parts[0].replace("label_", "")
-                    self._datastore.objects[-1].labels.append(LabelModel(id=label_id, tag=label_tag))
+            # find label files related to the image id being added to the datastore
+            label_id_files = [
+                pathlib.Path(file).name
+                for file in files
+                if file.startswith(self._label_store_path) and "label_" in file and image_id_nosuffix in file
+            ]
+            for label_id in label_id_files:
+                label_parts = label_id.split(image_id_nosuffix)
+                label_tag = label_parts[0].replace("label_", "")
+                self._datastore.objects[-1].labels.append(LabelModel(id=label_id, tag=label_tag))
 
     def _update_datastore_file(self):
         with open(self._datastore_config_path, "w") as f:
