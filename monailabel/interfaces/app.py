@@ -4,7 +4,7 @@ from abc import abstractmethod
 
 import yaml
 
-from monailabel.interfaces.datastore import Datastore, LabelTag
+from monailabel.interfaces.datastore import Datastore, DefaultLabelTag
 from monailabel.interfaces.exception import MONAILabelError, MONAILabelException
 from monailabel.utils.activelearning import Random
 from monailabel.utils.datastore import LocalDatastore
@@ -75,6 +75,7 @@ class MONAILabelApp:
                         "model": "segmentation_spleen",
                         "image": "file://xyz",
                         "save_label": "true/false",
+                        "label_tag": "my_custom_label_tag", (if not provided defaults to `original`)
                         "params": {},
                     }
 
@@ -99,7 +100,11 @@ class MONAILabelApp:
         result_file_name, result_json = task(request)
 
         if request.get("save_label", True):
-            self.datastore().save_label(image_id, result_file_name, LabelTag.ORIGINAL)
+            self.datastore().save_label(
+                image_id,
+                result_file_name,
+                request.get("label_tag") if request.get("label_tag") else DefaultLabelTag.ORIGINAL.value,
+            )
 
         return {"label": result_file_name, "params": result_json}
 
@@ -175,6 +180,7 @@ class MONAILabelApp:
                         "image": "file://xyz.com",
                         "label": "file://label_xyz.com",
                         "segments" ["spleen"],
+                        "label_tag": "my_custom_label_tag", (if not provided defaults to `final`)
                         "params": {},
                     }
 
@@ -182,7 +188,11 @@ class MONAILabelApp:
             JSON containing next image and label info
         """
 
-        label_id = self.datastore().save_label(request["image"], request["label"], LabelTag.FINAL)
+        label_id = self.datastore().save_label(
+            request["image"],
+            request["label"],
+            request.get("label_tag") if request.get("label_tag") else DefaultLabelTag.FINAL.value,
+        )
 
         return {
             "image": request.get("image"),
