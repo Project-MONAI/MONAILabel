@@ -367,7 +367,7 @@ class LocalDatastore(Datastore):
     def _list_files(path: str):
         relative_file_paths = []
         for root, dirs, files in os.walk(path):
-            base_dir = root.strip(path)
+            base_dir = root.lstrip(path)
             relative_file_paths.extend([os.path.join(base_dir, file) for file in files])
         return relative_file_paths
 
@@ -384,13 +384,16 @@ class LocalDatastore(Datastore):
         image_id_files = [file for file in files if not file.startswith(self._label_store_path)]
         image_id_datastore = [obj.image.id for obj in self._datastore.objects]
         missing_file_image_id = list(set(image_id_datastore) - set(image_id_files))
-        self._datastore.objects = [obj for obj in self._datastore.objects if obj.image.id not in missing_file_image_id]
+        if missing_file_image_id:
+            self._datastore.objects = [obj for obj in self._datastore.objects if obj.image.id not in missing_file_image_id]
 
-        label_id_files = [file for file in files if file.startswith(self._label_store_path)]
-        label_id_datastore = [obj.labels for obj in self._datastore.objects]
+        label_id_files = [pathlib.Path(file).name for file in files if file.startswith(self._label_store_path)]
+        label_id_datastore = [label.id for obj in self._datastore.objects for label in obj.labels]
+
         missing_file_label_id = list(set(label_id_datastore) - set(label_id_files))
-        for obj in self._datastore.objects:
-            obj.labels = [label for label in obj.labels if label.id not in missing_file_label_id]
+        if missing_file_label_id:
+            for obj in self._datastore.objects:
+                obj.labels = [label for label in obj.labels if label.id not in missing_file_label_id]
 
     def _add_object_with_present_file(self) -> None:
         """
