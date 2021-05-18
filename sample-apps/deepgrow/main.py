@@ -1,12 +1,12 @@
 import logging
 import os
 
-from lib import InferDeepgrow, InferSpleen, MyStrategy, TrainDeepgrow, TrainSpleen
-from monai.networks.layers import Norm
-from monai.networks.nets import BasicUNet, UNet
+from lib import InferDeepgrow, InferSpleen, MyStrategy, TrainDeepgrow
+from monai.networks.nets import BasicUNet
 
 from monailabel.interfaces import MONAILabelApp
 from monailabel.utils.activelearning import Random
+from monailabel.utils.infer.deepgrow_pipeline import InferDeepgrowPipeline
 
 logger = logging.getLogger(__name__)
 
@@ -33,20 +33,9 @@ class MyApp(MONAILabelApp):
                 "url": "https://www.dropbox.com/s/xgortm6ljd3dvhw/deepgrow_3d.pt?dl=1",
             },
             "segmentation_spleen": {
-                "network": UNet(
-                    dimensions=3,
-                    in_channels=1,
-                    out_channels=2,
-                    channels=(16, 32, 64, 128, 256),
-                    strides=(2, 2, 2, 2),
-                    num_res_units=2,
-                    norm=Norm.BATCH,
-                ),
-                "path": [
-                    os.path.join(self.model_dir, "segmentation_spleen.pt"),
-                    os.path.join(self.model_dir, "segmentation_spleen_final.pt"),
-                ],
-                "url": "https://www.dropbox.com/s/xc9wtssba63u7md/segmentation_spleen.pt?dl=1",
+                "network": None,
+                "path": [os.path.join(self.model_dir, "segmentation_spleen.ts")],
+                "url": "https://www.dropbox.com/s/p60vfxpa4l64fmz/segmentation_spleen.ts?dl=1",
             },
         }
 
@@ -67,6 +56,18 @@ class MyApp(MONAILabelApp):
                 path=self.data["segmentation_spleen"]["path"], network=self.data["segmentation_spleen"]["network"]
             ),
         }
+
+        # Add deepgrow pipeline(s)
+        infers["deepgrow_pipeline"] = InferDeepgrowPipeline(
+            path=self.data["deepgrow_2d"]["path"],
+            network=self.data["deepgrow_2d"]["network"],
+            model_3d=infers["deepgrow_3d"],
+        )
+        infers["deepgrow_spleen"] = InferDeepgrowPipeline(
+            path=self.data["deepgrow_2d"]["path"],
+            network=self.data["deepgrow_2d"]["network"],
+            model_3d=infers["segmentation_spleen"],
+        )
 
         strategies = {
             "random": Random(),
@@ -94,7 +95,7 @@ class MyApp(MONAILabelApp):
         val_split = request.get("val_split", 0.2)
 
         # App Owner can decide which checkpoint to load (from existing output folder or from base checkpoint)
-        models = ["deepgrow_2d", "deepgrow_3d", "segmentation_spleen"] if model == "all" else [model]
+        models = ["deepgrow_2d", "deepgrow_3d"] if model == "all" else [model]
         logger.info(f"Selected models for training: {models}")
 
         tasks = []
@@ -133,6 +134,8 @@ class MyApp(MONAILabelApp):
                     lr=lr,
                     val_split=val_split,
                     load_path=load_path,
+                    train_batch_size=1,
+                    train_num_workers=1,
                 )
             elif model == "deepgrow_2d":
                 # TODO:: Flatten the dataset and batch it instead of picking random slice id
@@ -142,16 +145,6 @@ class MyApp(MONAILabelApp):
                     model_size=(256, 256),
                     max_train_interactions=15,
                     max_val_interactions=5,
-                    output_dir=output_dir,
-                    data_list=self.datastore().datalist(),
-                    network=network,
-                    device=device,
-                    lr=lr,
-                    val_split=val_split,
-                    load_path=load_path,
-                )
-            elif model == "segmentation_spleen":
-                task = TrainSpleen(
                     output_dir=output_dir,
                     data_list=self.datastore().datalist(),
                     network=network,
