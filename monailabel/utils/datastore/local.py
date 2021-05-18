@@ -421,9 +421,11 @@ class LocalDatastore(Datastore):
                 if file.startswith(self._label_store_path) and "label_" in file and image_id_nosuffix in file
             ]
             for label_id in label_id_files:
+                image_id_index = [obj.image.id for obj in self._datastore.objects].index(image_id)
                 label_parts = label_id.split(image_id_nosuffix)
-                label_tag = label_parts[0].replace("label_", "")
-                self._datastore.objects[-1].labels.append(LabelModel(id=label_id, tag=label_tag))
+                label_tag = label_parts[0].replace("label_", "").strip("_")
+                if label_id not in [label.id for label in self._datastore.objects[image_id_index].labels]:
+                    self._datastore.objects[image_id_index].labels.append(LabelModel(id=label_id, tag=label_tag))
 
     def _update_datastore_file(self):
         with open(self._datastore_config_path, "w") as f:
