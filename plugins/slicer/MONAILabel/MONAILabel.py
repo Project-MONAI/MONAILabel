@@ -298,7 +298,7 @@ class MONAILabelWidget(ScriptedLoadableModuleWidget, VTKObservationMixin):
             label = segment.GetName()
             self.updateSegmentationMask(result_file, [label])
             # clear scribbles widget
-            self.onClearScribblesWidget()
+            # self.onClearScribblesWidget()
         except:
             slicer.util.errorDisplay("Failed to save Label to MONAI Label Server",
                                      detailedText=traceback.format_exc())
