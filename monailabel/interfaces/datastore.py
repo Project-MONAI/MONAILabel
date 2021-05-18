@@ -3,7 +3,7 @@ from enum import Enum
 from typing import Any, Dict, List
 
 
-class LabelTag(Enum):
+class DefaultLabelTag(Enum):
     ORIGINAL = "original"
     FINAL = "final"
 
@@ -52,14 +52,15 @@ class Datastore(metaclass=ABCMeta):
     @abstractmethod
     def datalist(self) -> List[Dict[str, str]]:
         """
-        Return a dictionary of (image, label) pairs corresponding to the ('image', 'label) keys respectively
+        Return a dictionary of image and label pairs corresponding to the 'image' and 'label'
+        keys respectively
 
         :return: the {'label': image, 'label': label} pairs for training
         """
         pass
 
     @abstractmethod
-    def get_labels_by_image_id(self, image_id: str) -> Dict[str, LabelTag]:
+    def get_labels_by_image_id(self, image_id: str) -> Dict[str, str]:
         """
         Retrieve all label ids for the given image id
 
@@ -156,13 +157,13 @@ class Datastore(metaclass=ABCMeta):
         pass
 
     @abstractmethod
-    def save_label(self, image_id: str, label_filename: str, label_tag: LabelTag) -> str:
+    def save_label(self, image_id: str, label_filename: str, label_tag: str) -> str:
         """
         Save a label for the given image id and return the newly saved label's id
 
         :param image_id: the image id for the label
         :param label_filename: the path to the label file
-        :param label_tag: the tag for the label
+        :param label_tag: the user-provided tag for the label
         :return: the label id for the given label filename
         """
         pass
