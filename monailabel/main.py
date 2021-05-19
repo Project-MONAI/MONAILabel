@@ -7,9 +7,11 @@ from fastapi import FastAPI
 from fastapi.openapi.docs import get_swagger_ui_html
 from starlette.middleware.cors import CORSMiddleware
 from starlette.responses import HTMLResponse
+from watchdog.observers import Observer
 
 from monailabel.config import settings
 from monailabel.endpoints import activelearning, datastore, download, inference, info, logs, train
+from monailabel.utils.datastore import DataStoreHandler
 from monailabel.utils.others.generic import get_app_instance, init_log_config
 
 app = FastAPI(
@@ -91,6 +93,11 @@ def run_main():
     sys.path.append(args.app)
     sys.path.append(os.path.join(args.app, "lib"))
 
+    datastore_handler = DataStoreHandler(api_str=settings.API_STR, host_port=args.port, studies=settings.STUDIES)
+    datastore_observer = Observer()
+    datastore_observer.schedule(datastore_handler, recursive=True, path=settings.STUDIES)
+    datastore_observer.start()
+
     uvicorn.run(
         "main:app" if args.reload else app,
         host=args.host,
@@ -101,6 +108,8 @@ def run_main():
         use_colors=True,
         access_log=args.debug,
     )
+
+    datastore_observer.join()
 
 
 if __name__ == "__main__":
