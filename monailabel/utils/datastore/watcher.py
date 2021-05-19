@@ -22,4 +22,3 @@ class DataStoreHandler(PatternMatchingEventHandler):
 
     def _refresh(self):
         dl = requests.get(self.refresh_url)
-        print(dl.json())
