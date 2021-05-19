@@ -174,7 +174,7 @@ class PostProcessingTask:
             logger.debug('******************************************************************************')
 
     @staticmethod
-    def _shape_info(data, keys=('image', 'label', 'pred', 'model', 'logits', 'unary')):
+    def _shape_info(data, keys=('image', 'label', 'pred', 'model', 'logits', 'unary', 'scribbles')):
         shape_info = []
         for key in keys:
             val = data.get(key)
