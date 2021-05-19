@@ -261,7 +261,9 @@ class MONAILabelWidget(ScriptedLoadableModuleWidget, VTKObservationMixin):
 
     def on3dBrushCheckbox(self, state=None):
         if state == None:
-            state = self.ui.brush3dCheckbox.isChecked()
+            state = self.ui.brush3dCheckbox.checkState()
+
+        print(f'3D brush update {state}')
         
         if self._segmentEditorWidget == None:
             self.onStartScribbling()
@@ -330,6 +332,7 @@ class MONAILabelWidget(ScriptedLoadableModuleWidget, VTKObservationMixin):
         effect = self._segmentEditorWidget.activeEffect()
         self.ui.selectedToolDisplay.setIcon(self.icon('tool-brush.svg'))
         self.updateBrushSize()
+        self.on3dBrushCheckbox()
     
     def onEraseScribbles(self):
         if self._segmentEditorWidget == None:
@@ -340,6 +343,7 @@ class MONAILabelWidget(ScriptedLoadableModuleWidget, VTKObservationMixin):
         effect = self._segmentEditorWidget.activeEffect()
         self.ui.selectedToolDisplay.setIcon(self.icon('eraser.svg'))
         self.updateBrushSize()
+        self.on3dBrushCheckbox()
     
     def updateBrushSize(self, value=None):
         if value==None:
@@ -1627,6 +1631,6 @@ GenericAnatomyColors = {
     "cyst": (205, 205, 100), 
 
     # additional colors added for covid lesion
-    "lung": (197, 165, 145),
-    "lesion": (144, 238, 144), # same color as mass above
+    "lung":   (224, 186, 162), # same color as inferior lobe lung from above
+    "lesion": (251, 159, 255), # same color as region 2 from above
 }
