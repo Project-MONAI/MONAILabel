@@ -1,3 +1,5 @@
+-r ../requirements.txt
+
 commonmark==0.9.1
 recommonmark==0.6.0
 Sphinx==3.3.0

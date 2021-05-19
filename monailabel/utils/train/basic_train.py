@@ -16,7 +16,7 @@ from monai.handlers import (
 from monai.inferers import SimpleInferer
 from monai.losses import DiceLoss
 
-from monailabel.utils.train import TrainTask
+from monailabel.interfaces.tasks import TrainTask
 
 logger = logging.getLogger(__name__)
 

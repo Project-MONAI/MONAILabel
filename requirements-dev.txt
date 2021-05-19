@@ -12,6 +12,6 @@ pycodestyle
 pyflakes
 black
 isort
-pytype>=2020.6.1
-mypy>=0.790
+pytype
+mypy
 ninja
