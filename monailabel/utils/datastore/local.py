@@ -284,6 +284,13 @@ class LocalDatastore(Datastore):
         """
         return [obj.image.id for obj in self._datastore.objects]
 
+    def refresh(self):
+        """
+        Refresh the datastore based on the state of the files on disk
+        """
+        self._reconcile_datastore()
+        self._update_datastore_file()
+
     def save_label(self, image_id: str, label_filename: str, label_tag: str) -> str:
         """
         Save a label for the given image id and return the newly saved label's id
@@ -385,7 +392,9 @@ class LocalDatastore(Datastore):
         image_id_datastore = [obj.image.id for obj in self._datastore.objects]
         missing_file_image_id = list(set(image_id_datastore) - set(image_id_files))
         if missing_file_image_id:
-            self._datastore.objects = [obj for obj in self._datastore.objects if obj.image.id not in missing_file_image_id]
+            self._datastore.objects = [
+                obj for obj in self._datastore.objects if obj.image.id not in missing_file_image_id
+            ]
 
         label_id_files = [pathlib.Path(file).name for file in files if file.startswith(self._label_store_path)]
         label_id_datastore = [label.id for obj in self._datastore.objects for label in obj.labels]
@@ -401,7 +410,11 @@ class LocalDatastore(Datastore):
         this adds the image present in the datastore path and any corresponding labels for that image
         """
         files = LocalDatastore._list_files(self._datastore_path)
-        image_id_files = [file for file in files if not file.startswith(self._label_store_path) and file != pathlib.Path(self._datastore_config_path).name]
+        image_id_files = [
+            file
+            for file in files
+            if not file.startswith(self._label_store_path) and file != pathlib.Path(self._datastore_config_path).name
+        ]
 
         # add any missing image files and any corresponding labels
         existing_image_ids = [obj.image.id for obj in self._datastore.objects]
