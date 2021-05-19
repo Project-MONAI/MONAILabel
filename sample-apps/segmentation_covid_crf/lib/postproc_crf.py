@@ -50,7 +50,7 @@ class MyCRF(PostProcessingTask):
             Spacingd(keys=['scribbles'], pixdim=[2.0, 2.0, 2.0], mode='nearest'),
 
             # ScaleIntensityRanged(keys='image', a_min=-164, a_max=164, b_min=0.0, b_max=1.0, clip=True),
-            AddUnaryTermd(ref_prob='logits', unary="unary", scribbles="scribbles", channel_dim=0, sc_background_label=2, sc_foreground_label=3, scale_infty=100, use_simplecrf=False),
+            AddUnaryTermd(ref_prob='logits', unary="unary", scribbles="scribbles", channel_dim=0, sc_background_label=4, sc_foreground_label=5, scale_infty=100, use_simplecrf=False),
             AddChanneld(keys=['image', 'unary']),
             ToTensord(keys=['image', 'logits', 'unary'])
 

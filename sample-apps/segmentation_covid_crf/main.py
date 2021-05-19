@@ -29,7 +29,7 @@ class MyApp(MONAILabelApp):
         infers = {
             "deepgrow_2d": InferDeepgrow2D(os.path.join(model_dir, "deepgrow_2d.ts")),
             "deepgrow_3d": InferDeepgrow3D(os.path.join(model_dir, "deepgrow_3d.ts")),
-            "segmentation_spleen": MyInfer(os.path.join(model_dir, "segmentation_covid.ts")),
+            "segmentation_covid": MyInfer(os.path.join(model_dir, "segmentation_covid.ts")),
         }
 
         self.postproc_methods = {

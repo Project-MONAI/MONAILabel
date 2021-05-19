@@ -30,7 +30,7 @@ class MyInfer(InferenceTask):
             path,
             network=None,
             type=InferType.SEGMENTATION,
-            labels=["spleen"],
+            labels=["lung", "lesion"],
             dimension=3,
             description='A pre-trained model for volumetric (3D) segmentation of the spleen from CT image'
     ):
@@ -58,8 +58,8 @@ class MyInfer(InferenceTask):
         return [
             AddChanneld(keys='pred'),
             Activationsd(keys='pred', softmax=True),
-            ConvertLogitsToBinaryd(key='pred', foreground_class=[1], softmax=False),
             CopyItemsd(keys='pred', times=1, names='logits'),
+            ConvertLogitsToBinaryd(key='logits', foreground_class=[1], softmax=False),
             AsDiscreted(keys='pred', argmax=True),
             SqueezeDimd(keys=['pred', 'logits'], dim=0),
             ToNumpyd(keys=['pred', 'logits']),

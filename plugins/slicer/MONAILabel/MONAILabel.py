@@ -1624,5 +1624,9 @@ GenericAnatomyColors = {
     "region 14": (0, 0, 255),
     "region 15": (157, 0, 0),
     "unknown": (100, 100, 130),
-    "cyst": (205, 205, 100)
+    "cyst": (205, 205, 100), 
+
+    # additional colors added for covid lesion
+    "lung": (197, 165, 145),
+    "lesion": (144, 238, 144), # same color as mass above
 }
