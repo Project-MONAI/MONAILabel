@@ -7,7 +7,6 @@ from fastapi import FastAPI
 from fastapi.openapi.docs import get_swagger_ui_html
 from starlette.middleware.cors import CORSMiddleware
 from starlette.responses import HTMLResponse
-from watchdog.observers import Observer
 
 from monailabel.config import settings
 from monailabel.endpoints import activelearning, datastore, download, inference, info, logs, train
@@ -102,6 +101,7 @@ def run_main():
         use_colors=True,
         access_log=args.debug,
     )
+
 
 if __name__ == "__main__":
     run_main()
