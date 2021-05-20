@@ -223,5 +223,5 @@ class BasicTrainTask(TrainTask):
     def __call__(self, max_epochs, amp):
         stats = super().__call__(max_epochs, amp)
         filename = datetime.now().strftime("stats_%Y%m%d_%H%M%S.json")
-        with open(os.path.join(self.output_dir, filename), 'w') as f:
+        with open(os.path.join(self.output_dir, filename), "w") as f:
             json.dump(stats, f, indent=2)

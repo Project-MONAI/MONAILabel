@@ -1,3 +1,2 @@
 pyyaml==5.4.1
 pydantic==1.8.2
-SimpleITK==2.0.2

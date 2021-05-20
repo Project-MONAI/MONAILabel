@@ -2,8 +2,8 @@ import logging
 import pathlib
 import tempfile
 
+import itk
 import numpy as np
-import SimpleITK
 from monai.data import write_nifti
 
 
@@ -51,11 +51,12 @@ class Writer:
             write_nifti(image_np, output_file, affine=affine, output_dtype=dtype)
         else:
             if len(image_np.shape) > 2:
-                image_np = image_np.transpose()
+                image_np = image_np.transpose().copy()
             if dtype:
                 image_np = image_np.astype(dtype)
 
-            result_image = SimpleITK.GetImageFromArray(image_np)
+            result_image = itk.image_from_array(image_np)
+            logger.debug("ITK Image size: {}".format(itk.size(result_image)))
 
             # https://github.com/RSIP-Vision/medio/blob/master/medio/metadata/affine.py#L108-L121
             if affine is not None:
@@ -72,19 +73,16 @@ class Writer:
                 spacing = np.linalg.norm(affine[_m_key] @ np.eye(dim), axis=0)
                 direction = affine[_m_key] @ np.diag(1 / spacing)
 
-                spacing = spacing.tolist()
-                direction = direction.flatten().tolist()
-
                 logger.debug("Affine: {}".format(affine))
                 logger.debug("Origin: {}".format(origin))
                 logger.debug("Spacing: {}".format(spacing))
                 logger.debug("Direction: {}".format(direction))
 
-                result_image.SetDirection(direction)
+                result_image.SetDirection(itk.matrix_from_array(direction))
                 result_image.SetSpacing(spacing)
                 result_image.SetOrigin(origin)
 
-            SimpleITK.WriteImage(result_image, output_file, compress)
+            itk.imwrite(result_image, output_file, compress)
 
         return output_file, data.get(self.json, {})
 

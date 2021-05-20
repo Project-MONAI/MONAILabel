@@ -78,9 +78,7 @@ class _ui_MONAILabelSettingsPanel(object):
 
         autoFetchNextSampleCheckBox = qt.QCheckBox()
         autoFetchNextSampleCheckBox.checked = False
-        autoFetchNextSampleCheckBox.toolTip = (
-            "Enable this option to fetch Next Sample after saving the label"
-        )
+        autoFetchNextSampleCheckBox.toolTip = "Enable this option to fetch Next Sample after saving the label"
         groupLayout.addRow("Auto-Fetch Next Sample:", autoFetchNextSampleCheckBox)
         parent.registerProperty(
             "MONAI-Label/autoFetchNextSample",
