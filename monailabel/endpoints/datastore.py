@@ -1,3 +1,4 @@
+import json
 import logging
 
 from fastapi import APIRouter, File, HTTPException, UploadFile
@@ -17,9 +18,9 @@ router = APIRouter(
 
 
 @router.get("/", summary="Get All Images/Labels from datastore")
-async def datastore():
+async def datastore(train: bool = True):
     d: Datastore = get_app_instance().datastore()
-    return d.datalist()
+    return d.datalist() if train else json.loads(str(d))
 
 
 @router.put("/", summary="Upload new Image")

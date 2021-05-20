@@ -1,5 +1,7 @@
+import fnmatch
 import io
 import json
+import logging
 import os
 import pathlib
 import shutil
@@ -9,6 +11,8 @@ from pydantic import BaseModel
 
 from monailabel.interfaces.datastore import Datastore, DefaultLabelTag
 from monailabel.interfaces.exception import ImageNotFoundException, LabelNotFoundException
+
+logger = logging.getLogger(__name__)
 
 
 class ImageModel(BaseModel):
@@ -52,6 +56,8 @@ class LocalDatastore(Datastore):
         datastore_config: str = "datastore.json",
         label_store_path: str = "labels",
         reconcile_datastore: bool = True,
+        image_extensions=("*.nii.gz", "*.nii"),
+        label_extensions=("*.nii.gz", "*.nii"),
     ):
         """
         Creates a `LocalDataset` object
@@ -67,6 +73,8 @@ class LocalDatastore(Datastore):
         self._datastore_path = datastore_path
         self._datastore_config_path = os.path.join(datastore_path, datastore_config)
         self._label_store_path = label_store_path
+        self._image_extensions = [image_extensions] if isinstance(image_extensions, str) else image_extensions
+        self._label_extensions = [label_extensions] if isinstance(label_extensions, str) else label_extensions
 
         if os.path.exists(self._datastore_config_path):
             # check if dataset configuration file exists and load if it does
@@ -371,12 +379,15 @@ class LocalDatastore(Datastore):
         return os.path.realpath(os.path.join(self._datastore_path, path))
 
     @staticmethod
-    def _list_files(path: str):
-        relative_file_paths = []
-        for root, dirs, files in os.walk(path):
-            base_dir = root.lstrip(path)
-            relative_file_paths.extend([os.path.join(base_dir, file) for file in files])
-        return relative_file_paths
+    def _list_files(path, patterns):
+        files = os.listdir(path)
+
+        filtered = dict()
+        for pattern in patterns:
+            matching = fnmatch.filter(files, pattern)
+            for file in matching:
+                filtered[os.path.basename(file)] = file
+        return filtered
 
     def _reconcile_datastore(self):
         self._remove_object_with_missing_file()
@@ -387,20 +398,21 @@ class LocalDatastore(Datastore):
         remove objects present in the datastore file but not present on path
         (even if labels exist, if images do not the whole object is removed from the datastore)
         """
-        files = LocalDatastore._list_files(self._datastore_path)
-        image_id_files = [file for file in files if not file.startswith(self._label_store_path)]
+        image_id_files = self._list_files(self._datastore_path, self._image_extensions)
         image_id_datastore = [obj.image.id for obj in self._datastore.objects]
-        missing_file_image_id = list(set(image_id_datastore) - set(image_id_files))
+        missing_file_image_id = list(set(image_id_datastore) - set(image_id_files.keys()))
         if missing_file_image_id:
+            logger.info(f"Removing Missing Images: {missing_file_image_id}")
             self._datastore.objects = [
                 obj for obj in self._datastore.objects if obj.image.id not in missing_file_image_id
             ]
 
-        label_id_files = [pathlib.Path(file).name for file in files if file.startswith(self._label_store_path)]
+        label_id_files = self._list_files(os.path.join(self._datastore_path, self._label_store_path),
+                                          self._label_extensions)
         label_id_datastore = [label.id for obj in self._datastore.objects for label in obj.labels]
-
-        missing_file_label_id = list(set(label_id_datastore) - set(label_id_files))
+        missing_file_label_id = list(set(label_id_datastore) - set(label_id_files.keys()))
         if missing_file_label_id:
+            logger.info(f"Removing Missing Labels: {missing_file_label_id}")
             for obj in self._datastore.objects:
                 obj.labels = [label for label in obj.labels if label.id not in missing_file_label_id]
 
@@ -409,12 +421,9 @@ class LocalDatastore(Datastore):
         add objects which are not present in the datastore file, but are present in the datastore directory
         this adds the image present in the datastore path and any corresponding labels for that image
         """
-        files = LocalDatastore._list_files(self._datastore_path)
-        image_id_files = [
-            file
-            for file in files
-            if not file.startswith(self._label_store_path) and file != pathlib.Path(self._datastore_config_path).name
-        ]
+        image_id_files = LocalDatastore._list_files(self._datastore_path, self._image_extensions)
+        label_id_files = LocalDatastore._list_files(os.path.join(self._datastore_path, self._label_store_path),
+                                                    self._label_extensions)
 
         # add any missing image files and any corresponding labels
         existing_image_ids = [obj.image.id for obj in self._datastore.objects]
@@ -425,21 +434,23 @@ class LocalDatastore(Datastore):
 
             # add the image i if not present
             if image_id not in existing_image_ids:
+                logger.info(f"Adding New Image: {image_id}")
                 self._datastore.objects.append(ObjectModel(image=ImageModel(id=image_id)))
 
-            # find label files related to the image id being added to the datastore
-            label_id_files = [
-                pathlib.Path(file).name
-                for file in files
-                if file.startswith(self._label_store_path) and "label_" in file and image_id_nosuffix in file
-            ]
-            for label_id in label_id_files:
+            # for matching image ids only
+            for label_id in [l for l in label_id_files if f"{image_id_nosuffix}." in l]:
                 image_id_index = [obj.image.id for obj in self._datastore.objects].index(image_id)
                 label_parts = label_id.split(image_id_nosuffix)
                 label_tag = label_parts[0].replace("label_", "").strip("_")
+
                 if label_id not in [label.id for label in self._datastore.objects[image_id_index].labels]:
+                    logger.info(f"Adding New Label: {image_id} => {label_id}")
                     self._datastore.objects[image_id_index].labels.append(LabelModel(id=label_id, tag=label_tag))
 
     def _update_datastore_file(self):
         with open(self._datastore_config_path, "w") as f:
             json.dump(self._datastore.dict(), f, indent=2, default=str)
+
+
+    def __str__(self):
+        return json.dumps(self._datastore.dict())
