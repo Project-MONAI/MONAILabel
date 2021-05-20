@@ -69,10 +69,22 @@ class _ui_MONAILabelSettingsPanel(object):
             "Enable this option to auto run segmentation if pre-trained model exists when Next Sample is fetched"
         )
         groupLayout.addRow("Auto-Run Pre-Trained Model:", autoRunSegmentationCheckBox)
-        autRunMapper = ctk.ctkBooleanMapper(autoRunSegmentationCheckBox, "checked", str(qt.SIGNAL("toggled(bool)")))
         parent.registerProperty(
             "MONAI-Label/autoRunSegmentationOnNextSample",
-            autRunMapper,
+            ctk.ctkBooleanMapper(autoRunSegmentationCheckBox, "checked", str(qt.SIGNAL("toggled(bool)"))),
+            "valueAsInt",
+            str(qt.SIGNAL("valueAsIntChanged(int)")),
+        )
+
+        autoFetchNextSampleCheckBox = qt.QCheckBox()
+        autoFetchNextSampleCheckBox.checked = False
+        autoFetchNextSampleCheckBox.toolTip = (
+            "Enable this option to fetch Next Sample after saving the label"
+        )
+        groupLayout.addRow("Auto-Fetch Next Sample:", autoFetchNextSampleCheckBox)
+        parent.registerProperty(
+            "MONAI-Label/autoFetchNextSample",
+            ctk.ctkBooleanMapper(autoFetchNextSampleCheckBox, "checked", str(qt.SIGNAL("toggled(bool)"))),
             "valueAsInt",
             str(qt.SIGNAL("valueAsIntChanged(int)")),
         )
@@ -832,8 +844,10 @@ class MONAILabelWidget(ScriptedLoadableModuleWidget, VTKObservationMixin):
                 slicer.util.infoDisplay(
                     "Label-Mask saved into MONAI Label Server\t\t", detailedText=json.dumps(result, indent=2)
                 )
-                slicer.mrmlScene.Clear(0)
-                self.onNextSampleButton()
+
+                if slicer.util.settingsValue("MONAI-Label/autoFetchNextSample", False, converter=slicer.util.toBool):
+                    slicer.mrmlScene.Clear(0)
+                    self.onNextSampleButton()
 
         logging.info("Time consumed by save label: {0:3.1f}".format(time.time() - start))
 

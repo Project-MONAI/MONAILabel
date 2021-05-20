@@ -1,6 +1,8 @@
+import json
 import logging
 import os
 from abc import abstractmethod
+from datetime import datetime
 
 import torch
 from monai.data import DataLoader, PersistentDataset, partition_dataset
@@ -70,6 +72,9 @@ class BasicTrainTask(TrainTask):
             if val_split > 0.0
             else (data_list, [])
         )
+
+        if not os.path.exists(self.output_dir):
+            os.makedirs(self.output_dir, exist_ok=True)
 
         logger.info(f"Total Records for Training: {len(self._train_datalist)}/{len(data_list)}")
         logger.info(f"Total Records for Validation: {len(self._val_datalist)}/{len(data_list)}")
@@ -214,3 +219,9 @@ class BasicTrainTask(TrainTask):
     @abstractmethod
     def val_inferer(self):
         pass
+
+    def __call__(self, max_epochs, amp):
+        stats = super().__call__(max_epochs, amp)
+        filename = datetime.now().strftime("stats_%Y%m%d_%H%M%S.json")
+        with open(os.path.join(self.output_dir, filename), 'w') as f:
+            json.dump(stats, f, indent=2)
