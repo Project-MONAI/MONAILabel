@@ -109,9 +109,6 @@ class LocalDatastore(Datastore):
         self._observer.schedule(self._handler, recursive=True, path=self._datastore_path)
         self._observer.start()
 
-    def __del__(self):
-        self._observer.join()
-
     @property
     def name(self) -> str:
         """
