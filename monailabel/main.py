@@ -88,6 +88,12 @@ def run_main():
     os.putenv("APP_DIR", settings.APP_DIR)
     os.putenv("STUDIES", settings.STUDIES)
 
+    dirs = ["model", "lib", "logs"]
+    for dir in dirs:
+        d = os.path.join(args.app, dir)
+        if not os.path.exists(d):
+            os.makedirs(d)
+
     sys.path.append(args.app)
     sys.path.append(os.path.join(args.app, "lib"))
 
