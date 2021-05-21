@@ -24,7 +24,7 @@ Current application provides an option to switch to SimpleCRF library for doing 
 ### Server
 Run server using:
 
-`CUDA_VISIBLE_DEVICES=0 PYTHONPATH=../. python main.py --app ../sample-apps/segmentation_spleen_crf --studies /path/to/Datasets/MSDDataset/Task09_Spleen/imagesTr`
+`CUDA_VISIBLE_DEVICES=0 PYTHONPATH=../. python main.py --app ../sample-apps/segmentation_covid_crf/ --studies ../../../../Datasets/CovidTestData/`
 
 ### Client
 Run slicer and load monailabel extension:
