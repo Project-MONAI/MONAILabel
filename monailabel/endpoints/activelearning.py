@@ -6,7 +6,7 @@ import shutil
 import tempfile
 from typing import Dict, Optional
 
-from fastapi import APIRouter, UploadFile
+from fastapi import APIRouter, File, UploadFile
 
 from monailabel.config import settings
 from monailabel.interfaces import MONAILabelApp
@@ -61,7 +61,7 @@ async def next_sample(strategy: str = "random", params: Optional[dict] = None, c
 
 
 @router.put("/label", summary="Save Finished Label")
-async def save_label(image: str, label: UploadFile):
+async def save_label(image: str, label: UploadFile = File(...)):
     file_ext = "".join(pathlib.Path(image).suffixes)
     label_file = tempfile.NamedTemporaryFile(suffix=file_ext).name
 

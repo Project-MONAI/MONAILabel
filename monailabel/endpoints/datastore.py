@@ -2,7 +2,7 @@ import json
 import logging
 from typing import Dict, List
 
-from fastapi import APIRouter, HTTPException, UploadFile
+from fastapi import APIRouter, File, HTTPException, UploadFile
 
 from monailabel.interfaces import Datastore
 from monailabel.utils.others.generic import get_app_instance
@@ -25,7 +25,7 @@ async def datastore(train: bool = True):
 
 
 @router.put("/", summary="Upload new Image")
-async def add_image(image: str, file: UploadFile):
+async def add_image(image: str, file: UploadFile = File(...)):
     logger.info(f"Image: {image}; File: {file}")
     raise HTTPException(status_code=501, detail="Not Implemented Yet")
 
