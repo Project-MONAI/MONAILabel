@@ -36,7 +36,7 @@ jobs:
           $(pwd)/runtests.sh --flake8
       - name: PyType
         run: |
-          echo Skipping (takes time):: $(pwd)/runtests.sh --pytype
+          echo Skipping this test
       - name: MyPy
         run: |
           $(pwd)/runtests.sh --mypy
