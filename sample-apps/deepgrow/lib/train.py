@@ -45,7 +45,7 @@ class TrainDeepgrow(BasicTrainTask):
         output_dir,
         data_list,
         network,
-        **kwargs
+        **kwargs,
     ):
         super().__init__(output_dir, data_list, network, **kwargs)
 
