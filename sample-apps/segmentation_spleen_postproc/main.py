@@ -72,29 +72,6 @@ class MyApp(MONAILabelApp):
         self.add_deepgrow_infer_tasks()
 
     def infer(self, request):
-        """
-        Run Inference for an exiting pre-trained model.
-
-        Args:
-            request: JSON object which contains `model`, `image`, `params` and `device`
-
-                For example::
-
-                    {
-                        "device": "cuda"
-                        "model": "segmentation_spleen",
-                        "image": "file://xyz",
-                        "save_label": "true/false",
-                        "label_tag": "my_custom_label_tag", (if not provided defaults to `original`)
-                        "params": {},
-                    }
-
-        Raises:
-            MONAILabelException: When ``model`` is not found
-
-        Returns:
-            JSON containing `label` and `params`
-        """
         # cleanup previous logits files
         self.cleanup_logits_files()
 

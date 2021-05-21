@@ -37,8 +37,8 @@ class SpleenCRF(PostProcTask):
             AddChanneld(keys=["image", "logits", "scribbles"]),
             # at the moment CRF implementation is bottleneck taking a long time,
             # therefore scaling non-isotropic with big spacing
-            Spacingd(keys=["image", "logits"], pixdim=[2.0, 2.0, 5.0]),
-            Spacingd(keys=["scribbles"], pixdim=[2.0, 2.0, 5.0], mode="nearest"),
+            Spacingd(keys=["image", "logits"], pixdim=[2.5, 2.5, 5.0]),
+            Spacingd(keys=["scribbles"], pixdim=[2.5, 2.5, 5.0], mode="nearest"),
             ScaleIntensityRanged(keys="image", a_min=-164, a_max=164, b_min=0.0, b_max=1.0, clip=True),
             AddUnaryTermd(
                 ref_prob="logits",
@@ -63,11 +63,4 @@ class SpleenCRF(PostProcTask):
         ]
 
     def postprocessor(self):
-        """
-        Provide postprocessor Class
-
-            For Example::
-                return ApplyCRFPostProcd(unary='unary', pairwise='image', post_proc_label='pred', use_simplecrf=False)
-
-        """
         return ApplyMONAICRFPostProcd(unary="unary", pairwise="image", post_proc_label="pred")

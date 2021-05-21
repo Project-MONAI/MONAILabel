@@ -86,7 +86,7 @@ class PostProcTask:
 
             For Example::
 
-                return  ApplyCRFPostProcd(unary='unary', pairwise='image', post_proc_label='pred', use_simplecrf=False)
+                return monailabel.interface.utils.ApplyMONAICRFPostProcd(unary="unary", pairwise="image", post_proc_label="pred")
 
         """
         pass

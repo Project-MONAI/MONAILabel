@@ -15,7 +15,6 @@ from monai.utils import InterpolateMode, ensure_tuple_rep
 logger = logging.getLogger(__name__)
 
 # define epsilon for numerical stability
-# help from: https://stackoverflow.com/a/25155518
 EPS = 7.0 / 3 - 4.0 / 3 - 1
 
 # TODO:: Move to MONAI ??
@@ -195,7 +194,6 @@ class AddUnaryTermd(Transform):
         scrib = np.squeeze(scrib)  # 4d to 3d drop first dim in [1, x, y, z]
 
         # extract background/foreground points from image
-        # help from: https://stackoverflow.com/a/58087561
         background_pts = np.argwhere(scrib == self.scribbles_bg_label)
         foreground_pts = np.argwhere(scrib == self.scribbles_fg_label)
 
@@ -271,33 +269,3 @@ class ApplyMONAICRFPostProcd(Transform):
 
         return d
 
-
-class ConvertLogitsToBinaryd(MapTransform):
-    def __init__(
-        self,
-        keys: KeysCollection,
-        foreground_class: List[int] = [1],
-        softmax: bool = False,
-        allow_missing_keys: bool = False,
-    ):
-        super().__init__(keys, allow_missing_keys)
-        self.foreground_class = foreground_class
-        self.softmax = softmax
-
-    def __call__(self, data):
-        d = dict(data)
-        for key in self.key_iterator(d):
-            logits = d[key]
-
-            if not isinstance(logits, torch.Tensor):
-                raise ValueError("Expecting torch.Tensor as input")
-
-            if self.softmax:
-                with torch.no_grad():
-                    logits = torch.softmax(logits, dim=1)
-
-            logits = logits[:, self.foreground_class, ...]
-            logits = torch.cat([1.0 - logits, logits], dim=1)
-
-            d[key] = logits
-        return d
