@@ -11,13 +11,14 @@ from monailabel.utils.others.writer import Writer
 
 logger = logging.getLogger(__name__)
 
+
 class PostProcType:
-    POSTPROCS = 'postprocessor'
-    OTHERS = 'others'
+    POSTPROCS = "postprocessor"
+    OTHERS = "others"
     KNOWN_TYPES = [POSTPROCS, OTHERS]
 
 
-class PostProcessingTask:
+class PostProcTask:
     """
     Basic Post Processing Task Helper
     """
@@ -38,7 +39,7 @@ class PostProcessingTask:
             "dimension": self.dimension,
             "description": self.description,
         }
-    
+
     @abstractmethod
     def pre_transforms(self):
         """
@@ -106,8 +107,8 @@ class PostProcessingTask:
         begin = time.time()
 
         data = copy.deepcopy(request)
-        data.update({'image_path': request.get('image')})
-        device = request.get('device', 'cuda')
+        data.update({"image_path": request.get("image")})
+        device = request.get("device", "cuda")
 
         start = time.time()
         data = self.run_pre_transforms(data, self.pre_transforms())
@@ -128,19 +129,21 @@ class PostProcessingTask:
         latency_total = time.time() - begin
         logger.info(
             "++ Latencies => Total: {:.4f}; Pre: {:.4f}; Postprocessor: {:.4f}; Post: {:.4f}; Write: {:.4f}".format(
-                latency_total, latency_pre, latency_postproc, latency_post, latency_write))
+                latency_total, latency_pre, latency_postproc, latency_post, latency_write
+            )
+        )
 
-        logger.info('Result File: {}'.format(result_file_name))
-        logger.info('Result Json: {}'.format(result_json))
+        logger.info("Result File: {}".format(result_file_name))
+        logger.info("Result Json: {}".format(result_json))
         return result_file_name, result_json
 
     def run_pre_transforms(self, data, transforms):
-        return self.run_transforms(data, transforms, log_prefix='PRE')
+        return self.run_transforms(data, transforms, log_prefix="PRE")
 
     def run_post_transforms(self, data, transforms):
-        return self.run_transforms(data, transforms, log_prefix='POST')
+        return self.run_transforms(data, transforms, log_prefix="POST")
 
-    def writer(self, data, label='pred', text='result', extension=None, dtype=None):
+    def writer(self, data, label="pred", text="result", extension=None, dtype=None):
         """
         You can provide your own writer.  However this writer saves the prediction/label mask to file
         and fetches result json
@@ -152,11 +155,11 @@ class PostProcessingTask:
         :param dtype: output label dtype
         :return: tuple of output_file and result_json
         """
-        logger.info('Writing Result')
+        logger.info("Writing Result")
         if extension is not None:
-            data['result_extension'] = extension
+            data["result_extension"] = extension
         if dtype is not None:
-            data['result_dtype'] = dtype
+            data["result_dtype"] = dtype
 
         writer = Writer(label=label, json=text)
         return writer(data)
@@ -164,26 +167,32 @@ class PostProcessingTask:
     @staticmethod
     def dump_data(data):
         if logging.getLogger().level == logging.DEBUG:
-            logger.debug('**************************** DATA ********************************************')
+            logger.debug("**************************** DATA ********************************************")
             for k in data:
                 v = data[k]
-                logger.debug('Data key: {} = {}'.format(
-                    k,
-                    v.shape if hasattr(v, 'shape') else v if type(v) in (
-                        int, float, bool, str, dict, tuple, list) else type(v)))
-            logger.debug('******************************************************************************')
+                logger.debug(
+                    "Data key: {} = {}".format(
+                        k,
+                        v.shape
+                        if hasattr(v, "shape")
+                        else v
+                        if type(v) in (int, float, bool, str, dict, tuple, list)
+                        else type(v),
+                    )
+                )
+            logger.debug("******************************************************************************")
 
     @staticmethod
-    def _shape_info(data, keys=('image', 'label', 'pred', 'model', 'logits', 'unary', 'scribbles')):
+    def _shape_info(data, keys=("image", "label", "pred", "model", "logits", "unary", "scribbles")):
         shape_info = []
         for key in keys:
             val = data.get(key)
-            if val is not None and hasattr(val, 'shape'):
-                shape_info.append('{}: {}'.format(key, val.shape))
-        return '; '.join(shape_info)
+            if val is not None and hasattr(val, "shape"):
+                shape_info.append("{}: {}".format(key, val.shape))
+        return "; ".join(shape_info)
 
     @staticmethod
-    def run_transforms(data, transforms, log_prefix='POST'):
+    def run_transforms(data, transforms, log_prefix="POST"):
         """
         Run Transforms
 
@@ -192,8 +201,8 @@ class PostProcessingTask:
         :param log_prefix: Logging prefix (POST or PRE)
         :return: Processed data after running transforms
         """
-        logger.info('{} - Run Transforms'.format(log_prefix))
-        logger.info('{} - Input Keys: {}'.format(log_prefix, data.keys()))
+        logger.info("{} - Run Transforms".format(log_prefix))
+        logger.info("{} - Input Keys: {}".format(log_prefix, data.keys()))
 
         if not transforms:
             return data
@@ -202,16 +211,20 @@ class PostProcessingTask:
             name = t.__class__.__name__
             start = time.time()
 
-            PostProcessingTask.dump_data(data)
+            PostProcTask.dump_data(data)
             if callable(t):
                 data = t(data)
             else:
-                raise MONAILabelException(MONAILabelError.POSTPROC_ERROR, "Transformer '{}' is not callable".format(
-                    t.__class__.__name__))
+                raise MONAILabelException(
+                    MONAILabelError.POSTPROC_ERROR, "Transformer '{}' is not callable".format(t.__class__.__name__)
+                )
 
-            logger.info("{} - Transform ({}): Time: {:.4f}; {}".format(
-                log_prefix, name, float(time.time() - start), PostProcessingTask._shape_info(data)))
-            logger.debug('-----------------------------------------------------------------------------')
+            logger.info(
+                "{} - Transform ({}): Time: {:.4f}; {}".format(
+                    log_prefix, name, float(time.time() - start), PostProcTask._shape_info(data)
+                )
+            )
+            logger.debug("-----------------------------------------------------------------------------")
 
-        PostProcessingTask.dump_data(data)
+        PostProcTask.dump_data(data)
         return data

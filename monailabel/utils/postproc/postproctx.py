@@ -1,21 +1,18 @@
 import copy
+import logging
 from typing import List
 
 import numpy as np
 import torch
-
-import logging
-
 from monai.config import KeysCollection
-
 from monai.networks.blocks import CRF
-from monai.transforms import Transform, MapTransform
+from monai.transforms import MapTransform, Transform
 
 logger = logging.getLogger(__name__)
 
 # define epsilon for numerical stability
 # help from: https://stackoverflow.com/a/25155518
-EPS = 7./3 - 4./3 - 1
+EPS = 7.0 / 3 - 4.0 / 3 - 1
 
 # Maybe these can go in MONAI, not sure at the moment
 class AddUnaryTermd(Transform):
@@ -87,9 +84,7 @@ class AddUnaryTermd(Transform):
 
         # in some cases, esp in MONAI Label, only background prob may be provided for binary classification
         # MONAI CRF requires these to be reconstructed into corresponding background and foreground prob
-        if (
-            prob_shape[self.channel_dim] == 1
-        ):  # unfold a single prob for background into bg/fg prob
+        if prob_shape[self.channel_dim] == 1:  # unfold a single prob for background into bg/fg prob
             prob = np.concatenate([(prob).copy(), (1.0 - prob).copy()], axis=self.channel_dim)
 
         # for numerical stability, get rid of zeros
@@ -119,6 +114,7 @@ class AddUnaryTermd(Transform):
         else:  # monai crf
             d[self.unary] = self._apply(background_pts, foreground_pts, prob)
         return d
+
 
 class ApplyMONAICRFPostProcd(Transform):
     def __init__(
@@ -166,9 +162,7 @@ class ApplyMONAICRFPostProcd(Transform):
         unary_term = unary_term.to(self.device)
         pairwise_term = pairwise_term.to(self.device)
 
-        d[self.post_proc_label] = torch.argmax(
-            self.crf_layer(unary_term, pairwise_term), dim=1, keepdims=True
-        )
+        d[self.post_proc_label] = torch.argmax(self.crf_layer(unary_term, pairwise_term), dim=1, keepdims=True)
 
         # copy meta data from pairwise input
         if self.pairwise + "_meta_dict" in d.keys():
@@ -176,9 +170,14 @@ class ApplyMONAICRFPostProcd(Transform):
 
         return d
 
+
 class ConvertLogitsToBinaryd(MapTransform):
     def __init__(
-        self, keys: KeysCollection, foreground_class: List[int] = [1], softmax: bool = False, allow_missing_keys: bool = False
+        self,
+        keys: KeysCollection,
+        foreground_class: List[int] = [1],
+        softmax: bool = False,
+        allow_missing_keys: bool = False,
     ):
         super().__init__(keys, allow_missing_keys)
         self.foreground_class = foreground_class

@@ -20,7 +20,7 @@ class MONAILabelApp:
         self,
         app_dir,
         studies,
-	postprocs=None,
+        postprocs=None,
         infers=None,
         strategies=None,
         resources=None,

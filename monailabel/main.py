@@ -9,7 +9,7 @@ from starlette.middleware.cors import CORSMiddleware
 from starlette.responses import HTMLResponse
 
 from monailabel.config import settings
-from monailabel.endpoints import activelearning, datastore, download, postproc, inference, info, logs, train
+from monailabel.endpoints import activelearning, datastore, download, inference, info, logs, postproc, train
 from monailabel.utils.others.generic import get_app_instance, init_log_config
 
 app = FastAPI(
@@ -37,6 +37,7 @@ app.include_router(datastore.router)
 app.include_router(download.router)
 app.include_router(logs.router)
 app.include_router(postproc.router)
+
 
 @app.get("/", include_in_schema=False)
 async def custom_swagger_ui_html():

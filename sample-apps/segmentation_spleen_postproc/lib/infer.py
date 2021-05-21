@@ -1,6 +1,6 @@
 import copy
-import time
 import logging
+import time
 
 from monai.inferers import SlidingWindowInferer
 from monai.transforms import (
@@ -19,6 +19,7 @@ from monailabel.interfaces.tasks import InferTask, InferType
 from monailabel.utils.others.post import BoundingBoxd, Restored
 
 logger = logging.getLogger(__name__)
+
 
 class MyInfer(InferTask):
     """
@@ -97,13 +98,13 @@ class MyInfer(InferTask):
 
         start = time.time()
         data = self.run_post_transforms(data, self.post_transforms())
-        latency_post = time.time() - start        
+        latency_post = time.time() - start
 
         start = time.time()
         # FIXME:
         result_file_name, result_json = self.writer(data, label=self.output_label_key, json=self.output_json_key)
         # save logits file temporarily somewhere
-        logits_file_name, logits_json =self.writer(data, label="logits", json=self.output_json_key)
+        logits_file_name, logits_json = self.writer(data, label="logits", json=self.output_json_key)
         latency_write = time.time() - start
 
         latency_total = time.time() - begin
@@ -119,15 +120,16 @@ class MyInfer(InferTask):
             )
         )
 
-        logger.info('Logits File: {}'.format(logits_file_name))
-        logger.info('Logits Json: {}'.format(logits_json))
+        logger.info("Logits File: {}".format(logits_file_name))
+        logger.info("Logits Json: {}".format(logits_json))
 
-        logger.info('Result File: {}'.format(result_file_name))
-        logger.info('Result Json: {}'.format(result_json))
+        logger.info("Result File: {}".format(result_file_name))
+        logger.info("Result Json: {}".format(result_json))
 
-        result_json['logits_file_name'] = logits_file_name
-        result_json['logits_json'] = logits_json
+        result_json["logits_file_name"] = logits_file_name
+        result_json["logits_json"] = logits_json
         return result_file_name, result_json
+
 
 #    def __call__(self, request):
 #        """
@@ -162,12 +164,12 @@ class MyInfer(InferTask):
 #        # save logits file temporarily somewhere
 #        logits_file_name, logits_json = self.writer(data, label='logits')
 #        latency_write = time.time() - start
-       
+
 #        latency_total = time.time() - begin
 #        logger.info(
 #            "++ Latencies => Total: {:.4f}; Pre: {:.4f}; Inferer: {:.4f}; Post: {:.4f}; Write: {:.4f}".format(
 #                latency_total, latency_pre, latency_inferer, latency_post, latency_write))
-       
+
 #        logger.info('Logits File: {}'.format(logits_file_name))
 #        logger.info('Logits Json: {}'.format(logits_json))
 
@@ -177,4 +179,3 @@ class MyInfer(InferTask):
 #         result_json['logits_file_name'] = logits_file_name
 #         result_json['logits_json'] = logits_json
 #         return result_file_name, result_json
-    
