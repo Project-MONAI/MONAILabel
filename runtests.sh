@@ -122,11 +122,11 @@ function install_deps() {
 
 function clean_py() {
   # remove coverage history
-  ${cmdPrefix}${PY_EXE} -m coverage erase
+  # ${cmdPrefix}${PY_EXE} -m coverage erase
 
   # uninstall the development package
-  echo "Uninstalling MONAILABEL development files..."
-  ${cmdPrefix}${PY_EXE} setup.py develop --user --uninstall
+  # echo "Uninstalling MONAILABEL development files..."
+  # ${cmdPrefix}${PY_EXE} setup.py develop --user --uninstall
 
   # remove temporary files (in the directory of this script)
   TO_CLEAN="$(cd "$(dirname "${BASH_SOURCE[0]}")" >/dev/null 2>&1 && pwd)"
