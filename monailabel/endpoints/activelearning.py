@@ -4,9 +4,9 @@ import os
 import pathlib
 import shutil
 import tempfile
-from typing import Optional
+from typing import Dict, Optional
 
-from fastapi import APIRouter, File, UploadFile
+from fastapi import APIRouter, UploadFile
 
 from monailabel.config import settings
 from monailabel.interfaces import MONAILabelApp
@@ -20,7 +20,7 @@ router = APIRouter(
     responses={404: {"description": "Not found"}},
 )
 
-cached_digest = dict()
+cached_digest: Dict = dict()
 
 
 @router.post("/sample/{stategy}", summary="Run Active Learning strategy to get next sample")
@@ -61,7 +61,7 @@ async def next_sample(strategy: str = "random", params: Optional[dict] = None, c
 
 
 @router.put("/label", summary="Save Finished Label")
-async def save_label(image: str, label: UploadFile = File(...)):
+async def save_label(image: str, label: UploadFile):
     file_ext = "".join(pathlib.Path(image).suffixes)
     label_file = tempfile.NamedTemporaryFile(suffix=file_ext).name
 

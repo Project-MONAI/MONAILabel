@@ -9,7 +9,6 @@ class DefaultLabelTag(Enum):
 
 
 class Datastore(metaclass=ABCMeta):
-    @property
     @abstractmethod
     def name(self) -> str:
         """
@@ -19,9 +18,8 @@ class Datastore(metaclass=ABCMeta):
         """
         pass
 
-    @name.setter
     @abstractmethod
-    def name(self, name: str):
+    def set_name(self, name: str):
         """
         Set the name of the datastore
 
@@ -29,7 +27,6 @@ class Datastore(metaclass=ABCMeta):
         """
         pass
 
-    @property
     @abstractmethod
     def description(self) -> str:
         """
@@ -39,9 +36,8 @@ class Datastore(metaclass=ABCMeta):
         """
         pass
 
-    @description.setter
     @abstractmethod
-    def description(self, description: str):
+    def set_description(self, description: str):
         """
         A human-readable description of the datastore
 

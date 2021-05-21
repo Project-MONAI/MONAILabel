@@ -20,13 +20,13 @@ def app_instance(app_dir, studies):
 
     main_py = os.path.join(app_dir, "main.py")
     if not os.path.exists(main_py):
-        raise MONAILabelException(MONAILabelError.APP_INIT_ERROR, f"App Does NOT have main.py")
+        raise MONAILabelException(MONAILabelError.APP_INIT_ERROR, "App Does NOT have main.py")
 
     c = get_class_of_subclass_from_file("main", main_py, MONAILabelApp)
     if c is None:
         raise MONAILabelException(
             MONAILabelError.APP_INIT_ERROR,
-            f"App Does NOT Implement MONAILabelApp in main.py",
+            "App Does NOT Implement MONAILabelApp in main.py",
         )
 
     o = c(app_dir=app_dir, studies=studies)
@@ -35,7 +35,7 @@ def app_instance(app_dir, studies):
         if not hasattr(o, m):
             raise MONAILabelException(
                 MONAILabelError.APP_INIT_ERROR,
-                f"App Does NOT Implement '{m}' method in main.py",
+                "App Does NOT Implement '{m}' method in main.py",
             )
 
     app = o

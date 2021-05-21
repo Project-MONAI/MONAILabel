@@ -84,7 +84,7 @@ async def get_logs(
     text: Optional[bool] = False,
     refresh: Optional[int] = 0,
 ):
-    return send_logs(os.path.join(settings.APP_DIR, "logs", logfile), lines, html, text, refresh)
+    return send_logs(os.path.join(settings.APP_DIR, "logs", str(logfile)), lines, html, text, refresh)
 
 
 @router.get("/gpu", summary="Get GPU Info (nvidia-smi)")

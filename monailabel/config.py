@@ -8,8 +8,8 @@ class Settings(BaseSettings):
     BACKEND_CORS_ORIGINS: List[AnyHttpUrl] = []
     PROJECT_NAME: str = "MONAILabel"
 
-    APP_DIR: str = None
-    STUDIES: str = None
+    APP_DIR: str = ""
+    STUDIES: str = ""
 
     @validator("BACKEND_CORS_ORIGINS", pre=True)
     def assemble_cors_origins(cls, v: Union[str, List[str]]) -> Union[List[str], str]:

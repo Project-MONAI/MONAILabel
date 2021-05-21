@@ -1,6 +1,7 @@
+#!/usr/bin/env python
 from setuptools import find_packages, setup
 
-from monailabel import __version__
+import versioneer
 
 with open("README.md") as f:
     readme = f.read()
@@ -13,7 +14,7 @@ with open("requirements.txt") as f:
 
 setup(
     name="monai-label",
-    version=__version__,
+    version=versioneer.get_version(),
     description="MONAI Label Development Kit",
     long_description=readme,
     url="http://monai.io",

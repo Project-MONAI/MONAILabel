@@ -132,6 +132,10 @@ function clean_py() {
   TO_CLEAN="$(cd "$(dirname "${BASH_SOURCE[0]}")" >/dev/null 2>&1 && pwd)"
   echo "Removing temporary files in ${TO_CLEAN}"
 
+	rm -rf sample-apps/*/logs
+	rm -rf sample-apps/*/.venv
+	rm -rf sample-apps/*/model/*
+
   find ${TO_CLEAN}/monailabel -type f -name "*.py[co]" -delete
   find ${TO_CLEAN}/monailabel -type f -name "*.so" -delete
   find ${TO_CLEAN}/monailabel -type d -name "__pycache__" -delete
@@ -449,7 +453,8 @@ fi
 if [ $doUnitTests = true ]; then
   echo "${separator}${blue}unittests${noColor}"
   torch_validate
-  ${cmdPrefix}${cmd} ./tests/runner.py -p "test_((?!integration).)"
+  #${cmdPrefix}${cmd} ./tests/runner.py -p "test_((?!integration).)"
+  pytest
 fi
 
 # network training/inference/eval integration tests

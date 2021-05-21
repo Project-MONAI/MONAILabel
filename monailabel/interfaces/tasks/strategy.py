@@ -1,9 +1,9 @@
-from abc import abstractmethod
+from abc import ABCMeta, abstractmethod
 
 from monailabel.interfaces.datastore import Datastore
 
 
-class Strategy:
+class Strategy(metaclass=ABCMeta):
     """
     Basic Active Learning Strategy
     """
