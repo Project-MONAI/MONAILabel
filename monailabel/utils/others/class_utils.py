@@ -10,7 +10,7 @@ def module_from_file(module_name, file_path):
 
 
 def get_class_of_subclass(module, class_c):
-    for n, o in inspect.getmembers(module):
+    for _, o in inspect.getmembers(module):
         if inspect.isclass(o) and o != class_c and issubclass(o, class_c):
             return o
     return None

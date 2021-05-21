@@ -18,7 +18,7 @@ def test_inference(args):
     logger.info("Running Inference Task: {}".format(args.model))
 
     response = None
-    for it in range(args.runs):
+    for _ in range(args.runs):
         request = {
             "model": args.model,
             "image": args.input,

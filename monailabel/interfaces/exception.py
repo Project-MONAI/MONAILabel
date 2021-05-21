@@ -33,9 +33,11 @@ class MONAILabelException(Exception):
     MONAI Label Exception
     """
 
+    __slots__ = ["error", "msg"]
+
     def __init__(self, error: MONAILabelError, msg: str):
-        self.error = error
-        self.msg = msg
+        super().__setattr__("error", error)
+        super().__setattr__("msg", msg)
 
 
 class ImageNotFoundException(MONAILabelException):

@@ -154,7 +154,7 @@ class InferDeepgrowPipeline(InferTask):
         count = min(self.max_random_points, int(np.sum(label) // self.random_point_density))
         if count:
             label_idx = np.where(label > 0.5)
-            for i in range(count):
+            for _ in range(count):
                 seed = np.random.randint(0, len(label_idx[0]))
                 points.append([label_idx[0][seed], label_idx[1][seed]])
         return points

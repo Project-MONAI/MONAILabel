@@ -87,17 +87,16 @@ class Deepgrow(InferTask):
         path,
         network=None,
         type=InferType.DEEPGROW,
-        labels=[],
         dimension=3,
         description="A pre-trained 3D DeepGrow model based on UNET",
-        spatial_size=[128, 128],
-        model_size=[128, 128, 128],
+        spatial_size=(128, 128),
+        model_size=(128, 128, 128),
     ):
         super().__init__(
             path=path,
             network=network,
             type=type,
-            labels=labels,
+            labels=None,
             dimension=dimension,
             description=description,
         )

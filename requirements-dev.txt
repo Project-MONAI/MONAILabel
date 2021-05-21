@@ -1,5 +1,7 @@
 # Full requirements for developments
 -r requirements.txt
+setuptools
+pybind11
 flake8
 pytest
 flake8-bugbear
@@ -15,3 +17,5 @@ isort
 pytype
 mypy
 ninja
+coverage
+parameterized

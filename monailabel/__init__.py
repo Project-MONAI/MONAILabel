@@ -1,43 +1,4 @@
-# Copyright 2020 - 2021 MONAI Consortium
-# Licensed under the Apache License, Version 2.0 (the "License");
-# you may not use this file except in compliance with the License.
-# You may obtain a copy of the License at
-#     http://www.apache.org/licenses/LICENSE-2.0
-# Unless required by applicable law or agreed to in writing, software
-# distributed under the License is distributed on an "AS IS" BASIS,
-# WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
-# See the License for the specific language governing permissions and
-# limitations under the License.
-
-import os
 import sys
-
-from ._version import get_versions
-
-PY_REQUIRED_MAJOR = 3
-PY_REQUIRED_MINOR = 6
-
-version_dict = get_versions()
-__version__ = version_dict.get("version", "0+unknown")
-__revision_id__ = version_dict.get("full-revisionid", None)
-del get_versions, version_dict
-
-__copyright__ = "(c) 2020 - 2021 MONAI Consortium"
-
-__basedir__ = os.path.dirname(__file__)
-
-if not (sys.version_info.major == PY_REQUIRED_MAJOR and sys.version_info.minor >= PY_REQUIRED_MINOR):
-    raise RuntimeError(
-        "MONAI Label requires Python {}.{} or higher. But the current Python is: {}".format(
-            PY_REQUIRED_MAJOR, PY_REQUIRED_MINOR, sys.version
-        ),
-    )
-
-__all__ = [
-    "endpoints",
-    "interfaces",
-    "utils",
-]
 
 
 def print_config(file=sys.stdout):
@@ -46,13 +7,11 @@ def print_config(file=sys.stdout):
     import numpy as np
     import torch
 
-    import monailabel
-
     output = OrderedDict()
-    output["MONAILabel"] = monailabel.__version__
+    output["MONAILabel"] = "0.1"
     output["Numpy"] = np.version.full_version
     output["Pytorch"] = torch.__version__
 
     for k, v in output.items():
         print(f"{k} version: {v}", file=file, flush=True)
-    print(f"MONAILabel rev id: {monailabel.__revision_id__}")
+    print("MONAILabel rev id: 0.1")

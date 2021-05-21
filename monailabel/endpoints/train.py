@@ -19,7 +19,7 @@ router = APIRouter(
 async def run_train(params: Optional[dict] = None):
     train_process = processes("train")
     if len(train_process):
-        raise HTTPException(status_code=429, detail=f"Training is Already Running")
+        raise HTTPException(status_code=429, detail="Training is Already Running")
 
     request = {}
     config = get_app_instance().info().get("config", {}).get("train", {})
@@ -39,13 +39,13 @@ async def status(all: bool = False, check_if_running: bool = False):
 
     if check_if_running:
         if len(train_process) == 0:
-            raise HTTPException(status_code=404, detail=f"No Training Tasks are currently Running")
+            raise HTTPException(status_code=404, detail="No Training Tasks are currently Running")
         task_id = next(iter(train_process))
         return [task for task in train_tasks if task["id"] == task_id][0]
 
     task = train_tasks[-1] if len(train_tasks) else None
     if task is None:
-        raise HTTPException(status_code=404, detail=f"No Training Tasks Found")
+        raise HTTPException(status_code=404, detail="No Training Tasks Found")
 
     return train_tasks if all else task
 

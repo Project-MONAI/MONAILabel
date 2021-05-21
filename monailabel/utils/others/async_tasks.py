@@ -8,13 +8,14 @@ import uuid
 from collections import deque
 from datetime import datetime
 from threading import Thread
+from typing import Dict
 
 from monailabel.config import settings
 
 logger = logging.getLogger(__name__)
 
-background_tasks = {"train": [], "infer": []}
-background_processes = {"train": dict(), "infer": dict()}
+background_tasks: Dict = {"train": [], "infer": []}
+background_processes: Dict = {"train": dict(), "infer": dict()}
 
 
 def task_func(task, method):

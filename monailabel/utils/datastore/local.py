@@ -5,6 +5,7 @@ import logging
 import os
 import pathlib
 import shutil
+from pathlib import Path
 from typing import Any, Dict, List
 
 from pydantic import BaseModel
@@ -94,12 +95,12 @@ class LocalDatastore(Datastore):
 
         if auto_reload:
             include_patterns = [
-                f"{self._datastore_path}{os.path.sep}{ext}" for ext in list(set([*image_extensions, *label_extensions]))
+                f"{self._datastore_path}{os.path.sep}{ext}" for ext in [*image_extensions, *label_extensions]
             ]
             include_patterns.extend(
                 [
                     f"{os.path.join(self._datastore_path, self._label_store_path)}{os.path.sep}{ext}"
-                    for ext in list(set([*image_extensions, *label_extensions]))
+                    for ext in [*image_extensions, *label_extensions]
                 ]
             )
             self._handler = PatternMatchingEventHandler(
@@ -111,7 +112,6 @@ class LocalDatastore(Datastore):
             self._observer.schedule(self._handler, recursive=True, path=self._datastore_path)
             self._observer.start()
 
-    @property
     def name(self) -> str:
         """
         Dataset name (if one is assigned)
@@ -121,8 +121,7 @@ class LocalDatastore(Datastore):
         """
         return self._datastore.name
 
-    @name.setter
-    def name(self, name: str):
+    def set_name(self, name: str):
         """
         Sets the dataset name in a standardized format (lowercase, no spaces).
 
@@ -132,7 +131,6 @@ class LocalDatastore(Datastore):
         self._datastore.name = name
         self._update_datastore_file()
 
-    @property
     def description(self) -> str:
         """
         Gets the description field for the dataset
@@ -141,8 +139,7 @@ class LocalDatastore(Datastore):
         """
         return self._datastore.description
 
-    @description.setter
-    def description(self, description: str):
+    def set_description(self, description: str):
         """
         Set a description for the dataset
 
@@ -179,7 +176,7 @@ class LocalDatastore(Datastore):
                     )
         return items
 
-    def get_image(self, image_id: str) -> io.BytesIO:
+    def get_image(self, image_id: str) -> Any:
         """
         Retrieve image object based on image id
 
@@ -189,8 +186,7 @@ class LocalDatastore(Datastore):
         buf = None
         for obj in self._datastore.objects:
             if obj.image.id == image_id:
-                with open(os.path.join(self._datastore_path, obj.image.id), "rb") as f:
-                    buf = io.BytesIO(f.read())
+                buf = io.BytesIO(Path(os.path.join(self._datastore_path, obj.image.id)).read_bytes())
                 break
         return buf
 
@@ -201,7 +197,7 @@ class LocalDatastore(Datastore):
         :param image_id: the desired image's id
         :return: return the image uri
         """
-        image_path = None
+        image_path = ""
         for obj in self._datastore.objects:
             if obj.image.id == image_id:
                 image_path = os.path.join(self._datastore_path, obj.image.id)
@@ -221,7 +217,7 @@ class LocalDatastore(Datastore):
 
         return {}
 
-    def get_label(self, label_id: str) -> io.BytesIO:
+    def get_label(self, label_id: str) -> Any:
         """
         Retrieve image object based on label id
 
@@ -232,8 +228,9 @@ class LocalDatastore(Datastore):
         for obj in self._datastore.objects:
             for label in obj.labels:
                 if label.id == label_id:
-                    with open(os.path.join(self._datastore_path, self._label_store_path, label.id)) as f:
-                        buf = io.BytesIO(f.read())
+                    buf = io.BytesIO(
+                        Path(os.path.join(self._datastore_path, self._label_store_path, label.id)).read_bytes()
+                    )
         return buf
 
     def get_label_uri(self, label_id: str) -> str:
@@ -247,7 +244,7 @@ class LocalDatastore(Datastore):
             for label in obj.labels:
                 if label.id == label_id:
                     return os.path.join(self._datastore_path, self._label_store_path, label.id)
-        return None
+        return ""
 
     def get_labels_by_image_id(self, image_id: str) -> Dict[str, str]:
         """
