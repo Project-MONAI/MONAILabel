@@ -69,7 +69,6 @@ class _ui_MONAILabelSettingsPanel(object):
             "Enable this option to auto run segmentation if pre-trained model exists when Next Sample is fetched"
         )
         groupLayout.addRow("Auto-Run Pre-Trained Model:", autoRunSegmentationCheckBox)
-        # autRunMapper = ctk.ctkBooleanMapper(autoRunSegmentationCheckBox, "checked", str(qt.SIGNAL("toggled(bool)")))
         parent.registerProperty(
             "MONAI-Label/autoRunSegmentationOnNextSample",
             ctk.ctkBooleanMapper(autoRunSegmentationCheckBox, "checked", str(qt.SIGNAL("toggled(bool)"))),
@@ -1766,7 +1765,4 @@ GenericAnatomyColors = {
     "region 15": (157, 0, 0),
     "unknown": (100, 100, 130),
     "cyst": (205, 205, 100),
-    # additional colors added for covid lesion
-    "lung": (224, 186, 162),  # same color as inferior lobe lung from above
-    "lesion": (251, 159, 255),  # same color as region 2 from above
 }
