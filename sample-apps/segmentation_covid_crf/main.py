@@ -32,7 +32,7 @@ class MyApp(MONAILabelApp):
             "segmentation_covid": MyInfer(os.path.join(model_dir, "segmentation_covid.ts")),
         }
 
-        self.postproc_methods = {
+        postprocs = {
             # can have other post processors here
             "CRF": MyCRF(method='CRF'),
         }
@@ -60,6 +60,7 @@ class MyApp(MONAILabelApp):
             app_dir=app_dir,
             studies=studies,
             infers=infers,
+            postprocs=postprocs,
             active_learning=MyActiveLearning()
         )
 
@@ -137,7 +138,7 @@ class MyApp(MONAILabelApp):
 
     def postproc_label(self, request):
         method = request.get('method')
-        task = self.postproc_methods.get(method)
+        task = self.postprocs.get(method)
 
         # prepare data
         data = {}

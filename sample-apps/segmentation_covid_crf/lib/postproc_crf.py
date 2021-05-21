@@ -22,7 +22,7 @@ class MyCRF(PostProcessingTask):
     Basic Post Processing Task Helper
     """
 
-    def __init__(self, method='CRF', type=PostProcType.CRF, labels=["spleen"], dimension=3, description='A post processing step with CRF for Spleen'):
+    def __init__(self, method='CRF', type=PostProcType.POSTPROCS, labels=["spleen"], dimension=3, description='A post processing step with CRF for Spleen'):
         super().__init__(
                     method=method,
                     type=type,

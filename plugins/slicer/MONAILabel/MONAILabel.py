@@ -104,6 +104,7 @@ class MONAILabelWidget(ScriptedLoadableModuleWidget, VTKObservationMixin):
         
         self.info = {}
         self.models = OrderedDict()
+        self.postprocs = OrderedDict()
         self.config = OrderedDict()
         self.current_sample = None
         self.samples = {}
@@ -181,6 +182,7 @@ class MONAILabelWidget(ScriptedLoadableModuleWidget, VTKObservationMixin):
         # Scribbles
         # eraser icon from: https://commons.wikimedia.org/wiki/File:Crystal128-eraser.svg
         # brush icon from: https://commons.wikimedia.org/wiki/File:Crystal128-tool-brush.svg
+        self.ui.postprocMethodSelector.connect("currentIndexChanged(int)", self.updateParameterNodeFromGUI)
         self.ui.paintScribblesButton.setIcon(self.icon('tool-brush.svg'))
         self.ui.eraseScribblesButton.setIcon(self.icon('eraser.svg'))
         self.ui.updateScribblesButton.setIcon(self.icon('refresh-icon.png'))
@@ -289,10 +291,11 @@ class MONAILabelWidget(ScriptedLoadableModuleWidget, VTKObservationMixin):
             self.reportProgress(30)
 
             self.updateServerSettings()
-            # At the moment method is hard-coded like this, this can be extended in future
-            # to include other methods from a drop-down menu from UI
-            method = 'CRF'
-
+            
+            # fetch selected postprocessing method
+            method = self.ui.postprocMethodSelector.currentText
+            print(f'Postproc method: {method} selected')
+            
             self.reportProgress(40)
             result_file, params = self.logic.postproc_label(method, self.current_sample["id"], scribbles_in)
             self.reportProgress(90)
@@ -436,6 +439,7 @@ class MONAILabelWidget(ScriptedLoadableModuleWidget, VTKObservationMixin):
 
         self.updateSelector(self.ui.segmentationModelSelector, ['segmentation'], 'SegmentationModel', 0)
         self.updateSelector(self.ui.deepgrowModelSelector, ['deepgrow'], 'DeepgrowModel', 0)
+        self.updatePostProcSelector(self.ui.postprocMethodSelector, ['postprocessor'], 'PostprocMethod', 0)
 
         self.ui.labelComboBox.clear()
         for label in self.info.get("labels", {}):
@@ -497,6 +501,11 @@ class MONAILabelWidget(ScriptedLoadableModuleWidget, VTKObservationMixin):
         if deepgrowModelIndex >= 0:
             deepgrowModel = self.ui.deepgrowModelSelector.itemText(deepgrowModelIndex)
             self._parameterNode.SetParameter("DeepgrowModel", deepgrowModel)
+        
+        postProcMethodIndex = self.ui.postprocMethodSelector.currentIndex
+        if postProcMethodIndex >= 0:
+            postProcMethod = self.ui.postprocMethodSelector.itemText(postProcMethodIndex)
+            self._parameterNode.SetParameter("PostprocMethod", postProcMethod)
 
         currentLabelIndex = self.ui.labelComboBox.currentIndex
         if currentLabelIndex >= 0:
@@ -523,6 +532,30 @@ class MONAILabelWidget(ScriptedLoadableModuleWidget, VTKObservationMixin):
         try:
             modelInfo = self.models[model]
             selector.setToolTip(modelInfo["description"])
+        except:
+            selector.setToolTip("")
+        selector.blockSignals(wasSelectorBlocked)
+    
+    def updatePostProcSelector(self, selector, postproc_types, param, defaultIndex=0):
+        wasSelectorBlocked = selector.blockSignals(True)
+        selector.clear()
+
+        for postproc_name, postproc in self.postprocs.items():
+            print(postproc['type'])
+            if postproc['type'] in postproc_types:
+                print('WE ARE HERE')
+                selector.addItem(postproc_name)
+                selector.setItemData(selector.count - 1, postproc['description'], qt.Qt.ToolTipRole)
+
+        postproc = self._parameterNode.GetParameter(param)
+        postproc = "" if not postproc else postproc
+        postprocIndex = selector.findText(postproc)
+        postprocIndex = defaultIndex if postprocIndex < 0 < selector.count else postprocIndex
+        selector.setCurrentIndex(postprocIndex)
+
+        try:
+            postprocInfo = self.models[postproc]
+            selector.setToolTip(postprocInfo["description"])
         except:
             selector.setToolTip("")
         selector.blockSignals(wasSelectorBlocked)
@@ -726,6 +759,7 @@ class MONAILabelWidget(ScriptedLoadableModuleWidget, VTKObservationMixin):
 
     def onClickFetchModels(self):
         self.fetchModels(showInfo=False)
+        self.fetchPostprocessors(showInfo=False)
         self.updateConfigTable()
 
         # if self._volumeNode is None:
@@ -767,6 +801,49 @@ class MONAILabelWidget(ScriptedLoadableModuleWidget, VTKObservationMixin):
         msg += '-----------------------------------------------------\t\n'
         for model_type in model_count.keys():
             msg += model_type.capitalize() + ' Models: \t' + str(model_count[model_type]) + '\t\n'
+        msg += '-----------------------------------------------------\t\n'
+
+        if showInfo:
+            qt.QMessageBox.information(slicer.util.mainWindow(), 'MONAI Label', msg)
+        logging.debug(msg)
+        logging.info("Time consumed by fetch info: {0:3.1f}".format(time.time() - start))
+
+    def fetchPostprocessors(self, showInfo=False):
+        if not self.logic:
+            return
+
+        start = time.time()
+        try:
+            self.updateServerSettings()
+            info = self.logic.info()
+            self.info = info
+
+            postprocs = info["postprocs"]
+        except:
+            slicer.util.errorDisplay("Failed to fetch models from remote server. "
+                                     "Make sure server address is correct and <server_uri>/info/ "
+                                     "is accessible in browser",
+                                     detailedText=traceback.format_exc())
+            return
+
+        self.postprocs.clear()
+        self.config = info["config"]
+        postprocs_count = {}
+        for k, v in postprocs.items():
+            postproc_type = v.get('type', 'postprocessor')
+            postprocs_count[postproc_type] = postprocs_count.get(postproc_type, 0) + 1
+
+            logging.debug('{} = {}'.format(k, postproc_type))
+            self.postprocs[k] = v
+
+        self.updateGUIFromParameterNode()
+
+        msg = ''
+        msg += '-----------------------------------------------------\t\n'
+        msg += 'Total PostProcessors Available: \t' + str(len(postprocs)) + '\t\n'
+        msg += '-----------------------------------------------------\t\n'
+        for postproc_type in postprocs_count.keys():
+            msg += postproc_type.capitalize() + ' Method: \t' + str(postprocs_count[postproc_type]) + '\t\n'
         msg += '-----------------------------------------------------\t\n'
 
         if showInfo:
@@ -1247,6 +1324,8 @@ class MONAILabelLogic(ScriptedLoadableModuleLogic):
             parameterNode.SetParameter("SegmentationModel", "")
         if not parameterNode.GetParameter("DeepgrowModel"):
             parameterNode.SetParameter("DeepgrowModel", "")
+        if not parameterNode.GetParameter("PostprocMethod"):
+            parameterNode.SetParameter("PostprocMethod", "")
 
     def __del__(self):
         shutil.rmtree(self.tmpdir, ignore_errors=True)

@@ -12,9 +12,9 @@ from monailabel.utils.others.writer import Writer
 logger = logging.getLogger(__name__)
 
 class PostProcType:
-    CRF = 'CRF'
+    POSTPROCS = 'postprocessor'
     OTHERS = 'others'
-    KNOWN_TYPES = [CRF, OTHERS]
+    KNOWN_TYPES = [POSTPROCS, OTHERS]
 
 
 class PostProcessingTask:

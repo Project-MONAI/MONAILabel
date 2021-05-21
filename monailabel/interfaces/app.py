@@ -15,7 +15,7 @@ logger = logging.getLogger(__name__)
 
 
 class MONAILabelApp:
-    def __init__(self, app_dir, studies, infers=None, active_learning: ActiveLearning = ActiveLearning()):
+    def __init__(self, app_dir, studies, infers=None, postprocs=None, active_learning: ActiveLearning = ActiveLearning()):
         """
         Base Class for Any MONAI Label App
 
@@ -28,6 +28,7 @@ class MONAILabelApp:
         self.app_dir = app_dir
         self.studies = studies
         self.infers = dict() if infers is None else infers
+        self.postprocs = dict() if postprocs is None else postprocs
         self.active_learning = active_learning
         self._datastore: Datastore = LocalDatastore(studies)
 
@@ -52,6 +53,12 @@ class MONAILabelApp:
                 models[name] = infer.info()
 
         meta["models"] = models
+
+        postprocs = dict()
+        for name, postproc in self.postprocs.items():
+            postprocs[name] = postproc.info()
+        meta['postprocs'] = postprocs
+        print(meta)
         return meta
 
     def infer(self, request):
