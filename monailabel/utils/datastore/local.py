@@ -59,6 +59,7 @@ class LocalDatastore(Datastore):
         label_store_path: str = "labels",
         image_extensions=("*.nii.gz", "*.nii"),
         label_extensions=("*.nii.gz", "*.nii"),
+        auto_reload=False,
     ):
         """
         Creates a `LocalDataset` object
@@ -91,23 +92,24 @@ class LocalDatastore(Datastore):
         self._reconcile_datastore()
         self._update_datastore_file()
 
-        include_patterns = [
-            f"{self._datastore_path}{os.path.sep}{ext}" for ext in list(set([*image_extensions, *label_extensions]))
-        ]
-        include_patterns.extend(
-            [
-                f"{os.path.join(self._datastore_path, self._label_store_path)}{os.path.sep}{ext}"
-                for ext in list(set([*image_extensions, *label_extensions]))
+        if auto_reload:
+            include_patterns = [
+                f"{self._datastore_path}{os.path.sep}{ext}" for ext in list(set([*image_extensions, *label_extensions]))
             ]
-        )
-        self._handler = PatternMatchingEventHandler(
-            patterns=include_patterns,
-            ignore_patterns=[self._datastore_config_path],
-        )
-        self._handler.on_any_event = self._on_any_event
-        self._observer = Observer()
-        self._observer.schedule(self._handler, recursive=True, path=self._datastore_path)
-        self._observer.start()
+            include_patterns.extend(
+                [
+                    f"{os.path.join(self._datastore_path, self._label_store_path)}{os.path.sep}{ext}"
+                    for ext in list(set([*image_extensions, *label_extensions]))
+                ]
+            )
+            self._handler = PatternMatchingEventHandler(
+                patterns=include_patterns,
+                ignore_patterns=[self._datastore_config_path],
+            )
+            self._handler.on_any_event = self._on_any_event
+            self._observer = Observer()
+            self._observer.schedule(self._handler, recursive=True, path=self._datastore_path)
+            self._observer.start()
 
     @property
     def name(self) -> str:

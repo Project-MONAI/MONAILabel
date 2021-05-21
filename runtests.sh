@@ -308,9 +308,9 @@ if [ $doIsortFormat = true ]; then
   ${cmdPrefix}isort --version
 
   if [ $doIsortFix = true ]; then
-    ${cmdPrefix}${PY_EXE} -m isort -l ${LINE_LENGTH} "$(pwd)"
+    ${cmdPrefix}${PY_EXE} -m isort -l ${LINE_LENGTH} --profile black "$(pwd)"
   else
-    ${cmdPrefix}${PY_EXE} -m isort -l ${LINE_LENGTH} --check "$(pwd)"
+    ${cmdPrefix}${PY_EXE} -m isort -l ${LINE_LENGTH} --profile black --check "$(pwd)"
   fi
 
   isort_status=$?
