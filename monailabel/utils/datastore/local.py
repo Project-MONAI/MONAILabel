@@ -8,6 +8,8 @@ import shutil
 from typing import Any, Dict, List
 
 from pydantic import BaseModel
+from watchdog.events import PatternMatchingEventHandler
+from watchdog.observers import Observer
 
 from monailabel.interfaces.datastore import Datastore, DefaultLabelTag
 from monailabel.interfaces.exception import ImageNotFoundException, LabelNotFoundException
@@ -55,7 +57,6 @@ class LocalDatastore(Datastore):
         datastore_path: str,
         datastore_config: str = "datastore.json",
         label_store_path: str = "labels",
-        reconcile_datastore: bool = True,
         image_extensions=("*.nii.gz", "*.nii"),
         label_extensions=("*.nii.gz", "*.nii"),
     ):
@@ -87,10 +88,26 @@ class LocalDatastore(Datastore):
         os.makedirs(os.path.join(self._datastore_path, self._label_store_path), exist_ok=True)
 
         # reconcile the loaded datastore file with any existing files in the path
-        if reconcile_datastore:
-            self._reconcile_datastore()
-
+        self._reconcile_datastore()
         self._update_datastore_file()
+
+        include_patterns = [
+            f"{self._datastore_path}{os.path.sep}{ext}" for ext in list(set([*image_extensions, *label_extensions]))
+        ]
+        include_patterns.extend(
+            [
+                f"{os.path.join(self._datastore_path, self._label_store_path)}{os.path.sep}{ext}"
+                for ext in list(set([*image_extensions, *label_extensions]))
+            ]
+        )
+        self._handler = PatternMatchingEventHandler(
+            patterns=include_patterns,
+            ignore_patterns=[self._datastore_config_path],
+        )
+        self._handler.on_any_event = self._on_any_event
+        self._observer = Observer()
+        self._observer.schedule(self._handler, recursive=True, path=self._datastore_path)
+        self._observer.start()
 
     @property
     def name(self) -> str:
@@ -292,7 +309,10 @@ class LocalDatastore(Datastore):
         """
         return [obj.image.id for obj in self._datastore.objects]
 
-    def refresh(self):
+    def _on_any_event(self, event):
+        self.refresh()
+
+    def refresh(self, event=None):
         """
         Refresh the datastore based on the state of the files on disk
         """
@@ -407,8 +427,9 @@ class LocalDatastore(Datastore):
                 obj for obj in self._datastore.objects if obj.image.id not in missing_file_image_id
             ]
 
-        label_id_files = self._list_files(os.path.join(self._datastore_path, self._label_store_path),
-                                          self._label_extensions)
+        label_id_files = self._list_files(
+            os.path.join(self._datastore_path, self._label_store_path), self._label_extensions
+        )
         label_id_datastore = [label.id for obj in self._datastore.objects for label in obj.labels]
         missing_file_label_id = list(set(label_id_datastore) - set(label_id_files.keys()))
         if missing_file_label_id:
@@ -422,8 +443,9 @@ class LocalDatastore(Datastore):
         this adds the image present in the datastore path and any corresponding labels for that image
         """
         image_id_files = LocalDatastore._list_files(self._datastore_path, self._image_extensions)
-        label_id_files = LocalDatastore._list_files(os.path.join(self._datastore_path, self._label_store_path),
-                                                    self._label_extensions)
+        label_id_files = LocalDatastore._list_files(
+            os.path.join(self._datastore_path, self._label_store_path), self._label_extensions
+        )
 
         # add any missing image files and any corresponding labels
         existing_image_ids = [obj.image.id for obj in self._datastore.objects]
@@ -450,7 +472,6 @@ class LocalDatastore(Datastore):
     def _update_datastore_file(self):
         with open(self._datastore_config_path, "w") as f:
             json.dump(self._datastore.dict(), f, indent=2, default=str)
-
 
     def __str__(self):
         return json.dumps(self._datastore.dict())
