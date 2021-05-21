@@ -32,6 +32,3 @@ Run slicer and load monailabel extension:
 
 Load a sample with its initial segmentation by clicking on *Next Sample* in Active Learning. Scribbles functionality is inside *Post Processing Scribbles* tab.
 Add scribbles by selecting *Painter/Eraser* and appropriate label and paint into regions as needed. Once done, click *Update* to update segmentations using user scribbles. 
-
-## CRF Timing
-At the moment, there is a bug in MONAI CRF code that prevents us from running it in GPU mode (see: [MONAI#2098](https://github.com/Project-MONAI/MONAI/issues/2098)). Therefore the CRF part takes ~ 1 min to complete. Once this bug is fixed, we can switch back to GPU version which is much faster to run the post processing. 

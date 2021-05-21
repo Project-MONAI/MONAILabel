@@ -2,7 +2,6 @@ import copy
 import time
 import logging
 
-from lib.transforms import ConvertLogitsToBinaryd
 from monai.inferers import SlidingWindowInferer
 from monai.transforms import (
     Activationsd,
@@ -15,6 +14,7 @@ from monai.transforms import (
     SqueezeDimd,
     ToNumpyd,
 )
+from monailabel.utils.postproc.postproctx import ConvertLogitsToBinaryd
 from monailabel.utils.infer import InferenceTask, InferType
 from monailabel.utils.others.post import Restored, BoundingBoxd
 
@@ -32,7 +32,7 @@ class MyInfer(InferenceTask):
             type=InferType.SEGMENTATION,
             labels=["lesion"],
             dimension=3,
-            description='A pre-trained model for volumetric (3D) segmentation of the spleen from CT image'
+            description='A pre-trained model for volumetric (3D) segmentation of the COVID lesion from CT image'
     ):
         super().__init__(
             path=path,
@@ -58,7 +58,7 @@ class MyInfer(InferenceTask):
         return [
             AddChanneld(keys='pred'),
             Activationsd(keys='pred', softmax=True),
-            ConvertLogitsToBinaryd(key='pred', foreground_class=[1], softmax=False),
+            ConvertLogitsToBinaryd(keys='pred', foreground_class=[1], softmax=False),
             CopyItemsd(keys='pred', times=1, names='logits'),
             AsDiscreted(keys='pred', argmax=True),
             SqueezeDimd(keys=['pred', 'logits'], dim=0),

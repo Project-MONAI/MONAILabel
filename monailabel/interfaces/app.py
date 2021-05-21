@@ -51,14 +51,12 @@ class MONAILabelApp:
         for name, infer in self.infers.items():
             if infer.is_valid():
                 models[name] = infer.info()
-
         meta["models"] = models
 
         postprocs = dict()
         for name, postproc in self.postprocs.items():
             postprocs[name] = postproc.info()
         meta['postprocs'] = postprocs
-        print(meta)
         return meta
 
     def infer(self, request):
