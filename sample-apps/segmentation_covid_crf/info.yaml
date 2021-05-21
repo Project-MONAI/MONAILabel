@@ -4,7 +4,6 @@ name: Segmentation COVID Lesion
 description: MONAI Label App to provide active learning solution to label COVID lesion over 3D CT Images
 dimension: 3
 labels:
-  - lung
   - lesion
 config:
   infer:
