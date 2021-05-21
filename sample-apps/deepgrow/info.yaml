@@ -1,0 +1,21 @@
+---
+version: 1
+name: Deepgrow
+description: MONAI Label App to provide active learning solution using pre-trained Clara Deepgrow MMAR
+dimension: 3
+labels:
+  - spleen
+config:
+  infer:
+    device: cuda
+  train:
+    model:
+      all: Train all Deepgrow models
+      deepgrow_2d: Train deepgrow 2d model
+      deepgrow_3d: Train deepgrow 3d model
+    name: model_01
+    device: cuda
+    amp: true
+    lr: 0.0001
+    epochs: 5
+    val_split: 0.2

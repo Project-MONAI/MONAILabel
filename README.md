@@ -16,7 +16,7 @@ It shares the same principles with [MONAI](https://github.com/Project-MONAI).
 ![alt text](https://www.websequencediagrams.com/cgi-bin/cdraw?lz=dGl0bGUgU2ltcGxlIFVzZWNhc2UKClJlc2VhcmNoZXItPgACCjogcGlwIGluc3RhbGwgbW9uYWlsYWJlbAAWGWRldmVsb3BzIG15X2FwcApub3RlIG92ZXIgAEkMdXNpbmcgdGVtcGxhdGUgYXBwIHByb3ZpZGVzIFxuMS4gdHJhaW5cbjIuIGluZmVyIGZvciBwcmVfABMFZWQgbW9kZWxzXG4zLiBhY3RpdmUgbGVhcm4gc3RyYXRlZ2llcwCBRA1NT05BSUxhYmVsOiBzdGFydF8AgUYFXwCBRwUoAIElBiwgZGF0YXNldCkAgX4OYWRpb2xvZ2lzdDogc2hhcmUAggEGIACCAwUgc2VydmVyIGlwCgAeCy0-M0RTbGljZXI6IGNvbmZpZ3VyZQCBfwwASAxGZXcAHgdzIGFyZSBhdgCCXwVsZSB0byBzZWxlY3QgXG5uZXR3b3JrLwCBWgd5L2RldmljZSBldGMuLgoAZwgAgVwObmV4dF9zYW1wbGUoAIIgBkxlYXJuaW5nKQoAgggKAIEhDAAnBiBkZXRhaWxzAEwLAIFGCmZldGNoAE4IbG9jYWwvcmVtb3RlKQBvF3J1bgCDPwZlbmNlKGRlZXBncm93LCBhdXRvc2VnbWVudAB3GACEZAcAgkEYcnJlY3RzAB8HAIFtFnN1Ym1pdCgAhS8FAIFnDgCEBwwAhGkFKG5ldwCCJwcpCgo&s=rose)
 
 ## Installation *(Development Mode)*
- - Pre-Trained models are available at [g-drive](https://drive.google.com/drive/folders/1QNEtb3InzpEve53xTWCmxe_HnR2cImUv?usp=sharing)
+ - Pre-Trained models are available at [dropbox](https://www.dropbox.com/sh/gcobuwui5v2r8f5/AAAaJ3uFajwo4NRnQ0BqU46Ma?dl=0)
  - Download sample images/datasets from [monai-aws](https://github.com/Project-MONAI/MONAI/blob/master/monai/apps/datasets.py#L213-L224)
 
 ```bash
@@ -26,11 +26,6 @@ git clone git@github.com:Project-MONAI/MONAILabel.git /workspace/MONAILabel
 cd /workspace/MONAILabel
 
 pip install -r requirements.txt
-
-# Download sample pre-trained models
-# https://drive.google.com/drive/folders/1QNEtb3InzpEve53xTWCmxe_HnR2cImUv?usp=sharing
-cd /workspace/MONAILabel/sample-apps/segmentation_spleen
-unzip model.zip && rm model.zip
 
 # Download MSD Datasets from
 mkdir -p /workspace/datasets
@@ -42,10 +37,7 @@ tar xf Task09_Spleen.tar
 cd /workspace/MONAILabel/monailabel
 export PYTHONPATH=/workspace/MONAILabel
 
-python main.py --app ../sample-apps/segmentation_spleen/ --studies /workspace/datasets/Task09_Spleen/imagesTr
-
-# To run in virtual env for the app by installing segmentation_spleen/requirements.txt
-#./start_monai_label.sh --app ../apps/segmentation_spleen/ --studies
+python main.py --app ../sample-apps/deepgrow/ --studies /workspace/datasets/Task09_Spleen/imagesTr
 ```
 
 ## App basic structure

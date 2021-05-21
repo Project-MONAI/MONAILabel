@@ -1,10 +1,9 @@
 aiofiles==0.6.0
 fastapi==0.63.0
-monai-weekly[all]
+monai[nibabel, skimage, pillow, tensorboard, gdown, ignite, torchvision, itk, tqdm, lmdb, psutil, openslide]
 pyyaml==5.4.1
 python-multipart==0.0.5
 requests-toolbelt==0.9.1
 uvicorn==0.13.4
 watchdog==2.0.2
-SimpleITK==2.0.2
-openapi-schema-validator==0.1.5
+pydantic==1.8.2

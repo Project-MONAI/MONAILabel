@@ -6,16 +6,13 @@ import pathlib
 import time
 from shutil import copyfile
 
+from lib import MyInfer, MyStrategy, MyTrain, SpleenCRF
 from monai.networks.layers import Norm
 from monai.networks.nets import UNet
-from monailabel.interfaces.app import MONAILabelApp
-from monailabel.interfaces.exception import (MONAILabelError,
-                                             MONAILabelException)
-from monailabel.utils.infer.deepgrow_2d import InferDeepgrow2D
-from monailabel.utils.infer.deepgrow_3d import InferDeepgrow3D
-from monailabel.utils.others.post import BoundingBoxd, Restored
 
-from lib import MyActiveLearning, MyInfer, MyTrain, SpleenCRF
+from monailabel.interfaces.datastore import Datastore, DefaultLabelTag
+from monailabel.interfaces import MONAILabelApp
+from monailabel.utils.activelearning import Random
 
 logger = logging.getLogger(__name__)
 
@@ -24,17 +21,37 @@ RESEARCH_MODE=True
 
 class MyApp(MONAILabelApp):
     def __init__(self, app_dir, studies):
-        model_dir = os.path.join(app_dir, "model")
+        self.model_dir = os.path.join(app_dir, "model")
+        self.network = UNet(
+            dimensions=3,
+            in_channels=1,
+            out_channels=2,
+            channels=(16, 32, 64, 128, 256),
+            strides=(2, 2, 2, 2),
+            num_res_units=2,
+            norm=Norm.BATCH,
+        )
+
+        self.pretrained_model = os.path.join(self.model_dir, "segmentation_spleen.pt")
+        self.final_model = os.path.join(self.model_dir, "final.pt")
+        path = [self.pretrained_model, self.final_model]
+
         infers = {
-            "deepgrow_2d": InferDeepgrow2D(os.path.join(model_dir, "deepgrow_2d.ts")),
-            "deepgrow_3d": InferDeepgrow3D(os.path.join(model_dir, "deepgrow_3d.ts")),
-            "segmentation_spleen": MyInfer(os.path.join(model_dir, "segmentation_spleen.ts")),
+            "segmentation_spleen": MyInfer(path, self.network),
         }
 
         postprocs = {
             # can have other post processors here
             "CRF": SpleenCRF(method='CRF'),
         }
+
+        strategies = {
+            "random": Random(),
+            "first": MyStrategy(),
+        }
+        resources = [
+            (self.pretrained_model, "https://www.dropbox.com/s/xc9wtssba63u7md/segmentation_spleen.pt?dl=1"),
+        ]
 
         # define a dictionary to keep track of logits files
         # these are needed for postproc step
@@ -60,8 +77,12 @@ class MyApp(MONAILabelApp):
             studies=studies,
             infers=infers,
             postprocs=postprocs,
-            active_learning=MyActiveLearning()
+            strategies=strategies,
+            resources=resources,
         )
+
+        # Simple way to Add deepgrow 2D+3D models for infer tasks
+        self.add_deepgrow_infer_tasks()
 
     def infer(self, request):
         """
@@ -76,6 +97,8 @@ class MyApp(MONAILabelApp):
                         "device": "cuda"
                         "model": "segmentation_spleen",
                         "image": "file://xyz",
+                        "save_label": "true/false",
+                        "label_tag": "my_custom_label_tag", (if not provided defaults to `original`)
                         "params": {},
                     }
 
@@ -85,21 +108,30 @@ class MyApp(MONAILabelApp):
         Returns:
             JSON containing `label` and `params`
         """
-        
         # cleanup previous logits files
         self.cleanup_logits_files()
 
-        model_name = request.get('model')
-        model_name = model_name if model_name else 'model'
+        model_name = request.get("model")
+        model_name = model_name if model_name else "model"
 
         task = self.infers.get(model_name)
         if task is None:
             raise MONAILabelException(
                 MONAILabelError.INFERENCE_ERROR,
-                "Inference Task is not Initialized. There is no pre-trained model available"
+                "Inference Task is not Initialized. There is no pre-trained model available",
             )
 
+        image_id = request["image"]
+        request["image"] = self._datastore.get_image_uri(request["image"])
         result_file_name, result_json = task(request)
+
+        if request.get("save_label", True):
+            self.datastore().save_label(
+                image_id,
+                result_file_name,
+                request.get("label_tag") if request.get("label_tag") else DefaultLabelTag.ORIGINAL.value,
+            )
+
         if 'logits_file_name' in result_json:
             logits_file = result_json.pop('logits_file_name')
             logits_json = result_json.pop('logits_json')
@@ -109,28 +141,38 @@ class MyApp(MONAILabelApp):
         return {"label": result_file_name, "params": result_json}
 
     def train(self, request):
-        epochs = request.get('epochs', 1)
-        amp = request.get('amp', True)
-        device = request.get('device', 'cuda')
-        lr = request.get('lr', 0.0001)
-        val_split = request.get('val_split', 0.2)
+        name = request.get("name", "model_01")
+        epochs = request.get("epochs", 1)
+        amp = request.get("amp", True)
+        device = request.get("device", "cuda")
+        lr = request.get("lr", 0.0001)
+        val_split = request.get("val_split", 0.2)
 
         logger.info(f"Training request: {request}")
+
+        output_dir = os.path.join(self.model_dir, name)
+
+        # App Owner can decide which checkpoint to load (from existing output folder or from base checkpoint)
+        load_path = os.path.join(output_dir, "model.pt")
+        load_path = load_path if os.path.exists(load_path) else self.pretrained_model
+
+        # Update/Publish latest model for infer/active learning use
+        if os.path.exists(self.final_model) or os.path.islink(self.final_model):
+            os.unlink(self.final_model)
+        os.symlink(
+            os.path.join(os.path.basename(output_dir), "model.pt"),
+            self.final_model,
+            dir_fd=os.open(self.model_dir, os.O_RDONLY),
+        )
+
         task = MyTrain(
-            output_dir=os.path.join(self.app_dir, "train", "train_0"),
+            output_dir=output_dir,
             data_list=self.datastore().datalist(),
-            network=UNet(
-                dimensions=3,
-                in_channels=1,
-                out_channels=2,
-                channels=(16, 32, 64, 128, 256),
-                strides=(2, 2, 2, 2),
-                num_res_units=2,
-                norm=Norm.BATCH
-            ),
+            network=self.network,
+            load_path=load_path,
             device=device,
             lr=lr,
-            val_split=val_split
+            val_split=val_split,
         )
 
         return task(max_epochs=epochs, amp=amp)
@@ -141,7 +183,7 @@ class MyApp(MONAILabelApp):
 
         # prepare data
         data = {}
-        image_file = request.get('image')
+        image_file = self._datastore.get_image_uri(request["image"])
         scribbles_file = request.get('scribbles')
         image_name = os.path.basename(image_file).rsplit('.')[0]
         

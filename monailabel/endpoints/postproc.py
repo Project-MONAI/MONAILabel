@@ -7,17 +7,13 @@ import tempfile
 from enum import Enum
 from typing import Optional
 
-from fastapi import APIRouter
-from fastapi import File, UploadFile
-from fastapi import HTTPException
+from fastapi import APIRouter, File, UploadFile, HTTPException
 from fastapi.responses import FileResponse, Response
 from requests_toolbelt import MultipartEncoder
 from starlette.background import BackgroundTasks
 
-from monailabel.config import settings
 from monailabel.interfaces import MONAILabelApp
-from monailabel.utils.others.app_utils import get_app_instance
-from monailabel.utils.others.generic import get_mime_type
+from monailabel.utils.others.generic import get_app_instance, get_mime_type
 
 logger = logging.getLogger(__name__)
 

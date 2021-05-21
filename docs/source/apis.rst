@@ -20,17 +20,26 @@ MONAI APP
 .. autoclass:: MONAILabelException
     :members:
 
-Utils
-======
+Tasks
+=====
 
-.. automodule:: monailabel.utils.infer.task
-.. autoclass:: InferenceTask
+.. automodule:: monailabel.interfaces.tasks.infer
+.. autoclass:: InferType
+    :members:
+.. autoclass:: InferTask
     :members:
 
-.. automodule:: monailabel.utils.train.task
+.. automodule:: monailabel.interfaces.tasks.train
 .. autoclass:: TrainTask
     :members:
 
-.. automodule:: monailabel.utils.train.basic_segmentation
-.. autoclass:: BasicTrainSegmentationTask
+.. automodule:: monailabel.interfaces.tasks.strategy
+.. autoclass:: Strategy
+    :members:
+
+Utils
+=====
+
+.. automodule:: monailabel.utils.train.basic_train
+.. autoclass:: BasicTrainTask
     :members:

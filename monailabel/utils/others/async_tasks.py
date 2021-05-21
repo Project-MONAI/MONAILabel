@@ -13,28 +13,17 @@ from monailabel.config import settings
 
 logger = logging.getLogger(__name__)
 
-background_tasks = {
-    'train': [],
-    'infer': []
-}
-background_processes = {
-    'train': dict(),
-    'infer': dict()
-}
+background_tasks = {"train": [], "infer": []}
+background_processes = {"train": dict(), "infer": dict()}
 
 
 def task_func(task, method):
-    import monailabel.utils.others.app_utils as app_utils
     cmd = [
-        "python3",
-        os.path.realpath(app_utils.__file__),
-        "-a",
+        os.path.realpath(os.path.join(os.path.dirname(__file__), "../..", "scripts", "run_monailabel_user_app.sh")),
         settings.APP_DIR,
-        "-s",
         settings.STUDIES,
         method,
-        "-r",
-        json.dumps(task["request"])
+        json.dumps(task["request"]),
     ]
 
     process = subprocess.Popen(
@@ -42,7 +31,7 @@ def task_func(task, method):
         stderr=subprocess.STDOUT,
         stdout=subprocess.PIPE,
         universal_newlines=True,
-        env=os.environ.copy()
+        env=os.environ.copy(),
     )
     task_id = task["id"]
     background_processes[method][task_id] = process
@@ -50,7 +39,7 @@ def task_func(task, method):
     task["status"] = "RUNNING"
     task["details"] = deque(maxlen=20)
 
-    plogger = logging.getLogger("training")
+    plogger = logging.getLogger(f"task_{method}")
     while process.poll() is None:
         line = process.stdout.readline()
         line = line.rstrip()
@@ -58,7 +47,7 @@ def task_func(task, method):
             plogger.info(line)
             task["details"].append(line)
 
-    logger.info('Return code: {}'.format(process.returncode))
+    logger.info("Return code: {}".format(process.returncode))
     background_processes[method].pop(task_id, None)
     process.stdout.close()
 

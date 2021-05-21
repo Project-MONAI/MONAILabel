@@ -1,36 +1,49 @@
-import io
 import logging
 import os
-import pathlib
+import time
 from abc import abstractmethod
 
 import yaml
+from monai.apps import download_url
 
-from monailabel.interfaces.activelearning import ActiveLearning
-from monailabel.interfaces.datastore import Datastore
-from monailabel.interfaces.datastore_local import LocalDatastore
-from monailabel.interfaces.exception import MONAILabelException, MONAILabelError
+from monailabel.interfaces.datastore import Datastore, DefaultLabelTag
+from monailabel.interfaces.exception import MONAILabelError, MONAILabelException
+from monailabel.utils.activelearning import Random
+from monailabel.utils.datastore import LocalDatastore
+from monailabel.utils.infer import InferDeepgrow2D, InferDeepgrow3D
 
 logger = logging.getLogger(__name__)
 
 
 class MONAILabelApp:
-    def __init__(self, app_dir, studies, infers=None, postprocs=None, active_learning: ActiveLearning = ActiveLearning()):
+    def __init__(
+        self,
+        app_dir,
+        studies,
+	postprocs=None,
+        infers=None,
+        strategies=None,
+        resources=None,
+    ):
         """
         Base Class for Any MONAI Label App
 
         :param app_dir: path for your App directory
         :param studies: path for studies/datalist
         :param infers: Dictionary of infer engines
-        :param active_learning: ActiveLearning implementation to get next sample
+        :param postprocs: Dictionary of postprocessor engines
+        :param strategies: List of ActiveLearning strategies to get next sample
+        :param resources: List of Tuples (path, url) to be downloaded when not exists
 
         """
         self.app_dir = app_dir
         self.studies = studies
         self.infers = dict() if infers is None else infers
         self.postprocs = dict() if postprocs is None else postprocs
-        self.active_learning = active_learning
+        self.strategies = {"random", Random()} if strategies is None else strategies
+
         self._datastore: Datastore = LocalDatastore(studies)
+        self._download(resources)
 
     def info(self):
         """
@@ -39,12 +52,9 @@ class MONAILabelApp:
         """
         file = os.path.join(self.app_dir, "info.yaml")
         if not os.path.exists(file):
-            raise MONAILabelException(
-                MONAILabelError.APP_ERROR,
-                "info.yaml NOT Found in the APP Folder"
-            )
+            raise MONAILabelException(MONAILabelError.APP_ERROR, "info.yaml NOT Found in the APP Folder")
 
-        with open(file, 'r') as fc:
+        with open(file, "r") as fc:
             meta = yaml.full_load(fc)
 
         models = dict()
@@ -53,10 +63,15 @@ class MONAILabelApp:
                 models[name] = infer.info()
         meta["models"] = models
 
+        strategies = dict()
+        for name, strategy in self.strategies.items():
+            strategies[name] = strategy.info()
+        meta["strategies"] = strategies
+
         postprocs = dict()
         for name, postproc in self.postprocs.items():
             postprocs[name] = postproc.info()
-        meta['postprocs'] = postprocs
+        meta["postprocs"] = postprocs
         return meta
 
     def infer(self, request):
@@ -72,6 +87,8 @@ class MONAILabelApp:
                         "device": "cuda"
                         "model": "segmentation_spleen",
                         "image": "file://xyz",
+                        "save_label": "true/false",
+                        "label_tag": "my_custom_label_tag", (if not provided defaults to `original`)
                         "params": {},
                     }
 
@@ -81,17 +98,27 @@ class MONAILabelApp:
         Returns:
             JSON containing `label` and `params`
         """
-        model_name = request.get('model')
-        model_name = model_name if model_name else 'model'
+        model_name = request.get("model")
+        model_name = model_name if model_name else "model"
 
         task = self.infers.get(model_name)
         if task is None:
             raise MONAILabelException(
                 MONAILabelError.INFERENCE_ERROR,
-                "Inference Task is not Initialized. There is no pre-trained model available"
+                "Inference Task is not Initialized. There is no pre-trained model available",
             )
 
+        image_id = request["image"]
+        request["image"] = self._datastore.get_image_uri(request["image"])
         result_file_name, result_json = task(request)
+
+        if request.get("save_label", True):
+            self.datastore().save_label(
+                image_id,
+                result_file_name,
+                request.get("label_tag") if request.get("label_tag") else DefaultLabelTag.ORIGINAL.value,
+            )
+
         return {"label": result_file_name, "params": result_json}
 
     def datastore(self) -> Datastore:
@@ -130,14 +157,28 @@ class MONAILabelApp:
                 For example::
 
                     {
-                        "strategy": "random,
+                        "strategy": "random"
                     }
 
         Returns:
             JSON containing next image info that is selected for labeling
         """
-        image = self.active_learning(request, self.datastore())
-        return {"image": image}
+        strategy = request.get("strategy")
+        strategy = strategy if strategy else "random"
+
+        task = self.strategies.get(strategy)
+        if task is None:
+            raise MONAILabelException(
+                MONAILabelError.APP_INIT_ERROR,
+                f"ActiveLearning Task is not Initialized. There is no such strategy '{strategy}' available",
+            )
+
+        image_id = task(request, self.datastore())
+        image_path = self._datastore.get_image_uri(image_id)
+        return {
+            "id": image_id,
+            "path": image_path,
+        }
 
     def save_label(self, request):
         """
@@ -152,6 +193,7 @@ class MONAILabelApp:
                         "image": "file://xyz.com",
                         "label": "file://label_xyz.com",
                         "segments" ["spleen"],
+                        "label_tag": "my_custom_label_tag", (if not provided defaults to `final`)
                         "params": {},
                     }
 
@@ -159,20 +201,42 @@ class MONAILabelApp:
             JSON containing next image and label info
         """
 
-        label = io.BytesIO(open(request['label'], 'rb').read())
-
-        img_name = os.path.basename(request['image']).rsplit('.')[0]
-        file_ext = ''.join(pathlib.Path(request['label']).suffixes)
-        segments = request.get('segments')
-        if not segments:
-            segments = self.info().get("labels", [])
-        segments = [segments] if isinstance(segments, str) else segments
-        segments = "+".join(segments) if len(segments) else "unk"
-
-        label_id = f"label_{segments}_{img_name}{file_ext}"
-        label_file = self.datastore().save_label(request['image'], label_id, label)
+        label_id = self.datastore().save_label(
+            request["image"],
+            request["label"],
+            request.get("label_tag") if request.get("label_tag") else DefaultLabelTag.FINAL.value,
+        )
 
         return {
             "image": request.get("image"),
-            "label": label_file,
+            "label": label_id,
         }
+
+    def _download(self, resources):
+        if not resources:
+            return
+
+        for resource in resources:
+            if not os.path.exists(resource[0]):
+                os.makedirs(os.path.dirname(resource[0]), exist_ok=True)
+                logger.info(f"Downloading resource: {resource[0]} from {resource[1]}")
+                download_url(resource[1], resource[0])
+                time.sleep(1)
+
+    def add_deepgrow_infer_tasks(self):
+        deepgrow_2d = os.path.join(self.app_dir, "model", "deepgrow_2d.ts")
+        deepgrow_3d = os.path.join(self.model_dir, "model", "deepgrow_3d.ts")
+
+        self.infers.update(
+            {
+                "deepgrow_2d": InferDeepgrow2D(deepgrow_2d),
+                "deepgrow_3d": InferDeepgrow3D(deepgrow_3d),
+            }
+        )
+
+        self._download(
+            [
+                (deepgrow_2d, "https://www.dropbox.com/s/y9a7tqcos2n4lxf/deepgrow_2d.ts?dl=1"),
+                (deepgrow_3d, "https://www.dropbox.com/s/vs6l30mf6t3h3d0/deepgrow_3d.ts?dl=1"),
+            ]
+        )
