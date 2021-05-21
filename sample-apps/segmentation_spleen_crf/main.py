@@ -21,7 +21,7 @@ from lib.transforms import AddUnaryTermd, ApplyCRFPostProcd
 logger = logging.getLogger(__name__)
 
 # Whether to save research data or not
-RESEARCH_MODE=False
+RESEARCH_MODE=True
 
 class MyApp(MONAILabelApp):
     def __init__(self, app_dir, studies):

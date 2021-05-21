@@ -14,12 +14,6 @@ logger = logging.getLogger(__name__)
 # help from: https://stackoverflow.com/a/25155518
 EPS = 7./3 - 4./3 - 1
 
-# 'lesion': 1,
-
-# 'lung': 2,
-# 'background': 0,
-# unused : 3
-
 # Maybe these can go in MONAI, not sure at the moment
 class ConvertLogitsToBinaryd(Transform):
     def __init__(
@@ -146,6 +140,12 @@ class AddUnaryTermd(Transform):
         background_pts = np.argwhere(scrib == self.sc_background_label)
         foreground_pts = np.argwhere(scrib ==  self.sc_foreground_label)
 
+        if len(background_pts) == 0:
+            logger.info(f'no background scribbles received with label {self.sc_background_label}, available in scribbles {np.unique(scrib)}')
+
+        if len(foreground_pts) == 0:
+            logger.info(f'no foreground scribbles received with label {self.sc_foreground_label}, available in scribbles {np.unique(scrib)}')
+
         if self.use_simplecrf:
             # swap fg with bg as -log taken inside simplecrf code
             d[self.unary] = self._apply(foreground_pts, background_pts, prob)
@@ -166,7 +166,7 @@ class ApplyCRFPostProcd(Transform):
         bilateral_color_sigma: float = 0.5,
         gaussian_spatial_sigma: float = 5.0,
         compatibility_kernel_range: float = 1,
-        device = torch.device('cpu'),
+        device = torch.device('cuda'),
         use_simplecrf = True
     ):
         self.unary = unary

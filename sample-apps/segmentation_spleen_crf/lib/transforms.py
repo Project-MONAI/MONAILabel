@@ -131,7 +131,7 @@ class ApplyCRFPostProcd(Transform):
         bilateral_color_sigma: float = 0.5,
         gaussian_spatial_sigma: float = 5.0,
         compatibility_kernel_range: float = 1,
-        device = torch.device('cpu'),
+        device = torch.device('cuda'),
         use_simplecrf = True
     ):
         self.unary = unary
