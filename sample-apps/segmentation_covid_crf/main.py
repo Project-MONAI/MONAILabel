@@ -15,7 +15,7 @@ from monailabel.utils.infer.deepgrow_2d import InferDeepgrow2D
 from monailabel.utils.infer.deepgrow_3d import InferDeepgrow3D
 from monailabel.utils.others.post import BoundingBoxd, Restored
 
-from lib import MyActiveLearning, MyCRF, MyInfer, MyTrain
+from lib import MyActiveLearning, CovidCRF, MyInfer, MyTrain
 
 logger = logging.getLogger(__name__)
 
@@ -33,7 +33,7 @@ class MyApp(MONAILabelApp):
 
         postprocs = {
             # can have other post processors here
-            "CRF": MyCRF(method='CRF'),
+            "CRF": CovidCRF(method='CRF'),
         }
 
         # define a dictionary to keep track of logits files
