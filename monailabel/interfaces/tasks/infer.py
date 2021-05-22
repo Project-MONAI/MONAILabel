@@ -3,6 +3,7 @@ import logging
 import os
 import time
 from abc import abstractmethod
+from typing import Dict
 
 import torch
 
@@ -71,7 +72,7 @@ class InferTask:
         self.output_label_key = output_label_key
         self.output_json_key = output_json_key
 
-        self._networks = {}
+        self._networks: Dict = {}
 
     def info(self):
         return {

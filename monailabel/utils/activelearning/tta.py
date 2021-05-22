@@ -131,6 +131,7 @@ class TTA(Strategy):
             logger.info(f"Volume Variation Coefficient: {vvc_tta}")
 
         # Returning image with higher VVC (Volume Variation Coefficient)
-        image = images[np.array(vvc_tta_all).argmax()]
+        idx = int(np.array(vvc_tta_all).argmax())
+        image = images[idx]
         logger.info(f"Strategy: tta; Selected Image: {image}")
         return image

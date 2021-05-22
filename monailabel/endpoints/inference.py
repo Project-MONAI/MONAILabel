@@ -102,5 +102,5 @@ async def run_inference(
     logger.info(f"Infer Request: {request}")
     result = instance.infer(request)
     if result is None:
-        raise HTTPException(status_code=500, detail=f"Failed to execute infer")
+        raise HTTPException(status_code=500, detail="Failed to execute infer")
     return send_response(result, output, background_tasks)

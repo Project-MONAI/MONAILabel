@@ -4,7 +4,7 @@ import os
 import pathlib
 import shutil
 import tempfile
-from typing import Optional
+from typing import Dict, Optional
 
 from fastapi import APIRouter, File, UploadFile
 
@@ -20,7 +20,7 @@ router = APIRouter(
     responses={404: {"description": "Not found"}},
 )
 
-cached_digest = dict()
+cached_digest: Dict = dict()
 
 
 @router.post("/sample/{stategy}", summary="Run Active Learning strategy to get next sample")

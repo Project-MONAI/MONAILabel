@@ -122,15 +122,19 @@ function install_deps() {
 
 function clean_py() {
   # remove coverage history
-  ${cmdPrefix}${PY_EXE} -m coverage erase
+  # ${cmdPrefix}${PY_EXE} -m coverage erase
 
   # uninstall the development package
-  echo "Uninstalling MONAILABEL development files..."
-  ${cmdPrefix}${PY_EXE} setup.py develop --user --uninstall
+  # echo "Uninstalling MONAILABEL development files..."
+  # ${cmdPrefix}${PY_EXE} setup.py develop --user --uninstall
 
   # remove temporary files (in the directory of this script)
   TO_CLEAN="$(cd "$(dirname "${BASH_SOURCE[0]}")" >/dev/null 2>&1 && pwd)"
   echo "Removing temporary files in ${TO_CLEAN}"
+
+	rm -rf sample-apps/*/logs
+	rm -rf sample-apps/*/.venv
+	rm -rf sample-apps/*/model/*
 
   find ${TO_CLEAN}/monailabel -type f -name "*.py[co]" -delete
   find ${TO_CLEAN}/monailabel -type f -name "*.so" -delete
@@ -449,7 +453,8 @@ fi
 if [ $doUnitTests = true ]; then
   echo "${separator}${blue}unittests${noColor}"
   torch_validate
-  ${cmdPrefix}${cmd} ./tests/runner.py -p "test_((?!integration).)"
+  #${cmdPrefix}${cmd} ./tests/runner.py -p "test_((?!integration).)"
+  pytest
 fi
 
 # network training/inference/eval integration tests
