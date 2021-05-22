@@ -101,7 +101,7 @@ class MyInfer(InferTask):
         latency_post = time.time() - start
 
         start = time.time()
-        
+
         result_file_name, result_json = self.writer(data, label=self.output_label_key, json=self.output_json_key)
         # FIXME: find a better way to supoprt saving this
         # save logits file temporarily somewhere
@@ -130,4 +130,3 @@ class MyInfer(InferTask):
         result_json["logits_file_name"] = logits_file_name
         result_json["logits_json"] = logits_json
         return result_file_name, result_json
-

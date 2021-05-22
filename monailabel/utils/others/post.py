@@ -268,4 +268,3 @@ class ApplyMONAICRFPostProcd(Transform):
             d[self.post_proc_label + "_meta_dict"] = copy.deepcopy(d[self.pairwise + "_meta_dict"])
 
         return d
-

@@ -473,7 +473,7 @@ class MONAILabelWidget(ScriptedLoadableModuleWidget, VTKObservationMixin):
 
         # Enable/Disable
         self.ui.nextSampleButton.setEnabled(self.ui.strategyBox.count)
-        
+
         self.ui.updateScribblesButton.setEnabled(self.ui.postprocMethodSelector.count)
         self.ui.eraseScribblesButton.setEnabled(self.ui.postprocMethodSelector.count)
         self.ui.paintScribblesButton.setEnabled(self.ui.postprocMethodSelector.count)
