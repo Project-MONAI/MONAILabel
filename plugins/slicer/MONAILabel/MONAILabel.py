@@ -111,6 +111,7 @@ class MONAILabelWidget(ScriptedLoadableModuleWidget, VTKObservationMixin):
         self._segmentNode = None
         self._volumeNodes = []
         self._updatingGUIFromParameterNode = False
+        self._segmentEditorWidget = None
 
         self.info = {}
         self.models = OrderedDict()
@@ -126,6 +127,8 @@ class MONAILabelWidget(ScriptedLoadableModuleWidget, VTKObservationMixin):
 
         self.progressBar = None
         self.tmpdir = None
+
+        self.scribblesMode = None
 
     def setup(self):
         """
@@ -186,6 +189,26 @@ class MONAILabelWidget(ScriptedLoadableModuleWidget, VTKObservationMixin):
         self.ui.trainingStatusButton.connect("clicked(bool)", self.onTrainingStatus)
         self.ui.saveLabelButton.connect("clicked(bool)", self.onSaveLabel)
 
+        # Scribbles
+        # eraser icon from: https://commons.wikimedia.org/wiki/File:Crystal128-eraser.svg
+        # brush icon from: https://commons.wikimedia.org/wiki/File:Crystal128-tool-brush.svg
+        self.ui.postprocMethodSelector.connect("currentIndexChanged(int)", self.updateParameterNodeFromGUI)
+        self.ui.paintScribblesButton.setIcon(self.icon("tool-brush.svg"))
+        self.ui.eraseScribblesButton.setIcon(self.icon("eraser.svg"))
+        self.ui.updateScribblesButton.setIcon(self.icon("refresh-icon.png"))
+        self.ui.selectForegroundButton.setIcon(self.icon("fg_green.svg"))
+        self.ui.selectBackgroundButton.setIcon(self.icon("bg_red.svg"))
+        self.ui.selectedScribbleDisplay.setIcon(self.icon("gray.svg"))
+        self.ui.selectedToolDisplay.setIcon(self.icon("gray.svg"))
+
+        self.ui.brushSizeSlider.connect("valueChanged(double)", self.updateBrushSize)
+        self.ui.updateScribblesButton.clicked.connect(self.onUpdateScribbles)
+        self.ui.paintScribblesButton.clicked.connect(self.onPaintScribbles)
+        self.ui.eraseScribblesButton.clicked.connect(self.onEraseScribbles)
+        self.ui.selectForegroundButton.clicked.connect(self.onSelectForegroundScribbles)
+        self.ui.selectBackgroundButton.clicked.connect(self.onSelectBackgroundScribbles)
+        self.ui.brush3dCheckbox.stateChanged.connect(self.on3dBrushCheckbox)
+
         self.initializeParameterNode()
         self.updateServerUrlGUIFromSettings()
         # self.onClickFetchModels()
@@ -199,6 +222,171 @@ class MONAILabelWidget(ScriptedLoadableModuleWidget, VTKObservationMixin):
 
     def exit(self):
         self.removeObserver(self._parameterNode, vtk.vtkCommand.ModifiedEvent, self.updateGUIFromParameterNode)
+
+    def onStartScribbling(self):
+        logging.debug("Scribbles start event")
+        if self._segmentEditorWidget == None:
+            segmentation = self._segmentNode.GetSegmentation()
+            segmentId = segmentation.GetSegmentIdBySegmentName("background_scribbles")
+            if segmentId == "":  # needs to be added
+                # add background # idx = 2
+                self._segmentNode.GetSegmentation().AddEmptySegment(
+                    "background_scribbles", "background_scribbles", [1.0, 0.0, 0.0]
+                )
+
+            segmentation = self._segmentNode.GetSegmentation()
+            segmentId = segmentation.GetSegmentIdBySegmentName("foreground_scribbles")
+            if segmentId == "":  # needs to be added
+                # add foreground # idx = 3
+                self._segmentNode.GetSegmentation().AddEmptySegment(
+                    "foreground_scribbles", "foreground_scribbles", [0.0, 1.0, 0.0]
+                )
+
+            # Change segment display properties to "see through" the scribbles
+            segmentationDisplayNode = self._segmentNode.GetDisplayNode()
+            segmentation = self._segmentNode.GetSegmentation()
+
+            # Opacity option help from:
+            # https://apidocs.slicer.org/master/classvtkMRMLSegmentationDisplayNode.html
+            # segmentId=segmentation.GetSegmentIdBySegmentName('background_scribbles')
+            segmentationDisplayNode.SetSegmentOpacity2DFill("background_scribbles", 0.2)
+            segmentationDisplayNode.SetSegmentOpacity2DOutline("background_scribbles", 0.2)
+
+            # segmentId=segmentation.GetSegmentIdBySegmentName('foreground_scribbles')
+            segmentationDisplayNode.SetSegmentOpacity2DFill("foreground_scribbles", 0.2)
+            segmentationDisplayNode.SetSegmentOpacity2DOutline("foreground_scribbles", 0.2)
+            # segmentation.GetSegment(segmentId).SetColor(1,0,0)
+
+            # Create segment editor to get access to effects
+            self._segmentEditorWidget = slicer.qMRMLSegmentEditorWidget()
+            self._segmentEditorWidget.setMRMLScene(slicer.mrmlScene)
+            segmentEditorNode = slicer.vtkMRMLSegmentEditorNode()
+
+            # Setting labels to overlay over previous labels:
+            # https://discourse.slicer.org/t/how-can-i-set-masking-settings-on-a-segment-editor-effect-in-python/4406/7
+            segmentEditorNode.SetOverwriteMode(slicer.vtkMRMLSegmentEditorNode.OverwriteNone)
+
+            slicer.mrmlScene.AddNode(segmentEditorNode)
+            self._segmentEditorWidget.setMRMLSegmentEditorNode(segmentEditorNode)
+            self._segmentEditorWidget.setSegmentationNode(self._segmentNode)
+            self._segmentEditorWidget.setMasterVolumeNode(self._volumeNode)
+
+            if self.scribblesMode == None:
+                self.onPaintScribbles()
+                self.onSelectForegroundScribbles()
+
+    def on3dBrushCheckbox(self, state=None):
+        if state == None:
+            state = self.ui.brush3dCheckbox.checkState()
+
+        print(f"3D brush update {state}")
+
+        if self._segmentEditorWidget == None:
+            self.onStartScribbling()
+
+        effect = self._segmentEditorWidget.activeEffect()
+        effect.setParameter("BrushSphere", state)  # enable scribbles in 3d using a sphere brush
+
+    def onUpdateScribbles(self):
+        logging.debug("Scribbles update event")
+        scribbles_in = None
+        result_file = None
+        try:
+            qt.QApplication.setOverrideCursor(qt.Qt.WaitCursor)
+
+            segmentationNode = self._segmentNode
+            labelmapVolumeNode = slicer.mrmlScene.AddNewNodeByClass("vtkMRMLLabelMapVolumeNode")
+            slicer.modules.segmentations.logic().ExportVisibleSegmentsToLabelmapNode(
+                segmentationNode, labelmapVolumeNode, self._volumeNode
+            )
+
+            scribbles_in = tempfile.NamedTemporaryFile(suffix=".nii.gz", dir=self.tmpdir).name
+            self.reportProgress(5)
+
+            slicer.util.saveNode(labelmapVolumeNode, scribbles_in)
+            self.reportProgress(30)
+
+            self.updateServerSettings()
+
+            # fetch selected postprocessing method
+            self.reportProgress(40)
+            model = self.ui.postprocMethodSelector.currentText
+            image_file = self.current_sample["id"]
+
+            configs = self.getParamsFromConfig()
+            result_file, params = self.logic.inference(model, image_file, configs.get("infer"), scribbles_in)
+
+            self.reportProgress(90)
+            _, segment = self.currentSegment()
+            label = segment.GetName()
+            self.updateSegmentationMask(result_file, [label])
+            # clear scribbles widget
+            # self.onClearScribblesWidget()
+        except:
+            slicer.util.errorDisplay("Failed to save Label to MONAI Label Server", detailedText=traceback.format_exc())
+        finally:
+            qt.QApplication.restoreOverrideCursor()
+            self.reportProgress(100)
+
+            if os.path.exists(scribbles_in):
+                os.unlink(scribbles_in)
+
+            if result_file and os.path.exists(result_file):
+                os.unlink(result_file)
+
+    def onClearScribblesWidget(self):
+        # clear previous editor widget
+        self.scribblesMode = None  # reset
+        widget = self._segmentEditorWidget
+        del widget
+        self._segmentEditorWidget = None
+        self.ui.selectedScribbleDisplay.setIcon(self.icon("gray.svg"))
+        self.ui.selectedToolDisplay.setIcon(self.icon("gray.svg"))
+
+    def onPaintScribbles(self):
+        if self._segmentEditorWidget == None:
+            self.onStartScribbling()
+
+        self.scribblesMode = "Paint"
+        self._segmentEditorWidget.setActiveEffectByName(self.scribblesMode)
+        effect = self._segmentEditorWidget.activeEffect()
+        self.ui.selectedToolDisplay.setIcon(self.icon("tool-brush.svg"))
+        self.updateBrushSize()
+        self.on3dBrushCheckbox()
+
+    def onEraseScribbles(self):
+        if self._segmentEditorWidget == None:
+            self.onStartScribbling()
+
+        self.scribblesMode = "Erase"
+        self._segmentEditorWidget.setActiveEffectByName(self.scribblesMode)
+        effect = self._segmentEditorWidget.activeEffect()
+        self.ui.selectedToolDisplay.setIcon(self.icon("eraser.svg"))
+        self.updateBrushSize()
+        self.on3dBrushCheckbox()
+
+    def updateBrushSize(self, value=None):
+        if value == None:
+            value = self.ui.brushSizeSlider.value
+
+        if self._segmentEditorWidget == None:
+            self.onStartScribbling()
+
+        effect = self._segmentEditorWidget.activeEffect()
+        effect.setParameter("BrushAbsoluteDiameter", value)
+        self.on3dBrushCheckbox()
+
+    def onSelectForegroundScribbles(self):
+        if self._segmentEditorWidget == None or self.scribblesMode == None:
+            self.onPaintScribbles()
+        self._segmentEditorWidget.setCurrentSegmentID("foreground_scribbles")
+        self.ui.selectedScribbleDisplay.setIcon(self.icon("fg_green.svg"))
+
+    def onSelectBackgroundScribbles(self):
+        if self._segmentEditorWidget == None or self.scribblesMode == None:
+            self.onPaintScribbles()
+        self._segmentEditorWidget.setCurrentSegmentID("background_scribbles")
+        self.ui.selectedScribbleDisplay.setIcon(self.icon("bg_red.svg"))
 
     def onSceneStartClose(self, caller, event):
         self._volumeNode = None
@@ -268,6 +456,7 @@ class MONAILabelWidget(ScriptedLoadableModuleWidget, VTKObservationMixin):
 
         self.updateSelector(self.ui.segmentationModelSelector, ["segmentation"], "SegmentationModel", 0)
         self.updateSelector(self.ui.deepgrowModelSelector, ["deepgrow"], "DeepgrowModel", 0)
+        self.updateSelector(self.ui.postprocMethodSelector, ["postprocessor"], "PostprocMethod", 0)
 
         self.ui.labelComboBox.clear()
         for label in self.info.get("labels", {}):
@@ -286,6 +475,14 @@ class MONAILabelWidget(ScriptedLoadableModuleWidget, VTKObservationMixin):
 
         # Enable/Disable
         self.ui.nextSampleButton.setEnabled(self.ui.strategyBox.count)
+
+        self.ui.updateScribblesButton.setEnabled(self.ui.postprocMethodSelector.count)
+        self.ui.eraseScribblesButton.setEnabled(self.ui.postprocMethodSelector.count)
+        self.ui.paintScribblesButton.setEnabled(self.ui.postprocMethodSelector.count)
+        self.ui.selectForegroundButton.setEnabled(self.ui.postprocMethodSelector.count)
+        self.ui.selectBackgroundButton.setEnabled(self.ui.postprocMethodSelector.count)
+        self.ui.brushSizeSlider.setEnabled(self.ui.postprocMethodSelector.count)
+        self.ui.brush3dCheckbox.setEnabled(self.ui.postprocMethodSelector.count)
 
         is_training_running = True if self.info and self.isTrainingRunning() else False
         self.ui.trainingButton.setEnabled(self.info and not is_training_running)
@@ -334,6 +531,11 @@ class MONAILabelWidget(ScriptedLoadableModuleWidget, VTKObservationMixin):
         if deepgrowModelIndex >= 0:
             deepgrowModel = self.ui.deepgrowModelSelector.itemText(deepgrowModelIndex)
             self._parameterNode.SetParameter("DeepgrowModel", deepgrowModel)
+
+        postProcMethodIndex = self.ui.postprocMethodSelector.currentIndex
+        if postProcMethodIndex >= 0:
+            postProcMethod = self.ui.postprocMethodSelector.itemText(postProcMethodIndex)
+            self._parameterNode.SetParameter("PostprocMethod", postProcMethod)
 
         currentLabelIndex = self.ui.labelComboBox.currentIndex
         if currentLabelIndex >= 0:
@@ -739,6 +941,7 @@ class MONAILabelWidget(ScriptedLoadableModuleWidget, VTKObservationMixin):
                 "Are you sure to continue?"
             ):
                 return
+            self.onClearScribblesWidget()
             slicer.mrmlScene.Clear(0)
 
         start = time.time()
@@ -1041,8 +1244,18 @@ class MONAILabelWidget(ScriptedLoadableModuleWidget, VTKObservationMixin):
 
                 segmentationNode.RemoveSegment(segmentId)
 
+        self.showSegmentationsIn3D()
         logging.info("Time consumed by updateSegmentationMask: {0:3.1f}".format(time.time() - start))
         return True
+
+    def showSegmentationsIn3D(self):
+        # add closed surface representation
+        segmentationNode = self._segmentNode
+        segmentationNode.CreateClosedSurfaceRepresentation()
+        layoutManager = slicer.app.layoutManager()
+        threeDWidget = layoutManager.threeDWidget(0)
+        threeDView = threeDWidget.threeDView()
+        threeDView.resetFocalPoint()
 
     def updateServerUrlGUIFromSettings(self):
         # Save current server URL to the top of history
@@ -1100,6 +1313,8 @@ class MONAILabelLogic(ScriptedLoadableModuleLogic):
             parameterNode.SetParameter("SegmentationModel", "")
         if not parameterNode.GetParameter("DeepgrowModel"):
             parameterNode.SetParameter("DeepgrowModel", "")
+        if not parameterNode.GetParameter("PostprocMethod"):
+            parameterNode.SetParameter("PostprocMethod", "")
 
     def __del__(self):
         shutil.rmtree(self.tmpdir, ignore_errors=True)
@@ -1125,12 +1340,23 @@ class MONAILabelLogic(ScriptedLoadableModuleLogic):
     def save_label(self, image_in, label_in):
         return MONAILabelClient(self.server_url, self.tmpdir).save_label(image_in, label_in)
 
-    def inference(self, model, image_in, params={}):
+    def postproc_label(self, method, image_in, scribbles_in):
+        logging.debug("Applying post proc methd {} with scribbles".format(method))
+
+        client = MONAILabelClient(self.server_url, self.tmpdir)
+        result_file, params = client.postproc_label(method, image_in, scribbles_in)
+
+        logging.debug(f"Image Response: {result_file}")
+        logging.debug(f"JSON  Response: {params}")
+
+        return result_file, params
+
+    def inference(self, model, image_in, params={}, label_in=None):
         logging.debug("Preparing input data for segmentation")
         self.reportProgress(0)
 
         client = MONAILabelClient(self.server_url, self.tmpdir)
-        result_file, params = client.inference(model, image_in, params)
+        result_file, params = client.inference(model, image_in, params, label_in)
 
         logging.debug(f"Image Response: {result_file}")
         logging.debug(f"JSON  Response: {params}")
