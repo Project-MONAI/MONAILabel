@@ -1,3 +1,4 @@
+import copy
 import logging
 import os
 import time
@@ -91,6 +92,7 @@ class MONAILabelApp:
         Returns:
             JSON containing `label` and `params`
         """
+        request = copy.deepcopy(request)
         model_name = request.get("model")
         model_name = model_name if model_name else "model"
 

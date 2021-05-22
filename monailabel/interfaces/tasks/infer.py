@@ -21,6 +21,7 @@ class InferType:
         CLASSIFICATION -          Classification Model
         DEEPGROW -                Deepgrow Interactive Model
         DEEPEDIT -                DeepEdit Interactive Model
+        POSTPROCS -               Post-Processor Model
         OTHERS -                  Other Model Type
     """
 
@@ -28,8 +29,9 @@ class InferType:
     CLASSIFICATION = "classification"
     DEEPGROW = "deepgrow"
     DEEPEDIT = "deepedit"
+    POSTPROCS = "postprocessor"
     OTHERS = "others"
-    KNOWN_TYPES = [SEGMENTATION, CLASSIFICATION, DEEPGROW, OTHERS]
+    KNOWN_TYPES = [SEGMENTATION, CLASSIFICATION, DEEPGROW, POSTPROCS, OTHERS]
 
 
 class InferTask:
@@ -83,6 +85,9 @@ class InferTask:
         }
 
     def is_valid(self):
+        if self.type == InferType.POSTPROCS:
+            return True
+
         paths = [self.path] if isinstance(self.path, str) else self.path
         for path in reversed(paths):
             if os.path.exists(path):
@@ -187,7 +192,10 @@ class InferTask:
         latency_pre = time.time() - start
 
         start = time.time()
-        data = self.run_inferer(data, device=device)
+        if self.type == InferType.POSTPROCS:
+            data = self.run_postprocessor(data)
+        else:
+            data = self.run_inferer(data, device=device)
         latency_inferer = time.time() - start
 
         start = time.time()
@@ -246,6 +254,10 @@ class InferTask:
 
     def run_post_transforms(self, data, transforms):
         return self.run_transforms(data, transforms, log_prefix="POST")
+
+    def run_postprocessor(self, data):
+        p = self.inferer()
+        return p(data) if p else data
 
     def run_inferer(self, data, convert_to_batch=True, device="cuda"):
         """

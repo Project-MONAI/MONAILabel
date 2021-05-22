@@ -1,10 +1,13 @@
 import json
 import logging
 import os
+import pathlib
+import shutil
+import tempfile
 from enum import Enum
 from typing import Optional
 
-from fastapi import APIRouter, HTTPException
+from fastapi import APIRouter, File, Form, HTTPException, UploadFile
 from fastapi.responses import FileResponse, Response
 from requests_toolbelt import MultipartEncoder
 from starlette.background import BackgroundTasks
@@ -56,11 +59,12 @@ class ResultType(str, Enum):
     all = "all"
 
 
-def send_response(result, output, background_tasks):
-    def remove_file(path: str) -> None:
-        if os.path.exists(path):
-            os.unlink(path)
+def remove_file(path: str) -> None:
+    if os.path.exists(path):
+        os.unlink(path)
 
+
+def send_response(result, output, background_tasks):
     res_img = result.get("label")
     res_json = result.get("params")
 
@@ -87,17 +91,27 @@ async def run_inference(
     background_tasks: BackgroundTasks,
     model: str,
     image: str,
-    params: Optional[dict] = None,
+    params: str = Form("{}"),
+    label: UploadFile = File(None),
     output: Optional[ResultType] = None,
 ):
     request = {"model": model, "image": image}
+
+    if label:
+        file_ext = "".join(pathlib.Path(label.filename).suffixes) if label.filename else ".nii.gz"
+        label_file = tempfile.NamedTemporaryFile(suffix=file_ext).name
+
+        with open(label_file, "wb") as buffer:
+            shutil.copyfileobj(label.file, buffer)
+            request["label"] = label_file
+            background_tasks.add_task(remove_file, label_file)
 
     instance: MONAILabelApp = get_app_instance()
     config = instance.info().get("config", {}).get("infer", {})
     request.update(config)
 
-    params = params if params is not None else {}
-    request.update(params)
+    p = json.loads(params) if params else {}
+    request.update(p)
 
     logger.info(f"Infer Request: {request}")
     result = instance.infer(request)

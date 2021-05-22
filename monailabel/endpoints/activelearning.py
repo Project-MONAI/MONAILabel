@@ -62,7 +62,7 @@ async def next_sample(strategy: str = "random", params: Optional[dict] = None, c
 
 @router.put("/label", summary="Save Finished Label")
 async def save_label(image: str, label: UploadFile = File(...)):
-    file_ext = "".join(pathlib.Path(image).suffixes)
+    file_ext = "".join(pathlib.Path(label.filename).suffixes) if label.filename else ".nii.gz"
     label_file = tempfile.NamedTemporaryFile(suffix=file_ext).name
 
     with open(label_file, "wb") as buffer:

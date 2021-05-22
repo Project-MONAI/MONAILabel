@@ -63,13 +63,15 @@ class MONAILabelClient:
         logging.debug("Response: {}".format(response))
         return json.loads(response)
 
-    def inference(self, model, image_in, params):
+    def inference(self, model, image_in, params, label_in=None):
         selector = "/inference/{}?image={}".format(
             MONAILabelUtils.urllib_quote_plus(model),
             MONAILabelUtils.urllib_quote_plus(image_in),
         )
 
-        status, form, files = MONAILabelUtils.http_method("POST", self._server_url, selector, params)
+        fields = {"params": json.dumps(params) if params else "{}"}
+        files = {"label": label_in} if label_in else {}
+        status, form, files = MONAILabelUtils.http_multipart("POST", self._server_url, selector, fields, files)
         if status != 200:
             raise MONAILabelException(
                 MONAILabelError.SERVER_ERROR,
