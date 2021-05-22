@@ -225,3 +225,4 @@ class BasicTrainTask(TrainTask):
         filename = datetime.now().strftime("stats_%Y%m%d_%H%M%S.json")
         with open(os.path.join(self.output_dir, filename), "w") as f:
             json.dump(stats, f, indent=2)
+        return stats
