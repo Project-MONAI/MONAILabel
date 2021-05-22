@@ -1,10 +1,8 @@
 import copy
 import logging
-import os
 import time
 from abc import abstractmethod
-
-import torch
+from typing import Dict
 
 from monailabel.interfaces.exception import MONAILabelError, MONAILabelException
 from monailabel.utils.others.writer import Writer
@@ -30,7 +28,7 @@ class PostProcTask:
         self.dimension = dimension
         self.description = description
 
-        self._methods = {}
+        self._methods: Dict = {}
 
     def info(self):
         return {

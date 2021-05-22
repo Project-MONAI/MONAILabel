@@ -17,7 +17,7 @@ class SpleenCRF(PostProcTask):
         self,
         method="CRF",
         type=PostProcType.POSTPROCS,
-        labels=["spleen"],
+        labels="spleen",
         dimension=3,
         description="A post processing step with CRF for Spleen",
     ):

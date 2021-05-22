@@ -240,3 +240,6 @@ class MONAILabelApp:
                 (deepgrow_3d, "https://www.dropbox.com/s/vs6l30mf6t3h3d0/deepgrow_3d.ts?dl=1"),
             ]
         )
+
+    def postproc_label(self, request):
+        raise NotImplementedError("Postprocessing method is not implemented in base class")

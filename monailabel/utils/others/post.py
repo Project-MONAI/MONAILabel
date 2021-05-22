@@ -1,6 +1,6 @@
 import copy
 import logging
-from typing import List, Optional, Sequence, Union
+from typing import Optional, Sequence, Union
 
 import numpy as np
 import skimage.measure as measure
@@ -227,7 +227,7 @@ class ApplyMONAICRFPostProcd(Transform):
         bilateral_spatial_sigma: float = 5.0,
         bilateral_color_sigma: float = 0.5,
         gaussian_spatial_sigma: float = 5.0,
-        compatibility_kernel_range: float = 1,
+        compatibility_kernel_range: int = 1,
         device: str = "cuda" if torch.cuda.is_available else "cpu",
     ):
         self.unary = unary

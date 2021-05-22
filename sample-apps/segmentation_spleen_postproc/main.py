@@ -1,10 +1,6 @@
 import atexit
-import json
 import logging
 import os
-import pathlib
-import time
-from shutil import copyfile
 
 from lib import MyInfer, MyStrategy, MyTrain, SpleenCRF
 from monai.networks.layers import Norm
