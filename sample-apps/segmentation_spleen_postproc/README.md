@@ -14,6 +14,11 @@ This can be done by uninstalling any previous monai/monai-weekly version and run
 
 `BUILD_MONAI=1 pip install git+https://github.com/Project-MONAI/MONAI#egg=monai`
 
+Another way is use docker for MONAI
+
+`docker run --gpus all --rm -ti --ipc=host --net=host -v /xyz:/workspace projectmonai/monai:latest`
+
+
 ### 2. Install SimpleCRF
 Current application provides an option to switch to SimpleCRF library for doing the CRF part. This can be installed as:
 
