@@ -108,6 +108,11 @@ def run_main():
         access_log=args.debug,
     )
 
+    sys.path.remove(os.path.join(args.app, "lib"))
+    sys.path.remove(args.app)
+    os.unsetenv("APP_DIR")
+    os.unsetenv("STUDIES")
+
 
 if __name__ == "__main__":
     run_main()
