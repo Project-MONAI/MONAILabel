@@ -6,6 +6,7 @@ from monai.networks.layers import Norm
 from monai.networks.nets import UNet
 
 from monailabel.interfaces import MONAILabelApp
+from monailabel.interfaces.tasks import InferType
 from monailabel.utils.activelearning import Random
 
 logger = logging.getLogger(__name__)
@@ -53,7 +54,7 @@ class MyApp(MONAILabelApp):
     def infer(self, request):
         image = request.get("image")
 
-        # check if inferer is Post Processor 
+        # check if inferer is Post Processor
         if self.infers[request.get("model")].type == InferType.POSTPROCS:
             saved_labels = self.datastore().get_labels_by_image_id(image)
             for label, tag in saved_labels.items():

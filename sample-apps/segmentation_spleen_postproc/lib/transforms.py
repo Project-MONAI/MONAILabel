@@ -14,6 +14,7 @@ logger = logging.getLogger(__name__)
 # define epsilon for numerical stability
 EPS = 7.0 / 3 - 4.0 / 3 - 1
 
+
 class AddUnaryTermd(Transform):
     def __init__(
         self,
@@ -112,7 +113,7 @@ class AddUnaryTermd(Transform):
         return d
 
 
-class ApplyMONAICRFPostProcd(Transform):
+class ApplyCRFPostProcd(Transform):
     def __init__(
         self,
         unary: str,

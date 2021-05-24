@@ -1238,8 +1238,12 @@ class MONAILabelWidget(ScriptedLoadableModuleWidget, VTKObservationMixin):
                         labelmap, slicer.qSlicerSegmentEditorAbstractEffect.ModificationModeAdd
                     )
                 else:
+                    # adding bypass masking to not overwrite other layers, 
+                    # needed for preserving scribbles during updates
+                    # help from: https://github.com/Slicer/Slicer/blob/master/Modules/Loadable/Segmentations/EditorEffects/Python/SegmentEditorLogicalEffect.py
+                    bypassMask = True
                     effect.modifySelectedSegmentByLabelmap(
-                        labelmap, slicer.qSlicerSegmentEditorAbstractEffect.ModificationModeSet
+                        labelmap, slicer.qSlicerSegmentEditorAbstractEffect.ModificationModeSet, bypassMask
                     )
 
                 segmentationNode.RemoveSegment(segmentId)
