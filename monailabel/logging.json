@@ -24,7 +24,7 @@
     "train_handler": {
       "class": "logging.handlers.RotatingFileHandler",
       "formatter": "single",
-      "filename": "${LOGDIR}/${LOGFILE}",
+      "filename": "${LOGFILE}",
       "backupCount": 10,
       "maxBytes": 10485760,
       "encoding": "utf-8"
@@ -32,7 +32,7 @@
     "file_handler": {
       "class": "logging.handlers.RotatingFileHandler",
       "formatter": "simple",
-      "filename": "${LOGDIR}/${LOGFILE}",
+      "filename": "${LOGFILE}",
       "backupCount": 10,
       "maxBytes": 10485760,
       "encoding": "utf-8"

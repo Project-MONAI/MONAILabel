@@ -9,6 +9,7 @@ from collections import deque
 from datetime import datetime
 from threading import Thread
 from typing import Dict
+import platform
 
 from monailabel.config import settings
 
@@ -19,8 +20,11 @@ background_processes: Dict = {"train": dict(), "infer": dict()}
 
 
 def task_func(task, method):
+    base_dir = os.path.dirname(os.path.dirname(os.path.dirname(__file__)))
+    script = "run_monailabel_user_app.bat" if any(platform.win32_ver()) else "run_monailabel_user_app.sh"
+
     cmd = [
-        os.path.realpath(os.path.join(os.path.dirname(__file__), "../..", "scripts", "run_monailabel_user_app.sh")),
+        os.path.realpath(os.path.join(base_dir, "scripts", script)),
         settings.APP_DIR,
         settings.STUDIES,
         method,

@@ -42,42 +42,13 @@ class MyTrain(BasicTrainTask):
         output_dir,
         data_list,
         network,
-        load_path=None,
-        load_dict=None,
-        val_split=0.2,
-        device="cuda",
-        lr=0.0001,
-        train_batch_size=1,
-        train_num_workers=4,
-        train_save_interval=50,
-        val_interval=1,
-        val_batch_size=1,
-        val_num_workers=1,
-        final_filename="checkpoint_final.pt",
-        key_metric_filename="model.pt",
         model_size=(128, 128, 128),
         max_train_interactions=20,
         max_val_interactions=10,
         save_iteration=False,
+        **kwargs
     ):
-        super().__init__(
-            output_dir,
-            data_list,
-            network,
-            load_path,
-            load_dict,
-            val_split,
-            device,
-            lr,
-            train_batch_size,
-            train_num_workers,
-            train_save_interval,
-            val_interval,
-            val_batch_size,
-            val_num_workers,
-            final_filename,
-            key_metric_filename,
-        )
+        super().__init__(output_dir, data_list, network, **kwargs)
 
         self.model_size = model_size
         self.max_train_interactions = max_train_interactions

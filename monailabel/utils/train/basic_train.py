@@ -1,6 +1,7 @@
 import json
 import logging
 import os
+import shutil
 from abc import abstractmethod
 from datetime import datetime
 
@@ -35,17 +36,19 @@ class BasicTrainTask(TrainTask):
         network,
         load_path=None,
         load_dict=None,
+        publish_path=None,
         val_split=0.2,
         device="cuda",
         lr=0.0001,
         train_batch_size=1,
-        train_num_workers=1,
+        train_num_workers=0,
         train_save_interval=50,
         val_interval=1,
         val_batch_size=1,
-        val_num_workers=1,
+        val_num_workers=0,
         final_filename="checkpoint_final.pt",
         key_metric_filename="model.pt",
+        **kwargs,
     ):
         """
 
@@ -54,6 +57,7 @@ class BasicTrainTask(TrainTask):
         :param network: If None then UNet with channels(16, 32, 64, 128, 256) is used
         :param load_path: Initialize model from existing checkpoint
         :param load_dict: Provide dictionary to load from checkpoint.  If None, then `net` will be loaded
+        :param publish_path: Publish path for best trained model (based on best key metric)
         :param val_split: Split ratio for validation dataset if `validation` field is not found in `data_list`
         :param device: device name
         :param lr: Learning Rate (LR)
@@ -83,6 +87,7 @@ class BasicTrainTask(TrainTask):
         self._network = network
         self._load_path = load_path
         self._load_dict = load_dict
+        self._publish_path = publish_path
 
         self._optimizer = torch.optim.Adam(self._network.parameters(), lr=lr)
         self._loss_function = DiceLoss(to_onehot_y=True, softmax=True)
@@ -111,7 +116,7 @@ class BasicTrainTask(TrainTask):
 
     def train_data_loader(self):
         return DataLoader(
-            dataset=PersistentDataset(self._train_datalist, self.train_pre_transforms(), cache_dir=None),
+            dataset=PersistentDataset(self._train_datalist, self.train_pre_transforms()),
             batch_size=self._train_batch_size,
             shuffle=True,
             num_workers=self._train_num_workers,
@@ -225,4 +230,6 @@ class BasicTrainTask(TrainTask):
         filename = datetime.now().strftime("stats_%Y%m%d_%H%M%S.json")
         with open(os.path.join(self.output_dir, filename), "w") as f:
             json.dump(stats, f, indent=2)
+        if self._publish_path:
+            shutil.copy(os.path.join(self.output_dir, self._key_metric_filename), self._publish_path)
         return stats

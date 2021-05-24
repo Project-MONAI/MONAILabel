@@ -40,7 +40,9 @@ def run_command(command, args=None, plogger=None):
 
 def init_log_config(log_config, app_dir, log_file):
     if not log_config or not os.path.exists(log_config):
-        default_config = os.path.realpath(os.path.join(os.path.dirname(__file__), "../..", "logging.json"))
+        default_log_dir = os.path.dirname(os.path.dirname(os.path.dirname(__file__)))
+        default_config = os.path.realpath(os.path.join(default_log_dir, "logging.json"))
+
         log_dir = os.path.join(app_dir, "logs")
         log_config = os.path.join(log_dir, "logging.json")
         os.makedirs(log_dir, exist_ok=True)
@@ -50,8 +52,8 @@ def init_log_config(log_config, app_dir, log_file):
         with open(log_config, "r") as f:
             c = f.read()
 
-        c = c.replace("${LOGDIR}", log_dir)
-        c = c.replace("${LOGFILE}", log_file)
+        c = c.replace("${LOGDIR}", log_dir.replace('\\', r'\\'))
+        c = c.replace("${LOGFILE}", os.path.join(log_dir, log_file).replace('\\', r'\\'))
 
         with open(log_config, "w") as f:
             f.write(c)

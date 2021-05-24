@@ -37,14 +37,14 @@ logger = logging.getLogger(__name__)
 class TrainDeepgrow(BasicTrainTask):
     def __init__(
         self,
+        output_dir,
+        data_list,
+        network,
         dimension,
         roi_size,
         model_size,
         max_train_interactions,
         max_val_interactions,
-        output_dir,
-        data_list,
-        network,
         **kwargs,
     ):
         super().__init__(output_dir, data_list, network, **kwargs)

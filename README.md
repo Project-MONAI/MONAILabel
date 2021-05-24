@@ -19,9 +19,10 @@ It shares the same principles with [MONAI](https://github.com/Project-MONAI).
  - Pre-Trained models are available at [dropbox](https://www.dropbox.com/sh/gcobuwui5v2r8f5/AAAaJ3uFajwo4NRnQ0BqU46Ma?dl=0)
  - Download sample images/datasets from [monai-aws](https://github.com/Project-MONAI/MONAI/blob/master/monai/apps/datasets.py#L213-L224)
 
+### Ubuntu
 ```bash
-# One time setup (docker to pull nvidia gpus and pytorch)
-docker run -it --rm --gpus all --ipc=host --net=host -v /rapid/xyz:/workspace/ nvcr.io/nvidia/pytorch:21.02-py3
+# One time setup (to pull monai with nvidia gpus)
+docker run -it --rm --gpus all --ipc=host --net=host -v /rapid/xyz:/workspace/ projectmonai/monai:0.5.2
 git clone git@github.com:Project-MONAI/MONAILabel.git /workspace/MONAILabel
 cd /workspace/MONAILabel
 
@@ -40,18 +41,47 @@ export PYTHONPATH=/workspace/MONAILabel
 python main.py --app ../sample-apps/deepgrow/ --studies /workspace/datasets/Task09_Spleen/imagesTr
 ```
 
+### Windows
+ 1. Install python and pip
+    >Install python from https://www.python.org/downloads/
+
+    `python -m pip install --upgrade pip setuptools wheel`
+
+ 2. Install cuda (Faster mode: install CUDA runtime only)
+    >https://developer.nvidia.com/cuda-downloads
+
+
+ 3. Install torch (https://pytorch.org/get-started/locally/)
+
+    `pip install torch==1.8.1+cu111 torchvision==0.9.1+cu111 torchaudio===0.8.1 -f https://download.pytorch.org/whl/torch_stable.html`
+
+
+ 4. Setup MONAILabel
+
+    ```bash
+    git clone git@github.com:Project-MONAI/MONAILabel.git C:/Projects
+    pip install -r C:/Projects/MONAILabel/requirements.txt
+
+    # Download sample datasets
+    ```
+
+
+ 5. Run App
+    ```bash
+    set PYTHONPATH=C:/Projects/MONAILabel
+    cd C:/Projects/MONAILabel
+
+    python monailabel\main.py -a sample-apps\deepedit_heart -s C:\Datasets\Task02_Heart\imagesTr
+    ```
+
+
 ## App basic structure
 
 <img src="https://user-images.githubusercontent.com/7339051/114428020-98cdaf80-9bb3-11eb-8010-40f47d1afcd6.png" width="200"/>
 
 ## Dry Run basic flow (without slicer)
 
-- get /info/ (you get list of pre-trained models available) and other configs you can see for client
-- post /activelearning/sample (you get next sample/image details based on strategy)
-- post /inference/segmentation_spleen (image is the one which you got in step 2)
-- post /activelearning/label (this will save the label)
-- post /train (manually start training.. otherwise plan is to add a config to support auto-start after N samples saved)
-- If slicer is on remote it will use /download/ api to get it from server (you get the download link in sample details)
+- http://127.0.0.1:8000/ will provide you the list of Rest APIs and click them to try any of them.
 
 <img src="https://user-images.githubusercontent.com/7339051/115477603-31ab9d00-a23c-11eb-85f0-0b8ac374a9a0.png" width="500"/>
 
