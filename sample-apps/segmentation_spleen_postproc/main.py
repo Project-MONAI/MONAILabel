@@ -6,6 +6,7 @@ from monai.networks.layers import Norm
 from monai.networks.nets import UNet
 
 from monailabel.interfaces import MONAILabelApp
+from monailabel.interfaces.tasks import InferType
 from monailabel.utils.activelearning import Random
 
 logger = logging.getLogger(__name__)
@@ -28,7 +29,7 @@ class MyApp(MONAILabelApp):
         self.final_model = os.path.join(self.model_dir, "final.pt")
         path = [self.pretrained_model, self.final_model]
 
-        infers = {"segmentation_spleen": MyInfer(path, self.network), "scribles": SpleenCRF()}
+        infers = {"segmentation_spleen": MyInfer(path, self.network), "CRF": SpleenCRF()}
 
         strategies = {
             "random": Random(),
@@ -53,7 +54,8 @@ class MyApp(MONAILabelApp):
     def infer(self, request):
         image = request.get("image")
 
-        if request.get("model") == "scribles":
+        # check if inferer is Post Processor
+        if self.infers[request.get("model")].type == InferType.POSTPROCS:
             saved_labels = self.datastore().get_labels_by_image_id(image)
             for label, tag in saved_labels.items():
                 if tag == "logits":

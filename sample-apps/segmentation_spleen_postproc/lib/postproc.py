@@ -5,7 +5,7 @@ from monai.transforms import AddChanneld, LoadImaged, ScaleIntensityRanged, Spac
 from monailabel.interfaces.tasks import InferTask, InferType
 from monailabel.utils.others.post import BoundingBoxd, Restored
 
-from .transforms import AddUnaryTermd, ApplyMONAICRFPostProcd
+from .transforms import AddUnaryTermd, ApplyCRFPostProcd
 
 logger = logging.getLogger(__name__)
 
@@ -61,4 +61,4 @@ class SpleenCRF(InferTask):
         ]
 
     def inferer(self):
-        return ApplyMONAICRFPostProcd(unary="unary", pairwise="image", post_proc_label="pred")
+        return ApplyCRFPostProcd(unary="unary", pairwise="image", post_proc_label="pred")

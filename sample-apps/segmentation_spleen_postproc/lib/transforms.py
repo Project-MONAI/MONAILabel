@@ -48,13 +48,11 @@ class AddUnaryTermd(Transform):
         # override unary with 0 or infty following equation 7 from:
         # https://arxiv.org/pdf/1710.04043.pdf
         for bk_pt in background_pts:
-            # unary_term[tuple(bk_pt)] = 0 if y_hat[(0,) + tuple(bk_pt[1:])] == 0 else infty
             # FIXME: find a more elegant way to determine index for unary term
             u_idx = (0,) + tuple(bk_pt) if self.channel_dim == 0 else tuple(bk_pt) + (0,)
             unary_term[u_idx] = EPS if y_hat[tuple(bk_pt)] == 0 else infty
 
         for fg_pt in foreground_pts:
-            # unary_term[tuple(fg_pt)] = 0 if y_hat[(0,) + tuple(fg_pt[1:])] == 1 else infty
             # FIXME: find a more elegant way to determine index for unary term
             u_idx = (1,) + tuple(fg_pt) if self.channel_dim == 0 else tuple(fg_pt) + (1,)
             unary_term[u_idx] = EPS if y_hat[tuple(fg_pt)] == 1 else infty
@@ -115,19 +113,20 @@ class AddUnaryTermd(Transform):
         return d
 
 
-class ApplyMONAICRFPostProcd(Transform):
+class ApplyCRFPostProcd(Transform):
     def __init__(
         self,
         unary: str,
         pairwise: str,
         post_proc_label: str = "pred",
-        iterations: int = 5,
-        bilateral_weight: float = 3.0,
-        gaussian_weight: float = 1.0,
-        bilateral_spatial_sigma: float = 5.0,
-        bilateral_color_sigma: float = 0.5,
-        gaussian_spatial_sigma: float = 5.0,
+        bilateral_weight: float = 5.0,
+        gaussian_weight: float = 3.0,
+        bilateral_spatial_sigma: float = 1.0,
+        bilateral_color_sigma: float = 5.0,
+        gaussian_spatial_sigma: float = 0.5,
+        update_factor: float = 5.0,
         compatibility_kernel_range: int = 1,
+        iterations: int = 5,
         device: str = "cuda" if torch.cuda.is_available else "cpu",
     ):
         self.unary = unary
@@ -136,13 +135,14 @@ class ApplyMONAICRFPostProcd(Transform):
         self.device = device
 
         self.crf_layer = CRF(
-            iterations,
-            bilateral_weight,
-            gaussian_weight,
-            bilateral_spatial_sigma,
-            bilateral_color_sigma,
-            gaussian_spatial_sigma,
-            compatibility_kernel_range,
+            bilateral_weight=bilateral_weight,
+            gaussian_weight=gaussian_weight,
+            bilateral_spatial_sigma=bilateral_spatial_sigma,
+            bilateral_color_sigma=bilateral_color_sigma,
+            gaussian_spatial_sigma=gaussian_spatial_sigma,
+            update_factor=update_factor,
+            compatibility_kernel_range=compatibility_kernel_range,
+            iterations=iterations,
         )
 
     def __call__(self, data):
