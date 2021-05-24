@@ -3,13 +3,13 @@ import json
 import logging
 import os
 import os.path
+import platform
 import subprocess
 import uuid
 from collections import deque
 from datetime import datetime
 from threading import Thread
 from typing import Dict
-import platform
 
 from monailabel.config import settings
 

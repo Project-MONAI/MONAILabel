@@ -1,9 +1,9 @@
 import logging
 import os
 
+from lib import Deepgrow, MyStrategy, MyTrain, Segmentation
 from monai.networks.nets import DynUNet
 
-from lib import Deepgrow, MyStrategy, MyTrain, Segmentation
 from monailabel.interfaces import MONAILabelApp
 from monailabel.utils.activelearning import TTA, Random
 

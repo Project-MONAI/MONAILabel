@@ -52,8 +52,8 @@ def init_log_config(log_config, app_dir, log_file):
         with open(log_config, "r") as f:
             c = f.read()
 
-        c = c.replace("${LOGDIR}", log_dir.replace('\\', r'\\'))
-        c = c.replace("${LOGFILE}", os.path.join(log_dir, log_file).replace('\\', r'\\'))
+        c = c.replace("${LOGDIR}", log_dir.replace("\\", r"\\"))
+        c = c.replace("${LOGFILE}", os.path.join(log_dir, log_file).replace("\\", r"\\"))
 
         with open(log_config, "w") as f:
             f.write(c)

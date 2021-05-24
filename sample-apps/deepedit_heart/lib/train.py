@@ -46,7 +46,7 @@ class MyTrain(BasicTrainTask):
         max_train_interactions=20,
         max_val_interactions=10,
         save_iteration=False,
-        **kwargs
+        **kwargs,
     ):
         super().__init__(output_dir, data_list, network, **kwargs)
 

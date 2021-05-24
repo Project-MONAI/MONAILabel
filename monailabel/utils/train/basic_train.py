@@ -116,7 +116,7 @@ class BasicTrainTask(TrainTask):
 
     def train_data_loader(self):
         return DataLoader(
-            dataset=PersistentDataset(self._train_datalist, self.train_pre_transforms()),
+            dataset=PersistentDataset(self._train_datalist, self.train_pre_transforms(), cache_dir=None),
             batch_size=self._train_batch_size,
             shuffle=True,
             num_workers=self._train_num_workers,
@@ -231,5 +231,10 @@ class BasicTrainTask(TrainTask):
         with open(os.path.join(self.output_dir, filename), "w") as f:
             json.dump(stats, f, indent=2)
         if self._publish_path:
-            shutil.copy(os.path.join(self.output_dir, self._key_metric_filename), self._publish_path)
+            final_model = os.path.join(self.output_dir, self._key_metric_filename)
+            if os.path.exists(final_model):
+                if os.path.exists(self._publish_path):
+                    os.unlink(self._publish_path)
+                shutil.copy(os.path.join(self.output_dir, self._key_metric_filename), self._publish_path)
+                logger.info(f"New Model published: {final_model} => {self._publish_path}")
         return stats
