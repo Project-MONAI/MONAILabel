@@ -79,6 +79,10 @@ class LocalDatastore(Datastore):
         self._image_extensions = [image_extensions] if isinstance(image_extensions, str) else image_extensions
         self._label_extensions = [label_extensions] if isinstance(label_extensions, str) else label_extensions
 
+        logger.info(f"Image Extensions: {self._image_extensions}")
+        logger.info(f"Label Extensions: {self._label_extensions}")
+        logger.info(f"Auto Reload: {auto_reload}")
+
         if os.path.exists(self._datastore_config_path):
             # check if dataset configuration file exists and load if it does
             self._datastore = LocalDatastoreModel.parse_file(self._datastore_config_path)
@@ -94,6 +98,7 @@ class LocalDatastore(Datastore):
         self._update_datastore_file()
 
         if auto_reload:
+            logger.info("Start observing external modifications on datastore (AUTO RELOAD)")
             include_patterns = [
                 f"{self._datastore_path}{os.path.sep}{ext}" for ext in [*image_extensions, *label_extensions]
             ]
@@ -309,9 +314,10 @@ class LocalDatastore(Datastore):
         return [obj.image.id for obj in self._datastore.objects]
 
     def _on_any_event(self, event):
+        logger.debug(f"Event: {event}")
         self.refresh()
 
-    def refresh(self, event=None):
+    def refresh(self):
         """
         Refresh the datastore based on the state of the files on disk
         """
