@@ -6,7 +6,7 @@ import os
 import pathlib
 import shutil
 from pathlib import Path
-from typing import Any, Dict, List
+from typing import Any, Dict, List, Union
 
 from pydantic import BaseModel
 from watchdog.events import PatternMatchingEventHandler
@@ -114,7 +114,8 @@ class LocalDatastore(Datastore):
                 self._observer.start()
             except OSError as e:
                 logger.error(
-                    "File watcher limit reached in operating system. Local datastore will not update if images and labels are moved from datastore location."
+                    "File watcher limit reached in operating system. "
+                    "Local datastore will not update if images and labels are moved from datastore location."
                 )
                 logger.error(str(e))
 
@@ -252,7 +253,7 @@ class LocalDatastore(Datastore):
                     return os.path.join(self._datastore_path, self._label_store_path, label.id)
         return ""
 
-    def get_labels_by_image_id(self, image_id: str, tag: str = None) -> Dict[str, str]:
+    def get_labels_by_image_id(self, image_id: str, tag: str = None) -> Union[Dict[str, str], str]:
         """
         Retrieve all label ids for the given image id
 
@@ -262,10 +263,12 @@ class LocalDatastore(Datastore):
         for obj in self._datastore.objects:
             if obj.image.id == image_id:
                 if tag is not None:
-                    labels = {label.id: label.tag for label in obj.labels if label.tag == tag}
+                    labels = [label.id for label in obj.labels if label.tag == tag]
+                    if labels:
+                        return labels[0]
+                    return None
                 else:
-                    labels = {label.id: label.tag for label in obj.labels}
-                return labels
+                    return {label.id: label.tag for label in obj.labels}
         return {}
 
     def get_label_info(self, label_id: str) -> Dict[str, Any]:
