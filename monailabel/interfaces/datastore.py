@@ -56,7 +56,7 @@ class Datastore(metaclass=ABCMeta):
         pass
 
     @abstractmethod
-    def get_labels_by_image_id(self, image_id: str) -> Dict[str, str]:
+    def get_labels_by_image_id(self, image_id: str, tag: str = None) -> Dict[str, str]:
         """
         Retrieve all label ids for the given image id
 

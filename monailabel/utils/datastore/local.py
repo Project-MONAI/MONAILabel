@@ -252,7 +252,7 @@ class LocalDatastore(Datastore):
                     return os.path.join(self._datastore_path, self._label_store_path, label.id)
         return ""
 
-    def get_labels_by_image_id(self, image_id: str) -> Dict[str, str]:
+    def get_labels_by_image_id(self, image_id: str, tag: str = None) -> Dict[str, str]:
         """
         Retrieve all label ids for the given image id
 
@@ -261,7 +261,10 @@ class LocalDatastore(Datastore):
         """
         for obj in self._datastore.objects:
             if obj.image.id == image_id:
-                labels = {label.id: label.tag for label in obj.labels}
+                if tag is not None:
+                    labels = {label.id: label.tag for label in obj.labels}
+                else:
+                    labels = {label.id: label.tag for label in obj.labels if label.tag == tag}
                 return labels
         return {}
 
