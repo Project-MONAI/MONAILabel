@@ -1,5 +1,7 @@
 import argparse
+import json
 import os
+import platform
 import sys
 
 import uvicorn
@@ -74,19 +76,22 @@ def run_main():
 
     args.app = os.path.realpath(args.app)
     args.studies = os.path.realpath(args.studies)
-    if args.dryrun:
-        print(f"Using APP Directory={args.app}")
-        print(f"Using STUDIES Directory={args.studies}")
-        exit(0)
 
     for arg in vars(args):
         print("USING:: {} = {}".format(arg, getattr(args, arg)))
     print("")
 
+    overrides = {
+        "APP_DIR": args.app,
+        "STUDIES": args.studies,
+        "APP_PORT": args.port,
+    }
+    for k, v in overrides.items():
+        os.putenv(k, str(v))
+
     settings.APP_DIR = args.app
     settings.STUDIES = args.studies
-    os.putenv("APP_DIR", settings.APP_DIR)
-    os.putenv("STUDIES", settings.STUDIES)
+    settings.APP_PORT = args.port
 
     dirs = ["model", "lib", "logs"]
     for dir in dirs:
@@ -97,21 +102,40 @@ def run_main():
     sys.path.append(args.app)
     sys.path.append(os.path.join(args.app, "lib"))
 
-    uvicorn.run(
-        "main:app" if args.reload else app,
-        host=args.host,
-        port=args.port,
-        log_level="debug" if args.debug else "info",
-        reload=args.reload,
-        log_config=init_log_config(args.log_config, args.app, "app.log"),
-        use_colors=True,
-        access_log=args.debug,
-    )
+    if args.dryrun:
+        with open(".env", "w") as f:
+            for k, v in settings.dict().items():
+                v = json.dumps(v) if isinstance(v, list) else v
+                e = f"{k}={v}"
+                f.write(e)
+                f.write(os.linesep)
+                print(f"{'set' if any(platform.win32_ver()) else 'export'} {e}")
+    else:
+        print("")
+        print("**********************************************************")
+        print("                  ENV VARIABLES/SETTINGS                  ")
+        print("**********************************************************")
+        for k, v in settings.dict().items():
+            v = json.dumps(v) if isinstance(v, list) else v
+            print(f"{'set' if any(platform.win32_ver()) else 'export'} {k}={v}")
+        print("**********************************************************")
+        print("")
+
+        uvicorn.run(
+            "main:app" if args.reload else app,
+            host=args.host,
+            port=args.port,
+            log_level="debug" if args.debug else "info",
+            reload=args.reload,
+            log_config=init_log_config(args.log_config, args.app, "app.log"),
+            use_colors=True,
+            access_log=args.debug,
+        )
 
     sys.path.remove(os.path.join(args.app, "lib"))
     sys.path.remove(args.app)
-    os.unsetenv("APP_DIR")
-    os.unsetenv("STUDIES")
+    for k in overrides:
+        os.unsetenv(k)
 
 
 if __name__ == "__main__":

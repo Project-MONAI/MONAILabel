@@ -7,6 +7,7 @@ from abc import abstractmethod
 import yaml
 from monai.apps import download_url
 
+from monailabel.config import settings
 from monailabel.interfaces.datastore import Datastore, DefaultLabelTag
 from monailabel.interfaces.exception import MONAILabelError, MONAILabelException
 from monailabel.utils.activelearning import Random
@@ -40,7 +41,12 @@ class MONAILabelApp:
         self.infers = dict() if infers is None else infers
         self.strategies = {"random", Random()} if strategies is None else strategies
 
-        self._datastore: Datastore = LocalDatastore(studies)
+        self._datastore: Datastore = LocalDatastore(
+            studies,
+            image_extensions=settings.DATASTORE_IMAGE_EXT,
+            label_extensions=settings.DATASTORE_LABEL_EXT,
+            auto_reload=settings.DATASTORE_AUTO_RELOAD,
+        )
         self._download(resources)
 
     def info(self):
@@ -220,7 +226,7 @@ class MONAILabelApp:
 
     def add_deepgrow_infer_tasks(self):
         deepgrow_2d = os.path.join(self.app_dir, "model", "deepgrow_2d.ts")
-        deepgrow_3d = os.path.join(self.model_dir, "model", "deepgrow_3d.ts")
+        deepgrow_3d = os.path.join(self.app_dir, "model", "deepgrow_3d.ts")
 
         self.infers.update(
             {
