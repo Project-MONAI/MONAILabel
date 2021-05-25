@@ -341,6 +341,7 @@ class LocalDatastore(Datastore):
                 label_ext = "".join(pathlib.Path(label_filename).suffixes)
                 label_id = "label_" + label_tag + "_" + image_id.replace(image_ext, "") + label_ext
 
+                os.makedirs(os.path.join(self._datastore_path, self._label_store_path), exist_ok=True)
                 datastore_label_path = os.path.join(self._datastore_path, self._label_store_path, label_id)
                 shutil.copy(src=label_filename, dst=datastore_label_path, follow_symlinks=True)
 

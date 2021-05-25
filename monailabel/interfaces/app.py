@@ -45,7 +45,7 @@ class MONAILabelApp:
             studies,
             image_extensions=settings.DATASTORE_IMAGE_EXT,
             label_extensions=settings.DATASTORE_LABEL_EXT,
-            auto_reload=settings.DATASTORE_AUTO_RELOAD
+            auto_reload=settings.DATASTORE_AUTO_RELOAD,
         )
         self._download(resources)
 
