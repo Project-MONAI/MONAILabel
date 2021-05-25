@@ -6,7 +6,7 @@ import os
 import pathlib
 import shutil
 from pathlib import Path
-from typing import Any, Dict, List, Union
+from typing import Any, Dict, List, Optional, Union
 
 from pydantic import BaseModel
 from watchdog.events import PatternMatchingEventHandler
@@ -253,7 +253,7 @@ class LocalDatastore(Datastore):
                     return os.path.join(self._datastore_path, self._label_store_path, label.id)
         return ""
 
-    def get_labels_by_image_id(self, image_id: str, tag: str = None) -> Union[Dict[str, str], str]:
+    def get_labels_by_image_id(self, image_id: str, tag: Optional[str] = None) -> Union[Dict[str, str], str, None]:
         """
         Retrieve all label ids for the given image id
 
