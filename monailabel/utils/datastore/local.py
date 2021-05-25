@@ -108,9 +108,13 @@ class LocalDatastore(Datastore):
                 ignore_patterns=[self._datastore_config_path],
             )
             self._handler.on_any_event = self._on_any_event
-            self._observer = Observer()
-            self._observer.schedule(self._handler, recursive=True, path=self._datastore_path)
-            self._observer.start()
+            try:
+                self._observer = Observer()
+                self._observer.schedule(self._handler, recursive=True, path=self._datastore_path)
+                self._observer.start()
+            except OSError as e:
+                logger.error(f'Watch limit reached in operating system. Local datastore will not update if images and labels are moved from datastore location.')
+                logger.error(str(e))
 
     def name(self) -> str:
         """
