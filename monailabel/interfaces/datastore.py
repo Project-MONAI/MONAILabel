@@ -1,6 +1,6 @@
 from abc import ABCMeta, abstractmethod
 from enum import Enum
-from typing import Any, Dict, List
+from typing import Any, Dict, List, Union
 
 
 class DefaultLabelTag(Enum):
@@ -56,7 +56,7 @@ class Datastore(metaclass=ABCMeta):
         pass
 
     @abstractmethod
-    def get_labels_by_image_id(self, image_id: str) -> Dict[str, str]:
+    def get_labels_by_image_id(self, image_id: str, tag: str = None) -> Union[Dict[str, str], str]:
         """
         Retrieve all label ids for the given image id
 
