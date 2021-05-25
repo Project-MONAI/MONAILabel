@@ -113,7 +113,9 @@ class LocalDatastore(Datastore):
                 self._observer.schedule(self._handler, recursive=True, path=self._datastore_path)
                 self._observer.start()
             except OSError as e:
-                logger.error(f'File watcher limit reached in operating system. Local datastore will not update if images and labels are moved from datastore location.')
+                logger.error(
+                    "File watcher limit reached in operating system. Local datastore will not update if images and labels are moved from datastore location."
+                )
                 logger.error(str(e))
 
     def name(self) -> str:
