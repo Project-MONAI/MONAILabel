@@ -262,9 +262,9 @@ class LocalDatastore(Datastore):
         for obj in self._datastore.objects:
             if obj.image.id == image_id:
                 if tag is not None:
-                    labels = {label.id: label.tag for label in obj.labels}
-                else:
                     labels = {label.id: label.tag for label in obj.labels if label.tag == tag}
+                else:
+                    labels = {label.id: label.tag for label in obj.labels}
                 return labels
         return {}
 
