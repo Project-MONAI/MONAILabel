@@ -1,7 +1,7 @@
 import logging
 import os
 
-from lib import InferDeepgrow, InferSpleen, MyStrategy, TrainDeepgrow
+from lib import InferDeepgrow, MyStrategy, TrainDeepgrow
 from monai.networks.nets import BasicUNet
 
 from monailabel.interfaces import MONAILabelApp
@@ -39,35 +39,26 @@ class MyApp(MONAILabelApp):
             },
         }
 
+        deepgrow_3d = InferDeepgrow(
+            path=self.data["deepgrow_3d"]["path"],
+            network=self.data["deepgrow_3d"]["network"],
+            dimension=3,
+            model_size=(128, 192, 192),
+        )
         infers = {
+            "deepgrow": InferDeepgrowPipeline(
+                path=self.data["deepgrow_2d"]["path"],
+                network=self.data["deepgrow_2d"]["network"],
+                model_3d=deepgrow_3d,
+            ),
             "deepgrow_2d": InferDeepgrow(
                 path=self.data["deepgrow_2d"]["path"],
                 network=self.data["deepgrow_2d"]["network"],
                 dimension=2,
                 model_size=(256, 256),
             ),
-            "deepgrow_3d": InferDeepgrow(
-                path=self.data["deepgrow_3d"]["path"],
-                network=self.data["deepgrow_3d"]["network"],
-                dimension=3,
-                model_size=(128, 192, 192),
-            ),
-            "segmentation_spleen": InferSpleen(
-                path=self.data["segmentation_spleen"]["path"], network=self.data["segmentation_spleen"]["network"]
-            ),
+            "deepgrow_3d": deepgrow_3d,
         }
-
-        # Add deepgrow pipeline(s)
-        infers["deepgrow_pipeline"] = InferDeepgrowPipeline(
-            path=self.data["deepgrow_2d"]["path"],
-            network=self.data["deepgrow_2d"]["network"],
-            model_3d=infers["deepgrow_3d"],
-        )
-        infers["deepgrow_spleen"] = InferDeepgrowPipeline(
-            path=self.data["deepgrow_2d"]["path"],
-            network=self.data["deepgrow_2d"]["network"],
-            model_3d=infers["segmentation_spleen"],
-        )
 
         strategies = {
             "random": Random(),

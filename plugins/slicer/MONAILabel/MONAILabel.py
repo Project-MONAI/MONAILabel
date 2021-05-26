@@ -269,6 +269,11 @@ class MONAILabelWidget(ScriptedLoadableModuleWidget, VTKObservationMixin):
         self.updateSelector(self.ui.segmentationModelSelector, ["segmentation"], "SegmentationModel", 0)
         self.updateSelector(self.ui.deepgrowModelSelector, ["deepgrow"], "DeepgrowModel", 0)
 
+        if self.models and [k for k, v in self.models.items() if v["type"] == "segmentation"]:
+            self.ui.segmentationCollapsibleButton.collapsed = False
+        if self.models and [k for k, v in self.models.items() if v["type"] == "deepgrow"]:
+            self.ui.deepgrowCollapsibleButton.collapsed = False
+
         self.ui.labelComboBox.clear()
         for label in self.info.get("labels", {}):
             self.ui.labelComboBox.addItem(label)
@@ -389,8 +394,8 @@ class MONAILabelWidget(ScriptedLoadableModuleWidget, VTKObservationMixin):
 
         n = 0
         for section in config:
+            table.setSpan(n, 0, n + len(config[section]), 1)
             for key in config[section]:
-                table.setSpan(n, 0, n + len(config[section]) - 1, 1)
                 table.setItem(n, 0, qt.QTableWidgetItem(section))
                 table.setItem(n, 1, qt.QTableWidgetItem(key))
 
@@ -960,6 +965,8 @@ class MONAILabelWidget(ScriptedLoadableModuleWidget, VTKObservationMixin):
         return [c / 255.0 for c in color]
 
     def updateSegmentationMask(self, in_file, labels, sliceIndex=None):
+        # TODO:: Add ROI Node (for Bounding Box if provided in the result)
+
         start = time.time()
         logging.debug("Update Segmentation Mask from: {}".format(in_file))
         if in_file and not os.path.exists(in_file):
@@ -1041,8 +1048,16 @@ class MONAILabelWidget(ScriptedLoadableModuleWidget, VTKObservationMixin):
 
                 segmentationNode.RemoveSegment(segmentId)
 
+        self.showSegmentationsIn3D()
         logging.info("Time consumed by updateSegmentationMask: {0:3.1f}".format(time.time() - start))
         return True
+
+    def showSegmentationsIn3D(self):
+        # add closed surface representation
+        if self._segmentNode:
+            self._segmentNode.CreateClosedSurfaceRepresentation()
+        view = slicer.app.layoutManager().threeDWidget(0).threeDView()
+        view.resetFocalPoint()
 
     def updateServerUrlGUIFromSettings(self):
         # Save current server URL to the top of history
@@ -1125,12 +1140,12 @@ class MONAILabelLogic(ScriptedLoadableModuleLogic):
     def save_label(self, image_in, label_in):
         return MONAILabelClient(self.server_url, self.tmpdir).save_label(image_in, label_in)
 
-    def inference(self, model, image_in, params={}):
+    def inference(self, model, image_in, params={}, label_in=None):
         logging.debug("Preparing input data for segmentation")
         self.reportProgress(0)
 
         client = MONAILabelClient(self.server_url, self.tmpdir)
-        result_file, params = client.inference(model, image_in, params)
+        result_file, params = client.inference(model, image_in, params, label_in)
 
         logging.debug(f"Image Response: {result_file}")
         logging.debug(f"JSON  Response: {params}")
