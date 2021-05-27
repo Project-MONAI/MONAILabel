@@ -126,6 +126,7 @@ class MONAILabelWidget(ScriptedLoadableModuleWidget, VTKObservationMixin):
 
         self.progressBar = None
         self.tmpdir = None
+        self.timer = None
 
     def setup(self):
         """
@@ -251,6 +252,19 @@ class MONAILabelWidget(ScriptedLoadableModuleWidget, VTKObservationMixin):
         # Initial GUI update
         self.updateGUIFromParameterNode()
 
+    def monitorTraining(self):
+        if self.isTrainingRunning():
+            # print("Training in progress...")
+            return
+
+        print("Training completed")
+        self.timer.stop()
+        self.timer = None
+
+        self.ui.trainingButton.setEnabled(True)
+        self.ui.stopTrainingButton.setEnabled(False)
+        self.fetchModels()
+
     def updateGUIFromParameterNode(self, caller=None, event=None):
         if self._parameterNode is None or self._updatingGUIFromParameterNode:
             return
@@ -296,6 +310,11 @@ class MONAILabelWidget(ScriptedLoadableModuleWidget, VTKObservationMixin):
         self.ui.trainingButton.setEnabled(self.info and not is_training_running)
         self.ui.stopTrainingButton.setEnabled(is_training_running)
         self.ui.trainingStatusButton.setEnabled(self.info)
+        if is_training_running and self.timer is None:
+            self.timer = qt.QTimer()
+            self.timer.setInterval(5000)
+            self.timer.connect("timeout()", self.monitorTraining)
+            self.timer.start()
 
         self.ui.segmentationButton.setEnabled(
             self.ui.segmentationModelSelector.currentText and self._volumeNode is not None
