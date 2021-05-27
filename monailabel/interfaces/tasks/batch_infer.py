@@ -1,5 +1,6 @@
 import copy
 import logging
+from typing import Callable
 
 logger = logging.getLogger(__name__)
 
@@ -9,7 +10,7 @@ class BatchInferTask:
     Basic Bach Infer Task
     """
 
-    def __call__(self, request, infer: callable):
+    def __call__(self, request, infer: Callable):
         image_ids = request["infer_images"]
         request.pop("infer_images")
 
