@@ -58,6 +58,14 @@ def test_inference(args):
     save_result(result, args.output)
 
 
+def test_batch_infer(args):
+    app = app_instance(app_dir=args.app, studies=args.studies)
+    request = json.loads(args.request)
+
+    result = app.batch_infer(request)
+    save_result(result, args.output)
+
+
 def test_train(args):
     app = app_instance(app_dir=args.app, studies=args.studies)
     request = json.loads(args.request)
@@ -91,6 +99,10 @@ def run_main():
     parser_c = subparsers.add_parser("info", help="info help")
     parser_c.set_defaults(test="info")
 
+    parser_d = subparsers.add_parser("batch_infer", help="batch inference help")
+    parser_d.add_argument("-r", "--request", required=True)
+    parser_d.set_defaults(test="batch_infer")
+
     args = parser.parse_args()
     if not hasattr(args, "test"):
         parser.print_usage()
@@ -114,6 +126,8 @@ def run_main():
         test_train(args)
     elif args.test == "info":
         test_info(args)
+    elif args.test == "batch_infer":
+        test_batch_infer(args)
     else:
         parser.print_help()
 

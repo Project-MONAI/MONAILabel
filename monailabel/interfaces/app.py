@@ -10,6 +10,7 @@ from monai.apps import download_url
 from monailabel.config import settings
 from monailabel.interfaces.datastore import Datastore, DefaultLabelTag
 from monailabel.interfaces.exception import MONAILabelError, MONAILabelException
+from monailabel.interfaces.tasks.batch_infer import BatchInferTask
 from monailabel.utils.activelearning import Random
 from monailabel.utils.datastore import LocalDatastore
 from monailabel.utils.infer import InferDeepgrow2D, InferDeepgrow3D
@@ -121,6 +122,37 @@ class MONAILabelApp:
             )
 
         return {"label": result_file_name, "params": result_json}
+
+    def batch_infer(self, request):
+        """
+        Run batch inference for an exiting pre-trained model.
+
+        Args:
+            request: JSON object which contains `model`, `params` and `device`
+
+                For example::
+
+                    {
+                        "device": "cuda"
+                        "model": "segmentation_spleen",
+                        "image_selector": "*" (default is "*" to select all unlabeled images),
+                        "label_tag": "my_custom_label_tag", (if not provided defaults to `original`)
+                        "params": {},
+                    }
+
+        Raises:
+            MONAILabelException: When ``model`` is not found
+
+        Returns:
+            JSON containing `label` and `params`
+        """
+        request = copy.deepcopy(request)
+        unlabeled_images = self._datastore.get_unlabeled_images()
+
+        request.update({"infer_images": unlabeled_images})
+        task = BatchInferTask()
+
+        return task(request, self.infer)
 
     def datastore(self) -> Datastore:
         return self._datastore

@@ -11,7 +11,7 @@ from starlette.middleware.cors import CORSMiddleware
 from starlette.responses import HTMLResponse
 
 from monailabel.config import settings
-from monailabel.endpoints import activelearning, datastore, download, inference, info, logs, train
+from monailabel.endpoints import activelearning, batch_infer, datastore, download, inference, info, logs, train
 from monailabel.utils.others.generic import get_app_instance, init_log_config
 
 app = FastAPI(
@@ -33,6 +33,7 @@ if settings.BACKEND_CORS_ORIGINS:
 
 app.include_router(info.router)
 app.include_router(inference.router)
+app.include_router(batch_infer.router)
 app.include_router(train.router)
 app.include_router(activelearning.router)
 app.include_router(datastore.router)
