@@ -15,8 +15,8 @@ from monailabel.config import settings
 
 logger = logging.getLogger(__name__)
 
-background_tasks: Dict = {"train": [], "infer": []}
-background_processes: Dict = {"train": dict(), "infer": dict()}
+background_tasks: Dict = {"train": [], "infer": [], "batch_infer": []}
+background_processes: Dict = {"train": dict(), "infer": dict(), "batch_infer": dict()}
 
 
 def task_func(task, method):
