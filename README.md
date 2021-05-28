@@ -31,17 +31,14 @@ cd /workspace/MONAILabel
 
 pip install -r requirements.txt
 
+export PATH=$PATH:/workspace/MONAILabel
+
 # Download MSD Datasets from
 mkdir -p /workspace/datasets
-cd /workspace/datasets
-wget https://msd-for-monai.s3-us-west-2.amazonaws.com/Task09_Spleen.tar
-tar xf Task09_Spleen.tar
+monailabel.sh datasets -command download --name Task02_Heart --output /workspace/datasets/
 
 # Run APP
-cd /workspace/MONAILabel/monailabel
-export PYTHONPATH=/workspace/MONAILabel
-
-python main.py --app ../sample-apps/deepgrow/ --studies /workspace/datasets/Task09_Spleen/imagesTr
+monailabel.sh run --app /workspace/MONAILabel/sample-apps/deepedit_heart/ --studies /workspace/datasets/Task02_Heart/imagesTr
 ```
 
 ### Windows
@@ -74,7 +71,7 @@ python main.py --app ../sample-apps/deepgrow/ --studies /workspace/datasets/Task
     set PYTHONPATH=C:/Projects/MONAILabel
     cd C:/Projects/MONAILabel
 
-    python monailabel\main.py -a sample-apps\deepedit_heart -s C:\Datasets\Task02_Heart\imagesTr
+    python monailabel\main.py --app sample-apps\deepedit_heart --studies C:\Datasets\Task02_Heart\imagesTr
     ```
 
 

@@ -9,7 +9,6 @@ class Settings(BaseSettings):
 
     APP_DIR: str = ""
     STUDIES: str = ""
-    APP_PORT: int = 8000
 
     DATASTORE_AUTO_RELOAD: bool = True
     DATASTORE_IMAGE_EXT: List[str] = ["*.nii.gz", "*.nii"]

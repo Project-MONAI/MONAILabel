@@ -13,7 +13,7 @@ with open("requirements.txt") as f:
     requirements = [l.strip() for l in f]
 
 setup(
-    name="monai-label",
+    name="monailabel",
     version=versioneer.get_version(),
     description="MONAI Label Development Kit",
     long_description=readme,
@@ -28,7 +28,7 @@ setup(
             "monai-label-utils = monailabel.utils.others.app_utils:run_main",
         ]
     },
-    scripts=["monailabel/scripts/run_monailabel_user_app.sh"],
+    scripts=["monailabel/monailabel.sh"],
     include_package_data=True,
     data_files=[
         ("logconfig", ["monailabel/logging.json"]),

@@ -3,7 +3,7 @@ from typing import Optional
 
 from fastapi import APIRouter, HTTPException
 
-from monailabel.utils.others.async_tasks import background_task, processes, stop_background_task, tasks
+from monailabel.utils.others.async_tasks import processes, run_background_task, stop_background_task, tasks
 from monailabel.utils.others.generic import get_app_instance
 
 logger = logging.getLogger(__name__)
@@ -29,7 +29,7 @@ async def run_train(params: Optional[dict] = None):
     request.update(params)
 
     logger.info(f"Train Request: {request}")
-    return background_task(request, "train")
+    return run_background_task(request, "train")
 
 
 @router.get("/", summary="Get Status of Training Task")

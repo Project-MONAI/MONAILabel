@@ -1,0 +1,15 @@
+#!/bin/bash
+
+set -e
+DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" >/dev/null 2>&1 && pwd)"
+
+export PYTHONPATH=$DIR:$PYTHONPATH
+
+PYEXE=python
+version=$(python --version)
+if echo "$version" | grep "Python 2"; then
+  echo "Trying python3 instead of python ($version)"
+  PYEXE=python3
+fi
+
+${PYEXE} -m monailabel.main $*

@@ -1,6 +1,7 @@
 import argparse
 import json
 import os
+import pathlib
 import platform
 import sys
 
@@ -57,17 +58,98 @@ async def startup_event():
 
 def run_main():
     parser = argparse.ArgumentParser()
-    parser.add_argument("-a", "--app", required=True)
-    parser.add_argument("-s", "--studies", required=True)
-    parser.add_argument("-d", "--debug", action="store_true")
+    subparsers = parser.add_subparsers(help="sub-command help")
 
-    parser.add_argument("-i", "--host", default="0.0.0.0", type=str)
-    parser.add_argument("-p", "--port", default=8000, type=int)
-    parser.add_argument("-r", "--reload", action="store_true")
-    parser.add_argument("-l", "--log_config", default=None, type=str)
-    parser.add_argument("--dryrun", action="store_true")
+    parser_a = subparsers.add_parser("run", help="run help")
+    parser_a.add_argument("-a", "--app", required=True, help="App Directory")
+    parser_a.add_argument("-s", "--studies", required=True, help="Studies Directory")
+    parser_a.add_argument("-d", "--debug", action="store_true", help="Enable debug logs")
+
+    parser_a.add_argument("-i", "--host", default="0.0.0.0", type=str, help="Server IP")
+    parser_a.add_argument("-p", "--port", default=8000, type=int, help="Server Port")
+    parser_a.add_argument("-l", "--log_config", default=None, type=str, help="Logging config")
+    parser_a.add_argument("--dryrun", action="store_true", help="Dry run without starting server")
+    parser_a.set_defaults(action="run")
+
+    parser_b = subparsers.add_parser("samples", help="samples help")
+    parser_b.add_argument("-c", "--command", choices=["list", "download"], help="list or download samples")
+    parser_b.add_argument("-n", "--name", help="Name of the sample to download", default=None)
+    parser_b.set_defaults(action="samples")
+
+    parser_c = subparsers.add_parser("datasets", help="datasets help")
+    parser_c.add_argument("-c", "--command", choices=["list", "download"], help="list or download datasets")
+    parser_c.add_argument("-n", "--name", help="Name of the dataset to download", default=None)
+    parser_c.add_argument("-o", "--output", help="Output path to save the dataset", default=None)
+    parser_c.set_defaults(action="datasets")
 
     args = parser.parse_args()
+    if not hasattr(args, "action"):
+        parser.print_usage()
+        exit(-1)
+
+    if args.action == "samples":
+        run_samples(args)
+    elif args.action == "datasets":
+        run_datasets(args)
+    else:
+        run_app(args)
+
+
+def run_datasets(args):
+    from monai.apps.datasets import DecathlonDataset
+    from monai.apps.utils import download_and_extract
+
+    resource = DecathlonDataset.resource
+    md5 = DecathlonDataset.md5
+
+    if not args.command or args.command == "list":
+        if not args.command or args.command == "list":
+            print("Available Datasets are:")
+            print("----------------------------------------------------")
+            for k, v in resource.items():
+                print("  {:<30}: {}".format(k, v))
+    else:
+        url = resource.get(args.name) if args.name else None
+        if not url:
+            print(f"Dataset ({args.name}) NOT Exists.")
+
+            available = "  " + "\n  ".join(resource.keys())
+            print(f"Available Datasets are:: \n{available}")
+            print("----------------------------------------------------")
+            exit(-1)
+
+        dataset_dir = os.path.join(args.output, args.name) if args.output else args.name
+        root_dir = os.path.dirname(os.path.realpath(dataset_dir))
+        tarfile_name = f"{dataset_dir}.tar"
+        download_and_extract(resource[args.name], tarfile_name, root_dir, md5.get(args.name))
+
+        junk_files = pathlib.Path(dataset_dir).rglob("._*")
+        for j in junk_files:
+            os.remove(j)
+        os.unlink(tarfile_name)
+
+
+def run_samples(args):
+    print("NOTE:: Will be available in release version to download sample apps from github")
+    samples_dir = os.path.join(os.path.dirname(os.path.dirname(os.path.realpath(__file__))), "sample-apps")
+    resource = {
+        os.path.basename(f.path): os.path.realpath(f.path)
+        for f in os.scandir(samples_dir)
+        if f.is_dir()
+        if os.path.exists(os.path.join(f.path, "main.py"))
+    }
+
+    if not args.command or args.command == "list":
+        print("Available Samples are:")
+        print("----------------------------------------------------")
+        for k, v in resource.items():
+            print("  {:<30}: {}".format(k, v))
+    else:
+        print("Not supported yet!")
+        exit(-1)
+
+
+def run_app(args):
     if not os.path.exists(args.app):
         print(f"APP Directory {args.app} NOT Found")
         exit(1)
@@ -85,18 +167,16 @@ def run_main():
     overrides = {
         "APP_DIR": args.app,
         "STUDIES": args.studies,
-        "APP_PORT": args.port,
     }
     for k, v in overrides.items():
         os.putenv(k, str(v))
 
     settings.APP_DIR = args.app
     settings.STUDIES = args.studies
-    settings.APP_PORT = args.port
 
     dirs = ["model", "lib", "logs"]
-    for dir in dirs:
-        d = os.path.join(args.app, dir)
+    for d in dirs:
+        d = os.path.join(args.app, d)
         if not os.path.exists(d):
             os.makedirs(d)
 
@@ -123,11 +203,10 @@ def run_main():
         print("")
 
         uvicorn.run(
-            "main:app" if args.reload else app,
+            "main:app",
             host=args.host,
             port=args.port,
             log_level="debug" if args.debug else "info",
-            reload=args.reload,
             log_config=init_log_config(args.log_config, args.app, "app.log"),
             use_colors=True,
             access_log=args.debug,

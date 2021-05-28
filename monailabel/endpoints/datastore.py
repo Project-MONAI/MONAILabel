@@ -1,6 +1,7 @@
 import json
 import logging
-from typing import Dict, List
+from enum import Enum
+from typing import Dict, List, Optional
 
 from fastapi import APIRouter, File, HTTPException, UploadFile
 
@@ -18,10 +19,22 @@ router = APIRouter(
 )
 
 
+class ResultType(str, Enum):
+    train = "train"
+    stats = "stats"
+    all = "all"
+
+
 @router.get("/", summary="Get All Images/Labels from datastore")
-async def datastore(train: bool = True):
+async def datastore(output: Optional[ResultType] = None):
     d: Datastore = get_app_instance().datastore()
-    return d.datalist() if train else json.loads(str(d))
+    output = output if output else ResultType.stats
+    logger.info(f"output type: {output}")
+    if output == ResultType.all:
+        return json.loads(str(d))
+    if output == ResultType.train:
+        return d.datalist()
+    return {"total": len(d.list_images()), "completed": len(d.get_labeled_images()), "train": d.datalist()}
 
 
 @router.put("/", summary="Upload new Image")
