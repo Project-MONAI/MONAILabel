@@ -6,7 +6,7 @@ import os
 import pathlib
 import shutil
 from pathlib import Path
-from typing import Any, Dict, List
+from typing import Any, Dict, List, Optional, Union
 
 from pydantic import BaseModel
 from watchdog.events import PatternMatchingEventHandler
@@ -79,6 +79,10 @@ class LocalDatastore(Datastore):
         self._image_extensions = [image_extensions] if isinstance(image_extensions, str) else image_extensions
         self._label_extensions = [label_extensions] if isinstance(label_extensions, str) else label_extensions
 
+        logger.info(f"Image Extensions: {self._image_extensions}")
+        logger.info(f"Label Extensions: {self._label_extensions}")
+        logger.info(f"Auto Reload: {auto_reload}")
+
         if os.path.exists(self._datastore_config_path):
             # check if dataset configuration file exists and load if it does
             self._datastore = LocalDatastoreModel.parse_file(self._datastore_config_path)
@@ -94,6 +98,7 @@ class LocalDatastore(Datastore):
         self._update_datastore_file()
 
         if auto_reload:
+            logger.info("Start observing external modifications on datastore (AUTO RELOAD)")
             include_patterns = [
                 f"{self._datastore_path}{os.path.sep}{ext}" for ext in [*image_extensions, *label_extensions]
             ]
@@ -108,9 +113,16 @@ class LocalDatastore(Datastore):
                 ignore_patterns=[self._datastore_config_path],
             )
             self._handler.on_any_event = self._on_any_event
-            self._observer = Observer()
-            self._observer.schedule(self._handler, recursive=True, path=self._datastore_path)
-            self._observer.start()
+            try:
+                self._observer = Observer()
+                self._observer.schedule(self._handler, recursive=True, path=self._datastore_path)
+                self._observer.start()
+            except OSError as e:
+                logger.error(
+                    "File watcher limit reached in operating system. "
+                    "Local datastore will not update if images and labels are moved from datastore location."
+                )
+                logger.error(str(e))
 
     def name(self) -> str:
         """
@@ -246,7 +258,7 @@ class LocalDatastore(Datastore):
                     return os.path.join(self._datastore_path, self._label_store_path, label.id)
         return ""
 
-    def get_labels_by_image_id(self, image_id: str) -> Dict[str, str]:
+    def get_labels_by_image_id(self, image_id: str, tag: Optional[str] = None) -> Union[Dict[str, str], str, None]:
         """
         Retrieve all label ids for the given image id
 
@@ -255,8 +267,13 @@ class LocalDatastore(Datastore):
         """
         for obj in self._datastore.objects:
             if obj.image.id == image_id:
-                labels = {label.id: label.tag for label in obj.labels}
-                return labels
+                if tag is not None:
+                    labels = [label.id for label in obj.labels if label.tag == tag]
+                    if labels:
+                        return labels[0]
+                    return None
+                else:
+                    return {label.id: label.tag for label in obj.labels}
         return {}
 
     def get_label_info(self, label_id: str) -> Dict[str, Any]:
@@ -309,9 +326,10 @@ class LocalDatastore(Datastore):
         return [obj.image.id for obj in self._datastore.objects]
 
     def _on_any_event(self, event):
+        logger.debug(f"Event: {event}")
         self.refresh()
 
-    def refresh(self, event=None):
+    def refresh(self):
         """
         Refresh the datastore based on the state of the files on disk
         """
@@ -335,6 +353,7 @@ class LocalDatastore(Datastore):
                 label_ext = "".join(pathlib.Path(label_filename).suffixes)
                 label_id = "label_" + label_tag + "_" + image_id.replace(image_ext, "") + label_ext
 
+                os.makedirs(os.path.join(self._datastore_path, self._label_store_path), exist_ok=True)
                 datastore_label_path = os.path.join(self._datastore_path, self._label_store_path, label_id)
                 shutil.copy(src=label_filename, dst=datastore_label_path, follow_symlinks=True)
 

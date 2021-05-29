@@ -7,8 +7,10 @@ from abc import abstractmethod
 import yaml
 from monai.apps import download_url
 
+from monailabel.config import settings
 from monailabel.interfaces.datastore import Datastore, DefaultLabelTag
 from monailabel.interfaces.exception import MONAILabelError, MONAILabelException
+from monailabel.interfaces.tasks.batch_infer import BatchInferTask
 from monailabel.utils.activelearning import Random
 from monailabel.utils.datastore import LocalDatastore
 from monailabel.utils.infer import InferDeepgrow2D, InferDeepgrow3D
@@ -40,7 +42,12 @@ class MONAILabelApp:
         self.infers = dict() if infers is None else infers
         self.strategies = {"random", Random()} if strategies is None else strategies
 
-        self._datastore: Datastore = LocalDatastore(studies)
+        self._datastore: Datastore = LocalDatastore(
+            studies,
+            image_extensions=settings.DATASTORE_IMAGE_EXT,
+            label_extensions=settings.DATASTORE_LABEL_EXT,
+            auto_reload=settings.DATASTORE_AUTO_RELOAD,
+        )
         self._download(resources)
 
     def info(self):
@@ -66,6 +73,10 @@ class MONAILabelApp:
             strategies[name] = strategy.info()
         meta["strategies"] = strategies
 
+        meta["datastore"] = {
+            "total": len(self.datastore().list_images()),
+            "completed": len(self.datastore().get_labeled_images()),
+        }
         return meta
 
     def infer(self, request):
@@ -115,6 +126,37 @@ class MONAILabelApp:
             )
 
         return {"label": result_file_name, "params": result_json}
+
+    def batch_infer(self, request):
+        """
+        Run batch inference for an exiting pre-trained model.
+
+        Args:
+            request: JSON object which contains `model`, `params` and `device`
+
+                For example::
+
+                    {
+                        "device": "cuda"
+                        "model": "segmentation_spleen",
+                        "image_selector": "*" (default is "*" to select all unlabeled images),
+                        "label_tag": "my_custom_label_tag", (if not provided defaults to `original`)
+                        "params": {},
+                    }
+
+        Raises:
+            MONAILabelException: When ``model`` is not found
+
+        Returns:
+            JSON containing `label` and `params`
+        """
+        request = copy.deepcopy(request)
+        unlabeled_images = self._datastore.get_unlabeled_images()
+
+        request.update({"infer_images": unlabeled_images})
+        task = BatchInferTask()
+
+        return task(request, self.infer)
 
     def datastore(self) -> Datastore:
         return self._datastore
@@ -220,7 +262,7 @@ class MONAILabelApp:
 
     def add_deepgrow_infer_tasks(self):
         deepgrow_2d = os.path.join(self.app_dir, "model", "deepgrow_2d.ts")
-        deepgrow_3d = os.path.join(self.model_dir, "model", "deepgrow_3d.ts")
+        deepgrow_3d = os.path.join(self.app_dir, "model", "deepgrow_3d.ts")
 
         self.infers.update(
             {

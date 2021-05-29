@@ -3,6 +3,7 @@ import json
 import logging
 import os
 import os.path
+import platform
 import subprocess
 import uuid
 from collections import deque
@@ -14,19 +15,23 @@ from monailabel.config import settings
 
 logger = logging.getLogger(__name__)
 
-background_tasks: Dict = {"train": [], "infer": []}
-background_processes: Dict = {"train": dict(), "infer": dict()}
+background_tasks: Dict = {}
+background_processes: Dict = {}
 
 
-def task_func(task, method):
+def _task_func(task, method):
+    base_dir = os.path.dirname(os.path.dirname(os.path.dirname(os.path.realpath(__file__))))
+    script = "run_app.bat" if any(platform.win32_ver()) else "run_app.sh"
+
     cmd = [
-        os.path.realpath(os.path.join(os.path.dirname(__file__), "../..", "scripts", "run_monailabel_user_app.sh")),
+        os.path.realpath(os.path.join(base_dir, "scripts", script)),
         settings.APP_DIR,
         settings.STUDIES,
         method,
         json.dumps(task["request"]),
     ]
 
+    logger.info(f"COMMAND:: {' '.join(cmd)}")
     process = subprocess.Popen(
         cmd,
         stderr=subprocess.STDOUT,
@@ -57,7 +62,7 @@ def task_func(task, method):
         task["status"] = "DONE" if process.returncode == 0 else "ERROR"
 
 
-def background_task(request, method):
+def run_background_task(request, method, debug=False):
     task = {
         "id": uuid.uuid4(),
         "status": "SUBMITTED",
@@ -65,19 +70,29 @@ def background_task(request, method):
         "start_ts": datetime.today().strftime("%Y-%m-%d %H:%M:%S"),
     }
 
+    if background_tasks.get(method) is None:
+        background_tasks[method] = []
+    if background_processes.get(method) is None:
+        background_processes[method] = dict()
+
     background_tasks[method].append(task)
-    thread = Thread(target=functools.partial(task_func, task, method))
-    thread.start()
+    if debug:
+        _task_func(task, method)
+    else:
+        thread = Thread(target=functools.partial(_task_func, task, method))
+        thread.start()
     return task
 
 
 def stop_background_task(method):
-    if not len(background_processes[method]):
+    logger.info(f"Kill background task for {method}")
+    if not background_tasks.get(method) or not background_processes.get(method):
         return None
 
     task_id, process = next(iter(background_processes[method].items()))
     process.kill()
     background_processes[method].pop(task_id, None)
+    logger.info(f"Killed background process: {process}")
 
     task = [task for task in background_tasks[method] if task["id"] == task_id][0]
     task["status"] = "STOPPED"
@@ -86,8 +101,44 @@ def stop_background_task(method):
 
 
 def tasks(method):
-    return background_tasks[method]
+    """
+    Returns List of all task ids
+    """
+    return background_tasks.get(method, [])
 
 
 def processes(method):
-    return background_processes[method]
+    """
+    Returns Dict of all task id => process
+    """
+    return background_processes.get(method, dict())
+
+
+def run_main():
+    import argparse
+
+    parser = argparse.ArgumentParser()
+    parser.add_argument("-a", "--app", required=True)
+    parser.add_argument("-s", "--studies", required=True)
+    parser.add_argument("-m", "--method", default="info")
+    parser.add_argument("-r", "--request", default="{}")
+    parser.add_argument("-d", "--debug", action="store_true")
+
+    args = parser.parse_args()
+    args.app = os.path.realpath(args.app)
+    args.studies = os.path.realpath(args.studies)
+
+    settings.APP_DIR = args.app
+    settings.STUDIES = args.studies
+
+    logging.basicConfig(
+        level=(logging.DEBUG if args.debug else logging.INFO),
+        format="[%(asctime)s.%(msecs)03d][%(levelname)5s](%(name)s) - %(message)s",
+        datefmt="%Y-%m-%d %H:%M:%S",
+    )
+
+    run_background_task(json.loads(args.request), args.method, debug=True)
+
+
+if __name__ == "__main__":
+    run_main()

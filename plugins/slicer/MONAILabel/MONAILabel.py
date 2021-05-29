@@ -127,6 +127,7 @@ class MONAILabelWidget(ScriptedLoadableModuleWidget, VTKObservationMixin):
 
         self.progressBar = None
         self.tmpdir = None
+        self.timer = None
 
         self.scribblesMode = None
 
@@ -439,6 +440,31 @@ class MONAILabelWidget(ScriptedLoadableModuleWidget, VTKObservationMixin):
         # Initial GUI update
         self.updateGUIFromParameterNode()
 
+    def monitorTraining(self):
+        status = self.isTrainingRunning(check_only=False)
+        if status and status.get("status") == "RUNNING":
+            for line in reversed(status.get("details")):
+                if "SupervisedTrainer" in line and "Epoch: " in line:
+                    epoch = line.split("Epoch: ")[1].split(",")[0].split("/")
+                    current = int(epoch[0])
+                    total = int(epoch[1])
+                    percent = max(1, 100 * ((current - 1) / total))
+                    if self.ui.trainingProgressBar.value != percent:
+                        self.ui.trainingProgressBar.setValue(percent)
+                    self.ui.trainingProgressBar.setToolTip(f"{current}/{total} epoch is running")
+                    return
+            return
+
+        print("Training completed")
+        self.ui.trainingProgressBar.setValue(100)
+        self.timer.stop()
+        self.timer = None
+        self.ui.trainingProgressBar.setToolTip(f"Training: {status.get('status', 'DONE')}")
+
+        self.ui.trainingButton.setEnabled(True)
+        self.ui.stopTrainingButton.setEnabled(False)
+        self.fetchModels()
+
     def updateGUIFromParameterNode(self, caller=None, event=None):
         if self._parameterNode is None or self._updatingGUIFromParameterNode:
             return
@@ -458,6 +484,11 @@ class MONAILabelWidget(ScriptedLoadableModuleWidget, VTKObservationMixin):
         self.updateSelector(self.ui.deepgrowModelSelector, ["deepgrow"], "DeepgrowModel", 0)
         self.updateSelector(self.ui.postprocMethodSelector, ["postprocessor"], "PostprocMethod", 0)
 
+        if self.models and [k for k, v in self.models.items() if v["type"] == "segmentation"]:
+            self.ui.segmentationCollapsibleButton.collapsed = False
+        if self.models and [k for k, v in self.models.items() if v["type"] == "deepgrow"]:
+            self.ui.deepgrowCollapsibleButton.collapsed = False
+
         self.ui.labelComboBox.clear()
         for label in self.info.get("labels", {}):
             self.ui.labelComboBox.addItem(label)
@@ -466,6 +497,12 @@ class MONAILabelWidget(ScriptedLoadableModuleWidget, VTKObservationMixin):
 
         self.ui.appComboBox.clear()
         self.ui.appComboBox.addItem(self.info.get("name", ""))
+
+        datastore_stats = self.info.get("datastore", {})
+        current = datastore_stats.get("completed", 0)
+        total = datastore_stats.get("total", 0)
+        self.ui.activeLearningProgressBar.setValue(current / max(total, 1) * 100)
+        self.ui.activeLearningProgressBar.setToolTip(f"{current}/{total} samples are labeled")
 
         self.ui.strategyBox.clear()
         for strategy in self.info.get("strategies", {}):
@@ -488,6 +525,11 @@ class MONAILabelWidget(ScriptedLoadableModuleWidget, VTKObservationMixin):
         self.ui.trainingButton.setEnabled(self.info and not is_training_running)
         self.ui.stopTrainingButton.setEnabled(is_training_running)
         self.ui.trainingStatusButton.setEnabled(self.info)
+        if is_training_running and self.timer is None:
+            self.timer = qt.QTimer()
+            self.timer.setInterval(5000)
+            self.timer.connect("timeout()", self.monitorTraining)
+            self.timer.start()
 
         self.ui.segmentationButton.setEnabled(
             self.ui.segmentationModelSelector.currentText and self._volumeNode is not None
@@ -591,8 +633,8 @@ class MONAILabelWidget(ScriptedLoadableModuleWidget, VTKObservationMixin):
 
         n = 0
         for section in config:
+            table.setSpan(n, 0, n + len(config[section]), 1)
             for key in config[section]:
-                table.setSpan(n, 0, n + len(config[section]) - 1, 1)
                 table.setItem(n, 0, qt.QTableWidgetItem(section))
                 table.setItem(n, 1, qt.QTableWidgetItem(key))
 
@@ -772,7 +814,7 @@ class MONAILabelWidget(ScriptedLoadableModuleWidget, VTKObservationMixin):
         self.updateServerUrlGUIFromSettings()
 
     def onClickFetchModels(self):
-        self.fetchModels(showInfo=False)
+        self.fetchModels()
         self.updateConfigTable()
 
         # if self._volumeNode is None:
@@ -844,6 +886,8 @@ class MONAILabelWidget(ScriptedLoadableModuleWidget, VTKObservationMixin):
             self.updateServerSettings()
             configs = self.getParamsFromConfig()
             status = self.logic.train_start(configs.get("train"))
+            self.ui.trainingProgressBar.setValue(1)
+            self.ui.trainingProgressBar.setToolTip("Training: STARTED")
         except:
             slicer.util.errorDisplay(
                 "Failed to run training in MONAI Label Server", detailedText=traceback.format_exc()
@@ -1163,6 +1207,8 @@ class MONAILabelWidget(ScriptedLoadableModuleWidget, VTKObservationMixin):
         return [c / 255.0 for c in color]
 
     def updateSegmentationMask(self, in_file, labels, sliceIndex=None):
+        # TODO:: Add ROI Node (for Bounding Box if provided in the result)
+
         start = time.time()
         logging.debug("Update Segmentation Mask from: {}".format(in_file))
         if in_file and not os.path.exists(in_file):
@@ -1238,7 +1284,7 @@ class MONAILabelWidget(ScriptedLoadableModuleWidget, VTKObservationMixin):
                         labelmap, slicer.qSlicerSegmentEditorAbstractEffect.ModificationModeAdd
                     )
                 else:
-                    # adding bypass masking to not overwrite other layers, 
+                    # adding bypass masking to not overwrite other layers,
                     # needed for preserving scribbles during updates
                     # help from: https://github.com/Slicer/Slicer/blob/master/Modules/Loadable/Segmentations/EditorEffects/Python/SegmentEditorLogicalEffect.py
                     bypassMask = True
@@ -1254,12 +1300,10 @@ class MONAILabelWidget(ScriptedLoadableModuleWidget, VTKObservationMixin):
 
     def showSegmentationsIn3D(self):
         # add closed surface representation
-        segmentationNode = self._segmentNode
-        segmentationNode.CreateClosedSurfaceRepresentation()
-        layoutManager = slicer.app.layoutManager()
-        threeDWidget = layoutManager.threeDWidget(0)
-        threeDView = threeDWidget.threeDView()
-        threeDView.resetFocalPoint()
+        if self._segmentNode:
+            self._segmentNode.CreateClosedSurfaceRepresentation()
+        view = slicer.app.layoutManager().threeDWidget(0).threeDView()
+        view.resetFocalPoint()
 
     def updateServerUrlGUIFromSettings(self):
         # Save current server URL to the top of history
@@ -1343,17 +1387,6 @@ class MONAILabelLogic(ScriptedLoadableModuleLogic):
 
     def save_label(self, image_in, label_in):
         return MONAILabelClient(self.server_url, self.tmpdir).save_label(image_in, label_in)
-
-    def postproc_label(self, method, image_in, scribbles_in):
-        logging.debug("Applying post proc methd {} with scribbles".format(method))
-
-        client = MONAILabelClient(self.server_url, self.tmpdir)
-        result_file, params = client.postproc_label(method, image_in, scribbles_in)
-
-        logging.debug(f"Image Response: {result_file}")
-        logging.debug(f"JSON  Response: {params}")
-
-        return result_file, params
 
     def inference(self, model, image_in, params={}, label_in=None):
         logging.debug("Preparing input data for segmentation")

@@ -1,6 +1,7 @@
 import json
 import logging
 import os
+import shutil
 from abc import abstractmethod
 from datetime import datetime
 
@@ -35,17 +36,19 @@ class BasicTrainTask(TrainTask):
         network,
         load_path=None,
         load_dict=None,
+        publish_path=None,
         val_split=0.2,
         device="cuda",
         lr=0.0001,
         train_batch_size=1,
-        train_num_workers=1,
+        train_num_workers=0,
         train_save_interval=50,
         val_interval=1,
         val_batch_size=1,
-        val_num_workers=1,
+        val_num_workers=0,
         final_filename="checkpoint_final.pt",
         key_metric_filename="model.pt",
+        **kwargs,
     ):
         """
 
@@ -54,6 +57,7 @@ class BasicTrainTask(TrainTask):
         :param network: If None then UNet with channels(16, 32, 64, 128, 256) is used
         :param load_path: Initialize model from existing checkpoint
         :param load_dict: Provide dictionary to load from checkpoint.  If None, then `net` will be loaded
+        :param publish_path: Publish path for best trained model (based on best key metric)
         :param val_split: Split ratio for validation dataset if `validation` field is not found in `data_list`
         :param device: device name
         :param lr: Learning Rate (LR)
@@ -67,6 +71,8 @@ class BasicTrainTask(TrainTask):
         """
         super().__init__()
         self.output_dir = output_dir
+        self.run_id = datetime.now().strftime("%Y%m%d_%H%M")
+        self.events_dir = os.path.join(output_dir, f"events_{self.run_id}")
         self._train_datalist, self._val_datalist = (
             partition_dataset(data_list, ratios=[(1 - val_split), val_split], shuffle=True)
             if val_split > 0.0
@@ -83,6 +89,7 @@ class BasicTrainTask(TrainTask):
         self._network = network
         self._load_path = load_path
         self._load_dict = load_dict
+        self._publish_path = publish_path
 
         self._optimizer = torch.optim.Adam(self._network.parameters(), lr=lr)
         self._loss_function = DiceLoss(to_onehot_y=True, softmax=True)
@@ -130,7 +137,7 @@ class BasicTrainTask(TrainTask):
             LrScheduleHandler(lr_scheduler=lr_scheduler, print_lr=True),
             StatsHandler(tag_name="train_loss", output_transform=lambda x: x["loss"]),
             TensorBoardStatsHandler(
-                log_dir=self.output_dir,
+                log_dir=self.events_dir,
                 tag_name="train_loss",
                 output_transform=lambda x: x["loss"],
             ),
@@ -185,7 +192,7 @@ class BasicTrainTask(TrainTask):
     def val_handlers(self):
         return [
             StatsHandler(output_transform=lambda x: None),
-            TensorBoardStatsHandler(log_dir=self.output_dir, output_transform=lambda x: None),
+            TensorBoardStatsHandler(log_dir=self.events_dir, output_transform=lambda x: None),
             CheckpointSaver(
                 save_dir=self.output_dir,
                 save_dict={"net": self.network()},
@@ -222,7 +229,14 @@ class BasicTrainTask(TrainTask):
 
     def __call__(self, max_epochs, amp):
         stats = super().__call__(max_epochs, amp)
-        filename = datetime.now().strftime("stats_%Y%m%d_%H%M%S.json")
+        filename = datetime.now().strftime(f"stats_{self.run_id}.json")
         with open(os.path.join(self.output_dir, filename), "w") as f:
             json.dump(stats, f, indent=2)
+        if self._publish_path:
+            final_model = os.path.join(self.output_dir, self._key_metric_filename)
+            if os.path.exists(final_model):
+                if os.path.exists(self._publish_path):
+                    os.unlink(self._publish_path)
+                shutil.copy(os.path.join(self.output_dir, self._key_metric_filename), self._publish_path)
+                logger.info(f"New Model published: {final_model} => {self._publish_path}")
         return stats

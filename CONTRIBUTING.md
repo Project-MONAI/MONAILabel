@@ -13,3 +13,8 @@ We are happy to talk with you about your needs for MONAILabel and your ideas for
 ## The contribution process
 
 >In progress.  Please wait for more instructions to follow
+
+  - Before submitting Pull Request make sure basic CI checks are passed.
+    ```
+    ./runtests.sh --codeformat
+    ```
