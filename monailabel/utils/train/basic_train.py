@@ -71,6 +71,8 @@ class BasicTrainTask(TrainTask):
         """
         super().__init__()
         self.output_dir = output_dir
+        self.run_id = datetime.now().strftime("%Y%m%d_%H%M")
+        self.events_dir = os.path.join(output_dir, f"events_{self.run_id}")
         self._train_datalist, self._val_datalist = (
             partition_dataset(data_list, ratios=[(1 - val_split), val_split], shuffle=True)
             if val_split > 0.0
@@ -135,7 +137,7 @@ class BasicTrainTask(TrainTask):
             LrScheduleHandler(lr_scheduler=lr_scheduler, print_lr=True),
             StatsHandler(tag_name="train_loss", output_transform=lambda x: x["loss"]),
             TensorBoardStatsHandler(
-                log_dir=self.output_dir,
+                log_dir=self.events_dir,
                 tag_name="train_loss",
                 output_transform=lambda x: x["loss"],
             ),
@@ -190,7 +192,7 @@ class BasicTrainTask(TrainTask):
     def val_handlers(self):
         return [
             StatsHandler(output_transform=lambda x: None),
-            TensorBoardStatsHandler(log_dir=self.output_dir, output_transform=lambda x: None),
+            TensorBoardStatsHandler(log_dir=self.events_dir, output_transform=lambda x: None),
             CheckpointSaver(
                 save_dir=self.output_dir,
                 save_dict={"net": self.network()},
@@ -227,7 +229,7 @@ class BasicTrainTask(TrainTask):
 
     def __call__(self, max_epochs, amp):
         stats = super().__call__(max_epochs, amp)
-        filename = datetime.now().strftime("stats_%Y%m%d_%H%M%S.json")
+        filename = datetime.now().strftime(f"stats_{self.run_id}.json")
         with open(os.path.join(self.output_dir, filename), "w") as f:
             json.dump(stats, f, indent=2)
         if self._publish_path:

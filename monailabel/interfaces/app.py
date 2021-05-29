@@ -73,6 +73,10 @@ class MONAILabelApp:
             strategies[name] = strategy.info()
         meta["strategies"] = strategies
 
+        meta["datastore"] = {
+            "total": len(self.datastore().list_images()),
+            "completed": len(self.datastore().get_labeled_images()),
+        }
         return meta
 
     def infer(self, request):

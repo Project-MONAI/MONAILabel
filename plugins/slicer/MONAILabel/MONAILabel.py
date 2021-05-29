@@ -253,13 +253,25 @@ class MONAILabelWidget(ScriptedLoadableModuleWidget, VTKObservationMixin):
         self.updateGUIFromParameterNode()
 
     def monitorTraining(self):
-        if self.isTrainingRunning():
-            # print("Training in progress...")
+        status = self.isTrainingRunning(check_only=False)
+        if status and status.get("status") == "RUNNING":
+            for line in reversed(status.get("details")):
+                if "SupervisedTrainer" in line and "Epoch: " in line:
+                    epoch = line.split("Epoch: ")[1].split(",")[0].split("/")
+                    current = int(epoch[0])
+                    total = int(epoch[1])
+                    percent = max(1, 100 * ((current - 1) / total))
+                    if self.ui.trainingProgressBar.value != percent:
+                        self.ui.trainingProgressBar.setValue(percent)
+                    self.ui.trainingProgressBar.setToolTip(f"{current}/{total} epoch is running")
+                    return
             return
 
         print("Training completed")
+        self.ui.trainingProgressBar.setValue(100)
         self.timer.stop()
         self.timer = None
+        self.ui.trainingProgressBar.setToolTip(f"Training: {status.get('status', 'DONE')}")
 
         self.ui.trainingButton.setEnabled(True)
         self.ui.stopTrainingButton.setEnabled(False)
@@ -296,6 +308,12 @@ class MONAILabelWidget(ScriptedLoadableModuleWidget, VTKObservationMixin):
 
         self.ui.appComboBox.clear()
         self.ui.appComboBox.addItem(self.info.get("name", ""))
+
+        datastore_stats = self.info.get("datastore", {})
+        current = datastore_stats.get("completed", 0)
+        total = datastore_stats.get("total", 0)
+        self.ui.activeLearningProgressBar.setValue(current / max(total, 1) * 100)
+        self.ui.activeLearningProgressBar.setToolTip(f"{current}/{total} samples are labeled")
 
         self.ui.strategyBox.clear()
         for strategy in self.info.get("strategies", {}):
@@ -594,7 +612,7 @@ class MONAILabelWidget(ScriptedLoadableModuleWidget, VTKObservationMixin):
         self.updateServerUrlGUIFromSettings()
 
     def onClickFetchModels(self):
-        self.fetchModels(showInfo=False)
+        self.fetchModels()
         self.updateConfigTable()
 
         # if self._volumeNode is None:
@@ -666,6 +684,8 @@ class MONAILabelWidget(ScriptedLoadableModuleWidget, VTKObservationMixin):
             self.updateServerSettings()
             configs = self.getParamsFromConfig()
             status = self.logic.train_start(configs.get("train"))
+            self.ui.trainingProgressBar.setValue(1)
+            self.ui.trainingProgressBar.setToolTip("Training: STARTED")
         except:
             slicer.util.errorDisplay(
                 "Failed to run training in MONAI Label Server", detailedText=traceback.format_exc()
@@ -713,11 +733,11 @@ class MONAILabelWidget(ScriptedLoadableModuleWidget, VTKObservationMixin):
 
         logging.info("Time consumed by next_sample: {0:3.1f}".format(time.time() - start))
 
-    def isTrainingRunning(self):
+    def isTrainingRunning(self, check_only=True):
         if not self.logic:
             return False
         self.updateServerSettings()
-        return self.logic.train_status(True)
+        return self.logic.train_status(check_only)
 
     def onTrainingStatus(self):
         if not self.logic:
@@ -854,6 +874,7 @@ class MONAILabelWidget(ScriptedLoadableModuleWidget, VTKObservationMixin):
 
             self.updateServerSettings()
             result = self.logic.save_label(self.current_sample["id"], label_in)
+            self.fetchModels()
         except:
             slicer.util.errorDisplay("Failed to save Label to MONAI Label Server", detailedText=traceback.format_exc())
         finally:
