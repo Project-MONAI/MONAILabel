@@ -203,7 +203,7 @@ def run_app(args):
         print("")
 
         uvicorn.run(
-            "main:app",
+            app,
             host=args.host,
             port=args.port,
             log_level="debug" if args.debug else "info",

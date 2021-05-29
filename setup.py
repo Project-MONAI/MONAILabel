@@ -28,7 +28,7 @@ setup(
             "monai-label-utils = monailabel.utils.others.app_utils:run_main",
         ]
     },
-    scripts=["monailabel/monailabel.sh"],
+    scripts=["monailabel/monailabel", "monailabel/monailabel.bat"],
     include_package_data=True,
     data_files=[
         ("logconfig", ["monailabel/logging.json"]),

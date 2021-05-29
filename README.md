@@ -31,14 +31,17 @@ cd /workspace/MONAILabel
 
 pip install -r requirements.txt
 
-export PATH=$PATH:/workspace/MONAILabel
+export PATH=$PATH:/workspace/MONAILabel/monailabel
+monailabel -h
 
 # Download MSD Datasets from
 mkdir -p /workspace/datasets
-monailabel.sh datasets -command download --name Task02_Heart --output /workspace/datasets/
+monailabel datasets
+monailabel datasets --command download --name Task02_Heart --output /workspace/datasets/
 
 # Run APP
-monailabel.sh run --app /workspace/MONAILabel/sample-apps/deepedit_heart/ --studies /workspace/datasets/Task02_Heart/imagesTr
+monailabel samples
+monailabel run --app /workspace/MONAILabel/sample-apps/deepedit_heart/ --studies /workspace/datasets/Task02_Heart/imagesTr
 ```
 
 ### Windows
@@ -59,19 +62,22 @@ monailabel.sh run --app /workspace/MONAILabel/sample-apps/deepedit_heart/ --stud
  4. Setup MONAILabel
 
     ```bash
-    git clone git@github.com:Project-MONAI/MONAILabel.git C:/Projects
-    pip install -r C:/Projects/MONAILabel/requirements.txt
+    git clone git@github.com:Project-MONAI/MONAILabel.git C:\Projects
+    pip install -r C:\Projects\MONAILabel\requirements.txt
+    
+    set PATH=%PATH%;C:\Projects\MONAILabel\monailabel
+    monailabel -h
 
-    # Download sample datasets
+
+    # Download MSD Datasets from
+    monailabel datasets --command download --name Task02_Heart --output C:\Datasets
     ```
 
 
  5. Run App
     ```bash
-    set PYTHONPATH=C:/Projects/MONAILabel
-    cd C:/Projects/MONAILabel
-
-    python monailabel\main.py --app sample-apps\deepedit_heart --studies C:\Datasets\Task02_Heart\imagesTr
+    monailabel samples
+    monailabel run --app C:\Projects\MONAILabel\sample-apps\deepedit_heart --studies C:\Datasets\Task02_Heart\imagesTr
     ```
 
 

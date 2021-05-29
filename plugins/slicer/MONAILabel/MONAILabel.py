@@ -260,7 +260,7 @@ class MONAILabelWidget(ScriptedLoadableModuleWidget, VTKObservationMixin):
                     epoch = line.split("Epoch: ")[1].split(",")[0].split("/")
                     current = int(epoch[0])
                     total = int(epoch[1])
-                    percent = max(1, 100 * (current / total))
+                    percent = max(1, 100 * ((current - 1) / total))
                     if self.ui.trainingProgressBar.value != percent:
                         self.ui.trainingProgressBar.setValue(percent)
                     self.ui.trainingProgressBar.setToolTip(f"{current}/{total} epoch is running")
@@ -275,7 +275,7 @@ class MONAILabelWidget(ScriptedLoadableModuleWidget, VTKObservationMixin):
 
         self.ui.trainingButton.setEnabled(True)
         self.ui.stopTrainingButton.setEnabled(False)
-        self.onClickFetchModels()
+        self.fetchModels()
 
     def updateGUIFromParameterNode(self, caller=None, event=None):
         if self._parameterNode is None or self._updatingGUIFromParameterNode:
@@ -612,7 +612,7 @@ class MONAILabelWidget(ScriptedLoadableModuleWidget, VTKObservationMixin):
         self.updateServerUrlGUIFromSettings()
 
     def onClickFetchModels(self):
-        self.fetchModels(showInfo=False)
+        self.fetchModels()
         self.updateConfigTable()
 
         # if self._volumeNode is None:
@@ -874,7 +874,7 @@ class MONAILabelWidget(ScriptedLoadableModuleWidget, VTKObservationMixin):
 
             self.updateServerSettings()
             result = self.logic.save_label(self.current_sample["id"], label_in)
-            self.onClickFetchModels()
+            self.fetchModels()
         except:
             slicer.util.errorDisplay("Failed to save Label to MONAI Label Server", detailedText=traceback.format_exc())
         finally:
