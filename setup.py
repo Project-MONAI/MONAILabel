@@ -32,6 +32,5 @@ setup(
     include_package_data=True,
     data_files=[
         ("logconfig", ["monailabel/logging.json"]),
-        ("userapprequirements", ["monailabel/scripts/user-requirements.txt"]),
     ],
 )
