@@ -1,6 +1,6 @@
 from abc import ABCMeta, abstractmethod
 from enum import Enum
-from typing import Any, Dict, List, Optional, Union
+from typing import Any, Dict, List
 
 
 class DefaultLabelTag(Enum):
@@ -56,12 +56,23 @@ class Datastore(metaclass=ABCMeta):
         pass
 
     @abstractmethod
-    def get_labels_by_image_id(self, image_id: str, tag: Optional[str]) -> Union[Dict[str, str], str, None]:
+    def get_labels_by_image_id(self, image_id: str) -> Dict[str, str]:
         """
         Retrieve all label ids for the given image id
 
         :param image_id: the desired image's id
         :return: label ids mapped to the appropriate `LabelTag` as Dict[str, LabelTag]
+        """
+        pass
+
+    @abstractmethod
+    def get_label_by_image_id(self, image_id: str, tag: str) -> str:
+        """
+        Retrieve label id for the given image id and tag
+
+        :param image_id: the desired image's id
+        :param tag: matching tag name
+        :return: label id
         """
         pass
 
@@ -188,5 +199,12 @@ class Datastore(metaclass=ABCMeta):
 
         :param label_id: the id of the label we want to add/update info
         :param info: a dictionary of custom label information Dict[str, Any]
+        """
+        pass
+
+    @abstractmethod
+    def status(self) -> Dict[str, Any]:
+        """
+        Return current statistics of datastore
         """
         pass

@@ -2,18 +2,24 @@ import copy
 import logging
 from typing import Callable
 
+from monailabel.interfaces.datastore import Datastore
+
 logger = logging.getLogger(__name__)
 
 
 class BatchInferTask:
     """
-    Basic Bach Infer Task
+    Basic Batch Infer Task
     """
 
-    def __call__(self, request, infer: Callable):
-        image_ids = request["infer_images"]
-        request.pop("infer_images")
+    def get_images(self, request, datastore: Datastore):
+        """
+        Override this method to get all eligible images for your task to run batch infer
+        """
+        return datastore.list_images()
 
+    def __call__(self, request, datastore: Datastore, infer: Callable):
+        image_ids = self.get_images(request, datastore)
         logger.info(f"Total number of images for batch inference: {len(image_ids)}")
 
         result = {}
@@ -22,11 +28,6 @@ class BatchInferTask:
             req["image"] = image_id
 
             logger.info(f"Running inference for image id {image_id}")
-
-            res_label, res_json = infer(req)
-            result[image_id] = {
-                "label": res_label,
-                "params": res_json,
-            }
+            result[image_id] = infer(req)
 
         return result
