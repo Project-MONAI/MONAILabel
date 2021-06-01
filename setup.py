@@ -1,7 +1,7 @@
 #!/usr/bin/env python
 from setuptools import find_packages, setup
 
-import versioneer
+# import versioneer
 
 with open("README.md") as f:
     readme = f.read()
@@ -14,7 +14,7 @@ with open("requirements.txt") as f:
 
 setup(
     name="monailabel",
-    version=versioneer.get_version(),
+    version="0.1",  # versioneer.get_version(),
     description="MONAI Label Development Kit",
     long_description=readme,
     url="http://monai.io",
@@ -22,13 +22,12 @@ setup(
     packages=find_packages(exclude=("tests", "docs", "apps")),
     python_requires=">=3.6",
     install_requires=requirements,
-    entry_points={
-        "console_scripts": [
-            "monai-label = monailabel.main:run_main",
-            "monai-label-utils = monailabel.utils.others.app_utils:run_main",
-        ]
-    },
-    scripts=["monailabel/monailabel", "monailabel/monailabel.bat"],
+    scripts=[
+        "monailabel/monailabel",
+        "monailabel/monailabel.bat",
+        "monailabel/scripts/run_monailabel_app.sh",
+        "monailabel/scripts/run_monailabel_app.bat",
+    ],
     include_package_data=True,
     data_files=[
         ("logconfig", ["monailabel/logging.json"]),
