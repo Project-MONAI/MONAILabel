@@ -88,4 +88,4 @@ principles with [MONAI](https://github.com/Project-MONAI).
 
 ## 3D Slicer
 
-Refer [3D Slicer plugin](plugins/slicer/README.md) for installing and running MONAILabel plugin in 3D Slicer.
+Refer [3D Slicer plugin](plugins/slicer) for installing and running MONAILabel plugin in 3D Slicer.
