@@ -3,7 +3,9 @@ import json
 import os
 import pathlib
 import platform
+import shutil
 import sys
+import tempfile
 
 import uvicorn
 from fastapi import FastAPI
@@ -72,13 +74,14 @@ def run_main():
     parser_a.add_argument("--dryrun", action="store_true", help="Dry run without starting server")
     parser_a.set_defaults(action="run")
 
-    parser_b = subparsers.add_parser("samples", help="samples help")
-    parser_b.add_argument("-c", "--command", choices=["list", "download"], help="list or download samples")
-    parser_b.add_argument("-n", "--name", help="Name of the sample to download", default=None)
-    parser_b.set_defaults(action="samples")
+    parser_b = subparsers.add_parser("apps", help="sample apps help")
+    parser_b.add_argument("-d", "--download", action="store_true", help="download app")
+    parser_b.add_argument("-n", "--name", help="Name of the sample app to download", default=None)
+    parser_b.add_argument("-o", "--output", help="Output path to save the app", default=None)
+    parser_b.set_defaults(action="apps")
 
     parser_c = subparsers.add_parser("datasets", help="datasets help")
-    parser_c.add_argument("-c", "--command", choices=["list", "download"], help="list or download datasets")
+    parser_c.add_argument("-d", "--download", action="store_true", help="download dataset")
     parser_c.add_argument("-n", "--name", help="Name of the dataset to download", default=None)
     parser_c.add_argument("-o", "--output", help="Output path to save the dataset", default=None)
     parser_c.set_defaults(action="datasets")
@@ -88,8 +91,8 @@ def run_main():
         parser.print_usage()
         exit(-1)
 
-    if args.action == "samples":
-        run_samples(args)
+    if args.action == "apps":
+        run_apps(args)
     elif args.action == "datasets":
         run_datasets(args)
     else:
@@ -103,12 +106,11 @@ def run_datasets(args):
     resource = DecathlonDataset.resource
     md5 = DecathlonDataset.md5
 
-    if not args.command or args.command == "list":
-        if not args.command or args.command == "list":
-            print("Available Datasets are:")
-            print("----------------------------------------------------")
-            for k, v in resource.items():
-                print("  {:<30}: {}".format(k, v))
+    if not args.download:
+        print("Available Datasets are:")
+        print("----------------------------------------------------")
+        for k, v in resource.items():
+            print("  {:<30}: {}".format(k, v))
     else:
         url = resource.get(args.name) if args.name else None
         if not url:
@@ -120,6 +122,10 @@ def run_datasets(args):
             exit(-1)
 
         dataset_dir = os.path.join(args.output, args.name) if args.output else args.name
+        if os.path.exists(dataset_dir):
+            print(f"Directory already exists: {dataset_dir}")
+            exit(-1)
+
         root_dir = os.path.dirname(os.path.realpath(dataset_dir))
         tarfile_name = f"{dataset_dir}.tar"
         download_and_extract(resource[args.name], tarfile_name, root_dir, md5.get(args.name))
@@ -128,26 +134,42 @@ def run_datasets(args):
         for j in junk_files:
             os.remove(j)
         os.unlink(tarfile_name)
+        print(f"{args.name} is downloaded at: {dataset_dir}")
 
 
-def run_samples(args):
-    print("NOTE:: Will be available in release version to download sample apps from github")
-    samples_dir = os.path.join(os.path.dirname(os.path.dirname(os.path.realpath(__file__))), "sample-apps")
+def run_apps(args):
+    from monai.apps.utils import download_and_extract
+
     resource = {
-        os.path.basename(f.path): os.path.realpath(f.path)
-        for f in os.scandir(samples_dir)
-        if f.is_dir()
-        if os.path.exists(os.path.join(f.path, "main.py"))
+        "deepedit_heart": "https://github.com/Project-MONAI/MONAILabel/tree/main/sample-apps/deepedit_heart",
+        "deepedit_spleen": "https://github.com/Project-MONAI/MONAILabel/tree/main/sample-apps/deepedit_spleen",
+        "deepgrow": "https://github.com/Project-MONAI/MONAILabel/tree/main/sample-apps/deepgrow",
+        "segmentation_heart": "https://github.com/Project-MONAI/MONAILabel/tree/main/sample-apps/segmentation_heart",
+        "segmentation_spleen": "https://github.com/Project-MONAI/MONAILabel/tree/main/sample-apps/segmentation_spleen",
     }
 
-    if not args.command or args.command == "list":
-        print("Available Samples are:")
+    if not args.download:
+        print("Available Sample Apps are:")
         print("----------------------------------------------------")
         for k, v in resource.items():
             print("  {:<30}: {}".format(k, v))
     else:
-        print("Not supported yet!")
-        exit(-1)
+        output_dir = os.path.realpath(os.path.join(args.output, args.name) if args.output else args.name)
+        if os.path.exists(output_dir):
+            print(f"Directory already exists: {output_dir}")
+            exit(-1)
+
+        url = "https://github.com/Project-MONAI/MONAILabel/archive/refs/heads/main.zip"
+        tmp_dir = tempfile.mkdtemp(prefix="monailabel")
+        tarfile_name = f"{tmp_dir}{os.path.sep}{args.name}.zip"
+        download_and_extract(url, tarfile_name, tmp_dir, None)
+        app_dir = os.path.join(tmp_dir, "MONAILabel-main", "sample-apps", args.name)
+
+        if os.path.dirname(output_dir):
+            os.makedirs(os.path.dirname(output_dir), exist_ok=True)
+        shutil.move(app_dir, output_dir)
+        shutil.rmtree(tmp_dir)
+        print(f"{args.name} is downloaded at: {output_dir}")
 
 
 def run_app(args):
