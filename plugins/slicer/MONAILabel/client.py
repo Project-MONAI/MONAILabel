@@ -35,7 +35,7 @@ class MONAILabelClient:
         return json.loads(response)
 
     def next_sample(self, strategy, params):
-        selector = "/activelearning/sample/{}".format(MONAILabelUtils.urllib_quote_plus(strategy))
+        selector = "/activelearning/{}".format(MONAILabelUtils.urllib_quote_plus(strategy))
         status, response, _ = MONAILabelUtils.http_method("POST", self._server_url, selector, params)
         if status != 200:
             raise MONAILabelException(
@@ -47,8 +47,11 @@ class MONAILabelClient:
         logging.debug("Response: {}".format(response))
         return json.loads(response)
 
-    def save_label(self, image_in, label_in):
-        selector = "/activelearning/label?image={}".format(MONAILabelUtils.urllib_quote_plus(image_in))
+    def save_label(self, image_in, label_in, tag=""):
+        selector = "/datastore/label?image={}".format(MONAILabelUtils.urllib_quote_plus(image_in))
+        if tag:
+            selector += "&tag={}".format(MONAILabelUtils.urllib_quote_plus(tag))
+
         fields = {}
         files = {"label": label_in}
 
@@ -63,8 +66,8 @@ class MONAILabelClient:
         logging.debug("Response: {}".format(response))
         return json.loads(response)
 
-    def inference(self, model, image_in, params, label_in=None):
-        selector = "/inference/{}?image={}".format(
+    def infer(self, model, image_in, params, label_in=None):
+        selector = "/infer/{}?image={}".format(
             MONAILabelUtils.urllib_quote_plus(model),
             MONAILabelUtils.urllib_quote_plus(image_in),
         )
