@@ -111,7 +111,7 @@ class MONAILabelWidget(ScriptedLoadableModuleWidget, VTKObservationMixin):
         self._segmentNode = None
         self._volumeNodes = []
         self._updatingGUIFromParameterNode = False
-        self._segmentEditorWidget = None
+        self._scribblesEditorWidget = None
 
         self.info = {}
         self.models = OrderedDict()
@@ -191,24 +191,37 @@ class MONAILabelWidget(ScriptedLoadableModuleWidget, VTKObservationMixin):
         self.ui.saveLabelButton.connect("clicked(bool)", self.onSaveLabel)
 
         # Scribbles
-        # eraser icon from: https://commons.wikimedia.org/wiki/File:Crystal128-eraser.svg
-        # brush icon from: https://commons.wikimedia.org/wiki/File:Crystal128-tool-brush.svg
+        # brush and eraser icon from: https://tablericons.com/
         self.ui.postprocMethodSelector.connect("currentIndexChanged(int)", self.updateParameterNodeFromGUI)
         self.ui.paintScribblesButton.setIcon(self.icon("tool-brush.svg"))
+        self.ui.paintScribblesButton.setToolTip("Paint scribbles for selected scribble layer")
         self.ui.eraseScribblesButton.setIcon(self.icon("eraser.svg"))
+        self.ui.eraseScribblesButton.setToolTip("Erase scribbles for selected scribble layer")
         self.ui.updateScribblesButton.setIcon(self.icon("refresh-icon.png"))
+        self.ui.updateScribblesButton.setToolTip(
+            "Update label by sending scribbles to server to apply selected post processing method"
+        )
         self.ui.selectForegroundButton.setIcon(self.icon("fg_green.svg"))
+        self.ui.selectForegroundButton.setToolTip("Select foreground scribbles layer")
         self.ui.selectBackgroundButton.setIcon(self.icon("bg_red.svg"))
+        self.ui.selectBackgroundButton.setToolTip("Select background scribbles layer")
         self.ui.selectedScribbleDisplay.setIcon(self.icon("gray.svg"))
+        self.ui.selectedScribbleDisplay.setToolTip("Displaying selected scribbles layer")
         self.ui.selectedToolDisplay.setIcon(self.icon("gray.svg"))
+        self.ui.selectedToolDisplay.setToolTip("Displaying selected scribbles tool")
 
         self.ui.brushSizeSlider.connect("valueChanged(double)", self.updateBrushSize)
+        self.ui.brushSizeSlider.setToolTip("Change brush size for scribbles tool")
+        self.ui.brush3dCheckbox.stateChanged.connect(self.on3dBrushCheckbox)
+        self.ui.brush3dCheckbox.setToolTip("Use 3D brush to paint/erase in multiple slices in 3D")
         self.ui.updateScribblesButton.clicked.connect(self.onUpdateScribbles)
         self.ui.paintScribblesButton.clicked.connect(self.onPaintScribbles)
         self.ui.eraseScribblesButton.clicked.connect(self.onEraseScribbles)
         self.ui.selectForegroundButton.clicked.connect(self.onSelectForegroundScribbles)
         self.ui.selectBackgroundButton.clicked.connect(self.onSelectBackgroundScribbles)
-        self.ui.brush3dCheckbox.stateChanged.connect(self.on3dBrushCheckbox)
+
+        # start with scribbles section disabled
+        self.ui.postprocCollapsibleButton.setEnabled(False)
 
         self.initializeParameterNode()
         self.updateServerUrlGUIFromSettings()
@@ -224,111 +237,102 @@ class MONAILabelWidget(ScriptedLoadableModuleWidget, VTKObservationMixin):
     def exit(self):
         self.removeObserver(self._parameterNode, vtk.vtkCommand.ModifiedEvent, self.updateGUIFromParameterNode)
 
+    def scribblesLayersPresent(self):
+        scribbles_exist = False
+        if self._segmentNode is not None:
+            segmentationNode = self._segmentNode
+            segmentation = segmentationNode.GetSegmentation()
+            numSegments = segmentation.GetNumberOfSegments()
+            segmentIds = [segmentation.GetNthSegmentID(i) for i in range(numSegments)]
+            scribbles_exist = sum([int("scribbles" in sid) for sid in segmentIds]) > 0
+        return scribbles_exist
+
     def onStartScribbling(self):
         logging.debug("Scribbles start event")
-        if self._segmentEditorWidget == None:
-            segmentation = self._segmentNode.GetSegmentation()
-            segmentId = segmentation.GetSegmentIdBySegmentName("background_scribbles")
-            if segmentId == "":  # needs to be added
-                # add background # idx = 2
-                self._segmentNode.GetSegmentation().AddEmptySegment(
-                    "background_scribbles", "background_scribbles", [1.0, 0.0, 0.0]
-                )
+        if (not self.scribblesLayersPresent()) and (self._scribblesEditorWidget is None):
+            # add background, layer index = -2 [2], color = red
+            self._segmentNode.GetSegmentation().AddEmptySegment(
+                "background_scribbles", "background_scribbles", [1.0, 0.0, 0.0]
+            )
 
-            segmentation = self._segmentNode.GetSegmentation()
-            segmentId = segmentation.GetSegmentIdBySegmentName("foreground_scribbles")
-            if segmentId == "":  # needs to be added
-                # add foreground # idx = 3
-                self._segmentNode.GetSegmentation().AddEmptySegment(
-                    "foreground_scribbles", "foreground_scribbles", [0.0, 1.0, 0.0]
-                )
+            # add foreground, layer index = -1 [3], color = green
+            self._segmentNode.GetSegmentation().AddEmptySegment(
+                "foreground_scribbles", "foreground_scribbles", [0.0, 1.0, 0.0]
+            )
 
-            # Change segment display properties to "see through" the scribbles
-            segmentationDisplayNode = self._segmentNode.GetDisplayNode()
-            segmentation = self._segmentNode.GetSegmentation()
-
-            # Opacity option help from:
+            # change segmentation display properties to "see through" the scribbles
+            # further explanation at:
             # https://apidocs.slicer.org/master/classvtkMRMLSegmentationDisplayNode.html
-            # segmentId=segmentation.GetSegmentIdBySegmentName('background_scribbles')
-            segmentationDisplayNode.SetSegmentOpacity2DFill("background_scribbles", 0.2)
-            segmentationDisplayNode.SetSegmentOpacity2DOutline("background_scribbles", 0.2)
+            segmentationDisplayNode = self._segmentNode.GetDisplayNode()
 
-            # segmentId=segmentation.GetSegmentIdBySegmentName('foreground_scribbles')
-            segmentationDisplayNode.SetSegmentOpacity2DFill("foreground_scribbles", 0.2)
-            segmentationDisplayNode.SetSegmentOpacity2DOutline("foreground_scribbles", 0.2)
-            # segmentation.GetSegment(segmentId).SetColor(1,0,0)
+            # background
+            opacity = 0.2
+            segmentationDisplayNode.SetSegmentOpacity2DFill("background_scribbles", opacity)
+            segmentationDisplayNode.SetSegmentOpacity2DOutline("background_scribbles", opacity)
 
-            # Create segment editor to get access to effects
-            self._segmentEditorWidget = slicer.qMRMLSegmentEditorWidget()
-            self._segmentEditorWidget.setMRMLScene(slicer.mrmlScene)
+            # foreground
+            segmentationDisplayNode.SetSegmentOpacity2DFill("foreground_scribbles", opacity)
+            segmentationDisplayNode.SetSegmentOpacity2DOutline("foreground_scribbles", opacity)
+
+            # create segmentEditorWidget to access "Paint" and "Erase" segmentation tools
+            # these will be used to draw scribbles
+            self._scribblesEditorWidget = slicer.qMRMLSegmentEditorWidget()
+            self._scribblesEditorWidget.setMRMLScene(slicer.mrmlScene)
             segmentEditorNode = slicer.vtkMRMLSegmentEditorNode()
 
-            # Setting labels to overlay over previous labels:
+            # adding new scribbles can overwrite a new one-hot vector, hence erase any existing
+            # labels - this is not a desired behaviour hence we swith to overlay mode that enables drawing
+            # scribbles without changing existing labels. Further explanation at:
             # https://discourse.slicer.org/t/how-can-i-set-masking-settings-on-a-segment-editor-effect-in-python/4406/7
             segmentEditorNode.SetOverwriteMode(slicer.vtkMRMLSegmentEditorNode.OverwriteNone)
 
+            # add all nodes to the widget
             slicer.mrmlScene.AddNode(segmentEditorNode)
-            self._segmentEditorWidget.setMRMLSegmentEditorNode(segmentEditorNode)
-            self._segmentEditorWidget.setSegmentationNode(self._segmentNode)
-            self._segmentEditorWidget.setMasterVolumeNode(self._volumeNode)
-
-            if self.scribblesMode == None:
-                self.onPaintScribbles()
-                self.onSelectForegroundScribbles()
-
-    def on3dBrushCheckbox(self, state=None):
-        if state == None:
-            state = self.ui.brush3dCheckbox.checkState()
-
-        print(f"3D brush update {state}")
-
-        if self._segmentEditorWidget == None:
-            self.onStartScribbling()
-
-        effect = self._segmentEditorWidget.activeEffect()
-        effect.setParameter("BrushSphere", state)  # enable scribbles in 3d using a sphere brush
+            self._scribblesEditorWidget.setMRMLSegmentEditorNode(segmentEditorNode)
+            self._scribblesEditorWidget.setSegmentationNode(self._segmentNode)
+            self._scribblesEditorWidget.setMasterVolumeNode(self._volumeNode)
 
     def onUpdateScribbles(self):
-        logging.debug("Scribbles update event")
-        scribbles_in = None
-        result_file = None
+        logging.info("Scribbles update event")
         try:
             qt.QApplication.setOverrideCursor(qt.Qt.WaitCursor)
 
+            # get scribbles + label
             segmentationNode = self._segmentNode
             labelmapVolumeNode = slicer.mrmlScene.AddNewNodeByClass("vtkMRMLLabelMapVolumeNode")
             slicer.modules.segmentations.logic().ExportVisibleSegmentsToLabelmapNode(
                 segmentationNode, labelmapVolumeNode, self._volumeNode
             )
-
             scribbles_in = tempfile.NamedTemporaryFile(suffix=".nii.gz", dir=self.tmpdir).name
             self.reportProgress(5)
 
+            # save scribbles + label to file
             slicer.util.saveNode(labelmapVolumeNode, scribbles_in)
             self.reportProgress(30)
-
             self.updateServerSettings()
+            self.reportProgress(60)
 
-            # fetch selected postprocessing method
-            self.reportProgress(40)
-            model = self.ui.postprocMethodSelector.currentText
+            # send scribbles + label to server along with selected postproc method
+            postprocMethod = self.ui.postprocMethodSelector.currentText
             image_file = self.current_sample["id"]
-
             configs = self.getParamsFromConfig()
-            result_file, params = self.logic.inference(model, image_file, configs.get("infer"), scribbles_in)
+            result_file, params = self.logic.inference(postprocMethod, image_file, configs.get("infer"), scribbles_in)
 
+            # display result from server
             self.reportProgress(90)
             _, segment = self.currentSegment()
             label = segment.GetName()
             self.updateSegmentationMask(result_file, [label])
-            # clear scribbles widget
-            # self.onClearScribblesWidget()
         except:
-            slicer.util.errorDisplay("Failed to save Label to MONAI Label Server", detailedText=traceback.format_exc())
+            slicer.util.errorDisplay(
+                "Failed to post process label on MONAI Label Server using {}".format(postprocMethod),
+                detailedText=traceback.format_exc(),
+            )
         finally:
             qt.QApplication.restoreOverrideCursor()
             self.reportProgress(100)
 
+            # clear all temporary files
             if os.path.exists(scribbles_in):
                 os.unlink(scribbles_in)
 
@@ -336,58 +340,110 @@ class MONAILabelWidget(ScriptedLoadableModuleWidget, VTKObservationMixin):
                 os.unlink(result_file)
 
     def onClearScribblesWidget(self):
-        # clear previous editor widget
-        self.scribblesMode = None  # reset
-        widget = self._segmentEditorWidget
+        # reset scribbles mode
+        self.scribblesMode = None
+
+        # clear scribbles editor widget
+        widget = self._scribblesEditorWidget
         del widget
-        self._segmentEditorWidget = None
-        self.ui.selectedScribbleDisplay.setIcon(self.icon("gray.svg"))
-        self.ui.selectedToolDisplay.setIcon(self.icon("gray.svg"))
+        self._scribblesEditorWidget = None
+
+        # update tool/layer display
+        self.updateScribblesStatusIcons()
+
+    def checkAndInitialiseScribbles(self):
+        if self._scribblesEditorWidget is None:
+            self.onStartScribbling()
+
+        if self.scribblesMode is None:
+            self.changeScribblesMode(tool="Paint", layer="foreground_scribbles")
+            self.updateScribToolLayerFromMode()
+
+    def updateScribToolLayerFromMode(self):
+        logging.info("Scribbles mode {} ".format(self.scribblesMode))
+        self.checkAndInitialiseScribbles()
+
+        # update tool/layer select for scribblesEditorWidget
+        tool, layer = self.getToolAndLayerFromScribblesMode()
+        self._scribblesEditorWidget.setActiveEffectByName(tool)
+        self._scribblesEditorWidget.setCurrentSegmentID(layer)
+
+        # update brush type from checkbox
+        is3dbrush = self.ui.brush3dCheckbox.checkState()
+        self.on3dBrushCheckbox(state=is3dbrush)
+
+        # update brush size from slider
+        brushSize = self.ui.brushSizeSlider.value
+        self.updateBrushSize(value=brushSize)
+
+        # show user the selected tools
+        self.updateScribblesStatusIcons()
+
+    def getToolAndLayerFromScribblesMode(self):
+        if self.scribblesMode is not None:
+            return self.scribblesMode.split("+")
+        else:
+            # default modes
+            return "Paint", "foreground_scribbles"
+
+    def changeScribblesMode(self, tool=None, layer=None):
+        ctool, clayer = self.getToolAndLayerFromScribblesMode()
+
+        ctool = tool if tool != None else ctool
+        clayer = layer if layer != None else clayer
+
+        self.scribblesMode = "+".join([ctool, clayer])
 
     def onPaintScribbles(self):
-        if self._segmentEditorWidget == None:
-            self.onStartScribbling()
-
-        self.scribblesMode = "Paint"
-        self._segmentEditorWidget.setActiveEffectByName(self.scribblesMode)
-        effect = self._segmentEditorWidget.activeEffect()
-        self.ui.selectedToolDisplay.setIcon(self.icon("tool-brush.svg"))
-        self.updateBrushSize()
-        self.on3dBrushCheckbox()
+        self.changeScribblesMode(tool="Paint")
+        self.updateScribToolLayerFromMode()
 
     def onEraseScribbles(self):
-        if self._segmentEditorWidget == None:
-            self.onStartScribbling()
-
-        self.scribblesMode = "Erase"
-        self._segmentEditorWidget.setActiveEffectByName(self.scribblesMode)
-        effect = self._segmentEditorWidget.activeEffect()
-        self.ui.selectedToolDisplay.setIcon(self.icon("eraser.svg"))
-        self.updateBrushSize()
-        self.on3dBrushCheckbox()
-
-    def updateBrushSize(self, value=None):
-        if value == None:
-            value = self.ui.brushSizeSlider.value
-
-        if self._segmentEditorWidget == None:
-            self.onStartScribbling()
-
-        effect = self._segmentEditorWidget.activeEffect()
-        effect.setParameter("BrushAbsoluteDiameter", value)
-        self.on3dBrushCheckbox()
+        self.changeScribblesMode(tool="Erase")
+        self.updateScribToolLayerFromMode()
 
     def onSelectForegroundScribbles(self):
-        if self._segmentEditorWidget == None or self.scribblesMode == None:
-            self.onPaintScribbles()
-        self._segmentEditorWidget.setCurrentSegmentID("foreground_scribbles")
-        self.ui.selectedScribbleDisplay.setIcon(self.icon("fg_green.svg"))
+        self.changeScribblesMode(layer="foreground_scribbles")
+        self.updateScribToolLayerFromMode()
 
     def onSelectBackgroundScribbles(self):
-        if self._segmentEditorWidget == None or self.scribblesMode == None:
-            self.onPaintScribbles()
-        self._segmentEditorWidget.setCurrentSegmentID("background_scribbles")
-        self.ui.selectedScribbleDisplay.setIcon(self.icon("bg_red.svg"))
+        self.changeScribblesMode(layer="background_scribbles")
+        self.updateScribToolLayerFromMode()
+
+    def updateScribblesStatusIcons(self):
+        if self.scribblesMode is None:
+            self.ui.selectedScribbleDisplay.setIcon(self.icon("gray.svg"))
+            self.ui.selectedToolDisplay.setIcon(self.icon("gray.svg"))
+        else:
+            tool, layer = self.getToolAndLayerFromScribblesMode()
+
+            # update tool icon
+            if tool == "Paint":
+                self.ui.selectedToolDisplay.setIcon(self.icon("tool-brush.svg"))
+            elif tool == "Erase":
+                self.ui.selectedToolDisplay.setIcon(self.icon("eraser.svg"))
+
+            # update scirbbles layer icon
+            if layer == "foreground_scribbles":
+                self.ui.selectedScribbleDisplay.setIcon(self.icon("fg_green.svg"))
+            elif layer == "background_scribbles":
+                self.ui.selectedScribbleDisplay.setIcon(self.icon("bg_red.svg"))
+
+    def on3dBrushCheckbox(self, state):
+        logging.info("3D brush update {}".format(state))
+        self.checkAndInitialiseScribbles()
+        effect = self._scribblesEditorWidget.activeEffect()
+
+        # enable scribbles in 3d using a sphere brush
+        effect.setParameter("BrushSphere", state)
+
+    def updateBrushSize(self, value):
+        logging.info("brush size update {}".format(value))
+        self.checkAndInitialiseScribbles()
+        effect = self._scribblesEditorWidget.activeEffect()
+
+        # change scribbles brush size
+        effect.setParameter("BrushAbsoluteDiameter", value)
 
     def onSceneStartClose(self, caller, event):
         self._volumeNode = None
@@ -513,14 +569,6 @@ class MONAILabelWidget(ScriptedLoadableModuleWidget, VTKObservationMixin):
         # Enable/Disable
         self.ui.nextSampleButton.setEnabled(self.ui.strategyBox.count)
 
-        self.ui.updateScribblesButton.setEnabled(self.ui.postprocMethodSelector.count)
-        self.ui.eraseScribblesButton.setEnabled(self.ui.postprocMethodSelector.count)
-        self.ui.paintScribblesButton.setEnabled(self.ui.postprocMethodSelector.count)
-        self.ui.selectForegroundButton.setEnabled(self.ui.postprocMethodSelector.count)
-        self.ui.selectBackgroundButton.setEnabled(self.ui.postprocMethodSelector.count)
-        self.ui.brushSizeSlider.setEnabled(self.ui.postprocMethodSelector.count)
-        self.ui.brush3dCheckbox.setEnabled(self.ui.postprocMethodSelector.count)
-
         is_training_running = True if self.info and self.isTrainingRunning() else False
         self.ui.trainingButton.setEnabled(self.info and not is_training_running)
         self.ui.stopTrainingButton.setEnabled(is_training_running)
@@ -551,6 +599,8 @@ class MONAILabelWidget(ScriptedLoadableModuleWidget, VTKObservationMixin):
                 )
                 self.ui.dgNegativeFiducialPlacementWidget.setCurrentNode(self.dgNegativeFiducialNode)
                 self.ui.dgNegativeFiducialPlacementWidget.setPlaceModeEnabled(False)
+
+            self.ui.postprocCollapsibleButton.setEnabled(self.ui.postprocMethodSelector.count)
 
         self.ui.dgPositiveFiducialPlacementWidget.setEnabled(self.ui.deepgrowModelSelector.currentText)
         self.ui.dgNegativeFiducialPlacementWidget.setEnabled(self.ui.deepgrowModelSelector.currentText)
