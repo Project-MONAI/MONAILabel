@@ -220,6 +220,9 @@ class MONAILabelWidget(ScriptedLoadableModuleWidget, VTKObservationMixin):
         self.ui.selectForegroundButton.clicked.connect(self.onSelectForegroundScribbles)
         self.ui.selectBackgroundButton.clicked.connect(self.onSelectBackgroundScribbles)
 
+        # start with scribbles section disabled
+        self.ui.postprocCollapsibleButton.setEnabled(False)
+
         self.initializeParameterNode()
         self.updateServerUrlGUIFromSettings()
         # self.onClickFetchModels()
@@ -566,14 +569,6 @@ class MONAILabelWidget(ScriptedLoadableModuleWidget, VTKObservationMixin):
         # Enable/Disable
         self.ui.nextSampleButton.setEnabled(self.ui.strategyBox.count)
 
-        self.ui.updateScribblesButton.setEnabled(self.ui.postprocMethodSelector.count)
-        self.ui.eraseScribblesButton.setEnabled(self.ui.postprocMethodSelector.count)
-        self.ui.paintScribblesButton.setEnabled(self.ui.postprocMethodSelector.count)
-        self.ui.selectForegroundButton.setEnabled(self.ui.postprocMethodSelector.count)
-        self.ui.selectBackgroundButton.setEnabled(self.ui.postprocMethodSelector.count)
-        self.ui.brushSizeSlider.setEnabled(self.ui.postprocMethodSelector.count)
-        self.ui.brush3dCheckbox.setEnabled(self.ui.postprocMethodSelector.count)
-
         is_training_running = True if self.info and self.isTrainingRunning() else False
         self.ui.trainingButton.setEnabled(self.info and not is_training_running)
         self.ui.stopTrainingButton.setEnabled(is_training_running)
@@ -604,6 +599,8 @@ class MONAILabelWidget(ScriptedLoadableModuleWidget, VTKObservationMixin):
                 )
                 self.ui.dgNegativeFiducialPlacementWidget.setCurrentNode(self.dgNegativeFiducialNode)
                 self.ui.dgNegativeFiducialPlacementWidget.setPlaceModeEnabled(False)
+
+            self.ui.postprocCollapsibleButton.setEnabled(self.ui.postprocMethodSelector.count)
 
         self.ui.dgPositiveFiducialPlacementWidget.setEnabled(self.ui.deepgrowModelSelector.currentText)
         self.ui.dgNegativeFiducialPlacementWidget.setEnabled(self.ui.deepgrowModelSelector.currentText)

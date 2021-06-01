@@ -7,7 +7,7 @@
     <x>0</x>
     <y>0</y>
     <width>425</width>
-    <height>602</height>
+    <height>709</height>
    </rect>
   </property>
   <layout class="QVBoxLayout" name="verticalLayout">
@@ -378,7 +378,7 @@
     </widget>
    </item>
    <item>
-    <widget class="ctkCollapsibleButton" name="CollapsibleButton">
+    <widget class="ctkCollapsibleButton" name="postprocCollapsibleButton">
      <property name="text">
       <string>Post Processing Scribbles</string>
      </property>
