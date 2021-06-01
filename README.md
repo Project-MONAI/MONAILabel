@@ -5,9 +5,9 @@ It is an open-source and easy-to-install ecosystem that can run locally on a mac
 Both server and client work on the same/different machine.  However, initial support for multiple users is restricted.
 It shares the same principles with [MONAI](https://github.com/Project-MONAI).
 
-[![Brief Demo]("docs/images/demo.png")](https://www.youtube.com/watch?v=vFirnscuOVI)
+[Brief Demo](https://www.youtube.com/watch?v=vFirnscuOVI)
 
-<img src="docs/images/demo.png" width="800"/>
+<img src="https://user-images.githubusercontent.com/7339051/120266996-fa98c480-c29a-11eb-93a3-36d50d791073.png" width="800"/>
 
 > **Development in Progress**. 
 > We will be actively working on this repository to add more features, fix issues, update docs, readme etc... 
