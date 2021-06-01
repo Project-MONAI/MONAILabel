@@ -1,24 +1,16 @@
-import logging
-
-from monai.transforms import AddChanneld, LoadImaged, ScaleIntensityRanged, Spacingd, SqueezeDimd, ToNumpyd, ToTensord
+from monai.transforms import AddChanneld, Compose, LoadImaged, ScaleIntensityRanged, Spacingd
 
 from monailabel.interfaces.tasks import InferTask, InferType
 from monailabel.utils.others.post import BoundingBoxd, Restored
 
-from .transforms import AddUnaryTermd, ApplyCRFPostProcd
-
-logger = logging.getLogger(__name__)
+from .transforms import ApplyCRFOptimisationd, ApplyGraphCutOptimisationd, MakeBIFSegUnaryd
 
 
-class SpleenCRF(InferTask):
-    """
-    Post Processing Task For Spleen using CRF
-    """
-
+class SpleenPostProc(InferTask):
     def __init__(
         self,
-        dimension=3,
-        description="A post processing step with CRF for Spleen",
+        dimension,
+        description,
     ):
         super().__init__(
             path=None,
@@ -37,28 +29,72 @@ class SpleenCRF(InferTask):
             # therefore scaling non-isotropic with big spacing
             Spacingd(keys=["image", "logits"], pixdim=[2.5, 2.5, 5.0]),
             Spacingd(keys=["label"], pixdim=[2.5, 2.5, 5.0], mode="nearest"),
-            ScaleIntensityRanged(keys="image", a_min=-164, a_max=164, b_min=0.0, b_max=1.0, clip=True),
-            AddUnaryTermd(
-                ref_prob="logits",
-                unary="unary",
-                scribbles="label",
-                channel_dim=0,
-                scribbles_bg_label=2,
-                scribbles_fg_label=3,
-                scale_infty=100,
-                use_simplecrf=False,
-            ),
-            AddChanneld(keys=["image", "unary"]),
-            ToTensord(keys=["image", "logits", "unary"]),
+            ScaleIntensityRanged(keys="image", a_min=-300, a_max=200, b_min=0.0, b_max=1.0, clip=True),
         ]
 
     def post_transforms(self):
         return [
-            SqueezeDimd(keys=["pred", "logits"], dim=0),
-            ToNumpyd(keys=["pred", "logits"]),
             Restored(keys="pred", ref_image="image"),  # undo Spacingd in pre-transform
             BoundingBoxd(keys="pred", result="result", bbox="bbox"),
         ]
 
     def inferer(self):
-        return ApplyCRFPostProcd(unary="unary", pairwise="image", post_proc_label="pred")
+        raise NotImplementedError("inferer not implemented in base post proc class")
+
+
+class SpleenBIFSegCRF(SpleenPostProc):
+    def __init__(
+        self,
+        dimension=3,
+        description="A post processing step BIFSeg with CRF for Spleen",
+    ):
+        super().__init__(
+            dimension=dimension,
+            description=description,
+        )
+
+    def inferer(self):
+        return Compose(
+            [
+                MakeBIFSegUnaryd(
+                    image="image",
+                    logits="logits",
+                    scribbles="label",
+                    unary="unary",
+                    scribbles_bg_label=2,
+                    scribbles_fg_label=3,
+                    scale_infty=10,
+                    use_simplecrf=False,
+                ),
+                ApplyCRFOptimisationd(unary="unary", pairwise="image", post_proc_label="pred"),
+            ]
+        )
+
+
+class SpleenBIFSegGraphCut(SpleenPostProc):
+    def __init__(
+        self,
+        dimension=3,
+        description="A post processing step with BIFSeg GraphCut for Spleen",
+    ):
+        super().__init__(
+            dimension=dimension,
+            description=description,
+        )
+
+    def inferer(self):
+        return Compose(
+            [
+                MakeBIFSegUnaryd(
+                    image="image",
+                    logits="logits",
+                    scribbles="label",
+                    unary="unary",
+                    scribbles_bg_label=2,
+                    scribbles_fg_label=3,
+                    scale_infty=10,
+                    use_simplecrf=True,
+                ),
+                ApplyGraphCutOptimisationd(unary="unary", pairwise="image", post_proc_label="pred"),
+            ]
+        )
