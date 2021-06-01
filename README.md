@@ -23,7 +23,7 @@ principles with [MONAI](https://github.com/Project-MONAI).
 
 - Pre-Trained models are available
   at [dropbox](https://www.dropbox.com/sh/gcobuwui5v2r8f5/AAAaJ3uFajwo4NRnQ0BqU46Ma?dl=0)
-- Download sample images/datasets
+- Sample images/datasets can be downloaded
   from [monai-aws](https://github.com/Project-MONAI/MONAI/blob/master/monai/apps/datasets.py#L213-L224)
 
 ### Ubuntu
@@ -78,20 +78,14 @@ principles with [MONAI](https://github.com/Project-MONAI).
 
 <img src="https://user-images.githubusercontent.com/7339051/120267190-61b67900-c29b-11eb-8eaf-9c2bfa74f837.png" width="200"/>
 
-## Dry Run basic flow (without slicer)
+## REST APIs
 
-- http://127.0.0.1:8000/ will provide you the list of Rest APIs and click them to try any of them.
+- Once you start the MONAILabel Server, by default it will be up and serving at http://127.0.0.1:8000/. Open the serving
+  URL in browser. It will provide you the list of Rest APIs. You can try them with the need of actual viewer to dry run
+  the features of MONAILabel.
 
 <img src="https://user-images.githubusercontent.com/7339051/120266924-cd4c1680-c29a-11eb-884e-a60975981df9.png" width="500"/>
 
-## Slicer
+## 3D Slicer
 
-Install Plugin in developer mode
-
-- git clone git@github.com:Project-MONAI/MONAILabel.git
-- Open 3D Slicer: Go to Edit -> Application Settings -> Modules -> Additional Module Paths
-- Add New Module Path: <FULL_PATH>/plugins/slicer/MONAILabel
-- Restart
-
-<img src="https://user-images.githubusercontent.com/7339051/120266996-fa98c480-c29a-11eb-93a3-36d50d791073.png" width="800"/>
-
+Refer [3D Slicer plugin](plugins/slicer/README.md) for installing and running MONAILabel plugin in 3D Slicer.

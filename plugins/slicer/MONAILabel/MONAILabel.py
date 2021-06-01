@@ -23,13 +23,13 @@ from slicer.util import VTKObservationMixin
 class MONAILabel(ScriptedLoadableModule):
     def __init__(self, parent):
         ScriptedLoadableModule.__init__(self, parent)
-        self.parent.title = "MONAI Label"
+        self.parent.title = "MONAILabel"
         self.parent.categories = ["Active Learning"]
         self.parent.dependencies = []
         self.parent.contributors = ["NVIDIA, KCL"]
         self.parent.helpText = """
 Active Learning solution.
-See more information in <a href="https://github.com/MONAI/MONAI-Label">module documentation</a>.
+See more information in <a href="https://github.com/Project-MONAI/MONAILabel">module documentation</a>.
 """
         self.parent.acknowledgementText = """
 Developed by NVIDIA, KCL
@@ -41,7 +41,7 @@ Developed by NVIDIA, KCL
     def initializeAfterStartup(self):
         if not slicer.app.commandOptions().noMainWindow:
             self.settingsPanel = MONAILabelSettingsPanel()
-            slicer.app.settingsDialog().addPanel("MONAI-Label", self.settingsPanel)
+            slicer.app.settingsDialog().addPanel("MONAI Label", self.settingsPanel)
 
 
 class _ui_MONAILabelSettingsPanel(object):
@@ -55,12 +55,12 @@ class _ui_MONAILabelSettingsPanel(object):
 
         serverUrl = qt.QLineEdit()
         groupLayout.addRow("Server address:", serverUrl)
-        parent.registerProperty("MONAI-Label/serverUrl", serverUrl, "text", str(qt.SIGNAL("textChanged(QString)")))
+        parent.registerProperty("MONAILabel/serverUrl", serverUrl, "text", str(qt.SIGNAL("textChanged(QString)")))
 
         serverUrlHistory = qt.QLineEdit()
         groupLayout.addRow("Server address history:", serverUrlHistory)
         parent.registerProperty(
-            "MONAI-Label/serverUrlHistory", serverUrlHistory, "text", str(qt.SIGNAL("textChanged(QString)"))
+            "MONAILabel/serverUrlHistory", serverUrlHistory, "text", str(qt.SIGNAL("textChanged(QString)"))
         )
 
         autoRunSegmentationCheckBox = qt.QCheckBox()
@@ -70,7 +70,7 @@ class _ui_MONAILabelSettingsPanel(object):
         )
         groupLayout.addRow("Auto-Run Pre-Trained Model:", autoRunSegmentationCheckBox)
         parent.registerProperty(
-            "MONAI-Label/autoRunSegmentationOnNextSample",
+            "MONAILabel/autoRunSegmentationOnNextSample",
             ctk.ctkBooleanMapper(autoRunSegmentationCheckBox, "checked", str(qt.SIGNAL("toggled(bool)"))),
             "valueAsInt",
             str(qt.SIGNAL("valueAsIntChanged(int)")),
@@ -81,7 +81,7 @@ class _ui_MONAILabelSettingsPanel(object):
         autoFetchNextSampleCheckBox.toolTip = "Enable this option to fetch Next Sample after saving the label"
         groupLayout.addRow("Auto-Fetch Next Sample:", autoFetchNextSampleCheckBox)
         parent.registerProperty(
-            "MONAI-Label/autoFetchNextSample",
+            "MONAILabel/autoFetchNextSample",
             ctk.ctkBooleanMapper(autoFetchNextSampleCheckBox, "checked", str(qt.SIGNAL("toggled(bool)"))),
             "valueAsInt",
             str(qt.SIGNAL("valueAsIntChanged(int)")),
@@ -592,10 +592,10 @@ class MONAILabelWidget(ScriptedLoadableModuleWidget, VTKObservationMixin):
         # Save selected server URL
         settings = qt.QSettings()
         serverUrl = self.ui.serverComboBox.currentText
-        settings.setValue("MONAI-Label/serverUrl", serverUrl)
+        settings.setValue("MONAILabel/serverUrl", serverUrl)
 
         # Save current server URL to the top of history
-        serverUrlHistory = settings.value("MONAI-Label/serverUrlHistory")
+        serverUrlHistory = settings.value("MONAILabel/serverUrlHistory")
         if serverUrlHistory:
             serverUrlHistory = serverUrlHistory.split(";")
         else:
@@ -607,7 +607,7 @@ class MONAILabelWidget(ScriptedLoadableModuleWidget, VTKObservationMixin):
 
         serverUrlHistory.insert(0, serverUrl)
         serverUrlHistory = serverUrlHistory[:10]  # keep up to first 10 elements
-        settings.setValue("MONAI-Label/serverUrlHistory", ";".join(serverUrlHistory))
+        settings.setValue("MONAILabel/serverUrlHistory", ";".join(serverUrlHistory))
 
         self.updateServerUrlGUIFromSettings()
 
@@ -835,7 +835,7 @@ class MONAILabelWidget(ScriptedLoadableModuleWidget, VTKObservationMixin):
 
             # Check if user wants to run auto-segmentation on new sample
             if slicer.util.settingsValue(
-                "MONAI-Label/autoRunSegmentationOnNextSample", True, converter=slicer.util.toBool
+                "MONAILabel/autoRunSegmentationOnNextSample", True, converter=slicer.util.toBool
             ):
                 for label in self.info.get("labels", []):
                     for name, model in self.models.items():
@@ -888,7 +888,7 @@ class MONAILabelWidget(ScriptedLoadableModuleWidget, VTKObservationMixin):
                     "Label-Mask saved into MONAI Label Server\t\t", detailedText=json.dumps(result, indent=2)
                 )
 
-                if slicer.util.settingsValue("MONAI-Label/autoFetchNextSample", False, converter=slicer.util.toBool):
+                if slicer.util.settingsValue("MONAILabel/autoFetchNextSample", False, converter=slicer.util.toBool):
                     slicer.mrmlScene.Clear(0)
                     self.onNextSampleButton()
 
@@ -1102,13 +1102,13 @@ class MONAILabelWidget(ScriptedLoadableModuleWidget, VTKObservationMixin):
     def updateServerUrlGUIFromSettings(self):
         # Save current server URL to the top of history
         settings = qt.QSettings()
-        serverUrlHistory = settings.value("MONAI-Label/serverUrlHistory")
+        serverUrlHistory = settings.value("MONAILabel/serverUrlHistory")
 
         wasBlocked = self.ui.serverComboBox.blockSignals(True)
         self.ui.serverComboBox.clear()
         if serverUrlHistory:
             self.ui.serverComboBox.addItems(serverUrlHistory.split(";"))
-        self.ui.serverComboBox.setCurrentText(settings.value("MONAI-Label/serverUrl"))
+        self.ui.serverComboBox.setCurrentText(settings.value("MONAILabel/serverUrl"))
         self.ui.serverComboBox.blockSignals(wasBlocked)
 
     def createFiducialNode(self, name, onMarkupNodeModified, color):
