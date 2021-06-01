@@ -111,7 +111,7 @@ class MONAILabelWidget(ScriptedLoadableModuleWidget, VTKObservationMixin):
         self._segmentNode = None
         self._volumeNodes = []
         self._updatingGUIFromParameterNode = False
-        self._segmentEditorWidget = None
+        self._scribblesEditorWidget = None
 
         self.info = {}
         self.models = OrderedDict()
@@ -249,7 +249,7 @@ class MONAILabelWidget(ScriptedLoadableModuleWidget, VTKObservationMixin):
 
     def onStartScribbling(self):
         logging.debug("Scribbles start event")
-        if (not self.scribblesLayersPresent()) and (self._segmentEditorWidget is None):
+        if (not self.scribblesLayersPresent()) and (self._scribblesEditorWidget is None):
             # add background, layer index = -2 [2], color = red
             self._segmentNode.GetSegmentation().AddEmptySegment(
                 "background_scribbles", "background_scribbles", [1.0, 0.0, 0.0]
@@ -276,8 +276,8 @@ class MONAILabelWidget(ScriptedLoadableModuleWidget, VTKObservationMixin):
 
             # create segmentEditorWidget to access "Paint" and "Erase" segmentation tools
             # these will be used to draw scribbles
-            self._segmentEditorWidget = slicer.qMRMLSegmentEditorWidget()
-            self._segmentEditorWidget.setMRMLScene(slicer.mrmlScene)
+            self._scribblesEditorWidget = slicer.qMRMLSegmentEditorWidget()
+            self._scribblesEditorWidget.setMRMLScene(slicer.mrmlScene)
             segmentEditorNode = slicer.vtkMRMLSegmentEditorNode()
 
             # adding new scribbles can overwrite a new one-hot vector, hence erase any existing
@@ -288,9 +288,9 @@ class MONAILabelWidget(ScriptedLoadableModuleWidget, VTKObservationMixin):
 
             # add all nodes to the widget
             slicer.mrmlScene.AddNode(segmentEditorNode)
-            self._segmentEditorWidget.setMRMLSegmentEditorNode(segmentEditorNode)
-            self._segmentEditorWidget.setSegmentationNode(self._segmentNode)
-            self._segmentEditorWidget.setMasterVolumeNode(self._volumeNode)
+            self._scribblesEditorWidget.setMRMLSegmentEditorNode(segmentEditorNode)
+            self._scribblesEditorWidget.setSegmentationNode(self._segmentNode)
+            self._scribblesEditorWidget.setMasterVolumeNode(self._volumeNode)
 
     def onUpdateScribbles(self):
         logging.info("Scribbles update event")
@@ -344,15 +344,15 @@ class MONAILabelWidget(ScriptedLoadableModuleWidget, VTKObservationMixin):
         self.scribblesMode = None
 
         # clear scribbles editor widget
-        widget = self._segmentEditorWidget
+        widget = self._scribblesEditorWidget
         del widget
-        self._segmentEditorWidget = None
+        self._scribblesEditorWidget = None
 
         # update tool/layer display
         self.updateScribblesStatusIcons()
 
     def checkAndInitialiseScribbles(self):
-        if self._segmentEditorWidget is None:
+        if self._scribblesEditorWidget is None:
             self.onStartScribbling()
 
         if self.scribblesMode is None:
@@ -365,8 +365,8 @@ class MONAILabelWidget(ScriptedLoadableModuleWidget, VTKObservationMixin):
 
         # update tool/layer select for scribblesEditorWidget
         tool, layer = self.getToolAndLayerFromScribblesMode()
-        self._segmentEditorWidget.setActiveEffectByName(tool)
-        self._segmentEditorWidget.setCurrentSegmentID(layer)
+        self._scribblesEditorWidget.setActiveEffectByName(tool)
+        self._scribblesEditorWidget.setCurrentSegmentID(layer)
 
         # update brush type from checkbox
         is3dbrush = self.ui.brush3dCheckbox.checkState()
@@ -432,7 +432,7 @@ class MONAILabelWidget(ScriptedLoadableModuleWidget, VTKObservationMixin):
     def on3dBrushCheckbox(self, state):
         logging.info("3D brush update {}".format(state))
         self.checkAndInitialiseScribbles()
-        effect = self._segmentEditorWidget.activeEffect()
+        effect = self._scribblesEditorWidget.activeEffect()
 
         # enable scribbles in 3d using a sphere brush
         effect.setParameter("BrushSphere", state)
@@ -440,7 +440,7 @@ class MONAILabelWidget(ScriptedLoadableModuleWidget, VTKObservationMixin):
     def updateBrushSize(self, value):
         logging.info("brush size update {}".format(value))
         self.checkAndInitialiseScribbles()
-        effect = self._segmentEditorWidget.activeEffect()
+        effect = self._scribblesEditorWidget.activeEffect()
 
         # change scribbles brush size
         effect.setParameter("BrushAbsoluteDiameter", value)
