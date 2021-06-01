@@ -56,6 +56,7 @@ class SpleenBIFSegCRF(SpleenPostProc):
     def inferer(self):
         return Compose(
             [
+                # unary term maker
                 MakeBIFSegUnaryd(
                     image="image",
                     logits="logits",
@@ -63,9 +64,10 @@ class SpleenBIFSegCRF(SpleenPostProc):
                     unary="unary",
                     scribbles_bg_label=2,
                     scribbles_fg_label=3,
-                    scale_infty=10,
+                    scale_infty=1e6,
                     use_simplecrf=False,
                 ),
+                # optimiser
                 ApplyCRFOptimisationd(unary="unary", pairwise="image", post_proc_label="pred"),
             ]
         )
@@ -85,6 +87,7 @@ class SpleenBIFSegGraphCut(SpleenPostProc):
     def inferer(self):
         return Compose(
             [
+                # unary term maker
                 MakeBIFSegUnaryd(
                     image="image",
                     logits="logits",
@@ -92,9 +95,16 @@ class SpleenBIFSegGraphCut(SpleenPostProc):
                     unary="unary",
                     scribbles_bg_label=2,
                     scribbles_fg_label=3,
-                    scale_infty=10,
-                    use_simplecrf=True,
+                    scale_infty=1e6,
+                    use_simplecrf=False,
                 ),
-                ApplyGraphCutOptimisationd(unary="unary", pairwise="image", post_proc_label="pred"),
+                # optimiser
+                ApplyGraphCutOptimisationd(
+                    unary="unary",
+                    pairwise="image",
+                    post_proc_label="pred",
+                    lamda=10.0,
+                    sigma=15.0,
+                ),
             ]
         )

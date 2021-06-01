@@ -31,8 +31,8 @@ class MyApp(MONAILabelApp):
 
         infers = {
             "segmentation_spleen": MyInfer(path, self.network),
-            "BIFSegGraphCut": SpleenBIFSegGraphCut(),
-            "BIFSegCRF": SpleenBIFSegCRF(),
+            "BIFSeg+GraphCut": SpleenBIFSegGraphCut(),
+            "BIFSeg+CRF": SpleenBIFSegCRF(),
         }
 
         strategies = {

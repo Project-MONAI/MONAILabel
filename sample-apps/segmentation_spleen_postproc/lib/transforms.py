@@ -35,6 +35,21 @@ class InteractiveSegmentationTransform(Transform):
 
         return data
 
+    def _copy_affine(self, d, src, dst):
+        # make keys
+        src_key = "_".join([src, self.meta_key_postfix])
+        dst_key = "_".join([dst, self.meta_key_postfix])
+
+        # check if keys exists, if so then copy affine info
+        if src_key in d.keys() and "affine" in d[src_key]:
+            # create a new destination dictionary if needed
+            d[dst_key] = {} if dst_key not in d.keys() else d[dst_key]
+
+            # copy over affine information
+            d[dst_key]["affine"] = deepcopy(d[src_key]["affine"])
+
+        return d
+
 
 ########################
 #  Make Unary Transforms
@@ -66,11 +81,8 @@ class MakeBIFSegUnaryd(InteractiveSegmentationTransform):
     def __call__(self, data):
         d = dict(data)
 
-        # copy meta data from pairwise input
-        src_key = "_".join([self.image, self.meta_key_postfix])
-        dst_key = "_".join([self.unary, self.meta_key_postfix])
-        if src_key in d.keys():
-            d[dst_key] = deepcopy(d[src_key])
+        # copy affine meta data from image input
+        self._copy_affine(d, self.image, self.unary)
 
         # create empty container for postprocessed label
         dst_shape = list(d[self.scribbles].shape)
@@ -147,11 +159,8 @@ class ApplyCRFOptimisationd(InteractiveSegmentationTransform):
     def __call__(self, data):
         d = dict(data)
 
-        # copy meta data from pairwise input
-        src_key = "_".join([self.pairwise, self.meta_key_postfix])
-        dst_key = "_".join([self.post_proc_label, self.meta_key_postfix])
-        if src_key in d.keys():
-            d[dst_key] = deepcopy(d[src_key])
+        # copy affine meta data from pairwise input
+        self._copy_affine(d, self.pairwise, self.post_proc_label)
 
         # create empty container for postprocessed label
         d[self.post_proc_label] = np.zeros_like(d[self.pairwise])
@@ -214,11 +223,8 @@ class ApplyGraphCutOptimisationd(InteractiveSegmentationTransform):
     def __call__(self, data):
         d = dict(data)
 
-        # copy meta data from pairwise input
-        src_key = "_".join([self.pairwise, self.meta_key_postfix])
-        dst_key = "_".join([self.post_proc_label, self.meta_key_postfix])
-        if src_key in d.keys():
-            d[dst_key] = deepcopy(d[src_key])
+        # copy affine meta data from pairwise input
+        self._copy_affine(d, self.pairwise, self.post_proc_label)
 
         # create empty container for postprocessed label
         d[self.post_proc_label] = np.zeros_like(d[self.pairwise])
