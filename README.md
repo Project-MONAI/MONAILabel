@@ -71,7 +71,7 @@ principles with [MONAI](https://github.com/Project-MONAI).
     monailabel apps --download --name deepedit_heart --output C:\Workspace\Apps
 
     # Run App
-    monailabel run --app C:\Workspace\Apps\deepedit_heart --studies C:\Datasets\Task02_Heart\imagesTr
+    monailabel run --app C:\Workspace\Apps\deepedit_heart --studies C:\Workspace\Datasets\Task02_Heart\imagesTr
 ```
 
 ## App basic structure
