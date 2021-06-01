@@ -17,11 +17,11 @@
       "class": "logging.StreamHandler",
       "formatter": "simple"
     },
-    "train_console": {
+    "task_console": {
       "class": "logging.StreamHandler",
       "formatter": "single"
     },
-    "train_handler": {
+    "task_handler": {
       "class": "logging.handlers.RotatingFileHandler",
       "formatter": "single",
       "filename": "${LOGFILE}",
@@ -51,8 +51,24 @@
       "level": "INFO",
       "propagate": false,
       "handlers": [
-        "train_console",
-        "train_handler"
+        "task_console",
+        "task_handler"
+      ]
+    },
+    "task_scoring": {
+      "level": "INFO",
+      "propagate": false,
+      "handlers": [
+        "task_console",
+        "task_handler"
+      ]
+    },
+    "task_batch_infer": {
+      "level": "INFO",
+      "propagate": false,
+      "handlers": [
+        "task_console",
+        "task_handler"
       ]
     },
     "uvicorn": {

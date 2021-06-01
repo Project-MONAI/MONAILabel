@@ -83,13 +83,14 @@ monailabel run --app /workspace/MONAILabel/sample-apps/deepedit_heart/ --studies
 
 ## App basic structure
 
-<img src="https://user-images.githubusercontent.com/7339051/114428020-98cdaf80-9bb3-11eb-8010-40f47d1afcd6.png" width="200"/>
+<img src="https://user-images.githubusercontent.com/7339051/120267190-61b67900-c29b-11eb-8eaf-9c2bfa74f837.png" width="200"/>
+
 
 ## Dry Run basic flow (without slicer)
 
 - http://127.0.0.1:8000/ will provide you the list of Rest APIs and click them to try any of them.
 
-<img src="https://user-images.githubusercontent.com/7339051/115477603-31ab9d00-a23c-11eb-85f0-0b8ac374a9a0.png" width="500"/>
+<img src="https://user-images.githubusercontent.com/7339051/120266924-cd4c1680-c29a-11eb-884e-a60975981df9.png" width="500"/>
 
 
 ## Slicer
@@ -101,4 +102,5 @@ Install Plugin in developer mode
 - Add New Module Path: <FULL_PATH>/plugins/slicer/MONAILabel
 - Restart
 
-<img src="https://user-images.githubusercontent.com/7339051/115478017-1725f380-a23d-11eb-9b60-19638187b8e6.png" width="400"/>
+<img src="https://user-images.githubusercontent.com/7339051/120266996-fa98c480-c29a-11eb-93a3-36d50d791073.png" width="800"/>
+

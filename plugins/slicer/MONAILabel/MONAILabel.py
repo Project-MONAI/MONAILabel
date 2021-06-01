@@ -909,7 +909,7 @@ class MONAILabelWidget(ScriptedLoadableModuleWidget, VTKObservationMixin):
             image_file = self.current_sample["id"]
 
             configs = self.getParamsFromConfig()
-            result_file, params = self.logic.inference(model, image_file, configs.get("infer"))
+            result_file, params = self.logic.infer(model, image_file, configs.get("infer"))
 
             self.updateSegmentationMask(result_file, self.models[model].get("labels"))
         except:
@@ -974,7 +974,7 @@ class MONAILabelWidget(ScriptedLoadableModuleWidget, VTKObservationMixin):
 
             configs = self.getParamsFromConfig()
             params.update(configs.get("infer", {}))
-            result_file, params = self.logic.inference(model, image_file, params)
+            result_file, params = self.logic.infer(model, image_file, params)
             logging.debug("Params from deepgrow is {}".format(params))
 
             self.updateSegmentationMask(result_file, [label], None if deepgrow_3d else sliceIndex)
@@ -1180,12 +1180,12 @@ class MONAILabelLogic(ScriptedLoadableModuleLogic):
     def save_label(self, image_in, label_in):
         return MONAILabelClient(self.server_url, self.tmpdir).save_label(image_in, label_in)
 
-    def inference(self, model, image_in, params={}, label_in=None):
+    def infer(self, model, image_in, params={}, label_in=None):
         logging.debug("Preparing input data for segmentation")
         self.reportProgress(0)
 
         client = MONAILabelClient(self.server_url, self.tmpdir)
-        result_file, params = client.inference(model, image_in, params, label_in)
+        result_file, params = client.infer(model, image_in, params, label_in)
 
         logging.debug(f"Image Response: {result_file}")
         logging.debug(f"JSON  Response: {params}")

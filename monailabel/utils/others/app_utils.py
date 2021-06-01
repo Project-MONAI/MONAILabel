@@ -30,14 +30,6 @@ def app_instance(app_dir, studies):
         )
 
     o = c(app_dir=app_dir, studies=studies)
-    methods = ["infer", "train", "info", "next_sample", "save_label"]
-    for m in methods:
-        if not hasattr(o, m):
-            raise MONAILabelException(
-                MONAILabelError.APP_INIT_ERROR,
-                "App Does NOT Implement '{m}' method in main.py",
-            )
-
     app = o
     return app
 
@@ -47,36 +39,6 @@ def save_result(result, output):
     if output:
         with open(output, "w") as fp:
             json.dump(result, fp, indent=2)
-
-
-def run_infer(args):
-    a = app_instance(app_dir=args.app, studies=args.studies)
-    request = json.loads(args.request)
-
-    res_img, res_json = a.infer(request=request)
-    result = {"label": res_img, "params": res_json}
-    save_result(result, args.output)
-
-
-def run_batch_infer(args):
-    a = app_instance(app_dir=args.app, studies=args.studies)
-    request = json.loads(args.request)
-
-    result = a.batch_infer(request)
-    save_result(result, args.output)
-
-
-def run_train(args):
-    a = app_instance(app_dir=args.app, studies=args.studies)
-    request = json.loads(args.request)
-    result = a.train(request)
-    save_result(result, args.output)
-
-
-def run_info(args):
-    a = app_instance(app_dir=args.app, studies=args.studies)
-    result = a.info()
-    save_result(result, args.output)
 
 
 def run_main():
@@ -101,16 +63,26 @@ def run_main():
         format="[%(asctime)s] [%(levelname)s] (%(name)s) - %(message)s",
     )
 
+    a = app_instance(app_dir=args.app, studies=args.studies)
+    request = json.loads(args.request)
+    result = None
+
     if args.method == "infer":
-        run_infer(args)
+        res_img, res_json = a.infer(request=request)
+        result = {"label": res_img, "params": res_json}
     elif args.method == "train":
-        run_train(args)
+        result = a.train(request)
     elif args.method == "info":
-        run_info(args)
+        result = a.info(request)
     elif args.method == "batch_infer":
-        run_batch_infer(args)
+        result = a.batch_infer(request)
+    elif args.method == "scoring":
+        result = a.scoring(request)
     else:
         parser.print_help()
+        exit(-1)
+
+    save_result(result, args.output)
 
 
 if __name__ == "__main__":
