@@ -8,6 +8,7 @@ import shutil
 from pathlib import Path
 from typing import Any, Dict, List
 
+from filelock import FileLock
 from pydantic import BaseModel
 from watchdog.events import PatternMatchingEventHandler
 from watchdog.observers import Observer
@@ -78,24 +79,25 @@ class LocalDatastore(Datastore):
         self._label_store_path = label_store_path
         self._image_extensions = [image_extensions] if isinstance(image_extensions, str) else image_extensions
         self._label_extensions = [label_extensions] if isinstance(label_extensions, str) else label_extensions
+        self._ignore_event_count = 0
+        self._ignore_event_config = False
+        self._config_ts = 0
+
+        self._lock = FileLock(os.path.join(datastore_path, ".lock"))
+        logging.getLogger("filelock").setLevel(logging.ERROR)
 
         logger.info(f"Image Extensions: {self._image_extensions}")
         logger.info(f"Label Extensions: {self._label_extensions}")
         logger.info(f"Auto Reload: {auto_reload}")
 
-        if os.path.exists(self._datastore_config_path):
-            # check if dataset configuration file exists and load if it does
-            self._datastore = LocalDatastoreModel.parse_file(self._datastore_config_path)
-        else:
-            # otherwise create anew
-            self._datastore = LocalDatastoreModel(name="new-dataset", description="New Dataset")
+        self._datastore: LocalDatastoreModel = LocalDatastoreModel(name="new-dataset", description="New Dataset")
+        self._init_from_datastore_file(throw_exception=True)
 
         # ensure labels path exists regardless of whether a datastore file is present
         os.makedirs(os.path.join(self._datastore_path, self._label_store_path), exist_ok=True)
 
         # reconcile the loaded datastore file with any existing files in the path
         self._reconcile_datastore()
-        self._update_datastore_file()
 
         if auto_reload:
             logger.info("Start observing external modifications on datastore (AUTO RELOAD)")
@@ -108,18 +110,22 @@ class LocalDatastore(Datastore):
                     for ext in [*image_extensions, *label_extensions]
                 ]
             )
+            include_patterns.append(self._datastore_config_path)
 
             self._handler = PatternMatchingEventHandler(patterns=include_patterns)
             self._handler.on_created = self._on_any_event
             self._handler.on_deleted = self._on_any_event
+            self._handler.on_modified = self._on_modify_event
 
             try:
+                self._ignore_event_count = 0
+                self._ignore_event_config = False
                 self._observer = Observer()
                 self._observer.schedule(self._handler, recursive=True, path=self._datastore_path)
                 self._observer.start()
             except OSError as e:
                 logger.error(
-                    "File watcher limit reached in operating system. "
+                    "Failed to start File watcher. "
                     "Local datastore will not update if images and labels are moved from datastore location."
                 )
                 logger.error(str(e))
@@ -335,15 +341,31 @@ class LocalDatastore(Datastore):
         return [obj.image.id for obj in self._datastore.objects]
 
     def _on_any_event(self, event):
+        if self._ignore_event_count:
+            logger.debug(f"Ignoring event by count: {self._ignore_event_count} => {event}")
+            self._ignore_event_count = max(self._ignore_event_count - 1, 0)
+            return
+
         logger.debug(f"Event: {event}")
         self.refresh()
+
+    def _on_modify_event(self, event):
+        # handle modify events only for config path; rest ignored
+        if event.src_path != self._datastore_config_path:
+            return
+
+        if self._ignore_event_config:
+            self._ignore_event_config = False
+            return
+
+        self._init_from_datastore_file()
 
     def refresh(self):
         """
         Refresh the datastore based on the state of the files on disk
         """
+        self._init_from_datastore_file()
         self._reconcile_datastore()
-        self._update_datastore_file()
 
     def save_label(self, image_id: str, label_filename: str, label_tag: str) -> str:
         """
@@ -355,35 +377,32 @@ class LocalDatastore(Datastore):
         :return: the label id for the given label filename
         """
         for obj in self._datastore.objects:
-
             if obj.image.id == image_id:
-
                 image_ext = "".join(pathlib.Path(image_id).suffixes)
                 label_ext = "".join(pathlib.Path(label_filename).suffixes)
                 label_id = "label_" + label_tag + "_" + image_id.replace(image_ext, "") + label_ext
 
-                os.makedirs(os.path.join(self._datastore_path, self._label_store_path), exist_ok=True)
-                datastore_label_path = os.path.join(self._datastore_path, self._label_store_path, label_id)
-                shutil.copy(src=label_filename, dst=datastore_label_path, follow_symlinks=True)
+                with self._lock:
+                    os.makedirs(os.path.join(self._datastore_path, self._label_store_path), exist_ok=True)
+                    datastore_label_path = os.path.join(self._datastore_path, self._label_store_path, label_id)
+                    shutil.copy(src=label_filename, dst=datastore_label_path, follow_symlinks=True)
 
-                if label_tag not in [label.tag for label in obj.labels]:
-                    obj.labels.append(
-                        LabelModel(
-                            id=label_id,
-                            tag=label_tag,
+                    if label_tag not in [label.tag for label in obj.labels]:
+                        obj.labels.append(
+                            LabelModel(
+                                id=label_id,
+                                tag=label_tag,
+                            )
                         )
-                    )
-                else:
-                    for label_index, label in enumerate(obj.labels):
-                        if label.tag == label_tag:
-                            obj.labels[label_index] = LabelModel(id=label_id, tag=label_tag)
+                    else:
+                        for label_index, label in enumerate(obj.labels):
+                            if label.tag == label_tag:
+                                obj.labels[label_index] = LabelModel(id=label_id, tag=label_tag)
 
-                self._update_datastore_file()
-
+                    self._update_datastore_file(lock=False)
                 return label_id
 
-        else:
-            raise ImageNotFoundException(f"Image {image_id} not found")
+        raise ImageNotFoundException(f"Image {image_id} not found")
 
     def update_image_info(self, image_id: str, info: Dict[str, Any]) -> None:
         """
@@ -437,19 +456,22 @@ class LocalDatastore(Datastore):
         return filtered
 
     def _reconcile_datastore(self):
-        self._remove_object_with_missing_file()
-        self._add_object_with_present_file()
+        if self._remove_object_with_missing_file() or self._add_object_with_present_file():
+            self._update_datastore_file()
 
-    def _remove_object_with_missing_file(self) -> None:
+    def _remove_object_with_missing_file(self) -> bool:
         """
         remove objects present in the datastore file but not present on path
         (even if labels exist, if images do not the whole object is removed from the datastore)
         """
+        invalidate = False
+
         image_id_files = self._list_files(self._datastore_path, self._image_extensions)
         image_id_datastore = [obj.image.id for obj in self._datastore.objects]
         missing_file_image_id = list(set(image_id_datastore) - set(image_id_files.keys()))
         if missing_file_image_id:
             logger.info(f"Removing Missing Images: {missing_file_image_id}")
+            invalidate = True
             self._datastore.objects = [
                 obj for obj in self._datastore.objects if obj.image.id not in missing_file_image_id
             ]
@@ -461,14 +483,19 @@ class LocalDatastore(Datastore):
         missing_file_label_id = list(set(label_id_datastore) - set(label_id_files.keys()))
         if missing_file_label_id:
             logger.info(f"Removing Missing Labels: {missing_file_label_id}")
+            invalidate = True
             for obj in self._datastore.objects:
                 obj.labels = [label for label in obj.labels if label.id not in missing_file_label_id]
 
-    def _add_object_with_present_file(self) -> None:
+        return invalidate
+
+    def _add_object_with_present_file(self) -> bool:
         """
         add objects which are not present in the datastore file, but are present in the datastore directory
         this adds the image present in the datastore path and any corresponding labels for that image
         """
+        invalidate = False
+
         image_id_files = LocalDatastore._list_files(self._datastore_path, self._image_extensions)
         label_id_files = LocalDatastore._list_files(
             os.path.join(self._datastore_path, self._label_store_path), self._label_extensions
@@ -484,6 +511,7 @@ class LocalDatastore(Datastore):
             # add the image i if not present
             if image_id not in existing_image_ids:
                 logger.info(f"Adding New Image: {image_id}")
+                invalidate = True
                 self._datastore.objects.append(ObjectModel(image=ImageModel(id=image_id)))
 
             # for matching image ids only
@@ -494,11 +522,37 @@ class LocalDatastore(Datastore):
 
                 if label_id not in [label.id for label in self._datastore.objects[image_id_index].labels]:
                     logger.info(f"Adding New Label: {image_id} => {label_id}")
+                    invalidate = True
                     self._datastore.objects[image_id_index].labels.append(LabelModel(id=label_id, tag=label_tag))
 
-    def _update_datastore_file(self):
+        return invalidate
+
+    def _init_from_datastore_file(self, throw_exception=False):
+        try:
+            with self._lock:
+                if os.path.exists(self._datastore_config_path):
+                    ts = os.stat(self._datastore_config_path).st_mtime
+                    if self._config_ts != ts:
+                        logger.debug(f"Reload Datastore; old ts: {self._config_ts}; new ts: {ts}")
+                        self._datastore = LocalDatastoreModel.parse_file(self._datastore_config_path)
+                        self._config_ts = ts
+        except ValueError as e:
+            logger.error(f"+++ Failed to load datastore => {e}")
+            if throw_exception:
+                raise e
+
+    def _update_datastore_file(self, lock=True):
+        if lock:
+            self._lock.acquire()
+
+        logger.debug("+++ Datastore is updated...")
+        self._ignore_event_config = True
         with open(self._datastore_config_path, "w") as f:
-            json.dump(self._datastore.dict(), f, indent=2, default=str)
+            f.write(json.dumps(self._datastore.dict(), indent=2, default=str))
+        self._config_ts = os.stat(self._datastore_config_path).st_mtime
+
+        if lock:
+            self._lock.release()
 
     def status(self) -> Dict[str, Any]:
         tags: dict = {}
