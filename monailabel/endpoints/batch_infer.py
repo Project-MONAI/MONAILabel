@@ -20,7 +20,7 @@ async def status(all: bool = False, check_if_running: bool = False):
 
 
 @router.post("/infer/{model}", summary="Run Batch Inference Task")
-async def run(model: str, params: Optional[dict] = None, force_sync: Optional[bool] = True):
+async def run(model: str, params: Optional[dict] = None, force_sync: Optional[bool] = False):
     return BackgroundTask.run("batch_infer", request={"model": model}, params=params, force_sync=force_sync)
 
 
