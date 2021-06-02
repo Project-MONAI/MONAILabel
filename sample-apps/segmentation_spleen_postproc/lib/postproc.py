@@ -113,6 +113,17 @@ class SpleenBIFSegGraphCut(SpleenPostProc):
             dimension=dimension,
             description=description,
         )
+    
+    def pre_transforms(self):
+        return [
+            LoadImaged(keys=["image", "logits", "label"]),
+            AddChanneld(keys=["image", "logits", "label"]),
+            # GraphCut is cheap, so use relatively smaller spacing
+            Spacingd(keys=["image", "logits"], pixdim=[2.0, 2.0, 2.0]),
+            Spacingd(keys=["label"], pixdim=[2.0, 2.0, 2.0], mode="nearest"),
+            # also reduce scaling range as GraphCut quantises pairwise to uint8
+            ScaleIntensityRanged(keys="image", a_min=-200, a_max=100, b_min=0.0, b_max=1.0, clip=True),
+        ]
 
     def inferer(self):
         return Compose(

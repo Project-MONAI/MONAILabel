@@ -1,6 +1,8 @@
+import logging
 import maxflow
 import numpy as np
 
+logger = logging.getLogger(__name__)
 
 def get_eps(data):
     return np.finfo(data.dtype).eps
@@ -54,7 +56,7 @@ def make_bifseg_unary(
     # for numerical stability, get rid of zeros
     # needed only for SimpleCRF, as internally it takes -log
     if use_simplecrf:
-        logits += get_eps(logits)
+        logits[logits==0] += get_eps(logits)
 
     # extract background/foreground points from image
     if use_simplecrf:
@@ -69,14 +71,14 @@ def make_bifseg_unary(
     # issue warning if no scribbles detected, the algorithm will still work
     # just need to inform user/researcher - in case it is unexpected
     if len(background_pts) == 0:
-        print(
-            "warining: no background scribbles received with label {}, available in scribbles {}".format(
+        logging.info(
+            "warning: no background scribbles received with label {}, available in scribbles {}".format(
                 scribbles_bg_label, np.unique(scribbles)
             )
         )
 
     if len(foreground_pts) == 0:
-        print(
+        logging.info(
             "warning: no foreground scribbles received with label {}, available in scribbles {}".format(
                 scribbles_fg_label, np.unique(scribbles)
             )
@@ -95,7 +97,7 @@ def make_bifseg_unary(
     s_hat = [0] * len(background_pts) + [1] * len(foreground_pts)
 
     # update unary with Equation 7, including predicted label y^ and corrected labels s^
-    eps = get_eps(unary_term)
+    eps = get_eps(unary_term) if use_simplecrf else 0
     fg_bg_pts = background_pts + foreground_pts
     for s_h, fb_pt in zip(s_hat, fg_bg_pts):
         u_idx = tuple(fb_pt[1:])
