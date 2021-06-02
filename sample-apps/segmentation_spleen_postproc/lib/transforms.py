@@ -5,7 +5,6 @@ import torch
 from monai.networks.blocks import CRF
 from monai.transforms.compose import Transform
 
-# You can write your transforms here... which can be used in your train/infer tasks
 from monailabel.utils.others.writer import Writer
 
 from .utils import BIFSegUnary, maxflow2d, maxflow3d
@@ -61,9 +60,29 @@ class MakeBIFSegUnaryd(InteractiveSegmentationTransform):
     Wang, Guotai, et al. "Interactive medical image segmentation using deep learning with image-specific fine tuning."
     IEEE transactions on medical imaging 37.7 (2018): 1562-1573. (preprint: https://arxiv.org/pdf/1710.04043.pdf)
 
-    BIFSeg unary term are constructed using Equation 7 on page 4 of the above mentioned paper.
+    BIFSeg unary term is constructed using Equation 7 on page 4 of the above mentioned paper.
     This unary term along with a pairwise term (e.g. input image volume) form Equation 5 in the paper, which defines an energy to be minimised.
     Equation 5 can be optimised using an appropriate optimisation method (e.g. CRF, GraphCut etc), which is implemented here as an additional transform.
+    
+    For Example::
+
+    Compose(
+        [
+            # unary term maker
+            MakeBIFSegUnaryd(
+                image="image",
+                logits="logits",
+                scribbles="label",
+                unary="unary",
+                scribbles_bg_label=2,
+                scribbles_fg_label=3,
+                scale_infty=1e6,
+                use_simplecrf=False,
+            ),
+            # optimiser
+            ApplyCRFOptimisationd(unary="unary", pairwise="image", post_proc_label="pred"),
+        ]
+    )
     """
 
     def __init__(
@@ -136,6 +155,33 @@ class MakeBIFSegUnaryd(InteractiveSegmentationTransform):
 #  Optimiser Transforms
 #######################
 class ApplyCRFOptimisationd(InteractiveSegmentationTransform):
+    """
+    Generic MONAI CRF optimisation transform.
+
+    This can be used in conjuction with any Make*Unaryd transform (e.g. MakeBIFSegUnaryd from above for implementing BIFSeg unary term).
+    It optimises a typical energy function for interactive segmentation methods using MONAI's CRF layer, 
+    e.g. Equation 5 from https://arxiv.org/pdf/1710.04043.pdf.
+
+    For Example::
+
+    Compose(
+        [
+            # unary term maker
+            MakeBIFSegUnaryd(
+                image="image",
+                logits="logits",
+                scribbles="label",
+                unary="unary",
+                scribbles_bg_label=2,
+                scribbles_fg_label=3,
+                scale_infty=1e6,
+                use_simplecrf=False,
+            ),
+            # optimiser
+            ApplyCRFOptimisationd(unary="unary", pairwise="image", post_proc_label="pred"),
+        ]
+    )
+    """
     def __init__(
         self,
         unary: str,
@@ -214,6 +260,39 @@ class ApplyCRFOptimisationd(InteractiveSegmentationTransform):
 
 
 class ApplyGraphCutOptimisationd(InteractiveSegmentationTransform):
+    """
+    Generic GraphCut optimisation transform.
+
+    This can be used in conjuction with any Make*Unaryd transform (e.g. MakeBIFSegUnaryd from above for implementing BIFSeg unary term).
+    It optimises a typical energy function for interactive segmentation methods using SimpleCRF's GraphCut method, 
+    e.g. Equation 5 from https://arxiv.org/pdf/1710.04043.pdf.
+
+    For Example::
+
+    Compose(
+        [
+            # unary term maker
+            MakeBIFSegUnaryd(
+                image="image",
+                logits="logits",
+                scribbles="label",
+                unary="unary",
+                scribbles_bg_label=2,
+                scribbles_fg_label=3,
+                scale_infty=1e6,
+                use_simplecrf=False,
+            ),
+            # optimiser
+            ApplyGraphCutOptimisationd(
+                unary="unary",
+                pairwise="image",
+                post_proc_label="pred",
+                lamda=10.0,
+                sigma=15.0,
+            ),
+        ]
+    )
+    """
     def __init__(
         self,
         unary: str,
