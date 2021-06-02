@@ -24,9 +24,17 @@ def BIFSegUnary(
     scribbles_bg_label=2,
     scribbles_fg_label=3,
     scale_infty=1,
-    use_simplecrf=True,
+    use_simplecrf=False,
 ):
-    # https://arxiv.org/pdf/1710.04043.pdf
+    """
+    Implements BIFSeg unary term from the following paper:
+
+    Wang, Guotai, et al. "Interactive medical image segmentation using deep learning with image-specific fine tuning."
+    IEEE transactions on medical imaging 37.7 (2018): 1562-1573. (preprint: https://arxiv.org/pdf/1710.04043.pdf)
+
+    BIFSeg unary term is constructed using Equation 7 on page 4 of the above mentioned paper.
+    """
+
     # fetch the data for probabilities and scribbles
     prob_shape = list(logits.shape)
     scrib_shape = list(scribbles.shape)

@@ -7,6 +7,10 @@ from .transforms import ApplyCRFOptimisationd, ApplyGraphCutOptimisationd, MakeB
 
 
 class SpleenPostProc(InferTask):
+    """
+    Defines a generic post processing task for Spleen segmentation.
+    """
+
     def __init__(
         self,
         dimension,
@@ -43,6 +47,19 @@ class SpleenPostProc(InferTask):
 
 
 class SpleenBIFSegCRF(SpleenPostProc):
+    """
+    Defines BIFSeg+CRF based post processing task for Spleen segmentation from the following paper:
+
+    Wang, Guotai, et al. "Interactive medical image segmentation using deep learning with image-specific fine tuning."
+    IEEE transactions on medical imaging 37.7 (2018): 1562-1573. (preprint: https://arxiv.org/pdf/1710.04043.pdf)
+
+    This task takes as input 1) original image volume 2) logits from model and 3) scribbles from user
+    indicating corrections for initial segmentation from model. It incorporates the user-scribbles using
+    Equation 7 on page 4 of the paper.
+
+    It runs CRF to optimise Equation 5 from the paper (with unaries coming from Equation 7 and pairwise as input volume).
+    """
+
     def __init__(
         self,
         dimension=3,
@@ -74,6 +91,19 @@ class SpleenBIFSegCRF(SpleenPostProc):
 
 
 class SpleenBIFSegGraphCut(SpleenPostProc):
+    """
+    Defines BIFSeg+GraphCut based post processing task for Spleen segmentation from the following paper:
+
+    Wang, Guotai, et al. "Interactive medical image segmentation using deep learning with image-specific fine tuning."
+    IEEE transactions on medical imaging 37.7 (2018): 1562-1573. (preprint: https://arxiv.org/pdf/1710.04043.pdf)
+
+    This task takes as input 1) original image volume 2) logits from model and 3) scribbles from user
+    indicating corrections for initial segmentation from model. It incorporates the user-scribbles using
+    Equation 7 on page 4 of the paper.
+
+    It runs GraphCut to optimise Equation 5 from the paper (with unaries coming from Equation 7 and pairwise as input volume).
+    """
+
     def __init__(
         self,
         dimension=3,

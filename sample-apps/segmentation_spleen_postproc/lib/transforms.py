@@ -55,6 +55,17 @@ class InteractiveSegmentationTransform(Transform):
 #  Make Unary Transforms
 ########################
 class MakeBIFSegUnaryd(InteractiveSegmentationTransform):
+    """
+    Implements forming BIFSeg unary term from the following paper:
+
+    Wang, Guotai, et al. "Interactive medical image segmentation using deep learning with image-specific fine tuning."
+    IEEE transactions on medical imaging 37.7 (2018): 1562-1573. (preprint: https://arxiv.org/pdf/1710.04043.pdf)
+
+    BIFSeg unary term are constructed using Equation 7 on page 4 of the above mentioned paper.
+    This unary term along with a pairwise term (e.g. input image volume) form Equation 5 in the paper, which defines an energy to be minimised.
+    Equation 5 can be optimised using an appropriate optimisation method (e.g. CRF, GraphCut etc), which is implemented here as an additional transform.
+    """
+
     def __init__(
         self,
         image: str,
