@@ -1,7 +1,15 @@
 import logging
 import os
 
-from lib import MyInfer, MyStrategy, MyTrain, SpleenBIFSegCRF, SpleenBIFSegGraphCut
+from lib import (
+    MyInfer,
+    MyStrategy,
+    MyTrain,
+    SpleenBIFSegCRF,
+    SpleenBIFSegGraphCut,
+    SpleenBIFSegSimpleCRF,
+    SpleenInteractiveGraphCut,
+)
 from monai.networks.layers import Norm
 from monai.networks.nets import UNet
 
@@ -31,8 +39,10 @@ class MyApp(MONAILabelApp):
 
         infers = {
             "segmentation_spleen": MyInfer(path, self.network),
-            "BIFSeg+GraphCut": SpleenBIFSegGraphCut(),
             "BIFSeg+CRF": SpleenBIFSegCRF(),
+            "BIFSeg+SimpleCRF": SpleenBIFSegSimpleCRF(),
+            "BIFSeg+GraphCut": SpleenBIFSegGraphCut(),
+            "Int.+BIFSeg+GraphCut": SpleenInteractiveGraphCut(),
         }
 
         strategies = {

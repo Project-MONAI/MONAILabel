@@ -1,8 +1,10 @@
 import logging
+
 import maxflow
 import numpy as np
 
 logger = logging.getLogger(__name__)
+
 
 def get_eps(data):
     return np.finfo(data.dtype).eps
@@ -20,13 +22,24 @@ def maxflow3d(image, prob, lamda=5, sigma=0.1):
     return maxflow.maxflow3d(image, prob, (lamda, sigma))
 
 
+def interactive_maxflow2d(image, prob, seed, lamda=5, sigma=0.1):
+    # lamda: weight of smoothing term
+    # sigma: std of intensity values
+    return maxflow.interactive_maxflow2d(image, prob, seed, (lamda, sigma))
+
+
+def interactive_maxflow3d(image, prob, seed, lamda=5, sigma=0.1):
+    # lamda: weight of smoothing term
+    # sigma: std of intensity values
+    return maxflow.interactive_maxflow3d(image, prob, seed, (lamda, sigma))
+
+
 def make_bifseg_unary(
     logits,
     scribbles,
     scribbles_bg_label=2,
     scribbles_fg_label=3,
     scale_infty=1,
-    use_simplecrf=False,
 ):
     """
     Implements BIFSeg unary term from the following paper:
@@ -45,30 +58,18 @@ def make_bifseg_unary(
     if prob_shape[1:] != scrib_shape[1:]:
         raise ValueError("shapes for logits and scribbles dont match")
 
-    # expected input shape is [1, X, Y, [Z]], exit if first dimension doesnt satisfy
+    # expected input shape is [1, X, Y, [Z]], exit if first dimension doesnt comply
     if scrib_shape[0] != 1:
         raise ValueError("scribbles should have single channel first, received {}".format(scrib_shape[0]))
 
-    # unfold a single logits for background into bg/fg logits (if needed)
+    # unfold a single prob for background into bg/fg logits (if needed)
     if prob_shape[0] == 1:
         logits = np.concatenate([logits, 1.0 - logits], axis=0)
 
-    # for numerical stability, get rid of zeros
-    # needed only for SimpleCRF, as internally it takes -log
-    if use_simplecrf:
-        logits[logits==0] += get_eps(logits)
+    background_pts = list(np.argwhere(scribbles == scribbles_bg_label))
+    foreground_pts = list(np.argwhere(scribbles == scribbles_fg_label))
 
-    # extract background/foreground points from image
-    if use_simplecrf:
-        # swap fg with bg as -log taken inside simplecrf code
-        background_pts = list(np.argwhere(scribbles == scribbles_fg_label))
-        foreground_pts = list(np.argwhere(scribbles == scribbles_bg_label))
-    else:
-        # monai crf, use default
-        background_pts = list(np.argwhere(scribbles == scribbles_bg_label))
-        foreground_pts = list(np.argwhere(scribbles == scribbles_fg_label))
-
-    # issue warning if no scribbles detected, the algorithm will still work
+    # issue a warning if no scribbles detected, the algorithm will still work
     # just need to inform user/researcher - in case it is unexpected
     if len(background_pts) == 0:
         logging.info(
@@ -87,20 +88,25 @@ def make_bifseg_unary(
     # get infty and scale it
     infty = np.max(logits) * scale_infty
 
-    # get predicted label y^
-    y_hat = np.argmax(logits, axis=0)
-
     # copy probabilities
     unary_term = np.copy(logits)
 
-    # get corrected labels from scribbles
     s_hat = [0] * len(background_pts) + [1] * len(foreground_pts)
 
-    # update unary with Equation 7, including predicted label y^ and corrected labels s^
-    eps = get_eps(unary_term) if use_simplecrf else 0
+    eps = get_eps(unary_term)
+
+    # for numerical stability, get rid of zeros
+    # needed only for SimpleCRF's methods, as internally they take -log(P)
+    unary_term[unary_term == 0] += eps
+
+    # update unary with Equation 7
+    equal_term = infty
+    no_equal_term = eps
+
     fg_bg_pts = background_pts + foreground_pts
     for s_h, fb_pt in zip(s_hat, fg_bg_pts):
         u_idx = tuple(fb_pt[1:])
-        unary_term[(s_h,) + u_idx] = eps if y_hat[u_idx] == s_h else infty
+        unary_term[(s_h,) + u_idx] = equal_term
+        unary_term[(1 - s_h,) + u_idx] = no_equal_term
 
     return unary_term
