@@ -143,7 +143,8 @@ def run_apps(args):
     resource = {
         "deepedit_heart": "https://github.com/Project-MONAI/MONAILabel/tree/main/sample-apps/deepedit_heart",
         "deepedit_spleen": "https://github.com/Project-MONAI/MONAILabel/tree/main/sample-apps/deepedit_spleen",
-        "deepgrow": "https://github.com/Project-MONAI/MONAILabel/tree/main/sample-apps/deepgrow",
+        "deepgrow_heart": "https://github.com/Project-MONAI/MONAILabel/tree/main/sample-apps/deepgrow_heart",
+        "deepgrow_spleen": "https://github.com/Project-MONAI/MONAILabel/tree/main/sample-apps/deepgrow_spleen",
         "segmentation_heart": "https://github.com/Project-MONAI/MONAILabel/tree/main/sample-apps/segmentation_heart",
         "segmentation_spleen": "https://github.com/Project-MONAI/MONAILabel/tree/main/sample-apps/segmentation_spleen",
     }
