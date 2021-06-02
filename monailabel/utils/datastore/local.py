@@ -90,8 +90,8 @@ class LocalDatastore(Datastore):
         logger.info(f"Label Extensions: {self._label_extensions}")
         logger.info(f"Auto Reload: {auto_reload}")
 
-        self._datastore = None
-        self._init_from_datastore_file()
+        self._datastore: LocalDatastoreModel = LocalDatastoreModel(name="new-dataset", description="New Dataset")
+        self._init_from_datastore_file(throw_exception=True)
 
         # ensure labels path exists regardless of whether a datastore file is present
         os.makedirs(os.path.join(self._datastore_path, self._label_store_path), exist_ok=True)
@@ -527,13 +527,10 @@ class LocalDatastore(Datastore):
 
         return invalidate
 
-    def _init_from_datastore_file(self):
+    def _init_from_datastore_file(self, throw_exception=False):
         try:
             with self._lock:
-                if not os.path.exists(self._datastore_config_path):
-                    self._datastore = LocalDatastoreModel(name="new-dataset", description="New Dataset")
-                    self._update_datastore_file()
-                else:
+                if os.path.exists(self._datastore_config_path):
                     ts = os.stat(self._datastore_config_path).st_mtime
                     if self._config_ts != ts:
                         logger.debug(f"Reload Datastore; old ts: {self._config_ts}; new ts: {ts}")
@@ -541,7 +538,7 @@ class LocalDatastore(Datastore):
                         self._config_ts = ts
         except ValueError as e:
             logger.error(f"+++ Failed to load datastore => {e}")
-            if not self._datastore:
+            if throw_exception:
                 raise e
 
     def _update_datastore_file(self, lock=True):
