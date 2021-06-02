@@ -6,19 +6,19 @@ def get_eps(data):
     return np.finfo(data.dtype).eps
 
 
-def maxflow2d(I, P, lamda=5, sigma=0.1):
+def maxflow2d(image, prob, lamda=5, sigma=0.1):
     # lamda: weight of smoothing term
     # sigma: std of intensity values
-    return maxflow.maxflow2d(I, P, (lamda, sigma))
+    return maxflow.maxflow2d(image, prob, (lamda, sigma))
 
 
-def maxflow3d(I, P, lamda=5, sigma=0.1):
+def maxflow3d(image, prob, lamda=5, sigma=0.1):
     # lamda: weight of smoothing term
     # sigma: std of intensity values
-    return maxflow.maxflow3d(I, P, (lamda, sigma))
+    return maxflow.maxflow3d(image, prob, (lamda, sigma))
 
 
-def BIFSegUnary(
+def make_bifseg_unary(
     logits,
     scribbles,
     scribbles_bg_label=2,
@@ -95,10 +95,10 @@ def BIFSegUnary(
     s_hat = [0] * len(background_pts) + [1] * len(foreground_pts)
 
     # update unary with Equation 7, including predicted label y^ and corrected labels s^
-    EPS = get_eps(unary_term)
+    eps = get_eps(unary_term)
     fg_bg_pts = background_pts + foreground_pts
     for s_h, fb_pt in zip(s_hat, fg_bg_pts):
         u_idx = tuple(fb_pt[1:])
-        unary_term[(s_h,) + u_idx] = EPS if y_hat[u_idx] == s_h else infty
+        unary_term[(s_h,) + u_idx] = eps if y_hat[u_idx] == s_h else infty
 
     return unary_term

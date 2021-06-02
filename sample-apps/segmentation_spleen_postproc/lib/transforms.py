@@ -7,7 +7,7 @@ from monai.transforms.compose import Transform
 
 from monailabel.utils.others.writer import Writer
 
-from .utils import BIFSegUnary, maxflow2d, maxflow3d
+from .utils import make_bifseg_unary, maxflow2d, maxflow3d
 
 
 class InteractiveSegmentationTransform(Transform):
@@ -61,9 +61,10 @@ class MakeBIFSegUnaryd(InteractiveSegmentationTransform):
     IEEE transactions on medical imaging 37.7 (2018): 1562-1573. (preprint: https://arxiv.org/pdf/1710.04043.pdf)
 
     BIFSeg unary term is constructed using Equation 7 on page 4 of the above mentioned paper.
-    This unary term along with a pairwise term (e.g. input image volume) form Equation 5 in the paper, which defines an energy to be minimised.
-    Equation 5 can be optimised using an appropriate optimisation method (e.g. CRF, GraphCut etc), which is implemented here as an additional transform.
-    
+    This unary term along with a pairwise term (e.g. input image volume) form Equation 5 in the paper,
+    which defines an energy to be minimised. Equation 5 can be optimised using an appropriate
+    optimisation method (e.g. CRF, GraphCut etc), which is implemented here as an additional transform.
+
     For Example::
 
     Compose(
@@ -135,7 +136,7 @@ class MakeBIFSegUnaryd(InteractiveSegmentationTransform):
 
         # make BIFSeg Unaries following Equation 7 from:
         # https://arxiv.org/pdf/1710.04043.pdf
-        unary_term = BIFSegUnary(
+        unary_term = make_bifseg_unary(
             logits=logits,
             scribbles=scribbles,
             scribbles_bg_label=self.scribbles_bg_label,
@@ -158,8 +159,9 @@ class ApplyCRFOptimisationd(InteractiveSegmentationTransform):
     """
     Generic MONAI CRF optimisation transform.
 
-    This can be used in conjuction with any Make*Unaryd transform (e.g. MakeBIFSegUnaryd from above for implementing BIFSeg unary term).
-    It optimises a typical energy function for interactive segmentation methods using MONAI's CRF layer, 
+    This can be used in conjuction with any Make*Unaryd transform
+    (e.g. MakeBIFSegUnaryd from above for implementing BIFSeg unary term).
+    It optimises a typical energy function for interactive segmentation methods using MONAI's CRF layer,
     e.g. Equation 5 from https://arxiv.org/pdf/1710.04043.pdf.
 
     For Example::
@@ -182,6 +184,7 @@ class ApplyCRFOptimisationd(InteractiveSegmentationTransform):
         ]
     )
     """
+
     def __init__(
         self,
         unary: str,
@@ -263,8 +266,9 @@ class ApplyGraphCutOptimisationd(InteractiveSegmentationTransform):
     """
     Generic GraphCut optimisation transform.
 
-    This can be used in conjuction with any Make*Unaryd transform (e.g. MakeBIFSegUnaryd from above for implementing BIFSeg unary term).
-    It optimises a typical energy function for interactive segmentation methods using SimpleCRF's GraphCut method, 
+    This can be used in conjuction with any Make*Unaryd transform
+    (e.g. MakeBIFSegUnaryd from above for implementing BIFSeg unary term).
+    It optimises a typical energy function for interactive segmentation methods using SimpleCRF's GraphCut method,
     e.g. Equation 5 from https://arxiv.org/pdf/1710.04043.pdf.
 
     For Example::
@@ -293,6 +297,7 @@ class ApplyGraphCutOptimisationd(InteractiveSegmentationTransform):
         ]
     )
     """
+
     def __init__(
         self,
         unary: str,
