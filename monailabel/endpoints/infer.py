@@ -64,9 +64,15 @@ def remove_file(path: str) -> None:
         os.unlink(path)
 
 
-def send_response(datastore, result, output):
-    res_img = datastore.get_label_uri(result.get("label"))
+def send_response(datastore, result, output, background_tasks):
+    res_img = result.get("label")
     res_json = result.get("params")
+
+    if res_img:
+        if not os.path.exists(res_img):
+            res_img = datastore.get_label_uri(res_img)
+        else:
+            background_tasks.add_task(remove_file, res_img)
 
     if output == "json":
         return res_json
@@ -84,7 +90,6 @@ def send_response(datastore, result, output):
     return Response(content=return_message.to_string(), media_type=return_message.content_type)
 
 
-# TODO:: Define request uri for (model, image, params)
 @router.post("/{model}", summary="Run Inference for supported model")
 async def run_inference(
     background_tasks: BackgroundTasks,
@@ -116,4 +121,4 @@ async def run_inference(
     result = instance.infer(request)
     if result is None:
         raise HTTPException(status_code=500, detail="Failed to execute infer")
-    return send_response(instance.datastore(), result, output)
+    return send_response(instance.datastore(), result, output, background_tasks)

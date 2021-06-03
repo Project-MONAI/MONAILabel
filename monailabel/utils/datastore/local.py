@@ -5,6 +5,8 @@ import logging
 import os
 import pathlib
 import shutil
+import statistics
+import time
 from pathlib import Path
 from typing import Any, Dict, List
 
@@ -185,7 +187,7 @@ class LocalDatastore(Datastore):
         for obj in self._datastore.objects:
             image_path = self._get_path(obj.image.id, False, full_path)
             for label in obj.labels:
-                if label.tag == DefaultLabelTag.FINAL.value:
+                if label.tag == DefaultLabelTag.FINAL:
                     items.append(
                         {
                             "image": image_path,
@@ -314,7 +316,7 @@ class LocalDatastore(Datastore):
         image_ids = []
         for obj in self._datastore.objects:
             for label in obj.labels:
-                if label.tag == DefaultLabelTag.FINAL.value:
+                if label.tag == DefaultLabelTag.FINAL:
                     image_ids.append(obj.image.id)
 
         return image_ids
@@ -327,7 +329,7 @@ class LocalDatastore(Datastore):
         """
         image_ids = []
         for obj in self._datastore.objects:
-            if not obj.labels or DefaultLabelTag.FINAL.value not in [label.tag for label in obj.labels]:
+            if not obj.labels or DefaultLabelTag.FINAL not in [label.tag for label in obj.labels]:
                 image_ids.append(obj.image.id)
 
         return image_ids
@@ -387,17 +389,13 @@ class LocalDatastore(Datastore):
                     datastore_label_path = os.path.join(self._datastore_path, self._label_store_path, label_id)
                     shutil.copy(src=label_filename, dst=datastore_label_path, follow_symlinks=True)
 
+                    lm = LabelModel(id=label_id, tag=label_tag, info={"ts": int(time.time())})
                     if label_tag not in [label.tag for label in obj.labels]:
-                        obj.labels.append(
-                            LabelModel(
-                                id=label_id,
-                                tag=label_tag,
-                            )
-                        )
+                        obj.labels.append(lm)
                     else:
                         for label_index, label in enumerate(obj.labels):
                             if label.tag == label_tag:
-                                obj.labels[label_index] = LabelModel(id=label_id, tag=label_tag)
+                                obj.labels[label_index] = lm  # This will reset the previous info
 
                     self._update_datastore_file(lock=False)
                 return label_id
@@ -556,13 +554,17 @@ class LocalDatastore(Datastore):
 
     def status(self) -> Dict[str, Any]:
         tags: dict = {}
+        dices = []
         for obj in self._datastore.objects:
+            if obj.image.info and obj.image.info.get("dice"):
+                dices.append(float(obj.image.info["dice"]))
             for label in obj.labels:
                 tags[label.tag] = tags.get(label.tag, 0) + 1
 
         return {
             "total": len(self.list_images()),
             "completed": len(self.get_labeled_images()),
+            "dice": statistics.mean(dices) if dices else 0.0,
             "label_tags": tags,
             "train": self.datalist(),
         }

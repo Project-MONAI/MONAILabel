@@ -78,12 +78,13 @@ class MONAILabelApp:
         meta["datastore"] = self._datastore.status()
         return meta
 
-    def infer(self, request):
+    def infer(self, request, datastore=None):
         """
         Run Inference for an exiting pre-trained model.
 
         Args:
             request: JSON object which contains `model`, `image`, `params` and `device`
+            datastore: Datastore object.  If None then use default app level datastore to save labels if applicable
 
                 For example::
 
@@ -113,27 +114,33 @@ class MONAILabelApp:
             )
 
         image_id = request["image"]
-        request["image"] = self._datastore.get_image_uri(request["image"])
+        datastore = datastore if datastore else self.datastore()
+        request["image"] = datastore.get_image_uri(request["image"])
         result_file_name, result_json = task(request)
 
         label_id = None
         if result_file_name and os.path.exists(result_file_name):
-            tag = request.get("label_tag") if request.get("label_tag") else DefaultLabelTag.ORIGINAL.value
-            label_id = self.datastore().save_label(image_id, result_file_name, tag)
-            if result_json:
-                self.datastore().update_label_info(label_id, result_json)
+            tag = request.get("label_tag", DefaultLabelTag.ORIGINAL)
+            save_label = request.get("save_label", True)
+            if save_label:
+                label_id = datastore.save_label(image_id, result_file_name, tag)
+                if result_json:
+                    datastore.update_label_info(label_id, result_json)
 
-            if os.path.exists(result_file_name):
-                os.unlink(result_file_name)
+                if os.path.exists(result_file_name):
+                    os.unlink(result_file_name)
+            else:
+                label_id = result_file_name
 
         return {"label": label_id, "params": result_json}
 
-    def batch_infer(self, request):
+    def batch_infer(self, request, datastore=None):
         """
         Run batch inference for an existing pre-trained model.
 
         Args:
             request: JSON object which contains `model`, `params` and `device`
+            datastore: Datastore object.  If None then use default app level datastore to fetch the images
 
                 For example::
 
@@ -150,14 +157,15 @@ class MONAILabelApp:
         Returns:
             JSON containing `label` and `params`
         """
-        return self._batch_infer(request, self.datastore(), self.infer)
+        return self._batch_infer(request, datastore if datastore else self.datastore(), self.infer)
 
-    def scoring(self, request):
+    def scoring(self, request, datastore=None):
         """
         Run scoring task over labels.
 
         Args:
             request: JSON object which contains `model`, `params` and `device`
+            datastore: Datastore object.  If None then use default app level datastore to fetch the images
 
                 For example::
 
@@ -183,7 +191,7 @@ class MONAILabelApp:
 
         task = self.scoring_methods[method]
         logger.info(f"Running scoring: {method}: {task.info()}")
-        return task(request, self.datastore())
+        return task(request, datastore if datastore else self.datastore())
 
     def datastore(self) -> Datastore:
         return self._datastore
@@ -249,6 +257,8 @@ class MONAILabelApp:
         """
         # TODO:: Add default recipe here to trigger training etc..
         logger.info(f"New label saved for: {image_id} => {label_id}")
+
+        self.scoring({"method": "dice"})
         return {}
 
     @staticmethod
