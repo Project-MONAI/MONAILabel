@@ -26,7 +26,7 @@ Another way is use docker for MONAI
 
 
 ## 2. Install SimpleCRF
-Current application provides an option to switch to SimpleCRF library for doing the CRF part. This can be installed as:
+Current application provides an option to switch to SimpleCRF library for doing the CRF/GraphCut part. This can be installed as:
 
 `pip install simplecrf`
 
@@ -38,7 +38,7 @@ On the server side, run server app using the following command:
 `CUDA_VISIBLE_DEVICES=0 PYTHONPATH=../. python main.py run --app ../sample-apps/segmentation_spleen_postproc/ --studies /path/to/dataset/Task09_Spleen/imagesTrSmall/`
 
 ## Client
-On the client side, run slicer and load monailabel extension:
+On the client side, run slicer and load MONAILabel extension:
 
 1. Click **Next Sample** to load a sample with its initial segmentation
 2. Scribbles functionality is inside **Post Processing Scribbles** section
@@ -46,4 +46,4 @@ On the client side, run slicer and load monailabel extension:
 4. Painting/Erasing tool will be activated, add scribbles to each slice/view
 5. Once done, click **Update** to send scribbles to server for applying the selected post processing method
 
-Further help on setting up monailabel apps can be found in the [main README document](../../README.md).
+Further help on setting up MONAILabel apps can be found in the [main README document](../../README.md).
