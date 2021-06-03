@@ -17,9 +17,10 @@ from monailabel.utils.others.post import BoundingBoxd, Restored
 from .transforms import WriteLogits
 
 
-class MyInfer(InferTask):
+class SegmentationWithWriteLogits(InferTask):
     """
-    This provides Inference Engine for pre-trained spleen segmentation (UNet) model over MSD Dataset.
+    Inference Engine for pre-trained Spleen segmentation (UNet) model for MSD Dataset. It additionally provides
+    appropriate transforms to save logits that are needed for post processing stage.
     """
 
     def __init__(

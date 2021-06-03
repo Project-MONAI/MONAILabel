@@ -2,7 +2,15 @@ import json
 import logging
 import os
 
-from lib import MyInfer, MyStrategy, MyTrain, SpleenCRF
+from lib import (
+    MyStrategy,
+    MyTrain,
+    SegmentationWithWriteLogits,
+    SpleenBIFSegCRF,
+    SpleenBIFSegGraphCut,
+    SpleenBIFSegSimpleCRF,
+    SpleenInteractiveGraphCut,
+)
 from monai.networks.layers import Norm
 from monai.networks.nets import UNet
 
@@ -31,7 +39,14 @@ class MyApp(MONAILabelApp):
         self.train_stats_path = os.path.join(self.model_dir, "train_stats.json")
 
         path = [self.pretrained_model, self.final_model]
-        infers = {"segmentation_spleen": MyInfer(path, self.network), "CRF": SpleenCRF()}
+        infers = {
+            "Spleen_Segmentation": SegmentationWithWriteLogits(path, self.network),
+            "BIFSeg+CRF": SpleenBIFSegCRF(),
+            "BIFSeg+SimpleCRF": SpleenBIFSegSimpleCRF(),
+            "BIFSeg+GraphCut": SpleenBIFSegGraphCut(),
+            "Int.+BIFSeg+GraphCut": SpleenInteractiveGraphCut(),
+        }
+
 
         strategies = {
             "random": Random(),
