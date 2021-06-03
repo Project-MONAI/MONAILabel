@@ -213,7 +213,7 @@ class TrainTask:
         stats["best_metric"] = trainer.state.best_metric
         stats["train"] = {
             "metrics": tensor_to_list(trainer.state.metrics),
-            "metric_details": tensor_to_list(trainer.state.metric_details),
+            # "metric_details": tensor_to_list(trainer.state.metric_details),
             "key_metric_name": trainer.state.key_metric_name,
             "best_metric": trainer.state.best_metric,
             "best_metric_epoch": trainer.state.best_metric_epoch,
@@ -223,7 +223,7 @@ class TrainTask:
             stats["best_metric"] = self._evalutor.state.best_metric
             stats["eval"] = {
                 "metrics": tensor_to_list(self._evalutor.state.metrics),
-                "metric_details": tensor_to_list(self._evalutor.state.metric_details),
+                # "metric_details": tensor_to_list(self._evalutor.state.metric_details),
                 "key_metric_name": self._evalutor.state.key_metric_name,
                 "best_metric": self._evalutor.state.best_metric,
                 "best_metric_epoch": self._evalutor.state.best_metric_epoch,
