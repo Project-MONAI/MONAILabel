@@ -1,12 +1,9 @@
 import base64
 import logging
 import os
-import pathlib
-import shutil
-import tempfile
 from typing import Dict, Optional
 
-from fastapi import APIRouter, File, UploadFile
+from fastapi import APIRouter
 
 from monailabel.config import settings
 from monailabel.interfaces import MONAILabelApp
@@ -16,15 +13,15 @@ logger = logging.getLogger(__name__)
 
 router = APIRouter(
     prefix="/activelearning",
-    tags=["AppService"],
+    tags=["ActiveLearning"],
     responses={404: {"description": "Not found"}},
 )
 
 cached_digest: Dict = dict()
 
 
-@router.post("/sample/{stategy}", summary="Run Active Learning strategy to get next sample")
-async def next_sample(strategy: str = "random", params: Optional[dict] = None, checksum: Optional[bool] = True):
+@router.post("/{stategy}", summary="Run Active Learning strategy to get next sample")
+async def sample(strategy: str = "random", params: Optional[dict] = None, checksum: Optional[bool] = True):
     request = {"strategy": strategy}
 
     instance: MONAILabelApp = get_app_instance()
@@ -58,15 +55,3 @@ async def next_sample(strategy: str = "random", params: Optional[dict] = None, c
         "url": url,
         "checksum": digest,
     }
-
-
-@router.put("/label", summary="Save Finished Label")
-async def save_label(image: str, label: UploadFile = File(...)):
-    file_ext = "".join(pathlib.Path(label.filename).suffixes) if label.filename else ".nii.gz"
-    label_file = tempfile.NamedTemporaryFile(suffix=file_ext).name
-
-    with open(label_file, "wb") as buffer:
-        shutil.copyfileobj(label.file, buffer)
-
-    instance: MONAILabelApp = get_app_instance()
-    return instance.save_label({"image": image, "label": label_file})

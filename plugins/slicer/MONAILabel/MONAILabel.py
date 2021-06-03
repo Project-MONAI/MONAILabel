@@ -24,13 +24,13 @@ from slicer.util import VTKObservationMixin
 class MONAILabel(ScriptedLoadableModule):
     def __init__(self, parent):
         ScriptedLoadableModule.__init__(self, parent)
-        self.parent.title = "MONAI Label"
+        self.parent.title = "MONAILabel"
         self.parent.categories = ["Active Learning"]
         self.parent.dependencies = []
         self.parent.contributors = ["NVIDIA, KCL"]
         self.parent.helpText = """
 Active Learning solution.
-See more information in <a href="https://github.com/MONAI/MONAI-Label">module documentation</a>.
+See more information in <a href="https://github.com/Project-MONAI/MONAILabel">module documentation</a>.
 """
         self.parent.acknowledgementText = """
 Developed by NVIDIA, KCL
@@ -42,7 +42,7 @@ Developed by NVIDIA, KCL
     def initializeAfterStartup(self):
         if not slicer.app.commandOptions().noMainWindow:
             self.settingsPanel = MONAILabelSettingsPanel()
-            slicer.app.settingsDialog().addPanel("MONAI-Label", self.settingsPanel)
+            slicer.app.settingsDialog().addPanel("MONAI Label", self.settingsPanel)
 
 
 class _ui_MONAILabelSettingsPanel(object):
@@ -56,12 +56,12 @@ class _ui_MONAILabelSettingsPanel(object):
 
         serverUrl = qt.QLineEdit()
         groupLayout.addRow("Server address:", serverUrl)
-        parent.registerProperty("MONAI-Label/serverUrl", serverUrl, "text", str(qt.SIGNAL("textChanged(QString)")))
+        parent.registerProperty("MONAILabel/serverUrl", serverUrl, "text", str(qt.SIGNAL("textChanged(QString)")))
 
         serverUrlHistory = qt.QLineEdit()
         groupLayout.addRow("Server address history:", serverUrlHistory)
         parent.registerProperty(
-            "MONAI-Label/serverUrlHistory", serverUrlHistory, "text", str(qt.SIGNAL("textChanged(QString)"))
+            "MONAILabel/serverUrlHistory", serverUrlHistory, "text", str(qt.SIGNAL("textChanged(QString)"))
         )
 
         autoRunSegmentationCheckBox = qt.QCheckBox()
@@ -71,7 +71,7 @@ class _ui_MONAILabelSettingsPanel(object):
         )
         groupLayout.addRow("Auto-Run Pre-Trained Model:", autoRunSegmentationCheckBox)
         parent.registerProperty(
-            "MONAI-Label/autoRunSegmentationOnNextSample",
+            "MONAILabel/autoRunSegmentationOnNextSample",
             ctk.ctkBooleanMapper(autoRunSegmentationCheckBox, "checked", str(qt.SIGNAL("toggled(bool)"))),
             "valueAsInt",
             str(qt.SIGNAL("valueAsIntChanged(int)")),
@@ -82,8 +82,19 @@ class _ui_MONAILabelSettingsPanel(object):
         autoFetchNextSampleCheckBox.toolTip = "Enable this option to fetch Next Sample after saving the label"
         groupLayout.addRow("Auto-Fetch Next Sample:", autoFetchNextSampleCheckBox)
         parent.registerProperty(
-            "MONAI-Label/autoFetchNextSample",
+            "MONAILabel/autoFetchNextSample",
             ctk.ctkBooleanMapper(autoFetchNextSampleCheckBox, "checked", str(qt.SIGNAL("toggled(bool)"))),
+            "valueAsInt",
+            str(qt.SIGNAL("valueAsIntChanged(int)")),
+        )
+
+        autoUpdateModelCheckBox = qt.QCheckBox()
+        autoUpdateModelCheckBox.checked = True
+        autoUpdateModelCheckBox.toolTip = "Enable this option to auto update model after submitting the label"
+        groupLayout.addRow("Auto-Update Model:", autoUpdateModelCheckBox)
+        parent.registerProperty(
+            "MONAILabel/autoUpdateModel",
+            ctk.ctkBooleanMapper(autoUpdateModelCheckBox, "checked", str(qt.SIGNAL("toggled(bool)"))),
             "valueAsInt",
             str(qt.SIGNAL("valueAsIntChanged(int)")),
         )
@@ -317,7 +328,7 @@ class MONAILabelWidget(ScriptedLoadableModuleWidget, VTKObservationMixin):
             postprocMethod = self.ui.postprocMethodSelector.currentText
             image_file = self.current_sample["id"]
             configs = self.getParamsFromConfig()
-            result_file, params = self.logic.inference(postprocMethod, image_file, configs.get("infer"), scribbles_in)
+            result_file, params = self.logic.infer(postprocMethod, image_file, configs.get("infer"), scribbles_in)
 
             # display result from server
             self.reportProgress(90)
@@ -570,7 +581,9 @@ class MONAILabelWidget(ScriptedLoadableModuleWidget, VTKObservationMixin):
         for label in self.info.get("labels", {}):
             self.ui.labelComboBox.addItem(label)
         currentLabel = self._parameterNode.GetParameter("CurrentLabel")
-        self.ui.labelComboBox.setCurrentIndex(self.ui.labelComboBox.findText(currentLabel) if currentLabel else 0)
+        idx = self.ui.labelComboBox.findText(currentLabel) if currentLabel else 0
+        idx = 0 if idx < 0 < self.ui.labelComboBox.count else idx
+        self.ui.labelComboBox.setCurrentIndex(idx)
 
         self.ui.appComboBox.clear()
         self.ui.appComboBox.addItem(self.info.get("name", ""))
@@ -580,6 +593,26 @@ class MONAILabelWidget(ScriptedLoadableModuleWidget, VTKObservationMixin):
         total = datastore_stats.get("total", 0)
         self.ui.activeLearningProgressBar.setValue(current / max(total, 1) * 100)
         self.ui.activeLearningProgressBar.setToolTip(f"{current}/{total} samples are labeled")
+
+        train_stats = self.info.get("train_stats", {})
+        dice = train_stats.get("best_metric", 0)
+        self.ui.accuracyProgressBar.setValue(dice * 100)
+        css = ["stop: 0 red"]
+        if dice > 0.5:
+            css.append(f"stop: {0.5 / dice} orange")
+        if dice > 0.6:
+            css.append(f"stop: {0.6 / dice} yellow")
+        if dice > 0.7:
+            css.append(f"stop: {0.7 / dice} lightgreen")
+        if dice > 0.8:
+            css.append(f"stop: {0.8 / dice} green")
+        if dice > 0.9:
+            css.append(f"stop: {0.9 / dice} darkgreen")
+        self.ui.accuracyProgressBar.setStyleSheet(
+            "QProgressBar {text-align: center;} "
+            "QProgressBar::chunk {background-color: "
+            "qlineargradient(x0: 0, x2: 1, " + ",".join(css) + ")}"
+        )
 
         self.ui.strategyBox.clear()
         for strategy in self.info.get("strategies", {}):
@@ -865,10 +898,10 @@ class MONAILabelWidget(ScriptedLoadableModuleWidget, VTKObservationMixin):
         # Save selected server URL
         settings = qt.QSettings()
         serverUrl = self.ui.serverComboBox.currentText
-        settings.setValue("MONAI-Label/serverUrl", serverUrl)
+        settings.setValue("MONAILabel/serverUrl", serverUrl)
 
         # Save current server URL to the top of history
-        serverUrlHistory = settings.value("MONAI-Label/serverUrlHistory")
+        serverUrlHistory = settings.value("MONAILabel/serverUrlHistory")
         if serverUrlHistory:
             serverUrlHistory = serverUrlHistory.split(";")
         else:
@@ -880,7 +913,7 @@ class MONAILabelWidget(ScriptedLoadableModuleWidget, VTKObservationMixin):
 
         serverUrlHistory.insert(0, serverUrl)
         serverUrlHistory = serverUrlHistory[:10]  # keep up to first 10 elements
-        settings.setValue("MONAI-Label/serverUrlHistory", ";".join(serverUrlHistory))
+        settings.setValue("MONAILabel/serverUrlHistory", ";".join(serverUrlHistory))
 
         self.updateServerUrlGUIFromSettings()
 
@@ -957,8 +990,12 @@ class MONAILabelWidget(ScriptedLoadableModuleWidget, VTKObservationMixin):
             self.updateServerSettings()
             configs = self.getParamsFromConfig()
             status = self.logic.train_start(configs.get("train"))
+
             self.ui.trainingProgressBar.setValue(1)
             self.ui.trainingProgressBar.setToolTip("Training: STARTED")
+
+            time.sleep(1)
+            self.updateGUIFromParameterNode()
         except:
             slicer.util.errorDisplay(
                 "Failed to run training in MONAI Label Server", detailedText=traceback.format_exc()
@@ -972,8 +1009,8 @@ class MONAILabelWidget(ScriptedLoadableModuleWidget, VTKObservationMixin):
                 status.get("status"),
                 status.get("start_ts"),
             )
-            slicer.util.infoDisplay(msg, detailedText=json.dumps(status, indent=2))
-            self.updateGUIFromParameterNode()
+            # slicer.util.infoDisplay(msg, detailedText=json.dumps(status, indent=2))
+            logging.info(msg)
 
         logging.info("Time consumed by training: {0:3.1f}".format(time.time() - start))
 
@@ -1001,16 +1038,17 @@ class MONAILabelWidget(ScriptedLoadableModuleWidget, VTKObservationMixin):
                 status.get("end_ts"),
                 status.get("result", status.get("details", [])[-1]),
             )
-            slicer.util.infoDisplay(msg, detailedText=json.dumps(status, indent=2))
+            # slicer.util.infoDisplay(msg, detailedText=json.dumps(status, indent=2))
+            logging.info(msg)
         self.updateGUIFromParameterNode()
 
-        logging.info("Time consumed by next_sample: {0:3.1f}".format(time.time() - start))
+        logging.info("Time consumed by stop training: {0:3.1f}".format(time.time() - start))
 
-    def isTrainingRunning(self):
+    def isTrainingRunning(self, check_only=True):
         if not self.logic:
             return False
         self.updateServerSettings()
-        return self.logic.train_status(True)
+        return self.logic.train_status(check_only)
 
     def onTrainingStatus(self):
         if not self.logic:
@@ -1109,7 +1147,7 @@ class MONAILabelWidget(ScriptedLoadableModuleWidget, VTKObservationMixin):
 
             # Check if user wants to run auto-segmentation on new sample
             if slicer.util.settingsValue(
-                "MONAI-Label/autoRunSegmentationOnNextSample", True, converter=slicer.util.toBool
+                "MONAILabel/autoRunSegmentationOnNextSample", True, converter=slicer.util.toBool
             ):
                 for label in self.info.get("labels", []):
                     for name, model in self.models.items():
@@ -1149,6 +1187,15 @@ class MONAILabelWidget(ScriptedLoadableModuleWidget, VTKObservationMixin):
 
             self.updateServerSettings()
             result = self.logic.save_label(self.current_sample["id"], label_in)
+            self.fetchModels()
+
+            if slicer.util.settingsValue("MONAILabel/autoUpdateModel", True, converter=slicer.util.toBool):
+                try:
+                    if self.isTrainingRunning(check_only=True):
+                        self.logic.train_stop()
+                except:
+                    logging.info("Failed to stop training; or already stopped")
+                self.onTraining()
         except:
             slicer.util.errorDisplay("Failed to save Label to MONAI Label Server", detailedText=traceback.format_exc())
         finally:
@@ -1162,7 +1209,7 @@ class MONAILabelWidget(ScriptedLoadableModuleWidget, VTKObservationMixin):
                     "Label-Mask saved into MONAI Label Server\t\t", detailedText=json.dumps(result, indent=2)
                 )
 
-                if slicer.util.settingsValue("MONAI-Label/autoFetchNextSample", False, converter=slicer.util.toBool):
+                if slicer.util.settingsValue("MONAILabel/autoFetchNextSample", False, converter=slicer.util.toBool):
                     slicer.mrmlScene.Clear(0)
                     self.onNextSampleButton()
 
@@ -1183,7 +1230,7 @@ class MONAILabelWidget(ScriptedLoadableModuleWidget, VTKObservationMixin):
             image_file = self.current_sample["id"]
 
             configs = self.getParamsFromConfig()
-            result_file, params = self.logic.inference(model, image_file, configs.get("infer"))
+            result_file, params = self.logic.infer(model, image_file, configs.get("infer"))
 
             self.updateSegmentationMask(result_file, self.models[model].get("labels"))
         except:
@@ -1248,7 +1295,7 @@ class MONAILabelWidget(ScriptedLoadableModuleWidget, VTKObservationMixin):
 
             configs = self.getParamsFromConfig()
             params.update(configs.get("infer", {}))
-            result_file, params = self.logic.inference(model, image_file, params)
+            result_file, params = self.logic.infer(model, image_file, params)
             logging.debug("Params from deepgrow is {}".format(params))
 
             self.updateSegmentationMask(result_file, [label], None if deepgrow_3d else sliceIndex)
@@ -1380,13 +1427,13 @@ class MONAILabelWidget(ScriptedLoadableModuleWidget, VTKObservationMixin):
     def updateServerUrlGUIFromSettings(self):
         # Save current server URL to the top of history
         settings = qt.QSettings()
-        serverUrlHistory = settings.value("MONAI-Label/serverUrlHistory")
+        serverUrlHistory = settings.value("MONAILabel/serverUrlHistory")
 
         wasBlocked = self.ui.serverComboBox.blockSignals(True)
         self.ui.serverComboBox.clear()
         if serverUrlHistory:
             self.ui.serverComboBox.addItems(serverUrlHistory.split(";"))
-        self.ui.serverComboBox.setCurrentText(settings.value("MONAI-Label/serverUrl"))
+        self.ui.serverComboBox.setCurrentText(settings.value("MONAILabel/serverUrl"))
         self.ui.serverComboBox.blockSignals(wasBlocked)
 
     def createFiducialNode(self, name, onMarkupNodeModified, color):
@@ -1460,12 +1507,12 @@ class MONAILabelLogic(ScriptedLoadableModuleLogic):
     def save_label(self, image_in, label_in):
         return MONAILabelClient(self.server_url, self.tmpdir).save_label(image_in, label_in)
 
-    def inference(self, model, image_in, params={}, label_in=None):
+    def infer(self, model, image_in, params={}, label_in=None):
         logging.debug("Preparing input data for segmentation")
         self.reportProgress(0)
 
         client = MONAILabelClient(self.server_url, self.tmpdir)
-        result_file, params = client.inference(model, image_in, params, label_in)
+        result_file, params = client.infer(model, image_in, params, label_in)
 
         logging.debug(f"Image Response: {result_file}")
         logging.debug(f"JSON  Response: {params}")

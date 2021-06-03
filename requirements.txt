@@ -8,3 +8,4 @@ uvicorn==0.13.4
 watchdog==2.0.2
 pydantic==1.8.2
 python-dotenv==0.17.1
+filelock==3.0.12

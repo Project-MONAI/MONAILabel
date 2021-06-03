@@ -6,7 +6,7 @@ from abc import abstractmethod
 from datetime import datetime
 
 import torch
-from monai.data import DataLoader, PersistentDataset, partition_dataset
+from monai.data import DataLoader, PersistentDataset
 from monai.handlers import (
     CheckpointLoader,
     CheckpointSaver,
@@ -32,12 +32,13 @@ class BasicTrainTask(TrainTask):
     def __init__(
         self,
         output_dir,
-        data_list,
+        train_datalist,
+        val_datalist,
         network,
         load_path=None,
         load_dict=None,
         publish_path=None,
-        val_split=0.2,
+        stats_path=None,
         device="cuda",
         lr=0.0001,
         train_batch_size=1,
@@ -53,12 +54,13 @@ class BasicTrainTask(TrainTask):
         """
 
         :param output_dir: Output to save the model checkpoints, events etc...
-        :param data_list: List of dictionary that normally contains {image, label}
+        :param train_datalist: Training List of dictionary that normally contains {image, label}
+        :param val_datalist: Validation List of dictionary that normally contains {image, label}
         :param network: If None then UNet with channels(16, 32, 64, 128, 256) is used
         :param load_path: Initialize model from existing checkpoint
         :param load_dict: Provide dictionary to load from checkpoint.  If None, then `net` will be loaded
         :param publish_path: Publish path for best trained model (based on best key metric)
-        :param val_split: Split ratio for validation dataset if `validation` field is not found in `data_list`
+        :param stats_path: Path to save the train stats
         :param device: device name
         :param lr: Learning Rate (LR)
         :param train_batch_size: train batch size
@@ -71,25 +73,23 @@ class BasicTrainTask(TrainTask):
         """
         super().__init__()
         self.output_dir = output_dir
+        self._train_datalist = train_datalist
+        self._val_datalist = val_datalist if val_datalist else []
         self.run_id = datetime.now().strftime("%Y%m%d_%H%M")
         self.events_dir = os.path.join(output_dir, f"events_{self.run_id}")
-        self._train_datalist, self._val_datalist = (
-            partition_dataset(data_list, ratios=[(1 - val_split), val_split], shuffle=True)
-            if val_split > 0.0
-            else (data_list, [])
-        )
 
         if not os.path.exists(self.output_dir):
             os.makedirs(self.output_dir, exist_ok=True)
 
-        logger.info(f"Total Records for Training: {len(self._train_datalist)}/{len(data_list)}")
-        logger.info(f"Total Records for Validation: {len(self._val_datalist)}/{len(data_list)}")
+        logger.info(f"Total Records for Training: {len(self._train_datalist)}")
+        logger.info(f"Total Records for Validation: {len(self._val_datalist)}")
 
         self._device = torch.device(device)
         self._network = network
         self._load_path = load_path
         self._load_dict = load_dict
         self._publish_path = publish_path
+        self._stats_path = stats_path
 
         self._optimizer = torch.optim.Adam(self._network.parameters(), lr=lr)
         self._loss_function = DiceLoss(to_onehot_y=True, softmax=True)
@@ -230,8 +230,13 @@ class BasicTrainTask(TrainTask):
     def __call__(self, max_epochs, amp):
         stats = super().__call__(max_epochs, amp)
         filename = datetime.now().strftime(f"stats_{self.run_id}.json")
-        with open(os.path.join(self.output_dir, filename), "w") as f:
+        filename = os.path.join(self.output_dir, filename)
+        with open(filename, "w") as f:
             json.dump(stats, f, indent=2)
+
+        if self._stats_path:
+            shutil.copy(filename, self._stats_path)
+
         if self._publish_path:
             final_model = os.path.join(self.output_dir, self._key_metric_filename)
             if os.path.exists(final_model):
