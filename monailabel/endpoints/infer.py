@@ -18,8 +18,8 @@ from monailabel.utils.others.generic import get_app_instance, get_mime_type
 logger = logging.getLogger(__name__)
 
 router = APIRouter(
-    prefix="/inference",
-    tags=["AppService"],
+    prefix="/infer",
+    tags=["Infer"],
     responses={
         404: {"description": "Not found"},
         200: {
@@ -64,14 +64,19 @@ def remove_file(path: str) -> None:
         os.unlink(path)
 
 
-def send_response(result, output, background_tasks):
+def send_response(datastore, result, output, background_tasks):
     res_img = result.get("label")
     res_json = result.get("params")
+
+    if res_img:
+        if not os.path.exists(res_img):
+            res_img = datastore.get_label_uri(res_img)
+        else:
+            background_tasks.add_task(remove_file, res_img)
 
     if output == "json":
         return res_json
 
-    background_tasks.add_task(remove_file, res_img)
     m_type = get_mime_type(res_img)
 
     if output == "image":
@@ -85,7 +90,6 @@ def send_response(result, output, background_tasks):
     return Response(content=return_message.to_string(), media_type=return_message.content_type)
 
 
-# TODO:: Define request uri for (model, image, params)
 @router.post("/{model}", summary="Run Inference for supported model")
 async def run_inference(
     background_tasks: BackgroundTasks,
@@ -117,4 +121,4 @@ async def run_inference(
     result = instance.infer(request)
     if result is None:
         raise HTTPException(status_code=500, detail="Failed to execute infer")
-    return send_response(result, output, background_tasks)
+    return send_response(instance.datastore(), result, output, background_tasks)

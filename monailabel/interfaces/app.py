@@ -3,17 +3,20 @@ import logging
 import os
 import time
 from abc import abstractmethod
+from typing import Any, Dict
 
 import yaml
 from monai.apps import download_url
+from monai.data import partition_dataset
 
 from monailabel.config import settings
 from monailabel.interfaces.datastore import Datastore, DefaultLabelTag
 from monailabel.interfaces.exception import MONAILabelError, MONAILabelException
-from monailabel.interfaces.tasks.batch_infer import BatchInferTask
+from monailabel.interfaces.tasks import BatchInferTask
 from monailabel.utils.activelearning import Random
 from monailabel.utils.datastore import LocalDatastore
 from monailabel.utils.infer import InferDeepgrow2D, InferDeepgrow3D
+from monailabel.utils.scoring import Dice, Sum
 
 logger = logging.getLogger(__name__)
 
@@ -24,7 +27,9 @@ class MONAILabelApp:
         app_dir,
         studies,
         infers=None,
+        batch_infer=None,
         strategies=None,
+        scoring_methods=None,
         resources=None,
     ):
         """
@@ -33,7 +38,9 @@ class MONAILabelApp:
         :param app_dir: path for your App directory
         :param studies: path for studies/datalist
         :param infers: Dictionary of infer engines
+        :param batch_infer: Batch Infer Task (default: BatchInferTask)
         :param strategies: List of ActiveLearning strategies to get next sample
+        :param scoring_methods: List of Scoring methods to available to run over labels
         :param resources: List of Tuples (path, url) to be downloaded when not exists
 
         """
@@ -41,6 +48,7 @@ class MONAILabelApp:
         self.studies = studies
         self.infers = dict() if infers is None else infers
         self.strategies = {"random", Random()} if strategies is None else strategies
+        self.scoring_methods = {"sum": Sum(), "dice": Dice()} if not scoring_methods else scoring_methods
 
         self._datastore: Datastore = LocalDatastore(
             studies,
@@ -48,6 +56,8 @@ class MONAILabelApp:
             label_extensions=settings.DATASTORE_LABEL_EXT,
             auto_reload=settings.DATASTORE_AUTO_RELOAD,
         )
+
+        self._batch_infer = BatchInferTask() if batch_infer is None else batch_infer
         self._download(resources)
 
     def info(self):
@@ -62,29 +72,21 @@ class MONAILabelApp:
         with open(file, "r") as fc:
             meta = yaml.full_load(fc)
 
-        models = dict()
-        for name, infer in self.infers.items():
-            if infer.is_valid():
-                models[name] = infer.info()
-        meta["models"] = models
+        meta["models"] = {k: v.info() for k, v in self.infers.items() if v.is_valid()}
+        meta["strategies"] = {k: v.info() for k, v in self.strategies.items()}
+        meta["scoring"] = {k: v.info() for k, v in self.scoring_methods.items()}
 
-        strategies = dict()
-        for name, strategy in self.strategies.items():
-            strategies[name] = strategy.info()
-        meta["strategies"] = strategies
-
-        meta["datastore"] = {
-            "total": len(self.datastore().list_images()),
-            "completed": len(self.datastore().get_labeled_images()),
-        }
+        meta["train_stats"] = self.train_stats()
+        meta["datastore"] = self._datastore.status()
         return meta
 
-    def infer(self, request):
+    def infer(self, request, datastore=None):
         """
         Run Inference for an exiting pre-trained model.
 
         Args:
             request: JSON object which contains `model`, `image`, `params` and `device`
+            datastore: Datastore object.  If None then use default app level datastore to save labels if applicable
 
                 For example::
 
@@ -94,7 +96,6 @@ class MONAILabelApp:
                         "image": "file://xyz",
                         "save_label": "true/false",
                         "label_tag": "my_custom_label_tag", (if not provided defaults to `original`)
-                        "params": {},
                     }
 
         Raises:
@@ -115,24 +116,33 @@ class MONAILabelApp:
             )
 
         image_id = request["image"]
-        request["image"] = self._datastore.get_image_uri(request["image"])
+        datastore = datastore if datastore else self.datastore()
+        request["image"] = datastore.get_image_uri(request["image"])
         result_file_name, result_json = task(request)
 
-        if request.get("save_label", True):
-            self.datastore().save_label(
-                image_id,
-                result_file_name,
-                request.get("label_tag") if request.get("label_tag") else DefaultLabelTag.ORIGINAL.value,
-            )
+        label_id = None
+        if result_file_name and os.path.exists(result_file_name):
+            tag = request.get("label_tag", DefaultLabelTag.ORIGINAL)
+            save_label = request.get("save_label", True)
+            if save_label:
+                label_id = datastore.save_label(image_id, result_file_name, tag)
+                if result_json:
+                    datastore.update_label_info(label_id, result_json)
 
-        return {"label": result_file_name, "params": result_json}
+                if os.path.exists(result_file_name):
+                    os.unlink(result_file_name)
+            else:
+                label_id = result_file_name
 
-    def batch_infer(self, request):
+        return {"label": label_id, "params": result_json}
+
+    def batch_infer(self, request, datastore=None):
         """
-        Run batch inference for an exiting pre-trained model.
+        Run batch inference for an existing pre-trained model.
 
         Args:
             request: JSON object which contains `model`, `params` and `device`
+            datastore: Datastore object.  If None then use default app level datastore to fetch the images
 
                 For example::
 
@@ -141,7 +151,6 @@ class MONAILabelApp:
                         "model": "segmentation_spleen",
                         "image_selector": "*" (default is "*" to select all unlabeled images),
                         "label_tag": "my_custom_label_tag", (if not provided defaults to `original`)
-                        "params": {},
                     }
 
         Raises:
@@ -150,16 +159,53 @@ class MONAILabelApp:
         Returns:
             JSON containing `label` and `params`
         """
-        request = copy.deepcopy(request)
-        unlabeled_images = self._datastore.get_unlabeled_images()
+        return self._batch_infer(request, datastore if datastore else self.datastore(), self.infer)
 
-        request.update({"infer_images": unlabeled_images})
-        task = BatchInferTask()
+    def scoring(self, request, datastore=None):
+        """
+        Run scoring task over labels.
 
-        return task(request, self.infer)
+        Args:
+            request: JSON object which contains `model`, `params` and `device`
+            datastore: Datastore object.  If None then use default app level datastore to fetch the images
+
+                For example::
+
+                    {
+                        "device": "cuda"
+                        "method": "dice",
+                        "y": "final",
+                        "y_pred": "original",
+                    }
+
+        Raises:
+            MONAILabelException: When ``method`` is not found
+
+        Returns:
+            JSON containing result of scoring method
+        """
+        method = request.get("method")
+        if not method or not self.scoring_methods.get(method):
+            raise MONAILabelException(
+                MONAILabelError.APP_INIT_ERROR,
+                f"Scoring Task is not Initialized. There is no such scoring method '{method}' available",
+            )
+
+        task = self.scoring_methods[method]
+        logger.info(f"Running scoring: {method}: {task.info()}")
+        return task(request, datastore if datastore else self.datastore())
 
     def datastore(self) -> Datastore:
         return self._datastore
+
+    @staticmethod
+    def partition_datalist(datalist, val_split, shuffle=True):
+        if val_split > 0.0:
+            return partition_dataset(datalist, ratios=[(1 - val_split), val_split], shuffle=shuffle)
+        return datalist, []
+
+    def train_stats(self):
+        return {}
 
     @abstractmethod
     def train(self, request):
@@ -176,7 +222,6 @@ class MONAILabelApp:
                         "epochs": 1,
                         "amp": False,
                         "lr": 0.0001,
-                        "params": {},
                     }
 
         Returns:
@@ -217,39 +262,18 @@ class MONAILabelApp:
             "path": image_path,
         }
 
-    def save_label(self, request):
+    def on_save_label(self, image_id, label_id) -> Dict[str, Any]:
         """
-        Saving New Label.  You can extend this has callback handler to run calibrations etc. over Active learning models
-
-        Args:
-            request: JSON object which contains Label and Image details
-
-                For example::
-
-                    {
-                        "image": "file://xyz.com",
-                        "label": "file://label_xyz.com",
-                        "segments" ["spleen"],
-                        "label_tag": "my_custom_label_tag", (if not provided defaults to `final`)
-                        "params": {},
-                    }
-
-        Returns:
-            JSON containing next image and label info
+        Callback method when label is saved into datastore by a remote client
         """
+        # TODO:: Add default recipe here to trigger training etc..
+        logger.info(f"New label saved for: {image_id} => {label_id}")
 
-        label_id = self.datastore().save_label(
-            request["image"],
-            request["label"],
-            request.get("label_tag") if request.get("label_tag") else DefaultLabelTag.FINAL.value,
-        )
+        self.scoring({"method": "dice"})
+        return {}
 
-        return {
-            "image": request.get("image"),
-            "label": label_id,
-        }
-
-    def _download(self, resources):
+    @staticmethod
+    def _download(resources):
         if not resources:
             return
 

@@ -38,7 +38,8 @@ class TrainDeepgrow(BasicTrainTask):
     def __init__(
         self,
         output_dir,
-        data_list,
+        train_datalist,
+        val_datalist,
         network,
         dimension,
         roi_size,
@@ -47,7 +48,7 @@ class TrainDeepgrow(BasicTrainTask):
         max_val_interactions,
         **kwargs,
     ):
-        super().__init__(output_dir, data_list, network, **kwargs)
+        super().__init__(output_dir, train_datalist, val_datalist, network, **kwargs)
 
         self.dimension = dimension
         self.roi_size = roi_size
@@ -89,7 +90,7 @@ class TrainDeepgrow(BasicTrainTask):
                 AddChanneld(keys=("image", "label")),
                 SpatialCropForegroundd(keys=("image", "label"), source_key="label", spatial_size=self.roi_size),
                 Resized(keys=("image", "label"), spatial_size=self.model_size, mode=("area", "nearest")),
-                NormalizeIntensityd(keys="image", subtrahend=208.0, divisor=388.0),
+                NormalizeIntensityd(keys="image"),
             ]
         )
         if self.dimension == 3:

@@ -21,10 +21,12 @@ background_processes: Dict = {}
 
 def _task_func(task, method):
     base_dir = os.path.dirname(os.path.dirname(os.path.dirname(os.path.realpath(__file__))))
-    script = "run_app.bat" if any(platform.win32_ver()) else "run_app.sh"
+    script = "run_monailabel_app.bat" if any(platform.win32_ver()) else "run_monailabel_app.sh"
+    if os.path.exists(os.path.realpath(os.path.join(base_dir, "scripts", script))):
+        script = os.path.realpath(os.path.join(base_dir, "scripts", script))
 
     cmd = [
-        os.path.realpath(os.path.join(base_dir, "scripts", script)),
+        script,
         settings.APP_DIR,
         settings.STUDIES,
         method,
