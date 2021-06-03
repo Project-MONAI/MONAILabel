@@ -7,6 +7,7 @@ from typing import Any, Dict
 
 import yaml
 from monai.apps import download_url
+from monai.data import partition_dataset
 
 from monailabel.config import settings
 from monailabel.interfaces.datastore import Datastore, DefaultLabelTag
@@ -75,6 +76,7 @@ class MONAILabelApp:
         meta["strategies"] = {k: v.info() for k, v in self.strategies.items()}
         meta["scoring"] = {k: v.info() for k, v in self.scoring_methods.items()}
 
+        meta["train_stats"] = self.train_stats()
         meta["datastore"] = self._datastore.status()
         return meta
 
@@ -195,6 +197,15 @@ class MONAILabelApp:
 
     def datastore(self) -> Datastore:
         return self._datastore
+
+    @staticmethod
+    def partition_datalist(datalist, val_split, shuffle=True):
+        if val_split > 0.0:
+            return partition_dataset(datalist, ratios=[(1 - val_split), val_split], shuffle=shuffle)
+        return datalist, []
+
+    def train_stats(self):
+        return {}
 
     @abstractmethod
     def train(self, request):

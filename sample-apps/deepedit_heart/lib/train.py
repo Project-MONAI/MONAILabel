@@ -40,7 +40,8 @@ class MyTrain(BasicTrainTask):
     def __init__(
         self,
         output_dir,
-        data_list,
+        train_datalist,
+        val_datalist,
         network,
         model_size=(128, 128, 128),
         max_train_interactions=20,
@@ -48,7 +49,7 @@ class MyTrain(BasicTrainTask):
         save_iteration=False,
         **kwargs,
     ):
-        super().__init__(output_dir, data_list, network, **kwargs)
+        super().__init__(output_dir, train_datalist, val_datalist, network, **kwargs)
 
         self.model_size = model_size
         self.max_train_interactions = max_train_interactions

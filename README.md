@@ -13,7 +13,7 @@ principles with [MONAI](https://github.com/Project-MONAI).
 
 [Brief Demo](https://www.youtube.com/watch?v=vFirnscuOVI)
 
-<img src="https://user-images.githubusercontent.com/7339051/120266996-fa98c480-c29a-11eb-93a3-36d50d791073.png" width="800"/>
+<img src="https://raw.githubusercontent.com/Project-MONAI/MONAILabel/main/docs/images/demo.png" width="800"/>
 
 > **Development in Progress**.
 > We will be actively working on this repository to add more features, fix issues, update docs, readme etc...

@@ -1,3 +1,4 @@
+import json
 import logging
 import os
 
@@ -96,8 +97,12 @@ class MyApp(MONAILabelApp):
             load_path = load_path if os.path.exists(load_path) else data["path"][0]
             logger.info(f"Using existing pre-trained weights: {load_path}")
 
+            # Datalist for train/validation
+            train_d, val_d = self.partition_datalist(self.datastore().datalist(), request.get("val_split", 0.2))
+
             # Update/Publish latest model for infer/active learning use
             final_model = data["path"][1]
+            train_stats_path = os.path.join(self.model_dir, f"train_stats_{model}.json")
 
             if model == "deepgrow_3d":
                 task = TrainDeepgrow(
@@ -107,13 +112,14 @@ class MyApp(MONAILabelApp):
                     max_train_interactions=15,
                     max_val_interactions=20,
                     output_dir=output_dir,
-                    data_list=self.datastore().datalist(),
+                    train_datalist=train_d,
+                    val_datalist=val_d,
                     network=network,
-                    device=request.get("device", "cuda"),
-                    lr=request.get("lr", 0.0001),
-                    val_split=request.get("val_split", 0.2),
                     load_path=load_path,
                     publish_path=final_model,
+                    stats_path=train_stats_path,
+                    device=request.get("device", "cuda"),
+                    lr=request.get("lr", 0.0001),
                 )
             elif model == "deepgrow_2d":
                 # TODO:: Flatten the dataset and batch it instead of picking random slice id
@@ -124,13 +130,14 @@ class MyApp(MONAILabelApp):
                     max_train_interactions=15,
                     max_val_interactions=5,
                     output_dir=output_dir,
-                    data_list=self.datastore().datalist(),
+                    train_datalist=train_d,
+                    val_datalist=val_d,
                     network=network,
-                    device=request.get("device", "cuda"),
-                    lr=request.get("lr", 0.0001),
-                    val_split=request.get("val_split", 0.2),
                     load_path=load_path,
                     publish_path=final_model,
+                    stats_path=train_stats_path,
+                    device=request.get("device", "cuda"),
+                    lr=request.get("lr", 0.0001),
                 )
             else:
                 raise Exception(f"Train Definition for {model} Not Found")
@@ -142,3 +149,17 @@ class MyApp(MONAILabelApp):
         for task in tasks:
             result = task(max_epochs=request.get("epochs", 1), amp=request.get("amp", True))
         return result
+
+    def train_stats(self):
+        # Return 3D stats as main stats and add 2D starts as part of
+        res = {}
+        for model in ["deepgrow_3d", "deepgrow_2d"]:
+            train_stats_path = os.path.join(self.model_dir, f"train_stats_{model}.json")
+            if os.path.exists(train_stats_path):
+                with open(train_stats_path, "r") as fc:
+                    if res:
+                        res[model] = json.load(fc)
+                    else:
+                        res = json.load(fc)
+
+        return res

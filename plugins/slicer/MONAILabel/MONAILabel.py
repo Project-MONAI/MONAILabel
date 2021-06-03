@@ -315,7 +315,9 @@ class MONAILabelWidget(ScriptedLoadableModuleWidget, VTKObservationMixin):
         for label in self.info.get("labels", {}):
             self.ui.labelComboBox.addItem(label)
         currentLabel = self._parameterNode.GetParameter("CurrentLabel")
-        self.ui.labelComboBox.setCurrentIndex(self.ui.labelComboBox.findText(currentLabel) if currentLabel else 0)
+        idx = self.ui.labelComboBox.findText(currentLabel) if currentLabel else 0
+        idx = 0 if idx < 0 < self.ui.labelComboBox.count else idx
+        self.ui.labelComboBox.setCurrentIndex(idx)
 
         self.ui.appComboBox.clear()
         self.ui.appComboBox.addItem(self.info.get("name", ""))
@@ -326,7 +328,8 @@ class MONAILabelWidget(ScriptedLoadableModuleWidget, VTKObservationMixin):
         self.ui.activeLearningProgressBar.setValue(current / max(total, 1) * 100)
         self.ui.activeLearningProgressBar.setToolTip(f"{current}/{total} samples are labeled")
 
-        dice = datastore_stats.get("dice", 0)
+        train_stats = self.info.get("train_stats", {})
+        dice = train_stats.get("best_metric", 0)
         self.ui.accuracyProgressBar.setValue(dice * 100)
         css = ["stop: 0 red"]
         if dice > 0.5:

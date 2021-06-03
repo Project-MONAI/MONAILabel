@@ -1,3 +1,4 @@
+import json
 import logging
 import os
 
@@ -6,7 +7,6 @@ from monai.networks.layers import Norm
 from monai.networks.nets import UNet
 
 from monailabel.interfaces import MONAILabelApp
-from monailabel.interfaces.tasks import BatchInferImageType
 from monailabel.utils.activelearning import Random
 
 logger = logging.getLogger(__name__)
@@ -27,8 +27,9 @@ class MyApp(MONAILabelApp):
 
         self.pretrained_model = os.path.join(self.model_dir, "segmentation_spleen.pt")
         self.final_model = os.path.join(self.model_dir, "final.pt")
-        path = [self.pretrained_model, self.final_model]
+        self.train_stats_path = os.path.join(self.model_dir, "train_stats.json")
 
+        path = [self.pretrained_model, self.final_model]
         infers = {
             "segmentation_spleen": MyInfer(path, self.network),
         }
@@ -62,20 +63,25 @@ class MyApp(MONAILabelApp):
         load_path = os.path.join(output_dir, "model.pt")
         load_path = load_path if os.path.exists(load_path) else self.pretrained_model
 
+        # Datalist for train/validation
+        train_d, val_d = self.partition_datalist(self.datastore().datalist(), request.get("val_split", 0.2))
+
         task = MyTrain(
             output_dir=output_dir,
-            data_list=self.datastore().datalist(),
+            train_datalist=train_d,
+            val_datalist=val_d,
             network=self.network,
             load_path=load_path,
             publish_path=self.final_model,
+            stats_path=self.train_stats_path,
             device=request.get("device", "cuda"),
             lr=request.get("lr", 0.0001),
             val_split=request.get("val_split", 0.2),
         )
+        return task(max_epochs=request.get("epochs", 1), amp=request.get("amp", True))
 
-        result = task(max_epochs=request.get("epochs", 1), amp=request.get("amp", True))
-
-        # Compute Dice for new model over submitted/final labels
-        self.batch_infer({"model": "heart", "images": BatchInferImageType.IMAGES_LABELED})
-        self.scoring({"method": "dice"})
-        return result
+    def train_stats(self):
+        if os.path.exists(self.train_stats_path):
+            with open(self.train_stats_path, "r") as fc:
+                return json.load(fc)
+        return super().train_stats()
