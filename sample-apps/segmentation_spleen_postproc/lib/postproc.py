@@ -119,17 +119,6 @@ class SpleenBIFSegGraphCut(SpleenPostProc):
             description=description,
         )
 
-    def pre_transforms(self):
-        return [
-            LoadImaged(keys=["image", "logits", "label"]),
-            AddChanneld(keys=["image", "logits", "label"]),
-            # GraphCut is cheap, so use relatively smaller spacing
-            Spacingd(keys=["image", "logits"], pixdim=[2.0, 2.0, 3.0]),
-            Spacingd(keys=["label"], pixdim=[2.0, 2.0, 3.0], mode="nearest"),
-            # also reduce scaling range as GraphCut quantises pairwise to uint8
-            ScaleIntensityRanged(keys="image", a_min=-154, a_max=154, b_min=0.0, b_max=1.0, clip=True),
-        ]
-
     def inferer(self):
         return Compose(
             [
@@ -179,17 +168,6 @@ class SpleenInteractiveGraphCut(SpleenPostProc):
             description=description,
         )
 
-    def pre_transforms(self):
-        return [
-            LoadImaged(keys=["image", "logits", "label"]),
-            AddChanneld(keys=["image", "logits", "label"]),
-            # GraphCut is cheap, so use relatively smaller spacing
-            Spacingd(keys=["image", "logits"], pixdim=[2.0, 2.0, 3.0]),
-            Spacingd(keys=["label"], pixdim=[2.0, 2.0, 3.0], mode="nearest"),
-            # also reduce scaling range as GraphCut quantises pairwise to uint8
-            ScaleIntensityRanged(keys="image", a_min=-154, a_max=154, b_min=0.0, b_max=1.0, clip=True),
-        ]
-
     def inferer(self):
         return Compose(
             [
@@ -236,11 +214,11 @@ class SpleenBIFSegSimpleCRF(SpleenPostProc):
         return [
             LoadImaged(keys=["image", "logits", "label"]),
             AddChanneld(keys=["image", "logits", "label"]),
-            # GraphCut is cheap, so use relatively smaller spacing
-            Spacingd(keys=["image", "logits"], pixdim=[2.5, 2.5, 5.0]),
-            Spacingd(keys=["label"], pixdim=[2.5, 2.5, 5.0], mode="nearest"),
-            # also reduce scaling range as GraphCut quantises pairwise to uint8
-            ScaleIntensityRanged(keys="image", a_min=-154, a_max=154, b_min=0.0, b_max=1.0, clip=True),
+            # at the moment CRF implementation is bottleneck taking a long time,
+            # therefore scaling non-isotropic with big spacing
+            Spacingd(keys=["image", "logits"], pixdim=[3.5, 3.5, 5.0]),
+            Spacingd(keys=["label"], pixdim=[3.5, 3.5, 5.0], mode="nearest"),
+            ScaleIntensityRanged(keys="image", a_min=-300, a_max=200, b_min=0.0, b_max=1.0, clip=True),
         ]
 
     def inferer(self):
