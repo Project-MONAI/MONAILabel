@@ -7,5 +7,5 @@
 - Add New Module Path: _<FULL_PATH>_/plugins/slicer/MONAILabel
 - _**Restart**_ 3D Slicer
 
-<img src="https://user-images.githubusercontent.com/7339051/120266996-fa98c480-c29a-11eb-93a3-36d50d791073.png" width="800"/>
+<img src="https://raw.githubusercontent.com/Project-MONAI/MONAILabel/main/plugins/slicer/MONAILabel/Screenshots/1.png" width="800"/>
 

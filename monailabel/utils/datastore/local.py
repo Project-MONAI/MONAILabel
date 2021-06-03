@@ -5,7 +5,6 @@ import logging
 import os
 import pathlib
 import shutil
-import statistics
 import time
 from pathlib import Path
 from typing import Any, Dict, List
@@ -554,17 +553,13 @@ class LocalDatastore(Datastore):
 
     def status(self) -> Dict[str, Any]:
         tags: dict = {}
-        dices = []
         for obj in self._datastore.objects:
-            if obj.image.info and obj.image.info.get("dice"):
-                dices.append(float(obj.image.info["dice"]))
             for label in obj.labels:
                 tags[label.tag] = tags.get(label.tag, 0) + 1
 
         return {
             "total": len(self.list_images()),
             "completed": len(self.get_labeled_images()),
-            "dice": statistics.mean(dices) if dices else 0.0,
             "label_tags": tags,
             "train": self.datalist(),
         }

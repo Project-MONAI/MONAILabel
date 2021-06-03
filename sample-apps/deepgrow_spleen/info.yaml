@@ -1,6 +1,6 @@
 ---
 version: 1
-name: Deepgrow
+name: Deepgrow - Spleen
 description: MONAI Label App to provide active learning solution using pre-trained Clara Deepgrow MMAR
 dimension: 3
 labels:
