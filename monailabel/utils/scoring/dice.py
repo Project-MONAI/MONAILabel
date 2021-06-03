@@ -20,8 +20,8 @@ class Dice(ScoringMethod):
     def __call__(self, request, datastore: Datastore):
         loader = LoadImage(image_only=True)
 
-        tag_y = request.get("y", DefaultLabelTag.FINAL.value)
-        tag_y_pred = request.get("y_pred", DefaultLabelTag.ORIGINAL.value)
+        tag_y = request.get("y", DefaultLabelTag.FINAL)
+        tag_y_pred = request.get("y_pred", DefaultLabelTag.ORIGINAL)
 
         result = {}
         for image_id in datastore.list_images():

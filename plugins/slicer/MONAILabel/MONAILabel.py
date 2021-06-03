@@ -87,6 +87,17 @@ class _ui_MONAILabelSettingsPanel(object):
             str(qt.SIGNAL("valueAsIntChanged(int)")),
         )
 
+        autoUpdateModelCheckBox = qt.QCheckBox()
+        autoUpdateModelCheckBox.checked = True
+        autoUpdateModelCheckBox.toolTip = "Enable this option to auto update model after submitting the label"
+        groupLayout.addRow("Auto-Update Model:", autoUpdateModelCheckBox)
+        parent.registerProperty(
+            "MONAILabel/autoUpdateModel",
+            ctk.ctkBooleanMapper(autoUpdateModelCheckBox, "checked", str(qt.SIGNAL("toggled(bool)"))),
+            "valueAsInt",
+            str(qt.SIGNAL("valueAsIntChanged(int)")),
+        )
+
         vBoxLayout.addWidget(groupBox)
         vBoxLayout.addStretch(1)
 
@@ -314,6 +325,25 @@ class MONAILabelWidget(ScriptedLoadableModuleWidget, VTKObservationMixin):
         total = datastore_stats.get("total", 0)
         self.ui.activeLearningProgressBar.setValue(current / max(total, 1) * 100)
         self.ui.activeLearningProgressBar.setToolTip(f"{current}/{total} samples are labeled")
+
+        dice = datastore_stats.get("dice", 0)
+        self.ui.accuracyProgressBar.setValue(dice * 100)
+        css = ["stop: 0 red"]
+        if dice > 0.5:
+            css.append(f"stop: {0.5 / dice} orange")
+        if dice > 0.6:
+            css.append(f"stop: {0.6 / dice} yellow")
+        if dice > 0.7:
+            css.append(f"stop: {0.7 / dice} lightgreen")
+        if dice > 0.8:
+            css.append(f"stop: {0.8 / dice} green")
+        if dice > 0.9:
+            css.append(f"stop: {0.9 / dice} darkgreen")
+        self.ui.accuracyProgressBar.setStyleSheet(
+            "QProgressBar {text-align: center;} "
+            "QProgressBar::chunk {background-color: "
+            "qlineargradient(x0: 0, x2: 1, " + ",".join(css) + ")}"
+        )
 
         self.ui.strategyBox.clear()
         for strategy in self.info.get("strategies", {}):
@@ -684,8 +714,12 @@ class MONAILabelWidget(ScriptedLoadableModuleWidget, VTKObservationMixin):
             self.updateServerSettings()
             configs = self.getParamsFromConfig()
             status = self.logic.train_start(configs.get("train"))
+
             self.ui.trainingProgressBar.setValue(1)
             self.ui.trainingProgressBar.setToolTip("Training: STARTED")
+
+            time.sleep(1)
+            self.updateGUIFromParameterNode()
         except:
             slicer.util.errorDisplay(
                 "Failed to run training in MONAI Label Server", detailedText=traceback.format_exc()
@@ -699,8 +733,8 @@ class MONAILabelWidget(ScriptedLoadableModuleWidget, VTKObservationMixin):
                 status.get("status"),
                 status.get("start_ts"),
             )
-            slicer.util.infoDisplay(msg, detailedText=json.dumps(status, indent=2))
-            self.updateGUIFromParameterNode()
+            # slicer.util.infoDisplay(msg, detailedText=json.dumps(status, indent=2))
+            logging.info(msg)
 
         logging.info("Time consumed by training: {0:3.1f}".format(time.time() - start))
 
@@ -728,10 +762,11 @@ class MONAILabelWidget(ScriptedLoadableModuleWidget, VTKObservationMixin):
                 status.get("end_ts"),
                 status.get("result", status.get("details", [])[-1]),
             )
-            slicer.util.infoDisplay(msg, detailedText=json.dumps(status, indent=2))
+            # slicer.util.infoDisplay(msg, detailedText=json.dumps(status, indent=2))
+            logging.info(msg)
         self.updateGUIFromParameterNode()
 
-        logging.info("Time consumed by next_sample: {0:3.1f}".format(time.time() - start))
+        logging.info("Time consumed by stop training: {0:3.1f}".format(time.time() - start))
 
     def isTrainingRunning(self, check_only=True):
         if not self.logic:
@@ -875,6 +910,14 @@ class MONAILabelWidget(ScriptedLoadableModuleWidget, VTKObservationMixin):
             self.updateServerSettings()
             result = self.logic.save_label(self.current_sample["id"], label_in)
             self.fetchModels()
+
+            if slicer.util.settingsValue("MONAILabel/autoUpdateModel", True, converter=slicer.util.toBool):
+                try:
+                    if self.isTrainingRunning(check_only=True):
+                        self.logic.train_stop()
+                except:
+                    logging.info("Failed to stop training; or already stopped")
+                self.onTraining()
         except:
             slicer.util.errorDisplay("Failed to save Label to MONAI Label Server", detailedText=traceback.format_exc())
         finally:
