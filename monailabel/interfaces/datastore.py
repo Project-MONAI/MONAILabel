@@ -3,7 +3,7 @@ from enum import Enum
 from typing import Any, Dict, List
 
 
-class DefaultLabelTag(Enum):
+class DefaultLabelTag(str, Enum):
     ORIGINAL = "original"
     FINAL = "final"
 

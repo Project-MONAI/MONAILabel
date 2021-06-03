@@ -6,6 +6,7 @@ from monai.networks.layers import Norm
 from monai.networks.nets import UNet
 
 from monailabel.interfaces import MONAILabelApp
+from monailabel.interfaces.tasks import BatchInferImageType
 from monailabel.utils.activelearning import Random
 
 logger = logging.getLogger(__name__)
@@ -72,4 +73,9 @@ class MyApp(MONAILabelApp):
             val_split=request.get("val_split", 0.2),
         )
 
-        return task(max_epochs=request.get("epochs", 1), amp=request.get("amp", True))
+        result = task(max_epochs=request.get("epochs", 1), amp=request.get("amp", True))
+
+        # Compute Dice for new model over submitted/final labels
+        self.batch_infer({"model": "heart", "images": BatchInferImageType.IMAGES_LABELED})
+        self.scoring({"method": "dice"})
+        return result
