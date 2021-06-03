@@ -561,7 +561,7 @@ class LocalDatastore(Datastore):
             "total": len(self.list_images()),
             "completed": len(self.get_labeled_images()),
             "label_tags": tags,
-            "train": self.datalist(),
+            "train": self.datalist(full_path=False),
         }
 
     def __str__(self):
