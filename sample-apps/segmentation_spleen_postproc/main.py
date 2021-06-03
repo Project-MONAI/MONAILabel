@@ -47,6 +47,7 @@ class MyApp(MONAILabelApp):
             "Int.+BIFSeg+GraphCut": SpleenInteractiveGraphCut(),
         }
 
+
         strategies = {
             "random": Random(),
             "first": MyStrategy(),
