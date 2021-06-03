@@ -1,3 +1,4 @@
+import json
 import logging
 import os
 
@@ -27,8 +28,9 @@ class MyApp(MONAILabelApp):
 
         self.pretrained_model = os.path.join(self.model_dir, "segmentation_spleen.pt")
         self.final_model = os.path.join(self.model_dir, "final.pt")
-        path = [self.pretrained_model, self.final_model]
+        self.train_stats_path = os.path.join(self.model_dir, "train_stats.json")
 
+        path = [self.pretrained_model, self.final_model]
         infers = {"segmentation_spleen": MyInfer(path, self.network), "CRF": SpleenCRF()}
 
         strategies = {
@@ -51,7 +53,7 @@ class MyApp(MONAILabelApp):
         # Simple way to Add deepgrow 2D+3D models for infer tasks
         self.add_deepgrow_infer_tasks()
 
-    def infer(self, request):
+    def infer(self, request, datastore=None):
         image = request.get("image")
 
         # check if inferer is Post Processor
@@ -75,38 +77,33 @@ class MyApp(MONAILabelApp):
         return result
 
     def train(self, request):
-        name = request.get("name", "model_01")
-        epochs = request.get("epochs", 1)
-        amp = request.get("amp", True)
-        device = request.get("device", "cuda")
-        lr = request.get("lr", 0.0001)
-        val_split = request.get("val_split", 0.2)
-
         logger.info(f"Training request: {request}")
 
-        output_dir = os.path.join(self.model_dir, name)
+        output_dir = os.path.join(self.model_dir, request.get("name", "model_01"))
 
         # App Owner can decide which checkpoint to load (from existing output folder or from base checkpoint)
         load_path = os.path.join(output_dir, "model.pt")
         load_path = load_path if os.path.exists(load_path) else self.pretrained_model
 
-        # Update/Publish latest model for infer/active learning use
-        if os.path.exists(self.final_model) or os.path.islink(self.final_model):
-            os.unlink(self.final_model)
-        os.symlink(
-            os.path.join(os.path.basename(output_dir), "model.pt"),
-            self.final_model,
-            dir_fd=os.open(self.model_dir, os.O_RDONLY),
-        )
+        # Datalist for train/validation
+        train_d, val_d = self.partition_datalist(self.datastore().datalist(), request.get("val_split", 0.2))
 
         task = MyTrain(
             output_dir=output_dir,
-            data_list=self.datastore().datalist(),
+            train_datalist=train_d,
+            val_datalist=val_d,
             network=self.network,
             load_path=load_path,
-            device=device,
-            lr=lr,
-            val_split=val_split,
+            publish_path=self.final_model,
+            stats_path=self.train_stats_path,
+            device=request.get("device", "cuda"),
+            lr=request.get("lr", 0.0001),
+            val_split=request.get("val_split", 0.2),
         )
+        return task(max_epochs=request.get("epochs", 1), amp=request.get("amp", True))
 
-        return task(max_epochs=epochs, amp=amp)
+    def train_stats(self):
+        if os.path.exists(self.train_stats_path):
+            with open(self.train_stats_path, "r") as fc:
+                return json.load(fc)
+        return super().train_stats()
