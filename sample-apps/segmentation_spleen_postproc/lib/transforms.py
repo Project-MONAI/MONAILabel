@@ -12,12 +12,12 @@ from monailabel.utils.others.writer import Writer
 from .utils import interactive_maxflow2d, interactive_maxflow3d, make_bifseg_unary, maxflow2d, maxflow3d
 
 
-######################################
+#####################################
 # Interactive Segmentation Transforms
 #
 # Base class for implementing common
 # functionality for int. seg. tx
-######################################
+#####################################
 class InteractiveSegmentationTransform(Transform):
     def _fetch_data(self, data, key):
         if key not in data.keys():
@@ -25,18 +25,18 @@ class InteractiveSegmentationTransform(Transform):
 
         return data[key]
 
-    def _unfold_prob(self, data, axis=0):
-        # in some cases, esp in MONAI Label, only background prob may be provided for binary classification
-        # MONAI CRF requires these to be reconstructed into corresponding background and foreground prob
-        # # unfold a single prob for background into bg/fg prob
-        if data.shape[axis] == 1:
-            data = np.concatenate([data, 1 - data], axis=axis)
+    def _unfold_prob(self, prob, axis=0):
+        # in some cases, esp in MONAILabel, only background prob may be present
+        # optimisers (e.g. CRF, GraphCut) require these to be reconstructed in two bg/fg prob
+        # assuming prob is background, form foreground as 1-background and concat the two
+        if prob.shape[axis] == 1:
+            prob = np.concatenate([prob, 1 - prob], axis=axis)
 
-        return data
+        return prob
 
     def _normalise_logits(self, data, axis=0):
         # check if logits is a true prob, if not then apply softmax
-        if not np.allclose(np.mean(np.sum(data, axis=axis)), 1.0):
+        if not np.allclose(np.sum(data, axis=axis), 1.0):
             print("found non normalized logits, normalizing using Softmax")
             data = torch.softmax(torch.from_numpy(data), dim=axis).numpy()
 
@@ -58,8 +58,8 @@ class InteractiveSegmentationTransform(Transform):
         return d
 
 
-######################################
-######################################
+#####################################
+#####################################
 
 ########################
 #  Make Unary Transforms
@@ -76,7 +76,7 @@ class MakeBIFSegUnaryd(InteractiveSegmentationTransform):
     which defines an energy to be minimised. Equation 5 can be optimised using an appropriate
     optimisation method (e.g. CRF, GraphCut etc), which is implemented here as an additional transform.
 
-    For Example::
+    Usage Example::
 
     Compose(
         [
@@ -89,7 +89,6 @@ class MakeBIFSegUnaryd(InteractiveSegmentationTransform):
                 scribbles_bg_label=2,
                 scribbles_fg_label=3,
                 scale_infty=1e6,
-                use_simplecrf=False,
             ),
             # optimiser
             ApplyCRFOptimisationd(unary="unary", pairwise="image", post_proc_label="pred"),
@@ -134,9 +133,7 @@ class MakeBIFSegUnaryd(InteractiveSegmentationTransform):
                 "BIFSeg can only be applied to binary probabilities for now, received {}".format(logits.shape[0])
             )
 
-        # attempt to unfold probability term from one dimension
-        # assuming the one dimension given is background probability
-        # we can get the foreground as 1-background and concat the two
+        # attempt to unfold probability term
         logits = self._unfold_prob(logits, axis=0)
 
         # make BIFSeg Unaries following Equation 7 from:
@@ -157,11 +154,38 @@ class MakeBIFSegUnaryd(InteractiveSegmentationTransform):
 ########################
 
 #################################################
-#  Hybrid Transforms
+# Hybrid Transforms
 # (both MakeUnary+Optimiser in single method)
 # uses SimpleCRF's interactive_maxflowNd() method
 #################################################
 class ApplyBIFSegGraphCutPostProcd(InteractiveSegmentationTransform):
+    """
+    Transform wrapper around SimpleCRF's Interactive GraphCut MaxFlow implementation for BIFSeg.
+
+    This is a hybrid transform, which covers both Make*Unaryd + Optimiser and hence does not
+    need an additional optimiser.
+
+    BIFSeg unaries are made and resulting energy function optimised using GraphCut inside
+    SimpleCRF's interactive segmentation function.
+
+    Usage Example::
+
+    Compose(
+        [
+            ApplyBIFSegGraphCutPostProcd(
+                image="image",
+                logits="logits",
+                scribbles="label",
+                post_proc_label="pred",
+                scribbles_bg_label=2,
+                scribbles_fg_label=3,
+                lamda=10.0,
+                sigma=15.0,
+            ),
+        ]
+    )
+    """
+
     def __init__(
         self,
         image: str,
@@ -207,9 +231,7 @@ class ApplyBIFSegGraphCutPostProcd(InteractiveSegmentationTransform):
                 "GraphCut can only be applied to binary probabilities, received {}".format(logits.shape[0])
             )
 
-        # attempt to unfold unary probability terms from one dimension
-        # assuming the one dimension given is background probability
-        # we can get the foreground as 1-background and concat the two
+        # attempt to unfold probability term
         logits = self._unfold_prob(logits, axis=0)
 
         # prepare data for SimpleCRF's Interactive GraphCut (BIFSeg)
@@ -247,7 +269,7 @@ class ApplyCRFOptimisationd(InteractiveSegmentationTransform):
     It optimises a typical energy function for interactive segmentation methods using MONAI's CRF layer,
     e.g. Equation 5 from https://arxiv.org/pdf/1710.04043.pdf.
 
-    For Example::
+    Usage Example::
 
     Compose(
         [
@@ -260,7 +282,6 @@ class ApplyCRFOptimisationd(InteractiveSegmentationTransform):
                 scribbles_bg_label=2,
                 scribbles_fg_label=3,
                 scale_infty=1e6,
-                use_simplecrf=False,
             ),
             # optimiser
             ApplyCRFOptimisationd(unary="unary", pairwise="image", post_proc_label="pred"),
@@ -351,7 +372,7 @@ class ApplySimpleCRFOptimisationd(InteractiveSegmentationTransform):
     It optimises a typical energy function for interactive segmentation methods using SimpleCRF's CRF method,
     e.g. Equation 5 from https://arxiv.org/pdf/1710.04043.pdf.
 
-    For Example::
+    Usage Example::
 
     Compose(
         [
@@ -413,6 +434,8 @@ class ApplySimpleCRFOptimisationd(InteractiveSegmentationTransform):
         pairwise_term = self._fetch_data(d, self.pairwise)
 
         # SimpleCRF expects uint8 for pairwise_term
+        # scaling of pairwise_term handled in pre_transforms should be in range [0, 1]
+        # just in case it is needed, leaving a basic scaling method here
         # min_p = pairwise_term.min()
         # max_p = pairwise_term.max()
         # pairwise_term = (((pairwise_term - min_p) / (max_p - min_p)) * 255).astype(np.uint8)
@@ -475,7 +498,7 @@ class ApplyGraphCutOptimisationd(InteractiveSegmentationTransform):
     It optimises a typical energy function for interactive segmentation methods using SimpleCRF's GraphCut method,
     e.g. Equation 5 from https://arxiv.org/pdf/1710.04043.pdf.
 
-    For Example::
+    Usage Example::
 
     Compose(
         [
@@ -488,7 +511,6 @@ class ApplyGraphCutOptimisationd(InteractiveSegmentationTransform):
                 scribbles_bg_label=2,
                 scribbles_fg_label=3,
                 scale_infty=1e6,
-                use_simplecrf=False,
             ),
             # optimiser
             ApplyGraphCutOptimisationd(
@@ -535,9 +557,7 @@ class ApplyGraphCutOptimisationd(InteractiveSegmentationTransform):
                 "GraphCut can only be applied to binary probabilities, received {}".format(unary_term.shape[0])
             )
 
-        # attempt to unfold unary probability terms from one dimension
-        # assuming the one dimension given is background probability
-        # we can get the foreground as 1-background and concat the two
+        # attempt to unfold probability term
         unary_term = self._unfold_prob(unary_term, axis=0)
 
         # prepare data for SimpleCRF's GraphCut
@@ -563,9 +583,9 @@ class ApplyGraphCutOptimisationd(InteractiveSegmentationTransform):
 #######################
 
 
-#########################
-#  Logits Save Transforms
-#########################
+########################
+#  Logits Save Transform
+########################
 class WriteLogits(Transform):
     def __init__(self, key, result="result"):
         self.key = key
@@ -582,5 +602,5 @@ class WriteLogits(Transform):
         return d
 
 
-#########################
-#########################
+########################
+########################

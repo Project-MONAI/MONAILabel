@@ -2,9 +2,9 @@ import logging
 import os
 
 from lib import (
-    MyInfer,
     MyStrategy,
     MyTrain,
+    SegmentationWithWriteLogits,
     SpleenBIFSegCRF,
     SpleenBIFSegGraphCut,
     SpleenBIFSegSimpleCRF,
@@ -38,7 +38,7 @@ class MyApp(MONAILabelApp):
         path = [self.pretrained_model, self.final_model]
 
         infers = {
-            "segmentation_spleen": MyInfer(path, self.network),
+            "Spleen_Segmentation": SegmentationWithWriteLogits(path, self.network),
             "BIFSeg+CRF": SpleenBIFSegCRF(),
             "BIFSeg+SimpleCRF": SpleenBIFSegSimpleCRF(),
             "BIFSeg+GraphCut": SpleenBIFSegGraphCut(),

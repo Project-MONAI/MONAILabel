@@ -15,6 +15,7 @@ import SimpleITK as sitk
 import sitkUtils
 import slicer
 import vtk
+import vtkSegmentationCore
 from client import MONAILabelClient
 from slicer.ScriptedLoadableModule import *
 from slicer.util import VTKObservationMixin
@@ -339,7 +340,24 @@ class MONAILabelWidget(ScriptedLoadableModuleWidget, VTKObservationMixin):
             if result_file and os.path.exists(result_file):
                 os.unlink(result_file)
 
-    def onClearScribblesWidget(self):
+    def onClearScribblesSegmentNodes(self):
+        # more explanation on this at:
+        # https://discourse.slicer.org/t/how-to-clear-segmentation/7433/4
+        # clear "scribbles" segment before saving the label
+        segmentation = self._segmentNode
+        num_segments = segmentation.GetSegmentation().GetNumberOfSegments()
+        for i in range(num_segments):
+            segmentId = segmentation.GetSegmentation().GetNthSegmentID(i)
+            if "scribbles" in segmentId:
+                logging.info("clearning {}".format(segmentId))
+                labelMapRep = slicer.vtkOrientedImageData()
+                segmentation.GetBinaryLabelmapRepresentation(segmentId, labelMapRep)
+                vtkSegmentationCore.vtkOrientedImageDataResample.FillImage(labelMapRep, 0, labelMapRep.GetExtent())
+                slicer.vtkSlicerSegmentationsModuleLogic.SetBinaryLabelmapToSegment(
+                    labelMapRep, segmentation, segmentId, slicer.vtkSlicerSegmentationsModuleLogic.MODE_REPLACE
+                )
+
+    def onClearScribbles(self):
         # reset scribbles mode
         self.scribblesMode = None
 
@@ -347,6 +365,9 @@ class MONAILabelWidget(ScriptedLoadableModuleWidget, VTKObservationMixin):
         widget = self._scribblesEditorWidget
         del widget
         self._scribblesEditorWidget = None
+
+        # remove "scribbles" segments from label
+        self.onClearScribblesSegmentNodes()
 
         # update tool/layer display
         self.updateScribblesStatusIcons()
@@ -1035,7 +1056,7 @@ class MONAILabelWidget(ScriptedLoadableModuleWidget, VTKObservationMixin):
                 "Are you sure to continue?"
             ):
                 return
-            self.onClearScribblesWidget()
+            self.onClearScribbles()
             slicer.mrmlScene.Clear(0)
 
         start = time.time()
@@ -1111,6 +1132,7 @@ class MONAILabelWidget(ScriptedLoadableModuleWidget, VTKObservationMixin):
         start = time.time()
         labelmapVolumeNode = None
         result = None
+        self.onClearScribbles()
         try:
             qt.QApplication.setOverrideCursor(qt.Qt.WaitCursor)
             segmentationNode = self._segmentNode

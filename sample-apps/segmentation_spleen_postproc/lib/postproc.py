@@ -35,7 +35,7 @@ class SpleenPostProc(InferTask):
         return [
             LoadImaged(keys=["image", "logits", "label"]),
             AddChanneld(keys=["image", "logits", "label"]),
-            # at the moment CRF implementation is bottleneck taking a long time,
+            # at the moment optimisers are bottleneck taking a long time,
             # therefore scaling non-isotropic with big spacing
             Spacingd(keys=["image", "logits"], pixdim=[2.5, 2.5, 5.0]),
             Spacingd(keys=["label"], pixdim=[2.5, 2.5, 5.0], mode="nearest"),
@@ -44,7 +44,7 @@ class SpleenPostProc(InferTask):
 
     def post_transforms(self):
         return [
-            Restored(keys="pred", ref_image="image"),  # undo Spacingd in pre-transform
+            Restored(keys="pred", ref_image="image"),
             BoundingBoxd(keys="pred", result="result", bbox="bbox"),
         ]
 
@@ -60,16 +60,17 @@ class SpleenBIFSegCRF(SpleenPostProc):
     IEEE transactions on medical imaging 37.7 (2018): 1562-1573. (preprint: https://arxiv.org/pdf/1710.04043.pdf)
 
     This task takes as input 1) original image volume 2) logits from model and 3) scribbles from user
-    indicating corrections for initial segmentation from model. It incorporates the user-scribbles using
+    indicating corrections for initial segmentation from model. User-scribbles are incorporated using
     Equation 7 on page 4 of the paper.
 
-    It runs CRF to optimise Equation 5 from the paper (with unaries coming from Equation 7 and pairwise as input volume).
+    MONAI's CRF layer is used to optimise Equation 5 from the paper, where unaries come from Equation 7
+    and pairwise is the original input volume.
     """
 
     def __init__(
         self,
         dimension=3,
-        description="A post processing step BIFSeg with CRF for Spleen",
+        description="A post processing step with BIFSeg + MONAI's CRF for Spleen segmentation",
     ):
         super().__init__(
             dimension=dimension,
@@ -103,16 +104,17 @@ class SpleenBIFSegGraphCut(SpleenPostProc):
     IEEE transactions on medical imaging 37.7 (2018): 1562-1573. (preprint: https://arxiv.org/pdf/1710.04043.pdf)
 
     This task takes as input 1) original image volume 2) logits from model and 3) scribbles from user
-    indicating corrections for initial segmentation from model. It incorporates the user-scribbles using
+    indicating corrections for initial segmentation from model. User-scribbles are incorporated using
     Equation 7 on page 4 of the paper.
 
-    It runs GraphCut to optimise Equation 5 from the paper (with unaries coming from Equation 7 and pairwise as input volume).
+    SimpleCRF's GraphCut MaxFlow is used to optimise Equation 5 from the paper,
+    where unaries come from Equation 7 and pairwise is the original input volume.
     """
 
     def __init__(
         self,
         dimension=3,
-        description="A post processing step with BIFSeg GraphCut for Spleen",
+        description="A post processing step with BIFSeg + SimpleCRF's GraphCut for Spleen segmentation",
     ):
         super().__init__(
             dimension=dimension,
@@ -152,16 +154,17 @@ class SpleenInteractiveGraphCut(SpleenPostProc):
     IEEE transactions on medical imaging 37.7 (2018): 1562-1573. (preprint: https://arxiv.org/pdf/1710.04043.pdf)
 
     This task takes as input 1) original image volume 2) logits from model and 3) scribbles from user
-    indicating corrections for initial segmentation from model. It incorporates the user-scribbles using
+    indicating corrections for initial segmentation from model. User-scribbles are incorporated using
     Equation 7 on page 4 of the paper.
 
-    It runs GraphCut to optimise Equation 5 from the paper (with unaries coming from Equation 7 and pairwise as input volume).
+    SimpleCRF's interactive GraphCut MaxFlow is used to optimise Equation 5 from the paper,
+    where unaries come from Equation 7 and pairwise is the original input volume.
     """
 
     def __init__(
         self,
         dimension=3,
-        description="A post processing step with SimpleCRF's Interactive BIFSeg GraphCut for Spleen",
+        description="A post processing step with SimpleCRF's Interactive BIFSeg GraphCut for Spleen segmentation",
     ):
         super().__init__(
             dimension=dimension,
@@ -193,17 +196,17 @@ class SpleenBIFSegSimpleCRF(SpleenPostProc):
     IEEE transactions on medical imaging 37.7 (2018): 1562-1573. (preprint: https://arxiv.org/pdf/1710.04043.pdf)
 
     This task takes as input 1) original image volume 2) logits from model and 3) scribbles from user
-    indicating corrections for initial segmentation from model. It incorporates the user-scribbles using
+    indicating corrections for initial segmentation from model. User-scribbles are incorporated using
     Equation 7 on page 4 of the paper.
 
-    It runs SimpleCRF's CRF to optimise Equation 5 from the paper
-    (with unaries coming from Equation 7 and pairwise as input volume).
+    SimpleCRF's CRF is used to optimise Equation 5 from the paper,
+    where unaries come from Equation 7 and pairwise is the original input volume.
     """
 
     def __init__(
         self,
         dimension=3,
-        description="A post processing step with BIFSeg SimpleCRF's CRF for Spleen",
+        description="A post processing step with BIFSeg + SimpleCRF's CRF for Spleen segmentation",
     ):
         super().__init__(
             dimension=dimension,
@@ -214,7 +217,7 @@ class SpleenBIFSegSimpleCRF(SpleenPostProc):
         return [
             LoadImaged(keys=["image", "logits", "label"]),
             AddChanneld(keys=["image", "logits", "label"]),
-            # at the moment CRF implementation is bottleneck taking a long time,
+            # at the moment Simple CRF implementation is bottleneck taking a long time,
             # therefore scaling non-isotropic with big spacing
             Spacingd(keys=["image", "logits"], pixdim=[3.5, 3.5, 5.0]),
             Spacingd(keys=["label"], pixdim=[3.5, 3.5, 5.0], mode="nearest"),
