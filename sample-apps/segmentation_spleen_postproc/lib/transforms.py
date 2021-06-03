@@ -430,14 +430,12 @@ class ApplySimpleCRFOptimisationd(InteractiveSegmentationTransform):
             simplecrf_params["MaxIterations"] = self.iterations
 
             # Gaussian
-            # gaussian_weight = self.5
             simplecrf_params["PosW"] = self.gaussian_weight
             simplecrf_params["PosRStd"] = self.gaussian_spatial_sigma  # row
             simplecrf_params["PosCStd"] = self.gaussian_spatial_sigma  # col
             simplecrf_params["PosZStd"] = self.gaussian_spatial_sigma  # depth (z direction)
 
             # Bilateral spatial
-            # bilateral_weight = self.0.1
             simplecrf_params["BilateralW"] = self.bilateral_weight
             simplecrf_params["BilateralRStd"] = self.bilateral_spatial_sigma  # row
             simplecrf_params["BilateralCStd"] = self.bilateral_spatial_sigma  # col
@@ -445,7 +443,6 @@ class ApplySimpleCRFOptimisationd(InteractiveSegmentationTransform):
             simplecrf_params["ModalityNum"] = self.number_of_modalities
 
             # Bilateral color
-            # bilateral_color_sigma = self.5
             simplecrf_params["BilateralModsStds"] = (self.bilateral_color_sigma,)
 
             post_proc_label = denseCRF3D.densecrf3d(pairwise_term, unary_term, simplecrf_params)
