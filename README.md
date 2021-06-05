@@ -28,6 +28,8 @@ principles with [MONAI](https://github.com/Project-MONAI).
 
 ### Ubuntu
 
+User have two options to start the server: (1) Using the Docker recipe or (2) Creating a virtual environment with the libraries specified in the [requirements file](https://github.com/Project-MONAI/MONAILabel/blob/main/requirements.txt)
+
 ```bash
     # One time setup (to pull monai with nvidia gpus)
     docker run -it --rm --gpus all --ipc=host --net=host -v /rapid/xyz:/workspace/ projectmonai/monai:0.5.2
