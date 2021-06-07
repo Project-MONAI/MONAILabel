@@ -6,7 +6,6 @@ import os
 import pathlib
 import shutil
 import time
-from pathlib import Path
 from typing import Any, Dict, List
 
 from filelock import FileLock
@@ -205,7 +204,7 @@ class LocalDatastore(Datastore):
         buf = None
         for obj in self._datastore.objects:
             if obj.image.id == image_id:
-                buf = io.BytesIO(Path(os.path.join(self._datastore_path, obj.image.id)).read_bytes())
+                buf = io.BytesIO(pathlib.Path(os.path.join(self._datastore_path, obj.image.id)).read_bytes())
                 break
         return buf
 
@@ -248,7 +247,7 @@ class LocalDatastore(Datastore):
             for label in obj.labels:
                 if label.id == label_id:
                     buf = io.BytesIO(
-                        Path(os.path.join(self._datastore_path, self._label_store_path, label.id)).read_bytes()
+                        pathlib.Path(os.path.join(self._datastore_path, self._label_store_path, label.id)).read_bytes()
                     )
         return buf
 
