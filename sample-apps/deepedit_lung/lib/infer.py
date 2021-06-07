@@ -30,7 +30,7 @@ from monailabel.utils.others.post import BoundingBoxd, Restored
 
 class Segmentation(InferTask):
     """
-    This provides Inference Engine for pre-trained heart segmentation (UNet) model over MSD Dataset.
+    This provides Inference Engine for pre-trained lung segmentation (UNet) model over MSD Dataset.
     """
 
     def __init__(
@@ -38,9 +38,9 @@ class Segmentation(InferTask):
         path,
         network=None,
         type=InferType.SEGMENTATION,
-        labels="heart",
+        labels="lung",
         dimension=3,
-        description="A pre-trained model for volumetric (3D) segmentation of the heart over 3D MR Images",
+        description="A pre-trained model for volumetric (3D) segmentation of the lung over 3D MR Images",
     ):
         super().__init__(
             path=path,
