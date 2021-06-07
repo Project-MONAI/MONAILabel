@@ -227,7 +227,7 @@ class Deepgrow(InferTask):
         return [
             LoadImaged(keys="image"),
             EnsureChannelFirstd(keys=("image")),
-            SqueezeDimd(keys="image", dim=0),
+            SqueezeDimd(keys="image", dim=0), # First Squeeze and then AddChannel?
             # The inverse of this transform causes some issues - Creates issues when inverting
             # Spacingd(keys='image', pixdim=[1.0, 1.0, 1.0], mode='bilinear'),
             AddGuidanceFromPointsd(ref_image="image", guidance="guidance", dimensions=3),
