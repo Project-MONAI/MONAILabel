@@ -1,10 +1,18 @@
 ---
 version: 1
+<<<<<<< HEAD
 name: DeepEdit - Brain Tumour
 description: MONAI Label App to provide active learning solution using DeepEdit to label brain tumour over 3D MRI Images
 dimension: 3
 labels:
   - brain tumour
+=======
+name: DeepEdit - Heart
+description: MONAI Label App to provide active learning solution using DeepEdit to label heart over 3D MRI Images
+dimension: 3
+labels:
+  - heart
+>>>>>>> 6ac3172639213dba694c9fbb950ea9633c800694
 config:
   infer:
     device: cuda
