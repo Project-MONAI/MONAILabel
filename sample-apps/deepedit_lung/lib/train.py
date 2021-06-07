@@ -15,6 +15,7 @@ from monai.transforms import (
     AsDiscreted,
     Compose,
     CropForegroundd,
+    EnsureChannelFirstd,
     LoadImaged,
     NormalizeIntensityd,
     Orientationd,
@@ -44,8 +45,8 @@ class MyTrain(BasicTrainTask):
         val_datalist,
         network,
         model_size=(128, 128, 128),
-        max_train_interactions=20,
-        max_val_interactions=10,
+        max_train_interactions=10,
+        max_val_interactions=5,
         save_iteration=False,
         **kwargs,
     ):
@@ -78,13 +79,10 @@ class MyTrain(BasicTrainTask):
         return Compose(
             [
                 LoadImaged(keys=("image", "label")),
-                RandZoomd(keys=("image", "label"), prob=0.4, min_zoom=0.3, max_zoom=1.9, mode=("bilinear", "nearest")),
-                AddChanneld(keys=("image", "label")),
+                EnsureChannelFirstd(keys=("image", "label")),
                 Spacingd(keys=["image", "label"], pixdim=(1.0, 1.0, 1.0), mode=("bilinear", "nearest")),
                 Orientationd(keys=["image", "label"], axcodes="RAS"),
                 NormalizeIntensityd(keys="image"),
-                # Using threshold to crop images
-                CropForegroundd(keys=("image", "label"), source_key="image", select_fn=lambda x: x > 2.9, margin=3),
                 RandAdjustContrastd(keys="image", gamma=6),
                 RandHistogramShiftd(keys="image", num_control_points=8, prob=0.5),
                 Resized(keys=("image", "label"), spatial_size=self.model_size, mode=("area", "nearest")),
