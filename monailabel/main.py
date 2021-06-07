@@ -140,13 +140,16 @@ def run_datasets(args):
 def run_apps(args):
     from monai.apps.utils import download_and_extract
 
+    sample_apps_uri = "https://github.com/Project-MONAI/MONAILabel/tree/main/sample-apps"
     resource = {
-        "deepedit_heart": "https://github.com/Project-MONAI/MONAILabel/tree/main/sample-apps/deepedit_heart",
-        "deepedit_spleen": "https://github.com/Project-MONAI/MONAILabel/tree/main/sample-apps/deepedit_spleen",
-        "deepgrow_heart": "https://github.com/Project-MONAI/MONAILabel/tree/main/sample-apps/deepgrow_heart",
-        "deepgrow_spleen": "https://github.com/Project-MONAI/MONAILabel/tree/main/sample-apps/deepgrow_spleen",
-        "segmentation_heart": "https://github.com/Project-MONAI/MONAILabel/tree/main/sample-apps/segmentation_heart",
-        "segmentation_spleen": "https://github.com/Project-MONAI/MONAILabel/tree/main/sample-apps/segmentation_spleen",
+        "deepedit_brain_tumor": f"{sample_apps_uri}/deepedit_brain_tumor",
+        "deepedit_heart": f"{sample_apps_uri}/deepedit_heart",
+        "deepedit_lung": f"{sample_apps_uri}/deepedit_lung",
+        "deepedit_spleen": f"{sample_apps_uri}/deepedit_spleen",
+        "deepgrow_heart": f"{sample_apps_uri}/deepgrow_heart",
+        "deepgrow_spleen": f"{sample_apps_uri}/deepgrow_spleen",
+        "segmentation_heart": f"{sample_apps_uri}/segmentation_heart",
+        "segmentation_spleen": f"{sample_apps_uri}/segmentation_spleen",
     }
 
     if not args.download:

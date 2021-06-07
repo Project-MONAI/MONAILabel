@@ -42,8 +42,8 @@ class MyTrain(BasicTrainTask):
         val_datalist,
         network,
         model_size=(128, 128, 128),
-        max_train_interactions=10,
-        max_val_interactions=5,
+        max_train_interactions=20,
+        max_val_interactions=10,
         save_iteration=False,
         **kwargs,
     ):
