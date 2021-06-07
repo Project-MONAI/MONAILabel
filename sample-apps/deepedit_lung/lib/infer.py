@@ -9,13 +9,11 @@ from monai.inferers import SimpleInferer
 from monai.transforms import (
     Activationsd,
     AddChanneld,
-    AsChannelFirstd,
     AsChannelLastd,
     AsDiscreted,
-    CropForegroundd,
+    EnsureChannelFirstd,
     LoadImaged,
     NormalizeIntensityd,
-    Orientationd,
     Resized,
     Spacingd,
     SqueezeDimd,
@@ -57,16 +55,9 @@ class Segmentation(InferTask):
     def pre_transforms(self):
         return [
             LoadImaged(keys="image"),
-            AddChanneld(keys="image"),
+            EnsureChannelFirstd(keys="image"),
             Spacingd(keys="image", pixdim=(1.0, 1.0, 1.0), mode="bilinear"),
-            Orientationd(keys="image", axcodes="RAS"),
             NormalizeIntensityd(keys="image"),
-            CropForegroundd(
-                keys="image",
-                source_key="image",
-                select_fn=lambda x: x > x.max() * 0.6,
-                margin=3,
-            ),
             Resized(keys="image", spatial_size=(128, 128, 128), mode="area"),
             DiscardAddGuidanced(image="image"),
             ToTensord(keys="image"),
@@ -120,7 +111,8 @@ class Deepgrow(InferTask):
     def pre_transforms(self):
         return [
             LoadImaged(keys="image"),
-            AsChannelFirstd(keys="image"),
+            EnsureChannelFirstd(keys="image"),
+            SqueezeDimd(keys="image", dim=0),
             Spacingd(keys="image", pixdim=[1.0, 1.0, 1.0], mode="bilinear"),
             AddGuidanceFromPointsd(ref_image="image", guidance="guidance", dimensions=3),
             AddChanneld(keys="image"),
