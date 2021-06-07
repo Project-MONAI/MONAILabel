@@ -13,6 +13,7 @@ from monai.transforms import (
     AsChannelLastd,
     AsDiscreted,
     CropForegroundd,
+    EnsureChannelFirstd,
     LoadImaged,
     NormalizeIntensityd,
     Orientationd,
@@ -30,7 +31,7 @@ from monailabel.utils.others.post import BoundingBoxd, Restored
 
 class Segmentation(InferTask):
     """
-    This provides Inference Engine for pre-trained heart segmentation (UNet) model over MSD Dataset.
+    This provides Inference Engine for pre-trained brain tumour segmentation (UNet) model over MSD Dataset.
     """
 
     def __init__(
@@ -38,9 +39,9 @@ class Segmentation(InferTask):
         path,
         network=None,
         type=InferType.SEGMENTATION,
-        labels="heart",
+        labels="brain_tumour",
         dimension=3,
-        description="A pre-trained model for volumetric (3D) segmentation of the heart over 3D MR Images",
+        description="A pre-trained model for volumetric (3D) segmentation of the brain tumour over 3D MR Images",
     ):
         super().__init__(
             path=path,
@@ -57,16 +58,10 @@ class Segmentation(InferTask):
     def pre_transforms(self):
         return [
             LoadImaged(keys="image"),
-            AddChanneld(keys="image"),
+            EnsureChannelFirstd(keys=("image")),
             Spacingd(keys="image", pixdim=(1.0, 1.0, 1.0), mode="bilinear"),
-            Orientationd(keys="image", axcodes="RAS"),
+            Orientationd(keys=["image"], axcodes="RAS"),
             NormalizeIntensityd(keys="image"),
-            CropForegroundd(
-                keys="image",
-                source_key="image",
-                select_fn=lambda x: x > x.max() * 0.6,
-                margin=3,
-            ),
             Resized(keys="image", spatial_size=(128, 128, 128), mode="area"),
             DiscardAddGuidanced(image="image"),
             ToTensord(keys="image"),
@@ -120,11 +115,13 @@ class Deepgrow(InferTask):
     def pre_transforms(self):
         return [
             LoadImaged(keys="image"),
-            AsChannelFirstd(keys="image"),
+            EnsureChannelFirstd(keys="image"),
+            SqueezeDimd(keys="image", dim=0),
             Spacingd(keys="image", pixdim=[1.0, 1.0, 1.0], mode="bilinear"),
+            Orientationd(keys=["image"], axcodes="RAS"),
             AddGuidanceFromPointsd(ref_image="image", guidance="guidance", dimensions=3),
             AddChanneld(keys="image"),
-            SpatialCropGuidanced(keys="image", guidance="guidance", spatial_size=self.spatial_size),
+            SpatialCropGuidanced(keys="image", guidance="guidance", spatial_size=self.model_size),
             Resized(keys="image", spatial_size=self.model_size, mode="area"),
             ResizeGuidanced(guidance="guidance", ref_image="image"),
             NormalizeIntensityd(keys="image"),
