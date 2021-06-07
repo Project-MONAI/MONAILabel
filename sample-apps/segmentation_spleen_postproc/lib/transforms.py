@@ -1,4 +1,5 @@
 from copy import deepcopy
+from typing import Optional
 
 import denseCRF
 import denseCRF3D
@@ -302,7 +303,7 @@ class ApplyCRFOptimisationd(InteractiveSegmentationTransform):
         bilateral_color_sigma: float = 5.0,
         gaussian_spatial_sigma: float = 0.5,
         update_factor: float = 5.0,
-        compatibility_kernel_range: int = 1,
+        compatibility_matrix: Optional[torch.Tensor] = None,
         device: str = "cuda" if torch.cuda.is_available else "cpu",
     ) -> None:
         super(ApplyCRFOptimisationd, self).__init__()
@@ -316,7 +317,7 @@ class ApplyCRFOptimisationd(InteractiveSegmentationTransform):
         self.bilateral_color_sigma = bilateral_color_sigma
         self.gaussian_spatial_sigma = gaussian_spatial_sigma
         self.update_factor = update_factor
-        self.compatibility_kernel_range = compatibility_kernel_range
+        self.compatibility_matrix = compatibility_matrix
         self.iterations = iterations
         self.device = device
 
@@ -332,14 +333,14 @@ class ApplyCRFOptimisationd(InteractiveSegmentationTransform):
 
         # initialise MONAI's CRF layer
         crf_layer = CRF(
+            iterations=self.iterations,
             bilateral_weight=self.bilateral_weight,
             gaussian_weight=self.gaussian_weight,
             bilateral_spatial_sigma=self.bilateral_spatial_sigma,
             bilateral_color_sigma=self.bilateral_color_sigma,
             gaussian_spatial_sigma=self.gaussian_spatial_sigma,
             update_factor=self.update_factor,
-            compatibility_kernel_range=self.compatibility_kernel_range,
-            iterations=self.iterations,
+            compatibility_matrix=self.compatibility_matrix,
         )
 
         # add batch dimension for MONAI's CRF so it is in format [B, ?, X, Y, [Z]]
