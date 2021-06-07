@@ -53,7 +53,7 @@ class MyApp(MONAILabelApp):
         path = [self.pretrained_model, self.final_model]
         infers = {
             "deepedit": Deepgrow(path, self.network),
-            "heart": Segmentation(path, self.network),
+            "lung": Segmentation(path, self.network),
         }
 
         strategies = {
@@ -63,7 +63,7 @@ class MyApp(MONAILabelApp):
         }
 
         resources = [
-            (self.pretrained_model, "https://www.dropbox.com/s/fgygtodqztjjdyz/deepedit_heart.pt?dl=1"),
+            (self.pretrained_model, "https://www.dropbox.com/s/fgygtodqztjjdyz/deepedit_lung.pt?dl=1"),
         ]
 
         super().__init__(
