@@ -5,6 +5,7 @@ from .context import BasicEndpointTestSuite
 
 
 class TestEndPointTrain(BasicEndpointTestSuite):
+    @unittest.skip
     def test_001_train(self):
         params = {"epochs": 1, "name": "net_test_01", "val_split": 0.5}
         response = self.client.post("/train/", json=params)
@@ -18,6 +19,7 @@ class TestEndPointTrain(BasicEndpointTestSuite):
         while self.client.get("/train/?check_if_running=True").status_code == 200:
             time.sleep(5)
 
+    @unittest.skip
     def test_002_stop(self):
         params = {"epochs": 3, "name": "net_test_01"}
         response = self.client.post("/train/", json=params)
