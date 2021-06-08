@@ -12,6 +12,7 @@ class TestEndPointLogs(BasicEndpointTestSuite):
         response = self.client.get("/logs/?lines=0")
         assert response.status_code == 200
 
+    @unittest.skip("GPU Needed")
     def test_logs_gpu(self):
         response = self.client.get("/logs/gpu")
         assert response.status_code == 200
