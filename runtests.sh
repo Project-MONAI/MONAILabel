@@ -442,7 +442,7 @@ if [ $doUnitTests = true ]; then
   torch_validate
 
   ${cmdPrefix}${PY_EXE} tests/setup.py
-  ${cmdPrefix}${cmd} -m pytest -v tests/unit --no-summary #--log-cli-level=INFO
+  ${cmdPrefix}${cmd} -m pytest -v tests/unit --no-summary --log-cli-level=INFO
 fi
 
 function check_server_running() {
