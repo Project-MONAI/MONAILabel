@@ -5,7 +5,7 @@ from .context import BasicEndpointTestSuite
 
 
 class EndPointInfer(BasicEndpointTestSuite):
-    @unittest.skip
+    @unittest.skip("GPU Needed")
     def test_segmentation(self):
         model = "heart"
         image = "la_003.nii.gz"
@@ -13,7 +13,7 @@ class EndPointInfer(BasicEndpointTestSuite):
         response = self.client.post(f"/infer/{model}?image={image}")
         assert response.status_code == 200
 
-    @unittest.skip
+    @unittest.skip("GPU Needed")
     def test_deepedit(self):
         model = "deepedit"
         image = "la_003.nii.gz"
