@@ -19,3 +19,5 @@ mypy
 ninja
 coverage
 parameterized
+types-PyYAML
+types-filelock
