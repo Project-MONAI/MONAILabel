@@ -1,12 +1,16 @@
 import time
 import unittest
 
+import torch
+
 from .context import BasicEndpointTestSuite
 
 
 class TestEndPointTrain(BasicEndpointTestSuite):
-    @unittest.skip("GPU Needed")
     def test_001_train(self):
+        if not torch.cuda.is_available():
+            return
+
         params = {"epochs": 1, "name": "net_test_01", "val_split": 0.5}
         response = self.client.post("/train/", json=params)
 
@@ -19,8 +23,10 @@ class TestEndPointTrain(BasicEndpointTestSuite):
         while self.client.get("/train/?check_if_running=True").status_code == 200:
             time.sleep(5)
 
-    @unittest.skip("GPU Needed")
     def test_002_stop(self):
+        if not torch.cuda.is_available():
+            return
+
         params = {"epochs": 3, "name": "net_test_01"}
         response = self.client.post("/train/", json=params)
         assert response.status_code == 200

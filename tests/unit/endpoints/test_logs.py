@@ -1,5 +1,7 @@
 import unittest
 
+import torch
+
 from .context import BasicEndpointTestSuite
 
 
@@ -12,8 +14,10 @@ class TestEndPointLogs(BasicEndpointTestSuite):
         response = self.client.get("/logs/?lines=0")
         assert response.status_code == 200
 
-    @unittest.skip("GPU Needed")
     def test_logs_gpu(self):
+        if not torch.cuda.is_available():
+            return
+
         response = self.client.get("/logs/gpu")
         assert response.status_code == 200
 
