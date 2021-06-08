@@ -171,6 +171,26 @@ class Datastore(metaclass=ABCMeta):
         pass
 
     @abstractmethod
+    def add_image(self, image_id: str, image_filename: str) -> str:
+        """
+        Save a image for the given image id and return the newly saved image's id
+
+        :param image_id: the image id for the image;  If None then base filename will be used
+        :param image_filename: the path to the image file
+        :return: the image id for the saved image filename
+        """
+        pass
+
+    @abstractmethod
+    def remove_image(self, image_id: str) -> None:
+        """
+        Remove image for the datastore.  This will also remove all associated labels.
+
+        :param image_id: the image id for the image to be removed from datastore
+        """
+        pass
+
+    @abstractmethod
     def save_label(self, image_id: str, label_filename: str, label_tag: str) -> str:
         """
         Save a label for the given image id and return the newly saved label's id
@@ -179,6 +199,24 @@ class Datastore(metaclass=ABCMeta):
         :param label_filename: the path to the label file
         :param label_tag: the user-provided tag for the label
         :return: the label id for the given label filename
+        """
+        pass
+
+    @abstractmethod
+    def remove_label(self, label_id: str) -> None:
+        """
+        Remove label from the datastore
+
+        :param label_id: the label id for the label to be removed from datastore
+        """
+        pass
+
+    @abstractmethod
+    def remove_label_by_tag(self, label_tag: str) -> None:
+        """
+        Remove all labels for matching tags from the datastore
+
+        :param label_tag: the label tag for the label to be removed from datastore
         """
         pass
 

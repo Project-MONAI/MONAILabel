@@ -11,6 +11,11 @@ from monailabel.utils.others.app_utils import app_instance
 logger = logging.getLogger(__name__)
 
 
+def remove_file(path: str) -> None:
+    if os.path.exists(path):
+        os.unlink(path)
+
+
 def run_command(command, args=None, plogger=None):
     plogger = plogger if plogger else logger
     cmd = [command]

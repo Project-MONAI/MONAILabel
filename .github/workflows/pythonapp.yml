@@ -42,4 +42,12 @@ jobs:
           $(pwd)/runtests.sh --mypy
       - name: Unit Tests
         run: |
-          $(pwd)/runtests.sh --unittests
+          $(pwd)/runtests.sh --unittests --coverage
+      - name: Coverage
+        run: |
+          coverage xml
+      - name: Upload coverage
+        uses: codecov/codecov-action@v1
+        with:
+          fail_ci_if_error: false
+          file: ./coverage.xml

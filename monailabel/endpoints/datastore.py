@@ -1,15 +1,17 @@
 import json
 import logging
+import os
 import pathlib
 import shutil
 import tempfile
 from enum import Enum
 from typing import Dict, List, Optional
 
-from fastapi import APIRouter, File, HTTPException, UploadFile
+from fastapi import APIRouter, File, UploadFile
+from starlette.background import BackgroundTasks
 
 from monailabel.interfaces import Datastore, DefaultLabelTag, MONAILabelApp
-from monailabel.utils.others.generic import get_app_instance
+from monailabel.utils.others.generic import get_app_instance, remove_file
 
 logger = logging.getLogger(__name__)
 train_tasks: List = []
@@ -28,6 +30,12 @@ class ResultType(str, Enum):
     all = "all"
 
 
+class RemoveType(str, Enum):
+    image = "image"
+    label = "label"
+    label_tag = "label_tag"
+
+
 @router.get("/", summary="Get All Images/Labels from datastore")
 async def datastore(output: Optional[ResultType] = None):
     d: Datastore = get_app_instance().datastore()
@@ -42,25 +50,48 @@ async def datastore(output: Optional[ResultType] = None):
 
 
 @router.put("/", summary="Upload new Image")
-async def add_image(image: str, file: UploadFile = File(...)):
+async def add_image(background_tasks: BackgroundTasks, image: Optional[str] = None, file: UploadFile = File(...)):
     logger.info(f"Image: {image}; File: {file}")
-    raise HTTPException(status_code=501, detail="Not Implemented Yet")
+    file_ext = "".join(pathlib.Path(file.filename).suffixes) if file.filename else ".nii.gz"
+
+    image_id = image if image else os.path.basename(file.filename)
+    image_file = tempfile.NamedTemporaryFile(suffix=file_ext).name
+
+    with open(image_file, "wb") as buffer:
+        shutil.copyfileobj(file.file, buffer)
+        background_tasks.add_task(remove_file, image_file)
+
+    instance: MONAILabelApp = get_app_instance()
+    image_id = instance.datastore().add_image(image_id, image_file)
+    return {"image": image_id}
 
 
 @router.delete("/", summary="Remove Image/Label")
-async def remove_image(id: str):
-    logger.info(f"Image/Label: {id}")
-    raise HTTPException(status_code=501, detail="Not Implemented Yet")
+async def remove_image(id: str, type: RemoveType):
+    instance: MONAILabelApp = get_app_instance()
+    if type == RemoveType.label:
+        instance.datastore().remove_label(id)
+    elif type == RemoveType.label_tag:
+        instance.datastore().remove_label_by_tag(id)
+    else:
+        instance.datastore().remove_image(id)
+    return {}
 
 
 @router.put("/label", summary="Save Finished Label")
-async def save_label(image: str, tag: str = DefaultLabelTag.FINAL.value, label: UploadFile = File(...)):
+async def save_label(
+    background_tasks: BackgroundTasks,
+    image: str,
+    tag: str = DefaultLabelTag.FINAL.value,
+    label: UploadFile = File(...),
+):
     file_ext = "".join(pathlib.Path(label.filename).suffixes) if label.filename else ".nii.gz"
     label_file = tempfile.NamedTemporaryFile(suffix=file_ext).name
     tag = tag if tag else DefaultLabelTag.FINAL.value
 
     with open(label_file, "wb") as buffer:
         shutil.copyfileobj(label.file, buffer)
+        background_tasks.add_task(remove_file, label_file)
 
     instance: MONAILabelApp = get_app_instance()
     label_id = instance.datastore().save_label(image, label_file, tag)

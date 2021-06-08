@@ -63,7 +63,7 @@ def run_main():
     parser = argparse.ArgumentParser()
     subparsers = parser.add_subparsers(help="sub-command help")
 
-    parser_a = subparsers.add_parser("run", help="run help")
+    parser_a = subparsers.add_parser("run", help="run <server> help")
     parser_a.add_argument("-a", "--app", required=True, help="App Directory")
     parser_a.add_argument("-s", "--studies", required=True, help="Studies Directory")
     parser_a.add_argument("-d", "--debug", action="store_true", help="Enable debug logs")
