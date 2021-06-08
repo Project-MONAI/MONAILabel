@@ -82,6 +82,7 @@ class LocalDatastore(Datastore):
         self._ignore_event_count = 0
         self._ignore_event_config = False
         self._config_ts = 0
+        self._auto_reload = auto_reload
 
         self._lock = FileLock(os.path.join(datastore_path, ".lock"))
         logging.getLogger("filelock").setLevel(logging.ERROR)
@@ -367,6 +368,32 @@ class LocalDatastore(Datastore):
         self._init_from_datastore_file()
         self._reconcile_datastore()
 
+    def add_image(self, image_id: str, image_filename: str) -> str:
+        if not image_id:
+            image_id = os.path.basename(image_filename)
+
+        logger.info(f"Adding Image: {image_id}")
+        shutil.copy(image_filename, os.path.join(self._datastore_path, image_id))
+        if not self._auto_reload:
+            self.refresh()
+        return image_id
+
+    def remove_image(self, image_id: str) -> None:
+        logger.info(f"Removing Image: {image_id}")
+
+        # Remove all labels
+        label_ids = self.get_labels_by_image_id(image_id)
+        for label_id in label_ids:
+            self.remove_label(label_id)
+
+        # Remove Image
+        p = os.path.join(self._datastore_path, image_id)
+        if os.path.exists(p):
+            os.unlink(p)
+
+        if not self._auto_reload:
+            self.refresh()
+
     def save_label(self, image_id: str, label_filename: str, label_tag: str) -> str:
         """
         Save a label for the given image id and return the newly saved label's id
@@ -376,6 +403,8 @@ class LocalDatastore(Datastore):
         :param label_tag: the tag for the label
         :return: the label id for the given label filename
         """
+        logger.info(f"Saving Label for Image: {image_id}; Tag: {label_tag}")
+
         for obj in self._datastore.objects:
             if obj.image.id == image_id:
                 image_ext = "".join(pathlib.Path(image_id).suffixes)
@@ -399,6 +428,25 @@ class LocalDatastore(Datastore):
                 return label_id
 
         raise ImageNotFoundException(f"Image {image_id} not found")
+
+    def remove_label(self, label_id: str) -> None:
+        logger.info(f"Removing label: {label_id}")
+        p = os.path.join(self.labelstore_path, label_id)
+        if os.path.exists(p):
+            os.unlink(p)
+        if not self._auto_reload:
+            self.refresh()
+
+    def remove_label_by_tag(self, label_tag: str) -> None:
+        label_ids = []
+        for obj in self._datastore.objects:
+            for label in obj.labels:
+                if label.tag == label_tag:
+                    label_ids.append(label.id)
+
+        logger.info(f"Tag: {label_tag}; Removing label(s): {label_ids}")
+        for label_id in label_ids:
+            self.remove_label(label_id)
 
     def update_image_info(self, image_id: str, info: Dict[str, Any]) -> None:
         """
