@@ -116,6 +116,7 @@ jobs:
           pwd
           ls -al
           python -m pip install -r requirements-dev.txt
+          python tests/setup.py
           python -m pytest -v tests --no-summary
         env:
           shell: bash
