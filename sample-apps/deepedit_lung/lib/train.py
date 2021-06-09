@@ -1,5 +1,6 @@
 import logging
 
+from monai.apps.deepgrow.interaction import Interaction
 from monai.apps.deepgrow.transforms import (
     AddGuidanceSignald,
     AddInitialSeedPointd,
@@ -25,9 +26,6 @@ from monai.transforms import (
     ToTensord,
 )
 
-from monailabel.deepedit.events import DeepEditEvents
-from monailabel.deepedit.handler import SaveIterationOutput
-from monailabel.deepedit.interaction import DeepEditInteraction
 from monailabel.deepedit.transforms import DiscardAddGuidanced
 from monailabel.utils.train.basic_train import BasicTrainTask
 
@@ -44,7 +42,6 @@ class MyTrain(BasicTrainTask):
         model_size=(128, 128, 128),
         max_train_interactions=10,
         max_val_interactions=5,
-        save_iteration=False,
         **kwargs,
     ):
         super().__init__(output_dir, train_datalist, val_datalist, network, **kwargs)
@@ -52,7 +49,6 @@ class MyTrain(BasicTrainTask):
         self.model_size = model_size
         self.max_train_interactions = max_train_interactions
         self.max_val_interactions = max_val_interactions
-        self.save_iteration = save_iteration
 
     def get_click_transforms(self):
         return Compose(
@@ -99,15 +95,6 @@ class MyTrain(BasicTrainTask):
             ]
         )
 
-    def train_handlers(self):
-        handlers = super().train_handlers()
-        if self.save_iteration:
-            handlers.append(SaveIterationOutput(output_dir=self.output_dir))
-        return handlers
-
-    def event_names(self):
-        return [DeepEditEvents]
-
     def val_pre_transforms(self):
         return self.train_pre_transforms()
 
@@ -115,7 +102,7 @@ class MyTrain(BasicTrainTask):
         return SimpleInferer()
 
     def train_iteration_update(self):
-        return DeepEditInteraction(
+        return Interaction(
             transforms=self.get_click_transforms(),
             max_interactions=self.max_train_interactions,
             key_probability="probability",
@@ -123,7 +110,7 @@ class MyTrain(BasicTrainTask):
         )
 
     def val_iteration_update(self):
-        return DeepEditInteraction(
+        return Interaction(
             transforms=self.get_click_transforms(),
             max_interactions=self.max_val_interactions,
             key_probability="probability",
