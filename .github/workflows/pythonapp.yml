@@ -80,8 +80,6 @@ jobs:
           python -m pip install torch>=1.5 torchvision
       - name: Test source archive and wheel file
         run: |
-          pip uninstall monailabel
-          pip list | grep -iv monailabel
           git fetch --depth=1 origin +refs/tags/*:refs/tags/*
           root_dir=$PWD
           echo "$root_dir"
