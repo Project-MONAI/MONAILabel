@@ -37,6 +37,6 @@ async def stop():
     res = BackgroundTask.stop("batch_infer")
 
     # Try to clear cuda cache
-    if not torch.cuda.is_available():
+    if torch.cuda.is_available():
         torch.cuda.empty_cache()
     return res

@@ -201,7 +201,7 @@ class TrainTask:
         logger.info(f"++ Total Train Time:: {lapsed}")
 
         # Try to clear cuda cache
-        if not torch.cuda.is_available():
+        if torch.cuda.is_available():
             torch.cuda.empty_cache()
 
         def tensor_to_list(d):
