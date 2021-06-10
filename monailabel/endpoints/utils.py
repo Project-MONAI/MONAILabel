@@ -29,6 +29,8 @@ class BackgroundTask:
                 return instance.batch_infer(request)
             if method == "scoring":
                 return instance.scoring(request)
+            if method == "train":
+                return instance.train(request)
 
         return run_background_task(request, method)
 

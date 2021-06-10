@@ -13,7 +13,7 @@ from monailabel.utils.others.app_utils import app_instance
 logger = logging.getLogger(__name__)
 
 
-def test_inference(args):
+def test_infer(args):
     app = app_instance(app_dir=args.app, studies=args.studies)
     logger.info("Running Inference Task: {}".format(args.model))
 
@@ -125,7 +125,7 @@ def test_main():
     )
 
     if args.test == "infer":
-        test_inference(args)
+        test_infer(args)
     elif args.test == "train":
         test_train(args)
     elif args.test == "info":

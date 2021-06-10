@@ -20,8 +20,8 @@ async def status(all: bool = False, check_if_running: bool = False):
 
 
 @router.post("/{method}", summary="Run Scoring Task")
-async def run(method: str, params: Optional[dict] = None, force_sync: Optional[bool] = False):
-    return BackgroundTask.run("scoring", request={"method": method}, params=params, force_sync=force_sync)
+async def run(method: str, params: Optional[dict] = None, run_sync: Optional[bool] = False):
+    return BackgroundTask.run("scoring", request={"method": method}, params=params, force_sync=run_sync)
 
 
 @router.delete("/", summary="Stop Scoring Task")
