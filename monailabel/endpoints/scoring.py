@@ -1,6 +1,7 @@
 import logging
 from typing import Optional
 
+import torch
 from fastapi import APIRouter
 
 from monailabel.endpoints.utils import BackgroundTask
@@ -20,10 +21,15 @@ async def status(all: bool = False, check_if_running: bool = False):
 
 
 @router.post("/{method}", summary="Run Scoring Task")
-async def run(method: str, params: Optional[dict] = None, force_sync: Optional[bool] = False):
-    return BackgroundTask.run("scoring", request={"method": method}, params=params, force_sync=force_sync)
+async def run(method: str, params: Optional[dict] = None, run_sync: Optional[bool] = False):
+    return BackgroundTask.run("scoring", request={"method": method}, params=params, force_sync=run_sync)
 
 
 @router.delete("/", summary="Stop Scoring Task")
 async def stop():
-    return BackgroundTask.stop("scoring")
+    res = BackgroundTask.stop("scoring")
+
+    # Try to clear cuda cache
+    if torch.cuda.is_available():
+        torch.cuda.empty_cache()
+    return res
