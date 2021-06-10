@@ -92,9 +92,10 @@ def stop_background_task(method):
         return None
 
     task_id, process = next(iter(background_processes[method].items()))
-    process.kill()
+    os.system(f"pkill -TERM -P {process.pid}")
+
     background_processes[method].pop(task_id, None)
-    logger.info(f"Killed background process: {process}")
+    logger.info(f"Killed background process: {process.pid}")
 
     task = [task for task in background_tasks[method] if task["id"] == task_id][0]
     task["status"] = "STOPPED"

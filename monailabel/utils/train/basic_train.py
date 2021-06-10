@@ -1,3 +1,4 @@
+import filecmp
 import json
 import logging
 import os
@@ -7,6 +8,7 @@ from datetime import datetime
 
 import torch
 from monai.data import DataLoader, PersistentDataset
+from monai.engines.workflow import Engine, Events
 from monai.handlers import (
     CheckpointLoader,
     CheckpointSaver,
@@ -40,6 +42,8 @@ class BasicTrainTask(TrainTask):
         publish_path=None,
         stats_path=None,
         device="cuda",
+        max_epochs=1,
+        amp=True,
         lr=0.0001,
         train_batch_size=1,
         train_num_workers=0,
@@ -62,6 +66,8 @@ class BasicTrainTask(TrainTask):
         :param publish_path: Publish path for best trained model (based on best key metric)
         :param stats_path: Path to save the train stats
         :param device: device name
+        :param max_epochs: maximum epochs to run
+        :param amp: use amp
         :param lr: Learning Rate (LR)
         :param train_batch_size: train batch size
         :param train_num_workers: number of workers for training
@@ -73,23 +79,26 @@ class BasicTrainTask(TrainTask):
         """
         super().__init__()
         self.output_dir = output_dir
-        self._train_datalist = train_datalist
-        self._val_datalist = val_datalist if val_datalist else []
         self.run_id = datetime.now().strftime("%Y%m%d_%H%M")
         self.events_dir = os.path.join(output_dir, f"events_{self.run_id}")
 
         if not os.path.exists(self.output_dir):
             os.makedirs(self.output_dir, exist_ok=True)
 
+        self._train_datalist = train_datalist
+        self._val_datalist = val_datalist if val_datalist else []
+
         logger.info(f"Total Records for Training: {len(self._train_datalist)}")
         logger.info(f"Total Records for Validation: {len(self._val_datalist)}")
 
         self._device = torch.device(device)
+        self._max_epochs = max_epochs
+        self._amp = amp
         self._network = network
         self._load_path = load_path
         self._load_dict = load_dict
-        self._publish_path = publish_path
-        self._stats_path = stats_path
+        self.publish_path = publish_path
+        self.stats_path = stats_path
 
         self._optimizer = torch.optim.Adam(self._network.parameters(), lr=lr)
         self._loss_function = DiceLoss(to_onehot_y=True, softmax=True)
@@ -102,10 +111,16 @@ class BasicTrainTask(TrainTask):
         self._val_batch_size = val_batch_size
         self._val_num_workers = val_num_workers
         self._final_filename = final_filename
-        self._key_metric_filename = key_metric_filename
+        self.key_metric_filename = key_metric_filename
 
     def device(self):
         return self._device
+
+    def max_epochs(self):
+        return self._max_epochs
+
+    def amp(self):
+        return self._amp
 
     def network(self):
         return self._network
@@ -143,19 +158,21 @@ class BasicTrainTask(TrainTask):
             ),
             CheckpointSaver(
                 save_dir=self.output_dir,
-                save_dict={"model": self.network(), "optimizer": self.optimizer()},
+                save_dict={"model": self.network()},
                 save_interval=self._train_save_interval,
                 save_final=True,
                 final_filename=self._final_filename,
                 save_key_metric=True,
-                key_metric_filename=self._key_metric_filename,
+                key_metric_filename=self.key_metric_filename,
             ),
         ]
 
-        eval = self.evaluator()
-        if eval:
+        e = self.evaluator()
+        if e:
             logger.info(f"Adding Validation Handler to run every '{self._val_interval}' interval")
-            handlers.append(ValidationHandler(validator=eval, interval=self._val_interval, epoch_level=True))
+            handlers.append(ValidationHandler(validator=e, interval=self._val_interval, epoch_level=True))
+        else:
+            handlers.append(PublishStatsAndModel(parent=self))
 
         logger.info(f"Load Path {self._load_path}")
         if self._load_path and os.path.exists(self._load_path):
@@ -195,9 +212,11 @@ class BasicTrainTask(TrainTask):
             TensorBoardStatsHandler(log_dir=self.events_dir, output_transform=lambda x: None),
             CheckpointSaver(
                 save_dir=self.output_dir,
-                save_dict={"net": self.network()},
+                save_dict={"model": self.network()},
                 save_key_metric=True,
+                key_metric_filename=f"eval_{self.key_metric_filename}",
             ),
+            PublishStatsAndModel(parent=self),
         ]
 
     def val_key_metric(self):
@@ -227,21 +246,31 @@ class BasicTrainTask(TrainTask):
     def val_inferer(self):
         pass
 
-    def __call__(self, max_epochs, amp):
-        stats = super().__call__(max_epochs, amp)
-        filename = datetime.now().strftime(f"stats_{self.run_id}.json")
-        filename = os.path.join(self.output_dir, filename)
+
+class PublishStatsAndModel:
+    def __init__(self, parent: BasicTrainTask):
+        self.parent: BasicTrainTask = parent
+
+    def iteration_completed(self):
+        filename = datetime.now().strftime(f"stats_{self.parent.run_id}.json")
+        filename = os.path.join(self.parent.output_dir, filename)
+
+        stats = self.parent.prepare_stats()
         with open(filename, "w") as f:
             json.dump(stats, f, indent=2)
 
-        if self._stats_path:
-            shutil.copy(filename, self._stats_path)
+        if self.parent.stats_path:
+            shutil.copy(filename, self.parent.stats_path)
 
-        if self._publish_path:
-            final_model = os.path.join(self.output_dir, self._key_metric_filename)
+        publish_path = self.parent.publish_path
+        if publish_path:
+            final_model = os.path.join(self.parent.output_dir, self.parent.key_metric_filename)
             if os.path.exists(final_model):
-                if os.path.exists(self._publish_path):
-                    os.unlink(self._publish_path)
-                shutil.copy(os.path.join(self.output_dir, self._key_metric_filename), self._publish_path)
-                logger.info(f"New Model published: {final_model} => {self._publish_path}")
+                if not os.path.exists(publish_path) or not filecmp.cmp(publish_path, final_model):
+                    shutil.copy(final_model, publish_path)
+                    logger.info(f"New Model published: {final_model} => {publish_path}")
         return stats
+
+    def attach(self, engine: Engine) -> None:
+        if not engine.has_event_handler(self.iteration_completed, Events.EPOCH_COMPLETED):
+            engine.add_event_handler(Events.EPOCH_COMPLETED, self.iteration_completed)

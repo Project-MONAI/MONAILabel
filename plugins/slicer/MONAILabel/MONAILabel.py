@@ -275,7 +275,7 @@ class MONAILabelWidget(ScriptedLoadableModuleWidget, VTKObservationMixin):
                     if self.ui.trainingProgressBar.value != percent:
                         self.ui.trainingProgressBar.setValue(percent)
                     self.ui.trainingProgressBar.setToolTip(f"{current}/{total} epoch is running")
-                    return
+                    self.fetchModels()
             return
 
         print("Training completed")

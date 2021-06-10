@@ -120,6 +120,8 @@ class MyApp(MONAILabelApp):
                     stats_path=train_stats_path,
                     device=request.get("device", "cuda"),
                     lr=request.get("lr", 0.0001),
+                    max_epochs=request.get("epochs", 1),
+                    amp=request.get("amp", True),
                 )
             elif model == "deepgrow_2d":
                 # TODO:: Flatten the dataset and batch it instead of picking random slice id
@@ -138,6 +140,8 @@ class MyApp(MONAILabelApp):
                     stats_path=train_stats_path,
                     device=request.get("device", "cuda"),
                     lr=request.get("lr", 0.0001),
+                    max_epochs=request.get("epochs", 1),
+                    amp=request.get("amp", True),
                 )
             else:
                 raise Exception(f"Train Definition for {model} Not Found")
@@ -147,7 +151,7 @@ class MyApp(MONAILabelApp):
         logger.info(f"Total Train tasks to run: {len(tasks)}")
         result = None
         for task in tasks:
-            result = task(max_epochs=request.get("epochs", 1), amp=request.get("amp", True))
+            result = task()
         return result
 
     def train_stats(self):
