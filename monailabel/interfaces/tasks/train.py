@@ -200,6 +200,10 @@ class TrainTask:
         lapsed = str(datetime.timedelta(seconds=int(time.time() - start)))
         logger.info(f"++ Total Train Time:: {lapsed}")
 
+        # Try to clear cuda cache
+        if not torch.cuda.is_available():
+            torch.cuda.empty_cache()
+
         def tensor_to_list(d):
             r = dict()
             for k, v in d.items():
