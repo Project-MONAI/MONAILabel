@@ -97,8 +97,10 @@ class MyApp(MONAILabelApp):
             stats_path=self.train_stats_path,
             device=request.get("device", "cuda"),
             lr=request.get("lr", 0.0001),
+            max_epochs=request.get("epochs", 1),
+            amp=request.get("amp", True),
         )
-        return task(max_epochs=request.get("epochs", 1), amp=request.get("amp", True))
+        return task()
 
     def train_stats(self):
         if os.path.exists(self.train_stats_path):

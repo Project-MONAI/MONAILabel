@@ -13,5 +13,5 @@ config:
     device: cuda
     amp: true
     lr: 0.0001
-    epochs: 5
+    epochs: 50
     val_split: 0.2
