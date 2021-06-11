@@ -45,8 +45,8 @@ Users have two options to start the server: (1) Using the Docker recipe or (2) C
     monailabel apps
     monailabel apps --download --name deepedit_heart --output /workspace/apps/
     
-    # Run APP
-    monailabel run --app /workspace/apps/deepedit_heart --studies /workspace/datasets/Task02_Heart/imagesTr
+    # Start Server
+    monailabel start_server --app /workspace/apps/deepedit_heart --studies /workspace/datasets/Task02_Heart/imagesTr
 ```
 
 ### Windows
@@ -72,8 +72,8 @@ Users have two options to start the server: (1) Using the Docker recipe or (2) C
     monailabel apps
     monailabel apps --download --name deepedit_heart --output C:\Workspace\Apps
 
-    # Run App
-    monailabel run --app C:\Workspace\Apps\deepedit_heart --studies C:\Workspace\Datasets\Task02_Heart\imagesTr
+    # Start Server
+    monailabel start_server --app C:\Workspace\Apps\deepedit_heart --studies C:\Workspace\Datasets\Task02_Heart\imagesTr
 ```
 
 ## App basic structure

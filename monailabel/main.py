@@ -63,7 +63,7 @@ def run_main():
     parser = argparse.ArgumentParser()
     subparsers = parser.add_subparsers(help="sub-command help")
 
-    parser_a = subparsers.add_parser("run", help="run <server> help")
+    parser_a = subparsers.add_parser("start_server", help="start server help")
     parser_a.add_argument("-a", "--app", required=True, help="App Directory")
     parser_a.add_argument("-s", "--studies", required=True, help="Studies Directory")
     parser_a.add_argument("-d", "--debug", action="store_true", help="Enable debug logs")
@@ -72,7 +72,7 @@ def run_main():
     parser_a.add_argument("-p", "--port", default=8000, type=int, help="Server Port")
     parser_a.add_argument("-l", "--log_config", default=None, type=str, help="Logging config")
     parser_a.add_argument("--dryrun", action="store_true", help="Dry run without starting server")
-    parser_a.set_defaults(action="run")
+    parser_a.set_defaults(action="start_server")
 
     parser_b = subparsers.add_parser("apps", help="sample apps help")
     parser_b.add_argument("-d", "--download", action="store_true", help="download app")
