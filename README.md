@@ -6,7 +6,7 @@
 [![codecov](https://codecov.io/gh/Project-MONAI/MONAILabel/branch/main/graph/badge.svg)](https://codecov.io/gh/Project-MONAI/MONAILabel)
 [![PyPI version](https://badge.fury.io/py/monailabel.svg)](https://badge.fury.io/py/monailabel)
 
-The MONAI-label is a server-client system that facilitates interactive medical image annotation by using AI. It is an
+MONAILabel is a server-client system that facilitates interactive medical image annotation by using AI. It is an
 open-source and easy-to-install ecosystem that can run locally on a machine with one or two GPUs. Both server and client
 work on the same/different machine. However, initial support for multiple users is restricted. It shares the same
 principles with [MONAI](https://github.com/Project-MONAI).
@@ -28,6 +28,8 @@ principles with [MONAI](https://github.com/Project-MONAI).
 
 ### Ubuntu
 
+Users have two options to start the server: (1) Using the Docker recipe or (2) Creating a virtual environment with the libraries specified in the [requirements file](https://github.com/Project-MONAI/MONAILabel/blob/main/requirements.txt)
+
 ```bash
     # One time setup (to pull monai with nvidia gpus)
     docker run -it --rm --gpus all --ipc=host --net=host -v /rapid/xyz:/workspace/ projectmonai/monai:0.5.2
@@ -43,8 +45,8 @@ principles with [MONAI](https://github.com/Project-MONAI).
     monailabel apps
     monailabel apps --download --name deepedit_heart --output /workspace/apps/
     
-    # Run APP
-    monailabel run --app /workspace/apps/deepedit_heart --studies /workspace/datasets/Task02_Heart/imagesTr
+    # Start Server
+    monailabel start_server --app /workspace/apps/deepedit_heart --studies /workspace/datasets/Task02_Heart/imagesTr
 ```
 
 ### Windows
@@ -70,8 +72,8 @@ principles with [MONAI](https://github.com/Project-MONAI).
     monailabel apps
     monailabel apps --download --name deepedit_heart --output C:\Workspace\Apps
 
-    # Run App
-    monailabel run --app C:\Workspace\Apps\deepedit_heart --studies C:\Workspace\Datasets\Task02_Heart\imagesTr
+    # Start Server
+    monailabel start_server --app C:\Workspace\Apps\deepedit_heart --studies C:\Workspace\Datasets\Task02_Heart\imagesTr
 ```
 
 ## App basic structure

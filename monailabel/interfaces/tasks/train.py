@@ -12,12 +12,28 @@ logger = logging.getLogger(__name__)
 
 class TrainTask:
     def __init__(self):
-        self._evalutor = None
+        self._start_time = time.time()
+        self._trainer = None
+        self._evaluator = None
 
     @abstractmethod
     def device(self):
         """
         Provide device name
+        """
+        pass
+
+    @abstractmethod
+    def max_epochs(self):
+        """
+        Max number of epochs to run
+        """
+        pass
+
+    @abstractmethod
+    def amp(self):
+        """
+        Use AMP
         """
         pass
 
@@ -162,8 +178,8 @@ class TrainTask:
         pass
 
     def evaluator(self):
-        if not self._evalutor and self.val_data_loader():
-            self._evalutor = SupervisedEvaluator(
+        if not self._evaluator and self.val_data_loader():
+            self._evaluator = SupervisedEvaluator(
                 device=self.device(),
                 val_data_loader=self.val_data_loader(),
                 network=self.network().to(self.device()),
@@ -175,59 +191,60 @@ class TrainTask:
                 iteration_update=self.val_iteration_update(),
                 event_names=self.event_names(),
             )
-        return self._evalutor
+        return self._evaluator
 
-    def __call__(self, max_epochs, amp):
-        trainer = SupervisedTrainer(
-            device=self.device(),
-            max_epochs=max_epochs,
-            train_data_loader=self.train_data_loader(),
-            network=self.network().to(self.device()),
-            optimizer=self.optimizer(),
-            loss_function=self.loss_function(),
-            inferer=self.train_inferer(),
-            amp=amp,
-            post_transform=self.train_post_transforms(),
-            key_train_metric=self.train_key_metric(),
-            train_handlers=self.train_handlers(),
-            iteration_update=self.train_iteration_update(),
-            event_names=self.event_names(),
-        )
+    def trainer(self):
+        if not self._trainer:
+            self._trainer = SupervisedTrainer(
+                device=self.device(),
+                max_epochs=self.max_epochs(),
+                train_data_loader=self.train_data_loader(),
+                network=self.network().to(self.device()),
+                optimizer=self.optimizer(),
+                loss_function=self.loss_function(),
+                inferer=self.train_inferer(),
+                amp=self.amp(),
+                post_transform=self.train_post_transforms(),
+                key_train_metric=self.train_key_metric(),
+                train_handlers=self.train_handlers(),
+                iteration_update=self.train_iteration_update(),
+                event_names=self.event_names(),
+            )
+        return self._trainer
 
-        logger.info(f"Running Training.  Epochs: {max_epochs}; AMP: {amp}")
-        start = time.time()
-        trainer.run()
-        lapsed = str(datetime.timedelta(seconds=int(time.time() - start)))
-        logger.info(f"++ Total Train Time:: {lapsed}")
+    def __call__(self):
+        self._start_time = time.time()
+        self.trainer().run()
 
-        def tensor_to_list(d):
-            r = dict()
-            for k, v in d.items():
-                r[k] = v.tolist() if torch.is_tensor(v) else v
-            return r
+        # Try to clear cuda cache
+        if torch.cuda.is_available():
+            torch.cuda.empty_cache()
 
+        return self.prepare_stats()
+
+    @staticmethod
+    def tensor_to_list(d):
+        r = dict()
+        for k, v in d.items():
+            r[k] = v.tolist() if torch.is_tensor(v) else v
+        return r
+
+    def prepare_stats(self):
         stats: Dict[str, Any] = dict()
-        stats.update(trainer.get_train_stats())
+        stats.update(self._trainer.get_train_stats())
+        stats["epoch"] = self._trainer.state.epoch
+        stats["total_time"] = str(datetime.timedelta(seconds=int(time.time() - self._start_time)))
+        stats["best_metric"] = self._trainer.state.best_metric
 
-        stats["total_time"] = lapsed
-        stats["best_metric"] = trainer.state.best_metric
-        stats["train"] = {
-            "metrics": tensor_to_list(trainer.state.metrics),
-            # "metric_details": tensor_to_list(trainer.state.metric_details),
-            "key_metric_name": trainer.state.key_metric_name,
-            "best_metric": trainer.state.best_metric,
-            "best_metric_epoch": trainer.state.best_metric_epoch,
-        }
+        for k, v in {"train": self._trainer, "eval": self._evaluator}.items():
+            if not v:
+                continue
 
-        if self._evalutor:
-            stats["best_metric"] = self._evalutor.state.best_metric
-            stats["eval"] = {
-                "metrics": tensor_to_list(self._evalutor.state.metrics),
-                # "metric_details": tensor_to_list(self._evalutor.state.metric_details),
-                "key_metric_name": self._evalutor.state.key_metric_name,
-                "best_metric": self._evalutor.state.best_metric,
-                "best_metric_epoch": self._evalutor.state.best_metric_epoch,
+            stats[k] = {
+                "metrics": TrainTask.tensor_to_list(v.state.metrics),
+                # "metric_details": tensor_to_list(v.state.metric_details),
+                "key_metric_name": v.state.key_metric_name,
+                "best_metric": v.state.best_metric,
+                "best_metric_epoch": v.state.best_metric_epoch,
             }
-
-        logger.info(f"Train Task Stats: {stats}")
         return stats

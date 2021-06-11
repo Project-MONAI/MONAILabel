@@ -95,7 +95,7 @@ class MONAILabelApp:
                         "model": "segmentation_spleen",
                         "image": "file://xyz",
                         "save_label": "true/false",
-                        "label_tag": "my_custom_label_tag", (if not provided defaults to `original`)
+                        "label_tag": "original"
                     }
 
         Raises:
@@ -149,8 +149,8 @@ class MONAILabelApp:
                     {
                         "device": "cuda"
                         "model": "segmentation_spleen",
-                        "image_selector": "*" (default is "*" to select all unlabeled images),
-                        "label_tag": "my_custom_label_tag", (if not provided defaults to `original`)
+                        "images": "unlabeled",
+                        "label_tag": "original"
                     }
 
         Raises:

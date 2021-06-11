@@ -1,0 +1,17 @@
+---
+version: 1
+name: DeepEdit - Brain Tumor
+description: MONAI Label App to provide active learning solution using DeepEdit to label brain tumour over 3D MRI Images
+dimension: 3
+labels:
+  - brain tumor
+config:
+  infer:
+    device: cuda
+  train:
+    name: model_01
+    device: cuda
+    amp: true
+    lr: 0.0001
+    epochs: 50
+    val_split: 0.2

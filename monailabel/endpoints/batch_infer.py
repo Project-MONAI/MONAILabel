@@ -1,6 +1,7 @@
 import logging
 from typing import Optional
 
+import torch
 from fastapi import APIRouter
 
 from monailabel.endpoints.utils import BackgroundTask
@@ -33,4 +34,9 @@ async def run(
 
 @router.delete("/infer", summary="Stop Batch Inference Task")
 async def stop():
-    return BackgroundTask.stop("batch_infer")
+    res = BackgroundTask.stop("batch_infer")
+
+    # Try to clear cuda cache
+    if torch.cuda.is_available():
+        torch.cuda.empty_cache()
+    return res

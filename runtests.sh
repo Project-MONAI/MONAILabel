@@ -43,14 +43,12 @@ doCoverage=false
 doQuickTests=false
 doNetTests=false
 doDryRun=false
-doZooTests=false
 doUnitTests=false
 doBlackFormat=false
 doBlackFix=false
 doIsortFormat=false
 doIsortFix=false
 doFlake8Format=false
-doClangFormat=false
 doPytypeFormat=false
 doMypyFormat=false
 doCleanup=false
@@ -62,7 +60,7 @@ PY_EXE=${MONAILABEL_PY_EXE:-$(which python3)}
 
 function print_usage() {
   echo "runtests.sh [--codeformat] [--autofix] [--isort] [--flake8] [--pytype] [--mypy]"
-  echo "            [--unittests] [--coverage] [--quick] [--net] [--dryrun] [-j number] [--clean] [--help] [--version]"
+  echo "            [--unittests] [--coverage] [--net] [--dryrun] [-j number] [--clean] [--help] [--version]"
   echo ""
   echo "MONAILABEL unit testing utilities."
   echo ""
@@ -70,7 +68,7 @@ function print_usage() {
   echo "./runtests.sh -f -u --net --coverage  # run style checks, full tests, print code coverage (${green}recommended for pull requests${noColor})."
   echo "./runtests.sh -f -u                   # run style checks and unit tests."
   echo "./runtests.sh -f                      # run coding style and static type checking."
-  echo "./runtests.sh --quick --unittests     # run minimal unit tests, for quick verification during code developments."
+  echo "./runtests.sh --unittests             # run unit tests, for quick verification during code developments."
   echo "./runtests.sh --autofix               # run automatic code formatting using \"isort\" and \"black\"."
   echo "./runtests.sh --clean                 # clean up temporary files and run \"${PY_EXE} setup.py develop --uninstall\"."
   echo ""
@@ -88,7 +86,6 @@ function print_usage() {
   echo "MONAILABEL unit testing options:"
   echo "    -u, --unittests   : perform unit testing"
   echo "    --coverage        : report testing code coverage, to be used with \"--net\", \"--unittests\""
-  echo "    -q, --quick       : skip long running unit tests and integration tests"
   echo "    --net             : perform integration testing"
   echo "    --list_tests      : list unit tests and exit"
   echo ""
@@ -132,9 +129,10 @@ function clean_py() {
   TO_CLEAN="$(cd "$(dirname "${BASH_SOURCE[0]}")" >/dev/null 2>&1 && pwd)"
   echo "Removing temporary files in ${TO_CLEAN}"
 
-	rm -rf sample-apps/*/logs
-	rm -rf sample-apps/*/.venv
-	rm -rf sample-apps/*/model/*
+  rm -rf sample-apps/*/logs
+  rm -rf sample-apps/*/.venv
+  rm -rf sample-apps/*/model/*
+  rm -rf tests/data/*
 
   find ${TO_CLEAN}/monailabel -type f -name "*.py[co]" -delete
   find ${TO_CLEAN}/monailabel -type f -name "*.so" -delete
@@ -178,7 +176,7 @@ def print_suite(suite):
             print_suite(x)
     else:
         print(suite)
-print_suite(unittest.defaultTestLoader.discover('./tests'))
+print_suite(unittest.defaultTestLoader.discover('./tests/unit'))
 END
   exit 0
 }
@@ -194,9 +192,6 @@ while [[ $# -gt 0 ]]; do
   case $key in
   --coverage)
     doCoverage=true
-    ;;
-  -q | --quick)
-    doQuickTests=true
     ;;
   --net)
     doNetTests=true
@@ -430,14 +425,6 @@ fi
 # testing command to run
 cmd="${PY_EXE}"
 
-# When running --quick, require doCoverage as well and set QUICKTEST environmental
-# variable to disable slow unit tests from running.
-if [ $doQuickTests = true ]; then
-  echo "${separator}${blue}quick${noColor}"
-  doCoverage=true
-  export QUICKTEST=True
-fi
-
 # set coverage command
 if [ $doCoverage = true ]; then
   echo "${separator}${blue}coverage${noColor}"
@@ -453,24 +440,49 @@ fi
 if [ $doUnitTests = true ]; then
   echo "${separator}${blue}unittests${noColor}"
   torch_validate
-  #${cmdPrefix}${cmd} ./tests/runner.py -p "test_((?!integration).)"
-  pytest
+
+  ${cmdPrefix}${PY_EXE} tests/setup.py
+  ${cmdPrefix}${cmd} -m pytest -v tests/unit --no-summary --log-cli-level=INFO
 fi
+
+function check_server_running() {
+  local code=$(curl --write-out "%{http_code}\n" -s "http://127.0.0.1:8000/" --output /dev/null)
+  echo ${code}
+}
 
 # network training/inference/eval integration tests
 if [ $doNetTests = true ]; then
   echo "${separator}${blue}integration${noColor}"
-  for i in tests/*integration_*.py; do
-    echo "$i"
-    ${cmdPrefix}${cmd} "$i"
-  done
-fi
+  torch_validate
 
-# run model zoo tests
-if [ $doZooTests = true ]; then
-  echo "${separator}${blue}zoo${noColor}"
-  print_error_msg "--zoo option not yet implemented"
-  exit 255
+  ${cmdPrefix}${PY_EXE} tests/setup.py
+  echo "Starting MONAILabel server..."
+  ./monailabel/monailabel run -a sample-apps/deepedit_heart -s tests/data/dataset/heart &
+
+  wait_time=0
+  server_is_up=0
+  start_time_out=60
+
+  while [[ $wait_time -le ${start_time_out} ]]; do
+    if [ "$(check_server_running)" == "200" ]; then
+      server_is_up=1
+      break
+    fi
+    sleep 5
+    wait_time=$((wait_time + 5))
+    echo "Waiting for MONAILabel to be up and running..."
+  done
+  echo ""
+
+  if [ "$server_is_up" == "1" ]; then
+    echo "MONAILabel server is up and running."
+  else
+    echo "Failed to start MONAILabel server. Exiting..."
+    exit 1
+  fi
+
+  ${cmdPrefix}${cmd} -m pytest -v tests/integration --no-summary #--log-cli-level=INFO
+  kill -9 $(ps -ef | grep monailabel | grep -v grep | awk '{print $2}')
 fi
 
 # report on coverage
