@@ -156,7 +156,16 @@ class MONAILabelUtils:
         logging.debug("URI Path: {}".format(selector))
 
         conn = http.client.HTTPConnection(parsed.hostname, parsed.port)
-        conn.request(method, selector, body=json.dumps(body) if body else None)
+        headers = {}
+        if body:
+            if isinstance(body, dict):
+                body = json.dumps(body)
+                content_type = "application/json"
+            else:
+                content_type = "text/plain"
+            headers = {"content-type": content_type, "content-length": str(len(body))}
+
+        conn.request(method, selector, body=body, headers=headers)
         return MONAILabelUtils.send_response(conn)
 
     @staticmethod
