@@ -46,10 +46,10 @@ MONAILabel supports following OS with GPU/CUDA enabled.
   
   # Download Sample Apps
   monailabel apps # list sample apps
-  monailabel apps --download --name deepedit_heart --output /workspace/apps/
+  monailabel apps --download --name deepedit_left_atrium --output /workspace/apps/
   
   # Start Server
-  monailabel start_server --app /workspace/apps/deepedit_heart --studies /workspace/datasets/Task02_Heart/imagesTr
+  monailabel start_server --app /workspace/apps/deepedit_left_atrium --studies /workspace/datasets/Task02_Heart/imagesTr
 ```
 
 ### Windows
@@ -74,10 +74,10 @@ Make sure you have python 3.x version environment with PyTorch + CUDA installed.
   
   # Download Sample Apps
   monailabel apps # List sample apps
-  monailabel apps --download --name deepedit_heart --output C:\Workspace\Apps
+  monailabel apps --download --name deepedit_left_atrium --output C:\Workspace\Apps
   
   # Start Server
-  monailabel start_server --app C:\Workspace\Apps\deepedit_heart --studies C:\Workspace\Datasets\Task02_Heart\imagesTr
+  monailabel start_server --app C:\Workspace\Apps\deepedit_left_atrium --studies C:\Workspace\Datasets\Task02_Heart\imagesTr
 ```
 
 > Once you start the MONAILabel Server, by default it will be up and serving at http://127.0.0.1:8000/. Open the serving
