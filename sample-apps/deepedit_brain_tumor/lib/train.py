@@ -73,7 +73,7 @@ class MyTrain(BasicTrainTask):
             [
                 LoadImaged(keys=("image", "label")),
                 EnsureChannelFirstd(keys=("image", "label")),
-                Spacingd(keys=["image", "label"], pixdim=(1.0, 1.0, 1.0), mode=("bilinear", "nearest")),
+                Spacingd(keys=["image", "label"], pixdim=(1.5, 1.5, 2.0), mode=("bilinear", "nearest")),
                 Orientationd(keys=["image", "label"], axcodes="RAS"),
                 NormalizeIntensityd(keys="image"),
                 RandAdjustContrastd(keys="image", gamma=6),
@@ -82,7 +82,7 @@ class MyTrain(BasicTrainTask):
                 FindAllValidSlicesd(label="label", sids="sids"),
                 AddInitialSeedPointd(label="label", guidance="guidance", sids="sids"),
                 AddGuidanceSignald(image="image", guidance="guidance"),
-                DiscardAddGuidanced(image="image", probability=0.6),
+                DiscardAddGuidanced(image="image", probability=0.5),
                 ToTensord(keys=("image", "label")),
             ]
         )
