@@ -40,8 +40,8 @@ class MyTrain(BasicTrainTask):
         val_datalist,
         network,
         model_size=(128, 128, 128),
-        max_train_interactions=10,
-        max_val_interactions=5,
+        max_train_interactions=20,
+        max_val_interactions=10,
         **kwargs,
     ):
         super().__init__(output_dir, train_datalist, val_datalist, network, **kwargs)
@@ -73,7 +73,7 @@ class MyTrain(BasicTrainTask):
             [
                 LoadImaged(keys=("image", "label")),
                 EnsureChannelFirstd(keys=("image", "label")),
-                Spacingd(keys=["image", "label"], pixdim=(1.0, 1.0, 1.0), mode=("bilinear", "nearest")),
+                Spacingd(keys=["image", "label"], pixdim=(1.5, 1.5, 2.0), mode=("bilinear", "nearest")),
                 Orientationd(keys=["image", "label"], axcodes="RAS"),
                 NormalizeIntensityd(keys="image"),
                 RandAdjustContrastd(keys="image", gamma=6),
@@ -82,7 +82,7 @@ class MyTrain(BasicTrainTask):
                 FindAllValidSlicesd(label="label", sids="sids"),
                 AddInitialSeedPointd(label="label", guidance="guidance", sids="sids"),
                 AddGuidanceSignald(image="image", guidance="guidance"),
-                DiscardAddGuidanced(image="image", probability=0.6),
+                DiscardAddGuidanced(image="image", probability=0.5),
                 ToTensord(keys=("image", "label")),
             ]
         )
