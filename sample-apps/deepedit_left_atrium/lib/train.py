@@ -79,8 +79,6 @@ class MyTrain(BasicTrainTask):
                 Spacingd(keys=["image", "label"], pixdim=(1.0, 1.0, 1.0), mode=("bilinear", "nearest")),
                 Orientationd(keys=["image", "label"], axcodes="RAS"),
                 NormalizeIntensityd(keys="image"),
-                # Using threshold to crop images
-                CropForegroundd(keys=("image", "label"), source_key="image", select_fn=lambda x: x > 2.9, margin=3),
                 RandAdjustContrastd(keys="image", gamma=6),
                 RandHistogramShiftd(keys="image", num_control_points=8, prob=0.5),
                 Resized(keys=("image", "label"), spatial_size=self.model_size, mode=("area", "nearest")),
