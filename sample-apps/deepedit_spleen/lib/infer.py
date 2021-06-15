@@ -105,7 +105,7 @@ class Deepgrow(InferTask):
         return [
             LoadImaged(keys="image"),
             AddChanneld(keys="image"),
-            Spacingd(keys='image', pixdim=(1.5, 1.5, 2.0), mode='bilinear'),
+            Spacingd(keys="image", pixdim=(1.5, 1.5, 2.0), mode="bilinear"),
             Orientationd(keys="image", axcodes="RAS"),
             SqueezeDimd(keys="image", dim=0),
             AddGuidanceFromPointsd(ref_image="image", guidance="guidance", dimensions=3),
