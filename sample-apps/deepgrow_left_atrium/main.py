@@ -33,9 +33,9 @@ class MyApp(MONAILabelApp):
                 ],
                 "url": "https://www.dropbox.com/s/xgortm6ljd3dvhw/deepgrow_3d.pt?dl=1",
             },
-            "segmentation_heart": {
+            "segmentation_left_atrium": {
                 "network": None,
-                "path": [os.path.join(self.model_dir, "segmentation_heart.ts")],
+                "path": [os.path.join(self.model_dir, "segmentation_left_atrium.ts")],
                 "url": "https://www.dropbox.com/s/p60vfxpa4l64fmz/segmentation_spleen.ts?dl=1",
             },
         }

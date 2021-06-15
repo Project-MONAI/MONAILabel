@@ -1,10 +1,10 @@
 ---
 version: 1
-name: Deepgrow - Heart
-description: MONAI Label App to provide active learning solution using DeepGrow to label heart for 3D MRI Volumes
+name: Deepgrow - Left Atrium
+description: MONAI Label App to provide active learning solution using DeepGrow to label left atrium for 3D MRI Volumes
 dimension: 3
 labels:
-  - heart
+  - left atrium
 config:
   infer:
     device: cuda
