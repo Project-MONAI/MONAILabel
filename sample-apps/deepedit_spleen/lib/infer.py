@@ -4,7 +4,6 @@ from monai.transforms import (
     Activationsd,
     AddChanneld,
     AsDiscreted,
-    CropForegroundd,
     LoadImaged,
     NormalizeIntensityd,
     Orientationd,
@@ -50,11 +49,9 @@ class Segmentation(InferTask):
         return [
             LoadImaged(keys="image"),
             AddChanneld(keys="image"),
-            Spacingd(keys="image", pixdim=(1.0, 1.0, 1.0), mode="bilinear"),
+            Spacingd(keys="image", pixdim=(1.5, 1.5, 2.0), mode="bilinear"),
             Orientationd(keys="image", axcodes="RAS"),
             NormalizeIntensityd(keys="image"),
-            CropForegroundd(keys="image", source_key="image", select_fn=lambda x: x > 1.3, margin=3),
-            # select_fn and margin are Task dependant
             Resized(keys="image", spatial_size=(128, 128, 128), mode="area"),
             DiscardAddGuidanced(image="image"),
             ToTensord(keys="image"),
@@ -107,8 +104,10 @@ class Deepgrow(InferTask):
     def pre_transforms(self):
         return [
             LoadImaged(keys="image"),
-            # The inverse of this transform causes some issues
-            # Spacingd(keys='image', pixdim=[1.0, 1.0, 1.0], mode='bilinear'),
+            AddChanneld(keys="image"),
+            Spacingd(keys='image', pixdim=(1.5, 1.5, 2.0), mode='bilinear'),
+            Orientationd(keys="image", axcodes="RAS"),
+            SqueezeDimd(keys="image", dim=0),
             AddGuidanceFromPointsd(ref_image="image", guidance="guidance", dimensions=3),
             AddChanneld(keys="image"),
             NormalizeIntensityd(keys="image"),
