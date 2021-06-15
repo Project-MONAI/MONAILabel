@@ -1,16 +1,8 @@
-from monai.apps.deepgrow.transforms import (
-    AddGuidanceFromPointsd,
-    AddGuidanceSignald,
-    ResizeGuidanced,
-    RestoreLabeld,
-    SpatialCropGuidanced,
-)
+from monai.apps.deepgrow.transforms import AddGuidanceFromPointsd, AddGuidanceSignald
 from monai.inferers import SimpleInferer
 from monai.transforms import (
     Activationsd,
     AddChanneld,
-    AsChannelFirstd,
-    AsChannelLastd,
     AsDiscreted,
     LoadImaged,
     NormalizeIntensityd,
@@ -113,7 +105,7 @@ class Deepgrow(InferTask):
         return [
             LoadImaged(keys="image"),
             AddChanneld(keys="image"),
-            Spacingd(keys='image', pixdim=(1.0, 1.0, 1.0), mode='bilinear'),
+            Spacingd(keys="image", pixdim=(1.0, 1.0, 1.0), mode="bilinear"),
             Orientationd(keys="image", axcodes="RAS"),
             SqueezeDimd(keys="image", dim=0),
             AddGuidanceFromPointsd(ref_image="image", guidance="guidance", dimensions=3),
@@ -130,9 +122,9 @@ class Deepgrow(InferTask):
 
     def post_transforms(self):
         return [
-                ToTensord(keys="pred"),
-                Activationsd(keys="pred", sigmoid=True),
-                AsDiscreted(keys="pred", threshold_values=True, logit_thresh=0.51),
-                ToNumpyd(keys="pred"),
-                Restored(keys="pred", ref_image="image"),
+            ToTensord(keys="pred"),
+            Activationsd(keys="pred", sigmoid=True),
+            AsDiscreted(keys="pred", threshold_values=True, logit_thresh=0.51),
+            ToNumpyd(keys="pred"),
+            Restored(keys="pred", ref_image="image"),
         ]
