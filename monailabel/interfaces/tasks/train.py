@@ -233,13 +233,18 @@ class TrainTask:
         stats: Dict[str, Any] = dict()
         stats.update(self._trainer.get_train_stats())
         stats["epoch"] = self._trainer.state.epoch
-        stats["total_time"] = str(datetime.timedelta(seconds=int(time.time() - self._start_time)))
-        stats["best_metric"] = self._trainer.state.best_metric
+        stats["start_ts"] = int(self._start_time)
+
+        if self._trainer.state.epoch == self._trainer.state.max_epochs:
+            stats["total_time"] = str(datetime.timedelta(seconds=int(time.time() - self._start_time)))
+        else:
+            stats["current_time"] = str(datetime.timedelta(seconds=int(time.time() - self._start_time)))
 
         for k, v in {"train": self._trainer, "eval": self._evaluator}.items():
             if not v:
                 continue
 
+            stats["best_metric"] = v.state.best_metric
             stats[k] = {
                 "metrics": TrainTask.tensor_to_list(v.state.metrics),
                 # "metric_details": tensor_to_list(v.state.metric_details),
