@@ -167,7 +167,7 @@ class MONAILabelWidget(ScriptedLoadableModuleWidget, VTKObservationMixin):
 
         # Set icons and tune widget properties
         self.ui.serverComboBox.lineEdit().setPlaceholderText("enter server address or leave empty to use default")
-        self.ui.fetchModelsButton.setIcon(self.icon("refresh-icon.png"))
+        self.ui.fetchServerInfoButton.setIcon(self.icon("refresh-icon.png"))
         self.ui.segmentationButton.setIcon(self.icon("segment.png"))
         self.ui.nextSampleButton.setIcon(self.icon("segment.png"))
         self.ui.saveLabelButton.setIcon(self.icon("save.png"))
@@ -187,8 +187,8 @@ class MONAILabelWidget(ScriptedLoadableModuleWidget, VTKObservationMixin):
         self.ui.dgNegativeFiducialPlacementWidget.deleteButton().show()
 
         # Connections
-        self.ui.fetchModelsButton.connect("clicked(bool)", self.onClickFetchModels)
-        self.ui.serverComboBox.connect("currentIndexChanged(int)", self.onClickFetchModels)
+        self.ui.fetchServerInfoButton.connect("clicked(bool)", self.onClickFetchInfo)
+        self.ui.serverComboBox.connect("currentIndexChanged(int)", self.onClickFetchInfo)
         self.ui.segmentationModelSelector.connect("currentIndexChanged(int)", self.updateParameterNodeFromGUI)
         self.ui.segmentationButton.connect("clicked(bool)", self.onClickSegmentation)
         self.ui.deepgrowModelSelector.connect("currentIndexChanged(int)", self.updateParameterNodeFromGUI)
@@ -200,7 +200,7 @@ class MONAILabelWidget(ScriptedLoadableModuleWidget, VTKObservationMixin):
 
         self.initializeParameterNode()
         self.updateServerUrlGUIFromSettings()
-        # self.onClickFetchModels()
+        # self.onClickFetchInfo()
 
     def cleanup(self):
         self.removeObservers()
@@ -266,16 +266,19 @@ class MONAILabelWidget(ScriptedLoadableModuleWidget, VTKObservationMixin):
     def monitorTraining(self):
         status = self.isTrainingRunning(check_only=False)
         if status and status.get("status") == "RUNNING":
-            for line in reversed(status.get("details")):
-                if "SupervisedTrainer" in line and "Epoch: " in line:
-                    epoch = line.split("Epoch: ")[1].split(",")[0].split("/")
-                    current = int(epoch[0])
-                    total = int(epoch[1])
-                    percent = max(1, 100 * ((current - 1) / total))
-                    if self.ui.trainingProgressBar.value != percent:
-                        self.ui.trainingProgressBar.setValue(percent)
-                    self.ui.trainingProgressBar.setToolTip(f"{current}/{total} epoch is running")
-                    self.fetchModels()
+            info = self.logic.info()
+            train_stats = info.get("train_stats", {})
+
+            current = 0 if train_stats.get("total_time") else train_stats.get("epoch", 1)
+            total = train_stats.get("total_epochs", 1)
+            percent = max(1, 100 * current / total)
+            if self.ui.trainingProgressBar.value != percent:
+                self.ui.trainingProgressBar.setValue(percent)
+            self.ui.trainingProgressBar.setToolTip(f"{current}/{total} epoch is completed")
+
+            dice = train_stats.get("best_metric", 0)
+            self.ui.accuracyProgressBar.setValue(dice * 100)
+            self.ui.accuracyProgressBar.setToolTip(f"Accuracy: {dice:.4f}")
             return
 
         print("Training completed")
@@ -286,7 +289,7 @@ class MONAILabelWidget(ScriptedLoadableModuleWidget, VTKObservationMixin):
 
         self.ui.trainingButton.setEnabled(True)
         self.ui.stopTrainingButton.setEnabled(False)
-        self.fetchModels()
+        self.fetchInfo()
 
     def updateGUIFromParameterNode(self, caller=None, event=None):
         if self._parameterNode is None or self._updatingGUIFromParameterNode:
@@ -644,14 +647,14 @@ class MONAILabelWidget(ScriptedLoadableModuleWidget, VTKObservationMixin):
 
         self.updateServerUrlGUIFromSettings()
 
-    def onClickFetchModels(self):
-        self.fetchModels()
+    def onClickFetchInfo(self):
+        self.fetchInfo()
         self.updateConfigTable()
 
         # if self._volumeNode is None:
         #    self.onNextSampleButton()
 
-    def fetchModels(self, showInfo=False):
+    def fetchInfo(self, showInfo=False):
         if not self.logic:
             return
 
@@ -796,8 +799,6 @@ class MONAILabelWidget(ScriptedLoadableModuleWidget, VTKObservationMixin):
             result = status.get("details", [])[-1]
             try:
                 result = json.loads(result)
-                result.pop("train_metric_details", None)
-                result.pop("val_metric_details", None)
                 result = json.dumps(result, indent=2)
             except:
                 pass
@@ -912,7 +913,7 @@ class MONAILabelWidget(ScriptedLoadableModuleWidget, VTKObservationMixin):
 
             self.updateServerSettings()
             result = self.logic.save_label(self.current_sample["id"], label_in)
-            self.fetchModels()
+            self.fetchInfo()
 
             if slicer.util.settingsValue("MONAILabel/autoUpdateModel", True, converter=slicer.util.toBool):
                 try:

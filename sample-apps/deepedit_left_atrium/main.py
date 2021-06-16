@@ -99,6 +99,8 @@ class MyApp(MONAILabelApp):
             lr=request.get("lr", 0.0001),
             max_epochs=request.get("epochs", 1),
             amp=request.get("amp", True),
+            train_batch_size=request.get("train_batch_size", 1),
+            val_batch_size=request.get("val_batch_size", 1),
         )
         return task()
 
