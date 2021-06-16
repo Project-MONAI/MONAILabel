@@ -143,12 +143,12 @@ def run_apps(args):
     sample_apps_uri = "https://github.com/Project-MONAI/MONAILabel/tree/main/sample-apps"
     resource = {
         "deepedit_brain_tumor": f"{sample_apps_uri}/deepedit_brain_tumor",
-        "deepedit_heart": f"{sample_apps_uri}/deepedit_heart",
+        "deepedit_left_atrium": f"{sample_apps_uri}/deepedit_left_atrium",
         "deepedit_lung": f"{sample_apps_uri}/deepedit_lung",
         "deepedit_spleen": f"{sample_apps_uri}/deepedit_spleen",
-        "deepgrow_heart": f"{sample_apps_uri}/deepgrow_heart",
+        "deepgrow_left_atrium": f"{sample_apps_uri}/deepgrow_left_atrium",
         "deepgrow_spleen": f"{sample_apps_uri}/deepgrow_spleen",
-        "segmentation_heart": f"{sample_apps_uri}/segmentation_heart",
+        "segmentation_left_atrium": f"{sample_apps_uri}/segmentation_left_atrium",
         "segmentation_spleen": f"{sample_apps_uri}/segmentation_spleen",
     }
 

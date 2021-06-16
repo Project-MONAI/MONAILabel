@@ -134,9 +134,9 @@ function clean_py() {
   rm -rf sample-apps/*/model/*
   rm -rf tests/data/*
 
-  find ${TO_CLEAN}/monailabel -type f -name "*.py[co]" -delete
-  find ${TO_CLEAN}/monailabel -type f -name "*.so" -delete
-  find ${TO_CLEAN}/monailabel -type d -name "__pycache__" -delete
+  find ${TO_CLEAN} -type f -name "*.py[co]" -delete
+  find ${TO_CLEAN} -type f -name "*.so" -delete
+  find ${TO_CLEAN} -type d -name "__pycache__" -delete
   find ${TO_CLEAN} -maxdepth 1 -type f -name ".coverage.*" -delete
 
   find ${TO_CLEAN} -depth -maxdepth 1 -type d -name ".eggs" -exec rm -r "{}" +
@@ -457,7 +457,7 @@ if [ $doNetTests = true ]; then
 
   ${cmdPrefix}${PY_EXE} tests/setup.py
   echo "Starting MONAILabel server..."
-  ./monailabel/monailabel run -a sample-apps/deepedit_heart -s tests/data/dataset/heart &
+  ./monailabel/monailabel run -a sample-apps/deepedit_left_atrium -s tests/data/dataset/heart &
 
   wait_time=0
   server_is_up=0

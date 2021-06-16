@@ -21,7 +21,7 @@ from monailabel.utils.others.post import Restored
 
 class Segmentation(InferTask):
     """
-    This provides Inference Engine for pre-trained heart segmentation (UNet) model over MSD Dataset.
+    This provides Inference Engine for pre-trained spleen segmentation (UNet) model over MSD Dataset.
     """
 
     def __init__(
