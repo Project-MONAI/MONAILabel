@@ -2,11 +2,12 @@ import json
 import logging
 import os
 
-from lib import Deepgrow, MyStrategy, MyTrain, Segmentation
-from monai.networks.nets import DynUNet
+from lib import MyInfer, MyStrategy, MyTrain
+from monai.networks.layers import Norm
+from monai.networks.nets import UNet
 
 from monailabel.interfaces import MONAILabelApp
-from monailabel.utils.activelearning import TTA, Random
+from monailabel.utils.activelearning import Random
 
 logger = logging.getLogger(__name__)
 
@@ -14,56 +15,32 @@ logger = logging.getLogger(__name__)
 class MyApp(MONAILabelApp):
     def __init__(self, app_dir, studies):
         self.model_dir = os.path.join(app_dir, "model")
-        self.network = DynUNet(
-            spatial_dims=3,
-            in_channels=3,
-            out_channels=1,
-            kernel_size=[
-                [3, 3, 3],
-                [3, 3, 3],
-                [3, 3, 3],
-                [3, 3, 3],
-                [3, 3, 3],
-                [3, 3, 3],
-            ],
-            strides=[
-                [1, 1, 1],
-                [2, 2, 2],
-                [2, 2, 2],
-                [2, 2, 2],
-                [2, 2, 2],
-                [2, 2, 1],
-            ],
-            upsample_kernel_size=[
-                [2, 2, 2],
-                [2, 2, 2],
-                [2, 2, 2],
-                [2, 2, 2],
-                [2, 2, 1],
-            ],
-            norm_name="instance",
-            deep_supervision=False,
-            res_block=True,
+        self.network = UNet(
+            dimensions=3,
+            in_channels=1,
+            out_channels=2,
+            channels=(16, 32, 64, 128, 256),
+            strides=(2, 2, 2, 2),
+            num_res_units=2,
+            norm=Norm.BATCH,
         )
 
-        self.pretrained_model = os.path.join(self.model_dir, "deepedit.pt")
+        self.pretrained_model = os.path.join(self.model_dir, "segmentation_left_atrium.pt")
         self.final_model = os.path.join(self.model_dir, "final.pt")
         self.train_stats_path = os.path.join(self.model_dir, "train_stats.json")
 
         path = [self.pretrained_model, self.final_model]
         infers = {
-            "deepedit": Deepgrow(path, self.network),
-            "heart": Segmentation(path, self.network),
+            "segmentation_left_atrium": MyInfer(path, self.network),
         }
 
         strategies = {
             "random": Random(),
             "first": MyStrategy(),
-            "tta": TTA(path, self.network),
         }
 
         resources = [
-            (self.pretrained_model, "https://www.dropbox.com/s/fgygtodqztjjdyz/deepedit_heart.pt?dl=1"),
+            (self.pretrained_model, "https://www.dropbox.com/s/y4wsf5w9hbns3tc/segmentation_left_atrium.pt?dl=1"),
         ]
 
         super().__init__(
@@ -74,6 +51,9 @@ class MyApp(MONAILabelApp):
             resources=resources,
         )
 
+        # Simple way to Add deepgrow 2D+3D models for infer tasks
+        self.add_deepgrow_infer_tasks()
+
     def train(self, request):
         logger.info(f"Training request: {request}")
 
@@ -81,7 +61,6 @@ class MyApp(MONAILabelApp):
 
         # App Owner can decide which checkpoint to load (from existing output folder or from base checkpoint)
         load_path = os.path.join(output_dir, "model.pt")
-        load_path = load_path if os.path.exists(load_path) else self.final_model
         load_path = load_path if os.path.exists(load_path) else self.pretrained_model
 
         # Datalist for train/validation
@@ -97,6 +76,7 @@ class MyApp(MONAILabelApp):
             stats_path=self.train_stats_path,
             device=request.get("device", "cuda"),
             lr=request.get("lr", 0.0001),
+            val_split=request.get("val_split", 0.2),
             max_epochs=request.get("epochs", 1),
             amp=request.get("amp", True),
         )

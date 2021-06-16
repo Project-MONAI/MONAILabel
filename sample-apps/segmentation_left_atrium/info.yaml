@@ -1,10 +1,10 @@
 ---
 version: 1
-name: DeepEdit - Heart
-description: MONAI Label App to provide active learning solution using DeepEdit to label heart over 3D MRI Images
+name: Segmentation Left Atrium
+description: MONAI Label App to provide active learning solution to label left atrium over 3D MRI Images
 dimension: 3
 labels:
-  - heart
+  - left atrium
 config:
   infer:
     device: cuda
