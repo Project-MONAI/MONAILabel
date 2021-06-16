@@ -14,7 +14,7 @@ from monai.transforms import (
     ToTensord,
 )
 
-from monailabel.deepedit.transforms import DiscardAddGuidanced
+from monailabel.deepedit.transforms import DiscardAddGuidanced, ResizeGuidanceCustomd
 from monailabel.interfaces.tasks import InferTask, InferType
 from monailabel.utils.others.post import Restored
 
@@ -29,7 +29,7 @@ class Segmentation(InferTask):
         path,
         network=None,
         type=InferType.SEGMENTATION,
-        labels="left_atrium",
+        labels="left atrium",
         dimension=3,
         description="A pre-trained model for volumetric (3D) segmentation of the left atrium over 3D MR Images",
     ):
