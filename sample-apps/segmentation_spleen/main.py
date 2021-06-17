@@ -40,7 +40,11 @@ class MyApp(MONAILabelApp):
         }
 
         resources = [
-            (self.pretrained_model, "https://www.dropbox.com/s/xc9wtssba63u7md/segmentation_spleen.pt?dl=1"),
+            (
+                self.pretrained_model,
+                "https://api.ngc.nvidia.com/v2/models/nvidia/med"
+                "/clara_pt_spleen_ct_segmentation/versions/1/files/models/model.pt",
+            ),
         ]
 
         super().__init__(
