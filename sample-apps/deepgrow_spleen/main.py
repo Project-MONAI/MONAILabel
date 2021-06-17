@@ -24,7 +24,8 @@ class MyApp(MONAILabelApp):
                     os.path.join(self.model_dir, "deepgrow_2d.pt"),
                     os.path.join(self.model_dir, "deepgrow_2d_final.pt"),
                 ],
-                "url": "https://www.dropbox.com/s/t6kazwpvi2f1ppl/deepgrow_2d.pt?dl=1",
+                "url": "https://api.ngc.nvidia.com/v2/models/nvidia/med"
+                "/clara_pt_deepgrow_2d_annotation/versions/1/files/models/model.pt",
             },
             "deepgrow_3d": {
                 "network": BasicUNet(dimensions=3, in_channels=3, out_channels=1, features=(32, 64, 128, 256, 512, 32)),
@@ -32,12 +33,8 @@ class MyApp(MONAILabelApp):
                     os.path.join(self.model_dir, "deepgrow_3d.pt"),
                     os.path.join(self.model_dir, "deepgrow_3d_final.pt"),
                 ],
-                "url": "https://www.dropbox.com/s/xgortm6ljd3dvhw/deepgrow_3d.pt?dl=1",
-            },
-            "segmentation_spleen": {
-                "network": None,
-                "path": [os.path.join(self.model_dir, "segmentation_spleen.ts")],
-                "url": "https://www.dropbox.com/s/p60vfxpa4l64fmz/segmentation_spleen.ts?dl=1",
+                "url": "https://api.ngc.nvidia.com/v2/models/nvidia/med"
+                "/clara_pt_deepgrow_3d_annotation/versions/1/files/models/model.pt",
             },
         }
 

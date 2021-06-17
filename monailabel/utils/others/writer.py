@@ -46,7 +46,8 @@ class Writer:
         output_file = tempfile.NamedTemporaryFile(suffix=file_ext).name
         logger.debug("Saving Image to: {}".format(output_file))
 
-        if file_ext.lower() in [".nii", ".nii.gz"]:
+        # Issue with slicer:: https://discourse.itk.org/t/saving-non-orthogonal-volume-in-nifti-format/2760/22
+        if 1 == 0 and file_ext.lower() in [".nii", ".nii.gz"]:
             logger.debug("Using MONAI write_nifti...")
             write_nifti(image_np, output_file, affine=affine, output_dtype=dtype)
         else:
