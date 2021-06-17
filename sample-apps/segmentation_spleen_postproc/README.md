@@ -35,7 +35,7 @@ Current application provides an option to switch to SimpleCRF library for doing 
 ## Server
 On the server side, run server app using the following command:
 
-`CUDA_VISIBLE_DEVICES=0 PYTHONPATH=../. python main.py run --app ../sample-apps/segmentation_spleen_postproc/ --studies /path/to/dataset/Task09_Spleen/imagesTrSmall/`
+`CUDA_VISIBLE_DEVICES=0 ./monailabel start_server --app ../sample-apps/segmentation_spleen_postproc/ --studies /path/to/dataset/Task09_Spleen/imagesTrSmall/`
 
 ## Client
 On the client side, run slicer and load MONAILabel extension:
