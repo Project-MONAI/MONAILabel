@@ -277,8 +277,7 @@ class MONAILabelWidget(ScriptedLoadableModuleWidget, VTKObservationMixin):
             self.ui.trainingProgressBar.setToolTip(f"{current}/{total} epoch is completed")
 
             dice = train_stats.get("best_metric", 0)
-            self.ui.accuracyProgressBar.setValue(dice * 100)
-            self.ui.accuracyProgressBar.setToolTip(f"Accuracy: {dice:.4f}")
+            self.updateAccuracyBar(dice)
             return
 
         print("Training completed")
@@ -333,23 +332,7 @@ class MONAILabelWidget(ScriptedLoadableModuleWidget, VTKObservationMixin):
 
         train_stats = self.info.get("train_stats", {})
         dice = train_stats.get("best_metric", 0)
-        self.ui.accuracyProgressBar.setValue(dice * 100)
-        css = ["stop: 0 red"]
-        if dice > 0.5:
-            css.append(f"stop: {0.5 / dice} orange")
-        if dice > 0.6:
-            css.append(f"stop: {0.6 / dice} yellow")
-        if dice > 0.7:
-            css.append(f"stop: {0.7 / dice} lightgreen")
-        if dice > 0.8:
-            css.append(f"stop: {0.8 / dice} green")
-        if dice > 0.9:
-            css.append(f"stop: {0.9 / dice} darkgreen")
-        self.ui.accuracyProgressBar.setStyleSheet(
-            "QProgressBar {text-align: center;} "
-            "QProgressBar::chunk {background-color: "
-            "qlineargradient(x0: 0, x2: 1, " + ",".join(css) + ")}"
-        )
+        self.updateAccuracyBar(dice)
 
         self.ui.strategyBox.clear()
         for strategy in self.info.get("strategies", {}):
@@ -488,6 +471,26 @@ class MONAILabelWidget(ScriptedLoadableModuleWidget, VTKObservationMixin):
 
                 table.item(n, 0).setBackground(colors[section])
                 n = n + 1
+
+    def updateAccuracyBar(self, dice):
+        self.ui.accuracyProgressBar.setValue(dice * 100)
+        css = ["stop: 0 red"]
+        if dice > 0.5:
+            css.append(f"stop: {0.5 / dice} orange")
+        if dice > 0.6:
+            css.append(f"stop: {0.6 / dice} yellow")
+        if dice > 0.7:
+            css.append(f"stop: {0.7 / dice} lightgreen")
+        if dice > 0.8:
+            css.append(f"stop: {0.8 / dice} green")
+        if dice > 0.9:
+            css.append(f"stop: {0.9 / dice} darkgreen")
+        self.ui.accuracyProgressBar.setStyleSheet(
+            "QProgressBar {text-align: center;} "
+            "QProgressBar::chunk {background-color: "
+            "qlineargradient(x0: 0, x2: 1, " + ",".join(css) + ")}"
+        )
+        self.ui.accuracyProgressBar.setToolTip(f"Accuracy: {dice:.4f}")
 
     def getParamsFromConfig(self):
         config = {}
