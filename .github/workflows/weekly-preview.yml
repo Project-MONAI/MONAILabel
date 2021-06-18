@@ -1,8 +1,9 @@
 name: weekly-preview
 
 on:
-  schedule:
-  - cron: "0 2 * * 0"  # 02:00 of every Sunday
+  # TODO: re-enable
+  # schedule:
+  # - cron: "0 2 * * 0"  # 02:00 of every Sunday
   # for testing on this branch; TODO: remove
   push:
     branches:
@@ -27,9 +28,9 @@ jobs:
     - name: Build distribution
       run: |
         export HEAD_COMMIT_ID=$(git rev-parse HEAD)
-        sed -i 's/name\ =\ monai$/name\ =\ monai-label-weekly/g' setup.cfg
+        sed -i 's/name\ =\ monai-label$/name\ =\ monai-label-weekly/g' setup.cfg
         echo "__commit_id__ = \"$HEAD_COMMIT_ID\"" >> monailabel/__init__.py
-        git diff setup.cfg monailabe/__init__.py
+        git diff setup.cfg monailabel/__init__.py
         git config user.name "CI Builder"
         git config user.email "monai.contact@gmail.com"
         git add setup.cfg monailabel/__init__.py
@@ -42,8 +43,8 @@ jobs:
         git tag --list
         python setup.py sdist bdist_wheel
 
-    - name: Publish to PyPI
-      uses: pypa/gh-action-pypi-publish@master
-      with:
-        user: __token__
-        password: ${{ secrets.PYPI_TOKEN }}
+    # - name: Publish to PyPI
+    #   uses: pypa/gh-action-pypi-publish@master
+    #   with:
+    #     user: __token__
+    #     password: ${{ secrets.PYPI_TOKEN }}
