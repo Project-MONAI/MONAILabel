@@ -82,7 +82,9 @@ class MyApp(MONAILabelApp):
         # App Owner can decide which checkpoint to load (from existing output folder or from base checkpoint)
         load_path = os.path.join(output_dir, "model.pt")
         load_path = load_path if os.path.exists(load_path) else self.final_model
-        load_path = load_path if os.path.exists(load_path) else self.pretrained_model
+        # Use pretrained weights to start training?
+        load_path = load_path if os.path.exists(load_path) else self.pretrained_model \
+            if request.get("pretrained", True) else None
 
         # Datalist for train/validation
         train_d, val_d = self.partition_datalist(self.datastore().datalist(), request.get("val_split", 0.2))

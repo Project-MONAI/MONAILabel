@@ -10,6 +10,7 @@ config:
     device: cuda
   train:
     name: model_01
+    pretrained: False
     device: cuda
     amp: true
     lr: 0.0001
