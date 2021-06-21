@@ -43,8 +43,9 @@ jobs:
         git tag --list
         python setup.py sdist bdist_wheel
 
-    # - name: Publish to PyPI
-    #   uses: pypa/gh-action-pypi-publish@master
-    #   with:
-    #     user: __token__
-    #     password: ${{ secrets.PYPI_TOKEN }}
+    - name: Publish to PyPI
+      uses: pypa/gh-action-pypi-publish@master
+      with:
+        user: __token__
+        password: ${{ secrets.PYPI_TOKEN }}
+        repository_url: https://test.pypi.org/legacy/
