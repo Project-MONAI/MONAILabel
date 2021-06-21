@@ -13,6 +13,8 @@ jobs:
   packaging:
     if: github.repository == 'Project-MONAI/MONAILabel'
     runs-on: ubuntu-latest
+    env:
+      DEV_RELEASE_VERSION: 0.1
     steps:
     - uses: actions/checkout@v2
       with:
@@ -38,7 +40,7 @@ jobs:
         export YEAR_WEEK=$(date +'%y%U')
         echo "Year week for tag is ${YEAR_WEEK}"
         if ! [[ $YEAR_WEEK =~ ^[0-9]{4}$ ]] ; then echo "Wrong 'year week' format.  Should be 4 digits."; exit 1 ; fi
-        git tag "0.1.dev${YEAR_WEEK}"
+        git tag "$DEV_RELEASE_VERSION.dev${YEAR_WEEK}"
         git log -1
         git tag --list
         python setup.py sdist bdist_wheel
