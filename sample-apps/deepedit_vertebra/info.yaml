@@ -1,0 +1,20 @@
+---
+version: 1
+name: DeepEdit - vertebra
+description: MONAI Label App to provide active learning solution using DeepEdit to label vertebra over 3D CT Images
+dimension: 3
+labels:
+  - vertebra
+config:
+  infer:
+    device: cuda
+  train:
+    name: model_01
+    pretrained: False
+    device: cuda
+    amp: true
+    lr: 0.0001
+    epochs: 100
+    val_split: 0.1
+    train_batch_size: 1
+    val_batch_size: 1
