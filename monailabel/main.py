@@ -150,6 +150,7 @@ def run_apps(args):
         "deepgrow_spleen": f"{sample_apps_uri}/deepgrow_spleen",
         "segmentation_left_atrium": f"{sample_apps_uri}/segmentation_left_atrium",
         "segmentation_spleen": f"{sample_apps_uri}/segmentation_spleen",
+        "segmentation_vertebra": f"{sample_apps_uri}/segmentation_vertebra",
     }
 
     if not args.download:

@@ -63,7 +63,7 @@ class MyApp(MONAILabelApp):
         }
 
         resources = [
-            (self.pretrained_model, "https://www.dropbox.com/s/1y4j9o12zadauhx/deepedit_vertebra.pt?dl=1"),
+            (self.pretrained_model, "https://www.dropbox.com/s/a2fqn2hzgdxkrth/deepedit_vertebra.pt?dl=1"),
         ]
 
         super().__init__(
