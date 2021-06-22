@@ -44,11 +44,6 @@ jobs:
         git log -1
         git tag --list
         python setup.py sdist bdist_wheel
-    - name: Upload artifacts
-      uses: actions/upload-artifact@v1
-      with: 
-        name: dist
-        path: dist/
     - name: Publish to PyPI
       uses: pypa/gh-action-pypi-publish@master
       with:
