@@ -146,6 +146,7 @@ def run_apps(args):
         "deepedit_left_atrium": f"{sample_apps_uri}/deepedit_left_atrium",
         "deepedit_lung": f"{sample_apps_uri}/deepedit_lung",
         "deepedit_spleen": f"{sample_apps_uri}/deepedit_spleen",
+        "deepedit_vertebra": f"{sample_apps_uri}/deepedit_vertebra",
         "deepgrow_left_atrium": f"{sample_apps_uri}/deepgrow_left_atrium",
         "deepgrow_spleen": f"{sample_apps_uri}/deepgrow_spleen",
         "segmentation_left_atrium": f"{sample_apps_uri}/segmentation_left_atrium",
