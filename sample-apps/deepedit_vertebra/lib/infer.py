@@ -8,7 +8,6 @@ from monai.transforms import (
     LoadImaged,
     NormalizeIntensityd,
     Resized,
-    Spacingd,
     SqueezeDimd,
     ToNumpyd,
     ToTensord,
@@ -49,7 +48,6 @@ class Segmentation(InferTask):
         return [
             LoadImaged(keys="image"),
             EnsureChannelFirstd(keys="image"),
-            Spacingd(keys="image", pixdim=(1.0, 1.0, 1.0), mode="bilinear"),
             NormalizeIntensityd(keys="image"),
             Resized(keys="image", spatial_size=(128, 128, 128), mode="area"),
             DiscardAddGuidanced(image="image"),
@@ -104,7 +102,6 @@ class Deepgrow(InferTask):
         return [
             LoadImaged(keys="image"),
             EnsureChannelFirstd(keys="image"),
-            Spacingd(keys="image", pixdim=(1.0, 1.0, 1.0), mode="bilinear"),
             SqueezeDimd(keys="image", dim=0),
             AddGuidanceFromPointsd(ref_image="image", guidance="guidance", dimensions=3),
             AddChanneld(keys="image"),

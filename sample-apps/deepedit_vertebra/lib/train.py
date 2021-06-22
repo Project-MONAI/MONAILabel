@@ -21,7 +21,6 @@ from monai.transforms import (
     RandAdjustContrastd,
     RandHistogramShiftd,
     Resized,
-    Spacingd,
     ToNumpyd,
     ToTensord,
 )
@@ -73,7 +72,6 @@ class MyTrain(BasicTrainTask):
             [
                 LoadImaged(keys=("image", "label")),
                 EnsureChannelFirstd(keys=("image", "label")),
-                Spacingd(keys=["image", "label"], pixdim=(1.0, 1.0, 1.0), mode=("bilinear", "nearest")),
                 Orientationd(keys=["image", "label"], axcodes="RAS"),
                 NormalizeIntensityd(keys="image"),
                 RandAdjustContrastd(keys="image", gamma=6),
