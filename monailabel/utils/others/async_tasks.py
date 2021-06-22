@@ -11,6 +11,8 @@ from datetime import datetime
 from threading import Thread
 from typing import Dict
 
+import psutil
+
 from monailabel.config import settings
 
 logger = logging.getLogger(__name__)
@@ -92,7 +94,12 @@ def stop_background_task(method):
         return None
 
     task_id, process = next(iter(background_processes[method].items()))
-    os.system(f"pkill -TERM -P {process.pid}")
+    children = psutil.Process(pid=process.pid).children(recursive=True)
+    for child in children:
+        logger.info(f"Kill:: Child pid is {child.pid}")
+        child.kill()
+    logger.info(f"Kill:: Process pid is {process.pid}")
+    process.kill()
 
     background_processes[method].pop(task_id, None)
     logger.info(f"Killed background process: {process.pid}")
