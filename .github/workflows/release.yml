@@ -108,6 +108,9 @@ jobs:
           python -c 'import monailabel; monailabel.print_config()' 2>&1 | grep -iv "unknown"
           python -c 'import monailabel; print(monailabel.__file__)'
 
+          # install test utilities
+          python -m pip install pytest
+
           # start the monailabel server in the background
           # and run the integration tests
           $root_dir/runtests.sh --net
