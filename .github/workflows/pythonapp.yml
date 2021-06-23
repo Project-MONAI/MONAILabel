@@ -110,7 +110,7 @@ jobs:
           python -c 'import monailabel; print(monailabel.__file__)'
 
           # start the monailabel server in the background and run the integration tests
-          $root_dir/../runtest.sh --net
+          $root_dir/runtests.sh --net
         env:
           shell: bash
 
