@@ -457,7 +457,7 @@ if [ $doNetTests = true ]; then
 
   ${cmdPrefix}${PY_EXE} tests/setup.py
   echo "Starting MONAILabel server..."
-  ./monailabel/monailabel run -a sample-apps/deepedit_left_atrium -s tests/data/dataset/heart &
+  ./monailabel/monailabel start_server -a sample-apps/deepedit_left_atrium -s tests/data/dataset/heart &
 
   wait_time=0
   server_is_up=0
