@@ -1,5 +1,7 @@
 import unittest
+
 import requests
+
 from . import SERVER_URI
 
 
