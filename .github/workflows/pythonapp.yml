@@ -111,8 +111,6 @@ jobs:
 
           # start the monailabel server in the background and run the integration tests
           ./runtest.sh --net
-          python tests/setup.py
-          python -m pytest -v tests/integration --no-summary
         env:
           shell: bash
 
