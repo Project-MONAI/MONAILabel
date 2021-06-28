@@ -48,7 +48,7 @@ jobs:
           # move packages to a temp dir
           tmp_dir=$(mktemp -d)
           cp dist/monailabel* "$tmp_dir"
-          rm -r build dist monailabel.egg-info
+          rm -r build monailabel.egg-info
           pushd "$tmp_dir"
           ls -al
 
@@ -65,6 +65,7 @@ jobs:
           python -m pip install $name
           python -c 'import monailabel; monailabel.print_config()' 2>&1 | grep -iv "unknown"
           python -c 'import monailabel; print(monailabel.__file__)'
+          popd
 
           # install test utilities
           python -m pip install pytest
@@ -72,7 +73,6 @@ jobs:
           # start the monailabel server in the background
           # and run the integration tests
           $root_dir/runtests.sh --net
-          popd
 
         env:
           shell: bash
