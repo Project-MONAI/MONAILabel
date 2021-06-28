@@ -49,7 +49,8 @@ jobs:
           tmp_dir=$(mktemp -d)
           cp dist/monailabel* "$tmp_dir"
           rm -r build dist monailabel.egg-info
-          ls -al "$tmp_dir"
+          pushd "$tmp_dir"
+          ls -al
 
           # install from wheel
           python -m pip install monailabel*.whl
@@ -71,24 +72,26 @@ jobs:
           # start the monailabel server in the background
           # and run the integration tests
           $root_dir/runtests.sh --net
+          popd
+
         env:
           shell: bash
 
-      - if: matrix.python-version == '3.8' && startsWith(github.ref, 'refs/tags/')
+      - if: matrix.python-version == '3.8' #&& startsWith(github.ref, 'refs/tags/')
         name: Upload artifacts
         uses: actions/upload-artifact@v1
         with:
           name: dist
           path: dist/
 
-      - if: matrix.python-version == '3.8' && startsWith(github.ref, 'refs/tags/')
+      - if: matrix.python-version == '3.8' #&& startsWith(github.ref, 'refs/tags/')
         name: Check artifacts
         run: |
           ls -al dist/
           rm dist/monai*.tar.gz
           ls -al dist/
 
-      - if: matrix.python-version == '3.8' && startsWith(github.ref, 'refs/tags/')
+      - if: matrix.python-version == '3.8' #&& startsWith(github.ref, 'refs/tags/')
         name: Publish to Test PyPI
         uses: pypa/gh-action-pypi-publish@master
         with:
