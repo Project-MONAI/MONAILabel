@@ -4,7 +4,7 @@ name: release
 on:
   push:
     branches:
-      - aihsani/release_workflow_updates
+      - aihsani/release_workflow_fixes
       # - main
     # tags:
     #   - '*'
