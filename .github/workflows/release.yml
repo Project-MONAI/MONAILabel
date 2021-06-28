@@ -4,9 +4,10 @@ name: release
 on:
   push:
     branches:
-      - main
-    tags:
-      - '*'
+      - aihsani/release_workflow_updates
+      # - main
+    # tags:
+    #   - '*'
 
 jobs:
   packaging:
@@ -48,8 +49,9 @@ jobs:
           tmp_dir=$(mktemp -d)
           cp dist/monailabel* "$tmp_dir"
           rm -r build dist monailabel.egg-info
-          cd "$tmp_dir"
+          pushd "$tmp_dir"
           ls -al
+          popd
 
           # install from wheel
           python -m pip install monailabel*.whl
