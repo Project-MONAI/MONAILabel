@@ -4,10 +4,9 @@ name: release
 on:
   push:
     branches:
-      - aihsani/release_workflow_fixes
-      # - main
-    # tags:
-    #   - '*'
+      - main
+    tags:
+      - '*'
 
 jobs:
   packaging:
@@ -37,6 +36,7 @@ jobs:
           python -m pip install torch>=1.5 torchvision
       - name: Build and test source archive and wheel file
         run: |
+          git fetch --depth=1 origin +refs/tags/*:refs/tags/*
           root_dir=$PWD
           echo "$root_dir"
           set -e
@@ -78,21 +78,21 @@ jobs:
         env:
           shell: bash
 
-      - if: matrix.python-version == '3.8' #&& startsWith(github.ref, 'refs/tags/')
+      - if: matrix.python-version == '3.8' && startsWith(github.ref, 'refs/tags/')
         name: Upload artifacts
         uses: actions/upload-artifact@v1
         with:
           name: dist
           path: dist/
 
-      - if: matrix.python-version == '3.8' #&& startsWith(github.ref, 'refs/tags/')
+      - if: matrix.python-version == '3.8' && startsWith(github.ref, 'refs/tags/')
         name: Check artifacts
         run: |
           ls -al dist/
           rm dist/monai*.tar.gz
           ls -al dist/
 
-      - if: matrix.python-version == '3.8' #&& startsWith(github.ref, 'refs/tags/')
+      - if: matrix.python-version == '3.8' && startsWith(github.ref, 'refs/tags/')
         name: Publish to Test PyPI
         uses: pypa/gh-action-pypi-publish@master
         with:
