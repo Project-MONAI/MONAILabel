@@ -15,7 +15,7 @@ from monai.transforms import (
     ToTensord,
 )
 
-from monailabel.deepedit.transforms import DiscardAddGuidanced
+from monailabel.deepedit.transforms import DiscardAddGuidanced, ResizeGuidanceCustomd
 from monailabel.interfaces.tasks import InferTask, InferType
 from monailabel.utils.others.post import Restored
 
