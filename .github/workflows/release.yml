@@ -2,11 +2,8 @@ name: release
 # generating and testing package artifacts from the main branch
 
 on:
-  push:
-    branches:
-      - main
-    tags:
-      - '*'
+  release:
+    types: [created, edited, published]
 
 jobs:
   packaging:
@@ -55,7 +52,7 @@ jobs:
           python -c 'import monailabel; print(monailabel.__file__)'
           python -m pip uninstall -y monailabel
           rm monailabel*.tar.gz
-          
+
           # install from wheel
           python -m pip install monailabel*.whl
           python -c 'import monailabel; monailabel.print_config()' 2>&1 | grep -iv "unknown"
@@ -98,7 +95,7 @@ jobs:
         with:
           password: ${{ secrets.TEST_PYPI_TOKEN }}
           repository_url: https://test.pypi.org/legacy/
-    
+
   versioning:
     if: github.repository == 'Project-MONAI/MONAILabel'
     needs: packaging
