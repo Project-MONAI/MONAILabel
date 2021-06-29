@@ -6,7 +6,6 @@ from . import SERVER_URI
 
 
 class EndPointInfer(unittest.TestCase):
-
     def test_segmentation(self):
         model = "segmentation_left_atrium"
         image = "la_004.nii.gz"
