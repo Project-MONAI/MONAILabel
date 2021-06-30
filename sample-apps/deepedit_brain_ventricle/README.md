@@ -12,16 +12,14 @@ The training data is from **PENDING LINK**.
 - Task: Segmentation 
 - Modality: MRI
 
-### Input
-
-Inputs: 
+### Inputs
 
 - 1 channel MRI (T1W)
 - 3 channels (T1W + foreground points + background points)
 
 ### Output
 
-Output: 1 channel representing left ventricle
+- 1 channel representing left ventricle
 
 
 ![DeepEdit for left ventricle](../../docs/images/sample-apps/deepedit_left_ventricle.png)
