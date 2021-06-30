@@ -446,7 +446,7 @@ if [ $doUnitTests = true ]; then
 fi
 
 function check_server_running() {
-  local code=$(curl --write-out "%{http_code}\n" -s "http://127.0.0.1:8000/" --output /dev/null)
+  local code=$(curl --write-out "%{http_code}\n" -s "http://127.0.0.1:${MONAILABEL_SERVER_PORT:-8000}/" --output /dev/null)
   echo ${code}
 }
 
@@ -457,7 +457,7 @@ if [ $doNetTests = true ]; then
 
   ${cmdPrefix}${PY_EXE} tests/setup.py
   echo "Starting MONAILabel server..."
-  ./monailabel/monailabel start_server -a sample-apps/deepedit_left_atrium -s tests/data/dataset/heart &
+  ./monailabel/monailabel start_server -a sample-apps/segmentation_left_atrium -s tests/data/dataset/heart -p ${MONAILABEL_SERVER_PORT:-8000} &
 
   wait_time=0
   server_is_up=0
@@ -481,8 +481,11 @@ if [ $doNetTests = true ]; then
     exit 1
   fi
 
-  ${cmdPrefix}${cmd} -m pytest -v tests/integration --no-summary #--log-cli-level=INFO
-  kill -9 $(ps -ef | grep monailabel | grep -v grep | awk '{print $2}')
+  {
+    ${cmdPrefix}${cmd} -m pytest -v tests/integration --no-summary
+  } || {
+    kill -9 $(ps -ef | grep monailabel | grep -v grep | awk '{print $2}')
+  }
 fi
 
 # report on coverage
