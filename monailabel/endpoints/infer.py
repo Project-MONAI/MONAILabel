@@ -89,12 +89,25 @@ def send_response(datastore, result, output, background_tasks):
 async def run_inference(
     background_tasks: BackgroundTasks,
     model: str,
-    image: str,
+    image: str = "",
     params: str = Form("{}"),
+    file: UploadFile = File(None),
     label: UploadFile = File(None),
     output: Optional[ResultType] = None,
 ):
     request = {"model": model, "image": image}
+
+    if not file and not image:
+        raise HTTPException(status_code=500, detail="Neither Image nor File input is provided")
+
+    if file:
+        file_ext = "".join(pathlib.Path(file.filename).suffixes) if file.filename else ".nii.gz"
+        image_file = tempfile.NamedTemporaryFile(suffix=file_ext).name
+
+        with open(image_file, "wb") as buffer:
+            shutil.copyfileobj(file.file, buffer)
+            request["image"] = image_file
+            background_tasks.add_task(remove_file, image_file)
 
     if label:
         file_ext = "".join(pathlib.Path(label.filename).suffixes) if label.filename else ".nii.gz"
