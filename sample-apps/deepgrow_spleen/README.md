@@ -1,8 +1,8 @@
-# DeepEdit for Spleen Segmentation
+# DeepGrow for Spleen Segmentation
 
 ### Model Overview
 
-Interactive MONAI Label App using DeepEdit to label spleen over CT Images
+Interactive MONAI Label App using DeepGrow (https://arxiv.org/abs/1903.08205) to label spleen over CT Images
 
 ### Data
 
@@ -12,9 +12,8 @@ The training data is from Medical Segmentation Decathlon (http://medicaldecathlo
 - Task: Segmentation 
 - Modality: CT
 
-### Inputs
+### Input
 
-- 1 channel CT
 - 3 channels (CT + foreground points + background points)
 
 ### Output
@@ -22,4 +21,4 @@ The training data is from Medical Segmentation Decathlon (http://medicaldecathlo
 - 1 channel representing Spleen
 
 
-![DeepEdit for spleen](../../docs/images/sample-apps/deepedit_spleen.png)
+![DeepGrow for spleen](../../docs/images/sample-apps/deepedit_spleen.png)

@@ -12,16 +12,14 @@ The training data is from Kaggle (https://www.kaggle.com/andrewmvd/covid19-ct-sc
 - Task: Segmentation 
 - Modality: CT
 
-### Input
-
-Inputs: 
+### Inputs
 
 - 1 channel CT
 - 3 channels (CT + foreground points + background points)
 
 ### Output
 
-Output: 1 channel representing lungs
+- 1 channel representing lungs
 
 
 ![DeepEdit for lungs](../../docs/images/sample-apps/deepedit_lungs.png)

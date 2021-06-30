@@ -1,8 +1,8 @@
-# DeepEdit for Left Atrium Segmentation on Heart Images
+# DeepGrow for Left Atrium Segmentation on Heart Images
 
 ### Model Overview
 
-Interactive MONAI Label App using DeepEdit to label left atrium over single modality 3D MRI Images
+Interactive MONAI Label App using DeepGrow (https://arxiv.org/abs/1903.08205) to label left atrium over single modality 3D MRI Images
 
 ### Data
 
@@ -12,9 +12,8 @@ The training data is from Medical Segmentation Decathlon (http://medicaldecathlo
 - Task: Segmentation 
 - Modality: MRI
 
-### Inputs
+### Input
 
-- 1 channel MRI 
 - 3 channels (MRI + foreground points + background points)
 
 ### Output
@@ -22,4 +21,4 @@ The training data is from Medical Segmentation Decathlon (http://medicaldecathlo
 - 1 channel representing left atrium
 
 
-![DeepEdit for left atrium](../../docs/images/sample-apps/deepedit_left_atrium.png)
+![DeepGrow for left atrium](../../docs/images/sample-apps/deepedit_left_atrium.png)
