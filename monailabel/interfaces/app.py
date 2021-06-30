@@ -117,7 +117,10 @@ class MONAILabelApp:
 
         image_id = request["image"]
         datastore = datastore if datastore else self.datastore()
-        request["image"] = datastore.get_image_uri(request["image"])
+        if os.path.exists(image_id):
+            request["save_label"] = False
+        else:
+            request["image"] = datastore.get_image_uri(request["image"])
         result_file_name, result_json = task(request)
 
         label_id = None
