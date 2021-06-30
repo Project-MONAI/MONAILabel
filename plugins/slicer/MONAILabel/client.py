@@ -47,6 +47,23 @@ class MONAILabelClient:
         logging.debug("Response: {}".format(response))
         return json.loads(response)
 
+    def upload_image(self, image_in, image_id=None):
+        selector = "/datastore/?image={}".format(MONAILabelUtils.urllib_quote_plus(image_id))
+
+        fields = {}
+        files = {"file": image_in}
+
+        status, response, _ = MONAILabelUtils.http_multipart("PUT", self._server_url, selector, fields, files)
+        if status != 200:
+            raise MONAILabelException(
+                MONAILabelError.SERVER_ERROR,
+                "Status: {}; Response: {}".format(status, response),
+            )
+
+        response = response.decode("utf-8") if isinstance(response, bytes) else response
+        logging.debug("Response: {}".format(response))
+        return json.loads(response)
+
     def save_label(self, image_in, label_in, tag=""):
         selector = "/datastore/label?image={}".format(MONAILabelUtils.urllib_quote_plus(image_in))
         if tag:
