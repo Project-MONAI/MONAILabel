@@ -25,7 +25,6 @@ class MyApp(MONAILabelApp):
                     os.path.join(self.model_dir, "deepgrow_2d_final.pt"),
                 ],
                 "url": "https://www.dropbox.com/s/u9ka8l3kxr8m5ys/deepgrow_2d_spleen.pt?dl=1"
-                "/clara_pt_deepgrow_2d_annotation/versions/1/files/models/model.pt",
             },
             "deepgrow_3d": {
                 "network": BasicUNet(dimensions=3, in_channels=3, out_channels=1, features=(32, 64, 128, 256, 512, 32)),
@@ -34,7 +33,6 @@ class MyApp(MONAILabelApp):
                     os.path.join(self.model_dir, "deepgrow_3d_final.pt"),
                 ],
                 "url": "https://www.dropbox.com/s/6krff7zjk3nkk16/deepgrow_3d_spleen.pt?dl=1"
-                "/clara_pt_deepgrow_3d_annotation/versions/1/files/models/model.pt",
             },
         }
 
