@@ -38,7 +38,7 @@ Make sure you have python 3.x version environment with PyTorch and CUDA installe
 - Install `CUDA <https://developer.nvidia.com/cuda-downloads>`_ (Faster mode: install CUDA runtime only)
 - Install the following Python libraries
 
-  .. code:: Python
+  .. code:: bash
   
     python -m pip install --upgrade pip setuptools wheel
     pip install torch==1.8.1+cu111 torchvision==0.9.1+cu111 torchaudio==0.8.1 -f https://download.pytorch.org/whl/torch_stable.html
@@ -47,7 +47,7 @@ Make sure you have python 3.x version environment with PyTorch and CUDA installe
 Installing MONAI Label
 ----------------------
 
-.. code:: python
+.. code:: bash
 
   pip install git+https://github.com/Project-MONAI/MONAILabel#egg=monailabel
   monailabel -h
@@ -64,8 +64,8 @@ Installing MONAI Label
   monailabel start_server --app C:\Workspace\Apps\deepedit_left_atrium --studies C:\Workspace\Datasets\Task02_Heart\imagesTr
 
 
-> Once you start the MONAILabel Server, by default it will be up and serving at http://127.0.0.1:8000/. Open the serving
-  URL in browser. It will provide you the list of Rest APIs available.
+Once you start the MONAILabel Server, by default it will be up and serving at http://127.0.0.1:8000/. Open the serving
+URL in browser. It will provide you the list of Rest APIs available.
 
 ----------------------------
 3DSlicer Module Installation
