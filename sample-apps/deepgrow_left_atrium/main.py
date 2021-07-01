@@ -24,7 +24,7 @@ class MyApp(MONAILabelApp):
                     os.path.join(self.model_dir, "deepgrow_2d.pt"),
                     os.path.join(self.model_dir, "deepgrow_2d_final.pt"),
                 ],
-                "url": "https://api.ngc.nvidia.com/v2/models/nvidia/med"
+                "url": "https://www.dropbox.com/s/bx832eozn8rcuyg/deepgrow_2d_left_atrium.pt?dl=1"
                 "/clara_pt_deepgrow_2d_annotation/versions/1/files/models/model.pt",
             },
             "deepgrow_3d": {
@@ -33,7 +33,7 @@ class MyApp(MONAILabelApp):
                     os.path.join(self.model_dir, "deepgrow_3d.pt"),
                     os.path.join(self.model_dir, "deepgrow_3d_final.pt"),
                 ],
-                "url": "https://api.ngc.nvidia.com/v2/models/nvidia/med"
+                "url": "https://www.dropbox.com/s/jpteflweqjfc81g/deepgrow_3d_left_atrium.pt?dl=1"
                 "/clara_pt_deepgrow_3d_annotation/versions/1/files/models/model.pt",
             },
         }
