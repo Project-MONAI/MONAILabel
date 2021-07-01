@@ -1,3 +1,4 @@
+===========
 MONAI Label
 ===========
 
@@ -43,13 +44,14 @@ Table of Contents
 
    installation
 
+------------
 Contributing
 ------------
 
 For guidance on making a contribution to MONAI, see the `contributing guidelines
 <https://github.com/Project-MONAI/MONAILabel/blob/main/CONTRIBUTING.md>`_.
 
-
+-----
 Links
 -----
 
@@ -66,9 +68,9 @@ Links
 - Weekly previews: https://pypi.org/project/monailabel-weekly/
 - Docker Hub: https://hub.docker.com/r/projectmonai/monailabel
 
-
+------------------
 Indices and tables
-==================
+------------------
 
 * :ref:`genindex`
 * :ref:`modindex`
