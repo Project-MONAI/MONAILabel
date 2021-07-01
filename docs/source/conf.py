@@ -6,6 +6,7 @@
 
 # -- Path setup --------------------------------------------------------------
 
+import monailabel
 import os
 import sys
 
@@ -16,13 +17,12 @@ import sys
 import sphinx_rtd_theme
 
 sys.path.insert(0, os.path.abspath("../../"))
-import monailabel
 
 # -- Project information -----------------------------------------------------
 
-project = "MONAI-Label"
+project = "MONAI Label"
 copyright = "2020 - 2021 MONAI Consortium"
-author = "MONAI-Label Contributors"
+author = "MONAI Label Contributors"
 
 # The full version, including alpha/beta/rc tags
 short_version = monailabel.__version__.split("+")[0]

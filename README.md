@@ -26,7 +26,7 @@ principles with [MONAI](https://github.com/Project-MONAI).
 - framework for developing and deploying MONAILabel Apps to train and infer AI models
 - compositional & portable APIs for ease of integration in existing workflows
 - customizable design for varying user expertise
-- 3D slicer support
+- 3DSlicer support
 
 
 ## Installation
@@ -54,7 +54,7 @@ MONAILabel supports following OS with GPU/CUDA enabled.
 
 ### Windows
 
-#### Pre Requirements
+#### Prerequisites
 Make sure you have python 3.x version environment with PyTorch + CUDA installed.
 - Install [python](https://www.python.org/downloads/)
 - Install [cuda](https://developer.nvidia.com/cuda-downloads) (Faster mode: install CUDA runtime only)
