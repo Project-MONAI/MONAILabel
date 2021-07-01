@@ -144,17 +144,14 @@ def run_apps(args):
     resource = {
         "generic_deepedit_experimental": f"{sample_apps_uri}/generic_deepedit_experimental",
         "generic_segmentation_experimental": f"{sample_apps_uri}/generic_segmentation_experimental",
-
         "deepedit_brain_tumor": f"{sample_apps_uri}/deepedit_brain_tumor",
         "deepedit_brain_ventricle": f"{sample_apps_uri}/deepedit_brain_ventricle",
         "deepedit_left_atrium": f"{sample_apps_uri}/deepedit_left_atrium",
         "deepedit_lung": f"{sample_apps_uri}/deepedit_lung",
         "deepedit_spleen": f"{sample_apps_uri}/deepedit_spleen",
         "deepedit_vertebra": f"{sample_apps_uri}/deepedit_vertebra",
-
         "deepgrow_left_atrium": f"{sample_apps_uri}/deepgrow_left_atrium",
         "deepgrow_spleen": f"{sample_apps_uri}/deepgrow_spleen",
-
         "segmentation_left_atrium": f"{sample_apps_uri}/segmentation_left_atrium",
         "segmentation_liver_and_tumor": f"{sample_apps_uri}/segmentation_liver_and_tumor",
         "segmentation_spleen": f"{sample_apps_uri}/segmentation_spleen",
