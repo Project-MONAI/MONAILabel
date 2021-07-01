@@ -58,7 +58,6 @@ class MyApp(MONAILabelApp):
         strategies = {
             "random": Random(),
             "first": MyStrategy(),
-            "tta": TTA(path, self.network),
         }
 
         super().__init__(
