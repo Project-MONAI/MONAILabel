@@ -4,7 +4,6 @@ import os
 
 import torch
 from lib import MyInfer, MyStrategy, MyTrain
-from monai.networks.nets import UNet
 
 from monailabel.interfaces import MONAILabelApp
 from monailabel.utils.activelearning import Random
