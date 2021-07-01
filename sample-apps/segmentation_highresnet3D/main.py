@@ -1,8 +1,8 @@
 import json
 import logging
 import os
-import torch
 
+import torch
 from lib import MyInfer, MyStrategy, MyTrain
 from monai.networks.nets import UNet
 
@@ -16,8 +16,8 @@ class MyApp(MONAILabelApp):
     def __init__(self, app_dir, studies):
         self.model_dir = os.path.join(app_dir, "model")
 
-        repo = 'fepegar/highresnet'
-        model_name = 'highres3dnet'
+        repo = "fepegar/highresnet"
+        model_name = "highres3dnet"
         self.network = torch.hub.load(repo, model_name, pretrained=True)
 
         self.pretrained_model = os.path.join(self.model_dir, "brain_parcelation.pth")

@@ -2,10 +2,10 @@ import numpy as np
 from monai.inferers import SlidingWindowInferer
 from monai.transforms import (
     Activationsd,
-    CastToTyped,
     AddChanneld,
-    EnsureChannelFirstd,
     AsDiscreted,
+    CastToTyped,
+    EnsureChannelFirstd,
     LoadImaged,
     NormalizeIntensityd,
     Orientationd,
