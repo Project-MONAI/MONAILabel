@@ -147,4 +147,5 @@ docs/source/apidocs
 
 # MONAI-label
 *.nii.gz
-
+.DS_Store
+*.DS_Store

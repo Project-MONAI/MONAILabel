@@ -24,7 +24,7 @@ class MyApp(MONAILabelApp):
                     os.path.join(self.model_dir, "deepgrow_2d.pt"),
                     os.path.join(self.model_dir, "deepgrow_2d_final.pt"),
                 ],
-                "url": "https://www.dropbox.com/s/bx832eozn8rcuyg/deepgrow_2d_left_atrium.pt?dl=1"
+                "url": "https://www.dropbox.com/s/bx832eozn8rcuyg/deepgrow_2d_left_atrium.pt?dl=1",
             },
             "deepgrow_3d": {
                 "network": BasicUNet(dimensions=3, in_channels=3, out_channels=1, features=(32, 64, 128, 256, 512, 32)),
@@ -32,7 +32,7 @@ class MyApp(MONAILabelApp):
                     os.path.join(self.model_dir, "deepgrow_3d.pt"),
                     os.path.join(self.model_dir, "deepgrow_3d_final.pt"),
                 ],
-                "url": "https://www.dropbox.com/s/jpteflweqjfc81g/deepgrow_3d_left_atrium.pt?dl=1"
+                "url": "https://www.dropbox.com/s/jpteflweqjfc81g/deepgrow_3d_left_atrium.pt?dl=1",
             },
         }
 
