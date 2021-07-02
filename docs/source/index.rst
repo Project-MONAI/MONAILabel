@@ -55,7 +55,7 @@ Links
 -----
 
 - Website: https://monai.io/
-- API documentation: https://docs.monai.io/label
+- API documentation: https://docs.monai.io/projects/label
 - Code: https://github.com/Project-MONAI/MONAI-Label
 - Project tracker: https://github.com/Project-MONAI/MONAI-Label/projects
 - Issue tracker: https://github.com/Project-MONAI/MONAI-Label/issues
