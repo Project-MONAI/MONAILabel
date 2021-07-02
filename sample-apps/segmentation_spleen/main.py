@@ -3,8 +3,7 @@ import logging
 import os
 
 from lib import MyInfer, MyStrategy, MyTrain
-from monai.networks.layers import Norm
-from monai.networks.nets import UNet
+from monai.apps.mmars import load_from_mmar
 
 from monailabel.interfaces import MONAILabelApp
 from monailabel.utils.activelearning import Random
@@ -14,18 +13,13 @@ logger = logging.getLogger(__name__)
 
 class MyApp(MONAILabelApp):
     def __init__(self, app_dir, studies):
+        self.mmar_model_name = "clara_pt_spleen_ct_segmentation_1"
         self.model_dir = os.path.join(app_dir, "model")
-        self.network = UNet(
-            dimensions=3,
-            in_channels=1,
-            out_channels=2,
-            channels=(16, 32, 64, 128, 256),
-            strides=(2, 2, 2, 2),
-            num_res_units=2,
-            norm=Norm.BATCH,
-        )
+        self.network = load_from_mmar(self.mmar_model_name, mmar_dir=self.model_dir, map_location="cuda")
 
-        self.pretrained_model = os.path.join(self.model_dir, "segmentation_spleen.pt")
+        model_path = self._get_mmar_model_path(self.mmar_model_name)
+        self.pretrained_model = os.path.join(self.model_dir, model_path)
+
         self.final_model = os.path.join(self.model_dir, "final.pt")
         self.train_stats_path = os.path.join(self.model_dir, "train_stats.json")
 
@@ -39,20 +33,11 @@ class MyApp(MONAILabelApp):
             "first": MyStrategy(),
         }
 
-        resources = [
-            (
-                self.pretrained_model,
-                "https://api.ngc.nvidia.com/v2/models/nvidia/med"
-                "/clara_pt_spleen_ct_segmentation/versions/1/files/models/model.pt",
-            ),
-        ]
-
         super().__init__(
             app_dir=app_dir,
             studies=studies,
             infers=infers,
             strategies=strategies,
-            resources=resources,
         )
 
         # Simple way to Add deepgrow 2D+3D models for infer tasks

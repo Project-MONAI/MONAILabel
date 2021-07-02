@@ -7,6 +7,8 @@ from typing import Any, Dict
 
 import yaml
 from monai.apps import download_url
+from monai.apps.mmars import MODEL_DESC
+from monai.apps.mmars import RemoteMMARKeys as MMARKeys
 from monai.data import partition_dataset
 
 from monailabel.config import settings
@@ -284,6 +286,14 @@ class MONAILabelApp:
                 logger.info(f"Downloading resource: {resource[0]} from {resource[1]}")
                 download_url(resource[1], resource[0])
                 time.sleep(1)
+
+    def _get_mmar_model_path(self, mmar_model_name):
+        key = mmar_model_name.strip().lower()
+        for mdesc in MODEL_DESC:
+            if key == mdesc[MMARKeys.ID]:
+                return os.path.join(mmar_model_name, mdesc[MMARKeys.MODEL_FILE])
+        else:
+            return None
 
     def add_deepgrow_infer_tasks(self):
         deepgrow_2d = os.path.join(self.app_dir, "model", "deepgrow_2d.ts")
