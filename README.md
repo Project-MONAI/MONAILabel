@@ -97,7 +97,7 @@ Ask and answer questions over on [MONAILabel's GitHub Discussions tab](https://g
 
 ## Links
 - Website: https://monai.io/
-- API documentation: https://docs.monai.io/monailabel
+- API documentation: https://docs.monai.io/projects/label
 - Code: https://github.com/Project-MONAI/MONAILabel
 - Project tracker: https://github.com/Project-MONAI/MONAILabel/projects
 - Issue tracker: https://github.com/Project-MONAI/MONAILabel/issues
