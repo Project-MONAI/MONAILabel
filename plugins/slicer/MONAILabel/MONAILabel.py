@@ -271,7 +271,9 @@ class MONAILabelWidget(ScriptedLoadableModuleWidget, VTKObservationMixin):
         status = self.isTrainingRunning(check_only=False)
         if status and status.get("status") == "RUNNING":
             info = self.logic.info()
-            train_stats = info.get("train_stats", {})
+            train_stats = info.get("train_stats")
+            if not train_stats:
+                return
 
             current = 0 if train_stats.get("total_time") else train_stats.get("epoch", 1)
             total = train_stats.get("total_epochs", 1)
