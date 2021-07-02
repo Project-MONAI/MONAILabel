@@ -28,7 +28,6 @@ from monai.transforms import (
 
 from monailabel.utils.train.basic_train import BasicTrainTask
 
-from .handler import DeepgrowStatsHandler
 from .transforms import Random2DSlice
 
 logger = logging.getLogger(__name__)
@@ -112,11 +111,6 @@ class TrainDeepgrow(BasicTrainTask):
                 AsDiscreted(keys="pred", threshold_values=True, logit_thresh=0.5),
             ]
         )
-
-    def train_handlers(self):
-        handlers = super().train_handlers()
-        handlers.append(DeepgrowStatsHandler(log_dir=self.output_dir, tag_name="val_dice", image_interval=1))
-        return handlers
 
     def val_pre_transforms(self):
         return self.train_pre_transforms()

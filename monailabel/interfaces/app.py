@@ -269,9 +269,7 @@ class MONAILabelApp:
         """
         Callback method when label is saved into datastore by a remote client
         """
-        # TODO:: Add default recipe here to trigger training etc..
         logger.info(f"New label saved for: {image_id} => {label_id}")
-
         self.scoring({"method": "dice"})
         return {}
 
@@ -300,7 +298,15 @@ class MONAILabelApp:
 
         self._download(
             [
-                (deepgrow_2d, "https://www.dropbox.com/s/y9a7tqcos2n4lxf/deepgrow_2d.ts?dl=1"),
-                (deepgrow_3d, "https://www.dropbox.com/s/vs6l30mf6t3h3d0/deepgrow_3d.ts?dl=1"),
+                (
+                    deepgrow_2d,
+                    "https://api.ngc.nvidia.com/v2/models/nvidia/med"
+                    "/clara_pt_deepgrow_2d_annotation/versions/1/files/models/model.ts",
+                ),
+                (
+                    deepgrow_3d,
+                    "https://api.ngc.nvidia.com/v2/models/nvidia/med"
+                    "/clara_pt_deepgrow_3d_annotation/versions/1/files/models/model.ts",
+                ),
             ]
         )

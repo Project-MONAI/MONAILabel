@@ -1,10 +1,10 @@
 ---
 version: 1
-name: Generic Segmentation
-description: Generic Segmentation MONAI Label App
+name: DeepEdit - Generic
+description: MONAI Label App solution using DeepEdit
 dimension: 3
 labels:
-  - Generic organ
+  - generic
 config:
   infer:
     device: cuda
