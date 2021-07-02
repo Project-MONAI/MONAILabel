@@ -166,9 +166,11 @@ def action_apps(args):
             "deepgrow_spleen",
         ],
         "Standard Segmentation Apps": [
+            "segmentation_highresnet3D",
             "segmentation_left_atrium",
             "segmentation_liver_and_tumor",
             "segmentation_spleen",
+            "segmentation_whole_heart",
         ],
     }
 
