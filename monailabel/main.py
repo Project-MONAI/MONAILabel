@@ -63,7 +63,7 @@ def run_main():
     parser = argparse.ArgumentParser()
     subparsers = parser.add_subparsers(help="sub-command help")
 
-    parser_a = subparsers.add_parser("start_server", help="start server help")
+    parser_a = subparsers.add_parser("start_server", help="start server for monailabel")
     parser_a.add_argument("-a", "--app", required=True, help="App Directory")
     parser_a.add_argument("-s", "--studies", required=True, help="Studies Directory")
     parser_a.add_argument("-d", "--debug", action="store_true", help="Enable debug logs")
@@ -74,17 +74,23 @@ def run_main():
     parser_a.add_argument("--dryrun", action="store_true", help="Dry run without starting server")
     parser_a.set_defaults(action="start_server")
 
-    parser_b = subparsers.add_parser("apps", help="sample apps help")
+    parser_b = subparsers.add_parser("apps", help="list or download sample apps")
     parser_b.add_argument("-d", "--download", action="store_true", help="download app")
     parser_b.add_argument("-n", "--name", help="Name of the sample app to download", default=None)
     parser_b.add_argument("-o", "--output", help="Output path to save the app", default=None)
     parser_b.set_defaults(action="apps")
 
-    parser_c = subparsers.add_parser("datasets", help="datasets help")
+    parser_c = subparsers.add_parser("datasets", help="list or download sample datasets")
     parser_c.add_argument("-d", "--download", action="store_true", help="download dataset")
     parser_c.add_argument("-n", "--name", help="Name of the dataset to download", default=None)
     parser_c.add_argument("-o", "--output", help="Output path to save the dataset", default=None)
     parser_c.set_defaults(action="datasets")
+
+    parser_d = subparsers.add_parser("plugins", help="list or download viewer plugins")
+    parser_d.add_argument("-d", "--download", action="store_true", help="download plugin")
+    parser_d.add_argument("-n", "--name", help="Name of the plugin to download", default=None)
+    parser_d.add_argument("-o", "--output", help="Output path to save the plugin", default=None)
+    parser_d.set_defaults(action="plugins")
 
     args = parser.parse_args()
     if not hasattr(args, "action"):
@@ -92,14 +98,16 @@ def run_main():
         exit(-1)
 
     if args.action == "apps":
-        run_apps(args)
+        action_apps(args)
     elif args.action == "datasets":
-        run_datasets(args)
+        action_datasets(args)
+    elif args.action == "plugins":
+        action_plugins(args)
     else:
         run_app(args)
 
 
-def run_datasets(args):
+def action_datasets(args):
     from monai.apps.datasets import DecathlonDataset
     from monai.apps.utils import download_and_extract
 
@@ -111,6 +119,7 @@ def run_datasets(args):
         print("----------------------------------------------------")
         for k, v in resource.items():
             print("  {:<30}: {}".format(k, v))
+        print("")
     else:
         url = resource.get(args.name) if args.name else None
         if not url:
@@ -127,6 +136,7 @@ def run_datasets(args):
             exit(-1)
 
         root_dir = os.path.dirname(os.path.realpath(dataset_dir))
+        os.makedirs(root_dir, exist_ok=True)
         tarfile_name = f"{dataset_dir}.tar"
         download_and_extract(resource[args.name], tarfile_name, root_dir, md5.get(args.name))
 
@@ -137,31 +147,42 @@ def run_datasets(args):
         print(f"{args.name} is downloaded at: {dataset_dir}")
 
 
-def run_apps(args):
+def action_apps(args):
     from monai.apps.utils import download_and_extract
 
     sample_apps_uri = "https://github.com/Project-MONAI/MONAILabel/tree/main/sample-apps"
     resource = {
-        "deepedit_brain_tumor": f"{sample_apps_uri}/deepedit_brain_tumor",
-        "deepedit_brain_ventricle": f"{sample_apps_uri}/deepedit_brain_ventricle",
-        "deepedit_left_atrium": f"{sample_apps_uri}/deepedit_left_atrium",
-        "deepedit_lung": f"{sample_apps_uri}/deepedit_lung",
-        "deepedit_spleen": f"{sample_apps_uri}/deepedit_spleen",
-        "deepedit_vertebra": f"{sample_apps_uri}/deepedit_vertebra",
-        "deepgrow_left_atrium": f"{sample_apps_uri}/deepgrow_left_atrium",
-        "deepgrow_spleen": f"{sample_apps_uri}/deepgrow_spleen",
-        "segmentation_left_atrium": f"{sample_apps_uri}/segmentation_left_atrium",
-        "segmentation_spleen": f"{sample_apps_uri}/segmentation_spleen",
-        "segmentation_liver_and_tumor": f"{sample_apps_uri}/segmentation_liver_and_tumor",
-        "segmentation_highresnet3D": f"{sample_apps_uri}/segmentation_highresnet3D",
-        "segmentation_whole_heart": f"{sample_apps_uri}/segmentation_whole_heart",
+        "Template/Generic Apps": ["generic_deepedit", "generic_deepgrow", "generic_segmentation"],
+        "Deepedit based Apps": [
+            "deepedit_brain_tumor",
+            "deepedit_brain_ventricle",
+            "deepedit_left_atrium",
+            "deepedit_lung",
+            "deepedit_spleen",
+            "deepedit_vertebra",
+        ],
+        "Deepgrow based Apps": [
+            "deepgrow_left_atrium",
+            "deepgrow_spleen",
+        ],
+        "Standard Segmentation Apps": [
+            "segmentation_highresnet3D",
+            "segmentation_left_atrium",
+            "segmentation_liver_and_tumor",
+            "segmentation_spleen",
+            "segmentation_whole_heart",
+        ],
     }
 
     if not args.download:
         print("Available Sample Apps are:")
         print("----------------------------------------------------")
         for k, v in resource.items():
-            print("  {:<30}: {}".format(k, v))
+            print(f"{k}")
+            print("----------------------------------------------------")
+            for n in v:
+                print("  {:<30}: {}".format(n, f"{sample_apps_uri}/{n}"))
+            print("")
     else:
         output_dir = os.path.realpath(os.path.join(args.output, args.name) if args.output else args.name)
         if os.path.exists(output_dir):
@@ -173,6 +194,39 @@ def run_apps(args):
         tarfile_name = f"{tmp_dir}{os.path.sep}{args.name}.zip"
         download_and_extract(url, tarfile_name, tmp_dir, None)
         app_dir = os.path.join(tmp_dir, "MONAILabel-main", "sample-apps", args.name)
+
+        if os.path.dirname(output_dir):
+            os.makedirs(os.path.dirname(output_dir), exist_ok=True)
+        shutil.move(app_dir, output_dir)
+        shutil.rmtree(tmp_dir)
+        print(f"{args.name} is downloaded at: {output_dir}")
+
+
+def action_plugins(args):
+    from monai.apps.utils import download_and_extract
+
+    sample_apps_uri = "https://github.com/Project-MONAI/MONAILabel/tree/main/plugins"
+    resource = {
+        "slicer": f"{sample_apps_uri}/slicer",
+    }
+
+    if not args.download:
+        print("Available Plugins are:")
+        print("----------------------------------------------------")
+        for k, v in resource.items():
+            print("  {:<30}: {}".format(k, v))
+        print("")
+    else:
+        output_dir = os.path.realpath(os.path.join(args.output, args.name) if args.output else args.name)
+        if os.path.exists(output_dir):
+            print(f"Directory already exists: {output_dir}")
+            exit(-1)
+
+        url = "https://github.com/Project-MONAI/MONAILabel/archive/refs/heads/main.zip"
+        tmp_dir = tempfile.mkdtemp(prefix="monailabel")
+        tarfile_name = f"{tmp_dir}{os.path.sep}{args.name}.zip"
+        download_and_extract(url, tarfile_name, tmp_dir, None)
+        app_dir = os.path.join(tmp_dir, "MONAILabel-main", "plugins", args.name)
 
         if os.path.dirname(output_dir):
             os.makedirs(os.path.dirname(output_dir), exist_ok=True)

@@ -174,6 +174,7 @@ class MONAILabelWidget(ScriptedLoadableModuleWidget, VTKObservationMixin):
         self.ui.trainingButton.setIcon(self.icon("training.png"))
         self.ui.stopTrainingButton.setIcon(self.icon("stop.png"))
         self.ui.uploadImageButton.setIcon(self.icon("upload.svg"))
+        self.ui.importLabelButton.setIcon(self.icon("download.png"))
 
         self.ui.dgPositiveFiducialPlacementWidget.setMRMLScene(slicer.mrmlScene)
         self.ui.dgPositiveFiducialPlacementWidget.placeButton().toolTip = "Select +ve points"
@@ -199,6 +200,7 @@ class MONAILabelWidget(ScriptedLoadableModuleWidget, VTKObservationMixin):
         self.ui.trainingStatusButton.connect("clicked(bool)", self.onTrainingStatus)
         self.ui.saveLabelButton.connect("clicked(bool)", self.onSaveLabel)
         self.ui.uploadImageButton.connect("clicked(bool)", self.onUploadImage)
+        self.ui.importLabelButton.connect("clicked(bool)", self.onImportLabel)
 
         self.initializeParameterNode()
         self.updateServerUrlGUIFromSettings()
@@ -362,6 +364,7 @@ class MONAILabelWidget(ScriptedLoadableModuleWidget, VTKObservationMixin):
         self.ui.uploadImageButton.setEnabled(
             self.info and slicer.mrmlScene.GetFirstNodeByClass("vtkMRMLScalarVolumeNode") and self._segmentNode is None
         )
+        self.ui.importLabelButton.setEnabled(self._segmentNode is not None)
 
         # Create empty markup fiducial node for deep grow +ve and -ve
         if self._segmentNode:
@@ -936,6 +939,19 @@ class MONAILabelWidget(ScriptedLoadableModuleWidget, VTKObservationMixin):
             self.reportProgress(100)
             qt.QApplication.restoreOverrideCursor()
             slicer.util.errorDisplay("Failed to upload volume to Server", detailedText=traceback.format_exc())
+
+    def onImportLabel(self):
+        if not self.ui.labelPathLineEdit.currentPath or not os.path.exists(self.ui.labelPathLineEdit.currentPath):
+            slicer.util.warningDisplay("Label File not selected")
+            return
+
+        try:
+            qt.QApplication.setOverrideCursor(qt.Qt.WaitCursor)
+            self.updateSegmentationMask(self.ui.labelPathLineEdit.currentPath, self.info["labels"])
+            qt.QApplication.restoreOverrideCursor()
+        except:
+            qt.QApplication.restoreOverrideCursor()
+            slicer.util.errorDisplay("Failed to import label", detailedText=traceback.format_exc())
 
     def onSaveLabel(self):
         start = time.time()
