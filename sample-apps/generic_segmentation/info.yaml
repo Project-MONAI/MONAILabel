@@ -1,7 +1,7 @@
 ---
 version: 1
-name: DeepEdit Generic
-description: MONAI Label App solution using DeepEdit
+name: Segmentation - Generic
+description: Generic Segmentation MONAI Label App
 dimension: 3
 labels:
   - generic

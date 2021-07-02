@@ -7,7 +7,7 @@
     <x>0</x>
     <y>0</y>
     <width>425</width>
-    <height>602</height>
+    <height>689</height>
    </rect>
   </property>
   <layout class="QVBoxLayout" name="verticalLayout">
@@ -146,7 +146,7 @@
          <bool>true</bool>
         </attribute>
         <attribute name="verticalHeaderDefaultSectionSize">
-         <number>20</number>
+         <number>24</number>
         </attribute>
         <column/>
         <column/>
@@ -250,6 +250,44 @@
        <widget class="QLabel" name="label_11">
         <property name="text">
          <string>Model Accuracy:</string>
+        </property>
+       </widget>
+      </item>
+     </layout>
+    </widget>
+   </item>
+   <item>
+    <widget class="ctkCollapsibleButton" name="toolsCollapsibleButton">
+     <property name="text">
+      <string>Tools</string>
+     </property>
+     <property name="collapsed">
+      <bool>true</bool>
+     </property>
+     <property name="collapsedHeight">
+      <number>9</number>
+     </property>
+     <layout class="QGridLayout" name="gridLayout">
+      <property name="leftMargin">
+       <number>0</number>
+      </property>
+      <property name="rightMargin">
+       <number>0</number>
+      </property>
+      <item row="2" column="1">
+       <widget class="ctkPathLineEdit" name="labelPathLineEdit"/>
+      </item>
+      <item row="2" column="0">
+       <widget class="QLabel" name="label_12">
+        <property name="text">
+         <string>Import Label:</string>
+        </property>
+       </widget>
+      </item>
+      <item row="2" column="2">
+       <widget class="QPushButton" name="importLabelButton">
+        <property name="text">
+         <string/>
         </property>
        </widget>
       </item>
@@ -432,6 +470,11 @@
    <extends>QWidget</extends>
    <header>ctkCollapsibleButton.h</header>
    <container>1</container>
+  </customwidget>
+  <customwidget>
+   <class>ctkPathLineEdit</class>
+   <extends>QWidget</extends>
+   <header>ctkPathLineEdit.h</header>
   </customwidget>
   <customwidget>
    <class>qMRMLWidget</class>
