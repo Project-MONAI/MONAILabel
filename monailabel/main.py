@@ -5,7 +5,6 @@ import pathlib
 import platform
 import shutil
 import sys
-import tempfile
 
 import uvicorn
 from fastapi import FastAPI
@@ -78,18 +77,21 @@ def run_main():
     parser_b.add_argument("-d", "--download", action="store_true", help="download app")
     parser_b.add_argument("-n", "--name", help="Name of the sample app to download", default=None)
     parser_b.add_argument("-o", "--output", help="Output path to save the app", default=None)
+    parser_b.add_argument("--prefix", default=None)
     parser_b.set_defaults(action="apps")
 
     parser_c = subparsers.add_parser("datasets", help="list or download sample datasets")
     parser_c.add_argument("-d", "--download", action="store_true", help="download dataset")
     parser_c.add_argument("-n", "--name", help="Name of the dataset to download", default=None)
     parser_c.add_argument("-o", "--output", help="Output path to save the dataset", default=None)
+    parser_c.add_argument("--prefix", default=None)
     parser_c.set_defaults(action="datasets")
 
     parser_d = subparsers.add_parser("plugins", help="list or download viewer plugins")
     parser_d.add_argument("-d", "--download", action="store_true", help="download plugin")
     parser_d.add_argument("-n", "--name", help="Name of the plugin to download", default=None)
     parser_d.add_argument("-o", "--output", help="Output path to save the plugin", default=None)
+    parser_d.add_argument("--prefix", default=None)
     parser_d.set_defaults(action="plugins")
 
     args = parser.parse_args()
@@ -148,67 +150,58 @@ def action_datasets(args):
 
 
 def action_apps(args):
-    from monai.apps.utils import download_and_extract
+    apps_dir = os.path.join(os.path.dirname(os.path.dirname(os.path.realpath(__file__))), "sample-apps")
+    if not os.path.exists(apps_dir):
+        apps_dir = os.path.join(args.prefix if args.prefix else sys.prefix, "monailabel", "sample-apps")
 
-    sample_apps_uri = "https://github.com/Project-MONAI/MONAILabel/tree/main/sample-apps"
+    apps = os.listdir(apps_dir)
+    apps = [os.path.basename(a) for a in apps]
+    apps.sort()
+
     resource = {
-        "Template/Generic Apps": ["generic_deepedit", "generic_deepgrow", "generic_segmentation"],
-        "Deepedit based Apps": [
-            "deepedit_brain_tumor",
-            "deepedit_brain_ventricle",
-            "deepedit_left_atrium",
-            "deepedit_lung",
-            "deepedit_spleen",
-            "deepedit_vertebra",
-        ],
-        "Deepgrow based Apps": [
-            "deepgrow_left_atrium",
-            "deepgrow_spleen",
-        ],
-        "Standard Segmentation Apps": [
-            "segmentation_highresnet3D",
-            "segmentation_left_atrium",
-            "segmentation_liver_and_tumor",
-            "segmentation_spleen",
-            "segmentation_whole_heart",
-        ],
+        "Template/Generic Apps": [a for a in apps if a.startswith("generic_")],
+        "Deepedit based Apps": [a for a in apps if a.startswith("deepedit_")],
+        "Deepgrow based Apps": [a for a in apps if a.startswith("deepgrow_")],
+        "Standard Segmentation Apps": [a for a in apps if a.startswith("segmentation_")],
     }
 
     if not args.download:
-        print("Available Sample Apps are:")
+        print(f"Available Sample Apps are: ({apps_dir})")
         print("----------------------------------------------------")
         for k, v in resource.items():
             print(f"{k}")
             print("----------------------------------------------------")
             for n in v:
-                print("  {:<30}: {}".format(n, f"{sample_apps_uri}/{n}"))
+                print("  {:<30}: {}".format(n, f"{apps_dir}/{n}"))
             print("")
     else:
+        app_dir = os.path.join(apps_dir, args.name)
+        if args.name not in apps or not os.path.exists(apps_dir):
+            print(f"App {args.name} => {app_dir} not exists")
+            exit(-1)
+
         output_dir = os.path.realpath(os.path.join(args.output, args.name) if args.output else args.name)
         if os.path.exists(output_dir):
             print(f"Directory already exists: {output_dir}")
             exit(-1)
 
-        url = "https://github.com/Project-MONAI/MONAILabel/archive/refs/heads/main.zip"
-        tmp_dir = tempfile.mkdtemp(prefix="monailabel")
-        tarfile_name = f"{tmp_dir}{os.path.sep}{args.name}.zip"
-        download_and_extract(url, tarfile_name, tmp_dir, None)
-        app_dir = os.path.join(tmp_dir, "MONAILabel-main", "sample-apps", args.name)
-
         if os.path.dirname(output_dir):
             os.makedirs(os.path.dirname(output_dir), exist_ok=True)
-        shutil.move(app_dir, output_dir)
-        shutil.rmtree(tmp_dir)
-        print(f"{args.name} is downloaded at: {output_dir}")
+        shutil.copytree(app_dir, output_dir, ignore=shutil.ignore_patterns("logs", "model", "__pycache__"))
+        print(f"{args.name} is copied at: {output_dir}")
 
 
 def action_plugins(args):
-    from monai.apps.utils import download_and_extract
+    plugins_dir = os.path.join(os.path.dirname(os.path.dirname(os.path.realpath(__file__))), "plugins")
+    if not os.path.exists(plugins_dir):
+        plugins_dir = os.path.join(args.prefix if args.prefix else sys.prefix, "monailabel", "plugins")
 
-    sample_apps_uri = "https://github.com/Project-MONAI/MONAILabel/tree/main/plugins"
-    resource = {
-        "slicer": f"{sample_apps_uri}/slicer",
-    }
+    plugins = os.listdir(plugins_dir)
+    plugins = [os.path.basename(a) for a in plugins]
+    plugins = [p for p in plugins if p != "ohif"]
+    plugins.sort()
+
+    resource = {p: f"{plugins_dir}/{p}" for p in plugins}
 
     if not args.download:
         print("Available Plugins are:")
@@ -217,22 +210,20 @@ def action_plugins(args):
             print("  {:<30}: {}".format(k, v))
         print("")
     else:
+        plugin_dir = os.path.join(plugins_dir, args.name)
+        if args.name not in plugins or not os.path.exists(plugin_dir):
+            print(f"Plugin {args.name} => {plugins_dir} not exists")
+            exit(-1)
+
         output_dir = os.path.realpath(os.path.join(args.output, args.name) if args.output else args.name)
         if os.path.exists(output_dir):
             print(f"Directory already exists: {output_dir}")
             exit(-1)
 
-        url = "https://github.com/Project-MONAI/MONAILabel/archive/refs/heads/main.zip"
-        tmp_dir = tempfile.mkdtemp(prefix="monailabel")
-        tarfile_name = f"{tmp_dir}{os.path.sep}{args.name}.zip"
-        download_and_extract(url, tarfile_name, tmp_dir, None)
-        app_dir = os.path.join(tmp_dir, "MONAILabel-main", "plugins", args.name)
-
         if os.path.dirname(output_dir):
             os.makedirs(os.path.dirname(output_dir), exist_ok=True)
-        shutil.move(app_dir, output_dir)
-        shutil.rmtree(tmp_dir)
-        print(f"{args.name} is downloaded at: {output_dir}")
+        shutil.copytree(plugin_dir, output_dir, ignore=shutil.ignore_patterns("__pycache__"))
+        print(f"{args.name} is copied at: {output_dir}")
 
 
 def run_app(args):
