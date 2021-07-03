@@ -1,17 +1,23 @@
 import logging
 
+import numpy as np
 from monai.inferers import SlidingWindowInferer
 from monai.transforms import (
     Activationsd,
     AsDiscreted,
+    CenterSpatialCropd,
     Compose,
     CropForegroundd,
     EnsureChannelFirstd,
     LoadImaged,
+    NormalizeIntensityd,
     Orientationd,
-    RandCropByPosNegLabeld,
+    RandAdjustContrastd,
+    RandAffined,
+    RandFlipd,
+    RandHistogramShiftd,
     RandShiftIntensityd,
-    ScaleIntensityRanged,
+    Resized,
     Spacingd,
     ToTensord,
 )
@@ -27,25 +33,27 @@ class MyTrain(BasicTrainTask):
             [
                 LoadImaged(keys=("image", "label")),
                 EnsureChannelFirstd(keys=("image", "label")),
-                Orientationd(keys=["image", "label"], axcodes="RAS"),
                 Spacingd(
                     keys=("image", "label"),
                     pixdim=(1.0, 1.0, 1.0),
                     mode=("bilinear", "nearest"),
                 ),
-                ScaleIntensityRanged(keys="image", a_min=-57, a_max=164, b_min=0.0, b_max=1.0, clip=True),
-                CropForegroundd(keys=("image", "label"), source_key="image"),
-                RandCropByPosNegLabeld(
-                    keys=("image", "label"),
-                    label_key="label",
-                    spatial_size=(32, 32, 32),
-                    pos=1,
-                    neg=1,
-                    num_samples=4,
-                    image_key="image",
-                    image_threshold=0,
-                ),
+                Orientationd(keys=["image", "label"], axcodes="RAS"),
+                NormalizeIntensityd(keys="image"),
                 RandShiftIntensityd(keys="image", offsets=0.1, prob=0.5),
+                RandAdjustContrastd(keys="image", gamma=6),
+                RandHistogramShiftd(keys="image", num_control_points=8, prob=0.5),
+                CropForegroundd(keys=["image", "label"], source_key="image"),
+                RandFlipd(keys=["image", "label"], prob=0.5, spatial_axis=0),
+                RandAffined(
+                    keys=["image", "label"],
+                    mode=("bilinear", "nearest"),
+                    prob=1.0,
+                    spatial_size=(128, 128, 128),
+                    rotate_range=(0, 0, np.pi / 15),
+                    scale_range=(0.1, 0.1, 0.1),
+                ),
+                Resized(keys=("image", "label"), spatial_size=[128, 128, 128], mode=("area", "nearest")),
                 ToTensord(keys=("image", "label")),
             ]
         )
@@ -68,8 +76,15 @@ class MyTrain(BasicTrainTask):
             [
                 LoadImaged(keys=("image", "label")),
                 EnsureChannelFirstd(keys=("image", "label")),
-                ScaleIntensityRanged(keys="image", a_min=-57, a_max=164, b_min=0.0, b_max=1.0, clip=True),
-                CropForegroundd(keys=("image", "label"), source_key="image"),
+                Spacingd(
+                    keys=("image", "label"),
+                    pixdim=(1.0, 1.0, 1.0),
+                    mode=("bilinear", "nearest"),
+                ),
+                Orientationd(keys=["image", "label"], axcodes="RAS"),
+                NormalizeIntensityd(keys="image"),
+                CenterSpatialCropd(keys=["image", "label"], roi_size=[128, 128, 16]),
+                Resized(keys=("image", "label"), spatial_size=[128, 128, 128], mode=("area", "nearest")),
                 ToTensord(keys=("image", "label")),
             ]
         )
