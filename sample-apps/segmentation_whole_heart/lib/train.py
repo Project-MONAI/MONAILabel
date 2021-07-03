@@ -1,22 +1,22 @@
 import logging
-import numpy as np
 
+import numpy as np
 from monai.inferers import SlidingWindowInferer
 from monai.transforms import (
     Activationsd,
     AsDiscreted,
+    CenterSpatialCropd,
     Compose,
     CropForegroundd,
-    CenterSpatialCropd,
     EnsureChannelFirstd,
     LoadImaged,
     NormalizeIntensityd,
-    RandAdjustContrastd,
-    RandHistogramShiftd,
     Orientationd,
-    RandShiftIntensityd,
-    RandFlipd,
+    RandAdjustContrastd,
     RandAffined,
+    RandFlipd,
+    RandHistogramShiftd,
+    RandShiftIntensityd,
     Resized,
     Spacingd,
     ToTensord,
@@ -46,12 +46,13 @@ class MyTrain(BasicTrainTask):
                 CropForegroundd(keys=["image", "label"], source_key="image"),
                 RandFlipd(keys=["image", "label"], prob=0.5, spatial_axis=0),
                 RandAffined(
-                    keys=['image', 'label'],
-                    mode=('bilinear', 'nearest'),
+                    keys=["image", "label"],
+                    mode=("bilinear", "nearest"),
                     prob=1.0,
                     spatial_size=(128, 128, 128),
-                    rotate_range=(0, 0, np.pi/15),
-                    scale_range=(0.1, 0.1, 0.1)),
+                    rotate_range=(0, 0, np.pi / 15),
+                    scale_range=(0.1, 0.1, 0.1),
+                ),
                 Resized(keys=("image", "label"), spatial_size=[128, 128, 128], mode=("area", "nearest")),
                 ToTensord(keys=("image", "label")),
             ]

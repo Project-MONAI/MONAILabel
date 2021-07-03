@@ -1,17 +1,15 @@
-import numpy as np
 from monai.inferers import SlidingWindowInferer
-from monai.transforms import (
+from monai.transforms import (  # CenterSpatialCropd,
     Activationsd,
     AddChanneld,
-    EnsureChannelFirstd,
     AsDiscreted,
+    EnsureChannelFirstd,
     LoadImaged,
     NormalizeIntensityd,
     Orientationd,
-    # CenterSpatialCropd,
+    Resized,
     Spacingd,
     SqueezeDimd,
-    Resized,
     ToNumpyd,
     ToTensord,
 )
