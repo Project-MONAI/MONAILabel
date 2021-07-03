@@ -3,7 +3,7 @@ import logging
 import os
 
 from lib import MyInfer, MyStrategy, MyTrain
-from monai.networks.nets import UNet
+from monai.networks.nets import DynUNet
 
 from monailabel.interfaces import MONAILabelApp
 from monailabel.utils.activelearning import Random
@@ -14,13 +14,36 @@ logger = logging.getLogger(__name__)
 class MyApp(MONAILabelApp):
     def __init__(self, app_dir, studies):
         self.model_dir = os.path.join(app_dir, "model")
-        self.network = UNet(
-            dimensions=3,
+        self.network = DynUNet(
+            spatial_dims=3,
             in_channels=1,
             out_channels=4,
-            channels=(16, 32, 64, 128, 256),
-            strides=(2, 2, 2, 2),
-            num_res_units=2,
+            kernel_size=[
+                [3, 3, 3],
+                [3, 3, 3],
+                [3, 3, 3],
+                [3, 3, 3],
+                [3, 3, 3],
+                [3, 3, 3],
+            ],
+            strides=[
+                [1, 1, 1],
+                [2, 2, 2],
+                [2, 2, 2],
+                [2, 2, 2],
+                [2, 2, 2],
+                [2, 2, 1],
+            ],
+            upsample_kernel_size=[
+                [2, 2, 2],
+                [2, 2, 2],
+                [2, 2, 2],
+                [2, 2, 2],
+                [2, 2, 1],
+            ],
+            norm_name="instance",
+            deep_supervision=False,
+            res_block=True,
         )
 
         self.pretrained_model = os.path.join(self.model_dir, "segmentation_whole_heart.pt")
@@ -53,7 +76,7 @@ class MyApp(MONAILabelApp):
             resources=resources,
         )
 
-        # Simple way to Add deepgrow 2D+3D models for infer tasks
+        # # Simple way to Add deepgrow 2D+3D models for infer tasks
         self.add_deepgrow_infer_tasks()
 
     def train(self, request):

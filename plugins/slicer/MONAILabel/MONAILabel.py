@@ -1110,8 +1110,7 @@ class MONAILabelWidget(ScriptedLoadableModuleWidget, VTKObservationMixin):
 
     def getLabelColor(self, name):
         color = GenericAnatomyColors.get(name.lower())
-        color = GenericAnatomyColors.get("tissue") if color is None else color
-        return [c / 255.0 for c in color]
+        return [c / 255.0 for c in color] if color else None
 
     def updateSegmentationMask(self, in_file, labels, sliceIndex=None):
         # TODO:: Add ROI Node (for Bounding Box if provided in the result)

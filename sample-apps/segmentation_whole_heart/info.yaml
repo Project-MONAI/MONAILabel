@@ -1,12 +1,12 @@
 ---
 version: 1
 name: Segmentation Whole Heart
-description: MONAI Label App to provide active learning solution to label two chambers over 3D MR Images
+description: MONAI Label App to provide active learning solution to label two heart chambers over 3D MR Images
 dimension: 3
 labels:
-  - Right ventricle
-  - Left ventricle
-  - Inner wall - left ventricle
+  - left ventricular volume
+  - left ventricle wall
+  - right ventricle of heart
 config:
   infer:
     device: cuda

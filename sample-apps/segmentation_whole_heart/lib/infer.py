@@ -3,15 +3,15 @@ from monai.inferers import SlidingWindowInferer
 from monai.transforms import (
     Activationsd,
     AddChanneld,
-    AsDiscreted,
-    CastToTyped,
     EnsureChannelFirstd,
+    AsDiscreted,
     LoadImaged,
     NormalizeIntensityd,
     Orientationd,
+    # CenterSpatialCropd,
     Spacingd,
-    SpatialPadd,
     SqueezeDimd,
+    Resized,
     ToNumpyd,
     ToTensord,
 )
@@ -22,7 +22,7 @@ from monailabel.utils.others.post import BoundingBoxd, Restored
 
 class MyInfer(InferTask):
     """
-    This provides Inference Engine for pre-trained whole heart segmentation (UNet) model.
+    This provides Inference Engine for pre-trained whole heart segmentation (DynUNet) model.
     """
 
     def __init__(
@@ -30,7 +30,7 @@ class MyInfer(InferTask):
         path,
         network=None,
         type=InferType.SEGMENTATION,
-        labels=("LV", "LV_wall", "RV"),
+        labels=("left ventricular volume", "left ventricle wall", "right ventricle of heart"),
         dimension=3,
         description="A pre-trained model for volumetric (3D) segmentation of heart from MR image",
     ):
@@ -47,18 +47,18 @@ class MyInfer(InferTask):
         pixdim = (1.0, 1.0, 1.0)
         roi_size = [128, 128, 128]
         return [
-            LoadImaged(keys=["image"]),
+            LoadImaged(keys="image"),
             EnsureChannelFirstd(keys="image"),
             Spacingd(
-                keys=["image"],
+                keys="image",
                 pixdim=pixdim,
                 mode="bilinear",
             ),
-            Orientationd(keys=["image"], axcodes="RAS"),
-            SpatialPadd(keys=["image"], spatial_size=tuple(roi_size)),
-            NormalizeIntensityd(keys=["image"], nonzero=False, channel_wise=True),
-            CastToTyped(keys=["image"], dtype=np.float32),
-            ToTensord(keys=["image"]),
+            Orientationd(keys="image", axcodes="RAS"),
+            NormalizeIntensityd(keys="image"),
+            # CenterSpatialCropd(keys="image", roi_size=[128, 128, 128]),
+            Resized(keys="image", spatial_size=roi_size, mode="area"),
+            ToTensord(keys="image"),
         ]
 
     def inferer(self):
