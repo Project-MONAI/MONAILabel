@@ -1,7 +1,7 @@
 ---
 version: 1
-name: Segmentation Whole Heart
-description: MONAI Label App to provide active learning solution to label two heart chambers over 3D MR Images
+name: Segmentation heart ventricles
+description: MONAI Label App to provide active learning solution to label two heart chambers over 3D MR (SAX) Images
 dimension: 3
 labels:
   - left ventricular volume
