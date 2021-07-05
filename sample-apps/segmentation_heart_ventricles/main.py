@@ -46,13 +46,13 @@ class MyApp(MONAILabelApp):
             res_block=True,
         )
 
-        self.pretrained_model = os.path.join(self.model_dir, "segmentation_whole_heart.pt")
+        self.pretrained_model = os.path.join(self.model_dir, "segmentation_heart_ventricles.pt")
         self.final_model = os.path.join(self.model_dir, "final.pt")
         self.train_stats_path = os.path.join(self.model_dir, "train_stats.json")
 
         path = [self.pretrained_model, self.final_model]
         infers = {
-            "segmentation_whole_heart": MyInfer(path, self.network),
+            "segmentation_heart_ventricles": MyInfer(path, self.network),
         }
 
         strategies = {
@@ -61,11 +61,7 @@ class MyApp(MONAILabelApp):
         }
 
         resources = [
-            (
-                self.pretrained_model,
-                "https://api.ngc.nvidia.com/v2/models/nvidia/med"
-                "/clara_pt_liver_and_tumor_ct_segmentation/versions/1/files/models/model.pt",
-            ),
+            (self.pretrained_model, "https://www.dropbox.com/s/83xupzo1z23j0f3/segmentation_heart_ventricles.pt?dl=1"),
         ]
 
         super().__init__(
@@ -77,7 +73,7 @@ class MyApp(MONAILabelApp):
         )
 
         # # Simple way to Add deepgrow 2D+3D models for infer tasks
-        self.add_deepgrow_infer_tasks()
+        # self.add_deepgrow_infer_tasks()
 
     def train(self, request):
         logger.info(f"Training request: {request}")

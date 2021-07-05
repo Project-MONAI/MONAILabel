@@ -1,13 +1,13 @@
 from monai.inferers import SlidingWindowInferer
-from monai.transforms import (  # CenterSpatialCropd,
+from monai.transforms import (
     Activationsd,
     AddChanneld,
     AsDiscreted,
+    CenterSpatialCropd,
     EnsureChannelFirstd,
     LoadImaged,
     NormalizeIntensityd,
     Orientationd,
-    Resized,
     Spacingd,
     SqueezeDimd,
     ToNumpyd,
@@ -15,12 +15,12 @@ from monai.transforms import (  # CenterSpatialCropd,
 )
 
 from monailabel.interfaces.tasks import InferTask, InferType
-from monailabel.utils.others.post import BoundingBoxd, Restored
+from monailabel.utils.others.post import Restored
 
 
 class MyInfer(InferTask):
     """
-    This provides Inference Engine for pre-trained whole heart segmentation (DynUNet) model.
+    This provides Inference Engine for pre-trained heart ventricles segmentation (DynUNet) model.
     """
 
     def __init__(
@@ -42,33 +42,33 @@ class MyInfer(InferTask):
         )
 
     def pre_transforms(self):
-        pixdim = (1.0, 1.0, 1.0)
-        roi_size = [128, 128, 128]
         return [
             LoadImaged(keys="image"),
             EnsureChannelFirstd(keys="image"),
             Spacingd(
                 keys="image",
-                pixdim=pixdim,
+                pixdim=(1.0, 1.0, 1.0),
                 mode="bilinear",
             ),
             Orientationd(keys="image", axcodes="RAS"),
             NormalizeIntensityd(keys="image"),
-            # CenterSpatialCropd(keys="image", roi_size=[128, 128, 128]),
-            Resized(keys="image", spatial_size=roi_size, mode="area"),
+            CenterSpatialCropd(keys="image", roi_size=[160, 160, 160]),
             ToTensord(keys="image"),
         ]
 
     def inferer(self):
         return SlidingWindowInferer(roi_size=[128, 128, 128])
 
+    def inverse_transforms(self):
+        return []  # Self-determine from the list of pre-transforms provided
+
     def post_transforms(self):
         return [
+            ToTensord(keys="pred"),
             AddChanneld(keys="pred"),
             Activationsd(keys="pred", softmax=True),
             AsDiscreted(keys="pred", argmax=True),
             SqueezeDimd(keys="pred", dim=0),
             ToNumpyd(keys="pred"),
             Restored(keys="pred", ref_image="image"),
-            BoundingBoxd(keys="pred", result="result", bbox="bbox"),
         ]
