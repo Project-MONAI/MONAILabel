@@ -61,7 +61,7 @@ class MyApp(MONAILabelApp):
         }
 
         resources = [
-            (self.pretrained_model, "https://www.dropbox.com/s/y4wsf5w9hbns3tc/segmentation_heart_ventricles.pt?dl=1"),
+            (self.pretrained_model, "https://www.dropbox.com/s/83xupzo1z23j0f3/segmentation_heart_ventricles.pt?dl=1"),
         ]
 
         super().__init__(
