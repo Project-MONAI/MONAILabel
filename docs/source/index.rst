@@ -19,29 +19,20 @@ learning and becoming better at understanding what the end-user is trying to ann
 MONAI Label aims to fill the gap between developers creating new annotation applications, and
 the end users which want to benefit from these innovations.
 
-.. image:: https://raw.githubusercontent.com/Project-MONAI/MONAILabel/main/docs/images/demo.png
-   :width: 800px
-   :target: https://www.youtube.com/watch?v=vFirnscuOVI
-
 Table of Contents
 
 .. toctree::
    :maxdepth: 1
-   :caption: Highlights
+   :caption: Getting Started
 
-   highlights
+   installation
+   modules
 
 .. toctree::
    :maxdepth: 1
    :caption: APIs
 
    apis
-
-.. toctree::
-   :maxdepth: 1
-   :caption: Installation
-
-   installation
 
 ------------
 Contributing
