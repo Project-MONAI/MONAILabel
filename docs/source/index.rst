@@ -6,7 +6,7 @@ MONAI Label
 
 MONAI Label is an intelligent open source image labeling and learning tool that enables
 users to create annotated datasets and build AI annotation models for clinical evaluation.
-MONAI Label enables application developers to build labeling apps in a __serverless__ way,
+MONAI Label enables application developers to build labeling apps in a *serverless* way,
 where custom labeling apps are exposed as a service through the MONAI Label Server.
 
 MONAI Label reduces the time and effort of annotating new datasets and enables the adaptation
@@ -19,29 +19,20 @@ learning and becoming better at understanding what the end-user is trying to ann
 MONAI Label aims to fill the gap between developers creating new annotation applications, and
 the end users which want to benefit from these innovations.
 
-.. image:: https://raw.githubusercontent.com/Project-MONAI/MONAILabel/main/docs/images/demo.png
-   :width: 800px
-   :target: https://www.youtube.com/watch?v=vFirnscuOVI
-
 Table of Contents
 
 .. toctree::
    :maxdepth: 1
-   :caption: Highlights
+   :caption: Getting Started
 
-   highlights
+   installation
+   modules
 
 .. toctree::
    :maxdepth: 1
    :caption: APIs
 
    apis
-
-.. toctree::
-   :maxdepth: 1
-   :caption: Installation
-
-   installation
 
 ------------
 Contributing
