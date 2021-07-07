@@ -18,11 +18,11 @@ and the various tasks their app may perform. For example, in the figure the user
 employs
 
 - | two inferencing tasks, namely :py:class:`MyInfer` which is a custom implementation of :py:class:`~monailabel.interfaces.tasks.InferTask`, 
-  | and :py:class:`~monailabel.utils.infer.deepgrow_2d.InferDeepGrow2D` which is a ready-to-use utilitiy included with MONAI Label,
+  | and :py:class:`~monailabel.utils.infer.deepgrow_2d.InferDeepGrow2D` which is a ready-to-use utility included with MONAI Label,
 - one training task, :py:class:`TrainDeepGrow` which is an extension of the :py:class:`~monailabel.utils.train.base_train.BasicTrainTask` utility,
 - | and two next image selection strategies, :py:class:`~monailabel.interfaces.utils.activelearning.Random` included with MONAL Label which allow 
   | the user to select the next image at random, and :py:class:`MyStrategy` which implements the interface 
-  | :py:class:`~monailabel.intefaces.Strategy` which the end user may select as a custom alternative for next image selection
+  | :py:class:`~monailabel.interfaces.Strategy` which the end user may select as a custom alternative for next image selection
 
 .. figure:: ../images/modules.svg
   :alt: MONAI Label Interfaces and Utilities
@@ -130,7 +130,7 @@ Building an Image Selection Strategy
 Selecting the next image to load in the end-users client may be of importance to some labeling
 applications where the developer may want to allow the user to select one (of perhaps many)
 strategies to select the next image to annotate as a means to efficiently annotate the datastore
-by, for example, presenting the most representattive image of an unlabeled subset of images.
+by, for example, presenting the most representative image of an unlabeled subset of images.
 
 The example below shows a simple image selection strategy where :py:class:`GetFirstUnlabeledImage` returns
 the first unlabeled image it finds in the :py:class:`~monailabel.interfaces.Datastore`.
@@ -160,7 +160,7 @@ Building a MONAI Label App
 ==========================
 
 A MONAI Label app ties together inference, training, and image selection to provide the end-user with
-a seamless simulataneous model training and annotation experience, where a segmentation model learns
+a seamless simultaneous model training and annotation experience, where a segmentation model learns
 how to segment the region of interest as the user annotates the data.
 
 The labeling app in the example code below utilizes the tasks :py:class:`MyInfer`, :py:class:`MyTrain`,
