@@ -170,7 +170,7 @@ weights perform training based on newly annotated data, save the new weights and
 Any further training on the model will continue from the latest checkpoint.
 
 .. code-block:: python
-  :emphasize-lines: 7, 9, 21, 25, 66
+  :emphasize-lines: 7, 9, 21, 26, 66
 
   from monai.networks.layers import Norm
   from monai.networks.nets import UNet
@@ -178,7 +178,7 @@ Any further training on the model will continue from the latest checkpoint.
   from monailabel.interfaces import MONAILabelApp
   from monailabel.utils.activelearning import Random
 
-  import MyInfer, MyStrategy, MyTrain
+  import MyInfer, MyTrain, GetFirstUnlabeledImage
 
   class MyApp(MONAILabelApp):
 
@@ -197,7 +197,7 @@ Any further training on the model will continue from the latest checkpoint.
 
           strategies = {
               "random": Random(),
-              "first": MyStrategy(),
+              "first": GetFirstUnlabeledImage(),
           }
 
           resources = [
