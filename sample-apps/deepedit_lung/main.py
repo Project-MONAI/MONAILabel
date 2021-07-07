@@ -2,7 +2,7 @@ import logging
 import os
 
 from lib import Deepgrow, MyStrategy, MyTrain, Segmentation
-from monai.networks.nets import DynUNet
+from monai.networks.nets.dynunet_v1 import DynUNetV1
 
 from monailabel.interfaces import MONAILabelApp
 from monailabel.utils.activelearning import Random
@@ -12,7 +12,7 @@ logger = logging.getLogger(__name__)
 
 class MyApp(MONAILabelApp):
     def __init__(self, app_dir, studies):
-        self.network = DynUNet(
+        self.network = DynUNetV1(
             spatial_dims=3,
             in_channels=3,
             out_channels=1,
