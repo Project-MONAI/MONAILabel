@@ -1,21 +1,23 @@
 import copy
+import json
 import logging
 import os
 import time
 from abc import abstractmethod
-from typing import Any, Dict
+from typing import Any, Callable, Dict
 
 import yaml
-from monai.apps import download_url
+from monai.apps import download_url, load_from_mmar
 from monai.data import partition_dataset
 
 from monailabel.config import settings
 from monailabel.interfaces.datastore import Datastore, DefaultLabelTag
 from monailabel.interfaces.exception import MONAILabelError, MONAILabelException
-from monailabel.interfaces.tasks import BatchInferTask
+from monailabel.interfaces.tasks import BatchInferTask, InferTask, ScoringMethod, Strategy
 from monailabel.utils.activelearning import Random
 from monailabel.utils.datastore import LocalDatastore
 from monailabel.utils.infer import InferDeepgrow2D, InferDeepgrow3D
+from monailabel.utils.infer.deepgrow_pipeline import InferDeepgrowPipeline
 from monailabel.utils.scoring import Dice, Sum
 
 logger = logging.getLogger(__name__)
@@ -26,39 +28,46 @@ class MONAILabelApp:
         self,
         app_dir,
         studies,
-        infers=None,
-        batch_infer=None,
-        strategies=None,
-        scoring_methods=None,
-        resources=None,
+        train_stats_path=None,
     ):
         """
         Base Class for Any MONAI Label App
 
         :param app_dir: path for your App directory
         :param studies: path for studies/datalist
-        :param infers: Dictionary of infer engines
-        :param batch_infer: Batch Infer Task (default: BatchInferTask)
-        :param strategies: List of ActiveLearning strategies to get next sample
-        :param scoring_methods: List of Scoring methods to available to run over labels
-        :param resources: List of Tuples (path, url) to be downloaded when not exists
+        :param train_stats_path: Path for Training stats json
 
         """
         self.app_dir = app_dir
         self.studies = studies
-        self.infers = dict() if infers is None else infers
-        self.strategies = {"random", Random()} if strategies is None else strategies
-        self.scoring_methods = {"sum": Sum(), "dice": Dice()} if not scoring_methods else scoring_methods
+        self.train_stats_path = train_stats_path
 
-        self._datastore: Datastore = LocalDatastore(
-            studies,
+        self._infers = self.init_infers()
+        self._strategies = self.init_strategies()
+        self._scoring_methods = self.init_scoring_methods()
+        self._batch_infer = self.init_batch_infer()
+
+        self._datastore: Datastore = self.init_datastore()
+
+    def init_infers(self) -> Dict[str, InferTask]:
+        return {}
+
+    def init_strategies(self) -> Dict[str, Strategy]:
+        return {"random": Random()}
+
+    def init_scoring_methods(self) -> Dict[str, ScoringMethod]:
+        return {"sum": Sum(), "dice": Dice()}
+
+    def init_batch_infer(self) -> Callable:
+        return BatchInferTask()
+
+    def init_datastore(self) -> Datastore:
+        return LocalDatastore(
+            self.studies,
             image_extensions=settings.DATASTORE_IMAGE_EXT,
             label_extensions=settings.DATASTORE_LABEL_EXT,
             auto_reload=settings.DATASTORE_AUTO_RELOAD,
         )
-
-        self._batch_infer = BatchInferTask() if batch_infer is None else batch_infer
-        self._download(resources)
 
     def info(self):
         """
@@ -72,9 +81,9 @@ class MONAILabelApp:
         with open(file, "r") as fc:
             meta = yaml.full_load(fc)
 
-        meta["models"] = {k: v.info() for k, v in self.infers.items() if v.is_valid()}
-        meta["strategies"] = {k: v.info() for k, v in self.strategies.items()}
-        meta["scoring"] = {k: v.info() for k, v in self.scoring_methods.items()}
+        meta["models"] = {k: v.info() for k, v in self._infers.items() if v.is_valid()}
+        meta["strategies"] = {k: v.info() for k, v in self._strategies.items()}
+        meta["scoring"] = {k: v.info() for k, v in self._scoring_methods.items()}
 
         meta["train_stats"] = self.train_stats()
         meta["datastore"] = self._datastore.status()
@@ -108,7 +117,7 @@ class MONAILabelApp:
         model_name = request.get("model")
         model_name = model_name if model_name else "model"
 
-        task = self.infers.get(model_name)
+        task = self._infers.get(model_name)
         if task is None:
             raise MONAILabelException(
                 MONAILabelError.INFERENCE_ERROR,
@@ -188,13 +197,13 @@ class MONAILabelApp:
             JSON containing result of scoring method
         """
         method = request.get("method")
-        if not method or not self.scoring_methods.get(method):
+        if not method or not self._scoring_methods.get(method):
             raise MONAILabelException(
                 MONAILabelError.APP_INIT_ERROR,
                 f"Scoring Task is not Initialized. There is no such scoring method '{method}' available",
             )
 
-        task = self.scoring_methods[method]
+        task = self._scoring_methods[method]
         logger.info(f"Running scoring: {method}: {task.info()}")
         return task(request, datastore if datastore else self.datastore())
 
@@ -208,6 +217,9 @@ class MONAILabelApp:
         return datalist, []
 
     def train_stats(self):
+        if self.train_stats_path and os.path.exists(self.train_stats_path):
+            with open(self.train_stats_path, "r") as fc:
+                return json.load(fc)
         return {}
 
     @abstractmethod
@@ -251,7 +263,7 @@ class MONAILabelApp:
         strategy = request.get("strategy")
         strategy = strategy if strategy else "random"
 
-        task = self.strategies.get(strategy)
+        task = self._strategies.get(strategy)
         if task is None:
             raise MONAILabelException(
                 MONAILabelError.APP_INIT_ERROR,
@@ -274,7 +286,7 @@ class MONAILabelApp:
         return {}
 
     @staticmethod
-    def _download(resources):
+    def download(resources):
         if not resources:
             return
 
@@ -285,28 +297,23 @@ class MONAILabelApp:
                 download_url(resource[1], resource[0])
                 time.sleep(1)
 
-    def add_deepgrow_infer_tasks(self):
-        deepgrow_2d = os.path.join(self.app_dir, "model", "deepgrow_2d.ts")
-        deepgrow_3d = os.path.join(self.app_dir, "model", "deepgrow_3d.ts")
+    @staticmethod
+    def deepgrow_infer_tasks(model_dir, pipeline=True):
+        """
+        Dictionary of Default Infer Tasks for Deepgrow 2D/3D
+        """
+        deepgrow_2d = load_from_mmar("clara_pt_deepgrow_2d_annotation_1", model_dir)
+        deepgrow_3d = load_from_mmar("clara_pt_deepgrow_3d_annotation_1", model_dir)
 
-        self.infers.update(
-            {
-                "deepgrow_2d": InferDeepgrow2D(deepgrow_2d),
-                "deepgrow_3d": InferDeepgrow3D(deepgrow_3d),
-            }
-        )
-
-        self._download(
-            [
-                (
-                    deepgrow_2d,
-                    "https://api.ngc.nvidia.com/v2/models/nvidia/med"
-                    "/clara_pt_deepgrow_2d_annotation/versions/1/files/models/model.ts",
-                ),
-                (
-                    deepgrow_3d,
-                    "https://api.ngc.nvidia.com/v2/models/nvidia/med"
-                    "/clara_pt_deepgrow_3d_annotation/versions/1/files/models/model.ts",
-                ),
-            ]
-        )
+        infers = {
+            "deepgrow_2d": InferDeepgrow2D(None, deepgrow_2d),
+            "deepgrow_3d": InferDeepgrow3D(None, deepgrow_3d),
+        }
+        if pipeline:
+            infers["deepgrow_pipeline"] = InferDeepgrowPipeline(
+                path=None,
+                network=deepgrow_2d,
+                model_3d=infers["deepgrow_3d"],
+                description="Combines Deepgrow 2D model and 3D deepgrow model",
+            )
+        return infers

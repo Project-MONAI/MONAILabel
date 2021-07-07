@@ -1,17 +1,20 @@
 import logging
 
+import numpy as np
 from monai.inferers import SlidingWindowInferer
 from monai.transforms import (
     Activationsd,
     AsDiscreted,
+    CenterSpatialCropd,
     Compose,
     CropForegroundd,
     EnsureChannelFirstd,
     LoadImaged,
+    NormalizeIntensityd,
     Orientationd,
-    RandCropByPosNegLabeld,
-    RandShiftIntensityd,
-    ScaleIntensityRanged,
+    RandAffined,
+    RandFlipd,
+    RandHistogramShiftd,
     Spacingd,
     ToTensord,
 )
@@ -27,25 +30,24 @@ class MyTrain(BasicTrainTask):
             [
                 LoadImaged(keys=("image", "label")),
                 EnsureChannelFirstd(keys=("image", "label")),
-                Orientationd(keys=["image", "label"], axcodes="RAS"),
                 Spacingd(
                     keys=("image", "label"),
                     pixdim=(1.0, 1.0, 1.0),
                     mode=("bilinear", "nearest"),
                 ),
-                ScaleIntensityRanged(keys="image", a_min=-57, a_max=164, b_min=0.0, b_max=1.0, clip=True),
-                CropForegroundd(keys=("image", "label"), source_key="image"),
-                RandCropByPosNegLabeld(
-                    keys=("image", "label"),
-                    label_key="label",
-                    spatial_size=(32, 32, 32),
-                    pos=1,
-                    neg=1,
-                    num_samples=4,
-                    image_key="image",
-                    image_threshold=0,
+                Orientationd(keys=["image", "label"], axcodes="RAS"),
+                NormalizeIntensityd(keys="image"),
+                RandHistogramShiftd(keys="image", num_control_points=8, prob=0.8),
+                CropForegroundd(keys=["image", "label"], source_key="image"),
+                RandFlipd(keys=["image", "label"], prob=0.5, spatial_axis=0),
+                RandAffined(
+                    keys=["image", "label"],
+                    mode=("bilinear", "nearest"),
+                    prob=1.0,
+                    spatial_size=(128, 128, 128),
+                    rotate_range=(0, 0, np.pi / 15),
+                    scale_range=(0.1, 0.1, 0.1),
                 ),
-                RandShiftIntensityd(keys="image", offsets=0.1, prob=0.5),
                 ToTensord(keys=("image", "label")),
             ]
         )
@@ -53,6 +55,7 @@ class MyTrain(BasicTrainTask):
     def train_post_transforms(self):
         return Compose(
             [
+                ToTensord(keys=("pred", "label")),
                 Activationsd(keys="pred", softmax=True),
                 AsDiscreted(
                     keys=("pred", "label"),
@@ -68,11 +71,17 @@ class MyTrain(BasicTrainTask):
             [
                 LoadImaged(keys=("image", "label")),
                 EnsureChannelFirstd(keys=("image", "label")),
-                ScaleIntensityRanged(keys="image", a_min=-57, a_max=164, b_min=0.0, b_max=1.0, clip=True),
-                CropForegroundd(keys=("image", "label"), source_key="image"),
+                Spacingd(
+                    keys=("image", "label"),
+                    pixdim=(1.0, 1.0, 1.0),
+                    mode=("bilinear", "nearest"),
+                ),
+                Orientationd(keys=["image", "label"], axcodes="RAS"),
+                NormalizeIntensityd(keys="image"),
+                CenterSpatialCropd(keys=["image", "label"], roi_size=[128, 128, 128]),
                 ToTensord(keys=("image", "label")),
             ]
         )
 
     def val_inferer(self):
-        return SlidingWindowInferer(roi_size=(128, 128, 128), sw_batch_size=1, overlap=0.25)
+        return SlidingWindowInferer(roi_size=(128, 128, 128))

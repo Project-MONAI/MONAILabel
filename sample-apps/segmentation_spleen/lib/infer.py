@@ -6,8 +6,8 @@ from monai.transforms import (
     LoadImaged,
     ScaleIntensityRanged,
     Spacingd,
-    SqueezeDimd,
     ToNumpyd,
+    ToTensord,
 )
 
 from monailabel.interfaces.tasks import InferTask, InferType
@@ -43,6 +43,7 @@ class MyInfer(InferTask):
             AddChanneld(keys="image"),
             Spacingd(keys="image", pixdim=[1.0, 1.0, 1.0]),
             ScaleIntensityRanged(keys="image", a_min=-57, a_max=164, b_min=0.0, b_max=1.0, clip=True),
+            ToTensord(keys="image"),
         ]
 
     def inferer(self):
@@ -50,10 +51,8 @@ class MyInfer(InferTask):
 
     def post_transforms(self):
         return [
-            AddChanneld(keys="pred"),
             Activationsd(keys="pred", softmax=True),
             AsDiscreted(keys="pred", argmax=True),
-            SqueezeDimd(keys="pred", dim=0),
             ToNumpyd(keys="pred"),
             Restored(keys="pred", ref_image="image"),
             BoundingBoxd(keys="pred", result="result", bbox="bbox"),

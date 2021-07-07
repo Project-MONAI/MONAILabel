@@ -14,6 +14,7 @@ config:
       deepgrow_2d: Train deepgrow 2d model
       deepgrow_3d: Train deepgrow 3d model
     name: model_01
+    pretrained: true
     device: cuda
     amp: true
     lr: 0.0001
