@@ -17,6 +17,7 @@ from monai.handlers import (
     StatsHandler,
     TensorBoardStatsHandler,
     ValidationHandler,
+    from_engine,
 )
 from monai.inferers import SimpleInferer
 from monai.losses import DiceLoss
@@ -143,18 +144,18 @@ class BasicTrainTask(TrainTask):
         return SimpleInferer()
 
     def train_key_metric(self):
-        return {"train_dice": MeanDice(output_transform=lambda x: (x["pred"], x["label"]))}
+        return {"train_dice": MeanDice(output_transform=from_engine(["pred", "label"]))}
 
     def train_handlers(self):
         lr_scheduler = torch.optim.lr_scheduler.StepLR(self.optimizer(), step_size=5000, gamma=0.1)
 
         handlers = [
             LrScheduleHandler(lr_scheduler=lr_scheduler, print_lr=True),
-            StatsHandler(tag_name="train_loss", output_transform=lambda x: x["loss"]),
+            StatsHandler(tag_name="train_loss", output_transform=from_engine(["loss"])),
             TensorBoardStatsHandler(
                 log_dir=self.events_dir,
                 tag_name="train_loss",
-                output_transform=lambda x: x["loss"],
+                output_transform=from_engine(["loss"]),
             ),
             CheckpointSaver(
                 save_dir=self.output_dir,
@@ -220,7 +221,7 @@ class BasicTrainTask(TrainTask):
         ]
 
     def val_key_metric(self):
-        return {"val_mean_dice": MeanDice(output_transform=lambda x: (x["pred"], x["label"]))}
+        return {"val_mean_dice": MeanDice(output_transform=from_engine(["pred", "label"]))}
 
     def train_iteration_update(self):
         return None

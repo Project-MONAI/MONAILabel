@@ -85,7 +85,7 @@ class InferTask:
         }
 
     def is_valid(self):
-        if self.type == InferType.POSTPROCS:
+        if self.network or self.type == InferType.POSTPROCS:
             return True
 
         paths = [self.path] if isinstance(self.path, str) else self.path
@@ -95,6 +95,9 @@ class InferTask:
         return False
 
     def get_path(self):
+        if not self.path:
+            return None
+
         paths = [self.path] if isinstance(self.path, str) else self.path
         for path in reversed(paths):
             if os.path.exists(path):
@@ -272,7 +275,7 @@ class InferTask:
         """
         path = self.get_path()
         logger.info("Infer model path: {}".format(path))
-        if not os.path.exists(path):
+        if not path and not self.network:
             raise MONAILabelException(
                 MONAILabelError.INFERENCE_ERROR,
                 f"Model Path ({self.path}) does not exist/valid",
@@ -284,26 +287,27 @@ class InferTask:
         inputs = inputs.cuda() if device == "cuda" else inputs
 
         cached = self._networks.get(device)
-        statbuf = os.stat(path)
+        statbuf = os.stat(path) if path else None
         network = None
         if cached:
-            if statbuf.st_mtime == cached[1]:
+            if statbuf and statbuf.st_mtime == cached[1]:
                 network = cached[0]
-            else:
+            elif statbuf:
                 logger.info(f"Reload model from cache.  Prev ts: {cached[1]}; Current ts: {statbuf.st_mtime}")
 
         if network is None:
             if self.network:
                 network = self.network
-                checkpoint = torch.load(path)
-                model_state_dict = checkpoint.get(self.model_state_dict, checkpoint)
-                network.load_state_dict(model_state_dict)
+                if path:
+                    checkpoint = torch.load(path)
+                    model_state_dict = checkpoint.get(self.model_state_dict, checkpoint)
+                    network.load_state_dict(model_state_dict)
             else:
                 network = torch.jit.load(path)
 
             network = network.cuda() if device == "cuda" else network
             network.eval()
-            self._networks[device] = (network, statbuf.st_mtime)
+            self._networks[device] = (network, statbuf.st_mtime if statbuf else 0)
 
         inferer = self.inferer()
         logger.info("Running Inferer:: {}".format(inferer.__class__.__name__))

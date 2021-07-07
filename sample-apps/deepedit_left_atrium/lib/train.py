@@ -55,13 +55,11 @@ class MyTrain(BasicTrainTask):
         return Compose(
             [
                 Activationsd(keys="pred", sigmoid=True),
-                ToNumpyd(keys=("image", "label", "pred", "probability", "guidance")),
-                FindDiscrepancyRegionsd(label="label", pred="pred", discrepancy="discrepancy", batched=True),
-                AddRandomGuidanced(
-                    guidance="guidance", discrepancy="discrepancy", probability="probability", batched=True
-                ),
-                AddGuidanceSignald(image="image", guidance="guidance", batched=True),
-                DiscardAddGuidanced(image="image", batched=True, probability=0.6),
+                ToNumpyd(keys=("image", "label", "pred")),
+                FindDiscrepancyRegionsd(label="label", pred="pred", discrepancy="discrepancy"),
+                AddRandomGuidanced(guidance="guidance", discrepancy="discrepancy", probability="probability"),
+                AddGuidanceSignald(image="image", guidance="guidance"),
+                DiscardAddGuidanced(image="image", probability=0.6),
                 ToTensord(keys=("image", "label")),
             ]
         )

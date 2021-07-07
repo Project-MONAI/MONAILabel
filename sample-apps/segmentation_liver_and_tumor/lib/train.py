@@ -51,6 +51,7 @@ class MyTrain(BasicTrainTask):
     def train_post_transforms(self):
         return Compose(
             [
+                ToTensord(keys=("pred", "label")),
                 Activationsd(keys="pred", softmax=True),
                 AsDiscreted(
                     keys=("pred", "label"),

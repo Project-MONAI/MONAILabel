@@ -120,15 +120,11 @@ class Deepgrow(InferTask):
     def inferer(self):
         return SimpleInferer()
 
-    def inverse_transforms(self):
-        return []  # Self-determine from the list of pre-transforms provided
-
     def post_transforms(self):
         return [
             ToTensord(keys="pred"),
             Activationsd(keys="pred", sigmoid=True),
             AsDiscreted(keys="pred", threshold_values=True, logit_thresh=0.51),
-            SqueezeDimd(keys="pred", dim=0),
             ToNumpyd(keys="pred"),
             Restored(keys="pred", ref_image="image"),
         ]
