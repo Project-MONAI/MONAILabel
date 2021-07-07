@@ -31,13 +31,9 @@ employs
   for custom functionality as well as utilities which are readily usable in the labeling app.
 
 
-==============================
-Implementing a MONAI Label App
-==============================
-
-In this section we will go into the details of implementing inferece an trainging tasks, designing
-a strategy to select the next image, and put these tasks to work together in a MONAI Label app. In the
-next few sections we will go into some detail on how to build
+In next few sections we will go into the details of implementing inferece an trainging tasks, and 
+putting these tasks to work together in a MONAI Label app. We will go into
+some detail on how to build
 
 - `a custom inference task <#building-a-custom-inference-task>`_,
 - `a custom training task <#building-a-custom-training-task>`_,
