@@ -4,7 +4,6 @@ name: Brain Parcelation using Highresnet 3D
 description: MONAI Label App using highresnet 3D over 3D MR Images
 dimension: 3
 labels:
-
   - Non-ventricular
   - 3rd-Ventricle
   - 4th-Ventricle
@@ -159,13 +158,12 @@ labels:
   - Left-TrIFG-triangular-part-of-the-inferior-frontal-gyrus
   - Right-TTG-transverse-temporal-gyrus
   - Left-TTG-transverse-temporal-gyrus
-  
 config:
   infer:
     device: cuda
   train:
     name: model_01
-    pretrained: True
+    pretrained: true
     device: cuda
     amp: true
     lr: 0.0001

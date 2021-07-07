@@ -1,7 +1,6 @@
 from monai.inferers import SlidingWindowInferer
 from monai.transforms import (
     Activationsd,
-    AddChanneld,
     AsDiscreted,
     CenterSpatialCropd,
     EnsureChannelFirstd,
@@ -9,7 +8,6 @@ from monai.transforms import (
     NormalizeIntensityd,
     Orientationd,
     Spacingd,
-    SqueezeDimd,
     ToNumpyd,
     ToTensord,
 )
@@ -64,11 +62,9 @@ class MyInfer(InferTask):
 
     def post_transforms(self):
         return [
-            ToTensord(keys="pred"),
-            AddChanneld(keys="pred"),
+            ToTensord(keys=("image", "pred")),
             Activationsd(keys="pred", softmax=True),
             AsDiscreted(keys="pred", argmax=True),
-            SqueezeDimd(keys="pred", dim=0),
             ToNumpyd(keys="pred"),
             Restored(keys="pred", ref_image="image"),
         ]

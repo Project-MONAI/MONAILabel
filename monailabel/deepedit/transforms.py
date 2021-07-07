@@ -8,7 +8,7 @@ logger = logging.getLogger(__name__)
 
 
 class DiscardAddGuidanced(Transform):
-    def __init__(self, image: str = "image", batched: bool = False, probability: float = 1.0):
+    def __init__(self, image: str = "image", probability: float = 1.0):
         """
         Discard positive and negative points randomly or Add the two channels for inference time
 
@@ -17,7 +17,6 @@ class DiscardAddGuidanced(Transform):
         :param probability: Discard probability; For inference it will be always 1.0
         """
         self.image = image
-        self.batched = batched
         self.probability = probability
 
     def _apply(self, image):
@@ -32,13 +31,7 @@ class DiscardAddGuidanced(Transform):
 
     def __call__(self, data):
         d: Dict = dict(data)
-        if not self.batched:
-            d[self.image] = self._apply(d[self.image])
-        else:
-            images = []
-            for image in d[self.image]:
-                images.append(self._apply(image))
-            d[self.image] = images
+        d[self.image] = self._apply(d[self.image])
         return d
 
 

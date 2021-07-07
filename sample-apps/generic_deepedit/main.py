@@ -1,4 +1,3 @@
-import json
 import logging
 import os
 
@@ -13,7 +12,6 @@ logger = logging.getLogger(__name__)
 
 class MyApp(MONAILabelApp):
     def __init__(self, app_dir, studies):
-        self.model_dir = os.path.join(app_dir, "model")
         self.network = DynUNet(
             spatial_dims=3,
             in_channels=3,
@@ -46,26 +44,32 @@ class MyApp(MONAILabelApp):
             res_block=True,
         )
 
-        self.final_model = os.path.join(self.model_dir, "final.pt")
-        self.train_stats_path = os.path.join(self.model_dir, "train_stats.json")
+        self.model_dir = os.path.join(app_dir, "model")
+        self.pretrained_model = os.path.join(self.model_dir, "pretrained.pt")
+        self.final_model = os.path.join(self.model_dir, "model.pt")
 
-        path = self.final_model
-        infers = {
-            "deepedit": Deepgrow(path, self.network),
-            "generic": Segmentation(path, self.network),
+        self.download(
+            [
+                (
+                    self.pretrained_model,
+                    "https://www.dropbox.com/s/fgygtodqztjjdyz/deepedit_left_atrium.pt?dl=1",
+                ),
+            ]
+        )
+
+        super().__init__(app_dir, studies, os.path.join(self.model_dir, "train_stats.json"))
+
+    def init_infers(self):
+        return {
+            "deepedit": Deepgrow([self.pretrained_model, self.final_model], self.network),
+            "generic": Segmentation([self.pretrained_model, self.final_model], self.network),
         }
 
-        strategies = {
+    def init_strategies(self):
+        return {
             "random": Random(),
             "first": MyStrategy(),
         }
-
-        super().__init__(
-            app_dir=app_dir,
-            studies=studies,
-            infers=infers,
-            strategies=strategies,
-        )
 
     def train(self, request):
         logger.info(f"Training request: {request}")
@@ -74,7 +78,8 @@ class MyApp(MONAILabelApp):
 
         # App Owner can decide which checkpoint to load (from existing output folder or from base checkpoint)
         load_path = os.path.join(output_dir, "model.pt")
-        load_path = load_path if os.path.exists(load_path) else self.final_model
+        if not os.path.exists(load_path) and request.get("pretrained", True):
+            load_path = self.pretrained_model
 
         # Datalist for train/validation
         train_d, val_d = self.partition_datalist(self.datastore().datalist(), request.get("val_split", 0.2))
@@ -95,9 +100,3 @@ class MyApp(MONAILabelApp):
             val_batch_size=request.get("val_batch_size", 1),
         )
         return task()
-
-    def train_stats(self):
-        if os.path.exists(self.train_stats_path):
-            with open(self.train_stats_path, "r") as fc:
-                return json.load(fc)
-        return super().train_stats()

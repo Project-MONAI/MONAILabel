@@ -4,7 +4,7 @@ import logging
 import os
 
 from lib import InferDeepgrow, MyStrategy, TrainDeepgrow
-from monai.networks.nets import BasicUNet
+from monai.apps import load_from_mmar
 
 from monailabel.interfaces import MONAILabelApp
 from monailabel.utils.activelearning import Random
@@ -17,66 +17,65 @@ class MyApp(MONAILabelApp):
     def __init__(self, app_dir, studies):
         self.model_dir = os.path.join(app_dir, "model")
 
-        self.data = {
-            "deepgrow_2d": {
-                "network": BasicUNet(dimensions=2, in_channels=3, out_channels=1, features=(32, 64, 128, 256, 512, 32)),
-                "path": [
-                    os.path.join(self.model_dir, "deepgrow_2d.pt"),
-                    os.path.join(self.model_dir, "deepgrow_2d_final.pt"),
-                ],
-                "url": "https://www.dropbox.com/s/bx832eozn8rcuyg/deepgrow_2d_left_atrium.pt?dl=1",
-            },
-            "deepgrow_3d": {
-                "network": BasicUNet(dimensions=3, in_channels=3, out_channels=1, features=(32, 64, 128, 256, 512, 32)),
-                "path": [
-                    os.path.join(self.model_dir, "deepgrow_3d.pt"),
-                    os.path.join(self.model_dir, "deepgrow_3d_final.pt"),
-                ],
-                "url": "https://www.dropbox.com/s/jpteflweqjfc81g/deepgrow_3d_left_atrium.pt?dl=1",
-            },
-        }
+        self.model_dir_2d = os.path.join(self.model_dir, "deepgrow_2d")
+        self.pretrained_model_2d = os.path.join(self.model_dir, "deepgrow_2d", "pretrained.pt")
+        self.final_model_2d = os.path.join(self.model_dir, "deepgrow_2d", "model.pt")
+        self.train_stats_path_2d = os.path.join(self.model_dir, "deepgrow_2d", "train_stats.json")
+        self.mmar_2d = "clara_pt_deepgrow_2d_annotation_1"
 
-        deepgrow_3d = InferDeepgrow(
-            path=self.data["deepgrow_3d"]["path"],
-            network=self.data["deepgrow_3d"]["network"],
-            dimension=3,
-            model_size=(128, 192, 192),
+        self.model_dir_3d = os.path.join(self.model_dir, "deepgrow_3d")
+        self.pretrained_model_3d = os.path.join(self.model_dir, "deepgrow_3d", "pretrained.pt")
+        self.final_model_3d = os.path.join(self.model_dir, "deepgrow_3d", "model.pt")
+        self.train_stats_path_3d = os.path.join(self.model_dir, "deepgrow_3d", "train_stats.json")
+        self.mmar_3d = "clara_pt_deepgrow_3d_annotation_1"
+
+        self.download(
+            [
+                (
+                    self.pretrained_model_2d,
+                    "https://www.dropbox.com/s/bx832eozn8rcuyg/deepgrow_2d_left_atrium.pt?dl=1",
+                ),
+                (
+                    self.pretrained_model_3d,
+                    "https://www.dropbox.com/s/jpteflweqjfc81g/deepgrow_3d_left_atrium.pt?dl=1",
+                ),
+            ]
         )
+
+        super().__init__(app_dir, studies)
+
+    def init_infers(self):
         infers = {
-            "deepgrow": InferDeepgrowPipeline(
-                path=self.data["deepgrow_2d"]["path"],
-                network=self.data["deepgrow_2d"]["network"],
-                model_3d=deepgrow_3d,
-            ),
             "deepgrow_2d": InferDeepgrow(
-                path=self.data["deepgrow_2d"]["path"],
-                network=self.data["deepgrow_2d"]["network"],
-                dimension=2,
-                model_size=(256, 256),
+                [self.pretrained_model_2d, self.final_model_2d],
+                load_from_mmar(self.mmar_2d, self.model_dir_2d, pretrained=False),
             ),
-            "deepgrow_3d": deepgrow_3d,
+            "deepgrow_3d": InferDeepgrow(
+                [self.pretrained_model_3d, self.final_model_3d],
+                load_from_mmar(self.mmar_3d, self.model_dir_3d, pretrained=False),
+                dimension=3,
+                model_size=(128, 192, 192),
+            ),
         }
 
-        strategies = {
+        infers["deepgrow_pipeline"] = InferDeepgrowPipeline(
+            path=[self.pretrained_model_2d, self.final_model_2d],
+            network=load_from_mmar(self.mmar_2d, self.model_dir_2d, pretrained=False),
+            model_3d=infers["deepgrow_3d"],
+            description="Combines Deepgrow 2D model and 3D deepgrow model",
+        )
+        return infers
+
+    def init_strategies(self):
+        return {
             "random": Random(),
             "first": MyStrategy(),
         }
 
-        resources = [(self.data[k]["path"][0], self.data[k]["url"]) for k in self.data.keys()]
-
-        super().__init__(
-            app_dir=app_dir,
-            studies=studies,
-            infers=infers,
-            strategies=strategies,
-            resources=resources,
-        )
-
     def train(self, request):
         logger.info(f"Training request: {request}")
-        model = request.get("model", "deepgrow_2d")
 
-        # App Owner can decide which checkpoint to load (from existing output folder or from base checkpoint)
+        model = request.get("model", "deepgrow_2d")
         models = ["deepgrow_2d", "deepgrow_3d"] if model == "all" else [model]
         logger.info(f"Selected models for training: {models}")
 
@@ -84,21 +83,29 @@ class MyApp(MONAILabelApp):
         for model in models:
             logger.info(f"Creating Training task for model: {model}")
 
-            name = request.get("name", "model_01")
-            output_dir = os.path.join(self.model_dir, f"{model}_{name}")
-            data = self.data[model]
+            if model == "deepgrow_2d":
+                mmar = self.mmar_2d
+                model_dir = self.model_dir_2d
+                final_model = self.final_model_2d
+                train_stats_path = self.train_stats_path_2d
+            else:
+                mmar = self.mmar_3d
+                model_dir = self.model_dir_3d
+                final_model = self.final_model_3d
+                train_stats_path = self.train_stats_path_3d
 
-            network = data["network"]
+            output_dir = os.path.join(model_dir, request.get("name", "model_01"))
+
+            # App Owner can decide which checkpoint to load (from existing output folder or from base checkpoint)
             load_path = os.path.join(output_dir, "model.pt")
-            load_path = load_path if os.path.exists(load_path) else data["path"][0]
-            logger.info(f"Using existing pre-trained weights: {load_path}")
+            if not os.path.exists(load_path) and request.get("pretrained", True):
+                load_path = None
+                network = load_from_mmar(mmar, model_dir)
+            else:
+                network = load_from_mmar(mmar, model_dir, pretrained=False)
 
             # Datalist for train/validation
             train_d, val_d = self.partition_datalist(self.datastore().datalist(), request.get("val_split", 0.2))
-
-            # Update/Publish latest model for infer/active learning use
-            final_model = data["path"][1]
-            train_stats_path = os.path.join(self.model_dir, f"train_stats_{model}.json")
 
             if model == "deepgrow_3d":
                 task = TrainDeepgrow(
@@ -169,7 +176,7 @@ class MyApp(MONAILabelApp):
         active = {}
         start_ts = 0
         for model in ["deepgrow_3d", "deepgrow_2d"]:
-            train_stats_path = os.path.join(self.model_dir, f"train_stats_{model}.json")
+            train_stats_path = os.path.join(self.model_dir, model, "train_stats.json")
             if os.path.exists(train_stats_path):
                 with open(train_stats_path, "r") as fc:
                     r = json.load(fc)
