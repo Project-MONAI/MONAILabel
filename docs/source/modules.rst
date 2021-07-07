@@ -31,9 +31,9 @@ employs
   for custom functionality as well as utilities which are readily usable in the labeling app.
 
 
-------------------------------
+==============================
 Implementing a MONAI Label App
-------------------------------
+==============================
 
 In this section we will go into the details of implementing inferece an trainging tasks, designing
 a strategy to select the next image, and put these tasks to work together in a MONAI Label app. In the
