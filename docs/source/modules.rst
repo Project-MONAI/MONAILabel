@@ -9,7 +9,7 @@ To develop a new MONAI labeling developers must inherit the ``MONAILabelApp`` an
 the methods in the interface that are relevant to their labeling application. Typically a
 labeling applications will consist of
 
-- inferencing tasks used to allow end-users to invoke select pre-trained models,
+- inferencing tasks to allow end-users to invoke select pre-trained models,
 - training tasks used to allow end-users to train an overlapping or completely different set of models,
 - strategies that allow the users to select the next image to label.
 
