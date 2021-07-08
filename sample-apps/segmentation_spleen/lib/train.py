@@ -20,7 +20,6 @@ logger = logging.getLogger(__name__)
 
 
 class MyTrain(BasicTrainTask):
-
     def train_pre_transforms(self):
         return [
             LoadImaged(keys=("image", "label")),

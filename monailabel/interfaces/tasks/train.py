@@ -185,7 +185,7 @@ class TrainTask:
         elif isinstance(self.val_post_transforms(), Compose):
             val_post_transforms = self.val_post_transforms()
         else:
-            raise ValueError('Validation post-transforms are not of `list` or `Compose` type')
+            raise ValueError("Validation post-transforms are not of `list` or `Compose` type")
 
         if not self._evaluator and self.val_data_loader():
             self._evaluator = SupervisedEvaluator(
@@ -209,7 +209,7 @@ class TrainTask:
         elif isinstance(self.train_post_transforms(), Compose):
             train_post_transforms = self.train_post_transforms()
         else:
-            raise ValueError('Training post-transforms are not of `list` or `Compose` type')
+            raise ValueError("Training post-transforms are not of `list` or `Compose` type")
 
         if not self._trainer:
             self._trainer = SupervisedTrainer(

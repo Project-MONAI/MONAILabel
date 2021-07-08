@@ -21,9 +21,9 @@ from monai.handlers import (
 )
 from monai.inferers import SimpleInferer
 from monai.losses import DiceLoss
+from monai.transforms.compose import Compose
 
 from monailabel.interfaces.tasks import TrainTask
-from monai.transforms.compose import Compose
 
 logger = logging.getLogger(__name__)
 
@@ -140,7 +140,7 @@ class BasicTrainTask(TrainTask):
         elif isinstance(self.train_pre_transforms(), Compose):
             train_pre_transforms = self.train_pre_transforms()
         else:
-            raise ValueError('Training pre-transforms are not of `list` or `Compose` type')
+            raise ValueError("Training pre-transforms are not of `list` or `Compose` type")
 
         return DataLoader(
             dataset=PersistentDataset(self._train_datalist, train_pre_transforms, cache_dir=None),
@@ -201,7 +201,7 @@ class BasicTrainTask(TrainTask):
     def val_data_loader(self):
         return (
             DataLoader(
-                dataset=PersistentDataset(self._val_datalist, val_pre_transforms, cache_dir=None),
+                dataset=PersistentDataset(self._val_datalist, self.val_pre_transforms(), cache_dir=None),
                 batch_size=self._val_batch_size,
                 shuffle=False,
                 num_workers=self._val_num_workers,
@@ -217,7 +217,7 @@ class BasicTrainTask(TrainTask):
         elif isinstance(self.train_pre_transforms(), Compose):
             val_pre_transforms = self.train_pre_transforms()
         else:
-            raise ValueError('Validation pre-transforms are not of `list` or `Compose` type')
+            raise ValueError("Validation pre-transforms are not of `list` or `Compose` type")
 
         return val_pre_transforms
 
@@ -228,7 +228,7 @@ class BasicTrainTask(TrainTask):
         elif isinstance(self.train_post_transforms(), Compose):
             val_post_transforms = self.train_post_transforms()
         else:
-            raise ValueError('Validation pre-transforms are not of `list` or `Compose` type')
+            raise ValueError("Validation pre-transforms are not of `list` or `Compose` type")
 
         return val_post_transforms
 
