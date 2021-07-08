@@ -162,13 +162,13 @@ a seamless simultaneous model training and annotation experience, where a segmen
 how to segment the region of interest as the user annotates the data.
 
 The labeling app in the example code below utilizes the tasks :py:class:`MyInfer`, :py:class:`MyTrain`,
-and :py:class:`MyStrategy` we have defined so far. In this example, we define a :py:class:`UNet` architecture
-where we load pre-trained the model weights, an use them or inference. During training, we load the model
-weights perform training based on newly annotated data, save the new weights and use them in future inferences.
-Any further training on the model will continue from the latest checkpoint.
+and :py:class:`MyStrategy` we have defined so far. In the labeling app, the developer overrides the 
+:py:meth:`init_infers` method to define their own set of inferers, :py:meth:`init_strategies` to
+define the next image selection strategies they want to make available to the end users, and
+:py:meth:`train` to train the model loaded when the app is initialized (not shown).
 
 .. code-block:: python
-  :emphasize-lines: 8, 12, 22, 39
+  :emphasize-lines: 8, 11, 21, 38
 
   from monai.apps import load_from_mmar
   
@@ -184,7 +184,6 @@ Any further training on the model will continue from the latest checkpoint.
               "segmentation_spleen": MyInfer(self.final_model, load_from_mmar(self.mmar, self.model_dir)),
           }
   
-          # Simple way to Add deepgrow 2D+3D models for infer tasks
           infers.update(self.deepgrow_infer_tasks(self.model_dir))
           return infers
   
@@ -206,12 +205,12 @@ Any further training on the model will continue from the latest checkpoint.
               network = load_from_mmar(self.mmar, self.model_dir, pretrained=False)
   
           # Datalist for train/validation
-          train_d, val_d = self.partition_datalist(self.datastore().datalist(), request.get("val_split", 0.2))
+          train_datalist, val_datalist = self.partition_datalist(self.datastore().datalist(), request.get("val_split", 0.2))
   
           task = MyTrain(
               output_dir=output_dir,
-              train_datalist=train_d,
-              val_datalist=val_d,
+              train_datalist=train_datalist,
+              val_datalist=val_datalist,
               network=network,
               load_path=load_path,
               publish_path=self.final_model,
