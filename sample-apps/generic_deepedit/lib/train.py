@@ -14,7 +14,6 @@ from monai.transforms import (
     Activationsd,
     AddChanneld,
     AsDiscreted,
-    Compose,
     LoadImaged,
     NormalizeIntensityd,
     Orientationd,
@@ -52,48 +51,42 @@ class MyTrain(BasicTrainTask):
         self.max_val_interactions = max_val_interactions
 
     def get_click_transforms(self):
-        return Compose(
-            [
-                Activationsd(keys="pred", sigmoid=True),
-                ToNumpyd(keys=("image", "label", "pred")),
-                FindDiscrepancyRegionsd(label="label", pred="pred", discrepancy="discrepancy"),
-                AddRandomGuidanced(guidance="guidance", discrepancy="discrepancy", probability="probability"),
-                AddGuidanceSignald(image="image", guidance="guidance"),
-                DiscardAddGuidanced(image="image", probability=0.6),
-                ToTensord(keys=("image", "label")),
-            ]
-        )
+        return [
+            Activationsd(keys="pred", sigmoid=True),
+            ToNumpyd(keys=("image", "label", "pred")),
+            FindDiscrepancyRegionsd(label="label", pred="pred", discrepancy="discrepancy"),
+            AddRandomGuidanced(guidance="guidance", discrepancy="discrepancy", probability="probability"),
+            AddGuidanceSignald(image="image", guidance="guidance"),
+            DiscardAddGuidanced(image="image", probability=0.6),
+            ToTensord(keys=("image", "label")),
+        ]
 
     def loss_function(self):
         return DiceLoss(sigmoid=True, squared_pred=True)
 
     def train_pre_transforms(self):
-        return Compose(
-            [
-                LoadImaged(keys=("image", "label")),
-                RandZoomd(keys=("image", "label"), prob=0.4, min_zoom=0.3, max_zoom=1.9, mode=("bilinear", "nearest")),
-                AddChanneld(keys=("image", "label")),
-                Spacingd(keys=["image", "label"], pixdim=(1.0, 1.0, 1.0), mode=("bilinear", "nearest")),
-                Orientationd(keys=["image", "label"], axcodes="RAS"),
-                NormalizeIntensityd(keys="image"),
-                RandAdjustContrastd(keys="image", gamma=6),
-                RandHistogramShiftd(keys="image", num_control_points=8, prob=0.5),
-                Resized(keys=("image", "label"), spatial_size=self.model_size, mode=("area", "nearest")),
-                FindAllValidSlicesd(label="label", sids="sids"),
-                AddInitialSeedPointd(label="label", guidance="guidance", sids="sids"),
-                AddGuidanceSignald(image="image", guidance="guidance"),
-                DiscardAddGuidanced(image="image", probability=0.6),
-                ToTensord(keys=("image", "label")),
-            ]
-        )
+        return [
+            LoadImaged(keys=("image", "label")),
+            RandZoomd(keys=("image", "label"), prob=0.4, min_zoom=0.3, max_zoom=1.9, mode=("bilinear", "nearest")),
+            AddChanneld(keys=("image", "label")),
+            Spacingd(keys=["image", "label"], pixdim=(1.0, 1.0, 1.0), mode=("bilinear", "nearest")),
+            Orientationd(keys=["image", "label"], axcodes="RAS"),
+            NormalizeIntensityd(keys="image"),
+            RandAdjustContrastd(keys="image", gamma=6),
+            RandHistogramShiftd(keys="image", num_control_points=8, prob=0.5),
+            Resized(keys=("image", "label"), spatial_size=self.model_size, mode=("area", "nearest")),
+            FindAllValidSlicesd(label="label", sids="sids"),
+            AddInitialSeedPointd(label="label", guidance="guidance", sids="sids"),
+            AddGuidanceSignald(image="image", guidance="guidance"),
+            DiscardAddGuidanced(image="image", probability=0.6),
+            ToTensord(keys=("image", "label")),
+        ]
 
     def train_post_transforms(self):
-        return Compose(
-            [
-                Activationsd(keys="pred", sigmoid=True),
-                AsDiscreted(keys="pred", threshold_values=True, logit_thresh=0.5),
-            ]
-        )
+        return [
+            Activationsd(keys="pred", sigmoid=True),
+            AsDiscreted(keys="pred", threshold_values=True, logit_thresh=0.5),
+        ]
 
     def val_pre_transforms(self):
         return self.train_pre_transforms()

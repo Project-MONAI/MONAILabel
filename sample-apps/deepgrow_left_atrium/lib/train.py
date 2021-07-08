@@ -16,7 +16,6 @@ from monai.transforms import (
     AddChanneld,
     AsChannelFirstd,
     AsDiscreted,
-    Compose,
     LoadImaged,
     NormalizeIntensityd,
     Orientationd,
@@ -56,16 +55,14 @@ class TrainDeepgrow(BasicTrainTask):
         self.max_val_interactions = max_val_interactions
 
     def get_click_transforms(self):
-        return Compose(
-            [
-                Activationsd(keys="pred", sigmoid=True),
-                ToNumpyd(keys=("image", "label", "pred")),
-                FindDiscrepancyRegionsd(label="label", pred="pred", discrepancy="discrepancy"),
-                AddRandomGuidanced(guidance="guidance", discrepancy="discrepancy", probability="probability"),
-                AddGuidanceSignald(image="image", guidance="guidance"),
-                ToTensord(keys=("image", "label")),
-            ]
-        )
+        return [
+            Activationsd(keys="pred", sigmoid=True),
+            ToNumpyd(keys=("image", "label", "pred")),
+            FindDiscrepancyRegionsd(label="label", pred="pred", discrepancy="discrepancy"),
+            AddRandomGuidanced(guidance="guidance", discrepancy="discrepancy", probability="probability"),
+            AddGuidanceSignald(image="image", guidance="guidance"),
+            ToTensord(keys=("image", "label")),
+        ]
 
     def loss_function(self):
         return DiceLoss(sigmoid=True, squared_pred=True)
@@ -102,15 +99,13 @@ class TrainDeepgrow(BasicTrainTask):
             ]
         )
 
-        return Compose(t)
+        return t
 
     def train_post_transforms(self):
-        return Compose(
-            [
-                Activationsd(keys="pred", sigmoid=True),
-                AsDiscreted(keys="pred", threshold_values=True, logit_thresh=0.5),
-            ]
-        )
+        return [
+            Activationsd(keys="pred", sigmoid=True),
+            AsDiscreted(keys="pred", threshold_values=True, logit_thresh=0.5),
+        ]
 
     def val_pre_transforms(self):
         return self.train_pre_transforms()
