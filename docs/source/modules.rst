@@ -138,8 +138,6 @@ the first unlabeled image it finds in the :py:class:`~monailabel.interfaces.Data
 .. code-block:: python
   :emphasize-lines: 6, 8
 
-  import logging
-
   from monailabel.interfaces import Datastore
   from monailabel.interfaces.tasks import Strategy
 
@@ -164,84 +162,56 @@ a seamless simultaneous model training and annotation experience, where a segmen
 how to segment the region of interest as the user annotates the data.
 
 The labeling app in the example code below utilizes the tasks :py:class:`MyInfer`, :py:class:`MyTrain`,
-and :py:class:`MyStrategy` we have defined so far. In this example, we define a :py:class:`UNet` architecture
-where we load pre-trained the model weights, an use them or inference. During training, we load the model
-weights perform training based on newly annotated data, save the new weights and use them in future inferences.
-Any further training on the model will continue from the latest checkpoint.
+and :py:class:`MyStrategy` we have defined so far. In the labeling app, the developer overrides the 
+:py:meth:`init_infers` method to define their own set of inferers, :py:meth:`init_strategies` to
+define the next image selection strategies they want to make available to the end users, and
+:py:meth:`train` to train the model loaded when the app is initialized (not shown).
 
 .. code-block:: python
-  :emphasize-lines: 7, 9, 21, 26, 66
+  :emphasize-lines: 8, 12, 21, 38
 
-  from monai.networks.layers import Norm
-  from monai.networks.nets import UNet
-
+  from monai.apps import load_from_mmar
+  
   from monailabel.interfaces import MONAILabelApp
   from monailabel.utils.activelearning import Random
-
+  
   import MyInfer, MyTrain, GetFirstUnlabeledImage
-
+  
   class MyApp(MONAILabelApp):
-
-      def __init__(self, app_dir, studies):
-          self.model_dir = os.path.join(app_dir, "model")
-          self.network = UNet(...)
-
-          self.pretrained_model = os.path.join(self.model_dir, "segmentation_spleen.pt")
-          self.final_model = os.path.join(self.model_dir, "final.pt")
-          self.train_stats_path = os.path.join(self.model_dir, "train_stats.json")
-
-          path = [self.pretrained_model, self.final_model]
+  
+      def init_infers(self):
           infers = {
-              "segmentation_spleen": MyInfer(path, self.network),
+              "segmentation_spleen": MyInfer(self.final_model, load_from_mmar(self.mmar, self.model_dir)),
           }
-
-          strategies = {
+  
+          infers.update(self.deepgrow_infer_tasks(self.model_dir))
+          return infers
+  
+      def init_strategies(self):
+          return {
               "random": Random(),
               "first": GetFirstUnlabeledImage(),
           }
-
-          resources = [
-              (
-                  self.pretrained_model,
-                  "https://api.ngc.nvidia.com/v2/models/nvidia/med"
-                  "/clara_pt_spleen_ct_segmentation/versions/1/files/models/model.pt",
-              ),
-          ]
-
-          super().__init__(
-              app_dir=app_dir,
-              studies=studies,
-              infers=infers,
-              strategies=strategies,
-              resources=resources,
-          )
-
-          # Simple way to Add deepgrow 2D+3D models for infer tasks
-          self.add_deepgrow_infer_tasks()
-
+  
       def train(self, request):
+  
           output_dir = os.path.join(self.model_dir, request.get("name", "model_01"))
-
-          # App Owner can decide which checkpoint to load (from existing output folder or from base checkpoint)
+  
           load_path = os.path.join(output_dir, "model.pt")
-
-          # Use pretrained weights to start training
-          load_path = (
-              load_path
-              if os.path.exists(load_path)
-              else self.pretrained_model
-              if request.get("pretrained", True)
-              else None
-          )
-
+          if not os.path.exists(load_path) and request.get("pretrained", True):
+              load_path = None
+              network = load_from_mmar(self.mmar, self.model_dir)
+          else:
+              network = load_from_mmar(self.mmar, self.model_dir, pretrained=False)
+  
           # Datalist for train/validation
-          train_d, val_d = self.partition_datalist(self.datastore().datalist(), request.get("val_split", 0.2))
-
+          train_datalist, val_datalist = self.partition_datalist(self.datastore().datalist(), request.get("val_split", 0.2))
+  
           task = MyTrain(
               output_dir=output_dir,
-              train_datalist=train_d,
-              val_datalist=val_d,
-              network=self.network,
+              train_datalist=train_datalist,
+              val_datalist=val_datalist,
+              network=network,
               load_path=load_path,
               publish_path=self.final_model,
               stats_path=self.train_stats_path,
@@ -254,10 +224,3 @@ Any further training on the model will continue from the latest checkpoint.
               val_batch_size=request.get("val_batch_size", 1),
           )
           return task()
-
-      def train_stats(self):
-          if os.path.exists(self.train_stats_path):
-              with open(self.train_stats_path, "r") as fc:
-                  return json.load(fc)
-          return super().train_stats()
-
