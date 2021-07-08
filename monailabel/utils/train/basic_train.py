@@ -23,6 +23,7 @@ from monai.inferers import SimpleInferer
 from monai.losses import DiceLoss
 
 from monailabel.interfaces.tasks import TrainTask
+from monai.transforms.compose import Compose
 
 logger = logging.getLogger(__name__)
 
@@ -133,8 +134,16 @@ class BasicTrainTask(TrainTask):
         return self._optimizer
 
     def train_data_loader(self):
+
+        if isinstance(self.train_pre_transforms(), list):
+            train_pre_transforms = Compose(self.train_pre_transforms())
+        elif isinstance(self.train_pre_transforms(), Compose):
+            train_pre_transforms = self.train_pre_transforms()
+        else:
+            raise ValueError('Training pre-transforms are not of `list` or `Compose` type')
+
         return DataLoader(
-            dataset=PersistentDataset(self._train_datalist, self.train_pre_transforms(), cache_dir=None),
+            dataset=PersistentDataset(self._train_datalist, train_pre_transforms, cache_dir=None),
             batch_size=self._train_batch_size,
             shuffle=True,
             num_workers=self._train_num_workers,
@@ -192,7 +201,7 @@ class BasicTrainTask(TrainTask):
     def val_data_loader(self):
         return (
             DataLoader(
-                dataset=PersistentDataset(self._val_datalist, self.val_pre_transforms(), cache_dir=None),
+                dataset=PersistentDataset(self._val_datalist, val_pre_transforms, cache_dir=None),
                 batch_size=self._val_batch_size,
                 shuffle=False,
                 num_workers=self._val_num_workers,
@@ -202,10 +211,26 @@ class BasicTrainTask(TrainTask):
         )
 
     def val_pre_transforms(self):
-        return self.train_pre_transforms()
+
+        if isinstance(self.train_pre_transforms(), list):
+            val_pre_transforms = Compose(self.train_pre_transforms())
+        elif isinstance(self.train_pre_transforms(), Compose):
+            val_pre_transforms = self.train_pre_transforms()
+        else:
+            raise ValueError('Validation pre-transforms are not of `list` or `Compose` type')
+
+        return val_pre_transforms
 
     def val_post_transforms(self):
-        return self.train_post_transforms()
+
+        if isinstance(self.train_post_transforms(), list):
+            val_post_transforms = Compose(self.train_post_transforms())
+        elif isinstance(self.train_post_transforms(), Compose):
+            val_post_transforms = self.train_post_transforms()
+        else:
+            raise ValueError('Validation pre-transforms are not of `list` or `Compose` type')
+
+        return val_post_transforms
 
     def val_handlers(self):
         return [
