@@ -168,7 +168,7 @@ define the next image selection strategies they want to make available to the en
 :py:meth:`train` to train the model loaded when the app is initialized (not shown).
 
 .. code-block:: python
-  :emphasize-lines: 8, 11, 21, 38
+  :emphasize-lines: 8, 12, 21, 38
 
   from monai.apps import load_from_mmar
   
@@ -224,4 +224,3 @@ define the next image selection strategies they want to make available to the en
               val_batch_size=request.get("val_batch_size", 1),
           )
           return task()
-
