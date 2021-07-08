@@ -3,8 +3,6 @@ version: 1
 name: DeepEdit - Generic
 description: MONAI Label App solution using DeepEdit
 dimension: 3
-labels:
-  - generic
 config:
   infer:
     device: cuda

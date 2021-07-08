@@ -1,4 +1,5 @@
 import copy
+import itertools
 import json
 import logging
 import os
@@ -84,6 +85,10 @@ class MONAILabelApp:
         meta["models"] = {k: v.info() for k, v in self._infers.items() if v.is_valid()}
         meta["strategies"] = {k: v.info() for k, v in self._strategies.items()}
         meta["scoring"] = {k: v.info() for k, v in self._scoring_methods.items()}
+
+        # If labels are not provided in info.yaml, aggregate from all individual infers
+        if not meta.get("labels"):
+            meta["labels"] = list(itertools.chain.from_iterable([v.get("labels", []) for v in meta["models"].values()]))
 
         meta["train_stats"] = self.train_stats()
         meta["datastore"] = self._datastore.status()

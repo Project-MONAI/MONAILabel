@@ -3,9 +3,6 @@ version: 1
 name: Segmentation Liver and Tumor
 description: MONAI Label App to provide active learning solution to label Liver and Tumor over 3D CT Images
 dimension: 3
-labels:
-  - liver
-  - liver tumor
 config:
   infer:
     device: cuda
