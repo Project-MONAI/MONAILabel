@@ -6,6 +6,7 @@ from typing import Any, Dict
 
 import torch
 from monai.engines import SupervisedEvaluator, SupervisedTrainer
+from monai.transforms.compose import Compose
 
 logger = logging.getLogger(__name__)
 
@@ -178,13 +179,21 @@ class TrainTask:
         pass
 
     def evaluator(self):
+
+        if isinstance(self.val_post_transforms(), list):
+            val_post_transforms = Compose(self.val_post_transforms())
+        elif isinstance(self.val_post_transforms(), Compose):
+            val_post_transforms = self.val_post_transforms()
+        else:
+            raise ValueError("Validation post-transforms are not of `list` or `Compose` type")
+
         if not self._evaluator and self.val_data_loader():
             self._evaluator = SupervisedEvaluator(
                 device=self.device(),
                 val_data_loader=self.val_data_loader(),
                 network=self.network().to(self.device()),
                 inferer=self.val_inferer(),
-                postprocessing=self.val_post_transforms(),
+                postprocessing=val_post_transforms,
                 key_val_metric=self.val_key_metric(),
                 additional_metrics=self.val_additional_metrics(),
                 val_handlers=self.val_handlers(),
@@ -194,6 +203,14 @@ class TrainTask:
         return self._evaluator
 
     def trainer(self):
+
+        if isinstance(self.train_post_transforms(), list):
+            train_post_transforms = Compose(self.train_post_transforms())
+        elif isinstance(self.train_post_transforms(), Compose):
+            train_post_transforms = self.train_post_transforms()
+        else:
+            raise ValueError("Training post-transforms are not of `list` or `Compose` type")
+
         if not self._trainer:
             self._trainer = SupervisedTrainer(
                 device=self.device(),
@@ -204,7 +221,7 @@ class TrainTask:
                 loss_function=self.loss_function(),
                 inferer=self.train_inferer(),
                 amp=self.amp(),
-                postprocessing=self.train_post_transforms(),
+                postprocessing=train_post_transforms,
                 key_train_metric=self.train_key_metric(),
                 train_handlers=self.train_handlers(),
                 iteration_update=self.train_iteration_update(),
