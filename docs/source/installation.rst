@@ -89,7 +89,7 @@ Starting Server
 You can start server using *monailabel* CLI
 ::
 
-  monailabel start_server --app aps\deepedit_left_atrium --studies datasets\Task02_Heart\imagesTr
+  monailabel start_server --app apps\deepedit_left_atrium --studies datasets\Task02_Heart\imagesTr
 
 
 .. note::
