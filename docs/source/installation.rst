@@ -4,7 +4,7 @@ Installation
 
 Prerequisites
 ---------------
-MONAILabel supports following OS with GPU/CUDA enabled.
+MONAI Label supports following OS with GPU/CUDA enabled.
 
 Windows
 ********
@@ -62,8 +62,8 @@ The milestone versions are currently planned and released every few months.  As 
 codebase is under active development, you may want to install MONAI from GitHub
 for the latest features
 
-MONAILabel CLI
---------------
+MONAI Label CLI
+---------------
 Simple *monailabel* command will help user to download sample apps, datasets and run server.
 ::
 
@@ -85,7 +85,7 @@ You can download sample apps and datasets from *monailabel* CLI.
 
 
 Starting Server
-**************************
+***************
 You can start server using *monailabel* CLI
 ::
 
@@ -94,11 +94,11 @@ You can start server using *monailabel* CLI
 
 .. note::
 
-    Once you start the MONAILabel Server, by default it will be up and serving at http://127.0.0.1:8000/. Open the serving
+    Once you start the MONAI Label Server, by default it will be up and serving at http://127.0.0.1:8000/. Open the serving
     URL in browser. It will provide you the list of Rest APIs available.
 
 3D Slicer Plugin
 ----------------
-Download Preview Release from https://download.slicer.org/ and install MONAILabel plugin from Slicer Extension Manager.
+Download Preview Release from https://download.slicer.org/ and install MONAI Label plugin from Slicer Extension Manager.
 
-Refer `3D Slicer plugin <https://github.com/Project-MONAI/MONAILabel/tree/main/plugins/slicer>`_ for other options to install and run MONAILabel plugin in 3D Slicer.
+Refer `3D Slicer plugin <https://github.com/Project-MONAI/MONAILabel/tree/main/plugins/slicer>`_ for other options to install and run MONAI Label plugin in 3D Slicer.
