@@ -151,11 +151,11 @@ class BasicTrainTask(TrainTask):
 
         handlers = [
             LrScheduleHandler(lr_scheduler=lr_scheduler, print_lr=True),
-            StatsHandler(tag_name="train_loss", output_transform=from_engine(["loss"])),
+            StatsHandler(tag_name="train_loss", output_transform=from_engine(["loss"], first=True)),
             TensorBoardStatsHandler(
                 log_dir=self.events_dir,
                 tag_name="train_loss",
-                output_transform=from_engine(["loss"]),
+                output_transform=from_engine(["loss"], first=True),
             ),
             CheckpointSaver(
                 save_dir=self.output_dir,
