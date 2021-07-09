@@ -15,11 +15,6 @@ principles with [MONAI](https://github.com/Project-MONAI).
 
 <img src="https://raw.githubusercontent.com/Project-MONAI/MONAILabel/main/docs/images/demo.png" width="800"/>
 
-> **Development in Progress**.
-> We will be actively working on this repository to add more features, fix issues, update docs, readme etc...
-> as we make more progress. Wiki's, LICENSE, Contributions, Code Compliance, CI Tool Integration etc... Otherwise, it shares the same
-principles with [MONAI](https://github.com/Project-MONAI).
-
 ## Features
 > _The codebase is currently under active development._
 
@@ -31,61 +26,25 @@ principles with [MONAI](https://github.com/Project-MONAI).
 
 ## Installation
 MONAILabel supports following OS with GPU/CUDA enabled.
+ - Ubuntu
+ - Windows
 
-### Ubuntu
-```bash
-  # One time setup (to pull monai with nvidia gpus)
-  docker run -it --rm --gpus all --ipc=host --net=host -v /rapid/xyz:/workspace/ projectmonai/monai:0.5.2
-  
-  # Install monailabel 
-  pip install git+https://github.com/Project-MONAI/MONAILabel#egg=monailabel
-  
-  # Download MSD Datasets
-  monailabel datasets # list sample datasets
-  monailabel datasets --download --name Task02_Heart --output /workspace/datasets/
-  
-  # Download Sample Apps
-  monailabel apps # list sample apps
-  monailabel apps --download --name deepedit_left_atrium --output /workspace/apps/
-  
-  # Start Server
-  monailabel start_server --app /workspace/apps/deepedit_left_atrium --studies /workspace/datasets/Task02_Heart/imagesTr
-```
-
-### Windows
-
-#### Prerequisites
-Make sure you have python 3.x version environment with PyTorch + CUDA installed.
-- Install [python](https://www.python.org/downloads/)
-- Install [cuda](https://developer.nvidia.com/cuda-downloads) (Faster mode: install CUDA runtime only)
-- `python -m pip install --upgrade pip setuptools wheel`
-- `pip install torch==1.8.1+cu111 torchvision==0.9.1+cu111 torchaudio===0.8.1 -f https://download.pytorch.org/whl/torch_stable.html`
-- `python -c "import torch; print(torch.cuda.is_available())"`
-
-#### MONAILabel
+To install the current release, you can simply run:
 
 ```bash
-  pip install git+https://github.com/Project-MONAI/MONAILabel#egg=monailabel
-  monailabel -h
-  
-  # Download MSD Datasets
-  monailabel datasets # List sample datasets
-  monailabel datasets --download --name Task02_Heart --output C:\Workspace\Datasets
-  
-  # Download Sample Apps
-  monailabel apps # List sample apps
-  monailabel apps --download --name deepedit_left_atrium --output C:\Workspace\Apps
-  
-  # Start Server
-  monailabel start_server --app C:\Workspace\Apps\deepedit_left_atrium --studies C:\Workspace\Datasets\Task02_Heart\imagesTr
+  pip install monailabel
 ```
+
+For other installation methods (using the default GitHub branch, using Docker, etc.), please refer to the [installation guide](https://docs.monai.io/projects/label/en/latest/installation.html).
 
 > Once you start the MONAILabel Server, by default it will be up and serving at http://127.0.0.1:8000/. Open the serving
   URL in browser. It will provide you the list of Rest APIs available.
 
 ### 3D Slicer
 
-Refer [3D Slicer plugin](plugins/slicer) for installing and running MONAILabel plugin in 3D Slicer.
+Download Preview Release from https://download.slicer.org/ and install MONAILabel plugin from Slicer Extension Manager.
+
+Refer [3D Slicer plugin](plugins/slicer) for other options to install and run MONAILabel plugin in 3D Slicer.
 
 ## Contributing
 For guidance on making a contribution to MONAILabel, see the [contributing guidelines](CONTRIBUTING.md).
