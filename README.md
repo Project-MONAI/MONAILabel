@@ -33,6 +33,14 @@ To install the current release, you can simply run:
 
 ```bash
   pip install monailabel
+  
+  # download sample apps/dataset
+  monailabel apps --download --name deepedit_left_atrium --output apps
+  monailabel datasets --download --name Task02_Heart --output datasets
+  
+  # run server
+  monailabel start_server --app apps\deepedit_left_atrium --studies datasets\Task02_Heart\imagesTr
+  
 ```
 
 For other installation methods (using the default GitHub branch, using Docker, etc.), please refer to the [installation guide](https://docs.monai.io/projects/label/en/latest/installation.html).
