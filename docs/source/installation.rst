@@ -64,7 +64,7 @@ for the latest features
 
 MONAILabel CLI
 --------------
-Simple *monailabel* command will help user to downoad sample apps, datasets and run server.
+Simple *monailabel* command will help user to download sample apps, datasets and run server.
 ::
 
     monailable --help
