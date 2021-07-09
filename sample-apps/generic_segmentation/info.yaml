@@ -3,8 +3,6 @@ version: 1
 name: Segmentation - Generic
 description: Generic Segmentation MONAI Label App
 dimension: 3
-labels:
-  - generic
 config:
   infer:
     device: cuda

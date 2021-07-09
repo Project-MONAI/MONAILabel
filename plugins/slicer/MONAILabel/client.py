@@ -12,14 +12,14 @@ logger = logging.getLogger(__name__)
 
 class MONAILabelClient:
     def __init__(self, server_url, tmpdir=None):
-        self._server_url = server_url
+        self._server_url = server_url.rstrip("/")
         self.tmpdir = tmpdir if tmpdir else tempfile.tempdir
 
     def get_server_url(self):
         return self._server_url
 
     def set_server_url(self, server_url):
-        self._server_url = server_url
+        self._server_url = server_url.rstrip("/")
 
     def info(self):
         selector = "/info/"

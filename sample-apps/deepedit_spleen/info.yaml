@@ -3,8 +3,6 @@ version: 1
 name: DeepEdit - Spleen
 description: MONAI Label App to provide active learning solution using DeepEdit to label spleen over 3D CT Images
 dimension: 3
-labels:
-  - spleen
 config:
   infer:
     device: cuda

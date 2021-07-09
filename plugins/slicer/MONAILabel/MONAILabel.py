@@ -633,7 +633,7 @@ class MONAILabelWidget(ScriptedLoadableModuleWidget, VTKObservationMixin):
         serverUrl = self.ui.serverComboBox.currentText
         if not serverUrl:
             serverUrl = "http://127.0.0.1:8000"
-        return serverUrl
+        return serverUrl.rstrip("/")
 
     def saveServerUrl(self):
         self.updateParameterNodeFromGUI()

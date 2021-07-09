@@ -3,8 +3,6 @@ version: 1
 name: DeepEdit - Brain Ventricle
 description: MONAI Label App to provide active learning solution using DeepEdit to label brain ventricle over 3D MRI Images
 dimension: 3
-labels:
-  - brain ventricle
 config:
   infer:
     device: cuda

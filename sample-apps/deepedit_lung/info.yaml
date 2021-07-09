@@ -3,8 +3,6 @@ version: 1
 name: DeepEdit - Lung
 description: MONAI Label App to provide active learning solution using DeepEdit to label lung over 3D CT Images
 dimension: 3
-labels:
-  - lung
 config:
   infer:
     device: cuda
