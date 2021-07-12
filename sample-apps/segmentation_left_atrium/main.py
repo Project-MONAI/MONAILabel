@@ -29,7 +29,10 @@ class MyApp(MONAILabelApp):
 
         self.download(
             [
-                (self.pretrained_model, "https://www.dropbox.com/s/y4wsf5w9hbns3tc/segmentation_left_atrium.pt?dl=1"),
+                (
+                    self.pretrained_model,
+                    "https://github.com/Project-MONAI/MONAILabel/releases/download/data/segmentation_left_atrium.pt",
+                ),
             ]
         )
 

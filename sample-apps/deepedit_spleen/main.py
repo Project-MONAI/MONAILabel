@@ -52,7 +52,7 @@ class MyApp(MONAILabelApp):
             [
                 (
                     self.pretrained_model,
-                    "https://www.dropbox.com/s/1y4j9o12zadauhx/deepedit_spleen.pt?dl=1",
+                    "https://github.com/Project-MONAI/MONAILabel/releases/download/data/deepedit_spleen.pt",
                 ),
             ]
         )
