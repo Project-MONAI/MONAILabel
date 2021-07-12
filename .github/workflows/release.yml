@@ -4,6 +4,8 @@ name: release
 on:
   release:
     types: [created, edited, published]
+    tags-ignore:
+      - data
 
 jobs:
   packaging:
