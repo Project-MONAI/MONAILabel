@@ -33,11 +33,11 @@ class MyApp(MONAILabelApp):
             [
                 (
                     self.pretrained_model_2d,
-                    "https://github.com/Project-MONAI/MONAILabel/releases/download/data/deepgrow_2d_spleen.pt",
+                    "https://github.com/Project-MONAI/MONAILabel/releases/download/data/deepgrow_2d_left_atrium.pt",
                 ),
                 (
                     self.pretrained_model_3d,
-                    "https://github.com/Project-MONAI/MONAILabel/releases/download/data/deepgrow_3d_spleen.pt",
+                    "https://github.com/Project-MONAI/MONAILabel/releases/download/data/deepgrow_3d_left_atrium.pt",
                 ),
             ]
         )
