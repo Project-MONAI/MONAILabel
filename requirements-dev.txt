@@ -21,3 +21,4 @@ coverage
 parameterized
 types-PyYAML
 types-filelock
+types-requests

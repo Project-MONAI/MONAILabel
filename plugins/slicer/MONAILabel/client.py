@@ -12,14 +12,14 @@ logger = logging.getLogger(__name__)
 
 class MONAILabelClient:
     def __init__(self, server_url, tmpdir=None):
-        self._server_url = server_url
+        self._server_url = server_url.rstrip("/")
         self.tmpdir = tmpdir if tmpdir else tempfile.tempdir
 
     def get_server_url(self):
         return self._server_url
 
     def set_server_url(self, server_url):
-        self._server_url = server_url
+        self._server_url = server_url.rstrip("/")
 
     def info(self):
         selector = "/info/"
@@ -37,6 +37,23 @@ class MONAILabelClient:
     def next_sample(self, strategy, params):
         selector = "/activelearning/{}".format(MONAILabelUtils.urllib_quote_plus(strategy))
         status, response, _ = MONAILabelUtils.http_method("POST", self._server_url, selector, params)
+        if status != 200:
+            raise MONAILabelException(
+                MONAILabelError.SERVER_ERROR,
+                "Status: {}; Response: {}".format(status, response),
+            )
+
+        response = response.decode("utf-8") if isinstance(response, bytes) else response
+        logging.debug("Response: {}".format(response))
+        return json.loads(response)
+
+    def upload_image(self, image_in, image_id=None):
+        selector = "/datastore/?image={}".format(MONAILabelUtils.urllib_quote_plus(image_id))
+
+        fields = {}
+        files = {"file": image_in}
+
+        status, response, _ = MONAILabelUtils.http_multipart("PUT", self._server_url, selector, fields, files)
         if status != 200:
             raise MONAILabelException(
                 MONAILabelError.SERVER_ERROR,

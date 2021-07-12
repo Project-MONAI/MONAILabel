@@ -7,7 +7,7 @@ TEST_DATA = os.path.join(os.path.realpath(os.path.dirname(__file__)), "data")
 
 def run_main():
     dataset_file = os.path.join(TEST_DATA, "dataset.zip")
-    dataset_url = "https://www.dropbox.com/s/h1euuclz4c3ekxt/test_dataset.zip?dl=1"
+    dataset_url = "https://github.com/Project-MONAI/MONAILabel/releases/download/data/test_dataset.zip"
     if not os.path.exists(os.path.join(TEST_DATA, "dataset")):
         if not os.path.exists(dataset_file):
             download_url(url=dataset_url, filepath=dataset_file)

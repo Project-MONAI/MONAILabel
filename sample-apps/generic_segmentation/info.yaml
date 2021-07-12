@@ -1,0 +1,18 @@
+---
+version: 1
+name: Segmentation - Generic
+description: Generic Segmentation MONAI Label App
+dimension: 3
+config:
+  infer:
+    device: cuda
+  train:
+    name: model_01
+    pretrained: false
+    device: cuda
+    amp: true
+    lr: 0.0001
+    epochs: 50
+    val_split: 0.2
+    train_batch_size: 1
+    val_batch_size: 1

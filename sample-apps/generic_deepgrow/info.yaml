@@ -1,0 +1,29 @@
+---
+version: 1
+name: Deepgrow - Generic
+description: MONAI Label App solution using Deepgrow
+dimension: 3
+labels:
+  - generic
+config:
+  infer:
+    device: cuda
+  train:
+    model:
+      all: Train all Deepgrow models
+      deepgrow_2d: Train deepgrow 2d model
+      deepgrow_3d: Train deepgrow 3d model
+    name: model_01
+    pretrained: true
+    device: cuda
+    amp: true
+    lr: 0.0001
+    epochs: 50
+    val_split: 0.2
+    train_batch_size: 1
+    val_batch_size: 1
+    2d_train_random_slices: 10
+    2d_val_random_slices: 5
+    2d_epochs: 20
+    2d_train_batch_size: 16
+    2d_val_batch_size: 16

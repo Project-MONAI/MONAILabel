@@ -171,12 +171,14 @@ class MONAILabelWidget(ScriptedLoadableModuleWidget, VTKObservationMixin):
 
         # Set icons and tune widget properties
         self.ui.serverComboBox.lineEdit().setPlaceholderText("enter server address or leave empty to use default")
-        self.ui.fetchModelsButton.setIcon(self.icon("refresh-icon.png"))
+        self.ui.fetchServerInfoButton.setIcon(self.icon("refresh-icon.png"))
         self.ui.segmentationButton.setIcon(self.icon("segment.png"))
         self.ui.nextSampleButton.setIcon(self.icon("segment.png"))
         self.ui.saveLabelButton.setIcon(self.icon("save.png"))
         self.ui.trainingButton.setIcon(self.icon("training.png"))
         self.ui.stopTrainingButton.setIcon(self.icon("stop.png"))
+        self.ui.uploadImageButton.setIcon(self.icon("upload.svg"))
+        self.ui.importLabelButton.setIcon(self.icon("download.png"))
 
         self.ui.dgPositiveFiducialPlacementWidget.setMRMLScene(slicer.mrmlScene)
         self.ui.dgPositiveFiducialPlacementWidget.placeButton().toolTip = "Select +ve points"
@@ -191,8 +193,8 @@ class MONAILabelWidget(ScriptedLoadableModuleWidget, VTKObservationMixin):
         self.ui.dgNegativeFiducialPlacementWidget.deleteButton().show()
 
         # Connections
-        self.ui.fetchModelsButton.connect("clicked(bool)", self.onClickFetchModels)
-        self.ui.serverComboBox.connect("currentIndexChanged(int)", self.onClickFetchModels)
+        self.ui.fetchServerInfoButton.connect("clicked(bool)", self.onClickFetchInfo)
+        self.ui.serverComboBox.connect("currentIndexChanged(int)", self.onClickFetchInfo)
         self.ui.segmentationModelSelector.connect("currentIndexChanged(int)", self.updateParameterNodeFromGUI)
         self.ui.segmentationButton.connect("clicked(bool)", self.onClickSegmentation)
         self.ui.deepgrowModelSelector.connect("currentIndexChanged(int)", self.updateParameterNodeFromGUI)
@@ -201,6 +203,8 @@ class MONAILabelWidget(ScriptedLoadableModuleWidget, VTKObservationMixin):
         self.ui.stopTrainingButton.connect("clicked(bool)", self.onStopTraining)
         self.ui.trainingStatusButton.connect("clicked(bool)", self.onTrainingStatus)
         self.ui.saveLabelButton.connect("clicked(bool)", self.onSaveLabel)
+        self.ui.uploadImageButton.connect("clicked(bool)", self.onUploadImage)
+        self.ui.importLabelButton.connect("clicked(bool)", self.onImportLabel)
 
         # Scribbles
         # brush and eraser icon from: https://tablericons.com/
@@ -237,7 +241,7 @@ class MONAILabelWidget(ScriptedLoadableModuleWidget, VTKObservationMixin):
 
         self.initializeParameterNode()
         self.updateServerUrlGUIFromSettings()
-        # self.onClickFetchModels()
+        # self.onClickFetchInfo()
 
     def cleanup(self):
         self.removeObservers()
@@ -531,16 +535,20 @@ class MONAILabelWidget(ScriptedLoadableModuleWidget, VTKObservationMixin):
     def monitorTraining(self):
         status = self.isTrainingRunning(check_only=False)
         if status and status.get("status") == "RUNNING":
-            for line in reversed(status.get("details")):
-                if "SupervisedTrainer" in line and "Epoch: " in line:
-                    epoch = line.split("Epoch: ")[1].split(",")[0].split("/")
-                    current = int(epoch[0])
-                    total = int(epoch[1])
-                    percent = max(1, 100 * ((current - 1) / total))
-                    if self.ui.trainingProgressBar.value != percent:
-                        self.ui.trainingProgressBar.setValue(percent)
-                    self.ui.trainingProgressBar.setToolTip(f"{current}/{total} epoch is running")
-                    self.fetchModels()
+            info = self.logic.info()
+            train_stats = info.get("train_stats")
+            if not train_stats:
+                return
+
+            current = 0 if train_stats.get("total_time") else train_stats.get("epoch", 1)
+            total = train_stats.get("total_epochs", 1)
+            percent = max(1, 100 * current / total)
+            if self.ui.trainingProgressBar.value != percent:
+                self.ui.trainingProgressBar.setValue(percent)
+            self.ui.trainingProgressBar.setToolTip(f"{current}/{total} epoch is completed")
+
+            dice = train_stats.get("best_metric", 0)
+            self.updateAccuracyBar(dice)
             return
 
         print("Training completed")
@@ -551,7 +559,7 @@ class MONAILabelWidget(ScriptedLoadableModuleWidget, VTKObservationMixin):
 
         self.ui.trainingButton.setEnabled(True)
         self.ui.stopTrainingButton.setEnabled(False)
-        self.fetchModels()
+        self.fetchInfo()
 
     def updateGUIFromParameterNode(self, caller=None, event=None):
         if self._parameterNode is None or self._updatingGUIFromParameterNode:
@@ -596,23 +604,7 @@ class MONAILabelWidget(ScriptedLoadableModuleWidget, VTKObservationMixin):
 
         train_stats = self.info.get("train_stats", {})
         dice = train_stats.get("best_metric", 0)
-        self.ui.accuracyProgressBar.setValue(dice * 100)
-        css = ["stop: 0 red"]
-        if dice > 0.5:
-            css.append(f"stop: {0.5 / dice} orange")
-        if dice > 0.6:
-            css.append(f"stop: {0.6 / dice} yellow")
-        if dice > 0.7:
-            css.append(f"stop: {0.7 / dice} lightgreen")
-        if dice > 0.8:
-            css.append(f"stop: {0.8 / dice} green")
-        if dice > 0.9:
-            css.append(f"stop: {0.9 / dice} darkgreen")
-        self.ui.accuracyProgressBar.setStyleSheet(
-            "QProgressBar {text-align: center;} "
-            "QProgressBar::chunk {background-color: "
-            "qlineargradient(x0: 0, x2: 1, " + ",".join(css) + ")}"
-        )
+        self.updateAccuracyBar(dice)
 
         self.ui.strategyBox.clear()
         for strategy in self.info.get("strategies", {}):
@@ -637,6 +629,10 @@ class MONAILabelWidget(ScriptedLoadableModuleWidget, VTKObservationMixin):
             self.ui.segmentationModelSelector.currentText and self._volumeNode is not None
         )
         self.ui.saveLabelButton.setEnabled(self._segmentNode is not None)
+        self.ui.uploadImageButton.setEnabled(
+            self.info and slicer.mrmlScene.GetFirstNodeByClass("vtkMRMLScalarVolumeNode") and self._segmentNode is None
+        )
+        self.ui.importLabelButton.setEnabled(self._segmentNode is not None)
 
         # Create empty markup fiducial node for deep grow +ve and -ve
         if self._segmentNode:
@@ -758,6 +754,26 @@ class MONAILabelWidget(ScriptedLoadableModuleWidget, VTKObservationMixin):
 
                 table.item(n, 0).setBackground(colors[section])
                 n = n + 1
+
+    def updateAccuracyBar(self, dice):
+        self.ui.accuracyProgressBar.setValue(dice * 100)
+        css = ["stop: 0 red"]
+        if dice > 0.5:
+            css.append(f"stop: {0.5 / dice} orange")
+        if dice > 0.6:
+            css.append(f"stop: {0.6 / dice} yellow")
+        if dice > 0.7:
+            css.append(f"stop: {0.7 / dice} lightgreen")
+        if dice > 0.8:
+            css.append(f"stop: {0.8 / dice} green")
+        if dice > 0.9:
+            css.append(f"stop: {0.9 / dice} darkgreen")
+        self.ui.accuracyProgressBar.setStyleSheet(
+            "QProgressBar {text-align: center;} "
+            "QProgressBar::chunk {background-color: "
+            "qlineargradient(x0: 0, x2: 1, " + ",".join(css) + ")}"
+        )
+        self.ui.accuracyProgressBar.setToolTip(f"Accuracy: {dice:.4f}")
 
     def getParamsFromConfig(self):
         config = {}
@@ -890,7 +906,7 @@ class MONAILabelWidget(ScriptedLoadableModuleWidget, VTKObservationMixin):
         serverUrl = self.ui.serverComboBox.currentText
         if not serverUrl:
             serverUrl = "http://127.0.0.1:8000"
-        return serverUrl
+        return serverUrl.rstrip("/")
 
     def saveServerUrl(self):
         self.updateParameterNodeFromGUI()
@@ -917,14 +933,14 @@ class MONAILabelWidget(ScriptedLoadableModuleWidget, VTKObservationMixin):
 
         self.updateServerUrlGUIFromSettings()
 
-    def onClickFetchModels(self):
-        self.fetchModels()
+    def onClickFetchInfo(self):
+        self.fetchInfo()
         self.updateConfigTable()
 
         # if self._volumeNode is None:
         #    self.onNextSampleButton()
 
-    def fetchModels(self, showInfo=False):
+    def fetchInfo(self, showInfo=False):
         if not self.logic:
             return
 
@@ -1069,8 +1085,6 @@ class MONAILabelWidget(ScriptedLoadableModuleWidget, VTKObservationMixin):
             result = status.get("details", [])[-1]
             try:
                 result = json.loads(result)
-                result.pop("train_metric_details", None)
-                result.pop("val_metric_details", None)
                 result = json.dumps(result, indent=2)
             except:
                 pass
@@ -1131,31 +1145,8 @@ class MONAILabelWidget(ScriptedLoadableModuleWidget, VTKObservationMixin):
                     nodeNames=sample["name"], fileNames=sample["name"], uris=download_uri, checksums=sample["checksum"]
                 )[0]
 
-            sample["VolumeNodeName"] = self._volumeNode.GetName()
-            self.current_sample = sample
-            self.samples[sample["id"]] = sample
-            self._volumeNodes.append(self._volumeNode)
+            self.initSample(sample)
 
-            # Create Empty Segments for all labels for this node
-            self.createSegmentNode()
-            segmentEditorWidget = slicer.modules.segmenteditor.widgetRepresentation().self().editor
-            segmentEditorWidget.setSegmentationNode(self._segmentNode)
-            segmentEditorWidget.setMasterVolumeNode(self._volumeNode)
-
-            if self.info.get("labels"):
-                self.updateSegmentationMask(None, self.info.get("labels"))
-
-            # Check if user wants to run auto-segmentation on new sample
-            if slicer.util.settingsValue(
-                "MONAILabel/autoRunSegmentationOnNextSample", True, converter=slicer.util.toBool
-            ):
-                for label in self.info.get("labels", []):
-                    for name, model in self.models.items():
-                        if label in model.get("labels", []):
-                            qt.QApplication.restoreOverrideCursor()
-                            self.ui.segmentationModelSelector.currentText = name
-                            self.onClickSegmentation()
-                            return
         except:
             slicer.util.errorDisplay(
                 "Failed to fetch Sample from MONAI Label Server", detailedText=traceback.format_exc()
@@ -1165,6 +1156,78 @@ class MONAILabelWidget(ScriptedLoadableModuleWidget, VTKObservationMixin):
 
         self.updateGUIFromParameterNode()
         logging.info("Time consumed by next_sample: {0:3.1f}".format(time.time() - start))
+
+    def initSample(self, sample, autosegment=True):
+        sample["VolumeNodeName"] = self._volumeNode.GetName()
+        self.current_sample = sample
+        self.samples[sample["id"]] = sample
+        self._volumeNodes.append(self._volumeNode)
+
+        # Create Empty Segments for all labels for this node
+        self.createSegmentNode()
+        segmentEditorWidget = slicer.modules.segmenteditor.widgetRepresentation().self().editor
+        segmentEditorWidget.setSegmentationNode(self._segmentNode)
+        segmentEditorWidget.setMasterVolumeNode(self._volumeNode)
+
+        if self.info.get("labels"):
+            self.updateSegmentationMask(None, self.info.get("labels"))
+
+        # Check if user wants to run auto-segmentation on new sample
+        if autosegment and slicer.util.settingsValue(
+            "MONAILabel/autoRunSegmentationOnNextSample", True, converter=slicer.util.toBool
+        ):
+            for label in self.info.get("labels", []):
+                for name, model in self.models.items():
+                    if label in model.get("labels", []):
+                        qt.QApplication.restoreOverrideCursor()
+                        self.ui.segmentationModelSelector.currentText = name
+                        self.onClickSegmentation()
+                        return
+
+    def onUploadImage(self):
+        volumeNode = slicer.mrmlScene.GetFirstNodeByClass("vtkMRMLScalarVolumeNode")
+        name = volumeNode.GetName()
+        image_id = f"{name}.nii.gz"
+        if not slicer.util.confirmOkCancelDisplay(
+            f"This will push/update volume to MONAILabel server as {image_id}\n" "Are you sure to continue?"
+        ):
+            return
+
+        try:
+            qt.QApplication.setOverrideCursor(qt.Qt.WaitCursor)
+            in_file = tempfile.NamedTemporaryFile(suffix=".nii.gz", dir=self.tmpdir).name
+            self.reportProgress(5)
+
+            start = time.time()
+            slicer.util.saveNode(volumeNode, in_file)
+            logging.info("Saved Input Node into {0} in {1:3.1f}s".format(in_file, time.time() - start))
+            self.reportProgress(30)
+
+            self.logic.upload_image(in_file, image_id)
+            self.reportProgress(100)
+
+            self._volumeNode = volumeNode
+            self.initSample({"id": image_id}, autosegment=False)
+            qt.QApplication.restoreOverrideCursor()
+
+            self.updateGUIFromParameterNode()
+        except:
+            self.reportProgress(100)
+            qt.QApplication.restoreOverrideCursor()
+            slicer.util.errorDisplay("Failed to upload volume to Server", detailedText=traceback.format_exc())
+
+    def onImportLabel(self):
+        if not self.ui.labelPathLineEdit.currentPath or not os.path.exists(self.ui.labelPathLineEdit.currentPath):
+            slicer.util.warningDisplay("Label File not selected")
+            return
+
+        try:
+            qt.QApplication.setOverrideCursor(qt.Qt.WaitCursor)
+            self.updateSegmentationMask(self.ui.labelPathLineEdit.currentPath, self.info["labels"])
+            qt.QApplication.restoreOverrideCursor()
+        except:
+            qt.QApplication.restoreOverrideCursor()
+            slicer.util.errorDisplay("Failed to import label", detailedText=traceback.format_exc())
 
     def onSaveLabel(self):
         start = time.time()
@@ -1187,7 +1250,7 @@ class MONAILabelWidget(ScriptedLoadableModuleWidget, VTKObservationMixin):
 
             self.updateServerSettings()
             result = self.logic.save_label(self.current_sample["id"], label_in)
-            self.fetchModels()
+            self.fetchInfo()
 
             if slicer.util.settingsValue("MONAILabel/autoUpdateModel", True, converter=slicer.util.toBool):
                 try:
@@ -1322,8 +1385,7 @@ class MONAILabelWidget(ScriptedLoadableModuleWidget, VTKObservationMixin):
 
     def getLabelColor(self, name):
         color = GenericAnatomyColors.get(name.lower())
-        color = GenericAnatomyColors.get("tissue") if color is None else color
-        return [c / 255.0 for c in color]
+        return [c / 255.0 for c in color] if color else None
 
     def updateSegmentationMask(self, in_file, labels, sliceIndex=None):
         # TODO:: Add ROI Node (for Bounding Box if provided in the result)
@@ -1503,6 +1565,9 @@ class MONAILabelLogic(ScriptedLoadableModuleLogic):
 
     def next_sample(self, strategy, params={}):
         return MONAILabelClient(self.server_url, self.tmpdir).next_sample(strategy, params)
+
+    def upload_image(self, image_in, image_id=None):
+        return MONAILabelClient(self.server_url, self.tmpdir).upload_image(image_in, image_id)
 
     def save_label(self, image_in, label_in):
         return MONAILabelClient(self.server_url, self.tmpdir).save_label(image_in, label_in)

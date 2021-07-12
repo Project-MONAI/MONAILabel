@@ -17,9 +17,11 @@ from monai.handlers import (
     StatsHandler,
     TensorBoardStatsHandler,
     ValidationHandler,
+    from_engine,
 )
 from monai.inferers import SimpleInferer
 from monai.losses import DiceLoss
+from monai.transforms.compose import Compose
 
 from monailabel.interfaces.tasks import TrainTask
 
@@ -132,8 +134,16 @@ class BasicTrainTask(TrainTask):
         return self._optimizer
 
     def train_data_loader(self):
+
+        if isinstance(self.train_pre_transforms(), list):
+            train_pre_transforms = Compose(self.train_pre_transforms())
+        elif isinstance(self.train_pre_transforms(), Compose):
+            train_pre_transforms = self.train_pre_transforms()
+        else:
+            raise ValueError("Training pre-transforms are not of `list` or `Compose` type")
+
         return DataLoader(
-            dataset=PersistentDataset(self._train_datalist, self.train_pre_transforms(), cache_dir=None),
+            dataset=PersistentDataset(self._train_datalist, train_pre_transforms, cache_dir=None),
             batch_size=self._train_batch_size,
             shuffle=True,
             num_workers=self._train_num_workers,
@@ -143,18 +153,18 @@ class BasicTrainTask(TrainTask):
         return SimpleInferer()
 
     def train_key_metric(self):
-        return {"train_dice": MeanDice(output_transform=lambda x: (x["pred"], x["label"]))}
+        return {"train_dice": MeanDice(output_transform=from_engine(["pred", "label"]))}
 
     def train_handlers(self):
         lr_scheduler = torch.optim.lr_scheduler.StepLR(self.optimizer(), step_size=5000, gamma=0.1)
 
         handlers = [
             LrScheduleHandler(lr_scheduler=lr_scheduler, print_lr=True),
-            StatsHandler(tag_name="train_loss", output_transform=lambda x: x["loss"]),
+            StatsHandler(tag_name="train_loss", output_transform=from_engine(["loss"], first=True)),
             TensorBoardStatsHandler(
                 log_dir=self.events_dir,
                 tag_name="train_loss",
-                output_transform=lambda x: x["loss"],
+                output_transform=from_engine(["loss"], first=True),
             ),
             CheckpointSaver(
                 save_dir=self.output_dir,
@@ -201,10 +211,26 @@ class BasicTrainTask(TrainTask):
         )
 
     def val_pre_transforms(self):
-        return self.train_pre_transforms()
+
+        if isinstance(self.train_pre_transforms(), list):
+            val_pre_transforms = Compose(self.train_pre_transforms())
+        elif isinstance(self.train_pre_transforms(), Compose):
+            val_pre_transforms = self.train_pre_transforms()
+        else:
+            raise ValueError("Validation pre-transforms are not of `list` or `Compose` type")
+
+        return val_pre_transforms
 
     def val_post_transforms(self):
-        return self.train_post_transforms()
+
+        if isinstance(self.train_post_transforms(), list):
+            val_post_transforms = Compose(self.train_post_transforms())
+        elif isinstance(self.train_post_transforms(), Compose):
+            val_post_transforms = self.train_post_transforms()
+        else:
+            raise ValueError("Validation pre-transforms are not of `list` or `Compose` type")
+
+        return val_post_transforms
 
     def val_handlers(self):
         return [
@@ -220,7 +246,7 @@ class BasicTrainTask(TrainTask):
         ]
 
     def val_key_metric(self):
-        return {"val_mean_dice": MeanDice(output_transform=lambda x: (x["pred"], x["label"]))}
+        return {"val_mean_dice": MeanDice(output_transform=from_engine(["pred", "label"]))}
 
     def train_iteration_update(self):
         return None

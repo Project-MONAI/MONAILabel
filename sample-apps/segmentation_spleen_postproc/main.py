@@ -1,6 +1,8 @@
-import json
 import logging
 import os
+
+from monai.networks.layers import Norm
+from monai.networks.nets import UNet
 
 from lib import (
     MyStrategy,
@@ -11,9 +13,6 @@ from lib import (
     SpleenBIFSegSimpleCRF,
     SpleenInteractiveGraphCut,
 )
-from monai.networks.layers import Norm
-from monai.networks.nets import UNet
-
 from monailabel.interfaces import MONAILabelApp
 from monailabel.interfaces.tasks import InferType
 from monailabel.utils.activelearning import Random
@@ -23,7 +22,6 @@ logger = logging.getLogger(__name__)
 
 class MyApp(MONAILabelApp):
     def __init__(self, app_dir, studies):
-        self.model_dir = os.path.join(app_dir, "model")
         self.network = UNet(
             dimensions=3,
             in_channels=1,
@@ -34,44 +32,46 @@ class MyApp(MONAILabelApp):
             norm=Norm.BATCH,
         )
 
-        self.pretrained_model = os.path.join(self.model_dir, "segmentation_spleen.pt")
-        self.final_model = os.path.join(self.model_dir, "final.pt")
-        self.train_stats_path = os.path.join(self.model_dir, "train_stats.json")
+        self.model_dir = os.path.join(app_dir, "model")
+        self.pretrained_model = os.path.join(self.model_dir, "pretrained.pt")
+        self.final_model = os.path.join(self.model_dir, "model.pt")
 
-        path = [self.pretrained_model, self.final_model]
+        self.download(
+            [
+                (
+                    self.pretrained_model,
+                    "https://api.ngc.nvidia.com/v2/models/nvidia/med/"
+                    "clara_pt_spleen_ct_segmentation/versions/1/files/models/model.pt",
+                ),
+            ]
+        )
+
+        super().__init__(app_dir, studies, os.path.join(self.model_dir, "train_stats.json"))
+
+    def init_infers(self):
         infers = {
-            "Spleen_Segmentation": SegmentationWithWriteLogits(path, self.network),
+            "Spleen_Segmentation": SegmentationWithWriteLogits([self.pretrained_model, self.final_model], self.network),
             "BIFSeg+CRF": SpleenBIFSegCRF(),
             "BIFSeg+SimpleCRF": SpleenBIFSegSimpleCRF(),
             "BIFSeg+GraphCut": SpleenBIFSegGraphCut(),
             "Int.+BIFSeg+GraphCut": SpleenInteractiveGraphCut(),
         }
 
-        strategies = {
+        # Simple way to Add deepgrow 2D+3D models for infer tasks
+        infers.update(self.deepgrow_infer_tasks(self.model_dir))
+        return infers
+
+    def init_strategies(self):
+        return {
             "random": Random(),
             "first": MyStrategy(),
         }
-
-        resources = [
-            (self.pretrained_model, "https://www.dropbox.com/s/xc9wtssba63u7md/segmentation_spleen.pt?dl=1"),
-        ]
-
-        super().__init__(
-            app_dir=app_dir,
-            studies=studies,
-            infers=infers,
-            strategies=strategies,
-            resources=resources,
-        )
-
-        # Simple way to Add deepgrow 2D+3D models for infer tasks
-        self.add_deepgrow_infer_tasks()
 
     def infer(self, request, datastore=None):
         image = request.get("image")
 
         # check if inferer is Post Processor
-        if self.infers[request.get("model")].type == InferType.POSTPROCS:
+        if self._infers[request.get("model")].type == InferType.POSTPROCS:
             saved_labels = self.datastore().get_labels_by_image_id(image)
             for label, tag in saved_labels.items():
                 if tag == "logits":
@@ -117,9 +117,3 @@ class MyApp(MONAILabelApp):
             amp=request.get("amp", True),
         )
         return task()
-
-    def train_stats(self):
-        if os.path.exists(self.train_stats_path):
-            with open(self.train_stats_path, "r") as fc:
-                return json.load(fc)
-        return super().train_stats()
