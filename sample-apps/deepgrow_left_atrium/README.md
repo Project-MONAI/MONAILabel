@@ -4,6 +4,10 @@
 
 Interactive MONAI Label App using DeepGrow (https://arxiv.org/abs/1903.08205) to label left atrium over single modality 3D MRI Images
 
+### Running the app
+
+monailabel start_server --app /path/on/server/to/monai_label/sample-apps/deepgrow_left_atrium/ --studies /path/to/data/
+
 ### Data
 
 The training data is from Medical Segmentation Decathlon (http://medicaldecathlon.com/).
