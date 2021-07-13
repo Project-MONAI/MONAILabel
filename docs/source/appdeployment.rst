@@ -14,7 +14,7 @@ The MONAI Label Server endpoints are available at startup. The user may download
 .. code-block:: bash
 
   # download a sample app
-  monailabel apps --name generic_deeedit --download --output my_deepedit
+  monailabel apps --name generic_deepdit --download --output my_deepedit
 
   # start the sample app locally
   monailabel start_server --app my_deepedit --studies <path/to/datastore>
