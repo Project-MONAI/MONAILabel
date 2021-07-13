@@ -235,3 +235,11 @@ behavior. Template applications currently available are
 - `automated segmentation <https://github.com/Project-MONAI/MONAILabel/tree/main/sample-apps/generic_segmentation>`_,
 - `DeepGrow AI annotation <https://github.com/Project-MONAI/MONAILabel/tree/main/sample-apps/generic_deepgrow>`_,
 - `DeepEdit AI annotation <https://github.com/Project-MONAI/MONAILabel/tree/main/sample-apps/generic_deepedit>`_.
+
+To quickly get started with the template apps the developer may use
+
+.. code-block:: bash
+
+  monailabel apps --name <desired_app> --download --output myapp
+
+where ``desired_app`` may be any of ``generic_segmentation``, ``generic_deepgrow``, or ``generic_deepedit``.
