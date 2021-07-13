@@ -27,6 +27,7 @@ Table of Contents
 
    installation
    modules
+   appdeployment
 
 .. toctree::
    :maxdepth: 1
