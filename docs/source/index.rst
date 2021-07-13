@@ -11,10 +11,11 @@ where custom labeling apps are exposed as a service through the MONAI Label Serv
 
 MONAI Label reduces the time and effort of annotating new datasets and enables the adaptation
 of AI to the task at hand by continuously learning from user interactions and data.
-- MONAI Label allows researchers and developers to make continuous improvements to their apps
-by allowing them to interact with their apps at the user would.
-- End-users (clinicians, technologists, and annotators in general) benefit from AI continuously
-learning and becoming better at understanding what the end-user is trying to annotate.
+
+- | MONAI Label allows researchers and developers to make continuous improvements to their apps
+  | by allowing them to interact with their apps at the user would.
+- | End-users (clinicians, technologists, and annotators in general) benefit from AI continuously
+  | learning and becoming better at understanding what the end-user is trying to annotate.
 
 MONAI Label aims to fill the gap between developers creating new annotation applications, and
 the end users which want to benefit from these innovations.
