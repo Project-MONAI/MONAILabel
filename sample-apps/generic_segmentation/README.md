@@ -8,7 +8,7 @@ If researchers are interested on using this App, please clone the folder and adj
 
 - Network
     > This App uses the UNet as the default network. This can be changed in the **main.py** file. 
-  > Researchers can define their own definition. Please check [here](https://docs.monai.io/en/latest/networks.html) for options 
+  > Researchers can define their own network or use one of the listed [here](https://docs.monai.io/en/latest/networks.html)
 
 - Input image size
   
