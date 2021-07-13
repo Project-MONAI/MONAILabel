@@ -1,15 +1,14 @@
 from monai.inferers import SimpleInferer
 from monai.transforms import (
     Activationsd,
-    EnsureChannelFirstd,
-    CenterSpatialCropd,
     AsDiscreted,
+    CenterSpatialCropd,
+    EnsureChannelFirstd,
     LoadImaged,
     NormalizeIntensityd,
     Orientationd,
     Spacingd,
     ToNumpyd,
-    Resized,
     ToTensord,
 )
 
