@@ -224,3 +224,14 @@ define the next image selection strategies they want to make available to the en
               val_batch_size=request.get("val_batch_size", 1),
           )
           return task()
+
+Quickstart with MONAI Label Template Apps
+==============================================
+
+MONAI Label currently provides three template applications which developers
+may start using out of the box or with few modifications to achieve the desired 
+behavior. Template applications currently available are
+
+- `automated segmentation <https://github.com/Project-MONAI/MONAILabel/tree/main/sample-apps/generic_segmentation>`_,
+- `DeepGrow AI annotation <https://github.com/Project-MONAI/MONAILabel/tree/main/sample-apps/generic_deepgrow>`_,
+- `DeepEdit AI annotation <https://github.com/Project-MONAI/MONAILabel/tree/main/sample-apps/generic_deepedit>`_.
