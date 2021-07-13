@@ -28,8 +28,8 @@ If the datastore is empty the user is required to first upload an image (e.g. vi
 web UI), however, if the datastore is populated the user may select the "next image" to annotate
 based on the image selection strategy defined in the labeling app.
 
-Label Server Application Call-flow
-==================================
+Application Call-flow
+=====================
 
 Figure 1 shows a typical call-flow between the client (e.g. 3DSlicer),
 the MONAI Label Server, and the deployed MONAI Label application.
