@@ -1,20 +1,20 @@
 import logging
-import numpy as np
 
+import numpy as np
 from monai.inferers import SimpleInferer
 from monai.transforms import (
     Activationsd,
-    EnsureChannelFirstd,
     AsDiscreted,
     CropForegroundd,
+    EnsureChannelFirstd,
     LoadImaged,
     NormalizeIntensityd,
     Orientationd,
+    RandAffined,
     RandCropByPosNegLabeld,
+    RandFlipd,
     RandShiftIntensityd,
     Resized,
-    RandFlipd,
-    RandAffined,
     Spacingd,
     ToTensord,
 )

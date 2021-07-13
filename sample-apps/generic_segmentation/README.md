@@ -47,5 +47,14 @@ If researchers are interested on using this App, please clone the folder and adj
 
 - 1 channel representing the segmented organ/tumor/tissue
 
+### Structure of the App
+
+- **[./lib/infer.py](./lib/infer.py)** is the script where researchers define the inference class (i.e. type of inferer, pre transforms for inference, etc).
+- **[./lib/train.py](./lib/train.py)** is the script to define the pre and post transforms to train the network/model
+- **[./lib/activelearning.py](./lib/activelearning.py)** is the file to define the image selection techniques.
+- **[./lib/transforms.py](./lib/transforms.py)** is the file to define customised transformations to be used in the App
+- **[info.yaml](./info.yaml)** is the file to define hyperparameters such as epochs, learning and validation split percentage.
+- **[main.py](./main.py)** is the script to define network architecture, enable the active learning strategy, etc  
+
 
 
