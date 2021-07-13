@@ -52,7 +52,7 @@ class Segmentation(InferTask):
             Spacingd(keys="image", pixdim=(1.5, 1.5, 2.0), mode="bilinear"),
             Orientationd(keys="image", axcodes="RAS"),
             NormalizeIntensityd(keys="image"),
-            Resized(keys="image", spatial_size=(128, 128, 128), mode="area"),
+            Resized(keys="image", spatial_size=(256, 256, 128), mode="area"),
             DiscardAddGuidanced(image="image"),
             ToTensord(keys="image"),
         ]
@@ -86,8 +86,8 @@ class Deepgrow(InferTask):
         type=InferType.DEEPGROW,
         dimension=3,
         description="A pre-trained 3D DeepGrow model based on UNET",
-        spatial_size=(128, 128),
-        model_size=(128, 128, 128),
+        spatial_size=(256, 256),
+        model_size=(256, 256, 128),
     ):
         super().__init__(
             path=path,

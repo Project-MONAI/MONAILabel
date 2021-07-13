@@ -1,22 +1,24 @@
-from monai.inferers import SlidingWindowInferer
+from monai.inferers import SimpleInferer
 from monai.transforms import (
     Activationsd,
-    AddChanneld,
     AsDiscreted,
+    CenterSpatialCropd,
+    EnsureChannelFirstd,
     LoadImaged,
-    ScaleIntensityRanged,
+    NormalizeIntensityd,
+    Orientationd,
     Spacingd,
     ToNumpyd,
     ToTensord,
 )
 
 from monailabel.interfaces.tasks import InferTask, InferType
-from monailabel.utils.others.post import BoundingBoxd, Restored
+from monailabel.utils.others.post import Restored
 
 
 class MyInfer(InferTask):
     """
-    Generic Inference Engine
+    This provides Inference Engine for 3D segmentation using a 3D model .
     """
 
     def __init__(
@@ -26,7 +28,7 @@ class MyInfer(InferTask):
         type=InferType.SEGMENTATION,
         labels="generic",
         dimension=3,
-        description="A generic model for volumetric (3D) segmentation",
+        description="A pre-trained model for volumetric (3D) segmentation over 3D Images",
     ):
         super().__init__(
             path=path,
@@ -38,22 +40,32 @@ class MyInfer(InferTask):
         )
 
     def pre_transforms(self):
-        return [
-            LoadImaged(keys="image"),
-            AddChanneld(keys="image"),
-            Spacingd(keys="image", pixdim=[1.0, 1.0, 1.0]),
-            ScaleIntensityRanged(keys="image", a_min=-57, a_max=164, b_min=0.0, b_max=1.0, clip=True),
-            ToTensord(keys="image"),
+        pre_transforms = [
+            LoadImaged(keys=["image"]),
+            EnsureChannelFirstd(keys="image"),
+            Spacingd(
+                keys=["image"],
+                pixdim=(1.0, 1.0, 1.0),
+                mode="bilinear",
+            ),
+            Orientationd(keys=["image"], axcodes="RAS"),
+            NormalizeIntensityd(keys=["image"], nonzero=False, channel_wise=True),
+            CenterSpatialCropd(keys="image", roi_size=(256, 256, 128)),
+            ToTensord(keys=["image"]),
         ]
+        return pre_transforms
 
     def inferer(self):
-        return SlidingWindowInferer(roi_size=[160, 160, 160])
+        return SimpleInferer()
+
+    def inverse_transforms(self):
+        return []  # Self-determine from the list of pre-transforms provided
 
     def post_transforms(self):
         return [
+            ToTensord(keys=("image", "pred")),
             Activationsd(keys="pred", softmax=True),
             AsDiscreted(keys="pred", argmax=True),
             ToNumpyd(keys="pred"),
             Restored(keys="pred", ref_image="image"),
-            BoundingBoxd(keys="pred", result="result", bbox="bbox"),
         ]
