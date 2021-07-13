@@ -24,5 +24,4 @@ The training data is from Medical Segmentation Decathlon (http://medicaldecathlo
 
 - 1 channel representing Spleen
 
-
 ![DeepGrow for spleen](../../docs/images/sample-apps/deepedit_spleen.png)
