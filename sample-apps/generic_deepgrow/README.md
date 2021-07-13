@@ -6,7 +6,11 @@ This MONAI Label App is based on DeepGrow which allows for an interactive segmen
 the user can guide the segmentation using positive and negative clicks (https://arxiv.org/abs/1903.08205).
 It uses pre-trained Deepgrow Models for NVIDIA Clara.
 
-To those extending this App, please clone the folder and adjust the following hyper-parameters:
+To those extending this App, use the below command through CLI and adjust the following hyper-parameters in the codebase:
+
+```bash
+monailabel apps --name generic_deepgrow --download --output myapp
+```
 
 - Network
   
