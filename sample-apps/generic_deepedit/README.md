@@ -9,7 +9,7 @@ If researchers are interested on using this App, please clone the folder and adj
 
 - Network
     > This App uses the DynUNetV1 as the default network. This can be changed in the **main.py** file. 
-  > Researchers can define their own definition. Please check [here](https://docs.monai.io/en/latest/networks.html) for options 
+  > Researchers can define their own network or use one of the listed [here](https://docs.monai.io/en/latest/networks.html) 
 
 - Input image size
   
@@ -28,8 +28,9 @@ If researchers are interested on using this App, please clone the folder and adj
   > - [RandAdjustContrastd](https://docs.monai.io/en/latest/_modules/monai/transforms/intensity/dictionary.html#RandAdjustContrastd) -> This transform randomly changes image intensity by a gamma value, 
   > - [RandHistogramShiftd](https://docs.monai.io/en/latest/_modules/monai/transforms/intensity/dictionary.html#RandHistogramShiftd) -> This transfoms applies random nonlinear transform the the image's intensity histogram,
   > - [Resized](https://docs.monai.io/en/latest/_modules/monai/transforms/spatial/dictionary.html#Resized) -> Resample image to a different size,
-  >  
-  > Transformations used for the clicks simulation [(DeepGrow App)](https://docs.monai.io/en/latest/apps.html)
+
+
+  Transformations used for the clicks simulation [(DeepGrow App)](https://docs.monai.io/en/latest/apps.html)
   > 
   > - [FindAllValidSlicesd](https://docs.monai.io/en/latest/_modules/monai/apps/deepgrow/transforms.html#FindAllValidSlicesd) -> This transform finds/lists all valid slices in the label. Label is assumed to be a 4D Volume with shape CDHW, where C=1,
   > - [AddInitialSeedPointd](https://docs.monai.io/en/latest/_modules/monai/apps/deepgrow/transforms.html#AddInitialSeedPointd) -> This transform adds random guidance as initial seed point for a given label,
