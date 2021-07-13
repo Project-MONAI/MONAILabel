@@ -11,7 +11,6 @@ from monai.transforms import (
     NormalizeIntensityd,
     Orientationd,
     RandAffined,
-    RandCropByPosNegLabeld,
     RandFlipd,
     RandShiftIntensityd,
     Resized,

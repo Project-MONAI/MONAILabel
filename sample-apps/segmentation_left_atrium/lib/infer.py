@@ -7,7 +7,6 @@ from monai.transforms import (
     LoadImaged,
     NormalizeIntensityd,
     Orientationd,
-    Resized,
     Spacingd,
     ToNumpyd,
     ToTensord,
