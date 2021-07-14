@@ -25,7 +25,7 @@ principles with [MONAI](https://github.com/Project-MONAI).
 
 
 ## Installation
-MONAI Label supports following OS with GPU/CUDA enabled.
+MONAI Label supports following OS with **GPU/CUDA** enabled.
  - Ubuntu
  - [Windows](https://docs.monai.io/projects/label/en/latest/installation.html#windows)
 
