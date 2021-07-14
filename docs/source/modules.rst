@@ -49,11 +49,11 @@ For a quickstart the developer may use
 
 where ``desired_app`` may be any of ``generic_segmentation``, ``generic_deepgrow``, or ``generic_deepedit``.
 
-To better understand template apps, the next few sections we will go into the details of implementing 
+To better understand template apps, the next few sections we will go into the details of implementing
 
-- `an inference task <#inference-task>`_,
-- `a training task <#training-task>`_,
-- `an image selection strategy <#image-selection-strategy>`_,
+- `Inference task <#inference-task>`_
+- `Training task <#training-task>`_
+- `Image selection strategy <#image-selection-strategy>`_
 
 and putting these to work together in a `MONAI Label app <#id1>`_.
 
