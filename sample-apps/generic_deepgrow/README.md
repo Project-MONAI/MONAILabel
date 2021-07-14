@@ -44,10 +44,7 @@ monailabel apps --name generic_deepgrow --download --output myapp
   > - [FindAllValidSlicesd](https://docs.monai.io/en/latest/_modules/monai/apps/deepgrow/transforms.html#FindAllValidSlicesd) -> This transform finds/lists all valid slices in the label. Label is assumed to be a 4D Volume with shape CDHW, where C=1,
   > - [AddInitialSeedPointd](https://docs.monai.io/en/latest/_modules/monai/apps/deepgrow/transforms.html#AddInitialSeedPointd) -> This transform adds random guidance as initial seed point for a given label,
   > - [AddGuidanceSignald](https://docs.monai.io/en/latest/_modules/monai/apps/deepgrow/transforms.html#AddGuidanceSignald) -> This transform adds guidance signal (foreground and background clicks) for input image, 
-  > - DiscardAddGuidanced -> This transform discards foreground and background tensors with a probability define as an argument. 
-      > This transform is responsible for the training of both automated model and interactive model. 
-      > This means, sometimes the input is a tensor with only the image and two empty tensors and sometimes is a tensor with the image and the foreground and backgounr points. 
-
+  
 - Number of epochs
   > Default value is 50 Epochs for DeepGrow 3D and 20 Epochs for DeepGrow 2D. Change this in the [info.YAML](./info.yaml) file.
 
