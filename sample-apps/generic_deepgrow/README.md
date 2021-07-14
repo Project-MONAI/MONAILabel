@@ -59,7 +59,6 @@ monailabel apps --name generic_deepgrow --download --output myapp
 
 ### Inputs
 
-- 1 channel for the image modality -> Automated mode
 - 3 channels (image modality + foreground points + background points) -> Interactive mode
 
 ### Output
