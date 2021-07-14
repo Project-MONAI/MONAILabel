@@ -19,7 +19,7 @@ The MONAI Label Server endpoints are available at startup. The user may download
   # start the sample app locally
   monailabel start_server --app my_deepedit --studies <path/to/datastore>
 
-and navigate to `http://127.0.0.1:8080/ <http://127.0.0.1:8080/>`_ on the browser (if the server
+and navigate to `http://127.0.0.1:8000/ <http://127.0.0.1:8000/>`_ on the browser (if the server
 is running on the local machine). The user may choose to use the web UI to invoke the various endpoints
 for the purpose of integration testing their labeling app.
 
