@@ -350,9 +350,8 @@ class MONAILabelWidget(ScriptedLoadableModuleWidget, VTKObservationMixin):
         self.ui.nextSampleButton.setEnabled(self.ui.strategyBox.count > 0 and current < total)
 
         is_training_running = True if self.info and self.isTrainingRunning() else False
-        self.ui.trainingButton.setEnabled(self.info and not is_training_running)
+        self.ui.trainingButton.setEnabled(current > 0 and self.info and not is_training_running)
         self.ui.stopTrainingButton.setEnabled(is_training_running)
-        self.ui.trainingStatusButton.setEnabled(self.info)
         if is_training_running and self.timer is None:
             self.timer = qt.QTimer()
             self.timer.setInterval(5000)
