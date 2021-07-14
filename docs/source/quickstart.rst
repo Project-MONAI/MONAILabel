@@ -31,8 +31,8 @@ heart MRI), and deploy the sample app and dataset on the MONAI Label server.
   monailabel start_server --app deepedit_left_atrium --studies Task02_Heart/imagesTr
 
 
-Connect 3DSlicer to MONAI Label Server
---------------------------------------
+Setup DeepEdit Annotation in 3DSlicer
+-------------------------------------
 
 Install 3DSlicer Preview Version with in-built MONAI Label plugin
 
