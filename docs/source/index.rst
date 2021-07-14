@@ -28,6 +28,7 @@ Table of Contents
    :caption: Getting Started
 
    installation
+   quickstart
    modules
    appdeployment
 
