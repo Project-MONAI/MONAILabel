@@ -10,6 +10,12 @@ set(MODULE_PYTHON_SCRIPTS
 set(MODULE_PYTHON_RESOURCES
   Resources/Icons/${MODULE_NAME}.png
   Resources/Icons/refresh-icon.png
+  Resources/Icons/download.png
+  Resources/Icons/save.png
+  Resources/Icons/segment.png
+  Resources/Icons/stop.png
+  Resources/Icons/training.png
+  Resources/Icons/upload.svg
   Resources/UI/${MODULE_NAME}.ui
   )
 
