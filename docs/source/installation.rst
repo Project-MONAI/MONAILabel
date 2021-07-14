@@ -67,7 +67,7 @@ MONAI Label CLI
 Simple *monailabel* command will help user to download sample apps, datasets and run server.
 ::
 
-    monailable --help
+    monailabel --help
 
 Downloading Sample Apps or Datasets
 ***********************************
