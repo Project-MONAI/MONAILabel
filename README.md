@@ -25,9 +25,9 @@ principles with [MONAI](https://github.com/Project-MONAI).
 
 
 ## Installation
-MONAI Label supports following OS with GPU/CUDA enabled.
+MONAI Label supports following OS with **GPU/CUDA** enabled.
  - Ubuntu
- - Windows
+ - [Windows](https://docs.monai.io/projects/label/en/latest/installation.html#windows)
 
 To install the current release, you can simply run:
 
@@ -43,7 +43,7 @@ To install the current release, you can simply run:
   
 ```
 
-For other installation methods (using the default GitHub branch, using Docker, etc.), please refer to the [installation guide](https://docs.monai.io/projects/label/en/latest/installation.html).
+For **_prerequisites_**, other installation methods (using the default GitHub branch, using Docker, etc.), please refer to the [installation guide](https://docs.monai.io/projects/label/en/latest/installation.html).
 
 > Once you start the MONAI Label Server, by default it will be up and serving at http://127.0.0.1:8000/. Open the serving
   URL in browser. It will provide you the list of Rest APIs available.

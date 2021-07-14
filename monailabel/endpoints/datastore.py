@@ -7,11 +7,12 @@ import tempfile
 from enum import Enum
 from typing import Dict, List, Optional
 
-from fastapi import APIRouter, File, UploadFile
+from fastapi import APIRouter, File, HTTPException, UploadFile
+from fastapi.responses import FileResponse
 from starlette.background import BackgroundTasks
 
 from monailabel.interfaces import Datastore, DefaultLabelTag, MONAILabelApp
-from monailabel.utils.others.generic import get_app_instance, remove_file
+from monailabel.utils.others.generic import get_app_instance, get_mime_type, remove_file
 
 logger = logging.getLogger(__name__)
 train_tasks: List = []
@@ -105,3 +106,23 @@ async def save_label(
         }
     )
     return res
+
+
+@router.get("/image", summary="Download Image")
+async def download_image(image):
+    instance: MONAILabelApp = get_app_instance()
+    image = instance.datastore().get_image_uri(image)
+    if not os.path.isfile(image):
+        raise HTTPException(status_code=404, detail="Image NOT Found")
+
+    return FileResponse(image, media_type=get_mime_type(image), filename=os.path.basename(image))
+
+
+@router.get("/label", summary="Download Label")
+async def download_label(label):
+    instance: MONAILabelApp = get_app_instance()
+    label = instance.datastore().get_label_uri(label)
+    if not os.path.isfile(label):
+        raise HTTPException(status_code=404, detail="Label NOT Found")
+
+    return FileResponse(label, media_type=get_mime_type(label), filename=os.path.basename(label))
