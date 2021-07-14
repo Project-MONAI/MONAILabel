@@ -37,9 +37,9 @@ MONAI Label currently provides three template applications which developers
 may start using out of the box, or with few modifications to achieve the desired 
 behavior. Template applications currently available are
 
-- `automated segmentation <https://github.com/Project-MONAI/MONAILabel/tree/main/sample-apps/generic_segmentation>`_,
-- `DeepGrow AI annotation <https://github.com/Project-MONAI/MONAILabel/tree/main/sample-apps/generic_deepgrow>`_,
-- `DeepEdit AI annotation <https://github.com/Project-MONAI/MONAILabel/tree/main/sample-apps/generic_deepedit>`_.
+- `Automated Segmentation <https://github.com/Project-MONAI/MONAILabel/tree/main/sample-apps/generic_segmentation>`_
+- `DeepGrow AI Annotation <https://github.com/Project-MONAI/MONAILabel/tree/main/sample-apps/generic_deepgrow>`_
+- `DeepEdit AI Annotation <https://github.com/Project-MONAI/MONAILabel/tree/main/sample-apps/generic_deepedit>`_
 
 For a quickstart the developer may use
 
@@ -172,8 +172,8 @@ the first unlabeled image it finds in the :py:class:`~monailabel.interfaces.Data
           return image
 
 
-MONAI Label App
-===============
+Developing a MONAI Label App
+============================
 
 A MONAI Label app ties together inference, training, and image selection to provide the end-user with
 a seamless simultaneous model training and annotation experience, where a segmentation model learns
