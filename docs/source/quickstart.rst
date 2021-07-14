@@ -78,7 +78,8 @@ To annotate the downlaoded heart MR images using DeepEdit
     :alt: Next Sample
 
 - We can now start making adjustments to the initial segmentation provided by adding **foreground** and **background** points using the tools in the **SmartEdit** section
-  - For example, click on the **Foreground** button and start clicking on the image panel to start seeing how foreground points affect the segmentation
+  
+  - For example, click on the **foreground** button and start clicking on the image panel to start seeing how foreground points affect the segmentation
 
   .. image:: ../images/quickstart/monai-smartedit-section.png
     :alt: MONAI Label SmartEdit
@@ -116,5 +117,11 @@ We can follow the instructions in the previous section to install and connect 3D
 Label Server, however, in this scenario we will instead load a file into MONAI Label Server *through*
 3DSlicer.
 
-- Open an image file by navigating the menu bar **File** -> **Add Data**
+- Load an image file by navigating the menu bar **File** -> **Add Data**
+- Click the referesh button under **MONAI Label Server** to connect to the server
+- Click the **Upload Volume** button to upload the new image onto the server
 
+  .. image:: ../images/quickstart/uploadnew-image-icon.png
+    :alt: MONAI Label Upload Image
+
+- Now, all DeepEdit functions should be available to use and we use **foreground** and **background** clicks
