@@ -277,6 +277,13 @@
       <item row="2" column="1">
        <widget class="ctkPathLineEdit" name="labelPathLineEdit"/>
       </item>
+      <item row="2" column="3">
+       <widget class="QPushButton" name="importLabelButton">
+        <property name="text">
+         <string/>
+        </property>
+       </widget>
+      </item>
       <item row="2" column="0">
        <widget class="QLabel" name="label_12">
         <property name="text">
@@ -284,10 +291,16 @@
         </property>
        </widget>
       </item>
-      <item row="2" column="2">
-       <widget class="QPushButton" name="importLabelButton">
+      <item row="2" column="4">
+       <widget class="QPushButton" name="contourButton">
+        <property name="sizePolicy">
+         <sizepolicy hsizetype="Minimum" vsizetype="MinimumExpanding">
+          <horstretch>0</horstretch>
+          <verstretch>0</verstretch>
+         </sizepolicy>
+        </property>
         <property name="text">
-         <string/>
+         <string>Contour</string>
         </property>
        </widget>
       </item>
@@ -343,19 +356,6 @@
         </property>
         <property name="toolTip">
          <string>Select pre-trained segmentation model</string>
-        </property>
-       </widget>
-      </item>
-      <item row="1" column="3">
-       <widget class="QPushButton" name="contourButton">
-        <property name="sizePolicy">
-         <sizepolicy hsizetype="Minimum" vsizetype="MinimumExpanding">
-          <horstretch>0</horstretch>
-          <verstretch>0</verstretch>
-         </sizepolicy>
-        </property>
-        <property name="text">
-         <string>Contour</string>
         </property>
        </widget>
       </item>

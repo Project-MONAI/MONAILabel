@@ -170,7 +170,7 @@ class MONAILabelWidget(ScriptedLoadableModuleWidget, VTKObservationMixin):
         self.ui.serverComboBox.lineEdit().setPlaceholderText("enter server address or leave empty to use default")
         self.ui.fetchServerInfoButton.setIcon(self.icon("refresh-icon.png"))
         self.ui.segmentationButton.setIcon(self.icon("segment.png"))
-        self.ui.contourButton.setIcon(self.icon("icon_contour.svg"))
+        self.ui.contourButton.setIcon(self.icon("contour.svg"))
         self.ui.nextSampleButton.setIcon(self.icon("segment.png"))
         self.ui.saveLabelButton.setIcon(self.icon("save.png"))
         self.ui.trainingButton.setIcon(self.icon("training.png"))

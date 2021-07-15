@@ -16,6 +16,7 @@ set(MODULE_PYTHON_RESOURCES
   Resources/Icons/stop.png
   Resources/Icons/training.png
   Resources/Icons/upload.svg
+  Resources/Icons/contour.svg
   Resources/UI/${MODULE_NAME}.ui
   )
 
