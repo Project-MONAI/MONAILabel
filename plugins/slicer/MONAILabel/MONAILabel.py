@@ -16,7 +16,6 @@ import sitkUtils
 import slicer
 import vtk
 from client import MONAILabelClient
-from EditorLib.EditUtil import EditUtil
 from slicer.ScriptedLoadableModule import *
 from slicer.util import VTKObservationMixin
 
@@ -139,7 +138,7 @@ class MONAILabelWidget(ScriptedLoadableModuleWidget, VTKObservationMixin):
         self.progressBar = None
         self.tmpdir = None
         self.timer = None
-        self.editUtil = EditUtil()
+        self.opacity = 0.5
 
     def setup(self):
         """
@@ -171,6 +170,7 @@ class MONAILabelWidget(ScriptedLoadableModuleWidget, VTKObservationMixin):
         self.ui.serverComboBox.lineEdit().setPlaceholderText("enter server address or leave empty to use default")
         self.ui.fetchServerInfoButton.setIcon(self.icon("refresh-icon.png"))
         self.ui.segmentationButton.setIcon(self.icon("segment.png"))
+        self.ui.contourButton.setIcon(self.icon("icon_contour.svg"))
         self.ui.nextSampleButton.setIcon(self.icon("segment.png"))
         self.ui.saveLabelButton.setIcon(self.icon("save.png"))
         self.ui.trainingButton.setIcon(self.icon("training.png"))
@@ -1007,7 +1007,10 @@ class MONAILabelWidget(ScriptedLoadableModuleWidget, VTKObservationMixin):
         logging.info("Time consumed by save label: {0:3.1f}".format(time.time() - start))
 
     def onClickContour(self):
-        self.editUtil.toggleLabelOutline()
+        segNode = slicer.util.getNodesByClass("vtkMRMLSegmentationNode")
+        displayNode = segNode[0].GetDisplayNode()
+        displayNode.SetOpacity2DFill(self.opacity)
+        self.opacity = 0.05 if self.opacity > 0.05 else 0.5
 
     def onClickSegmentation(self):
         if not self.current_sample:
@@ -1037,6 +1040,7 @@ class MONAILabelWidget(ScriptedLoadableModuleWidget, VTKObservationMixin):
                 os.unlink(result_file)
 
         self.updateGUIFromParameterNode()
+        self.onClickContour()
         logging.info("Time consumed by segmentation: {0:3.1f}".format(time.time() - start))
 
     def onClickDeepgrow(self, current_point):
