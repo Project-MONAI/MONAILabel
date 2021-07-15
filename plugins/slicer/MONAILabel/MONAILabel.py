@@ -138,6 +138,7 @@ class MONAILabelWidget(ScriptedLoadableModuleWidget, VTKObservationMixin):
         self.progressBar = None
         self.tmpdir = None
         self.timer = None
+        self.opacity = 0.5
 
     def setup(self):
         """
@@ -169,6 +170,7 @@ class MONAILabelWidget(ScriptedLoadableModuleWidget, VTKObservationMixin):
         self.ui.serverComboBox.lineEdit().setPlaceholderText("enter server address or leave empty to use default")
         self.ui.fetchServerInfoButton.setIcon(self.icon("refresh-icon.png"))
         self.ui.segmentationButton.setIcon(self.icon("segment.png"))
+        self.ui.contourButton.setIcon(self.icon("contour.svg"))
         self.ui.nextSampleButton.setIcon(self.icon("segment.png"))
         self.ui.saveLabelButton.setIcon(self.icon("save.png"))
         self.ui.trainingButton.setIcon(self.icon("training.png"))
@@ -193,6 +195,7 @@ class MONAILabelWidget(ScriptedLoadableModuleWidget, VTKObservationMixin):
         self.ui.serverComboBox.connect("currentIndexChanged(int)", self.onClickFetchInfo)
         self.ui.segmentationModelSelector.connect("currentIndexChanged(int)", self.updateParameterNodeFromGUI)
         self.ui.segmentationButton.connect("clicked(bool)", self.onClickSegmentation)
+        self.ui.contourButton.connect("clicked(bool)", self.onClickContour)
         self.ui.deepgrowModelSelector.connect("currentIndexChanged(int)", self.updateParameterNodeFromGUI)
         self.ui.nextSampleButton.connect("clicked(bool)", self.onNextSampleButton)
         self.ui.trainingButton.connect("clicked(bool)", self.onTraining)
@@ -361,6 +364,7 @@ class MONAILabelWidget(ScriptedLoadableModuleWidget, VTKObservationMixin):
         self.ui.segmentationButton.setEnabled(
             self.ui.segmentationModelSelector.currentText and self._volumeNode is not None
         )
+        self.ui.contourButton.setEnabled(self.ui.segmentationModelSelector.currentText and self._volumeNode is not None)
         self.ui.saveLabelButton.setEnabled(self._segmentNode is not None)
         self.ui.uploadImageButton.setEnabled(
             self.info and slicer.mrmlScene.GetFirstNodeByClass("vtkMRMLScalarVolumeNode") and self._segmentNode is None
@@ -1002,6 +1006,12 @@ class MONAILabelWidget(ScriptedLoadableModuleWidget, VTKObservationMixin):
 
         logging.info("Time consumed by save label: {0:3.1f}".format(time.time() - start))
 
+    def onClickContour(self):
+        segNode = slicer.util.getNodesByClass("vtkMRMLSegmentationNode")
+        displayNode = segNode[0].GetDisplayNode()
+        displayNode.SetOpacity2DFill(self.opacity)
+        self.opacity = 0.05 if self.opacity > 0.05 else 0.5
+
     def onClickSegmentation(self):
         if not self.current_sample:
             return
@@ -1030,6 +1040,7 @@ class MONAILabelWidget(ScriptedLoadableModuleWidget, VTKObservationMixin):
                 os.unlink(result_file)
 
         self.updateGUIFromParameterNode()
+        self.onClickContour()
         logging.info("Time consumed by segmentation: {0:3.1f}".format(time.time() - start))
 
     def onClickDeepgrow(self, current_point):
