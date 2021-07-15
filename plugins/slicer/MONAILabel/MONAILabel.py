@@ -18,6 +18,7 @@ import vtk
 from client import MONAILabelClient
 from slicer.ScriptedLoadableModule import *
 from slicer.util import VTKObservationMixin
+from EditorLib.EditUtil import EditUtil
 
 
 class MONAILabel(ScriptedLoadableModule):
@@ -138,6 +139,7 @@ class MONAILabelWidget(ScriptedLoadableModuleWidget, VTKObservationMixin):
         self.progressBar = None
         self.tmpdir = None
         self.timer = None
+        self.editUtil = EditUtil()
 
     def setup(self):
         """
@@ -193,6 +195,7 @@ class MONAILabelWidget(ScriptedLoadableModuleWidget, VTKObservationMixin):
         self.ui.serverComboBox.connect("currentIndexChanged(int)", self.onClickFetchInfo)
         self.ui.segmentationModelSelector.connect("currentIndexChanged(int)", self.updateParameterNodeFromGUI)
         self.ui.segmentationButton.connect("clicked(bool)", self.onClickSegmentation)
+        self.ui.contourButton.connect("clicked(bool)", self.onClickContour)
         self.ui.deepgrowModelSelector.connect("currentIndexChanged(int)", self.updateParameterNodeFromGUI)
         self.ui.nextSampleButton.connect("clicked(bool)", self.onNextSampleButton)
         self.ui.trainingButton.connect("clicked(bool)", self.onTraining)
@@ -359,6 +362,9 @@ class MONAILabelWidget(ScriptedLoadableModuleWidget, VTKObservationMixin):
             self.timer.start()
 
         self.ui.segmentationButton.setEnabled(
+            self.ui.segmentationModelSelector.currentText and self._volumeNode is not None
+        )
+        self.ui.contourButton.setEnabled(
             self.ui.segmentationModelSelector.currentText and self._volumeNode is not None
         )
         self.ui.saveLabelButton.setEnabled(self._segmentNode is not None)
@@ -1001,6 +1007,9 @@ class MONAILabelWidget(ScriptedLoadableModuleWidget, VTKObservationMixin):
                     self.onNextSampleButton()
 
         logging.info("Time consumed by save label: {0:3.1f}".format(time.time() - start))
+
+    def onClickContour(self):
+        self.editUtil.toggleLabelOutline()
 
     def onClickSegmentation(self):
         if not self.current_sample:
