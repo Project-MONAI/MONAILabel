@@ -16,9 +16,9 @@ import sitkUtils
 import slicer
 import vtk
 from client import MONAILabelClient
+from EditorLib.EditUtil import EditUtil
 from slicer.ScriptedLoadableModule import *
 from slicer.util import VTKObservationMixin
-from EditorLib.EditUtil import EditUtil
 
 
 class MONAILabel(ScriptedLoadableModule):
@@ -364,9 +364,7 @@ class MONAILabelWidget(ScriptedLoadableModuleWidget, VTKObservationMixin):
         self.ui.segmentationButton.setEnabled(
             self.ui.segmentationModelSelector.currentText and self._volumeNode is not None
         )
-        self.ui.contourButton.setEnabled(
-            self.ui.segmentationModelSelector.currentText and self._volumeNode is not None
-        )
+        self.ui.contourButton.setEnabled(self.ui.segmentationModelSelector.currentText and self._volumeNode is not None)
         self.ui.saveLabelButton.setEnabled(self._segmentNode is not None)
         self.ui.uploadImageButton.setEnabled(
             self.info and slicer.mrmlScene.GetFirstNodeByClass("vtkMRMLScalarVolumeNode") and self._segmentNode is None
