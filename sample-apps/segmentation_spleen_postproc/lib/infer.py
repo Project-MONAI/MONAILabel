@@ -54,11 +54,9 @@ class SegmentationWithWriteLogits(InferTask):
 
     def post_transforms(self):
         return [
-            AddChanneld(keys="pred"),
             Activationsd(keys="pred", softmax=True),
             CopyItemsd(keys="pred", times=1, names="logits"),
             AsDiscreted(keys="pred", argmax=True),
-            SqueezeDimd(keys=["pred", "logits"], dim=0),
             ToNumpyd(keys=["pred", "logits"]),
             Restored(keys=["pred", "logits"], ref_image="image"),
             BoundingBoxd(keys="pred", result="result", bbox="bbox"),
