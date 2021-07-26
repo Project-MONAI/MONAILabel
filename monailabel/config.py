@@ -14,7 +14,7 @@ class Settings(BaseSettings):
     DATASTORE_IMAGE_EXT: List[str] = ["*.nii.gz", "*.nii"]
     DATASTORE_LABEL_EXT: List[str] = ["*.nii.gz", "*.nii"]
 
-    BACKEND_CORS_ORIGINS: List[AnyHttpUrl] = []
+    CORS_ORIGINS: List[AnyHttpUrl] = []
 
     class Config:
         env_file = ".env"
