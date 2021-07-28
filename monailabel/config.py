@@ -14,6 +14,8 @@ class Settings(BaseSettings):
     DATASTORE_IMAGE_EXT: List[str] = ["*.nii.gz", "*.nii"]
     DATASTORE_LABEL_EXT: List[str] = ["*.nii.gz", "*.nii"]
 
+    DICOM_WEB: str = "http://localhost:8042"
+
     CORS_ORIGINS: List[AnyHttpUrl] = []
 
     class Config:

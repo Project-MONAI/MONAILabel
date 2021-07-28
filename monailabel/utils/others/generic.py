@@ -73,7 +73,7 @@ def get_mime_type(file):
     if m_type is None or m_type[0] is None:
         m_type = "application/octet-stream"
     else:
-        m_type = f"{m_type[0]}/{m_type[1]}"
+        m_type = m_type[0]
     logger.debug(f"Final Mime Type: {m_type}")
     return m_type
 

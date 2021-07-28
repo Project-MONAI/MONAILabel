@@ -8,28 +8,49 @@ import sys
 
 import uvicorn
 from fastapi import FastAPI
+from fastapi.middleware import Middleware
 from fastapi.openapi.docs import get_swagger_ui_html
+from fastapi.responses import FileResponse, HTMLResponse
+from fastapi.staticfiles import StaticFiles
 from starlette.middleware.cors import CORSMiddleware
-from starlette.responses import HTMLResponse
 
 from monailabel.config import settings
-from monailabel.endpoints import activelearning, batch_infer, datastore, download, infer, info, logs, scoring, train
+from monailabel.endpoints import (
+    activelearning,
+    batch_infer,
+    datastore,
+    download,
+    infer,
+    info,
+    logs,
+    ohif,
+    proxy,
+    scoring,
+    train,
+)
 from monailabel.utils.others.generic import get_app_instance, init_log_config
+
+middleware = [
+    Middleware(
+        CORSMiddleware,
+        allow_origins=[str(origin) for origin in settings.CORS_ORIGINS] if settings.CORS_ORIGINS else ["*"],
+        allow_credentials=True,
+        allow_methods=["*"],
+        allow_headers=["*"],
+    )
+]
 
 app = FastAPI(
     title=settings.PROJECT_NAME,
     openapi_url=f"{settings.API_STR}/openapi.json",
     docs_url=None,
     redoc_url="/docs",
+    middleware=middleware,
 )
 
-# Set all CORS enabled origins
-app.add_middleware(
-    CORSMiddleware,
-    allow_origins=[str(origin) for origin in settings.CORS_ORIGINS] if settings.CORS_ORIGINS else ["*"],
-    allow_credentials=True,
-    allow_methods=["*"],
-    allow_headers=["*"],
+static_dir = os.path.join(os.path.dirname(os.path.realpath(__file__)), "static")
+app.mount(
+    "/static", StaticFiles(directory=os.path.join(os.path.dirname(os.path.realpath(__file__)), "static")), name="static"
 )
 
 app.include_router(info.router)
@@ -41,6 +62,8 @@ app.include_router(scoring.router)
 app.include_router(datastore.router)
 app.include_router(download.router)
 app.include_router(logs.router)
+app.include_router(ohif.router)
+app.include_router(proxy.router)
 
 
 @app.get("/", include_in_schema=False)
@@ -50,6 +73,11 @@ async def custom_swagger_ui_html():
     body = html.body.decode("utf-8")
     body = body.replace("showExtensions: true,", "showExtensions: true, defaultModelsExpandDepth: -1,")
     return HTMLResponse(body)
+
+
+@app.get("/favicon.ico", include_in_schema=False)
+async def favicon():
+    return FileResponse(os.path.join(static_dir, "favicon.ico"), media_type="image/x-icon")
 
 
 @app.on_event("startup")

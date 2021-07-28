@@ -1,0 +1,138 @@
+@import url("https://www.w3schools.com/w3css/4/w3.css")
+
+.monaiLabelPanel
+  background-color: var(--primary-background-color)
+  height: 100%
+  width: 100%
+  display: flex
+  flex-direction: column
+  color: var(--text-primary-color)
+  padding: 5px
+
+  .subtitle
+    font-size: 14px
+    text-decoration: underline
+    font-weight 500
+    color #91b9cd
+    margin 1px
+    text-align center
+
+  /* Accordion styles */
+  .tabs {
+    border-radius: 4px;
+    overflow: auto;
+    box-shadow: 0 4px 4px -2px rgba(0, 0, 0, 0.5);
+    background: #91b9cd;
+    margin: 1rem 0;
+  }
+
+  .tab {
+    width: 100%;
+    color: white;
+    overflow: hidden;
+  }
+  .tab-switch {
+    position: absolute;
+    opacity: 0;
+    z-index: -1;
+  }
+  .tab-label {
+    display: flex;
+    justify-content: space-between;
+    padding: 0.4em;
+    background: #16202b;
+    border-right: 1px dotted #3c5d80;
+    color: #fff;
+    font-size: 11px;
+    font-weight: normal;
+    cursor: pointer;
+    /* Icon */
+  }
+  .tab-label:hover {
+    background: #3e5975;
+  }
+  .tab-label::after {
+    content: "❯";
+    width: 1em;
+    height: 1em;
+    text-align: center;
+    transition: all 0.35s;
+  }
+  .tab-content {
+    max-height: 0;
+    padding: 0 1em;
+    background: black;
+    transition: all 0.35s;
+    width: 100%;
+    font-size: small
+  }
+  .tab-close {
+    display: flex;
+    justify-content: flex-end;
+    padding: 1em;
+    font-size: 0.75em;
+    background: #2c3e50;
+    cursor: pointer;
+  }
+  .tab-close:hover {
+    background: #1a252f;
+  }
+
+  input:checked + .tab-label {
+    background: #00a4d9;
+  }
+  input:checked + .tab-label::after {
+    transform: rotate(90deg);
+  }
+  input:checked ~ .tab-content {
+    max-height: 100vh;
+    padding: 1em;
+  }
+
+  .seperator
+    border: 0.01em solid #44626f
+    width: 100%
+    margin-top: 3px
+    margin-bottom: 3px
+
+  .actionInput
+    width: 100%
+
+  .actionButton
+    border: 1px solid var(--ui-border-color-active)
+    border-radius: 15px
+    background-color: var(--active-color)
+    color: var(--ui-gray-dark)
+    line-height: 25px
+    padding: 0 15px
+    outline: none
+    cursor: pointer
+
+    &:hover, &:active
+      background-color: var(--ui-sky-blue)
+
+    &:disabled
+      background-color: var(--ui-sky-blue)
+
+    svg
+      margin-right: 4px
+      position: relative
+      top: 2px
+
+.scrollbar {
+  overflow-y: scroll;
+}
+
+#style-3::-webkit-scrollbar-track {
+  -webkit-box-shadow: inset 0 0 6px rgba(0, 0, 0, 0.3);
+  background-color: #000000;
+}
+
+#style-3::-webkit-scrollbar {
+  width: 6px;
+  background-color: #000000;
+}
+
+#style-3::-webkit-scrollbar-thumb {
+  background-color: #f5f5f5;
+}
