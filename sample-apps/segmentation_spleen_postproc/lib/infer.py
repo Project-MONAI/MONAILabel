@@ -7,7 +7,6 @@ from monai.transforms import (
     LoadImaged,
     ScaleIntensityRanged,
     Spacingd,
-    SqueezeDimd,
     ToNumpyd,
 )
 

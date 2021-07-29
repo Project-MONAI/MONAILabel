@@ -1,6 +1,6 @@
-from monai.transforms import AddChanneld, Compose, LoadImaged, ScaleIntensityRanged, Spacingd
+from monai.transforms import AddChanneld, LoadImaged, ScaleIntensityRanged, Spacingd
 
-from monailabel.interfaces.tasks import InferTask, InferType
+from monailabel.interfaces.tasks import PostProcTask
 from monailabel.utils.others.post import BoundingBoxd, Restored
 
 from .transforms import (
@@ -12,24 +12,10 @@ from .transforms import (
 )
 
 
-class SpleenPostProc(InferTask):
+class SpleenPostProc(PostProcTask):
     """
     Defines a generic post processing task for Spleen segmentation.
     """
-
-    def __init__(
-        self,
-        dimension,
-        description,
-    ):
-        super().__init__(
-            path=None,
-            network=None,
-            type=InferType.POSTPROCS,
-            labels=None,
-            dimension=dimension,
-            description=description,
-        )
 
     def pre_transforms(self):
         return [
@@ -48,8 +34,8 @@ class SpleenPostProc(InferTask):
             BoundingBoxd(keys="pred", result="result", bbox="bbox"),
         ]
 
-    def inferer(self):
-        raise NotImplementedError("inferer not implemented in base post proc class")
+    def postproc(self):
+        raise NotImplementedError("postproc not implemented in base post proc class")
 
 
 class SpleenBIFSegCRF(SpleenPostProc):
@@ -72,28 +58,23 @@ class SpleenBIFSegCRF(SpleenPostProc):
         dimension=3,
         description="A post processing step with BIFSeg + MONAI's CRF for Spleen segmentation",
     ):
-        super().__init__(
-            dimension=dimension,
-            description=description,
-        )
+        super().__init__(dimension, description)
 
-    def inferer(self):
-        return Compose(
-            [
-                # unary term maker
-                MakeBIFSegUnaryd(
-                    image="image",
-                    logits="logits",
-                    scribbles="label",
-                    unary="unary",
-                    scribbles_bg_label=2,
-                    scribbles_fg_label=3,
-                    scale_infty=1e6,
-                ),
-                # optimiser
-                ApplyCRFOptimisationd(unary="unary", pairwise="image", post_proc_label="pred"),
-            ]
-        )
+    def postproc(self):
+        return [
+            # unary term maker
+            MakeBIFSegUnaryd(
+                image="image",
+                logits="logits",
+                scribbles="label",
+                unary="unary",
+                scribbles_bg_label=2,
+                scribbles_fg_label=3,
+                scale_infty=1e6,
+            ),
+            # optimiser
+            ApplyCRFOptimisationd(unary="unary", pairwise="image", post_proc_label="pred"),
+        ]
 
 
 class SpleenBIFSegGraphCut(SpleenPostProc):
@@ -116,34 +97,29 @@ class SpleenBIFSegGraphCut(SpleenPostProc):
         dimension=3,
         description="A post processing step with BIFSeg + SimpleCRF's GraphCut for Spleen segmentation",
     ):
-        super().__init__(
-            dimension=dimension,
-            description=description,
-        )
+        super().__init__(dimension, description)
 
-    def inferer(self):
-        return Compose(
-            [
-                # unary term maker
-                MakeBIFSegUnaryd(
-                    image="image",
-                    logits="logits",
-                    scribbles="label",
-                    unary="unary",
-                    scribbles_bg_label=2,
-                    scribbles_fg_label=3,
-                    scale_infty=1e6,
-                ),
-                # optimiser
-                ApplyGraphCutOptimisationd(
-                    unary="unary",
-                    pairwise="image",
-                    post_proc_label="pred",
-                    lamda=10.0,
-                    sigma=15.0,
-                ),
-            ]
-        )
+    def postproc(self):
+        return [
+            # unary term maker
+            MakeBIFSegUnaryd(
+                image="image",
+                logits="logits",
+                scribbles="label",
+                unary="unary",
+                scribbles_bg_label=2,
+                scribbles_fg_label=3,
+                scale_infty=1e6,
+            ),
+            # optimiser
+            ApplyGraphCutOptimisationd(
+                unary="unary",
+                pairwise="image",
+                post_proc_label="pred",
+                lamda=10.0,
+                sigma=15.0,
+            ),
+        ]
 
 
 class SpleenInteractiveGraphCut(SpleenPostProc):
@@ -166,26 +142,21 @@ class SpleenInteractiveGraphCut(SpleenPostProc):
         dimension=3,
         description="A post processing step with SimpleCRF's Interactive BIFSeg GraphCut for Spleen segmentation",
     ):
-        super().__init__(
-            dimension=dimension,
-            description=description,
-        )
+        super().__init__(dimension, description)
 
-    def inferer(self):
-        return Compose(
-            [
-                ApplyBIFSegGraphCutPostProcd(
-                    image="image",
-                    logits="logits",
-                    scribbles="label",
-                    post_proc_label="pred",
-                    scribbles_bg_label=2,
-                    scribbles_fg_label=3,
-                    lamda=10.0,
-                    sigma=15.0,
-                ),
-            ]
-        )
+    def postproc(self):
+        return [
+            ApplyBIFSegGraphCutPostProcd(
+                image="image",
+                logits="logits",
+                scribbles="label",
+                post_proc_label="pred",
+                scribbles_bg_label=2,
+                scribbles_fg_label=3,
+                lamda=10.0,
+                sigma=15.0,
+            ),
+        ]
 
 
 class SpleenBIFSegSimpleCRF(SpleenPostProc):
@@ -208,10 +179,7 @@ class SpleenBIFSegSimpleCRF(SpleenPostProc):
         dimension=3,
         description="A post processing step with BIFSeg + SimpleCRF's CRF for Spleen segmentation",
     ):
-        super().__init__(
-            dimension=dimension,
-            description=description,
-        )
+        super().__init__(dimension, description)
 
     def pre_transforms(self):
         return [
@@ -224,24 +192,22 @@ class SpleenBIFSegSimpleCRF(SpleenPostProc):
             ScaleIntensityRanged(keys="image", a_min=-300, a_max=200, b_min=0.0, b_max=1.0, clip=True),
         ]
 
-    def inferer(self):
-        return Compose(
-            [
-                # unary term maker
-                MakeBIFSegUnaryd(
-                    image="image",
-                    logits="logits",
-                    scribbles="label",
-                    unary="unary",
-                    scribbles_bg_label=2,
-                    scribbles_fg_label=3,
-                    scale_infty=1e6,
-                ),
-                # optimiser
-                ApplySimpleCRFOptimisationd(
-                    unary="unary",
-                    pairwise="image",
-                    post_proc_label="pred",
-                ),
-            ]
-        )
+    def postproc(self):
+        return [
+            # unary term maker
+            MakeBIFSegUnaryd(
+                image="image",
+                logits="logits",
+                scribbles="label",
+                unary="unary",
+                scribbles_bg_label=2,
+                scribbles_fg_label=3,
+                scale_infty=1e6,
+            ),
+            # optimiser
+            ApplySimpleCRFOptimisationd(
+                unary="unary",
+                pairwise="image",
+                post_proc_label="pred",
+            ),
+        ]

@@ -259,9 +259,7 @@ class InferTask:
         return self.run_transforms(data, transforms, log_prefix="POST")
 
     def run_postprocessor(self, data):
-        p = self.inferer()
-        logger.info("Running PostProcessor: {}".format(p))
-        return p(data) if p else data
+        return data
 
     def run_inferer(self, data, convert_to_batch=True, device="cuda"):
         """

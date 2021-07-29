@@ -30,17 +30,35 @@ employs
   **Figure 1:** MONAI Label provides interfaces which can be implemented by the label app developer
   for custom functionality as well as utilities which are readily usable in the labeling app.
 
+Quickstart with Template App
+============================
 
-In next few sections we will go into the details of implementing 
+MONAI Label currently provides three template applications which developers
+may start using out of the box, or with few modifications to achieve the desired 
+behavior. Template applications currently available are
 
-- `an inference task <#building-an-inference-task>`_,
-- `a training task <#building-a-training-task>`_,
-- `an image selection strategy <#build-an-image-selection-strategy>`_,
+- `Automated Segmentation <https://github.com/Project-MONAI/MONAILabel/tree/main/sample-apps/generic_segmentation>`_
+- `DeepGrow AI Annotation <https://github.com/Project-MONAI/MONAILabel/tree/main/sample-apps/generic_deepgrow>`_
+- `DeepEdit AI Annotation <https://github.com/Project-MONAI/MONAILabel/tree/main/sample-apps/generic_deepedit>`_
 
-and putting these to work together in a `MONAI Label app <#building-a-monai-label-app>`_.
+For a quickstart the developer may use
 
-Building an Inference Task
-================================
+.. code-block:: bash
+
+  monailabel apps --name <desired_app> --download --output myapp
+
+where ``desired_app`` may be any of ``generic_segmentation``, ``generic_deepgrow``, or ``generic_deepedit``.
+
+To better understand template apps, the next few sections we will go into the details of implementing
+
+- `Inference task <#inference-task>`_
+- `Training task <#training-task>`_
+- `Image selection strategy <#image-selection-strategy>`_
+
+and putting these to work together in a `MONAI Label app <#id1>`_.
+
+Inference Task
+==============
 
 Inference tasks must implement the :py:class:`~monailabel.interfaces.InferTask` interface where one must specify a list of pre- and post-transforms
 and an inferer model. The code snippet below is an example implementation of :py:class:`~monailabel.interfaces.InferTask` where the image is pre-processed
@@ -74,8 +92,8 @@ discretization.
             ToNumpyd(keys="pred"),
         ]
 
-Building a Training Task
-===============================
+Training Task
+=============
 
 Training tasks may extend the base class :py:class:`~monailabel.utils.train.basic_train.BasicTrainTask` which is an abstraction over supervised trainers and evaluators.
 Here, the developer may override the functionality of the base training class with the desired behavior.
@@ -124,8 +142,8 @@ in this example they follow the default behavior in the base class.
         return SlidingWindowInferer(roi_size=(128, 128, 128))
 
 
-Building an Image Selection Strategy
-====================================
+Image Selection Strategy
+========================
 
 Selecting the next image to load in the end-users client may be of importance to some labeling
 applications where the developer may want to allow the user to select one (of perhaps many)
@@ -136,7 +154,7 @@ The example below shows a simple image selection strategy where :py:class:`GetFi
 the first unlabeled image it finds in the :py:class:`~monailabel.interfaces.Datastore`.
 
 .. code-block:: python
-  :emphasize-lines: 6, 8
+  :emphasize-lines: 4, 6
 
   from monailabel.interfaces import Datastore
   from monailabel.interfaces.tasks import Strategy
@@ -154,8 +172,8 @@ the first unlabeled image it finds in the :py:class:`~monailabel.interfaces.Data
           return image
 
 
-Building a MONAI Label App
-==========================
+Developing a MONAI Label App
+============================
 
 A MONAI Label app ties together inference, training, and image selection to provide the end-user with
 a seamless simultaneous model training and annotation experience, where a segmentation model learns
