@@ -43,7 +43,7 @@ export default class SettingsTable extends Component {
       <table className="settingsTable">
         <tbody>
           <tr>
-            <td>Server URL:</td>
+            <td>Server:</td>
             <td>
               <input
                 className="actionInput"
@@ -61,7 +61,8 @@ export default class SettingsTable extends Component {
             </td>
           </tr>
           <tr style={{ fontSize: 'smaller' }}>
-            <td colSpan="5">
+            <td>&nbsp;</td>
+            <td colSpan="4">
               <a
                 href={new URL(this.state.url).toString() + 'info/'}
                 target="_blank"

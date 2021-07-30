@@ -49,9 +49,13 @@ export default class SmartEdit extends BaseTab {
       .filter(p => (is3D || p.z === currentPoint.z) && p.data.ctrlKey)
       .map(p => [p.x, p.y, p.z]);
 
+    const cursor = viewConstants.element.style.cursor;
+    viewConstants.element.style.cursor='wait';
     const response = await this.props
       .client()
       .deepgrow(model, image, foreground, background);
+    viewConstants.element.style.cursor=cursor;
+
     if (response.status !== 200) {
       this.notification.show({
         title: 'MONAI Label',

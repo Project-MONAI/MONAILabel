@@ -26,6 +26,7 @@ export default class MonaiLabelPanel extends Component {
 
     const { viewports, studies, activeIndex } = props;
     this.viewConstants = this.getViewConstants(viewports, studies, activeIndex);
+    console.log(this.viewConstants);
 
     this.notification = UINotificationService.create({});
     this.segmentationList = React.createRef();
@@ -77,9 +78,12 @@ export default class MonaiLabelPanel extends Component {
       .update(PatientID + StudyInstanceUID + SeriesInstanceUID)
       .digest('hex');
 
-    // TODO:: Fix Image ID...
     return {
-      monaiLabelImageId: 'image.nii.gz',
+      monaiLabelImageId: {
+        PatientID,
+        StudyInstanceUID,
+        SeriesInstanceUID
+      },
       PatientID: PatientID,
       StudyInstanceUID: StudyInstanceUID,
       SeriesInstanceUID: SeriesInstanceUID,
@@ -182,7 +186,7 @@ export default class MonaiLabelPanel extends Component {
           onSegmentDeleted={this.onSegmentDeleted}
           onSegmentSelected={this.onSegmentSelected}
         />
-        <br />
+        <br style={{ margin: '3px' }}/>
 
         <SettingsTable ref={this.settings} />
 

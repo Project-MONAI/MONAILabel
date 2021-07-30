@@ -301,7 +301,7 @@ export default class SegmentationList extends Component {
                 <button
                   className="segButton"
                   onClick={this.onClickExportSegments}
-                  title={'Save/Download Segments'}
+                  title={'Download Segments'}
                   disabled
                 >
                   <Icon name="save" width="12px" height="12px" />

@@ -1,5 +1,8 @@
+import json
 import logging
 import os
+
+import yaml
 
 from lib import MyInfer, MyStrategy, MyTrain
 from monai.apps import load_from_mmar
@@ -33,6 +36,19 @@ class MyApp(MONAILabelApp):
             "random": Random(),
             "first": MyStrategy(),
         }
+
+    # TODO:: This will be removed once DICOM Web support is added through datastore
+    def infer(self, request, datastore=None):
+        image = request["image"]
+        try:
+            dicom = json.loads(image)
+            logger.info(f"Temporary Hack:: Looking mapped image for: {dicom}")
+            with open(os.path.join(os.path.dirname(__file__), "dicom.yaml"), "r") as fc:
+                meta = yaml.full_load(fc)
+                request["image"] = meta[dicom["SeriesInstanceUID"]]
+        except:
+            pass
+        return super().infer(request, datastore)
 
     def train(self, request):
         logger.info(f"Training request: {request}")
