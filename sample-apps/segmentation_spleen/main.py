@@ -3,7 +3,6 @@ import logging
 import os
 
 import yaml
-
 from lib import MyInfer, MyStrategy, MyTrain
 from monai.apps import load_from_mmar
 
