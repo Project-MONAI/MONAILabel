@@ -1,6 +1,7 @@
 import json
 import logging
 import os
+from json import JSONDecodeError
 
 import yaml
 from lib import MyInfer, MyStrategy, MyTrain
@@ -45,7 +46,8 @@ class MyApp(MONAILabelApp):
             with open(os.path.join(os.path.dirname(__file__), "dicom.yaml"), "r") as fc:
                 meta = yaml.full_load(fc)
                 request["image"] = meta[dicom["SeriesInstanceUID"]]
-        except:
+                logger.info(f"Using Image: {request['image']}")
+        except JSONDecodeError:
             pass
         return super().infer(request, datastore)
 

@@ -179,6 +179,8 @@ export default class SegmentationList extends Component {
     }
   };
 
+  onClickExportSegments = () => {};
+
   refreshSegTable = id => {
     const { element } = this.props.viewConstants;
 
