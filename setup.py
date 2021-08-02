@@ -29,9 +29,9 @@ class OHIFSDist(sdist):
         try:
             script = "build.bat" if any(platform.win32_ver()) else "build.sh"
             command = os.path.realpath(os.path.join(os.path.dirname(__file__), "plugins", "ohif", script))
-            self.spawn(['sh', command])
+            self.spawn(["sh", command])
         except DistutilsExecError:
-            self.warn('listing directory failed')
+            self.warn("listing directory failed")
         super().run()
 
 
@@ -39,15 +39,15 @@ class OHIFBuildPy(build_py):
     def run(self):
         script = "build.bat" if any(platform.win32_ver()) else "build.sh"
         command = os.path.realpath(os.path.join(os.path.dirname(__file__), "plugins", "ohif", script))
-        self.spawn(['sh', command])
+        self.spawn(["sh", command])
         super().run()
 
 
 setup(
     version=versioneer.get_version(),
     cmdclass={
-        'sdist': OHIFSDist,
-        'build_py': OHIFBuildPy,
+        "sdist": OHIFSDist,
+        "build_py": OHIFBuildPy,
     },
     packages=find_packages(exclude=("tests", "docs", "sample-apps", "plugins")),
     zip_safe=False,
