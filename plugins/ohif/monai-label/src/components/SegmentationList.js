@@ -2,7 +2,7 @@ import React, { Component } from 'react';
 import PropTypes from 'prop-types';
 
 import { Icon } from '@ohif/ui';
-import { UIModalService } from '@ohif/core';
+import { UIModalService, UINotificationService } from '@ohif/core';
 import cornerstone from 'cornerstone-core';
 import cornerstoneTools from 'cornerstone-tools';
 
@@ -52,6 +52,7 @@ export default class SegmentationList extends Component {
   constructor(props) {
     super(props);
 
+    this.notification = UINotificationService.create({});
     this.uiModelService = UIModalService.create({});
     const { element } = this.props.viewConstants;
     const labelmaps = getLabelMaps(element);
@@ -61,6 +62,7 @@ export default class SegmentationList extends Component {
       element: element,
       segments: segments,
       selectedSegmentId: segments && segments.length ? segments[0].id : null,
+      header: null,
     };
   }
 
@@ -179,7 +181,45 @@ export default class SegmentationList extends Component {
     }
   };
 
-  onClickExportSegments = () => {};
+  onClickExportSegments = () => {
+    const { getters } = cornerstoneTools.getModule('segmentation');
+    const { labelmaps3D } = getters.labelmaps3D(
+      this.props.viewConstants.element
+    );
+    if (!labelmaps3D) {
+      console.info('LabelMap3D is empty.. so zero segments');
+      return;
+    }
+
+    this.notification.show({
+      title: 'MONAI Label',
+      message: 'Preparing the labelmap to download as .nrrd',
+      type: 'info',
+      duration: 5000,
+    });
+
+    for (let i = 0; i < labelmaps3D.length; i++) {
+      const labelmap3D = labelmaps3D[i];
+      if (!labelmap3D) {
+        console.warn('Missing Label; so ignore');
+        continue;
+      }
+
+      const metadata = labelmap3D.metadata.data
+        ? labelmap3D.metadata.data
+        : labelmap3D.metadata;
+      if (!metadata || !metadata.length) {
+        console.warn('Missing Meta; so ignore');
+        continue;
+      }
+
+      SegmentationReader.serializeNrrdCompressed(
+        this.state.header,
+        labelmap3D.buffer,
+        'segment-' + i + '.nrrd'
+      );
+    }
+  };
 
   refreshSegTable = id => {
     const { element } = this.props.viewConstants;
@@ -220,7 +260,8 @@ export default class SegmentationList extends Component {
   updateView = async (response, labels, operation, slice, overlap) => {
     const { element, numberOfFrames } = this.props.viewConstants;
     let activeIndex = this.getSelectedActiveIndex();
-    const { image } = SegmentationReader.parseNrrdData(response.data);
+    const { header, image } = SegmentationReader.parseNrrdData(response.data);
+    this.setState({ header: header });
 
     if (labels) {
       for (let i = 0; i < labels.length; i++) {
@@ -304,7 +345,7 @@ export default class SegmentationList extends Component {
                   className="segButton"
                   onClick={this.onClickExportSegments}
                   title={'Download Segments'}
-                  disabled
+                  disabled={!this.state.header}
                 >
                   <Icon name="save" width="12px" height="12px" />
                 </button>
