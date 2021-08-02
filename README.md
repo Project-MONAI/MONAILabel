@@ -16,6 +16,7 @@ principles with [MONAI](https://github.com/Project-MONAI).
 <img src="https://raw.githubusercontent.com/Project-MONAI/MONAILabel/main/docs/images/demo.png" width="800"/>
 
 ## Features
+
 > _The codebase is currently under active development._
 
 - framework for developing and deploying MONAI Label Apps to train and infer AI models
@@ -23,11 +24,12 @@ principles with [MONAI](https://github.com/Project-MONAI).
 - customizable design for varying user expertise
 - 3DSlicer support
 
-
 ## Installation
+
 MONAI Label supports following OS with **GPU/CUDA** enabled.
- - Ubuntu
- - [Windows](https://docs.monai.io/projects/label/en/latest/installation.html#windows)
+
+- Ubuntu
+- [Windows](https://docs.monai.io/projects/label/en/latest/installation.html#windows)
 
 To install the current release, you can simply run:
 
@@ -43,10 +45,10 @@ To install the current release, you can simply run:
   
 ```
 
-For **_prerequisites_**, other installation methods (using the default GitHub branch, using Docker, etc.), please refer to the [installation guide](https://docs.monai.io/projects/label/en/latest/installation.html).
+For **_prerequisites_**, other installation methods (using the default GitHub branch, using Docker, etc.), please refer
+to the [installation guide](https://docs.monai.io/projects/label/en/latest/installation.html).
 
-> Once you start the MONAI Label Server, by default it will be up and serving at http://127.0.0.1:8000/. Open the serving
-  URL in browser. It will provide you the list of Rest APIs available.
+> Once you start the MONAI Label Server, by default it will be up and serving at http://127.0.0.1:8000/. Open the serving URL in browser. It will provide you the list of Rest APIs available.
 
 ### 3D Slicer
 
@@ -54,21 +56,30 @@ Download Preview Release from https://download.slicer.org/ and install MONAI Lab
 
 Refer [3D Slicer plugin](plugins/slicer) for other options to install and run MONAI Label plugin in 3D Slicer.
 
-### OHIF
+### OHIF [WIP]
 
-MONAI Label comes with pre-build plugin from [OHIF Viewer](https://github.com/OHIF/Viewers).
+MONAI Label comes with pre-built plugin for [OHIF Viewer](https://github.com/OHIF/Viewers).
+> Please install [Orthanc](https://www.orthanc-server.com/download.php) before using OHIF Viewer.
+> For Ubuntu 20.x, Orthanc can be installed as `apt-get install orthanc orthanc-dicomweb`
 
-Refer [3D Slicer plugin](plugins/slicer) for other options to install and run MONAI Label plugin in 3D Slicer.
+> OHIF Viewer will be accessible at http://127.0.0.1:8000/ohif/
+
+> You can use [PlastiMatch](https://plastimatch.org/plastimatch.html#plastimatch-convert) to convert NIFTI to DICOM
 
 ## Contributing
+
 For guidance on making a contribution to MONAI Label, see the [contributing guidelines](CONTRIBUTING.md).
 
 ## Community
-Join the conversation on Twitter [@ProjectMONAI](https://twitter.com/ProjectMONAI) or join our [Slack channel](https://forms.gle/QTxJq3hFictp31UM9).
 
-Ask and answer questions over on [MONAI Label's GitHub Discussions tab](https://github.com/Project-MONAI/MONAILabel/discussions).
+Join the conversation on Twitter [@ProjectMONAI](https://twitter.com/ProjectMONAI) or join
+our [Slack channel](https://forms.gle/QTxJq3hFictp31UM9).
+
+Ask and answer questions over
+on [MONAI Label's GitHub Discussions tab](https://github.com/Project-MONAI/MONAILabel/discussions).
 
 ## Links
+
 - Website: https://monai.io/
 - API documentation: https://docs.monai.io/projects/label
 - Code: https://github.com/Project-MONAI/MONAILabel
