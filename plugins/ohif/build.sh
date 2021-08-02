@@ -3,17 +3,17 @@
 curr_dir="$(pwd)"
 my_dir="$(dirname "$(readlink -f "$0")")"
 
-install_dir=${1:-$curr_dir/../../monailabel/static/ohif}
+echo "Installing requirements..."
+sh $my_dir/requirements.sh
+
+install_dir=${1:-$my_dir/../../monailabel/static/ohif}
 
 echo "Current Dir: ${curr_dir}"
 echo "My Dir: ${my_dir}"
 echo "Installing OHIF at: ${install_dir}"
 
 cd ${my_dir}
-
-if [ ! -d Viewers ]; then
-  git clone https://github.com/OHIF/Viewers.git
-fi
+git submodule update --init
 
 cd Viewers
 

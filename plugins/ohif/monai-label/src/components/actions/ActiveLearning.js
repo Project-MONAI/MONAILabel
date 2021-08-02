@@ -36,7 +36,7 @@ export default class OptionTable extends BaseTab {
           value="activelearning"
           defaultChecked
         />
-        <label className="tab-label" htmlFor="rd2">
+        <label className="tab-label" htmlFor={this.tabId}>
           Active Learning
         </label>
         <div className="tab-content">

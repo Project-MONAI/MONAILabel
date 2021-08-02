@@ -1,5 +1,8 @@
 #!/bin/bash
-echo "Installing requirements...."
-apt install npm -y
-npm install --global yarn
 
+if which yarn >/dev/null; then
+  echo "node/yarn is already installed"
+else
+  sudo apt install npm -y
+  sudo npm install --global yarn
+fi

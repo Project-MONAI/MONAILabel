@@ -54,6 +54,12 @@ Download Preview Release from https://download.slicer.org/ and install MONAI Lab
 
 Refer [3D Slicer plugin](plugins/slicer) for other options to install and run MONAI Label plugin in 3D Slicer.
 
+### OHIF
+
+MONAI Label comes with pre-build plugin from [OHIF Viewer](https://github.com/OHIF/Viewers).
+
+Refer [3D Slicer plugin](plugins/slicer) for other options to install and run MONAI Label plugin in 3D Slicer.
+
 ## Contributing
 For guidance on making a contribution to MONAI Label, see the [contributing guidelines](CONTRIBUTING.md).
 
