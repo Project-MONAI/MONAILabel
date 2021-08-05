@@ -44,12 +44,24 @@ class MyApp(MONAILabelApp):
             dicom = json.loads(image)
             logger.info(f"Temporary Hack:: Looking mapped image for: {dicom}")
             with open(os.path.join(os.path.dirname(__file__), "dicom.yaml"), "r") as fc:
-                meta = yaml.full_load(fc)
+                meta = yaml.full_load(fc)["series"]
                 request["image"] = meta[dicom["SeriesInstanceUID"]]
                 logger.info(f"Using Image: {request['image']}")
         except JSONDecodeError:
             pass
         return super().infer(request, datastore)
+
+    # TODO:: This will be removed once DICOM Web support is added through datastore
+    def next_sample(self, request):
+        res = super().next_sample(request)
+        try:
+            with open(os.path.join(os.path.dirname(__file__), "dicom.yaml"), "r") as fc:
+                meta = dict((v, k) for k, v in yaml.full_load(fc)["studies"].items())
+                res["id"] = meta[res["id"]]
+                logger.info(f"Using studies: {res['id']}")
+        except JSONDecodeError:
+            pass
+        return res
 
     def train(self, request):
         logger.info(f"Training request: {request}")
