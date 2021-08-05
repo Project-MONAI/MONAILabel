@@ -238,6 +238,7 @@ class MONAILabelWidget(ScriptedLoadableModuleWidget, VTKObservationMixin):
 
         # start with scribbles section disabled
         self.ui.postprocCollapsibleButton.setEnabled(False)
+        self.ui.postprocCollapsibleButton.setVisible(False)
 
         self.initializeParameterNode()
         self.updateServerUrlGUIFromSettings()
@@ -611,6 +612,9 @@ class MONAILabelWidget(ScriptedLoadableModuleWidget, VTKObservationMixin):
             self.ui.strategyBox.addItem(strategy)
         currentStrategy = self._parameterNode.GetParameter("CurrentStrategy")
         self.ui.strategyBox.setCurrentIndex(self.ui.strategyBox.findText(currentStrategy) if currentStrategy else 0)
+
+        # Show scribbles panel only if postproc methods detected
+        self.ui.postprocCollapsibleButton.setVisible(self.ui.postprocMethodSelector.count)
 
         # Enable/Disable
         self.ui.nextSampleButton.setEnabled(self.ui.strategyBox.count)
