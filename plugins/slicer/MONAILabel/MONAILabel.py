@@ -208,7 +208,7 @@ class MONAILabelWidget(ScriptedLoadableModuleWidget, VTKObservationMixin):
 
         # Scribbles
         # brush and eraser icon from: https://tablericons.com/
-        self.ui.postprocMethodSelector.connect("currentIndexChanged(int)", self.updateParameterNodeFromGUI)
+        self.ui.scribblesMethodSelector.connect("currentIndexChanged(int)", self.updateParameterNodeFromGUI)
         self.ui.paintScribblesButton.setIcon(self.icon("tool-brush.svg"))
         self.ui.paintScribblesButton.setToolTip("Paint scribbles for selected scribble layer")
         self.ui.eraseScribblesButton.setIcon(self.icon("eraser.svg"))
@@ -237,8 +237,9 @@ class MONAILabelWidget(ScriptedLoadableModuleWidget, VTKObservationMixin):
         self.ui.selectBackgroundButton.clicked.connect(self.onSelectBackgroundScribbles)
 
         # start with scribbles section disabled
-        self.ui.postprocCollapsibleButton.setEnabled(False)
-        self.ui.postprocCollapsibleButton.setVisible(False)
+        self.ui.scribblesCollapsibleButton.setEnabled(False)
+        self.ui.scribblesCollapsibleButton.setVisible(False)
+        self.ui.scribblesCollapsibleButton.collapsed = True
 
         self.initializeParameterNode()
         self.updateServerUrlGUIFromSettings()
@@ -329,11 +330,11 @@ class MONAILabelWidget(ScriptedLoadableModuleWidget, VTKObservationMixin):
             self.updateServerSettings()
             self.reportProgress(60)
 
-            # send scribbles + label to server along with selected postproc method
-            postprocMethod = self.ui.postprocMethodSelector.currentText
+            # send scribbles + label to server along with selected scribbles method
+            scribblesMethod = self.ui.scribblesMethodSelector.currentText
             image_file = self.current_sample["id"]
             configs = self.getParamsFromConfig()
-            result_file, params = self.logic.infer(postprocMethod, image_file, configs.get("infer"), scribbles_in)
+            result_file, params = self.logic.infer(scribblesMethod, image_file, configs.get("infer"), scribbles_in)
 
             # display result from server
             self.reportProgress(90)
@@ -342,7 +343,7 @@ class MONAILabelWidget(ScriptedLoadableModuleWidget, VTKObservationMixin):
             self.updateSegmentationMask(result_file, [label])
         except:
             slicer.util.errorDisplay(
-                "Failed to post process label on MONAI Label Server using {}".format(postprocMethod),
+                "Failed to post process label on MONAI Label Server using {}".format(scribblesMethod),
                 detailedText=traceback.format_exc(),
             )
         finally:
@@ -360,6 +361,9 @@ class MONAILabelWidget(ScriptedLoadableModuleWidget, VTKObservationMixin):
         # more explanation on this at:
         # https://discourse.slicer.org/t/how-to-clear-segmentation/7433/4
         # clear "scribbles" segment before saving the label
+        if not self._segmentNode:
+            return
+
         segmentation = self._segmentNode
         num_segments = segmentation.GetSegmentation().GetNumberOfSegments()
         for i in range(num_segments):
@@ -378,8 +382,9 @@ class MONAILabelWidget(ScriptedLoadableModuleWidget, VTKObservationMixin):
         self.scribblesMode = None
 
         # clear scribbles editor widget
-        widget = self._scribblesEditorWidget
-        del widget
+        if self._scribblesEditorWidget:
+            widget = self._scribblesEditorWidget
+            del widget
         self._scribblesEditorWidget = None
 
         # remove "scribbles" segments from label
@@ -387,6 +392,10 @@ class MONAILabelWidget(ScriptedLoadableModuleWidget, VTKObservationMixin):
 
         # update tool/layer display
         self.updateScribblesStatusIcons()
+
+        self.ui.scribblesCollapsibleButton.setEnabled(False)
+        self.ui.scribblesCollapsibleButton.setVisible(False)
+        self.ui.scribblesCollapsibleButton.collapsed = True
 
     def checkAndInitialiseScribbles(self):
         if self._scribblesEditorWidget is None:
@@ -498,6 +507,7 @@ class MONAILabelWidget(ScriptedLoadableModuleWidget, VTKObservationMixin):
             self.ui.dgNegativeFiducialPlacementWidget, self.dgNegativeFiducialNode, self.dgNegativeFiducialNodeObservers
         )
         self.dgNegativeFiducialNode = None
+        self.onClearScribbles()
 
     def resetFiducial(self, fiducialWidget, fiducialNode, fiducialNodeObservers):
         if fiducialWidget.placeModeEnabled:
@@ -579,12 +589,14 @@ class MONAILabelWidget(ScriptedLoadableModuleWidget, VTKObservationMixin):
 
         self.updateSelector(self.ui.segmentationModelSelector, ["segmentation"], "SegmentationModel", 0)
         self.updateSelector(self.ui.deepgrowModelSelector, ["deepgrow"], "DeepgrowModel", 0)
-        self.updateSelector(self.ui.postprocMethodSelector, ["postprocessor"], "PostprocMethod", 0)
+        self.updateSelector(self.ui.scribblesMethodSelector, ["scribble"], "ScribbleMethod", 0)
 
         if self.models and [k for k, v in self.models.items() if v["type"] == "segmentation"]:
             self.ui.segmentationCollapsibleButton.collapsed = False
         if self.models and [k for k, v in self.models.items() if v["type"] == "deepgrow"]:
             self.ui.deepgrowCollapsibleButton.collapsed = False
+        if self.models and [k for k, v in self.models.items() if v["type"] == "scribbles"]:
+            self.ui.scribblesCollapsibleButton.collapsed = False
 
         self.ui.labelComboBox.clear()
         for label in self.info.get("labels", {}):
@@ -613,8 +625,8 @@ class MONAILabelWidget(ScriptedLoadableModuleWidget, VTKObservationMixin):
         currentStrategy = self._parameterNode.GetParameter("CurrentStrategy")
         self.ui.strategyBox.setCurrentIndex(self.ui.strategyBox.findText(currentStrategy) if currentStrategy else 0)
 
-        # Show scribbles panel only if postproc methods detected
-        self.ui.postprocCollapsibleButton.setVisible(self.ui.postprocMethodSelector.count)
+        # Show scribbles panel only if scribbles methods detected
+        self.ui.scribblesCollapsibleButton.setVisible(self.ui.scribblesMethodSelector.count)
 
         # Enable/Disable
         self.ui.nextSampleButton.setEnabled(self.ui.strategyBox.count)
@@ -654,7 +666,8 @@ class MONAILabelWidget(ScriptedLoadableModuleWidget, VTKObservationMixin):
                 self.ui.dgNegativeFiducialPlacementWidget.setCurrentNode(self.dgNegativeFiducialNode)
                 self.ui.dgNegativeFiducialPlacementWidget.setPlaceModeEnabled(False)
 
-            self.ui.postprocCollapsibleButton.setEnabled(self.ui.postprocMethodSelector.count)
+            self.ui.scribblesCollapsibleButton.setEnabled(self.ui.scribblesMethodSelector.count)
+            self.ui.scribblesCollapsibleButton.collapsed = False
 
         self.ui.dgPositiveFiducialPlacementWidget.setEnabled(self.ui.deepgrowModelSelector.currentText)
         self.ui.dgNegativeFiducialPlacementWidget.setEnabled(self.ui.deepgrowModelSelector.currentText)
@@ -678,10 +691,10 @@ class MONAILabelWidget(ScriptedLoadableModuleWidget, VTKObservationMixin):
             deepgrowModel = self.ui.deepgrowModelSelector.itemText(deepgrowModelIndex)
             self._parameterNode.SetParameter("DeepgrowModel", deepgrowModel)
 
-        postProcMethodIndex = self.ui.postprocMethodSelector.currentIndex
-        if postProcMethodIndex >= 0:
-            postProcMethod = self.ui.postprocMethodSelector.itemText(postProcMethodIndex)
-            self._parameterNode.SetParameter("PostprocMethod", postProcMethod)
+        scribblesMethodIndex = self.ui.scribblesMethodSelector.currentIndex
+        if scribblesMethodIndex >= 0:
+            scribblesMethod = self.ui.scribblesMethodSelector.itemText(scribblesMethodIndex)
+            self._parameterNode.SetParameter("ScribblesMethod", scribblesMethod)
 
         currentLabelIndex = self.ui.labelComboBox.currentIndex
         if currentLabelIndex >= 0:
@@ -1546,8 +1559,8 @@ class MONAILabelLogic(ScriptedLoadableModuleLogic):
             parameterNode.SetParameter("SegmentationModel", "")
         if not parameterNode.GetParameter("DeepgrowModel"):
             parameterNode.SetParameter("DeepgrowModel", "")
-        if not parameterNode.GetParameter("PostprocMethod"):
-            parameterNode.SetParameter("PostprocMethod", "")
+        if not parameterNode.GetParameter("ScribblesMethod"):
+            parameterNode.SetParameter("ScribblesMethod", "")
 
     def __del__(self):
         shutil.rmtree(self.tmpdir, ignore_errors=True)

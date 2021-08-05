@@ -450,9 +450,9 @@
     </widget>
    </item>
    <item>
-    <widget class="ctkCollapsibleButton" name="postprocCollapsibleButton">
+    <widget class="ctkCollapsibleButton" name="scribblesCollapsibleButton">
      <property name="text">
-      <string>Post Processing Scribbles</string>
+      <string>Scribbles</string>
      </property>
      <layout class="QGridLayout" name="gridLayout_4">
       <item row="2" column="1" colspan="2">
@@ -529,10 +529,10 @@
          </widget>
         </item>
         <item row="0" column="3">
-         <widget class="QComboBox" name="postprocMethodSelector"/>
+         <widget class="QComboBox" name="scribblesMethodSelector"/>
         </item>
         <item row="0" column="2">
-         <widget class="QLabel" name="postprocMethodLabel">
+         <widget class="QLabel" name="scribblesMethodLabel">
           <property name="layoutDirection">
            <enum>Qt::LeftToRight</enum>
           </property>

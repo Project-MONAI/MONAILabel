@@ -52,8 +52,8 @@ class MyApp(MONAILabelApp):
     def infer(self, request, datastore=None):
         image = request.get("image")
 
-        # check if inferer is Post Processor
-        if self._infers[request.get("model")].type == InferType.POSTPROCS:
+        # add saved logits into request
+        if self._infers[request.get("model")].type == InferType.SCRIBBLE:
             saved_labels = self.datastore().get_labels_by_image_id(image)
             for label, tag in saved_labels.items():
                 if tag == "logits":
@@ -63,6 +63,7 @@ class MyApp(MONAILabelApp):
         result = super().infer(request)
         result_params = result.get("params")
 
+        # save logits
         logits = result_params.get("logits")
         if logits:
             self.datastore().save_label(image, logits, "logits")
