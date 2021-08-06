@@ -4,7 +4,8 @@ set(MODULE_NAME MONAILabel)
 #-----------------------------------------------------------------------------
 set(MODULE_PYTHON_SCRIPTS
   ${MODULE_NAME}.py
-  client.py
+  ${MODULE_NAME}Lib/__init__.py
+  ${MODULE_NAME}Lib/client.py
   )
 
 set(MODULE_PYTHON_RESOURCES

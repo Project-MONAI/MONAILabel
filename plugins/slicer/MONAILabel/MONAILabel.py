@@ -16,7 +16,7 @@ import sitkUtils
 import slicer
 import vtk
 import vtkSegmentationCore
-from client import MONAILabelClient
+from MONAILabelLib import MONAILabelClient
 from slicer.ScriptedLoadableModule import *
 from slicer.util import VTKObservationMixin
 
