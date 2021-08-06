@@ -6,6 +6,7 @@ from abc import abstractmethod
 from typing import Dict
 
 import torch
+from monai.transforms import Compose
 
 from monailabel.interfaces.exception import MONAILabelError, MONAILabelException
 from monailabel.utils.others.writer import Writer
@@ -21,7 +22,7 @@ class InferType:
         CLASSIFICATION -          Classification Model
         DEEPGROW -                Deepgrow Interactive Model
         DEEPEDIT -                DeepEdit Interactive Model
-        POSTPROCS -               Post-Processor Model
+        SCRIBBLE -                Scribble Model
         OTHERS -                  Other Model Type
     """
 
@@ -29,9 +30,9 @@ class InferType:
     CLASSIFICATION = "classification"
     DEEPGROW = "deepgrow"
     DEEPEDIT = "deepedit"
-    POSTPROCS = "postprocessor"
+    SCRIBBLE = "scribble"
     OTHERS = "others"
-    KNOWN_TYPES = [SEGMENTATION, CLASSIFICATION, DEEPGROW, POSTPROCS, OTHERS]
+    KNOWN_TYPES = [SEGMENTATION, CLASSIFICATION, DEEPGROW, DEEPEDIT, SCRIBBLE, OTHERS]
 
 
 class InferTask:
@@ -85,7 +86,7 @@ class InferTask:
         }
 
     def is_valid(self):
-        if self.network or self.type == InferType.POSTPROCS:
+        if self.network or self.type == InferType.SCRIBBLE:
             return True
 
         paths = [self.path] if isinstance(self.path, str) else self.path
@@ -195,10 +196,7 @@ class InferTask:
         latency_pre = time.time() - start
 
         start = time.time()
-        if self.type == InferType.POSTPROCS:
-            data = self.run_postprocessor(data)
-        else:
-            data = self.run_inferer(data, device=device)
+        data = self.run_inferer(data, device=device)
         latency_inferer = time.time() - start
 
         start = time.time()
@@ -231,7 +229,7 @@ class InferTask:
         return result_file_name, result_json
 
     def run_pre_transforms(self, data, transforms):
-        return self.run_transforms(data, transforms, log_prefix="PRE")
+        return self.run_callables(data, transforms, log_prefix="PRE")
 
     def run_invert_transforms(self, data, pre_transforms, names):
         if names is None:
@@ -251,40 +249,24 @@ class InferTask:
         d = copy.deepcopy(dict(data))
         d[self.input_key] = data[self.output_label_key]
 
-        d = self.run_transforms(d, transforms, inverse=True, log_prefix="INV")
+        d = self.run_callables(d, transforms, inverse=True, log_prefix="INV")
         data[self.output_label_key] = d[self.input_key]
         return data
 
     def run_post_transforms(self, data, transforms):
-        return self.run_transforms(data, transforms, log_prefix="POST")
+        return self.run_callables(data, transforms, log_prefix="POST")
 
-    def run_postprocessor(self, data):
-        p = self.inferer()
-        logger.info("Running PostProcessor: {}".format(p))
-        return p(data) if p else data
-
-    def run_inferer(self, data, convert_to_batch=True, device="cuda"):
-        """
-        Run Inferer over pre-processed Data.  Derive this logic to customize the normal behavior.
-        In some cases, you want to implement your own for running chained inferers over pre-processed data
-
-        :param data: pre-processed data
-        :param convert_to_batch: convert input to batched input
-        :param device: device type run load the model and run inferer
-        :return: updated data with output_key stored that will be used for post-processing
-        """
+    def _get_network(self, device):
         path = self.get_path()
         logger.info("Infer model path: {}".format(path))
         if not path and not self.network:
+            if self.type == InferType.SCRIBBLE:
+                return None
+
             raise MONAILabelException(
                 MONAILabelError.INFERENCE_ERROR,
                 f"Model Path ({self.path}) does not exist/valid",
             )
-
-        inputs = data[self.input_key]
-        inputs = inputs if torch.is_tensor(inputs) else torch.from_numpy(inputs)
-        inputs = inputs[None] if convert_to_batch else inputs
-        inputs = inputs.cuda() if device == "cuda" else inputs
 
         cached = self._networks.get(device)
         statbuf = os.stat(path) if path else None
@@ -309,16 +291,38 @@ class InferTask:
             network.eval()
             self._networks[device] = (network, statbuf.st_mtime if statbuf else 0)
 
+        return network
+
+    def run_inferer(self, data, convert_to_batch=True, device="cuda"):
+        """
+        Run Inferer over pre-processed Data.  Derive this logic to customize the normal behavior.
+        In some cases, you want to implement your own for running chained inferers over pre-processed data
+
+        :param data: pre-processed data
+        :param convert_to_batch: convert input to batched input
+        :param device: device type run load the model and run inferer
+        :return: updated data with output_key stored that will be used for post-processing
+        """
+
         inferer = self.inferer()
         logger.info("Running Inferer:: {}".format(inferer.__class__.__name__))
 
-        with torch.no_grad():
-            outputs = inferer(inputs, network)
-        if device == "cuda":
-            torch.cuda.empty_cache()
+        network = self._get_network(device)
+        if network:
+            inputs = data[self.input_key]
+            inputs = inputs if torch.is_tensor(inputs) else torch.from_numpy(inputs)
+            inputs = inputs[None] if convert_to_batch else inputs
+            inputs = inputs.cuda() if device == "cuda" else inputs
 
-        outputs = outputs[0] if convert_to_batch else outputs
-        data[self.output_label_key] = outputs
+            with torch.no_grad():
+                outputs = inferer(inputs, network)
+            if device == "cuda":
+                torch.cuda.empty_cache()
+
+            outputs = outputs[0] if convert_to_batch else outputs
+            data[self.output_label_key] = outputs
+        else:
+            data = self.run_callables(data, inferer, log_prefix="INF", log_name="Inferer")
         return data
 
     def writer(self, data, extension=None, dtype=None):
@@ -371,23 +375,29 @@ class InferTask:
         return "; ".join(shape_info)
 
     @staticmethod
-    def run_transforms(data, transforms, inverse=False, log_prefix="POST"):
+    def run_callables(data, callables, inverse=False, log_prefix="POST", log_name="Transform"):
         """
         Run Transforms
 
         :param data: Input data dictionary
-        :param transforms: List of transforms to run
+        :param callables: List of transforms or callable objects
         :param inverse: Run inverse instead of call/forward function
         :param log_prefix: Logging prefix (POST or PRE)
+        :param log_name: Type of callables for logging
         :return: Processed data after running transforms
         """
-        logger.info("{} - Run Transforms".format(log_prefix))
+        logger.info("{} - Run {}".format(log_prefix, log_name))
         logger.info("{} - Input Keys: {}".format(log_prefix, data.keys()))
 
-        if not transforms:
+        if not callables:
             return data
 
-        for t in transforms:
+        if isinstance(callables, Compose):
+            callables = callables.transforms
+        elif callable(callables):
+            callables = [callables]
+
+        for t in callables:
             name = t.__class__.__name__
             start = time.time()
 
@@ -398,19 +408,20 @@ class InferTask:
                 else:
                     raise MONAILabelException(
                         MONAILabelError.INFERENCE_ERROR,
-                        "Transformer '{}' has no invert method".format(t.__class__.__name__),
+                        "{} '{}' has no invert method".format(log_name, t.__class__.__name__),
                     )
             elif callable(t):
                 data = t(data)
             else:
                 raise MONAILabelException(
                     MONAILabelError.INFERENCE_ERROR,
-                    "Transformer '{}' is not callable".format(t.__class__.__name__),
+                    "{} '{}' is not callable".format(log_name, t.__class__.__name__),
                 )
 
             logger.info(
-                "{} - Transform ({}): Time: {:.4f}; {}".format(
+                "{} - {} ({}): Time: {:.4f}; {}".format(
                     log_prefix,
+                    log_name,
                     name,
                     float(time.time() - start),
                     InferTask._shape_info(data),

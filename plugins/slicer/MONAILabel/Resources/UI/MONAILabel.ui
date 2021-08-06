@@ -7,7 +7,7 @@
     <x>0</x>
     <y>0</y>
     <width>425</width>
-    <height>726</height>
+    <height>713</height>
    </rect>
   </property>
   <layout class="QVBoxLayout" name="verticalLayout">
@@ -146,7 +146,7 @@
          <bool>true</bool>
         </attribute>
         <attribute name="verticalHeaderDefaultSectionSize">
-         <number>24</number>
+         <number>20</number>
         </attribute>
         <column/>
         <column/>
@@ -239,7 +239,7 @@
       <item row="9" column="0" colspan="2">
        <widget class="QProgressBar" name="accuracyProgressBar">
         <property name="toolTip">
-         <string>Current Model Accuracy</string>
+         <string>Average Dice score computed over submitted labels</string>
         </property>
         <property name="value">
          <number>0</number>
@@ -274,57 +274,20 @@
       <property name="rightMargin">
        <number>0</number>
       </property>
-      <item row="1" column="2">
-       <widget class="QPushButton" name="importLabelButton">
-        <property name="text">
-         <string/>
-        </property>
-       </widget>
-      </item>
-      <item row="1" column="1">
+      <item row="2" column="1">
        <widget class="ctkPathLineEdit" name="labelPathLineEdit"/>
       </item>
-      <item row="1" column="0">
+      <item row="2" column="0">
        <widget class="QLabel" name="label_12">
         <property name="text">
          <string>Import Label:</string>
         </property>
        </widget>
       </item>
-      <item row="3" column="0" colspan="3">
-       <layout class="QGridLayout" name="gridLayout_4">
-        <item row="1" column="0">
-         <widget class="QPushButton" name="contourButton">
-          <property name="sizePolicy">
-           <sizepolicy hsizetype="Minimum" vsizetype="MinimumExpanding">
-            <horstretch>0</horstretch>
-            <verstretch>0</verstretch>
-           </sizepolicy>
-          </property>
-          <property name="text">
-           <string>Contour</string>
-          </property>
-         </widget>
-        </item>
-        <item row="1" column="1">
-         <spacer name="horizontalSpacer">
-          <property name="orientation">
-           <enum>Qt::Horizontal</enum>
-          </property>
-          <property name="sizeHint" stdset="0">
-           <size>
-            <width>40</width>
-            <height>20</height>
-           </size>
-          </property>
-         </spacer>
-        </item>
-       </layout>
-      </item>
-      <item row="2" column="0" colspan="3">
-       <widget class="Line" name="line">
-        <property name="orientation">
-         <enum>Qt::Horizontal</enum>
+      <item row="2" column="2">
+       <widget class="QPushButton" name="importLabelButton">
+        <property name="text">
+         <string/>
         </property>
        </widget>
       </item>
@@ -349,6 +312,19 @@
       <property name="rightMargin">
        <number>0</number>
       </property>
+      <item row="1" column="1">
+       <widget class="QComboBox" name="segmentationModelSelector">
+        <property name="sizePolicy">
+         <sizepolicy hsizetype="Expanding" vsizetype="Fixed">
+          <horstretch>0</horstretch>
+          <verstretch>0</verstretch>
+         </sizepolicy>
+        </property>
+        <property name="toolTip">
+         <string>Select pre-trained segmentation model</string>
+        </property>
+       </widget>
+      </item>
       <item row="1" column="0">
        <widget class="QLabel" name="label_5">
         <property name="text">
@@ -367,19 +343,6 @@
         <property name="icon">
          <iconset>
           <normaloff>monai-label-icon.png</normaloff>monai-label-icon.png</iconset>
-        </property>
-       </widget>
-      </item>
-      <item row="1" column="1">
-       <widget class="QComboBox" name="segmentationModelSelector">
-        <property name="sizePolicy">
-         <sizepolicy hsizetype="Expanding" vsizetype="Fixed">
-          <horstretch>0</horstretch>
-          <verstretch>0</verstretch>
-         </sizepolicy>
-        </property>
-        <property name="toolTip">
-         <string>Select pre-trained segmentation model</string>
         </property>
        </widget>
       </item>
@@ -487,6 +450,170 @@
     </widget>
    </item>
    <item>
+    <widget class="ctkCollapsibleButton" name="scribblesCollapsibleButton">
+     <property name="text">
+      <string>Scribbles</string>
+     </property>
+     <layout class="QGridLayout" name="gridLayout_4">
+      <item row="2" column="1" colspan="2">
+       <layout class="QGridLayout" name="gridLayout_7">
+        <item row="1" column="2" rowspan="2">
+         <layout class="QGridLayout" name="gridLayout_9">
+          <item row="1" column="0">
+           <widget class="QPushButton" name="selectedToolDisplay">
+            <property name="text">
+             <string/>
+            </property>
+            <property name="flat">
+             <bool>true</bool>
+            </property>
+           </widget>
+          </item>
+          <item row="1" column="1">
+           <widget class="QPushButton" name="selectedScribbleDisplay">
+            <property name="text">
+             <string/>
+            </property>
+            <property name="flat">
+             <bool>true</bool>
+            </property>
+           </widget>
+          </item>
+          <item row="0" column="0" colspan="2">
+           <widget class="QLabel" name="label_7">
+            <property name="font">
+             <font>
+              <pointsize>9</pointsize>
+              <weight>50</weight>
+              <bold>false</bold>
+             </font>
+            </property>
+            <property name="text">
+             <string>Current tool:</string>
+            </property>
+            <property name="alignment">
+             <set>Qt::AlignCenter</set>
+            </property>
+           </widget>
+          </item>
+         </layout>
+        </item>
+        <item row="1" column="3">
+         <widget class="QPushButton" name="paintScribblesButton">
+          <property name="text">
+           <string/>
+          </property>
+         </widget>
+        </item>
+        <item row="2" column="4">
+         <widget class="QPushButton" name="selectBackgroundButton">
+          <property name="text">
+           <string>Background</string>
+          </property>
+          <property name="flat">
+           <bool>false</bool>
+          </property>
+         </widget>
+        </item>
+        <item row="2" column="3">
+         <widget class="QPushButton" name="selectForegroundButton">
+          <property name="enabled">
+           <bool>true</bool>
+          </property>
+          <property name="text">
+           <string>Foreground</string>
+          </property>
+          <property name="flat">
+           <bool>false</bool>
+          </property>
+         </widget>
+        </item>
+        <item row="0" column="3">
+         <widget class="QComboBox" name="scribblesMethodSelector"/>
+        </item>
+        <item row="0" column="2">
+         <widget class="QLabel" name="scribblesMethodLabel">
+          <property name="layoutDirection">
+           <enum>Qt::LeftToRight</enum>
+          </property>
+          <property name="text">
+           <string>Method:</string>
+          </property>
+          <property name="alignment">
+           <set>Qt::AlignCenter</set>
+          </property>
+         </widget>
+        </item>
+        <item row="3" column="2">
+         <spacer name="verticalSpacer_2">
+          <property name="orientation">
+           <enum>Qt::Vertical</enum>
+          </property>
+          <property name="sizeHint" stdset="0">
+           <size>
+            <width>20</width>
+            <height>10</height>
+           </size>
+          </property>
+         </spacer>
+        </item>
+        <item row="1" column="4">
+         <widget class="QPushButton" name="eraseScribblesButton">
+          <property name="text">
+           <string/>
+          </property>
+         </widget>
+        </item>
+        <item row="0" column="4">
+         <widget class="QPushButton" name="updateScribblesButton">
+          <property name="text">
+           <string>Update</string>
+          </property>
+         </widget>
+        </item>
+        <item row="5" column="3" colspan="2">
+         <layout class="QGridLayout" name="gridLayout_6">
+          <item row="1" column="3">
+           <widget class="QCheckBox" name="brush3dCheckbox">
+            <property name="layoutDirection">
+             <enum>Qt::LeftToRight</enum>
+            </property>
+            <property name="autoFillBackground">
+             <bool>false</bool>
+            </property>
+            <property name="text">
+             <string>3D</string>
+            </property>
+            <property name="checked">
+             <bool>true</bool>
+            </property>
+           </widget>
+          </item>
+          <item row="1" column="2">
+           <widget class="ctkSliderWidget" name="brushSizeSlider">
+            <property name="value">
+             <double>10.000000000000000</double>
+            </property>
+           </widget>
+          </item>
+         </layout>
+        </item>
+        <item row="5" column="2">
+         <widget class="QLabel" name="label_11">
+          <property name="text">
+           <string>Tool size:</string>
+          </property>
+          <property name="alignment">
+           <set>Qt::AlignCenter</set>
+          </property>
+         </widget>
+        </item>
+       </layout>
+      </item>
+     </layout>
+    </widget>
+   </item>
+   <item>
     <spacer name="verticalSpacer">
      <property name="orientation">
       <enum>Qt::Vertical</enum>
@@ -512,6 +639,11 @@
    <class>ctkPathLineEdit</class>
    <extends>QWidget</extends>
    <header>ctkPathLineEdit.h</header>
+  </customwidget>
+  <customwidget>
+   <class>ctkSliderWidget</class>
+   <extends>QWidget</extends>
+   <header>ctkSliderWidget.h</header>
   </customwidget>
   <customwidget>
    <class>qMRMLWidget</class>

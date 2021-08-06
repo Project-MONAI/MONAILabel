@@ -1,0 +1,17 @@
+---
+version: 1
+name: Segmentation Spleen + Post Processing Scribbles
+description: MONAI Label App to provide active learning solution to label Spleen Organ over 3D CT Images. Includes multiple post processing method that incorporate user scribbles to improve labels.
+dimension: 3
+labels:
+  - spleen
+config:
+  infer:
+    device: cuda
+  train:
+    name: model_01
+    device: cuda
+    amp: true
+    lr: 0.0001
+    epochs: 50
+    val_split: 0.2
