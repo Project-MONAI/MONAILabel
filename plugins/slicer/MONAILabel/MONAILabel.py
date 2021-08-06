@@ -15,7 +15,7 @@ import SimpleITK as sitk
 import sitkUtils
 import slicer
 import vtk
-from client import MONAILabelClient
+from MONAILabelLib import MONAILabelClient
 from slicer.ScriptedLoadableModule import *
 from slicer.util import VTKObservationMixin
 
