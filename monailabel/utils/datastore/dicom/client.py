@@ -1,6 +1,6 @@
-import itertools
 import json
 import logging
+from monailabel.interfaces.datastore import DefaultLabelTag
 from typing import Dict
 
 from dicomweb_client.api import DICOMwebClient
@@ -10,9 +10,8 @@ from monailabel.utils.datastore.dicom.attributes import (
     ATTRB_MONAILABELINFO,
     ATTRB_MONAILABELTAG,
     ATTRB_PATIENTID,
-    ATTRB_REFERENCEDIMAGESEQUENCE,
+    ATTRB_REFERENCEDSERIESSEQUENCE,
     ATTRB_SERIESINSTANCEUID,
-    ATTRB_SOPINSTANCEUID,
     ATTRB_STUDYINSTANCEUID,
     DICOMSEG_MODALITY,
 )
@@ -35,8 +34,16 @@ class DICOMWebClient(DICOMwebClient):
             s_series_id = s[ATTRB_SERIESINSTANCEUID]['Value'][0]
             key = generate_key(s_patient_id, s_study_id, s_series_id)
 
+            s_meta = self.retrieve_series_metadata(
+                study_instance_uid=s_study_id,
+                series_instance_uid=s_series_id,
+            )
+            s_tag = s_meta[ATTRB_MONAILABELTAG]['Value'][0] if s.get(
+                ATTRB_MONAILABELTAG) else DefaultLabelTag.FINAL.value
+            s_info = json.loads(s_meta[ATTRB_MONAILABELINFO]['Value'][0]) if s.get(ATTRB_MONAILABELINFO) else {}
+
             # determine if this is a DICOMSEG series
-            if s[ATTRB_MODALITY] == DICOMSEG_MODALITY:
+            if s[ATTRB_MODALITY]['Value'][0] == DICOMSEG_MODALITY:
 
                 # add DICOMSEG to datastore
                 objects.update({
@@ -44,8 +51,8 @@ class DICOMWebClient(DICOMwebClient):
                         patient_id=s_patient_id,
                         study_id=s_study_id,
                         series_id=s_series_id,
-                        tag=s[ATTRB_MONAILABELTAG]['Value'][0] or '',
-                        info=json.loads(s[ATTRB_MONAILABELINFO]['Value'][0]) if s.get(ATTRB_MONAILABELINFO) else {},
+                        tag=s_tag,
+                        info=s_info,
                     )
                 })
 
@@ -58,27 +65,22 @@ class DICOMWebClient(DICOMwebClient):
                     label_study_id = label[ATTRB_STUDYINSTANCEUID]['Value'][0]
                     label_series_id = label[ATTRB_SERIESINSTANCEUID]['Value'][0]
 
-                    if label[ATTRB_MODALITY] == DICOMSEG_MODALITY and s_patient_id == label_patient_id:
+                    if DICOMSEG_MODALITY in label[ATTRB_MODALITY]['Value'] and s_patient_id == label_patient_id:
 
-                        label_instances = self.search_for_instances(
+                        label_series_meta = self.retrieve_series_metadata(
                             study_instance_uid=label_study_id,
-                            series_instance_uid=label_series_id,
-                        )
-                        label_referenced_instances = [label_instance[ATTRB_REFERENCEDIMAGESEQUENCE]['Value']
-                                                      for label_instance in label_instances]
-                        label_referenced_instances = set(itertools.chain.from_iterable(label_referenced_instances))
-
-                        original_series_instances = self.search_for_instances(
-                            study_instance_uid=s_study_id,
-                            series_instance_uid=s_series_id,
-                        )
-                        original_series_instances = {original_instance[ATTRB_SOPINSTANCEUID]['Value'][0]
-                                                     for original_instance in original_series_instances}
+                            series_instance_uid=label_series_id
+                        )[0]  # assuming a multiframe DICOMSEG (single-image series)
+                        label_referenced_series = []
+                        if label_series_meta.get(ATTRB_REFERENCEDSERIESSEQUENCE) and \
+                                label_series_meta[ATTRB_REFERENCEDSERIESSEQUENCE]['Value'][0].get(ATTRB_SERIESINSTANCEUID):
+                            label_referenced_series.extend(
+                                label_series_meta[ATTRB_REFERENCEDSERIESSEQUENCE]['Value'][0]
+                                [ATTRB_SERIESINSTANCEUID]['Value'])
 
                         # to find the related original iage of this label we must look at all instances of a label
                         # in the attribute
-                        if label.get(ATTRB_REFERENCEDIMAGESEQUENCE) and \
-                           (original_series_instances & label_referenced_instances):
+                        if s_series_id in label_referenced_series:
 
                             label_key = generate_key(label_patient_id, label_study_id, label_series_id)
                             related_labels_keys.append(label_key)
@@ -88,7 +90,7 @@ class DICOMWebClient(DICOMwebClient):
                         patient_id=s_patient_id,
                         study_id=s_study_id,
                         series_id=s_series_id,
-                        info=json.loads(s[ATTRB_MONAILABELINFO]['Value'][0]) if s.get(ATTRB_MONAILABELINFO) else {},
+                        info=s_info,
                         related_labels_keys=related_labels_keys,
                     )
                 })

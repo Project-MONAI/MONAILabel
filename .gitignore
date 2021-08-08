@@ -149,3 +149,7 @@ docs/source/apidocs
 *.nii.gz
 .DS_Store
 *.DS_Store
+
+# Orthanc
+OrthancStorage
+plugins/ohif/Viewers
