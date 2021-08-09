@@ -692,10 +692,10 @@ class MONAILabelWidget(ScriptedLoadableModuleWidget, VTKObservationMixin):
             self._parameterNode.SetParameter("DeepgrowModel", deepgrowModel)
 
         scribblesMethodIndex = self.ui.scribblesMethodSelector.currentIndex
-        print('scribindex {}'.format(scribblesMethodIndex))
+        print("scribindex {}".format(scribblesMethodIndex))
         if scribblesMethodIndex >= 0:
             scribblesMethod = self.ui.scribblesMethodSelector.itemText(scribblesMethodIndex)
-            print('scribmethod {}'.format(scribblesMethod))
+            print("scribmethod {}".format(scribblesMethod))
             self._parameterNode.SetParameter("ScribblesMethod", scribblesMethod)
 
         currentLabelIndex = self.ui.labelComboBox.currentIndex

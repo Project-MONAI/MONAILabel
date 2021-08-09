@@ -4,9 +4,9 @@ from monailabel.interfaces.tasks import InferTask, InferType
 from monailabel.utils.others.post import BoundingBoxd, Restored
 
 from .transforms import (
-    ApplyISegGraphCutPostProcd,
     ApplyCRFOptimisationd,
     ApplyGraphCutOptimisationd,
+    ApplyISegGraphCutPostProcd,
     ApplySimpleCRFOptimisationd,
     MakeISegUnaryd,
 )

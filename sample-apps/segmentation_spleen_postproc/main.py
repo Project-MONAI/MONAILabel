@@ -5,10 +5,10 @@ from lib import (
     MyStrategy,
     MyTrain,
     SegmentationWithWriteLogits,
+    SpleenInteractiveGraphCut,
     SpleenISegCRF,
     SpleenISegGraphCut,
     SpleenISegSimpleCRF,
-    SpleenInteractiveGraphCut,
 )
 from monai.apps import load_from_mmar
 

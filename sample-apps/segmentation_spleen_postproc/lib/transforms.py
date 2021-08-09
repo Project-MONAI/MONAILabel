@@ -10,7 +10,7 @@ from monai.transforms.compose import Transform
 
 from monailabel.utils.others.writer import Writer
 
-from .utils import interactive_maxflow2d, interactive_maxflow3d, make_ISeg_unary, maxflow2d, maxflow3d
+from .utils import interactive_maxflow2d, interactive_maxflow3d, make_iseg_unary, maxflow2d, maxflow3d
 
 
 #####################################
@@ -139,7 +139,7 @@ class MakeISegUnaryd(InteractiveSegmentationTransform):
 
         # make ISeg Unaries following Equation 7 from:
         # https://arxiv.org/pdf/1710.04043.pdf
-        unary_term = make_ISeg_unary(
+        unary_term = make_iseg_unary(
             logits=logits,
             scribbles=scribbles,
             scribbles_bg_label=self.scribbles_bg_label,

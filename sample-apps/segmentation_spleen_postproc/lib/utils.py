@@ -34,7 +34,7 @@ def interactive_maxflow3d(image, prob, seed, lamda=5, sigma=0.1):
     return maxflow.interactive_maxflow3d(image, prob, seed, (lamda, sigma))
 
 
-def make_ISeg_unary(
+def make_iseg_unary(
     logits,
     scribbles,
     scribbles_bg_label=2,
