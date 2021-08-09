@@ -10,7 +10,7 @@ from monai.transforms.compose import Transform
 
 from monailabel.utils.others.writer import Writer
 
-from .utils import interactive_maxflow2d, interactive_maxflow3d, make_bifseg_unary, maxflow2d, maxflow3d
+from .utils import interactive_maxflow2d, interactive_maxflow3d, make_ISeg_unary, maxflow2d, maxflow3d
 
 
 #####################################
@@ -65,14 +65,14 @@ class InteractiveSegmentationTransform(Transform):
 ########################
 #  Make Unary Transforms
 ########################
-class MakeBIFSegUnaryd(InteractiveSegmentationTransform):
+class MakeISegUnaryd(InteractiveSegmentationTransform):
     """
-    Implements forming BIFSeg unary term from the following paper:
+    Implements forming ISeg unary term from the following paper:
 
     Wang, Guotai, et al. "Interactive medical image segmentation using deep learning with image-specific fine tuning."
     IEEE transactions on medical imaging 37.7 (2018): 1562-1573. (preprint: https://arxiv.org/pdf/1710.04043.pdf)
 
-    BIFSeg unary term is constructed using Equation 7 on page 4 of the above mentioned paper.
+    ISeg unary term is constructed using Equation 7 on page 4 of the above mentioned paper.
     This unary term along with a pairwise term (e.g. input image volume) form Equation 5 in the paper,
     which defines an energy to be minimised. Equation 5 can be optimised using an appropriate
     optimisation method (e.g. CRF, GraphCut etc), which is implemented here as an additional transform.
@@ -82,7 +82,7 @@ class MakeBIFSegUnaryd(InteractiveSegmentationTransform):
     Compose(
         [
             # unary term maker
-            MakeBIFSegUnaryd(
+            MakeISegUnaryd(
                 image="image",
                 logits="logits",
                 scribbles="label",
@@ -108,7 +108,7 @@ class MakeBIFSegUnaryd(InteractiveSegmentationTransform):
         scribbles_fg_label: int = 3,
         scale_infty: float = 1.0,
     ) -> None:
-        super(MakeBIFSegUnaryd, self).__init__()
+        super(MakeISegUnaryd, self).__init__()
         self.image = image
         self.logits = logits
         self.scribbles = scribbles
@@ -128,18 +128,18 @@ class MakeBIFSegUnaryd(InteractiveSegmentationTransform):
         logits = self._fetch_data(d, self.logits)
         scribbles = self._fetch_data(d, self.scribbles)
 
-        # check if input logits are compatible with BIFSeg opt
+        # check if input logits are compatible with ISeg opt
         if logits.shape[0] > 2:
             raise ValueError(
-                "BIFSeg can only be applied to binary probabilities for now, received {}".format(logits.shape[0])
+                "ISeg can only be applied to binary probabilities for now, received {}".format(logits.shape[0])
             )
 
         # attempt to unfold probability term
         logits = self._unfold_prob(logits, axis=0)
 
-        # make BIFSeg Unaries following Equation 7 from:
+        # make ISeg Unaries following Equation 7 from:
         # https://arxiv.org/pdf/1710.04043.pdf
-        unary_term = make_bifseg_unary(
+        unary_term = make_ISeg_unary(
             logits=logits,
             scribbles=scribbles,
             scribbles_bg_label=self.scribbles_bg_label,
@@ -159,21 +159,21 @@ class MakeBIFSegUnaryd(InteractiveSegmentationTransform):
 # (both MakeUnary+Optimiser in single method)
 # uses SimpleCRF's interactive_maxflowNd() method
 #################################################
-class ApplyBIFSegGraphCutPostProcd(InteractiveSegmentationTransform):
+class ApplyISegGraphCutPostProcd(InteractiveSegmentationTransform):
     """
-    Transform wrapper around SimpleCRF's Interactive GraphCut MaxFlow implementation for BIFSeg.
+    Transform wrapper around SimpleCRF's Interactive GraphCut MaxFlow implementation for ISeg.
 
     This is a hybrid transform, which covers both Make*Unaryd + Optimiser and hence does not
     need an additional optimiser.
 
-    BIFSeg unaries are made and resulting energy function optimised using GraphCut inside
+    ISeg unaries are made and resulting energy function optimised using GraphCut inside
     SimpleCRF's interactive segmentation function.
 
     Usage Example::
 
     Compose(
         [
-            ApplyBIFSegGraphCutPostProcd(
+            ApplyISegGraphCutPostProcd(
                 image="image",
                 logits="logits",
                 scribbles="label",
@@ -199,7 +199,7 @@ class ApplyBIFSegGraphCutPostProcd(InteractiveSegmentationTransform):
         lamda: float = 8.0,
         sigma: float = 0.1,
     ) -> None:
-        super(ApplyBIFSegGraphCutPostProcd, self).__init__()
+        super(ApplyISegGraphCutPostProcd, self).__init__()
         self.image = image
         self.logits = logits
         self.scribbles = scribbles
@@ -235,7 +235,7 @@ class ApplyBIFSegGraphCutPostProcd(InteractiveSegmentationTransform):
         # attempt to unfold probability term
         logits = self._unfold_prob(logits, axis=0)
 
-        # prepare data for SimpleCRF's Interactive GraphCut (BIFSeg)
+        # prepare data for SimpleCRF's Interactive GraphCut (ISeg)
         image = np.moveaxis(image, source=0, destination=-1)
         logits = np.moveaxis(logits, source=0, destination=-1)
         scribbles = np.moveaxis(scribbles, source=0, destination=-1)
@@ -266,7 +266,7 @@ class ApplyCRFOptimisationd(InteractiveSegmentationTransform):
     Generic MONAI CRF optimisation transform.
 
     This can be used in conjuction with any Make*Unaryd transform
-    (e.g. MakeBIFSegUnaryd from above for implementing BIFSeg unary term).
+    (e.g. MakeISegUnaryd from above for implementing ISeg unary term).
     It optimises a typical energy function for interactive segmentation methods using MONAI's CRF layer,
     e.g. Equation 5 from https://arxiv.org/pdf/1710.04043.pdf.
 
@@ -275,7 +275,7 @@ class ApplyCRFOptimisationd(InteractiveSegmentationTransform):
     Compose(
         [
             # unary term maker
-            MakeBIFSegUnaryd(
+            MakeISegUnaryd(
                 image="image",
                 logits="logits",
                 scribbles="label",
@@ -369,7 +369,7 @@ class ApplySimpleCRFOptimisationd(InteractiveSegmentationTransform):
     Generic SimpleCRF's CRF optimisation transform.
 
     This can be used in conjuction with any Make*Unaryd transform
-    (e.g. MakeBIFSegUnaryd from above for implementing BIFSeg unary term).
+    (e.g. MakeISegUnaryd from above for implementing ISeg unary term).
     It optimises a typical energy function for interactive segmentation methods using SimpleCRF's CRF method,
     e.g. Equation 5 from https://arxiv.org/pdf/1710.04043.pdf.
 
@@ -378,7 +378,7 @@ class ApplySimpleCRFOptimisationd(InteractiveSegmentationTransform):
     Compose(
         [
             # unary term maker
-            MakeBIFSegUnaryd(
+            MakeISegUnaryd(
                 image="image",
                 logits="logits",
                 scribbles="label",
@@ -495,7 +495,7 @@ class ApplyGraphCutOptimisationd(InteractiveSegmentationTransform):
     Generic GraphCut optimisation transform.
 
     This can be used in conjuction with any Make*Unaryd transform
-    (e.g. MakeBIFSegUnaryd from above for implementing BIFSeg unary term).
+    (e.g. MakeISegUnaryd from above for implementing ISeg unary term).
     It optimises a typical energy function for interactive segmentation methods using SimpleCRF's GraphCut method,
     e.g. Equation 5 from https://arxiv.org/pdf/1710.04043.pdf.
 
@@ -504,7 +504,7 @@ class ApplyGraphCutOptimisationd(InteractiveSegmentationTransform):
     Compose(
         [
             # unary term maker
-            MakeBIFSegUnaryd(
+            MakeISegUnaryd(
                 image="image",
                 logits="logits",
                 scribbles="label",

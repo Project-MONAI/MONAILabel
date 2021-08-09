@@ -34,7 +34,7 @@ def interactive_maxflow3d(image, prob, seed, lamda=5, sigma=0.1):
     return maxflow.interactive_maxflow3d(image, prob, seed, (lamda, sigma))
 
 
-def make_bifseg_unary(
+def make_ISeg_unary(
     logits,
     scribbles,
     scribbles_bg_label=2,
@@ -42,12 +42,12 @@ def make_bifseg_unary(
     scale_infty=1,
 ):
     """
-    Implements BIFSeg unary term from the following paper:
+    Implements ISeg unary term from the following paper:
 
     Wang, Guotai, et al. "Interactive medical image segmentation using deep learning with image-specific fine tuning."
     IEEE transactions on medical imaging 37.7 (2018): 1562-1573. (preprint: https://arxiv.org/pdf/1710.04043.pdf)
 
-    BIFSeg unary term is constructed using Equation 7 on page 4 of the above mentioned paper.
+    ISeg unary term is constructed using Equation 7 on page 4 of the above mentioned paper.
     """
 
     # fetch the data for probabilities and scribbles

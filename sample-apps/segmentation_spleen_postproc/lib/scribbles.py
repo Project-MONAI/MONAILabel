@@ -4,11 +4,11 @@ from monailabel.interfaces.tasks import InferTask, InferType
 from monailabel.utils.others.post import BoundingBoxd, Restored
 
 from .transforms import (
-    ApplyBIFSegGraphCutPostProcd,
+    ApplyISegGraphCutPostProcd,
     ApplyCRFOptimisationd,
     ApplyGraphCutOptimisationd,
     ApplySimpleCRFOptimisationd,
-    MakeBIFSegUnaryd,
+    MakeISegUnaryd,
 )
 
 
@@ -23,7 +23,7 @@ class SpleenPostProc(InferTask):
         description,
     ):
         super().__init__(
-            path=None, network=None, labels=None, type=InferType.SCRIBBLE, dimension=dimension, description=description
+            path=None, network=None, labels=None, type=InferType.SCRIBBLES, dimension=dimension, description=description
         )
 
     def pre_transforms(self):
@@ -47,9 +47,9 @@ class SpleenPostProc(InferTask):
         raise NotImplementedError("inferer not implemented in base post proc class")
 
 
-class SpleenBIFSegCRF(SpleenPostProc):
+class SpleenISegCRF(SpleenPostProc):
     """
-    Defines BIFSeg+CRF based post processing task for Spleen segmentation from the following paper:
+    Defines ISeg+CRF based post processing task for Spleen segmentation from the following paper:
 
     Wang, Guotai, et al. "Interactive medical image segmentation using deep learning with image-specific fine tuning."
     IEEE transactions on medical imaging 37.7 (2018): 1562-1573. (preprint: https://arxiv.org/pdf/1710.04043.pdf)
@@ -65,7 +65,7 @@ class SpleenBIFSegCRF(SpleenPostProc):
     def __init__(
         self,
         dimension=3,
-        description="A post processing step with BIFSeg + MONAI's CRF for Spleen segmentation",
+        description="A post processing step with ISeg + MONAI's CRF for Spleen segmentation",
     ):
         super().__init__(dimension, description)
 
@@ -73,7 +73,7 @@ class SpleenBIFSegCRF(SpleenPostProc):
         return Compose(
             [
                 # unary term maker
-                MakeBIFSegUnaryd(
+                MakeISegUnaryd(
                     image="image",
                     logits="logits",
                     scribbles="label",
@@ -88,9 +88,9 @@ class SpleenBIFSegCRF(SpleenPostProc):
         )
 
 
-class SpleenBIFSegGraphCut(SpleenPostProc):
+class SpleenISegGraphCut(SpleenPostProc):
     """
-    Defines BIFSeg+GraphCut based post processing task for Spleen segmentation from the following paper:
+    Defines ISeg+GraphCut based post processing task for Spleen segmentation from the following paper:
 
     Wang, Guotai, et al. "Interactive medical image segmentation using deep learning with image-specific fine tuning."
     IEEE transactions on medical imaging 37.7 (2018): 1562-1573. (preprint: https://arxiv.org/pdf/1710.04043.pdf)
@@ -106,7 +106,7 @@ class SpleenBIFSegGraphCut(SpleenPostProc):
     def __init__(
         self,
         dimension=3,
-        description="A post processing step with BIFSeg + SimpleCRF's GraphCut for Spleen segmentation",
+        description="A post processing step with ISeg + SimpleCRF's GraphCut for Spleen segmentation",
     ):
         super().__init__(dimension, description)
 
@@ -114,7 +114,7 @@ class SpleenBIFSegGraphCut(SpleenPostProc):
         return Compose(
             [
                 # unary term maker
-                MakeBIFSegUnaryd(
+                MakeISegUnaryd(
                     image="image",
                     logits="logits",
                     scribbles="label",
@@ -137,7 +137,7 @@ class SpleenBIFSegGraphCut(SpleenPostProc):
 
 class SpleenInteractiveGraphCut(SpleenPostProc):
     """
-    Defines BIFSeg+GraphCut based post processing task for Spleen segmentation from the following paper:
+    Defines ISeg+GraphCut based post processing task for Spleen segmentation from the following paper:
 
     Wang, Guotai, et al. "Interactive medical image segmentation using deep learning with image-specific fine tuning."
     IEEE transactions on medical imaging 37.7 (2018): 1562-1573. (preprint: https://arxiv.org/pdf/1710.04043.pdf)
@@ -153,14 +153,14 @@ class SpleenInteractiveGraphCut(SpleenPostProc):
     def __init__(
         self,
         dimension=3,
-        description="A post processing step with SimpleCRF's Interactive BIFSeg GraphCut for Spleen segmentation",
+        description="A post processing step with SimpleCRF's Interactive ISeg GraphCut for Spleen segmentation",
     ):
         super().__init__(dimension, description)
 
     def inferer(self):
         return Compose(
             [
-                ApplyBIFSegGraphCutPostProcd(
+                ApplyISegGraphCutPostProcd(
                     image="image",
                     logits="logits",
                     scribbles="label",
@@ -174,9 +174,9 @@ class SpleenInteractiveGraphCut(SpleenPostProc):
         )
 
 
-class SpleenBIFSegSimpleCRF(SpleenPostProc):
+class SpleenISegSimpleCRF(SpleenPostProc):
     """
-    Defines BIFSeg+SimpleCRF's CRF based post processing task for Spleen segmentation from the following paper:
+    Defines ISeg+SimpleCRF's CRF based post processing task for Spleen segmentation from the following paper:
 
     Wang, Guotai, et al. "Interactive medical image segmentation using deep learning with image-specific fine tuning."
     IEEE transactions on medical imaging 37.7 (2018): 1562-1573. (preprint: https://arxiv.org/pdf/1710.04043.pdf)
@@ -192,7 +192,7 @@ class SpleenBIFSegSimpleCRF(SpleenPostProc):
     def __init__(
         self,
         dimension=3,
-        description="A post processing step with BIFSeg + SimpleCRF's CRF for Spleen segmentation",
+        description="A post processing step with ISeg + SimpleCRF's CRF for Spleen segmentation",
     ):
         super().__init__(dimension, description)
 
@@ -211,7 +211,7 @@ class SpleenBIFSegSimpleCRF(SpleenPostProc):
         return Compose(
             [
                 # unary term maker
-                MakeBIFSegUnaryd(
+                MakeISegUnaryd(
                     image="image",
                     logits="logits",
                     scribbles="label",

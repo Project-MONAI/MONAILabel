@@ -7,7 +7,7 @@
     <x>0</x>
     <y>0</y>
     <width>425</width>
-    <height>713</height>
+    <height>802</height>
    </rect>
   </property>
   <layout class="QVBoxLayout" name="verticalLayout">
@@ -470,7 +470,7 @@
            </widget>
           </item>
           <item row="1" column="1">
-           <widget class="QPushButton" name="selectedScribbleDisplay">
+           <widget class="QPushButton" name="selectedScribblesDisplay">
             <property name="text">
              <string/>
             </property>
