@@ -9,6 +9,12 @@ class Settings(BaseSettings):
 
     APP_DIR: str = ""
     STUDIES: str = ""
+    DICOMWEB_USERNAME: str = ""
+    DICOMWEB_PASSWORD: str = ""
+
+    QIDO_PREFIX: str = ""
+    WADO_PREFIX: str = ""
+    STOW_PREFIX: str = ""
 
     DATASTORE_AUTO_RELOAD: bool = True
     DATASTORE_IMAGE_EXT: List[str] = ["*.nii.gz", "*.nii"]

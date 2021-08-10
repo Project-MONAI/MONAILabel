@@ -5,16 +5,18 @@ import os
 from pathlib import Path
 from typing import Any, Dict, List
 
+from filelock import FileLock
+
 from monailabel.interfaces import Datastore
 from monailabel.interfaces.datastore import DefaultLabelTag
 from monailabel.utils.datastore.dicom.client import DICOMWebClient
 from monailabel.utils.datastore.dicom.convert import ConverterUtil
-from monailabel.utils.datastore.dicom.datamodel import DICOMImageModel, DICOMLabelModel, DICOMWebDatastoreModel
+from monailabel.utils.datastore.dicom.datamodel import DICOMWebDatastoreModel
 
 logger = logging.getLogger(__name__)
 
 
-class DicomWebCache(Datastore):
+class DICOMWebCache(Datastore):
     """
     Class to represent a DICOMWeb datastore for the MONAI-Label Server
 
@@ -33,26 +35,30 @@ class DicomWebCache(Datastore):
         label_store_path: str = "labels",
         datastore_config: str = "datastore.json",
     ):
+        self._config_ts = 0
         self._dicomweb_client = dicomweb_client
+        dicomweb_uri = self._dicomweb_client.base_url
         self._datastore_path = os.path.join(
             Path.home(),
             '.cache',
             'monailabel',
-            hashlib.md5(self._dicomweb_uri.encode('utf-8')).hexdigest(),
+            hashlib.md5(dicomweb_uri.encode('utf-8')).hexdigest(),
         )
+        self._lock = FileLock(os.path.join(self._datastore_path, ".lock"))
         self._datastore_config_path = os.path.join(self._datastore_path, datastore_config)
         self._label_path = label_store_path
 
         os.makedirs(self._datastore_path, exist_ok=True)
         os.makedirs(os.path.join(self._datastore_path, self._label_path), exist_ok=True)
 
-        logger.info(f"DICOMWeb Endpoint: {self._dicomweb_uri}")
+        logger.info(f"DICOMWeb Endpoint: {dicomweb_uri}")
         logger.info(f"Datastore cache path: {self._datastore_path}")
 
         self._datastore: DICOMWebDatastoreModel = DICOMWebDatastoreModel(
-            url=f"{self._dicomweb_uri}", description="Local Cache for DICOMWeb")
+            url=f"{dicomweb_uri}", description="Local Cache for DICOMWeb")
 
         self._datastore.objects = self._dicomweb_client.retrieve_dataset()
+        self._update_datastore_file()
 
     def name(self) -> str:
         return self._datastore.url
@@ -89,8 +95,7 @@ class DicomWebCache(Datastore):
 
     def get_label_by_image_id(self, image_id: str, tag: str) -> str:
         image = self._datastore.objects[image_id]
-        image.__class__ = DICOMImageModel
-        for label_id in image.related_labels:
+        for label_id in image.related_labels_keys:
             label = self._datastore.objects[label_id]
             if label.tag == tag:
                 return label_id
@@ -99,24 +104,76 @@ class DicomWebCache(Datastore):
 
     def get_labels_by_image_id(self, image_id: str) -> Dict[str, str]:
         image = self._datastore.objects[image_id]
-        image.__class__ = DICOMImageModel
-        return {label_id: self._datastore.objects[label_id].tag for label_id in image.related_labels}
+        return {label_id: self._datastore.objects[label_id].tag for label_id in image.related_labels_keys}
 
     def get_unlabeled_images(self) -> List[str]:
         image_ids = []
-        for id, data in [obj for obj in self._datastore.objects if obj.info['object_type'] == 'image']:
-            data.__class__ = DICOMImageModel
+        images = {id: data for id, data in self._datastore.objects.items() if data.info['object_type'] == 'image'}
+        for image_id, image_model in images.items():
             has_final_label = False
-            for label_id in data.related_labels:
-                label = self._datastore[label_id]
-                label.__class__ = DICOMLabelModel
+            for label_id in image_model.related_labels_keys:
+                label = self._datastore.objects[label_id]
                 if label.tag == DefaultLabelTag.FINAL.value:
                     has_final_label = True
 
             if not has_final_label:
-                image_ids.append(id)
+                image_ids.append(image_id)
 
         return image_ids
 
+    def add_image(self, image_id: str, image_filename: str) -> str:
+        pass
+
+    def datalist(self) -> List[Dict[str, str]]:
+        pass
+
+    def get_image_info(self, image_id: str) -> Dict[str, Any]:
+        pass
+
+    def get_label_info(self, label_id: str) -> Dict[str, Any]:
+        pass
+
+    def get_labeled_images(self) -> List[str]:
+        pass
+
+    def list_images(self) -> List[str]:
+        pass
+
+    def refresh(self) -> None:
+        pass
+
+    def remove_image(self, image_id: str) -> None:
+        pass
+
+    def remove_label(self, label_id: str) -> None:
+        pass
+
+    def remove_label_by_tag(self, label_tag: str) -> None:
+        pass
+
+    def save_label(self, image_id: str, label_filename: str, label_tag: str) -> str:
+        pass
+
+    def status(self) -> Dict[str, Any]:
+        pass
+
+    def update_image_info(self, image_id: str, info: Dict[str, Any]) -> None:
+        pass
+
+    def update_label_info(self, label_id: str, info: Dict[str, Any]) -> None:
+        pass
+
     def __str__(self) -> str:
         return json.dumps(self._datastore.dict())
+
+    def _update_datastore_file(self, lock=True):
+        if lock:
+            self._lock.acquire()
+
+        logger.debug("+++ Updating datastore...")
+        with open(self._datastore_config_path, "w") as f:
+            f.write(json.dumps(self._datastore.dict(exclude_none=True, exclude_unset=True), indent=2, default=str))
+        self._config_ts = os.stat(self._datastore_config_path).st_mtime
+
+        if lock:
+            self._lock.release()

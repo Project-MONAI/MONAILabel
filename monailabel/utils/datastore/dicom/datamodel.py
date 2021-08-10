@@ -15,7 +15,7 @@ class DICOMLabelModel(DICOMObjectModel):
     tag: str
 
 
-class DICOMImageModel(BaseModel):
+class DICOMImageModel(DICOMObjectModel):
     info: Dict[str, Any] = {}
     related_labels_keys: List[str] = []
 

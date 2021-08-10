@@ -8,6 +8,7 @@ from abc import abstractmethod
 from typing import Any, Callable, Dict
 
 import yaml
+from dicomweb_client.session_utils import create_session_from_user_pass
 from monai.apps import download_url, load_from_mmar
 from monai.data import partition_dataset
 
@@ -16,7 +17,9 @@ from monailabel.interfaces.datastore import Datastore, DefaultLabelTag
 from monailabel.interfaces.exception import MONAILabelError, MONAILabelException
 from monailabel.interfaces.tasks import BatchInferTask, InferTask, ScoringMethod, Strategy
 from monailabel.utils.activelearning import Random
+from monailabel.utils.datastore.dicom.client import DICOMWebClient
 from monailabel.utils.datastore.local import LocalDatastore
+from monailabel.utils.datastore.dicom.cache import DICOMWebCache
 from monailabel.utils.infer import InferDeepgrow2D, InferDeepgrow3D
 from monailabel.utils.infer.deepgrow_pipeline import InferDeepgrowPipeline
 from monailabel.utils.scoring import Dice, Sum
@@ -63,6 +66,23 @@ class MONAILabelApp:
         return BatchInferTask()
 
     def init_datastore(self) -> Datastore:
+        if settings.STUDIES.startswith("http://") or settings.STUDIES.startswith("https://"):
+
+            dw_session = None
+            if settings.DICOMWEB_USERNAME and settings.DICOMWEB_PASSWORD:
+                dw_session = create_session_from_user_pass(settings.DICOMWEB_USERNAME, settings.DICOMWEB_PASSWORD)
+
+            dw_client = DICOMWebClient(
+                url=settings.STUDIES,
+                session=dw_session,
+                qido_url_prefix=settings.QIDO_PREFIX,
+                wado_url_prefix=settings.WADO_PREFIX,
+                stow_url_prefix=settings.STOW_PREFIX,
+            )
+            return DICOMWebCache(
+                dicomweb_client=dw_client,
+            )
+
         return LocalDatastore(
             self.studies,
             image_extensions=settings.DATASTORE_IMAGE_EXT,
@@ -276,6 +296,9 @@ class MONAILabelApp:
             )
 
         image_id = task(request, self.datastore())
+        if not image_id:
+            return {}
+
         image_path = self._datastore.get_image_uri(image_id)
         return {
             "id": image_id,

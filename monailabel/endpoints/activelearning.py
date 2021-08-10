@@ -33,6 +33,9 @@ async def sample(strategy: str, params: Optional[dict] = None, checksum: Optiona
 
     logger.info(f"Active Learning Request: {request}")
     result = instance.next_sample(request)
+    if not result:
+        return {}
+
     image_path = result["path"]
     image_id = result["id"]
     name = os.path.basename(image_path)
