@@ -29,7 +29,7 @@ class SpleenPostProc(InferTask):
     def pre_transforms(self):
         return [
             LoadImaged(keys=["image", "logits", "label"]),
-            AddChanneld(keys=["image", "logits", "label"]),
+            AddChanneld(keys=["image", "label"]),
             # at the moment optimisers are bottleneck taking a long time,
             # therefore scaling non-isotropic with big spacing
             Spacingd(keys=["image", "logits"], pixdim=[2.5, 2.5, 5.0]),
@@ -199,7 +199,7 @@ class SpleenISegSimpleCRF(SpleenPostProc):
     def pre_transforms(self):
         return [
             LoadImaged(keys=["image", "logits", "label"]),
-            AddChanneld(keys=["image", "logits", "label"]),
+            AddChanneld(keys=["image", "label"]),
             # at the moment Simple CRF implementation is bottleneck taking a long time,
             # therefore scaling non-isotropic with big spacing
             Spacingd(keys=["image", "logits"], pixdim=[3.5, 3.5, 5.0]),

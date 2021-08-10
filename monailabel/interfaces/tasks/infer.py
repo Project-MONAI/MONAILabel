@@ -367,7 +367,6 @@ class InferTask:
 
     @staticmethod
     def _shape_info(data, keys=("image", "label", "logits", "pred", "model")):
-        print(data.keys())
         shape_info = []
         for key in keys:
             val = data.get(key)

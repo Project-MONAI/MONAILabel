@@ -610,7 +610,7 @@ class WriteLogits(Transform):
 
         output_file = tempfile.NamedTemporaryFile(suffix=file_ext).name
         logger.debug("Saving Image to: {}".format(output_file))
-        write_nifti(image, output_file, affine=affine, output_type=None)
+        write_nifti(image, output_file, affine=affine, output_dtype=None)
 
         if data.get(self.result) is None:
             d[self.result] = {}
