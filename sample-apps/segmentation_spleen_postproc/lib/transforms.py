@@ -1,3 +1,7 @@
+import logging
+import pathlib
+import tempfile
+
 from copy import deepcopy
 from typing import Optional
 
@@ -7,8 +11,7 @@ import numpy as np
 import torch
 from monai.networks.blocks import CRF
 from monai.transforms.compose import Transform
-
-from monailabel.utils.others.writer import Writer
+from monai.data import write_nifti
 
 from .utils import interactive_maxflow2d, interactive_maxflow3d, make_iseg_unary, maxflow2d, maxflow3d
 
@@ -588,20 +591,31 @@ class ApplyGraphCutOptimisationd(InteractiveSegmentationTransform):
 #  Logits Save Transform
 ########################
 class WriteLogits(Transform):
-    def __init__(self, key, result="result"):
+    def __init__(self, key, ref_image=None, result="result", meta_key_postfix="meta_dict"):
         self.key = key
+        self.ref_image = ref_image if ref_image else key
         self.result = result
+        self.meta_key_postfix = meta_key_postfix
 
     def __call__(self, data):
-        d = dict(data)
-        writer = Writer(label=self.key)
+        logger = logging.getLogger(self.__class__.__name__)
 
-        file, _ = writer(d)
+        d = dict(data)
+        file_ext = "".join(pathlib.Path(d["image_path"]).suffixes)
+        logger.debug("Result ext: {}".format(file_ext))
+
+        image = d[self.key]
+        meta_dict = d.get(f"{self.ref_image}_{self.meta_key_postfix}")
+        affine = meta_dict.get("affine") if meta_dict else None
+
+        output_file = tempfile.NamedTemporaryFile(suffix=file_ext).name
+        logger.debug("Saving Image to: {}".format(output_file))
+        write_nifti(image, output_file, affine=affine, output_type=None)
+
         if data.get(self.result) is None:
             d[self.result] = {}
-        d[self.result][self.key] = file
+        d[self.result][self.key] = output_file
         return d
-
 
 ########################
 ########################
