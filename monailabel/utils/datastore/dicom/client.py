@@ -45,6 +45,8 @@ class DICOMWebClient(DICOMwebClient):
             # determine if this is a DICOMSEG series
             if s[ATTRB_MODALITY]['Value'][0] == DICOMSEG_MODALITY:
 
+                s_info.update({'object_type': 'label'})
+
                 # add DICOMSEG to datastore
                 objects.update({
                     key: DICOMLabelModel(
@@ -85,6 +87,8 @@ class DICOMWebClient(DICOMwebClient):
                             label_key = generate_key(label_patient_id, label_study_id, label_series_id)
                             related_labels_keys.append(label_key)
 
+                s_info.update({'object_type': 'image'})
+
                 objects.update({
                     key: DICOMImageModel(
                         patient_id=s_patient_id,
@@ -96,6 +100,12 @@ class DICOMWebClient(DICOMwebClient):
                 })
 
         return objects
+
+    def get_object_url(self, dicom_object: DICOMObjectModel):
+        return self._get_series_url('wado', dicom_object.study_id, dicom_object.series_id)
+
+    def get_object(self, dicom_object: DICOMObjectModel):
+        return self.retrieve_series(dicom_object.study_id, dicom_object.series_id)
 
     def push_studies(self):
         pass
