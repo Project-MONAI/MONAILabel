@@ -10,7 +10,7 @@ import numpy as np
 import torch
 from monai.data import write_nifti
 from monai.networks.blocks import CRF
-from monai.transforms.compose import Transform
+from monai.transforms import Transform, MapTransform
 
 from .utils import interactive_maxflow2d, interactive_maxflow3d, make_iseg_unary, maxflow2d, maxflow3d
 
@@ -63,6 +63,37 @@ class InteractiveSegmentationTransform(Transform):
 
 #####################################
 #####################################
+
+############################
+#  Prob Softening Transforms
+############################
+from scipy.special import softmax
+class SoftenProbSoftmaxRescale(InteractiveSegmentationTransform, MapTransform):
+    def __init__(
+        self,
+        keys: str,
+        beta: float,
+        allow_missing_keys: bool = False,
+    ) -> None:
+        MapTransform.__init__(self, keys=keys, allow_missing_keys=allow_missing_keys)
+        self.beta = beta
+
+    def __call__(self, data):
+        d = dict(data)
+        for key in self.key_iterator(d):
+            import pdb; pdb.set_trace()
+            tmp = d[key]
+            delta = np.max(tmp[1, ...] - tmp[0, ...])
+            b = np.log(9)/delta
+            print(np.unique(tmp))
+            tmp = softmax(tmp * b, axis=0)
+            print(np.unique(tmp))
+            d[key] = tmp
+        return d
+
+
+############################
+############################
 
 ########################
 #  Make Unary Transforms
