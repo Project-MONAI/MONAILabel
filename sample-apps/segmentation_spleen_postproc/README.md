@@ -14,7 +14,7 @@ In the diagram, the neural network (inference) stage is run only once for a give
 
 # Installing pre-requisites
 
-## 1. Install MONAI with BUILD_MONAI=1
+## Install MONAI with BUILD_MONAI=1
 Uses CRF layer from MONAI, which requires compiling the C++/CUDA code following instructions from [MONAI docs](https://docs.monai.io/en/latest/installation.html#option-1-as-a-part-of-your-system-wide-module). 
 This can be done by uninstalling any previous monai/monai-weekly version and running the following command:
 
@@ -23,12 +23,6 @@ This can be done by uninstalling any previous monai/monai-weekly version and run
 Another way is use docker for MONAI
 
 `docker run --gpus all --rm -ti --ipc=host --net=host -v /xyz:/workspace projectmonai/monai:latest`
-
-
-## 2. Install SimpleCRF
-Current application provides an option to switch to SimpleCRF library for doing the CRF/GraphCut part. This can be installed as:
-
-`pip install simplecrf`
 
 # Running the app
 

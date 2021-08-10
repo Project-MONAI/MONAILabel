@@ -80,7 +80,6 @@ class SpleenISegCRF(SpleenPostProc):
                     unary="unary",
                     scribbles_bg_label=2,
                     scribbles_fg_label=3,
-                    scale_infty=1e6,
                 ),
                 # optimiser
                 ApplyCRFOptimisationd(unary="unary", pairwise="image", post_proc_label="pred"),
@@ -121,7 +120,6 @@ class SpleenISegGraphCut(SpleenPostProc):
                     unary="unary",
                     scribbles_bg_label=2,
                     scribbles_fg_label=3,
-                    scale_infty=1e6,
                 ),
                 # optimiser
                 ApplyGraphCutOptimisationd(
@@ -218,7 +216,6 @@ class SpleenISegSimpleCRF(SpleenPostProc):
                     unary="unary",
                     scribbles_bg_label=2,
                     scribbles_fg_label=3,
-                    scale_infty=1e6,
                 ),
                 # optimiser
                 ApplySimpleCRFOptimisationd(

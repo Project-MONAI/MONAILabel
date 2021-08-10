@@ -1,7 +1,6 @@
 import logging
 import pathlib
 import tempfile
-
 from copy import deepcopy
 from typing import Optional
 
@@ -9,9 +8,9 @@ import denseCRF
 import denseCRF3D
 import numpy as np
 import torch
+from monai.data import write_nifti
 from monai.networks.blocks import CRF
 from monai.transforms.compose import Transform
-from monai.data import write_nifti
 
 from .utils import interactive_maxflow2d, interactive_maxflow3d, make_iseg_unary, maxflow2d, maxflow3d
 
@@ -29,14 +28,14 @@ class InteractiveSegmentationTransform(Transform):
 
         return data[key]
 
-    def _unfold_prob(self, prob, axis=0):
-        # in some cases, esp in MONAILabel, only background prob may be present
-        # optimisers (e.g. CRF, GraphCut) require these to be reconstructed in two bg/fg prob
-        # assuming prob is background, form foreground as 1-background and concat the two
-        if prob.shape[axis] == 1:
-            prob = np.concatenate([prob, 1 - prob], axis=axis)
+    # def _unfold_prob(self, prob, axis=0):
+    #     # in some cases, esp in MONAILabel, only background prob may be present
+    #     # optimisers (e.g. CRF, GraphCut) require these to be reconstructed in two bg/fg prob
+    #     # assuming prob is background, form foreground as 1-background and concat the two
+    #     if prob.shape[axis] == 1:
+    #         prob = np.concatenate([prob, 1 - prob], axis=axis)
 
-        return prob
+    #     return prob
 
     def _normalise_logits(self, data, axis=0):
         # check if logits is a true prob, if not then apply softmax
@@ -87,12 +86,11 @@ class MakeISegUnaryd(InteractiveSegmentationTransform):
             # unary term maker
             MakeISegUnaryd(
                 image="image",
-                logits="logits",
+                prob="logits",
                 scribbles="label",
                 unary="unary",
                 scribbles_bg_label=2,
                 scribbles_fg_label=3,
-                scale_infty=1e6,
             ),
             # optimiser
             ApplyCRFOptimisationd(unary="unary", pairwise="image", post_proc_label="pred"),
@@ -109,7 +107,6 @@ class MakeISegUnaryd(InteractiveSegmentationTransform):
         unary: str = "unary",
         scribbles_bg_label: int = 2,
         scribbles_fg_label: int = 3,
-        scale_infty: float = 1.0,
     ) -> None:
         super(MakeISegUnaryd, self).__init__()
         self.image = image
@@ -119,7 +116,6 @@ class MakeISegUnaryd(InteractiveSegmentationTransform):
         self.unary = unary
         self.scribbles_bg_label = scribbles_bg_label
         self.scribbles_fg_label = scribbles_fg_label
-        self.scale_infty = scale_infty
 
     def __call__(self, data):
         d = dict(data)
@@ -137,17 +133,16 @@ class MakeISegUnaryd(InteractiveSegmentationTransform):
                 "ISeg can only be applied to binary probabilities for now, received {}".format(logits.shape[0])
             )
 
-        # attempt to unfold probability term
-        logits = self._unfold_prob(logits, axis=0)
+        # convert logits to probability
+        prob = self._normalise_logits(logits, axis=0)
 
         # make ISeg Unaries following Equation 7 from:
         # https://arxiv.org/pdf/1710.04043.pdf
         unary_term = make_iseg_unary(
-            logits=logits,
+            prob=prob,
             scribbles=scribbles,
             scribbles_bg_label=self.scribbles_bg_label,
             scribbles_fg_label=self.scribbles_fg_label,
-            scale_infty=self.scale_infty,
         )
         d[self.unary] = unary_term
 
@@ -178,7 +173,7 @@ class ApplyISegGraphCutPostProcd(InteractiveSegmentationTransform):
         [
             ApplyISegGraphCutPostProcd(
                 image="image",
-                logits="logits",
+                prob="logits",
                 scribbles="label",
                 post_proc_label="pred",
                 scribbles_bg_label=2,
@@ -235,22 +230,22 @@ class ApplyISegGraphCutPostProcd(InteractiveSegmentationTransform):
                 "GraphCut can only be applied to binary probabilities, received {}".format(logits.shape[0])
             )
 
-        # attempt to unfold probability term
-        logits = self._unfold_prob(logits, axis=0)
+        # convert logits to probability
+        prob = self._normalise_logits(logits, axis=0)
 
         # prepare data for SimpleCRF's Interactive GraphCut (ISeg)
         image = np.moveaxis(image, source=0, destination=-1)
-        logits = np.moveaxis(logits, source=0, destination=-1)
+        prob = np.moveaxis(prob, source=0, destination=-1)
         scribbles = np.moveaxis(scribbles, source=0, destination=-1)
 
         # run GraphCut
         spatial_dims = image.ndim - 1
         run_3d = spatial_dims == 3
         if run_3d:
-            post_proc_label = interactive_maxflow3d(image, logits, scribbles, lamda=self.lamda, sigma=self.sigma)
+            post_proc_label = interactive_maxflow3d(image, prob, scribbles, lamda=self.lamda, sigma=self.sigma)
         else:
             # 2D is not yet tested within this framework
-            post_proc_label = interactive_maxflow2d(image, logits, scribbles, lamda=self.lamda, sigma=self.sigma)
+            post_proc_label = interactive_maxflow2d(image, prob, scribbles, lamda=self.lamda, sigma=self.sigma)
 
         post_proc_label = np.expand_dims(post_proc_label, axis=0)
         d[self.post_proc_label] = post_proc_label
@@ -280,12 +275,11 @@ class ApplyCRFOptimisationd(InteractiveSegmentationTransform):
             # unary term maker
             MakeISegUnaryd(
                 image="image",
-                logits="logits",
+                prob="logits",
                 scribbles="label",
                 unary="unary",
                 scribbles_bg_label=2,
                 scribbles_fg_label=3,
-                scale_infty=1e6,
             ),
             # optimiser
             ApplyCRFOptimisationd(unary="unary", pairwise="image", post_proc_label="pred"),
@@ -383,12 +377,11 @@ class ApplySimpleCRFOptimisationd(InteractiveSegmentationTransform):
             # unary term maker
             MakeISegUnaryd(
                 image="image",
-                logits="logits",
+                prob="logits",
                 scribbles="label",
                 unary="unary",
                 scribbles_bg_label=2,
                 scribbles_fg_label=3,
-                scale_infty=1e6,
             ),
             # optimiser
             ApplySimpleCRFOptimisationd(
@@ -509,12 +502,11 @@ class ApplyGraphCutOptimisationd(InteractiveSegmentationTransform):
             # unary term maker
             MakeISegUnaryd(
                 image="image",
-                logits="logits",
+                prob="logits",
                 scribbles="label",
                 unary="unary",
                 scribbles_bg_label=2,
                 scribbles_fg_label=3,
-                scale_infty=1e6,
             ),
             # optimiser
             ApplyGraphCutOptimisationd(
@@ -561,8 +553,8 @@ class ApplyGraphCutOptimisationd(InteractiveSegmentationTransform):
                 "GraphCut can only be applied to binary probabilities, received {}".format(unary_term.shape[0])
             )
 
-        # attempt to unfold probability term
-        unary_term = self._unfold_prob(unary_term, axis=0)
+        # # attempt to unfold probability term
+        # unary_term = self._unfold_prob(unary_term, axis=0)
 
         # prepare data for SimpleCRF's GraphCut
         unary_term = np.moveaxis(unary_term, source=0, destination=-1)
@@ -616,6 +608,7 @@ class WriteLogits(Transform):
             d[self.result] = {}
         d[self.result][self.key] = output_file
         return d
+
 
 ########################
 ########################
