@@ -120,11 +120,3 @@ class DicomWebCache(Datastore):
 
     def __str__(self) -> str:
         return json.dumps(self._datastore.dict())
-
-
-if __name__ == "__main__":
-    from dicomweb_client.session_utils import create_session_from_user_pass
-    dw_session = create_session_from_user_pass('orthanc', 'orthanc')
-    dwc = DICOMWebClient("http://localhost:8042", session=dw_session)
-    ds = DicomWebCache(dwc, )
-    ds._reconcile_datastore_cache()
