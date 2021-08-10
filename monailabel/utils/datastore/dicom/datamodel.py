@@ -1,4 +1,4 @@
-from typing import Any, Dict, List
+from typing import Any, Dict, List, Optional
 
 from pydantic.main import BaseModel
 
@@ -7,6 +7,7 @@ class DICOMObjectModel(BaseModel):
     patient_id: str
     study_id: str
     series_id: str
+    local_path: Optional[str]
     info: Dict[str, Any] = {}
 
 
