@@ -87,7 +87,7 @@ class DICOMWebCache(Datastore):
         return os.path.join(self._datastore_path, self._datastore.objects[image_id].local_path)
 
     def get_label_uri(self, label_id: str) -> str:
-        return self._dicomweb_client.get_object_url(self._datastore.objects[label_id])
+        return self.get_image_uri(label_id)
 
     def get_image(self, image_id: str) -> Any:
         image = self._datastore.objects[image_id]
