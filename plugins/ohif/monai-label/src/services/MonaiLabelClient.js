@@ -46,9 +46,22 @@ export default class MonaiLabelClient {
       params.result_compress = false;
     }
 
-    const files = null;
-    const responseType = 'arraybuffer';
-    return await MonaiLabelClient.api_post(url, params, files, responseType);
+    return await MonaiLabelClient.api_post(
+      url,
+      params,
+      null,
+      true,
+      'arraybuffer'
+    );
+  }
+
+  async next_sample(stategy = 'random') {
+    const url = new URL(
+      'activelearning/' + encodeURIComponent(stategy),
+      this.server_url
+    ).toString();
+
+    return await MonaiLabelClient.api_post(url, {}, null, false, 'json');
   }
 
   static constructFormData(params, files) {
