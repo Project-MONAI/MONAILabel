@@ -13,7 +13,7 @@ from monailabel.interfaces import Datastore
 from monailabel.interfaces.datastore import DefaultLabelTag
 from monailabel.utils.datastore.dicom.client import DICOMWebClient
 from monailabel.utils.datastore.dicom.convert import ConverterUtil
-from monailabel.utils.datastore.dicom.datamodel import DICOMWebDatastoreModel
+from monailabel.utils.datastore.dicom.datamodel import DICOMLabelModel, DICOMWebDatastoreModel
 from monailabel.utils.others.generic import file_checksum
 
 logger = logging.getLogger(__name__)
@@ -49,10 +49,10 @@ class DICOMWebCache(Datastore):
         )
         self._lock = FileLock(os.path.join(self._datastore_path, ".lock"))
         self._datastore_config_path = os.path.join(self._datastore_path, datastore_config)
-        self._label_path = label_store_path
+        self._label_store_path = label_store_path
 
         os.makedirs(self._datastore_path, exist_ok=True)
-        os.makedirs(os.path.join(self._datastore_path, self._label_path), exist_ok=True)
+        os.makedirs(os.path.join(self._datastore_path, self._label_store_path), exist_ok=True)
 
         logger.info(f"DICOMWeb Endpoint: {dicomweb_uri}")
         logger.info(f"Datastore cache path: {self._datastore_path}")
@@ -77,7 +77,14 @@ class DICOMWebCache(Datastore):
         self._datastore.description = description
 
     def get_image_uri(self, image_id: str) -> str:
-        return self._dicomweb_client.get_object_url(self._datastore.objects[image_id])
+        # get the image from the DICOMWeb server so we can compute the checksum
+        # if it's not been cached or is somehow not existent
+        if not self._datastore.objects[image_id].local_path or not os.path.exists(
+            os.path.join(self._datastore_path, self._datastore.objects[image_id].local_path)
+        ):
+            _ = self.get_image(image_id)
+
+        return os.path.join(self._datastore_path, self._datastore.objects[image_id].local_path)
 
     def get_label_uri(self, label_id: str) -> str:
         return self._dicomweb_client.get_object_url(self._datastore.objects[label_id])
@@ -130,8 +137,31 @@ class DICOMWebCache(Datastore):
     def add_image(self, image_id: str, image_filename: str) -> str:
         pass
 
-    def datalist(self) -> List[Dict[str, str]]:
-        pass
+    def datalist(self, full_path=True) -> List[Dict[str, str]]:
+        items = []
+        images = {image_id: image for image_id, image in self._datastore.objects.items()
+                  if image.info['object_type'] == 'image'}
+        for image_id, image in images.items():
+
+            image_path = self._get_path(image.local_path, False, full_path) if image.local_path else image_id
+
+            for label_key in image.related_labels_keys:
+                label = self._datastore.objects[label_key]
+                if label.tag == DefaultLabelTag.FINAL:
+                    items.append({
+                        "image": image_path,
+                        "label": self._get_path(label.local_path, True, full_path) if label.local_path else label_key,
+                    })
+        return items
+
+    def _get_path(self, path: str, is_label: bool, full_path=True):
+        if is_label:
+            path = os.path.join(self._label_store_path, path)
+
+        if not full_path or os.path.isabs(path):
+            return path
+
+        return os.path.realpath(os.path.join(self._datastore_path, path))
 
     def get_image_info(self, image_id: str) -> Dict[str, Any]:
         info = {}
@@ -186,7 +216,17 @@ class DICOMWebCache(Datastore):
         pass
 
     def status(self) -> Dict[str, Any]:
-        pass
+        labels: List[DICOMLabelModel] = []
+        tags: dict = {}
+        for label in labels:
+            tags[label.tag] = tags.get(label.tag, 0) + 1
+
+        return {
+            "total": len(self.list_images()),
+            "completed": len(self.get_labeled_images()),
+            "label_tags": tags,
+            "train": self.datalist(full_path=False),
+        }
 
     def update_image_info(self, image_id: str, info: Dict[str, Any]) -> None:
         pass
