@@ -1170,10 +1170,7 @@ class MONAILabelWidget(ScriptedLoadableModuleWidget, VTKObservationMixin):
 
                 sampleDataLogic = SampleData.SampleDataLogic()
                 self._volumeNode = sampleDataLogic.downloadFromURL(
-                    nodeNames=image_name,
-                    fileNames=image_name,
-                    uris=download_uri,
-                    checksums=checksum
+                    nodeNames=image_name, fileNames=image_name, uris=download_uri, checksums=checksum
                 )[0]
 
             self.initSample(sample)
