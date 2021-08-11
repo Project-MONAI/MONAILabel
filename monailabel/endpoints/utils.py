@@ -3,8 +3,8 @@ import logging
 from fastapi import HTTPException
 
 from monailabel.interfaces import MONAILabelApp
+from monailabel.utils.others.app_utils import app_instance
 from monailabel.utils.others.async_tasks import processes, run_background_task, stop_background_task, tasks
-from monailabel.utils.others.generic import get_app_instance
 
 logger = logging.getLogger(__name__)
 
@@ -15,7 +15,8 @@ class BackgroundTask:
         if len(processes(method)):
             raise HTTPException(status_code=429, detail=f"{method.capitalize()} Task is Already Running")
 
-        config = get_app_instance().info().get("config", {}).get(method, {})
+        instance: MONAILabelApp = app_instance()
+        config = instance.info().get("config", {}).get(method, {})
         request = request if request else {}
         request.update(config)
 
@@ -24,7 +25,6 @@ class BackgroundTask:
 
         logger.info(f"{method.capitalize()} request: {request}")
         if force_sync:
-            instance: MONAILabelApp = get_app_instance()
             if method == "batch_infer":
                 return instance.batch_infer(request)
             if method == "scoring":

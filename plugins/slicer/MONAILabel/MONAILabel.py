@@ -7,6 +7,7 @@ import tempfile
 import time
 import traceback
 from collections import OrderedDict
+from urllib.parse import quote_plus
 
 import ctk
 import qt
@@ -752,8 +753,13 @@ class MONAILabelWidget(ScriptedLoadableModuleWidget, VTKObservationMixin):
         for section in config:
             table.setSpan(n, 0, n + len(config[section]), 1)
             for key in config[section]:
-                table.setItem(n, 0, qt.QTableWidgetItem(section))
-                table.setItem(n, 1, qt.QTableWidgetItem(key))
+                item = qt.QTableWidgetItem(section)
+                item.setFlags(item.flags() & ~qt.Qt.ItemIsEditable)
+                table.setItem(n, 0, item)
+
+                item = qt.QTableWidgetItem(key)
+                table.setItem(n, 1, item)
+                item.setFlags(item.flags() & ~qt.Qt.ItemIsEditable)
 
                 val = config[section][key]
                 if isinstance(val, dict) or isinstance(val, list):
@@ -1149,17 +1155,25 @@ class MONAILabelWidget(ScriptedLoadableModuleWidget, VTKObservationMixin):
                 self.ui.inputSelector.setCurrentIndex(index)
                 return
 
-            image_file = sample["path"].replace("/workspace", "/raid/sachi")
+            logging.info(sample)
+            image_id = sample["id"]
+            image_file = sample.get("path")
+            image_name = sample.get("name", image_id)
+            checksum = sample.get("checksum")
+
             logging.info(f"Check if file exists/shared locally: {image_file}")
-            if os.path.exists(image_file):
+            if image_file and os.path.exists(image_file):
                 self._volumeNode = slicer.util.loadVolume(image_file)
             else:
-                download_uri = f"{self.serverUrl()}{sample['url']}"
+                download_uri = f"{self.serverUrl()}/datastore/image?image={quote_plus(image_id)}"
                 logging.info(download_uri)
 
                 sampleDataLogic = SampleData.SampleDataLogic()
                 self._volumeNode = sampleDataLogic.downloadFromURL(
-                    nodeNames=sample["name"], fileNames=sample["name"], uris=download_uri, checksums=sample["checksum"]
+                    nodeNames=image_name,
+                    fileNames=image_name,
+                    uris=download_uri,
+                    checksums=checksum
                 )[0]
 
             self.initSample(sample)

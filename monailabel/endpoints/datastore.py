@@ -12,7 +12,8 @@ from fastapi.responses import FileResponse
 from starlette.background import BackgroundTasks
 
 from monailabel.interfaces import Datastore, DefaultLabelTag, MONAILabelApp
-from monailabel.utils.others.generic import get_app_instance, get_mime_type, remove_file
+from monailabel.utils.others.app_utils import app_instance
+from monailabel.utils.others.generic import get_mime_type, remove_file
 
 logger = logging.getLogger(__name__)
 train_tasks: List = []
@@ -39,7 +40,7 @@ class RemoveType(str, Enum):
 
 @router.get("/", summary="Get All Images/Labels from datastore")
 async def datastore(output: Optional[ResultType] = None):
-    d: Datastore = get_app_instance().datastore()
+    d: Datastore = app_instance().datastore()
     output = output if output else ResultType.stats
 
     logger.debug(f"output type: {output}")
@@ -62,14 +63,14 @@ async def add_image(background_tasks: BackgroundTasks, image: Optional[str] = No
         shutil.copyfileobj(file.file, buffer)
         background_tasks.add_task(remove_file, image_file)
 
-    instance: MONAILabelApp = get_app_instance()
+    instance: MONAILabelApp = app_instance()
     image_id = instance.datastore().add_image(image_id, image_file)
     return {"image": image_id}
 
 
 @router.delete("/", summary="Remove Image/Label")
 async def remove_image(id: str, type: RemoveType):
-    instance: MONAILabelApp = get_app_instance()
+    instance: MONAILabelApp = app_instance()
     if type == RemoveType.label:
         instance.datastore().remove_label(id)
     elif type == RemoveType.label_tag:
@@ -94,7 +95,7 @@ async def save_label(
         shutil.copyfileobj(label.file, buffer)
         background_tasks.add_task(remove_file, label_file)
 
-    instance: MONAILabelApp = get_app_instance()
+    instance: MONAILabelApp = app_instance()
     label_id = instance.datastore().save_label(image, label_file, tag)
 
     res = instance.on_save_label(image, label_id)
@@ -110,7 +111,7 @@ async def save_label(
 
 @router.get("/image", summary="Download Image")
 async def download_image(image):
-    instance: MONAILabelApp = get_app_instance()
+    instance: MONAILabelApp = app_instance()
     image = instance.datastore().get_image_uri(image)
     if not os.path.isfile(image):
         raise HTTPException(status_code=404, detail="Image NOT Found")
@@ -120,7 +121,7 @@ async def download_image(image):
 
 @router.get("/label", summary="Download Label")
 async def download_label(label):
-    instance: MONAILabelApp = get_app_instance()
+    instance: MONAILabelApp = app_instance()
     label = instance.datastore().get_label_uri(label)
     if not os.path.isfile(label):
         raise HTTPException(status_code=404, detail="Label NOT Found")
