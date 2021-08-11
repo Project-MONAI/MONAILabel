@@ -2,6 +2,7 @@ import React from 'react';
 
 import './OptionTable.styl';
 import BaseTab from './BaseTab';
+import cornerstoneTools from 'cornerstone-tools';
 
 export default class OptionTable extends BaseTab {
   constructor(props) {
@@ -37,7 +38,69 @@ export default class OptionTable extends BaseTab {
     }
   };
   onClickUpdateModel = () => {};
-  onClickSubmitLabel = () => {};
+
+  onClickSubmitLabel = async () => {
+    const { getters } = cornerstoneTools.getModule('segmentation');
+    const { labelmaps3D } = getters.labelmaps3D(
+      this.props.viewConstants.element
+    );
+    if (!labelmaps3D) {
+      console.info('LabelMap3D is empty.. so zero segments');
+      return;
+    }
+
+    this.notification.show({
+      title: 'MONAI Label',
+      message: 'Preparing the labelmap to submit',
+      type: 'info',
+      duration: 5000,
+    });
+
+    for (let i = 0; i < labelmaps3D.length; i++) {
+      const labelmap3D = labelmaps3D[i];
+      if (!labelmap3D) {
+        console.warn('Missing Label; so ignore');
+        continue;
+      }
+
+      const metadata = labelmap3D.metadata.data
+        ? labelmap3D.metadata.data
+        : labelmap3D.metadata;
+      if (!metadata || !metadata.length) {
+        console.warn('Missing Meta; so ignore');
+        continue;
+      }
+
+      console.log(metadata);
+      console.log(labelmap3D.buffer);
+
+      const image = this.props.viewConstants.monaiLabelImageId;
+      const params = metadata;
+      const label = new Blob([labelmap3D.buffer], {
+        type: 'application/octet-stream',
+      });
+
+      const response = await this.props
+        .client()
+        .save_label(params, image, label);
+
+      if (response.status !== 200) {
+        this.notification.show({
+          title: 'MONAI Label',
+          message: 'Failed to save label',
+          type: 'error',
+          duration: 5000,
+        });
+      } else {
+        this.notification.show({
+          title: 'MONAI Label',
+          message: 'Label submitted to server',
+          type: 'success',
+          duration: 2000,
+        });
+      }
+    }
+  };
 
   render() {
     const ds = this.props.info.datastore;
