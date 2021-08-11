@@ -7,6 +7,7 @@ import tempfile
 import time
 import traceback
 from collections import OrderedDict
+from urllib.parse import quote_plus
 
 import ctk
 import qt
@@ -1149,12 +1150,12 @@ class MONAILabelWidget(ScriptedLoadableModuleWidget, VTKObservationMixin):
                 self.ui.inputSelector.setCurrentIndex(index)
                 return
 
-            image_file = sample["path"].replace("/workspace", "/raid/sachi")
+            image_file = sample["path"]
             logging.info(f"Check if file exists/shared locally: {image_file}")
             if os.path.exists(image_file):
                 self._volumeNode = slicer.util.loadVolume(image_file)
             else:
-                download_uri = f"{self.serverUrl()}{sample['url']}"
+                download_uri = f"{self.serverUrl()}/datastore/image?image={quote_plus(sample['id'])}"
                 logging.info(download_uri)
 
                 sampleDataLogic = SampleData.SampleDataLogic()

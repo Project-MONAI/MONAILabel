@@ -5,17 +5,6 @@ export default class MonaiLabelClient {
     this.server_url = new URL(server_url);
   }
 
-  getInfoURL() {
-    let model_url = new URL('info/', this.server_url);
-    return model_url.toString();
-  }
-
-  getLogsURL(lines = 200) {
-    let log_url = new URL('logs/', this.server_url);
-    log_url.searchParams.append('lines', String(lines));
-    return log_url.toString();
-  }
-
   async info() {
     let url = new URL('info', this.server_url);
     return await MonaiLabelClient.api_get(url.toString());
@@ -64,6 +53,28 @@ export default class MonaiLabelClient {
     return await MonaiLabelClient.api_post(url, {}, null, false, 'json');
   }
 
+  async save_label(params, image, label) {
+    const url = new URL(
+      'datastore/label?image=' + encodeURIComponent(image),
+      this.server_url
+    ).toString();
+    const data = MonaiLabelClient.constructFormDataFromArray(
+      params,
+      label,
+      'label',
+      'label.bin'
+    );
+
+    return await MonaiLabelClient.aput(url, data, 'json');
+  }
+
+  static constructFormDataFromArray(params, data, name, fileName) {
+    let formData = new FormData();
+    formData.append('params', JSON.stringify(params));
+    formData.append(name, data, fileName);
+    return formData;
+  }
+
   static constructFormData(params, files) {
     let formData = new FormData();
     formData.append('params', JSON.stringify(params));
@@ -104,11 +115,14 @@ export default class MonaiLabelClient {
     form = true,
     responseType = 'arraybuffer'
   ) {
-    console.info('POST:: ' + url);
     const data = form
       ? MonaiLabelClient.constructFormData(params, files)
       : MonaiLabelClient.constructFormOrJsonData(params, files);
+    return MonaiLabelClient.apost(url, data, responseType);
+  }
 
+  static apost(url, data, responseType) {
+    console.info('POST:: ' + url);
     return axios
       .post(url, data, {
         responseType: responseType,
@@ -127,11 +141,14 @@ export default class MonaiLabelClient {
   }
 
   static api_put(url, params, files, form = false, responseType = 'json') {
-    console.info('PUT:: ' + url);
     const data = form
       ? MonaiLabelClient.constructFormData(params, files)
       : MonaiLabelClient.constructFormOrJsonData(params, files);
+    return MonaiLabelClient.aput(url, data, responseType);
+  }
 
+  static aput(url, data, responseType = 'json') {
+    console.info('PUT:: ' + url);
     return axios
       .put(url, data, {
         responseType: responseType,
