@@ -68,7 +68,7 @@ class DICOMWebCache(Datastore):
         return self._datastore.url
 
     def set_name(self, name: str):
-        pass  # raise not allowed exception
+        pass  # TODO: raise not allowed exception
 
     def description(self) -> str:
         return self._datastore.description
@@ -85,11 +85,11 @@ class DICOMWebCache(Datastore):
     def get_image(self, image_id: str) -> Any:
         image = self._datastore.objects[image_id]
         nifti_output_path = os.path.join(self._datastore_path, f"{image_id}.nii.gz")
+        instances = self._dicomweb_client.get_object(image)
 
-        _, nifti_file = ConverterUtil.to_nifti(
-            self._dicomweb_client.get_object(image),
-            nifti_output_path,
-        )
+        with FileLock(f"{nifti_output_path}.lock"):
+            _, nifti_file = ConverterUtil.to_nifti(instances, nifti_output_path)
+
         self._datastore.objects[image_id].local_path = nifti_file
 
         self._update_datastore_file()
@@ -148,6 +148,9 @@ class DICOMWebCache(Datastore):
         local_path = os.path.join(self._datastore_path, self._datastore.objects[image_id].local_path)
         info.update(
             {
+                "patient_id": self._datastore.objects[image_id].patient_id,
+                "study_id": self._datastore.objects[image_id].study_id,
+                "series_id": self._datastore.objects[image_id].series_id,
                 "checksum": file_checksum(pathlib.Path(local_path)),
                 "name": self._datastore.objects[image_id].local_path,
                 "path": local_path,
@@ -157,13 +160,15 @@ class DICOMWebCache(Datastore):
         return info
 
     def get_label_info(self, label_id: str) -> Dict[str, Any]:
-        pass
+        return self.get_image_info(label_id)
 
     def get_labeled_images(self) -> List[str]:
-        pass
+        return [data for data in self._datastore.objects.values()
+                if data.info["object_type"] == "image" and not data.related_labels_keys]
 
     def list_images(self) -> List[str]:
-        pass
+        return [data for data in self._datastore.objects.values()
+                if data.info["object_type"] == "image"]
 
     def refresh(self) -> None:
         pass
