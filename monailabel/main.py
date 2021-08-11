@@ -290,6 +290,9 @@ def run_app(args):
     settings.STUDIES = args.studies
     settings.DICOMWEB_USERNAME = args.username
     settings.DICOMWEB_PASSWORD = args.password
+    settings.QIDO_PREFIX = args.qido_prefix
+    settings.WADO_PREFIX = args.wado_prefix
+    settings.STOW_PREFIX = args.stow_prefix
 
     dirs = ["model", "lib", "logs"]
     for d in dirs:

@@ -1,7 +1,9 @@
 import hashlib
+import io
 import json
 import logging
 import os
+import pathlib
 from pathlib import Path
 from typing import Any, Dict, List
 
@@ -12,6 +14,7 @@ from monailabel.interfaces.datastore import DefaultLabelTag
 from monailabel.utils.datastore.dicom.client import DICOMWebClient
 from monailabel.utils.datastore.dicom.convert import ConverterUtil
 from monailabel.utils.datastore.dicom.datamodel import DICOMWebDatastoreModel
+from monailabel.utils.others.generic import file_checksum
 
 logger = logging.getLogger(__name__)
 
@@ -82,13 +85,15 @@ class DICOMWebCache(Datastore):
         image = self._datastore.objects[image_id]
         nifti_output_path = os.path.join(self._datastore_path, f"{image_id}.nii.gz")
 
-        nifti_vol, nifti_file = ConverterUtil.to_nifti(
-            self._dicomweb_client.retrieve_series(image.study_id, image.series_id),
+        _, nifti_file = ConverterUtil.to_nifti(
+            self._dicomweb_client.get_object(image),
             nifti_output_path,
         )
         self._datastore.objects[image_id].local_path = nifti_file
 
-        return nifti_vol
+        self._update_datastore_file()
+
+        return io.BytesIO(pathlib.Path(nifti_output_path).read_bytes())
 
     def get_label(self, label_id: str) -> Any:
         return self.get_image(label_id)
@@ -128,7 +133,24 @@ class DICOMWebCache(Datastore):
         pass
 
     def get_image_info(self, image_id: str) -> Dict[str, Any]:
-        pass
+        info = {}
+        if self._datastore.objects[image_id].info:
+            info.update(self._datastore.objects[image_id].info)
+
+        # get the image from the DICOMWeb server so we can compute the checksum
+        # if it's not been cached or is somehow not existent
+        if not self._datastore.objects[image_id].local_path \
+                or not os.path.exists(os.path.join(self._datastore_path, self._datastore.objects[image_id].local_path)):
+            _ = self.get_image(image_id)
+
+        local_path = os.path.join(self._datastore_path, self._datastore.objects[image_id].local_path)
+        info.update({
+            "checksum": file_checksum(pathlib.Path(local_path)),
+            'name': self._datastore.objects[image_id].local_path,
+            'path': local_path,
+        })
+
+        return info
 
     def get_label_info(self, label_id: str) -> Dict[str, Any]:
         pass

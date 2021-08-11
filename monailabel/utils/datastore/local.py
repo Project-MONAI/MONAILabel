@@ -15,6 +15,7 @@ from watchdog.observers import Observer
 
 from monailabel.interfaces.datastore import Datastore, DefaultLabelTag
 from monailabel.interfaces.exception import ImageNotFoundException, LabelNotFoundException
+from monailabel.utils.others.generic import file_checksum
 
 logger = logging.getLogger(__name__)
 
@@ -230,11 +231,19 @@ class LocalDatastore(Datastore):
         :param image_id: the desired image id
         :return: image info as a list of dictionaries Dict[str, Any]
         """
+        info = {}
         for obj in self._datastore.objects:
             if obj.image.id == image_id:
-                return obj.image.info
+                info = obj.image.info
 
-        return {}
+        local_path = pathlib.Path(os.path.join(self._datastore_path, image_id))
+        info.update({
+            'checksum': file_checksum(local_path),
+            'name': obj.image.id,
+            "path": local_path,
+        })
+
+        return info
 
     def get_label(self, label_id: str) -> Any:
         """
@@ -488,7 +497,7 @@ class LocalDatastore(Datastore):
 
         return os.path.realpath(os.path.join(self._datastore_path, path))
 
-    @staticmethod
+    @ staticmethod
     def _list_files(path, patterns):
         files = os.listdir(path)
 

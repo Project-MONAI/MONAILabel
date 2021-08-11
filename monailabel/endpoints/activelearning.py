@@ -1,13 +1,10 @@
-import base64
 import logging
-import os
 from typing import Dict, Optional
 
 from fastapi import APIRouter
 
-from monailabel.config import settings
 from monailabel.interfaces import MONAILabelApp
-from monailabel.utils.others.generic import file_checksum, get_app_instance
+from monailabel.utils.others.generic import get_app_instance
 
 logger = logging.getLogger(__name__)
 
@@ -36,25 +33,10 @@ async def sample(strategy: str, params: Optional[dict] = None, checksum: Optiona
     if not result:
         return {}
 
-    image_path = result["path"]
     image_id = result["id"]
-    name = os.path.basename(image_path)
-
-    digest = None
-    if checksum:  # It's always costly operation (some clients to access directly from shared file-system)
-        digest = cached_digest.get(image_path)
-        digest = digest if digest is not None else file_checksum(image_path)
-        digest = f"SHA256:{digest}"
-
-    encoded = base64.urlsafe_b64encode(image_path.encode("utf-8")).decode("utf-8")
-    encoded = encoded.rstrip("=")
-    url = "/download/{}".format(encoded)
+    image_info = instance.datastore().get_image_info(image_id)
 
     return {
-        "name": name,
         "id": image_id,
-        "path": image_path,
-        "studies": settings.STUDIES,
-        "url": url,
-        "checksum": digest,
+        **image_info,
     }

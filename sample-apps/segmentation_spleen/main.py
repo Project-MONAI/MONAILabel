@@ -51,18 +51,6 @@ class MyApp(MONAILabelApp):
             pass
         return super().infer(request, datastore)
 
-    # TODO:: This will be removed once DICOM Web support is added through datastore
-    def next_sample(self, request):
-        res = super().next_sample(request)
-        try:
-            with open(os.path.join(os.path.dirname(__file__), "dicom.yaml"), "r") as fc:
-                meta = dict((v, k) for k, v in yaml.full_load(fc)["studies"].items())
-                res["id"] = meta[res["id"]]
-                logger.info(f"Using studies: {res['id']}")
-        except JSONDecodeError:
-            pass
-        return res
-
     def train(self, request):
         logger.info(f"Training request: {request}")
 

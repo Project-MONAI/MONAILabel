@@ -1,4 +1,5 @@
 from typing import Tuple
+import pathlib
 
 import pydicom as dicom
 from dicom2nifti import settings
@@ -16,7 +17,7 @@ class ConverterUtil(object):
 
     def to_nifti(dicom_dataset: dicom.Dataset, nifti_output_path: str) -> Tuple[Nifti1Image, str]:
         result = dicom_array_to_nifti(dicom_dataset, nifti_output_path)
-        return result['NIFTI'], result['NII_FILE']
+        return result['NII'], pathlib.Path(result['NII_FILE']).name
 
     def to_dicom(nifti_volume: Nifti1Image) -> dicom.Dataset:
         pass

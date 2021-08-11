@@ -1,10 +1,14 @@
 import json
 import logging
-from monailabel.interfaces.datastore import DefaultLabelTag
-from typing import Dict
+from multiprocessing import Lock
+from multiprocessing.pool import ThreadPool
+from typing import Callable, Dict, List, Optional
 
+import pydicom
+import requests
 from dicomweb_client.api import DICOMwebClient
 
+from monailabel.interfaces.datastore import DefaultLabelTag
 from monailabel.utils.datastore.dicom.attributes import (
     ATTRB_MODALITY,
     ATTRB_MONAILABELINFO,
@@ -12,6 +16,7 @@ from monailabel.utils.datastore.dicom.attributes import (
     ATTRB_PATIENTID,
     ATTRB_REFERENCEDSERIESSEQUENCE,
     ATTRB_SERIESINSTANCEUID,
+    ATTRB_SOPINSTANCEUID,
     ATTRB_STUDYINSTANCEUID,
     DICOMSEG_MODALITY,
 )
@@ -22,6 +27,34 @@ logger = logging.getLogger(__name__)
 
 
 class DICOMWebClient(DICOMwebClient):
+
+    def __init__(
+        self,
+        url: str,
+        session: Optional[requests.Session],
+        qido_url_prefix: Optional[str],
+        wado_url_prefix: Optional[str],
+        stow_url_prefix: Optional[str],
+        delete_url_prefix: Optional[str],
+        proxies: Optional[Dict[str, str]],
+        headers: Optional[Dict[str, str]],
+        callback: Optional[Callable],
+        chunk_size: int,
+        num_download_threads: int = 8,
+    ) -> None:
+        super().__init__(
+            url,
+            session=session,
+            qido_url_prefix=qido_url_prefix,
+            wado_url_prefix=wado_url_prefix,
+            stow_url_prefix=stow_url_prefix,
+            delete_url_prefix=delete_url_prefix,
+            proxies=proxies,
+            headers=headers,
+            callback=callback,
+            chunk_size=chunk_size
+        )
+        self.num_download_threads = num_download_threads
 
     def retrieve_dataset(self) -> Dict[str, DICOMObjectModel]:
 
@@ -102,10 +135,27 @@ class DICOMWebClient(DICOMwebClient):
         return objects
 
     def get_object_url(self, dicom_object: DICOMObjectModel):
-        return self._get_series_url('wado', dicom_object.study_id, dicom_object.series_id)
+        return self._get_series_url('wado', dicom_object.study_id, dicom_object.series_id).replace(self.base_url, "")
 
-    def get_object(self, dicom_object: DICOMObjectModel):
-        return self.retrieve_series(dicom_object.study_id, dicom_object.series_id)
+    def get_object(self, dicom_object: DICOMObjectModel) -> List[pydicom.Dataset]:
+        series_meta = self.retrieve_series_metadata(dicom_object.study_id, dicom_object.series_id)
+        instances: List[pydicom.Dataset] = []
+
+        list_lock = Lock()
+
+        def download_instance(idx):
+            instance = self.retrieve_instance(
+                dicom_object.study_id,
+                dicom_object.series_id,
+                series_meta[idx][ATTRB_SOPINSTANCEUID]['Value'][0],
+            )
+            with list_lock:
+                instances.append(instance)
+
+        with ThreadPool(self.num_download_threads) as tp:
+            tp.map(download_instance, range(len(series_meta)))
+
+        return instances
 
     def push_studies(self):
         pass
