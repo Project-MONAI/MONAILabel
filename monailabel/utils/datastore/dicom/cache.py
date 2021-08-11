@@ -43,9 +43,9 @@ class DICOMWebCache(Datastore):
         dicomweb_uri = self._dicomweb_client.base_url
         self._datastore_path = os.path.join(
             Path.home(),
-            '.cache',
-            'monailabel',
-            hashlib.md5(dicomweb_uri.encode('utf-8')).hexdigest(),
+            ".cache",
+            "monailabel",
+            hashlib.md5(dicomweb_uri.encode("utf-8")).hexdigest(),
         )
         self._lock = FileLock(os.path.join(self._datastore_path, ".lock"))
         self._datastore_config_path = os.path.join(self._datastore_path, datastore_config)
@@ -58,7 +58,8 @@ class DICOMWebCache(Datastore):
         logger.info(f"Datastore cache path: {self._datastore_path}")
 
         self._datastore: DICOMWebDatastoreModel = DICOMWebDatastoreModel(
-            url=f"{dicomweb_uri}", description="Local Cache for DICOMWeb")
+            url=f"{dicomweb_uri}", description="Local Cache for DICOMWeb"
+        )
 
         self._datastore.objects = self._dicomweb_client.retrieve_dataset()
         self._update_datastore_file()
@@ -113,7 +114,7 @@ class DICOMWebCache(Datastore):
 
     def get_unlabeled_images(self) -> List[str]:
         image_ids = []
-        images = {id: data for id, data in self._datastore.objects.items() if data.info['object_type'] == 'image'}
+        images = {id: data for id, data in self._datastore.objects.items() if data.info["object_type"] == "image"}
         for image_id, image_model in images.items():
             has_final_label = False
             for label_id in image_model.related_labels_keys:
@@ -139,16 +140,19 @@ class DICOMWebCache(Datastore):
 
         # get the image from the DICOMWeb server so we can compute the checksum
         # if it's not been cached or is somehow not existent
-        if not self._datastore.objects[image_id].local_path \
-                or not os.path.exists(os.path.join(self._datastore_path, self._datastore.objects[image_id].local_path)):
+        if not self._datastore.objects[image_id].local_path or not os.path.exists(
+            os.path.join(self._datastore_path, self._datastore.objects[image_id].local_path)
+        ):
             _ = self.get_image(image_id)
 
         local_path = os.path.join(self._datastore_path, self._datastore.objects[image_id].local_path)
-        info.update({
-            "checksum": file_checksum(pathlib.Path(local_path)),
-            'name': self._datastore.objects[image_id].local_path,
-            'path': local_path,
-        })
+        info.update(
+            {
+                "checksum": file_checksum(pathlib.Path(local_path)),
+                "name": self._datastore.objects[image_id].local_path,
+                "path": local_path,
+            }
+        )
 
         return info
 

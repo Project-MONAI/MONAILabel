@@ -6,7 +6,6 @@ import shutil
 import subprocess
 
 from monailabel.config import settings
-from monailabel.utils.others.app_utils import app_instance
 
 logger = logging.getLogger(__name__)
 
@@ -93,4 +92,6 @@ def file_checksum(file, algo="SHA256"):
 
 
 def get_app_instance():
+    from monailabel.utils.others.app_utils import app_instance
+
     return app_instance(settings.APP_DIR, settings.STUDIES)

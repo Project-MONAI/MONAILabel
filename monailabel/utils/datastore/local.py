@@ -237,11 +237,13 @@ class LocalDatastore(Datastore):
                 info = obj.image.info
 
         local_path = pathlib.Path(os.path.join(self._datastore_path, image_id))
-        info.update({
-            'checksum': file_checksum(local_path),
-            'name': obj.image.id,
-            "path": local_path,
-        })
+        info.update(
+            {
+                "checksum": file_checksum(local_path),
+                "name": obj.image.id,
+                "path": local_path,
+            }
+        )
 
         return info
 
@@ -497,7 +499,7 @@ class LocalDatastore(Datastore):
 
         return os.path.realpath(os.path.join(self._datastore_path, path))
 
-    @ staticmethod
+    @staticmethod
     def _list_files(path, patterns):
         files = os.listdir(path)
 

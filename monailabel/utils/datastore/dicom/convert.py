@@ -1,5 +1,5 @@
-from typing import Tuple
 import pathlib
+from typing import Tuple
 
 import pydicom as dicom
 from dicom2nifti import settings
@@ -8,7 +8,6 @@ from nibabel.nifti1 import Nifti1Image
 
 
 class ConverterUtil(object):
-
     def __init__(self, interp_order: int = 1, fill_value: int = 0) -> None:
         settings.disable_validate_orthogonal()
         settings.enable_resampling()
@@ -17,7 +16,7 @@ class ConverterUtil(object):
 
     def to_nifti(dicom_dataset: dicom.Dataset, nifti_output_path: str) -> Tuple[Nifti1Image, str]:
         result = dicom_array_to_nifti(dicom_dataset, nifti_output_path)
-        return result['NII'], pathlib.Path(result['NII_FILE']).name
+        return result["NII"], pathlib.Path(result["NII_FILE"]).name
 
     def to_dicom(nifti_volume: Nifti1Image) -> dicom.Dataset:
         pass
