@@ -123,9 +123,11 @@ async def run_inference(
     request.update(config)
 
     labels = instance.info().get("labels", ["unknown"])
-    request.update({
-        "label_names": labels,
-    })
+    request.update(
+        {
+            "label_names": labels,
+        }
+    )
 
     p = json.loads(params) if params else {}
     request.update(p)

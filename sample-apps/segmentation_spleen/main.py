@@ -11,7 +11,6 @@ logger = logging.getLogger(__name__)
 
 
 class MyApp(MONAILabelApp):
-
     def __init__(self, app_dir, studies):
         self.model_dir = os.path.join(app_dir, "model")
         self.final_model = os.path.join(self.model_dir, "model.pt")

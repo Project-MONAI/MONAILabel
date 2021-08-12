@@ -9,9 +9,9 @@ import time
 from pathlib import Path
 from typing import Any, Dict, List
 
-from filelock import FileLock
 import nibabel
 import pydicom
+from filelock import FileLock
 
 from monailabel.interfaces import Datastore
 from monailabel.interfaces.datastore import DefaultLabelTag
@@ -19,7 +19,7 @@ from monailabel.utils.datastore.dicom.attributes import (
     ATTRB_MONAILABELINDICATOR,
     ATTRB_MONAILABELTAG,
     ATTRB_SERIESINSTANCEUID,
-    str2hex
+    str2hex,
 )
 from monailabel.utils.datastore.dicom.client import DICOMWebClient
 from monailabel.utils.datastore.dicom.convert import ConverterUtil
@@ -104,9 +104,11 @@ class DICOMWebCache(Datastore):
         image = self._datastore.objects[image_id]
         nifti_output_path = os.path.join(self._datastore_path, f"{image_id}.nii.gz")
         instances = self._dicomweb_client.get_object(image)
-        self._datastore.objects[image_id].memory_cache.update({
-            "dicom_dataset": instances,
-        })
+        self._datastore.objects[image_id].memory_cache.update(
+            {
+                "dicom_dataset": instances,
+            }
+        )
 
         with FileLock(f"{nifti_output_path}.lock"):
             _, nifti_file = ConverterUtil.to_nifti(instances, nifti_output_path)
@@ -153,8 +155,11 @@ class DICOMWebCache(Datastore):
 
     def datalist(self, full_path=True) -> List[Dict[str, str]]:
         items = []
-        images = {image_id: image for image_id, image in self._datastore.objects.items()
-                  if image.info['object_type'] == 'image'}
+        images = {
+            image_id: image
+            for image_id, image in self._datastore.objects.items()
+            if image.info["object_type"] == "image"
+        }
         for image_id, image in images.items():
 
             image_path = self._get_path(image.local_path, False, full_path) if image.local_path else image_id
@@ -162,10 +167,14 @@ class DICOMWebCache(Datastore):
             for label_key in image.related_labels_keys:
                 label = self._datastore.objects[label_key]
                 if label.tag == DefaultLabelTag.FINAL:
-                    items.append({
-                        "image": image_path,
-                        "label": self._get_path(label.local_path, True, full_path) if label.local_path else label_key,
-                    })
+                    items.append(
+                        {
+                            "image": image_path,
+                            "label": self._get_path(label.local_path, True, full_path)
+                            if label.local_path
+                            else label_key,
+                        }
+                    )
         return items
 
     def _get_path(self, path: str, is_label: bool, full_path=True):
@@ -207,12 +216,14 @@ class DICOMWebCache(Datastore):
         return self.get_image_info(label_id)
 
     def get_labeled_images(self) -> List[str]:
-        return [data for data in self._datastore.objects.values()
-                if data.info["object_type"] == "image" and not data.related_labels_keys]
+        return [
+            data
+            for data in self._datastore.objects.values()
+            if data.info["object_type"] == "image" and not data.related_labels_keys
+        ]
 
     def list_images(self) -> List[str]:
-        return [data for data in self._datastore.objects.values()
-                if data.info["object_type"] == "image"]
+        return [data for data in self._datastore.objects.values() if data.info["object_type"] == "image"]
 
     def refresh(self) -> None:
         pass
@@ -234,8 +245,8 @@ class DICOMWebCache(Datastore):
         # get the dicom image dataset to use as the template for generating DICOMSEG
         # from inference result
         original_dataset = None
-        if image.memory_cache.get('dicom_dataset'):
-            original_dataset = image.memory_cache['dicom_dataset']
+        if image.memory_cache.get("dicom_dataset"):
+            original_dataset = image.memory_cache["dicom_dataset"]
         else:
             original_dataset = self.get_image(image_id)
 
@@ -247,8 +258,8 @@ class DICOMWebCache(Datastore):
         label_id = generate_key(image.patient_id, image.study_id, series_id)
 
         # add label tag to DICOMSEG image in MONAI Label private tag `ATTRB_MONAILABELTAG`
-        dcmseg_dataset.add_new(str2hex(ATTRB_MONAILABELTAG), 'LO', label_tag.value)
-        dcmseg_dataset.add_new(str2hex(ATTRB_MONAILABELINDICATOR), 'CS', 'Y')
+        dcmseg_dataset.add_new(str2hex(ATTRB_MONAILABELTAG), "LO", label_tag.value)
+        dcmseg_dataset.add_new(str2hex(ATTRB_MONAILABELINDICATOR), "CS", "Y")
 
         # send the new DICOMSEG label to the DICOMWeb server
         if isinstance(dcmseg_dataset, pydicom.Dataset):
@@ -257,9 +268,7 @@ class DICOMWebCache(Datastore):
         self._dicomweb_client.push_series(image, dcmseg_dataset)
 
         datastore_label_path = os.path.join(
-            self._datastore_path,
-            self._label_store_path,
-            f"{label_id}{pathlib.Path(label_filename).suffixes}"
+            self._datastore_path, self._label_store_path, f"{label_id}{pathlib.Path(label_filename).suffixes}"
         )
         shutil.copy(src=label_filename, dst=datastore_label_path, follow_symlinks=True)
         label = DICOMLabelModel(
@@ -277,9 +286,11 @@ class DICOMWebCache(Datastore):
         # add the newly created label reference to the image from which it was generated
         self._datastore.objects.referenced_labels_keys.append(label_id)
 
-        self._datastore.objects.update({
-            label_id: label,
-        })
+        self._datastore.objects.update(
+            {
+                label_id: label,
+            }
+        )
 
         self._update_datastore_file()
 
@@ -311,11 +322,17 @@ class DICOMWebCache(Datastore):
 
         logger.debug("+++ Updating datastore...")
         with open(self._datastore_config_path, "w") as f:
-            f.write(json.dumps(self._datastore.dict(
-                exclude_none=True,
-                exclude_unset=True,
-                exclude={"memory_cache"},
-            ), indent=2, default=str))
+            f.write(
+                json.dumps(
+                    self._datastore.dict(
+                        exclude_none=True,
+                        exclude_unset=True,
+                        exclude={"memory_cache"},
+                    ),
+                    indent=2,
+                    default=str,
+                )
+            )
         self._config_ts = os.stat(self._datastore_config_path).st_mtime
 
         if lock:
