@@ -94,9 +94,7 @@ class SoftenProbSoftmax(InteractiveSegmentationTransform):
         beta = np.log(9) / delta
 
         # normalise using softmax with temperature beta
-        print(np.unique(logits))
         prob = softmax(logits * beta, axis=0)
-        print(np.unique(prob))
 
         d[self.prob] = prob
         return d
