@@ -69,7 +69,7 @@ class SpleenISegCRF(SpleenPostProc):
         description="A post processing step with ISeg + MONAI's CRF for Spleen segmentation",
     ):
         super().__init__(dimension, description)
-    
+
     def pre_transforms(self):
         return [
             LoadImaged(keys=["image", "logits", "label"]),
@@ -81,7 +81,6 @@ class SpleenISegCRF(SpleenPostProc):
             ScaleIntensityRanged(keys="image", a_min=-300, a_max=200, b_min=0.0, b_max=1.0, clip=True),
             SoftenProbSoftmax(logits="logits", prob="prob"),
         ]
-
 
     def inferer(self):
         return Compose(
