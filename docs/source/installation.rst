@@ -105,5 +105,5 @@ Refer `3D Slicer plugin <https://github.com/Project-MONAI/MONAILabel/tree/main/p
 
 .. note::
 
-    To avoid conflicts with older version, you might need to *uninstall* any previously installed 3D Slicer package.
+    To avoid conflicts with older version, you may want to *uninstall* any previously installed 3D Slicer package.
 
