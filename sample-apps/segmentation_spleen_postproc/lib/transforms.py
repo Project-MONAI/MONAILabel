@@ -10,7 +10,8 @@ import numpy as np
 import torch
 from monai.data import write_nifti
 from monai.networks.blocks import CRF
-from monai.transforms import Transform, MapTransform
+from monai.transforms import MapTransform, Transform
+from scipy.special import softmax
 
 from .utils import interactive_maxflow2d, interactive_maxflow3d, make_iseg_unary, maxflow2d, maxflow3d
 
@@ -67,25 +68,37 @@ class InteractiveSegmentationTransform(Transform):
 ############################
 #  Prob Softening Transforms
 ############################
-from scipy.special import softmax
-class SoftenProbSoftmax(InteractiveSegmentationTransform, MapTransform):
+class SoftenProbSoftmax(InteractiveSegmentationTransform):
     def __init__(
         self,
-        keys: str,
-        allow_missing_keys: bool = False,
+        logits: str = "logits",
+        meta_key_postfix: str = "meta_dict",
+        prob: str = "prob",
     ) -> None:
-        MapTransform.__init__(self, keys=keys, allow_missing_keys=allow_missing_keys)
+        super(SoftenProbSoftmax, self).__init__()
+        self.logits = logits
+        self.meta_key_postfix = meta_key_postfix
+        self.prob = prob
 
     def __call__(self, data):
         d = dict(data)
-        for key in self.key_iterator(d):
-            tmp = d[key]
-            delta = np.max(tmp[1, ...] - tmp[0, ...])
-            b = np.log(9)/delta
-            print(np.unique(tmp))
-            tmp = softmax(tmp * b, axis=0)
-            print(np.unique(tmp))
-            d[key] = tmp
+
+        # copy affine meta data from logits input
+        self._copy_affine(d, self.logits, self.prob)
+
+        # read relevant terms from data
+        logits = self._fetch_data(d, self.logits)
+
+        # calculate temperate beta for range 0.1 to 0.9
+        delta = np.max(logits[1, ...] - logits[0, ...])
+        beta = np.log(9) / delta
+
+        # normalise using softmax with temperature beta
+        print(np.unique(logits))
+        prob = softmax(logits * beta, axis=0)
+        print(np.unique(prob))
+
+        d[self.prob] = prob
         return d
 
 
@@ -114,7 +127,7 @@ class MakeISegUnaryd(InteractiveSegmentationTransform):
             # unary term maker
             MakeISegUnaryd(
                 image="image",
-                prob="logits",
+                logits="logits",
                 scribbles="label",
                 unary="unary",
                 scribbles_bg_label=2,
@@ -201,7 +214,7 @@ class ApplyISegGraphCutPostProcd(InteractiveSegmentationTransform):
         [
             ApplyISegGraphCutPostProcd(
                 image="image",
-                prob="logits",
+                logits="logits",
                 scribbles="label",
                 post_proc_label="pred",
                 scribbles_bg_label=2,
@@ -303,7 +316,7 @@ class ApplyCRFOptimisationd(InteractiveSegmentationTransform):
             # unary term maker
             MakeISegUnaryd(
                 image="image",
-                prob="logits",
+                logits="logits",
                 scribbles="label",
                 unary="unary",
                 scribbles_bg_label=2,
@@ -405,7 +418,7 @@ class ApplySimpleCRFOptimisationd(InteractiveSegmentationTransform):
             # unary term maker
             MakeISegUnaryd(
                 image="image",
-                prob="logits",
+                logits="logits",
                 scribbles="label",
                 unary="unary",
                 scribbles_bg_label=2,
@@ -530,7 +543,7 @@ class ApplyGraphCutOptimisationd(InteractiveSegmentationTransform):
             # unary term maker
             MakeISegUnaryd(
                 image="image",
-                prob="logits",
+                logits="logits",
                 scribbles="label",
                 unary="unary",
                 scribbles_bg_label=2,

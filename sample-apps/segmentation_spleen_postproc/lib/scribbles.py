@@ -36,8 +36,6 @@ class SpleenPostProc(InferTask):
             Spacingd(keys=["image", "logits"], pixdim=[2.5, 2.5, 5.0]),
             Spacingd(keys=["label"], pixdim=[2.5, 2.5, 5.0], mode="nearest"),
             ScaleIntensityRanged(keys="image", a_min=-300, a_max=200, b_min=0.0, b_max=1.0, clip=True),
-            SoftenProbSoftmax(keys="logits"),
-
         ]
 
     def post_transforms(self):
@@ -71,6 +69,19 @@ class SpleenISegCRF(SpleenPostProc):
         description="A post processing step with ISeg + MONAI's CRF for Spleen segmentation",
     ):
         super().__init__(dimension, description)
+    
+    def pre_transforms(self):
+        return [
+            LoadImaged(keys=["image", "logits", "label"]),
+            AddChanneld(keys=["image", "label"]),
+            # at the moment optimisers are bottleneck taking a long time,
+            # therefore scaling non-isotropic with big spacing
+            Spacingd(keys=["image", "logits"], pixdim=[2.5, 2.5, 5.0]),
+            Spacingd(keys=["label"], pixdim=[2.5, 2.5, 5.0], mode="nearest"),
+            ScaleIntensityRanged(keys="image", a_min=-300, a_max=200, b_min=0.0, b_max=1.0, clip=True),
+            SoftenProbSoftmax(logits="logits", prob="prob"),
+        ]
+
 
     def inferer(self):
         return Compose(
@@ -78,7 +89,7 @@ class SpleenISegCRF(SpleenPostProc):
                 # unary term maker
                 MakeISegUnaryd(
                     image="image",
-                    logits="logits",
+                    logits="prob",
                     scribbles="label",
                     unary="unary",
                     scribbles_bg_label=2,
@@ -197,17 +208,17 @@ class SpleenISegSimpleCRF(SpleenPostProc):
     ):
         super().__init__(dimension, description)
 
-    def pre_transforms(self):
-        return [
-            LoadImaged(keys=["image", "logits", "label"]),
-            AddChanneld(keys=["image", "label"]),
-            # at the moment Simple CRF implementation is bottleneck taking a long time,
-            # therefore scaling non-isotropic with big spacing
-            Spacingd(keys=["image", "logits"], pixdim=[3.5, 3.5, 5.0]),
-            Spacingd(keys=["label"], pixdim=[3.5, 3.5, 5.0], mode="nearest"),
-            ScaleIntensityRanged(keys="image", a_min=-300, a_max=200, b_min=0.0, b_max=1.0, clip=True),
-            SoftenProbSoftmax(keys="logits"),
-        ]
+    # def pre_transforms(self):
+    #     return [
+    #         LoadImaged(keys=["image", "logits", "label"]),
+    #         AddChanneld(keys=["image", "label"]),
+    #         # at the moment Simple CRF implementation is bottleneck taking a long time,
+    #         # therefore scaling non-isotropic with big spacing
+    #         Spacingd(keys=["image", "logits"], pixdim=[3.5, 3.5, 5.0]),
+    #         Spacingd(keys=["label"], pixdim=[3.5, 3.5, 5.0], mode="nearest"),
+    #         ScaleIntensityRanged(keys="image", a_min=-300, a_max=200, b_min=0.0, b_max=1.0, clip=True),
+    #         # SoftenProbSoftmax(logits="logits", prob="prob"),
+    #     ]
 
     def inferer(self):
         return Compose(
