@@ -1,7 +1,6 @@
 # MONAILabel App to enable User Scribbles based post processing
 
 ## Short Demo
-<!-- ![scribble_ui](./docs/scribble_ui.gif) -->
 <img src="./docs/scribble_ui.gif" alt="scribble_ui" width="1024"/>
 
 ## About
@@ -12,26 +11,24 @@ The flow of this application is outlined below:
 
 In the diagram, the neural network (inference) stage is run only once for a given input volume. The logits for this run are saved and used throughout scribble based updates to the same sample. The inferred label is shown to a user through MONAILabel's client extension. The user provides scribbles to indicate corrections needed, which are transferred to server and used along with the logits and original input volume by a post processing algorithm to improve the label. The process is repeated multiple times and the resulting improved label is saved for future training of the deep learning model.
 
-# Installing pre-requisites
+# Using the app
 
-## Install MONAI with BUILD_MONAI=1
-Uses CRF layer from MONAI, which requires compiling the C++/CUDA code following instructions from [MONAI docs](https://docs.monai.io/en/latest/installation.html#option-1-as-a-part-of-your-system-wide-module). 
-This can be done by uninstalling any previous monai/monai-weekly version and running the following command:
+## Install relevant requirements
 
-`BUILD_MONAI=1 pip install git+https://github.com/Project-MONAI/MONAI#egg=monai`
+`BUILD_MONAI=1 pip install -r requirements.txt`
 
 Another way is use docker for MONAI
 
 `docker run --gpus all --rm -ti --ipc=host --net=host -v /xyz:/workspace projectmonai/monai:latest`
 
-# Running the app
+## Running the app
 
-## Server
+### Server
 On the server side, run server app using the following command:
 
 `CUDA_VISIBLE_DEVICES=0 ./monailabel start_server --app ../sample-apps/segmentation_spleen_postproc/ --studies /path/to/dataset/Task09_Spleen/imagesTrSmall/`
 
-## Client
+### Client
 On the client side, run slicer and load MONAILabel extension:
 
 1. Click **Next Sample** to load a sample with its initial segmentation
