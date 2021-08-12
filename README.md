@@ -50,7 +50,8 @@ For **_prerequisites_**, other installation methods (using the default GitHub br
 
 ### 3D Slicer
 
-Download Preview Release from https://download.slicer.org/ and install MONAI Label plugin from Slicer Extension Manager.
+Download **Preview Release** from https://download.slicer.org/ and install MONAI Label plugin from Slicer Extension Manager.
+> **Uninstall** any existing 3D-Slicer version before using the latest preview release. 
 
 Refer [3D Slicer plugin](plugins/slicer) for other options to install and run MONAI Label plugin in 3D Slicer.
 

@@ -8,6 +8,7 @@ Pick one of the following options to install MONAILabel Plugin for 3D Slicer
 
 ### Install 3D Slicer Preview Version with in-built Plugin
 
+- **Uninstall** any existing 3D-Slicer version
 - Download and Install [3D Slicer](https://download.slicer.org/) **Preview version**
 - Go to **View** -> **Extension Manager** -> **Active Learning** -> **MONAI Label**
 - Install MONAI Label plugin

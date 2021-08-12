@@ -102,3 +102,8 @@ You can start server using *monailabel* CLI
 Download Preview Release from https://download.slicer.org/ and install MONAI Label plugin from Slicer Extension Manager.
 
 Refer `3D Slicer plugin <https://github.com/Project-MONAI/MONAILabel/tree/main/plugins/slicer>`_ for other options to install and run MONAI Label plugin in 3D Slicer.
+
+.. note::
+
+    **Uninstall** any existing 3D-Slicer version before using the latest preview release.
+
