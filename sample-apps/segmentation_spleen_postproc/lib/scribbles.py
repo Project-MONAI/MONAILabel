@@ -36,7 +36,7 @@ class SpleenPostProc(InferTask):
             Spacingd(keys=["image", "logits"], pixdim=[2.5, 2.5, 5.0]),
             Spacingd(keys=["label"], pixdim=[2.5, 2.5, 5.0], mode="nearest"),
             ScaleIntensityRanged(keys="image", a_min=-300, a_max=200, b_min=0.0, b_max=1.0, clip=True),
-            SoftenProbSoftmax(keys='logits'),
+            SoftenProbSoftmax(keys="logits"),
 
         ]
 
@@ -206,7 +206,7 @@ class SpleenISegSimpleCRF(SpleenPostProc):
             Spacingd(keys=["image", "logits"], pixdim=[3.5, 3.5, 5.0]),
             Spacingd(keys=["label"], pixdim=[3.5, 3.5, 5.0], mode="nearest"),
             ScaleIntensityRanged(keys="image", a_min=-300, a_max=200, b_min=0.0, b_max=1.0, clip=True),
-            SoftenProbSoftmax(keys='logits'),
+            SoftenProbSoftmax(keys="logits"),
         ]
 
     def inferer(self):
