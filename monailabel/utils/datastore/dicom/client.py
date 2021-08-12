@@ -165,8 +165,8 @@ class DICOMWebClient(DICOMwebClient):
 
         return instances
 
-    def push_studies(self):
-        pass
-
-    def push_series(self):
-        pass
+    def push_series(self, image_object: DICOMImageModel, dataset: List[pydicom.Dataset]):
+        self.store_instances(
+            study_instance_uid=image_object.study_id,
+            datasets=dataset,
+        )

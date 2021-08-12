@@ -162,7 +162,7 @@ class MONAILabelApp:
             tag = request.get("label_tag", DefaultLabelTag.ORIGINAL)
             save_label = request.get("save_label", True)
             if save_label:
-                label_id = datastore.save_label(image_id, result_file_name, tag)
+                label_id = datastore.save_label(image_id, result_file_name, tag, request['label_names'])
                 if result_json:
                     datastore.update_label_info(label_id, result_json)
 

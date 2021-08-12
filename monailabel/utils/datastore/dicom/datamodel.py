@@ -9,6 +9,7 @@ class DICOMObjectModel(BaseModel):
     series_id: str
     local_path: Optional[str]
     info: Dict[str, Any] = {}
+    memory_cache: Dict[str, Any] = {}
 
 
 class DICOMLabelModel(DICOMObjectModel):

@@ -1,9 +1,6 @@
-import json
 import logging
 import os
-from json import JSONDecodeError
 
-import yaml
 from lib import MyInfer, MyStrategy, MyTrain
 from monai.apps import load_from_mmar
 
@@ -14,6 +11,7 @@ logger = logging.getLogger(__name__)
 
 
 class MyApp(MONAILabelApp):
+
     def __init__(self, app_dir, studies):
         self.model_dir = os.path.join(app_dir, "model")
         self.final_model = os.path.join(self.model_dir, "model.pt")
