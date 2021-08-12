@@ -4,6 +4,7 @@ import logging
 import os
 import sys
 
+from monailabel.config import settings
 from monailabel.interfaces import MONAILabelApp, MONAILabelError, MONAILabelException
 from monailabel.utils.others.class_utils import get_class_of_subclass_from_file
 
@@ -11,11 +12,13 @@ logger = logging.getLogger(__name__)
 app = None
 
 
-def app_instance(app_dir, studies):
+def app_instance(app_dir=None, studies=None):
     global app
     if app is not None:
         return app
 
+    app_dir = app_dir if app_dir else settings.APP_DIR
+    studies = studies if studies else settings.STUDIES
     logger.info(f"Initializing App from: {app_dir}; studies: {studies}")
 
     main_py = os.path.join(app_dir, "main.py")

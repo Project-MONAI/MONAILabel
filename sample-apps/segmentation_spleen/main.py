@@ -56,7 +56,7 @@ class MyApp(MONAILabelApp):
         res = super().next_sample(request)
         try:
             with open(os.path.join(os.path.dirname(__file__), "dicom.yaml"), "r") as fc:
-                meta = dict((v, k) for k, v in yaml.full_load(fc)["studies"].items())
+                meta = {v: k for k, v in yaml.full_load(fc)["studies"].items()}
                 res["id"] = meta[res["id"]]
                 logger.info(f"Using studies: {res['id']}")
         except JSONDecodeError:

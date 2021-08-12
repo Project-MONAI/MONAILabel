@@ -1,7 +1,7 @@
 from fastapi import APIRouter
 
 from monailabel.interfaces import MONAILabelApp
-from monailabel.utils.others.generic import get_app_instance
+from monailabel.utils.others.app_utils import app_instance
 
 router = APIRouter(
     prefix="/info",
@@ -12,5 +12,5 @@ router = APIRouter(
 
 @router.get("/", summary="Get App Info")
 async def app_info():
-    instance: MONAILabelApp = get_app_instance()
+    instance: MONAILabelApp = app_instance()
     return instance.info()

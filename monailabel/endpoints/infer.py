@@ -13,7 +13,8 @@ from requests_toolbelt import MultipartEncoder
 from starlette.background import BackgroundTasks
 
 from monailabel.interfaces import MONAILabelApp
-from monailabel.utils.others.generic import get_app_instance, get_mime_type, remove_file
+from monailabel.utils.others.app_utils import app_instance
+from monailabel.utils.others.generic import get_mime_type, remove_file
 
 logger = logging.getLogger(__name__)
 
@@ -118,7 +119,7 @@ async def run_inference(
             request["label"] = label_file
             background_tasks.add_task(remove_file, label_file)
 
-    instance: MONAILabelApp = get_app_instance()
+    instance: MONAILabelApp = app_instance()
     config = instance.info().get("config", {}).get("infer", {})
     request.update(config)
 
