@@ -207,18 +207,6 @@ class SpleenISegSimpleCRF(SpleenPostProc):
     ):
         super().__init__(dimension, description)
 
-    # def pre_transforms(self):
-    #     return [
-    #         LoadImaged(keys=["image", "logits", "label"]),
-    #         AddChanneld(keys=["image", "label"]),
-    #         # at the moment Simple CRF implementation is bottleneck taking a long time,
-    #         # therefore scaling non-isotropic with big spacing
-    #         Spacingd(keys=["image", "logits"], pixdim=[3.5, 3.5, 5.0]),
-    #         Spacingd(keys=["label"], pixdim=[3.5, 3.5, 5.0], mode="nearest"),
-    #         ScaleIntensityRanged(keys="image", a_min=-300, a_max=200, b_min=0.0, b_max=1.0, clip=True),
-    #         # SoftenProbSoftmax(logits="logits", prob="prob"),
-    #     ]
-
     def inferer(self):
         return Compose(
             [

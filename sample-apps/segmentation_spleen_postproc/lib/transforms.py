@@ -29,15 +29,6 @@ class InteractiveSegmentationTransform(Transform):
 
         return data[key]
 
-    # def _unfold_prob(self, prob, axis=0):
-    #     # in some cases, esp in MONAILabel, only background prob may be present
-    #     # optimisers (e.g. CRF, GraphCut) require these to be reconstructed in two bg/fg prob
-    #     # assuming prob is background, form foreground as 1-background and concat the two
-    #     if prob.shape[axis] == 1:
-    #         prob = np.concatenate([prob, 1 - prob], axis=axis)
-
-    #     return prob
-
     def _normalise_logits(self, data, axis=0):
         # check if logits is a true prob, if not then apply softmax
         if not np.allclose(np.sum(data, axis=axis), 1.0):
