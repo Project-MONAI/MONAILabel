@@ -633,7 +633,7 @@ class MONAILabelWidget(ScriptedLoadableModuleWidget, VTKObservationMixin):
         self.ui.nextSampleButton.setEnabled(self.ui.strategyBox.count)
 
         is_training_running = True if self.info and self.isTrainingRunning() else False
-        self.ui.trainingButton.setEnabled(self.info and not is_training_running)
+        self.ui.trainingButton.setEnabled(self.info and not is_training_running and current)
         self.ui.stopTrainingButton.setEnabled(is_training_running)
         self.ui.trainingStatusButton.setEnabled(self.info)
         if is_training_running and self.timer is None:
