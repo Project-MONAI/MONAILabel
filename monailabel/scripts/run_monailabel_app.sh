@@ -22,7 +22,7 @@ fi
 
 echo "USING PYTHON: $(which ${PYEXE})"
 
-if test -f "${app_dir}/requirements.txt"; then
+if test -f "${app_dir}/requirements.txt.invalid"; then
   user_packages=$(sed '/^\s*#/d;/^\s*$/d' <"${app_dir}/requirements.txt" | wc -l)
   if [[ ${user_packages} == 0 ]]; then
     echo "No need to install anything..."

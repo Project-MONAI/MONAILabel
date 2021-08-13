@@ -8,7 +8,7 @@ set request=%4
 set COUNT=
 
 echo Virtual Env: %VIRTUAL_ENV%
-if exist %app_dir%\requirements.txt (
+if exist %app_dir%\requirements.txt.invalid (
     for /f "tokens=*" %%i in ('findstr /v "#" %app_dir%\requirements.txt ^| findstr "." ^| find /c /v ""') do (
         set COUNT=%%i
         goto :done
