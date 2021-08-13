@@ -33,10 +33,10 @@ class MyApp(MONAILabelApp):
             "Spleen_Segmentation": SegmentationWithWriteLogits(
                 self.final_model, load_from_mmar(self.mmar, self.model_dir)
             ),
+            "ISeg+GraphCut": SpleenISegGraphCut(),
             "ISeg+CRF": SpleenISegCRF(),
             "ISeg+SimpleCRF": SpleenISegSimpleCRF(),
-            "ISeg+GraphCut": SpleenISegGraphCut(),
-            "Int.+ISeg+GraphCut": SpleenInteractiveGraphCut(),
+            "ISeg+InteractiveGraphCut": SpleenInteractiveGraphCut(),
         }
 
         # Simple way to Add deepgrow 2D+3D models for infer tasks

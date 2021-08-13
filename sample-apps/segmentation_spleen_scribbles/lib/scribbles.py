@@ -95,7 +95,7 @@ class SpleenISegCRF(SpleenPostProc):
                     scribbles_fg_label=3,
                 ),
                 # optimiser
-                ApplyCRFOptimisationd(unary="unary", pairwise="image", post_proc_label="pred"),
+                ApplyCRFOptimisationd(unary="unary", pairwise="image", post_proc_label="pred", device="cpu"),
             ]
         )
 
