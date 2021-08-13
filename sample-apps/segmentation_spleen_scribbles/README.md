@@ -7,12 +7,14 @@
 This MONAILabel app enables user scribbles-based label refinement to improve a given segmentation label. It can be used to improve segmentations from a deep learning model and hence can be used as part of an active learning framework where the improved labels can in turn improve the dataset and the corresponding deep learning model.
 
 The flow of this application is outlined below:
-![monailabel_crf](./docs/monailabel_crf.png)
+
+<img src="./docs/monailabel_crf.png" alt="monailabel_crf" width="720"/>
 
 In the diagram, the neural network (inference) stage is run only once for a given input volume. The logits for this run are saved and used throughout scribbles-based updates to the same sample. The inferred label is shown to a user through MONAILabel's client extension. The user provides scribbles to indicate corrections needed, which are transferred to server and used along with the logits and original input volume by a label refinement algorithm to improve the label. The process is repeated multiple times and the resulting improved label is saved for future training of the deep learning model.
 
 ## Scribbles-based label refinement methods
-![monailabel_label_ref_overview](./docs/monailabel_label_ref_overview.png)
+<img src="./docs/monailabel_label_ref_overview.png" alt="monailabel_label_ref_overview" width="660"/>
+
 The included label refinement methods take as input 1) original image volume 2) logits from model and 3) scribbles from user indicating corrections for initial segmentation from model. User-scribbles are incorporated using Equation 7 on page 4 of [this paper](https://arxiv.org/pdf/1710.04043.pdf). This method is referred to here as ISeg (Interactive Segmentation using Scribbles). ISeg equation can be optimised with different optimisation techniques, the ones included within this app are:
 
 | Method Name                | Description                      |
