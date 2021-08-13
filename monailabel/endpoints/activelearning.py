@@ -7,7 +7,8 @@ from fastapi import APIRouter
 
 from monailabel.config import settings
 from monailabel.interfaces import MONAILabelApp
-from monailabel.utils.others.generic import file_checksum, get_app_instance
+from monailabel.utils.others.app_utils import app_instance
+from monailabel.utils.others.generic import file_checksum
 
 logger = logging.getLogger(__name__)
 
@@ -24,7 +25,7 @@ cached_digest: Dict = dict()
 async def sample(strategy: str, params: Optional[dict] = None, checksum: Optional[bool] = True):
     request = {"strategy": strategy}
 
-    instance: MONAILabelApp = get_app_instance()
+    instance: MONAILabelApp = app_instance()
     config = instance.info().get("config", {}).get("activelearning", {})
     request.update(config)
 
