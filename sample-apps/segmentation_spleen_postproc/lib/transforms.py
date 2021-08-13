@@ -8,10 +8,11 @@ import denseCRF
 import denseCRF3D
 import numpy as np
 import torch
-from monai.data import write_nifti
 from monai.networks.blocks import CRF
-from monai.transforms import MapTransform, Transform
+from monai.transforms import Transform
 from scipy.special import softmax
+
+from monailabel.utils.others.writer import Writer
 
 from .utils import interactive_maxflow2d, interactive_maxflow3d, make_iseg_unary, maxflow2d, maxflow3d
 
@@ -612,31 +613,46 @@ class ApplyGraphCutOptimisationd(InteractiveSegmentationTransform):
 ########################
 #  Logits Save Transform
 ########################
+# class WriteLogits(Transform):
+#     def __init__(self, key, ref_image=None, result="result", meta_key_postfix="meta_dict"):
+#         self.key = key
+#         self.ref_image = ref_image if ref_image else key
+#         self.result = result
+#         self.meta_key_postfix = meta_key_postfix
+
+#     def __call__(self, data):
+#         logger = logging.getLogger(self.__class__.__name__)
+
+#         d = dict(data)
+#         file_ext = "".join(pathlib.Path(d["image_path"]).suffixes)
+#         logger.debug("Result ext: {}".format(file_ext))
+
+#         image = d[self.key]
+#         meta_dict = d.get(f"{self.ref_image}_{self.meta_key_postfix}")
+#         affine = meta_dict.get("affine") if meta_dict else None
+
+#         output_file = tempfile.NamedTemporaryFile(suffix=file_ext).name
+#         logger.debug("Saving Image to: {}".format(output_file))
+#         write_nifti(image, output_file, affine=affine, output_dtype=None)
+
+#         if data.get(self.result) is None:
+#             d[self.result] = {}
+#         d[self.result][self.key] = output_file
+#         return d
+
 class WriteLogits(Transform):
-    def __init__(self, key, ref_image=None, result="result", meta_key_postfix="meta_dict"):
+    def __init__(self, key, result="result"):
         self.key = key
-        self.ref_image = ref_image if ref_image else key
         self.result = result
-        self.meta_key_postfix = meta_key_postfix
 
     def __call__(self, data):
-        logger = logging.getLogger(self.__class__.__name__)
-
         d = dict(data)
-        file_ext = "".join(pathlib.Path(d["image_path"]).suffixes)
-        logger.debug("Result ext: {}".format(file_ext))
+        writer = Writer(label=self.key, nibabel=True)
 
-        image = d[self.key]
-        meta_dict = d.get(f"{self.ref_image}_{self.meta_key_postfix}")
-        affine = meta_dict.get("affine") if meta_dict else None
-
-        output_file = tempfile.NamedTemporaryFile(suffix=file_ext).name
-        logger.debug("Saving Image to: {}".format(output_file))
-        write_nifti(image, output_file, affine=affine, output_dtype=None)
-
+        file, _ = writer(d)
         if data.get(self.result) is None:
             d[self.result] = {}
-        d[self.result][self.key] = output_file
+        d[self.result][self.key] = file
         return d
 
 
