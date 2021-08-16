@@ -1,3 +1,0 @@
-#monai[nibabel, skimage, pillow, tensorboard, gdown, ignite, torchvision, itk, tqdm, lmdb, psutil, openslide]
-#monailabel
-#simplecrf

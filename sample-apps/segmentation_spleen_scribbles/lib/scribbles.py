@@ -4,11 +4,12 @@ from monailabel.interfaces.tasks import InferTask, InferType
 from monailabel.utils.others.post import BoundingBoxd, Restored
 
 from .transforms import (
-    ApplyBIFSegGraphCutPostProcd,
     ApplyCRFOptimisationd,
     ApplyGraphCutOptimisationd,
+    ApplyISegGraphCutPostProcd,
     ApplySimpleCRFOptimisationd,
-    MakeBIFSegUnaryd,
+    MakeISegUnaryd,
+    SoftenProbSoftmax,
 )
 
 
@@ -23,13 +24,13 @@ class SpleenPostProc(InferTask):
         description,
     ):
         super().__init__(
-            path=None, network=None, labels=None, type=InferType.SCRIBBLE, dimension=dimension, description=description
+            path=None, network=None, labels=None, type=InferType.SCRIBBLES, dimension=dimension, description=description
         )
 
     def pre_transforms(self):
         return [
             LoadImaged(keys=["image", "logits", "label"]),
-            AddChanneld(keys=["image", "logits", "label"]),
+            AddChanneld(keys=["image", "label"]),
             # at the moment optimisers are bottleneck taking a long time,
             # therefore scaling non-isotropic with big spacing
             Spacingd(keys=["image", "logits"], pixdim=[2.5, 2.5, 5.0]),
@@ -47,9 +48,9 @@ class SpleenPostProc(InferTask):
         raise NotImplementedError("inferer not implemented in base post proc class")
 
 
-class SpleenBIFSegCRF(SpleenPostProc):
+class SpleenISegCRF(SpleenPostProc):
     """
-    Defines BIFSeg+CRF based post processing task for Spleen segmentation from the following paper:
+    Defines ISeg+CRF based post processing task for Spleen segmentation from the following paper:
 
     Wang, Guotai, et al. "Interactive medical image segmentation using deep learning with image-specific fine tuning."
     IEEE transactions on medical imaging 37.7 (2018): 1562-1573. (preprint: https://arxiv.org/pdf/1710.04043.pdf)
@@ -65,32 +66,43 @@ class SpleenBIFSegCRF(SpleenPostProc):
     def __init__(
         self,
         dimension=3,
-        description="A post processing step with BIFSeg + MONAI's CRF for Spleen segmentation",
+        description="A post processing step with ISeg + MONAI's CRF for Spleen segmentation",
     ):
         super().__init__(dimension, description)
+
+    def pre_transforms(self):
+        return [
+            LoadImaged(keys=["image", "logits", "label"]),
+            AddChanneld(keys=["image", "label"]),
+            # at the moment optimisers are bottleneck taking a long time,
+            # therefore scaling non-isotropic with big spacing
+            Spacingd(keys=["image", "logits"], pixdim=[2.5, 2.5, 5.0]),
+            Spacingd(keys=["label"], pixdim=[2.5, 2.5, 5.0], mode="nearest"),
+            ScaleIntensityRanged(keys="image", a_min=-300, a_max=200, b_min=0.0, b_max=1.0, clip=True),
+            SoftenProbSoftmax(logits="logits", prob="prob"),
+        ]
 
     def inferer(self):
         return Compose(
             [
                 # unary term maker
-                MakeBIFSegUnaryd(
+                MakeISegUnaryd(
                     image="image",
-                    logits="logits",
+                    logits="prob",
                     scribbles="label",
                     unary="unary",
                     scribbles_bg_label=2,
                     scribbles_fg_label=3,
-                    scale_infty=1e6,
                 ),
                 # optimiser
-                ApplyCRFOptimisationd(unary="unary", pairwise="image", post_proc_label="pred"),
+                ApplyCRFOptimisationd(unary="unary", pairwise="image", post_proc_label="pred", device="cpu"),
             ]
         )
 
 
-class SpleenBIFSegGraphCut(SpleenPostProc):
+class SpleenISegGraphCut(SpleenPostProc):
     """
-    Defines BIFSeg+GraphCut based post processing task for Spleen segmentation from the following paper:
+    Defines ISeg+GraphCut based post processing task for Spleen segmentation from the following paper:
 
     Wang, Guotai, et al. "Interactive medical image segmentation using deep learning with image-specific fine tuning."
     IEEE transactions on medical imaging 37.7 (2018): 1562-1573. (preprint: https://arxiv.org/pdf/1710.04043.pdf)
@@ -106,7 +118,7 @@ class SpleenBIFSegGraphCut(SpleenPostProc):
     def __init__(
         self,
         dimension=3,
-        description="A post processing step with BIFSeg + SimpleCRF's GraphCut for Spleen segmentation",
+        description="A post processing step with ISeg + SimpleCRF's GraphCut for Spleen segmentation",
     ):
         super().__init__(dimension, description)
 
@@ -114,14 +126,13 @@ class SpleenBIFSegGraphCut(SpleenPostProc):
         return Compose(
             [
                 # unary term maker
-                MakeBIFSegUnaryd(
+                MakeISegUnaryd(
                     image="image",
                     logits="logits",
                     scribbles="label",
                     unary="unary",
                     scribbles_bg_label=2,
                     scribbles_fg_label=3,
-                    scale_infty=1e6,
                 ),
                 # optimiser
                 ApplyGraphCutOptimisationd(
@@ -137,7 +148,7 @@ class SpleenBIFSegGraphCut(SpleenPostProc):
 
 class SpleenInteractiveGraphCut(SpleenPostProc):
     """
-    Defines BIFSeg+GraphCut based post processing task for Spleen segmentation from the following paper:
+    Defines ISeg+GraphCut based post processing task for Spleen segmentation from the following paper:
 
     Wang, Guotai, et al. "Interactive medical image segmentation using deep learning with image-specific fine tuning."
     IEEE transactions on medical imaging 37.7 (2018): 1562-1573. (preprint: https://arxiv.org/pdf/1710.04043.pdf)
@@ -153,14 +164,14 @@ class SpleenInteractiveGraphCut(SpleenPostProc):
     def __init__(
         self,
         dimension=3,
-        description="A post processing step with SimpleCRF's Interactive BIFSeg GraphCut for Spleen segmentation",
+        description="A post processing step with SimpleCRF's Interactive ISeg GraphCut for Spleen segmentation",
     ):
         super().__init__(dimension, description)
 
     def inferer(self):
         return Compose(
             [
-                ApplyBIFSegGraphCutPostProcd(
+                ApplyISegGraphCutPostProcd(
                     image="image",
                     logits="logits",
                     scribbles="label",
@@ -174,9 +185,9 @@ class SpleenInteractiveGraphCut(SpleenPostProc):
         )
 
 
-class SpleenBIFSegSimpleCRF(SpleenPostProc):
+class SpleenISegSimpleCRF(SpleenPostProc):
     """
-    Defines BIFSeg+SimpleCRF's CRF based post processing task for Spleen segmentation from the following paper:
+    Defines ISeg+SimpleCRF's CRF based post processing task for Spleen segmentation from the following paper:
 
     Wang, Guotai, et al. "Interactive medical image segmentation using deep learning with image-specific fine tuning."
     IEEE transactions on medical imaging 37.7 (2018): 1562-1573. (preprint: https://arxiv.org/pdf/1710.04043.pdf)
@@ -192,33 +203,21 @@ class SpleenBIFSegSimpleCRF(SpleenPostProc):
     def __init__(
         self,
         dimension=3,
-        description="A post processing step with BIFSeg + SimpleCRF's CRF for Spleen segmentation",
+        description="A post processing step with ISeg + SimpleCRF's CRF for Spleen segmentation",
     ):
         super().__init__(dimension, description)
-
-    def pre_transforms(self):
-        return [
-            LoadImaged(keys=["image", "logits", "label"]),
-            AddChanneld(keys=["image", "logits", "label"]),
-            # at the moment Simple CRF implementation is bottleneck taking a long time,
-            # therefore scaling non-isotropic with big spacing
-            Spacingd(keys=["image", "logits"], pixdim=[3.5, 3.5, 5.0]),
-            Spacingd(keys=["label"], pixdim=[3.5, 3.5, 5.0], mode="nearest"),
-            ScaleIntensityRanged(keys="image", a_min=-300, a_max=200, b_min=0.0, b_max=1.0, clip=True),
-        ]
 
     def inferer(self):
         return Compose(
             [
                 # unary term maker
-                MakeBIFSegUnaryd(
+                MakeISegUnaryd(
                     image="image",
                     logits="logits",
                     scribbles="label",
                     unary="unary",
                     scribbles_bg_label=2,
                     scribbles_fg_label=3,
-                    scale_infty=1e6,
                 ),
                 # optimiser
                 ApplySimpleCRFOptimisationd(
