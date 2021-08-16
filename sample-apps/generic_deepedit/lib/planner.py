@@ -1,9 +1,10 @@
 from collections import OrderedDict
-import numpy as np
+
 import nibabel as nib
+import numpy as np
+
 
 class ExperimentPlanner(object):
-
     def __init__(self, datastore):
         self.plans = OrderedDict()
         self.target_spacing_percentile = 50
