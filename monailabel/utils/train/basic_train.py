@@ -24,6 +24,7 @@ from monai.losses import DiceLoss
 from monai.transforms.compose import Compose
 
 from monailabel.interfaces.tasks import TrainTask
+from monailabel.utils.train.custom_tensorboard_handlers import TensorBoardImageHandler
 
 logger = logging.getLogger(__name__)
 
@@ -165,6 +166,10 @@ class BasicTrainTask(TrainTask):
                 log_dir=self.events_dir,
                 tag_name="train_loss",
                 output_transform=from_engine(["loss"], first=True),
+            ),
+            TensorBoardImageHandler(
+                log_dir=self.events_dir,
+                epoch_level=True,
             ),
             CheckpointSaver(
                 save_dir=self.output_dir,
