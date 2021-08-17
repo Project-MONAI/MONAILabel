@@ -222,8 +222,8 @@ class MONAILabelWidget(ScriptedLoadableModuleWidget, VTKObservationMixin):
         self.ui.selectForegroundButton.setToolTip("Select foreground scribbles layer")
         self.ui.selectBackgroundButton.setIcon(self.icon("bg_red.svg"))
         self.ui.selectBackgroundButton.setToolTip("Select background scribbles layer")
-        self.ui.selectedScribbleDisplay.setIcon(self.icon("gray.svg"))
-        self.ui.selectedScribbleDisplay.setToolTip("Displaying selected scribbles layer")
+        self.ui.selectedScribblesDisplay.setIcon(self.icon("gray.svg"))
+        self.ui.selectedScribblesDisplay.setToolTip("Displaying selected scribbles layer")
         self.ui.selectedToolDisplay.setIcon(self.icon("gray.svg"))
         self.ui.selectedToolDisplay.setToolTip("Displaying selected scribbles tool")
 
@@ -459,7 +459,7 @@ class MONAILabelWidget(ScriptedLoadableModuleWidget, VTKObservationMixin):
 
     def updateScribblesStatusIcons(self):
         if self.scribblesMode is None:
-            self.ui.selectedScribbleDisplay.setIcon(self.icon("gray.svg"))
+            self.ui.selectedScribblesDisplay.setIcon(self.icon("gray.svg"))
             self.ui.selectedToolDisplay.setIcon(self.icon("gray.svg"))
         else:
             tool, layer = self.getToolAndLayerFromScribblesMode()
@@ -472,9 +472,9 @@ class MONAILabelWidget(ScriptedLoadableModuleWidget, VTKObservationMixin):
 
             # update scirbbles layer icon
             if layer == "foreground_scribbles":
-                self.ui.selectedScribbleDisplay.setIcon(self.icon("fg_green.svg"))
+                self.ui.selectedScribblesDisplay.setIcon(self.icon("fg_green.svg"))
             elif layer == "background_scribbles":
-                self.ui.selectedScribbleDisplay.setIcon(self.icon("bg_red.svg"))
+                self.ui.selectedScribblesDisplay.setIcon(self.icon("bg_red.svg"))
 
     def on3dBrushCheckbox(self, state):
         logging.info("3D brush update {}".format(state))
@@ -590,7 +590,7 @@ class MONAILabelWidget(ScriptedLoadableModuleWidget, VTKObservationMixin):
 
         self.updateSelector(self.ui.segmentationModelSelector, ["segmentation"], "SegmentationModel", 0)
         self.updateSelector(self.ui.deepgrowModelSelector, ["deepgrow"], "DeepgrowModel", 0)
-        self.updateSelector(self.ui.scribblesMethodSelector, ["scribble"], "ScribbleMethod", 0)
+        self.updateSelector(self.ui.scribblesMethodSelector, ["scribbles"], "ScribblesMethod", 0)
 
         if self.models and [k for k, v in self.models.items() if v["type"] == "segmentation"]:
             self.ui.segmentationCollapsibleButton.collapsed = False
@@ -633,7 +633,7 @@ class MONAILabelWidget(ScriptedLoadableModuleWidget, VTKObservationMixin):
         self.ui.nextSampleButton.setEnabled(self.ui.strategyBox.count)
 
         is_training_running = True if self.info and self.isTrainingRunning() else False
-        self.ui.trainingButton.setEnabled(self.info and not is_training_running)
+        self.ui.trainingButton.setEnabled(self.info and not is_training_running and current)
         self.ui.stopTrainingButton.setEnabled(is_training_running)
         self.ui.trainingStatusButton.setEnabled(self.info)
         if is_training_running and self.timer is None:

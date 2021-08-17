@@ -53,8 +53,8 @@ class SegmentationWithWriteLogits(InferTask):
 
     def post_transforms(self):
         return [
-            Activationsd(keys="pred", softmax=True),
             CopyItemsd(keys="pred", times=1, names="logits"),
+            Activationsd(keys="pred", softmax=True),
             AsDiscreted(keys="pred", argmax=True),
             ToNumpyd(keys=["pred", "logits"]),
             Restored(keys=["pred", "logits"], ref_image="image"),

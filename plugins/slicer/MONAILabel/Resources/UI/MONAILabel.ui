@@ -7,7 +7,7 @@
     <x>0</x>
     <y>0</y>
     <width>425</width>
-    <height>713</height>
+    <height>802</height>
    </rect>
   </property>
   <layout class="QVBoxLayout" name="verticalLayout">
@@ -174,48 +174,17 @@
       <property name="rightMargin">
        <number>0</number>
       </property>
-      <item row="6" column="1">
-       <widget class="QPushButton" name="stopTrainingButton">
-        <property name="text">
-         <string>Stop Training</string>
-        </property>
-       </widget>
-      </item>
-      <item row="10" column="0" colspan="2">
-       <widget class="QCommandLinkButton" name="trainingStatusButton">
-        <property name="text">
-         <string>Training Status</string>
-        </property>
-        <property name="description">
-         <string/>
-        </property>
-       </widget>
-      </item>
-      <item row="4" column="1">
-       <widget class="QPushButton" name="saveLabelButton">
-        <property name="text">
-         <string>Submit Label</string>
-        </property>
-       </widget>
-      </item>
-      <item row="11" column="0" colspan="2">
-       <widget class="QProgressBar" name="trainingProgressBar">
+      <item row="0" column="0" colspan="2">
+       <widget class="QProgressBar" name="activeLearningProgressBar">
         <property name="value">
          <number>0</number>
         </property>
        </widget>
       </item>
-      <item row="2" column="0" colspan="2">
-       <widget class="QLabel" name="label_7">
+      <item row="11" column="0" colspan="2">
+       <widget class="QLabel" name="label_11">
         <property name="text">
-         <string>Strategy:</string>
-        </property>
-       </widget>
-      </item>
-      <item row="4" column="0">
-       <widget class="QPushButton" name="nextSampleButton">
-        <property name="text">
-         <string>Next Sample</string>
+         <string>Train Accuracy:</string>
         </property>
        </widget>
       </item>
@@ -226,17 +195,14 @@
         </property>
        </widget>
       </item>
-      <item row="0" column="0" colspan="2">
-       <widget class="QProgressBar" name="activeLearningProgressBar">
-        <property name="value">
-         <number>0</number>
+      <item row="2" column="0" colspan="2">
+       <widget class="QLabel" name="label_7">
+        <property name="text">
+         <string>Strategy:</string>
         </property>
        </widget>
       </item>
-      <item row="3" column="0" colspan="2">
-       <widget class="QComboBox" name="strategyBox"/>
-      </item>
-      <item row="9" column="0" colspan="2">
+      <item row="12" column="0" colspan="2">
        <widget class="QProgressBar" name="accuracyProgressBar">
         <property name="toolTip">
          <string>Average Dice score computed over submitted labels</string>
@@ -246,10 +212,44 @@
         </property>
        </widget>
       </item>
-      <item row="8" column="0" colspan="2">
-       <widget class="QLabel" name="label_11">
+      <item row="4" column="1">
+       <widget class="QPushButton" name="saveLabelButton">
         <property name="text">
-         <string>Model Accuracy:</string>
+         <string>Submit Label</string>
+        </property>
+       </widget>
+      </item>
+      <item row="6" column="1">
+       <widget class="QPushButton" name="stopTrainingButton">
+        <property name="text">
+         <string>Stop Training</string>
+        </property>
+       </widget>
+      </item>
+      <item row="4" column="0">
+       <widget class="QPushButton" name="nextSampleButton">
+        <property name="text">
+         <string>Next Sample</string>
+        </property>
+       </widget>
+      </item>
+      <item row="3" column="0" colspan="2">
+       <widget class="QComboBox" name="strategyBox"/>
+      </item>
+      <item row="7" column="0" colspan="2">
+       <widget class="QCommandLinkButton" name="trainingStatusButton">
+        <property name="text">
+         <string>Training Status</string>
+        </property>
+        <property name="description">
+         <string/>
+        </property>
+       </widget>
+      </item>
+      <item row="8" column="0" colspan="2">
+       <widget class="QProgressBar" name="trainingProgressBar">
+        <property name="value">
+         <number>0</number>
         </property>
        </widget>
       </item>
@@ -470,7 +470,7 @@
            </widget>
           </item>
           <item row="1" column="1">
-           <widget class="QPushButton" name="selectedScribbleDisplay">
+           <widget class="QPushButton" name="selectedScribblesDisplay">
             <property name="text">
              <string/>
             </property>

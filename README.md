@@ -52,9 +52,11 @@ to the [installation guide](https://docs.monai.io/projects/label/en/latest/insta
 
 ### 3D Slicer
 
-Download Preview Release from https://download.slicer.org/ and install MONAI Label plugin from Slicer Extension Manager.
+Download **Preview Release** from https://download.slicer.org/ and install MONAI Label plugin from Slicer Extension Manager.
 
 Refer [3D Slicer plugin](plugins/slicer) for other options to install and run MONAI Label plugin in 3D Slicer.
+> To avoid accidentally using an older Slicer version, you may want to _uninstall_ any previously installed 3D Slicer package. 
+
 
 ### OHIF [WIP]
 
