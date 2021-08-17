@@ -147,8 +147,8 @@ def _create_multiframe_metadata(input_ds) -> Dataset:
 
     # General Equipment module, only Manufacturer is Type 2, the rest Type 3
     dicomOutput.add_new(0x00181000, "LO", "0000")  # DeviceSerialNumber
-    dicomOutput.add_new(0x00080070, "LO", "NVIDIA")  # Manufacturer
-    dicomOutput.add_new(0x00081090, "LO", "CLARA")  # ManufacturerModelName
+    dicomOutput.add_new(0x00080070, "LO", "MONAI Label")  # Manufacturer
+    dicomOutput.add_new(0x00081090, "LO", "MONAI Label")  # ManufacturerModelName
     dicomOutput.add_new(0x00181020, "LO", "1")  # SoftwareVersions
 
     # SOP common, only SOPClassUID and SOPInstanceUID are Type 1
