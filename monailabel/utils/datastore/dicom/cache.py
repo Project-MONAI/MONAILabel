@@ -268,7 +268,7 @@ class DICOMWebCache(Datastore):
         self._dicomweb_client.push_series(image, dcmseg_dataset)
 
         datastore_label_path = os.path.join(
-            self._datastore_path, self._label_store_path, f"{label_id}{pathlib.Path(label_filename).suffixes}"
+            self._datastore_path, self._label_store_path, f"{label_id}{''.join(pathlib.Path(label_filename).suffixes)}"
         )
         shutil.copy(src=label_filename, dst=datastore_label_path, follow_symlinks=True)
         label = DICOMLabelModel(
@@ -284,7 +284,7 @@ class DICOMWebCache(Datastore):
         )
 
         # add the newly created label reference to the image from which it was generated
-        self._datastore.objects.referenced_labels_keys.append(label_id)
+        self._datastore.objects[image_id].referenced_labels_keys.append(label_id)
 
         self._datastore.objects.update(
             {
