@@ -1,11 +1,13 @@
 import logging
 import os
 
-from lib import MyInfer, MyStrategy, MyTrain
+from lib import MyInfer, MyTrain
+from lib.activelearning import MyStrategy, Tta
 from monai.apps import load_from_mmar
 
 from monailabel.interfaces import MONAILabelApp
 from monailabel.utils.activelearning import Random
+from monailabel.utils.scoring.tta_scoring import TtaScoring
 
 logger = logging.getLogger(__name__)
 
@@ -32,6 +34,12 @@ class MyApp(MONAILabelApp):
         return {
             "random": Random(),
             "first": MyStrategy(),
+            "Tta": Tta(),
+        }
+
+    def init_scoring_methods(self):
+        return {
+            "tta_scoring": TtaScoring(),
         }
 
     def train(self, request):
@@ -67,3 +75,21 @@ class MyApp(MONAILabelApp):
             val_batch_size=request.get("val_batch_size", 1),
         )
         return task()
+
+
+def main():
+    app_dir_path = os.path.normpath("/home/adp20local/Documents/MONAILabel/sample-apps/deepedit_spleen")
+    studies_path = os.path.normpath("/home/adp20local/Documents/Datasets/monailabel_datasets/spleen/train_small")
+    al_app = MyApp(app_dir=app_dir_path, studies=studies_path)
+    request = {}
+    request["val_batch_size"] = 1
+    request["epochs"] = 1
+    request["strategy"] = "Tta"
+    request["method"] = "tta_scoring"
+    al_app.scoring(request)
+    al_app.next_sample(request=request)
+    return None
+
+
+if __name__ == "__main__":
+    main()
