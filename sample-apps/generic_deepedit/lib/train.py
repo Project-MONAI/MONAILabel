@@ -27,6 +27,7 @@ from monai.transforms import (
 )
 
 from monailabel.deepedit.transforms import DiscardAddGuidanced
+from monailabel.utils.others.planner import ExperimentPlanner
 from monailabel.utils.train.basic_train import BasicTrainTask
 
 logger = logging.getLogger(__name__)
@@ -39,16 +40,19 @@ class MyTrain(BasicTrainTask):
         train_datalist,
         val_datalist,
         network,
-        model_size=(128, 128, 128),
         max_train_interactions=20,
         max_val_interactions=10,
         **kwargs,
     ):
         super().__init__(output_dir, train_datalist, val_datalist, network, **kwargs)
 
-        self.model_size = model_size
         self.max_train_interactions = max_train_interactions
         self.max_val_interactions = max_val_interactions
+        # Experiment planner
+        self.planner = ExperimentPlanner(datastore=kwargs["datastore"])
+        self.model_size = self.planner.get_target_img_size()
+        self.target_spacing = self.planner.get_target_spacing()
+        print("Available GPU 0 memory: ", str(self.planner.get_gpu_memory_map().values()))
 
     def get_click_transforms(self):
         return [
@@ -69,7 +73,7 @@ class MyTrain(BasicTrainTask):
             LoadImaged(keys=("image", "label")),
             RandZoomd(keys=("image", "label"), prob=0.4, min_zoom=0.3, max_zoom=1.9, mode=("bilinear", "nearest")),
             AddChanneld(keys=("image", "label")),
-            Spacingd(keys=["image", "label"], pixdim=(1.0, 1.0, 1.0), mode=("bilinear", "nearest")),
+            Spacingd(keys=["image", "label"], pixdim=self.target_spacing, mode=("bilinear", "nearest")),
             Orientationd(keys=["image", "label"], axcodes="RAS"),
             NormalizeIntensityd(keys="image"),
             RandAdjustContrastd(keys="image", gamma=6),
