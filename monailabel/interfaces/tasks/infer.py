@@ -22,7 +22,7 @@ class InferType:
         CLASSIFICATION -          Classification Model
         DEEPGROW -                Deepgrow Interactive Model
         DEEPEDIT -                DeepEdit Interactive Model
-        SCRIBBLE -                Scribble Model
+        SCRIBBLES -               Scribbles Model
         OTHERS -                  Other Model Type
     """
 
@@ -30,9 +30,9 @@ class InferType:
     CLASSIFICATION = "classification"
     DEEPGROW = "deepgrow"
     DEEPEDIT = "deepedit"
-    SCRIBBLE = "scribble"
+    SCRIBBLES = "scribbles"
     OTHERS = "others"
-    KNOWN_TYPES = [SEGMENTATION, CLASSIFICATION, DEEPGROW, DEEPEDIT, SCRIBBLE, OTHERS]
+    KNOWN_TYPES = [SEGMENTATION, CLASSIFICATION, DEEPGROW, DEEPEDIT, SCRIBBLES, OTHERS]
 
 
 class InferTask:
@@ -86,7 +86,7 @@ class InferTask:
         }
 
     def is_valid(self):
-        if self.network or self.type == InferType.SCRIBBLE:
+        if self.network or self.type == InferType.SCRIBBLES:
             return True
 
         paths = [self.path] if isinstance(self.path, str) else self.path
@@ -260,7 +260,7 @@ class InferTask:
         path = self.get_path()
         logger.info("Infer model path: {}".format(path))
         if not path and not self.network:
-            if self.type == InferType.SCRIBBLE:
+            if self.type == InferType.SCRIBBLES:
                 return None
 
             raise MONAILabelException(
@@ -366,7 +366,7 @@ class InferTask:
             logger.debug("******************************************************************************")
 
     @staticmethod
-    def _shape_info(data, keys=("image", "label", "pred", "model")):
+    def _shape_info(data, keys=("image", "label", "logits", "pred", "model")):
         shape_info = []
         for key in keys:
             val = data.get(key)

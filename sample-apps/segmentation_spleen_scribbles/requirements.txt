@@ -1,0 +1,2 @@
+git+https://github.com/Project-MONAI/MONAI#egg=monai[nibabel, skimage, pillow, tensorboard, gdown, ignite, torchvision, itk, tqdm, lmdb, psutil, openslide]>=0.6.0
+simplecrf
