@@ -4,7 +4,6 @@ from monai.apps.deepgrow.interaction import Interaction
 from monai.apps.deepgrow.transforms import (
     AddGuidanceSignald,
     AddInitialSeedPointd,
-    AddRandomGuidanced,
     FindAllValidSlicesd,
     FindDiscrepancyRegionsd,
 )
@@ -26,7 +25,7 @@ from monai.transforms import (
     ToTensord,
 )
 
-from monailabel.deepedit.transforms import DiscardAddGuidanced
+from monailabel.deepedit.transforms import ClickRatioAddRandomGuidanced, DiscardAddGuidanced
 from monailabel.utils.train.basic_train import BasicTrainTask
 
 logger = logging.getLogger(__name__)
@@ -55,9 +54,9 @@ class MyTrain(BasicTrainTask):
             Activationsd(keys="pred", sigmoid=True),
             ToNumpyd(keys=("image", "label", "pred")),
             FindDiscrepancyRegionsd(label="label", pred="pred", discrepancy="discrepancy"),
-            AddRandomGuidanced(guidance="guidance", discrepancy="discrepancy", probability="probability"),
+            ClickRatioAddRandomGuidanced(guidance="guidance", discrepancy="discrepancy", probability="probability"),
             AddGuidanceSignald(image="image", guidance="guidance"),
-            DiscardAddGuidanced(image="image", probability=0.6),
+            DiscardAddGuidanced(image="image", probability=0.5),
             ToTensord(keys=("image", "label")),
         ]
 
