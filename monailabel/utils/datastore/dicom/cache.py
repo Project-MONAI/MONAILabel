@@ -105,7 +105,10 @@ class DICOMWebCache(Datastore):
     def get_image(self, image_id: str) -> Any:
         image = self._datastore.objects[image_id]
         nifti_output_path = os.path.join(self._datastore_path, f"{image_id}.nii.gz")
-        if not os.path.exists(nifti_output_path):
+        if (
+            not os.path.exists(nifti_output_path) or
+            not self._datastore.objects[image_id].memory_cache.get("dicom_dataset")
+        ):
             instances = self._dicomweb_client.get_object(image)
             self._datastore.objects[image_id].memory_cache.update(
                 {
@@ -228,7 +231,7 @@ class DICOMWebCache(Datastore):
         ]
 
     def list_images(self) -> List[str]:
-        return [data for data in self._datastore.objects.values() if data.info["object_type"] == "image"]
+        return [object_id for object_id, obj in self._datastore.objects.items() if obj.info["object_type"] == "image"]
 
     def refresh(self) -> None:
         pass
@@ -250,10 +253,9 @@ class DICOMWebCache(Datastore):
         # get the dicom image dataset to use as the template for generating DICOMSEG
         # from inference result
         original_dataset = None
-        if image.memory_cache.get("dicom_dataset"):
-            original_dataset = image.memory_cache["dicom_dataset"]
-        else:
-            original_dataset = self.get_image(image_id)
+        if not image.memory_cache.get("dicom_dataset"):
+            _ = self.get_image(image_id)
+        original_dataset = image.memory_cache["dicom_dataset"]
 
         # convert segmentation result in `label_filename` to a numpy array
         seg_image = nibabel.load(label_filename)
@@ -263,7 +265,7 @@ class DICOMWebCache(Datastore):
         label_id = generate_key(image.patient_id, image.study_id, series_id)
 
         # add label tag to DICOMSEG image in MONAI Label private tag `ATTRB_MONAILABELTAG`
-        dcmseg_dataset.add_new(str2hex(ATTRB_MONAILABELTAG), "LO", label_tag.value)
+        dcmseg_dataset.add_new(str2hex(ATTRB_MONAILABELTAG), "LO", label_tag)
         dcmseg_dataset.add_new(str2hex(ATTRB_MONAILABELINDICATOR), "CS", "Y")
 
         # send the new DICOMSEG label to the DICOMWeb server
@@ -332,6 +334,9 @@ class DICOMWebCache(Datastore):
         return existing_datastore
 
     def _reconcile_local_datastore(self, local_datastore: DICOMWebDatastoreModel):
+
+        if not local_datastore:
+            return
 
         # find all the keys that already exist in the locally cached datastore
         # and put them into the datastore that was newly fathed from the dicomweb connection
