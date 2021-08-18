@@ -284,7 +284,7 @@ class DICOMWebCache(Datastore):
         )
 
         # add the newly created label reference to the image from which it was generated
-        self._datastore.objects[image_id].referenced_labels_keys.append(label_id)
+        self._datastore.objects[image_id].related_labels_keys.append(label_id)
 
         self._datastore.objects.update(
             {
@@ -293,6 +293,8 @@ class DICOMWebCache(Datastore):
         )
 
         self._update_datastore_file()
+
+        return label_id
 
     def status(self) -> Dict[str, Any]:
         labels: List[DICOMLabelModel] = []
