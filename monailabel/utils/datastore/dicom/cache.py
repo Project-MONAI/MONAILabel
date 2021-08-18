@@ -242,7 +242,7 @@ class DICOMWebCache(Datastore):
     def remove_label_by_tag(self, label_tag: str) -> None:
         pass
 
-    def save_label(self, image_id: str, label_filename: str, label_tag: str, label_names: List[str] = []) -> str:
+    def save_label(self, image_id: str, label_filename: str, label_tag: str, label_info: Dict[str, str] = {}) -> str:
         logger.info(f"Saving Label for Image: {image_id}; Tag: {label_tag}")
 
         image = self._datastore.objects[image_id]
@@ -258,7 +258,7 @@ class DICOMWebCache(Datastore):
         # convert segmentation result in `label_filename` to a numpy array
         seg_image = nibabel.load(label_filename)
 
-        dcmseg_dataset = ConverterUtil.to_dicom(original_dataset, seg_image.get_fdata(), label_names)
+        dcmseg_dataset = ConverterUtil.to_dicom(original_dataset, seg_image.get_fdata(), label_info.get("label_names"))
         series_id = dcmseg_dataset[str2hex(ATTRB_SERIESINSTANCEUID)].value
         label_id = generate_key(image.patient_id, image.study_id, series_id)
 
