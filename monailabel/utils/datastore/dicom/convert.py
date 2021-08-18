@@ -31,7 +31,7 @@ class ConverterUtil(object):
 
     @staticmethod
     def to_dicom(
-        original_data: dicom.Dataset,
+        original_data: List[dicom.Dataset],
         seg_img: np.ndarray,
         seg_labels: List[str],
     ) -> dicom.Dataset:
