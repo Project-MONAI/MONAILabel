@@ -38,7 +38,7 @@ class DICOMWebClient(DICOMwebClient):
         proxies: Optional[Dict[str, str]] = None,
         headers: Optional[Dict[str, str]] = None,
         callback: Optional[Callable] = None,
-        chunk_size: int = 10 ** 8,
+        chunk_size: int = 10 ** 9,
         num_download_threads: int = 8,
     ) -> None:
         super().__init__(
