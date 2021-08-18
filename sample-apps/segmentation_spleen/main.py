@@ -76,6 +76,7 @@ class MyApp(MONAILabelApp):
         )
         return task()
 
+
 def main():
     logging.basicConfig(
         level=logging.INFO,
