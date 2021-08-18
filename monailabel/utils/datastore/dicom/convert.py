@@ -49,6 +49,11 @@ class ConverterUtil(object):
 
         # Find out the unique values in the seg image
         unique_elements = np.unique(seg_img, return_counts=False)
+
+        # if I am not given labels then try to use the unique elements found in the range
+        if not seg_labels:
+            seg_labels = list(map(str, unique_elements))
+
         logger.info("Unique values in seg image: {}".format(unique_elements))
 
         dcmseg_dataset = _create_multiframe_metadata(original_data[0])
