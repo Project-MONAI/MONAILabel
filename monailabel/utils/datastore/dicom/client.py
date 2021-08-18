@@ -20,7 +20,7 @@ from monailabel.utils.datastore.dicom.attributes import (
     ATTRB_STUDYINSTANCEUID,
     DICOMSEG_MODALITY,
 )
-from monailabel.utils.datastore.dicom.datamodel import DICOMImageModel, DICOMLabelModel, DICOMObjectModel
+from monailabel.utils.datastore.dicom.datamodel import DICOMObjectModel
 from monailabel.utils.datastore.dicom.util import generate_key
 
 logger = logging.getLogger(__name__)
@@ -38,7 +38,7 @@ class DICOMWebClient(DICOMwebClient):
         proxies: Optional[Dict[str, str]] = None,
         headers: Optional[Dict[str, str]] = None,
         callback: Optional[Callable] = None,
-        chunk_size: int = 10 ** 6,
+        chunk_size: int = 10 ** 8,
         num_download_threads: int = 8,
     ) -> None:
         super().__init__(
@@ -83,7 +83,7 @@ class DICOMWebClient(DICOMwebClient):
                 # add DICOMSEG to datastore
                 objects.update(
                     {
-                        key: DICOMLabelModel(
+                        key: DICOMObjectModel(
                             patient_id=s_patient_id,
                             study_id=s_study_id,
                             series_id=s_series_id,
@@ -130,7 +130,7 @@ class DICOMWebClient(DICOMwebClient):
 
                 objects.update(
                     {
-                        key: DICOMImageModel(
+                        key: DICOMObjectModel(
                             patient_id=s_patient_id,
                             study_id=s_study_id,
                             series_id=s_series_id,
@@ -165,7 +165,7 @@ class DICOMWebClient(DICOMwebClient):
 
         return instances
 
-    def push_series(self, image_object: DICOMImageModel, dataset: List[pydicom.Dataset]):
+    def push_series(self, image_object: DICOMObjectModel, dataset: List[pydicom.Dataset]):
         self.store_instances(
             study_instance_uid=image_object.study_id,
             datasets=dataset,

@@ -23,7 +23,7 @@ from monailabel.utils.datastore.dicom.attributes import (
 )
 from monailabel.utils.datastore.dicom.client import DICOMWebClient
 from monailabel.utils.datastore.dicom.convert import ConverterUtil
-from monailabel.utils.datastore.dicom.datamodel import DICOMLabelModel, DICOMWebDatastoreModel
+from monailabel.utils.datastore.dicom.datamodel import DICOMObjectModel, DICOMWebDatastoreModel
 from monailabel.utils.datastore.dicom.util import generate_key
 from monailabel.utils.others.generic import file_checksum
 
@@ -73,6 +73,8 @@ class DICOMWebCache(Datastore):
         )
 
         self._datastore.objects = self._dicomweb_client.retrieve_dataset()
+        local_cache = self._load_existing_datastore_config()
+        self._reconcile_local_datastore(local_cache)
         self._update_datastore_file()
 
     def name(self) -> str:
@@ -103,17 +105,20 @@ class DICOMWebCache(Datastore):
     def get_image(self, image_id: str) -> Any:
         image = self._datastore.objects[image_id]
         nifti_output_path = os.path.join(self._datastore_path, f"{image_id}.nii.gz")
-        instances = self._dicomweb_client.get_object(image)
-        self._datastore.objects[image_id].memory_cache.update(
-            {
-                "dicom_dataset": instances,
-            }
-        )
+        if not os.path.exists(nifti_output_path):
+            instances = self._dicomweb_client.get_object(image)
+            self._datastore.objects[image_id].memory_cache.update(
+                {
+                    "dicom_dataset": instances,
+                }
+            )
 
-        with FileLock(f"{nifti_output_path}.lock"):
-            _, nifti_file = ConverterUtil.to_nifti(instances, nifti_output_path)
+            with FileLock(f"{nifti_output_path}.lock"):
+                _, nifti_file = ConverterUtil.to_nifti(instances, nifti_output_path)
 
-        self._datastore.objects[image_id].local_path = nifti_file
+            self._datastore.objects[image_id].local_path = nifti_file
+        else:
+            self._datastore.objects[image_id].local_path = nifti_output_path
 
         self._update_datastore_file()
 
@@ -271,7 +276,7 @@ class DICOMWebCache(Datastore):
             self._datastore_path, self._label_store_path, f"{label_id}{''.join(pathlib.Path(label_filename).suffixes)}"
         )
         shutil.copy(src=label_filename, dst=datastore_label_path, follow_symlinks=True)
-        label = DICOMLabelModel(
+        label = DICOMObjectModel(
             patient_id=image.patient_id,
             study_id=image.study_id,
             series_id=series_id,
@@ -297,7 +302,7 @@ class DICOMWebCache(Datastore):
         return label_id
 
     def status(self) -> Dict[str, Any]:
-        labels: List[DICOMLabelModel] = []
+        labels: List[DICOMObjectModel] = []
         tags: dict = {}
         for label in labels:
             tags[label.tag] = tags.get(label.tag, 0) + 1
@@ -317,6 +322,30 @@ class DICOMWebCache(Datastore):
 
     def __str__(self) -> str:
         return json.dumps(self._datastore.dict())
+
+    def _load_existing_datastore_config(self):
+        existing_datastore = None
+        with self._lock:
+            if os.path.exists(self._datastore_config_path):
+                existing_datastore = DICOMWebDatastoreModel.parse_file(self._datastore_config_path)
+
+        return existing_datastore
+
+    def _reconcile_local_datastore(self, local_datastore: DICOMWebDatastoreModel):
+
+        # find all the keys that already exist in the locally cached datastore
+        # and put them into the datastore that was newly fathed from the dicomweb connection
+        for object_id in self._datastore.objects.keys():
+            if object_id in local_datastore.objects.keys():
+                self._datastore.objects[object_id] = local_datastore.objects[object_id]
+
+        for obj in self._datastore.objects.values():
+            if obj.info.get("object_type") == "image":
+                exclude_label_keys = []
+                for label_key in obj.related_labels_keys:
+                    if label_key not in self._datastore.objects.keys():
+                        exclude_label_keys.append(label_key)
+                obj.related_labels_keys = [k for k in obj.related_labels_keys if k not in exclude_label_keys]
 
     def _update_datastore_file(self, lock=True):
         if lock:

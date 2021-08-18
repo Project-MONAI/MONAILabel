@@ -10,14 +10,7 @@ class DICOMObjectModel(BaseModel):
     local_path: Optional[str]
     info: Dict[str, Any] = {}
     memory_cache: Dict[str, Any] = {}
-
-
-class DICOMLabelModel(DICOMObjectModel):
-    tag: str
-
-
-class DICOMImageModel(DICOMObjectModel):
-    info: Dict[str, Any] = {}
+    tag: Optional[str] = ""
     related_labels_keys: List[str] = []
 
 
