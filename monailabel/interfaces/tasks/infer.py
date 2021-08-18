@@ -83,7 +83,11 @@ class InferTask:
             "labels": self.labels,
             "dimension": self.dimension,
             "description": self.description,
+            "config": self.config(),
         }
+
+    def config(self):
+        return {}
 
     def is_valid(self):
         if self.network or self.type == InferType.SCRIBBLES:

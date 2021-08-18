@@ -552,6 +552,9 @@ class MONAILabelWidget(ScriptedLoadableModuleWidget, VTKObservationMixin):
             if not train_stats:
                 return
 
+            if info.get("trainers"):
+                train_stats = train_stats.get(next(iter(info.get("trainers"))), {})
+
             current = 0 if train_stats.get("total_time") else train_stats.get("epoch", 1)
             total = train_stats.get("total_epochs", 1)
             percent = max(1, 100 * current / total)
@@ -973,7 +976,7 @@ class MONAILabelWidget(ScriptedLoadableModuleWidget, VTKObservationMixin):
             info = self.logic.info()
             self.info = info
 
-            models = info["models"]
+            models = info.get("models", {})
         except:
             slicer.util.errorDisplay(
                 "Failed to fetch models from remote server. "
@@ -984,7 +987,7 @@ class MONAILabelWidget(ScriptedLoadableModuleWidget, VTKObservationMixin):
             return
 
         self.models.clear()
-        self.config = info["config"]
+        self.config = info.get("config", {})
         model_count = {}
         for k, v in models.items():
             model_type = v.get("type", "segmentation")
@@ -1160,9 +1163,10 @@ class MONAILabelWidget(ScriptedLoadableModuleWidget, VTKObservationMixin):
             image_file = sample.get("path")
             image_name = sample.get("name", image_id)
             checksum = sample.get("checksum")
+            local_exists = image_file and os.path.exists(image_file)
 
-            logging.info(f"Check if file exists/shared locally: {image_file}")
-            if image_file and os.path.exists(image_file):
+            logging.info(f"Check if file exists/shared locally: {image_file} => {local_exists}")
+            if local_exists:
                 self._volumeNode = slicer.util.loadVolume(image_file)
             else:
                 download_uri = f"{self.serverUrl()}/datastore/image?image={quote_plus(image_id)}"

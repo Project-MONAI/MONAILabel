@@ -1,7 +1,9 @@
 import logging
 
 import numpy as np
+import torch
 from monai.inferers import SimpleInferer
+from monai.losses import DiceLoss
 from monai.transforms import (
     Activationsd,
     AsDiscreted,
@@ -24,6 +26,25 @@ logger = logging.getLogger(__name__)
 
 
 class MyTrain(BasicTrainTask):
+    def __init__(
+        self,
+        model_dir,
+        network,
+        description="Train generic Segmentation model",
+        **kwargs,
+    ):
+        self._network = network
+        super().__init__(model_dir, description, **kwargs)
+
+    def network(self):
+        return self._network
+
+    def optimizer(self):
+        return torch.optim.Adam(self._network.parameters(), lr=0.0001)
+
+    def loss_function(self):
+        return DiceLoss(to_onehot_y=True, softmax=True)
+
     def train_pre_transforms(self):
         return [
             LoadImaged(keys=("image", "label")),

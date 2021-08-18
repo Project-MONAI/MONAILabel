@@ -1,5 +1,7 @@
+import copy
 import logging
 
+import torch
 from monai.apps.deepgrow.interaction import Interaction
 from monai.apps.deepgrow.transforms import (
     AddGuidanceSignald,
@@ -35,24 +37,49 @@ logger = logging.getLogger(__name__)
 class TrainDeepgrow(BasicTrainTask):
     def __init__(
         self,
-        output_dir,
-        train_datalist,
-        val_datalist,
+        model_dir,
         network,
         dimension,
         roi_size,
         model_size,
         max_train_interactions,
         max_val_interactions,
+        description="Train Deepgrow Model",
         **kwargs,
     ):
-        super().__init__(output_dir, train_datalist, val_datalist, network, **kwargs)
-
+        self._network = network
         self.dimension = dimension
         self.roi_size = roi_size
         self.model_size = model_size
         self.max_train_interactions = max_train_interactions
         self.max_val_interactions = max_val_interactions
+
+        super().__init__(model_dir, description, **kwargs)
+
+    def network(self):
+        return self._network
+
+    def optimizer(self):
+        return torch.optim.Adam(self._network.parameters(), lr=0.0001)
+
+    def loss_function(self):
+        return DiceLoss(sigmoid=True, squared_pred=True)
+
+    def partition_datalist(self, request, datalist, shuffle=True):
+        train_ds, val_ds = super().partition_datalist(request, datalist, shuffle)
+        if self.dimension != 2:
+            return train_ds, val_ds
+
+        flatten_train_ds = []
+        for _ in range(max(request.get("train_random_slices", 20), 1)):
+            flatten_train_ds.extend(copy.deepcopy(train_ds))
+        logger.info(f"After flatten:: {len(train_ds)} => {len(flatten_train_ds)}")
+
+        flatten_val_ds = []
+        for _ in range(max(request.get("val_random_slices", 5), 1)):
+            flatten_val_ds.extend(copy.deepcopy(val_ds))
+        logger.info(f"After flatten:: {len(val_ds)} => {len(flatten_val_ds)}")
+        return flatten_train_ds, flatten_val_ds
 
     def get_click_transforms(self):
         return [
@@ -63,9 +90,6 @@ class TrainDeepgrow(BasicTrainTask):
             AddGuidanceSignald(image="image", guidance="guidance"),
             ToTensord(keys=("image", "label")),
         ]
-
-    def loss_function(self):
-        return DiceLoss(sigmoid=True, squared_pred=True)
 
     def train_pre_transforms(self):
         # Dataset preparation

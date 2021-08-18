@@ -1,6 +1,8 @@
 import logging
 
+import torch
 from monai.inferers import SlidingWindowInferer
+from monai.losses import DiceLoss
 from monai.transforms import (
     Activationsd,
     AddChanneld,
@@ -20,6 +22,25 @@ logger = logging.getLogger(__name__)
 
 
 class MyTrain(BasicTrainTask):
+    def __init__(
+        self,
+        model_dir,
+        network,
+        description="Train Segmentation model for spleen",
+        **kwargs,
+    ):
+        self._network = network
+        super().__init__(model_dir, description, **kwargs)
+
+    def network(self):
+        return self._network
+
+    def optimizer(self):
+        return torch.optim.Adam(self._network.parameters(), lr=0.0001)
+
+    def loss_function(self):
+        return DiceLoss(to_onehot_y=True, softmax=True)
+
     def train_pre_transforms(self):
         return [
             LoadImaged(keys=("image", "label")),
@@ -61,6 +82,11 @@ class MyTrain(BasicTrainTask):
         return [
             LoadImaged(keys=("image", "label")),
             AddChanneld(keys=("image", "label")),
+            Spacingd(
+                keys=("image", "label"),
+                pixdim=(1.0, 1.0, 1.0),
+                mode=("bilinear", "nearest"),
+            ),
             ScaleIntensityRanged(keys="image", a_min=-57, a_max=164, b_min=0.0, b_max=1.0, clip=True),
             CropForegroundd(keys=("image", "label"), source_key="image"),
             ToTensord(keys=("image", "label")),

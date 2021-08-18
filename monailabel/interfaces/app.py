@@ -1,20 +1,17 @@
 import copy
 import itertools
-import json
 import logging
 import os
 import time
-from abc import abstractmethod
 from typing import Any, Callable, Dict
 
-import yaml
 from monai.apps import download_url, load_from_mmar
 from monai.data import partition_dataset
 
 from monailabel.config import settings
 from monailabel.interfaces.datastore import Datastore, DefaultLabelTag
 from monailabel.interfaces.exception import MONAILabelError, MONAILabelException
-from monailabel.interfaces.tasks import BatchInferTask, InferTask, ScoringMethod, Strategy
+from monailabel.interfaces.tasks import BatchInferTask, InferTask, ScoringMethod, Strategy, TrainTask
 from monailabel.utils.activelearning import Random
 from monailabel.utils.datastore import LocalDatastore
 from monailabel.utils.infer import InferDeepgrow2D, InferDeepgrow3D
@@ -25,25 +22,23 @@ logger = logging.getLogger(__name__)
 
 
 class MONAILabelApp:
-    def __init__(
-        self,
-        app_dir,
-        studies,
-        train_stats_path=None,
-    ):
+    def __init__(self, app_dir, studies, name="", description="", version="", labels=None):
         """
         Base Class for Any MONAI Label App
 
         :param app_dir: path for your App directory
         :param studies: path for studies/datalist
-        :param train_stats_path: Path for Training stats json
 
         """
         self.app_dir = app_dir
         self.studies = studies
-        self.train_stats_path = train_stats_path
+        self.name = name
+        self.description = description
+        self.version = version
+        self.labels = labels
 
         self._infers = self.init_infers()
+        self._trainers = self.init_trainers()
         self._strategies = self.init_strategies()
         self._scoring_methods = self.init_scoring_methods()
         self._batch_infer = self.init_batch_infer()
@@ -51,6 +46,9 @@ class MONAILabelApp:
         self._datastore: Datastore = self.init_datastore()
 
     def init_infers(self) -> Dict[str, InferTask]:
+        return {}
+
+    def init_trainers(self) -> Dict[str, TrainTask]:
         return {}
 
     def init_strategies(self) -> Dict[str, Strategy]:
@@ -73,25 +71,24 @@ class MONAILabelApp:
     def info(self):
         """
         Provide basic information about APP.  This information is passed to client.
-        Default implementation is to pass the contents of info.yaml present in APP_DIR
         """
-        file = os.path.join(self.app_dir, "info.yaml")
-        if not os.path.exists(file):
-            raise MONAILabelException(MONAILabelError.APP_ERROR, "info.yaml NOT Found in the APP Folder")
+        meta = {
+            "name": self.name,
+            "description": self.description,
+            "version": self.version,
+            "labels": self.labels,
+            "models": {k: v.info() for k, v in self._infers.items() if v.is_valid()},
+            "trainers": {k: v.info() for k, v in self._trainers.items()},
+            "strategies": {k: v.info() for k, v in self._strategies.items()},
+            "scoring": {k: v.info() for k, v in self._scoring_methods.items()},
+            "train_stats": {k: v.stats() for k, v in self._trainers.items()},
+            "datastore": self._datastore.status(),
+        }
 
-        with open(file, "r") as fc:
-            meta = yaml.full_load(fc)
-
-        meta["models"] = {k: v.info() for k, v in self._infers.items() if v.is_valid()}
-        meta["strategies"] = {k: v.info() for k, v in self._strategies.items()}
-        meta["scoring"] = {k: v.info() for k, v in self._scoring_methods.items()}
-
-        # If labels are not provided in info.yaml, aggregate from all individual infers
-        if not meta.get("labels"):
+        # If labels are not provided, aggregate from all individual infers
+        if not self.labels:
             meta["labels"] = list(itertools.chain.from_iterable([v.get("labels", []) for v in meta["models"].values()]))
 
-        meta["train_stats"] = self.train_stats()
-        meta["datastore"] = self._datastore.status()
         return meta
 
     def infer(self, request, datastore=None):
@@ -221,13 +218,6 @@ class MONAILabelApp:
             return partition_dataset(datalist, ratios=[(1 - val_split), val_split], shuffle=shuffle)
         return datalist, []
 
-    def train_stats(self):
-        if self.train_stats_path and os.path.exists(self.train_stats_path):
-            with open(self.train_stats_path, "r") as fc:
-                return json.load(fc)
-        return {}
-
-    @abstractmethod
     def train(self, request):
         """
         Run Training.  User APP has to implement this method to run training
@@ -247,7 +237,22 @@ class MONAILabelApp:
         Returns:
             JSON containing train stats
         """
-        pass
+        model = request.get("model")
+        if model and not self._trainers.get(model):
+            raise MONAILabelException(
+                MONAILabelError.APP_INIT_ERROR,
+                f"Trainer Task is not Initialized. There is no such trainer '{model}' available",
+            )
+
+        models = [model] if model else self._trainers.keys()
+        results = []
+        for m in models:
+            task = self._trainers[m]
+            logger.info(f"Running training: {m}: {task.info()} => {request}")
+
+            result = task(request, self.datastore())
+            results.append(result)
+        return results[0] if len(results) == 1 else results
 
     def next_sample(self, request):
         """
