@@ -7,7 +7,7 @@ import tempfile
 from enum import Enum
 from typing import Dict, List, Optional
 
-from fastapi import APIRouter, File, HTTPException, UploadFile
+from fastapi import APIRouter, File, Form, HTTPException, UploadFile
 from fastapi.responses import FileResponse
 from starlette.background import BackgroundTasks
 
@@ -83,6 +83,7 @@ async def remove_image(id: str, type: RemoveType):
 async def save_label(
     background_tasks: BackgroundTasks,
     image: str,
+    params: str = Form("{}"),
     tag: str = DefaultLabelTag.FINAL.value,
     label: UploadFile = File(...),
 ):
@@ -95,7 +96,10 @@ async def save_label(
         background_tasks.add_task(remove_file, label_file)
 
     instance: MONAILabelApp = get_app_instance()
-    label_id = instance.datastore().save_label(image, label_file, tag)
+
+    params = json.loads(params) if params else {}
+
+    label_id = instance.datastore().save_label(image, label_file, tag, label_info=params)
 
     res = instance.on_save_label(image, label_id)
     res = res if res else {}
