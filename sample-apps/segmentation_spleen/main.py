@@ -35,7 +35,11 @@ class MyApp(MONAILabelApp):
         return infers
 
     def init_trainers(self):
-        return {"segmentation_spleen": MyTrain(self.model_dir, load_from_mmar(self.mmar, self.model_dir))}
+        return {
+            "segmentation_spleen": MyTrain(
+                self.model_dir, load_from_mmar(self.mmar, self.model_dir), publish_path=self.final_model
+            )
+        }
 
     def init_strategies(self):
         return {

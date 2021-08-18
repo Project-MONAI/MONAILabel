@@ -55,7 +55,11 @@ class MyApp(MONAILabelApp):
         return infers
 
     def init_trainers(self):
-        return {"segmentation": MyTrain(self.model_dir, self.network, load_path=self.pretrained_model)}
+        return {
+            "segmentation": MyTrain(
+                self.model_dir, self.network, load_path=self.pretrained_model, publish_path=self.final_model
+            )
+        }
 
     def init_strategies(self):
         return {

@@ -53,6 +53,7 @@ class BasicTrainTask(TrainTask):
         """
         :param model_dir: Base Model Dir to save the model checkpoints, events etc...
         :param description: Description for this task
+        :param config: K,V pairs to be part of user config
         :param amp: Enable AMP for training
         :param load_path: Initialize model from existing checkpoint (pre-trained)
         :param load_dict: Provide dictionary to load from checkpoint.  If None, then `net` will be loaded
@@ -235,7 +236,8 @@ class BasicTrainTask(TrainTask):
     def __call__(self, request, datastore: Datastore):
         start_ts = time.time()
         req = copy.deepcopy(self._config)
-        req.update(request)
+        req.update(copy.deepcopy(request))
+        logger.info(f"Train Request (input): {request}")
         logger.info(f"Train Request (final): {req}")
 
         name = req["name"]

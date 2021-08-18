@@ -72,7 +72,15 @@ class MyApp(MONAILabelApp):
         }
 
     def init_trainers(self):
-        return {"deepedit_spleen": MyTrain(self.model_dir, self.network, load_path=self.pretrained_model)}
+        return {
+            "deepedit_spleen": MyTrain(
+                self.model_dir,
+                self.network,
+                load_path=self.pretrained_model,
+                publish_path=self.final_model,
+                config={"pretrained": False},
+            )
+        }
 
     def init_strategies(self):
         return {

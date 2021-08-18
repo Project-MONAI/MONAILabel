@@ -128,9 +128,11 @@ class MONAILabelWidget(ScriptedLoadableModuleWidget, VTKObservationMixin):
 
         self.info = {}
         self.models = OrderedDict()
+        self.trainers = OrderedDict()
         self.config = OrderedDict()
         self.current_sample = None
         self.samples = {}
+        self.v2 = False
 
         self.dgPositiveFiducialNode = None
         self.dgPositiveFiducialNodeObservers = []
@@ -334,8 +336,9 @@ class MONAILabelWidget(ScriptedLoadableModuleWidget, VTKObservationMixin):
             # send scribbles + label to server along with selected scribbles method
             scribblesMethod = self.ui.scribblesMethodSelector.currentText
             image_file = self.current_sample["id"]
-            configs = self.getParamsFromConfig()
-            result_file, params = self.logic.infer(scribblesMethod, image_file, configs.get("infer"), scribbles_in)
+            result_file, params = self.logic.infer(
+                scribblesMethod, image_file, self.getParamsFromConfig("infer", scribblesMethod), scribbles_in
+            )
 
             # display result from server
             self.reportProgress(90)
@@ -552,8 +555,8 @@ class MONAILabelWidget(ScriptedLoadableModuleWidget, VTKObservationMixin):
             if not train_stats:
                 return
 
-            if info.get("trainers"):
-                train_stats = train_stats.get(next(iter(info.get("trainers"))), {})
+            if self.v2:
+                train_stats = next(iter(train_stats.values())) if train_stats else train_stats
 
             current = 0 if train_stats.get("total_time") else train_stats.get("epoch", 1)
             total = train_stats.get("total_epochs", 1)
@@ -620,6 +623,9 @@ class MONAILabelWidget(ScriptedLoadableModuleWidget, VTKObservationMixin):
         self.ui.activeLearningProgressBar.setToolTip(f"{current}/{total} samples are labeled")
 
         train_stats = self.info.get("train_stats", {})
+        if self.v2:
+            train_stats = next(iter(train_stats.values())) if train_stats else train_stats
+
         dice = train_stats.get("best_metric", 0)
         self.updateAccuracyBar(dice)
 
@@ -734,10 +740,93 @@ class MONAILabelWidget(ScriptedLoadableModuleWidget, VTKObservationMixin):
             selector.setToolTip("")
         selector.blockSignals(wasSelectorBlocked)
 
+    def updateConfigTableV2(self):
+        table = self.ui.configTable
+        table.clear()
+        headers = ["section", "name", "key", "value"]
+        table.setColumnCount(len(headers))
+        table.setHorizontalHeaderLabels(headers)
+
+        config = copy.deepcopy(self.info)
+        infer = config.get("models", {})
+        train = config.get("trainers", {})
+        activelearning = config.get("strategies", {})
+        scoring = config.get("scoring", {})
+
+        row_count = 0
+        config = {"infer": infer, "train": train, "activelearning": activelearning, "scoring": scoring}
+        for c in config.values():
+            row_count += sum([len(c[k].get("config", {})) for k in c.keys()])
+        # print(f"Total rows: {row_count}")
+
+        table.setRowCount(row_count)
+        colors = {
+            "infer": qt.QColor(255, 255, 255),
+            "train": qt.QColor(220, 220, 220),
+            "activelearning": qt.QColor(255, 255, 255),
+            "scoring": qt.QColor(220, 220, 220),
+        }
+
+        n = 0
+        for section in config:
+            if not config[section]:
+                continue
+
+            c_section = config[section]
+            l_section = sum([len(c_section[k].get("config", {})) for k in c_section.keys()])
+            if not l_section:
+                continue
+
+            # print(f"{n} => l_section = {l_section}")
+            if l_section:
+                table.setSpan(n, 0, l_section, 1)
+
+            for name in c_section:
+                c_name = c_section[name]
+                l_name = len(c_name.get("config", {}))
+                if not l_name:
+                    continue
+
+                # print(f"{n} => l_name = {l_name}")
+                if l_name:
+                    table.setSpan(n, 1, l_name, 1)
+
+                for key, val in c_name.get("config", {}).items():
+                    item = qt.QTableWidgetItem(section)
+                    item.setFlags(item.flags() & ~qt.Qt.ItemIsEditable)
+                    table.setItem(n, 0, item)
+
+                    item = qt.QTableWidgetItem(name)
+                    table.setItem(n, 1, item)
+                    item.setFlags(item.flags() & ~qt.Qt.ItemIsEditable)
+
+                    item = qt.QTableWidgetItem(key)
+                    table.setItem(n, 2, item)
+                    item.setFlags(item.flags() & ~qt.Qt.ItemIsEditable)
+
+                    if isinstance(val, dict) or isinstance(val, list):
+                        combo = qt.QComboBox()
+                        for m, v in enumerate(val):
+                            combo.addItem(v)
+                        combo.setCurrentIndex(0)
+                        table.setCellWidget(n, 3, combo)
+                    elif isinstance(val, bool):
+                        checkbox = qt.QCheckBox()
+                        checkbox.setChecked(val)
+                        table.setCellWidget(n, 3, checkbox)
+                    else:
+                        table.setItem(n, 3, qt.QTableWidgetItem(str(val) if val else ""))
+
+                    table.item(n, 0).setBackground(colors[section])
+                    # print(f"{n} => {section} => {name} => {key} => {val}")
+                    n = n + 1
+
     def updateConfigTable(self):
         table = self.ui.configTable
         table.clear()
-        table.setHorizontalHeaderLabels(["section", "name", "value"])
+        headers = ["section", "key", "value"]
+        table.setColumnCount(len(headers))
+        table.setHorizontalHeaderLabels(headers)
 
         config = copy.deepcopy(self.config)
         infer = config.get("infer", {})
@@ -801,7 +890,42 @@ class MONAILabelWidget(ScriptedLoadableModuleWidget, VTKObservationMixin):
         )
         self.ui.accuracyProgressBar.setToolTip(f"Accuracy: {dice:.4f}")
 
-    def getParamsFromConfig(self):
+    def getParamsFromConfigV2(self, filter, filter2):
+        mapping = {"infer": "models", "train": "trainers", "activelearning": "strategies", "scoring": "scoring"}
+        config = {}
+        for row in range(self.ui.configTable.rowCount):
+            section = str(self.ui.configTable.item(row, 0).text())
+            name = str(self.ui.configTable.item(row, 1).text())
+            key = str(self.ui.configTable.item(row, 2).text())
+            value = self.ui.configTable.item(row, 3)
+            if value is None:
+                value = self.ui.configTable.cellWidget(row, 3)
+                value = value.checked if isinstance(value, qt.QCheckBox) else value.currentText
+            else:
+                value = str(value.text())
+                v = self.info.get(mapping.get(section, ""), {}).get(name, {}).get("config", {}).get(key, {})
+                if isinstance(v, int):
+                    value = int(value)
+                elif isinstance(v, float):
+                    value = float(value)
+
+            # print(f"{section} => {name} => {key} => {value}")
+
+            if config.get(section) is None:
+                config[section] = {}
+            if config[section].get(name) is None:
+                config[section][name] = {}
+            config[section][name][key] = value
+            # print(f"row: {row}, section: {section}, name: {name}, value: {value}, type: {type(v)}")
+
+        res = config.get(filter, {})
+        res = res.get(filter2, {}) if filter2 else res
+        return res
+
+    def getParamsFromConfig(self, filter, filter2=None):
+        if self.v2:
+            return self.getParamsFromConfigV2(filter, filter2)
+
         config = {}
         for row in range(self.ui.configTable.rowCount):
             section = str(self.ui.configTable.item(row, 0).text())
@@ -823,7 +947,7 @@ class MONAILabelWidget(ScriptedLoadableModuleWidget, VTKObservationMixin):
                 config[section] = {}
             config[section][name] = value
             # print(f"row: {row}, section: {section}, name: {name}, value: {value}, type: {type(v)}")
-        return config
+        return config.get(filter, {})
 
     def onDeepGrowFiducialNodeModified(self, observer, eventid):
         logging.debug("Deepgrow Point Event!!")
@@ -961,7 +1085,10 @@ class MONAILabelWidget(ScriptedLoadableModuleWidget, VTKObservationMixin):
 
     def onClickFetchInfo(self):
         self.fetchInfo()
-        self.updateConfigTable()
+        if self.v2:
+            self.updateConfigTableV2()
+        else:
+            self.updateConfigTable()
 
         # if self._volumeNode is None:
         #    self.onNextSampleButton()
@@ -975,8 +1102,7 @@ class MONAILabelWidget(ScriptedLoadableModuleWidget, VTKObservationMixin):
             self.updateServerSettings()
             info = self.logic.info()
             self.info = info
-
-            models = info.get("models", {})
+            self.v2 = False if self.info.get("config") else True
         except:
             slicer.util.errorDisplay(
                 "Failed to fetch models from remote server. "
@@ -988,7 +1114,9 @@ class MONAILabelWidget(ScriptedLoadableModuleWidget, VTKObservationMixin):
 
         self.models.clear()
         self.config = info.get("config", {})
+
         model_count = {}
+        models = info.get("models", {})
         for k, v in models.items():
             model_type = v.get("type", "segmentation")
             model_count[model_type] = model_count.get(model_type, 0) + 1
@@ -1008,7 +1136,7 @@ class MONAILabelWidget(ScriptedLoadableModuleWidget, VTKObservationMixin):
 
         if showInfo:
             qt.QMessageBox.information(slicer.util.mainWindow(), "MONAI Label", msg)
-        logging.debug(msg)
+        logging.info(msg)
         logging.info("Time consumed by fetch info: {0:3.1f}".format(time.time() - start))
 
     def setProgressBarLabelText(self, label):
@@ -1030,8 +1158,7 @@ class MONAILabelWidget(ScriptedLoadableModuleWidget, VTKObservationMixin):
         try:
             qt.QApplication.setOverrideCursor(qt.Qt.WaitCursor)
             self.updateServerSettings()
-            configs = self.getParamsFromConfig()
-            status = self.logic.train_start(configs.get("train"))
+            status = self.logic.train_start(self.getParamsFromConfig("train"))
 
             self.ui.trainingProgressBar.setValue(1)
             self.ui.trainingProgressBar.setToolTip("Training: STARTED")
@@ -1142,13 +1269,12 @@ class MONAILabelWidget(ScriptedLoadableModuleWidget, VTKObservationMixin):
             qt.QApplication.setOverrideCursor(qt.Qt.WaitCursor)
 
             self.updateServerSettings()
-            configs = self.getParamsFromConfig()
             strategy = self.ui.strategyBox.currentText
             if not strategy:
                 slicer.util.errorDisplay("No Strategy Found/Selected\t")
                 return
 
-            sample = self.logic.next_sample(strategy, configs.get("activelearning"))
+            sample = self.logic.next_sample(strategy, self.getParamsFromConfig("activelearning", strategy))
             logging.debug(sample)
 
             if self.samples.get(sample["id"]) is not None:
@@ -1324,8 +1450,7 @@ class MONAILabelWidget(ScriptedLoadableModuleWidget, VTKObservationMixin):
             model = self.ui.segmentationModelSelector.currentText
             image_file = self.current_sample["id"]
 
-            configs = self.getParamsFromConfig()
-            result_file, params = self.logic.infer(model, image_file, configs.get("infer"))
+            result_file, params = self.logic.infer(model, image_file, self.getParamsFromConfig("infer", model))
 
             self.updateSegmentationMask(result_file, self.models[model].get("labels"))
         except:
@@ -1388,8 +1513,7 @@ class MONAILabelWidget(ScriptedLoadableModuleWidget, VTKObservationMixin):
                 "background": background,
             }
 
-            configs = self.getParamsFromConfig()
-            params.update(configs.get("infer", {}))
+            params.update(self.getParamsFromConfig("infer", model))
             result_file, params = self.logic.infer(model, image_file, params)
             logging.debug("Params from deepgrow is {}".format(params))
 

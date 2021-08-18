@@ -58,6 +58,7 @@ class MyApp(MONAILabelApp):
             "deepgrow_2d": TrainDeepgrow(
                 model_dir=self.model_dir_2d,
                 network=load_from_mmar(self.mmar_2d, self.model_dir_2d),
+                publish_path=self.final_model_2d,
                 description="Train 2D Deepgrow model",
                 dimension=2,
                 roi_size=(256, 256),

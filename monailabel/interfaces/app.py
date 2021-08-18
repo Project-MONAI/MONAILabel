@@ -248,9 +248,10 @@ class MONAILabelApp:
         results = []
         for m in models:
             task = self._trainers[m]
-            logger.info(f"Running training: {m}: {task.info()} => {request}")
+            req = request.get(m, {})
+            logger.info(f"Running training: {m}: {task.info()} => {req}")
 
-            result = task(request, self.datastore())
+            result = task(req, self.datastore())
             results.append(result)
         return results[0] if len(results) == 1 else results
 
