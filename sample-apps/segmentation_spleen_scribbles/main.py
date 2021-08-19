@@ -80,7 +80,7 @@ class MyApp(MONAILabelApp):
         # save logits
         logits = result_params.get("logits")
         if logits and self._infers[request.get("model")].type == InferType.SEGMENTATION:
-            self.datastore().save_label(image, logits, "logits")
+            self.datastore().save_label(image, logits, "logits", None)
             os.unlink(logits)
 
         result_params.pop("logits", None)

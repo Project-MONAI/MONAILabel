@@ -10,7 +10,7 @@ class EndPointScoring(BasicEndpointTestSuite):
         if not torch.cuda.is_available():
             return
 
-        model = "heart"
+        model = "left_atrium"
         images = "labeled"
         response = self.client.post(f"/batch/infer/{model}?images={images}&run_sync=true")
         assert response.status_code == 200

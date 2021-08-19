@@ -5,9 +5,9 @@ import pathlib
 import shutil
 import tempfile
 from enum import Enum
-from typing import Dict, List, Optional
+from typing import Any, Dict, List, Optional
 
-from fastapi import APIRouter, File, HTTPException, UploadFile
+from fastapi import APIRouter, File, Form, HTTPException, UploadFile
 from fastapi.responses import FileResponse
 from starlette.background import BackgroundTasks
 
@@ -45,7 +45,7 @@ async def datastore(output: Optional[ResultType] = None):
 
     logger.debug(f"output type: {output}")
     if output == ResultType.all:
-        return json.loads(str(d))
+        return d.json()
     if output == ResultType.train:
         return d.datalist()
     return d.status()
@@ -84,6 +84,7 @@ async def remove_image(id: str, type: RemoveType):
 async def save_label(
     background_tasks: BackgroundTasks,
     image: str,
+    params: str = Form("{}"),
     tag: str = DefaultLabelTag.FINAL.value,
     label: UploadFile = File(...),
 ):
@@ -96,8 +97,10 @@ async def save_label(
         background_tasks.add_task(remove_file, label_file)
 
     instance: MONAILabelApp = app_instance()
-    label_id = instance.datastore().save_label(image, label_file, tag)
+    save_params: Dict[str, Any] = json.loads(params) if params else {}
+    logger.info(f"Save Label params: {params}")
 
+    label_id = instance.datastore().save_label(image, label_file, tag, save_params)
     res = instance.on_save_label(image, label_id)
     res = res if res else {}
     res.update(

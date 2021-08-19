@@ -10,7 +10,7 @@ class EndPointActiveLearning(BasicEndpointTestSuite):
 
         # check if following fields exist in the response
         res = response.json()
-        for f in ["id", "name", "url"]:
+        for f in ["id", "name"]:
             assert res[f]
 
 
