@@ -171,13 +171,10 @@ class DICOMWebClient(DICOMwebClient):
             datasets=dataset,
         )
 
-    # workaround for Orthanc compatibility of DICOMWeb headers where 
+    # workaround for Orthanc compatibility of DICOMWeb headers where
     # Orthanc doesn't support multiple `Content-type`s
     def _http_get_application_json(
-        self,
-        url: str,
-        params: Optional[Dict[str, Any]] = None,
-        stream: bool = False
+        self, url: str, params: Optional[Dict[str, Any]] = None, stream: bool = False
     ) -> List[Dict[str, dict]]:
         """Performs a HTTP GET request that accepts "applicaton/dicom+json"
         or "application/json" media type.
@@ -198,13 +195,8 @@ class DICOMWebClient(DICOMwebClient):
             content of HTTP message body in DICOM JSON format
 
         """
-        content_type = 'application/dicom+json'
-        response = self._http_get(
-            url,
-            params=params,
-            headers={'Accept': content_type},
-            stream=stream
-        )
+        content_type = "application/dicom+json"
+        response = self._http_get(url, params=params, headers={"Accept": content_type}, stream=stream)
         if response.content:
             decoded_response = response.json()
             # All metadata resources are expected to be sent as a JSON array of

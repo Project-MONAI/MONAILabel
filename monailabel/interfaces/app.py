@@ -14,9 +14,9 @@ from monailabel.interfaces.datastore import Datastore, DefaultLabelTag
 from monailabel.interfaces.exception import MONAILabelError, MONAILabelException
 from monailabel.interfaces.tasks import BatchInferTask, InferTask, ScoringMethod, Strategy, TrainTask
 from monailabel.utils.activelearning import Random
-from monailabel.utils.datastore.local import LocalDatastore
 from monailabel.utils.datastore.dicom.cache import DICOMWebCache
 from monailabel.utils.datastore.dicom.client import DICOMWebClient
+from monailabel.utils.datastore.local import LocalDatastore
 from monailabel.utils.infer import InferDeepgrow2D, InferDeepgrow3D
 from monailabel.utils.infer.deepgrow_pipeline import InferDeepgrowPipeline
 from monailabel.utils.scoring import Dice, Sum

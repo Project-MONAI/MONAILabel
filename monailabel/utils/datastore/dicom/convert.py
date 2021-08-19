@@ -399,8 +399,9 @@ def _segslice_from_mhd(dcm_output: Dataset, seg_img: np.ndarray, input_ds: Datas
     pixel_measures_ds = Dataset()
     pixel_measures_ds.add_new("0x00280030", "DS", _safe_get(input_ds[0], "0x00280030"))  # PixelSpacing
     if input_ds[0].get("SpacingBetweenSlices", ""):
-        pixel_measures_ds.add_new("0x00180088", "DS", input_ds[0].get(
-            "SpacingBetweenSlices", ""))  # SpacingBetweenSlices
+        pixel_measures_ds.add_new(
+            "0x00180088", "DS", input_ds[0].get("SpacingBetweenSlices", "")
+        )
     pixel_measures_ds.add_new("0x00180050", "DS", _safe_get(input_ds[0], "0x00180050"))  # SliceThickness
     pixel_measures_sequence.append(pixel_measures_ds)
     shared_functional_groups_ds.add_new("0x00289110", "SQ", pixel_measures_sequence)  # PixelMeasuresSequence
