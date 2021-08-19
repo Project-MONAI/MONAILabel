@@ -45,7 +45,7 @@ async def datastore(output: Optional[ResultType] = None):
 
     logger.debug(f"output type: {output}")
     if output == ResultType.all:
-        return json.loads(str(d))
+        return d.json()
     if output == ResultType.train:
         return d.datalist()
     return d.status()

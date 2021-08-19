@@ -18,6 +18,7 @@ We are happy to talk with you about your needs for MONAILabel and your ideas for
   - Before submitting Pull Request make sure basic CI checks are passed.
     ```
     ./runtests.sh --codeformat
+    ./runtests.sh --unittests
     ```
 
 ### Signing your work

@@ -375,3 +375,6 @@ class DICOMWebCache(Datastore):
 
         if lock:
             self._lock.release()
+
+    def json(self):
+        return self._datastore.dict()

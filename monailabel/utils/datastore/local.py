@@ -622,5 +622,5 @@ class LocalDatastore(Datastore):
             "train": self.datalist(full_path=False),
         }
 
-    def __str__(self):
-        return json.dumps(self._datastore.dict())
+    def json(self):
+        return self._datastore.dict()

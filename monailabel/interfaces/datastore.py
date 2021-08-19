@@ -246,3 +246,10 @@ class Datastore(metaclass=ABCMeta):
         Return current statistics of datastore
         """
         pass
+
+    @abstractmethod
+    def json(self):
+        """
+        Return json representation of datastore
+        """
+        pass
