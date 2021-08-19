@@ -321,7 +321,7 @@ def _set_pixel_meta(dcmseg_output: Dataset, input_ds: Dataset) -> None:
     dcmseg_output.PixelRepresentation = 0
     # dicomOutput.PixelRepresentation = input_ds.PixelRepresentation
     dcmseg_output.SamplesPerPixel = 1
-    dcmseg_output.ImageType = "DERIVED\PRIMARY"
+    dcmseg_output.ImageType = "DERIVED\\PRIMARY"
     dcmseg_output.ContentLabel = "SEGMENTATION"
     dcmseg_output.ContentDescription = ""
     dcmseg_output.ContentCreatorName = ""

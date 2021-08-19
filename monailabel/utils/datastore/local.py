@@ -405,7 +405,7 @@ class LocalDatastore(Datastore):
         if not self._auto_reload:
             self.refresh()
 
-    def save_label(self, image_id: str, label_filename: str, label_tag: str, label_info: Dict[str, str] = {}) -> str:
+    def save_label(self, image_id: str, label_filename: str, label_tag: str, label_info: Dict[str, str] = None) -> str:
         """
         Save a label for the given image id and return the newly saved label's id
 
