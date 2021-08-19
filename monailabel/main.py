@@ -8,31 +8,39 @@ import sys
 
 import uvicorn
 from fastapi import FastAPI
+from fastapi.middleware import Middleware
 from fastapi.openapi.docs import get_swagger_ui_html
+from fastapi.responses import FileResponse, HTMLResponse
+from fastapi.staticfiles import StaticFiles
 from starlette.middleware.cors import CORSMiddleware
-from starlette.responses import HTMLResponse
 
 from monailabel.config import settings
 from monailabel.endpoints import activelearning, batch_infer, datastore, infer, info, logs, scoring, train
 from monailabel.utils.others.app_utils import app_instance
 from monailabel.utils.others.generic import init_log_config
 
+middleware = [
+    Middleware(
+        CORSMiddleware,
+        allow_origins=[str(origin) for origin in settings.CORS_ORIGINS] if settings.CORS_ORIGINS else ["*"],
+        allow_credentials=True,
+        allow_methods=["*"],
+        allow_headers=["*"],
+    )
+]
+
 app = FastAPI(
     title=settings.PROJECT_NAME,
     openapi_url=f"{settings.API_STR}/openapi.json",
     docs_url=None,
     redoc_url="/docs",
+    middleware=middleware,
 )
 
-# Set all CORS enabled origins
-if settings.BACKEND_CORS_ORIGINS:
-    app.add_middleware(
-        CORSMiddleware,
-        allow_origins=[str(origin) for origin in settings.BACKEND_CORS_ORIGINS],
-        allow_credentials=True,
-        allow_methods=["*"],
-        allow_headers=["*"],
-    )
+static_dir = os.path.join(os.path.dirname(os.path.realpath(__file__)), "static")
+app.mount(
+    "/static", StaticFiles(directory=os.path.join(os.path.dirname(os.path.realpath(__file__)), "static")), name="static"
+)
 
 app.include_router(info.router)
 app.include_router(infer.router)
@@ -53,6 +61,11 @@ async def custom_swagger_ui_html():
     return HTMLResponse(body)
 
 
+@app.get("/favicon.ico", include_in_schema=False)
+async def favicon():
+    return FileResponse(os.path.join(static_dir, "favicon.ico"), media_type="image/x-icon")
+
+
 @app.on_event("startup")
 async def startup_event():
     app_instance()
@@ -65,6 +78,11 @@ def run_main():
     parser_a = subparsers.add_parser("start_server", help="start server for monailabel")
     parser_a.add_argument("-a", "--app", required=True, help="App Directory")
     parser_a.add_argument("-s", "--studies", required=True, help="Studies Directory")
+    parser_a.add_argument("-u", "--username", required=False, default=None, help="Username to access DICOMWeb server")
+    parser_a.add_argument("-w", "--password", required=False, default=None, help="Password to access DICOMWeb server")
+    parser_a.add_argument("-W", "--wado_prefix", required=False, default="", help="DICOMWeb Server WADO URL prefix")
+    parser_a.add_argument("-Q", "--qido_prefix", required=False, default="", help="DICOMWeb Server QIDO URL prefix")
+    parser_a.add_argument("-S", "--stow_prefix", required=False, default="", help="DICOMWeb Server STOW URL prefix")
     parser_a.add_argument("-d", "--debug", action="store_true", help="Enable debug logs")
 
     parser_a.add_argument("-i", "--host", default="0.0.0.0", type=str, help="Server IP")
@@ -230,12 +248,17 @@ def run_app(args):
     if not os.path.exists(args.app):
         print(f"APP Directory {args.app} NOT Found")
         exit(1)
-    if not os.path.exists(args.studies):
+    if (
+        not args.studies.startswith("http://")
+        and not args.studies.startswith("https://")
+        and not os.path.exists(args.studies)
+    ):
         print(f"STUDIES Directory {args.studies} NOT Found")
         exit(1)
 
     args.app = os.path.realpath(args.app)
-    args.studies = os.path.realpath(args.studies)
+    if not args.studies.startswith("http://") and not args.studies.startswith("https://"):
+        args.studies = os.path.realpath(args.studies)
 
     for arg in vars(args):
         print("USING:: {} = {}".format(arg, getattr(args, arg)))
@@ -250,6 +273,11 @@ def run_app(args):
 
     settings.APP_DIR = args.app
     settings.STUDIES = args.studies
+    settings.DICOMWEB_USERNAME = args.username
+    settings.DICOMWEB_PASSWORD = args.password
+    settings.QIDO_PREFIX = args.qido_prefix
+    settings.WADO_PREFIX = args.wado_prefix
+    settings.STOW_PREFIX = args.stow_prefix
 
     dirs = ["model", "lib", "logs"]
     for d in dirs:

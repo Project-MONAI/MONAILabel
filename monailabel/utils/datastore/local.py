@@ -15,6 +15,7 @@ from watchdog.observers import Observer
 
 from monailabel.interfaces.datastore import Datastore, DefaultLabelTag
 from monailabel.interfaces.exception import ImageNotFoundException, LabelNotFoundException
+from monailabel.utils.others.generic import file_checksum
 
 logger = logging.getLogger(__name__)
 
@@ -230,11 +231,21 @@ class LocalDatastore(Datastore):
         :param image_id: the desired image id
         :return: image info as a list of dictionaries Dict[str, Any]
         """
+        info = {}
         for obj in self._datastore.objects:
             if obj.image.id == image_id:
-                return obj.image.info
+                info = obj.image.info
 
-        return {}
+        local_path = pathlib.Path(os.path.join(self._datastore_path, image_id))
+        info.update(
+            {
+                "checksum": file_checksum(local_path),
+                "name": obj.image.id,
+                "path": local_path,
+            }
+        )
+
+        return info
 
     def get_label(self, label_id: str) -> Any:
         """
@@ -394,7 +405,7 @@ class LocalDatastore(Datastore):
         if not self._auto_reload:
             self.refresh()
 
-    def save_label(self, image_id: str, label_filename: str, label_tag: str) -> str:
+    def save_label(self, image_id: str, label_filename: str, label_tag: str, label_info: Dict[str, str] = {}) -> str:
         """
         Save a label for the given image id and return the newly saved label's id
 

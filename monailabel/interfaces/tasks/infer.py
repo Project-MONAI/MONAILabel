@@ -241,6 +241,8 @@ class InferTask:
             )
         )
 
+        result_json["label_names"] = self.labels
+
         logger.info("Result File: {}".format(result_file_name))
         logger.info("Result Json: {}".format(result_json))
         return result_file_name, result_json
