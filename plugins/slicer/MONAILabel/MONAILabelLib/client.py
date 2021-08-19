@@ -64,12 +64,14 @@ class MONAILabelClient:
         logging.debug("Response: {}".format(response))
         return json.loads(response)
 
-    def save_label(self, image_in, label_in, tag=""):
+    def save_label(self, image_in, label_in, tag="", params={}):
         selector = "/datastore/label?image={}".format(MONAILabelUtils.urllib_quote_plus(image_in))
         if tag:
             selector += "&tag={}".format(MONAILabelUtils.urllib_quote_plus(tag))
 
-        fields = {}
+        fields = {
+            "params": json.dumps(params),
+        }
         files = {"label": label_in}
 
         status, response, _ = MONAILabelUtils.http_multipart("PUT", self._server_url, selector, fields, files)
