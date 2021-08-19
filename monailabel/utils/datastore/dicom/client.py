@@ -73,11 +73,11 @@ class DICOMWebClient(DICOMwebClient):
 
             s_tag: str = DefaultLabelTag.FINAL.value
             if s.get(ATTRB_MONAILABELTAG):
-                s_tag = s_meta[ATTRB_MONAILABELTAG]["Value"][0]
+                s_tag = s_meta[0][ATTRB_MONAILABELTAG]["Value"][0]
 
             s_info: Dict = {}
             if s.get(ATTRB_MONAILABELINFO):
-                s_info = json.loads(s_meta[ATTRB_MONAILABELINFO]["Value"][0])
+                s_info = json.loads(s_meta[0][ATTRB_MONAILABELINFO]["Value"][0])
 
             # determine if this is a DICOMSEG series
             if s[ATTRB_MODALITY]["Value"][0] == DICOMSEG_MODALITY:
