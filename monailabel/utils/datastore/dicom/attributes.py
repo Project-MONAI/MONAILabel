@@ -17,5 +17,5 @@ DICOMSEG_SOPCLASSUID = "1.2.840.10008.5.1.4.1.1.66.4"
 DICOMSEG_IMPLCLASSUID = "1.2.840.10008.5.1.4.1.1.66.4"
 
 
-def str2hex(input_string: str) -> hex:
+def str2hex(input_string: str):
     return hex(int(input_string, 16))
