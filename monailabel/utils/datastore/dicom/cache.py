@@ -223,9 +223,9 @@ class DICOMWebCache(Datastore):
 
     def get_labeled_images(self) -> List[str]:
         return [
-            data
-            for data in self._datastore.objects.values()
-            if data.info["object_type"] == "image" and not data.related_labels_keys
+            object_id
+            for object_id, obj in self._datastore.objects.items()
+            if obj.info["object_type"] == "image" and not obj.related_labels_keys
         ]
 
     def list_images(self) -> List[str]:
@@ -243,7 +243,7 @@ class DICOMWebCache(Datastore):
     def remove_label_by_tag(self, label_tag: str) -> None:
         pass
 
-    def save_label(self, image_id: str, label_filename: str, label_tag: str, label_info: Dict[str, str] = None) -> str:
+    def save_label(self, image_id: str, label_filename: str, label_tag: str, label_info: Dict[str, Any]) -> str:
         logger.info(f"Saving Label for Image: {image_id}; Tag: {label_tag}")
 
         image = self._datastore.objects[image_id]
@@ -258,13 +258,13 @@ class DICOMWebCache(Datastore):
         # convert segmentation result in `label_filename` to a numpy array
         seg_image = nibabel.load(label_filename)
 
-        label_names = None
-        if label_info:
-            label_names = [item["name"] for item in label_info.get("label_names")]
+        label_names: List[str] = []
+        if label_info and label_info.get("label_names"):
+            label_names = [item["name"] for item in label_info["label_names"]]
 
         dcmseg_dataset = ConverterUtil.to_dicom(original_dataset, seg_image.get_fdata(), label_names)
         series_id = dcmseg_dataset[str2hex(ATTRB_SERIESINSTANCEUID)].value
-        label_id = generate_key(image.patient_id, image.study_id, series_id)
+        label_id: str = generate_key(image.patient_id, image.study_id, series_id)
 
         # add label tag to DICOMSEG image in MONAI Label private tag `ATTRB_MONAILABELTAG`
         dcmseg_dataset.add_new(str2hex(ATTRB_MONAILABELTAG), "LO", label_tag)

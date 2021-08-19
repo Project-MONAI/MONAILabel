@@ -191,7 +191,7 @@ class Datastore(metaclass=ABCMeta):
         pass
 
     @abstractmethod
-    def save_label(self, image_id: str, label_filename: str, label_tag: str, label_info: Dict[str, str]) -> str:
+    def save_label(self, image_id: str, label_filename: str, label_tag: str, label_info: Dict[str, Any]) -> str:
         """
         Save a label for the given image id and return the newly saved label's id
 

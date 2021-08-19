@@ -348,7 +348,7 @@ def _segslice_from_mhd(dcm_output: Dataset, seg_img: np.ndarray, input_ds: Datas
     out_frame_counter = 0
     out_frames = Sequence()
 
-    out_pixels = None
+    out_pixels: List[np.ndarray] = []
 
     reference_instances = Sequence()
 
@@ -368,20 +368,19 @@ def _segslice_from_mhd(dcm_output: Dataset, seg_img: np.ndarray, input_ds: Datas
                     img_slice, label, out_frame_counter, _safe_get(input_ds[img_slice], 0x00200032)
                 )
             )
-            seg_slice = np.zeros((1, seg_img.shape[1], seg_img.shape[2]), dtype=np.bool)
+            seg_slice = np.zeros((1, seg_img.shape[1], seg_img.shape[2]), dtype=bool)
 
             seg_slice[np.expand_dims(seg_img[img_slice, ...] == label, 0)] = 1
 
-            if out_pixels is None:
-                out_pixels = seg_slice
-            else:
-                out_pixels = np.concatenate((out_pixels, seg_slice), axis=0)
+            out_pixels.append(seg_slice)
 
             out_frame_counter = out_frame_counter + 1
 
+    out_pixels_arr: np.ndarray = np.concatenate(out_pixels, axis=0)
+
     dcm_output.add_new(0x52009230, "SQ", out_frames)  # PerFrameFunctionalGroupsSequence
     dcm_output.NumberOfFrames = out_frame_counter
-    dcm_output.PixelData = np.packbits(np.flip(np.reshape(out_pixels.astype(np.bool), (-1, 8)), 1)).tostring()
+    dcm_output.PixelData = np.packbits(np.flip(np.reshape(out_pixels_arr.astype(bool), (-1, 8)), 1)).tostring()
 
     dcm_output.get(0x00081115)[0].add_new(0x0008114A, "SQ", reference_instances)  # ReferencedInstanceSequence
 

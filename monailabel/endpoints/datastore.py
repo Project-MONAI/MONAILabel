@@ -5,7 +5,7 @@ import pathlib
 import shutil
 import tempfile
 from enum import Enum
-from typing import Dict, List, Optional
+from typing import Any, Dict, List, Optional
 
 from fastapi import APIRouter, File, Form, HTTPException, UploadFile
 from fastapi.responses import FileResponse
@@ -97,10 +97,10 @@ async def save_label(
         background_tasks.add_task(remove_file, label_file)
 
     instance: MONAILabelApp = app_instance()
-    params = json.loads(params) if params else {}
+    save_params: Dict[str, Any] = json.loads(params) if params else {}
     logger.info(f"Save Label params: {params}")
 
-    label_id = instance.datastore().save_label(image, label_file, tag, label_info=params)
+    label_id = instance.datastore().save_label(image, label_file, tag, save_params)
     res = instance.on_save_label(image, label_id)
     res = res if res else {}
     res.update(

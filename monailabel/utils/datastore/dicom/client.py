@@ -70,10 +70,14 @@ class DICOMWebClient(DICOMwebClient):
                 study_instance_uid=s_study_id,
                 series_instance_uid=s_series_id,
             )
-            s_tag = (
-                s_meta[ATTRB_MONAILABELTAG]["Value"][0] if s.get(ATTRB_MONAILABELTAG) else DefaultLabelTag.FINAL.value
-            )
-            s_info = json.loads(s_meta[ATTRB_MONAILABELINFO]["Value"][0]) if s.get(ATTRB_MONAILABELINFO) else {}
+
+            s_tag: str = DefaultLabelTag.FINAL.value
+            if s.get(ATTRB_MONAILABELTAG):
+                s_tag = s_meta[ATTRB_MONAILABELTAG]["Value"][0]
+
+            s_info: Dict = {}
+            if s.get(ATTRB_MONAILABELINFO):
+                s_info = json.loads(s_meta[ATTRB_MONAILABELINFO]["Value"][0])
 
             # determine if this is a DICOMSEG series
             if s[ATTRB_MODALITY]["Value"][0] == DICOMSEG_MODALITY:
@@ -198,7 +202,7 @@ class DICOMWebClient(DICOMwebClient):
         content_type = "application/dicom+json"
         response = self._http_get(url, params=params, headers={"Accept": content_type}, stream=stream)
         if response.content:
-            decoded_response = response.json()
+            decoded_response: List[Dict[str, dict]] = response.json()
             # All metadata resources are expected to be sent as a JSON array of
             # DICOM data sets. However, some origin servers may incorrectly
             # sent an individual data set.
