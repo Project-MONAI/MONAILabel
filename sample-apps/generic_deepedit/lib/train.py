@@ -1,5 +1,6 @@
 import logging
 
+import torch
 from monai.apps.deepgrow.interaction import Interaction
 from monai.apps.deepgrow.transforms import (
     AddGuidanceSignald,
@@ -35,20 +36,29 @@ logger = logging.getLogger(__name__)
 class MyTrain(BasicTrainTask):
     def __init__(
         self,
-        output_dir,
-        train_datalist,
-        val_datalist,
+        model_dir,
         network,
-        model_size=(128, 128, 128),
+        description="Train DeepEdit model for generic",
+        model_size=(256, 256, 128),
         max_train_interactions=20,
         max_val_interactions=10,
         **kwargs,
     ):
-        super().__init__(output_dir, train_datalist, val_datalist, network, **kwargs)
-
+        self._network = network
         self.model_size = model_size
         self.max_train_interactions = max_train_interactions
         self.max_val_interactions = max_val_interactions
+
+        super().__init__(model_dir, description, **kwargs)
+
+    def network(self):
+        return self._network
+
+    def optimizer(self):
+        return torch.optim.Adam(self._network.parameters(), lr=0.0001)
+
+    def loss_function(self):
+        return DiceLoss(sigmoid=True, squared_pred=True)
 
     def get_click_transforms(self):
         return [
@@ -60,9 +70,6 @@ class MyTrain(BasicTrainTask):
             DiscardAddGuidanced(image="image", probability=0.6),
             ToTensord(keys=("image", "label")),
         ]
-
-    def loss_function(self):
-        return DiceLoss(sigmoid=True, squared_pred=True)
 
     def train_pre_transforms(self):
         return [
