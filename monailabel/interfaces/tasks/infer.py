@@ -22,7 +22,7 @@ class InferType:
         CLASSIFICATION -          Classification Model
         DEEPGROW -                Deepgrow Interactive Model
         DEEPEDIT -                DeepEdit Interactive Model
-        SCRIBBLE -                Scribble Model
+        SCRIBBLES -               Scribbles Model
         OTHERS -                  Other Model Type
     """
 
@@ -30,9 +30,9 @@ class InferType:
     CLASSIFICATION = "classification"
     DEEPGROW = "deepgrow"
     DEEPEDIT = "deepedit"
-    SCRIBBLE = "scribble"
+    SCRIBBLES = "scribbles"
     OTHERS = "others"
-    KNOWN_TYPES = [SEGMENTATION, CLASSIFICATION, DEEPGROW, DEEPEDIT, SCRIBBLE, OTHERS]
+    KNOWN_TYPES = [SEGMENTATION, CLASSIFICATION, DEEPGROW, DEEPEDIT, SCRIBBLES, OTHERS]
 
 
 class InferTask:
@@ -52,6 +52,7 @@ class InferTask:
         input_key="image",
         output_label_key="pred",
         output_json_key="result",
+        config=None,
     ):
         """
         :param path: Model File Path. Supports multiple paths to support versions (Last item will be picked as latest)
@@ -63,6 +64,7 @@ class InferTask:
         :param input_key: Input key for running inference
         :param output_label_key: Output key for storing result/label of inference
         :param output_json_key: Output key for storing result/label of inference
+        :param config: K,V pairs to be part of user config
         """
         self.path = path
         self.network = network
@@ -76,6 +78,14 @@ class InferTask:
         self.output_json_key = output_json_key
 
         self._networks: Dict = {}
+        self._config = {
+            # "device": "cuda",
+            # "result_extension": None,
+            # "result_dtype": None,
+            # "result_compress": False
+        }
+        if config:
+            self._config.update(config)
 
     def info(self):
         return {
@@ -83,10 +93,14 @@ class InferTask:
             "labels": self.labels,
             "dimension": self.dimension,
             "description": self.description,
+            "config": self.config(),
         }
 
+    def config(self):
+        return self._config
+
     def is_valid(self):
-        if self.network or self.type == InferType.SCRIBBLE:
+        if self.network or self.type == InferType.SCRIBBLES:
             return True
 
         paths = [self.path] if isinstance(self.path, str) else self.path
@@ -185,10 +199,13 @@ class InferTask:
         Returns: Label (File Path) and Result Params (JSON)
         """
         begin = time.time()
+        req = copy.deepcopy(self._config)
+        req.update(copy.deepcopy(request))
+        logger.info(f"Infer Request (final): {req}")
 
-        data = copy.deepcopy(request)
-        data.update({"image_path": request.get("image")})
-        device = request.get("device", "cuda")
+        data = copy.deepcopy(req)
+        data.update({"image_path": req.get("image")})
+        device = req.get("device", "cuda")
 
         start = time.time()
         pre_transforms = self.pre_transforms()
@@ -260,7 +277,7 @@ class InferTask:
         path = self.get_path()
         logger.info("Infer model path: {}".format(path))
         if not path and not self.network:
-            if self.type == InferType.SCRIBBLE:
+            if self.type == InferType.SCRIBBLES:
                 return None
 
             raise MONAILabelException(
@@ -366,7 +383,7 @@ class InferTask:
             logger.debug("******************************************************************************")
 
     @staticmethod
-    def _shape_info(data, keys=("image", "label", "pred", "model")):
+    def _shape_info(data, keys=("image", "label", "logits", "pred", "model")):
         shape_info = []
         for key in keys:
             val = data.get(key)

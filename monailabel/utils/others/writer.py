@@ -73,8 +73,8 @@ class Writer:
         file_ext = "".join(pathlib.Path(data["image_path"]).suffixes)
         dtype = data.get(self.key_dtype, None)
         compress = data.get(self.key_compress, False)
-        file_ext = data.get(self.key_extension, file_ext)
-        logger.debug("Result ext: {}".format(file_ext))
+        file_ext = data.get(self.key_extension) if data.get(self.key_extension) else file_ext
+        logger.info("Result ext: {}".format(file_ext))
 
         image_np = data[self.label]
         meta_dict = data.get(f"{self.ref_image}_{self.meta_key_postfix}")
