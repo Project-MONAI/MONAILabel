@@ -260,7 +260,8 @@ class DICOMWebCache(Datastore):
         # convert segmentation result in `label_filename` to a numpy array
         seg_image = nibabel.load(label_filename)
 
-        dcmseg_dataset = ConverterUtil.to_dicom(original_dataset, seg_image.get_fdata(), label_info.get("label_names"))
+        label_names = [item["name"] for item in label_info.get("label_names")]
+        dcmseg_dataset = ConverterUtil.to_dicom(original_dataset, seg_image.get_fdata(), label_names)
         series_id = dcmseg_dataset[str2hex(ATTRB_SERIESINSTANCEUID)].value
         label_id = generate_key(image.patient_id, image.study_id, series_id)
 
