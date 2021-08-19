@@ -25,6 +25,7 @@ from monai.transforms import (
     ToTensord,
 )
 
+from monailabel.deepedit.custom_tensorboard_handlers import TensorBoardImageHandler
 from monailabel.deepedit.transforms import ClickRatioAddRandomGuidanced, DiscardAddGuidanced
 from monailabel.utils.train.basic_train import BasicTrainTask
 
@@ -116,3 +117,8 @@ class MyTrain(BasicTrainTask):
             key_probability="probability",
             train=False,
         )
+
+    def train_handlers(self):
+        handlers = super().train_handlers()
+        handlers.append(TensorBoardImageHandler(log_dir=self.events_dir, epoch_level=True))
+        return handlers
