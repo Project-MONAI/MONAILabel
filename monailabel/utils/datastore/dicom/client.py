@@ -2,7 +2,7 @@ import json
 import logging
 from multiprocessing import Lock
 from multiprocessing.pool import ThreadPool
-from typing import Callable, Dict, List, Optional
+from typing import Any, Callable, Dict, List, Optional
 
 import pydicom
 import requests
@@ -170,3 +170,47 @@ class DICOMWebClient(DICOMwebClient):
             study_instance_uid=image_object.study_id,
             datasets=dataset,
         )
+
+    # workaround for Orthanc compatibility of DICOMWeb headers where 
+    # Orthanc doesn't support multiple `Content-type`s
+    def _http_get_application_json(
+        self,
+        url: str,
+        params: Optional[Dict[str, Any]] = None,
+        stream: bool = False
+    ) -> List[Dict[str, dict]]:
+        """Performs a HTTP GET request that accepts "applicaton/dicom+json"
+        or "application/json" media type.
+
+        Parameters
+        ----------
+        url: str
+            unique resource locator
+        params: Dict[str], optional
+            query parameters
+        stream: bool, optional
+            whether data should be streamed (i.e., requested using chunked
+            transfer encoding)
+
+        Returns
+        -------
+        List[str, dict]
+            content of HTTP message body in DICOM JSON format
+
+        """
+        content_type = 'application/dicom+json'
+        response = self._http_get(
+            url,
+            params=params,
+            headers={'Accept': content_type},
+            stream=stream
+        )
+        if response.content:
+            decoded_response = response.json()
+            # All metadata resources are expected to be sent as a JSON array of
+            # DICOM data sets. However, some origin servers may incorrectly
+            # sent an individual data set.
+            if isinstance(decoded_response, dict):
+                return [decoded_response]
+            return decoded_response
+        return []
