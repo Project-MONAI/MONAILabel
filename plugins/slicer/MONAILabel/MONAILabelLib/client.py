@@ -1,3 +1,14 @@
+# Copyright 2020 - 2021 MONAI Consortium
+# Licensed under the Apache License, Version 2.0 (the "License");
+# you may not use this file except in compliance with the License.
+# You may obtain a copy of the License at
+#     http://www.apache.org/licenses/LICENSE-2.0
+# Unless required by applicable law or agreed to in writing, software
+# distributed under the License is distributed on an "AS IS" BASIS,
+# WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+# See the License for the specific language governing permissions and
+# limitations under the License.
+
 import cgi
 import http.client
 import json
@@ -64,12 +75,14 @@ class MONAILabelClient:
         logging.debug("Response: {}".format(response))
         return json.loads(response)
 
-    def save_label(self, image_in, label_in, tag=""):
+    def save_label(self, image_in, label_in, tag="", params={}):
         selector = "/datastore/label?image={}".format(MONAILabelUtils.urllib_quote_plus(image_in))
         if tag:
             selector += "&tag={}".format(MONAILabelUtils.urllib_quote_plus(tag))
 
-        fields = {}
+        fields = {
+            "params": json.dumps(params),
+        }
         files = {"label": label_in}
 
         status, response, _ = MONAILabelUtils.http_multipart("PUT", self._server_url, selector, fields, files)

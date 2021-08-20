@@ -304,7 +304,7 @@ if [ $doIsortFormat = true ]; then
   if ! is_pip_installed isort; then
     install_deps
   fi
-  ${cmdPrefix}isort --version
+  ${cmdPrefix}${PY_EXE} -m isort --version
 
   if [ $doIsortFix = true ]; then
     ${cmdPrefix}${PY_EXE} -m isort -l ${LINE_LENGTH} --profile black "$(pwd)"
