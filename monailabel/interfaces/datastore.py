@@ -1,3 +1,14 @@
+# Copyright 2020 - 2021 MONAI Consortium
+# Licensed under the Apache License, Version 2.0 (the "License");
+# you may not use this file except in compliance with the License.
+# You may obtain a copy of the License at
+#     http://www.apache.org/licenses/LICENSE-2.0
+# Unless required by applicable law or agreed to in writing, software
+# distributed under the License is distributed on an "AS IS" BASIS,
+# WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+# See the License for the specific language governing permissions and
+# limitations under the License.
+
 from abc import ABCMeta, abstractmethod
 from enum import Enum
 from typing import Any, Dict, List
@@ -191,7 +202,7 @@ class Datastore(metaclass=ABCMeta):
         pass
 
     @abstractmethod
-    def save_label(self, image_id: str, label_filename: str, label_tag: str) -> str:
+    def save_label(self, image_id: str, label_filename: str, label_tag: str, label_info: Dict[str, Any]) -> str:
         """
         Save a label for the given image id and return the newly saved label's id
 
@@ -244,5 +255,12 @@ class Datastore(metaclass=ABCMeta):
     def status(self) -> Dict[str, Any]:
         """
         Return current statistics of datastore
+        """
+        pass
+
+    @abstractmethod
+    def json(self):
+        """
+        Return json representation of datastore
         """
         pass

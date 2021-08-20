@@ -1,3 +1,14 @@
+# Copyright 2020 - 2021 MONAI Consortium
+# Licensed under the Apache License, Version 2.0 (the "License");
+# you may not use this file except in compliance with the License.
+# You may obtain a copy of the License at
+#     http://www.apache.org/licenses/LICENSE-2.0
+# Unless required by applicable law or agreed to in writing, software
+# distributed under the License is distributed on an "AS IS" BASIS,
+# WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+# See the License for the specific language governing permissions and
+# limitations under the License.
+
 import copy
 import json
 import logging
@@ -1397,6 +1408,15 @@ class MONAILabelWidget(ScriptedLoadableModuleWidget, VTKObservationMixin):
                 segmentationNode, labelmapVolumeNode, self._volumeNode
             )
 
+            segmentation = segmentationNode.GetSegmentation()
+            totalSegments = segmentation.GetNumberOfSegments()
+            segmentIds = [segmentation.GetNthSegmentID(i) for i in range(totalSegments)]
+
+            label_names = []
+            for segmentId in segmentIds:
+                segment = segmentation.GetSegment(segmentId)
+                label_names.append({"name": segment.GetName()})
+
             label_in = tempfile.NamedTemporaryFile(suffix=".nii.gz", dir=self.tmpdir).name
             self.reportProgress(5)
 
@@ -1404,7 +1424,7 @@ class MONAILabelWidget(ScriptedLoadableModuleWidget, VTKObservationMixin):
             self.reportProgress(30)
 
             self.updateServerSettings()
-            result = self.logic.save_label(self.current_sample["id"], label_in)
+            result = self.logic.save_label(self.current_sample["id"], label_in, {"label_names": label_names})
             self.fetchInfo()
 
             if slicer.util.settingsValue("MONAILabel/autoUpdateModel", True, converter=slicer.util.toBool):
@@ -1722,8 +1742,8 @@ class MONAILabelLogic(ScriptedLoadableModuleLogic):
     def upload_image(self, image_in, image_id=None):
         return MONAILabelClient(self.server_url, self.tmpdir).upload_image(image_in, image_id)
 
-    def save_label(self, image_in, label_in):
-        return MONAILabelClient(self.server_url, self.tmpdir).save_label(image_in, label_in)
+    def save_label(self, image_in, label_in, params):
+        return MONAILabelClient(self.server_url, self.tmpdir).save_label(image_in, label_in, params=params)
 
     def infer(self, model, image_in, params={}, label_in=None):
         logging.debug("Preparing input data for segmentation")

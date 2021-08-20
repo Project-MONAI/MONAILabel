@@ -1,14 +1,21 @@
-import base64
+# Copyright 2020 - 2021 MONAI Consortium
+# Licensed under the Apache License, Version 2.0 (the "License");
+# you may not use this file except in compliance with the License.
+# You may obtain a copy of the License at
+#     http://www.apache.org/licenses/LICENSE-2.0
+# Unless required by applicable law or agreed to in writing, software
+# distributed under the License is distributed on an "AS IS" BASIS,
+# WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+# See the License for the specific language governing permissions and
+# limitations under the License.
+
 import logging
-import os
 from typing import Dict, Optional
 
 from fastapi import APIRouter
 
-from monailabel.config import settings
 from monailabel.interfaces import MONAILabelApp
 from monailabel.utils.others.app_utils import app_instance
-from monailabel.utils.others.generic import file_checksum
 
 logger = logging.getLogger(__name__)
 
@@ -34,25 +41,13 @@ async def sample(strategy: str, params: Optional[dict] = None, checksum: Optiona
 
     logger.info(f"Active Learning Request: {request}")
     result = instance.next_sample(request)
-    image_path = result["path"]
+    if not result:
+        return {}
+
     image_id = result["id"]
-    name = os.path.basename(image_path)
-
-    digest = None
-    if checksum:  # It's always costly operation (some clients to access directly from shared file-system)
-        digest = cached_digest.get(image_path)
-        digest = digest if digest is not None else file_checksum(image_path)
-        digest = f"SHA256:{digest}"
-
-    encoded = base64.urlsafe_b64encode(image_path.encode("utf-8")).decode("utf-8")
-    encoded = encoded.rstrip("=")
-    url = "/download/{}".format(encoded)
+    image_info = instance.datastore().get_image_info(image_id)
 
     return {
-        "name": name,
         "id": image_id,
-        "path": image_path,
-        "studies": settings.STUDIES,
-        "url": url,
-        "checksum": digest,
+        **image_info,
     }
