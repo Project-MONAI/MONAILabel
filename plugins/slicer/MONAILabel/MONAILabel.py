@@ -993,7 +993,7 @@ class MONAILabelWidget(ScriptedLoadableModuleWidget, VTKObservationMixin):
             p_Ijk = RasToIjkMatrix.MultiplyDoublePoint(p_Ras)
             p_Ijk = [round(i) for i in p_Ijk]
 
-            logging.debug("RAS: {}; WORLD: {}; IJK: ".format(coord, world, p_Ijk))
+            logging.debug("RAS: {}; WORLD: {}; IJK: {}".format(coord, world, p_Ijk))
             point_set.append(p_Ijk[0:3])
 
         logging.info("Current Fiducials-Points: {}".format(point_set))
@@ -1014,7 +1014,7 @@ class MONAILabelWidget(ScriptedLoadableModuleWidget, VTKObservationMixin):
         p_Ijk = RasToIjkMatrix.MultiplyDoublePoint(p_Ras)
         p_Ijk = [round(i) for i in p_Ijk]
 
-        logging.debug("RAS: {}; WORLD: {}; IJK: ".format(coord, world, p_Ijk))
+        logging.debug("RAS: {}; WORLD: {}; IJK: {}".format(coord, world, p_Ijk))
         return p_Ijk[0:3]
 
     def onEditFiducialPoints(self, fiducialNode, tagName):

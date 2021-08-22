@@ -136,7 +136,7 @@ class MyTrain(BasicTrainTask):
             train=False,
         )
 
-    def train_handlers(self):
-        handlers = super().train_handlers()
-        handlers.append(TensorBoardImageHandler(log_dir=self.events_dir, epoch_level=True))
+    def train_handlers(self, output_dir, events_dir, evaluator):
+        handlers = super().train_handlers(output_dir, events_dir, evaluator)
+        handlers.append(TensorBoardImageHandler(log_dir=events_dir, epoch_level=True))
         return handlers
