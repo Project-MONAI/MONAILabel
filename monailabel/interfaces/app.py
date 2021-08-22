@@ -51,13 +51,13 @@ class MONAILabelApp:
         self.version = version
         self.labels = labels
 
+        self._datastore: Datastore = self.init_datastore()
+
         self._infers = self.init_infers()
         self._trainers = self.init_trainers()
         self._strategies = self.init_strategies()
         self._scoring_methods = self.init_scoring_methods()
         self._batch_infer = self.init_batch_infer()
-
-        self._datastore: Datastore = self.init_datastore()
 
     def init_infers(self) -> Dict[str, InferTask]:
         return {}
