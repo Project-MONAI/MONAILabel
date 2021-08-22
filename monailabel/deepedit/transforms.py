@@ -14,7 +14,6 @@ import logging
 from typing import Dict, Hashable, Mapping, Tuple
 
 import numpy as np
-
 from monai.config import KeysCollection
 from monai.transforms.transform import MapTransform, Randomizable, Transform
 
