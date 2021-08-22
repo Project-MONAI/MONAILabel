@@ -64,7 +64,7 @@ class Segmentation(InferTask):
             Orientationd(keys="image", axcodes="RAS"),
             NormalizeIntensityd(keys="image"),
             Resized(keys="image", spatial_size=(256, 256, 128), mode="area"),
-            DiscardAddGuidanced(image="image"),
+            DiscardAddGuidanced(keys="image"),
             ToTensord(keys="image"),
         ]
 
