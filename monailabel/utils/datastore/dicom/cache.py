@@ -17,7 +17,6 @@ import os
 import pathlib
 import shutil
 import time
-from pathlib import Path
 from typing import Any, Dict, List
 
 import nibabel
@@ -63,7 +62,7 @@ class DICOMWebCache(Datastore):
         self._dicomweb_client = dicomweb_client
         dicomweb_uri = self._dicomweb_client.base_url
         self._datastore_path = os.path.join(
-            Path.home(),
+            pathlib.Path.home(),
             ".cache",
             "monailabel",
             hashlib.md5(dicomweb_uri.encode("utf-8")).hexdigest(),
