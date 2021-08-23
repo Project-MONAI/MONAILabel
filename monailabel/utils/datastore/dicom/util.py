@@ -54,7 +54,7 @@ def binary_to_image(reference_image, label, dtype=np.uint16, file_ext=".nii.gz",
     return output_file
 
 
-def nifti_to_dicom_seg(series_dir, label, label_info, ext="*"):
+def nifti_to_dicom_seg(series_dir, label, label_info, file_ext="*"):
     label_np, meta_dict = LoadImage()(label)
     unique_labels = np.unique(label_np.flatten()).astype(np.int)
     unique_labels = unique_labels[unique_labels != 0]
@@ -115,7 +115,7 @@ def nifti_to_dicom_seg(series_dir, label, label_info, ext="*"):
 
     # Read source Images
     series_dir = pathlib.Path(series_dir)
-    image_files = series_dir.glob(ext)
+    image_files = series_dir.glob(file_ext)
     image_datasets = [dcmread(str(f), stop_before_pixels=True) for f in image_files]
     logger.info(f"Total Source Images: {len(image_datasets)}")
 
