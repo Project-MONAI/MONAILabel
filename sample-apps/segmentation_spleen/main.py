@@ -14,21 +14,17 @@ import logging
 import os
 import pathlib
 import tempfile
-import time
-from typing import Any, Dict, List, Optional
+from typing import Any, Dict
 
 import yaml
-from dicomweb_client import DICOMwebClient
 from lib import MyInfer, MyTrain
 from lib.activelearning import MyStrategy, Tta
 from monai.apps import load_from_mmar
 
 from monailabel.interfaces import Datastore, MONAILabelApp
 from monailabel.utils.activelearning import Random
-from monailabel.utils.datastore.dicom.attributes import ATTRB_SOPINSTANCEUID
-from monailabel.utils.datastore.dicom.util import binary_to_image, nifti_to_dicom_seg
+from monailabel.utils.datastore.dicom.util import binary_to_image, get_scu, nifti_to_dicom_seg, score_scu
 from monailabel.utils.datastore.local import LocalDatastore
-from monailabel.utils.others.generic import run_command
 from monailabel.utils.scoring import Dice, Sum
 from monailabel.utils.scoring.tta_scoring import TtaScoring
 
@@ -139,54 +135,13 @@ class MockStorage(LocalDatastore):
         dicom = json.loads(image_id)
         res = super().save_label(self.from_dicom(dicom), label_filename, label_tag, label_info)
 
-        # Create DICOM Seg and Upload to Orthanc
         with tempfile.TemporaryDirectory() as series_dir:
-            download_series(dicom["StudyInstanceUID"], dicom["SeriesInstanceUID"], save_dir=series_dir)
+            get_scu(dicom["SeriesInstanceUID"], series_dir, query_level="SERIES")
             label_file = nifti_to_dicom_seg(series_dir, label_filename, label_info)
 
-            run_command("curl", ["-X", "POST", "http://localhost:8042/instances", "--data-binary", f"@{label_file}"])
+            score_scu(label_file)
             os.unlink(label_file)
 
         if output_file:
             os.unlink(output_file)
         return res
-
-
-class MyClient(DICOMwebClient):
-    def _http_get_application_json(
-        self, url: str, params: Optional[Dict[str, Any]] = None, stream: bool = False
-    ) -> List[Dict[str, dict]]:
-        content_type = "application/dicom+json"
-        response = self._http_get(url, params=params, headers={"Accept": content_type}, stream=stream)
-        if response.content:
-            decoded_response: List[Dict[str, dict]] = response.json()
-            if isinstance(decoded_response, dict):
-                return [decoded_response]
-            return decoded_response
-        return []
-
-
-def download_instance(study_id, series_id, instance_id, save_dir):
-    file_name = os.path.join(save_dir, f"{instance_id}.dcm")
-    client = MyClient(url="http://127.0.0.1:8042/dicom-web")
-    instance = client.retrieve_instance(
-        study_id,
-        series_id,
-        instance_id,
-    )
-    instance.save_as(file_name)
-
-
-def download_series(study_id, series_id, save_dir):
-    start = time.time()
-
-    os.makedirs(save_dir, exist_ok=True)
-    client = MyClient(url="http://127.0.0.1:8042/dicom-web")
-    series_meta = client.retrieve_series_metadata(study_id, series_id)
-
-    for idx, meta in enumerate(series_meta):
-        instance_id = meta[ATTRB_SOPINSTANCEUID]["Value"][0]
-        print(f"{idx} => {instance_id}")
-        download_instance(study_id, series_id, instance_id, save_dir)
-
-    logger.info(f"Time to download: {time.time() - start} (sec)")
