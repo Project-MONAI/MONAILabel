@@ -73,7 +73,7 @@ def nifti_to_dicom_seg(series_dir, label, label_info):
         info = label_info[i] if label_info and i < len(label_info) else {}
         name = info.get("name", "unknown")
         description = info.get("description", "Unknown")
-        rgb = list(info.get("rgb", GENERIC_ANATOMY_COLORS.get(name, (255, 0, 0))))
+        rgb = list(info.get("color", GENERIC_ANATOMY_COLORS.get(name, (255, 0, 0))))[0:3]
 
         logger.info(f"{i} => {idx} => {name} => Mask: {mask.GetSize()}")
 

@@ -3,6 +3,7 @@ import React from 'react';
 import './OptionTable.styl';
 import BaseTab from './BaseTab';
 import cornerstoneTools from 'cornerstone-tools';
+import { flattenLabelmaps, getLabelMaps } from '../../utils/SegmentationUtils';
 
 export default class OptionTable extends BaseTab {
   constructor(props) {
@@ -74,11 +75,16 @@ export default class OptionTable extends BaseTab {
       console.log(metadata);
       console.log(labelmap3D.buffer);
 
+      const segments = flattenLabelmaps(
+        getLabelMaps(this.props.viewConstants.element)
+      );
+      console.log(segments);
+
       const image = this.props.viewConstants.monaiLabelImageId;
-      const params = metadata;
       const label = new Blob([labelmap3D.buffer], {
         type: 'application/octet-stream',
       });
+      const params = segments;
 
       const response = await this.props
         .client()

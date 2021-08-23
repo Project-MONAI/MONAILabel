@@ -13,6 +13,7 @@ import json
 import logging
 import os
 import pathlib
+import tempfile
 import time
 from typing import Any, Dict, List, Optional
 
@@ -25,8 +26,9 @@ from monai.apps import load_from_mmar
 from monailabel.interfaces import Datastore, MONAILabelApp
 from monailabel.utils.activelearning import Random
 from monailabel.utils.datastore.dicom.attributes import ATTRB_SOPINSTANCEUID
-from monailabel.utils.datastore.dicom.util import binary_to_image
+from monailabel.utils.datastore.dicom.util import binary_to_image, nifti_to_dicom_seg
 from monailabel.utils.datastore.local import LocalDatastore
+from monailabel.utils.others.generic import run_command
 from monailabel.utils.scoring import Dice, Sum
 from monailabel.utils.scoring.tta_scoring import TtaScoring
 
@@ -134,7 +136,17 @@ class MockStorage(LocalDatastore):
             label_filename = output_file
 
         logger.info(f"Label File: {output_file}")
-        res = super().save_label(self.from_dicom(json.loads(image_id)), label_filename, label_tag, label_info)
+        dicom = json.loads(image_id)
+        res = super().save_label(self.from_dicom(dicom), label_filename, label_tag, label_info)
+
+        # Create DICOM Seg and Upload to Orthanc
+        with tempfile.TemporaryDirectory() as series_dir:
+            download_series(dicom["StudyInstanceUID"], dicom["SeriesInstanceUID"], save_dir=series_dir)
+            label_file = nifti_to_dicom_seg(series_dir, label_filename, label_info)
+
+            run_command("curl", ["-X", "POST", "http://localhost:8042/instances", "--data-binary", f"@{label_file}"])
+            os.unlink(label_file)
+
         if output_file:
             os.unlink(output_file)
         return res

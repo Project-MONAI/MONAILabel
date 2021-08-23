@@ -80,6 +80,8 @@ function getLabelMaps(element) {
           segmentIndex: meta.SegmentNumber,
           color: color,
           meta: meta,
+          name: meta.SegmentLabel,
+          description: meta.SegmentDescription,
         };
         segments.push(segmentItem);
       }
