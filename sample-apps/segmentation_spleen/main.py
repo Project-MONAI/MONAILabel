@@ -12,15 +12,22 @@
 import json
 import logging
 import os
-from json import JSONDecodeError
+import pathlib
+import time
+from typing import Any, Dict, List, Optional
 
 import yaml
+from dicomweb_client import DICOMwebClient
 from lib import MyInfer, MyTrain
 from lib.activelearning import MyStrategy, Tta
 from monai.apps import load_from_mmar
 
-from monailabel.interfaces import MONAILabelApp
+from monailabel.interfaces import Datastore, MONAILabelApp
 from monailabel.utils.activelearning import Random
+from monailabel.utils.datastore.dicom.attributes import ATTRB_SOPINSTANCEUID
+from monailabel.utils.datastore.dicom.util import binary_to_image
+from monailabel.utils.datastore.local import LocalDatastore
+from monailabel.utils.scoring import Dice, Sum
 from monailabel.utils.scoring.tta_scoring import TtaScoring
 
 logger = logging.getLogger(__name__)
@@ -66,31 +73,108 @@ class MyApp(MONAILabelApp):
 
     def init_scoring_methods(self):
         return {
+            "sum": Sum(),
+            "dice": Dice(),
             "tta_scoring": TtaScoring(),
         }
 
-    # TODO:: This will be removed once DICOM Web support is added through datastore
-    def infer(self, request, datastore=None):
-        image = request["image"]
-        try:
-            dicom = json.loads(image)
-            logger.info(f"Temporary Hack:: Looking mapped image for: {dicom}")
-            with open(os.path.join(os.path.dirname(__file__), "dicom.yaml"), "r") as fc:
-                meta = yaml.full_load(fc)["series"]
-                request["image"] = meta[dicom["SeriesInstanceUID"]]
-                logger.info(f"Using Image: {request['image']}")
-        except JSONDecodeError:
-            pass
-        return super().infer(request, datastore)
+    def init_datastore(self) -> Datastore:
+        return MockStorage(self.studies, auto_reload=True)
 
-    # TODO:: This will be removed once DICOM Web support is added through datastore
-    def next_sample(self, request):
-        res = super().next_sample(request)
-        try:
-            with open(os.path.join(os.path.dirname(__file__), "dicom.yaml"), "r") as fc:
-                meta = {v: k for k, v in yaml.full_load(fc)["studies"].items()}
-                res["id"] = meta[res["id"]]
-                logger.info(f"Using studies: {res['id']}")
-        except JSONDecodeError:
-            pass
+
+# TODO:: This will be removed once DICOM Web support is added through datastore
+class MockStorage(LocalDatastore):
+    @staticmethod
+    def from_dicom(dicom):
+        logger.info(f"Temporary Hack:: Looking mapped image for: {dicom}")
+        with open(os.path.join(os.path.dirname(__file__), "dicom.yaml"), "r") as fc:
+            meta = yaml.full_load(fc)
+            series_id = dicom["SeriesInstanceUID"]
+            image_id = meta["series"][series_id]
+            logger.info(f"Image Series: {series_id} => {image_id}")
+            return image_id
+
+    @staticmethod
+    def to_dicom(image_id):
+        logger.info(f"Temporary Hack:: Looking dicom info: {image_id}")
+        with open(os.path.join(os.path.dirname(__file__), "dicom.yaml"), "r") as fc:
+            meta = yaml.full_load(fc)
+            return {
+                "StudyInstanceUID": {v: k for k, v in meta.items()}[image_id],
+                "SeriesInstanceUID": {v: k for k, v in meta.items()}[image_id],
+            }
+
+    def get_image_uri(self, image) -> str:
+        image_id = self.from_dicom(json.loads(image))
+        image_uri = super().get_image_uri(image_id)
+
+        logger.info(f"Image ID : {image_id} => {image_uri}")
+        return image_uri
+
+    def get_image_info(self, image_id: str) -> Dict[str, Any]:
+        res = super().get_image_info(image_id)
+        res.update(self.to_dicom(image_id))
+
+        logger.info(f"Image {image_id} => {res}")
         return res
+
+    def save_label(self, image_id: str, label_filename: str, label_tag: str, label_info: Dict[str, Any]) -> str:
+        logger.info(f"Input - Image Id: {image_id}")
+        logger.info(f"Input - Label File: {label_filename}")
+        logger.info(f"Input - Label Tag: {label_tag}")
+        logger.info(f"Input - Label Info: {label_info}")
+
+        image_uri = self.get_image_uri(image_id)
+        logger.info(f"Image {image_uri}; Label: {label_filename}")
+
+        label_ext = "".join(pathlib.Path(label_filename).suffixes)
+        output_file = None
+        if label_ext == ".bin":
+            output_file = binary_to_image(image_uri, label_filename)
+            label_filename = output_file
+
+        logger.info(f"Label File: {output_file}")
+        res = super().save_label(self.from_dicom(json.loads(image_id)), label_filename, label_tag, label_info)
+        if output_file:
+            os.unlink(output_file)
+        return res
+
+
+class MyClient(DICOMwebClient):
+    def _http_get_application_json(
+        self, url: str, params: Optional[Dict[str, Any]] = None, stream: bool = False
+    ) -> List[Dict[str, dict]]:
+        content_type = "application/dicom+json"
+        response = self._http_get(url, params=params, headers={"Accept": content_type}, stream=stream)
+        if response.content:
+            decoded_response: List[Dict[str, dict]] = response.json()
+            if isinstance(decoded_response, dict):
+                return [decoded_response]
+            return decoded_response
+        return []
+
+
+def download_instance(study_id, series_id, instance_id, save_dir):
+    file_name = os.path.join(save_dir, f"{instance_id}.dcm")
+    client = MyClient(url="http://127.0.0.1:8042/dicom-web")
+    instance = client.retrieve_instance(
+        study_id,
+        series_id,
+        instance_id,
+    )
+    instance.save_as(file_name)
+
+
+def download_series(study_id, series_id, save_dir):
+    start = time.time()
+
+    os.makedirs(save_dir, exist_ok=True)
+    client = MyClient(url="http://127.0.0.1:8042/dicom-web")
+    series_meta = client.retrieve_series_metadata(study_id, series_id)
+
+    for idx, meta in enumerate(series_meta):
+        instance_id = meta[ATTRB_SOPINSTANCEUID]["Value"][0]
+        print(f"{idx} => {instance_id}")
+        download_instance(study_id, series_id, instance_id, save_dir)
+
+    logger.info(f"Time to download: {time.time() - start} (sec)")

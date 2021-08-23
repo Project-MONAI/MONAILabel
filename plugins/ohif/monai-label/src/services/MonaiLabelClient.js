@@ -54,10 +54,10 @@ export default class MonaiLabelClient {
   }
 
   async save_label(params, image, label) {
-    const url = new URL(
-      'datastore/label?image=' + encodeURIComponent(image),
-      this.server_url
-    ).toString();
+    let url = new URL('datastore/label', this.server_url);
+    url.searchParams.append('image', JSON.stringify(image));
+    url = url.toString();
+
     const data = MonaiLabelClient.constructFormDataFromArray(
       params,
       label,

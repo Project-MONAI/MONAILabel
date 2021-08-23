@@ -82,7 +82,7 @@ export default class MonaiLabelPanel extends Component {
       monaiLabelImageId: {
         PatientID,
         StudyInstanceUID,
-        SeriesInstanceUID
+        SeriesInstanceUID,
       },
       PatientID: PatientID,
       StudyInstanceUID: StudyInstanceUID,
@@ -186,7 +186,7 @@ export default class MonaiLabelPanel extends Component {
           onSegmentDeleted={this.onSegmentDeleted}
           onSegmentSelected={this.onSegmentSelected}
         />
-        <br style={{ margin: '3px' }}/>
+        <br style={{ margin: '3px' }} />
 
         <SettingsTable ref={this.settings} />
 
