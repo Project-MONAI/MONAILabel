@@ -78,7 +78,7 @@ class MyTrain(BasicTrainTask):
             FindDiscrepancyRegionsd(label="label", pred="pred", discrepancy="discrepancy"),
             ClickRatioAddRandomGuidanced(guidance="guidance", discrepancy="discrepancy", probability="probability"),
             AddGuidanceSignald(image="image", guidance="guidance"),
-            DiscardAddGuidanced(image="image", probability=0.5),
+            DiscardAddGuidanced(keys="image", probability=0.5),
             ToTensord(keys=("image", "label")),
         ]
 
@@ -104,7 +104,7 @@ class MyTrain(BasicTrainTask):
             FindAllValidSlicesd(label="label", sids="sids"),
             AddInitialSeedPointd(label="label", guidance="guidance", sids="sids"),
             AddGuidanceSignald(image="image", guidance="guidance"),
-            DiscardAddGuidanced(image="image", probability=0.5),
+            DiscardAddGuidanced(keys="image", probability=0.5),
             ToTensord(keys=("image", "label")),
         ]
 
@@ -136,7 +136,7 @@ class MyTrain(BasicTrainTask):
             train=False,
         )
 
-    def train_handlers(self):
-        handlers = super().train_handlers()
-        handlers.append(TensorBoardImageHandler(log_dir=self.events_dir, epoch_level=True))
+    def train_handlers(self, output_dir, events_dir, evaluator):
+        handlers = super().train_handlers(output_dir, events_dir, evaluator)
+        handlers.append(TensorBoardImageHandler(log_dir=events_dir, epoch_level=True))
         return handlers

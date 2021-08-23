@@ -29,5 +29,6 @@ exclude = '''
   )/
   # also separately exclude a file named versioneer.py
   | monailabel/_version.py
+  | plugins/ohif
 )
 '''
