@@ -1,18 +1,7 @@
-# Copyright 2020 - 2021 MONAI Consortium
-# Licensed under the Apache License, Version 2.0 (the "License");
-# you may not use this file except in compliance with the License.
-# You may obtain a copy of the License at
-#     http://www.apache.org/licenses/LICENSE-2.0
-# Unless required by applicable law or agreed to in writing, software
-# distributed under the License is distributed on an "AS IS" BASIS,
-# WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
-# See the License for the specific language governing permissions and
-# limitations under the License.
-
 import logging
 
 import torch
-from monai.apps.deepgrow.interaction import Interaction
+from monailabel.deepedit.interaction import Interaction
 from monai.apps.deepgrow.transforms import (
     AddGuidanceSignald,
     AddInitialSeedPointd,
@@ -50,13 +39,15 @@ class MyTrain(BasicTrainTask):
         model_dir,
         network,
         description="Train DeepEdit model for spleen over 3D CT Images",
-        model_size=(256, 256, 128),
+        spatial_size=(256, 256, 128),
+        target_spacing=(1.0, 1.0, 1.0),
         max_train_interactions=20,
         max_val_interactions=10,
         **kwargs,
     ):
         self._network = network
-        self.model_size = model_size
+        self.spatial_size = spatial_size
+        self.target_spacing = target_spacing
         self.max_train_interactions = max_train_interactions
         self.max_val_interactions = max_val_interactions
 
@@ -78,7 +69,7 @@ class MyTrain(BasicTrainTask):
             FindDiscrepancyRegionsd(label="label", pred="pred", discrepancy="discrepancy"),
             ClickRatioAddRandomGuidanced(guidance="guidance", discrepancy="discrepancy", probability="probability"),
             AddGuidanceSignald(image="image", guidance="guidance"),
-            DiscardAddGuidanced(keys="image", probability=0.5),
+            DiscardAddGuidanced(image="image", probability=0.5),
             ToTensord(keys=("image", "label")),
         ]
 
@@ -86,7 +77,7 @@ class MyTrain(BasicTrainTask):
         return [
             LoadImaged(keys=("image", "label")),
             AddChanneld(keys=("image", "label")),
-            Spacingd(keys=["image", "label"], pixdim=(1.5, 1.5, 2.0), mode=("bilinear", "nearest")),
+            Spacingd(keys=["image", "label"], pixdim=self.target_spacing, mode=("bilinear", "nearest")),
             Orientationd(keys=["image", "label"], axcodes="RAS"),
             NormalizeIntensityd(keys="image"),
             RandAdjustContrastd(keys="image", gamma=6),
@@ -100,11 +91,11 @@ class MyTrain(BasicTrainTask):
                 keep_size=True,
                 mode=("bilinear", "nearest"),
             ),
-            Resized(keys=("image", "label"), spatial_size=self.model_size, mode=("area", "nearest")),
+            Resized(keys=("image", "label"), spatial_size=self.spatial_size, mode=("area", "nearest")),
             FindAllValidSlicesd(label="label", sids="sids"),
             AddInitialSeedPointd(label="label", guidance="guidance", sids="sids"),
             AddGuidanceSignald(image="image", guidance="guidance"),
-            DiscardAddGuidanced(keys="image", probability=0.5),
+            DiscardAddGuidanced(image="image", probability=0.5),
             ToTensord(keys=("image", "label")),
         ]
 
@@ -137,6 +128,7 @@ class MyTrain(BasicTrainTask):
         )
 
     def train_handlers(self, output_dir, events_dir, evaluator):
+
         handlers = super().train_handlers(output_dir, events_dir, evaluator)
-        handlers.append(TensorBoardImageHandler(log_dir=events_dir, epoch_level=True))
+        handlers.append(TensorBoardImageHandler(log_dir=events_dir, epoch_level=False, inner_iter_level=True))
         return handlers
