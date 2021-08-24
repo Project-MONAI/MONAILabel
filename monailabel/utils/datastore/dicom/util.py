@@ -71,7 +71,7 @@ def nifti_to_dicom_seg(series_dir, label, label_info, file_ext="*"):
         segment_attribute = info.get(
             "segmentAttribute",
             {
-                "labelID": int(1),
+                "labelID": int(idx),
                 "SegmentLabel": name,
                 "SegmentDescription": description,
                 "SegmentAlgorithmType": "AUTOMATIC",
