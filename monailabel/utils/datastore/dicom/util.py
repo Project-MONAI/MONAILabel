@@ -8,7 +8,7 @@
 # WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 # See the License for the specific language governing permissions and
 # limitations under the License.
-
+import json
 import logging
 import os
 import pathlib
@@ -65,6 +65,7 @@ def nifti_to_dicom_seg(series_dir, label, label_info, file_ext="*"):
         name = info.get("name", "unknown")
         description = info.get("description", "Unknown")
         rgb = list(info.get("color", GENERIC_ANATOMY_COLORS.get(name, (255, 0, 0))))[0:3]
+        rgb = [int(x) for x in rgb]
 
         logger.info(f"{i} => {idx} => {name}")
 
@@ -104,6 +105,11 @@ def nifti_to_dicom_seg(series_dir, label, label_info, file_ext="*"):
         "ClinicalTrialCoordinatingCenterName": "MONAI",
         "BodyPartExamined": "",
     }
+
+    logger.info(json.dumps(template))
+    if not segment_attributes:
+        logger.error("Missing Attributes/Empty Label provided")
+        return None
 
     template = pydicom_seg.template.from_dcmqi_metainfo(template)
     writer = pydicom_seg.MultiClassWriter(
