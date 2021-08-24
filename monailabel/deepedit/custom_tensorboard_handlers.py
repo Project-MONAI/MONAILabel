@@ -3,9 +3,9 @@ from typing import TYPE_CHECKING, Callable, Optional
 import numpy as np
 import torch
 from monai.config import IgniteInfo
+from monai.engines.utils import IterationEvents
 from monai.utils import min_version, optional_import
 from monai.visualize import plot_2d_or_3d_image
-from monai.engines.utils import IterationEvents
 
 Events, _ = optional_import("ignite.engine", IgniteInfo.OPT_IMPORT_VERSION, min_version, "Events")
 
@@ -145,12 +145,19 @@ class TensorBoardImageHandler(TensorBoardHandler):
 
         """
         step = self.global_iter_transform(engine.state.epoch if self.epoch_level else engine.state.iteration)
-        filename = self.batch_transform(engine.state.batch)['image_meta_dict']['filename_or_obj'][0].split('/')[-1].split('.')[0]
+        filename = (
+            self.batch_transform(engine.state.batch)["image_meta_dict"]["filename_or_obj"][0]
+            .split("/")[-1]
+            .split(".")[0]
+        )
 
-        ################################ IMAGE #########################################
-        show_images = self.batch_transform(engine.state.batch)['img_inner_iter'][0]["image"][0, ...][None]
-        inner_j = self.batch_transform(engine.state.batch)['inner_iter']
-        print('Inner iteration: ', str(inner_j))
+        """
+        IMAGE
+        """
+
+        show_images = self.batch_transform(engine.state.batch)["img_inner_iter"][0]["image"][0, ...][None]
+        inner_j = self.batch_transform(engine.state.batch)["inner_iter"]
+        print("Inner iteration: ", str(inner_j))
 
         if isinstance(show_images, torch.Tensor):
             show_images = show_images.detach().cpu().numpy()
@@ -171,8 +178,10 @@ class TensorBoardImageHandler(TensorBoardHandler):
                 "step_" + str(step) + "_image_" + filename,
             )
 
-        ############################# LABEL ################################################
-        show_labels = self.batch_transform(engine.state.batch)['img_inner_iter'][0]["label"]
+        """
+        LABEL
+        """
+        show_labels = self.batch_transform(engine.state.batch)["img_inner_iter"][0]["label"]
         if isinstance(show_labels, torch.Tensor):
             show_labels = show_labels.detach().cpu().numpy()
             new_show_labels = show_labels[..., [np.sum(show_labels[..., s]) > 0 for s in range(show_labels.shape[3])]]
@@ -192,8 +201,11 @@ class TensorBoardImageHandler(TensorBoardHandler):
                 "step_" + str(step) + "_label_" + filename,
             )
 
-        ######################### POSITIVE CLICKS ########################################
-        show_pos_clicks = self.batch_transform(engine.state.batch)['img_inner_iter'][0]["image"][1, ...][None]
+        """
+        POSITIVE CLICKS
+        """
+
+        show_pos_clicks = self.batch_transform(engine.state.batch)["img_inner_iter"][0]["image"][1, ...][None]
         if isinstance(show_pos_clicks, torch.Tensor):
             show_pos_clicks = show_pos_clicks.detach().cpu().numpy()
             if np.sum(show_pos_clicks) == 0.0:
@@ -201,7 +213,9 @@ class TensorBoardImageHandler(TensorBoardHandler):
             else:
                 # Consider only the slices that contain the clicks
                 show_pos_clicks = show_labels + show_pos_clicks
-                show_pos_clicks = show_pos_clicks[..., [np.sum(show_pos_clicks[...,s])>0 for s in range(show_pos_clicks.shape[3])]]
+                show_pos_clicks = show_pos_clicks[
+                    ..., [np.sum(show_pos_clicks[..., s]) > 0 for s in range(show_pos_clicks.shape[3])]
+                ]
         if show_pos_clicks is not None:
             if not isinstance(show_pos_clicks, np.ndarray):
                 raise TypeError(
@@ -219,9 +233,11 @@ class TensorBoardImageHandler(TensorBoardHandler):
                 "step_" + str(step) + "_pos_clicks_" + filename,
             )
 
+        """
+        NEGATIVE CLICKS
+        """
 
-        ##################### NEGATIVE CLICKS #########################################
-        show_neg_clicks = self.batch_transform(engine.state.batch)['img_inner_iter'][0]["image"][2, ...][None]
+        show_neg_clicks = self.batch_transform(engine.state.batch)["img_inner_iter"][0]["image"][2, ...][None]
         if isinstance(show_neg_clicks, torch.Tensor):
             show_neg_clicks = show_neg_clicks.detach().cpu().numpy()
             if np.sum(show_neg_clicks) == 0.0:
@@ -229,7 +245,9 @@ class TensorBoardImageHandler(TensorBoardHandler):
             else:
                 # Consider only the slices that contain the clicks
                 show_neg_clicks = show_labels + show_neg_clicks
-                show_neg_clicks = show_neg_clicks[..., [np.sum(show_neg_clicks[...,s])>0 for s in range(show_neg_clicks.shape[3])]]
+                show_neg_clicks = show_neg_clicks[
+                    ..., [np.sum(show_neg_clicks[..., s]) > 0 for s in range(show_neg_clicks.shape[3])]
+                ]
         if show_neg_clicks is not None:
             if not isinstance(show_neg_clicks, np.ndarray):
                 raise TypeError(
@@ -248,15 +266,18 @@ class TensorBoardImageHandler(TensorBoardHandler):
                 "step_" + str(step) + "_neg_clicks_" + filename,
             )
 
-        ########### Adding simulated clicks stats ###############################
-        if self.batch_transform(engine.state.batch)['is_pos']:
-            self.num_pos_clicks+=1
-        if self.batch_transform(engine.state.batch)['is_neg']:
-            self.num_neg_clicks+=1
+        """
+        Adding simulated clicks stats
+        """
 
-        if inner_j == self.batch_transform(engine.state.batch)['max_iter']-1:
-            self._writer.add_scalar('Positive clicks', self.num_pos_clicks, step)
-            self._writer.add_scalar('Negative clicks', self.num_neg_clicks, step)
+        if self.batch_transform(engine.state.batch)["is_pos"]:
+            self.num_pos_clicks += 1
+        if self.batch_transform(engine.state.batch)["is_neg"]:
+            self.num_neg_clicks += 1
+
+        if inner_j == self.batch_transform(engine.state.batch)["max_iter"] - 1:
+            self._writer.add_scalar("Positive clicks", self.num_pos_clicks, step)
+            self._writer.add_scalar("Negative clicks", self.num_neg_clicks, step)
             self.num_pos_clicks = 0
             self.num_neg_clicks = 0
 

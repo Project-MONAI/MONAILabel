@@ -159,8 +159,8 @@ class ClickRatioAddRandomGuidanced(Randomizable, Transform):
         discrepancy = d[self.discrepancy]
         self.randomize(data)
         d[self.guidance] = self._apply(guidance, discrepancy)
-        d['is_pos'] = self.is_pos
-        d['is_neg'] = self.is_neg
+        d["is_pos"] = self.is_pos
+        d["is_neg"] = self.is_neg
         self.is_pos = False
         self.is_neg = False
         return d

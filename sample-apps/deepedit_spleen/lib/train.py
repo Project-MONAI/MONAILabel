@@ -1,7 +1,6 @@
 import logging
 
 import torch
-from monailabel.deepedit.interaction import Interaction
 from monai.apps.deepgrow.transforms import (
     AddGuidanceSignald,
     AddInitialSeedPointd,
@@ -27,6 +26,7 @@ from monai.transforms import (
 )
 
 from monailabel.deepedit.custom_tensorboard_handlers import TensorBoardImageHandler
+from monailabel.deepedit.interaction import Interaction
 from monailabel.deepedit.transforms import ClickRatioAddRandomGuidanced, DiscardAddGuidanced
 from monailabel.utils.train.basic_train import BasicTrainTask
 

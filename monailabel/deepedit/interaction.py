@@ -11,7 +11,6 @@
 from typing import Callable, Dict, Sequence, Union
 
 import torch
-
 from monai.data import decollate_batch, list_data_collate
 from monai.engines import SupervisedEvaluator, SupervisedTrainer
 from monai.engines.utils import IterationEvents
@@ -77,7 +76,7 @@ class Interaction:
             # decollate batch data to execute click transforms
             batchdata_list = decollate_batch(batchdata, detach=True)
 
-            for i in range(len(batchdata_list)): # Only 1 iteration
+            for i in range(len(batchdata_list)):  # Only 1 iteration
                 batchdata_list[i][self.key_probability] = (
                     (1.0 - ((1.0 / self.max_interactions) * j)) if self.train else 1.0
                 )
@@ -89,15 +88,15 @@ class Interaction:
             # Why 'inner_iter' isn't visible or always ZERO in the Tensorboard handler??
             # I was modifying batchdata without modifying the state!!!
 
-            engine.state.batch.update({'inner_iter': j})
-            engine.state.batch.update({'img_inner_iter': batchdata_list})
-            engine.state.batch.update({'is_pos': batchdata_list[0]['is_pos']})
-            engine.state.batch.update({'is_neg': batchdata_list[0]['is_neg']})
-            engine.state.batch.update({'max_iter': self.max_interactions})
+            engine.state.batch.update({"inner_iter": j})
+            engine.state.batch.update({"img_inner_iter": batchdata_list})
+            engine.state.batch.update({"is_pos": batchdata_list[0]["is_pos"]})
+            engine.state.batch.update({"is_neg": batchdata_list[0]["is_neg"]})
+            engine.state.batch.update({"max_iter": self.max_interactions})
 
             engine.fire_event(IterationEvents.INNER_ITERATION_COMPLETED)
 
             # Need to remove these from dictionary as collating shows errors
-            engine.state.batch.pop('img_inner_iter')
+            engine.state.batch.pop("img_inner_iter")
 
         return engine._iteration(engine, batchdata)
