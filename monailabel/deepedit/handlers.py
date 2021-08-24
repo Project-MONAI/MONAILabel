@@ -28,38 +28,7 @@ else:
     SummaryWriter, _ = optional_import("torch.utils.tensorboard", name="SummaryWriter")
 
 
-class TensorBoardHandler:
-    """
-    Base class for the handlers to write data into TensorBoard.
-
-    Args:
-        summary_writer: user can specify TensorBoard SummaryWriter,
-            default to create a new writer.
-        log_dir: if using default SummaryWriter, write logs to this directory, default is `./runs`.
-
-    """
-
-    def __init__(self, summary_writer: Optional[SummaryWriter] = None, log_dir: str = "./runs"):
-        if summary_writer is None:
-            self._writer = SummaryWriter(log_dir=log_dir)
-            self.internal_writer = True
-        else:
-            self._writer = summary_writer
-            self.internal_writer = False
-
-    def attach(self, engine: Engine) -> None:
-        raise NotImplementedError(f"Subclass {self.__class__.__name__} must implement this method.")
-
-    def close(self):
-        """
-        Close the summary writer if created in this TensorBoard handler.
-
-        """
-        if self.internal_writer:
-            self._writer.close()
-
-
-class TensorBoardImageHandler(TensorBoardHandler):
+class TensorBoardImageHandler:
     """
     TensorBoardImageHandler is an Ignite Event handler that can visualize images, labels and outputs as 2D/3D images.
     2D output (shape in Batch, channel, H, W) will be shown as simple image using the first element in the batch,
@@ -115,7 +84,14 @@ class TensorBoardImageHandler(TensorBoardHandler):
             max_channels: number of channels to plot.
             max_frames: number of frames for 2D-t plot.
         """
-        super().__init__(summary_writer=summary_writer, log_dir=log_dir)
+
+        if summary_writer is None:
+            self._writer = SummaryWriter(log_dir=log_dir)
+            self.internal_writer = True
+        else:
+            self._writer = summary_writer
+            self.internal_writer = False
+
         self.interval = interval
         self.epoch_level = epoch_level
         self.inner_iter_level = inner_iter_level
@@ -137,7 +113,7 @@ class TensorBoardImageHandler(TensorBoardHandler):
             engine.add_event_handler(Events.EPOCH_COMPLETED(every=self.interval), self)
         else:
             if self.inner_iter_level:
-                engine.add_event_handler(IterationEvents.INNER_ITERATION_COMPLETED(every=self.interval), self)
+                engine.add_event_handler(IterationEvents.INNER_ITERATION_COMPLETED, self)
             else:
                 engine.add_event_handler(Events.ITERATION_COMPLETED(every=self.interval), self)
 
@@ -293,3 +269,11 @@ class TensorBoardImageHandler(TensorBoardHandler):
             self.num_neg_clicks = 0
 
         self._writer.flush()
+
+    def close(self):
+        """
+        Close the summary writer if created in this TensorBoard handler.
+
+        """
+        if self.internal_writer:
+            self._writer.close()

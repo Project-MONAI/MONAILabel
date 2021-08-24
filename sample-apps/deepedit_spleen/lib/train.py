@@ -36,7 +36,7 @@ from monai.transforms import (
     ToTensord,
 )
 
-from monailabel.deepedit.custom_tensorboard_handlers import TensorBoardImageHandler
+from monailabel.deepedit.handlers import TensorBoardImageHandler
 from monailabel.deepedit.interaction import Interaction
 from monailabel.deepedit.transforms import ClickRatioAddRandomGuidanced, DiscardAddGuidanced
 from monailabel.utils.train.basic_train import BasicTrainTask
