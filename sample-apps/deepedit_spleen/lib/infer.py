@@ -42,6 +42,8 @@ class Segmentation(InferTask):
         type=InferType.SEGMENTATION,
         labels="spleen",
         dimension=3,
+        spatial_size=(256, 256, 128),
+        target_spacing=(1.0, 1.0, 1.0),
         description="A pre-trained model for volumetric (3D) segmentation of the spleen over 3D CT Images",
     ):
         super().__init__(
@@ -56,14 +58,17 @@ class Segmentation(InferTask):
             output_json_key="result",
         )
 
+        self.spatial_size = spatial_size
+        self.target_spacing = target_spacing
+
     def pre_transforms(self):
         return [
             LoadImaged(keys="image"),
             AddChanneld(keys="image"),
-            Spacingd(keys="image", pixdim=(1.5, 1.5, 2.0), mode="bilinear"),
+            Spacingd(keys="image", pixdim=self.target_spacing, mode="bilinear"),
             Orientationd(keys="image", axcodes="RAS"),
             NormalizeIntensityd(keys="image"),
-            Resized(keys="image", spatial_size=(256, 256, 128), mode="area"),
+            Resized(keys="image", spatial_size=self.spatial_size, mode="area"),
             DiscardAddGuidanced(keys="image"),
             ToTensord(keys="image"),
         ]
@@ -97,8 +102,8 @@ class Deepgrow(InferTask):
         type=InferType.DEEPGROW,
         dimension=3,
         description="A pre-trained 3D DeepGrow model based on UNET",
-        spatial_size=(256, 256),
-        model_size=(256, 256, 128),
+        spatial_size=(256, 256, 128),
+        target_spacing=(1.0, 1.0, 1.0),
     ):
         super().__init__(
             path=path,
@@ -110,19 +115,19 @@ class Deepgrow(InferTask):
         )
 
         self.spatial_size = spatial_size
-        self.model_size = model_size
+        self.target_spacing = target_spacing
 
     def pre_transforms(self):
         return [
             LoadImaged(keys="image"),
             AddChanneld(keys="image"),
-            Spacingd(keys="image", pixdim=(1.5, 1.5, 2.0), mode="bilinear"),
+            Spacingd(keys="image", pixdim=self.target_spacing, mode="bilinear"),
             Orientationd(keys="image", axcodes="RAS"),
             SqueezeDimd(keys="image", dim=0),
             AddGuidanceFromPointsd(ref_image="image", guidance="guidance", dimensions=3),
             AddChanneld(keys="image"),
             NormalizeIntensityd(keys="image"),
-            Resized(keys="image", spatial_size=self.model_size, mode="area"),
+            Resized(keys="image", spatial_size=self.spatial_size, mode="area"),
             ResizeGuidanceCustomd(guidance="guidance", ref_image="image"),
             AddGuidanceSignald(image="image", guidance="guidance"),
             ToTensord(keys="image"),
