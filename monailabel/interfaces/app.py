@@ -195,6 +195,7 @@ class MONAILabelApp:
                         "device": "cuda"
                         "model": "segmentation_spleen",
                         "images": "unlabeled",
+                        "save_label": "true/false"
                         "label_tag": "original"
                     }
 
