@@ -26,7 +26,7 @@ from watchdog.observers import Observer
 
 from monailabel.interfaces.datastore import Datastore, DefaultLabelTag
 from monailabel.interfaces.exception import ImageNotFoundException, LabelNotFoundException
-from monailabel.utils.others.generic import file_checksum
+from monailabel.utils.others.generic import file_checksum, remove_file
 
 logger = logging.getLogger(__name__)
 
@@ -74,7 +74,7 @@ class LocalDatastoreModel(BaseModel):
         return [obj for obj in self.objects.values() if obj.labels.get(tag)]
 
     def filter_by_id(self, id: str):
-        return [obj for obj in self.objects.values() if obj.label(id)]
+        return [obj for obj in self.objects.values() if obj.label(id)[0]]
 
     def label(self, id: str):
         objects = self.filter_by_id(id)
@@ -155,7 +155,7 @@ class LocalDatastore(Datastore):
         logger.info(f"Extensions: {self._extensions}")
         logger.info(f"Auto Reload: {auto_reload}")
 
-        os.makedirs(os.path.join(self._datastore_path), exist_ok=True)
+        os.makedirs(self._datastore_path, exist_ok=True)
 
         self._lock = FileLock(os.path.join(datastore_path, ".lock"))
         self._datastore: LocalDatastoreModel = LocalDatastoreModel(
@@ -264,7 +264,11 @@ class LocalDatastore(Datastore):
         :return: return the "image"
         """
         obj = self._datastore.objects.get(image_id)
-        return self.to_bytes(os.path.join(self._datastore.image_path(), obj.image.path())) if obj else None
+        return (
+            self.to_bytes(os.path.realpath(os.path.join(self._datastore.image_path(), obj.image.path())))
+            if obj
+            else None
+        )
 
     def get_image_uri(self, image_id: str) -> str:
         """
@@ -286,7 +290,7 @@ class LocalDatastore(Datastore):
         obj = self._datastore.objects.get(image_id)
         info = copy.deepcopy(obj.image.info) if obj else {}
         if obj:
-            path = os.path.join(self._datastore.image_path(), obj.image.path())
+            path = os.path.realpath(os.path.join(self._datastore.image_path(), obj.image.path()))
             info.update(
                 {
                     "checksum": file_checksum(path),
@@ -304,7 +308,11 @@ class LocalDatastore(Datastore):
         :return: return the "label"
         """
         tag, label = self._datastore.label(label_id)
-        return self.to_bytes(os.path.join(self._datastore.label_path(tag), label.path())) if tag else None
+        return (
+            self.to_bytes(os.path.realpath(os.path.join(self._datastore.label_path(tag), label.path())))
+            if tag
+            else None
+        )
 
     def get_label_uri(self, label_id: str) -> str:
         """
@@ -408,7 +416,7 @@ class LocalDatastore(Datastore):
             image_id = os.path.basename(image_filename).replace(image_ext, "")
 
         logger.info(f"Adding Image: {image_id} => {image_filename}")
-        dest = os.path.join(self._datastore.image_path(), image_id + image_ext)
+        dest = os.path.realpath(os.path.join(self._datastore.image_path(), image_id + image_ext))
         if os.path.isdir(image_filename):
             shutil.copytree(image_filename, dest)
         else:
@@ -428,9 +436,8 @@ class LocalDatastore(Datastore):
 
         # Remove Image
         obj = self._datastore.objects.get(image_id)
-        p = os.path.join(self._datastore.image_path(), obj.image.path()) if obj else None
-        if p and os.path.exists(p):
-            shutil.rmtree(p)
+        p = os.path.realpath(os.path.join(self._datastore.image_path(), obj.image.path())) if obj else None
+        remove_file(p)
 
         if not self._auto_reload:
             self.refresh()
@@ -478,9 +485,8 @@ class LocalDatastore(Datastore):
         logger.info(f"Removing label: {label_id}")
 
         tag, label = self._datastore.label(label_id)
-        p = os.path.join(self._datastore.label_path(tag), label.path()) if label else None
-        if p and os.path.exists(p):
-            shutil.rmtree(p)
+        p = os.path.realpath(os.path.join(self._datastore.label_path(tag), label.path())) if label else None
+        remove_file(p)
 
         if not self._auto_reload:
             self.refresh()
@@ -543,7 +549,7 @@ class LocalDatastore(Datastore):
 
         invalidate += self._remove_non_existing()
 
-        logger.debug(f"Invalidate count: {invalidate}")
+        logger.info(f"Invalidate count: {invalidate}")
         if invalidate:
             logger.debug("Save datastore file to disk")
             self._update_datastore_file()
@@ -595,13 +601,15 @@ class LocalDatastore(Datastore):
 
         objects: Dict[str, ImageLabelModel] = {}
         for image_id, obj in self._datastore.objects.items():
-            if not os.path.exists(os.path.join(self._datastore.image_path(), obj.image.path())):
+            if not os.path.exists(os.path.realpath(os.path.join(self._datastore.image_path(), obj.image.path()))):
                 logger.info(f"Removing non existing Image Id: {image_id}")
                 invalidate += 1
             else:
                 labels: Dict[str, DataModel] = {}
                 for tag, label in obj.labels.items():
-                    if not os.path.exists(os.path.join(self._datastore.label_path(tag), label.path())):
+                    if not os.path.exists(
+                        os.path.realpath(os.path.join(self._datastore.label_path(tag), label.path()))
+                    ):
                         logger.info(f"Removing non existing Label Id: '{label.id}' for '{tag}' for '{image_id}'")
                         invalidate += 1
                     else:
