@@ -26,8 +26,8 @@ from monailabel.interfaces.datastore import Datastore, DefaultLabelTag
 from monailabel.interfaces.exception import MONAILabelError, MONAILabelException
 from monailabel.interfaces.tasks import BatchInferTask, InferTask, ScoringMethod, Strategy, TrainTask
 from monailabel.utils.activelearning import Random
-from monailabel.utils.datastore.dicom.cache_v2 import DICOMWebCache
-from monailabel.utils.datastore.local_v2 import LocalDatastore
+from monailabel.utils.datastore.dicom.cache import DICOMWebCache
+from monailabel.utils.datastore.local import LocalDatastore
 from monailabel.utils.infer import InferDeepgrow2D, InferDeepgrow3D
 from monailabel.utils.infer.deepgrow_pipeline import InferDeepgrowPipeline
 from monailabel.utils.scoring import Dice, Sum
@@ -161,6 +161,7 @@ class MONAILabelApp:
         else:
             request["image"] = datastore.get_image_uri(request["image"])
 
+        # TODO:: BUG In MONAI? Currently can not load DICOM through ITK Loader
         if os.path.isdir(request["image"]):
             logger.info("Input is a Directory; Consider it as DICOM")
             logger.info(os.listdir(request["image"]))
