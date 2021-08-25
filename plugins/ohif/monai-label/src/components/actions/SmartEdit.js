@@ -22,7 +22,7 @@ export default class SmartEdit extends BaseTab {
 
   onDeepgrow = async () => {
     const { info, viewConstants } = this.props;
-    const image = viewConstants.monaiLabelImageId;
+    const image = viewConstants.SeriesInstanceUID;
     const model = this.modelSelector.current.state.currentModel;
     const { segmentId } = this.state;
 
@@ -50,11 +50,11 @@ export default class SmartEdit extends BaseTab {
       .map(p => [p.x, p.y, p.z]);
 
     const cursor = viewConstants.element.style.cursor;
-    viewConstants.element.style.cursor='wait';
+    viewConstants.element.style.cursor = 'wait';
     const response = await this.props
       .client()
       .deepgrow(model, image, foreground, background);
-    viewConstants.element.style.cursor=cursor;
+    viewConstants.element.style.cursor = cursor;
 
     if (response.status !== 200) {
       this.notification.show({

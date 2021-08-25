@@ -9,22 +9,15 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-import json
 import logging
 import os
-import pathlib
-import tempfile
-from typing import Any, Dict
 
-import yaml
 from lib import MyInfer, MyTrain
 from lib.activelearning import MyStrategy, Tta
 from monai.apps import load_from_mmar
 
-from monailabel.interfaces import Datastore, MONAILabelApp
+from monailabel.interfaces import MONAILabelApp
 from monailabel.utils.activelearning import Random
-from monailabel.utils.datastore.dicom.util import binary_to_image, get_scu, nifti_to_dicom_seg, score_scu
-from monailabel.utils.datastore.local import LocalDatastore
 from monailabel.utils.scoring import Dice, Sum
 from monailabel.utils.scoring.tta_scoring import TtaScoring
 
@@ -75,73 +68,3 @@ class MyApp(MONAILabelApp):
             "dice": Dice(),
             "tta_scoring": TtaScoring(),
         }
-
-    def init_datastore(self) -> Datastore:
-        return MockStorage(self.studies, auto_reload=True)
-
-
-# TODO:: This will be removed once DICOM Web support is added through datastore
-class MockStorage(LocalDatastore):
-    @staticmethod
-    def from_dicom(dicom):
-        logger.info(f"Temporary Hack:: Looking mapped image for: {dicom}")
-        with open(os.path.join(os.path.dirname(__file__), "dicom.yaml"), "r") as fc:
-            meta = yaml.full_load(fc)
-            series_id = dicom["SeriesInstanceUID"]
-            image_id = meta["series"][series_id]
-            logger.info(f"Image Series: {series_id} => {image_id}")
-            return image_id
-
-    @staticmethod
-    def to_dicom(image_id):
-        logger.info(f"Temporary Hack:: Looking dicom info: {image_id}")
-        with open(os.path.join(os.path.dirname(__file__), "dicom.yaml"), "r") as fc:
-            meta = yaml.full_load(fc)
-            return {
-                "StudyInstanceUID": {v: k for k, v in meta.items()}[image_id],
-                "SeriesInstanceUID": {v: k for k, v in meta.items()}[image_id],
-            }
-
-    def get_image_uri(self, image) -> str:
-        image_id = self.from_dicom(json.loads(image))
-        image_uri = super().get_image_uri(image_id)
-
-        logger.info(f"Image ID : {image_id} => {image_uri}")
-        return image_uri
-
-    def get_image_info(self, image_id: str) -> Dict[str, Any]:
-        res = super().get_image_info(image_id)
-        res.update(self.to_dicom(image_id))
-
-        logger.info(f"Image {image_id} => {res}")
-        return res
-
-    def save_label(self, image_id: str, label_filename: str, label_tag: str, label_info: Dict[str, Any]) -> str:
-        logger.info(f"Input - Image Id: {image_id}")
-        logger.info(f"Input - Label File: {label_filename}")
-        logger.info(f"Input - Label Tag: {label_tag}")
-        logger.info(f"Input - Label Info: {label_info}")
-
-        image_uri = self.get_image_uri(image_id)
-        logger.info(f"Image {image_uri}; Label: {label_filename}")
-
-        label_ext = "".join(pathlib.Path(label_filename).suffixes)
-        output_file = None
-        if label_ext == ".bin":
-            output_file = binary_to_image(image_uri, label_filename)
-            label_filename = output_file
-
-        logger.info(f"Label File: {output_file}")
-        dicom = json.loads(image_id)
-        res = super().save_label(self.from_dicom(dicom), label_filename, label_tag, label_info)
-
-        with tempfile.TemporaryDirectory() as series_dir:
-            get_scu(dicom["SeriesInstanceUID"], series_dir, query_level="SERIES")
-            label_file = nifti_to_dicom_seg(series_dir, label_filename, label_info)
-
-            score_scu(label_file)
-            os.unlink(label_file)
-
-        if output_file:
-            os.unlink(output_file)
-        return res

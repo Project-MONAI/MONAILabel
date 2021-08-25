@@ -21,7 +21,7 @@ export default class AutoSegmentation extends BaseTab {
 
     // TODO:: Fix Image ID...
     const { info, viewConstants } = this.props;
-    const image = viewConstants.monaiLabelImageId;
+    const image = viewConstants.SeriesInstanceUID;
     const model = this.modelSelector.current.state.currentModel;
 
     const labels = info.models[model].labels;

@@ -79,11 +79,6 @@ export default class MonaiLabelPanel extends Component {
       .digest('hex');
 
     return {
-      monaiLabelImageId: {
-        PatientID,
-        StudyInstanceUID,
-        SeriesInstanceUID,
-      },
       PatientID: PatientID,
       StudyInstanceUID: StudyInstanceUID,
       SeriesInstanceUID: SeriesInstanceUID,

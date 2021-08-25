@@ -106,7 +106,7 @@ def nifti_to_dicom_seg(series_dir, label, label_info, file_ext="*"):
         "BodyPartExamined": "",
     }
 
-    logger.info(json.dumps(template))
+    logger.info(json.dumps(template, indent=2))
     if not segment_attributes:
         logger.error("Missing Attributes/Empty Label provided")
         return None
@@ -126,6 +126,8 @@ def nifti_to_dicom_seg(series_dir, label, label_info, file_ext="*"):
     logger.info(f"Total Source Images: {len(image_datasets)}")
 
     mask = SimpleITK.ReadImage(label)
+    mask = SimpleITK.Cast(mask, SimpleITK.sitkUInt16)
+
     output_file = tempfile.NamedTemporaryFile(suffix=".dcm").name
     dcm = writer.write(mask, image_datasets)
     dcm.save_as(output_file)

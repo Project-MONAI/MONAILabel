@@ -84,7 +84,7 @@ export default class OptionTable extends BaseTab {
         console.warn('Segments and Metadata NOT matching; So Ignore');
       }
 
-      const image = this.props.viewConstants.monaiLabelImageId;
+      const image = this.props.viewConstants.SeriesInstanceUID;
       const label = new Blob([labelmap3D.buffer], {
         type: 'application/octet-stream',
       });
