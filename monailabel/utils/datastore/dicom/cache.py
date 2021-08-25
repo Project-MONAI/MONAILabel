@@ -133,7 +133,7 @@ class DICOMWebCache(LocalDatastore):
         return list(set(series) - set(seg_series))
 
     def save_label(
-            self, image_id: str, label_filename: str, label_tag: str, label_info: Dict[str, Any], label_id: str = ""
+        self, image_id: str, label_filename: str, label_tag: str, label_info: Dict[str, Any], label_id: str = ""
     ) -> str:
         logger.info(f"Input - Image Id: {image_id}")
         logger.info(f"Input - Label File: {label_filename}")
