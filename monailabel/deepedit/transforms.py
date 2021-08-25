@@ -108,6 +108,8 @@ class ClickRatioAddRandomGuidanced(Randomizable, Transform):
         self.probability = probability
         self.fn_fp_click_ratio = fn_fp_click_ratio
         self._will_interact = None
+        self.is_pos = False
+        self.is_neg = False
 
     def randomize(self, data=None):
         probability = data[self.probability]
@@ -162,9 +164,11 @@ class ClickRatioAddRandomGuidanced(Randomizable, Transform):
         if pos:
             guidance[0].append(pos)
             guidance[1].append([-1] * len(pos))
+            self.is_pos = True
         if neg:
             guidance[0].append([-1] * len(neg))
             guidance[1].append(neg)
+            self.is_neg = True
 
         return json.dumps(np.asarray(guidance).astype(int).tolist())
 
@@ -174,4 +178,8 @@ class ClickRatioAddRandomGuidanced(Randomizable, Transform):
         discrepancy = d[self.discrepancy]
         self.randomize(data)
         d[self.guidance] = self._apply(guidance, discrepancy)
+        d["is_pos"] = self.is_pos
+        d["is_neg"] = self.is_neg
+        self.is_pos = False
+        self.is_neg = False
         return d

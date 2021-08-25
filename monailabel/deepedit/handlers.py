@@ -14,10 +14,12 @@ from typing import TYPE_CHECKING, Callable, Optional
 import numpy as np
 import torch
 from monai.config import IgniteInfo
+from monai.engines.utils import IterationEvents
 from monai.utils import min_version, optional_import
 from monai.visualize import plot_2d_or_3d_image
 
 Events, _ = optional_import("ignite.engine", IgniteInfo.OPT_IMPORT_VERSION, min_version, "Events")
+
 if TYPE_CHECKING:
     from ignite.engine import Engine
     from torch.utils.tensorboard import SummaryWriter
@@ -25,41 +27,8 @@ else:
     Engine, _ = optional_import("ignite.engine", IgniteInfo.OPT_IMPORT_VERSION, min_version, "Engine")
     SummaryWriter, _ = optional_import("torch.utils.tensorboard", name="SummaryWriter")
 
-DEFAULT_TAG = "Loss"
 
-
-class TensorBoardHandler:
-    """
-    Base class for the handlers to write data into TensorBoard.
-
-    Args:
-        summary_writer: user can specify TensorBoard SummaryWriter,
-            default to create a new writer.
-        log_dir: if using default SummaryWriter, write logs to this directory, default is `./runs`.
-
-    """
-
-    def __init__(self, summary_writer: Optional[SummaryWriter] = None, log_dir: str = "./runs"):
-        if summary_writer is None:
-            self._writer = SummaryWriter(log_dir=log_dir)
-            self.internal_writer = True
-        else:
-            self._writer = summary_writer
-            self.internal_writer = False
-
-    def attach(self, engine: Engine) -> None:
-        raise NotImplementedError(f"Subclass {self.__class__.__name__} must implement this method.")
-
-    def close(self):
-        """
-        Close the summary writer if created in this TensorBoard handler.
-
-        """
-        if self.internal_writer:
-            self._writer.close()
-
-
-class TensorBoardImageHandler(TensorBoardHandler):
+class TensorBoardImageHandler:
     """
     TensorBoardImageHandler is an Ignite Event handler that can visualize images, labels and outputs as 2D/3D images.
     2D output (shape in Batch, channel, H, W) will be shown as simple image using the first element in the batch,
@@ -87,6 +56,7 @@ class TensorBoardImageHandler(TensorBoardHandler):
         log_dir: str = "./runs",
         interval: int = 1,
         epoch_level: bool = True,
+        inner_iter_level: bool = True,
         batch_transform: Callable = lambda x: x,
         output_transform: Callable = lambda x: x,
         global_iter_transform: Callable = lambda x: x,
@@ -114,15 +84,25 @@ class TensorBoardImageHandler(TensorBoardHandler):
             max_channels: number of channels to plot.
             max_frames: number of frames for 2D-t plot.
         """
-        super().__init__(summary_writer=summary_writer, log_dir=log_dir)
+
+        if summary_writer is None:
+            self._writer = SummaryWriter(log_dir=log_dir)
+            self.internal_writer = True
+        else:
+            self._writer = summary_writer
+            self.internal_writer = False
+
         self.interval = interval
         self.epoch_level = epoch_level
+        self.inner_iter_level = inner_iter_level
         self.batch_transform = batch_transform
         self.output_transform = output_transform
         self.global_iter_transform = global_iter_transform
         self.index = index
         self.max_frames = max_frames
         self.max_channels = max_channels
+        self.num_pos_clicks = 0
+        self.num_neg_clicks = 0
 
     def attach(self, engine: Engine) -> None:
         """
@@ -132,7 +112,10 @@ class TensorBoardImageHandler(TensorBoardHandler):
         if self.epoch_level:
             engine.add_event_handler(Events.EPOCH_COMPLETED(every=self.interval), self)
         else:
-            engine.add_event_handler(Events.ITERATION_COMPLETED(every=self.interval), self)
+            if self.inner_iter_level:
+                engine.add_event_handler(IterationEvents.INNER_ITERATION_COMPLETED, self)
+            else:
+                engine.add_event_handler(Events.ITERATION_COMPLETED(every=self.interval), self)
 
     def __call__(self, engine: Engine) -> None:
         """
@@ -149,7 +132,20 @@ class TensorBoardImageHandler(TensorBoardHandler):
 
         """
         step = self.global_iter_transform(engine.state.epoch if self.epoch_level else engine.state.iteration)
-        show_images = self.batch_transform(engine.state.batch)[0]["image"]
+        filename = (
+            self.batch_transform(engine.state.batch)["image_meta_dict"]["filename_or_obj"][0]
+            .split("/")[-1]
+            .split(".")[0]
+        )
+
+        """
+        IMAGE
+        """
+
+        show_images = self.batch_transform(engine.state.batch)["img_inner_iter"][0]["image"][0, ...][None]
+        inner_j = self.batch_transform(engine.state.batch)["inner_iter"]
+        print("Inner iteration: ", str(inner_j))
+
         if isinstance(show_images, torch.Tensor):
             show_images = show_images.detach().cpu().numpy()
         if show_images is not None:
@@ -166,12 +162,47 @@ class TensorBoardImageHandler(TensorBoardHandler):
                 0,
                 self.max_channels,
                 self.max_frames,
-                "image",
+                "step_" + str(step) + "_image_" + filename,
             )
 
-        show_pos_clicks = self.batch_transform(engine.state.batch)[0]["image"][1, ...][None]
+        """
+        LABEL
+        """
+        show_labels = self.batch_transform(engine.state.batch)["img_inner_iter"][0]["label"]
+        if isinstance(show_labels, torch.Tensor):
+            show_labels = show_labels.detach().cpu().numpy()
+            new_show_labels = show_labels[..., [np.sum(show_labels[..., s]) > 0 for s in range(show_labels.shape[3])]]
+        if new_show_labels is not None:
+            if not isinstance(new_show_labels, np.ndarray):
+                raise TypeError(
+                    "batch_transform(engine.state.batch)[1] must be None or one of "
+                    f"(numpy.ndarray, torch.Tensor) but is {type(new_show_labels).__name__}."
+                )
+            plot_2d_or_3d_image(
+                new_show_labels[None],
+                step,
+                self._writer,
+                0,
+                self.max_channels,
+                self.max_frames,
+                "step_" + str(step) + "_label_" + filename,
+            )
+
+        """
+        POSITIVE CLICKS
+        """
+
+        show_pos_clicks = self.batch_transform(engine.state.batch)["img_inner_iter"][0]["image"][1, ...][None]
         if isinstance(show_pos_clicks, torch.Tensor):
             show_pos_clicks = show_pos_clicks.detach().cpu().numpy()
+            if np.sum(show_pos_clicks) == 0.0:
+                show_pos_clicks = None
+            else:
+                # Consider only the slices that contain the clicks
+                show_pos_clicks = show_labels + show_pos_clicks
+                show_pos_clicks = show_pos_clicks[
+                    ..., [np.sum(show_pos_clicks[..., s]) > 0 for s in range(show_pos_clicks.shape[3])]
+                ]
         if show_pos_clicks is not None:
             if not isinstance(show_pos_clicks, np.ndarray):
                 raise TypeError(
@@ -186,18 +217,31 @@ class TensorBoardImageHandler(TensorBoardHandler):
                 0,
                 self.max_channels,
                 self.max_frames,
-                "pos_clicks",
+                "step_" + str(step) + "_pos_clicks_" + filename,
             )
 
-        show_neg_clicks = self.batch_transform(engine.state.batch)[0]["image"][2, ...][None]
+        """
+        NEGATIVE CLICKS
+        """
+
+        show_neg_clicks = self.batch_transform(engine.state.batch)["img_inner_iter"][0]["image"][2, ...][None]
         if isinstance(show_neg_clicks, torch.Tensor):
             show_neg_clicks = show_neg_clicks.detach().cpu().numpy()
+            if np.sum(show_neg_clicks) == 0.0:
+                show_neg_clicks = None
+            else:
+                # Consider only the slices that contain the clicks
+                show_neg_clicks = show_labels + show_neg_clicks
+                show_neg_clicks = show_neg_clicks[
+                    ..., [np.sum(show_neg_clicks[..., s]) > 0 for s in range(show_neg_clicks.shape[3])]
+                ]
         if show_neg_clicks is not None:
             if not isinstance(show_neg_clicks, np.ndarray):
                 raise TypeError(
                     "output_transform(engine.state.output)[0] must be None or one of "
                     f"(numpy.ndarray, torch.Tensor) but is {type(show_neg_clicks).__name__}."
                 )
+
             plot_2d_or_3d_image(
                 # add batch dim and plot the first item
                 show_neg_clicks[None],
@@ -206,18 +250,30 @@ class TensorBoardImageHandler(TensorBoardHandler):
                 0,
                 self.max_channels,
                 self.max_frames,
-                "neg_clicks",
+                "step_" + str(step) + "_neg_clicks_" + filename,
             )
 
-        show_labels = self.batch_transform(engine.state.batch)[0]["label"]
-        if isinstance(show_labels, torch.Tensor):
-            show_labels = show_labels.detach().cpu().numpy()
-        if show_labels is not None:
-            if not isinstance(show_labels, np.ndarray):
-                raise TypeError(
-                    "batch_transform(engine.state.batch)[1] must be None or one of "
-                    f"(numpy.ndarray, torch.Tensor) but is {type(show_labels).__name__}."
-                )
-            plot_2d_or_3d_image(show_labels[None], step, self._writer, 0, self.max_channels, self.max_frames, "label")
+        """
+        Adding simulated clicks stats
+        """
+
+        if self.batch_transform(engine.state.batch)["is_pos"]:
+            self.num_pos_clicks += 1
+        if self.batch_transform(engine.state.batch)["is_neg"]:
+            self.num_neg_clicks += 1
+
+        if inner_j == self.batch_transform(engine.state.batch)["max_iter"] - 1:
+            self._writer.add_scalar("Positive clicks", self.num_pos_clicks, step)
+            self._writer.add_scalar("Negative clicks", self.num_neg_clicks, step)
+            self.num_pos_clicks = 0
+            self.num_neg_clicks = 0
 
         self._writer.flush()
+
+    def close(self):
+        """
+        Close the summary writer if created in this TensorBoard handler.
+
+        """
+        if self.internal_writer:
+            self._writer.close()
