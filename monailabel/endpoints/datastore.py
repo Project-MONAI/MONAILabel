@@ -67,7 +67,7 @@ async def add_image(background_tasks: BackgroundTasks, image: Optional[str] = No
     logger.info(f"Image: {image}; File: {file}")
     file_ext = "".join(pathlib.Path(file.filename).suffixes) if file.filename else ".nii.gz"
 
-    image_id = image if image else os.path.basename(file.filename)
+    image_id = image if image else os.path.basename(file.filename).replace(file_ext, "")
     image_file = tempfile.NamedTemporaryFile(suffix=file_ext).name
 
     with open(image_file, "wb") as buffer:
