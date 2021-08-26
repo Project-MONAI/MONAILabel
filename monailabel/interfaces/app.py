@@ -16,6 +16,7 @@ import os
 import time
 from typing import Callable, Dict
 
+from dicomweb_client import DICOMwebClient
 from dicomweb_client.session_utils import create_session_from_user_pass
 from monai.apps import download_url, load_from_mmar
 from monai.data import partition_dataset
@@ -26,7 +27,6 @@ from monailabel.interfaces.exception import MONAILabelError, MONAILabelException
 from monailabel.interfaces.tasks import BatchInferTask, InferTask, ScoringMethod, Strategy, TrainTask
 from monailabel.utils.activelearning import Random
 from monailabel.utils.datastore.dicom.cache import DICOMWebCache
-from monailabel.utils.datastore.dicom.client import DICOMWebClient
 from monailabel.utils.datastore.local import LocalDatastore
 from monailabel.utils.infer import InferDeepgrow2D, InferDeepgrow3D
 from monailabel.utils.infer.deepgrow_pipeline import InferDeepgrowPipeline
@@ -75,27 +75,24 @@ class MONAILabelApp:
         return BatchInferTask()
 
     def init_datastore(self) -> Datastore:
-        if settings.STUDIES.startswith("http://") or settings.STUDIES.startswith("https://"):
-
+        logger.info(f"Init Datastore for: {self.studies}")
+        if self.studies.startswith("http://") or self.studies.startswith("https://"):
             dw_session = None
             if settings.DICOMWEB_USERNAME and settings.DICOMWEB_PASSWORD:
                 dw_session = create_session_from_user_pass(settings.DICOMWEB_USERNAME, settings.DICOMWEB_PASSWORD)
 
-            dw_client = DICOMWebClient(
-                url=settings.STUDIES,
+            dw_client = DICOMwebClient(
+                url=self.studies,
                 session=dw_session,
                 qido_url_prefix=settings.QIDO_PREFIX,
                 wado_url_prefix=settings.WADO_PREFIX,
                 stow_url_prefix=settings.STOW_PREFIX,
             )
-            return DICOMWebCache(
-                dicomweb_client=dw_client,
-            )
+            return DICOMWebCache(dw_client)
 
         return LocalDatastore(
             self.studies,
-            image_extensions=settings.DATASTORE_IMAGE_EXT,
-            label_extensions=settings.DATASTORE_LABEL_EXT,
+            extensions=settings.DATASTORE_FILE_EXT,
             auto_reload=settings.DATASTORE_AUTO_RELOAD,
         )
 
@@ -163,6 +160,14 @@ class MONAILabelApp:
             request["save_label"] = False
         else:
             request["image"] = datastore.get_image_uri(request["image"])
+
+        # TODO:: BUG In MONAI? Currently can not load DICOM through ITK Loader
+        if os.path.isdir(request["image"]):
+            logger.info("Input is a Directory; Consider it as DICOM")
+            logger.info(os.listdir(request["image"]))
+            request["image"] = [os.path.join(f, request["image"]) for f in os.listdir(request["image"])]
+
+        logger.info(f"Image => {request['image']}")
         result_file_name, result_json = task(request)
 
         label_id = None
