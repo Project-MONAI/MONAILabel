@@ -123,3 +123,21 @@ class MyApp(MONAILabelApp):
             "random": Random(),
             "first": MyStrategy(),
         }
+
+def main():
+    logging.basicConfig(
+        level=logging.INFO,
+        format="[%(asctime)s.%(msecs)03d][%(levelname)5s](%(name)s) - %(message)s",
+        datefmt="%Y-%m-%d %H:%M:%S",
+    )
+    app_dir_path = os.path.normpath("/home/adp20local/Documents/MONAILabel/sample-apps/deepedit_spleen")
+    studies_path = os.path.normpath("/home/adp20local/Documents/Datasets/monailabel_datasets/spleen/train_small")
+    al_app = MyApp(app_dir=app_dir_path, studies=studies_path)
+    request = {}
+    request["val_batch_size"] = 1
+    request["epochs"] = 2
+    al_app.train(request=request)
+    return None
+
+if __name__ == "__main__":
+    main()
