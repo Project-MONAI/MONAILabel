@@ -14,7 +14,6 @@ import os
 
 from lib import MyInfer, MyTrain
 
-# from lib.infer_tta import MyInferTTA
 from lib.activelearning import TTA, MyStrategy
 from monai.apps import load_from_mmar
 
@@ -49,12 +48,6 @@ class MyApp(MONAILabelApp):
         infers.update(self.deepgrow_infer_tasks(self.model_dir))
         return infers
 
-    # def init_infers(self):
-    #     infers = {
-    #         "segmentation_spleen": MyInferTTA(self.final_model, load_from_mmar(self.mmar, self.model_dir)),
-    #     }
-    #     return infers
-
     def init_trainers(self):
         return {
             "segmentation_spleen": MyTrain(
@@ -74,42 +67,3 @@ class MyApp(MONAILabelApp):
             "TTA": TTAScoring(model=self.init_infers()["segmentation_spleen"]),
         }
 
-    # def create_augmented_imgs(self, request):
-    #     # ["first", "second", "third", "fourth", "fifth", "sixth", "seventh", "eighth", "ninth", "tenth"]
-    #     for i in ["first", "second", "third"]:
-    #         request["label_tag"] = i
-    #         self.batch_infer(request)
-
-
-def main():
-    logging.basicConfig(
-        level=logging.INFO,
-        format="[%(asctime)s.%(msecs)03d][%(levelname)5s](%(name)s) - %(message)s",
-        datefmt="%Y-%m-%d %H:%M:%S",
-    )
-    app_dir_path = os.path.normpath("/home/adp20local/Documents/MONAILabel/sample-apps/segmentation_spleen_tta")
-    studies_path = os.path.normpath("/home/adp20local/Documents/Datasets/monailabel_datasets/spleen/train_small")
-    al_app = MyApp(app_dir=app_dir_path, studies=studies_path)
-    request = {}
-    request["device"] = "cuda"
-    request["model"] = "segmentation_spleen"
-    request["images"] = "unlabeled"
-    request["save_label"] = True
-    # Perform batch inference using augmented images
-    al_app.init_infers()
-    # al_app.create_augmented_imgs(request)
-
-    request["val_batch_size"] = 1
-    request["epochs"] = 1
-    request["strategy"] = "TTA"
-    request["method"] = "TTA"
-    # Perform scoring
-    al_app.scoring(request)
-    # Fetch next sample
-    al_app.next_sample(request=request)
-    al_app.next_sample(request=request)
-    return None
-
-
-if __name__ == "__main__":
-    main()
