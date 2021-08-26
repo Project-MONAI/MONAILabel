@@ -37,7 +37,7 @@ class MyStrategy(Strategy):
         return image
 
 
-class Tta(Strategy):
+class TTA(Strategy):
     """
     Test Time Augmentation (TTA) as active learning strategy
     """
@@ -49,7 +49,7 @@ class Tta(Strategy):
         images = datastore.get_unlabeled_images()
         if not len(images):
             return None
-        tta_scores = {image: datastore.get_image_info(image)["tta_score"] for image in images}
+        tta_scores = {image: datastore.get_image_info(image)["vvc_tta"] for image in images}
         _, image = max(zip(tta_scores.values(), tta_scores.keys()))
 
         logger.info(f"First: Selected Image: {image}")

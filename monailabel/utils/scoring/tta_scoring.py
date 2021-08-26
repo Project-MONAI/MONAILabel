@@ -10,12 +10,24 @@
 # limitations under the License.
 
 import logging
+import time
+from functools import partial
 
 import numpy as np
-
-"""
-from monai.transforms import LoadImage
-"""
+import torch
+from monai.data import TestTimeAugmentation
+from monai.inferers import sliding_window_inference
+from monai.transforms import (
+    Activations,
+    AddChanneld,
+    AsDiscrete,
+    Compose,
+    LoadImaged,
+    RandAffined,
+    ScaleIntensityRanged,
+    Spacingd,
+    ToTensord,
+)
 
 from monailabel.interfaces.datastore import Datastore
 from monailabel.interfaces.tasks import ScoringMethod
@@ -23,32 +35,88 @@ from monailabel.interfaces.tasks import ScoringMethod
 logger = logging.getLogger(__name__)
 
 
-class TtaScoring(ScoringMethod):
+class TTAScoring(ScoringMethod):
     """
     First version of test time augmentation active learning
     """
 
-    def __init__(self, tags=("first", "second", "third")):
+    def __init__(self, model=None):
         super().__init__("Compute initial score based on TTA")
-        self.tags = tags
+        self.model = model
+        self.device = "cuda"
+        self.img_size = [128, 128, 64]
+        self.num_samples = 2
+
+    def pre_transforms(self):
+        return Compose(
+            [
+                LoadImaged(keys="image"),
+                AddChanneld(keys="image"),
+                Spacingd(keys="image", pixdim=[1.0, 1.0, 1.0]),
+                RandAffined(
+                    keys=["image"],
+                    prob=1,
+                    rotate_range=(np.pi / 6, np.pi / 6, np.pi / 6),
+                    padding_mode="zeros",
+                    as_tensor_output=False,
+                ),
+                ScaleIntensityRanged(keys="image", a_min=-57, a_max=164, b_min=0.0, b_max=1.0, clip=True),
+                ToTensord(keys="image"),
+            ]
+        )
+
+    def post_transforms(self):
+        return Compose(
+            [
+                Activations(sigmoid=True),
+                AsDiscrete(threshold_values=True),
+            ]
+        )
+
+    def infer_seg(self, images, model, roi_size, sw_batch_size):
+        preds = sliding_window_inference(images, roi_size, sw_batch_size, model)
+        transforms = self.post_transforms()
+        post_pred = transforms(preds)
+        return post_pred
 
     def __call__(self, request, datastore: Datastore):
-        """
-        loader = LoadImage(image_only=True)
-        avg = []
-        """
+
+        logger.info("Starting TTA scoring")
+
         result = {}
-        for image_id in datastore.list_images():
-            """
-            for tag in self.tags:
-                label_id: str = datastore.get_label_by_image_id(image_id, tag)
-                if label_id:
-                    aux = np.sum(loader(datastore.get_label_uri(label_id)))
-                    avg.append(aux)
-            avg = np.array(avg)
-            """
-            info = {"tta_score": np.random.randint(1, 100)}
+
+        tt_aug = TestTimeAugmentation(
+            transform=self.pre_transforms(),
+            label_key="image",
+            batch_size=1,
+            num_workers=0,
+            inferrer_fn=partial(
+                self.infer_seg, roi_size=self.img_size, model=self.model._get_network(self.device), sw_batch_size=1
+            ),
+            device=self.device,
+        )
+
+        # Performing TTA for all unlabeled images
+        for image_id in datastore.get_unlabeled_images():
+
+            logger.info("TTA for image: " + image_id)
+
+            file = {"image": datastore.get_image_uri(image_id)}
+
+            # Computing the Volume Variation Coefficient (VVC)
+            start = time.time()
+            with torch.no_grad():
+                mode_tta, mean_tta, std_tta, vvc_tta = tt_aug(file, num_examples=self.num_samples)
+            if self.device == "cuda":
+                torch.cuda.empty_cache()
+            latency_tta = time.time() - start
+
+            logger.info("Time taken for " + str(self.num_samples) + " augmented samples: " + str(latency_tta))
+
+            # Add vvc in datastore
+            info = {"vvc_tta": vvc_tta}
             logger.info(f"{image_id} => {info}")
             datastore.update_image_info(image_id, info)
             result[image_id] = info
+
         return result
