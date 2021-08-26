@@ -20,8 +20,11 @@ logger = logging.getLogger(__name__)
 
 
 def remove_file(path: str) -> None:
-    if os.path.exists(path):
-        os.unlink(path)
+    if path and os.path.exists(path):
+        if os.path.isdir(path):
+            shutil.rmtree(path)
+        else:
+            os.unlink(path)
 
 
 def run_command(command, args=None, plogger=None):
