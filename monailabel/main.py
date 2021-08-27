@@ -290,7 +290,7 @@ def run_app(args):
     settings.WADO_PREFIX = args.wado_prefix
     settings.STOW_PREFIX = args.stow_prefix
 
-    dirs = ["model", "lib", "logs"]
+    dirs = ["model", "lib", "logs", "bin"]
     for d in dirs:
         d = os.path.join(args.app, d)
         if not os.path.exists(d):
@@ -298,6 +298,7 @@ def run_app(args):
 
     sys.path.append(args.app)
     sys.path.append(os.path.join(args.app, "lib"))
+    os.environ["PATH"] += os.pathsep + os.path.join(args.app, "bin")
 
     if args.dryrun:
         with open(".env", "w") as f:

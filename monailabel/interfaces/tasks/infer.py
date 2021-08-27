@@ -17,9 +17,9 @@ from abc import abstractmethod
 from typing import Dict
 
 import torch
-from monai.transforms import Compose
 
 from monailabel.interfaces.exception import MONAILabelError, MONAILabelException
+from monailabel.utils.others.transform_utils import run_transforms
 from monailabel.utils.others.writer import Writer
 
 logger = logging.getLogger(__name__)
@@ -259,7 +259,7 @@ class InferTask:
         return result_file_name, result_json
 
     def run_pre_transforms(self, data, transforms):
-        return self.run_callables(data, transforms, log_prefix="PRE")
+        return run_transforms(data, transforms, log_prefix="PRE")
 
     def run_invert_transforms(self, data, pre_transforms, names):
         if names is None:
@@ -279,12 +279,12 @@ class InferTask:
         d = copy.deepcopy(dict(data))
         d[self.input_key] = data[self.output_label_key]
 
-        d = self.run_callables(d, transforms, inverse=True, log_prefix="INV")
+        d = run_transforms(d, transforms, inverse=True, log_prefix="INV")
         data[self.output_label_key] = d[self.input_key]
         return data
 
     def run_post_transforms(self, data, transforms):
-        return self.run_callables(data, transforms, log_prefix="POST")
+        return run_transforms(data, transforms, log_prefix="POST")
 
     def _get_network(self, device):
         path = self.get_path()
@@ -352,7 +352,8 @@ class InferTask:
             outputs = outputs[0] if convert_to_batch else outputs
             data[self.output_label_key] = outputs
         else:
-            data = self.run_callables(data, inferer, log_prefix="INF", log_name="Inferer")
+            # consider them as callable transforms
+            data = run_transforms(data, inferer, log_prefix="INF", log_name="Inferer")
         return data
 
     def writer(self, data, extension=None, dtype=None):
@@ -376,88 +377,3 @@ class InferTask:
 
     def clear(self):
         self._networks.clear()
-
-    @staticmethod
-    def dump_data(data):
-        if logging.getLogger().level == logging.DEBUG:
-            logger.debug("**************************** DATA ********************************************")
-            for k in data:
-                v = data[k]
-                logger.debug(
-                    "Data key: {} = {}".format(
-                        k,
-                        v.shape
-                        if hasattr(v, "shape")
-                        else v
-                        if type(v) in (int, float, bool, str, dict, tuple, list)
-                        else type(v),
-                    )
-                )
-            logger.debug("******************************************************************************")
-
-    @staticmethod
-    def _shape_info(data, keys=("image", "label", "logits", "pred", "model")):
-        shape_info = []
-        for key in keys:
-            val = data.get(key)
-            if val is not None and hasattr(val, "shape"):
-                shape_info.append("{}: {}".format(key, val.shape))
-        return "; ".join(shape_info)
-
-    @staticmethod
-    def run_callables(data, callables, inverse=False, log_prefix="POST", log_name="Transform"):
-        """
-        Run Transforms
-
-        :param data: Input data dictionary
-        :param callables: List of transforms or callable objects
-        :param inverse: Run inverse instead of call/forward function
-        :param log_prefix: Logging prefix (POST or PRE)
-        :param log_name: Type of callables for logging
-        :return: Processed data after running transforms
-        """
-        logger.info("{} - Run {}".format(log_prefix, log_name))
-        logger.info("{} - Input Keys: {}".format(log_prefix, data.keys()))
-
-        if not callables:
-            return data
-
-        if isinstance(callables, Compose):
-            callables = callables.transforms
-        elif callable(callables):
-            callables = [callables]
-
-        for t in callables:
-            name = t.__class__.__name__
-            start = time.time()
-
-            InferTask.dump_data(data)
-            if inverse:
-                if hasattr(t, "inverse"):
-                    data = t.inverse(data)
-                else:
-                    raise MONAILabelException(
-                        MONAILabelError.INFERENCE_ERROR,
-                        "{} '{}' has no invert method".format(log_name, t.__class__.__name__),
-                    )
-            elif callable(t):
-                data = t(data)
-            else:
-                raise MONAILabelException(
-                    MONAILabelError.INFERENCE_ERROR,
-                    "{} '{}' is not callable".format(log_name, t.__class__.__name__),
-                )
-
-            logger.info(
-                "{} - {} ({}): Time: {:.4f}; {}".format(
-                    log_prefix,
-                    log_name,
-                    name,
-                    float(time.time() - start),
-                    InferTask._shape_info(data),
-                )
-            )
-            logger.debug("-----------------------------------------------------------------------------")
-
-        InferTask.dump_data(data)
-        return data

@@ -154,7 +154,7 @@ def run_main():
 
     logging.basicConfig(
         level=(logging.DEBUG if args.debug else logging.INFO),
-        format="[%(asctime)s.%(msecs)03d][%(levelname)5s](%(name)s) - %(message)s",
+        format="[%(asctime)s] [%(levelname)s] (%(name)s.%(funcName)s:%(lineno)d) - %(message)",
         datefmt="%Y-%m-%d %H:%M:%S",
     )
 
