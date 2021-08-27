@@ -10,7 +10,9 @@
 # limitations under the License.
 import json
 import logging
+import os
 import pathlib
+import shutil
 import tempfile
 import time
 
@@ -22,21 +24,36 @@ from monai.transforms import LoadImage
 from pydicom.filereader import dcmread
 
 from monailabel.utils.datastore.dicom.colors import GENERIC_ANATOMY_COLORS
+from monailabel.utils.others.generic import run_command
 from monailabel.utils.others.writer import write_itk
 
 logger = logging.getLogger(__name__)
 
 
-def dicom_to_nifti(series_dir, output_nifti):
+def dicom_to_nifti(series_dir, output_nifti, is_seg=False):
     start = time.time()
 
-    reader = SimpleITK.ImageSeriesReader()
-    dicom_names = reader.GetGDCMSeriesFileNames(series_dir)
-    reader.SetFileNames(dicom_names)
+    if is_seg:
+        itk_dicom_seg_to_image(series_dir, output_nifti)
+    else:
+        # https://simpleitk.readthedocs.io/en/master/link_DicomConvert_docs.html
+        if os.path.isdir(series_dir) and len(os.listdir(series_dir)) > 1:
+            reader = SimpleITK.ImageSeriesReader()
+            dicom_names = reader.GetGDCMSeriesFileNames(series_dir)
+            reader.SetFileNames(dicom_names)
+            image = reader.Execute()
+        else:
+            filename = (
+                series_dir if not os.path.isdir(series_dir) else os.path.join(series_dir, os.listdir(series_dir)[0])
+            )
 
-    image = reader.Execute()
-    logger.info(f"Image size: {image.GetSize()}")
-    SimpleITK.WriteImage(image, output_nifti)
+            file_reader = SimpleITK.ImageFileReader()
+            file_reader.SetImageIO("GDCMImageIO")
+            file_reader.SetFileName(filename)
+            image = file_reader.Execute()
+
+        logger.info(f"Image size: {image.GetSize()}")
+        SimpleITK.WriteImage(image, output_nifti)
 
     logger.info(f"dicom_to_nifti latency : {time.time() - start} (sec)")
 
@@ -64,7 +81,7 @@ def binary_to_image(reference_image, label, dtype=np.uint16, file_ext=".nii.gz",
     return output_file
 
 
-def nifti_to_dicom_seg(series_dir, label, label_info, file_ext="*"):
+def nifti_to_dicom_seg(series_dir, label, label_info, file_ext="*", use_itk=True):
     start = time.time()
 
     label_np, meta_dict = LoadImage()(label)
@@ -123,26 +140,74 @@ def nifti_to_dicom_seg(series_dir, label, label_info, file_ext="*"):
         logger.error("Missing Attributes/Empty Label provided")
         return None
 
-    template = pydicom_seg.template.from_dcmqi_metainfo(template)
-    writer = pydicom_seg.MultiClassWriter(
-        template=template,
-        inplane_cropping=False,
-        skip_empty_slices=False,
-        skip_missing_segment=False,
-    )
+    if use_itk:
+        output_file = itk_image_to_dicom_seg(label, series_dir, template)
+    else:
+        template = pydicom_seg.template.from_dcmqi_metainfo(template)
+        writer = pydicom_seg.MultiClassWriter(
+            template=template,
+            inplane_cropping=False,
+            skip_empty_slices=False,
+            skip_missing_segment=False,
+        )
 
-    # Read source Images
-    series_dir = pathlib.Path(series_dir)
-    image_files = series_dir.glob(file_ext)
-    image_datasets = [dcmread(str(f), stop_before_pixels=True) for f in image_files]
-    logger.info(f"Total Source Images: {len(image_datasets)}")
+        # Read source Images
+        series_dir = pathlib.Path(series_dir)
+        image_files = series_dir.glob(file_ext)
+        image_datasets = [dcmread(str(f), stop_before_pixels=True) for f in image_files]
+        logger.info(f"Total Source Images: {len(image_datasets)}")
 
-    mask = SimpleITK.ReadImage(label)
-    mask = SimpleITK.Cast(mask, SimpleITK.sitkUInt16)
+        mask = SimpleITK.ReadImage(label)
+        mask = SimpleITK.Cast(mask, SimpleITK.sitkUInt16)
 
-    output_file = tempfile.NamedTemporaryFile(suffix=".dcm").name
-    dcm = writer.write(mask, image_datasets)
-    dcm.save_as(output_file)
+        output_file = tempfile.NamedTemporaryFile(suffix=".dcm").name
+        dcm = writer.write(mask, image_datasets)
+        dcm.save_as(output_file)
 
     logger.info(f"nifti_to_dicom_seg latency : {time.time() - start} (sec)")
     return output_file
+
+
+def itk_image_to_dicom_seg(label, series_dir, template):
+    output_file = tempfile.NamedTemporaryFile(suffix=".dcm").name
+    meta_data = tempfile.NamedTemporaryFile(suffix=".json").name
+    with open(meta_data, "w") as fp:
+        json.dump(template, fp)
+
+    command = "itkimage2segimage"
+    args = [
+        "--inputImageList",
+        label,
+        "--inputDICOMDirectory",
+        series_dir,
+        "--outputDICOM",
+        output_file,
+        "--inputMetadata",
+        meta_data,
+    ]
+    run_command(command, args)
+    os.unlink(meta_data)
+    return output_file
+
+
+def itk_dicom_seg_to_image(label, output_file, output_type="nifti"):
+    # TODO:: Currently supports only one file
+    filename = label if not os.path.isdir(label) else os.path.join(label, os.listdir(label)[0])
+    with tempfile.TemporaryDirectory() as output_dir:
+        command = "segimage2itkimage"
+        args = [
+            "--inputDICOM",
+            filename,
+            "--outputType",
+            output_type,
+            "--prefix",
+            "segment",
+            "--outputDirectory",
+            output_dir,
+        ]
+        run_command(command, args)
+        result_file = os.path.join(output_dir, [f for f in os.listdir(output_dir) if f.startswith("segment")][0])
+        logger.info(f"{result_file}")
+
+        shutil.move(result_file, output_file)
+        return output_file
