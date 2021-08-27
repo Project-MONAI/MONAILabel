@@ -82,7 +82,7 @@ class MyApp(MONAILabelApp):
             saved_labels = self.datastore().get_labels_by_image_id(image)
             for label, tag in saved_labels.items():
                 if tag == "logits":
-                    request["logits"] = self.datastore().get_label_uri(label)
+                    request["logits"] = self.datastore().get_label_uri(label, tag)
             logger.info(f"Updated request: {request}")
 
         result = super().infer(request)
@@ -91,7 +91,7 @@ class MyApp(MONAILabelApp):
         # save logits
         logits = result_params.get("logits")
         if logits and self._infers[request.get("model")].type == InferType.SEGMENTATION:
-            self.datastore().save_label(image, logits, "logits", None)
+            self.datastore().save_label(image, logits, "logits", {})
             os.unlink(logits)
 
         result_params.pop("logits", None)
