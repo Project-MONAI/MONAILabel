@@ -10,6 +10,7 @@
 # limitations under the License.
 
 import logging
+from scipy.special import softmax
 
 import maxflow
 import numpy as np
@@ -113,3 +114,42 @@ def make_iseg_unary(
         unary_term[(1 - s_h,) + u_idx] = no_equal_term
 
     return unary_term
+
+def make_histograms(image, scrib, scribbles_bg_label, scribbles_fg_label):
+    def get_values(_data, _seed, _label):
+        idx = np.argwhere(_seed == _label)
+        _values = []
+        for id in idx:
+            _values.append(_data[tuple(id)])
+        return _values
+
+    values = get_values(image, scrib, scribbles_bg_label)
+    bg_hist, bg_bin_edges = np.histogram(values, bins=512, range=(0, 1), density=True)
+
+    values = get_values(image, scrib, scribbles_fg_label)
+    fg_hist, fg_bin_edges = np.histogram(values, bins=512, range=(0, 1), density=True)
+
+    scale = fg_bin_edges[1] - fg_bin_edges[0]
+    return (bg_hist * scale).astype(np.float32), (fg_hist * scale).astype(np.float32), fg_bin_edges
+
+
+def make_likelihood_image_histogram(image, scrib, scribbles_bg_label, scribbles_fg_label, return_prob=True):
+    # normalise image in range [0, 1] if needed
+    min_img = np.min(image)
+    max_img = np.max(image)
+    if min_img < 0.0 or max_img > 1.0:
+        image = (image - min_img)/(max_img - min_img)
+
+    bg_hist, fg_hist, bin_edges = make_histograms(image, scrib, scribbles_bg_label, scribbles_fg_label)
+
+    dimage = np.digitize(image, bin_edges[:-1]) - 1
+    fprob = fg_hist[dimage]
+    bprob = bg_hist[dimage]
+    retprob = np.concatenate([bprob, fprob], axis=0)
+    retprob = softmax(retprob, axis=0)
+    
+    # return label instead of probability
+    if not return_prob:
+        retprob = np.expand_dims(np.argmax(retprob, axis=0), axis=0).astype(np.float32)
+
+    return retprob

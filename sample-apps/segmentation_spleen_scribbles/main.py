@@ -19,7 +19,7 @@ from lib import (
     SpleenInteractiveGraphCut,
     SpleenISegCRF,
     SpleenISegGraphCut,
-    SpleenISegSimpleCRF,
+    SpleenISegSimpleCRF,SpleenISegGraphcutColdstart,
 )
 from monai.apps import load_from_mmar
 
@@ -52,6 +52,7 @@ class MyApp(MONAILabelApp):
                 self.final_model, load_from_mmar(self.mmar, self.model_dir)
             ),
             "ISeg+GraphCut": SpleenISegGraphCut(),
+            "Coldstart->ISeg+GraphCut": SpleenISegGraphcutColdstart(),
             "ISeg+CRF": SpleenISegCRF(),
             "ISeg+SimpleCRF": SpleenISegSimpleCRF(),
             "ISeg+InteractiveGraphCut": SpleenInteractiveGraphCut(),
