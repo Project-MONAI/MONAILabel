@@ -12,7 +12,7 @@ import hashlib
 import logging
 import os
 import pathlib
-from typing import Any, Dict, List
+from typing import Any, Dict, List, Tuple
 
 from dicomweb_client import DICOMwebClient
 from dicomweb_client.api import load_json_dataset
@@ -39,11 +39,12 @@ class DICOMWebCache(LocalDatastore):
     def name(self) -> str:
         return self._client.base_url
 
-    def _to_filename(self, series_id):
-        return series_id.replace(".", "#")
-
-    def _to_series_id(self, filename):
-        return filename.repace("#", ".")
+    def _to_id(self, file: str) -> Tuple[str, str]:
+        extensions = [".nii", ".nii.gz", ".nrrd"]
+        for extension in extensions:
+            if file.endswith(extension):
+                return file.replace(extension, ""), extension
+        return super()._to_id(file)
 
     def get_image_uri(self, image_id: str) -> str:
         logger.info(f"Image ID: {image_id}")
@@ -53,58 +54,43 @@ class DICOMWebCache(LocalDatastore):
         if not os.path.exists(image_dir) or not os.listdir(image_dir):
             dicom_web_download_series(None, image_id, image_dir, self._client)
 
-        # TODO:: BUG In MONAI? Currently can not load DICOM through ITK Loader
-        image_id_encoded = self._to_filename(image_id)
-        image_nii_gz = os.path.realpath(os.path.join(self._datastore.image_path(), f"{image_id_encoded}.nii.gz"))
+        # TODO:: Do we need to convert always? For clients like OHIF it's not needed.
+        image_nii_gz = os.path.realpath(os.path.join(self._datastore.image_path(), f"{image_id}.nii.gz"))
         if not os.path.exists(image_nii_gz):
             dicom_to_nifti(image_dir, image_nii_gz)
+            self.refresh()
+            self.update_image_info(image_id, self._dicom_info(image_id))
 
         return image_nii_gz
 
-    def get_label_uri(self, label_id: str, image_id: str = "") -> str:
-        # TODO:: Only Final Tag is supported
-        logger.info(f"Label ID: {label_id}")
-        label_dir = os.path.realpath(os.path.join(self._datastore.label_path(DefaultLabelTag.FINAL), label_id))
+    def get_label_uri(self, label_id: str, label_tag: str, image_id: str = "") -> str:
+        if label_tag != DefaultLabelTag.FINAL:
+            return super().get_label_uri(label_id, label_tag)
+
+        logger.info(f"Label ID: {label_id} => {label_tag}")
+        label_dir = os.path.realpath(os.path.join(self._datastore.label_path(label_tag), label_id))
         logger.info(f"Label Dir (cache): {label_dir}")
 
         if not os.path.exists(label_dir) or not os.listdir(label_dir):
             dicom_web_download_series(None, label_id, label_dir, self._client)
 
-        label_id_encoded = self._to_filename(label_id)
-        image_id_encoded = self._to_filename(image_id) if image_id else ""
         label_nii_gz = os.path.realpath(
-            os.path.join(
-                self._datastore.label_path(DefaultLabelTag.FINAL), f"{image_id_encoded}+{label_id_encoded}.nii.gz"
-            )
+            os.path.join(self._datastore.label_path(DefaultLabelTag.FINAL), f"{image_id}.nii.gz")
         )
         if not os.path.exists(label_nii_gz):
-            dicom_to_nifti(label_dir, label_nii_gz)
+            dicom_to_nifti(label_dir, label_nii_gz, is_seg=True)
+            self.refresh()
+            self.update_label_info(image_id, label_tag, self._dicom_info(label_id))
 
         return label_nii_gz
 
-    def get_image_info(self, image_id: str) -> Dict[str, Any]:
-        info = super().get_image_info(self._to_filename(image_id))
-        self._update_info(image_id, info)
-        return info
-
-    def get_label_info(self, label_id: str) -> Dict[str, Any]:
-        info = super().get_label_info(label_id)
-        self._update_info(label_id, info)
-        return info
-
-    def _update_info(self, series_id, info):
-        if info.get("SeriesInstanceUID"):
-            return
-
+    def _dicom_info(self, series_id):
         meta = load_json_dataset(self._client.search_for_series(search_filters={"SeriesInstanceUID": series_id})[0])
-        info.update(
-            {
-                "SeriesInstanceUID": series_id,
-                "StudyInstanceUID": str(meta["StudyInstanceUID"].value),
-                "PatientID": str(meta["PatientID"].value),
-            }
-        )
-        self._update_datastore_file()
+        return {
+            "SeriesInstanceUID": series_id,
+            "StudyInstanceUID": str(meta["StudyInstanceUID"].value),
+            "PatientID": str(meta["PatientID"].value),
+        }
 
     def list_images(self) -> List[str]:
         datasets = self._client.search_for_series(search_filters={"Modality": self._modality})
@@ -143,23 +129,24 @@ class DICOMWebCache(LocalDatastore):
         image_uri = self.get_image_uri(image_id)
         label_ext = "".join(pathlib.Path(label_filename).suffixes)
 
-        output_file = None
+        output_file = ""
         if label_ext == ".bin":
             output_file = binary_to_image(image_uri, label_filename)
             label_filename = output_file
 
         logger.info(f"Label File: {label_filename}")
-        # res = super().save_label(image_id, label_filename, label_tag, label_info, label_id)
 
-        image_dir = os.path.realpath(os.path.join(self._datastore.image_path(), image_id))
-        label_file = nifti_to_dicom_seg(image_dir, label_filename, label_info)
-        label_series_id = dicom_web_upload_dcm(label_file, self._client)
-        label_id = self._to_filename(label_series_id)
+        # Support DICOM-SEG uploading only final version
+        if label_tag == DefaultLabelTag.FINAL:
+            image_dir = os.path.realpath(os.path.join(self._datastore.image_path(), image_id))
+            label_file = nifti_to_dicom_seg(image_dir, label_filename, label_info)
 
-        image_id_encoded = self._to_filename(image_id)
-        super().save_label(image_id_encoded, label_filename, label_tag, label_info, label_id)
+            label_series_id = dicom_web_upload_dcm(label_file, self._client)
+            label_info.update(self._dicom_info(label_series_id))
+            os.unlink(label_file)
 
-        os.unlink(label_file)
+        label_id = super().save_label(image_id, label_filename, label_tag, label_info)
+
         if output_file:
             os.unlink(output_file)
         return label_id
@@ -183,7 +170,9 @@ class DICOMWebCache(LocalDatastore):
 
         for image_label in image_labels:
             self.get_image_uri(image_id=image_label["image"])
-            self.get_label_uri(label_id=image_label["label"], image_id=image_label["image"])
+            self.get_label_uri(
+                label_id=image_label["label"], label_tag=DefaultLabelTag.FINAL, image_id=image_label["image"]
+            )
 
     def datalist(self, full_path=True) -> List[Dict[str, str]]:
         self._download_labeled_data()

@@ -13,10 +13,15 @@ import hashlib
 import logging
 import mimetypes
 import os
+import pathlib
 import shutil
 import subprocess
 
 logger = logging.getLogger(__name__)
+
+
+def file_ext(name) -> str:
+    return "".join(pathlib.Path(name).suffixes)
 
 
 def remove_file(path: str) -> None:
