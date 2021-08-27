@@ -993,7 +993,7 @@ class MONAILabelWidget(ScriptedLoadableModuleWidget, VTKObservationMixin):
             p_Ijk = RasToIjkMatrix.MultiplyDoublePoint(p_Ras)
             p_Ijk = [round(i) for i in p_Ijk]
 
-            logging.debug("RAS: {}; WORLD: {}; IJK: ".format(coord, world, p_Ijk))
+            logging.debug("RAS: {}; WORLD: {}; IJK: {}".format(coord, world, p_Ijk))
             point_set.append(p_Ijk[0:3])
 
         logging.info("Current Fiducials-Points: {}".format(point_set))
@@ -1014,7 +1014,7 @@ class MONAILabelWidget(ScriptedLoadableModuleWidget, VTKObservationMixin):
         p_Ijk = RasToIjkMatrix.MultiplyDoublePoint(p_Ras)
         p_Ijk = [round(i) for i in p_Ijk]
 
-        logging.debug("RAS: {}; WORLD: {}; IJK: ".format(coord, world, p_Ijk))
+        logging.debug("RAS: {}; WORLD: {}; IJK: {}".format(coord, world, p_Ijk))
         return p_Ijk[0:3]
 
     def onEditFiducialPoints(self, fiducialNode, tagName):
@@ -1295,13 +1295,14 @@ class MONAILabelWidget(ScriptedLoadableModuleWidget, VTKObservationMixin):
             logging.info(sample)
             image_id = sample["id"]
             image_file = sample.get("path")
-            image_name = sample.get("name", image_id)
+            image_name = sample.get("PatientID", sample.get("name", image_id))[-20:]
             checksum = sample.get("checksum")
             local_exists = image_file and os.path.exists(image_file)
 
             logging.info(f"Check if file exists/shared locally: {image_file} => {local_exists}")
             if local_exists:
                 self._volumeNode = slicer.util.loadVolume(image_file)
+                self._volumeNode.SetName(image_name)
             else:
                 download_uri = f"{self.serverUrl()}/datastore/image?image={quote_plus(image_id)}"
                 logging.info(download_uri)
@@ -1412,10 +1413,11 @@ class MONAILabelWidget(ScriptedLoadableModuleWidget, VTKObservationMixin):
             totalSegments = segmentation.GetNumberOfSegments()
             segmentIds = [segmentation.GetNthSegmentID(i) for i in range(totalSegments)]
 
-            label_names = []
+            label_info = []
             for segmentId in segmentIds:
                 segment = segmentation.GetSegment(segmentId)
-                label_names.append({"name": segment.GetName()})
+                label_info.append({"name": segment.GetName()})
+                # label_info.append({"color": segment.GetColor()})
 
             label_in = tempfile.NamedTemporaryFile(suffix=".nii.gz", dir=self.tmpdir).name
             self.reportProgress(5)
@@ -1424,7 +1426,7 @@ class MONAILabelWidget(ScriptedLoadableModuleWidget, VTKObservationMixin):
             self.reportProgress(30)
 
             self.updateServerSettings()
-            result = self.logic.save_label(self.current_sample["id"], label_in, {"label_names": label_names})
+            result = self.logic.save_label(self.current_sample["id"], label_in, {"label_info": label_info})
             self.fetchInfo()
 
             if slicer.util.settingsValue("MONAILabel/autoUpdateModel", True, converter=slicer.util.toBool):

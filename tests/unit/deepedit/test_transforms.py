@@ -32,7 +32,7 @@ DATA_1 = {
 
 class MyTestCase(unittest.TestCase):
     def test_t1(self):
-        DiscardAddGuidanced()(DATA_1)
+        DiscardAddGuidanced(keys="image")(DATA_1)
 
     def test_t2(self):
         ResizeGuidanceCustomd("label", "image")(DATA_1)

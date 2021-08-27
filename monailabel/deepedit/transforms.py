@@ -11,10 +11,11 @@
 
 import json
 import logging
-from typing import Dict, Tuple
+from typing import Dict, Hashable, Mapping, Tuple
 
 import numpy as np
-from monai.transforms.transform import Randomizable, Transform
+from monai.config import KeysCollection
+from monai.transforms.transform import MapTransform, Randomizable, Transform
 
 logger = logging.getLogger(__name__)
 
@@ -23,16 +24,19 @@ from monai.utils import optional_import
 distance_transform_cdt, _ = optional_import("scipy.ndimage.morphology", name="distance_transform_cdt")
 
 
-class DiscardAddGuidanced(Transform):
-    def __init__(self, image: str = "image", probability: float = 1.0):
+class DiscardAddGuidanced(MapTransform):
+    def __init__(
+        self,
+        keys: KeysCollection,
+        probability: float = 1.0,
+        allow_missing_keys: bool = False,
+    ):
         """
         Discard positive and negative points randomly or Add the two channels for inference time
 
-        :param image: image key
-        :param batched: Is it batched (if used during training and data is batched as interaction transform)
         :param probability: Discard probability; For inference it will be always 1.0
         """
-        self.image = image
+        super().__init__(keys, allow_missing_keys)
         self.probability = probability
 
     def _apply(self, image):
@@ -45,9 +49,13 @@ class DiscardAddGuidanced(Transform):
                 image = np.concatenate((image, signal, signal), axis=0)
         return image
 
-    def __call__(self, data):
+    def __call__(self, data: Mapping[Hashable, np.ndarray]) -> Dict[Hashable, np.ndarray]:
         d: Dict = dict(data)
-        d[self.image] = self._apply(d[self.image])
+        for key in self.key_iterator(d):
+            if key == "image":
+                d[key] = self._apply(d[key])
+            else:
+                print("This transform only applies to the image")
         return d
 
 
@@ -100,6 +108,8 @@ class ClickRatioAddRandomGuidanced(Randomizable, Transform):
         self.probability = probability
         self.fn_fp_click_ratio = fn_fp_click_ratio
         self._will_interact = None
+        self.is_pos = False
+        self.is_neg = False
 
     def randomize(self, data=None):
         probability = data[self.probability]
@@ -154,9 +164,11 @@ class ClickRatioAddRandomGuidanced(Randomizable, Transform):
         if pos:
             guidance[0].append(pos)
             guidance[1].append([-1] * len(pos))
+            self.is_pos = True
         if neg:
             guidance[0].append([-1] * len(neg))
             guidance[1].append(neg)
+            self.is_neg = True
 
         return json.dumps(np.asarray(guidance).astype(int).tolist())
 
@@ -166,4 +178,8 @@ class ClickRatioAddRandomGuidanced(Randomizable, Transform):
         discrepancy = d[self.discrepancy]
         self.randomize(data)
         d[self.guidance] = self._apply(guidance, discrepancy)
+        d["is_pos"] = self.is_pos
+        d["is_neg"] = self.is_neg
+        self.is_pos = False
+        self.is_neg = False
         return d
