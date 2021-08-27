@@ -22,7 +22,14 @@ from scipy.special import softmax
 
 from monailabel.utils.others.writer import Writer
 
-from .utils import interactive_maxflow2d, interactive_maxflow3d, make_iseg_unary, make_likelihood_image_histogram, maxflow2d, maxflow3d
+from .utils import (
+    interactive_maxflow2d,
+    interactive_maxflow3d,
+    make_iseg_unary,
+    make_likelihood_image_histogram,
+    maxflow2d,
+    maxflow3d,
+)
 
 
 #####################################
@@ -106,6 +113,7 @@ class MakeLikelihoodFromScribblesHistogramd(InteractiveSegmentationTransform):
         d[self.post_proc_label] = post_proc_label
 
         return d
+
 
 #############################
 #############################

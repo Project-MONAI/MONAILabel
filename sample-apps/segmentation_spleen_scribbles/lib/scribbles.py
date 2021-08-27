@@ -110,7 +110,8 @@ class SpleenISegCRF(SpleenPostProc):
                 ApplyCRFOptimisationd(unary="unary", pairwise="image", post_proc_label="pred", device="cpu"),
             ]
         )
-    
+
+
 class SpleenISegGraphcutColdstart(SpleenPostProc):
     """
     Defines ISeg+Graphcut based cold start task for Spleen segmentation from the following paper:
@@ -143,7 +144,9 @@ class SpleenISegGraphcutColdstart(SpleenPostProc):
             Spacingd(keys=["label"], pixdim=[2.5, 2.5, 5.0], mode="nearest"),
             ScaleIntensityRanged(keys="image", a_min=-300, a_max=200, b_min=0.0, b_max=1.0, clip=True),
             # SoftenProbSoftmax(logits="logits", prob="prob"),
-            MakeLikelihoodFromScribblesHistogramd(image="image", scribbles="label", post_proc_label="prob", scribbles_bg_label=2, scribbles_fg_label=3),
+            MakeLikelihoodFromScribblesHistogramd(
+                image="image", scribbles="label", post_proc_label="prob", scribbles_bg_label=2, scribbles_fg_label=3
+            ),
         ]
 
     def inferer(self):

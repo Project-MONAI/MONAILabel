@@ -19,7 +19,8 @@ from lib import (
     SpleenInteractiveGraphCut,
     SpleenISegCRF,
     SpleenISegGraphCut,
-    SpleenISegSimpleCRF,SpleenISegGraphcutColdstart,
+    SpleenISegGraphcutColdstart,
+    SpleenISegSimpleCRF,
 )
 from monai.apps import load_from_mmar
 

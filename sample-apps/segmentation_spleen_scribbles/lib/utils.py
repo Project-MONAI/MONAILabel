@@ -10,10 +10,10 @@
 # limitations under the License.
 
 import logging
-from scipy.special import softmax
 
 import maxflow
 import numpy as np
+from scipy.special import softmax
 
 logger = logging.getLogger(__name__)
 
@@ -115,6 +115,7 @@ def make_iseg_unary(
 
     return unary_term
 
+
 def make_histograms(image, scrib, scribbles_bg_label, scribbles_fg_label):
     def get_values(_data, _seed, _label):
         idx = np.argwhere(_seed == _label)
@@ -138,7 +139,7 @@ def make_likelihood_image_histogram(image, scrib, scribbles_bg_label, scribbles_
     min_img = np.min(image)
     max_img = np.max(image)
     if min_img < 0.0 or max_img > 1.0:
-        image = (image - min_img)/(max_img - min_img)
+        image = (image - min_img) / (max_img - min_img)
 
     bg_hist, fg_hist, bin_edges = make_histograms(image, scrib, scribbles_bg_label, scribbles_fg_label)
 
@@ -147,7 +148,7 @@ def make_likelihood_image_histogram(image, scrib, scribbles_bg_label, scribbles_
     bprob = bg_hist[dimage]
     retprob = np.concatenate([bprob, fprob], axis=0)
     retprob = softmax(retprob, axis=0)
-    
+
     # return label instead of probability
     if not return_prob:
         retprob = np.expand_dims(np.argmax(retprob, axis=0), axis=0).astype(np.float32)
