@@ -13,9 +13,11 @@ import logging
 import time
 from functools import partial
 
+import matplotlib.pyplot as plt
 import numpy as np
 import torch
-from monai.data import TestTimeAugmentation
+
+# from monai.data import TestTimeAugmentation
 from monai.inferers import sliding_window_inference
 from monai.transforms import (
     Activations,
@@ -31,6 +33,7 @@ from monai.transforms import (
 
 from monailabel.interfaces.datastore import Datastore
 from monailabel.interfaces.tasks import ScoringMethod
+from monailabel.utils.scoring.test_time_augmentation import TestTimeAugmentation
 
 logger = logging.getLogger(__name__)
 
@@ -45,7 +48,7 @@ class TTAScoring(ScoringMethod):
         self.model = model
         self.device = "cuda"
         self.img_size = [128, 128, 64]
-        self.num_samples = 2
+        self.num_samples = 10
 
     def pre_transforms(self):
         return Compose(
@@ -79,6 +82,28 @@ class TTAScoring(ScoringMethod):
         post_pred = transforms(preds)
         return post_pred
 
+    def get_2d_im(self, im, channel, z_slice):
+        im = im[..., z_slice]
+        if channel is not None:
+            im = im[channel][None]
+        return im
+
+    def imshows(self, ims):
+        nrow = len(ims)
+        ncol = len(ims[0])
+        fig, axes = plt.subplots(nrow, ncol, figsize=(ncol * 3, nrow * 3), facecolor="white")
+        for i, im_dict in enumerate(ims):
+            for j, (title, im) in enumerate(im_dict.items()):
+                if isinstance(im, torch.Tensor):
+                    im = im.detach().cpu().numpy()
+                im = np.mean(im, axis=0)  # average across channels
+                ax = axes[j] if len(ims) == 1 else axes[i, j]
+                ax.set_title(f"{title}\n{im.shape}")
+                im_show = ax.imshow(im)
+                ax.axis("off")
+                fig.colorbar(im_show, ax=ax)
+                fig.savefig("/home/adp20local/Documents/MONAILabel/sample-apps/segmentation_spleen_tta/tta_output.png")
+
     def __call__(self, request, datastore: Datastore):
 
         logger.info("Starting TTA scoring")
@@ -96,6 +121,7 @@ class TTAScoring(ScoringMethod):
             device=self.device,
         )
 
+        to_imshow = []
         # Performing TTA for all unlabeled images
         for image_id in datastore.get_unlabeled_images():
 
@@ -118,5 +144,21 @@ class TTAScoring(ScoringMethod):
             logger.info(f"{image_id} => {info}")
             datastore.update_image_info(image_id, info)
             result[image_id] = info
+
+            im_gt = LoadImaged(keys="image")(file)
+            im_gt = im_gt["image"][None]
+
+            # Preparing images to plot
+            to_imshow.append(
+                {
+                    "im GT": self.get_2d_im(im_gt, None, int(im_gt.shape[-1] / 2)),
+                    # "label GT": self.get_2d_im(label_gt, None, int(label_gt.shape[-1]/2)),
+                    "mode, vvc: %.2f" % vvc_tta: self.get_2d_im(mode_tta, 1, int(mode_tta.shape[-1] / 2)),
+                    "mean, vvc: %.2f" % vvc_tta: self.get_2d_im(mean_tta, 1, int(mean_tta.shape[-1] / 2)),
+                    "std, vvc: %.2f" % vvc_tta: self.get_2d_im(std_tta, 1, int(std_tta.shape[-1] / 2)),
+                }
+            )
+            # Plotting images
+            self.imshows(to_imshow)
 
         return result
