@@ -33,7 +33,6 @@ class DiscardAddGuidanced(MapTransform):
     ):
         """
         Discard positive and negative points randomly or Add the two channels for inference time
-
         :param probability: Discard probability; For inference it will be always 1.0
         """
         super().__init__(keys, allow_missing_keys)

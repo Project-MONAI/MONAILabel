@@ -130,8 +130,8 @@ def main():
         format="[%(asctime)s.%(msecs)03d][%(levelname)5s](%(name)s) - %(message)s",
         datefmt="%Y-%m-%d %H:%M:%S",
     )
-    app_dir_path = os.path.normpath("/home/adp20local/Documents/MONAILabel/sample-apps/deepedit_spleen")
-    studies_path = os.path.normpath("/home/adp20local/Documents/Datasets/monailabel_datasets/spleen/train_small")
+    app_dir_path = os.path.normpath(r"C:\Users\pmeht\Documents\MONAILabel\sample-apps\deepedit_spleen")
+    studies_path = os.path.normpath(r"C:\Users\pmeht\Documents\monai_label_datasets\Task09_Spleen\imagesTr")
     al_app = MyApp(app_dir=app_dir_path, studies=studies_path)
     request = {}
     request["val_batch_size"] = 1
