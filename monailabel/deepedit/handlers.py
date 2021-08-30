@@ -142,104 +142,6 @@ class TensorBoardImageHandler:
         print("Inner iteration: ", str(inner_j))
         
         """
-        IMAGE
-        """
-
-        show_image = self.batch_transform(engine.state.batch)["img_inner_iter"][0]["image"][0, ...][None]
-        if isinstance(show_image, torch.Tensor):
-            show_image = show_image.detach().cpu().numpy()
-        if show_image is not None:
-            if not isinstance(show_image, np.ndarray):
-                raise TypeError(
-                    "show_image must be None or one of "
-                    f"(numpy.ndarray, torch.Tensor) but is {type(show_image).__name__}."
-                )
-            plot_2d_or_3d_image(
-                # add batch dim and plot the first item
-                show_image[None],
-                step,
-                self._writer,
-                0,
-                self.max_channels,
-                self.max_frames,
-                "step_" + str(step) + "_image_" + filename,
-            )
-
-        """
-        LABEL
-        """
-        show_label = self.batch_transform(engine.state.batch)["img_inner_iter"][0]["label"][0, ...][None]
-        if isinstance(show_label, torch.Tensor):
-            show_label = show_label.detach().cpu().numpy()
-        if show_label is not None:
-            if not isinstance(show_label, np.ndarray):
-                raise TypeError(
-                    "show_label must be None or one of "
-                    f"(numpy.ndarray, torch.Tensor) but is {type(show_label).__name__}."
-                )
-            plot_2d_or_3d_image(
-                # add batch dim and plot the first item
-                show_label[None],
-                step,
-                self._writer,
-                0,
-                self.max_channels,
-                self.max_frames,
-                "step_" + str(step) + "_label_" + filename,
-            )
-        
-        """
-        POSITIVE CLICKS
-        """
-
-        show_pos_clicks = self.batch_transform(engine.state.batch)["img_inner_iter"][0]["image"][1, ...][None]
-        if isinstance(show_pos_clicks, torch.Tensor):
-            show_pos_clicks = show_pos_clicks.detach().cpu().numpy()
-        if show_pos_clicks is not None:
-            print("ok")
-            if not isinstance(show_pos_clicks, np.ndarray):
-                raise TypeError(
-                    "show_pos_clicks must be None or one of "
-                    f"(numpy.ndarray, torch.Tensor) but is {type(show_pos_clicks).__name__}."
-                )
-            show_pos_clicks = show_label + show_pos_clicks
-            plot_2d_or_3d_image(
-                # add batch dim and plot the first item
-                show_pos_clicks[None],
-                step,
-                self._writer,
-                0,
-                self.max_channels,
-                self.max_frames,
-                "step_" + str(step) + "_pos_clicks_" + filename,
-            )
-
-        """
-        NEGATIVE CLICKS
-        """
-
-        show_neg_clicks = self.batch_transform(engine.state.batch)["img_inner_iter"][0]["image"][2, ...][None]
-        if isinstance(show_neg_clicks, torch.Tensor):
-            show_neg_clicks = show_neg_clicks.detach().cpu().numpy()
-        if show_neg_clicks is not None:
-            if not isinstance(show_neg_clicks, np.ndarray):
-                raise TypeError(
-                    "show_neg_clicks must be None or one of "
-                    f"(numpy.ndarray, torch.Tensor) but is {type(show_neg_clicks).__name__}."
-                )
-            show_neg_clicks = show_label + show_neg_clicks
-            plot_2d_or_3d_image(
-                # add batch dim and plot the first item
-                show_neg_clicks[None],
-                step,
-                self._writer,
-                0,
-                self.max_channels,
-                self.max_frames,
-                "step_" + str(step) + "_neg_clicks_" + filename,
-            )
-
-        """
         Adding simulated clicks stats
         """
 
@@ -247,12 +149,115 @@ class TensorBoardImageHandler:
             self.num_pos_clicks += 1
         if self.batch_transform(engine.state.batch)["is_neg"]:
             self.num_neg_clicks += 1
-
+            
         if inner_j == self.batch_transform(engine.state.batch)["max_iter"] - 1:
             self._writer.add_scalar("Positive clicks", self.num_pos_clicks, step)
             self._writer.add_scalar("Negative clicks", self.num_neg_clicks, step)
             self.num_pos_clicks = 0
             self.num_neg_clicks = 0
+        
+            """
+            IMAGE
+            """
+    
+            show_image = self.batch_transform(engine.state.batch)["img_inner_iter"][0]["image"][0, ...][None]
+            if isinstance(show_image, torch.Tensor):
+                show_image = show_image.detach().cpu().numpy()
+            if show_image is not None:
+                if not isinstance(show_image, np.ndarray):
+                    raise TypeError(
+                        "show_image must be None or one of "
+                        f"(numpy.ndarray, torch.Tensor) but is {type(show_image).__name__}."
+                    )
+                plot_2d_or_3d_image(
+                    # add batch dim and plot the first item
+                    show_image[None],
+                    step,
+                    self._writer,
+                    0,
+                    self.max_channels,
+                    self.max_frames,
+                    "step_" + str(step) + "_image_" + filename,
+                )
+    
+            """
+            LABEL
+            """
+            show_label = self.batch_transform(engine.state.batch)["img_inner_iter"][0]["label"][0, ...][None]
+            if isinstance(show_label, torch.Tensor):
+                show_label = show_label.detach().cpu().numpy()
+            if show_label is not None:
+                if not isinstance(show_label, np.ndarray):
+                    raise TypeError(
+                        "show_label must be None or one of "
+                        f"(numpy.ndarray, torch.Tensor) but is {type(show_label).__name__}."
+                    )
+                plot_2d_or_3d_image(
+                    # add batch dim and plot the first item
+                    show_label[None],
+                    step,
+                    self._writer,
+                    0,
+                    self.max_channels,
+                    self.max_frames,
+                    "step_" + str(step) + "_label_" + filename,
+                )
+            
+            """
+            POSITIVE CLICKS
+            """
+    
+            show_pos_clicks = self.batch_transform(engine.state.batch)["img_inner_iter"][0]["image"][1, ...][None]
+            if isinstance(show_pos_clicks, torch.Tensor):
+                show_pos_clicks = show_pos_clicks.detach().cpu().numpy()
+                print("show_pos_clicks", np.sum(show_pos_clicks))
+                print(np.shape(show_pos_clicks))
+                print(np.max(show_pos_clicks))
+            if show_pos_clicks is not None:
+                if not isinstance(show_pos_clicks, np.ndarray):
+                    raise TypeError(
+                        "show_pos_clicks must be None or one of "
+                        f"(numpy.ndarray, torch.Tensor) but is {type(show_pos_clicks).__name__}."
+                    )
+                #show_pos_clicks = show_label + show_pos_clicks
+                plot_2d_or_3d_image(
+                    # add batch dim and plot the first item
+                    show_pos_clicks[None],
+                    step,
+                    self._writer,
+                    0,
+                    self.max_channels,
+                    self.max_frames,
+                    "step_" + str(step) + "_pos_clicks_" + filename,
+                )
+    
+            """
+            NEGATIVE CLICKS
+            """
+    
+            show_neg_clicks = self.batch_transform(engine.state.batch)["img_inner_iter"][0]["image"][2, ...][None]
+            if isinstance(show_neg_clicks, torch.Tensor):
+                show_neg_clicks = show_neg_clicks.detach().cpu().numpy()
+                print("show_neg_clicks", np.sum(show_neg_clicks))
+                print(np.shape(show_neg_clicks))
+                print(np.max(show_neg_clicks))
+            if show_neg_clicks is not None:
+                if not isinstance(show_neg_clicks, np.ndarray):
+                    raise TypeError(
+                        "show_neg_clicks must be None or one of "
+                        f"(numpy.ndarray, torch.Tensor) but is {type(show_neg_clicks).__name__}."
+                    )
+                #show_neg_clicks = show_label + show_neg_clicks
+                plot_2d_or_3d_image(
+                    # add batch dim and plot the first item
+                    show_neg_clicks[None],
+                    step,
+                    self._writer,
+                    0,
+                    self.max_channels,
+                    self.max_frames,
+                    "step_" + str(step) + "_neg_clicks_" + filename,
+                )
 
         self._writer.flush()
 

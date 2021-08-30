@@ -40,12 +40,16 @@ class DiscardAddGuidanced(MapTransform):
 
     def _apply(self, image):
         if self.probability >= 1.0 or np.random.choice([True, False], p=[self.probability, 1 - self.probability]):
+            print("discard")
             signal = np.zeros((1, image.shape[-3], image.shape[-2], image.shape[-1]), dtype=np.float32)
             if image.shape[0] == 3:
                 image[1] = signal
                 image[2] = signal
             else:
                 image = np.concatenate((image, signal, signal), axis=0)
+        print("image_0_sum", np.sum(image[0]))
+        print("image_1_sum", np.sum(image[1]))
+        print("image_2_sum", np.sum(image[2]))
         return image
 
     def __call__(self, data: Mapping[Hashable, np.ndarray]) -> Dict[Hashable, np.ndarray]:
@@ -164,10 +168,14 @@ class ClickRatioAddRandomGuidanced(Randomizable, Transform):
             guidance[0].append(pos)
             guidance[1].append([-1] * len(pos))
             self.is_pos = True
-        if neg:
+            print("pos_click")
+        elif neg:
             guidance[0].append([-1] * len(neg))
             guidance[1].append(neg)
             self.is_neg = True
+            print("neg_click")
+        else:
+            print("no_click")
 
         return json.dumps(np.asarray(guidance).astype(int).tolist())
 
