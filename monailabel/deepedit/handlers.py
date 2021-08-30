@@ -17,6 +17,7 @@ from monai.config import IgniteInfo
 from monai.engines.utils import IterationEvents
 from monai.utils import min_version, optional_import
 from monai.visualize import plot_2d_or_3d_image
+from monai.transforms import Compose
 
 Events, _ = optional_import("ignite.engine", IgniteInfo.OPT_IMPORT_VERSION, min_version, "Events")
 
@@ -201,6 +202,30 @@ class TensorBoardImageHandler:
                     self.max_channels,
                     self.max_frames,
                     "step_" + str(step) + "_label_" + filename,
+                )
+                
+            """
+            PREDICTION
+            """
+            show_prediction = self.batch_transform(engine.state.batch)["img_inner_iter"][0]["pred"][0, ...][None]
+            if isinstance(show_prediction, torch.Tensor):
+                show_prediction = show_prediction.detach().cpu().numpy()
+            if show_prediction is not None:
+                if not isinstance(show_prediction, np.ndarray):
+                    raise TypeError(
+                        "show_pred must be None or one of "
+                        f"(numpy.ndarray, torch.Tensor) but is {type(show_label).__name__}."
+                    )
+                show_prediction = (show_prediction > 0.5).astype(np.float32) # binarize
+                plot_2d_or_3d_image(
+                    # add batch dim and plot the first item
+                    show_prediction[None],
+                    step,
+                    self._writer,
+                    0,
+                    self.max_channels,
+                    self.max_frames,
+                    "step_" + str(step) + "_prediction_" + filename,
                 )
             
             """
