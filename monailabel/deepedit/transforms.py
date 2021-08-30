@@ -22,45 +22,33 @@ logger = logging.getLogger(__name__)
 from monai.utils import optional_import
 
 distance_transform_cdt, _ = optional_import("scipy.ndimage.morphology", name="distance_transform_cdt")
-
-
-class DiscardAddGuidanced(MapTransform):
-    def __init__(
-        self,
-        keys: KeysCollection,
-        probability: float = 1.0,
-        allow_missing_keys: bool = False,
-    ):
+    
+class DiscardAddGuidanced(Transform):
+    def __init__(self, image: str = "image", number_intensity_ch: int = 1, discard_probability: float = 1.0):
         """
-        Discard positive and negative points randomly or Add the two channels for inference time
-        :param probability: Discard probability; For inference it will be always 1.0
+        Discard positive and negative points according to discard probability
+        :param image: image key
+        :param number_intensity_ch: number of intensity channels
+        :param discard_probability: probability of discarding clicks
         """
-        super().__init__(keys, allow_missing_keys)
-        self.probability = probability
+        self.image = image
+        self.number_intensity_ch = number_intensity_ch
+        self.discard_probability = discard_probability
 
     def _apply(self, image):
-        if self.probability >= 1.0 or np.random.choice([True, False], p=[self.probability, 1 - self.probability]):
-            print("discard")
+        if self.discard_probability >= 1.0 or np.random.choice([True, False], p=[self.discard_probability, 1 - self.discard_probability]):
             signal = np.zeros((1, image.shape[-3], image.shape[-2], image.shape[-1]), dtype=np.float32)
-            if image.shape[0] == 3:
-                image[1] = signal
-                image[2] = signal
+            if image.shape[0] == self.number_intensity_ch + 2:
+                image[self.number_intensity_ch] = signal
+                image[self.number_intensity_ch + 1] = signal
             else:
                 image = np.concatenate((image, signal, signal), axis=0)
-        print("image_0_sum", np.sum(image[0]))
-        print("image_1_sum", np.sum(image[1]))
-        print("image_2_sum", np.sum(image[2]))
         return image
 
-    def __call__(self, data: Mapping[Hashable, np.ndarray]) -> Dict[Hashable, np.ndarray]:
+    def __call__(self, data):
         d: Dict = dict(data)
-        for key in self.key_iterator(d):
-            if key == "image":
-                d[key] = self._apply(d[key])
-            else:
-                print("This transform only applies to the image")
+        d[self.image] = self._apply(d[self.image])
         return d
-
 
 class ResizeGuidanceCustomd(Transform):
     """

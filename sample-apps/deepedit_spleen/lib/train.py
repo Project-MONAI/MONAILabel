@@ -80,7 +80,7 @@ class MyTrain(BasicTrainTask):
             FindDiscrepancyRegionsd(label="label", pred="pred", discrepancy="discrepancy"),
             ClickRatioAddRandomGuidanced(guidance="guidance", discrepancy="discrepancy", probability="probability"),
             AddGuidanceSignald(image="image", guidance="guidance"),
-            DiscardAddGuidanced(keys="image", probability=0.5),
+            DiscardAddGuidanced(image="image", discard_probability=0.5),
             ToTensord(keys=("image", "label")),
         ]
 
@@ -106,7 +106,7 @@ class MyTrain(BasicTrainTask):
             FindAllValidSlicesd(label="label", sids="sids"),
             AddInitialSeedPointd(label="label", guidance="guidance", sids="sids"),
             AddGuidanceSignald(image="image", guidance="guidance"),
-            DiscardAddGuidanced(keys="image", probability=0.5),
+            DiscardAddGuidanced(image="image", discard_probability=0.5),
             ToTensord(keys=("image", "label")),
         ]
 
