@@ -104,6 +104,9 @@ class TensorBoardImageHandler:
         self.max_channels = max_channels
         self.num_pos_clicks = 0
         self.num_neg_clicks = 0
+        self.num_total_clicks = 0
+        self.cumulative_pos_clicks = 0
+        self.cumulative_neg_clicks = 0
 
     def attach(self, engine: Engine) -> None:
         """
@@ -145,22 +148,28 @@ class TensorBoardImageHandler:
         """
         Adding simulated clicks stats
         """
-
         if self.batch_transform(engine.state.batch)["is_pos"]:
             self.num_pos_clicks += 1
+            self.num_total_clicks += 1
+            self.cumulative_pos_clicks += 1
         if self.batch_transform(engine.state.batch)["is_neg"]:
             self.num_neg_clicks += 1
+            self.num_total_clicks += 1
+            self.cumulative_neg_clicks += 1
             
         if inner_j == self.batch_transform(engine.state.batch)["max_iter"] - 1:
             self._writer.add_scalar("Positive clicks", self.num_pos_clicks, step)
             self._writer.add_scalar("Negative clicks", self.num_neg_clicks, step)
+            self._writer.add_scalar("Total clicks", self.num_total_clicks, step)
+            self._writer.add_scalar("Positive clicks (cumulative)", self.cumulative_pos_clicks, step)
+            self._writer.add_scalar("Negative clicks (cumulative)", self.cumulative_neg_clicks, step)
             self.num_pos_clicks = 0
             self.num_neg_clicks = 0
+            self.num_total_clicks = 0
         
             """
             IMAGE
             """
-    
             show_image = self.batch_transform(engine.state.batch)["img_inner_iter"][0]["image"][0, ...][None]
             if isinstance(show_image, torch.Tensor):
                 show_image = show_image.detach().cpu().numpy()
@@ -231,7 +240,6 @@ class TensorBoardImageHandler:
             """
             POSITIVE CLICKS
             """
-    
             show_pos_clicks = self.batch_transform(engine.state.batch)["img_inner_iter"][0]["image"][1, ...][None]
             if isinstance(show_pos_clicks, torch.Tensor):
                 show_pos_clicks = show_pos_clicks.detach().cpu().numpy()
@@ -259,7 +267,6 @@ class TensorBoardImageHandler:
             """
             NEGATIVE CLICKS
             """
-    
             show_neg_clicks = self.batch_transform(engine.state.batch)["img_inner_iter"][0]["image"][2, ...][None]
             if isinstance(show_neg_clicks, torch.Tensor):
                 show_neg_clicks = show_neg_clicks.detach().cpu().numpy()
