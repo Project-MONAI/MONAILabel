@@ -43,12 +43,13 @@ class TTAScoring(ScoringMethod):
     First version of test time augmentation active learning
     """
 
-    def __init__(self, model=None):
+    def __init__(self, model=None, plot=False):
         super().__init__("Compute initial score based on TTA")
         self.model = model
         self.device = "cuda"
         self.img_size = [128, 128, 64]
         self.num_samples = 10
+        self.plot = plot
 
     def pre_transforms(self):
         return Compose(
@@ -145,20 +146,21 @@ class TTAScoring(ScoringMethod):
             datastore.update_image_info(image_id, info)
             result[image_id] = info
 
-            im_gt = LoadImaged(keys="image")(file)
-            im_gt = im_gt["image"][None]
+            if self.plot:
+                im_gt = LoadImaged(keys="image")(file)
+                im_gt = im_gt["image"][None]
 
-            # Preparing images to plot
-            to_imshow.append(
-                {
-                    "im GT": self.get_2d_im(im_gt, None, int(im_gt.shape[-1] / 2)),
-                    # "label GT": self.get_2d_im(label_gt, None, int(label_gt.shape[-1]/2)),
-                    "mode, vvc: %.2f" % vvc_tta: self.get_2d_im(mode_tta, 1, int(mode_tta.shape[-1] / 2)),
-                    "mean, vvc: %.2f" % vvc_tta: self.get_2d_im(mean_tta, 1, int(mean_tta.shape[-1] / 2)),
-                    "std, vvc: %.2f" % vvc_tta: self.get_2d_im(std_tta, 1, int(std_tta.shape[-1] / 2)),
-                }
-            )
-            # Plotting images
-            self.imshows(to_imshow)
+                # Preparing images to plot
+                to_imshow.append(
+                    {
+                        "im GT": self.get_2d_im(im_gt, None, int(im_gt.shape[-1] / 1.5)),
+                        # "label GT": self.get_2d_im(label_gt, None, int(label_gt.shape[-1]/3)),
+                        "mode, vvc: %.2f" % vvc_tta: self.get_2d_im(mode_tta, 1, int(mode_tta.shape[-1] / 1.5)),
+                        "mean, vvc: %.2f" % vvc_tta: self.get_2d_im(mean_tta, 1, int(mean_tta.shape[-1] / 1.5)),
+                        "std, vvc: %.2f" % vvc_tta: self.get_2d_im(std_tta, 1, int(std_tta.shape[-1] / 1.5)),
+                    }
+                )
+                # Plotting images
+                self.imshows(to_imshow)
 
         return result
