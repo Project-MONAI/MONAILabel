@@ -11,7 +11,7 @@
 
 import json
 import logging
-from typing import Dict
+from typing import Dict, Optional
 
 import numpy as np
 from monai.transforms.transform import Randomizable, Transform
@@ -81,9 +81,13 @@ class PosNegClickProbAddRandomGuidanced(Randomizable, Transform):
     Add random guidance based on discrepancies that were found between label and prediction.
     Args:
         guidance: key to guidance source, shape (2, N, # of dim)
-        discrepancy: key that represents discrepancies found between label and prediction, shape (2, C, D, H, W) or (2, C, H, W)
+        discrepancy: key that represents discrepancies found between label and prediction, 
+            shape (2, C, D, H, W) or (2, C, H, W)
         probability: key that represents click/interaction probability, shape (1)
-        pos_click_probability: if click, probability of a positive click (probability of negative click will be 1 - pos_click_probability)
+        pos_click_probability: if click, probability of a positive click 
+            (probability of negative click will be 1 - pos_click_probability)
+        weight_map: optional key to predetermined weight map used to increase click likelihood in higher weight areas, 
+            shape (C, D, H, W) or (C, H, W)
     """
 
     def __init__(
@@ -91,12 +95,14 @@ class PosNegClickProbAddRandomGuidanced(Randomizable, Transform):
         guidance: str = "guidance",
         discrepancy: str = "discrepancy",
         probability: str = "probability",
-        pos_click_probability: float = 0.5
+        pos_click_probability: float = 0.5,
+        weight_map: Optional[str] = None,
     ):
         self.guidance = guidance
         self.discrepancy = discrepancy
         self.probability = probability
         self.pos_click_probability = pos_click_probability
+        self.weight_map = weight_map
         self._will_interact = None
         self.is_pos = False
         self.is_neg = False
@@ -105,21 +111,22 @@ class PosNegClickProbAddRandomGuidanced(Randomizable, Transform):
         probability = data[self.probability]
         self._will_interact = self.R.choice([True, False], p=[probability, 1.0 - probability])
 
-    def find_guidance(self, discrepancy):
-        distance = distance_transform_cdt(discrepancy).flatten()
-        probability = np.exp(distance) - 1.0
+    def find_guidance(self, discrepancy, weight_map):
+        distance = distance_transform_cdt(discrepancy)
+        weighted_distance = (distance * weight_map).flatten() if weight_map is not None else distance.flatten()
+        probability = np.exp(weighted_distance) - 1.0
         idx = np.where(discrepancy.flatten() > 0)[0]
 
         if np.sum(discrepancy > 0) > 0:
             seed = self.R.choice(idx, size=1, p=probability[idx] / np.sum(probability[idx]))
-            dst = distance[seed]
+            dst = weighted_distance[seed]
 
             g = np.asarray(np.unravel_index(seed, discrepancy.shape)).transpose().tolist()[0]
             g[0] = dst[0]
             return g
         return None
 
-    def add_guidance(self, discrepancy, will_interact):
+    def add_guidance(self, discrepancy, weight_map, will_interact):
         if not will_interact:
             return None, None
 
@@ -135,22 +142,22 @@ class PosNegClickProbAddRandomGuidanced(Randomizable, Transform):
         correct_pos = self.R.choice([True, False], p=[pos_prob, neg_prob])
 
         if can_be_positive and not can_be_negative:
-            return self.find_guidance(pos_discr), None
+            return self.find_guidance(pos_discr, weight_map), None
 
         if not can_be_positive and can_be_negative:
-            return None, self.find_guidance(neg_discr)
+            return None, self.find_guidance(neg_discr, weight_map)
 
         if correct_pos and can_be_positive:
-            return self.find_guidance(pos_discr), None
+            return self.find_guidance(pos_discr, weight_map), None
 
         if not correct_pos and can_be_negative:
-            return None, self.find_guidance(neg_discr)
+            return None, self.find_guidance(neg_discr, weight_map)
         return None, None
 
-    def _apply(self, guidance, discrepancy):
+    def _apply(self, guidance, discrepancy, weight_map):
         guidance = guidance.tolist() if isinstance(guidance, np.ndarray) else guidance
         guidance = json.loads(guidance) if isinstance(guidance, str) else guidance
-        pos, neg = self.add_guidance(discrepancy, self._will_interact)
+        pos, neg = self.add_guidance(discrepancy, weight_map, self._will_interact)
         if pos:
             guidance[0].append(pos)
             guidance[1].append([-1] * len(pos))
@@ -170,8 +177,9 @@ class PosNegClickProbAddRandomGuidanced(Randomizable, Transform):
         d = dict(data)
         guidance = d[self.guidance]
         discrepancy = d[self.discrepancy]
+        weight_map =  d[self.weight_map] if self.weight_map is not None else None
         self.randomize(data)
-        d[self.guidance] = self._apply(guidance, discrepancy)
+        d[self.guidance] = self._apply(guidance, discrepancy, weight_map)
         d["is_pos"] = self.is_pos
         d["is_neg"] = self.is_neg
         self.is_pos = False
