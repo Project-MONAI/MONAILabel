@@ -11,7 +11,7 @@
 
 import json
 import logging
-from typing import Dict, Tuple
+from typing import Dict
 
 import numpy as np
 from monai.transforms.transform import Randomizable, Transform
@@ -76,14 +76,14 @@ class ResizeGuidanceCustomd(Transform):
         return d
 
 
-class ClickRatioAddRandomGuidanced(Randomizable, Transform):
+class PosNegClickProbAddRandomGuidanced(Randomizable, Transform):
     """
     Add random guidance based on discrepancies that were found between label and prediction.
     Args:
         guidance: key to guidance source, shape (2, N, # of dim)
         discrepancy: key that represents discrepancies found between label and prediction, shape (2, C, D, H, W) or (2, C, H, W)
         probability: key that represents click/interaction probability, shape (1)
-        fn_fp_click_ratio: ratio of clicks between FN and FP
+        pos_click_probability: if click, probability of a positive click (probability of negative click will be 1 - pos_click_probability)
     """
 
     def __init__(
@@ -91,12 +91,12 @@ class ClickRatioAddRandomGuidanced(Randomizable, Transform):
         guidance: str = "guidance",
         discrepancy: str = "discrepancy",
         probability: str = "probability",
-        fn_fp_click_ratio: Tuple[float, float] = (1.0, 1.0),
+        pos_click_probability: float = 0.5
     ):
         self.guidance = guidance
         self.discrepancy = discrepancy
         self.probability = probability
-        self.fn_fp_click_ratio = fn_fp_click_ratio
+        self.pos_click_probability = pos_click_probability
         self._will_interact = None
         self.is_pos = False
         self.is_neg = False
@@ -129,8 +129,8 @@ class ClickRatioAddRandomGuidanced(Randomizable, Transform):
         can_be_positive = np.sum(pos_discr) > 0
         can_be_negative = np.sum(neg_discr) > 0
 
-        pos_prob = self.fn_fp_click_ratio[0] / (self.fn_fp_click_ratio[0] + self.fn_fp_click_ratio[1])
-        neg_prob = self.fn_fp_click_ratio[1] / (self.fn_fp_click_ratio[0] + self.fn_fp_click_ratio[1])
+        pos_prob = self.pos_click_probability
+        neg_prob = 1 - pos_prob
 
         correct_pos = self.R.choice([True, False], p=[pos_prob, neg_prob])
 
