@@ -16,8 +16,6 @@ from functools import partial
 import matplotlib.pyplot as plt
 import numpy as np
 import torch
-
-# from monai.data import TestTimeAugmentation
 from monai.inferers import sliding_window_inference
 from monai.transforms import (
     Activations,

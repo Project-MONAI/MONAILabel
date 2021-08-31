@@ -1,118 +1,92 @@
+import argparse
 import glob
 import os
 from time import sleep
 
 import requests
 
-'''
+parser = argparse.ArgumentParser(description="Active Learning Setting Using TTA")
 
-Workflow to compare TTA against random
+# Directories & URL
+parser.add_argument("--url_server", default="http://127.0.0.1:8000/", type=str)
+# Path where labels used to simulate clinicians submission
+parser.add_argument(
+    "--path_new_labels",
+    default="/home/adp20local/Documents/Datasets/monailabel_datasets/spleen/labels2train/",
+    type=str,
+)
+# Path used to start the App + labels/
+parser.add_argument(
+    "--path_labels_root",
+    default="/home/adp20local/Documents/Datasets/monailabel_datasets/spleen/train_small/labels/",
+    type=str,
+)
 
-1. Start training with 2 images
-2. Perform TTA
-3. Fetch image and retrain model
-4. Perform TTA
-5. Fetch image and retrain model
-
-Questions:
-- How to split val and train images
-  In train class! Use the method "partition_datalist" to do the partition
-
-
-- Why it is not working the epochs specification? I put 100 and it shows 50.
-  In init_trainers method using config argument. BUT WHAT IS THE DIFFERENCE BETWEEN THAT AND THE EPOCHS IN REQUEST?
-
-- How to specify I don't want to use pretrained model to start training?
-  In init_trainers method. "load_from_mmar" is the method where the network is being specified
-
-
-- A mix of object instantiation and API calls is not possible because
-for API calls we'll need an IP to make the calls and
-object instantiation doesn't have the option to stop the training, it executes line by line
-
-- The disadvantage of using requests is that I need to first start the App via bash. Not everything is via PyCharm
-
-THINGS TO IMPROVE:
-
-- HAVE BETTER TRANSFORMS. IN TRAINING WE'RE USING CROPPING BUT NOT FOR INFERENCE. 
-  FOR TRAINING WE'RE USING 96 PX AND FOR VALIDATION 160 PX. 
-  
-  DONE!!
-  
-- FOR SOME REASON THE THE MMARs MODEL DOESN'T WORK BETTER THAN 0.5 IN VALIDATION :/
-  It seems the error comes from the transforms used in validation. The cropping doesn't allow to predict the whole mask??
-
-'''
-
-# # Start MONAI Label APP
-# os.system("export PATH=$PATH:/home/adp20local/Documents/MONAILabel/monailabel/")
-# os.system("monailabel start_server -a ./sample-apps/segmentation_spleen_tta/ -s /home/adp20local/Documents/Datasets/monailabel_datasets/spleen/train_small/")
+# Active learning parameters
+parser.add_argument("--active_learning_technique", default="TTA", type=str)
+# Factor used to wait until training happens
+parser.add_argument("--training_time_factor", default=10, type=int)
+args = parser.parse_args()
 
 
-# Getting server info
-url_server = "http://127.0.0.1:8000/"
-r = requests.get(url_server + "info/")
+# First step is to start the App using the Terminal
+
+# Getting server info - OPTIONAL
+r = requests.get(args.url_server + "info/")
 print(r.text)
 
 
-new_labels = glob.glob("/home/adp20local/Documents/Datasets/monailabel_datasets/spleen/labels2train/*.nii.gz")
+new_labels = glob.glob(args.path_new_labels + "*.nii.gz")
 
 for idx in range(len(new_labels)):
 
     # Start training
-    r = requests.post(url_server + "train/")
+    r = requests.post(args.url_server + "train/")
     print(r.text)
 
-    # Waiting for some epochs
-    for i in range(10):
+    # Waiting to train model for some epochs
+    for i in range(args.training_time_factor):
         sleep(150)
-        print("Training - Label number: " + str(idx) + " of " + str(len(new_labels)+1) + " -- Second: " + str(i + 1))
+        print("Training - Label number: " + str(idx) + " of " + str(len(new_labels) + 1) + " -- Second: " + str(i + 1))
 
-    # Stopping the training
-    print('Stop training ---')
-    r = requests.delete(url_server + "train/")
+    # Stop training
+    print("Stop training ---")
+    r = requests.delete(args.url_server + "train/")
     print(r.text)
 
     sleep(5)
 
     # Start scoring
     # First experiment will wait until scoring ends. So we simulate like ideal scenario where scoring is immediate
-    print('Start scoring ---')
-    r = requests.post(url_server + "scoring/TTA")
+    print("Start scoring ---")
+    r = requests.post(args.url_server + "scoring/" + args.active_learning_technique)
     print(r.text)
 
-    # Checking scoring status ---
-    sleep(10)
-    r = requests.get(url_server + "scoring/")
-
-    while r.json()['status'] == 'RUNNING':
+    # Check scoring status ---
+    sleep(5)
+    r = requests.get(args.url_server + "scoring/")
+    while r.json()["status"] == "RUNNING":
         sleep(180)
-        print('Running scoring --- Checking every 180 seconds')
-        r = requests.get(url_server + "scoring/")
+        print("Running scoring --- Checking every 180 seconds")
+        r = requests.get(args.url_server + "scoring/")
 
-    sleep(3)
+    sleep(5)
 
-    # Fetching an image
-    print('Fetching image ---')
-    r = requests.post(url_server + "activelearning/TTA")
+    # Fetch an image using active learning technique score
+    print("Fetching image ---")
+    r = requests.post(args.url_server + "activelearning/" + args.active_learning_technique)
     print(r.text)
 
-    sleep(3)
+    sleep(5)
 
     if r:
-        # Copying the fetched image
-        label_name = r.json()['id']
-        print('Image fetched: ' + label_name)
-        os.system(
-            "cp /home/adp20local/Documents/Datasets/monailabel_datasets/spleen/labels2train/"
-            + label_name
-            + " /home/adp20local/Documents/Datasets/monailabel_datasets/spleen/train_small/labels/label_final_"
-            + label_name
-        )
+        # Copy fetched image
+        label_name = r.json()["id"]
+        print("Image fetched: " + label_name)
+        os.system("cp " + args.path_new_labels + label_name + " " + args.path_labels_root + "label_final_" + label_name)
 
-    sleep(3)
+    sleep(5)
 
-
-# Re-starting training
-r = requests.post(url_server + "train/")
+# Re-start training
+r = requests.post(args.url_server + "train/")
 print(r.text)

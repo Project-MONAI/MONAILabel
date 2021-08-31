@@ -9,39 +9,28 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-import logging
 import glob
+import logging
 import os
-import numpy as np
 
 import torch
-from monai.inferers import SlidingWindowInferer, SimpleInferer
+from monai.inferers import SimpleInferer
 from monai.losses import DiceLoss
 from monai.transforms import (
     Activationsd,
-    AddChanneld,
     AsDiscreted,
-    CenterSpatialCropd,
-    CropForegroundd,
     EnsureChannelFirstd,
     LoadImaged,
     NormalizeIntensityd,
     Orientationd,
-    RandAffined,
-    RandCropByPosNegLabeld,
     RandFlipd,
-    RandHistogramShiftd,
-    RandRotated,
     RandShiftIntensityd,
-    RandSpatialCropd,
     Resized,
-    ScaleIntensityRanged,
     Spacingd,
     ToTensord,
 )
 
 from monailabel.utils.train.basic_train import BasicTrainTask
-# from monai.data import CacheDataset, DataLoader, PersistentDataset
 
 logger = logging.getLogger(__name__)
 
@@ -67,53 +56,20 @@ class MyTrain(BasicTrainTask):
         return DiceLoss(sigmoid=True, squared_pred=True)
 
     def train_pre_transforms(self):
-        # return [
-        #     LoadImaged(keys=("image", "label")),
-        #     AddChanneld(keys=("image", "label")),
-        #     Spacingd(
-        #         keys=("image", "label"),
-        #         pixdim=(1.0, 1.0, 1.0),
-        #         mode=("bilinear", "nearest"),
-        #     ),
-        #     ScaleIntensityRanged(keys="image", a_min=-57, a_max=164, b_min=0.0, b_max=1.0, clip=True),
-        #     CropForegroundd(keys=("image", "label"), source_key="image"),
-        #     RandCropByPosNegLabeld(
-        #         keys=("image", "label"),
-        #         label_key="label",
-        #         spatial_size=(96, 96, 96),
-        #         pos=1,
-        #         neg=1,
-        #         num_samples=4,
-        #         image_key="image",
-        #         image_threshold=0,
-        #     ),
-        #     RandShiftIntensityd(keys="image", offsets=0.1, prob=0.5),
-        #     ToTensord(keys=("image", "label")),
-        # ]
-
         return [
-                LoadImaged(keys=("image", "label")),
-                EnsureChannelFirstd(keys=("image", "label")),
-                Spacingd(
-                    keys=("image", "label"),
-                    pixdim=(1.0, 1.0, 1.0),
-                    mode=("bilinear", "nearest"),
-                ),
-                Orientationd(keys=("image", "label"), axcodes="RAS"),
-                NormalizeIntensityd(keys="image"),
-                RandShiftIntensityd(keys="image", offsets=0.1, prob=0.5),
-                # CropForegroundd(keys=("image", "label"), source_key="image"),
-                RandFlipd(keys=["image", "label"], prob=0.5, spatial_axis=0),
-                # RandAffined(
-                #     keys=["image", "label"],
-                #     mode=("bilinear", "nearest"),
-                #     prob=1.0,
-                #     spatial_size=(256, 256, 128),
-                #     rotate_range=(0, 0, np.pi / 15),
-                #     scale_range=(0.1, 0.1, 0.1),
-                # ),
-                Resized(keys=("image", "label"), spatial_size=(256, 256, 128), mode=("area", "nearest")),
-                ToTensord(keys=("image", "label")),
+            LoadImaged(keys=("image", "label")),
+            EnsureChannelFirstd(keys=("image", "label")),
+            Spacingd(
+                keys=("image", "label"),
+                pixdim=(1.0, 1.0, 1.0),
+                mode=("bilinear", "nearest"),
+            ),
+            Orientationd(keys=("image", "label"), axcodes="RAS"),
+            NormalizeIntensityd(keys="image"),
+            RandShiftIntensityd(keys="image", offsets=0.1, prob=0.5),
+            RandFlipd(keys=["image", "label"], prob=0.5, spatial_axis=0),
+            Resized(keys=("image", "label"), spatial_size=(256, 256, 128), mode=("area", "nearest")),
+            ToTensord(keys=("image", "label")),
         ]
 
     def train_post_transforms(self):
@@ -123,33 +79,19 @@ class MyTrain(BasicTrainTask):
         ]
 
     def val_pre_transforms(self):
-        # return [
-        #     LoadImaged(keys=("image", "label")),
-        #     AddChanneld(keys=("image", "label")),
-        #     Spacingd(
-        #         keys=("image", "label"),
-        #         pixdim=(1.0, 1.0, 1.0),
-        #         mode=("bilinear", "nearest"),
-        #     ),
-        #     ScaleIntensityRanged(keys="image", a_min=-57, a_max=164, b_min=0.0, b_max=1.0, clip=True),
-        #     CropForegroundd(keys=("image", "label"), source_key="image"),
-        #     ToTensord(keys=("image", "label")),
-        # ]
         return [
-                LoadImaged(keys=("image", "label")),
-                EnsureChannelFirstd(keys=("image", "label")),
-                Spacingd(
-                    keys=("image", "label"),
-                    pixdim=(1.0, 1.0, 1.0),
-                    mode=("bilinear", "nearest"),
-                ),
-                Orientationd(keys=("image", "label"), axcodes="RAS"),
-                NormalizeIntensityd(keys="image"),
-                # CropForegroundd(keys=("image", "label"), source_key="image"),
-                Resized(keys=("image", "label"), spatial_size=(256, 256, 128), mode=("area", "nearest")),
-                ToTensord(keys=("image", "label")),
-                ]
-
+            LoadImaged(keys=("image", "label")),
+            EnsureChannelFirstd(keys=("image", "label")),
+            Spacingd(
+                keys=("image", "label"),
+                pixdim=(1.0, 1.0, 1.0),
+                mode=("bilinear", "nearest"),
+            ),
+            Orientationd(keys=("image", "label"), axcodes="RAS"),
+            NormalizeIntensityd(keys="image"),
+            Resized(keys=("image", "label"), spatial_size=(256, 256, 128), mode=("area", "nearest")),
+            ToTensord(keys=("image", "label")),
+        ]
 
     def val_inferer(self):
         return SimpleInferer()

@@ -9,25 +9,22 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-from monai.inferers import SlidingWindowInferer, SimpleInferer
+from monai.inferers import SimpleInferer
 from monai.transforms import (
     Activationsd,
-    AddChanneld,
     AsDiscreted,
-    CenterSpatialCropd,
     EnsureChannelFirstd,
     LoadImaged,
     NormalizeIntensityd,
     Orientationd,
     Resized,
-    ScaleIntensityRanged,
     Spacingd,
     ToNumpyd,
     ToTensord,
 )
 
 from monailabel.interfaces.tasks import InferTask, InferType
-from monailabel.utils.others.post import BoundingBoxd, Restored
+from monailabel.utils.others.post import Restored
 
 
 class MyInfer(InferTask):
