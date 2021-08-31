@@ -13,7 +13,7 @@ principles with [MONAI](https://github.com/Project-MONAI).
 
 [Brief Demo](https://youtu.be/gzAR-Ix31Gs)
 
-<img src="https://raw.githubusercontent.com/Project-MONAI/MONAILabel/main/docs/images/demo.png" width="800"/>
+![DEMO](docs/images/demo.png)
 
 ## Features
 
@@ -52,21 +52,24 @@ to the [installation guide](https://docs.monai.io/projects/label/en/latest/insta
 
 ### 3D Slicer
 
-Download **Preview Release** from https://download.slicer.org/ and install MONAI Label plugin from Slicer Extension Manager.
+Download **Preview Release** from https://download.slicer.org/ and install MONAI Label plugin from Slicer Extension
+Manager.
 
 Refer [3D Slicer plugin](plugins/slicer) for other options to install and run MONAI Label plugin in 3D Slicer.
-> To avoid accidentally using an older Slicer version, you may want to _uninstall_ any previously installed 3D Slicer package. 
+> To avoid accidentally using an older Slicer version, you may want to _uninstall_ any previously installed 3D Slicer package.
 
-
-### OHIF [WIP]
+### OHIF
 
 MONAI Label comes with pre-built plugin for [OHIF Viewer](https://github.com/OHIF/Viewers).
 > Please install [Orthanc](https://www.orthanc-server.com/download.php) before using OHIF Viewer.
-> For Ubuntu 20.x, Orthanc can be installed as `apt-get install orthanc orthanc-dicomweb`
+> For Ubuntu 20.x, Orthanc can be installed as `apt-get install orthanc orthanc-dicomweb`. However, you have to **upgrade to latest version** by following steps mentioned [here](https://book.orthanc-server.com/users/debian-packages.html#replacing-the-package-from-the-service-by-the-lsb-binaries)
+>
+> You can use [PlastiMatch](https://plastimatch.org/plastimatch.html#plastimatch-convert) to convert NIFTI to DICOM
 
 > OHIF Viewer will be accessible at http://127.0.0.1:8000/ohif/
+> For development OHIF can be built by running 
 
-> You can use [PlastiMatch](https://plastimatch.org/plastimatch.html#plastimatch-convert) to convert NIFTI to DICOM
+![OHIF](docs/images/ohif.png)
 
 ## Contributing
 

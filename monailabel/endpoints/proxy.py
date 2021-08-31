@@ -13,7 +13,13 @@ router = APIRouter(
 
 @router.get("/dicom/{path:path}", include_in_schema=False)
 async def proxy(path: str, response: Response):
-    async with httpx.AsyncClient() as client:
+    auth = (
+        (settings.DICOMWEB_USERNAME, settings.DICOMWEB_PASSWORD)
+        if settings.DICOMWEB_USERNAME and settings.DICOMWEB_PASSWORD
+        else None
+    )
+
+    async with httpx.AsyncClient(auth=auth) as client:
         proxy = await client.get(f"{settings.DICOM_WEB.lstrip('/')}/{path}")
     response.body = proxy.content
     response.status_code = proxy.status_code
