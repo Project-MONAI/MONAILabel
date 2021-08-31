@@ -46,9 +46,6 @@ class DICOMWebCache(LocalDatastore):
                 return file.replace(extension, ""), extension
         return super()._to_id(file)
 
-    def _filename(self, id: str, ext: str) -> str:
-        return id.replace(".", "_") + ext
-
     def get_image_uri(self, image_id: str) -> str:
         logger.info(f"Image ID: {image_id}")
         image_dir = os.path.realpath(os.path.join(self._datastore.image_path(), image_id))
