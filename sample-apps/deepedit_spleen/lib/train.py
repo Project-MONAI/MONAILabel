@@ -80,7 +80,7 @@ class MyTrain(BasicTrainTask):
             FindDiscrepancyRegionsd(label="label", pred="pred", discrepancy="discrepancy"),
             PosNegClickProbAddRandomGuidanced(guidance="guidance", discrepancy="discrepancy", probability="probability"),
             AddGuidanceSignald(image="image", guidance="guidance"),
-            DiscardAddGuidanced(image="image", discard_probability=0.5),
+            #DiscardAddGuidanced(image="image", discard_probability=0.5),
             ToTensord(keys=("image", "label")),
         ]
 
@@ -106,7 +106,7 @@ class MyTrain(BasicTrainTask):
             FindAllValidSlicesd(label="label", sids="sids"),
             AddInitialSeedPointd(label="label", guidance="guidance", sids="sids"),
             AddGuidanceSignald(image="image", guidance="guidance"),
-            DiscardAddGuidanced(image="image", discard_probability=0.5),
+            #DiscardAddGuidanced(image="image", discard_probability=0.5),
             ToTensord(keys=("image", "label")),
         ]
 
@@ -124,17 +124,19 @@ class MyTrain(BasicTrainTask):
 
     def train_iteration_update(self):
         return Interaction(
+            deepgrow_probability=0.5,
             transforms=self.get_click_transforms(),
             max_interactions=self.max_train_interactions,
-            key_probability="probability",
+            click_probability_key="probability",
             train=True,
         )
 
     def val_iteration_update(self):
         return Interaction(
+            deepgrow_probability=1.0,
             transforms=self.get_click_transforms(),
             max_interactions=self.max_val_interactions,
-            key_probability="probability",
+            click_probability_key="probability",
             train=False,
         )
 
