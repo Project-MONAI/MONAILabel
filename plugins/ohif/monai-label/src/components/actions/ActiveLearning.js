@@ -4,6 +4,7 @@ import './OptionTable.styl';
 import BaseTab from './BaseTab';
 import cornerstoneTools from 'cornerstone-tools';
 import { flattenLabelmaps, getLabelMaps } from '../../utils/SegmentationUtils';
+import NextSampleForm from './NextSampleForm';
 
 export default class OptionTable extends BaseTab {
   constructor(props) {
@@ -41,12 +42,15 @@ export default class OptionTable extends BaseTab {
         duration: 5000,
       });
     } else {
-      // TODO:: OHIF Doesn't support loading exact series in URI
-      const msg =
-        'This action will reload current page.  Are you sure to continue?';
-      if (!window.confirm(msg)) return;
-
-      window.location.pathname = '/viewer/' + response.data['StudyInstanceUID'];
+      this.uiModelService.show({
+        content: NextSampleForm,
+        title: 'Active Learning - Next Sample',
+        contentProps: {
+          info: response.data,
+        },
+        customClassName: 'nextSampleForm',
+        shouldCloseOnEsc: true,
+      });
     }
   };
 
