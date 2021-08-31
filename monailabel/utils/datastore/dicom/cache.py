@@ -54,12 +54,10 @@ class DICOMWebCache(LocalDatastore):
         if not os.path.exists(image_dir) or not os.listdir(image_dir):
             dicom_web_download_series(None, image_id, image_dir, self._client)
 
-        # TODO:: Do we need to convert always? For clients like OHIF it's not needed.
         image_nii_gz = os.path.realpath(os.path.join(self._datastore.image_path(), f"{image_id}.nii.gz"))
         if not os.path.exists(image_nii_gz):
-            dicom_to_nifti(image_dir, image_nii_gz)
-            self.refresh()
-            self.update_image_info(image_id, self._dicom_info(image_id))
+            image_nii_gz = dicom_to_nifti(image_dir)
+            super().add_image(image_id, image_nii_gz, self._dicom_info(image_id))
 
         return image_nii_gz
 
@@ -78,9 +76,8 @@ class DICOMWebCache(LocalDatastore):
             os.path.join(self._datastore.label_path(DefaultLabelTag.FINAL), f"{image_id}.nii.gz")
         )
         if not os.path.exists(label_nii_gz):
-            dicom_to_nifti(label_dir, label_nii_gz, is_seg=True)
-            self.refresh()
-            self.update_label_info(image_id, label_tag, self._dicom_info(label_id))
+            label_nii_gz = dicom_to_nifti(label_dir, is_seg=True)
+            super().save_label(image_id, label_tag, label_nii_gz, self._dicom_info(label_id))
 
         return label_nii_gz
 
@@ -139,13 +136,14 @@ class DICOMWebCache(LocalDatastore):
         # Support DICOM-SEG uploading only final version
         if label_tag == DefaultLabelTag.FINAL:
             image_dir = os.path.realpath(os.path.join(self._datastore.image_path(), image_id))
-            label_file = nifti_to_dicom_seg(image_dir, label_filename, label_info)
+            label_file = nifti_to_dicom_seg(image_dir, label_filename, label_info.get("label_info"))
 
             label_series_id = dicom_web_upload_dcm(label_file, self._client)
             label_info.update(self._dicom_info(label_series_id))
             os.unlink(label_file)
 
         label_id = super().save_label(image_id, label_filename, label_tag, label_info)
+        logger.info("Save completed!")
 
         if output_file:
             os.unlink(output_file)
