@@ -75,19 +75,18 @@ class ResizeGuidanceCustomd(Transform):
         d[self.guidance] = [pos, neg]
         return d
 
-
 class PosNegClickProbAddRandomGuidanced(Randomizable, Transform):
     """
     Add random guidance based on discrepancies that were found between label and prediction.
     Args:
         guidance: key to guidance source, shape (2, N, # of dim)
-        discrepancy: key that represents discrepancies found between label and prediction, 
-            shape (2, C, D, H, W) or (2, C, H, W)
-        probability: key that represents click/interaction probability, shape (1)
+        discrepancy: key to discrepancy map between label and prediction, 
+            shape (2, C, H, W, D) or (2, C, H, W)
+        probability: key to click/interaction probability, shape (1)
         pos_click_probability: if click, probability of a positive click 
             (probability of negative click will be 1 - pos_click_probability)
         weight_map: optional key to predetermined weight map used to increase click likelihood in higher weight areas, 
-            shape (C, D, H, W) or (C, H, W)
+            shape (C, H, W, D) or (C, H, W)
     """
 
     def __init__(
