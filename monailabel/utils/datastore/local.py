@@ -398,7 +398,7 @@ class LocalDatastore(Datastore):
         dest = os.path.realpath(os.path.join(self._datastore.image_path(), name))
 
         with FileLock(self._lock_file):
-            logger.info("Acquired the lock!")
+            logger.debug("Acquired the lock!")
             shutil.copy(image_filename, dest)
 
             image_info = image_info if image_info else {}
@@ -408,7 +408,7 @@ class LocalDatastore(Datastore):
 
             self._datastore.objects[image_id] = ImageLabelModel(image=DataModel(info=image_info, ext=image_ext))
             self._update_datastore_file(lock=False)
-        logger.info("Released the lock!")
+        logger.debug("Released the lock!")
         return image_id
 
     def remove_image(self, image_id: str) -> None:
@@ -454,7 +454,7 @@ class LocalDatastore(Datastore):
         dest = os.path.join(label_path, name)
 
         with FileLock(self._lock_file):
-            logger.info("Acquired the lock!")
+            logger.debug("Acquired the lock!")
             os.makedirs(label_path, exist_ok=True)
             shutil.copy(label_filename, dest)
 
@@ -466,7 +466,7 @@ class LocalDatastore(Datastore):
             obj.labels[label_tag] = DataModel(info=label_info, ext=label_ext)
             logger.info(f"Label Info: {label_info}")
             self._update_datastore_file(lock=False)
-        logger.info("Release the lock!")
+        logger.debug("Release the lock!")
         return label_id
 
     def remove_label(self, label_id: str, label_tag: str) -> None:
@@ -622,7 +622,7 @@ class LocalDatastore(Datastore):
     def _init_from_datastore_file(self, throw_exception=False):
         try:
             with FileLock(self._lock_file):
-                logger.info("Acquired the lock!")
+                logger.debug("Acquired the lock!")
                 if os.path.exists(self._datastore_config_path):
                     ts = os.stat(self._datastore_config_path).st_mtime
                     if self._config_ts != ts:
@@ -630,7 +630,7 @@ class LocalDatastore(Datastore):
                         self._datastore = LocalDatastoreModel.parse_file(self._datastore_config_path)
                         self._datastore.base_path = self._datastore_path
                         self._config_ts = ts
-            logger.info("Release the Lock...")
+            logger.debug("Release the Lock...")
         except ValueError as e:
             logger.error(f"+++ Failed to load datastore => {e}")
             if throw_exception:
@@ -646,9 +646,9 @@ class LocalDatastore(Datastore):
 
         if lock:
             with FileLock(self._lock_file):
-                logger.info("Acquired the Lock...")
+                logger.debug("Acquired the Lock...")
                 _write_to_file()
-            logger.info("Released the Lock...")
+            logger.debug("Released the Lock...")
         else:
             _write_to_file()
 
