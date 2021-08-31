@@ -46,6 +46,9 @@ class DICOMWebCache(LocalDatastore):
                 return file.replace(extension, ""), extension
         return super()._to_id(file)
 
+    def _filename(self, id: str, ext: str) -> str:
+        return id.replace(".", "_") + ext
+
     def get_image_uri(self, image_id: str) -> str:
         logger.info(f"Image ID: {image_id}")
         image_dir = os.path.realpath(os.path.join(self._datastore.image_path(), image_id))
@@ -77,7 +80,7 @@ class DICOMWebCache(LocalDatastore):
         )
         if not os.path.exists(label_nii_gz):
             label_nii_gz = dicom_to_nifti(label_dir, is_seg=True)
-            super().save_label(image_id, label_tag, label_nii_gz, self._dicom_info(label_id))
+            super().save_label(image_id, label_nii_gz, label_tag, self._dicom_info(label_id))
 
         return label_nii_gz
 

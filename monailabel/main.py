@@ -260,9 +260,9 @@ def run_app(args):
         print(f"APP Directory {args.app} NOT Found")
         exit(1)
     if (
-        not args.studies.startswith("http://")
-        and not args.studies.startswith("https://")
-        and not os.path.exists(args.studies)
+        not args.studies.startswith("http://") and
+        not args.studies.startswith("https://") and
+        not os.path.exists(args.studies)
     ):
         print(f"STUDIES Directory {args.studies} NOT Found")
         exit(1)
@@ -278,9 +278,14 @@ def run_app(args):
     overrides = {
         "APP_DIR": args.app,
         "STUDIES": args.studies,
+        "DICOMWEB_USERNAME": args.username,
+        "DICOMWEB_PASSWORD": args.password,
+        "QIDO_PREFIX": args.qido_prefix,
+        "WADO_PREFIX": args.wado_prefix,
+        "STOW_PREFIX": args.stow_prefix,
     }
     for k, v in overrides.items():
-        os.putenv(k, str(v))
+        os.environ[k] = str(v)
 
     settings.APP_DIR = args.app
     settings.STUDIES = args.studies
