@@ -208,8 +208,10 @@ def itk_dicom_seg_to_image(label, output_file, output_type="nifti"):
             output_dir,
         ]
         run_command(command, args)
-        result_file = os.path.join(output_dir, [f for f in os.listdir(output_dir) if f.startswith("segment")][0])
-        logger.info(f"{result_file}")
+        result_file = os.path.join(
+            output_dir, [f for f in os.listdir(output_dir) if f.startswith("segment") and f.endswith(".nii.gz")][0]
+        )
+        logger.info(f"Result/Output (NII) File: {result_file}")
 
         shutil.move(result_file, output_file)
         return output_file
