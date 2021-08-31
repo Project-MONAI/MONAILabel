@@ -73,11 +73,12 @@ class ResultType(str, Enum):
 
 def send_response(datastore, result, output, background_tasks):
     res_img = result.get("label")
+    res_tag = result.get("tag")
     res_json = result.get("params")
 
     if res_img:
         if not os.path.exists(res_img):
-            res_img = datastore.get_label_uri(res_img)
+            res_img = datastore.get_label_uri(res_img, res_tag)
         else:
             background_tasks.add_task(remove_file, res_img)
 

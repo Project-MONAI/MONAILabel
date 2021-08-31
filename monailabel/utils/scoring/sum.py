@@ -36,11 +36,11 @@ class Sum(ScoringMethod):
             for tag in self.tags:
                 label_id: str = datastore.get_label_by_image_id(image_id, tag)
                 if label_id:
-                    label = loader(datastore.get_label_uri(label_id))
+                    label = loader(datastore.get_label_uri(label_id, tag))
                     slices = [sid for sid in range(label.shape[0]) if np.sum(label[sid] > 0)]
                     info = {"sum": int(np.sum(label)), "slices": slices}
                     logger.info(f"{label_id} => {info}")
 
-                    datastore.update_label_info(label_id, info)
+                    datastore.update_label_info(label_id, tag, info)
                     result[label_id] = info
         return result

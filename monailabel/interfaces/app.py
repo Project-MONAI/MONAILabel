@@ -13,12 +13,15 @@ import copy
 import itertools
 import logging
 import os
+import platform
+import shutil
+import tempfile
 import time
 from typing import Callable, Dict
 
 from dicomweb_client import DICOMwebClient
 from dicomweb_client.session_utils import create_session_from_user_pass
-from monai.apps import download_url, load_from_mmar
+from monai.apps import download_and_extract, download_url, load_from_mmar
 from monai.data import partition_dataset
 
 from monailabel.config import settings
@@ -58,6 +61,8 @@ class MONAILabelApp:
         self._strategies = self.init_strategies()
         self._scoring_methods = self.init_scoring_methods()
         self._batch_infer = self.init_batch_infer()
+
+        self._download_tools()
 
     def init_infers(self) -> Dict[str, InferTask]:
         return {}
@@ -173,18 +178,15 @@ class MONAILabelApp:
         label_id = None
         if result_file_name and os.path.exists(result_file_name):
             tag = request.get("label_tag", DefaultLabelTag.ORIGINAL)
-            save_label = request.get("save_label", False)
+            save_label = request.get("save_label", True)
             if save_label:
                 label_id = datastore.save_label(image_id, result_file_name, tag, result_json)
-                if result_json:
-                    datastore.update_label_info(label_id, result_json)
-
                 if os.path.exists(result_file_name):
                     os.unlink(result_file_name)
             else:
                 label_id = result_file_name
 
-        return {"label": label_id, "params": result_json}
+        return {"label": label_id, "tag": DefaultLabelTag.ORIGINAL, "params": result_json}
 
     def batch_infer(self, request, datastore=None):
         """
@@ -332,6 +334,24 @@ class MONAILabelApp:
         Callback method when label is saved into datastore by a remote client
         """
         logger.info(f"New label saved for: {image_id} => {label_id}")
+
+    def _download_tools(self):
+        target = os.path.join(self.app_dir, "bin")
+        dcmqi_tools = ["segimage2itkimage", "itkimage2segimage", "segimage2itkimage.exe", "itkimage2segimage.exe"]
+        existing = [tool for tool in dcmqi_tools if shutil.which(tool) or os.path.exists(os.path.join(target, tool))]
+
+        if len(existing) == len(dcmqi_tools) // 2:
+            return
+
+        target_os = "win64.zip" if any(platform.win32_ver()) else "linux.tar.gz"
+        with tempfile.TemporaryDirectory() as tmp:
+            download_and_extract(
+                url=f"https://github.com/QIICR/dcmqi/releases/download/v1.2.4/dcmqi-1.2.4-{target_os}", output_dir=tmp
+            )
+            for root, _, files in os.walk(tmp):
+                for f in files:
+                    if f in dcmqi_tools:
+                        shutil.copy(os.path.join(root, f), target)
 
     @staticmethod
     def download(resources):

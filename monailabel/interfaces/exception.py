@@ -20,6 +20,7 @@ class MONAILabelError(Enum):
         CLASS_INIT_ERROR -        Class Initialization Error
         MODEL_IMPORT_ERROR -      Model Import Error
         INFERENCE_ERROR -         Inference Error
+        TRANSFORM_ERROR -         Transform Error
 
         APP_INIT_ERROR -          Initialization Error
         APP_INFERENCE_FAILED -    Inference Failed
@@ -32,6 +33,7 @@ class MONAILabelError(Enum):
     CLASS_INIT_ERROR = "CLASS_INIT_ERROR"
     MODEL_IMPORT_ERROR = "MODEL_IMPORT_ERROR"
     INFERENCE_ERROR = "INFERENCE_ERROR"
+    TRANSFORM_ERROR = "TRANSFORM_ERROR"
 
     APP_INIT_ERROR = "APP_INIT_ERROR"
     APP_INFERENCE_FAILED = "APP_INFERENCE_FAILED"
