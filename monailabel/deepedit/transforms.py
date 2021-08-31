@@ -75,6 +75,103 @@ class ResizeGuidanceCustomd(Transform):
         d[self.guidance] = [pos, neg]
         return d
 
+class AddRandomGuidanced(Randomizable, Transform):
+    """
+    Add random guidance based on discrepancies that were found between label and prediction.
+    Args:
+        guidance: key to guidance source, shape (2, N, # of dim)
+        discrepancy: key to discrepancy map between label and prediction, 
+            shape (2, C, H, W, D) or (2, C, H, W)
+        probability: key to click/interaction probability, shape (1)
+        weight_map: optional key to predetermined weight map used to increase click likelihood in higher weight areas, 
+            shape (C, H, W, D) or (C, H, W)
+    """
+
+    def __init__(
+        self,
+        guidance: str = "guidance",
+        discrepancy: str = "discrepancy",
+        weight_map: Optional[str] = None,
+        probability: str = "probability",
+    ):
+        self.guidance = guidance
+        self.discrepancy = discrepancy
+        self.weight_map = weight_map
+        self.probability = probability
+        self._will_interact = None
+        self.is_pos = False
+        self.is_neg = False
+
+    def randomize(self, data=None):
+        probability = data[self.probability]
+        self._will_interact = self.R.choice([True, False], p=[probability, 1.0 - probability])
+
+    def find_guidance(self, discrepancy, weight_map): 
+        distance = distance_transform_cdt(discrepancy)
+        weighted_distance = (distance * weight_map).flatten() if weight_map is not None else distance 
+        probability = np.exp(weighted_distance) - 1.0
+        idx = np.where(discrepancy.flatten() > 0)[0]
+
+        if np.sum(discrepancy > 0) > 0:
+            seed = self.R.choice(idx, size=1, p=probability[idx] / np.sum(probability[idx])) 
+            dst = weighted_distance[seed]
+
+            g = np.asarray(np.unravel_index(seed, discrepancy.shape)).transpose().tolist()[0]
+            g[0] = dst[0]
+            return g
+        return None
+
+    def add_guidance(self, discrepancy, weight_map, will_interact):
+        if not will_interact:
+            return None, None
+
+        pos_discr = discrepancy[0]
+        neg_discr = discrepancy[1]
+        
+        can_be_positive = np.sum(pos_discr) > 0
+        can_be_negative = np.sum(neg_discr) > 0
+        
+        correct_pos = np.sum(pos_discr) >= np.sum(neg_discr)
+        
+        if correct_pos and can_be_positive:
+            return self.find_guidance(pos_discr, weight_map), None 
+
+        if not correct_pos and can_be_negative:
+            return None, self.find_guidance(neg_discr, weight_map) 
+        return None, None
+
+    def _apply(self, guidance, discrepancy, weight_map):
+        guidance = guidance.tolist() if isinstance(guidance, np.ndarray) else guidance
+        guidance = json.loads(guidance) if isinstance(guidance, str) else guidance
+        pos, neg = self.add_guidance(discrepancy, weight_map, self._will_interact)
+        if pos:
+            guidance[0].append(pos)
+            guidance[1].append([-1] * len(pos))
+            self.is_pos = True
+            print("pos_click")
+        elif neg:
+            guidance[0].append([-1] * len(neg))
+            guidance[1].append(neg)
+            self.is_neg = True
+            print("neg_click")
+        else:
+            print("no_click")
+
+        return json.dumps(np.asarray(guidance).astype(int).tolist())
+
+    def __call__(self, data):
+        d = dict(data)
+        guidance = d[self.guidance]
+        discrepancy = d[self.discrepancy]
+        weight_map =  d[self.weight_map] if self.weight_map is not None else None
+        self.randomize(data)
+        d[self.guidance] = self._apply(guidance, discrepancy, weight_map)
+        d["is_pos"] = self.is_pos
+        d["is_neg"] = self.is_neg
+        self.is_pos = False
+        self.is_neg = False
+        return d
+
 class PosNegClickProbAddRandomGuidanced(Randomizable, Transform):
     """
     Add random guidance based on discrepancies that were found between label and prediction.
