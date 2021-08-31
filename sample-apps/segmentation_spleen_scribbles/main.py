@@ -12,12 +12,10 @@
 import logging
 import os
 
-from lib import (
+from lib import (  # SpleenInteractiveGraphCut,; SpleenISegCRF,
     MyStrategy,
     MyTrain,
     SegmentationWithWriteLogits,
-    SpleenInteractiveGraphCut,
-    SpleenISegCRF,
     SpleenISegGraphCut,
     SpleenISegGraphcutColdstart,
     SpleenISegSimpleCRF,
