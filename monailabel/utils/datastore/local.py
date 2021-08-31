@@ -127,7 +127,7 @@ class LocalDatastore(Datastore):
 
         os.makedirs(self._datastore_path, exist_ok=True)
 
-        self._lock = FileLock(os.path.join(datastore_path, ".lock"))
+        self._lock_file = os.path.join(datastore_path, ".lock")
         self._datastore: LocalDatastoreModel = LocalDatastoreModel(
             name="new-dataset", description="New Dataset", images_dir=images_dir, labels_dir=labels_dir
         )
@@ -386,7 +386,6 @@ class LocalDatastore(Datastore):
         """
         Refresh the datastore based on the state of the files on disk
         """
-        self._init_from_datastore_file()
         self._reconcile_datastore()
 
     def add_image(self, image_id: str, image_filename: str, image_info: Dict[str, Any]) -> str:
@@ -398,7 +397,8 @@ class LocalDatastore(Datastore):
         name = self._filename(image_id, image_ext)
         dest = os.path.realpath(os.path.join(self._datastore.image_path(), name))
 
-        with self._lock:
+        with FileLock(self._lock_file):
+            logger.info("Acquired the lock!")
             shutil.copy(image_filename, dest)
 
             image_info = image_info if image_info else {}
@@ -408,6 +408,7 @@ class LocalDatastore(Datastore):
 
             self._datastore.objects[image_id] = ImageLabelModel(image=DataModel(info=image_info, ext=image_ext))
             self._update_datastore_file(lock=False)
+        logger.info("Released the lock!")
         return image_id
 
     def remove_image(self, image_id: str) -> None:
@@ -439,7 +440,7 @@ class LocalDatastore(Datastore):
         :param label_info: additional info for the label
         :return: the label id for the given label filename
         """
-        logger.info(f"Saving Label for Image: {image_id}; Tag: {label_tag}")
+        logger.info(f"Saving Label for Image: {image_id}; Tag: {label_tag}; Info: {label_info}")
         obj = self._datastore.objects.get(image_id)
         if not obj:
             raise ImageNotFoundException(f"Image {image_id} not found")
@@ -452,7 +453,8 @@ class LocalDatastore(Datastore):
         name = self._filename(image_id, label_ext)
         dest = os.path.join(label_path, name)
 
-        with self._lock:
+        with FileLock(self._lock_file):
+            logger.info("Acquired the lock!")
             os.makedirs(label_path, exist_ok=True)
             shutil.copy(label_filename, dest)
 
@@ -462,7 +464,9 @@ class LocalDatastore(Datastore):
             label_info["name"] = name
 
             obj.labels[label_tag] = DataModel(info=label_info, ext=label_ext)
+            logger.info(f"Label Info: {label_info}")
             self._update_datastore_file(lock=False)
+        logger.info("Release the lock!")
         return label_id
 
     def remove_label(self, label_id: str, label_tag: str) -> None:
@@ -512,6 +516,7 @@ class LocalDatastore(Datastore):
         return filtered
 
     def _reconcile_datastore(self):
+        logger.info("reconcile datastore...")
         invalidate = 0
         invalidate += self._remove_non_existing()
         invalidate += self._add_non_existing_images()
@@ -535,6 +540,7 @@ class LocalDatastore(Datastore):
 
     def _add_non_existing_images(self) -> int:
         invalidate = 0
+        self._init_from_datastore_file()
 
         local_images = self._list_files(self._datastore.image_path(), self._extensions)
 
@@ -558,6 +564,7 @@ class LocalDatastore(Datastore):
 
     def _add_non_existing_labels(self, tag) -> int:
         invalidate = 0
+        self._init_from_datastore_file()
 
         local_labels = self._list_files(self._datastore.label_path(tag), self._extensions)
 
@@ -587,6 +594,7 @@ class LocalDatastore(Datastore):
 
     def _remove_non_existing(self) -> int:
         invalidate = 0
+        self._init_from_datastore_file()
 
         objects: Dict[str, ImageLabelModel] = {}
         for image_id, obj in self._datastore.objects.items():
@@ -613,7 +621,8 @@ class LocalDatastore(Datastore):
 
     def _init_from_datastore_file(self, throw_exception=False):
         try:
-            with self._lock:
+            with FileLock(self._lock_file):
+                logger.info("Acquired the lock!")
                 if os.path.exists(self._datastore_config_path):
                     ts = os.stat(self._datastore_config_path).st_mtime
                     if self._config_ts != ts:
@@ -621,23 +630,27 @@ class LocalDatastore(Datastore):
                         self._datastore = LocalDatastoreModel.parse_file(self._datastore_config_path)
                         self._datastore.base_path = self._datastore_path
                         self._config_ts = ts
+            logger.info("Release the Lock...")
         except ValueError as e:
             logger.error(f"+++ Failed to load datastore => {e}")
             if throw_exception:
                 raise e
 
     def _update_datastore_file(self, lock=True):
-        if lock:
-            self._lock.acquire()
-
-        logger.debug("+++ Datastore is updated...")
-        self._ignore_event_config = True
-        with open(self._datastore_config_path, "w") as f:
-            f.write(json.dumps(self._datastore.dict(exclude={"base_path"}), indent=2, default=str))
-        self._config_ts = os.stat(self._datastore_config_path).st_mtime
+        def _write_to_file():
+            logger.debug("+++ Datastore is updated...")
+            self._ignore_event_config = True
+            with open(self._datastore_config_path, "w") as f:
+                f.write(json.dumps(self._datastore.dict(exclude={"base_path"}), indent=2, default=str))
+            self._config_ts = os.stat(self._datastore_config_path).st_mtime
 
         if lock:
-            self._lock.release()
+            with FileLock(self._lock_file):
+                logger.info("Acquired the Lock...")
+                _write_to_file()
+            logger.info("Released the Lock...")
+        else:
+            _write_to_file()
 
     def status(self) -> Dict[str, Any]:
         tags: dict = {}
