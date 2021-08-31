@@ -52,11 +52,11 @@ class MyApp(MONAILabelApp):
             "Spleen_Segmentation": SegmentationWithWriteLogits(
                 self.final_model, load_from_mmar(self.mmar, self.model_dir)
             ),
-            "ISeg+GraphCut": SpleenISegGraphCut(),
             "Coldstart->ISeg+GraphCut": SpleenISegGraphcutColdstart(),
-            "ISeg+CRF": SpleenISegCRF(),
+            "ISeg+GraphCut": SpleenISegGraphCut(),
             "ISeg+SimpleCRF": SpleenISegSimpleCRF(),
-            "ISeg+InteractiveGraphCut": SpleenInteractiveGraphCut(),
+            # "ISeg+CRF": SpleenISegCRF(), # disabled for now as MONAI CRF GPU has a bug
+            # "ISeg+InteractiveGraphCut": SpleenInteractiveGraphCut(), # hidden as this is redundant option
         }
 
         # Simple way to Add deepgrow 2D+3D models for infer tasks
