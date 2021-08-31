@@ -77,7 +77,7 @@ class DICOMWebCache(LocalDatastore):
         )
         if not os.path.exists(label_nii_gz):
             label_nii_gz = dicom_to_nifti(label_dir, is_seg=True)
-            super().save_label(image_id, label_tag, label_nii_gz, self._dicom_info(label_id))
+            super().save_label(image_id, label_nii_gz, label_tag, self._dicom_info(label_id))
 
         return label_nii_gz
 
