@@ -260,9 +260,9 @@ def run_app(args):
         print(f"APP Directory {args.app} NOT Found")
         exit(1)
     if (
-        not args.studies.startswith("http://") and
-        not args.studies.startswith("https://") and
-        not os.path.exists(args.studies)
+        not args.studies.startswith("http://")
+        and not args.studies.startswith("https://")
+        and not os.path.exists(args.studies)
     ):
         print(f"STUDIES Directory {args.studies} NOT Found")
         exit(1)
