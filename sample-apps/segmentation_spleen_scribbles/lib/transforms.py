@@ -109,6 +109,7 @@ class MakeLikelihoodFromScribblesHistogramd(InteractiveSegmentationTransform):
             scribbles,
             scribbles_bg_label=self.scribbles_bg_label,
             scribbles_fg_label=self.scribbles_fg_label,
+            return_prob=True,
         )
         d[self.post_proc_label] = post_proc_label
 

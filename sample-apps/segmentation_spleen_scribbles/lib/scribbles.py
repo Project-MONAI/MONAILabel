@@ -136,11 +136,11 @@ class SpleenISegGraphcutColdstart(SpleenPostProc):
 
     def pre_transforms(self):
         return [
-            LoadImaged(keys=["image", "logits", "label"]),
+            LoadImaged(keys=["image", "label"]),
             AddChanneld(keys=["image", "label"]),
             # at the moment optimisers are bottleneck taking a long time,
             # therefore scaling non-isotropic with big spacing
-            Spacingd(keys=["image", "logits"], pixdim=[2.5, 2.5, 5.0]),
+            Spacingd(keys=["image"], pixdim=[2.5, 2.5, 5.0]),
             Spacingd(keys=["label"], pixdim=[2.5, 2.5, 5.0], mode="nearest"),
             ScaleIntensityRanged(keys="image", a_min=-300, a_max=200, b_min=0.0, b_max=1.0, clip=True),
             # SoftenProbSoftmax(logits="logits", prob="prob"),
@@ -169,8 +169,6 @@ class SpleenISegGraphcutColdstart(SpleenPostProc):
                     lamda=1.0,
                     sigma=0.1,
                 ),
-                # # optimiser
-                # ApplyCRFOptimisationd(unary="unary", pairwise="image", post_proc_label="pred", device="cpu"),
             ]
         )
 
