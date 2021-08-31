@@ -82,7 +82,7 @@ class MyApp(MONAILabelApp):
         # add saved logits into request
         if self._infers[request.get("model")].type == InferType.SCRIBBLES:
             saved_labels = self.datastore().get_labels_by_image_id(image)
-            for label, tag in saved_labels.items():
+            for tag, label in saved_labels.items():
                 if tag == "logits":
                     request["logits"] = self.datastore().get_label_uri(label, tag)
             logger.info(f"Updated request: {request}")
