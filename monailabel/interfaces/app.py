@@ -337,7 +337,7 @@ class MONAILabelApp:
 
     def _download_tools(self):
         target = os.path.join(self.app_dir, "bin")
-        dcmqi_tools = ["segimage2itkimage", "itkimage2segimage"]
+        dcmqi_tools = ["segimage2itkimage", "itkimage2segimage", "segimage2itkimage.exe", "itkimage2segimage.exe"]
         existing = [tool for tool in dcmqi_tools if shutil.which(tool) or os.path.exists(os.path.join(target, tool))]
 
         if len(existing) == len(dcmqi_tools):
