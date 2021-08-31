@@ -59,6 +59,8 @@ class Interaction:
         pos_click_sum = 0
         neg_click_sum = 0
         if np.random.choice([True, False], p=[self.deepgrow_probability, 1 - self.deepgrow_probability]):
+            # increase pos_click_sum by 1-click for AddInitialSeedPointd pre_transform
+            pos_click_sum += 1 #
             for j in range(self.max_interactions):
                 print("Inner iteration: ", str(j))
                 
