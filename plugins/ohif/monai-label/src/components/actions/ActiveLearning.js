@@ -10,6 +10,7 @@ export default class OptionTable extends BaseTab {
     super(props);
     this.state = {
       strategy: 'random',
+      training: false,
     };
   }
 
@@ -18,15 +19,20 @@ export default class OptionTable extends BaseTab {
   };
 
   onClickNextSample = async () => {
-    if (
-      !window.confirm(
-        'This action will reload current page.  Are you sure to continue?'
-      )
-    ) {
-      return;
-    }
+    const nid = this.notification.show({
+      title: 'MONAI Label',
+      message: 'Running Active Learning strategy - ' + this.state.strategy,
+      type: 'info',
+      duration: 60000,
+    });
 
     const response = await this.props.client().next_sample(this.state.strategy);
+    if (!nid) {
+      window.snackbar.hideAll();
+    } else {
+      this.notification.hide(nid);
+    }
+
     if (response.status !== 200) {
       this.notification.show({
         title: 'MONAI Label',
@@ -35,10 +41,39 @@ export default class OptionTable extends BaseTab {
         duration: 5000,
       });
     } else {
-      window.location.pathname = '/viewer/' + response.data['id'];
+      // TODO:: OHIF Doesn't support loading exact series in URI
+      const msg =
+        'This action will reload current page.  Are you sure to continue?';
+      if (!window.confirm(msg)) return;
+
+      window.location.pathname = '/viewer/' + response.data['StudyInstanceUID'];
     }
   };
-  onClickUpdateModel = () => {};
+
+  onClickUpdateModel = async () => {
+    const training = this.state.training;
+    console.log('Current training status: ' + training);
+    const response = training
+      ? await this.props.client().stop_train()
+      : await this.props.client().run_train({});
+
+    if (response.status !== 200) {
+      this.notification.show({
+        title: 'MONAI Label',
+        message: 'Failed to ' + (training ? 'STOP' : 'RUN') + ' training',
+        type: 'error',
+        duration: 5000,
+      });
+    } else {
+      this.notification.show({
+        title: 'MONAI Label',
+        message: 'Model update task ' + (training ? 'STOPPED' : 'STARTED'),
+        type: 'success',
+        duration: 2000,
+      });
+      this.setState({ training: !training });
+    }
+  };
 
   onClickSubmitLabel = async () => {
     const { getters } = cornerstoneTools.getModule('segmentation');
@@ -88,7 +123,7 @@ export default class OptionTable extends BaseTab {
       const label = new Blob([labelmap3D.buffer], {
         type: 'application/octet-stream',
       });
-      const params = segments;
+      const params = { label_info: segments };
 
       const response = await this.props
         .client()
@@ -112,6 +147,12 @@ export default class OptionTable extends BaseTab {
     }
   };
 
+  async componentDidMount() {
+    const training = await this.props.client().is_train_running();
+    console.log('Training: ' + training);
+    this.setState({ training: training });
+  }
+
   render() {
     const ds = this.props.info.datastore;
     const completed = ds && ds.completed ? ds.completed : 0;
@@ -119,8 +160,12 @@ export default class OptionTable extends BaseTab {
     const activelearning = Math.round(100 * (completed / total)) + '%';
     const activelearningTip = completed + '/' + total + ' samples annotated';
 
-    const ts = this.props.info.train_stats;
-    const epochs = ts && ts.total_time ? (ts.epoch ? ts.epoch : 1) : 0;
+    const ts = this.props.info.train_stats
+      ? Object.values(this.props.info.train_stats)[0]
+      : null;
+    console.log(this.props.info.train_stats);
+    console.log(ts);
+    const epochs = ts ? (ts.total_time ? 0 : ts.epoch ? ts.epoch : 1) : 0;
     const total_epochs = ts && ts.total_epochs ? ts.total_epochs : 1;
     const training = Math.round(100 * (epochs / total_epochs)) + '%';
     const trainingTip = epochs
@@ -168,7 +213,7 @@ export default class OptionTable extends BaseTab {
                     className="actionInput"
                     onClick={this.onClickUpdateModel}
                   >
-                    Update Model
+                    {this.state.training ? 'Stop Training' : 'Update Model'}
                   </button>
                 </td>
                 <td>&nbsp;</td>
@@ -233,7 +278,7 @@ export default class OptionTable extends BaseTab {
                 </td>
               </tr>
               <tr>
-                <td>Accuracy:</td>
+                <td>Train Acc:</td>
                 <td title={accuracyTip}>
                   <div className="w3-round w3-light-grey w3-tiny">
                     <div

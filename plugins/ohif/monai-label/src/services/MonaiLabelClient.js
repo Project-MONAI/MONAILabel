@@ -65,7 +65,28 @@ export default class MonaiLabelClient {
       'label.bin'
     );
 
-    return await MonaiLabelClient.aput(url, data, 'json');
+    return await MonaiLabelClient.api_put_data(url, data, 'json');
+  }
+
+  async is_train_running() {
+    let url = new URL('train', this.server_url);
+    url.searchParams.append('check_if_running', 'true');
+    url = url.toString();
+
+    const response = await MonaiLabelClient.api_get(url);
+    return (
+      response && response.status === 200 && response.data.status === 'RUNNING'
+    );
+  }
+
+  async run_train(params) {
+    const url = new URL('train', this.server_url).toString();
+    return await MonaiLabelClient.api_post(url, params, null, false, 'json');
+  }
+
+  async stop_train() {
+    const url = new URL('train', this.server_url).toString();
+    return await MonaiLabelClient.api_delete(url);
   }
 
   static constructFormDataFromArray(params, data, name, fileName) {
@@ -108,6 +129,20 @@ export default class MonaiLabelClient {
       .finally(function() {});
   }
 
+  static api_delete(url) {
+    console.info('DELETE:: ' + url);
+    return axios
+      .delete(url)
+      .then(function(response) {
+        console.info(response);
+        return response;
+      })
+      .catch(function(error) {
+        return error;
+      })
+      .finally(function() {});
+  }
+
   static api_post(
     url,
     params,
@@ -118,10 +153,10 @@ export default class MonaiLabelClient {
     const data = form
       ? MonaiLabelClient.constructFormData(params, files)
       : MonaiLabelClient.constructFormOrJsonData(params, files);
-    return MonaiLabelClient.apost(url, data, responseType);
+    return MonaiLabelClient.api_post_data(url, data, responseType);
   }
 
-  static apost(url, data, responseType) {
+  static api_post_data(url, data, responseType) {
     console.info('POST:: ' + url);
     return axios
       .post(url, data, {
@@ -144,10 +179,10 @@ export default class MonaiLabelClient {
     const data = form
       ? MonaiLabelClient.constructFormData(params, files)
       : MonaiLabelClient.constructFormOrJsonData(params, files);
-    return MonaiLabelClient.aput(url, data, responseType);
+    return MonaiLabelClient.api_put_data(url, data, responseType);
   }
 
-  static aput(url, data, responseType = 'json') {
+  static api_put_data(url, data, responseType = 'json') {
     console.info('PUT:: ' + url);
     return axios
       .put(url, data, {

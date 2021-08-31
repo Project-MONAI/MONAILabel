@@ -48,8 +48,13 @@ export default class MonaiLabelPanel extends Component {
   }
 
   client = () => {
-    const settings = this.settings.current.state;
-    return new MonaiLabelClient(settings.url);
+    const settings =
+      this.settings && this.settings.current && this.settings.current.state
+        ? this.settings.current.state
+        : null;
+    return new MonaiLabelClient(
+      settings ? settings.url : 'http://127.0.0.1:8000'
+    );
   };
 
   getViewConstants = (viewports, studies, activeIndex) => {
