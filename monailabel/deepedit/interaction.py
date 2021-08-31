@@ -102,6 +102,11 @@ class Interaction:
             batchdata = list_data_collate(batchdata_list)
             
         # first item in batch only  
+        print("interaction_pos_click_sum", pos_click_sum)
+        print("interaction_neg_click_sum", neg_click_sum)
+        
+        
+        engine.state.batch = batchdata
         engine.state.batch.update({"pos_click_sum": pos_click_sum})
         engine.state.batch.update({"neg_click_sum": neg_click_sum})
 

@@ -145,9 +145,13 @@ class TensorBoardImageHandler:
         self._writer.add_scalar("Positive clicks (cumulative)", self.cumulative_pos_clicks, step)
         self._writer.add_scalar("Negative clicks (cumulative)", self.cumulative_neg_clicks, step)
         
+        print("handler_pos_clicks", self.num_pos_clicks)
+        print("handler_neg_clicks", self.num_neg_clicks)
+        
         """
         IMAGE
         """
+        print("Handler in operation")
         show_image = self.batch_transform(engine.state.batch)[0]["image"][0, ...][None]
         if isinstance(show_image, torch.Tensor):
             show_image = show_image.detach().cpu().numpy()
@@ -221,6 +225,7 @@ class TensorBoardImageHandler:
         show_pos_clicks = self.batch_transform(engine.state.batch)[0]["image"][1, ...][None]
         if isinstance(show_pos_clicks, torch.Tensor):
             show_pos_clicks = show_pos_clicks.detach().cpu().numpy()
+        print("handler_pos_click_image_sum", np.sum(show_pos_clicks))
         if show_pos_clicks is not None:
             if not isinstance(show_pos_clicks, np.ndarray):
                 raise TypeError(
@@ -246,7 +251,7 @@ class TensorBoardImageHandler:
         show_neg_clicks = self.batch_transform(engine.state.batch)[0]["image"][2, ...][None]
         if isinstance(show_neg_clicks, torch.Tensor):
             show_neg_clicks = show_neg_clicks.detach().cpu().numpy()
-            print("show_neg_clicks", np.sum(show_neg_clicks))
+        print("handler_neg_click_image_sum", np.sum(show_neg_clicks))
         if show_neg_clicks is not None:
             if not isinstance(show_neg_clicks, np.ndarray):
                 raise TypeError(
