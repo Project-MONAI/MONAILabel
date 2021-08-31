@@ -30,11 +30,12 @@ from monailabel.utils.others.writer import write_itk
 logger = logging.getLogger(__name__)
 
 
-def dicom_to_nifti(series_dir, output_nifti, is_seg=False):
+def dicom_to_nifti(series_dir, is_seg=False):
     start = time.time()
+    output_file = tempfile.NamedTemporaryFile(suffix=".nii.gz").name
 
     if is_seg:
-        itk_dicom_seg_to_image(series_dir, output_nifti)
+        itk_dicom_seg_to_image(series_dir, output_file)
     else:
         # https://simpleitk.readthedocs.io/en/master/link_DicomConvert_docs.html
         if os.path.isdir(series_dir) and len(os.listdir(series_dir)) > 1:
@@ -53,9 +54,10 @@ def dicom_to_nifti(series_dir, output_nifti, is_seg=False):
             image = file_reader.Execute()
 
         logger.info(f"Image size: {image.GetSize()}")
-        SimpleITK.WriteImage(image, output_nifti)
+        SimpleITK.WriteImage(image, output_file)
 
     logger.info(f"dicom_to_nifti latency : {time.time() - start} (sec)")
+    return output_file
 
 
 def binary_to_image(reference_image, label, dtype=np.uint16, file_ext=".nii.gz", use_itk=True):
