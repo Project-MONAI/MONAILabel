@@ -4,16 +4,25 @@
 
 ## Development setup
 
-You can build the OHIF plugin for development as follows:
+- Build the OHIF plugin for development:
+
+  `(cd plugins/ohif && ./build.sh)`
+
+- Run App with Orthanc (DICOMWeb):
+
+  `./monailabel/monailabel start_server -a samples/segmentation_spleen -s http://127.0.0.1:8042/dicom-web`
+
+- Access OHIF: http://127.0.0.1:8000/ohif/
 
 ```shell
-(cd plugins/ohif && ./build.sh)
-
 # If you want to avoid building OHIF package for every code changes, 
 # you can run OHIF Viewer directly in checked-out git submodule
 cd plugins/ohif/Viewers
 
 yarn run dev:orthanc
+
+# in this case ohif will run at http://127.0.0.1:3000/
+xdg-open http://127.0.0.1:3000/
 ```
 
 ## Installing Orthanc (DICOMWeb)
