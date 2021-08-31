@@ -13,11 +13,15 @@ import copy
 import itertools
 import logging
 import os
+import platform
+import shutil
+import tempfile
 import time
 from typing import Callable, Dict
 
+from dicomweb_client import DICOMwebClient
 from dicomweb_client.session_utils import create_session_from_user_pass
-from monai.apps import download_url, load_from_mmar
+from monai.apps import download_and_extract, download_url, load_from_mmar
 from monai.data import partition_dataset
 
 from monailabel.config import settings
@@ -26,7 +30,6 @@ from monailabel.interfaces.exception import MONAILabelError, MONAILabelException
 from monailabel.interfaces.tasks import BatchInferTask, InferTask, ScoringMethod, Strategy, TrainTask
 from monailabel.utils.activelearning import Random
 from monailabel.utils.datastore.dicom.cache import DICOMWebCache
-from monailabel.utils.datastore.dicom.client import DICOMWebClient
 from monailabel.utils.datastore.local import LocalDatastore
 from monailabel.utils.infer import InferDeepgrow2D, InferDeepgrow3D
 from monailabel.utils.infer.deepgrow_pipeline import InferDeepgrowPipeline
@@ -59,6 +62,8 @@ class MONAILabelApp:
         self._scoring_methods = self.init_scoring_methods()
         self._batch_infer = self.init_batch_infer()
 
+        self._download_tools()
+
     def init_infers(self) -> Dict[str, InferTask]:
         return {}
 
@@ -75,27 +80,24 @@ class MONAILabelApp:
         return BatchInferTask()
 
     def init_datastore(self) -> Datastore:
-        if settings.STUDIES.startswith("http://") or settings.STUDIES.startswith("https://"):
-
+        logger.info(f"Init Datastore for: {self.studies}")
+        if self.studies.startswith("http://") or self.studies.startswith("https://"):
             dw_session = None
             if settings.DICOMWEB_USERNAME and settings.DICOMWEB_PASSWORD:
                 dw_session = create_session_from_user_pass(settings.DICOMWEB_USERNAME, settings.DICOMWEB_PASSWORD)
 
-            dw_client = DICOMWebClient(
-                url=settings.STUDIES,
+            dw_client = DICOMwebClient(
+                url=self.studies,
                 session=dw_session,
                 qido_url_prefix=settings.QIDO_PREFIX,
                 wado_url_prefix=settings.WADO_PREFIX,
                 stow_url_prefix=settings.STOW_PREFIX,
             )
-            return DICOMWebCache(
-                dicomweb_client=dw_client,
-            )
+            return DICOMWebCache(dw_client)
 
         return LocalDatastore(
             self.studies,
-            image_extensions=settings.DATASTORE_IMAGE_EXT,
-            label_extensions=settings.DATASTORE_LABEL_EXT,
+            extensions=settings.DATASTORE_FILE_EXT,
             auto_reload=settings.DATASTORE_AUTO_RELOAD,
         )
 
@@ -163,23 +165,28 @@ class MONAILabelApp:
             request["save_label"] = False
         else:
             request["image"] = datastore.get_image_uri(request["image"])
+
+        # TODO:: BUG In MONAI? Currently can not load DICOM through ITK Loader
+        if os.path.isdir(request["image"]):
+            logger.info("Input is a Directory; Consider it as DICOM")
+            logger.info(os.listdir(request["image"]))
+            request["image"] = [os.path.join(f, request["image"]) for f in os.listdir(request["image"])]
+
+        logger.info(f"Image => {request['image']}")
         result_file_name, result_json = task(request)
 
         label_id = None
         if result_file_name and os.path.exists(result_file_name):
             tag = request.get("label_tag", DefaultLabelTag.ORIGINAL)
-            save_label = request.get("save_label", False)
+            save_label = request.get("save_label", True)
             if save_label:
                 label_id = datastore.save_label(image_id, result_file_name, tag, result_json)
-                if result_json:
-                    datastore.update_label_info(label_id, result_json)
-
                 if os.path.exists(result_file_name):
                     os.unlink(result_file_name)
             else:
                 label_id = result_file_name
 
-        return {"label": label_id, "params": result_json}
+        return {"label": label_id, "tag": DefaultLabelTag.ORIGINAL, "params": result_json}
 
     def batch_infer(self, request, datastore=None):
         """
@@ -327,6 +334,24 @@ class MONAILabelApp:
         Callback method when label is saved into datastore by a remote client
         """
         logger.info(f"New label saved for: {image_id} => {label_id}")
+
+    def _download_tools(self):
+        target = os.path.join(self.app_dir, "bin")
+        dcmqi_tools = ["segimage2itkimage", "itkimage2segimage", "segimage2itkimage.exe", "itkimage2segimage.exe"]
+        existing = [tool for tool in dcmqi_tools if shutil.which(tool) or os.path.exists(os.path.join(target, tool))]
+
+        if len(existing) == len(dcmqi_tools) // 2:
+            return
+
+        target_os = "win64.zip" if any(platform.win32_ver()) else "linux.tar.gz"
+        with tempfile.TemporaryDirectory() as tmp:
+            download_and_extract(
+                url=f"https://github.com/QIICR/dcmqi/releases/download/v1.2.4/dcmqi-1.2.4-{target_os}", output_dir=tmp
+            )
+            for root, _, files in os.walk(tmp):
+                for f in files:
+                    if f in dcmqi_tools:
+                        shutil.copy(os.path.join(root, f), target)
 
     @staticmethod
     def download(resources):
