@@ -28,9 +28,9 @@ class Interaction:
         deepgrow_probability: probability of simulating clicks in an iteration
         transforms: execute additional transformation during every iteration (before train).
             Typically, several Tensor based transforms composed by `Compose`.
-        max_interactions: maximum number of interactions per iteration
-        train: training or evaluation
-        click_probability: field name to fill probability for every interaction
+        max_interactions: maximum number of click interactions per iteration if deepgrow training invoked for iteration
+        train: True for training mode or False for evaluation mode
+        click_probability_key: key to click/interaction probability
     """
 
     def __init__(
@@ -53,13 +53,15 @@ class Interaction:
 
     def __call__(self, engine: Union[SupervisedTrainer, SupervisedEvaluator], batchdata: Dict[str, torch.Tensor]):
 
-        # batchdata.update({'inner_iter': torch.tensor([0])})
-
         if batchdata is None:
             raise ValueError("Must provide batch data for current iteration.")
             
+        pos_click_sum = 0
+        neg_click_sum = 0
         if np.random.choice([True, False], p=[self.deepgrow_probability, 1 - self.deepgrow_probability]):
             for j in range(self.max_interactions):
+                print("Inner iteration: ", str(j))
+                
                 inputs, _ = engine.prepare_batch(batchdata)
                 inputs = inputs.to(engine.state.device)
     
@@ -72,54 +74,35 @@ class Interaction:
                             predictions = engine.inferer(inputs, engine.network)
                     else:
                         predictions = engine.inferer(inputs, engine.network)
-    
                 batchdata.update({CommonKeys.PRED: predictions})
     
-                # decollate batch data to execute click transforms
+                # decollate/collate batchdata to execute click transforms
                 batchdata_list = decollate_batch(batchdata, detach=True)
     
-                for i in range(len(batchdata_list)):  # Only 1 iteration
+                for i in range(len(batchdata_list)):
                     batchdata_list[i][self.click_probability_key] = (
                         (1.0 - ((1.0 / self.max_interactions) * j)) if self.train else 1.0
                     )
                     batchdata_list[i] = self.transforms(batchdata_list[i])
-    
-                # collate list into a batch for next round interaction
+
                 batchdata = list_data_collate(batchdata_list)
-    
-                # Why 'inner_iter' isn't visible or always ZERO in the Tensorboard handler??
-                # I was modifying batchdata without modifying the state!!!
-    
-                engine.state.batch.update({"inner_iter": j})
-                engine.state.batch.update({"img_inner_iter": batchdata_list})
-                engine.state.batch.update({"is_pos": batchdata_list[0]["is_pos"]})
-                engine.state.batch.update({"is_neg": batchdata_list[0]["is_neg"]})
-                engine.state.batch.update({"max_iter": self.max_interactions})
-    
+                
+                # first item in batch only
+                pos_click_sum += (batchdata_list[0]["is_pos"]) * 1
+                neg_click_sum += (batchdata_list[0]["is_neg"]) * 1 
+                    
                 engine.fire_event(IterationEvents.INNER_ITERATION_COMPLETED)
     
-                # Need to remove these from dictionary as collating shows errors
-                engine.state.batch.pop("img_inner_iter")
         else:
-            print("no click")
-            # decollate batchdata to zero out input guidance channels
+            # zero out input guidance channels
             batchdata_list = decollate_batch(batchdata, detach=True)
             for i in range(len(batchdata_list)):
-                batchdata_list[i][CommonKeys.IMAGE][-1] = batchdata_list[i][CommonKeys.IMAGE][-1] * 0
-                batchdata_list[i][CommonKeys.IMAGE][-2] = batchdata_list[i][CommonKeys.IMAGE][-2] * 0  
+                batchdata_list[i][CommonKeys.IMAGE][-1] *= 0
+                batchdata_list[i][CommonKeys.IMAGE][-2] *= 0  
             batchdata = list_data_collate(batchdata_list)
             
-            inputs, _ = engine.prepare_batch(batchdata)
-            inputs = inputs.to(engine.state.device)
-
-            engine.network.eval()
-            with torch.no_grad():
-                if engine.amp:
-                    with torch.cuda.amp.autocast():
-                        predictions = engine.inferer(inputs, engine.network)
-                else:
-                    predictions = engine.inferer(inputs, engine.network)
-
-            batchdata.update({CommonKeys.PRED: predictions})
+        # first item in batch only  
+        engine.state.batch.update({"pos_click_sum": pos_click_sum})
+        engine.state.batch.update({"neg_click_sum": neg_click_sum})
 
         return engine._iteration(engine, batchdata)

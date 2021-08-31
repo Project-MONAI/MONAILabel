@@ -60,8 +60,8 @@ class MyTrain(BasicTrainTask):
         self._network = network
         self.spatial_size = spatial_size
         self.target_spacing = target_spacing
-        self.deepgrow_probability_train = deepgrow_probability_train,
-        self.deepgrow_probability_val = deepgrow_probability_val,
+        self.deepgrow_probability_train = deepgrow_probability_train
+        self.deepgrow_probability_val = deepgrow_probability_val
         self.max_train_interactions = max_train_interactions
         self.max_val_interactions = max_val_interactions
 
