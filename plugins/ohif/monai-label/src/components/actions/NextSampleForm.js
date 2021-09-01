@@ -18,7 +18,7 @@ export default class NextSampleForm extends Component {
 
     // TODO:: OHIF Doesn't support loading exact series in URI
     if (!window.confirm(msg)) return;
-    window.location.pathname = '/viewer/' + this.props.info.StudyInstanceUID;
+    window.location.pathname = '/ohif/viewer/' + this.props.info.StudyInstanceUID;
   };
 
   render() {
