@@ -26,7 +26,7 @@ from fastapi.staticfiles import StaticFiles
 from starlette.middleware.cors import CORSMiddleware
 
 from monailabel.config import settings
-from monailabel.endpoints import activelearning, batch_infer, datastore, infer, info, logs, scoring, train
+from monailabel.endpoints import activelearning, batch_infer, datastore, infer, info, logs, ohif, proxy, scoring, train
 from monailabel.utils.others.app_utils import app_instance
 from monailabel.utils.others.generic import init_log_config
 
@@ -61,6 +61,8 @@ app.include_router(activelearning.router)
 app.include_router(scoring.router)
 app.include_router(datastore.router)
 app.include_router(logs.router)
+app.include_router(ohif.router)
+app.include_router(proxy.router)
 
 
 @app.get("/", include_in_schema=False)
@@ -278,9 +280,14 @@ def run_app(args):
     overrides = {
         "APP_DIR": args.app,
         "STUDIES": args.studies,
+        "DICOMWEB_USERNAME": args.username,
+        "DICOMWEB_PASSWORD": args.password,
+        "QIDO_PREFIX": args.qido_prefix,
+        "WADO_PREFIX": args.wado_prefix,
+        "STOW_PREFIX": args.stow_prefix,
     }
     for k, v in overrides.items():
-        os.putenv(k, str(v))
+        os.environ[k] = str(v)
 
     settings.APP_DIR = args.app
     settings.STUDIES = args.studies
@@ -290,7 +297,7 @@ def run_app(args):
     settings.WADO_PREFIX = args.wado_prefix
     settings.STOW_PREFIX = args.stow_prefix
 
-    dirs = ["model", "lib", "logs"]
+    dirs = ["model", "lib", "logs", "bin"]
     for d in dirs:
         d = os.path.join(args.app, d)
         if not os.path.exists(d):
@@ -298,6 +305,7 @@ def run_app(args):
 
     sys.path.append(args.app)
     sys.path.append(os.path.join(args.app, "lib"))
+    os.environ["PATH"] += os.pathsep + os.path.join(args.app, "bin")
 
     if args.dryrun:
         with open(".env", "w") as f:

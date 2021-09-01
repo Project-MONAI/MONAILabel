@@ -28,10 +28,7 @@ class Settings(BaseSettings):
     STOW_PREFIX: str = ""
 
     DATASTORE_AUTO_RELOAD: bool = True
-    DATASTORE_IMAGE_EXT: List[str] = ["*.nii.gz", "*.nii"]
-    DATASTORE_LABEL_EXT: List[str] = ["*.nii.gz", "*.nii"]
-
-    DICOM_WEB: str = "http://localhost:8042"
+    DATASTORE_FILE_EXT: List[str] = ["*.nii.gz", "*.nii"]
 
     CORS_ORIGINS: List[AnyHttpUrl] = []
 

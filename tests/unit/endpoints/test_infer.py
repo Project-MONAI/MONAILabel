@@ -23,7 +23,7 @@ class EndPointInfer(BasicEndpointTestSuite):
             return
 
         model = "left_atrium"
-        image = "la_003.nii.gz"
+        image = "la_003"
 
         response = self.client.post(f"/infer/{model}?image={image}")
         assert response.status_code == 200
@@ -33,7 +33,7 @@ class EndPointInfer(BasicEndpointTestSuite):
             return
 
         model = "deepedit"
-        image = "la_003.nii.gz"
+        image = "la_003"
         params = {"foreground": [[153, 175, 60]], "background": []}
 
         response = self.client.post(f"/infer/{model}?image={image}", data={"params": json.dumps(params)})

@@ -22,7 +22,14 @@ from scipy.special import softmax
 
 from monailabel.utils.others.writer import Writer
 
-from .utils import interactive_maxflow2d, interactive_maxflow3d, make_iseg_unary, maxflow2d, maxflow3d
+from .utils import (
+    interactive_maxflow2d,
+    interactive_maxflow3d,
+    make_iseg_unary,
+    make_likelihood_image_histogram,
+    maxflow2d,
+    maxflow3d,
+)
 
 
 #####################################
@@ -64,6 +71,53 @@ class InteractiveSegmentationTransform(Transform):
 
 #####################################
 #####################################
+
+#############################
+#  Make Likelihood Transforms
+#############################
+class MakeLikelihoodFromScribblesHistogramd(InteractiveSegmentationTransform):
+    def __init__(
+        self,
+        image: str,
+        scribbles: str,
+        meta_key_postfix: str = "meta_dict",
+        post_proc_label: str = "prob",
+        scribbles_bg_label: int = 2,
+        scribbles_fg_label: int = 3,
+    ) -> None:
+        super(MakeLikelihoodFromScribblesHistogramd, self).__init__()
+        self.image = image
+        self.scribbles = scribbles
+        self.scribbles_bg_label = scribbles_bg_label
+        self.scribbles_fg_label = scribbles_fg_label
+        self.meta_key_postfix = meta_key_postfix
+        self.post_proc_label = post_proc_label
+
+    def __call__(self, data):
+        d = dict(data)
+
+        # copy affine meta data from image input
+        d = self._copy_affine(d, src=self.image, dst=self.post_proc_label)
+
+        # read relevant terms from data
+        image = self._fetch_data(d, self.image)
+        scribbles = self._fetch_data(d, self.scribbles)
+
+        # make likelihood image
+        post_proc_label = make_likelihood_image_histogram(
+            image,
+            scribbles,
+            scribbles_bg_label=self.scribbles_bg_label,
+            scribbles_fg_label=self.scribbles_fg_label,
+            return_prob=True,
+        )
+        d[self.post_proc_label] = post_proc_label
+
+        return d
+
+
+#############################
+#############################
 
 ############################
 #  Prob Softening Transforms

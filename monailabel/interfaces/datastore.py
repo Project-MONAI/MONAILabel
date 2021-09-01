@@ -72,7 +72,7 @@ class Datastore(metaclass=ABCMeta):
         Retrieve all label ids for the given image id
 
         :param image_id: the desired image's id
-        :return: label ids mapped to the appropriate `LabelTag` as Dict[str, LabelTag]
+        :return: label ids mapped to the appropriate `LabelTag` as Dict[LabelTag, str]
         """
         pass
 
@@ -108,21 +108,23 @@ class Datastore(metaclass=ABCMeta):
         pass
 
     @abstractmethod
-    def get_label(self, label_id: str) -> Any:
+    def get_label(self, label_id: str, label_tag: str) -> Any:
         """
         Retrieve image object based on label id
 
         :param label_id: the desired label's id
+        :param label_tag: the matching label's tag
         :return: return the "label"
         """
         pass
 
     @abstractmethod
-    def get_label_uri(self, label_id: str) -> str:
+    def get_label_uri(self, label_id: str, label_tag: str) -> str:
         """
         Retrieve label uri based on image id
 
         :param label_id: the desired label's id
+        :param label_tag: the matching label's tag
         :return: return the label uri
         """
         pass
@@ -138,11 +140,12 @@ class Datastore(metaclass=ABCMeta):
         pass
 
     @abstractmethod
-    def get_label_info(self, label_id: str) -> Dict[str, Any]:
+    def get_label_info(self, label_id: str, label_tag: str) -> Dict[str, Any]:
         """
         Get the label information for the given label id
 
         :param label_id: the desired label id
+        :param label_tag: the matching label tag
         :return: label info as a list of dictionaries Dict[str, Any]
         """
         pass
@@ -150,7 +153,7 @@ class Datastore(metaclass=ABCMeta):
     @abstractmethod
     def get_labeled_images(self) -> List[str]:
         """
-        Get all images that have a corresponding label
+        Get all images that have a corresponding final label
 
         :return: list of image ids List[str]
         """
@@ -159,7 +162,7 @@ class Datastore(metaclass=ABCMeta):
     @abstractmethod
     def get_unlabeled_images(self) -> List[str]:
         """
-        Get all images that have no corresponding label
+        Get all images that have no corresponding final label
 
         :return: list of image ids List[str]
         """
@@ -182,12 +185,13 @@ class Datastore(metaclass=ABCMeta):
         pass
 
     @abstractmethod
-    def add_image(self, image_id: str, image_filename: str) -> str:
+    def add_image(self, image_id: str, image_filename: str, image_info: Dict[str, Any]) -> str:
         """
         Save a image for the given image id and return the newly saved image's id
 
         :param image_id: the image id for the image;  If None then base filename will be used
         :param image_filename: the path to the image file
+        :param image_info: additional info for the image
         :return: the image id for the saved image filename
         """
         pass
@@ -209,24 +213,17 @@ class Datastore(metaclass=ABCMeta):
         :param image_id: the image id for the label
         :param label_filename: the path to the label file
         :param label_tag: the user-provided tag for the label
+        :param label_info: additional info for the label
         :return: the label id for the given label filename
         """
         pass
 
     @abstractmethod
-    def remove_label(self, label_id: str) -> None:
+    def remove_label(self, label_id: str, label_tag: str) -> None:
         """
         Remove label from the datastore
 
         :param label_id: the label id for the label to be removed from datastore
-        """
-        pass
-
-    @abstractmethod
-    def remove_label_by_tag(self, label_tag: str) -> None:
-        """
-        Remove all labels for matching tags from the datastore
-
         :param label_tag: the label tag for the label to be removed from datastore
         """
         pass
@@ -242,11 +239,12 @@ class Datastore(metaclass=ABCMeta):
         pass
 
     @abstractmethod
-    def update_label_info(self, label_id: str, info: Dict[str, Any]) -> None:
+    def update_label_info(self, label_id: str, label_tag: str, info: Dict[str, Any]) -> None:
         """
         Update (or create a new) info tag for the desired label
 
         :param label_id: the id of the label we want to add/update info
+        :param label_tag: the matching label tag
         :param info: a dictionary of custom label information Dict[str, Any]
         """
         pass
