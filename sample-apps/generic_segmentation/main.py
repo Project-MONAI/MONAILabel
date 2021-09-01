@@ -12,7 +12,14 @@
 import logging
 import os
 
-from lib import MyInfer, MyStrategy, MyTrain
+from lib import (  # GenericInteractiveGraphCut,; GenericISegCRF,
+    GenericISegGraphCut,
+    GenericISegGraphcutColdstart,
+    GenericISegSimpleCRF,
+    MyInfer,
+    MyStrategy,
+    MyTrain,
+)
 from monai.networks.layers import Norm
 from monai.networks.nets import UNet
 
@@ -59,6 +66,11 @@ class MyApp(MONAILabelApp):
     def init_infers(self):
         infers = {
             "segmentation": MyInfer([self.pretrained_model, self.final_model], self.network),
+            "Coldstart->ISeg+GraphCut": GenericISegGraphcutColdstart(),
+            "ISeg+GraphCut": GenericISegGraphCut(),
+            "ISeg+SimpleCRF": GenericISegSimpleCRF(),
+            # "ISeg+CRF": GenericISegCRF(), # disabled for now as MONAI CRF GPU has a bug
+            # "ISeg+InteractiveGraphCut": GenericInteractiveGraphCut(), # hidden as this is redundant option
         }
 
         # Simple way to Add deepgrow 2D+3D models for infer tasks
