@@ -1,8 +1,11 @@
 import httpx
 from fastapi import APIRouter
 from fastapi.responses import Response
+import logging
 
 from monailabel.config import settings
+
+logger = logging.getLogger(__name__)
 
 router = APIRouter(
     prefix="/proxy",
@@ -20,7 +23,9 @@ async def proxy(path: str, response: Response):
     )
 
     async with httpx.AsyncClient(auth=auth) as client:
-        proxy = await client.get(f"{settings.DICOM_WEB.lstrip('/')}/{path}")
+        proxy_path = f"{settings.STUDIES.lstrip('/')}/{path}"
+        logger.debug(f"Proxy conneting to {proxy_path}")
+        proxy = await client.get(proxy_path)
     response.body = proxy.content
     response.status_code = proxy.status_code
     return response

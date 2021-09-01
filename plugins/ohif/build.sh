@@ -22,7 +22,7 @@ git checkout -- ./platform/viewer/public/config/default.js
 sed -i "s|routerBasename: '/'|routerBasename: '/ohif/'|g" ./platform/viewer/public/config/default.js
 sed -i "s|name: 'DCM4CHEE'|name: 'Orthanc'|g" ./platform/viewer/public/config/default.js
 sed -i "s|https://server.dcmjs.org/dcm4chee-arc/aets/DCM4CHEE/wado|/proxy/dicom/wado|g" ./platform/viewer/public/config/default.js
-sed -i "s|https://server.dcmjs.org/dcm4chee-arc/aets/DCM4CHEE/rs|/proxy/dicom/dicom-web|g" ./platform/viewer/public/config/default.js
+sed -i "s|https://server.dcmjs.org/dcm4chee-arc/aets/DCM4CHEE/rs|/proxy/dicom|g" ./platform/viewer/public/config/default.js
 
 # Viewers/platform/viewer/.env
 git checkout -- ./platform/viewer/.env
