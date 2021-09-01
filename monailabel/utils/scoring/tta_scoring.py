@@ -23,7 +23,8 @@ from monai.transforms import (
     Compose,
     LoadImaged,
     RandAffined,
-    ScaleIntensityRanged,
+    RandFlipd,
+    RandRotated,
     Spacingd,
     ToTensord,
 )
@@ -56,11 +57,12 @@ class TTAScoring(ScoringMethod):
                 RandAffined(
                     keys=["image"],
                     prob=1,
-                    rotate_range=(np.pi / 6, np.pi / 6, np.pi / 6),
+                    rotate_range=(np.pi / 3, np.pi / 3, np.pi / 3),
                     padding_mode="zeros",
                     as_tensor_output=False,
                 ),
-                ScaleIntensityRanged(keys="image", a_min=-57, a_max=164, b_min=0.0, b_max=1.0, clip=True),
+                RandFlipd(keys="image", prob=0.5, spatial_axis=0),
+                RandRotated(keys="image", range_x=(-10, 10), range_y=(-10, 10), range_z=(-10, 10)),
                 ToTensord(keys="image"),
             ]
         )
@@ -90,9 +92,7 @@ class TTAScoring(ScoringMethod):
             label_key="image",
             batch_size=1,
             num_workers=0,
-            inferrer_fn=partial(
-                self.infer_seg, roi_size=self.img_size, model=self.model._get_network(self.device), sw_batch_size=1
-            ),
+            inferrer_fn=partial(self.infer_seg, roi_size=self.img_size, model=self.model, sw_batch_size=1),
             device=self.device,
         )
 

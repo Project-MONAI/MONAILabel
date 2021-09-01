@@ -18,7 +18,7 @@ parser.add_argument(
 # Path used to start the App + labels/
 parser.add_argument(
     "--path_labels_root",
-    default="/home/adp20local/Documents/Datasets/monailabel_datasets/spleen/train_small/labels/",
+    default="/home/adp20local/Documents/Datasets/monailabel_datasets/spleen/train_small/labels/final/",
     type=str,
 )
 
