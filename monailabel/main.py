@@ -26,7 +26,7 @@ from fastapi.staticfiles import StaticFiles
 from starlette.middleware.cors import CORSMiddleware
 
 from monailabel.config import settings
-from monailabel.endpoints import activelearning, batch_infer, datastore, infer, info, logs, scoring, train
+from monailabel.endpoints import activelearning, batch_infer, datastore, infer, info, logs, ohif, proxy, scoring, train
 from monailabel.utils.others.app_utils import app_instance
 from monailabel.utils.others.generic import init_log_config
 
@@ -61,6 +61,8 @@ app.include_router(activelearning.router)
 app.include_router(scoring.router)
 app.include_router(datastore.router)
 app.include_router(logs.router)
+app.include_router(ohif.router)
+app.include_router(proxy.router)
 
 
 @app.get("/", include_in_schema=False)
