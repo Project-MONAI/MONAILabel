@@ -13,15 +13,23 @@ import hashlib
 import logging
 import mimetypes
 import os
+import pathlib
 import shutil
 import subprocess
 
 logger = logging.getLogger(__name__)
 
 
+def file_ext(name) -> str:
+    return "".join(pathlib.Path(name).suffixes)
+
+
 def remove_file(path: str) -> None:
-    if os.path.exists(path):
-        os.unlink(path)
+    if path and os.path.exists(path):
+        if os.path.isdir(path):
+            shutil.rmtree(path)
+        else:
+            os.unlink(path)
 
 
 def run_command(command, args=None, plogger=None):

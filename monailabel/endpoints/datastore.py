@@ -43,12 +43,6 @@ class ResultType(str, Enum):
     all = "all"
 
 
-class RemoveType(str, Enum):
-    image = "image"
-    label = "label"
-    label_tag = "label_tag"
-
-
 @router.get("/", summary="Get All Images/Labels from datastore")
 async def datastore(output: Optional[ResultType] = None):
     d: Datastore = app_instance().datastore()
@@ -63,11 +57,16 @@ async def datastore(output: Optional[ResultType] = None):
 
 
 @router.put("/", summary="Upload new Image")
-async def add_image(background_tasks: BackgroundTasks, image: Optional[str] = None, file: UploadFile = File(...)):
+async def add_image(
+    background_tasks: BackgroundTasks,
+    image: Optional[str] = None,
+    params: str = Form("{}"),
+    file: UploadFile = File(...),
+):
     logger.info(f"Image: {image}; File: {file}")
     file_ext = "".join(pathlib.Path(file.filename).suffixes) if file.filename else ".nii.gz"
 
-    image_id = image if image else os.path.basename(file.filename)
+    image_id = image if image else os.path.basename(file.filename).replace(file_ext, "")
     image_file = tempfile.NamedTemporaryFile(suffix=file_ext).name
 
     with open(image_file, "wb") as buffer:
@@ -75,19 +74,15 @@ async def add_image(background_tasks: BackgroundTasks, image: Optional[str] = No
         background_tasks.add_task(remove_file, image_file)
 
     instance: MONAILabelApp = app_instance()
-    image_id = instance.datastore().add_image(image_id, image_file)
+    save_params: Dict[str, Any] = json.loads(params) if params else {}
+    image_id = instance.datastore().add_image(image_id, image_file, save_params)
     return {"image": image_id}
 
 
-@router.delete("/", summary="Remove Image/Label")
-async def remove_image(id: str, type: RemoveType):
+@router.delete("/", summary="Remove Image and corresponding labels")
+async def remove_image(id: str):
     instance: MONAILabelApp = app_instance()
-    if type == RemoveType.label:
-        instance.datastore().remove_label(id)
-    elif type == RemoveType.label_tag:
-        instance.datastore().remove_label_by_tag(id)
-    else:
-        instance.datastore().remove_image(id)
+    instance.datastore().remove_image(id)
     return {}
 
 
@@ -123,6 +118,13 @@ async def save_label(
     return res
 
 
+@router.delete("/label", summary="Remove Label")
+async def remove_label(id: str, tag: str):
+    instance: MONAILabelApp = app_instance()
+    instance.datastore().remove_label(id, tag)
+    return {}
+
+
 @router.get("/image", summary="Download Image")
 async def download_image(image):
     instance: MONAILabelApp = app_instance()
@@ -134,9 +136,9 @@ async def download_image(image):
 
 
 @router.get("/label", summary="Download Label")
-async def download_label(label):
+async def download_label(label: str, tag: str):
     instance: MONAILabelApp = app_instance()
-    label = instance.datastore().get_label_uri(label)
+    label = instance.datastore().get_label_uri(label, tag)
     if not os.path.isfile(label):
         raise HTTPException(status_code=404, detail="Label NOT Found")
 
