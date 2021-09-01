@@ -117,7 +117,7 @@ class MyTrain(BasicTrainTask):
             Activationsd(keys="pred", sigmoid=True),
             AsDiscreted(keys="pred", threshold_values=True, logit_thresh=0.5),
         ]
-
+        
     def val_pre_transforms(self):
         return self.train_pre_transforms()
 
@@ -144,5 +144,5 @@ class MyTrain(BasicTrainTask):
 
     def train_handlers(self, output_dir, events_dir, evaluator):
         handlers = super().train_handlers(output_dir, events_dir, evaluator)
-        handlers.append(TensorBoardImageHandler(log_dir=events_dir, output_transform=Compose(self.train_post_transforms())))
+        handlers.append(TensorBoardImageHandler(log_dir=events_dir))
         return handlers

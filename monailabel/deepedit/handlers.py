@@ -198,7 +198,7 @@ class TensorBoardImageHandler:
         """
         PREDICTION
         """
-        show_prediction = self.output_transform(engine.state.output[0])["pred"][0, ...][None]
+        show_prediction = self.output_transform(engine.state.output)[0]["pred"][0, ...][None]
         if isinstance(show_prediction, torch.Tensor):
             show_prediction = show_prediction.detach().cpu().numpy()
         if show_prediction is not None:
@@ -207,7 +207,6 @@ class TensorBoardImageHandler:
                     "show_pred must be None or one of "
                     f"(numpy.ndarray, torch.Tensor) but is {type(show_label).__name__}."
                 )
-            show_prediction = (show_prediction > 0.5).astype(np.float32) # binarize
             plot_2d_or_3d_image(
                 # add batch dim and plot the first item
                 show_prediction[None],
@@ -247,7 +246,6 @@ class TensorBoardImageHandler:
         """
         NEGATIVE CLICKS
         """
-        #show_neg_clicks = self.batch_transform(engine.state.batch)["img_inner_iter"][0]["image"][2, ...][None]
         show_neg_clicks = self.batch_transform(engine.state.batch)[0]["image"][2, ...][None]
         if isinstance(show_neg_clicks, torch.Tensor):
             show_neg_clicks = show_neg_clicks.detach().cpu().numpy()
