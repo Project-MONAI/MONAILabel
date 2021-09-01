@@ -59,8 +59,7 @@ class Interaction:
         pos_click_sum = 0
         neg_click_sum = 0
         if np.random.choice([True, False], p=[self.deepgrow_probability, 1 - self.deepgrow_probability]):
-            # increase pos_click_sum by 1-click for AddInitialSeedPointd pre_transform
-            pos_click_sum += 1 
+            pos_click_sum += 1  # increase pos_click_sum by 1-click for AddInitialSeedPointd pre_transform
             for j in range(self.max_interactions):
                 print("Inner iteration: ", str(j))
                 
@@ -104,10 +103,6 @@ class Interaction:
             batchdata = list_data_collate(batchdata_list)
             
         # first item in batch only  
-        print("interaction_pos_click_sum", pos_click_sum)
-        print("interaction_neg_click_sum", neg_click_sum)
-        
-        
         engine.state.batch = batchdata
         engine.state.batch.update({"pos_click_sum": pos_click_sum})
         engine.state.batch.update({"neg_click_sum": neg_click_sum})

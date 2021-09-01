@@ -148,15 +148,10 @@ class AddRandomGuidanced(Randomizable, Transform):
             guidance[0].append(pos)
             guidance[1].append([-1] * len(pos))
             self.is_pos = True
-            print("transform pos_click")
-        elif neg:
+        if neg:
             guidance[0].append([-1] * len(neg))
             guidance[1].append(neg)
             self.is_neg = True
-            print("transform neg_click")
-        else:
-            print("transform no_click")
-
         return json.dumps(np.asarray(guidance).astype(int).tolist())
 
     def __call__(self, data):
@@ -258,15 +253,10 @@ class PosNegClickProbAddRandomGuidanced(Randomizable, Transform):
             guidance[0].append(pos)
             guidance[1].append([-1] * len(pos))
             self.is_pos = True
-            print("transform pos_click")
-        elif neg:
+        if neg:
             guidance[0].append([-1] * len(neg))
             guidance[1].append(neg)
             self.is_neg = True
-            print("transform neg_click")
-        else:
-            print("transform no_click")
-
         return json.dumps(np.asarray(guidance).astype(int).tolist())
 
     def __call__(self, data):
