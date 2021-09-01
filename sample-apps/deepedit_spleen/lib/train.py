@@ -34,12 +34,11 @@ from monai.transforms import (
     Spacingd,
     ToNumpyd,
     ToTensord,
-    Compose,
 )
 
 from monailabel.deepedit.handlers import TensorBoardImageHandler
 from monailabel.deepedit.interaction import Interaction
-from monailabel.deepedit.transforms import PosNegClickProbAddRandomGuidanced
+from monailabel.deepedit.transforms import AddRandomGuidanced
 from monailabel.utils.train.basic_train import BasicTrainTask
 
 logger = logging.getLogger(__name__)
@@ -82,7 +81,7 @@ class MyTrain(BasicTrainTask):
             Activationsd(keys="pred", sigmoid=True),
             ToNumpyd(keys=("image", "label", "pred")),
             FindDiscrepancyRegionsd(label="label", pred="pred", discrepancy="discrepancy"),
-            PosNegClickProbAddRandomGuidanced(guidance="guidance", discrepancy="discrepancy", probability="probability"),
+            AddRandomGuidanced(guidance="guidance", discrepancy="discrepancy", probability="probability"),
             AddGuidanceSignald(image="image", guidance="guidance"),
             ToTensord(keys=("image", "label")),
         ]

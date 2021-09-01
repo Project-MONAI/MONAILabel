@@ -108,7 +108,7 @@ class AddRandomGuidanced(Randomizable, Transform):
 
     def find_guidance(self, discrepancy, weight_map): 
         distance = distance_transform_cdt(discrepancy)
-        weighted_distance = (distance * weight_map).flatten() if weight_map is not None else distance 
+        weighted_distance = (distance * weight_map).flatten() if weight_map is not None else distance .flatten()
         probability = np.exp(weighted_distance) - 1.0
         idx = np.where(discrepancy.flatten() > 0)[0]
 
