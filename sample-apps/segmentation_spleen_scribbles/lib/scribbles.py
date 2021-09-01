@@ -12,9 +12,7 @@
 from monai.transforms import AddChanneld, Compose, LoadImaged, ScaleIntensityRanged, Spacingd
 
 from monailabel.interfaces.tasks import InferTask, InferType
-from monailabel.utils.others.post import BoundingBoxd, Restored
-
-from .transforms import (
+from monailabel.scribbles.transforms import (
     ApplyCRFOptimisationd,
     ApplyGraphCutOptimisationd,
     ApplyISegGraphCutPostProcd,
@@ -23,6 +21,7 @@ from .transforms import (
     MakeLikelihoodFromScribblesHistogramd,
     SoftenProbSoftmax,
 )
+from monailabel.utils.others.post import BoundingBoxd, Restored
 
 
 class SpleenPostProc(InferTask):
