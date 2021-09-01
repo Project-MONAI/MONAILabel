@@ -1,7 +1,8 @@
+import logging
+
 import httpx
 from fastapi import APIRouter
 from fastapi.responses import Response
-import logging
 
 from monailabel.config import settings
 
