@@ -61,7 +61,7 @@ class Interaction:
         if np.random.choice([True, False], p=[self.deepgrow_probability, 1 - self.deepgrow_probability]):
             pos_click_sum += 1  # increase pos_click_sum by 1-click for AddInitialSeedPointd pre_transform
             for j in range(self.max_interactions):
-                print("Inner iteration: ", str(j))
+                print("Inner iteration (click simulations running): ", str(j))
                 
                 inputs, _ = engine.prepare_batch(batchdata)
                 inputs = inputs.to(engine.state.device)
