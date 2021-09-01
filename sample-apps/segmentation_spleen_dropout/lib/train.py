@@ -64,7 +64,7 @@ class MyTrain(BasicTrainTask):
         return torch.optim.Adam(self._network.parameters(), lr=0.0001)
 
     def loss_function(self):
-        return DiceLoss(sigmoid=True, squared_pred=True)
+        return DiceLoss(to_onehot_y=True, softmax=True)
 
     def train_pre_transforms(self):
          return [

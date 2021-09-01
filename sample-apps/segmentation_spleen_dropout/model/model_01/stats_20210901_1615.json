@@ -1,0 +1,16 @@
+{
+  "total_epochs": 1,
+  "total_iterations": 4,
+  "epoch": 1,
+  "start_ts": 1630530916,
+  "total_time": "0:00:13",
+  "best_metric": 0.4872976541519165,
+  "train": {
+    "metrics": {
+      "train_dice": 0.4872976541519165
+    },
+    "key_metric_name": "train_dice",
+    "best_metric": 0.4872976541519165,
+    "best_metric_epoch": 1
+  }
+}

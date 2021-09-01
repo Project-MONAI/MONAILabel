@@ -83,7 +83,7 @@ class MyApp(MONAILabelApp):
             "name": "model_01",
             "pretrained": False,
             "device": "cuda",
-            "max_epochs": 200,
+            "max_epochs": 1,
             "val_split": 0.2,
             "train_batch_size": 1,
             "val_batch_size": 1,

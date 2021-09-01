@@ -75,7 +75,10 @@ class EpistemicScoring(ScoringMethod):
     def infer_seg(self, images, model, roi_size, sw_batch_size):
         pre_transforms = self.pre_transforms()
         images = pre_transforms(images)
-        preds = sliding_window_inference(images, roi_size, sw_batch_size, model)
+        print('Shape of image {}'.format(images['image'].shape))
+        #preds = sliding_window_inference(images, roi_size, sw_batch_size, model)
+        preds = sliding_window_inference(inputs=images['image'][None].cuda(), roi_size=roi_size,
+                                      sw_batch_size=sw_batch_size, predictor=model)
         transforms = self.post_transforms()
         post_pred = transforms(preds)
         return post_pred
@@ -102,7 +105,7 @@ class EpistemicScoring(ScoringMethod):
                 fig.colorbar(im_show, ax=ax)
                 fig.savefig("/home/adp20local/Documents/MONAILabel/sample-apps/segmentation_spleen_tta/tta_output.png")
 
-    def entropy_3d_volume(vol_input):
+    def entropy_3d_volume(self, vol_input):
         # The input is assumed with repetitions, channels and then volumetric data
         vol_input = vol_input.astype(dtype='float32')
         dims = vol_input.shape
