@@ -69,7 +69,7 @@ class MyApp(MONAILabelApp):
         }
 
         # Simple way to Add deepgrow 2D+3D models for infer tasks
-        infers.update(self.deepgrow_infer_tasks(self.model_dir))
+        # infers.update(self.deepgrow_infer_tasks(self.model_dir))
         return infers
 
     # def init_infers(self):
@@ -155,8 +155,8 @@ def main():
         datefmt="%Y-%m-%d %H:%M:%S",
     )
 
-    app_dir_path = os.path.normpath("/home/adp20local/Documents/MONAILabel/sample-apps/segmentation_spleen_tta")
-    studies_path = os.path.normpath("/home/adp20local/Documents/Datasets/monailabel_datasets/spleen/train_small")
+    app_dir_path = os.path.normpath("/home/vishwesh/Code/MONAILabel/sample-apps/segmentation_spleen_dropout")
+    studies_path = os.path.normpath("/home/vishwesh/experiments/monai_label_spleen/small_data")
 
     al_app = MyApp(app_dir=app_dir_path, studies=studies_path)
 
