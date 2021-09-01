@@ -231,7 +231,7 @@ class TensorBoardImageHandler:
                     "show_pos_clicks must be None or one of "
                     f"(numpy.ndarray, torch.Tensor) but is {type(show_pos_clicks).__name__}."
                 )
-            #show_pos_clicks = show_label + show_pos_clicks
+            show_pos_clicks = show_label + show_pos_clicks
             plot_2d_or_3d_image(
                 # add batch dim and plot the first item
                 show_pos_clicks[None],
@@ -256,7 +256,7 @@ class TensorBoardImageHandler:
                     "show_neg_clicks must be None or one of "
                     f"(numpy.ndarray, torch.Tensor) but is {type(show_neg_clicks).__name__}."
                 )
-            #show_neg_clicks = show_label + show_neg_clicks
+            show_neg_clicks = show_label + show_neg_clicks
             plot_2d_or_3d_image(
                 # add batch dim and plot the first item
                 show_neg_clicks[None],
