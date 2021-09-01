@@ -34,6 +34,7 @@ from monai.transforms import (
     Spacingd,
     ToNumpyd,
     ToTensord,
+    Compose,
 )
 
 from monailabel.deepedit.handlers import TensorBoardImageHandler
@@ -143,5 +144,5 @@ class MyTrain(BasicTrainTask):
 
     def train_handlers(self, output_dir, events_dir, evaluator):
         handlers = super().train_handlers(output_dir, events_dir, evaluator)
-        handlers.append(TensorBoardImageHandler(log_dir=events_dir))
+        handlers.append(TensorBoardImageHandler(log_dir=events_dir, output_transform=Compose(self.train_post_transforms())))
         return handlers

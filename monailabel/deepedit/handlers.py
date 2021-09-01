@@ -198,7 +198,7 @@ class TensorBoardImageHandler:
         """
         PREDICTION
         """
-        show_prediction = self.output_transform(engine.state.output)[0]["pred"][0, ...][None]
+        show_prediction = self.output_transform(engine.state.output[0])["pred"][0, ...][None]
         if isinstance(show_prediction, torch.Tensor):
             show_prediction = show_prediction.detach().cpu().numpy()
         if show_prediction is not None:
