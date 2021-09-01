@@ -54,7 +54,7 @@ class InteractiveSegmentationTransform(Transform):
         # check if logits is a true prob, if not then apply softmax
         if not np.allclose(np.sum(data, axis=axis), 1.0):
             print("found non normalized logits, normalizing using Softmax")
-            data = torch.softmax(torch.from_numpy(data), dim=axis).numpy()
+            data = softmax(data, axis=axis)
 
         return data
 
