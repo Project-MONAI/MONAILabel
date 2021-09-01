@@ -110,5 +110,5 @@ class MyApp(MONAILabelApp):
 
     def init_scoring_methods(self):
         return {
-            "TTA": TTAScoring(model=self.init_infers()["segmentation_spleen"], plot=False),
+            "TTA": TTAScoring(model=self.init_infers()["segmentation_spleen"]),
         }
