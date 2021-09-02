@@ -86,7 +86,7 @@ class MyApp(MONAILabelApp):
     def init_trainers(self):
         config = {
             "name": "model_01",
-            "pretrained": True,
+            "pretrained": False,
             "device": "cuda",
             "max_epochs": 200,
             "val_split": 0.2,
@@ -111,5 +111,5 @@ class MyApp(MONAILabelApp):
 
     def init_scoring_methods(self):
         return {
-            "TTA": TTAScoring(model=[self.pretrained_model, self.final_model], network=self.network),
+            "TTA": TTAScoring(model=[self.pretrained_model, self.final_model], network=self.network, plot=True),
         }

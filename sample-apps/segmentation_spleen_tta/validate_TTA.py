@@ -25,7 +25,8 @@ parser.add_argument(
 # Active learning parameters
 parser.add_argument("--active_learning_technique", default="TTA", type=str)
 # Factor used to wait until training happens
-parser.add_argument("--training_time_factor", default=10, type=int)
+parser.add_argument("--training_time_factor", default=5, type=int)
+parser.add_argument("--num_imgs_fetched", default=2, type=int)
 args = parser.parse_args()
 
 
@@ -46,7 +47,7 @@ for idx in range(len(new_labels)):
 
     # Waiting to train model for some epochs
     for i in range(args.training_time_factor):
-        sleep(720)
+        sleep(1)
         print("Training - Label number: " + str(idx) + " of " + str(len(new_labels) + 1) + " -- Second: " + str(i + 1))
 
     # Stop training
@@ -70,22 +71,23 @@ for idx in range(len(new_labels)):
         print("Running scoring --- Checking every 180 seconds")
         r = requests.get(args.url_server + "scoring/")
 
-    sleep(5)
+    # Fetch images
+    for _ in range(args.num_imgs_fetched):
 
-    # Fetch an image using active learning technique score
-    print("Fetching image ---")
-    r = requests.post(args.url_server + "activelearning/" + args.active_learning_technique)
-    print(r.text)
+        # Fetch an image using active learning technique score
+        print("Fetching image ---")
+        r = requests.post(args.url_server + "activelearning/" + args.active_learning_technique)
+        print(r.text)
 
-    sleep(5)
+        sleep(2)
 
-    if r:
-        # Copy fetched image
-        label_name = r.json()["id"]
-        print("Image fetched: " + label_name)
-        os.system("cp " + args.path_new_labels + label_name + " " + args.path_labels_root + "label_final_" + label_name)
+        if r:
+            # Copy fetched image
+            label_name = r.json()["name"]
+            print("Image fetched: " + label_name)
+            os.system("cp " + args.path_new_labels + label_name + " " + args.path_labels_root + label_name)
 
-    sleep(5)
+        sleep(2)
 
 # Re-start training
 r = requests.post(args.url_server + "train/")
