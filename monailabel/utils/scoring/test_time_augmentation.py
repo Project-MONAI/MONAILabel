@@ -159,7 +159,7 @@ class TestTimeAugmentation:
 
         outputs: List[np.ndarray] = []
 
-        for batch_data in tqdm(dl) if has_tqdm and self.progress else dl:
+        for batch_data in tqdm(dl) if self.progress else dl:
 
             batch_images = batch_data[self.image_key].to(self.device)
 
