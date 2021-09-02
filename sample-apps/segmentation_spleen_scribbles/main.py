@@ -12,7 +12,7 @@
 import logging
 import os
 
-from lib import (  # SpleenInteractiveGraphCut,; SpleenISegCRF,
+from lib import (
     MyStrategy,
     MyTrain,
     SegmentationWithWriteLogits,
@@ -53,8 +53,6 @@ class MyApp(MONAILabelApp):
             "Coldstart->ISeg+GraphCut": SpleenISegGraphcutColdstart(),
             "ISeg+GraphCut": SpleenISegGraphCut(),
             "ISeg+SimpleCRF": SpleenISegSimpleCRF(),
-            # "ISeg+CRF": SpleenISegCRF(), # disabled for now as MONAI CRF GPU has a bug
-            # "ISeg+InteractiveGraphCut": SpleenInteractiveGraphCut(), # hidden as this is redundant option
         }
 
         # Simple way to Add deepgrow 2D+3D models for infer tasks
