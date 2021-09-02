@@ -77,6 +77,48 @@ class InteractiveSegmentationTransform(Transform):
 #####################################
 #####################################
 
+#########################################
+#  Add Background Scribbles from bbox ROI
+#########################################
+class AddBackgroundScribblesFromROId(InteractiveSegmentationTransform):
+    def __init__(
+        self,
+        scribbles: str,
+        roi_key: str = "roi",
+        meta_key_postfix: str = "meta_dict",
+        scribbles_bg_label: int = 2,
+        scribbles_fg_label: int = 3,
+    ) -> None:
+        super(AddBackgroundScribblesFromROId, self).__init__()
+        self.scribbles = scribbles
+        self.roi_key = roi_key
+        self.meta_key_postfix = meta_key_postfix
+        self.scribbles_bg_label = scribbles_bg_label
+        self.scribbles_fg_label = scribbles_fg_label
+
+    def __call__(self, data):
+        d = dict(data)
+
+        # read relevant terms from data
+        scribbles = self._fetch_data(d, self.scribbles)
+
+        # get any existing roi information and apply it to scribbles, skip otherwise
+        selected_roi = d.get(self.roi_key, None)
+        if selected_roi != None and selected_roi != []:
+            mask = np.ones_like(scribbles).astype(np.bool)
+            mask[:, selected_roi[0]:selected_roi[1], selected_roi[2]: selected_roi[3], selected_roi[4]:selected_roi[5]] = 0
+
+            # prune outside roi region as bg scribbles
+            scribbles[mask] = self.scribbles_bg_label
+
+        # return new scribbles
+        d[self.scribbles] = scribbles
+
+        return d
+
+#########################################
+#########################################
+
 #############################
 #  Make Likelihood Transforms
 #############################
