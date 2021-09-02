@@ -18,7 +18,7 @@ from monai.apps import load_from_mmar
 
 from monailabel.interfaces import MONAILabelApp
 from monailabel.utils.activelearning import Random
-from monailabel.utils.scoring.tta_scoring import TtaScoring
+from monailabel.utils.scoring.tta_scoring import TTAScoring
 
 logger = logging.getLogger(__name__)
 
@@ -63,5 +63,5 @@ class MyApp(MONAILabelApp):
 
     def init_scoring_methods(self):
         return {
-            "tta_scoring": TtaScoring(),
+            "tta_scoring": TTAScoring(),
         }
