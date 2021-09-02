@@ -11,10 +11,11 @@
 
 import json
 import logging
-from typing import Dict, Optional
+from typing import Dict, Hashable, Mapping, Optional
 
 import numpy as np
-from monai.transforms.transform import Randomizable, Transform
+from monai.config import KeysCollection
+from monai.transforms.transform import MapTransform, Randomizable, Transform
 
 logger = logging.getLogger(__name__)
 
@@ -23,17 +24,24 @@ from monai.utils import optional_import
 distance_transform_cdt, _ = optional_import("scipy.ndimage.morphology", name="distance_transform_cdt")
 
 
-class DiscardAddGuidanced(Transform):
-    def __init__(self, image: str = "image", number_intensity_ch: int = 1, discard_probability: float = 1.0):
+class DiscardAddGuidanced(MapTransform):
+    def __init__(
+        self,
+        keys: KeysCollection,
+        number_intensity_ch: int = 1,
+        probability: float = 1.0,
+        allow_missing_keys: bool = False,
+    ):
         """
         Discard positive and negative points according to discard probability
-        :param image: image key
+        :param keys: The ``keys`` parameter will be used to get and set the actual data item to transform
         :param number_intensity_ch: number of intensity channels
         :param discard_probability: probability of discarding clicks
         """
-        self.image = image
+        super().__init__(keys, allow_missing_keys)
+
         self.number_intensity_ch = number_intensity_ch
-        self.discard_probability = discard_probability
+        self.discard_probability = probability
 
     def _apply(self, image):
         if self.discard_probability >= 1.0 or np.random.choice(
@@ -47,9 +55,13 @@ class DiscardAddGuidanced(Transform):
                 image = np.concatenate((image, signal, signal), axis=0)
         return image
 
-    def __call__(self, data):
+    def __call__(self, data: Mapping[Hashable, np.ndarray]) -> Dict[Hashable, np.ndarray]:
         d: Dict = dict(data)
-        d[self.image] = self._apply(d[self.image])
+        for key in self.key_iterator(d):
+            if key == "image":
+                d[key] = self._apply(d[key])
+            else:
+                print("This transform only applies to the image")
         return d
 
 
