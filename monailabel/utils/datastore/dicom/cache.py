@@ -83,11 +83,12 @@ class DICOMWebCache(LocalDatastore):
 
     def _dicom_info(self, series_id):
         meta = load_json_dataset(self._client.search_for_series(search_filters={"SeriesInstanceUID": series_id})[0])
-        return {
-            "SeriesInstanceUID": series_id,
-            "StudyInstanceUID": str(meta["StudyInstanceUID"].value),
-            "PatientID": str(meta["PatientID"].value),
-        }
+        fields = ["StudyDate", "StudyTime", "Modality", "RetrieveURL", "PatientID", "StudyInstanceUID"]
+
+        info = {"SeriesInstanceUID": series_id}
+        for f in fields:
+            info[f] = str(meta[f].value)
+        return info
 
     def list_images(self) -> List[str]:
         datasets = self._client.search_for_series(search_filters={"Modality": self._modality})
