@@ -43,6 +43,7 @@ from monailabel.utils.train.basic_train import BasicTrainTask
 
 logger = logging.getLogger(__name__)
 
+
 class MyTrain(BasicTrainTask):
     def __init__(
         self,
@@ -81,7 +82,9 @@ class MyTrain(BasicTrainTask):
             Activationsd(keys="pred", sigmoid=True),
             ToNumpyd(keys=("image", "label", "pred")),
             FindDiscrepancyRegionsd(label="label", pred="pred", discrepancy="discrepancy"),
-            PosNegClickProbAddRandomGuidanced(guidance="guidance", discrepancy="discrepancy", probability="probability"),
+            PosNegClickProbAddRandomGuidanced(
+                guidance="guidance", discrepancy="discrepancy", probability="probability"
+            ),
             AddGuidanceSignald(image="image", guidance="guidance"),
             ToTensord(keys=("image", "label")),
         ]
@@ -116,7 +119,7 @@ class MyTrain(BasicTrainTask):
             Activationsd(keys="pred", sigmoid=True),
             AsDiscreted(keys="pred", threshold_values=True, logit_thresh=0.5),
         ]
-        
+
     def val_pre_transforms(self):
         return self.train_pre_transforms()
 

@@ -11,8 +11,8 @@
 
 from typing import Callable, Dict, Sequence, Union
 
-import torch
 import numpy as np
+import torch
 from monai.data import decollate_batch, list_data_collate
 from monai.engines import SupervisedEvaluator, SupervisedTrainer
 from monai.engines.utils import IterationEvents
@@ -44,7 +44,7 @@ class Interaction:
 
         if not isinstance(transforms, Compose):
             transforms = Compose(transforms)
-        
+
         self.deepgrow_probability = deepgrow_probability
         self.transforms = transforms
         self.max_interactions = max_interactions
@@ -55,19 +55,19 @@ class Interaction:
 
         if batchdata is None:
             raise ValueError("Must provide batch data for current iteration.")
-            
+
         pos_click_sum = 0
         neg_click_sum = 0
         if np.random.choice([True, False], p=[self.deepgrow_probability, 1 - self.deepgrow_probability]):
             pos_click_sum += 1  # increase pos_click_sum by 1-click for AddInitialSeedPointd pre_transform
             for j in range(self.max_interactions):
                 print("Inner iteration (click simulations running): ", str(j))
-                
+
                 inputs, _ = engine.prepare_batch(batchdata)
                 inputs = inputs.to(engine.state.device)
-    
+
                 engine.fire_event(IterationEvents.INNER_ITERATION_STARTED)
-    
+
                 engine.network.eval()
                 with torch.no_grad():
                     if engine.amp:
@@ -76,10 +76,10 @@ class Interaction:
                     else:
                         predictions = engine.inferer(inputs, engine.network)
                 batchdata.update({CommonKeys.PRED: predictions})
-    
+
                 # decollate/collate batchdata to execute click transforms
                 batchdata_list = decollate_batch(batchdata, detach=True)
-    
+
                 for i in range(len(batchdata_list)):
                     batchdata_list[i][self.click_probability_key] = (
                         (1.0 - ((1.0 / self.max_interactions) * j)) if self.train else 1.0
@@ -87,24 +87,24 @@ class Interaction:
                     batchdata_list[i] = self.transforms(batchdata_list[i])
 
                 batchdata = list_data_collate(batchdata_list)
-                
+
                 # first item in batch only
                 pos_click_sum += (batchdata_list[0]["is_pos"]) * 1
-                neg_click_sum += (batchdata_list[0]["is_neg"]) * 1 
-                    
+                neg_click_sum += (batchdata_list[0]["is_neg"]) * 1
+
                 engine.fire_event(IterationEvents.INNER_ITERATION_COMPLETED)
-    
+
         else:
             # zero out input guidance channels
             batchdata_list = decollate_batch(batchdata, detach=True)
             for i in range(len(batchdata_list)):
                 batchdata_list[i][CommonKeys.IMAGE][-1] *= 0
-                batchdata_list[i][CommonKeys.IMAGE][-2] *= 0  
+                batchdata_list[i][CommonKeys.IMAGE][-2] *= 0
             batchdata = list_data_collate(batchdata_list)
-            
-        # first item in batch only  
+
+        # first item in batch only
         engine.state.batch = batchdata
-        engine.state.batch.update({"pos_click_sum": pos_click_sum})
-        engine.state.batch.update({"neg_click_sum": neg_click_sum})
+        engine.state.batch.update({"pos_click_sum": torch.tensor(pos_click_sum)})
+        engine.state.batch.update({"neg_click_sum": torch.tensor(neg_click_sum)})
 
         return engine._iteration(engine, batchdata)

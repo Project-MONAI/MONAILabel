@@ -104,7 +104,7 @@ class TensorBoardImageHandler:
         """
         Args:
             engine: Ignite Engine, it can be a trainer, validator or evaluator.
-        """                
+        """
         engine.add_event_handler(Events.ITERATION_COMPLETED(every=self.interval), self)
 
     def __call__(self, engine: Engine) -> None:
@@ -127,24 +127,24 @@ class TensorBoardImageHandler:
             .split("/")[-1]
             .split(".")[0]
         )
-                
+
         """
         Adding simulated clicks stats
         """
         self.num_pos_clicks = self.batch_transform(engine.state.batch)[0]["pos_click_sum"]
-        self.cumulative_pos_clicks += self.batch_transform(engine.state.batch)[0]["pos_click_sum"]
+        self.cumulative_pos_clicks += self.num_pos_clicks
 
         self.num_neg_clicks = self.batch_transform(engine.state.batch)[0]["neg_click_sum"]
-        self.cumulative_neg_clicks += self.batch_transform(engine.state.batch)[0]["neg_click_sum"]
-            
+        self.cumulative_neg_clicks += self.num_neg_clicks
+
         self.num_total_clicks = self.num_pos_clicks + self.num_neg_clicks
-            
+
         self._writer.add_scalar("Positive clicks", self.num_pos_clicks, step)
         self._writer.add_scalar("Negative clicks", self.num_neg_clicks, step)
         self._writer.add_scalar("Total clicks", self.num_total_clicks, step)
         self._writer.add_scalar("Positive clicks (cumulative)", self.cumulative_pos_clicks, step)
         self._writer.add_scalar("Negative clicks (cumulative)", self.cumulative_neg_clicks, step)
-                
+
         """
         IMAGE
         """
@@ -190,7 +190,7 @@ class TensorBoardImageHandler:
                 self.max_frames,
                 "step_" + str(step) + "_label_" + filename,
             )
-            
+
         """
         PREDICTION
         """
@@ -213,7 +213,7 @@ class TensorBoardImageHandler:
                 self.max_frames,
                 "step_" + str(step) + "_prediction_" + filename,
             )
-        
+
         """
         POSITIVE CLICKS
         """

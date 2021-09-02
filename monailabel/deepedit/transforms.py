@@ -21,7 +21,8 @@ logger = logging.getLogger(__name__)
 from monai.utils import optional_import
 
 distance_transform_cdt, _ = optional_import("scipy.ndimage.morphology", name="distance_transform_cdt")
-    
+
+
 class DiscardAddGuidanced(Transform):
     def __init__(self, image: str = "image", number_intensity_ch: int = 1, discard_probability: float = 1.0):
         """
@@ -35,7 +36,9 @@ class DiscardAddGuidanced(Transform):
         self.discard_probability = discard_probability
 
     def _apply(self, image):
-        if self.discard_probability >= 1.0 or np.random.choice([True, False], p=[self.discard_probability, 1 - self.discard_probability]):
+        if self.discard_probability >= 1.0 or np.random.choice(
+            [True, False], p=[self.discard_probability, 1 - self.discard_probability]
+        ):
             signal = np.zeros((1, image.shape[-3], image.shape[-2], image.shape[-1]), dtype=np.float32)
             if image.shape[0] == self.number_intensity_ch + 2:
                 image[self.number_intensity_ch] = signal
@@ -48,6 +51,7 @@ class DiscardAddGuidanced(Transform):
         d: Dict = dict(data)
         d[self.image] = self._apply(d[self.image])
         return d
+
 
 class ResizeGuidanceCustomd(Transform):
     """
@@ -75,15 +79,16 @@ class ResizeGuidanceCustomd(Transform):
         d[self.guidance] = [pos, neg]
         return d
 
+
 class AddRandomGuidanced(Randomizable, Transform):
     """
     Add random guidance based on discrepancies that were found between label and prediction.
     Args:
         guidance: key to guidance source, shape (2, N, # of dim)
-        discrepancy: key to discrepancy map between label and prediction, 
+        discrepancy: key to discrepancy map between label and prediction,
             shape (2, C, H, W, D) or (2, C, H, W)
         probability: key to click/interaction probability, shape (1)
-        weight_map: optional key to predetermined weight map used to increase click likelihood in higher weight areas, 
+        weight_map: optional key to predetermined weight map used to increase click likelihood in higher weight areas,
             shape (C, H, W, D) or (C, H, W)
     """
 
@@ -106,14 +111,14 @@ class AddRandomGuidanced(Randomizable, Transform):
         probability = data[self.probability]
         self._will_interact = self.R.choice([True, False], p=[probability, 1.0 - probability])
 
-    def find_guidance(self, discrepancy, weight_map): 
+    def find_guidance(self, discrepancy, weight_map):
         distance = distance_transform_cdt(discrepancy)
-        weighted_distance = (distance * weight_map).flatten() if weight_map is not None else distance .flatten()
+        weighted_distance = (distance * weight_map).flatten() if weight_map is not None else distance.flatten()
         probability = np.exp(weighted_distance) - 1.0
         idx = np.where(discrepancy.flatten() > 0)[0]
 
         if np.sum(discrepancy > 0) > 0:
-            seed = self.R.choice(idx, size=1, p=probability[idx] / np.sum(probability[idx])) 
+            seed = self.R.choice(idx, size=1, p=probability[idx] / np.sum(probability[idx]))
             dst = weighted_distance[seed]
 
             g = np.asarray(np.unravel_index(seed, discrepancy.shape)).transpose().tolist()[0]
@@ -127,17 +132,17 @@ class AddRandomGuidanced(Randomizable, Transform):
 
         pos_discr = discrepancy[0]
         neg_discr = discrepancy[1]
-        
+
         can_be_positive = np.sum(pos_discr) > 0
         can_be_negative = np.sum(neg_discr) > 0
-        
+
         correct_pos = np.sum(pos_discr) >= np.sum(neg_discr)
-        
+
         if correct_pos and can_be_positive:
-            return self.find_guidance(pos_discr, weight_map), None 
+            return self.find_guidance(pos_discr, weight_map), None
 
         if not correct_pos and can_be_negative:
-            return None, self.find_guidance(neg_discr, weight_map) 
+            return None, self.find_guidance(neg_discr, weight_map)
         return None, None
 
     def _apply(self, guidance, discrepancy, weight_map):
@@ -158,7 +163,7 @@ class AddRandomGuidanced(Randomizable, Transform):
         d = dict(data)
         guidance = d[self.guidance]
         discrepancy = d[self.discrepancy]
-        weight_map =  d[self.weight_map] if self.weight_map is not None else None
+        weight_map = d[self.weight_map] if self.weight_map is not None else None
         self.randomize(data)
         d[self.guidance] = self._apply(guidance, discrepancy, weight_map)
         d["is_pos"] = self.is_pos
@@ -167,17 +172,18 @@ class AddRandomGuidanced(Randomizable, Transform):
         self.is_neg = False
         return d
 
+
 class PosNegClickProbAddRandomGuidanced(Randomizable, Transform):
     """
     Add random guidance based on discrepancies that were found between label and prediction.
     Args:
         guidance: key to guidance source, shape (2, N, # of dim)
-        discrepancy: key to discrepancy map between label and prediction, 
+        discrepancy: key to discrepancy map between label and prediction,
             shape (2, C, H, W, D) or (2, C, H, W)
         probability: key to click/interaction probability, shape (1)
-        pos_click_probability: if click, probability of a positive click 
+        pos_click_probability: if click, probability of a positive click
             (probability of negative click will be 1 - pos_click_probability)
-        weight_map: optional key to predetermined weight map used to increase click likelihood in higher weight areas, 
+        weight_map: optional key to predetermined weight map used to increase click likelihood in higher weight areas,
             shape (C, H, W, D) or (C, H, W)
     """
 
@@ -263,7 +269,7 @@ class PosNegClickProbAddRandomGuidanced(Randomizable, Transform):
         d = dict(data)
         guidance = d[self.guidance]
         discrepancy = d[self.discrepancy]
-        weight_map =  d[self.weight_map] if self.weight_map is not None else None
+        weight_map = d[self.weight_map] if self.weight_map is not None else None
         self.randomize(data)
         d[self.guidance] = self._apply(guidance, discrepancy, weight_map)
         d["is_pos"] = self.is_pos
