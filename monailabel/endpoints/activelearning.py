@@ -47,7 +47,9 @@ async def sample(strategy: str, params: Optional[dict] = None):
     image_id = result["id"]
     image_info = instance.datastore().get_image_info(image_id)
 
-    return {
+    result = {
         "id": image_id,
         **image_info,
     }
+    logger.info(f"Next sample: {result}")
+    return result
