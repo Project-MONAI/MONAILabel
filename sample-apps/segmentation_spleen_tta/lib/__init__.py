@@ -10,12 +10,5 @@
 # limitations under the License.
 
 from .activelearning import MyStrategy
-from .infer import SegmentationWithWriteLogits
-from .scribbles import (
-    SpleenInteractiveGraphCut,
-    SpleenISegCRF,
-    SpleenISegGraphCut,
-    SpleenISegGraphcutColdstart,
-    SpleenISegSimpleCRF,
-)
+from .infer import MyInfer
 from .train import MyTrain

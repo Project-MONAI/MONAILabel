@@ -9,13 +9,8 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-from .activelearning import MyStrategy
-from .infer import SegmentationWithWriteLogits
-from .scribbles import (
-    SpleenInteractiveGraphCut,
-    SpleenISegCRF,
-    SpleenISegGraphCut,
-    SpleenISegGraphcutColdstart,
-    SpleenISegSimpleCRF,
-)
-from .train import MyTrain
+import logging
+
+logger = logging.getLogger(__name__)
+
+# You can write your transforms here... which can be used in your train/infer tasks
