@@ -29,6 +29,7 @@ class MyApp(MONAILabelApp):
 
         self.model_dir = os.path.join(app_dir, "model")
         self.final_model = os.path.join(self.model_dir, "model.pt")
+        self.pretrained_model = os.path.join(self.model_dir, "pretrained.pt")
 
         self.network = DynUNetV1(
             spatial_dims=3,
@@ -75,17 +76,17 @@ class MyApp(MONAILabelApp):
 
     def init_infers(self):
         infers = {
-            "segmentation_spleen": MyInfer(self.final_model, self.network),
+            "segmentation_spleen": MyInfer([self.pretrained_model, self.final_model], self.network),
         }
 
         # Simple way to Add deepgrow 2D+3D models for infer tasks
-        infers.update(self.deepgrow_infer_tasks(self.model_dir))
+        # infers.update(self.deepgrow_infer_tasks(self.model_dir))
         return infers
 
     def init_trainers(self):
         config = {
             "name": "model_01",
-            "pretrained": False,
+            "pretrained": True,
             "device": "cuda",
             "max_epochs": 200,
             "val_split": 0.2,
@@ -110,5 +111,5 @@ class MyApp(MONAILabelApp):
 
     def init_scoring_methods(self):
         return {
-            "TTA": TTAScoring(model=self.init_infers()["segmentation_spleen"]._get_network("cuda").eval()),
+            "TTA": TTAScoring(model=[self.pretrained_model, self.final_model], network=self.network),
         }

@@ -68,7 +68,7 @@ class MyTrain(BasicTrainTask):
             NormalizeIntensityd(keys="image"),
             RandShiftIntensityd(keys="image", offsets=0.1, prob=0.5),
             RandFlipd(keys=["image", "label"], prob=0.5, spatial_axis=0),
-            Resized(keys=("image", "label"), spatial_size=(256, 256, 128), mode=("area", "nearest")),
+            Resized(keys=("image", "label"), spatial_size=(128, 128, 128), mode=("area", "nearest")),
             ToTensord(keys=("image", "label")),
         ]
 
@@ -89,7 +89,7 @@ class MyTrain(BasicTrainTask):
             ),
             Orientationd(keys=("image", "label"), axcodes="RAS"),
             NormalizeIntensityd(keys="image"),
-            Resized(keys=("image", "label"), spatial_size=(256, 256, 128), mode=("area", "nearest")),
+            Resized(keys=("image", "label"), spatial_size=(128, 128, 128), mode=("area", "nearest")),
             ToTensord(keys=("image", "label")),
         ]
 

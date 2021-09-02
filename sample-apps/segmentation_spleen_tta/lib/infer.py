@@ -61,7 +61,7 @@ class MyInfer(InferTask):
             ),
             Orientationd(keys="image", axcodes="RAS"),
             NormalizeIntensityd(keys="image"),
-            Resized(keys="image", spatial_size=(256, 256, 128)),
+            Resized(keys="image", spatial_size=(128, 128, 128)),
             ToTensord(keys=["image"]),
         ]
 

@@ -10,12 +10,13 @@
 # limitations under the License.
 
 import logging
+import os
 import time
 from functools import partial
 
 import numpy as np
 import torch
-from monai.inferers import sliding_window_inference
+from monai.inferers import SimpleInferer
 from monai.transforms import (
     Activations,
     AddChanneld,
@@ -25,6 +26,7 @@ from monai.transforms import (
     RandAffined,
     RandFlipd,
     RandRotated,
+    Resized,
     Spacingd,
     ToTensord,
 )
@@ -41,12 +43,13 @@ class TTAScoring(ScoringMethod):
     First version of test time augmentation active learning
     """
 
-    def __init__(self, model=None):
+    def __init__(self, model, network=None):
         super().__init__("Compute initial score based on TTA")
         self.model = model
         self.device = "cuda"
-        self.img_size = [128, 128, 64]
-        self.num_samples = 10
+        self.img_size = [128, 128, 128]
+        self.num_samples = 5
+        self.network = network
 
     def pre_transforms(self):
         return Compose(
@@ -55,14 +58,15 @@ class TTAScoring(ScoringMethod):
                 AddChanneld(keys="image"),
                 Spacingd(keys="image", pixdim=[1.0, 1.0, 1.0]),
                 RandAffined(
-                    keys=["image"],
+                    keys="image",
                     prob=1,
-                    rotate_range=(np.pi / 3, np.pi / 3, np.pi / 3),
+                    rotate_range=(np.pi / 4, np.pi / 4, np.pi / 4),
                     padding_mode="zeros",
                     as_tensor_output=False,
                 ),
                 RandFlipd(keys="image", prob=0.5, spatial_axis=0),
-                RandRotated(keys="image", range_x=(-10, 10), range_y=(-10, 10), range_z=(-10, 10)),
+                RandRotated(keys="image", range_x=(-5, 5), range_y=(-5, 5), range_z=(-5, 5)),
+                Resized(keys="image", spatial_size=self.img_size),
                 ToTensord(keys="image"),
             ]
         )
@@ -76,10 +80,21 @@ class TTAScoring(ScoringMethod):
         )
 
     def infer_seg(self, images, model, roi_size, sw_batch_size):
-        preds = sliding_window_inference(images, roi_size, sw_batch_size, model)
+        # preds = sliding_window_inference(images, roi_size, sw_batch_size, model)
+        preds = SimpleInferer()(images, model)
         transforms = self.post_transforms()
         post_pred = transforms(preds)
         return post_pred
+
+    def get_model_path(self, path):
+        if not path:
+            return None
+
+        paths = [path] if isinstance(path, str) else path
+        for path in reversed(paths):
+            if os.path.exists(path):
+                return path
+        return None
 
     def __call__(self, request, datastore: Datastore):
 
@@ -87,12 +102,23 @@ class TTAScoring(ScoringMethod):
 
         result = {}
 
+        path = self.get_model_path(self.model)
+
+        if self.network:
+            model = self.network
+            if path:
+                checkpoint = torch.load(path)
+                model_state_dict = checkpoint.get("model", checkpoint)
+                model.load_state_dict(model_state_dict)
+        else:
+            model = torch.jit.load(path)
+
         tt_aug = TestTimeAugmentation(
             transform=self.pre_transforms(),
             label_key="image",
             batch_size=1,
             num_workers=0,
-            inferrer_fn=partial(self.infer_seg, roi_size=self.img_size, model=self.model, sw_batch_size=1),
+            inferrer_fn=partial(self.infer_seg, roi_size=self.img_size, model=model.to(self.device), sw_batch_size=1),
             device=self.device,
         )
 
