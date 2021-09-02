@@ -11,11 +11,12 @@
 
 import logging
 
-import maxflow
 import numpy as np
-from scipy.special import softmax
+from monai.utils import optional_import
 
 logger = logging.getLogger(__name__)
+maxflow, has_maxflow = optional_import("maxflow")
+softmax, has_softmax = optional_import("scipy.special", name="softmax")
 
 
 def get_eps(data):
