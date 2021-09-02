@@ -40,7 +40,10 @@ To install the current release, you can simply run:
   monailabel apps --download --name deepedit_left_atrium --output apps
   monailabel datasets --download --name Task02_Heart --output datasets
   
-  # run server
+  # run server (ubuntu)
+  monailabel start_server --app apps/deepedit_left_atrium --studies datasets/Task02_Heart/imagesTr
+
+  # run server (windows)
   monailabel start_server --app apps\deepedit_left_atrium --studies datasets\Task02_Heart\imagesTr
   
 ```
@@ -58,7 +61,7 @@ Manager.
 Refer [3D Slicer plugin](plugins/slicer) for other options to install and run MONAI Label plugin in 3D Slicer.
 > To avoid accidentally using an older Slicer version, you may want to _uninstall_ any previously installed 3D Slicer package.
 
-### OHIF
+### OHIF [WIP]
 
 MONAI Label comes with pre-built plugin for [OHIF Viewer](https://github.com/OHIF/Viewers).
 > Please install [Orthanc](https://www.orthanc-server.com/download.php) before using OHIF Viewer.
@@ -67,7 +70,6 @@ MONAI Label comes with pre-built plugin for [OHIF Viewer](https://github.com/OHI
 > You can use [PlastiMatch](https://plastimatch.org/plastimatch.html#plastimatch-convert) to convert NIFTI to DICOM
 
 > OHIF Viewer will be accessible at http://127.0.0.1:8000/ohif/
-> For development OHIF can be built by running 
 
 ![OHIF](docs/images/ohif.png)
 
