@@ -25,7 +25,7 @@ parser.add_argument(
 # Active learning parameters
 parser.add_argument("--active_learning_technique", default="TTA", type=str)
 # Factor used to wait until training happens
-parser.add_argument("--training_time_factor", default=5, type=int)
+parser.add_argument("--training_time_factor", default=10, type=int)
 parser.add_argument("--num_imgs_fetched", default=2, type=int)
 args = parser.parse_args()
 
@@ -47,7 +47,7 @@ for idx in range(len(new_labels)):
 
     # Waiting to train model for some epochs
     for i in range(args.training_time_factor):
-        sleep(1)
+        sleep(30)
         print("Training - Label number: " + str(idx) + " of " + str(len(new_labels) + 1) + " -- Second: " + str(i + 1))
 
     # Stop training

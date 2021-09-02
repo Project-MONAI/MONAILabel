@@ -111,5 +111,5 @@ class MyApp(MONAILabelApp):
 
     def init_scoring_methods(self):
         return {
-            "TTA": TTAScoring(model=[self.pretrained_model, self.final_model], network=self.network, plot=True),
+            "TTA": TTAScoring(model=[self.pretrained_model, self.final_model], network=self.network),
         }

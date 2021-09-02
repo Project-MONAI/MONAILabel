@@ -9,7 +9,7 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-from typing import TYPE_CHECKING, Any, Callable, Dict, List, Optional, Tuple, Union
+from typing import Any, Callable, Dict, List, Optional, Tuple, Union
 
 import numpy as np
 import torch
@@ -22,14 +22,7 @@ from monai.transforms.inverse_batch_transform import BatchInverseTransform
 from monai.transforms.transform import Randomizable
 from monai.transforms.utils import allow_missing_keys_mode
 from monai.utils.enums import CommonKeys, InverseKeys
-from monai.utils.module import optional_import
-
-if TYPE_CHECKING:
-    from tqdm import tqdm
-
-    has_tqdm = True
-else:
-    tqdm, has_tqdm = optional_import("tqdm", name="tqdm")
+from tqdm import tqdm
 
 __all__ = ["TestTimeAugmentation"]
 
@@ -93,7 +86,7 @@ class TestTimeAugmentation:
         batch_size: int,
         num_workers: int,
         inferrer_fn: Callable,
-        device: Union[str, torch.device] = "cpu",
+        device: Union[str, torch.device] = "gpu",
         image_key=CommonKeys.IMAGE,
         label_key=CommonKeys.LABEL,
         meta_keys: Optional[str] = None,

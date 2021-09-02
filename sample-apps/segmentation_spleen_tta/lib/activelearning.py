@@ -56,7 +56,7 @@ class TTA(Strategy):
         tta_scores = {image: datastore.get_image_info(image).get("vvc_tta", 0) for image in images}
 
         # PICK RANDOM IF THERE IS NOT VVC_TTA SCORES!!
-        if tta_scores[images[0]] == 0:
+        if sum(tta_scores.values()) == 0:
             image = random.choice(images)
             logger.info(f"Random: Selected Image: {image}")
         else:
