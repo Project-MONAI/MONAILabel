@@ -38,7 +38,7 @@ from monai.transforms import (
 
 from monailabel.deepedit.handlers import TensorBoardImageHandler
 from monailabel.deepedit.interaction import Interaction
-from monailabel.deepedit.transforms import ClickRatioAddRandomGuidanced, DiscardAddGuidanced
+from monailabel.deepedit.transforms import PosNegClickProbAddRandomGuidanced
 from monailabel.utils.train.basic_train import BasicTrainTask
 
 logger = logging.getLogger(__name__)
@@ -52,6 +52,8 @@ class MyTrain(BasicTrainTask):
         description="Train DeepEdit model for spleen over 3D CT Images",
         spatial_size=(256, 256, 128),
         target_spacing=(1.0, 1.0, 1.0),
+        deepgrow_probability_train=0.5,
+        deepgrow_probability_val=1.0,
         max_train_interactions=20,
         max_val_interactions=10,
         **kwargs,
@@ -59,6 +61,8 @@ class MyTrain(BasicTrainTask):
         self._network = network
         self.spatial_size = spatial_size
         self.target_spacing = target_spacing
+        self.deepgrow_probability_train = deepgrow_probability_train
+        self.deepgrow_probability_val = deepgrow_probability_val
         self.max_train_interactions = max_train_interactions
         self.max_val_interactions = max_val_interactions
 
@@ -78,9 +82,10 @@ class MyTrain(BasicTrainTask):
             Activationsd(keys="pred", sigmoid=True),
             ToNumpyd(keys=("image", "label", "pred")),
             FindDiscrepancyRegionsd(label="label", pred="pred", discrepancy="discrepancy"),
-            ClickRatioAddRandomGuidanced(guidance="guidance", discrepancy="discrepancy", probability="probability"),
+            PosNegClickProbAddRandomGuidanced(
+                guidance="guidance", discrepancy="discrepancy", probability="probability"
+            ),
             AddGuidanceSignald(image="image", guidance="guidance"),
-            DiscardAddGuidanced(keys="image", probability=0.5),
             ToTensord(keys=("image", "label")),
         ]
 
@@ -106,7 +111,6 @@ class MyTrain(BasicTrainTask):
             FindAllValidSlicesd(label="label", sids="sids"),
             AddInitialSeedPointd(label="label", guidance="guidance", sids="sids"),
             AddGuidanceSignald(image="image", guidance="guidance"),
-            DiscardAddGuidanced(keys="image", probability=0.5),
             ToTensord(keys=("image", "label")),
         ]
 
@@ -124,22 +128,23 @@ class MyTrain(BasicTrainTask):
 
     def train_iteration_update(self):
         return Interaction(
+            deepgrow_probability=self.deepgrow_probability_train,
             transforms=self.get_click_transforms(),
             max_interactions=self.max_train_interactions,
-            key_probability="probability",
+            click_probability_key="probability",
             train=True,
         )
 
     def val_iteration_update(self):
         return Interaction(
+            deepgrow_probability=self.deepgrow_probability_val,
             transforms=self.get_click_transforms(),
             max_interactions=self.max_val_interactions,
-            key_probability="probability",
+            click_probability_key="probability",
             train=False,
         )
 
     def train_handlers(self, output_dir, events_dir, evaluator):
-
         handlers = super().train_handlers(output_dir, events_dir, evaluator)
-        handlers.append(TensorBoardImageHandler(log_dir=events_dir, epoch_level=False, inner_iter_level=True))
+        handlers.append(TensorBoardImageHandler(log_dir=events_dir))
         return handlers
