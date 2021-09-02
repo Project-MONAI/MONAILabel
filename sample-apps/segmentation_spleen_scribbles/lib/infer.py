@@ -22,9 +22,8 @@ from monai.transforms import (
 )
 
 from monailabel.interfaces.tasks import InferTask, InferType
+from monailabel.scribbles.transforms import WriteLogits
 from monailabel.utils.others.post import BoundingBoxd, Restored
-
-from .transforms import WriteLogits
 
 
 class SegmentationWithWriteLogits(InferTask):
