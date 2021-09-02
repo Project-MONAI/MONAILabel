@@ -8,12 +8,18 @@
 # WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 # See the License for the specific language governing permissions and
 # limitations under the License.
-
+import logging
+import shutil
 import subprocess
 from collections import OrderedDict
 
 import numpy as np
 from monai.transforms import LoadImage
+from tqdm import tqdm
+
+from monailabel.interfaces import MONAILabelError, MONAILabelException
+
+logger = logging.getLogger(__name__)
 
 
 class ExperimentPlanner(object):
@@ -31,6 +37,12 @@ class ExperimentPlanner(object):
             Keys are device ids as integers.
             Values are memory usage as integers in MB.
         """
+        logger.info("Using nvidia-smi command")
+        if shutil.which("nvidia-smi") is None:
+            raise MONAILabelException(
+                MONAILabelError.APP_INIT_ERROR,
+                "nvidia-smi command doesn't work!",
+            )
         result = subprocess.check_output(
             ["nvidia-smi", "--query-gpu=memory.free", "--format=csv,nounits,noheader"], encoding="utf-8"
         )
@@ -47,7 +59,8 @@ class ExperimentPlanner(object):
         loader = LoadImage(reader="ITKReader")
         spacings = []
         img_sizes = []
-        for n in self.datastore.list_images():
+        logger.info("Reading datastore metadata for heuristic planner ...")
+        for n in tqdm(self.datastore.list_images()):
             _, mtdt = loader(self.datastore.get_image_uri(n))
             spacings.append(mtdt["spacing"])
             img_sizes.append(mtdt["spatial_shape"])
