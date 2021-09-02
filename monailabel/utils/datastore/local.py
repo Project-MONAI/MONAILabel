@@ -17,7 +17,7 @@ import os
 import pathlib
 import shutil
 import time
-from typing import Any, Dict, List
+from typing import Any, Dict, List, Tuple
 
 from filelock import FileLock
 from pydantic import BaseModel
@@ -26,29 +26,19 @@ from watchdog.observers import Observer
 
 from monailabel.interfaces.datastore import Datastore, DefaultLabelTag
 from monailabel.interfaces.exception import ImageNotFoundException, LabelNotFoundException
-from monailabel.utils.others.generic import file_checksum, remove_file
+from monailabel.utils.others.generic import file_checksum, file_ext, remove_file
 
 logger = logging.getLogger(__name__)
 
 
 class DataModel(BaseModel):
-    id: str
     ext: str = ""
     info: Dict[str, Any] = {}
-
-    def path(self):
-        return self.id + self.ext
 
 
 class ImageLabelModel(BaseModel):
     image: DataModel
     labels: Dict[str, DataModel] = {}  # tag => label
-
-    def label(self, id):
-        for tag, label in self.labels.items():
-            if label.id == id:
-                return tag, label
-        return None, None
 
     def tags(self):
         return self.labels.keys()
@@ -71,17 +61,11 @@ class LocalDatastoreModel(BaseModel):
         return tags
 
     def filter_by_tag(self, tag: str):
-        return [obj for obj in self.objects.values() if obj.labels.get(tag)]
+        return {k: v for k, v in self.objects.items() if v.labels.get(tag)}
 
-    def filter_by_id(self, id: str):
-        return [obj for obj in self.objects.values() if obj.label(id)[0]]
-
-    def label(self, id: str):
-        objects = self.filter_by_id(id)
-        obj = next(iter(objects)) if objects else None
-        if obj:
-            return obj.label(id)
-        return None, None
+    def label(self, id: str, tag: str):
+        obj = self.objects.get(id)
+        return obj.labels.get(tag) if obj else None
 
     def image_path(self):
         return os.path.join(self.base_path, self.images_dir) if self.base_path else self.images_dir
@@ -93,20 +77,6 @@ class LocalDatastoreModel(BaseModel):
     def labels_path(self):
         path = self.labels_dir
         return {tag: os.path.join(path, tag) if self.base_path else path for tag in self.tags()}
-
-    def datalist(self, tag: str) -> List[Dict[str, str]]:
-        image_path = self.image_path()
-        label_path = self.label_path(tag)
-
-        items = []
-        for obj in self.filter_by_tag(tag):
-            items.append(
-                {
-                    "image": os.path.realpath(os.path.join(image_path, obj.image.path())),
-                    "label": os.path.realpath(os.path.join(label_path, obj.labels[tag].path())),
-                }
-            )
-        return items
 
 
 class LocalDatastore(Datastore):
@@ -157,7 +127,7 @@ class LocalDatastore(Datastore):
 
         os.makedirs(self._datastore_path, exist_ok=True)
 
-        self._lock = FileLock(os.path.join(datastore_path, ".lock"))
+        self._lock_file = os.path.join(datastore_path, ".lock")
         self._datastore: LocalDatastoreModel = LocalDatastoreModel(
             name="new-dataset", description="New Dataset", images_dir=images_dir, labels_dir=labels_dir
         )
@@ -241,6 +211,17 @@ class LocalDatastore(Datastore):
         self._datastore.description = description
         self._update_datastore_file()
 
+    def _to_id(self, file: str) -> Tuple[str, str]:
+        ext = file_ext(file)
+        id = file.replace(ext, "")
+        return id, ext
+
+    def _filename(self, id: str, ext: str) -> str:
+        return id + ext
+
+    def _to_bytes(self, file):
+        return io.BytesIO(pathlib.Path(file).read_bytes())
+
     def datalist(self, full_path=True) -> List[Dict[str, str]]:
         """
         Return a dictionary of image and label pairs corresponding to the 'image' and 'label'
@@ -248,13 +229,23 @@ class LocalDatastore(Datastore):
 
         :return: the {'label': image, 'label': label} pairs for training
         """
-        ds = self._datastore.datalist(DefaultLabelTag.FINAL)
+
+        tag = DefaultLabelTag.FINAL
+        image_path = self._datastore.image_path()
+        label_path = self._datastore.label_path(tag)
+
+        ds = []
+        for k, v in self._datastore.filter_by_tag(tag).items():
+            ds.append(
+                {
+                    "image": os.path.realpath(os.path.join(image_path, self._filename(k, v.image.ext))),
+                    "label": os.path.realpath(os.path.join(label_path, self._filename(k, v.labels[tag].ext))),
+                }
+            )
+
         if not full_path:
             ds = json.loads(json.dumps(ds).replace(f"{self._datastore_path.rstrip(os.pathsep)}{os.pathsep}", ""))
         return ds
-
-    def to_bytes(self, file):
-        return io.BytesIO(pathlib.Path(file).read_bytes())
 
     def get_image(self, image_id: str) -> Any:
         """
@@ -263,12 +254,8 @@ class LocalDatastore(Datastore):
         :param image_id: the desired image's id
         :return: return the "image"
         """
-        obj = self._datastore.objects.get(image_id)
-        return (
-            self.to_bytes(os.path.realpath(os.path.join(self._datastore.image_path(), obj.image.path())))
-            if obj
-            else None
-        )
+        uri = self.get_image_uri(image_id)
+        return self._to_bytes(uri) if uri else None
 
     def get_image_uri(self, image_id: str) -> str:
         """
@@ -278,7 +265,8 @@ class LocalDatastore(Datastore):
         :return: return the image uri
         """
         obj = self._datastore.objects.get(image_id)
-        return str(os.path.realpath(os.path.join(self._datastore.image_path(), obj.image.path()))) if obj else ""
+        name = self._filename(image_id, obj.image.ext) if obj else ""
+        return str(os.path.realpath(os.path.join(self._datastore.image_path(), name))) if obj else ""
 
     def get_image_info(self, image_id: str) -> Dict[str, Any]:
         """
@@ -290,51 +278,43 @@ class LocalDatastore(Datastore):
         obj = self._datastore.objects.get(image_id)
         info = copy.deepcopy(obj.image.info) if obj else {}
         if obj:
-            path = os.path.realpath(os.path.join(self._datastore.image_path(), obj.image.path()))
-            info.update(
-                {
-                    "checksum": file_checksum(path),
-                    "name": obj.image.path(),
-                    "path": path,
-                }
-            )
+            name = self._filename(image_id, obj.image.ext)
+            path = os.path.realpath(os.path.join(self._datastore.image_path(), name))
+            info["path"] = path
         return info
 
-    def get_label(self, label_id: str) -> Any:
+    def get_label(self, label_id: str, label_tag: str) -> Any:
         """
         Retrieve image object based on label id
 
         :param label_id: the desired label's id
+        :param label_tag: the matching label's tag
         :return: return the "label"
         """
-        tag, label = self._datastore.label(label_id)
-        return (
-            self.to_bytes(os.path.realpath(os.path.join(self._datastore.label_path(tag), label.path())))
-            if tag
-            else None
-        )
+        uri = self.get_label_uri(label_id, label_tag)
+        return self._to_bytes(uri) if uri else None
 
-    def get_label_uri(self, label_id: str) -> str:
+    def get_label_uri(self, label_id: str, label_tag: str) -> str:
         """
         Retrieve label uri based on image id
 
         :param label_id: the desired label's id
+        :param label_tag: the matching label's tag
         :return: return the label uri
         """
-        tag, label = self._datastore.label(label_id)
-        return str(os.path.realpath(os.path.join(self._datastore.label_path(tag), label.path()))) if tag else ""
+        label = self._datastore.label(label_id, label_tag)
+        name = self._filename(label_id, label.ext) if label else ""
+        return str(os.path.realpath(os.path.join(self._datastore.label_path(label_tag), name))) if label else ""
 
     def get_labels_by_image_id(self, image_id: str) -> Dict[str, str]:
         """
         Retrieve all label ids for the given image id
 
         :param image_id: the desired image's id
-        :return: label ids mapped to the appropriate `LabelTag` as Dict[str, LabelTag]
+        :return: label ids mapped to the appropriate `LabelTag` as Dict[LabelTag, str]
         """
         obj = self._datastore.objects.get(image_id)
-        if obj:
-            return {label.id: tag for tag, label in obj.labels.items()}
-        return {}
+        return {tag: image_id for tag in obj.labels} if obj else {}
 
     def get_label_by_image_id(self, image_id: str, tag: str) -> str:
         """
@@ -344,18 +324,17 @@ class LocalDatastore(Datastore):
         :param tag: matching tag name
         :return: label id
         """
-        obj = self._datastore.objects.get(image_id)
-        label = obj.labels.get(tag) if obj else None
-        return label.id if label else ""
+        return self.get_labels_by_image_id(image_id).get(tag, "")
 
-    def get_label_info(self, label_id: str) -> Dict[str, Any]:
+    def get_label_info(self, label_id: str, label_tag: str) -> Dict[str, Any]:
         """
         Get the label information for the given label id
 
         :param label_id: the desired label id
+        :param label_tag: the matching label tag
         :return: label info as a list of dictionaries Dict[str, Any]
         """
-        _, label = self._datastore.label(label_id)
+        label = self._datastore.label(label_id, label_tag)
         info: Dict[str, Any] = label.info if label else {}
         return info
 
@@ -365,7 +344,7 @@ class LocalDatastore(Datastore):
 
         :return: list of image ids List[str]
         """
-        return [obj.image.id for obj in self._datastore.objects.values() if obj.labels.get(DefaultLabelTag.FINAL)]
+        return [k for k, v in self._datastore.objects.items() if v.labels.get(DefaultLabelTag.FINAL)]
 
     def get_unlabeled_images(self) -> List[str]:
         """
@@ -373,7 +352,7 @@ class LocalDatastore(Datastore):
 
         :return: list of image ids List[str]
         """
-        return [obj.image.id for obj in self._datastore.objects.values() if not obj.labels.get(DefaultLabelTag.FINAL)]
+        return [k for k, v in self._datastore.objects.items() if not v.labels.get(DefaultLabelTag.FINAL)]
 
     def list_images(self) -> List[str]:
         """
@@ -407,44 +386,51 @@ class LocalDatastore(Datastore):
         """
         Refresh the datastore based on the state of the files on disk
         """
-        self._init_from_datastore_file()
         self._reconcile_datastore()
 
-    def add_image(self, image_id: str, image_filename: str) -> str:
-        image_ext = "".join(pathlib.Path(image_filename).suffixes)
+    def add_image(self, image_id: str, image_filename: str, image_info: Dict[str, Any]) -> str:
+        id, image_ext = self._to_id(os.path.basename(image_filename))
         if not image_id:
-            image_id = os.path.basename(image_filename).replace(image_ext, "")
+            image_id = id
 
         logger.info(f"Adding Image: {image_id} => {image_filename}")
-        dest = os.path.realpath(os.path.join(self._datastore.image_path(), image_id + image_ext))
-        if os.path.isdir(image_filename):
-            shutil.copytree(image_filename, dest)
-        else:
+        name = self._filename(image_id, image_ext)
+        dest = os.path.realpath(os.path.join(self._datastore.image_path(), name))
+
+        with FileLock(self._lock_file):
+            logger.debug("Acquired the lock!")
             shutil.copy(image_filename, dest)
 
-        if not self._auto_reload:
-            self.refresh()
+            image_info = image_info if image_info else {}
+            image_info["ts"] = int(time.time())
+            image_info["checksum"] = file_checksum(dest)
+            image_info["name"] = name
+
+            self._datastore.objects[image_id] = ImageLabelModel(image=DataModel(info=image_info, ext=image_ext))
+            self._update_datastore_file(lock=False)
+        logger.debug("Released the lock!")
         return image_id
 
     def remove_image(self, image_id: str) -> None:
         logger.info(f"Removing Image: {image_id}")
 
+        obj = self._datastore.objects.get(image_id)
+        if not obj:
+            raise ImageNotFoundException(f"Image {image_id} not found")
+
         # Remove all labels
-        label_ids = self.get_labels_by_image_id(image_id)
-        for label_id in label_ids:
-            self.remove_label(label_id)
+        tags = list(obj.labels.keys())
+        for tag in tags:
+            self.remove_label(image_id, tag)
 
         # Remove Image
-        obj = self._datastore.objects.get(image_id)
-        p = os.path.realpath(os.path.join(self._datastore.image_path(), obj.image.path())) if obj else None
-        remove_file(p)
+        name = self._filename(image_id, obj.image.ext)
+        remove_file(os.path.realpath(os.path.join(self._datastore.image_path(), name)))
 
         if not self._auto_reload:
             self.refresh()
 
-    def save_label(
-        self, image_id: str, label_filename: str, label_tag: str, label_info: Dict[str, Any], label_id: str = ""
-    ) -> str:
+    def save_label(self, image_id: str, label_filename: str, label_tag: str, label_info: Dict[str, Any]) -> str:
         """
         Save a label for the given image id and return the newly saved label's id
 
@@ -452,50 +438,43 @@ class LocalDatastore(Datastore):
         :param label_filename: the path to the label file
         :param label_tag: the tag for the label
         :param label_info: additional info for the label
-        :param label_id: use this label id instead of generating it from filename
         :return: the label id for the given label filename
         """
-        logger.info(f"Saving Label for Image: {image_id}; Tag: {label_tag}")
+        logger.info(f"Saving Label for Image: {image_id}; Tag: {label_tag}; Info: {label_info}")
         obj = self._datastore.objects.get(image_id)
         if not obj:
             raise ImageNotFoundException(f"Image {image_id} not found")
 
-        label_ext = "".join(pathlib.Path(label_filename).suffixes)
-        if not label_id:
-            label_id = image_id
-        else:
-            label_id = f"{image_id}+{label_id}"
+        _, label_ext = self._to_id(os.path.basename(label_filename))
+        label_id = image_id
 
-        logger.info(f"Adding Label: {label_id} => {label_filename}")
+        logger.info(f"Adding Label: {image_id} => {label_tag} => {label_filename}")
         label_path = self._datastore.label_path(label_tag)
-        dest = os.path.join(label_path, label_id + label_ext)
+        name = self._filename(image_id, label_ext)
+        dest = os.path.join(label_path, name)
 
-        with self._lock:
+        with FileLock(self._lock_file):
+            logger.debug("Acquired the lock!")
             os.makedirs(label_path, exist_ok=True)
-            if os.path.isdir(label_filename):
-                shutil.copytree(label_filename, dest)
-            else:
-                shutil.copy(label_filename, dest)
+            shutil.copy(label_filename, dest)
 
-            obj.labels[label_tag] = DataModel(id=label_id, info={"ts": int(time.time())}, ext=label_ext)
+            label_info = label_info if label_info else {}
+            label_info["ts"] = int(time.time())
+            label_info["checksum"] = file_checksum(dest)
+            label_info["name"] = name
+
+            obj.labels[label_tag] = DataModel(info=label_info, ext=label_ext)
+            logger.info(f"Label Info: {label_info}")
             self._update_datastore_file(lock=False)
+        logger.debug("Release the lock!")
         return label_id
 
-    def remove_label(self, label_id: str) -> None:
-        logger.info(f"Removing label: {label_id}")
-
-        tag, label = self._datastore.label(label_id)
-        p = os.path.realpath(os.path.join(self._datastore.label_path(tag), label.path())) if label else None
-        remove_file(p)
+    def remove_label(self, label_id: str, label_tag: str) -> None:
+        logger.info(f"Removing label: {label_id} => {label_tag}")
+        remove_file(self.get_label_uri(label_id, label_tag))
 
         if not self._auto_reload:
             self.refresh()
-
-    def remove_label_by_tag(self, label_tag: str) -> None:
-        label_ids = [obj.labels[label_tag].id for obj in self._datastore.objects.values() if obj.labels.get(label_tag)]
-        logger.info(f"Tag: {label_tag}; Removing label(s): {label_ids}")
-        for label_id in label_ids:
-            self.remove_label(label_id)
 
     def update_image_info(self, image_id: str, info: Dict[str, Any]) -> None:
         """
@@ -511,16 +490,17 @@ class LocalDatastore(Datastore):
         obj.image.info.update(info)
         self._update_datastore_file()
 
-    def update_label_info(self, label_id: str, info: Dict[str, Any]) -> None:
+    def update_label_info(self, label_id: str, label_tag: str, info: Dict[str, Any]) -> None:
         """
         Update (or create a new) info tag for the desired label
 
         :param label_id: the id of the label we want to add/update info
+        :param label_tag: the matching label tag
         :param info: a dictionary of custom label information Dict[str, Any]
         """
-        _, label = self._datastore.label(label_id)
+        label = self._datastore.label(label_id, label_tag)
         if not label:
-            raise LabelNotFoundException(f"Label {label_id} not found")
+            raise LabelNotFoundException(f"Label: {label_id} Tag: {label_tag} not found")
 
         label.info.update(info)
         self._update_datastore_file()
@@ -536,12 +516,14 @@ class LocalDatastore(Datastore):
         return filtered
 
     def _reconcile_datastore(self):
+        logger.info("reconcile datastore...")
         invalidate = 0
         invalidate += self._remove_non_existing()
         invalidate += self._add_non_existing_images()
 
         labels_dir = self._datastore.label_path(None)
-        logger.info(f"Labels Dir {labels_dir}")
+        logger.debug(f"Labels Dir {labels_dir}")
+
         tags = [f for f in os.listdir(labels_dir) if os.path.isdir(os.path.join(labels_dir, f))]
         logger.debug(f"Label Tags: {tags}")
         for tag in tags:
@@ -558,59 +540,74 @@ class LocalDatastore(Datastore):
 
     def _add_non_existing_images(self) -> int:
         invalidate = 0
+        self._init_from_datastore_file()
 
         local_images = self._list_files(self._datastore.image_path(), self._extensions)
 
         image_ids = list(self._datastore.objects.keys())
         for image_file in local_images:
-            image_ext = "".join(pathlib.Path(image_file).suffixes)
-            image_id = image_file.replace(image_ext, "")
-
+            image_id, image_ext = self._to_id(image_file)
             if image_id not in image_ids:
                 logger.info(f"Adding New Image: {image_id} => {image_file}")
+
+                name = self._filename(image_id, image_ext)
+                image_info = {
+                    "ts": int(time.time()),
+                    "checksum": file_checksum(os.path.join(self._datastore.image_path(), name)),
+                    "name": name,
+                }
+
                 invalidate += 1
-                self._datastore.objects[image_id] = ImageLabelModel(image=DataModel(id=image_id, ext=image_ext))
+                self._datastore.objects[image_id] = ImageLabelModel(image=DataModel(info=image_info, ext=image_ext))
 
         return invalidate
 
     def _add_non_existing_labels(self, tag) -> int:
         invalidate = 0
+        self._init_from_datastore_file()
 
         local_labels = self._list_files(self._datastore.label_path(tag), self._extensions)
 
-        label_ids = [obj.labels[tag].id for obj in self._datastore.filter_by_tag(tag)]
+        image_ids = list(self._datastore.objects.keys())
         for label_file in local_labels:
-            label_ext = "".join(pathlib.Path(label_file).suffixes)
-            label_id = label_file.replace(label_ext, "")
-            image_id = label_id.split("+")[0]
+            label_id, label_ext = self._to_id(label_file)
 
-            if label_id not in label_ids:
-                obj = self._datastore.objects.get(image_id)
-                if not obj:
-                    logger.warning(f"IGNORE:: No matching image '{image_id}' for '{label_id}' to add [{label_file}]")
-                    continue
+            obj = self._datastore.objects.get(label_id)
+            if not obj or label_id not in image_ids:
+                logger.warning(f"IGNORE:: No matching image exists for '{label_id}' to add [{label_file}]")
+                continue
 
-                logger.info(f"Adding New Label: {tag} => {label_id} => {label_file} for {image_id}")
-                obj.labels[tag] = DataModel(id=label_id, ext=label_ext)
+            if not obj.labels.get(tag):
+                logger.info(f"Adding New Label: {tag} => {label_id} => {label_file}")
+
+                name = self._filename(label_id, label_ext)
+                label_info = {
+                    "ts": int(time.time()),
+                    "checksum": file_checksum(os.path.join(self._datastore.image_path(), name)),
+                    "name": name,
+                }
+
+                self._datastore.objects[label_id].labels[tag] = DataModel(info=label_info, ext=label_ext)
                 invalidate += 1
 
         return invalidate
 
     def _remove_non_existing(self) -> int:
         invalidate = 0
+        self._init_from_datastore_file()
 
         objects: Dict[str, ImageLabelModel] = {}
         for image_id, obj in self._datastore.objects.items():
-            if not os.path.exists(os.path.realpath(os.path.join(self._datastore.image_path(), obj.image.path()))):
+            name = self._filename(image_id, obj.image.ext)
+            if not os.path.exists(os.path.realpath(os.path.join(self._datastore.image_path(), name))):
                 logger.info(f"Removing non existing Image Id: {image_id}")
                 invalidate += 1
             else:
                 labels: Dict[str, DataModel] = {}
                 for tag, label in obj.labels.items():
-                    if not os.path.exists(
-                        os.path.realpath(os.path.join(self._datastore.label_path(tag), label.path()))
-                    ):
-                        logger.info(f"Removing non existing Label Id: '{label.id}' for '{tag}' for '{image_id}'")
+                    name = self._filename(image_id, label.ext)
+                    if not os.path.exists(os.path.realpath(os.path.join(self._datastore.label_path(tag), name))):
+                        logger.info(f"Removing non existing Label Id: '{image_id}' for '{tag}'")
                         invalidate += 1
                     else:
                         labels[tag] = label
@@ -624,7 +621,8 @@ class LocalDatastore(Datastore):
 
     def _init_from_datastore_file(self, throw_exception=False):
         try:
-            with self._lock:
+            with FileLock(self._lock_file):
+                logger.debug("Acquired the lock!")
                 if os.path.exists(self._datastore_config_path):
                     ts = os.stat(self._datastore_config_path).st_mtime
                     if self._config_ts != ts:
@@ -632,23 +630,27 @@ class LocalDatastore(Datastore):
                         self._datastore = LocalDatastoreModel.parse_file(self._datastore_config_path)
                         self._datastore.base_path = self._datastore_path
                         self._config_ts = ts
+            logger.debug("Release the Lock...")
         except ValueError as e:
             logger.error(f"+++ Failed to load datastore => {e}")
             if throw_exception:
                 raise e
 
     def _update_datastore_file(self, lock=True):
-        if lock:
-            self._lock.acquire()
-
-        logger.debug("+++ Datastore is updated...")
-        self._ignore_event_config = True
-        with open(self._datastore_config_path, "w") as f:
-            f.write(json.dumps(self._datastore.dict(exclude={"base_path"}), indent=2, default=str))
-        self._config_ts = os.stat(self._datastore_config_path).st_mtime
+        def _write_to_file():
+            logger.debug("+++ Datastore is updated...")
+            self._ignore_event_config = True
+            with open(self._datastore_config_path, "w") as f:
+                f.write(json.dumps(self._datastore.dict(exclude={"base_path"}), indent=2, default=str))
+            self._config_ts = os.stat(self._datastore_config_path).st_mtime
 
         if lock:
-            self._lock.release()
+            with FileLock(self._lock_file):
+                logger.debug("Acquired the Lock...")
+                _write_to_file()
+            logger.debug("Released the Lock...")
+        else:
+            _write_to_file()
 
     def status(self) -> Dict[str, Any]:
         tags: dict = {}

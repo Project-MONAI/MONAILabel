@@ -40,8 +40,8 @@ class Dice(ScoringMethod):
             y_pred_i = datastore.get_label_by_image_id(image_id, tag_y_pred) if tag_y_pred else None
 
             if y_i and y_pred_i:
-                y = loader(datastore.get_label_uri(y_i))
-                y_pred = loader(datastore.get_label_uri(y_pred_i))
+                y = loader(datastore.get_label_uri(y_i, tag_y))
+                y_pred = loader(datastore.get_label_uri(y_pred_i, tag_y_pred))
 
                 y = y.flatten()
                 y_pred = y_pred.flatten()

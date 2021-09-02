@@ -45,7 +45,7 @@ class EndPointDatastore(BasicEndpointTestSuite):
 
     def test_004_remove(self):
         total = self.client.get("/datastore/").json()["total"]
-        response = self.client.delete(f"/datastore/?id={self.image_id}&type=image")
+        response = self.client.delete(f"/datastore/?id={self.image_id}")
         assert response.status_code == 200
 
         current = self.client.get("/datastore/").json()["total"]

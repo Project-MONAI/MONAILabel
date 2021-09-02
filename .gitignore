@@ -150,4 +150,4 @@ docs/source/apidocs
 *.nii.gz
 .DS_Store
 *.DS_Store
-.gitignore
+bin

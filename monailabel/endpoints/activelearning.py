@@ -29,7 +29,7 @@ cached_digest: Dict = dict()
 
 
 @router.post("/{strategy}", summary="Run Active Learning strategy to get next sample")
-async def sample(strategy: str, params: Optional[dict] = None, checksum: Optional[bool] = True):
+async def sample(strategy: str, params: Optional[dict] = None):
     request = {"strategy": strategy}
 
     instance: MONAILabelApp = app_instance()
@@ -47,7 +47,9 @@ async def sample(strategy: str, params: Optional[dict] = None, checksum: Optiona
     image_id = result["id"]
     image_info = instance.datastore().get_image_info(image_id)
 
-    return {
+    result = {
         "id": image_id,
         **image_info,
     }
+    logger.info(f"Next sample: {result}")
+    return result
