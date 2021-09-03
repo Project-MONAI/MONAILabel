@@ -104,9 +104,14 @@ class AddBackgroundScribblesFromROId(InteractiveSegmentationTransform):
 
         # get any existing roi information and apply it to scribbles, skip otherwise
         selected_roi = d.get(self.roi_key, None)
-        if selected_roi != None and selected_roi != []:
+        if selected_roi is not None and selected_roi != []:
             mask = np.ones_like(scribbles).astype(np.bool)
-            mask[:, selected_roi[0]:selected_roi[1], selected_roi[2]: selected_roi[3], selected_roi[4]:selected_roi[5]] = 0
+            mask[
+                :,
+                selected_roi[0] : selected_roi[1],
+                selected_roi[2] : selected_roi[3],
+                selected_roi[4] : selected_roi[5],
+            ] = 0
 
             # prune outside roi region as bg scribbles
             scribbles[mask] = self.scribbles_bg_label
@@ -115,6 +120,7 @@ class AddBackgroundScribblesFromROId(InteractiveSegmentationTransform):
         d[self.scribbles] = scribbles
 
         return d
+
 
 #########################################
 #########################################

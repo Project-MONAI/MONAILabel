@@ -352,11 +352,9 @@ class MONAILabelWidget(ScriptedLoadableModuleWidget, VTKObservationMixin):
             scribblesMethod = self.ui.scribblesMethodSelector.currentText
             params = self.getParamsFromConfig("infer", scribblesMethod)
             params.update({"roi": selected_roi})
-            
+
             image_file = self.current_sample["id"]
-            result_file, params = self.logic.infer(
-                scribblesMethod, image_file, params, scribbles_in
-            )
+            result_file, params = self.logic.infer(scribblesMethod, image_file, params, scribbles_in)
 
             # display result from server
             self.reportProgress(90)
@@ -387,11 +385,11 @@ class MONAILabelWidget(ScriptedLoadableModuleWidget, VTKObservationMixin):
         RasToIjkMatrix = vtk.vtkMatrix4x4()
         v.GetRASToIJKMatrix(RasToIjkMatrix)
 
-        roi_points_ras = [0.0]*6
+        roi_points_ras = [0.0] * 6
         roiNode.GetBounds(roi_points_ras)
 
         min_points_ras = [roi_points_ras[0], roi_points_ras[2], roi_points_ras[4], 1.0]
-        max_points_ras = [roi_points_ras[0+1], roi_points_ras[2+1], roi_points_ras[4+1], 1.0]
+        max_points_ras = [roi_points_ras[0 + 1], roi_points_ras[2 + 1], roi_points_ras[4 + 1], 1.0]
 
         min_points_ijk = RasToIjkMatrix.MultiplyDoublePoint(min_points_ras)
         max_points_ijk = RasToIjkMatrix.MultiplyDoublePoint(max_points_ras)
