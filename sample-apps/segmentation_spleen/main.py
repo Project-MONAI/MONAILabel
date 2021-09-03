@@ -13,12 +13,11 @@ import logging
 import os
 
 from lib import MyInfer, MyTrain
-from lib.activelearning import MyStrategy, Tta
+from lib.activelearning import MyStrategy
 from monai.apps import load_from_mmar
 
 from monailabel.interfaces import MONAILabelApp
 from monailabel.utils.activelearning import Random
-from monailabel.utils.scoring.tta_scoring import TTAScoring
 
 logger = logging.getLogger(__name__)
 
@@ -58,10 +57,4 @@ class MyApp(MONAILabelApp):
         return {
             "random": Random(),
             "first": MyStrategy(),
-            "Tta": Tta(),
-        }
-
-    def init_scoring_methods(self):
-        return {
-            "tta_scoring": TTAScoring(),
         }

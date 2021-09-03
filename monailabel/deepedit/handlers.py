@@ -14,7 +14,6 @@ from typing import TYPE_CHECKING, Callable, Optional
 import numpy as np
 import torch
 from monai.config import IgniteInfo
-from monai.engines.utils import IterationEvents
 from monai.utils import min_version, optional_import
 from monai.visualize import plot_2d_or_3d_image
 
@@ -55,8 +54,6 @@ class TensorBoardImageHandler:
         summary_writer: Optional[SummaryWriter] = None,
         log_dir: str = "./runs",
         interval: int = 1,
-        epoch_level: bool = True,
-        inner_iter_level: bool = True,
         batch_transform: Callable = lambda x: x,
         output_transform: Callable = lambda x: x,
         global_iter_transform: Callable = lambda x: x,
@@ -70,8 +67,6 @@ class TensorBoardImageHandler:
                 default to create a new writer.
             log_dir: if using default SummaryWriter, write logs to this directory, default is `./runs`.
             interval: plot content from engine.state every N epochs or every N iterations, default is 1.
-            epoch_level: plot content from engine.state every N epochs or N iterations. `True` is epoch level,
-                `False` is iteration level.
             batch_transform: a callable that is used to extract `image` and `label` from `ignite.engine.state.batch`,
                 then construct `(image, label)` pair. for example: if `ignite.engine.state.batch` is `{"image": xxx,
                 "label": xxx, "other": xxx}`, `batch_transform` can be `lambda x: (x["image"], x["label"])`.
@@ -93,8 +88,6 @@ class TensorBoardImageHandler:
             self.internal_writer = False
 
         self.interval = interval
-        self.epoch_level = epoch_level
-        self.inner_iter_level = inner_iter_level
         self.batch_transform = batch_transform
         self.output_transform = output_transform
         self.global_iter_transform = global_iter_transform
@@ -103,19 +96,16 @@ class TensorBoardImageHandler:
         self.max_channels = max_channels
         self.num_pos_clicks = 0
         self.num_neg_clicks = 0
+        self.num_total_clicks = 0
+        self.cumulative_pos_clicks = 0
+        self.cumulative_neg_clicks = 0
 
     def attach(self, engine: Engine) -> None:
         """
         Args:
             engine: Ignite Engine, it can be a trainer, validator or evaluator.
         """
-        if self.epoch_level:
-            engine.add_event_handler(Events.EPOCH_COMPLETED(every=self.interval), self)
-        else:
-            if self.inner_iter_level:
-                engine.add_event_handler(IterationEvents.INNER_ITERATION_COMPLETED, self)
-            else:
-                engine.add_event_handler(Events.ITERATION_COMPLETED(every=self.interval), self)
+        engine.add_event_handler(Events.ITERATION_COMPLETED(every=self.interval), self)
 
     def __call__(self, engine: Engine) -> None:
         """
@@ -131,32 +121,45 @@ class TensorBoardImageHandler:
                 ``Optional[Union[numpy.ndarray, torch.Tensor]]``.
 
         """
-        step = self.global_iter_transform(engine.state.epoch if self.epoch_level else engine.state.iteration)
+        step = self.global_iter_transform(engine.state.iteration)
         filename = (
-            self.batch_transform(engine.state.batch)["image_meta_dict"]["filename_or_obj"][0]
+            self.batch_transform(engine.state.batch)[0]["image_meta_dict"]["filename_or_obj"]
             .split("/")[-1]
             .split(".")[0]
         )
 
         """
+        Adding simulated clicks stats
+        """
+        self.num_pos_clicks = self.batch_transform(engine.state.batch)[0]["pos_click_sum"]
+        self.cumulative_pos_clicks += self.num_pos_clicks
+
+        self.num_neg_clicks = self.batch_transform(engine.state.batch)[0]["neg_click_sum"]
+        self.cumulative_neg_clicks += self.num_neg_clicks
+
+        self.num_total_clicks = self.num_pos_clicks + self.num_neg_clicks
+
+        self._writer.add_scalar("Positive clicks", self.num_pos_clicks, step)
+        self._writer.add_scalar("Negative clicks", self.num_neg_clicks, step)
+        self._writer.add_scalar("Total clicks", self.num_total_clicks, step)
+        self._writer.add_scalar("Positive clicks (cumulative)", self.cumulative_pos_clicks, step)
+        self._writer.add_scalar("Negative clicks (cumulative)", self.cumulative_neg_clicks, step)
+
+        """
         IMAGE
         """
-
-        show_images = self.batch_transform(engine.state.batch)["img_inner_iter"][0]["image"][0, ...][None]
-        inner_j = self.batch_transform(engine.state.batch)["inner_iter"]
-        print("Inner iteration: ", str(inner_j))
-
-        if isinstance(show_images, torch.Tensor):
-            show_images = show_images.detach().cpu().numpy()
-        if show_images is not None:
-            if not isinstance(show_images, np.ndarray):
+        show_image = self.batch_transform(engine.state.batch)[0]["image"][0, ...][None]
+        if isinstance(show_image, torch.Tensor):
+            show_image = show_image.detach().cpu().numpy()
+        if show_image is not None:
+            if not isinstance(show_image, np.ndarray):
                 raise TypeError(
-                    "output_transform(engine.state.output)[0] must be None or one of "
-                    f"(numpy.ndarray, torch.Tensor) but is {type(show_images).__name__}."
+                    "show_image must be None or one of "
+                    f"(numpy.ndarray, torch.Tensor) but is {type(show_image).__name__}."
                 )
             plot_2d_or_3d_image(
                 # add batch dim and plot the first item
-                show_images[None],
+                show_image[None],
                 step,
                 self._writer,
                 0,
@@ -168,18 +171,18 @@ class TensorBoardImageHandler:
         """
         LABEL
         """
-        show_labels = self.batch_transform(engine.state.batch)["img_inner_iter"][0]["label"]
-        if isinstance(show_labels, torch.Tensor):
-            show_labels = show_labels.detach().cpu().numpy()
-            new_show_labels = show_labels[..., [np.sum(show_labels[..., s]) > 0 for s in range(show_labels.shape[3])]]
-        if new_show_labels is not None:
-            if not isinstance(new_show_labels, np.ndarray):
+        show_label = self.batch_transform(engine.state.batch)[0]["label"][0, ...][None]
+        if isinstance(show_label, torch.Tensor):
+            show_label = show_label.detach().cpu().numpy()
+        if show_label is not None:
+            if not isinstance(show_label, np.ndarray):
                 raise TypeError(
-                    "batch_transform(engine.state.batch)[1] must be None or one of "
-                    f"(numpy.ndarray, torch.Tensor) but is {type(new_show_labels).__name__}."
+                    "show_label must be None or one of "
+                    f"(numpy.ndarray, torch.Tensor) but is {type(show_label).__name__}."
                 )
             plot_2d_or_3d_image(
-                new_show_labels[None],
+                # add batch dim and plot the first item
+                show_label[None],
                 step,
                 self._writer,
                 0,
@@ -189,26 +192,41 @@ class TensorBoardImageHandler:
             )
 
         """
+        PREDICTION
+        """
+        show_prediction = self.output_transform(engine.state.output)[0]["pred"][0, ...][None]
+        if isinstance(show_prediction, torch.Tensor):
+            show_prediction = show_prediction.detach().cpu().numpy()
+        if show_prediction is not None:
+            if not isinstance(show_prediction, np.ndarray):
+                raise TypeError(
+                    "show_pred must be None or one of "
+                    f"(numpy.ndarray, torch.Tensor) but is {type(show_label).__name__}."
+                )
+            plot_2d_or_3d_image(
+                # add batch dim and plot the first item
+                show_prediction[None],
+                step,
+                self._writer,
+                0,
+                self.max_channels,
+                self.max_frames,
+                "step_" + str(step) + "_prediction_" + filename,
+            )
+
+        """
         POSITIVE CLICKS
         """
-
-        show_pos_clicks = self.batch_transform(engine.state.batch)["img_inner_iter"][0]["image"][1, ...][None]
+        show_pos_clicks = self.batch_transform(engine.state.batch)[0]["image"][1, ...][None]
         if isinstance(show_pos_clicks, torch.Tensor):
             show_pos_clicks = show_pos_clicks.detach().cpu().numpy()
-            if np.sum(show_pos_clicks) == 0.0:
-                show_pos_clicks = None
-            else:
-                # Consider only the slices that contain the clicks
-                show_pos_clicks = show_labels + show_pos_clicks
-                show_pos_clicks = show_pos_clicks[
-                    ..., [np.sum(show_pos_clicks[..., s]) > 0 for s in range(show_pos_clicks.shape[3])]
-                ]
         if show_pos_clicks is not None:
             if not isinstance(show_pos_clicks, np.ndarray):
                 raise TypeError(
-                    "output_transform(engine.state.output)[0] must be None or one of "
+                    "show_pos_clicks must be None or one of "
                     f"(numpy.ndarray, torch.Tensor) but is {type(show_pos_clicks).__name__}."
                 )
+            show_pos_clicks = show_label + show_pos_clicks
             plot_2d_or_3d_image(
                 # add batch dim and plot the first item
                 show_pos_clicks[None],
@@ -223,25 +241,16 @@ class TensorBoardImageHandler:
         """
         NEGATIVE CLICKS
         """
-
-        show_neg_clicks = self.batch_transform(engine.state.batch)["img_inner_iter"][0]["image"][2, ...][None]
+        show_neg_clicks = self.batch_transform(engine.state.batch)[0]["image"][2, ...][None]
         if isinstance(show_neg_clicks, torch.Tensor):
             show_neg_clicks = show_neg_clicks.detach().cpu().numpy()
-            if np.sum(show_neg_clicks) == 0.0:
-                show_neg_clicks = None
-            else:
-                # Consider only the slices that contain the clicks
-                show_neg_clicks = show_labels + show_neg_clicks
-                show_neg_clicks = show_neg_clicks[
-                    ..., [np.sum(show_neg_clicks[..., s]) > 0 for s in range(show_neg_clicks.shape[3])]
-                ]
         if show_neg_clicks is not None:
             if not isinstance(show_neg_clicks, np.ndarray):
                 raise TypeError(
-                    "output_transform(engine.state.output)[0] must be None or one of "
+                    "show_neg_clicks must be None or one of "
                     f"(numpy.ndarray, torch.Tensor) but is {type(show_neg_clicks).__name__}."
                 )
-
+            show_neg_clicks = show_label + show_neg_clicks
             plot_2d_or_3d_image(
                 # add batch dim and plot the first item
                 show_neg_clicks[None],
@@ -252,21 +261,6 @@ class TensorBoardImageHandler:
                 self.max_frames,
                 "step_" + str(step) + "_neg_clicks_" + filename,
             )
-
-        """
-        Adding simulated clicks stats
-        """
-
-        if self.batch_transform(engine.state.batch)["is_pos"]:
-            self.num_pos_clicks += 1
-        if self.batch_transform(engine.state.batch)["is_neg"]:
-            self.num_neg_clicks += 1
-
-        if inner_j == self.batch_transform(engine.state.batch)["max_iter"] - 1:
-            self._writer.add_scalar("Positive clicks", self.num_pos_clicks, step)
-            self._writer.add_scalar("Negative clicks", self.num_neg_clicks, step)
-            self.num_pos_clicks = 0
-            self.num_neg_clicks = 0
 
         self._writer.flush()
 
