@@ -16,7 +16,6 @@ import unittest
 
 from fastapi.testclient import TestClient
 
-
 from monailabel.config import settings
 from monailabel.main import app
 

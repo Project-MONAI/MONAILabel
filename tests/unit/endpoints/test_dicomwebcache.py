@@ -12,8 +12,8 @@
 import hashlib
 import json
 import os
-from typing import Dict
 import unittest
+from typing import Dict
 from unittest.mock import patch
 
 import pydicom
@@ -61,18 +61,20 @@ class EndPointDICOMWebDatastore(DICOMWebEndpointTestSuite):
     def setUp(self) -> None:
         pass
 
-    @patch('monailabel.interfaces.app.DICOMwebClient')
+    @patch("monailabel.interfaces.app.DICOMwebClient")
     def test_datastore_stats(self, dwc):
 
         cache_path = os.path.join(self.data_dir, hashlib.md5(self.studies.encode("utf-8")).hexdigest())
         dwc.return_value.base_url = self.studies
         dwc.return_value.search_for_series = lambda **kwargs: search_for_series(self.data_dir, **kwargs)
         dwc.return_value.retrieve_series_metadata = lambda *args, **kwargs: retrieve_series_metadata(
-            self.data_dir, *args, **kwargs)
+            self.data_dir, *args, **kwargs
+        )
         dwc.return_value.load_json_dataset = lambda *args, **kwargs: retrieve_series(cache_path, *args, **kwargs)
 
-        with patch.object(monailabel.utils.datastore.dicom.cache.DICOMWebCache.__init__,
-                          '__defaults__', (None, self.data_dir)):
+        with patch.object(
+            monailabel.utils.datastore.dicom.cache.DICOMWebCache.__init__, "__defaults__", (None, self.data_dir)
+        ):
 
             response = self.client.get("/datastore/?output=stats")
             self.assertEquals(response.status_code, 200)
@@ -83,11 +85,11 @@ class EndPointDICOMWebDatastore(DICOMWebEndpointTestSuite):
             label_tags = res["label_tags"]
             self.assertEquals(total, 8)
             self.assertEquals(completed, 3)
-            self.assertEquals(label_tags['original'], 2)
-            self.assertEquals(label_tags['final'], 1)
+            self.assertEquals(label_tags["original"], 2)
+            self.assertEquals(label_tags["final"], 1)
 
-    @patch('monailabel.interfaces.app.DICOMwebClient')
-    @patch('monailabel.utils.datastore.dicom.cache.dicom_web_download_series')
+    @patch("monailabel.interfaces.app.DICOMwebClient")
+    @patch("monailabel.utils.datastore.dicom.cache.dicom_web_download_series")
     def test_datastore_datalist(self, dicom_web_download_series, dwc):
 
         dicom_web_download_series.return_value = lambda *args: None
@@ -96,26 +98,30 @@ class EndPointDICOMWebDatastore(DICOMWebEndpointTestSuite):
         dwc.return_value.base_url = self.studies
         dwc.return_value.search_for_series = lambda **kwargs: search_for_series(self.data_dir, **kwargs)
         dwc.return_value.retrieve_series_metadata = lambda *args, **kwargs: retrieve_series_metadata(
-            self.data_dir, *args, **kwargs)
+            self.data_dir, *args, **kwargs
+        )
         dwc.return_value.load_json_dataset = lambda *args, **kwargs: retrieve_series(cache_path, *args, **kwargs)
 
-        with patch.object(monailabel.utils.datastore.dicom.cache.DICOMWebCache.__init__,
-                          '__defaults__', (None, self.data_dir)):
+        with patch.object(
+            monailabel.utils.datastore.dicom.cache.DICOMWebCache.__init__, "__defaults__", (None, self.data_dir)
+        ):
 
             response = self.client.get("/datastore/?output=all")
             self.assertEquals(response.status_code, 200)
 
             res = response.json()
-            for k in res['objects'].keys():
-                self.assertIn(k,
-                              [
-                                  '1.2.826.0.1.3680043.8.274.1.1.8323329.686549.1629744177.996087',
-                                  '1.2.826.0.1.3680043.8.274.1.1.8323329.686405.1629744173.656721',
-                                  '1.2.826.0.1.3680043.8.274.1.1.8323329.686521.1629744176.620266'
-                              ])
+            for k in res["objects"].keys():
+                self.assertIn(
+                    k,
+                    [
+                        "1.2.826.0.1.3680043.8.274.1.1.8323329.686549.1629744177.996087",
+                        "1.2.826.0.1.3680043.8.274.1.1.8323329.686405.1629744173.656721",
+                        "1.2.826.0.1.3680043.8.274.1.1.8323329.686521.1629744176.620266",
+                    ],
+                )
 
-    @patch('monailabel.interfaces.app.DICOMwebClient')
-    @patch('monailabel.utils.datastore.dicom.cache.dicom_web_download_series')
+    @patch("monailabel.interfaces.app.DICOMwebClient")
+    @patch("monailabel.utils.datastore.dicom.cache.dicom_web_download_series")
     def test_save_label(self, dicom_web_download_series, dwc):
         dicom_web_download_series.return_value = lambda *args: None
 
@@ -124,14 +130,16 @@ class EndPointDICOMWebDatastore(DICOMWebEndpointTestSuite):
         dwc.return_value.search_for_series = lambda **kwargs: search_for_series(self.data_dir, **kwargs)
         # dwc.return_value.retrieve_series = lambda *args, **kwargs: retrieve_series(cache_path, *args, **kwargs)
         dwc.return_value.retrieve_series_metadata = lambda *args, **kwargs: retrieve_series_metadata(
-            self.data_dir, *args, **kwargs)
+            self.data_dir, *args, **kwargs
+        )
         dwc.return_value.load_json_dataset = lambda *args, **kwargs: retrieve_series(cache_path, *args, **kwargs)
 
-        image_id = '1.2.826.0.1.3680043.8.274.1.1.8323329.686405.1629744173.656721'
+        image_id = "1.2.826.0.1.3680043.8.274.1.1.8323329.686405.1629744173.656721"
         image_file = os.path.join(self.data_dir, f"{image_id}.nii.gz")
 
-        with patch.object(monailabel.utils.datastore.dicom.cache.DICOMWebCache.__init__,
-                          '__defaults__', (None, self.data_dir)):
+        with patch.object(
+            monailabel.utils.datastore.dicom.cache.DICOMWebCache.__init__, "__defaults__", (None, self.data_dir)
+        ):
             test_tag = "test"
             with open(os.path.join(self.data_dir, "labels_to_upload", f"{image_id}.nii.gz"), "rb") as f:
                 response = self.client.put(
@@ -139,8 +147,8 @@ class EndPointDICOMWebDatastore(DICOMWebEndpointTestSuite):
                 )
                 self.assertEquals(response.status_code, 200)
                 res = response.json()
-                self.assertEquals(res['image'], image_id)
-                self.assertEquals(res['label'], image_id)
+                self.assertEquals(res["image"], image_id)
+                self.assertEquals(res["label"], image_id)
 
             response = self.client.get("/datastore/?output=stats")
             self.assertEquals(response.status_code, 200)
