@@ -106,14 +106,13 @@ class EndPointDICOMWebDatastore(DICOMWebEndpointTestSuite):
             self.assertEquals(response.status_code, 200)
 
             res = response.json()
-            self.assertEquals(
-                list(res['objects'].keys()),
-                [
-                    '1.2.826.0.1.3680043.8.274.1.1.8323329.686549.1629744177.996087',
-                    '1.2.826.0.1.3680043.8.274.1.1.8323329.686405.1629744173.656721',
-                    '1.2.826.0.1.3680043.8.274.1.1.8323329.686521.1629744176.620266'
-                ]
-            )
+            for k in res['objects'].keys():
+                self.assertIn(k,
+                              [
+                                  '1.2.826.0.1.3680043.8.274.1.1.8323329.686549.1629744177.996087',
+                                  '1.2.826.0.1.3680043.8.274.1.1.8323329.686405.1629744173.656721',
+                                  '1.2.826.0.1.3680043.8.274.1.1.8323329.686521.1629744176.620266'
+                              ])
 
     @patch('monailabel.interfaces.app.DICOMwebClient')
     @patch('monailabel.utils.datastore.dicom.cache.dicom_web_download_series')
