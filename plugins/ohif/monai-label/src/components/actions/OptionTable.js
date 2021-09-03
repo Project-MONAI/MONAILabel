@@ -6,18 +6,78 @@ import BaseTab from './BaseTab';
 export default class OptionTable extends BaseTab {
   constructor(props) {
     super(props);
+
+    this.state = {
+      section: '',
+      name: '',
+      config: null,
+    };
   }
 
-  onChangeConfig = (c, n, evt) => {
-    if (typeof this.props.info.config[c][n] === 'boolean')
-      this.props.info.config[c][n] = evt.target.checked;
-    else this.props.info.config[c][n] = evt.target.value;
-    console.log(this.props.info.config);
+  onChangeSection = evt => {
+    this.state.section = evt.target.value;
+    this.setState({ section: evt.target.value });
+  };
+
+  onChangeName = evt => {
+    this.state.name = evt.target.value;
+    this.setState({ name: evt.target.value });
+  };
+
+  onChangeConfig = (s, n, k, evt) => {
+    console.log(s + ' => ' + n + ' => ' + k);
+
+    const c = this.state.config;
+    if (typeof c[s][n][k] === 'boolean') {
+      c[s][n][k] = !!evt.target.checked;
+    } else {
+      c[s][n][k] = evt.target.value;
+    }
+    this.setState({ config: c });
   };
 
   render() {
-    const info = this.props.info;
-    const config = info && info.config ? info.config : {};
+    let config = this.state.config ? this.state.config : {};
+    if (!Object.keys(config).length) {
+      const info = this.props.info;
+      const mapping = {
+        infer: 'models',
+        train: 'trainers',
+        activelearning: 'strategies',
+        scoring: 'scoring',
+      };
+      for (const [m, n] of Object.entries(mapping)) {
+        for (const [k, v] of Object.entries(info && info[n] ? info[n] : {})) {
+          if (v && v.config && Object.keys(v.config).length) {
+            if (!config[m]) config[m] = {};
+            config[m][k] = v.config;
+          }
+        }
+      }
+
+      this.state.config = config;
+    }
+
+    const section =
+      this.state.section.length && config[this.state.section]
+        ? this.state.section
+        : Object.keys(config).length
+        ? Object.keys(config)[0]
+        : '';
+    this.state.section = section;
+    const section_map = config[section] ? config[section] : {};
+
+    const name =
+      this.state.name.length && section_map[this.state.name]
+        ? this.state.name
+        : Object.keys(section_map).length
+        ? Object.keys(section_map)[0]
+        : '';
+    this.state.name = name;
+    const name_map = section_map[name] ? section_map[name] : {};
+
+    //console.log('Section: ' + section + '; Name: ' + name);
+    //console.log(name_map);
 
     return (
       <div className="tab">
@@ -32,54 +92,106 @@ export default class OptionTable extends BaseTab {
           Options
         </label>
         <div className="tab-content">
+          <table>
+            <tbody>
+              <tr>
+                <td>Section:</td>
+                <td>
+                  <select
+                    className="selectBox"
+                    name="selectSection"
+                    onChange={this.onChangeSection}
+                    value={this.state.section}
+                  >
+                    {Object.keys(config).map(k => (
+                      <option key={k} value={k}>
+                        {`${k} `}
+                      </option>
+                    ))}
+                  </select>
+                </td>
+              </tr>
+              <tr>
+                <td>Name:</td>
+                <td>
+                  <select
+                    className="selectBox"
+                    name="selectName"
+                    onChange={this.onChangeName}
+                    value={this.state.name}
+                  >
+                    {Object.keys(section_map).map(k => (
+                      <option key={k} value={k}>
+                        {`${k} `}
+                      </option>
+                    ))}
+                  </select>
+                </td>
+              </tr>
+            </tbody>
+          </table>
+
           <table className="optionsTable">
             <thead>
               <tr>
-                <th>Action</th>
-                <th>Name</th>
+                <th>Key</th>
                 <th>Value</th>
               </tr>
             </thead>
             <tbody>
-              {Object.keys(config).map(c =>
-                Object.entries(config[c] ? config[c] : {}).map(
-                  ([k, v], index) => (
-                    <tr key={c + k}>
-                      {!index ? (
-                        <td rowSpan={Object.keys(config[c]).length}>{c}</td>
-                      ) : null}
-                      <td>{k}</td>
-                      <td>
-                        {typeof v === 'boolean' ? (
-                          <input
-                            type="checkbox"
-                            defaultChecked={v}
-                            onChange={e => this.onChangeConfig(c, k, e)}
-                          />
-                        ) : typeof v === 'object' ? (
-                          <select
-                            className="optionsInput"
-                            onChange={e => this.onChangeConfig(c, k, e)}
-                          >
-                            {Object.keys(v).map(a => (
-                              <option key={a} name={a} value={a}>
-                                {a}
-                              </option>
-                            ))}
-                          </select>
-                        ) : (
-                          <input
-                            type="text"
-                            defaultValue={v}
-                            className="optionsInput"
-                            onChange={e => this.onChangeConfig(c, k, e)}
-                          />
-                        )}
-                      </td>
-                    </tr>
-                  )
-                )
-              )}
+              {Object.entries(name_map).map(([k, v]) => (
+                <tr key={this.state.section + this.state.name + k}>
+                  <td>{k}</td>
+                  <td>
+                    {v !== null && typeof v === 'boolean' ? (
+                      <input
+                        type="checkbox"
+                        defaultChecked={v}
+                        onChange={e =>
+                          this.onChangeConfig(
+                            this.state.section,
+                            this.state.name,
+                            k,
+                            e
+                          )
+                        }
+                      />
+                    ) : v !== null && typeof v === 'object' ? (
+                      <select
+                        className="optionsInput"
+                        onChange={e =>
+                          this.onChangeConfig(
+                            this.state.section,
+                            this.state.name,
+                            k,
+                            e
+                          )
+                        }
+                      >
+                        {Object.keys(v).map(a => (
+                          <option key={a} name={a} value={a}>
+                            {a}
+                          </option>
+                        ))}
+                      </select>
+                    ) : (
+                      <input
+                        type="text"
+                        defaultValue={v ? v : ''}
+                        className="optionsInput"
+                        onChange={e =>
+                          this.onChangeConfig(
+                            this.state.section,
+                            this.state.name,
+                            k,
+                            e
+                          )
+                        }
+                      />
+                    )}
+                  </td>
+                </tr>
+              ))}
             </tbody>
           </table>
         </div>
