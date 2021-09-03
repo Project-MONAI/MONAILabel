@@ -12,7 +12,7 @@ import hashlib
 import logging
 import os
 import pathlib
-from typing import Any, Dict, List, Tuple
+from typing import Any, Dict, List, Optional, Tuple
 
 from dicomweb_client import DICOMwebClient
 from dicomweb_client.api import load_json_dataset
@@ -27,7 +27,7 @@ logger = logging.getLogger(__name__)
 
 
 class DICOMWebCache(LocalDatastore):
-    def __init__(self, client: DICOMwebClient, cache_path: str = None):
+    def __init__(self, client: DICOMwebClient, cache_path: Optional[str] = None):
         self._client = client
         self._modality = "CT"
         uri_hash = hashlib.md5(self._client.base_url.encode("utf-8")).hexdigest()
