@@ -1,25 +1,22 @@
-# DeepEdit for Spleen Segmentation
+# DeepEdit Default App
 
 ### Model Overview
 
-Interactive MONAI Label App using DeepEdit to label spleen over CT Images.
+Interactive MONAI Label App using DeepEdit to label 3D Images. This includes a heuristic training planner and enhance DeepEdit transforms.
 
 ### Data
 
-The training data is from Medical Segmentation Decathlon (http://medicaldecathlon.com/). Specifically, 35 CT images of size 256x256x128 from the **Task09_Spleen** dataset were used to train this DeepEdit model. 6 images were used to validate this model.
+Researchers may want to use the Medical Segmentation Decathlon (http://medicaldecathlon.com/) to train and validate this algorithm.
 
-- Target: Spleen
+- Target: Any organ or tumour
 - Task: Segmentation 
-- Modality: CT
+- Modality: CT/MR
 
 ### Inputs
 
-- 1 channel CT
-- 3 channels (CT + foreground points + background points)
+- 1 channel CT or MR
+- 3 channels (CT or MR + foreground points + background points)
 
 ### Output
 
-- 1 channel representing Spleen
-
-
-![DeepEdit for spleen](../../docs/images/sample-apps/deepedit_spleen.png)
+- 1 channel representing the organ of interest
