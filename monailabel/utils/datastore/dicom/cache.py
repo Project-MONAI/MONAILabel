@@ -41,7 +41,8 @@ class DICOMWebCache(LocalDatastore):
         super().__init__(datastore_path=datastore_path, auto_reload=True)
 
     def name(self) -> str:
-        return self._client.base_url
+        base_url: str = self._client.base_url
+        return base_url
 
     def _to_id(self, file: str) -> Tuple[str, str]:
         extensions = [".nii", ".nii.gz", ".nrrd"]
