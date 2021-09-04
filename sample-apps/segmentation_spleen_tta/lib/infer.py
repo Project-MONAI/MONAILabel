@@ -9,27 +9,27 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-from monai.inferers import SlidingWindowInferer
+from monai.inferers import SimpleInferer
 from monai.transforms import (
     Activationsd,
-    AddChanneld,
     AsDiscreted,
-    CopyItemsd,
+    EnsureChannelFirstd,
     LoadImaged,
-    ScaleIntensityRanged,
+    NormalizeIntensityd,
+    Orientationd,
+    Resized,
     Spacingd,
     ToNumpyd,
+    ToTensord,
 )
 
 from monailabel.interfaces.tasks import InferTask, InferType
-from monailabel.scribbles.transforms import WriteLogits
-from monailabel.utils.others.post import BoundingBoxd, Restored
+from monailabel.utils.others.post import Restored
 
 
-class SegmentationWithWriteLogits(InferTask):
+class MyInfer(InferTask):
     """
-    Inference Engine for pre-trained Spleen segmentation (UNet) model for MSD Dataset. It additionally provides
-    appropriate transforms to save logits that are needed for post processing stage.
+    This provides Inference Engine for pre-trained spleen segmentation (UNet) model over MSD Dataset.
     """
 
     def __init__(
@@ -53,21 +53,26 @@ class SegmentationWithWriteLogits(InferTask):
     def pre_transforms(self):
         return [
             LoadImaged(keys="image"),
-            AddChanneld(keys="image"),
-            Spacingd(keys="image", pixdim=[1.0, 1.0, 1.0]),
-            ScaleIntensityRanged(keys="image", a_min=-57, a_max=164, b_min=0.0, b_max=1.0, clip=True),
+            EnsureChannelFirstd(keys="image"),
+            Spacingd(
+                keys="image",
+                pixdim=(1.0, 1.0, 1.0),
+                mode="bilinear",
+            ),
+            Orientationd(keys="image", axcodes="RAS"),
+            NormalizeIntensityd(keys="image"),
+            Resized(keys="image", spatial_size=(128, 128, 128)),
+            ToTensord(keys=["image"]),
         ]
 
     def inferer(self):
-        return SlidingWindowInferer(roi_size=[160, 160, 160])
+        return SimpleInferer()
 
     def post_transforms(self):
         return [
-            CopyItemsd(keys="pred", times=1, names="logits"),
+            ToTensord(keys=("image", "pred")),
             Activationsd(keys="pred", softmax=True),
             AsDiscreted(keys="pred", argmax=True),
-            ToNumpyd(keys=["pred", "logits"]),
-            Restored(keys=["pred", "logits"], ref_image="image"),
-            BoundingBoxd(keys="pred", result="result", bbox="bbox"),
-            WriteLogits(key="logits", result="result"),
+            ToNumpyd(keys="pred"),
+            Restored(keys="pred", ref_image="image"),
         ]
