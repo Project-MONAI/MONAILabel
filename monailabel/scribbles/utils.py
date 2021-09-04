@@ -117,7 +117,7 @@ def make_iseg_unary(
     return unary_term
 
 
-def make_histograms(image, scrib, scribbles_bg_label, scribbles_fg_label):
+def make_histograms(image, scrib, scribbles_bg_label, scribbles_fg_label, bins=32):
     def get_values(_data, _seed, _label):
         idx = np.argwhere(_seed == _label)
         _values = []
@@ -126,10 +126,10 @@ def make_histograms(image, scrib, scribbles_bg_label, scribbles_fg_label):
         return _values
 
     values = get_values(image, scrib, scribbles_bg_label)
-    bg_hist, bg_bin_edges = np.histogram(values, bins=32, range=(0, 1), density=True)
+    bg_hist, bg_bin_edges = np.histogram(values, bins=bins, range=(0, 1), density=True)
 
     values = get_values(image, scrib, scribbles_fg_label)
-    fg_hist, fg_bin_edges = np.histogram(values, bins=32, range=(0, 1), density=True)
+    fg_hist, fg_bin_edges = np.histogram(values, bins=bins, range=(0, 1), density=True)
 
     scale = fg_bin_edges[1] - fg_bin_edges[0]
     return (bg_hist * scale).astype(np.float32), (fg_hist * scale).astype(np.float32), fg_bin_edges

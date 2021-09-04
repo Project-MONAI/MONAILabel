@@ -104,7 +104,7 @@ class AddBackgroundScribblesFromROId(InteractiveSegmentationTransform):
 
         # get any existing roi information and apply it to scribbles, skip otherwise
         selected_roi = d.get(self.roi_key, None)
-        if selected_roi is not None and selected_roi != []:
+        if selected_roi:
             mask = np.ones_like(scribbles).astype(np.bool)
             mask[
                 :,
