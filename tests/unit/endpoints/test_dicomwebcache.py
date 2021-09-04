@@ -17,7 +17,7 @@ from typing import Dict
 from unittest.mock import patch
 
 import pydicom
-from context import DICOMWebEndpointTestSuite
+from .context import DICOMWebEndpointTestSuite
 
 import monailabel
 
