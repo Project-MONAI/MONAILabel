@@ -17,9 +17,10 @@ from typing import Dict
 from unittest.mock import patch
 
 import pydicom
-from .context import DICOMWebEndpointTestSuite
 
 import monailabel
+
+from .context import DICOMWebEndpointTestSuite
 
 
 def search_for_series(data_dir, **kwargs):
