@@ -24,6 +24,7 @@ jobs:
         python -m pip install --user --upgrade setuptools wheel
     - name: Build distribution
       run: |
+        export BUILD_OHIF=true
         export HEAD_COMMIT_ID=$(git rev-parse HEAD)
         sed -i 's/name\ =\ monailabel$/name\ =\ monailabel-weekly/g' setup.cfg
         echo "__commit_id__ = \"$HEAD_COMMIT_ID\"" >> monailabel/__init__.py
