@@ -63,6 +63,26 @@ class MyApp(MONAILabelApp):
         self.spatial_size = None
         self.target_spacing = None
 
+        # Path to pretrained weights for spleen segmentation
+        # self.download(
+        #     [
+        #         (
+        #             self.pretrained_model,
+        #             "https://github.com/Project-MONAI/MONAILabel/releases/download/data/deepedit_spleen.pt",
+        #         ),
+        #     ]
+        # )
+
+        # Path to pretrained weights for left atrium segmentation
+        # self.download(
+        #     [
+        #         (
+        #             self.pretrained_model,
+        #             "https://github.com/Project-MONAI/MONAILabel/releases/download/data/deepedit_left_atrium.pt",
+        #         ),
+        #     ]
+        # )
+
         super().__init__(
             app_dir=app_dir,
             studies=studies,
@@ -107,6 +127,7 @@ class MyApp(MONAILabelApp):
                 load_path=self.pretrained_model,
                 publish_path=self.final_model,
                 config={"pretrained": False},
+                debug_mode=False,
             )
         }
 
