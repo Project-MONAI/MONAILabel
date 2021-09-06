@@ -39,18 +39,16 @@ class ExperimentPlanner(object):
         """
         logger.info("Using nvidia-smi command")
         if shutil.which("nvidia-smi") is None:
-            raise logger.info("nvidia-smi command didn't work! - Using default image size [512, 512, 128]")
-        result = subprocess.check_output(
-            ["nvidia-smi", "--query-gpu=memory.free", "--format=csv,nounits,noheader"], encoding="utf-8"
-        )
-
-        # --query-gpu=memory.used
-
-        # Convert lines into a dictionary
-        gpu_memory = [int(x) for x in result.strip().split("\n")]
-        gpu_memory_map = dict(zip(range(len(gpu_memory)), gpu_memory))
-
-        return gpu_memory_map
+            logger.info("nvidia-smi command didn't work! - Using default image size [512, 512, 128]")
+            return {"0": 4300}
+        else:
+            result = subprocess.check_output(
+                ["nvidia-smi", "--query-gpu=memory.free", "--format=csv,nounits,noheader"], encoding="utf-8"
+            )  # --query-gpu=memory.used
+            # Convert lines into a dictionary
+            gpu_memory = [int(x) for x in result.strip().split("\n")]
+            gpu_memory_map = dict(zip(range(len(gpu_memory)), gpu_memory))
+            return gpu_memory_map
 
     def get_img_info(self):
         loader = LoadImage(reader="ITKReader")
