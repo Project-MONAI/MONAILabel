@@ -74,6 +74,8 @@ class ExperimentPlanner(object):
 
         self.target_spacing = np.mean(spacings, 0)
         self.target_img_size = np.mean(img_sizes, 0, np.int64)
+        # Changing from DHW to HDW order
+        self.target_img_size = np.array([self.target_img_size[1], self.target_img_size[2], self.target_img_size[0]])
 
     def get_target_img_size(self):
         # This should return an image according to the free gpu memory available
