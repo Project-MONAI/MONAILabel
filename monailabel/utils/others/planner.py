@@ -39,8 +39,8 @@ class ExperimentPlanner(object):
         """
         logger.info("Using nvidia-smi command")
         if shutil.which("nvidia-smi") is None:
-            logger.info("nvidia-smi command didn't work! - Using default image size [512, 512, 128]")
-            return {"0": 4300}
+            logger.info("nvidia-smi command didn't work! - Using default image size [128, 128, 64]")
+            return {0: 4300}
         else:
             result = subprocess.check_output(
                 ["nvidia-smi", "--query-gpu=memory.free", "--format=csv,nounits,noheader"], encoding="utf-8"
