@@ -12,12 +12,14 @@
 import logging
 import os
 
-from lib import Deepgrow, MyStrategy, MyTrain, Segmentation
+from lib import Deepgrow, MyTrain, Segmentation
+from lib.activelearning import TTA, MyStrategy
 from monai.networks.nets.dynunet_v1 import DynUNetV1
 
 from monailabel.interfaces import MONAILabelApp
 from monailabel.utils.activelearning import Random
 from monailabel.utils.others.planner import ExperimentPlanner
+from monailabel.utils.scoring.tta_scoring import TTAScoring
 
 logger = logging.getLogger(__name__)
 
@@ -133,6 +135,12 @@ class MyApp(MONAILabelApp):
 
     def init_strategies(self):
         return {
+            "TTA": TTA(),
             "random": Random(),
             "first": MyStrategy(),
+        }
+
+    def init_scoring_methods(self):
+        return {
+            "TTA": TTAScoring(model=[self.pretrained_model, self.final_model], network=self.network),
         }

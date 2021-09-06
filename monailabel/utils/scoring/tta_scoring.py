@@ -31,6 +31,7 @@ from monai.transforms import (
     ToTensord,
 )
 
+from monailabel.deepedit.transforms import DiscardAddGuidanced
 from monailabel.interfaces.datastore import Datastore
 from monailabel.interfaces.tasks import ScoringMethod
 from monailabel.utils.scoring.test_time_augmentation import TestTimeAugmentation
@@ -43,33 +44,36 @@ class TTAScoring(ScoringMethod):
     First version of test time augmentation active learning
     """
 
-    def __init__(self, model, network=None):
+    def __init__(self, model, network=None, deepedit=True):
         super().__init__("Compute initial score based on TTA")
         self.model = model
         self.device = "cuda"
         self.img_size = [128, 128, 128]
         self.num_samples = 5
         self.network = network
+        self.deepedit = deepedit
 
     def pre_transforms(self):
-        return Compose(
-            [
-                LoadImaged(keys="image"),
-                AddChanneld(keys="image"),
-                Spacingd(keys="image", pixdim=[1.0, 1.0, 1.0]),
-                RandAffined(
-                    keys="image",
-                    prob=1,
-                    rotate_range=(np.pi / 4, np.pi / 4, np.pi / 4),
-                    padding_mode="zeros",
-                    as_tensor_output=False,
-                ),
-                RandFlipd(keys="image", prob=0.5, spatial_axis=0),
-                RandRotated(keys="image", range_x=(-5, 5), range_y=(-5, 5), range_z=(-5, 5)),
-                Resized(keys="image", spatial_size=self.img_size),
-                ToTensord(keys="image"),
-            ]
-        )
+        t = [
+            LoadImaged(keys="image"),
+            AddChanneld(keys="image"),
+            Spacingd(keys="image", pixdim=[1.0, 1.0, 1.0]),
+            RandAffined(
+                keys="image",
+                prob=1,
+                rotate_range=(np.pi / 4, np.pi / 4, np.pi / 4),
+                padding_mode="zeros",
+                as_tensor_output=False,
+            ),
+            RandFlipd(keys="image", prob=0.5, spatial_axis=0),
+            RandRotated(keys="image", range_x=(-5, 5), range_y=(-5, 5), range_z=(-5, 5)),
+            Resized(keys="image", spatial_size=self.img_size),
+        ]
+        # If using TTA for deepedit
+        if self.deepedit:
+            t.append(DiscardAddGuidanced(keys="image"))
+        t.append(ToTensord(keys="image"))
+        return Compose(t)
 
     def post_transforms(self):
         return Compose(
