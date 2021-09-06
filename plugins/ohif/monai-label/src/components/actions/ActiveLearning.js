@@ -27,7 +27,13 @@ export default class OptionTable extends BaseTab {
       duration: 60000,
     });
 
-    const response = await this.props.client().next_sample(this.state.strategy);
+    const strategy = this.state.strategy;
+    const config = this.props.onOptionsConfig();
+    const params =
+      config && config.activelearning && config.activelearning[strategy]
+        ? config.activelearning[strategy]
+        : {};
+    const response = await this.props.client().next_sample(strategy, params);
     if (!nid) {
       window.snackbar.hideAll();
     } else {
@@ -57,9 +63,14 @@ export default class OptionTable extends BaseTab {
   onClickUpdateModel = async () => {
     const training = this.state.training;
     console.log('Current training status: ' + training);
+    const config = this.props.onOptionsConfig();
+    const params = config && config.train && config.train ? config.train : {};
+    console.log(config);
+    console.log(params);
+
     const response = training
       ? await this.props.client().stop_train()
-      : await this.props.client().run_train({});
+      : await this.props.client().run_train(params);
 
     if (response.status !== 200) {
       this.notification.show({
@@ -131,7 +142,7 @@ export default class OptionTable extends BaseTab {
 
       const response = await this.props
         .client()
-        .save_label(params, image, label);
+        .save_label(image, label, params);
 
       if (response.status !== 200) {
         this.notification.show({

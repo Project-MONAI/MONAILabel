@@ -31,7 +31,11 @@ export default class OptionTable extends BaseTab {
     if (typeof c[s][n][k] === 'boolean') {
       c[s][n][k] = !!evt.target.checked;
     } else {
-      c[s][n][k] = evt.target.value;
+      if (typeof c[s][n][k] === 'number')
+        c[s][n][k] = Number.isInteger(c[s][n][k])
+          ? parseInt(evt.target.value)
+          : parseFloat(evt.target.value);
+      else c[s][n][k] = evt.target.value;
     }
     this.setState({ config: c });
   };

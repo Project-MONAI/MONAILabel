@@ -23,9 +23,14 @@ export default class AutoSegmentation extends BaseTab {
     const { info, viewConstants } = this.props;
     const image = viewConstants.SeriesInstanceUID;
     const model = this.modelSelector.current.state.currentModel;
+    const config = this.props.onOptionsConfig();
+    const params =
+      config && config.infer && config.infer[model] ? config.infer[model] : {};
 
     const labels = info.models[model].labels;
-    const response = await this.props.client().segmentation(model, image);
+    const response = await this.props
+      .client()
+      .segmentation(model, image, params);
 
     // Bug:: Notification Service on show doesn't return id
     if (!nid) {

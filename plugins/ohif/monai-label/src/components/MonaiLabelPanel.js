@@ -165,6 +165,13 @@ export default class MonaiLabelPanel extends Component {
     this.setState({ action: name });
   };
 
+  onOptionsConfig = () => {
+    return this.actions['options'].current &&
+      this.actions['options'].current.state
+      ? this.actions['options'].current.state.config
+      : {};
+  };
+
   updateView = async (response, labels, operation, slice, overlap) => {
     this.segmentationList.current.updateView(
       response,
@@ -214,6 +221,7 @@ export default class MonaiLabelPanel extends Component {
             notification={this.notification}
             updateView={this.updateView}
             onSelectActionTab={this.onSelectActionTab}
+            onOptionsConfig={this.onOptionsConfig}
           />
 
           <AutoSegmentation
@@ -225,6 +233,7 @@ export default class MonaiLabelPanel extends Component {
             notification={this.notification}
             updateView={this.updateView}
             onSelectActionTab={this.onSelectActionTab}
+            onOptionsConfig={this.onOptionsConfig}
           />
           <SmartEdit
             ref={this.actions['smartedit']}
@@ -235,6 +244,7 @@ export default class MonaiLabelPanel extends Component {
             notification={this.notification}
             updateView={this.updateView}
             onSelectActionTab={this.onSelectActionTab}
+            onOptionsConfig={this.onOptionsConfig}
           />
         </div>
 

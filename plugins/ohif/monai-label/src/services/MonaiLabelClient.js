@@ -10,16 +10,13 @@ export default class MonaiLabelClient {
     return await MonaiLabelClient.api_get(url.toString());
   }
 
-  async segmentation(model, image) {
-    return this.infer(model, image, {});
+  async segmentation(model, image, params = {}) {
+    return this.infer(model, image, params);
   }
 
-  async deepgrow(model, image, foreground, background) {
-    const params = {
-      foreground: foreground,
-      background: background,
-    };
-
+  async deepgrow(model, image, foreground, background, params = {}) {
+    params['foreground'] = foreground;
+    params['background'] = background;
     return this.infer(model, image, params);
   }
 
@@ -44,16 +41,16 @@ export default class MonaiLabelClient {
     );
   }
 
-  async next_sample(stategy = 'random') {
+  async next_sample(stategy = 'random', params = {}) {
     const url = new URL(
       'activelearning/' + encodeURIComponent(stategy),
       this.server_url
     ).toString();
 
-    return await MonaiLabelClient.api_post(url, {}, null, false, 'json');
+    return await MonaiLabelClient.api_post(url, params, null, false, 'json');
   }
 
-  async save_label(params, image, label) {
+  async save_label(image, label, params) {
     let url = new URL('datastore/label', this.server_url);
     url.searchParams.append('image', image);
     url = url.toString();
