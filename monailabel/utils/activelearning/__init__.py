@@ -10,4 +10,3 @@
 # limitations under the License.
 
 from .random import Random
-from .tta import TTA

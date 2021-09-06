@@ -12,11 +12,9 @@
 import logging
 
 import torch
-from monai.apps.deepgrow.interaction import Interaction
 from monai.apps.deepgrow.transforms import (
     AddGuidanceSignald,
     AddInitialSeedPointd,
-    AddRandomGuidanced,
     FindAllValidSlicesd,
     FindDiscrepancyRegionsd,
 )
@@ -31,14 +29,16 @@ from monai.transforms import (
     Orientationd,
     RandAdjustContrastd,
     RandHistogramShiftd,
-    RandZoomd,
+    RandRotated,
     Resized,
     Spacingd,
     ToNumpyd,
     ToTensord,
 )
 
-from monailabel.deepedit.transforms import DiscardAddGuidanced
+from monailabel.deepedit.handlers import TensorBoardImageHandler
+from monailabel.deepedit.interaction import Interaction
+from monailabel.deepedit.transforms import PosNegClickProbAddRandomGuidanced
 from monailabel.utils.train.basic_train import BasicTrainTask
 
 logger = logging.getLogger(__name__)
@@ -49,16 +49,24 @@ class MyTrain(BasicTrainTask):
         self,
         model_dir,
         network,
-        description="Train DeepEdit model for generic",
-        model_size=(256, 256, 128),
+        description="Train DeepEdit model for 3D Images",
+        spatial_size=(128, 128, 64),
+        target_spacing=(1.0, 1.0, 1.0),
+        deepgrow_probability_train=0.5,
+        deepgrow_probability_val=1.0,
         max_train_interactions=20,
         max_val_interactions=10,
+        debug_mode=False,
         **kwargs,
     ):
         self._network = network
-        self.model_size = model_size
+        self.spatial_size = spatial_size
+        self.target_spacing = target_spacing
+        self.deepgrow_probability_train = deepgrow_probability_train
+        self.deepgrow_probability_val = deepgrow_probability_val
         self.max_train_interactions = max_train_interactions
         self.max_val_interactions = max_val_interactions
+        self.debug_mode = debug_mode
 
         super().__init__(model_dir, description, **kwargs)
 
@@ -76,27 +84,36 @@ class MyTrain(BasicTrainTask):
             Activationsd(keys="pred", sigmoid=True),
             ToNumpyd(keys=("image", "label", "pred")),
             FindDiscrepancyRegionsd(label="label", pred="pred", discrepancy="discrepancy"),
-            AddRandomGuidanced(guidance="guidance", discrepancy="discrepancy", probability="probability"),
+            PosNegClickProbAddRandomGuidanced(
+                guidance="guidance", discrepancy="discrepancy", probability="probability"
+            ),
             AddGuidanceSignald(image="image", guidance="guidance"),
-            DiscardAddGuidanced(keys="image", probability=0.6),
             ToTensord(keys=("image", "label")),
         ]
 
     def train_pre_transforms(self):
         return [
             LoadImaged(keys=("image", "label")),
-            RandZoomd(keys=("image", "label"), prob=0.4, min_zoom=0.3, max_zoom=1.9, mode=("bilinear", "nearest")),
+            # RandZoomd(keys=("image", "label"), prob=0.4, min_zoom=0.3, max_zoom=1.9, mode=("bilinear", "nearest")),
             AddChanneld(keys=("image", "label")),
-            Spacingd(keys=["image", "label"], pixdim=(1.0, 1.0, 1.0), mode=("bilinear", "nearest")),
+            Spacingd(keys=["image", "label"], pixdim=self.target_spacing, mode=("bilinear", "nearest")),
             Orientationd(keys=["image", "label"], axcodes="RAS"),
             NormalizeIntensityd(keys="image"),
             RandAdjustContrastd(keys="image", gamma=6),
             RandHistogramShiftd(keys="image", num_control_points=8, prob=0.5),
-            Resized(keys=("image", "label"), spatial_size=self.model_size, mode=("area", "nearest")),
+            RandRotated(
+                keys=("image", "label"),
+                range_x=0.1,
+                range_y=0.1,
+                range_z=0.1,
+                prob=0.4,
+                keep_size=True,
+                mode=("bilinear", "nearest"),
+            ),
+            Resized(keys=("image", "label"), spatial_size=self.spatial_size, mode=("area", "nearest")),
             FindAllValidSlicesd(label="label", sids="sids"),
             AddInitialSeedPointd(label="label", guidance="guidance", sids="sids"),
             AddGuidanceSignald(image="image", guidance="guidance"),
-            DiscardAddGuidanced(keys="image", probability=0.6),
             ToTensord(keys=("image", "label")),
         ]
 
@@ -107,23 +124,40 @@ class MyTrain(BasicTrainTask):
         ]
 
     def val_pre_transforms(self):
-        return self.train_pre_transforms()
+        return [
+            LoadImaged(keys=("image", "label")),
+            AddChanneld(keys=("image", "label")),
+            Spacingd(keys=["image", "label"], pixdim=self.target_spacing, mode=("bilinear", "nearest")),
+            Orientationd(keys=["image", "label"], axcodes="RAS"),
+            NormalizeIntensityd(keys="image"),
+            Resized(keys=("image", "label"), spatial_size=self.spatial_size, mode=("area", "nearest")),
+            FindAllValidSlicesd(label="label", sids="sids"),
+            AddInitialSeedPointd(label="label", guidance="guidance", sids="sids"),
+            AddGuidanceSignald(image="image", guidance="guidance"),
+            ToTensord(keys=("image", "label")),
+        ]
 
     def val_inferer(self):
         return SimpleInferer()
 
     def train_iteration_update(self):
         return Interaction(
+            deepgrow_probability=self.deepgrow_probability_train,
             transforms=self.get_click_transforms(),
             max_interactions=self.max_train_interactions,
-            key_probability="probability",
+            click_probability_key="probability",
             train=True,
         )
 
     def val_iteration_update(self):
         return Interaction(
+            deepgrow_probability=self.deepgrow_probability_val,
             transforms=self.get_click_transforms(),
             max_interactions=self.max_val_interactions,
-            key_probability="probability",
+            click_probability_key="probability",
             train=False,
         )
+
+    def train_handlers(self, output_dir, events_dir, evaluator):
+        handlers = super().train_handlers(output_dir, events_dir, evaluator)
+        return handlers.append(TensorBoardImageHandler(log_dir=events_dir)) if self.debug_mode else handlers

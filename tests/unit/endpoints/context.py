@@ -25,7 +25,7 @@ class BasicEndpointTestSuite(unittest.TestCase):
     base_dir = os.path.realpath(os.path.dirname(os.path.dirname(os.path.dirname(os.path.dirname(__file__)))))
     data_dir = os.path.join(base_dir, "tests", "data")
 
-    app_dir = os.path.join(base_dir, "sample-apps", "deepedit_left_atrium")
+    app_dir = os.path.join(base_dir, "sample-apps", "deepedit")
     studies = os.path.join(data_dir, "dataset", "heart")
     rand_id = random.randint(0, 9999)
 

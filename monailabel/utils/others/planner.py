@@ -39,27 +39,27 @@ class ExperimentPlanner(object):
         """
         logger.info("Using nvidia-smi command")
         if shutil.which("nvidia-smi") is None:
-            raise MONAILabelException(
-                MONAILabelError.APP_INIT_ERROR,
-                "nvidia-smi command doesn't work!",
-            )
-        result = subprocess.check_output(
-            ["nvidia-smi", "--query-gpu=memory.free", "--format=csv,nounits,noheader"], encoding="utf-8"
-        )
-
-        # --query-gpu=memory.used
-
-        # Convert lines into a dictionary
-        gpu_memory = [int(x) for x in result.strip().split("\n")]
-        gpu_memory_map = dict(zip(range(len(gpu_memory)), gpu_memory))
-
-        return gpu_memory_map
+            logger.info("nvidia-smi command didn't work! - Using default image size [128, 128, 64]")
+            return {0: 4300}
+        else:
+            result = subprocess.check_output(
+                ["nvidia-smi", "--query-gpu=memory.free", "--format=csv,nounits,noheader"], encoding="utf-8"
+            )  # --query-gpu=memory.used
+            # Convert lines into a dictionary
+            gpu_memory = [int(x) for x in result.strip().split("\n")]
+            gpu_memory_map = dict(zip(range(len(gpu_memory)), gpu_memory))
+            return gpu_memory_map
 
     def get_img_info(self):
         loader = LoadImage(reader="ITKReader")
         spacings = []
         img_sizes = []
         logger.info("Reading datastore metadata for heuristic planner ...")
+        if len(self.datastore.list_images()) == 0:
+            raise MONAILabelException(
+                MONAILabelError.APP_INIT_ERROR,
+                "Empty folder!",
+            )
         for n in tqdm(self.datastore.list_images()):
             _, mtdt = loader(self.datastore.get_image_uri(n))
             spacings.append(mtdt["spacing"])
@@ -68,7 +68,9 @@ class ExperimentPlanner(object):
         img_sizes = np.array(img_sizes)
 
         self.target_spacing = np.mean(spacings, 0)
-        self.target_img_size = np.max(img_sizes, 0)
+        self.target_img_size = np.mean(img_sizes, 0, np.int64)
+        # Changing from DHW to HDW order
+        self.target_img_size = np.array([self.target_img_size[1], self.target_img_size[2], self.target_img_size[0]])
 
     def get_target_img_size(self):
         # This should return an image according to the free gpu memory available
@@ -86,7 +88,11 @@ class ExperimentPlanner(object):
             "17700": [256, 256, 128],
         }
         idx = np.abs(np.array(memory_use) - self.get_gpu_memory_map()[0]).argmin()
-        return sizes[str(memory_use[idx])]
+        img_size_gpu = sizes[str(memory_use[idx])]
+        if img_size_gpu[0] > self.target_img_size[0]:
+            return self.target_img_size
+        else:
+            return sizes[str(memory_use[idx])]
 
     def get_target_spacing(self):
         return np.around(self.target_spacing)

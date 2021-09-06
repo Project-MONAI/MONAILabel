@@ -32,7 +32,7 @@ from monailabel.utils.others.post import Restored
 
 class Segmentation(InferTask):
     """
-    This is a generic DeepEdit.
+    This provides Inference Engine for pre-trained model over MSD Dataset.
     """
 
     def __init__(
@@ -40,9 +40,11 @@ class Segmentation(InferTask):
         path,
         network=None,
         type=InferType.SEGMENTATION,
-        labels="generic",
+        labels="organ",
         dimension=3,
-        description="A pre-trained model for volumetric (3D) segmentation",
+        spatial_size=(128, 128, 64),
+        target_spacing=(1.0, 1.0, 1.0),
+        description="A DeepEdit model for volumetric (3D) segmentation over 3D Images",
     ):
         super().__init__(
             path=path,
@@ -56,14 +58,17 @@ class Segmentation(InferTask):
             output_json_key="result",
         )
 
+        self.spatial_size = spatial_size
+        self.target_spacing = target_spacing
+
     def pre_transforms(self):
         return [
             LoadImaged(keys="image"),
             AddChanneld(keys="image"),
-            Spacingd(keys="image", pixdim=(1.0, 1.0, 1.0), mode="bilinear"),
+            Spacingd(keys="image", pixdim=self.target_spacing, mode="bilinear"),
             Orientationd(keys="image", axcodes="RAS"),
             NormalizeIntensityd(keys="image"),
-            Resized(keys="image", spatial_size=(128, 128, 128), mode="area"),
+            Resized(keys="image", spatial_size=self.spatial_size, mode="area"),
             DiscardAddGuidanced(keys="image"),
             ToTensord(keys="image"),
         ]
@@ -96,9 +101,9 @@ class Deepgrow(InferTask):
         network=None,
         type=InferType.DEEPGROW,
         dimension=3,
-        description="A 3D DeepEdit model based on DynUNET",
-        spatial_size=(128, 128),
-        model_size=(128, 128, 128),
+        description="A pre-trained 3D DeepGrow model based on UNET",
+        spatial_size=(128, 128, 64),
+        target_spacing=(1.0, 1.0, 1.0),
     ):
         super().__init__(
             path=path,
@@ -110,19 +115,19 @@ class Deepgrow(InferTask):
         )
 
         self.spatial_size = spatial_size
-        self.model_size = model_size
+        self.target_spacing = target_spacing
 
     def pre_transforms(self):
         return [
             LoadImaged(keys="image"),
             AddChanneld(keys="image"),
-            Spacingd(keys="image", pixdim=(1.0, 1.0, 1.0), mode="bilinear"),
+            Spacingd(keys="image", pixdim=self.target_spacing, mode="bilinear"),
             Orientationd(keys="image", axcodes="RAS"),
             SqueezeDimd(keys="image", dim=0),
             AddGuidanceFromPointsd(ref_image="image", guidance="guidance", dimensions=3),
             AddChanneld(keys="image"),
             NormalizeIntensityd(keys="image"),
-            Resized(keys="image", spatial_size=self.model_size, mode="area"),
+            Resized(keys="image", spatial_size=self.spatial_size, mode="area"),
             ResizeGuidanceCustomd(guidance="guidance", ref_image="image"),
             AddGuidanceSignald(image="image", guidance="guidance"),
             ToTensord(keys="image"),

@@ -344,12 +344,17 @@ class MONAILabelWidget(ScriptedLoadableModuleWidget, VTKObservationMixin):
             self.updateServerSettings()
             self.reportProgress(60)
 
+            roiNode = slicer.mrmlScene.GetFirstNodeByClass("vtkMRMLAnnotationROINode")
+            # if roi node found, then try to get roi
+            selected_roi = self.getROIPointsXYZ(roiNode)
+
             # send scribbles + label to server along with selected scribbles method
             scribblesMethod = self.ui.scribblesMethodSelector.currentText
+            params = self.getParamsFromConfig("infer", scribblesMethod)
+            params.update({"roi": selected_roi})
+
             image_file = self.current_sample["id"]
-            result_file, params = self.logic.infer(
-                scribblesMethod, image_file, self.getParamsFromConfig("infer", scribblesMethod), scribbles_in
-            )
+            result_file, params = self.logic.infer(scribblesMethod, image_file, params, scribbles_in)
 
             # display result from server
             self.reportProgress(90)
@@ -371,6 +376,32 @@ class MONAILabelWidget(ScriptedLoadableModuleWidget, VTKObservationMixin):
 
             if result_file and os.path.exists(result_file):
                 os.unlink(result_file)
+
+    def getROIPointsXYZ(self, roiNode):
+        if roiNode == None:
+            return []
+
+        v = self._volumeNode
+        RasToIjkMatrix = vtk.vtkMatrix4x4()
+        v.GetRASToIJKMatrix(RasToIjkMatrix)
+
+        roi_points_ras = [0.0] * 6
+        roiNode.GetBounds(roi_points_ras)
+
+        min_points_ras = [roi_points_ras[0], roi_points_ras[2], roi_points_ras[4], 1.0]
+        max_points_ras = [roi_points_ras[0 + 1], roi_points_ras[2 + 1], roi_points_ras[4 + 1], 1.0]
+
+        min_points_ijk = RasToIjkMatrix.MultiplyDoublePoint(min_points_ras)
+        max_points_ijk = RasToIjkMatrix.MultiplyDoublePoint(max_points_ras)
+
+        min_points_ijk = [round(i) for i in min_points_ijk]
+        max_points_ijk = [round(i) for i in max_points_ijk]
+
+        roi_points_ijk = [val for pair in zip(min_points_ijk[0:3], max_points_ijk[0:3]) for val in pair]
+        logging.debug("RAS: {}; IJK: {}".format(roi_points_ras, roi_points_ijk))
+        # print("RAS: {}; IJK: {}".format(roi_points_ras, roi_points_ijk))
+
+        return roi_points_ijk
 
     def onClearScribblesSegmentNodes(self):
         # more explanation on this at:
