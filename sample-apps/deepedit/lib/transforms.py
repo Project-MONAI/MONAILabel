@@ -9,4 +9,8 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-from .random import Random
+import logging
+
+logger = logging.getLogger(__name__)
+
+# You can write your transforms here... which can be used in your train/infer tasks

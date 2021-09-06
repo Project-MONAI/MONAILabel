@@ -9,4 +9,6 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-from .random import Random
+from .activelearning import MyStrategy
+from .infer import Deepgrow, Segmentation
+from .train import MyTrain
