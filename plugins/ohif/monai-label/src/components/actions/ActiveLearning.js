@@ -3,7 +3,11 @@ import React from 'react';
 import './OptionTable.styl';
 import BaseTab from './BaseTab';
 import cornerstoneTools from 'cornerstone-tools';
-import { flattenLabelmaps, getLabelMaps } from '../../utils/SegmentationUtils';
+import {
+  flattenLabelmaps,
+  getFirstSegmentId,
+  getLabelMaps,
+} from '../../utils/SegmentationUtils';
 import NextSampleForm from './NextSampleForm';
 
 export default class OptionTable extends BaseTab {
@@ -12,11 +16,20 @@ export default class OptionTable extends BaseTab {
     this.state = {
       strategy: 'random',
       training: false,
+      segmentId: null,
     };
   }
 
   onChangeStrategy = evt => {
     this.setState({ strategy: evt.target.value });
+  };
+
+  onSegmentSelected = id => {
+    this.setState({ segmentId: id });
+  };
+
+  onSegmentDeleted = id => {
+    this.setState({ segmentId: null });
   };
 
   onClickNextSample = async () => {
@@ -50,12 +63,12 @@ export default class OptionTable extends BaseTab {
     } else {
       this.uiModelService.show({
         content: NextSampleForm,
-        title: 'Active Learning - Next Sample',
         contentProps: {
           info: response.data,
         },
-        customClassName: 'nextSampleForm',
         shouldCloseOnEsc: true,
+        title: 'Active Learning - Next Sample',
+        customClassName: 'nextSampleForm',
       });
     }
   };
@@ -165,6 +178,10 @@ export default class OptionTable extends BaseTab {
   }
 
   render() {
+    const segmentId = this.state.segmentId
+      ? this.state.segmentId
+      : getFirstSegmentId(this.props.viewConstants.element);
+
     const ds = this.props.info.datastore;
     const completed = ds && ds.completed ? ds.completed : 0;
     const total = ds && ds.total ? ds.total : 1;
@@ -231,6 +248,7 @@ export default class OptionTable extends BaseTab {
                   <button
                     className="actionInput"
                     onClick={this.onClickSubmitLabel}
+                    disabled={!segmentId}
                   >
                     Submit Label
                   </button>

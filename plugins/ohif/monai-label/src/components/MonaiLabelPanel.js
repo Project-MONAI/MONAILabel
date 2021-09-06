@@ -33,6 +33,7 @@ export default class MonaiLabelPanel extends Component {
     this.settings = React.createRef();
     this.actions = {
       options: React.createRef(),
+      activelearning: React.createRef(),
       segmentation: React.createRef(),
       smartedit: React.createRef(),
     };

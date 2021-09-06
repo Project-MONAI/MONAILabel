@@ -131,6 +131,7 @@ export default class SmartEdit extends BaseTab {
 
   onSegmentDeleted = id => {
     this.clearPoints(id);
+    this.setState({ segmentId: null });
   };
   onSegmentSelected = id => {
     this.initPoints(id);
