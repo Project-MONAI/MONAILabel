@@ -3,7 +3,11 @@ import React from 'react';
 import './OptionTable.styl';
 import BaseTab from './BaseTab';
 import cornerstoneTools from 'cornerstone-tools';
-import { flattenLabelmaps, getLabelMaps } from '../../utils/SegmentationUtils';
+import {
+  flattenLabelmaps,
+  getFirstSegmentId,
+  getLabelMaps,
+} from '../../utils/SegmentationUtils';
 import NextSampleForm from './NextSampleForm';
 
 export default class OptionTable extends BaseTab {
@@ -12,11 +16,20 @@ export default class OptionTable extends BaseTab {
     this.state = {
       strategy: 'random',
       training: false,
+      segmentId: null,
     };
   }
 
   onChangeStrategy = evt => {
     this.setState({ strategy: evt.target.value });
+  };
+
+  onSegmentSelected = id => {
+    this.setState({ segmentId: id });
+  };
+
+  onSegmentDeleted = id => {
+    this.setState({ segmentId: null });
   };
 
   onClickNextSample = async () => {
@@ -27,7 +40,13 @@ export default class OptionTable extends BaseTab {
       duration: 60000,
     });
 
-    const response = await this.props.client().next_sample(this.state.strategy);
+    const strategy = this.state.strategy;
+    const config = this.props.onOptionsConfig();
+    const params =
+      config && config.activelearning && config.activelearning[strategy]
+        ? config.activelearning[strategy]
+        : {};
+    const response = await this.props.client().next_sample(strategy, params);
     if (!nid) {
       window.snackbar.hideAll();
     } else {
@@ -44,22 +63,25 @@ export default class OptionTable extends BaseTab {
     } else {
       this.uiModelService.show({
         content: NextSampleForm,
-        title: 'Active Learning - Next Sample',
         contentProps: {
           info: response.data,
         },
-        customClassName: 'nextSampleForm',
         shouldCloseOnEsc: true,
+        title: 'Active Learning - Next Sample',
+        customClassName: 'nextSampleForm',
       });
     }
   };
 
   onClickUpdateModel = async () => {
     const training = this.state.training;
-    console.log('Current training status: ' + training);
+    console.debug('Current training status: ' + training);
+    const config = this.props.onOptionsConfig();
+    const params = config && config.train && config.train ? config.train : {};
+
     const response = training
       ? await this.props.client().stop_train()
-      : await this.props.client().run_train({});
+      : await this.props.client().run_train(params);
 
     if (response.status !== 200) {
       this.notification.show({
@@ -111,13 +133,12 @@ export default class OptionTable extends BaseTab {
         continue;
       }
 
-      console.log(metadata);
-      console.log(labelmap3D.buffer);
+      console.debug(metadata);
 
       const segments = flattenLabelmaps(
         getLabelMaps(this.props.viewConstants.element)
       );
-      console.log(segments);
+      console.debug(segments);
 
       if (metadata.length !== segments.length + 1) {
         console.warn('Segments and Metadata NOT matching; So Ignore');
@@ -131,7 +152,7 @@ export default class OptionTable extends BaseTab {
 
       const response = await this.props
         .client()
-        .save_label(params, image, label);
+        .save_label(image, label, params);
 
       if (response.status !== 200) {
         this.notification.show({
@@ -153,11 +174,14 @@ export default class OptionTable extends BaseTab {
 
   async componentDidMount() {
     const training = await this.props.client().is_train_running();
-    console.log('Training: ' + training);
     this.setState({ training: training });
   }
 
   render() {
+    const segmentId = this.state.segmentId
+      ? this.state.segmentId
+      : getFirstSegmentId(this.props.viewConstants.element);
+
     const ds = this.props.info.datastore;
     const completed = ds && ds.completed ? ds.completed : 0;
     const total = ds && ds.total ? ds.total : 1;
@@ -167,8 +191,7 @@ export default class OptionTable extends BaseTab {
     const ts = this.props.info.train_stats
       ? Object.values(this.props.info.train_stats)[0]
       : null;
-    console.log(this.props.info.train_stats);
-    console.log(ts);
+
     const epochs = ts ? (ts.total_time ? 0 : ts.epoch ? ts.epoch : 1) : 0;
     const total_epochs = ts && ts.total_epochs ? ts.total_epochs : 1;
     const training = Math.round(100 * (epochs / total_epochs)) + '%';
@@ -225,6 +248,7 @@ export default class OptionTable extends BaseTab {
                   <button
                     className="actionInput"
                     onClick={this.onClickSubmitLabel}
+                    disabled={!segmentId}
                   >
                     Submit Label
                   </button>

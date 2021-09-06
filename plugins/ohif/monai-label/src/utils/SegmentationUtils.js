@@ -40,16 +40,17 @@ function getImageIdsForDisplaySet(
 function getLabelMaps(element) {
   let labelmaps = [];
   if (!element) {
-    console.info('element is empty... weird...');
+    console.warn('element is empty... weird...');
     return labelmaps;
   }
 
   const segmentationModule = cornerstoneTools.getModule('segmentation');
   const { labelmaps3D } = getters.labelmaps3D(element);
   if (!labelmaps3D) {
-    console.info('LabelMap3D is empty.. so zero segments');
+    console.debug('LabelMap3D is empty.. so zero segments');
     return labelmaps;
   }
+  console.debug(labelmaps3D);
 
   for (let i = 0; i < labelmaps3D.length; i++) {
     let segments = [];
@@ -62,6 +63,10 @@ function getLabelMaps(element) {
         : null;
     const colorLutTable =
       segmentationModule.state.colorLutTables[labelmap3D.colorLUTIndex];
+    console.debug('Labelmap3D Index = ' + i);
+    console.debug('labelmap3D.colorLUTIndex = ' + labelmap3D.colorLUTIndex);
+    console.debug(labelmap3D);
+    console.debug(colorLutTable);
 
     if (!metadata) {
       console.warn('Missing Meta Data for Label; so ignore');
@@ -71,6 +76,9 @@ function getLabelMaps(element) {
         if (!meta) {
           continue;
         }
+
+        console.debug('SegmentNumber = ' + meta.SegmentNumber);
+        console.debug(meta);
 
         const id = i + '+' + meta.SegmentNumber;
         const color = colorLutTable[meta.SegmentNumber];
@@ -94,6 +102,13 @@ function getLabelMaps(element) {
 
 function flattenLabelmaps(labelmaps) {
   return [].concat.apply([], labelmaps);
+}
+
+function getFirstSegmentId(element) {
+  const labelmaps = getLabelMaps(element);
+  const segments = flattenLabelmaps(labelmaps);
+  console.debug(segments);
+  return segments && segments.length ? segments[0].id : null;
 }
 
 /**
@@ -158,10 +173,15 @@ function createSegment(
 
   // Add new colorLUT if required for new labelmapIndex
   const { state } = cornerstoneTools.getModule('segmentation');
+  console.debug(state.colorLutTables);
   if (state.colorLutTables.length <= activeLabelmapIndex) {
+    console.debug('Adding new Color LUT Table for: ' + activeLabelmapIndex);
     setters.colorLUT(activeLabelmapIndex);
+    console.debug(state.colorLutTables);
+    labelmap3D.colorLUTIndex = activeLabelmapIndex;
   }
-  labelmap3D.colorLUTIndex = activeLabelmapIndex;
+
+  console.debug('labelmap3D.colorLUTIndex = ' + labelmap3D.colorLUTIndex);
 
   // TODO:: which one is standard metadata.data[] or metadata[] ???
   if (!labelmap3D.metadata || !labelmap3D.metadata.data) {
@@ -177,7 +197,7 @@ function createSegment(
       break;
     }
   }
-  console.info(
+  console.debug(
     'Next Segment: ' + nextSegmentId + '; LabelMap: ' + activeLabelmapIndex
   );
 
@@ -436,4 +456,5 @@ export {
   updateSegment,
   deleteSegment,
   updateSegmentMeta,
+  getFirstSegmentId,
 };

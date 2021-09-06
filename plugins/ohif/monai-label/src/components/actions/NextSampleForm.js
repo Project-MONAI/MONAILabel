@@ -13,12 +13,17 @@ export default class NextSampleForm extends Component {
   }
 
   onSubmit = () => {
+    // TODO:: OHIF Doesn't support loading exact series in URI
+    let path = window.location.pathname.split('/');
+    path[path.length - 1] = this.props.info.StudyInstanceUID;
+
+    const pathname = path.join('/');
+    console.info(pathname);
+
     let msg =
       'This action will reload current page.  Are you sure to continue?';
-
-    // TODO:: OHIF Doesn't support loading exact series in URI
     if (!window.confirm(msg)) return;
-    window.location.pathname = '/ohif/viewer/' + this.props.info.StudyInstanceUID;
+    window.location.pathname = pathname;
   };
 
   render() {
