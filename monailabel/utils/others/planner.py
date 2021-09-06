@@ -39,10 +39,7 @@ class ExperimentPlanner(object):
         """
         logger.info("Using nvidia-smi command")
         if shutil.which("nvidia-smi") is None:
-            raise MONAILabelException(
-                MONAILabelError.APP_INIT_ERROR,
-                "nvidia-smi command doesn't work!",
-            )
+            raise logger.info("nvidia-smi command didn't work! - Using default image size [512, 512, 128]")
         result = subprocess.check_output(
             ["nvidia-smi", "--query-gpu=memory.free", "--format=csv,nounits,noheader"], encoding="utf-8"
         )
