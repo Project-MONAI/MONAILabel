@@ -60,6 +60,11 @@ class ExperimentPlanner(object):
         spacings = []
         img_sizes = []
         logger.info("Reading datastore metadata for heuristic planner ...")
+        if len(self.datastore.list_images()) == 0:
+            raise MONAILabelException(
+                MONAILabelError.APP_INIT_ERROR,
+                "Empty folder!",
+            )
         for n in tqdm(self.datastore.list_images()):
             _, mtdt = loader(self.datastore.get_image_uri(n))
             spacings.append(mtdt["spacing"])
@@ -68,7 +73,7 @@ class ExperimentPlanner(object):
         img_sizes = np.array(img_sizes)
 
         self.target_spacing = np.mean(spacings, 0)
-        self.target_img_size = np.max(img_sizes, 0)
+        self.target_img_size = np.mean(img_sizes, 0, np.int64)
 
     def get_target_img_size(self):
         # This should return an image according to the free gpu memory available
@@ -86,7 +91,11 @@ class ExperimentPlanner(object):
             "17700": [256, 256, 128],
         }
         idx = np.abs(np.array(memory_use) - self.get_gpu_memory_map()[0]).argmin()
-        return sizes[str(memory_use[idx])]
+        img_size_gpu = sizes[str(memory_use[idx])]
+        if img_size_gpu[0] > self.target_img_size[0]:
+            return self.target_img_size
+        else:
+            return sizes[str(memory_use[idx])]
 
     def get_target_spacing(self):
         return np.around(self.target_spacing)
