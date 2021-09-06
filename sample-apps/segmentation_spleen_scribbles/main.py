@@ -16,9 +16,8 @@ from lib import (
     MyStrategy,
     MyTrain,
     SegmentationWithWriteLogits,
-    SpleenInteractiveGraphCut,
-    SpleenISegCRF,
     SpleenISegGraphCut,
+    SpleenISegGraphcutColdstart,
     SpleenISegSimpleCRF,
 )
 from monai.apps import load_from_mmar
@@ -51,10 +50,9 @@ class MyApp(MONAILabelApp):
             "Spleen_Segmentation": SegmentationWithWriteLogits(
                 self.final_model, load_from_mmar(self.mmar, self.model_dir)
             ),
+            "Coldstart->ISeg+GraphCut": SpleenISegGraphcutColdstart(),
             "ISeg+GraphCut": SpleenISegGraphCut(),
-            "ISeg+CRF": SpleenISegCRF(),
             "ISeg+SimpleCRF": SpleenISegSimpleCRF(),
-            "ISeg+InteractiveGraphCut": SpleenInteractiveGraphCut(),
         }
 
         # Simple way to Add deepgrow 2D+3D models for infer tasks
@@ -80,9 +78,9 @@ class MyApp(MONAILabelApp):
         # add saved logits into request
         if self._infers[request.get("model")].type == InferType.SCRIBBLES:
             saved_labels = self.datastore().get_labels_by_image_id(image)
-            for label, tag in saved_labels.items():
+            for tag, label in saved_labels.items():
                 if tag == "logits":
-                    request["logits"] = self.datastore().get_label_uri(label)
+                    request["logits"] = self.datastore().get_label_uri(label, tag)
             logger.info(f"Updated request: {request}")
 
         result = super().infer(request)
@@ -91,7 +89,7 @@ class MyApp(MONAILabelApp):
         # save logits
         logits = result_params.get("logits")
         if logits and self._infers[request.get("model")].type == InferType.SEGMENTATION:
-            self.datastore().save_label(image, logits, "logits", None)
+            self.datastore().save_label(image, logits, "logits", {})
             os.unlink(logits)
 
         result_params.pop("logits", None)

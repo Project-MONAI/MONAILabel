@@ -52,10 +52,10 @@ def get_scu(query, output_dir, query_level="SERIES", host="127.0.0.1", port="424
     logger.info(f"Time to run GET-SCU: {time.time() - start} (sec)")
 
 
-def score_scu(input, host="127.0.0.1", port="4242", aet="MONAILABEL"):
+def score_scu(input_file, host="127.0.0.1", port="4242", aet="MONAILABEL"):
     start = time.time()
-    inputs = input if isinstance(input, list) else [input]
-    for i in inputs:
+    input_files = input_file if isinstance(input_file, list) else [input_file]
+    for i in input_files:
         run_command("python", ["-m", "pynetdicom", "storescu", host, port, "-aet", aet, i])
     logger.info(f"Time to run STORE-SCU: {time.time() - start} (sec)")
 
@@ -71,16 +71,16 @@ def dicom_web_download_series(study_id, series_id, save_dir, client: DICOMwebCli
     os.makedirs(save_dir, exist_ok=True)
     instances = client.retrieve_series(study_id, series_id)
     for instance in instances:
-        instance_id = instance["SOPInstanceUID"]
+        instance_id = str(instance["SOPInstanceUID"].value)
         file_name = os.path.join(save_dir, f"{instance_id}.dcm")
         instance.save_as(file_name)
 
     logger.info(f"Time to download: {time.time() - start} (sec)")
 
 
-def dicom_web_upload_dcm(input, client: DICOMwebClient):
+def dicom_web_upload_dcm(input_file, client: DICOMwebClient):
     start = time.time()
-    dataset = dcmread(input)
+    dataset = dcmread(input_file)
     result = client.store_instances([dataset])
 
     url = ""

@@ -12,18 +12,30 @@
 from copy import deepcopy
 from typing import Optional
 
-import denseCRF
-import denseCRF3D
 import numpy as np
 import torch
-from monai.networks.blocks import CRF
 from monai.transforms import Transform
-from scipy.special import softmax
+from monai.utils import optional_import
 
 from monailabel.utils.others.writer import Writer
 
-from .utils import interactive_maxflow2d, interactive_maxflow3d, make_iseg_unary, maxflow2d, maxflow3d
+from .utils import (
+    interactive_maxflow2d,
+    interactive_maxflow3d,
+    make_iseg_unary,
+    make_likelihood_image_histogram,
+    maxflow2d,
+    maxflow3d,
+)
 
+# monai crf is optional import as it requires compiling monai C++/Cuda code
+monaicrf, has_monaicrf = optional_import("monai.networks.blocks", name="CRF")
+
+# simplecrf is option import as it requires compiling C++ code
+densecrf, has_densecrf = optional_import("denseCRF")
+densecrf3d, has_densecrf3d = optional_import("denseCRF3D")
+
+softmax, has_softmax = optional_import("scipy.special", name="softmax")
 
 #####################################
 # Interactive Segmentation Transforms
@@ -42,7 +54,7 @@ class InteractiveSegmentationTransform(Transform):
         # check if logits is a true prob, if not then apply softmax
         if not np.allclose(np.sum(data, axis=axis), 1.0):
             print("found non normalized logits, normalizing using Softmax")
-            data = torch.softmax(torch.from_numpy(data), dim=axis).numpy()
+            data = softmax(data, axis=axis)
 
         return data
 
@@ -64,6 +76,101 @@ class InteractiveSegmentationTransform(Transform):
 
 #####################################
 #####################################
+
+#########################################
+#  Add Background Scribbles from bbox ROI
+#########################################
+class AddBackgroundScribblesFromROId(InteractiveSegmentationTransform):
+    def __init__(
+        self,
+        scribbles: str,
+        roi_key: str = "roi",
+        meta_key_postfix: str = "meta_dict",
+        scribbles_bg_label: int = 2,
+        scribbles_fg_label: int = 3,
+    ) -> None:
+        super(AddBackgroundScribblesFromROId, self).__init__()
+        self.scribbles = scribbles
+        self.roi_key = roi_key
+        self.meta_key_postfix = meta_key_postfix
+        self.scribbles_bg_label = scribbles_bg_label
+        self.scribbles_fg_label = scribbles_fg_label
+
+    def __call__(self, data):
+        d = dict(data)
+
+        # read relevant terms from data
+        scribbles = self._fetch_data(d, self.scribbles)
+
+        # get any existing roi information and apply it to scribbles, skip otherwise
+        selected_roi = d.get(self.roi_key, None)
+        if selected_roi:
+            mask = np.ones_like(scribbles).astype(np.bool)
+            mask[
+                :,
+                selected_roi[0] : selected_roi[1],
+                selected_roi[2] : selected_roi[3],
+                selected_roi[4] : selected_roi[5],
+            ] = 0
+
+            # prune outside roi region as bg scribbles
+            scribbles[mask] = self.scribbles_bg_label
+
+        # return new scribbles
+        d[self.scribbles] = scribbles
+
+        return d
+
+
+#########################################
+#########################################
+
+#############################
+#  Make Likelihood Transforms
+#############################
+class MakeLikelihoodFromScribblesHistogramd(InteractiveSegmentationTransform):
+    def __init__(
+        self,
+        image: str,
+        scribbles: str,
+        meta_key_postfix: str = "meta_dict",
+        post_proc_label: str = "prob",
+        scribbles_bg_label: int = 2,
+        scribbles_fg_label: int = 3,
+    ) -> None:
+        super(MakeLikelihoodFromScribblesHistogramd, self).__init__()
+        self.image = image
+        self.scribbles = scribbles
+        self.scribbles_bg_label = scribbles_bg_label
+        self.scribbles_fg_label = scribbles_fg_label
+        self.meta_key_postfix = meta_key_postfix
+        self.post_proc_label = post_proc_label
+
+    def __call__(self, data):
+        d = dict(data)
+
+        # copy affine meta data from image input
+        d = self._copy_affine(d, src=self.image, dst=self.post_proc_label)
+
+        # read relevant terms from data
+        image = self._fetch_data(d, self.image)
+        scribbles = self._fetch_data(d, self.scribbles)
+
+        # make likelihood image
+        post_proc_label = make_likelihood_image_histogram(
+            image,
+            scribbles,
+            scribbles_bg_label=self.scribbles_bg_label,
+            scribbles_fg_label=self.scribbles_fg_label,
+            return_prob=True,
+        )
+        d[self.post_proc_label] = post_proc_label
+
+        return d
+
+
+#############################
+#############################
 
 ############################
 #  Prob Softening Transforms
@@ -368,7 +475,7 @@ class ApplyCRFOptimisationd(InteractiveSegmentationTransform):
         pairwise_term = self._fetch_data(d, self.pairwise)
 
         # initialise MONAI's CRF layer
-        crf_layer = CRF(
+        crf_layer = monaicrf(
             iterations=self.iterations,
             bilateral_weight=self.bilateral_weight,
             gaussian_weight=self.gaussian_weight,
@@ -504,7 +611,7 @@ class ApplySimpleCRFOptimisationd(InteractiveSegmentationTransform):
             # Bilateral color
             simplecrf_params["BilateralModsStds"] = (self.bilateral_color_sigma,)
 
-            post_proc_label = denseCRF3D.densecrf3d(pairwise_term, unary_term, simplecrf_params)
+            post_proc_label = densecrf3d.densecrf3d(pairwise_term, unary_term, simplecrf_params)
         else:
             # 2D is not yet tested within this framework
             # 2D parameters are different, so prepare them
@@ -517,7 +624,7 @@ class ApplySimpleCRFOptimisationd(InteractiveSegmentationTransform):
                 self.iterations,
             )
 
-            post_proc_label = denseCRF.densecrf(pairwise_term, unary_term, simplecrf_params)
+            post_proc_label = densecrf.densecrf(pairwise_term, unary_term, simplecrf_params)
 
         post_proc_label = np.expand_dims(post_proc_label, axis=0)
         d[self.post_proc_label] = post_proc_label

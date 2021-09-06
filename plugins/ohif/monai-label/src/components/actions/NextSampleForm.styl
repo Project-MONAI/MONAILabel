@@ -1,0 +1,41 @@
+.nextSampleForm
+  width: 750px
+
+  .actionButton
+    border: 1px solid var(--ui-border-color-active)
+    border-radius: 15px
+    background-color: var(--active-color)
+    color: var(--ui-gray-dark)
+    line-height: 25px
+    padding: 0 15px
+    outline: none
+    cursor: pointer
+
+    &:hover, &:active
+      background-color: var(--ui-sky-blue)
+
+    &:disabled
+      background-color: var(--ui-sky-blue)
+
+    svg
+      margin-right: 4px
+      position: relative
+      top: 2px
+
+  .optionsTable {
+    font-family: arial, sans-serif;
+    border-collapse: collapse;
+    width: 100%;
+    font-size: smaller;
+  }
+
+  .optionsTable th {
+    border: 1px solid #dddddd;
+    text-align: left;
+    background-color: lightslategray;
+  }
+
+  .optionsTable td {
+    border: 1px solid #dddddd;
+    text-align: left;
+  }

@@ -12,16 +12,17 @@
 from monai.transforms import AddChanneld, Compose, LoadImaged, ScaleIntensityRanged, Spacingd
 
 from monailabel.interfaces.tasks import InferTask, InferType
-from monailabel.utils.others.post import BoundingBoxd, Restored
-
-from .transforms import (
+from monailabel.scribbles.transforms import (
+    AddBackgroundScribblesFromROId,
     ApplyCRFOptimisationd,
     ApplyGraphCutOptimisationd,
     ApplyISegGraphCutPostProcd,
     ApplySimpleCRFOptimisationd,
     MakeISegUnaryd,
+    MakeLikelihoodFromScribblesHistogramd,
     SoftenProbSoftmax,
 )
+from monailabel.utils.others.post import BoundingBoxd, Restored
 
 
 class SpleenPostProc(InferTask):
@@ -107,6 +108,68 @@ class SpleenISegCRF(SpleenPostProc):
                 ),
                 # optimiser
                 ApplyCRFOptimisationd(unary="unary", pairwise="image", post_proc_label="pred", device="cpu"),
+            ]
+        )
+
+
+class SpleenISegGraphcutColdstart(SpleenPostProc):
+    """
+    Defines ISeg+Graphcut based cold start task for Spleen segmentation from the following paper:
+
+    Wang, Guotai, et al. "Interactive medical image segmentation using deep learning with image-specific fine tuning."
+    IEEE transactions on medical imaging 37.7 (2018): 1562-1573. (preprint: https://arxiv.org/pdf/1710.04043.pdf)
+
+    This task takes as input 1) original image volume and 2) scribbles from user
+    indicating foreground and background regions. A likelihood volume is generated using histogram method.
+    User-scribbles are incorporated using Equation 7 on page 4 of the paper.
+
+    SimpleCRF's Graphcut layer is used to optimise Equation 5 from the paper, where unaries come from Equation 7
+    and pairwise is the original input volume.
+    """
+
+    def __init__(
+        self,
+        dimension=3,
+        description="A post processing step with ISeg + Graphcut cold start for Spleen segmentation",
+    ):
+        super().__init__(dimension, description)
+
+    def pre_transforms(self):
+        return [
+            LoadImaged(keys=["image", "label"]),
+            AddChanneld(keys=["image", "label"]),
+            AddBackgroundScribblesFromROId(scribbles="label", scribbles_bg_label=2, scribbles_fg_label=3),
+            # at the moment optimisers are bottleneck taking a long time,
+            # therefore scaling non-isotropic with big spacing
+            Spacingd(keys=["image"], pixdim=[2.5, 2.5, 5.0]),
+            Spacingd(keys=["label"], pixdim=[2.5, 2.5, 5.0], mode="nearest"),
+            ScaleIntensityRanged(keys="image", a_min=-300, a_max=200, b_min=0.0, b_max=1.0, clip=True),
+            # SoftenProbSoftmax(logits="logits", prob="prob"),
+            MakeLikelihoodFromScribblesHistogramd(
+                image="image", scribbles="label", post_proc_label="prob", scribbles_bg_label=2, scribbles_fg_label=3
+            ),
+        ]
+
+    def inferer(self):
+        return Compose(
+            [
+                # unary term maker
+                MakeISegUnaryd(
+                    image="image",
+                    logits="prob",
+                    scribbles="label",
+                    unary="unary",
+                    scribbles_bg_label=2,
+                    scribbles_fg_label=3,
+                ),
+                # optimiser
+                ApplyGraphCutOptimisationd(
+                    unary="unary",
+                    pairwise="image",
+                    post_proc_label="pred",
+                    lamda=1.0,
+                    sigma=0.1,
+                ),
             ]
         )
 

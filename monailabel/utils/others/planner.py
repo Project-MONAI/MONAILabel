@@ -8,12 +8,18 @@
 # WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 # See the License for the specific language governing permissions and
 # limitations under the License.
-
+import logging
+import shutil
 import subprocess
 from collections import OrderedDict
 
 import numpy as np
 from monai.transforms import LoadImage
+from tqdm import tqdm
+
+from monailabel.interfaces import MONAILabelError, MONAILabelException
+
+logger = logging.getLogger(__name__)
 
 
 class ExperimentPlanner(object):
@@ -31,6 +37,12 @@ class ExperimentPlanner(object):
             Keys are device ids as integers.
             Values are memory usage as integers in MB.
         """
+        logger.info("Using nvidia-smi command")
+        if shutil.which("nvidia-smi") is None:
+            raise MONAILabelException(
+                MONAILabelError.APP_INIT_ERROR,
+                "nvidia-smi command doesn't work!",
+            )
         result = subprocess.check_output(
             ["nvidia-smi", "--query-gpu=memory.free", "--format=csv,nounits,noheader"], encoding="utf-8"
         )
@@ -47,7 +59,13 @@ class ExperimentPlanner(object):
         loader = LoadImage(reader="ITKReader")
         spacings = []
         img_sizes = []
-        for n in self.datastore.list_images():
+        logger.info("Reading datastore metadata for heuristic planner ...")
+        if len(self.datastore.list_images()) == 0:
+            raise MONAILabelException(
+                MONAILabelError.APP_INIT_ERROR,
+                "Empty folder!",
+            )
+        for n in tqdm(self.datastore.list_images()):
             _, mtdt = loader(self.datastore.get_image_uri(n))
             spacings.append(mtdt["spacing"])
             img_sizes.append(mtdt["spatial_shape"])
@@ -55,7 +73,7 @@ class ExperimentPlanner(object):
         img_sizes = np.array(img_sizes)
 
         self.target_spacing = np.mean(spacings, 0)
-        self.target_img_size = np.max(img_sizes, 0)
+        self.target_img_size = np.mean(img_sizes, 0, np.int64)
 
     def get_target_img_size(self):
         # This should return an image according to the free gpu memory available
@@ -73,7 +91,11 @@ class ExperimentPlanner(object):
             "17700": [256, 256, 128],
         }
         idx = np.abs(np.array(memory_use) - self.get_gpu_memory_map()[0]).argmin()
-        return sizes[str(memory_use[idx])]
+        img_size_gpu = sizes[str(memory_use[idx])]
+        if img_size_gpu[0] > self.target_img_size[0]:
+            return self.target_img_size
+        else:
+            return sizes[str(memory_use[idx])]
 
     def get_target_spacing(self):
         return np.around(self.target_spacing)
