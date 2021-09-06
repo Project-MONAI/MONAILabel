@@ -56,6 +56,7 @@ class MyTrain(BasicTrainTask):
         deepgrow_probability_val=1.0,
         max_train_interactions=20,
         max_val_interactions=10,
+        debug_mode=False,
         **kwargs,
     ):
         self._network = network
@@ -65,6 +66,7 @@ class MyTrain(BasicTrainTask):
         self.deepgrow_probability_val = deepgrow_probability_val
         self.max_train_interactions = max_train_interactions
         self.max_val_interactions = max_val_interactions
+        self.debug_mode = debug_mode
 
         super().__init__(model_dir, description, **kwargs)
 
@@ -101,9 +103,9 @@ class MyTrain(BasicTrainTask):
             RandHistogramShiftd(keys="image", num_control_points=8, prob=0.5),
             RandRotated(
                 keys=("image", "label"),
-                range_x=0.3,
-                range_y=0.3,
-                range_z=0.3,
+                range_x=0.1,
+                range_y=0.1,
+                range_z=0.1,
                 prob=0.4,
                 keep_size=True,
                 mode=("bilinear", "nearest"),
@@ -158,5 +160,4 @@ class MyTrain(BasicTrainTask):
 
     def train_handlers(self, output_dir, events_dir, evaluator):
         handlers = super().train_handlers(output_dir, events_dir, evaluator)
-        handlers.append(TensorBoardImageHandler(log_dir=events_dir))
-        return handlers
+        return handlers.append(TensorBoardImageHandler(log_dir=events_dir)) if self.debug_mode else handlers

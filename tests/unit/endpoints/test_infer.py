@@ -22,7 +22,7 @@ class EndPointInfer(BasicEndpointTestSuite):
         if not torch.cuda.is_available():
             return
 
-        model = "left_atrium"
+        model = "automatic"
         image = "la_003"
 
         response = self.client.post(f"/infer/{model}?image={image}")

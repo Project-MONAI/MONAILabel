@@ -22,7 +22,7 @@ class EndPointInfer(unittest.TestCase):
         if not torch.cuda.is_available():
             return
 
-        model = "segmentation_left_atrium"
+        model = "automatic"
         image = "la_004.nii.gz"
 
         response = requests.post(f"{SERVER_URI}/infer/{model}?image={image}")
