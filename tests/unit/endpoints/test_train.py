@@ -22,7 +22,7 @@ class TestEndPointTrain(BasicEndpointTestSuite):
         if not torch.cuda.is_available():
             return
 
-        params = {"deepedit_left_atrium": {"max_epochs": 1, "name": "net_test_01", "val_split": 0.5}}
+        params = {"deepedit": {"max_epochs": 1, "name": "net_test_01", "val_split": 0.5}}
         response = self.client.post("/train/?run_sync=True", json=params)
         assert response.status_code == 200
         assert response.json()
@@ -31,7 +31,7 @@ class TestEndPointTrain(BasicEndpointTestSuite):
         if not torch.cuda.is_available():
             return
 
-        params = {"deepedit_left_atrium": {"max_epochs": 1, "name": "net_test_01", "val_split": 0.5}}
+        params = {"deepedit": {"max_epochs": 1, "name": "net_test_01", "val_split": 0.5}}
         response = self.client.post("/train/", json=params)
 
         assert response.status_code == 200
@@ -47,7 +47,7 @@ class TestEndPointTrain(BasicEndpointTestSuite):
         if not torch.cuda.is_available():
             return
 
-        params = {"deepedit_left_atrium": {"max_epochs": 3, "name": "net_test_01"}}
+        params = {"deepedit": {"max_epochs": 3, "name": "net_test_01"}}
         response = self.client.post("/train/", json=params)
         assert response.status_code == 200
 
