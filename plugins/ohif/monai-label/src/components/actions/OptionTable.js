@@ -25,7 +25,7 @@ export default class OptionTable extends BaseTab {
   };
 
   onChangeConfig = (s, n, k, evt) => {
-    console.log(s + ' => ' + n + ' => ' + k);
+    console.debug(s + ' => ' + n + ' => ' + k);
 
     const c = this.state.config;
     if (typeof c[s][n][k] === 'boolean') {

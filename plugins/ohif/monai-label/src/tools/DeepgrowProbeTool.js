@@ -43,10 +43,10 @@ export class DeepgrowProbeTool extends ProbeTool {
       res.x = eventData.currentPoints.image.x;
       res.y = eventData.currentPoints.image.y;
 
-      console.info(
+      console.debug(
         'TRIGGERING DEEPGROW PROB EVENT: ' + this.configuration.eventName
       );
-      console.info(res);
+      console.debug(res);
       triggerEvent(eventData.element, this.configuration.eventName, res);
     }
     return res;

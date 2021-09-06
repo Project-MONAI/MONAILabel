@@ -62,11 +62,9 @@ export default class OptionTable extends BaseTab {
 
   onClickUpdateModel = async () => {
     const training = this.state.training;
-    console.log('Current training status: ' + training);
+    console.debug('Current training status: ' + training);
     const config = this.props.onOptionsConfig();
     const params = config && config.train && config.train ? config.train : {};
-    console.log(config);
-    console.log(params);
 
     const response = training
       ? await this.props.client().stop_train()
@@ -122,13 +120,12 @@ export default class OptionTable extends BaseTab {
         continue;
       }
 
-      console.log(metadata);
-      console.log(labelmap3D.buffer);
+      console.debug(metadata);
 
       const segments = flattenLabelmaps(
         getLabelMaps(this.props.viewConstants.element)
       );
-      console.log(segments);
+      console.debug(segments);
 
       if (metadata.length !== segments.length + 1) {
         console.warn('Segments and Metadata NOT matching; So Ignore');
@@ -164,7 +161,6 @@ export default class OptionTable extends BaseTab {
 
   async componentDidMount() {
     const training = await this.props.client().is_train_running();
-    console.log('Training: ' + training);
     this.setState({ training: training });
   }
 
@@ -178,8 +174,7 @@ export default class OptionTable extends BaseTab {
     const ts = this.props.info.train_stats
       ? Object.values(this.props.info.train_stats)[0]
       : null;
-    console.log(this.props.info.train_stats);
-    console.log(ts);
+
     const epochs = ts ? (ts.total_time ? 0 : ts.epoch ? ts.epoch : 1) : 0;
     const total_epochs = ts && ts.total_epochs ? ts.total_epochs : 1;
     const training = Math.round(100 * (epochs / total_epochs)) + '%';

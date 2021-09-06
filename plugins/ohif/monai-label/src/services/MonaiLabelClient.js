@@ -113,11 +113,11 @@ export default class MonaiLabelClient {
   }
 
   static api_get(url) {
-    console.info('GET:: ' + url);
+    console.debug('GET:: ' + url);
     return axios
       .get(url)
       .then(function(response) {
-        console.info(response);
+        console.debug(response);
         return response;
       })
       .catch(function(error) {
@@ -127,11 +127,11 @@ export default class MonaiLabelClient {
   }
 
   static api_delete(url) {
-    console.info('DELETE:: ' + url);
+    console.debug('DELETE:: ' + url);
     return axios
       .delete(url)
       .then(function(response) {
-        console.info(response);
+        console.debug(response);
         return response;
       })
       .catch(function(error) {
@@ -154,7 +154,7 @@ export default class MonaiLabelClient {
   }
 
   static api_post_data(url, data, responseType) {
-    console.info('POST:: ' + url);
+    console.debug('POST:: ' + url);
     return axios
       .post(url, data, {
         responseType: responseType,
@@ -163,7 +163,7 @@ export default class MonaiLabelClient {
         },
       })
       .then(function(response) {
-        console.info(response);
+        console.debug(response);
         return response;
       })
       .catch(function(error) {
@@ -180,7 +180,7 @@ export default class MonaiLabelClient {
   }
 
   static api_put_data(url, data, responseType = 'json') {
-    console.info('PUT:: ' + url);
+    console.debug('PUT:: ' + url);
     return axios
       .put(url, data, {
         responseType: responseType,
@@ -189,7 +189,7 @@ export default class MonaiLabelClient {
         },
       })
       .then(function(response) {
-        console.info(response);
+        console.debug(response);
         return response;
       })
       .catch(function(error) {

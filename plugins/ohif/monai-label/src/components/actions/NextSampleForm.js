@@ -18,7 +18,7 @@ export default class NextSampleForm extends Component {
     path[path.length - 1] = this.props.info.StudyInstanceUID;
 
     const pathname = path.join('/');
-    console.log(pathname);
+    console.info(pathname);
 
     let msg =
       'This action will reload current page.  Are you sure to continue?';

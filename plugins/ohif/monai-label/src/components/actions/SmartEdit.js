@@ -5,6 +5,7 @@ import cornerstone from 'cornerstone-core';
 import cornerstoneTools from 'cornerstone-tools';
 import ModelSelector from '../ModelSelector';
 import BaseTab from './BaseTab';
+import { getFirstSegmentId } from '../../utils/SegmentationUtils';
 
 export default class SmartEdit extends BaseTab {
   constructor(props) {
@@ -17,14 +18,24 @@ export default class SmartEdit extends BaseTab {
       currentPoint: null,
       deepgrowPoints: new Map(),
       currentEvent: null,
+      currentModel: null,
     };
   }
+
+  onSelectModel = model => {
+    this.setState({ currentModel: model });
+  };
 
   onDeepgrow = async () => {
     const { info, viewConstants } = this.props;
     const image = viewConstants.SeriesInstanceUID;
-    const model = this.modelSelector.current.state.currentModel;
-    const { segmentId } = this.state;
+    const model = this.modelSelector.current.currentModel();
+    const segmentId = this.state.segmentId
+      ? this.state.segmentId
+      : getFirstSegmentId(viewConstants.element);
+    if (segmentId && !this.state.segmentId) {
+      this.onSegmentSelected(segmentId);
+    }
 
     const is3D = info.models[model].dimension === 3;
     if (!segmentId) {
@@ -83,7 +94,13 @@ export default class SmartEdit extends BaseTab {
       return;
     }
 
-    const { segmentId } = this.state;
+    const segmentId = this.state.segmentId
+      ? this.state.segmentId
+      : getFirstSegmentId(this.props.viewConstants.element);
+    if (segmentId && !this.state.segmentId) {
+      this.onSegmentSelected(segmentId);
+    }
+
     if (!segmentId) {
       this.notification.show({
         title: 'MONAI Label',
@@ -240,7 +257,9 @@ export default class SmartEdit extends BaseTab {
             name="smartedit"
             title="SmartEdit"
             models={models}
+            currentModel={this.state.currentModel}
             onClick={this.onDeepgrow}
+            onSelectModel={this.onSelectModel}
             usage={
               <div style={{ fontSize: 'smaller' }}>
                 <p>

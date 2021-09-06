@@ -34,4 +34,5 @@ export default class BaseTab extends Component {
   onSegmentUpdated = id => {};
   onSegmentDeleted = id => {};
   onSegmentSelected = id => {};
+  onSelectModel = model => {};
 }
