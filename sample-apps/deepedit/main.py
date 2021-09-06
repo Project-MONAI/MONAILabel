@@ -107,6 +107,7 @@ class MyApp(MONAILabelApp):
                 load_path=self.pretrained_model,
                 publish_path=self.final_model,
                 config={"pretrained": False},
+                debug_mode=False,
             )
         }
 
