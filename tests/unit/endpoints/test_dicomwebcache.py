@@ -129,7 +129,6 @@ class EndPointDICOMWebDatastore(DICOMWebEndpointTestSuite):
         cache_path = os.path.join(self.data_dir, hashlib.md5(self.studies.encode("utf-8")).hexdigest())
         dwc.return_value.base_url = self.studies
         dwc.return_value.search_for_series = lambda **kwargs: search_for_series(self.data_dir, **kwargs)
-        # dwc.return_value.retrieve_series = lambda *args, **kwargs: retrieve_series(cache_path, *args, **kwargs)
         dwc.return_value.retrieve_series_metadata = lambda *args, **kwargs: retrieve_series_metadata(
             self.data_dir, *args, **kwargs
         )
