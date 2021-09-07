@@ -54,7 +54,6 @@ class DICOMWebEndpointTestSuite(unittest.TestCase):
 
     app_dir = os.path.join(base_dir, "sample-apps", "deepedit_left_atrium")
     studies = "http://faketesturl:8042/dicom-web"
-    rand_id = random.randint(0, 9999)
 
     @classmethod
     def setUpClass(cls) -> None:
