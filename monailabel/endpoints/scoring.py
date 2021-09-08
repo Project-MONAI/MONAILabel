@@ -13,9 +13,9 @@ import logging
 from typing import Optional
 
 import torch
-from fastapi import APIRouter
+from fastapi import APIRouter, HTTPException
 
-from monailabel.endpoints.utils import BackgroundTask
+from monailabel.utils.async_tasks.task import AsyncTask
 
 logger = logging.getLogger(__name__)
 
@@ -28,17 +28,23 @@ router = APIRouter(
 
 @router.get("/", summary="Get Status of Scoring Task")
 async def status(all: bool = False, check_if_running: bool = False):
-    return BackgroundTask.status("scoring", all, check_if_running)
+    res, detail = AsyncTask.status("scoring", all, check_if_running)
+    if res is None:
+        raise HTTPException(status_code=404, detail=detail)
+    return res
 
 
 @router.post("/{method}", summary="Run Scoring Task")
 async def run(method: str, params: Optional[dict] = None, run_sync: Optional[bool] = False):
-    return BackgroundTask.run("scoring", request={"method": method}, params=params, force_sync=run_sync)
+    res, detail = AsyncTask.run("scoring", request={"method": method}, params=params, force_sync=run_sync)
+    if res is None:
+        raise HTTPException(status_code=429, detail=detail)
+    return res
 
 
 @router.delete("/", summary="Stop Scoring Task")
 async def stop():
-    res = BackgroundTask.stop("scoring")
+    res = AsyncTask.stop("scoring")
 
     # Try to clear cuda cache
     if torch.cuda.is_available():
