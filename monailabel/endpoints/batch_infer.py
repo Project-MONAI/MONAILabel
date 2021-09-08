@@ -30,7 +30,7 @@ router = APIRouter(
 @router.get("/infer", summary="Get Status of Batch Inference Task")
 async def status(all: bool = False, check_if_running: bool = False):
     res, detail = AsyncTask.status("batch_infer", all, check_if_running)
-    if not res:
+    if res is None:
         raise HTTPException(status_code=404, detail=detail)
     return res
 
@@ -44,7 +44,7 @@ async def run(
 ):
     request = {"model": model, "images": images}
     res, detail = AsyncTask.run("batch_infer", request=request, params=params, force_sync=run_sync)
-    if not res:
+    if res is None:
         raise HTTPException(status_code=429, detail=detail)
     return res
 

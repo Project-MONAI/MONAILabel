@@ -29,7 +29,7 @@ router = APIRouter(
 @router.get("/", summary="Get Status of Training Task")
 async def status(all: bool = False, check_if_running: bool = False):
     res, detail = AsyncTask.status("train", all, check_if_running)
-    if not res:
+    if res is None:
         raise HTTPException(status_code=404, detail=detail)
     return res
 
@@ -37,7 +37,7 @@ async def status(all: bool = False, check_if_running: bool = False):
 @router.post("/", summary="Run Training Task")
 async def run(params: Optional[dict] = None, run_sync: Optional[bool] = False):
     res, detail = AsyncTask.run("train", params=params, force_sync=run_sync)
-    if not res:
+    if res is None:
         raise HTTPException(status_code=429, detail=detail)
     return res
 
