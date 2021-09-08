@@ -34,11 +34,7 @@ class BasicEndpointTestSuite(unittest.TestCase):
         settings.MONAI_LABEL_APP_DIR = cls.app_dir
         settings.MONAI_LABEL_STUDIES = cls.studies
         settings.MONAI_LABEL_DATASTORE_AUTO_RELOAD = False
-        settings.MONAI_LABEL_APP_CONF = {
-            "use_experiment_planner": "false",
-            "tta_enabled": "false",
-            "tta_samples": "1"
-        }
+        settings.MONAI_LABEL_APP_CONF = {"use_experiment_planner": "false", "tta_enabled": "false", "tta_samples": "1"}
 
         sys.path.append(settings.MONAI_LABEL_APP_DIR)
         sys.path.append(os.path.join(settings.MONAI_LABEL_APP_DIR, "lib"))
