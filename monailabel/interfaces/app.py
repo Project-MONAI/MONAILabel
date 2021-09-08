@@ -11,7 +11,6 @@
 
 import copy
 import itertools
-import json
 import logging
 import os
 import platform
