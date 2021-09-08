@@ -190,10 +190,9 @@ def action_apps(args):
     apps.sort()
 
     resource = {
-        "Template/Generic Apps": [a for a in apps if a.startswith("generic_")],
-        "Deepedit based Apps": [a for a in apps if a.startswith("deepedit_")],
-        "Deepgrow based Apps": [a for a in apps if a.startswith("deepgrow_")],
-        "Standard Segmentation Apps": [a for a in apps if a.startswith("segmentation_")],
+        "Deepedit based Apps": [a for a in apps if a.startswith("deepedit")],
+        "Deepgrow based Apps": [a for a in apps if a.startswith("deepgrow")],
+        "Standard Segmentation Apps": [a for a in apps if a.startswith("segmentation")],
     }
 
     if not args.download:
