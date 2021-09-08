@@ -22,7 +22,7 @@ class EndPointInfer(BasicEndpointTestSuite):
         if not torch.cuda.is_available():
             return
 
-        model = "automatic"
+        model = "deepedit_seg"
         image = "la_003"
 
         response = self.client.post(f"/infer/{model}?image={image}")

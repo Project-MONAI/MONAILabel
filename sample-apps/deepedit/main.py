@@ -8,26 +8,28 @@
 # WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 # See the License for the specific language governing permissions and
 # limitations under the License.
-
+import json
 import logging
 import os
+from distutils.util import strtobool
 
 from lib import Deepgrow, MyTrain, Segmentation
-from lib.activelearning import TTA, MyStrategy
+from lib.activelearning import MyStrategy
 from monai.networks.nets.dynunet_v1 import DynUNetV1
 
-from monailabel.interfaces import MONAILabelApp
-from monailabel.utils.activelearning import Random
+from monailabel.interfaces.app import MONAILabelApp
+from monailabel.utils.activelearning.random import Random
+from monailabel.utils.activelearning.tta import TTAStrategy
 from monailabel.utils.others.planner import ExperimentPlanner
-from monailabel.utils.scoring import Dice, Sum
-from monailabel.utils.scoring.tta_scoring import TTAScoring
+from monailabel.utils.scoring.dice import Dice
+from monailabel.utils.scoring.sum import Sum
+from monailabel.utils.scoring.tta import TTAScoring
 
 logger = logging.getLogger(__name__)
 
 
 class MyApp(MONAILabelApp):
-    def __init__(self, app_dir, studies):
-
+    def __init__(self, app_dir, studies, conf):
         self.network = DynUNetV1(
             spatial_dims=3,
             in_channels=3,
@@ -63,48 +65,38 @@ class MyApp(MONAILabelApp):
         self.model_dir = os.path.join(app_dir, "model")
         self.pretrained_model = os.path.join(self.model_dir, "pretrained.pt")
         self.final_model = os.path.join(self.model_dir, "model.pt")
-        self.spatial_size = None
-        self.target_spacing = None
 
-        # Path to pretrained weights for spleen segmentation
-        # self.download(
-        #     [
-        #         (
-        #             self.pretrained_model,
-        #             "https://github.com/Project-MONAI/MONAILabel/releases/download/data/deepedit_spleen.pt",
-        #         ),
-        #     ]
-        # )
+        # Use Experiment Planner to determine target spacing and spatial size based on dataset+gpu
+        self.use_experiment_planner = strtobool(conf.get("use_experiment_planner", "false"))
+        self.spatial_size = json.loads(conf.get("spatial_size", "[128, 128, 64]"))
+        self.target_spacing = json.loads(conf.get("target_spacing", "[1.0, 1.0, 1.0]"))
 
-        # Path to pretrained weights for left atrium segmentation
-        # self.download(
-        #     [
-        #         (
-        #             self.pretrained_model,
-        #             "https://github.com/Project-MONAI/MONAILabel/releases/download/data/deepedit_left_atrium.pt",
-        #         ),
-        #     ]
-        # )
+        use_pretrained_model = strtobool(conf.get("use_pretrained_model", "true"))
+        pretrained_model_uri = conf.get("pretrained_model_path", f"{self.PRE_TRAINED_PATH}/deepedit_left_atrium.pt")
+
+        # Path to pretrained weights
+        if use_pretrained_model:
+            self.download([(self.pretrained_model, pretrained_model_uri)])
 
         super().__init__(
             app_dir=app_dir,
             studies=studies,
+            conf=conf,
             name="DeepEdit",
             description="Active learning solution using DeepEdit to label 3D Images",
-            version=2,
         )
 
-    def experiment_planner(self):
-        # Experiment planner
-        self.planner = ExperimentPlanner(datastore=self.datastore())
-        self.spatial_size = self.planner.get_target_img_size()
-        self.target_spacing = self.planner.get_target_spacing()
-        logger.info(f"Available GPU memory: {list(self.planner.get_gpu_memory_map().values())} in MB")
+    def _init_planner(self):
+        # Experiment planner to compute spatial_size and target spacing based on images/gpu resources
+        planner = ExperimentPlanner(datastore=self.datastore())
+        self.spatial_size = planner.get_target_img_size()
+        self.target_spacing = planner.get_target_spacing()
 
     def init_infers(self):
-        self.experiment_planner()
-        logger.info(f"Spacing set: {self.target_spacing}")
-        logger.info(f"Spatial size set: {self.spatial_size}")
+        if self.use_experiment_planner:
+            self._init_planner()
+        logger.info(f"Using Spacing: {self.target_spacing}; Spatial Size: {self.spatial_size}")
+
         return {
             "deepedit": Deepgrow(
                 [self.pretrained_model, self.final_model],
@@ -112,7 +104,7 @@ class MyApp(MONAILabelApp):
                 spatial_size=self.spatial_size,
                 target_spacing=self.target_spacing,
             ),
-            "automatic": Segmentation(
+            "deepedit_seg": Segmentation(
                 [self.pretrained_model, self.final_model],
                 self.network,
                 spatial_size=self.spatial_size,
@@ -129,21 +121,21 @@ class MyApp(MONAILabelApp):
                 target_spacing=self.target_spacing,
                 load_path=self.pretrained_model,
                 publish_path=self.final_model,
-                config={"pretrained": False},
+                config={"pretrained": strtobool(self.conf.get("use_pretrained_model", "true"))},
                 debug_mode=False,
             )
         }
 
     def init_strategies(self):
         return {
-            "TTA": TTA(),
+            "TTA": TTAStrategy(),
             "random": Random(),
             "first": MyStrategy(),
         }
 
     def init_scoring_methods(self):
         return {
+            "TTA": TTAScoring(model=[self.pretrained_model, self.final_model], network=self.network),
             "sum": Sum(),
             "dice": Dice(),
-            "TTA": TTAScoring(model=[self.pretrained_model, self.final_model], network=self.network),
         }

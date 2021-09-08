@@ -9,9 +9,9 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-from monai.transforms import Compose, EnsureChannelFirstd, LoadImaged, Orientationd, ScaleIntensityRanged, Spacingd
+from monai.transforms import AddChanneld, Compose, LoadImaged, ScaleIntensityRanged, Spacingd
 
-from monailabel.interfaces.tasks import InferTask, InferType
+from monailabel.interfaces.tasks.infer import InferTask, InferType
 from monailabel.scribbles.transforms import (
     AddBackgroundScribblesFromROId,
     ApplyCRFOptimisationd,
@@ -25,9 +25,9 @@ from monailabel.scribbles.transforms import (
 from monailabel.utils.others.post import BoundingBoxd, Restored
 
 
-class ScribblesInferTask(InferTask):
+class SpleenPostProc(InferTask):
     """
-    Defines a generic scribbles post processing task for segmentation.
+    Defines a generic post processing task for Spleen segmentation.
     """
 
     def __init__(
@@ -42,14 +42,11 @@ class ScribblesInferTask(InferTask):
     def pre_transforms(self):
         return [
             LoadImaged(keys=["image", "logits", "label"]),
-            EnsureChannelFirstd(keys=["image", "label"]),
+            AddChanneld(keys=["image", "label"]),
             # at the moment optimisers are bottleneck taking a long time,
             # therefore scaling non-isotropic with big spacing
-            Spacingd(keys=["image", "logits"], pixdim=[2.5, 2.5, 5.0], mode="bilinear"),
+            Spacingd(keys=["image", "logits"], pixdim=[2.5, 2.5, 5.0]),
             Spacingd(keys=["label"], pixdim=[2.5, 2.5, 5.0], mode="nearest"),
-            Orientationd(keys=["image", "logits", "label"], axcodes="RAS"),
-            # NormalizeIntensityd(keys="image", nonzero=False, channel_wise=True),
-            # CenterSpatialCropd(keys=["image", "logits", "label"], roi_size=(256, 256, 128)),
             ScaleIntensityRanged(keys="image", a_min=-300, a_max=200, b_min=0.0, b_max=1.0, clip=True),
         ]
 
@@ -63,9 +60,9 @@ class ScribblesInferTask(InferTask):
         raise NotImplementedError("inferer not implemented in base post proc class")
 
 
-class GenericISegCRF(ScribblesInferTask):
+class SpleenISegCRF(SpleenPostProc):
     """
-    Defines ISeg+CRF based post processing task for Generic segmentation from the following paper:
+    Defines ISeg+CRF based post processing task for Spleen segmentation from the following paper:
 
     Wang, Guotai, et al. "Interactive medical image segmentation using deep learning with image-specific fine tuning."
     IEEE transactions on medical imaging 37.7 (2018): 1562-1573. (preprint: https://arxiv.org/pdf/1710.04043.pdf)
@@ -81,21 +78,18 @@ class GenericISegCRF(ScribblesInferTask):
     def __init__(
         self,
         dimension=3,
-        description="A post processing step with ISeg + MONAI's CRF for Generic segmentation",
+        description="A post processing step with ISeg + MONAI's CRF for Spleen segmentation",
     ):
         super().__init__(dimension, description)
 
     def pre_transforms(self):
         return [
             LoadImaged(keys=["image", "logits", "label"]),
-            EnsureChannelFirstd(keys=["image", "label"]),
+            AddChanneld(keys=["image", "label"]),
             # at the moment optimisers are bottleneck taking a long time,
             # therefore scaling non-isotropic with big spacing
-            Spacingd(keys=["image", "logits"], pixdim=[2.5, 2.5, 5.0], mode="bilinear"),
+            Spacingd(keys=["image", "logits"], pixdim=[2.5, 2.5, 5.0]),
             Spacingd(keys=["label"], pixdim=[2.5, 2.5, 5.0], mode="nearest"),
-            Orientationd(keys=["image", "logits", "label"], axcodes="RAS"),
-            # NormalizeIntensityd(keys="image", nonzero=False, channel_wise=True),
-            # CenterSpatialCropd(keys=["image", "logits", "label"], roi_size=(256, 256, 128)),
             ScaleIntensityRanged(keys="image", a_min=-300, a_max=200, b_min=0.0, b_max=1.0, clip=True),
             SoftenProbSoftmax(logits="logits", prob="prob"),
         ]
@@ -118,9 +112,9 @@ class GenericISegCRF(ScribblesInferTask):
         )
 
 
-class GenericISegGraphcutColdstart(ScribblesInferTask):
+class SpleenISegGraphcutColdstart(SpleenPostProc):
     """
-    Defines ISeg+Graphcut based cold start task for Generic segmentation from the following paper:
+    Defines ISeg+Graphcut based cold start task for Spleen segmentation from the following paper:
 
     Wang, Guotai, et al. "Interactive medical image segmentation using deep learning with image-specific fine tuning."
     IEEE transactions on medical imaging 37.7 (2018): 1562-1573. (preprint: https://arxiv.org/pdf/1710.04043.pdf)
@@ -136,23 +130,21 @@ class GenericISegGraphcutColdstart(ScribblesInferTask):
     def __init__(
         self,
         dimension=3,
-        description="A post processing step with ISeg + Graphcut cold start for Generic segmentation",
+        description="A post processing step with ISeg + Graphcut cold start for Spleen segmentation",
     ):
         super().__init__(dimension, description)
 
     def pre_transforms(self):
         return [
             LoadImaged(keys=["image", "label"]),
-            EnsureChannelFirstd(keys=["image", "label"]),
+            AddChanneld(keys=["image", "label"]),
             AddBackgroundScribblesFromROId(scribbles="label", scribbles_bg_label=2, scribbles_fg_label=3),
             # at the moment optimisers are bottleneck taking a long time,
             # therefore scaling non-isotropic with big spacing
-            Spacingd(keys=["image"], pixdim=[2.5, 2.5, 5.0], mode="bilinear"),
+            Spacingd(keys=["image"], pixdim=[2.5, 2.5, 5.0]),
             Spacingd(keys=["label"], pixdim=[2.5, 2.5, 5.0], mode="nearest"),
-            Orientationd(keys=["image", "label"], axcodes="RAS"),
-            # NormalizeIntensityd(keys="image", nonzero=False, channel_wise=True),
-            # CenterSpatialCropd(keys=["image", "logits", "label"], roi_size=(256, 256, 128)),
             ScaleIntensityRanged(keys="image", a_min=-300, a_max=200, b_min=0.0, b_max=1.0, clip=True),
+            # SoftenProbSoftmax(logits="logits", prob="prob"),
             MakeLikelihoodFromScribblesHistogramd(
                 image="image", scribbles="label", post_proc_label="prob", scribbles_bg_label=2, scribbles_fg_label=3
             ),
@@ -182,9 +174,9 @@ class GenericISegGraphcutColdstart(ScribblesInferTask):
         )
 
 
-class GenericISegGraphCut(ScribblesInferTask):
+class SpleenISegGraphCut(SpleenPostProc):
     """
-    Defines ISeg+GraphCut based post processing task for Generic segmentation from the following paper:
+    Defines ISeg+GraphCut based post processing task for Spleen segmentation from the following paper:
 
     Wang, Guotai, et al. "Interactive medical image segmentation using deep learning with image-specific fine tuning."
     IEEE transactions on medical imaging 37.7 (2018): 1562-1573. (preprint: https://arxiv.org/pdf/1710.04043.pdf)
@@ -200,7 +192,7 @@ class GenericISegGraphCut(ScribblesInferTask):
     def __init__(
         self,
         dimension=3,
-        description="A post processing step with ISeg + SimpleCRF's GraphCut for Generic segmentation",
+        description="A post processing step with ISeg + SimpleCRF's GraphCut for Spleen segmentation",
     ):
         super().__init__(dimension, description)
 
@@ -228,9 +220,9 @@ class GenericISegGraphCut(ScribblesInferTask):
         )
 
 
-class GenericInteractiveGraphCut(ScribblesInferTask):
+class SpleenInteractiveGraphCut(SpleenPostProc):
     """
-    Defines ISeg+GraphCut based post processing task for Generic segmentation from the following paper:
+    Defines ISeg+GraphCut based post processing task for Spleen segmentation from the following paper:
 
     Wang, Guotai, et al. "Interactive medical image segmentation using deep learning with image-specific fine tuning."
     IEEE transactions on medical imaging 37.7 (2018): 1562-1573. (preprint: https://arxiv.org/pdf/1710.04043.pdf)
@@ -246,7 +238,7 @@ class GenericInteractiveGraphCut(ScribblesInferTask):
     def __init__(
         self,
         dimension=3,
-        description="A post processing step with SimpleCRF's Interactive ISeg GraphCut for Generic segmentation",
+        description="A post processing step with SimpleCRF's Interactive ISeg GraphCut for Spleen segmentation",
     ):
         super().__init__(dimension, description)
 
@@ -267,9 +259,9 @@ class GenericInteractiveGraphCut(ScribblesInferTask):
         )
 
 
-class GenericISegSimpleCRF(ScribblesInferTask):
+class SpleenISegSimpleCRF(SpleenPostProc):
     """
-    Defines ISeg+SimpleCRF's CRF based post processing task for Generic segmentation from the following paper:
+    Defines ISeg+SimpleCRF's CRF based post processing task for Spleen segmentation from the following paper:
 
     Wang, Guotai, et al. "Interactive medical image segmentation using deep learning with image-specific fine tuning."
     IEEE transactions on medical imaging 37.7 (2018): 1562-1573. (preprint: https://arxiv.org/pdf/1710.04043.pdf)
@@ -285,7 +277,7 @@ class GenericISegSimpleCRF(ScribblesInferTask):
     def __init__(
         self,
         dimension=3,
-        description="A post processing step with ISeg + SimpleCRF's CRF for Generic segmentation",
+        description="A post processing step with ISeg + SimpleCRF's CRF for Spleen segmentation",
     ):
         super().__init__(dimension, description)
 

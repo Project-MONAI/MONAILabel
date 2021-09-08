@@ -17,7 +17,7 @@ import platform
 import shutil
 import tempfile
 import time
-from typing import Callable, Dict
+from typing import Callable, Dict, Optional, Sequence
 
 from dicomweb_client import DICOMwebClient
 from dicomweb_client.session_utils import create_session_from_user_pass
@@ -27,28 +27,48 @@ from monai.data import partition_dataset
 from monailabel.config import settings
 from monailabel.interfaces.datastore import Datastore, DefaultLabelTag
 from monailabel.interfaces.exception import MONAILabelError, MONAILabelException
-from monailabel.interfaces.tasks import BatchInferTask, InferTask, ScoringMethod, Strategy, TrainTask
-from monailabel.utils.activelearning import Random
+from monailabel.interfaces.tasks.batch_infer import BatchInferTask
+from monailabel.interfaces.tasks.infer import InferTask
+from monailabel.interfaces.tasks.scoring import ScoringMethod
+from monailabel.interfaces.tasks.strategy import Strategy
+from monailabel.interfaces.tasks.train import TrainTask
+from monailabel.utils.activelearning.random import Random
 from monailabel.utils.datastore.dicom.cache import DICOMWebCache
 from monailabel.utils.datastore.local import LocalDatastore
-from monailabel.utils.infer import InferDeepgrow2D, InferDeepgrow3D
+from monailabel.utils.infer.deepgrow_2d import InferDeepgrow2D
+from monailabel.utils.infer.deepgrow_3d import InferDeepgrow3D
 from monailabel.utils.infer.deepgrow_pipeline import InferDeepgrowPipeline
-from monailabel.utils.scoring import Dice, Sum
+from monailabel.utils.scoring.dice import Dice
+from monailabel.utils.scoring.sum import Sum
 
 logger = logging.getLogger(__name__)
 
 
 class MONAILabelApp:
-    def __init__(self, app_dir, studies, name="", description="", version="", labels=None):
+    PRE_TRAINED_PATH: str = "https://github.com/Project-MONAI/MONAILabel/releases/download/data/"
+
+    def __init__(
+        self,
+        app_dir: str,
+        studies: str,
+        conf: Dict[str, str],
+        name: str = "",
+        description: str = "",
+        version: str = "2.0",
+        labels: Optional[Sequence[str]] = None,
+    ):
         """
         Base Class for Any MONAI Label App
 
         :param app_dir: path for your App directory
         :param studies: path for studies/datalist
+        :param conf: dictionary of key/value pairs provided by user while running the app
 
         """
         self.app_dir = app_dir
         self.studies = studies
+        self.conf = conf if conf else {}
+
         self.name = name
         self.description = description
         self.version = version
@@ -63,6 +83,7 @@ class MONAILabelApp:
         self._batch_infer = self.init_batch_infer()
 
         self._download_tools()
+        self._server_mode = False
 
     def init_infers(self) -> Dict[str, InferTask]:
         return {}
@@ -83,22 +104,24 @@ class MONAILabelApp:
         logger.info(f"Init Datastore for: {self.studies}")
         if self.studies.startswith("http://") or self.studies.startswith("https://"):
             dw_session = None
-            if settings.DICOMWEB_USERNAME and settings.DICOMWEB_PASSWORD:
-                dw_session = create_session_from_user_pass(settings.DICOMWEB_USERNAME, settings.DICOMWEB_PASSWORD)
+            if settings.MONAI_LABEL_DICOMWEB_USERNAME and settings.MONAI_LABEL_DICOMWEB_PASSWORD:
+                dw_session = create_session_from_user_pass(
+                    settings.MONAI_LABEL_DICOMWEB_USERNAME, settings.MONAI_LABEL_DICOMWEB_PASSWORD
+                )
 
             dw_client = DICOMwebClient(
                 url=self.studies,
                 session=dw_session,
-                qido_url_prefix=settings.QIDO_PREFIX,
-                wado_url_prefix=settings.WADO_PREFIX,
-                stow_url_prefix=settings.STOW_PREFIX,
+                qido_url_prefix=settings.MONAI_LABEL_QIDO_PREFIX,
+                wado_url_prefix=settings.MONAI_LABEL_WADO_PREFIX,
+                stow_url_prefix=settings.MONAI_LABEL_STOW_PREFIX,
             )
             return DICOMWebCache(dw_client)
 
         return LocalDatastore(
             self.studies,
-            extensions=settings.DATASTORE_FILE_EXT,
-            auto_reload=settings.DATASTORE_AUTO_RELOAD,
+            extensions=settings.MONAI_LABEL_DATASTORE_FILE_EXT,
+            auto_reload=settings.MONAI_LABEL_DATASTORE_AUTO_RELOAD,
         )
 
     def info(self):
@@ -266,10 +289,12 @@ class MONAILabelApp:
                 For example::
 
                     {
-                        "device": "cuda"
-                        "epochs": 1,
-                        "amp": False,
-                        "lr": 0.0001,
+                        "mytrain": {
+                            "device": "cuda"
+                            "max_epochs": 1,
+                            "amp": False,
+                            "lr": 0.0001,
+                        }
                     }
 
         Returns:
@@ -286,7 +311,7 @@ class MONAILabelApp:
         results = []
         for m in models:
             task = self._trainers[m]
-            req = request.get(m, {})
+            req = request.get(m, copy.deepcopy(request))
             logger.info(f"Running training: {m}: {task.info()} => {req}")
 
             result = task(req, self.datastore())
@@ -329,14 +354,26 @@ class MONAILabelApp:
             "path": image_path,
         }
 
+    def on_init_complete(self):
+        logger.info("App Init - completed")
+
     def on_save_label(self, image_id, label_id):
         """
         Callback method when label is saved into datastore by a remote client
         """
         logger.info(f"New label saved for: {image_id} => {label_id}")
 
+    # TODO :: Allow model files to be monitored and call this method when it is published (during training)
+    # def on_model_published(self, model):
+    #    pass
+
+    def server_mode(self, mode: bool):
+        self._server_mode = mode
+
     def _download_tools(self):
         target = os.path.join(self.app_dir, "bin")
+        os.makedirs(target, exist_ok=True)
+
         dcmqi_tools = ["segimage2itkimage", "itkimage2segimage", "segimage2itkimage.exe", "itkimage2segimage.exe"]
         existing = [tool for tool in dcmqi_tools if shutil.which(tool) or os.path.exists(os.path.join(target, tool))]
 

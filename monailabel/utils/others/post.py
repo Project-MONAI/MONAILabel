@@ -14,8 +14,7 @@ from typing import Optional, Sequence, Union
 import numpy as np
 import skimage.measure as measure
 from monai.config import KeysCollection
-from monai.transforms import Resize, generate_spatial_bounding_box, get_extreme_points
-from monai.transforms.compose import MapTransform
+from monai.transforms import MapTransform, Resize, generate_spatial_bounding_box, get_extreme_points
 from monai.transforms.spatial.dictionary import InterpolateModeSequence
 from monai.utils import InterpolateMode, ensure_tuple_rep
 

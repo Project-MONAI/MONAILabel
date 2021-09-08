@@ -9,27 +9,27 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-from monai.inferers import SimpleInferer
+from monai.inferers import SlidingWindowInferer
 from monai.transforms import (
     Activationsd,
+    AddChanneld,
     AsDiscreted,
-    CenterSpatialCropd,
-    EnsureChannelFirstd,
+    CopyItemsd,
     LoadImaged,
-    NormalizeIntensityd,
-    Orientationd,
+    ScaleIntensityRanged,
     Spacingd,
     ToNumpyd,
-    ToTensord,
 )
 
 from monailabel.interfaces.tasks.infer import InferTask, InferType
-from monailabel.utils.others.post import Restored
+from monailabel.scribbles.transforms import WriteLogits
+from monailabel.utils.others.post import BoundingBoxd, Restored
 
 
-class MyInfer(InferTask):
+class SegmentationWithWriteLogits(InferTask):
     """
-    This provides Inference Engine for pre-trained left atrium segmentation (UNet) model over MSD Dataset.
+    Inference Engine for pre-trained Spleen segmentation (UNet) model for MSD Dataset. It additionally provides
+    appropriate transforms to save logits that are needed for post processing stage.
     """
 
     def __init__(
@@ -37,9 +37,9 @@ class MyInfer(InferTask):
         path,
         network=None,
         type=InferType.SEGMENTATION,
-        labels="left_atrium",
+        labels="spleen",
         dimension=3,
-        description="A pre-trained model for volumetric (3D) segmentation of the left atrium over 3D MR Images",
+        description="A pre-trained model for volumetric (3D) segmentation of the spleen from CT image",
     ):
         super().__init__(
             path=path,
@@ -51,32 +51,23 @@ class MyInfer(InferTask):
         )
 
     def pre_transforms(self):
-        pre_transforms = [
-            LoadImaged(keys=["image"]),
-            EnsureChannelFirstd(keys="image"),
-            Spacingd(
-                keys=["image"],
-                pixdim=(1.0, 1.0, 1.0),
-                mode="bilinear",
-            ),
-            Orientationd(keys=["image"], axcodes="RAS"),
-            NormalizeIntensityd(keys=["image"], nonzero=False, channel_wise=True),
-            CenterSpatialCropd(keys="image", roi_size=(256, 256, 128)),
-            ToTensord(keys=["image"]),
+        return [
+            LoadImaged(keys="image"),
+            AddChanneld(keys="image"),
+            Spacingd(keys="image", pixdim=[1.0, 1.0, 1.0]),
+            ScaleIntensityRanged(keys="image", a_min=-57, a_max=164, b_min=0.0, b_max=1.0, clip=True),
         ]
-        return pre_transforms
 
     def inferer(self):
-        return SimpleInferer()
-
-    def inverse_transforms(self):
-        return []  # Self-determine from the list of pre-transforms provided
+        return SlidingWindowInferer(roi_size=[160, 160, 160])
 
     def post_transforms(self):
         return [
-            ToTensord(keys=("image", "pred")),
+            CopyItemsd(keys="pred", times=1, names="logits"),
             Activationsd(keys="pred", softmax=True),
             AsDiscreted(keys="pred", argmax=True),
-            ToNumpyd(keys="pred"),
-            Restored(keys="pred", ref_image="image"),
+            ToNumpyd(keys=["pred", "logits"]),
+            Restored(keys=["pred", "logits"], ref_image="image"),
+            BoundingBoxd(keys="pred", result="result", bbox="bbox"),
+            WriteLogits(key="logits", result="result"),
         ]
