@@ -40,8 +40,8 @@ def _task_func(task, method):
 
     cmd = [
         script,
-        settings.APP_DIR,
-        settings.STUDIES,
+        settings.MONAI_LABEL_APP_DIR,
+        settings.MONAI_LABEL_STUDIES,
         method,
         json.dumps(task["request"]),
     ]
@@ -149,8 +149,8 @@ def run_main():
     args.app = os.path.realpath(args.app)
     args.studies = os.path.realpath(args.studies)
 
-    settings.APP_DIR = args.app
-    settings.STUDIES = args.studies
+    settings.MONAI_LABEL_APP_DIR = args.app
+    settings.MONAI_LABEL_STUDIES = args.studies
 
     logging.basicConfig(
         level=(logging.DEBUG if args.debug else logging.INFO),

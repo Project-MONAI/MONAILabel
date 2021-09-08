@@ -17,7 +17,7 @@ import numpy as np
 from monai.transforms import LoadImage
 from tqdm import tqdm
 
-from monailabel.interfaces import MONAILabelError, MONAILabelException
+from monailabel.interfaces.exception import MONAILabelError, MONAILabelException
 
 logger = logging.getLogger(__name__)
 
@@ -27,9 +27,11 @@ class ExperimentPlanner(object):
 
         self.plans = OrderedDict()
         self.datastore = datastore
-        self.get_img_info()
 
-    def get_gpu_memory_map(self):
+        logger.info(f"Available GPU memory: {list(self._get_gpu_memory_map().values())} in MB")
+        self._get_img_info()
+
+    def _get_gpu_memory_map(self):
         """Get the current gpu usage.
         Returns
         -------
@@ -41,16 +43,17 @@ class ExperimentPlanner(object):
         if shutil.which("nvidia-smi") is None:
             logger.info("nvidia-smi command didn't work! - Using default image size [128, 128, 64]")
             return {0: 4300}
-        else:
-            result = subprocess.check_output(
-                ["nvidia-smi", "--query-gpu=memory.free", "--format=csv,nounits,noheader"], encoding="utf-8"
-            )  # --query-gpu=memory.used
-            # Convert lines into a dictionary
-            gpu_memory = [int(x) for x in result.strip().split("\n")]
-            gpu_memory_map = dict(zip(range(len(gpu_memory)), gpu_memory))
-            return gpu_memory_map
 
-    def get_img_info(self):
+        result = subprocess.check_output(
+            ["nvidia-smi", "--query-gpu=memory.free", "--format=csv,nounits,noheader"], encoding="utf-8"
+        )  # --query-gpu=memory.used
+
+        # Convert lines into a dictionary
+        gpu_memory = [int(x) for x in result.strip().split("\n")]
+        gpu_memory_map = dict(zip(range(len(gpu_memory)), gpu_memory))
+        return gpu_memory_map
+
+    def _get_img_info(self):
         loader = LoadImage(reader="ITKReader")
         spacings = []
         img_sizes = []
@@ -60,6 +63,7 @@ class ExperimentPlanner(object):
                 MONAILabelError.APP_INIT_ERROR,
                 "Empty folder!",
             )
+
         for n in tqdm(self.datastore.list_images()):
             _, mtdt = loader(self.datastore.get_image_uri(n))
             spacings.append(mtdt["spacing"])
@@ -69,6 +73,7 @@ class ExperimentPlanner(object):
 
         self.target_spacing = np.mean(spacings, 0)
         self.target_img_size = np.mean(img_sizes, 0, np.int64)
+
         # Changing from DHW to HDW order
         self.target_img_size = np.array([self.target_img_size[1], self.target_img_size[2], self.target_img_size[0]])
 
@@ -87,12 +92,12 @@ class ExperimentPlanner(object):
             "12100": [256, 256, 96],
             "17700": [256, 256, 128],
         }
-        idx = np.abs(np.array(memory_use) - self.get_gpu_memory_map()[0]).argmin()
+
+        idx = np.abs(np.array(memory_use) - self._get_gpu_memory_map()[0]).argmin()
         img_size_gpu = sizes[str(memory_use[idx])]
         if img_size_gpu[0] > self.target_img_size[0]:
             return self.target_img_size
-        else:
-            return sizes[str(memory_use[idx])]
+        return sizes[str(memory_use[idx])]
 
     def get_target_spacing(self):
         return np.around(self.target_spacing)

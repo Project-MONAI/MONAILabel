@@ -11,19 +11,20 @@
 
 import logging
 import os
+from distutils.util import strtobool
 
 from lib import MyInfer, MyStrategy, MyTrain
 from monai.networks.layers import Norm
 from monai.networks.nets import UNet
 
-from monailabel.interfaces import MONAILabelApp
-from monailabel.utils.activelearning import Random
+from monailabel.interfaces.app import MONAILabelApp
+from monailabel.utils.activelearning.random import Random
 
 logger = logging.getLogger(__name__)
 
 
 class MyApp(MONAILabelApp):
-    def __init__(self, app_dir, studies):
+    def __init__(self, app_dir, studies, conf):
         self.network = UNet(
             dimensions=3,
             in_channels=1,
@@ -38,21 +39,18 @@ class MyApp(MONAILabelApp):
         self.pretrained_model = os.path.join(self.model_dir, "pretrained.pt")
         self.final_model = os.path.join(self.model_dir, "model.pt")
 
-        self.download(
-            [
-                (
-                    self.pretrained_model,
-                    "https://github.com/Project-MONAI/MONAILabel/releases/download/data/segmentation_left_atrium.pt",
-                ),
-            ]
-        )
+        # Path to pretrained weights
+        use_pretrained_model = strtobool(conf.get("use_pretrained_model", "true"))
+        pretrained_model_uri = conf.get("pretrained_model_path", f"{self.PRE_TRAINED_PATH}/segmentation_left_atrium.pt")
+        if use_pretrained_model:
+            self.download([(self.pretrained_model, pretrained_model_uri)])
 
         super().__init__(
             app_dir=app_dir,
             studies=studies,
+            conf=conf,
             name="Segmentation - Left Atrium",
             description="Active Learning solution to label left atrium over 3D MRI Images",
-            version=2,
         )
 
     def init_infers(self):

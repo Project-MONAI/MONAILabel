@@ -26,7 +26,7 @@ from monai.transforms import (
 )
 
 from monailabel.deepedit.transforms import DiscardAddGuidanced, ResizeGuidanceCustomd
-from monailabel.interfaces.tasks import InferTask, InferType
+from monailabel.interfaces.tasks.infer import InferTask, InferType
 from monailabel.utils.others.post import Restored
 
 

@@ -21,7 +21,7 @@ from monai.transforms import (
     ToNumpyd,
 )
 
-from monailabel.interfaces.tasks import InferTask, InferType
+from monailabel.interfaces.tasks.infer import InferTask, InferType
 from monailabel.scribbles.transforms import WriteLogits
 from monailabel.utils.others.post import BoundingBoxd, Restored
 
