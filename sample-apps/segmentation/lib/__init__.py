@@ -10,7 +10,7 @@
 # limitations under the License.
 
 from .activelearning import MyStrategy
-from .infer import MyInfer
+from .infer import MyInferWithWriteLogits
 from .scribbles import (
     GenericInteractiveGraphCut,
     GenericISegCRF,

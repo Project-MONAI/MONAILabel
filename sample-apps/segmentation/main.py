@@ -10,10 +10,11 @@
 # limitations under the License.
 
 import logging
+from monailabel.interfaces.tasks.infer import InferType
 import os
 from distutils.util import strtobool
 
-from lib import GenericISegGraphCut, GenericISegGraphcutColdstart, GenericISegSimpleCRF, MyInfer, MyStrategy, MyTrain
+from lib import GenericISegGraphCut, GenericISegGraphcutColdstart, GenericISegSimpleCRF, MyInferWithWriteLogits, MyStrategy, MyTrain
 from monai.networks.layers import Norm
 from monai.networks.nets import UNet
 
@@ -58,7 +59,7 @@ class MyApp(MONAILabelApp):
 
     def init_infers(self):
         infers = {
-            "segmentation": MyInfer([self.pretrained_model, self.final_model], self.network),
+            "segmentation": MyInferWithWriteLogits([self.pretrained_model, self.final_model], self.network),
             "Coldstart->ISeg+GraphCut": GenericISegGraphcutColdstart(),
             "ISeg+GraphCut": GenericISegGraphCut(),
             "ISeg+SimpleCRF": GenericISegSimpleCRF(),
@@ -80,3 +81,27 @@ class MyApp(MONAILabelApp):
             "random": Random(),
             "first": MyStrategy(),
         }
+    
+    def infer(self, request, datastore=None):
+        image = request.get("image")
+
+        # add saved logits into request
+        if self._infers[request.get("model")].type == InferType.SCRIBBLES:
+            saved_labels = self.datastore().get_labels_by_image_id(image)
+            for tag, label in saved_labels.items():
+                if tag == "logits":
+                    request["logits"] = self.datastore().get_label_uri(label, tag)
+            logger.info(f"Updated request: {request}")
+
+        result = super().infer(request)
+        result_params = result.get("params")
+
+        # save logits
+        logits = result_params.get("logits")
+        if logits and self._infers[request.get("model")].type == InferType.SEGMENTATION:
+            self.datastore().save_label(image, logits, "logits", {})
+            os.unlink(logits)
+
+        result_params.pop("logits", None)
+        logger.info(f"Final Result: {result}")
+        return result

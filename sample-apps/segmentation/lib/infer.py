@@ -14,6 +14,7 @@ from monai.transforms import (
     Activationsd,
     AsDiscreted,
     CenterSpatialCropd,
+    CopyItemsd,
     EnsureChannelFirstd,
     LoadImaged,
     NormalizeIntensityd,
@@ -24,10 +25,11 @@ from monai.transforms import (
 )
 
 from monailabel.interfaces.tasks.infer import InferTask, InferType
+from monailabel.scribbles.transforms import WriteLogits
 from monailabel.utils.others.post import Restored
 
 
-class MyInfer(InferTask):
+class MyInferWithWriteLogits(InferTask):
     """
     This provides Inference Engine for 3D segmentation using a 3D model .
     """
@@ -75,8 +77,10 @@ class MyInfer(InferTask):
     def post_transforms(self):
         return [
             ToTensord(keys=("image", "pred")),
+            CopyItemsd(keys="pred", times=1, names="logits"),
             Activationsd(keys="pred", softmax=True),
             AsDiscreted(keys="pred", argmax=True),
-            ToNumpyd(keys="pred"),
-            Restored(keys="pred", ref_image="image"),
+            ToNumpyd(keys=["pred", "logits"]),
+            Restored(keys=["pred", "logits"], ref_image="image"),
+            WriteLogits(key="logits", result="result"),
         ]
