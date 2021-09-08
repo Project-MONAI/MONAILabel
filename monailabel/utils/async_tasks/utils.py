@@ -32,7 +32,7 @@ background_tasks: Dict = {}
 background_processes: Dict = {}
 
 
-def _task_func(task, method):
+def _task_func(task, method, callback=None):
     base_dir = os.path.dirname(os.path.dirname(os.path.dirname(os.path.realpath(__file__))))
     script = "run_monailabel_app.bat" if any(platform.win32_ver()) else "run_monailabel_app.sh"
     if os.path.exists(os.path.realpath(os.path.join(base_dir, "scripts", script))):
@@ -76,8 +76,11 @@ def _task_func(task, method):
     if task["status"] == "RUNNING":
         task["status"] = "DONE" if process.returncode == 0 else "ERROR"
 
+    if callback:
+        callback(task)
 
-def run_background_task(request, method, debug=False):
+
+def run_background_task(request, method, callback=None, debug=False):
     task = {
         "id": uuid.uuid4(),
         "status": "SUBMITTED",
@@ -94,7 +97,7 @@ def run_background_task(request, method, debug=False):
     if debug:
         _task_func(task, method)
     else:
-        thread = Thread(target=functools.partial(_task_func, task, method))
+        thread = Thread(target=functools.partial(_task_func, task, method, callback))
         thread.start()
     return task
 
@@ -133,33 +136,3 @@ def processes(method):
     Returns Dict of all task id => process
     """
     return background_processes.get(method, dict())
-
-
-def run_main():
-    import argparse
-
-    parser = argparse.ArgumentParser()
-    parser.add_argument("-a", "--app", required=True)
-    parser.add_argument("-s", "--studies", required=True)
-    parser.add_argument("-m", "--method", default="info")
-    parser.add_argument("-r", "--request", default="{}")
-    parser.add_argument("-d", "--debug", action="store_true")
-
-    args = parser.parse_args()
-    args.app = os.path.realpath(args.app)
-    args.studies = os.path.realpath(args.studies)
-
-    settings.MONAI_LABEL_APP_DIR = args.app
-    settings.MONAI_LABEL_STUDIES = args.studies
-
-    logging.basicConfig(
-        level=(logging.DEBUG if args.debug else logging.INFO),
-        format="[%(asctime)s] [%(levelname)s] (%(name)s.%(funcName)s:%(lineno)d) - %(message)",
-        datefmt="%Y-%m-%d %H:%M:%S",
-    )
-
-    run_background_task(json.loads(args.request), args.method, debug=True)
-
-
-if __name__ == "__main__":
-    run_main()

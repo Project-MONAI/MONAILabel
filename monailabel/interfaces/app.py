@@ -11,6 +11,7 @@
 
 import copy
 import itertools
+import json
 import logging
 import os
 import platform
@@ -19,6 +20,7 @@ import tempfile
 import time
 from typing import Callable, Dict, Optional, Sequence
 
+import requests
 from dicomweb_client import DICOMwebClient
 from dicomweb_client.session_utils import create_session_from_user_pass
 from monai.apps import download_and_extract, download_url, load_from_mmar
@@ -27,12 +29,13 @@ from monai.data import partition_dataset
 from monailabel.config import settings
 from monailabel.interfaces.datastore import Datastore, DefaultLabelTag
 from monailabel.interfaces.exception import MONAILabelError, MONAILabelException
-from monailabel.interfaces.tasks.batch_infer import BatchInferTask
+from monailabel.interfaces.tasks.batch_infer import BatchInferImageType, BatchInferTask
 from monailabel.interfaces.tasks.infer import InferTask
 from monailabel.interfaces.tasks.scoring import ScoringMethod
 from monailabel.interfaces.tasks.strategy import Strategy
 from monailabel.interfaces.tasks.train import TrainTask
 from monailabel.utils.activelearning.random import Random
+from monailabel.utils.async_tasks.task import AsyncTask
 from monailabel.utils.datastore.dicom.cache import DICOMWebCache
 from monailabel.utils.datastore.local import LocalDatastore
 from monailabel.utils.infer.deepgrow_2d import InferDeepgrow2D
@@ -369,6 +372,41 @@ class MONAILabelApp:
 
     def server_mode(self, mode: bool):
         self._server_mode = mode
+
+    def async_scoring(self, method, params=None):
+        if self._server_mode:
+            request = {"method": method}
+            res, _ = AsyncTask.run("scoring", request=request, params=params)
+            return res
+
+        url = f"/scoring/{method}"
+        return self._local_request(url, params, "Scoring")
+
+    def async_training(self, model, params=None):
+        if self._server_mode:
+            res, _ = AsyncTask.run("train", params=params)
+            return res
+
+        url = "/train"
+        params = {"model": model, model: params} if model else params
+        return self._local_request(url, params, "Training")
+
+    def async_batch_infer(self, model, images: BatchInferImageType, params=None):
+        if self._server_mode:
+            request = {"model": model, "images": images}
+            res, _ = AsyncTask.run("batch_infer", request=request, params=params)
+            return res
+
+        url = f"/batch/infer/{model}?images={images}"
+        return self._local_request(url, params, "Batch Infer")
+
+    def _local_request(self, url, params, action):
+        params = params if params else {}
+        response = requests.post(f"http://127.0.0.1:{settings.MONAI_LABEL_SERVER_PORT}{url}", json=params)
+
+        if response.status_code != 200:
+            logger.error(f"Failed To Trigger {action}: {response.text}")
+        return response.json() if response.status_code == 200 else None
 
     def _download_tools(self):
         target = os.path.join(self.app_dir, "bin")
