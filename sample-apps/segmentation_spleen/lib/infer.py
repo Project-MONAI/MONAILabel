@@ -21,7 +21,7 @@ from monai.transforms import (
     ToTensord,
 )
 
-from monailabel.interfaces.tasks import InferTask, InferType
+from monailabel.interfaces.tasks.infer import InferTask, InferType
 from monailabel.utils.others.post import BoundingBoxd, Restored
 
 

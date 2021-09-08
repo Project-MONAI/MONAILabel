@@ -10,10 +10,9 @@
 # limitations under the License.
 
 import logging
-import random
 
-from monailabel.interfaces import Datastore
-from monailabel.interfaces.tasks import Strategy
+from monailabel.interfaces.datastore import Datastore
+from monailabel.interfaces.tasks.strategy import Strategy
 
 logger = logging.getLogger(__name__)
 
@@ -35,32 +34,4 @@ class MyStrategy(Strategy):
         image = images[0]
 
         logger.info(f"First: Selected Image: {image}")
-        return image
-
-
-class TTA(Strategy):
-    """
-    Test Time Augmentation (TTA) as active learning strategy
-    """
-
-    def __init__(self):
-        super().__init__("Get First Sample Based on TTA score")
-
-    def __call__(self, request, datastore: Datastore):
-
-        images = datastore.get_unlabeled_images()
-
-        if not len(images):
-            return None
-
-        tta_scores = {image: datastore.get_image_info(image).get("vvc_tta", 0) for image in images}
-
-        # PICK RANDOM IF THERE IS NOT VVC_TTA SCORES!!
-        if sum(tta_scores.values()) == 0:
-            image = random.choice(images)
-            logger.info(f"Random: Selected Image: {image}")
-        else:
-            _, image = max(zip(tta_scores.values(), tta_scores.keys()))
-            logger.info(f"TTA: Selected Image: {image}")
-
         return image

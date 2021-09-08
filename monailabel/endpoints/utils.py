@@ -13,7 +13,7 @@ import logging
 
 from fastapi import HTTPException
 
-from monailabel.interfaces import MONAILabelApp
+from monailabel.interfaces.app import MONAILabelApp
 from monailabel.utils.others.app_utils import app_instance
 from monailabel.utils.others.async_tasks import processes, run_background_task, stop_background_task, tasks
 

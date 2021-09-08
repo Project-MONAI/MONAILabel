@@ -36,7 +36,7 @@ class DiscardAddGuidanced(MapTransform):
         Discard positive and negative points according to discard probability
         :param keys: The ``keys`` parameter will be used to get and set the actual data item to transform
         :param number_intensity_ch: number of intensity channels
-        :param discard_probability: probability of discarding clicks
+        :param probability: probability of discarding clicks
         """
         super().__init__(keys, allow_missing_keys)
 

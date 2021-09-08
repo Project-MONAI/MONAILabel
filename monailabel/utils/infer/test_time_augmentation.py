@@ -160,7 +160,6 @@ class TestTimeAugmentation:
         outputs: List[np.ndarray] = []
 
         for batch_data in tqdm(dl) if self.progress else dl:
-
             batch_images = batch_data[self.image_key].to(self.device)
 
             # do model forward pass
