@@ -393,7 +393,7 @@ class ApplyISegGraphCutPostProcd(InteractiveSegmentationTransform):
             # 2D is not yet tested within this framework
             post_proc_label = interactive_maxflow2d(image, prob, scribbles, lamda=self.lamda, sigma=self.sigma)
 
-        post_proc_label = np.expand_dims(post_proc_label, axis=0)
+        post_proc_label = np.expand_dims(post_proc_label, axis=0).astype(np.float32)
         d[self.post_proc_label] = post_proc_label
 
         return d
@@ -626,7 +626,7 @@ class ApplySimpleCRFOptimisationd(InteractiveSegmentationTransform):
 
             post_proc_label = densecrf.densecrf(pairwise_term, unary_term, simplecrf_params)
 
-        post_proc_label = np.expand_dims(post_proc_label, axis=0)
+        post_proc_label = np.expand_dims(post_proc_label, axis=0).astype(np.float32)
         d[self.post_proc_label] = post_proc_label
 
         return d
@@ -715,7 +715,7 @@ class ApplyGraphCutOptimisationd(InteractiveSegmentationTransform):
             # 2D is not yet tested within this framework
             post_proc_label = maxflow2d(pairwise_term, unary_term, lamda=self.lamda, sigma=self.sigma)
 
-        post_proc_label = np.expand_dims(post_proc_label, axis=0)
+        post_proc_label = np.expand_dims(post_proc_label, axis=0).astype(np.float32)
         d[self.post_proc_label] = post_proc_label
 
         return d
