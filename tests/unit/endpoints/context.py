@@ -31,12 +31,12 @@ class BasicEndpointTestSuite(unittest.TestCase):
 
     @classmethod
     def setUpClass(cls) -> None:
-        settings.APP_DIR = cls.app_dir
-        settings.STUDIES = cls.studies
-        settings.DATASTORE_AUTO_RELOAD = False
+        settings.MONAI_LABEL_APP_DIR = cls.app_dir
+        settings.MONAI_LABEL_STUDIES = cls.studies
+        settings.MONAI_LABEL_DATASTORE_AUTO_RELOAD = False
 
-        sys.path.append(settings.APP_DIR)
-        sys.path.append(os.path.join(settings.APP_DIR, "lib"))
+        sys.path.append(settings.MONAI_LABEL_APP_DIR)
+        sys.path.append(os.path.join(settings.MONAI_LABEL_APP_DIR, "lib"))
 
         logs_dir = os.path.join(cls.app_dir, "logs")
         os.makedirs(logs_dir, exist_ok=True)

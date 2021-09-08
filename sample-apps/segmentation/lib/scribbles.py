@@ -11,7 +11,7 @@
 
 from monai.transforms import Compose, EnsureChannelFirstd, LoadImaged, Orientationd, ScaleIntensityRanged, Spacingd
 
-from monailabel.interfaces.tasks import InferTask, InferType
+from monailabel.interfaces.tasks.infer import InferTask, InferType
 from monailabel.scribbles.transforms import (
     AddBackgroundScribblesFromROId,
     ApplyCRFOptimisationd,

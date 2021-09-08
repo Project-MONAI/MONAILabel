@@ -15,7 +15,7 @@ import numpy as np
 from monai.transforms import LoadImage
 
 from monailabel.interfaces.datastore import Datastore, DefaultLabelTag
-from monailabel.interfaces.tasks import ScoringMethod
+from monailabel.interfaces.tasks.scoring import ScoringMethod
 
 logger = logging.getLogger(__name__)
 

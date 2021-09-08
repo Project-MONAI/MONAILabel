@@ -33,8 +33,8 @@ from monai.transforms import (
 
 from monailabel.deepedit.transforms import DiscardAddGuidanced
 from monailabel.interfaces.datastore import Datastore
-from monailabel.interfaces.tasks import ScoringMethod
-from monailabel.utils.scoring.test_time_augmentation import TestTimeAugmentation
+from monailabel.interfaces.tasks.scoring import ScoringMethod
+from monailabel.utils.infer.test_time_augmentation import TestTimeAugmentation
 
 logger = logging.getLogger(__name__)
 
@@ -83,14 +83,13 @@ class TTAScoring(ScoringMethod):
             ]
         )
 
-    def infer_seg(self, images, model, roi_size, sw_batch_size):
-        # preds = sliding_window_inference(images, roi_size, sw_batch_size, model)
+    def _inferer(self, images, model):
         preds = SimpleInferer()(images, model)
         transforms = self.post_transforms()
         post_pred = transforms(preds)
         return post_pred
 
-    def get_model_path(self, path):
+    def _get_model_path(self, path):
         if not path:
             return None
 
@@ -101,52 +100,62 @@ class TTAScoring(ScoringMethod):
         return None
 
     def __call__(self, request, datastore: Datastore):
-
         logger.info("Starting TTA scoring")
 
         result = {}
+        model_file = self._get_model_path(self.model)
+        if not model_file:
+            logger.warning(f"Skip TTA Scoring:: Model(s) {self.model} not available yet")
+            return
 
-        path = self.get_model_path(self.model)
-
+        logger.info(f"Using {model_file} for running TTA")
+        model_ts = os.stat(model_file).st_mtime
         if self.network:
             model = self.network
-            if path:
-                checkpoint = torch.load(path)
+            if model_file:
+                checkpoint = torch.load(model_file)
                 model_state_dict = checkpoint.get("model", checkpoint)
                 model.load_state_dict(model_state_dict)
         else:
-            model = torch.jit.load(path)
+            model = torch.jit.load(model_file)
 
         tt_aug = TestTimeAugmentation(
             transform=self.pre_transforms(),
             label_key="image",
             batch_size=1,
             num_workers=0,
-            inferrer_fn=partial(self.infer_seg, roi_size=self.img_size, model=model.to(self.device), sw_batch_size=1),
+            inferrer_fn=partial(self._inferer, model=model.to(self.device)),
             device=self.device,
         )
 
         # Performing TTA for all unlabeled images
-        for image_id in datastore.get_unlabeled_images():
+        skipped = 0
+        unlabeled_images = datastore.get_unlabeled_images()
+        for image_id in unlabeled_images:
+            image_info = datastore.get_image_info(image_id)
+            if image_info.get("tta_ts", 0) == model_ts:
+                skipped += 1
+                continue
 
-            logger.info("TTA for image: " + image_id)
-
-            file = {"image": datastore.get_image_uri(image_id)}
+            logger.info("Run TTA for image: " + image_id)
 
             # Computing the Volume Variation Coefficient (VVC)
             start = time.time()
             with torch.no_grad():
-                mode_tta, mean_tta, std_tta, vvc_tta = tt_aug(file, num_examples=self.num_samples)
+                data = {"image": datastore.get_image_uri(image_id)}
+                mode_tta, mean_tta, std_tta, vvc_tta = tt_aug(data, num_examples=self.num_samples)
+
+            logger.info(f"{image_id} => vvc: {vvc_tta}")
             if self.device == "cuda":
                 torch.cuda.empty_cache()
-            latency_tta = time.time() - start
 
+            latency_tta = time.time() - start
             logger.info("Time taken for " + str(self.num_samples) + " augmented samples: " + str(latency_tta))
 
             # Add vvc in datastore
-            info = {"vvc_tta": vvc_tta}
-            logger.info(f"{image_id} => {info}")
+            info = {"vvc_tta": vvc_tta, "tta_ts": model_ts}
             datastore.update_image_info(image_id, info)
             result[image_id] = info
 
+        logger.info(f"Total: {len(unlabeled_images)}; Skipped = {skipped}; Executed: {len(result)}")
         return result

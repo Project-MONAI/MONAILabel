@@ -18,13 +18,13 @@ router = APIRouter(
 @router.get("/dicom/{path:path}", include_in_schema=False)
 async def proxy(path: str, response: Response):
     auth = (
-        (settings.DICOMWEB_USERNAME, settings.DICOMWEB_PASSWORD)
-        if settings.DICOMWEB_USERNAME and settings.DICOMWEB_PASSWORD
+        (settings.MONAI_LABEL_DICOMWEB_USERNAME, settings.MONAI_LABEL_DICOMWEB_PASSWORD)
+        if settings.MONAI_LABEL_DICOMWEB_USERNAME and settings.MONAI_LABEL_DICOMWEB_PASSWORD
         else None
     )
 
     async with httpx.AsyncClient(auth=auth) as client:
-        proxy_path = f"{settings.STUDIES.lstrip('/')}/{path}"
+        proxy_path = f"{settings.MONAI_LABEL_STUDIES.lstrip('/')}/{path}"
         logger.debug(f"Proxy conneting to {proxy_path}")
         proxy = await client.get(proxy_path)
     response.body = proxy.content

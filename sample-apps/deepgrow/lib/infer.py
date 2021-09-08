@@ -31,7 +31,7 @@ from monai.transforms import (
     ToNumpyd,
 )
 
-from monailabel.interfaces.tasks import InferTask, InferType
+from monailabel.interfaces.tasks.infer import InferTask, InferType
 
 
 class InferDeepgrow(InferTask):

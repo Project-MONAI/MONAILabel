@@ -11,19 +11,20 @@
 
 import logging
 import os
+from distutils.util import strtobool
 
 from lib import GenericISegGraphCut, GenericISegGraphcutColdstart, GenericISegSimpleCRF, MyInfer, MyStrategy, MyTrain
 from monai.networks.layers import Norm
 from monai.networks.nets import UNet
 
-from monailabel.interfaces import MONAILabelApp
-from monailabel.utils.activelearning import Random
+from monailabel.interfaces.app import MONAILabelApp
+from monailabel.utils.activelearning.random import Random
 
 logger = logging.getLogger(__name__)
 
 
 class MyApp(MONAILabelApp):
-    def __init__(self, app_dir, studies):
+    def __init__(self, app_dir, studies, conf):
         self.network = UNet(
             dimensions=3,
             in_channels=1,
@@ -38,22 +39,21 @@ class MyApp(MONAILabelApp):
         self.pretrained_model = os.path.join(self.model_dir, "pretrained.pt")
         self.final_model = os.path.join(self.model_dir, "model.pt")
 
-        self.download(
-            [
-                (
-                    self.pretrained_model,
-                    "https://api.ngc.nvidia.com/v2/models/nvidia/med/"
-                    "clara_pt_spleen_ct_segmentation/versions/1/files/models/model.pt",
-                ),
-            ]
+        # Path to pretrained weights
+        ngc_path = "https://api.ngc.nvidia.com/v2/models/nvidia/med/"
+        use_pretrained_model = strtobool(conf.get("use_pretrained_model", "true"))
+        pretrained_model_uri = conf.get(
+            "pretrained_model_path", f"{ngc_path}/clara_pt_spleen_ct_segmentation/versions/1/files/models/model.pt"
         )
+        if use_pretrained_model:
+            self.download([(self.pretrained_model, pretrained_model_uri)])
 
         super().__init__(
             app_dir=app_dir,
             studies=studies,
+            conf=conf,
             name="Segmentation - Generic",
             description="Active Learning solution to label generic organ",
-            version=2,
         )
 
     def init_infers(self):

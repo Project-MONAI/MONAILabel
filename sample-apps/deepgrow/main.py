@@ -15,15 +15,15 @@ import os
 from lib import InferDeepgrow, MyStrategy, TrainDeepgrow
 from monai.apps import load_from_mmar
 
-from monailabel.interfaces import MONAILabelApp
-from monailabel.utils.activelearning import Random
+from monailabel.interfaces.app import MONAILabelApp
+from monailabel.utils.activelearning.random import Random
 from monailabel.utils.infer.deepgrow_pipeline import InferDeepgrowPipeline
 
 logger = logging.getLogger(__name__)
 
 
 class MyApp(MONAILabelApp):
-    def __init__(self, app_dir, studies):
+    def __init__(self, app_dir, studies, conf):
         self.model_dir = os.path.join(app_dir, "model")
 
         self.model_dir_2d = os.path.join(self.model_dir, "deepgrow_2d")
@@ -39,9 +39,9 @@ class MyApp(MONAILabelApp):
         super().__init__(
             app_dir=app_dir,
             studies=studies,
+            conf=conf,
             name="Deepgrow - Generic",
             description="Active Learning solution to label generic organ",
-            version=2,
             labels=["spleen"],
         )
 

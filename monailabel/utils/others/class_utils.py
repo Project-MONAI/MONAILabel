@@ -21,8 +21,9 @@ def module_from_file(module_name, file_path):
 
 
 def get_class_of_subclass(module, class_c):
-    for _, o in inspect.getmembers(module):
-        if inspect.isclass(o) and o != class_c and issubclass(o, class_c):
+    for n, o in inspect.getmembers(module):
+        b = [cls.__name__ for cls in o.__bases__]
+        if inspect.isclass(o) and n != class_c and class_c in b:
             return o
     return None
 

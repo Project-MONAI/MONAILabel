@@ -16,34 +16,35 @@ import os
 import sys
 
 from monailabel.config import settings
-from monailabel.interfaces import MONAILabelApp, MONAILabelError, MONAILabelException
+from monailabel.interfaces.exception import MONAILabelError, MONAILabelException
 from monailabel.utils.others.class_utils import get_class_of_subclass_from_file
 
 logger = logging.getLogger(__name__)
 app = None
 
 
-def app_instance(app_dir=None, studies=None):
+def app_instance(app_dir=None, studies=None, conf=None):
     global app
     if app is not None:
         return app
 
-    app_dir = app_dir if app_dir else settings.APP_DIR
-    studies = studies if studies else settings.STUDIES
-    logger.info(f"Initializing App from: {app_dir}; studies: {studies}")
+    app_dir = app_dir if app_dir else settings.MONAI_LABEL_APP_DIR
+    studies = studies if studies else settings.MONAI_LABEL_STUDIES
+    conf = conf if conf else settings.MONAI_LABEL_APP_CONF
+    logger.info(f"Initializing App from: {app_dir}; studies: {studies}; conf: {conf}")
 
     main_py = os.path.join(app_dir, "main.py")
     if not os.path.exists(main_py):
         raise MONAILabelException(MONAILabelError.APP_INIT_ERROR, "App Does NOT have main.py")
 
-    c = get_class_of_subclass_from_file("main", main_py, MONAILabelApp)
+    c = get_class_of_subclass_from_file("main", main_py, "MONAILabelApp")
     if c is None:
         raise MONAILabelException(
             MONAILabelError.APP_INIT_ERROR,
             "App Does NOT Implement MONAILabelApp in main.py",
         )
 
-    o = c(app_dir=app_dir, studies=studies)
+    o = c(app_dir=app_dir, studies=studies, conf=conf)
     app = o
     return app
 
@@ -67,6 +68,12 @@ def run_main():
     args = parser.parse_args()
     for arg in vars(args):
         print("USING:: {} = {}".format(arg, getattr(args, arg)))
+    print("")
+
+    print("------------------------------------------------------")
+    print("SETTINGS")
+    print("------------------------------------------------------")
+    print(json.dumps(settings.dict(), indent=2))
     print("")
 
     sys.path.append(args.app)
