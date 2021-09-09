@@ -11,6 +11,7 @@ MONAILabel APP
 .. currentmodule:: monailabel.interfaces.app
 .. autoclass:: MONAILabelApp
     :members:
+    :noindex:
 
 .. currentmodule:: monailabel.interfaces.datastore
 .. autoclass:: Datastore
@@ -46,7 +47,7 @@ Tasks
     :members:
     :noindex:
 
-.. automodule:: monailabel.interfaces.tasks.scoring
+.. currentmodule:: monailabel.interfaces.tasks.scoring
 .. autoclass:: ScoringMethod
     :members:
     :noindex:
@@ -58,3 +59,12 @@ Utils
 .. autoclass:: BasicTrainTask
     :members:
     :noindex:
+
+
+Modules
+=======
+
+.. toctree::
+    :maxdepth: 4
+
+    apidocs/modules

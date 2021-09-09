@@ -28,6 +28,7 @@ logger = logging.getLogger(__name__)
 class InferType:
     """
     Type of Inference Model
+
     Attributes:
         SEGMENTATION -            Segmentation Model
         CLASSIFICATION -          Classification Model

@@ -58,7 +58,7 @@ extensions = [
 ]
 
 autoclass_content = "both"
-add_module_names = False
+add_module_names = True
 source_encoding = "utf-8"
 autosectionlabel_prefix_document = True
 napoleon_use_param = True

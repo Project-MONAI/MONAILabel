@@ -230,21 +230,21 @@ class MakeISegUnaryd(InteractiveSegmentationTransform):
 
     Usage Example::
 
-    Compose(
-        [
-            # unary term maker
-            MakeISegUnaryd(
-                image="image",
-                logits="logits",
-                scribbles="label",
-                unary="unary",
-                scribbles_bg_label=2,
-                scribbles_fg_label=3,
-            ),
-            # optimiser
-            ApplyCRFOptimisationd(unary="unary", pairwise="image", post_proc_label="pred"),
-        ]
-    )
+        Compose(
+            [
+                # unary term maker
+                MakeISegUnaryd(
+                    image="image",
+                    logits="logits",
+                    scribbles="label",
+                    unary="unary",
+                    scribbles_bg_label=2,
+                    scribbles_fg_label=3,
+                ),
+                # optimiser
+                ApplyCRFOptimisationd(unary="unary", pairwise="image", post_proc_label="pred"),
+            ]
+        )
     """
 
     def __init__(
@@ -317,20 +317,20 @@ class ApplyISegGraphCutPostProcd(InteractiveSegmentationTransform):
 
     Usage Example::
 
-    Compose(
-        [
-            ApplyISegGraphCutPostProcd(
-                image="image",
-                logits="logits",
-                scribbles="label",
-                post_proc_label="pred",
-                scribbles_bg_label=2,
-                scribbles_fg_label=3,
-                lamda=10.0,
-                sigma=15.0,
-            ),
-        ]
-    )
+        Compose(
+            [
+                ApplyISegGraphCutPostProcd(
+                    image="image",
+                    logits="logits",
+                    scribbles="label",
+                    post_proc_label="pred",
+                    scribbles_bg_label=2,
+                    scribbles_fg_label=3,
+                    lamda=10.0,
+                    sigma=15.0,
+                ),
+            ]
+        )
     """
 
     def __init__(
@@ -417,21 +417,21 @@ class ApplyCRFOptimisationd(InteractiveSegmentationTransform):
 
     Usage Example::
 
-    Compose(
-        [
-            # unary term maker
-            MakeISegUnaryd(
-                image="image",
-                logits="logits",
-                scribbles="label",
-                unary="unary",
-                scribbles_bg_label=2,
-                scribbles_fg_label=3,
-            ),
-            # optimiser
-            ApplyCRFOptimisationd(unary="unary", pairwise="image", post_proc_label="pred"),
-        ]
-    )
+        Compose(
+            [
+                # unary term maker
+                MakeISegUnaryd(
+                    image="image",
+                    logits="logits",
+                    scribbles="label",
+                    unary="unary",
+                    scribbles_bg_label=2,
+                    scribbles_fg_label=3,
+                ),
+                # optimiser
+                ApplyCRFOptimisationd(unary="unary", pairwise="image", post_proc_label="pred"),
+            ]
+        )
     """
 
     def __init__(
@@ -518,25 +518,25 @@ class ApplySimpleCRFOptimisationd(InteractiveSegmentationTransform):
 
     Usage Example::
 
-    Compose(
-        [
-            # unary term maker
-            MakeISegUnaryd(
-                image="image",
-                logits="logits",
-                scribbles="label",
-                unary="unary",
-                scribbles_bg_label=2,
-                scribbles_fg_label=3,
-            ),
-            # optimiser
-            ApplySimpleCRFOptimisationd(
-                unary="unary",
-                pairwise="image",
-                post_proc_label="pred",
-            ),
-        ]
-    )
+        Compose(
+            [
+                # unary term maker
+                MakeISegUnaryd(
+                    image="image",
+                    logits="logits",
+                    scribbles="label",
+                    unary="unary",
+                    scribbles_bg_label=2,
+                    scribbles_fg_label=3,
+                ),
+                # optimiser
+                ApplySimpleCRFOptimisationd(
+                    unary="unary",
+                    pairwise="image",
+                    post_proc_label="pred",
+                ),
+            ]
+        )
     """
 
     def __init__(
@@ -637,27 +637,27 @@ class ApplyGraphCutOptimisationd(InteractiveSegmentationTransform):
 
     Usage Example::
 
-    Compose(
-        [
-            # unary term maker
-            MakeISegUnaryd(
-                image="image",
-                logits="logits",
-                scribbles="label",
-                unary="unary",
-                scribbles_bg_label=2,
-                scribbles_fg_label=3,
-            ),
-            # optimiser
-            ApplyGraphCutOptimisationd(
-                unary="unary",
-                pairwise="image",
-                post_proc_label="pred",
-                lamda=10.0,
-                sigma=15.0,
-            ),
-        ]
-    )
+        Compose(
+            [
+                # unary term maker
+                MakeISegUnaryd(
+                    image="image",
+                    logits="logits",
+                    scribbles="label",
+                    unary="unary",
+                    scribbles_bg_label=2,
+                    scribbles_fg_label=3,
+                ),
+                # optimiser
+                ApplyGraphCutOptimisationd(
+                    unary="unary",
+                    pairwise="image",
+                    post_proc_label="pred",
+                    lamda=10.0,
+                    sigma=15.0,
+                ),
+            ]
+        )
     """
 
     def __init__(

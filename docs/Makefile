@@ -21,3 +21,4 @@ help:
 
 clean:
 	rm -rf build/
+	rm -rf source/apidocs/
