@@ -13,10 +13,11 @@ import logging
 import os
 from distutils.util import strtobool
 
-from lib import GenericISegGraphcutModelFree, MyInfer, MyStrategy, MyTrain
+from lib import MyInfer, MyStrategy, MyTrain
 from monai.networks.layers import Norm
 from monai.networks.nets import UNet
 
+from monailabel.scribbles.infer import GenericISegGraphcutModelFree
 from monailabel.interfaces.app import MONAILabelApp
 from monailabel.utils.activelearning.random import Random
 
