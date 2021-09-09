@@ -47,6 +47,9 @@ softmax, has_softmax = optional_import("scipy.special", name="softmax")
 # functionality for interactive seg. tx
 #######################################
 class InteractiveSegmentationTransform(Transform):
+    def __init__(self, meta_key_postfix: str = "meta_dict"):
+        self.meta_key_postfix = meta_key_postfix
+
     def _fetch_data(self, data, key):
         if key not in data.keys():
             raise ValueError("Key {} not found, present keys {}".format(key, data.keys()))
@@ -92,10 +95,9 @@ class AddBackgroundScribblesFromROId(InteractiveSegmentationTransform):
         scribbles_bg_label: int = 2,
         scribbles_fg_label: int = 3,
     ) -> None:
-        super(AddBackgroundScribblesFromROId, self).__init__()
+        super(AddBackgroundScribblesFromROId, self).__init__(meta_key_postfix)
         self.scribbles = scribbles
         self.roi_key = roi_key
-        self.meta_key_postfix = meta_key_postfix
         self.scribbles_bg_label = scribbles_bg_label
         self.scribbles_fg_label = scribbles_fg_label
 
@@ -141,12 +143,11 @@ class MakeLikelihoodFromScribblesHistogramd(InteractiveSegmentationTransform):
         scribbles_bg_label: int = 2,
         scribbles_fg_label: int = 3,
     ) -> None:
-        super(MakeLikelihoodFromScribblesHistogramd, self).__init__()
+        super(MakeLikelihoodFromScribblesHistogramd, self).__init__(meta_key_postfix)
         self.image = image
         self.scribbles = scribbles
         self.scribbles_bg_label = scribbles_bg_label
         self.scribbles_fg_label = scribbles_fg_label
-        self.meta_key_postfix = meta_key_postfix
         self.post_proc_label = post_proc_label
 
     def __call__(self, data):
@@ -185,9 +186,8 @@ class SoftenProbSoftmax(InteractiveSegmentationTransform):
         meta_key_postfix: str = "meta_dict",
         prob: str = "prob",
     ) -> None:
-        super(SoftenProbSoftmax, self).__init__()
+        super(SoftenProbSoftmax, self).__init__(meta_key_postfix)
         self.logits = logits
-        self.meta_key_postfix = meta_key_postfix
         self.prob = prob
 
     def __call__(self, data):
@@ -257,11 +257,10 @@ class MakeISegUnaryd(InteractiveSegmentationTransform):
         scribbles_bg_label: int = 2,
         scribbles_fg_label: int = 3,
     ) -> None:
-        super(MakeISegUnaryd, self).__init__()
+        super(MakeISegUnaryd, self).__init__(meta_key_postfix)
         self.image = image
         self.logits = logits
         self.scribbles = scribbles
-        self.meta_key_postfix = meta_key_postfix
         self.unary = unary
         self.scribbles_bg_label = scribbles_bg_label
         self.scribbles_fg_label = scribbles_fg_label
@@ -346,11 +345,10 @@ class ApplyISegGraphCutPostProcd(InteractiveSegmentationTransform):
         lamda: float = 8.0,
         sigma: float = 0.1,
     ) -> None:
-        super(ApplyISegGraphCutPostProcd, self).__init__()
+        super(ApplyISegGraphCutPostProcd, self).__init__(meta_key_postfix)
         self.image = image
         self.logits = logits
         self.scribbles = scribbles
-        self.meta_key_postfix = meta_key_postfix
         self.post_proc_label = post_proc_label
         self.lamda = lamda
         self.sigma = sigma
@@ -452,10 +450,9 @@ class ApplyCRFOptimisationd(InteractiveSegmentationTransform):
         compatibility_matrix: Optional[torch.Tensor] = None,
         device: str = "cuda" if torch.cuda.is_available else "cpu",
     ) -> None:
-        super(ApplyCRFOptimisationd, self).__init__()
+        super(ApplyCRFOptimisationd, self).__init__(meta_key_postfix)
         self.unary = unary
         self.pairwise = pairwise
-        self.meta_key_postfix = meta_key_postfix
         self.post_proc_label = post_proc_label
         self.bilateral_weight = bilateral_weight
         self.gaussian_weight = gaussian_weight
@@ -556,10 +553,9 @@ class ApplySimpleCRFOptimisationd(InteractiveSegmentationTransform):
         gaussian_spatial_sigma: int = 1,
         number_of_modalities: int = 1,
     ) -> None:
-        super(ApplySimpleCRFOptimisationd, self).__init__()
+        super(ApplySimpleCRFOptimisationd, self).__init__(meta_key_postfix)
         self.unary = unary
         self.pairwise = pairwise
-        self.meta_key_postfix = meta_key_postfix
         self.post_proc_label = post_proc_label
         self.iterations = iterations
         self.bilateral_weight = bilateral_weight
@@ -673,10 +669,9 @@ class ApplyGraphCutOptimisationd(InteractiveSegmentationTransform):
         lamda: float = 8.0,
         sigma: float = 0.1,
     ) -> None:
-        super(ApplyGraphCutOptimisationd, self).__init__()
+        super(ApplyGraphCutOptimisationd, self).__init__(meta_key_postfix)
         self.unary = unary
         self.pairwise = pairwise
-        self.meta_key_postfix = meta_key_postfix
         self.post_proc_label = post_proc_label
         self.lamda = lamda
         self.sigma = sigma
