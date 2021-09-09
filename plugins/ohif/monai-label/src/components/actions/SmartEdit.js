@@ -5,6 +5,7 @@ import cornerstone from 'cornerstone-core';
 import cornerstoneTools from 'cornerstone-tools';
 import ModelSelector from '../ModelSelector';
 import BaseTab from './BaseTab';
+import { getFirstSegmentId } from '../../utils/SegmentationUtils';
 
 export default class SmartEdit extends BaseTab {
   constructor(props) {
@@ -17,14 +18,24 @@ export default class SmartEdit extends BaseTab {
       currentPoint: null,
       deepgrowPoints: new Map(),
       currentEvent: null,
+      currentModel: null,
     };
   }
+
+  onSelectModel = model => {
+    this.setState({ currentModel: model });
+  };
 
   onDeepgrow = async () => {
     const { info, viewConstants } = this.props;
     const image = viewConstants.SeriesInstanceUID;
-    const model = this.modelSelector.current.state.currentModel;
-    const { segmentId } = this.state;
+    const model = this.modelSelector.current.currentModel();
+    const segmentId = this.state.segmentId
+      ? this.state.segmentId
+      : getFirstSegmentId(viewConstants.element);
+    if (segmentId && !this.state.segmentId) {
+      this.onSegmentSelected(segmentId);
+    }
 
     const is3D = info.models[model].dimension === 3;
     if (!segmentId) {
@@ -49,11 +60,15 @@ export default class SmartEdit extends BaseTab {
       .filter(p => (is3D || p.z === currentPoint.z) && p.data.ctrlKey)
       .map(p => [p.x, p.y, p.z]);
 
+    const config = this.props.onOptionsConfig();
+    const params =
+      config && config.infer && config.infer[model] ? config.infer[model] : {};
+
     const cursor = viewConstants.element.style.cursor;
     viewConstants.element.style.cursor = 'wait';
     const response = await this.props
       .client()
-      .deepgrow(model, image, foreground, background);
+      .deepgrow(model, image, foreground, background, params);
     viewConstants.element.style.cursor = cursor;
 
     if (response.status !== 200) {
@@ -79,7 +94,13 @@ export default class SmartEdit extends BaseTab {
       return;
     }
 
-    const { segmentId } = this.state;
+    const segmentId = this.state.segmentId
+      ? this.state.segmentId
+      : getFirstSegmentId(this.props.viewConstants.element);
+    if (segmentId && !this.state.segmentId) {
+      this.onSegmentSelected(segmentId);
+    }
+
     if (!segmentId) {
       this.notification.show({
         title: 'MONAI Label',
@@ -110,6 +131,7 @@ export default class SmartEdit extends BaseTab {
 
   onSegmentDeleted = id => {
     this.clearPoints(id);
+    this.setState({ segmentId: null });
   };
   onSegmentSelected = id => {
     this.initPoints(id);
@@ -236,7 +258,9 @@ export default class SmartEdit extends BaseTab {
             name="smartedit"
             title="SmartEdit"
             models={models}
+            currentModel={this.state.currentModel}
             onClick={this.onDeepgrow}
+            onSelectModel={this.onSelectModel}
             usage={
               <div style={{ fontSize: 'smaller' }}>
                 <p>

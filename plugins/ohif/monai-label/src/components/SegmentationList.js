@@ -12,6 +12,7 @@ import {
   createSegment,
   deleteSegment,
   flattenLabelmaps,
+  getFirstSegmentId,
   getLabelMaps,
   getSegmentInfo,
   updateSegment,
@@ -174,6 +175,7 @@ export default class SegmentationList extends Component {
     const activeIndex = this.getSelectedActiveIndex();
 
     deleteSegment(element, activeIndex.labelmapIndex, activeIndex.segmentIndex);
+    this.setState({ selectedSegmentId: null });
     this.refreshSegTable(null);
 
     if (this.props.onSegmentDeleted) {
@@ -308,6 +310,11 @@ export default class SegmentationList extends Component {
   }
 
   render() {
+    const segmentId = this.state.selectedSegmentId
+      ? this.state.selectedSegmentId
+      : getFirstSegmentId(this.props.viewConstants.element);
+    console.debug('render seg list: ' + segmentId);
+
     return (
       <div className="segmentationList">
         <table width="100%">
@@ -326,7 +333,7 @@ export default class SegmentationList extends Component {
                   className="segButton"
                   onClick={this.onClickEditSegment}
                   title="Edit Selected Segment"
-                  disabled={!this.state.selectedSegmentId}
+                  disabled={!segmentId}
                 >
                   <Icon name="edit" width="12px" height="12px" />
                 </button>
@@ -335,7 +342,7 @@ export default class SegmentationList extends Component {
                   className="segButton"
                   onClick={this.onClickDeleteSegment}
                   title="Delete Selected Segment"
-                  disabled={!this.state.selectedSegmentId}
+                  disabled={!segmentId}
                 >
                   <Icon name="trash" width="12px" height="12px" />
                 </button>

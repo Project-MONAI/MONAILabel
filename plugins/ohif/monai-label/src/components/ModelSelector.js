@@ -8,16 +8,23 @@ export default class ModelSelector extends Component {
     name: PropTypes.string,
     title: PropTypes.string,
     models: PropTypes.array,
+    currentModel: PropTypes.string,
     usage: PropTypes.any,
     onClick: PropTypes.func,
+    onSelectModel: PropTypes.func,
   };
 
   constructor(props) {
     super(props);
 
+    const currentModel = props.currentModel
+      ? props.currentModel
+      : props.models.length > 0
+      ? props.models[0]
+      : '';
     this.state = {
       models: props.models,
-      currentModel: props.models.length > 0 ? props.models[0] : '',
+      currentModel: currentModel,
       buttonDisabled: false,
     };
   }
@@ -33,8 +40,14 @@ export default class ModelSelector extends Component {
   }
 
   onChangeModel = evt => {
-    console.info('Selected Model: ' + evt.target.value);
     this.setState({ currentModel: evt.target.value });
+    if (this.props.onSelectModel) this.props.onSelectModel(evt.target.value);
+  };
+
+  currentModel = () => {
+    return this.props.currentModel
+      ? this.props.currentModel
+      : this.state.currentModel;
   };
 
   onClickBtn = async () => {
@@ -54,6 +67,7 @@ export default class ModelSelector extends Component {
   };
 
   render() {
+    const currentModel = this.currentModel();
     return (
       <div className="modelSelector">
         <table>
@@ -65,12 +79,11 @@ export default class ModelSelector extends Component {
               <td width="80%">
                 <select
                   className="selectBox"
-                  name={this.props.name + 'Select'}
                   onChange={this.onChangeModel}
-                  value={this.state.currentModel}
+                  value={currentModel}
                 >
                   {this.props.models.map(model => (
-                    <option key={model} value={model}>
+                    <option key={model} name={model} value={model}>
                       {`${model} `}
                     </option>
                   ))}
@@ -80,7 +93,6 @@ export default class ModelSelector extends Component {
               <td width="18%">
                 <button
                   className="actionButton"
-                  name={this.props.name + 'Button'}
                   onClick={this.onClickBtn}
                   title={'Run ' + this.props.title}
                   disabled={

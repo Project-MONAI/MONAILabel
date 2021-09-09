@@ -26,13 +26,14 @@ export default class MonaiLabelPanel extends Component {
 
     const { viewports, studies, activeIndex } = props;
     this.viewConstants = this.getViewConstants(viewports, studies, activeIndex);
-    console.log(this.viewConstants);
+    console.debug(this.viewConstants);
 
     this.notification = UINotificationService.create({});
     this.segmentationList = React.createRef();
     this.settings = React.createRef();
     this.actions = {
       options: React.createRef(),
+      activelearning: React.createRef(),
       segmentation: React.createRef(),
       smartedit: React.createRef(),
     };
@@ -117,28 +118,28 @@ export default class MonaiLabelPanel extends Component {
   };
 
   onSegmentCreated = id => {
-    console.log('Segment Created: ' + id);
+    console.info('Segment Created: ' + id);
     for (const action of Object.keys(this.actions)) {
       if (this.actions[action].current)
         this.actions[action].current.onSegmentCreated(id);
     }
   };
   onSegmentUpdated = id => {
-    console.log('Segment Updated: ' + id);
+    console.info('Segment Updated: ' + id);
     for (const action of Object.keys(this.actions)) {
       if (this.actions[action].current)
         this.actions[action].current.onSegmentUpdated(id);
     }
   };
   onSegmentDeleted = id => {
-    console.log('Segment Deleted: ' + id);
+    console.info('Segment Deleted: ' + id);
     for (const action of Object.keys(this.actions)) {
       if (this.actions[action].current)
         this.actions[action].current.onSegmentDeleted(id);
     }
   };
   onSegmentSelected = id => {
-    console.log('Segment Selected: ' + id);
+    console.info('Segment Selected: ' + id);
     for (const action of Object.keys(this.actions)) {
       if (this.actions[action].current)
         this.actions[action].current.onSegmentSelected(id);
@@ -163,6 +164,13 @@ export default class MonaiLabelPanel extends Component {
     }
 
     this.setState({ action: name });
+  };
+
+  onOptionsConfig = () => {
+    return this.actions['options'].current &&
+      this.actions['options'].current.state
+      ? this.actions['options'].current.state.config
+      : {};
   };
 
   updateView = async (response, labels, operation, slice, overlap) => {
@@ -214,6 +222,7 @@ export default class MonaiLabelPanel extends Component {
             notification={this.notification}
             updateView={this.updateView}
             onSelectActionTab={this.onSelectActionTab}
+            onOptionsConfig={this.onOptionsConfig}
           />
 
           <AutoSegmentation
@@ -225,6 +234,7 @@ export default class MonaiLabelPanel extends Component {
             notification={this.notification}
             updateView={this.updateView}
             onSelectActionTab={this.onSelectActionTab}
+            onOptionsConfig={this.onOptionsConfig}
           />
           <SmartEdit
             ref={this.actions['smartedit']}
@@ -235,6 +245,7 @@ export default class MonaiLabelPanel extends Component {
             notification={this.notification}
             updateView={this.updateView}
             onSelectActionTab={this.onSelectActionTab}
+            onOptionsConfig={this.onOptionsConfig}
           />
         </div>
 

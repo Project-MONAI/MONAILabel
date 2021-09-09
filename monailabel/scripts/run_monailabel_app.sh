@@ -23,6 +23,7 @@ if [[ "${app_dir}" == "" ]]; then
   exit 1
 fi
 
+export PATH=$PATH:$app_dir/bin
 echo "Virtual Env: $VIRTUAL_ENV"
 
 PYEXE=python

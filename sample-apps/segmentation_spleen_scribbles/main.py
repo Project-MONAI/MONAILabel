@@ -12,7 +12,7 @@
 import logging
 import os
 
-from lib import (  # SpleenInteractiveGraphCut,; SpleenISegCRF,
+from lib import (
     MyStrategy,
     MyTrain,
     SegmentationWithWriteLogits,
@@ -22,15 +22,15 @@ from lib import (  # SpleenInteractiveGraphCut,; SpleenISegCRF,
 )
 from monai.apps import load_from_mmar
 
-from monailabel.interfaces import MONAILabelApp
-from monailabel.interfaces.tasks import InferType
-from monailabel.utils.activelearning import Random
+from monailabel.interfaces.app import MONAILabelApp
+from monailabel.interfaces.tasks.infer import InferType
+from monailabel.utils.activelearning.random import Random
 
 logger = logging.getLogger(__name__)
 
 
 class MyApp(MONAILabelApp):
-    def __init__(self, app_dir, studies):
+    def __init__(self, app_dir, studies, conf):
         self.model_dir = os.path.join(app_dir, "model")
         self.final_model = os.path.join(self.model_dir, "model.pt")
 
@@ -39,10 +39,10 @@ class MyApp(MONAILabelApp):
         super().__init__(
             app_dir=app_dir,
             studies=studies,
+            conf=conf,
             name="Segmentation - Spleen + Scribbles",
             description="Active Learning solution to label Spleen Organ over 3D CT Images.  "
             "It includes multiple scribbles method that incorporate user scribbles to improve labels",
-            version=2,
         )
 
     def init_infers(self):
@@ -53,8 +53,6 @@ class MyApp(MONAILabelApp):
             "Coldstart->ISeg+GraphCut": SpleenISegGraphcutColdstart(),
             "ISeg+GraphCut": SpleenISegGraphCut(),
             "ISeg+SimpleCRF": SpleenISegSimpleCRF(),
-            # "ISeg+CRF": SpleenISegCRF(), # disabled for now as MONAI CRF GPU has a bug
-            # "ISeg+InteractiveGraphCut": SpleenInteractiveGraphCut(), # hidden as this is redundant option
         }
 
         # Simple way to Add deepgrow 2D+3D models for infer tasks
