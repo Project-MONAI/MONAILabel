@@ -57,7 +57,7 @@ class SpleenPostProc(InferTask):
                 b_min=self.b_range[0],
                 b_max=self.b_range[1],
                 clip=True,
-            ),        
+            ),
         ]
 
     def post_transforms(self):
