@@ -76,19 +76,18 @@ def make_iseg_unary(
     if prob_shape[0] == 1:
         prob = np.concatenate([prob, 1.0 - prob], axis=0)
 
-    background_pts = list(np.argwhere(scribbles == scribbles_bg_label))
-    foreground_pts = list(np.argwhere(scribbles == scribbles_fg_label))
+    mask = np.concatenate([scribbles == scribbles_bg_label, scribbles == scribbles_fg_label], axis=0)
 
     # issue a warning if no scribbles detected, the algorithm will still work
     # just need to inform user/researcher - in case it is unexpected
-    if len(background_pts) == 0:
+    if not np.any(mask[0, ...]):
         logging.info(
             "warning: no background scribbles received with label {}, available in scribbles {}".format(
                 scribbles_bg_label, np.unique(scribbles)
             )
         )
 
-    if len(foreground_pts) == 0:
+    if not np.any(mask[1, ...]):
         logging.info(
             "warning: no foreground scribbles received with label {}, available in scribbles {}".format(
                 scribbles_fg_label, np.unique(scribbles)
@@ -99,39 +98,34 @@ def make_iseg_unary(
     unary_term = np.copy(prob)
 
     # for numerical stability, get rid of zeros
-    # needed only for SimpleCRF's methods, as internally they take -log(P)
     eps = get_eps(unary_term)
-    unary_term[unary_term == 0] += eps
-
-    # update unary with Equation 7
-    s_hat = [0] * len(background_pts) + [1] * len(foreground_pts)
-    fg_bg_pts = background_pts + foreground_pts
 
     equal_term = 1.0 - eps
     no_equal_term = eps
-    for s_h, fb_pt in zip(s_hat, fg_bg_pts):
-        u_idx = tuple(fb_pt[1:])
-        unary_term[(s_h,) + u_idx] = equal_term
-        unary_term[(1 - s_h,) + u_idx] = no_equal_term
+
+    # update unary with Equation 7
+    unary_term[mask] = equal_term
+    mask = np.flip(mask, axis=0)
+    unary_term[mask] = no_equal_term
 
     return unary_term
 
 
 def make_histograms(image, scrib, scribbles_bg_label, scribbles_fg_label, bins=32):
-    def get_values(_data, _seed, _label):
-        idx = np.argwhere(_seed == _label)
-        _values = []
-        for id in idx:
-            _values.append(_data[tuple(id)])
-        return _values
+    # collect background voxels
+    values = image[scrib == scribbles_bg_label]
+    # generate histogram for background
+    bg_hist, _ = np.histogram(values, bins=bins, range=(0, 1), density=True)
 
-    values = get_values(image, scrib, scribbles_bg_label)
-    bg_hist, bg_bin_edges = np.histogram(values, bins=bins, range=(0, 1), density=True)
-
-    values = get_values(image, scrib, scribbles_fg_label)
+    # collect foreground voxels
+    values = image[scrib == scribbles_fg_label]
+    # generate histrogram for foreground
     fg_hist, fg_bin_edges = np.histogram(values, bins=bins, range=(0, 1), density=True)
 
+    # calculate scale to normalise histogram, such that it returns a true probability
     scale = fg_bin_edges[1] - fg_bin_edges[0]
+
+    # normalise histograms and return
     return (bg_hist * scale).astype(np.float32), (fg_hist * scale).astype(np.float32), fg_bin_edges
 
 
@@ -142,15 +136,19 @@ def make_likelihood_image_histogram(image, scrib, scribbles_bg_label, scribbles_
     if min_img < 0.0 or max_img > 1.0:
         image = (image - min_img) / (max_img - min_img)
 
+    # generate histograms for background/foreground
     bg_hist, fg_hist, bin_edges = make_histograms(image, scrib, scribbles_bg_label, scribbles_fg_label)
 
+    # lookup values for each voxel for generating background/foreground probabilities
     dimage = np.digitize(image, bin_edges[:-1]) - 1
     fprob = fg_hist[dimage]
     bprob = bg_hist[dimage]
     retprob = np.concatenate([bprob, fprob], axis=0)
+
+    # renormalise
     retprob = softmax(retprob, axis=0)
 
-    # return label instead of probability
+    # if needed, convert to discrete labels instead of probability
     if not return_prob:
         retprob = np.expand_dims(np.argmax(retprob, axis=0), axis=0).astype(np.float32)
 
