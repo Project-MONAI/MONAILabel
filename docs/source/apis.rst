@@ -1,45 +1,60 @@
 :github_url: https://github.com/Project-MONAI/MONAILabel
 
-.. _apis:
+=============
+API Reference
+=============
 
-MONAI APP
-=========
+MONAILabel APP
+==============
 
 
-.. automodule:: monailabel.interfaces.app
+.. currentmodule:: monailabel.interfaces.app
 .. autoclass:: MONAILabelApp
     :members:
 
-.. automodule:: monailabel.interfaces.datastore
+.. currentmodule:: monailabel.interfaces.datastore
 .. autoclass:: Datastore
     :members:
+    :noindex:
 
-.. automodule:: monailabel.interfaces.exception
+.. currentmodule:: monailabel.interfaces.exception
 .. autoclass:: MONAILabelError
     :members:
+    :noindex:
 .. autoclass:: MONAILabelException
     :members:
+    :noindex:
 
 Tasks
 =====
 
-.. automodule:: monailabel.interfaces.tasks.infer
+.. currentmodule:: monailabel.interfaces.tasks.infer
 .. autoclass:: InferType
     :members:
+    :noindex:
 .. autoclass:: InferTask
     :members:
+    :noindex:
 
-.. automodule:: monailabel.interfaces.tasks.train
+.. currentmodule:: monailabel.interfaces.tasks.train
 .. autoclass:: TrainTask
     :members:
+    :noindex:
 
-.. automodule:: monailabel.interfaces.tasks.strategy
+.. currentmodule:: monailabel.interfaces.tasks.strategy
 .. autoclass:: Strategy
     :members:
+    :noindex:
+
+.. automodule:: monailabel.interfaces.tasks.scoring
+.. autoclass:: ScoringMethod
+    :members:
+    :noindex:
 
 Utils
 =====
 
-.. automodule:: monailabel.utils.train.basic_train
+.. currentmodule:: monailabel.utils.train.basic_train
 .. autoclass:: BasicTrainTask
     :members:
+    :noindex:
