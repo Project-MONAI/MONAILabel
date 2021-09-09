@@ -95,7 +95,7 @@ class AddBackgroundScribblesFromROId(InteractiveSegmentationTransform):
         scribbles_bg_label: int = 2,
         scribbles_fg_label: int = 3,
     ) -> None:
-        super(AddBackgroundScribblesFromROId, self).__init__(meta_key_postfix)
+        super().__init__(meta_key_postfix)
         self.scribbles = scribbles
         self.roi_key = roi_key
         self.scribbles_bg_label = scribbles_bg_label
@@ -143,7 +143,7 @@ class MakeLikelihoodFromScribblesHistogramd(InteractiveSegmentationTransform):
         scribbles_bg_label: int = 2,
         scribbles_fg_label: int = 3,
     ) -> None:
-        super(MakeLikelihoodFromScribblesHistogramd, self).__init__(meta_key_postfix)
+        super().__init__(meta_key_postfix)
         self.image = image
         self.scribbles = scribbles
         self.scribbles_bg_label = scribbles_bg_label
@@ -186,7 +186,7 @@ class SoftenProbSoftmax(InteractiveSegmentationTransform):
         meta_key_postfix: str = "meta_dict",
         prob: str = "prob",
     ) -> None:
-        super(SoftenProbSoftmax, self).__init__(meta_key_postfix)
+        super().__init__(meta_key_postfix)
         self.logits = logits
         self.prob = prob
 
@@ -230,21 +230,21 @@ class MakeISegUnaryd(InteractiveSegmentationTransform):
 
     Usage Example::
 
-    Compose(
-        [
-            # unary term maker
-            MakeISegUnaryd(
-                image="image",
-                logits="logits",
-                scribbles="label",
-                unary="unary",
-                scribbles_bg_label=2,
-                scribbles_fg_label=3,
-            ),
-            # optimiser
-            ApplyCRFOptimisationd(unary="unary", pairwise="image", post_proc_label="pred"),
-        ]
-    )
+        Compose(
+            [
+                # unary term maker
+                MakeISegUnaryd(
+                    image="image",
+                    logits="logits",
+                    scribbles="label",
+                    unary="unary",
+                    scribbles_bg_label=2,
+                    scribbles_fg_label=3,
+                ),
+                # optimiser
+                ApplyCRFOptimisationd(unary="unary", pairwise="image", post_proc_label="pred"),
+            ]
+        )
     """
 
     def __init__(
@@ -257,7 +257,7 @@ class MakeISegUnaryd(InteractiveSegmentationTransform):
         scribbles_bg_label: int = 2,
         scribbles_fg_label: int = 3,
     ) -> None:
-        super(MakeISegUnaryd, self).__init__(meta_key_postfix)
+        super().__init__(meta_key_postfix)
         self.image = image
         self.logits = logits
         self.scribbles = scribbles
@@ -317,20 +317,20 @@ class ApplyISegGraphCutPostProcd(InteractiveSegmentationTransform):
 
     Usage Example::
 
-    Compose(
-        [
-            ApplyISegGraphCutPostProcd(
-                image="image",
-                logits="logits",
-                scribbles="label",
-                post_proc_label="pred",
-                scribbles_bg_label=2,
-                scribbles_fg_label=3,
-                lamda=10.0,
-                sigma=15.0,
-            ),
-        ]
-    )
+        Compose(
+            [
+                ApplyISegGraphCutPostProcd(
+                    image="image",
+                    logits="logits",
+                    scribbles="label",
+                    post_proc_label="pred",
+                    scribbles_bg_label=2,
+                    scribbles_fg_label=3,
+                    lamda=10.0,
+                    sigma=15.0,
+                ),
+            ]
+        )
     """
 
     def __init__(
@@ -345,7 +345,7 @@ class ApplyISegGraphCutPostProcd(InteractiveSegmentationTransform):
         lamda: float = 8.0,
         sigma: float = 0.1,
     ) -> None:
-        super(ApplyISegGraphCutPostProcd, self).__init__(meta_key_postfix)
+        super().__init__(meta_key_postfix)
         self.image = image
         self.logits = logits
         self.scribbles = scribbles
@@ -417,21 +417,21 @@ class ApplyCRFOptimisationd(InteractiveSegmentationTransform):
 
     Usage Example::
 
-    Compose(
-        [
-            # unary term maker
-            MakeISegUnaryd(
-                image="image",
-                logits="logits",
-                scribbles="label",
-                unary="unary",
-                scribbles_bg_label=2,
-                scribbles_fg_label=3,
-            ),
-            # optimiser
-            ApplyCRFOptimisationd(unary="unary", pairwise="image", post_proc_label="pred"),
-        ]
-    )
+        Compose(
+            [
+                # unary term maker
+                MakeISegUnaryd(
+                    image="image",
+                    logits="logits",
+                    scribbles="label",
+                    unary="unary",
+                    scribbles_bg_label=2,
+                    scribbles_fg_label=3,
+                ),
+                # optimiser
+                ApplyCRFOptimisationd(unary="unary", pairwise="image", post_proc_label="pred"),
+            ]
+        )
     """
 
     def __init__(
@@ -450,7 +450,7 @@ class ApplyCRFOptimisationd(InteractiveSegmentationTransform):
         compatibility_matrix: Optional[torch.Tensor] = None,
         device: str = "cuda" if torch.cuda.is_available else "cpu",
     ) -> None:
-        super(ApplyCRFOptimisationd, self).__init__(meta_key_postfix)
+        super().__init__(meta_key_postfix)
         self.unary = unary
         self.pairwise = pairwise
         self.post_proc_label = post_proc_label
@@ -518,25 +518,25 @@ class ApplySimpleCRFOptimisationd(InteractiveSegmentationTransform):
 
     Usage Example::
 
-    Compose(
-        [
-            # unary term maker
-            MakeISegUnaryd(
-                image="image",
-                logits="logits",
-                scribbles="label",
-                unary="unary",
-                scribbles_bg_label=2,
-                scribbles_fg_label=3,
-            ),
-            # optimiser
-            ApplySimpleCRFOptimisationd(
-                unary="unary",
-                pairwise="image",
-                post_proc_label="pred",
-            ),
-        ]
-    )
+        Compose(
+            [
+                # unary term maker
+                MakeISegUnaryd(
+                    image="image",
+                    logits="logits",
+                    scribbles="label",
+                    unary="unary",
+                    scribbles_bg_label=2,
+                    scribbles_fg_label=3,
+                ),
+                # optimiser
+                ApplySimpleCRFOptimisationd(
+                    unary="unary",
+                    pairwise="image",
+                    post_proc_label="pred",
+                ),
+            ]
+        )
     """
 
     def __init__(
@@ -553,7 +553,7 @@ class ApplySimpleCRFOptimisationd(InteractiveSegmentationTransform):
         gaussian_spatial_sigma: int = 1,
         number_of_modalities: int = 1,
     ) -> None:
-        super(ApplySimpleCRFOptimisationd, self).__init__(meta_key_postfix)
+        super().__init__(meta_key_postfix)
         self.unary = unary
         self.pairwise = pairwise
         self.post_proc_label = post_proc_label
@@ -637,27 +637,27 @@ class ApplyGraphCutOptimisationd(InteractiveSegmentationTransform):
 
     Usage Example::
 
-    Compose(
-        [
-            # unary term maker
-            MakeISegUnaryd(
-                image="image",
-                logits="logits",
-                scribbles="label",
-                unary="unary",
-                scribbles_bg_label=2,
-                scribbles_fg_label=3,
-            ),
-            # optimiser
-            ApplyGraphCutOptimisationd(
-                unary="unary",
-                pairwise="image",
-                post_proc_label="pred",
-                lamda=10.0,
-                sigma=15.0,
-            ),
-        ]
-    )
+        Compose(
+            [
+                # unary term maker
+                MakeISegUnaryd(
+                    image="image",
+                    logits="logits",
+                    scribbles="label",
+                    unary="unary",
+                    scribbles_bg_label=2,
+                    scribbles_fg_label=3,
+                ),
+                # optimiser
+                ApplyGraphCutOptimisationd(
+                    unary="unary",
+                    pairwise="image",
+                    post_proc_label="pred",
+                    lamda=10.0,
+                    sigma=15.0,
+                ),
+            ]
+        )
     """
 
     def __init__(
@@ -669,7 +669,7 @@ class ApplyGraphCutOptimisationd(InteractiveSegmentationTransform):
         lamda: float = 8.0,
         sigma: float = 0.1,
     ) -> None:
-        super(ApplyGraphCutOptimisationd, self).__init__(meta_key_postfix)
+        super().__init__(meta_key_postfix)
         self.unary = unary
         self.pairwise = pairwise
         self.post_proc_label = post_proc_label

@@ -13,18 +13,12 @@ import logging
 import os
 from distutils.util import strtobool
 
-from lib import (
-    MyStrategy,
-    MyTrain,
-    SegmentationWithWriteLogits,
-    SpleenISegGraphCut,
-    SpleenISegGraphcutColdstart,
-    SpleenISegSimpleCRF,
-)
+from lib import MyStrategy, MyTrain, SegmentationWithWriteLogits, SpleenISegGraphCut, SpleenISegSimpleCRF
 from monai.apps import load_from_mmar
 
 from monailabel.interfaces.app import MONAILabelApp
 from monailabel.interfaces.tasks.infer import InferType
+from monailabel.scribbles.infer import HistogramBasedGraphCut
 from monailabel.utils.activelearning.random import Random
 from monailabel.utils.activelearning.tta import TTAStrategy
 from monailabel.utils.scoring.dice import Dice
@@ -59,7 +53,7 @@ class MyApp(MONAILabelApp):
             "Spleen_Segmentation": SegmentationWithWriteLogits(
                 self.final_model, load_from_mmar(self.mmar, self.model_dir)
             ),
-            "Coldstart->ISeg+GraphCut": SpleenISegGraphcutColdstart(),
+            "histogramBasedGraphCut": HistogramBasedGraphCut(),
             "ISeg+GraphCut": SpleenISegGraphCut(),
             "ISeg+SimpleCRF": SpleenISegSimpleCRF(),
         }

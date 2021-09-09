@@ -34,6 +34,7 @@ class DiscardAddGuidanced(MapTransform):
     ):
         """
         Discard positive and negative points according to discard probability
+
         :param keys: The ``keys`` parameter will be used to get and set the actual data item to transform
         :param number_intensity_ch: number of intensity channels
         :param probability: probability of discarding clicks
@@ -95,13 +96,14 @@ class ResizeGuidanceCustomd(Transform):
 class AddRandomGuidanced(Randomizable, Transform):
     """
     Add random guidance based on discrepancies that were found between label and prediction.
+
     Args:
         guidance: key to guidance source, shape (2, N, # of dim)
-        discrepancy: key to discrepancy map between label and prediction,
-            shape (2, C, H, W, D) or (2, C, H, W)
+        discrepancy: key to discrepancy map between label and prediction
+          shape (2, C, H, W, D) or (2, C, H, W)
         probability: key to click/interaction probability, shape (1)
-        weight_map: optional key to predetermined weight map used to increase click likelihood in higher weight areas,
-            shape (C, H, W, D) or (C, H, W)
+        weight_map: optional key to predetermined weight map used to increase click likelihood
+          in higher weight areas shape (C, H, W, D) or (C, H, W)
     """
 
     def __init__(
@@ -188,15 +190,15 @@ class AddRandomGuidanced(Randomizable, Transform):
 class PosNegClickProbAddRandomGuidanced(Randomizable, Transform):
     """
     Add random guidance based on discrepancies that were found between label and prediction.
+
     Args:
         guidance: key to guidance source, shape (2, N, # of dim)
-        discrepancy: key to discrepancy map between label and prediction,
-            shape (2, C, H, W, D) or (2, C, H, W)
+        discrepancy: key to discrepancy map between label and prediction shape (2, C, H, W, D) or (2, C, H, W)
         probability: key to click/interaction probability, shape (1)
         pos_click_probability: if click, probability of a positive click
-            (probability of negative click will be 1 - pos_click_probability)
-        weight_map: optional key to predetermined weight map used to increase click likelihood in higher weight areas,
-            shape (C, H, W, D) or (C, H, W)
+          (probability of negative click will be 1 - pos_click_probability)
+        weight_map: optional key to predetermined weight map used to increase click likelihood
+          in higher weight areas shape (C, H, W, D) or (C, H, W)
     """
 
     def __init__(

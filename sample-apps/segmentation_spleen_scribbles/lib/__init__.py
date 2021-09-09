@@ -11,11 +11,5 @@
 
 from .activelearning import MyStrategy
 from .infer import SegmentationWithWriteLogits
-from .scribbles import (
-    SpleenInteractiveGraphCut,
-    SpleenISegCRF,
-    SpleenISegGraphCut,
-    SpleenISegGraphcutColdstart,
-    SpleenISegSimpleCRF,
-)
+from .scribbles import SpleenInteractiveGraphCut, SpleenISegCRF, SpleenISegGraphCut, SpleenISegSimpleCRF
 from .train import MyTrain
