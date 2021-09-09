@@ -59,8 +59,9 @@ def main():
         # Waiting to train model for some epochs
         for i in range(args.training_time_factor):
             sleep(3)
-            print("Training - Label number: " + str(idx) + " of " + str(len(new_labels) + 1) + " -- Second: " + str(
-                i + 1))
+            print(
+                "Training - Label number: " + str(idx) + " of " + str(len(new_labels) + 1) + " -- Second: " + str(i + 1)
+            )
 
         # Stop training
         print("Stop training ---")
