@@ -17,6 +17,7 @@ set method=%3
 set request=%4
 
 set COUNT=
+set PATH=%app_dir%\bin;%PATH%
 
 echo Virtual Env: %VIRTUAL_ENV%
 if exist %app_dir%\requirements.txt.invalid (

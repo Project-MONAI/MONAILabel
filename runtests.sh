@@ -442,7 +442,7 @@ if [ $doUnitTests = true ]; then
   torch_validate
 
   ${cmdPrefix}${PY_EXE} tests/setup.py
-  ${cmdPrefix}${cmd} -m pytest -v tests/unit --no-summary --log-cli-level=INFO
+  ${cmdPrefix}${cmd} -m pytest -v tests/unit --no-summary
 fi
 
 function check_server_running() {
@@ -457,11 +457,11 @@ if [ $doNetTests = true ]; then
 
   ${cmdPrefix}${PY_EXE} tests/setup.py
   echo "Starting MONAILabel server..."
-  ./monailabel/monailabel start_server -a sample-apps/segmentation_left_atrium -s tests/data/dataset/heart -p ${MONAILABEL_SERVER_PORT:-8000} &
+  ./monailabel/monailabel start_server -a sample-apps/segmentation_left_atrium -s tests/data/dataset/local/heart -p ${MONAILABEL_SERVER_PORT:-8000} &
 
   wait_time=0
   server_is_up=0
-  start_time_out=60
+  start_time_out=120
 
   while [[ $wait_time -le ${start_time_out} ]]; do
     if [ "$(check_server_running)" == "200" ]; then
