@@ -34,18 +34,18 @@ logger = logging.getLogger(__name__)
 # monai crf is optional import as it requires compiling monai C++/Cuda code
 monaicrf, has_monaicrf = optional_import("monai.networks.blocks", name="CRF")
 
-# simplecrf is option import as it requires compiling C++ code
+# simplecrf is optional import as it requires compiling C++ code
 densecrf, has_densecrf = optional_import("denseCRF")
 densecrf3d, has_densecrf3d = optional_import("denseCRF3D")
 
 softmax, has_softmax = optional_import("scipy.special", name="softmax")
 
-#####################################
+#######################################
 # Interactive Segmentation Transforms
 #
 # Base class for implementing common
-# functionality for int. seg. tx
-#####################################
+# functionality for interactive seg. tx
+#######################################
 class InteractiveSegmentationTransform(Transform):
     def _fetch_data(self, data, key):
         if key not in data.keys():
@@ -77,8 +77,8 @@ class InteractiveSegmentationTransform(Transform):
         return d
 
 
-#####################################
-#####################################
+#######################################
+#######################################
 
 #########################################
 #  Add Background Scribbles from bbox ROI
@@ -580,11 +580,6 @@ class ApplySimpleCRFOptimisationd(InteractiveSegmentationTransform):
         pairwise_term = self._fetch_data(d, self.pairwise)
 
         # SimpleCRF expects uint8 for pairwise_term
-        # scaling of pairwise_term handled in pre_transforms should be in range [0, 1]
-        # just in case it is needed, leaving a basic scaling method here
-        # min_p = pairwise_term.min()
-        # max_p = pairwise_term.max()
-        # pairwise_term = (((pairwise_term - min_p) / (max_p - min_p)) * 255).astype(np.uint8)
         pairwise_term = (pairwise_term * 255).astype(np.uint8)
 
         # prepare data for SimpleCRF's CRF

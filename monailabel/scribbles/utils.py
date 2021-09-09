@@ -139,7 +139,7 @@ def make_likelihood_image_histogram(image, scrib, scribbles_bg_label, scribbles_
     # generate histograms for background/foreground
     bg_hist, fg_hist, bin_edges = make_histograms(image, scrib, scribbles_bg_label, scribbles_fg_label)
 
-    # lookup values for each voxel for generating background/foreground probabilityes
+    # lookup values for each voxel for generating background/foreground probabilities
     dimage = np.digitize(image, bin_edges[:-1]) - 1
     fprob = fg_hist[dimage]
     bprob = bg_hist[dimage]
