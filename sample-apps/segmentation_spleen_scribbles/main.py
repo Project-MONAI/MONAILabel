@@ -17,7 +17,7 @@ from lib import (
     MyTrain,
     SegmentationWithWriteLogits,
     SpleenISegGraphCut,
-    SpleenISegGraphcutColdstart,
+    SpleenISegGraphcutModelFree,
     SpleenISegSimpleCRF,
 )
 from monai.apps import load_from_mmar
@@ -50,7 +50,7 @@ class MyApp(MONAILabelApp):
             "Spleen_Segmentation": SegmentationWithWriteLogits(
                 self.final_model, load_from_mmar(self.mmar, self.model_dir)
             ),
-            "Coldstart->ISeg+GraphCut": SpleenISegGraphcutColdstart(),
+            "ModelFreeGraphCut": SpleenISegGraphcutModelFree(),
             "ISeg+GraphCut": SpleenISegGraphCut(),
             "ISeg+SimpleCRF": SpleenISegSimpleCRF(),
         }

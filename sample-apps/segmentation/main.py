@@ -13,7 +13,7 @@ import logging
 import os
 from distutils.util import strtobool
 
-from lib import GenericISegGraphCut, GenericISegGraphcutColdstart, GenericISegSimpleCRF, MyInfer, MyStrategy, MyTrain
+from lib import GenericISegGraphCut, GenericISegGraphcutModelFree, GenericISegSimpleCRF, MyInfer, MyStrategy, MyTrain
 from monai.networks.layers import Norm
 from monai.networks.nets import UNet
 
@@ -59,7 +59,7 @@ class MyApp(MONAILabelApp):
     def init_infers(self):
         infers = {
             "segmentation": MyInfer([self.pretrained_model, self.final_model], self.network),
-            "Coldstart->ISeg+GraphCut": GenericISegGraphcutColdstart(),
+            "ModelFreeGraphCut": GenericISegGraphcutModelFree(),
             "ISeg+GraphCut": GenericISegGraphCut(),
             "ISeg+SimpleCRF": GenericISegSimpleCRF(),
         }

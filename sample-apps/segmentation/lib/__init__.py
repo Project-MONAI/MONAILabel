@@ -15,7 +15,7 @@ from .scribbles import (
     GenericInteractiveGraphCut,
     GenericISegCRF,
     GenericISegGraphCut,
-    GenericISegGraphcutColdstart,
+    GenericISegGraphcutModelFree,
     GenericISegSimpleCRF,
 )
 from .train import MyTrain

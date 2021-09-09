@@ -15,7 +15,7 @@ from .scribbles import (
     SpleenInteractiveGraphCut,
     SpleenISegCRF,
     SpleenISegGraphCut,
-    SpleenISegGraphcutColdstart,
+    SpleenISegGraphcutModelFree,
     SpleenISegSimpleCRF,
 )
 from .train import MyTrain

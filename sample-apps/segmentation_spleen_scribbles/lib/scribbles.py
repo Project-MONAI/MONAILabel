@@ -112,9 +112,9 @@ class SpleenISegCRF(SpleenPostProc):
         )
 
 
-class SpleenISegGraphcutColdstart(SpleenPostProc):
+class SpleenISegGraphcutModelFree(SpleenPostProc):
     """
-    Defines ISeg+Graphcut based cold start task for Spleen segmentation from the following paper:
+    Defines model-free Graphcut task for Spleen segmentation from the following paper:
 
     Wang, Guotai, et al. "Interactive medical image segmentation using deep learning with image-specific fine tuning."
     IEEE transactions on medical imaging 37.7 (2018): 1562-1573. (preprint: https://arxiv.org/pdf/1710.04043.pdf)
@@ -130,7 +130,7 @@ class SpleenISegGraphcutColdstart(SpleenPostProc):
     def __init__(
         self,
         dimension=3,
-        description="A post processing step with ISeg + Graphcut cold start for Spleen segmentation",
+        description="A post processing step with model-free Graphcut for Spleen segmentation",
     ):
         super().__init__(dimension, description)
 

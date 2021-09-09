@@ -118,9 +118,9 @@ class GenericISegCRF(ScribblesInferTask):
         )
 
 
-class GenericISegGraphcutColdstart(ScribblesInferTask):
+class GenericISegGraphcutModelFree(ScribblesInferTask):
     """
-    Defines ISeg+Graphcut based cold start task for Generic segmentation from the following paper:
+    Defines model-free Graphcut task for Generic segmentation from the following paper:
 
     Wang, Guotai, et al. "Interactive medical image segmentation using deep learning with image-specific fine tuning."
     IEEE transactions on medical imaging 37.7 (2018): 1562-1573. (preprint: https://arxiv.org/pdf/1710.04043.pdf)
@@ -136,7 +136,7 @@ class GenericISegGraphcutColdstart(ScribblesInferTask):
     def __init__(
         self,
         dimension=3,
-        description="A post processing step with ISeg + Graphcut cold start for Generic segmentation",
+        description="A post processing step with model-free Graphcut for Generic segmentation",
     ):
         super().__init__(dimension, description)
 
