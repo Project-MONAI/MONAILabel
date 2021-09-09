@@ -9,6 +9,7 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
+import logging
 from copy import deepcopy
 from typing import Optional
 
@@ -27,6 +28,8 @@ from .utils import (
     maxflow2d,
     maxflow3d,
 )
+
+logger = logging.getLogger(__name__)
 
 # monai crf is optional import as it requires compiling monai C++/Cuda code
 monaicrf, has_monaicrf = optional_import("monai.networks.blocks", name="CRF")
@@ -53,7 +56,7 @@ class InteractiveSegmentationTransform(Transform):
     def _normalise_logits(self, data, axis=0):
         # check if logits is a true prob, if not then apply softmax
         if not np.allclose(np.sum(data, axis=axis), 1.0):
-            print("found non normalized logits, normalizing using Softmax")
+            logger.info("found non normalized logits, normalizing using Softmax")
             data = softmax(data, axis=axis)
 
         return data
