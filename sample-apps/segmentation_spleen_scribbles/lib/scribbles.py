@@ -11,10 +11,9 @@
 
 from monai.transforms import AddChanneld, Compose, LoadImaged, ScaleIntensityRanged, Spacingd
 
-from monailabel.interfaces.tasks import InferTask, InferType
-from monailabel.utils.others.post import BoundingBoxd, Restored
-
-from .transforms import (
+from monailabel.interfaces.tasks.infer import InferTask, InferType
+from monailabel.scribbles.transforms import (
+    AddBackgroundScribblesFromROId,
     ApplyCRFOptimisationd,
     ApplyGraphCutOptimisationd,
     ApplyISegGraphCutPostProcd,
@@ -23,6 +22,7 @@ from .transforms import (
     MakeLikelihoodFromScribblesHistogramd,
     SoftenProbSoftmax,
 )
+from monailabel.utils.others.post import BoundingBoxd, Restored
 
 
 class SpleenPostProc(InferTask):
@@ -138,6 +138,7 @@ class SpleenISegGraphcutColdstart(SpleenPostProc):
         return [
             LoadImaged(keys=["image", "label"]),
             AddChanneld(keys=["image", "label"]),
+            AddBackgroundScribblesFromROId(scribbles="label", scribbles_bg_label=2, scribbles_fg_label=3),
             # at the moment optimisers are bottleneck taking a long time,
             # therefore scaling non-isotropic with big spacing
             Spacingd(keys=["image"], pixdim=[2.5, 2.5, 5.0]),

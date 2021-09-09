@@ -36,7 +36,7 @@ from monai.transforms import (
     ToTensor,
 )
 
-from monailabel.interfaces.tasks import InferTask, InferType
+from monailabel.interfaces.tasks.infer import InferTask, InferType
 from monailabel.utils.others.post import BoundingBoxd, LargestCCd
 
 logger = logging.getLogger(__name__)

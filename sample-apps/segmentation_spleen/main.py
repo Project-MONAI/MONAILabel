@@ -13,18 +13,17 @@ import logging
 import os
 
 from lib import MyInfer, MyTrain
-from lib.activelearning import MyStrategy, Tta
+from lib.activelearning import MyStrategy
 from monai.apps import load_from_mmar
 
-from monailabel.interfaces import MONAILabelApp
-from monailabel.utils.activelearning import Random
-from monailabel.utils.scoring.tta_scoring import TTAScoring
+from monailabel.interfaces.app import MONAILabelApp
+from monailabel.utils.activelearning.random import Random
 
 logger = logging.getLogger(__name__)
 
 
 class MyApp(MONAILabelApp):
-    def __init__(self, app_dir, studies):
+    def __init__(self, app_dir, studies, conf):
         self.model_dir = os.path.join(app_dir, "model")
         self.final_model = os.path.join(self.model_dir, "model.pt")
 
@@ -33,9 +32,9 @@ class MyApp(MONAILabelApp):
         super().__init__(
             app_dir=app_dir,
             studies=studies,
+            conf=conf,
             name="Segmentation - Spleen",
             description="Active Learning solution to label Spleen Organ over 3D CT Images",
-            version=2,
         )
 
     def init_infers(self):
@@ -58,10 +57,4 @@ class MyApp(MONAILabelApp):
         return {
             "random": Random(),
             "first": MyStrategy(),
-            "Tta": Tta(),
-        }
-
-    def init_scoring_methods(self):
-        return {
-            "tta_scoring": TTAScoring(),
         }

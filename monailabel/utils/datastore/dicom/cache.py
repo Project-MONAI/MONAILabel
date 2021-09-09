@@ -12,7 +12,7 @@ import hashlib
 import logging
 import os
 import pathlib
-from typing import Any, Dict, List, Tuple
+from typing import Any, Dict, List, Optional, Tuple
 
 from dicomweb_client import DICOMwebClient
 from dicomweb_client.api import load_json_dataset
@@ -27,17 +27,22 @@ logger = logging.getLogger(__name__)
 
 
 class DICOMWebCache(LocalDatastore):
-    def __init__(self, client: DICOMwebClient):
+    def __init__(self, client: DICOMwebClient, cache_path: Optional[str] = None):
         self._client = client
         self._modality = "CT"
         uri_hash = hashlib.md5(self._client.base_url.encode("utf-8")).hexdigest()
-        datastore_path = os.path.join(pathlib.Path.home(), ".cache", "monailabel", uri_hash)
+        datastore_path = (
+            os.path.join(cache_path, uri_hash)
+            if cache_path
+            else os.path.join(pathlib.Path.home(), ".cache", "monailabel", uri_hash)
+        )
 
         self._stats_cache = ExpiringDict(max_len=100, max_age_seconds=30)
         super().__init__(datastore_path=datastore_path, auto_reload=True)
 
     def name(self) -> str:
-        return self._client.base_url
+        base_url: str = self._client.base_url
+        return base_url
 
     def _to_id(self, file: str) -> Tuple[str, str]:
         extensions = [".nii", ".nii.gz", ".nrrd"]

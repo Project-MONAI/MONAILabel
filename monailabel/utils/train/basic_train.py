@@ -34,8 +34,8 @@ from monai.handlers import (
 from monai.inferers import SimpleInferer
 from monai.transforms import Compose
 
-from monailabel.interfaces import Datastore
-from monailabel.interfaces.tasks import TrainTask
+from monailabel.interfaces.datastore import Datastore
+from monailabel.interfaces.tasks.train import TrainTask
 from monailabel.utils.train.handler import PublishStatsAndModel, prepare_stats
 
 logger = logging.getLogger(__name__)
