@@ -42,6 +42,7 @@ def create_client(app_dir, studies):
 
 
 class BasicEndpointTestSuite(unittest.TestCase):
+    client = None
     base_dir = os.path.realpath(os.path.dirname(os.path.dirname(os.path.dirname(os.path.dirname(__file__)))))
     data_dir = os.path.join(base_dir, "tests", "data")
 
