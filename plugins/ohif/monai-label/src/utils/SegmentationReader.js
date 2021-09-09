@@ -65,7 +65,7 @@ export default class SegmentationReader {
       );
       writer.then(function(response) {
         SegmentationReader.saveFile(new Blob([response.arrayBuffer]), filename);
-        console.info('File downloaded: ' + filename);
+        console.debug('File downloaded: ' + filename);
       });
     });
   }
@@ -78,7 +78,7 @@ export default class SegmentationReader {
     const nrrdBuffer = nrrd.serialize(nrrdOrg);
     if (filename) {
       SegmentationReader.saveFile(new Blob([nrrdBuffer]), filename);
-      console.info('File downloaded: ' + filename);
+      console.debug('File downloaded: ' + filename);
     }
     return nrrdBuffer;
   }

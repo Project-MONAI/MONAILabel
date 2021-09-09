@@ -13,6 +13,7 @@ export default class BaseTab extends Component {
     client: PropTypes.func,
     updateView: PropTypes.func,
     onSelectActionTab: PropTypes.func,
+    onOptionsConfig: PropTypes.func,
   };
 
   constructor(props) {
@@ -33,4 +34,5 @@ export default class BaseTab extends Component {
   onSegmentUpdated = id => {};
   onSegmentDeleted = id => {};
   onSegmentSelected = id => {};
+  onSelectModel = model => {};
 }

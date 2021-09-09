@@ -41,6 +41,7 @@ jobs:
           set -e
 
           # move packages to a temp dir
+          export BUILD_OHIF=true
           python setup.py sdist bdist_wheel --build-number $(date +'%Y%m%d%H%M')
           tmp_dir=$(mktemp -d)
           cp dist/monailabel* "$tmp_dir"

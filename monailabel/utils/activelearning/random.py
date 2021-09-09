@@ -13,7 +13,7 @@ import logging
 import random
 
 from monailabel.interfaces.datastore import Datastore
-from monailabel.interfaces.tasks import Strategy
+from monailabel.interfaces.tasks.strategy import Strategy
 
 logger = logging.getLogger(__name__)
 
