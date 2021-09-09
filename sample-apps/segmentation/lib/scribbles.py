@@ -11,7 +11,7 @@
 
 from monai.transforms import Compose, EnsureChannelFirstd, LoadImaged, Orientationd, ScaleIntensityRanged, Spacingd
 
-from monailabel.interfaces.tasks.infer import InferTask
+from monailabel.interfaces.tasks.infer import InferTask, InferType
 from monailabel.scribbles.transforms import (
     AddBackgroundScribblesFromROId,
     ApplyGraphCutOptimisationd,
@@ -19,6 +19,7 @@ from monailabel.scribbles.transforms import (
     MakeLikelihoodFromScribblesHistogramd,
 )
 from monailabel.utils.others.post import BoundingBoxd, Restored
+
 
 class GenericISegGraphcutModelFree(InferTask):
     """
@@ -40,7 +41,9 @@ class GenericISegGraphcutModelFree(InferTask):
         dimension=3,
         description="A post processing step with model-free Graphcut for Generic segmentation",
     ):
-        super().__init__(dimension, description)
+        super().__init__(
+            path=None, network=None, labels=None, type=InferType.SCRIBBLES, dimension=dimension, description=description
+        )
 
     def pre_transforms(self):
         return [
@@ -88,4 +91,3 @@ class GenericISegGraphcutModelFree(InferTask):
             Restored(keys="pred", ref_image="image"),
             BoundingBoxd(keys="pred", result="result", bbox="bbox"),
         ]
-

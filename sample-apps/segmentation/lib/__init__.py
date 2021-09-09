@@ -11,7 +11,5 @@
 
 from .activelearning import MyStrategy
 from .infer import MyInfer
-from .scribbles import (
-    GenericISegGraphcutModelFree,
-)
+from .scribbles import GenericISegGraphcutModelFree
 from .train import MyTrain
