@@ -13,11 +13,12 @@ import logging
 import os
 from distutils.util import strtobool
 
-from lib import GenericISegGraphCut, GenericISegGraphcutColdstart, GenericISegSimpleCRF, MyInfer, MyStrategy, MyTrain
+from lib import MyInfer, MyStrategy, MyTrain
 from monai.networks.layers import Norm
 from monai.networks.nets import UNet
 
 from monailabel.interfaces.app import MONAILabelApp
+from monailabel.scribbles.infer import HistogramBasedGraphCut
 from monailabel.utils.activelearning.random import Random
 
 logger = logging.getLogger(__name__)
@@ -59,9 +60,7 @@ class MyApp(MONAILabelApp):
     def init_infers(self):
         infers = {
             "segmentation": MyInfer([self.pretrained_model, self.final_model], self.network),
-            "Coldstart->ISeg+GraphCut": GenericISegGraphcutColdstart(),
-            "ISeg+GraphCut": GenericISegGraphCut(),
-            "ISeg+SimpleCRF": GenericISegSimpleCRF(),
+            "histogramBasedGraphCut": HistogramBasedGraphCut(),
         }
 
         # Simple way to Add deepgrow 2D+3D models for infer tasks
