@@ -7,12 +7,12 @@ In this folder you will find examples of the **three available paradigms**: Two 
 
 #### DeepGrow
 
-For the DeepGrow paradigm there are three cases: the [deepgrow for spleen segmentation](./deepgrow_spleen), the [deepgrow for left atrium segmentation](./deepgrow_left_atrium) and 
-the [generic deepgrow App](./generic_deepgrow). The latter one is meant for the users that want to build deepgrow-based Apps.
+For the DeepGrow paradigm there are two cases: the [deepgrow for left atrium segmentation](./deepgrow_left_atrium) and 
+the [deepgrow App](./deepgrow). The latter one is meant for the users that want to build deepgrow-based Apps.
 
 #### DeepEdit
 
-Similar to the deepgrow Apps, you'll find three folders: [deepedit for spleen segmentation](./deepedit_spleen), [deepedit for left atrium](./deepedit_left_atrium) segmentation and the [generic deepedit](./generic_deepedit) that researchers can use to build their own deepedit-based app
+Similar to the deepgrow Apps, you'll find the one generic [deepedit](./generic_deepedit) that researchers can use to build their own deepedit-based app.
 
 
 #### Automated Segmentation

@@ -44,12 +44,12 @@ class TTAScoring(ScoringMethod):
     First version of test time augmentation active learning
     """
 
-    def __init__(self, model, network=None, deepedit=True):
+    def __init__(self, model, network=None, deepedit=True, num_samples=5):
         super().__init__("Compute initial score based on TTA")
         self.model = model
         self.device = "cuda"
         self.img_size = [128, 128, 128]
-        self.num_samples = 5
+        self.num_samples = num_samples
         self.network = network
         self.deepedit = deepedit
 
@@ -109,7 +109,7 @@ class TTAScoring(ScoringMethod):
             return
 
         logger.info(f"Using {model_file} for running TTA")
-        model_ts = os.stat(model_file).st_mtime
+        model_ts = int(os.stat(model_file).st_mtime)
         if self.network:
             model = self.network
             if model_file:
@@ -126,36 +126,40 @@ class TTAScoring(ScoringMethod):
             num_workers=0,
             inferrer_fn=partial(self._inferer, model=model.to(self.device)),
             device=self.device,
+            progress=self.num_samples > 1,
         )
 
         # Performing TTA for all unlabeled images
         skipped = 0
         unlabeled_images = datastore.get_unlabeled_images()
+        num_samples = request.get("num_samples", self.num_samples)
+
         for image_id in unlabeled_images:
             image_info = datastore.get_image_info(image_id)
-            if image_info.get("tta_ts", 0) == model_ts:
+            prev_ts = image_info.get("tta_ts", 0)
+            if prev_ts == model_ts:
                 skipped += 1
                 continue
 
-            logger.info("Run TTA for image: " + image_id)
+            logger.info(f"TTA:: Run for image: {image_id}; Prev Ts: {prev_ts}; New Ts: {model_ts}")
 
             # Computing the Volume Variation Coefficient (VVC)
             start = time.time()
             with torch.no_grad():
                 data = {"image": datastore.get_image_uri(image_id)}
-                mode_tta, mean_tta, std_tta, vvc_tta = tt_aug(data, num_examples=self.num_samples)
+                mode_tta, mean_tta, std_tta, vvc_tta = tt_aug(data, num_examples=num_samples)
 
-            logger.info(f"{image_id} => vvc: {vvc_tta}")
+            logger.info(f"TTA:: {image_id} => vvc: {vvc_tta}")
             if self.device == "cuda":
                 torch.cuda.empty_cache()
 
             latency_tta = time.time() - start
-            logger.info("Time taken for " + str(self.num_samples) + " augmented samples: " + str(latency_tta))
+            logger.info(f"TTA:: Time taken for {num_samples} augmented samples: {latency_tta} (sec)")
 
             # Add vvc in datastore
             info = {"vvc_tta": vvc_tta, "tta_ts": model_ts}
             datastore.update_image_info(image_id, info)
             result[image_id] = info
 
-        logger.info(f"Total: {len(unlabeled_images)}; Skipped = {skipped}; Executed: {len(result)}")
+        logger.info(f"TTA:: Total: {len(unlabeled_images)}; Skipped = {skipped}; Executed: {len(result)}")
         return result

@@ -81,7 +81,7 @@ def run_main():
 
     logging.basicConfig(
         level=(logging.DEBUG if args.debug else logging.INFO),
-        format="[%(asctime)s] [%(levelname)s] (%(name)s) - %(message)s",
+        format="[%(asctime)s] [%(threadName)s] [%(levelname)s] (%(name)s:%(lineno)d) - %(message)s",
     )
 
     a = app_instance(app_dir=args.app, studies=args.studies)
