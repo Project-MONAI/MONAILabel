@@ -9,6 +9,7 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
+import logging
 from copy import deepcopy
 from typing import Optional
 
@@ -28,21 +29,23 @@ from .utils import (
     maxflow3d,
 )
 
+logger = logging.getLogger(__name__)
+
 # monai crf is optional import as it requires compiling monai C++/Cuda code
 monaicrf, has_monaicrf = optional_import("monai.networks.blocks", name="CRF")
 
-# simplecrf is option import as it requires compiling C++ code
+# simplecrf is optional import as it requires compiling C++ code
 densecrf, has_densecrf = optional_import("denseCRF")
 densecrf3d, has_densecrf3d = optional_import("denseCRF3D")
 
 softmax, has_softmax = optional_import("scipy.special", name="softmax")
 
-#####################################
+#######################################
 # Interactive Segmentation Transforms
 #
 # Base class for implementing common
-# functionality for int. seg. tx
-#####################################
+# functionality for interactive seg. tx
+#######################################
 class InteractiveSegmentationTransform(Transform):
     def _fetch_data(self, data, key):
         if key not in data.keys():
@@ -53,7 +56,7 @@ class InteractiveSegmentationTransform(Transform):
     def _normalise_logits(self, data, axis=0):
         # check if logits is a true prob, if not then apply softmax
         if not np.allclose(np.sum(data, axis=axis), 1.0):
-            print("found non normalized logits, normalizing using Softmax")
+            logger.info("found non normalized logits, normalizing using Softmax")
             data = softmax(data, axis=axis)
 
         return data
@@ -74,8 +77,8 @@ class InteractiveSegmentationTransform(Transform):
         return d
 
 
-#####################################
-#####################################
+#######################################
+#######################################
 
 #########################################
 #  Add Background Scribbles from bbox ROI
@@ -393,7 +396,7 @@ class ApplyISegGraphCutPostProcd(InteractiveSegmentationTransform):
             # 2D is not yet tested within this framework
             post_proc_label = interactive_maxflow2d(image, prob, scribbles, lamda=self.lamda, sigma=self.sigma)
 
-        post_proc_label = np.expand_dims(post_proc_label, axis=0)
+        post_proc_label = np.expand_dims(post_proc_label, axis=0).astype(np.float32)
         d[self.post_proc_label] = post_proc_label
 
         return d
@@ -577,11 +580,6 @@ class ApplySimpleCRFOptimisationd(InteractiveSegmentationTransform):
         pairwise_term = self._fetch_data(d, self.pairwise)
 
         # SimpleCRF expects uint8 for pairwise_term
-        # scaling of pairwise_term handled in pre_transforms should be in range [0, 1]
-        # just in case it is needed, leaving a basic scaling method here
-        # min_p = pairwise_term.min()
-        # max_p = pairwise_term.max()
-        # pairwise_term = (((pairwise_term - min_p) / (max_p - min_p)) * 255).astype(np.uint8)
         pairwise_term = (pairwise_term * 255).astype(np.uint8)
 
         # prepare data for SimpleCRF's CRF
@@ -626,7 +624,7 @@ class ApplySimpleCRFOptimisationd(InteractiveSegmentationTransform):
 
             post_proc_label = densecrf.densecrf(pairwise_term, unary_term, simplecrf_params)
 
-        post_proc_label = np.expand_dims(post_proc_label, axis=0)
+        post_proc_label = np.expand_dims(post_proc_label, axis=0).astype(np.float32)
         d[self.post_proc_label] = post_proc_label
 
         return d
@@ -715,7 +713,7 @@ class ApplyGraphCutOptimisationd(InteractiveSegmentationTransform):
             # 2D is not yet tested within this framework
             post_proc_label = maxflow2d(pairwise_term, unary_term, lamda=self.lamda, sigma=self.sigma)
 
-        post_proc_label = np.expand_dims(post_proc_label, axis=0)
+        post_proc_label = np.expand_dims(post_proc_label, axis=0).astype(np.float32)
         d[self.post_proc_label] = post_proc_label
 
         return d
