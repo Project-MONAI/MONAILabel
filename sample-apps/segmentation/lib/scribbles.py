@@ -10,6 +10,8 @@
 # limitations under the License.
 
 from monai.transforms import Compose, EnsureChannelFirstd, LoadImaged, Orientationd, ScaleIntensityRanged, Spacingd
+from monai.transforms.croppad.dictionary import CenterSpatialCropd
+from monai.transforms.intensity.dictionary import NormalizeIntensityd
 
 from monailabel.interfaces.tasks.infer import InferTask, InferType
 from monailabel.scribbles.transforms import (
@@ -40,10 +42,14 @@ class GenericISegGraphcutModelFree(InferTask):
         self,
         dimension=3,
         description="A post processing step with model-free Graphcut for Generic segmentation",
+        intensity_range=[-300, 200],
+        pix_dim=[2.5, 2.5, 5.0],
     ):
         super().__init__(
             path=None, network=None, labels=None, type=InferType.SCRIBBLES, dimension=dimension, description=description
         )
+        self.intensity_range=intensity_range
+        self.pix_dim = pix_dim
 
     def pre_transforms(self):
         return [
@@ -52,12 +58,10 @@ class GenericISegGraphcutModelFree(InferTask):
             AddBackgroundScribblesFromROId(scribbles="label", scribbles_bg_label=2, scribbles_fg_label=3),
             # at the moment optimisers are bottleneck taking a long time,
             # therefore scaling non-isotropic with big spacing
-            Spacingd(keys=["image"], pixdim=[2.5, 2.5, 5.0], mode="bilinear"),
-            Spacingd(keys=["label"], pixdim=[2.5, 2.5, 5.0], mode="nearest"),
+            Spacingd(keys=["image"], pixdim=self.pix_dim, mode="bilinear"),
+            Spacingd(keys=["label"], pixdim=self.pix_dim, mode="nearest"),
             Orientationd(keys=["image", "label"], axcodes="RAS"),
-            # NormalizeIntensityd(keys="image", nonzero=False, channel_wise=True),
-            # CenterSpatialCropd(keys=["image", "logits", "label"], roi_size=(256, 256, 128)),
-            ScaleIntensityRanged(keys="image", a_min=-300, a_max=200, b_min=0.0, b_max=1.0, clip=True),
+            ScaleIntensityRanged(keys="image", a_min=self.intensity_range[0], a_max=self.intensity_range[1], b_min=0.0, b_max=1.0, clip=True),
             MakeLikelihoodFromScribblesHistogramd(
                 image="image", scribbles="label", post_proc_label="prob", scribbles_bg_label=2, scribbles_fg_label=3
             ),
