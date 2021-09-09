@@ -18,7 +18,7 @@ from lib.activelearning import MyStrategy
 from monai.networks.nets.dynunet_v1 import DynUNetV1
 
 from monailabel.interfaces.app import MONAILabelApp
-from monailabel.scribbles.infer import GenericISegGraphcutModelFree
+from monailabel.scribbles.infer import HistogramBasedGraphCut
 from monailabel.utils.activelearning.random import Random
 from monailabel.utils.activelearning.tta import TTAStrategy
 from monailabel.utils.others.planner import ExperimentPlanner
@@ -115,7 +115,7 @@ class MyApp(MONAILabelApp):
                 spatial_size=self.spatial_size,
                 target_spacing=self.target_spacing,
             ),
-            "ModelFreeGraphCut": GenericISegGraphcutModelFree(),
+            "HistogramBasedGraphCut": HistogramBasedGraphCut(),
         }
 
     def init_trainers(self):

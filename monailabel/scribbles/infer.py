@@ -21,9 +21,9 @@ from monailabel.scribbles.transforms import (
 from monailabel.utils.others.post import BoundingBoxd, Restored
 
 
-class GenericISegGraphcutModelFree(InferTask):
+class HistogramBasedGraphCut(InferTask):
     """
-    Defines model-free Graphcut task for Generic segmentation from the following paper:
+    Defines histogram-based GraphCut task for Generic segmentation from the following paper:
 
     Wang, Guotai, et al. "Interactive medical image segmentation using deep learning with image-specific fine tuning."
     IEEE transactions on medical imaging 37.7 (2018): 1562-1573. (preprint: https://arxiv.org/pdf/1710.04043.pdf)
@@ -32,14 +32,14 @@ class GenericISegGraphcutModelFree(InferTask):
     indicating foreground and background regions. A likelihood volume is generated using histogram method.
     User-scribbles are incorporated using Equation 7 on page 4 of the paper.
 
-    SimpleCRF's Graphcut layer is used to optimise Equation 5 from the paper, where unaries come from Equation 7
+    SimpleCRF's GraphCut layer is used to optimise Equation 5 from the paper, where unaries come from Equation 7
     and pairwise is the original input volume.
     """
 
     def __init__(
         self,
         dimension=3,
-        description="A post processing step with model-free Graphcut for Generic segmentation",
+        description="A post processing step with histogram-based GraphCut for Generic segmentation",
         intensity_range=(-300, 200),
         pix_dim=(2.5, 2.5, 5.0),
     ):

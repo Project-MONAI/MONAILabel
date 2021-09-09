@@ -17,7 +17,7 @@ from lib.activelearning import MyStrategy
 from monai.apps import load_from_mmar
 
 from monailabel.interfaces.app import MONAILabelApp
-from monailabel.scribbles.infer import GenericISegGraphcutModelFree
+from monailabel.scribbles.infer import HistogramBasedGraphCut
 from monailabel.utils.activelearning.random import Random
 
 logger = logging.getLogger(__name__)
@@ -41,7 +41,7 @@ class MyApp(MONAILabelApp):
     def init_infers(self):
         infers = {
             "segmentation_spleen": MyInfer(self.final_model, load_from_mmar(self.mmar, self.model_dir)),
-            "ModelFreeGraphCut": GenericISegGraphcutModelFree(),
+            "HistogramBasedGraphCut": HistogramBasedGraphCut(),
         }
 
         # Simple way to Add deepgrow 2D+3D models for infer tasks

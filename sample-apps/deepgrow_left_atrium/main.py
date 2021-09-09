@@ -16,7 +16,7 @@ from lib import InferDeepgrow, MyStrategy, TrainDeepgrow
 from monai.apps import load_from_mmar
 
 from monailabel.interfaces.app import MONAILabelApp
-from monailabel.scribbles.infer import GenericISegGraphcutModelFree
+from monailabel.scribbles.infer import HistogramBasedGraphCut
 from monailabel.utils.activelearning.random import Random
 from monailabel.utils.infer.deepgrow_pipeline import InferDeepgrowPipeline
 
@@ -67,7 +67,7 @@ class MyApp(MONAILabelApp):
                 dimension=3,
                 model_size=(128, 192, 192),
             ),
-            "ModelFreeGraphCut": GenericISegGraphcutModelFree(),
+            "HistogramBasedGraphCut": HistogramBasedGraphCut(),
         }
 
         infers["deepgrow_pipeline"] = InferDeepgrowPipeline(
