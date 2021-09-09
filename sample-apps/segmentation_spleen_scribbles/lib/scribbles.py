@@ -32,15 +32,13 @@ class SpleenPostProc(InferTask):
         self,
         dimension,
         description,
-        intensity_range=(-300, 200),
-        b_range=(0.0, 1.0),
+        intensity_range=(-300, 200, 0.0, 1.0),
         pix_dim=(2.5, 2.5, 5.0),
     ):
         super().__init__(
             path=None, network=None, labels=None, type=InferType.SCRIBBLES, dimension=dimension, description=description
         )
         self.intensity_range = intensity_range
-        self.b_range = b_range
         self.pix_dim = pix_dim
 
     def pre_transforms(self):
@@ -54,8 +52,8 @@ class SpleenPostProc(InferTask):
                 keys="image",
                 a_min=self.intensity_range[0],
                 a_max=self.intensity_range[1],
-                b_min=self.b_range[0],
-                b_max=self.b_range[1],
+                b_min=self.intensity_range[2],
+                b_max=self.intensity_range[3],
                 clip=True,
             ),
         ]
@@ -89,11 +87,10 @@ class SpleenISegCRF(SpleenPostProc):
         self,
         dimension=3,
         description="A post processing step with ISeg + MONAI's CRF for Spleen segmentation",
-        intensity_range=(-300, 200),
-        b_range=(0.0, 1.0),
+        intensity_range=(-300, 200, 0.0, 1.0),
         pix_dim=(2.5, 2.5, 5.0),
     ):
-        super().__init__(dimension, description, intensity_range, b_range, pix_dim)
+        super().__init__(dimension, description, intensity_range, pix_dim)
 
     def pre_transforms(self):
         return [
@@ -106,8 +103,8 @@ class SpleenISegCRF(SpleenPostProc):
                 keys="image",
                 a_min=self.intensity_range[0],
                 a_max=self.intensity_range[1],
-                b_min=self.b_range[0],
-                b_max=self.b_range[1],
+                b_min=self.intensity_range[2],
+                b_max=self.intensity_range[3],
                 clip=True,
             ),
             SoftenProbSoftmax(logits="logits", prob="prob"),
@@ -150,11 +147,10 @@ class SpleenISegGraphCut(SpleenPostProc):
         self,
         dimension=3,
         description="A post processing step with ISeg + SimpleCRF's GraphCut for Spleen segmentation",
-        intensity_range=(-300, 200),
-        b_range=(0.0, 1.0),
+        intensity_range=(-300, 200, 0.0, 1.0),
         pix_dim=(2.5, 2.5, 5.0),
     ):
-        super().__init__(dimension, description, intensity_range, b_range, pix_dim)
+        super().__init__(dimension, description, intensity_range, pix_dim)
 
     def inferer(self):
         return Compose(
@@ -199,11 +195,10 @@ class SpleenInteractiveGraphCut(SpleenPostProc):
         self,
         dimension=3,
         description="A post processing step with SimpleCRF's Interactive ISeg GraphCut for Spleen segmentation",
-        intensity_range=(-300, 200),
-        b_range=(0.0, 1.0),
+        intensity_range=(-300, 200, 0.0, 1.0),
         pix_dim=(2.5, 2.5, 5.0),
     ):
-        super().__init__(dimension, description, intensity_range, b_range, pix_dim)
+        super().__init__(dimension, description, intensity_range, pix_dim)
 
     def inferer(self):
         return Compose(
@@ -241,11 +236,10 @@ class SpleenISegSimpleCRF(SpleenPostProc):
         self,
         dimension=3,
         description="A post processing step with ISeg + SimpleCRF's CRF for Spleen segmentation",
-        intensity_range=(-300, 200),
-        b_range=(0.0, 1.0),
+        intensity_range=(-300, 200, 0.0, 1.0),
         pix_dim=(2.5, 2.5, 5.0),
     ):
-        super().__init__(dimension, description, intensity_range, b_range, pix_dim)
+        super().__init__(dimension, description, intensity_range, pix_dim)
 
     def inferer(self):
         return Compose(

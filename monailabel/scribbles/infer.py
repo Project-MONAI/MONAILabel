@@ -40,15 +40,13 @@ class HistogramBasedGraphCut(InferTask):
         self,
         dimension=3,
         description="A post processing step with histogram-based GraphCut for Generic segmentation",
-        intensity_range=(-300, 200),
-        b_range=(0.0, 1.0),
+        intensity_range=(-300, 200, 0.0, 1.0),
         pix_dim=(2.5, 2.5, 5.0),
     ):
         super().__init__(
             path=None, network=None, labels=None, type=InferType.SCRIBBLES, dimension=dimension, description=description
         )
         self.intensity_range = intensity_range
-        self.b_range = b_range
         self.pix_dim = pix_dim
 
     def pre_transforms(self):
@@ -64,8 +62,8 @@ class HistogramBasedGraphCut(InferTask):
                 keys="image",
                 a_min=self.intensity_range[0],
                 a_max=self.intensity_range[1],
-                b_min=self.b_range[0],
-                b_max=self.b_range[1],
+                b_min=self.intensity_range[2],
+                b_max=self.intensity_range[3],
                 clip=True,
             ),
             MakeLikelihoodFromScribblesHistogramd(
