@@ -115,7 +115,7 @@ class MyApp(MONAILabelApp):
                 spatial_size=self.spatial_size,
                 target_spacing=self.target_spacing,
             ),
-            "HistogramBasedGraphCut": HistogramBasedGraphCut(),
+            "histogramBasedGraphCut": HistogramBasedGraphCut(),
         }
 
     def init_trainers(self):

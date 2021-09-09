@@ -67,7 +67,7 @@ class MyApp(MONAILabelApp):
                 dimension=3,
                 model_size=(128, 192, 192),
             ),
-            "HistogramBasedGraphCut": HistogramBasedGraphCut(),
+            "histogramBasedGraphCut": HistogramBasedGraphCut(),
         }
 
         infers["deepgrow_pipeline"] = InferDeepgrowPipeline(

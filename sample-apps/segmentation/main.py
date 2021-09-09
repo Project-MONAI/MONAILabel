@@ -60,7 +60,7 @@ class MyApp(MONAILabelApp):
     def init_infers(self):
         infers = {
             "segmentation": MyInfer([self.pretrained_model, self.final_model], self.network),
-            "HistogramBasedGraphCut": HistogramBasedGraphCut(),
+            "histogramBasedGraphCut": HistogramBasedGraphCut(),
         }
 
         # Simple way to Add deepgrow 2D+3D models for infer tasks

@@ -41,7 +41,7 @@ class MyApp(MONAILabelApp):
     def init_infers(self):
         infers = {
             "segmentation_spleen": MyInfer(self.final_model, load_from_mmar(self.mmar, self.model_dir)),
-            "HistogramBasedGraphCut": HistogramBasedGraphCut(),
+            "histogramBasedGraphCut": HistogramBasedGraphCut(),
         }
 
         # Simple way to Add deepgrow 2D+3D models for infer tasks
