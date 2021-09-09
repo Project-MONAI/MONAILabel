@@ -12,18 +12,12 @@
 import logging
 import os
 
-from lib import (
-    MyStrategy,
-    MyTrain,
-    SegmentationWithWriteLogits,
-    SpleenISegGraphCut,
-    SpleenISegGraphcutModelFree,
-    SpleenISegSimpleCRF,
-)
+from lib import MyStrategy, MyTrain, SegmentationWithWriteLogits, SpleenISegGraphCut, SpleenISegSimpleCRF
 from monai.apps import load_from_mmar
 
 from monailabel.interfaces.app import MONAILabelApp
 from monailabel.interfaces.tasks.infer import InferType
+from monailabel.scribbles.infer import GenericISegGraphcutModelFree
 from monailabel.utils.activelearning.random import Random
 
 logger = logging.getLogger(__name__)
@@ -50,7 +44,7 @@ class MyApp(MONAILabelApp):
             "Spleen_Segmentation": SegmentationWithWriteLogits(
                 self.final_model, load_from_mmar(self.mmar, self.model_dir)
             ),
-            "ModelFreeGraphCut": SpleenISegGraphcutModelFree(),
+            "ModelFreeGraphCut": GenericISegGraphcutModelFree(),
             "ISeg+GraphCut": SpleenISegGraphCut(),
             "ISeg+SimpleCRF": SpleenISegSimpleCRF(),
         }

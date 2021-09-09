@@ -18,6 +18,7 @@ from monai.networks.layers import Norm
 from monai.networks.nets import UNet
 
 from monailabel.interfaces.app import MONAILabelApp
+from monailabel.scribbles.infer import GenericISegGraphcutModelFree
 from monailabel.utils.activelearning.random import Random
 
 logger = logging.getLogger(__name__)
@@ -56,6 +57,7 @@ class MyApp(MONAILabelApp):
     def init_infers(self):
         return {
             "segmentation_left_atrium": MyInfer([self.pretrained_model, self.final_model], self.network),
+            "ModelFreeGraphCut": GenericISegGraphcutModelFree(),
         }
 
     def init_trainers(self):

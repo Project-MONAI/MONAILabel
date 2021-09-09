@@ -17,8 +17,8 @@ from lib import MyInfer, MyStrategy, MyTrain
 from monai.networks.layers import Norm
 from monai.networks.nets import UNet
 
-from monailabel.scribbles.infer import GenericISegGraphcutModelFree
 from monailabel.interfaces.app import MONAILabelApp
+from monailabel.scribbles.infer import GenericISegGraphcutModelFree
 from monailabel.utils.activelearning.random import Random
 
 logger = logging.getLogger(__name__)
