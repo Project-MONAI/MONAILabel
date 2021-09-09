@@ -14,13 +14,14 @@ import json
 import logging
 import os
 import sys
+from typing import Any, Dict
 
 from monailabel.config import settings
 from monailabel.interfaces.exception import MONAILabelError, MONAILabelException
 from monailabel.utils.others.class_utils import get_class_of_subclass_from_file
 
 logger = logging.getLogger(__name__)
-apps = {}
+apps: Dict[str, Any] = {}
 
 
 def app_instance(app_dir=None, studies=None, conf=None):

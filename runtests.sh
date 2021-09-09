@@ -461,7 +461,7 @@ if [ $doNetTests = true ]; then
 
   wait_time=0
   server_is_up=0
-  start_time_out=60
+  start_time_out=120
 
   while [[ $wait_time -le ${start_time_out} ]]; do
     if [ "$(check_server_running)" == "200" ]; then
