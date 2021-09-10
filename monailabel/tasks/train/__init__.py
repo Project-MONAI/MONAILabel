@@ -8,20 +8,3 @@
 # WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 # See the License for the specific language governing permissions and
 # limitations under the License.
-
-from fastapi import APIRouter
-
-from monailabel.interfaces.app import MONAILabelApp
-from monailabel.interfaces.utils.app import app_instance
-
-router = APIRouter(
-    prefix="/info",
-    tags=["AppService"],
-    responses={404: {"description": "Not found"}},
-)
-
-
-@router.get("/", summary="Get App Info")
-async def app_info():
-    instance: MONAILabelApp = app_instance()
-    return instance.info()

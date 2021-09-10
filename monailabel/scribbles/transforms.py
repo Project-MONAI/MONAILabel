@@ -18,7 +18,7 @@ import torch
 from monai.transforms import Transform
 from monai.utils import optional_import
 
-from monailabel.utils.others.writer import Writer
+from monailabel.transform.writer import Writer
 
 from .utils import (
     interactive_maxflow2d,

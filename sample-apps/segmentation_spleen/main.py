@@ -19,11 +19,11 @@ from monai.apps import load_from_mmar
 
 from monailabel.interfaces.app import MONAILabelApp
 from monailabel.scribbles.infer import HistogramBasedGraphCut
-from monailabel.utils.activelearning.random import Random
-from monailabel.utils.activelearning.tta import TTAStrategy
-from monailabel.utils.scoring.dice import Dice
-from monailabel.utils.scoring.sum import Sum
-from monailabel.utils.scoring.tta import TTAScoring
+from monailabel.tasks.activelearning.random import Random
+from monailabel.tasks.activelearning.tta import TTAStrategy
+from monailabel.tasks.scoring.dice import Dice
+from monailabel.tasks.scoring.sum import Sum
+from monailabel.tasks.scoring.tta import TTAScoring
 
 logger = logging.getLogger(__name__)
 

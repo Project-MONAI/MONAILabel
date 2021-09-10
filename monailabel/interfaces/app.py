@@ -26,6 +26,8 @@ from monai.apps import download_and_extract, download_url, load_from_mmar
 from monai.data import partition_dataset
 
 from monailabel.config import settings
+from monailabel.datastore.dicom import DICOMWebDatastore
+from monailabel.datastore.local import LocalDatastore
 from monailabel.interfaces.datastore import Datastore, DefaultLabelTag
 from monailabel.interfaces.exception import MONAILabelError, MONAILabelException
 from monailabel.interfaces.tasks.batch_infer import BatchInferImageType, BatchInferTask
@@ -33,15 +35,13 @@ from monailabel.interfaces.tasks.infer import InferTask
 from monailabel.interfaces.tasks.scoring import ScoringMethod
 from monailabel.interfaces.tasks.strategy import Strategy
 from monailabel.interfaces.tasks.train import TrainTask
-from monailabel.utils.activelearning.random import Random
+from monailabel.tasks.activelearning.random import Random
+from monailabel.tasks.infer.deepgrow_2d import InferDeepgrow2D
+from monailabel.tasks.infer.deepgrow_3d import InferDeepgrow3D
+from monailabel.tasks.infer.deepgrow_pipeline import InferDeepgrowPipeline
+from monailabel.tasks.scoring.dice import Dice
+from monailabel.tasks.scoring.sum import Sum
 from monailabel.utils.async_tasks.task import AsyncTask
-from monailabel.utils.datastore.dicom.cache import DICOMWebCache
-from monailabel.utils.datastore.local import LocalDatastore
-from monailabel.utils.infer.deepgrow_2d import InferDeepgrow2D
-from monailabel.utils.infer.deepgrow_3d import InferDeepgrow3D
-from monailabel.utils.infer.deepgrow_pipeline import InferDeepgrowPipeline
-from monailabel.utils.scoring.dice import Dice
-from monailabel.utils.scoring.sum import Sum
 
 logger = logging.getLogger(__name__)
 
@@ -122,7 +122,7 @@ class MONAILabelApp:
                 wado_url_prefix=settings.MONAI_LABEL_WADO_PREFIX,
                 stow_url_prefix=settings.MONAI_LABEL_STOW_PREFIX,
             )
-            return DICOMWebCache(dw_client)
+            return DICOMWebDatastore(dw_client)
 
         return LocalDatastore(
             self.studies,

@@ -18,15 +18,15 @@ from dicomweb_client import DICOMwebClient
 from dicomweb_client.api import load_json_dataset
 from expiringdict import ExpiringDict
 
+from monailabel.datastore.local import LocalDatastore
+from monailabel.datastore.utils.convert import binary_to_image, dicom_to_nifti, nifti_to_dicom_seg
+from monailabel.datastore.utils.dicom import dicom_web_download_series, dicom_web_upload_dcm
 from monailabel.interfaces.datastore import DefaultLabelTag
-from monailabel.utils.datastore.dicom.convert import binary_to_image, dicom_to_nifti, nifti_to_dicom_seg
-from monailabel.utils.datastore.dicom.util import dicom_web_download_series, dicom_web_upload_dcm
-from monailabel.utils.datastore.local import LocalDatastore
 
 logger = logging.getLogger(__name__)
 
 
-class DICOMWebCache(LocalDatastore):
+class DICOMWebDatastore(LocalDatastore):
     def __init__(self, client: DICOMwebClient, cache_path: Optional[str] = None):
         self._client = client
         self._modality = "CT"

@@ -37,7 +37,7 @@ from monai.transforms import (
 )
 
 from monailabel.interfaces.tasks.infer import InferTask, InferType
-from monailabel.utils.others.post import BoundingBoxd, LargestCCd
+from monailabel.transform.post import BoundingBoxd, LargestCCd
 
 logger = logging.getLogger(__name__)
 
