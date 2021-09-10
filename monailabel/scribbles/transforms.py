@@ -121,6 +121,24 @@ class AddBackgroundScribblesFromROId(InteractiveSegmentationTransform):
             # prune outside roi region as bg scribbles
             scribbles[mask] = self.scribbles_bg_label
 
+            # if no foreground scribbles found, then add a scribble at centre of roi
+            if not np.any(scribbles == self.scribbles_fg_label):
+                # issue a small warning - the algorithm should still work
+                logging.info(
+                    "warning: no foreground scribbles received with label {}, adding foreground scribbles to ROI centre".format(
+                        self.scribbles_fg_label
+                    )
+                )
+                offset = 5
+
+                cx = int((selected_roi[0] + selected_roi[1]) / 2)
+                cy = int((selected_roi[2] + selected_roi[3]) / 2)
+                cz = int((selected_roi[4] + selected_roi[5]) / 2)
+
+                scribbles[
+                    :, cx - offset : cx + offset, cy - offset : cy + offset, cz - offset : cz + offset
+                ] = self.scribbles_fg_label
+
         # return new scribbles
         d[self.scribbles] = scribbles
 
