@@ -86,25 +86,19 @@ class ExperimentPlanner(object):
 
     def get_target_img_size(self):
         # This should return an image according to the free gpu memory available
-        # These values are for DynUNetV1. In Megabytes
-        memory_use = [3000, 4100, 4300, 5900, 7700, 9000, 9300, 12100, 17700]
-        sizes = {
-            "3000": [64, 64, 32],
-            "4100": [256, 256, 16],
-            "4300": [128, 128, 64],
-            "5900": [256, 256, 32],
-            "7700": [192, 192, 96],
-            "9000": [256, 256, 64],
-            "9300": [192, 192, 128],
-            "12100": [256, 256, 96],
-            "17700": [256, 256, 128],
-        }
-
-        idx = np.abs(np.array(memory_use) - self._get_gpu_memory_map()[0]).argmin()
-        img_size_gpu = sizes[str(memory_use[idx])]
-        if img_size_gpu[0] > self.target_img_size[0]:
-            return self.target_img_size
-        return sizes[str(memory_use[idx])]
+        # Equation obtained from curve fitting using table:
+        # https://tinyurl.com/tableGPUMemory
+        gpu_mem = self._get_gpu_memory_map()[0]
+        # Get a number in base 2 close to the mean depth
+        depth_base_2 = int(2 ** np.ceil(np.log2(self.target_img_size[2])))
+        # Get the maximum width according available GPU memory
+        # This equation roughly estimates the image size that fits in the available GPU memory using DynUNet
+        width = (gpu_mem - 2000) / (0.5 * depth_base_2)
+        width_base_2 = int(2 ** np.round(np.log2(width)))
+        if width_base_2 < np.maximum(self.target_img_size[0], self.target_img_size[1]):
+            return [width_base_2, width_base_2, depth_base_2]
+        else:
+            return [self.target_img_size[0], self.target_img_size[1], depth_base_2]
 
     def get_target_spacing(self):
         return np.around(self.target_spacing)
