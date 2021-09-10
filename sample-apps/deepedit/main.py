@@ -142,7 +142,11 @@ class MyApp(MONAILabelApp):
     def init_scoring_methods(self):
         return {
             "TTA": TTAScoring(
-                model=[self.pretrained_model, self.final_model], network=self.network, num_samples=self.tta_samples
+                model=[self.pretrained_model, self.final_model],
+                network=self.network,
+                num_samples=self.tta_samples,
+                spatial_size=self.spatial_size,
+                spacing=self.target_spacing,
             ),
             "sum": Sum(),
             "dice": Dice(),
