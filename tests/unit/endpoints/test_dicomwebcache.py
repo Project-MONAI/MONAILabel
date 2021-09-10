@@ -73,9 +73,7 @@ class EndPointDICOMWebDatastore(DICOMWebEndpointTestSuite):
         )
         dwc.return_value.load_json_dataset = lambda *args, **kwargs: retrieve_series(cache_path, *args, **kwargs)
 
-        with patch.object(
-            monailabel.utils.datastore.dicom.cache.DICOMWebDatastore.__init__, "__defaults__", (None, self.data_dir)
-        ):
+        with patch.object(monailabel.datastore.dicom.DICOMWebDatastore.__init__, "__defaults__", (None, self.data_dir)):
 
             response = self.client.get("/datastore/?output=stats")
             self.assertEquals(response.status_code, 200)
@@ -90,7 +88,7 @@ class EndPointDICOMWebDatastore(DICOMWebEndpointTestSuite):
             self.assertEquals(label_tags["final"], 1)
 
     @patch("monailabel.interfaces.app.DICOMwebClient")
-    @patch("monailabel.utils.datastore.dicom.cache.dicom_web_download_series")
+    @patch("monailabel.datastore.dicom.dicom_web_download_series")
     def test_datastore_datalist(self, dicom_web_download_series, dwc):
 
         dicom_web_download_series.return_value = lambda *args: None
@@ -103,9 +101,7 @@ class EndPointDICOMWebDatastore(DICOMWebEndpointTestSuite):
         )
         dwc.return_value.load_json_dataset = lambda *args, **kwargs: retrieve_series(cache_path, *args, **kwargs)
 
-        with patch.object(
-            monailabel.utils.datastore.dicom.cache.DICOMWebDatastore.__init__, "__defaults__", (None, self.data_dir)
-        ):
+        with patch.object(monailabel.datastore.dicom.DICOMWebDatastore.__init__, "__defaults__", (None, self.data_dir)):
 
             response = self.client.get("/datastore/?output=all")
             self.assertEquals(response.status_code, 200)
@@ -122,7 +118,7 @@ class EndPointDICOMWebDatastore(DICOMWebEndpointTestSuite):
                 )
 
     @patch("monailabel.interfaces.app.DICOMwebClient")
-    @patch("monailabel.utils.datastore.dicom.cache.dicom_web_download_series")
+    @patch("monailabel.datastore.dicom.dicom_web_download_series")
     def test_save_label(self, dicom_web_download_series, dwc):
         dicom_web_download_series.return_value = lambda *args: None
 
@@ -137,9 +133,7 @@ class EndPointDICOMWebDatastore(DICOMWebEndpointTestSuite):
         image_id = "1.2.826.0.1.3680043.8.274.1.1.8323329.686405.1629744173.656721"
         image_file = os.path.join(self.data_dir, f"{image_id}.nii.gz")
 
-        with patch.object(
-            monailabel.utils.datastore.dicom.cache.DICOMWebDatastore.__init__, "__defaults__", (None, self.data_dir)
-        ):
+        with patch.object(monailabel.datastore.dicom.DICOMWebDatastore.__init__, "__defaults__", (None, self.data_dir)):
             test_tag = "test"
             with open(os.path.join(self.data_dir, "labels_to_upload", f"{image_id}.nii.gz"), "rb") as f:
                 response = self.client.put(

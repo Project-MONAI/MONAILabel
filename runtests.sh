@@ -442,7 +442,7 @@ if [ $doUnitTests = true ]; then
   torch_validate
 
   ${cmdPrefix}${PY_EXE} tests/setup.py
-  ${cmdPrefix}${cmd} -m pytest -v tests/unit --no-summary
+  ${cmdPrefix}${cmd} -m pytest -v tests/unit --no-summary -x
 fi
 
 function check_server_running() {
@@ -482,7 +482,7 @@ if [ $doNetTests = true ]; then
   fi
 
   {
-    ${cmdPrefix}${cmd} -m pytest -v tests/integration --no-summary
+    ${cmdPrefix}${cmd} -m pytest -v tests/integration --no-summary -x
   } || {
     kill -9 $(ps -ef | grep monailabel | grep -v grep | awk '{print $2}')
   }
