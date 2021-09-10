@@ -55,7 +55,7 @@ Tasks
 Utils
 =====
 
-.. currentmodule:: monailabel.utils.train.basic_train
+.. currentmodule:: monailabel.tasks.train.basic_train
 .. autoclass:: BasicTrainTask
     :members:
     :noindex:

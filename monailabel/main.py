@@ -27,7 +27,7 @@ from starlette.middleware.cors import CORSMiddleware
 
 from monailabel.config import settings
 from monailabel.endpoints import activelearning, batch_infer, datastore, infer, info, logs, ohif, proxy, scoring, train
-from monailabel.utils.others.app_utils import app_instance
+from monailabel.interfaces.utils.app import app_instance
 from monailabel.utils.others.generic import init_log_config
 
 middleware = [
@@ -50,9 +50,11 @@ app = FastAPI(
     middleware=middleware,
 )
 
-static_dir = os.path.join(os.path.dirname(os.path.realpath(__file__)), "static")
+static_dir = os.path.join(os.path.dirname(os.path.realpath(__file__)), "endpoints/static")
 app.mount(
-    "/static", StaticFiles(directory=os.path.join(os.path.dirname(os.path.realpath(__file__)), "static")), name="static"
+    "/static",
+    StaticFiles(directory=os.path.join(os.path.dirname(os.path.realpath(__file__)), "endpoints/static")),
+    name="static",
 )
 
 app.include_router(info.router)
@@ -196,7 +198,7 @@ def action_datasets(args):
 def action_apps(args):
     apps_dir = os.path.join(os.path.dirname(os.path.dirname(os.path.realpath(__file__))), "sample-apps")
     if not os.path.exists(apps_dir):
-        apps_dir = os.path.join(args.prefix if args.prefix else sys.prefix, "monailabel", "sample-apps")
+        apps_dir = os.path.join(args.prefix if args.prefix else sys.prefix, "scripts/monailabel", "sample-apps")
 
     apps = os.listdir(apps_dir)
     apps = [os.path.basename(a) for a in apps]
@@ -237,7 +239,7 @@ def action_apps(args):
 def action_plugins(args):
     plugins_dir = os.path.join(os.path.dirname(os.path.dirname(os.path.realpath(__file__))), "plugins")
     if not os.path.exists(plugins_dir):
-        plugins_dir = os.path.join(args.prefix if args.prefix else sys.prefix, "monailabel", "plugins")
+        plugins_dir = os.path.join(args.prefix if args.prefix else sys.prefix, "scripts/monailabel", "plugins")
 
     plugins = os.listdir(plugins_dir)
     plugins = [os.path.basename(a) for a in plugins]

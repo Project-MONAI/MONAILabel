@@ -22,7 +22,7 @@ from monai.transforms import (
 )
 
 from monailabel.interfaces.tasks.infer import InferTask, InferType
-from monailabel.utils.others.post import BoundingBoxd, Restored
+from monailabel.transform.post import BoundingBoxd, Restored
 
 
 class MyInfer(InferTask):

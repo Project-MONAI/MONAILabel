@@ -12,7 +12,7 @@
 @echo off
 
 set DIR=%~dp0
-pushd %DIR%\..
+pushd %DIR%\..\..
 set PARENT=%cd%
 popd
 
@@ -20,5 +20,7 @@ popd
 set BAK_PYTHONPATH=%PYTHONPATH%
 
 set PYTHONPATH=%PARENT%;%PYTHONPATH%
+echo Using PYTHONPATH=%PYTHONPATH%
+
 python -m monailabel.main %*
 set PYTHONPATH=%BAK_PYTHONPATH%

@@ -35,7 +35,7 @@ def mock_app_instance(app_dir, studies):
     return MockAppInstance()
 
 
-@patch("monailabel.utils.others.app_utils.app_instance", new=mock_app_instance)
+@patch("monailabel.interfaces.utils.app.app_instance", new=mock_app_instance)
 class MyTestCase(unittest.TestCase):
     def test_info(self):
         from monailabel.interfaces.test import test_info

@@ -51,8 +51,8 @@ setup(
     package_data={"monailabel": ["py.typed"]},
     include_package_data=True,
     scripts=[
-        "monailabel/monailabel",
-        "monailabel/monailabel.bat",
+        "monailabel/scripts/monailabel",
+        "monailabel/scripts/monailabel.bat",
         "monailabel/scripts/run_monailabel_app.sh",
         "monailabel/scripts/run_monailabel_app.bat",
     ],

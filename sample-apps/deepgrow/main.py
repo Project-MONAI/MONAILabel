@@ -17,8 +17,8 @@ from monai.apps import load_from_mmar
 
 from monailabel.interfaces.app import MONAILabelApp
 from monailabel.scribbles.infer import HistogramBasedGraphCut
-from monailabel.utils.activelearning.random import Random
-from monailabel.utils.infer.deepgrow_pipeline import InferDeepgrowPipeline
+from monailabel.tasks.activelearning.random import Random
+from monailabel.tasks.infer.deepgrow_pipeline import InferDeepgrowPipeline
 
 logger = logging.getLogger(__name__)
 
