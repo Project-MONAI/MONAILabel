@@ -6,7 +6,7 @@ my_dir="$(dirname "$(readlink -f "$0")")"
 echo "Installing requirements..."
 sh $my_dir/requirements.sh
 
-install_dir=${1:-$my_dir/../../monailabel/static/ohif}
+install_dir=${1:-$my_dir/../../monailabel/endpoints/static/ohif}
 
 echo "Current Dir: ${curr_dir}"
 echo "My Dir: ${my_dir}"

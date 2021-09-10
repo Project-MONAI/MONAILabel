@@ -23,9 +23,9 @@ from monai.data import write_nifti
 from monai.transforms import LoadImage
 from pydicom.filereader import dcmread
 
-from monailabel.utils.datastore.dicom.colors import GENERIC_ANATOMY_COLORS
+from monailabel.datastore.utils.colors import GENERIC_ANATOMY_COLORS
+from monailabel.transform.writer import write_itk
 from monailabel.utils.others.generic import run_command
-from monailabel.utils.others.writer import write_itk
 
 logger = logging.getLogger(__name__)
 

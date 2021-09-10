@@ -1,3 +1,5 @@
+#!/bin/bash
+
 # Copyright 2020 - 2021 MONAI Consortium
 # Licensed under the Apache License, Version 2.0 (the "License");
 # you may not use this file except in compliance with the License.
@@ -9,19 +11,17 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-from fastapi import APIRouter
+set -e
+DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")/../.." >/dev/null 2>&1 && pwd)"
 
-from monailabel.interfaces.app import MONAILabelApp
-from monailabel.interfaces.utils.app import app_instance
+export PYTHONPATH=$DIR:$PYTHONPATH
+echo Using PYTHONPATH=$PYTHONPATH
 
-router = APIRouter(
-    prefix="/info",
-    tags=["AppService"],
-    responses={404: {"description": "Not found"}},
-)
+PYEXE=python
+version=$(python --version)
+if echo "$version" | grep "Python 2"; then
+  echo "Trying python3 instead of python ($version)"
+  PYEXE=python3
+fi
 
-
-@router.get("/", summary="Get App Info")
-async def app_info():
-    instance: MONAILabelApp = app_instance()
-    return instance.info()
+${PYEXE} -m monailabel.main $*

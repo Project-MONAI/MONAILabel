@@ -18,7 +18,7 @@ from monailabel.scribbles.transforms import (
     MakeISegUnaryd,
     MakeLikelihoodFromScribblesHistogramd,
 )
-from monailabel.utils.others.post import BoundingBoxd, Restored
+from monailabel.transform.post import BoundingBoxd, Restored
 
 
 class HistogramBasedGraphCut(InferTask):
