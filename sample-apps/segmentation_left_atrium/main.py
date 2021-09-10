@@ -18,7 +18,12 @@ from monai.networks.layers import Norm
 from monai.networks.nets import UNet
 
 from monailabel.interfaces.app import MONAILabelApp
+from monailabel.scribbles.infer import HistogramBasedGraphCut
 from monailabel.utils.activelearning.random import Random
+from monailabel.utils.activelearning.tta import TTAStrategy
+from monailabel.utils.scoring.dice import Dice
+from monailabel.utils.scoring.sum import Sum
+from monailabel.utils.scoring.tta import TTAScoring
 
 logger = logging.getLogger(__name__)
 
@@ -45,6 +50,10 @@ class MyApp(MONAILabelApp):
         if use_pretrained_model:
             self.download([(self.pretrained_model, pretrained_model_uri)])
 
+        self.tta_enabled = strtobool(conf.get("tta_enabled", "false"))
+        self.tta_samples = int(conf.get("tta_samples", "5"))
+        logger.info(f"TTA Enabled: {self.tta_enabled}; Samples: {self.tta_samples}")
+
         super().__init__(
             app_dir=app_dir,
             studies=studies,
@@ -56,6 +65,7 @@ class MyApp(MONAILabelApp):
     def init_infers(self):
         return {
             "segmentation_left_atrium": MyInfer([self.pretrained_model, self.final_model], self.network),
+            "histogramBasedGraphCut": HistogramBasedGraphCut(),
         }
 
     def init_trainers(self):
@@ -67,6 +77,37 @@ class MyApp(MONAILabelApp):
 
     def init_strategies(self):
         return {
+            "TTA": TTAStrategy(),
             "random": Random(),
             "first": MyStrategy(),
         }
+
+    def init_scoring_methods(self):
+        return {
+            "TTA": TTAScoring(
+                model=[self.pretrained_model, self.final_model],
+                network=self.network,
+                deepedit=False,
+                num_samples=self.tta_samples,
+            ),
+            "sum": Sum(),
+            "dice": Dice(),
+        }
+
+    def on_init_complete(self):
+        super().on_init_complete()
+        self._run_tta_scoring()
+
+    def next_sample(self, request):
+        res = super().next_sample(request)
+        self._run_tta_scoring()
+        return res
+
+    def train(self, request):
+        res = super().train(request)
+        self._run_tta_scoring()
+        return res
+
+    def _run_tta_scoring(self):
+        if self.tta_enabled:
+            self.async_scoring("TTA")

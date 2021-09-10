@@ -25,17 +25,11 @@ Table of Contents
 
 .. toctree::
    :maxdepth: 1
-   :caption: Getting Started
 
    installation
    quickstart
    modules
    appdeployment
-
-.. toctree::
-   :maxdepth: 1
-   :caption: APIs
-
    apis
 
 ------------

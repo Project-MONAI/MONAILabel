@@ -18,6 +18,7 @@ from lib.activelearning import MyStrategy
 from monai.networks.nets.dynunet_v1 import DynUNetV1
 
 from monailabel.interfaces.app import MONAILabelApp
+from monailabel.scribbles.infer import HistogramBasedGraphCut
 from monailabel.utils.activelearning.random import Random
 from monailabel.utils.activelearning.tta import TTAStrategy
 from monailabel.utils.others.planner import ExperimentPlanner
@@ -78,6 +79,10 @@ class MyApp(MONAILabelApp):
         if use_pretrained_model:
             self.download([(self.pretrained_model, pretrained_model_uri)])
 
+        self.tta_enabled = strtobool(conf.get("tta_enabled", "true"))
+        self.tta_samples = int(conf.get("tta_samples", "5"))
+        logger.info(f"TTA Enabled: {self.tta_enabled}; Samples: {self.tta_samples}")
+
         super().__init__(
             app_dir=app_dir,
             studies=studies,
@@ -110,6 +115,7 @@ class MyApp(MONAILabelApp):
                 spatial_size=self.spatial_size,
                 target_spacing=self.target_spacing,
             ),
+            "histogramBasedGraphCut": HistogramBasedGraphCut(),
         }
 
     def init_trainers(self):
@@ -135,7 +141,27 @@ class MyApp(MONAILabelApp):
 
     def init_scoring_methods(self):
         return {
-            "TTA": TTAScoring(model=[self.pretrained_model, self.final_model], network=self.network),
+            "TTA": TTAScoring(
+                model=[self.pretrained_model, self.final_model], network=self.network, num_samples=self.tta_samples
+            ),
             "sum": Sum(),
             "dice": Dice(),
         }
+
+    def on_init_complete(self):
+        super().on_init_complete()
+        self._run_tta_scoring()
+
+    def next_sample(self, request):
+        res = super().next_sample(request)
+        self._run_tta_scoring()
+        return res
+
+    def train(self, request):
+        res = super().train(request)
+        self._run_tta_scoring()
+        return res
+
+    def _run_tta_scoring(self):
+        if self.tta_enabled:
+            self.async_scoring("TTA")

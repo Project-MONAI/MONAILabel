@@ -14,22 +14,26 @@ import json
 import logging
 import os
 import sys
+from typing import Any, Dict
 
 from monailabel.config import settings
 from monailabel.interfaces.exception import MONAILabelError, MONAILabelException
 from monailabel.utils.others.class_utils import get_class_of_subclass_from_file
 
 logger = logging.getLogger(__name__)
-app = None
+apps: Dict[str, Any] = {}
 
 
 def app_instance(app_dir=None, studies=None, conf=None):
-    global app
+    app_dir = app_dir if app_dir else settings.MONAI_LABEL_APP_DIR
+    studies = studies if studies else settings.MONAI_LABEL_STUDIES
+    cache_key = f"{app_dir}{studies}"
+
+    global apps
+    app = apps.get(cache_key)
     if app is not None:
         return app
 
-    app_dir = app_dir if app_dir else settings.MONAI_LABEL_APP_DIR
-    studies = studies if studies else settings.MONAI_LABEL_STUDIES
     conf = conf if conf else settings.MONAI_LABEL_APP_CONF
     logger.info(f"Initializing App from: {app_dir}; studies: {studies}; conf: {conf}")
 
@@ -44,8 +48,8 @@ def app_instance(app_dir=None, studies=None, conf=None):
             "App Does NOT Implement MONAILabelApp in main.py",
         )
 
-    o = c(app_dir=app_dir, studies=studies, conf=conf)
-    app = o
+    app = c(app_dir=app_dir, studies=studies, conf=conf)
+    apps[cache_key] = app
     return app
 
 
@@ -81,7 +85,7 @@ def run_main():
 
     logging.basicConfig(
         level=(logging.DEBUG if args.debug else logging.INFO),
-        format="[%(asctime)s] [%(levelname)s] (%(name)s) - %(message)s",
+        format="[%(asctime)s] [%(threadName)s] [%(levelname)s] (%(name)s:%(lineno)d) - %(message)s",
     )
 
     a = app_instance(app_dir=args.app, studies=args.studies)
