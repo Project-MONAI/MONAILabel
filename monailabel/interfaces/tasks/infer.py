@@ -19,8 +19,8 @@ from typing import Dict
 import torch
 
 from monailabel.interfaces.exception import MONAILabelError, MONAILabelException
-from monailabel.utils.others.transform_utils import run_transforms
-from monailabel.utils.others.writer import Writer
+from monailabel.interfaces.utils.transform import run_transforms
+from monailabel.transform.writer import Writer
 
 logger = logging.getLogger(__name__)
 

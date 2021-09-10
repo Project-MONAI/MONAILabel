@@ -34,7 +34,7 @@ from monai.transforms import (
 from monailabel.deepedit.transforms import DiscardAddGuidanced, SingleLabelSingleModalityd
 from monailabel.interfaces.datastore import Datastore
 from monailabel.interfaces.tasks.scoring import ScoringMethod
-from monailabel.utils.infer.test_time_augmentation import TestTimeAugmentation
+from monailabel.tasks.infer.tta import TestTimeAugmentation
 
 logger = logging.getLogger(__name__)
 

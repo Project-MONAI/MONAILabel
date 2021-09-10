@@ -47,7 +47,7 @@ class ImageLabelModel(BaseModel):
 class LocalDatastoreModel(BaseModel):
     name: str
     description: str
-    images_dir: str = "."
+    images_dir: str = ""
     labels_dir: str = "labels"
     objects: Dict[str, ImageLabelModel] = {}
 

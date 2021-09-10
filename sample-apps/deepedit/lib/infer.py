@@ -27,7 +27,7 @@ from monai.transforms import (
 
 from monailabel.deepedit.transforms import DiscardAddGuidanced, ResizeGuidanceCustomd, SingleLabelSingleModalityd
 from monailabel.interfaces.tasks.infer import InferTask, InferType
-from monailabel.utils.others.post import Restored
+from monailabel.transform.post import Restored
 
 
 class Segmentation(InferTask):
