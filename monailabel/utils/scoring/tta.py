@@ -44,21 +44,26 @@ class TTAScoring(ScoringMethod):
     First version of test time augmentation active learning
     """
 
-    def __init__(self, model, network=None, deepedit=True, num_samples=5):
+    def __init__(self, model, network=None, deepedit=True, num_samples=5, spatial_size=None, spacing=None):
         super().__init__("Compute initial score based on TTA")
+        if spacing is None:
+            spacing = [1.0, 1.0, 1.0]
+        if spatial_size is None:
+            spatial_size = [128, 128, 128]
         self.model = model
         self.device = "cuda"
-        self.img_size = [128, 128, 128]
         self.num_samples = num_samples
         self.network = network
         self.deepedit = deepedit
+        self.spatial_size = spatial_size
+        self.spacing = spacing
 
     def pre_transforms(self):
         t = [
             LoadImaged(keys="image", reader="nibabelreader"),
             SingleLabelSingleModalityd(keys="image"),
             AddChanneld(keys="image"),
-            Spacingd(keys="image", pixdim=[1.0, 1.0, 1.0]),
+            Spacingd(keys="image", pixdim=self.spacing),
             RandAffined(
                 keys="image",
                 prob=1,
@@ -68,7 +73,7 @@ class TTAScoring(ScoringMethod):
             ),
             RandFlipd(keys="image", prob=0.5, spatial_axis=0),
             RandRotated(keys="image", range_x=(-5, 5), range_y=(-5, 5), range_z=(-5, 5)),
-            Resized(keys="image", spatial_size=self.img_size),
+            Resized(keys="image", spatial_size=self.spatial_size),
         ]
         # If using TTA for deepedit
         if self.deepedit:
