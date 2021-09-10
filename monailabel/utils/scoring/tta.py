@@ -31,7 +31,7 @@ from monai.transforms import (
     ToTensord,
 )
 
-from monailabel.deepedit.transforms import DiscardAddGuidanced
+from monailabel.deepedit.transforms import DiscardAddGuidanced, SingleLabelSingleModalityd
 from monailabel.interfaces.datastore import Datastore
 from monailabel.interfaces.tasks.scoring import ScoringMethod
 from monailabel.utils.infer.test_time_augmentation import TestTimeAugmentation
@@ -55,7 +55,8 @@ class TTAScoring(ScoringMethod):
 
     def pre_transforms(self):
         t = [
-            LoadImaged(keys="image"),
+            LoadImaged(keys="image", reader="nibabelreader"),
+            SingleLabelSingleModalityd(keys="image"),
             AddChanneld(keys="image"),
             Spacingd(keys="image", pixdim=[1.0, 1.0, 1.0]),
             RandAffined(

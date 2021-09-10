@@ -291,3 +291,49 @@ class PosNegClickProbAddRandomGuidanced(Randomizable, Transform):
         self.is_pos = False
         self.is_neg = False
         return d
+
+
+# A transform to get single modality and single label
+class SingleLabelSingleModalityd(MapTransform):
+    """
+    Gets single modality and single label
+    """
+
+    def __call__(self, data):
+        d = dict(data)
+        for key in self.keys:
+            if key == "label":
+                meta_data = d["label_meta_dict"]
+                if d[key].max() > 1:
+                    logger.info(
+                        f"Label {meta_data['filename_or_obj'].split('/')[-1]} has more than one mask - "
+                        f"taking SINGLE mask ..."
+                    )
+                    result = []
+                    # label bigger than 0 is foreground
+                    result.append(d[key] > 0)
+                    # label 0 is background
+                    result.append(d[key] == 0)
+                    d[key] = np.stack(result, axis=0).astype(np.float32)
+
+                    d[key] = d[key][0, ...]
+
+                    meta_data["pixdim"][4] = 0.0
+                    meta_data["dim"][0] = 3
+                    meta_data["dim"][4] = 1
+
+            if key == "image":
+                meta_data = d["image_meta_dict"]
+                if meta_data["pixdim"][4] > 0:
+                    logger.info(
+                        f"Image {meta_data['filename_or_obj'].split('/')[-1]} has more than one modality "
+                        f"- taking FIRST modality ..."
+                    )
+
+                    d[key] = d[key][..., 0]
+
+                    meta_data["pixdim"][4] = 0.0
+                    meta_data["dim"][0] = 3
+                    meta_data["dim"][4] = 1
+
+        return d
