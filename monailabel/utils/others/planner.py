@@ -9,6 +9,7 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 import logging
+import random
 import shutil
 import subprocess
 from collections import OrderedDict
@@ -54,7 +55,7 @@ class ExperimentPlanner(object):
         return gpu_memory_map
 
     def _get_img_info(self):
-        loader = LoadImage(reader="ITKReader")
+        loader = LoadImage(reader="nibabelreader")
         spacings = []
         img_sizes = []
         logger.info("Reading datastore metadata for heuristic planner ...")
@@ -64,18 +65,24 @@ class ExperimentPlanner(object):
                 "Empty folder!",
             )
 
-        for n in tqdm(self.datastore.list_images()):
+        # Sampling 20 images from the datastore
+        datastore_check = (
+            self.datastore.list_images()
+            if len(self.datastore.list_images()) < 20
+            else random.sample(self.datastore.list_images(), 20)
+        )
+        for n in tqdm(datastore_check):
             _, mtdt = loader(self.datastore.get_image_uri(n))
-            spacings.append(mtdt["spacing"])
+            # Check if images have more than one modality
+            if mtdt["pixdim"][4] > 0:
+                logger.info(f"Image {mtdt['filename_or_obj'].split('/')[-1]} has more than one modality ...")
+            spacings.append(mtdt["pixdim"][1:4])
             img_sizes.append(mtdt["spatial_shape"])
         spacings = np.array(spacings)
         img_sizes = np.array(img_sizes)
 
         self.target_spacing = np.mean(spacings, 0)
         self.target_img_size = np.mean(img_sizes, 0, np.int64)
-
-        # Changing from DHW to HDW order
-        self.target_img_size = np.array([self.target_img_size[1], self.target_img_size[2], self.target_img_size[0]])
 
     def get_target_img_size(self):
         # This should return an image according to the free gpu memory available
