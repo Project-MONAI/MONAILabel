@@ -59,7 +59,7 @@ class MyApp(MONAILabelApp):
         self.pretrained_model = os.path.join(self.model_dir, "pretrained.pt")
         self.final_model = os.path.join(self.model_dir, "model.pt")
 
-        # Path to pretrained weights
+        # Path to pretrained weights (currently use NVIDIA Clara Spleen model)
         ngc_path = "https://api.ngc.nvidia.com/v2/models/nvidia/med/"
         use_pretrained_model = strtobool(conf.get("use_pretrained_model", "true"))
         pretrained_model_uri = conf.get(
@@ -103,6 +103,8 @@ class MyApp(MONAILabelApp):
 
     def init_strategies(self) -> Dict[str, Strategy]:
         strategies: Dict[str, Strategy] = {}
+        if self.epistemic_enabled:
+            strategies["EPISTEMIC"] = Epistemic()
         if self.tta_enabled:
             strategies["TTA"] = TTA()
 
