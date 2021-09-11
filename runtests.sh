@@ -132,11 +132,15 @@ function clean_py() {
   rm -rf sample-apps/*/logs
   rm -rf sample-apps/*/.venv
   rm -rf sample-apps/*/model/*
+  rm -rf sample-apps/*/bin
   rm -rf tests/data/*
+  rm -rf monailabel/endpoints/static/ohif
+  rm -rf pytest.log
 
   find ${TO_CLEAN} -type f -name "*.py[co]" -delete
   find ${TO_CLEAN} -type f -name "*.so" -delete
   find ${TO_CLEAN} -type d -name "__pycache__" -delete
+  find ${TO_CLEAN} -type d -name ".pytest_cache" -exec rm -r "{}" +
   find ${TO_CLEAN} -maxdepth 1 -type f -name ".coverage.*" -delete
 
   find ${TO_CLEAN} -depth -maxdepth 1 -type d -name ".eggs" -exec rm -r "{}" +

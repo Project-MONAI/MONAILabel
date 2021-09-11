@@ -12,19 +12,25 @@ import json
 import logging
 import os
 from distutils.util import strtobool
+from typing import Dict
 
 from lib import Deepgrow, MyTrain, Segmentation
 from lib.activelearning import MyStrategy
 from monai.networks.nets.dynunet_v1 import DynUNetV1
 
 from monailabel.interfaces.app import MONAILabelApp
+from monailabel.interfaces.datastore import Datastore
+from monailabel.interfaces.tasks.infer import InferTask
+from monailabel.interfaces.tasks.scoring import ScoringMethod
+from monailabel.interfaces.tasks.strategy import Strategy
+from monailabel.interfaces.tasks.train import TrainTask
 from monailabel.scribbles.infer import HistogramBasedGraphCut
 from monailabel.tasks.activelearning.random import Random
-from monailabel.tasks.activelearning.tta import TTAStrategy
+from monailabel.tasks.activelearning.tta import TTA
 from monailabel.tasks.scoring.dice import Dice
 from monailabel.tasks.scoring.sum import Sum
 from monailabel.tasks.scoring.tta import TTAScoring
-from monailabel.utils.others.planner import ExperimentPlanner
+from monailabel.utils.others.planner import HeuristicPlanner
 
 logger = logging.getLogger(__name__)
 
@@ -67,10 +73,11 @@ class MyApp(MONAILabelApp):
         self.pretrained_model = os.path.join(self.model_dir, "pretrained.pt")
         self.final_model = os.path.join(self.model_dir, "model.pt")
 
-        # Use Experiment Planner to determine target spacing and spatial size based on dataset+gpu
-        self.use_experiment_planner = strtobool(conf.get("use_experiment_planner", "false"))
-        self.spatial_size = json.loads(conf.get("spatial_size", "[128, 128, 64]"))
-        self.target_spacing = json.loads(conf.get("target_spacing", "[1.0, 1.0, 1.0]"))
+        # Use Heuristic Planner to determine target spacing and spatial size based on dataset+gpu
+        spatial_size = json.loads(conf.get("spatial_size", "[128, 128, 64]"))
+        target_spacing = json.loads(conf.get("target_spacing", "[1.0, 1.0, 1.0]"))
+        self.heuristic_planner = strtobool(conf.get("heuristic_planner", "false"))
+        self.planner = HeuristicPlanner(spatial_size=spatial_size, target_spacing=target_spacing)
 
         use_pretrained_model = strtobool(conf.get("use_pretrained_model", "true"))
         pretrained_model_uri = conf.get("pretrained_model_path", f"{self.PRE_TRAINED_PATH}/deepedit_left_atrium.pt")
@@ -91,40 +98,36 @@ class MyApp(MONAILabelApp):
             description="Active learning solution using DeepEdit to label 3D Images",
         )
 
-    def _init_planner(self):
-        # Experiment planner to compute spatial_size and target spacing based on images/gpu resources
-        planner = ExperimentPlanner(datastore=self.datastore())
-        self.spatial_size = planner.get_target_img_size()
-        self.target_spacing = planner.get_target_spacing()
+    def init_datastore(self) -> Datastore:
+        datastore = super().init_datastore()
+        if self.heuristic_planner:
+            self.planner.run(datastore)
+        return datastore
 
-    def init_infers(self):
-        if self.use_experiment_planner:
-            self._init_planner()
-        logger.info(f"Using Spacing: {self.target_spacing}; Spatial Size: {self.spatial_size}")
-
+    def init_infers(self) -> Dict[str, InferTask]:
         return {
             "deepedit": Deepgrow(
                 [self.pretrained_model, self.final_model],
                 self.network,
-                spatial_size=self.spatial_size,
-                target_spacing=self.target_spacing,
+                spatial_size=self.planner.spatial_size,
+                target_spacing=self.planner.target_spacing,
             ),
             "deepedit_seg": Segmentation(
                 [self.pretrained_model, self.final_model],
                 self.network,
-                spatial_size=self.spatial_size,
-                target_spacing=self.target_spacing,
+                spatial_size=self.planner.spatial_size,
+                target_spacing=self.planner.target_spacing,
             ),
-            "histogramBasedGraphCut": HistogramBasedGraphCut(),
+            "Histogram+GraphCut": HistogramBasedGraphCut(),
         }
 
-    def init_trainers(self):
+    def init_trainers(self) -> Dict[str, TrainTask]:
         return {
             "deepedit_train": MyTrain(
                 self.model_dir,
                 self.network,
-                spatial_size=self.spatial_size,
-                target_spacing=self.target_spacing,
+                spatial_size=self.planner.spatial_size,
+                target_spacing=self.planner.target_spacing,
                 load_path=self.pretrained_model,
                 publish_path=self.final_model,
                 config={"pretrained": strtobool(self.conf.get("use_pretrained_model", "true"))},
@@ -132,40 +135,25 @@ class MyApp(MONAILabelApp):
             )
         }
 
-    def init_strategies(self):
-        return {
-            "TTA": TTAStrategy(),
-            "random": Random(),
-            "first": MyStrategy(),
-        }
+    def init_strategies(self) -> Dict[str, Strategy]:
+        strategies: Dict[str, Strategy] = {}
+        if self.tta_enabled:
+            strategies["TTA"] = TTA()
+        strategies["random"] = Random()
+        strategies["first"] = MyStrategy()
+        return strategies
 
-    def init_scoring_methods(self):
-        return {
-            "TTA": TTAScoring(
+    def init_scoring_methods(self) -> Dict[str, ScoringMethod]:
+        methods: Dict[str, ScoringMethod] = {}
+        if self.tta_enabled:
+            methods["TTA"] = TTAScoring(
                 model=[self.pretrained_model, self.final_model],
                 network=self.network,
                 num_samples=self.tta_samples,
-                spatial_size=self.spatial_size,
-                spacing=self.target_spacing,
-            ),
-            "sum": Sum(),
-            "dice": Dice(),
-        }
+                spatial_size=self.planner.spatial_size,
+                spacing=self.planner.target_spacing,
+            )
 
-    def on_init_complete(self):
-        super().on_init_complete()
-        self._run_tta_scoring()
-
-    def next_sample(self, request):
-        res = super().next_sample(request)
-        self._run_tta_scoring()
-        return res
-
-    def train(self, request):
-        res = super().train(request)
-        self._run_tta_scoring()
-        return res
-
-    def _run_tta_scoring(self):
-        if self.tta_enabled:
-            self.async_scoring("TTA")
+        methods["dice"] = Dice()
+        methods["sum"] = Sum()
+        return methods

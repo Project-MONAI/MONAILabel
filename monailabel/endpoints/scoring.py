@@ -34,8 +34,16 @@ async def status(all: bool = False, check_if_running: bool = False):
     return res
 
 
-@router.post("/{method}", summary="Run Scoring Task")
-async def run(method: str, params: Optional[dict] = None, run_sync: Optional[bool] = False):
+@router.post("/", summary="Run Scoring Task")
+async def run(params: Optional[dict] = None, run_sync: Optional[bool] = False):
+    res, detail = AsyncTask.run("scoring", params=params, force_sync=run_sync)
+    if res is None:
+        raise HTTPException(status_code=429, detail=detail)
+    return res
+
+
+@router.post("/{method}", summary="Run Scoring Task for specific method")
+async def run_method(method: str, params: Optional[dict] = None, run_sync: Optional[bool] = False):
     res, detail = AsyncTask.run("scoring", request={"method": method}, params=params, force_sync=run_sync)
     if res is None:
         raise HTTPException(status_code=429, detail=detail)
