@@ -12,17 +12,20 @@
 import logging
 import os
 from distutils.util import strtobool
+from typing import Dict
 
 from lib import MyInfer, MyStrategy, MyTrain
 from monai.networks.layers import Norm
 from monai.networks.nets import UNet
 
 from monailabel.interfaces.app import MONAILabelApp
+from monailabel.interfaces.tasks.infer import InferTask
+from monailabel.interfaces.tasks.scoring import ScoringMethod
+from monailabel.interfaces.tasks.strategy import Strategy
+from monailabel.interfaces.tasks.train import TrainTask
 from monailabel.scribbles.infer import HistogramBasedGraphCut
 from monailabel.tasks.activelearning.random import Random
-from monailabel.tasks.activelearning.tta import TTAStrategy
-from monailabel.tasks.scoring.dice import Dice
-from monailabel.tasks.scoring.sum import Sum
+from monailabel.tasks.activelearning.tta import TTA
 from monailabel.tasks.scoring.tta import TTAScoring
 
 logger = logging.getLogger(__name__)
@@ -65,56 +68,41 @@ class MyApp(MONAILabelApp):
             description="Active Learning solution to label generic organ",
         )
 
-    def init_infers(self):
+    def init_infers(self) -> Dict[str, InferTask]:
         infers = {
             "segmentation": MyInfer([self.pretrained_model, self.final_model], self.network),
-            "histogramBasedGraphCut": HistogramBasedGraphCut(),
+            "Histogram+GraphCut": HistogramBasedGraphCut(),
         }
 
         # Simple way to Add deepgrow 2D+3D models for infer tasks
         infers.update(self.deepgrow_infer_tasks(self.model_dir))
         return infers
 
-    def init_trainers(self):
+    def init_trainers(self) -> Dict[str, TrainTask]:
         return {
             "segmentation": MyTrain(
                 self.model_dir, self.network, load_path=self.pretrained_model, publish_path=self.final_model
             )
         }
 
-    def init_strategies(self):
-        return {
-            "TTA": TTAStrategy(),
-            "random": Random(),
-            "first": MyStrategy(),
-        }
+    def init_strategies(self) -> Dict[str, Strategy]:
+        strategies: Dict[str, Strategy] = {}
+        if self.tta_enabled:
+            strategies["TTA"] = TTA()
 
-    def init_scoring_methods(self):
-        return {
-            "TTA": TTAScoring(
+        strategies["random"] = Random()
+        strategies["first"] = MyStrategy()
+        return strategies
+
+    def init_scoring_methods(self) -> Dict[str, ScoringMethod]:
+        methods: Dict[str, ScoringMethod] = {}
+        if self.tta_enabled:
+            methods["TTA"] = TTAScoring(
                 model=[self.pretrained_model, self.final_model],
                 network=self.network,
                 deepedit=False,
                 num_samples=self.tta_samples,
-            ),
-            "sum": Sum(),
-            "dice": Dice(),
-        }
-
-    def on_init_complete(self):
-        super().on_init_complete()
-        self._run_tta_scoring()
-
-    def next_sample(self, request):
-        res = super().next_sample(request)
-        self._run_tta_scoring()
-        return res
-
-    def train(self, request):
-        res = super().train(request)
-        self._run_tta_scoring()
-        return res
-
-    def _run_tta_scoring(self):
-        if self.tta_enabled:
-            self.async_scoring("TTA")
+                spatial_size=(128, 128, 64),
+                spacing=(1.0, 1.0, 1.0),
+            )
+        return methods

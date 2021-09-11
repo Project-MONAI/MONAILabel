@@ -25,7 +25,13 @@ def create_client(app_dir, studies):
     settings.MONAI_LABEL_APP_DIR = app_dir
     settings.MONAI_LABEL_STUDIES = studies
     settings.MONAI_LABEL_DATASTORE_AUTO_RELOAD = False
-    settings.MONAI_LABEL_APP_CONF = {"use_experiment_planner": "false", "tta_enabled": "false", "tta_samples": "1"}
+    settings.MONAI_LABEL_APP_CONF = {
+        "heuristic_planner": "false",
+        "tta_enabled": "false",
+        "tta_samples": "1",
+        "server_mode": "true",
+        "auto_update_scoring": "false",
+    }
 
     sys.path.append(settings.MONAI_LABEL_APP_DIR)
     sys.path.append(os.path.join(settings.MONAI_LABEL_APP_DIR, "lib"))
