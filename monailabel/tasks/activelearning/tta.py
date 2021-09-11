@@ -38,6 +38,6 @@ class TTA(Strategy):
             image = random.choice(images)
             logger.info(f"Random: Selected Image: {image}")
         else:
-            _, image = max(zip(tta_scores.values(), tta_scores.keys()))
-            logger.info(f"TTA: Selected Image: {image}")
+            tta_vvc, image = max(zip(tta_scores.values(), tta_scores.keys()))
+            logger.info(f"TTA: Selected Image: {image}; tta_vvc: {tta_vvc}")
         return image

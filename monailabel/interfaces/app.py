@@ -91,7 +91,7 @@ class MONAILabelApp:
 
         self._download_tools()
         self._server_mode = strtobool(conf.get("server_mode", "false"))
-        self._auto_update_scoring = strtobool(conf.get("auto_update_scoring", "false"))
+        self._auto_update_scoring = strtobool(conf.get("auto_update_scoring", "true"))
 
     def init_infers(self) -> Dict[str, InferTask]:
         return {}
