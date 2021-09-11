@@ -17,6 +17,7 @@ import platform
 import shutil
 import tempfile
 import time
+from distutils.util import strtobool
 from typing import Callable, Dict, Optional, Sequence
 
 import requests
@@ -89,7 +90,8 @@ class MONAILabelApp:
         self._batch_infer = self.init_batch_infer()
 
         self._download_tools()
-        self._server_mode = False
+        self._server_mode = strtobool(conf.get("server_mode", "false"))
+        self._auto_update_scoring = strtobool(conf.get("auto_update_scoring", "true"))
 
     def init_infers(self) -> Dict[str, InferTask]:
         return {}
@@ -266,15 +268,23 @@ class MONAILabelApp:
             JSON containing result of scoring method
         """
         method = request.get("method")
-        if not method or not self._scoring_methods.get(method):
+        if method and not self._scoring_methods.get(method):
             raise MONAILabelException(
                 MONAILabelError.APP_INIT_ERROR,
                 f"Scoring Task is not Initialized. There is no such scoring method '{method}' available",
             )
 
-        task = self._scoring_methods[method]
-        logger.info(f"Running scoring: {method}: {task.info()}")
-        return task(request, datastore if datastore else self.datastore())
+        methods = [method] if method else self._scoring_methods.keys()
+        results = []
+        for m in methods:
+            task = self._scoring_methods[m]
+            req = request.get(m, copy.deepcopy(request))
+            logger.info(f"Running scoring: {m}: {task.info()} => {req}")
+
+            result = task(req, datastore if datastore else self.datastore())
+            results.append(result)
+
+        return results[0] if len(results) == 1 else results
 
     def datastore(self) -> Datastore:
         return self._datastore
@@ -322,6 +332,11 @@ class MONAILabelApp:
 
             result = task(req, self.datastore())
             results.append(result)
+
+        # Run all scoring methods
+        if self._auto_update_scoring:
+            self.async_scoring(None)
+
         return results[0] if len(results) == 1 else results
 
     def next_sample(self, request):
@@ -355,6 +370,11 @@ class MONAILabelApp:
             return {}
 
         image_path = self._datastore.get_image_uri(image_id)
+
+        # Run all scoring methods
+        if self._auto_update_scoring:
+            self.async_scoring(None)
+
         return {
             "id": image_id,
             "path": image_path,
@@ -362,6 +382,10 @@ class MONAILabelApp:
 
     def on_init_complete(self):
         logger.info("App Init - completed")
+
+        # Run all scoring methods
+        if self._auto_update_scoring:
+            self.async_scoring(None)
 
     def on_save_label(self, image_id, label_id):
         """
@@ -377,15 +401,21 @@ class MONAILabelApp:
         self._server_mode = mode
 
     def async_scoring(self, method, params=None):
+        if not method and not self._scoring_methods:
+            return {}
+
         if self._server_mode:
-            request = {"method": method}
+            request = {"method": method} if method else {}
             res, _ = AsyncTask.run("scoring", request=request, params=params)
             return res
 
-        url = f"/scoring/{method}"
+        url = f"/scoring/{method}" if method else "/scoring/"
         return self._local_request(url, params, "Scoring")
 
     def async_training(self, model, params=None):
+        if not model and not self._trainers:
+            return {}
+
         if self._server_mode:
             res, _ = AsyncTask.run("train", params=params)
             return res

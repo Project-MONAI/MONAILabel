@@ -11,11 +11,15 @@
 
 import logging
 import os
+from typing import Dict
 
 from lib import InferDeepgrow, MyStrategy, TrainDeepgrow
 from monai.apps import load_from_mmar
 
 from monailabel.interfaces.app import MONAILabelApp
+from monailabel.interfaces.tasks.infer import InferTask
+from monailabel.interfaces.tasks.strategy import Strategy
+from monailabel.interfaces.tasks.train import TrainTask
 from monailabel.scribbles.infer import HistogramBasedGraphCut
 from monailabel.tasks.activelearning.random import Random
 from monailabel.tasks.infer.deepgrow_pipeline import InferDeepgrowPipeline
@@ -46,7 +50,7 @@ class MyApp(MONAILabelApp):
             labels=["spleen"],
         )
 
-    def init_infers(self):
+    def init_infers(self) -> Dict[str, InferTask]:
         infers = {
             "deepgrow_2d": InferDeepgrow(self.final_model_2d, load_from_mmar(self.mmar_2d, self.model_dir_2d)),
             "deepgrow_3d": InferDeepgrow(
@@ -55,7 +59,7 @@ class MyApp(MONAILabelApp):
                 dimension=3,
                 model_size=(128, 192, 192),
             ),
-            "histogramBasedGraphCut": HistogramBasedGraphCut(),
+            "Histogram+GraphCut": HistogramBasedGraphCut(),
         }
 
         infers["deepgrow_pipeline"] = InferDeepgrowPipeline(
@@ -66,7 +70,7 @@ class MyApp(MONAILabelApp):
         )
         return infers
 
-    def init_trainers(self):
+    def init_trainers(self) -> Dict[str, TrainTask]:
         return {
             "deepgrow_2d": TrainDeepgrow(
                 model_dir=self.model_dir_2d,
@@ -98,7 +102,7 @@ class MyApp(MONAILabelApp):
             ),
         }
 
-    def init_strategies(self):
+    def init_strategies(self) -> Dict[str, Strategy]:
         return {
             "random": Random(),
             "first": MyStrategy(),
