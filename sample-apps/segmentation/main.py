@@ -24,8 +24,10 @@ from monailabel.interfaces.tasks.scoring import ScoringMethod
 from monailabel.interfaces.tasks.strategy import Strategy
 from monailabel.interfaces.tasks.train import TrainTask
 from monailabel.scribbles.infer import HistogramBasedGraphCut
+from monailabel.tasks.activelearning.epistemic import Epistemic
 from monailabel.tasks.activelearning.random import Random
 from monailabel.tasks.activelearning.tta import TTA
+from monailabel.tasks.scoring.epistemic import EpistemicScoring
 from monailabel.tasks.scoring.tta import TTAScoring
 
 logger = logging.getLogger(__name__)
@@ -42,6 +44,16 @@ class MyApp(MONAILabelApp):
             num_res_units=2,
             norm=Norm.BATCH,
         )
+        self.network_with_dropout = UNet(
+            dimensions=3,
+            in_channels=1,
+            out_channels=2,
+            channels=(16, 32, 64, 128, 256),
+            strides=(2, 2, 2, 2),
+            num_res_units=2,
+            norm=Norm.BATCH,
+            dropout=0.2,
+        )
 
         self.model_dir = os.path.join(app_dir, "model")
         self.pretrained_model = os.path.join(self.model_dir, "pretrained.pt")
@@ -55,6 +67,10 @@ class MyApp(MONAILabelApp):
         )
         if use_pretrained_model:
             self.download([(self.pretrained_model, pretrained_model_uri)])
+
+        self.epistemic_enabled = strtobool(conf.get("epistemic_enabled", "true"))
+        self.epistemic_samples = int(conf.get("epistemic_samples", "5"))
+        logger.info(f"EPISTEMIC Enabled: {self.epistemic_enabled}; Samples: {self.epistemic_samples}")
 
         self.tta_enabled = strtobool(conf.get("tta_enabled", "false"))
         self.tta_samples = int(conf.get("tta_samples", "5"))
@@ -96,6 +112,13 @@ class MyApp(MONAILabelApp):
 
     def init_scoring_methods(self) -> Dict[str, ScoringMethod]:
         methods: Dict[str, ScoringMethod] = {}
+        if self.epistemic_enabled:
+            methods["EPISTEMIC"] = EpistemicScoring(
+                model=[self.pretrained_model, self.final_model],
+                network=self.network_with_dropout,
+                transforms=self._infers["segmentation"].pre_transforms(),
+                num_samples=self.epistemic_samples,
+            )
         if self.tta_enabled:
             methods["TTA"] = TTAScoring(
                 model=[self.pretrained_model, self.final_model],
