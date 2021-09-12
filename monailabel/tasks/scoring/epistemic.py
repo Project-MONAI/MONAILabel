@@ -16,11 +16,10 @@ import time
 import numpy as np
 import torch
 from monai.inferers import sliding_window_inference
-from monai.transforms import Activations, Compose
+from monai.transforms import Compose
 
 from monailabel.interfaces.datastore import Datastore
 from monailabel.interfaces.tasks.scoring import ScoringMethod
-from monailabel.interfaces.utils.transform import run_transforms
 
 logger = logging.getLogger(__name__)
 
@@ -39,20 +38,25 @@ class EpistemicScoring(ScoringMethod):
         self.roi_size = roi_size
         self.num_samples = num_samples
 
-    def post_transforms(self):
-        return Compose([Activations(softmax=True)])
-
     def infer_seg(self, data, model, roi_size, sw_batch_size):
-        pre_transforms = Compose(self.transforms) if self.transforms else None
-        data = run_transforms(data, pre_transforms, log_prefix="EPISTEMIC-PRE") if pre_transforms else data
+        pre_transforms = (
+            None
+            if not self.transforms
+            else self.transforms
+            if isinstance(self.transforms, Compose)
+            else Compose(self.transforms)
+        )
+        # data = run_transforms(data, pre_transforms, log_prefix="EPISTEMIC-PRE") if pre_transforms else data
+        data = pre_transforms(data)
 
         with torch.no_grad():
             preds = sliding_window_inference(
                 inputs=data["image"][None].cuda(), roi_size=roi_size, sw_batch_size=sw_batch_size, predictor=model
             )
 
-        post_transforms = self.post_transforms()
-        return post_transforms(preds)
+        soft_preds = torch.softmax(preds, dim=1)
+        soft_preds = soft_preds.detach().to("cpu").numpy()
+        return soft_preds
 
     def entropy_3d_volume(self, vol_input):
         # The input is assumed with repetitions, channels and then volumetric data
@@ -127,6 +131,9 @@ class EpistemicScoring(ScoringMethod):
         skipped = 0
         unlabeled_images = datastore.get_unlabeled_images()
         num_samples = request.get("num_samples", self.num_samples)
+        if num_samples < 2:
+            num_samples = 2
+            logger.warning("EPISTEMIC:: Fixing 'num_samples=2' as min 2 samples are needed to compute entropy")
 
         for image_id in unlabeled_images:
             image_info = datastore.get_image_info(image_id)
@@ -137,17 +144,17 @@ class EpistemicScoring(ScoringMethod):
 
             logger.info(f"EPISTEMIC:: Run for image: {image_id}; Prev Ts: {prev_ts}; New Ts: {model_ts}")
 
-            # Computing the Volume Variation Coefficient (VVC)
+            # Computing the Entropy
             start = time.time()
             data = {"image": datastore.get_image_uri(image_id)}
             accum_unl_outputs = []
-            for _ in range(num_samples):
+            for i in range(num_samples):
                 output_pred = self.infer_seg(data, model, self.roi_size, 1)
+                logger.info(f"EPISTEMIC:: {image_id} => {i} => pred: {output_pred.shape}; sum: {np.sum(output_pred)}")
                 accum_unl_outputs.append(output_pred)
 
-            accum_tensor = torch.stack(accum_unl_outputs)
-            accum_tensor = torch.squeeze(accum_tensor)
-            accum_numpy = accum_tensor.to("cpu").numpy()
+            accum_numpy = np.stack(accum_unl_outputs)
+            accum_numpy = np.squeeze(accum_numpy)
             accum_numpy = accum_numpy[:, 1, :, :, :]
 
             entropy = self.entropy_3d_volume(accum_numpy)

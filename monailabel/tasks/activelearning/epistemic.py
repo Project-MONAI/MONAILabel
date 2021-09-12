@@ -39,6 +39,6 @@ class Epistemic(Strategy):
             image = random.choice(images)
             logger.info(f"Random: Selected Image: {image}")
         else:
-            _, image = max(zip(epistemic_scores.values(), epistemic_scores.keys()))
-            logger.info(f"EPISTEMIC: Selected Image: {image}")
+            entropy, image = max(zip(epistemic_scores.values(), epistemic_scores.keys()))
+            logger.info(f"EPISTEMIC: Selected Image: {image}; epistemic_entropy: {entropy}")
         return image

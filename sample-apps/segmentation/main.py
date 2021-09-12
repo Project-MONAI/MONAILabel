@@ -15,7 +15,6 @@ from distutils.util import strtobool
 from typing import Dict
 
 from lib import MyInfer, MyStrategy, MyTrain
-from monai.networks.layers import Norm
 from monai.networks.nets import UNet
 
 from monailabel.interfaces.app import MONAILabelApp
@@ -35,25 +34,17 @@ logger = logging.getLogger(__name__)
 
 class MyApp(MONAILabelApp):
     def __init__(self, app_dir, studies, conf):
-        self.network = UNet(
-            dimensions=3,
-            in_channels=1,
-            out_channels=2,
-            channels=(16, 32, 64, 128, 256),
-            strides=(2, 2, 2, 2),
-            num_res_units=2,
-            norm=Norm.BATCH,
-        )
-        self.network_with_dropout = UNet(
-            dimensions=3,
-            in_channels=1,
-            out_channels=2,
-            channels=(16, 32, 64, 128, 256),
-            strides=(2, 2, 2, 2),
-            num_res_units=2,
-            norm=Norm.BATCH,
-            dropout=0.2,
-        )
+        network_params = {
+            "dimensions": 3,
+            "in_channels": 1,
+            "out_channels": 2,
+            "channels": [16, 32, 64, 128, 256],
+            "strides": [2, 2, 2, 2],
+            "num_res_units": 2,
+            "norm": "batch",
+        }
+        self.network = UNet(**network_params)
+        self.network_with_dropout = UNet(**network_params, dropout=0.2)
 
         self.model_dir = os.path.join(app_dir, "model")
         self.pretrained_model = os.path.join(self.model_dir, "pretrained.pt")
