@@ -127,7 +127,7 @@ async def remove_label(id: str, tag: str):
 
 
 @router.get("/image", summary="Download Image")
-async def download_image(image):
+async def download_image(image: str):
     instance: MONAILabelApp = app_instance()
     image = instance.datastore().get_image_uri(image)
     if not os.path.isfile(image):
