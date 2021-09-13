@@ -25,9 +25,9 @@ from monai.transforms import (
     ToTensord,
 )
 
-from monailabel.deepedit.transforms import DiscardAddGuidanced, ResizeGuidanceCustomd
-from monailabel.interfaces.tasks import InferTask, InferType
-from monailabel.utils.others.post import Restored
+from monailabel.deepedit.transforms import DiscardAddGuidanced, ResizeGuidanceCustomd, SingleLabelSingleModalityd
+from monailabel.interfaces.tasks.infer import InferTask, InferType
+from monailabel.transform.post import Restored
 
 
 class Segmentation(InferTask):
@@ -63,7 +63,8 @@ class Segmentation(InferTask):
 
     def pre_transforms(self):
         return [
-            LoadImaged(keys="image"),
+            LoadImaged(keys="image", reader="nibabelreader"),
+            SingleLabelSingleModalityd(keys="image"),
             AddChanneld(keys="image"),
             Spacingd(keys="image", pixdim=self.target_spacing, mode="bilinear"),
             Orientationd(keys="image", axcodes="RAS"),
@@ -119,7 +120,8 @@ class Deepgrow(InferTask):
 
     def pre_transforms(self):
         return [
-            LoadImaged(keys="image"),
+            LoadImaged(keys="image", reader="nibabelreader"),
+            SingleLabelSingleModalityd(keys="image"),
             AddChanneld(keys="image"),
             Spacingd(keys="image", pixdim=self.target_spacing, mode="bilinear"),
             Orientationd(keys="image", axcodes="RAS"),

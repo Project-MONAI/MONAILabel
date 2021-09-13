@@ -3,7 +3,7 @@ const commandsModule = ({ servicesManager }) => {
 
   const MONAILabelMessage = (message, type = 'success', debug = true) => {
     if (debug) {
-      console.log('MONAI Label - ' + message);
+      console.debug('MONAI Label - ' + message);
     }
     if (UINotificationService) {
       UINotificationService.show({

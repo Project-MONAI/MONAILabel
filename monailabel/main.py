@@ -27,13 +27,15 @@ from starlette.middleware.cors import CORSMiddleware
 
 from monailabel.config import settings
 from monailabel.endpoints import activelearning, batch_infer, datastore, infer, info, logs, ohif, proxy, scoring, train
-from monailabel.utils.others.app_utils import app_instance
+from monailabel.interfaces.utils.app import app_instance
 from monailabel.utils.others.generic import init_log_config
 
 middleware = [
     Middleware(
         CORSMiddleware,
-        allow_origins=[str(origin) for origin in settings.CORS_ORIGINS] if settings.CORS_ORIGINS else ["*"],
+        allow_origins=[str(origin) for origin in settings.MONAI_LABEL_CORS_ORIGINS]
+        if settings.MONAI_LABEL_CORS_ORIGINS
+        else ["*"],
         allow_credentials=True,
         allow_methods=["*"],
         allow_headers=["*"],
@@ -41,16 +43,18 @@ middleware = [
 ]
 
 app = FastAPI(
-    title=settings.PROJECT_NAME,
-    openapi_url=f"{settings.API_STR}/openapi.json",
+    title=settings.MONAI_LABEL_PROJECT_NAME,
+    openapi_url=f"{settings.MONAI_LABEL_API_STR}/openapi.json",
     docs_url=None,
     redoc_url="/docs",
     middleware=middleware,
 )
 
-static_dir = os.path.join(os.path.dirname(os.path.realpath(__file__)), "static")
+static_dir = os.path.join(os.path.dirname(os.path.realpath(__file__)), "endpoints/static")
 app.mount(
-    "/static", StaticFiles(directory=os.path.join(os.path.dirname(os.path.realpath(__file__)), "static")), name="static"
+    "/static",
+    StaticFiles(directory=os.path.join(os.path.dirname(os.path.realpath(__file__)), "endpoints/static")),
+    name="static",
 )
 
 app.include_router(info.router)
@@ -81,7 +85,9 @@ async def favicon():
 
 @app.on_event("startup")
 async def startup_event():
-    app_instance()
+    instance = app_instance()
+    instance.server_mode(True)
+    instance.on_init_complete()
 
 
 def run_main():
@@ -97,6 +103,15 @@ def run_main():
     parser_a.add_argument("-Q", "--qido_prefix", required=False, default="", help="DICOMWeb Server QIDO URL prefix")
     parser_a.add_argument("-S", "--stow_prefix", required=False, default="", help="DICOMWeb Server STOW URL prefix")
     parser_a.add_argument("-d", "--debug", action="store_true", help="Enable debug logs")
+
+    # --conf key1 value1 --conf key2 value2
+    parser_a.add_argument(
+        "-c",
+        "--conf",
+        nargs=2,
+        action="append",
+        help="config for the app.  Example: --conf key1 valu1 --conf key2 value2",
+    )
 
     parser_a.add_argument("-i", "--host", default="0.0.0.0", type=str, help="Server IP")
     parser_a.add_argument("-p", "--port", default=8000, type=int, help="Server Port")
@@ -183,17 +198,16 @@ def action_datasets(args):
 def action_apps(args):
     apps_dir = os.path.join(os.path.dirname(os.path.dirname(os.path.realpath(__file__))), "sample-apps")
     if not os.path.exists(apps_dir):
-        apps_dir = os.path.join(args.prefix if args.prefix else sys.prefix, "monailabel", "sample-apps")
+        apps_dir = os.path.join(args.prefix if args.prefix else sys.prefix, "scripts/monailabel", "sample-apps")
 
     apps = os.listdir(apps_dir)
     apps = [os.path.basename(a) for a in apps]
     apps.sort()
 
     resource = {
-        "Template/Generic Apps": [a for a in apps if a.startswith("generic_")],
-        "Deepedit based Apps": [a for a in apps if a.startswith("deepedit_")],
-        "Deepgrow based Apps": [a for a in apps if a.startswith("deepgrow_")],
-        "Standard Segmentation Apps": [a for a in apps if a.startswith("segmentation_")],
+        "Deepedit based Apps": [a for a in apps if a.startswith("deepedit")],
+        "Deepgrow based Apps": [a for a in apps if a.startswith("deepgrow")],
+        "Standard Segmentation Apps": [a for a in apps if a.startswith("segmentation")],
     }
 
     if not args.download:
@@ -225,7 +239,7 @@ def action_apps(args):
 def action_plugins(args):
     plugins_dir = os.path.join(os.path.dirname(os.path.dirname(os.path.realpath(__file__))), "plugins")
     if not os.path.exists(plugins_dir):
-        plugins_dir = os.path.join(args.prefix if args.prefix else sys.prefix, "monailabel", "plugins")
+        plugins_dir = os.path.join(args.prefix if args.prefix else sys.prefix, "scripts/monailabel", "plugins")
 
     plugins = os.listdir(plugins_dir)
     plugins = [os.path.basename(a) for a in plugins]
@@ -277,25 +291,19 @@ def run_app(args):
         print("USING:: {} = {}".format(arg, getattr(args, arg)))
     print("")
 
-    overrides = {
-        "APP_DIR": args.app,
-        "STUDIES": args.studies,
-        "DICOMWEB_USERNAME": args.username,
-        "DICOMWEB_PASSWORD": args.password,
-        "QIDO_PREFIX": args.qido_prefix,
-        "WADO_PREFIX": args.wado_prefix,
-        "STOW_PREFIX": args.stow_prefix,
-    }
-    for k, v in overrides.items():
-        os.environ[k] = str(v)
+    # namespace('conf': [['key1','value1'],['key2','value2']])
+    conf = {c[0]: c[1] for c in args.conf} if args.conf else {}
 
-    settings.APP_DIR = args.app
-    settings.STUDIES = args.studies
-    settings.DICOMWEB_USERNAME = args.username
-    settings.DICOMWEB_PASSWORD = args.password
-    settings.QIDO_PREFIX = args.qido_prefix
-    settings.WADO_PREFIX = args.wado_prefix
-    settings.STOW_PREFIX = args.stow_prefix
+    settings.MONAI_LABEL_SERVER_PORT = args.port
+    settings.MONAI_LABEL_APP_DIR = args.app
+    settings.MONAI_LABEL_STUDIES = args.studies
+    settings.MONAI_LABEL_APP_CONF = conf
+
+    settings.MONAI_LABEL_DICOMWEB_USERNAME = args.username
+    settings.MONAI_LABEL_DICOMWEB_PASSWORD = args.password
+    settings.MONAI_LABEL_QIDO_PREFIX = args.qido_prefix
+    settings.MONAI_LABEL_WADO_PREFIX = args.wado_prefix
+    settings.MONAI_LABEL_STOW_PREFIX = args.stow_prefix
 
     dirs = ["model", "lib", "logs", "bin"]
     for d in dirs:
@@ -310,7 +318,7 @@ def run_app(args):
     if args.dryrun:
         with open(".env", "w") as f:
             for k, v in settings.dict().items():
-                v = json.dumps(v) if isinstance(v, list) else v
+                v = json.dumps(v) if isinstance(v, list) or isinstance(v, dict) else v
                 e = f"{k}={v}"
                 f.write(e)
                 f.write(os.linesep)
@@ -321,8 +329,9 @@ def run_app(args):
         print("                  ENV VARIABLES/SETTINGS                  ")
         print("**********************************************************")
         for k, v in settings.dict().items():
-            v = json.dumps(v) if isinstance(v, list) else v
+            v = json.dumps(v) if isinstance(v, list) or isinstance(v, dict) else str(v)
             print(f"{'set' if any(platform.win32_ver()) else 'export'} {k}={v}")
+            os.environ[k] = v
         print("**********************************************************")
         print("")
 
@@ -338,8 +347,6 @@ def run_app(args):
 
     sys.path.remove(os.path.join(args.app, "lib"))
     sys.path.remove(args.app)
-    for k in overrides:
-        os.unsetenv(k)
 
 
 if __name__ == "__main__":

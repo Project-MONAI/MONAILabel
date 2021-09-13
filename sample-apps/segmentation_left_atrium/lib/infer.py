@@ -23,8 +23,8 @@ from monai.transforms import (
     ToTensord,
 )
 
-from monailabel.interfaces.tasks import InferTask, InferType
-from monailabel.utils.others.post import Restored
+from monailabel.interfaces.tasks.infer import InferTask, InferType
+from monailabel.transform.post import Restored
 
 
 class MyInfer(InferTask):
@@ -37,7 +37,7 @@ class MyInfer(InferTask):
         path,
         network=None,
         type=InferType.SEGMENTATION,
-        labels="left_atrium",
+        labels="left atrium",
         dimension=3,
         description="A pre-trained model for volumetric (3D) segmentation of the left atrium over 3D MR Images",
     ):

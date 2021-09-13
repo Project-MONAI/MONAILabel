@@ -9,7 +9,14 @@ export default class AutoSegmentation extends BaseTab {
     super(props);
 
     this.modelSelector = React.createRef();
+    this.state = {
+      currentModel: null,
+    };
   }
+
+  onSelectModel = model => {
+    this.setState({ currentModel: model });
+  };
 
   onSegmentation = async () => {
     const nid = this.notification.show({
@@ -22,10 +29,15 @@ export default class AutoSegmentation extends BaseTab {
     // TODO:: Fix Image ID...
     const { info, viewConstants } = this.props;
     const image = viewConstants.SeriesInstanceUID;
-    const model = this.modelSelector.current.state.currentModel;
+    const model = this.modelSelector.current.currentModel();
+    const config = this.props.onOptionsConfig();
+    const params =
+      config && config.infer && config.infer[model] ? config.infer[model] : {};
 
     const labels = info.models[model].labels;
-    const response = await this.props.client().segmentation(model, image);
+    const response = await this.props
+      .client()
+      .segmentation(model, image, params);
 
     // Bug:: Notification Service on show doesn't return id
     if (!nid) {
@@ -83,7 +95,9 @@ export default class AutoSegmentation extends BaseTab {
             name="segmentation"
             title="Segmentation"
             models={models}
+            currentModel={this.state.currentModel}
             onClick={this.onSegmentation}
+            onSelectModel={this.onSelectModel}
             usage={
               <p style={{ fontSize: 'smaller' }}>
                 Fully automated segmentation <b>without any user input</b>. Just

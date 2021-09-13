@@ -111,6 +111,17 @@ class _ui_MONAILabelSettingsPanel(object):
             str(qt.SIGNAL("valueAsIntChanged(int)")),
         )
 
+        developerModeCheckBox = qt.QCheckBox()
+        developerModeCheckBox.checked = False
+        developerModeCheckBox.toolTip = "Enable this option to find options tab etc..."
+        groupLayout.addRow("Developer Mode:", developerModeCheckBox)
+        parent.registerProperty(
+            "MONAILabel/developerMode",
+            ctk.ctkBooleanMapper(developerModeCheckBox, "checked", str(qt.SIGNAL("toggled(bool)"))),
+            "valueAsInt",
+            str(qt.SIGNAL("valueAsIntChanged(int)")),
+        )
+
         vBoxLayout.addWidget(groupBox)
         vBoxLayout.addStretch(1)
 
@@ -679,6 +690,9 @@ class MONAILabelWidget(ScriptedLoadableModuleWidget, VTKObservationMixin):
 
         # Show scribbles panel only if scribbles methods detected
         self.ui.scribblesCollapsibleButton.setVisible(self.ui.scribblesMethodSelector.count)
+
+        developer_mode = slicer.util.settingsValue("MONAILabel/developerMode", True, converter=slicer.util.toBool)
+        self.ui.optionsCollapsibleButton.setVisible(developer_mode)
 
         # Enable/Disable
         self.ui.nextSampleButton.setEnabled(self.ui.strategyBox.count)

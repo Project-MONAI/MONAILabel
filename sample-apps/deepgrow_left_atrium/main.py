@@ -11,19 +11,24 @@
 
 import logging
 import os
+from typing import Dict
 
 from lib import InferDeepgrow, MyStrategy, TrainDeepgrow
 from monai.apps import load_from_mmar
 
-from monailabel.interfaces import MONAILabelApp
-from monailabel.utils.activelearning import Random
-from monailabel.utils.infer.deepgrow_pipeline import InferDeepgrowPipeline
+from monailabel.interfaces.app import MONAILabelApp
+from monailabel.interfaces.tasks.infer import InferTask
+from monailabel.interfaces.tasks.strategy import Strategy
+from monailabel.interfaces.tasks.train import TrainTask
+from monailabel.scribbles.infer import HistogramBasedGraphCut
+from monailabel.tasks.activelearning.random import Random
+from monailabel.tasks.infer.deepgrow_pipeline import InferDeepgrowPipeline
 
 logger = logging.getLogger(__name__)
 
 
 class MyApp(MONAILabelApp):
-    def __init__(self, app_dir, studies):
+    def __init__(self, app_dir, studies, conf):
         self.model_dir = os.path.join(app_dir, "model")
 
         self.model_dir_2d = os.path.join(self.model_dir, "deepgrow_2d")
@@ -38,29 +43,23 @@ class MyApp(MONAILabelApp):
         self.train_stats_path_3d = os.path.join(self.model_dir, "deepgrow_3d", "train_stats.json")
         self.mmar_3d = "clara_pt_deepgrow_3d_annotation_1"
 
+        # Use pre-trained model
+        pretrained_model_2d_uri = f"{self.PRE_TRAINED_PATH}/deepgrow_2d_left_atrium.pt"
+        pretrained_model_3d_uri = f"{self.PRE_TRAINED_PATH}/deepgrow_3d_left_atrium.pt"
         self.download(
-            [
-                (
-                    self.pretrained_model_2d,
-                    "https://github.com/Project-MONAI/MONAILabel/releases/download/data/deepgrow_2d_left_atrium.pt",
-                ),
-                (
-                    self.pretrained_model_3d,
-                    "https://github.com/Project-MONAI/MONAILabel/releases/download/data/deepgrow_3d_left_atrium.pt",
-                ),
-            ]
+            [(self.pretrained_model_2d, pretrained_model_2d_uri), (self.pretrained_model_3d, pretrained_model_3d_uri)]
         )
 
         super().__init__(
             app_dir=app_dir,
             studies=studies,
+            conf=conf,
             name="Deepgrow - Left Atrium",
             description="Active Learning solution to label left atrium for 3D MRI Volumes",
-            version=2,
             labels=["left atrium"],
         )
 
-    def init_infers(self):
+    def init_infers(self) -> Dict[str, InferTask]:
         infers = {
             "deepgrow_2d": InferDeepgrow(
                 [self.pretrained_model_2d, self.final_model_2d],
@@ -72,6 +71,7 @@ class MyApp(MONAILabelApp):
                 dimension=3,
                 model_size=(128, 192, 192),
             ),
+            "Histogram+GraphCut": HistogramBasedGraphCut(),
         }
 
         infers["deepgrow_pipeline"] = InferDeepgrowPipeline(
@@ -82,7 +82,7 @@ class MyApp(MONAILabelApp):
         )
         return infers
 
-    def init_trainers(self):
+    def init_trainers(self) -> Dict[str, TrainTask]:
         return {
             "deepgrow_2d": TrainDeepgrow(
                 model_dir=self.model_dir_2d,
@@ -115,7 +115,7 @@ class MyApp(MONAILabelApp):
             ),
         }
 
-    def init_strategies(self):
+    def init_strategies(self) -> Dict[str, Strategy]:
         return {
             "random": Random(),
             "first": MyStrategy(),

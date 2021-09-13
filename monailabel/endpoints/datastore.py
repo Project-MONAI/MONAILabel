@@ -22,8 +22,9 @@ from fastapi import APIRouter, File, Form, HTTPException, UploadFile
 from fastapi.responses import FileResponse
 from starlette.background import BackgroundTasks
 
-from monailabel.interfaces import Datastore, DefaultLabelTag, MONAILabelApp
-from monailabel.utils.others.app_utils import app_instance
+from monailabel.interfaces.app import MONAILabelApp
+from monailabel.interfaces.datastore import Datastore, DefaultLabelTag
+from monailabel.interfaces.utils.app import app_instance
 from monailabel.utils.others.generic import get_mime_type, remove_file
 
 logger = logging.getLogger(__name__)

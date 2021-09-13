@@ -23,6 +23,7 @@ if [[ "${app_dir}" == "" ]]; then
   exit 1
 fi
 
+export PATH=$PATH:$app_dir/bin
 echo "Virtual Env: $VIRTUAL_ENV"
 
 PYEXE=python
@@ -68,7 +69,7 @@ fi
 
 echo "Using PYTHONPATH:: ${PYTHONPATH}"
 if [[ -z "$output" ]]; then
-  ${PYEXE} -m monailabel.utils.others.app_utils -a "$app_dir" -s "$study_dir" -m "$method" -r "$request"
+  ${PYEXE} -m monailabel.interfaces.utils.app -a "$app_dir" -s "$study_dir" -m "$method" -r "$request"
 else
-  ${PYEXE} -m monailabel.utils.others.app_utils -a "$app_dir" -s "$study_dir" -m "$method" -r "$request" -o "$output"
+  ${PYEXE} -m monailabel.interfaces.utils.app -a "$app_dir" -s "$study_dir" -m "$method" -r "$request" -o "$output"
 fi

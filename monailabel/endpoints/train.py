@@ -13,9 +13,9 @@ import logging
 from typing import Optional
 
 import torch
-from fastapi import APIRouter
+from fastapi import APIRouter, HTTPException
 
-from monailabel.endpoints.utils import BackgroundTask
+from monailabel.utils.async_tasks.task import AsyncTask
 
 logger = logging.getLogger(__name__)
 
@@ -28,17 +28,32 @@ router = APIRouter(
 
 @router.get("/", summary="Get Status of Training Task")
 async def status(all: bool = False, check_if_running: bool = False):
-    return BackgroundTask.status("train", all, check_if_running)
+    res, detail = AsyncTask.status("train", all, check_if_running)
+    if res is None:
+        raise HTTPException(status_code=404, detail=detail)
+    return res
 
 
 @router.post("/", summary="Run Training Task")
 async def run(params: Optional[dict] = None, run_sync: Optional[bool] = False):
-    return BackgroundTask.run("train", params=params, force_sync=run_sync)
+    res, detail = AsyncTask.run("train", params=params, force_sync=run_sync)
+    if res is None:
+        raise HTTPException(status_code=429, detail=detail)
+    return res
+
+
+@router.post("/{model}", summary="Run Training Task for specific model")
+async def run_model(model: str, params: Optional[dict] = None, run_sync: Optional[bool] = False):
+    request = {"model": model} if model else {}
+    res, detail = AsyncTask.run("train", request=request, params=params, force_sync=run_sync)
+    if res is None:
+        raise HTTPException(status_code=429, detail=detail)
+    return res
 
 
 @router.delete("/", summary="Stop Training Task")
 async def stop():
-    res = BackgroundTask.stop("train")
+    res = AsyncTask.stop("train")
 
     # Try to clear cuda cache
     if torch.cuda.is_available():

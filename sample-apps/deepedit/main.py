@@ -8,23 +8,35 @@
 # WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 # See the License for the specific language governing permissions and
 # limitations under the License.
-
+import json
 import logging
 import os
+from distutils.util import strtobool
+from typing import Dict
 
-from lib import Deepgrow, MyStrategy, MyTrain, Segmentation
+from lib import Deepgrow, MyTrain, Segmentation
+from lib.activelearning import MyStrategy
 from monai.networks.nets.dynunet_v1 import DynUNetV1
 
-from monailabel.interfaces import MONAILabelApp
-from monailabel.utils.activelearning import Random
-from monailabel.utils.others.planner import ExperimentPlanner
+from monailabel.interfaces.app import MONAILabelApp
+from monailabel.interfaces.datastore import Datastore
+from monailabel.interfaces.tasks.infer import InferTask
+from monailabel.interfaces.tasks.scoring import ScoringMethod
+from monailabel.interfaces.tasks.strategy import Strategy
+from monailabel.interfaces.tasks.train import TrainTask
+from monailabel.scribbles.infer import HistogramBasedGraphCut
+from monailabel.tasks.activelearning.random import Random
+from monailabel.tasks.activelearning.tta import TTA
+from monailabel.tasks.scoring.dice import Dice
+from monailabel.tasks.scoring.sum import Sum
+from monailabel.tasks.scoring.tta import TTAScoring
+from monailabel.utils.others.planner import HeuristicPlanner
 
 logger = logging.getLogger(__name__)
 
 
 class MyApp(MONAILabelApp):
-    def __init__(self, app_dir, studies):
-
+    def __init__(self, app_dir, studies, conf):
         self.network = DynUNetV1(
             spatial_dims=3,
             in_channels=3,
@@ -60,58 +72,88 @@ class MyApp(MONAILabelApp):
         self.model_dir = os.path.join(app_dir, "model")
         self.pretrained_model = os.path.join(self.model_dir, "pretrained.pt")
         self.final_model = os.path.join(self.model_dir, "model.pt")
-        self.spatial_size = None
-        self.target_spacing = None
+
+        # Use Heuristic Planner to determine target spacing and spatial size based on dataset+gpu
+        spatial_size = json.loads(conf.get("spatial_size", "[128, 128, 64]"))
+        target_spacing = json.loads(conf.get("target_spacing", "[1.0, 1.0, 1.0]"))
+        self.heuristic_planner = strtobool(conf.get("heuristic_planner", "false"))
+        self.planner = HeuristicPlanner(spatial_size=spatial_size, target_spacing=target_spacing)
+
+        use_pretrained_model = strtobool(conf.get("use_pretrained_model", "true"))
+        pretrained_model_uri = conf.get("pretrained_model_path", f"{self.PRE_TRAINED_PATH}/deepedit_left_atrium.pt")
+
+        # Path to pretrained weights
+        if use_pretrained_model:
+            self.download([(self.pretrained_model, pretrained_model_uri)])
+
+        self.tta_enabled = strtobool(conf.get("tta_enabled", "true"))
+        self.tta_samples = int(conf.get("tta_samples", "5"))
+        logger.info(f"TTA Enabled: {self.tta_enabled}; Samples: {self.tta_samples}")
 
         super().__init__(
             app_dir=app_dir,
             studies=studies,
+            conf=conf,
             name="DeepEdit",
             description="Active learning solution using DeepEdit to label 3D Images",
-            version=2,
         )
 
-    def experiment_planner(self):
-        # Experiment planner
-        self.planner = ExperimentPlanner(datastore=self.datastore())
-        self.spatial_size = self.planner.get_target_img_size()
-        self.target_spacing = self.planner.get_target_spacing()
-        logger.info(f"Available GPU memory: {list(self.planner.get_gpu_memory_map().values())} in MB")
+    def init_datastore(self) -> Datastore:
+        datastore = super().init_datastore()
+        if self.heuristic_planner:
+            self.planner.run(datastore)
+        return datastore
 
-    def init_infers(self):
-        self.experiment_planner()
-        logger.info(f"Spacing set: {self.target_spacing}")
-        logger.info(f"Spatial size set: {self.spatial_size}")
+    def init_infers(self) -> Dict[str, InferTask]:
         return {
             "deepedit": Deepgrow(
                 [self.pretrained_model, self.final_model],
                 self.network,
-                spatial_size=self.spatial_size,
-                target_spacing=self.target_spacing,
+                spatial_size=self.planner.spatial_size,
+                target_spacing=self.planner.target_spacing,
             ),
-            "automatic": Segmentation(
+            "deepedit_seg": Segmentation(
                 [self.pretrained_model, self.final_model],
                 self.network,
-                spatial_size=self.spatial_size,
-                target_spacing=self.target_spacing,
+                spatial_size=self.planner.spatial_size,
+                target_spacing=self.planner.target_spacing,
             ),
+            "Histogram+GraphCut": HistogramBasedGraphCut(),
         }
 
-    def init_trainers(self):
+    def init_trainers(self) -> Dict[str, TrainTask]:
         return {
             "deepedit_train": MyTrain(
                 self.model_dir,
                 self.network,
-                spatial_size=self.spatial_size,
-                target_spacing=self.target_spacing,
+                spatial_size=self.planner.spatial_size,
+                target_spacing=self.planner.target_spacing,
                 load_path=self.pretrained_model,
                 publish_path=self.final_model,
-                config={"pretrained": False},
+                config={"pretrained": strtobool(self.conf.get("use_pretrained_model", "true"))},
+                debug_mode=False,
             )
         }
 
-    def init_strategies(self):
-        return {
-            "random": Random(),
-            "first": MyStrategy(),
-        }
+    def init_strategies(self) -> Dict[str, Strategy]:
+        strategies: Dict[str, Strategy] = {}
+        if self.tta_enabled:
+            strategies["TTA"] = TTA()
+        strategies["random"] = Random()
+        strategies["first"] = MyStrategy()
+        return strategies
+
+    def init_scoring_methods(self) -> Dict[str, ScoringMethod]:
+        methods: Dict[str, ScoringMethod] = {}
+        if self.tta_enabled:
+            methods["TTA"] = TTAScoring(
+                model=[self.pretrained_model, self.final_model],
+                network=self.network,
+                num_samples=self.tta_samples,
+                spatial_size=self.planner.spatial_size,
+                spacing=self.planner.target_spacing,
+            )
+
+        methods["dice"] = Dice()
+        methods["sum"] = Sum()
+        return methods

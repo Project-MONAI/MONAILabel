@@ -17,6 +17,7 @@ set method=%3
 set request=%4
 
 set COUNT=
+set PATH=%app_dir%\bin;%PATH%
 
 echo Virtual Env: %VIRTUAL_ENV%
 if exist %app_dir%\requirements.txt.invalid (
@@ -44,15 +45,15 @@ if exist %app_dir%\requirements.txt.invalid (
         echo Using PYTHONPATH:: %PYTHONPATH%
         python -c "import os, sys; print(os.path.dirname(sys.executable))"
 
-        python -m monailabel.utils.others.app_utils -a %app_dir% -s %study_dir% -m %method% -r %request%
+        python -m monailabel.interfaces.utils.app -a %app_dir% -s %study_dir% -m %method% -r %request%
         deactivate
         @exit
     ) else (
         echo Do nothing as no valid items to install
-        python -m monailabel.utils.others.app_utils -a %app_dir% -s %study_dir% -m %method% -r %request%
+        python -m monailabel.interfaces.utils.app -a %app_dir% -s %study_dir% -m %method% -r %request%
         @exit
     )
 ) else (
-    python -m monailabel.utils.others.app_utils -a %app_dir% -s %study_dir% -m %method% -r %request%
+    python -m monailabel.interfaces.utils.app -a %app_dir% -s %study_dir% -m %method% -r %request%
     @exit
 )

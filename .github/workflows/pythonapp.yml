@@ -84,7 +84,7 @@ jobs:
           echo "$root_dir"
 
           # build tar.gz and wheel
-          export BUILD_OHIF=false
+          export BUILD_OHIF=true
           python setup.py check -m -s
           python setup.py sdist bdist_wheel
           python -m twine check dist/*

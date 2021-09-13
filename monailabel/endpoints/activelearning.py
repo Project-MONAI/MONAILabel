@@ -14,8 +14,8 @@ from typing import Dict, Optional
 
 from fastapi import APIRouter
 
-from monailabel.interfaces import MONAILabelApp
-from monailabel.utils.others.app_utils import app_instance
+from monailabel.interfaces.app import MONAILabelApp
+from monailabel.interfaces.utils.app import app_instance
 
 logger = logging.getLogger(__name__)
 

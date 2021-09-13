@@ -17,7 +17,7 @@ router = APIRouter(
 
 @router.get("/{path:path}", include_in_schema=False)
 async def get_ohif(path: str):
-    ohif_dir = os.path.join(os.path.dirname(os.path.realpath(__file__)), "..", "static", "ohif")
+    ohif_dir = os.path.join(os.path.dirname(os.path.realpath(__file__)), "static", "ohif")
     file = os.path.join(ohif_dir, "index.html")
     if path:
         path = os.path.join(ohif_dir, path.replace("/", os.pathsep))
