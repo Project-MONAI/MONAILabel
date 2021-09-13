@@ -6,15 +6,11 @@
 
 # -- Path setup --------------------------------------------------------------
 
-import logging
 import os
 import subprocess
 import sys
 
 from docutils.nodes import Text, reference
-
-
-logger = logging.getLogger(__name__)
 
 sys.path.insert(0, os.path.abspath("../../"))
 
