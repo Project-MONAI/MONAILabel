@@ -169,7 +169,7 @@ class GenerateTagLinks(SphinxTransform):
 
             # find the entry for the link reference we want to substitute
             link_key = None
-            for i, k in enumerate(self.linkref_lut.keys()):
+            for k in self.linkref_lut.keys():
                 if k in node["refuri"]:
                     link_key = k
 
