@@ -141,28 +141,23 @@ def generate_apidocs(*args):
     print(f"output_path {output_path}")
     print(f"module_path {module_path}")
     subprocess.check_call(
-        [apidoc_command_path, "-e"] +
-        ["-o", output_path] +
-        [module_path] +
-        [os.path.join(module_path, p) for p in exclude_patterns]
+        [apidoc_command_path, "-e"]
+        + ["-o", output_path]
+        + [module_path]
+        + [os.path.join(module_path, p) for p in exclude_patterns]
     )
 
 
 class GenerateTagLinks(SphinxTransform):
 
-    linkref_prefix = 'LINKREF_'
-    git_tag = 'MONAILABEL_GIT_TAG'
-    linkref_lut = {
-        'LINKREF_GITHUB_MONAILABEL': f'https://github.com/Project-MONAI/MONAILabel/tree/{{{git_tag}}}'
-    }
+    linkref_prefix = "LINKREF_"
+    git_tag = "MONAILABEL_GIT_TAG"
+    linkref_lut = {"LINKREF_GITHUB_MONAILABEL": f"https://github.com/Project-MONAI/MONAILabel/tree/{{{git_tag}}}"}
     default_priority = 500
 
     @staticmethod
     def baseref(obj):
-        return (
-            isinstance(obj, reference) and
-            obj.get('refuri', '').startswith(GenerateTagLinks.linkref_prefix)
-        )
+        return isinstance(obj, reference) and obj.get("refuri", "").startswith(GenerateTagLinks.linkref_prefix)
 
     @staticmethod
     def basetext(obj):
@@ -175,7 +170,7 @@ class GenerateTagLinks(SphinxTransform):
             # find the entry for the link reference we want to substitute
             link_key = None
             for i, k in enumerate(self.linkref_lut.keys()):
-                if k in node['refuri']:
+                if k in node["refuri"]:
                     link_key = k
 
             if not link_key:
@@ -183,15 +178,15 @@ class GenerateTagLinks(SphinxTransform):
 
             link_value = self.linkref_lut[link_key]
 
-            git_tag = 'main'
-            if os.getenv('MONAILABEL_GIT_TAG', None):
-                git_tag = os.environ['MONAILABEL_GIT_TAG']
+            git_tag = "main"
+            if os.getenv("MONAILABEL_GIT_TAG", None):
+                git_tag = os.environ["MONAILABEL_GIT_TAG"]
 
             link_value = link_value.format(MONAILABEL_GIT_TAG=git_tag)
 
             # replace the link reference with the link value
-            target = node['refuri'].replace(link_key, link_value, 1)
-            node.replace_attr('refuri', target)
+            target = node["refuri"].replace(link_key, link_value, 1)
+            node.replace_attr("refuri", target)
 
             # replace the text as well where it occurs
             for txt in node.traverse(GenerateTagLinks.basetext):
