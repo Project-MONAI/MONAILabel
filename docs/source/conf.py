@@ -166,35 +166,31 @@ class GenerateTagLinks(SphinxTransform):
 
     @staticmethod
     def basetext(obj):
-        return (isinstance(obj, Text) and obj.startwith(GenerateTagLinks.linkref_prefix))
+        return isinstance(obj, Text) and obj.startswith(GenerateTagLinks.linkref_prefix)
 
     def apply(self):
 
         for node in self.document.traverse(GenerateTagLinks.baseref):
 
-            logger.error(f"Sphinx-transform: {node['refuri']}")
-
             # find the entry for the link reference we want to substitute
-            dict_entry = -1
+            link_key = None
             for i, k in enumerate(self.linkref_lut.keys()):
-                if k == node['refuri']:
-                    dict_entry = i
+                if k in node['refuri']:
+                    link_key = k
 
-            if dict_entry == -1:
+            if not link_key:
                 continue
 
-            link_value = self.linkref_lut.values()[i]
+            link_value = self.linkref_lut[link_key]
 
-            if self.git_tag in link_value:
+            git_tag = 'main'
+            if os.getenv('MONAILABEL_GIT_TAG', None):
+                git_tag = os.environ['MONAILABEL_GIT_TAG']
 
-                git_tag = 'main'
-                if os.getenv('MONAILABEL_GIT_TAG', None):
-                    git_tag = os.environ['MONAILABEL_GIT_TAG']
-
-                link_value = link_value.format(MONAILABEL_GIT_TAG=git_tag)
+            link_value = link_value.format(MONAILABEL_GIT_TAG=git_tag)
 
             # replace the link reference with the link value
-            target = node['refuri'].replace(self.linkref_lut.keys()[i], link_value, 1)
+            target = node['refuri'].replace(link_key, link_value, 1)
             node.replace_attr('refuri', target)
 
             # replace the text as well where it occurs
