@@ -32,10 +32,9 @@ logger = logging.getLogger(__name__)
 
 def dicom_to_nifti(series_dir, is_seg=False):
     start = time.time()
-    output_file = tempfile.NamedTemporaryFile(suffix=".nii.gz").name
 
     if is_seg:
-        itk_dicom_seg_to_image(series_dir, output_file)
+        output_file = itk_dicom_seg_to_image(series_dir)
     else:
         # https://simpleitk.readthedocs.io/en/master/link_DicomConvert_docs.html
         if os.path.isdir(series_dir) and len(os.listdir(series_dir)) > 1:
@@ -54,6 +53,7 @@ def dicom_to_nifti(series_dir, is_seg=False):
             image = file_reader.Execute()
 
         logger.info(f"Image size: {image.GetSize()}")
+        output_file = tempfile.NamedTemporaryFile(suffix=".nii.gz").name
         SimpleITK.WriteImage(image, output_file)
 
     logger.info(f"dicom_to_nifti latency : {time.time() - start} (sec)")
@@ -192,7 +192,7 @@ def itk_image_to_dicom_seg(label, series_dir, template):
     return output_file
 
 
-def itk_dicom_seg_to_image(label, output_file, output_type="nifti"):
+def itk_dicom_seg_to_image(label, output_type="nifti"):
     # TODO:: Currently supports only one file
     filename = label if not os.path.isdir(label) else os.path.join(label, os.listdir(label)[0])
     with tempfile.TemporaryDirectory() as output_dir:
@@ -208,10 +208,14 @@ def itk_dicom_seg_to_image(label, output_file, output_type="nifti"):
             output_dir,
         ]
         run_command(command, args)
-        result_file = os.path.join(
-            output_dir, [f for f in os.listdir(output_dir) if f.startswith("segment") and f.endswith(".nii.gz")][0]
-        )
+        output_files = [f for f in os.listdir(output_dir) if f.startswith("segment") and f.endswith(".nii.gz")]
+        if not output_files:
+            logger.warning(f"Failed to convert DICOM-SEG {label} to NIFTI")
+            return None
+
+        result_file = os.path.join(output_dir, output_files[0])
         logger.info(f"Result/Output (NII) File: {result_file}")
 
+        output_file = tempfile.NamedTemporaryFile(suffix=".nii.gz").name
         shutil.move(result_file, output_file)
         return output_file
