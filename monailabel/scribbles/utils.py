@@ -8,15 +8,13 @@
 # WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 # See the License for the specific language governing permissions and
 # limitations under the License.
-
 import logging
 
+import maxflow
 import numpy as np
-from monai.utils import optional_import
+from scipy.special import softmax
 
 logger = logging.getLogger(__name__)
-maxflow, has_maxflow = optional_import("maxflow")
-softmax, has_softmax = optional_import("scipy.special", name="softmax")
 
 
 def get_eps(data):
