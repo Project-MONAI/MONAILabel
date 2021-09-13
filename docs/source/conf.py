@@ -7,6 +7,7 @@
 # -- Path setup --------------------------------------------------------------
 
 import os
+import re
 import subprocess
 import sys
 
@@ -18,8 +19,9 @@ sys.path.insert(0, os.path.abspath("../../"))
 # add these directories to sys.path here. If the directory is relative to the
 # documentation root, use os.path.abspath to make it absolute, like shown here.
 #
-from sphinx.transforms import SphinxTransform
 from sphinx.application import Sphinx
+from sphinx.transforms import SphinxTransform
+
 import monailabel
 
 # -- Project information -----------------------------------------------------
@@ -150,6 +152,7 @@ class GenerateTagLinks(SphinxTransform):
     git_tag = "MONAILABEL_GIT_TAG"
     linkref_lut = {"LINKREF_GITHUB_MONAILABEL": f"https://github.com/Project-MONAI/MONAILabel/tree/{{{git_tag}}}"}
     default_priority = 500
+    accepted_tag_format = "^v?\\d{1,2}\\.\\d{1,2}\\.\\d{1,2}$"
 
     @staticmethod
     def baseref(obj):
@@ -174,9 +177,9 @@ class GenerateTagLinks(SphinxTransform):
 
             link_value = self.linkref_lut[link_key]
 
-            git_tag = "main"
-            if os.getenv("MONAILABEL_GIT_TAG", None):
-                git_tag = os.environ["MONAILABEL_GIT_TAG"]
+            git_tag = subprocess.check_output(["git", "describe"]).decode("utf-8").strip()
+            if len(re.findall(self.accepted_tag_format, git_tag)) != 1:
+                git_tag = "main"
 
             link_value = link_value.format(MONAILABEL_GIT_TAG=git_tag)
 
