@@ -53,7 +53,7 @@ class MyApp(MONAILabelApp):
         self.mmar = "clara_pt_spleen_ct_segmentation_1"
         self.pretrained_model = os.path.join(self.model_dir, self.mmar, "models", "model.pt")
 
-        self.epistemic_enabled = strtobool(conf.get("epistemic_enabled", "true"))
+        self.epistemic_enabled = strtobool(conf.get("epistemic_enabled", "false"))
         self.epistemic_samples = int(conf.get("epistemic_samples", "5"))
         logger.info(f"EPISTEMIC Enabled: {self.epistemic_enabled}; Samples: {self.epistemic_samples}")
 
