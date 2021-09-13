@@ -86,7 +86,7 @@ class MyApp(MONAILabelApp):
         if use_pretrained_model:
             self.download([(self.pretrained_model, pretrained_model_uri)])
 
-        self.tta_enabled = strtobool(conf.get("tta_enabled", "true"))
+        self.tta_enabled = strtobool(conf.get("tta_enabled", "false"))
         self.tta_samples = int(conf.get("tta_samples", "5"))
         logger.info(f"TTA Enabled: {self.tta_enabled}; Samples: {self.tta_samples}")
 
