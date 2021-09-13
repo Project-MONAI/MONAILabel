@@ -177,7 +177,7 @@ class GenerateTagLinks(SphinxTransform):
 
             link_value = self.linkref_lut[link_key]
 
-            git_tag = subprocess.check_output(["git", "describe"]).decode("utf-8").strip()
+            git_tag = subprocess.check_output(["git", "describe", "--always"]).decode("utf-8").strip()
             if len(re.findall(self.accepted_tag_format, git_tag)) != 1:
                 git_tag = "main"
 
