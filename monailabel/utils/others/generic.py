@@ -105,4 +105,4 @@ def file_checksum(file, algo="SHA256"):
             if not chunk:
                 break
             hash.update(chunk)
-        return hash.hexdigest()
+        return f"{algo}:{hash.hexdigest()}"
