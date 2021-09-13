@@ -51,11 +51,13 @@ where ``desired_app`` may be any of ``segmentation``, ``deepgrow``, or ``deepedi
 
 To better understand template apps, the next few sections we will go into the details of implementing
 
-- `Inference task <#inference-task>`_
-- `Training task <#training-task>`_
-- `Image selection strategy <#image-selection-strategy>`_
+- :ref:`Inference Task`
+- :ref:`Training Task`
+- :ref:`Image Selection Strategy`
 
-and putting these to work together in a `MONAI Label app <#id1>`_.
+and putting these to work together in a :ref:`MONAI Label App`.
+
+.. _Inference Task:
 
 Inference Task
 ==============
@@ -91,6 +93,9 @@ discretization.
             AsDiscreted(keys="pred", threshold_values=True, logit_thresh=0.5),
             ToNumpyd(keys="pred"),
         ]
+
+
+.. _Training Task:
 
 Training Task
 =============
@@ -141,6 +146,7 @@ in this example they follow the default behavior in the base class.
     def val_inferer(self):
         return SlidingWindowInferer(roi_size=(128, 128, 128))
 
+.. _Image Selection Strategy:
 
 Image Selection Strategy
 ========================
@@ -171,6 +177,7 @@ the first unlabeled image it finds in the :py:class:`~monailabel.interfaces.Data
 
           return image
 
+.. _MONAI Label App:
 
 Developing a MONAI Label App
 ============================
@@ -183,10 +190,11 @@ The labeling app in the example code below utilizes the tasks :py:class:`MyInfer
 and :py:class:`MyStrategy` we have defined so far. In the labeling app, the developer overrides the 
 :py:meth:`init_infers` method to define their own set of inferers, :py:meth:`init_strategies` to
 define the next image selection strategies they want to make available to the end users, and
-:py:meth:`train` to train the model loaded when the app is initialized (not shown).
+:py:meth:`init_trainers` to define the training tasks that will update the various models required by
+the labeling app.
 
 .. code-block:: python
-  :emphasize-lines: 8, 12, 21, 38
+  :emphasize-lines: 8, 10, 18, 24
 
   from monai.apps import load_from_mmar
   
@@ -211,34 +219,9 @@ define the next image selection strategies they want to make available to the en
               "first": GetFirstUnlabeledImage(),
           }
   
-      def train(self, request):
-  
-          output_dir = os.path.join(self.model_dir, request.get("name", "model_01"))
-  
-          load_path = os.path.join(output_dir, "model.pt")
-          if not os.path.exists(load_path) and request.get("pretrained", True):
-              load_path = None
-              network = load_from_mmar(self.mmar, self.model_dir)
-          else:
-              network = load_from_mmar(self.mmar, self.model_dir, pretrained=False)
-  
-          # Datalist for train/validation
-          train_datalist, val_datalist = self.partition_datalist(self.datastore().datalist(), request.get("val_split", 0.2))
-  
-          task = MyTrain(
-              output_dir=output_dir,
-              train_datalist=train_datalist,
-              val_datalist=val_datalist,
-              network=network,
-              load_path=load_path,
-              publish_path=self.final_model,
-              stats_path=self.train_stats_path,
-              device=request.get("device", "cuda"),
-              lr=request.get("lr", 0.0001),
-              val_split=request.get("val_split", 0.2),
-              max_epochs=request.get("epochs", 1),
-              amp=request.get("amp", True),
-              train_batch_size=request.get("train_batch_size", 1),
-              val_batch_size=request.get("val_batch_size", 1),
-          )
-          return task()
+      def init_trainers(self) -> Dict[str, TrainTask]:
+        return {
+            "segmentation": MyTrainTask(
+                self.model_dir, self.network, load_path=self.pretrained_model, publish_path=self.final_model
+            )
+        }
