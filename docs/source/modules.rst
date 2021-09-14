@@ -37,9 +37,9 @@ MONAI Label currently provides three template applications which developers
 may start using out of the box, or with few modifications to achieve the desired 
 behavior. Template applications currently available are
 
-- `Automated Segmentation <https://github.com/Project-MONAI/MONAILabel/tree/main/sample-apps/segmentation>`_
-- `DeepGrow AI Annotation <https://github.com/Project-MONAI/MONAILabel/tree/main/sample-apps/deepgrow>`_
-- `DeepEdit AI Annotation <https://github.com/Project-MONAI/MONAILabel/tree/main/sample-apps/deepedit>`_
+- `Automated Segmentation <LINKREF_GITHUB_MONAILABEL/sample-apps/segmentation>`_
+- `DeepGrow AI Annotation <LINKREF_GITHUB_MONAILABEL/sample-apps/deepgrow>`_
+- `DeepEdit AI Annotation <LINKREF_GITHUB_MONAILABEL/sample-apps/deepedit>`_
 
 For a quickstart the developer may use
 
