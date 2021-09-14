@@ -8,15 +8,17 @@
 # WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 # See the License for the specific language governing permissions and
 # limitations under the License.
-
 import logging
 from copy import deepcopy
 from typing import Optional
 
+import denseCRF
+import denseCRF3D
 import numpy as np
 import torch
+from monai.networks.blocks import CRF
 from monai.transforms import Transform
-from monai.utils import optional_import
+from scipy.special import softmax
 
 from monailabel.transform.writer import Writer
 
@@ -31,14 +33,6 @@ from .utils import (
 
 logger = logging.getLogger(__name__)
 
-# monai crf is optional import as it requires compiling monai C++/Cuda code
-monaicrf, has_monaicrf = optional_import("monai.networks.blocks", name="CRF")
-
-# simplecrf is optional import as it requires compiling C++ code
-densecrf, has_densecrf = optional_import("denseCRF")
-densecrf3d, has_densecrf3d = optional_import("denseCRF3D")
-
-softmax, has_softmax = optional_import("scipy.special", name="softmax")
 
 #######################################
 # Interactive Segmentation Transforms
@@ -494,7 +488,7 @@ class ApplyCRFOptimisationd(InteractiveSegmentationTransform):
         pairwise_term = self._fetch_data(d, self.pairwise)
 
         # initialise MONAI's CRF layer
-        crf_layer = monaicrf(
+        crf_layer = CRF(
             iterations=self.iterations,
             bilateral_weight=self.bilateral_weight,
             gaussian_weight=self.gaussian_weight,
@@ -624,7 +618,7 @@ class ApplySimpleCRFOptimisationd(InteractiveSegmentationTransform):
             # Bilateral color
             simplecrf_params["BilateralModsStds"] = (self.bilateral_color_sigma,)
 
-            post_proc_label = densecrf3d.densecrf3d(pairwise_term, unary_term, simplecrf_params)
+            post_proc_label = denseCRF3D.densecrf3d(pairwise_term, unary_term, simplecrf_params)
         else:
             # 2D is not yet tested within this framework
             # 2D parameters are different, so prepare them
@@ -637,7 +631,7 @@ class ApplySimpleCRFOptimisationd(InteractiveSegmentationTransform):
                 self.iterations,
             )
 
-            post_proc_label = densecrf.densecrf(pairwise_term, unary_term, simplecrf_params)
+            post_proc_label = denseCRF.densecrf(pairwise_term, unary_term, simplecrf_params)
 
         post_proc_label = np.expand_dims(post_proc_label, axis=0).astype(np.float32)
         d[self.post_proc_label] = post_proc_label
