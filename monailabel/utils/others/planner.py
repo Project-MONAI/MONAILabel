@@ -26,6 +26,10 @@ class HeuristicPlanner(object):
         self.target_spacing = target_spacing
         self.spatial_size = spatial_size
         self.max_samples = max_samples
+        self.max_pix = None
+        self.min_pix = None
+        self.mean_pix = None
+        self.std_pix = None
 
     def run(self, datastore):
         logger.info("Reading datastore metadata for heuristic planner...")
@@ -33,7 +37,7 @@ class HeuristicPlanner(object):
             logger.warning("Currently no images are available in datastore for sampling")
             return
 
-        # Sampling 20 images from the datastore
+        # Sampling max_samples images from the datastore
         datastore_check = (
             datastore.list_images()
             if len(datastore.list_images()) < self.max_samples
@@ -42,15 +46,24 @@ class HeuristicPlanner(object):
 
         spacings = []
         img_sizes = []
+        pix_img_max = []
+        pix_img_min = []
+        pix_img_mean = []
+        pix_img_std = []
         loader = LoadImage()
         for n in tqdm(datastore_check):
-            _, mtdt = loader(datastore.get_image_uri(n))
+            img, mtdt = loader(datastore.get_image_uri(n))
 
             # Check if images have more than one modality
             if mtdt["pixdim"][4] > 0:
                 logger.info(f"Image {mtdt['filename_or_obj'].split('/')[-1]} has more than one modality ...")
             spacings.append(mtdt["pixdim"][1:4])
             img_sizes.append(mtdt["spatial_shape"])
+
+            pix_img_max.append(img.max())
+            pix_img_min.append(img.min())
+            pix_img_mean.append(img.mean())
+            pix_img_std.append(img.std())
 
         spacings = np.array(spacings)
         img_sizes = np.array(img_sizes)
@@ -60,6 +73,13 @@ class HeuristicPlanner(object):
         self.target_spacing = self._get_target_spacing(np.mean(spacings, 0))
         self.spatial_size = self._get_target_img_size(np.mean(img_sizes, 0, np.int64))
         logger.info(f"Spacing: {self.target_spacing}; Spatial Size: {self.spatial_size}")
+
+        # Image stats for intensity normalization
+        self.max_pix = np.max(np.array(pix_img_max))
+        self.min_pix = np.min(np.array(pix_img_min))
+        self.mean_pix = np.mean(np.array(pix_img_mean))
+        self.std_pix = np.mean(np.array(pix_img_std))
+        logger.info(f"Maximum pixel value: {self.max_pix}; Minimum pixel value: {self.min_pix}")
 
     @staticmethod
     def _get_target_img_size(target_img_size):
