@@ -7,8 +7,11 @@
 # -- Path setup --------------------------------------------------------------
 
 import os
+import re
 import subprocess
 import sys
+
+from docutils.nodes import Text, reference
 
 sys.path.insert(0, os.path.abspath("../../"))
 
@@ -16,6 +19,9 @@ sys.path.insert(0, os.path.abspath("../../"))
 # add these directories to sys.path here. If the directory is relative to the
 # documentation root, use os.path.abspath to make it absolute, like shown here.
 #
+from sphinx.application import Sphinx
+from sphinx.transforms import SphinxTransform
+
 import monailabel
 
 # -- Project information -----------------------------------------------------
@@ -140,7 +146,55 @@ def generate_apidocs(*args):
     )
 
 
-def setup(app):
+class GenerateTagLinks(SphinxTransform):
+
+    linkref_prefix = "LINKREF_"
+    git_tag = "MONAILABEL_GIT_TAG"
+    linkref_lut = {"LINKREF_GITHUB_MONAILABEL": f"https://github.com/Project-MONAI/MONAILabel/tree/{{{git_tag}}}"}
+    default_priority = 500
+    accepted_tag_format = "^v?\\d{1,2}\\.\\d{1,2}\\.\\d{1,2}$"
+
+    @staticmethod
+    def baseref(obj):
+        return isinstance(obj, reference) and obj.get("refuri", "").startswith(GenerateTagLinks.linkref_prefix)
+
+    @staticmethod
+    def basetext(obj):
+        return isinstance(obj, Text) and obj.startswith(GenerateTagLinks.linkref_prefix)
+
+    def apply(self):
+
+        for node in self.document.traverse(GenerateTagLinks.baseref):
+
+            # find the entry for the link reference we want to substitute
+            link_key = None
+            for k in self.linkref_lut.keys():
+                if k in node["refuri"]:
+                    link_key = k
+
+            if not link_key:
+                continue
+
+            link_value = self.linkref_lut[link_key]
+
+            git_tag = subprocess.check_output(["git", "describe", "--always"]).decode("utf-8").strip()
+            if len(re.findall(self.accepted_tag_format, git_tag)) != 1:
+                git_tag = "main"
+
+            link_value = link_value.format(MONAILABEL_GIT_TAG=git_tag)
+
+            # replace the link reference with the link value
+            target = node["refuri"].replace(link_key, link_value, 1)
+            node.replace_attr("refuri", target)
+
+            # replace the text as well where it occurs
+            for txt in node.traverse(GenerateTagLinks.basetext):
+                new_txt = Text(txt.replace(self.linkref_prefix, self.github_link, 1), txt.rawsource)
+                txt.parent.replate(txt, new_txt)
+
+
+def setup(app: Sphinx):
     # Hook to allow for automatic generation of API docs
     # before doc deployment begins.
+    app.add_transform(GenerateTagLinks)
     app.connect("builder-inited", generate_apidocs)
