@@ -26,6 +26,10 @@ class HeuristicPlanner(object):
         self.target_spacing = target_spacing
         self.spatial_size = spatial_size
         self.max_samples = max_samples
+        self.max_pix = None
+        self.min_pix = None
+        self.mean_pix = None
+        self.std_pix = None
 
     def run(self, datastore):
         logger.info("Reading datastore metadata for heuristic planner...")
