@@ -2,18 +2,25 @@
 Quickstart
 ==========
 
-The following section will provide a step by step guide to get started with MONAI Label
-using the left atrium DeepEdit annotation sample app.
+MONAI Label server currently supports the annotation of local datasets via `3DSlicer <https://www.slicer.org/>`_, such as unlabeled images 
+residing on disk, and remote data residing on DICOMweb-enabled PACS systems via both `3DSlicer <https://www.slicer.org/>`_ and `OHIF <https://ohif.org/>`_.
 
-DeepEdit Annotation with a Standard Dataset
-===========================================
+  * To setup a local dataset for annotation follow the instructions under :ref:`DeepEdit Annotation with 3DSlicer`.
+  * To perform annotation of data residing on a remote DICOMweb-accessible PACS follow the instructions under :ref:`DeedEdit Annotation Using OHIF`
+
+.. _DeepEdit Annotation with 3DSlicer:
+
+DeepEdit Annotation with 3DSlicer
+=================================
+
+.. _Deploy DeepEdit on MONAI Label Server:
 
 Deploy DeepEdit on MONAI Label Server
 -------------------------------------
 
 On the local machine follow the commands listed below to install MONAI Label, download
 a sample application (DeepEdit left atrium annotation), download a sample dataset (MSD
-heart MRI), and deploy the sample app and dataset on the MONAI Label server.
+heart MRI), and deploy the sample app and standard dataset on the MONAI Label server.
 
 .. code-block:: bash
   
@@ -27,7 +34,7 @@ heart MRI), and deploy the sample app and dataset on the MONAI Label server.
   monailabel datasets --download --name Task02_Heart --output .
   
   # start the left atrium DeepEdit app in MONAI label server 
-  # an start annotating the downloaded images
+  # and start annotating the downloaded images
   monailabel start_server --app deepedit_left_atrium --studies Task02_Heart/imagesTr
 
 
@@ -61,6 +68,8 @@ To add the MONAI Label icon shortcut on the 3DSlicer toolbar
 
 .. |MLIcon| image:: ../images/quickstart/MONAILabel.png
   :width: 20
+
+.. _DeepEdit Annotation in 3DSlicer:
 
 DeepEdit Annotation in 3DSlicer
 -------------------------------
@@ -96,12 +105,13 @@ To annotate the downloaded heart MR images using DeepEdit
 
 - We repeat the last four steps until our dataset is annotated
 
-DeepEdit Annotation with a Custom Dataset
-=========================================
+Annotating a Custom Dataset
+---------------------------
 
-To annotate a custom dataset using DeepEdit, we can donwload the DeepEdit app as above,
+To annotate a custom dataset using DeepEdit, we can download the DeepEdit app as above,
 however, the dataset directory need not be populated. Follow the commands below to setup
-custom dataset annotation.
+custom dataset annotation using the empty local directory ``my_dataset`` as the image and
+label storage location.
 
 .. code-block:: bash
   
@@ -130,3 +140,121 @@ Label Server, however, in this scenario we will instead load a file into MONAI L
     :alt: MONAI Label Upload Image
 
 - Now, all DeepEdit functions should be available to use and we use **foreground** and **background** clicks
+
+
+.. _DeedEdit Annotation Using OHIF:
+
+DeedEdit Annotation Using OHIF
+==============================
+
+As of version ``0.2.0``, MONAI Label server supports connectivity to a remote DICOM server via DICOMweb. All we need
+when starting MONAI Label server is to specify the URL of the DICOMweb service in the ``studies`` argument (and optionally
+the ``username`` and ``password`` for DICOM servers that require them). 
+
+If you do not have a DICOM server available for usage but would like to set one up please follow the instructions in the 
+:ref:`next section<Setup Development DICOM Server>`, otherwise skip to 
+:ref:`Deploy DeepEdit for PACS Data Annotation`.
+
+.. _Setup Development DICOM Server:
+
+Setup Development DICOM Server
+------------------------------
+
+`Orthanc <https://www.orthanc-server.com/>`_ is an open-source lightweight DICOM server for medical imaging. To setup an
+instance of Orthanc on your machine of choice follow the guides below.
+
+Ubuntu
+******
+
+.. code-block:: bash
+  
+  # Install orthanc and dicomweb plugin
+  sudo apt-get install orthanc orthanc-dicomweb -y
+
+  # stop the existing Orthanc instance if there is one
+  sudo service orthanc stop
+
+  # setup and upgrade Orthanc libraries
+  sudo wget https://lsb.orthanc-server.com/orthanc/1.9.7/Orthanc --output-document /usr/sbin/Orthanc
+  sudo rm -f /usr/share/orthanc/plugins/*.so
+
+  sudo wget https://lsb.orthanc-server.com/orthanc/1.9.7/libServeFolders.so --output-document /usr/share/orthanc/plugins/libServeFolders.so
+  sudo wget https://lsb.orthanc-server.com/orthanc/1.9.7/libModalityWorklists.so --output-document /usr/share/orthanc/plugins/libModalityWorklists.so
+  sudo wget https://lsb.orthanc-server.com/plugin-dicom-web/1.6/libOrthancDicomWeb.so --output-document /usr/share/orthanc/plugins/libOrthancDicomWeb.so
+
+  # start 
+  sudo service orthanc restart
+
+
+Windows
+*******
+
+Download and Install Orthanc from `https://www.orthanc-server.com/download.php <https://www.orthanc-server.com/download.php>`_.
+
+The Orthanc DICOM server on the chosen machine. You can check if the server is running
+by navigating to `http://localhost:8042 <http://localhost:8042>`_ or using the remote machine's address and entering
+the username/password ``orthanc/orthanc``.
+
+The DICOMweb service for Orthanc runs on `http://localhost:8042/dicom-web/ <http://locahost:8042/dicom-web>` by default. You can check if the DICOMweb
+endpoint is active by issuing the following command
+
+.. code-block:: bash
+
+  curl -X GET -v http://localhost:8042/dicom-web
+
+You may encounter a ``401 Unauthorized`` response when username and password are required.
+
+.. warning::
+  When trying to access Orthanc remotely, please make sure you update the default configuration to allow for remote connections, by opening
+  ``/etc/orthanc/orthanc.json`` and setting ``RemoteAccessAllowed`` to ``true``.
+
+
+Adding Data to Development DICOM Server
+*******************************************
+
+If you do not have access to DICOM data to upload to the DICOM server you can convert from the NIFTI available via MONAI Label.
+
+.. code-block:: bash
+
+  # install MONAI Label (if you have not already)
+  pip install monailabel
+
+  # Install `plastimatch` NIFTI to DICOM converter 
+  sudo apt-get install plastimatch -y
+
+  # download Task 2 MSD dataset
+  monailabel datasets --download --name Task02_Heart --output .
+
+  # convert one of the NIFTI images to DICOM
+  plastimatch convert --patient-id patient1 --input Task02_Heart/imagesTs/la_001.nii.gz --output-dicom la_001_dicom
+
+Now, we can upload the DICOM series in ``la_001_dicom`` using the `upload <http://127.0.0.1:8042/app/explorer.html#upload>`_ link in Orthanc.
+
+You may use ``plastimatch`` to convert more NIFTI files to DICOM to keep populating the development DICOM server.
+
+.. _Deploy DeepEdit for PACS Data Annotation:
+
+DeepEdit Annotation in OHIF
+---------------------------
+
+We follow a very similar ser of commands as in :ref:`Deploy DeepEdit on MONAI Label Server`, however, we use the DICOMweb
+endpoint of our DICOM server, which based on the last section is ``http://locahost:8042/dicom-web``.
+
+.. code-block:: bash
+  
+  # install MONAI Label (if you have not already)
+  pip install monailabel
+
+  # download left atrium DeepEdit sample app to local directory
+  monailabel apps --name deepedit_left_atrium --download --output .
+
+  # start the left atrium DeepEdit app in MONAI label server 
+  # and start annotating images in our DICOM server
+  monailabel start_server --app deepedit_left_atrium --studies http://locahost:8042/dicom-web --username orthanc --password orthanc
+
+At this point OHIF can be used to annotate the data in the DICOM server via the MONAI Label server ``/ohif`` endpoint 
+(e.g. via `http://localhost:8000/ohif <http://localhost:8000/ohif>`_).
+
+.. note::
+
+  Here, user may also perform annotation using 3DSlicer by following the same instructions as in section :ref:`DeepEdit Annotation in 3DSlicer`.
