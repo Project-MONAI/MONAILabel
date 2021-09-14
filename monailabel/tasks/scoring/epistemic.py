@@ -54,7 +54,7 @@ class EpistemicScoring(ScoringMethod):
                 inputs=data["image"][None].cuda(), roi_size=roi_size, sw_batch_size=sw_batch_size, predictor=model
             )
 
-        soft_preds = torch.softmax(preds, dim=1)
+        soft_preds = torch.softmax(preds, dim=1) if preds.shape[1] > 1 else torch.sigmoid(preds)
         soft_preds = soft_preds.detach().to("cpu").numpy()
         return soft_preds
 
