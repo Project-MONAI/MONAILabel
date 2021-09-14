@@ -155,6 +155,7 @@ class MONAILabelWidget(ScriptedLoadableModuleWidget, VTKObservationMixin):
         self.current_sample = None
         self.samples = {}
         self.v2 = False
+        self.state = {"SegmentationModel": "", "DeepgrowModel": "", "ScribblesMethod": "", "CurrentStrategy": ""}
 
         self.dgPositiveFiducialNode = None
         self.dgPositiveFiducialNodeObservers = []
@@ -549,6 +550,13 @@ class MONAILabelWidget(ScriptedLoadableModuleWidget, VTKObservationMixin):
         effect.setParameter("BrushAbsoluteDiameter", value)
 
     def onSceneStartClose(self, caller, event):
+        self.state = {
+            "SegmentationModel": self.ui.segmentationModelSelector.currentText,
+            "DeepgrowModel": self.ui.deepgrowModelSelector.currentText,
+            "ScribblesMethod": self.ui.scribblesMethodSelector.currentText,
+            "CurrentStrategy": self.ui.strategyBox.currentText,
+        }
+
         self._volumeNode = None
         self._segmentNode = None
         self._volumeNodes.clear()
@@ -686,6 +694,7 @@ class MONAILabelWidget(ScriptedLoadableModuleWidget, VTKObservationMixin):
         for strategy in self.info.get("strategies", {}):
             self.ui.strategyBox.addItem(strategy)
         currentStrategy = self._parameterNode.GetParameter("CurrentStrategy")
+        currentStrategy = currentStrategy if currentStrategy else self.state["CurrentStrategy"]
         self.ui.strategyBox.setCurrentIndex(self.ui.strategyBox.findText(currentStrategy) if currentStrategy else 0)
 
         # Show scribbles panel only if scribbles methods detected
@@ -784,7 +793,7 @@ class MONAILabelWidget(ScriptedLoadableModuleWidget, VTKObservationMixin):
                 selector.setItemData(selector.count - 1, model["description"], qt.Qt.ToolTipRole)
 
         model = self._parameterNode.GetParameter(param)
-        model = "" if not model else model
+        model = model if model else self.state.get(param, "")
         modelIndex = selector.findText(model)
         modelIndex = defaultIndex if modelIndex < 0 < selector.count else modelIndex
         selector.setCurrentIndex(modelIndex)
@@ -1340,21 +1349,22 @@ class MONAILabelWidget(ScriptedLoadableModuleWidget, VTKObservationMixin):
             logging.info(sample)
             image_id = sample["id"]
             image_file = sample.get("path")
-            image_name = sample.get("PatientID", sample.get("name", image_id))[-20:]
+            image_name = sample.get("name", image_id)
+            node_name = sample.get("PatientID", sample.get("name", image_id))[-20:]
             checksum = sample.get("checksum")
             local_exists = image_file and os.path.exists(image_file)
 
             logging.info(f"Check if file exists/shared locally: {image_file} => {local_exists}")
             if local_exists:
                 self._volumeNode = slicer.util.loadVolume(image_file)
-                self._volumeNode.SetName(image_name)
+                self._volumeNode.SetName(node_name)
             else:
                 download_uri = f"{self.serverUrl()}/datastore/image?image={quote_plus(image_id)}"
                 logging.info(download_uri)
 
                 sampleDataLogic = SampleData.SampleDataLogic()
                 self._volumeNode = sampleDataLogic.downloadFromURL(
-                    nodeNames=image_name, fileNames=image_name, uris=download_uri, checksums=checksum
+                    nodeNames=node_name, fileNames=image_name, uris=download_uri, checksums=checksum
                 )[0]
 
             self.initSample(sample)
@@ -1461,6 +1471,11 @@ class MONAILabelWidget(ScriptedLoadableModuleWidget, VTKObservationMixin):
             label_info = []
             for segmentId in segmentIds:
                 segment = segmentation.GetSegment(segmentId)
+                if segment.GetName() in ["foreground_scribbles", "background_scribbles"]:
+                    logging.info(f"Removing segment {segmentId}: {segment.GetName()}")
+                    segmentationNode.RemoveSegment(segmentId)
+                    continue
+
                 label_info.append({"name": segment.GetName()})
                 # label_info.append({"color": segment.GetColor()})
 

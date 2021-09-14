@@ -59,7 +59,7 @@ class MyApp(MONAILabelApp):
         if use_pretrained_model:
             self.download([(self.pretrained_model, pretrained_model_uri)])
 
-        self.epistemic_enabled = strtobool(conf.get("epistemic_enabled", "true"))
+        self.epistemic_enabled = strtobool(conf.get("epistemic_enabled", "false"))
         self.epistemic_samples = int(conf.get("epistemic_samples", "5"))
         logger.info(f"EPISTEMIC Enabled: {self.epistemic_enabled}; Samples: {self.epistemic_samples}")
 
