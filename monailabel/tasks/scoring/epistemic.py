@@ -125,7 +125,7 @@ class EpistemicScoring(ScoringMethod):
         model, model_ts = self._load_model(self.model, self.network)
         if not model:
             return
-        model = model.to(self.device)
+        model = model.to(self.device).train()
 
         # Performing Epistemic for all unlabeled images
         skipped = 0
@@ -155,7 +155,7 @@ class EpistemicScoring(ScoringMethod):
 
             accum_numpy = np.stack(accum_unl_outputs)
             accum_numpy = np.squeeze(accum_numpy)
-            accum_numpy = accum_numpy[:, 1, :, :, :] if len(accum_numpy.shape) > 4 else accum_numpy
+            accum_numpy = accum_numpy[:, 1:, :, :, :] if len(accum_numpy.shape) > 4 else accum_numpy
 
             entropy = self.entropy_3d_volume(accum_numpy)
             entropy_sum = float(np.sum(entropy))
