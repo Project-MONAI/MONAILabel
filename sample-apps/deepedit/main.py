@@ -25,6 +25,7 @@ from monailabel.interfaces.tasks.scoring import ScoringMethod
 from monailabel.interfaces.tasks.strategy import Strategy
 from monailabel.interfaces.tasks.train import TrainTask
 from monailabel.scribbles.infer import HistogramBasedGraphCut
+from monailabel.tasks.activelearning.epistemic import Epistemic
 from monailabel.tasks.activelearning.random import Random
 from monailabel.tasks.activelearning.tta import TTA
 from monailabel.tasks.scoring.dice import Dice
@@ -144,6 +145,8 @@ class MyApp(MONAILabelApp):
 
     def init_strategies(self) -> Dict[str, Strategy]:
         strategies: Dict[str, Strategy] = {}
+        if self.epistemic_enabled:
+            strategies["EPISTEMIC"] = Epistemic()
         if self.tta_enabled:
             strategies["TTA"] = TTA()
         strategies["random"] = Random()
