@@ -242,7 +242,7 @@ class TestScribblesTransforms(unittest.TestCase):
         ] = True
         input_data[~mask] = input_param["scribbles_bg_label"]
 
-        np.testing.assert_allclose(input_data, result["scribbles"], rtol=1e-4)
+        np.testing.assert_equal(input_data, result["scribbles"])
         self.assertTupleEqual(expected_shape, result["scribbles"].shape)
         self.assertTupleEqual(test_input["scribbles"].shape, result["scribbles"].shape)
 
@@ -259,7 +259,7 @@ class TestScribblesTransforms(unittest.TestCase):
         ] = True
         input_data[~mask] = input_param["scribbles_bg_label"]
 
-        np.testing.assert_allclose(input_data, result["scribbles"], rtol=1e-4)
+        np.testing.assert_equal(input_data, result["scribbles"])
         self.assertTupleEqual(expected_shape, result["scribbles"].shape)
         self.assertTupleEqual(test_input["scribbles"].shape, result["scribbles"].shape)
 
