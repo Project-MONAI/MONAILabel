@@ -1,7 +1,7 @@
 aiofiles==0.6.0
 fastapi==0.65.2
 monai-weekly[nibabel, skimage, pillow, tensorboard, gdown, ignite, torchvision, itk, tqdm, lmdb, psutil, openslide]
-https://github.com/Project-MONAI/MONAI.git@dev
+https://github.com/Project-MONAI/MONAI/tree/dev#egg=monai070
 pyyaml==5.4.1
 python-multipart==0.0.5
 requests-toolbelt==0.9.1
