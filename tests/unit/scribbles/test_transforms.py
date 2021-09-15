@@ -228,6 +228,23 @@ TEST_CASE_ADD_BG_ROI = [
 
 
 class TestScribblesTransforms(unittest.TestCase):
+    @parameterized.expand(TEST_CASE_ADD_BG_ROI)
+    def test_add_bg_roi_transform(self, input_param, test_input, expected_shape):
+        result = AddBackgroundScribblesFromROId(**input_param)(test_input)
+        mask = result["scribbles"].astype(bool)
+        mask[
+            :,
+            test_input["roi"][0] : test_input["roi"][1],
+            test_input["roi"][2] : test_input["roi"][3],
+            test_input["roi"][4] : test_input["roi"][5],
+        ] = True
+        target = result["scribbles"]
+        target[~mask] = input_param["scribbles_bg_label"]
+
+        np.testing.assert_allclose(target, mask.astype(np.float32) * result["scribbles"], rtol=1e-4)
+        self.assertTupleEqual(expected_shape, result["scribbles"].shape)
+        self.assertTupleEqual(test_input["scribbles"].shape, result["scribbles"].shape)
+
     @parameterized.expand(TEST_CASE_OPTIM_TX)
     def test_optimisation_transforms(self, input_param, test_input, output, expected_shape):
         input_param.update({"post_proc_label": "pred"})
@@ -269,23 +286,6 @@ class TestScribblesTransforms(unittest.TestCase):
         # compare
         np.testing.assert_allclose(expected_result, np.argmax(result["pred"], axis=0), rtol=1e-4)
         self.assertTupleEqual(expected_shape, result["pred"].shape)
-
-    @parameterized.expand(TEST_CASE_ADD_BG_ROI)
-    def test_add_bg_roi_transform(self, input_param, test_input, expected_shape):
-        result = AddBackgroundScribblesFromROId(**input_param)(test_input)
-        mask = result["scribbles"].astype(bool)
-        mask[
-            :,
-            test_input["roi"][0] : test_input["roi"][1],
-            test_input["roi"][2] : test_input["roi"][3],
-            test_input["roi"][4] : test_input["roi"][5],
-        ] = True
-        target = result["scribbles"]
-        target[~mask] = input_param["scribbles_bg_label"]
-
-        np.testing.assert_allclose(target, mask.astype(np.float32) * result["scribbles"], rtol=1e-4)
-        self.assertTupleEqual(expected_shape, result["scribbles"].shape)
-        self.assertTupleEqual(test_input["scribbles"].shape, result["scribbles"].shape)
 
 
 if __name__ == "__main__":
