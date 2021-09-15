@@ -268,14 +268,14 @@ class TestScribblesTransforms(unittest.TestCase):
         input_param.update({"post_proc_label": "pred"})
         for current_tx in [ApplyGraphCutOptimisationd, ApplySimpleCRFOptimisationd]:
             result = current_tx(**input_param)(test_input)
-            np.testing.assert_allclose(output["target"], result["pred"], rtol=1e-4)
+            np.testing.assert_equal(output["target"], result["pred"])
             self.assertTupleEqual(expected_shape, result["pred"].shape)
 
     @parameterized.expand(TEST_CASE_ISEG_OPTIM_TX)
     def test_interactive_graphcut_optimisation_transform(self, input_param, test_input, output, expected_shape):
         input_param.update({"post_proc_label": "pred"})
         result = ApplyISegGraphCutPostProcd(**input_param)(test_input)
-        np.testing.assert_allclose(output["target"], result["pred"], rtol=1e-4)
+        np.testing.assert_equal(output["target"], result["pred"])
         self.assertTupleEqual(expected_shape, result["pred"].shape)
 
     @parameterized.expand(TEST_CASE_MAKE_ISEG_UNARY_TX)
@@ -290,7 +290,7 @@ class TestScribblesTransforms(unittest.TestCase):
         expected_result[expected_result == 1] = 1 - eps
 
         # compare
-        np.testing.assert_allclose(expected_result, result["pred"], rtol=1e-4)
+        np.testing.assert_equal(expected_result, result["pred"])
         self.assertTupleEqual(expected_shape, result["pred"].shape)
 
     @parameterized.expand(TEST_CASE_MAKE_LIKE_HIST_TX)
@@ -302,7 +302,7 @@ class TestScribblesTransforms(unittest.TestCase):
         expected_result = np.argmax(output["target"].copy(), axis=0)
 
         # compare
-        np.testing.assert_allclose(expected_result, np.argmax(result["pred"], axis=0), rtol=1e-4)
+        np.testing.assert_equal(expected_result, np.argmax(result["pred"], axis=0))
         self.assertTupleEqual(expected_shape, result["pred"].shape)
 
 
