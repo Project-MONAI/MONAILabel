@@ -230,18 +230,36 @@ TEST_CASE_ADD_BG_ROI = [
 class TestScribblesTransforms(unittest.TestCase):
     @parameterized.expand(TEST_CASE_ADD_BG_ROI)
     def test_add_bg_roi_transform(self, input_param, test_input, expected_shape):
+        # float32 test
         result = AddBackgroundScribblesFromROId(**input_param)(test_input)
-        mask = result["scribbles"].astype(bool)
+        input_data = test_input["scribbles"].copy()
+        mask = input_data.astype(bool)
         mask[
             :,
             test_input["roi"][0] : test_input["roi"][1],
             test_input["roi"][2] : test_input["roi"][3],
             test_input["roi"][4] : test_input["roi"][5],
         ] = True
-        target = result["scribbles"]
-        target[~mask] = input_param["scribbles_bg_label"]
+        input_data[~mask] = input_param["scribbles_bg_label"]
 
-        np.testing.assert_allclose(target, mask.astype(np.float32) * result["scribbles"], rtol=1e-4)
+        np.testing.assert_allclose(input_data, result["scribbles"], rtol=1e-4)
+        self.assertTupleEqual(expected_shape, result["scribbles"].shape)
+        self.assertTupleEqual(test_input["scribbles"].shape, result["scribbles"].shape)
+
+        # int32 test
+        test_input["scribbles"] = test_input["scribbles"].astype(np.int)
+        result = AddBackgroundScribblesFromROId(**input_param)(test_input)
+        input_data = test_input["scribbles"].copy()
+        mask = input_data.astype(bool)
+        mask[
+            :,
+            test_input["roi"][0] : test_input["roi"][1],
+            test_input["roi"][2] : test_input["roi"][3],
+            test_input["roi"][4] : test_input["roi"][5],
+        ] = True
+        input_data[~mask] = input_param["scribbles_bg_label"]
+
+        np.testing.assert_allclose(input_data, result["scribbles"], rtol=1e-4)
         self.assertTupleEqual(expected_shape, result["scribbles"].shape)
         self.assertTupleEqual(test_input["scribbles"].shape, result["scribbles"].shape)
 
