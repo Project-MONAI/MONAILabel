@@ -1,6 +1,6 @@
 aiofiles==0.6.0
 fastapi==0.65.2
-https://github.com/diazandr3s/MONAI/archive/refs/tags/0.7.0-tempAndres.tar.gz#egg=monai
+https://github.com/diazandr3s/MONAI/archive/refs/tags/v0.7.0.tar.gz#egg=monai
 monai-weekly[nibabel, skimage, pillow, tensorboard, gdown, ignite, torchvision, itk, tqdm, lmdb, psutil, openslide]
 pyyaml==5.4.1
 python-multipart==0.0.5
