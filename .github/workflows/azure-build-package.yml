@@ -1,11 +1,11 @@
 trigger:
   - main
   - '*'
-  
-  # no PR triggers: only committers to the main branch should be able to trigger these builds
+
+# no PR triggers: only committers to the main branch should be able to trigger these builds
 pr: 
   - main
-  
+
 stages:
   - stage: 'Test'
     jobs:
@@ -20,36 +20,36 @@ stages:
             python.version: '3.8'
           Python3.9:
             python.version: '3.9'
-          maxParallel: 3
-      steps:
-      - task: UsePythonVersion@0
-        inputs:
-          versionSpec: $(python.version)
-      - script: |
-          python3 -m pip install --upgrade pip wheel
-          python3 -m pip install -r requirements-dev.txt
-        displayName: 'Install dependencies'
-      - bash:  $(pwd)/runtests.sh --clean
-        displayName: 'Clean'
-      - bash: $(pwd)/runtests.sh --isort
-        displayName: 'iSort'
-      - bash: $(pwd)/runtests.sh --black
-        displayName: 'Black'
-      - script: |
-          $(pwd)/runtests.sh --flake8
-        displayName: 'Flake8'
-      - bash:  $(pwd)/runtests.sh --pytype
-        displayName: 'PyType'
-      - bash:  $(pwd)/runtests.sh --mypy
-        displayName: 'MyPy'
-      - bash:  $(pwd)/runtests.sh --unittests --coverage
-        displayName: 'Unit tests'
-      - task: PublishCodeCoverageResults@1
-        inputs:
-          codeCoverageTool: 'Cobertura'
-          summaryFileLocation: ./coverage.xml
-        displayName: 'Publish Code Coverage Results'
-  
+        maxParallel: 3
+    steps:
+    - task: UsePythonVersion@0
+      inputs:
+        versionSpec: $(python.version)
+    - script: |
+        python3 -m pip install --upgrade pip wheel
+        python3 -m pip install -r requirements-dev.txt
+      displayName: 'Install dependencies'
+    - bash:  $(pwd)/runtests.sh --clean
+      displayName: 'Clean'
+    - bash: $(pwd)/runtests.sh --isort
+      displayName: 'iSort'
+    - bash: $(pwd)/runtests.sh --black
+      displayName: 'Black'
+    - script: |
+        $(pwd)/runtests.sh --flake8
+      displayName: 'Flake8'
+    - bash:  $(pwd)/runtests.sh --pytype
+      displayName: 'PyType'
+    - bash:  $(pwd)/runtests.sh --mypy
+      displayName: 'MyPy'
+    - bash:  $(pwd)/runtests.sh --unittests --coverage
+      displayName: 'Unit tests'
+    - task: PublishCodeCoverageResults@1
+      inputs:
+        codeCoverageTool: 'Cobertura'
+        summaryFileLocation: ./coverage.xml
+      displayName: 'Publish Code Coverage Results'
+
   - stage: Build
     jobs:
     - job: Package
@@ -67,37 +67,37 @@ stages:
         - script: |
             root_dir=$PWD
             echo "$root_dir"
-  
+
             # build tar.gz and wheel
             export BUILD_OHIF=true
             python setup.py check -m -s
             python setup.py sdist bdist_wheel
             python -m twine check dist/*
-  
+
             # move packages to a temp dir
             tmp_dir=$(mktemp -d)
             cp dist/monailabel* "$tmp_dir"
             rm -r build dist monailabel.egg-info
             cd "$tmp_dir"
             ls -al
-  
+
             # install from wheel
             python -m pip install monailabel*.whl
             python -c 'import monailabel; monailabel.print_config()' 2>&1 | grep -iv "unknown"
             python -c 'import monailabel; print(monailabel.__file__)'
             python -m pip uninstall -y monailabel
             rm monailabel*.whl
-  
+
             # install from tar.gz
             name=$(ls *.tar.gz | head -n1)
             echo $name
             python -m pip install $name
             python -c 'import monailabel; monailabel.print_config()' 2>&1 | grep -iv "unknown"
             python -c 'import monailabel; print(monailabel.__file__)'
-  
+
             # install test utilities
             python -m pip install pytest
-  
+
             # start the monailabel server in the background and run the integration tests
             $root_dir/runtests.sh --net
           env:
