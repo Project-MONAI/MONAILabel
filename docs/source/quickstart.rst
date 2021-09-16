@@ -255,7 +255,8 @@ endpoint of our DICOM server, which based on the last section is ``http://locaho
 Then, build the OHIF plugin for development:
 
 .. code-block:: bash
-    (cd plugins/ohif && ./build.sh)
+
+  (cd plugins/ohif && ./build.sh)
 
 At this point OHIF can be used to annotate the data in the DICOM server via the MONAI Label server ``/ohif`` endpoint 
 (e.g. via `http://localhost:8000/ohif <http://localhost:8000/ohif>`_).
