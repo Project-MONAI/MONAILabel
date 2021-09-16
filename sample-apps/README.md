@@ -12,7 +12,7 @@ the [deepgrow App](./deepgrow). The latter one is meant for the users that want 
 
 #### DeepEdit
 
-Similar to the deepgrow Apps, you'll find the one generic [deepedit](./generic_deepedit) that researchers can use to build their own deepedit-based app.
+Similar to the deepgrow Apps, you'll find the one generic [deepedit](./deepedit) that researchers can use to build their own deepedit-based app.
 
 
 #### Automated Segmentation

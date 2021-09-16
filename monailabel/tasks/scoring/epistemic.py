@@ -26,11 +26,11 @@ logger = logging.getLogger(__name__)
 
 class EpistemicScoring(ScoringMethod):
     """
-    First version of test time augmentation active learning
+    First version of Epistemic computation used as active learning strategy
     """
 
     def __init__(self, model, network=None, transforms=None, roi_size=(128, 128, 64), num_samples=10):
-        super().__init__("Compute initial score based on TTA")
+        super().__init__("Compute initial score based on dropout")
         self.model = model
         self.network = network
         self.transforms = transforms
@@ -54,7 +54,7 @@ class EpistemicScoring(ScoringMethod):
                 inputs=data["image"][None].cuda(), roi_size=roi_size, sw_batch_size=sw_batch_size, predictor=model
             )
 
-        soft_preds = torch.softmax(preds, dim=1)
+        soft_preds = torch.softmax(preds, dim=1) if preds.shape[1] > 1 else torch.sigmoid(preds)
         soft_preds = soft_preds.detach().to("cpu").numpy()
         return soft_preds
 
@@ -125,7 +125,7 @@ class EpistemicScoring(ScoringMethod):
         model, model_ts = self._load_model(self.model, self.network)
         if not model:
             return
-        model = model.to(self.device)
+        model = model.to(self.device).train()
 
         # Performing Epistemic for all unlabeled images
         skipped = 0
@@ -155,7 +155,7 @@ class EpistemicScoring(ScoringMethod):
 
             accum_numpy = np.stack(accum_unl_outputs)
             accum_numpy = np.squeeze(accum_numpy)
-            accum_numpy = accum_numpy[:, 1, :, :, :]
+            accum_numpy = accum_numpy[:, 1:, :, :, :] if len(accum_numpy.shape) > 4 else accum_numpy
 
             entropy = self.entropy_3d_volume(accum_numpy)
             entropy_sum = float(np.sum(entropy))
