@@ -3,10 +3,10 @@ trigger:
   - '*'
   
   # no PR triggers: only committers to the main branch should be able to trigger these builds
-  pr: 
-    - main
+pr: 
+  - main
   
-  stages:
+stages:
   - stage: 'Test'
     jobs:
     - job: RunTests
@@ -20,7 +20,7 @@ trigger:
             python.version: '3.8'
           Python3.9:
             python.version: '3.9'
-          maxParallel: 3
+        maxParallel: 3
       steps:
       - task: UsePythonVersion@0
         inputs:
