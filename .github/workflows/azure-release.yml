@@ -1,71 +1,72 @@
 
 stages:
-- stage: 'Build'
-  jobs:
-  - job: Run-Tests
-    pool:
-      vmImage: ubuntu-20.04
-      strategy:
-        matrix:
-          Python38:
-            python.version: '3.8'
-        maxParallel: 1
-    steps:
-    - script: |
-        python -m pip install --user --upgrade pip setuptools wheel twine
-        python -m pip install torch>=1.5 torchvision
-      displayName: 'Install dependencies'
-    - script: |
-        git fetch --depth=1 origin +refs/tags/*:refs/tags/*
-        root_dir=$PWD
-        echo "$root_dir"
-        set -e
-
-        # move packages to a temp dir
-        export BUILD_OHIF=true
-        python setup.py sdist bdist_wheel --build-number $(date +'%Y%m%d%H%M')
-        tmp_dir=$(mktemp -d)
-        cp dist/monailabel* "$tmp_dir"
-        rm -r build monailabel.egg-info
-        cd "$tmp_dir"
-        ls -al
-
-        # install from tar.gz
-        python -m pip install monailabel*.tar.gz
-        python -c 'import monailabel; monailabel.print_config()' 2>&1 | grep -iv "unknown"
-        python -c 'import monailabel; print(monailabel.__file__)'
-        python -m pip uninstall -y monailabel
-        rm monailabel*.tar.gz
-
-        # install from wheel
-        python -m pip install monailabel*.whl
-        python -c 'import monailabel; monailabel.print_config()' 2>&1 | grep -iv "unknown"
-        python -c 'import monailabel; print(monailabel.__file__)'
-        python -m pip uninstall -y monailabel
-        rm monailabel*.whl
-
-        # install test utilities
-        python -m pip install pytest
-
-        # start the monailabel server in the background
-        # and run the integration tests
-        $root_dir/runtests.sh --net
-
-        # cleanup
-        cd "$root_dir"
-        rm -r "$tmp_dir"
-        rm -rf monailabel/
-        ls -la .
-      displayName: 'Build and test source archive and wheel file'
-    - task: GitHubRelease@0
-      inputs:
-        gitHubConnection: monailabel
-        repositoryName: '$(Build.Repository.Name)'
-        action: 'create'
-        # target: '$(tagName)'
-        tagSource: 'manual'
-        tag: 0.2.0
-        addChangeLog: true 
-        compareWith: 'lastRelease' 
-        releaseTag: 0.2.0
-        assets: '$(Build.ArtifactStagingDirectory)/*'
+  - stage: 'Build'
+    jobs:
+    - job: Run-Tests
+      pool:
+        vmImage: ubuntu-20.04
+        strategy:
+          matrix:
+            Python38:
+              python.version: '3.8'
+          maxParallel: 1
+      steps:
+      - script: |
+          python -m pip install --user --upgrade pip setuptools wheel twine
+          python -m pip install torch>=1.5 torchvision
+        displayName: 'Install dependencies'
+      - script: |
+          git fetch --depth=1 origin +refs/tags/*:refs/tags/*
+          root_dir=$PWD
+          echo "$root_dir"
+          set -e
+  
+          # move packages to a temp dir
+          export BUILD_OHIF=true
+          python setup.py sdist bdist_wheel --build-number $(date +'%Y%m%d%H%M')
+          tmp_dir=$(mktemp -d)
+          cp dist/monailabel* "$tmp_dir"
+          rm -r build monailabel.egg-info
+          cd "$tmp_dir"
+          ls -al
+  
+          # install from tar.gz
+          python -m pip install monailabel*.tar.gz
+          python -c 'import monailabel; monailabel.print_config()' 2>&1 | grep -iv "unknown"
+          python -c 'import monailabel; print(monailabel.__file__)'
+          python -m pip uninstall -y monailabel
+          rm monailabel*.tar.gz
+  
+          # install from wheel
+          python -m pip install monailabel*.whl
+          python -c 'import monailabel; monailabel.print_config()' 2>&1 | grep -iv "unknown"
+          python -c 'import monailabel; print(monailabel.__file__)'
+          python -m pip uninstall -y monailabel
+          rm monailabel*.whl
+  
+          # install test utilities
+          python -m pip install pytest
+  
+          # start the monailabel server in the background
+          # and run the integration tests
+          $root_dir/runtests.sh --net
+  
+          # cleanup
+          cd "$root_dir"
+          rm -r "$tmp_dir"
+          rm -rf monailabel/
+          ls -la .
+        displayName: 'Build and test source archive and wheel file'
+      - task: GitHubRelease@0
+        inputs:
+          gitHubConnection: monailabel
+          repositoryName: '$(Build.Repository.Name)'
+          action: 'create'
+          # target: '$(tagName)'
+          tagSource: 'manual'
+          tag: 0.2.0
+          addChangeLog: true 
+          compareWith: 'lastRelease' 
+          releaseTag: 0.2.0
+          assets: '$(Build.ArtifactStagingDirectory)/*'
+  
