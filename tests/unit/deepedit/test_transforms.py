@@ -99,6 +99,7 @@ SINGLE_LABEL_SINGLE_MODALITY_TEST_CASE_1 = [
     (5, 5),
 ]
 
+# When checking tensor content use np.testing.assert_equal(result["image"], expected_values)
 
 class TestDiscardAddGuidanced(unittest.TestCase):
     @parameterized.expand([DISCARD_ADD_GUIDANCE_TEST_CASE])
