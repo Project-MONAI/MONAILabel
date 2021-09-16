@@ -2,7 +2,7 @@
 stages:
   - stage: 'Build'
     jobs:
-    - job: Run-Tests
+    - job: RunTests
       pool:
         vmImage: ubuntu-20.04
         strategy:
