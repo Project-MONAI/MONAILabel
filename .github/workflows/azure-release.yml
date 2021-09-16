@@ -1,4 +1,7 @@
-
+trigger:
+  tags:
+    include:
+      - '*'
 stages:
   - stage: 'Build'
     jobs:
