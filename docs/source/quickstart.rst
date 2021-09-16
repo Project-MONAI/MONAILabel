@@ -252,7 +252,7 @@ endpoint of our DICOM server, which based on the last section is ``http://locaho
   # and start annotating images in our DICOM server
   monailabel start_server --app deepedit --studies http://locahost:8042/dicom-web --username orthanc --password orthanc
 
-Then, build the OHIF plugin for development:
+Then, build the OHIF plugin by executing the following command:
 
 .. code-block:: bash
 
