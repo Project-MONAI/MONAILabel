@@ -141,7 +141,7 @@ class TTAScoring(ScoringMethod):
         model, model_ts = self._load_model(self.model, self.network)
         if not model:
             return
-        model = model.to(self.device)
+        model = model.to(self.device).eval()
 
         tt_aug = TestTimeAugmentation(
             transform=self.pre_transforms(),
