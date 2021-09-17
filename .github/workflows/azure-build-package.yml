@@ -1,10 +1,9 @@
 trigger:
-  - main
-  - '*'
+- main
+- '*'
 
-# no PR triggers: only committers to the main branch should be able to trigger these builds
 pr: 
-  - main
+- main
 
 stages:
   - stage: 'Test'
@@ -23,34 +22,34 @@ stages:
           Python3.9:
             python.version: '3.9'
         maxParallel: 3
-    steps:
-    - task: UsePythonVersion@0
-      inputs:
-        versionSpec: $(python.version)
-    - script: |
-        python3 -m pip install --upgrade pip wheel
-        python3 -m pip install -r requirements-dev.txt
-      displayName: 'Install dependencies'
-    - bash:  $(pwd)/runtests.sh --clean
-      displayName: 'Clean'
-    - bash: $(pwd)/runtests.sh --isort
-      displayName: 'iSort'
-    - bash: $(pwd)/runtests.sh --black
-      displayName: 'Black'
-    - script: |
-        $(pwd)/runtests.sh --flake8
-      displayName: 'Flake8'
-    - bash:  $(pwd)/runtests.sh --pytype
-      displayName: 'PyType'
-    - bash:  $(pwd)/runtests.sh --mypy
-      displayName: 'MyPy'
-    - bash:  $(pwd)/runtests.sh --unittests --coverage
-      displayName: 'Unit tests'
-    - task: PublishCodeCoverageResults@1
-      inputs:
-        codeCoverageTool: 'Cobertura'
-        summaryFileLocation: ./coverage.xml
-      displayName: 'Publish Code Coverage Results'
+      steps:
+      - task: UsePythonVersion@0
+        inputs:
+          versionSpec: $(python.version)
+      - script: |
+          python3 -m pip install --upgrade pip wheel
+          python3 -m pip install -r requirements-dev.txt
+        displayName: 'Install dependencies'
+      - bash:  $(pwd)/runtests.sh --clean
+        displayName: 'Clean'
+      - bash: $(pwd)/runtests.sh --isort
+        displayName: 'iSort'
+      - bash: $(pwd)/runtests.sh --black
+        displayName: 'Black'
+      - script: |
+          $(pwd)/runtests.sh --flake8
+        displayName: 'Flake8'
+      - bash:  $(pwd)/runtests.sh --pytype
+        displayName: 'PyType'
+      - bash:  $(pwd)/runtests.sh --mypy
+        displayName: 'MyPy'
+      - bash:  $(pwd)/runtests.sh --unittests --coverage
+        displayName: 'Unit tests'
+      - task: PublishCodeCoverageResults@1
+        inputs:
+          codeCoverageTool: 'Cobertura'
+          summaryFileLocation: ./coverage.xml
+        displayName: 'Publish Code Coverage Results'
 
   - stage: Build
     jobs:
