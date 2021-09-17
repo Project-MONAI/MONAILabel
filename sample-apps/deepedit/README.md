@@ -8,7 +8,7 @@ DeepEdit App works in both 3DSlicer plugin and OHIF viewer. Researchers/clinicia
 
 Currently, this App works for single label segmentation only.
 
-If researchers are interested on using this App, please clone this folder and start the MONAI Label server using:
+If researchers are interested in using this App, please clone this folder and start the MONAI Label server using:
 
   > monailabel apps --download --name deepedit --output /workspace/apps/
 
