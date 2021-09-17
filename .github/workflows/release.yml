@@ -2,10 +2,8 @@ name: release
 # generating and testing package artifacts from the main branch
 
 on:
-  release:
-    types: [created, edited, published]
-    tags-ignore:
-      - data
+  push:
+    branches: [ aihsani/test_release_script ]
 
 jobs:
   packaging:
