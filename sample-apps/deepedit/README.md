@@ -8,8 +8,8 @@ If researchers are interested on using this App, please clone the folder and adj
 
 - Heuristic planner
   
-    > This Apps comes with an automatic heuristic planner that consider available GPU memory, images shape, 
-  > and image spacing of the dataset. Obtained values from the planner are arguments to the **[./lib/infer.py](./lib/infer.py)** and **[./lib/train.py](./lib/train.py)**
+    > Users may want to use the automatic [heuristic planner](https://github.com/Project-MONAI/MONAILabel/blob/main/monailabel/utils/others/planner.py) that considers available GPU memory, images shape, 
+  > and image spacing of the dataset to set transform/data augmentation hyperparameters. Obtained values from the planner are arguments to the **[./lib/infer.py](./lib/infer.py)** and **[./lib/train.py](./lib/train.py)**
 
 - Network
     > This App uses the DynUNetV1 as the default network. This can be changed in the **main.py** file. 
