@@ -77,7 +77,7 @@ You can download sample apps and datasets from *monailabel* CLI.
 
   # Download Sample Apps
   monailabel apps # List sample apps
-  monailabel apps --download --name deepedit_left_atrium --output apps
+  monailabel apps --download --name deepedit --output apps
 
   # Download MSD Datasets
   monailabel datasets # List sample datasets
@@ -89,7 +89,7 @@ Starting Server
 You can start server using *monailabel* CLI
 ::
 
-  monailabel start_server --app apps\deepedit_left_atrium --studies datasets\Task02_Heart\imagesTr
+  monailabel start_server --app apps\deepedit --studies datasets\Task02_Heart\imagesTr
 
 
 .. note::

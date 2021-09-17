@@ -27,15 +27,15 @@ heart MRI), and deploy the sample app and standard dataset on the MONAI Label se
   # install MONAI Label
   pip install monailabel
 
-  # download left atrium DeepEdit sample app to local directory
-  monailabel apps --name deepedit_left_atrium --download --output .
+  # download DeepEdit sample app to local directory
+  monailabel apps --name deepedit --download --output .
 
   # download Task 2 MSD dataset
   monailabel datasets --download --name Task02_Heart --output .
   
-  # start the left atrium DeepEdit app in MONAI label server 
+  # start the DeepEdit app in MONAI label server
   # and start annotating the downloaded images
-  monailabel start_server --app deepedit_left_atrium --studies Task02_Heart/imagesTr
+  monailabel start_server --app deepedit --studies Task02_Heart/imagesTr
 
 
 Install MONAI Label Plugin in 3DSlicer
@@ -118,15 +118,15 @@ label storage location.
   # install MONAI Label
   pip install monailabel
 
-  # download left atrium DeepEdit sample app to local directory
-  monailabel apps --name deepedit_left_atrium --download --output .
+  # download DeepEdit sample app to local directory
+  monailabel apps --name deepedit --download --output .
 
   # create an empty folder for the custom dataset
   mkdir my_dataset
   
-  # start the left atrium DeepEdit app in MONAI label server
+  # start the DeepEdit app in MONAI label server
   # on the empty dataset folder
-  monailabel start_server --app deepedit_left_atrium --studies my_dataset
+  monailabel start_server --app deepedit --studies my_dataset
 
 We can follow the instructions in the previous section to install and connect 3DSlicer to MONAI
 Label Server, however, in this scenario we will instead load a file into MONAI Label Server *through*
@@ -245,12 +245,18 @@ endpoint of our DICOM server, which based on the last section is ``http://locaho
   # install MONAI Label (if you have not already)
   pip install monailabel
 
-  # download left atrium DeepEdit sample app to local directory
-  monailabel apps --name deepedit_left_atrium --download --output .
+  # download DeepEdit sample app to local directory
+  monailabel apps --name deepedit --download --output .
 
-  # start the left atrium DeepEdit app in MONAI label server 
+  # start the DeepEdit app in MONAI label server
   # and start annotating images in our DICOM server
-  monailabel start_server --app deepedit_left_atrium --studies http://locahost:8042/dicom-web --username orthanc --password orthanc
+  monailabel start_server --app deepedit --studies http://locahost:8042/dicom-web --username orthanc --password orthanc
+
+Then, build the OHIF plugin by executing the following command:
+
+.. code-block:: bash
+
+  (cd plugins/ohif && ./build.sh)
 
 At this point OHIF can be used to annotate the data in the DICOM server via the MONAI Label server ``/ohif`` endpoint 
 (e.g. via `http://localhost:8000/ohif <http://localhost:8000/ohif>`_).
