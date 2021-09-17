@@ -20,8 +20,6 @@ from monai.data.utils import pad_list_data_collate
 from monai.losses import DiceLoss
 from monai.networks.nets import UNet
 from monai.transforms import Activations, AddChanneld, AsDiscrete, Compose, CropForegroundd, DivisiblePadd, RandAffined
-from monai.transforms.croppad.dictionary import SpatialPadd
-from monai.transforms.spatial.dictionary import Rand2DElasticd
 from monai.utils import set_determinism
 
 from monailabel.tasks.scoring.tta import TestTimeAugmentation
@@ -122,18 +120,6 @@ class TestTestTimeAugmentation(unittest.TestCase):
         self.assertEqual((mean.min(), mean.max()), (0.0, 1.0))
         self.assertEqual(std.shape, (1,) + input_size)
         self.assertIsInstance(vvc, float)
-
-    def test_fail_non_random(self):
-        device = "cuda" if torch.cuda.is_available() else "cpu"
-        transforms = Compose([AddChanneld("im"), SpatialPadd("im", 1)])
-        with self.assertRaises(RuntimeError):
-            TestTimeAugmentation(transforms, batch_size=1, num_workers=0, inferrer_fn=lambda x: x, device=device)
-
-    def test_fail_random_but_not_invertible(self):
-        device = "cuda" if torch.cuda.is_available() else "cpu"
-        transforms = Compose([AddChanneld("im"), Rand2DElasticd("im", spacing=(1.0, 1.0), magnitude_range=(0.2, 0.2))])
-        with self.assertRaises(RuntimeError):
-            TestTimeAugmentation(transforms, batch_size=1, num_workers=0, inferrer_fn=lambda x: x, device=device)
 
 
 if __name__ == "__main__":
