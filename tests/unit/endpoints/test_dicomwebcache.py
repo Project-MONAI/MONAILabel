@@ -63,7 +63,7 @@ class EndPointDICOMWebDatastore(DICOMWebEndpointTestSuite):
         pass
 
     @patch("monailabel.interfaces.app.DICOMwebClient")
-    def test_datastore_stats(self, dwc):
+    def test_001_datastore_stats(self, dwc):
 
         cache_path = os.path.join(self.data_dir, hashlib.md5(self.studies.encode("utf-8")).hexdigest())
         dwc.return_value.base_url = self.studies
@@ -88,10 +88,7 @@ class EndPointDICOMWebDatastore(DICOMWebEndpointTestSuite):
             self.assertEquals(label_tags["final"], 1)
 
     @patch("monailabel.interfaces.app.DICOMwebClient")
-    @patch("monailabel.datastore.dicom.dicom_web_download_series")
-    def test_datastore_datalist(self, dicom_web_download_series, dwc):
-
-        dicom_web_download_series.return_value = lambda *args: None
+    def test_002_datastore_datalist(self, dwc):
 
         cache_path = os.path.join(self.data_dir, hashlib.md5(self.studies.encode("utf-8")).hexdigest())
         dwc.return_value.base_url = self.studies
@@ -118,9 +115,7 @@ class EndPointDICOMWebDatastore(DICOMWebEndpointTestSuite):
                 )
 
     @patch("monailabel.interfaces.app.DICOMwebClient")
-    @patch("monailabel.datastore.dicom.dicom_web_download_series")
-    def test_save_label(self, dicom_web_download_series, dwc):
-        dicom_web_download_series.return_value = lambda *args: None
+    def test_003_save_label(self, dwc):
 
         cache_path = os.path.join(self.data_dir, hashlib.md5(self.studies.encode("utf-8")).hexdigest())
         dwc.return_value.base_url = self.studies
