@@ -3,7 +3,9 @@ name: release
 
 on:
   push:
-    branches: [ aihsani/test_release_script ]
+    branches: [ main ]
+  pull_request:
+    branches: [ main ]
 
 jobs:
   packaging:
