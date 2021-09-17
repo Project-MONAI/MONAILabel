@@ -115,7 +115,26 @@ class EndPointDICOMWebDatastore(DICOMWebEndpointTestSuite):
                 )
 
     @patch("monailabel.interfaces.app.DICOMwebClient")
-    def test_003_save_label(self, dwc):
+    def test_003_datastore_train_datalist(self, dwc):
+
+        cache_path = os.path.join(self.data_dir, hashlib.md5(self.studies.encode("utf-8")).hexdigest())
+        dwc.return_value.base_url = self.studies
+        dwc.return_value.search_for_series = lambda **kwargs: search_for_series(self.data_dir, **kwargs)
+        dwc.return_value.retrieve_series_metadata = lambda *args, **kwargs: retrieve_series_metadata(
+            self.data_dir, *args, **kwargs
+        )
+        dwc.return_value.load_json_dataset = lambda *args, **kwargs: retrieve_series(cache_path, *args, **kwargs)
+
+        with patch.object(monailabel.datastore.dicom.DICOMWebDatastore.__init__, "__defaults__", (None, self.data_dir)):
+
+            response = self.client.get("/datastore/?output=train")
+            self.assertEquals(response.status_code, 200)
+
+            res = response.json()
+            self.assertEquals(len(res), 1)
+
+    @patch("monailabel.interfaces.app.DICOMwebClient")
+    def test_004_save_label(self, dwc):
 
         cache_path = os.path.join(self.data_dir, hashlib.md5(self.studies.encode("utf-8")).hexdigest())
         dwc.return_value.base_url = self.studies
