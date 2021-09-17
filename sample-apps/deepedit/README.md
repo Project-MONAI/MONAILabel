@@ -4,6 +4,10 @@
 
 This MONAI Label App is based on DeepEdit: an algorithm that combines the capabilities of multiple models into one, allowing for both interactive and automated segmentation.
 
+DeepEdit App works in both 3DSlicer plugin and OHIF viewer. Researchers/clinicians can also place their studies in either the file archive or a DICOMweb server (i.e. Orthanc) to use DeepEdit. 
+
+Currently, this App works for single label segmentation only.
+
 If researchers are interested on using this App, please clone this folder and start the MONAI Label server using:
 
   > monailabel apps --download --name deepedit --output /workspace/apps/
