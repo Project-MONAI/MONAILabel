@@ -1,14 +1,14 @@
 import hashlib
 import os
+import shutil
 import unittest
 from unittest.mock import patch
 from uuid import uuid4
 
-from pydicom import Dataset
 import pydicom
+from pydicom import Dataset
 
 from monailabel.datastore.utils.dicom import dicom_web_download_series, dicom_web_upload_dcm
-
 
 study_id = "1.2.826.0.1.3680043.8.274.1.1.8323329.686549.1629744177.996072"
 series_id = "1.2.826.0.1.3680043.8.274.1.1.8323329.686405.1629744173.656721"
@@ -16,7 +16,6 @@ instance_id = "1.2.826.0.1.3680043.8.274.1.1.8323329.686405.1629744173.656724.dc
 
 
 class Client(object):
-
     def __init__(self, cache_path) -> None:
         self.cache_path = cache_path
 
@@ -26,7 +25,9 @@ class Client(object):
         return ds
 
     def search_for_series(self, *args, **kwargs):
-        return [1, ]
+        return [
+            1,
+        ]
 
     def retrieve_series(self, *args, **kwargs):
         series_dir = os.path.join(self.cache_path, series_id)
@@ -60,7 +61,6 @@ class Client(object):
 
 
 class DicomUtils(unittest.TestCase):
-
     @classmethod
     def setUpClass(cls) -> None:
         cls.base_dir = os.path.realpath(os.path.dirname(os.path.dirname(os.path.dirname(os.path.dirname(__file__)))))
@@ -76,14 +76,17 @@ class DicomUtils(unittest.TestCase):
         save_dir = os.path.join(self.cache_path, rand_dir)
 
         ds = Dataset()
-        ds.add_new('0x0020000D', 'UI', study_id)
+        ds.add_new("0x0020000D", "UI", study_id)
         load_json_dataset.return_value = ds
 
         dicom_web_download_series(None, series_id, save_dir, self.client)
 
         downloaded_items = os.listdir(save_dir)
-        original_items = os.listdir(os.path.join(self.cache_path, series_id))
+
+        original_dir = os.path.join(self.cache_path, series_id)
+        original_items = os.listdir(original_dir)
         self.assertCountEqual(downloaded_items, original_items)
+        shutil.rmtree(save_dir)
 
     def test_dicom_web_upload_dcm(self):
         input_file = os.path.join(self.cache_path, series_id, instance_id)
