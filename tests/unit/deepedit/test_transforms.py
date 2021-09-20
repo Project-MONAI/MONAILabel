@@ -42,7 +42,38 @@ DATA_1 = {
 DISCARD_ADD_GUIDANCE_TEST_CASE = [
     {"image": IMAGE, "label": LABEL},
     DATA_1,
-    (3, 1, 5, 5),
+    # Image
+    [
+        [
+            [
+                [1.0, 0.0, 2.0, 0.0, 1.0],
+                [0.0, 1.0, 2.0, 1.0, 0.0],
+                [2.0, 2.0, 3.0, 2.0, 2.0],
+                [0.0, 1.0, 2.0, 1.0, 0.0],
+                [1.0, 0.0, 2.0, 0.0, 1.0],
+            ]
+        ],
+        # Positive clicks in zeros
+        [
+            [
+                [0.0, 0.0, 0.0, 0.0, 0.0],
+                [0.0, 0.0, 0.0, 0.0, 0.0],
+                [0.0, 0.0, 0.0, 0.0, 0.0],
+                [0.0, 0.0, 0.0, 0.0, 0.0],
+                [0.0, 0.0, 0.0, 0.0, 0.0],
+            ]
+        ],
+        # Negative clicks in zeros
+        [
+            [
+                [0.0, 0.0, 0.0, 0.0, 0.0],
+                [0.0, 0.0, 0.0, 0.0, 0.0],
+                [0.0, 0.0, 0.0, 0.0, 0.0],
+                [0.0, 0.0, 0.0, 0.0, 0.0],
+                [0.0, 0.0, 0.0, 0.0, 0.0],
+            ]
+        ],
+    ],
 ]
 
 DATA_2 = {
@@ -108,7 +139,7 @@ class TestDiscardAddGuidanced(unittest.TestCase):
     def test_correct_results(self, arguments, input_data, expected_result):
         add_fn = DiscardAddGuidanced(arguments)
         result = add_fn(input_data)
-        self.assertEqual(result["image"].shape, expected_result)
+        np.testing.assert_equal(result["image"], expected_result)
 
 
 class TestClickRatioAddRandomGuidanced(unittest.TestCase):
