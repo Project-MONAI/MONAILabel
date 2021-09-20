@@ -19,8 +19,6 @@ from .context import BasicEndpointTestSuite
 
 class EndPointInfer(BasicEndpointTestSuite):
     def test_segmentation(self):
-        if not torch.cuda.is_available():
-            return
 
         model = "deepedit_seg"
         image = "la_003"
@@ -29,8 +27,6 @@ class EndPointInfer(BasicEndpointTestSuite):
         assert response.status_code == 200
 
     def test_deepedit(self):
-        if not torch.cuda.is_available():
-            return
 
         model = "deepedit"
         image = "la_003"
