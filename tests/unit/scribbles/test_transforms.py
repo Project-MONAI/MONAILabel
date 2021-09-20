@@ -336,14 +336,14 @@ class TestScribblesTransforms(unittest.TestCase):
                 return data
 
         iseg_tx = MyInteractiveSeg(meta_key_postfix="meta_dict")
-        data = {"image": [i for i in range(20)]}
+        data = {"image": [0, 1, 2, 3, 4, 5]}
         self.assertEqual(iseg_tx._fetch_data(data, "image"), data["image"])
 
         image_np = np.random.rand(2, 128, 128)
         outimage_np = iseg_tx._normalise_logits(image_np, axis=0)
         self.assertEqual(np.sum(outimage_np, axis=0).mean(), 1.0)
 
-        data.update({"image_meta_dict": {"affine": [i for i in range(20)]}})
+        data.update({"image_meta_dict": {"affine": [0, 1, 2, 3, 4, 5]}})
         data = iseg_tx._copy_affine(data, "image", "label")
         self.assertIn("label_meta_dict", data.keys())
 
