@@ -15,12 +15,11 @@ from .context import DICOMWebEndpointTestSuite
 
 
 class EndPointOHIF(DICOMWebEndpointTestSuite):
-
     def test_ohif(self):
         response = self.client.get("/ohif/")
         assert response.status_code == 200
 
-        self.assertIn('text/html', response.headers['Content-type'])
+        self.assertIn("text/html", response.headers["Content-type"])
 
 
 if __name__ == "__main__":
