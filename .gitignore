@@ -151,3 +151,6 @@ docs/source/apidocs
 .DS_Store
 *.DS_Store
 bin
+
+# plugins ignore
+plugins/ohif/Viewers
