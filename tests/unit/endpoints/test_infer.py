@@ -12,8 +12,6 @@
 import json
 import unittest
 
-import torch
-
 from .context import BasicEndpointTestSuite
 
 
