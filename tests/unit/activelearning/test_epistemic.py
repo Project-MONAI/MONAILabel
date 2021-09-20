@@ -19,10 +19,19 @@ from monai.data import CacheDataset, DataLoader, create_test_image_3d
 from monai.data.utils import pad_list_data_collate
 from monai.losses import DiceLoss
 from monai.networks.nets import UNet
-from monai.transforms import AddChanneld, Compose, CropForegroundd, DivisiblePadd
-from monai.transforms import AddChannel, CropForeground, DivisiblePad
+from monai.transforms import (
+    AddChannel,
+    AddChanneld,
+    Compose,
+    CropForeground,
+    CropForegroundd,
+    DivisiblePad,
+    DivisiblePadd,
+)
 from monai.utils import set_determinism
+
 from monailabel.tasks.scoring.epistemic import EpistemicScoring
+
 trange = partial(tqdm.trange, desc="training")
 
 
@@ -98,9 +107,11 @@ class TestEpistemicScoring(unittest.TestCase):
 
             epoch_loss /= len(train_loader)
 
-        entropy_score = EpistemicScoring(model=model, transforms=infer_transforms, roi_size=[20, 20, 20], num_samples=10)
+        entropy_score = EpistemicScoring(
+            model=model, transforms=infer_transforms, roi_size=[20, 20, 20], num_samples=10
+        )
         # Call Individual Infer from Epistemic Scoring
-        ip_stack = [test_data['image'], test_data['image'], test_data['image']]
+        ip_stack = [test_data["image"], test_data["image"], test_data["image"]]
         ip_stack = np.array(ip_stack)
         score_3d = entropy_score.entropy_3d_volume(ip_stack)
         score_3d_sum = np.sum(score_3d)
