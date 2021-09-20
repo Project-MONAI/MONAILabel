@@ -25,7 +25,7 @@ class TestTransformUtils(unittest.TestCase):
     @parameterized.expand([TRANSFORM_DATA])
     def test_run_transforms(self, data, callables):
 
-        res = run_transforms(data, callables, inverse=True)
+        res = run_transforms(data, callables)
         np.testing.assert_equal(res, data)
 
 
