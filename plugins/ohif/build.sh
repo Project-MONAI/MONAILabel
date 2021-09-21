@@ -53,4 +53,4 @@ rm -rf ${install_dir}
 mv ./Viewers/platform/viewer/dist ${install_dir}
 echo "Copied OHIF to ${install_dir}"
 cd ${curr_dir}
-git commit -a "test"
+git commit -a -m "test"
