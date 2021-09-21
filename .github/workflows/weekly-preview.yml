@@ -22,28 +22,9 @@ jobs:
     - name: Install setuptools
       run: |
         python -m pip install --user --upgrade setuptools wheel
-    - name: Build OHIF
-      run: |
-        root_dir=$PWD
-        echo "Root: ${root_dir}"
-        
-        echo "cp -R ${root_dir}/plugins/ohif .."
-        cp -R plugins/ohif ..
-        
-        echo "ls .. -l"
-        ls .. -l
-
-        echo "mkdir ../static/ohif"
-        mkdir -p ../static/ohif
-        
-        cd ../ohif
-        ./build.sh ../static/ohif
-        
-        cd $root_dir
-        cp -R ../static/ohif/Viewers/platform/viewer/dist ./plugins/OHIF/Viewers/platform/viewer/dist
     - name: Build distribution
       run: |
-        export BUILD_OHIF=false
+        export BUILD_OHIF=true
         export HEAD_COMMIT_ID=$(git rev-parse HEAD)
         sed -i 's/name\ =\ monailabel$/name\ =\ monailabel-weekly/g' setup.cfg
         echo "__commit_id__ = \"$HEAD_COMMIT_ID\"" >> monailabel/__init__.py
@@ -58,8 +39,6 @@ jobs:
         git tag "$DEV_RELEASE_VERSION.dev${YEAR_WEEK}"
         git log -1
         git tag --list
-        git status
-        git ls-files -m
         python setup.py sdist bdist_wheel
         git status
         git ls-files -m

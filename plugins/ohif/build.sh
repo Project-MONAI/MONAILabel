@@ -51,5 +51,6 @@ cd ..
 
 rm -rf ${install_dir}
 mv ./Viewers/platform/viewer/dist ${install_dir}
+rm -rf ./Viewers
 echo "Copied OHIF to ${install_dir}"
 cd ${curr_dir}
