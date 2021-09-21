@@ -112,11 +112,11 @@ def make_iseg_unary(
 def make_histograms(image, scrib, scribbles_bg_label, scribbles_fg_label, alpha=1, bins=32):
     # alpha forms the psuedo-counts for Dirichlet distribution used here as
     # conjugate prior to histogram distributions which enables us to make
-    #  histograms work in cases where only foreground or only background scribbles are provide
+    # histograms work in cases where only foreground or only background scribbles are provide
 
     # alpha can be:
     # - a scalar, where it is expanded into a list of size==bins
-    # - a list of scalars, where it is checked against size==bins and directly applied
+    # - a list of scalars, where it is checked against size==bins and applied
 
     # expand psuedo-count into array if needed
     if not isinstance(alpha, list):
