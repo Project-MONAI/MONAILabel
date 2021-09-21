@@ -114,7 +114,7 @@ def make_histograms(image, scrib, scribbles_bg_label, scribbles_fg_label, alpha=
     # conjugate prior to histogram distributions which enables us to make
     #  histograms work in cases where only foreground or only background scribbles are provide
 
-    # alpha can:
+    # alpha can be:
     # - a scalar, where it is expanded into a list of size==bins
     # - a list of scalars, where it is checked against size==bins and directly applied
 
