@@ -35,16 +35,6 @@ data_files.extend(recursive_files("sample-apps", "monailabel"))
 data_files.extend(recursive_files("plugins/slicer", "monailabel"))
 data_files.extend(recursive_files("plugins/ohif", "monailabel"))
 
-# Build OHIF Plugin
-build_ohif_s = os.environ.get("BUILD_OHIF")
-print(f"BUILD_OHIF = {build_ohif_s}")
-build_ohif = True if not build_ohif_s else distutils.util.strtobool(build_ohif_s)
-if build_ohif:
-    script = "build.bat" if any(platform.win32_ver()) else "build.sh"
-    command = os.path.realpath(os.path.join(os.path.dirname(__file__), "plugins", "ohif", script))
-    if os.path.exists(command):
-        subprocess.call(["sh", command])
-
 setup(
     version=versioneer.get_version(),
     packages=find_packages(exclude=("tests", "docs", "sample-apps", "plugins")),
