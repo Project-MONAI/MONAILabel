@@ -53,6 +53,7 @@ rm -rf ${install_dir}
 mv ./Viewers/platform/viewer/dist ${install_dir}
 echo "Copied OHIF to ${install_dir}"
 
+cd ${my_dir}/plugins/ohif/Viewers
 git reset
 
 cd ${curr_dir}
