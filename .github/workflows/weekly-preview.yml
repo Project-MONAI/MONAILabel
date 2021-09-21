@@ -24,6 +24,9 @@ jobs:
         python -m pip install --user --upgrade setuptools wheel
     - name: Build OHIF
       run: |
+        git config user.name "CI Builder"
+        git config user.email "monai.contact@gmail.com"
+
         root_dir=$(pwd)
         ohif_dir=${root_dir}/plugins/ohif
         
@@ -44,8 +47,6 @@ jobs:
         sed -i 's/name\ =\ monailabel$/name\ =\ monailabel-weekly/g' setup.cfg
         echo "__commit_id__ = \"$HEAD_COMMIT_ID\"" >> monailabel/__init__.py
         git diff setup.cfg monailabel/__init__.py
-        git config user.name "CI Builder"
-        git config user.email "monai.contact@gmail.com"
         git add setup.cfg monailabel/__init__.py
         git commit -m "Weekly build at $HEAD_COMMIT_ID"
         export YEAR_WEEK=$(date +'%y%U')
