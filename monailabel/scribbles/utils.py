@@ -111,9 +111,9 @@ def make_iseg_unary(
 
 def make_histograms(image, scrib, scribbles_bg_label, scribbles_fg_label, bins=32):
     # initialise prior distribution with a special case of Dirichlet distribution
-    # this helps with the case where only foreground scribbles are given, 
+    # this helps with the case where only foreground scribbles are given,
     # and vice versa for background scribbles
-    prior_values = [i/bins for i in range(bins)]
+    prior_values = [i / bins for i in range(bins)]
 
     # collect background voxels
     values = np.concatenate([image[scrib == scribbles_bg_label], prior_values], axis=0)
