@@ -43,6 +43,7 @@ if build_ohif:
     command = os.path.realpath(os.path.join(os.path.dirname(__file__), "plugins", "ohif", script))
     if os.path.exists(command):
         subprocess.call(["sh", command])
+    subprocess.call(["git", "status"])
 
 setup(
     version=versioneer.get_version(),
