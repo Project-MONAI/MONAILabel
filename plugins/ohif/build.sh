@@ -57,3 +57,4 @@ cd ${my_dir}/plugins/ohif/Viewers
 git reset
 
 cd ${curr_dir}
+git reset
