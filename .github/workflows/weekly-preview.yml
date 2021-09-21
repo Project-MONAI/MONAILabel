@@ -57,9 +57,9 @@ jobs:
         git tag "$DEV_RELEASE_VERSION.dev${YEAR_WEEK}"
         git log -1
         git tag --list
-        git status
         python setup.py sdist bdist_wheel
         git status
+        git ls-files -m
     - name: Publish to PyPI
       uses: pypa/gh-action-pypi-publish@master
       with:
