@@ -53,8 +53,8 @@ rm -rf ${install_dir}
 mv ./Viewers/platform/viewer/dist ${install_dir}
 echo "Copied OHIF to ${install_dir}"
 
-cd ${my_dir}/plugins/ohif/Viewers
-git reset
+rm ${my_dir}/Viewers/extensions/monai-label
+cd ${my_dir}/Viewers
+git reset --hard
 
 cd ${curr_dir}
-git reset
