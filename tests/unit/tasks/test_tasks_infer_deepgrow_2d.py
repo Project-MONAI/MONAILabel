@@ -9,51 +9,17 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
+import os
 import unittest
-from functools import partial
 
-import numpy as np
 import torch
-import tqdm
-from monai.data import CacheDataset, DataLoader, create_test_image_3d
-from monai.data.utils import pad_list_data_collate
-from monai.losses import DiceLoss
-from monai.networks.nets import UNet
-from monai.transforms import (
-    AddChannel,
-    AddChanneld,
-    Compose,
-    CropForeground,
-    CropForegroundd,
-    DivisiblePad,
-    DivisiblePadd,
-)
 from monai.utils import set_determinism
-from monailabel.tasks.scoring.epistemic import EpistemicScoring
-from monailabel.tasks.infer.deepgrow_2d import InferDeepgrow2D
 
-trange = partial(tqdm.trange, desc="training")
+from monailabel.datastore.local import LocalDatastore
+from monailabel.tasks.infer.deepgrow_2d import InferDeepgrow2D
 
 
 class TestInferDeepgrow2D(unittest.TestCase):
-    @staticmethod
-    def get_data(num_examples, input_size, data_type=np.asarray, include_label=True):
-        custom_create_test_image_3d = partial(
-            create_test_image_3d, *input_size, rad_max=7, num_seg_classes=1, num_objs=1
-        )
-        data = []
-        for _ in range(num_examples):
-            im, label = custom_create_test_image_3d()
-            d = {}
-            d["image"] = data_type(im)
-            d["image_meta_dict"] = {"affine": np.eye(4)}
-            if include_label:
-                d["label"] = data_type(label)
-                d["label_meta_dict"] = {"affine": np.eye(4)}
-            d["label_transforms"] = []
-            data.append(d)
-        return data[0] if num_examples == 1 else data
-
     def setUp(self) -> None:
         set_determinism(seed=0)
 
@@ -61,66 +27,41 @@ class TestInferDeepgrow2D(unittest.TestCase):
         set_determinism(None)
 
     def test_infer_deepgrow_2d(self):
-        input_size = (20, 20, 20)
-        device = "cuda" if torch.cuda.is_available() else "cpu"
-        keys = ["image", "label"]
-        num_training_ims = 10
-        train_data = self.get_data(num_training_ims, input_size)
-        test_data = self.get_data(1, input_size)
 
-        transforms = Compose(
-            [
-                AddChanneld(keys),
-                CropForegroundd(keys, source_key="image"),
-                DivisiblePadd(keys, 4),
-            ]
+        base_dir = os.path.realpath(os.path.dirname(os.path.dirname(os.path.dirname(os.path.dirname(__file__)))))
+        data_dir = os.path.join(base_dir, "tests", "data")
+        studies = os.path.join(data_dir, "dataset", "local", "heart")
+
+        datastore = LocalDatastore(
+            studies,
+            extensions=["*.nii.gz", "*.nii"],
+            auto_reload=True,
         )
 
-        infer_transforms = Compose(
-            [
-                AddChannel(),
-                CropForeground(),
-                DivisiblePad(4),
-            ]
-        )
+        data_json = datastore.json()["objects"]
 
-        train_ds = CacheDataset(train_data, transforms)
-        # output might be different size, so pad so that they match
-        train_loader = DataLoader(train_ds, batch_size=2, collate_fn=pad_list_data_collate)
+        # Get Data file name
+        for key, _value in data_json.items():
+            t1 = key
+            break
 
-        model = UNet(3, 1, 1, channels=(6, 6), strides=(2, 2)).to(device)
-        loss_function = DiceLoss(sigmoid=True)
-        optimizer = torch.optim.Adam(model.parameters(), 1e-3)
+        file_name = data_json[t1]["image"]["info"]["name"]
+        file_path = os.path.join(studies, file_name)
 
-        num_epochs = 10
-        for _ in trange(num_epochs):
-            epoch_loss = 0
+        model = torch.nn.Identity(20)
+        input = torch.randn(30, 30)
+        output = model(input)
 
-            for batch_data in train_loader:
-                inputs, labels = batch_data["image"].to(device), batch_data["label"].to(device)
-                optimizer.zero_grad()
-                outputs = model(inputs)
-                loss = loss_function(outputs, labels)
-                loss.backward()
-                optimizer.step()
-                epoch_loss += loss.item()
+        deepgrow_2d_infer = InferDeepgrow2D(network=model, path=file_path)
+        pre_transform_list = deepgrow_2d_infer.pre_transforms()
+        post_transform_list = deepgrow_2d_infer.post_transforms()
+        deepgrow_inferer = deepgrow_2d_infer.inferer()
+        deepgrow_inferer_output = deepgrow_inferer(inputs=input, network=model)
 
-            epoch_loss /= len(train_loader)
-
-        entropy_score = EpistemicScoring(
-            model=model, transforms=infer_transforms, roi_size=[20, 20, 20], num_samples=10
-        )
-        # Call Individual Infer from Epistemic Scoring
-        ip_stack = [test_data["image"], test_data["image"], test_data["image"]]
-        ip_stack = np.array(ip_stack)
-        score_3d = entropy_score.entropy_3d_volume(ip_stack)
-        score_3d_sum = np.sum(score_3d)
-        # Call Entropy Metric from Epistemic Scoring
-        self.assertEqual(score_3d.shape, input_size)
-        self.assertIsInstance(score_3d_sum, np.float32)
-        self.assertGreater(score_3d_sum, 3.0)
+        self.assertEqual(output.shape, deepgrow_inferer_output.shape)
+        self.assertEqual(len(pre_transform_list), 11)
+        self.assertEqual(len(post_transform_list), 5)
 
 
 if __name__ == "__main__":
     unittest.main()
-
