@@ -40,6 +40,8 @@ jobs:
         git commit -m "OHIF Update $YEAR_WEEK"
         popd
 
+        git add .
+        git commit -m "OHIF Update $YEAR_WEEK"
         git status
     - name: Build distribution
       run: |
