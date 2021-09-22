@@ -35,6 +35,10 @@ jobs:
           python -m pip install torch>=1.5 torchvision
       - name: Build OHIF
         run: |
+          # store release tag and message
+          export GIT_TAG=`git describe`
+          export TAG_MESSAGE=`git tag -n 0.2.0rc0 | awk '{$1=""; print}' | cut -c 2-`
+
           git config --global user.name "CI Builder"
           git config --global user.email "monai.contact@gmail.com"
 
@@ -56,7 +60,10 @@ jobs:
           git add .
           git commit -m "OHIF Update $YEAR_WEEK"
           git status
-          git describe --tags --dirty --always --long
+
+          # re-create the release tag from newly commited files from OHIF build
+          git tag --delete $GIT_TAG
+          git tag -a $GIT_TAG -m "${TAG_MESSAGE}"
       - name: Build and test source archive and wheel file
         run: |
           git fetch --depth=1 origin +refs/tags/*:refs/tags/*
