@@ -38,11 +38,14 @@ jobs:
         export YEAR_WEEK=$(date +'%y%U')
         git add .
         git commit -m "OHIF Update $YEAR_WEEK"
+
+        git describe --tags --dirty --always --long
         popd
 
         git add .
         git commit -m "OHIF Update $YEAR_WEEK"
         git status
+        git describe --tags --dirty --always --long
     - name: Build distribution
       run: |
         export HEAD_COMMIT_ID=$(git rev-parse HEAD)
@@ -57,6 +60,7 @@ jobs:
         git tag "$DEV_RELEASE_VERSION.dev${YEAR_WEEK}"
         git log -1
         git tag --list
+        git describe --tags --dirty --always --long
         python setup.py sdist bdist_wheel
         git status
         git ls-files -m
