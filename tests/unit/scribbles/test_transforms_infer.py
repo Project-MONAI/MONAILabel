@@ -29,7 +29,9 @@ from monailabel.scribbles.transforms import (
     WriteLogits,
 )
 from monailabel.transform.writer import Writer
+from monai.utils import set_determinism
 
+set_determinism(seed=123)
 
 def generate_synthetic_binary_segmentation(height, width, num_circles=10, r_min=10, r_max=100, random_state=None):
     # function based on:
