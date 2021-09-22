@@ -3,9 +3,13 @@ name: release
 
 on:
   release:
-    types: [edited, published]
+    # types: [edited, published]
+    push:
+      branches: [ aihsani/release_fix ]
     tags-ignore:
       - data
+    tags:
+      - test-release-.*
 
 jobs:
   packaging:
