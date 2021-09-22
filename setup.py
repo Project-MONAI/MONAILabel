@@ -46,6 +46,7 @@ if build_ohif:
 
 setup(
     version=versioneer.get_version(),
+    cmdclass=versioneer.get_cmdclass(),
     packages=find_packages(exclude=("tests", "docs", "sample-apps", "plugins")),
     zip_safe=False,
     package_data={"monailabel": ["py.typed"]},
