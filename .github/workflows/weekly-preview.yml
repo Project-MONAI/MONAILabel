@@ -1,8 +1,8 @@
 name: weekly-preview
 
 on:
-  push:
-    branches: [ aihsani/weekly_build_fix_2 ]
+  schedule:
+  - cron: "0 2 * * 0"  # 02:00 of every Sunday
 
 jobs:
   packaging:
