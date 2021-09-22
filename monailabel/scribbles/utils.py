@@ -110,7 +110,7 @@ def make_iseg_unary(
 
 
 def make_histograms(image, scrib, scribbles_bg_label, scribbles_fg_label, alpha_bg=1, alpha_fg=1, bins=32):
-    # alpha forms the psuedo-counts for Dirichlet distribution used here as
+    # alpha forms the pseudo-counts for Dirichlet distribution used here as
     # conjugate prior to histogram distributions which enables us to make
     # histograms work in cases where only foreground or only background scribbles are provide
 
@@ -118,21 +118,21 @@ def make_histograms(image, scrib, scribbles_bg_label, scribbles_fg_label, alpha_
     # - a scalar, where it is expanded into a list of size==bins
     # - a list of scalars, where it is checked against size==bins and applied
 
-    def expand_psuedocounts(alpha):
-        # expand psuedo-count into array if needed
+    def expand_pseudocounts(alpha):
+        # expand pseudo-counts into array if needed
         if not isinstance(alpha, list):
             alpha = [alpha] * bins
         elif len(alpha) != bins:
             raise ValueError(
-                "pseudo-count size does not match number of bins in histogram, received: {} | num_bins {}".format(
+                "pseudo-counts size does not match number of bins in histogram, received: {} | num_bins {}".format(
                     len(alpha), bins
                 )
             )
         alpha = np.array(alpha)
         return alpha
 
-    alpha_bg = expand_psuedocounts(alpha_bg)
-    alpha_fg = expand_psuedocounts(alpha_fg)
+    alpha_bg = expand_pseudocounts(alpha_bg)
+    alpha_fg = expand_pseudocounts(alpha_fg)
 
     # collect background voxels
     values = image[scrib == scribbles_bg_label]
