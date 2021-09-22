@@ -57,8 +57,6 @@ jobs:
 
           git add .
           git commit -m "OHIF Update $YEAR_WEEK"
-          git status
-          git describe --tags --dirty --always --long
       - name: Build and test source archive and wheel file
         run: |
           git fetch --depth=1 origin +refs/tags/*:refs/tags/*
