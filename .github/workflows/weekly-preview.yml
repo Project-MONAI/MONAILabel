@@ -9,7 +9,7 @@ jobs:
     if: github.repository == 'Project-MONAI/MONAILabel'
     runs-on: ubuntu-latest
     env:
-      DEV_RELEASE_VERSION: 0.2
+      DEV_RELEASE_VERSION: 0.3
     steps:
     - uses: actions/checkout@v2
       with:
@@ -22,15 +22,39 @@ jobs:
     - name: Install setuptools
       run: |
         python -m pip install --user --upgrade setuptools wheel
+    - name: Generate HEAD Commit Id
+      run: |
+        export HEAD_COMMIT_ID=$(git rev-parse HEAD)
+    - name: Build OHIF
+      run: |
+        git config --global user.name "CI Builder"
+        git config --global user.email "monai.contact@gmail.com"
+
+        root_dir=$(pwd)
+        ohif_dir=${root_dir}/plugins/ohif
+        
+        pushd $ohif_dir
+        ./build.sh
+        popd
+
+        pushd $ohif_dir/Viewers
+        export YEAR_WEEK=$(date +'%y%U')
+        git add .
+        git commit -m "OHIF Update $YEAR_WEEK"
+
+        git describe --tags --dirty --always --long
+        popd
+
+        git add .
+        git commit -m "OHIF Update $YEAR_WEEK"
+        git status
+        git describe --tags --dirty --always --long
     - name: Build distribution
       run: |
-        export BUILD_OHIF=true
-        export HEAD_COMMIT_ID=$(git rev-parse HEAD)
+        export BUILD_OHIF=false
         sed -i 's/name\ =\ monailabel$/name\ =\ monailabel-weekly/g' setup.cfg
         echo "__commit_id__ = \"$HEAD_COMMIT_ID\"" >> monailabel/__init__.py
         git diff setup.cfg monailabel/__init__.py
-        git config user.name "CI Builder"
-        git config user.email "monai.contact@gmail.com"
         git add setup.cfg monailabel/__init__.py
         git commit -m "Weekly build at $HEAD_COMMIT_ID"
         export YEAR_WEEK=$(date +'%y%U')
@@ -39,7 +63,10 @@ jobs:
         git tag "$DEV_RELEASE_VERSION.dev${YEAR_WEEK}"
         git log -1
         git tag --list
+        git describe --tags --dirty --always --long
         python setup.py sdist bdist_wheel
+        git status
+        git ls-files -m
     - name: Publish to PyPI
       uses: pypa/gh-action-pypi-publish@master
       with:
