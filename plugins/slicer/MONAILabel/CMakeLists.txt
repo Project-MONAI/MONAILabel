@@ -18,6 +18,12 @@ set(MODULE_PYTHON_RESOURCES
   Resources/Icons/training.png
   Resources/Icons/upload.svg
   Resources/Icons/contour.svg
+  Resources/Icons/tool-brush.svg
+  Resources/Icons/eraser.svg
+  Resources/Icons/refresh-icon.png
+  Resources/Icons/fg_green.svg
+  Resources/Icons/bg_red.svg
+  Resources/Icons/gray.svg
   Resources/UI/${MODULE_NAME}.ui
   )
 
