@@ -200,7 +200,7 @@ def action_apps(args):
     project_root_absolute = pathlib.Path(__file__).parent.parent.resolve()
     apps_dir = os.path.join(project_root_absolute, "sample-apps")
     if not os.path.exists(apps_dir):
-        apps_dir = os.path.join(args.prefix if args.prefix else sys.prefix, "scripts/monailabel", "sample-apps")
+        apps_dir = os.path.join(args.prefix if args.prefix else sys.prefix, "/monailabel", "sample-apps")
 
     apps = os.listdir(apps_dir)
     apps = [os.path.basename(a) for a in apps]
