@@ -14,6 +14,7 @@ import unittest
 
 import numpy as np
 from monai.transforms import LoadImage
+from monai.utils import set_determinism
 from parameterized import parameterized
 
 from monailabel.scribbles.infer import HistogramBasedGraphCut
@@ -29,6 +30,8 @@ from monailabel.scribbles.transforms import (
     WriteLogits,
 )
 from monailabel.transform.writer import Writer
+
+set_determinism(seed=123)
 
 
 def generate_synthetic_binary_segmentation(height, width, num_circles=10, r_min=10, r_max=100, random_state=None):
