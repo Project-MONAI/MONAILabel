@@ -37,14 +37,14 @@ To install the current release, you can simply run:
   pip install monailabel
   
   # download sample apps/dataset
-  monailabel apps --download --name deepedit_left_atrium --output apps
+  monailabel apps --download --name deepedit --output apps
   monailabel datasets --download --name Task02_Heart --output datasets
   
   # run server (ubuntu)
-  monailabel start_server --app apps/deepedit_left_atrium --studies datasets/Task02_Heart/imagesTr
+  monailabel start_server --app apps/deepedit --studies datasets/Task02_Heart/imagesTr
 
   # run server (windows)
-  monailabel start_server --app apps\deepedit_left_atrium --studies datasets\Task02_Heart\imagesTr
+  monailabel start_server --app apps\deepedit --studies datasets\Task02_Heart\imagesTr
   
 ```
 
@@ -69,7 +69,10 @@ MONAI Label comes with pre-built plugin for [OHIF Viewer](https://github.com/OHI
 >
 > You can use [PlastiMatch](https://plastimatch.org/plastimatch.html#plastimatch-convert) to convert NIFTI to DICOM
 
-> OHIF Viewer will be accessible at http://127.0.0.1:8000/ohif/
+> OHIF Viewer will be accessible at http://127.0.0.1:8000/ohif/ after running the following command:
+
+`(cd plugins/ohif && ./build.sh)`
+
 
 ![OHIF](docs/images/ohif.png)
 
