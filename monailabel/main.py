@@ -51,9 +51,11 @@ app = FastAPI(
 )
 
 static_dir = os.path.join(os.path.dirname(os.path.realpath(__file__)), "endpoints/static")
+project_root = pathlib.Path(__file__).parent.parent
+project_root_absolute = project_root.resolve()
 app.mount(
     "/static",
-    StaticFiles(directory=os.path.join(os.path.dirname(os.path.realpath(__file__)), "endpoints/static")),
+    StaticFiles(directory=os.path.join(project_root_absolute, "monailabel/endpoints/static")),
     name="static",
 )
 
