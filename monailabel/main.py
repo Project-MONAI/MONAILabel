@@ -51,8 +51,7 @@ app = FastAPI(
 )
 
 static_dir = os.path.join(os.path.dirname(os.path.realpath(__file__)), "endpoints/static")
-project_root = pathlib.Path(__file__).parent.parent
-project_root_absolute = project_root.resolve()
+project_root_absolute = pathlib.Path(__file__).parent.parent.resolve()
 app.mount(
     "/static",
     StaticFiles(directory=os.path.join(project_root_absolute, "monailabel/endpoints/static")),
@@ -198,7 +197,8 @@ def action_datasets(args):
 
 
 def action_apps(args):
-    apps_dir = os.path.join(os.path.dirname(os.path.dirname(os.path.realpath(__file__))), "sample-apps")
+    project_root_absolute = pathlib.Path(__file__).parent.parent.resolve()
+    apps_dir = os.path.join(project_root_absolute, "sample-apps")
     if not os.path.exists(apps_dir):
         apps_dir = os.path.join(args.prefix if args.prefix else sys.prefix, "scripts/monailabel", "sample-apps")
 
