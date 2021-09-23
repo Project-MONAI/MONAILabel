@@ -44,6 +44,7 @@ if build_ohif:
     if os.path.exists(command):
         subprocess.call(["sh", command])
 
+
 setup(
     version=versioneer.get_version(),
     cmdclass=versioneer.get_cmdclass(),
