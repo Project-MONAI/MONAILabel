@@ -1,7 +1,6 @@
 include versioneer.py
 include monailabel/_version.py
 
-recursive-include monailabel/static *
 recursive-include monailabel/endpoints/static *
 
 include README.md
