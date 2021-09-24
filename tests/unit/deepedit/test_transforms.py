@@ -15,6 +15,7 @@ import numpy as np
 from parameterized import parameterized
 
 from monailabel.deepedit.transforms import (
+    AddRandomGuidanced,
     DiscardAddGuidanced,
     PosNegClickProbAddRandomGuidanced,
     ResizeGuidanceCustomd,
@@ -42,7 +43,38 @@ DATA_1 = {
 DISCARD_ADD_GUIDANCE_TEST_CASE = [
     {"image": IMAGE, "label": LABEL},
     DATA_1,
-    (3, 1, 5, 5),
+    # Image
+    [
+        [
+            [
+                [1.0, 0.0, 2.0, 0.0, 1.0],
+                [0.0, 1.0, 2.0, 1.0, 0.0],
+                [2.0, 2.0, 3.0, 2.0, 2.0],
+                [0.0, 1.0, 2.0, 1.0, 0.0],
+                [1.0, 0.0, 2.0, 0.0, 1.0],
+            ]
+        ],
+        # Positive clicks in zeros
+        [
+            [
+                [0.0, 0.0, 0.0, 0.0, 0.0],
+                [0.0, 0.0, 0.0, 0.0, 0.0],
+                [0.0, 0.0, 0.0, 0.0, 0.0],
+                [0.0, 0.0, 0.0, 0.0, 0.0],
+                [0.0, 0.0, 0.0, 0.0, 0.0],
+            ]
+        ],
+        # Negative clicks in zeros
+        [
+            [
+                [0.0, 0.0, 0.0, 0.0, 0.0],
+                [0.0, 0.0, 0.0, 0.0, 0.0],
+                [0.0, 0.0, 0.0, 0.0, 0.0],
+                [0.0, 0.0, 0.0, 0.0, 0.0],
+                [0.0, 0.0, 0.0, 0.0, 0.0],
+            ]
+        ],
+    ],
 ]
 
 DATA_2 = {
@@ -62,6 +94,12 @@ CLICK_RATIO_ADD_RANDOM_GUIDANCE_TEST_CASE_1 = [
     {"guidance": "guidance", "discrepancy": "discrepancy", "probability": "probability"},
     DATA_2,
     "[[[1, 0, 2, 2], [-1, -1, -1, -1]], [[-1, -1, -1, -1], [1, 0, 2, 1]]]",
+]
+
+ADD_RANDOM_GUIDANCE_TEST_CASE_1 = [
+    {"guidance": "guidance", "discrepancy": "discrepancy", "probability": "probability"},
+    DATA_2,
+    "[[[1, 0, 2, 2], [1, 0, 1, 3]], [[-1, -1, -1, -1], [-1, -1, -1, -1]]]",
 ]
 
 DATA_3 = {
@@ -108,7 +146,7 @@ class TestDiscardAddGuidanced(unittest.TestCase):
     def test_correct_results(self, arguments, input_data, expected_result):
         add_fn = DiscardAddGuidanced(arguments)
         result = add_fn(input_data)
-        self.assertEqual(result["image"].shape, expected_result)
+        np.testing.assert_equal(result["image"], expected_result)
 
 
 class TestClickRatioAddRandomGuidanced(unittest.TestCase):
@@ -116,6 +154,16 @@ class TestClickRatioAddRandomGuidanced(unittest.TestCase):
     def test_correct_results(self, arguments, input_data, expected_result):
         seed = 0
         add_fn = PosNegClickProbAddRandomGuidanced(**arguments)
+        add_fn.set_random_state(seed)
+        result = add_fn(input_data)
+        self.assertEqual(result[arguments["guidance"]], expected_result)
+
+
+class TestAddRandomGuidanced(unittest.TestCase):
+    @parameterized.expand([ADD_RANDOM_GUIDANCE_TEST_CASE_1])
+    def test_correct_results(self, arguments, input_data, expected_result):
+        seed = 0
+        add_fn = AddRandomGuidanced(**arguments)
         add_fn.set_random_state(seed)
         result = add_fn(input_data)
         self.assertEqual(result[arguments["guidance"]], expected_result)

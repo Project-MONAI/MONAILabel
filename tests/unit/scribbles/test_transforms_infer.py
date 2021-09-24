@@ -9,19 +9,29 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
+import os
 import unittest
 
 import numpy as np
+from monai.transforms import LoadImage
+from monai.utils import set_determinism
 from parameterized import parameterized
 
+from monailabel.scribbles.infer import HistogramBasedGraphCut
 from monailabel.scribbles.transforms import (
     AddBackgroundScribblesFromROId,
     ApplyGraphCutOptimisationd,
     ApplyISegGraphCutPostProcd,
     ApplySimpleCRFOptimisationd,
+    InteractiveSegmentationTransform,
     MakeISegUnaryd,
     MakeLikelihoodFromScribblesHistogramd,
+    SoftenProbSoftmax,
+    WriteLogits,
 )
+from monailabel.transform.writer import Writer
+
+set_determinism(seed=123)
 
 
 def generate_synthetic_binary_segmentation(height, width, num_circles=10, r_min=10, r_max=100, random_state=None):
@@ -226,6 +236,29 @@ TEST_CASE_ADD_BG_ROI = [
     ),
 ]
 
+TEST_CASE_HISTOGRAM_GRAPHCUT = [
+    # 2D case
+    (
+        {
+            "image": np.squeeze(two_dim_data["image"]),
+            "label": np.squeeze(two_dim_data["prob"][[1], ...] + 2),
+            "image_meta_dict": {"affine": np.identity(4)},
+            "label_meta_dict": {"affine": np.identity(4)},
+        },
+        (1, HEIGHT, WIDTH),
+    ),
+    # 3D case
+    (
+        {
+            "image": np.squeeze(three_dim_data["image"]),
+            "label": np.squeeze(three_dim_data["prob"][[1], ...] + 2),
+            "image_meta_dict": {"affine": np.identity(5)},
+            "label_meta_dict": {"affine": np.identity(5)},
+        },
+        (NUM_SLICES, HEIGHT, WIDTH),
+    ),
+]
+
 
 class TestScribblesTransforms(unittest.TestCase):
     @parameterized.expand(TEST_CASE_ADD_BG_ROI)
@@ -271,12 +304,20 @@ class TestScribblesTransforms(unittest.TestCase):
             np.testing.assert_equal(output["target"], result["pred"])
             self.assertTupleEqual(expected_shape, result["pred"].shape)
 
+        with self.assertRaises(ValueError):
+            test_input["prob"] = np.random.rand(3, 128, 128, 128)
+            result = ApplyGraphCutOptimisationd(**input_param)(test_input)
+
     @parameterized.expand(TEST_CASE_ISEG_OPTIM_TX)
     def test_interactive_graphcut_optimisation_transform(self, input_param, test_input, output, expected_shape):
         input_param.update({"post_proc_label": "pred"})
         result = ApplyISegGraphCutPostProcd(**input_param)(test_input)
         np.testing.assert_equal(output["target"], result["pred"])
         self.assertTupleEqual(expected_shape, result["pred"].shape)
+
+        with self.assertRaises(ValueError):
+            test_input["prob"] = np.random.rand(3, 128, 128, 128)
+            result = ApplyISegGraphCutPostProcd(**input_param)(test_input)
 
     @parameterized.expand(TEST_CASE_MAKE_ISEG_UNARY_TX)
     def test_make_iseg_unary_transform(self, input_param, test_input, output, expected_shape):
@@ -293,6 +334,10 @@ class TestScribblesTransforms(unittest.TestCase):
         np.testing.assert_equal(expected_result, result["pred"])
         self.assertTupleEqual(expected_shape, result["pred"].shape)
 
+        with self.assertRaises(ValueError):
+            test_input["prob"] = np.random.rand(3, 128, 128, 128)
+            result = MakeISegUnaryd(**input_param)(test_input)
+
     @parameterized.expand(TEST_CASE_MAKE_LIKE_HIST_TX)
     def test_make_likelihood_histogram(self, input_param, test_input, output, expected_shape):
         input_param.update({"post_proc_label": "pred"})
@@ -304,6 +349,69 @@ class TestScribblesTransforms(unittest.TestCase):
         # compare
         np.testing.assert_equal(expected_result, np.argmax(result["pred"], axis=0))
         self.assertTupleEqual(expected_shape, result["pred"].shape)
+
+    @parameterized.expand(TEST_CASE_ISEG_OPTIM_TX)
+    def test_writelogits(self, input_param, test_input, output, expected_shape):
+        test_input.update({"image_path": "./image.nii.gz"})
+        result = WriteLogits(key="image")(test_input)
+        self.assertEqual(os.path.exists(result["result"]["image"]), True)
+
+    def test_interactive_seg_transforms(self):
+        class MyInteractiveSeg(InteractiveSegmentationTransform):
+            def __init__(self, meta_key_postfix):
+                super().__init__(meta_key_postfix)
+
+            def __call__(self, data):
+                return data
+
+        iseg_tx = MyInteractiveSeg(meta_key_postfix="meta_dict")
+        data = {"image": [0, 1, 2, 3, 4, 5]}
+        self.assertEqual(iseg_tx._fetch_data(data, "image"), data["image"])
+
+        image_np = np.random.rand(2, 128, 128)
+        outimage_np = iseg_tx._normalise_logits(image_np, axis=0)
+        self.assertEqual(np.sum(outimage_np, axis=0).mean(), 1.0)
+
+        data.update({"image_meta_dict": {"affine": [0, 1, 2, 3, 4, 5]}})
+        data = iseg_tx._copy_affine(data, "image", "label")
+        self.assertIn("label_meta_dict", data.keys())
+
+    def test_soften_prob_softmax_transforms(self):
+        soften_tx = SoftenProbSoftmax(logits="logits", meta_key_postfix="meta_dict", prob="prob")
+        data = {"logits": np.random.rand(2, 128, 128, 128)}
+        output_data = soften_tx(data)
+
+        # minimum should be close to 0,1
+        self.assertAlmostEqual(round(output_data["prob"].min(), 1), 0.1)
+        # maximum should be close to 0.9
+        self.assertAlmostEqual(round(output_data["prob"].max(), 1), 0.9)
+
+        # shape should be same as input
+        self.assertEqual(output_data["prob"].shape, data["logits"].shape)
+
+
+class TestScribblesInferers(unittest.TestCase):
+    @parameterized.expand(TEST_CASE_HISTOGRAM_GRAPHCUT)
+    def test_histogram_graphcut_inferer(self, test_input, expected_shape):
+        test_input.update({"image_path": "fakepath.nii"})
+
+        # save data to file and update test dictionary
+        image_file, data = Writer(label="image", nibabel=True)(test_input)
+        scribbles_file, data = Writer(label="label", nibabel=True)(test_input)
+
+        # add paths to file, remove any associated meta_dict
+        test_input["image"] = image_file
+        test_input["label"] = scribbles_file
+
+        test_input.pop("image_meta_dict", None)
+        test_input.pop("label_meta_dict", None)
+
+        # run scribbles inferer and load results
+        result_file, _ = HistogramBasedGraphCut()(test_input)
+        result = LoadImage()(result_file)[0]
+
+        # can only check output shape due to non-deterministic results
+        self.assertTupleEqual(expected_shape, result.shape)
 
 
 if __name__ == "__main__":
