@@ -413,6 +413,9 @@ class MONAILabelWidget(ScriptedLoadableModuleWidget, VTKObservationMixin):
             # for vtkMRMLAnnotationROINode (old method)
             print(roiNode.__class__.__name__)
             roiNode.GetBounds(roi_points_ras)
+        else:
+            # if none found then best to return empty list
+            return []
 
         min_points_ras = [roi_points_ras[0], roi_points_ras[2], roi_points_ras[4], 1.0]
         max_points_ras = [roi_points_ras[0 + 1], roi_points_ras[2 + 1], roi_points_ras[4 + 1], 1.0]
