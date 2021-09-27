@@ -19,10 +19,11 @@ principles with [MONAI](https://github.com/Project-MONAI).
 
 > _The codebase is currently under active development._
 
-- framework for developing and deploying MONAI Label Apps to train and infer AI models
-- compositional & portable APIs for ease of integration in existing workflows
-- customizable design for varying user expertise
-- 3DSlicer support
+- Framework for developing and deploying MONAI Label Apps to train and infer AI models
+- Compositional & portable APIs for ease of integration in existing workflows
+- Customizable labelling app design for varying user expertise
+- Annotation support via 3DSlicer & OHIF 
+- PACS connectivity via DICOMWeb
 
 ## Installation
 
@@ -57,7 +58,7 @@ Manager.
 Refer [3D Slicer plugin](plugins/slicer) for other options to install and run MONAI Label plugin in 3D Slicer.
 > To avoid accidentally using an older Slicer version, you may want to _uninstall_ any previously installed 3D Slicer package.
 
-### OHIF [WIP]
+### OHIF
 
 MONAI Label comes with pre-built plugin for [OHIF Viewer](https://github.com/OHIF/Viewers).
 > Please install [Orthanc](https://www.orthanc-server.com/download.php) before using OHIF Viewer.
@@ -71,6 +72,8 @@ MONAI Label comes with pre-built plugin for [OHIF Viewer](https://github.com/OHI
 
 
 ![OHIF](docs/images/ohif.png)
+
+> **_NOTE:_** OHIF does not yet support Scribbles-based annotations.
 
 ## Contributing
 
