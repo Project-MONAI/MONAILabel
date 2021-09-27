@@ -40,12 +40,8 @@ To install the current release, you can simply run:
   monailabel apps --download --name deepedit --output apps
   monailabel datasets --download --name Task02_Heart --output datasets
   
-  # run server (ubuntu)
+  # run server
   monailabel start_server --app apps/deepedit --studies datasets/Task02_Heart/imagesTr
-
-  # run server (windows)
-  monailabel start_server --app apps\deepedit --studies datasets\Task02_Heart\imagesTr
-  
 ```
 
 For **_prerequisites_**, other installation methods (using the default GitHub branch, using Docker, etc.), please refer
