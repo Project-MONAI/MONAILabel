@@ -60,16 +60,13 @@ Refer [3D Slicer plugin](plugins/slicer) for other options to install and run MO
 
 ### OHIF
 
-MONAI Label comes with pre-built plugin for [OHIF Viewer](https://github.com/OHIF/Viewers).
+MONAI Label comes with [pre-built plugin](plugins/ohif) for [OHIF Viewer](https://github.com/OHIF/Viewers).
 > Please install [Orthanc](https://www.orthanc-server.com/download.php) before using OHIF Viewer.
 > For Ubuntu 20.x, Orthanc can be installed as `apt-get install orthanc orthanc-dicomweb`. However, you have to **upgrade to latest version** by following steps mentioned [here](https://book.orthanc-server.com/users/debian-packages.html#replacing-the-package-from-the-service-by-the-lsb-binaries)
 >
 > You can use [PlastiMatch](https://plastimatch.org/plastimatch.html#plastimatch-convert) to convert NIFTI to DICOM
 
-> OHIF Viewer will be accessible at http://127.0.0.1:8000/ohif/ after running the following command:
-
-`(cd plugins/ohif && ./build.sh)`
-
+> OHIF Viewer will be accessible at http://127.0.0.1:8000/ohif/
 
 ![OHIF](docs/images/ohif.png)
 
