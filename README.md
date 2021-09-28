@@ -45,6 +45,8 @@ To install the current release, you can simply run:
   monailabel start_server --app apps/deepedit --studies datasets/Task02_Heart/imagesTr
 ```
 
+> If monailabel install path is not automatically determined, then you can provide explicit install path as: `monailabel apps --prefix ~/.local`
+
 For **_prerequisites_**, other installation methods (using the default GitHub branch, using Docker, etc.), please refer
 to the [installation guide](https://docs.monai.io/projects/label/en/latest/installation.html).
 
