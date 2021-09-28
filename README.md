@@ -13,7 +13,7 @@ principles with [MONAI](https://github.com/Project-MONAI).
 
 [Brief Demo](https://youtu.be/gzAR-Ix31Gs)
 
-![DEMO](docs/images/demo.png)
+![DEMO](https://raw.githubusercontent.com/Project-MONAI/MONAILabel/main/docs/images/demo.png)
 
 ## Features
 
@@ -70,7 +70,7 @@ MONAI Label comes with [pre-built plugin](plugins/ohif) for [OHIF Viewer](https:
 
 > OHIF Viewer will be accessible at http://127.0.0.1:8000/ohif/
 
-![OHIF](docs/images/ohif.png)
+![OHIF](https://raw.githubusercontent.com/Project-MONAI/MONAILabel/main/docs/images/ohif.png)
 
 > **_NOTE:_** OHIF does not yet support Scribbles-based annotations.
 
