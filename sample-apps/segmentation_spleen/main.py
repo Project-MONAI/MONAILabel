@@ -109,6 +109,7 @@ class MyApp(MONAILabelApp):
             methods["TTA"] = TTAScoring(
                 model=self.final_model,
                 network=load_from_mmar(self.mmar, self.model_dir),
+                deepedit=False,
                 num_samples=self.tta_samples,
                 spatial_size=(128, 128, 64),
                 spacing=(1.0, 1.0, 1.0),
