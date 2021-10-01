@@ -363,13 +363,17 @@ class ApplyISegGraphCutPostProcd(InteractiveSegmentationTransform):
         self.logits = logits
         self.scribbles = scribbles
         self.post_proc_label = post_proc_label
-        self.lamda = lamda
-        self.sigma = sigma
         self.scribbles_bg_label = scribbles_bg_label
         self.scribbles_fg_label = scribbles_fg_label
+        self.lamda = lamda
+        self.sigma = sigma
 
     def __call__(self, data):
         d = dict(data)
+
+        # attempt to fetch algorithmic parameters from app if present
+        self.lamda = d.get("lamda", self.lamda)
+        self.sigma = d.get("sigma", self.sigma)
 
         # copy affine meta data from image input
         d = self._copy_affine(d, src=self.image, dst=self.post_proc_label)
@@ -467,6 +471,7 @@ class ApplyCRFOptimisationd(InteractiveSegmentationTransform):
         self.unary = unary
         self.pairwise = pairwise
         self.post_proc_label = post_proc_label
+        self.iterations = iterations
         self.bilateral_weight = bilateral_weight
         self.gaussian_weight = gaussian_weight
         self.bilateral_spatial_sigma = bilateral_spatial_sigma
@@ -474,12 +479,22 @@ class ApplyCRFOptimisationd(InteractiveSegmentationTransform):
         self.gaussian_spatial_sigma = gaussian_spatial_sigma
         self.update_factor = update_factor
         self.compatibility_matrix = compatibility_matrix
-        self.iterations = iterations
         self.device = device
 
     def __call__(self, data):
         d = dict(data)
 
+        # attempt to fetch algorithmic parameters from app if present
+        self.iterations = d.get("iterations", self.iterations)
+        self.bilateral_weight = d.get("bilateral_weight", self.bilateral_weight)
+        self.gaussian_weight = d.get("gaussian_weight", self.gaussian_weight)
+        self.bilateral_spatial_sigma = d.get("bilateral_spatial_sigma", self.bilateral_spatial_sigma)
+        self.bilateral_color_sigma = d.get("bilateral_color_sigma", self.bilateral_color_sigma)
+        self.gaussian_spatial_sigma = d.get("gaussian_spatial_sigma", self.gaussian_spatial_sigma)
+        self.update_factor = d.get("update_factor", self.update_factor)
+        self.compatibility_matrix = d.get("compatibility_matrix", self.compatibility_matrix)
+        self.device = d.get("device", self.device)
+        
         # copy affine meta data from pairwise input
         self._copy_affine(d, self.pairwise, self.post_proc_label)
 
@@ -580,6 +595,15 @@ class ApplySimpleCRFOptimisationd(InteractiveSegmentationTransform):
 
     def __call__(self, data):
         d = dict(data)
+
+        # attempt to fetch algorithmic parameters from app if present
+        self.iterations = d.get("iterations", self.iterations)
+        self.bilateral_weight = d.get("bilateral_weight", self.bilateral_weight)
+        self.gaussian_weight = d.get("gaussian_weight", self.gaussian_weight)
+        self.bilateral_spatial_sigma = d.get("bilateral_spatial_sigma", self.bilateral_spatial_sigma)
+        self.bilateral_color_sigma = d.get("bilateral_color_sigma", self.bilateral_color_sigma)
+        self.gaussian_spatial_sigma = d.get("gaussian_spatial_sigma", self.gaussian_weight)
+        self.number_of_modalities = d.get("number_of_modalities", self.number_of_modalities)
 
         # copy affine meta data from pairwise input
         d = self._copy_affine(d, src=self.pairwise, dst=self.post_proc_label)
@@ -691,6 +715,10 @@ class ApplyGraphCutOptimisationd(InteractiveSegmentationTransform):
 
     def __call__(self, data):
         d = dict(data)
+
+        # attempt to fetch algorithmic parameters from app if present
+        self.lamda = d.get("lamda", self.lamda)
+        self.sigma = d.get("sigma", self.sigma)
 
         # copy affine meta data from pairwise input
         self._copy_affine(d, self.pairwise, self.post_proc_label)
