@@ -11,7 +11,7 @@ open-source and easy-to-install ecosystem that can run locally on a machine with
 work on the same/different machine. However, initial support for multiple users is restricted. It shares the same
 principles with [MONAI](https://github.com/Project-MONAI).
 
-[Brief Demo](https://youtu.be/gzAR-Ix31Gs)
+[MONAI Label Demo](https://www.youtube.com/watch?v=o8HipCgSZIw&t=1394s)
 
 ![DEMO](https://raw.githubusercontent.com/Project-MONAI/MONAILabel/main/docs/images/demo.png)
 
