@@ -4,12 +4,18 @@
 
 This MONAI Label App is based on DeepEdit: an algorithm that combines the capabilities of multiple models into one, allowing for both interactive and automated segmentation.
 
-If researchers are interested on using this App, please clone the folder and adjust the following hyperparameters:
+DeepEdit App works in both 3DSlicer plugin and OHIF viewer. Researchers/clinicians can also place their studies in either the file archive or a DICOMweb server (i.e. Orthanc) to use DeepEdit. 
+
+Currently, this App works for single label segmentation only.
+
+If researchers are interested in using this App, please clone this folder and start the MONAI Label server using:
+
+  > monailabel apps --download --name deepedit --output /workspace/apps/
 
 - Heuristic planner
   
-    > This Apps comes with an automatic heuristic planner that consider available GPU memory, images shape, 
-  > and image spacing of the dataset. Obtained values from the planner are arguments to the **[./lib/infer.py](./lib/infer.py)** and **[./lib/train.py](./lib/train.py)**
+    > Users may want to use the automatic [heuristic planner](https://github.com/Project-MONAI/MONAILabel/blob/main/monailabel/utils/others/planner.py) that considers available GPU memory, images shape, 
+  > and image spacing of the dataset to set transform/data augmentation hyperparameters. Obtained values from the planner are arguments to the **[./lib/infer.py](./lib/infer.py)** and **[./lib/train.py](./lib/train.py)**
 
 - Network
     > This App uses the DynUNetV1 as the default network. This can be changed in the **main.py** file. 

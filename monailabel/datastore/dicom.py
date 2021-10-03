@@ -12,6 +12,7 @@ import hashlib
 import logging
 import os
 import pathlib
+import shutil
 from typing import Any, Dict, List, Optional, Tuple
 
 from dicomweb_client import DICOMwebClient
@@ -82,7 +83,8 @@ class DICOMWebDatastore(LocalDatastore):
         )
         if not os.path.exists(label_nii_gz):
             label_nii_gz = dicom_to_nifti(label_dir, is_seg=True)
-            super().save_label(image_id, label_nii_gz, label_tag, self._dicom_info(label_id))
+            if label_nii_gz:
+                super().save_label(image_id, label_nii_gz, label_tag, self._dicom_info(label_id))
 
         return label_nii_gz
 
@@ -171,6 +173,15 @@ class DICOMWebDatastore(LocalDatastore):
                     "label": str(seg["SeriesInstanceUID"].value),
                 }
             )
+
+        invalid = set(super().get_labeled_images()) - {image_label["image"] for image_label in image_labels}
+        logger.info(f"Invalid Labels: {invalid}")
+        for e in invalid:
+            logger.info(f"Label {e} not exist on remote;  Remove from local")
+            label_uri = super().get_label_uri(e, DefaultLabelTag.FINAL)
+            if label_uri and os.path.exists(label_uri):
+                shutil.rmtree(os.path.join(os.path.dirname(label_uri), e), ignore_errors=True)
+                os.unlink(label_uri)
 
         for image_label in image_labels:
             self.get_image_uri(image_id=image_label["image"])

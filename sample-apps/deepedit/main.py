@@ -25,9 +25,11 @@ from monailabel.interfaces.tasks.scoring import ScoringMethod
 from monailabel.interfaces.tasks.strategy import Strategy
 from monailabel.interfaces.tasks.train import TrainTask
 from monailabel.scribbles.infer import HistogramBasedGraphCut
+from monailabel.tasks.activelearning.epistemic import Epistemic
 from monailabel.tasks.activelearning.random import Random
 from monailabel.tasks.activelearning.tta import TTA
 from monailabel.tasks.scoring.dice import Dice
+from monailabel.tasks.scoring.epistemic import EpistemicScoring
 from monailabel.tasks.scoring.sum import Sum
 from monailabel.tasks.scoring.tta import TTAScoring
 from monailabel.utils.others.planner import HeuristicPlanner
@@ -37,11 +39,11 @@ logger = logging.getLogger(__name__)
 
 class MyApp(MONAILabelApp):
     def __init__(self, app_dir, studies, conf):
-        self.network = DynUNetV1(
-            spatial_dims=3,
-            in_channels=3,
-            out_channels=1,
-            kernel_size=[
+        network_params = {
+            "spatial_dims": 3,
+            "in_channels": 3,
+            "out_channels": 1,
+            "kernel_size": [
                 [3, 3, 3],
                 [3, 3, 3],
                 [3, 3, 3],
@@ -49,7 +51,7 @@ class MyApp(MONAILabelApp):
                 [3, 3, 3],
                 [3, 3, 3],
             ],
-            strides=[
+            "strides": [
                 [1, 1, 1],
                 [2, 2, 2],
                 [2, 2, 2],
@@ -57,17 +59,19 @@ class MyApp(MONAILabelApp):
                 [2, 2, 2],
                 [2, 2, 1],
             ],
-            upsample_kernel_size=[
+            "upsample_kernel_size": [
                 [2, 2, 2],
                 [2, 2, 2],
                 [2, 2, 2],
                 [2, 2, 2],
                 [2, 2, 1],
             ],
-            norm_name="instance",
-            deep_supervision=False,
-            res_block=True,
-        )
+            "norm_name": "instance",
+            "deep_supervision": False,
+            "res_block": True,
+        }
+        self.network = DynUNetV1(**network_params)
+        self.network_with_dropout = DynUNetV1(**network_params, dropout=0.2)
 
         self.model_dir = os.path.join(app_dir, "model")
         self.pretrained_model = os.path.join(self.model_dir, "pretrained.pt")
@@ -86,7 +90,11 @@ class MyApp(MONAILabelApp):
         if use_pretrained_model:
             self.download([(self.pretrained_model, pretrained_model_uri)])
 
-        self.tta_enabled = strtobool(conf.get("tta_enabled", "true"))
+        self.epistemic_enabled = strtobool(conf.get("epistemic_enabled", "false"))
+        self.epistemic_samples = int(conf.get("epistemic_samples", "5"))
+        logger.info(f"EPISTEMIC Enabled: {self.epistemic_enabled}; Samples: {self.epistemic_samples}")
+
+        self.tta_enabled = strtobool(conf.get("tta_enabled", "false"))
         self.tta_samples = int(conf.get("tta_samples", "5"))
         logger.info(f"TTA Enabled: {self.tta_enabled}; Samples: {self.tta_samples}")
 
@@ -137,6 +145,8 @@ class MyApp(MONAILabelApp):
 
     def init_strategies(self) -> Dict[str, Strategy]:
         strategies: Dict[str, Strategy] = {}
+        if self.epistemic_enabled:
+            strategies["EPISTEMIC"] = Epistemic()
         if self.tta_enabled:
             strategies["TTA"] = TTA()
         strategies["random"] = Random()
@@ -145,6 +155,13 @@ class MyApp(MONAILabelApp):
 
     def init_scoring_methods(self) -> Dict[str, ScoringMethod]:
         methods: Dict[str, ScoringMethod] = {}
+        if self.epistemic_enabled:
+            methods["EPISTEMIC"] = EpistemicScoring(
+                model=[self.pretrained_model, self.final_model],
+                network=self.network_with_dropout,
+                transforms=self._infers["deepedit_seg"].pre_transforms(),
+                num_samples=self.epistemic_samples,
+            )
         if self.tta_enabled:
             methods["TTA"] = TTAScoring(
                 model=[self.pretrained_model, self.final_model],

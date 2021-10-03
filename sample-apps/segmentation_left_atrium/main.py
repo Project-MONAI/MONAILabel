@@ -56,7 +56,7 @@ class MyApp(MONAILabelApp):
         if use_pretrained_model:
             self.download([(self.pretrained_model, pretrained_model_uri)])
 
-        self.epistemic_enabled = strtobool(conf.get("epistemic_enabled", "true"))
+        self.epistemic_enabled = strtobool(conf.get("epistemic_enabled", "false"))
         self.epistemic_samples = int(conf.get("epistemic_samples", "5"))
         logger.info(f"EPISTEMIC Enabled: {self.epistemic_enabled}; Samples: {self.epistemic_samples}")
 
@@ -109,6 +109,7 @@ class MyApp(MONAILabelApp):
             methods["TTA"] = TTAScoring(
                 model=[self.pretrained_model, self.final_model],
                 network=self.network,
+                deepedit=False,
                 num_samples=self.tta_samples,
                 spatial_size=(128, 128, 64),
                 spacing=(1.0, 1.0, 1.0),

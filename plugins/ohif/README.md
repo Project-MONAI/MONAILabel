@@ -2,6 +2,10 @@
 
 ![](Screenshots/1.png)
 
+## Release mode
+`pip install monailabel` will install the OHIF that is pre-built with MONAI Label.  
+OHIF will be accessible at http://127.0.0.1:8000/ohif/ when you start monailabel server connecting to local/remote dicom-web storage.
+
 ## Development setup
 
 - Build the OHIF plugin for development:

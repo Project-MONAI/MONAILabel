@@ -53,7 +53,7 @@ class MyApp(MONAILabelApp):
         self.mmar = "clara_pt_spleen_ct_segmentation_1"
         self.pretrained_model = os.path.join(self.model_dir, self.mmar, "models", "model.pt")
 
-        self.epistemic_enabled = strtobool(conf.get("epistemic_enabled", "true"))
+        self.epistemic_enabled = strtobool(conf.get("epistemic_enabled", "false"))
         self.epistemic_samples = int(conf.get("epistemic_samples", "5"))
         logger.info(f"EPISTEMIC Enabled: {self.epistemic_enabled}; Samples: {self.epistemic_samples}")
 
@@ -109,6 +109,7 @@ class MyApp(MONAILabelApp):
             methods["TTA"] = TTAScoring(
                 model=self.final_model,
                 network=load_from_mmar(self.mmar, self.model_dir),
+                deepedit=False,
                 num_samples=self.tta_samples,
                 spatial_size=(128, 128, 64),
                 spacing=(1.0, 1.0, 1.0),

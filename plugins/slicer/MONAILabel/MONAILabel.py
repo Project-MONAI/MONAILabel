@@ -155,6 +155,7 @@ class MONAILabelWidget(ScriptedLoadableModuleWidget, VTKObservationMixin):
         self.current_sample = None
         self.samples = {}
         self.v2 = False
+        self.state = {"SegmentationModel": "", "DeepgrowModel": "", "ScribblesMethod": "", "CurrentStrategy": ""}
 
         self.dgPositiveFiducialNode = None
         self.dgPositiveFiducialNodeObservers = []
@@ -355,7 +356,11 @@ class MONAILabelWidget(ScriptedLoadableModuleWidget, VTKObservationMixin):
             self.updateServerSettings()
             self.reportProgress(60)
 
+            # try to first fetch vtkMRMLAnnotationROINode
             roiNode = slicer.mrmlScene.GetFirstNodeByClass("vtkMRMLAnnotationROINode")
+            if roiNode == None:  # if vtkMRMLAnnotationROINode not present, then check for vtkMRMLMarkupsROINode node
+                roiNode = slicer.mrmlScene.GetFirstNodeByClass("vtkMRMLMarkupsROINode")
+
             # if roi node found, then try to get roi
             selected_roi = self.getROIPointsXYZ(roiNode)
 
@@ -397,7 +402,20 @@ class MONAILabelWidget(ScriptedLoadableModuleWidget, VTKObservationMixin):
         v.GetRASToIJKMatrix(RasToIjkMatrix)
 
         roi_points_ras = [0.0] * 6
-        roiNode.GetBounds(roi_points_ras)
+        if roiNode.__class__.__name__ == "vtkMRMLMarkupsROINode":
+            # for vtkMRMLMarkupsROINode
+            print(roiNode.__class__.__name__)
+            center = [0] * 3
+            roiNode.GetCenter(center)
+            roi_points_ras = [(x - s / 2, x + s / 2) for x, s in zip(center, roiNode.GetSize())]
+            roi_points_ras = [item for sublist in roi_points_ras for item in sublist]
+        elif roiNode.__class__.__name__ == "vtkMRMLAnnotationROINode":
+            # for vtkMRMLAnnotationROINode (old method)
+            print(roiNode.__class__.__name__)
+            roiNode.GetBounds(roi_points_ras)
+        else:
+            # if none found then best to return empty list
+            return []
 
         min_points_ras = [roi_points_ras[0], roi_points_ras[2], roi_points_ras[4], 1.0]
         max_points_ras = [roi_points_ras[0 + 1], roi_points_ras[2 + 1], roi_points_ras[4 + 1], 1.0]
@@ -549,6 +567,13 @@ class MONAILabelWidget(ScriptedLoadableModuleWidget, VTKObservationMixin):
         effect.setParameter("BrushAbsoluteDiameter", value)
 
     def onSceneStartClose(self, caller, event):
+        self.state = {
+            "SegmentationModel": self.ui.segmentationModelSelector.currentText,
+            "DeepgrowModel": self.ui.deepgrowModelSelector.currentText,
+            "ScribblesMethod": self.ui.scribblesMethodSelector.currentText,
+            "CurrentStrategy": self.ui.strategyBox.currentText,
+        }
+
         self._volumeNode = None
         self._segmentNode = None
         self._volumeNodes.clear()
@@ -686,6 +711,7 @@ class MONAILabelWidget(ScriptedLoadableModuleWidget, VTKObservationMixin):
         for strategy in self.info.get("strategies", {}):
             self.ui.strategyBox.addItem(strategy)
         currentStrategy = self._parameterNode.GetParameter("CurrentStrategy")
+        currentStrategy = currentStrategy if currentStrategy else self.state["CurrentStrategy"]
         self.ui.strategyBox.setCurrentIndex(self.ui.strategyBox.findText(currentStrategy) if currentStrategy else 0)
 
         # Show scribbles panel only if scribbles methods detected
@@ -784,7 +810,7 @@ class MONAILabelWidget(ScriptedLoadableModuleWidget, VTKObservationMixin):
                 selector.setItemData(selector.count - 1, model["description"], qt.Qt.ToolTipRole)
 
         model = self._parameterNode.GetParameter(param)
-        model = "" if not model else model
+        model = model if model else self.state.get(param, "")
         modelIndex = selector.findText(model)
         modelIndex = defaultIndex if modelIndex < 0 < selector.count else modelIndex
         selector.setCurrentIndex(modelIndex)
@@ -1340,21 +1366,22 @@ class MONAILabelWidget(ScriptedLoadableModuleWidget, VTKObservationMixin):
             logging.info(sample)
             image_id = sample["id"]
             image_file = sample.get("path")
-            image_name = sample.get("PatientID", sample.get("name", image_id))[-20:]
+            image_name = sample.get("name", image_id)
+            node_name = sample.get("PatientID", sample.get("name", image_id))[-20:]
             checksum = sample.get("checksum")
             local_exists = image_file and os.path.exists(image_file)
 
             logging.info(f"Check if file exists/shared locally: {image_file} => {local_exists}")
             if local_exists:
                 self._volumeNode = slicer.util.loadVolume(image_file)
-                self._volumeNode.SetName(image_name)
+                self._volumeNode.SetName(node_name)
             else:
                 download_uri = f"{self.serverUrl()}/datastore/image?image={quote_plus(image_id)}"
                 logging.info(download_uri)
 
                 sampleDataLogic = SampleData.SampleDataLogic()
                 self._volumeNode = sampleDataLogic.downloadFromURL(
-                    nodeNames=image_name, fileNames=image_name, uris=download_uri, checksums=checksum
+                    nodeNames=node_name, fileNames=image_name, uris=download_uri, checksums=checksum
                 )[0]
 
             self.initSample(sample)
@@ -1461,6 +1488,11 @@ class MONAILabelWidget(ScriptedLoadableModuleWidget, VTKObservationMixin):
             label_info = []
             for segmentId in segmentIds:
                 segment = segmentation.GetSegment(segmentId)
+                if segment.GetName() in ["foreground_scribbles", "background_scribbles"]:
+                    logging.info(f"Removing segment {segmentId}: {segment.GetName()}")
+                    segmentationNode.RemoveSegment(segmentId)
+                    continue
+
                 label_info.append({"name": segment.GetName()})
                 # label_info.append({"color": segment.GetColor()})
 

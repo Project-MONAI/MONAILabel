@@ -8,15 +8,13 @@
 # WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 # See the License for the specific language governing permissions and
 # limitations under the License.
-
 import logging
 
+import maxflow
 import numpy as np
-from monai.utils import optional_import
+from scipy.special import softmax
 
 logger = logging.getLogger(__name__)
-maxflow, has_maxflow = optional_import("maxflow")
-softmax, has_softmax = optional_import("scipy.special", name="softmax")
 
 
 def get_eps(data):
@@ -111,22 +109,51 @@ def make_iseg_unary(
     return unary_term
 
 
-def make_histograms(image, scrib, scribbles_bg_label, scribbles_fg_label, bins=32):
+def make_histograms(image, scrib, scribbles_bg_label, scribbles_fg_label, alpha_bg=1, alpha_fg=1, bins=32):
+    # alpha forms the pseudo-counts for Dirichlet distribution used here as
+    # conjugate prior to histogram distributions which enables us to make
+    # histograms work in cases where only foreground or only background scribbles are provide
+
+    # alpha can be:
+    # - a scalar, where it is expanded into a list of size==bins
+    # - a list of scalars, where it is checked against size==bins and applied
+
+    def expand_pseudocounts(alpha):
+        # expand pseudo-counts into array if needed
+        if not isinstance(alpha, list):
+            alpha = [alpha] * bins
+        elif len(alpha) != bins:
+            raise ValueError(
+                "pseudo-counts size does not match number of bins in histogram, received: {} | num_bins {}".format(
+                    len(alpha), bins
+                )
+            )
+        alpha = np.array(alpha)
+        return alpha
+
+    alpha_bg = expand_pseudocounts(alpha_bg)
+    alpha_fg = expand_pseudocounts(alpha_fg)
+
     # collect background voxels
     values = image[scrib == scribbles_bg_label]
     # generate histogram for background
-    bg_hist, _ = np.histogram(values, bins=bins, range=(0, 1), density=True)
+    bg_hist, _ = np.histogram(values, bins=bins, range=(0, 1), density=False)
 
     # collect foreground voxels
     values = image[scrib == scribbles_fg_label]
     # generate histrogram for foreground
-    fg_hist, fg_bin_edges = np.histogram(values, bins=bins, range=(0, 1), density=True)
+    fg_hist, fg_bin_edges = np.histogram(values, bins=bins, range=(0, 1), density=False)
 
-    # calculate scale to normalise histogram, such that it returns a true probability
-    scale = fg_bin_edges[1] - fg_bin_edges[0]
+    # add Dirichlet distribution as conjugate prior for our histogram distributions
+    bg_hist = bg_hist + alpha_bg
+    fg_hist = fg_hist + alpha_fg
+
+    # normalise histograms
+    bg_hist = bg_hist / np.sum(bg_hist)
+    fg_hist = fg_hist / np.sum(fg_hist)
 
     # normalise histograms and return
-    return (bg_hist * scale).astype(np.float32), (fg_hist * scale).astype(np.float32), fg_bin_edges
+    return bg_hist.astype(np.float32), fg_hist.astype(np.float32), fg_bin_edges.astype(np.float32)
 
 
 def make_likelihood_image_histogram(image, scrib, scribbles_bg_label, scribbles_fg_label, return_prob=True):
@@ -137,7 +164,9 @@ def make_likelihood_image_histogram(image, scrib, scribbles_bg_label, scribbles_
         image = (image - min_img) / (max_img - min_img)
 
     # generate histograms for background/foreground
-    bg_hist, fg_hist, bin_edges = make_histograms(image, scrib, scribbles_bg_label, scribbles_fg_label)
+    bg_hist, fg_hist, bin_edges = make_histograms(
+        image, scrib, scribbles_bg_label, scribbles_fg_label, alpha_bg=1, alpha_fg=1, bins=32
+    )
 
     # lookup values for each voxel for generating background/foreground probabilities
     dimage = np.digitize(image, bin_edges[:-1]) - 1
