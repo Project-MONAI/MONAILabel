@@ -17,7 +17,8 @@ app_dir=$1
 study_dir=$2
 method=$3
 request=$4
-output=$5
+multi_gpu="${5:-false}"
+gpus="${6:-all}"
 
 if [[ "${app_dir}" == "" ]]; then
   exit 1
@@ -68,8 +69,15 @@ if test -f "${app_dir}/requirements.txt.invalid"; then
 fi
 
 echo "Using PYTHONPATH:: ${PYTHONPATH}"
-if [[ -z "$output" ]]; then
-  ${PYEXE} -m monailabel.interfaces.utils.app -a "$app_dir" -s "$study_dir" -m "$method" -r "$request"
+
+if [ "${method}" == "train" ] && [ "${multi_gpu}" == "true" ]; then
+  export NVIDIA_VISIBLE_DEVICES=${gpus}
+  num_gpus=$(nvidia-smi -L | wc -l)
+
+  echo ${PYEXE} -m torch.distributed.launch \
+     --nproc_per_node="${num_gpus}" \
+     --nnodes=1 --node_rank=0 --master_addr="localhost" --master_port=1234 \
+     -m monailabel.interfaces.utils.app -a "${app_dir}" -s "${study_dir}" -m "${method}" -r "${request}"
 else
-  ${PYEXE} -m monailabel.interfaces.utils.app -a "$app_dir" -s "$study_dir" -m "$method" -r "$request" -o "$output"
+  echo ${PYEXE} -m monailabel.interfaces.utils.app -a "${app_dir}" -s "${study_dir}" -m "${method}" -r "${request}"
 fi

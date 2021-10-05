@@ -15,6 +15,8 @@ set app_dir=%1
 set study_dir=%2
 set method=%3
 set request=%4
+set multi_gpu=%5
+set gpus=%6
 
 set COUNT=
 set PATH=%app_dir%\bin;%PATH%
@@ -45,15 +47,58 @@ if exist %app_dir%\requirements.txt.invalid (
         echo Using PYTHONPATH:: %PYTHONPATH%
         python -c "import os, sys; print(os.path.dirname(sys.executable))"
 
-        python -m monailabel.interfaces.utils.app -a %app_dir% -s %study_dir% -m %method% -r %request%
+        if "%method%" == "train" && "%multi_gpu%" == "true" (
+            set NVIDIA_VISIBLE_DEVICES=%gpus%
+            for /f "tokens=*" %%i in ('nvidia-smi -L ^| findstr "." ^| find /c /v ""') do (
+              set num_gpus=%%i
+              goto :train1
+            )
+
+            :train1
+            python -m torch.distributed.launch \
+                --nproc_per_node="${num_gpus}" \
+                --nnodes=1 --node_rank=0 --master_addr="localhost" --master_port=1234 \
+                -m monailabel.interfaces.utils.app -a "%app_dir%" -s "%study_dir%" -m "%method%" -r "%request%"
+        ) else (
+            python -m monailabel.interfaces.utils.app -a "%app_dir%" -s "%study_dir%" -m "%method%" -r "%request%"
+        )
+
         deactivate
         @exit
     ) else (
         echo Do nothing as no valid items to install
-        python -m monailabel.interfaces.utils.app -a %app_dir% -s %study_dir% -m %method% -r %request%
+        if "%method%" == "train" && "%multi_gpu%" == "true" (
+            set NVIDIA_VISIBLE_DEVICES=%gpus%
+            for /f "tokens=*" %%i in ('nvidia-smi -L ^| findstr "." ^| find /c /v ""') do (
+              set num_gpus=%%i
+              goto :train2
+            )
+
+            :train2
+            python -m torch.distributed.launch \
+                --nproc_per_node="${num_gpus}" \
+                --nnodes=1 --node_rank=0 --master_addr="localhost" --master_port=1234 \
+                -m monailabel.interfaces.utils.app -a "%app_dir%" -s "%study_dir%" -m "%method%" -r "%request%"
+        ) else (
+            python -m monailabel.interfaces.utils.app -a "%app_dir%" -s "%study_dir%" -m "%method%" -r "%request%"
+        )
         @exit
     )
 ) else (
-    python -m monailabel.interfaces.utils.app -a %app_dir% -s %study_dir% -m %method% -r %request%
+        if "%method%" == "train" && "%multi_gpu%" == "true" (
+            set NVIDIA_VISIBLE_DEVICES=%gpus%
+            for /f "tokens=*" %%i in ('nvidia-smi -L ^| findstr "." ^| find /c /v ""') do (
+              set num_gpus=%%i
+              goto :train3
+            )
+
+            :train3
+            python -m torch.distributed.launch \
+                --nproc_per_node="${num_gpus}" \
+                --nnodes=1 --node_rank=0 --master_addr="localhost" --master_port=1234 \
+                -m monailabel.interfaces.utils.app -a "%app_dir%" -s "%study_dir%" -m "%method%" -r "%request%"
+        ) else (
+            python -m monailabel.interfaces.utils.app -a "%app_dir%" -s "%study_dir%" -m "%method%" -r "%request%"
+        )
     @exit
 )

@@ -38,12 +38,19 @@ def _task_func(task, method, callback=None):
     if os.path.exists(os.path.realpath(os.path.join(base_dir, "scripts", script))):
         script = os.path.realpath(os.path.join(base_dir, "scripts", script))
 
+    request = task["request"]
+
+    multi_gpu = request.get("multi_gpu", False)
+    gpus = request.get("gpus", "all")
+
     cmd = [
         script,
         settings.MONAI_LABEL_APP_DIR,
         settings.MONAI_LABEL_STUDIES,
         method,
-        json.dumps(task["request"]),
+        json.dumps(request),
+        str(multi_gpu).lower(),
+        gpus,
     ]
 
     logger.info(f"COMMAND:: {' '.join(cmd)}")

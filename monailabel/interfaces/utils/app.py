@@ -68,6 +68,7 @@ def run_main():
     parser.add_argument("-r", "--request", type=str, default="{}")
     parser.add_argument("-o", "--output", type=str, default=None)
     parser.add_argument("-d", "--debug", action="store_true")
+    parser.add_argument("--local_rank", type=int, default=0)
 
     args = parser.parse_args()
     for arg in vars(args):
@@ -96,6 +97,7 @@ def run_main():
         res_img, res_json = a.infer(request=request)
         result = {"label": res_img, "params": res_json}
     elif args.method == "train":
+        request["local_rank"] = args.local_rank
         result = a.train(request)
     elif args.method == "info":
         result = a.info(request)

@@ -33,6 +33,7 @@ from monai.handlers import (
 )
 from monai.inferers import SimpleInferer
 from monai.transforms import Compose
+from torch import distributed
 
 from monailabel.interfaces.datastore import Datastore
 from monailabel.interfaces.tasks.train import TrainTask
@@ -87,6 +88,9 @@ class BasicTrainTask(TrainTask):
             "val_split": 0.2,
             "train_batch_size": 1,
             "val_batch_size": 1,
+            "multi_gpu": False,
+            "gpus": "all",
+            "cached": False,
         }
         if config:
             self._config.update(config)
@@ -113,7 +117,12 @@ class BasicTrainTask(TrainTask):
     def loss_function(self):
         pass
 
-    def train_data_loader(self, datalist, batch_size=1, num_workers=0, cached=False):
+    def train_data_loader(self, datalist, batch_size=1, num_workers=0, cached=False, multi_gpu=False, local_rank=0):
+        if multi_gpu:
+            datalist = partition_dataset(
+                data=datalist, num_partitions=distributed.get_world_size(), even_divisible=True
+            )[local_rank]
+
         transforms = self._validate_transforms(self.train_pre_transforms(), "Training", "pre")
         dataset = CacheDataset(datalist, transforms) if cached else PersistentDataset(datalist, transforms, None)
         return DataLoader(
@@ -135,7 +144,7 @@ class BasicTrainTask(TrainTask):
             load_path = self._load_path
         return load_path
 
-    def train_handlers(self, output_dir, events_dir, evaluator):
+    def train_handlers(self, output_dir, events_dir, evaluator, local_rank=0):
         lr_scheduler = torch.optim.lr_scheduler.StepLR(self.optimizer(), step_size=5000, gamma=0.1)
 
         handlers = [
@@ -161,12 +170,17 @@ class BasicTrainTask(TrainTask):
             logger.info(f"Adding Validation Handler to run every '{self._val_interval}' interval")
             handlers.append(ValidationHandler(validator=evaluator, interval=self._val_interval, epoch_level=True))
 
-        return handlers
+        return handlers if local_rank == 0 else [handlers[0], handlers[-1]] if evaluator else handlers[:1]
 
     def train_additional_metrics(self):
         return None
 
-    def val_data_loader(self, datalist, batch_size=1, num_workers=0, cached=False):
+    def val_data_loader(self, datalist, batch_size=1, num_workers=0, cached=False, multi_gpu=False, local_rank=0):
+        if multi_gpu:
+            datalist = partition_dataset(
+                data=datalist, num_partitions=distributed.get_world_size(), even_divisible=True
+            )[local_rank]
+
         transforms = self._validate_transforms(self.val_pre_transforms(), "Validation", "pre")
         dataset = CacheDataset(datalist, transforms) if cached else PersistentDataset(datalist, transforms, None)
         return DataLoader(
@@ -182,8 +196,8 @@ class BasicTrainTask(TrainTask):
     def val_post_transforms(self):
         return self.train_post_transforms()
 
-    def val_handlers(self, output_dir, events_dir):
-        return [
+    def val_handlers(self, output_dir, events_dir, local_rank=0):
+        val_handlers = [
             StatsHandler(output_transform=lambda x: None),
             TensorBoardStatsHandler(log_dir=events_dir, output_transform=lambda x: None),
             CheckpointSaver(
@@ -193,6 +207,7 @@ class BasicTrainTask(TrainTask):
                 key_metric_filename=f"eval_{self._key_metric_filename}",
             ),
         ]
+        return val_handlers if local_rank == 0 else None
 
     def val_key_metric(self):
         return {"val_mean_dice": MeanDice(output_transform=from_engine(["pred", "label"]))}
@@ -251,8 +266,17 @@ class BasicTrainTask(TrainTask):
         logger.info(f"Train Request (input): {request}")
         logger.info(f"Train Request (final): {req}")
 
+        cached = req["cached"]
+        multi_gpu = req["multi_gpu"]
+        local_rank = int(os.environ.get("LOCAL_RANK", str(req.get("local_rank", 0))))
+        if multi_gpu:
+            distributed.init_process_group(backend="nccl", init_method="env://")
+            device = torch.device("cuda:{}".format(local_rank))
+            torch.cuda.set_device(device)
+        else:
+            device = torch.device(req["device"] if torch.cuda.is_available() else "cpu")
+
         name = req["name"]
-        device = torch.device(req["device"] if torch.cuda.is_available() else "cpu")
         max_epochs = req["max_epochs"]
         train_batch_size = req["train_batch_size"]
         val_batch_size = req["val_batch_size"]
@@ -274,12 +298,15 @@ class BasicTrainTask(TrainTask):
         )
         evaluator = None
         if val_ds and len(val_ds) > 0:
-            val_hanlders: List = self.val_handlers(output_dir, events_dir)
-            val_hanlders.append(publisher)
+            val_hanlders: List = self.val_handlers(output_dir, events_dir, local_rank)
+            if local_rank == 0:
+                val_hanlders.append(publisher)
 
             evaluator = SupervisedEvaluator(
                 device=device,
-                val_data_loader=self.val_data_loader(val_ds, val_batch_size),
+                val_data_loader=self.val_data_loader(
+                    val_ds, val_batch_size, cached=cached, multi_gpu=multi_gpu, local_rank=local_rank
+                ),
                 network=self.network().to(device),
                 inferer=self.val_inferer(),
                 postprocessing=self._validate_transforms(self.val_post_transforms(), "Validation", "post"),
@@ -290,25 +317,30 @@ class BasicTrainTask(TrainTask):
                 event_names=self.event_names(),
             )
 
-        train_handlers: List = self.train_handlers(output_dir, events_dir, evaluator)
+        train_handlers: List = self.train_handlers(output_dir, events_dir, evaluator, local_rank)
         if not evaluator:
-            train_handlers.append(publisher)
+            if local_rank == 0:
+                train_handlers.append(publisher)
+
+        network = self.network().to(device)
+        if multi_gpu:
+            network = torch.nn.parallel.DistributedDataParallel(
+                network, device_ids=[local_rank], output_device=local_rank
+            )
 
         load_path = self.load_path(output_dir, pretrained)
         if load_path and os.path.exists(load_path):
             logger.info(f"Load Path {load_path}")
-            train_handlers.append(
-                CheckpointLoader(
-                    load_path=load_path,
-                    load_dict={"model": self.network()} if self._load_dict is None else self._load_dict,
-                )
-            )
+            map_location = {"cuda:0": "cuda:{}".format(local_rank)}
+            network.load_state_dict(torch.load(load_path, map_location=map_location))
 
         trainer = SupervisedTrainer(
             device=device,
             max_epochs=max_epochs,
-            train_data_loader=self.train_data_loader(train_ds, train_batch_size),
-            network=self.network().to(device),
+            train_data_loader=self.train_data_loader(
+                train_ds, train_batch_size, cached=cached, multi_gpu=multi_gpu, local_rank=local_rank
+            ),
+            network=network,
             optimizer=self.optimizer(),
             loss_function=self.loss_function(),
             inferer=self.train_inferer(),
@@ -329,4 +361,7 @@ class BasicTrainTask(TrainTask):
         # Try to clear cuda cache
         if torch.cuda.is_available():
             torch.cuda.empty_cache()
+
+        if multi_gpu:
+            distributed.destroy_process_group()
         return prepare_stats(start_ts, trainer, evaluator)
