@@ -9,7 +9,6 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-import functools
 import json
 import logging
 import os
@@ -18,8 +17,8 @@ import platform
 import subprocess
 import uuid
 from collections import deque
+from concurrent.futures import ThreadPoolExecutor
 from datetime import datetime
-from threading import Thread
 from typing import Dict
 
 import psutil
@@ -30,6 +29,7 @@ logger = logging.getLogger(__name__)
 
 background_tasks: Dict = {}
 background_processes: Dict = {}
+background_executors: Dict = {}
 
 
 def _get_first(key, request, default):
@@ -49,8 +49,8 @@ def _task_func(task, method, callback=None):
         script = os.path.realpath(os.path.join(base_dir, "scripts", script))
 
     request = task["request"]
-    multi_gpu = _get_first("multi_gpu", request, False)
-    gpus = _get_first("gpus", request, "all")
+    multi_gpu = request.get("multi_gpu", False)
+    gpus = request.get("gpus", "all")
 
     cmd = [
         script,
@@ -108,13 +108,15 @@ def run_background_task(request, method, callback=None, debug=False):
         background_tasks[method] = []
     if background_processes.get(method) is None:
         background_processes[method] = dict()
+    if background_executors.get(method) is None:
+        background_executors[method] = ThreadPoolExecutor(max_workers=1)
 
     background_tasks[method].append(task)
     if debug:
         _task_func(task, method)
     else:
-        thread = Thread(target=functools.partial(_task_func, task, method, callback))
-        thread.start()
+        executor = background_executors[method]
+        executor.submit(_task_func, task, method, callback)
     return task
 
 

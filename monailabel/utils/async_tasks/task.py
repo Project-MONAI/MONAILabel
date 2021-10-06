@@ -19,8 +19,8 @@ logger = logging.getLogger(__name__)
 
 class AsyncTask:
     @staticmethod
-    def run(method: str, request=None, params=None, force_sync=False):
-        if len(processes(method)):
+    def run(method: str, request=None, params=None, force_sync=False, queue=False):
+        if len(processes(method)) and not queue:
             description = f"++++++++++ {method.capitalize()} Task is Already Running"
             logger.info(description)
             return None, description

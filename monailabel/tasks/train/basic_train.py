@@ -303,12 +303,14 @@ class BasicTrainTask(TrainTask):
             val_hanlders: List = self.val_handlers(output_dir, events_dir, local_rank)
             if local_rank == 0:
                 val_hanlders.append(publisher)
-                val_hanlders.append(CheckpointSaver(
-                    save_dir=output_dir,
-                    save_dict={self._model_dict_key: network},
-                    save_key_metric=True,
-                    key_metric_filename=f"eval_{self._key_metric_filename}",
-                ))
+                val_hanlders.append(
+                    CheckpointSaver(
+                        save_dir=output_dir,
+                        save_dict={self._model_dict_key: network},
+                        save_key_metric=True,
+                        key_metric_filename=f"eval_{self._key_metric_filename}",
+                    )
+                )
 
             evaluator = SupervisedEvaluator(
                 device=device,
@@ -328,15 +330,17 @@ class BasicTrainTask(TrainTask):
         train_handlers: List = self.train_handlers(output_dir, events_dir, evaluator, local_rank)
         if not evaluator:
             if local_rank == 0:
-                train_handlers.append(CheckpointSaver(
-                    save_dir=output_dir,
-                    save_dict={self._model_dict_key: network},
-                    save_interval=self._train_save_interval,
-                    save_final=True,
-                    final_filename=self._final_filename,
-                    save_key_metric=True,
-                    key_metric_filename=self._key_metric_filename,
-                ))
+                train_handlers.append(
+                    CheckpointSaver(
+                        save_dir=output_dir,
+                        save_dict={self._model_dict_key: network},
+                        save_interval=self._train_save_interval,
+                        save_final=True,
+                        final_filename=self._final_filename,
+                        save_key_metric=True,
+                        key_metric_filename=self._key_metric_filename,
+                    )
+                )
                 train_handlers.append(publisher)
 
         load_path = self.load_path(output_dir, pretrained)
