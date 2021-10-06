@@ -74,10 +74,14 @@ if [ "${method}" == "train" ] && [ "${multi_gpu}" == "true" ]; then
   export NVIDIA_VISIBLE_DEVICES=${gpus}
   num_gpus=$(nvidia-smi -L | wc -l)
 
-  echo ${PYEXE} -m torch.distributed.launch \
-     --nproc_per_node="${num_gpus}" \
-     --nnodes=1 --node_rank=0 --master_addr="localhost" --master_port=1234 \
-     -m monailabel.interfaces.utils.app -a "${app_dir}" -s "${study_dir}" -m "${method}" -r "${request}"
+  if [[ $num_gpus -gt 1 ]]; then
+    ${PYEXE} -m torch.distributed.launch \
+       --nproc_per_node="${num_gpus}" \
+       --nnodes=1 --node_rank=0 --master_addr="localhost" --master_port=1234 \
+       -m monailabel.interfaces.utils.app -a "${app_dir}" -s "${study_dir}" -m "${method}" -r "${request}"
+  else
+    ${PYEXE} -m monailabel.interfaces.utils.app -a "${app_dir}" -s "${study_dir}" -m "${method}" -r "${request}"
+  fi
 else
-  echo ${PYEXE} -m monailabel.interfaces.utils.app -a "${app_dir}" -s "${study_dir}" -m "${method}" -r "${request}"
+  ${PYEXE} -m monailabel.interfaces.utils.app -a "${app_dir}" -s "${study_dir}" -m "${method}" -r "${request}"
 fi

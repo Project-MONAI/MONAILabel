@@ -32,6 +32,16 @@ background_tasks: Dict = {}
 background_processes: Dict = {}
 
 
+def _get_first(key, request, default):
+    val = request.get(key, default)
+    if not val:
+        for k in request.values():
+            if isinstance(k, dict) and k.get(key):
+                val = k.get(key)
+                break
+    return val
+
+
 def _task_func(task, method, callback=None):
     base_dir = os.path.dirname(os.path.dirname(os.path.dirname(os.path.realpath(__file__))))
     script = "run_monailabel_app.bat" if any(platform.win32_ver()) else "run_monailabel_app.sh"
@@ -39,9 +49,8 @@ def _task_func(task, method, callback=None):
         script = os.path.realpath(os.path.join(base_dir, "scripts", script))
 
     request = task["request"]
-
-    multi_gpu = request.get("multi_gpu", False)
-    gpus = request.get("gpus", "all")
+    multi_gpu = _get_first("multi_gpu", request, False)
+    gpus = _get_first("gpus", request, "all")
 
     cmd = [
         script,

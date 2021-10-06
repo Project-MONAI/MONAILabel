@@ -333,6 +333,9 @@ class MONAILabelApp:
             result = task(req, self.datastore())
             results.append(result)
 
+            if multi_gpu:
+                distributed.destroy_process_group()
+
         # Run all scoring methods
         if self._auto_update_scoring:
             self.async_scoring(None)

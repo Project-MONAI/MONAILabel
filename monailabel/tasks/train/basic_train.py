@@ -57,10 +57,11 @@ class BasicTrainTask(TrainTask):
         load_dict=None,
         publish_path=None,
         stats_path=None,
-        train_save_interval=50,
+        train_save_interval=20,
         val_interval=1,
         final_filename="checkpoint_final.pt",
         key_metric_filename="model.pt",
+        model_dict_key="model",
     ):
         """
         :param model_dir: Base Model Dir to save the model checkpoints, events etc...
@@ -75,6 +76,7 @@ class BasicTrainTask(TrainTask):
         :param val_interval: validation interval (run every x epochs)
         :param final_filename: name of final checkpoint that will be saved
         :param key_metric_filename: best key metric model file name
+        :param model_dict_key: key to save network weights into checkpoint
         """
         super().__init__(description)
 
@@ -84,13 +86,13 @@ class BasicTrainTask(TrainTask):
             "name": "model_01",
             "pretrained": True,
             "device": "cuda",
-            "max_epochs": 50,
+            "max_epochs": 20,
             "val_split": 0.2,
             "train_batch_size": 1,
             "val_batch_size": 1,
-            "multi_gpu": False,
+            "multi_gpu": True,
             "gpus": "all",
-            "cached": False,
+            "cached": True,
         }
         if config:
             self._config.update(config)
@@ -104,6 +106,7 @@ class BasicTrainTask(TrainTask):
         self._val_interval = val_interval
         self._final_filename = final_filename
         self._key_metric_filename = key_metric_filename
+        self._model_dict_key = model_dict_key
 
     @abstractmethod
     def network(self):
@@ -125,6 +128,8 @@ class BasicTrainTask(TrainTask):
 
         transforms = self._validate_transforms(self.train_pre_transforms(), "Training", "pre")
         dataset = CacheDataset(datalist, transforms) if cached else PersistentDataset(datalist, transforms, None)
+
+        logger.info(f"{local_rank} - Records for Training: {len(datalist)}")
         return DataLoader(
             dataset=dataset,
             batch_size=batch_size,
@@ -155,19 +160,10 @@ class BasicTrainTask(TrainTask):
                 tag_name="train_loss",
                 output_transform=from_engine(["loss"], first=True),
             ),
-            CheckpointSaver(
-                save_dir=output_dir,
-                save_dict={"model": self.network()},
-                save_interval=self._train_save_interval,
-                save_final=True,
-                final_filename=self._final_filename,
-                save_key_metric=True,
-                key_metric_filename=self._key_metric_filename,
-            ),
         ]
 
         if evaluator:
-            logger.info(f"Adding Validation Handler to run every '{self._val_interval}' interval")
+            logger.info(f"{local_rank} - Adding Validation Handler to run every '{self._val_interval}' interval")
             handlers.append(ValidationHandler(validator=evaluator, interval=self._val_interval, epoch_level=True))
 
         return handlers if local_rank == 0 else [handlers[0], handlers[-1]] if evaluator else handlers[:1]
@@ -183,6 +179,8 @@ class BasicTrainTask(TrainTask):
 
         transforms = self._validate_transforms(self.val_pre_transforms(), "Validation", "pre")
         dataset = CacheDataset(datalist, transforms) if cached else PersistentDataset(datalist, transforms, None)
+        logger.info(f"{local_rank} - Records for Validation: {len(datalist)}")
+
         return DataLoader(
             dataset=dataset,
             batch_size=batch_size,
@@ -200,12 +198,6 @@ class BasicTrainTask(TrainTask):
         val_handlers = [
             StatsHandler(output_transform=lambda x: None),
             TensorBoardStatsHandler(log_dir=events_dir, output_transform=lambda x: None),
-            CheckpointSaver(
-                save_dir=output_dir,
-                save_dict={"model": self.network()},
-                save_key_metric=True,
-                key_metric_filename=f"eval_{self._key_metric_filename}",
-            ),
         ]
         return val_handlers if local_rank == 0 else None
 
@@ -263,12 +255,14 @@ class BasicTrainTask(TrainTask):
         start_ts = time.time()
         req = copy.deepcopy(self._config)
         req.update(copy.deepcopy(request))
-        logger.info(f"Train Request (input): {request}")
-        logger.info(f"Train Request (final): {req}")
 
         cached = req["cached"]
         multi_gpu = req["multi_gpu"]
         local_rank = int(os.environ.get("LOCAL_RANK", str(req.get("local_rank", 0))))
+
+        logger.info(f"{local_rank} - Train Request (input): {request}")
+        logger.info(f"{local_rank} - Train Request (final): {req}")
+
         if multi_gpu:
             distributed.init_process_group(backend="nccl", init_method="env://")
             device = torch.device("cuda:{}".format(local_rank))
@@ -290,24 +284,38 @@ class BasicTrainTask(TrainTask):
             os.makedirs(output_dir, exist_ok=True)
 
         train_ds, val_ds = self.partition_datalist(req, datastore.datalist())
-        logger.info(f"Total Records for Training: {len(train_ds)}")
-        logger.info(f"Total Records for Validation: {len(val_ds)}")
+        if local_rank == 0:
+            logger.info(f"Total Records for Training: {len(train_ds)}")
+            logger.info(f"Total Records for Validation: {len(val_ds)}")
 
         publisher = PublishStatsAndModel(
             self._stats_path, self._publish_path, self._key_metric_filename, start_ts, run_id, output_dir, None, None
         )
+
+        network = self.network().to(device)
+        if multi_gpu:
+            network = torch.nn.parallel.DistributedDataParallel(
+                network, device_ids=[local_rank], output_device=local_rank
+            )
+
         evaluator = None
         if val_ds and len(val_ds) > 0:
             val_hanlders: List = self.val_handlers(output_dir, events_dir, local_rank)
             if local_rank == 0:
                 val_hanlders.append(publisher)
+                val_hanlders.append(CheckpointSaver(
+                    save_dir=output_dir,
+                    save_dict={self._model_dict_key: network},
+                    save_key_metric=True,
+                    key_metric_filename=f"eval_{self._key_metric_filename}",
+                ))
 
             evaluator = SupervisedEvaluator(
                 device=device,
                 val_data_loader=self.val_data_loader(
                     val_ds, val_batch_size, cached=cached, multi_gpu=multi_gpu, local_rank=local_rank
                 ),
-                network=self.network().to(device),
+                network=network,
                 inferer=self.val_inferer(),
                 postprocessing=self._validate_transforms(self.val_post_transforms(), "Validation", "post"),
                 key_val_metric=self.val_key_metric(),
@@ -320,19 +328,29 @@ class BasicTrainTask(TrainTask):
         train_handlers: List = self.train_handlers(output_dir, events_dir, evaluator, local_rank)
         if not evaluator:
             if local_rank == 0:
+                train_handlers.append(CheckpointSaver(
+                    save_dir=output_dir,
+                    save_dict={self._model_dict_key: network},
+                    save_interval=self._train_save_interval,
+                    save_final=True,
+                    final_filename=self._final_filename,
+                    save_key_metric=True,
+                    key_metric_filename=self._key_metric_filename,
+                ))
                 train_handlers.append(publisher)
-
-        network = self.network().to(device)
-        if multi_gpu:
-            network = torch.nn.parallel.DistributedDataParallel(
-                network, device_ids=[local_rank], output_device=local_rank
-            )
 
         load_path = self.load_path(output_dir, pretrained)
         if load_path and os.path.exists(load_path):
-            logger.info(f"Load Path {load_path}")
+            logger.info(f"{local_rank} - Load Path {load_path}")
             map_location = {"cuda:0": "cuda:{}".format(local_rank)}
-            network.load_state_dict(torch.load(load_path, map_location=map_location))
+
+            train_handlers.append(
+                CheckpointLoader(
+                    load_path=load_path,
+                    load_dict={self._model_dict_key: network} if self._load_dict is None else self._load_dict,
+                    map_location=map_location,
+                )
+            )
 
         trainer = SupervisedTrainer(
             device=device,
