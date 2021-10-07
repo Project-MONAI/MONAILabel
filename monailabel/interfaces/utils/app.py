@@ -68,6 +68,7 @@ def run_main():
     parser.add_argument("-r", "--request", type=str, default="{}")
     parser.add_argument("-o", "--output", type=str, default=None)
     parser.add_argument("-d", "--debug", action="store_true")
+    parser.add_argument("--multi_gpu", action="store_true")
     parser.add_argument("--local_rank", type=int, default=0)
 
     args = parser.parse_args()

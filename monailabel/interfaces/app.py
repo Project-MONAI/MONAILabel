@@ -449,8 +449,10 @@ class MONAILabelApp:
 
         dcmqi_tools = ["segimage2itkimage", "itkimage2segimage", "segimage2itkimage.exe", "itkimage2segimage.exe"]
         existing = [tool for tool in dcmqi_tools if shutil.which(tool) or os.path.exists(os.path.join(target, tool))]
+        logger.debug(f"Existing Tools: {existing}")
 
-        if len(existing) == len(dcmqi_tools) // 2:
+        if len(existing) in [len(dcmqi_tools), len(dcmqi_tools) // 2]:
+            logger.debug("No need to download dcmqi tools")
             return
 
         target_os = "win64.zip" if any(platform.win32_ver()) else "linux.tar.gz"
