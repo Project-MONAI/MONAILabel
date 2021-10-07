@@ -110,6 +110,7 @@ def file_checksum(file, algo="SHA256"):
 
 def get_gpu_memory_map():
     """Get the current gpu usage.
+
     Returns
     -------
     usage: dict
