@@ -54,6 +54,8 @@ class HistogramBasedGraphCut(InferTask):
         )
         self.intensity_range = intensity_range
         self.pix_dim = pix_dim
+        self.lamda = lamda
+        self.sigma = sigma
 
     def pre_transforms(self):
         return [
@@ -94,8 +96,8 @@ class HistogramBasedGraphCut(InferTask):
                     unary="unary",
                     pairwise="image",
                     post_proc_label="pred",
-                    lamda=1.0,
-                    sigma=0.1,
+                    lamda=self.lamda,
+                    sigma=self.sigma,
                 ),
             ]
         )
