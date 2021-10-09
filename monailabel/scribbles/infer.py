@@ -43,14 +43,17 @@ class HistogramBasedGraphCut(InferTask):
         intensity_range=(-300, 200, 0.0, 1.0, True),
         pix_dim=(2.5, 2.5, 5.0),
         lamda=1.0,
-        sigma=0.1
+        sigma=0.1,
     ):
-        config = {
-            "lamda": lamda,
-            "sigma": sigma
-        }
+        config = {"lamda": lamda, "sigma": sigma}
         super().__init__(
-            path=None, network=None, labels=None, type=InferType.SCRIBBLES, dimension=dimension, description=description, config=config
+            path=None,
+            network=None,
+            labels=None,
+            type=InferType.SCRIBBLES,
+            dimension=dimension,
+            description=description,
+            config=config,
         )
         self.intensity_range = intensity_range
         self.pix_dim = pix_dim

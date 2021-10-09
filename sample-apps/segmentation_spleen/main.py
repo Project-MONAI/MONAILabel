@@ -73,8 +73,10 @@ class MyApp(MONAILabelApp):
         infers = {
             "segmentation_spleen": MyInfer(self.final_model, load_from_mmar(self.mmar, self.model_dir)),
             # intensity range set for CT Soft Tissue
-            "Histogram+GraphCut": HistogramBasedGraphCut(intensity_range=(-300, 200, 0.0, 1.0, True), pix_dim=(2.5, 2.5, 5.0), lamda=1.0, sigma=0.1),
-            }
+            "Histogram+GraphCut": HistogramBasedGraphCut(
+                intensity_range=(-300, 200, 0.0, 1.0, True), pix_dim=(2.5, 2.5, 5.0), lamda=1.0, sigma=0.1
+            ),
+        }
 
         # Simple way to Add deepgrow 2D+3D models for infer tasks
         infers.update(self.deepgrow_infer_tasks(self.model_dir))

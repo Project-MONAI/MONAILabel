@@ -494,7 +494,7 @@ class ApplyCRFOptimisationd(InteractiveSegmentationTransform):
         self.update_factor = d.get("update_factor", self.update_factor)
         self.compatibility_matrix = d.get("compatibility_matrix", self.compatibility_matrix)
         self.device = d.get("device", self.device)
-        
+
         # copy affine meta data from pairwise input
         self._copy_affine(d, self.pairwise, self.post_proc_label)
 

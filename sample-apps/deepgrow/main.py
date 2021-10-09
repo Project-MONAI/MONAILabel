@@ -60,7 +60,9 @@ class MyApp(MONAILabelApp):
                 model_size=(128, 192, 192),
             ),
             # intensity range set for CT Soft Tissue
-            "Histogram+GraphCut": HistogramBasedGraphCut(intensity_range=(-300, 200, 0.0, 1.0, True), pix_dim=(2.5, 2.5, 5.0), lamda=1.0, sigma=0.1),
+            "Histogram+GraphCut": HistogramBasedGraphCut(
+                intensity_range=(-300, 200, 0.0, 1.0, True), pix_dim=(2.5, 2.5, 5.0), lamda=1.0, sigma=0.1
+            ),
         }
 
         infers["deepgrow_pipeline"] = InferDeepgrowPipeline(
