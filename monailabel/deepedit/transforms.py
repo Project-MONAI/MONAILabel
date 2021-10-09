@@ -131,7 +131,7 @@ class AddRandomGuidanced(Randomizable, Transform):
         probability = np.exp(weighted_distance) - 1.0
         idx = np.where(discrepancy.flatten() > 0)[0]
 
-        if np.sum(discrepancy > 0) > 0:
+        if np.sum(probability[idx]) > 0:
             seed = self.R.choice(idx, size=1, p=probability[idx] / np.sum(probability[idx]))
             dst = weighted_distance[seed]
 
@@ -228,7 +228,7 @@ class PosNegClickProbAddRandomGuidanced(Randomizable, Transform):
         probability = np.exp(weighted_distance) - 1.0
         idx = np.where(discrepancy.flatten() > 0)[0]
 
-        if np.sum(discrepancy > 0) > 0:
+        if np.sum(probability[idx]) > 0:
             seed = self.R.choice(idx, size=1, p=probability[idx] / np.sum(probability[idx]))
             dst = weighted_distance[seed]
 
