@@ -75,7 +75,8 @@ class MyApp(MONAILabelApp):
     def init_infers(self) -> Dict[str, InferTask]:
         return {
             "segmentation_left_atrium": MyInfer([self.pretrained_model, self.final_model], self.network),
-            "Histogram+GraphCut": HistogramBasedGraphCut(),
+            # intensity range set for MRI
+            "Histogram+GraphCut": HistogramBasedGraphCut(intensity_range=(0, 1500, 0.0, 1.0, True), pix_dim=(2.5, 2.5, 5.0), lamda=1.0, sigma=0.1),
         }
 
     def init_trainers(self) -> Dict[str, TrainTask]:
