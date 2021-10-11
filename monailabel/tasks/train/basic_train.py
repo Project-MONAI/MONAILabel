@@ -38,7 +38,7 @@ from torch import distributed
 from monailabel.interfaces.datastore import Datastore
 from monailabel.interfaces.tasks.train import TrainTask
 from monailabel.tasks.train.handler import PublishStatsAndModel, prepare_stats
-from monailabel.utils.others.generic import get_gpu_memory_map
+from monailabel.utils.others.generic import gpu_count
 
 logger = logging.getLogger(__name__)
 
@@ -259,7 +259,7 @@ class BasicTrainTask(TrainTask):
 
         cached = req["cached"]
         multi_gpu = req["multi_gpu"]
-        if multi_gpu and len(get_gpu_memory_map()) <= 1:
+        if multi_gpu and gpu_count() < 2:
             multi_gpu = False
         local_rank = int(os.environ.get("LOCAL_RANK", str(req.get("local_rank", 0))))
 

@@ -17,6 +17,8 @@ import pathlib
 import shutil
 import subprocess
 
+import torch.cuda
+
 logger = logging.getLogger(__name__)
 
 
@@ -108,7 +110,7 @@ def file_checksum(file, algo="SHA256"):
         return f"{algo}:{hash.hexdigest()}"
 
 
-def get_gpu_memory_map():
+def gpu_memory_map():
     """Get the current gpu usage.
 
     Returns
@@ -130,3 +132,7 @@ def get_gpu_memory_map():
     gpu_memory = [int(x) for x in result.strip().split("\n")]
     gpu_memory_map = dict(zip(range(len(gpu_memory)), gpu_memory))
     return gpu_memory_map
+
+
+def gpu_count():
+    return torch.cuda.device_count()

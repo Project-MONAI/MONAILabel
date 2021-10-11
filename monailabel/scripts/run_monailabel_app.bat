@@ -49,7 +49,7 @@ if exist %app_dir%\requirements.txt.invalid (
 
         if "%method%" == "train" if "%multi_gpu%" == "true" (
             set NVIDIA_VISIBLE_DEVICES=%gpus%
-            for /f "tokens=*" %%i in ('nvidia-smi -L ^| findstr "." ^| find /c /v ""') do (
+            for /f "tokens=*" %%i in ('python -c "import torch; print(torch.cuda.device_count())"') do (
               set num_gpus=%%i
               goto :train1
             )
@@ -73,7 +73,7 @@ if exist %app_dir%\requirements.txt.invalid (
         echo Do nothing as no valid items to install
         if "%method%" == "train" if "%multi_gpu%" == "true" (
             set NVIDIA_VISIBLE_DEVICES=%gpus%
-            for /f "tokens=*" %%i in ('nvidia-smi -L ^| findstr "." ^| find /c /v ""') do (
+            for /f "tokens=*" %%i in ('python -c "import torch; print(torch.cuda.device_count())"') do (
               set num_gpus=%%i
               goto :train2
             )
@@ -95,7 +95,7 @@ if exist %app_dir%\requirements.txt.invalid (
 ) else (
         if "%method%" == "train" if "%multi_gpu%" == "true" (
             set NVIDIA_VISIBLE_DEVICES=%gpus%
-            for /f "tokens=*" %%i in ('nvidia-smi -L ^| findstr "." ^| find /c /v ""') do (
+            for /f "tokens=*" %%i in ('python -c "import torch; print(torch.cuda.device_count())"') do (
               set num_gpus=%%i
               goto :train3
             )
