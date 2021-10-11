@@ -75,7 +75,10 @@ class MyApp(MONAILabelApp):
     def init_infers(self) -> Dict[str, InferTask]:
         return {
             "segmentation_left_atrium": MyInfer([self.pretrained_model, self.final_model], self.network),
-            "Histogram+GraphCut": HistogramBasedGraphCut(),
+            # intensity range set for MRI
+            "Histogram+GraphCut": HistogramBasedGraphCut(
+                intensity_range=(0, 1500, 0.0, 1.0, True), pix_dim=(2.5, 2.5, 5.0), lamda=1.0, sigma=0.1
+            ),
         }
 
     def init_trainers(self) -> Dict[str, TrainTask]:
@@ -109,6 +112,7 @@ class MyApp(MONAILabelApp):
             methods["TTA"] = TTAScoring(
                 model=[self.pretrained_model, self.final_model],
                 network=self.network,
+                deepedit=False,
                 num_samples=self.tta_samples,
                 spatial_size=(128, 128, 64),
                 spacing=(1.0, 1.0, 1.0),
