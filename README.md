@@ -11,18 +11,19 @@ open-source and easy-to-install ecosystem that can run locally on a machine with
 work on the same/different machine. However, initial support for multiple users is restricted. It shares the same
 principles with [MONAI](https://github.com/Project-MONAI).
 
-[Brief Demo](https://youtu.be/gzAR-Ix31Gs)
+[MONAI Label Demo](https://youtu.be/o8HipCgSZIw?t=1319)
 
-![DEMO](docs/images/demo.png)
+![DEMO](https://raw.githubusercontent.com/Project-MONAI/MONAILabel/main/docs/images/demo.png)
 
 ## Features
 
 > _The codebase is currently under active development._
 
-- framework for developing and deploying MONAI Label Apps to train and infer AI models
-- compositional & portable APIs for ease of integration in existing workflows
-- customizable design for varying user expertise
-- 3DSlicer support
+- Framework for developing and deploying MONAI Label Apps to train and infer AI models
+- Compositional & portable APIs for ease of integration in existing workflows
+- Customizable labelling app design for varying user expertise
+- Annotation support via 3DSlicer & OHIF 
+- PACS connectivity via DICOMWeb
 
 ## Installation
 
@@ -44,6 +45,8 @@ To install the current release, you can simply run:
   monailabel start_server --app apps/deepedit --studies datasets/Task02_Heart/imagesTr
 ```
 
+> If monailabel install path is not automatically determined, then you can provide explicit install path as: `monailabel apps --prefix ~/.local`
+
 For **_prerequisites_**, other installation methods (using the default GitHub branch, using Docker, etc.), please refer
 to the [installation guide](https://docs.monai.io/projects/label/en/latest/installation.html).
 
@@ -57,20 +60,19 @@ Manager.
 Refer [3D Slicer plugin](plugins/slicer) for other options to install and run MONAI Label plugin in 3D Slicer.
 > To avoid accidentally using an older Slicer version, you may want to _uninstall_ any previously installed 3D Slicer package.
 
-### OHIF [WIP]
+### OHIF
 
-MONAI Label comes with pre-built plugin for [OHIF Viewer](https://github.com/OHIF/Viewers).
+MONAI Label comes with [pre-built plugin](plugins/ohif) for [OHIF Viewer](https://github.com/OHIF/Viewers).
 > Please install [Orthanc](https://www.orthanc-server.com/download.php) before using OHIF Viewer.
 > For Ubuntu 20.x, Orthanc can be installed as `apt-get install orthanc orthanc-dicomweb`. However, you have to **upgrade to latest version** by following steps mentioned [here](https://book.orthanc-server.com/users/debian-packages.html#replacing-the-package-from-the-service-by-the-lsb-binaries)
 >
 > You can use [PlastiMatch](https://plastimatch.org/plastimatch.html#plastimatch-convert) to convert NIFTI to DICOM
 
-> OHIF Viewer will be accessible at http://127.0.0.1:8000/ohif/ after running the following command:
+> OHIF Viewer will be accessible at http://127.0.0.1:8000/ohif/
 
-`(cd plugins/ohif && ./build.sh)`
+![OHIF](https://raw.githubusercontent.com/Project-MONAI/MONAILabel/main/docs/images/ohif.png)
 
-
-![OHIF](docs/images/ohif.png)
+> **_NOTE:_** OHIF does not yet support Scribbles-based annotations.
 
 ## Contributing
 

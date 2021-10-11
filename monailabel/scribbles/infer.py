@@ -40,14 +40,29 @@ class HistogramBasedGraphCut(InferTask):
         self,
         dimension=3,
         description="A post processing step with histogram-based GraphCut for Generic segmentation",
-        intensity_range=(-300, 200, 0.0, 1.0),
+        intensity_range=(-300, 200, 0.0, 1.0, True),
         pix_dim=(2.5, 2.5, 5.0),
+        lamda=1.0,
+        sigma=0.1,
+        config=None,
     ):
+        if config:
+            config.update({"lamda": lamda, "sigma": sigma})
+        else:
+            config = {"lamda": lamda, "sigma": sigma}
         super().__init__(
-            path=None, network=None, labels=None, type=InferType.SCRIBBLES, dimension=dimension, description=description
+            path=None,
+            network=None,
+            labels=None,
+            type=InferType.SCRIBBLES,
+            dimension=dimension,
+            description=description,
+            config=config,
         )
         self.intensity_range = intensity_range
         self.pix_dim = pix_dim
+        self.lamda = lamda
+        self.sigma = sigma
 
     def pre_transforms(self):
         return [
@@ -64,7 +79,7 @@ class HistogramBasedGraphCut(InferTask):
                 a_max=self.intensity_range[1],
                 b_min=self.intensity_range[2],
                 b_max=self.intensity_range[3],
-                clip=True,
+                clip=self.intensity_range[4],
             ),
             MakeLikelihoodFromScribblesHistogramd(
                 image="image", scribbles="label", post_proc_label="prob", scribbles_bg_label=2, scribbles_fg_label=3
@@ -88,8 +103,8 @@ class HistogramBasedGraphCut(InferTask):
                     unary="unary",
                     pairwise="image",
                     post_proc_label="pred",
-                    lamda=1.0,
-                    sigma=0.1,
+                    lamda=self.lamda,
+                    sigma=self.sigma,
                 ),
             ]
         )
