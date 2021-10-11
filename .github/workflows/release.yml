@@ -39,7 +39,7 @@ jobs:
           git fetch --depth=1 origin +refs/tags/*:refs/tags/*
           export GIT_TAG=`git describe`
           echo $GIT_TAG
-          export TAG_MESSAGE=`git tag -n 0.2.0rc0 | awk '{$1=""; print}' | cut -c 2-`
+          export TAG_MESSAGE=`git tag -n 0.2.0 | awk '{$1=""; print}' | cut -c 2-`
           echo $TAG_MESSAGE
 
           git config --global user.name "CI Builder"
