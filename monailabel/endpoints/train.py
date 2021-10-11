@@ -44,10 +44,10 @@ async def run(params: Optional[dict] = None, run_sync: Optional[bool] = False):
 
 @router.post("/{model}", summary="Run Training Task for specific model")
 async def run_model(
-    model: str, params: Optional[dict] = None, run_sync: Optional[bool] = False, queue: Optional[bool] = False
+    model: str, params: Optional[dict] = None, run_sync: Optional[bool] = False, enqueue: Optional[bool] = False
 ):
     request = {"model": model} if model else {}
-    res, detail = AsyncTask.run("train", request=request, params=params, force_sync=run_sync, queue=queue)
+    res, detail = AsyncTask.run("train", request=request, params=params, force_sync=run_sync, enqueue=enqueue)
     if res is None:
         raise HTTPException(status_code=429, detail=detail)
     return res

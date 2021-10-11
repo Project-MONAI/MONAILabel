@@ -327,7 +327,7 @@ class MONAILabelApp:
         logger.info(f"Run Training for models: {models}")
         for m in models:
             if len(models) > 1:
-                result = self.async_training(m, request.get(m, request), queue=True)
+                result = self.async_training(m, request.get(m, request), enqueue=True)
             else:
                 task = self._trainers[m]
                 req = request.get(m, copy.deepcopy(request))
@@ -415,15 +415,15 @@ class MONAILabelApp:
         url = f"/scoring/{method}" if method else "/scoring/"
         return self._local_request(url, params, "Scoring")
 
-    def async_training(self, model, params=None, queue=False):
+    def async_training(self, model, params=None, enqueue=False):
         if not model and not self._trainers:
             return {}
 
         if self._server_mode:
-            res, _ = AsyncTask.run("train", params=params, queue=True)
+            res, _ = AsyncTask.run("train", params=params, enqueue=True)
             return res
 
-        url = f"/train/{model}?queue={queue}"
+        url = f"/train/{model}?enqueue={enqueue}"
         return self._local_request(url, params, "Training")
 
     def async_batch_infer(self, model, images: BatchInferImageType, params=None):
