@@ -14,12 +14,14 @@ import json
 import logging
 import os
 import platform
+import tempfile
 import time
 from abc import abstractmethod
 from datetime import datetime
 from typing import List
 
 import torch
+import torch.distributed
 from monai.data import CacheDataset, DataLoader, PersistentDataset, partition_dataset
 from monai.engines import SupervisedEvaluator, SupervisedTrainer
 from monai.handlers import (
@@ -34,12 +36,11 @@ from monai.handlers import (
 )
 from monai.inferers import SimpleInferer
 from monai.transforms import Compose
-from torch import distributed
 
 from monailabel.interfaces.datastore import Datastore
 from monailabel.interfaces.tasks.train import TrainTask
 from monailabel.tasks.train.handler import PublishStatsAndModel, prepare_stats
-from monailabel.utils.others.generic import gpu_count
+from monailabel.utils.others.generic import remove_file
 
 logger = logging.getLogger(__name__)
 
@@ -92,7 +93,7 @@ class BasicTrainTask(TrainTask):
             "val_split": 0.2,
             "train_batch_size": 1,
             "val_batch_size": 1,
-            "multi_gpu": True,
+            "distributed": True,
             "gpus": "all",
             "cached": True,
         }
@@ -122,16 +123,18 @@ class BasicTrainTask(TrainTask):
     def loss_function(self):
         pass
 
-    def train_data_loader(self, datalist, batch_size=1, num_workers=0, cached=False, multi_gpu=False, local_rank=0):
-        if multi_gpu:
-            datalist = partition_dataset(
-                data=datalist, num_partitions=distributed.get_world_size(), even_divisible=True
-            )[local_rank]
+    def train_data_loader(self, datalist, batch_size=1, num_workers=0, cached=False, distributed=False, local_rank=0):
+        if distributed:
+            world_size = torch.distributed.get_world_size()
+            if len(datalist) // world_size:
+                datalist = partition_dataset(data=datalist, num_partitions=world_size, even_divisible=True)[local_rank]
 
         transforms = self._validate_transforms(self.train_pre_transforms(), "Training", "pre")
         dataset = CacheDataset(datalist, transforms) if cached else PersistentDataset(datalist, transforms, None)
 
         logger.info(f"{local_rank} - Records for Training: {len(datalist)}")
+        logger.debug(f"{local_rank} - Training: {datalist}")
+
         return DataLoader(
             dataset=dataset,
             batch_size=batch_size,
@@ -173,15 +176,16 @@ class BasicTrainTask(TrainTask):
     def train_additional_metrics(self):
         return None
 
-    def val_data_loader(self, datalist, batch_size=1, num_workers=0, cached=False, multi_gpu=False, local_rank=0):
-        if multi_gpu:
-            datalist = partition_dataset(
-                data=datalist, num_partitions=distributed.get_world_size(), even_divisible=True
-            )[local_rank]
+    def val_data_loader(self, datalist, batch_size=1, num_workers=0, cached=False, distributed=False, local_rank=0):
+        if distributed:
+            world_size = torch.distributed.get_world_size()
+            if len(datalist) // world_size:
+                datalist = partition_dataset(data=datalist, num_partitions=world_size, even_divisible=True)[local_rank]
 
         transforms = self._validate_transforms(self.val_pre_transforms(), "Validation", "pre")
         dataset = CacheDataset(datalist, transforms) if cached else PersistentDataset(datalist, transforms, None)
         logger.info(f"{local_rank} - Records for Validation: {len(datalist)}")
+        logger.debug(f"{local_rank} - Validation: {datalist}")
 
         return DataLoader(
             dataset=dataset,
@@ -254,23 +258,53 @@ class BasicTrainTask(TrainTask):
         raise ValueError(f"{step} {name}-transforms are not of `list` or `Compose` type")
 
     def __call__(self, request, datastore: Datastore):
-        start_ts = time.time()
+        logger.info(f"Train Request (input): {request}")
+
         req = copy.deepcopy(self._config)
         req.update(copy.deepcopy(request))
 
-        cached = req["cached"]
-        multi_gpu = req["multi_gpu"]
-        if multi_gpu and (gpu_count() < 2 or any(platform.win32_ver())):  # multi-gpu not supported for windows
-            logger.info("Multi GPU is limited")
-            multi_gpu = False
-        local_rank = int(os.environ.get("LOCAL_RANK", str(req.get("local_rank", 0))))
+        distributed = req["distributed"]
+        distributed_gpus = req.get("gpus", "all")
+        world_size = torch.cuda.device_count() if distributed_gpus == "all" else len(distributed_gpus.split(","))
 
-        logger.info(f"{local_rank} - Train Request (input): {request}")
+        if distributed and world_size < 2:
+            logger.info("Distributed/Multi GPU is limited")
+            req["distributed"] = False
+
+        if distributed:
+            logger.info("Distributed Training = TRUE")
+            tfile = tempfile.NamedTemporaryFile().name
+            if any(platform.win32_ver()):
+                req["distributed_backend"] = "gloo"
+                req["distributed_url"] = f"file://{tfile}"
+            torch.multiprocessing.spawn(main_worker, nprocs=world_size, args=(world_size, req, datastore, self))
+            remove_file(tfile)
+        else:
+            logger.info("Distributed Training = FALSE")
+            self.train(0, world_size, req, datastore)
+        return {}
+
+    def train(self, rank, world_size, req, datastore: Datastore):
+        start_ts = time.time()
+
+        distributed = req["distributed"]
+        distributed_backend = req.get("distributed_backend", "nccl")
+        distributed_url = req.get("distributed_url", "env://")
+        gpus = req.get("gpus", "all")
+        distributed_gpus = list(range(world_size)) if gpus == "all" else [int(g) for g in gpus.split(",")]
+
+        local_rank = rank
         logger.info(f"{local_rank} - Train Request (final): {req}")
 
-        if multi_gpu:
-            distributed.init_process_group(backend="nccl", init_method="env://")
-            device = torch.device("cuda:{}".format(local_rank))
+        if distributed:
+            torch.distributed.init_process_group(
+                backend=distributed_backend, init_method=distributed_url, world_size=world_size, rank=local_rank
+            )
+
+            gpu = distributed_gpus[local_rank]
+            logger.info(f"++++ Using GPU-{gpu}")
+            device = torch.device("cuda:{}".format(gpu))
+
             torch.cuda.set_device(device)
         else:
             device = torch.device(req["device"] if torch.cuda.is_available() else "cpu")
@@ -280,6 +314,7 @@ class BasicTrainTask(TrainTask):
         train_batch_size = req["train_batch_size"]
         val_batch_size = req["val_batch_size"]
         pretrained = req["pretrained"]
+        cached = req["cached"]
 
         output_dir = os.path.join(self._model_dir, name)
         run_id = datetime.now().strftime("%Y%m%d_%H%M")
@@ -298,7 +333,7 @@ class BasicTrainTask(TrainTask):
         )
 
         network = self.network().to(device)
-        if multi_gpu:
+        if distributed:
             network = torch.nn.parallel.DistributedDataParallel(
                 network, device_ids=[local_rank], output_device=local_rank
             )
@@ -320,7 +355,7 @@ class BasicTrainTask(TrainTask):
             evaluator = SupervisedEvaluator(
                 device=device,
                 val_data_loader=self.val_data_loader(
-                    val_ds, val_batch_size, cached=cached, multi_gpu=multi_gpu, local_rank=local_rank
+                    val_ds, val_batch_size, cached=cached, distributed=distributed, local_rank=local_rank
                 ),
                 network=network,
                 inferer=self.val_inferer(),
@@ -365,7 +400,7 @@ class BasicTrainTask(TrainTask):
             device=device,
             max_epochs=max_epochs,
             train_data_loader=self.train_data_loader(
-                train_ds, train_batch_size, cached=cached, multi_gpu=multi_gpu, local_rank=local_rank
+                train_ds, train_batch_size, cached=cached, distributed=distributed, local_rank=local_rank
             ),
             network=network,
             optimizer=self.optimizer(),
@@ -389,6 +424,19 @@ class BasicTrainTask(TrainTask):
         if torch.cuda.is_available():
             torch.cuda.empty_cache()
 
-        if multi_gpu:
-            distributed.destroy_process_group()
-        return prepare_stats(start_ts, trainer, evaluator)
+        if distributed:
+            torch.distributed.destroy_process_group()
+
+        if local_rank == 0:
+            prepare_stats(start_ts, trainer, evaluator)
+
+
+def main_worker(rank, world_size, request, datastore: Datastore, task: BasicTrainTask):
+    logging.basicConfig(
+        level=logging.INFO,
+        format="[%(asctime)s.%(msecs)03d][%(levelname)5s](%(name)s) - %(message)s",
+        datefmt="%Y-%m-%d %H:%M:%S",
+    )
+
+    logger.info(f"Main Worker: {rank}")
+    task.train(rank, world_size, request, datastore)

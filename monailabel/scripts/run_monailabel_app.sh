@@ -17,8 +17,6 @@ app_dir=$1
 study_dir=$2
 method=$3
 request=$4
-multi_gpu="${5:-true}"
-gpus="${6:-all}"
 
 if [[ "${app_dir}" == "" ]]; then
   exit 1
@@ -35,6 +33,10 @@ if echo "$version" | grep "Python 2"; then
 fi
 
 echo "USING PYTHON: $(which ${PYEXE})"
+if [ "method" == "train" ]; then
+  echo "Avoid spawning other threads for train"
+  export MONAI_LABEL_DATASTORE_AUTO_RELOAD=false
+fi
 
 if test -f "${app_dir}/requirements.txt.invalid"; then
   user_packages=$(sed '/^\s*#/d;/^\s*$/d' <"${app_dir}/requirements.txt" | wc -l)
@@ -69,20 +71,4 @@ if test -f "${app_dir}/requirements.txt.invalid"; then
 fi
 
 echo "Using PYTHONPATH:: ${PYTHONPATH}"
-
-if [ "${method}" == "train" ] && [ "${multi_gpu}" == "true" ]; then
-  export NVIDIA_VISIBLE_DEVICES=${gpus}
-  num_gpus=$(nvidia-smi -L | wc -l)
-  echo "Total GPUs available: ${num_gpus}"
-
-  if [[ $num_gpus -gt 1 ]]; then
-    ${PYEXE} -m torch.distributed.launch \
-       --nproc_per_node="${num_gpus}" \
-       --nnodes=1 --node_rank=0 --master_addr="localhost" --master_port=1234 \
-       -m monailabel.interfaces.utils.app -a "${app_dir}" -s "${study_dir}" -m "${method}" -r "${request}"
-  else
-    ${PYEXE} -m monailabel.interfaces.utils.app -a "${app_dir}" -s "${study_dir}" -m "${method}" -r "${request}"
-  fi
-else
-  ${PYEXE} -m monailabel.interfaces.utils.app -a "${app_dir}" -s "${study_dir}" -m "${method}" -r "${request}"
-fi
+${PYEXE} -m monailabel.interfaces.utils.app -a "${app_dir}" -s "${study_dir}" -m "${method}" -r "${request}"

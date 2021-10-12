@@ -39,17 +39,12 @@ def _task_func(task, method, callback=None):
         script = os.path.realpath(os.path.join(base_dir, "scripts", script))
 
     request = task["request"]
-    multi_gpu = request.get("multi_gpu", True)
-    gpus = request.get("gpus", "all")
-
     cmd = [
         script,
         settings.MONAI_LABEL_APP_DIR,
         settings.MONAI_LABEL_STUDIES,
         method,
         json.dumps(request),
-        str(multi_gpu).lower(),
-        gpus,
     ]
 
     logger.info(f"COMMAND:: {' '.join(cmd)}")

@@ -321,7 +321,7 @@ class MONAILabelApp:
                 f"Trainer Task is not Initialized. There is no such trainer '{model}' available",
             )
 
-        models = [model] if model else self._trainers.keys()
+        models = [model] if model else list(self._trainers.keys())
         results = []
 
         logger.info(f"Run Training for models: {models}")
@@ -331,7 +331,7 @@ class MONAILabelApp:
             else:
                 task = self._trainers[m]
                 req = request.get(m, copy.deepcopy(request))
-                logger.info(f"Running training: {m}: {task.info()} => {req}")
+                logger.info(f"Running training for {m}: {task.info()} => {req}")
 
                 result = task(req, self.datastore())
 
