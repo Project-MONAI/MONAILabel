@@ -33,9 +33,11 @@ if echo "$version" | grep "Python 2"; then
 fi
 
 echo "USING PYTHON: $(which ${PYEXE})"
-if [ "method" == "train" ]; then
+if [ "${method}" == "train" ]; then
   echo "Avoid spawning other threads for train"
   export MONAI_LABEL_DATASTORE_AUTO_RELOAD=false
+  export MASTER_ADDR="localhost"
+  export MASTER_PORT=1234
 fi
 
 if test -f "${app_dir}/requirements.txt.invalid"; then
