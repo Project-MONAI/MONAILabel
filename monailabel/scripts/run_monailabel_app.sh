@@ -17,7 +17,7 @@ app_dir=$1
 study_dir=$2
 method=$3
 request=$4
-multi_gpu="${5:-false}"
+multi_gpu="${5:-true}"
 gpus="${6:-all}"
 
 if [[ "${app_dir}" == "" ]]; then
@@ -73,6 +73,7 @@ echo "Using PYTHONPATH:: ${PYTHONPATH}"
 if [ "${method}" == "train" ] && [ "${multi_gpu}" == "true" ]; then
   export NVIDIA_VISIBLE_DEVICES=${gpus}
   num_gpus=$(nvidia-smi -L | wc -l)
+  echo "Total GPUs available: ${num_gpus}"
 
   if [[ $num_gpus -gt 1 ]]; then
     ${PYEXE} -m torch.distributed.launch \

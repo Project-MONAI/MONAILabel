@@ -39,7 +39,7 @@ def _task_func(task, method, callback=None):
         script = os.path.realpath(os.path.join(base_dir, "scripts", script))
 
     request = task["request"]
-    multi_gpu = request.get("multi_gpu", False)
+    multi_gpu = request.get("multi_gpu", True)
     gpus = request.get("gpus", "all")
 
     cmd = [

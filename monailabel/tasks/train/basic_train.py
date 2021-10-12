@@ -13,6 +13,7 @@ import copy
 import json
 import logging
 import os
+import platform
 import time
 from abc import abstractmethod
 from datetime import datetime
@@ -259,7 +260,8 @@ class BasicTrainTask(TrainTask):
 
         cached = req["cached"]
         multi_gpu = req["multi_gpu"]
-        if multi_gpu and gpu_count() < 2:
+        if multi_gpu and (gpu_count() < 2 or any(platform.win32_ver())):  # multi-gpu not supported for windows
+            logger.info("Multi GPU is limited")
             multi_gpu = False
         local_rank = int(os.environ.get("LOCAL_RANK", str(req.get("local_rank", 0))))
 
