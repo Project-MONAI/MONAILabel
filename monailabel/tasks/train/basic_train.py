@@ -126,7 +126,7 @@ class BasicTrainTask(TrainTask):
     def train_data_loader(self, datalist, batch_size=1, num_workers=0, cached=False, distributed=False, local_rank=0):
         if distributed:
             world_size = torch.distributed.get_world_size()
-            if len(datalist) // world_size:
+            if len(datalist) // world_size:  # every gpu gets full data when datalist is samller
                 datalist = partition_dataset(data=datalist, num_partitions=world_size, even_divisible=True)[local_rank]
 
         transforms = self._validate_transforms(self.train_pre_transforms(), "Training", "pre")
@@ -179,7 +179,7 @@ class BasicTrainTask(TrainTask):
     def val_data_loader(self, datalist, batch_size=1, num_workers=0, cached=False, distributed=False, local_rank=0):
         if distributed:
             world_size = torch.distributed.get_world_size()
-            if len(datalist) // world_size:
+            if len(datalist) // world_size:  # every gpu gets full data when datalist is samller
                 datalist = partition_dataset(data=datalist, num_partitions=world_size, even_divisible=True)[local_rank]
 
         transforms = self._validate_transforms(self.val_pre_transforms(), "Validation", "pre")
