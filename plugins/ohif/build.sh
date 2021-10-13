@@ -52,4 +52,8 @@ cd ..
 rm -rf ${install_dir}
 mv ./Viewers/platform/viewer/dist ${install_dir}
 echo "Copied OHIF to ${install_dir}"
+
+rm -rf Viewers
+git restore Viewers
+
 cd ${curr_dir}
