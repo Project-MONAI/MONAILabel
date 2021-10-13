@@ -10,12 +10,12 @@
 # limitations under the License.
 import logging
 import random
-import shutil
-import subprocess
 
 import numpy as np
 from monai.transforms import LoadImage
 from tqdm import tqdm
+
+from monailabel.utils.others.generic import gpu_memory_map
 
 logger = logging.getLogger(__name__)
 
@@ -68,7 +68,7 @@ class HeuristicPlanner(object):
         spacings = np.array(spacings)
         img_sizes = np.array(img_sizes)
 
-        logger.info(f"Available GPU memory: {HeuristicPlanner._get_gpu_memory_map()} in MB")
+        logger.info(f"Available GPU memory: {gpu_memory_map()} in MB")
 
         self.target_spacing = self._get_target_spacing(np.mean(spacings, 0))
         self.spatial_size = self._get_target_img_size(np.mean(img_sizes, 0, np.int64))
@@ -86,7 +86,7 @@ class HeuristicPlanner(object):
         # This should return an image according to the free gpu memory available
         # Equation obtained from curve fitting using table:
         # https://tinyurl.com/tableGPUMemory
-        gpu_mem = HeuristicPlanner._get_gpu_memory_map()[0]
+        gpu_mem = gpu_memory_map()[0]
         # Get a number in base 2 close to the mean depth
         depth_base_2 = int(2 ** np.ceil(np.log2(target_img_size[2])))
         # Get the maximum width according available GPU memory
@@ -101,26 +101,3 @@ class HeuristicPlanner(object):
     @staticmethod
     def _get_target_spacing(target_spacing):
         return np.around(target_spacing)
-
-    @staticmethod
-    def _get_gpu_memory_map():
-        """Get the current gpu usage.
-        Returns
-        -------
-        usage: dict
-            Keys are device ids as integers.
-            Values are memory usage as integers in MB.
-        """
-        logger.info("Using nvidia-smi command")
-        if shutil.which("nvidia-smi") is None:
-            logger.info("nvidia-smi command didn't work! - Using default image size [128, 128, 64]")
-            return {0: 4300}
-
-        result = subprocess.check_output(
-            ["nvidia-smi", "--query-gpu=memory.free", "--format=csv,nounits,noheader"], encoding="utf-8"
-        )
-
-        # Convert lines into a dictionary
-        gpu_memory = [int(x) for x in result.strip().split("\n")]
-        gpu_memory_map = dict(zip(range(len(gpu_memory)), gpu_memory))
-        return gpu_memory_map

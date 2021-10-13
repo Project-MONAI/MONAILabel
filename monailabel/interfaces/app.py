@@ -40,8 +40,6 @@ from monailabel.tasks.activelearning.random import Random
 from monailabel.tasks.infer.deepgrow_2d import InferDeepgrow2D
 from monailabel.tasks.infer.deepgrow_3d import InferDeepgrow3D
 from monailabel.tasks.infer.deepgrow_pipeline import InferDeepgrowPipeline
-from monailabel.tasks.scoring.dice import Dice
-from monailabel.tasks.scoring.sum import Sum
 from monailabel.utils.async_tasks.task import AsyncTask
 
 logger = logging.getLogger(__name__)
@@ -103,7 +101,7 @@ class MONAILabelApp:
         return {"random": Random()}
 
     def init_scoring_methods(self) -> Dict[str, ScoringMethod]:
-        return {"sum": Sum(), "dice": Dice()}
+        return {}
 
     def init_batch_infer(self) -> Callable:
         return BatchInferTask()
@@ -323,19 +321,24 @@ class MONAILabelApp:
                 f"Trainer Task is not Initialized. There is no such trainer '{model}' available",
             )
 
-        models = [model] if model else self._trainers.keys()
+        models = [model] if model else list(self._trainers.keys())
         results = []
+
+        logger.info(f"Run Training for models: {models}")
         for m in models:
-            task = self._trainers[m]
-            req = request.get(m, copy.deepcopy(request))
-            logger.info(f"Running training: {m}: {task.info()} => {req}")
+            if len(models) > 1:
+                result = self.async_training(m, request.get(m, request), enqueue=True)
+            else:
+                task = self._trainers[m]
+                req = request.get(m, copy.deepcopy(request))
+                logger.info(f"Running training for {m}: {task.info()} => {req}")
 
-            result = task(req, self.datastore())
+                result = task(req, self.datastore())
+
+                # Run all scoring methods
+                if self._auto_update_scoring:
+                    self.async_scoring(None)
             results.append(result)
-
-        # Run all scoring methods
-        if self._auto_update_scoring:
-            self.async_scoring(None)
 
         return results[0] if len(results) == 1 else results
 
@@ -412,16 +415,15 @@ class MONAILabelApp:
         url = f"/scoring/{method}" if method else "/scoring/"
         return self._local_request(url, params, "Scoring")
 
-    def async_training(self, model, params=None):
+    def async_training(self, model, params=None, enqueue=False):
         if not model and not self._trainers:
             return {}
 
         if self._server_mode:
-            res, _ = AsyncTask.run("train", params=params)
+            res, _ = AsyncTask.run("train", params=params, enqueue=True)
             return res
 
-        url = "/train"
-        params = {"model": model, model: params} if model else params
+        url = f"/train/{model}?enqueue={enqueue}"
         return self._local_request(url, params, "Training")
 
     def async_batch_infer(self, model, images: BatchInferImageType, params=None):
@@ -447,8 +449,10 @@ class MONAILabelApp:
 
         dcmqi_tools = ["segimage2itkimage", "itkimage2segimage", "segimage2itkimage.exe", "itkimage2segimage.exe"]
         existing = [tool for tool in dcmqi_tools if shutil.which(tool) or os.path.exists(os.path.join(target, tool))]
+        logger.debug(f"Existing Tools: {existing}")
 
-        if len(existing) == len(dcmqi_tools) // 2:
+        if len(existing) in [len(dcmqi_tools), len(dcmqi_tools) // 2]:
+            logger.debug("No need to download dcmqi tools")
             return
 
         target_os = "win64.zip" if any(platform.win32_ver()) else "linux.tar.gz"

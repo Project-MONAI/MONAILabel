@@ -20,6 +20,11 @@ set COUNT=
 set PATH=%app_dir%\bin;%PATH%
 
 echo Virtual Env: %VIRTUAL_ENV%
+if "%method%" == "train" (
+    echo "Avoid spawning other threads for train"
+    set MONAI_LABEL_DATASTORE_AUTO_RELOAD=false
+)
+
 if exist %app_dir%\requirements.txt.invalid (
     for /f "tokens=*" %%i in ('findstr /v "#" %app_dir%\requirements.txt ^| findstr "." ^| find /c /v ""') do (
         set COUNT=%%i

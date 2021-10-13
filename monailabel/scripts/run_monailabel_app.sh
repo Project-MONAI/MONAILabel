@@ -17,7 +17,6 @@ app_dir=$1
 study_dir=$2
 method=$3
 request=$4
-output=$5
 
 if [[ "${app_dir}" == "" ]]; then
   exit 1
@@ -34,6 +33,12 @@ if echo "$version" | grep "Python 2"; then
 fi
 
 echo "USING PYTHON: $(which ${PYEXE})"
+if [ "${method}" == "train" ]; then
+  echo "Avoid spawning other threads for train"
+  export MONAI_LABEL_DATASTORE_AUTO_RELOAD=false
+  export MASTER_ADDR="localhost"
+  export MASTER_PORT=1234
+fi
 
 if test -f "${app_dir}/requirements.txt.invalid"; then
   user_packages=$(sed '/^\s*#/d;/^\s*$/d' <"${app_dir}/requirements.txt" | wc -l)
@@ -68,8 +73,4 @@ if test -f "${app_dir}/requirements.txt.invalid"; then
 fi
 
 echo "Using PYTHONPATH:: ${PYTHONPATH}"
-if [[ -z "$output" ]]; then
-  ${PYEXE} -m monailabel.interfaces.utils.app -a "$app_dir" -s "$study_dir" -m "$method" -r "$request"
-else
-  ${PYEXE} -m monailabel.interfaces.utils.app -a "$app_dir" -s "$study_dir" -m "$method" -r "$request" -o "$output"
-fi
+${PYEXE} -m monailabel.interfaces.utils.app -a "${app_dir}" -s "${study_dir}" -m "${method}" -r "${request}"
