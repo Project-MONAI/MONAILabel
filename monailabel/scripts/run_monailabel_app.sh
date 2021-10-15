@@ -36,7 +36,7 @@ echo "USING PYTHON: $(which ${PYEXE})"
 if [ "${method}" == "train" ]; then
   echo "Avoid spawning other threads for train"
   export MONAI_LABEL_DATASTORE_AUTO_RELOAD=false
-  export MASTER_ADDR="localhost"
+  export MASTER_ADDR="127.0.0.1"
   export MASTER_PORT=1234
 fi
 

@@ -22,7 +22,7 @@ from typing import List
 
 import torch
 import torch.distributed
-from monai.data import CacheDataset, DataLoader, PersistentDataset, SmartCacheDataset, partition_dataset
+from monai.data import CacheDataset, DataLoader, Dataset, PersistentDataset, SmartCacheDataset, partition_dataset
 from monai.engines import SupervisedEvaluator, SupervisedTrainer
 from monai.handlers import (
     CheckpointLoader,
@@ -35,6 +35,7 @@ from monai.handlers import (
     from_engine,
 )
 from monai.inferers import SimpleInferer
+from monai.networks.utils import copy_model_state
 from monai.transforms import Compose
 
 from monailabel.interfaces.datastore import Datastore
@@ -119,7 +120,7 @@ class BasicTrainTask(TrainTask):
             "val_batch_size": 1,
             "multi_gpu": True,
             "gpus": "all",
-            "dataset": ["CacheDataset", "PersistentDataset", "SmartCacheDataset"],
+            "dataset": ["CacheDataset", "PersistentDataset", "SmartCacheDataset", "None"],
         }
         if config:
             self._config.update(config)
@@ -160,6 +161,8 @@ class BasicTrainTask(TrainTask):
             else SmartCacheDataset(datalist, transforms, replace_rate)
             if dataset_type == "SmartCacheDataset"
             else PersistentDataset(datalist, transforms, None)
+            if dataset_type == "PersistentDataset"
+            else Dataset(datalist, transforms)
         )
         return dataset, datalist
 
@@ -396,18 +399,20 @@ class BasicTrainTask(TrainTask):
             multi_gpus = list(range(context.world_size)) if gpus == "all" else [int(g) for g in gpus.split(",")]
             gpu = multi_gpus[context.local_rank]
 
-            logger.info(f"++++ Using GPU-{gpu}")
+            logger.info(f"++++ Rank:{context.local_rank} => Using GPU-{gpu}")
             device = torch.device("cuda:{}".format(gpu))
             torch.cuda.set_device(device)
         else:
             device = torch.device(context.request["device"] if torch.cuda.is_available() else "cpu")
+
+        logger.info(f"{context.local_rank} - Using Device: {device}; IDX: {device.index}")
         return device
 
     def _create_network(self, context: Context):
         network = self.network().to(context.device)
         if context.multi_gpu:
             network = torch.nn.parallel.DistributedDataParallel(
-                network, device_ids=[context.local_rank], output_device=context.local_rank
+                network, device_ids=[context.device.index], output_device=context.device.index
             )
         return network
 
@@ -468,15 +473,19 @@ class BasicTrainTask(TrainTask):
         load_path = self.load_path(context.output_dir, context.pretrained)
         if load_path and os.path.exists(load_path):
             logger.info(f"{context.local_rank} - Load Path {load_path}")
-            map_location = {"cuda:0": "cuda:{}".format(context.local_rank)}
+            map_location = {"cuda:0": "cuda:{}".format(context.device.index)}
+            load_dict = {self._model_dict_key: context.network} if self._load_dict is None else self._load_dict
 
-            train_handlers.append(
-                CheckpointLoader(
-                    load_path=load_path,
-                    load_dict={self._model_dict_key: context.network} if self._load_dict is None else self._load_dict,
-                    map_location=map_location,
+            if context.multi_gpu:
+                self._load_checkpoint(load_path, load_dict, map_location)
+            else:
+                train_handlers.append(
+                    CheckpointLoader(
+                        load_path=load_path,
+                        load_dict=load_dict,
+                        map_location=map_location,
+                    )
                 )
-            )
 
         return SupervisedTrainer(
             device=context.device,
@@ -499,6 +508,27 @@ class BasicTrainTask(TrainTask):
             iteration_update=self.train_iteration_update(),
             event_names=self.event_names(),
         )
+
+    # Refer monai.handlers.CheckpointLoader
+    def _load_checkpoint(self, load_path, load_dict, map_location=None, strict_shape=False):
+        checkpoint = torch.load(load_path, map_location=map_location)
+
+        k, _ = list(load_dict.items())[0]
+        # single object and checkpoint is directly a state_dict
+        if len(load_dict) == 1 and k not in checkpoint:
+            checkpoint = {k: checkpoint}
+
+        if not strict_shape:
+            pop_items: List[str] = []
+            for k, obj in load_dict.items():
+                if isinstance(obj, torch.nn.Module):
+                    # skip items that don't match key name or data shape
+                    checkpoint[k] = copy_model_state(obj, checkpoint, inplace=False)[0]
+                else:
+                    logger.warning("`strict_shape` is False, load checkpoint for model, skip others in `load_dict`.")
+                    pop_items.append(k)
+            for i in pop_items:
+                load_dict.pop(i)
 
 
 def main_worker(rank, world_size, request, datastore: Datastore, task: BasicTrainTask):
