@@ -307,6 +307,8 @@ class BasicTrainTask(TrainTask):
 
         if multi_gpu:
             logger.info("Distributed/Multi GPU Training = TRUE")
+            logger.info(f"CUDA_VISIBLE_DEVICES: {os.environ.get('CUDA_VISIBLE_DEVICES')}")
+
             tfile = tempfile.NamedTemporaryFile().name
             if any(platform.win32_ver()):
                 req["distributed_backend"] = "gloo"
