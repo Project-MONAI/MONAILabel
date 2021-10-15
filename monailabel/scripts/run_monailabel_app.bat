@@ -15,11 +15,17 @@ set app_dir=%1
 set study_dir=%2
 set method=%3
 set request=%4
+set gpus=%5
 
 set COUNT=
 set PATH=%app_dir%\bin;%PATH%
 
 echo Virtual Env: %VIRTUAL_ENV%
+
+if "%gpus%" != "all" if "%gpus%" != "" (
+    set CUDA_VISIBLE_DEVICES=%gpus%
+)
+
 if "%method%" == "train" (
     echo "Avoid spawning other threads for train"
     set MONAI_LABEL_DATASTORE_AUTO_RELOAD=false

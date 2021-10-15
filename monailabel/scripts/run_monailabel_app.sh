@@ -17,6 +17,7 @@ app_dir=$1
 study_dir=$2
 method=$3
 request=$4
+gpus=$5
 
 if [[ "${app_dir}" == "" ]]; then
   exit 1
@@ -24,6 +25,10 @@ fi
 
 export PATH=$PATH:$app_dir/bin
 echo "Virtual Env: $VIRTUAL_ENV"
+
+if [ "${gpus}" != "all" ] && [ "${gpus}" != "" ]; then
+  export CUDA_VISIBLE_DEVICES="${gpus}"
+fi
 
 PYEXE=python
 version=$(python --version)
@@ -74,3 +79,4 @@ fi
 
 echo "Using PYTHONPATH:: ${PYTHONPATH}"
 ${PYEXE} -m monailabel.interfaces.utils.app -a "${app_dir}" -s "${study_dir}" -m "${method}" -r "${request}"
+

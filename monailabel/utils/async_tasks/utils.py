@@ -39,12 +39,16 @@ def _task_func(task, method, callback=None):
         script = os.path.realpath(os.path.join(base_dir, "scripts", script))
 
     request = task["request"]
+    gpus = request.get("gpus", "all")
+    request["gpus"] = "all"  # set CUDA_VISIBLE_DEVICES explicit in the run-script
+
     cmd = [
         script,
         settings.MONAI_LABEL_APP_DIR,
         settings.MONAI_LABEL_STUDIES,
         method,
         json.dumps(request),
+        gpus,
     ]
 
     logger.info(f"COMMAND:: {' '.join(cmd)}")
