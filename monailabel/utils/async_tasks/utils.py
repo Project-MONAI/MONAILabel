@@ -87,7 +87,7 @@ def _task_func(task, method, callback=None):
 
 def run_background_task(request, method, callback=None, debug=False):
     task = {
-        "id": uuid.uuid4(),
+        "id": str(uuid.uuid4()),
         "status": "SUBMITTED",
         "request": request,
         "start_ts": datetime.today().strftime("%Y-%m-%d %H:%M:%S"),

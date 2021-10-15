@@ -317,7 +317,11 @@ class BasicTrainTask(TrainTask):
             remove_file(tfile)
         else:
             logger.info("Distributed Training = FALSE")
-            self.train(0, world_size, req, datastore)
+            return self.train(0, world_size, req, datastore)
+
+        if os.path.exists(self._stats_path):
+            with open(self._stats_path) as f:
+                return json.load(f)
         return {}
 
     def train(self, rank, world_size, req, datastore: Datastore):
@@ -383,8 +387,7 @@ class BasicTrainTask(TrainTask):
         if context.multi_gpu:
             torch.distributed.destroy_process_group()
 
-        if context.local_rank == 0:
-            prepare_stats(start_ts, context.trainer, context.evaluator)
+        return prepare_stats(start_ts, context.trainer, context.evaluator)
 
     def _device(self, context: Context):
         if context.multi_gpu:
@@ -475,19 +478,13 @@ class BasicTrainTask(TrainTask):
         load_path = self.load_path(context.output_dir, context.pretrained)
         if load_path and os.path.exists(load_path):
             logger.info(f"{context.local_rank} - Load Path {load_path}")
-            map_location = {"cuda:0": "cuda:{}".format(context.device.index)}
             load_dict = {self._model_dict_key: context.network} if self._load_dict is None else self._load_dict
 
             if context.multi_gpu:
+                map_location = {"cuda:0": "cuda:{}".format(context.device.index)}
                 self._load_checkpoint(load_path, load_dict, map_location)
             else:
-                train_handlers.append(
-                    CheckpointLoader(
-                        load_path=load_path,
-                        load_dict=load_dict,
-                        map_location=map_location,
-                    )
-                )
+                train_handlers.append(CheckpointLoader(load_path, load_dict))
 
         return SupervisedTrainer(
             device=context.device,
