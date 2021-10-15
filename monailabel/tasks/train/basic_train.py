@@ -22,7 +22,7 @@ from typing import List
 
 import torch
 import torch.distributed
-from monai.data import CacheDataset, DataLoader, PersistentDataset, partition_dataset
+from monai.data import CacheDataset, DataLoader, PersistentDataset, SmartCacheDataset, partition_dataset
 from monai.engines import SupervisedEvaluator, SupervisedTrainer
 from monai.handlers import (
     CheckpointLoader,
@@ -43,6 +43,30 @@ from monailabel.tasks.train.handler import PublishStatsAndModel, prepare_stats
 from monailabel.utils.others.generic import remove_file
 
 logger = logging.getLogger(__name__)
+
+
+class Context:
+    def __init__(self):
+        self.run_id = None
+        self.output_dir = None
+        self.events_dir = None
+        self.train_ds = None
+        self.train_batch_size = None
+        self.val_ds = None
+        self.val_batch_size = None
+        self.publisher = None
+        self.device = None
+        self.network = None
+        self.dataset_type = "CacheDataset"
+        self.pretrained = False
+        self.max_epochs = 1
+        self.multi_gpu = False
+        self.local_rank = 0
+        self.world_size = 0
+
+        self.request = None
+        self.trainer = None
+        self.evaluator = None
 
 
 class BasicTrainTask(TrainTask):
@@ -93,9 +117,9 @@ class BasicTrainTask(TrainTask):
             "val_split": 0.2,
             "train_batch_size": 1,
             "val_batch_size": 1,
-            "distributed": True,
+            "multi_gpu": True,
             "gpus": "all",
-            "cached": True,
+            "dataset": ["CacheDataset", "PersistentDataset", "SmartCacheDataset"],
         }
         if config:
             self._config.update(config)
@@ -123,15 +147,26 @@ class BasicTrainTask(TrainTask):
     def loss_function(self):
         pass
 
-    def train_data_loader(self, datalist, batch_size=1, num_workers=0, cached=False, distributed=False, local_rank=0):
-        if distributed:
+    def _dataset(self, datalist, dataset_type, multi_gpu, local_rank, replace_rate=0.25):
+        if multi_gpu:
             world_size = torch.distributed.get_world_size()
-            if len(datalist) // world_size:  # every gpu gets full data when datalist is samller
+            if len(datalist) // world_size:  # every gpu gets full data when datalist is smaller
                 datalist = partition_dataset(data=datalist, num_partitions=world_size, even_divisible=True)[local_rank]
 
         transforms = self._validate_transforms(self.train_pre_transforms(), "Training", "pre")
-        dataset = CacheDataset(datalist, transforms) if cached else PersistentDataset(datalist, transforms, None)
+        dataset = (
+            CacheDataset(datalist, transforms)
+            if dataset_type == "CacheDataset"
+            else SmartCacheDataset(datalist, transforms, replace_rate)
+            if dataset_type == "SmartCacheDataset"
+            else PersistentDataset(datalist, transforms, None)
+        )
+        return dataset, datalist
 
+    def train_data_loader(
+        self, datalist, batch_size=1, num_workers=0, dataset_type="CacheDataset", multi_gpu=False, local_rank=0
+    ):
+        dataset, datalist = self._dataset(datalist, dataset_type, multi_gpu, local_rank)
         logger.info(f"{local_rank} - Records for Training: {len(datalist)}")
         logger.debug(f"{local_rank} - Training: {datalist}")
 
@@ -176,14 +211,10 @@ class BasicTrainTask(TrainTask):
     def train_additional_metrics(self):
         return None
 
-    def val_data_loader(self, datalist, batch_size=1, num_workers=0, cached=False, distributed=False, local_rank=0):
-        if distributed:
-            world_size = torch.distributed.get_world_size()
-            if len(datalist) // world_size:  # every gpu gets full data when datalist is samller
-                datalist = partition_dataset(data=datalist, num_partitions=world_size, even_divisible=True)[local_rank]
-
-        transforms = self._validate_transforms(self.val_pre_transforms(), "Validation", "pre")
-        dataset = CacheDataset(datalist, transforms) if cached else PersistentDataset(datalist, transforms, None)
+    def val_data_loader(
+        self, datalist, batch_size=1, num_workers=0, dataset_type="CacheDataset", multi_gpu=False, local_rank=0
+    ):
+        dataset, datalist = self._dataset(datalist, dataset_type, multi_gpu, local_rank)
         logger.info(f"{local_rank} - Records for Validation: {len(datalist)}")
         logger.debug(f"{local_rank} - Validation: {datalist}")
 
@@ -263,16 +294,16 @@ class BasicTrainTask(TrainTask):
         req = copy.deepcopy(self._config)
         req.update(copy.deepcopy(request))
 
-        distributed = req["distributed"]
-        distributed_gpus = req.get("gpus", "all")
-        world_size = torch.cuda.device_count() if distributed_gpus == "all" else len(distributed_gpus.split(","))
+        multi_gpu = req["multi_gpu"]
+        multi_gpus = req.get("gpus", "all")
+        world_size = torch.cuda.device_count() if multi_gpus == "all" else len(multi_gpus.split(","))
 
-        if distributed and world_size < 2:
+        if multi_gpu and world_size < 2:
             logger.info("Distributed/Multi GPU is limited")
-            req["distributed"] = False
+            req["multi_gpu"] = False
 
-        if distributed:
-            logger.info("Distributed Training = TRUE")
+        if multi_gpu:
+            logger.info("Distributed/Multi GPU Training = TRUE")
             tfile = tempfile.NamedTemporaryFile().name
             if any(platform.win32_ver()):
                 req["distributed_backend"] = "gloo"
@@ -287,77 +318,124 @@ class BasicTrainTask(TrainTask):
     def train(self, rank, world_size, req, datastore: Datastore):
         start_ts = time.time()
 
-        distributed = req["distributed"]
-        distributed_backend = req.get("distributed_backend", "nccl")
-        distributed_url = req.get("distributed_url", "env://")
-        gpus = req.get("gpus", "all")
-        distributed_gpus = list(range(world_size)) if gpus == "all" else [int(g) for g in gpus.split(",")]
+        context: Context = Context()
 
-        local_rank = rank
-        logger.info(f"{local_rank} - Train Request (final): {req}")
+        context.request = req
+        context.local_rank = rank
+        context.world_size = world_size
+        context.multi_gpu = req["multi_gpu"]
+        if context.multi_gpu:
+            os.environ["LOCAL_RANK"] = str(context.local_rank)
 
-        if distributed:
-            torch.distributed.init_process_group(
-                backend=distributed_backend, init_method=distributed_url, world_size=world_size, rank=local_rank
-            )
+        logger.info(f"{context.local_rank} - Train Request (final): {req}")
 
-            gpu = distributed_gpus[local_rank]
-            logger.info(f"++++ Using GPU-{gpu}")
-            device = torch.device("cuda:{}".format(gpu))
+        context.device = self._device(context)
+        context.max_epochs = req["max_epochs"]
+        context.train_batch_size = req["train_batch_size"]
+        context.val_batch_size = req["val_batch_size"]
+        context.pretrained = req["pretrained"]
+        context.dataset_type = req["dataset"]
 
-            torch.cuda.set_device(device)
-        else:
-            device = torch.device(req["device"] if torch.cuda.is_available() else "cpu")
+        context.output_dir = os.path.join(self._model_dir, req["name"])
+        context.run_id = datetime.now().strftime("%Y%m%d_%H%M")
+        context.events_dir = os.path.join(context.output_dir, f"events_{context.run_id}")
 
-        name = req["name"]
-        max_epochs = req["max_epochs"]
-        train_batch_size = req["train_batch_size"]
-        val_batch_size = req["val_batch_size"]
-        pretrained = req["pretrained"]
-        cached = req["cached"]
-
-        output_dir = os.path.join(self._model_dir, name)
-        run_id = datetime.now().strftime("%Y%m%d_%H%M")
-        events_dir = os.path.join(output_dir, f"events_{run_id}")
-
-        if not os.path.exists(output_dir):
-            os.makedirs(output_dir, exist_ok=True)
+        if not os.path.exists(context.output_dir):
+            os.makedirs(context.output_dir, exist_ok=True)
 
         train_ds, val_ds = self.partition_datalist(req, datastore.datalist())
-        if local_rank == 0:
+        if context.local_rank == 0:
             logger.info(f"Total Records for Training: {len(train_ds)}")
             logger.info(f"Total Records for Validation: {len(val_ds)}")
+        context.train_ds = train_ds
+        context.val_ds = val_ds
 
-        publisher = PublishStatsAndModel(
-            self._stats_path, self._publish_path, self._key_metric_filename, start_ts, run_id, output_dir, None, None
+        context.publisher = PublishStatsAndModel(
+            self._stats_path,
+            self._publish_path,
+            self._key_metric_filename,
+            start_ts,
+            context.run_id,
+            context.output_dir,
+            None,
+            None,
         )
 
-        network = self.network().to(device)
-        if distributed:
-            network = torch.nn.parallel.DistributedDataParallel(
-                network, device_ids=[local_rank], output_device=local_rank
+        context.network = self._create_network(context)
+        context.evaluator = self._create_evaluator(context)
+        context.trainer = self._create_trainer(context)
+
+        context.publisher.trainer = context.trainer
+        context.publisher.evaluator = context.evaluator
+
+        # Run Training
+        context.trainer.run()
+
+        # Try to clear cuda cache
+        if torch.cuda.is_available():
+            torch.cuda.empty_cache()
+
+        if context.multi_gpu:
+            torch.distributed.destroy_process_group()
+
+        if context.local_rank == 0:
+            prepare_stats(start_ts, context.trainer, context.evaluator)
+
+    def _device(self, context: Context):
+        if context.multi_gpu:
+            distributed_backend = context.request.get("distributed_backend", "nccl")
+            distributed_url = context.request.get("distributed_url", "env://")
+            torch.distributed.init_process_group(
+                backend=distributed_backend,
+                init_method=distributed_url,
+                world_size=context.world_size,
+                rank=context.local_rank,
             )
 
+            gpus = context.request.get("gpus", "all")
+            multi_gpus = list(range(context.world_size)) if gpus == "all" else [int(g) for g in gpus.split(",")]
+            gpu = multi_gpus[context.local_rank]
+
+            logger.info(f"++++ Using GPU-{gpu}")
+            device = torch.device("cuda:{}".format(gpu))
+            torch.cuda.set_device(device)
+        else:
+            device = torch.device(context.request["device"] if torch.cuda.is_available() else "cpu")
+        return device
+
+    def _create_network(self, context: Context):
+        network = self.network().to(context.device)
+        if context.multi_gpu:
+            network = torch.nn.parallel.DistributedDataParallel(
+                network, device_ids=[context.local_rank], output_device=context.local_rank
+            )
+        return network
+
+    def _create_evaluator(self, context: Context):
         evaluator = None
-        if val_ds and len(val_ds) > 0:
-            val_hanlders: List = self.val_handlers(output_dir, events_dir, local_rank)
-            if local_rank == 0:
-                val_hanlders.append(publisher)
+        if context.val_ds and len(context.val_ds) > 0:
+            val_hanlders: List = self.val_handlers(context.output_dir, context.events_dir, context.local_rank)
+            if context.local_rank == 0:
+                val_hanlders.append(context.publisher)
                 val_hanlders.append(
                     CheckpointSaver(
-                        save_dir=output_dir,
-                        save_dict={self._model_dict_key: network},
+                        save_dir=context.output_dir,
+                        save_dict={self._model_dict_key: context.network},
                         save_key_metric=True,
                         key_metric_filename=f"eval_{self._key_metric_filename}",
                     )
                 )
 
             evaluator = SupervisedEvaluator(
-                device=device,
+                device=context.device,
                 val_data_loader=self.val_data_loader(
-                    val_ds, val_batch_size, cached=cached, distributed=distributed, local_rank=local_rank
+                    context.val_ds,
+                    context.val_batch_size,
+                    dataset_type=context.dataset_type,
+                    multi_gpu=context.multi_gpu,
+                    local_rank=context.local_rank,
                 ),
-                network=network,
+                network=context.network,
                 inferer=self.val_inferer(),
                 postprocessing=self._validate_transforms(self.val_post_transforms(), "Validation", "post"),
                 key_val_metric=self.val_key_metric(),
@@ -366,14 +444,18 @@ class BasicTrainTask(TrainTask):
                 iteration_update=self.val_iteration_update(),
                 event_names=self.event_names(),
             )
+        return evaluator
 
-        train_handlers: List = self.train_handlers(output_dir, events_dir, evaluator, local_rank)
-        if not evaluator:
-            if local_rank == 0:
+    def _create_trainer(self, context: Context):
+        train_handlers: List = self.train_handlers(
+            context.output_dir, context.events_dir, context.evaluator, context.local_rank
+        )
+        if not context.evaluator:
+            if context.local_rank == 0:
                 train_handlers.append(
                     CheckpointSaver(
-                        save_dir=output_dir,
-                        save_dict={self._model_dict_key: network},
+                        save_dir=context.output_dir,
+                        save_dict={self._model_dict_key: context.network},
                         save_interval=self._train_save_interval,
                         save_final=True,
                         final_filename=self._final_filename,
@@ -381,28 +463,32 @@ class BasicTrainTask(TrainTask):
                         key_metric_filename=self._key_metric_filename,
                     )
                 )
-                train_handlers.append(publisher)
+                train_handlers.append(context.publisher)
 
-        load_path = self.load_path(output_dir, pretrained)
+        load_path = self.load_path(context.output_dir, context.pretrained)
         if load_path and os.path.exists(load_path):
-            logger.info(f"{local_rank} - Load Path {load_path}")
-            map_location = {"cuda:0": "cuda:{}".format(local_rank)}
+            logger.info(f"{context.local_rank} - Load Path {load_path}")
+            map_location = {"cuda:0": "cuda:{}".format(context.local_rank)}
 
             train_handlers.append(
                 CheckpointLoader(
                     load_path=load_path,
-                    load_dict={self._model_dict_key: network} if self._load_dict is None else self._load_dict,
+                    load_dict={self._model_dict_key: context.network} if self._load_dict is None else self._load_dict,
                     map_location=map_location,
                 )
             )
 
-        trainer = SupervisedTrainer(
-            device=device,
-            max_epochs=max_epochs,
+        return SupervisedTrainer(
+            device=context.device,
+            max_epochs=context.max_epochs,
             train_data_loader=self.train_data_loader(
-                train_ds, train_batch_size, cached=cached, distributed=distributed, local_rank=local_rank
+                context.train_ds,
+                context.train_batch_size,
+                dataset_type=context.dataset_type,
+                multi_gpu=context.multi_gpu,
+                local_rank=context.local_rank,
             ),
-            network=network,
+            network=context.network,
             optimizer=self.optimizer(),
             loss_function=self.loss_function(),
             inferer=self.train_inferer(),
@@ -413,22 +499,6 @@ class BasicTrainTask(TrainTask):
             iteration_update=self.train_iteration_update(),
             event_names=self.event_names(),
         )
-
-        publisher.trainer = trainer
-        publisher.evaluator = evaluator
-
-        # Run Training
-        trainer.run()
-
-        # Try to clear cuda cache
-        if torch.cuda.is_available():
-            torch.cuda.empty_cache()
-
-        if distributed:
-            torch.distributed.destroy_process_group()
-
-        if local_rank == 0:
-            prepare_stats(start_ts, trainer, evaluator)
 
 
 def main_worker(rank, world_size, request, datastore: Datastore, task: BasicTrainTask):
