@@ -64,7 +64,7 @@ def run_main():
     parser = argparse.ArgumentParser()
     parser.add_argument("-a", "--app", required=True)
     parser.add_argument("-s", "--studies", required=True)
-    parser.add_argument("-m", "--method", required=True)
+    parser.add_argument("-m", "--method", required=True, choices=["infer", "train", "info", "batch_infer", "scoring"])
     parser.add_argument("-r", "--request", type=str, default="{}")
     parser.add_argument("-o", "--output", type=str, default=None)
     parser.add_argument("-d", "--debug", action="store_true")
