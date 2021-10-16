@@ -40,6 +40,7 @@ def _task_func(task, method, callback=None):
 
     request = task["request"]
     gpus = request.get("gpus", "all")
+    gpus = gpus if gpus else "all"
     request["gpus"] = "all"  # set CUDA_VISIBLE_DEVICES explicit in the run-script
 
     cmd = [
