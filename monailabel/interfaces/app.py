@@ -326,7 +326,7 @@ class MONAILabelApp:
 
         logger.info(f"Run Training for models: {models}")
         for m in models:
-            if len(models) > 1:
+            if len(models) > 1 or not model:
                 result = self.async_training(m, request.get(m, request), enqueue=True)
             else:
                 task = self._trainers[m]

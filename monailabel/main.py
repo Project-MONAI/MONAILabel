@@ -111,7 +111,7 @@ def run_main():
         "--conf",
         nargs=2,
         action="append",
-        help="config for the app.  Example: --conf key1 valu1 --conf key2 value2",
+        help="config for the app.  Example: --conf key1 value1 --conf key2 value2",
     )
 
     parser_a.add_argument("-i", "--host", default="0.0.0.0", type=str, help="Server IP")

@@ -62,9 +62,9 @@ def save_result(result, output):
 
 def run_main():
     parser = argparse.ArgumentParser()
-    parser.add_argument("-a", "--app", required=True)
-    parser.add_argument("-s", "--studies", required=True)
-    parser.add_argument("-m", "--method", required=True)
+    parser.add_argument("-a", "--app", type=str, default=None)
+    parser.add_argument("-s", "--studies", type=str, default=None)
+    parser.add_argument("-m", "--method", required=True, choices=["infer", "train", "info", "batch_infer", "scoring"])
     parser.add_argument("-r", "--request", type=str, default="{}")
     parser.add_argument("-o", "--output", type=str, default=None)
     parser.add_argument("-d", "--debug", action="store_true")
@@ -82,15 +82,20 @@ def run_main():
     print(json.dumps(settings.dict(), indent=2))
     print("")
 
-    sys.path.append(args.app)
-    sys.path.append(os.path.join(args.app, "lib"))
+    app_dir = args.app if args.app else settings.MONAI_LABEL_APP_DIR
+    studies = args.studies if args.studies else settings.MONAI_LABEL_STUDIES
+    print(f"++ APP_DIR: {app_dir}")
+    print(f"++ STUDIES: {studies}")
+
+    sys.path.append(app_dir)
+    sys.path.append(os.path.join(app_dir, "lib"))
 
     logging.basicConfig(
         level=(logging.DEBUG if args.debug else logging.INFO),
         format="[%(asctime)s] [%(threadName)s] [%(levelname)s] (%(name)s:%(lineno)d) - %(message)s",
     )
 
-    a = app_instance(app_dir=args.app, studies=args.studies)
+    a = app_instance(app_dir=app_dir, studies=studies)
     request = json.loads(args.request)
     result = None
 

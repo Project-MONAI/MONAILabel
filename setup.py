@@ -55,8 +55,6 @@ setup(
     scripts=[
         "monailabel/scripts/monailabel",
         "monailabel/scripts/monailabel.bat",
-        "monailabel/scripts/run_monailabel_app.sh",
-        "monailabel/scripts/run_monailabel_app.bat",
     ],
     data_files=data_files,
 )
