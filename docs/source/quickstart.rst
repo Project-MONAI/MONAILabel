@@ -192,15 +192,15 @@ Windows
 Download and Install Orthanc from `https://www.orthanc-server.com/download.php <https://www.orthanc-server.com/download.php>`_.
 
 The Orthanc DICOM server on the chosen machine. You can check if the server is running
-by navigating to `http://localhost:8042 <http://localhost:8042>`_ or using the remote machine's address and entering
+by navigating to `http://127.0.0.1:8042 <http://127.0.0.1:8042>`_ or using the remote machine's address and entering
 the username/password ``orthanc/orthanc``.
 
-The DICOMweb service for Orthanc runs on `http://localhost:8042/dicom-web/ <http://locahost:8042/dicom-web>` by default. You can check if the DICOMweb
+The DICOMweb service for Orthanc runs on `http://127.0.0.1:8042/dicom-web/ <http://127.0.0.1:8042/dicom-web>` by default. You can check if the DICOMweb
 endpoint is active by issuing the following command
 
 .. code-block:: bash
 
-  curl -X GET -v http://localhost:8042/dicom-web
+  curl -X GET -v http://127.0.0.1:8042/dicom-web
 
 You may encounter a ``401 Unauthorized`` response when username and password are required.
 
@@ -254,7 +254,7 @@ endpoint of our DICOM server, which based on the last section is ``http://locaho
 
 
 At this point OHIF can be used to annotate the data in the DICOM server via the MONAI Label server ``/ohif`` endpoint 
-(e.g. via `http://localhost:8000/ohif <http://localhost:8000/ohif>`_).
+(e.g. via `http://127.0.0.1:8000/ohif <http://127.0.0.1:8000/ohif>`_).
 
 .. note::
 
