@@ -124,7 +124,7 @@ class MONAILabelApp:
             )
 
             cache_path = settings.MONAI_LABEL_DICOMWEB_CACHE_PATH
-            cache_path = cache_path.strip() if cache_path else None
+            cache_path = cache_path.strip() if cache_path else ""
             return DICOMWebDatastore(dw_client, cache_path) if cache_path else DICOMWebDatastore(dw_client)
 
         return LocalDatastore(
