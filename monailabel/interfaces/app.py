@@ -122,7 +122,7 @@ class MONAILabelApp:
                 wado_url_prefix=settings.MONAI_LABEL_WADO_PREFIX,
                 stow_url_prefix=settings.MONAI_LABEL_STOW_PREFIX,
             )
-            return DICOMWebDatastore(dw_client)
+            return DICOMWebDatastore(dw_client, cache_path=settings.MONAI_LABEL_DICOMWEB_CACHE_PATH)
 
         return LocalDatastore(
             self.studies,

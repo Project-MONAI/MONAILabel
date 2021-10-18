@@ -33,8 +33,8 @@ class DICOMWebDatastore(LocalDatastore):
         self._modality = "CT"
         uri_hash = hashlib.md5(self._client.base_url.encode("utf-8")).hexdigest()
         datastore_path = (
-            os.path.join(cache_path, uri_hash)
-            if cache_path
+            os.path.join(cache_path.strip(), uri_hash)
+            if cache_path and cache_path.strip()
             else os.path.join(pathlib.Path.home(), ".cache", "monailabel", uri_hash)
         )
 
