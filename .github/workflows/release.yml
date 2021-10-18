@@ -6,6 +6,7 @@ on:
     types: [edited, published]
     tags-ignore:
       - data
+  workflow_dispatch:
 
 jobs:
   packaging:
