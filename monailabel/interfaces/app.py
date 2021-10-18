@@ -17,14 +17,17 @@ import platform
 import shutil
 import tempfile
 import time
+from datetime import timedelta
 from distutils.util import strtobool
 from typing import Callable, Dict, Optional, Sequence
 
 import requests
+import schedule
 from dicomweb_client import DICOMwebClient
 from dicomweb_client.session_utils import create_session_from_user_pass
 from monai.apps import download_and_extract, download_url, load_from_mmar
 from monai.data import partition_dataset
+from timeloop import Timeloop
 
 from monailabel.config import settings
 from monailabel.datastore.dicom import DICOMWebDatastore
@@ -41,6 +44,7 @@ from monailabel.tasks.infer.deepgrow_2d import InferDeepgrow2D
 from monailabel.tasks.infer.deepgrow_3d import InferDeepgrow3D
 from monailabel.tasks.infer.deepgrow_pipeline import InferDeepgrowPipeline
 from monailabel.utils.async_tasks.task import AsyncTask
+from monailabel.utils.sessions import Sessions
 
 logger = logging.getLogger(__name__)
 
@@ -90,6 +94,7 @@ class MONAILabelApp:
         self._download_tools()
         self._server_mode = strtobool(conf.get("server_mode", "false"))
         self._auto_update_scoring = strtobool(conf.get("auto_update_scoring", "true"))
+        self._sessions = self._load_sessions(strtobool(conf.get("sessions", "true")))
 
     def init_infers(self) -> Dict[str, InferTask]:
         return {}
@@ -390,6 +395,20 @@ class MONAILabelApp:
         if self._auto_update_scoring:
             self.async_scoring(None)
 
+        # Run Cleanup Jobs
+        def cleanup_sessions(instance):
+            instance.cleanup_sessions()
+
+        cleanup_sessions(self)
+        time_loop = Timeloop()
+        schedule.every(5).minutes.do(cleanup_sessions, self)
+
+        @time_loop.job(interval=timedelta(seconds=30))
+        def run_scheduler():
+            schedule.run_pending()
+
+        time_loop.start(block=False)
+
     def on_save_label(self, image_id, label_id):
         """
         Callback method when label is saved into datastore by a remote client
@@ -464,6 +483,20 @@ class MONAILabelApp:
                 for f in files:
                     if f in dcmqi_tools:
                         shutil.copy(os.path.join(root, f), target)
+
+    def _load_sessions(self, load=False):
+        if not load:
+            return None
+        return Sessions(settings.MONAI_LABEL_SESSION_PATH, settings.MONAI_LABEL_SESSION_EXPIRY)
+
+    def cleanup_sessions(self):
+        if not self._sessions:
+            return
+        count = self._sessions.remove_expired()
+        logger.debug("Total sessions cleaned up: {}".format(count))
+
+    def sessions(self):
+        return self._sessions
 
     @staticmethod
     def download(resources):

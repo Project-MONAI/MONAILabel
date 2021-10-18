@@ -33,6 +33,9 @@ class Settings(BaseSettings):
     MONAI_LABEL_SERVER_PORT: int = 8000
     MONAI_LABEL_CORS_ORIGINS: List[AnyHttpUrl] = []
 
+    MONAI_LABEL_SESSION_PATH: str = ""
+    MONAI_LABEL_SESSION_EXPIRY: int = 3600
+
     class Config:
         env_file = ".env"
         case_sensitive = True

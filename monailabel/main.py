@@ -20,13 +20,25 @@ import sys
 import uvicorn
 from fastapi import FastAPI
 from fastapi.middleware import Middleware
+from fastapi.middleware.cors import CORSMiddleware
 from fastapi.openapi.docs import get_swagger_ui_html
 from fastapi.responses import FileResponse, HTMLResponse
 from fastapi.staticfiles import StaticFiles
-from starlette.middleware.cors import CORSMiddleware
 
 from monailabel.config import settings
-from monailabel.endpoints import activelearning, batch_infer, datastore, infer, info, logs, ohif, proxy, scoring, train
+from monailabel.endpoints import (
+    activelearning,
+    batch_infer,
+    datastore,
+    infer,
+    info,
+    logs,
+    ohif,
+    proxy,
+    scoring,
+    session,
+    train,
+)
 from monailabel.interfaces.utils.app import app_instance
 from monailabel.utils.others.generic import init_log_config
 
@@ -68,6 +80,7 @@ app.include_router(datastore.router)
 app.include_router(logs.router)
 app.include_router(ohif.router)
 app.include_router(proxy.router)
+app.include_router(session.router)
 
 
 @app.get("/", include_in_schema=False)

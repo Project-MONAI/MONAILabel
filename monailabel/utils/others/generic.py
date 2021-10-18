@@ -34,6 +34,15 @@ def remove_file(path: str) -> None:
             os.unlink(path)
 
 
+def get_basename(path):
+    """Gets the basename of a file.
+
+    Ref: https://stackoverflow.com/questions/8384737/extract-file-name-from-path-no-matter-what-the-os-path-format
+    """
+    head, tail = os.path.split(path)
+    return tail or os.path.basename(head)
+
+
 def run_command(command, args=None, plogger=None):
     plogger = plogger if plogger else logger
     cmd = [command]
