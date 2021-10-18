@@ -33,10 +33,11 @@ class DICOMWebDatastore(LocalDatastore):
         self._modality = "CT"
         uri_hash = hashlib.md5(self._client.base_url.encode("utf-8")).hexdigest()
         datastore_path = (
-            os.path.join(cache_path.strip(), uri_hash)
-            if cache_path and cache_path.strip()
+            os.path.join(cache_path, uri_hash)
+            if cache_path
             else os.path.join(pathlib.Path.home(), ".cache", "monailabel", uri_hash)
         )
+        logger.info(f"DICOMWeb Datastore (cache) Path: {datastore_path}")
 
         self._stats_cache = ExpiringDict(max_len=100, max_age_seconds=30)
         super().__init__(datastore_path=datastore_path, auto_reload=True)
