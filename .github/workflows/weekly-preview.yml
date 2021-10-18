@@ -27,28 +27,11 @@ jobs:
         export HEAD_COMMIT_ID=$(git rev-parse HEAD)
     - name: Build OHIF
       run: |
-        git config --global user.name "CI Builder"
-        git config --global user.email "monai.contact@gmail.com"
-
         root_dir=$(pwd)
         ohif_dir=${root_dir}/plugins/ohif
-        
         pushd $ohif_dir
         ./build.sh
         popd
-
-        pushd $ohif_dir/Viewers
-        export YEAR_WEEK=$(date +'%y%U')
-        git add .
-        git commit -m "OHIF Update $YEAR_WEEK"
-
-        git describe --tags --dirty --always --long
-        popd
-
-        git add .
-        git commit -m "OHIF Update $YEAR_WEEK"
-        git status
-        git describe --tags --dirty --always --long
     - name: Build distribution
       run: |
         export BUILD_OHIF=false
