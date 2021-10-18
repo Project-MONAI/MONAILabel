@@ -38,9 +38,13 @@ jobs:
         export BUILD_OHIF=false
         sed -i 's/name\ =\ monailabel$/name\ =\ monailabel-weekly/g' setup.cfg
         echo "__commit_id__ = \"$HEAD_COMMIT_ID\"" >> monailabel/__init__.py
+
+        git config --global user.name "CI Builder"
+        git config --global user.email "monai.contact@gmail.com"
         git diff setup.cfg monailabel/__init__.py
         git add setup.cfg monailabel/__init__.py
         git commit -m "Weekly build at $HEAD_COMMIT_ID"
+
         export YEAR_WEEK=$(date +'%y%U')
         echo "Year week for tag is ${YEAR_WEEK}"
         if ! [[ $YEAR_WEEK =~ ^[0-9]{4}$ ]] ; then echo "Wrong 'year week' format.  Should be 4 digits."; exit 1 ; fi

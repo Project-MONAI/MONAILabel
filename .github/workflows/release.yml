@@ -36,38 +36,11 @@ jobs:
           python -m pip install torch>=1.5 torchvision
       - name: Build OHIF
         run: |
-          # store release tag and message
-          git fetch --depth=1 origin +refs/tags/*:refs/tags/*
-          export GIT_TAG=`git describe`
-          echo $GIT_TAG
-          export TAG_MESSAGE=`git tag -n 0.2.0 | awk '{$1=""; print}' | cut -c 2-`
-          echo $TAG_MESSAGE
-
-          git config --global user.name "CI Builder"
-          git config --global user.email "monai.contact@gmail.com"
-
           root_dir=$(pwd)
           ohif_dir=${root_dir}/plugins/ohif
-          
           pushd $ohif_dir
           ./build.sh
           popd
-
-          pushd $ohif_dir/Viewers
-          export YEAR_WEEK=$(date +'%y%U')
-          git add .
-          git commit -m "OHIF Update $YEAR_WEEK"
-
-          git describe --tags --dirty --always --long
-          popd
-
-          git add .
-          git commit -m "OHIF Update $YEAR_WEEK"
-          git status
-
-          # re-create the release tag from newly commited files from OHIF build
-          git tag --delete $GIT_TAG
-          git tag -a $GIT_TAG -m "${TAG_MESSAGE}"
       - name: Build and test source archive and wheel file
         run: |
           root_dir=$PWD
