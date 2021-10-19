@@ -37,6 +37,7 @@ class DICOMWebDatastore(LocalDatastore):
             if cache_path
             else os.path.join(pathlib.Path.home(), ".cache", "monailabel", uri_hash)
         )
+        logger.info(f"DICOMWeb Datastore (cache) Path: {datastore_path}")
 
         self._stats_cache = ExpiringDict(max_len=100, max_age_seconds=30)
         super().__init__(datastore_path=datastore_path, auto_reload=True)
