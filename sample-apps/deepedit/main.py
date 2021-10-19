@@ -41,11 +41,11 @@ class MyApp(MONAILabelApp):
     def __init__(self, app_dir, studies, conf):
 
         # Label names
-        self.label_names = json.loads(conf.get("label_names", "['organ']"))
+        self.label_names = ["spleen", "right_kidney", "left_kidney"]
 
         network_params = {
             "spatial_dims": 3,
-            "in_channels": 3,
+            "in_channels": len(self.label_names) + 2,
             "out_channels": len(self.label_names) + 1,
             "kernel_size": [
                 [3, 3, 3],
@@ -82,9 +82,9 @@ class MyApp(MONAILabelApp):
         self.final_model = os.path.join(self.model_dir, "model.pt")
 
         # Use Heuristic Planner to determine target spacing and spatial size based on dataset+gpu
-        spatial_size = json.loads(conf.get("spatial_size", "[256, 256, 128]"))
+        spatial_size = json.loads(conf.get("spatial_size", "[128, 128, 128]"))
         target_spacing = json.loads(conf.get("target_spacing", "[1.0, 1.0, 1.0]"))
-        self.heuristic_planner = strtobool(conf.get("heuristic_planner", "true"))
+        self.heuristic_planner = strtobool(conf.get("heuristic_planner", "false"))
         self.planner = HeuristicPlanner(spatial_size=spatial_size, target_spacing=target_spacing)
 
         use_pretrained_model = strtobool(conf.get("use_pretrained_model", "false"))
@@ -195,17 +195,25 @@ def main():
         datefmt="%Y-%m-%d %H:%M:%S",
     )
     app_dir_path = os.path.normpath("/home/adp20local/Documents/MONAILabel/sample-apps/deepedit")
-    studies_path = os.path.normpath("/home/adp20local/Documents/Datasets/monailabel_datasets/multilabel_abdomen/train")
+    studies_path = os.path.normpath(
+        "/home/adp20local/Documents/Datasets/monailabel_datasets/multilabel_abdomen/train_small"
+    )
     # conf is Dict[str, str]
     conf = {
         "use_pretrained_model": "false",
-        "heuristic_planner": "true",
+        "heuristic_planner": "false",
         "tta_enabled": "false",
         "tta_samples": "10",
-        "label_names": "['liver', 'Spleen', 'right_kidney', 'left_kidney']",
     }
     al_app = MyApp(app_dir=app_dir_path, studies=studies_path, conf=conf)
-    al_app.train(request={"epochs": 1})
+    request = {
+        "device": "cuda",
+        "model": "deepedit_train",
+        "max_epochs": 100,
+        "amp": False,
+        "lr": 0.0001,
+    }
+    al_app.train(request=request)
 
     return None
 

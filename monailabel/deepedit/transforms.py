@@ -14,7 +14,9 @@ import logging
 from typing import Dict, Hashable, Mapping, Optional
 
 import numpy as np
+import torch
 from monai.config import KeysCollection
+from monai.networks.layers import GaussianFilter
 from monai.transforms.transform import MapTransform, Randomizable, Transform
 
 logger = logging.getLogger(__name__)
@@ -30,6 +32,7 @@ class DiscardAddGuidanced(MapTransform):
         keys: KeysCollection,
         number_intensity_ch: int = 1,
         probability: float = 1.0,
+        label_names=None,
         allow_missing_keys: bool = False,
     ):
         """
@@ -43,17 +46,19 @@ class DiscardAddGuidanced(MapTransform):
 
         self.number_intensity_ch = number_intensity_ch
         self.discard_probability = probability
+        self.label_names = label_names
 
     def _apply(self, image):
         if self.discard_probability >= 1.0 or np.random.choice(
             [True, False], p=[self.discard_probability, 1 - self.discard_probability]
         ):
-            signal = np.zeros((1, image.shape[-3], image.shape[-2], image.shape[-1]), dtype=np.float32)
-            if image.shape[0] == self.number_intensity_ch + 2:
-                image[self.number_intensity_ch] = signal
-                image[self.number_intensity_ch + 1] = signal
+            signal = np.zeros(
+                (len(self.label_names) + 1, image.shape[-3], image.shape[-2], image.shape[-1]), dtype=np.float32
+            )
+            if image.shape[0] == self.number_intensity_ch + len(self.label_names) + 1:
+                image[self.number_intensity_ch :, ...] = signal
             else:
-                image = np.concatenate((image, signal, signal), axis=0)
+                image = np.concatenate([image, signal], axis=0)
         return image
 
     def __call__(self, data: Mapping[Hashable, np.ndarray]) -> Dict[Hashable, np.ndarray]:
@@ -339,32 +344,182 @@ class SingleLabelSingleModalityd(MapTransform):
         return d
 
 
-# Transform for multilabel segmentation
-class SelectLabelsd(MapTransform):
+# Transform for multilabel DeepEdit segmentation
+class SelectLabelsAbdomend(MapTransform):
     def __init__(
         self,
         keys: KeysCollection,
-        number_intensity_ch: int = 1,
-        probability: float = 1.0,
+        label_names: list = None,
         allow_missing_keys: bool = False,
     ):
         """
-        Discard positive and negative points according to discard probability
+        Select labels from list on the Multi-Atlas Labeling Beyond the Cranial Vault dataset
 
         :param keys: The ``keys`` parameter will be used to get and set the actual data item to transform
-        :param number_intensity_ch: number of intensity channels
-        :param probability: probability of discarding clicks
+        :param label_names: all label names
         """
         super().__init__(keys, allow_missing_keys)
 
-        self.number_intensity_ch = number_intensity_ch
-        self.discard_probability = probability
+        self.label_names = label_names
+        self.all_label_values = {
+            "spleen": 1,
+            "right_kidney": 2,
+            "left_kidney": 3,
+            "gallbladder": 4,
+            "esophagus": 5,
+            "liver": 6,
+            "stomach": 7,
+            "aorta": 8,
+            "inferior_vena_cava": 9,
+            "portal_vein": 10,
+            "splenic_vein": 11,
+            "pancreas": 12,
+            "right_adrenal_gland": 13,
+            "left_adrenal_gland": 14,
+        }
 
     def __call__(self, data: Mapping[Hashable, np.ndarray]) -> Dict[Hashable, np.ndarray]:
+
         d: Dict = dict(data)
         for key in self.key_iterator(d):
-            if key == "image":
-                d[key] = "Do something"
+            if key == "label":
+                # Making other labels as background
+                for k in self.all_label_values.keys():
+                    if k not in self.label_names:
+                        d[key][d[key] == self.all_label_values[k]] = 0.0
             else:
-                print("This transform only applies to the image")
+                print("This transform only applies to the label")
+        return d
+
+
+# One label at a time transform - DeepEdit
+class SingleLabelSelectiond(MapTransform):
+    def __init__(
+        self,
+        keys: KeysCollection,
+        label_names: list = None,
+        allow_missing_keys: bool = False,
+    ):
+        """
+        Selects one label at a time to train the DeepEdit
+
+        :param keys: The ``keys`` parameter will be used to get and set the actual data item to transform
+        :param label_names: all label names
+        """
+        super().__init__(keys, allow_missing_keys)
+
+        self.label_names = label_names
+        self.all_label_values = {
+            "spleen": 1,
+            "right_kidney": 2,
+            "left_kidney": 3,
+            "gallbladder": 4,
+            "esophagus": 5,
+            "liver": 6,
+            "stomach": 7,
+            "aorta": 8,
+            "inferior_vena_cava": 9,
+            "portal_vein": 10,
+            "splenic_vein": 11,
+            "pancreas": 12,
+            "right_adrenal_gland": 13,
+            "left_adrenal_gland": 14,
+        }
+
+    def __call__(self, data: Mapping[Hashable, np.ndarray]) -> Dict[Hashable, np.ndarray]:
+
+        d: Dict = dict(data)
+        for key in self.key_iterator(d):
+            if key == "label":
+                # Taking one label at a time
+                t_label = np.random.choice(self.label_names)
+                d["current_label"] = t_label
+                d[key][d[key] != self.all_label_values[t_label]] = 0.0
+                print(f"Using label {t_label} with number: {d[key].max()}")
+            else:
+                print("This transform only applies to the label")
+        return d
+
+
+class AddGuidanceSignalCustomMultiLabeld(Transform):
+    """
+    Add Guidance signal for input image. Multilabel DeepEdit
+
+    Based on the "guidance" points, apply gaussian to them and add them as new channel for input image.
+
+    Args:
+        image: key to the image source.
+        guidance: key to store guidance.
+        sigma: standard deviation for Gaussian kernel.
+        number_intensity_ch: channel index.
+
+    """
+
+    def __init__(
+        self,
+        image: str = "image",
+        guidance: str = "guidance",
+        sigma: int = 2,
+        number_intensity_ch: int = 1,
+        label_names=None,
+    ):
+        self.image = image
+        self.guidance = guidance
+        self.sigma = sigma
+        self.number_intensity_ch = number_intensity_ch
+        self.label_names = label_names
+
+    def _get_signal(self, image, guidance):
+        dimensions = 3 if len(image.shape) > 3 else 2
+        guidance = guidance.tolist() if isinstance(guidance, np.ndarray) else guidance
+        guidance = json.loads(guidance) if isinstance(guidance, str) else guidance
+        if dimensions == 3:
+            signal = np.zeros((len(guidance), image.shape[-3], image.shape[-2], image.shape[-1]), dtype=np.float32)
+        else:
+            signal = np.zeros((len(guidance), image.shape[-2], image.shape[-1]), dtype=np.float32)
+
+        sshape = signal.shape
+        for i, g_i in enumerate(guidance):
+            for point in g_i:
+                if np.any(np.asarray(point) < 0):
+                    continue
+
+                if dimensions == 3:
+                    p1 = max(0, min(int(point[-3]), sshape[-3] - 1))
+                    p2 = max(0, min(int(point[-2]), sshape[-2] - 1))
+                    p3 = max(0, min(int(point[-1]), sshape[-1] - 1))
+                    signal[i, p1, p2, p3] = 1.0
+                else:
+                    p1 = max(0, min(int(point[-2]), sshape[-2] - 1))
+                    p2 = max(0, min(int(point[-1]), sshape[-1] - 1))
+                    signal[i, p1, p2] = 1.0
+
+            if np.max(signal[i]) > 0:
+                signal_tensor = torch.tensor(signal[i])
+                pt_gaussian = GaussianFilter(len(signal_tensor.shape), sigma=self.sigma)
+                signal_tensor = pt_gaussian(signal_tensor.unsqueeze(0).unsqueeze(0))
+                signal_tensor = signal_tensor.squeeze(0).squeeze(0)
+                signal[i] = signal_tensor.detach().cpu().numpy()
+                signal[i] = (signal[i] - np.min(signal[i])) / (np.max(signal[i]) - np.min(signal[i]))
+        return signal
+
+    def _apply(self, image, guidance, num_channels, idx_guidance):
+        signal = self._get_signal(image, guidance)
+        image = image[0 : 0 + self.number_intensity_ch, ...]
+        empty_signal = np.zeros((num_channels, image.shape[-3], image.shape[-2], image.shape[-1]), dtype=np.float32)
+        input_tensor = np.concatenate([image, empty_signal], axis=0)
+        # Assign positive clicks to label channel
+        input_tensor[idx_guidance, ...] = signal[0, ...]
+        # Assign negative clicks to the last channel
+        input_tensor[-1, ...] = signal[1, ...]
+        return input_tensor
+
+    def __call__(self, data):
+        d = dict(data)
+        image = d[self.image]
+        guidance = d[self.guidance]
+
+        d[self.image] = self._apply(
+            image, guidance, len(self.label_names) + 1, self.label_names.index(d["current_label"])
+        )
         return d

@@ -25,7 +25,7 @@ from monai.transforms import (
     ToTensord,
 )
 
-from monailabel.deepedit.transforms import DiscardAddGuidanced, ResizeGuidanceCustomd, SingleLabelSingleModalityd
+from monailabel.deepedit.transforms import DiscardAddGuidanced, ResizeGuidanceCustomd
 from monailabel.interfaces.tasks.infer import InferTask, InferType
 from monailabel.transform.post import Restored
 
@@ -60,17 +60,18 @@ class Segmentation(InferTask):
 
         self.spatial_size = spatial_size
         self.target_spacing = target_spacing
+        self.label_names = label_names
 
     def pre_transforms(self):
         return [
             LoadImaged(keys="image", reader="nibabelreader"),
-            SingleLabelSingleModalityd(keys="image"),
+            # SingleLabelSingleModalityd(keys="image"),
             AddChanneld(keys="image"),
             Spacingd(keys="image", pixdim=self.target_spacing, mode="bilinear"),
             Orientationd(keys="image", axcodes="RAS"),
             NormalizeIntensityd(keys="image"),
             Resized(keys="image", spatial_size=self.spatial_size, mode="area"),
-            DiscardAddGuidanced(keys="image"),
+            DiscardAddGuidanced(keys="image", label_names=self.label_names),
             ToTensord(keys="image"),
         ]
 
@@ -105,6 +106,7 @@ class Deepgrow(InferTask):
         description="A pre-trained 3D DeepGrow model based on UNET",
         spatial_size=(128, 128, 64),
         target_spacing=(1.0, 1.0, 1.0),
+        label_names=None,
     ):
         super().__init__(
             path=path,
@@ -117,11 +119,12 @@ class Deepgrow(InferTask):
 
         self.spatial_size = spatial_size
         self.target_spacing = target_spacing
+        self.label_names = label_names
 
     def pre_transforms(self):
         return [
             LoadImaged(keys="image", reader="nibabelreader"),
-            SingleLabelSingleModalityd(keys="image"),
+            # SingleLabelSingleModalityd(keys="image"),
             AddChanneld(keys="image"),
             Spacingd(keys="image", pixdim=self.target_spacing, mode="bilinear"),
             Orientationd(keys="image", axcodes="RAS"),

@@ -12,12 +12,7 @@
 import logging
 
 import torch
-from monai.apps.deepgrow.transforms import (
-    AddGuidanceSignald,
-    AddInitialSeedPointd,
-    FindAllValidSlicesd,
-    FindDiscrepancyRegionsd,
-)
+from monai.apps.deepgrow.transforms import AddInitialSeedPointd, FindAllValidSlicesd, FindDiscrepancyRegionsd
 from monai.inferers import SimpleInferer
 from monai.losses import DiceLoss
 from monai.transforms import (
@@ -38,7 +33,11 @@ from monai.transforms import (
 
 from monailabel.deepedit.handlers import TensorBoardImageHandler
 from monailabel.deepedit.interaction import Interaction
-from monailabel.deepedit.transforms import PosNegClickProbAddRandomGuidanced, SelectLabelsd
+from monailabel.deepedit.transforms import (
+    AddGuidanceSignalCustomMultiLabeld,
+    PosNegClickProbAddRandomGuidanced,
+    SingleLabelSelectiond,
+)
 from monailabel.tasks.train.basic_train import BasicTrainTask
 
 logger = logging.getLogger(__name__)
@@ -89,7 +88,8 @@ class MyTrain(BasicTrainTask):
             PosNegClickProbAddRandomGuidanced(
                 guidance="guidance", discrepancy="discrepancy", probability="probability"
             ),
-            AddGuidanceSignald(image="image", guidance="guidance"),
+            # AddGuidanceSignald(image="image", guidance="guidance"),
+            AddGuidanceSignalCustomMultiLabeld(image="image", guidance="guidance", label_names=self.label_names),
             ToTensord(keys=("image", "label")),
         ]
 
@@ -97,7 +97,7 @@ class MyTrain(BasicTrainTask):
         return [
             LoadImaged(keys=("image", "label"), reader="nibabelreader"),
             # SingleLabelSingleModalityd(keys=("image", "label")),
-            SelectLabelsd(keys="label"),
+            SingleLabelSelectiond(keys="label", label_names=self.label_names),
             # RandZoomd(keys=("image", "label"), prob=0.4, min_zoom=0.3, max_zoom=1.9, mode=("bilinear", "nearest")),
             AddChanneld(keys=("image", "label")),
             Spacingd(keys=["image", "label"], pixdim=self.target_spacing, mode=("bilinear", "nearest")),
@@ -117,7 +117,8 @@ class MyTrain(BasicTrainTask):
             Resized(keys=("image", "label"), spatial_size=self.spatial_size, mode=("area", "nearest")),
             FindAllValidSlicesd(label="label", sids="sids"),
             AddInitialSeedPointd(label="label", guidance="guidance", sids="sids"),
-            AddGuidanceSignald(image="image", guidance="guidance"),
+            # AddGuidanceSignald(image="image", guidance="guidance"),
+            AddGuidanceSignalCustomMultiLabeld(image="image", guidance="guidance", label_names=self.label_names),
             ToTensord(keys=("image", "label")),
         ]
 
@@ -136,6 +137,7 @@ class MyTrain(BasicTrainTask):
         return [
             LoadImaged(keys=("image", "label"), reader="nibabelreader"),
             # SingleLabelSingleModalityd(keys=("image", "label")),
+            SingleLabelSelectiond(keys="label", label_names=self.label_names),
             AddChanneld(keys=("image", "label")),
             Spacingd(keys=["image", "label"], pixdim=self.target_spacing, mode=("bilinear", "nearest")),
             Orientationd(keys=["image", "label"], axcodes="RAS"),
@@ -143,7 +145,8 @@ class MyTrain(BasicTrainTask):
             Resized(keys=("image", "label"), spatial_size=self.spatial_size, mode=("area", "nearest")),
             FindAllValidSlicesd(label="label", sids="sids"),
             AddInitialSeedPointd(label="label", guidance="guidance", sids="sids"),
-            AddGuidanceSignald(image="image", guidance="guidance"),
+            # AddGuidanceSignald(image="image", guidance="guidance"),
+            AddGuidanceSignalCustomMultiLabeld(image="image", guidance="guidance", label_names=self.label_names),
             ToTensord(keys=("image", "label")),
         ]
 
