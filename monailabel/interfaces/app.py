@@ -91,7 +91,8 @@ class MONAILabelApp:
         self._scoring_methods = self.init_scoring_methods()
         self._batch_infer = self.init_batch_infer()
 
-        self._download_tools()
+        if strtobool(conf.get("download_tools", "true")):
+            self._download_tools()
         self._server_mode = strtobool(conf.get("server_mode", "false"))
         self._auto_update_scoring = strtobool(conf.get("auto_update_scoring", "true"))
         self._sessions = self._load_sessions(strtobool(conf.get("sessions", "true")))
