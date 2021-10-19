@@ -48,6 +48,8 @@ class Sessions(dict):
 
         self.store_path = store_path
         self.expiry = expiry if expiry > 60 else 3600
+        logger.info(f"Session Path: {self.store_path}")
+        logger.info(f"Session Expiry (max): {self.expiry}")
 
     def remove_expired(self):
         count = 0
