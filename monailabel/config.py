@@ -23,6 +23,7 @@ class Settings(BaseSettings):
 
     MONAI_LABEL_DICOMWEB_USERNAME: str = ""
     MONAI_LABEL_DICOMWEB_PASSWORD: str = ""
+    MONAI_LABEL_DICOMWEB_CACHE_PATH: str = ""
     MONAI_LABEL_QIDO_PREFIX: str = ""
     MONAI_LABEL_WADO_PREFIX: str = ""
     MONAI_LABEL_STOW_PREFIX: str = ""
