@@ -21,7 +21,7 @@ from monailabel.config import settings
 from monailabel.main import app
 
 
-def create_client(app_dir, studies):
+def create_client(app_dir, studies, data_dir):
     settings.MONAI_LABEL_APP_DIR = app_dir
     settings.MONAI_LABEL_STUDIES = studies
     settings.MONAI_LABEL_DATASTORE_AUTO_RELOAD = False
@@ -32,6 +32,7 @@ def create_client(app_dir, studies):
         "server_mode": "true",
         "auto_update_scoring": "false",
     }
+    settings.MONAI_LABEL_SESSION_PATH = os.path.join(data_dir, "sessions")
 
     sys.path.append(settings.MONAI_LABEL_APP_DIR)
     sys.path.append(os.path.join(settings.MONAI_LABEL_APP_DIR, "lib"))
@@ -58,7 +59,7 @@ class BasicEndpointTestSuite(unittest.TestCase):
 
     @classmethod
     def setUpClass(cls) -> None:
-        cls.client = create_client(cls.app_dir, cls.studies)
+        cls.client = create_client(cls.app_dir, cls.studies, cls.data_dir)
 
 
 class DICOMWebEndpointTestSuite(unittest.TestCase):
@@ -71,4 +72,4 @@ class DICOMWebEndpointTestSuite(unittest.TestCase):
 
     @classmethod
     def setUpClass(cls) -> None:
-        cls.client = create_client(cls.app_dir, cls.studies)
+        cls.client = create_client(cls.app_dir, cls.studies, cls.data_dir)

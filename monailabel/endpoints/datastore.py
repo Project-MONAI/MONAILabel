@@ -19,8 +19,8 @@ from enum import Enum
 from typing import Any, Dict, List, Optional
 
 from fastapi import APIRouter, File, Form, HTTPException, UploadFile
+from fastapi.background import BackgroundTasks
 from fastapi.responses import FileResponse
-from starlette.background import BackgroundTasks
 
 from monailabel.interfaces.app import MONAILabelApp
 from monailabel.interfaces.datastore import Datastore, DefaultLabelTag

@@ -19,9 +19,9 @@ from enum import Enum
 from typing import Optional
 
 from fastapi import APIRouter, File, Form, HTTPException, UploadFile
+from fastapi.background import BackgroundTasks
 from fastapi.responses import FileResponse, Response
 from requests_toolbelt import MultipartEncoder
-from starlette.background import BackgroundTasks
 
 from monailabel.interfaces.app import MONAILabelApp
 from monailabel.interfaces.utils.app import app_instance
@@ -103,6 +103,7 @@ async def run_inference(
     background_tasks: BackgroundTasks,
     model: str,
     image: str = "",
+    session_id: str = "",
     params: str = Form("{}"),
     file: UploadFile = File(None),
     label: UploadFile = File(None),
@@ -110,8 +111,8 @@ async def run_inference(
 ):
     request = {"model": model, "image": image}
 
-    if not file and not image:
-        raise HTTPException(status_code=500, detail="Neither Image nor File input is provided")
+    if not file and not image and not session_id:
+        raise HTTPException(status_code=500, detail="Neither Image nor File not Session ID input is provided")
 
     if file:
         file_ext = "".join(pathlib.Path(file.filename).suffixes) if file.filename else ".nii.gz"
@@ -137,6 +138,12 @@ async def run_inference(
 
     p = json.loads(params) if params else {}
     request.update(p)
+
+    if session_id:
+        session = instance.sessions().get_session(session_id)
+        if session:
+            request["image"] = session.image
+            request["session"] = session.to_json()
 
     logger.info(f"Infer Request: {request}")
     result = instance.infer(request)
