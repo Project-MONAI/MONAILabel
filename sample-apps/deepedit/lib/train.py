@@ -38,7 +38,7 @@ from monai.transforms import (
 
 from monailabel.deepedit.handlers import TensorBoardImageHandler
 from monailabel.deepedit.interaction import Interaction
-from monailabel.deepedit.transforms import PosNegClickProbAddRandomGuidanced, SingleLabelSingleModalityd, SelectLabelsd
+from monailabel.deepedit.transforms import PosNegClickProbAddRandomGuidanced, SelectLabelsd
 from monailabel.tasks.train.basic_train import BasicTrainTask
 
 logger = logging.getLogger(__name__)
@@ -128,7 +128,7 @@ class MyTrain(BasicTrainTask):
                 keys=("pred", "label"),
                 argmax=(True, False),
                 to_onehot=True,
-                n_classes=len(self.label_names)+1,
+                n_classes=len(self.label_names) + 1,
             ),
         ]
 

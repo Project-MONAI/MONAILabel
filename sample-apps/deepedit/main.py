@@ -132,7 +132,7 @@ class MyApp(MONAILabelApp):
                 self.network,
                 spatial_size=self.planner.spatial_size,
                 target_spacing=self.planner.target_spacing,
-                label_names=self.label_names
+                label_names=self.label_names,
             ),
             # intensity range set for MRI
             "Histogram+GraphCut": HistogramBasedGraphCut(
@@ -187,6 +187,7 @@ class MyApp(MONAILabelApp):
         methods["sum"] = Sum()
         return methods
 
+
 def main():
     logging.basicConfig(
         level=logging.INFO,
@@ -196,14 +197,15 @@ def main():
     app_dir_path = os.path.normpath("/home/adp20local/Documents/MONAILabel/sample-apps/deepedit")
     studies_path = os.path.normpath("/home/adp20local/Documents/Datasets/monailabel_datasets/multilabel_abdomen/train")
     # conf is Dict[str, str]
-    conf = {'use_pretrained_model': 'false',
-            'heuristic_planner': 'true',
-            'tta_enabled': 'false',
-            'tta_samples': '10',
-            'label_names': "['liver', 'Spleen', 'right_kidney', 'left_kidney']"
-            }
+    conf = {
+        "use_pretrained_model": "false",
+        "heuristic_planner": "true",
+        "tta_enabled": "false",
+        "tta_samples": "10",
+        "label_names": "['liver', 'Spleen', 'right_kidney', 'left_kidney']",
+    }
     al_app = MyApp(app_dir=app_dir_path, studies=studies_path, conf=conf)
-    al_app.train(request={'epochs':1})
+    al_app.train(request={"epochs": 1})
 
     return None
 

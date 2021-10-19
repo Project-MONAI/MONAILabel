@@ -364,7 +364,7 @@ class SelectLabelsd(MapTransform):
         d: Dict = dict(data)
         for key in self.key_iterator(d):
             if key == "image":
-                d[key] = 'Do something'
+                d[key] = "Do something"
             else:
                 print("This transform only applies to the image")
         return d
