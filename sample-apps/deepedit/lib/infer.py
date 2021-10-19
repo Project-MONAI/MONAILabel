@@ -40,7 +40,7 @@ class Segmentation(InferTask):
         path,
         network=None,
         type=InferType.SEGMENTATION,
-        labels="organ",
+        label_names=None,
         dimension=3,
         spatial_size=(128, 128, 64),
         target_spacing=(1.0, 1.0, 1.0),
@@ -50,7 +50,7 @@ class Segmentation(InferTask):
             path=path,
             network=network,
             type=type,
-            labels=labels,
+            labels=label_names,
             dimension=dimension,
             description=description,
             input_key="image",
@@ -83,8 +83,8 @@ class Segmentation(InferTask):
     def post_transforms(self):
         return [
             ToTensord(keys="pred"),
-            Activationsd(keys="pred", sigmoid=True),
-            AsDiscreted(keys="pred", threshold_values=True, logit_thresh=0.51),
+            Activationsd(keys="pred", softmax=True),
+            AsDiscreted(keys="pred", argmax=True),
             SqueezeDimd(keys="pred", dim=0),
             ToNumpyd(keys="pred"),
             Restored(keys="pred", ref_image="image"),
@@ -141,8 +141,8 @@ class Deepgrow(InferTask):
     def post_transforms(self):
         return [
             ToTensord(keys="pred"),
-            Activationsd(keys="pred", sigmoid=True),
-            AsDiscreted(keys="pred", threshold_values=True, logit_thresh=0.51),
+            Activationsd(keys="pred", softmax=True),
+            AsDiscreted(keys="pred", argmax=True),
             ToNumpyd(keys="pred"),
             Restored(keys="pred", ref_image="image"),
         ]

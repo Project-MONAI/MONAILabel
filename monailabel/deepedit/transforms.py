@@ -337,3 +337,34 @@ class SingleLabelSingleModalityd(MapTransform):
                     meta_data["dim"][4] = 1
 
         return d
+
+
+# Transform for multilabel segmentation
+class SelectLabelsd(MapTransform):
+    def __init__(
+        self,
+        keys: KeysCollection,
+        number_intensity_ch: int = 1,
+        probability: float = 1.0,
+        allow_missing_keys: bool = False,
+    ):
+        """
+        Discard positive and negative points according to discard probability
+
+        :param keys: The ``keys`` parameter will be used to get and set the actual data item to transform
+        :param number_intensity_ch: number of intensity channels
+        :param probability: probability of discarding clicks
+        """
+        super().__init__(keys, allow_missing_keys)
+
+        self.number_intensity_ch = number_intensity_ch
+        self.discard_probability = probability
+
+    def __call__(self, data: Mapping[Hashable, np.ndarray]) -> Dict[Hashable, np.ndarray]:
+        d: Dict = dict(data)
+        for key in self.key_iterator(d):
+            if key == "image":
+                d[key] = 'Do something'
+            else:
+                print("This transform only applies to the image")
+        return d

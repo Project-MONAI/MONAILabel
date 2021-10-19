@@ -38,7 +38,7 @@ from monai.transforms import (
 
 from monailabel.deepedit.handlers import TensorBoardImageHandler
 from monailabel.deepedit.interaction import Interaction
-from monailabel.deepedit.transforms import PosNegClickProbAddRandomGuidanced, SingleLabelSingleModalityd
+from monailabel.deepedit.transforms import PosNegClickProbAddRandomGuidanced, SingleLabelSingleModalityd, SelectLabelsd
 from monailabel.tasks.train.basic_train import BasicTrainTask
 
 logger = logging.getLogger(__name__)
@@ -56,6 +56,7 @@ class MyTrain(BasicTrainTask):
         deepgrow_probability_val=1.0,
         max_train_interactions=20,
         max_val_interactions=10,
+        label_names=None,
         debug_mode=False,
         **kwargs,
     ):
@@ -66,6 +67,7 @@ class MyTrain(BasicTrainTask):
         self.deepgrow_probability_val = deepgrow_probability_val
         self.max_train_interactions = max_train_interactions
         self.max_val_interactions = max_val_interactions
+        self.label_names = label_names
         self.debug_mode = debug_mode
 
         super().__init__(model_dir, description, **kwargs)
@@ -77,7 +79,7 @@ class MyTrain(BasicTrainTask):
         return torch.optim.Adam(self._network.parameters(), lr=0.0001)
 
     def loss_function(self):
-        return DiceLoss(sigmoid=True, squared_pred=True)
+        return DiceLoss(to_onehot_y=True, softmax=True)
 
     def get_click_transforms(self):
         return [
@@ -94,7 +96,8 @@ class MyTrain(BasicTrainTask):
     def train_pre_transforms(self):
         return [
             LoadImaged(keys=("image", "label"), reader="nibabelreader"),
-            SingleLabelSingleModalityd(keys=("image", "label")),
+            # SingleLabelSingleModalityd(keys=("image", "label")),
+            SelectLabelsd(keys="label"),
             # RandZoomd(keys=("image", "label"), prob=0.4, min_zoom=0.3, max_zoom=1.9, mode=("bilinear", "nearest")),
             AddChanneld(keys=("image", "label")),
             Spacingd(keys=["image", "label"], pixdim=self.target_spacing, mode=("bilinear", "nearest")),
@@ -120,14 +123,19 @@ class MyTrain(BasicTrainTask):
 
     def train_post_transforms(self):
         return [
-            Activationsd(keys="pred", sigmoid=True),
-            AsDiscreted(keys="pred", threshold_values=True, logit_thresh=0.5),
+            Activationsd(keys="pred", softmax=True),
+            AsDiscreted(
+                keys=("pred", "label"),
+                argmax=(True, False),
+                to_onehot=True,
+                n_classes=len(self.label_names)+1,
+            ),
         ]
 
     def val_pre_transforms(self):
         return [
             LoadImaged(keys=("image", "label"), reader="nibabelreader"),
-            SingleLabelSingleModalityd(keys=("image", "label")),
+            # SingleLabelSingleModalityd(keys=("image", "label")),
             AddChanneld(keys=("image", "label")),
             Spacingd(keys=["image", "label"], pixdim=self.target_spacing, mode=("bilinear", "nearest")),
             Orientationd(keys=["image", "label"], axcodes="RAS"),
