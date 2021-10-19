@@ -17,4 +17,4 @@ pynetdicom==1.5.7
 expiringdict==1.2.1
 schedule==1.1.0
 timeloop==1.0.2
-https://github.com/masadcv/SimpleCRF/archive/refs/tags/v0.1.1.tar.gz#egg=simplecrf
+simplecrf==0.2.1.1

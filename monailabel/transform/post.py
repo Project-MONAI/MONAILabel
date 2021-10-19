@@ -52,10 +52,13 @@ class ExtremePointsd(MapTransform):
     def __call__(self, data):
         d = dict(data)
         for key in self.keys:
-            points = get_extreme_points(d[key])
-            if d.get(self.result) is None:
-                d[self.result] = dict()
-            d[self.result][self.points] = np.array(points).astype(int).tolist()
+            try:
+                points = get_extreme_points(d[key])
+                if d.get(self.result) is None:
+                    d[self.result] = dict()
+                d[self.result][self.points] = np.array(points).astype(int).tolist()
+            except ValueError:
+                pass
         return d
 
 

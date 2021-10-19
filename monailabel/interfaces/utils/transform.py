@@ -37,7 +37,7 @@ def dump_data(data):
         logger.debug("******************************************************************************")
 
 
-def shape_info(data, keys=("image", "label", "logits", "pred", "model")):
+def shape_info(data, keys=("image", "label", "logits", "pred", "model", "points")):
     info = []
     for key in keys:
         val = data.get(key) if hasattr(data, "get") else None
@@ -46,7 +46,7 @@ def shape_info(data, keys=("image", "label", "logits", "pred", "model")):
     return "; ".join(info)
 
 
-def run_transforms(data, callables, inverse=False, log_prefix="POST", log_name="Transform"):
+def run_transforms(data, callables, inverse=False, log_prefix="POST", log_name="Transform", use_compose=False):
     """
     Run Transforms
 
@@ -55,6 +55,7 @@ def run_transforms(data, callables, inverse=False, log_prefix="POST", log_name="
     :param inverse: Run inverse instead of call/forward function
     :param log_prefix: Logging prefix (POST or PRE)
     :param log_name: Type of callables for logging
+    :param use_compose: Use Compose to run individual callables
     :return: Processed data after running transforms
     """
     logger.info("{} - Run {}".format(log_prefix, log_name))
@@ -83,8 +84,11 @@ def run_transforms(data, callables, inverse=False, log_prefix="POST", log_name="
                     "{} '{}' has no invert method".format(log_name, t.__class__.__name__),
                 )
         elif callable(t):
-            compose.transforms = [t]
-            data = compose(data)
+            if use_compose:
+                compose.transforms = [t]
+                data = compose(data)
+            else:
+                data = t(data)
         else:
             raise MONAILabelException(
                 MONAILabelError.TRANSFORM_ERROR,
