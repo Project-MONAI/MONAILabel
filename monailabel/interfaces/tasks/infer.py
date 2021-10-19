@@ -260,7 +260,7 @@ class InferTask:
         return result_file_name, result_json
 
     def run_pre_transforms(self, data, transforms):
-        return run_transforms(data, transforms, log_prefix="PRE")
+        return run_transforms(data, transforms, log_prefix="PRE", use_compose=True)
 
     def run_invert_transforms(self, data, pre_transforms, names):
         if names is None:
