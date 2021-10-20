@@ -435,6 +435,9 @@ class SingleLabelSelectiond(MapTransform):
                 t_label = np.random.choice(self.label_names)
                 d["current_label"] = t_label
                 d[key][d[key] != self.all_label_values[t_label]] = 0.0
+                # Convert label to index values following label_names argument
+                max_label_val = self.label_names.index(t_label) + 1
+                d[key][d[key] > 0] = max_label_val
                 print(f"Using label {t_label} with number: {d[key].max()}")
             else:
                 print("This transform only applies to the label")

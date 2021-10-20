@@ -9,7 +9,7 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-from monai.apps.deepgrow.transforms import AddGuidanceFromPointsd, AddGuidanceSignald
+from monai.apps.deepgrow.transforms import AddGuidanceFromPointsd
 from monai.inferers import SimpleInferer
 from monai.transforms import (
     Activationsd,
@@ -25,7 +25,11 @@ from monai.transforms import (
     ToTensord,
 )
 
-from monailabel.deepedit.transforms import DiscardAddGuidanced, ResizeGuidanceCustomd
+from monailabel.deepedit.transforms import (
+    AddGuidanceSignalCustomMultiLabeld,
+    DiscardAddGuidanced,
+    ResizeGuidanceCustomd,
+)
 from monailabel.interfaces.tasks.infer import InferTask, InferType
 from monailabel.transform.post import Restored
 
@@ -134,7 +138,8 @@ class Deepgrow(InferTask):
             NormalizeIntensityd(keys="image"),
             Resized(keys="image", spatial_size=self.spatial_size, mode="area"),
             ResizeGuidanceCustomd(guidance="guidance", ref_image="image"),
-            AddGuidanceSignald(image="image", guidance="guidance"),
+            # AddGuidanceSignald(image="image", guidance="guidance"),
+            AddGuidanceSignalCustomMultiLabeld(image="image", guidance="guidance", label_names=self.label_names),
             ToTensord(keys="image"),
         ]
 

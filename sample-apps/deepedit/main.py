@@ -41,7 +41,7 @@ class MyApp(MONAILabelApp):
     def __init__(self, app_dir, studies, conf):
 
         # Label names
-        self.label_names = ["spleen", "right_kidney", "left_kidney"]
+        self.label_names = ["spleen", "right_kidney", "left_kidney", "liver"]
 
         network_params = {
             "spatial_dims": 3,
@@ -195,9 +195,7 @@ def main():
         datefmt="%Y-%m-%d %H:%M:%S",
     )
     app_dir_path = os.path.normpath("/home/adp20local/Documents/MONAILabel/sample-apps/deepedit")
-    studies_path = os.path.normpath(
-        "/home/adp20local/Documents/Datasets/monailabel_datasets/multilabel_abdomen/train_small"
-    )
+    studies_path = os.path.normpath("/home/adp20local/Documents/Datasets/monailabel_datasets/multilabel_abdomen/train")
     # conf is Dict[str, str]
     conf = {
         "use_pretrained_model": "false",
@@ -209,7 +207,7 @@ def main():
     request = {
         "device": "cuda",
         "model": "deepedit_train",
-        "max_epochs": 100,
+        "max_epochs": 200,
         "amp": False,
         "lr": 0.0001,
     }
