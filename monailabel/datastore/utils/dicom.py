@@ -52,7 +52,7 @@ def get_scu(query, output_dir, query_level="SERIES", host="127.0.0.1", port="424
     logger.info(f"Time to run GET-SCU: {time.time() - start} (sec)")
 
 
-def score_scu(input_file, host="127.0.0.1", port="4242", aet="MONAILABEL"):
+def store_scu(input_file, host="127.0.0.1", port="4242", aet="MONAILABEL"):
     start = time.time()
     input_files = input_file if isinstance(input_file, list) else [input_file]
     for i in input_files:

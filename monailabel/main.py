@@ -11,6 +11,7 @@
 
 import argparse
 import json
+import logging
 import os
 import pathlib
 import platform
@@ -41,6 +42,8 @@ from monailabel.endpoints import (
 )
 from monailabel.interfaces.utils.app import app_instance
 from monailabel.utils.others.generic import init_log_config
+
+logger = logging.getLogger(__name__)
 
 middleware = [
     Middleware(
@@ -105,6 +108,11 @@ async def startup_event():
 
 
 def run_main():
+    logging.basicConfig(
+        level=(logging.INFO),
+        format="[%(asctime)s] [%(process)s] [%(threadName)s] [%(levelname)s] (%(name)s:%(lineno)d) - %(message)s",
+    )
+
     parser = argparse.ArgumentParser()
     subparsers = parser.add_subparsers(help="sub-command help")
 
@@ -303,8 +311,8 @@ def run_app(args):
         args.studies = os.path.realpath(args.studies)
 
     for arg in vars(args):
-        print("USING:: {} = {}".format(arg, getattr(args, arg)))
-    print("")
+        logger.info("USING:: {} = {}".format(arg, getattr(args, arg)))
+    logger.info("")
 
     # namespace('conf': [['key1','value1'],['key2','value2']])
     conf = {c[0]: c[1] for c in args.conf} if args.conf else {}
@@ -337,18 +345,18 @@ def run_app(args):
                 e = f"{k}={v}"
                 f.write(e)
                 f.write(os.linesep)
-                print(f"{'set' if any(platform.win32_ver()) else 'export'} {e}")
+                logger.debug(f"{'set' if any(platform.win32_ver()) else 'export'} {e}")
     else:
-        print("")
-        print("**********************************************************")
-        print("                  ENV VARIABLES/SETTINGS                  ")
-        print("**********************************************************")
+        logger.debug("")
+        logger.debug("**********************************************************")
+        logger.debug("                  ENV VARIABLES/SETTINGS                  ")
+        logger.debug("**********************************************************")
         for k, v in settings.dict().items():
             v = json.dumps(v) if isinstance(v, list) or isinstance(v, dict) else str(v)
-            print(f"{'set' if any(platform.win32_ver()) else 'export'} {k}={v}")
+            logger.debug(f"{'set' if any(platform.win32_ver()) else 'export'} {k}={v}")
             os.environ[k] = v
-        print("**********************************************************")
-        print("")
+        logger.debug("**********************************************************")
+        logger.debug("")
 
         uvicorn.run(
             app,

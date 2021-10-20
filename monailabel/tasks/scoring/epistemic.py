@@ -107,7 +107,7 @@ class EpistemicScoring(ScoringMethod):
             return None, None
 
         logger.info(f"Using {model_file} for running Epistemic")
-        model_ts = int(os.stat(model_file).st_mtime)
+        model_ts = int(os.stat(model_file).st_mtime) if model_file and os.path.exists(model_file) else 1
         if network:
             model = network
             if model_file:
@@ -135,6 +135,7 @@ class EpistemicScoring(ScoringMethod):
             num_samples = 2
             logger.warning("EPISTEMIC:: Fixing 'num_samples=2' as min 2 samples are needed to compute entropy")
 
+        logger.info(f"EPISTEMIC:: Total unlabeled images: {len(unlabeled_images)}")
         for image_id in unlabeled_images:
             image_info = datastore.get_image_info(image_id)
             prev_ts = image_info.get("epistemic_ts", 0)

@@ -54,13 +54,18 @@ def app_instance(app_dir=None, studies=None, conf=None):
 
 
 def save_result(result, output):
-    print(json.dumps(result))
+    logger.info(f"Result: {json.dumps(result)}")
     if output:
         with open(output, "w") as fp:
             json.dump(result, fp, indent=2)
 
 
 def run_main():
+    logging.basicConfig(
+        level=(logging.INFO),
+        format="[%(asctime)s] [%(process)s] [%(threadName)s] [%(levelname)s] (%(name)s:%(lineno)d) - %(message)s",
+    )
+
     parser = argparse.ArgumentParser()
     parser.add_argument("-a", "--app", type=str, default=None)
     parser.add_argument("-s", "--studies", type=str, default=None)
@@ -73,19 +78,19 @@ def run_main():
 
     args = parser.parse_args()
     for arg in vars(args):
-        print("USING:: {} = {}".format(arg, getattr(args, arg)))
-    print("")
+        logger.debug("USING:: {} = {}".format(arg, getattr(args, arg)))
+    logger.debug("")
 
-    print("------------------------------------------------------")
-    print("SETTINGS")
-    print("------------------------------------------------------")
-    print(json.dumps(settings.dict(), indent=2))
-    print("")
+    logger.debug("------------------------------------------------------")
+    logger.debug("SETTINGS")
+    logger.debug("------------------------------------------------------")
+    logger.debug(json.dumps(settings.dict(), indent=2))
+    logger.debug("")
 
     app_dir = args.app if args.app else settings.MONAI_LABEL_APP_DIR
     studies = args.studies if args.studies else settings.MONAI_LABEL_STUDIES
-    print(f"++ APP_DIR: {app_dir}")
-    print(f"++ STUDIES: {studies}")
+    logger.debug(f"++ APP_DIR: {app_dir}")
+    logger.debug(f"++ STUDIES: {studies}")
 
     sys.path.append(app_dir)
     sys.path.append(os.path.join(app_dir, "lib"))
