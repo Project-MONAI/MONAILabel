@@ -122,8 +122,7 @@ class LocalDatastore(Datastore):
 
         logging.getLogger("filelock").setLevel(logging.ERROR)
 
-        logger.info(f"Extensions: {self._extensions}")
-        logger.info(f"Auto Reload: {auto_reload}")
+        logger.info(f"Auto Reload: {auto_reload}; Extensions: {self._extensions}")
 
         os.makedirs(self._datastore_path, exist_ok=True)
 
@@ -516,7 +515,7 @@ class LocalDatastore(Datastore):
         return filtered
 
     def _reconcile_datastore(self):
-        logger.info("reconcile datastore...")
+        logger.debug("reconcile datastore...")
         invalidate = 0
         invalidate += self._remove_non_existing()
         invalidate += self._add_non_existing_images()
