@@ -192,7 +192,9 @@ def main():
         datefmt="%Y-%m-%d %H:%M:%S",
     )
     app_dir_path = os.path.normpath("/home/adp20local/Documents/MONAILabel/sample-apps/deepedit_multiple_label")
-    studies_path = os.path.normpath("/home/adp20local/Documents/Datasets/monailabel_datasets/multilabel_abdomen/NRRD/train_small")
+    studies_path = os.path.normpath(
+        "/home/adp20local/Documents/Datasets/monailabel_datasets/multilabel_abdomen/NRRD/train_small"
+    )
     # conf is Dict[str, str]
     conf = {
         "use_pretrained_model": "false",
