@@ -102,9 +102,6 @@ class MyApp(MONAILabelApp):
         self.tta_samples = int(conf.get("tta_samples", "5"))
         logger.info(f"TTA Enabled: {self.tta_enabled}; Samples: {self.tta_samples}")
 
-        self.debug_mode = strtobool(conf.get("debug_mode", "false"))
-        logger.info(f"DEBUG MODE Enabled: {self.debug_mode}")
-
         super().__init__(
             app_dir=app_dir,
             studies=studies,
@@ -151,7 +148,7 @@ class MyApp(MONAILabelApp):
                 publish_path=self.final_model,
                 config={"pretrained": strtobool(self.conf.get("use_pretrained_model", "true"))},
                 label_names=self.label_names,
-                debug_mode=self.debug_mode,
+                debug_mode=True,
             )
         }
 
@@ -194,15 +191,14 @@ def main():
         format="[%(asctime)s.%(msecs)03d][%(levelname)5s](%(name)s) - %(message)s",
         datefmt="%Y-%m-%d %H:%M:%S",
     )
-    app_dir_path = os.path.normpath("/home/adp20local/Documents/MONAILabel/sample-apps/deepedit")
-    studies_path = os.path.normpath("/home/adp20local/Documents/Datasets/monailabel_datasets/multilabel_abdomen/train")
+    app_dir_path = os.path.normpath("/home/adp20local/Documents/MONAILabel/sample-apps/deepedit_multiple_label")
+    studies_path = os.path.normpath("/home/adp20local/Documents/Datasets/monailabel_datasets/multilabel_abdomen/NRRD/train_small")
     # conf is Dict[str, str]
     conf = {
         "use_pretrained_model": "false",
         "heuristic_planner": "false",
         "tta_enabled": "false",
         "tta_samples": "10",
-        "debug_mode": "True",
     }
     al_app = MyApp(app_dir=app_dir_path, studies=studies_path, conf=conf)
     request = {
