@@ -113,7 +113,7 @@ class MyTrain(BasicTrainTask):
             Resized(keys=("image", "label"), spatial_size=self.spatial_size, mode=("area", "nearest")),
             FindAllValidSlicesd(label="label", sids="sids"),
             AddInitialSeedPointd(label="label", guidance="guidance", sids="sids"),
-            DiscardAddGuidanceSingleLabeld(image="image", guidance="guidance"),
+            DiscardAddGuidanceSingleLabeld(keys="image"),
             ToTensord(keys=("image", "label")),
         ]
 
@@ -134,7 +134,7 @@ class MyTrain(BasicTrainTask):
             Resized(keys=("image", "label"), spatial_size=self.spatial_size, mode=("area", "nearest")),
             FindAllValidSlicesd(label="label", sids="sids"),
             AddInitialSeedPointd(label="label", guidance="guidance", sids="sids"),
-            DiscardAddGuidanceSingleLabeld(image="image", guidance="guidance"),
+            DiscardAddGuidanceSingleLabeld(keys="image"),
             ToTensord(keys=("image", "label")),
         ]
 

@@ -104,7 +104,11 @@ ADD_RANDOM_GUIDANCE_TEST_CASE_1 = [
 
 DATA_3 = {
     "image": np.arange(1000).reshape((1, 5, 10, 20)),
-    "image_meta_dict": {"foreground_cropped_shape": (1, 10, 20, 40), "dim": [3, 512, 512, 128]},
+    "image_meta_dict": {
+        "foreground_cropped_shape": (1, 10, 20, 40),
+        "dim": [3, 512, 512, 128],
+        "spatial_shape": [3, 512, 512, 128],
+    },
     "guidance": [[[6, 10, 14], [8, 10, 14]], [[8, 10, 16]]],
     "foreground": [[10, 14, 6], [10, 14, 8]],
     "background": [[10, 16, 8]],
