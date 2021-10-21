@@ -15,6 +15,8 @@ from typing import Optional
 import torch
 from fastapi import APIRouter, HTTPException
 
+from monailabel.interfaces.app import MONAILabelApp
+from monailabel.interfaces.utils.app import app_instance
 from monailabel.utils.async_tasks.task import AsyncTask
 
 logger = logging.getLogger(__name__)
@@ -34,12 +36,17 @@ async def status(all: bool = False, check_if_running: bool = False):
     return res
 
 
-@router.post("/", summary="Run Training Task")
+@router.post("/", summary="Run All Training Tasks")
 async def run(params: Optional[dict] = None, run_sync: Optional[bool] = False):
-    res, detail = AsyncTask.run("train", params=params, force_sync=run_sync)
-    if res is None:
-        raise HTTPException(status_code=429, detail=detail)
-    return res
+    instance: MONAILabelApp = app_instance()
+    result = {}
+    for model in instance.info()["trainers"]:
+        request = {"model": model}
+        if params and params.get(model):
+            request.update(params[model])
+        res, detail = AsyncTask.run("train", request=request, params=params, force_sync=run_sync, enqueue=True)
+        result[model] = {"result": res, "detail": detail}
+    return result
 
 
 @router.post("/{model}", summary="Run Training Task for specific model")

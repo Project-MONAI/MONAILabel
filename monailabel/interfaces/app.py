@@ -186,17 +186,21 @@ class MONAILabelApp:
         Returns:
             JSON containing `label` and `params`
         """
-        request = copy.deepcopy(request)
-        model_name = request.get("model")
-        model_name = model_name if model_name else "model"
-
-        task = self._infers.get(model_name)
-        if task is None:
+        model = request.get("model")
+        if not model:
             raise MONAILabelException(
-                MONAILabelError.INFERENCE_ERROR,
-                "Inference Task is not Initialized. There is no pre-trained model available",
+                MONAILabelError.INVALID_INPUT,
+                "Model is not provided for Inference Task",
             )
 
+        task = self._infers.get(model)
+        if not task:
+            raise MONAILabelException(
+                MONAILabelError.INVALID_INPUT,
+                f"Inference Task is not Initialized. There is no model '{model}' available",
+            )
+
+        request = copy.deepcopy(request)
         image_id = request["image"]
         datastore = datastore if datastore else self.datastore()
         if os.path.exists(image_id):
@@ -275,23 +279,21 @@ class MONAILabelApp:
             JSON containing result of scoring method
         """
         method = request.get("method")
-        if method and not self._scoring_methods.get(method):
+        if not method:
             raise MONAILabelException(
-                MONAILabelError.APP_INIT_ERROR,
+                MONAILabelError.INVALID_INPUT,
+                "Method is not provided for Scoring Task",
+            )
+
+        task = self._scoring_methods.get(method)
+        if not task:
+            raise MONAILabelException(
+                MONAILabelError.INVALID_INPUT,
                 f"Scoring Task is not Initialized. There is no such scoring method '{method}' available",
             )
 
-        methods = [method] if method else self._scoring_methods.keys()
-        results = []
-        for m in methods:
-            task = self._scoring_methods[m]
-            req = request.get(m, copy.deepcopy(request))
-            logger.info(f"Running scoring: {m}: {task.info()} => {req}")
-
-            result = task(req, datastore if datastore else self.datastore())
-            results.append(result)
-
-        return results[0] if len(results) == 1 else results
+        request = copy.deepcopy(request)
+        return task(copy.deepcopy(request), datastore if datastore else self.datastore())
 
     def datastore(self) -> Datastore:
         return self._datastore
@@ -324,32 +326,26 @@ class MONAILabelApp:
             JSON containing train stats
         """
         model = request.get("model")
-        if model and not self._trainers.get(model):
+        if not model:
             raise MONAILabelException(
-                MONAILabelError.APP_INIT_ERROR,
-                f"Trainer Task is not Initialized. There is no such trainer '{model}' available",
+                MONAILabelError.INVALID_INPUT,
+                "Model is not provided for Training Task",
             )
 
-        models = [model] if model else list(self._trainers.keys())
-        results = []
+        task = self._trainers.get(model)
+        if not task:
+            raise MONAILabelException(
+                MONAILabelError.INVALID_INPUT,
+                f"Train Task is not Initialized. There is no model '{model}' available",
+            )
 
-        logger.info(f"Run Training for models: {models}")
-        for m in models:
-            if len(models) > 1 or not model:
-                result = self.async_training(m, request.get(m, request), enqueue=True)
-            else:
-                task = self._trainers[m]
-                req = request.get(m, copy.deepcopy(request))
-                logger.info(f"Running training for {m}: {task.info()} => {req}")
+        request = copy.deepcopy(request)
+        result = task(request, self.datastore())
 
-                result = task(req, self.datastore())
-
-                # Run all scoring methods
-                if self._auto_update_scoring:
-                    self.async_scoring(None)
-            results.append(result)
-
-        return results[0] if len(results) == 1 else results
+        # Run all scoring methods
+        if self._auto_update_scoring:
+            self.async_scoring(None)
+        return result
 
     def next_sample(self, request):
         """
@@ -430,24 +426,38 @@ class MONAILabelApp:
         if not method and not self._scoring_methods:
             return {}
 
-        if self._server_mode:
-            request = {"method": method} if method else {}
-            res, _ = AsyncTask.run("scoring", request=request, params=params)
-            return res
-
-        url = f"/scoring/{method}" if method else "/scoring/"
-        return self._local_request(url, params, "Scoring")
+        methods = [method] if method else list(self._scoring_methods.keys())
+        result = {}
+        for m in methods:
+            if self._server_mode:
+                request = {"method": m}
+                request.update(params[m] if params and params.get(m) else {})
+                res, _ = AsyncTask.run("scoring", request=request, params=params, enqueue=True)
+                result[m] = res
+            else:
+                url = f"/scoring/{m}"
+                p = params[m] if params and params.get(m) else None
+                result[m] = self._local_request(url, p, "Scoring")
+        return result[method] if method else result
 
     def async_training(self, model, params=None, enqueue=False):
         if not model and not self._trainers:
             return {}
 
-        if self._server_mode:
-            res, _ = AsyncTask.run("train", params=params, enqueue=True)
-            return res
-
-        url = f"/train/{model}?enqueue={enqueue}"
-        return self._local_request(url, params, "Training")
+        models = [model] if model else list(self._trainers.keys())
+        enqueue = True if model > 1 else enqueue
+        result = {}
+        for m in models:
+            if self._server_mode:
+                request = {"model": m}
+                request.update(params[m] if params and params.get(m) else {})
+                res, _ = AsyncTask.run("train", request=request, params=params, enqueue=enqueue)
+                result[m] = res
+            else:
+                url = f"/train/{model}?enqueue={enqueue}"
+                p = params[m] if params and params.get(m) else None
+                result[m] = self._local_request(url, p, "Training")
+        return result[model] if model else result
 
     def async_batch_infer(self, model, images: BatchInferImageType, params=None):
         if self._server_mode:

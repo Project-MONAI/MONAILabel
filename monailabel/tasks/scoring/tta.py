@@ -123,7 +123,7 @@ class TTAScoring(ScoringMethod):
             return None, None
 
         logger.info(f"Using {model_file} for running TTA")
-        model_ts = int(os.stat(model_file).st_mtime)
+        model_ts = int(os.stat(model_file).st_mtime) if model_file and os.path.exists(model_file) else 1
         if network:
             model = network
             if model_file:
@@ -158,6 +158,7 @@ class TTAScoring(ScoringMethod):
         unlabeled_images = datastore.get_unlabeled_images()
         num_samples = request.get("num_samples", self.num_samples)
 
+        logger.info(f"TTA:: Total unlabeled images: {len(unlabeled_images)}")
         for image_id in unlabeled_images:
             image_info = datastore.get_image_info(image_id)
             prev_ts = image_info.get("tta_ts", 0)

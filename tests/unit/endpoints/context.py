@@ -39,7 +39,7 @@ def create_client(app_dir, studies, data_dir):
     for k, v in settings.dict().items():
         v = json.dumps(v) if isinstance(v, list) or isinstance(v, dict) else str(v)
         os.environ[k] = v
-        logging.info(f"{k} => {v}")
+        logging.debug(f"{k} => {v}")
 
     logs_dir = os.path.join(app_dir, "logs")
     os.makedirs(logs_dir, exist_ok=True)
