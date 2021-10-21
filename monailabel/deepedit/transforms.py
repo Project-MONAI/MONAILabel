@@ -390,7 +390,7 @@ class SelectLabelsAbdomend(MapTransform):
     def __init__(
         self,
         keys: KeysCollection,
-        label_names: list = None,
+        label_names=None,
         allow_missing_keys: bool = False,
     ):
         """
@@ -438,7 +438,7 @@ class SingleLabelSelectiond(MapTransform):
     def __init__(
         self,
         keys: KeysCollection,
-        label_names: list = None,
+        label_names=None,
         allow_missing_keys: bool = False,
     ):
         """

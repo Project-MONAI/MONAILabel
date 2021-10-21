@@ -174,6 +174,6 @@ class MyApp(MONAILabelApp):
                 spacing=self.planner.target_spacing,
             )
 
-        methods["dice"] = Dice()
-        methods["sum"] = Sum()
+        # methods["dice"] = Dice()
+        # methods["sum"] = Sum()
         return methods
