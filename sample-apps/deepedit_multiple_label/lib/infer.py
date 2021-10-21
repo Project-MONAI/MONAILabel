@@ -9,7 +9,7 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-from monai.apps.deepgrow.transforms import AddGuidanceFromPointsd, AddGuidanceSignald
+from monai.apps.deepgrow.transforms import AddGuidanceFromPointsd
 from monai.inferers import SimpleInferer
 from monai.transforms import (
     Activationsd,
@@ -26,9 +26,9 @@ from monai.transforms import (
 )
 
 from monailabel.deepedit.transforms import (
-    DiscardAddGuidanceSingleLabeld,
+    AddGuidanceSignalCustomMultiLabeld,
+    DiscardAddGuidanced,
     ResizeGuidanceCustomd,
-    SingleLabelSingleModalityd,
 )
 from monailabel.interfaces.tasks.infer import InferTask, InferType
 from monailabel.transform.post import Restored
@@ -44,7 +44,7 @@ class Segmentation(InferTask):
         path,
         network=None,
         type=InferType.SEGMENTATION,
-        labels="organ",
+        label_names=None,
         dimension=3,
         spatial_size=(128, 128, 64),
         target_spacing=(1.0, 1.0, 1.0),
@@ -54,7 +54,7 @@ class Segmentation(InferTask):
             path=path,
             network=network,
             type=type,
-            labels=labels,
+            labels=label_names,
             dimension=dimension,
             description=description,
             input_key="image",
@@ -64,17 +64,18 @@ class Segmentation(InferTask):
 
         self.spatial_size = spatial_size
         self.target_spacing = target_spacing
+        self.label_names = label_names
 
     def pre_transforms(self):
         return [
             LoadImaged(keys="image", reader="nibabelreader"),
-            SingleLabelSingleModalityd(keys="image"),
+            # SingleLabelSingleModalityd(keys="image"),
             AddChanneld(keys="image"),
             Spacingd(keys="image", pixdim=self.target_spacing, mode="bilinear"),
             Orientationd(keys="image", axcodes="RAS"),
             NormalizeIntensityd(keys="image"),
             Resized(keys="image", spatial_size=self.spatial_size, mode="area"),
-            DiscardAddGuidanceSingleLabeld(keys="image"),
+            DiscardAddGuidanced(keys="image", label_names=self.label_names),
             ToTensord(keys="image"),
         ]
 
@@ -87,8 +88,8 @@ class Segmentation(InferTask):
     def post_transforms(self):
         return [
             ToTensord(keys="pred"),
-            Activationsd(keys="pred", sigmoid=True),
-            AsDiscreted(keys="pred", threshold_values=True, logit_thresh=0.51),
+            Activationsd(keys="pred", softmax=True),
+            AsDiscreted(keys="pred", argmax=True),
             SqueezeDimd(keys="pred", dim=0),
             ToNumpyd(keys="pred"),
             Restored(keys="pred", ref_image="image"),
@@ -109,6 +110,7 @@ class Deepgrow(InferTask):
         description="A pre-trained 3D DeepGrow model based on UNET",
         spatial_size=(128, 128, 64),
         target_spacing=(1.0, 1.0, 1.0),
+        label_names=None,
     ):
         super().__init__(
             path=path,
@@ -121,11 +123,12 @@ class Deepgrow(InferTask):
 
         self.spatial_size = spatial_size
         self.target_spacing = target_spacing
+        self.label_names = label_names
 
     def pre_transforms(self):
         return [
             LoadImaged(keys="image", reader="nibabelreader"),
-            SingleLabelSingleModalityd(keys="image"),
+            # SingleLabelSingleModalityd(keys="image"),
             AddChanneld(keys="image"),
             Spacingd(keys="image", pixdim=self.target_spacing, mode="bilinear"),
             Orientationd(keys="image", axcodes="RAS"),
@@ -135,21 +138,19 @@ class Deepgrow(InferTask):
             NormalizeIntensityd(keys="image"),
             Resized(keys="image", spatial_size=self.spatial_size, mode="area"),
             ResizeGuidanceCustomd(guidance="guidance", ref_image="image"),
-            AddGuidanceSignald(image="image", guidance="guidance"),
+            # AddGuidanceSignald(image="image", guidance="guidance"),
+            AddGuidanceSignalCustomMultiLabeld(image="image", guidance="guidance", label_names=self.label_names),
             ToTensord(keys="image"),
         ]
 
     def inferer(self):
         return SimpleInferer()
 
-    def inverse_transforms(self):
-        return []  # Self-determine from the list of pre-transforms provided
-
     def post_transforms(self):
         return [
             ToTensord(keys="pred"),
-            Activationsd(keys="pred", sigmoid=True),
-            AsDiscreted(keys="pred", threshold_values=True, logit_thresh=0.51),
+            Activationsd(keys="pred", softmax=True),
+            AsDiscreted(keys="pred", argmax=True),
             ToNumpyd(keys="pred"),
             Restored(keys="pred", ref_image="image"),
         ]

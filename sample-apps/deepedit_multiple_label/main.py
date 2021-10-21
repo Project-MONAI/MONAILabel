@@ -39,10 +39,14 @@ logger = logging.getLogger(__name__)
 
 class MyApp(MONAILabelApp):
     def __init__(self, app_dir, studies, conf):
+
+        # Label names
+        self.label_names = ["spleen", "right_kidney", "left_kidney", "liver"]
+
         network_params = {
             "spatial_dims": 3,
-            "in_channels": 3,
-            "out_channels": 1,
+            "in_channels": len(self.label_names) + 2,
+            "out_channels": len(self.label_names) + 1,
             "kernel_size": [
                 [3, 3, 3],
                 [3, 3, 3],
@@ -78,12 +82,12 @@ class MyApp(MONAILabelApp):
         self.final_model = os.path.join(self.model_dir, "model.pt")
 
         # Use Heuristic Planner to determine target spacing and spatial size based on dataset+gpu
-        spatial_size = json.loads(conf.get("spatial_size", "[256, 256, 128]"))
+        spatial_size = json.loads(conf.get("spatial_size", "[128, 128, 128]"))
         target_spacing = json.loads(conf.get("target_spacing", "[1.0, 1.0, 1.0]"))
         self.heuristic_planner = strtobool(conf.get("heuristic_planner", "false"))
         self.planner = HeuristicPlanner(spatial_size=spatial_size, target_spacing=target_spacing)
 
-        use_pretrained_model = strtobool(conf.get("use_pretrained_model", "true"))
+        use_pretrained_model = strtobool(conf.get("use_pretrained_model", "false"))
         pretrained_model_uri = conf.get("pretrained_model_path", f"{self.PRE_TRAINED_PATH}/deepedit_spleen.pt")
 
         # Path to pretrained weights
@@ -97,6 +101,9 @@ class MyApp(MONAILabelApp):
         self.tta_enabled = strtobool(conf.get("tta_enabled", "false"))
         self.tta_samples = int(conf.get("tta_samples", "5"))
         logger.info(f"TTA Enabled: {self.tta_enabled}; Samples: {self.tta_samples}")
+
+        self.debug_mode = strtobool(conf.get("debug_mode", "false"))
+        logger.info(f"DEBUG MODE Enabled: {self.debug_mode}")
 
         super().__init__(
             app_dir=app_dir,
@@ -125,6 +132,7 @@ class MyApp(MONAILabelApp):
                 self.network,
                 spatial_size=self.planner.spatial_size,
                 target_spacing=self.planner.target_spacing,
+                label_names=self.label_names,
             ),
             # intensity range set for MRI
             "Histogram+GraphCut": HistogramBasedGraphCut(
@@ -142,7 +150,8 @@ class MyApp(MONAILabelApp):
                 load_path=self.pretrained_model,
                 publish_path=self.final_model,
                 config={"pretrained": strtobool(self.conf.get("use_pretrained_model", "true"))},
-                debug_mode=False,
+                label_names=self.label_names,
+                debug_mode=self.debug_mode,
             )
         }
 
@@ -177,3 +186,36 @@ class MyApp(MONAILabelApp):
         methods["dice"] = Dice()
         methods["sum"] = Sum()
         return methods
+
+
+def main():
+    logging.basicConfig(
+        level=logging.INFO,
+        format="[%(asctime)s.%(msecs)03d][%(levelname)5s](%(name)s) - %(message)s",
+        datefmt="%Y-%m-%d %H:%M:%S",
+    )
+    app_dir_path = os.path.normpath("/home/adp20local/Documents/MONAILabel/sample-apps/deepedit")
+    studies_path = os.path.normpath("/home/adp20local/Documents/Datasets/monailabel_datasets/multilabel_abdomen/train")
+    # conf is Dict[str, str]
+    conf = {
+        "use_pretrained_model": "false",
+        "heuristic_planner": "false",
+        "tta_enabled": "false",
+        "tta_samples": "10",
+        "debug_mode": "True",
+    }
+    al_app = MyApp(app_dir=app_dir_path, studies=studies_path, conf=conf)
+    request = {
+        "device": "cuda",
+        "model": "deepedit_train",
+        "max_epochs": 200,
+        "amp": False,
+        "lr": 0.0001,
+    }
+    al_app.train(request=request)
+
+    return None
+
+
+if __name__ == "__main__":
+    main()

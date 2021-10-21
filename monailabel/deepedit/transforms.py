@@ -71,6 +71,47 @@ class DiscardAddGuidanced(MapTransform):
         return d
 
 
+class DiscardAddGuidanceSingleLabeld(MapTransform):
+    def __init__(
+        self,
+        keys: KeysCollection,
+        number_intensity_ch: int = 1,
+        probability: float = 1.0,
+        allow_missing_keys: bool = False,
+    ):
+        """
+        Discard positive and negative points according to discard probability
+        :param keys: The ``keys`` parameter will be used to get and set the actual data item to transform
+        :param number_intensity_ch: number of intensity channels
+        :param probability: probability of discarding clicks
+        """
+        super().__init__(keys, allow_missing_keys)
+
+        self.number_intensity_ch = number_intensity_ch
+        self.discard_probability = probability
+
+    def _apply(self, image):
+        if self.discard_probability >= 1.0 or np.random.choice(
+            [True, False], p=[self.discard_probability, 1 - self.discard_probability]
+        ):
+            signal = np.zeros((1, image.shape[-3], image.shape[-2], image.shape[-1]), dtype=np.float32)
+            if image.shape[0] == self.number_intensity_ch + 2:
+                image[self.number_intensity_ch] = signal
+                image[self.number_intensity_ch + 1] = signal
+            else:
+                image = np.concatenate((image, signal, signal), axis=0)
+        return image
+
+    def __call__(self, data: Mapping[Hashable, np.ndarray]) -> Dict[Hashable, np.ndarray]:
+        d: Dict = dict(data)
+        for key in self.key_iterator(d):
+            if key == "image":
+                d[key] = self._apply(d[key])
+            else:
+                print("This transform only applies to the image")
+        return d
+
+
 class ResizeGuidanceCustomd(Transform):
     """
     Resize the guidance based on cropped vs resized image.
