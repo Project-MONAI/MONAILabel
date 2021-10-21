@@ -129,7 +129,7 @@ class ResizeGuidanceCustomd(Transform):
         d = dict(data)
         current_shape = d[self.ref_image].shape[1:]
 
-        factor = np.divide(current_shape, d["image_meta_dict"]["dim"][1:4])
+        factor = np.divide(current_shape, d["image_meta_dict"]["spatial_shape"])
         pos_clicks, neg_clicks = d["foreground"], d["background"]
 
         pos = np.multiply(pos_clicks, factor).astype(int).tolist() if len(pos_clicks) else []

@@ -68,7 +68,7 @@ class Segmentation(InferTask):
     def pre_transforms(self):
         return [
             LoadImaged(keys="image", reader="nibabelreader"),
-            SingleLabelSingleModalityd(keys="image"),
+            # SingleLabelSingleModalityd(keys="image"),
             AddChanneld(keys="image"),
             Spacingd(keys="image", pixdim=self.target_spacing, mode="bilinear"),
             Orientationd(keys="image", axcodes="RAS"),
@@ -124,8 +124,8 @@ class Deepgrow(InferTask):
 
     def pre_transforms(self):
         return [
-            LoadImaged(keys="image", reader="nibabelreader"),
-            SingleLabelSingleModalityd(keys="image"),
+            LoadImaged(keys="image"),
+            # SingleLabelSingleModalityd(keys="image"),
             AddChanneld(keys="image"),
             Spacingd(keys="image", pixdim=self.target_spacing, mode="bilinear"),
             Orientationd(keys="image", axcodes="RAS"),
