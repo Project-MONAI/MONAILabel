@@ -41,7 +41,7 @@ class MyApp(MONAILabelApp):
     def __init__(self, app_dir, studies, conf):
 
         # Label names
-        self.label_names = ["spleen", "right_kidney", "left_kidney", "liver"]
+        self.label_names = ["spleen", "right_kidney", "left_kidney", "liver", "stomach"]  # Don't include backgound
 
         network_params = {
             "spatial_dims": 3,
@@ -148,7 +148,7 @@ class MyApp(MONAILabelApp):
                 publish_path=self.final_model,
                 config={"pretrained": strtobool(self.conf.get("use_pretrained_model", "true"))},
                 label_names=self.label_names,
-                debug_mode=True,
+                debug_mode=False,
             )
         }
 
