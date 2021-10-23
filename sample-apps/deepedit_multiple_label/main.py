@@ -41,12 +41,14 @@ class MyApp(MONAILabelApp):
     def __init__(self, app_dir, studies, conf):
 
         # Label names
-        self.label_names = ["spleen", "right_kidney", "left_kidney", "liver", "stomach"]  # Don't include backgound
+        # background is used to place the negative clicks
+        # Zero values are reserved to background. Non zero values are for the labels
+        self.label_names = {"spleen": 1, "right_kidney": 2, "left_kidney": 3, "liver": 6, "stomach": 7, "background": 0}
 
         network_params = {
             "spatial_dims": 3,
-            "in_channels": len(self.label_names) + 2,
-            "out_channels": len(self.label_names) + 1,
+            "in_channels": len(self.label_names) + 1,  # All labels plus image
+            "out_channels": len(self.label_names),  # All labels
             "kernel_size": [
                 [3, 3, 3],
                 [3, 3, 3],

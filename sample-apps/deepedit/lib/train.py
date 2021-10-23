@@ -86,7 +86,7 @@ class MyTrain(BasicTrainTask):
             PosNegClickProbAddRandomGuidanced(
                 guidance="guidance", discrepancy="discrepancy", probability="probability"
             ),
-            DiscardAddGuidanceSingleLabeld(image="image", guidance="guidance"),
+            DiscardAddGuidanceSingleLabeld(keys="image"),
             ToTensord(keys=("image", "label")),
         ]
 

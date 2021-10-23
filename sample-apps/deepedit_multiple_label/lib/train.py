@@ -12,7 +12,6 @@
 import logging
 
 import torch
-from monai.apps.deepgrow.transforms import FindDiscrepancyRegionsd
 from monai.inferers import SimpleInferer
 from monai.losses import DiceLoss
 from monai.transforms import (
@@ -37,6 +36,7 @@ from monailabel.deepedit.transforms import (
     AddGuidanceSignalCustomMultiLabeld,
     AddInitialSeedPointCustomMultiLabeld,
     FindAllValidSlicesCustomMultiLabeld,
+    FindDiscrepancyRegionsCustomMultiLabeld,
     PosNegClickProbAddRandomGuidanced,
     SelectLabelsAbdomend,
 )
@@ -87,7 +87,8 @@ class MyTrain(BasicTrainTask):
             Activationsd(keys="pred", sigmoid=True),
             ToNumpyd(keys=("image", "label", "pred")),
             # Transfors used to simulate clicks
-            FindDiscrepancyRegionsd(label="label", pred="pred", discrepancy="discrepancy"),
+            # FindDiscrepancyRegionsd(label="label", pred="pred", discrepancy="discrepancy"),
+            FindDiscrepancyRegionsCustomMultiLabeld(keys="label", pred="pred", discrepancy="discrepancy"),
             PosNegClickProbAddRandomGuidanced(
                 guidance="guidance", discrepancy="discrepancy", probability="probability"
             ),

@@ -497,7 +497,7 @@ class AddGuidanceSignalCustomMultiLabeld(MapTransform):
         guidance: key to store guidance.
         sigma: standard deviation for Gaussian kernel.
         number_intensity_ch: channel index.
-        label_names: list of label names
+        label_names: dict of label names and values
     """
 
     def __init__(
@@ -513,7 +513,7 @@ class AddGuidanceSignalCustomMultiLabeld(MapTransform):
         self.guidance = guidance
         self.sigma = sigma
         self.number_intensity_ch = number_intensity_ch
-        self.label_names = label_names  # This defines the NUMBER OF channels in the input tensor
+        self.label_names = label_names
 
     def _get_signal(self, image, guidance):
         dimensions = 3 if len(image.shape) > 3 else 2
@@ -549,43 +549,24 @@ class AddGuidanceSignalCustomMultiLabeld(MapTransform):
                 signal[i] = (signal[i] - np.min(signal[i])) / (np.max(signal[i]) - np.min(signal[i]))
         return signal
 
-    def _apply(self, image, guidance, num_channels, idx_guidance):
-        signal = self._get_signal(image, guidance)
-        image = image[0 : 0 + self.number_intensity_ch, ...]
-        empty_signal = np.zeros((num_channels, image.shape[-3], image.shape[-2], image.shape[-1]), dtype=np.float32)
-        input_tensor = np.concatenate([image, empty_signal], axis=0)
-        # Assign positive clicks to label channel
-        input_tensor[idx_guidance, ...] = signal[0, ...]
-        # Assign negative clicks to the last channel
-        input_tensor[-1, ...] = signal[1, ...]
-        return input_tensor
-
     def __call__(self, data: Mapping[Hashable, np.ndarray]) -> Dict[Hashable, np.ndarray]:
 
         d: Dict = dict(data)
         for key in self.key_iterator(d):
             if key == "image":
                 image = d[key]
+                tmp_image = image[0 : 0 + self.number_intensity_ch, ...]
                 guidance = d[self.guidance]
-                for l in guidance.keys():
-                    # Check if there is guidance
-                    if guidance[l] != -1:
-                        d[key] = self._apply(
-                            image, guidance[l], len(self.label_names) + 1, self.label_names.index(d["current_label"])
-                        )
+                for key_label in guidance.keys():
+                    # Getting signal based on guidance
+                    signal = self._get_signal(image, guidance[key_label])
+                    tmp_image = np.concatenate([tmp_image, signal], axis=0)
+                d[key] = tmp_image
+
                 return d
             else:
                 print("This transform only applies to image key")
-
-    # def __call__(self, data):
-    #     d = dict(data)
-    #     image = d[self.image]
-    #     guidance = d[self.guidance]
-    #
-    #     d[self.image] = self._apply(
-    #         image, guidance, len(self.label_names) + 1, self.label_names.index(d["current_label"])
-    #     )
-    #     return d
+        return d
 
 
 class FindAllValidSlicesCustomMultiLabeld(MapTransform):
@@ -596,7 +577,7 @@ class FindAllValidSlicesCustomMultiLabeld(MapTransform):
     Args:
         label: key to the label source.
         sids: key to store slices indices having valid label map.
-        label_names: list of label names
+        label_names: Dict of label names and values
     """
 
     def __init__(
@@ -608,17 +589,16 @@ class FindAllValidSlicesCustomMultiLabeld(MapTransform):
     ):
         super().__init__(keys, allow_missing_keys)
         self.sids = sids
-        self.label_names = label_names  # UNUSED - How to associate label names with label numbers?
+        self.label_names = label_names
 
     def _apply(self, label):
-        label_numbers = np.unique(label)[1:]  # Assume background is 0.0 and is the first element
         sids = {}
-        for l in label_numbers:
+        for key_label in self.label_names.keys():
             l_ids = []
             for sid in range(label.shape[1]):  # Assume channel is first
-                if l in label[0][sid]:
+                if self.label_names[key_label] in label[0][sid]:
                     l_ids.append(sid)
-            sids[str(int(l))] = l_ids
+            sids[key_label] = l_ids
         return sids
 
     def __call__(self, data: Mapping[Hashable, np.ndarray]) -> Dict[Hashable, np.ndarray]:
@@ -639,6 +619,7 @@ class FindAllValidSlicesCustomMultiLabeld(MapTransform):
                 return d
             else:
                 print("This transform only applies to label key")
+        return d
 
 
 class AddInitialSeedPointCustomMultiLabeld(Randomizable, MapTransform):
@@ -656,7 +637,7 @@ class AddInitialSeedPointCustomMultiLabeld(Randomizable, MapTransform):
         sids: key that represents list of valid slice indices for the given label.
         sid: key that represents the slice to add initial seed point.  If not present, random sid will be chosen.
         connected_regions: maximum connected regions to use for adding initial points.
-        label_names: list of label names
+        label_names: list of label names and values
     """
 
     def __init__(
@@ -675,11 +656,11 @@ class AddInitialSeedPointCustomMultiLabeld(Randomizable, MapTransform):
         self.sid = None
         self.guidance = guidance
         self.connected_regions = connected_regions
-        self.label_names = label_names  # UNUSED - How to associate label names with label numbers?
+        self.label_names = label_names
 
     def _apply(self, label, sid):
         dimensions = 3 if len(label.shape) > 3 else 2
-        default_guidance = [-1] * (dimensions + 1)
+        self.default_guidance = [-1] * (dimensions + 1)
 
         dims = dimensions
         if sid is not None and dimensions == 3:
@@ -692,7 +673,7 @@ class AddInitialSeedPointCustomMultiLabeld(Randomizable, MapTransform):
         # plt.show()
         # plt.close()
 
-        # REMEMBER: THERE CAN BE MULTIPLE BLOBS FOR SINGLE LABEL IN THE SELECTED SLICE
+        # THERE MAY BE MULTIPLE BLOBS FOR SINGLE LABEL IN THE SELECTED SLICE
         label = (label > 0.5).astype(np.float32)
         # measure.label: Label connected regions of an integer array - Two pixels are connected
         # when they are neighbors and have the same value
@@ -710,7 +691,7 @@ class AddInitialSeedPointCustomMultiLabeld(Randomizable, MapTransform):
             if dims == 2:
                 label = (blobs_labels == ridx).astype(np.float32)
                 if np.sum(label) == 0:
-                    pos_guidance.append(default_guidance)
+                    pos_guidance.append(self.default_guidance)
                     continue
 
             # plt.imshow(label[0])
@@ -738,7 +719,7 @@ class AddInitialSeedPointCustomMultiLabeld(Randomizable, MapTransform):
             else:
                 pos_guidance.append([g[0], sid, g[-2], g[-1]])
 
-        return np.asarray([pos_guidance, [default_guidance] * len(pos_guidance)])
+        return np.asarray([pos_guidance])
 
     def __call__(self, data: Mapping[Hashable, np.ndarray]) -> Dict[Hashable, np.ndarray]:
 
@@ -746,17 +727,75 @@ class AddInitialSeedPointCustomMultiLabeld(Randomizable, MapTransform):
         for key in self.key_iterator(d):
             if key == "label":
                 label_guidances = {}
-                for l in d["sids"].keys():
-                    sids = d["sids"][l]
-                    if sids is not None:
-                        # Randomize: Select a random slice
-                        self.sid = self.R.choice(sids, replace=False)
-                        # Generate guidance base on selected slice
-                        tmp_label = np.copy(d[key])
-                        # Taking one label to create the guidance
-                        tmp_label[tmp_label != float(l)] = 0.0
-                        label_guidances[l] = json.dumps(self._apply(tmp_label, self.sid).astype(int).tolist())
+                for key_label in d["sids"].keys():
+                    if key_label != "background" or self.label_names[key_label] != 0:
+                        sids = d["sids"][key_label]
+                        if sids is not None:
+                            # Randomize: Select a random slice
+                            self.sid = self.R.choice(sids, replace=False)
+                            # Generate guidance base on selected slice
+                            tmp_label = np.copy(d[key])
+                            # Taking one label to create the guidance
+                            tmp_label[tmp_label != float(self.label_names[key_label])] = 0.0
+                            label_guidances[key_label] = json.dumps(
+                                self._apply(tmp_label, self.sid).astype(int).tolist()
+                            )
+                    if key_label == "background" or self.label_names[key_label] == 0:
+                        label_guidances[key_label] = json.dumps(
+                            np.asarray([[self.default_guidance] * self.connected_regions]).astype(int).tolist()
+                        )
                 d[self.guidance] = label_guidances
                 return d
             else:
                 print("This transform only applies to label key")
+        return d
+
+
+class FindDiscrepancyRegionsCustomMultiLabeld(MapTransform):
+    """
+    Find discrepancy between prediction and actual during click interactions during training.
+
+    Args:
+        label: key to label source.
+        pred: key to prediction source.
+        discrepancy: key to store discrepancies found between label and prediction.
+
+    """
+
+    def __init__(
+        self,
+        keys: KeysCollection,
+        pred: str = "pred",
+        discrepancy: str = "discrepancy",
+        label_names=None,
+        allow_missing_keys: bool = False,
+    ):
+        super().__init__(keys, allow_missing_keys)
+        self.pred = pred
+        self.discrepancy = discrepancy
+        self.label_names = label_names
+
+    @staticmethod
+    def disparity(label, pred):
+        label = (label > 0.5).astype(np.float32)
+        pred = (pred > 0.5).astype(np.float32)
+        disparity = label - pred
+
+        pos_disparity = (disparity > 0).astype(np.float32)
+        neg_disparity = (disparity < 0).astype(np.float32)
+        return [pos_disparity, neg_disparity]
+
+    def _apply(self, label, pred):
+        return self.disparity(label, pred)
+
+    def __call__(self, data: Mapping[Hashable, np.ndarray]) -> Dict[Hashable, np.ndarray]:
+
+        d: Dict = dict(data)
+        for key in self.key_iterator(d):
+            if key == "label":
+                pred = d[self.pred]
+                d[self.discrepancy] = self._apply(d[key], pred)
+                return d
+            else:
+                print("This transform only applies to 'label' key")
+        return d
