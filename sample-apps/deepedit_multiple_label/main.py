@@ -16,7 +16,7 @@ from typing import Dict
 
 from lib import Deepgrow, MyTrain, Segmentation
 from lib.activelearning import MyStrategy
-from monai.networks.nets.dynunet_v1 import DynUNetV1
+from monai.networks.nets import DynUNet
 
 from monailabel.interfaces.app import MONAILabelApp
 from monailabel.interfaces.datastore import Datastore
@@ -47,7 +47,7 @@ class MyApp(MONAILabelApp):
 
         network_params = {
             "spatial_dims": 3,
-            "in_channels": len(self.label_names) + 1,  # All labels plus image
+            "in_channels": len(self.label_names) + 1,  # All labels plus Image
             "out_channels": len(self.label_names),  # All labels
             "kernel_size": [
                 [3, 3, 3],
@@ -76,8 +76,8 @@ class MyApp(MONAILabelApp):
             "deep_supervision": False,
             "res_block": True,
         }
-        self.network = DynUNetV1(**network_params)
-        self.network_with_dropout = DynUNetV1(**network_params, dropout=0.2)
+        self.network = DynUNet(**network_params)
+        self.network_with_dropout = DynUNet(**network_params, dropout=0.2)
 
         self.model_dir = os.path.join(app_dir, "model")
         self.pretrained_model = os.path.join(self.model_dir, "pretrained.pt")
@@ -195,7 +195,7 @@ def main():
     )
     app_dir_path = os.path.normpath("/home/adp20local/Documents/MONAILabel/sample-apps/deepedit_multiple_label")
     studies_path = os.path.normpath(
-        "/home/adp20local/Documents/Datasets/monailabel_datasets/multilabel_abdomen/NRRD/train_small"
+        "/home/adp20local/Documents/Datasets/monailabel_datasets/multilabel_abdomen/NRRD/train"
     )
     # conf is Dict[str, str]
     conf = {

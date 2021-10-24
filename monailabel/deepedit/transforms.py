@@ -237,7 +237,6 @@ class AddRandomGuidanced(Randomizable, Transform):
 class PosNegClickProbAddRandomGuidanced(Randomizable, Transform):
     """
     Add random guidance based on discrepancies that were found between label and prediction.
-
     Args:
         guidance: key to guidance source, shape (2, N, # of dim)
         discrepancy: key to discrepancy map between label and prediction shape (2, C, H, W, D) or (2, C, H, W)
@@ -427,7 +426,7 @@ class SelectLabelsAbdomend(MapTransform):
             if key == "label":
                 # Making other labels as background
                 for k in self.all_label_values.keys():
-                    if k not in self.label_names:
+                    if k not in self.label_names.keys():
                         d[key][d[key] == self.all_label_values[k]] = 0.0
             else:
                 print("This transform only applies to the label")
@@ -562,7 +561,7 @@ class AddGuidanceSignalCustomMultiLabeld(MapTransform):
                     signal = self._get_signal(image, guidance[key_label])
                     tmp_image = np.concatenate([tmp_image, signal], axis=0)
                 d[key] = tmp_image
-
+                logger.info(f"Built channels in Input tensor in AddGuidanceSignal transform: {d[key].shape[0]}")
                 return d
             else:
                 print("This transform only applies to image key")
@@ -740,7 +739,7 @@ class AddInitialSeedPointCustomMultiLabeld(Randomizable, MapTransform):
                             label_guidances[key_label] = json.dumps(
                                 self._apply(tmp_label, self.sid).astype(int).tolist()
                             )
-                    if key_label == "background" or self.label_names[key_label] == 0:
+                    elif key_label == "background" or self.label_names[key_label] == 0:
                         label_guidances[key_label] = json.dumps(
                             np.asarray([[self.default_guidance] * self.connected_regions]).astype(int).tolist()
                         )
@@ -759,7 +758,7 @@ class FindDiscrepancyRegionsCustomMultiLabeld(MapTransform):
         label: key to label source.
         pred: key to prediction source.
         discrepancy: key to store discrepancies found between label and prediction.
-
+        label_names: Dict of label names and values
     """
 
     def __init__(
@@ -777,10 +776,9 @@ class FindDiscrepancyRegionsCustomMultiLabeld(MapTransform):
 
     @staticmethod
     def disparity(label, pred):
-        label = (label > 0.5).astype(np.float32)
-        pred = (pred > 0.5).astype(np.float32)
         disparity = label - pred
-
+        # Negative ONES mean predicted label is not part of the ground truth
+        # Positive ONES mean predicted label missed that region of the ground truth
         pos_disparity = (disparity > 0).astype(np.float32)
         neg_disparity = (disparity < 0).astype(np.float32)
         return [pos_disparity, neg_disparity]
@@ -793,9 +791,165 @@ class FindDiscrepancyRegionsCustomMultiLabeld(MapTransform):
         d: Dict = dict(data)
         for key in self.key_iterator(d):
             if key == "label":
-                pred = d[self.pred]
-                d[self.discrepancy] = self._apply(d[key], pred)
+                all_discrepancies = {}
+                for idx, (key_label, val_label) in enumerate(self.label_names.items()):
+                    if key_label != "background":
+                        # Taking single label
+                        label = np.copy(d[key])
+                        label[label != val_label] = 0
+                        # Label should be represented in 1
+                        label = (label > 0.5).astype(np.float32)
+                        # Taking single prediction
+                        pred = d[self.pred][idx, ...][np.newaxis]
+                        # Prediction should be represented in one
+                        pred = (pred > 0.5).astype(np.float32)
+                        all_discrepancies[key_label] = self._apply(label, pred)
+                d[self.discrepancy] = all_discrepancies
                 return d
             else:
                 print("This transform only applies to 'label' key")
+        return d
+
+
+class PosNegClickProbAddRandomGuidanceCustomMultiLabeld(Randomizable, MapTransform):
+    """
+    Add random guidance based on discrepancies that were found between label and prediction.
+
+    Args:
+        guidance: key to guidance source, shape (2, N, # of dim)
+        discrepancy: key to discrepancy map between label and prediction shape (2, C, H, W, D) or (2, C, H, W)
+        probability: key to click/interaction probability, shape (1)
+        pos_click_probability: if click, probability of a positive click
+          (probability of negative click will be 1 - pos_click_probability)
+        weight_map: optional key to predetermined weight map used to increase click likelihood
+          in higher weight areas shape (C, H, W, D) or (C, H, W)
+        label_names: Dict of label names and values
+    """
+
+    def __init__(
+        self,
+        keys: KeysCollection,
+        guidance: str = "guidance",
+        discrepancy: str = "discrepancy",
+        probability: str = "probability",
+        pos_click_probability: float = 0.5,
+        weight_map: Optional[dict] = None,
+        label_names=None,
+        allow_missing_keys: bool = False,
+    ):
+        super().__init__(keys, allow_missing_keys)
+        self.guidance = guidance
+        self.discrepancy = discrepancy
+        self.probability = probability
+        self.pos_click_probability = pos_click_probability
+        self.weight_map = weight_map
+        self.label_names = label_names
+        self._will_interact = None
+        self.is_pos = False
+        self.is_neg = False
+
+    def randomize(self, data=None):
+        probability = data[self.probability]
+        self._will_interact = self.R.choice([True, False], p=[probability, 1.0 - probability])
+
+    def find_guidance(self, discrepancy, weight_map):
+        distance = distance_transform_cdt(discrepancy)
+        weighted_distance = (distance * weight_map).flatten() if weight_map is not None else distance.flatten()
+        probability = np.exp(weighted_distance) - 1.0
+        idx = np.where(discrepancy.flatten() > 0)[0]
+
+        if np.sum(probability[idx]) > 0:
+            seed = self.R.choice(idx, size=1, p=probability[idx] / np.sum(probability[idx]))
+            dst = weighted_distance[seed]
+
+            g = np.asarray(np.unravel_index(seed, discrepancy.shape)).transpose().tolist()[0]
+            g[0] = dst[0]
+            return g
+        return None
+
+    def add_guidance(self, discrepancy, mask_background, weight_map):
+
+        pos_discr = discrepancy[0]
+        neg_discr = discrepancy[1] * mask_background
+
+        can_be_positive = np.sum(pos_discr) > 0
+        can_be_negative = np.sum(neg_discr) > 0
+
+        pos_prob = self.pos_click_probability
+        neg_prob = 1 - pos_prob
+
+        correct_pos = self.R.choice([True, False], p=[pos_prob, neg_prob])
+
+        if can_be_positive and not can_be_negative:
+            return self.find_guidance(pos_discr, weight_map), None
+
+        if not can_be_positive and can_be_negative:
+            return None, self.find_guidance(neg_discr, weight_map)
+
+        if correct_pos and can_be_positive:
+            return self.find_guidance(pos_discr, weight_map), None
+
+        if not correct_pos and can_be_negative:
+            return None, self.find_guidance(neg_discr, weight_map)
+
+        return None, None
+
+    def _apply(self, guidance, discrepancy, mask_background, guidance_background, weight_map):
+
+        guidance = guidance.tolist() if isinstance(guidance, np.ndarray) else guidance
+        guidance = json.loads(guidance) if isinstance(guidance, str) else guidance
+
+        guidance_background = (
+            guidance_background.tolist() if isinstance(guidance_background, np.ndarray) else guidance_background
+        )
+        guidance_background = (
+            json.loads(guidance_background) if isinstance(guidance_background, str) else guidance_background
+        )
+
+        pos, neg = self.add_guidance(discrepancy, mask_background, weight_map)
+
+        if pos:
+            guidance[0].append(pos)
+            # guidance[1].append([-1] * len(pos))
+            self.is_pos = True
+
+        if neg:
+            # guidance[0].append([-1] * len(neg))
+            guidance_background[0].append(neg)
+            self.is_neg = True
+
+        return json.dumps(np.asarray(guidance).astype(int).tolist()), json.dumps(
+            np.asarray(guidance_background).astype(int).tolist()
+        )
+
+    def __call__(self, data: Mapping[Hashable, np.ndarray]) -> Dict[Hashable, np.ndarray]:
+        d: Dict = dict(data)
+        guidance = d[self.guidance]
+        discrepancy = d[self.discrepancy]
+        weight_map = d[self.weight_map] if self.weight_map is not None else None
+        # Decide whether to add clicks or not
+        self.randomize(data)
+        if True:  # self._will_interact:
+            all_is_pos = {}
+            all_is_neg = {}
+            # Create mask background to multiply for discrepancy
+            mask_background = np.copy(d["label"])
+            mask_background[mask_background != 0] = 1.0
+            mask_background = 1.0 - mask_background
+            for key_label in self.label_names.keys():
+                if key_label != "background":
+                    # Add POSITIVE and NEGATIVE (background) guidance based on discrepancy
+                    d[self.guidance][key_label], d[self.guidance]["background"] = self._apply(
+                        guidance[key_label],
+                        discrepancy[key_label],
+                        mask_background,
+                        guidance["background"],
+                        weight_map[key_label] if weight_map is not None else weight_map,
+                    )
+                    all_is_pos[key_label] = self.is_pos
+                    all_is_neg[key_label] = self.is_neg
+                    self.is_pos = False
+                    self.is_neg = False
+            d["is_pos"] = all_is_pos
+            d["is_neg"] = all_is_neg
         return d

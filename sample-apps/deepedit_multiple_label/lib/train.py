@@ -37,7 +37,7 @@ from monailabel.deepedit.transforms import (
     AddInitialSeedPointCustomMultiLabeld,
     FindAllValidSlicesCustomMultiLabeld,
     FindDiscrepancyRegionsCustomMultiLabeld,
-    PosNegClickProbAddRandomGuidanced,
+    PosNegClickProbAddRandomGuidanceCustomMultiLabeld,
     SelectLabelsAbdomend,
 )
 from monailabel.tasks.train.basic_train import BasicTrainTask
@@ -84,15 +84,21 @@ class MyTrain(BasicTrainTask):
 
     def get_click_transforms(self):
         return [
-            Activationsd(keys="pred", sigmoid=True),
+            Activationsd(keys="pred", softmax=True),
             ToNumpyd(keys=("image", "label", "pred")),
-            # Transfors used to simulate clicks
+            # Transforms used to simulate clicks
             # FindDiscrepancyRegionsd(label="label", pred="pred", discrepancy="discrepancy"),
-            FindDiscrepancyRegionsCustomMultiLabeld(keys="label", pred="pred", discrepancy="discrepancy"),
-            PosNegClickProbAddRandomGuidanced(
-                guidance="guidance", discrepancy="discrepancy", probability="probability"
-            ),
             # AddGuidanceSignald(image="image", guidance="guidance"),
+            FindDiscrepancyRegionsCustomMultiLabeld(
+                keys="label", pred="pred", discrepancy="discrepancy", label_names=self.label_names
+            ),
+            PosNegClickProbAddRandomGuidanceCustomMultiLabeld(
+                keys="NA",
+                guidance="guidance",
+                discrepancy="discrepancy",
+                probability="probability",
+                label_names=self.label_names,
+            ),
             AddGuidanceSignalCustomMultiLabeld(keys="image", guidance="guidance", label_names=self.label_names),
             #
             ToTensord(keys=("image", "label")),
@@ -141,7 +147,7 @@ class MyTrain(BasicTrainTask):
                 keys=("pred", "label"),
                 argmax=(True, False),
                 to_onehot=True,
-                n_classes=len(self.label_names) + 1,
+                n_classes=len(self.label_names),
             ),
         ]
 

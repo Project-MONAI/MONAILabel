@@ -90,8 +90,8 @@ class Interaction:
                 batchdata = list_data_collate(batchdata_list)
 
                 # first item in batch only
-                pos_click_sum += (batchdata_list[0]["is_pos"]) * 1
-                neg_click_sum += (batchdata_list[0]["is_neg"]) * 1
+                # pos_click_sum += (batchdata_list[0]["is_pos"]) * 1
+                # neg_click_sum += (batchdata_list[0]["is_neg"]) * 1
 
                 engine.fire_event(IterationEvents.INNER_ITERATION_COMPLETED)
 
@@ -105,7 +105,7 @@ class Interaction:
 
         # first item in batch only
         engine.state.batch = batchdata
-        engine.state.batch.update({"pos_click_sum": torch.tensor(pos_click_sum)})
-        engine.state.batch.update({"neg_click_sum": torch.tensor(neg_click_sum)})
+        # engine.state.batch.update({"pos_click_sum": torch.tensor(pos_click_sum)})
+        # engine.state.batch.update({"neg_click_sum": torch.tensor(neg_click_sum)})
 
         return engine._iteration(engine, batchdata)
