@@ -23,6 +23,7 @@ from fastapi.background import BackgroundTasks
 from fastapi.responses import FileResponse, Response
 from requests_toolbelt import MultipartEncoder
 
+from monailabel.datastore.utils.convert import binary_to_image
 from monailabel.interfaces.app import MONAILabelApp
 from monailabel.interfaces.utils.app import app_instance
 from monailabel.utils.others.generic import get_mime_type, remove_file
@@ -114,6 +115,8 @@ async def run_inference(
     if not file and not image and not session_id:
         raise HTTPException(status_code=500, detail="Neither Image nor File not Session ID input is provided")
 
+    instance: MONAILabelApp = app_instance()
+
     if file:
         file_ext = "".join(pathlib.Path(file.filename).suffixes) if file.filename else ".nii.gz"
         image_file = tempfile.NamedTemporaryFile(suffix=file_ext).name
@@ -129,10 +132,15 @@ async def run_inference(
 
         with open(label_file, "wb") as buffer:
             shutil.copyfileobj(label.file, buffer)
-            request["label"] = label_file
             background_tasks.add_task(remove_file, label_file)
 
-    instance: MONAILabelApp = app_instance()
+        if file_ext == ".bin":
+            image_uri = instance.datastore().get_image_uri(image)
+            output_file = binary_to_image(image_uri, label_file)
+            label_file = output_file
+        
+        request["label"] = label_file
+            
     config = instance.info().get("config", {}).get("infer", {})
     request.update(config)
 

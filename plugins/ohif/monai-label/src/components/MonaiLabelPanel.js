@@ -10,6 +10,7 @@ import cornerstone from 'cornerstone-core';
 import MD5 from 'md5.js';
 import AutoSegmentation from './actions/AutoSegmentation';
 import SmartEdit from './actions/SmartEdit';
+import Scribbles from './actions/Scribbles';
 import OptionTable from './actions/OptionTable';
 import ActiveLearning from './actions/ActiveLearning';
 import SettingsTable from './SettingsTable';
@@ -239,6 +240,17 @@ export default class MonaiLabelPanel extends Component {
           <SmartEdit
             ref={this.actions['smartedit']}
             tabIndex={4}
+            info={this.state.info}
+            viewConstants={this.viewConstants}
+            client={this.client}
+            notification={this.notification}
+            updateView={this.updateView}
+            onSelectActionTab={this.onSelectActionTab}
+            onOptionsConfig={this.onOptionsConfig}
+          />
+          <Scribbles
+            ref={this.actions['scribbles']}
+            tabIndex={5}
             info={this.state.info}
             viewConstants={this.viewConstants}
             client={this.client}
