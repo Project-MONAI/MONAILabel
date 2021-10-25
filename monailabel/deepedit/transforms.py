@@ -238,6 +238,7 @@ class PosNegClickProbAddRandomGuidanced(Randomizable, Transform):
 
     """
     Add random guidance based on discrepancies that were found between label and prediction.
+
     Args:
         guidance: key to guidance source, shape (2, N, # of dim)
         discrepancy: key to discrepancy map between label and prediction shape (2, C, H, W, D) or (2, C, H, W)
@@ -387,7 +388,7 @@ class SingleLabelSingleModalityd(MapTransform):
 
 
 # Transform for multilabel DeepEdit segmentation
-class SelectLabelsAbdomend(MapTransform):
+class SelectLabelsAbdomenDatasetd(MapTransform):
     def __init__(
         self,
         keys: KeysCollection,
@@ -425,10 +426,22 @@ class SelectLabelsAbdomend(MapTransform):
         d: Dict = dict(data)
         for key in self.key_iterator(d):
             if key == "label":
+                new_label_names = {}
+
                 # Making other labels as background
                 for k in self.all_label_values.keys():
                     if k not in self.label_names.keys():
                         d[key][d[key] == self.all_label_values[k]] = 0.0
+
+                # Making sure the range values and number of labels are the same
+                for idx, (key_label, val_label) in enumerate(self.label_names.items(), start=1):
+                    if key_label != "background":
+                        new_label_names[key_label] = idx
+                        d[key][d[key] == val_label] = idx
+                    if key_label == "background":
+                        new_label_names["background"] = 0
+                        d[key][d[key] == self.label_names["background"]] = 0
+                d["label_names"] = new_label_names
             else:
                 print("This transform only applies to the label")
         return d
@@ -497,7 +510,6 @@ class AddGuidanceSignalCustomMultiLabeld(MapTransform):
         guidance: key to store guidance.
         sigma: standard deviation for Gaussian kernel.
         number_intensity_ch: channel index.
-        label_names: dict of label names and values
     """
 
     def __init__(
@@ -506,14 +518,12 @@ class AddGuidanceSignalCustomMultiLabeld(MapTransform):
         guidance: str = "guidance",
         sigma: int = 2,
         number_intensity_ch: int = 1,
-        label_names=None,
         allow_missing_keys: bool = False,
     ):
         super().__init__(keys, allow_missing_keys)
         self.guidance = guidance
         self.sigma = sigma
         self.number_intensity_ch = number_intensity_ch
-        self.label_names = label_names
 
     def _get_signal(self, image, guidance):
         dimensions = 3 if len(image.shape) > 3 else 2
@@ -580,26 +590,23 @@ class FindAllValidSlicesCustomMultiLabeld(MapTransform):
     Args:
         label: key to the label source.
         sids: key to store slices indices having valid label map.
-        label_names: Dict of label names and values
     """
 
     def __init__(
         self,
         keys: KeysCollection,
         sids="sids",
-        label_names=None,
         allow_missing_keys: bool = False,
     ):
         super().__init__(keys, allow_missing_keys)
         self.sids = sids
-        self.label_names = label_names
 
-    def _apply(self, label):
+    def _apply(self, label, d):
         sids = {}
-        for key_label in self.label_names.keys():
+        for key_label in d["label_names"].keys():
             l_ids = []
             for sid in range(label.shape[1]):  # Assume channel is first
-                if self.label_names[key_label] in label[0][sid]:
+                if d["label_names"][key_label] in label[0][sid]:
                     l_ids.append(sid)
             sids[key_label] = l_ids
         return sids
@@ -616,7 +623,7 @@ class FindAllValidSlicesCustomMultiLabeld(MapTransform):
                 if len(label.shape) != 4:  # only for 3D
                     raise ValueError("Only supports label with shape CDHW!")
 
-                sids = self._apply(label)
+                sids = self._apply(label, d)
                 if sids is not None and len(sids.keys()):
                     d[self.sids] = sids
                 return d
@@ -637,10 +644,9 @@ class AddInitialSeedPointCustomMultiLabeld(Randomizable, MapTransform):
     Args:
         label: label source.
         guidance: key to store guidance.
-        sids: key that represents list of valid slice indices for the given label.
+        sids: key that represents lists of valid slice indices for the given label.
         sid: key that represents the slice to add initial seed point.  If not present, random sid will be chosen.
         connected_regions: maximum connected regions to use for adding initial points.
-        label_names: list of label names and values
     """
 
     def __init__(
@@ -650,18 +656,16 @@ class AddInitialSeedPointCustomMultiLabeld(Randomizable, MapTransform):
         sids: str = "sids",
         sid: str = "sid",
         connected_regions: int = 5,
-        label_names=None,
         allow_missing_keys: bool = False,
     ):
         super().__init__(keys, allow_missing_keys)
         self.sids_key = sids
         self.sid_key = sid
-        self.sid = None
+        self.sid: Dict[str, int] = dict()
         self.guidance = guidance
         self.connected_regions = connected_regions
-        self.label_names = label_names
 
-    def _apply(self, label, sid):
+    def _apply(self, label, sid, key_label):
         dimensions = 3 if len(label.shape) > 3 else 2
         self.default_guidance = [-1] * (dimensions + 1)
 
@@ -682,7 +686,7 @@ class AddInitialSeedPointCustomMultiLabeld(Randomizable, MapTransform):
         # when they are neighbors and have the same value
         blobs_labels = measure.label(label.astype(int), background=0) if dims == 2 else label
         if np.max(blobs_labels) <= 0:
-            raise AssertionError("Not a valid Label")
+            raise AssertionError(f"SLICES NOT FOUND FOR LABEL: {key_label}")
 
         # plt.imshow(blobs_labels[0])
         # plt.title('Blobs')
@@ -724,6 +728,17 @@ class AddInitialSeedPointCustomMultiLabeld(Randomizable, MapTransform):
 
         return np.asarray([pos_guidance])
 
+    def _randomize(self, d, key_label):
+        sids = d.get(self.sids_key, None).get(key_label, None) if d.get(self.sids_key, None) is not None else None
+        sid = d.get(self.sid_key, None).get(key_label, None) if d.get(self.sid_key, None) is not None else None
+        if sids is not None and sids:
+            if sid is None or sid not in sids:
+                sid = self.R.choice(sids, replace=False)
+        else:
+            logger.info(f"Not slice IDs for label: {key_label}")
+            sid = None
+        self.sid[key_label] = sid
+
     def __call__(self, data: Mapping[Hashable, np.ndarray]) -> Dict[Hashable, np.ndarray]:
 
         d: Dict = dict(data)
@@ -731,19 +746,18 @@ class AddInitialSeedPointCustomMultiLabeld(Randomizable, MapTransform):
             if key == "label":
                 label_guidances = {}
                 for key_label in d["sids"].keys():
-                    if key_label != "background" or self.label_names[key_label] != 0:
-                        sids = d["sids"][key_label]
-                        if sids is not None:
-                            # Randomize: Select a random slice
-                            self.sid = self.R.choice(sids, replace=False)
-                            # Generate guidance base on selected slice
-                            tmp_label = np.copy(d[key])
-                            # Taking one label to create the guidance
-                            tmp_label[tmp_label != float(self.label_names[key_label])] = 0.0
-                            label_guidances[key_label] = json.dumps(
-                                self._apply(tmp_label, self.sid).astype(int).tolist()
-                            )
-                    elif key_label == "background" or self.label_names[key_label] == 0:
+                    # For all non-background labels
+                    if key_label != "background" or d["label_names"][key_label] != 0:
+                        # Randomize: Select a random slice
+                        self._randomize(d, key_label)
+                        # Generate guidance base on selected slice
+                        tmp_label = np.copy(d[key])
+                        # Taking one label to create the guidance
+                        tmp_label[tmp_label != float(d["label_names"][key_label])] = 0
+                        label_guidances[key_label] = json.dumps(
+                            self._apply(tmp_label, self.sid.get(key_label, None), key_label).astype(int).tolist()
+                        )
+                    elif key_label == "background" or d["label_names"][key_label] == 0:
                         label_guidances[key_label] = json.dumps(
                             np.asarray([[self.default_guidance] * self.connected_regions]).astype(int).tolist()
                         )
@@ -762,7 +776,6 @@ class FindDiscrepancyRegionsCustomMultiLabeld(MapTransform):
         label: key to label source.
         pred: key to prediction source.
         discrepancy: key to store discrepancies found between label and prediction.
-        label_names: Dict of label names and values
     """
 
     def __init__(
@@ -770,13 +783,11 @@ class FindDiscrepancyRegionsCustomMultiLabeld(MapTransform):
         keys: KeysCollection,
         pred: str = "pred",
         discrepancy: str = "discrepancy",
-        label_names=None,
         allow_missing_keys: bool = False,
     ):
         super().__init__(keys, allow_missing_keys)
         self.pred = pred
         self.discrepancy = discrepancy
-        self.label_names = label_names
 
     @staticmethod
     def disparity(label, pred):
@@ -796,7 +807,7 @@ class FindDiscrepancyRegionsCustomMultiLabeld(MapTransform):
         for key in self.key_iterator(d):
             if key == "label":
                 all_discrepancies = {}
-                for idx, (key_label, val_label) in enumerate(self.label_names.items()):
+                for idx, (key_label, val_label) in enumerate(d["label_names"].items()):
                     if key_label != "background":
                         # Taking single label
                         label = np.copy(d[key])
@@ -827,7 +838,6 @@ class PosNegClickProbAddRandomGuidanceCustomMultiLabeld(Randomizable, MapTransfo
           (probability of negative click will be 1 - pos_click_probability)
         weight_map: optional key to predetermined weight map used to increase click likelihood
           in higher weight areas shape (C, H, W, D) or (C, H, W)
-        label_names: Dict of label names and values
     """
 
     def __init__(
@@ -838,7 +848,6 @@ class PosNegClickProbAddRandomGuidanceCustomMultiLabeld(Randomizable, MapTransfo
         probability: str = "probability",
         pos_click_probability: float = 0.5,
         weight_map: Optional[dict] = None,
-        label_names=None,
         allow_missing_keys: bool = False,
     ):
         super().__init__(keys, allow_missing_keys)
@@ -847,7 +856,6 @@ class PosNegClickProbAddRandomGuidanceCustomMultiLabeld(Randomizable, MapTransfo
         self.probability = probability
         self.pos_click_probability = pos_click_probability
         self.weight_map = weight_map
-        self.label_names = label_names
         self._will_interact = None
         self.is_pos = False
         self.is_neg = False
@@ -940,7 +948,7 @@ class PosNegClickProbAddRandomGuidanceCustomMultiLabeld(Randomizable, MapTransfo
             mask_background = np.copy(d["label"])
             mask_background[mask_background != 0] = 1.0
             mask_background = 1.0 - mask_background
-            for key_label in self.label_names.keys():
+            for key_label in d["label_names"].keys():
                 if key_label != "background":
                     # Add POSITIVE and NEGATIVE (background) guidance based on discrepancy
                     d[self.guidance][key_label], d[self.guidance]["background"] = self._apply(
@@ -963,6 +971,7 @@ class PosNegClickProbAddRandomGuidanceCustomMultiLabeld(Randomizable, MapTransfo
 class SingleModalityLabelSanityd(MapTransform):
     """
     Gets single modality and perform label sanity check
+
     Error is the label is not in the same range:
      https://stdworkflow.com/866/runtimeerror-cudnn-error-cudnn-status-not-initialized
     """
@@ -999,6 +1008,7 @@ class SingleModalityLabelSanityd(MapTransform):
 class ToCheckTransformd(MapTransform):
     """
     Transform to debug dictionary
+
     """
 
     def __init__(

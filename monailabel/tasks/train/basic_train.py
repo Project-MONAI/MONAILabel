@@ -38,6 +38,7 @@ from monai.inferers import SimpleInferer
 from monai.networks.utils import copy_model_state
 from monai.transforms import Compose
 
+from monailabel.deepedit.handlers import TensorBoardImageHandler
 from monailabel.interfaces.datastore import Datastore
 from monailabel.interfaces.tasks.train import TrainTask
 from monailabel.tasks.train.handler import PublishStatsAndModel, prepare_stats
@@ -203,7 +204,7 @@ class BasicTrainTask(TrainTask):
                 tag_name="train_loss",
                 output_transform=from_engine(["loss"], first=True),
             ),
-            # TensorBoardImageHandler(log_dir=events_dir),  # TEMPORAL for DEBUGGING
+            TensorBoardImageHandler(log_dir=events_dir),  # TEMPORAL for DEBUGGING
         ]
 
         if evaluator:

@@ -38,7 +38,7 @@ from monailabel.deepedit.transforms import (  # SingleModalityLabelSanityd,
     FindAllValidSlicesCustomMultiLabeld,
     FindDiscrepancyRegionsCustomMultiLabeld,
     PosNegClickProbAddRandomGuidanceCustomMultiLabeld,
-    SelectLabelsAbdomend,
+    SelectLabelsAbdomenDatasetd,
 )
 from monailabel.tasks.train.basic_train import BasicTrainTask
 
@@ -87,17 +87,14 @@ class MyTrain(BasicTrainTask):
             Activationsd(keys="pred", sigmoid=True),
             ToNumpyd(keys=("image", "label", "pred")),
             # Transforms for click simulation
-            FindDiscrepancyRegionsCustomMultiLabeld(
-                keys="label", pred="pred", discrepancy="discrepancy", label_names=self.label_names
-            ),
+            FindDiscrepancyRegionsCustomMultiLabeld(keys="label", pred="pred", discrepancy="discrepancy"),
             PosNegClickProbAddRandomGuidanceCustomMultiLabeld(
                 keys="NA",
                 guidance="guidance",
                 discrepancy="discrepancy",
                 probability="probability",
-                label_names=self.label_names,
             ),
-            AddGuidanceSignalCustomMultiLabeld(keys="image", guidance="guidance", label_names=self.label_names),
+            AddGuidanceSignalCustomMultiLabeld(keys="image", guidance="guidance"),
             #
             ToTensord(keys=("image", "label")),
         ]
@@ -105,7 +102,7 @@ class MyTrain(BasicTrainTask):
     def train_pre_transforms(self):
         return [
             LoadImaged(keys=("image", "label"), reader="nibabelreader"),
-            SelectLabelsAbdomend(keys="label", label_names=self.label_names),
+            SelectLabelsAbdomenDatasetd(keys="label", label_names=self.label_names),
             # SingleModalityLabelSanityd(keys=("image", "label"), label_names=self.label_names),
             # RandZoomd(keys=("image", "label"), prob=0.4, min_zoom=0.3, max_zoom=1.9, mode=("bilinear", "nearest")),
             AddChanneld(keys=("image", "label")),
@@ -125,11 +122,9 @@ class MyTrain(BasicTrainTask):
             ),
             Resized(keys=("image", "label"), spatial_size=self.spatial_size, mode=("area", "nearest")),
             # Transforms for click simulation
-            FindAllValidSlicesCustomMultiLabeld(keys="label", sids="sids", label_names=self.label_names),
-            AddInitialSeedPointCustomMultiLabeld(
-                keys="label", guidance="guidance", sids="sids", label_names=self.label_names
-            ),
-            AddGuidanceSignalCustomMultiLabeld(keys="image", guidance="guidance", label_names=self.label_names),
+            FindAllValidSlicesCustomMultiLabeld(keys="label", sids="sids"),
+            AddInitialSeedPointCustomMultiLabeld(keys="label", guidance="guidance", sids="sids"),
+            AddGuidanceSignalCustomMultiLabeld(keys="image", guidance="guidance"),
             #
             ToTensord(keys=("image", "label")),
         ]
@@ -149,7 +144,7 @@ class MyTrain(BasicTrainTask):
     def val_pre_transforms(self):
         return [
             LoadImaged(keys=("image", "label"), reader="nibabelreader"),
-            SelectLabelsAbdomend(keys="label", label_names=self.label_names),
+            SelectLabelsAbdomenDatasetd(keys="label", label_names=self.label_names),
             # SingleModalityLabelSanityd(keys=("image", "label"), label_names=self.label_names),
             AddChanneld(keys=("image", "label")),
             Spacingd(keys=["image", "label"], pixdim=self.target_spacing, mode=("bilinear", "nearest")),
@@ -157,11 +152,9 @@ class MyTrain(BasicTrainTask):
             NormalizeIntensityd(keys="image"),
             Resized(keys=("image", "label"), spatial_size=self.spatial_size, mode=("area", "nearest")),
             # Transforms for click simulation
-            FindAllValidSlicesCustomMultiLabeld(keys="label", sids="sids", label_names=self.label_names),
-            AddInitialSeedPointCustomMultiLabeld(
-                keys="label", guidance="guidance", sids="sids", label_names=self.label_names
-            ),
-            AddGuidanceSignalCustomMultiLabeld(keys="image", guidance="guidance", label_names=self.label_names),
+            FindAllValidSlicesCustomMultiLabeld(keys="label", sids="sids"),
+            AddInitialSeedPointCustomMultiLabeld(keys="label", guidance="guidance", sids="sids"),
+            AddGuidanceSignalCustomMultiLabeld(keys="image", guidance="guidance"),
             #
             ToTensord(keys=("image", "label")),
         ]
@@ -176,6 +169,7 @@ class MyTrain(BasicTrainTask):
             max_interactions=self.max_train_interactions,
             click_probability_key="probability",
             train=True,
+            label_names=self.label_names,
         )
 
     def val_iteration_update(self):
@@ -185,6 +179,7 @@ class MyTrain(BasicTrainTask):
             max_interactions=self.max_val_interactions,
             click_probability_key="probability",
             train=False,
+            label_names=self.label_names,
         )
 
     def train_handlers(self, output_dir, events_dir, evaluator, local_rank=0):

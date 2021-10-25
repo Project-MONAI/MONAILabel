@@ -145,10 +145,12 @@ class TensorBoardImageHandler:
         self._writer.add_scalar("Positive clicks (cumulative)", self.cumulative_pos_clicks, step)
         self._writer.add_scalar("Negative clicks (cumulative)", self.cumulative_neg_clicks, step)
 
+        input_tensor = self.batch_transform(engine.state.batch)[0]["image"]
+
         """
         IMAGE
         """
-        show_image = self.batch_transform(engine.state.batch)[0]["image"][0, ...][None]
+        show_image = input_tensor[0, ...][None]
         if isinstance(show_image, torch.Tensor):
             show_image = show_image.detach().cpu().numpy()
         if show_image is not None:
@@ -194,39 +196,42 @@ class TensorBoardImageHandler:
         """
         PREDICTION
         """
-        show_prediction = self.output_transform(engine.state.output)[0]["pred"][0, ...][None]
-        if isinstance(show_prediction, torch.Tensor):
-            show_prediction = show_prediction.detach().cpu().numpy()
-        if show_prediction is not None:
-            if not isinstance(show_prediction, np.ndarray):
-                raise TypeError(
-                    "show_pred must be None or one of "
-                    f"(numpy.ndarray, torch.Tensor) but is {type(show_label).__name__}."
-                )
-            plot_2d_or_3d_image(
-                # add batch dim and plot the first item
-                show_prediction[None],
-                step,
-                self._writer,
-                0,
-                self.max_channels,
-                self.max_frames,
-                "step_" + str(step) + "_prediction_" + filename,
-            )
+        # show_prediction = self.output_transform(engine.state.output)[0]["pred"][0, ...][None]
+        # if isinstance(show_prediction, torch.Tensor):
+        #     show_prediction = show_prediction.detach().cpu().numpy()
+        # if show_prediction is not None:
+        #     if not isinstance(show_prediction, np.ndarray):
+        #         raise TypeError(
+        #             "show_pred must be None or one of "
+        #             f"(numpy.ndarray, torch.Tensor) but is {type(show_label).__name__}."
+        #         )
+        #     plot_2d_or_3d_image(
+        #         # add batch dim and plot the first item
+        #         show_prediction[None],
+        #         step,
+        #         self._writer,
+        #         0,
+        #         self.max_channels,
+        #         self.max_frames,
+        #         "step_" + str(step) + "_prediction_" + filename,
+        #     )
 
         """
         POSITIVE CLICKS
         """
-        show_pos_clicks = self.batch_transform(engine.state.batch)[0]["image"][1, ...][None]
+        show_pos_clicks = input_tensor[1:-1, ...][None]
         if isinstance(show_pos_clicks, torch.Tensor):
             show_pos_clicks = show_pos_clicks.detach().cpu().numpy()
+            # Adding all labels in a single channel tensor
+            if show_pos_clicks.shape[1] > 1:
+                show_pos_clicks = np.sum(show_pos_clicks, axis=1)
         if show_pos_clicks is not None:
             if not isinstance(show_pos_clicks, np.ndarray):
                 raise TypeError(
                     "show_pos_clicks must be None or one of "
                     f"(numpy.ndarray, torch.Tensor) but is {type(show_pos_clicks).__name__}."
                 )
-            show_pos_clicks = show_label + show_pos_clicks
+            show_pos_clicks = show_label * (1 - show_pos_clicks)
             plot_2d_or_3d_image(
                 # add batch dim and plot the first item
                 show_pos_clicks[None],
@@ -241,7 +246,7 @@ class TensorBoardImageHandler:
         """
         NEGATIVE CLICKS
         """
-        show_neg_clicks = self.batch_transform(engine.state.batch)[0]["image"][2, ...][None]
+        show_neg_clicks = input_tensor[-1, ...][None]
         if isinstance(show_neg_clicks, torch.Tensor):
             show_neg_clicks = show_neg_clicks.detach().cpu().numpy()
         if show_neg_clicks is not None:

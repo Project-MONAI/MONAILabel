@@ -46,8 +46,9 @@ class MyApp(MONAILabelApp):
             "spleen": 1,
             "right_kidney": 2,
             "left_kidney": 3,
-            "gallbladder": 4,
-            "esophagus": 5,
+            "liver": 6,
+            "stomach": 7,
+            "aorta": 8,
             "background": 0,
         }
 
@@ -201,7 +202,7 @@ def main():
     )
     app_dir_path = os.path.normpath("/home/adp20local/Documents/MONAILabel/sample-apps/deepedit_multiple_label")
     studies_path = os.path.normpath(
-        "/home/adp20local/Documents/Datasets/monailabel_datasets/multilabel_abdomen/NRRD/train_small"
+        "/home/adp20local/Documents/Datasets/monailabel_datasets/multilabel_abdomen/NRRD/train"
     )
     # conf is Dict[str, str]
     conf = {
@@ -214,7 +215,7 @@ def main():
     request = {
         "device": "cuda",
         "model": "deepedit_train",
-        "max_epochs": 200,
+        "max_epochs": 300,
         "amp": False,
         "lr": 0.0001,
     }
