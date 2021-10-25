@@ -131,6 +131,7 @@ class InteractionMultipleLabel:
 class Interaction:
     """
     Ignite process_function used to introduce interactions (simulation of clicks) for DeepEdit Training/Evaluation.
+
     Args:
         deepgrow_probability: probability of simulating clicks in an iteration
         transforms: execute additional transformation during every iteration (before train).
