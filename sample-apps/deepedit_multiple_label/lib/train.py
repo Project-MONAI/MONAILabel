@@ -31,8 +31,8 @@ from monai.transforms import (
 )
 
 from monailabel.deepedit.handlers import TensorBoardImageHandler
-from monailabel.deepedit.interaction import Interaction
-from monailabel.deepedit.transforms import (  # SingleModalityLabelSanityd,
+from monailabel.deepedit.interaction import InteractionMultipleLabel
+from monailabel.deepedit.transforms import (
     AddGuidanceSignalCustomMultiLabeld,
     AddInitialSeedPointCustomMultiLabeld,
     FindAllValidSlicesCustomMultiLabeld,
@@ -163,7 +163,7 @@ class MyTrain(BasicTrainTask):
         return SimpleInferer()
 
     def train_iteration_update(self):
-        return Interaction(
+        return InteractionMultipleLabel(
             deepgrow_probability=self.deepgrow_probability_train,
             transforms=self.get_click_transforms(),
             max_interactions=self.max_train_interactions,
@@ -173,7 +173,7 @@ class MyTrain(BasicTrainTask):
         )
 
     def val_iteration_update(self):
-        return Interaction(
+        return InteractionMultipleLabel(
             deepgrow_probability=self.deepgrow_probability_val,
             transforms=self.get_click_transforms(),
             max_interactions=self.max_val_interactions,
