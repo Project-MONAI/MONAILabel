@@ -32,7 +32,7 @@ from monai.transforms import (
 
 from monailabel.deepedit.handlers import TensorBoardImageHandler
 from monailabel.deepedit.interaction import Interaction
-from monailabel.deepedit.transforms import (
+from monailabel.deepedit.transforms import (  # SingleModalityLabelSanityd,
     AddGuidanceSignalCustomMultiLabeld,
     AddInitialSeedPointCustomMultiLabeld,
     FindAllValidSlicesCustomMultiLabeld,
@@ -80,15 +80,13 @@ class MyTrain(BasicTrainTask):
         return torch.optim.Adam(self._network.parameters(), lr=0.0001)
 
     def loss_function(self):
-        return DiceLoss(to_onehot_y=True, softmax=True)
+        return DiceLoss(to_onehot_y=True, softmax=True, include_background=False)
 
     def get_click_transforms(self):
         return [
-            Activationsd(keys="pred", softmax=True),
+            Activationsd(keys="pred", sigmoid=True),
             ToNumpyd(keys=("image", "label", "pred")),
-            # Transforms used to simulate clicks
-            # FindDiscrepancyRegionsd(label="label", pred="pred", discrepancy="discrepancy"),
-            # AddGuidanceSignald(image="image", guidance="guidance"),
+            # Transforms for click simulation
             FindDiscrepancyRegionsCustomMultiLabeld(
                 keys="label", pred="pred", discrepancy="discrepancy", label_names=self.label_names
             ),
@@ -107,9 +105,8 @@ class MyTrain(BasicTrainTask):
     def train_pre_transforms(self):
         return [
             LoadImaged(keys=("image", "label"), reader="nibabelreader"),
-            # SingleLabelSingleModalityd(keys=("image", "label")),
-            # SingleLabelSelectiond(keys="label", label_names=self.label_names),
             SelectLabelsAbdomend(keys="label", label_names=self.label_names),
+            # SingleModalityLabelSanityd(keys=("image", "label"), label_names=self.label_names),
             # RandZoomd(keys=("image", "label"), prob=0.4, min_zoom=0.3, max_zoom=1.9, mode=("bilinear", "nearest")),
             AddChanneld(keys=("image", "label")),
             Spacingd(keys=["image", "label"], pixdim=self.target_spacing, mode=("bilinear", "nearest")),
@@ -127,10 +124,7 @@ class MyTrain(BasicTrainTask):
                 mode=("bilinear", "nearest"),
             ),
             Resized(keys=("image", "label"), spatial_size=self.spatial_size, mode=("area", "nearest")),
-            # Transforms used to simulated clicks
-            # FindAllValidSlicesd(label="label", sids="sids"),
-            # AddInitialSeedPointd(label="label", guidance="guidance", sids="sids"),
-            # AddGuidanceSignald(image="image", guidance="guidance"),
+            # Transforms for click simulation
             FindAllValidSlicesCustomMultiLabeld(keys="label", sids="sids", label_names=self.label_names),
             AddInitialSeedPointCustomMultiLabeld(
                 keys="label", guidance="guidance", sids="sids", label_names=self.label_names
@@ -146,26 +140,23 @@ class MyTrain(BasicTrainTask):
             AsDiscreted(
                 keys=("pred", "label"),
                 argmax=(True, False),
-                to_onehot=True,
+                to_onehot=(True, True),
                 n_classes=len(self.label_names),
             ),
+            # ToCheckTransformd(keys="pred"),
         ]
 
     def val_pre_transforms(self):
         return [
             LoadImaged(keys=("image", "label"), reader="nibabelreader"),
-            # SingleLabelSingleModalityd(keys=("image", "label")),
-            # SingleLabelSelectiond(keys="label", label_names=self.label_names),
             SelectLabelsAbdomend(keys="label", label_names=self.label_names),
+            # SingleModalityLabelSanityd(keys=("image", "label"), label_names=self.label_names),
             AddChanneld(keys=("image", "label")),
             Spacingd(keys=["image", "label"], pixdim=self.target_spacing, mode=("bilinear", "nearest")),
             Orientationd(keys=["image", "label"], axcodes="RAS"),
             NormalizeIntensityd(keys="image"),
             Resized(keys=("image", "label"), spatial_size=self.spatial_size, mode=("area", "nearest")),
-            # Transforms used to simulate clicks
-            # FindAllValidSlicesd(label="label", sids="sids"),
-            # AddInitialSeedPointd(label="label", guidance="guidance", sids="sids"),
-            # AddGuidanceSignald(image="image", guidance="guidance"),
+            # Transforms for click simulation
             FindAllValidSlicesCustomMultiLabeld(keys="label", sids="sids", label_names=self.label_names),
             AddInitialSeedPointCustomMultiLabeld(
                 keys="label", guidance="guidance", sids="sids", label_names=self.label_names

@@ -40,15 +40,21 @@ logger = logging.getLogger(__name__)
 class MyApp(MONAILabelApp):
     def __init__(self, app_dir, studies, conf):
 
-        # Label names
-        # background is used to place the negative clicks
+        # background label is used to place the negative clicks
         # Zero values are reserved to background. Non zero values are for the labels
-        self.label_names = {"spleen": 1, "right_kidney": 2, "left_kidney": 3, "liver": 6, "stomach": 7, "background": 0}
+        self.label_names = {
+            "spleen": 1,
+            "right_kidney": 2,
+            "left_kidney": 3,
+            "gallbladder": 4,
+            "esophagus": 5,
+            "background": 0,
+        }
 
         network_params = {
             "spatial_dims": 3,
             "in_channels": len(self.label_names) + 1,  # All labels plus Image
-            "out_channels": len(self.label_names),  # All labels
+            "out_channels": len(self.label_names),  # All labels including background
             "kernel_size": [
                 [3, 3, 3],
                 [3, 3, 3],
@@ -195,7 +201,7 @@ def main():
     )
     app_dir_path = os.path.normpath("/home/adp20local/Documents/MONAILabel/sample-apps/deepedit_multiple_label")
     studies_path = os.path.normpath(
-        "/home/adp20local/Documents/Datasets/monailabel_datasets/multilabel_abdomen/NRRD/train"
+        "/home/adp20local/Documents/Datasets/monailabel_datasets/multilabel_abdomen/NRRD/train_small"
     )
     # conf is Dict[str, str]
     conf = {

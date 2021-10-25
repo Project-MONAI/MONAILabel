@@ -56,10 +56,18 @@ class Interaction:
         if batchdata is None:
             raise ValueError("Must provide batch data for current iteration.")
 
-        pos_click_sum = 0
-        neg_click_sum = 0
+        # pos_click_sum = {}
+        # neg_click_sum = {}
+        # for key_label in batchdata["guidance"].keys():
+        #     pos_click_sum[key_label] = 0
+        # for key_label in batchdata["guidance"].keys():
+        #     neg_click_sum[key_label] = 0
+
         if np.random.choice([True, False], p=[self.deepgrow_probability, 1 - self.deepgrow_probability]):
-            pos_click_sum += 1  # increase pos_click_sum by 1-click for AddInitialSeedPointd pre_transform
+            # increase pos_click_sum by 1-click for AddInitialSeedPointd pre_transform
+            # pos_click_sum += 1
+            # for key_label in batchdata["guidance"].keys():
+            #     pos_click_sum[key_label] += 1
             for j in range(self.max_interactions):
 
                 # print("Inner iteration (click simulations running): ", str(j))
@@ -90,8 +98,9 @@ class Interaction:
                 batchdata = list_data_collate(batchdata_list)
 
                 # first item in batch only
-                # pos_click_sum += (batchdata_list[0]["is_pos"]) * 1
-                # neg_click_sum += (batchdata_list[0]["is_neg"]) * 1
+                # for key_label in batchdata_list[0]["is_pos"].keys():
+                #     pos_click_sum[key_label] += (batchdata_list[0]["is_pos"][key_label]) * 1
+                #     neg_click_sum[key_label] += (batchdata_list[0]["is_neg"][key_label]) * 1
 
                 engine.fire_event(IterationEvents.INNER_ITERATION_COMPLETED)
 
@@ -105,7 +114,7 @@ class Interaction:
 
         # first item in batch only
         engine.state.batch = batchdata
-        # engine.state.batch.update({"pos_click_sum": torch.tensor(pos_click_sum)})
-        # engine.state.batch.update({"neg_click_sum": torch.tensor(neg_click_sum)})
+        # engine.state.batch.update({"pos_click_sum": pos_click_sum})
+        # engine.state.batch.update({"neg_click_sum": neg_click_sum})
 
         return engine._iteration(engine, batchdata)

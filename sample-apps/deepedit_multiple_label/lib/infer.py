@@ -25,7 +25,7 @@ from monai.transforms import (
     ToTensord,
 )
 
-from monailabel.deepedit.transforms import (
+from monailabel.deepedit.transforms import (  # SingleModalityLabelSanityd,
     AddGuidanceSignalCustomMultiLabeld,
     DiscardAddGuidanced,
     ResizeGuidanceCustomd,
@@ -69,7 +69,7 @@ class Segmentation(InferTask):
     def pre_transforms(self):
         return [
             LoadImaged(keys="image", reader="nibabelreader"),
-            # SingleLabelSingleModalityd(keys="image"),
+            # SingleModalityLabelSanityd(keys="image", label_names=self.label_names),
             AddChanneld(keys="image"),
             Spacingd(keys="image", pixdim=self.target_spacing, mode="bilinear"),
             Orientationd(keys="image", axcodes="RAS"),
@@ -128,7 +128,7 @@ class Deepgrow(InferTask):
     def pre_transforms(self):
         return [
             LoadImaged(keys="image", reader="nibabelreader"),
-            # SingleLabelSingleModalityd(keys="image"),
+            # SingleModalityLabelSanityd(keys="image", label_names=self.label_names),
             AddChanneld(keys="image"),
             Spacingd(keys="image", pixdim=self.target_spacing, mode="bilinear"),
             Orientationd(keys="image", axcodes="RAS"),
@@ -139,7 +139,7 @@ class Deepgrow(InferTask):
             Resized(keys="image", spatial_size=self.spatial_size, mode="area"),
             ResizeGuidanceCustomd(guidance="guidance", ref_image="image"),
             # AddGuidanceSignald(image="image", guidance="guidance"),
-            AddGuidanceSignalCustomMultiLabeld(image="image", guidance="guidance", label_names=self.label_names),
+            AddGuidanceSignalCustomMultiLabeld(keys="image", guidance="guidance", label_names=self.label_names),
             ToTensord(keys="image"),
         ]
 

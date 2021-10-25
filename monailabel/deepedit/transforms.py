@@ -54,7 +54,7 @@ class DiscardAddGuidanced(MapTransform):
             [True, False], p=[self.discard_probability, 1 - self.discard_probability]
         ):
             signal = np.zeros(
-                (len(self.label_names) + 1, image.shape[-3], image.shape[-2], image.shape[-1]), dtype=np.float32
+                (len(self.label_names), image.shape[-3], image.shape[-2], image.shape[-1]), dtype=np.float32
             )
             if image.shape[0] == self.number_intensity_ch + len(self.label_names) + 1:
                 image[self.number_intensity_ch :, ...] = signal
@@ -235,6 +235,7 @@ class AddRandomGuidanced(Randomizable, Transform):
 
 
 class PosNegClickProbAddRandomGuidanced(Randomizable, Transform):
+
     """
     Add random guidance based on discrepancies that were found between label and prediction.
     Args:
@@ -561,7 +562,10 @@ class AddGuidanceSignalCustomMultiLabeld(MapTransform):
                     signal = self._get_signal(image, guidance[key_label])
                     tmp_image = np.concatenate([tmp_image, signal], axis=0)
                 d[key] = tmp_image
-                logger.info(f"Built channels in Input tensor in AddGuidanceSignal transform: {d[key].shape[0]}")
+                logger.info(
+                    f"Number of input channels: {d[key].shape[0]} - "
+                    f'Using image: {d["image_meta_dict"]["filename_or_obj"].split("/")[-1]}'
+                )
                 return d
             else:
                 print("This transform only applies to image key")
@@ -952,4 +956,61 @@ class PosNegClickProbAddRandomGuidanceCustomMultiLabeld(Randomizable, MapTransfo
                     self.is_neg = False
             d["is_pos"] = all_is_pos
             d["is_neg"] = all_is_neg
+        return d
+
+
+# A transform to get single modality if there are more and do label sanity
+class SingleModalityLabelSanityd(MapTransform):
+    """
+    Gets single modality and perform label sanity check
+    Error is the label is not in the same range:
+     https://stdworkflow.com/866/runtimeerror-cudnn-error-cudnn-status-not-initialized
+    """
+
+    def __init__(
+        self,
+        keys: KeysCollection,
+        label_names=None,
+        allow_missing_keys: bool = False,
+    ):
+        super().__init__(keys, allow_missing_keys)
+        self.label_names = label_names
+
+    def __call__(self, data):
+        d = dict(data)
+        for key in self.keys:
+            if key == "label":
+                logger.info(f"Input image shape check in SingleModalityLabelSanityd transform: {d[key].shape}")
+            if key == "image":
+                meta_data = d["image_meta_dict"]
+                if meta_data["spatial_shape"].shape[0] > 3:
+                    if meta_data["spatial_shape"][4] > 0:
+                        logger.info(
+                            f"Image {meta_data['filename_or_obj'].split('/')[-1]} has more than one modality "
+                            f"- taking FIRST modality ..."
+                        )
+
+                        d[key] = d[key][..., 0]
+                        meta_data["spatial_shape"][4] = 0.0
+
+        return d
+
+
+class ToCheckTransformd(MapTransform):
+    """
+    Transform to debug dictionary
+    """
+
+    def __init__(
+        self,
+        keys: KeysCollection,
+        allow_missing_keys: bool = False,
+    ):
+        super().__init__(keys, allow_missing_keys)
+
+    def __call__(self, data: Mapping[Hashable, np.ndarray]) -> Dict[Hashable, np.ndarray]:
+
+        d: Dict = dict(data)
+        for key in self.key_iterator(d):
+            logger.info(f"Printing pred shape in ToCheckTransformd: {d[key].shape}")
         return d
