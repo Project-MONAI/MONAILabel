@@ -66,7 +66,12 @@ class TestInteractions(unittest.TestCase):
         ]
         iteration_transforms = Compose(iteration_transforms) if compose else iteration_transforms
 
-        i = Interaction(transforms=iteration_transforms, train=train, max_interactions=5, deepgrow_probability=0.5)
+        i = Interaction(
+            transforms=iteration_transforms,
+            train=train,
+            max_interactions=5,
+            deepgrow_probability=0.5,
+        )
         self.assertEqual(len(i.transforms), 6, "Mismatch in expected transforms")
 
         # set up engine
