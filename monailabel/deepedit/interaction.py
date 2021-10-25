@@ -20,6 +20,114 @@ from monai.transforms import Compose
 from monai.utils.enums import CommonKeys
 
 
+class InteractionMultipleLabel:
+    """
+    Ignite process_function used to introduce interactions (simulation of clicks) for DeepEdit Training/Evaluation.
+
+    Args:
+        deepgrow_probability: probability of simulating clicks in an iteration
+        transforms: execute additional transformation during every iteration (before train).
+            Typically, several Tensor based transforms composed by `Compose`.
+        max_interactions: maximum number of click interactions per iteration if deepgrow training invoked for iteration
+        train: True for training mode or False for evaluation mode
+        click_probability_key: key to click/interaction probability
+        label_names: Dict of label names
+    """
+
+    def __init__(
+        self,
+        deepgrow_probability: float,
+        transforms: Union[Sequence[Callable], Callable],
+        max_interactions: int,
+        train: bool,
+        label_names: Dict[str, int],
+        click_probability_key: str = "probability",
+    ) -> None:
+
+        if not isinstance(transforms, Compose):
+            transforms = Compose(transforms)
+
+        self.deepgrow_probability = deepgrow_probability
+        self.transforms = transforms
+        self.max_interactions = max_interactions
+        self.train = train
+        self.label_names = label_names
+        self.click_probability_key = click_probability_key
+
+    def __call__(self, engine: Union[SupervisedTrainer, SupervisedEvaluator], batchdata: Dict[str, torch.Tensor]):
+
+        if batchdata is None:
+            raise ValueError("Must provide batch data for current iteration.")
+
+        total_pos_click_sum = 0
+        pos_click_sum = {}
+        neg_click_sum = 0
+        for key_label in self.label_names.keys():
+            if key_label != "background":
+                pos_click_sum[key_label] = 0
+
+        if np.random.choice([True, False], p=[self.deepgrow_probability, 1 - self.deepgrow_probability]):
+            # increase pos_click_sum by 1-click for AddInitialSeedPointd pre_transform
+            # pos_click_sum += 1 # Previous command
+            for key_label in self.label_names.keys():
+                if key_label != "background":
+                    pos_click_sum[key_label] += 1
+            for j in range(self.max_interactions):
+
+                # print("Inner iteration (click simulations running): ", str(j))
+
+                inputs, _ = engine.prepare_batch(batchdata)
+                inputs = inputs.to(engine.state.device)
+
+                engine.fire_event(IterationEvents.INNER_ITERATION_STARTED)
+
+                engine.network.eval()
+                with torch.no_grad():
+                    if engine.amp:
+                        with torch.cuda.amp.autocast():
+                            predictions = engine.inferer(inputs, engine.network)
+                    else:
+                        predictions = engine.inferer(inputs, engine.network)
+                batchdata.update({CommonKeys.PRED: predictions})
+
+                # decollate/collate batchdata to execute click transforms
+                batchdata_list = decollate_batch(batchdata, detach=True)
+
+                for i in range(len(batchdata_list)):
+                    batchdata_list[i][self.click_probability_key] = (
+                        (1.0 - ((1.0 / self.max_interactions) * j)) if self.train else 1.0
+                    )
+                    batchdata_list[i] = self.transforms(batchdata_list[i])
+
+                batchdata = list_data_collate(batchdata_list)
+
+                # first item in batch only
+                for key_label in self.label_names.keys():
+                    if key_label != "background":
+                        pos_click_sum[key_label] += (batchdata_list[0]["is_pos"][key_label]) * 1
+                        neg_click_sum += (batchdata_list[0]["is_neg"][key_label]) * 1
+
+                engine.fire_event(IterationEvents.INNER_ITERATION_COMPLETED)
+
+        else:
+            # zero out input guidance channels
+            batchdata_list = decollate_batch(batchdata, detach=True)
+            for i in range(len(batchdata_list)):
+                batchdata_list[i][CommonKeys.IMAGE][-1] *= 0
+                batchdata_list[i][CommonKeys.IMAGE][-2] *= 0
+            batchdata = list_data_collate(batchdata_list)
+
+        # first item in batch only
+        engine.state.batch = batchdata
+        # Counting all positive clicks
+        for _, value in pos_click_sum.items():
+            total_pos_click_sum += value
+        engine.state.batch.update({"pos_click_sum": torch.tensor(total_pos_click_sum)})
+        engine.state.batch.update({"neg_click_sum": torch.tensor(neg_click_sum)})
+
+        return engine._iteration(engine, batchdata)
+
+
 class Interaction:
     """
     Ignite process_function used to introduce interactions (simulation of clicks) for DeepEdit Training/Evaluation.

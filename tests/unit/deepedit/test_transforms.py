@@ -16,7 +16,7 @@ from parameterized import parameterized
 
 from monailabel.deepedit.transforms import (
     AddRandomGuidanced,
-    DiscardAddGuidanced,
+    DiscardAddGuidanceSingleLabeld,
     PosNegClickProbAddRandomGuidanced,
     ResizeGuidanceCustomd,
     SingleLabelSingleModalityd,
@@ -104,7 +104,11 @@ ADD_RANDOM_GUIDANCE_TEST_CASE_1 = [
 
 DATA_3 = {
     "image": np.arange(1000).reshape((1, 5, 10, 20)),
-    "image_meta_dict": {"foreground_cropped_shape": (1, 10, 20, 40), "dim": [3, 512, 512, 128]},
+    "image_meta_dict": {
+        "foreground_cropped_shape": (1, 10, 20, 40),
+        "dim": [3, 512, 512, 128],
+        "spatial_shape": [512, 512, 128],
+    },
     "guidance": [[[6, 10, 14], [8, 10, 14]], [[8, 10, 16]]],
     "foreground": [[10, 14, 6], [10, 14, 8]],
     "background": [[10, 16, 8]],
@@ -144,7 +148,7 @@ SINGLE_LABEL_SINGLE_MODALITY_TEST_CASE_1 = [
 class TestDiscardAddGuidanced(unittest.TestCase):
     @parameterized.expand([DISCARD_ADD_GUIDANCE_TEST_CASE])
     def test_correct_results(self, arguments, input_data, expected_result):
-        add_fn = DiscardAddGuidanced(arguments)
+        add_fn = DiscardAddGuidanceSingleLabeld(arguments)
         result = add_fn(input_data)
         np.testing.assert_equal(result["image"], expected_result)
 

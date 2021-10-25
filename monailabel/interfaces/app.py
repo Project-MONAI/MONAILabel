@@ -158,7 +158,7 @@ class MONAILabelApp:
 
         # If labels are not provided, aggregate from all individual infers
         if not self.labels:
-            meta["labels"] = list(itertools.chain.from_iterable([v.get("labels", []) for v in meta["models"].values()]))
+            meta["labels"] = set(itertools.chain.from_iterable([v.get("labels", []) for v in meta["models"].values()]))
 
         return meta
 

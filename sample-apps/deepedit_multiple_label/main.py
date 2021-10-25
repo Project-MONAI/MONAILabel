@@ -16,7 +16,7 @@ from typing import Dict
 
 from lib import Deepgrow, MyTrain, Segmentation
 from lib.activelearning import MyStrategy
-from monai.networks.nets.dynunet_v1 import DynUNetV1
+from monai.networks.nets import DynUNet
 
 from monailabel.interfaces.app import MONAILabelApp
 from monailabel.interfaces.datastore import Datastore
@@ -39,10 +39,23 @@ logger = logging.getLogger(__name__)
 
 class MyApp(MONAILabelApp):
     def __init__(self, app_dir, studies, conf):
+
+        # background label is used to place the negative clicks
+        # Zero values are reserved to background. Non zero values are for the labels
+        self.label_names = {
+            "spleen": 1,
+            "right_kidney": 2,
+            "left_kidney": 3,
+            "liver": 6,
+            "stomach": 7,
+            "aorta": 8,
+            "background": 0,
+        }
+
         network_params = {
             "spatial_dims": 3,
-            "in_channels": 3,
-            "out_channels": 1,
+            "in_channels": len(self.label_names) + 1,  # All labels plus Image
+            "out_channels": len(self.label_names),  # All labels including background
             "kernel_size": [
                 [3, 3, 3],
                 [3, 3, 3],
@@ -70,20 +83,20 @@ class MyApp(MONAILabelApp):
             "deep_supervision": False,
             "res_block": True,
         }
-        self.network = DynUNetV1(**network_params)
-        self.network_with_dropout = DynUNetV1(**network_params, dropout=0.2)
+        self.network = DynUNet(**network_params)
+        self.network_with_dropout = DynUNet(**network_params, dropout=0.2)
 
         self.model_dir = os.path.join(app_dir, "model")
         self.pretrained_model = os.path.join(self.model_dir, "pretrained.pt")
         self.final_model = os.path.join(self.model_dir, "model.pt")
 
         # Use Heuristic Planner to determine target spacing and spatial size based on dataset+gpu
-        spatial_size = json.loads(conf.get("spatial_size", "[256, 256, 128]"))
+        spatial_size = json.loads(conf.get("spatial_size", "[128, 128, 128]"))
         target_spacing = json.loads(conf.get("target_spacing", "[1.0, 1.0, 1.0]"))
         self.heuristic_planner = strtobool(conf.get("heuristic_planner", "false"))
         self.planner = HeuristicPlanner(spatial_size=spatial_size, target_spacing=target_spacing)
 
-        use_pretrained_model = strtobool(conf.get("use_pretrained_model", "true"))
+        use_pretrained_model = strtobool(conf.get("use_pretrained_model", "false"))
         pretrained_model_uri = conf.get("pretrained_model_path", f"{self.PRE_TRAINED_PATH}/deepedit_spleen.pt")
 
         # Path to pretrained weights
@@ -125,6 +138,7 @@ class MyApp(MONAILabelApp):
                 self.network,
                 spatial_size=self.planner.spatial_size,
                 target_spacing=self.planner.target_spacing,
+                label_names=self.label_names,
             ),
             # intensity range set for MRI
             "Histogram+GraphCut": HistogramBasedGraphCut(
@@ -142,6 +156,7 @@ class MyApp(MONAILabelApp):
                 load_path=self.pretrained_model,
                 publish_path=self.final_model,
                 config={"pretrained": strtobool(self.conf.get("use_pretrained_model", "true"))},
+                label_names=self.label_names,
                 debug_mode=False,
             )
         }
@@ -177,3 +192,37 @@ class MyApp(MONAILabelApp):
         methods["dice"] = Dice()
         methods["sum"] = Sum()
         return methods
+
+
+def main():
+    logging.basicConfig(
+        level=logging.INFO,
+        format="[%(asctime)s.%(msecs)03d][%(levelname)5s](%(name)s) - %(message)s",
+        datefmt="%Y-%m-%d %H:%M:%S",
+    )
+    app_dir_path = os.path.normpath("/home/adp20local/Documents/MONAILabel/sample-apps/deepedit_multiple_label")
+    studies_path = os.path.normpath(
+        "/home/adp20local/Documents/Datasets/monailabel_datasets/multilabel_abdomen/NRRD/train"
+    )
+    # conf is Dict[str, str]
+    conf = {
+        "use_pretrained_model": "false",
+        "heuristic_planner": "false",
+        "tta_enabled": "false",
+        "tta_samples": "10",
+    }
+    al_app = MyApp(app_dir=app_dir_path, studies=studies_path, conf=conf)
+    request = {
+        "device": "cuda",
+        "model": "deepedit_train",
+        "max_epochs": 300,
+        "amp": False,
+        "lr": 0.0001,
+    }
+    al_app.train(request=request)
+
+    return None
+
+
+if __name__ == "__main__":
+    main()

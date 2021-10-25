@@ -12,7 +12,6 @@
 import logging
 
 import torch
-from monai.apps.deepgrow.transforms import AddInitialSeedPointd, FindAllValidSlicesd, FindDiscrepancyRegionsd
 from monai.inferers import SimpleInferer
 from monai.losses import DiceLoss
 from monai.transforms import (
@@ -32,11 +31,14 @@ from monai.transforms import (
 )
 
 from monailabel.deepedit.handlers import TensorBoardImageHandler
-from monailabel.deepedit.interaction import Interaction
+from monailabel.deepedit.interaction import InteractionMultipleLabel
 from monailabel.deepedit.transforms import (
-    DiscardAddGuidanceSingleLabeld,
-    PosNegClickProbAddRandomGuidanced,
-    SingleLabelSingleModalityd,
+    AddGuidanceSignalCustomMultiLabeld,
+    AddInitialSeedPointCustomMultiLabeld,
+    FindAllValidSlicesCustomMultiLabeld,
+    FindDiscrepancyRegionsCustomMultiLabeld,
+    PosNegClickProbAddRandomGuidanceCustomMultiLabeld,
+    SelectLabelsAbdomenDatasetd,
 )
 from monailabel.tasks.train.basic_train import BasicTrainTask
 
@@ -55,6 +57,7 @@ class MyTrain(BasicTrainTask):
         deepgrow_probability_val=1.0,
         max_train_interactions=20,
         max_val_interactions=10,
+        label_names=None,
         debug_mode=False,
         **kwargs,
     ):
@@ -65,6 +68,7 @@ class MyTrain(BasicTrainTask):
         self.deepgrow_probability_val = deepgrow_probability_val
         self.max_train_interactions = max_train_interactions
         self.max_val_interactions = max_val_interactions
+        self.label_names = label_names
         self.debug_mode = debug_mode
 
         super().__init__(model_dir, description, **kwargs)
@@ -76,24 +80,30 @@ class MyTrain(BasicTrainTask):
         return torch.optim.Adam(self._network.parameters(), lr=0.0001)
 
     def loss_function(self):
-        return DiceLoss(sigmoid=True, squared_pred=True)
+        return DiceLoss(to_onehot_y=True, softmax=True, include_background=False)
 
     def get_click_transforms(self):
         return [
             Activationsd(keys="pred", sigmoid=True),
             ToNumpyd(keys=("image", "label", "pred")),
-            FindDiscrepancyRegionsd(label="label", pred="pred", discrepancy="discrepancy"),
-            PosNegClickProbAddRandomGuidanced(
-                guidance="guidance", discrepancy="discrepancy", probability="probability"
+            # Transforms for click simulation
+            FindDiscrepancyRegionsCustomMultiLabeld(keys="label", pred="pred", discrepancy="discrepancy"),
+            PosNegClickProbAddRandomGuidanceCustomMultiLabeld(
+                keys="NA",
+                guidance="guidance",
+                discrepancy="discrepancy",
+                probability="probability",
             ),
-            DiscardAddGuidanceSingleLabeld(keys="image"),
+            AddGuidanceSignalCustomMultiLabeld(keys="image", guidance="guidance"),
+            #
             ToTensord(keys=("image", "label")),
         ]
 
     def train_pre_transforms(self):
         return [
             LoadImaged(keys=("image", "label"), reader="nibabelreader"),
-            SingleLabelSingleModalityd(keys=("image", "label")),
+            SelectLabelsAbdomenDatasetd(keys="label", label_names=self.label_names),
+            # SingleModalityLabelSanityd(keys=("image", "label"), label_names=self.label_names),
             # RandZoomd(keys=("image", "label"), prob=0.4, min_zoom=0.3, max_zoom=1.9, mode=("bilinear", "nearest")),
             AddChanneld(keys=("image", "label")),
             Spacingd(keys=["image", "label"], pixdim=self.target_spacing, mode=("bilinear", "nearest")),
@@ -111,30 +121,41 @@ class MyTrain(BasicTrainTask):
                 mode=("bilinear", "nearest"),
             ),
             Resized(keys=("image", "label"), spatial_size=self.spatial_size, mode=("area", "nearest")),
-            FindAllValidSlicesd(label="label", sids="sids"),
-            AddInitialSeedPointd(label="label", guidance="guidance", sids="sids"),
-            DiscardAddGuidanceSingleLabeld(keys="image"),
+            # Transforms for click simulation
+            FindAllValidSlicesCustomMultiLabeld(keys="label", sids="sids"),
+            AddInitialSeedPointCustomMultiLabeld(keys="label", guidance="guidance", sids="sids"),
+            AddGuidanceSignalCustomMultiLabeld(keys="image", guidance="guidance"),
+            #
             ToTensord(keys=("image", "label")),
         ]
 
     def train_post_transforms(self):
         return [
-            Activationsd(keys="pred", sigmoid=True),
-            AsDiscreted(keys="pred", threshold_values=True, logit_thresh=0.5),
+            Activationsd(keys="pred", softmax=True),
+            AsDiscreted(
+                keys=("pred", "label"),
+                argmax=(True, False),
+                to_onehot=(True, True),
+                n_classes=len(self.label_names),
+            ),
+            # ToCheckTransformd(keys="pred"),
         ]
 
     def val_pre_transforms(self):
         return [
             LoadImaged(keys=("image", "label"), reader="nibabelreader"),
-            SingleLabelSingleModalityd(keys=("image", "label")),
+            SelectLabelsAbdomenDatasetd(keys="label", label_names=self.label_names),
+            # SingleModalityLabelSanityd(keys=("image", "label"), label_names=self.label_names),
             AddChanneld(keys=("image", "label")),
             Spacingd(keys=["image", "label"], pixdim=self.target_spacing, mode=("bilinear", "nearest")),
             Orientationd(keys=["image", "label"], axcodes="RAS"),
             NormalizeIntensityd(keys="image"),
             Resized(keys=("image", "label"), spatial_size=self.spatial_size, mode=("area", "nearest")),
-            FindAllValidSlicesd(label="label", sids="sids"),
-            AddInitialSeedPointd(label="label", guidance="guidance", sids="sids"),
-            DiscardAddGuidanceSingleLabeld(keys="image"),
+            # Transforms for click simulation
+            FindAllValidSlicesCustomMultiLabeld(keys="label", sids="sids"),
+            AddInitialSeedPointCustomMultiLabeld(keys="label", guidance="guidance", sids="sids"),
+            AddGuidanceSignalCustomMultiLabeld(keys="image", guidance="guidance"),
+            #
             ToTensord(keys=("image", "label")),
         ]
 
@@ -142,21 +163,23 @@ class MyTrain(BasicTrainTask):
         return SimpleInferer()
 
     def train_iteration_update(self):
-        return Interaction(
+        return InteractionMultipleLabel(
             deepgrow_probability=self.deepgrow_probability_train,
             transforms=self.get_click_transforms(),
             max_interactions=self.max_train_interactions,
             click_probability_key="probability",
             train=True,
+            label_names=self.label_names,
         )
 
     def val_iteration_update(self):
-        return Interaction(
+        return InteractionMultipleLabel(
             deepgrow_probability=self.deepgrow_probability_val,
             transforms=self.get_click_transforms(),
             max_interactions=self.max_val_interactions,
             click_probability_key="probability",
             train=False,
+            label_names=self.label_names,
         )
 
     def train_handlers(self, output_dir, events_dir, evaluator, local_rank=0):
