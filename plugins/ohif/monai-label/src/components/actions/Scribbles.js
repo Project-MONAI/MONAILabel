@@ -36,6 +36,11 @@ export default class Scribbles extends BaseTab {
       this.props.viewConstants.element
     );
     if (!labelmaps3D) {
+      this.notification.show({
+        title: 'MONAI Label',
+        message: 'Please create/select a label first',
+        type: 'warning',
+      });
       console.info('LabelMap3D is empty.. so zero segments');
       return;
     }
@@ -111,7 +116,7 @@ export default class Scribbles extends BaseTab {
         duration: 2000,
       });
 
-      await this.props.updateView(response, labels);
+      await this.props.updateView(response, labels, "overlap", undefined, undefined, 1);
     }
   };
 
@@ -134,7 +139,6 @@ export default class Scribbles extends BaseTab {
           className="tab-switch"
           value="segmentation"
           onClick={this.onSelectActionTab}
-          defaultChecked
         />
         <label htmlFor={this.tabId} className="tab-label">
           Scribbles

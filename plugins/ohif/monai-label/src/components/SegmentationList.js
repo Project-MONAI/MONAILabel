@@ -259,12 +259,13 @@ export default class SegmentationList extends Component {
     }
   };
 
-  updateView = async (response, labels, operation, slice, overlap) => {
+  updateView = async (response, labels, operation, slice, overlap, segmentIndex) => {
     const { element, numberOfFrames } = this.props.viewConstants;
     let activeIndex = this.getSelectedActiveIndex();
     const { header, image } = SegmentationReader.parseNrrdData(response.data);
     this.setState({ header: header });
-
+    console.debug(activeIndex);
+    
     if (labels) {
       for (let i = 0; i < labels.length; i++) {
         const resp = createSegment(
@@ -290,10 +291,14 @@ export default class SegmentationList extends Component {
       operation = 'overlap';
     }
 
+    if (!segmentIndex){
+      segmentIndex = activeIndex.segmentIndex;
+    }
+
     updateSegment(
       element,
       activeIndex.labelmapIndex,
-      activeIndex.segmentIndex,
+      segmentIndex,
       image,
       numberOfFrames,
       operation,

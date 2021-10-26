@@ -138,9 +138,9 @@ async def run_inference(
             image_uri = instance.datastore().get_image_uri(image)
             output_file = binary_to_image(image_uri, label_file)
             label_file = output_file
-        
+
         request["label"] = label_file
-            
+
     config = instance.info().get("config", {}).get("infer", {})
     request.update(config)
 

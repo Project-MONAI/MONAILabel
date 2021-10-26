@@ -174,13 +174,14 @@ export default class MonaiLabelPanel extends Component {
       : {};
   };
 
-  updateView = async (response, labels, operation, slice, overlap) => {
+  updateView = async (response, labels, operation, slice, overlap, segmentIndex) => {
     this.segmentationList.current.updateView(
       response,
       labels,
       operation,
       slice,
-      overlap
+      overlap,
+      segmentIndex
     );
   };
 
