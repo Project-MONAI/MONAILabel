@@ -1151,6 +1151,33 @@ class ResizeGuidanceMultipleLabelCustomd(Transform):
         return d
 
 
+class SplitPredsLabeld(MapTransform):
+    """
+    Split preds and labels for individual evaluation
+
+    """
+
+    def __init__(
+        self,
+        keys: KeysCollection,
+        allow_missing_keys: bool = False,
+    ):
+        super().__init__(keys, allow_missing_keys)
+
+    def __call__(self, data: Mapping[Hashable, np.ndarray]) -> Dict[Hashable, np.ndarray]:
+
+        d: Dict = dict(data)
+        for key in self.key_iterator(d):
+            if key == "pred":
+                for idx, (key_label, _) in enumerate(d["label_names"].items()):
+                    if key_label != "background":
+                        d[f"pred_{key_label}"] = d[key][idx + 1, ...][None]
+                        d[f"label_{key_label}"] = d["label"][idx, ...][None]
+            elif key != "pred":
+                logger.info("This is only for pred key")
+        return d
+
+
 class ToCheckTransformd(MapTransform):
     """
     Transform to debug dictionary

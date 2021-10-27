@@ -217,7 +217,7 @@ def main():
         "amp": False,
         "lr": 0.0001,
     }
-    # al_app.train(request=request)
+    al_app.train(request=request)
 
     # # PERFORMING INFERENCE USING INTERACTIVE MODEL
     # deepgrow_3d = {

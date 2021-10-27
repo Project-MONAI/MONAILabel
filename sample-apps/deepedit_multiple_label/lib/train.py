@@ -12,6 +12,7 @@
 import logging
 
 import torch
+from monai.handlers import MeanDice, from_engine
 from monai.inferers import SimpleInferer
 from monai.losses import DiceLoss
 from monai.transforms import (
@@ -39,6 +40,7 @@ from monailabel.deepedit.transforms import (
     FindDiscrepancyRegionsCustomMultiLabeld,
     PosNegClickProbAddRandomGuidanceCustomMultiLabeld,
     SelectLabelsAbdomenDatasetd,
+    SplitPredsLabeld,
 )
 from monailabel.tasks.train.basic_train import BasicTrainTask
 
@@ -140,6 +142,7 @@ class MyTrain(BasicTrainTask):
                 to_onehot=(True, True),
                 n_classes=len(self.label_names),
             ),
+            SplitPredsLabeld(keys="pred"),
             # ToCheckTransformd(keys="pred"),
         ]
 
@@ -184,6 +187,26 @@ class MyTrain(BasicTrainTask):
             train=False,
             label_names=self.label_names,
         )
+
+    def train_key_metric(self):
+        all_metrics = dict()
+        all_metrics["train_dice"] = MeanDice(output_transform=from_engine(["pred", "label"]))
+        for _, (key_label, _) in enumerate(self.label_names.items()):
+            if key_label != "background":
+                all_metrics[key_label + "_dice"] = MeanDice(
+                    output_transform=from_engine(["pred_" + key_label, "label_" + key_label])
+                )
+        return all_metrics
+
+    def val_key_metric(self):
+        all_metrics = dict()
+        all_metrics["val_mean_dice"] = MeanDice(output_transform=from_engine(["pred", "label"]))
+        for _, (key_label, _) in enumerate(self.label_names.items()):
+            if key_label != "background":
+                all_metrics[key_label + "_dice"] = MeanDice(
+                    output_transform=from_engine(["pred_" + key_label, "label_" + key_label])
+                )
+        return all_metrics
 
     def train_handlers(self, output_dir, events_dir, evaluator, local_rank=0):
         handlers = super().train_handlers(output_dir, events_dir, evaluator, local_rank)
