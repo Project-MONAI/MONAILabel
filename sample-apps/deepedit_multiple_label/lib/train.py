@@ -8,13 +8,14 @@
 # WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 # See the License for the specific language governing permissions and
 # limitations under the License.
-
+import glob
 import logging
+import os
 
 import torch
 from monai.handlers import MeanDice, from_engine
 from monai.inferers import SimpleInferer
-from monai.losses import DiceLoss
+from monai.losses import DiceCELoss
 from monai.transforms import (
     Activationsd,
     AddChanneld,
@@ -79,10 +80,12 @@ class MyTrain(BasicTrainTask):
         return self._network
 
     def optimizer(self):
-        return torch.optim.Adam(self._network.parameters(), lr=0.0001)
+        # torch.optim.Adam(self._network.parameters(), lr=0.0001)
+        return torch.optim.AdamW(self._network.parameters(), lr=1e-4, weight_decay=1e-5)
 
     def loss_function(self):
-        return DiceLoss(to_onehot_y=True, softmax=True)
+        # return DiceLoss(to_onehot_y=True, softmax=True)
+        return DiceCELoss(to_onehot_y=True, softmax=True)
 
     def get_click_transforms(self):
         return [
@@ -238,6 +241,18 @@ class MyTrain(BasicTrainTask):
                     output_transform=from_engine(["pred_" + key_label, "label_" + key_label]), include_background=False
                 )
         return all_metrics
+
+    def partition_datalist(self, request, datalist, shuffle=True):
+        # Training images
+        train_d = datalist
+
+        # Validation images
+        data_dir = "/home/adp20local/Documents/Datasets/monailabel_datasets/multilabel_abdomen/NIFTI/val"
+        val_images = sorted(glob.glob(os.path.join(data_dir, "imgs", "*.nii.gz")))
+        val_labels = sorted(glob.glob(os.path.join(data_dir, "labels", "*.nii.gz")))
+        val_d = [{"image": image_name, "label": label_name} for image_name, label_name in zip(val_images, val_labels)]
+
+        return train_d, val_d
 
     def train_handlers(self, output_dir, events_dir, evaluator, local_rank=0):
         handlers = super().train_handlers(output_dir, events_dir, evaluator, local_rank)
