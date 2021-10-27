@@ -47,8 +47,6 @@ class MyApp(MONAILabelApp):
             "right_kidney": 2,
             "left_kidney": 3,
             "liver": 6,
-            "stomach": 7,
-            "aorta": 8,
             "background": 0,
         }
 
@@ -92,7 +90,7 @@ class MyApp(MONAILabelApp):
 
         # Use Heuristic Planner to determine target spacing and spatial size based on dataset+gpu
         spatial_size = json.loads(conf.get("spatial_size", "[128, 128, 128]"))
-        target_spacing = json.loads(conf.get("target_spacing", "[1.0, 1.0, 1.0]"))
+        target_spacing = json.loads(conf.get("target_spacing", "[1.5, 1.5, 2.0]"))
         self.heuristic_planner = strtobool(conf.get("heuristic_planner", "false"))
         self.planner = HeuristicPlanner(spatial_size=spatial_size, target_spacing=target_spacing)
 
@@ -202,7 +200,7 @@ def main():
     )
     app_dir_path = os.path.normpath("/home/adp20local/Documents/MONAILabel/sample-apps/deepedit_multiple_label")
     studies_path = os.path.normpath(
-        "/home/adp20local/Documents/Datasets/monailabel_datasets/multilabel_abdomen/NRRD/train"
+        "/home/adp20local/Documents/Datasets/monailabel_datasets/multilabel_abdomen/NIFTI/train"
     )
     # conf is Dict[str, str]
     conf = {

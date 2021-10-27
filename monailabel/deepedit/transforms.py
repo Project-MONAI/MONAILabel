@@ -572,10 +572,10 @@ class AddGuidanceSignalCustomMultiLabeld(MapTransform):
                     signal = self._get_signal(image, guidance[key_label])
                     tmp_image = np.concatenate([tmp_image, signal], axis=0)
                 d[key] = tmp_image
-                logger.info(
-                    f"Number of input channels: {d[key].shape[0]} - "
-                    f'Using image: {d["image_meta_dict"]["filename_or_obj"].split("/")[-1]}'
-                )
+                # logger.info(
+                #     f"Number of input channels: {d[key].shape[0]} - "
+                #     f'Using image: {d["image_meta_dict"]["filename_or_obj"].split("/")[-1]}'
+                # )
                 return d
             else:
                 print("This transform only applies to image key")
@@ -807,7 +807,7 @@ class FindDiscrepancyRegionsCustomMultiLabeld(MapTransform):
         for key in self.key_iterator(d):
             if key == "label":
                 all_discrepancies = {}
-                for idx, (key_label, val_label) in enumerate(d["label_names"].items()):
+                for _, (key_label, val_label) in enumerate(d["label_names"].items()):
                     if key_label != "background":
                         # Taking single label
                         label = np.copy(d[key])
@@ -815,7 +815,10 @@ class FindDiscrepancyRegionsCustomMultiLabeld(MapTransform):
                         # Label should be represented in 1
                         label = (label > 0.5).astype(np.float32)
                         # Taking single prediction
-                        pred = d[self.pred][idx, ...][np.newaxis]
+                        # idx = 0 in pred is the background
+                        # pred = d[self.pred][idx+1, ...][np.newaxis]
+                        pred = np.copy(d[self.pred])
+                        pred[pred != val_label] = 0
                         # Prediction should be represented in one
                         pred = (pred > 0.5).astype(np.float32)
                         all_discrepancies[key_label] = self._apply(label, pred)
@@ -941,7 +944,7 @@ class PosNegClickProbAddRandomGuidanceCustomMultiLabeld(Randomizable, MapTransfo
         weight_map = d[self.weight_map] if self.weight_map is not None else None
         # Decide whether to add clicks or not
         self.randomize(data)
-        if True:  # self._will_interact:
+        if self._will_interact:
             all_is_pos = {}
             all_is_neg = {}
             # Create mask background to multiply for discrepancy

@@ -38,6 +38,7 @@ from monai.inferers import SimpleInferer
 from monai.networks.utils import copy_model_state
 from monai.transforms import Compose
 
+from monailabel.deepedit.handlers import TensorBoardImageHandler
 from monailabel.interfaces.datastore import Datastore
 from monailabel.interfaces.tasks.train import TrainTask
 from monailabel.tasks.train.handler import PublishStatsAndModel, prepare_stats
@@ -184,7 +185,7 @@ class BasicTrainTask(TrainTask):
         return SimpleInferer()
 
     def train_key_metric(self):
-        return {"train_dice": MeanDice(output_transform=from_engine(["pred", "label"]), include_background=False)}
+        return {"train_dice": MeanDice(output_transform=from_engine(["pred", "label"]))}
 
     def load_path(self, output_dir, pretrained=True):
         load_path = os.path.join(output_dir, self._key_metric_filename)
@@ -203,7 +204,7 @@ class BasicTrainTask(TrainTask):
                 tag_name="train_loss",
                 output_transform=from_engine(["loss"], first=True),
             ),
-            # TensorBoardImageHandler(log_dir=events_dir),  # TEMPORAL for DEBUGGING
+            TensorBoardImageHandler(log_dir=events_dir),  # TEMPORAL for DEBUGGING
         ]
 
         if evaluator:
@@ -243,7 +244,7 @@ class BasicTrainTask(TrainTask):
         return val_handlers if local_rank == 0 else None
 
     def val_key_metric(self):
-        return {"val_mean_dice": MeanDice(output_transform=from_engine(["pred", "label"]), include_background=False)}
+        return {"val_mean_dice": MeanDice(output_transform=from_engine(["pred", "label"]))}
 
     def train_iteration_update(self):
         return None

@@ -139,7 +139,7 @@ class Deepgrow(InferTask):
             Resized(keys="image", spatial_size=self.spatial_size, mode="area"),
             ResizeGuidanceCustomd(guidance="guidance", ref_image="image"),
             # AddGuidanceSignald(image="image", guidance="guidance"),
-            AddGuidanceSignalCustomMultiLabeld(keys="image", guidance="guidance", label_names=self.label_names),
+            AddGuidanceSignalCustomMultiLabeld(keys="image", guidance="guidance"),
             ToTensord(keys="image"),
         ]
 

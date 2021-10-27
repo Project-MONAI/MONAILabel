@@ -238,6 +238,7 @@ class InferTask:
 
         start = time.time()
         result_file_name, result_json = self.writer(data)
+        _, _ = self.writer(data)
         latency_write = time.time() - start
 
         latency_total = time.time() - begin

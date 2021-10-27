@@ -80,11 +80,12 @@ class MyTrain(BasicTrainTask):
         return torch.optim.Adam(self._network.parameters(), lr=0.0001)
 
     def loss_function(self):
-        return DiceLoss(to_onehot_y=True, softmax=True, include_background=False)
+        return DiceLoss(to_onehot_y=True, softmax=True)
 
     def get_click_transforms(self):
         return [
-            Activationsd(keys="pred", sigmoid=True),
+            Activationsd(keys="pred", softmax=True),
+            AsDiscreted(keys="pred", argmax=True),
             ToNumpyd(keys=("image", "label", "pred")),
             # Transforms for click simulation
             FindDiscrepancyRegionsCustomMultiLabeld(keys="label", pred="pred", discrepancy="discrepancy"),
@@ -130,6 +131,7 @@ class MyTrain(BasicTrainTask):
         ]
 
     def train_post_transforms(self):
+        # FOR DICE EVALUATION
         return [
             Activationsd(keys="pred", softmax=True),
             AsDiscreted(
@@ -156,6 +158,7 @@ class MyTrain(BasicTrainTask):
             AddInitialSeedPointCustomMultiLabeld(keys="label", guidance="guidance", sids="sids"),
             AddGuidanceSignalCustomMultiLabeld(keys="image", guidance="guidance"),
             #
+            AsDiscreted(keys="label", to_onehot=True, num_classes=len(self.label_names)),
             ToTensord(keys=("image", "label")),
         ]
 
