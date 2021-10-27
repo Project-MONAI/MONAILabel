@@ -529,35 +529,43 @@ class AddGuidanceSignalCustomMultiLabeld(MapTransform):
         dimensions = 3 if len(image.shape) > 3 else 2
         guidance = guidance.tolist() if isinstance(guidance, np.ndarray) else guidance
         guidance = json.loads(guidance) if isinstance(guidance, str) else guidance
-        if dimensions == 3:
-            signal = np.zeros((len(guidance), image.shape[-3], image.shape[-2], image.shape[-1]), dtype=np.float32)
+        # In inference the user may not provide clicks for some channels/labels
+        if len(guidance):
+            if dimensions == 3:
+                signal = np.zeros((len(guidance), image.shape[-3], image.shape[-2], image.shape[-1]), dtype=np.float32)
+            else:
+                signal = np.zeros((len(guidance), image.shape[-2], image.shape[-1]), dtype=np.float32)
+
+            sshape = signal.shape
+            for i, g_i in enumerate(guidance):
+                for point in g_i:
+                    if np.any(np.asarray(point) < 0):
+                        continue
+
+                    if dimensions == 3:
+                        p1 = max(0, min(int(point[-3]), sshape[-3] - 1))
+                        p2 = max(0, min(int(point[-2]), sshape[-2] - 1))
+                        p3 = max(0, min(int(point[-1]), sshape[-1] - 1))
+                        signal[i, p1, p2, p3] = 1.0
+                    else:
+                        p1 = max(0, min(int(point[-2]), sshape[-2] - 1))
+                        p2 = max(0, min(int(point[-1]), sshape[-1] - 1))
+                        signal[i, p1, p2] = 1.0
+
+                if np.max(signal[i]) > 0:
+                    signal_tensor = torch.tensor(signal[i])
+                    pt_gaussian = GaussianFilter(len(signal_tensor.shape), sigma=self.sigma)
+                    signal_tensor = pt_gaussian(signal_tensor.unsqueeze(0).unsqueeze(0))
+                    signal_tensor = signal_tensor.squeeze(0).squeeze(0)
+                    signal[i] = signal_tensor.detach().cpu().numpy()
+                    signal[i] = (signal[i] - np.min(signal[i])) / (np.max(signal[i]) - np.min(signal[i]))
+            return signal
         else:
-            signal = np.zeros((len(guidance), image.shape[-2], image.shape[-1]), dtype=np.float32)
-
-        sshape = signal.shape
-        for i, g_i in enumerate(guidance):
-            for point in g_i:
-                if np.any(np.asarray(point) < 0):
-                    continue
-
-                if dimensions == 3:
-                    p1 = max(0, min(int(point[-3]), sshape[-3] - 1))
-                    p2 = max(0, min(int(point[-2]), sshape[-2] - 1))
-                    p3 = max(0, min(int(point[-1]), sshape[-1] - 1))
-                    signal[i, p1, p2, p3] = 1.0
-                else:
-                    p1 = max(0, min(int(point[-2]), sshape[-2] - 1))
-                    p2 = max(0, min(int(point[-1]), sshape[-1] - 1))
-                    signal[i, p1, p2] = 1.0
-
-            if np.max(signal[i]) > 0:
-                signal_tensor = torch.tensor(signal[i])
-                pt_gaussian = GaussianFilter(len(signal_tensor.shape), sigma=self.sigma)
-                signal_tensor = pt_gaussian(signal_tensor.unsqueeze(0).unsqueeze(0))
-                signal_tensor = signal_tensor.squeeze(0).squeeze(0)
-                signal[i] = signal_tensor.detach().cpu().numpy()
-                signal[i] = (signal[i] - np.min(signal[i])) / (np.max(signal[i]) - np.min(signal[i]))
-        return signal
+            if dimensions == 3:
+                signal = np.zeros((1, image.shape[-3], image.shape[-2], image.shape[-1]), dtype=np.float32)
+            else:
+                signal = np.zeros((1, image.shape[-2], image.shape[-1]), dtype=np.float32)
+            return signal
 
     def __call__(self, data: Mapping[Hashable, np.ndarray]) -> Dict[Hashable, np.ndarray]:
 
@@ -1005,6 +1013,141 @@ class SingleModalityLabelSanityd(MapTransform):
                         d[key] = d[key][..., 0]
                         meta_data["spatial_shape"][4] = 0.0
 
+        return d
+
+
+class AddGuidanceFromPointsCustomMultipleLabeld(Transform):
+    """
+    Add guidance based on user clicks. ONLY WORKS FOR 3D
+
+    We assume the input is loaded by LoadImaged and has the shape of (H, W, D) originally.
+    Clicks always specify the coordinates in (H, W, D)
+
+    If depth_first is True:
+
+        Input is now of shape (D, H, W), will return guidance that specifies the coordinates in (D, H, W)
+
+    else:
+
+        Input is now of shape (H, W, D), will return guidance that specifies the coordinates in (H, W, D)
+
+    Args:
+        ref_image: key to reference image to fetch current and original image details.
+        guidance: output key to store guidance.
+        foreground: key that represents user foreground (+ve) clicks.
+        background: key that represents user background (-ve) clicks.
+        axis: axis that represents slices in 3D volume. (axis to Depth)
+        depth_first: if depth (slices) is positioned at first dimension.
+        meta_keys: explicitly indicate the key of the meta data dictionary of `ref_image`.
+            for example, for data with key `image`, the metadata by default is in `image_meta_dict`.
+            the meta data is a dictionary object which contains: filename, original_shape, etc.
+            if None, will try to construct meta_keys by `{ref_image}_{meta_key_postfix}`.
+        meta_key_postfix: if meta_key is None, use `{ref_image}_{meta_key_postfix}` to to fetch the meta data according
+            to the key data, default is `meta_dict`, the meta data is a dictionary object.
+            For example, to handle key `image`,  read/write affine matrices from the
+            metadata `image_meta_dict` dictionary's `affine` field.
+
+    """
+
+    def __init__(
+        self,
+        ref_image,
+        guidance: str = "guidance",
+        foreground: str = "foreground",
+        background: str = "background",
+        axis: int = 0,
+        depth_first: bool = True,
+        meta_keys: Optional[str] = None,
+        meta_key_postfix: str = "meta_dict",
+    ):
+        self.ref_image = ref_image
+        self.guidance = guidance
+        self.foreground = foreground
+        self.background = background
+        self.axis = axis
+        self.depth_first = depth_first
+        self.meta_keys = meta_keys
+        self.meta_key_postfix = meta_key_postfix
+
+    def _apply(self, clicks, factor):
+        if len(clicks):
+            guidance = np.multiply(clicks, factor).astype(int).tolist()
+            return guidance
+        else:
+            return []
+
+    def __call__(self, data):
+        d = dict(data)
+        meta_dict_key = self.meta_keys or f"{self.ref_image}_{self.meta_key_postfix}"
+        if meta_dict_key not in d:
+            raise RuntimeError(f"Missing meta_dict {meta_dict_key} in data!")
+        if "spatial_shape" not in d[meta_dict_key]:
+            raise RuntimeError('Missing "spatial_shape" in meta_dict!')
+        original_shape = d[meta_dict_key]["spatial_shape"]
+        current_shape = list(d[self.ref_image].shape)
+
+        if self.depth_first:
+            if self.axis != 0:
+                raise RuntimeError("Depth first means the depth axis should be 0.")
+            # in here we assume the depth dimension was in the last dimension of "original_shape"
+            original_shape = np.roll(original_shape, 1)
+
+        factor = np.array(current_shape) / original_shape
+
+        fg_bg_clicks = dict()
+        # For foreground clicks
+        for key_label in d[self.foreground]:
+            clicks = d[self.foreground][key_label]
+            clicks = list(np.array(clicks).astype(int))
+            if self.depth_first:
+                for i in range(len(clicks)):
+                    clicks[i] = list(np.roll(clicks[i], 1))
+            fg_bg_clicks[key_label] = clicks
+        # For background clicks
+        clicks = d[self.background]
+        clicks = list(np.array(clicks).astype(int))
+        if self.depth_first:
+            for i in range(len(clicks)):
+                clicks[i] = list(np.roll(clicks[i], 1))
+        fg_bg_clicks["background"] = clicks
+        # Creating guidance based on foreground clicks
+        all_guidances = dict()
+        for key_label in d[self.foreground]:
+            all_guidances[key_label] = self._apply(fg_bg_clicks[key_label], factor)
+        # Creating guidance based on background clicks
+        all_guidances["background"] = self._apply(fg_bg_clicks["background"], factor)
+        d[self.guidance] = all_guidances
+        return d
+
+
+class ResizeGuidanceMultipleLabelCustomd(Transform):
+    """
+    Resize the guidance based on cropped vs resized image.
+    """
+
+    def __init__(
+        self,
+        guidance: str,
+        ref_image: str,
+    ) -> None:
+        self.guidance = guidance
+        self.ref_image = ref_image
+
+    def __call__(self, data):
+        d = dict(data)
+        current_shape = d[self.ref_image].shape[1:]
+
+        factor = np.divide(current_shape, d["image_meta_dict"]["spatial_shape"])
+        all_guidances = dict()
+        for key_label in d[self.guidance].keys():
+            guidance = (
+                np.multiply(d[self.guidance][key_label], factor).astype(int).tolist()
+                if len(d[self.guidance][key_label])
+                else []
+            )
+            all_guidances[key_label] = guidance
+
+        d[self.guidance] = all_guidances
         return d
 
 
