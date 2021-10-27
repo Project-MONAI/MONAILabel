@@ -200,7 +200,7 @@ def main():
     )
     app_dir_path = os.path.normpath("/home/adp20local/Documents/MONAILabel/sample-apps/deepedit_multiple_label")
     studies_path = os.path.normpath(
-        "/home/adp20local/Documents/Datasets/monailabel_datasets/multilabel_abdomen/NIFTI/train"
+        "/home/adp20local/Documents/Datasets/monailabel_datasets/multilabel_abdomen/NIFTI/train_small"
     )
     # conf is Dict[str, str]
     conf = {

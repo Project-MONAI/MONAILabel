@@ -56,7 +56,7 @@ class DiscardAddGuidanced(MapTransform):
             signal = np.zeros(
                 (len(self.label_names), image.shape[-3], image.shape[-2], image.shape[-1]), dtype=np.float32
             )
-            if image.shape[0] == self.number_intensity_ch + len(self.label_names) + 1:
+            if image.shape[0] == self.number_intensity_ch + len(self.label_names):
                 image[self.number_intensity_ch :, ...] = signal
             else:
                 image = np.concatenate([image, signal], axis=0)
@@ -426,7 +426,7 @@ class SelectLabelsAbdomenDatasetd(MapTransform):
         d: Dict = dict(data)
         for key in self.key_iterator(d):
             if key == "label":
-                new_label_names = {}
+                new_label_names = dict()
 
                 # Making other labels as background
                 for k in self.all_label_values.keys():
@@ -1172,7 +1172,7 @@ class SplitPredsLabeld(MapTransform):
                 for idx, (key_label, _) in enumerate(d["label_names"].items()):
                     if key_label != "background":
                         d[f"pred_{key_label}"] = d[key][idx + 1, ...][None]
-                        d[f"label_{key_label}"] = d["label"][idx, ...][None]
+                        d[f"label_{key_label}"] = d["label"][idx + 1, ...][None]
             elif key != "pred":
                 logger.info("This is only for pred key")
         return d

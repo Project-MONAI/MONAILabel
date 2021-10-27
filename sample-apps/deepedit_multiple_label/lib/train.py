@@ -20,12 +20,12 @@ from monai.transforms import (
     AddChanneld,
     AsDiscreted,
     LoadImaged,
-    NormalizeIntensityd,
     Orientationd,
-    RandAdjustContrastd,
-    RandHistogramShiftd,
-    RandRotated,
+    RandFlipd,
+    RandRotate90d,
+    RandShiftIntensityd,
     Resized,
+    ScaleIntensityRanged,
     Spacingd,
     ToNumpyd,
     ToTensord,
@@ -107,21 +107,42 @@ class MyTrain(BasicTrainTask):
             LoadImaged(keys=("image", "label"), reader="nibabelreader"),
             SelectLabelsAbdomenDatasetd(keys="label", label_names=self.label_names),
             # SingleModalityLabelSanityd(keys=("image", "label"), label_names=self.label_names),
-            # RandZoomd(keys=("image", "label"), prob=0.4, min_zoom=0.3, max_zoom=1.9, mode=("bilinear", "nearest")),
             AddChanneld(keys=("image", "label")),
             Spacingd(keys=["image", "label"], pixdim=self.target_spacing, mode=("bilinear", "nearest")),
             Orientationd(keys=["image", "label"], axcodes="RAS"),
-            NormalizeIntensityd(keys="image"),
-            RandAdjustContrastd(keys="image", gamma=6),
-            RandHistogramShiftd(keys="image", num_control_points=8, prob=0.5),
-            RandRotated(
+            # This transform may not work well for MR images
+            ScaleIntensityRanged(
+                keys="image",
+                a_min=-175,
+                a_max=250,
+                b_min=0.0,
+                b_max=1.0,
+                clip=True,
+            ),
+            RandFlipd(
                 keys=("image", "label"),
-                range_x=0.1,
-                range_y=0.1,
-                range_z=0.1,
-                prob=0.4,
-                keep_size=True,
-                mode=("bilinear", "nearest"),
+                spatial_axis=[0],
+                prob=0.10,
+            ),
+            RandFlipd(
+                keys=("image", "label"),
+                spatial_axis=[1],
+                prob=0.10,
+            ),
+            RandFlipd(
+                keys=("image", "label"),
+                spatial_axis=[2],
+                prob=0.10,
+            ),
+            RandRotate90d(
+                keys=("image", "label"),
+                prob=0.10,
+                max_k=3,
+            ),
+            RandShiftIntensityd(
+                keys="image",
+                offsets=0.10,
+                prob=0.50,
             ),
             Resized(keys=("image", "label"), spatial_size=self.spatial_size, mode=("area", "nearest")),
             # Transforms for click simulation
@@ -154,7 +175,15 @@ class MyTrain(BasicTrainTask):
             AddChanneld(keys=("image", "label")),
             Spacingd(keys=["image", "label"], pixdim=self.target_spacing, mode=("bilinear", "nearest")),
             Orientationd(keys=["image", "label"], axcodes="RAS"),
-            NormalizeIntensityd(keys="image"),
+            # This transform may not work well for MR images
+            ScaleIntensityRanged(
+                keys=("image"),
+                a_min=-175,
+                a_max=250,
+                b_min=0.0,
+                b_max=1.0,
+                clip=True,
+            ),
             Resized(keys=("image", "label"), spatial_size=self.spatial_size, mode=("area", "nearest")),
             # Transforms for click simulation
             FindAllValidSlicesCustomMultiLabeld(keys="label", sids="sids"),
@@ -190,21 +219,23 @@ class MyTrain(BasicTrainTask):
 
     def train_key_metric(self):
         all_metrics = dict()
-        all_metrics["train_dice"] = MeanDice(output_transform=from_engine(["pred", "label"]))
+        all_metrics["train_dice"] = MeanDice(output_transform=from_engine(["pred", "label"]), include_background=False)
         for _, (key_label, _) in enumerate(self.label_names.items()):
             if key_label != "background":
                 all_metrics[key_label + "_dice"] = MeanDice(
-                    output_transform=from_engine(["pred_" + key_label, "label_" + key_label])
+                    output_transform=from_engine(["pred_" + key_label, "label_" + key_label]), include_background=False
                 )
         return all_metrics
 
     def val_key_metric(self):
         all_metrics = dict()
-        all_metrics["val_mean_dice"] = MeanDice(output_transform=from_engine(["pred", "label"]))
+        all_metrics["val_mean_dice"] = MeanDice(
+            output_transform=from_engine(["pred", "label"]), include_background=False
+        )
         for _, (key_label, _) in enumerate(self.label_names.items()):
             if key_label != "background":
                 all_metrics[key_label + "_dice"] = MeanDice(
-                    output_transform=from_engine(["pred_" + key_label, "label_" + key_label])
+                    output_transform=from_engine(["pred_" + key_label, "label_" + key_label]), include_background=False
                 )
         return all_metrics
 

@@ -15,16 +15,16 @@ from monai.transforms import (
     AddChanneld,
     AsDiscreted,
     LoadImaged,
-    NormalizeIntensityd,
     Orientationd,
     Resized,
+    ScaleIntensityRanged,
     Spacingd,
     SqueezeDimd,
     ToNumpyd,
     ToTensord,
 )
 
-from monailabel.deepedit.transforms import (  # SingleModalityLabelSanityd,
+from monailabel.deepedit.transforms import (
     AddGuidanceFromPointsCustomMultipleLabeld,
     AddGuidanceSignalCustomMultiLabeld,
     DiscardAddGuidanced,
@@ -73,7 +73,16 @@ class Segmentation(InferTask):
             AddChanneld(keys="image"),
             Spacingd(keys="image", pixdim=self.target_spacing, mode="bilinear"),
             Orientationd(keys="image", axcodes="RAS"),
-            NormalizeIntensityd(keys="image"),
+            # NormalizeIntensityd(keys="image"),
+            # This transform may not work well for MR images
+            ScaleIntensityRanged(
+                keys="image",
+                a_min=-175,
+                a_max=250,
+                b_min=0.0,
+                b_max=1.0,
+                clip=True,
+            ),
             Resized(keys="image", spatial_size=self.spatial_size, mode="area"),
             DiscardAddGuidanced(keys="image", label_names=self.label_names),
             ToTensord(keys="image"),
@@ -135,10 +144,18 @@ class Deepgrow(InferTask):
             SqueezeDimd(keys="image", dim=0),
             AddGuidanceFromPointsCustomMultipleLabeld(ref_image="image", guidance="guidance"),
             AddChanneld(keys="image"),
-            NormalizeIntensityd(keys="image"),
+            # NormalizeIntensityd(keys="image"),
+            # This transform may not work well for MR images
+            ScaleIntensityRanged(
+                keys="image",
+                a_min=-175,
+                a_max=250,
+                b_min=0.0,
+                b_max=1.0,
+                clip=True,
+            ),
             Resized(keys="image", spatial_size=self.spatial_size, mode="area"),
             ResizeGuidanceMultipleLabelCustomd(guidance="guidance", ref_image="image"),
-            # AddGuidanceSignald(image="image", guidance="guidance"),
             AddGuidanceSignalCustomMultiLabeld(keys="image", guidance="guidance"),
             ToTensord(keys="image"),
         ]
