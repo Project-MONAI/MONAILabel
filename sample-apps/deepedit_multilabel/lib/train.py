@@ -256,8 +256,6 @@ class MyTrain(BasicTrainTask):
 
     def train_handlers(self, output_dir, events_dir, evaluator, local_rank=0):
         handlers = super().train_handlers(output_dir, events_dir, evaluator, local_rank)
-        return (
+        if self.debug_mode and local_rank == 0:
             handlers.append(TensorBoardImageHandler(log_dir=events_dir))
-            if self.debug_mode and local_rank == 0
-            else handlers
-        )
+        return handlers

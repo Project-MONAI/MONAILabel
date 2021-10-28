@@ -60,6 +60,7 @@ class Segmentation(InferTask):
             input_key="image",
             output_label_key="pred",
             output_json_key="result",
+            config={"result_extension": ".nrrd"},
         )
 
         self.spatial_size = spatial_size

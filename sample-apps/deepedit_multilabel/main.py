@@ -49,7 +49,6 @@ class MyApp(MONAILabelApp):
             "liver": 6,
             "background": 0,
         }
-        self.labels = ["spleen", "right_kidney", "left_kidney", "liver"]
 
         network_params = {
             "spatial_dims": 3,
@@ -95,7 +94,7 @@ class MyApp(MONAILabelApp):
         self.heuristic_planner = strtobool(conf.get("heuristic_planner", "false"))
         self.planner = HeuristicPlanner(spatial_size=spatial_size, target_spacing=target_spacing)
 
-        use_pretrained_model = strtobool(conf.get("use_pretrained_model", "false"))
+        use_pretrained_model = strtobool(conf.get("use_pretrained_model", "true"))
         pretrained_model_uri = conf.get("pretrained_model_path", f"{self.PRE_TRAINED_PATH}/deepedit_multilabel.pt")
 
         # Path to pretrained weights
@@ -155,7 +154,7 @@ class MyApp(MONAILabelApp):
                 load_path=self.pretrained_model,
                 publish_path=self.final_model,
                 config={"pretrained": strtobool(self.conf.get("use_pretrained_model", "true"))},
-                label_names=self.labels,
+                label_names=self.label_names,
                 debug_mode=False,
             )
         }
