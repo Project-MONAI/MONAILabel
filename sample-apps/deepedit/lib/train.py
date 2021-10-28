@@ -12,7 +12,12 @@
 import logging
 
 import torch
-from monai.apps.deepgrow.transforms import AddInitialSeedPointd, FindAllValidSlicesd, FindDiscrepancyRegionsd
+from monai.apps.deepgrow.transforms import (
+    AddGuidanceSignald,
+    AddInitialSeedPointd,
+    FindAllValidSlicesd,
+    FindDiscrepancyRegionsd,
+)
 from monai.inferers import SimpleInferer
 from monai.losses import DiceLoss
 from monai.transforms import (
@@ -33,11 +38,7 @@ from monai.transforms import (
 
 from monailabel.deepedit.handlers import TensorBoardImageHandler
 from monailabel.deepedit.interaction import Interaction
-from monailabel.deepedit.transforms import (
-    DiscardAddGuidanceSingleLabeld,
-    PosNegClickProbAddRandomGuidanced,
-    SingleLabelSingleModalityd,
-)
+from monailabel.deepedit.transforms import PosNegClickProbAddRandomGuidanced, SingleLabelSingleModalityd
 from monailabel.tasks.train.basic_train import BasicTrainTask
 
 logger = logging.getLogger(__name__)
@@ -86,7 +87,7 @@ class MyTrain(BasicTrainTask):
             PosNegClickProbAddRandomGuidanced(
                 guidance="guidance", discrepancy="discrepancy", probability="probability"
             ),
-            DiscardAddGuidanceSingleLabeld(keys="image"),
+            AddGuidanceSignald(image="image", guidance="guidance"),
             ToTensord(keys=("image", "label")),
         ]
 
@@ -113,7 +114,7 @@ class MyTrain(BasicTrainTask):
             Resized(keys=("image", "label"), spatial_size=self.spatial_size, mode=("area", "nearest")),
             FindAllValidSlicesd(label="label", sids="sids"),
             AddInitialSeedPointd(label="label", guidance="guidance", sids="sids"),
-            DiscardAddGuidanceSingleLabeld(keys="image"),
+            AddGuidanceSignald(image="image", guidance="guidance"),
             ToTensord(keys=("image", "label")),
         ]
 
@@ -134,7 +135,7 @@ class MyTrain(BasicTrainTask):
             Resized(keys=("image", "label"), spatial_size=self.spatial_size, mode=("area", "nearest")),
             FindAllValidSlicesd(label="label", sids="sids"),
             AddInitialSeedPointd(label="label", guidance="guidance", sids="sids"),
-            DiscardAddGuidanceSingleLabeld(keys="image"),
+            AddGuidanceSignald(image="image", guidance="guidance"),
             ToTensord(keys=("image", "label")),
         ]
 

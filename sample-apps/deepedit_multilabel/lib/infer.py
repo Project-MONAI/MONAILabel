@@ -24,9 +24,9 @@ from monai.transforms import (
     ToTensord,
 )
 
-from monailabel.deepedit.transforms import (
-    AddGuidanceFromPointsCustomMultipleLabeld,
-    AddGuidanceSignalCustomMultiLabeld,
+from monailabel.deepedit.multilabel.transforms import (
+    AddGuidanceFromPointsCustomd,
+    AddGuidanceSignalCustomd,
     DiscardAddGuidanced,
     ResizeGuidanceMultipleLabelCustomd,
 )
@@ -142,7 +142,7 @@ class Deepgrow(InferTask):
             Spacingd(keys="image", pixdim=self.target_spacing, mode="bilinear"),
             Orientationd(keys="image", axcodes="RAS"),
             SqueezeDimd(keys="image", dim=0),
-            AddGuidanceFromPointsCustomMultipleLabeld(ref_image="image", guidance="guidance"),
+            AddGuidanceFromPointsCustomd(ref_image="image", guidance="guidance"),
             AddChanneld(keys="image"),
             # NormalizeIntensityd(keys="image"),
             # This transform may not work well for MR images
@@ -156,7 +156,7 @@ class Deepgrow(InferTask):
             ),
             Resized(keys="image", spatial_size=self.spatial_size, mode="area"),
             ResizeGuidanceMultipleLabelCustomd(guidance="guidance", ref_image="image"),
-            AddGuidanceSignalCustomMultiLabeld(keys="image", guidance="guidance"),
+            AddGuidanceSignalCustomd(keys="image", guidance="guidance"),
             ToTensord(keys="image"),
         ]
 

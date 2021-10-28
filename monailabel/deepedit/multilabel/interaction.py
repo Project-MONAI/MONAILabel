@@ -31,6 +31,7 @@ class Interaction:
         max_interactions: maximum number of click interactions per iteration if deepgrow training invoked for iteration
         train: True for training mode or False for evaluation mode
         click_probability_key: key to click/interaction probability
+        label_names: Dict of label names
     """
 
     def __init__(
@@ -39,6 +40,7 @@ class Interaction:
         transforms: Union[Sequence[Callable], Callable],
         max_interactions: int,
         train: bool,
+        label_names: Dict[str, int],
         click_probability_key: str = "probability",
     ) -> None:
 
@@ -49,6 +51,7 @@ class Interaction:
         self.transforms = transforms
         self.max_interactions = max_interactions
         self.train = train
+        self.label_names = label_names
         self.click_probability_key = click_probability_key
 
     def __call__(self, engine: Union[SupervisedTrainer, SupervisedEvaluator], batchdata: Dict[str, torch.Tensor]):
@@ -56,10 +59,19 @@ class Interaction:
         if batchdata is None:
             raise ValueError("Must provide batch data for current iteration.")
 
-        pos_click_sum = 0
+        total_pos_click_sum = 0
+        pos_click_sum = {}
         neg_click_sum = 0
+        for key_label in self.label_names.keys():
+            if key_label != "background":
+                pos_click_sum[key_label] = 0
+
         if np.random.choice([True, False], p=[self.deepgrow_probability, 1 - self.deepgrow_probability]):
-            pos_click_sum += 1  # increase pos_click_sum by 1-click for AddInitialSeedPointd pre_transform
+            # increase pos_click_sum by 1-click for AddInitialSeedPointd pre_transform
+            # pos_click_sum += 1 # Previous command
+            for key_label in self.label_names.keys():
+                if key_label != "background":
+                    pos_click_sum[key_label] += 1
             for j in range(self.max_interactions):
 
                 # print("Inner iteration (click simulations running): ", str(j))
@@ -90,8 +102,10 @@ class Interaction:
                 batchdata = list_data_collate(batchdata_list)
 
                 # first item in batch only
-                pos_click_sum += (batchdata_list[0]["is_pos"]) * 1
-                neg_click_sum += (batchdata_list[0]["is_neg"]) * 1
+                for key_label in self.label_names.keys():
+                    if key_label != "background":
+                        pos_click_sum[key_label] += (batchdata_list[0]["is_pos"][key_label]) * 1
+                        neg_click_sum += (batchdata_list[0]["is_neg"][key_label]) * 1
 
                 engine.fire_event(IterationEvents.INNER_ITERATION_COMPLETED)
 
@@ -105,7 +119,10 @@ class Interaction:
 
         # first item in batch only
         engine.state.batch = batchdata
-        engine.state.batch.update({"pos_click_sum": torch.tensor(pos_click_sum)})
+        # Counting all positive clicks
+        for _, value in pos_click_sum.items():
+            total_pos_click_sum += value
+        engine.state.batch.update({"pos_click_sum": torch.tensor(total_pos_click_sum)})
         engine.state.batch.update({"neg_click_sum": torch.tensor(neg_click_sum)})
 
         return engine._iteration(engine, batchdata)

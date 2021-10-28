@@ -33,13 +33,13 @@ from monai.transforms import (
 )
 
 from monailabel.deepedit.handlers import TensorBoardImageHandler
-from monailabel.deepedit.interaction import InteractionMultipleLabel
-from monailabel.deepedit.transforms import (
-    AddGuidanceSignalCustomMultiLabeld,
-    AddInitialSeedPointCustomMultiLabeld,
-    FindAllValidSlicesCustomMultiLabeld,
-    FindDiscrepancyRegionsCustomMultiLabeld,
-    PosNegClickProbAddRandomGuidanceCustomMultiLabeld,
+from monailabel.deepedit.multilabel.interaction import Interaction
+from monailabel.deepedit.multilabel.transforms import (
+    AddGuidanceSignalCustomd,
+    AddInitialSeedPointCustomd,
+    FindAllValidSlicesCustomd,
+    FindDiscrepancyRegionsCustomd,
+    PosNegClickProbAddRandomGuidanceCustomd,
     SelectLabelsAbdomenDatasetd,
     SplitPredsLabeld,
 )
@@ -93,14 +93,14 @@ class MyTrain(BasicTrainTask):
             AsDiscreted(keys="pred", argmax=True),
             ToNumpyd(keys=("image", "label", "pred")),
             # Transforms for click simulation
-            FindDiscrepancyRegionsCustomMultiLabeld(keys="label", pred="pred", discrepancy="discrepancy"),
-            PosNegClickProbAddRandomGuidanceCustomMultiLabeld(
+            FindDiscrepancyRegionsCustomd(keys="label", pred="pred", discrepancy="discrepancy"),
+            PosNegClickProbAddRandomGuidanceCustomd(
                 keys="NA",
                 guidance="guidance",
                 discrepancy="discrepancy",
                 probability="probability",
             ),
-            AddGuidanceSignalCustomMultiLabeld(keys="image", guidance="guidance"),
+            AddGuidanceSignalCustomd(keys="image", guidance="guidance"),
             #
             ToTensord(keys=("image", "label")),
         ]
@@ -149,9 +149,9 @@ class MyTrain(BasicTrainTask):
             ),
             Resized(keys=("image", "label"), spatial_size=self.spatial_size, mode=("area", "nearest")),
             # Transforms for click simulation
-            FindAllValidSlicesCustomMultiLabeld(keys="label", sids="sids"),
-            AddInitialSeedPointCustomMultiLabeld(keys="label", guidance="guidance", sids="sids"),
-            AddGuidanceSignalCustomMultiLabeld(keys="image", guidance="guidance"),
+            FindAllValidSlicesCustomd(keys="label", sids="sids"),
+            AddInitialSeedPointCustomd(keys="label", guidance="guidance", sids="sids"),
+            AddGuidanceSignalCustomd(keys="image", guidance="guidance"),
             #
             ToTensord(keys=("image", "label")),
         ]
@@ -189,9 +189,9 @@ class MyTrain(BasicTrainTask):
             ),
             Resized(keys=("image", "label"), spatial_size=self.spatial_size, mode=("area", "nearest")),
             # Transforms for click simulation
-            FindAllValidSlicesCustomMultiLabeld(keys="label", sids="sids"),
-            AddInitialSeedPointCustomMultiLabeld(keys="label", guidance="guidance", sids="sids"),
-            AddGuidanceSignalCustomMultiLabeld(keys="image", guidance="guidance"),
+            FindAllValidSlicesCustomd(keys="label", sids="sids"),
+            AddInitialSeedPointCustomd(keys="label", guidance="guidance", sids="sids"),
+            AddGuidanceSignalCustomd(keys="image", guidance="guidance"),
             #
             AsDiscreted(keys="label", to_onehot=True, num_classes=len(self.label_names)),
             ToTensord(keys=("image", "label")),
@@ -201,7 +201,7 @@ class MyTrain(BasicTrainTask):
         return SimpleInferer()
 
     def train_iteration_update(self):
-        return InteractionMultipleLabel(
+        return Interaction(
             deepgrow_probability=self.deepgrow_probability_train,
             transforms=self.get_click_transforms(),
             max_interactions=self.max_train_interactions,
@@ -211,7 +211,7 @@ class MyTrain(BasicTrainTask):
         )
 
     def val_iteration_update(self):
-        return InteractionMultipleLabel(
+        return Interaction(
             deepgrow_probability=self.deepgrow_probability_val,
             transforms=self.get_click_transforms(),
             max_interactions=self.max_val_interactions,
