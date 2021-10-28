@@ -31,6 +31,7 @@ class InferType:
 
     Attributes:
         SEGMENTATION -            Segmentation Model
+        ANNOTATION -              Annotation Model
         CLASSIFICATION -          Classification Model
         DEEPGROW -                Deepgrow Interactive Model
         DEEPEDIT -                DeepEdit Interactive Model
@@ -39,12 +40,13 @@ class InferType:
     """
 
     SEGMENTATION = "segmentation"
+    ANNOTATION = "annotation"
     CLASSIFICATION = "classification"
     DEEPGROW = "deepgrow"
     DEEPEDIT = "deepedit"
     SCRIBBLES = "scribbles"
     OTHERS = "others"
-    KNOWN_TYPES = [SEGMENTATION, CLASSIFICATION, DEEPGROW, DEEPEDIT, SCRIBBLES, OTHERS]
+    KNOWN_TYPES = [SEGMENTATION, ANNOTATION, CLASSIFICATION, DEEPGROW, DEEPEDIT, SCRIBBLES, OTHERS]
 
 
 class InferTask:

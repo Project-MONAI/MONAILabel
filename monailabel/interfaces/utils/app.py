@@ -53,6 +53,11 @@ def app_instance(app_dir=None, studies=None, conf=None):
     return app
 
 
+def clear_cache():
+    global apps
+    apps.clear()
+
+
 def save_result(result, output):
     logger.info(f"Result: {json.dumps(result)}")
     if output:
