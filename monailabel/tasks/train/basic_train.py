@@ -203,7 +203,6 @@ class BasicTrainTask(TrainTask):
                 tag_name="train_loss",
                 output_transform=from_engine(["loss"], first=True),
             ),
-            # TensorBoardImageHandler(log_dir=events_dir),  # TEMPORAL for DEBUGGING
         ]
 
         if evaluator:
