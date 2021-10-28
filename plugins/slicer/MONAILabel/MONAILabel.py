@@ -835,9 +835,16 @@ class MONAILabelWidget(ScriptedLoadableModuleWidget, VTKObservationMixin):
         train = config.get("trainers", {})
         activelearning = config.get("strategies", {})
         scoring = config.get("scoring", {})
+        viewer = config.get("viewer", {})
 
         row_count = 0
-        config = {"infer": infer, "train": train, "activelearning": activelearning, "scoring": scoring}
+        config = {
+            "infer": infer,
+            "train": train,
+            "activelearning": activelearning,
+            "scoring": scoring,
+            "viewer": viewer,
+        }
         for c in config.values():
             row_count += sum([len(c[k].get("config", {})) for k in c.keys()])
         # print(f"Total rows: {row_count}")
@@ -970,7 +977,13 @@ class MONAILabelWidget(ScriptedLoadableModuleWidget, VTKObservationMixin):
         self.ui.accuracyProgressBar.setToolTip(f"Accuracy: {dice:.4f}")
 
     def getParamsFromConfigV2(self, filter, filter2):
-        mapping = {"infer": "models", "train": "trainers", "activelearning": "strategies", "scoring": "scoring"}
+        mapping = {
+            "infer": "models",
+            "train": "trainers",
+            "activelearning": "strategies",
+            "scoring": "scoring",
+            "viewer": "viewer",
+        }
         config = {}
         for row in range(self.ui.configTable.rowCount):
             section = str(self.ui.configTable.item(row, 0).text())
@@ -1385,6 +1398,10 @@ class MONAILabelWidget(ScriptedLoadableModuleWidget, VTKObservationMixin):
                 )[0]
 
             self.initSample(sample)
+            slicer_settings = self.getParamsFromConfigV2("viewer", "slicer")
+            ww = slicer_settings.get("WW", None)
+            wl = slicer_settings.get("WL", None)
+            self.initWindowing(ww, wl)
 
         except:
             slicer.util.errorDisplay(
@@ -1422,6 +1439,15 @@ class MONAILabelWidget(ScriptedLoadableModuleWidget, VTKObservationMixin):
                         self.ui.segmentationModelSelector.currentText = name
                         self.onClickSegmentation()
                         return
+
+    def initWindowing(self, WW=None, WL=None):
+        logging.info("Windowing: WW={}, WL={}".format(WW, WL))
+        # more explanation for the following at:
+        # https://github.com/Project-MONAI/MONAILabel/issues/447#issue-1021009088
+        if WW and WL:
+            volumeNode = slicer.mrmlScene.GetFirstNodeByClass("vtkMRMLScalarVolumeNode")
+            volumeNode.GetDisplayNode().SetAutoWindowLevel(False)
+            volumeNode.GetDisplayNode().SetWindowLevelMinMax(WL - WW / 2, WL + WW / 2)
 
     def onUploadImage(self):
         volumeNode = slicer.mrmlScene.GetFirstNodeByClass("vtkMRMLScalarVolumeNode")

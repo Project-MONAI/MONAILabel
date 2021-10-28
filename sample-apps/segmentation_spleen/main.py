@@ -61,6 +61,10 @@ class MyApp(MONAILabelApp):
         self.tta_samples = int(conf.get("tta_samples", "5"))
         logger.info(f"TTA Enabled: {self.tta_enabled}; Samples: {self.tta_samples}")
 
+        # setting window for soft tissue (spleen):
+        # help from: https://radiopaedia.org/articles/windowing-ct?lang=gb
+        conf.update({"windowing": {"WW": 400, "WL": 60}})
+
         super().__init__(
             app_dir=app_dir,
             studies=studies,

@@ -96,6 +96,12 @@ class MONAILabelApp:
         self._server_mode = strtobool(conf.get("server_mode", "false"))
         self._auto_update_scoring = strtobool(conf.get("auto_update_scoring", "true"))
         self._sessions = self._load_sessions(strtobool(conf.get("sessions", "true")))
+        self._viewer = {
+            "slicer": {
+                "description": "configurations for 3d slicer",
+                "config": {k: v for k, v in conf.get("windowing", {}).items()},
+            },
+        }
 
     def init_infers(self) -> Dict[str, InferTask]:
         return {}
@@ -154,6 +160,7 @@ class MONAILabelApp:
             "scoring": {k: v.info() for k, v in self._scoring_methods.items()},
             "train_stats": {k: v.stats() for k, v in self._trainers.items()},
             "datastore": self._datastore.status(),
+            "viewer": self._viewer,
         }
 
         # If labels are not provided, aggregate from all individual infers
