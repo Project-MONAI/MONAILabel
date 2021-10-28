@@ -196,25 +196,27 @@ class TensorBoardImageHandler:
         """
         PREDICTION
         """
-        # show_prediction = self.output_transform(engine.state.output)[0]["pred"][0, ...][None]
-        # if isinstance(show_prediction, torch.Tensor):
-        #     show_prediction = show_prediction.detach().cpu().numpy()
-        # if show_prediction is not None:
-        #     if not isinstance(show_prediction, np.ndarray):
-        #         raise TypeError(
-        #             "show_pred must be None or one of "
-        #             f"(numpy.ndarray, torch.Tensor) but is {type(show_label).__name__}."
-        #         )
-        #     plot_2d_or_3d_image(
-        #         # add batch dim and plot the first item
-        #         show_prediction[None],
-        #         step,
-        #         self._writer,
-        #         0,
-        #         self.max_channels,
-        #         self.max_frames,
-        #         "step_" + str(step) + "_prediction_" + filename,
-        #     )
+        all_preds = self.output_transform(engine.state.output)[0]["pred"]
+        for idx in range(all_preds.shape[0]):
+            show_prediction = all_preds[idx, ...][None]
+            if isinstance(show_prediction, torch.Tensor):
+                show_prediction = show_prediction.detach().cpu().numpy()
+            if show_prediction is not None:
+                if not isinstance(show_prediction, np.ndarray):
+                    raise TypeError(
+                        "show_pred must be None or one of "
+                        f"(numpy.ndarray, torch.Tensor) but is {type(show_label).__name__}."
+                    )
+                plot_2d_or_3d_image(
+                    # add batch dim and plot the first item
+                    show_prediction[None],
+                    step,
+                    self._writer,
+                    0,
+                    self.max_channels,
+                    self.max_frames,
+                    "step_" + str(step) + f"_prediction_for_label_{str(idx)}_" + filename,
+                )
 
         """
         POSITIVE CLICKS

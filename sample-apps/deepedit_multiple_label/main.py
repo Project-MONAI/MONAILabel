@@ -47,8 +47,6 @@ class MyApp(MONAILabelApp):
             "right_kidney": 2,
             "left_kidney": 3,
             "liver": 6,
-            "stomach": 7,
-            "aorta": 8,
             "background": 0,
         }
 
@@ -91,8 +89,8 @@ class MyApp(MONAILabelApp):
         self.final_model = os.path.join(self.model_dir, "model.pt")
 
         # Use Heuristic Planner to determine target spacing and spatial size based on dataset+gpu
-        spatial_size = json.loads(conf.get("spatial_size", "[128, 128, 128]"))
-        target_spacing = json.loads(conf.get("target_spacing", "[1.0, 1.0, 1.0]"))
+        spatial_size = json.loads(conf.get("spatial_size", "[256, 256, 128]"))
+        target_spacing = json.loads(conf.get("target_spacing", "[1.5, 1.5, 2.0]"))
         self.heuristic_planner = strtobool(conf.get("heuristic_planner", "false"))
         self.planner = HeuristicPlanner(spatial_size=spatial_size, target_spacing=target_spacing)
 
@@ -202,7 +200,7 @@ def main():
     )
     app_dir_path = os.path.normpath("/home/adp20local/Documents/MONAILabel/sample-apps/deepedit_multiple_label")
     studies_path = os.path.normpath(
-        "/home/adp20local/Documents/Datasets/monailabel_datasets/multilabel_abdomen/NRRD/train"
+        "/home/adp20local/Documents/Datasets/monailabel_datasets/multilabel_abdomen/NIFTI/train"
     )
     # conf is Dict[str, str]
     conf = {
@@ -215,11 +213,32 @@ def main():
     request = {
         "device": "cuda",
         "model": "deepedit_train",
-        "max_epochs": 300,
+        "max_epochs": 500,
         "amp": False,
         "lr": 0.0001,
     }
     al_app.train(request=request)
+
+    # # PERFORMING INFERENCE USING INTERACTIVE MODEL
+    # deepgrow_3d = {
+    #     "model": "deepedit",
+    #     "image": f"{studies_path}/img0022.nii.gz",
+    #     "foreground": {
+    #         'spleen': [[[61, 106, 54], [65, 106, 54]]],
+    #         'right_kidney': [[[59, 86, 93]]],
+    #         'left_kidney': [[[61, 94, 54]]],
+    #         'liver': [[[79, 104, 67], [94, 114, 67]]],
+    #     },
+    #     "background": [[[6, 132, 427]]],
+    # }
+    # al_app.infer(deepgrow_3d)
+
+    # # PERFORMING INFERENCE USING AUTOMATIC MODEL
+    # automatic_request = {
+    #     "model": "deepedit_seg",
+    #     "image": f"{studies_path}/img0022.nii.gz",
+    # }
+    # al_app.infer(automatic_request)
 
     return None
 
