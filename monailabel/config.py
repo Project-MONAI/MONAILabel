@@ -29,7 +29,7 @@ class Settings(BaseSettings):
     MONAI_LABEL_STOW_PREFIX: str = ""
 
     MONAI_LABEL_DATASTORE_AUTO_RELOAD: bool = True
-    MONAI_LABEL_DATASTORE_FILE_EXT: List[str] = ["*.nii.gz", "*.nii"]
+    MONAI_LABEL_DATASTORE_FILE_EXT: List[str] = ["*.nii.gz", "*.nii", "*.nrrd"]
 
     MONAI_LABEL_SERVER_PORT: int = 8000
     MONAI_LABEL_CORS_ORIGINS: List[AnyHttpUrl] = []

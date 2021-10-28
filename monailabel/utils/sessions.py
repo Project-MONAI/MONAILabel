@@ -40,7 +40,7 @@ class SessionInfo(object):
 
 
 class Sessions(dict):
-    def __init__(self, store_path: str, expiry: int):
+    def __init__(self, store_path: str = "", expiry: int = 3600):
         dict.__init__(self)
 
         store_path = store_path.strip() if store_path else ""
