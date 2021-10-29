@@ -91,19 +91,19 @@ class SelectLabelsAbdomenDatasetd(MapTransform):
         self.label_names = label_names
         self.all_label_values = {
             "spleen": 1,
-            "right_kidney": 2,
-            "left_kidney": 3,
+            "right kidney": 2,
+            "left kidney": 3,
             "gallbladder": 4,
             "esophagus": 5,
             "liver": 6,
             "stomach": 7,
             "aorta": 8,
-            "inferior_vena_cava": 9,
-            "portal_vein": 10,
-            "splenic_vein": 11,
+            "inferior vena cava": 9,
+            "portal vein": 10,
+            "splenic vein": 11,
             "pancreas": 12,
-            "right_adrenal_gland": 13,
-            "left_adrenal_gland": 14,
+            "right adrenal gland": 13,
+            "left adrenal gland": 14,
         }
 
     def __call__(self, data: Mapping[Hashable, np.ndarray]) -> Dict[Hashable, np.ndarray]:
@@ -150,19 +150,19 @@ class SingleLabelSelectiond(MapTransform):
         self.label_names = label_names
         self.all_label_values = {
             "spleen": 1,
-            "right_kidney": 2,
-            "left_kidney": 3,
+            "right kidney": 2,
+            "left kidney": 3,
             "gallbladder": 4,
             "esophagus": 5,
             "liver": 6,
             "stomach": 7,
             "aorta": 8,
-            "inferior_vena_cava": 9,
+            "inferior vena cava": 9,
             "portal_vein": 10,
             "splenic_vein": 11,
             "pancreas": 12,
-            "right_adrenal_gland": 13,
-            "left_adrenal_gland": 14,
+            "right adrenal gland": 13,
+            "left adrenal gland": 14,
         }
 
     def __call__(self, data: Mapping[Hashable, np.ndarray]) -> Dict[Hashable, np.ndarray]:
