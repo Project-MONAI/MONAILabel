@@ -856,6 +856,65 @@ class SplitPredsLabeld(MapTransform):
         return d
 
 
+class PointsToDictd(Transform):
+    """
+    Transform to convert to dictionary
+
+    """
+
+    def __init__(
+        self,
+        label_names=None,
+    ):
+        self.label_names = label_names
+
+    def __call__(self, data: Mapping[Hashable, np.ndarray]) -> Dict[Hashable, np.ndarray]:
+        d: Dict = dict(data)
+
+        new_foreground = dict()
+        for key_label in self.label_names.keys():
+            if key_label != "background":
+                if key_label == d["label"]:
+                    new_foreground[key_label] = [d["foreground"]]
+                elif key_label != d["label"]:
+                    new_foreground[key_label] = []
+            else:
+                if d["background"]:
+                    d["background"] = [d["background"]]
+                else:
+                    d["background"] = []
+
+        d["foreground"] = new_foreground
+
+        return d
+
+
+class GetSingleLabeld(MapTransform):
+    """
+    Get single to show in UI
+
+    """
+
+    def __init__(
+        self,
+        keys: KeysCollection,
+        label_names=None,
+        allow_missing_keys: bool = False,
+    ):
+        super().__init__(keys, allow_missing_keys)
+        self.label_names = label_names
+
+    def __call__(self, data: Mapping[Hashable, np.ndarray]) -> Dict[Hashable, np.ndarray]:
+        d: Dict = dict(data)
+        for key in self.key_iterator(d):
+            if key == "pred":
+                label_value = list(self.label_names.keys()).index(d["label"]) + 1
+                d["pred"][d["pred"] != label_value] = 0
+            elif key != "pred":
+                logger.info("This is only for pred key")
+        return d
+
+
 class ToCheckTransformd(MapTransform):
     """
     Transform to debug dictionary
