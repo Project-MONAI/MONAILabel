@@ -1554,7 +1554,9 @@ class MONAILabelWidget(ScriptedLoadableModuleWidget, VTKObservationMixin):
 
             result_file, params = self.logic.infer(model, image_file, self.getParamsFromConfig("infer", model))
 
-            labels = self.models[model].get("labels")
+            labels = (
+                params.get("label_names") if params and params.get("label_names") else self.models[model].get("labels")
+            )
             if labels and isinstance(labels, dict):
                 labels = [k for k, _ in sorted(labels.items(), key=lambda item: item[1])]
             self.updateSegmentationMask(result_file, labels)
@@ -1653,6 +1655,8 @@ class MONAILabelWidget(ScriptedLoadableModuleWidget, VTKObservationMixin):
 
     def updateSegmentationMask(self, in_file, labels, sliceIndex=None):
         # TODO:: Add ROI Node (for Bounding Box if provided in the result)
+        labels = [l for l in labels if l != "background"]
+        print(f"Update Segmentation Mask using Labels: {labels}")
 
         start = time.time()
         logging.debug("Update Segmentation Mask from: {}".format(in_file))
