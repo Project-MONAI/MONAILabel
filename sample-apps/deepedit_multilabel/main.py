@@ -218,7 +218,7 @@ def main():
         "amp": False,
         "lr": 0.0001,
     }
-    # al_app.train(request=request)
+    al_app.train(request=request)
 
     # # PERFORMING INFERENCE USING INTERACTIVE MODEL
     # deepgrow_3d = {
@@ -234,15 +234,15 @@ def main():
     # }
     # al_app.infer(deepgrow_3d)
 
-    # PERFORMING INFERENCE USING INTERACTIVE MODEL
-    deepgrow_3d = {
-        "model": "deepedit",
-        "image": f"{studies_path}/img0022.nii.gz",
-        "label": "spleen",
-        "foreground": [[61, 106, 54], [65, 106, 54]],
-        "background": [[6, 132, 427]],
-    }
-    al_app.infer(deepgrow_3d)
+    # # PERFORMING INFERENCE USING INTERACTIVE MODEL
+    # deepgrow_3d = {
+    #     "model": "deepedit",
+    #     "image": f"{studies_path}/img0022.nii.gz",
+    #     "label": "spleen",
+    #     "foreground": [[61, 106, 54], [65, 106, 54]],
+    #     "background": [[6, 132, 427]],
+    # }
+    # al_app.infer(deepgrow_3d)
 
     # # PERFORMING INFERENCE USING AUTOMATIC MODEL
     # automatic_request = {

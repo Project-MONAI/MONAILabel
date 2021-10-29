@@ -572,7 +572,9 @@ class PosNegClickProbAddRandomGuidanceCustomd(Randomizable, MapTransform):
     def add_guidance(self, discrepancy, mask_background, weight_map):
 
         pos_discr = discrepancy[0]
-        neg_discr = discrepancy[1] * mask_background
+        #  HOW TO DEFINE THE BACKGROUND CLICKS??
+        # neg_discr = discrepancy[1] * mask_background
+        neg_discr = discrepancy[1]
 
         can_be_positive = np.sum(pos_discr) > 0
         can_be_negative = np.sum(neg_discr) > 0
