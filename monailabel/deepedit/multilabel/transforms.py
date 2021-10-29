@@ -91,19 +91,19 @@ class SelectLabelsAbdomenDatasetd(MapTransform):
         self.label_names = label_names
         self.all_label_values = {
             "spleen": 1,
-            "right_kidney": 2,
-            "left_kidney": 3,
+            "right kidney": 2,
+            "left kidney": 3,
             "gallbladder": 4,
             "esophagus": 5,
             "liver": 6,
             "stomach": 7,
             "aorta": 8,
-            "inferior_vena_cava": 9,
-            "portal_vein": 10,
-            "splenic_vein": 11,
+            "inferior vena cava": 9,
+            "portal vein": 10,
+            "splenic vein": 11,
             "pancreas": 12,
-            "right_adrenal_gland": 13,
-            "left_adrenal_gland": 14,
+            "right adrenal gland": 13,
+            "left adrenal gland": 14,
         }
 
     def __call__(self, data: Mapping[Hashable, np.ndarray]) -> Dict[Hashable, np.ndarray]:
@@ -150,19 +150,19 @@ class SingleLabelSelectiond(MapTransform):
         self.label_names = label_names
         self.all_label_values = {
             "spleen": 1,
-            "right_kidney": 2,
-            "left_kidney": 3,
+            "right kidney": 2,
+            "left kidney": 3,
             "gallbladder": 4,
             "esophagus": 5,
             "liver": 6,
             "stomach": 7,
             "aorta": 8,
-            "inferior_vena_cava": 9,
+            "inferior vena cava": 9,
             "portal_vein": 10,
             "splenic_vein": 11,
             "pancreas": 12,
-            "right_adrenal_gland": 13,
-            "left_adrenal_gland": 14,
+            "right adrenal gland": 13,
+            "left adrenal gland": 14,
         }
 
     def __call__(self, data: Mapping[Hashable, np.ndarray]) -> Dict[Hashable, np.ndarray]:
@@ -572,7 +572,9 @@ class PosNegClickProbAddRandomGuidanceCustomd(Randomizable, MapTransform):
     def add_guidance(self, discrepancy, mask_background, weight_map):
 
         pos_discr = discrepancy[0]
-        neg_discr = discrepancy[1] * mask_background
+        #  HOW TO DEFINE THE BACKGROUND CLICKS??
+        # neg_discr = discrepancy[1] * mask_background
+        neg_discr = discrepancy[1]
 
         can_be_positive = np.sum(pos_discr) > 0
         can_be_negative = np.sum(neg_discr) > 0
@@ -851,6 +853,65 @@ class SplitPredsLabeld(MapTransform):
                     if key_label != "background":
                         d[f"pred_{key_label}"] = d[key][idx + 1, ...][None]
                         d[f"label_{key_label}"] = d["label"][idx + 1, ...][None]
+            elif key != "pred":
+                logger.info("This is only for pred key")
+        return d
+
+
+class PointsToDictd(Transform):
+    """
+    Transform to convert to dictionary
+
+    """
+
+    def __init__(
+        self,
+        label_names=None,
+    ):
+        self.label_names = label_names
+
+    def __call__(self, data: Mapping[Hashable, np.ndarray]) -> Dict[Hashable, np.ndarray]:
+        d: Dict = dict(data)
+
+        new_foreground = dict()
+        for key_label in self.label_names.keys():
+            if key_label != "background":
+                if key_label == d["label"]:
+                    new_foreground[key_label] = [d["foreground"]]
+                elif key_label != d["label"]:
+                    new_foreground[key_label] = []
+            else:
+                if d["background"]:
+                    d["background"] = [d["background"]]
+                else:
+                    d["background"] = []
+
+        d["foreground"] = new_foreground
+
+        return d
+
+
+class GetSingleLabeld(MapTransform):
+    """
+    Get single to show in UI
+
+    """
+
+    def __init__(
+        self,
+        keys: KeysCollection,
+        label_names=None,
+        allow_missing_keys: bool = False,
+    ):
+        super().__init__(keys, allow_missing_keys)
+        self.label_names = label_names
+
+    def __call__(self, data: Mapping[Hashable, np.ndarray]) -> Dict[Hashable, np.ndarray]:
+        d: Dict = dict(data)
+        for key in self.key_iterator(d):
+            if key == "pred":
+                label_value = list(self.label_names.keys()).index(d["label"]) + 1
+                d["pred"][d["pred"] != label_value] = 0
             elif key != "pred":
                 logger.info("This is only for pred key")
         return d

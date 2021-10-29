@@ -80,8 +80,8 @@ class MyTrain(BasicTrainTask):
         return self._network
 
     def optimizer(self):
-        # torch.optim.Adam(self._network.parameters(), lr=0.0001)
-        return torch.optim.AdamW(self._network.parameters(), lr=1e-4, weight_decay=1e-5)
+        return torch.optim.Adam(self._network.parameters(), lr=0.0001)
+        # return torch.optim.AdamW(self._network.parameters(), lr=1e-4, weight_decay=1e-5)
 
     def loss_function(self):
         # return DiceLoss(to_onehot_y=True, softmax=True)
