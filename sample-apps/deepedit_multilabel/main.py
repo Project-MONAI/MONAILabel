@@ -44,12 +44,11 @@ class MyApp(MONAILabelApp):
         # Zero values are reserved to background. Non zero values are for the labels
         self.label_names = {
             "spleen": 1,
-            "right_kidney": 2,
-            "left_kidney": 3,
+            "right kidney": 2,
+            "left kidney": 3,
             "liver": 6,
             "background": 0,
         }
-        self.labels = ["spleen", "right_kidney", "left_kidney", "liver"]
 
         network_params = {
             "spatial_dims": 3,
@@ -95,7 +94,7 @@ class MyApp(MONAILabelApp):
         self.heuristic_planner = strtobool(conf.get("heuristic_planner", "false"))
         self.planner = HeuristicPlanner(spatial_size=spatial_size, target_spacing=target_spacing)
 
-        use_pretrained_model = strtobool(conf.get("use_pretrained_model", "false"))
+        use_pretrained_model = strtobool(conf.get("use_pretrained_model", "true"))
         pretrained_model_uri = conf.get("pretrained_model_path", f"{self.PRE_TRAINED_PATH}/deepedit_multilabel.pt")
 
         # Path to pretrained weights
@@ -131,13 +130,14 @@ class MyApp(MONAILabelApp):
                 self.network,
                 spatial_size=self.planner.spatial_size,
                 target_spacing=self.planner.target_spacing,
+                label_names=self.label_names,
             ),
             "deepedit_seg": Segmentation(
                 [self.pretrained_model, self.final_model],
                 self.network,
                 spatial_size=self.planner.spatial_size,
                 target_spacing=self.planner.target_spacing,
-                label_names=self.label_names,
+                label_names=list(self.label_names.keys()),
             ),
             # intensity range set for MRI
             "Histogram+GraphCut": HistogramBasedGraphCut(
@@ -155,7 +155,7 @@ class MyApp(MONAILabelApp):
                 load_path=self.pretrained_model,
                 publish_path=self.final_model,
                 config={"pretrained": strtobool(self.conf.get("use_pretrained_model", "true"))},
-                label_names=self.labels,
+                label_names=self.label_names,
                 debug_mode=False,
             )
         }
@@ -199,7 +199,7 @@ def main():
         format="[%(asctime)s.%(msecs)03d][%(levelname)5s](%(name)s) - %(message)s",
         datefmt="%Y-%m-%d %H:%M:%S",
     )
-    app_dir_path = os.path.normpath("/home/adp20local/Documents/MONAILabel/sample-apps/deepedit_multiple_label")
+    app_dir_path = os.path.normpath("/home/adp20local/Documents/MONAILabel/sample-apps/deepedit_multilabel")
     studies_path = os.path.normpath(
         "/home/adp20local/Documents/Datasets/monailabel_datasets/multilabel_abdomen/NIFTI/train"
     )
@@ -231,6 +231,16 @@ def main():
     #         'liver': [[[79, 104, 67], [94, 114, 67]]],
     #     },
     #     "background": [[[6, 132, 427]]],
+    # }
+    # al_app.infer(deepgrow_3d)
+
+    # # PERFORMING INFERENCE USING INTERACTIVE MODEL
+    # deepgrow_3d = {
+    #     "model": "deepedit",
+    #     "image": f"{studies_path}/img0022.nii.gz",
+    #     "label": "spleen",
+    #     "foreground": [[61, 106, 54], [65, 106, 54]],
+    #     "background": [[6, 132, 427]],
     # }
     # al_app.infer(deepgrow_3d)
 

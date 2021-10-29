@@ -28,6 +28,8 @@ from monailabel.deepedit.multilabel.transforms import (
     AddGuidanceFromPointsCustomd,
     AddGuidanceSignalCustomd,
     DiscardAddGuidanced,
+    GetSingleLabeld,
+    PointsToDictd,
     ResizeGuidanceMultipleLabelCustomd,
 )
 from monailabel.interfaces.tasks.infer import InferTask, InferType
@@ -60,6 +62,7 @@ class Segmentation(InferTask):
             input_key="image",
             output_label_key="pred",
             output_json_key="result",
+            config={"result_extension": ".nrrd"},
         )
 
         self.spatial_size = spatial_size
@@ -142,6 +145,7 @@ class Deepgrow(InferTask):
             Spacingd(keys="image", pixdim=self.target_spacing, mode="bilinear"),
             Orientationd(keys="image", axcodes="RAS"),
             SqueezeDimd(keys="image", dim=0),
+            PointsToDictd(label_names=self.label_names),
             AddGuidanceFromPointsCustomd(ref_image="image", guidance="guidance"),
             AddChanneld(keys="image"),
             # NormalizeIntensityd(keys="image"),
@@ -170,4 +174,5 @@ class Deepgrow(InferTask):
             AsDiscreted(keys="pred", argmax=True),
             ToNumpyd(keys="pred"),
             Restored(keys="pred", ref_image="image"),
+            GetSingleLabeld(keys="pred", label_names=self.label_names),
         ]

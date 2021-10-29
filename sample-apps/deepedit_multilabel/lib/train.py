@@ -80,8 +80,8 @@ class MyTrain(BasicTrainTask):
         return self._network
 
     def optimizer(self):
-        # torch.optim.Adam(self._network.parameters(), lr=0.0001)
-        return torch.optim.AdamW(self._network.parameters(), lr=1e-4, weight_decay=1e-5)
+        return torch.optim.Adam(self._network.parameters(), lr=0.0001)
+        # return torch.optim.AdamW(self._network.parameters(), lr=1e-4, weight_decay=1e-5)
 
     def loss_function(self):
         # return DiceLoss(to_onehot_y=True, softmax=True)
@@ -256,8 +256,6 @@ class MyTrain(BasicTrainTask):
 
     def train_handlers(self, output_dir, events_dir, evaluator, local_rank=0):
         handlers = super().train_handlers(output_dir, events_dir, evaluator, local_rank)
-        return (
+        if self.debug_mode and local_rank == 0:
             handlers.append(TensorBoardImageHandler(log_dir=events_dir))
-            if self.debug_mode and local_rank == 0
-            else handlers
-        )
+        return handlers
