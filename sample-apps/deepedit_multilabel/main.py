@@ -44,8 +44,8 @@ class MyApp(MONAILabelApp):
         # Zero values are reserved to background. Non zero values are for the labels
         self.label_names = {
             "spleen": 1,
-            "right_kidney": 2,
-            "left_kidney": 3,
+            "right kidney": 2,
+            "left kidney": 3,
             "liver": 6,
             "background": 0,
         }
