@@ -231,6 +231,7 @@ class MONAILabelWidget(ScriptedLoadableModuleWidget, VTKObservationMixin):
         self.ui.saveLabelButton.connect("clicked(bool)", self.onSaveLabel)
         self.ui.uploadImageButton.connect("clicked(bool)", self.onUploadImage)
         self.ui.importLabelButton.connect("clicked(bool)", self.onImportLabel)
+        self.ui.labelComboBox.connect("currentIndexChanged(int)", self.onSelectLabel)
 
         # Scribbles
         # brush and eraser icon from: https://tablericons.com/
@@ -1120,6 +1121,11 @@ class MONAILabelWidget(ScriptedLoadableModuleWidget, VTKObservationMixin):
         logging.debug("Current SegmentID: {}; Segment: {}".format(segmentId, segment))
         return segmentId, segment
 
+    def onSelectLabel(self, caller=None, event=None):
+        self.updateParameterNodeFromGUI(caller, event)
+        self.onEditFiducialPoints(self.dgPositiveFiducialNode, "MONAILabel.ForegroundPoints")
+        self.onEditFiducialPoints(self.dgNegativeFiducialNode, "MONAILabel.BackgroundPoints")
+
     def icon(self, name="MONAILabel.png"):
         # It should not be necessary to modify this method
         iconPath = os.path.join(os.path.dirname(__file__), "Resources", "Icons", name)
@@ -1548,7 +1554,12 @@ class MONAILabelWidget(ScriptedLoadableModuleWidget, VTKObservationMixin):
 
             result_file, params = self.logic.infer(model, image_file, self.getParamsFromConfig("infer", model))
 
-            self.updateSegmentationMask(result_file, self.models[model].get("labels"))
+            labels = (
+                params.get("label_names") if params and params.get("label_names") else self.models[model].get("labels")
+            )
+            if labels and isinstance(labels, dict):
+                labels = [k for k, _ in sorted(labels.items(), key=lambda item: item[1])]
+            self.updateSegmentationMask(result_file, labels)
         except:
             slicer.util.errorDisplay(
                 "Failed to run inference in MONAI Label Server", detailedText=traceback.format_exc()
@@ -1605,13 +1616,16 @@ class MONAILabelWidget(ScriptedLoadableModuleWidget, VTKObservationMixin):
 
             image_file = self.current_sample["id"]
             params = {
+                "label": label,
                 "foreground": foreground,
                 "background": background,
             }
 
             params.update(self.getParamsFromConfig("infer", model))
+            print(f"Request Params for Deepgrow/Deepedit: {params}")
+
             result_file, params = self.logic.infer(model, image_file, params)
-            logging.debug("Params from deepgrow is {}".format(params))
+            print(f"Result Params for Deepgrow/Deepedit: {params}")
 
             self.updateSegmentationMask(result_file, [label], None if deepgrow_3d else sliceIndex)
         except:
@@ -1641,6 +1655,8 @@ class MONAILabelWidget(ScriptedLoadableModuleWidget, VTKObservationMixin):
 
     def updateSegmentationMask(self, in_file, labels, sliceIndex=None):
         # TODO:: Add ROI Node (for Bounding Box if provided in the result)
+        labels = [l for l in labels if l != "background"]
+        print(f"Update Segmentation Mask using Labels: {labels}")
 
         start = time.time()
         logging.debug("Update Segmentation Mask from: {}".format(in_file))
