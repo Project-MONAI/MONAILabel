@@ -6,6 +6,7 @@ set(MODULE_PYTHON_SCRIPTS
   ${MODULE_NAME}.py
   ${MODULE_NAME}Lib/__init__.py
   ${MODULE_NAME}Lib/client.py
+  ${MODULE_NAME}Lib/labelcolors.py
   )
 
 set(MODULE_PYTHON_RESOURCES
