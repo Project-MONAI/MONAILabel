@@ -62,7 +62,7 @@ class Segmentation(InferTask):
             input_key="image",
             output_label_key="pred",
             output_json_key="result",
-            config={"result_extension": ".nrrd"},
+            config={"result_extension": [".nrrd", ".nii.gz"]},
         )
 
         self.spatial_size = spatial_size
@@ -131,6 +131,7 @@ class Deepgrow(InferTask):
             labels=None,
             dimension=dimension,
             description=description,
+            config={"result_extension": [".nrrd", ".nii.gz"]},
         )
 
         self.spatial_size = spatial_size
