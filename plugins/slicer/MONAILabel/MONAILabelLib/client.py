@@ -75,7 +75,9 @@ class MONAILabelClient:
         selector = f"/session/{MONAILabelUtils.urllib_quote_plus(session_id)}"
         status, response, _ = MONAILabelUtils.http_method("GET", self._server_url, selector)
         if status != 200:
-            return None
+            raise MONAILabelException(
+                MONAILabelError.SERVER_ERROR, "Status: {}; Response: {}".format(status, response), status, response
+            )
 
         response = response.decode("utf-8") if isinstance(response, bytes) else response
         logging.debug("Response: {}".format(response))
@@ -131,7 +133,7 @@ class MONAILabelClient:
         logging.debug("Response: {}".format(response))
         return json.loads(response)
 
-    def infer(self, model, image_in, params, label_in=None, session_id=None):
+    def infer(self, model, image_in, params, label_in=None, file=None, session_id=None):
         selector = "/infer/{}?image={}".format(
             MONAILabelUtils.urllib_quote_plus(model),
             MONAILabelUtils.urllib_quote_plus(image_in),
@@ -141,6 +143,8 @@ class MONAILabelClient:
 
         fields = {"params": json.dumps(params) if params else "{}"}
         files = {"label": label_in} if label_in else {}
+        files.update({"file": file} if file and not session_id else {})
+
         status, form, files = MONAILabelUtils.http_multipart("POST", self._server_url, selector, fields, files)
         if status != 200:
             raise MONAILabelException(

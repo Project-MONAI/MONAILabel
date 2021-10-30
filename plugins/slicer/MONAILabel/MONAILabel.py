@@ -1147,7 +1147,10 @@ class MONAILabelWidget(ScriptedLoadableModuleWidget, VTKObservationMixin):
             self.reportProgress(100)
             qt.QApplication.restoreOverrideCursor()
             if session:
-                slicer.util.errorDisplay("Server Error:: Session creation Failed", detailedText=traceback.format_exc())
+                slicer.util.errorDisplay(
+                    "Server Error:: Session creation Failed\nPlease upgrade to latest monailable version (> 0.2.0)",
+                    detailedText=traceback.format_exc(),
+                )
             else:
                 slicer.util.errorDisplay("Failed to upload volume to Server", detailedText=traceback.format_exc())
             return False
@@ -1846,12 +1849,12 @@ class MONAILabelLogic(ScriptedLoadableModuleLogic):
     def save_label(self, image_in, label_in, params):
         return MONAILabelClient(self.server_url, self.tmpdir).save_label(image_in, label_in, params=params)
 
-    def infer(self, model, image_in, params={}, label_in=None, session_id=None):
+    def infer(self, model, image_in, params={}, label_in=None, file=None, session_id=None):
         logging.debug("Preparing input data for segmentation")
         self.reportProgress(0)
 
         client = MONAILabelClient(self.server_url, self.tmpdir)
-        result_file, params = client.infer(model, image_in, params, label_in, session_id)
+        result_file, params = client.infer(model, image_in, params, label_in, file, session_id)
 
         logging.debug(f"Image Response: {result_file}")
         logging.debug(f"JSON  Response: {params}")
