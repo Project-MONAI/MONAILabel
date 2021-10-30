@@ -11,6 +11,7 @@
 
 import logging
 import time
+from typing import Any, Dict
 
 from monailabel.interfaces.datastore import Datastore
 from monailabel.interfaces.tasks.strategy import Strategy
@@ -39,7 +40,7 @@ class Epistemic(Strategy):
         if not len(images):
             return None
 
-        scores = {}
+        scores: Dict[str, Any] = {}
         current_ts = int(time.time())
         strategy = request["strategy"]
 
@@ -49,11 +50,11 @@ class Epistemic(Strategy):
             ts = min(current_ts - info.get("strategy", {}).get(strategy, {}).get("ts", 0), self.reset)
             scores[image] = {"score": score, "ts": ts}
 
-        scores = {k: v for k, v in sorted(scores.items(), key=lambda item: item[1]["score"], reverse=True)}
+        scores = {k: v for k, v in sorted(scores.items(), key=lambda item: item[1]["score"], reverse=True)}  # type: ignore
         logger.info(f"{strategy}: Top-N: {scores}")
 
         # Pick Top-N based on epistemic scores
-        top_k = {}
+        top_k: Dict[str, Any] = {}
         max_len = self.k if 0 < self.k < len(scores) else len(scores)
         for k, v in scores.items():
             if len(top_k) == max_len:
@@ -66,7 +67,7 @@ class Epistemic(Strategy):
         logger.info(f"{strategy}: Top-K: {top_k}")
 
         # Pick the one which is least served recently among Top-N
-        top_k = {k: v for k, v in sorted(scores.items(), key=lambda item: item[1]["ts"], reverse=True)}
+        top_k = {k: v for k, v in sorted(scores.items(), key=lambda item: item[1]["ts"], reverse=True)}  # type: ignore
         logger.info(f"{strategy}: Top-K (ts): {top_k};")
 
         image = next(iter(top_k))
