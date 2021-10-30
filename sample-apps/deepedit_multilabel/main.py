@@ -113,7 +113,7 @@ class MyApp(MONAILabelApp):
             app_dir=app_dir,
             studies=studies,
             conf=conf,
-            name="DeepEdit",
+            name="DeepEdit - Multilabel",
             description="Active learning solution using DeepEdit to label 3D Images",
         )
 

@@ -7,7 +7,7 @@
     <x>0</x>
     <y>0</y>
     <width>400</width>
-    <height>802</height>
+    <height>804</height>
    </rect>
   </property>
   <property name="minimumSize">
@@ -88,7 +88,7 @@
      <item row="2" column="1">
       <widget class="QComboBox" name="inputSelector">
        <property name="currentText">
-        <string>Select Node</string>
+        <string/>
        </property>
        <property name="placeholderText">
         <string>Select Node</string>
@@ -461,95 +461,14 @@
       <string>Scribbles</string>
      </property>
      <layout class="QGridLayout" name="gridLayout_4">
+      <property name="leftMargin">
+       <number>0</number>
+      </property>
+      <property name="rightMargin">
+       <number>0</number>
+      </property>
       <item row="2" column="1" colspan="2">
        <layout class="QGridLayout" name="gridLayout_7">
-        <item row="1" column="2" rowspan="2">
-         <layout class="QGridLayout" name="gridLayout_9">
-          <item row="1" column="0">
-           <widget class="QPushButton" name="selectedToolDisplay">
-            <property name="text">
-             <string/>
-            </property>
-            <property name="flat">
-             <bool>true</bool>
-            </property>
-           </widget>
-          </item>
-          <item row="1" column="1">
-           <widget class="QPushButton" name="selectedScribblesDisplay">
-            <property name="text">
-             <string/>
-            </property>
-            <property name="flat">
-             <bool>true</bool>
-            </property>
-           </widget>
-          </item>
-          <item row="0" column="0" colspan="2">
-           <widget class="QLabel" name="label_7">
-            <property name="font">
-             <font>
-              <pointsize>9</pointsize>
-              <weight>50</weight>
-              <bold>false</bold>
-             </font>
-            </property>
-            <property name="text">
-             <string>Current tool:</string>
-            </property>
-            <property name="alignment">
-             <set>Qt::AlignCenter</set>
-            </property>
-           </widget>
-          </item>
-         </layout>
-        </item>
-        <item row="1" column="3">
-         <widget class="QPushButton" name="paintScribblesButton">
-          <property name="text">
-           <string/>
-          </property>
-         </widget>
-        </item>
-        <item row="2" column="4">
-         <widget class="QPushButton" name="selectBackgroundButton">
-          <property name="text">
-           <string>Background</string>
-          </property>
-          <property name="flat">
-           <bool>false</bool>
-          </property>
-         </widget>
-        </item>
-        <item row="2" column="3">
-         <widget class="QPushButton" name="selectForegroundButton">
-          <property name="enabled">
-           <bool>true</bool>
-          </property>
-          <property name="text">
-           <string>Foreground</string>
-          </property>
-          <property name="flat">
-           <bool>false</bool>
-          </property>
-         </widget>
-        </item>
-        <item row="0" column="3">
-         <widget class="QComboBox" name="scribblesMethodSelector"/>
-        </item>
-        <item row="0" column="2">
-         <widget class="QLabel" name="scribblesMethodLabel">
-          <property name="layoutDirection">
-           <enum>Qt::LeftToRight</enum>
-          </property>
-          <property name="text">
-           <string>Method:</string>
-          </property>
-          <property name="alignment">
-           <set>Qt::AlignCenter</set>
-          </property>
-         </widget>
-        </item>
         <item row="3" column="2">
          <spacer name="verticalSpacer_2">
           <property name="orientation">
@@ -563,21 +482,7 @@
           </property>
          </spacer>
         </item>
-        <item row="1" column="4">
-         <widget class="QPushButton" name="eraseScribblesButton">
-          <property name="text">
-           <string/>
-          </property>
-         </widget>
-        </item>
-        <item row="0" column="4">
-         <widget class="QPushButton" name="updateScribblesButton">
-          <property name="text">
-           <string>Update</string>
-          </property>
-         </widget>
-        </item>
-        <item row="5" column="3" colspan="2">
+        <item row="6" column="3" colspan="2">
          <layout class="QGridLayout" name="gridLayout_6">
           <item row="1" column="3">
            <widget class="QCheckBox" name="brush3dCheckbox">
@@ -604,13 +509,74 @@
           </item>
          </layout>
         </item>
-        <item row="5" column="2">
+        <item row="6" column="2">
          <widget class="QLabel" name="label_11">
           <property name="text">
            <string>Tool size:</string>
           </property>
           <property name="alignment">
            <set>Qt::AlignCenter</set>
+          </property>
+         </widget>
+        </item>
+        <item row="1" column="4">
+         <layout class="QGridLayout" name="gridLayout_9">
+          <item row="1" column="1">
+           <widget class="QPushButton" name="paintScribblesButton">
+            <property name="text">
+             <string/>
+            </property>
+            <property name="checkable">
+             <bool>true</bool>
+            </property>
+           </widget>
+          </item>
+          <item row="1" column="2">
+           <widget class="QPushButton" name="eraseScribblesButton">
+            <property name="text">
+             <string/>
+            </property>
+            <property name="checkable">
+             <bool>true</bool>
+            </property>
+           </widget>
+          </item>
+         </layout>
+        </item>
+        <item row="0" column="2">
+         <widget class="QLabel" name="scribblesMethodLabel">
+          <property name="layoutDirection">
+           <enum>Qt::LeftToRight</enum>
+          </property>
+          <property name="text">
+           <string>Method:</string>
+          </property>
+         </widget>
+        </item>
+        <item row="0" column="4">
+         <widget class="QPushButton" name="updateScribblesButton">
+          <property name="text">
+           <string>Update</string>
+          </property>
+         </widget>
+        </item>
+        <item row="0" column="3">
+         <widget class="QComboBox" name="scribblesMethodSelector">
+          <property name="sizePolicy">
+           <sizepolicy hsizetype="Expanding" vsizetype="Fixed">
+            <horstretch>0</horstretch>
+            <verstretch>0</verstretch>
+           </sizepolicy>
+          </property>
+         </widget>
+        </item>
+        <item row="1" column="3">
+         <widget class="QComboBox" name="scribblesLabelSelector"/>
+        </item>
+        <item row="1" column="2" rowspan="2">
+         <widget class="QLabel" name="label_13">
+          <property name="text">
+           <string>Current Tool:</string>
           </property>
          </widget>
         </item>
