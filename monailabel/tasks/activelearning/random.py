@@ -11,6 +11,7 @@
 
 import logging
 import random
+import time
 
 from monailabel.interfaces.datastore import Datastore
 from monailabel.interfaces.tasks.strategy import Strategy
@@ -31,7 +32,15 @@ class Random(Strategy):
         if not len(images):
             return None
 
-        image = random.choice(images)
+        strategy = request["strategy"]
+        images_info = []
+        for image in images:
+            images_info.append(datastore.get_image_info(image).get("strategy", {}).get(strategy, {}))
 
+        current_ts = int(time.time())
+        weights = [current_ts - info.get("ts", 0) for info in images_info]
+
+        image = random.choices(images, weights=weights)[0]
+        logger.info(f"Random: Images: {images}; Weight: {weights}")
         logger.info(f"Random: Selected Image: {image}")
         return image

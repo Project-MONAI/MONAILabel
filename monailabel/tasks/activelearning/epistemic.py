@@ -10,7 +10,8 @@
 # limitations under the License.
 
 import logging
-import random
+import time
+from typing import Any, Dict
 
 from monailabel.interfaces.datastore import Datastore
 from monailabel.interfaces.tasks.strategy import Strategy
@@ -23,8 +24,15 @@ class Epistemic(Strategy):
     Epistemic as active learning strategy
     """
 
-    def __init__(self):
-        super().__init__("Get First Sample Based on Epistemic score")
+    SECS_IN_DAY = 24 * 60 * 60
+
+    def __init__(
+        self, k=0, reset=SECS_IN_DAY, key="epistemic_entropy", desc="Get First Sample Based on Epistemic score"
+    ):
+        self.k = k
+        self.reset = reset  # Reset previously served samples after N seconds (ex: every day)
+        self.key = key
+        super().__init__(desc)
 
     def __call__(self, request, datastore: Datastore):
         images = datastore.get_unlabeled_images()
@@ -32,13 +40,36 @@ class Epistemic(Strategy):
         if not len(images):
             return None
 
-        epistemic_scores = {image: datastore.get_image_info(image).get("epistemic_entropy", 0) for image in images}
+        scores: Dict[str, Any] = {}
+        current_ts = int(time.time())
+        strategy = request["strategy"]
 
-        # PICK RANDOM IF THERE IS NOT ENTROPY SCORES!!
-        if epistemic_scores[images[0]] == 0:
-            image = random.choice(images)
-            logger.info(f"Random: Selected Image: {image}")
-        else:
-            entropy, image = max(zip(epistemic_scores.values(), epistemic_scores.keys()))
-            logger.info(f"EPISTEMIC: Selected Image: {image}; epistemic_entropy: {entropy}")
+        for image in images:
+            info = datastore.get_image_info(image)
+            score = info.get(self.key, 0)
+            ts = min(current_ts - info.get("strategy", {}).get(strategy, {}).get("ts", 0), self.reset)
+            scores[image] = {"score": score, "ts": ts}
+
+        scores = {k: v for k, v in sorted(scores.items(), key=lambda item: item[1]["score"], reverse=True)}  # type: ignore
+        logger.info(f"{strategy}: Top-N: {scores}")
+
+        # Pick Top-N based on epistemic scores
+        top_k: Dict[str, Any] = {}
+        max_len = self.k if 0 < self.k < len(scores) else len(scores)
+        for k, v in scores.items():
+            if len(top_k) == max_len:
+                break
+            # Handle similar timestamps
+            top_k[k] = {
+                "score": v["score"],
+                "ts": v["ts"] - (pow(10, len(top_k)) if v["ts"] == self.reset else len(top_k)) * 10,
+            }
+        logger.info(f"{strategy}: Top-K: {top_k}")
+
+        # Pick the one which is least served recently among Top-N
+        top_k = {k: v for k, v in sorted(scores.items(), key=lambda item: item[1]["ts"], reverse=True)}  # type: ignore
+        logger.info(f"{strategy}: Top-K (ts): {top_k};")
+
+        image = next(iter(top_k))
+        logger.info(f"{strategy}: Selected Image: {image}; epistemic_entropy: {top_k[image]}")
         return image

@@ -10,6 +10,7 @@
 # limitations under the License.
 
 import logging
+import time
 from typing import Dict, Optional
 
 from fastapi import APIRouter
@@ -46,6 +47,10 @@ async def sample(strategy: str, params: Optional[dict] = None):
 
     image_id = result["id"]
     image_info = instance.datastore().get_image_info(image_id)
+
+    strategy_info = image_info.get("strategy", {})
+    strategy_info[strategy] = {"ts": int(time.time()), "client_id": params.get("client_id")}
+    instance.datastore().update_image_info(image_id, {"strategy": strategy_info})
 
     result = {
         "id": image_id,
