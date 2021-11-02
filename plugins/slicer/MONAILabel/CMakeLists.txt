@@ -19,7 +19,7 @@ set(MODULE_PYTHON_RESOURCES
   Resources/Icons/training.png
   Resources/Icons/upload.svg
   Resources/Icons/contour.svg
-  Resources/Icons/brush.png
+  Resources/Icons/paint.png
   Resources/Icons/eraser.png
   Resources/Icons/refresh-icon.png
   Resources/Icons/fg_green.svg
