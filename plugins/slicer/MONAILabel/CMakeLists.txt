@@ -6,6 +6,7 @@ set(MODULE_PYTHON_SCRIPTS
   ${MODULE_NAME}.py
   ${MODULE_NAME}Lib/__init__.py
   ${MODULE_NAME}Lib/client.py
+  ${MODULE_NAME}Lib/labelcolors.py
   )
 
 set(MODULE_PYTHON_RESOURCES
@@ -18,8 +19,8 @@ set(MODULE_PYTHON_RESOURCES
   Resources/Icons/training.png
   Resources/Icons/upload.svg
   Resources/Icons/contour.svg
-  Resources/Icons/tool-brush.svg
-  Resources/Icons/eraser.svg
+  Resources/Icons/paint.png
+  Resources/Icons/eraser.png
   Resources/Icons/refresh-icon.png
   Resources/Icons/fg_green.svg
   Resources/Icons/bg_red.svg

@@ -28,7 +28,7 @@ import sitkUtils
 import slicer
 import vtk
 import vtkSegmentationCore
-from MONAILabelLib import MONAILabelClient
+from MONAILabelLib import GenericAnatomyColors, MONAILabelClient
 from slicer.ScriptedLoadableModule import *
 from slicer.util import VTKObservationMixin
 
@@ -75,6 +75,20 @@ class _ui_MONAILabelSettingsPanel(object):
         parent.registerProperty(
             "MONAILabel/serverUrlHistory", serverUrlHistory, "text", str(qt.SIGNAL("textChanged(QString)"))
         )
+
+        fileExtension = qt.QLineEdit()
+        fileExtension.setText(".nii.gz")
+        fileExtension.toolTip = "Default extension for uploading images/labels"
+        groupLayout.addRow("File Extension:", fileExtension)
+        parent.registerProperty(
+            "MONAILabel/fileExtension", fileExtension, "text", str(qt.SIGNAL("textChanged(QString)"))
+        )
+
+        clientId = qt.QLineEdit()
+        clientId.setText("user-xyz")
+        clientId.toolTip = "Client/User ID that will be sent to MONAI Label server for reference"
+        groupLayout.addRow("Client/User-ID:", clientId)
+        parent.registerProperty("MONAILabel/clientId", clientId, "text", str(qt.SIGNAL("textChanged(QString)")))
 
         autoRunSegmentationCheckBox = qt.QCheckBox()
         autoRunSegmentationCheckBox.checked = True
@@ -154,8 +168,8 @@ class MONAILabelWidget(ScriptedLoadableModuleWidget, VTKObservationMixin):
         self.config = OrderedDict()
         self.current_sample = None
         self.samples = {}
-        self.v2 = False
         self.state = {"SegmentationModel": "", "DeepgrowModel": "", "ScribblesMethod": "", "CurrentStrategy": ""}
+        self.file_ext = ".nii.gz"
 
         self.dgPositiveFiducialNode = None
         self.dgPositiveFiducialNodeObservers = []
@@ -189,6 +203,7 @@ class MONAILabelWidget(ScriptedLoadableModuleWidget, VTKObservationMixin):
         # These connections ensure that we update parameter node when scene is closed
         self.addObserver(slicer.mrmlScene, slicer.mrmlScene.StartCloseEvent, self.onSceneStartClose)
         self.addObserver(slicer.mrmlScene, slicer.mrmlScene.EndCloseEvent, self.onSceneEndClose)
+        self.addObserver(slicer.mrmlScene, slicer.mrmlScene.NodeAddedEvent, self.onSceneEndImport)
 
         # Create logic class. Logic implements all computations that should be possible to run
         # in batch mode, without a graphical user interface.
@@ -236,22 +251,14 @@ class MONAILabelWidget(ScriptedLoadableModuleWidget, VTKObservationMixin):
         # Scribbles
         # brush and eraser icon from: https://tablericons.com/
         self.ui.scribblesMethodSelector.connect("currentIndexChanged(int)", self.updateParameterNodeFromGUI)
-        self.ui.paintScribblesButton.setIcon(self.icon("tool-brush.svg"))
+        self.ui.paintScribblesButton.setIcon(self.icon("paint.png"))
         self.ui.paintScribblesButton.setToolTip("Paint scribbles for selected scribble layer")
-        self.ui.eraseScribblesButton.setIcon(self.icon("eraser.svg"))
+        self.ui.eraseScribblesButton.setIcon(self.icon("eraser.png"))
         self.ui.eraseScribblesButton.setToolTip("Erase scribbles for selected scribble layer")
-        self.ui.updateScribblesButton.setIcon(self.icon("refresh-icon.png"))
+        self.ui.updateScribblesButton.setIcon(self.icon("segment.png"))
         self.ui.updateScribblesButton.setToolTip(
             "Update label by sending scribbles to server to apply selected post processing method"
         )
-        self.ui.selectForegroundButton.setIcon(self.icon("fg_green.svg"))
-        self.ui.selectForegroundButton.setToolTip("Select foreground scribbles layer")
-        self.ui.selectBackgroundButton.setIcon(self.icon("bg_red.svg"))
-        self.ui.selectBackgroundButton.setToolTip("Select background scribbles layer")
-        self.ui.selectedScribblesDisplay.setIcon(self.icon("gray.svg"))
-        self.ui.selectedScribblesDisplay.setToolTip("Displaying selected scribbles layer")
-        self.ui.selectedToolDisplay.setIcon(self.icon("gray.svg"))
-        self.ui.selectedToolDisplay.setToolTip("Displaying selected scribbles tool")
 
         self.ui.brushSizeSlider.connect("valueChanged(double)", self.updateBrushSize)
         self.ui.brushSizeSlider.setToolTip("Change brush size for scribbles tool")
@@ -260,8 +267,10 @@ class MONAILabelWidget(ScriptedLoadableModuleWidget, VTKObservationMixin):
         self.ui.updateScribblesButton.clicked.connect(self.onUpdateScribbles)
         self.ui.paintScribblesButton.clicked.connect(self.onPaintScribbles)
         self.ui.eraseScribblesButton.clicked.connect(self.onEraseScribbles)
-        self.ui.selectForegroundButton.clicked.connect(self.onSelectForegroundScribbles)
-        self.ui.selectBackgroundButton.clicked.connect(self.onSelectBackgroundScribbles)
+        self.ui.scribblesLabelSelector.connect("currentIndexChanged(int)", self.onSelectScribblesLabel)
+        self.ui.scribblesLabelSelector.addItem("Foreground")
+        self.ui.scribblesLabelSelector.addItem("Background")
+        self.ui.scribblesLabelSelector.setCurrentIndex(0)
 
         # start with scribbles section disabled
         self.ui.scribblesCollapsibleButton.setEnabled(False)
@@ -278,294 +287,11 @@ class MONAILabelWidget(ScriptedLoadableModuleWidget, VTKObservationMixin):
 
     def enter(self):
         self.initializeParameterNode()
+        if self._segmentNode:
+            self.updateGUIFromParameterNode()
 
     def exit(self):
         self.removeObserver(self._parameterNode, vtk.vtkCommand.ModifiedEvent, self.updateGUIFromParameterNode)
-
-    def scribblesLayersPresent(self):
-        scribbles_exist = False
-        if self._segmentNode is not None:
-            segmentationNode = self._segmentNode
-            segmentation = segmentationNode.GetSegmentation()
-            numSegments = segmentation.GetNumberOfSegments()
-            segmentIds = [segmentation.GetNthSegmentID(i) for i in range(numSegments)]
-            scribbles_exist = sum([int("scribbles" in sid) for sid in segmentIds]) > 0
-        return scribbles_exist
-
-    def onStartScribbling(self):
-        logging.debug("Scribbles start event")
-        if (not self.scribblesLayersPresent()) and (self._scribblesEditorWidget is None):
-            # add background, layer index = -2 [2], color = red
-            self._segmentNode.GetSegmentation().AddEmptySegment(
-                "background_scribbles", "background_scribbles", [1.0, 0.0, 0.0]
-            )
-
-            # add foreground, layer index = -1 [3], color = green
-            self._segmentNode.GetSegmentation().AddEmptySegment(
-                "foreground_scribbles", "foreground_scribbles", [0.0, 1.0, 0.0]
-            )
-
-            # change segmentation display properties to "see through" the scribbles
-            # further explanation at:
-            # https://apidocs.slicer.org/master/classvtkMRMLSegmentationDisplayNode.html
-            segmentationDisplayNode = self._segmentNode.GetDisplayNode()
-
-            # background
-            opacity = 0.2
-            segmentationDisplayNode.SetSegmentOpacity2DFill("background_scribbles", opacity)
-            segmentationDisplayNode.SetSegmentOpacity2DOutline("background_scribbles", opacity)
-
-            # foreground
-            segmentationDisplayNode.SetSegmentOpacity2DFill("foreground_scribbles", opacity)
-            segmentationDisplayNode.SetSegmentOpacity2DOutline("foreground_scribbles", opacity)
-
-            # create segmentEditorWidget to access "Paint" and "Erase" segmentation tools
-            # these will be used to draw scribbles
-            self._scribblesEditorWidget = slicer.qMRMLSegmentEditorWidget()
-            self._scribblesEditorWidget.setMRMLScene(slicer.mrmlScene)
-            segmentEditorNode = slicer.vtkMRMLSegmentEditorNode()
-
-            # adding new scribbles can overwrite a new one-hot vector, hence erase any existing
-            # labels - this is not a desired behaviour hence we swith to overlay mode that enables drawing
-            # scribbles without changing existing labels. Further explanation at:
-            # https://discourse.slicer.org/t/how-can-i-set-masking-settings-on-a-segment-editor-effect-in-python/4406/7
-            segmentEditorNode.SetOverwriteMode(slicer.vtkMRMLSegmentEditorNode.OverwriteNone)
-
-            # add all nodes to the widget
-            slicer.mrmlScene.AddNode(segmentEditorNode)
-            self._scribblesEditorWidget.setMRMLSegmentEditorNode(segmentEditorNode)
-            self._scribblesEditorWidget.setSegmentationNode(self._segmentNode)
-            self._scribblesEditorWidget.setMasterVolumeNode(self._volumeNode)
-
-    def onUpdateScribbles(self):
-        logging.info("Scribbles update event")
-        try:
-            qt.QApplication.setOverrideCursor(qt.Qt.WaitCursor)
-
-            # get scribbles + label
-            segmentationNode = self._segmentNode
-            labelmapVolumeNode = slicer.mrmlScene.AddNewNodeByClass("vtkMRMLLabelMapVolumeNode")
-            slicer.modules.segmentations.logic().ExportVisibleSegmentsToLabelmapNode(
-                segmentationNode, labelmapVolumeNode, self._volumeNode
-            )
-            scribbles_in = tempfile.NamedTemporaryFile(suffix=".nii.gz", dir=self.tmpdir).name
-            self.reportProgress(5)
-
-            # save scribbles + label to file
-            slicer.util.saveNode(labelmapVolumeNode, scribbles_in)
-            self.reportProgress(30)
-            self.updateServerSettings()
-            self.reportProgress(60)
-
-            # try to first fetch vtkMRMLAnnotationROINode
-            roiNode = slicer.mrmlScene.GetFirstNodeByClass("vtkMRMLAnnotationROINode")
-            if roiNode == None:  # if vtkMRMLAnnotationROINode not present, then check for vtkMRMLMarkupsROINode node
-                roiNode = slicer.mrmlScene.GetFirstNodeByClass("vtkMRMLMarkupsROINode")
-
-            # if roi node found, then try to get roi
-            selected_roi = self.getROIPointsXYZ(roiNode)
-
-            # send scribbles + label to server along with selected scribbles method
-            scribblesMethod = self.ui.scribblesMethodSelector.currentText
-            params = self.getParamsFromConfig("infer", scribblesMethod)
-            params.update({"roi": selected_roi})
-
-            image_file = self.current_sample["id"]
-            result_file, params = self.logic.infer(scribblesMethod, image_file, params, scribbles_in)
-
-            # display result from server
-            self.reportProgress(90)
-            _, segment = self.currentSegment()
-            label = segment.GetName()
-            self.updateSegmentationMask(result_file, [label])
-        except:
-            slicer.util.errorDisplay(
-                "Failed to post process label on MONAI Label Server using {}".format(scribblesMethod),
-                detailedText=traceback.format_exc(),
-            )
-        finally:
-            qt.QApplication.restoreOverrideCursor()
-            self.reportProgress(100)
-
-            # clear all temporary files
-            if os.path.exists(scribbles_in):
-                os.unlink(scribbles_in)
-
-            if result_file and os.path.exists(result_file):
-                os.unlink(result_file)
-
-    def getROIPointsXYZ(self, roiNode):
-        if roiNode == None:
-            return []
-
-        v = self._volumeNode
-        RasToIjkMatrix = vtk.vtkMatrix4x4()
-        v.GetRASToIJKMatrix(RasToIjkMatrix)
-
-        roi_points_ras = [0.0] * 6
-        if roiNode.__class__.__name__ == "vtkMRMLMarkupsROINode":
-            # for vtkMRMLMarkupsROINode
-            print(roiNode.__class__.__name__)
-            center = [0] * 3
-            roiNode.GetCenter(center)
-            roi_points_ras = [(x - s / 2, x + s / 2) for x, s in zip(center, roiNode.GetSize())]
-            roi_points_ras = [item for sublist in roi_points_ras for item in sublist]
-        elif roiNode.__class__.__name__ == "vtkMRMLAnnotationROINode":
-            # for vtkMRMLAnnotationROINode (old method)
-            print(roiNode.__class__.__name__)
-            roiNode.GetBounds(roi_points_ras)
-        else:
-            # if none found then best to return empty list
-            return []
-
-        min_points_ras = [roi_points_ras[0], roi_points_ras[2], roi_points_ras[4], 1.0]
-        max_points_ras = [roi_points_ras[0 + 1], roi_points_ras[2 + 1], roi_points_ras[4 + 1], 1.0]
-
-        min_points_ijk = RasToIjkMatrix.MultiplyDoublePoint(min_points_ras)
-        max_points_ijk = RasToIjkMatrix.MultiplyDoublePoint(max_points_ras)
-
-        min_points_ijk = [round(i) for i in min_points_ijk]
-        max_points_ijk = [round(i) for i in max_points_ijk]
-
-        roi_points_ijk = [val for pair in zip(min_points_ijk[0:3], max_points_ijk[0:3]) for val in pair]
-        logging.debug("RAS: {}; IJK: {}".format(roi_points_ras, roi_points_ijk))
-        # print("RAS: {}; IJK: {}".format(roi_points_ras, roi_points_ijk))
-
-        return roi_points_ijk
-
-    def onClearScribblesSegmentNodes(self):
-        # more explanation on this at:
-        # https://discourse.slicer.org/t/how-to-clear-segmentation/7433/4
-        # clear "scribbles" segment before saving the label
-        if not self._segmentNode:
-            return
-
-        segmentation = self._segmentNode
-        num_segments = segmentation.GetSegmentation().GetNumberOfSegments()
-        for i in range(num_segments):
-            segmentId = segmentation.GetSegmentation().GetNthSegmentID(i)
-            if "scribbles" in segmentId:
-                logging.info("clearning {}".format(segmentId))
-                labelMapRep = slicer.vtkOrientedImageData()
-                segmentation.GetBinaryLabelmapRepresentation(segmentId, labelMapRep)
-                vtkSegmentationCore.vtkOrientedImageDataResample.FillImage(labelMapRep, 0, labelMapRep.GetExtent())
-                slicer.vtkSlicerSegmentationsModuleLogic.SetBinaryLabelmapToSegment(
-                    labelMapRep, segmentation, segmentId, slicer.vtkSlicerSegmentationsModuleLogic.MODE_REPLACE
-                )
-
-    def onClearScribbles(self):
-        # reset scribbles mode
-        self.scribblesMode = None
-
-        # clear scribbles editor widget
-        if self._scribblesEditorWidget:
-            widget = self._scribblesEditorWidget
-            del widget
-        self._scribblesEditorWidget = None
-
-        # remove "scribbles" segments from label
-        self.onClearScribblesSegmentNodes()
-
-        # update tool/layer display
-        self.updateScribblesStatusIcons()
-
-        self.ui.scribblesCollapsibleButton.setEnabled(False)
-        self.ui.scribblesCollapsibleButton.setVisible(False)
-        self.ui.scribblesCollapsibleButton.collapsed = True
-
-    def checkAndInitialiseScribbles(self):
-        if self._scribblesEditorWidget is None:
-            self.onStartScribbling()
-
-        if self.scribblesMode is None:
-            self.changeScribblesMode(tool="Paint", layer="foreground_scribbles")
-            self.updateScribToolLayerFromMode()
-
-    def updateScribToolLayerFromMode(self):
-        logging.info("Scribbles mode {} ".format(self.scribblesMode))
-        self.checkAndInitialiseScribbles()
-
-        # update tool/layer select for scribblesEditorWidget
-        tool, layer = self.getToolAndLayerFromScribblesMode()
-        self._scribblesEditorWidget.setActiveEffectByName(tool)
-        self._scribblesEditorWidget.setCurrentSegmentID(layer)
-
-        # update brush type from checkbox
-        is3dbrush = self.ui.brush3dCheckbox.checkState()
-        self.on3dBrushCheckbox(state=is3dbrush)
-
-        # update brush size from slider
-        brushSize = self.ui.brushSizeSlider.value
-        self.updateBrushSize(value=brushSize)
-
-        # show user the selected tools
-        self.updateScribblesStatusIcons()
-
-    def getToolAndLayerFromScribblesMode(self):
-        if self.scribblesMode is not None:
-            return self.scribblesMode.split("+")
-        else:
-            # default modes
-            return "Paint", "foreground_scribbles"
-
-    def changeScribblesMode(self, tool=None, layer=None):
-        ctool, clayer = self.getToolAndLayerFromScribblesMode()
-
-        ctool = tool if tool != None else ctool
-        clayer = layer if layer != None else clayer
-
-        self.scribblesMode = "+".join([ctool, clayer])
-
-    def onPaintScribbles(self):
-        self.changeScribblesMode(tool="Paint")
-        self.updateScribToolLayerFromMode()
-
-    def onEraseScribbles(self):
-        self.changeScribblesMode(tool="Erase")
-        self.updateScribToolLayerFromMode()
-
-    def onSelectForegroundScribbles(self):
-        self.changeScribblesMode(layer="foreground_scribbles")
-        self.updateScribToolLayerFromMode()
-
-    def onSelectBackgroundScribbles(self):
-        self.changeScribblesMode(layer="background_scribbles")
-        self.updateScribToolLayerFromMode()
-
-    def updateScribblesStatusIcons(self):
-        if self.scribblesMode is None:
-            self.ui.selectedScribblesDisplay.setIcon(self.icon("gray.svg"))
-            self.ui.selectedToolDisplay.setIcon(self.icon("gray.svg"))
-        else:
-            tool, layer = self.getToolAndLayerFromScribblesMode()
-
-            # update tool icon
-            if tool == "Paint":
-                self.ui.selectedToolDisplay.setIcon(self.icon("tool-brush.svg"))
-            elif tool == "Erase":
-                self.ui.selectedToolDisplay.setIcon(self.icon("eraser.svg"))
-
-            # update scirbbles layer icon
-            if layer == "foreground_scribbles":
-                self.ui.selectedScribblesDisplay.setIcon(self.icon("fg_green.svg"))
-            elif layer == "background_scribbles":
-                self.ui.selectedScribblesDisplay.setIcon(self.icon("bg_red.svg"))
-
-    def on3dBrushCheckbox(self, state):
-        logging.info("3D brush update {}".format(state))
-        self.checkAndInitialiseScribbles()
-        effect = self._scribblesEditorWidget.activeEffect()
-
-        # enable scribbles in 3d using a sphere brush
-        effect.setParameter("BrushSphere", state)
-
-    def updateBrushSize(self, value):
-        logging.info("brush size update {}".format(value))
-        self.checkAndInitialiseScribbles()
-        effect = self._scribblesEditorWidget.activeEffect()
-
-        # change scribbles brush size
-        effect.setParameter("BrushAbsoluteDiameter", value)
 
     def onSceneStartClose(self, caller, event):
         self.state = {
@@ -604,6 +330,10 @@ class MONAILabelWidget(ScriptedLoadableModuleWidget, VTKObservationMixin):
         if self.parent.isEntered:
             self.initializeParameterNode()
 
+    def onSceneEndImport(self, caller, event):
+        if not self._volumeNode:
+            self.updateGUIFromParameterNode()
+
     def initializeParameterNode(self):
         self.setParameterNode(self.logic.getParameterNode())
 
@@ -634,8 +364,7 @@ class MONAILabelWidget(ScriptedLoadableModuleWidget, VTKObservationMixin):
             if not train_stats:
                 return
 
-            if self.v2:
-                train_stats = next(iter(train_stats.values())) if train_stats else train_stats
+            train_stats = next(iter(train_stats.values())) if train_stats else train_stats
 
             current = 0 if train_stats.get("total_time") else train_stats.get("epoch", 1)
             total = train_stats.get("total_epochs", 1)
@@ -665,13 +394,24 @@ class MONAILabelWidget(ScriptedLoadableModuleWidget, VTKObservationMixin):
         # Make sure GUI changes do not call updateParameterNodeFromGUI (it could cause infinite loop)
         self._updatingGUIFromParameterNode = True
 
+        file_ext = slicer.util.settingsValue("MONAILabel/fileExtension", self.file_ext)
+        self.file_ext = file_ext if file_ext else self.file_ext
+
         # Update node selectors and sliders
         self.ui.inputSelector.clear()
         for v in self._volumeNodes:
             self.ui.inputSelector.addItem(v.GetName())
         if self._volumeNode:
             self.ui.inputSelector.setCurrentIndex(self.ui.inputSelector.findText(self._volumeNode.GetName()))
-        self.ui.inputSelector.setEnabled(self._volumeNode is not None)
+        self.ui.inputSelector.setEnabled(False)  # Allow only one active scene
+
+        self.ui.uploadImageButton.setEnabled(False)
+        if self.info and slicer.mrmlScene.GetFirstNodeByClass("vtkMRMLScalarVolumeNode") and self._volumeNode is None:
+            self._volumeNode = slicer.mrmlScene.GetFirstNodeByClass("vtkMRMLScalarVolumeNode")
+            self.initSample({"id": self._volumeNode.GetName(), "session": True}, autosegment=False)
+            self.ui.inputSelector.setEnabled(False)
+
+        self.ui.uploadImageButton.setEnabled(self.current_sample and self.current_sample.get("session"))
 
         self.updateSelector(self.ui.segmentationModelSelector, ["segmentation"], "SegmentationModel", 0)
         self.updateSelector(self.ui.deepgrowModelSelector, ["deepgrow"], "DeepgrowModel", 0)
@@ -685,8 +425,20 @@ class MONAILabelWidget(ScriptedLoadableModuleWidget, VTKObservationMixin):
             self.ui.scribblesCollapsibleButton.collapsed = False
 
         self.ui.labelComboBox.clear()
-        for label in self.info.get("labels", {}):
-            self.ui.labelComboBox.addItem(label)
+        if self._segmentNode:
+            segmentation = self._segmentNode.GetSegmentation()
+            totalSegments = segmentation.GetNumberOfSegments()
+            segmentIds = [segmentation.GetNthSegmentID(i) for i in range(totalSegments)]
+            for idx, segmentId in enumerate(segmentIds):
+                segment = segmentation.GetSegment(segmentId)
+                label = segment.GetName()
+                if label in ["foreground_scribbles", "background_scribbles"]:
+                    continue
+                self.ui.labelComboBox.addItem(label)
+        else:
+            for label in self.info.get("labels", {}):
+                self.ui.labelComboBox.addItem(label)
+
         currentLabel = self._parameterNode.GetParameter("CurrentLabel")
         idx = self.ui.labelComboBox.findText(currentLabel) if currentLabel else 0
         idx = 0 if idx < 0 < self.ui.labelComboBox.count else idx
@@ -702,8 +454,7 @@ class MONAILabelWidget(ScriptedLoadableModuleWidget, VTKObservationMixin):
         self.ui.activeLearningProgressBar.setToolTip(f"{current}/{total} samples are labeled")
 
         train_stats = self.info.get("train_stats", {})
-        if self.v2:
-            train_stats = next(iter(train_stats.values())) if train_stats else train_stats
+        train_stats = next(iter(train_stats.values())) if train_stats else train_stats
 
         dice = train_stats.get("best_metric", 0)
         self.updateAccuracyBar(dice)
@@ -738,9 +489,6 @@ class MONAILabelWidget(ScriptedLoadableModuleWidget, VTKObservationMixin):
             self.ui.segmentationModelSelector.currentText and self._volumeNode is not None
         )
         self.ui.saveLabelButton.setEnabled(self._segmentNode is not None)
-        self.ui.uploadImageButton.setEnabled(
-            self.info and slicer.mrmlScene.GetFirstNodeByClass("vtkMRMLScalarVolumeNode") and self._segmentNode is None
-        )
         self.ui.importLabelButton.setEnabled(self._segmentNode is not None)
 
         # Create empty markup fiducial node for deep grow +ve and -ve
@@ -823,7 +571,7 @@ class MONAILabelWidget(ScriptedLoadableModuleWidget, VTKObservationMixin):
             selector.setToolTip("")
         selector.blockSignals(wasSelectorBlocked)
 
-    def updateConfigTableV2(self):
+    def updateConfigTable(self):
         table = self.ui.configTable
         table.clear()
         headers = ["section", "name", "key", "value"]
@@ -908,55 +656,6 @@ class MONAILabelWidget(ScriptedLoadableModuleWidget, VTKObservationMixin):
                     # print(f"{n} => {section} => {name} => {key} => {val}")
                     n = n + 1
 
-    def updateConfigTable(self):
-        table = self.ui.configTable
-        table.clear()
-        headers = ["section", "key", "value"]
-        table.setColumnCount(len(headers))
-        table.setHorizontalHeaderLabels(headers)
-
-        config = copy.deepcopy(self.config)
-        infer = config.get("infer", {})
-        train = config.get("train", {})
-        activelearning = config.get("activelearning", {})
-        table.setRowCount(len(infer) + len(activelearning) + len(train))
-
-        config = {"infer": infer, "activelearning": activelearning, "train": train}
-        colors = {
-            "infer": qt.QColor(255, 255, 255),
-            "activelearning": qt.QColor(220, 220, 220),
-            "train": qt.QColor(255, 255, 255),
-        }
-
-        n = 0
-        for section in config:
-            table.setSpan(n, 0, n + len(config[section]), 1)
-            for key in config[section]:
-                item = qt.QTableWidgetItem(section)
-                item.setFlags(item.flags() & ~qt.Qt.ItemIsEditable)
-                table.setItem(n, 0, item)
-
-                item = qt.QTableWidgetItem(key)
-                table.setItem(n, 1, item)
-                item.setFlags(item.flags() & ~qt.Qt.ItemIsEditable)
-
-                val = config[section][key]
-                if isinstance(val, dict) or isinstance(val, list):
-                    combo = qt.QComboBox()
-                    for m, v in enumerate(val):
-                        combo.addItem(v)
-                    combo.setCurrentIndex(0)
-                    table.setCellWidget(n, 2, combo)
-                elif isinstance(val, bool):
-                    checkbox = qt.QCheckBox()
-                    checkbox.setChecked(val)
-                    table.setCellWidget(n, 2, checkbox)
-                else:
-                    table.setItem(n, 2, qt.QTableWidgetItem(str(val)))
-
-                table.item(n, 0).setBackground(colors[section])
-                n = n + 1
-
     def updateAccuracyBar(self, dice):
         self.ui.accuracyProgressBar.setValue(dice * 100)
         css = ["stop: 0 red"]
@@ -977,7 +676,7 @@ class MONAILabelWidget(ScriptedLoadableModuleWidget, VTKObservationMixin):
         )
         self.ui.accuracyProgressBar.setToolTip(f"Accuracy: {dice:.4f}")
 
-    def getParamsFromConfigV2(self, filter, filter2):
+    def getParamsFromConfig(self, filter, filter2=None):
         mapping = {
             "infer": "models",
             "train": "trainers",
@@ -1015,33 +714,6 @@ class MONAILabelWidget(ScriptedLoadableModuleWidget, VTKObservationMixin):
         res = res.get(filter2, {}) if filter2 else res
         return res
 
-    def getParamsFromConfig(self, filter, filter2=None):
-        if self.v2:
-            return self.getParamsFromConfigV2(filter, filter2)
-
-        config = {}
-        for row in range(self.ui.configTable.rowCount):
-            section = str(self.ui.configTable.item(row, 0).text())
-            name = str(self.ui.configTable.item(row, 1).text())
-            value = self.ui.configTable.item(row, 2)
-            if value is None:
-                value = self.ui.configTable.cellWidget(row, 2)
-                value = value.checked if isinstance(value, qt.QCheckBox) else value.currentText
-            else:
-                value = str(value.text())
-
-            v = self.config.get(section, {}).get(name, {})
-            if isinstance(v, int):
-                value = int(value)
-            elif isinstance(v, float):
-                value = float(value)
-
-            if config.get(section) is None:
-                config[section] = {}
-            config[section][name] = value
-            # print(f"row: {row}, section: {section}, name: {name}, value: {value}, type: {type(v)}")
-        return config.get(filter, {})
-
     def onDeepGrowFiducialNodeModified(self, observer, eventid):
         logging.debug("Deepgrow Point Event!!")
 
@@ -1060,7 +732,7 @@ class MONAILabelWidget(ScriptedLoadableModuleWidget, VTKObservationMixin):
         self.onEditFiducialPoints(self.dgNegativeFiducialNode, "MONAILabel.BackgroundPoints")
         self.ignoreFiducialNodeAddEvent = False
 
-    def getFiducialPointsXYZ(self, fiducialNode):
+    def getFiducialPointsXYZ(self, fiducialNode, name):
         v = self._volumeNode
         RasToIjkMatrix = vtk.vtkMatrix4x4()
         v.GetRASToIJKMatrix(RasToIjkMatrix)
@@ -1081,7 +753,7 @@ class MONAILabelWidget(ScriptedLoadableModuleWidget, VTKObservationMixin):
             logging.debug("RAS: {}; WORLD: {}; IJK: {}".format(coord, world, p_Ijk))
             point_set.append(p_Ijk[0:3])
 
-        logging.info("Current Fiducials-Points: {}".format(point_set))
+        logging.info("{} => Current Fiducials-Points: {}".format(name, point_set))
         return point_set
 
     def getFiducialPointXYZ(self, fiducialNode, index):
@@ -1136,8 +808,11 @@ class MONAILabelWidget(ScriptedLoadableModuleWidget, VTKObservationMixin):
 
     def onSelectLabel(self, caller=None, event=None):
         self.updateParameterNodeFromGUI(caller, event)
+
+        self.ignoreFiducialNodeAddEvent = True
         self.onEditFiducialPoints(self.dgPositiveFiducialNode, "MONAILabel.ForegroundPoints")
         self.onEditFiducialPoints(self.dgNegativeFiducialNode, "MONAILabel.BackgroundPoints")
+        self.ignoreFiducialNodeAddEvent = False
 
     def icon(self, name="MONAILabel.png"):
         # It should not be necessary to modify this method
@@ -1148,6 +823,7 @@ class MONAILabelWidget(ScriptedLoadableModuleWidget, VTKObservationMixin):
 
     def updateServerSettings(self):
         self.logic.setServer(self.serverUrl())
+        self.logic.setClientId(slicer.util.settingsValue("MONAILabel/clientId", "user-xyz"))
         self.saveServerUrl()
 
     def serverUrl(self):
@@ -1183,13 +859,7 @@ class MONAILabelWidget(ScriptedLoadableModuleWidget, VTKObservationMixin):
 
     def onClickFetchInfo(self):
         self.fetchInfo()
-        if self.v2:
-            self.updateConfigTableV2()
-        else:
-            self.updateConfigTable()
-
-        # if self._volumeNode is None:
-        #    self.onNextSampleButton()
+        self.updateConfigTable()
 
     def fetchInfo(self, showInfo=False):
         if not self.logic:
@@ -1200,7 +870,12 @@ class MONAILabelWidget(ScriptedLoadableModuleWidget, VTKObservationMixin):
             self.updateServerSettings()
             info = self.logic.info()
             self.info = info
-            self.v2 = False if self.info.get("config") else True
+            if self.info.get("config"):
+                slicer.util.errorDisplay(
+                    "Please upgrade the monai server to latest version",
+                    detailedText=traceback.format_exc(),
+                )
+                return
         except:
             slicer.util.errorDisplay(
                 "Failed to fetch models from remote server. "
@@ -1404,7 +1079,7 @@ class MONAILabelWidget(ScriptedLoadableModuleWidget, VTKObservationMixin):
                 )[0]
 
             self.initSample(sample)
-            slicer_settings = self.getParamsFromConfigV2("viewer", "slicer")
+            slicer_settings = self.getParamsFromConfig("viewer", "slicer")
             ww = slicer_settings.get("WW", None)
             wl = slicer_settings.get("WL", None)
             self.initWindowing(ww, wl)
@@ -1455,18 +1130,25 @@ class MONAILabelWidget(ScriptedLoadableModuleWidget, VTKObservationMixin):
             volumeNode.GetDisplayNode().SetAutoWindowLevel(False)
             volumeNode.GetDisplayNode().SetWindowLevelMinMax(WL - WW / 2, WL + WW / 2)
 
-    def onUploadImage(self):
+    def getPermissionForImageDataUpload(self):
+        return slicer.util.confirmOkCancelDisplay(
+            "Master volume - without any additional patient information -"
+            " will be sent to remote data processing server: {0}.\n\n"
+            "Click 'OK' to proceed with the segmentation.\n"
+            "Click 'Cancel' to not upload any data and cancel segmentation.\n".format(self.serverUrl()),
+            dontShowAgainSettingsKey="MONAILabel/showImageDataSendWarning",
+        )
+
+    def onUploadImage(self, init_sample=True, session=False):
         volumeNode = slicer.mrmlScene.GetFirstNodeByClass("vtkMRMLScalarVolumeNode")
-        name = volumeNode.GetName()
-        image_id = f"{name}.nii.gz"
-        if not slicer.util.confirmOkCancelDisplay(
-            f"This will push/update volume to MONAILabel server as {image_id}\n" "Are you sure to continue?"
-        ):
-            return
+        image_id = volumeNode.GetName()
+
+        if not self.getPermissionForImageDataUpload():
+            return False
 
         try:
             qt.QApplication.setOverrideCursor(qt.Qt.WaitCursor)
-            in_file = tempfile.NamedTemporaryFile(suffix=".nii.gz", dir=self.tmpdir).name
+            in_file = tempfile.NamedTemporaryFile(suffix=self.file_ext, dir=self.tmpdir).name
             self.reportProgress(5)
 
             start = time.time()
@@ -1474,18 +1156,31 @@ class MONAILabelWidget(ScriptedLoadableModuleWidget, VTKObservationMixin):
             logging.info("Saved Input Node into {0} in {1:3.1f}s".format(in_file, time.time() - start))
             self.reportProgress(30)
 
-            self.logic.upload_image(in_file, image_id)
+            if session:
+                self.current_sample["session_id"] = self.logic.create_session(in_file)["session_id"]
+            else:
+                self.logic.upload_image(in_file, image_id)
+                self.current_sample["session"] = False
             self.reportProgress(100)
 
             self._volumeNode = volumeNode
-            self.initSample({"id": image_id}, autosegment=False)
+            if init_sample:
+                self.initSample({"id": image_id}, autosegment=False)
             qt.QApplication.restoreOverrideCursor()
 
             self.updateGUIFromParameterNode()
+            return True
         except:
             self.reportProgress(100)
             qt.QApplication.restoreOverrideCursor()
-            slicer.util.errorDisplay("Failed to upload volume to Server", detailedText=traceback.format_exc())
+            if session:
+                slicer.util.errorDisplay(
+                    "Server Error:: Session creation Failed\nPlease upgrade to latest monailable version (> 0.2.0)",
+                    detailedText=traceback.format_exc(),
+                )
+            else:
+                slicer.util.errorDisplay("Failed to upload volume to Server", detailedText=traceback.format_exc())
+            return False
 
     def onImportLabel(self):
         if not self.ui.labelPathLineEdit.currentPath or not os.path.exists(self.ui.labelPathLineEdit.currentPath):
@@ -1505,6 +1200,11 @@ class MONAILabelWidget(ScriptedLoadableModuleWidget, VTKObservationMixin):
         labelmapVolumeNode = None
         result = None
         self.onClearScribbles()
+
+        if self.current_sample["session"]:
+            if not self.onUploadImage(init_sample=False):
+                return
+
         try:
             qt.QApplication.setOverrideCursor(qt.Qt.WaitCursor)
             segmentationNode = self._segmentNode
@@ -1518,17 +1218,17 @@ class MONAILabelWidget(ScriptedLoadableModuleWidget, VTKObservationMixin):
             segmentIds = [segmentation.GetNthSegmentID(i) for i in range(totalSegments)]
 
             label_info = []
-            for segmentId in segmentIds:
+            for idx, segmentId in enumerate(segmentIds):
                 segment = segmentation.GetSegment(segmentId)
                 if segment.GetName() in ["foreground_scribbles", "background_scribbles"]:
                     logging.info(f"Removing segment {segmentId}: {segment.GetName()}")
                     segmentationNode.RemoveSegment(segmentId)
                     continue
 
-                label_info.append({"name": segment.GetName()})
+                label_info.append({"name": segment.GetName(), "idx": idx + 1})
                 # label_info.append({"color": segment.GetColor()})
 
-            label_in = tempfile.NamedTemporaryFile(suffix=".nii.gz", dir=self.tmpdir).name
+            label_in = tempfile.NamedTemporaryFile(suffix=self.file_ext, dir=self.tmpdir).name
             self.reportProgress(5)
 
             slicer.util.saveNode(labelmapVolumeNode, label_in)
@@ -1564,6 +1264,15 @@ class MONAILabelWidget(ScriptedLoadableModuleWidget, VTKObservationMixin):
 
         logging.info("Time consumed by save label: {0:3.1f}".format(time.time() - start))
 
+    def getSessionId(self):
+        session_id = None
+        if self.current_sample.get("session", False):
+            session_id = self.current_sample.get("session_id")
+            if not session_id or not self.logic.get_session(session_id):
+                self.onUploadImage(init_sample=False, session=True)
+                session_id = self.current_sample["session_id"]
+        return session_id
+
     def onClickSegmentation(self):
         if not self.current_sample:
             return
@@ -1577,8 +1286,10 @@ class MONAILabelWidget(ScriptedLoadableModuleWidget, VTKObservationMixin):
 
             model = self.ui.segmentationModelSelector.currentText
             image_file = self.current_sample["id"]
+            params = self.getParamsFromConfig("infer", model)
 
-            result_file, params = self.logic.infer(model, image_file, self.getParamsFromConfig("infer", model))
+            result_file, params = self.logic.infer(model, image_file, params, session_id=self.getSessionId())
+            print(f"Result Params for Segmentation: {params}")
 
             labels = (
                 params.get("label_names") if params and params.get("label_names") else self.models[model].get("labels")
@@ -1609,8 +1320,8 @@ class MONAILabelWidget(ScriptedLoadableModuleWidget, VTKObservationMixin):
             slicer.util.warningDisplay("Please add the required label to run deepgrow")
             return
 
-        foreground_all = self.getFiducialPointsXYZ(self.dgPositiveFiducialNode)
-        background_all = self.getFiducialPointsXYZ(self.dgNegativeFiducialNode)
+        foreground_all = self.getFiducialPointsXYZ(self.dgPositiveFiducialNode, "foreground")
+        background_all = self.getFiducialPointsXYZ(self.dgNegativeFiducialNode, "background")
 
         segment.SetTag("MONAILabel.ForegroundPoints", json.dumps(foreground_all))
         segment.SetTag("MONAILabel.BackgroundPoints", json.dumps(background_all))
@@ -1650,7 +1361,7 @@ class MONAILabelWidget(ScriptedLoadableModuleWidget, VTKObservationMixin):
             params.update(self.getParamsFromConfig("infer", model))
             print(f"Request Params for Deepgrow/Deepedit: {params}")
 
-            result_file, params = self.logic.infer(model, image_file, params)
+            result_file, params = self.logic.infer(model, image_file, params, session_id=self.getSessionId())
             print(f"Result Params for Deepgrow/Deepedit: {params}")
 
             self.updateSegmentationMask(result_file, [label], None if deepgrow_3d else sliceIndex)
@@ -1681,9 +1392,6 @@ class MONAILabelWidget(ScriptedLoadableModuleWidget, VTKObservationMixin):
 
     def updateSegmentationMask(self, in_file, labels, sliceIndex=None):
         # TODO:: Add ROI Node (for Bounding Box if provided in the result)
-        labels = [l for l in labels if l != "background"]
-        print(f"Update Segmentation Mask using Labels: {labels}")
-
         start = time.time()
         logging.debug("Update Segmentation Mask from: {}".format(in_file))
         if in_file and not os.path.exists(in_file):
@@ -1691,6 +1399,9 @@ class MONAILabelWidget(ScriptedLoadableModuleWidget, VTKObservationMixin):
 
         segmentationNode = self._segmentNode
         segmentation = segmentationNode.GetSegmentation()
+
+        labels = [l for l in labels if l != "background"]
+        print(f"Update Segmentation Mask using Labels: {labels}")
 
         if in_file is None:
             for label in labels:
@@ -1818,18 +1529,307 @@ class MONAILabelWidget(ScriptedLoadableModuleWidget, VTKObservationMixin):
                 fiducialNodeObservers.append(fiducialNode.AddObserver(eventId, onMarkupNodeModified))
         return fiducialNodeObservers
 
+    def scribblesLayersPresent(self):
+        scribbles_exist = False
+        if self._segmentNode is not None:
+            segmentationNode = self._segmentNode
+            segmentation = segmentationNode.GetSegmentation()
+            numSegments = segmentation.GetNumberOfSegments()
+            segmentIds = [segmentation.GetNthSegmentID(i) for i in range(numSegments)]
+            scribbles_exist = sum([int("scribbles" in sid) for sid in segmentIds]) > 0
+        return scribbles_exist
+
+    def onStartScribbling(self):
+        if not self._segmentNode:
+            return
+
+        logging.debug("Scribbles start event")
+        if (not self.scribblesLayersPresent()) and (self._scribblesEditorWidget is None):
+            # add background, layer index = -2 [2], color = red
+            self._segmentNode.GetSegmentation().AddEmptySegment(
+                "background_scribbles", "background_scribbles", [1.0, 0.0, 0.0]
+            )
+
+            # add foreground, layer index = -1 [3], color = green
+            self._segmentNode.GetSegmentation().AddEmptySegment(
+                "foreground_scribbles", "foreground_scribbles", [0.0, 1.0, 0.0]
+            )
+
+            # change segmentation display properties to "see through" the scribbles
+            # further explanation at:
+            # https://apidocs.slicer.org/master/classvtkMRMLSegmentationDisplayNode.html
+            segmentationDisplayNode = self._segmentNode.GetDisplayNode()
+
+            # background
+            opacity = 0.2
+            segmentationDisplayNode.SetSegmentOpacity2DFill("background_scribbles", opacity)
+            segmentationDisplayNode.SetSegmentOpacity2DOutline("background_scribbles", opacity)
+
+            # foreground
+            segmentationDisplayNode.SetSegmentOpacity2DFill("foreground_scribbles", opacity)
+            segmentationDisplayNode.SetSegmentOpacity2DOutline("foreground_scribbles", opacity)
+
+            # create segmentEditorWidget to access "Paint" and "Erase" segmentation tools
+            # these will be used to draw scribbles
+            self._scribblesEditorWidget = slicer.qMRMLSegmentEditorWidget()
+            self._scribblesEditorWidget.setMRMLScene(slicer.mrmlScene)
+            segmentEditorNode = slicer.vtkMRMLSegmentEditorNode()
+
+            # adding new scribbles can overwrite a new one-hot vector, hence erase any existing
+            # labels - this is not a desired behaviour hence we swith to overlay mode that enables drawing
+            # scribbles without changing existing labels. Further explanation at:
+            # https://discourse.slicer.org/t/how-can-i-set-masking-settings-on-a-segment-editor-effect-in-python/4406/7
+            segmentEditorNode.SetOverwriteMode(slicer.vtkMRMLSegmentEditorNode.OverwriteNone)
+
+            # add all nodes to the widget
+            slicer.mrmlScene.AddNode(segmentEditorNode)
+            self._scribblesEditorWidget.setMRMLSegmentEditorNode(segmentEditorNode)
+            self._scribblesEditorWidget.setSegmentationNode(self._segmentNode)
+            self._scribblesEditorWidget.setMasterVolumeNode(self._volumeNode)
+
+    def onUpdateScribbles(self):
+        logging.info("Scribbles update event")
+        scribblesMethod = self.ui.scribblesMethodSelector.currentText
+        scribbles_in = None
+        result_file = None
+
+        try:
+            qt.QApplication.setOverrideCursor(qt.Qt.WaitCursor)
+
+            # get scribbles + label
+            segmentationNode = self._segmentNode
+            labelmapVolumeNode = slicer.mrmlScene.AddNewNodeByClass("vtkMRMLLabelMapVolumeNode")
+            slicer.modules.segmentations.logic().ExportVisibleSegmentsToLabelmapNode(
+                segmentationNode, labelmapVolumeNode, self._volumeNode
+            )
+            scribbles_in = tempfile.NamedTemporaryFile(suffix=self.file_ext, dir=self.tmpdir).name
+            self.reportProgress(5)
+
+            # save scribbles + label to file
+            slicer.util.saveNode(labelmapVolumeNode, scribbles_in)
+            self.reportProgress(30)
+            self.updateServerSettings()
+            self.reportProgress(60)
+
+            # try to first fetch vtkMRMLAnnotationROINode
+            roiNode = slicer.mrmlScene.GetFirstNodeByClass("vtkMRMLAnnotationROINode")
+            if roiNode == None:  # if vtkMRMLAnnotationROINode not present, then check for vtkMRMLMarkupsROINode node
+                roiNode = slicer.mrmlScene.GetFirstNodeByClass("vtkMRMLMarkupsROINode")
+
+            # if roi node found, then try to get roi
+            selected_roi = self.getROIPointsXYZ(roiNode)
+
+            # send scribbles + label to server along with selected scribbles method
+            params = self.getParamsFromConfig("infer", scribblesMethod)
+            params.update({"roi": selected_roi})
+
+            image_file = self.current_sample["id"]
+            result_file, params = self.logic.infer(
+                scribblesMethod, image_file, params, scribbles_in, session_id=self.getSessionId()
+            )
+
+            # display result from server
+            self.reportProgress(90)
+            _, segment = self.currentSegment()
+            label = segment.GetName()
+            self.updateSegmentationMask(result_file, [label])
+        except:
+            slicer.util.errorDisplay(
+                "Failed to post process label on MONAI Label Server using {}".format(scribblesMethod),
+                detailedText=traceback.format_exc(),
+            )
+        finally:
+            qt.QApplication.restoreOverrideCursor()
+            self.reportProgress(100)
+
+            # clear all temporary files
+            if scribbles_in and os.path.exists(scribbles_in):
+                os.unlink(scribbles_in)
+
+            if result_file and os.path.exists(result_file):
+                os.unlink(result_file)
+
+    def getROIPointsXYZ(self, roiNode):
+        if roiNode == None:
+            return []
+
+        v = self._volumeNode
+        RasToIjkMatrix = vtk.vtkMatrix4x4()
+        v.GetRASToIJKMatrix(RasToIjkMatrix)
+
+        roi_points_ras = [0.0] * 6
+        if roiNode.__class__.__name__ == "vtkMRMLMarkupsROINode":
+            # for vtkMRMLMarkupsROINode
+            print(roiNode.__class__.__name__)
+            center = [0] * 3
+            roiNode.GetCenter(center)
+            roi_points_ras = [(x - s / 2, x + s / 2) for x, s in zip(center, roiNode.GetSize())]
+            roi_points_ras = [item for sublist in roi_points_ras for item in sublist]
+        elif roiNode.__class__.__name__ == "vtkMRMLAnnotationROINode":
+            # for vtkMRMLAnnotationROINode (old method)
+            print(roiNode.__class__.__name__)
+            roiNode.GetBounds(roi_points_ras)
+        else:
+            # if none found then best to return empty list
+            return []
+
+        min_points_ras = [roi_points_ras[0], roi_points_ras[2], roi_points_ras[4], 1.0]
+        max_points_ras = [roi_points_ras[0 + 1], roi_points_ras[2 + 1], roi_points_ras[4 + 1], 1.0]
+
+        min_points_ijk = RasToIjkMatrix.MultiplyDoublePoint(min_points_ras)
+        max_points_ijk = RasToIjkMatrix.MultiplyDoublePoint(max_points_ras)
+
+        min_points_ijk = [round(i) for i in min_points_ijk]
+        max_points_ijk = [round(i) for i in max_points_ijk]
+
+        roi_points_ijk = [val for pair in zip(min_points_ijk[0:3], max_points_ijk[0:3]) for val in pair]
+        logging.debug("RAS: {}; IJK: {}".format(roi_points_ras, roi_points_ijk))
+        # print("RAS: {}; IJK: {}".format(roi_points_ras, roi_points_ijk))
+
+        return roi_points_ijk
+
+    def onClearScribblesSegmentNodes(self):
+        # more explanation on this at:
+        # https://discourse.slicer.org/t/how-to-clear-segmentation/7433/4
+        # clear "scribbles" segment before saving the label
+        if not self._segmentNode:
+            return
+
+        segmentation = self._segmentNode
+        num_segments = segmentation.GetSegmentation().GetNumberOfSegments()
+        for i in range(num_segments):
+            segmentId = segmentation.GetSegmentation().GetNthSegmentID(i)
+            if "scribbles" in segmentId:
+                logging.info("clearning {}".format(segmentId))
+                labelMapRep = slicer.vtkOrientedImageData()
+                segmentation.GetBinaryLabelmapRepresentation(segmentId, labelMapRep)
+                vtkSegmentationCore.vtkOrientedImageDataResample.FillImage(labelMapRep, 0, labelMapRep.GetExtent())
+                slicer.vtkSlicerSegmentationsModuleLogic.SetBinaryLabelmapToSegment(
+                    labelMapRep, segmentation, segmentId, slicer.vtkSlicerSegmentationsModuleLogic.MODE_REPLACE
+                )
+
+    def onClearScribbles(self):
+        # reset scribbles mode
+        self.scribblesMode = None
+
+        # clear scribbles editor widget
+        if self._scribblesEditorWidget:
+            widget = self._scribblesEditorWidget
+            del widget
+        self._scribblesEditorWidget = None
+
+        # remove "scribbles" segments from label
+        self.onClearScribblesSegmentNodes()
+
+        self.ui.scribblesCollapsibleButton.setEnabled(False)
+        self.ui.scribblesCollapsibleButton.setVisible(False)
+        self.ui.scribblesCollapsibleButton.collapsed = True
+
+    def checkAndInitialiseScribbles(self):
+        if not self._segmentNode:
+            return
+
+        if self._scribblesEditorWidget is None:
+            self.onStartScribbling()
+
+        if self.scribblesMode is None:
+            self.changeScribblesMode(tool="Paint", layer="foreground_scribbles")
+            self.updateScribToolLayerFromMode()
+
+    def updateScribToolLayerFromMode(self):
+        if not self._segmentNode:
+            return
+
+        logging.info("Scribbles mode {} ".format(self.scribblesMode))
+        self.checkAndInitialiseScribbles()
+
+        # update tool/layer select for scribblesEditorWidget
+        tool, layer = self.getToolAndLayerFromScribblesMode()
+        self._scribblesEditorWidget.setActiveEffectByName(tool)
+        self._scribblesEditorWidget.setCurrentSegmentID(layer)
+
+        # update brush type from checkbox
+        if tool in ("Paint", "Erase"):
+            is3dbrush = self.ui.brush3dCheckbox.checkState()
+            self.on3dBrushCheckbox(state=is3dbrush)
+
+            # update brush size from slider
+            brushSize = self.ui.brushSizeSlider.value
+            self.updateBrushSize(value=brushSize)
+
+    def getToolAndLayerFromScribblesMode(self):
+        if self.scribblesMode is not None:
+            return self.scribblesMode.split("+")
+        else:
+            # default modes
+            return "Paint", "foreground_scribbles"
+
+    def changeScribblesMode(self, tool=None, layer=None):
+        ctool, clayer = self.getToolAndLayerFromScribblesMode()
+
+        ctool = tool if tool != None else ctool
+        clayer = layer if layer != None else clayer
+
+        self.scribblesMode = "+".join([ctool, clayer])
+
+    def onPaintScribbles(self):
+        if not self._segmentNode:
+            return
+
+        if self.ui.eraseScribblesButton.checked:
+            self.ui.eraseScribblesButton.setChecked(False)
+
+        self.changeScribblesMode(tool="Paint" if self.ui.paintScribblesButton.checked else "None")
+        self.updateScribToolLayerFromMode()
+
+    def onEraseScribbles(self):
+        if not self._segmentNode:
+            return
+
+        if self.ui.paintScribblesButton.checked:
+            self.ui.paintScribblesButton.setChecked(False)
+
+        self.changeScribblesMode(tool="Erase" if self.ui.eraseScribblesButton.checked else "None")
+        self.updateScribToolLayerFromMode()
+
+    def onSelectScribblesLabel(self):
+        if not self._segmentNode:
+            return
+
+        index = self.ui.scribblesLabelSelector.currentIndex
+        index = 0 if index < 0 else index
+        selected = self.ui.scribblesLabelSelector.itemText(index)
+
+        layer = "foreground_scribbles" if selected == "Foreground" else "background_scribbles"
+        self.changeScribblesMode(layer=layer)
+        self.updateScribToolLayerFromMode()
+
+    def on3dBrushCheckbox(self, state):
+        logging.info("3D brush update {}".format(state))
+        self.checkAndInitialiseScribbles()
+        effect = self._scribblesEditorWidget.activeEffect()
+
+        # enable scribbles in 3d using a sphere brush
+        effect.setParameter("BrushSphere", state)
+
+    def updateBrushSize(self, value):
+        logging.info("brush size update {}".format(value))
+        if self.ui.paintScribblesButton.checked or self.ui.eraseScribblesButton.checked:
+            self.checkAndInitialiseScribbles()
+            effect = self._scribblesEditorWidget.activeEffect()
+            effect.setParameter("BrushAbsoluteDiameter", value)
+
 
 class MONAILabelLogic(ScriptedLoadableModuleLogic):
-    def __init__(self, tmpdir=None, server_url=None, progress_callback=None):
+    def __init__(self, tmpdir=None, server_url=None, progress_callback=None, client_id=None):
         ScriptedLoadableModuleLogic.__init__(self)
 
+        self.server_url = server_url
         self.tmpdir = slicer.util.tempDirectory("slicer-monai-label") if tmpdir is None else tmpdir
+        self.client_id = client_id
+
         self.volumeToSessions = dict()
         self.progress_callback = progress_callback
-
-        self.server_url = server_url
-        self.useCompression = True
-        self.useSession = False
 
     def setDefaultParameters(self, parameterNode):
         if not parameterNode.GetParameter("SegmentationModel"):
@@ -1843,9 +1843,10 @@ class MONAILabelLogic(ScriptedLoadableModuleLogic):
         shutil.rmtree(self.tmpdir, ignore_errors=True)
 
     def setServer(self, server_url=None):
-        if not server_url:
-            server_url = "http://127.0.0.1:8000"
-        self.server_url = server_url
+        self.server_url = server_url if server_url else "http://127.0.0.1:8000"
+
+    def setClientId(self, client_id):
+        self.client_id = client_id if client_id else "user-xyz"
 
     def setProgressCallback(self, progress_callback=None):
         self.progress_callback = progress_callback
@@ -1855,23 +1856,34 @@ class MONAILabelLogic(ScriptedLoadableModuleLogic):
             self.progress_callback(progress)
 
     def info(self):
-        return MONAILabelClient(self.server_url, self.tmpdir).info()
+        return MONAILabelClient(self.server_url, self.tmpdir, self.client_id).info()
 
     def next_sample(self, strategy, params={}):
-        return MONAILabelClient(self.server_url, self.tmpdir).next_sample(strategy, params)
+        return MONAILabelClient(self.server_url, self.tmpdir, self.client_id).next_sample(strategy, params)
+
+    def create_session(self, image_in):
+        return MONAILabelClient(self.server_url, self.tmpdir, self.client_id).create_session(image_in)
+
+    def get_session(self, session_id):
+        return MONAILabelClient(self.server_url, self.tmpdir, self.client_id).get_session(session_id)
+
+    def remove_session(self, session_id):
+        return MONAILabelClient(self.server_url, self.tmpdir, self.client_id).remove_session(session_id)
 
     def upload_image(self, image_in, image_id=None):
-        return MONAILabelClient(self.server_url, self.tmpdir).upload_image(image_in, image_id)
+        return MONAILabelClient(self.server_url, self.tmpdir, self.client_id).upload_image(image_in, image_id)
 
     def save_label(self, image_in, label_in, params):
-        return MONAILabelClient(self.server_url, self.tmpdir).save_label(image_in, label_in, params=params)
+        return MONAILabelClient(self.server_url, self.tmpdir, self.client_id).save_label(
+            image_in, label_in, params=params
+        )
 
-    def infer(self, model, image_in, params={}, label_in=None):
+    def infer(self, model, image_in, params={}, label_in=None, file=None, session_id=None):
         logging.debug("Preparing input data for segmentation")
         self.reportProgress(0)
 
-        client = MONAILabelClient(self.server_url, self.tmpdir)
-        result_file, params = client.infer(model, image_in, params, label_in)
+        client = MONAILabelClient(self.server_url, self.tmpdir, self.client_id)
+        result_file, params = client.infer(model, image_in, params, label_in, file, session_id)
 
         logging.debug(f"Image Response: {result_file}")
         logging.debug(f"JSON  Response: {params}")
@@ -1880,13 +1892,13 @@ class MONAILabelLogic(ScriptedLoadableModuleLogic):
         return result_file, params
 
     def train_start(self, params={}):
-        return MONAILabelClient(self.server_url, self.tmpdir).train_start(params)
+        return MONAILabelClient(self.server_url, self.tmpdir, self.client_id).train_start(params)
 
     def train_status(self, check_if_running):
-        return MONAILabelClient(self.server_url, self.tmpdir).train_status(check_if_running)
+        return MONAILabelClient(self.server_url, self.tmpdir, self.client_id).train_status(check_if_running)
 
     def train_stop(self):
-        return MONAILabelClient(self.server_url, self.tmpdir).train_stop()
+        return MONAILabelClient(self.server_url, self.tmpdir, self.client_id).train_stop()
 
 
 class MONAILabelTest(ScriptedLoadableModuleTest):
@@ -1899,317 +1911,3 @@ class MONAILabelTest(ScriptedLoadableModuleTest):
 
     def test_MONAILabel1(self):
         self.delayDisplay("Test passed")
-
-
-GenericAnatomyColors = {
-    "background": (0, 0, 0),
-    "tissue": (128, 174, 128),
-    "bone": (241, 214, 145),
-    "skin": (177, 122, 101),
-    "connective tissue": (111, 184, 210),
-    "blood": (216, 101, 79),
-    "organ": (221, 130, 101),
-    "mass": (144, 238, 144),
-    "muscle": (192, 104, 88),
-    "foreign object": (220, 245, 20),
-    "waste": (78, 63, 0),
-    "teeth": (255, 250, 220),
-    "fat": (230, 220, 70),
-    "gray matter": (200, 200, 235),
-    "white matter": (250, 250, 210),
-    "nerve": (244, 214, 49),
-    "vein": (0, 151, 206),
-    "artery": (216, 101, 79),
-    "capillary": (183, 156, 220),
-    "ligament": (183, 214, 211),
-    "tendon": (152, 189, 207),
-    "cartilage": (111, 184, 210),
-    "meniscus": (178, 212, 242),
-    "lymph node": (68, 172, 100),
-    "lymphatic vessel": (111, 197, 131),
-    "cerebro-spinal fluid": (85, 188, 255),
-    "bile": (0, 145, 30),
-    "urine": (214, 230, 130),
-    "feces": (78, 63, 0),
-    "gas": (218, 255, 255),
-    "fluid": (170, 250, 250),
-    "edema": (140, 224, 228),
-    "bleeding": (188, 65, 28),
-    "necrosis": (216, 191, 216),
-    "clot": (145, 60, 66),
-    "embolism": (150, 98, 83),
-    "head": (177, 122, 101),
-    "central nervous system": (244, 214, 49),
-    "brain": (250, 250, 225),
-    "gray matter of brain": (200, 200, 215),
-    "telencephalon": (68, 131, 98),
-    "cerebral cortex": (128, 174, 128),
-    "right frontal lobe": (83, 146, 164),
-    "left frontal lobe": (83, 146, 164),
-    "right temporal lobe": (162, 115, 105),
-    "left temporal lobe": (162, 115, 105),
-    "right parietal lobe": (141, 93, 137),
-    "left parietal lobe": (141, 93, 137),
-    "right occipital lobe": (182, 166, 110),
-    "left occipital lobe": (182, 166, 110),
-    "right insular lobe": (188, 135, 166),
-    "left insular lobe": (188, 135, 166),
-    "right limbic lobe": (154, 150, 201),
-    "left limbic lobe": (154, 150, 201),
-    "right striatum": (177, 140, 190),
-    "left striatum": (177, 140, 190),
-    "right caudate nucleus": (30, 111, 85),
-    "left caudate nucleus": (30, 111, 85),
-    "right putamen": (210, 157, 166),
-    "left putamen": (210, 157, 166),
-    "right pallidum": (48, 129, 126),
-    "left pallidum": (48, 129, 126),
-    "right amygdaloid complex": (98, 153, 112),
-    "left amygdaloid complex": (98, 153, 112),
-    "diencephalon": (69, 110, 53),
-    "thalamus": (166, 113, 137),
-    "right thalamus": (122, 101, 38),
-    "left thalamus": (122, 101, 38),
-    "pineal gland": (253, 135, 192),
-    "midbrain": (145, 92, 109),
-    "substantia nigra": (46, 101, 131),
-    "right substantia nigra": (0, 108, 112),
-    "left substantia nigra": (0, 108, 112),
-    "cerebral white matter": (250, 250, 225),
-    "right superior longitudinal fasciculus": (127, 150, 88),
-    "left superior longitudinal fasciculus": (127, 150, 88),
-    "right inferior longitudinal fasciculus": (159, 116, 163),
-    "left inferior longitudinal fasciculus": (159, 116, 163),
-    "right arcuate fasciculus": (125, 102, 154),
-    "left arcuate fasciculus": (125, 102, 154),
-    "right uncinate fasciculus": (106, 174, 155),
-    "left uncinate fasciculus": (106, 174, 155),
-    "right cingulum bundle": (154, 146, 83),
-    "left cingulum bundle": (154, 146, 83),
-    "projection fibers": (126, 126, 55),
-    "right corticospinal tract": (201, 160, 133),
-    "left corticospinal tract": (201, 160, 133),
-    "right optic radiation": (78, 152, 141),
-    "left optic radiation": (78, 152, 141),
-    "right medial lemniscus": (174, 140, 103),
-    "left medial lemniscus": (174, 140, 103),
-    "right superior cerebellar peduncle": (139, 126, 177),
-    "left superior cerebellar peduncle": (139, 126, 177),
-    "right middle cerebellar peduncle": (148, 120, 72),
-    "left middle cerebellar peduncle": (148, 120, 72),
-    "right inferior cerebellar peduncle": (186, 135, 135),
-    "left inferior cerebellar peduncle": (186, 135, 135),
-    "optic chiasm": (99, 106, 24),
-    "right optic tract": (156, 171, 108),
-    "left optic tract": (156, 171, 108),
-    "right fornix": (64, 123, 147),
-    "left fornix": (64, 123, 147),
-    "commissural fibers": (138, 95, 74),
-    "corpus callosum": (97, 113, 158),
-    "posterior commissure": (126, 161, 197),
-    "cerebellar white matter": (194, 195, 164),
-    "CSF space": (85, 188, 255),
-    "ventricles of brain": (88, 106, 215),
-    "right lateral ventricle": (88, 106, 215),
-    "left lateral ventricle": (88, 106, 215),
-    "right third ventricle": (88, 106, 215),
-    "left third ventricle": (88, 106, 215),
-    "cerebral aqueduct": (88, 106, 215),
-    "fourth ventricle": (88, 106, 215),
-    "subarachnoid space": (88, 106, 215),
-    "spinal cord": (244, 214, 49),
-    "gray matter of spinal cord": (200, 200, 215),
-    "white matter of spinal cord": (250, 250, 225),
-    "endocrine system of brain": (82, 174, 128),
-    "pituitary gland": (57, 157, 110),
-    "adenohypophysis": (60, 143, 83),
-    "neurohypophysis": (92, 162, 109),
-    "meninges": (255, 244, 209),
-    "dura mater": (255, 244, 209),
-    "arachnoid": (255, 244, 209),
-    "pia mater": (255, 244, 209),
-    "muscles of head": (201, 121, 77),
-    "salivary glands": (70, 163, 117),
-    "lips": (188, 91, 95),
-    "nose": (177, 122, 101),
-    "tongue": (166, 84, 94),
-    "soft palate": (182, 105, 107),
-    "right inner ear": (229, 147, 118),
-    "left inner ear": (229, 147, 118),
-    "right external ear": (174, 122, 90),
-    "left external ear": (174, 122, 90),
-    "right middle ear": (201, 112, 73),
-    "left middle ear": (201, 112, 73),
-    "right eyeball": (194, 142, 0),
-    "left eyeball": (194, 142, 0),
-    "skull": (241, 213, 144),
-    "right frontal bone": (203, 179, 77),
-    "left frontal bone": (203, 179, 77),
-    "right parietal bone": (229, 204, 109),
-    "left parietal bone": (229, 204, 109),
-    "right temporal bone": (255, 243, 152),
-    "left temporal bone": (255, 243, 152),
-    "right sphenoid bone": (209, 185, 85),
-    "left sphenoid bone": (209, 185, 85),
-    "right ethmoid bone": (248, 223, 131),
-    "left ethmoid bone": (248, 223, 131),
-    "occipital bone": (255, 230, 138),
-    "maxilla": (196, 172, 68),
-    "right zygomatic bone": (255, 255, 167),
-    "right lacrimal bone": (255, 250, 160),
-    "vomer bone": (255, 237, 145),
-    "right palatine bone": (242, 217, 123),
-    "left palatine bone": (242, 217, 123),
-    "mandible": (222, 198, 101),
-    "neck": (177, 122, 101),
-    "muscles of neck": (213, 124, 109),
-    "pharynx": (184, 105, 108),
-    "larynx": (150, 208, 243),
-    "thyroid gland": (62, 162, 114),
-    "right parathyroid glands": (62, 162, 114),
-    "left parathyroid glands": (62, 162, 114),
-    "skeleton of neck": (242, 206, 142),
-    "hyoid bone": (250, 210, 139),
-    "cervical vertebral column": (255, 255, 207),
-    "thorax": (177, 122, 101),
-    "trachea": (182, 228, 255),
-    "bronchi": (175, 216, 244),
-    "right lung": (197, 165, 145),
-    "left lung": (197, 165, 145),
-    "superior lobe of right lung": (172, 138, 115),
-    "superior lobe of left lung": (172, 138, 115),
-    "middle lobe of right lung": (202, 164, 140),
-    "inferior lobe of right lung": (224, 186, 162),
-    "inferior lobe of left lung": (224, 186, 162),
-    "pleura": (255, 245, 217),
-    "heart": (206, 110, 84),
-    "right atrium": (210, 115, 89),
-    "left atrium": (203, 108, 81),
-    "atrial septum": (233, 138, 112),
-    "ventricular septum": (195, 100, 73),
-    "right ventricle of heart": (181, 85, 57),
-    "left ventricle of heart": (152, 55, 13),
-    "mitral valve": (159, 63, 27),
-    "tricuspid valve": (166, 70, 38),
-    "aortic valve": (218, 123, 97),
-    "pulmonary valve": (225, 130, 104),
-    "aorta": (224, 97, 76),
-    "pericardium": (255, 244, 209),
-    "pericardial cavity": (184, 122, 154),
-    "esophagus": (211, 171, 143),
-    "thymus": (47, 150, 103),
-    "mediastinum": (255, 244, 209),
-    "skin of thoracic wall": (173, 121, 88),
-    "muscles of thoracic wall": (188, 95, 76),
-    "skeleton of thorax": (255, 239, 172),
-    "thoracic vertebral column": (226, 202, 134),
-    "ribs": (253, 232, 158),
-    "sternum": (244, 217, 154),
-    "right clavicle": (205, 179, 108),
-    "left clavicle": (205, 179, 108),
-    "abdominal cavity": (186, 124, 161),
-    "abdomen": (177, 122, 101),
-    "peritoneum": (255, 255, 220),
-    "omentum": (234, 234, 194),
-    "peritoneal cavity": (204, 142, 178),
-    "retroperitoneal space": (180, 119, 153),
-    "stomach": (216, 132, 105),
-    "duodenum": (255, 253, 229),
-    "small bowel": (205, 167, 142),
-    "colon": (204, 168, 143),
-    "anus": (255, 224, 199),
-    "liver": (221, 130, 101),
-    "biliary tree": (0, 145, 30),
-    "gallbladder": (139, 150, 98),
-    "pancreas": (249, 180, 111),
-    "spleen": (157, 108, 162),
-    "urinary system": (203, 136, 116),
-    "right kidney": (185, 102, 83),
-    "left kidney": (185, 102, 83),
-    "right ureter": (247, 182, 164),
-    "left ureter": (247, 182, 164),
-    "urinary bladder": (222, 154, 132),
-    "urethra": (124, 186, 223),
-    "right adrenal gland": (249, 186, 150),
-    "left adrenal gland": (249, 186, 150),
-    "female internal genitalia": (244, 170, 147),
-    "uterus": (255, 181, 158),
-    "right fallopian tube": (255, 190, 165),
-    "left fallopian tube": (227, 153, 130),
-    "right ovary": (213, 141, 113),
-    "left ovary": (213, 141, 113),
-    "vagina": (193, 123, 103),
-    "male internal genitalia": (216, 146, 127),
-    "prostate": (230, 158, 140),
-    "right seminal vesicle": (245, 172, 147),
-    "left seminal vesicle": (245, 172, 147),
-    "right deferent duct": (241, 172, 151),
-    "left deferent duct": (241, 172, 151),
-    "skin of abdominal wall": (177, 124, 92),
-    "muscles of abdominal wall": (171, 85, 68),
-    "skeleton of abdomen": (217, 198, 131),
-    "lumbar vertebral column": (212, 188, 102),
-    "female external genitalia": (185, 135, 134),
-    "male external genitalia": (185, 135, 134),
-    "skeleton of upper limb": (198, 175, 125),
-    "muscles of upper limb": (194, 98, 79),
-    "right upper limb": (177, 122, 101),
-    "left upper limb": (177, 122, 101),
-    "right shoulder": (177, 122, 101),
-    "left shoulder": (177, 122, 101),
-    "right arm": (177, 122, 101),
-    "left arm": (177, 122, 101),
-    "right elbow": (177, 122, 101),
-    "left elbow": (177, 122, 101),
-    "right forearm": (177, 122, 101),
-    "left forearm": (177, 122, 101),
-    "right wrist": (177, 122, 101),
-    "left wrist": (177, 122, 101),
-    "right hand": (177, 122, 101),
-    "left hand": (177, 122, 101),
-    "skeleton of lower limb": (255, 238, 170),
-    "muscles of lower limb": (206, 111, 93),
-    "right lower limb": (177, 122, 101),
-    "left lower limb": (177, 122, 101),
-    "right hip": (177, 122, 101),
-    "left hip": (177, 122, 101),
-    "right thigh": (177, 122, 101),
-    "left thigh": (177, 122, 101),
-    "right knee": (177, 122, 101),
-    "left knee": (177, 122, 101),
-    "right leg": (177, 122, 101),
-    "left leg": (177, 122, 101),
-    "right foot": (177, 122, 101),
-    "left foot": (177, 122, 101),
-    "peripheral nervous system": (216, 186, 0),
-    "autonomic nerve": (255, 226, 77),
-    "sympathetic trunk": (255, 243, 106),
-    "cranial nerves": (255, 234, 92),
-    "vagus nerve": (240, 210, 35),
-    "peripheral nerve": (224, 194, 0),
-    "circulatory system": (213, 99, 79),
-    "systemic arterial system": (217, 102, 81),
-    "systemic venous system": (0, 147, 202),
-    "pulmonary arterial system": (0, 122, 171),
-    "pulmonary venous system": (186, 77, 64),
-    "lymphatic system": (111, 197, 131),
-    "needle": (240, 255, 30),
-    "region 0": (185, 232, 61),
-    "region 1": (0, 226, 255),
-    "region 2": (251, 159, 255),
-    "region 3": (230, 169, 29),
-    "region 4": (0, 194, 113),
-    "region 5": (104, 160, 249),
-    "region 6": (221, 108, 158),
-    "region 7": (137, 142, 0),
-    "region 8": (230, 70, 0),
-    "region 9": (0, 147, 0),
-    "region 10": (0, 147, 248),
-    "region 11": (231, 0, 206),
-    "region 12": (129, 78, 0),
-    "region 13": (0, 116, 0),
-    "region 14": (0, 0, 255),
-    "region 15": (157, 0, 0),
-    "unknown": (100, 100, 130),
-    "cyst": (205, 205, 100),
-}

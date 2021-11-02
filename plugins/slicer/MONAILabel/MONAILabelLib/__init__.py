@@ -10,3 +10,4 @@
 # limitations under the License.
 
 from .client import *
+from .labelcolors import *
