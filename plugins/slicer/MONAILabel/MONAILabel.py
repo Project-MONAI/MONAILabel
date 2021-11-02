@@ -268,13 +268,14 @@ class MONAILabelWidget(ScriptedLoadableModuleWidget, VTKObservationMixin):
         self.ui.paintScribblesButton.clicked.connect(self.onPaintScribbles)
         self.ui.eraseScribblesButton.clicked.connect(self.onEraseScribbles)
         self.ui.scribblesLabelSelector.connect("currentIndexChanged(int)", self.onSelectScribblesLabel)
-        self.ui.scribblesLabelSelector.addItem("Foreground")
-        self.ui.scribblesLabelSelector.addItem("Background")
+
+        # creating editable combo box
+        self.ui.scribblesLabelSelector.addItem(self.icon("fg_green.png"), "Foreground")
+        self.ui.scribblesLabelSelector.addItem(self.icon("bg_red.png"), "Background")
         self.ui.scribblesLabelSelector.setCurrentIndex(0)
 
         # start with scribbles section disabled
         self.ui.scribblesCollapsibleButton.setEnabled(False)
-        self.ui.scribblesCollapsibleButton.setVisible(False)
         self.ui.scribblesCollapsibleButton.collapsed = True
 
         self.initializeParameterNode()
@@ -465,9 +466,6 @@ class MONAILabelWidget(ScriptedLoadableModuleWidget, VTKObservationMixin):
         currentStrategy = self._parameterNode.GetParameter("CurrentStrategy")
         currentStrategy = currentStrategy if currentStrategy else self.state["CurrentStrategy"]
         self.ui.strategyBox.setCurrentIndex(self.ui.strategyBox.findText(currentStrategy) if currentStrategy else 0)
-
-        # Show scribbles panel only if scribbles methods detected
-        self.ui.scribblesCollapsibleButton.setVisible(self.ui.scribblesMethodSelector.count)
 
         developer_mode = slicer.util.settingsValue("MONAILabel/developerMode", True, converter=slicer.util.toBool)
         self.ui.optionsCollapsibleButton.setVisible(developer_mode)
@@ -1695,9 +1693,13 @@ class MONAILabelWidget(ScriptedLoadableModuleWidget, VTKObservationMixin):
         # remove "scribbles" segments from label
         self.onClearScribblesSegmentNodes()
 
-        self.ui.scribblesCollapsibleButton.setEnabled(False)
-        self.ui.scribblesCollapsibleButton.setVisible(False)
+        # reset UI elements associated with scribbles
         self.ui.scribblesCollapsibleButton.collapsed = True
+
+        self.ui.paintScribblesButton.setChecked(False)
+        self.ui.eraseScribblesButton.setChecked(False)
+
+        self.ui.scribblesLabelSelector.setCurrentIndex(0)
 
     def checkAndInitialiseScribbles(self):
         if not self._segmentNode:
