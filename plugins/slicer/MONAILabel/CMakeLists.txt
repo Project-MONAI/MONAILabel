@@ -21,10 +21,8 @@ set(MODULE_PYTHON_RESOURCES
   Resources/Icons/contour.svg
   Resources/Icons/paint.png
   Resources/Icons/eraser.png
-  Resources/Icons/refresh-icon.png
-  Resources/Icons/fg_green.svg
-  Resources/Icons/bg_red.svg
-  Resources/Icons/gray.svg
+  Resources/Icons/fg_green.png
+  Resources/Icons/bg_red.png
   Resources/UI/${MODULE_NAME}.ui
   )
 
