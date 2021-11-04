@@ -181,7 +181,7 @@ class MONAILabelWidget(ScriptedLoadableModuleWidget, VTKObservationMixin):
 
         self.scribblesMode = None
 
-        self.autoUpdateStatus = True
+        self.autoUpdateStatus = False
 
     def setup(self):
         """
@@ -749,7 +749,7 @@ class MONAILabelWidget(ScriptedLoadableModuleWidget, VTKObservationMixin):
         if fiducialNode is None:
             return
 
-        fiducialNode.RemoveAllMarkups()
+        # fiducialNode.RemoveAllMarkups()
         segmentId, segment = self.currentSegment()
         if segment and segmentId:
             v = self._volumeNode
@@ -1352,7 +1352,8 @@ class MONAILabelWidget(ScriptedLoadableModuleWidget, VTKObservationMixin):
         segmentationNode = self._segmentNode
         segmentation = segmentationNode.GetSegmentation()
 
-        labels = [l for l in labels if l != "background"]
+        # labels = [l for l in labels if l != "background"]
+        labels = [l for l in labels]  # Background is also a label from which user provides clicks
         print(f"Update Segmentation Mask using Labels: {labels}")
 
         if in_file is None:
