@@ -6,7 +6,7 @@
    <rect>
     <x>0</x>
     <y>0</y>
-    <width>400</width>
+    <width>443</width>
     <height>804</height>
    </rect>
   </property>
@@ -88,7 +88,7 @@
      <item row="2" column="1">
       <widget class="QComboBox" name="inputSelector">
        <property name="currentText">
-        <string>Select Node</string>
+        <string/>
        </property>
        <property name="placeholderText">
         <string>Select Node</string>
@@ -382,10 +382,30 @@
       </item>
       <item row="3" column="0" colspan="2">
        <layout class="QGridLayout" name="gridLayout_2">
-        <item row="3" column="2">
-         <widget class="QLabel" name="label_10">
+        <item row="3" column="0">
+         <widget class="QLabel" name="label_6">
           <property name="text">
-           <string>Background:</string>
+           <string>Label:</string>
+          </property>
+         </widget>
+        </item>
+        <item row="3" column="5">
+         <widget class="QCheckBox" name="autoUpdateCheckBox">
+          <property name="autoFillBackground">
+           <bool>true</bool>
+          </property>
+          <property name="text">
+           <string>AutoUpdate</string>
+          </property>
+          <property name="checked">
+           <bool>true</bool>
+          </property>
+         </widget>
+        </item>
+        <item row="3" column="2">
+         <widget class="QLabel" name="label_9">
+          <property name="text">
+           <string>Landmark:</string>
           </property>
          </widget>
         </item>
@@ -402,55 +422,41 @@
           </property>
          </widget>
         </item>
-        <item row="2" column="0">
-         <widget class="QLabel" name="label_8">
-          <property name="text">
-           <string>Model:</string>
-          </property>
-         </widget>
-        </item>
-        <item row="2" column="2">
-         <widget class="QLabel" name="label_9">
-          <property name="text">
-           <string>Foreground:</string>
-          </property>
-         </widget>
-        </item>
-        <item row="2" column="1">
-         <widget class="QComboBox" name="deepgrowModelSelector">
-          <property name="sizePolicy">
-           <sizepolicy hsizetype="Expanding" vsizetype="Fixed">
-            <horstretch>0</horstretch>
-            <verstretch>0</verstretch>
-           </sizepolicy>
-          </property>
-          <property name="toolTip">
-           <string>Select Deepgrow/DeepEdit Model</string>
-          </property>
-         </widget>
-        </item>
-        <item row="3" column="0">
-         <widget class="QLabel" name="label_6">
-          <property name="text">
-           <string>Label:</string>
-          </property>
-         </widget>
-        </item>
-        <item row="2" column="3">
+        <item row="3" column="3">
          <widget class="qSlicerMarkupsPlaceWidget" name="dgPositiveFiducialPlacementWidget">
           <property name="placeMultipleMarkups">
            <enum>qSlicerMarkupsPlaceWidget::ForcePlaceMultipleMarkups</enum>
           </property>
          </widget>
         </item>
-        <item row="3" column="3">
-         <widget class="qSlicerMarkupsPlaceWidget" name="dgNegativeFiducialPlacementWidget">
-          <property name="placeMultipleMarkups">
-           <enum>qSlicerMarkupsPlaceWidget::ForcePlaceMultipleMarkups</enum>
+        <item row="3" column="4">
+         <widget class="QPushButton" name="updateDeepGrowButton">
+          <property name="text">
+           <string>Update</string>
           </property>
          </widget>
         </item>
        </layout>
+      </item>
+      <item row="0" column="0">
+       <widget class="QLabel" name="label_8">
+        <property name="text">
+         <string>Model:</string>
+        </property>
+       </widget>
+      </item>
+      <item row="0" column="1">
+       <widget class="QComboBox" name="deepgrowModelSelector">
+        <property name="sizePolicy">
+         <sizepolicy hsizetype="Expanding" vsizetype="Fixed">
+          <horstretch>0</horstretch>
+          <verstretch>0</verstretch>
+         </sizepolicy>
+        </property>
+        <property name="toolTip">
+         <string>Select Deepgrow/DeepEdit Model</string>
+        </property>
+       </widget>
       </item>
      </layout>
     </widget>

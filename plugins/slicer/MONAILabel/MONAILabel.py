@@ -173,8 +173,6 @@ class MONAILabelWidget(ScriptedLoadableModuleWidget, VTKObservationMixin):
 
         self.dgPositiveFiducialNode = None
         self.dgPositiveFiducialNodeObservers = []
-        self.dgNegativeFiducialNode = None
-        self.dgNegativeFiducialNodeObservers = []
         self.ignoreFiducialNodeAddEvent = False
 
         self.progressBar = None
@@ -182,6 +180,8 @@ class MONAILabelWidget(ScriptedLoadableModuleWidget, VTKObservationMixin):
         self.timer = None
 
         self.scribblesMode = None
+
+        self.autoUpdateStatus = True
 
     def setup(self):
         """
@@ -227,12 +227,6 @@ class MONAILabelWidget(ScriptedLoadableModuleWidget, VTKObservationMixin):
         self.ui.dgPositiveFiducialPlacementWidget.placeButton().show()
         self.ui.dgPositiveFiducialPlacementWidget.deleteButton().show()
 
-        self.ui.dgNegativeFiducialPlacementWidget.setMRMLScene(slicer.mrmlScene)
-        self.ui.dgNegativeFiducialPlacementWidget.placeButton().toolTip = "Select -ve points"
-        self.ui.dgNegativeFiducialPlacementWidget.buttonsVisible = False
-        self.ui.dgNegativeFiducialPlacementWidget.placeButton().show()
-        self.ui.dgNegativeFiducialPlacementWidget.deleteButton().show()
-
         # Connections
         self.ui.fetchServerInfoButton.connect("clicked(bool)", self.onClickFetchInfo)
         self.ui.serverComboBox.connect("currentIndexChanged(int)", self.onClickFetchInfo)
@@ -247,6 +241,11 @@ class MONAILabelWidget(ScriptedLoadableModuleWidget, VTKObservationMixin):
         self.ui.uploadImageButton.connect("clicked(bool)", self.onUploadImage)
         self.ui.importLabelButton.connect("clicked(bool)", self.onImportLabel)
         self.ui.labelComboBox.connect("currentIndexChanged(int)", self.onSelectLabel)
+        self.ui.updateDeepGrowButton.setIcon(self.icon("segment.png"))
+        self.ui.updateDeepGrowButton.clicked.connect(self.onUpdateDeepGrow)
+        self.ui.updateDeepGrowButton.setIcon(self.icon("segment.png"))
+        self.ui.autoUpdateCheckBox.stateChanged.connect(self.onAutoUpdateCheckBox)
+        self.ui.autoUpdateCheckBox.setToolTip("Enable/Disable automatic inference after providing one landmark")
 
         # Scribbles
         # brush and eraser icon from: https://tablericons.com/
@@ -313,10 +312,6 @@ class MONAILabelWidget(ScriptedLoadableModuleWidget, VTKObservationMixin):
             self.ui.dgPositiveFiducialPlacementWidget, self.dgPositiveFiducialNode, self.dgPositiveFiducialNodeObservers
         )
         self.dgPositiveFiducialNode = None
-        self.resetFiducial(
-            self.ui.dgNegativeFiducialPlacementWidget, self.dgNegativeFiducialNode, self.dgNegativeFiducialNodeObservers
-        )
-        self.dgNegativeFiducialNode = None
         self.onClearScribbles()
 
     def resetFiducial(self, fiducialWidget, fiducialNode, fiducialNodeObservers):
@@ -498,18 +493,10 @@ class MONAILabelWidget(ScriptedLoadableModuleWidget, VTKObservationMixin):
                 self.ui.dgPositiveFiducialPlacementWidget.setCurrentNode(self.dgPositiveFiducialNode)
                 self.ui.dgPositiveFiducialPlacementWidget.setPlaceModeEnabled(False)
 
-            if not self.dgNegativeFiducialNode:
-                self.dgNegativeFiducialNode, self.dgNegativeFiducialNodeObservers = self.createFiducialNode(
-                    "N", self.onDeepGrowFiducialNodeModified, [0.5, 0.5, 1]
-                )
-                self.ui.dgNegativeFiducialPlacementWidget.setCurrentNode(self.dgNegativeFiducialNode)
-                self.ui.dgNegativeFiducialPlacementWidget.setPlaceModeEnabled(False)
-
             self.ui.scribblesCollapsibleButton.setEnabled(self.ui.scribblesMethodSelector.count)
             self.ui.scribblesCollapsibleButton.collapsed = False
 
         self.ui.dgPositiveFiducialPlacementWidget.setEnabled(self.ui.deepgrowModelSelector.currentText)
-        self.ui.dgNegativeFiducialPlacementWidget.setEnabled(self.ui.deepgrowModelSelector.currentText)
 
         # All the GUI updates are done
         self._updatingGUIFromParameterNode = False
@@ -714,7 +701,6 @@ class MONAILabelWidget(ScriptedLoadableModuleWidget, VTKObservationMixin):
 
         self.ignoreFiducialNodeAddEvent = True
         self.onEditFiducialPoints(self.dgPositiveFiducialNode, "MONAILabel.ForegroundPoints")
-        self.onEditFiducialPoints(self.dgNegativeFiducialNode, "MONAILabel.BackgroundPoints")
         self.ignoreFiducialNodeAddEvent = False
 
     def getFiducialPointsXYZ(self, fiducialNode, name):
@@ -796,7 +782,6 @@ class MONAILabelWidget(ScriptedLoadableModuleWidget, VTKObservationMixin):
 
         self.ignoreFiducialNodeAddEvent = True
         self.onEditFiducialPoints(self.dgPositiveFiducialNode, "MONAILabel.ForegroundPoints")
-        self.onEditFiducialPoints(self.dgNegativeFiducialNode, "MONAILabel.BackgroundPoints")
         self.ignoreFiducialNodeAddEvent = False
 
     def icon(self, name="MONAILabel.png"):
@@ -1293,10 +1278,8 @@ class MONAILabelWidget(ScriptedLoadableModuleWidget, VTKObservationMixin):
             return
 
         foreground_all = self.getFiducialPointsXYZ(self.dgPositiveFiducialNode, "foreground")
-        background_all = self.getFiducialPointsXYZ(self.dgNegativeFiducialNode, "background")
 
         segment.SetTag("MONAILabel.ForegroundPoints", json.dumps(foreground_all))
-        segment.SetTag("MONAILabel.BackgroundPoints", json.dumps(background_all))
 
         # use model info "deepgrow" to determine
         deepgrow_3d = False if self.models[model].get("dimension", 3) == 2 else True
@@ -1314,29 +1297,26 @@ class MONAILabelWidget(ScriptedLoadableModuleWidget, VTKObservationMixin):
 
             if deepgrow_3d:
                 foreground = foreground_all
-                background = background_all
             else:
                 foreground = [x for x in foreground_all if x[2] == sliceIndex]
-                background = [x for x in background_all if x[2] == sliceIndex]
 
-            logging.debug("Foreground: {}".format(foreground))
-            logging.debug("Background: {}".format(background))
+            logging.debug("Landmarks: {}".format(foreground))
             logging.debug("Current point: {}".format(current_point))
 
             image_file = self.current_sample["id"]
             params = {
-                "label": label,
-                "foreground": foreground,
-                "background": background,
+                "Landmarks": {label: foreground},
             }
 
             params.update(self.getParamsFromConfig("infer", model))
             print(f"Request Params for Deepgrow/Deepedit: {params}")
 
-            result_file, params = self.logic.infer(model, image_file, params, session_id=self.getSessionId())
-            print(f"Result Params for Deepgrow/Deepedit: {params}")
+            # Run if AutoUpdate is enabled
+            if self.autoUpdateStatus:
+                result_file, params = self.logic.infer(model, image_file, params, session_id=self.getSessionId())
+                print(f"Result Params for Deepgrow/Deepedit: {params}")
 
-            self.updateSegmentationMask(result_file, [label], None if deepgrow_3d else sliceIndex)
+                self.updateSegmentationMask(result_file, [label], None if deepgrow_3d else sliceIndex)
         except:
             logging.exception("Unknown Exception")
             slicer.util.errorDisplay(operationDescription + " - unexpected error.", detailedText=traceback.format_exc())
@@ -1621,6 +1601,66 @@ class MONAILabelWidget(ScriptedLoadableModuleWidget, VTKObservationMixin):
             if result_file and os.path.exists(result_file):
                 os.unlink(result_file)
 
+    def onUpdateDeepGrow(self, current_point):
+        model = self.ui.deepgrowModelSelector.currentText
+        if not model:
+            slicer.util.warningDisplay("Please select a deepgrow model")
+            return
+
+        _, segment = self.currentSegment()
+        if not segment:
+            slicer.util.warningDisplay("Please add the required label to run deepgrow")
+            return
+
+        foreground_all = self.getFiducialPointsXYZ(self.dgPositiveFiducialNode, "foreground")
+
+        segment.SetTag("MONAILabel.ForegroundPoints", json.dumps(foreground_all))
+
+        # use model info "deepgrow" to determine
+        deepgrow_3d = False if self.models[model].get("dimension", 3) == 2 else True
+        start = time.time()
+
+        label = segment.GetName()
+        operationDescription = "Run Deepgrow for segment: {}; model: {}; 3d {}".format(label, model, deepgrow_3d)
+        logging.debug(operationDescription)
+
+        try:
+            qt.QApplication.setOverrideCursor(qt.Qt.WaitCursor)
+
+            sliceIndex = current_point[2]
+            logging.debug("Slice Index: {}".format(sliceIndex))
+
+            if deepgrow_3d:
+                foreground = foreground_all
+            else:
+                foreground = [x for x in foreground_all if x[2] == sliceIndex]
+
+            logging.debug("Landmarks: {}".format(foreground))
+            logging.debug("Current point: {}".format(current_point))
+
+            image_file = self.current_sample["id"]
+            params = {
+                "Landmarks": {label: foreground},
+            }
+
+            params.update(self.getParamsFromConfig("infer", model))
+            print(f"Request Params for Deepgrow/Deepedit: {params}")
+
+            # Run if AutoUpdate is enabled
+            if self.autoUpdateStatus:
+                result_file, params = self.logic.infer(model, image_file, params, session_id=self.getSessionId())
+                print(f"Result Params for Deepgrow/Deepedit: {params}")
+
+                self.updateSegmentationMask(result_file, [label], None if deepgrow_3d else sliceIndex)
+        except:
+            logging.exception("Unknown Exception")
+            slicer.util.errorDisplay(operationDescription + " - unexpected error.", detailedText=traceback.format_exc())
+        finally:
+            qt.QApplication.restoreOverrideCursor()
+
+        self.updateGUIFromParameterNode()
+        logging.info("Time consumed by Deepgrow: {0:3.1f}".format(time.time() - start))
+
     def getROIPointsXYZ(self, roiNode):
         if roiNode == None:
             return []
@@ -1787,6 +1827,10 @@ class MONAILabelWidget(ScriptedLoadableModuleWidget, VTKObservationMixin):
 
         # enable scribbles in 3d using a sphere brush
         effect.setParameter("BrushSphere", state)
+
+    def onAutoUpdateCheckBox(self, state):
+        logging.info("AutoUpdate status {}".format(state))
+        self.autoUpdateStatus = state
 
     def updateBrushSize(self, value):
         logging.info("brush size update {}".format(value))
