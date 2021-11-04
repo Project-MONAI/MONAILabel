@@ -29,7 +29,9 @@ class EpistemicScoring(ScoringMethod):
     First version of Epistemic computation used as active learning strategy
     """
 
-    def __init__(self, model, network=None, transforms=None, roi_size=(128, 128, 64), num_samples=10, mean_score_flag=False):
+    def __init__(
+        self, model, network=None, transforms=None, roi_size=(128, 128, 64), num_samples=10, mean_score_flag=False
+    ):
         super().__init__("Compute initial score based on dropout")
         self.model = model
         self.network = network
@@ -160,7 +162,7 @@ class EpistemicScoring(ScoringMethod):
             accum_numpy = accum_numpy[:, 1:, :, :, :] if len(accum_numpy.shape) > 4 else accum_numpy
 
             entropy = self.entropy_3d_volume(accum_numpy)
-            if self.mean_score_flag==True:
+            if self.mean_score_flag:
                 entropy_mean = float(np.nanmean(entropy))
                 entropy_score = entropy_mean
             else:
