@@ -44,8 +44,7 @@ class ResultType(str, Enum):
     all = "all"
 
 
-@router.get("/", summary="Get All Images/Labels from datastore")
-async def datastore(output: Optional[ResultType] = None):
+def datastore(output: Optional[ResultType] = None):
     d: Datastore = app_instance().datastore()
     output = output if output else ResultType.stats
 
@@ -57,8 +56,7 @@ async def datastore(output: Optional[ResultType] = None):
     return d.status()
 
 
-@router.put("/", summary="Upload new Image")
-async def add_image(
+def add_image(
     background_tasks: BackgroundTasks,
     image: Optional[str] = None,
     params: str = Form("{}"),
@@ -80,15 +78,13 @@ async def add_image(
     return {"image": image_id}
 
 
-@router.delete("/", summary="Remove Image and corresponding labels")
-async def remove_image(id: str):
+def remove_image(id: str):
     instance: MONAILabelApp = app_instance()
     instance.datastore().remove_image(id)
     return {}
 
 
-@router.put("/label", summary="Save Finished Label")
-async def save_label(
+def save_label(
     background_tasks: BackgroundTasks,
     image: str,
     params: str = Form("{}"),
@@ -119,15 +115,13 @@ async def save_label(
     return res
 
 
-@router.delete("/label", summary="Remove Label")
-async def remove_label(id: str, tag: str):
+def remove_label(id: str, tag: str):
     instance: MONAILabelApp = app_instance()
     instance.datastore().remove_label(id, tag)
     return {}
 
 
-@router.get("/image", summary="Download Image")
-async def download_image(image: str):
+def download_image(image: str):
     instance: MONAILabelApp = app_instance()
     image = instance.datastore().get_image_uri(image)
     if not os.path.isfile(image):
@@ -136,11 +130,56 @@ async def download_image(image: str):
     return FileResponse(image, media_type=get_mime_type(image), filename=os.path.basename(image))
 
 
-@router.get("/label", summary="Download Label")
-async def download_label(label: str, tag: str):
+def download_label(label: str, tag: str):
     instance: MONAILabelApp = app_instance()
     label = instance.datastore().get_label_uri(label, tag)
     if not os.path.isfile(label):
         raise HTTPException(status_code=404, detail="Label NOT Found")
 
     return FileResponse(label, media_type=get_mime_type(label), filename=os.path.basename(label))
+
+
+@router.get("/", summary="Get All Images/Labels from datastore")
+async def api_datastore(output: Optional[ResultType] = None):
+    return datastore(output)
+
+
+@router.put("/", summary="Upload new Image")
+async def api_add_image(
+    background_tasks: BackgroundTasks,
+    image: Optional[str] = None,
+    params: str = Form("{}"),
+    file: UploadFile = File(...),
+):
+    return add_image(background_tasks, image, params, file)
+
+
+@router.delete("/", summary="Remove Image and corresponding labels")
+async def api_remove_image(id: str):
+    return remove_image(id)
+
+
+@router.put("/label", summary="Save Finished Label")
+async def api_save_label(
+    background_tasks: BackgroundTasks,
+    image: str,
+    params: str = Form("{}"),
+    tag: str = DefaultLabelTag.FINAL.value,
+    label: UploadFile = File(...),
+):
+    return save_label(background_tasks, image, params, tag, label)
+
+
+@router.delete("/label", summary="Remove Label")
+async def api_remove_label(id: str, tag: str):
+    return remove_label(id, tag)
+
+
+@router.get("/image", summary="Download Image")
+async def api_download_image(image: str):
+    return download_image(image)
+
+
+@router.get("/label", summary="Download Label")
+async def api_download_label(label: str, tag: str):
+    return download_label(label, tag)
