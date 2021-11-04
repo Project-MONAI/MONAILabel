@@ -32,8 +32,7 @@ router = APIRouter(
 )
 
 
-@router.get("/{session_id}", summary="Get Session ID")
-async def get_session(session_id: str, update_ts: bool = False, image: bool = False):
+def get_session(session_id: str, update_ts: bool = False, image: bool = False):
     instance: MONAILabelApp = app_instance()
     sessions: Sessions = instance.sessions()
     if sessions is None:
@@ -52,8 +51,7 @@ async def get_session(session_id: str, update_ts: bool = False, image: bool = Fa
     raise HTTPException(status_code=404, detail=f"Session ({session_id}) Not Found")
 
 
-@router.put("/", summary="Create new session with Image")
-async def create_session(
+def create_session(
     background_tasks: BackgroundTasks,
     uncompress: bool = False,
     expiry: int = 0,
@@ -74,11 +72,7 @@ async def create_session(
     input_image = ""
     total_files = 0
     for f in files:
-        if f.filename:
-            basename = get_basename(f.filename)
-        else:
-            basename = tempfile.NamedTemporaryFile().name
-
+        basename = get_basename(f.filename) if f.filename else tempfile.NamedTemporaryFile().name
         input_image = os.path.join(received_dir, basename)
         with open(input_image, "wb") as fb:
             shutil.copyfileobj(f.file, fb)
@@ -100,8 +94,7 @@ async def create_session(
     return {"session_id": session_id, "session_info": session_info.to_json()}
 
 
-@router.delete("/{session_id}", summary="Delete Session")
-async def remove_session(session_id: str):
+def remove_session(session_id: str):
     instance: MONAILabelApp = app_instance()
     sessions: Sessions = instance.sessions()
     if sessions is None:
@@ -113,3 +106,23 @@ async def remove_session(session_id: str):
         sessions.remove_session(session_id)
         return session_info.to_json()
     raise HTTPException(status_code=404, detail="Session Not Found")
+
+
+@router.get("/{session_id}", summary="Get Session ID")
+async def api_get_session(session_id: str, update_ts: bool = False, image: bool = False):
+    return get_session(session_id, update_ts, image)
+
+
+@router.put("/", summary="Create new session with Image")
+async def api_create_session(
+    background_tasks: BackgroundTasks,
+    uncompress: bool = False,
+    expiry: int = 0,
+    files: List[UploadFile] = File(...),
+):
+    return create_session(background_tasks, uncompress, expiry, files)
+
+
+@router.delete("/{session_id}", summary="Delete Session")
+async def api_remove_session(session_id: str):
+    return remove_session(session_id)
