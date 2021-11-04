@@ -28,16 +28,14 @@ router = APIRouter(
 )
 
 
-@router.get("/", summary="Get Status of Training Task")
-async def status(all: bool = False, check_if_running: bool = False):
+def status(all: bool = False, check_if_running: bool = False):
     res, detail = AsyncTask.status("train", all, check_if_running)
     if res is None:
         raise HTTPException(status_code=404, detail=detail)
     return res
 
 
-@router.post("/", summary="Run All Training Tasks")
-async def run(params: Optional[dict] = None, run_sync: Optional[bool] = False):
+def run(params: Optional[dict] = None, run_sync: Optional[bool] = False):
     instance: MONAILabelApp = app_instance()
     result = {}
     for model in instance.info()["trainers"]:
@@ -49,8 +47,7 @@ async def run(params: Optional[dict] = None, run_sync: Optional[bool] = False):
     return result
 
 
-@router.post("/{model}", summary="Run Training Task for specific model")
-async def run_model(
+def run_model(
     model: str, params: Optional[dict] = None, run_sync: Optional[bool] = False, enqueue: Optional[bool] = False
 ):
     request = {"model": model} if model else {}
@@ -60,11 +57,32 @@ async def run_model(
     return res
 
 
-@router.delete("/", summary="Stop Training Task")
-async def stop():
+def stop():
     res = AsyncTask.stop("train")
 
     # Try to clear cuda cache
     if torch.cuda.is_available():
         torch.cuda.empty_cache()
     return res
+
+
+@router.get("/", summary="Get Status of Training Task")
+async def api_status(all: bool = False, check_if_running: bool = False):
+    return status(all, check_if_running)
+
+
+@router.post("/", summary="Run All Training Tasks")
+async def api_run(params: Optional[dict] = None, run_sync: Optional[bool] = False):
+    return run(params, run_sync)
+
+
+@router.post("/{model}", summary="Run Training Task for specific model")
+async def api_run_model(
+    model: str, params: Optional[dict] = None, run_sync: Optional[bool] = False, enqueue: Optional[bool] = False
+):
+    return run_model(model, params, run_sync, enqueue)
+
+
+@router.delete("/", summary="Stop Training Task")
+async def api_stop():
+    return stop()
