@@ -216,6 +216,7 @@ def main():
     parser.add_argument("-d", "--dataset", default="CacheDataset")
     parser.add_argument("-o", "--output", default="model_01")
     parser.add_argument("-i", "--size", default="[192,192,128]")
+    parser.add_argument("-b", "--batch", type=int, default=1)
     args = parser.parse_args()
 
     app_dir = os.path.dirname(__file__)
@@ -234,6 +235,7 @@ def main():
         "model": "deepedit_train",
         "max_epochs": args.epoch,
         "dataset": args.dataset,
+        "train_batch_size": args.batch
     })
 
 
