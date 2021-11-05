@@ -68,8 +68,9 @@ class EndPointSession(BasicEndpointTestSuite):
             ("files", ("la_003.nii.gz", open(os.path.join(self.studies, "la_003.nii.gz"), "rb"))),
             ("files", ("la_004.nii.gz", open(os.path.join(self.studies, "la_004.nii.gz"), "rb"))),
         ]
+        params = {"client_id": "xyz"}
 
-        response = self.client.put("/session/", files=files)
+        response = self.client.put("/session/", files=files, data=params)
         assert response.status_code == 200
 
         response = self.client.delete(f"/session/{response.json()['session_id']}")

@@ -64,7 +64,7 @@ async def add_image(
     params: str = Form("{}"),
     file: UploadFile = File(...),
 ):
-    logger.info(f"Image: {image}; File: {file}")
+    logger.info(f"Image: {image}; File: {file}; params: {params}")
     file_ext = "".join(pathlib.Path(file.filename).suffixes) if file.filename else ".nii.gz"
 
     image_id = image if image else os.path.basename(file.filename).replace(file_ext, "")

@@ -115,6 +115,7 @@ class MONAILabelApp:
     def init_datastore(self) -> Datastore:
         logger.info(f"Init Datastore for: {self.studies}")
         if self.studies.startswith("http://") or self.studies.startswith("https://"):
+            self.studies = self.studies.rstrip("/").strip()
             dw_session = None
             if settings.MONAI_LABEL_DICOMWEB_USERNAME and settings.MONAI_LABEL_DICOMWEB_PASSWORD:
                 dw_session = create_session_from_user_pass(
@@ -158,7 +159,9 @@ class MONAILabelApp:
 
         # If labels are not provided, aggregate from all individual infers
         if not self.labels:
-            meta["labels"] = set(itertools.chain.from_iterable([v.get("labels", []) for v in meta["models"].values()]))
+            meta["labels"] = list(
+                set(itertools.chain.from_iterable([v.get("labels", []) for v in meta["models"].values()]))
+            )
 
         return meta
 

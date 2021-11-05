@@ -195,7 +195,7 @@ The Orthanc DICOM server on the chosen machine. You can check if the server is r
 by navigating to `http://127.0.0.1:8042 <http://127.0.0.1:8042>`_ or using the remote machine's address and entering
 the username/password ``orthanc/orthanc``.
 
-The DICOMweb service for Orthanc runs on `http://127.0.0.1:8042/dicom-web/ <http://127.0.0.1:8042/dicom-web>` by default. You can check if the DICOMweb
+The DICOMweb service for Orthanc runs on `http://127.0.0.1:8042/dicom-web <http://127.0.0.1:8042/dicom-web>`_ by default. You can check if the DICOMweb
 endpoint is active by issuing the following command
 
 .. code-block:: bash

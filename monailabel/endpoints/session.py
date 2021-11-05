@@ -37,6 +37,7 @@ async def get_session(session_id: str, update_ts: bool = False, image: bool = Fa
     instance: MONAILabelApp = app_instance()
     sessions: Sessions = instance.sessions()
     if sessions is None:
+        logger.error("Session Feature is Not Enabled")
         raise HTTPException(status_code=406, detail="Session Feature is Not Enabled")
 
     session_info = sessions.get_session(session_id, update_ts=update_ts)
@@ -61,6 +62,7 @@ async def create_session(
     instance: MONAILabelApp = app_instance()
     sessions: Sessions = instance.sessions()
     if sessions is None:
+        logger.error("Session Feature is Not Enabled")
         raise HTTPException(status_code=406, detail="Session Feature is Not Enabled")
 
     logger.info(f"Uncompress: {uncompress}; Expiry: {expiry}")
@@ -103,6 +105,7 @@ async def remove_session(session_id: str):
     instance: MONAILabelApp = app_instance()
     sessions: Sessions = instance.sessions()
     if sessions is None:
+        logger.error("Session Feature is Not Enabled")
         raise HTTPException(status_code=406, detail="Session Feature is Not Enabled")
 
     session_info = sessions.get_session(session_id)
