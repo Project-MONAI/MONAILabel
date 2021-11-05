@@ -215,7 +215,7 @@ def main():
     request = {
         "device": "cuda",
         "model": "deepedit_train",
-        "max_epochs": 500,
+        "max_epochs": 600,
         "amp": False,
         "lr": 0.0001,
     }

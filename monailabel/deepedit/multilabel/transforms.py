@@ -568,7 +568,7 @@ class PosNegClickProbAddRandomGuidanceCustomd(Randomizable, MapTransform):
     def add_guidance(self, guidance, discrepancy, label_names, labels):
 
         # Positive clicks of the segment in the iteration
-        pos_discr = discrepancy[0]
+        pos_discr = discrepancy[0]  # idx 0 is positive discrepancy and idx 1 is negative discrepancy
 
         # Check the areas that belong to other segments
         other_discrepancy_areas = dict()
@@ -591,8 +591,8 @@ class PosNegClickProbAddRandomGuidanceCustomd(Randomizable, MapTransform):
 
         # Add guidance to the other areas
         for key_label in label_names.keys():
-            # Areas that cover more than 100 voxels
-            if other_discrepancy_areas[key_label] > 100:
+            # Areas that cover more than 50 voxels
+            if other_discrepancy_areas[key_label] > 50:
                 self.is_other = True
                 if key_label != "background":
                     tmp_label = np.copy(labels)
@@ -619,6 +619,7 @@ class PosNegClickProbAddRandomGuidanceCustomd(Randomizable, MapTransform):
                 tmp_gui = json.loads(tmp_gui) if isinstance(tmp_gui, str) else tmp_gui
                 self.tmp_guidance[key_label] = tmp_gui
 
+            # Add guidance according to discrepancy
             all_is_pos = {}
             all_is_other = {}
             for key_label in d["label_names"].keys():
@@ -636,6 +637,7 @@ class PosNegClickProbAddRandomGuidanceCustomd(Randomizable, MapTransform):
             for key_label in d["label_names"].keys():
                 d[self.guidance][key_label] = json.dumps(np.asarray(self.tmp_guidance[key_label]).astype(int).tolist())
             #
+
         return d
 
 
