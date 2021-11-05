@@ -49,6 +49,7 @@ class MyApp(MONAILabelApp):
             }
             self.network = BasicUNet(**network_params)
             self.network_with_dropout = BasicUNet(**network_params, dropout=0.2)
+            self.find_unused_parameters = False
         else:
             network_params = {
                 "spatial_dims": 3,
@@ -83,6 +84,7 @@ class MyApp(MONAILabelApp):
             }
             self.network = DynUNet(**network_params)
             self.network_with_dropout = DynUNet(**network_params, dropout=0.2)
+            self.find_unused_parameters = True
 
         self.model_dir = os.path.join(app_dir, "model")
         self.pretrained_model = os.path.join(self.model_dir, "pretrained.pt")
@@ -154,7 +156,7 @@ class MyApp(MONAILabelApp):
                 publish_path=self.final_model,
                 config={"pretrained": strtobool(self.conf.get("use_pretrained_model", "true"))},
                 debug_mode=False,
-                find_unused_parameters=True,
+                find_unused_parameters=self.find_unused_parameters,
             )
         }
 
