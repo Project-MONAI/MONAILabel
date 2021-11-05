@@ -14,10 +14,11 @@ import os
 from distutils.util import strtobool
 from typing import Dict
 
+from monai.networks.nets import BasicUNet
+from monai.networks.nets.dynunet import DynUNet
+
 from lib import Deepgrow, MyTrain, Segmentation
 from lib.activelearning import MyStrategy
-from monai.networks.nets.dynunet_v1 import DynUNetV1
-
 from monailabel.interfaces.app import MONAILabelApp
 from monailabel.interfaces.datastore import Datastore
 from monailabel.interfaces.tasks.infer import InferTask
@@ -39,39 +40,49 @@ logger = logging.getLogger(__name__)
 
 class MyApp(MONAILabelApp):
     def __init__(self, app_dir, studies, conf):
-        network_params = {
-            "spatial_dims": 3,
-            "in_channels": 3,
-            "out_channels": 1,
-            "kernel_size": [
-                [3, 3, 3],
-                [3, 3, 3],
-                [3, 3, 3],
-                [3, 3, 3],
-                [3, 3, 3],
-                [3, 3, 3],
-            ],
-            "strides": [
-                [1, 1, 1],
-                [2, 2, 2],
-                [2, 2, 2],
-                [2, 2, 2],
-                [2, 2, 2],
-                [2, 2, 1],
-            ],
-            "upsample_kernel_size": [
-                [2, 2, 2],
-                [2, 2, 2],
-                [2, 2, 2],
-                [2, 2, 2],
-                [2, 2, 1],
-            ],
-            "norm_name": "instance",
-            "deep_supervision": False,
-            "res_block": True,
-        }
-        self.network = DynUNetV1(**network_params)
-        self.network_with_dropout = DynUNetV1(**network_params, dropout=0.2)
+        if conf.get("network") == "unet":
+            network_params = {
+                "dimensions": 3,
+                "in_channels": 3,
+                "out_channels": 1,
+                "features": [32, 64, 128, 256, 512, 32],
+            }
+            self.network = BasicUNet(**network_params)
+            self.network_with_dropout = BasicUNet(**network_params, dropout=0.2)
+        else:
+            network_params = {
+                "spatial_dims": 3,
+                "in_channels": 3,
+                "out_channels": 1,
+                "kernel_size": [
+                    [3, 3, 3],
+                    [3, 3, 3],
+                    [3, 3, 3],
+                    [3, 3, 3],
+                    [3, 3, 3],
+                    [3, 3, 3],
+                ],
+                "strides": [
+                    [1, 1, 1],
+                    [2, 2, 2],
+                    [2, 2, 2],
+                    [2, 2, 2],
+                    [2, 2, 2],
+                    [2, 2, 1],
+                ],
+                "upsample_kernel_size": [
+                    [2, 2, 2],
+                    [2, 2, 2],
+                    [2, 2, 2],
+                    [2, 2, 2],
+                    [2, 2, 1],
+                ],
+                "norm_name": "instance",
+                "deep_supervision": False,
+                "res_block": True,
+            }
+            self.network = DynUNet(**network_params)
+            self.network_with_dropout = DynUNet(**network_params, dropout=0.2)
 
         self.model_dir = os.path.join(app_dir, "model")
         self.pretrained_model = os.path.join(self.model_dir, "pretrained.pt")
@@ -178,3 +189,51 @@ class MyApp(MONAILabelApp):
         methods["dice"] = Dice()
         methods["sum"] = Sum()
         return methods
+
+'''
+Example to run train/infer/scoring task(s) locally without actually running MONAI Label Server
+'''
+def main():
+    from monailabel.config import settings
+    import argparse
+
+    settings.MONAI_LABEL_DATASTORE_AUTO_RELOAD = False
+    os.putenv("MASTER_ADDR", "127.0.0.1")
+    os.putenv("MASTER_PORT", "1234")
+
+    logging.basicConfig(
+        level=logging.INFO,
+        format="[%(asctime)s] [%(process)s] [%(threadName)s] [%(levelname)s] (%(name)s:%(lineno)d) - %(message)s",
+        datefmt="%Y-%m-%d %H:%M:%S",
+    )
+
+    parser = argparse.ArgumentParser()
+    parser.add_argument("-n", "--network", default="dynunet", choices=["unet", "dynunet"])
+    parser.add_argument("-s", "--studies", default="/local/sachi/Datasets/Task09_Spleen/imagesTr")
+    parser.add_argument("-e", "--epoch", type=int, default=100)
+    parser.add_argument("-d", "--dataset", default="CacheDataset")
+    parser.add_argument("-o", "--output", default="model_01")
+    parser.add_argument("-i", "--size", default="[192,192,128]")
+    args = parser.parse_args()
+
+    app_dir = os.path.dirname(__file__)
+    studies = args.studies
+    conf = {
+        "use_pretrained_model": "false",
+        "auto_update_scoring": "false",
+        "spatial_size": args.size,
+        "network": args.network,
+    }
+
+    app = MyApp(app_dir, studies, conf)
+    app.train(request={
+        "name": args.output,
+        "server_mode": "true",
+        "model": "deepedit_train",
+        "max_epochs": args.epoch,
+        "dataset": args.dataset,
+    })
+
+
+if __name__ == "__main__":
+    main()

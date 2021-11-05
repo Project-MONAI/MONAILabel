@@ -317,12 +317,9 @@ class MONAILabelApp:
                 For example::
 
                     {
-                        "mytrain": {
-                            "device": "cuda"
-                            "max_epochs": 1,
-                            "amp": False,
-                            "lr": 0.0001,
-                        }
+                        "model": "mytrain",
+                        "device": "cuda"
+                        "max_epochs": 1,
                     }
 
         Returns:
