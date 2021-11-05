@@ -157,6 +157,7 @@ class MyApp(MONAILabelApp):
                 config={"pretrained": strtobool(self.conf.get("use_pretrained_model", "true"))},
                 label_names=self.label_names,
                 debug_mode=False,
+                find_unused_parameters=True,
             )
         }
 

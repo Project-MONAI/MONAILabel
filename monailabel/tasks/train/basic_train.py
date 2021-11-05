@@ -90,6 +90,7 @@ class BasicTrainTask(TrainTask):
         final_filename="checkpoint_final.pt",
         key_metric_filename="model.pt",
         model_dict_key="model",
+        find_unused_parameters=False,
     ):
         """
         :param model_dir: Base Model Dir to save the model checkpoints, events etc...
@@ -105,6 +106,7 @@ class BasicTrainTask(TrainTask):
         :param final_filename: name of final checkpoint that will be saved
         :param key_metric_filename: best key metric model file name
         :param model_dict_key: key to save network weights into checkpoint
+        :param find_unused_parameters: Applicable for DDP/Multi GPU training
         """
         super().__init__(description)
 
@@ -135,6 +137,7 @@ class BasicTrainTask(TrainTask):
         self._final_filename = final_filename
         self._key_metric_filename = key_metric_filename
         self._model_dict_key = model_dict_key
+        self._find_unused_parameters = find_unused_parameters
 
     @abstractmethod
     def network(self):
@@ -418,7 +421,10 @@ class BasicTrainTask(TrainTask):
         network = self.network().to(context.device)
         if context.multi_gpu:
             network = torch.nn.parallel.DistributedDataParallel(
-                network, device_ids=[context.device.index], output_device=context.device.index
+                network,
+                device_ids=[context.device.index],
+                output_device=context.device.index,
+                find_unused_parameters=self._find_unused_parameters,
             )
         return network
 
@@ -433,7 +439,7 @@ class BasicTrainTask(TrainTask):
                         save_dir=context.output_dir,
                         save_dict={self._model_dict_key: context.network},
                         save_key_metric=True,
-                        key_metric_filename=f"eval_{self._key_metric_filename}",
+                        key_metric_filename=self._key_metric_filename,
                     )
                 )
 
@@ -461,19 +467,21 @@ class BasicTrainTask(TrainTask):
         train_handlers: List = self.train_handlers(
             context.output_dir, context.events_dir, context.evaluator, context.local_rank
         )
-        if not context.evaluator:
-            if context.local_rank == 0:
-                train_handlers.append(
-                    CheckpointSaver(
-                        save_dir=context.output_dir,
-                        save_dict={self._model_dict_key: context.network},
-                        save_interval=self._train_save_interval,
-                        save_final=True,
-                        final_filename=self._final_filename,
-                        save_key_metric=True,
-                        key_metric_filename=self._key_metric_filename,
-                    )
+        if context.local_rank == 0:
+            train_handlers.append(
+                CheckpointSaver(
+                    save_dir=context.output_dir,
+                    save_dict={self._model_dict_key: context.network},
+                    save_interval=self._train_save_interval,
+                    save_final=True,
+                    final_filename=self._final_filename,
+                    save_key_metric=True,
+                    key_metric_filename=f"train_{self._key_metric_filename}"
+                    if context.evaluator
+                    else self._key_metric_filename,
                 )
+            )
+            if not context.evaluator:
                 train_handlers.append(context.publisher)
 
         load_path = self.load_path(context.output_dir, context.pretrained)
