@@ -14,11 +14,11 @@ import os
 from distutils.util import strtobool
 from typing import Dict
 
-from monai.networks.nets import BasicUNet
-from monai.networks.nets.dynunet import DynUNet
-
 from lib import Deepgrow, MyTrain, Segmentation
 from lib.activelearning import MyStrategy
+from monai.networks.nets import BasicUNet
+from monai.networks.nets.dynunet_v1 import DynUNet
+
 from monailabel.interfaces.app import MONAILabelApp
 from monailabel.interfaces.datastore import Datastore
 from monailabel.interfaces.tasks.infer import InferTask
@@ -40,7 +40,8 @@ logger = logging.getLogger(__name__)
 
 class MyApp(MONAILabelApp):
     def __init__(self, app_dir, studies, conf):
-        if conf.get("network") == "unet":
+        network = conf.get("network", "dynunet")
+        if network == "unet":
             network_params = {
                 "dimensions": 3,
                 "in_channels": 3,
@@ -91,16 +92,19 @@ class MyApp(MONAILabelApp):
         self.final_model = os.path.join(self.model_dir, "model.pt")
 
         # Use Heuristic Planner to determine target spacing and spatial size based on dataset+gpu
-        spatial_size = json.loads(conf.get("spatial_size", "[128, 128, 128]"))
+        spatial_size = json.loads(conf.get("spatial_size", "[192, 192, 128]"))
         target_spacing = json.loads(conf.get("target_spacing", "[1.0, 1.0, 1.0]"))
         self.heuristic_planner = strtobool(conf.get("heuristic_planner", "false"))
         self.planner = HeuristicPlanner(spatial_size=spatial_size, target_spacing=target_spacing)
 
         use_pretrained_model = strtobool(conf.get("use_pretrained_model", "true"))
-        pretrained_model_uri = conf.get("pretrained_model_path", f"{self.PRE_TRAINED_PATH}/deepedit_spleen.pt")
+        pretrained_model_uri = conf.get(
+            "pretrained_model_path", f"{self.PRE_TRAINED_PATH}/deepedit_{network}_spleen.pt"
+        )
 
         # Path to pretrained weights
         if use_pretrained_model:
+            logger.info(f"Pretrained Model Path: {pretrained_model_uri}")
             self.download([(self.pretrained_model, pretrained_model_uri)])
 
         self.epistemic_enabled = strtobool(conf.get("epistemic_enabled", "false"))
@@ -192,12 +196,16 @@ class MyApp(MONAILabelApp):
         methods["sum"] = Sum()
         return methods
 
-'''
+
+"""
 Example to run train/infer/scoring task(s) locally without actually running MONAI Label Server
-'''
+"""
+
+
 def main():
-    from monailabel.config import settings
     import argparse
+
+    from monailabel.config import settings
 
     settings.MONAI_LABEL_DATASTORE_AUTO_RELOAD = False
     os.putenv("MASTER_ADDR", "127.0.0.1")
@@ -229,14 +237,16 @@ def main():
     }
 
     app = MyApp(app_dir, studies, conf)
-    app.train(request={
-        "name": args.output,
-        "server_mode": "true",
-        "model": "deepedit_train",
-        "max_epochs": args.epoch,
-        "dataset": args.dataset,
-        "train_batch_size": args.batch
-    })
+    app.train(
+        request={
+            "name": args.output,
+            "model": "deepedit_train",
+            "max_epochs": args.epoch,
+            "dataset": args.dataset,
+            "train_batch_size": args.batch,
+            "multi_gpu": True,
+        }
+    )
 
 
 if __name__ == "__main__":
