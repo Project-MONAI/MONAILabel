@@ -1173,7 +1173,7 @@ class MONAILabelWidget(ScriptedLoadableModuleWidget, VTKObservationMixin):
         result = None
         self.onClearScribbles()
 
-        if self.current_sample["session"]:
+        if self.current_sample.get("session"):
             if not self.onUploadImage(init_sample=False):
                 return
 
