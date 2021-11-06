@@ -423,7 +423,7 @@
          </widget>
         </item>
         <item row="3" column="3">
-         <widget class="qSlicerMarkupsPlaceWidget" name="dgPositiveFiducialPlacementWidget">
+         <widget class="qSlicerMarkupsPlaceWidget" name="dgLandmarkFiducialPlacementWidget">
           <property name="placeMultipleMarkups">
            <enum>qSlicerMarkupsPlaceWidget::ForcePlaceMultipleMarkups</enum>
           </property>

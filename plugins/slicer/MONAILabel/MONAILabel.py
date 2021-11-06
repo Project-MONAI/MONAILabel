@@ -171,8 +171,8 @@ class MONAILabelWidget(ScriptedLoadableModuleWidget, VTKObservationMixin):
         self.state = {"SegmentationModel": "", "DeepgrowModel": "", "ScribblesMethod": "", "CurrentStrategy": ""}
         self.file_ext = ".nii.gz"
 
-        self.dgPositiveFiducialNode = None
-        self.dgPositiveFiducialNodeObservers = []
+        self.dgLandmarkFiducialNode = []
+        self.dgLandmarkFiducialNodeObservers = []
         self.ignoreFiducialNodeAddEvent = False
 
         self.progressBar = None
@@ -221,11 +221,11 @@ class MONAILabelWidget(ScriptedLoadableModuleWidget, VTKObservationMixin):
         self.ui.uploadImageButton.setIcon(self.icon("upload.svg"))
         self.ui.importLabelButton.setIcon(self.icon("download.png"))
 
-        self.ui.dgPositiveFiducialPlacementWidget.setMRMLScene(slicer.mrmlScene)
-        self.ui.dgPositiveFiducialPlacementWidget.placeButton().toolTip = "Select +ve points"
-        self.ui.dgPositiveFiducialPlacementWidget.buttonsVisible = False
-        self.ui.dgPositiveFiducialPlacementWidget.placeButton().show()
-        self.ui.dgPositiveFiducialPlacementWidget.deleteButton().show()
+        self.ui.dgLandmarkFiducialPlacementWidget.setMRMLScene(slicer.mrmlScene)
+        self.ui.dgLandmarkFiducialPlacementWidget.placeButton().toolTip = "Select landmarks"
+        self.ui.dgLandmarkFiducialPlacementWidget.buttonsVisible = False
+        self.ui.dgLandmarkFiducialPlacementWidget.placeButton().show()
+        self.ui.dgLandmarkFiducialPlacementWidget.deleteButton().show()
 
         # Connections
         self.ui.fetchServerInfoButton.connect("clicked(bool)", self.onClickFetchInfo)
@@ -309,9 +309,9 @@ class MONAILabelWidget(ScriptedLoadableModuleWidget, VTKObservationMixin):
         self.samples.clear()
 
         self.resetFiducial(
-            self.ui.dgPositiveFiducialPlacementWidget, self.dgPositiveFiducialNode, self.dgPositiveFiducialNodeObservers
+            self.ui.dgLandmarkFiducialPlacementWidget, self.dgLandmarkFiducialNode, self.dgLandmarkFiducialNodeObservers
         )
-        self.dgPositiveFiducialNode = None
+        self.dgLandmarkFiducialNode = None
         self.onClearScribbles()
 
     def resetFiducial(self, fiducialWidget, fiducialNode, fiducialNodeObservers):
@@ -484,19 +484,22 @@ class MONAILabelWidget(ScriptedLoadableModuleWidget, VTKObservationMixin):
         self.ui.saveLabelButton.setEnabled(self._segmentNode is not None)
         self.ui.importLabelButton.setEnabled(self._segmentNode is not None)
 
-        # Create empty markup fiducial node for deep grow +ve and -ve
+        # Create empty markup fiducial node for deepgrow landmarks
         if self._segmentNode:
-            if not self.dgPositiveFiducialNode:
-                self.dgPositiveFiducialNode, self.dgPositiveFiducialNodeObservers = self.createFiducialNode(
-                    "P", self.onDeepGrowFiducialNodeModified, [0.5, 1, 0.5]
-                )
-                self.ui.dgPositiveFiducialPlacementWidget.setCurrentNode(self.dgPositiveFiducialNode)
-                self.ui.dgPositiveFiducialPlacementWidget.setPlaceModeEnabled(False)
+            if not self.dgLandmarkFiducialNode:
+                if self.info.get("labels"):
+                    for idx, label in enumerate(self.info.get("labels")):
+                        tmpFiducialNode, self.dgLandmarkFiducialNodeObservers = self.createFiducialNode(
+                            label, self.onDeepGrowFiducialNodeModified, self.getLabelColor(label)
+                        )
+                        self.dgLandmarkFiducialNode.append(tmpFiducialNode)
+                    self.ui.dgLandmarkFiducialPlacementWidget.setCurrentNode(self.dgLandmarkFiducialNode)
+                    self.ui.dgLandmarkFiducialPlacementWidget.setPlaceModeEnabled(False)
 
             self.ui.scribblesCollapsibleButton.setEnabled(self.ui.scribblesMethodSelector.count)
             self.ui.scribblesCollapsibleButton.collapsed = False
 
-        self.ui.dgPositiveFiducialPlacementWidget.setEnabled(self.ui.deepgrowModelSelector.currentText)
+        self.ui.dgLandmarkFiducialPlacementWidget.setEnabled(self.ui.deepgrowModelSelector.currentText)
 
         # All the GUI updates are done
         self._updatingGUIFromParameterNode = False
@@ -700,7 +703,7 @@ class MONAILabelWidget(ScriptedLoadableModuleWidget, VTKObservationMixin):
         self.onClickDeepgrow(current_point)
 
         self.ignoreFiducialNodeAddEvent = True
-        self.onEditFiducialPoints(self.dgPositiveFiducialNode, "MONAILabel.ForegroundPoints")
+        self.onEditFiducialPoints(self.dgLandmarkFiducialNode, "MONAILabel.ForegroundPoints")
         self.ignoreFiducialNodeAddEvent = False
 
     def getFiducialPointsXYZ(self, fiducialNode, name):
@@ -781,7 +784,7 @@ class MONAILabelWidget(ScriptedLoadableModuleWidget, VTKObservationMixin):
         self.updateParameterNodeFromGUI(caller, event)
 
         self.ignoreFiducialNodeAddEvent = True
-        self.onEditFiducialPoints(self.dgPositiveFiducialNode, "MONAILabel.ForegroundPoints")
+        self.onEditFiducialPoints(self.dgLandmarkFiducialNode, "MONAILabel.ForegroundPoints")
         self.ignoreFiducialNodeAddEvent = False
 
     def icon(self, name="MONAILabel.png"):
@@ -1277,7 +1280,7 @@ class MONAILabelWidget(ScriptedLoadableModuleWidget, VTKObservationMixin):
             slicer.util.warningDisplay("Please add the required label to run deepgrow")
             return
 
-        foreground_all = self.getFiducialPointsXYZ(self.dgPositiveFiducialNode, "foreground")
+        foreground_all = self.getFiducialPointsXYZ(self.dgLandmarkFiducialNode, "foreground")
 
         segment.SetTag("MONAILabel.ForegroundPoints", json.dumps(foreground_all))
 
@@ -1613,7 +1616,7 @@ class MONAILabelWidget(ScriptedLoadableModuleWidget, VTKObservationMixin):
             slicer.util.warningDisplay("Please add the required label to run deepgrow")
             return
 
-        foreground_all = self.getFiducialPointsXYZ(self.dgPositiveFiducialNode, "foreground")
+        foreground_all = self.getFiducialPointsXYZ(self.dgLandmarkFiducialNode, "foreground")
 
         segment.SetTag("MONAILabel.ForegroundPoints", json.dumps(foreground_all))
 
