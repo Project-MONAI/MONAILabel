@@ -37,6 +37,7 @@ export default class MonaiLabelPanel extends Component {
       activelearning: React.createRef(),
       segmentation: React.createRef(),
       smartedit: React.createRef(),
+      scribbles: React.createRef(),
     };
 
     this.state = {
@@ -174,16 +175,49 @@ export default class MonaiLabelPanel extends Component {
       : {};
   };
 
-  updateView = async (response, labels, operation, slice, overlap, segmentIndex) => {
+  updateView = async (response, labels, operation, slice, overlap, activeIndex) => {
     this.segmentationList.current.updateView(
       response,
       labels,
       operation,
       slice,
       overlap,
-      segmentIndex
+      activeIndex
     );
   };
+
+  onAddSegment = (name, description, color, newLabelMap) => {
+    this.segmentationList.current.onAddSegment(
+      name, 
+      description,
+      color,
+      newLabelMap
+    );
+  };
+
+  onDeleteSegmentByName = name => {
+    this.segmentationList.current.onDeleteSegmentByName(
+      name
+    );
+  }
+
+  onClearSegmentByName = name => {
+    this.segmentationList.current.onClearSegmentByName(
+      name
+    );
+  }
+ 
+  getSelectedActiveName = () =>{
+    return this.segmentationList.current.getSelectedActiveName();
+  }
+
+  getIndexByName = name => {
+    return this.segmentationList.current.getIndexByName(name);
+  }
+  
+  refreshSegTable = () =>{
+    this.segmentationList.current.refreshSegTable();
+  }
 
   render() {
     return (
@@ -223,6 +257,7 @@ export default class MonaiLabelPanel extends Component {
             client={this.client}
             notification={this.notification}
             updateView={this.updateView}
+            onDeleteSegmentByName={this.onDeleteSegmentByName}
             onSelectActionTab={this.onSelectActionTab}
             onOptionsConfig={this.onOptionsConfig}
           />
@@ -257,7 +292,13 @@ export default class MonaiLabelPanel extends Component {
             client={this.client}
             notification={this.notification}
             updateView={this.updateView}
+            onAddSegment={this.onAddSegment}
+            onDeleteSegmentByName={this.onDeleteSegmentByName}
+            onClearSegmentByName={this.onClearSegmentByName}
             onSelectActionTab={this.onSelectActionTab}
+            getSelectedActiveName={this.getSelectedActiveName}
+            getIndexByName={this.getIndexByName}
+            refreshSegTable={this.refreshSegTable}
             onOptionsConfig={this.onOptionsConfig}
           />
         </div>

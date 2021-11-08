@@ -102,6 +102,11 @@ export default class OptionTable extends BaseTab {
   };
 
   onClickSubmitLabel = async () => {
+    
+    // clear any scribbles segments
+    this.props.onDeleteSegmentByName("background_scribbles");
+    this.props.onDeleteSegmentByName("foreground_scribbles");
+
     const { getters } = cornerstoneTools.getModule('segmentation');
     const { labelmaps3D } = getters.labelmaps3D(
       this.props.viewConstants.element

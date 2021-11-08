@@ -134,10 +134,10 @@ async def run_inference(
             shutil.copyfileobj(label.file, buffer)
             background_tasks.add_task(remove_file, label_file)
 
+        # if binary file received, e.g. from OHIF - then convert using reference image
         if file_ext == ".bin":
             image_uri = instance.datastore().get_image_uri(image)
-            output_file = binary_to_image(image_uri, label_file)
-            label_file = output_file
+            label_file = binary_to_image(image_uri, label_file)
 
         request["label"] = label_file
 

@@ -17,6 +17,7 @@ export default class Scribbles extends BaseTab {
     this.state = {
       currentModel: null,
     };
+    this.main_label = null;
   }
 
   onSelectModel = model => {
@@ -53,41 +54,62 @@ export default class Scribbles extends BaseTab {
     let params =
       config && config.infer && config.infer[model] ? config.infer[model] : {};
 
-    // const labels = info.models[model].labels;
-    let labels = info.models[model].labels;
+    const scribblesLabelMapIndex = this.props.getIndexByName("background_scribbles").labelmapIndex;
+    const labels = info.models[model].labels;
 
-    let label = null;
-    
     // get label/scribbles
-    const labelmap3D = labelmaps3D[0];
+    const labelmap3D = labelmaps3D[scribblesLabelMapIndex];
     console.debug(labelmap3D)
     if (!labelmap3D) {
+      this.notification.show({
+        title: 'MONAI Label',
+        message: 'Missing Label; so ignore',
+        type: 'warning',
+      });
       console.warn('Missing Label; so ignore');
-      // continue;
+      return;
     }
 
     const metadata = labelmap3D.metadata.data
       ? labelmap3D.metadata.data
-      : labelmap3D.metadata;
-    // if (!metadata || !metadata.length) {
-    //   console.warn('Missing Meta; so ignore');
-    //   continue;
-    // }
+      : labelmap3D.metadata;   
+    if (!metadata || !metadata.length) {
+      this.notification.show({
+        title: 'MONAI Label',
+        message: 'Missing Meta; so ignore',
+        type: 'warning',
+      });
+      console.warn('Missing Meta; so ignore');    
+      return;
+    }
 
     console.debug(metadata);
 
+    // only select segments with labelmapIndex==scribblesLabelMapIndex
     const segments = flattenLabelmaps(
       getLabelMaps(this.props.viewConstants.element)
+    ).filter(
+      function(seg){
+        return seg.labelmapIndex == scribblesLabelMapIndex;
+      }
     );
     console.debug(segments);
 
     if (metadata.length !== segments.length + 1) {
+      this.notification.show({
+        title: 'MONAI Label',
+        message: 'Segments and Metadata NOT matching; So Ignore',
+        type: 'warning',
+      });
       console.warn('Segments and Metadata NOT matching; So Ignore');
+      return;
     }
 
-    label = {name: "label", fileName: "label.bin", data: new Blob([labelmap3D.buffer], {
-      type: 'application/octet-stream',
-    })};
+    const label = {
+      name: "label", fileName: "label.bin", data: new Blob([labelmap3D.buffer], {
+        type: 'application/octet-stream',
+      })
+    };
     params["label_info"] = segments;
 
     const response = await this.props
@@ -104,21 +126,117 @@ export default class Scribbles extends BaseTab {
     if (response.status !== 200) {
       this.notification.show({
         title: 'MONAI Label',
-        message: 'Failed to Run Segmentation',
+        message: 'Failed to Run Scribbles Segmentation',
         type: 'error',
         duration: 5000,
       });
     } else {
       this.notification.show({
         title: 'MONAI Label',
-        message: 'Run Segmentation - Successful',
+        message: 'Run Scribbles Segmentation - Successful',
         type: 'success',
         duration: 2000,
       });
 
-      await this.props.updateView(response, labels, "overlap", undefined, undefined, 1);
+      await this.props.updateView(response, labels, "overlap", undefined, undefined, this.props.getIndexByName(this.main_label));
     }
   };
+
+  onSelectActionTab = evt => {
+    console.info("Scribbles: SelectActionTab");
+    this.props.onSelectActionTab(evt.currentTarget.value);
+  };
+
+  onScribblesExist = () => {
+    // fetch both background and foreground scribbles
+    let main_scribbles = this.props.getIndexByName("main_scribbles");
+    let background_scribbles = this.props.getIndexByName("background_scribbles");
+    let foreground_scribbles = this.props.getIndexByName("foreground_scribbles");
+
+    // return true if scribbles volume exist
+    return main_scribbles != null && background_scribbles != null && foreground_scribbles != null;
+  }
+
+  onEnterActionTab = () => {
+    console.info("Scribbles: EnterActionTab");
+
+    // select our brush tool
+    cornerstoneTools.setToolActive('SphericalBrush', { mouseButtonMask: 1 });
+
+    // fetch the segmentation volume, and add additional segments for scribbles
+    const { getters } = cornerstoneTools.getModule('segmentation');
+    const { labelmaps3D } = getters.labelmaps3D(
+      this.props.viewConstants.element
+    );
+
+    // if empty, then add a main segmentation volume
+    if (!labelmaps3D) {
+      console.info('LabelMap3D is empty.. adding an empty segment');
+      this.main_label = "generic";
+      this.props.onAddSegment("generic", "generic tissue seg", "#D683E6", true);
+    }
+    else {
+      this.main_label = this.props.getSelectedActiveName();
+    }
+
+    // if no scribbles segmentation volume exists then add them now
+    if (!this.onScribblesExist()) {
+      console.debug(this.onScribblesExist());
+      console.debug("no scribbles segments found, adding....")
+
+      this.props.onAddSegment("main_scribbles", "main segmentation volume for scribbles", "#E2EF83", true);
+      this.props.onAddSegment("background_scribbles", "background scribbles", "#FF0000");
+      this.props.onAddSegment("foreground_scribbles", "foreground scribbles", "#00FF00");
+      this.props.refreshSegTable();
+      
+      // all done setting up scribbles volumes, now make one active
+      this.setActiveSegment("foreground_scribbles");
+    }
+    else {
+      console.debug("scribbles segments already exist, skipping....")
+    }
+  };
+
+  onLeaveActionTab = () => {
+    console.info("Scribbles: LeaveActionTab");
+    cornerstoneTools.setToolDisabled('SphericalBrush', {});
+    this.props.onDeleteSegmentByName("main_scribbles");
+    this.props.onDeleteSegmentByName("background_scribbles");
+    this.props.onDeleteSegmentByName("foreground_scribbles");
+  };
+
+  clearScribbles = () => {
+    console.info("Scribbles: Clear Scribbles");
+    this.props.onClearSegmentByName("main_scribbles");
+    this.props.onClearSegmentByName("background_scribbles");
+    this.props.onClearSegmentByName("foreground_scribbles");
+  };
+
+  setActiveSegment = name => {
+    const { element } = this.props.viewConstants;
+    const activeIndex = this.props.getIndexByName(name);
+
+    if(activeIndex){
+      const { setters } = cornerstoneTools.getModule('segmentation');
+      const { labelmapIndex, segmentIndex } = activeIndex;
+  
+      setters.activeLabelmapIndex(element, labelmapIndex);
+      setters.activeSegmentIndex(element, segmentIndex);
+  
+      // Refresh
+      cornerstone.updateImage(element);
+  
+    }
+    else{
+      console.info("Scribbles: setActiveSegment - unable to find segment " + name);
+    }    
+  };
+
+  onChangeScribbles = evt => {
+    const value = evt.target.value;
+    console.info(value);
+    this.setActiveSegment(value);
+  }
 
   render() {
     let models = [];
@@ -130,6 +248,10 @@ export default class Scribbles extends BaseTab {
       }
     }
 
+    let scribbles = [];
+    scribbles.push("Foreground");
+    scribbles.push("Background");
+
     return (
       <div className="tab">
         <input
@@ -137,7 +259,7 @@ export default class Scribbles extends BaseTab {
           name="rd"
           id={this.tabId}
           className="tab-switch"
-          value="segmentation"
+          value="scribbles"
           onClick={this.onSelectActionTab}
         />
         <label htmlFor={this.tabId} className="tab-label">
@@ -146,17 +268,44 @@ export default class Scribbles extends BaseTab {
         <div className="tab-content">
           <ModelSelector
             ref={this.modelSelector}
-            name="segmentation"
+            name="scribbles"
             title="Scribbles"
             models={models}
             currentModel={this.state.currentModel}
             onClick={this.onSegmentation}
             onSelectModel={this.onSelectModel}
+            scribbles_selector={
+              <div>
+                <tr>
+                  <td width="18%">Label:</td>
+                  <td width="2%">&nbsp;</td>
+                  <td width="80%">
+                    <select
+                      name="scribblesSelectorBox"
+                      className="selectBox"
+                      onChange={this.onChangeScribbles}
+                    >
+                      {scribbles.map(scribbles => (
+                        <option key={scribbles} name={scribbles} 
+                          value={scribbles.toLowerCase() + "_scribbles"}>
+                          {`${scribbles} `}
+                        </option>
+                      ))}
+                    </select>
+                  </td>
+                </tr>
+              </div>
+            }
             usage={
-              <p style={{ fontSize: 'smaller' }}>
-                Fully automated segmentation <b>without any user input</b>. Just
-                select a model and click to run
-              </p>
+              <div style={{ fontSize: 'smaller' }}>
+                <p>
+                  Select a scribbles layer, click to add and ctrl+click to remove scribbles.
+                </p>
+                <a href="#" onClick={() => this.clearScribbles()}>
+                  Clear Scribbles
+                </a>
+              </div>
+
             }
           />
         </div>
