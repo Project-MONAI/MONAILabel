@@ -145,7 +145,7 @@ class Deepgrow(InferTask):
             # Orientationd(keys="image", axcodes="RAS"), # Should we apply inverse orientation in Restored transform?
             SqueezeDimd(keys="image", dim=0),
             # PointsToDictd(label_names=self.label_names),
-            AddGuidanceFromPointsCustomd(ref_image="image", guidance="guidance"),
+            AddGuidanceFromPointsCustomd(ref_image="image", guidance="guidance", label_names=self.label_names),
             AddChanneld(keys="image"),
             # NormalizeIntensityd(keys="image"),
             # This transform may not work well for MR images

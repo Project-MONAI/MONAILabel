@@ -716,8 +716,7 @@ class AddGuidanceFromPointsCustomd(Transform):
         self,
         ref_image,
         guidance: str = "guidance",
-        foreground: str = "foreground",
-        background: str = "background",
+        label_names=None,
         axis: int = 0,
         depth_first: bool = True,
         meta_keys: Optional[str] = None,
@@ -725,8 +724,7 @@ class AddGuidanceFromPointsCustomd(Transform):
     ):
         self.ref_image = ref_image
         self.guidance = guidance
-        self.foreground = foreground
-        self.background = background
+        self.label_names = label_names
         self.axis = axis
         self.depth_first = depth_first
         self.meta_keys = meta_keys
@@ -735,7 +733,7 @@ class AddGuidanceFromPointsCustomd(Transform):
     def _apply(self, clicks, factor):
         if len(clicks):
             guidance = np.multiply(clicks, factor).astype(int).tolist()
-            return guidance
+            return [guidance]
         else:
             return []
 
@@ -757,28 +755,15 @@ class AddGuidanceFromPointsCustomd(Transform):
 
         factor = np.array(current_shape) / original_shape
 
-        fg_bg_clicks = dict()
-        # For foreground clicks
-        for key_label in d[self.foreground]:
-            clicks = d[self.foreground][key_label]
+        # Creating guidance for all clicks
+        all_guidances = dict()
+        for key_label in self.label_names.keys():
+            clicks = d[key_label]
             clicks = list(np.array(clicks).astype(int))
             if self.depth_first:
                 for i in range(len(clicks)):
                     clicks[i] = list(np.roll(clicks[i], 1))
-            fg_bg_clicks[key_label] = clicks
-        # For background clicks
-        clicks = d[self.background]
-        clicks = list(np.array(clicks).astype(int))
-        if self.depth_first:
-            for i in range(len(clicks)):
-                clicks[i] = list(np.roll(clicks[i], 1))
-        fg_bg_clicks["background"] = clicks
-        # Creating guidance based on foreground clicks
-        all_guidances = dict()
-        for key_label in d[self.foreground]:
-            all_guidances[key_label] = self._apply(fg_bg_clicks[key_label], factor)
-        # Creating guidance based on background clicks
-        all_guidances["background"] = self._apply(fg_bg_clicks["background"], factor)
+            all_guidances[key_label] = self._apply(clicks, factor)
         d[self.guidance] = all_guidances
         return d
 

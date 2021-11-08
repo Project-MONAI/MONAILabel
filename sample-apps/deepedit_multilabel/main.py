@@ -219,7 +219,7 @@ def main():
         "amp": False,
         "lr": 0.0001,
     }
-    al_app.train(request=request)
+    # al_app.train(request=request)
 
     # # PERFORMING INFERENCE USING INTERACTIVE MODEL
     # deepgrow_3d = {
@@ -245,24 +245,26 @@ def main():
     # }
     # al_app.infer(deepgrow_3d)
 
-    # # PERFORMING INFERENCE USING INTERACTIVE MODEL
-    # deepgrow_3d = {
-    #     "model": "deepedit",
-    #     "image": f"{studies_path}/img0022.nii.gz",
-    #     "spleen": [[61, 106, 54], [65, 106, 54]],
-    #     "liver": [[61, 106, 54], [65, 106, 54]],
-    #     "right kidney": [[61, 106, 54], [65, 106, 54]],
-    #     "left kidney": [[61, 106, 54], [65, 106, 54]],
-    #     "background": [[6, 132, 427]],
-    # }
-    # al_app.infer(deepgrow_3d)
+    # PERFORMING INFERENCE USING INTERACTIVE MODEL
+    deepgrow_3d = {
+        "model": "deepedit",
+        "image": f"{studies_path}/img0022.nii.gz",
+        "result_extension": ".nii.gz",
+        "spleen": [[61, 106, 54], [65, 106, 54]],
+        "liver": [[61, 106, 54], [65, 106, 54]],
+        "right kidney": [[61, 106, 54], [65, 106, 54]],
+        "left kidney": [[61, 106, 54], [65, 106, 54]],
+        "background": [[6, 132, 427]],
+    }
+    al_app.infer(deepgrow_3d)
 
-    # # PERFORMING INFERENCE USING AUTOMATIC MODEL
-    # automatic_request = {
-    #     "model": "deepedit_seg",
-    #     "image": f"{studies_path}/img0022.nii.gz",
-    # }
-    # al_app.infer(automatic_request)
+    # PERFORMING INFERENCE USING AUTOMATIC MODEL
+    automatic_request = {
+        "model": "deepedit_seg",
+        "image": f"{studies_path}/img0022.nii.gz",
+        "result_extension": ".nii.gz",
+    }
+    al_app.infer(automatic_request)
 
     return None
 
