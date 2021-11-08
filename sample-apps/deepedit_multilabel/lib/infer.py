@@ -28,8 +28,6 @@ from monailabel.deepedit.multilabel.transforms import (
     AddGuidanceFromPointsCustomd,
     AddGuidanceSignalCustomd,
     DiscardAddGuidanced,
-    GetSingleLabeld,
-    PointsToDictd,
     ResizeGuidanceMultipleLabelCustomd,
 )
 from monailabel.interfaces.tasks.infer import InferTask, InferType
@@ -144,10 +142,10 @@ class Deepgrow(InferTask):
             # SingleModalityLabelSanityd(keys="image", label_names=self.label_names),
             AddChanneld(keys="image"),
             Spacingd(keys="image", pixdim=self.target_spacing, mode="bilinear"),
-            Orientationd(keys="image", axcodes="RAS"),
+            # Orientationd(keys="image", axcodes="RAS"), # Should we apply inverse orientation in Restored transform?
             SqueezeDimd(keys="image", dim=0),
-            PointsToDictd(label_names=self.label_names),
-            AddGuidanceFromPointsCustomd(ref_image="image", guidance="guidance"),
+            # PointsToDictd(label_names=self.label_names),
+            AddGuidanceFromPointsCustomd(ref_image="image", guidance="guidance", label_names=self.label_names),
             AddChanneld(keys="image"),
             # NormalizeIntensityd(keys="image"),
             # This transform may not work well for MR images
@@ -175,5 +173,5 @@ class Deepgrow(InferTask):
             AsDiscreted(keys="pred", argmax=True),
             ToNumpyd(keys="pred"),
             Restored(keys="pred", ref_image="image"),
-            GetSingleLabeld(keys="pred", label_names=self.label_names),
+            # GetSingleLabeld(keys="pred", label_names=self.label_names),
         ]
