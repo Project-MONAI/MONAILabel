@@ -28,16 +28,14 @@ router = APIRouter(
 )
 
 
-@router.get("/", summary="Get Status of Scoring Task")
-async def status(all: bool = False, check_if_running: bool = False):
+def status(all: bool = False, check_if_running: bool = False):
     res, detail = AsyncTask.status("scoring", all, check_if_running)
     if res is None:
         raise HTTPException(status_code=404, detail=detail)
     return res
 
 
-@router.post("/", summary="Run All Scoring Tasks")
-async def run(params: Optional[dict] = None, run_sync: Optional[bool] = False):
+def run(params: Optional[dict] = None, run_sync: Optional[bool] = False):
     instance: MONAILabelApp = app_instance()
     result = {}
     for method in instance.info()["scoring"]:
@@ -49,19 +47,37 @@ async def run(params: Optional[dict] = None, run_sync: Optional[bool] = False):
     return result
 
 
-@router.post("/{method}", summary="Run Scoring Task for specific method")
-async def run_method(method: str, params: Optional[dict] = None, run_sync: Optional[bool] = False):
+def run_method(method: str, params: Optional[dict] = None, run_sync: Optional[bool] = False):
     res, detail = AsyncTask.run("scoring", request={"method": method}, params=params, force_sync=run_sync)
     if res is None:
         raise HTTPException(status_code=429, detail=detail)
     return res
 
 
-@router.delete("/", summary="Stop Scoring Task")
-async def stop():
+def stop():
     res = AsyncTask.stop("scoring")
 
     # Try to clear cuda cache
     if torch.cuda.is_available():
         torch.cuda.empty_cache()
     return res
+
+
+@router.get("/", summary="Get Status of Scoring Task")
+async def api_status(all: bool = False, check_if_running: bool = False):
+    return status(all, check_if_running)
+
+
+@router.post("/", summary="Run All Scoring Tasks")
+async def api_run(params: Optional[dict] = None, run_sync: Optional[bool] = False):
+    return run(params, run_sync)
+
+
+@router.post("/{method}", summary="Run Scoring Task for specific method")
+async def api_run_method(method: str, params: Optional[dict] = None, run_sync: Optional[bool] = False):
+    return run_method(method, params, run_sync)
+
+
+@router.delete("/", summary="Stop Scoring Task")
+async def api_stop():
+    return stop()

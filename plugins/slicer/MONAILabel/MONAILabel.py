@@ -182,6 +182,7 @@ class MONAILabelWidget(ScriptedLoadableModuleWidget, VTKObservationMixin):
         self.timer = None
 
         self.scribblesMode = None
+        self.multi_label = False
 
     def setup(self):
         """
@@ -233,6 +234,8 @@ class MONAILabelWidget(ScriptedLoadableModuleWidget, VTKObservationMixin):
         self.ui.dgNegativeFiducialPlacementWidget.placeButton().show()
         self.ui.dgNegativeFiducialPlacementWidget.deleteButton().show()
 
+        self.ui.dgUpdateButton.setIcon(self.icon("segment.png"))
+
         # Connections
         self.ui.fetchServerInfoButton.connect("clicked(bool)", self.onClickFetchInfo)
         self.ui.serverComboBox.connect("currentIndexChanged(int)", self.onClickFetchInfo)
@@ -247,6 +250,9 @@ class MONAILabelWidget(ScriptedLoadableModuleWidget, VTKObservationMixin):
         self.ui.uploadImageButton.connect("clicked(bool)", self.onUploadImage)
         self.ui.importLabelButton.connect("clicked(bool)", self.onImportLabel)
         self.ui.labelComboBox.connect("currentIndexChanged(int)", self.onSelectLabel)
+        self.ui.dgUpdateButton.connect("clicked(bool)", self.onUpdateDeepgrow)
+        self.ui.trainingStatusButton.hide()
+        self.ui.dgUpdateCheckBox.setStyleSheet("padding-left: 10px;")
 
         # Scribbles
         # brush and eraser icon from: https://tablericons.com/
@@ -415,12 +421,12 @@ class MONAILabelWidget(ScriptedLoadableModuleWidget, VTKObservationMixin):
         self.ui.uploadImageButton.setEnabled(self.current_sample and self.current_sample.get("session"))
 
         self.updateSelector(self.ui.segmentationModelSelector, ["segmentation"], "SegmentationModel", 0)
-        self.updateSelector(self.ui.deepgrowModelSelector, ["deepgrow"], "DeepgrowModel", 0)
+        self.updateSelector(self.ui.deepgrowModelSelector, ["deepgrow", "deepedit"], "DeepgrowModel", 0)
         self.updateSelector(self.ui.scribblesMethodSelector, ["scribbles"], "ScribblesMethod", 0)
 
         if self.models and [k for k, v in self.models.items() if v["type"] == "segmentation"]:
             self.ui.segmentationCollapsibleButton.collapsed = False
-        if self.models and [k for k, v in self.models.items() if v["type"] == "deepgrow"]:
+        if self.models and [k for k, v in self.models.items() if v["type"] in ("deepgrow", "deepedit")]:
             self.ui.deepgrowCollapsibleButton.collapsed = False
         if self.models and [k for k, v in self.models.items() if v["type"] == "scribbles"]:
             self.ui.scribblesCollapsibleButton.collapsed = False
@@ -510,6 +516,20 @@ class MONAILabelWidget(ScriptedLoadableModuleWidget, VTKObservationMixin):
 
         self.ui.dgPositiveFiducialPlacementWidget.setEnabled(self.ui.deepgrowModelSelector.currentText)
         self.ui.dgNegativeFiducialPlacementWidget.setEnabled(self.ui.deepgrowModelSelector.currentText)
+
+        self.multi_label = "background" in self.info.get("labels", [])
+        if self.multi_label:
+            self.ui.dgLabelBackground.hide()
+            self.ui.dgNegativeFiducialPlacementWidget.hide()
+            self.ui.freezeUpdateCheckBox.show()
+            self.ui.dgLabelForeground.setText("Landmarks:")
+        else:
+            self.ui.dgNegativeFiducialPlacementWidget.show()
+            self.ui.freezeUpdateCheckBox.hide()
+            self.ui.dgLabelForeground.setText("Foreground:")
+
+        self.ui.dgUpdateCheckBox.setEnabled(self.ui.deepgrowModelSelector.currentText and self._segmentNode)
+        self.ui.dgUpdateButton.setEnabled(self.ui.deepgrowModelSelector.currentText and self._segmentNode)
 
         # All the GUI updates are done
         self._updatingGUIFromParameterNode = False
@@ -710,6 +730,11 @@ class MONAILabelWidget(ScriptedLoadableModuleWidget, VTKObservationMixin):
         logging.debug("Markup point added; point ID = {}".format(movingMarkupIndex))
 
         current_point = self.getFiducialPointXYZ(markupsNode, movingMarkupIndex)
+
+        if not self.ui.dgUpdateCheckBox.checked:
+            self.onClickDeepgrow(current_point, skip_infer=True)
+            return
+
         self.onClickDeepgrow(current_point)
 
         self.ignoreFiducialNodeAddEvent = True
@@ -1173,7 +1198,7 @@ class MONAILabelWidget(ScriptedLoadableModuleWidget, VTKObservationMixin):
         result = None
         self.onClearScribbles()
 
-        if self.current_sample["session"]:
+        if self.current_sample.get("session"):
             if not self.onUploadImage(init_sample=False):
                 return
 
@@ -1281,7 +1306,10 @@ class MONAILabelWidget(ScriptedLoadableModuleWidget, VTKObservationMixin):
         self.updateGUIFromParameterNode()
         logging.info("Time consumed by segmentation: {0:3.1f}".format(time.time() - start))
 
-    def onClickDeepgrow(self, current_point):
+    def onUpdateDeepgrow(self):
+        self.onClickDeepgrow(None)
+
+    def onClickDeepgrow(self, current_point, skip_infer=False):
         model = self.ui.deepgrowModelSelector.currentText
         if not model:
             slicer.util.warningDisplay("Please select a deepgrow model")
@@ -1297,6 +1325,8 @@ class MONAILabelWidget(ScriptedLoadableModuleWidget, VTKObservationMixin):
 
         segment.SetTag("MONAILabel.ForegroundPoints", json.dumps(foreground_all))
         segment.SetTag("MONAILabel.BackgroundPoints", json.dumps(background_all))
+        if skip_infer:
+            return
 
         # use model info "deepgrow" to determine
         deepgrow_3d = False if self.models[model].get("dimension", 3) == 2 else True
@@ -1306,37 +1336,74 @@ class MONAILabelWidget(ScriptedLoadableModuleWidget, VTKObservationMixin):
         operationDescription = "Run Deepgrow for segment: {}; model: {}; 3d {}".format(label, model, deepgrow_3d)
         logging.debug(operationDescription)
 
+        if not current_point:
+            if not foreground_all and not deepgrow_3d:
+                slicer.util.warningDisplay(operationDescription + " - points not added")
+                return
+            current_point = foreground_all[-1] if foreground_all else background_all[-1] if background_all else None
+
         try:
             qt.QApplication.setOverrideCursor(qt.Qt.WaitCursor)
 
-            sliceIndex = current_point[2]
-            logging.debug("Slice Index: {}".format(sliceIndex))
+            sliceIndex = None
+            if self.multi_label:
+                params = {}
+                segmentation = self._segmentNode.GetSegmentation()
+                for name in self.info.get("labels", []):
+                    points = []
+                    segmentId = segmentation.GetSegmentIdBySegmentName(name)
+                    segment = segmentation.GetSegment(segmentId) if segmentId else None
+                    if segment:
+                        fPosStr = vtk.mutable("")
+                        segment.GetTag("MONAILabel.ForegroundPoints", fPosStr)
+                        pointset = str(fPosStr)
+                        print("{} => {} Fiducial points are: {}".format(segmentId, name, pointset))
+                        if fPosStr is not None and len(pointset) > 0:
+                            points = json.loads(pointset)
 
-            if deepgrow_3d:
-                foreground = foreground_all
-                background = background_all
+                    params[name] = points
+                params["label"] = label
+                labels = None
             else:
-                foreground = [x for x in foreground_all if x[2] == sliceIndex]
-                background = [x for x in background_all if x[2] == sliceIndex]
+                sliceIndex = current_point[2] if current_point else None
+                logging.debug("Slice Index: {}".format(sliceIndex))
 
-            logging.debug("Foreground: {}".format(foreground))
-            logging.debug("Background: {}".format(background))
-            logging.debug("Current point: {}".format(current_point))
+                if deepgrow_3d or not sliceIndex:
+                    foreground = foreground_all
+                    background = background_all
+                else:
+                    foreground = [x for x in foreground_all if x[2] == sliceIndex]
+                    background = [x for x in background_all if x[2] == sliceIndex]
 
-            image_file = self.current_sample["id"]
-            params = {
-                "label": label,
-                "foreground": foreground,
-                "background": background,
-            }
+                logging.debug("Foreground: {}".format(foreground))
+                logging.debug("Background: {}".format(background))
+                logging.debug("Current point: {}".format(current_point))
 
+                params = {
+                    "label": label,
+                    "foreground": foreground,
+                    "background": background,
+                }
+                labels = [label]
+
+            params["label"] = label
             params.update(self.getParamsFromConfig("infer", model))
             print(f"Request Params for Deepgrow/Deepedit: {params}")
 
+            image_file = self.current_sample["id"]
             result_file, params = self.logic.infer(model, image_file, params, session_id=self.getSessionId())
             print(f"Result Params for Deepgrow/Deepedit: {params}")
+            if labels is None:
+                labels = (
+                    params.get("label_names")
+                    if params and params.get("label_names")
+                    else self.models[model].get("labels")
+                )
+                if labels and isinstance(labels, dict):
+                    labels = [k for k, _ in sorted(labels.items(), key=lambda item: item[1])]
 
-            self.updateSegmentationMask(result_file, [label], None if deepgrow_3d else sliceIndex)
+            freeze = label if self.ui.freezeUpdateCheckBox.checked else None
+            self.updateSegmentationMask(result_file, labels, None if deepgrow_3d else sliceIndex, freeze=freeze)
         except:
             logging.exception("Unknown Exception")
             slicer.util.errorDisplay(operationDescription + " - unexpected error.", detailedText=traceback.format_exc())
@@ -1362,7 +1429,7 @@ class MONAILabelWidget(ScriptedLoadableModuleWidget, VTKObservationMixin):
         color = GenericAnatomyColors.get(name.lower())
         return [c / 255.0 for c in color] if color else None
 
-    def updateSegmentationMask(self, in_file, labels, sliceIndex=None):
+    def updateSegmentationMask(self, in_file, labels, sliceIndex=None, freeze=None):
         # TODO:: Add ROI Node (for Bounding Box if provided in the result)
         start = time.time()
         logging.debug("Update Segmentation Mask from: {}".format(in_file))
@@ -1372,14 +1439,14 @@ class MONAILabelWidget(ScriptedLoadableModuleWidget, VTKObservationMixin):
         segmentationNode = self._segmentNode
         segmentation = segmentationNode.GetSegmentation()
 
-        labels = [l for l in labels if l != "background"]
-        print(f"Update Segmentation Mask using Labels: {labels}")
-
         if in_file is None:
             for label in labels:
                 if not segmentation.GetSegmentIdBySegmentName(label):
                     segmentation.AddEmptySegment(label, label, self.getLabelColor(label))
             return True
+
+        labels = [l for l in labels if l != "background"]
+        print(f"Update Segmentation Mask using Labels: {labels}")
 
         # segmentId, segment = self.currentSegment()
         labelImage = sitk.ReadImage(in_file)
@@ -1390,6 +1457,9 @@ class MONAILabelWidget(ScriptedLoadableModuleWidget, VTKObservationMixin):
             id = segmentation.GetSegmentIdBySegmentName(label)
             if id:
                 existing_label_ids[label] = id
+
+        freeze = [freeze] if freeze and isinstance(freeze, str) else freeze
+        print(f"Import only Freezed label: {freeze}")
 
         numberOfExistingSegments = segmentation.GetNumberOfSegments()
         slicer.modules.segmentations.logic().ImportLabelmapToSegmentationNode(labelmapVolumeNode, segmentationNode)
@@ -1409,7 +1479,9 @@ class MONAILabelWidget(ScriptedLoadableModuleWidget, VTKObservationMixin):
             # segment.SetName(label)
             # segment.SetColor(self.getLabelColor(label))
 
-            if label in existing_label_ids:
+            if freeze and label not in freeze:
+                print(f"Discard label update for: {label}")
+            elif label in existing_label_ids:
                 segmentEditorWidget = slicer.modules.segmenteditor.widgetRepresentation().self().editor
                 segmentEditorWidget.setSegmentationNode(segmentationNode)
                 segmentEditorWidget.setMasterVolumeNode(self._volumeNode)
@@ -1450,7 +1522,7 @@ class MONAILabelWidget(ScriptedLoadableModuleWidget, VTKObservationMixin):
                         labelmap, slicer.qSlicerSegmentEditorAbstractEffect.ModificationModeSet, bypassMask
                     )
 
-                segmentationNode.RemoveSegment(segmentId)
+            segmentationNode.RemoveSegment(segmentId)
 
         self.showSegmentationsIn3D()
         logging.info("Time consumed by updateSegmentationMask: {0:3.1f}".format(time.time() - start))

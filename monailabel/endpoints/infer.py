@@ -99,8 +99,7 @@ def send_response(datastore, result, output, background_tasks):
     return Response(content=return_message.to_string(), media_type=return_message.content_type)
 
 
-@router.post("/{model}", summary="Run Inference for supported model")
-async def run_inference(
+def run_inference(
     background_tasks: BackgroundTasks,
     model: str,
     image: str = "",
@@ -158,3 +157,17 @@ async def run_inference(
     if result is None:
         raise HTTPException(status_code=500, detail="Failed to execute infer")
     return send_response(instance.datastore(), result, output, background_tasks)
+
+
+@router.post("/{model}", summary="Run Inference for supported model")
+async def api_run_inference(
+    background_tasks: BackgroundTasks,
+    model: str,
+    image: str = "",
+    session_id: str = "",
+    params: str = Form("{}"),
+    file: UploadFile = File(None),
+    label: UploadFile = File(None),
+    output: Optional[ResultType] = None,
+):
+    return run_inference(background_tasks, model, image, session_id, params, file, label, output)

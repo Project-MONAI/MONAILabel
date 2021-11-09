@@ -10,7 +10,6 @@
 # limitations under the License.
 
 import copy
-import itertools
 import logging
 import os
 import platform
@@ -159,9 +158,14 @@ class MONAILabelApp:
 
         # If labels are not provided, aggregate from all individual infers
         if not self.labels:
-            meta["labels"] = list(
-                set(itertools.chain.from_iterable([v.get("labels", []) for v in meta["models"].values()]))
-            )
+            merged = []
+            for labels in [v.get("labels", []) for v in meta["models"].values()]:
+                if labels and isinstance(labels, dict):
+                    labels = [k for k, _ in sorted(labels.items(), key=lambda item: item[1])]  # type: ignore
+                for l in labels:
+                    if l not in merged:
+                        merged.append(l)
+            meta["labels"] = merged
 
         return meta
 
@@ -317,12 +321,9 @@ class MONAILabelApp:
                 For example::
 
                     {
-                        "mytrain": {
-                            "device": "cuda"
-                            "max_epochs": 1,
-                            "amp": False,
-                            "lr": 0.0001,
-                        }
+                        "model": "mytrain",
+                        "device": "cuda"
+                        "max_epochs": 1,
                     }
 
         Returns:
