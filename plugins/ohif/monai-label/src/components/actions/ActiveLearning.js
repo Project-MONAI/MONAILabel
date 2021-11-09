@@ -103,7 +103,9 @@ export default class OptionTable extends BaseTab {
 
   onClickSubmitLabel = async () => {
     
-    // clear any scribbles segments
+    // delete any scribbles segments, 
+    // they are not needed anymore since this is final label
+    this.props.onDeleteSegmentByName("main_scribbles");
     this.props.onDeleteSegmentByName("background_scribbles");
     this.props.onDeleteSegmentByName("foreground_scribbles");
 

@@ -10,8 +10,8 @@ import './SegmentationList.styl';
 
 import {
   createSegment,
-  deleteSegment,
   clearSegment,
+  deleteSegment,
   flattenLabelmaps,
   getFirstSegmentId,
   getLabelMaps,
@@ -305,8 +305,7 @@ export default class SegmentationList extends Component {
         id = null;
       }    
     }
-
-
+    
     if (id && selectActive) {
       this.setState({ segments: segments, selectedSegmentId: id });
     } else {

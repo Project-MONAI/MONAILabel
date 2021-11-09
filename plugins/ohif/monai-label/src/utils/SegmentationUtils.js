@@ -476,10 +476,10 @@ export {
   getLabelMaps,
   flattenLabelmaps,
   createSegment,
+  clearSegment,
   getSegmentInfo,
   updateSegment,
   deleteSegment,
-  clearSegment,
   updateSegmentMeta,
   getFirstSegmentId,
 };

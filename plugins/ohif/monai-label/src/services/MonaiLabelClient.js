@@ -11,6 +11,8 @@ export default class MonaiLabelClient {
   }
 
   async segmentation(model, image, params = {}, label = null) {
+    // label is used to send label volumes, e.g. scribbles,
+    // that are to be used during segmentation
     return this.infer(model, image, params, label);
   }
 

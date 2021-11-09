@@ -27,7 +27,7 @@ export default class Scribbles extends BaseTab {
   onSegmentation = async () => {
     const nid = this.notification.show({
       title: 'MONAI Label',
-      message: 'Running Scribbles method - ' + this.modelSelector.current.currentModel(),
+      message: 'Running Scribbles method: ' + this.modelSelector.current.currentModel(),
       type: 'info',
       duration: 60000,
     });
@@ -54,7 +54,7 @@ export default class Scribbles extends BaseTab {
     let params =
       config && config.infer && config.infer[model] ? config.infer[model] : {};
 
-    const scribblesLabelMapIndex = this.props.getIndexByName("background_scribbles").labelmapIndex;
+    const scribblesLabelMapIndex = this.props.getIndexByName("main_scribbles").labelmapIndex;
     const labels = info.models[model].labels;
 
     // get label/scribbles
@@ -133,12 +133,19 @@ export default class Scribbles extends BaseTab {
     } else {
       this.notification.show({
         title: 'MONAI Label',
-        message: 'Run Scribbles Segmentation - Successful',
+        message: 'Run Scribbles method: ' + + this.modelSelector.current.currentModel() + ' successful',
         type: 'success',
         duration: 2000,
       });
 
-      await this.props.updateView(response, labels, "overlap", undefined, undefined, this.props.getIndexByName(this.main_label));
+      await this.props.updateView(
+        response, 
+        labels, 
+        "override", 
+        undefined, 
+        undefined, 
+        this.props.getIndexByName(this.main_label)
+        );
     }
   };
 
@@ -202,9 +209,9 @@ export default class Scribbles extends BaseTab {
 
     // commenting the following to make scribbles persist even in other tabs
     // keeping this in here in case if the persist options needs to be disabled
-    // this.props.onDeleteSegmentByName("main_scribbles");
-    // this.props.onDeleteSegmentByName("background_scribbles");
-    // this.props.onDeleteSegmentByName("foreground_scribbles");
+    this.props.onDeleteSegmentByName("main_scribbles");
+    this.props.onDeleteSegmentByName("background_scribbles");
+    this.props.onDeleteSegmentByName("foreground_scribbles");
   };
 
   clearScribbles = () => {
@@ -276,7 +283,7 @@ export default class Scribbles extends BaseTab {
             currentModel={this.state.currentModel}
             onClick={this.onSegmentation}
             onSelectModel={this.onSelectModel}
-            scribbles_selector={
+            scribblesSelector={
               <div>
                 <tr>
                   <td width="18%">Label:</td>

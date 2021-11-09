@@ -195,21 +195,17 @@ export default class MonaiLabelPanel extends Component {
       newLabelMap
     );
   };
-
-  onDeleteSegmentByName = name => {
-    this.segmentationList.current.onDeleteSegmentByName(
-      name
-    );
-  }
-
+  
   onClearSegmentByName = name => {
     this.segmentationList.current.onClearSegmentByName(
       name
     );
   }
   
-  getSelectedActiveIndex = () => {
-    return this.segmentationList.current.getSelectedActiveIndex();
+  onDeleteSegmentByName = name => {
+    this.segmentationList.current.onDeleteSegmentByName(
+      name
+    );
   }
 
   getIndexByName = name => {
@@ -219,6 +215,11 @@ export default class MonaiLabelPanel extends Component {
   getNameByIndex = selectedIndex => {
     return this.segmentationList.current.getNameByIndex(selectedIndex);
   }
+
+  getSelectedActiveIndex = () => {
+    return this.segmentationList.current.getSelectedActiveIndex();
+  }
+
 
   render() {
     return (
@@ -258,9 +259,10 @@ export default class MonaiLabelPanel extends Component {
             client={this.client}
             notification={this.notification}
             updateView={this.updateView}
-            onDeleteSegmentByName={this.onDeleteSegmentByName}
             onSelectActionTab={this.onSelectActionTab}
             onOptionsConfig={this.onOptionsConfig}
+            // additional function - delete scribbles before submit
+            onDeleteSegmentByName={this.onDeleteSegmentByName}
           />
 
           <AutoSegmentation
@@ -295,9 +297,10 @@ export default class MonaiLabelPanel extends Component {
             updateView={this.updateView}
             onSelectActionTab={this.onSelectActionTab}
             onOptionsConfig={this.onOptionsConfig}
+            // additional functions for scribbles volume updates
             onAddSegment={this.onAddSegment}
-            onDeleteSegmentByName={this.onDeleteSegmentByName}
             onClearSegmentByName={this.onClearSegmentByName}
+            onDeleteSegmentByName={this.onDeleteSegmentByName}
             getIndexByName={this.getIndexByName}
             getNameByIndex={this.getNameByIndex}
             getSelectedActiveIndex={this.getSelectedActiveIndex}
