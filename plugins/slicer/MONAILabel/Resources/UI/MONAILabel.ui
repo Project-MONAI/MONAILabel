@@ -467,7 +467,7 @@
           <item>
            <widget class="QLabel" name="dgLabelBackground">
             <property name="text">
-             <string>Background:</string>
+             <string>  Background:</string>
             </property>
            </widget>
           </item>
