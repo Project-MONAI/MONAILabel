@@ -30,7 +30,7 @@ class EpistemicScoring(ScoringMethod):
     """
 
     def __init__(
-        self, model, network=None, transforms=None, roi_size=(128, 128, 64), num_samples=10, mean_score_flag=False
+        self, model, network=None, transforms=None, roi_size=(128, 128, 64), num_samples=10
     ):
         super().__init__("Compute initial score based on dropout")
         self.model = model
