@@ -14,8 +14,7 @@ import os
 from distutils.util import strtobool
 from typing import Dict
 
-from lib import Deepgrow, MyTrain, Segmentation
-from lib.activelearning import MyStrategy
+from lib import DeepEdit, DeepEditSeg, MyStrategy, MyTrain
 from monai.networks.nets import DynUNet
 
 from monailabel.interfaces.app import MONAILabelApp
@@ -125,19 +124,19 @@ class MyApp(MONAILabelApp):
 
     def init_infers(self) -> Dict[str, InferTask]:
         return {
-            "deepedit": Deepgrow(
+            "deepedit": DeepEdit(
                 [self.pretrained_model, self.final_model],
                 self.network,
                 spatial_size=self.planner.spatial_size,
                 target_spacing=self.planner.target_spacing,
                 label_names=self.label_names,
             ),
-            "deepedit_seg": Segmentation(
+            "deepedit_seg": DeepEditSeg(
                 [self.pretrained_model, self.final_model],
                 self.network,
                 spatial_size=self.planner.spatial_size,
                 target_spacing=self.planner.target_spacing,
-                label_names=list(self.label_names.keys()),
+                label_names=self.label_names,
             ),
             # intensity range set for MRI
             "Histogram+GraphCut": HistogramBasedGraphCut(
