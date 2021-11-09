@@ -77,10 +77,10 @@ class TrainDeepgrow(BasicTrainTask):
         return DiceLoss(sigmoid=True, squared_pred=True)
 
     def pre_process(self, request, datastore: Datastore):
-        self.cleanup()
+        self.cleanup(request)
 
         # run_id = request["run_id"]
-        output_dir = os.path.join(tempfile.tempdir, f"deepgrow_{self.dimension}D_train")
+        output_dir = os.path.join(tempfile.gettempdir(), f"deepgrow_{self.dimension}D_train")
         logger.info(f"Preparing Dataset for Deepgrow-{self.dimension}D:: {output_dir}")
 
         datalist = create_dataset(
@@ -96,7 +96,7 @@ class TrainDeepgrow(BasicTrainTask):
 
     def cleanup(self, request):
         # run_id = request["run_id"]
-        output_dir = os.path.join(tempfile.tempdir, f"deepgrow_{self.dimension}D_train")
+        output_dir = os.path.join(tempfile.gettempdir(), f"deepgrow_{self.dimension}D_train")
         if os.path.exists(output_dir):
             shutil.rmtree(output_dir, ignore_errors=True)
 
