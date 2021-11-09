@@ -29,9 +29,7 @@ class EpistemicScoring(ScoringMethod):
     First version of Epistemic computation used as active learning strategy
     """
 
-    def __init__(
-        self, model, network=None, transforms=None, roi_size=(128, 128, 64), num_samples=10
-    ):
+    def __init__(self, model, network=None, transforms=None, roi_size=(128, 128, 64), num_samples=10):
         super().__init__("Compute initial score based on dropout")
         self.model = model
         self.network = network
