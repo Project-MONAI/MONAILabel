@@ -186,11 +186,12 @@ export default class MonaiLabelPanel extends Component {
     );
   };
 
-  onAddSegment = (name, description, color, newLabelMap) => {
+  onAddSegment = (name, description, color, selectActive, newLabelMap) => {
     this.segmentationList.current.onAddSegment(
       name, 
       description,
       color,
+      selectActive,
       newLabelMap
     );
   };
@@ -206,17 +207,17 @@ export default class MonaiLabelPanel extends Component {
       name
     );
   }
- 
-  getSelectedActiveName = () =>{
-    return this.segmentationList.current.getSelectedActiveName();
+  
+  getSelectedActiveIndex = () => {
+    return this.segmentationList.current.getSelectedActiveIndex();
   }
 
   getIndexByName = name => {
     return this.segmentationList.current.getIndexByName(name);
   }
-  
-  refreshSegTable = () =>{
-    this.segmentationList.current.refreshSegTable();
+
+  getNameByIndex = selectedIndex => {
+    return this.segmentationList.current.getNameByIndex(selectedIndex);
   }
 
   render() {
@@ -292,14 +293,14 @@ export default class MonaiLabelPanel extends Component {
             client={this.client}
             notification={this.notification}
             updateView={this.updateView}
+            onSelectActionTab={this.onSelectActionTab}
+            onOptionsConfig={this.onOptionsConfig}
             onAddSegment={this.onAddSegment}
             onDeleteSegmentByName={this.onDeleteSegmentByName}
             onClearSegmentByName={this.onClearSegmentByName}
-            onSelectActionTab={this.onSelectActionTab}
-            getSelectedActiveName={this.getSelectedActiveName}
             getIndexByName={this.getIndexByName}
-            refreshSegTable={this.refreshSegTable}
-            onOptionsConfig={this.onOptionsConfig}
+            getNameByIndex={this.getNameByIndex}
+            getSelectedActiveIndex={this.getSelectedActiveIndex}
           />
         </div>
 

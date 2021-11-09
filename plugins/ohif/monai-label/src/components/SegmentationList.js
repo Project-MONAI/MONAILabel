@@ -77,17 +77,6 @@ export default class SegmentationList extends Component {
     return null;
   };
 
-  getSelectedActiveName = () =>{
-    console.info(this.state.segments);
-    const id = this.state.selectedSegmentId;
-    for (let i = 0; i < this.state.segments.length; i++){
-      if(this.state.segments[i].id == id){
-        return this.state.segments[i].meta.SegmentLabel;
-      }
-    }
-    return null;
-  };
-
   getIndexByName = (name) => {
     console.info(this.state.segments);
     for (let i = 0; i < this.state.segments.length; i++){
@@ -100,12 +89,22 @@ export default class SegmentationList extends Component {
     return null;
   };
 
-  onAddSegment = (name, description, color, newLabelMap=false) => {
+  getNameByIndex = index => {
+    const id = index.id;
+    for (let i = 0; i < this.state.segments.length; i++){
+      if(this.state.segments[i].id == id){
+        return this.state.segments[i].meta.SegmentLabel;
+      }
+    }
+    return null;
+  }
+
+  onAddSegment = (name, description, color, selectActive=true, newLabelMap=false) => {
     this.uiModelService.hide();
 
     const { element } = this.props.viewConstants;
     const { id } = createSegment(element, name, description, hexToRgb(color), newLabelMap);
-    this.refreshSegTable(id);
+    this.refreshSegTable(id, selectActive);
 
     if (this.props.onSegmentCreated) {
       this.props.onSegmentCreated(id);
@@ -207,9 +206,12 @@ export default class SegmentationList extends Component {
     }
   };
 
-  onDeleteSegmentByName = name =>{
+  onDeleteSegmentByName = name => {
+    this.onDeleteSegmentByIndex(this.getIndexByName(name));
+  }
+
+  onDeleteSegmentByIndex = selectedIndex =>{
     const { element } = this.props.viewConstants
-    const selectedIndex = this.getIndexByName(name);
     console.info(selectedIndex);
 
     if(selectedIndex){    
@@ -222,20 +224,23 @@ export default class SegmentationList extends Component {
       }
     }
     else {
-      console.info("onDeleteSegmentByName: segment " + name + " not found, skipping..." );
+      console.info("onDeleteSegmentByIndex: segment " + selectedIndex + " not found, skipping..." );
     }
   }
 
-  onClearSegmentByName = name =>{
+  onClearSegmentByName = name => {
+    this.onClearSegmentByIndex(this.getIndexByName(name));
+  }
+
+  onClearSegmentByIndex = selectedIndex =>{
     const { element } = this.props.viewConstants
-    const selectedIndex = this.getIndexByName(name);
     console.info(selectedIndex);
 
     if(selectedIndex){
       clearSegment(element, selectedIndex.labelmapIndex, selectedIndex.segmentIndex);
     }
     else {
-      console.info("onClearSegmentByName: segment " + name + " not found, skipping..." );
+      console.info("onClearSegmentByIndex: segment " + selectedIndex + " not found, skipping..." );
     }
   }
   
@@ -279,7 +284,7 @@ export default class SegmentationList extends Component {
     }
   };
 
-  refreshSegTable = id => {
+  refreshSegTable = (id, selectActive=true) => {
     const { element } = this.props.viewConstants;
 
     const labelmaps = getLabelMaps(element);
@@ -301,7 +306,8 @@ export default class SegmentationList extends Component {
       }    
     }
 
-    if (id) {
+
+    if (id && selectActive) {
       this.setState({ segments: segments, selectedSegmentId: id });
     } else {
       this.setState({ segments: segments });

@@ -173,10 +173,10 @@ export default class Scribbles extends BaseTab {
     if (!labelmaps3D) {
       console.info('LabelMap3D is empty.. adding an empty segment');
       this.main_label = "generic";
-      this.props.onAddSegment("generic", "generic tissue seg", "#D683E6", true);
+      this.props.onAddSegment("generic", "generic tissue seg", "#D683E6", false, true);
     }
     else {
-      this.main_label = this.props.getSelectedActiveName();
+      this.main_label = this.props.getNameByIndex(this.props.getSelectedActiveIndex());
     }
 
     // if no scribbles segmentation volume exists then add them now
@@ -184,13 +184,12 @@ export default class Scribbles extends BaseTab {
       console.debug(this.onScribblesExist());
       console.debug("no scribbles segments found, adding....")
 
-      this.props.onAddSegment("main_scribbles", "main segmentation volume for scribbles", "#E2EF83", true);
-      this.props.onAddSegment("background_scribbles", "background scribbles", "#FF0000");
-      this.props.onAddSegment("foreground_scribbles", "foreground scribbles", "#00FF00");
-      this.props.refreshSegTable();
-      
+      this.props.onAddSegment("main_scribbles", "main segmentation volume for scribbles", "#E2EF83", false, true);
+      this.props.onAddSegment("background_scribbles", "background scribbles", "#FF0000", false);
+      this.props.onAddSegment("foreground_scribbles", "foreground scribbles", "#00FF00", false);
+
       // all done setting up scribbles volumes, now make one active
-      this.setActiveSegment("foreground_scribbles");
+      this.setActiveScribbles("foreground_scribbles");
     }
     else {
       console.debug("scribbles segments already exist, skipping....")
@@ -200,9 +199,12 @@ export default class Scribbles extends BaseTab {
   onLeaveActionTab = () => {
     console.info("Scribbles: LeaveActionTab");
     cornerstoneTools.setToolDisabled('SphericalBrush', {});
-    this.props.onDeleteSegmentByName("main_scribbles");
-    this.props.onDeleteSegmentByName("background_scribbles");
-    this.props.onDeleteSegmentByName("foreground_scribbles");
+
+    // commenting the following to make scribbles persist even in other tabs
+    // keeping this in here in case if the persist options needs to be disabled
+    // this.props.onDeleteSegmentByName("main_scribbles");
+    // this.props.onDeleteSegmentByName("background_scribbles");
+    // this.props.onDeleteSegmentByName("foreground_scribbles");
   };
 
   clearScribbles = () => {
@@ -212,7 +214,7 @@ export default class Scribbles extends BaseTab {
     this.props.onClearSegmentByName("foreground_scribbles");
   };
 
-  setActiveSegment = name => {
+  setActiveScribbles = name => {
     const { element } = this.props.viewConstants;
     const activeIndex = this.props.getIndexByName(name);
 
@@ -228,14 +230,14 @@ export default class Scribbles extends BaseTab {
   
     }
     else{
-      console.info("Scribbles: setActiveSegment - unable to find segment " + name);
+      console.info("Scribbles: setActiveScribbles - unable to find segment " + name);
     }    
   };
 
   onChangeScribbles = evt => {
     const value = evt.target.value;
     console.info(value);
-    this.setActiveSegment(value);
+    this.setActiveScribbles(value);
   }
 
   render() {
