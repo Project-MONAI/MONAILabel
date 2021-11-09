@@ -10,5 +10,5 @@
 # limitations under the License.
 
 from .activelearning import MyStrategy
-from .infer import Deepgrow, Segmentation
+from .infer import DeepEdit, DeepEditSeg
 from .train import MyTrain

@@ -34,7 +34,7 @@ from monailabel.interfaces.tasks.infer import InferTask, InferType
 from monailabel.transform.post import Restored
 
 
-class Segmentation(InferTask):
+class DeepEditSeg(InferTask):
     """
     This provides Inference Engine for pre-trained model over MSD Dataset.
     """
@@ -106,7 +106,7 @@ class Segmentation(InferTask):
         ]
 
 
-class Deepgrow(InferTask):
+class DeepEdit(InferTask):
     """
     This provides Inference Engine for Deepgrow over DeepEdit model.
     """
@@ -115,9 +115,9 @@ class Deepgrow(InferTask):
         self,
         path,
         network=None,
-        type=InferType.DEEPGROW,
+        type=InferType.DEEPEDIT,
         dimension=3,
-        description="A pre-trained 3D DeepGrow model based on UNET",
+        description="A pre-trained 3D Deepedit model based on UNET",
         spatial_size=(128, 128, 128),
         target_spacing=(1.5, 1.5, 2.0),
         label_names=None,
@@ -126,7 +126,7 @@ class Deepgrow(InferTask):
             path=path,
             network=network,
             type=type,
-            labels=None,
+            labels=label_names,
             dimension=dimension,
             description=description,
             config={"result_extension": [".nrrd", ".nii.gz"]},
