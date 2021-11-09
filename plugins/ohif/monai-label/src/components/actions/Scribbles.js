@@ -32,10 +32,13 @@ export default class Scribbles extends BaseTab {
       duration: 60000,
     });
 
+    // get current labelmap nodes
     const { getters } = cornerstoneTools.getModule('segmentation');
     const { labelmaps3D } = getters.labelmaps3D(
       this.props.viewConstants.element
     );
+
+    // if no labelmaps exists then exit
     if (!labelmaps3D) {
       this.notification.show({
         title: 'MONAI Label',
@@ -54,12 +57,15 @@ export default class Scribbles extends BaseTab {
     let params =
       config && config.infer && config.infer[model] ? config.infer[model] : {};
 
+    // get the labelmap index for scribbles e.g. in 1+2 1 is labelmap index
     const scribblesLabelMapIndex = this.props.getIndexByName("main_scribbles").labelmapIndex;
     const labels = info.models[model].labels;
 
-    // get label/scribbles
+    // get segmentation labels associated with scribbles
     const labelmap3D = labelmaps3D[scribblesLabelMapIndex];
     console.debug(labelmap3D)
+
+    // if no scribbles labelmap nodes found then exit
     if (!labelmap3D) {
       this.notification.show({
         title: 'MONAI Label',
@@ -70,6 +76,7 @@ export default class Scribbles extends BaseTab {
       return;
     }
 
+    // fetch relevant metadata and perform sanity checks
     const metadata = labelmap3D.metadata.data
       ? labelmap3D.metadata.data
       : labelmap3D.metadata;   
@@ -85,7 +92,7 @@ export default class Scribbles extends BaseTab {
 
     console.debug(metadata);
 
-    // only select segments with labelmapIndex==scribblesLabelMapIndex
+    // fetch scribbles segments info with labelmapIndex==scribblesLabelMapIndex
     const segments = flattenLabelmaps(
       getLabelMaps(this.props.viewConstants.element)
     ).filter(
@@ -94,7 +101,8 @@ export default class Scribbles extends BaseTab {
       }
     );
     console.debug(segments);
-
+    
+    // perform sanity check and exit if not passed
     if (metadata.length !== segments.length + 1) {
       this.notification.show({
         title: 'MONAI Label',
@@ -105,6 +113,7 @@ export default class Scribbles extends BaseTab {
       return;
     }
 
+    // prepare binary blob to send scribbles labelmap 
     const label = {
       name: "label", fileName: "label.bin", data: new Blob([labelmap3D.buffer], {
         type: 'application/octet-stream',
@@ -112,6 +121,7 @@ export default class Scribbles extends BaseTab {
     };
     params["label_info"] = segments;
 
+    // send scribbles labelmap to server and capture response
     const response = await this.props
       .client()
       .segmentation(model, image, params, label);
@@ -123,6 +133,7 @@ export default class Scribbles extends BaseTab {
       this.notification.hide(nid);
     }
 
+    // notify about the return status
     if (response.status !== 200) {
       this.notification.show({
         title: 'MONAI Label',
@@ -138,6 +149,7 @@ export default class Scribbles extends BaseTab {
         duration: 2000,
       });
 
+      // update labelmap with returned reponse from server
       await this.props.updateView(
         response, 
         labels, 
@@ -155,12 +167,12 @@ export default class Scribbles extends BaseTab {
   };
 
   onScribblesExist = () => {
-    // fetch both background and foreground scribbles
+    // fetch main, background and foreground scribbles indices
     let main_scribbles = this.props.getIndexByName("main_scribbles");
     let background_scribbles = this.props.getIndexByName("background_scribbles");
     let foreground_scribbles = this.props.getIndexByName("foreground_scribbles");
 
-    // return true if scribbles volume exist
+    // return true if scribbles volumes exist
     return main_scribbles != null && background_scribbles != null && foreground_scribbles != null;
   }
 
@@ -170,7 +182,7 @@ export default class Scribbles extends BaseTab {
     // select our brush tool
     cornerstoneTools.setToolActive('SphericalBrush', { mouseButtonMask: 1 });
 
-    // fetch the segmentation volume, and add additional segments for scribbles
+    // fetch the segmentation volume, and add additional segments for scribbles if needed
     const { getters } = cornerstoneTools.getModule('segmentation');
     const { labelmaps3D } = getters.labelmaps3D(
       this.props.viewConstants.element
@@ -191,12 +203,13 @@ export default class Scribbles extends BaseTab {
       console.debug(this.onScribblesExist());
       console.debug("no scribbles segments found, adding....")
 
+      // add scribbles segmentation volumes as new set of labels
       this.props.onAddSegment("main_scribbles", "main segmentation volume for scribbles", "#E2EF83", false, true);
       this.props.onAddSegment("background_scribbles", "background scribbles", "#FF0000", false);
       this.props.onAddSegment("foreground_scribbles", "foreground scribbles", "#00FF00", false);
 
-      // all done setting up scribbles volumes, now make one active
-      this.setActiveScribbles("foreground_scribbles");
+      // all done setting up scribbles volumes, 
+      // last added volume will automatically be active at this point (i.e. foreground_scribbles)
     }
     else {
       console.debug("scribbles segments already exist, skipping....")
@@ -205,10 +218,12 @@ export default class Scribbles extends BaseTab {
 
   onLeaveActionTab = () => {
     console.info("Scribbles: LeaveActionTab");
+
+    // disable our brush tool
     cornerstoneTools.setToolDisabled('SphericalBrush', {});
 
-    // commenting the following to make scribbles persist even in other tabs
-    // keeping this in here in case if the persist options needs to be disabled
+    // delete scribbles segment
+    // comment the following to make scribbles persist in other tabs
     this.props.onDeleteSegmentByName("main_scribbles");
     this.props.onDeleteSegmentByName("background_scribbles");
     this.props.onDeleteSegmentByName("foreground_scribbles");
@@ -216,18 +231,22 @@ export default class Scribbles extends BaseTab {
 
   clearScribbles = () => {
     console.info("Scribbles: Clear Scribbles");
+
+    // clear scribbles segment
     this.props.onClearSegmentByName("main_scribbles");
     this.props.onClearSegmentByName("background_scribbles");
     this.props.onClearSegmentByName("foreground_scribbles");
   };
 
   setActiveScribbles = name => {
+    // get element and selected index
     const { element } = this.props.viewConstants;
-    const activeIndex = this.props.getIndexByName(name);
+    const selectedIndex = this.props.getIndexByName(name);
 
-    if(activeIndex){
+    // update if scribbles volume with name exists
+    if(selectedIndex){
       const { setters } = cornerstoneTools.getModule('segmentation');
-      const { labelmapIndex, segmentIndex } = activeIndex;
+      const { labelmapIndex, segmentIndex } = selectedIndex;
   
       setters.activeLabelmapIndex(element, labelmapIndex);
       setters.activeSegmentIndex(element, segmentIndex);
@@ -238,6 +257,12 @@ export default class Scribbles extends BaseTab {
     }
     else{
       console.info("Scribbles: setActiveScribbles - unable to find segment " + name);
+      this.notification.show({
+        title: 'MONAI Label',
+        message: 'Unable to setActive scribbles volume ' + name,
+        type: 'error',
+        duration: 5000,
+      });
     }    
   };
 

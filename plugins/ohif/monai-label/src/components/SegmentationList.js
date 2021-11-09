@@ -303,6 +303,7 @@ export default class SegmentationList extends Component {
       if(segments[i].meta.SegmentLabel.includes("scribbles") && segments[i].id == id)
       {
         id = null;
+        break;
       }    
     }
     
@@ -331,15 +332,15 @@ export default class SegmentationList extends Component {
     }
   };
 
-  updateView = async (response, labels, operation, slice, overlap, activeIndex) => {
+  updateView = async (response, labels, operation, slice, overlap, selectedIndex) => {
     const { element, numberOfFrames } = this.props.viewConstants;
-    if(!activeIndex)
+    if(!selectedIndex)
     {
-      activeIndex = this.getSelectedActiveIndex();
+      selectedIndex = this.getSelectedActiveIndex();
     }
     const { header, image } = SegmentationReader.parseNrrdData(response.data);
     this.setState({ header: header });
-    console.debug(activeIndex);
+    console.debug(selectedIndex);
     
     if (labels) {
       for (let i = 0; i < labels.length; i++) {
@@ -351,13 +352,13 @@ export default class SegmentationList extends Component {
           i === 0 ? !overlap : false
         );
         if (i === 0) {
-          activeIndex = resp;
+          selectedIndex = resp;
         }
 
         if (this.state.selectedSegmentId) {
           this.refreshSegTable();
         } else {
-          this.refreshSegTable(activeIndex.id);
+          this.refreshSegTable(selectedIndex.id);
         }
       }
     }
@@ -368,8 +369,8 @@ export default class SegmentationList extends Component {
 
     updateSegment(
       element,
-      activeIndex.labelmapIndex,
-      activeIndex.segmentIndex,
+      selectedIndex.labelmapIndex,
+      selectedIndex.segmentIndex,
       image,
       numberOfFrames,
       operation,
