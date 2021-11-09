@@ -92,15 +92,13 @@ class MyApp(MONAILabelApp):
         self.final_model = os.path.join(self.model_dir, "model.pt")
 
         # Use Heuristic Planner to determine target spacing and spatial size based on dataset+gpu
-        spatial_size = json.loads(conf.get("spatial_size", "[192, 192, 128]"))
+        spatial_size = json.loads(conf.get("spatial_size", "[256, 256, 128]"))
         target_spacing = json.loads(conf.get("target_spacing", "[1.0, 1.0, 1.0]"))
         self.heuristic_planner = strtobool(conf.get("heuristic_planner", "false"))
         self.planner = HeuristicPlanner(spatial_size=spatial_size, target_spacing=target_spacing)
 
         use_pretrained_model = strtobool(conf.get("use_pretrained_model", "true"))
-        pretrained_model_uri = conf.get(
-            "pretrained_model_path", f"{self.PRE_TRAINED_PATH}/deepedit_{network}_spleen.pt"
-        )
+        pretrained_model_uri = conf.get("pretrained_model_path", f"{self.PRE_TRAINED_PATH}deepedit_{network}_spleen.pt")
 
         # Path to pretrained weights
         if use_pretrained_model:
@@ -114,6 +112,9 @@ class MyApp(MONAILabelApp):
         self.tta_enabled = strtobool(conf.get("tta_enabled", "false"))
         self.tta_samples = int(conf.get("tta_samples", "5"))
         logger.info(f"TTA Enabled: {self.tta_enabled}; Samples: {self.tta_samples}")
+
+        self.other_al_enabled = strtobool(conf.get("other_al_enabled", "false"))
+        logger.info(f"Other Active Learning Strategies Enabled: {self.tta_enabled}")
 
         super().__init__(
             app_dir=app_dir,
@@ -191,9 +192,9 @@ class MyApp(MONAILabelApp):
                 spatial_size=self.planner.spatial_size,
                 spacing=self.planner.target_spacing,
             )
-
-        methods["dice"] = Dice()
-        methods["sum"] = Sum()
+        if self.other_al_enabled:
+            methods["dice"] = Dice()
+            methods["sum"] = Sum()
         return methods
 
 
@@ -223,7 +224,7 @@ def main():
     parser.add_argument("-e", "--epoch", type=int, default=100)
     parser.add_argument("-d", "--dataset", default="CacheDataset")
     parser.add_argument("-o", "--output", default="model_01")
-    parser.add_argument("-i", "--size", default="[192,192,128]")
+    parser.add_argument("-i", "--size", default="[256,256,128]")
     parser.add_argument("-b", "--batch", type=int, default=1)
     args = parser.parse_args()
 
