@@ -9,10 +9,13 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-import copy
 import logging
+import os
+import shutil
+import tempfile
 
 import torch
+from monai.apps.deepgrow.dataset import create_dataset
 from monai.apps.deepgrow.interaction import Interaction
 from monai.apps.deepgrow.transforms import (
     AddGuidanceSignald,
@@ -27,20 +30,17 @@ from monai.losses import DiceLoss
 from monai.transforms import (
     Activationsd,
     AddChanneld,
-    AsChannelFirstd,
     AsDiscreted,
+    EnsureTyped,
     LoadImaged,
     NormalizeIntensityd,
-    Orientationd,
     Resized,
-    Spacingd,
     ToNumpyd,
     ToTensord,
 )
 
+from monailabel.interfaces.datastore import Datastore
 from monailabel.tasks.train.basic_train import BasicTrainTask
-
-from .transforms import Random2DSlice
 
 logger = logging.getLogger(__name__)
 
@@ -76,21 +76,29 @@ class TrainDeepgrow(BasicTrainTask):
     def loss_function(self):
         return DiceLoss(sigmoid=True, squared_pred=True)
 
-    def partition_datalist(self, request, datalist, shuffle=True):
-        train_ds, val_ds = super().partition_datalist(request, datalist, shuffle)
-        if self.dimension != 2:
-            return train_ds, val_ds
+    def pre_process(self, request, datastore: Datastore):
+        self.cleanup()
 
-        flatten_train_ds = []
-        for _ in range(max(request.get("train_random_slices", 20), 1)):
-            flatten_train_ds.extend(copy.deepcopy(train_ds))
-        logger.info(f"After flatten:: {len(train_ds)} => {len(flatten_train_ds)}")
+        # run_id = request["run_id"]
+        output_dir = os.path.join(tempfile.tempdir, f"deepgrow_{self.dimension}D_train")
+        logger.info(f"Preparing Dataset for Deepgrow-{self.dimension}D:: {output_dir}")
 
-        flatten_val_ds = []
-        for _ in range(max(request.get("val_random_slices", 5), 1)):
-            flatten_val_ds.extend(copy.deepcopy(val_ds))
-        logger.info(f"After flatten:: {len(val_ds)} => {len(flatten_val_ds)}")
-        return flatten_train_ds, flatten_val_ds
+        datalist = create_dataset(
+            datalist=datastore.datalist(),
+            base_dir=None,
+            output_dir=output_dir,
+            dimension=self.dimension,
+            pixdim=[1.0] * self.dimension,
+        )
+
+        logging.info("+++ Total Records: {}".format(len(datalist)))
+        return datalist
+
+    def cleanup(self, request):
+        # run_id = request["run_id"]
+        output_dir = os.path.join(tempfile.tempdir, f"deepgrow_{self.dimension}D_train")
+        if os.path.exists(output_dir):
+            shutil.rmtree(output_dir, ignore_errors=True)
 
     def get_click_transforms(self):
         return [
@@ -106,31 +114,18 @@ class TrainDeepgrow(BasicTrainTask):
         # Dataset preparation
         t = [
             LoadImaged(keys=("image", "label")),
-            AsChannelFirstd(keys=("image", "label")),
-            Spacingd(keys=("image", "label"), pixdim=(1.0, 1.0, 1.0), mode=("bilinear", "nearest")),
-            Orientationd(keys=("image", "label"), axcodes="RAS"),
+            AddChanneld(keys=("image", "label")),
+            SpatialCropForegroundd(keys=("image", "label"), source_key="label", spatial_size=self.roi_size),
+            Resized(keys=("image", "label"), spatial_size=self.model_size, mode=("area", "nearest")),
+            NormalizeIntensityd(keys="image", subtrahend=208.0, divisor=388.0),
         ]
-
-        # Pick random slice (run more epochs to cover max slices for 2D training)
-        if self.dimension == 2:
-            t.append(Random2DSlice(image="image", label="label"))
-
-        # Training
-        t.extend(
-            [
-                AddChanneld(keys=("image", "label")),
-                SpatialCropForegroundd(keys=("image", "label"), source_key="label", spatial_size=self.roi_size),
-                Resized(keys=("image", "label"), spatial_size=self.model_size, mode=("area", "nearest")),
-                NormalizeIntensityd(keys="image", subtrahend=208.0, divisor=388.0),
-            ]
-        )
         if self.dimension == 3:
             t.append(FindAllValidSlicesd(label="label", sids="sids"))
         t.extend(
             [
                 AddInitialSeedPointd(label="label", guidance="guidance", sids="sids"),
                 AddGuidanceSignald(image="image", guidance="guidance"),
-                ToTensord(keys=("image", "label")),
+                EnsureTyped(keys=("image", "label")),
             ]
         )
 
@@ -138,6 +133,7 @@ class TrainDeepgrow(BasicTrainTask):
 
     def train_post_transforms(self):
         return [
+            EnsureTyped(keys="pred"),
             Activationsd(keys="pred", sigmoid=True),
             AsDiscreted(keys="pred", threshold_values=True, logit_thresh=0.5),
         ]

@@ -271,8 +271,8 @@ class BasicTrainTask(TrainTask):
     def val_inferer(self):
         pass
 
-    def partition_datalist(self, request, datalist, shuffle=False):
-        val_split = request["val_split"]
+    def partition_datalist(self, context: Context, datalist, shuffle=False):
+        val_split = context.request["val_split"]
         if val_split > 0.0:
             return partition_dataset(datalist, ratios=[(1 - val_split), val_split], shuffle=shuffle)
         return datalist, []
@@ -299,12 +299,15 @@ class BasicTrainTask(TrainTask):
 
         req = copy.deepcopy(self._config)
         req.update(copy.deepcopy(request))
+        req["run_id"] = datetime.now().strftime("%Y%m%d_%H%M")
 
         multi_gpu = req["multi_gpu"]
         multi_gpus = req.get("gpus", "all")
         world_size = torch.cuda.device_count() if not multi_gpus or multi_gpus == "all" else len(multi_gpus.split(","))
 
         logger.info(f"CUDA_VISIBLE_DEVICES: {os.environ.get('CUDA_VISIBLE_DEVICES')}")
+
+        datalist = self.pre_process(req, datastore)
 
         if multi_gpu and world_size < 2:
             logger.info("Distributed/Multi GPU is limited")
@@ -317,22 +320,24 @@ class BasicTrainTask(TrainTask):
             if any(platform.win32_ver()):
                 req["distributed_backend"] = "gloo"
                 req["distributed_url"] = f"file://{tfile}"
-            torch.multiprocessing.spawn(main_worker, nprocs=world_size, args=(world_size, req, datastore, self))
+            torch.multiprocessing.spawn(main_worker, nprocs=world_size, args=(world_size, req, datalist, self))
             remove_file(tfile)
         else:
             logger.info("Distributed Training = FALSE")
-            return self.train(0, world_size, req, datastore)
+            return self.train(0, world_size, req, datalist)
 
+        self.cleanup(req)
         if os.path.exists(self._stats_path):
             with open(self._stats_path) as f:
                 return json.load(f)
         return {}
 
-    def train(self, rank, world_size, req, datastore: Datastore):
+    def train(self, rank, world_size, req, datalist):
         start_ts = time.time()
 
         context: Context = Context()
 
+        context.run_id = req["run_id"]
         context.request = req
         context.local_rank = rank
         context.world_size = world_size
@@ -350,13 +355,12 @@ class BasicTrainTask(TrainTask):
         context.dataset_type = req["dataset"]
 
         context.output_dir = os.path.join(self._model_dir, req["name"])
-        context.run_id = datetime.now().strftime("%Y%m%d_%H%M")
         context.events_dir = os.path.join(context.output_dir, f"events_{context.run_id}")
 
         if not os.path.exists(context.output_dir):
             os.makedirs(context.output_dir, exist_ok=True)
 
-        train_ds, val_ds = self.partition_datalist(req, datastore.datalist())
+        train_ds, val_ds = self.partition_datalist(context, datalist)
         if context.local_rank == 0:
             logger.info(f"Total Records for Training: {len(train_ds)}")
             logger.info(f"Total Records for Validation: {len(val_ds)}")
@@ -391,6 +395,12 @@ class BasicTrainTask(TrainTask):
             torch.cuda.empty_cache()
 
         return prepare_stats(start_ts, context.trainer, context.evaluator)
+
+    def pre_process(self, request, datastore: Datastore):
+        return datastore.datalist()
+
+    def cleanup(self, request):
+        pass
 
     def _device(self, context: Context):
         if context.multi_gpu:
