@@ -29,8 +29,7 @@ router = APIRouter(
 cached_digest: Dict = dict()
 
 
-@router.post("/{strategy}", summary="Run Active Learning strategy to get next sample")
-async def sample(strategy: str, params: Optional[dict] = None):
+def sample(strategy: str, params: Optional[dict] = None):
     request = {"strategy": strategy}
 
     instance: MONAILabelApp = app_instance()
@@ -58,3 +57,8 @@ async def sample(strategy: str, params: Optional[dict] = None):
     }
     logger.info(f"Next sample: {result}")
     return result
+
+
+@router.post("/{strategy}", summary="Run Active Learning strategy to get next sample")
+async def api_sample(strategy: str, params: Optional[dict] = None):
+    return sample(strategy, params)

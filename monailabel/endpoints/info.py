@@ -21,7 +21,11 @@ router = APIRouter(
 )
 
 
-@router.get("/", summary="Get App Info")
-async def app_info():
+def app_info():
     instance: MONAILabelApp = app_instance()
     return instance.info()
+
+
+@router.get("/", summary="Get App Info")
+async def api_app_info():
+    return app_info()

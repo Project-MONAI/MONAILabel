@@ -17,8 +17,8 @@ import unittest
 
 from fastapi.testclient import TestClient
 
+from monailabel.app import app
 from monailabel.config import settings
-from monailabel.main import app
 
 
 def create_client(app_dir, studies, data_dir):

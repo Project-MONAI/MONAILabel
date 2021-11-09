@@ -14,8 +14,7 @@ import os
 from distutils.util import strtobool
 from typing import Dict
 
-from lib import Deepgrow, MyTrain, Segmentation
-from lib.activelearning import MyStrategy
+from lib import DeepEdit, DeepEditSeg, MyStrategy, MyTrain
 from monai.networks.nets import DynUNet
 
 from monailabel.interfaces.app import MONAILabelApp
@@ -125,19 +124,19 @@ class MyApp(MONAILabelApp):
 
     def init_infers(self) -> Dict[str, InferTask]:
         return {
-            "deepedit": Deepgrow(
+            "deepedit": DeepEdit(
                 [self.pretrained_model, self.final_model],
                 self.network,
                 spatial_size=self.planner.spatial_size,
                 target_spacing=self.planner.target_spacing,
                 label_names=self.label_names,
             ),
-            "deepedit_seg": Segmentation(
+            "deepedit_seg": DeepEditSeg(
                 [self.pretrained_model, self.final_model],
                 self.network,
                 spatial_size=self.planner.spatial_size,
                 target_spacing=self.planner.target_spacing,
-                label_names=list(self.label_names.keys()),
+                label_names=self.label_names,
             ),
             # intensity range set for MRI
             "Histogram+GraphCut": HistogramBasedGraphCut(
@@ -157,6 +156,7 @@ class MyApp(MONAILabelApp):
                 config={"pretrained": strtobool(self.conf.get("use_pretrained_model", "true"))},
                 label_names=self.label_names,
                 debug_mode=False,
+                find_unused_parameters=True,
             )
         }
 
@@ -214,11 +214,11 @@ def main():
     request = {
         "device": "cuda",
         "model": "deepedit_train",
-        "max_epochs": 500,
+        "max_epochs": 600,
         "amp": False,
         "lr": 0.0001,
     }
-    al_app.train(request=request)
+    # al_app.train(request=request)
 
     # # PERFORMING INFERENCE USING INTERACTIVE MODEL
     # deepgrow_3d = {
@@ -244,12 +244,26 @@ def main():
     # }
     # al_app.infer(deepgrow_3d)
 
-    # # PERFORMING INFERENCE USING AUTOMATIC MODEL
-    # automatic_request = {
-    #     "model": "deepedit_seg",
-    #     "image": f"{studies_path}/img0022.nii.gz",
-    # }
-    # al_app.infer(automatic_request)
+    # PERFORMING INFERENCE USING INTERACTIVE MODEL
+    deepgrow_3d = {
+        "model": "deepedit",
+        "image": f"{studies_path}/img0022.nii.gz",
+        "result_extension": ".nii.gz",
+        "spleen": [[61, 106, 54], [65, 106, 54]],
+        "liver": [[61, 106, 54], [65, 106, 54]],
+        "right kidney": [[61, 106, 54], [65, 106, 54]],
+        "left kidney": [[61, 106, 54], [65, 106, 54]],
+        "background": [[6, 132, 427]],
+    }
+    al_app.infer(deepgrow_3d)
+
+    # PERFORMING INFERENCE USING AUTOMATIC MODEL
+    automatic_request = {
+        "model": "deepedit_seg",
+        "image": f"{studies_path}/img0022.nii.gz",
+        "result_extension": ".nii.gz",
+    }
+    al_app.infer(automatic_request)
 
     return None
 

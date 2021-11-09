@@ -112,9 +112,8 @@ class Interaction:
         else:
             # zero out input guidance channels
             batchdata_list = decollate_batch(batchdata, detach=True)
-            for i in range(len(batchdata_list)):
-                batchdata_list[i][CommonKeys.IMAGE][-1] *= 0
-                batchdata_list[i][CommonKeys.IMAGE][-2] *= 0
+            for i in range(1, len(batchdata_list[0][CommonKeys.IMAGE])):
+                batchdata_list[0][CommonKeys.IMAGE][i] *= 0
             batchdata = list_data_collate(batchdata_list)
 
         # first item in batch only
