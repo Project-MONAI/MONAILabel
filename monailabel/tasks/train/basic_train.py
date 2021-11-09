@@ -271,7 +271,7 @@ class BasicTrainTask(TrainTask):
     def val_inferer(self):
         pass
 
-    def partition_datalist(self, request, datalist, shuffle=True):
+    def partition_datalist(self, request, datalist, shuffle=False):
         val_split = request["val_split"]
         if val_split > 0.0:
             return partition_dataset(datalist, ratios=[(1 - val_split), val_split], shuffle=shuffle)
@@ -383,13 +383,12 @@ class BasicTrainTask(TrainTask):
 
         # Run Training
         context.trainer.run()
+        if context.multi_gpu:
+            torch.distributed.destroy_process_group()
 
         # Try to clear cuda cache
         if torch.cuda.is_available():
             torch.cuda.empty_cache()
-
-        if context.multi_gpu:
-            torch.distributed.destroy_process_group()
 
         return prepare_stats(start_ts, context.trainer, context.evaluator)
 
