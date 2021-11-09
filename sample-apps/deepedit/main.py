@@ -113,9 +113,6 @@ class MyApp(MONAILabelApp):
         self.tta_samples = int(conf.get("tta_samples", "5"))
         logger.info(f"TTA Enabled: {self.tta_enabled}; Samples: {self.tta_samples}")
 
-        self.other_al_enabled = strtobool(conf.get("other_al_enabled", "false"))
-        logger.info(f"Other Active Learning Strategies Enabled: {self.tta_enabled}")
-
         super().__init__(
             app_dir=app_dir,
             studies=studies,
@@ -192,9 +189,9 @@ class MyApp(MONAILabelApp):
                 spatial_size=self.planner.spatial_size,
                 spacing=self.planner.target_spacing,
             )
-        if self.other_al_enabled:
-            methods["dice"] = Dice()
-            methods["sum"] = Sum()
+
+        methods["dice"] = Dice()
+        methods["sum"] = Sum()
         return methods
 
 
