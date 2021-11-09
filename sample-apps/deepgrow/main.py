@@ -47,7 +47,21 @@ class MyApp(MONAILabelApp):
             conf=conf,
             name="Deepgrow - Generic",
             description="Active Learning solution to label generic organ",
-            labels=["spleen"],
+            labels=[
+                "spleen",
+                "right kidney",
+                "left kidney",
+                "gallbladder",
+                "esophagus",
+                "liver",
+                "stomach",
+                "aorta",
+                "inferior vena cava",
+                "portal vein and splenic vein",
+                "pancreas",
+                "right adrenal gland",
+                "left adrenal gland",
+            ],
         )
 
     def init_infers(self) -> Dict[str, InferTask]:

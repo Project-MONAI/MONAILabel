@@ -14,8 +14,7 @@ import os
 from distutils.util import strtobool
 from typing import Dict
 
-from lib import Deepgrow, MyTrain, Segmentation
-from lib.activelearning import MyStrategy
+from lib import DeepEdit, DeepEditSeg, MyStrategy, MyTrain
 from monai.networks.nets import BasicUNet
 from monai.networks.nets.dynunet_v1 import DynUNet
 
@@ -131,13 +130,13 @@ class MyApp(MONAILabelApp):
 
     def init_infers(self) -> Dict[str, InferTask]:
         return {
-            "deepedit": Deepgrow(
+            "deepedit": DeepEdit(
                 [self.pretrained_model, self.final_model],
                 self.network,
                 spatial_size=self.planner.spatial_size,
                 target_spacing=self.planner.target_spacing,
             ),
-            "deepedit_seg": Segmentation(
+            "deepedit_seg": DeepEditSeg(
                 [self.pretrained_model, self.final_model],
                 self.network,
                 spatial_size=self.planner.spatial_size,
