@@ -39,7 +39,6 @@ class EpistemicScoring(ScoringMethod):
         self.device = "cuda"
         self.roi_size = roi_size
         self.num_samples = num_samples
-        self.mean_score_flag = mean_score_flag
 
     def infer_seg(self, data, model, roi_size, sw_batch_size):
         pre_transforms = (
@@ -89,6 +88,7 @@ class EpistemicScoring(ScoringMethod):
             t_entropy = -np.multiply(t_avg, t_log)
             entropy = entropy + t_entropy
 
+        # Returns a 3D volume of entropy
         return entropy
 
     @staticmethod
@@ -161,23 +161,17 @@ class EpistemicScoring(ScoringMethod):
             accum_numpy = np.squeeze(accum_numpy)
             accum_numpy = accum_numpy[:, 1:, :, :, :] if len(accum_numpy.shape) > 4 else accum_numpy
 
-            entropy = self.entropy_3d_volume(accum_numpy)
-            if self.mean_score_flag:
-                entropy_mean = float(np.nanmean(entropy))
-                entropy_score = entropy_mean
-            else:
-                entropy_sum = float(np.sum(entropy))
-                entropy_score = entropy_sum
+            entropy = float(np.nanmean(self.entropy_3d_volume(accum_numpy)))
 
             if self.device == "cuda":
                 torch.cuda.empty_cache()
             latency = time.time() - start
 
-            logger.info(f"EPISTEMIC:: {image_id} => entropy_score: {entropy_score}")
+            logger.info(f"EPISTEMIC:: {image_id} => entropy: {entropy}")
             logger.info(f"EPISTEMIC:: Time taken for {num_samples} Monte Carlo Simulation samples: {latency}")
 
             # Add epistemic_entropy in datastore
-            info = {"epistemic_entropy": entropy_score, "epistemic_ts": model_ts}
+            info = {"epistemic_entropy": entropy, "epistemic_ts": model_ts}
             datastore.update_image_info(image_id, info)
             result[image_id] = info
 
