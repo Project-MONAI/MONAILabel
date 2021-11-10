@@ -6,7 +6,7 @@
    <rect>
     <x>0</x>
     <y>0</y>
-    <width>467</width>
+    <width>448</width>
     <height>867</height>
    </rect>
   </property>
@@ -180,19 +180,82 @@
       <property name="rightMargin">
        <number>0</number>
       </property>
-      <item row="6" column="1">
-       <widget class="QPushButton" name="stopTrainingButton">
-        <property name="text">
-         <string>Stop Training</string>
-        </property>
-       </widget>
-      </item>
       <item row="0" column="0" colspan="2">
        <widget class="QProgressBar" name="activeLearningProgressBar">
         <property name="value">
          <number>0</number>
         </property>
        </widget>
+      </item>
+      <item row="8" column="0" colspan="2">
+       <layout class="QGridLayout" name="gridLayout_5">
+        <item row="1" column="0">
+         <widget class="QLabel" name="label_9">
+          <property name="text">
+           <string>Status:</string>
+          </property>
+         </widget>
+        </item>
+        <item row="1" column="1">
+         <widget class="QProgressBar" name="trainingProgressBar">
+          <property name="value">
+           <number>0</number>
+          </property>
+         </widget>
+        </item>
+        <item row="2" column="0">
+         <widget class="QLabel" name="label_11">
+          <property name="text">
+           <string>Accuracy:</string>
+          </property>
+         </widget>
+        </item>
+        <item row="2" column="1">
+         <widget class="QProgressBar" name="accuracyProgressBar">
+          <property name="toolTip">
+           <string>Average Dice score computed over submitted labels</string>
+          </property>
+          <property name="value">
+           <number>0</number>
+          </property>
+         </widget>
+        </item>
+        <item row="0" column="0">
+         <widget class="QLabel" name="label_10">
+          <property name="text">
+           <string>Train:</string>
+          </property>
+         </widget>
+        </item>
+        <item row="0" column="1">
+         <layout class="QHBoxLayout" name="horizontalLayout_5">
+          <item>
+           <widget class="QComboBox" name="trainerBox">
+            <property name="sizePolicy">
+             <sizepolicy hsizetype="Expanding" vsizetype="Fixed">
+              <horstretch>0</horstretch>
+              <verstretch>0</verstretch>
+             </sizepolicy>
+            </property>
+           </widget>
+          </item>
+          <item>
+           <widget class="QPushButton" name="trainingButton">
+            <property name="text">
+             <string>Run</string>
+            </property>
+           </widget>
+          </item>
+          <item>
+           <widget class="QPushButton" name="stopTrainingButton">
+            <property name="text">
+             <string>Stop</string>
+            </property>
+           </widget>
+          </item>
+         </layout>
+        </item>
+       </layout>
       </item>
       <item row="4" column="1">
        <widget class="QPushButton" name="saveLabelButton">
@@ -205,47 +268,6 @@
        <widget class="QLabel" name="label_7">
         <property name="text">
          <string>Strategy:</string>
-        </property>
-       </widget>
-      </item>
-      <item row="12" column="0" colspan="2">
-       <widget class="QProgressBar" name="accuracyProgressBar">
-        <property name="toolTip">
-         <string>Average Dice score computed over submitted labels</string>
-        </property>
-        <property name="value">
-         <number>0</number>
-        </property>
-       </widget>
-      </item>
-      <item row="6" column="0">
-       <widget class="QPushButton" name="trainingButton">
-        <property name="text">
-         <string>Update Model</string>
-        </property>
-       </widget>
-      </item>
-      <item row="11" column="0" colspan="2">
-       <widget class="QLabel" name="label_11">
-        <property name="text">
-         <string>Train Accuracy:</string>
-        </property>
-       </widget>
-      </item>
-      <item row="7" column="0" colspan="2">
-       <widget class="QCommandLinkButton" name="trainingStatusButton">
-        <property name="text">
-         <string>Training Status</string>
-        </property>
-        <property name="description">
-         <string/>
-        </property>
-       </widget>
-      </item>
-      <item row="8" column="0" colspan="2">
-       <widget class="QProgressBar" name="trainingProgressBar">
-        <property name="value">
-         <number>0</number>
         </property>
        </widget>
       </item>
@@ -459,6 +481,12 @@
          <layout class="QHBoxLayout" name="horizontalLayout_2">
           <item>
            <widget class="qSlicerMarkupsPlaceWidget" name="dgPositiveFiducialPlacementWidget">
+            <property name="sizePolicy">
+             <sizepolicy hsizetype="Expanding" vsizetype="Preferred">
+              <horstretch>0</horstretch>
+              <verstretch>0</verstretch>
+             </sizepolicy>
+            </property>
             <property name="placeMultipleMarkups">
              <enum>qSlicerMarkupsPlaceWidget::ForcePlaceMultipleMarkups</enum>
             </property>
@@ -473,23 +501,16 @@
           </item>
           <item>
            <widget class="qSlicerMarkupsPlaceWidget" name="dgNegativeFiducialPlacementWidget">
+            <property name="sizePolicy">
+             <sizepolicy hsizetype="Expanding" vsizetype="Preferred">
+              <horstretch>0</horstretch>
+              <verstretch>0</verstretch>
+             </sizepolicy>
+            </property>
             <property name="placeMultipleMarkups">
              <enum>qSlicerMarkupsPlaceWidget::ForcePlaceMultipleMarkups</enum>
             </property>
            </widget>
-          </item>
-          <item>
-           <spacer name="horizontalSpacer">
-            <property name="orientation">
-             <enum>Qt::Horizontal</enum>
-            </property>
-            <property name="sizeHint" stdset="0">
-             <size>
-              <width>40</width>
-              <height>20</height>
-             </size>
-            </property>
-           </spacer>
           </item>
          </layout>
         </item>
