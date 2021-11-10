@@ -1059,6 +1059,11 @@ class MONAILabelWidget(ScriptedLoadableModuleWidget, VTKObservationMixin):
 
             sample = self.logic.next_sample(strategy, self.getParamsFromConfig("activelearning", strategy))
             logging.debug(sample)
+            if not sample.get("id"):
+                slicer.util.warningDisplay(
+                    "Unlabled Samples/Images Not Found at server.  Instead you can load your own image."
+                )
+                return
 
             if self.samples.get(sample["id"]) is not None:
                 self.current_sample = self.samples[sample["id"]]
