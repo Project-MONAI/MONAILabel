@@ -109,7 +109,6 @@ class MyTrain(BasicTrainTask):
         return [
             LoadImaged(keys=("image", "label"), reader="nibabelreader"),
             SelectLabelsAbdomenDatasetd(keys="label", label_names=self.label_names),
-            # SingleModalityLabelSanityd(keys=("image", "label"), label_names=self.label_names),
             AddChanneld(keys=("image", "label")),
             Spacingd(keys=["image", "label"], pixdim=self.target_spacing, mode=("bilinear", "nearest")),
             Orientationd(keys=["image", "label"], axcodes="RAS"),
@@ -174,7 +173,6 @@ class MyTrain(BasicTrainTask):
         return [
             LoadImaged(keys=("image", "label"), reader="nibabelreader"),
             SelectLabelsAbdomenDatasetd(keys="label", label_names=self.label_names),
-            # SingleModalityLabelSanityd(keys=("image", "label"), label_names=self.label_names),
             AddChanneld(keys=("image", "label")),
             Spacingd(keys=["image", "label"], pixdim=self.target_spacing, mode=("bilinear", "nearest")),
             Orientationd(keys=["image", "label"], axcodes="RAS"),
