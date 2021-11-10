@@ -85,7 +85,7 @@ class MyApp(MONAILabelApp):
     def init_trainers(self) -> Dict[str, TrainTask]:
         return {
             "segmentation_spleen": MyTrain(
-                self.model_dir, load_from_mmar(self.mmar, self.model_dir), publish_path=self.final_model
+                self.model_dir, load_from_mmar(self.mmar, self.model_dir), publish_path=self.final_model, fast=True
             )
         }
 

@@ -22,7 +22,7 @@ from typing import List
 
 import torch
 import torch.distributed
-from monai.data import CacheDataset, DataLoader, ThreadDataLoader, Dataset, PersistentDataset, SmartCacheDataset, partition_dataset
+from monai.data import CacheDataset, DataLoader, Dataset, PersistentDataset, SmartCacheDataset, partition_dataset
 from monai.engines import SupervisedEvaluator, SupervisedTrainer
 from monai.handlers import (
     CheckpointLoader,

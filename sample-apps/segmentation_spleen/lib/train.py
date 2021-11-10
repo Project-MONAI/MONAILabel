@@ -13,7 +13,8 @@ import logging
 
 import torch
 from monai.inferers import SlidingWindowInferer
-from monai.losses import DiceLoss, DiceCELoss
+from monai.losses import DiceCELoss, DiceLoss
+from monai.optimizers import Novograd
 from monai.transforms import (
     Activationsd,
     AddChanneld,
@@ -28,9 +29,9 @@ from monai.transforms import (
 )
 
 from monailabel.tasks.train.basic_train import BasicTrainTask
-from monai.optimizers import Novograd
 
 logger = logging.getLogger(__name__)
+
 
 class MyTrain(BasicTrainTask):
     def __init__(
@@ -42,23 +43,21 @@ class MyTrain(BasicTrainTask):
         **kwargs,
     ):
         self._network = network
+        self.fast = fast
         super().__init__(model_dir, description, **kwargs)
 
     def network(self):
         return self._network
 
     def optimizer(self):
-        # TODO Add optimizer here, We also need to make LR as a parameter somewhere
-        if self.fast==True:
-            optimizer = Novograd(self._network.parameters(), 0.0001 * 10)
-            scaler = torch.cuda.amp.GradScaler()
-            return optimizer, scaler
+        if self.fast:
+            optimizer = Novograd(self._network.parameters(), 0.0001)
+            return optimizer
         else:
             return torch.optim.Adam(self._network.parameters(), lr=0.0001)
 
     def loss_function(self):
-        # TODO Add optimizer here, We also need to make LR as a parameter somewhere
-        if self.fast==True:
+        if self.fast:
             return DiceCELoss(to_onehot_y=True, softmax=True, squared_pred=True, batch=True)
         else:
             return DiceLoss(to_onehot_y=True, softmax=True)
