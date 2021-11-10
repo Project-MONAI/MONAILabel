@@ -175,7 +175,14 @@ export default class MonaiLabelPanel extends Component {
       : {};
   };
 
-  updateView = async (response, labels, operation, slice, overlap, selectedIndex) => {
+  updateView = async (
+    response,
+    labels,
+    operation,
+    slice,
+    overlap,
+    selectedIndex
+  ) => {
     this.segmentationList.current.updateView(
       response,
       labels,
@@ -188,38 +195,33 @@ export default class MonaiLabelPanel extends Component {
 
   onAddSegment = (name, description, color, selectActive, newLabelMap) => {
     this.segmentationList.current.onAddSegment(
-      name, 
+      name,
       description,
       color,
       selectActive,
       newLabelMap
     );
   };
-  
+
   onClearSegmentByName = name => {
-    this.segmentationList.current.onClearSegmentByName(
-      name
-    );
-  }
-  
+    this.segmentationList.current.onClearSegmentByName(name);
+  };
+
   onDeleteSegmentByName = name => {
-    this.segmentationList.current.onDeleteSegmentByName(
-      name
-    );
-  }
+    this.segmentationList.current.onDeleteSegmentByName(name);
+  };
 
   getIndexByName = name => {
     return this.segmentationList.current.getIndexByName(name);
-  }
+  };
 
   getNameByIndex = selectedIndex => {
     return this.segmentationList.current.getNameByIndex(selectedIndex);
-  }
+  };
 
   getSelectedActiveIndex = () => {
     return this.segmentationList.current.getSelectedActiveIndex();
-  }
-
+  };
 
   render() {
     return (
