@@ -39,7 +39,7 @@ from monai.transforms import (
 from monailabel.deepedit.handlers import TensorBoardImageHandler
 from monailabel.deepedit.interaction import Interaction
 from monailabel.deepedit.transforms import PosNegClickProbAddRandomGuidanced, SingleLabelSingleModalityd
-from monailabel.tasks.train.basic_train import BasicTrainTask
+from monailabel.tasks.train.basic_train import BasicTrainTask, Context
 
 logger = logging.getLogger(__name__)
 
@@ -70,16 +70,16 @@ class MyTrain(BasicTrainTask):
 
         super().__init__(model_dir, description, **kwargs)
 
-    def network(self):
+    def network(self, context: Context):
         return self._network
 
-    def optimizer(self):
+    def optimizer(self, context: Context):
         return torch.optim.Adam(self._network.parameters(), lr=0.0001)
 
-    def loss_function(self):
+    def loss_function(self, context: Context):
         return DiceLoss(sigmoid=True, squared_pred=True)
 
-    def get_click_transforms(self):
+    def get_click_transforms(self, context: Context):
         return [
             Activationsd(keys="pred", sigmoid=True),
             ToNumpyd(keys=("image", "label", "pred")),
@@ -91,7 +91,7 @@ class MyTrain(BasicTrainTask):
             ToTensord(keys=("image", "label")),
         ]
 
-    def train_pre_transforms(self):
+    def train_pre_transforms(self, context: Context):
         return [
             LoadImaged(keys=("image", "label"), reader="nibabelreader"),
             SingleLabelSingleModalityd(keys=("image", "label")),
@@ -118,13 +118,13 @@ class MyTrain(BasicTrainTask):
             ToTensord(keys=("image", "label")),
         ]
 
-    def train_post_transforms(self):
+    def train_post_transforms(self, context: Context):
         return [
             Activationsd(keys="pred", sigmoid=True),
             AsDiscreted(keys="pred", threshold_values=True, logit_thresh=0.5),
         ]
 
-    def val_pre_transforms(self):
+    def val_pre_transforms(self, context: Context):
         return [
             LoadImaged(keys=("image", "label"), reader="nibabelreader"),
             SingleLabelSingleModalityd(keys=("image", "label")),
@@ -139,29 +139,29 @@ class MyTrain(BasicTrainTask):
             ToTensord(keys=("image", "label")),
         ]
 
-    def val_inferer(self):
+    def val_inferer(self, context: Context):
         return SimpleInferer()
 
-    def train_iteration_update(self):
+    def train_iteration_update(self, context: Context):
         return Interaction(
             deepgrow_probability=self.deepgrow_probability_train,
-            transforms=self.get_click_transforms(),
+            transforms=self.get_click_transforms(context),
             max_interactions=self.max_train_interactions,
             click_probability_key="probability",
             train=True,
         )
 
-    def val_iteration_update(self):
+    def val_iteration_update(self, context: Context):
         return Interaction(
             deepgrow_probability=self.deepgrow_probability_val,
-            transforms=self.get_click_transforms(),
+            transforms=self.get_click_transforms(context),
             max_interactions=self.max_val_interactions,
             click_probability_key="probability",
             train=False,
         )
 
-    def train_handlers(self, output_dir, events_dir, evaluator, local_rank=0):
-        handlers = super().train_handlers(output_dir, events_dir, evaluator, local_rank)
-        if self.debug_mode and local_rank == 0:
-            handlers.append(TensorBoardImageHandler(log_dir=events_dir))
+    def train_handlers(self, context: Context):
+        handlers = super().train_handlers(context)
+        if self.debug_mode and context.local_rank == 0:
+            handlers.append(TensorBoardImageHandler(log_dir=context.events_dir))
         return handlers

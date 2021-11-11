@@ -31,7 +31,7 @@ from monai.transforms import (
     ToTensord,
 )
 
-from monailabel.tasks.train.basic_train import BasicTrainTask
+from monailabel.tasks.train.basic_train import BasicTrainTask, Context
 
 logger = logging.getLogger(__name__)
 
@@ -47,16 +47,16 @@ class MyTrain(BasicTrainTask):
         self._network = network
         super().__init__(model_dir, description, **kwargs)
 
-    def network(self):
+    def network(self, context: Context):
         return self._network
 
-    def optimizer(self):
+    def optimizer(self, context: Context):
         return torch.optim.Adam(self._network.parameters(), lr=0.0001)
 
-    def loss_function(self):
+    def loss_function(self, context: Context):
         return DiceLoss(to_onehot_y=True, softmax=True)
 
-    def train_pre_transforms(self):
+    def train_pre_transforms(self, context: Context):
         return [
             LoadImaged(keys=("image", "label")),
             EnsureChannelFirstd(keys=("image", "label")),
@@ -81,7 +81,7 @@ class MyTrain(BasicTrainTask):
             ToTensord(keys=("image", "label")),
         ]
 
-    def train_post_transforms(self):
+    def train_post_transforms(self, context: Context):
         return [
             Activationsd(keys="pred", softmax=True),
             AsDiscreted(
@@ -92,7 +92,7 @@ class MyTrain(BasicTrainTask):
             ),
         ]
 
-    def val_pre_transforms(self):
+    def val_pre_transforms(self, context: Context):
         return [
             LoadImaged(keys=("image", "label")),
             EnsureChannelFirstd(keys=("image", "label")),
@@ -108,5 +108,5 @@ class MyTrain(BasicTrainTask):
             ToTensord(keys=("image", "label")),
         ]
 
-    def val_inferer(self):
+    def val_inferer(self, context: Context):
         return SimpleInferer()

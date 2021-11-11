@@ -11,23 +11,25 @@
 
 import logging
 
-import torch
 from monai.inferers import SlidingWindowInferer
-from monai.losses import DiceLoss
+from monai.losses import DiceCELoss
+from monai.optimizers import Novograd
 from monai.transforms import (
     Activationsd,
     AddChanneld,
     AsDiscreted,
     CropForegroundd,
+    EnsureTyped,
     LoadImaged,
     RandCropByPosNegLabeld,
     RandShiftIntensityd,
     ScaleIntensityRanged,
     Spacingd,
+    ToDeviced,
     ToTensord,
 )
 
-from monailabel.tasks.train.basic_train import BasicTrainTask
+from monailabel.tasks.train.basic_train import BasicTrainTask, Context
 
 logger = logging.getLogger(__name__)
 
@@ -43,17 +45,17 @@ class MyTrain(BasicTrainTask):
         self._network = network
         super().__init__(model_dir, description, **kwargs)
 
-    def network(self):
+    def network(self, context: Context):
         return self._network
 
-    def optimizer(self):
-        return torch.optim.Adam(self._network.parameters(), lr=0.0001)
+    def optimizer(self, context: Context):
+        return Novograd(self._network.parameters(), 0.0001)
 
-    def loss_function(self):
-        return DiceLoss(to_onehot_y=True, softmax=True)
+    def loss_function(self, context: Context):
+        return DiceCELoss(to_onehot_y=True, softmax=True, squared_pred=True, batch=True)
 
-    def train_pre_transforms(self):
-        return [
+    def train_pre_transforms(self, context: Context):
+        t = [
             LoadImaged(keys=("image", "label")),
             AddChanneld(keys=("image", "label")),
             Spacingd(
@@ -63,21 +65,27 @@ class MyTrain(BasicTrainTask):
             ),
             ScaleIntensityRanged(keys="image", a_min=-57, a_max=164, b_min=0.0, b_max=1.0, clip=True),
             CropForegroundd(keys=("image", "label"), source_key="image"),
-            RandCropByPosNegLabeld(
-                keys=("image", "label"),
-                label_key="label",
-                spatial_size=(96, 96, 96),
-                pos=1,
-                neg=1,
-                num_samples=4,
-                image_key="image",
-                image_threshold=0,
-            ),
-            RandShiftIntensityd(keys="image", offsets=0.1, prob=0.5),
-            ToTensord(keys=("image", "label")),
         ]
+        if context.request.get("to_gpu", False):
+            t.extend([EnsureTyped(keys=("image", "label")), ToDeviced(keys=("image", "label"), device=context.device)])
+        t.extend(
+            [
+                RandCropByPosNegLabeld(
+                    keys=("image", "label"),
+                    label_key="label",
+                    spatial_size=(96, 96, 96),
+                    pos=1,
+                    neg=1,
+                    num_samples=4,
+                    image_key="image",
+                    image_threshold=0,
+                ),
+                RandShiftIntensityd(keys="image", offsets=0.1, prob=0.5),
+            ]
+        )
+        return t
 
-    def train_post_transforms(self):
+    def train_post_transforms(self, context: Context):
         return [
             ToTensord(keys=("pred", "label")),
             Activationsd(keys="pred", softmax=True),
@@ -89,8 +97,8 @@ class MyTrain(BasicTrainTask):
             ),
         ]
 
-    def val_pre_transforms(self):
-        return [
+    def val_pre_transforms(self, context: Context):
+        t = [
             LoadImaged(keys=("image", "label")),
             AddChanneld(keys=("image", "label")),
             Spacingd(
@@ -100,8 +108,10 @@ class MyTrain(BasicTrainTask):
             ),
             ScaleIntensityRanged(keys="image", a_min=-57, a_max=164, b_min=0.0, b_max=1.0, clip=True),
             CropForegroundd(keys=("image", "label"), source_key="image"),
-            ToTensord(keys=("image", "label")),
         ]
+        if context.request.get("to_gpu", False):
+            t.extend([EnsureTyped(keys=("image", "label")), ToDeviced(keys=("image", "label"), device=context.device)])
+        return t
 
-    def val_inferer(self):
+    def val_inferer(self, context: Context):
         return SlidingWindowInferer(roi_size=(160, 160, 160), sw_batch_size=1, overlap=0.25)
