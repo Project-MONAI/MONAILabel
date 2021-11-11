@@ -15,8 +15,7 @@ router = APIRouter(
 )
 
 
-@router.get("/{path:path}", include_in_schema=False)
-async def get_ohif(path: str):
+def get_ohif(path: str):
     ohif_dir = os.path.join(os.path.dirname(os.path.realpath(__file__)), "static", "ohif")
     file = os.path.join(ohif_dir, "index.html")
     if path:
@@ -27,3 +26,8 @@ async def get_ohif(path: str):
         logger.info(file)
         raise HTTPException(status_code=404, detail="Resource NOT Found")
     return FileResponse(file, media_type=get_mime_type(file))
+
+
+@router.get("/{path:path}", include_in_schema=False)
+async def api_get_ohif(path: str):
+    return get_ohif(path)

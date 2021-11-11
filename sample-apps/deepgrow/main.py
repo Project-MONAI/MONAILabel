@@ -47,7 +47,21 @@ class MyApp(MONAILabelApp):
             conf=conf,
             name="Deepgrow - Generic",
             description="Active Learning solution to label generic organ",
-            labels=["spleen"],
+            labels=[
+                "spleen",
+                "right kidney",
+                "left kidney",
+                "gallbladder",
+                "esophagus",
+                "liver",
+                "stomach",
+                "aorta",
+                "inferior vena cava",
+                "portal vein and splenic vein",
+                "pancreas",
+                "right adrenal gland",
+                "left adrenal gland",
+            ],
         )
 
     def init_infers(self) -> Dict[str, InferTask]:
@@ -86,9 +100,7 @@ class MyApp(MONAILabelApp):
                 max_train_interactions=15,
                 max_val_interactions=5,
                 config={
-                    "train_random_slices": 10,
-                    "val_random_slices": 5,
-                    "max_epochs": 20,
+                    "max_epochs": 10,
                     "train_batch_size": 16,
                     "val_batch_size": 16,
                 },
@@ -98,8 +110,8 @@ class MyApp(MONAILabelApp):
                 network=load_from_mmar(self.mmar_3d, self.model_dir_3d),
                 description="Train 3D Deepgrow model",
                 dimension=3,
-                roi_size=(96, 96, 96),
-                model_size=(96, 96, 96),
+                roi_size=(128, 192, 192),
+                model_size=(128, 192, 192),
                 max_train_interactions=15,
                 max_val_interactions=20,
             ),
@@ -110,3 +122,55 @@ class MyApp(MONAILabelApp):
             "random": Random(),
             "first": MyStrategy(),
         }
+
+
+"""
+Example to run train/infer/scoring task(s) locally without actually running MONAI Label Server
+"""
+
+
+def main():
+    import argparse
+
+    from monailabel.config import settings
+
+    settings.MONAI_LABEL_DATASTORE_AUTO_RELOAD = False
+    os.putenv("MASTER_ADDR", "127.0.0.1")
+    os.putenv("MASTER_PORT", "1234")
+
+    logging.basicConfig(
+        level=logging.INFO,
+        format="[%(asctime)s] [%(process)s] [%(threadName)s] [%(levelname)s] (%(name)s:%(lineno)d) - %(message)s",
+        datefmt="%Y-%m-%d %H:%M:%S",
+    )
+
+    parser = argparse.ArgumentParser()
+    parser.add_argument("-s", "--studies", default="/local/sachi/Datasets/Test")
+    parser.add_argument("-e", "--epoch", type=int, default=3)
+    parser.add_argument("-d", "--dataset", default="CacheDataset")
+    parser.add_argument("-o", "--output", default="model_01")
+    parser.add_argument("-b", "--batch", type=int, default=1)
+    args = parser.parse_args()
+
+    app_dir = os.path.dirname(__file__)
+    studies = args.studies
+    conf = {
+        "use_pretrained_model": "true",
+        "auto_update_scoring": "false",
+    }
+
+    app = MyApp(app_dir, studies, conf)
+    app.train(
+        request={
+            "name": args.output,
+            "model": "deepgrow_3d",
+            "max_epochs": args.epoch,
+            "dataset": args.dataset,
+            "train_batch_size": args.batch,
+            "multi_gpu": True,
+        }
+    )
+
+
+if __name__ == "__main__":
+    main()

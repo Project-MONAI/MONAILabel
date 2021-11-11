@@ -27,16 +27,14 @@ router = APIRouter(
 )
 
 
-@router.get("/infer", summary="Get Status of Batch Inference Task")
-async def status(all: bool = False, check_if_running: bool = False):
+def status(all: bool = False, check_if_running: bool = False):
     res, detail = AsyncTask.status("batch_infer", all, check_if_running)
     if res is None:
         raise HTTPException(status_code=404, detail=detail)
     return res
 
 
-@router.post("/infer/{model}", summary="Run Batch Inference Task")
-async def run(
+def run(
     model: str,
     images: Optional[BatchInferImageType] = BatchInferImageType.IMAGES_ALL,
     params: Optional[dict] = None,
@@ -49,11 +47,30 @@ async def run(
     return res
 
 
-@router.delete("/infer", summary="Stop Batch Inference Task")
-async def stop():
+def stop():
     res = AsyncTask.stop("batch_infer")
 
     # Try to clear cuda cache
     if torch.cuda.is_available():
         torch.cuda.empty_cache()
     return res
+
+
+@router.get("/infer", summary="Get Status of Batch Inference Task")
+async def api_status(all: bool = False, check_if_running: bool = False):
+    return status(all, check_if_running)
+
+
+@router.post("/infer/{model}", summary="Run Batch Inference Task")
+async def api_run(
+    model: str,
+    images: Optional[BatchInferImageType] = BatchInferImageType.IMAGES_ALL,
+    params: Optional[dict] = None,
+    run_sync: Optional[bool] = False,
+):
+    return run(model, images, params, run_sync)
+
+
+@router.delete("/infer", summary="Stop Batch Inference Task")
+async def api_stop():
+    return stop()

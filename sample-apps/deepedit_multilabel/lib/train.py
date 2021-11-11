@@ -56,7 +56,7 @@ class MyTrain(BasicTrainTask):
         description="Train DeepEdit model for 3D Images",
         spatial_size=(128, 128, 64),
         target_spacing=(1.0, 1.0, 1.0),
-        deepgrow_probability_train=0.5,
+        deepgrow_probability_train=0.4,
         deepgrow_probability_val=1.0,
         max_train_interactions=20,
         max_val_interactions=10,
@@ -109,7 +109,6 @@ class MyTrain(BasicTrainTask):
         return [
             LoadImaged(keys=("image", "label"), reader="nibabelreader"),
             SelectLabelsAbdomenDatasetd(keys="label", label_names=self.label_names),
-            # SingleModalityLabelSanityd(keys=("image", "label"), label_names=self.label_names),
             AddChanneld(keys=("image", "label")),
             Spacingd(keys=["image", "label"], pixdim=self.target_spacing, mode=("bilinear", "nearest")),
             Orientationd(keys=["image", "label"], axcodes="RAS"),
@@ -174,7 +173,6 @@ class MyTrain(BasicTrainTask):
         return [
             LoadImaged(keys=("image", "label"), reader="nibabelreader"),
             SelectLabelsAbdomenDatasetd(keys="label", label_names=self.label_names),
-            # SingleModalityLabelSanityd(keys=("image", "label"), label_names=self.label_names),
             AddChanneld(keys=("image", "label")),
             Spacingd(keys=["image", "label"], pixdim=self.target_spacing, mode=("bilinear", "nearest")),
             Orientationd(keys=["image", "label"], axcodes="RAS"),
