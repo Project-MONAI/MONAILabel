@@ -99,8 +99,8 @@ class MyApp(MONAILabelApp):
         self.final_model = os.path.join(self.model_dir, "model.pt")
 
         # Use Heuristic Planner to determine target spacing and spatial size based on dataset+gpu
-        spatial_size = json.loads(conf.get("spatial_size", "[256, 256, 128]"))
-        target_spacing = json.loads(conf.get("target_spacing", "[1.5, 1.5, 2.0]"))
+        spatial_size = json.loads(conf.get("spatial_size", "[128, 128, 128]"))
+        target_spacing = json.loads(conf.get("target_spacing", "[1.0, 1.0, 1.0]"))
         self.heuristic_planner = strtobool(conf.get("heuristic_planner", "false"))
         self.planner = HeuristicPlanner(spatial_size=spatial_size, target_spacing=target_spacing)
 
@@ -212,8 +212,7 @@ def main():
     )
     app_dir_path = os.path.normpath("/home/adp20local/Documents/MONAILabel/sample-apps/deepedit_multilabel")
     studies_path = os.path.normpath(
-        "/home/adp20local/Documents/Datasets/monailabel_datasets/multilabel_abdomen/NIFTI/train"
-        # "/home/adp20local/Documents/Datasets/monailabel_datasets/Slicer/spleen/train"
+        "/home/adp20local/Documents/Datasets/monailabel_datasets/multilabel_abdomen/NIFTI_REORIENTED/train"
     )
     # conf is Dict[str, str]
     conf = {
@@ -226,7 +225,7 @@ def main():
     request = {
         "device": "cuda",
         "model": "deepedit_train",
-        # "dataset": "CacheDataset",
+        "dataset": "CacheDataset",
         "max_epochs": 600,
         "amp": False,
         "lr": 0.0001,

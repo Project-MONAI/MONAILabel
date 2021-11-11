@@ -58,8 +58,8 @@ class MyTrain(BasicTrainTask):
         target_spacing=(1.0, 1.0, 1.0),
         deepgrow_probability_train=0.4,
         deepgrow_probability_val=1.0,
-        max_train_interactions=20,
-        max_val_interactions=10,
+        max_train_interactions=10,
+        max_val_interactions=5,
         label_names=None,
         debug_mode=False,
         **kwargs,
@@ -245,7 +245,7 @@ class MyTrain(BasicTrainTask):
         train_d = datalist
 
         # Validation images
-        data_dir = "/home/adp20local/Documents/Datasets/monailabel_datasets/multilabel_abdomen/NIFTI/val"
+        data_dir = "/home/adp20local/Documents/Datasets/monailabel_datasets/multilabel_abdomen/NIFTI_REORIENTED/val"
         val_images = sorted(glob.glob(os.path.join(data_dir, "imgs", "*.nii.gz")))
         val_labels = sorted(glob.glob(os.path.join(data_dir, "labels", "*.nii.gz")))
         val_d = [{"image": image_name, "label": label_name} for image_name, label_name in zip(val_images, val_labels)]
