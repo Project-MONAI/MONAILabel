@@ -168,7 +168,13 @@ class MONAILabelWidget(ScriptedLoadableModuleWidget, VTKObservationMixin):
         self.config = OrderedDict()
         self.current_sample = None
         self.samples = {}
-        self.state = {"SegmentationModel": "", "DeepgrowModel": "", "ScribblesMethod": "", "CurrentStrategy": ""}
+        self.state = {
+            "SegmentationModel": "",
+            "DeepgrowModel": "",
+            "ScribblesMethod": "",
+            "CurrentStrategy": "",
+            "CurrentTrainer": "",
+        }
         self.file_ext = ".nii.gz"
 
         self.dgPositiveFiducialNode = None
@@ -245,13 +251,11 @@ class MONAILabelWidget(ScriptedLoadableModuleWidget, VTKObservationMixin):
         self.ui.nextSampleButton.connect("clicked(bool)", self.onNextSampleButton)
         self.ui.trainingButton.connect("clicked(bool)", self.onTraining)
         self.ui.stopTrainingButton.connect("clicked(bool)", self.onStopTraining)
-        self.ui.trainingStatusButton.connect("clicked(bool)", self.onTrainingStatus)
         self.ui.saveLabelButton.connect("clicked(bool)", self.onSaveLabel)
         self.ui.uploadImageButton.connect("clicked(bool)", self.onUploadImage)
         self.ui.importLabelButton.connect("clicked(bool)", self.onImportLabel)
         self.ui.labelComboBox.connect("currentIndexChanged(int)", self.onSelectLabel)
         self.ui.dgUpdateButton.connect("clicked(bool)", self.onUpdateDeepgrow)
-        self.ui.trainingStatusButton.hide()
         self.ui.dgUpdateCheckBox.setStyleSheet("padding-left: 10px;")
 
         # Scribbles
@@ -306,6 +310,7 @@ class MONAILabelWidget(ScriptedLoadableModuleWidget, VTKObservationMixin):
             "DeepgrowModel": self.ui.deepgrowModelSelector.currentText,
             "ScribblesMethod": self.ui.scribblesMethodSelector.currentText,
             "CurrentStrategy": self.ui.strategyBox.currentText,
+            "CurrentTrainer": self.ui.trainerBox.currentText,
         }
 
         self._volumeNode = None
@@ -473,6 +478,16 @@ class MONAILabelWidget(ScriptedLoadableModuleWidget, VTKObservationMixin):
         currentStrategy = currentStrategy if currentStrategy else self.state["CurrentStrategy"]
         self.ui.strategyBox.setCurrentIndex(self.ui.strategyBox.findText(currentStrategy) if currentStrategy else 0)
 
+        self.ui.trainerBox.clear()
+        trainers = self.info.get("trainers", {})
+        if trainers:
+            self.ui.trainerBox.addItem("ALL")
+        for t in trainers:
+            self.ui.trainerBox.addItem(t)
+        currentTrainer = self._parameterNode.GetParameter("CurrentTrainer")
+        currentTrainer = currentTrainer if currentTrainer else self.state["CurrentTrainer"]
+        self.ui.trainerBox.setCurrentIndex(self.ui.trainerBox.findText(currentTrainer) if currentTrainer else 0)
+
         developer_mode = slicer.util.settingsValue("MONAILabel/developerMode", True, converter=slicer.util.toBool)
         self.ui.optionsCollapsibleButton.setVisible(developer_mode)
 
@@ -482,7 +497,6 @@ class MONAILabelWidget(ScriptedLoadableModuleWidget, VTKObservationMixin):
         is_training_running = True if self.info and self.isTrainingRunning() else False
         self.ui.trainingButton.setEnabled(self.info and not is_training_running and current)
         self.ui.stopTrainingButton.setEnabled(is_training_running)
-        self.ui.trainingStatusButton.setEnabled(self.info)
         if is_training_running and self.timer is None:
             self.timer = qt.QTimer()
             self.timer.setInterval(5000)
@@ -564,6 +578,11 @@ class MONAILabelWidget(ScriptedLoadableModuleWidget, VTKObservationMixin):
         if currentStrategyIndex >= 0:
             currentStrategy = self.ui.strategyBox.itemText(currentStrategyIndex)
             self._parameterNode.SetParameter("CurrentStrategy", currentStrategy)
+
+        currentTrainerIndex = self.ui.trainerBox.currentIndex
+        if currentTrainerIndex >= 0:
+            currentTrainer = self.ui.trainerBox.itemText(currentTrainerIndex)
+            self._parameterNode.SetParameter("CurrentTrainer", currentTrainer)
 
         self._parameterNode.EndModify(wasModified)
 
@@ -941,7 +960,12 @@ class MONAILabelWidget(ScriptedLoadableModuleWidget, VTKObservationMixin):
         try:
             qt.QApplication.setOverrideCursor(qt.Qt.WaitCursor)
             self.updateServerSettings()
-            status = self.logic.train_start(self.getParamsFromConfig("train"))
+
+            model = self.ui.trainerBox.currentText
+            model = model if model and model != "ALL" else None
+            params = self.getParamsFromConfig("train", model)
+
+            status = self.logic.train_start(model, params)
 
             self.ui.trainingProgressBar.setValue(1)
             self.ui.trainingProgressBar.setToolTip("Training: STARTED")
@@ -1002,38 +1026,6 @@ class MONAILabelWidget(ScriptedLoadableModuleWidget, VTKObservationMixin):
         self.updateServerSettings()
         return self.logic.train_status(check_only)
 
-    def onTrainingStatus(self):
-        if not self.logic:
-            return
-
-        start = time.time()
-        status = None
-        try:
-            qt.QApplication.setOverrideCursor(qt.Qt.WaitCursor)
-            self.updateServerSettings()
-            status = self.logic.train_status(False)
-        except:
-            logging.debug("Failed to fetch Training Status\n{}".format(traceback.format_exc()))
-        finally:
-            qt.QApplication.restoreOverrideCursor()
-
-        if status:
-            result = status.get("details", [])[-1]
-            try:
-                result = json.loads(result)
-                result = json.dumps(result, indent=2)
-            except:
-                pass
-            msg = "Status: {}\nStart Time: {}\nEnd Time: {}\nResult: {}".format(
-                status.get("status"), status.get("start_ts"), status.get("end_ts"), status.get("result", result)
-            )
-            slicer.util.infoDisplay(msg, detailedText=json.dumps(status, indent=2))
-        else:
-            slicer.util.errorDisplay("No Training Tasks Found\t")
-
-        self.updateGUIFromParameterNode()
-        logging.info("Time consumed by next_sample: {0:3.1f}".format(time.time() - start))
-
     def onNextSampleButton(self):
         if not self.logic:
             return
@@ -1059,6 +1051,11 @@ class MONAILabelWidget(ScriptedLoadableModuleWidget, VTKObservationMixin):
 
             sample = self.logic.next_sample(strategy, self.getParamsFromConfig("activelearning", strategy))
             logging.debug(sample)
+            if not sample.get("id"):
+                slicer.util.warningDisplay(
+                    "Unlabled Samples/Images Not Found at server.  Instead you can load your own image."
+                )
+                return
 
             if self.samples.get(sample["id"]) is not None:
                 self.current_sample = self.samples[sample["id"]]
@@ -1939,8 +1936,8 @@ class MONAILabelLogic(ScriptedLoadableModuleLogic):
         self.reportProgress(100)
         return result_file, params
 
-    def train_start(self, params={}):
-        return MONAILabelClient(self.server_url, self.tmpdir, self.client_id).train_start(params)
+    def train_start(self, model=None, params={}):
+        return MONAILabelClient(self.server_url, self.tmpdir, self.client_id).train_start(model, params)
 
     def train_status(self, check_if_running):
         return MONAILabelClient(self.server_url, self.tmpdir, self.client_id).train_status(check_if_running)

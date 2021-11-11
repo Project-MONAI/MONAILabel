@@ -172,10 +172,13 @@ class MONAILabelClient:
         image_out = MONAILabelUtils.save_result(files, self._tmpdir)
         return image_out, params
 
-    def train_start(self, params):
+    def train_start(self, model, params):
         params = self._update_client_id(params)
 
         selector = "/train/"
+        if model:
+            selector += MONAILabelUtils.urllib_quote_plus(model)
+
         status, response, _ = MONAILabelUtils.http_method("POST", self._server_url, selector, params)
         if status != 200:
             raise MONAILabelException(
