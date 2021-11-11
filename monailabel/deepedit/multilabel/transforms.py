@@ -199,7 +199,7 @@ class AddGuidanceSignalCustomd(MapTransform):
         self,
         keys: KeysCollection,
         guidance: str = "guidance",
-        sigma: int = 2,
+        sigma: int = 3,
         number_intensity_ch: int = 1,
         allow_missing_keys: bool = False,
     ):
@@ -212,36 +212,39 @@ class AddGuidanceSignalCustomd(MapTransform):
         dimensions = 3 if len(image.shape) > 3 else 2
         guidance = guidance.tolist() if isinstance(guidance, np.ndarray) else guidance
         guidance = json.loads(guidance) if isinstance(guidance, str) else guidance
+
         # In inference the user may not provide clicks for some channels/labels
         if len(guidance):
             if dimensions == 3:
-                signal = np.zeros((len(guidance), image.shape[-3], image.shape[-2], image.shape[-1]), dtype=np.float32)
+                # Assume channel is first and depth is last CHWD
+                signal = np.zeros((1, image.shape[-3], image.shape[-2], image.shape[-1]), dtype=np.float32)
             else:
-                signal = np.zeros((len(guidance), image.shape[-2], image.shape[-1]), dtype=np.float32)
+                signal = np.zeros((1, image.shape[-2], image.shape[-1]), dtype=np.float32)
 
             sshape = signal.shape
-            for i, g_i in enumerate(guidance):
-                for point in g_i:
-                    if np.any(np.asarray(point) < 0):
-                        continue
+            for point in guidance[0]:  # TO DO: make the guidance a list only - it is currently a list of list
+                if np.any(np.asarray(point) < 0):
+                    continue
 
-                    if dimensions == 3:
-                        p1 = max(0, min(int(point[-3]), sshape[-3] - 1))
-                        p2 = max(0, min(int(point[-2]), sshape[-2] - 1))
-                        p3 = max(0, min(int(point[-1]), sshape[-1] - 1))
-                        signal[i, p1, p2, p3] = 1.0
-                    else:
-                        p1 = max(0, min(int(point[-2]), sshape[-2] - 1))
-                        p2 = max(0, min(int(point[-1]), sshape[-1] - 1))
-                        signal[i, p1, p2] = 1.0
+                if dimensions == 3:
+                    # Making sure points fall inside the image dimension
+                    p1 = max(0, min(int(point[-3]), sshape[-3] - 1))
+                    p2 = max(0, min(int(point[-2]), sshape[-2] - 1))
+                    p3 = max(0, min(int(point[-1]), sshape[-1] - 1))
+                    signal[:, p1, p2, p3] = 1.0
+                else:
+                    p1 = max(0, min(int(point[-2]), sshape[-2] - 1))
+                    p2 = max(0, min(int(point[-1]), sshape[-1] - 1))
+                    signal[:, p1, p2] = 1.0
 
-                if np.max(signal[i]) > 0:
-                    signal_tensor = torch.tensor(signal[i])
-                    pt_gaussian = GaussianFilter(len(signal_tensor.shape), sigma=self.sigma)
-                    signal_tensor = pt_gaussian(signal_tensor.unsqueeze(0).unsqueeze(0))
-                    signal_tensor = signal_tensor.squeeze(0).squeeze(0)
-                    signal[i] = signal_tensor.detach().cpu().numpy()
-                    signal[i] = (signal[i] - np.min(signal[i])) / (np.max(signal[i]) - np.min(signal[i]))
+            # Apply a Gaussian filter to the signal
+            if np.max(signal[0]) > 0:
+                signal_tensor = torch.tensor(signal[0])
+                pt_gaussian = GaussianFilter(len(signal_tensor.shape), sigma=self.sigma)
+                signal_tensor = pt_gaussian(signal_tensor.unsqueeze(0).unsqueeze(0))
+                signal_tensor = signal_tensor.squeeze(0).squeeze(0)
+                signal[0] = signal_tensor.detach().cpu().numpy()
+                signal[0] = (signal[0] - np.min(signal[0])) / (np.max(signal[0]) - np.min(signal[0]))
             return signal
         else:
             if dimensions == 3:
@@ -271,7 +274,7 @@ class AddGuidanceSignalCustomd(MapTransform):
 class FindAllValidSlicesCustomd(MapTransform):
     """
     Find/List all valid slices in the labels.
-    Label is assumed to be a 4D Volume with shape CDHW, where C=1.
+    Label is assumed to be a 4D Volume with shape CHWD, where C=1.
 
     Args:
         label: key to the label source.
@@ -291,8 +294,8 @@ class FindAllValidSlicesCustomd(MapTransform):
         sids = {}
         for key_label in d["label_names"].keys():
             l_ids = []
-            for sid in range(label.shape[1]):  # Assume channel is first
-                if d["label_names"][key_label] in label[0][sid]:
+            for sid in range(label.shape[-1]):  # Assume channel is first and depth is last CHWD
+                if d["label_names"][key_label] in label[0][..., sid]:
                     l_ids.append(sid)
             sids[key_label] = l_ids
         return sids
@@ -306,7 +309,7 @@ class FindAllValidSlicesCustomd(MapTransform):
                     raise ValueError("Only supports single channel labels!")
 
                 if len(label.shape) != 4:  # only for 3D
-                    raise ValueError("Only supports label with shape CDHW!")
+                    raise ValueError("Only supports label with shape CHWD!")
 
                 sids = self._apply(label, d)
                 if sids is not None and len(sids.keys()):
@@ -357,7 +360,7 @@ class AddInitialSeedPointCustomd(Randomizable, MapTransform):
         dims = dimensions
         if sid is not None and dimensions == 3:
             dims = 2
-            label = label[0][sid][np.newaxis]  # Assume channel is first
+            label = label[0][..., sid][np.newaxis]  # Assume channel is first and depth is last CHWD
 
         # import matplotlib.pyplot as plt
         # plt.imshow(label[0])
@@ -409,7 +412,8 @@ class AddInitialSeedPointCustomd(Randomizable, MapTransform):
             if dimensions == 2 or dims == 3:
                 pos_guidance.append(g)
             else:
-                pos_guidance.append([g[0], sid, g[-2], g[-1]])
+                # Clicks are created using this convention Channel Height Width Depth (CHWD)
+                pos_guidance.append([g[0], g[-2], g[-1], sid])  # Assume channel is first and depth is last CHWD
 
         return np.asarray([pos_guidance])
 
@@ -686,21 +690,9 @@ class AddGuidanceFromPointsCustomd(Transform):
     We assume the input is loaded by LoadImaged and has the shape of (H, W, D) originally.
     Clicks always specify the coordinates in (H, W, D)
 
-    If depth_first is True:
-
-        Input is now of shape (D, H, W), will return guidance that specifies the coordinates in (D, H, W)
-
-    else:
-
-        Input is now of shape (H, W, D), will return guidance that specifies the coordinates in (H, W, D)
-
     Args:
         ref_image: key to reference image to fetch current and original image details.
         guidance: output key to store guidance.
-        foreground: key that represents user foreground (+ve) clicks.
-        background: key that represents user background (-ve) clicks.
-        axis: axis that represents slices in 3D volume. (axis to Depth)
-        depth_first: if depth (slices) is positioned at first dimension.
         meta_keys: explicitly indicate the key of the meta data dictionary of `ref_image`.
             for example, for data with key `image`, the metadata by default is in `image_meta_dict`.
             the meta data is a dictionary object which contains: filename, original_shape, etc.
@@ -717,16 +709,12 @@ class AddGuidanceFromPointsCustomd(Transform):
         ref_image,
         guidance: str = "guidance",
         label_names=None,
-        axis: int = 0,
-        depth_first: bool = True,
         meta_keys: Optional[str] = None,
         meta_key_postfix: str = "meta_dict",
     ):
         self.ref_image = ref_image
         self.guidance = guidance
         self.label_names = label_names
-        self.axis = axis
-        self.depth_first = depth_first
         self.meta_keys = meta_keys
         self.meta_key_postfix = meta_key_postfix
 
@@ -744,15 +732,12 @@ class AddGuidanceFromPointsCustomd(Transform):
             raise RuntimeError(f"Missing meta_dict {meta_dict_key} in data!")
         if "spatial_shape" not in d[meta_dict_key]:
             raise RuntimeError('Missing "spatial_shape" in meta_dict!')
+
+        # Assume channel is first and depth is last CHWD
         original_shape = d[meta_dict_key]["spatial_shape"]
-        current_shape = list(d[self.ref_image].shape)
+        current_shape = list(d[self.ref_image].shape)[1:]
 
-        if self.depth_first:
-            if self.axis != 0:
-                raise RuntimeError("Depth first means the depth axis should be 0.")
-            # in here we assume the depth dimension was in the last dimension of "original_shape"
-            original_shape = np.roll(original_shape, 1)
-
+        # in here we assume the depth dimension is in the last dimension of "original_shape" and "current_shape"
         factor = np.array(current_shape) / original_shape
 
         # Creating guidance for all clicks
@@ -760,9 +745,6 @@ class AddGuidanceFromPointsCustomd(Transform):
         for key_label in self.label_names.keys():
             clicks = d[key_label]
             clicks = list(np.array(clicks).astype(int))
-            if self.depth_first:
-                for i in range(len(clicks)):
-                    clicks[i] = list(np.roll(clicks[i], 1))
             all_guidances[key_label] = self._apply(clicks, factor)
         d[self.guidance] = all_guidances
         return d
@@ -783,9 +765,13 @@ class ResizeGuidanceMultipleLabelCustomd(Transform):
 
     def __call__(self, data):
         d = dict(data)
+        # Assume channel is first and depth is last CHWD
         current_shape = d[self.ref_image].shape[1:]
+        original_shape = d["image_meta_dict"]["spatial_shape"]
 
-        factor = np.divide(current_shape, d["image_meta_dict"]["spatial_shape"])
+        # original_shape = np.roll(original_shape, 1)
+
+        factor = np.divide(current_shape, original_shape)
         all_guidances = dict()
         for key_label in d[self.guidance].keys():
             guidance = (
