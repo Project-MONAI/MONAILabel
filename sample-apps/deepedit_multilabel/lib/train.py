@@ -245,7 +245,7 @@ class MyTrain(BasicTrainTask):
         train_d = datalist
 
         # Validation images
-        data_dir = "/home/adp20local/Documents/Datasets/monailabel_datasets/multilabel_abdomen/NIFTI_REORIENTED/val"
+        data_dir = "/home/adp20local/Documents/Datasets/monailabel_datasets/multilabel_abdomen/NIFTI/val"
         val_images = sorted(glob.glob(os.path.join(data_dir, "imgs", "*.nii.gz")))
         val_labels = sorted(glob.glob(os.path.join(data_dir, "labels", "*.nii.gz")))
         val_d = [{"image": image_name, "label": label_name} for image_name, label_name in zip(val_images, val_labels)]
