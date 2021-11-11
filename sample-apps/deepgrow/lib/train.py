@@ -11,8 +11,9 @@
 
 import logging
 import os
+import pathlib
 import shutil
-import tempfile
+from typing import Any, List
 
 import torch
 from monai.apps.deepgrow.dataset import create_dataset
@@ -35,12 +36,13 @@ from monai.transforms import (
     LoadImaged,
     NormalizeIntensityd,
     Resized,
+    ToDeviced,
     ToNumpyd,
     ToTensord,
 )
 
 from monailabel.interfaces.datastore import Datastore
-from monailabel.tasks.train.basic_train import BasicTrainTask
+from monailabel.tasks.train.basic_train import BasicTrainTask, Context
 
 logger = logging.getLogger(__name__)
 
@@ -67,20 +69,20 @@ class TrainDeepgrow(BasicTrainTask):
 
         super().__init__(model_dir, description, **kwargs)
 
-    def network(self):
+    def network(self, context: Context):
         return self._network
 
-    def optimizer(self):
+    def optimizer(self, context: Context):
         return torch.optim.Adam(self._network.parameters(), lr=0.0001)
 
-    def loss_function(self):
+    def loss_function(self, context: Context):
         return DiceLoss(sigmoid=True, squared_pred=True)
 
     def pre_process(self, request, datastore: Datastore):
         self.cleanup(request)
 
         # run_id = request["run_id"]
-        output_dir = os.path.join(tempfile.gettempdir(), f"deepgrow_{self.dimension}D_train")
+        output_dir = os.path.join(pathlib.Path.home(), ".cache", "monailabel", f"deepgrow_{self.dimension}D_train")
         logger.info(f"Preparing Dataset for Deepgrow-{self.dimension}D:: {output_dir}")
 
         datalist = create_dataset(
@@ -96,11 +98,11 @@ class TrainDeepgrow(BasicTrainTask):
 
     def cleanup(self, request):
         # run_id = request["run_id"]
-        output_dir = os.path.join(tempfile.gettempdir(), f"deepgrow_{self.dimension}D_train")
+        output_dir = os.path.join(pathlib.Path.home(), ".cache", "monailabel", f"deepgrow_{self.dimension}D_train")
         if os.path.exists(output_dir):
             shutil.rmtree(output_dir, ignore_errors=True)
 
-    def get_click_transforms(self):
+    def get_click_transforms(self, context: Context):
         return [
             Activationsd(keys="pred", sigmoid=True),
             ToNumpyd(keys=("image", "label", "pred")),
@@ -110,14 +112,14 @@ class TrainDeepgrow(BasicTrainTask):
             ToTensord(keys=("image", "label")),
         ]
 
-    def train_pre_transforms(self):
+    def train_pre_transforms(self, context: Context):
         # Dataset preparation
-        t = [
+        t: List[Any] = [
             LoadImaged(keys=("image", "label")),
             AddChanneld(keys=("image", "label")),
             SpatialCropForegroundd(keys=("image", "label"), source_key="label", spatial_size=self.roi_size),
             Resized(keys=("image", "label"), spatial_size=self.model_size, mode=("area", "nearest")),
-            NormalizeIntensityd(keys="image", subtrahend=208.0, divisor=388.0),
+            NormalizeIntensityd(keys="image", subtrahend=208.0, divisor=388.0),  # type: ignore
         ]
         if self.dimension == 3:
             t.append(FindAllValidSlicesd(label="label", sids="sids"))
@@ -128,33 +130,34 @@ class TrainDeepgrow(BasicTrainTask):
                 EnsureTyped(keys=("image", "label")),
             ]
         )
-
+        if context.request.get("to_gpu", False):
+            t.append(ToDeviced(keys=("image", "label"), device=context.device))
         return t
 
-    def train_post_transforms(self):
+    def train_post_transforms(self, context: Context):
         return [
             EnsureTyped(keys="pred"),
             Activationsd(keys="pred", sigmoid=True),
             AsDiscreted(keys="pred", threshold_values=True, logit_thresh=0.5),
         ]
 
-    def val_pre_transforms(self):
-        return self.train_pre_transforms()
+    def val_pre_transforms(self, context: Context):
+        return self.train_pre_transforms(context)
 
-    def val_inferer(self):
+    def val_inferer(self, context: Context):
         return SimpleInferer()
 
-    def train_iteration_update(self):
+    def train_iteration_update(self, context: Context):
         return Interaction(
-            transforms=self.get_click_transforms(),
+            transforms=self.get_click_transforms(context),
             max_interactions=self.max_train_interactions,
             key_probability="probability",
             train=True,
         )
 
-    def val_iteration_update(self):
+    def val_iteration_update(self, context: Context):
         return Interaction(
-            transforms=self.get_click_transforms(),
+            transforms=self.get_click_transforms(context),
             max_interactions=self.max_val_interactions,
             key_probability="probability",
             train=False,

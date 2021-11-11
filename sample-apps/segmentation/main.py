@@ -91,7 +91,11 @@ class MyApp(MONAILabelApp):
     def init_trainers(self) -> Dict[str, TrainTask]:
         return {
             "segmentation": MyTrain(
-                self.model_dir, self.network, load_path=self.pretrained_model, publish_path=self.final_model
+                model_dir=self.model_dir,
+                network=self.network,
+                load_path=self.pretrained_model,
+                publish_path=self.final_model,
+                config={"max_epochs": 100, "train_batch_size": 4, "to_gpu": True},
             )
         }
 
