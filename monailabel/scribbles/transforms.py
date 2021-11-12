@@ -155,6 +155,7 @@ class MakeLikelihoodFromScribblesHistogramd(InteractiveSegmentationTransform):
         post_proc_label: str = "prob",
         scribbles_bg_label: int = 2,
         scribbles_fg_label: int = 3,
+        normalise: bool = True,
     ) -> None:
         super().__init__(meta_key_postfix)
         self.image = image
@@ -162,6 +163,7 @@ class MakeLikelihoodFromScribblesHistogramd(InteractiveSegmentationTransform):
         self.scribbles_bg_label = scribbles_bg_label
         self.scribbles_fg_label = scribbles_fg_label
         self.post_proc_label = post_proc_label
+        self.normalise = normalise
 
     def __call__(self, data):
         d = dict(data)
@@ -179,8 +181,12 @@ class MakeLikelihoodFromScribblesHistogramd(InteractiveSegmentationTransform):
             scribbles,
             scribbles_bg_label=self.scribbles_bg_label,
             scribbles_fg_label=self.scribbles_fg_label,
-            return_prob=True,
+            return_label=False,
         )
+
+        if self.normalise:
+            post_proc_label = self._normalise_logits(post_proc_label, axis=0)
+
         d[self.post_proc_label] = post_proc_label
 
         return d

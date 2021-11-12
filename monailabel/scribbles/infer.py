@@ -82,7 +82,12 @@ class HistogramBasedGraphCut(InferTask):
                 clip=self.intensity_range[4],
             ),
             MakeLikelihoodFromScribblesHistogramd(
-                image="image", scribbles="label", post_proc_label="prob", scribbles_bg_label=2, scribbles_fg_label=3
+                image="image",
+                scribbles="label",
+                post_proc_label="prob",
+                scribbles_bg_label=2,
+                scribbles_fg_label=3,
+                normalise=True,
             ),
         ]
 
