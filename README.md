@@ -32,25 +32,27 @@ MONAI Label supports following OS with **GPU/CUDA** enabled.
 - Ubuntu
 - [Windows](https://docs.monai.io/projects/label/en/latest/installation.html#windows)
 
-To install the current release, you can simply run:
+To install the [current release](https://pypi.org/project/monailabel/), you can simply run:
 
 ```bash
   pip install monailabel
   
   # download sample apps/dataset
   monailabel apps --download --name deepedit --output apps
-  monailabel datasets --download --name Task02_Heart --output datasets
+  monailabel datasets --download --name Task09_Spleen --output datasets
   
   # run server
-  monailabel start_server --app apps/deepedit --studies datasets/Task02_Heart/imagesTr
+  monailabel start_server --app apps/deepedit --studies datasets/Task09_Spleen/imagesTr
 ```
 
-> If monailabel install path is not automatically determined, then you can provide explicit install path as: `monailabel apps --prefix ~/.local`
+> If monailabel install path is not automatically determined, then you can provide explicit install path as: 
+> 
+> `monailabel apps --prefix ~/.local`
 
 For **_prerequisites_**, other installation methods (using the default GitHub branch, using Docker, etc.), please refer
 to the [installation guide](https://docs.monai.io/projects/label/en/latest/installation.html).
 
-> Once you start the MONAI Label Server, by default it will be up and serving at http://127.0.0.1:8000/. Open the serving URL in browser. It will provide you the list of Rest APIs available.
+> Once you start the MONAI Label Server, by default server will be up and serving at http://127.0.0.1:8000/. Open the serving URL in browser. It will provide you the list of Rest APIs available.
 
 ### 3D Slicer
 
@@ -62,17 +64,22 @@ Refer [3D Slicer plugin](plugins/slicer) for other options to install and run MO
 
 ### OHIF
 
-MONAI Label comes with [pre-built plugin](plugins/ohif) for [OHIF Viewer](https://github.com/OHIF/Viewers).
+MONAI Label comes with [pre-built plugin](plugins/ohif) for [OHIF Viewer](https://github.com/OHIF/Viewers).  To use OHIF Viewer, you need to provide DICOMWeb instead of FileSystem as _studies_ when you start the server.
 > Please install [Orthanc](https://www.orthanc-server.com/download.php) before using OHIF Viewer.
 > For Ubuntu 20.x, Orthanc can be installed as `apt-get install orthanc orthanc-dicomweb`. However, you have to **upgrade to latest version** by following steps mentioned [here](https://book.orthanc-server.com/users/debian-packages.html#replacing-the-package-from-the-service-by-the-lsb-binaries)
 >
 > You can use [PlastiMatch](https://plastimatch.org/plastimatch.html#plastimatch-convert) to convert NIFTI to DICOM
 
+```bash
+  # start server using DICOMWeb
+  monailabel start_server --app apps\deepedit --studies http://127.0.0.1:8042/dicom-web
+```
+
 > OHIF Viewer will be accessible at http://127.0.0.1:8000/ohif/
 
 ![OHIF](https://raw.githubusercontent.com/Project-MONAI/MONAILabel/main/docs/images/ohif.png)
 
-> **_NOTE:_** OHIF does not yet support Scribbles-based annotations.
+> **_NOTE:_** OHIF does not yet support Scribbles-based annotations and Multi-Label interaction for DeepEdit.
 
 ## Contributing
 
