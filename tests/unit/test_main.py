@@ -17,7 +17,7 @@ class MyTestCase(unittest.TestCase):
     def test_run(self):
         try:
             Main().run()
-        except:
+        except BaseException:
             pass
 
     def test_start_server(self):
