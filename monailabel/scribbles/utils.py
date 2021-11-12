@@ -12,7 +12,6 @@ import logging
 
 import maxflow
 import numpy as np
-from scipy.special import softmax
 
 logger = logging.getLogger(__name__)
 
@@ -156,7 +155,7 @@ def make_histograms(image, scrib, scribbles_bg_label, scribbles_fg_label, alpha_
     return bg_hist.astype(np.float32), fg_hist.astype(np.float32), fg_bin_edges.astype(np.float32)
 
 
-def make_likelihood_image_histogram(image, scrib, scribbles_bg_label, scribbles_fg_label, return_prob=True):
+def make_likelihood_image_histogram(image, scrib, scribbles_bg_label, scribbles_fg_label, return_label=False):
     # normalise image in range [0, 1] if needed
     min_img = np.min(image)
     max_img = np.max(image)
@@ -174,11 +173,8 @@ def make_likelihood_image_histogram(image, scrib, scribbles_bg_label, scribbles_
     bprob = bg_hist[dimage]
     retprob = np.concatenate([bprob, fprob], axis=0)
 
-    # renormalise
-    retprob = softmax(retprob, axis=0)
-
     # if needed, convert to discrete labels instead of probability
-    if not return_prob:
+    if return_label:
         retprob = np.expand_dims(np.argmax(retprob, axis=0), axis=0).astype(np.float32)
 
     return retprob
