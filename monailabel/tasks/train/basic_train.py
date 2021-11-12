@@ -46,7 +46,6 @@ from monai.handlers import (
     stopping_fn_from_metric,
 )
 from monai.inferers import SimpleInferer
-from monai.networks.utils import copy_model_state
 from monai.transforms import Compose
 
 from monailabel.interfaces.datastore import Datastore
@@ -531,16 +530,7 @@ class BasicTrainTask(TrainTask):
                 )
             )
 
-        load_path = self.load_path(context.output_dir, context.pretrained)
-        if load_path and os.path.exists(load_path):
-            logger.info(f"{context.local_rank} - Load Path {load_path}")
-            load_dict = {self._model_dict_key: context.network} if self._load_dict is None else self._load_dict
-
-            if context.multi_gpu:
-                map_location = {"cuda:0": "cuda:{}".format(context.device.index)}
-                self._load_checkpoint(load_path, load_dict, map_location)
-            else:
-                train_handlers.append(CheckpointLoader(load_path, load_dict))
+        self._load_checkpoint(context, train_handlers)
 
         return SupervisedTrainer(
             device=context.device,
@@ -558,26 +548,14 @@ class BasicTrainTask(TrainTask):
             event_names=self.event_names(context),
         )
 
-    # Refer monai.handlers.CheckpointLoader
-    def _load_checkpoint(self, load_path, load_dict, map_location=None, strict_shape=False):
-        checkpoint = torch.load(load_path, map_location=map_location)
+    def _load_checkpoint(self, context, train_handlers):
+        load_path = self.load_path(context.output_dir, context.pretrained)
+        if load_path and os.path.exists(load_path):
+            logger.info(f"{context.local_rank} - Load Path {load_path}")
 
-        k, _ = list(load_dict.items())[0]
-        # single object and checkpoint is directly a state_dict
-        if len(load_dict) == 1 and k not in checkpoint:
-            checkpoint = {k: checkpoint}
-
-        if not strict_shape:
-            pop_items: List[str] = []
-            for k, obj in load_dict.items():
-                if isinstance(obj, torch.nn.Module):
-                    # skip items that don't match key name or data shape
-                    checkpoint[k] = copy_model_state(obj, checkpoint, inplace=False)[0]
-                else:
-                    logger.warning("`strict_shape` is False, load checkpoint for model, skip others in `load_dict`.")
-                    pop_items.append(k)
-            for i in pop_items:
-                load_dict.pop(i)
+            load_dict = {self._model_dict_key: context.network} if self._load_dict is None else self._load_dict
+            map_location = {"cuda:0": "cuda:{}".format(context.device.index)} if context.multi_gpu else None
+            train_handlers.append(CheckpointLoader(load_path, load_dict, map_location=map_location))
 
 
 def main_worker(rank, world_size, request, datastore: Datastore, task: BasicTrainTask):
