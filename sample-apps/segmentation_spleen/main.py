@@ -85,7 +85,10 @@ class MyApp(MONAILabelApp):
     def init_trainers(self) -> Dict[str, TrainTask]:
         return {
             "segmentation_spleen": MyTrain(
-                self.model_dir, load_from_mmar(self.mmar, self.model_dir), publish_path=self.final_model
+                model_dir=self.model_dir,
+                network=load_from_mmar(self.mmar, self.model_dir),
+                publish_path=self.final_model,
+                config={"max_epochs": 100, "train_batch_size": 4, "to_gpu": True},
             )
         }
 
@@ -95,6 +98,7 @@ class MyApp(MONAILabelApp):
             strategies["EPISTEMIC"] = Epistemic()
         if self.tta_enabled:
             strategies["TTA"] = TTA()
+
         strategies["random"] = Random()
         strategies["first"] = MyStrategy()
         return strategies
