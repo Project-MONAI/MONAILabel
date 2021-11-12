@@ -187,6 +187,7 @@ class MyTrain(BasicTrainTask):
             AddInitialSeedPointCustomd(keys="label", guidance="guidance", sids="sids"),
             AddGuidanceSignalCustomd(keys="image", guidance="guidance"),
             #
+            # Don't think the AsDiscreted transform is needed here -- STILL CHECKING
             AsDiscreted(keys="label", to_onehot=True, num_classes=len(self.label_names)),
             ToTensord(keys=("image", "label")),
         ]

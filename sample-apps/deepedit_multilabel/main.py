@@ -41,14 +41,8 @@ class MyApp(MONAILabelApp):
 
         # background label is used to place the negative clicks
         # Zero values are reserved to background. Non zero values are for the labels
-        # self.label_names = {
-        #     "spleen": 1,
-        #     "right kidney": 2,
-        #     "left kidney": 3,
-        #     "liver": 6,
-        #     "background": 0,
-        # }
-        # For RSNA demo
+
+        # For demo
         self.label_names = {
             "spleen": 1,
             "right kidney": 2,
@@ -204,54 +198,90 @@ class MyApp(MONAILabelApp):
         return methods
 
 
+"""
+Example to run train/infer/scoring task(s) locally without actually running MONAI Label Server
+"""
+
+
 def main():
+
+    import argparse
+
+    from monailabel.config import settings
+
+    settings.MONAI_LABEL_DATASTORE_AUTO_RELOAD = False
+    os.putenv("MASTER_ADDR", "127.0.0.1")
+    os.putenv("MASTER_PORT", "1234")
+
     logging.basicConfig(
         level=logging.INFO,
         format="[%(asctime)s.%(msecs)03d][%(levelname)5s](%(name)s) - %(message)s",
         datefmt="%Y-%m-%d %H:%M:%S",
     )
-    app_dir_path = os.path.normpath("/home/adp20local/Documents/MONAILabel/sample-apps/deepedit_multilabel")
-    studies_path = os.path.normpath(
-        "/home/adp20local/Documents/Datasets/monailabel_datasets/multilabel_abdomen/NIFTI/train"
+
+    parser = argparse.ArgumentParser()
+    parser.add_argument("-n", "--network", default="dynunet", choices=["unet", "dynunet"])
+    parser.add_argument(
+        "-s",
+        "--studies",
+        default="/home/adp20local/Documents/Datasets/monailabel_datasets/multilabel_abdomen/NIFTI/train",
     )
+    parser.add_argument("-e", "--epoch", type=int, default=600)
+    parser.add_argument("-l", "--lr", default=0.0001)
+    parser.add_argument("-d", "--dataset", default="CacheDataset")
+    parser.add_argument("-o", "--output", default="model_01")
+    parser.add_argument("-i", "--size", default="[128,128,128]")
+    parser.add_argument("-b", "--batch", type=int, default=1)
+    args = parser.parse_args()
+
+    app_dir = os.path.dirname(__file__)
+    studies = args.studies
+
     # conf is Dict[str, str]
     conf = {
         "use_pretrained_model": "false",
+        "auto_update_scoring": "false",
         "heuristic_planner": "false",
         "tta_enabled": "false",
         "tta_samples": "10",
+        "spatial_size": args.size,
+        "network": args.network,
     }
-    al_app = MyApp(app_dir=app_dir_path, studies=studies_path, conf=conf)
+    app = MyApp(app_dir, studies, conf)
     request = {
+        "name": args.output,
         "device": "cuda",
         "model": "deepedit_train",
         "dataset": "CacheDataset",
-        "max_epochs": 600,
+        "max_epochs": args.epoch,
         "amp": False,
-        "lr": 0.0001,
+        "lr": args.lr,
     }
-    al_app.train(request=request)
+    app.train(request=request)
 
     # # PERFORMING INFERENCE USING INTERACTIVE MODEL
     # deepgrow_3d = {
     #     "model": "deepedit",
-    #     "image": f"{studies_path}/img0007.nii.gz",
+    #     "image": f"{studies}/img0007.nii.gz",
     #     "result_extension": ".nii.gz",
     #     "spleen": [[61, 106, 54], [65, 106, 54]],
-    #     "liver": [], # [[61, 106, 54], [65, 106, 54]],
     #     "right kidney": [], # [[61, 106, 54], [65, 106, 54]],
     #     "left kidney": [], # [[61, 106, 54], [65, 106, 54]],
+    #     "liver": [],  # [[61, 106, 54], [65, 106, 54]],
+    #     "stomach": [],
+    #     "aorta": [],
+    #     "inferior vena cava": [],
     #     "background": [[50, 201, 100], [51, 210, 100], [94, 201, 100]],
     # }
-    # al_app.infer(deepgrow_3d)
-
+    # app.infer(deepgrow_3d)
+    #
     # # PERFORMING INFERENCE USING AUTOMATIC MODEL
     # automatic_request = {
     #     "model": "deepedit_seg",
-    #     "image": f"{studies_path}/img0022.nii.gz",
+    #     "image": f"{studies}/img0022.nii.gz",
     #     "result_extension": ".nii.gz",
     # }
-    # al_app.infer(automatic_request)
+    # app.infer(automatic_request)
 
     return None
 
