@@ -56,8 +56,8 @@ class MyTrain(BasicTrainTask):
         target_spacing=(1.0, 1.0, 1.0),
         deepgrow_probability_train=0.4,
         deepgrow_probability_val=1.0,
-        max_train_interactions=20,
-        max_val_interactions=10,
+        max_train_interactions=10,
+        max_val_interactions=5,
         label_names=None,
         debug_mode=False,
         **kwargs,
@@ -187,6 +187,7 @@ class MyTrain(BasicTrainTask):
             AddInitialSeedPointCustomd(keys="label", guidance="guidance", sids="sids"),
             AddGuidanceSignalCustomd(keys="image", guidance="guidance"),
             #
+            # Don't think the AsDiscreted transform is needed here -- STILL CHECKING
             AsDiscreted(keys="label", to_onehot=True, num_classes=len(self.label_names)),
             ToTensord(keys=("image", "label")),
         ]
