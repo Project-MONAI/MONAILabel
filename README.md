@@ -7,9 +7,8 @@
 [![PyPI version](https://badge.fury.io/py/monailabel.svg)](https://badge.fury.io/py/monailabel)
 
 MONAI Label is a server-client system that facilitates interactive medical image annotation by using AI. It is an
-open-source and easy-to-install ecosystem that can run locally on a machine with one or two GPUs. Both server and client
-work on the same/different machine. However, initial support for multiple users is restricted. It shares the same
-principles with [MONAI](https://github.com/Project-MONAI).
+open-source and easy-to-install ecosystem that can run locally on a machine with single or multiple GPUs. Both server and client
+work on the same/different machine. It shares the same principles with [MONAI](https://github.com/Project-MONAI).
 
 [MONAI Label Demo](https://youtu.be/o8HipCgSZIw?t=1319)
 
