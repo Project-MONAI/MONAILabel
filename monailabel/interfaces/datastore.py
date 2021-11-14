@@ -57,7 +57,7 @@ class Datastore(metaclass=ABCMeta):
         pass
 
     @abstractmethod
-    def datalist(self) -> List[Dict[str, str]]:
+    def datalist(self) -> List[Dict[str, Any]]:
         """
         Return a dictionary of image and label pairs corresponding to the 'image' and 'label'
         keys respectively
