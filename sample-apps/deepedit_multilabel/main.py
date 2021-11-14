@@ -115,8 +115,8 @@ class MyApp(MONAILabelApp):
             logger.info("Working with Network DynUNet")
 
         self.model_dir = os.path.join(app_dir, "model")
-        self.pretrained_model = os.path.join(self.model_dir, "pretrained.pt")
-        self.final_model = os.path.join(self.model_dir, "model.pt")
+        self.pretrained_model = os.path.join(self.model_dir, f"pretrained_{network}.pt")
+        self.final_model = os.path.join(self.model_dir, f"model_{network}.pt")
 
         use_pretrained_model = strtobool(conf.get("use_pretrained_model", "true"))
         pretrained_model_uri = conf.get(
