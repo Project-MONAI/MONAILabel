@@ -108,24 +108,23 @@ class SelectLabelsAbdomenDatasetd(MapTransform):
 
     def __call__(self, data: Mapping[Hashable, np.ndarray]) -> Dict[Hashable, np.ndarray]:
         d: Dict = dict(data)
+        label_info = d.get("meta", {}).get("label", {}).get("label_info", [])
+        remap = {l["name"]: l["idx"] for l in label_info}
         for key in self.key_iterator(d):
             if key == "label":
                 new_label_names = dict()
-
-                # Making other labels as background
-                for k in self.all_label_values.keys():
-                    if k not in self.label_names.keys():
-                        d[key][d[key] == self.all_label_values[k]] = 0.0
+                label = np.zeros(d[key].shape)
 
                 # Making sure the range values and number of labels are the same
                 for idx, (key_label, val_label) in enumerate(self.label_names.items(), start=1):
                     if key_label != "background":
                         new_label_names[key_label] = idx
-                        d[key][d[key] == val_label] = idx
+                        label[d[key] == remap.get(key_label, val_label)] = idx
                     if key_label == "background":
                         new_label_names["background"] = 0
-                        d[key][d[key] == self.label_names["background"]] = 0
+
                 d["label_names"] = new_label_names
+                d[key] = label
             else:
                 print("This transform only applies to the label")
         return d

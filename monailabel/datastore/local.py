@@ -221,7 +221,7 @@ class LocalDatastore(Datastore):
     def _to_bytes(self, file):
         return io.BytesIO(pathlib.Path(file).read_bytes())
 
-    def datalist(self, full_path=True) -> List[Dict[str, str]]:
+    def datalist(self, full_path=True) -> List[Dict[str, Any]]:
         """
         Return a dictionary of image and label pairs corresponding to the 'image' and 'label'
         keys respectively
@@ -239,6 +239,7 @@ class LocalDatastore(Datastore):
                 {
                     "image": os.path.realpath(os.path.join(image_path, self._filename(k, v.image.ext))),
                     "label": os.path.realpath(os.path.join(label_path, self._filename(k, v.labels[tag].ext))),
+                    "meta": {"image": v.image.info, "label": v.labels[tag].info},
                 }
             )
 
