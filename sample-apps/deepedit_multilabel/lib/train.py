@@ -103,7 +103,7 @@ class MyTrain(BasicTrainTask):
 
     def train_pre_transforms(self, context: Context):
         return [
-            LoadImaged(keys=("image", "label"), reader="nibabelreader"),
+            LoadImaged(keys=("image", "label"), reader="ITKReader"),
             SelectLabelsAbdomenDatasetd(keys="label", label_names=self.label_names),
             AddChanneld(keys=("image", "label")),
             Spacingd(keys=["image", "label"], pixdim=self.target_spacing, mode=("bilinear", "nearest")),
@@ -167,7 +167,7 @@ class MyTrain(BasicTrainTask):
 
     def val_pre_transforms(self, context: Context):
         return [
-            LoadImaged(keys=("image", "label"), reader="nibabelreader"),
+            LoadImaged(keys=("image", "label"), reader="ITKReader"),
             SelectLabelsAbdomenDatasetd(keys="label", label_names=self.label_names),
             AddChanneld(keys=("image", "label")),
             Spacingd(keys=["image", "label"], pixdim=self.target_spacing, mode=("bilinear", "nearest")),

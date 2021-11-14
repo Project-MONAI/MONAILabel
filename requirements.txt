@@ -18,3 +18,4 @@ expiringdict==1.2.1
 schedule==1.1.0
 timeloop==1.0.2
 simplecrf==0.2.1.1
+einops==0.3.2

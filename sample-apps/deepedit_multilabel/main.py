@@ -15,7 +15,7 @@ from distutils.util import strtobool
 from typing import Dict
 
 from lib import DeepEdit, DeepEditSeg, MyStrategy, MyTrain
-from monai.networks.nets import DynUNet
+from monai.networks.nets import UNETR, DynUNet
 
 from monailabel.interfaces.app import MONAILabelApp
 from monailabel.interfaces.datastore import Datastore
@@ -39,10 +39,7 @@ logger = logging.getLogger(__name__)
 class MyApp(MONAILabelApp):
     def __init__(self, app_dir, studies, conf):
 
-        # background label is used to place the negative clicks
         # Zero values are reserved to background. Non zero values are for the labels
-
-        # For demo
         self.label_names = {
             "spleen": 1,
             "right kidney": 2,
@@ -54,43 +51,7 @@ class MyApp(MONAILabelApp):
             "background": 0,
         }
 
-        network_params = {
-            "spatial_dims": 3,
-            "in_channels": len(self.label_names) + 1,  # All labels plus Image
-            "out_channels": len(self.label_names),  # All labels including background
-            "kernel_size": [
-                [3, 3, 3],
-                [3, 3, 3],
-                [3, 3, 3],
-                [3, 3, 3],
-                [3, 3, 3],
-                [3, 3, 3],
-            ],
-            "strides": [
-                [1, 1, 1],
-                [2, 2, 2],
-                [2, 2, 2],
-                [2, 2, 2],
-                [2, 2, 2],
-                [2, 2, 1],
-            ],
-            "upsample_kernel_size": [
-                [2, 2, 2],
-                [2, 2, 2],
-                [2, 2, 2],
-                [2, 2, 2],
-                [2, 2, 1],
-            ],
-            "norm_name": "instance",
-            "deep_supervision": False,
-            "res_block": True,
-        }
-        self.network = DynUNet(**network_params)
-        self.network_with_dropout = DynUNet(**network_params, dropout=0.2)
-
-        self.model_dir = os.path.join(app_dir, "model")
-        self.pretrained_model = os.path.join(self.model_dir, "pretrained.pt")
-        self.final_model = os.path.join(self.model_dir, "model.pt")
+        network = conf.get("network", "dynunet")
 
         # Use Heuristic Planner to determine target spacing and spatial size based on dataset+gpu
         spatial_size = json.loads(conf.get("spatial_size", "[128, 128, 128]"))
@@ -98,8 +59,69 @@ class MyApp(MONAILabelApp):
         self.heuristic_planner = strtobool(conf.get("heuristic_planner", "false"))
         self.planner = HeuristicPlanner(spatial_size=spatial_size, target_spacing=target_spacing)
 
+        if network == "unetr":
+            network_params = {
+                "spatial_dims": 3,
+                "in_channels": len(self.label_names) + 1,  # All labels plus Image
+                "out_channels": len(self.label_names),  # All labels including background
+                "img_size": spatial_size,
+                "feature_size": 16,
+                "hidden_size": 768,
+                "mlp_dim": 3072,
+                "num_heads": 12,
+                "pos_embed": "perceptron",
+                "norm_name": "instance",
+                "res_block": True,
+            }
+            self.network = UNETR(**network_params, dropout_rate=0.0)
+            self.network_with_dropout = UNETR(**network_params, dropout_rate=0.2)
+            self.find_unused_parameters = True
+            logger.info("Working with Network UNETR")
+        else:
+            network_params = {
+                "spatial_dims": 3,
+                "in_channels": len(self.label_names) + 1,  # All labels plus Image
+                "out_channels": len(self.label_names),  # All labels including background
+                "kernel_size": [
+                    [3, 3, 3],
+                    [3, 3, 3],
+                    [3, 3, 3],
+                    [3, 3, 3],
+                    [3, 3, 3],
+                    [3, 3, 3],
+                ],
+                "strides": [
+                    [1, 1, 1],
+                    [2, 2, 2],
+                    [2, 2, 2],
+                    [2, 2, 2],
+                    [2, 2, 2],
+                    [2, 2, 1],
+                ],
+                "upsample_kernel_size": [
+                    [2, 2, 2],
+                    [2, 2, 2],
+                    [2, 2, 2],
+                    [2, 2, 2],
+                    [2, 2, 1],
+                ],
+                "norm_name": "instance",
+                "deep_supervision": False,
+                "res_block": True,
+            }
+            self.network = DynUNet(**network_params)
+            self.network_with_dropout = DynUNet(**network_params, dropout=0.2)
+            self.find_unused_parameters = True
+            logger.info("Working with Network DynUNet")
+
+        self.model_dir = os.path.join(app_dir, "model")
+        self.pretrained_model = os.path.join(self.model_dir, f"pretrained_{network}.pt")
+        self.final_model = os.path.join(self.model_dir, f"model_{network}.pt")
+
         use_pretrained_model = strtobool(conf.get("use_pretrained_model", "true"))
-        pretrained_model_uri = conf.get("pretrained_model_path", f"{self.PRE_TRAINED_PATH}/deepedit_multilabel.pt")
+        pretrained_model_uri = conf.get(
+            "pretrained_model_path", f"{self.PRE_TRAINED_PATH}deepedit_{network}_multilabel.pt"
+        )
 
         # Path to pretrained weights
         if use_pretrained_model:
@@ -161,7 +183,7 @@ class MyApp(MONAILabelApp):
                 config={"pretrained": strtobool(self.conf.get("use_pretrained_model", "true"))},
                 label_names=self.label_names,
                 debug_mode=False,
-                find_unused_parameters=True,
+                find_unused_parameters=self.find_unused_parameters,
             )
         }
 
@@ -220,7 +242,7 @@ def main():
     )
 
     parser = argparse.ArgumentParser()
-    parser.add_argument("-n", "--network", default="dynunet", choices=["unet", "dynunet"])
+    parser.add_argument("-n", "--network", default="unetr", choices=["unetr", "dynunet"])
     parser.add_argument(
         "-s",
         "--studies",
@@ -252,7 +274,7 @@ def main():
         "name": args.output,
         "device": "cuda",
         "model": "deepedit_train",
-        "dataset": "CacheDataset",
+        "dataset": args.dataset,
         "max_epochs": args.epoch,
         "amp": False,
         "lr": args.lr,
