@@ -119,7 +119,9 @@ class MyApp(MONAILabelApp):
         self.final_model = os.path.join(self.model_dir, "model.pt")
 
         use_pretrained_model = strtobool(conf.get("use_pretrained_model", "true"))
-        pretrained_model_uri = conf.get("pretrained_model_path", f"{self.PRE_TRAINED_PATH}/deepedit_multilabel.pt")
+        pretrained_model_uri = conf.get(
+            "pretrained_model_path", f"{self.PRE_TRAINED_PATH}deepedit_{network}_multilabel.pt"
+        )
 
         # Path to pretrained weights
         if use_pretrained_model:
