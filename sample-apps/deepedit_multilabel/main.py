@@ -75,7 +75,7 @@ class MyApp(MONAILabelApp):
             }
             self.network = UNETR(**network_params, dropout_rate=0.0)
             self.network_with_dropout = UNETR(**network_params, dropout_rate=0.2)
-            self.find_unused_parameters = False
+            self.find_unused_parameters = True
             logger.info("Working with Network UNETR")
         else:
             network_params = {
