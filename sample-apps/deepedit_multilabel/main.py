@@ -77,6 +77,7 @@ class MyApp(MONAILabelApp):
             self.network = UNETR(**network_params, dropout_rate=0.0)
             self.network_with_dropout = UNETR(**network_params, dropout_rate=0.2)
             self.find_unused_parameters = False
+            logger.info("Working with Network UNETR")
         else:
             network_params = {
                 "spatial_dims": 3,
@@ -112,6 +113,7 @@ class MyApp(MONAILabelApp):
             self.network = DynUNet(**network_params)
             self.network_with_dropout = DynUNet(**network_params, dropout=0.2)
             self.find_unused_parameters = True
+            logger.info("Working with Network DynUNet")
 
         self.model_dir = os.path.join(app_dir, "model")
         self.pretrained_model = os.path.join(self.model_dir, "pretrained.pt")
@@ -239,11 +241,11 @@ def main():
     )
 
     parser = argparse.ArgumentParser()
-    parser.add_argument("-n", "--network", default="dynunet", choices=["unetr", "dynunet"])
+    parser.add_argument("-n", "--network", default="unetr", choices=["unetr", "dynunet"])
     parser.add_argument(
         "-s",
         "--studies",
-        default="/home/adp20local/Documents/Datasets/monailabel_datasets/multilabel_abdomen/NIFTI_REORIENTED/train",
+        default="/home/adp20local/Documents/Datasets/monailabel_datasets/multilabel_abdomen/NIFTI/train",
     )
     parser.add_argument("-e", "--epoch", type=int, default=600)
     parser.add_argument("-l", "--lr", default=0.0001)
