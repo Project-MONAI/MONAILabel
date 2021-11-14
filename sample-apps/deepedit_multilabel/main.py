@@ -52,12 +52,6 @@ class MyApp(MONAILabelApp):
             "background": 0,
         }
 
-        # Use Heuristic Planner to determine target spacing and spatial size based on dataset+gpu
-        spatial_size = json.loads(conf.get("spatial_size", "[128, 128, 128]"))
-        target_spacing = json.loads(conf.get("target_spacing", "[1.0, 1.0, 1.0]"))
-        self.heuristic_planner = strtobool(conf.get("heuristic_planner", "false"))
-        self.planner = HeuristicPlanner(spatial_size=spatial_size, target_spacing=target_spacing)
-
         network = conf.get("network", "dynunet")
 
         if network == "unetr":
@@ -65,7 +59,7 @@ class MyApp(MONAILabelApp):
                 "spatial_dims": 3,
                 "in_channels": len(self.label_names) + 1,  # All labels plus Image
                 "out_channels": len(self.label_names),  # All labels including background
-                "img_size": spatial_size,
+                "img_size": (128, 128, 128),  # THIS SHOULD BE DEFINED IN HEURISTIC PLANNER
                 "feature_size": 16,
                 "hidden_size": 768,
                 "mlp_dim": 3072,
@@ -118,6 +112,12 @@ class MyApp(MONAILabelApp):
         self.model_dir = os.path.join(app_dir, "model")
         self.pretrained_model = os.path.join(self.model_dir, "pretrained.pt")
         self.final_model = os.path.join(self.model_dir, "model.pt")
+
+        # Use Heuristic Planner to determine target spacing and spatial size based on dataset+gpu
+        spatial_size = json.loads(conf.get("spatial_size", "[128, 128, 128]"))
+        target_spacing = json.loads(conf.get("target_spacing", "[1.0, 1.0, 1.0]"))
+        self.heuristic_planner = strtobool(conf.get("heuristic_planner", "false"))
+        self.planner = HeuristicPlanner(spatial_size=spatial_size, target_spacing=target_spacing)
 
         use_pretrained_model = strtobool(conf.get("use_pretrained_model", "true"))
         pretrained_model_uri = conf.get("pretrained_model_path", f"{self.PRE_TRAINED_PATH}/deepedit_multilabel.pt")
