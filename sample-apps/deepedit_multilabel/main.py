@@ -15,7 +15,7 @@ from distutils.util import strtobool
 from typing import Dict
 
 from lib import DeepEdit, DeepEditSeg, MyStrategy, MyTrain
-from monai.networks.nets import DynUNet
+from monai.networks.nets import UNETR, DynUNet
 
 from monailabel.interfaces.app import MONAILabelApp
 from monailabel.interfaces.datastore import Datastore
@@ -39,16 +39,7 @@ logger = logging.getLogger(__name__)
 class MyApp(MONAILabelApp):
     def __init__(self, app_dir, studies, conf):
 
-        # background label is used to place the negative clicks
         # Zero values are reserved to background. Non zero values are for the labels
-        # self.label_names = {
-        #     "spleen": 1,
-        #     "right kidney": 2,
-        #     "left kidney": 3,
-        #     "liver": 6,
-        #     "background": 0,
-        # }
-        # For RSNA demo
         self.label_names = {
             "spleen": 1,
             "right kidney": 2,
@@ -60,52 +51,77 @@ class MyApp(MONAILabelApp):
             "background": 0,
         }
 
-        network_params = {
-            "spatial_dims": 3,
-            "in_channels": len(self.label_names) + 1,  # All labels plus Image
-            "out_channels": len(self.label_names),  # All labels including background
-            "kernel_size": [
-                [3, 3, 3],
-                [3, 3, 3],
-                [3, 3, 3],
-                [3, 3, 3],
-                [3, 3, 3],
-                [3, 3, 3],
-            ],
-            "strides": [
-                [1, 1, 1],
-                [2, 2, 2],
-                [2, 2, 2],
-                [2, 2, 2],
-                [2, 2, 2],
-                [2, 2, 1],
-            ],
-            "upsample_kernel_size": [
-                [2, 2, 2],
-                [2, 2, 2],
-                [2, 2, 2],
-                [2, 2, 2],
-                [2, 2, 1],
-            ],
-            "norm_name": "instance",
-            "deep_supervision": False,
-            "res_block": True,
-        }
-        self.network = DynUNet(**network_params)
-        self.network_with_dropout = DynUNet(**network_params, dropout=0.2)
-
-        self.model_dir = os.path.join(app_dir, "model")
-        self.pretrained_model = os.path.join(self.model_dir, "pretrained.pt")
-        self.final_model = os.path.join(self.model_dir, "model.pt")
+        network = conf.get("network", "dynunet")
 
         # Use Heuristic Planner to determine target spacing and spatial size based on dataset+gpu
-        spatial_size = json.loads(conf.get("spatial_size", "[256, 256, 128]"))
-        target_spacing = json.loads(conf.get("target_spacing", "[1.5, 1.5, 2.0]"))
+        spatial_size = json.loads(conf.get("spatial_size", "[128, 128, 128]"))
+        target_spacing = json.loads(conf.get("target_spacing", "[1.0, 1.0, 1.0]"))
         self.heuristic_planner = strtobool(conf.get("heuristic_planner", "false"))
         self.planner = HeuristicPlanner(spatial_size=spatial_size, target_spacing=target_spacing)
 
+        if network == "unetr":
+            network_params = {
+                "spatial_dims": 3,
+                "in_channels": len(self.label_names) + 1,  # All labels plus Image
+                "out_channels": len(self.label_names),  # All labels including background
+                "img_size": spatial_size,
+                "feature_size": 16,
+                "hidden_size": 768,
+                "mlp_dim": 3072,
+                "num_heads": 12,
+                "pos_embed": "perceptron",
+                "norm_name": "instance",
+                "res_block": True,
+            }
+            self.network = UNETR(**network_params, dropout_rate=0.0)
+            self.network_with_dropout = UNETR(**network_params, dropout_rate=0.2)
+            self.find_unused_parameters = True
+            logger.info("Working with Network UNETR")
+        else:
+            network_params = {
+                "spatial_dims": 3,
+                "in_channels": len(self.label_names) + 1,  # All labels plus Image
+                "out_channels": len(self.label_names),  # All labels including background
+                "kernel_size": [
+                    [3, 3, 3],
+                    [3, 3, 3],
+                    [3, 3, 3],
+                    [3, 3, 3],
+                    [3, 3, 3],
+                    [3, 3, 3],
+                ],
+                "strides": [
+                    [1, 1, 1],
+                    [2, 2, 2],
+                    [2, 2, 2],
+                    [2, 2, 2],
+                    [2, 2, 2],
+                    [2, 2, 1],
+                ],
+                "upsample_kernel_size": [
+                    [2, 2, 2],
+                    [2, 2, 2],
+                    [2, 2, 2],
+                    [2, 2, 2],
+                    [2, 2, 1],
+                ],
+                "norm_name": "instance",
+                "deep_supervision": False,
+                "res_block": True,
+            }
+            self.network = DynUNet(**network_params)
+            self.network_with_dropout = DynUNet(**network_params, dropout=0.2)
+            self.find_unused_parameters = True
+            logger.info("Working with Network DynUNet")
+
+        self.model_dir = os.path.join(app_dir, "model")
+        self.pretrained_model = os.path.join(self.model_dir, f"pretrained_{network}.pt")
+        self.final_model = os.path.join(self.model_dir, f"model_{network}.pt")
+
         use_pretrained_model = strtobool(conf.get("use_pretrained_model", "true"))
-        pretrained_model_uri = conf.get("pretrained_model_path", f"{self.PRE_TRAINED_PATH}/deepedit_multilabel.pt")
+        pretrained_model_uri = conf.get(
+            "pretrained_model_path", f"{self.PRE_TRAINED_PATH}deepedit_{network}_multilabel.pt"
+        )
 
         # Path to pretrained weights
         if use_pretrained_model:
@@ -167,7 +183,7 @@ class MyApp(MONAILabelApp):
                 config={"pretrained": strtobool(self.conf.get("use_pretrained_model", "true"))},
                 label_names=self.label_names,
                 debug_mode=False,
-                find_unused_parameters=True,
+                find_unused_parameters=self.find_unused_parameters,
             )
         }
 
@@ -204,55 +220,90 @@ class MyApp(MONAILabelApp):
         return methods
 
 
+"""
+Example to run train/infer/scoring task(s) locally without actually running MONAI Label Server
+"""
+
+
 def main():
+
+    import argparse
+
+    from monailabel.config import settings
+
+    settings.MONAI_LABEL_DATASTORE_AUTO_RELOAD = False
+    os.putenv("MASTER_ADDR", "127.0.0.1")
+    os.putenv("MASTER_PORT", "1234")
+
     logging.basicConfig(
         level=logging.INFO,
         format="[%(asctime)s.%(msecs)03d][%(levelname)5s](%(name)s) - %(message)s",
         datefmt="%Y-%m-%d %H:%M:%S",
     )
-    app_dir_path = os.path.normpath("/home/adp20local/Documents/MONAILabel/sample-apps/deepedit_multilabel")
-    studies_path = os.path.normpath(
-        "/home/adp20local/Documents/Datasets/monailabel_datasets/multilabel_abdomen/NIFTI/train"
-        # "/home/adp20local/Documents/Datasets/monailabel_datasets/Slicer/spleen/train"
+
+    parser = argparse.ArgumentParser()
+    parser.add_argument("-n", "--network", default="unetr", choices=["unetr", "dynunet"])
+    parser.add_argument(
+        "-s",
+        "--studies",
+        default="/home/adp20local/Documents/Datasets/monailabel_datasets/multilabel_abdomen/NIFTI/train",
     )
+    parser.add_argument("-e", "--epoch", type=int, default=600)
+    parser.add_argument("-l", "--lr", default=0.0001)
+    parser.add_argument("-d", "--dataset", default="CacheDataset")
+    parser.add_argument("-o", "--output", default="model_01")
+    parser.add_argument("-i", "--size", default="[128,128,128]")
+    parser.add_argument("-b", "--batch", type=int, default=1)
+    args = parser.parse_args()
+
+    app_dir = os.path.dirname(__file__)
+    studies = args.studies
+
     # conf is Dict[str, str]
     conf = {
         "use_pretrained_model": "false",
+        "auto_update_scoring": "false",
         "heuristic_planner": "false",
         "tta_enabled": "false",
         "tta_samples": "10",
+        "spatial_size": args.size,
+        "network": args.network,
     }
-    al_app = MyApp(app_dir=app_dir_path, studies=studies_path, conf=conf)
+    app = MyApp(app_dir, studies, conf)
     request = {
+        "name": args.output,
         "device": "cuda",
         "model": "deepedit_train",
-        # "dataset": "CacheDataset",
-        "max_epochs": 600,
+        "dataset": args.dataset,
+        "max_epochs": args.epoch,
         "amp": False,
-        "lr": 0.0001,
+        "lr": args.lr,
     }
-    al_app.train(request=request)
+    app.train(request=request)
 
     # # PERFORMING INFERENCE USING INTERACTIVE MODEL
     # deepgrow_3d = {
     #     "model": "deepedit",
-    #     "image": f"{studies_path}/img0007.nii.gz",
+    #     "image": f"{studies}/img0007.nii.gz",
     #     "result_extension": ".nii.gz",
     #     "spleen": [[61, 106, 54], [65, 106, 54]],
-    #     "liver": [], # [[61, 106, 54], [65, 106, 54]],
     #     "right kidney": [], # [[61, 106, 54], [65, 106, 54]],
     #     "left kidney": [], # [[61, 106, 54], [65, 106, 54]],
+    #     "liver": [],  # [[61, 106, 54], [65, 106, 54]],
+    #     "stomach": [],
+    #     "aorta": [],
+    #     "inferior vena cava": [],
     #     "background": [[50, 201, 100], [51, 210, 100], [94, 201, 100]],
     # }
-    # al_app.infer(deepgrow_3d)
-
+    # app.infer(deepgrow_3d)
+    #
     # # PERFORMING INFERENCE USING AUTOMATIC MODEL
     # automatic_request = {
     #     "model": "deepedit_seg",
-    #     "image": f"{studies_path}/img0022.nii.gz",
+    #     "image": f"{studies}/img0022.nii.gz",
     #     "result_extension": ".nii.gz",
     # }
-    # al_app.infer(automatic_request)
+    # app.infer(automatic_request)
 
     return None
 

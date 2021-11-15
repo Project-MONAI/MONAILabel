@@ -228,6 +228,8 @@ class Main:
         self.start_server_validate_args(args)
         self.start_server_init_settings(args)
 
+        log_config = init_log_config(args.log_config, args.app, "app.log")
+
         if args.dryrun:
             return
 
@@ -238,7 +240,7 @@ class Main:
             host=args.host,
             port=args.port,
             log_level="debug" if args.debug else "info",
-            log_config=init_log_config(args.log_config, args.app, "app.log"),
+            log_config=log_config,
             use_colors=True,
             access_log=args.debug,
         )
@@ -290,13 +292,25 @@ class Main:
         os.environ["PATH"] += os.pathsep + os.path.join(args.app, "bin")
 
         if args.dryrun:
-            with open(".env", "w") as f:
+            export_key = "set " if any(platform.win32_ver()) else "export "
+            with open("env.bat" if any(platform.win32_ver()) else ".env", "w") as f:
                 for k, v in settings.dict().items():
-                    v = json.dumps(v) if isinstance(v, list) or isinstance(v, dict) else v
-                    e = f"{k}={v}"
+                    v = f"'{json.dumps(v)}'" if isinstance(v, list) or isinstance(v, dict) else v
+                    e = f"{export_key}{k}={v}"
                     f.write(e)
                     f.write(os.linesep)
-                    logger.debug(f"{'set' if any(platform.win32_ver()) else 'export'} {e}")
+                    logger.info(e)
+
+                py_path = [os.environ.get("PYTHONPATH", "").rstrip(os.pathsep), args.app, os.path.join(args.app, "lib")]
+                py_path = [p for p in py_path if p]
+                others = [
+                    f"{export_key}PYTHONPATH={os.pathsep.join(py_path)}",
+                    f"{export_key}PATH={os.environ['PATH']}",
+                ]
+                for o in others:
+                    f.write(o)
+                    f.write(os.linesep)
+                    logger.info(o)
         else:
             logger.debug("")
             logger.debug("**********************************************************")

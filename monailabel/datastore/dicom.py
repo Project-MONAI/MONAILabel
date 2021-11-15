@@ -190,7 +190,7 @@ class DICOMWebDatastore(LocalDatastore):
                 label_id=image_label["label"], label_tag=DefaultLabelTag.FINAL, image_id=image_label["image"]
             )
 
-    def datalist(self, full_path=True) -> List[Dict[str, str]]:
+    def datalist(self, full_path=True) -> List[Dict[str, Any]]:
         self._download_labeled_data()
         return super().datalist(full_path)
 

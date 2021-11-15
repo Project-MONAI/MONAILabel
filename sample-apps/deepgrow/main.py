@@ -97,12 +97,14 @@ class MyApp(MONAILabelApp):
                 dimension=2,
                 roi_size=(256, 256),
                 model_size=(256, 256),
-                max_train_interactions=15,
+                max_train_interactions=10,
                 max_val_interactions=5,
+                val_interval=5,
                 config={
                     "max_epochs": 10,
                     "train_batch_size": 16,
                     "val_batch_size": 16,
+                    "to_gpu": True,
                 },
             ),
             "deepgrow_3d": TrainDeepgrow(
@@ -113,7 +115,11 @@ class MyApp(MONAILabelApp):
                 roi_size=(128, 192, 192),
                 model_size=(128, 192, 192),
                 max_train_interactions=15,
-                max_val_interactions=20,
+                max_val_interactions=10,
+                val_interval=5,
+                config={
+                    "to_gpu": True,
+                },
             ),
         }
 

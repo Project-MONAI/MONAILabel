@@ -14,6 +14,10 @@ import unittest
 import numpy as np
 from parameterized import parameterized
 
+from monailabel.deepedit.multilabel.transforms import (
+    FindDiscrepancyRegionsCustomd,
+    PosNegClickProbAddRandomGuidanceCustomd,
+)
 from monailabel.deepedit.transforms import (
     AddRandomGuidanced,
     DiscardAddGuidanced,
@@ -26,6 +30,7 @@ IMAGE = np.array([[[[1, 0, 2, 0, 1], [0, 1, 2, 1, 0], [2, 2, 3, 2, 2], [0, 1, 2,
 LABEL = np.array([[[[0, 0, 0, 0, 0], [0, 1, 0, 1, 0], [0, 0, 1, 0, 0], [0, 1, 0, 1, 0], [0, 0, 0, 0, 0]]]])
 MULTIMODALITY_IMAGE = np.random.rand(5, 5, 5)
 MULTI_LABEL = np.random.randint(0, 6, (5, 5))
+PRED = np.random.randint(0, 6, (5, 5))
 
 DATA_1 = {
     "image": IMAGE,
@@ -141,6 +146,72 @@ SINGLE_LABEL_SINGLE_MODALITY_TEST_CASE_1 = [
     (5, 5),
 ]
 
+LABEL_NAMES = {
+    "spleen": 1,
+    "right kidney": 2,
+    "background": 0,
+}
+
+DATA_5 = {
+    "image": IMAGE,
+    "label": MULTI_LABEL,
+    "guidance": {
+        "spleen": np.array([[[1, 0, 2, 2], [-1, -1, -1, -1]]]),
+        "right kidney": np.array([[[1, 0, 2, 2], [-1, -1, -1, -1]]]),
+        "background": np.array([[[1, 0, 2, 2], [-1, -1, -1, -1]]]),
+    },
+    "discrepancy": {
+        "spleen": np.array(
+            [
+                [[[[0, 0, 0, 0, 0], [0, 0, 0, 1, 0], [0, 0, 0, 0, 0], [0, 0, 0, 0, 0], [0, 0, 0, 0, 0]]]],
+                [[[[0, 0, 0, 0, 0], [0, 0, 0, 0, 0], [0, 1, 0, 0, 0], [0, 0, 0, 0, 0], [0, 0, 0, 0, 0]]]],
+            ]
+        ),
+        "right kidney": np.array(
+            [
+                [[[[0, 0, 0, 0, 0], [0, 0, 0, 1, 0], [0, 0, 0, 0, 0], [0, 0, 0, 0, 0], [0, 0, 0, 0, 0]]]],
+                [[[[0, 0, 0, 0, 0], [0, 0, 0, 0, 0], [0, 1, 0, 0, 0], [0, 0, 0, 0, 0], [0, 0, 0, 0, 0]]]],
+            ]
+        ),
+        "background": np.array(
+            [
+                [[[[0, 0, 0, 0, 0], [0, 0, 0, 1, 0], [0, 0, 0, 0, 0], [0, 0, 0, 0, 0], [0, 0, 0, 0, 0]]]],
+                [[[[0, 0, 0, 0, 0], [0, 0, 0, 0, 0], [0, 1, 0, 0, 0], [0, 0, 0, 0, 0], [0, 0, 0, 0, 0]]]],
+            ]
+        ),
+    },
+    "probability": 1.0,
+    "label_names": LABEL_NAMES,
+}
+
+PosNegClickProbAddRandomGuidanceCustomd_TEST_CASE = [
+    {"guidance": "guidance", "discrepancy": "discrepancy", "probability": "probability"},
+    DATA_5,
+    {
+        "spleen": "[[[1, 0, 2, 2], [-1, -1, -1, -1], [1, 0, 1, 3]]]",
+        "right kidney": "[[[1, 0, 2, 2], [-1, -1, -1, -1], [1, 0, 1, 3]]]",
+        "background": "[[[1, 0, 2, 2], [-1, -1, -1, -1], [1, 0, 1, 3]]]",
+    },
+]
+
+DATA_6 = {
+    "image": IMAGE,
+    "label": MULTI_LABEL,
+    "guidance": {
+        "spleen": np.array([[[1, 0, 2, 2], [-1, -1, -1, -1]]]),
+        "right kidney": np.array([[[1, 0, 2, 2], [-1, -1, -1, -1]]]),
+        "background": np.array([[[1, 0, 2, 2], [-1, -1, -1, -1]]]),
+    },
+    "probability": 1.0,
+    "label_names": LABEL_NAMES,
+    "pred": PRED,
+}
+
+FindDiscrepancyRegionsCustomd_TEST_CASE = [
+    {"discrepancy": "discrepancy"},
+    DATA_6,
+    (5, 5),
+]
 
 # When checking tensor content use np.testing.assert_equal(result["image"], expected_values)
 
@@ -185,6 +256,27 @@ class TestSingleLabelSingleModalityd(unittest.TestCase):
     def test_correct_results(self, arguments, input_data, expected_result):
         result = SingleLabelSingleModalityd(**arguments)(input_data)
         self.assertEqual(result["image"].shape, expected_result)
+
+
+# Tests for transforms used in multilabel deepedit
+
+
+class TestPosNegClickProbAddRandomGuidanceCustomd(unittest.TestCase):
+    @parameterized.expand([PosNegClickProbAddRandomGuidanceCustomd_TEST_CASE])
+    def test_correct_results(self, arguments, input_data, expected_result):
+        seed = 0
+        add_fn = PosNegClickProbAddRandomGuidanceCustomd(keys="NA", **arguments)
+        add_fn.set_random_state(seed)
+        result = add_fn(input_data)
+        self.assertEqual(result[arguments["guidance"]], expected_result)
+
+
+class TestFindDiscrepancyRegionsCustomd(unittest.TestCase):
+    @parameterized.expand([FindDiscrepancyRegionsCustomd_TEST_CASE])
+    def test_correct_results(self, arguments, input_data, expected_result):
+        add_fn = FindDiscrepancyRegionsCustomd(keys="label", **arguments)
+        result = add_fn(input_data)
+        self.assertEqual(result["discrepancy"]["spleen"][0].shape, expected_result)
 
 
 if __name__ == "__main__":

@@ -63,7 +63,7 @@ class DeepEditSeg(InferTask):
 
     def pre_transforms(self):
         return [
-            LoadImaged(keys="image", reader="nibabelreader"),
+            LoadImaged(keys="image"),
             SingleLabelSingleModalityd(keys="image"),
             AddChanneld(keys="image"),
             Spacingd(keys="image", pixdim=self.target_spacing, mode="bilinear"),

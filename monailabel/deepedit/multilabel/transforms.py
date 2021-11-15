@@ -108,24 +108,23 @@ class SelectLabelsAbdomenDatasetd(MapTransform):
 
     def __call__(self, data: Mapping[Hashable, np.ndarray]) -> Dict[Hashable, np.ndarray]:
         d: Dict = dict(data)
+        label_info = d.get("meta", {}).get("label", {}).get("label_info", [])
+        remap = {l["name"]: l["idx"] for l in label_info}
         for key in self.key_iterator(d):
             if key == "label":
                 new_label_names = dict()
-
-                # Making other labels as background
-                for k in self.all_label_values.keys():
-                    if k not in self.label_names.keys():
-                        d[key][d[key] == self.all_label_values[k]] = 0.0
+                label = np.zeros(d[key].shape)
 
                 # Making sure the range values and number of labels are the same
                 for idx, (key_label, val_label) in enumerate(self.label_names.items(), start=1):
                     if key_label != "background":
                         new_label_names[key_label] = idx
-                        d[key][d[key] == val_label] = idx
+                        label[d[key] == remap.get(key_label, val_label)] = idx
                     if key_label == "background":
                         new_label_names["background"] = 0
-                        d[key][d[key] == self.label_names["background"]] = 0
+
                 d["label_names"] = new_label_names
+                d[key] = label
             else:
                 print("This transform only applies to the label")
         return d
@@ -811,68 +810,9 @@ class SplitPredsLabeld(MapTransform):
         return d
 
 
-class PointsToDictd(Transform):
-    """
-    Transform to convert to dictionary
-
-    """
-
-    def __init__(
-        self,
-        label_names=None,
-    ):
-        self.label_names = label_names
-
-    def __call__(self, data: Mapping[Hashable, np.ndarray]) -> Dict[Hashable, np.ndarray]:
-        d: Dict = dict(data)
-
-        new_foreground = dict()
-        for key_label in self.label_names.keys():
-            if key_label != "background":
-                if key_label == d["label"]:
-                    new_foreground[key_label] = [d["foreground"]]
-                elif key_label != d["label"]:
-                    new_foreground[key_label] = []
-            else:
-                if d["background"]:
-                    d["background"] = [d["background"]]
-                else:
-                    d["background"] = []
-
-        d["foreground"] = new_foreground
-
-        return d
-
-
-class GetSingleLabeld(MapTransform):
-    """
-    Get single to show in UI
-
-    """
-
-    def __init__(
-        self,
-        keys: KeysCollection,
-        label_names=None,
-        allow_missing_keys: bool = False,
-    ):
-        super().__init__(keys, allow_missing_keys)
-        self.label_names = label_names
-
-    def __call__(self, data: Mapping[Hashable, np.ndarray]) -> Dict[Hashable, np.ndarray]:
-        d: Dict = dict(data)
-        for key in self.key_iterator(d):
-            if key == "pred":
-                label_value = list(self.label_names.keys()).index(d["label"]) + 1
-                d["pred"][d["pred"] != label_value] = 0
-            elif key != "pred":
-                logger.info("This is only for pred key")
-        return d
-
-
 class ToCheckTransformd(MapTransform):
     """
-    Transform to debug dictionary
+    Transform to debug dictionary used in transforms
 
     """
 
@@ -886,5 +826,5 @@ class ToCheckTransformd(MapTransform):
     def __call__(self, data: Mapping[Hashable, np.ndarray]) -> Dict[Hashable, np.ndarray]:
         d: Dict = dict(data)
         for key in self.key_iterator(d):
-            logger.info(f"Printing pred shape in ToCheckTransformd: {d[key].shape}")
+            logger.info(f"Printing key shape in ToCheckTransformd: {d[key].shape}")
         return d

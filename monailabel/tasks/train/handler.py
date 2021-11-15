@@ -89,3 +89,6 @@ class PublishStatsAndModel:
     def attach(self, engine: Engine) -> None:
         if not engine.has_event_handler(self.iteration_completed, Events.EPOCH_COMPLETED):
             engine.add_event_handler(Events.EPOCH_COMPLETED, self.iteration_completed)
+
+    def __call__(self, engine: Engine) -> None:
+        self.iteration_completed()

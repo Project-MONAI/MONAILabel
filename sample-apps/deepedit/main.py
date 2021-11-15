@@ -87,8 +87,8 @@ class MyApp(MONAILabelApp):
             self.find_unused_parameters = True
 
         self.model_dir = os.path.join(app_dir, "model")
-        self.pretrained_model = os.path.join(self.model_dir, "pretrained.pt")
-        self.final_model = os.path.join(self.model_dir, "model.pt")
+        self.pretrained_model = os.path.join(self.model_dir, f"pretrained_{network}.pt")
+        self.final_model = os.path.join(self.model_dir, f"model_{network}.pt")
 
         # Use Heuristic Planner to determine target spacing and spatial size based on dataset+gpu
         spatial_size = json.loads(conf.get("spatial_size", "[256, 256, 128]"))
