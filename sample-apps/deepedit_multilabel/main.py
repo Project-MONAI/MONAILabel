@@ -65,11 +65,11 @@ class MyApp(MONAILabelApp):
                 "in_channels": len(self.label_names) + 1,  # All labels plus Image
                 "out_channels": len(self.label_names),  # All labels including background
                 "img_size": spatial_size,
-                "feature_size": 16,
-                "hidden_size": 768,
+                "feature_size": 64,
+                "hidden_size": 1536,
                 "mlp_dim": 3072,
-                "num_heads": 12,
-                "pos_embed": "perceptron",
+                "num_heads": 48,
+                "pos_embed": "conv",
                 "norm_name": "instance",
                 "res_block": True,
             }
