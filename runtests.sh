@@ -136,6 +136,8 @@ function clean_py() {
   rm -rf tests/data/*
   rm -rf monailabel/endpoints/static/ohif
   rm -rf pytest.log
+  rm -rf htmlcov
+  rm -rf coverage.xml
 
   find ${TO_CLEAN} -type f -name "*.py[co]" -delete
   find ${TO_CLEAN} -type f -name "*.so" -delete
@@ -441,7 +443,7 @@ if [ $doUnitTests = true ]; then
   torch_validate
 
   ${cmdPrefix}${PY_EXE} tests/setup.py
-  ${cmdPrefix}${cmd} -m pytest -x --forked --cov-report xml --cov-report term --cov monailabel tests/unit
+  ${cmdPrefix}${cmd} -m pytest -x --forked --cov-report xml --cov-report html --cov-report term --cov monailabel tests/unit
 fi
 
 function check_server_running() {
