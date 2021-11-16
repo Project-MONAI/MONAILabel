@@ -9,41 +9,35 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
+import json
 import unittest
 
 import torch
 
-from .context import BasicEndpointV3TestSuite
+from .context import BasicEndpointV2TestSuite
 
 
-class EndPointScoring(BasicEndpointV3TestSuite):
-    def test_dice(self):
-        response = self.client.post("/scoring/dice?run_sync=true")
-        assert response.status_code == 200
-
-    def test_sum(self):
-        response = self.client.post("/scoring/sum?run_sync=true")
-        assert response.status_code == 200
-
-    def test_epistemic(self):
+class EndPointInfer(BasicEndpointV2TestSuite):
+    def test_segmentation(self):
         if not torch.cuda.is_available():
             return
 
-        response = self.client.post("/scoring/EPISTEMIC?run_sync=true")
+        model = "segmentation"
+        image = "la_003"
+
+        response = self.client.post(f"/infer/{model}?image={image}")
         assert response.status_code == 200
 
-    def test_tta(self):
+    def test_deepgrow_pipeline(self):
         if not torch.cuda.is_available():
             return
 
-        response = self.client.post("/scoring/TTA?run_sync=true")
+        model = "deepgrow_pipeline"
+        image = "la_003"
+        params = {"foreground": [[153, 175, 60]], "background": []}
+
+        response = self.client.post(f"/infer/{model}?image={image}", data={"params": json.dumps(params)})
         assert response.status_code == 200
-
-    def test_status(self):
-        self.client.get("/scoring/")
-
-    def test_stop(self):
-        self.client.delete("/scoring/")
 
 
 if __name__ == "__main__":

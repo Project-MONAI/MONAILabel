@@ -4,6 +4,8 @@ setuptools
 pybind11
 flake8
 pytest
+pytest-xdist
+pytest-cov
 flake8-bugbear
 flake8-comprehensions
 flake8-executable
@@ -17,7 +19,6 @@ isort
 pytype
 mypy
 ninja
-coverage
 parameterized
 types-PyYAML
 types-filelock
