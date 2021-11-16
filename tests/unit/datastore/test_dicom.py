@@ -10,11 +10,43 @@
 # limitations under the License.
 
 import os
+import tempfile
 import unittest
 from unittest.mock import patch
 
+from dicomweb_client import DICOMwebClient
 
-class TestLargestCCd(unittest.TestCase):
+
+class Instance(dict):
+    def save_as(self, f):
+        pass
+
+    def iterall(self):
+        return [SOPInstanceUID("/series/xyz")]
+
+
+class SOPInstanceUID:
+    def __init__(self, value="xyz"):
+        self.value = value
+
+    def val(self):
+        return self.value
+
+
+class MockDICOMwebClient(DICOMwebClient):
+    def __init__(self):
+        pass
+
+    def retrieve_series(self, *args, **kwargs):
+        instance = Instance()
+        instance["SOPInstanceUID"] = SOPInstanceUID()
+        return [instance]
+
+    def store_instances(self, *args, **kwargs):
+        return Instance()
+
+
+class TestDicom(unittest.TestCase):
     base_dir = os.path.realpath(os.path.dirname(os.path.dirname(os.path.dirname(__file__))))
     local_dataset = os.path.join(base_dir, "data", "dataset", "local", "heart")
     dicom_dataset = os.path.join(base_dir, "data", "dataset", "dicomweb", "e7567e0a064f0c334226a0658de23afd")
@@ -39,10 +71,18 @@ class TestLargestCCd(unittest.TestCase):
         store_scu(self.local_dataset)
 
     def test_dicom_web_download_series(self):
-        pass
+        from monailabel.datastore.utils.dicom import dicom_web_download_series
 
-    def test_dicom_web_upload_dcm(self):
-        pass
+        with tempfile.TemporaryDirectory() as d:
+            dicom_web_download_series("xyz", "abc", d, MockDICOMwebClient())
+
+    @patch("monailabel.datastore.utils.dicom.dcmread")
+    def test_dicom_web_upload_dcm(self, f3):
+        f3.return_value = "xyz"
+
+        from monailabel.datastore.utils.dicom import dicom_web_upload_dcm
+
+        dicom_web_upload_dcm("xyz", MockDICOMwebClient())
 
 
 if __name__ == "__main__":

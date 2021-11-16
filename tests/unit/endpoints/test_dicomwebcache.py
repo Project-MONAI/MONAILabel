@@ -11,6 +11,7 @@
 
 import hashlib
 import json
+import logging
 import os
 import unittest
 from typing import Dict
@@ -89,7 +90,7 @@ class EndPointDICOMWebDatastore(DICOMWebEndpointTestSuite):
 
     @patch("monailabel.interfaces.app.DICOMwebClient")
     @patch("monailabel.datastore.dicom.dicom_web_download_series")
-    def test_datastore_datalist(self, dicom_web_download_series, dwc):
+    def test_datastore_all(self, dicom_web_download_series, dwc):
 
         dicom_web_download_series.return_value = lambda *args: None
 
@@ -149,6 +150,27 @@ class EndPointDICOMWebDatastore(DICOMWebEndpointTestSuite):
             res = response.json()
             label_tags = res["label_tags"]
             self.assertEquals(label_tags[test_tag], 1)
+
+    @patch("monailabel.interfaces.app.DICOMwebClient")
+    @patch("monailabel.datastore.dicom.dicom_web_download_series")
+    def test_datastore_train(self, dicom_web_download_series, dwc):
+
+        dicom_web_download_series.return_value = lambda *args: None
+
+        cache_path = os.path.join(self.data_dir, hashlib.md5(self.studies.encode("utf-8")).hexdigest())
+        dwc.return_value.base_url = self.studies
+        dwc.return_value.search_for_series = lambda **kwargs: search_for_series(self.data_dir, **kwargs)
+        dwc.return_value.retrieve_series_metadata = lambda *args, **kwargs: retrieve_series_metadata(
+            self.data_dir, *args, **kwargs
+        )
+        dwc.return_value.load_json_dataset = lambda *args, **kwargs: retrieve_series(cache_path, *args, **kwargs)
+
+        with patch.object(DICOMWebDatastore.__init__, "__defaults__", (None, self.data_dir)):
+
+            response = self.client.get("/datastore/?output=train")
+            self.assertEquals(response.status_code, 200)
+            res = response.json()
+            logging.error(res)
 
 
 if __name__ == "__main__":
