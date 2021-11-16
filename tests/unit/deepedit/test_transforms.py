@@ -17,10 +17,6 @@ from parameterized import parameterized
 from monailabel.deepedit.multilabel.transforms import (
     FindDiscrepancyRegionsCustomd,
     PosNegClickProbAddRandomGuidanceCustomd,
-    SelectLabelsAbdomenDatasetd,
-    SingleLabelSelectiond,
-    SplitPredsLabeld,
-    ToCheckTransformd,
 )
 from monailabel.deepedit.transforms import (
     AddRandomGuidanced,
@@ -217,43 +213,6 @@ FindDiscrepancyRegionsCustomd_TEST_CASE = [
     (5, 5),
 ]
 
-SelectLabelsAbdomenDatasetd_TEST_CASE = [
-    {"label_names": LABEL_NAMES},
-    DATA_6,
-    len(LABEL_NAMES),
-]
-
-
-DATA_7 = {
-    "image": IMAGE,
-    "label": MULTI_LABEL,
-    "current_label": "spleen",
-    "probability": 1.0,
-    "label_names": LABEL_NAMES,
-    "pred": PRED,
-}
-
-SingleLabelSelectiond_TEST_CASE = [
-    {"label_names": ["spleen"]},
-    DATA_7,
-    "spleen",
-]
-
-DATA_8 = {
-    "image": IMAGE,
-    "label": MULTI_LABEL,
-    "current_label": "spleen",
-    "probability": 1.0,
-    "label_names": LABEL_NAMES,
-    "pred": PRED,
-}
-
-SplitPredsLabeld_TEST_CASE = [
-    DATA_7,
-]
-
-ToCheckTransformd_TEST_CASE = [DATA_7, 6]
-
 # When checking tensor content use np.testing.assert_equal(result["image"], expected_values)
 
 
@@ -300,39 +259,6 @@ class TestSingleLabelSingleModalityd(unittest.TestCase):
 
 
 # Tests for transforms used in multilabel deepedit
-
-
-class TestSelectLabelsAbdomenDatasetd(unittest.TestCase):
-    @parameterized.expand([SelectLabelsAbdomenDatasetd_TEST_CASE])
-    def test_correct_results(self, arguments, input_data, expected_result):
-        add_fn = SelectLabelsAbdomenDatasetd(keys="label", **arguments)
-        result = add_fn(input_data)
-        self.assertEqual(len(np.unique(result["label"])), expected_result)
-
-
-class TestSingleLabelSelectiond(unittest.TestCase):
-    @parameterized.expand([SingleLabelSelectiond_TEST_CASE])
-    def test_correct_results(self, arguments, input_data, expected_result):
-        add_fn = SingleLabelSelectiond(keys="label", **arguments)
-        result = add_fn(input_data)
-        self.assertEqual(result["current_label"], expected_result)
-
-
-class TestSplitPredsLabeld(unittest.TestCase):
-    @parameterized.expand([SplitPredsLabeld_TEST_CASE])
-    def test_correct_results(self, input_data):
-        add_fn = SplitPredsLabeld(keys="pred")
-        result = add_fn(input_data)
-        self.assertIsNotNone(result["pred_spleen"])
-
-
-# Simple transform to debug other transforms
-class TestToCheckTransformd(unittest.TestCase):
-    @parameterized.expand([ToCheckTransformd_TEST_CASE])
-    def test_correct_results(self, input_data, expected_result):
-        add_fn = ToCheckTransformd(keys="label")
-        result = add_fn(input_data)
-        self.assertEqual(len(result), expected_result)
 
 
 class TestPosNegClickProbAddRandomGuidanceCustomd(unittest.TestCase):
