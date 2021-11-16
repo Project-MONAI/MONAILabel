@@ -1,6 +1,8 @@
 name: "Build & Test w/GPU"
 
 on:
+  push:
+    branches: [main]
   workflow_dispatch:
 
 jobs:
