@@ -11,11 +11,12 @@
 
 import json
 import logging
-from typing import Dict, Hashable, Mapping, Optional
+from typing import Dict, Hashable, Mapping, Optional, Sequence
 
 import numpy as np
 from monai.config import KeysCollection
 from monai.transforms.transform import MapTransform, Randomizable, Transform
+from monai.transforms import CropForeground, ResizeWithPadOrCrop
 
 logger = logging.getLogger(__name__)
 
@@ -336,4 +337,97 @@ class SingleLabelSingleModalityd(MapTransform):
                     meta_data["dim"][0] = 3
                     meta_data["dim"][4] = 1
 
+        return d
+
+class CropGuidanceForegroundd(Transform):
+    """
+    Update guidance based on foreground crop.
+    Args:
+        ref_image_key: reference image key.
+        guidance: guidance key.
+        source_key: mask key for generating bounding box.
+        margin: add margin value to spatial dims of the bounding box, if only 1 value provided, use it for all dims.
+    """
+    
+    def __init__(
+        self,
+        ref_image_key: str,
+        guidance: str,
+        source_key: str,
+        margin: Sequence[int]
+    ) -> None:
+        self.ref_image_key = ref_image_key
+        self.guidance = guidance
+        self.source_key = source_key
+        self.margin = margin
+
+    def __call__(self, data):
+        d = dict(data)
+        
+        current_shape = d[self.ref_image_key].shape[1:]
+        dims = len(current_shape)
+        cropper = CropForeground(margin=self.margin)
+        
+        # get guidance following foreground crop
+        new_guidance = []
+        for guidance in d[self.guidance]:
+            if guidance:
+                signal = np.zeros(current_shape)
+                for point in guidance:
+                    if dims == 2:
+                        signal[point[0], point[1]] = 1.0
+                    else:
+                        signal[point[0], point[1], point[2]] = 1.0
+                # compute bounding box  
+                box_start, box_end = cropper.compute_bounding_box(img=d[self.source_key])
+                signal = cropper.crop_pad(img=signal[np.newaxis, :], box_start=box_start, box_end=box_end).squeeze(0), # requires channel dim
+                new_guidance.append(np.argwhere(signal[0]==1.0).astype(int).tolist()) # signal is a tuple containing a numpy array
+            else:
+                new_guidance.append([])
+                
+        d[self.guidance] = new_guidance
+        return d
+
+class ResizeGuidanceWithPadOrCropd(Transform):
+    """
+    Update guidance based on pad or crop.
+    Args:
+        ref_image_key: reference image key.
+        guidance: guidance key.
+        spatial_size: the spatial size of output data after pad or crop.
+    """
+    
+    def __init__(
+        self,
+        ref_image_key: str,
+        guidance: str,
+        spatial_size: Sequence[int]
+    ) -> None:
+        self.ref_image_key = ref_image_key
+        self.guidance = guidance
+        self.spatial_size = spatial_size
+
+    def __call__(self, data):
+        d = dict(data)
+        
+        current_shape = d[self.ref_image_key].shape[1:]
+        dims = len(current_shape)
+        croppad = ResizeWithPadOrCrop(spatial_size=self.spatial_size)
+        
+        # get guidance following pad or crop to spatial_size
+        new_guidance = []
+        for guidance in d[self.guidance]:
+            if guidance:
+                signal = np.zeros(current_shape)
+                for point in guidance:
+                    if dims == 2:
+                        signal[point[0], point[1]] = 1.0
+                    else:
+                        signal[point[0], point[1], point[2]] = 1.0
+                signal = croppad(signal[np.newaxis, :]).squeeze(0) # croppad requires channel dim
+                new_guidance.append(np.argwhere(signal==1.0).astype(int).tolist())
+            else:
+                new_guidance.append([])
+                
+        d[self.guidance] = new_guidance
         return d
