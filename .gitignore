@@ -151,3 +151,4 @@ docs/source/apidocs
 .DS_Store
 *.DS_Store
 bin
+junit
