@@ -11,7 +11,6 @@
 
 import hashlib
 import json
-import logging
 import os
 import unittest
 from typing import Dict
@@ -170,7 +169,7 @@ class EndPointDICOMWebDatastore(DICOMWebEndpointTestSuite):
             response = self.client.get("/datastore/?output=train")
             self.assertEquals(response.status_code, 200)
             res = response.json()
-            logging.error(res)
+            assert res
 
 
 if __name__ == "__main__":
