@@ -196,7 +196,7 @@ SplitPredsLabeld_TEST_CASE = [DATA_7]
 
 ToCheckTransformd_TEST_CASE = [DATA_7, 6]
 
-SingleModalityLabelSanityd_TEST_CASE = [DATA_7, 2]
+SingleModalityLabelSanityd_TEST_CASE = [DATA_7, (5, 5)]
 
 
 DATA_9 = {
@@ -290,7 +290,7 @@ class TestSingleModalityLabelSanityd(unittest.TestCase):
     def test_correct_results(self, input_data, expected_result):
         add_fn = SingleModalityLabelSanityd(keys="label")
         result = add_fn(input_data)
-        self.assertEqual(len(np.unique(result["label"])), expected_result)
+        self.assertEqual(result["label"].shape, expected_result)
 
 
 # # WORK IN PROGRESS
