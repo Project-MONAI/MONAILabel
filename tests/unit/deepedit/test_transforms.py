@@ -186,5 +186,6 @@ class TestSingleLabelSingleModalityd(unittest.TestCase):
         result = SingleLabelSingleModalityd(**arguments)(input_data)
         self.assertEqual(result["image"].shape, expected_result)
 
+
 if __name__ == "__main__":
     unittest.main()
