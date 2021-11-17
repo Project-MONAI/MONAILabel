@@ -40,7 +40,7 @@ from monailabel.deepedit.multilabel.transforms import (
     FindDiscrepancyRegionsCustomd,
     PosNegClickProbAddRandomGuidanceCustomd,
     SelectLabelsAbdomenDatasetd,
-    SplitPredsLabeld, ToCheckTransformd,
+    SplitPredsLabeld,
 )
 from monailabel.tasks.train.basic_train import BasicTrainTask, Context
 
@@ -57,8 +57,6 @@ class MyTrain(BasicTrainTask):
         target_spacing=(1.0, 1.0, 1.0),
         deepgrow_probability_train=0.4,
         deepgrow_probability_val=1.0,
-        max_train_interactions=10,
-        max_val_interactions=5,
         label_names=None,
         debug_mode=False,
         **kwargs,
@@ -68,8 +66,6 @@ class MyTrain(BasicTrainTask):
         self.target_spacing = target_spacing
         self.deepgrow_probability_train = deepgrow_probability_train
         self.deepgrow_probability_val = deepgrow_probability_val
-        self.max_train_interactions = max_train_interactions
-        self.max_val_interactions = max_val_interactions
         self.label_names = label_names
         self.debug_mode = debug_mode
 
@@ -100,7 +96,6 @@ class MyTrain(BasicTrainTask):
             AddGuidanceSignalCustomd(keys="image", guidance="guidance"),
             #
             ToTensord(keys=("image", "label")),
-            ToCheckTransformd(keys="label"),
         ]
 
     def train_pre_transforms(self, context: Context):
@@ -197,7 +192,6 @@ class MyTrain(BasicTrainTask):
         return Interaction(
             deepgrow_probability=self.deepgrow_probability_train,
             transforms=self.get_click_transforms(context),
-            max_interactions=self.max_train_interactions,
             click_probability_key="probability",
             train=True,
             label_names=self.label_names,
@@ -207,7 +201,6 @@ class MyTrain(BasicTrainTask):
         return Interaction(
             deepgrow_probability=self.deepgrow_probability_val,
             transforms=self.get_click_transforms(context),
-            max_interactions=self.max_val_interactions,
             click_probability_key="probability",
             train=False,
             label_names=self.label_names,

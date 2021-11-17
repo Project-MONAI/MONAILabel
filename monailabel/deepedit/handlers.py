@@ -94,11 +94,6 @@ class TensorBoardImageHandler:
         self.index = index
         self.max_frames = max_frames
         self.max_channels = max_channels
-        self.num_pos_clicks = 0
-        self.num_neg_clicks = 0
-        self.num_total_clicks = 0
-        self.cumulative_pos_clicks = 0
-        self.cumulative_neg_clicks = 0
 
     def attach(self, engine: Engine) -> None:
         """
@@ -127,23 +122,6 @@ class TensorBoardImageHandler:
             .split("/")[-1]
             .split(".")[0]
         )
-
-        """
-        Adding simulated clicks stats
-        """
-        self.num_pos_clicks = self.batch_transform(engine.state.batch)[0]["pos_click_sum"]
-        self.cumulative_pos_clicks += self.num_pos_clicks
-
-        self.num_neg_clicks = self.batch_transform(engine.state.batch)[0]["neg_click_sum"]
-        self.cumulative_neg_clicks += self.num_neg_clicks
-
-        self.num_total_clicks = self.num_pos_clicks + self.num_neg_clicks
-
-        self._writer.add_scalar("Positive clicks", self.num_pos_clicks, step)
-        self._writer.add_scalar("Negative clicks", self.num_neg_clicks, step)
-        self._writer.add_scalar("Total clicks", self.num_total_clicks, step)
-        self._writer.add_scalar("Positive clicks (cumulative)", self.cumulative_pos_clicks, step)
-        self._writer.add_scalar("Negative clicks (cumulative)", self.cumulative_neg_clicks, step)
 
         input_tensor = self.batch_transform(engine.state.batch)[0]["image"]
 
@@ -219,9 +197,9 @@ class TensorBoardImageHandler:
                 )
 
         """
-        POSITIVE CLICKS
+        ALL CLICKS
         """
-        show_pos_clicks = input_tensor[1:-1, ...][None]
+        show_pos_clicks = input_tensor[1:, ...][None]
         if isinstance(show_pos_clicks, torch.Tensor):
             show_pos_clicks = show_pos_clicks.detach().cpu().numpy()
             # Adding all labels in a single channel tensor
@@ -242,31 +220,7 @@ class TensorBoardImageHandler:
                 0,
                 self.max_channels,
                 self.max_frames,
-                "step_" + str(step) + "_pos_clicks_" + filename,
-            )
-
-        """
-        NEGATIVE CLICKS
-        """
-        show_neg_clicks = input_tensor[-1, ...][None]
-        if isinstance(show_neg_clicks, torch.Tensor):
-            show_neg_clicks = show_neg_clicks.detach().cpu().numpy()
-        if show_neg_clicks is not None:
-            if not isinstance(show_neg_clicks, np.ndarray):
-                raise TypeError(
-                    "show_neg_clicks must be None or one of "
-                    f"(numpy.ndarray, torch.Tensor) but is {type(show_neg_clicks).__name__}."
-                )
-            show_neg_clicks = show_label + show_neg_clicks
-            plot_2d_or_3d_image(
-                # add batch dim and plot the first item
-                show_neg_clicks[None],
-                step,
-                self._writer,
-                0,
-                self.max_channels,
-                self.max_frames,
-                "step_" + str(step) + "_neg_clicks_" + filename,
+                "step_" + str(step) + "_all_clicks_" + filename,
             )
 
         self._writer.flush()
