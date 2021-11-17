@@ -274,7 +274,7 @@ def main():
         "name": args.output,
         "device": "cuda",
         "model": "deepedit_train",
-        "dataset": args.dataset,
+        # "dataset": args.dataset,
         "max_epochs": args.epoch,
         "amp": False,
         "lr": args.lr,
