@@ -268,6 +268,10 @@ export default class SegmentationList extends Component {
     if (labels) {
       let i = 0;
       for (var label in labels) {
+        if (Array.isArray(labels)) {
+          label = labels[label];
+        }
+
         if (label === 'background') {
           console.debug('Ignore Background...');
           continue;
