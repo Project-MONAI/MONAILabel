@@ -44,11 +44,7 @@ jobs:
       - name: Unit Tests
         run: |
           $(pwd)/runtests.sh --unittests --coverage
-      - name: Coverage
-        run: |
-          coverage xml
       - name: Upload coverage
-        if: ${{ github.event_name == 'pull_request' }}
         uses: codecov/codecov-action@v1
         with:
           fail_ci_if_error: false
