@@ -2,7 +2,7 @@ coverage:
   status:
     project:
       default:
-        target: 30%
+        target: 60%
         threshold: 10
         base: parent
         if_no_uploads: error
