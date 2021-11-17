@@ -156,7 +156,7 @@ class MyApp(MONAILabelApp):
                 load_path=self.pretrained_model,
                 publish_path=self.final_model,
                 config={"pretrained": strtobool(self.conf.get("use_pretrained_model", "true"))},
-                debug_mode=False,
+                debug_mode=strtobool(self.conf.get("debug", "false")),
                 find_unused_parameters=self.find_unused_parameters,
             )
         }
