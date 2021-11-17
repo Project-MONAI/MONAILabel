@@ -136,6 +136,9 @@ function clean_py() {
   rm -rf tests/data/*
   rm -rf monailabel/endpoints/static/ohif
   rm -rf pytest.log
+  rm -rf htmlcov
+  rm -rf coverage.xml
+  rm -rf junit
 
   find ${TO_CLEAN} -type f -name "*.py[co]" -delete
   find ${TO_CLEAN} -type f -name "*.so" -delete
@@ -429,11 +432,6 @@ fi
 # testing command to run
 cmd="${PY_EXE}"
 
-# set coverage command
-if [ $doCoverage = true ]; then
-  echo "${separator}${blue}coverage${noColor}"
-  cmd="${PY_EXE} -m coverage run --append"
-fi
 
 # # download test data if needed
 # if [ ! -d testing_data ] && [ "$doDryRun" != 'true' ]
@@ -446,7 +444,7 @@ if [ $doUnitTests = true ]; then
   torch_validate
 
   ${cmdPrefix}${PY_EXE} tests/setup.py
-  ${cmdPrefix}${cmd} -m pytest -v tests/unit --no-summary -x
+  ${cmdPrefix}${cmd} -m pytest -x --forked --doctest-modules --junitxml=junit/test-results.xml --cov-report xml --cov-report html --cov-report term --cov monailabel tests/unit
 fi
 
 function check_server_running() {
@@ -490,11 +488,4 @@ if [ $doNetTests = true ]; then
   } || {
     kill -9 $(ps -ef | grep monailabel | grep -v grep | awk '{print $2}')
   }
-fi
-
-# report on coverage
-if [ $doCoverage = true ]; then
-  echo "${separator}${blue}coverage${noColor}"
-  ${cmdPrefix}${PY_EXE} -m coverage combine --append .coverage/
-  ${cmdPrefix}${PY_EXE} -m coverage report
 fi
