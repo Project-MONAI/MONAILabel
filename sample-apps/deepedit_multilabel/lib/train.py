@@ -25,7 +25,6 @@ from monai.transforms import (
     RandShiftIntensityd,
     Resized,
     ScaleIntensityRanged,
-    Spacingd,
     ToNumpyd,
     ToTensord,
 )
@@ -56,8 +55,6 @@ class MyTrain(BasicTrainTask):
         target_spacing=(1.0, 1.0, 1.0),
         deepgrow_probability_train=0.4,
         deepgrow_probability_val=1.0,
-        max_train_interactions=10,
-        max_val_interactions=5,
         label_names=None,
         debug_mode=False,
         **kwargs,
@@ -67,8 +64,6 @@ class MyTrain(BasicTrainTask):
         self.target_spacing = target_spacing
         self.deepgrow_probability_train = deepgrow_probability_train
         self.deepgrow_probability_val = deepgrow_probability_val
-        self.max_train_interactions = max_train_interactions
-        self.max_val_interactions = max_val_interactions
         self.label_names = label_names
         self.debug_mode = debug_mode
 
@@ -106,7 +101,6 @@ class MyTrain(BasicTrainTask):
             LoadImaged(keys=("image", "label"), reader="ITKReader"),
             SelectLabelsAbdomenDatasetd(keys="label", label_names=self.label_names),
             AddChanneld(keys=("image", "label")),
-            Spacingd(keys=["image", "label"], pixdim=self.target_spacing, mode=("bilinear", "nearest")),
             Orientationd(keys=["image", "label"], axcodes="RAS"),
             # This transform may not work well for MR images
             ScaleIntensityRanged(
@@ -170,7 +164,6 @@ class MyTrain(BasicTrainTask):
             LoadImaged(keys=("image", "label"), reader="ITKReader"),
             SelectLabelsAbdomenDatasetd(keys="label", label_names=self.label_names),
             AddChanneld(keys=("image", "label")),
-            Spacingd(keys=["image", "label"], pixdim=self.target_spacing, mode=("bilinear", "nearest")),
             Orientationd(keys=["image", "label"], axcodes="RAS"),
             # This transform may not work well for MR images
             ScaleIntensityRanged(
@@ -187,8 +180,6 @@ class MyTrain(BasicTrainTask):
             AddInitialSeedPointCustomd(keys="label", guidance="guidance", sids="sids"),
             AddGuidanceSignalCustomd(keys="image", guidance="guidance"),
             #
-            # Don't think the AsDiscreted transform is needed here -- STILL CHECKING
-            AsDiscreted(keys="label", to_onehot=True, num_classes=len(self.label_names)),
             ToTensord(keys=("image", "label")),
         ]
 
@@ -199,7 +190,6 @@ class MyTrain(BasicTrainTask):
         return Interaction(
             deepgrow_probability=self.deepgrow_probability_train,
             transforms=self.get_click_transforms(context),
-            max_interactions=self.max_train_interactions,
             click_probability_key="probability",
             train=True,
             label_names=self.label_names,
@@ -209,7 +199,6 @@ class MyTrain(BasicTrainTask):
         return Interaction(
             deepgrow_probability=self.deepgrow_probability_val,
             transforms=self.get_click_transforms(context),
-            max_interactions=self.max_val_interactions,
             click_probability_key="probability",
             train=False,
             label_names=self.label_names,
