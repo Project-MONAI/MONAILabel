@@ -11,7 +11,7 @@
 
 import json
 import logging
-from typing import Dict, Hashable, Mapping, Optional, Sequence
+from typing import Dict, Hashable, Mapping, Optional, Sequence, Union
 
 import numpy as np
 from monai.config import KeysCollection
@@ -343,15 +343,16 @@ class SingleLabelSingleModalityd(MapTransform):
 class CropGuidanceForegroundd(Transform):
     """
     Update guidance based on foreground crop.
+    Transform should precede CropForegroundd applied to image, in transforms list.
     Args:
-        ref_image_key: reference image key.
+        ref_image: reference image key.
         guidance: guidance key.
         source_key: mask key for generating bounding box.
         margin: add margin value to spatial dims of the bounding box, if only 1 value provided, use it for all dims.
     """
 
-    def __init__(self, ref_image_key: str, guidance: str, source_key: str, margin: Sequence[int]) -> None:
-        self.ref_image_key = ref_image_key
+    def __init__(self, ref_image: str, guidance: str, source_key: str, margin: Union[Sequence[int], int] = 0) -> None:
+        self.ref_image = ref_image
         self.guidance = guidance
         self.source_key = source_key
         self.margin = margin
@@ -359,7 +360,7 @@ class CropGuidanceForegroundd(Transform):
     def __call__(self, data):
         d = dict(data)
 
-        current_shape = d[self.ref_image_key].shape[1:]
+        current_shape = d[self.ref_image].shape[1:]
         dims = len(current_shape)
         cropper = CropForeground(margin=self.margin)
 
@@ -391,21 +392,22 @@ class CropGuidanceForegroundd(Transform):
 class ResizeGuidanceWithPadOrCropd(Transform):
     """
     Update guidance based on pad or crop.
+    Transform should precede ResizeWithPadOrCropd applied to image, in transforms list.
     Args:
-        ref_image_key: reference image key.
+        ref_image: reference image key.
         guidance: guidance key.
         spatial_size: the spatial size of output data after pad or crop.
     """
 
-    def __init__(self, ref_image_key: str, guidance: str, spatial_size: Sequence[int]) -> None:
-        self.ref_image_key = ref_image_key
+    def __init__(self, ref_image: str, guidance: str, spatial_size: Sequence[int]) -> None:
+        self.ref_image = ref_image
         self.guidance = guidance
         self.spatial_size = spatial_size
 
     def __call__(self, data):
         d = dict(data)
 
-        current_shape = d[self.ref_image_key].shape[1:]
+        current_shape = d[self.ref_image].shape[1:]
         dims = len(current_shape)
         croppad = ResizeWithPadOrCrop(spatial_size=self.spatial_size)
 
