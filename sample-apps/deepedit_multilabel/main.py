@@ -242,7 +242,7 @@ def main():
     )
 
     parser = argparse.ArgumentParser()
-    parser.add_argument("-n", "--network", default="unetr", choices=["unetr", "dynunet"])
+    parser.add_argument("-n", "--network", default="dynunet", choices=["unetr", "dynunet"])
     parser.add_argument(
         "-s",
         "--studies",

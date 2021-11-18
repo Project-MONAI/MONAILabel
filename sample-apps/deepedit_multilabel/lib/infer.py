@@ -18,7 +18,6 @@ from monai.transforms import (
     Orientationd,
     Resized,
     ScaleIntensityRanged,
-    Spacingd,
     SqueezeDimd,
     ToNumpyd,
     ToTensord,
@@ -71,7 +70,7 @@ class DeepEditSeg(InferTask):
         return [
             LoadImaged(keys="image", reader="ITKReader"),
             AddChanneld(keys="image"),
-            Spacingd(keys="image", pixdim=self.target_spacing, mode="bilinear"),
+            # Spacingd(keys="image", pixdim=self.target_spacing, mode="bilinear"),
             Orientationd(keys="image", axcodes="RAS"),
             # This transform may not work well for MR images
             ScaleIntensityRanged(
@@ -138,7 +137,7 @@ class DeepEdit(InferTask):
         return [
             LoadImaged(keys="image", reader="ITKReader"),
             AddChanneld(keys="image"),
-            Spacingd(keys="image", pixdim=self.target_spacing, mode="bilinear"),
+            # Spacingd(keys="image", pixdim=self.target_spacing, mode="bilinear"),
             Orientationd(keys="image", axcodes="RAS"),
             # This transform may not work well for MR images
             ScaleIntensityRanged(

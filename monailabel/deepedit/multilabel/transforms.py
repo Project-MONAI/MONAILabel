@@ -11,6 +11,7 @@
 
 import json
 import logging
+import random
 from typing import Dict, Hashable, Mapping, Optional
 
 import numpy as np
@@ -547,8 +548,6 @@ class PosNegClickProbAddRandomGuidanceCustomd(Randomizable, MapTransform):
         self.discrepancy = discrepancy
         self.probability = probability
         self._will_interact = None
-        self.is_pos = False
-        self.is_other = False
 
     def randomize(self, data=None):
         probability = data[self.probability]
@@ -620,21 +619,31 @@ class PosNegClickProbAddRandomGuidanceCustomd(Randomizable, MapTransform):
                 tmp_gui = guidance[key_label]
                 tmp_gui = tmp_gui.tolist() if isinstance(tmp_gui, np.ndarray) else tmp_gui
                 tmp_gui = json.loads(tmp_gui) if isinstance(tmp_gui, str) else tmp_gui
-                self.tmp_guidance[key_label] = tmp_gui
+                self.tmp_guidance[key_label] = [[j for j in tmp_gui[0] if -1 not in j]]
 
             # Add guidance according to discrepancy
-            all_is_pos = {}
-            all_is_other = {}
             for key_label in d["label_names"].keys():
                 # Add guidance based on discrepancy
                 self.add_guidance(self.tmp_guidance[key_label][0], discrepancy[key_label], d["label_names"], d["label"])
-                all_is_pos[key_label] = self.is_pos
-                all_is_other[key_label] = self.is_other
-                self.is_pos = False
-                self.is_other = False
 
-            d["is_pos"] = all_is_pos
-            d["is_neg"] = all_is_other
+            # Checking the number of clicks
+            num_clicks = random.randint(1, 10)
+            logger.info(f"Number of simulated clicks: {num_clicks}")
+            counter = 0
+            keep_guidance = []
+            while True:
+                aux_label = random.choice(list(d["label_names"].keys()))
+                if aux_label in keep_guidance:
+                    pass
+                else:
+                    keep_guidance.append(aux_label)
+                    counter = counter + len(self.tmp_guidance[aux_label][0])
+                    # If collected clicks is bigger than max clicks, discard the others
+                    if counter >= num_clicks:
+                        for key_label in d["label_names"].keys():
+                            if key_label not in keep_guidance:
+                                self.tmp_guidance[key_label][0] = []
+                        break
 
             # Convert tmp_guidance back to json
             for key_label in d["label_names"].keys():
