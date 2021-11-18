@@ -8,9 +8,7 @@
 # WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 # See the License for the specific language governing permissions and
 # limitations under the License.
-import glob
 import logging
-import os
 
 import torch
 from monai.handlers import MeanDice, from_engine
@@ -233,19 +231,3 @@ class MyTrain(BasicTrainTask):
         if self.debug_mode and context.local_rank == 0:
             handlers.append(TensorBoardImageHandler(log_dir=context.events_dir))
         return handlers
-
-    def partition_datalist(self, context: Context, shuffle=False):
-        # Training images
-        train_d = context.datalist
-
-        # Validation images
-        data_dir = "/home/adp20local/Documents/Datasets/monailabel_datasets/multilabel_abdomen/NIFTI/val"
-        val_images = sorted(glob.glob(os.path.join(data_dir, "imgs", "*.nii.gz")))
-        val_labels = sorted(glob.glob(os.path.join(data_dir, "labels", "*.nii.gz")))
-        val_d = [{"image": image_name, "label": label_name} for image_name, label_name in zip(val_images, val_labels)]
-
-        if context.local_rank == 0:
-            logger.info(f"Total Records for Training: {len(train_d)}")
-            logger.info(f"Total Records for Validation: {len(val_d)}")
-
-        return train_d, val_d
