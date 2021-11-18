@@ -16,12 +16,12 @@ from parameterized import parameterized
 
 from monailabel.deepedit.transforms import (
     AddRandomGuidanced,
+    CropGuidanceForegroundd,
     DiscardAddGuidanced,
     PosNegClickProbAddRandomGuidanced,
     ResizeGuidanceCustomd,
-    SingleLabelSingleModalityd,
-    CropGuidanceForegroundd,
     ResizeGuidanceWithPadOrCropd,
+    SingleLabelSingleModalityd,
 )
 
 IMAGE = np.array([[[[1, 0, 2, 0, 1], [0, 1, 2, 1, 0], [2, 2, 3, 2, 2], [0, 1, 2, 1, 0], [1, 0, 2, 0, 1]]]])
@@ -146,8 +146,8 @@ SINGLE_LABEL_SINGLE_MODALITY_TEST_CASE_1 = [
 
 DATA_5 = {
     "image": np.arange(8000).reshape((1, 20, 20, 20)),
-    "guidance":  [[[7, 8, 9], [10, 10, 10]], [[12, 15, 9]]],
-    "mask": np.expand_dims(np.pad(np.ones((16, 16, 16)), pad_width=2), axis=0)
+    "guidance": [[[7, 8, 9], [10, 10, 10]], [[12, 15, 9]]],
+    "mask": np.expand_dims(np.pad(np.ones((16, 16, 16)), pad_width=2), axis=0),
 }
 
 CROP_GUIDANCE_FOREGROUND_TEST_CASE_1 = [
@@ -164,7 +164,7 @@ CROP_GUIDANCE_FOREGROUND_TEST_CASE_2 = [
 
 DATA_6 = {
     "image": np.arange(8000).reshape((1, 20, 20, 20)),
-    "guidance":  [[[7, 8, 9], [10, 10, 10]], [[12, 15, 9]]],
+    "guidance": [[[7, 8, 9], [10, 10, 10]], [[12, 15, 9]]],
 }
 
 RESIZE_GUIDANCE_WITH_PAD_OR_CROP_TEST_CASE_1 = [
@@ -216,7 +216,7 @@ class TestSingleLabelSingleModalityd(unittest.TestCase):
     def test_correct_results(self, arguments, input_data, expected_result):
         result = SingleLabelSingleModalityd(**arguments)(input_data)
         self.assertEqual(result["image"].shape, expected_result)
-        
+
 
 class Test1CropGuidanceForegroundd(unittest.TestCase):
     @parameterized.expand([CROP_GUIDANCE_FOREGROUND_TEST_CASE_1])
