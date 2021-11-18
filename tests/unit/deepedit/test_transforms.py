@@ -16,9 +16,11 @@ from parameterized import parameterized
 
 from monailabel.deepedit.transforms import (
     AddRandomGuidanced,
+    CropGuidanceForegroundd,
     DiscardAddGuidanced,
     PosNegClickProbAddRandomGuidanced,
     ResizeGuidanceCustomd,
+    ResizeGuidanceWithPadOrCropd,
     SingleLabelSingleModalityd,
 )
 
@@ -142,6 +144,35 @@ SINGLE_LABEL_SINGLE_MODALITY_TEST_CASE_1 = [
     (5, 5),
 ]
 
+DATA_5 = {
+    "image": np.arange(8000).reshape((1, 20, 20, 20)),
+    "guidance": [[[7, 8, 9], [10, 10, 10]], [[12, 15, 9]]],
+    "mask": np.expand_dims(np.pad(np.ones((16, 16, 16)), pad_width=2), axis=0),
+}
+
+CROP_GUIDANCE_FOREGROUND_TEST_CASE_1 = [
+    {"ref_image": "image", "guidance": "guidance", "source_key": "mask"},
+    DATA_5,
+    [[[5, 6, 7], [8, 8, 8]], [[10, 13, 7]]],
+]
+
+CROP_GUIDANCE_FOREGROUND_TEST_CASE_2 = [
+    {"ref_image": "image", "guidance": "guidance", "source_key": "mask"},
+    DATA_5,
+    [[[6, 7, 8], [9, 9, 9]], [[11, 14, 8]]],
+]
+
+DATA_6 = {
+    "image": np.arange(8000).reshape((1, 20, 20, 20)),
+    "guidance": [[[7, 8, 9], [10, 10, 10]], [[12, 15, 9]]],
+}
+
+RESIZE_GUIDANCE_WITH_PAD_OR_CROP_TEST_CASE_1 = [
+    {"ref_image": "image", "guidance": "guidance"},
+    DATA_6,
+    [[[5, 10, 7], [8, 12, 8]], [[10, 17, 7]]],
+]
+
 # When checking tensor content use np.testing.assert_equal(result["image"], expected_values)
 
 
@@ -185,6 +216,27 @@ class TestSingleLabelSingleModalityd(unittest.TestCase):
     def test_correct_results(self, arguments, input_data, expected_result):
         result = SingleLabelSingleModalityd(**arguments)(input_data)
         self.assertEqual(result["image"].shape, expected_result)
+
+
+class Test1CropGuidanceForegroundd(unittest.TestCase):
+    @parameterized.expand([CROP_GUIDANCE_FOREGROUND_TEST_CASE_1])
+    def test_correct_results(self, arguments, input_data, expected_result):
+        result = CropGuidanceForegroundd(**arguments)(input_data)
+        self.assertEqual(result[arguments["guidance"]], expected_result)
+
+
+class Test2CropGuidanceForegroundd(unittest.TestCase):
+    @parameterized.expand([CROP_GUIDANCE_FOREGROUND_TEST_CASE_2])
+    def test_correct_results(self, arguments, input_data, expected_result):
+        result = CropGuidanceForegroundd(margin=(1, 1, 1), **arguments)(input_data)
+        self.assertEqual(result[arguments["guidance"]], expected_result)
+
+
+class TestResizeGuidanceWithPadOrCropd(unittest.TestCase):
+    @parameterized.expand([RESIZE_GUIDANCE_WITH_PAD_OR_CROP_TEST_CASE_1])
+    def test_correct_results(self, arguments, input_data, expected_result):
+        result = ResizeGuidanceWithPadOrCropd(spatial_size=(16, 24, 16), **arguments)(input_data)
+        self.assertEqual(result[arguments["guidance"]], expected_result)
 
 
 if __name__ == "__main__":
