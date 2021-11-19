@@ -1,14 +1,9 @@
 name: docker
 on:
-  push:
-    branches:
-      - main
-      - docker
   workflow_dispatch:
 
 jobs:
   docker_build:
-    needs: versioning
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v2
