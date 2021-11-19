@@ -76,43 +76,37 @@ jobs:
         run: |
           python -m pip install --user --upgrade pip setuptools wheel twine
           python -m pip install torch>=1.5 torchvision
-      - name: Test source archive and wheel file
+      - name: Build Package
         run: |
-          root_dir=$PWD
-          echo "$root_dir"
-
-          # build tar.gz and wheel
-          export BUILD_OHIF=true
           python setup.py check -m -s
           python setup.py sdist bdist_wheel
           python -m twine check dist/*
-
-          # move packages to a temp dir
+      - name: Verify Package
+        run: |
           tmp_dir=$(mktemp -d)
           cp dist/monailabel* "$tmp_dir"
-          rm -r build dist monailabel.egg-info
-          cd "$tmp_dir"
-          ls -al
+          rm -r build monailabel.egg-info
 
-          # install from wheel
-          python -m pip install monailabel*.whl
+          # install from tar.gz
+          python -m pip install "$tmp_dir"/monailabel*.tar.gz
           python -c 'import monailabel; monailabel.print_config()' 2>&1 | grep -iv "unknown"
           python -c 'import monailabel; print(monailabel.__file__)'
           python -m pip uninstall -y monailabel
-          rm monailabel*.whl
 
-          # install from tar.gz
-          name=$(ls *.tar.gz | head -n1)
-          echo $name
-          python -m pip install $name
+          # install from wheel
+          python -m pip install "$tmp_dir"/monailabel*.whl
           python -c 'import monailabel; monailabel.print_config()' 2>&1 | grep -iv "unknown"
           python -c 'import monailabel; print(monailabel.__file__)'
+          python -m pip uninstall -y monailabel
 
           # install test utilities
           python -m pip install pytest
 
           # start the monailabel server in the background and run the integration tests
-          $root_dir/runtests.sh --net
+          ./runtests.sh --net
+
+          # cleanup
+          rm -r "$tmp_dir"
         env:
           shell: bash
 
