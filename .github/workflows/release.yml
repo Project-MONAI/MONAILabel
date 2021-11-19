@@ -41,7 +41,7 @@ jobs:
         run: |
           tmp_dir=$(mktemp -d)
           cp dist/monailabel* "$tmp_dir"
-          rm -r build monailabel.egg-info
+          rm -r build monailabel*.egg-info
 
           # install from tar.gz
           python -m pip install "$tmp_dir"/monailabel*.tar.gz
