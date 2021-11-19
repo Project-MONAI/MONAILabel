@@ -139,6 +139,8 @@ function clean_py() {
   rm -rf htmlcov
   rm -rf coverage.xml
   rm -rf junit
+  rm -rf docs/build/
+  rm -rf docs/source/apidocs/
 
   find ${TO_CLEAN} -type f -name "*.py[co]" -delete
   find ${TO_CLEAN} -type f -name "*.so" -delete

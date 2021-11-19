@@ -1,0 +1,84 @@
+name: docker
+on:
+  push:
+    branches:
+      - main
+      - docker
+  workflow_dispatch:
+
+jobs:
+  docker_build:
+    needs: versioning
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v2
+      - name: Set up Python 3.8
+        uses: actions/setup-python@v2
+        with:
+          python-version: 3.8
+      - name: Install dependencies
+        run: |
+          python -m pip install --upgrade pip wheel
+          pip install -r requirements-dev.txt
+      - name: Install Latest Docker
+        run: |
+          curl -fsSL https://download.docker.com/linux/ubuntu/gpg | sudo apt-key add -
+          sudo add-apt-repository "deb [arch=amd64] https://download.docker.com/linux/ubuntu  $(lsb_release -cs)  stable"
+          sudo apt-get update
+          sudo apt-get install docker-ce
+      - name: docker_build
+        shell: bash
+        run: |
+          DOCKER_BUILDKIT=1 docker build -t projectmonai/monailabel:latest -f Dockerfile .
+
+          # distribute as always w/ tag "latest" to hub.docker.com
+          echo "${{ secrets.DOCKER_PW }}" | docker login -u projectmonai --password-stdin
+          docker push projectmonai/monailabel:latest
+          docker logout
+          docker image prune -f
+
+  docker_test_dockerhub:
+    needs: docker_build
+    container:
+      image: docker://projectmonai/monailabel:latest
+      options: "--shm-size=4g --ipc=host"
+    runs-on: ubuntu-latest
+    steps:
+      - name: Import
+        run: |
+          echo $CUDA_VISIBLE_DEVICES
+          python -c 'import monailabel; monailabel.print_config()'
+
+          mkdir -p cd /opt/monailabel
+          cd /opt/monailabel
+          monailabel apps --download --name deepedit --output apps
+          monailabel datasets --download --name Task04_Hippocampus --output datasets
+          monailabel start_server --app apps/deepedit --studies datasets/Task04_Hippocampus/imagesTr --port 8000 &
+
+          wait_time=0
+          server_is_up=0
+          start_time_out=120
+
+          while [[ $wait_time -le ${start_time_out} ]]; do
+            code=$(curl --write-out "%{http_code}\n" -s "http://127.0.0.1:8000/" --output /dev/null)
+            if [ "${code}" == "200" ]; then
+              server_is_up=1
+              break
+            fi
+            sleep 5
+            wait_time=$((wait_time + 5))
+            echo "Waiting for MONAILabel to be up and running..."
+          done
+          echo ""
+
+          if [ "$server_is_up" == "1" ]; then
+            echo "MONAILabel server is up and running."
+          else
+            echo "Failed to start MONAILabel server. Exiting..."
+            exit 1
+          fi
+
+          curl -s http://127.0.0.1:8000/info/ | jq
+        shell: bash
+        env:
+          QUICKTEST: True
