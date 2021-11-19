@@ -97,7 +97,6 @@ jobs:
           python -m pip install "$tmp_dir"/monailabel*.whl
           python -c 'import monailabel; monailabel.print_config()' 2>&1 | grep -iv "unknown"
           python -c 'import monailabel; print(monailabel.__file__)'
-          python -m pip uninstall -y monailabel
 
           # install test utilities
           python -m pip install pytest
@@ -106,6 +105,7 @@ jobs:
           ./runtests.sh --net
 
           # cleanup
+          python -m pip uninstall -y monailabel
           rm -r "$tmp_dir"
         env:
           shell: bash

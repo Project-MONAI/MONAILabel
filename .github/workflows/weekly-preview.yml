@@ -26,8 +26,6 @@ jobs:
       - name: Generate HEAD Commit Id
         run: |
           export HEAD_COMMIT_ID=$(git rev-parse HEAD)
-      - name: Build distribution
-        run: |
           sed -i 's/name\ =\ monailabel$/name\ =\ monailabel-weekly/g' setup.cfg
           echo "__commit_id__ = \"$HEAD_COMMIT_ID\"" >> monailabel/__init__.py
 
@@ -44,7 +42,8 @@ jobs:
           git log -1
           git tag --list
           git describe --tags --dirty --always --long
-
+      - name: Build distribution
+        run: |
           python setup.py sdist bdist_wheel
       - name: Verify Package
         run: |
@@ -62,7 +61,6 @@ jobs:
           python -m pip install "$tmp_dir"/monailabel*.whl
           python -c 'import monailabel; monailabel.print_config()' 2>&1 | grep -iv "unknown"
           python -c 'import monailabel; print(monailabel.__file__)'
-          python -m pip uninstall -y monailabel
 
           # install test utilities
           python -m pip install pytest
@@ -71,6 +69,7 @@ jobs:
           ./runtests.sh --net
 
           # cleanup
+          python -m pip uninstall -y monailabel
           rm -r "$tmp_dir"
         env:
           shell: bash
