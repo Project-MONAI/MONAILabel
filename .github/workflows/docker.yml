@@ -13,19 +13,17 @@ jobs:
       - name: Install dependencies
         run: |
           python -m pip install --upgrade pip wheel
-          pip install -r requirements-dev.txt
       - name: Install Latest Docker
         run: |
           curl -fsSL https://download.docker.com/linux/ubuntu/gpg | sudo apt-key add -
           sudo add-apt-repository "deb [arch=amd64] https://download.docker.com/linux/ubuntu  $(lsb_release -cs)  stable"
           sudo apt-get update
           sudo apt-get install docker-ce
-      - name: docker_build
-        shell: bash
+      - name: Build
         run: |
           DOCKER_BUILDKIT=1 docker build -t projectmonai/monailabel:latest -f Dockerfile .
-
-          # distribute as always w/ tag "latest" to hub.docker.com
+      - name: Publish
+        run: |
           echo "${{ secrets.DOCKER_PW }}" | docker login -u projectmonai --password-stdin
           docker push projectmonai/monailabel:latest
           docker logout
@@ -38,7 +36,7 @@ jobs:
       options: "--shm-size=4g --ipc=host"
     runs-on: ubuntu-latest
     steps:
-      - name: Import
+      - name: Verify
         run: |
           echo $CUDA_VISIBLE_DEVICES
           python -c 'import monailabel; monailabel.print_config()'
