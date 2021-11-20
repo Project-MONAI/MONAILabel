@@ -24,7 +24,7 @@ jobs:
           DOCKER_BUILDKIT=1 docker build -t projectmonai/monailabel:latest -f Dockerfile .
       - name: Publish
         run: |
-          echo "${{ secrets.DOCKER_PW }}" | docker login -u projectmonai --password-stdin
+          echo "${{ secrets.DOCKERHUB }}" | docker login -u projectmonai --password-stdin
           docker push projectmonai/monailabel:latest
           docker logout
           docker image prune -f
