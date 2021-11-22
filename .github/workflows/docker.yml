@@ -45,7 +45,7 @@ jobs:
           cd /opt/monailabel
           monailabel apps --download --name deepedit --output apps
           monailabel datasets --download --name Task04_Hippocampus --output datasets
-          monailabel start_server --app apps/deepedit --studies datasets/Task04_Hippocampus/imagesTr --port 8000 &
+          monailabel start_server --app apps/deepedit --studies datasets/Task04_Hippocampus/imagesTr --host 127.0.0.1 --port 8000 &
 
           wait_time=0
           server_is_up=0
@@ -71,6 +71,7 @@ jobs:
           fi
 
           curl -s http://127.0.0.1:8000/info/ | jq
+          kill -9 $(ps -ef | grep monailabel | grep -v grep | awk '{print $2}')
         shell: bash
         env:
           QUICKTEST: True
