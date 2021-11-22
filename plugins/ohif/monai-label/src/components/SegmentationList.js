@@ -376,17 +376,28 @@ export default class SegmentationList extends Component {
     console.debug(selectedIndex);
 
     if (labels) {
-      for (let i = 0; i < labels.length; i++) {
+      let i = 0;
+      for (var label in labels) {
+        if (Array.isArray(labels)) {
+          label = labels[label];
+        }
+
+        if (label === 'background') {
+          console.debug('Ignore Background...');
+          continue;
+        }
+
         const resp = createSegment(
           element,
-          labels[i],
+          label,
           '',
-          getLabelColor(labels[i]),
+          getLabelColor(label),
           i === 0 ? !overlap : false
         );
         if (i === 0) {
           selectedIndex = resp;
         }
+        i++;
 
         if (this.state.selectedSegmentId) {
           this.refreshSegTable();

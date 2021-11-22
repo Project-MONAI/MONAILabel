@@ -721,9 +721,9 @@ class MONAILabelWidget(ScriptedLoadableModuleWidget, VTKObservationMixin):
                 value = str(value.text())
                 v = self.info.get(mapping.get(section, ""), {}).get(name, {}).get("config", {}).get(key, {})
                 if isinstance(v, int):
-                    value = int(value)
+                    value = int(value) if value else 0
                 elif isinstance(v, float):
-                    value = float(value)
+                    value = float(value) if value else 0.0
 
             # print(f"{section} => {name} => {key} => {value}")
 
