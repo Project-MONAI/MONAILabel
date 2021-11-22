@@ -34,62 +34,65 @@ class Main:
             format="[%(asctime)s] [%(process)s] [%(threadName)s] [%(levelname)s] (%(name)s:%(lineno)d) - %(message)s",
         )
 
+    def args_start_server(self, parser):
+        parser.add_argument("-a", "--app", required=True, help="App Directory")
+        parser.add_argument("-s", "--studies", required=True, help="Studies Directory")
+        parser.add_argument("-d", "--debug", action="store_true", help="Enable debug logs")
+
+        # --conf key1 value1 --conf key2 value2
+        parser.add_argument(
+            "-c",
+            "--conf",
+            nargs=2,
+            action="append",
+            help="config for the app.  Example: --conf key1 value1 --conf key2 value2",
+        )
+
+        parser.add_argument("-i", "--host", default="0.0.0.0", type=str, help="Server IP")
+        parser.add_argument("-p", "--port", default=8000, type=int, help="Server Port")
+        parser.add_argument("-l", "--log_config", default=None, type=str, help="Logging config")
+        parser.add_argument("--dryrun", action="store_true", help="Dry run without starting server")
+
+    def args_apps(self, parser):
+        parser.add_argument("-d", "--download", action="store_true", help="download app")
+        parser.add_argument("-n", "--name", help="Name of the sample app to download", default=None)
+        parser.add_argument("-o", "--output", help="Output path to save the app", default=None)
+        parser.add_argument("--prefix", default=None)
+
+    def args_datasets(self, parser):
+        parser.add_argument("-d", "--download", action="store_true", help="download dataset")
+        parser.add_argument("-n", "--name", help="Name of the dataset to download", default=None)
+        parser.add_argument("-o", "--output", help="Output path to save the dataset", default=None)
+        parser.add_argument("--prefix", default=None)
+
+    def args_plugins(self, parser):
+        parser.add_argument("-d", "--download", action="store_true", help="download plugin")
+        parser.add_argument("-n", "--name", help="Name of the plugin to download", default=None)
+        parser.add_argument("-o", "--output", help="Output path to save the plugin", default=None)
+        parser.add_argument("--prefix", default=None)
+
     def args_parser(self):
         parser = argparse.ArgumentParser()
         subparsers = parser.add_subparsers(help="sub-command help")
 
         if "start_server" in self.actions:
             parser_a = subparsers.add_parser("start_server", help="Start Application Server")
-            parser_a.add_argument("-a", "--app", required=True, help="App Directory")
-            parser_a.add_argument("-s", "--studies", required=True, help="Studies Directory")
-            parser_a.add_argument(
-                "-u", "--username", required=False, default=None, help="Username to access DICOMWeb server"
-            )
-            parser_a.add_argument(
-                "-w", "--password", required=False, default=None, help="Password to access DICOMWeb server"
-            )
-            parser_a.add_argument("-W", "--wado_prefix", required=False, default="", help="DICOMWeb WADO URL prefix")
-            parser_a.add_argument("-Q", "--qido_prefix", required=False, default="", help="DICOMWeb QIDO URL prefix")
-            parser_a.add_argument("-S", "--stow_prefix", required=False, default="", help="DICOMWeb STOW URL prefix")
-            parser_a.add_argument("-d", "--debug", action="store_true", help="Enable debug logs")
-
-            # --conf key1 value1 --conf key2 value2
-            parser_a.add_argument(
-                "-c",
-                "--conf",
-                nargs=2,
-                action="append",
-                help="config for the app.  Example: --conf key1 value1 --conf key2 value2",
-            )
-
-            parser_a.add_argument("-i", "--host", default="0.0.0.0", type=str, help="Server IP")
-            parser_a.add_argument("-p", "--port", default=8000, type=int, help="Server Port")
-            parser_a.add_argument("-l", "--log_config", default=None, type=str, help="Logging config")
-            parser_a.add_argument("--dryrun", action="store_true", help="Dry run without starting server")
+            self.args_start_server(parser_a)
             parser_a.set_defaults(action="start_server")
 
         if "apps" in self.actions:
             parser_b = subparsers.add_parser("apps", help="list or download sample apps")
-            parser_b.add_argument("-d", "--download", action="store_true", help="download app")
-            parser_b.add_argument("-n", "--name", help="Name of the sample app to download", default=None)
-            parser_b.add_argument("-o", "--output", help="Output path to save the app", default=None)
-            parser_b.add_argument("--prefix", default=None)
+            self.args_apps(parser_b)
             parser_b.set_defaults(action="apps")
 
         if "datasets" in self.actions:
             parser_c = subparsers.add_parser("datasets", help="list or download sample datasets")
-            parser_c.add_argument("-d", "--download", action="store_true", help="download dataset")
-            parser_c.add_argument("-n", "--name", help="Name of the dataset to download", default=None)
-            parser_c.add_argument("-o", "--output", help="Output path to save the dataset", default=None)
-            parser_c.add_argument("--prefix", default=None)
+            self.args_datasets(parser_c)
             parser_c.set_defaults(action="datasets")
 
         if "plugins" in self.actions:
             parser_d = subparsers.add_parser("plugins", help="list or download viewer plugins")
-            parser_d.add_argument("-d", "--download", action="store_true", help="download plugin")
-            parser_d.add_argument("-n", "--name", help="Name of the plugin to download", default=None)
-            parser_d.add_argument("-o", "--output", help="Output path to save the plugin", default=None)
-            parser_d.add_argument("--prefix", default=None)
+            self.args_plugins(parser_d)
             parser_d.set_defaults(action="plugins")
 
         return parser
@@ -274,12 +277,6 @@ class Main:
         settings.MONAI_LABEL_APP_DIR = args.app
         settings.MONAI_LABEL_STUDIES = args.studies
         settings.MONAI_LABEL_APP_CONF = conf
-
-        settings.MONAI_LABEL_DICOMWEB_USERNAME = args.username
-        settings.MONAI_LABEL_DICOMWEB_PASSWORD = args.password
-        settings.MONAI_LABEL_QIDO_PREFIX = args.qido_prefix
-        settings.MONAI_LABEL_WADO_PREFIX = args.wado_prefix
-        settings.MONAI_LABEL_STOW_PREFIX = args.stow_prefix
 
         dirs = ["model", "lib", "logs", "bin"]
         for d in dirs:
