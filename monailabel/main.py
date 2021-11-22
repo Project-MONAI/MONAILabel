@@ -71,8 +71,8 @@ class Main:
         parser.add_argument("-o", "--output", help="Output path to save the plugin", default=None)
         parser.add_argument("--prefix", default=None)
 
-    def args_parser(self):
-        parser = argparse.ArgumentParser()
+    def args_parser(self, name="monailabel"):
+        parser = argparse.ArgumentParser(name)
         subparsers = parser.add_subparsers(help="sub-command help")
 
         if "start_server" in self.actions:
