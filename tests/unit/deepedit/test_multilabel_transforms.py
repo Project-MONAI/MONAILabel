@@ -17,11 +17,8 @@ from parameterized import parameterized
 from monailabel.deepedit.multilabel.transforms import (
     AddGuidanceSignalCustomd,
     DiscardAddGuidanced,
-    FindDiscrepancyRegionsCustomd,
-    PosNegClickProbAddRandomGuidanceCustomd,
     SelectLabelsAbdomenDatasetd,
     SingleLabelSelectiond,
-    SingleModalityLabelSanityd,
     SplitPredsLabeld,
     ToCheckTransformd,
 )
@@ -263,33 +260,33 @@ class TestToCheckTransformd(unittest.TestCase):
         self.assertEqual(len(result), expected_result)
 
 
-class TestPosNegClickProbAddRandomGuidanceCustomd(unittest.TestCase):
-    @parameterized.expand([PosNegClickProbAddRandomGuidanceCustomd_TEST_CASE])
-    def test_correct_results(self, arguments, input_data, expected_result):
-        seed = 0
-        add_fn = PosNegClickProbAddRandomGuidanceCustomd(keys="NA", **arguments)
-        add_fn.set_random_state(seed)
-        result = add_fn(input_data)
-        self.assertGreaterEqual(len(result[arguments["guidance"]]["spleen"]), expected_result)
-
-
-class TestFindDiscrepancyRegionsCustomd(unittest.TestCase):
-    @parameterized.expand([FindDiscrepancyRegionsCustomd_TEST_CASE])
-    def test_correct_results(self, arguments, input_data, expected_result):
-        add_fn = FindDiscrepancyRegionsCustomd(keys="label", **arguments)
-        result = add_fn(input_data)
-        self.assertEqual(result["discrepancy"]["spleen"][0].shape, expected_result)
-
-
-class TestSingleModalityLabelSanityd(unittest.TestCase):
-    @parameterized.expand([SingleModalityLabelSanityd_TEST_CASE])
-    def test_correct_results(self, input_data, expected_result):
-        add_fn = SingleModalityLabelSanityd(keys="label")
-        result = add_fn(input_data)
-        self.assertEqual(result["label"].shape, expected_result)
-
-
 # # WORK IN PROGRESS
+# class TestPosNegClickProbAddRandomGuidanceCustomd(unittest.TestCase):
+#     @parameterized.expand([PosNegClickProbAddRandomGuidanceCustomd_TEST_CASE])
+#     def test_correct_results(self, arguments, input_data, expected_result):
+#         seed = 0
+#         add_fn = PosNegClickProbAddRandomGuidanceCustomd(keys="NA", **arguments)
+#         add_fn.set_random_state(seed)
+#         result = add_fn(input_data)
+#         self.assertGreaterEqual(len(result[arguments["guidance"]]["spleen"]), expected_result)
+#
+#
+# class TestFindDiscrepancyRegionsCustomd(unittest.TestCase):
+#     @parameterized.expand([FindDiscrepancyRegionsCustomd_TEST_CASE])
+#     def test_correct_results(self, arguments, input_data, expected_result):
+#         add_fn = FindDiscrepancyRegionsCustomd(keys="label", **arguments)
+#         result = add_fn(input_data)
+#         self.assertEqual(result["discrepancy"]["spleen"][0].shape, expected_result)
+#
+#
+# class TestSingleModalityLabelSanityd(unittest.TestCase):
+#     @parameterized.expand([SingleModalityLabelSanityd_TEST_CASE])
+#     def test_correct_results(self, input_data, expected_result):
+#         add_fn = SingleModalityLabelSanityd(keys="label")
+#         result = add_fn(input_data)
+#         self.assertEqual(result["label"].shape, expected_result)
+#
+#
 # class TestAddInitialSeedPointd(unittest.TestCase):
 #     @parameterized.expand([ADD_INITIAL_POINT_TEST_CASE_1])
 #     def test_correct_results(self, arguments, input_data, expected_result):
