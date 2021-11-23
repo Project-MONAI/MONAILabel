@@ -35,8 +35,8 @@ class Main:
         )
 
     def args_start_server(self, parser):
-        parser.add_argument("-a", "--app", required=True, help="App Directory")
-        parser.add_argument("-s", "--studies", required=True, help="Studies Directory")
+        parser.add_argument("-a", "--app", help="App Directory")
+        parser.add_argument("-s", "--studies", help="Studies Directory")
         parser.add_argument("-d", "--debug", action="store_true", help="Enable debug logs")
 
         # --conf key1 value1 --conf key2 value2
@@ -249,6 +249,14 @@ class Main:
         )
 
     def start_server_validate_args(self, args):
+        if not args.app:
+            print(f"APP Directory NOT provided")
+            exit(1)
+
+        if not args.studies:
+            print(f"STUDIES Path/Directory NOT provided")
+            exit(1)
+
         if not os.path.exists(args.app):
             print(f"APP Directory {args.app} NOT Found")
             exit(1)
