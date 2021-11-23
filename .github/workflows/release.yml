@@ -1,12 +1,7 @@
 name: release
-# generating and testing package artifacts from the main branch
+# generating and publishing release package artifacts from the main branch
 
-on:
-  release:
-    types: [ edited, published ]
-    tags-ignore:
-      - data
-  workflow_dispatch:
+on: workflow_dispatch
 
 jobs:
   packaging:
@@ -66,21 +61,21 @@ jobs:
         env:
           shell: bash
 
-      - if: matrix.python-version == '3.8' && startsWith(github.ref, 'refs/tags/')
+      - if: matrix.python-version == '3.8'
         name: Upload artifacts
         uses: actions/upload-artifact@v1
         with:
           name: dist
           path: dist/
 
-      - if: matrix.python-version == '3.8' && startsWith(github.ref, 'refs/tags/')
+      - if: matrix.python-version == '3.8'
         name: Check artifacts
         run: |
           rm dist/monai*.tar.gz
 
-      - if: matrix.python-version == '3.8' && startsWith(github.ref, 'refs/tags/')
-        name: Publish to Test PyPI
+      - if: matrix.python-version == '3.8'
+        name: Publish to PyPI
         uses: pypa/gh-action-pypi-publish@master
         with:
-          password: ${{ secrets.TEST_PYPI_TOKEN }}
-          repository_url: https://test.pypi.org/legacy/
+          user: __token__
+          password: ${{ secrets.PYPI_TOKEN }}
