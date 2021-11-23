@@ -16,7 +16,7 @@ from typing import Dict
 
 from lib import DeepEdit, DeepEditSeg, MyStrategy, MyTrain
 from monai.networks.nets import BasicUNet
-from monai.networks.nets.dynunet_v1 import DynUNet
+from monai.networks.nets.dynunet import DynUNet
 
 from monailabel.interfaces.app import MONAILabelApp
 from monailabel.interfaces.datastore import Datastore
