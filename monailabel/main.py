@@ -250,11 +250,11 @@ class Main:
 
     def start_server_validate_args(self, args):
         if not args.app:
-            print(f"APP Directory NOT provided")
+            print("APP Directory NOT provided")
             exit(1)
 
         if not args.studies:
-            print(f"STUDIES Path/Directory NOT provided")
+            print("STUDIES Path/Directory NOT provided")
             exit(1)
 
         if not os.path.exists(args.app):
