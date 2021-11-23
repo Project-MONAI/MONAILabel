@@ -1,10 +1,5 @@
 __pycache__
 .idea
 .vscode
-**/.gitignore
-**/.git
-**/.github
 
-Makefile
-manage.py
-README.rst
+Dockerfile

@@ -60,16 +60,15 @@ PY_EXE=${MONAILABEL_PY_EXE:-$(which python3)}
 
 function print_usage() {
   echo "runtests.sh [--codeformat] [--autofix] [--isort] [--flake8] [--pytype] [--mypy]"
-  echo "            [--unittests] [--coverage] [--net] [--dryrun] [-j number] [--clean] [--help] [--version]"
+  echo "            [--unittests] [--net] [--dryrun] [-j number] [--clean] [--help] [--version]"
   echo ""
-  echo "MONAILABEL unit testing utilities."
+  echo "MONAILABEL testing utilities."
   echo ""
   echo "Examples:"
-  echo "./runtests.sh -f -u --net --coverage  # run style checks, full tests, print code coverage (${green}recommended for pull requests${noColor})."
-  echo "./runtests.sh -f -u                   # run style checks and unit tests."
-  echo "./runtests.sh -f                      # run coding style and static type checking."
-  echo "./runtests.sh --unittests             # run unit tests, for quick verification during code developments."
+  echo "./runtests.sh --codeformat            # run static checks"
   echo "./runtests.sh --autofix               # run automatic code formatting using \"isort\" and \"black\"."
+  echo "./runtests.sh --unittests             # run unit tests with code coverage"
+  echo "./runtests.sh --net                   # run integration tests (monailabel PIP package should have been installed)"
   echo "./runtests.sh --clean                 # clean up temporary files and run \"${PY_EXE} setup.py develop --uninstall\"."
   echo ""
   echo "Code style check options:"
@@ -85,9 +84,7 @@ function print_usage() {
   echo ""
   echo "MONAILABEL unit testing options:"
   echo "    -u, --unittests   : perform unit testing"
-  echo "    --coverage        : report testing code coverage, to be used with \"--net\", \"--unittests\""
   echo "    --net             : perform integration testing"
-  echo "    --list_tests      : list unit tests and exit"
   echo ""
   echo "Misc. options:"
   echo "    --dryrun          : display the commands to the screen without running"
@@ -118,14 +115,6 @@ function install_deps() {
 }
 
 function clean_py() {
-  # remove coverage history
-  # ${cmdPrefix}${PY_EXE} -m coverage erase
-
-  # uninstall the development package
-  # echo "Uninstalling MONAILABEL development files..."
-  # ${cmdPrefix}${PY_EXE} setup.py develop --user --uninstall
-
-  # remove temporary files (in the directory of this script)
   TO_CLEAN="$(cd "$(dirname "${BASH_SOURCE[0]}")" >/dev/null 2>&1 && pwd)"
   echo "Removing temporary files in ${TO_CLEAN}"
 
@@ -139,6 +128,9 @@ function clean_py() {
   rm -rf htmlcov
   rm -rf coverage.xml
   rm -rf junit
+  rm -rf docs/build/
+  rm -rf docs/source/apidocs/
+  rm -rf test-output.xml
 
   find ${TO_CLEAN} -type f -name "*.py[co]" -delete
   find ${TO_CLEAN} -type f -name "*.so" -delete
@@ -174,20 +166,6 @@ function is_pip_installed() {
   return $(${PY_EXE} -c "import sys, pkgutil; sys.exit(0 if pkgutil.find_loader(sys.argv[1]) else 1)" $1)
 }
 
-function list_unittests() {
-  ${PY_EXE} - <<END
-import unittest
-def print_suite(suite):
-    if hasattr(suite, "__iter__"):
-        for x in suite:
-            print_suite(x)
-    else:
-        print(suite)
-print_suite(unittest.defaultTestLoader.discover('./tests/unit'))
-END
-  exit 0
-}
-
 if [ -z "$1" ]; then
   print_error_msg "Too few arguments to $0"
   print_usage
@@ -197,14 +175,8 @@ fi
 while [[ $# -gt 0 ]]; do
   key="$1"
   case $key in
-  --coverage)
-    doCoverage=true
-    ;;
   --net)
     doNetTests=true
-    ;;
-  --list_tests)
-    list_unittests
     ;;
   --dryrun)
     doDryRun=true
@@ -433,11 +405,6 @@ fi
 cmd="${PY_EXE}"
 
 
-# # download test data if needed
-# if [ ! -d testing_data ] && [ "$doDryRun" != 'true' ]
-# then
-# fi
-
 # unit tests
 if [ $doUnitTests = true ]; then
   echo "${separator}${blue}unittests${noColor}"
@@ -459,7 +426,7 @@ if [ $doNetTests = true ]; then
 
   ${cmdPrefix}${PY_EXE} tests/setup.py
   echo "Starting MONAILabel server..."
-  ./monailabel/scripts/monailabel start_server -a sample-apps/segmentation_left_atrium -s tests/data/dataset/local/heart -p ${MONAILABEL_SERVER_PORT:-8000} &
+  monailabel start_server -a sample-apps/segmentation_left_atrium -s tests/data/dataset/local/heart -p ${MONAILABEL_SERVER_PORT:-8000} &
 
   wait_time=0
   server_is_up=0

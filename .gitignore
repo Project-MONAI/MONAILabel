@@ -152,3 +152,4 @@ docs/source/apidocs
 *.DS_Store
 bin
 junit
+test-output.xml
