@@ -80,14 +80,14 @@ jobs:
           rm dist/monai*.tar.gz
 
       - name: Publish distribution to Test PyPI
-        if: ${{ github.event.inputs.test_py }} == 'true'
+        if: ${{ github.event.inputs.test_py == 'true' }}
         uses: pypa/gh-action-pypi-publish@master
         with:
           password: ${{ secrets.TEST_PYPI_TOKEN }}
           repository_url: https://test.pypi.org/legacy/
 
       - name: Publish distribution to PyPI
-        if: ${{ github.event.inputs.main_py }} == 'true'
+        if: ${{ github.event.inputs.main_py == 'true' }}
         uses: pypa/gh-action-pypi-publish@master
         with:
           password: ${{ secrets.PYPI_TOKEN }}
