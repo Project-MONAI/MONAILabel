@@ -4,7 +4,11 @@ name: release
 on:
   workflow_dispatch:
     inputs:
-      publish_py:
+      test_py:
+        description: 'Publish package to test PY Repository'
+        required: true
+        default: 'true'
+      main_py:
         description: 'Publish package to main PY Repository'
         required: true
         default: 'false'
@@ -13,17 +17,14 @@ jobs:
   packaging:
     if: github.repository == 'Project-MONAI/MONAILabel'
     runs-on: ubuntu-latest
-    strategy:
-      matrix:
-        python-version: [ 3.6, 3.7, 3.8, 3.9 ]
     steps:
       - uses: actions/checkout@v2
         with:
           fetch-depth: 0
-      - name: Set up Python ${{ matrix.python-version }}
+      - name: Set up Python 3.8
         uses: actions/setup-python@v2
         with:
-          python-version: ${{ matrix.python-version }}
+          python-version: 3.8
       - name: Cache for pip
         uses: actions/cache@v2
         id: cache
@@ -69,26 +70,24 @@ jobs:
           shell: bash
 
       - name: Upload artifacts
-        if: matrix.python-version == '3.8'
         uses: actions/upload-artifact@v1
         with:
           name: dist
           path: dist/
 
       - name: Check artifacts
-        if: matrix.python-version == '3.8'
         run: |
           rm dist/monai*.tar.gz
 
       - name: Publish distribution to Test PyPI
-        if: matrix.python-version == '3.8'
+        if: ${{ github.event.inputs.test_py }} == 'true'
         uses: pypa/gh-action-pypi-publish@master
         with:
           password: ${{ secrets.TEST_PYPI_TOKEN }}
           repository_url: https://test.pypi.org/legacy/
 
       - name: Publish distribution to PyPI
-        if: matrix.python-version == '3.8' && ${{ github.event.inputs.publish_py }} == 'true'
+        if: ${{ github.event.inputs.main_py }} == 'true'
         uses: pypa/gh-action-pypi-publish@master
         with:
           password: ${{ secrets.PYPI_TOKEN }}
