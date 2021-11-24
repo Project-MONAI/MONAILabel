@@ -3,6 +3,7 @@ on: workflow_dispatch
 
 jobs:
   docker_build:
+    if: github.repository == 'Project-MONAI/MONAILabel'
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v2

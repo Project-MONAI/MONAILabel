@@ -1,10 +1,17 @@
 name: release
 # generating and publishing release package artifacts from the main branch
 
-on: workflow_dispatch
+on:
+  workflow_dispatch:
+    inputs:
+      publish_py:
+        description: 'Publish package to main PY Repository'
+        required: true
+        default: 'false'
 
 jobs:
   packaging:
+    if: github.repository == 'Project-MONAI/MONAILabel'
     runs-on: ubuntu-latest
     strategy:
       matrix:
@@ -61,21 +68,27 @@ jobs:
         env:
           shell: bash
 
-      - if: matrix.python-version == '3.8'
-        name: Upload artifacts
+      - name: Upload artifacts
+        if: matrix.python-version == '3.8'
         uses: actions/upload-artifact@v1
         with:
           name: dist
           path: dist/
 
-      - if: matrix.python-version == '3.8'
-        name: Check artifacts
+      - name: Check artifacts
+        if: matrix.python-version == '3.8'
         run: |
           rm dist/monai*.tar.gz
 
-      - if: matrix.python-version == '3.8'
-        name: Publish to PyPI
+      - name: Publish distribution to Test PyPI
+        if: matrix.python-version == '3.8'
         uses: pypa/gh-action-pypi-publish@master
         with:
-          user: __token__
+          password: ${{ secrets.TEST_PYPI_TOKEN }}
+          repository_url: https://test.pypi.org/legacy/
+
+      - name: Publish distribution to PyPI
+        if: matrix.python-version == '3.8' && ${{ github.event.inputs.publish_py }} == 'true'
+        uses: pypa/gh-action-pypi-publish@master
+        with:
           password: ${{ secrets.PYPI_TOKEN }}
