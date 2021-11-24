@@ -70,7 +70,7 @@ jobs:
             exit 1
           fi
 
-          curl -s http://127.0.0.1:8000/info/ | jq
+          curl http://127.0.0.1:8000/info/
           kill -9 $(ps -ef | grep monailabel | grep -v grep | awk '{print $2}')
         shell: bash
         env:
