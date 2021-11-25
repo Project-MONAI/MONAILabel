@@ -33,7 +33,6 @@ from monai.transforms import (
     NormalizeIntensityd,
     Resized,
     Spacingd,
-    ToTensor,
 )
 
 from monailabel.interfaces.tasks.infer import InferTask, InferType
@@ -151,9 +150,7 @@ class InferDeepgrowPipeline(InferTask):
         return data
 
     def run_batch(self, run_inferer_method, batched_data, batched_slices, pred):
-        to_tensor = ToTensor()
-
-        bdata = {self.input_key: to_tensor(batched_data)}
+        bdata = {self.input_key: torch.as_tensor(batched_data)}
         outputs = run_inferer_method(bdata, False)
         for i, s in enumerate(batched_slices):
             p = torch.sigmoid(outputs[self.output_label_key][i]).detach().cpu().numpy()
