@@ -139,13 +139,13 @@ class TensorBoardImageHandler:
                 )
             plot_2d_or_3d_image(
                 # add batch dim and plot the first item
-                show_image[None],
-                step,
-                self._writer,
-                0,
-                self.max_channels,
-                self.max_frames,
-                "step_" + str(step) + "_image_" + filename,
+                data=show_image[None],
+                step=step,
+                writer=self._writer,
+                index=0,
+                max_channels=self.max_channels,
+                max_frames=self.max_frames,
+                tag="step_" + str(step) + "_image_" + filename,
             )
 
         """
@@ -162,13 +162,13 @@ class TensorBoardImageHandler:
                 )
             plot_2d_or_3d_image(
                 # add batch dim and plot the first item
-                show_label[None],
-                step,
-                self._writer,
-                0,
-                self.max_channels,
-                self.max_frames,
-                "step_" + str(step) + "_label_" + filename,
+                data=show_label[None],
+                step=step,
+                writer=self._writer,
+                index=0,
+                max_channels=self.max_channels,
+                max_frames=self.max_frames,
+                tag="step_" + str(step) + "_label_" + filename,
             )
 
         """
@@ -187,13 +187,13 @@ class TensorBoardImageHandler:
                     )
                 plot_2d_or_3d_image(
                     # add batch dim and plot the first item
-                    show_prediction[None],
-                    step,
-                    self._writer,
-                    0,
-                    self.max_channels,
-                    self.max_frames,
-                    "step_" + str(step) + f"_prediction_for_label_{str(idx)}_" + filename,
+                    data=show_prediction[None],
+                    step=step,
+                    writer=self._writer,
+                    index=0,
+                    max_channels=self.max_channels,
+                    max_frames=self.max_frames,
+                    tag="step_" + str(step) + f"_prediction_for_label_{str(idx)}_" + filename,
                 )
 
         """
@@ -214,13 +214,13 @@ class TensorBoardImageHandler:
             show_pos_clicks = show_label * (1 - show_pos_clicks)
             plot_2d_or_3d_image(
                 # add batch dim and plot the first item
-                show_pos_clicks[None],
-                step,
-                self._writer,
-                0,
-                self.max_channels,
-                self.max_frames,
-                "step_" + str(step) + "_all_clicks_" + filename,
+                data=show_pos_clicks[None],
+                step=step,
+                writer=self._writer,
+                index=0,
+                max_channels=self.max_channels,
+                max_frames=self.max_frames,
+                tag="step_" + str(step) + "_all_clicks_" + filename,
             )
 
         self._writer.flush()

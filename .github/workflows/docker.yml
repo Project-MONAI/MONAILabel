@@ -1,5 +1,11 @@
 name: docker
-on: workflow_dispatch
+on:
+  workflow_dispatch:
+    inputs:
+      tag:
+        description: 'Tag name to publish'
+        required: true
+        default: 'latest'
 
 jobs:
   docker_build:
@@ -22,18 +28,18 @@ jobs:
           sudo apt-get install docker-ce
       - name: Build
         run: |
-          DOCKER_BUILDKIT=1 docker build -t projectmonai/monailabel:latest -f Dockerfile .
+          DOCKER_BUILDKIT=1 docker build -t projectmonai/monailabel:${{ github.event.inputs.tag }} -f Dockerfile .
       - name: Publish
         run: |
           echo "${{ secrets.DOCKER_PW }}" | docker login -u projectmonai --password-stdin
-          docker push projectmonai/monailabel:latest
+          docker push projectmonai/monailabel:${{ github.event.inputs.tag }}
           docker logout
           docker image prune -f
 
   docker_test_dockerhub:
     needs: docker_build
     container:
-      image: docker://projectmonai/monailabel:latest
+      image: docker://projectmonai/monailabel:${{ github.event.inputs.tag }}
       options: "--shm-size=4g --ipc=host"
     runs-on: ubuntu-latest
     steps:
