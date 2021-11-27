@@ -62,6 +62,14 @@ The milestone versions are currently planned and released every few months.  As 
 codebase is under active development, you may want to install MONAI from GitHub
 for the latest features
 
+From DockerHub
+**************
+To install latest from `DockerHub <https://hub.docker.com/r/projectmonai/monailabel>`_:
+::
+
+    docker run -it --rm --gpus all --ipc=host --net=host -v ~:/workspace/ projectmonai/monailabel:latest bash
+
+
 MONAI Label CLI
 ---------------
 Simple *monailabel* command will help user to download sample apps, datasets and run server.
