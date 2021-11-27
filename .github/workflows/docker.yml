@@ -3,6 +3,7 @@ on: workflow_dispatch
 
 jobs:
   docker_build:
+    if: github.repository == 'Project-MONAI/MONAILabel'
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v2
@@ -24,7 +25,7 @@ jobs:
           DOCKER_BUILDKIT=1 docker build -t projectmonai/monailabel:latest -f Dockerfile .
       - name: Publish
         run: |
-          echo "${{ secrets.DOCKERHUB }}" | docker login -u projectmonai --password-stdin
+          echo "${{ secrets.DOCKER_PW }}" | docker login -u projectmonai --password-stdin
           docker push projectmonai/monailabel:latest
           docker logout
           docker image prune -f
@@ -70,7 +71,7 @@ jobs:
             exit 1
           fi
 
-          curl -s http://127.0.0.1:8000/info/ | jq
+          curl http://127.0.0.1:8000/info/
           kill -9 $(ps -ef | grep monailabel | grep -v grep | awk '{print $2}')
         shell: bash
         env:

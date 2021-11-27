@@ -30,10 +30,9 @@ RUN python -m pip install --upgrade --no-cache-dir pip setuptools wheel twine \
 FROM ${MONAI_IMAGE}
 LABEL maintainer="monai.contact@gmail.com"
 
-COPY --from=build /opt/monailabel/dist/monailabel*.tar.gz /tmp
+COPY --from=build /opt/monailabel/dist/monailabel*.tar.gz /opt/monailabel/dist/
 RUN python -m pip install --upgrade --no-cache-dir pip \
-    && python -m pip install /tmp/monailabel*.tar.gz
-RUN rm -rf /tmp/monailabel*.tar.gz
+    && python -m pip install /opt/monailabel/dist/monailabel*.tar.gz
 
 # Add Orthanc
 RUN if [ "${ORTHANC}" = "true" ] ; then  \
