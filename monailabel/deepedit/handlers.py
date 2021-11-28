@@ -125,9 +125,7 @@ class TensorBoardImageHandler:
 
         input_tensor = self.batch_transform(engine.state.batch)[0]["image"]
 
-        """
-        IMAGE
-        """
+        # IMAGE
         show_image = input_tensor[0, ...][None]
         if isinstance(show_image, torch.Tensor):
             show_image = show_image.detach().cpu().numpy()
@@ -148,9 +146,7 @@ class TensorBoardImageHandler:
                 tag="step_" + str(step) + "_image_" + filename,
             )
 
-        """
-        LABEL
-        """
+        # LABEL
         show_label = self.batch_transform(engine.state.batch)[0]["label"][0, ...][None]
         if isinstance(show_label, torch.Tensor):
             show_label = show_label.detach().cpu().numpy()
@@ -171,9 +167,7 @@ class TensorBoardImageHandler:
                 tag="step_" + str(step) + "_label_" + filename,
             )
 
-        """
-        PREDICTION
-        """
+        # PREDICTION
         all_preds = self.output_transform(engine.state.output)[0]["pred"]
         for idx in range(all_preds.shape[0]):
             show_prediction = all_preds[idx, ...][None]
@@ -196,9 +190,7 @@ class TensorBoardImageHandler:
                     tag="step_" + str(step) + f"_prediction_for_label_{str(idx)}_" + filename,
                 )
 
-        """
-        ALL CLICKS
-        """
+        # ALL CLICKS
         show_pos_clicks = input_tensor[1:, ...][None]
         if isinstance(show_pos_clicks, torch.Tensor):
             show_pos_clicks = show_pos_clicks.detach().cpu().numpy()
