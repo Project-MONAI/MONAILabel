@@ -2,6 +2,32 @@
 What's New
 ==========
 
+0.3.0
+=====
+- Multi GPU support for training
+
+  - Support for both Windows and Ubuntu
+  - Option to customize GPU selection
+- Multi Label support for DeepEdit
+
+  - DynUNET and UNETR
+- Multi Label support for Deepgrow App
+
+  - Annotate multiple organs (spleen, liver, pancreas, unknown etc..)
+  - Train Deepgrow 2D/3D models to learn on existing + new labels submitted
+- 3D Slicer plugin
+
+  - Multi Label Interaction
+  - UI Enhancements
+  - Train/Update specific model
+- Performance Improvements
+
+  - Dataset (Cached, Persistence, SmartCache)
+  - ThreadDataloader
+  - Early Stopping
+- Strategy Improvements to support Multi User environment 
+- Extensibility for Server APIs
+
 0.2.0
 =====
 
