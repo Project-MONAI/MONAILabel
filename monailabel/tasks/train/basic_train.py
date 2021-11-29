@@ -83,12 +83,12 @@ class Context:
 
 
 class BasicTrainTask(TrainTask):
-    TRAIN_KEY_METRIC = "train_dice"
-    VAL_KEY_METRIC = "val_mean_dice"
-
     """
     This provides Basic Train Task to train a model using SupervisedTrainer and SupervisedEvaluator from MONAI
     """
+
+    TRAIN_KEY_METRIC = "train_dice"
+    VAL_KEY_METRIC = "val_mean_dice"
 
     def __init__(
         self,
