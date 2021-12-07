@@ -274,7 +274,7 @@ def main():
         "name": args.output,
         "device": "cuda",
         "model": "deepedit_train",
-        "dataset": args.dataset,
+        # "dataset": args.dataset,
         "max_epochs": args.epoch,
         "amp": False,
         "lr": args.lr,
@@ -296,7 +296,7 @@ def main():
     #     "background": [[50, 201, 100], [51, 210, 100], [94, 201, 100]],
     # }
     # app.infer(deepgrow_3d)
-    #
+
     # # PERFORMING INFERENCE USING AUTOMATIC MODEL
     # automatic_request = {
     #     "model": "deepedit_seg",

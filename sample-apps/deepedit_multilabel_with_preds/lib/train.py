@@ -36,7 +36,7 @@ from monailabel.deepedit.multilabel.interaction import Interaction
 from monailabel.deepedit.multilabel.transforms import SplitPredsLabeld
 from monailabel.tasks.train.basic_train import BasicTrainTask, Context
 
-from .transforms import (
+from .transforms import (  # ToCheckTransformd,
     AddGuidanceSignalCustomd,
     AddInitialSeedPointCustomd,
     AddRandomGuidanceCustomd,
