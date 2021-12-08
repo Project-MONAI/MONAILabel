@@ -53,7 +53,7 @@ To install the [current release](https://pypi.org/project/monailabel/), you can 
 For **_prerequisites_**, other installation methods (using the default GitHub branch, using Docker, etc.), please refer
 to the [installation guide](https://docs.monai.io/projects/label/en/latest/installation.html).
 
-> Once you start the MONAI Label Server, by default server will be up and serving at http://127.0.0.1:8000/. Open the serving URL in browser. It will provide you the list of Rest APIs available.
+> Once you start the MONAI Label Server, by default server will be up and serving at http://127.0.0.1:8000/. Open the serving URL in browser. It will provide you the list of Rest APIs available. **For this, please make sure you use the HTTP protocol. HTTPS is not implemented.**
 
 ### 3D Slicer
 
