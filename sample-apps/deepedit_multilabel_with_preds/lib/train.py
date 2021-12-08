@@ -36,8 +36,8 @@ from monailabel.deepedit.multilabel.interaction import Interaction
 from monailabel.deepedit.multilabel.transforms import SplitPredsLabeld
 from monailabel.tasks.train.basic_train import BasicTrainTask, Context
 
-from .transforms import (  # ToCheckTransformd,
-    AddGuidanceSignalCustomd,
+from .transforms import (
+    AddGuidanceSignalAndPredsd,
     AddInitialSeedPointCustomd,
     AddRandomGuidanceCustomd,
     FindAllValidSlicesCustomd,
@@ -94,7 +94,7 @@ class MyTrain(BasicTrainTask):
                 discrepancy="discrepancy",
                 probability="probability",
             ),
-            AddGuidanceSignalCustomd(keys="image", guidance="guidance"),
+            AddGuidanceSignalAndPredsd(keys="image", guidance="guidance"),
             #
             ToTensord(keys=("image", "label")),
         ]
@@ -143,7 +143,7 @@ class MyTrain(BasicTrainTask):
             # Transforms for click simulation
             FindAllValidSlicesCustomd(keys="label", sids="sids"),
             AddInitialSeedPointCustomd(keys="label", guidance="guidance", sids="sids"),
-            AddGuidanceSignalCustomd(keys="image", guidance="guidance"),
+            AddGuidanceSignalAndPredsd(keys="image", guidance="guidance"),
             #
             ToTensord(keys=("image", "label")),
         ]
@@ -181,7 +181,7 @@ class MyTrain(BasicTrainTask):
             # Transforms for click simulation
             FindAllValidSlicesCustomd(keys="label", sids="sids"),
             AddInitialSeedPointCustomd(keys="label", guidance="guidance", sids="sids"),
-            AddGuidanceSignalCustomd(keys="image", guidance="guidance"),
+            AddGuidanceSignalAndPredsd(keys="image", guidance="guidance"),
             #
             ToTensord(keys=("image", "label")),
         ]

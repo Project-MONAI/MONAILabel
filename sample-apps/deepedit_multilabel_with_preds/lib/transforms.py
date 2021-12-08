@@ -355,6 +355,115 @@ class AddGuidanceSignalCustomd(MapTransform):
         return d
 
 
+class AddGuidanceSignalAndPredsd(MapTransform):
+    """
+    Add Guidance signal and predictions for input image
+
+    Based on the "guidance" points, apply gaussian to them and add them as new channel for input image.
+    This also adds the predictions to the Input tensor
+
+    Args:
+        image: key to the image source.
+        guidance: key to store guidance.
+        sigma: standard deviation for Gaussian kernel.
+        number_intensity_ch: channel index.
+    """
+
+    def __init__(
+        self,
+        keys: KeysCollection,
+        guidance: str = "guidance",
+        sigma: int = 3,
+        number_intensity_ch: int = 1,
+        allow_missing_keys: bool = False,
+    ):
+        super().__init__(keys, allow_missing_keys)
+        self.guidance = guidance
+        self.sigma = sigma
+        self.number_intensity_ch = number_intensity_ch
+
+    def _get_signal(self, image, guidance):
+        dimensions = 3 if len(image.shape) > 3 else 2
+        guidance = guidance.tolist() if isinstance(guidance, np.ndarray) else guidance
+        guidance = json.loads(guidance) if isinstance(guidance, str) else guidance
+
+        # In inference the user may not provide clicks for some channels/labels
+        if len(guidance):
+            if dimensions == 3:
+                # Assume channel is first and depth is last CHWD
+                signal = np.zeros((1, image.shape[-3], image.shape[-2], image.shape[-1]), dtype=np.float32)
+            else:
+                signal = np.zeros((1, image.shape[-2], image.shape[-1]), dtype=np.float32)
+
+            sshape = signal.shape
+            for point in guidance:
+                if np.any(np.asarray(point) < 0):
+                    continue
+
+                if dimensions == 3:
+                    # Making sure points fall inside the image dimension
+                    p1 = max(0, min(int(point[-3]), sshape[-3] - 1))
+                    p2 = max(0, min(int(point[-2]), sshape[-2] - 1))
+                    p3 = max(0, min(int(point[-1]), sshape[-1] - 1))
+                    signal[:, p1, p2, p3] = 1.0
+                else:
+                    p1 = max(0, min(int(point[-2]), sshape[-2] - 1))
+                    p2 = max(0, min(int(point[-1]), sshape[-1] - 1))
+                    signal[:, p1, p2] = 1.0
+
+            # Apply a Gaussian filter to the signal
+            if np.max(signal[0]) > 0:
+                signal_tensor = torch.tensor(signal[0])
+                pt_gaussian = GaussianFilter(len(signal_tensor.shape), sigma=self.sigma)
+                signal_tensor = pt_gaussian(signal_tensor.unsqueeze(0).unsqueeze(0))
+                signal_tensor = signal_tensor.squeeze(0).squeeze(0)
+                signal[0] = signal_tensor.detach().cpu().numpy()
+                signal[0] = (signal[0] - np.min(signal[0])) / (np.max(signal[0]) - np.min(signal[0]))
+            return signal
+        else:
+            if dimensions == 3:
+                signal = np.zeros((1, image.shape[-3], image.shape[-2], image.shape[-1]), dtype=np.float32)
+            else:
+                signal = np.zeros((1, image.shape[-2], image.shape[-1]), dtype=np.float32)
+            return signal
+
+    def _get_pred(self, d, key_label):
+        # This applies when doing internal loop
+        if "pred" in d:
+            # Taking one prediction for each label
+            tmp_pred = d["pred"]
+            if key_label != "background":
+                tmp_pred[tmp_pred != d["label_names"][key_label]] = 0
+                tmp_pred[tmp_pred > 0] = 1
+            else:
+                tmp_pred[tmp_pred > 0] = 1
+            return tmp_pred
+        # This is when there is no predictions
+        else:
+            tmp_pred = np.ones(
+                (1, d["image"].shape[-3], d["image"].shape[-2], d["image"].shape[-1]), dtype=np.float32
+            ) * (1 / len(d["label_names"]))
+            return tmp_pred
+
+    def __call__(self, data: Mapping[Hashable, np.ndarray]) -> Dict[Hashable, np.ndarray]:
+        d: Dict = dict(data)
+        for key in self.key_iterator(d):
+            if key == "image":
+                image = d[key]
+                tmp_image = image[0 : 0 + self.number_intensity_ch, ...]
+                guidance = d[self.guidance]
+                for key_label in guidance.keys():
+                    # Getting signal based on guidance
+                    signal = self._get_signal(image, guidance[key_label])
+                    label_pred = self._get_pred(d, key_label)
+                    tmp_image = np.concatenate([tmp_image, label_pred, signal], axis=0)
+                d[key] = tmp_image
+                return d
+            else:
+                print("This transform only applies to image key")
+        return d
+
+
 class FindDiscrepancyRegionsCustomd(MapTransform):
     """
     Find discrepancy between prediction and actual during click interactions during training.
@@ -625,6 +734,47 @@ class DiscardAddGuidanced(MapTransform):
         return d
 
 
+class AddGuidanceAndPredsd(MapTransform):
+    def __init__(
+        self,
+        keys: KeysCollection,
+        number_intensity_ch: int = 1,
+        label_names=None,
+        allow_missing_keys: bool = False,
+    ):
+        """
+        Add points
+
+        :param keys: The ``keys`` parameter will be used to get and set the actual data item to transform
+        :param number_intensity_ch: number of intensity channels
+        """
+        super().__init__(keys, allow_missing_keys)
+
+        self.number_intensity_ch = number_intensity_ch
+        self.label_names = label_names
+
+    def _apply(self, d):
+        image = d["image"]
+        click_signal = np.zeros((1, image.shape[-3], image.shape[-2], image.shape[-1]), dtype=np.float32)
+        pred_signal = np.ones((1, image.shape[-3], image.shape[-2], image.shape[-1]), dtype=np.float32) * (
+            1 / len(self.label_names)
+        )
+
+        tmp_image = image[0, ...][None]
+        for _ in self.label_names.keys():
+            tmp_image = np.concatenate([tmp_image, pred_signal, click_signal], axis=0)
+        return tmp_image
+
+    def __call__(self, data: Mapping[Hashable, np.ndarray]) -> Dict[Hashable, np.ndarray]:
+        d: Dict = dict(data)
+        for key in self.key_iterator(d):
+            if key == "image":
+                d[key] = self._apply(d)
+            else:
+                print("This transform only applies to the image")
+        return d
+
+
 class AddGuidanceFromPointsCustomd(Transform):
     """
     Add guidance based on user clicks. ONLY WORKS FOR 3D
@@ -689,6 +839,8 @@ class AddGuidanceFromPointsCustomd(Transform):
             clicks = list(np.array(clicks).astype(int))
             all_guidances[key_label] = self._apply(clicks, factor)
         d[self.guidance] = all_guidances
+        # Adding label_names key in d if it doesn't exist
+        d["label_names"] = self.label_names if "label_names" not in d else d["label_names"]
         return d
 
 

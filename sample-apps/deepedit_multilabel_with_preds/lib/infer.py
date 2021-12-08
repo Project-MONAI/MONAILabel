@@ -27,9 +27,9 @@ from monailabel.interfaces.tasks.infer import InferTask, InferType
 from monailabel.transform.post import Restored
 
 from .transforms import (
+    AddGuidanceAndPredsd,
     AddGuidanceFromPointsCustomd,
-    AddGuidanceSignalCustomd,
-    DiscardAddGuidanced,
+    AddGuidanceSignalAndPredsd,
     ResizeGuidanceMultipleLabelCustomd,
 )
 
@@ -83,7 +83,7 @@ class DeepEditSeg(InferTask):
                 clip=True,
             ),
             Resized(keys="image", spatial_size=self.spatial_size, mode="area"),
-            DiscardAddGuidanced(keys="image", label_names=self.label_names),
+            AddGuidanceAndPredsd(keys="image", label_names=self.label_names),
             ToTensord(keys="image"),
         ]
 
@@ -152,7 +152,7 @@ class DeepEdit(InferTask):
             AddGuidanceFromPointsCustomd(ref_image="image", guidance="guidance", label_names=self.label_names),
             Resized(keys="image", spatial_size=self.spatial_size, mode="area"),
             ResizeGuidanceMultipleLabelCustomd(guidance="guidance", ref_image="image"),
-            AddGuidanceSignalCustomd(keys="image", guidance="guidance"),
+            AddGuidanceSignalAndPredsd(keys="image", guidance="guidance"),
             ToTensord(keys="image"),
         ]
 

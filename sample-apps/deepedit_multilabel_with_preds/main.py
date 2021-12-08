@@ -62,7 +62,7 @@ class MyApp(MONAILabelApp):
         if network == "unetr":
             network_params = {
                 "spatial_dims": 3,
-                "in_channels": len(self.label_names) + 1,  # All labels plus Image
+                "in_channels": len(self.label_names) * 2 + 1,  # All labels times 2 plus Image
                 "out_channels": len(self.label_names),  # All labels including background
                 "img_size": spatial_size,
                 "feature_size": 64,
@@ -80,7 +80,7 @@ class MyApp(MONAILabelApp):
         else:
             network_params = {
                 "spatial_dims": 3,
-                "in_channels": len(self.label_names) + 1,  # All labels plus Image
+                "in_channels": len(self.label_names) * 2 + 1,  # All labels times 2 plus Image
                 "out_channels": len(self.label_names),  # All labels including background
                 "kernel_size": [
                     [3, 3, 3],
@@ -296,7 +296,7 @@ def main():
     #     "background": [[50, 201, 100], [51, 210, 100], [94, 201, 100]],
     # }
     # app.infer(deepgrow_3d)
-
+    #
     # # PERFORMING INFERENCE USING AUTOMATIC MODEL
     # automatic_request = {
     #     "model": "deepedit_seg",
