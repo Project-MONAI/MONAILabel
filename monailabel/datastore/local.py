@@ -583,7 +583,7 @@ class LocalDatastore(Datastore):
                 name = self._filename(label_id, label_ext)
                 label_info = {
                     "ts": int(time.time()),
-                    "checksum": file_checksum(os.path.join(self._datastore.image_path(), name)),
+                    "checksum": file_checksum(os.path.join(self._datastore.label_path(), name)),
                     "name": name,
                 }
 
