@@ -1202,10 +1202,10 @@ class MONAILabelWidget(ScriptedLoadableModuleWidget, VTKObservationMixin):
         try:
             qt.QApplication.setOverrideCursor(qt.Qt.WaitCursor)
             segmentationNode = self._segmentNode
-            labelmapVolumeNode = slicer.mrmlScene.AddNewNodeByClass("vtkMRMLLabelMapVolumeNode")
-            slicer.modules.segmentations.logic().ExportVisibleSegmentsToLabelmapNode(
-                segmentationNode, labelmapVolumeNode, self._volumeNode
-            )
+            #labelmapVolumeNode = slicer.mrmlScene.AddNewNodeByClass("vtkMRMLLabelMapVolumeNode")
+            #slicer.modules.segmentations.logic().ExportVisibleSegmentsToLabelmapNode(
+                #segmentationNode, labelmapVolumeNode, self._volumeNode
+            #)
 
             segmentation = segmentationNode.GetSegmentation()
             totalSegments = segmentation.GetNumberOfSegments()
@@ -1225,7 +1225,8 @@ class MONAILabelWidget(ScriptedLoadableModuleWidget, VTKObservationMixin):
             label_in = tempfile.NamedTemporaryFile(suffix=self.file_ext, dir=self.tmpdir).name
             self.reportProgress(5)
 
-            slicer.util.saveNode(labelmapVolumeNode, label_in)
+            #slicer.util.saveNode(labelmapVolumeNode, label_in)
+            slicer.util.saveNode(segmentationNode, label_in)
             self.reportProgress(30)
 
             self.updateServerSettings()
