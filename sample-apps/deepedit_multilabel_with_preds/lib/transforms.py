@@ -374,11 +374,13 @@ class AddGuidanceSignalAndPredsd(MapTransform):
         keys: KeysCollection,
         guidance: str = "guidance",
         sigma: int = 3,
+        step: str = "main_loop",
         number_intensity_ch: int = 1,
         allow_missing_keys: bool = False,
     ):
         super().__init__(keys, allow_missing_keys)
         self.guidance = guidance
+        self.step = step
         self.sigma = sigma
         self.number_intensity_ch = number_intensity_ch
 
@@ -431,12 +433,13 @@ class AddGuidanceSignalAndPredsd(MapTransform):
         # This applies when doing internal loop
         if "pred" in d:
             # Taking one prediction for each label
-            tmp_pred = d["pred"]
+            tmp_pred = np.copy(d["pred"])
             if key_label != "background":
-                tmp_pred[tmp_pred != d["label_names"][key_label]] = 0
-                tmp_pred[tmp_pred > 0] = 1
+                tmp_pred[tmp_pred != d["label_names"][key_label]] = 0.0
+                tmp_pred[tmp_pred > 0.0] = 1.0
             else:
-                tmp_pred[tmp_pred > 0] = 1
+                tmp_pred[tmp_pred > 0.0] = 1.0
+                tmp_pred = 1.0 - tmp_pred
             return tmp_pred
         # This is when there is no predictions
         else:
@@ -449,6 +452,7 @@ class AddGuidanceSignalAndPredsd(MapTransform):
         d: Dict = dict(data)
         for key in self.key_iterator(d):
             if key == "image":
+                logger.info(f"AddGuidanceSignalAndPredsd - Running {self.step}")
                 image = d[key]
                 tmp_image = image[0 : 0 + self.number_intensity_ch, ...]
                 guidance = d[self.guidance]
@@ -550,18 +554,19 @@ class AddRandomGuidanceCustomd(Randomizable, MapTransform):
         keys: KeysCollection,
         guidance: str = "guidance",
         discrepancy: str = "discrepancy",
-        probability: str = "probability",
+        # probability: str = "probability",
         allow_missing_keys: bool = False,
     ):
         super().__init__(keys, allow_missing_keys)
         self.guidance = guidance
         self.discrepancy = discrepancy
-        self.probability = probability
-        self._will_interact = None
+        # self.probability = probability
+        # self._will_interact = None
 
-    def randomize(self, data=None):
-        probability = data[self.probability]
-        self._will_interact = self.R.choice([True, False], p=[probability, 1.0 - probability])
+    # def randomize(self, data=None):
+    #     probability = data[self.probability]
+    #     logger.info(f'AddRandomGuidanceCustomd - Probability:: {probability}')
+    #     self._will_interact = self.R.choice([True, False], p=[probability, 1.0 - probability])
 
     def find_guidance(self, discrepancy):
         distance = distance_transform_cdt(discrepancy).flatten()
@@ -621,44 +626,44 @@ class AddRandomGuidanceCustomd(Randomizable, MapTransform):
         d: Dict = dict(data)
         guidance = d[self.guidance]
         discrepancy = d[self.discrepancy]
-        self.randomize(data)
-        if self._will_interact:
-            # Convert all guidance to lists so new guidance can be easily appended
-            self.tmp_guidance = dict()
-            for key_label in d["label_names"].keys():
-                tmp_gui = guidance[key_label]
-                tmp_gui = tmp_gui.tolist() if isinstance(tmp_gui, np.ndarray) else tmp_gui
-                tmp_gui = json.loads(tmp_gui) if isinstance(tmp_gui, str) else tmp_gui
-                self.tmp_guidance[key_label] = [j for j in tmp_gui if -1 not in j]
+        # self.randomize(data)
+        # if self._will_interact:
+        # Convert all guidance to lists so new guidance can be easily appended
+        self.tmp_guidance = dict()
+        for key_label in d["label_names"].keys():
+            tmp_gui = guidance[key_label]
+            tmp_gui = tmp_gui.tolist() if isinstance(tmp_gui, np.ndarray) else tmp_gui
+            tmp_gui = json.loads(tmp_gui) if isinstance(tmp_gui, str) else tmp_gui
+            self.tmp_guidance[key_label] = [j for j in tmp_gui if -1 not in j]
 
-            # Add guidance according to discrepancy
-            for key_label in d["label_names"].keys():
-                # Add guidance based on discrepancy
-                self.add_guidance(self.tmp_guidance[key_label], discrepancy[key_label], d["label_names"], d["label"])
+        # Add guidance according to discrepancy
+        for key_label in d["label_names"].keys():
+            # Add guidance based on discrepancy
+            self.add_guidance(self.tmp_guidance[key_label], discrepancy[key_label], d["label_names"], d["label"])
 
-            # Checking the number of clicks
-            num_clicks = random.randint(1, 10)
-            logger.info(f"Number of simulated clicks: {num_clicks}")
-            counter = 0
-            keep_guidance = []
-            while True:
-                aux_label = random.choice(list(d["label_names"].keys()))
-                if aux_label in keep_guidance:
-                    pass
-                else:
-                    keep_guidance.append(aux_label)
-                    counter = counter + len(self.tmp_guidance[aux_label])
-                    # If number of collected clicks is bigger than max clicks, discard the difference
-                    if counter >= num_clicks:
-                        for key_label in d["label_names"].keys():
-                            if key_label not in keep_guidance:
-                                self.tmp_guidance[key_label] = []
-                        break
+        # Checking the number of clicks
+        num_clicks = random.randint(1, 10)
+        logger.info(f"Number of simulated clicks: {num_clicks}")
+        counter = 0
+        keep_guidance = []
+        while True:
+            aux_label = random.choice(list(d["label_names"].keys()))
+            if aux_label in keep_guidance:
+                pass
+            else:
+                keep_guidance.append(aux_label)
+                counter = counter + len(self.tmp_guidance[aux_label])
+                # If number of collected clicks is bigger than max clicks, discard the difference
+                if counter >= num_clicks:
+                    for key_label in d["label_names"].keys():
+                        if key_label not in keep_guidance:
+                            self.tmp_guidance[key_label] = []
+                    break
 
-            # Convert tmp_guidance back to json
-            for key_label in d["label_names"].keys():
-                d[self.guidance][key_label] = json.dumps(np.asarray(self.tmp_guidance[key_label]).astype(int).tolist())
-            #
+        # Convert tmp_guidance back to json
+        for key_label in d["label_names"].keys():
+            d[self.guidance][key_label] = json.dumps(np.asarray(self.tmp_guidance[key_label]).astype(int).tolist())
+        #
 
         return d
 

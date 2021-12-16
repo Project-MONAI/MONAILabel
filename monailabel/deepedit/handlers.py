@@ -216,23 +216,25 @@ class TensorBoardImageHandler:
             )
 
         # Preds and Clicks
-        show_pred_and_clicks = input_tensor[1:, ...][None]
+        show_pred_and_clicks = input_tensor[1:, ...]
         if isinstance(show_pred_and_clicks, torch.Tensor):
             show_pred_and_clicks = show_pred_and_clicks.detach().cpu().numpy()
             # Printing labels
-            for j in range(1, show_pred_and_clicks.shape[1], 2):
-                # Adding preds and clicks in single tensor
-                tmp_tensor = np.sum(show_pred_and_clicks[:, j : j + 2, ...], axis=1)
-                plot_2d_or_3d_image(
-                    # add batch dim and plot the first item
-                    data=tmp_tensor[None],
-                    step=step,
-                    writer=self._writer,
-                    index=0,
-                    max_channels=self.max_channels,
-                    max_frames=self.max_frames,
-                    tag="step_" + str(step) + f"_pred_and_clicks_label_{j-1}" + filename,
-                )
+            for j in range(0, show_pred_and_clicks.shape[0] - 1, 2):
+                # Only plot the ones that have clicks
+                if show_pred_and_clicks[j + 1, ...].max() > 0.5:
+                    # Adding preds and clicks in single tensor
+                    tmp_tensor = np.sum(show_pred_and_clicks[j : j + 2, ...], axis=0)[None]
+                    plot_2d_or_3d_image(
+                        # add batch dim and plot the first item
+                        data=tmp_tensor[None],
+                        step=step,
+                        writer=self._writer,
+                        index=0,
+                        max_channels=self.max_channels,
+                        max_frames=self.max_frames,
+                        tag="step_" + str(step) + f"_pred_and_clicks_label_{j}" + filename,
+                    )
 
         self._writer.flush()
 

@@ -261,7 +261,7 @@ def main():
 
     # conf is Dict[str, str]
     conf = {
-        "use_pretrained_model": "false",
+        "use_pretrained_model": "true",
         "auto_update_scoring": "false",
         "heuristic_planner": "false",
         "tta_enabled": "false",

@@ -32,10 +32,10 @@ from monai.transforms import (
 )
 
 from monailabel.deepedit.handlers import TensorBoardImageHandler
-from monailabel.deepedit.multilabel.interaction import Interaction
 from monailabel.deepedit.multilabel.transforms import SplitPredsLabeld
 from monailabel.tasks.train.basic_train import BasicTrainTask, Context
 
+from .interaction import Interaction
 from .transforms import (
     AddGuidanceSignalAndPredsd,
     AddInitialSeedPointCustomd,
@@ -92,9 +92,9 @@ class MyTrain(BasicTrainTask):
                 keys="NA",
                 guidance="guidance",
                 discrepancy="discrepancy",
-                probability="probability",
+                # probability="probability",
             ),
-            AddGuidanceSignalAndPredsd(keys="image", guidance="guidance"),
+            AddGuidanceSignalAndPredsd(keys="image", guidance="guidance", step="sim_click"),
             #
             ToTensord(keys=("image", "label")),
         ]
@@ -193,7 +193,7 @@ class MyTrain(BasicTrainTask):
         return Interaction(
             deepgrow_probability=self.deepgrow_probability_train,
             transforms=self.get_click_transforms(context),
-            click_probability_key="probability",
+            # click_probability_key="probability",
             train=True,
             label_names=self.label_names,
         )
@@ -202,7 +202,7 @@ class MyTrain(BasicTrainTask):
         return Interaction(
             deepgrow_probability=self.deepgrow_probability_val,
             transforms=self.get_click_transforms(context),
-            click_probability_key="probability",
+            # click_probability_key="probability",
             train=False,
             label_names=self.label_names,
         )
