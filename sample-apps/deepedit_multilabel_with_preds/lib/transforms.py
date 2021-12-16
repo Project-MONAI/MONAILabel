@@ -430,7 +430,13 @@ class AddGuidanceSignalAndPredsd(MapTransform):
             return signal
 
     def _get_pred(self, d, key_label):
-        # This applies when doing internal loop
+
+        # Same probability for all pixels
+        uniform_pred = np.ones(
+            (1, d["image"].shape[-3], d["image"].shape[-2], d["image"].shape[-1]), dtype=np.float32
+        ) * (1 / len(d["label_names"]))
+
+        # This applies when doing training internal loop
         if "pred" in d:
             # Taking one prediction for each label
             tmp_pred = np.copy(d["pred"])
@@ -441,12 +447,25 @@ class AddGuidanceSignalAndPredsd(MapTransform):
                 tmp_pred[tmp_pred > 0.0] = 1.0
                 tmp_pred = 1.0 - tmp_pred
             return tmp_pred
-        # This is when there is no predictions
-        else:
-            tmp_pred = np.ones(
-                (1, d["image"].shape[-3], d["image"].shape[-2], d["image"].shape[-1]), dtype=np.float32
-            ) * (1 / len(d["label_names"]))
+
+        # For DeepGrow inference - when there is UI_label
+        elif "UI_label" in d:
+            # Taking one prediction for each label
+            tmp_pred = np.copy(d["UI_label"])
+            if key_label != "background":
+                tmp_pred[tmp_pred != d["label_names"][key_label]] = 0.0
+                tmp_pred[tmp_pred > 0.0] = 1.0
+                # In case there is no label
+                tmp_pred = tmp_pred if tmp_pred.max() > 0 else uniform_pred
+            else:
+                tmp_pred[tmp_pred > 0.0] = 1.0
+                tmp_pred = 1.0 - tmp_pred
+                tmp_pred = tmp_pred if tmp_pred.max() > 0 else uniform_pred
             return tmp_pred
+
+        # This is when there is no predictions in training or no labels in inference
+        else:
+            return uniform_pred
 
     def __call__(self, data: Mapping[Hashable, np.ndarray]) -> Dict[Hashable, np.ndarray]:
         d: Dict = dict(data)
