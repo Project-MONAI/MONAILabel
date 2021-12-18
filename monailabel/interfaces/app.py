@@ -214,8 +214,8 @@ class MONAILabelApp:
             request["save_label"] = False
         else:
             request["image"] = datastore.get_image_uri(request["image"])
-            if "UI_label" in request:
-                request["UI_label"] = datastore.get_label_uri("img0030", "original")
+            if "UI_preds" in request:
+                request["UI_preds"] = datastore.get_label_uri(request["UI_preds"], "original")
 
         # TODO:: BUG In MONAI? Currently can not load DICOM through ITK Loader
         if os.path.isdir(request["image"]):

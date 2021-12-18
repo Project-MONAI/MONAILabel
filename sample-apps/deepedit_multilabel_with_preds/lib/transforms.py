@@ -448,10 +448,10 @@ class AddGuidanceSignalAndPredsd(MapTransform):
                 tmp_pred = 1.0 - tmp_pred
             return tmp_pred
 
-        # For DeepGrow inference - when there is UI_label
-        elif "UI_label" in d:
+        # For DeepGrow inference - when there is UI_preds
+        elif "UI_preds" in d and self.step == "deepgrow_infer":
             # Taking one prediction for each label
-            tmp_pred = np.copy(d["UI_label"])
+            tmp_pred = np.copy(d["UI_preds"])
             if key_label != "background":
                 tmp_pred[tmp_pred != d["label_names"][key_label]] = 0.0
                 tmp_pred[tmp_pred > 0.0] = 1.0

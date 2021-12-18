@@ -1388,7 +1388,7 @@ class MONAILabelWidget(ScriptedLoadableModuleWidget, VTKObservationMixin):
             print(f"Request Params for Deepgrow/Deepedit: {params}")
 
             image_file = self.current_sample["id"]
-            params["UI_label"] = image_file  # PLACEHOLDER TO SEND PREDICTIONS TO MULTILABEL DEEPEDIT
+            params["UI_preds"] = image_file  # PLACEHOLDER TO SEND PREDICTIONS TO MULTILABEL DEEPEDIT
             result_file, params = self.logic.infer(model, image_file, params, session_id=self.getSessionId())
             print(f"Result Params for Deepgrow/Deepedit: {params}")
             if labels is None:
