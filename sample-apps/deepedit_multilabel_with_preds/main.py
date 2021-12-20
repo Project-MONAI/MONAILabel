@@ -48,6 +48,8 @@ class MyApp(MONAILabelApp):
             "stomach": 7,
             "aorta": 8,
             "inferior vena cava": 9,
+            "portal vein and splenic vein": 10,
+            "pancreas": 11,
             "background": 0,
         }
 
@@ -274,7 +276,7 @@ def main():
         "name": args.output,
         "device": "cuda",
         "model": "deepedit_train",
-        # "dataset": args.dataset,
+        "dataset": args.dataset,
         "max_epochs": args.epoch,
         "amp": False,
         "lr": args.lr,
