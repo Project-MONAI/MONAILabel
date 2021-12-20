@@ -565,7 +565,6 @@ class AddRandomGuidanceCustomd(Randomizable, MapTransform):
     Args:
         guidance: key to guidance source, shape (2, N, # of dim)
         discrepancy: key to discrepancy map between label and prediction shape (2, C, H, W, D) or (2, C, H, W)
-        probability: key to click/interaction probability, shape (1)
     """
 
     def __init__(
@@ -573,19 +572,11 @@ class AddRandomGuidanceCustomd(Randomizable, MapTransform):
         keys: KeysCollection,
         guidance: str = "guidance",
         discrepancy: str = "discrepancy",
-        # probability: str = "probability",
         allow_missing_keys: bool = False,
     ):
         super().__init__(keys, allow_missing_keys)
         self.guidance = guidance
         self.discrepancy = discrepancy
-        # self.probability = probability
-        # self._will_interact = None
-
-    # def randomize(self, data=None):
-    #     probability = data[self.probability]
-    #     logger.info(f'AddRandomGuidanceCustomd - Probability:: {probability}')
-    #     self._will_interact = self.R.choice([True, False], p=[probability, 1.0 - probability])
 
     def find_guidance(self, discrepancy):
         distance = distance_transform_cdt(discrepancy).flatten()
@@ -645,8 +636,7 @@ class AddRandomGuidanceCustomd(Randomizable, MapTransform):
         d: Dict = dict(data)
         guidance = d[self.guidance]
         discrepancy = d[self.discrepancy]
-        # self.randomize(data)
-        # if self._will_interact:
+
         # Convert all guidance to lists so new guidance can be easily appended
         self.tmp_guidance = dict()
         for key_label in d["label_names"].keys():
@@ -711,51 +701,6 @@ class ToCheckTransformd(MapTransform):
 INFER TRANSFORMS
 
 """
-
-
-class DiscardAddGuidanced(MapTransform):
-    def __init__(
-        self,
-        keys: KeysCollection,
-        number_intensity_ch: int = 1,
-        probability: float = 1.0,
-        label_names=None,
-        allow_missing_keys: bool = False,
-    ):
-        """
-        Discard positive and negative points according to discard probability
-
-        :param keys: The ``keys`` parameter will be used to get and set the actual data item to transform
-        :param number_intensity_ch: number of intensity channels
-        :param probability: probability of discarding clicks
-        """
-        super().__init__(keys, allow_missing_keys)
-
-        self.number_intensity_ch = number_intensity_ch
-        self.discard_probability = probability
-        self.label_names = label_names
-
-    def _apply(self, image):
-        if self.discard_probability >= 1.0 or np.random.choice(
-            [True, False], p=[self.discard_probability, 1 - self.discard_probability]
-        ):
-            signal = np.zeros(
-                (len(self.label_names), image.shape[-3], image.shape[-2], image.shape[-1]), dtype=np.float32
-            )
-            if image.shape[0] == self.number_intensity_ch + len(self.label_names):
-                image[self.number_intensity_ch :, ...] = signal
-            else:
-                image = np.concatenate([image, signal], axis=0)
-        return image
-
-    def __call__(self, data: Mapping[Hashable, np.ndarray]) -> Dict[Hashable, np.ndarray]:
-        d: Dict = dict(data)
-        for key in self.key_iterator(d):
-            if key == "image":
-                d[key] = self._apply(d[key])
-            else:
-                print("This transform only applies to the image")
-        return d
 
 
 class AddGuidanceAndPredsd(MapTransform):

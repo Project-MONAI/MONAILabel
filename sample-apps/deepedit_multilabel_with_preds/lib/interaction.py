@@ -29,7 +29,6 @@ class Interaction:
         transforms: execute additional transformation during every iteration (before train).
             Typically, several Tensor based transforms composed by `Compose`.
         train: True for training mode or False for evaluation mode
-        click_probability_key: key to click/interaction probability
         label_names: Dict of label names
     """
 
@@ -39,7 +38,6 @@ class Interaction:
         transforms: Union[Sequence[Callable], Callable],
         train: bool,
         label_names: Dict[str, int],
-        # click_probability_key: str = "probability",
     ) -> None:
 
         if not isinstance(transforms, Compose):
@@ -49,7 +47,6 @@ class Interaction:
         self.transforms = transforms
         self.train = train
         self.label_names = label_names
-        # self.click_probability_key = click_probability_key
 
     def __call__(self, engine: Union[SupervisedTrainer, SupervisedEvaluator], batchdata: Dict[str, torch.Tensor]):
 
@@ -77,7 +74,6 @@ class Interaction:
             batchdata_list = decollate_batch(batchdata, detach=True)
 
             for i in range(len(batchdata_list)):
-                # batchdata_list[i][self.click_probability_key] = 1.0
                 batchdata_list[i] = self.transforms(batchdata_list[i])
 
             batchdata = list_data_collate(batchdata_list)

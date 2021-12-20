@@ -246,7 +246,7 @@ def main():
     parser.add_argument(
         "-s",
         "--studies",
-        default="/home/adp20local/Documents/Datasets/monailabel_datasets/multilabel_abdomen/NIFTI_REORIENTED/test2",
+        default="/home/adp20local/Documents/Datasets/monailabel_datasets/multilabel_abdomen/NIFTI/train",
     )
     parser.add_argument("-e", "--epoch", type=int, default=600)
     parser.add_argument("-l", "--lr", default=0.0001)
@@ -274,12 +274,12 @@ def main():
         "name": args.output,
         "device": "cuda",
         "model": "deepedit_train",
-        "dataset": args.dataset,
+        # "dataset": args.dataset,
         "max_epochs": args.epoch,
         "amp": False,
         "lr": args.lr,
     }
-    # app.train(request=request)
+    app.train(request=request)
 
     # # PERFORMING INFERENCE USING AUTOMATIC MODEL
     # automatic_request = {
@@ -290,22 +290,22 @@ def main():
     # }
     # app.infer(automatic_request)
 
-    # PERFORMING INFERENCE USING INTERACTIVE MODEL
-    deepgrow_3d = {
-        "model": "deepedit",
-        "image": f"{studies}/img0030.nii.gz",
-        "UI_label": f"{studies}/labels/original/img0030.nii.gz",
-        "result_extension": ".nii.gz",
-        "spleen": [[61, 106, 54], [65, 106, 54]],
-        "right kidney": [],  # [[61, 106, 54], [65, 106, 54]],
-        "left kidney": [],  # [[61, 106, 54], [65, 106, 54]],
-        "liver": [],  # [[61, 106, 54], [65, 106, 54]],
-        "stomach": [],
-        "aorta": [],
-        "inferior vena cava": [],
-        "background": [[50, 201, 100], [51, 210, 100], [94, 201, 100]],
-    }
-    app.infer(deepgrow_3d)
+    # # PERFORMING INFERENCE USING INTERACTIVE MODEL
+    # deepgrow_3d = {
+    #     "model": "deepedit",
+    #     "image": f"{studies}/img0030.nii.gz",
+    #     "UI_label": f"{studies}/labels/original/img0030.nii.gz",
+    #     "result_extension": ".nii.gz",
+    #     "spleen": [[61, 106, 54], [65, 106, 54]],
+    #     "right kidney": [],  # [[61, 106, 54], [65, 106, 54]],
+    #     "left kidney": [],  # [[61, 106, 54], [65, 106, 54]],
+    #     "liver": [],  # [[61, 106, 54], [65, 106, 54]],
+    #     "stomach": [],
+    #     "aorta": [],
+    #     "inferior vena cava": [],
+    #     "background": [[50, 201, 100], [51, 210, 100], [94, 201, 100]],
+    # }
+    # app.infer(deepgrow_3d)
 
     return None
 

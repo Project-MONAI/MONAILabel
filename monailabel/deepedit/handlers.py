@@ -226,7 +226,6 @@ class TensorBoardImageHandler:
                     # Adding preds and clicks in single tensor
                     tmp_tensor = np.sum(show_pred_and_clicks[j : j + 2, ...], axis=0)[None]
                     plot_2d_or_3d_image(
-                        # add batch dim and plot the first item
                         data=tmp_tensor[None],
                         step=step,
                         writer=self._writer,
