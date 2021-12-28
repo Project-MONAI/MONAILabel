@@ -124,6 +124,17 @@ class _ui_MONAILabelSettingsPanel(object):
             "valueAsInt",
             str(qt.SIGNAL("valueAsIntChanged(int)")),
         )
+        
+        autOpenSegmentEditorCheckBox = qt.QCheckBox()
+        autOpenSegmentEditorCheckBox.checked = False
+        autOpenSegmentEditorCheckBox.toolTip = "Enable this option to automatically open segment editor after Next Sample was fetched"
+        groupLayout.addRow("Auto-Open Segment Editor:", autOpenSegmentEditorCheckBox)
+        parent.registerProperty(
+            "MONAILabel/autoOpenSegmentEditor",
+            ctk.ctkBooleanMapper(autOpenSegmentEditorCheckBox, "checked", str(qt.SIGNAL("toggled(bool)"))),
+            "valueAsInt",
+            str(qt.SIGNAL("valueAsIntChanged(int)")),
+        )
 
         developerModeCheckBox = qt.QCheckBox()
         developerModeCheckBox.checked = False
@@ -1123,6 +1134,10 @@ class MONAILabelWidget(ScriptedLoadableModuleWidget, VTKObservationMixin):
                         self.ui.segmentationModelSelector.currentText = name
                         self.onClickSegmentation()
                         return
+                    
+        # Check if user wants to automatically open segment editor after next sample was fetched
+        if slicer.util.settingsValue("MONAILabel/autoOpenSegmentEditor", False, converter=slicer.util.toBool):
+            slicer.util.selectModule("SegmentEditor")  
 
     def getPermissionForImageDataUpload(self):
         return slicer.util.confirmOkCancelDisplay(
