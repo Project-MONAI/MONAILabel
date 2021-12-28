@@ -914,7 +914,8 @@ class MONAILabelWidget(ScriptedLoadableModuleWidget, VTKObservationMixin):
             self.info = info
             if self.info.get("config"):
                 slicer.util.errorDisplay(
-                    "Please upgrade the monai server to latest version", detailedText=traceback.format_exc(),
+                    "Please upgrade the monai server to latest version",
+                    detailedText=traceback.format_exc(),
                 )
                 return
         except:
@@ -993,7 +994,9 @@ class MONAILabelWidget(ScriptedLoadableModuleWidget, VTKObservationMixin):
 
         if status:
             msg = "ID: {}\nStatus: {}\nStart Time: {}\n".format(
-                status.get("id"), status.get("status"), status.get("start_ts"),
+                status.get("id"),
+                status.get("status"),
+                status.get("start_ts"),
             )
             # slicer.util.infoDisplay(msg, detailedText=json.dumps(status, indent=2))
             logging.info(msg)
