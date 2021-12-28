@@ -124,18 +124,7 @@ class _ui_MONAILabelSettingsPanel(object):
             "valueAsInt",
             str(qt.SIGNAL("valueAsIntChanged(int)")),
         )
-        
-        autoOpenSegmentEditorCheckBox = qt.QCheckBox()
-        autoOpenSegmentEditorCheckBox.checked = False
-        autoOpenSegmentEditorCheckBox.toolTip = "Enable this option to automatically open segment editor after Next Sample was fetched"
-        groupLayout.addRow("Auto-Open Segment Editor:", autoOpenSegmentEditorCheckBox)
-        parent.registerProperty(
-            "MONAILabel/autoOpenSegmentEditor",
-            ctk.ctkBooleanMapper(autoOpenSegmentEditorCheckBox, "checked", str(qt.SIGNAL("toggled(bool)"))),
-            "valueAsInt",
-            str(qt.SIGNAL("valueAsIntChanged(int)")),
-        )
-        
+
         developerModeCheckBox = qt.QCheckBox()
         developerModeCheckBox.checked = False
         developerModeCheckBox.toolTip = "Enable this option to find options tab etc..."
@@ -912,8 +901,7 @@ class MONAILabelWidget(ScriptedLoadableModuleWidget, VTKObservationMixin):
             self.info = info
             if self.info.get("config"):
                 slicer.util.errorDisplay(
-                    "Please upgrade the monai server to latest version",
-                    detailedText=traceback.format_exc(),
+                    "Please upgrade the monai server to latest version", detailedText=traceback.format_exc(),
                 )
                 return
         except:
@@ -992,9 +980,7 @@ class MONAILabelWidget(ScriptedLoadableModuleWidget, VTKObservationMixin):
 
         if status:
             msg = "ID: {}\nStatus: {}\nStart Time: {}\n".format(
-                status.get("id"),
-                status.get("status"),
-                status.get("start_ts"),
+                status.get("id"), status.get("status"), status.get("start_ts"),
             )
             # slicer.util.infoDisplay(msg, detailedText=json.dumps(status, indent=2))
             logging.info(msg)
@@ -1134,11 +1120,7 @@ class MONAILabelWidget(ScriptedLoadableModuleWidget, VTKObservationMixin):
                         self.ui.segmentationModelSelector.currentText = name
                         self.onClickSegmentation()
                         return
-        
-        # Check if user wants to automatically open segment editor after next sample was fetched
-        if slicer.util.settingsValue("MONAILabel/autoOpenSegmentEditor", False, converter=slicer.util.toBool):
-            slicer.util.selectModule("SegmentEditor")  
-    
+
     def getPermissionForImageDataUpload(self):
         return slicer.util.confirmOkCancelDisplay(
             "Master volume - without any additional patient information -"
@@ -1217,10 +1199,10 @@ class MONAILabelWidget(ScriptedLoadableModuleWidget, VTKObservationMixin):
         try:
             qt.QApplication.setOverrideCursor(qt.Qt.WaitCursor)
             segmentationNode = self._segmentNode
-            labelmapVolumeNode = slicer.mrmlScene.AddNewNodeByClass("vtkMRMLLabelMapVolumeNode")
-            slicer.modules.segmentations.logic().ExportVisibleSegmentsToLabelmapNode(
-                segmentationNode, labelmapVolumeNode, self._volumeNode
-            )
+            # labelmapVolumeNode = slicer.mrmlScene.AddNewNodeByClass("vtkMRMLLabelMapVolumeNode")
+            # slicer.modules.segmentations.logic().ExportVisibleSegmentsToLabelmapNode(
+            # segmentationNode, labelmapVolumeNode, self._volumeNode
+            # )
 
             segmentation = segmentationNode.GetSegmentation()
             totalSegments = segmentation.GetNumberOfSegments()
@@ -1240,7 +1222,8 @@ class MONAILabelWidget(ScriptedLoadableModuleWidget, VTKObservationMixin):
             label_in = tempfile.NamedTemporaryFile(suffix=self.file_ext, dir=self.tmpdir).name
             self.reportProgress(5)
 
-            slicer.util.saveNode(labelmapVolumeNode, label_in)
+            # slicer.util.saveNode(labelmapVolumeNode, label_in)
+            slicer.util.saveNode(segmentationNode, label_in)
             self.reportProgress(30)
 
             self.updateServerSettings()
