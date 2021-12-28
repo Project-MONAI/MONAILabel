@@ -125,13 +125,13 @@ class _ui_MONAILabelSettingsPanel(object):
             str(qt.SIGNAL("valueAsIntChanged(int)")),
         )
         
-        autOpenSegmentEditorCheckBox = qt.QCheckBox()
-        autOpenSegmentEditorCheckBox.checked = False
-        autOpenSegmentEditorCheckBox.toolTip = "Enable this option to automatically open segment editor after Next Sample was fetched"
-        groupLayout.addRow("Auto-Open Segment Editor:", autOpenSegmentEditorCheckBox)
+        autoOpenSegmentEditorCheckBox = qt.QCheckBox()
+        autoOpenSegmentEditorCheckBox.checked = False
+        autoOpenSegmentEditorCheckBox.toolTip = "Enable this option to automatically open segment editor after Next Sample was fetched"
+        groupLayout.addRow("Auto-Open Segment Editor:", autoOpenSegmentEditorCheckBox)
         parent.registerProperty(
             "MONAILabel/autoOpenSegmentEditor",
-            ctk.ctkBooleanMapper(autOpenSegmentEditorCheckBox, "checked", str(qt.SIGNAL("toggled(bool)"))),
+            ctk.ctkBooleanMapper(autoOpenSegmentEditorCheckBox, "checked", str(qt.SIGNAL("toggled(bool)"))),
             "valueAsInt",
             str(qt.SIGNAL("valueAsIntChanged(int)")),
         )
