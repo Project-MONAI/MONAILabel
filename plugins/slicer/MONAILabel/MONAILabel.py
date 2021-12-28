@@ -413,7 +413,7 @@ class MONAILabelWidget(ScriptedLoadableModuleWidget, VTKObservationMixin):
         self.ui.inputSelector.clear()
         for v in self._volumeNodes:
             self.ui.inputSelector.addItem(v.GetName())
-            self.ui.inputSelector.setToolTip(self.current_sample['name'])
+            self.ui.inputSelector.setToolTip(self.current_sample["name"])
         if self._volumeNode:
             self.ui.inputSelector.setCurrentIndex(self.ui.inputSelector.findText(self._volumeNode.GetName()))
         self.ui.inputSelector.setEnabled(False)  # Allow only one active scene
