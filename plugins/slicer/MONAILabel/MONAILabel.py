@@ -135,7 +135,7 @@ class _ui_MONAILabelSettingsPanel(object):
             "valueAsInt",
             str(qt.SIGNAL("valueAsIntChanged(int)")),
         )
-
+        
         developerModeCheckBox = qt.QCheckBox()
         developerModeCheckBox.checked = False
         developerModeCheckBox.toolTip = "Enable this option to find options tab etc..."
@@ -1134,11 +1134,11 @@ class MONAILabelWidget(ScriptedLoadableModuleWidget, VTKObservationMixin):
                         self.ui.segmentationModelSelector.currentText = name
                         self.onClickSegmentation()
                         return
-                    
+        
         # Check if user wants to automatically open segment editor after next sample was fetched
         if slicer.util.settingsValue("MONAILabel/autoOpenSegmentEditor", False, converter=slicer.util.toBool):
             slicer.util.selectModule("SegmentEditor")  
-
+    
     def getPermissionForImageDataUpload(self):
         return slicer.util.confirmOkCancelDisplay(
             "Master volume - without any additional patient information -"
