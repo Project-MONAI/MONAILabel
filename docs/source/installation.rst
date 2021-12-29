@@ -156,6 +156,15 @@ MONAI Label comes with `pre-built plugin <https://github.com/Project-MONAI/MONAI
   monailabel start_server --app apps\deepedit --studies http://127.0.0.1:8042/dicom-web
 
 
+If you have authentication set for dicom-web then you can pass the credentials using environment `variables <https://github.com/Project-MONAI/MONAILabel/blob/main/monailabel/config.py>`_ while running the server.
+
+::
+
+  export MONAI_LABEL_DICOMWEB_USERNAME=xyz
+  export MONAI_LABEL_DICOMWEB_PASSWORD=abc
+  monailabel start_server --app apps\deepedit --studies http://127.0.0.1:8042/dicom-web
+
+
 .. note::
 
     Please install `Orthanc <https://www.orthanc-server.com/download.php>`_ before using OHIF Viewer.
