@@ -106,6 +106,7 @@ class BasicTrainTask(TrainTask):
         key_metric_filename="model.pt",
         model_dict_key="model",
         find_unused_parameters=False,
+        load_strict=False,
     ):
         """
         :param model_dir: Base Model Dir to save the model checkpoints, events etc...
@@ -122,6 +123,7 @@ class BasicTrainTask(TrainTask):
         :param key_metric_filename: best key metric model file name
         :param model_dict_key: key to save network weights into checkpoint
         :param find_unused_parameters: Applicable for DDP/Multi GPU training
+        :param load_strict: Load pretrained model in strict mode
         """
         super().__init__(description)
 
@@ -155,6 +157,7 @@ class BasicTrainTask(TrainTask):
         self._key_metric_filename = key_metric_filename
         self._model_dict_key = model_dict_key
         self._find_unused_parameters = find_unused_parameters
+        self._load_strict = load_strict
 
     @abstractmethod
     def network(self, context: Context):
@@ -555,7 +558,9 @@ class BasicTrainTask(TrainTask):
 
             load_dict = {self._model_dict_key: context.network} if self._load_dict is None else self._load_dict
             map_location = {"cuda:0": "cuda:{}".format(context.device.index)} if context.multi_gpu else None
-            train_handlers.append(CheckpointLoader(load_path, load_dict, map_location=map_location))
+            train_handlers.append(
+                CheckpointLoader(load_path, load_dict, map_location=map_location, strict=self._load_strict)
+            )
 
 
 def main_worker(rank, world_size, request, datastore: Datastore, task: BasicTrainTask):
