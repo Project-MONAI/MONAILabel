@@ -10,7 +10,7 @@ jobs:
     if: github.repository == 'Project-MONAI/MONAILabel'
     runs-on: ubuntu-latest
     env:
-      DEV_RELEASE_VERSION: 0.3
+      DEV_RELEASE_VERSION: 0.4
     steps:
       - uses: actions/checkout@v2
         with:
@@ -76,5 +76,4 @@ jobs:
       - name: Publish to PyPI
         uses: pypa/gh-action-pypi-publish@master
         with:
-          user: __token__
-          password: ${{ secrets.PYPI_TOKEN }}
+          password: ${{ secrets.PYPI_WEEKLY_TOKEN }}
