@@ -4,10 +4,8 @@ Installation
 
 Prerequisites
 ---------------
-MONAI Label supports both Ubuntu and Windows OS with GPU/CUDA enabled.
+MONAI Label supports both **Ubuntu** and **Windows** OS with GPU/CUDA enabled.
 
-Windows
-********
 Make sure you have python 3.x version environment with PyTorch and CUDA installed.
 
 - Install `Python <https://www.python.org/downloads/>`_
