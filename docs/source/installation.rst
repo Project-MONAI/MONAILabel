@@ -4,7 +4,7 @@ Installation
 
 Prerequisites
 ---------------
-MONAI Label supports following OS with GPU/CUDA enabled.
+MONAI Label supports both Ubuntu and Windows OS with GPU/CUDA enabled.
 
 Windows
 ********
