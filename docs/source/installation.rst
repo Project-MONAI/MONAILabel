@@ -4,10 +4,8 @@ Installation
 
 Prerequisites
 ---------------
-MONAI Label supports both Ubuntu and Windows OS with GPU/CUDA enabled.
+MONAI Label supports both **Ubuntu** and **Windows** OS with GPU/CUDA enabled.
 
-Windows
-********
 Make sure you have python 3.x version environment with PyTorch and CUDA installed.
 
 - Install `Python <https://www.python.org/downloads/>`_
@@ -97,7 +95,7 @@ Starting Server
 You can start server using *monailabel* CLI
 ::
 
-  monailabel start_server --app apps\deepedit --studies datasets\Task09_Spleen\imagesTr
+  monailabel start_server --app apps/deepedit --studies datasets/Task09_Spleen/imagesTr
 
 
 .. note::
@@ -117,14 +115,14 @@ Deploying MONAI Label server for production use is out of project scope.  Howeve
 ::
 
   # dryrun the MONAI Label CLI for pre-init and dump the env variables to .env or env.bat
-  monailabel start_server --app apps\deepedit --studies datasets\Task09_Spleen\imagesTr --host 0.0.0.0 --port 8000 --dryrun
+  monailabel start_server --app apps/deepedit --studies datasets/Task09_Spleen/imagesTr --host 0.0.0.0 --port 8000 --dryrun
 
   # Linux/Ubuntu
   source .env
   uvicorn monailabel.app:app \
     --host 0.0.0.0 \
     --port 8000 \
-    --log-config apps\deepedit\logs\logging.json \
+    --log-config apps/deepedit/logs/logging.json \
     --no-access-log
 
 
@@ -155,7 +153,16 @@ MONAI Label comes with `pre-built plugin <https://github.com/Project-MONAI/MONAI
 
 ::
 
-  monailabel start_server --app apps\deepedit --studies http://127.0.0.1:8042/dicom-web
+  monailabel start_server --app apps/deepedit --studies http://127.0.0.1:8042/dicom-web
+
+
+If you have authentication set for dicom-web then you can pass the credentials using environment `variables <https://github.com/Project-MONAI/MONAILabel/blob/main/monailabel/config.py>`_ while running the server.
+
+::
+
+  export MONAI_LABEL_DICOMWEB_USERNAME=xyz
+  export MONAI_LABEL_DICOMWEB_PASSWORD=abc
+  monailabel start_server --app apps/deepedit --studies http://127.0.0.1:8042/dicom-web
 
 
 .. note::
