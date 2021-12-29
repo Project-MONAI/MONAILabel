@@ -23,7 +23,6 @@ LABEL maintainer="monai.contact@gmail.com"
 ADD . /opt/monailabel/
 RUN apt update -y && apt install npm -y && npm install --global yarn
 RUN python -m pip install --upgrade --no-cache-dir pip setuptools wheel twine \
-    && export BUILD_OHIF=true \
     && cd /opt/monailabel \
     && python setup.py sdist
 
