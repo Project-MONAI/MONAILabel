@@ -426,7 +426,6 @@ class MONAILabelWidget(ScriptedLoadableModuleWidget, VTKObservationMixin):
         self.ui.inputSelector.clear()
         for v in self._volumeNodes:
             self.ui.inputSelector.addItem(v.GetName())
-            # for truncated long filenames show tooltip
             self.ui.inputSelector.setToolTip(self.current_sample.get("name", "") if self.current_sample else "")
         if self._volumeNode:
             self.ui.inputSelector.setCurrentIndex(self.ui.inputSelector.findText(self._volumeNode.GetName()))
