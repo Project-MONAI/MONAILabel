@@ -301,6 +301,11 @@ class MONAILabelWidget(ScriptedLoadableModuleWidget, VTKObservationMixin):
         self.ui.scribblesCollapsibleButton.setEnabled(False)
         self.ui.scribblesCollapsibleButton.collapsed = True
 
+        # embedded segment editor
+        self.ui.embeddedSegmentEditorWidget.setMRMLScene(slicer.mrmlScene)
+        self.ui.embeddedSegmentEditorWidget.setSegmentationNodeSelectorVisible(False)
+        self.ui.embeddedSegmentEditorWidget.setMasterVolumeNodeSelectorVisible(False)
+
         self.initializeParameterNode()
         self.updateServerUrlGUIFromSettings()
         # self.onClickFetchInfo()
@@ -558,6 +563,8 @@ class MONAILabelWidget(ScriptedLoadableModuleWidget, VTKObservationMixin):
 
         self.ui.dgUpdateCheckBox.setEnabled(self.ui.deepgrowModelSelector.currentText and self._segmentNode)
         self.ui.dgUpdateButton.setEnabled(self.ui.deepgrowModelSelector.currentText and self._segmentNode)
+
+        self.ui.embeddedSegmentEditorWidget.setMRMLSegmentEditorNode(slicer.mrmlScene.GetFirstNodeByClass("vtkMRMLSegmentEditorNode"))
 
         # All the GUI updates are done
         self._updatingGUIFromParameterNode = False

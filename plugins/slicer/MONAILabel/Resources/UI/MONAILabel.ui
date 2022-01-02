@@ -7,7 +7,7 @@
     <x>0</x>
     <y>0</y>
     <width>448</width>
-    <height>867</height>
+    <height>1055</height>
    </rect>
   </property>
   <property name="minimumSize">
@@ -152,7 +152,7 @@
          <bool>true</bool>
         </attribute>
         <attribute name="verticalHeaderDefaultSectionSize">
-         <number>20</number>
+         <number>21</number>
         </attribute>
         <column/>
         <column/>
@@ -280,6 +280,28 @@
       </item>
       <item row="3" column="0" colspan="2">
        <widget class="QComboBox" name="strategyBox"/>
+      </item>
+     </layout>
+    </widget>
+   </item>
+   <item>
+    <widget class="ctkCollapsibleButton" name="seCollapsibleButton">
+     <property name="text">
+      <string>Segment Editor</string>
+     </property>
+     <property name="collapsed">
+      <bool>true</bool>
+     </property>
+     <layout class="QVBoxLayout" name="verticalLayout_2">
+      <item>
+       <widget class="qMRMLSegmentEditorWidget" name="embeddedSegmentEditorWidget">
+        <property name="autoShowMasterVolumeNode">
+         <bool>true</bool>
+        </property>
+        <property name="maximumNumberOfUndoStates">
+         <number>10</number>
+        </property>
+       </widget>
       </item>
      </layout>
     </widget>
@@ -720,6 +742,11 @@
    <class>qSlicerMarkupsPlaceWidget</class>
    <extends>qSlicerWidget</extends>
    <header>qSlicerMarkupsPlaceWidget.h</header>
+  </customwidget>
+  <customwidget>
+   <class>qMRMLSegmentEditorWidget</class>
+   <extends>qMRMLWidget</extends>
+   <header>qMRMLSegmentEditorWidget.h</header>
   </customwidget>
  </customwidgets>
  <resources/>
