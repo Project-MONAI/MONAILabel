@@ -67,6 +67,7 @@ class InferTask:
         output_label_key="pred",
         output_json_key="result",
         config=None,
+        load_strict=False,
     ):
         """
         :param path: Model File Path. Supports multiple paths to support versions (Last item will be picked as latest)
@@ -79,6 +80,7 @@ class InferTask:
         :param output_label_key: Output key for storing result/label of inference
         :param output_json_key: Output key for storing result/label of inference
         :param config: K,V pairs to be part of user config
+        :param load_strict: Load model in strict mode
         """
         self.path = path
         self.network = network
@@ -90,6 +92,7 @@ class InferTask:
         self.input_key = input_key
         self.output_label_key = output_label_key
         self.output_json_key = output_json_key
+        self.load_strict = load_strict
 
         self._networks: Dict = {}
         self._config = {
@@ -316,7 +319,7 @@ class InferTask:
                 if path:
                     checkpoint = torch.load(path)
                     model_state_dict = checkpoint.get(self.model_state_dict, checkpoint)
-                    network.load_state_dict(model_state_dict)
+                    network.load_state_dict(model_state_dict, strict=self.load_strict)
             else:
                 network = torch.jit.load(path)
 
