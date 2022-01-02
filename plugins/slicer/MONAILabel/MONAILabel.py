@@ -551,7 +551,9 @@ class MONAILabelWidget(ScriptedLoadableModuleWidget, VTKObservationMixin):
         self.ui.dgUpdateCheckBox.setEnabled(self.ui.deepgrowModelSelector.currentText and self._segmentNode)
         self.ui.dgUpdateButton.setEnabled(self.ui.deepgrowModelSelector.currentText and self._segmentNode)
 
-        self.ui.embeddedSegmentEditorWidget.setMRMLSegmentEditorNode(slicer.mrmlScene.GetFirstNodeByClass("vtkMRMLSegmentEditorNode"))
+        self.ui.embeddedSegmentEditorWidget.setMRMLSegmentEditorNode(
+            slicer.mrmlScene.GetFirstNodeByClass("vtkMRMLSegmentEditorNode")
+        )
 
         # All the GUI updates are done
         self._updatingGUIFromParameterNode = False
