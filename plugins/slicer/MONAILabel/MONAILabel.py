@@ -138,6 +138,17 @@ class _ui_MONAILabelSettingsPanel(object):
             str(qt.SIGNAL("valueAsIntChanged(int)")),
         )
 
+        askForUserNameCheckBox = qt.QCheckBox()
+        askForUserNameCheckBox.checked = False
+        askForUserNameCheckBox.toolTip = "Enable this option to ask for the user name every time the MONAILabel extension is loaded for the first time"
+        groupLayout.addRow("Ask For User Name:", askForUserNameCheckBox)
+        parent.registerProperty(
+            "MONAILabel/askForUserName",
+            ctk.ctkBooleanMapper(askForUserNameCheckBox, "checked", str(qt.SIGNAL("toggled(bool)"))),
+            "valueAsInt",
+            str(qt.SIGNAL("valueAsIntChanged(int)")),
+        )
+
         developerModeCheckBox = qt.QCheckBox()
         developerModeCheckBox.checked = False
         developerModeCheckBox.toolTip = "Enable this option to find options tab etc..."
@@ -304,6 +315,18 @@ class MONAILabelWidget(ScriptedLoadableModuleWidget, VTKObservationMixin):
         self.initializeParameterNode()
         self.updateServerUrlGUIFromSettings()
         # self.onClickFetchInfo()
+
+        if slicer.util.settingsValue("MONAILabel/askForUserName", None):
+            text = qt.QInputDialog().getText(
+                self.parent,
+                "User Name",
+                "Please enter your name:",
+                qt.QLineEdit.Normal,
+                slicer.util.settingsValue("MONAILabel/clientId", None),
+            )
+            if text:
+                settings = qt.QSettings()
+                settings.setValue("MONAILabel/clientId", text)
 
     def cleanup(self):
         self.removeObservers()
