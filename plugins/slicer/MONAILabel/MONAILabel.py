@@ -136,6 +136,17 @@ class _ui_MONAILabelSettingsPanel(object):
             str(qt.SIGNAL("valueAsIntChanged(int)")),
         )
 
+        askForUserNameCheckBox = qt.QCheckBox()
+        askForUserNameCheckBox.checked = False
+        askForUserNameCheckBox.toolTip = "Enable this option to ask for the user name every time the MONAILabel extension is loaded for the first time"
+        groupLayout.addRow("Ask For User Name:", askForUserNameCheckBox)
+        parent.registerProperty(
+            "MONAILabel/askForUserName",
+            ctk.ctkBooleanMapper(askForUserNameCheckBox, "checked", str(qt.SIGNAL("toggled(bool)"))),
+            "valueAsInt",
+            str(qt.SIGNAL("valueAsIntChanged(int)")),
+        )
+
         developerModeCheckBox = qt.QCheckBox()
         developerModeCheckBox.checked = False
         developerModeCheckBox.toolTip = "Enable this option to find options tab etc..."
