@@ -125,19 +125,6 @@ class _ui_MONAILabelSettingsPanel(object):
             str(qt.SIGNAL("valueAsIntChanged(int)")),
         )
 
-        autoOpenSegmentEditorCheckBox = qt.QCheckBox()
-        autoOpenSegmentEditorCheckBox.checked = False
-        autoOpenSegmentEditorCheckBox.toolTip = (
-            "Enable this option to automatically open segment editor after Next Sample was fetched"
-        )
-        groupLayout.addRow("Auto-Open Segment Editor:", autoOpenSegmentEditorCheckBox)
-        parent.registerProperty(
-            "MONAILabel/autoOpenSegmentEditor",
-            ctk.ctkBooleanMapper(autoOpenSegmentEditorCheckBox, "checked", str(qt.SIGNAL("toggled(bool)"))),
-            "valueAsInt",
-            str(qt.SIGNAL("valueAsIntChanged(int)")),
-        )
-
         askForUserNameCheckBox = qt.QCheckBox()
         askForUserNameCheckBox.checked = False
         askForUserNameCheckBox.toolTip = "Enable this option to ask for the user name every time the MONAILabel extension is loaded for the first time"
@@ -329,11 +316,16 @@ class MONAILabelWidget(ScriptedLoadableModuleWidget, VTKObservationMixin):
         self.ui.scribblesCollapsibleButton.setEnabled(False)
         self.ui.scribblesCollapsibleButton.collapsed = True
 
+        # embedded segment editor
+        self.ui.embeddedSegmentEditorWidget.setMRMLScene(slicer.mrmlScene)
+        self.ui.embeddedSegmentEditorWidget.setSegmentationNodeSelectorVisible(False)
+        self.ui.embeddedSegmentEditorWidget.setMasterVolumeNodeSelectorVisible(False)
+
         self.initializeParameterNode()
         self.updateServerUrlGUIFromSettings()
         # self.onClickFetchInfo()
 
-        if slicer.util.settingsValue("MONAILabel/askForUserName", None):
+        if slicer.util.settingsValue("MONAILabel/askForUserName", False, converter=slicer.util.toBool):
             text = qt.QInputDialog().getText(
                 self.parent,
                 "User Name",
@@ -598,6 +590,10 @@ class MONAILabelWidget(ScriptedLoadableModuleWidget, VTKObservationMixin):
 
         self.ui.dgUpdateCheckBox.setEnabled(self.ui.deepgrowModelSelector.currentText and self._segmentNode)
         self.ui.dgUpdateButton.setEnabled(self.ui.deepgrowModelSelector.currentText and self._segmentNode)
+
+        self.ui.embeddedSegmentEditorWidget.setMRMLSegmentEditorNode(
+            slicer.mrmlScene.GetFirstNodeByClass("vtkMRMLSegmentEditorNode")
+        )
 
         # All the GUI updates are done
         self._updatingGUIFromParameterNode = False
@@ -1182,10 +1178,6 @@ class MONAILabelWidget(ScriptedLoadableModuleWidget, VTKObservationMixin):
                         self.ui.segmentationModelSelector.currentText = name
                         self.onClickSegmentation()
                         return
-
-        # Check if user wants to automatically open segment editor after next sample was fetched
-        if slicer.util.settingsValue("MONAILabel/autoOpenSegmentEditor", False, converter=slicer.util.toBool):
-            slicer.util.selectModule("SegmentEditor")
 
     def getPermissionForImageDataUpload(self):
         return slicer.util.confirmOkCancelDisplay(
