@@ -24,14 +24,14 @@ ADD . /opt/monailabel/
 RUN apt update -y && apt install npm -y && npm install --global yarn
 RUN python -m pip install --upgrade --no-cache-dir pip setuptools wheel twine \
     && cd /opt/monailabel \
-    && python setup.py sdist
+    && python setup.py sdist bdist_wheel --build-number $(date +'%Y%m%d%H%M')
 
 FROM ${MONAI_IMAGE}
 LABEL maintainer="monai.contact@gmail.com"
 
 COPY --from=build /opt/monailabel/dist/monailabel*.tar.gz /opt/monailabel/dist/
 RUN python -m pip install --upgrade --no-cache-dir pip \
-    && python -m pip install /opt/monailabel/dist/monailabel*.tar.gz
+    && python -m pip install /opt/monailabel/dist/monailabel*.whl
 
 # Add Orthanc
 RUN if [ "${ORTHANC}" = "true" ] ; then  \
