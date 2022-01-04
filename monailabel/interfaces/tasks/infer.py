@@ -317,13 +317,24 @@ class InferTask:
             if self.network:
                 network = self.network
                 if path:
-                    checkpoint = torch.load(path)
+                    # If we are using a CPU-only machine, try to load the network for CPU inference
+                    if torch.cuda.is_available():
+                        checkpoint = torch.load(path)
+                    else:
+                        checkpoint = torch.load(path,  map_location=torch.device('cpu'))
+
                     model_state_dict = checkpoint.get(self.model_state_dict, checkpoint)
                     network.load_state_dict(model_state_dict, strict=self.load_strict)
             else:
-                network = torch.jit.load(path)
+                # If we are using a CPU-only machine, try to load the network for CPU inference
+                if torch.cuda.is_available():
+                    network = torch.jit.load(path)
+                else:
+                    network = torch.jit.load(path,  map_location=torch.device('cpu'))
 
-            network = network.cuda() if device == "cuda" else network
+            if device == "cuda":
+                network = network.cuda()
+
             network.eval()
             self._networks[device] = (network, statbuf.st_mtime if statbuf else 0)
 
@@ -343,13 +354,17 @@ class InferTask:
         inferer = self.inferer()
         logger.info("Running Inferer:: {}".format(inferer.__class__.__name__))
 
+        if device == 'cuda' and torch.cuda.is_available() == False:
+            device = 'cpu'
+
         network = self._get_network(device)
         if network:
             inputs = data[self.input_key]
             inputs = inputs if torch.is_tensor(inputs) else torch.from_numpy(inputs)
             inputs = inputs[None] if convert_to_batch else inputs
-            inputs = inputs.cuda() if device == "cuda" else inputs
-
+            if device == "cuda":
+                inputs = inputs.cuda()
+            
             with torch.no_grad():
                 outputs = inferer(inputs, network)
             if device == "cuda":
