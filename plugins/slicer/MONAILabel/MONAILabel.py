@@ -136,17 +136,6 @@ class _ui_MONAILabelSettingsPanel(object):
             str(qt.SIGNAL("valueAsIntChanged(int)")),
         )
 
-        developerModeCheckBox = qt.QCheckBox()
-        developerModeCheckBox.checked = False
-        developerModeCheckBox.toolTip = "Enable this option to find options tab etc..."
-        groupLayout.addRow("Developer Mode:", developerModeCheckBox)
-        parent.registerProperty(
-            "MONAILabel/developerMode",
-            ctk.ctkBooleanMapper(developerModeCheckBox, "checked", str(qt.SIGNAL("toggled(bool)"))),
-            "valueAsInt",
-            str(qt.SIGNAL("valueAsIntChanged(int)")),
-        )
-
         allowOverlapCheckBox = qt.QCheckBox()
         allowOverlapCheckBox.checked = False
         allowOverlapCheckBox.toolTip = "Enable this option to allow overlapping segmentations"
@@ -159,13 +148,26 @@ class _ui_MONAILabelSettingsPanel(object):
         )
         allowOverlapCheckBox.connect("toggled(bool)", self.onUpdateAllowOverlap)
 
+        developerModeCheckBox = qt.QCheckBox()
+        developerModeCheckBox.checked = False
+        developerModeCheckBox.toolTip = "Enable this option to find options tab etc..."
+        groupLayout.addRow("Developer Mode:", developerModeCheckBox)
+        parent.registerProperty(
+            "MONAILabel/developerMode",
+            ctk.ctkBooleanMapper(developerModeCheckBox, "checked", str(qt.SIGNAL("toggled(bool)"))),
+            "valueAsInt",
+            str(qt.SIGNAL("valueAsIntChanged(int)")),
+        )
+
         vBoxLayout.addWidget(groupBox)
         vBoxLayout.addStretch(1)
 
     def onUpdateAllowOverlap(self):
         if slicer.util.settingsValue("MONAILabel/allowOverlappingSegments", True, converter=slicer.util.toBool):
-            if slicer.util.settingsValue("MONAILabel/fileExtension", None) != '.seg.nrrd':
-                slicer.util.warningDisplay("Overlapping segmentations are only availabel with the '.seg.nrrd' file extension!")
+            if slicer.util.settingsValue("MONAILabel/fileExtension", None) != ".seg.nrrd":
+                slicer.util.warningDisplay(
+                    "Overlapping segmentations are only availabel with the '.seg.nrrd' file extension! Consider changing MONAILabel file extension."
+                )
 
 
 class MONAILabelSettingsPanel(ctk.ctkSettingsPanel):
@@ -1163,7 +1165,7 @@ class MONAILabelWidget(ScriptedLoadableModuleWidget, VTKObservationMixin):
         if slicer.util.settingsValue("MONAILabel/allowOverlappingSegments", False, converter=slicer.util.toBool):
             # set segment editor to allow overlaps
             slicer.util.getNodesByClass("vtkMRMLSegmentEditorNode")[0].SetOverwriteMode(2)
-        
+
         if self.info.get("labels"):
             self.updateSegmentationMask(None, self.info.get("labels"))
 
@@ -1280,7 +1282,10 @@ class MONAILabelWidget(ScriptedLoadableModuleWidget, VTKObservationMixin):
             label_in = tempfile.NamedTemporaryFile(suffix=self.file_ext, dir=self.tmpdir).name
             self.reportProgress(5)
 
-            if slicer.util.settingsValue("MONAILabel/allowOverlappingSegments", True, converter=slicer.util.toBool) and slicer.util.settingsValue("MONAILabel/fileExtension", None) == '.seg.nrrd':
+            if (
+                slicer.util.settingsValue("MONAILabel/allowOverlappingSegments", True, converter=slicer.util.toBool)
+                and slicer.util.settingsValue("MONAILabel/fileExtension", self.file_ext) == ".seg.nrrd"
+            ):
                 slicer.util.saveNode(segmentationNode, label_in)
             else:
                 slicer.util.saveNode(labelmapVolumeNode, label_in)
