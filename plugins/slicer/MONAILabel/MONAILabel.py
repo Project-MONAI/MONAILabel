@@ -162,6 +162,12 @@ class _ui_MONAILabelSettingsPanel(object):
         vBoxLayout.addWidget(groupBox)
         vBoxLayout.addStretch(1)
 
+        def onUpdateAllowOverlap(self):
+            if slicer.util.settingsValue("MONAILabel/allowOverlappingSegments", True, converter=slicer.util.toBool):
+                if slicer.util.settingsValue("MONAILabel/fileExtension", None) != ".seg.nrrd":
+                    slicer.util.warningDisplay(
+                        "Overlapping segmentations are only availabel with the '.seg.nrrd' file extension! Consider changing MONAILabel file extension."
+                    )
 
 class MONAILabelSettingsPanel(ctk.ctkSettingsPanel):
     def __init__(self, *args, **kwargs):
@@ -1154,6 +1160,11 @@ class MONAILabelWidget(ScriptedLoadableModuleWidget, VTKObservationMixin):
         segmentEditorWidget.setSegmentationNode(self._segmentNode)
         segmentEditorWidget.setMasterVolumeNode(self._volumeNode)
 
+        # check if user allows overlapping segments
+        if slicer.util.settingsValue("MONAILabel/allowOverlappingSegments", False, converter=slicer.util.toBool):
+            # set segment editor to allow overlaps
+            slicer.util.getNodesByClass("vtkMRMLSegmentEditorNode")[0].SetOverwriteMode(2)
+
         if self.info.get("labels"):
             self.updateSegmentationMask(None, self.info.get("labels"))
 
@@ -1270,7 +1281,13 @@ class MONAILabelWidget(ScriptedLoadableModuleWidget, VTKObservationMixin):
             label_in = tempfile.NamedTemporaryFile(suffix=self.file_ext, dir=self.tmpdir).name
             self.reportProgress(5)
 
-            slicer.util.saveNode(labelmapVolumeNode, label_in)
+            if (
+                slicer.util.settingsValue("MONAILabel/allowOverlappingSegments", True, converter=slicer.util.toBool)
+                and slicer.util.settingsValue("MONAILabel/fileExtension", self.file_ext) == ".seg.nrrd"
+            ):
+                slicer.util.saveNode(segmentationNode, label_in)
+            else:
+                slicer.util.saveNode(labelmapVolumeNode, label_in)
             self.reportProgress(30)
 
             self.updateServerSettings()
