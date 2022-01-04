@@ -162,12 +162,13 @@ class _ui_MONAILabelSettingsPanel(object):
         vBoxLayout.addWidget(groupBox)
         vBoxLayout.addStretch(1)
 
-        def onUpdateAllowOverlap(self):
-            if slicer.util.settingsValue("MONAILabel/allowOverlappingSegments", True, converter=slicer.util.toBool):
-                if slicer.util.settingsValue("MONAILabel/fileExtension", None) != ".seg.nrrd":
-                    slicer.util.warningDisplay(
-                        "Overlapping segmentations are only availabel with the '.seg.nrrd' file extension! Consider changing MONAILabel file extension."
-                    )
+    def onUpdateAllowOverlap(self):
+        if slicer.util.settingsValue("MONAILabel/allowOverlappingSegments", True, converter=slicer.util.toBool):
+            if slicer.util.settingsValue("MONAILabel/fileExtension", None) != ".seg.nrrd":
+                slicer.util.warningDisplay(
+                    "Overlapping segmentations are only availabel with the '.seg.nrrd' file extension! Consider changing MONAILabel file extension."
+                )
+
 
 class MONAILabelSettingsPanel(ctk.ctkSettingsPanel):
     def __init__(self, *args, **kwargs):
