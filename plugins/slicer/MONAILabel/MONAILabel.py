@@ -136,6 +136,18 @@ class _ui_MONAILabelSettingsPanel(object):
             str(qt.SIGNAL("valueAsIntChanged(int)")),
         )
 
+        allowOverlapCheckBox = qt.QCheckBox()
+        allowOverlapCheckBox.checked = False
+        allowOverlapCheckBox.toolTip = "Enable this option to allow overlapping segmentations"
+        groupLayout.addRow("Allow Overlapping Segmentations:", allowOverlapCheckBox)
+        parent.registerProperty(
+            "MONAILabel/allowOverlappingSegments",
+            ctk.ctkBooleanMapper(allowOverlapCheckBox, "checked", str(qt.SIGNAL("toggled(bool)"))),
+            "valueAsInt",
+            str(qt.SIGNAL("valueAsIntChanged(int)")),
+        )
+        allowOverlapCheckBox.connect("toggled(bool)", self.onUpdateAllowOverlap)
+
         developerModeCheckBox = qt.QCheckBox()
         developerModeCheckBox.checked = False
         developerModeCheckBox.toolTip = "Enable this option to find options tab etc..."
