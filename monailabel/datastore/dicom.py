@@ -114,7 +114,12 @@ class DICOMWebDatastore(LocalDatastore):
                 str(seg["StudyInstanceUID"].value), str(seg["SeriesInstanceUID"].value)
             )
             seg_meta = load_json_dataset(meta[0])
-            image_series.append(str(seg_meta["ReferencedSeriesSequence"].value[0]["SeriesInstanceUID"].value))
+            if seg_meta.get("ReferencedSeriesSequence"):
+                image_series.append(str(seg_meta["ReferencedSeriesSequence"].value[0]["SeriesInstanceUID"].value))
+            else:
+                logger.warning(
+                    f"Label Ignored:: ReferencedSeriesSequence is NOT found in Label: {str(seg['SeriesInstanceUID'].value)}"
+                )
         return image_series
 
     def get_unlabeled_images(self) -> List[str]:
@@ -168,6 +173,12 @@ class DICOMWebDatastore(LocalDatastore):
                 str(seg["StudyInstanceUID"].value), str(seg["SeriesInstanceUID"].value)
             )
             seg_meta = load_json_dataset(meta[0])
+            if not seg_meta.get("ReferencedSeriesSequence"):
+                logger.warning(
+                    f"Label Ignored:: ReferencedSeriesSequence is NOT found in Label: {str(seg['SeriesInstanceUID'].value)}"
+                )
+                continue
+
             image_labels.append(
                 {
                     "image": str(seg_meta["ReferencedSeriesSequence"].value[0]["SeriesInstanceUID"].value),
