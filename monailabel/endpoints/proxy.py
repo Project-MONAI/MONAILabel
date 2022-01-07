@@ -24,8 +24,14 @@ async def proxy(path: str, response: Response):
     )
 
     async with httpx.AsyncClient(auth=auth) as client:
-        proxy_path = f"{settings.MONAI_LABEL_STUDIES.lstrip('/')}/{path}"
-        logger.debug(f"Proxy conneting to {proxy_path}")
+        server = f"{settings.MONAI_LABEL_STUDIES.rstrip('/')}"
+        # Assuming all prefix QIDO/WADO/STOW are same (proxy requests to support OHIF viewer)
+        if settings.MONAI_LABEL_WADO_PREFIX:
+            proxy_path = f"{server}/{settings.MONAI_LABEL_WADO_PREFIX}/{path}"
+        else:
+            proxy_path = f"{server}/{path}"
+
+        logger.debug(f"Proxy connecting to {proxy_path}")
         proxy = await client.get(proxy_path)
     response.body = proxy.content
     response.status_code = proxy.status_code

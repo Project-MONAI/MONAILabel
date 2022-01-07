@@ -22,14 +22,13 @@ from typing import Callable, Dict, Optional, Sequence
 
 import requests
 import schedule
-from dicomweb_client import DICOMwebClient
 from dicomweb_client.session_utils import create_session_from_user_pass
 from monai.apps import download_and_extract, download_url, load_from_mmar
 from monai.data import partition_dataset
 from timeloop import Timeloop
 
 from monailabel.config import settings
-from monailabel.datastore.dicom import DICOMWebDatastore
+from monailabel.datastore.dicom import DICOMwebClientX, DICOMWebDatastore
 from monailabel.datastore.local import LocalDatastore
 from monailabel.interfaces.datastore import Datastore, DefaultLabelTag
 from monailabel.interfaces.exception import MONAILabelError, MONAILabelException
@@ -115,13 +114,15 @@ class MONAILabelApp:
         logger.info(f"Init Datastore for: {self.studies}")
         if self.studies.startswith("http://") or self.studies.startswith("https://"):
             self.studies = self.studies.rstrip("/").strip()
+            logger.info(f"Using DICOM WEB: {self.studies}")
+
             dw_session = None
             if settings.MONAI_LABEL_DICOMWEB_USERNAME and settings.MONAI_LABEL_DICOMWEB_PASSWORD:
                 dw_session = create_session_from_user_pass(
                     settings.MONAI_LABEL_DICOMWEB_USERNAME, settings.MONAI_LABEL_DICOMWEB_PASSWORD
                 )
 
-            dw_client = DICOMwebClient(
+            dw_client = DICOMwebClientX(
                 url=self.studies,
                 session=dw_session,
                 qido_url_prefix=settings.MONAI_LABEL_QIDO_PREFIX,
@@ -131,7 +132,12 @@ class MONAILabelApp:
 
             cache_path = settings.MONAI_LABEL_DICOMWEB_CACHE_PATH
             cache_path = cache_path.strip() if cache_path else ""
-            return DICOMWebDatastore(dw_client, cache_path) if cache_path else DICOMWebDatastore(dw_client)
+            fetch_by_frame = settings.MONAI_LABEL_DICOMWEB_FETCH_BY_FRAME
+            return (
+                DICOMWebDatastore(dw_client, cache_path, fetch_by_frame=fetch_by_frame)
+                if cache_path
+                else DICOMWebDatastore(dw_client, fetch_by_frame=fetch_by_frame)
+            )
 
         return LocalDatastore(
             self.studies,
