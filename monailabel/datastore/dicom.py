@@ -30,7 +30,10 @@ logger = logging.getLogger(__name__)
 
 class DICOMwebClientX(DICOMwebClient):
     def _decode_multipart_message(self, response: requests.Response, stream: bool) -> Iterator[bytes]:
-        response.headers["content-type"] = "multipart/related"
+        content_type = response.headers["content-type"]
+        media_type, *ct_info = [ct.strip() for ct in content_type.split(";")]
+        if media_type.lower() != "multipart/related":
+            response.headers["content-type"] = "multipart/related"
         return super()._decode_multipart_message(response, stream)
 
 
