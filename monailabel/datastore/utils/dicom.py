@@ -125,6 +125,7 @@ def dicom_web_upload_dcm(input_file, client: DICOMwebClient):
 
 if __name__ == "__main__":
     import shutil
+
     from monailabel.datastore.dicom import DICOMwebClientX
 
     client = DICOMwebClientX(
