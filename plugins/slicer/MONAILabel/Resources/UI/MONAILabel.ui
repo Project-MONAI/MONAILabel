@@ -7,7 +7,7 @@
     <x>0</x>
     <y>0</y>
     <width>448</width>
-    <height>867</height>
+    <height>1055</height>
    </rect>
   </property>
   <property name="minimumSize">
@@ -152,7 +152,7 @@
          <bool>true</bool>
         </attribute>
         <attribute name="verticalHeaderDefaultSectionSize">
-         <number>20</number>
+         <number>21</number>
         </attribute>
         <column/>
         <column/>
@@ -285,9 +285,9 @@
     </widget>
    </item>
    <item>
-    <widget class="ctkCollapsibleButton" name="toolsCollapsibleButton">
+    <widget class="ctkCollapsibleButton" name="seCollapsibleButton">
      <property name="text">
-      <string>Tools</string>
+      <string>Segment Editor</string>
      </property>
      <property name="collapsed">
       <bool>true</bool>
@@ -295,27 +295,14 @@
      <property name="collapsedHeight">
       <number>9</number>
      </property>
-     <layout class="QGridLayout" name="gridLayout">
-      <property name="leftMargin">
-       <number>0</number>
-      </property>
-      <property name="rightMargin">
-       <number>0</number>
-      </property>
-      <item row="2" column="1">
-       <widget class="ctkPathLineEdit" name="labelPathLineEdit"/>
-      </item>
-      <item row="2" column="0">
-       <widget class="QLabel" name="label_12">
-        <property name="text">
-         <string>Import Label:</string>
+     <layout class="QVBoxLayout" name="verticalLayout_2">
+      <item>
+       <widget class="qMRMLSegmentEditorWidget" name="embeddedSegmentEditorWidget">
+        <property name="autoShowMasterVolumeNode">
+         <bool>true</bool>
         </property>
-       </widget>
-      </item>
-      <item row="2" column="2">
-       <widget class="QPushButton" name="importLabelButton">
-        <property name="text">
-         <string/>
+        <property name="maximumNumberOfUndoStates">
+         <number>10</number>
         </property>
        </widget>
       </item>
@@ -673,6 +660,44 @@
     </widget>
    </item>
    <item>
+    <widget class="ctkCollapsibleButton" name="toolsCollapsibleButton">
+     <property name="text">
+      <string>Tools</string>
+     </property>
+     <property name="collapsed">
+      <bool>true</bool>
+     </property>
+     <property name="collapsedHeight">
+      <number>9</number>
+     </property>
+     <layout class="QGridLayout" name="gridLayout">
+      <property name="leftMargin">
+       <number>0</number>
+      </property>
+      <property name="rightMargin">
+       <number>0</number>
+      </property>
+      <item row="2" column="1">
+       <widget class="ctkPathLineEdit" name="labelPathLineEdit"/>
+      </item>
+      <item row="2" column="0">
+       <widget class="QLabel" name="label_12">
+        <property name="text">
+         <string>Import Label:</string>
+        </property>
+       </widget>
+      </item>
+      <item row="2" column="2">
+       <widget class="QPushButton" name="importLabelButton">
+        <property name="text">
+         <string/>
+        </property>
+       </widget>
+      </item>
+     </layout>
+    </widget>
+   </item>
+   <item>
     <spacer name="verticalSpacer">
      <property name="orientation">
       <enum>Qt::Vertical</enum>
@@ -720,6 +745,11 @@
    <class>qSlicerMarkupsPlaceWidget</class>
    <extends>qSlicerWidget</extends>
    <header>qSlicerMarkupsPlaceWidget.h</header>
+  </customwidget>
+  <customwidget>
+   <class>qMRMLSegmentEditorWidget</class>
+   <extends>qMRMLWidget</extends>
+   <header>qMRMLSegmentEditorWidget.h</header>
   </customwidget>
  </customwidgets>
  <resources/>
