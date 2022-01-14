@@ -291,7 +291,7 @@ def main():
         "name": args.output,
         "device": "cuda",
         "model": "deepedit_train",
-        # "dataset": args.dataset,
+        "dataset": args.dataset,
         "max_epochs": args.epoch,
         "val_split": 0.05,
         "amp": False,
