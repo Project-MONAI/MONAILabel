@@ -321,7 +321,7 @@ class InferTask:
                     if torch.cuda.is_available():
                         checkpoint = torch.load(path)
                     else:
-                        checkpoint = torch.load(path,  map_location=torch.device('cpu'))
+                        checkpoint = torch.load(path, map_location=torch.device("cpu"))
 
                     model_state_dict = checkpoint.get(self.model_state_dict, checkpoint)
                     network.load_state_dict(model_state_dict, strict=self.load_strict)
@@ -330,7 +330,7 @@ class InferTask:
                 if torch.cuda.is_available():
                     network = torch.jit.load(path)
                 else:
-                    network = torch.jit.load(path,  map_location=torch.device('cpu'))
+                    network = torch.jit.load(path, map_location=torch.device("cpu"))
 
             if device == "cuda":
                 network = network.cuda()
@@ -354,8 +354,8 @@ class InferTask:
         inferer = self.inferer()
         logger.info("Running Inferer:: {}".format(inferer.__class__.__name__))
 
-        if device == 'cuda' and torch.cuda.is_available() == False:
-            device = 'cpu'
+        if device == "cuda" and not torch.cuda.is_available():
+            device = "cpu"
 
         network = self._get_network(device)
         if network:
@@ -364,7 +364,7 @@ class InferTask:
             inputs = inputs[None] if convert_to_batch else inputs
             if device == "cuda":
                 inputs = inputs.cuda()
-            
+
             with torch.no_grad():
                 outputs = inferer(inputs, network)
             if device == "cuda":
