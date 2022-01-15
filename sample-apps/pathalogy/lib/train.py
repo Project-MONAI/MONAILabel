@@ -8,7 +8,6 @@
 # WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 # See the License for the specific language governing permissions and
 # limitations under the License.
-
 import logging
 
 from monai.inferers import SlidingWindowInferer
@@ -16,18 +15,11 @@ from monai.losses import DiceCELoss
 from monai.optimizers import Novograd
 from monai.transforms import (
     Activationsd,
-    AddChanneld,
     AsDiscreted,
-    CropForegroundd,
-    EnsureTyped,
     LoadImaged,
-    RandCropByPosNegLabeld,
-    RandShiftIntensityd,
-    ScaleIntensityRanged,
-    Spacingd,
-    ToDeviced,
-    ToTensord,
+    EnsureChannelFirstd, AddChanneld, ScaleIntensityd, RandRotate90d, EnsureTyped, RandCropByPosNegLabeld,
 )
+from torchvision import transforms  # noqa
 
 from monailabel.tasks.train.basic_train import BasicTrainTask, Context
 
@@ -36,11 +28,11 @@ logger = logging.getLogger(__name__)
 
 class MyTrain(BasicTrainTask):
     def __init__(
-        self,
-        model_dir,
-        network,
-        description="Train generic Segmentation model",
-        **kwargs,
+            self,
+            model_dir,
+            network,
+            description="Pathology Segmentation model",
+            **kwargs,
     ):
         self._network = network
         super().__init__(model_dir, description, **kwargs)
@@ -55,39 +47,35 @@ class MyTrain(BasicTrainTask):
         return DiceCELoss(to_onehot_y=True, softmax=True, squared_pred=True, batch=True)
 
     def train_pre_transforms(self, context: Context):
-        t = [
+        return [
             LoadImaged(keys=("image", "label")),
-            AddChanneld(keys=("image", "label")),
-            Spacingd(
-                keys=("image", "label"),
-                pixdim=(1.0, 1.0, 1.0),
-                mode=("bilinear", "nearest"),
+            EnsureChannelFirstd(keys="image"),
+            AddChanneld(keys="label"),
+
+            # ToTensorD(keys="image"),
+            # TorchVisionD(
+            #     keys="image", name="ColorJitter", brightness=64.0 / 255.0, contrast=0.75, saturation=0.25, hue=0.04
+            # ),
+            # ToNumpyD(keys="image"),
+
+            # RandFlipD(keys="image", prob=0.5),
+            # RandRotate90D(keys="image", prob=0.5),
+            # CastToTypeD(keys="image", dtype=np.float32),
+            # RandZoomD(keys="image", prob=0.5, min_zoom=0.9, max_zoom=1.1),
+            # ScaleIntensityRangeD(keys="image", a_min=0.0, a_max=255.0, b_min=-1.0, b_max=1.0),
+
+            ScaleIntensityd(keys=("image", "label")),
+            RandCropByPosNegLabeld(
+                keys=("image", "label"), label_key="label", spatial_size=(512, 512), pos=1, neg=1, num_samples=4
             ),
-            ScaleIntensityRanged(keys="image", a_min=-57, a_max=164, b_min=0.0, b_max=1.0, clip=True),
-            CropForegroundd(keys=("image", "label"), source_key="image"),
+
+            RandRotate90d(keys=("image", "label"), prob=0.5, spatial_axes=[0, 1]),
+            EnsureTyped(keys=("image", "label")),
         ]
-        if context.request.get("to_gpu", False):
-            t.extend([EnsureTyped(keys=("image", "label")), ToDeviced(keys=("image", "label"), device=context.device)])
-        t.extend(
-            [
-                RandCropByPosNegLabeld(
-                    keys=("image", "label"),
-                    label_key="label",
-                    spatial_size=(96, 96, 96),
-                    pos=1,
-                    neg=1,
-                    num_samples=4,
-                    image_key="image",
-                    image_threshold=0,
-                ),
-                RandShiftIntensityd(keys="image", offsets=0.1, prob=0.5),
-            ]
-        )
-        return t
 
     def train_post_transforms(self, context: Context):
         return [
-            ToTensord(keys=("pred", "label")),
+            EnsureTyped(keys=("pred", "label")),
             Activationsd(keys="pred", softmax=True),
             AsDiscreted(
                 keys=("pred", "label"),
@@ -100,17 +88,11 @@ class MyTrain(BasicTrainTask):
     def val_pre_transforms(self, context: Context):
         return [
             LoadImaged(keys=("image", "label")),
-            AddChanneld(keys=("image", "label")),
-            Spacingd(
-                keys=("image", "label"),
-                pixdim=(1.0, 1.0, 1.0),
-                mode=("bilinear", "nearest"),
-            ),
-            ScaleIntensityRanged(keys="image", a_min=-57, a_max=164, b_min=0.0, b_max=1.0, clip=True),
-            CropForegroundd(keys=("image", "label"), source_key="image"),
+            EnsureChannelFirstd(keys="image"),
+            AddChanneld(keys="label"),
+            ScaleIntensityd(keys="image"),
             EnsureTyped(keys=("image", "label")),
-            ToDeviced(keys=("image", "label"), device=context.device),
         ]
 
     def val_inferer(self, context: Context):
-        return SlidingWindowInferer(roi_size=(160, 160, 160), sw_batch_size=1, overlap=0.25)
+        return SlidingWindowInferer(roi_size=(512, 512), sw_batch_size=4, overlap=0.25)

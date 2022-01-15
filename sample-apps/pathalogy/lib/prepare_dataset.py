@@ -30,7 +30,13 @@ def fetch_annotations(image, label, coverage, min_size, level=0):
     logger.info(f"Using Factor: {factor} => Level: {level}")
 
     for annotation in tree.getroot().iter('Annotation'):
-        group = int(annotation.attrib.get("PartOfGroup").replace("_", ""))
+        group = int(
+            annotation.attrib.get(
+                "PartOfGroup").replace(
+                "_", "").replace(
+                "Tumor", "0").replace(
+                "Exclusion", "2").replace(
+                "None", "1"))
         object_type = annotation.attrib.get("Type").lower()
         idx = annotation.attrib.get("Name").lstrip("_")
 
@@ -211,35 +217,26 @@ def create_region_label(annotations, output, output_ext=".png"):
         width, height = annotation["region_size"]
 
         label_np = np.zeros((height, width), dtype=np.uint8)  # Transposed
+        logger.info("Label NP Created!!")
 
         for r in referred_by:
-            logger.info(f"Adding Label For Index: {r}")
             ra = get_matching(r, annotations)
             annotation_points = ra["points"]
             annotation_group = ra["group"]
-            annotation_type = ra["type"]
 
-            if annotation_type == "polygon":
-                contours = np.array([[p[0] - loc_x, p[1] - loc_y] for p in annotation_points])
-                color = (255, 255, 255) if annotation_group == 0 else (128, 128, 128) if annotation_group == 1 else (
-                    0, 0, 0)
-                cv2.fillPoly(label_np, pts=[contours], color=color)
-            else:
-                # TODO:: spline
-                for x_idx in range(w):
-                    xn = x - loc_x + x_idx
-                    for y_idx in range(h):
-                        yn = abs(loc_y - y) + y_idx  # y = height from bottom
-                        point = (x + x_idx, y + y_idx)
-                        if point in annotation_points:
-                            label_np[yn][xn] = annotation_group + 1 if annotation_group in (0, 1) else 0
+            logger.info(f"Adding Label For Index: {r}; size: {width} x {height}; points: {len(annotation_points)}")
 
-        logger.info(f"Label Ready... sum: {np.sum(label_np)}")
+            contours = np.array([[p[0] - loc_x, p[1] - loc_y] for p in annotation_points])
+            color = (255, 255, 255) if annotation_group == 0 else (128, 128, 128) if annotation_group == 1 else (
+                0, 0, 0)
+            cv2.fillPoly(label_np, pts=[contours], color=color)
+
+        logger.info(f"Label Ready...")
         save_patch(annotation, label_np, None, 0, output, output_ext)
 
 
 def create_region(annotations, output, level, output_ext=".png"):
-    # create_region_image(annotations, os.path.join(output, "images"), level, output_ext)
+    #create_region_image(annotations, os.path.join(output, "images"), level, output_ext)
     create_region_label(annotations, os.path.join(output, "labels"), output_ext)
 
 
@@ -266,7 +263,7 @@ def main():
     parser.add_argument("-c", "--coverage", type=float, default=2.0)
     parser.add_argument("-s", "--min_size", default="[4096,4096]")
     parser.add_argument("-x", "--extension", default=".png")
-    parser.add_argument("-m", "--multiprcoess", type=bool, default=False)
+    parser.add_argument("-m", "--multiprcoess", type=bool, default=True)
 
     args = parser.parse_args()
     args.min_size = json.loads(args.min_size)
