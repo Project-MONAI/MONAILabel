@@ -67,6 +67,7 @@ class InferTask:
         output_label_key="pred",
         output_json_key="result",
         config=None,
+        load_strict=False,
     ):
         """
         :param path: Model File Path. Supports multiple paths to support versions (Last item will be picked as latest)
@@ -79,6 +80,7 @@ class InferTask:
         :param output_label_key: Output key for storing result/label of inference
         :param output_json_key: Output key for storing result/label of inference
         :param config: K,V pairs to be part of user config
+        :param load_strict: Load model in strict mode
         """
         self.path = path
         self.network = network
@@ -90,6 +92,7 @@ class InferTask:
         self.input_key = input_key
         self.output_label_key = output_label_key
         self.output_json_key = output_json_key
+        self.load_strict = load_strict
 
         self._networks: Dict = {}
         self._config = {
@@ -314,13 +317,24 @@ class InferTask:
             if self.network:
                 network = self.network
                 if path:
-                    checkpoint = torch.load(path)
-                    model_state_dict = checkpoint.get(self.model_state_dict, checkpoint)
-                    network.load_state_dict(model_state_dict)
-            else:
-                network = torch.jit.load(path)
+                    # If we are using a CPU-only machine, try to load the network for CPU inference
+                    if torch.cuda.is_available():
+                        checkpoint = torch.load(path)
+                    else:
+                        checkpoint = torch.load(path, map_location=torch.device("cpu"))
 
-            network = network.cuda() if device == "cuda" else network
+                    model_state_dict = checkpoint.get(self.model_state_dict, checkpoint)
+                    network.load_state_dict(model_state_dict, strict=self.load_strict)
+            else:
+                # If we are using a CPU-only machine, try to load the network for CPU inference
+                if torch.cuda.is_available():
+                    network = torch.jit.load(path)
+                else:
+                    network = torch.jit.load(path, map_location=torch.device("cpu"))
+
+            if device == "cuda":
+                network = network.cuda()
+
             network.eval()
             self._networks[device] = (network, statbuf.st_mtime if statbuf else 0)
 
@@ -340,12 +354,16 @@ class InferTask:
         inferer = self.inferer()
         logger.info("Running Inferer:: {}".format(inferer.__class__.__name__))
 
+        if device == "cuda" and not torch.cuda.is_available():
+            device = "cpu"
+
         network = self._get_network(device)
         if network:
             inputs = data[self.input_key]
             inputs = inputs if torch.is_tensor(inputs) else torch.from_numpy(inputs)
             inputs = inputs[None] if convert_to_batch else inputs
-            inputs = inputs.cuda() if device == "cuda" else inputs
+            if device == "cuda":
+                inputs = inputs.cuda()
 
             with torch.no_grad():
                 outputs = inferer(inputs, network)

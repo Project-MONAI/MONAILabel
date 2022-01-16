@@ -138,6 +138,9 @@ class DeepEdit(InferTask):
     def inferer(self):
         return SimpleInferer()
 
+    def inverse_transforms(self):
+        return []  # Self-determine from the list of pre-transforms provided
+
     def post_transforms(self):
         return [
             ToTensord(keys="pred"),
