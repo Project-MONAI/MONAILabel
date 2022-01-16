@@ -33,15 +33,13 @@ from monailabel.deepedit.handlers import TensorBoardImageHandler
 from monailabel.deepedit.multilabel.interaction import Interaction
 from monailabel.deepedit.multilabel.transforms import (
     AddGuidanceSignalCustomd,
-    AddInitialSeedPointCustomd,
-    FindAllValidSlicesCustomd,
     FindDiscrepancyRegionsCustomd,
     PosNegClickProbAddRandomGuidanceCustomd,
     SplitPredsLabeld,
 )
 from monailabel.tasks.train.basic_train import BasicTrainTask, Context
 
-from .transforms import SelectLabelsSpineDatasetd
+from .transforms import AddInitialSeedPointMissingLabelsd, FindAllValidSlicesMissingLabelsd, SelectLabelsSpineDatasetd
 
 logger = logging.getLogger(__name__)
 
@@ -139,8 +137,8 @@ class MyTrain(BasicTrainTask):
             ),
             Resized(keys=("image", "label"), spatial_size=self.spatial_size, mode=("area", "nearest")),
             # Transforms for click simulation
-            FindAllValidSlicesCustomd(keys="label", sids="sids"),
-            AddInitialSeedPointCustomd(keys="label", guidance="guidance", sids="sids"),
+            FindAllValidSlicesMissingLabelsd(keys="label", sids="sids"),
+            AddInitialSeedPointMissingLabelsd(keys="label", guidance="guidance", sids="sids"),
             AddGuidanceSignalCustomd(keys="image", guidance="guidance"),
             #
             ToTensord(keys=("image", "label")),
@@ -177,8 +175,8 @@ class MyTrain(BasicTrainTask):
             ),
             Resized(keys=("image", "label"), spatial_size=self.spatial_size, mode=("area", "nearest")),
             # Transforms for click simulation
-            FindAllValidSlicesCustomd(keys="label", sids="sids"),
-            AddInitialSeedPointCustomd(keys="label", guidance="guidance", sids="sids"),
+            FindAllValidSlicesMissingLabelsd(keys="label", sids="sids"),
+            AddInitialSeedPointMissingLabelsd(keys="label", guidance="guidance", sids="sids"),
             AddGuidanceSignalCustomd(keys="image", guidance="guidance"),
             #
             ToTensord(keys=("image", "label")),

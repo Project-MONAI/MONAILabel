@@ -49,22 +49,22 @@ class MyApp(MONAILabelApp):
             "C6": 6,
             "C7": 7,
             "Th1": 8,
-            # "Th2": 9,
-            # "Th3": 10,
-            # "Th4": 11,
-            # "Th5": 12,
-            # "Th6": 13,
-            # "Th7": 14,
-            # "Th8": 15,
-            # "Th9": 16,
-            # "Th10": 17,
-            # "Th11": 18,
-            # "Th12": 19,
-            # "L1": 20,
-            # "L2": 21,
-            # "L3": 22,
-            # "L4": 23,
-            # "L5": 24,
+            "Th2": 9,
+            "Th3": 10,
+            "Th4": 11,
+            "Th5": 12,
+            "Th6": 13,
+            "Th7": 14,
+            "Th8": 15,
+            "Th9": 16,
+            "Th10": 17,
+            "Th11": 18,
+            "Th12": 19,
+            "L1": 20,
+            "L2": 21,
+            "L3": 22,
+            "L4": 23,
+            "L5": 24,
             "background": 0,
         }
 
@@ -269,7 +269,7 @@ def main():
     parser.add_argument("-l", "--lr", default=0.0001)
     parser.add_argument("-d", "--dataset", default="CacheDataset")
     parser.add_argument("-o", "--output", default="model_01")
-    parser.add_argument("-i", "--size", default="[256,256,128]")
+    parser.add_argument("-i", "--size", default="[128,128,128]")
     parser.add_argument("-b", "--batch", type=int, default=1)
     args = parser.parse_args()
 
