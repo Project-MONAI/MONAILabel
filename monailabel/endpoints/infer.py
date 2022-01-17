@@ -72,7 +72,7 @@ class ResultType(str, Enum):
 
 
 def send_response(datastore, result, output, background_tasks):
-    res_img = result.get("label")
+    res_img = result.get("file") if result.get("file") else result.get("label")
     res_tag = result.get("tag")
     res_json = result.get("params")
 
