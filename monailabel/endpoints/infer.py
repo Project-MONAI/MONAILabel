@@ -92,7 +92,11 @@ def send_response(datastore, result, output, background_tasks):
 
     res_fields = dict()
     res_fields["params"] = (None, json.dumps(res_json), "application/json")
-    res_fields["image"] = (os.path.basename(res_img), open(res_img, "rb"), m_type)
+    if res_img and os.path.exists(res_img):
+        res_fields["image"] = (os.path.basename(res_img), open(res_img, "rb"), m_type)
+    else:
+        logger.info(f"Return only Result Json as Result Image is not available: {res_img}")
+        return res_json
 
     return_message = MultipartEncoder(fields=res_fields)
     return Response(content=return_message.to_string(), media_type=return_message.content_type)
