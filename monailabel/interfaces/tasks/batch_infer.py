@@ -14,7 +14,8 @@ import logging
 from enum import Enum
 from typing import Callable
 
-from monailabel.interfaces.datastore import Datastore
+from monailabel.interfaces.datastore import Datastore, DefaultLabelTag
+from monailabel.utils.others.generic import remove_file
 
 logger = logging.getLogger(__name__)
 
@@ -51,7 +52,12 @@ class BatchInferTask:
         for image_id in image_ids:
             req = copy.deepcopy(request)
             req["image"] = image_id
+            req["save_label"] = True
+            req["label_tag"] = DefaultLabelTag.ORIGINAL
 
             logger.info(f"Running inference for image id {image_id}")
-            result[image_id] = infer(req, datastore)
+            r = infer(req, datastore)
+            if r.get("file"):
+                remove_file(r.get("file"))
+            result["image_id"] = r
         return result
