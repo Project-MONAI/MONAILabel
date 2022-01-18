@@ -10,7 +10,7 @@ date-released: 2020-03-28
 version: "0.6.0"
 doi: "10.5281/zenodo.4323058"
 license: "Apache-2.0"
-repository-code: "https://github.com/Project-MONAI/MONAI"
+repository-code: "https://github.com/Project-MONAI/MONAILabel"
 cff-version: "1.1.0"
 message: "If you use this software, please cite it using these metadata."
 ...
