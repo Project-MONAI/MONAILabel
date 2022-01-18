@@ -13,8 +13,9 @@ import logging
 import os
 import pathlib
 import shutil
-from typing import Any, Dict, List, Optional, Tuple
+from typing import Any, Dict, Iterator, List, Optional, Tuple
 
+import requests
 from dicomweb_client import DICOMwebClient
 from dicomweb_client.api import load_json_dataset
 from expiringdict import ExpiringDict
@@ -27,17 +28,28 @@ from monailabel.interfaces.datastore import DefaultLabelTag
 logger = logging.getLogger(__name__)
 
 
+class DICOMwebClientX(DICOMwebClient):
+    def _decode_multipart_message(self, response: requests.Response, stream: bool) -> Iterator[bytes]:
+        content_type = response.headers["content-type"]
+        media_type, *ct_info = [ct.strip() for ct in content_type.split(";")]
+        if media_type.lower() != "multipart/related":
+            response.headers["content-type"] = "multipart/related"
+        return super()._decode_multipart_message(response, stream)
+
+
 class DICOMWebDatastore(LocalDatastore):
-    def __init__(self, client: DICOMwebClient, cache_path: Optional[str] = None):
+    def __init__(self, client: DICOMwebClient, cache_path: Optional[str] = None, fetch_by_frame=False):
         self._client = client
         self._modality = "CT"
+        self._fetch_by_frame = fetch_by_frame
+
         uri_hash = hashlib.md5(self._client.base_url.encode("utf-8")).hexdigest()
         datastore_path = (
             os.path.join(cache_path, uri_hash)
             if cache_path
             else os.path.join(pathlib.Path.home(), ".cache", "monailabel", uri_hash)
         )
-        logger.info(f"DICOMWeb Datastore (cache) Path: {datastore_path}")
+        logger.info(f"DICOMWeb Datastore (cache) Path: {datastore_path}; FetchByFrame: {fetch_by_frame}")
 
         self._stats_cache = ExpiringDict(max_len=100, max_age_seconds=30)
         super().__init__(datastore_path=datastore_path, auto_reload=True)
@@ -59,7 +71,7 @@ class DICOMWebDatastore(LocalDatastore):
         logger.info(f"Image Dir (cache): {image_dir}")
 
         if not os.path.exists(image_dir) or not os.listdir(image_dir):
-            dicom_web_download_series(None, image_id, image_dir, self._client)
+            dicom_web_download_series(None, image_id, image_dir, self._client, self._fetch_by_frame)
 
         image_nii_gz = os.path.realpath(os.path.join(self._datastore.image_path(), f"{image_id}.nii.gz"))
         if not os.path.exists(image_nii_gz):
@@ -77,7 +89,7 @@ class DICOMWebDatastore(LocalDatastore):
         logger.info(f"Label Dir (cache): {label_dir}")
 
         if not os.path.exists(label_dir) or not os.listdir(label_dir):
-            dicom_web_download_series(None, label_id, label_dir, self._client)
+            dicom_web_download_series(None, label_id, label_dir, self._client, self._fetch_by_frame)
 
         label_nii_gz = os.path.realpath(
             os.path.join(self._datastore.label_path(DefaultLabelTag.FINAL), f"{image_id}.nii.gz")
@@ -95,7 +107,7 @@ class DICOMWebDatastore(LocalDatastore):
 
         info = {"SeriesInstanceUID": series_id}
         for f in fields:
-            info[f] = str(meta[f].value)
+            info[f] = str(meta[f].value) if meta.get(f) else "UNK"
         return info
 
     def list_images(self) -> List[str]:
@@ -114,7 +126,12 @@ class DICOMWebDatastore(LocalDatastore):
                 str(seg["StudyInstanceUID"].value), str(seg["SeriesInstanceUID"].value)
             )
             seg_meta = load_json_dataset(meta[0])
-            image_series.append(str(seg_meta["ReferencedSeriesSequence"].value[0]["SeriesInstanceUID"].value))
+            if seg_meta.get("ReferencedSeriesSequence"):
+                image_series.append(str(seg_meta["ReferencedSeriesSequence"].value[0]["SeriesInstanceUID"].value))
+            else:
+                logger.warning(
+                    f"Label Ignored:: ReferencedSeriesSequence is NOT found: {str(seg['SeriesInstanceUID'].value)}"
+                )
         return image_series
 
     def get_unlabeled_images(self) -> List[str]:
@@ -168,6 +185,12 @@ class DICOMWebDatastore(LocalDatastore):
                 str(seg["StudyInstanceUID"].value), str(seg["SeriesInstanceUID"].value)
             )
             seg_meta = load_json_dataset(meta[0])
+            if not seg_meta.get("ReferencedSeriesSequence"):
+                logger.warning(
+                    f"Label Ignored:: ReferencedSeriesSequence is NOT found: {str(seg['SeriesInstanceUID'].value)}"
+                )
+                continue
+
             image_labels.append(
                 {
                     "image": str(seg_meta["ReferencedSeriesSequence"].value[0]["SeriesInstanceUID"].value),
@@ -190,7 +213,7 @@ class DICOMWebDatastore(LocalDatastore):
                 label_id=image_label["label"], label_tag=DefaultLabelTag.FINAL, image_id=image_label["image"]
             )
 
-    def datalist(self, full_path=True) -> List[Dict[str, str]]:
+    def datalist(self, full_path=True) -> List[Dict[str, Any]]:
         self._download_labeled_data()
         return super().datalist(full_path)
 

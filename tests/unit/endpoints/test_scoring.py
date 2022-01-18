@@ -11,16 +11,32 @@
 
 import unittest
 
-from .context import BasicEndpointTestSuite
+import torch
+
+from .context import BasicEndpointV3TestSuite
 
 
-class EndPointScoring(BasicEndpointTestSuite):
+class EndPointScoring(BasicEndpointV3TestSuite):
     def test_dice(self):
         response = self.client.post("/scoring/dice?run_sync=true")
         assert response.status_code == 200
 
     def test_sum(self):
         response = self.client.post("/scoring/sum?run_sync=true")
+        assert response.status_code == 200
+
+    def test_epistemic(self):
+        if not torch.cuda.is_available():
+            return
+
+        response = self.client.post("/scoring/EPISTEMIC?run_sync=true")
+        assert response.status_code == 200
+
+    def test_tta(self):
+        if not torch.cuda.is_available():
+            return
+
+        response = self.client.post("/scoring/TTA?run_sync=true")
         assert response.status_code == 200
 
     def test_status(self):

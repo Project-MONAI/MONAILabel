@@ -51,7 +51,7 @@ class MyInfer(InferTask):
         )
 
     def pre_transforms(self):
-        pre_transforms = [
+        return [
             LoadImaged(keys=["image"]),
             EnsureChannelFirstd(keys="image"),
             Spacingd(
@@ -64,7 +64,6 @@ class MyInfer(InferTask):
             CenterSpatialCropd(keys="image", roi_size=(256, 256, 128)),
             ToTensord(keys=["image"]),
         ]
-        return pre_transforms
 
     def inferer(self):
         return SimpleInferer()

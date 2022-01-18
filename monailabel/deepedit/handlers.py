@@ -94,11 +94,6 @@ class TensorBoardImageHandler:
         self.index = index
         self.max_frames = max_frames
         self.max_channels = max_channels
-        self.num_pos_clicks = 0
-        self.num_neg_clicks = 0
-        self.num_total_clicks = 0
-        self.cumulative_pos_clicks = 0
-        self.cumulative_neg_clicks = 0
 
     def attach(self, engine: Engine) -> None:
         """
@@ -128,28 +123,9 @@ class TensorBoardImageHandler:
             .split(".")[0]
         )
 
-        """
-        Adding simulated clicks stats
-        """
-        self.num_pos_clicks = self.batch_transform(engine.state.batch)[0]["pos_click_sum"]
-        self.cumulative_pos_clicks += self.num_pos_clicks
-
-        self.num_neg_clicks = self.batch_transform(engine.state.batch)[0]["neg_click_sum"]
-        self.cumulative_neg_clicks += self.num_neg_clicks
-
-        self.num_total_clicks = self.num_pos_clicks + self.num_neg_clicks
-
-        self._writer.add_scalar("Positive clicks", self.num_pos_clicks, step)
-        self._writer.add_scalar("Negative clicks", self.num_neg_clicks, step)
-        self._writer.add_scalar("Total clicks", self.num_total_clicks, step)
-        self._writer.add_scalar("Positive clicks (cumulative)", self.cumulative_pos_clicks, step)
-        self._writer.add_scalar("Negative clicks (cumulative)", self.cumulative_neg_clicks, step)
-
         input_tensor = self.batch_transform(engine.state.batch)[0]["image"]
 
-        """
-        IMAGE
-        """
+        # IMAGE
         show_image = input_tensor[0, ...][None]
         if isinstance(show_image, torch.Tensor):
             show_image = show_image.detach().cpu().numpy()
@@ -161,18 +137,16 @@ class TensorBoardImageHandler:
                 )
             plot_2d_or_3d_image(
                 # add batch dim and plot the first item
-                show_image[None],
-                step,
-                self._writer,
-                0,
-                self.max_channels,
-                self.max_frames,
-                "step_" + str(step) + "_image_" + filename,
+                data=show_image[None],
+                step=step,
+                writer=self._writer,
+                index=0,
+                max_channels=self.max_channels,
+                max_frames=self.max_frames,
+                tag="step_" + str(step) + "_image_" + filename,
             )
 
-        """
-        LABEL
-        """
+        # LABEL
         show_label = self.batch_transform(engine.state.batch)[0]["label"][0, ...][None]
         if isinstance(show_label, torch.Tensor):
             show_label = show_label.detach().cpu().numpy()
@@ -184,18 +158,16 @@ class TensorBoardImageHandler:
                 )
             plot_2d_or_3d_image(
                 # add batch dim and plot the first item
-                show_label[None],
-                step,
-                self._writer,
-                0,
-                self.max_channels,
-                self.max_frames,
-                "step_" + str(step) + "_label_" + filename,
+                data=show_label[None],
+                step=step,
+                writer=self._writer,
+                index=0,
+                max_channels=self.max_channels,
+                max_frames=self.max_frames,
+                tag="step_" + str(step) + "_label_" + filename,
             )
 
-        """
-        PREDICTION
-        """
+        # PREDICTION
         all_preds = self.output_transform(engine.state.output)[0]["pred"]
         for idx in range(all_preds.shape[0]):
             show_prediction = all_preds[idx, ...][None]
@@ -209,19 +181,17 @@ class TensorBoardImageHandler:
                     )
                 plot_2d_or_3d_image(
                     # add batch dim and plot the first item
-                    show_prediction[None],
-                    step,
-                    self._writer,
-                    0,
-                    self.max_channels,
-                    self.max_frames,
-                    "step_" + str(step) + f"_prediction_for_label_{str(idx)}_" + filename,
+                    data=show_prediction[None],
+                    step=step,
+                    writer=self._writer,
+                    index=0,
+                    max_channels=self.max_channels,
+                    max_frames=self.max_frames,
+                    tag="step_" + str(step) + f"_prediction_for_label_{str(idx)}_" + filename,
                 )
 
-        """
-        POSITIVE CLICKS
-        """
-        show_pos_clicks = input_tensor[1:-1, ...][None]
+        # ALL CLICKS
+        show_pos_clicks = input_tensor[1:, ...][None]
         if isinstance(show_pos_clicks, torch.Tensor):
             show_pos_clicks = show_pos_clicks.detach().cpu().numpy()
             # Adding all labels in a single channel tensor
@@ -236,37 +206,13 @@ class TensorBoardImageHandler:
             show_pos_clicks = show_label * (1 - show_pos_clicks)
             plot_2d_or_3d_image(
                 # add batch dim and plot the first item
-                show_pos_clicks[None],
-                step,
-                self._writer,
-                0,
-                self.max_channels,
-                self.max_frames,
-                "step_" + str(step) + "_pos_clicks_" + filename,
-            )
-
-        """
-        NEGATIVE CLICKS
-        """
-        show_neg_clicks = input_tensor[-1, ...][None]
-        if isinstance(show_neg_clicks, torch.Tensor):
-            show_neg_clicks = show_neg_clicks.detach().cpu().numpy()
-        if show_neg_clicks is not None:
-            if not isinstance(show_neg_clicks, np.ndarray):
-                raise TypeError(
-                    "show_neg_clicks must be None or one of "
-                    f"(numpy.ndarray, torch.Tensor) but is {type(show_neg_clicks).__name__}."
-                )
-            show_neg_clicks = show_label + show_neg_clicks
-            plot_2d_or_3d_image(
-                # add batch dim and plot the first item
-                show_neg_clicks[None],
-                step,
-                self._writer,
-                0,
-                self.max_channels,
-                self.max_frames,
-                "step_" + str(step) + "_neg_clicks_" + filename,
+                data=show_pos_clicks[None],
+                step=step,
+                writer=self._writer,
+                index=0,
+                max_channels=self.max_channels,
+                max_frames=self.max_frames,
+                tag="step_" + str(step) + "_all_clicks_" + filename,
             )
 
         self._writer.flush()

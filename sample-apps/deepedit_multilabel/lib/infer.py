@@ -18,7 +18,6 @@ from monai.transforms import (
     Orientationd,
     Resized,
     ScaleIntensityRanged,
-    Spacingd,
     SqueezeDimd,
     ToNumpyd,
     ToTensord,
@@ -28,17 +27,16 @@ from monailabel.deepedit.multilabel.transforms import (
     AddGuidanceFromPointsCustomd,
     AddGuidanceSignalCustomd,
     DiscardAddGuidanced,
-    GetSingleLabeld,
-    PointsToDictd,
     ResizeGuidanceMultipleLabelCustomd,
 )
 from monailabel.interfaces.tasks.infer import InferTask, InferType
 from monailabel.transform.post import Restored
 
 
-class Segmentation(InferTask):
+class DeepEditSeg(InferTask):
     """
-    This provides Inference Engine for pre-trained model over MSD Dataset.
+    This provides Inference Engine for pre-trained model over Multi Atlas Labeling Beyond The Cranial Vault (BTCV)
+    dataset.
     """
 
     def __init__(
@@ -62,7 +60,6 @@ class Segmentation(InferTask):
             input_key="image",
             output_label_key="pred",
             output_json_key="result",
-            config={"result_extension": [".nrrd", ".nii.gz"]},
         )
 
         self.spatial_size = spatial_size
@@ -71,12 +68,10 @@ class Segmentation(InferTask):
 
     def pre_transforms(self):
         return [
-            LoadImaged(keys="image", reader="nibabelreader"),
-            # SingleModalityLabelSanityd(keys="image", label_names=self.label_names),
+            LoadImaged(keys="image", reader="ITKReader"),
             AddChanneld(keys="image"),
-            Spacingd(keys="image", pixdim=self.target_spacing, mode="bilinear"),
+            # Spacingd(keys="image", pixdim=self.target_spacing, mode="bilinear"),
             Orientationd(keys="image", axcodes="RAS"),
-            # NormalizeIntensityd(keys="image"),
             # This transform may not work well for MR images
             ScaleIntensityRanged(
                 keys="image",
@@ -108,7 +103,7 @@ class Segmentation(InferTask):
         ]
 
 
-class Deepgrow(InferTask):
+class DeepEdit(InferTask):
     """
     This provides Inference Engine for Deepgrow over DeepEdit model.
     """
@@ -117,9 +112,9 @@ class Deepgrow(InferTask):
         self,
         path,
         network=None,
-        type=InferType.DEEPGROW,
+        type=InferType.DEEPEDIT,
         dimension=3,
-        description="A pre-trained 3D DeepGrow model based on UNET",
+        description="A pre-trained 3D Deepedit model based on DynUnet",
         spatial_size=(128, 128, 128),
         target_spacing=(1.5, 1.5, 2.0),
         label_names=None,
@@ -128,7 +123,7 @@ class Deepgrow(InferTask):
             path=path,
             network=network,
             type=type,
-            labels=None,
+            labels=label_names,
             dimension=dimension,
             description=description,
             config={"result_extension": [".nrrd", ".nii.gz"]},
@@ -140,16 +135,10 @@ class Deepgrow(InferTask):
 
     def pre_transforms(self):
         return [
-            LoadImaged(keys="image", reader="nibabelreader"),
-            # SingleModalityLabelSanityd(keys="image", label_names=self.label_names),
+            LoadImaged(keys="image", reader="ITKReader"),
             AddChanneld(keys="image"),
-            Spacingd(keys="image", pixdim=self.target_spacing, mode="bilinear"),
+            # Spacingd(keys="image", pixdim=self.target_spacing, mode="bilinear"),
             Orientationd(keys="image", axcodes="RAS"),
-            SqueezeDimd(keys="image", dim=0),
-            PointsToDictd(label_names=self.label_names),
-            AddGuidanceFromPointsCustomd(ref_image="image", guidance="guidance"),
-            AddChanneld(keys="image"),
-            # NormalizeIntensityd(keys="image"),
             # This transform may not work well for MR images
             ScaleIntensityRanged(
                 keys="image",
@@ -159,6 +148,7 @@ class Deepgrow(InferTask):
                 b_max=1.0,
                 clip=True,
             ),
+            AddGuidanceFromPointsCustomd(ref_image="image", guidance="guidance", label_names=self.label_names),
             Resized(keys="image", spatial_size=self.spatial_size, mode="area"),
             ResizeGuidanceMultipleLabelCustomd(guidance="guidance", ref_image="image"),
             AddGuidanceSignalCustomd(keys="image", guidance="guidance"),
@@ -168,6 +158,9 @@ class Deepgrow(InferTask):
     def inferer(self):
         return SimpleInferer()
 
+    def inverse_transforms(self):
+        return []  # Self-determine from the list of pre-transforms provided
+
     def post_transforms(self):
         return [
             ToTensord(keys="pred"),
@@ -175,5 +168,4 @@ class Deepgrow(InferTask):
             AsDiscreted(keys="pred", argmax=True),
             ToNumpyd(keys="pred"),
             Restored(keys="pred", ref_image="image"),
-            GetSingleLabeld(keys="pred", label_names=self.label_names),
         ]

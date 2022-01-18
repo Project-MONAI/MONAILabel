@@ -1,4 +1,4 @@
-# DeepEdit Default App
+# DeepEdit Multilabel Default App
 
 ### Model Overview
 
@@ -6,19 +6,15 @@ This MONAI Label App is based on DeepEdit: an algorithm that combines the capabi
 
 DeepEdit App works in both 3DSlicer plugin and OHIF viewer. Researchers/clinicians can also place their studies in either the file archive or a DICOMweb server (i.e. Orthanc) to use DeepEdit. 
 
-Currently, this App works for single label segmentation only.
+This App works for single and multiple label segmentation tasks.
 
 If researchers are interested in using this App, please clone this folder and start the MONAI Label server using:
 
-  > monailabel apps --download --name deepedit --output /workspace/apps/
+  > monailabel apps --download --name deepedit_multilabel --output /workspace/apps/
 
-- Heuristic planner
-  
-    > Users may want to use the automatic [heuristic planner](https://github.com/Project-MONAI/MONAILabel/blob/main/monailabel/utils/others/planner.py) that considers available GPU memory, images shape, 
-  > and image spacing of the dataset to set transform/data augmentation hyperparameters. Obtained values from the planner are arguments to the **[./lib/infer.py](./lib/infer.py)** and **[./lib/train.py](./lib/train.py)**
 
 - Network
-    > This App uses the DynUNetV1 as the default network. This can be changed in the **main.py** file. 
+    > This App uses the DynUNet as the default network. This can be changed in the **main.py** file. 
   > Researchers can define their own network or use one of the listed [here](https://docs.monai.io/en/latest/networks.html)  
   
 - [Spatial and intensity transformation](https://docs.monai.io/en/latest/transforms.html) for pre and post processing
@@ -37,9 +33,9 @@ If researchers are interested in using this App, please clone this folder and st
 
   Transformations used for the clicks simulation [(DeepGrow App)](https://docs.monai.io/en/latest/apps.html)
   > 
-  > - [FindAllValidSlicesd](https://docs.monai.io/en/latest/_modules/monai/apps/deepgrow/transforms.html#FindAllValidSlicesd) -> This transform finds/lists all valid slices in the label. Label is assumed to be a 4D Volume with shape CDHW, where C=1,
-  > - [AddInitialSeedPointd](https://docs.monai.io/en/latest/_modules/monai/apps/deepgrow/transforms.html#AddInitialSeedPointd) -> This transform adds random guidance as initial seed point for a given label,
-  > - [AddGuidanceSignald](https://docs.monai.io/en/latest/_modules/monai/apps/deepgrow/transforms.html#AddGuidanceSignald) -> This transform adds guidance signal (foreground and background clicks) for input image,
+  > - [FindAllValidSlicesd](https://docs.monai.io/en/latest/_modules/monai/apps/deepgrow/transforms.html#FindAllValidSlicesd) -> This transform finds/lists all valid slices in labels. Label is assumed to be a 4D Volume with shape CHWD, where C=1,
+  > - [AddInitialSeedPointd](https://docs.monai.io/en/latest/_modules/monai/apps/deepgrow/transforms.html#AddInitialSeedPointd) -> This transform adds random guidance as initial seed point for the given labels,
+  > - [AddGuidanceSignald](https://docs.monai.io/en/latest/_modules/monai/apps/deepgrow/transforms.html#AddGuidanceSignald) -> This transform adds guidance signal (labels and background clicks) for input image,
 
 - Training hyperparameters (i.e. Number of epochs, learning rate, validation split, ...)
   > Default values are in [conf argument](https://github.com/Project-MONAI/MONAILabel/blob/72574542bcb23fb1eb7973ac35f45b59b0976d17/monailabel/interfaces/app.py#L60)
@@ -47,11 +43,11 @@ If researchers are interested in using this App, please clone this folder and st
 ### Inputs
 
 - 1 channel for the image modality -> Automated mode
-- 3 channels (image modality + foreground points + background points) -> Interactive mode
+- 1+N channels (image modality + points for N labels including background) -> Interactive mode
 
 ### Output
 
-- 1 channel representing the segmented organ/tumor/tissue
+- N channels representing the segmented organs/tumors/tissues
 
 ### Structure of the App
 

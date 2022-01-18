@@ -72,7 +72,7 @@ class ResultType(str, Enum):
 
 
 def send_response(datastore, result, output, background_tasks):
-    res_img = result.get("label")
+    res_img = result.get("file") if result.get("file") else result.get("label")
     res_tag = result.get("tag")
     res_json = result.get("params")
 
@@ -92,14 +92,17 @@ def send_response(datastore, result, output, background_tasks):
 
     res_fields = dict()
     res_fields["params"] = (None, json.dumps(res_json), "application/json")
-    res_fields["image"] = (os.path.basename(res_img), open(res_img, "rb"), m_type)
+    if res_img and os.path.exists(res_img):
+        res_fields["image"] = (os.path.basename(res_img), open(res_img, "rb"), m_type)
+    else:
+        logger.info(f"Return only Result Json as Result Image is not available: {res_img}")
+        return res_json
 
     return_message = MultipartEncoder(fields=res_fields)
     return Response(content=return_message.to_string(), media_type=return_message.content_type)
 
 
-@router.post("/{model}", summary="Run Inference for supported model")
-async def run_inference(
+def run_inference(
     background_tasks: BackgroundTasks,
     model: str,
     image: str = "",
@@ -150,3 +153,17 @@ async def run_inference(
     if result is None:
         raise HTTPException(status_code=500, detail="Failed to execute infer")
     return send_response(instance.datastore(), result, output, background_tasks)
+
+
+@router.post("/{model}", summary="Run Inference for supported model")
+async def api_run_inference(
+    background_tasks: BackgroundTasks,
+    model: str,
+    image: str = "",
+    session_id: str = "",
+    params: str = Form("{}"),
+    file: UploadFile = File(None),
+    label: UploadFile = File(None),
+    output: Optional[ResultType] = None,
+):
+    return run_inference(background_tasks, model, image, session_id, params, file, label, output)

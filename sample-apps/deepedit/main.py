@@ -14,9 +14,9 @@ import os
 from distutils.util import strtobool
 from typing import Dict
 
-from lib import Deepgrow, MyTrain, Segmentation
-from lib.activelearning import MyStrategy
-from monai.networks.nets.dynunet_v1 import DynUNetV1
+from lib import DeepEdit, DeepEditSeg, MyStrategy, MyTrain
+from monai.networks.nets import BasicUNet
+from monai.networks.nets.dynunet import DynUNet
 
 from monailabel.interfaces.app import MONAILabelApp
 from monailabel.interfaces.datastore import Datastore
@@ -39,43 +39,56 @@ logger = logging.getLogger(__name__)
 
 class MyApp(MONAILabelApp):
     def __init__(self, app_dir, studies, conf):
-        network_params = {
-            "spatial_dims": 3,
-            "in_channels": 3,
-            "out_channels": 1,
-            "kernel_size": [
-                [3, 3, 3],
-                [3, 3, 3],
-                [3, 3, 3],
-                [3, 3, 3],
-                [3, 3, 3],
-                [3, 3, 3],
-            ],
-            "strides": [
-                [1, 1, 1],
-                [2, 2, 2],
-                [2, 2, 2],
-                [2, 2, 2],
-                [2, 2, 2],
-                [2, 2, 1],
-            ],
-            "upsample_kernel_size": [
-                [2, 2, 2],
-                [2, 2, 2],
-                [2, 2, 2],
-                [2, 2, 2],
-                [2, 2, 1],
-            ],
-            "norm_name": "instance",
-            "deep_supervision": False,
-            "res_block": True,
-        }
-        self.network = DynUNetV1(**network_params)
-        self.network_with_dropout = DynUNetV1(**network_params, dropout=0.2)
+        network = conf.get("network", "dynunet")
+        if network == "unet":
+            network_params = {
+                "dimensions": 3,
+                "in_channels": 3,
+                "out_channels": 1,
+                "features": [32, 64, 128, 256, 512, 32],
+            }
+            self.network = BasicUNet(**network_params)
+            self.network_with_dropout = BasicUNet(**network_params, dropout=0.2)
+            self.find_unused_parameters = False
+        else:
+            network_params = {
+                "spatial_dims": 3,
+                "in_channels": 3,
+                "out_channels": 1,
+                "kernel_size": [
+                    [3, 3, 3],
+                    [3, 3, 3],
+                    [3, 3, 3],
+                    [3, 3, 3],
+                    [3, 3, 3],
+                    [3, 3, 3],
+                ],
+                "strides": [
+                    [1, 1, 1],
+                    [2, 2, 2],
+                    [2, 2, 2],
+                    [2, 2, 2],
+                    [2, 2, 2],
+                    [2, 2, 1],
+                ],
+                "upsample_kernel_size": [
+                    [2, 2, 2],
+                    [2, 2, 2],
+                    [2, 2, 2],
+                    [2, 2, 2],
+                    [2, 2, 1],
+                ],
+                "norm_name": "instance",
+                "deep_supervision": False,
+                "res_block": True,
+            }
+            self.network = DynUNet(**network_params)
+            self.network_with_dropout = DynUNet(**network_params, dropout=0.2)
+            self.find_unused_parameters = False
 
         self.model_dir = os.path.join(app_dir, "model")
-        self.pretrained_model = os.path.join(self.model_dir, "pretrained.pt")
-        self.final_model = os.path.join(self.model_dir, "model.pt")
+        self.pretrained_model = os.path.join(self.model_dir, f"pretrained_{network}.pt")
+        self.final_model = os.path.join(self.model_dir, f"model_{network}.pt")
 
         # Use Heuristic Planner to determine target spacing and spatial size based on dataset+gpu
         spatial_size = json.loads(conf.get("spatial_size", "[256, 256, 128]"))
@@ -84,10 +97,11 @@ class MyApp(MONAILabelApp):
         self.planner = HeuristicPlanner(spatial_size=spatial_size, target_spacing=target_spacing)
 
         use_pretrained_model = strtobool(conf.get("use_pretrained_model", "true"))
-        pretrained_model_uri = conf.get("pretrained_model_path", f"{self.PRE_TRAINED_PATH}/deepedit_spleen.pt")
+        pretrained_model_uri = conf.get("pretrained_model_path", f"{self.PRE_TRAINED_PATH}deepedit_{network}_spleen.pt")
 
         # Path to pretrained weights
         if use_pretrained_model:
+            logger.info(f"Pretrained Model Path: {pretrained_model_uri}")
             self.download([(self.pretrained_model, pretrained_model_uri)])
 
         self.epistemic_enabled = strtobool(conf.get("epistemic_enabled", "false"))
@@ -114,13 +128,13 @@ class MyApp(MONAILabelApp):
 
     def init_infers(self) -> Dict[str, InferTask]:
         return {
-            "deepedit": Deepgrow(
+            "deepedit": DeepEdit(
                 [self.pretrained_model, self.final_model],
                 self.network,
                 spatial_size=self.planner.spatial_size,
                 target_spacing=self.planner.target_spacing,
             ),
-            "deepedit_seg": Segmentation(
+            "deepedit_seg": DeepEditSeg(
                 [self.pretrained_model, self.final_model],
                 self.network,
                 spatial_size=self.planner.spatial_size,
@@ -142,7 +156,8 @@ class MyApp(MONAILabelApp):
                 load_path=self.pretrained_model,
                 publish_path=self.final_model,
                 config={"pretrained": strtobool(self.conf.get("use_pretrained_model", "true"))},
-                debug_mode=False,
+                debug_mode=strtobool(self.conf.get("debug", "false")),
+                find_unused_parameters=self.find_unused_parameters,
             )
         }
 
@@ -177,3 +192,59 @@ class MyApp(MONAILabelApp):
         methods["dice"] = Dice()
         methods["sum"] = Sum()
         return methods
+
+
+"""
+Example to run train/infer/scoring task(s) locally without actually running MONAI Label Server
+"""
+
+
+def main():
+    import argparse
+
+    from monailabel.config import settings
+
+    settings.MONAI_LABEL_DATASTORE_AUTO_RELOAD = False
+    os.putenv("MASTER_ADDR", "127.0.0.1")
+    os.putenv("MASTER_PORT", "1234")
+
+    logging.basicConfig(
+        level=logging.INFO,
+        format="[%(asctime)s] [%(process)s] [%(threadName)s] [%(levelname)s] (%(name)s:%(lineno)d) - %(message)s",
+        datefmt="%Y-%m-%d %H:%M:%S",
+    )
+
+    parser = argparse.ArgumentParser()
+    parser.add_argument("-n", "--network", default="dynunet", choices=["unet", "dynunet"])
+    parser.add_argument("-s", "--studies", default="/local/sachi/Datasets/Task09_Spleen/imagesTr")
+    parser.add_argument("-e", "--epoch", type=int, default=100)
+    parser.add_argument("-d", "--dataset", default="CacheDataset")
+    parser.add_argument("-o", "--output", default="model_01")
+    parser.add_argument("-i", "--size", default="[256,256,128]")
+    parser.add_argument("-b", "--batch", type=int, default=1)
+    args = parser.parse_args()
+
+    app_dir = os.path.dirname(__file__)
+    studies = args.studies
+    conf = {
+        "use_pretrained_model": "false",
+        "auto_update_scoring": "false",
+        "spatial_size": args.size,
+        "network": args.network,
+    }
+
+    app = MyApp(app_dir, studies, conf)
+    app.train(
+        request={
+            "name": args.output,
+            "model": "deepedit_train",
+            "max_epochs": args.epoch,
+            "dataset": args.dataset,
+            "train_batch_size": args.batch,
+            "multi_gpu": True,
+        }
+    )
+
+
+if __name__ == "__main__":
+    main()

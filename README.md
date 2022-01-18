@@ -3,13 +3,14 @@
 [![License](https://img.shields.io/badge/license-Apache%202.0-green.svg)](https://opensource.org/licenses/Apache-2.0)
 [![CI Build](https://github.com/Project-MONAI/MONAILabel/workflows/build/badge.svg?branch=main)](https://github.com/Project-MONAI/MONAILabel/commits/main)
 [![Documentation Status](https://readthedocs.org/projects/monailabel/badge/?version=latest)](https://docs.monai.io/projects/label/en/latest/?badge=latest)
-[![codecov](https://codecov.io/gh/Project-MONAI/MONAILabel/branch/main/graph/badge.svg)](https://codecov.io/gh/Project-MONAI/MONAILabel)
 [![PyPI version](https://badge.fury.io/py/monailabel.svg)](https://badge.fury.io/py/monailabel)
+[![Azure DevOps tests (compact)](https://img.shields.io/azure-devops/tests/projectmonai/monai-label/10?compact_message)](https://dev.azure.com/projectmonai/monai-label/_test/analytics?definitionId=10&contextType=build)
+[![Azure DevOps coverage](https://img.shields.io/azure-devops/coverage/projectmonai/monai-label/10)](https://dev.azure.com/projectmonai/monai-label/_build?definitionId=10)
+[![codecov](https://codecov.io/gh/Project-MONAI/MONAILabel/branch/main/graph/badge.svg)](https://codecov.io/gh/Project-MONAI/MONAILabel)
 
 MONAI Label is a server-client system that facilitates interactive medical image annotation by using AI. It is an
-open-source and easy-to-install ecosystem that can run locally on a machine with one or two GPUs. Both server and client
-work on the same/different machine. However, initial support for multiple users is restricted. It shares the same
-principles with [MONAI](https://github.com/Project-MONAI).
+open-source and easy-to-install ecosystem that can run locally on a machine with single or multiple GPUs. Both server and client
+work on the same/different machine. It shares the same principles with [MONAI](https://github.com/Project-MONAI).
 
 [MONAI Label Demo](https://youtu.be/o8HipCgSZIw?t=1319)
 
@@ -32,25 +33,27 @@ MONAI Label supports following OS with **GPU/CUDA** enabled.
 - Ubuntu
 - [Windows](https://docs.monai.io/projects/label/en/latest/installation.html#windows)
 
-To install the current release, you can simply run:
+To install the [current release](https://pypi.org/project/monailabel/), you can simply run:
 
 ```bash
   pip install monailabel
   
   # download sample apps/dataset
   monailabel apps --download --name deepedit --output apps
-  monailabel datasets --download --name Task02_Heart --output datasets
+  monailabel datasets --download --name Task09_Spleen --output datasets
   
   # run server
-  monailabel start_server --app apps/deepedit --studies datasets/Task02_Heart/imagesTr
+  monailabel start_server --app apps/deepedit --studies datasets/Task09_Spleen/imagesTr
 ```
 
-> If monailabel install path is not automatically determined, then you can provide explicit install path as: `monailabel apps --prefix ~/.local`
+> If monailabel install path is not automatically determined, then you can provide explicit install path as: 
+> 
+> `monailabel apps --prefix ~/.local`
 
 For **_prerequisites_**, other installation methods (using the default GitHub branch, using Docker, etc.), please refer
 to the [installation guide](https://docs.monai.io/projects/label/en/latest/installation.html).
 
-> Once you start the MONAI Label Server, by default it will be up and serving at http://127.0.0.1:8000/. Open the serving URL in browser. It will provide you the list of Rest APIs available.
+> Once you start the MONAI Label Server, by default server will be up and serving at http://127.0.0.1:8000/. Open the serving URL in browser. It will provide you the list of Rest APIs available. **For this, please make sure you use the HTTP protocol. HTTPS is not implemented.**
 
 ### 3D Slicer
 
@@ -62,17 +65,22 @@ Refer [3D Slicer plugin](plugins/slicer) for other options to install and run MO
 
 ### OHIF
 
-MONAI Label comes with [pre-built plugin](plugins/ohif) for [OHIF Viewer](https://github.com/OHIF/Viewers).
+MONAI Label comes with [pre-built plugin](plugins/ohif) for [OHIF Viewer](https://github.com/OHIF/Viewers).  To use OHIF Viewer, you need to provide DICOMWeb instead of FileSystem as _studies_ when you start the server.
 > Please install [Orthanc](https://www.orthanc-server.com/download.php) before using OHIF Viewer.
 > For Ubuntu 20.x, Orthanc can be installed as `apt-get install orthanc orthanc-dicomweb`. However, you have to **upgrade to latest version** by following steps mentioned [here](https://book.orthanc-server.com/users/debian-packages.html#replacing-the-package-from-the-service-by-the-lsb-binaries)
 >
 > You can use [PlastiMatch](https://plastimatch.org/plastimatch.html#plastimatch-convert) to convert NIFTI to DICOM
 
+```bash
+  # start server using DICOMWeb
+  monailabel start_server --app apps\deepedit --studies http://127.0.0.1:8042/dicom-web
+```
+
 > OHIF Viewer will be accessible at http://127.0.0.1:8000/ohif/
 
 ![OHIF](https://raw.githubusercontent.com/Project-MONAI/MONAILabel/main/docs/images/ohif.png)
 
-> **_NOTE:_** OHIF does not yet support Scribbles-based annotations.
+> **_NOTE:_** OHIF does not yet support Scribbles-based annotations and Multi-Label interaction for DeepEdit.
 
 ## Contributing
 

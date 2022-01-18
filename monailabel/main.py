@@ -19,358 +19,315 @@ import shutil
 import sys
 
 import uvicorn
-from fastapi import FastAPI
-from fastapi.middleware import Middleware
-from fastapi.middleware.cors import CORSMiddleware
-from fastapi.openapi.docs import get_swagger_ui_html
-from fastapi.responses import FileResponse, HTMLResponse
-from fastapi.staticfiles import StaticFiles
 
 from monailabel.config import settings
-from monailabel.endpoints import (
-    activelearning,
-    batch_infer,
-    datastore,
-    infer,
-    info,
-    logs,
-    ohif,
-    proxy,
-    scoring,
-    session,
-    train,
-)
-from monailabel.interfaces.utils.app import app_instance
 from monailabel.utils.others.generic import init_log_config
 
 logger = logging.getLogger(__name__)
 
-middleware = [
-    Middleware(
-        CORSMiddleware,
-        allow_origins=[str(origin) for origin in settings.MONAI_LABEL_CORS_ORIGINS]
-        if settings.MONAI_LABEL_CORS_ORIGINS
-        else ["*"],
-        allow_credentials=True,
-        allow_methods=["*"],
-        allow_headers=["*"],
-    )
-]
 
-app = FastAPI(
-    title=settings.MONAI_LABEL_PROJECT_NAME,
-    openapi_url=f"{settings.MONAI_LABEL_API_STR}/openapi.json",
-    docs_url=None,
-    redoc_url="/docs",
-    middleware=middleware,
-)
+class Main:
+    def __init__(self, loglevel=logging.INFO, actions=("start_server", "apps", "datasets", "plugins")):
+        self.actions = set([actions] if isinstance(actions, str) else actions)
+        logging.basicConfig(
+            level=loglevel,
+            format="[%(asctime)s] [%(process)s] [%(threadName)s] [%(levelname)s] (%(name)s:%(lineno)d) - %(message)s",
+        )
 
-static_dir = os.path.join(os.path.dirname(os.path.realpath(__file__)), "endpoints", "static")
-project_root_absolute = pathlib.Path(__file__).parent.parent.resolve()
-app.mount(
-    "/static",
-    StaticFiles(directory=os.path.join(project_root_absolute, "monailabel", "endpoints", "static")),
-    name="static",
-)
+    def args_start_server(self, parser):
+        parser.add_argument("-a", "--app", help="App Directory")
+        parser.add_argument("-s", "--studies", help="Studies Directory")
+        parser.add_argument("-d", "--debug", action="store_true", help="Enable debug logs")
 
-app.include_router(info.router)
-app.include_router(infer.router)
-app.include_router(batch_infer.router)
-app.include_router(train.router)
-app.include_router(activelearning.router)
-app.include_router(scoring.router)
-app.include_router(datastore.router)
-app.include_router(logs.router)
-app.include_router(ohif.router)
-app.include_router(proxy.router)
-app.include_router(session.router)
+        # --conf key1 value1 --conf key2 value2
+        parser.add_argument(
+            "-c",
+            "--conf",
+            nargs=2,
+            action="append",
+            help="config for the app.  Example: --conf key1 value1 --conf key2 value2",
+        )
 
+        parser.add_argument("-i", "--host", default="0.0.0.0", type=str, help="Server IP")
+        parser.add_argument("-p", "--port", default=8000, type=int, help="Server Port")
+        parser.add_argument("-l", "--log_config", default=None, type=str, help="Logging config")
+        parser.add_argument("--dryrun", action="store_true", help="Dry run without starting server")
 
-@app.get("/", include_in_schema=False)
-async def custom_swagger_ui_html():
-    html = get_swagger_ui_html(openapi_url=app.openapi_url, title=app.title + " - APIs")
+    def args_apps(self, parser):
+        parser.add_argument("-d", "--download", action="store_true", help="download app")
+        parser.add_argument("-n", "--name", help="Name of the sample app to download", default=None)
+        parser.add_argument("-o", "--output", help="Output path to save the app", default=None)
+        parser.add_argument("--prefix", default=None)
 
-    body = html.body.decode("utf-8")
-    body = body.replace("showExtensions: true,", "showExtensions: true, defaultModelsExpandDepth: -1,")
-    return HTMLResponse(body)
+    def args_datasets(self, parser):
+        parser.add_argument("-d", "--download", action="store_true", help="download dataset")
+        parser.add_argument("-n", "--name", help="Name of the dataset to download", default=None)
+        parser.add_argument("-o", "--output", help="Output path to save the dataset", default=None)
+        parser.add_argument("--prefix", default=None)
 
+    def args_plugins(self, parser):
+        parser.add_argument("-d", "--download", action="store_true", help="download plugin")
+        parser.add_argument("-n", "--name", help="Name of the plugin to download", default=None)
+        parser.add_argument("-o", "--output", help="Output path to save the plugin", default=None)
+        parser.add_argument("--prefix", default=None)
 
-@app.get("/favicon.ico", include_in_schema=False)
-async def favicon():
-    return FileResponse(os.path.join(static_dir, "favicon.ico"), media_type="image/x-icon")
+    def args_parser(self, name="monailabel"):
+        parser = argparse.ArgumentParser(name)
+        subparsers = parser.add_subparsers(help="sub-command help")
 
+        if "start_server" in self.actions:
+            parser_a = subparsers.add_parser("start_server", help="Start Application Server")
+            self.args_start_server(parser_a)
+            parser_a.set_defaults(action="start_server")
 
-@app.on_event("startup")
-async def startup_event():
-    instance = app_instance()
-    instance.server_mode(True)
-    instance.on_init_complete()
+        if "apps" in self.actions:
+            parser_b = subparsers.add_parser("apps", help="list or download sample apps")
+            self.args_apps(parser_b)
+            parser_b.set_defaults(action="apps")
 
+        if "datasets" in self.actions:
+            parser_c = subparsers.add_parser("datasets", help="list or download sample datasets")
+            self.args_datasets(parser_c)
+            parser_c.set_defaults(action="datasets")
 
-def run_main():
-    logging.basicConfig(
-        level=(logging.INFO),
-        format="[%(asctime)s] [%(process)s] [%(threadName)s] [%(levelname)s] (%(name)s:%(lineno)d) - %(message)s",
-    )
+        if "plugins" in self.actions:
+            parser_d = subparsers.add_parser("plugins", help="list or download viewer plugins")
+            self.args_plugins(parser_d)
+            parser_d.set_defaults(action="plugins")
 
-    parser = argparse.ArgumentParser()
-    subparsers = parser.add_subparsers(help="sub-command help")
+        return parser
 
-    parser_a = subparsers.add_parser("start_server", help="start server for monailabel")
-    parser_a.add_argument("-a", "--app", required=True, help="App Directory")
-    parser_a.add_argument("-s", "--studies", required=True, help="Studies Directory")
-    parser_a.add_argument("-u", "--username", required=False, default=None, help="Username to access DICOMWeb server")
-    parser_a.add_argument("-w", "--password", required=False, default=None, help="Password to access DICOMWeb server")
-    parser_a.add_argument("-W", "--wado_prefix", required=False, default="", help="DICOMWeb Server WADO URL prefix")
-    parser_a.add_argument("-Q", "--qido_prefix", required=False, default="", help="DICOMWeb Server QIDO URL prefix")
-    parser_a.add_argument("-S", "--stow_prefix", required=False, default="", help="DICOMWeb Server STOW URL prefix")
-    parser_a.add_argument("-d", "--debug", action="store_true", help="Enable debug logs")
-
-    # --conf key1 value1 --conf key2 value2
-    parser_a.add_argument(
-        "-c",
-        "--conf",
-        nargs=2,
-        action="append",
-        help="config for the app.  Example: --conf key1 value1 --conf key2 value2",
-    )
-
-    parser_a.add_argument("-i", "--host", default="0.0.0.0", type=str, help="Server IP")
-    parser_a.add_argument("-p", "--port", default=8000, type=int, help="Server Port")
-    parser_a.add_argument("-l", "--log_config", default=None, type=str, help="Logging config")
-    parser_a.add_argument("--dryrun", action="store_true", help="Dry run without starting server")
-    parser_a.set_defaults(action="start_server")
-
-    parser_b = subparsers.add_parser("apps", help="list or download sample apps")
-    parser_b.add_argument("-d", "--download", action="store_true", help="download app")
-    parser_b.add_argument("-n", "--name", help="Name of the sample app to download", default=None)
-    parser_b.add_argument("-o", "--output", help="Output path to save the app", default=None)
-    parser_b.add_argument("--prefix", default=None)
-    parser_b.set_defaults(action="apps")
-
-    parser_c = subparsers.add_parser("datasets", help="list or download sample datasets")
-    parser_c.add_argument("-d", "--download", action="store_true", help="download dataset")
-    parser_c.add_argument("-n", "--name", help="Name of the dataset to download", default=None)
-    parser_c.add_argument("-o", "--output", help="Output path to save the dataset", default=None)
-    parser_c.add_argument("--prefix", default=None)
-    parser_c.set_defaults(action="datasets")
-
-    parser_d = subparsers.add_parser("plugins", help="list or download viewer plugins")
-    parser_d.add_argument("-d", "--download", action="store_true", help="download plugin")
-    parser_d.add_argument("-n", "--name", help="Name of the plugin to download", default=None)
-    parser_d.add_argument("-o", "--output", help="Output path to save the plugin", default=None)
-    parser_d.add_argument("--prefix", default=None)
-    parser_d.set_defaults(action="plugins")
-
-    args = parser.parse_args()
-    if not hasattr(args, "action"):
-        parser.print_usage()
-        exit(-1)
-
-    if args.action == "apps":
-        action_apps(args)
-    elif args.action == "datasets":
-        action_datasets(args)
-    elif args.action == "plugins":
-        action_plugins(args)
-    else:
-        run_app(args)
-
-
-def action_datasets(args):
-    from monai.apps.datasets import DecathlonDataset
-    from monai.apps.utils import download_and_extract
-
-    resource = DecathlonDataset.resource
-    md5 = DecathlonDataset.md5
-
-    if not args.download:
-        print("Available Datasets are:")
-        print("----------------------------------------------------")
-        for k, v in resource.items():
-            print("  {:<30}: {}".format(k, v))
-        print("")
-    else:
-        url = resource.get(args.name) if args.name else None
-        if not url:
-            print(f"Dataset ({args.name}) NOT Exists.")
-
-            available = "  " + "\n  ".join(resource.keys())
-            print(f"Available Datasets are:: \n{available}")
-            print("----------------------------------------------------")
+    def run(self):
+        parser = self.args_parser()
+        args = parser.parse_args()
+        if not hasattr(args, "action"):
+            parser.print_usage()
             exit(-1)
 
-        dataset_dir = os.path.join(args.output, args.name) if args.output else args.name
-        if os.path.exists(dataset_dir):
-            print(f"Directory already exists: {dataset_dir}")
-            exit(-1)
+        if args.action == "apps":
+            self.action_apps(args)
+        elif args.action == "datasets":
+            self.action_datasets(args)
+        elif args.action == "plugins":
+            self.action_plugins(args)
+        else:
+            self.action_start_server(args)
 
-        root_dir = os.path.dirname(os.path.realpath(dataset_dir))
-        os.makedirs(root_dir, exist_ok=True)
-        tarfile_name = f"{dataset_dir}.tar"
-        download_and_extract(resource[args.name], tarfile_name, root_dir, md5.get(args.name))
+    def action_datasets(self, args):
+        from monai.apps.datasets import DecathlonDataset
+        from monai.apps.utils import download_and_extract
 
-        junk_files = pathlib.Path(dataset_dir).rglob("._*")
-        for j in junk_files:
-            os.remove(j)
-        os.unlink(tarfile_name)
-        print(f"{args.name} is downloaded at: {dataset_dir}")
+        resource = DecathlonDataset.resource
+        md5 = DecathlonDataset.md5
 
-
-def action_apps(args):
-    project_root_absolute = pathlib.Path(__file__).parent.parent.resolve()
-    apps_dir = os.path.join(project_root_absolute, "sample-apps")
-    if not os.path.exists(apps_dir):
-        apps_dir = os.path.join(args.prefix if args.prefix else sys.prefix, "monailabel", "sample-apps")
-
-    apps = os.listdir(apps_dir)
-    apps = [os.path.basename(a) for a in apps]
-    apps.sort()
-
-    resource = {
-        "Deepedit based Apps": [a for a in apps if a.startswith("deepedit")],
-        "Deepgrow based Apps": [a for a in apps if a.startswith("deepgrow")],
-        "Standard Segmentation Apps": [a for a in apps if a.startswith("segmentation")],
-    }
-
-    if not args.download:
-        print(f"Available Sample Apps are: ({apps_dir})")
-        print("----------------------------------------------------")
-        for k, v in resource.items():
-            print(f"{k}")
+        if not args.download:
+            print("Available Datasets are:")
             print("----------------------------------------------------")
-            for n in v:
-                print("  {:<30}: {}".format(n, f"{apps_dir}/{n}"))
+            for k, v in resource.items():
+                print("  {:<30}: {}".format(k, v))
             print("")
-    else:
-        app_dir = os.path.join(apps_dir, args.name)
-        if args.name not in apps or not os.path.exists(apps_dir):
-            print(f"App {args.name} => {app_dir} not exists")
-            exit(-1)
+        else:
+            url = resource.get(args.name) if args.name else None
+            if not url:
+                print(f"Dataset ({args.name}) NOT Exists.")
 
-        output_dir = os.path.realpath(os.path.join(args.output, args.name) if args.output else args.name)
-        if os.path.exists(output_dir):
-            print(f"Directory already exists: {output_dir}")
-            exit(-1)
+                available = "  " + "\n  ".join(resource.keys())
+                print(f"Available Datasets are:: \n{available}")
+                print("----------------------------------------------------")
+                exit(-1)
 
-        if os.path.dirname(output_dir):
-            os.makedirs(os.path.dirname(output_dir), exist_ok=True)
-        shutil.copytree(app_dir, output_dir, ignore=shutil.ignore_patterns("logs", "model", "__pycache__"))
-        print(f"{args.name} is copied at: {output_dir}")
+            dataset_dir = os.path.join(args.output, args.name) if args.output else args.name
+            if os.path.exists(dataset_dir):
+                print(f"Directory already exists: {dataset_dir}")
+                exit(-1)
 
+            root_dir = os.path.dirname(os.path.realpath(dataset_dir))
+            os.makedirs(root_dir, exist_ok=True)
+            tarfile_name = f"{dataset_dir}.tar"
+            download_and_extract(resource[args.name], tarfile_name, root_dir, md5.get(args.name))
 
-def action_plugins(args):
-    plugins_dir = os.path.join(os.path.dirname(os.path.dirname(os.path.realpath(__file__))), "plugins")
-    if not os.path.exists(plugins_dir):
-        plugins_dir = os.path.join(args.prefix if args.prefix else sys.prefix, "scripts/monailabel", "plugins")
+            junk_files = pathlib.Path(dataset_dir).rglob("._*")
+            for j in junk_files:
+                os.remove(j)
+            os.unlink(tarfile_name)
+            print(f"{args.name} is downloaded at: {dataset_dir}")
 
-    plugins = os.listdir(plugins_dir)
-    plugins = [os.path.basename(a) for a in plugins]
-    plugins = [p for p in plugins if p != "ohif"]
-    plugins.sort()
+    def action_apps(self, args):
+        project_root_absolute = pathlib.Path(__file__).parent.parent.resolve()
+        apps_dir = os.path.join(project_root_absolute, "sample-apps")
+        if not os.path.exists(apps_dir):
+            apps_dir = os.path.join(args.prefix if args.prefix else sys.prefix, "monailabel", "sample-apps")
 
-    resource = {p: f"{plugins_dir}/{p}" for p in plugins}
+        apps = os.listdir(apps_dir)
+        apps = [os.path.basename(a) for a in apps]
+        apps.sort()
 
-    if not args.download:
-        print("Available Plugins are:")
-        print("----------------------------------------------------")
-        for k, v in resource.items():
-            print("  {:<30}: {}".format(k, v))
-        print("")
-    else:
-        plugin_dir = os.path.join(plugins_dir, args.name)
-        if args.name not in plugins or not os.path.exists(plugin_dir):
-            print(f"Plugin {args.name} => {plugins_dir} not exists")
-            exit(-1)
+        resource = {
+            "Deepedit based Apps": [a for a in apps if a.startswith("deepedit")],
+            "Deepgrow based Apps": [a for a in apps if a.startswith("deepgrow")],
+            "Standard Segmentation Apps": [a for a in apps if a.startswith("segmentation")],
+        }
 
-        output_dir = os.path.realpath(os.path.join(args.output, args.name) if args.output else args.name)
-        if os.path.exists(output_dir):
-            print(f"Directory already exists: {output_dir}")
-            exit(-1)
+        if not args.download:
+            print(f"Available Sample Apps are: ({apps_dir})")
+            print("----------------------------------------------------")
+            for k, v in resource.items():
+                print(f"{k}")
+                print("----------------------------------------------------")
+                for n in v:
+                    print("  {:<30}: {}".format(n, f"{apps_dir}/{n}"))
+                print("")
+        else:
+            app_dir = os.path.join(apps_dir, args.name)
+            if args.name not in apps or not os.path.exists(apps_dir):
+                print(f"App {args.name} => {app_dir} not exists")
+                exit(-1)
 
-        if os.path.dirname(output_dir):
-            os.makedirs(os.path.dirname(output_dir), exist_ok=True)
-        shutil.copytree(plugin_dir, output_dir, ignore=shutil.ignore_patterns("__pycache__"))
-        print(f"{args.name} is copied at: {output_dir}")
+            output_dir = os.path.realpath(os.path.join(args.output, args.name) if args.output else args.name)
+            if os.path.exists(output_dir):
+                print(f"Directory already exists: {output_dir}")
+                exit(-1)
 
+            if os.path.dirname(output_dir):
+                os.makedirs(os.path.dirname(output_dir), exist_ok=True)
+            shutil.copytree(app_dir, output_dir, ignore=shutil.ignore_patterns("logs", "model", "__pycache__"))
+            print(f"{args.name} is copied at: {output_dir}")
 
-def run_app(args):
-    if not os.path.exists(args.app):
-        print(f"APP Directory {args.app} NOT Found")
-        exit(1)
-    if (
-        not args.studies.startswith("http://")
-        and not args.studies.startswith("https://")
-        and not os.path.exists(args.studies)
-    ):
-        print(f"STUDIES Directory {args.studies} NOT Found")
-        exit(1)
+    def action_plugins(self, args):
+        plugins_dir = os.path.join(os.path.dirname(os.path.dirname(os.path.realpath(__file__))), "plugins")
+        if not os.path.exists(plugins_dir):
+            plugins_dir = os.path.join(args.prefix if args.prefix else sys.prefix, "scripts/monailabel", "plugins")
 
-    args.app = os.path.realpath(args.app)
-    if not args.studies.startswith("http://") and not args.studies.startswith("https://"):
-        args.studies = os.path.realpath(args.studies)
+        plugins = os.listdir(plugins_dir)
+        plugins = [os.path.basename(a) for a in plugins]
+        plugins = [p for p in plugins if p != "ohif"]
+        plugins.sort()
 
-    for arg in vars(args):
-        logger.info("USING:: {} = {}".format(arg, getattr(args, arg)))
-    logger.info("")
+        resource = {p: f"{plugins_dir}/{p}" for p in plugins}
 
-    # namespace('conf': [['key1','value1'],['key2','value2']])
-    conf = {c[0]: c[1] for c in args.conf} if args.conf else {}
+        if not args.download:
+            print("Available Plugins are:")
+            print("----------------------------------------------------")
+            for k, v in resource.items():
+                print("  {:<30}: {}".format(k, v))
+            print("")
+        else:
+            plugin_dir = os.path.join(plugins_dir, args.name)
+            if args.name not in plugins or not os.path.exists(plugin_dir):
+                print(f"Plugin {args.name} => {plugins_dir} not exists")
+                exit(-1)
 
-    settings.MONAI_LABEL_SERVER_PORT = args.port
-    settings.MONAI_LABEL_APP_DIR = args.app
-    settings.MONAI_LABEL_STUDIES = args.studies
-    settings.MONAI_LABEL_APP_CONF = conf
+            output_dir = os.path.realpath(os.path.join(args.output, args.name) if args.output else args.name)
+            if os.path.exists(output_dir):
+                print(f"Directory already exists: {output_dir}")
+                exit(-1)
 
-    settings.MONAI_LABEL_DICOMWEB_USERNAME = args.username
-    settings.MONAI_LABEL_DICOMWEB_PASSWORD = args.password
-    settings.MONAI_LABEL_QIDO_PREFIX = args.qido_prefix
-    settings.MONAI_LABEL_WADO_PREFIX = args.wado_prefix
-    settings.MONAI_LABEL_STOW_PREFIX = args.stow_prefix
+            if os.path.dirname(output_dir):
+                os.makedirs(os.path.dirname(output_dir), exist_ok=True)
+            shutil.copytree(plugin_dir, output_dir, ignore=shutil.ignore_patterns("__pycache__"))
+            print(f"{args.name} is copied at: {output_dir}")
 
-    dirs = ["model", "lib", "logs", "bin"]
-    for d in dirs:
-        d = os.path.join(args.app, d)
-        if not os.path.exists(d):
-            os.makedirs(d)
+    def action_start_server(self, args):
+        self.start_server_validate_args(args)
+        self.start_server_init_settings(args)
 
-    sys.path.append(args.app)
-    sys.path.append(os.path.join(args.app, "lib"))
-    os.environ["PATH"] += os.pathsep + os.path.join(args.app, "bin")
+        log_config = init_log_config(args.log_config, args.app, "app.log")
 
-    if args.dryrun:
-        with open(".env", "w") as f:
-            for k, v in settings.dict().items():
-                v = json.dumps(v) if isinstance(v, list) or isinstance(v, dict) else v
-                e = f"{k}={v}"
-                f.write(e)
-                f.write(os.linesep)
-                logger.debug(f"{'set' if any(platform.win32_ver()) else 'export'} {e}")
-    else:
-        logger.debug("")
-        logger.debug("**********************************************************")
-        logger.debug("                  ENV VARIABLES/SETTINGS                  ")
-        logger.debug("**********************************************************")
-        for k, v in settings.dict().items():
-            v = json.dumps(v) if isinstance(v, list) or isinstance(v, dict) else str(v)
-            logger.debug(f"{'set' if any(platform.win32_ver()) else 'export'} {k}={v}")
-            os.environ[k] = v
-        logger.debug("**********************************************************")
-        logger.debug("")
+        if args.dryrun:
+            return
+
+        from monailabel.app import app
 
         uvicorn.run(
             app,
             host=args.host,
             port=args.port,
             log_level="debug" if args.debug else "info",
-            log_config=init_log_config(args.log_config, args.app, "app.log"),
+            log_config=log_config,
             use_colors=True,
             access_log=args.debug,
         )
 
-    sys.path.remove(os.path.join(args.app, "lib"))
-    sys.path.remove(args.app)
+    def start_server_validate_args(self, args):
+        if not args.app:
+            print("APP Directory NOT provided")
+            exit(1)
+
+        if not args.studies:
+            print("STUDIES Path/Directory NOT provided")
+            exit(1)
+
+        if not os.path.exists(args.app):
+            print(f"APP Directory {args.app} NOT Found")
+            exit(1)
+
+        if (
+            not args.studies.startswith("http://")
+            and not args.studies.startswith("https://")
+            and not os.path.exists(args.studies)
+        ):
+            print(f"STUDIES Directory {args.studies} NOT Found")
+            exit(1)
+
+        args.app = os.path.realpath(args.app)
+        if not args.studies.startswith("http://") and not args.studies.startswith("https://"):
+            args.studies = os.path.realpath(args.studies)
+
+        for arg in vars(args):
+            logger.info("USING:: {} = {}".format(arg, getattr(args, arg)))
+        logger.info("")
+
+    def start_server_init_settings(self, args):
+        # namespace('conf': [['key1','value1'],['key2','value2']])
+        conf = {c[0]: c[1] for c in args.conf} if args.conf else {}
+
+        settings.MONAI_LABEL_SERVER_PORT = args.port
+        settings.MONAI_LABEL_APP_DIR = args.app
+        settings.MONAI_LABEL_STUDIES = args.studies
+        settings.MONAI_LABEL_APP_CONF = conf
+
+        dirs = ["model", "lib", "logs", "bin"]
+        for d in dirs:
+            d = os.path.join(args.app, d)
+            if not os.path.exists(d):
+                os.makedirs(d)
+
+        sys.path.append(args.app)
+        sys.path.append(os.path.join(args.app, "lib"))
+        os.environ["PATH"] += os.pathsep + os.path.join(args.app, "bin")
+
+        if args.dryrun:
+            export_key = "set " if any(platform.win32_ver()) else "export "
+            with open("env.bat" if any(platform.win32_ver()) else ".env", "w") as f:
+                for k, v in settings.dict().items():
+                    v = f"'{json.dumps(v)}'" if isinstance(v, list) or isinstance(v, dict) else v
+                    e = f"{export_key}{k}={v}"
+                    f.write(e)
+                    f.write(os.linesep)
+                    logger.info(e)
+
+                py_path = [os.environ.get("PYTHONPATH", "").rstrip(os.pathsep), args.app, os.path.join(args.app, "lib")]
+                py_path = [p for p in py_path if p]
+                others = [
+                    f"{export_key}PYTHONPATH={os.pathsep.join(py_path)}",
+                    f"{export_key}PATH={os.environ['PATH']}",
+                ]
+                for o in others:
+                    f.write(o)
+                    f.write(os.linesep)
+                    logger.info(o)
+        else:
+            logger.debug("")
+            logger.debug("**********************************************************")
+            logger.debug("                  ENV VARIABLES/SETTINGS                  ")
+            logger.debug("**********************************************************")
+            for k, v in settings.dict().items():
+                v = json.dumps(v) if isinstance(v, list) or isinstance(v, dict) else str(v)
+                logger.debug(f"{'set' if any(platform.win32_ver()) else 'export'} {k}={v}")
+                os.environ[k] = v
+            logger.debug("**********************************************************")
+            logger.debug("")
 
 
 if __name__ == "__main__":
-    run_main()
+    Main().run()

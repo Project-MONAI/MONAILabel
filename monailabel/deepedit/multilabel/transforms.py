@@ -11,6 +11,7 @@
 
 import json
 import logging
+import random
 from typing import Dict, Hashable, Mapping, Optional
 
 import numpy as np
@@ -108,24 +109,23 @@ class SelectLabelsAbdomenDatasetd(MapTransform):
 
     def __call__(self, data: Mapping[Hashable, np.ndarray]) -> Dict[Hashable, np.ndarray]:
         d: Dict = dict(data)
+        label_info = d.get("meta", {}).get("label", {}).get("label_info", [])
+        remap = {l["name"]: l["idx"] for l in label_info}
         for key in self.key_iterator(d):
             if key == "label":
                 new_label_names = dict()
-
-                # Making other labels as background
-                for k in self.all_label_values.keys():
-                    if k not in self.label_names.keys():
-                        d[key][d[key] == self.all_label_values[k]] = 0.0
+                label = np.zeros(d[key].shape)
 
                 # Making sure the range values and number of labels are the same
                 for idx, (key_label, val_label) in enumerate(self.label_names.items(), start=1):
                     if key_label != "background":
                         new_label_names[key_label] = idx
-                        d[key][d[key] == val_label] = idx
+                        label[d[key] == remap.get(key_label, val_label)] = idx
                     if key_label == "background":
                         new_label_names["background"] = 0
-                        d[key][d[key] == self.label_names["background"]] = 0
+
                 d["label_names"] = new_label_names
+                d[key] = label
             else:
                 print("This transform only applies to the label")
         return d
@@ -199,7 +199,7 @@ class AddGuidanceSignalCustomd(MapTransform):
         self,
         keys: KeysCollection,
         guidance: str = "guidance",
-        sigma: int = 2,
+        sigma: int = 3,
         number_intensity_ch: int = 1,
         allow_missing_keys: bool = False,
     ):
@@ -212,36 +212,39 @@ class AddGuidanceSignalCustomd(MapTransform):
         dimensions = 3 if len(image.shape) > 3 else 2
         guidance = guidance.tolist() if isinstance(guidance, np.ndarray) else guidance
         guidance = json.loads(guidance) if isinstance(guidance, str) else guidance
+
         # In inference the user may not provide clicks for some channels/labels
         if len(guidance):
             if dimensions == 3:
-                signal = np.zeros((len(guidance), image.shape[-3], image.shape[-2], image.shape[-1]), dtype=np.float32)
+                # Assume channel is first and depth is last CHWD
+                signal = np.zeros((1, image.shape[-3], image.shape[-2], image.shape[-1]), dtype=np.float32)
             else:
-                signal = np.zeros((len(guidance), image.shape[-2], image.shape[-1]), dtype=np.float32)
+                signal = np.zeros((1, image.shape[-2], image.shape[-1]), dtype=np.float32)
 
             sshape = signal.shape
-            for i, g_i in enumerate(guidance):
-                for point in g_i:
-                    if np.any(np.asarray(point) < 0):
-                        continue
+            for point in guidance[0]:  # TO DO: make the guidance a list only - it is currently a list of list
+                if np.any(np.asarray(point) < 0):
+                    continue
 
-                    if dimensions == 3:
-                        p1 = max(0, min(int(point[-3]), sshape[-3] - 1))
-                        p2 = max(0, min(int(point[-2]), sshape[-2] - 1))
-                        p3 = max(0, min(int(point[-1]), sshape[-1] - 1))
-                        signal[i, p1, p2, p3] = 1.0
-                    else:
-                        p1 = max(0, min(int(point[-2]), sshape[-2] - 1))
-                        p2 = max(0, min(int(point[-1]), sshape[-1] - 1))
-                        signal[i, p1, p2] = 1.0
+                if dimensions == 3:
+                    # Making sure points fall inside the image dimension
+                    p1 = max(0, min(int(point[-3]), sshape[-3] - 1))
+                    p2 = max(0, min(int(point[-2]), sshape[-2] - 1))
+                    p3 = max(0, min(int(point[-1]), sshape[-1] - 1))
+                    signal[:, p1, p2, p3] = 1.0
+                else:
+                    p1 = max(0, min(int(point[-2]), sshape[-2] - 1))
+                    p2 = max(0, min(int(point[-1]), sshape[-1] - 1))
+                    signal[:, p1, p2] = 1.0
 
-                if np.max(signal[i]) > 0:
-                    signal_tensor = torch.tensor(signal[i])
-                    pt_gaussian = GaussianFilter(len(signal_tensor.shape), sigma=self.sigma)
-                    signal_tensor = pt_gaussian(signal_tensor.unsqueeze(0).unsqueeze(0))
-                    signal_tensor = signal_tensor.squeeze(0).squeeze(0)
-                    signal[i] = signal_tensor.detach().cpu().numpy()
-                    signal[i] = (signal[i] - np.min(signal[i])) / (np.max(signal[i]) - np.min(signal[i]))
+            # Apply a Gaussian filter to the signal
+            if np.max(signal[0]) > 0:
+                signal_tensor = torch.tensor(signal[0])
+                pt_gaussian = GaussianFilter(len(signal_tensor.shape), sigma=self.sigma)
+                signal_tensor = pt_gaussian(signal_tensor.unsqueeze(0).unsqueeze(0))
+                signal_tensor = signal_tensor.squeeze(0).squeeze(0)
+                signal[0] = signal_tensor.detach().cpu().numpy()
+                signal[0] = (signal[0] - np.min(signal[0])) / (np.max(signal[0]) - np.min(signal[0]))
             return signal
         else:
             if dimensions == 3:
@@ -262,10 +265,6 @@ class AddGuidanceSignalCustomd(MapTransform):
                     signal = self._get_signal(image, guidance[key_label])
                     tmp_image = np.concatenate([tmp_image, signal], axis=0)
                 d[key] = tmp_image
-                # logger.info(
-                #     f"Number of input channels: {d[key].shape[0]} - "
-                #     f'Using image: {d["image_meta_dict"]["filename_or_obj"].split("/")[-1]}'
-                # )
                 return d
             else:
                 print("This transform only applies to image key")
@@ -275,7 +274,7 @@ class AddGuidanceSignalCustomd(MapTransform):
 class FindAllValidSlicesCustomd(MapTransform):
     """
     Find/List all valid slices in the labels.
-    Label is assumed to be a 4D Volume with shape CDHW, where C=1.
+    Label is assumed to be a 4D Volume with shape CHWD, where C=1.
 
     Args:
         label: key to the label source.
@@ -295,8 +294,8 @@ class FindAllValidSlicesCustomd(MapTransform):
         sids = {}
         for key_label in d["label_names"].keys():
             l_ids = []
-            for sid in range(label.shape[1]):  # Assume channel is first
-                if d["label_names"][key_label] in label[0][sid]:
+            for sid in range(label.shape[-1]):  # Assume channel is first and depth is last CHWD
+                if d["label_names"][key_label] in label[0][..., sid]:
                     l_ids.append(sid)
             sids[key_label] = l_ids
         return sids
@@ -310,7 +309,7 @@ class FindAllValidSlicesCustomd(MapTransform):
                     raise ValueError("Only supports single channel labels!")
 
                 if len(label.shape) != 4:  # only for 3D
-                    raise ValueError("Only supports label with shape CDHW!")
+                    raise ValueError("Only supports label with shape CHWD!")
 
                 sids = self._apply(label, d)
                 if sids is not None and len(sids.keys()):
@@ -361,11 +360,11 @@ class AddInitialSeedPointCustomd(Randomizable, MapTransform):
         dims = dimensions
         if sid is not None and dimensions == 3:
             dims = 2
-            label = label[0][sid][np.newaxis]  # Assume channel is first
+            label = label[0][..., sid][np.newaxis]  # Assume channel is first and depth is last CHWD
 
         # import matplotlib.pyplot as plt
         # plt.imshow(label[0])
-        # plt.title('label as is')
+        # plt.title(f'label as is {key_label}')
         # plt.show()
         # plt.close()
 
@@ -378,7 +377,7 @@ class AddInitialSeedPointCustomd(Randomizable, MapTransform):
             raise AssertionError(f"SLICES NOT FOUND FOR LABEL: {key_label}")
 
         # plt.imshow(blobs_labels[0])
-        # plt.title('Blobs')
+        # plt.title(f'Blobs {key_label}')
         # plt.show()
         # plt.close()
 
@@ -391,11 +390,11 @@ class AddInitialSeedPointCustomd(Randomizable, MapTransform):
                     continue
 
             # plt.imshow(label[0])
-            # plt.title('Label postprocessed with blob number')
+            # plt.title(f'Label postprocessed with blob number {key_label}')
             # plt.show()
 
             # plt.imshow(distance_transform_cdt(label)[0])
-            # plt.title('Transform CDT')
+            # plt.title(f'Transform CDT {key_label}')
             # plt.show()
 
             # The distance transform provides a metric or measure of the separation of points in the image.
@@ -413,7 +412,8 @@ class AddInitialSeedPointCustomd(Randomizable, MapTransform):
             if dimensions == 2 or dims == 3:
                 pos_guidance.append(g)
             else:
-                pos_guidance.append([g[0], sid, g[-2], g[-1]])
+                # Clicks are created using this convention Channel Height Width Depth (CHWD)
+                pos_guidance.append([g[0], g[-2], g[-1], sid])  # Assume channel is first and depth is last CHWD
 
         return np.asarray([pos_guidance])
 
@@ -434,21 +434,19 @@ class AddInitialSeedPointCustomd(Randomizable, MapTransform):
             if key == "label":
                 label_guidances = {}
                 for key_label in d["sids"].keys():
-                    # For all non-background labels
-                    if key_label != "background" or d["label_names"][key_label] != 0:
-                        # Randomize: Select a random slice
-                        self._randomize(d, key_label)
-                        # Generate guidance base on selected slice
-                        tmp_label = np.copy(d[key])
-                        # Taking one label to create the guidance
+                    # Randomize: Select a random slice
+                    self._randomize(d, key_label)
+                    # Generate guidance base on selected slice
+                    tmp_label = np.copy(d[key])
+                    # Taking one label to create the guidance
+                    if key_label != "background":
                         tmp_label[tmp_label != float(d["label_names"][key_label])] = 0
-                        label_guidances[key_label] = json.dumps(
-                            self._apply(tmp_label, self.sid.get(key_label, None), key_label).astype(int).tolist()
-                        )
-                    elif key_label == "background" or d["label_names"][key_label] == 0:
-                        label_guidances[key_label] = json.dumps(
-                            np.asarray([[self.default_guidance] * self.connected_regions]).astype(int).tolist()
-                        )
+                    else:
+                        tmp_label[tmp_label != float(d["label_names"][key_label])] = 1
+                        tmp_label = 1 - tmp_label
+                    label_guidances[key_label] = json.dumps(
+                        self._apply(tmp_label, self.sid.get(key_label, None), key_label).astype(int).tolist()
+                    )
                 d[self.guidance] = label_guidances
                 return d
             else:
@@ -502,13 +500,24 @@ class FindDiscrepancyRegionsCustomd(MapTransform):
                         # Label should be represented in 1
                         label = (label > 0.5).astype(np.float32)
                         # Taking single prediction
-                        # idx = 0 in pred is the background
-                        # pred = d[self.pred][idx+1, ...][np.newaxis]
                         pred = np.copy(d[self.pred])
                         pred[pred != val_label] = 0
                         # Prediction should be represented in one
                         pred = (pred > 0.5).astype(np.float32)
-                        all_discrepancies[key_label] = self._apply(label, pred)
+                    else:
+                        # Taking single label
+                        label = np.copy(d[key])
+                        label[label != val_label] = 1
+                        label = 1 - label
+                        # Label should be represented in 1
+                        label = (label > 0.5).astype(np.float32)
+                        # Taking single prediction
+                        pred = np.copy(d[self.pred])
+                        pred[pred != val_label] = 1
+                        pred = 1 - pred
+                        # Prediction should be represented in one
+                        pred = (pred > 0.5).astype(np.float32)
+                    all_discrepancies[key_label] = self._apply(label, pred)
                 d[self.discrepancy] = all_discrepancies
                 return d
             else:
@@ -524,10 +533,6 @@ class PosNegClickProbAddRandomGuidanceCustomd(Randomizable, MapTransform):
         guidance: key to guidance source, shape (2, N, # of dim)
         discrepancy: key to discrepancy map between label and prediction shape (2, C, H, W, D) or (2, C, H, W)
         probability: key to click/interaction probability, shape (1)
-        pos_click_probability: if click, probability of a positive click
-          (probability of negative click will be 1 - pos_click_probability)
-        weight_map: optional key to predetermined weight map used to increase click likelihood
-          in higher weight areas shape (C, H, W, D) or (C, H, W)
     """
 
     def __init__(
@@ -536,126 +541,115 @@ class PosNegClickProbAddRandomGuidanceCustomd(Randomizable, MapTransform):
         guidance: str = "guidance",
         discrepancy: str = "discrepancy",
         probability: str = "probability",
-        pos_click_probability: float = 0.5,
-        weight_map: Optional[dict] = None,
         allow_missing_keys: bool = False,
     ):
         super().__init__(keys, allow_missing_keys)
         self.guidance = guidance
         self.discrepancy = discrepancy
         self.probability = probability
-        self.pos_click_probability = pos_click_probability
-        self.weight_map = weight_map
         self._will_interact = None
-        self.is_pos = False
-        self.is_neg = False
 
     def randomize(self, data=None):
         probability = data[self.probability]
         self._will_interact = self.R.choice([True, False], p=[probability, 1.0 - probability])
 
-    def find_guidance(self, discrepancy, weight_map):
-        distance = distance_transform_cdt(discrepancy)
-        weighted_distance = (distance * weight_map).flatten() if weight_map is not None else distance.flatten()
-        probability = np.exp(weighted_distance) - 1.0
+    def find_guidance(self, discrepancy):
+        distance = distance_transform_cdt(discrepancy).flatten()
+        probability = np.exp(distance.flatten()) - 1.0
         idx = np.where(discrepancy.flatten() > 0)[0]
 
-        if np.sum(probability[idx]) > 0:
+        if np.sum(discrepancy > 0) > 0:
             seed = self.R.choice(idx, size=1, p=probability[idx] / np.sum(probability[idx]))
-            dst = weighted_distance[seed]
+            dst = distance[seed]
 
             g = np.asarray(np.unravel_index(seed, discrepancy.shape)).transpose().tolist()[0]
             g[0] = dst[0]
             return g
         return None
 
-    def add_guidance(self, discrepancy, mask_background, weight_map):
+    def add_guidance(self, guidance, discrepancy, label_names, labels):
 
-        pos_discr = discrepancy[0]
-        #  HOW TO DEFINE THE BACKGROUND CLICKS??
-        # neg_discr = discrepancy[1] * mask_background
-        neg_discr = discrepancy[1]
+        # Positive clicks of the segment in the iteration
+        pos_discr = discrepancy[0]  # idx 0 is positive discrepancy and idx 1 is negative discrepancy
 
-        can_be_positive = np.sum(pos_discr) > 0
-        can_be_negative = np.sum(neg_discr) > 0
+        # Check the areas that belong to other segments
+        other_discrepancy_areas = dict()
+        for _, (key_label, val_label) in enumerate(label_names.items()):
+            if key_label != "background":
+                tmp_label = np.copy(labels)
+                tmp_label[tmp_label != val_label] = 0
+                tmp_label = (tmp_label > 0.5).astype(np.float32)
+                other_discrepancy_areas[key_label] = np.sum(discrepancy[1] * tmp_label)
+            else:
+                tmp_label = np.copy(labels)
+                tmp_label[tmp_label != val_label] = 1
+                tmp_label = 1 - tmp_label
+                other_discrepancy_areas[key_label] = np.sum(discrepancy[1] * tmp_label)
 
-        pos_prob = self.pos_click_probability
-        neg_prob = 1 - pos_prob
-
-        correct_pos = self.R.choice([True, False], p=[pos_prob, neg_prob])
-
-        if can_be_positive and not can_be_negative:
-            return self.find_guidance(pos_discr, weight_map), None
-
-        if not can_be_positive and can_be_negative:
-            return None, self.find_guidance(neg_discr, weight_map)
-
-        if correct_pos and can_be_positive:
-            return self.find_guidance(pos_discr, weight_map), None
-
-        if not correct_pos and can_be_negative:
-            return None, self.find_guidance(neg_discr, weight_map)
-
-        return None, None
-
-    def _apply(self, guidance, discrepancy, mask_background, guidance_background, weight_map):
-
-        guidance = guidance.tolist() if isinstance(guidance, np.ndarray) else guidance
-        guidance = json.loads(guidance) if isinstance(guidance, str) else guidance
-
-        guidance_background = (
-            guidance_background.tolist() if isinstance(guidance_background, np.ndarray) else guidance_background
-        )
-        guidance_background = (
-            json.loads(guidance_background) if isinstance(guidance_background, str) else guidance_background
-        )
-
-        pos, neg = self.add_guidance(discrepancy, mask_background, weight_map)
-
-        if pos:
-            guidance[0].append(pos)
-            # guidance[1].append([-1] * len(pos))
+        # Add guidance to the current key label
+        if np.sum(pos_discr) > 0:
+            guidance.append(self.find_guidance(pos_discr))
             self.is_pos = True
 
-        if neg:
-            # guidance[0].append([-1] * len(neg))
-            guidance_background[0].append(neg)
-            self.is_neg = True
-
-        return json.dumps(np.asarray(guidance).astype(int).tolist()), json.dumps(
-            np.asarray(guidance_background).astype(int).tolist()
-        )
+        # Add guidance to the other areas
+        for key_label in label_names.keys():
+            # Areas that cover more than 50 voxels
+            if other_discrepancy_areas[key_label] > 50:
+                self.is_other = True
+                if key_label != "background":
+                    tmp_label = np.copy(labels)
+                    tmp_label[tmp_label != label_names[key_label]] = 0
+                    tmp_label = (tmp_label > 0.5).astype(np.float32)
+                    self.tmp_guidance[key_label][0].append(self.find_guidance(discrepancy[1] * tmp_label))
+                else:
+                    tmp_label = np.copy(labels)
+                    tmp_label[tmp_label != label_names[key_label]] = 1
+                    tmp_label = 1 - tmp_label
+                    self.tmp_guidance[key_label][0].append(self.find_guidance(discrepancy[1] * tmp_label))
 
     def __call__(self, data: Mapping[Hashable, np.ndarray]) -> Dict[Hashable, np.ndarray]:
         d: Dict = dict(data)
         guidance = d[self.guidance]
         discrepancy = d[self.discrepancy]
-        weight_map = d[self.weight_map] if self.weight_map is not None else None
-        # Decide whether to add clicks or not
         self.randomize(data)
         if self._will_interact:
-            all_is_pos = {}
-            all_is_neg = {}
-            # Create mask background to multiply for discrepancy
-            mask_background = np.copy(d["label"])
-            mask_background[mask_background != 0] = 1.0
-            mask_background = 1.0 - mask_background
+            # Convert all guidance to lists so new guidance can be easily appended
+            self.tmp_guidance = dict()
             for key_label in d["label_names"].keys():
-                if key_label != "background":
-                    # Add POSITIVE and NEGATIVE (background) guidance based on discrepancy
-                    d[self.guidance][key_label], d[self.guidance]["background"] = self._apply(
-                        guidance[key_label],
-                        discrepancy[key_label],
-                        mask_background,
-                        guidance["background"],
-                        weight_map[key_label] if weight_map is not None else weight_map,
-                    )
-                    all_is_pos[key_label] = self.is_pos
-                    all_is_neg[key_label] = self.is_neg
-                    self.is_pos = False
-                    self.is_neg = False
-            d["is_pos"] = all_is_pos
-            d["is_neg"] = all_is_neg
+                tmp_gui = guidance[key_label]
+                tmp_gui = tmp_gui.tolist() if isinstance(tmp_gui, np.ndarray) else tmp_gui
+                tmp_gui = json.loads(tmp_gui) if isinstance(tmp_gui, str) else tmp_gui
+                self.tmp_guidance[key_label] = [[j for j in tmp_gui[0] if -1 not in j]]
+
+            # Add guidance according to discrepancy
+            for key_label in d["label_names"].keys():
+                # Add guidance based on discrepancy
+                self.add_guidance(self.tmp_guidance[key_label][0], discrepancy[key_label], d["label_names"], d["label"])
+
+            # Checking the number of clicks
+            num_clicks = random.randint(1, 10)
+            logger.info(f"Number of simulated clicks: {num_clicks}")
+            counter = 0
+            keep_guidance = []
+            while True:
+                aux_label = random.choice(list(d["label_names"].keys()))
+                if aux_label in keep_guidance:
+                    pass
+                else:
+                    keep_guidance.append(aux_label)
+                    counter = counter + len(self.tmp_guidance[aux_label][0])
+                    # If collected clicks is bigger than max clicks, discard the others
+                    if counter >= num_clicks:
+                        for key_label in d["label_names"].keys():
+                            if key_label not in keep_guidance:
+                                self.tmp_guidance[key_label][0] = []
+                        break
+
+            # Convert tmp_guidance back to json
+            for key_label in d["label_names"].keys():
+                d[self.guidance][key_label] = json.dumps(np.asarray(self.tmp_guidance[key_label]).astype(int).tolist())
+            #
+
         return d
 
 
@@ -704,21 +698,9 @@ class AddGuidanceFromPointsCustomd(Transform):
     We assume the input is loaded by LoadImaged and has the shape of (H, W, D) originally.
     Clicks always specify the coordinates in (H, W, D)
 
-    If depth_first is True:
-
-        Input is now of shape (D, H, W), will return guidance that specifies the coordinates in (D, H, W)
-
-    else:
-
-        Input is now of shape (H, W, D), will return guidance that specifies the coordinates in (H, W, D)
-
     Args:
         ref_image: key to reference image to fetch current and original image details.
         guidance: output key to store guidance.
-        foreground: key that represents user foreground (+ve) clicks.
-        background: key that represents user background (-ve) clicks.
-        axis: axis that represents slices in 3D volume. (axis to Depth)
-        depth_first: if depth (slices) is positioned at first dimension.
         meta_keys: explicitly indicate the key of the meta data dictionary of `ref_image`.
             for example, for data with key `image`, the metadata by default is in `image_meta_dict`.
             the meta data is a dictionary object which contains: filename, original_shape, etc.
@@ -734,26 +716,20 @@ class AddGuidanceFromPointsCustomd(Transform):
         self,
         ref_image,
         guidance: str = "guidance",
-        foreground: str = "foreground",
-        background: str = "background",
-        axis: int = 0,
-        depth_first: bool = True,
+        label_names=None,
         meta_keys: Optional[str] = None,
         meta_key_postfix: str = "meta_dict",
     ):
         self.ref_image = ref_image
         self.guidance = guidance
-        self.foreground = foreground
-        self.background = background
-        self.axis = axis
-        self.depth_first = depth_first
+        self.label_names = label_names
         self.meta_keys = meta_keys
         self.meta_key_postfix = meta_key_postfix
 
     def _apply(self, clicks, factor):
         if len(clicks):
             guidance = np.multiply(clicks, factor).astype(int).tolist()
-            return guidance
+            return [guidance]
         else:
             return []
 
@@ -764,39 +740,20 @@ class AddGuidanceFromPointsCustomd(Transform):
             raise RuntimeError(f"Missing meta_dict {meta_dict_key} in data!")
         if "spatial_shape" not in d[meta_dict_key]:
             raise RuntimeError('Missing "spatial_shape" in meta_dict!')
+
+        # Assume channel is first and depth is last CHWD
         original_shape = d[meta_dict_key]["spatial_shape"]
-        current_shape = list(d[self.ref_image].shape)
+        current_shape = list(d[self.ref_image].shape)[1:]
 
-        if self.depth_first:
-            if self.axis != 0:
-                raise RuntimeError("Depth first means the depth axis should be 0.")
-            # in here we assume the depth dimension was in the last dimension of "original_shape"
-            original_shape = np.roll(original_shape, 1)
-
+        # in here we assume the depth dimension is in the last dimension of "original_shape" and "current_shape"
         factor = np.array(current_shape) / original_shape
 
-        fg_bg_clicks = dict()
-        # For foreground clicks
-        for key_label in d[self.foreground]:
-            clicks = d[self.foreground][key_label]
-            clicks = list(np.array(clicks).astype(int))
-            if self.depth_first:
-                for i in range(len(clicks)):
-                    clicks[i] = list(np.roll(clicks[i], 1))
-            fg_bg_clicks[key_label] = clicks
-        # For background clicks
-        clicks = d[self.background]
-        clicks = list(np.array(clicks).astype(int))
-        if self.depth_first:
-            for i in range(len(clicks)):
-                clicks[i] = list(np.roll(clicks[i], 1))
-        fg_bg_clicks["background"] = clicks
-        # Creating guidance based on foreground clicks
+        # Creating guidance for all clicks
         all_guidances = dict()
-        for key_label in d[self.foreground]:
-            all_guidances[key_label] = self._apply(fg_bg_clicks[key_label], factor)
-        # Creating guidance based on background clicks
-        all_guidances["background"] = self._apply(fg_bg_clicks["background"], factor)
+        for key_label in self.label_names.keys():
+            clicks = d[key_label]
+            clicks = list(np.array(clicks).astype(int))
+            all_guidances[key_label] = self._apply(clicks, factor)
         d[self.guidance] = all_guidances
         return d
 
@@ -816,9 +773,13 @@ class ResizeGuidanceMultipleLabelCustomd(Transform):
 
     def __call__(self, data):
         d = dict(data)
+        # Assume channel is first and depth is last CHWD
         current_shape = d[self.ref_image].shape[1:]
+        original_shape = d["image_meta_dict"]["spatial_shape"]
 
-        factor = np.divide(current_shape, d["image_meta_dict"]["spatial_shape"])
+        # original_shape = np.roll(original_shape, 1)
+
+        factor = np.divide(current_shape, original_shape)
         all_guidances = dict()
         for key_label in d[self.guidance].keys():
             guidance = (
@@ -858,68 +819,9 @@ class SplitPredsLabeld(MapTransform):
         return d
 
 
-class PointsToDictd(Transform):
-    """
-    Transform to convert to dictionary
-
-    """
-
-    def __init__(
-        self,
-        label_names=None,
-    ):
-        self.label_names = label_names
-
-    def __call__(self, data: Mapping[Hashable, np.ndarray]) -> Dict[Hashable, np.ndarray]:
-        d: Dict = dict(data)
-
-        new_foreground = dict()
-        for key_label in self.label_names.keys():
-            if key_label != "background":
-                if key_label == d["label"]:
-                    new_foreground[key_label] = [d["foreground"]]
-                elif key_label != d["label"]:
-                    new_foreground[key_label] = []
-            else:
-                if d["background"]:
-                    d["background"] = [d["background"]]
-                else:
-                    d["background"] = []
-
-        d["foreground"] = new_foreground
-
-        return d
-
-
-class GetSingleLabeld(MapTransform):
-    """
-    Get single to show in UI
-
-    """
-
-    def __init__(
-        self,
-        keys: KeysCollection,
-        label_names=None,
-        allow_missing_keys: bool = False,
-    ):
-        super().__init__(keys, allow_missing_keys)
-        self.label_names = label_names
-
-    def __call__(self, data: Mapping[Hashable, np.ndarray]) -> Dict[Hashable, np.ndarray]:
-        d: Dict = dict(data)
-        for key in self.key_iterator(d):
-            if key == "pred":
-                label_value = list(self.label_names.keys()).index(d["label"]) + 1
-                d["pred"][d["pred"] != label_value] = 0
-            elif key != "pred":
-                logger.info("This is only for pred key")
-        return d
-
-
 class ToCheckTransformd(MapTransform):
     """
-    Transform to debug dictionary
+    Transform to debug dictionary used in transforms
 
     """
 
@@ -933,5 +835,5 @@ class ToCheckTransformd(MapTransform):
     def __call__(self, data: Mapping[Hashable, np.ndarray]) -> Dict[Hashable, np.ndarray]:
         d: Dict = dict(data)
         for key in self.key_iterator(d):
-            logger.info(f"Printing pred shape in ToCheckTransformd: {d[key].shape}")
+            logger.info(f"Printing key shape in ToCheckTransformd: {d[key].shape}")
         return d
