@@ -25,6 +25,7 @@ from requests_toolbelt import MultipartEncoder
 
 from monailabel.interfaces.app import MONAILabelApp
 from monailabel.interfaces.utils.app import app_instance
+from monailabel.utils.async_tasks.task import AsyncTask
 from monailabel.utils.others.generic import get_mime_type, remove_file
 
 logger = logging.getLogger(__name__)
@@ -144,8 +145,26 @@ def run_inference(
             request["image"] = session.image
             request["session"] = session.to_json()
 
+    train_tasks, _ = AsyncTask.status(method="train", all=True)
+    if train_tasks:
+        # "pause" training
+        app_info = instance.info()
+        for train_task_model, train_task_info in app_info["train_stats"].items():
+            total_epochs = train_task_info["total_epochs"]
+            completed_epochs = train_task_info["epoch"]
+            for train_task in train_tasks:
+                if train_task["request"]["model"] == train_task_model:
+                    train_task["request"]["max_epochs"] = total_epochs - completed_epochs + 1
+        AsyncTask.stop(method="train")
+
+    # perform inference
     logger.info(f"Infer Request: {request}")
     result = instance.infer(request)
+
+    if train_tasks:
+        for train_task in train_tasks:
+            AsyncTask.run("train", request=train_task["request"], params=None, force_sync=False, enqueue=True)
+
     if result is None:
         raise HTTPException(status_code=500, detail="Failed to execute infer")
     return send_response(instance.datastore(), result, output, background_tasks)

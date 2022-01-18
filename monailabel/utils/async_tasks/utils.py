@@ -18,7 +18,7 @@ import uuid
 from collections import deque
 from concurrent.futures import ThreadPoolExecutor
 from datetime import datetime
-from typing import Dict
+from typing import Dict, List, Optional
 
 import psutil
 
@@ -85,6 +85,14 @@ def _task_func(task, method, callback=None):
 
 
 def run_background_task(request, method, callback=None, debug=False):
+
+    background_models: List[str] = [
+        task["request"]["model"] for task in background_tasks.get(method) or [] if task["request"].get("model")
+    ]
+    task_idx: Optional[int] = None
+    if background_models:
+        task_idx = background_models.index(request["model"])
+
     task = {
         "id": str(uuid.uuid4()),
         "status": "SUBMITTED",
@@ -99,7 +107,17 @@ def run_background_task(request, method, callback=None, debug=False):
     if background_executors.get(method) is None:
         background_executors[method] = ThreadPoolExecutor(max_workers=1)
 
-    background_tasks[method].append(task)
+    if task_idx is not None:
+        if background_tasks[method][task_idx].get("request_history"):
+            background_tasks[method][task_idx]["request_history"].append(background_tasks[method][task_idx]["request"])
+        else:
+            background_tasks[method][task_idx].update(
+                {"request_history": [background_tasks[method][task_idx]["request"]]}
+            )
+        background_tasks[method][task_idx]["request"] = task
+    else:
+        background_tasks[method].append(task)
+
     if debug:
         _task_func(task, method)
     else:
