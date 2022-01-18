@@ -11,6 +11,7 @@
 import logging
 import os
 import time
+from concurrent.futures import ThreadPoolExecutor
 from hashlib import md5
 
 from dicomweb_client import DICOMwebClient
@@ -60,7 +61,7 @@ def store_scu(input_file, host="127.0.0.1", port="4242", aet="MONAILABEL"):
     logger.info(f"Time to run STORE-SCU: {time.time() - start} (sec)")
 
 
-def dicom_web_download_series(study_id, series_id, save_dir, client: DICOMwebClient):
+def dicom_web_download_series(study_id, series_id, save_dir, client: DICOMwebClient, frame_fetch=False):
     start = time.time()
 
     # Limitation for DICOMWeb Client as it needs StudyInstanceUID to fetch series
@@ -69,11 +70,35 @@ def dicom_web_download_series(study_id, series_id, save_dir, client: DICOMwebCli
         study_id = str(meta["StudyInstanceUID"].value)
 
     os.makedirs(save_dir, exist_ok=True)
-    instances = client.retrieve_series(study_id, series_id)
-    for instance in instances:
-        instance_id = str(instance["SOPInstanceUID"].value)
-        file_name = os.path.join(save_dir, f"{instance_id}.dcm")
-        instance.save_as(file_name)
+    if not frame_fetch:
+        instances = client.retrieve_series(study_id, series_id)
+        for instance in instances:
+            instance_id = str(instance["SOPInstanceUID"].value)
+            file_name = os.path.join(save_dir, f"{instance_id}.dcm")
+            instance.save_as(file_name)
+    else:
+        # TODO:: This logic (combining meta+pixeldata) needs improvement
+        def save_from_frame(m):
+            d = load_json_dataset(m)
+            instance_id = str(d["SOPInstanceUID"].value)
+
+            # Hack to merge Info + RawData
+            d.is_little_endian = True
+            d.is_implicit_VR = True
+            d.PixelData = client.retrieve_instance_frames(
+                study_instance_uid=study_id,
+                series_instance_uid=series_id,
+                sop_instance_uid=instance_id,
+                frame_numbers=[1],
+            )[0]
+
+            file_name = os.path.join(save_dir, f"{instance_id}.dcm")
+            logger.info(f"++ Saved {file_name}")
+            d.save_as(file_name)
+
+        meta = client.retrieve_series_metadata(study_id, series_id)
+        with ThreadPoolExecutor(max_workers=2, thread_name_prefix="DICOMFetch") as executor:
+            executor.map(save_from_frame, meta)
 
     logger.info(f"Time to download: {time.time() - start} (sec)")
 
@@ -96,3 +121,26 @@ def dicom_web_upload_dcm(input_file, client: DICOMwebClient):
 
     logger.info(f"Time to upload: {time.time() - start} (sec)")
     return series_id
+
+
+if __name__ == "__main__":
+    import shutil
+
+    from monailabel.datastore.dicom import DICOMwebClientX
+
+    client = DICOMwebClientX(
+        url="https://d1l7y4hjkxnyal.cloudfront.net",
+        session=None,
+        qido_url_prefix="output",
+        wado_url_prefix="output",
+        stow_url_prefix="output",
+    )
+
+    study_id = "1.2.840.113654.2.55.68425808326883186792123057288612355322"
+    series_id = "1.2.840.113654.2.55.257926562693607663865369179341285235858"
+
+    save_dir = "/local/sachi/Data/dicom"
+    shutil.rmtree(save_dir, ignore_errors=True)
+    os.makedirs(save_dir, exist_ok=True)
+
+    dicom_web_download_series(study_id, series_id, save_dir, client, True)
