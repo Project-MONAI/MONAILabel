@@ -41,13 +41,13 @@ class MyApp(MONAILabelApp):
 
         # Zero values are reserved to background. Non zero values are for the labels
         self.label_names = {
-            "C1 Atlas": 1,
-            "C2 Axis": 2,
-            "C3": 3,
-            "C4": 4,
-            "C5": 5,
-            "C6": 6,
-            "C7": 7,
+            # "C1 Atlas": 1,
+            # "C2 Axis": 2,
+            # "C3": 3,
+            # "C4": 4,
+            # "C5": 5,
+            # "C6": 6,
+            # "C7": 7,
             "Th1": 8,
             "Th2": 9,
             "Th3": 10,
@@ -135,7 +135,7 @@ class MyApp(MONAILabelApp):
         self.pretrained_model = os.path.join(self.model_dir, f"pretrained_{network}.pt")
         self.final_model = os.path.join(self.model_dir, f"model_{network}.pt")
 
-        use_pretrained_model = strtobool(conf.get("use_pretrained_model", "true"))
+        use_pretrained_model = strtobool(conf.get("use_pretrained_model", "false"))
         pretrained_model_uri = conf.get(
             "pretrained_model_path", f"{self.PRE_TRAINED_PATH}deepedit_{network}_multilabel.pt"
         )
@@ -291,7 +291,7 @@ def main():
         "name": args.output,
         "device": "cuda",
         "model": "deepedit_train",
-        "dataset": args.dataset,
+        # "dataset": args.dataset,
         "max_epochs": args.epoch,
         "val_split": 0.05,
         "amp": False,
