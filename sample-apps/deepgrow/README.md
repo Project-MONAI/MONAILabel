@@ -46,13 +46,13 @@ monailabel apps --name generic_deepgrow --download --output myapp
   > - [AddGuidanceSignald](https://docs.monai.io/en/latest/_modules/monai/apps/deepgrow/transforms.html#AddGuidanceSignald) -> This transform adds guidance signal (foreground and background clicks) for input image, 
   
 - Number of epochs
-  > Default value is 50 Epochs for DeepGrow 3D and 20 Epochs for DeepGrow 2D. Change this in the [info.YAML](./info.yaml) file.
+  > Default value is 50 Epochs for DeepGrow 3D and 20 Epochs for DeepGrow 2D. This can be changed in the `main.py` file as appropriate. 
 
 - learning rate
-  > Default value is 0.0001. Change this in the [info.YAML](./info.yaml) file
+  > Default value is 0.0001. This can be changed in `train.py`.
 
 - validation split used during training
-    > Default value is 0.2. Change this in the [info.YAML](./info.yaml) file
+    > Default value is 0.2. Change this in `main.py` if needed. 
 
 ### Inputs
 
@@ -68,7 +68,6 @@ monailabel apps --name generic_deepgrow --download --output myapp
 - **[./lib/train.py](./lib/train.py)** is the script to define the pre and post transforms to train the network/model
 - **[./lib/activelearning.py](./lib/activelearning.py)** is the file to define the image selection techniques.
 - **[./lib/transforms.py](./lib/transforms.py)** is the file to define customised transformations to be used in the App
-- **[info.yaml](./info.yaml)** is the file to define hyperparameters such as epochs, learning and validation split percentage.
 - **[main.py](./main.py)** is the script to define network architecture, enable the active learning strategy, etc
  
 ### Data
