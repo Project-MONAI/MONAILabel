@@ -1854,8 +1854,9 @@ class MONAILabelWidget(ScriptedLoadableModuleWidget, VTKObservationMixin):
 
         # update tool/layer select for scribblesEditorWidget
         tool, layer = self.getToolAndLayerFromScribblesMode()
-        self._scribblesEditorWidget.setActiveEffectByName(tool)
-        self._scribblesEditorWidget.setCurrentSegmentID(layer)
+        if self._scribblesEditorWidget:
+            self._scribblesEditorWidget.setActiveEffectByName(tool)
+            self._scribblesEditorWidget.setCurrentSegmentID(layer)
 
         # update brush type from checkbox
         if tool in ("Paint", "Erase"):
