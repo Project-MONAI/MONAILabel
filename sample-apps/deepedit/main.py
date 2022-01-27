@@ -84,7 +84,7 @@ class MyApp(MONAILabelApp):
             }
             self.network = DynUNet(**network_params)
             self.network_with_dropout = DynUNet(**network_params, dropout=0.2)
-            self.find_unused_parameters = True
+            self.find_unused_parameters = False
 
         self.model_dir = os.path.join(app_dir, "model")
         self.pretrained_model = os.path.join(self.model_dir, f"pretrained_{network}.pt")

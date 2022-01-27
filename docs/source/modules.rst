@@ -3,7 +3,7 @@ Modules Overview
 ================
 
 MONAI Label aims to allow researchers to build labeling applications in a serverless way.
-This means that MONAI Label applications are always ready-to-deploy via MONAL Label server.
+This means that MONAI Label applications are always ready-to-deploy via MONAI Label server.
 
 To develop a new MONAI labeling app, developers must inherit the :py:class:`~monailabel.interfaces.MONAILabelApp` interface
 and implement the methods in the interface that are relevant to their application. Typically a
@@ -20,7 +20,7 @@ employs
 - | two inferencing tasks, namely :py:class:`MyInfer` which is a custom implementation of :py:class:`~monailabel.interfaces.tasks.InferTask`, 
   | and :py:class:`~monailabel.utils.infer.deepgrow_2d.InferDeepGrow2D` which is a ready-to-use utility included with MONAI Label,
 - one training task, :py:class:`TrainDeepGrow` which is an extension of the :py:class:`~monailabel.utils.train.base_train.BasicTrainTask` utility,
-- | and two next image selection strategies, :py:class:`~monailabel.interfaces.utils.activelearning.Random` included with MONAL Label which allow 
+- | and two next image selection strategies, :py:class:`~monailabel.interfaces.utils.activelearning.Random` included with MONAI Label which allow 
   | the user to select the next image at random, and :py:class:`MyStrategy` which implements the interface 
   | :py:class:`~monailabel.interfaces.Strategy` which the end user may select as a custom alternative for next image selection
 

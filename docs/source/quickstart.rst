@@ -6,7 +6,7 @@ MONAI Label server currently supports the annotation of local datasets via `3DSl
 residing on disk, and remote data residing on DICOMweb-enabled PACS systems via both `3DSlicer <https://www.slicer.org/>`_ and `OHIF <https://ohif.org/>`_.
 
   * To setup a local dataset for annotation follow the instructions under :ref:`DeepEdit Annotation with 3DSlicer`.
-  * To perform annotation of data residing on a remote DICOMweb-accessible PACS follow the instructions under :ref:`DeedEdit Annotation Using OHIF`
+  * To perform annotation of data residing on a remote DICOMweb-accessible PACS follow the instructions under :ref:`DeepEdit Annotation Using OHIF`
 
 .. _DeepEdit Annotation with 3DSlicer:
 
@@ -142,9 +142,9 @@ Label Server, however, in this scenario we will instead load a file into MONAI L
 - Now, all DeepEdit functions should be available to use and we use **foreground** and **background** clicks
 
 
-.. _DeedEdit Annotation Using OHIF:
+.. _DeepEdit Annotation Using OHIF:
 
-DeedEdit Annotation Using OHIF
+DeepEdit Annotation Using OHIF
 ==============================
 
 As of version ``0.2.0``, MONAI Label server supports connectivity to a remote DICOM server via DICOMweb. All we need

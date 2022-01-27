@@ -125,6 +125,29 @@ class _ui_MONAILabelSettingsPanel(object):
             str(qt.SIGNAL("valueAsIntChanged(int)")),
         )
 
+        askForUserNameCheckBox = qt.QCheckBox()
+        askForUserNameCheckBox.checked = False
+        askForUserNameCheckBox.toolTip = "Enable this option to ask for the user name every time the MONAILabel extension is loaded for the first time"
+        groupLayout.addRow("Ask For User Name:", askForUserNameCheckBox)
+        parent.registerProperty(
+            "MONAILabel/askForUserName",
+            ctk.ctkBooleanMapper(askForUserNameCheckBox, "checked", str(qt.SIGNAL("toggled(bool)"))),
+            "valueAsInt",
+            str(qt.SIGNAL("valueAsIntChanged(int)")),
+        )
+
+        allowOverlapCheckBox = qt.QCheckBox()
+        allowOverlapCheckBox.checked = False
+        allowOverlapCheckBox.toolTip = "Enable this option to allow overlapping segmentations"
+        groupLayout.addRow("Allow Overlapping Segmentations:", allowOverlapCheckBox)
+        parent.registerProperty(
+            "MONAILabel/allowOverlappingSegments",
+            ctk.ctkBooleanMapper(allowOverlapCheckBox, "checked", str(qt.SIGNAL("toggled(bool)"))),
+            "valueAsInt",
+            str(qt.SIGNAL("valueAsIntChanged(int)")),
+        )
+        allowOverlapCheckBox.connect("toggled(bool)", self.onUpdateAllowOverlap)
+
         developerModeCheckBox = qt.QCheckBox()
         developerModeCheckBox.checked = False
         developerModeCheckBox.toolTip = "Enable this option to find options tab etc..."
@@ -138,6 +161,13 @@ class _ui_MONAILabelSettingsPanel(object):
 
         vBoxLayout.addWidget(groupBox)
         vBoxLayout.addStretch(1)
+
+    def onUpdateAllowOverlap(self):
+        if slicer.util.settingsValue("MONAILabel/allowOverlappingSegments", True, converter=slicer.util.toBool):
+            if slicer.util.settingsValue("MONAILabel/fileExtension", None) != ".seg.nrrd":
+                slicer.util.warningDisplay(
+                    "Overlapping segmentations are only availabel with the '.seg.nrrd' file extension! Consider changing MONAILabel file extension."
+                )
 
 
 class MONAILabelSettingsPanel(ctk.ctkSettingsPanel):
@@ -288,9 +318,26 @@ class MONAILabelWidget(ScriptedLoadableModuleWidget, VTKObservationMixin):
         self.ui.scribblesCollapsibleButton.setEnabled(False)
         self.ui.scribblesCollapsibleButton.collapsed = True
 
+        # embedded segment editor
+        self.ui.embeddedSegmentEditorWidget.setMRMLScene(slicer.mrmlScene)
+        self.ui.embeddedSegmentEditorWidget.setSegmentationNodeSelectorVisible(False)
+        self.ui.embeddedSegmentEditorWidget.setMasterVolumeNodeSelectorVisible(False)
+
         self.initializeParameterNode()
         self.updateServerUrlGUIFromSettings()
         # self.onClickFetchInfo()
+
+        if slicer.util.settingsValue("MONAILabel/askForUserName", False, converter=slicer.util.toBool):
+            text = qt.QInputDialog().getText(
+                self.parent,
+                "User Name",
+                "Please enter your name:",
+                qt.QLineEdit.Normal,
+                slicer.util.settingsValue("MONAILabel/clientId", None),
+            )
+            if text:
+                settings = qt.QSettings()
+                settings.setValue("MONAILabel/clientId", text)
 
     def cleanup(self):
         self.removeObservers()
@@ -413,6 +460,7 @@ class MONAILabelWidget(ScriptedLoadableModuleWidget, VTKObservationMixin):
         self.ui.inputSelector.clear()
         for v in self._volumeNodes:
             self.ui.inputSelector.addItem(v.GetName())
+            self.ui.inputSelector.setToolTip(self.current_sample.get("name", "") if self.current_sample else "")
         if self._volumeNode:
             self.ui.inputSelector.setCurrentIndex(self.ui.inputSelector.findText(self._volumeNode.GetName()))
         self.ui.inputSelector.setEnabled(False)  # Allow only one active scene
@@ -544,6 +592,10 @@ class MONAILabelWidget(ScriptedLoadableModuleWidget, VTKObservationMixin):
 
         self.ui.dgUpdateCheckBox.setEnabled(self.ui.deepgrowModelSelector.currentText and self._segmentNode)
         self.ui.dgUpdateButton.setEnabled(self.ui.deepgrowModelSelector.currentText and self._segmentNode)
+
+        self.ui.embeddedSegmentEditorWidget.setMRMLSegmentEditorNode(
+            slicer.mrmlScene.GetFirstNodeByClass("vtkMRMLSegmentEditorNode")
+        )
 
         # All the GUI updates are done
         self._updatingGUIFromParameterNode = False
@@ -1109,6 +1161,11 @@ class MONAILabelWidget(ScriptedLoadableModuleWidget, VTKObservationMixin):
         segmentEditorWidget.setSegmentationNode(self._segmentNode)
         segmentEditorWidget.setMasterVolumeNode(self._volumeNode)
 
+        # check if user allows overlapping segments
+        if slicer.util.settingsValue("MONAILabel/allowOverlappingSegments", False, converter=slicer.util.toBool):
+            # set segment editor to allow overlaps
+            slicer.util.getNodesByClass("vtkMRMLSegmentEditorNode")[0].SetOverwriteMode(2)
+
         if self.info.get("labels"):
             self.updateSegmentationMask(None, self.info.get("labels"))
 
@@ -1225,7 +1282,13 @@ class MONAILabelWidget(ScriptedLoadableModuleWidget, VTKObservationMixin):
             label_in = tempfile.NamedTemporaryFile(suffix=self.file_ext, dir=self.tmpdir).name
             self.reportProgress(5)
 
-            slicer.util.saveNode(labelmapVolumeNode, label_in)
+            if (
+                slicer.util.settingsValue("MONAILabel/allowOverlappingSegments", True, converter=slicer.util.toBool)
+                and slicer.util.settingsValue("MONAILabel/fileExtension", self.file_ext) == ".seg.nrrd"
+            ):
+                slicer.util.saveNode(segmentationNode, label_in)
+            else:
+                slicer.util.saveNode(labelmapVolumeNode, label_in)
             self.reportProgress(30)
 
             self.updateServerSettings()
@@ -1790,8 +1853,9 @@ class MONAILabelWidget(ScriptedLoadableModuleWidget, VTKObservationMixin):
 
         # update tool/layer select for scribblesEditorWidget
         tool, layer = self.getToolAndLayerFromScribblesMode()
-        self._scribblesEditorWidget.setActiveEffectByName(tool)
-        self._scribblesEditorWidget.setCurrentSegmentID(layer)
+        if self._scribblesEditorWidget:
+            self._scribblesEditorWidget.setActiveEffectByName(tool)
+            self._scribblesEditorWidget.setCurrentSegmentID(layer)
 
         # update brush type from checkbox
         if tool in ("Paint", "Erase"):
