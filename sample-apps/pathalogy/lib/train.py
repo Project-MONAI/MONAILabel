@@ -13,26 +13,22 @@ import logging
 from monai.inferers import SlidingWindowInferer
 from monai.losses import DiceCELoss
 from monai.optimizers import Novograd
-from monai.transforms import (
-    Activationsd,
-    AsDiscreted,
-    LoadImaged,
-    EnsureChannelFirstd, AddChanneld, ScaleIntensityd, RandRotate90d, EnsureTyped, RandCropByPosNegLabeld,
-)
-from torchvision import transforms  # noqa
+from monai.transforms import Activationsd, AsDiscreted, EnsureTyped
 
 from monailabel.tasks.train.basic_train import BasicTrainTask, Context
+
+from .transforms import ImageToGridd
 
 logger = logging.getLogger(__name__)
 
 
 class MyTrain(BasicTrainTask):
     def __init__(
-            self,
-            model_dir,
-            network,
-            description="Pathology Segmentation model",
-            **kwargs,
+        self,
+        model_dir,
+        network,
+        description="Pathology Segmentation model",
+        **kwargs,
     ):
         self._network = network
         super().__init__(model_dir, description, **kwargs)
@@ -48,29 +44,7 @@ class MyTrain(BasicTrainTask):
 
     def train_pre_transforms(self, context: Context):
         return [
-            LoadImaged(keys=("image", "label")),
-            EnsureChannelFirstd(keys="image"),
-            AddChanneld(keys="label"),
-
-            # ToTensorD(keys="image"),
-            # TorchVisionD(
-            #     keys="image", name="ColorJitter", brightness=64.0 / 255.0, contrast=0.75, saturation=0.25, hue=0.04
-            # ),
-            # ToNumpyD(keys="image"),
-
-            # RandFlipD(keys="image", prob=0.5),
-            # RandRotate90D(keys="image", prob=0.5),
-            # CastToTypeD(keys="image", dtype=np.float32),
-            # RandZoomD(keys="image", prob=0.5, min_zoom=0.9, max_zoom=1.1),
-            # ScaleIntensityRangeD(keys="image", a_min=0.0, a_max=255.0, b_min=-1.0, b_max=1.0),
-
-            ScaleIntensityd(keys=("image", "label")),
-            RandCropByPosNegLabeld(
-                keys=("image", "label"), label_key="label", spatial_size=(512, 512), pos=1, neg=1, num_samples=4
-            ),
-
-            RandRotate90d(keys=("image", "label"), prob=0.5, spatial_axes=[0, 1]),
-            EnsureTyped(keys=("image", "label")),
+            ImageToGridd(keys=("image", "label"), image_size=4096, patch_size=256),
         ]
 
     def train_post_transforms(self, context: Context):
@@ -85,14 +59,5 @@ class MyTrain(BasicTrainTask):
             ),
         ]
 
-    def val_pre_transforms(self, context: Context):
-        return [
-            LoadImaged(keys=("image", "label")),
-            EnsureChannelFirstd(keys="image"),
-            AddChanneld(keys="label"),
-            ScaleIntensityd(keys="image"),
-            EnsureTyped(keys=("image", "label")),
-        ]
-
     def val_inferer(self, context: Context):
-        return SlidingWindowInferer(roi_size=(512, 512), sw_batch_size=4, overlap=0.25)
+        return SlidingWindowInferer(roi_size=(256, 256), sw_batch_size=16, overlap=0.25)

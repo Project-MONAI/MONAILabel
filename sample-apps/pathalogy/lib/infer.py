@@ -9,14 +9,20 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-from monai.inferers import SlidingWindowInferer
+import numpy as np
+from monai.inferers import SimpleInferer, SlidingWindowInferer
 from monai.transforms import (
     Activationsd,
-    CastToTypeD,
+    AddChanneld,
     AsDiscreted,
+    CastToTypeD,
+    EnsureChannelFirstd,
+    EnsureTyped,
     LoadImaged,
+    ScaleIntensityd,
     ScaleIntensityRanged,
     Spacingd,
+    SqueezeDimd,
     ToNumpyd,
     ToTensord,
 )
@@ -50,19 +56,17 @@ class MyInfer(InferTask):
 
     def pre_transforms(self):
         return [
-            CastToTypeD(keys="image"),
-            ScaleIntensityRanged(keys="image", a_min=-57, a_max=164, b_min=0.0, b_max=1.0, clip=True),
-            ToTensord(keys="image"),
+            LoadImaged(keys="image"),
+            EnsureChannelFirstd(keys="image"),
         ]
 
     def inferer(self):
-        return SlidingWindowInferer(roi_size=[160, 160, 160])
+        return SimpleInferer()  # SlidingWindowInferer(roi_size=(512, 512), sw_batch_size=4, overlap=0.25)
 
     def post_transforms(self):
         return [
-            Activationsd(keys="pred", softmax=True),
-            AsDiscreted(keys="pred", argmax=True),
+            # Activationsd(keys="pred", sigmoid=True),
+            # AsDiscreted(keys="pred", argmax=True),
+            # SqueezeDimd(keys="pred", dim=0),
             ToNumpyd(keys="pred"),
-            Restored(keys="pred", ref_image="image"),
-            BoundingBoxd(keys="pred", result="result", bbox="bbox"),
         ]

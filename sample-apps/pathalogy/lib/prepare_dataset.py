@@ -12,7 +12,7 @@ import numpy as np
 import openslide
 from skimage.measure import points_in_poly
 
-from monailabel.utils.others.generic import get_basename, file_ext
+from monailabel.utils.others.generic import file_ext, get_basename
 
 
 def fetch_annotations(image, label, coverage, min_size, level=0):
@@ -29,22 +29,23 @@ def fetch_annotations(image, label, coverage, min_size, level=0):
 
     logger.info(f"Using Factor: {factor} => Level: {level}")
 
-    for annotation in tree.getroot().iter('Annotation'):
+    for annotation in tree.getroot().iter("Annotation"):
         group = int(
-            annotation.attrib.get(
-                "PartOfGroup").replace(
-                "_", "").replace(
-                "Tumor", "0").replace(
-                "Exclusion", "2").replace(
-                "None", "1"))
+            annotation.attrib.get("PartOfGroup")
+            .replace("_", "")
+            .replace("Tumor", "0")
+            .replace("Exclusion", "2")
+            .replace("None", "1")
+        )
         object_type = annotation.attrib.get("Type").lower()
         idx = annotation.attrib.get("Name").lstrip("_")
 
-        for coords in annotation.iter('Coordinates'):
+        for coords in annotation.iter("Coordinates"):
             points = []
             for coord in coords:
                 points.append(
-                    [round(float(coord.attrib.get("X")) / factor), round(float(coord.attrib.get("Y")) / factor)])
+                    [round(float(coord.attrib.get("X")) / factor), round(float(coord.attrib.get("Y")) / factor)]
+                )
 
             x, y, w, h = cv2.boundingRect(np.array(points))
             center_x = round(x + w / 2)
@@ -62,20 +63,22 @@ def fetch_annotations(image, label, coverage, min_size, level=0):
             loc_y = max(0, round(center_y - height / 2))
             logger.info(f"{idx} => tumor size: {w} x {h} => region: ({loc_x}, {loc_y}) => {width} x {height}")
 
-            annotations.append({
-                "name": name,
-                "image": image,
-                "label": label,
-                "idx": idx,
-                "points": points,
-                "group": group,
-                "type": object_type,
-                "bbox": (x, y, w, h),
-                "region_top": (loc_x, loc_y),
-                "region_size": (width, height),
-                "ignore": False,
-                "refer": None,
-            })
+            annotations.append(
+                {
+                    "name": name,
+                    "image": image,
+                    "label": label,
+                    "idx": idx,
+                    "points": points,
+                    "group": group,
+                    "type": object_type,
+                    "bbox": (x, y, w, h),
+                    "region_top": (loc_x, loc_y),
+                    "region_size": (width, height),
+                    "ignore": False,
+                    "refer": None,
+                }
+            )
 
     # Make sure all Name defined by annotator are unique from the given xml
     ids = [a["idx"] for a in annotations]
@@ -147,7 +150,7 @@ def get_matching(idx, annotations):
     return None
 
 
-def create_region_image(annotations, output, level=0, output_ext=".png"):
+def create_region_image(annotations, patch_size, output, level=0, output_ext=".png"):
     for annotation in annotations:
         if annotation["ignore"]:
             continue
@@ -160,16 +163,19 @@ def create_region_image(annotations, output, level=0, output_ext=".png"):
         logger.info(f"Create Image; bbox: {annotation['bbox']}; region: {annotation['region_size']}")
 
         slide = openslide.OpenSlide(image)
-        save_patch(annotation, None, slide, level, output, output_ext)
+        save_patch(annotation, None, slide, level, patch_size, output, output_ext)
 
 
-def save_patch(annotation, input_np, slide, level, output, output_ext, max_w=4096, max_h=4096):
+def save_patch(annotation, input_np, slide, level, patch_size, output, output_ext):
     name = annotation["name"]
     idx = annotation["idx"]
     logger = logging.getLogger(f"{name}_{idx}")
 
     w, h = annotation["region_size"]
     x, y = annotation["region_top"]
+    max_w = patch_size[0]
+    max_h = patch_size[1]
+
     tiles_i = ceil(w / max_w)  # COL
     tiles_j = ceil(h / max_h)  # ROW
 
@@ -185,21 +191,21 @@ def save_patch(annotation, input_np, slide, level, output, output_ext, max_w=409
                 tx = x + ti * max_w
                 ty = y + tj * max_h
 
-                logger.info(f"{prefix} - Patch/Slide ({tj}, {ti}) => Top: ({tx}, {ty}); Size: {tw} x {th}")
+                logger.debug(f"{prefix} - Patch/Slide ({tj}, {ti}) => Top: ({tx}, {ty}); Size: {tw} x {th}")
                 region_rgb = slide.read_region((tx, ty), level, (tw, th)).convert("RGB")
                 region_rgb.save(os.path.join(output, f"{name}_{idx}_{tj}x{ti}{output_ext}"))
             else:
                 sx = ti * max_w
                 sy = tj * max_h
 
-                logger.info(f"{prefix} - Patch/Slice ({tj}, {ti}) => {sx}:{sx + tw}, {sy}:{sy + th}")
-                region_rgb = input_np[sy:(sy + th), sx:(sx + tw)]
-                logger.info(f"{prefix} - Patch/Slice ({tj}, {ti}) => Size: {region_rgb.shape} / {input_np.shape}")
+                logger.debug(f"{prefix} - Patch/Slice ({tj}, {ti}) => {sx}:{sx + tw}, {sy}:{sy + th}")
+                region_rgb = input_np[sy : (sy + th), sx : (sx + tw)]
+                logger.debug(f"{prefix} - Patch/Slice ({tj}, {ti}) => Size: {region_rgb.shape} / {input_np.shape}")
                 cv2.imwrite(os.path.join(output, f"{name}_{idx}_{tj}x{ti}{output_ext}"), region_rgb)
     logger.info(f"{prefix} Patch(s) Saved...")
 
 
-def create_region_label(annotations, output, output_ext=".png"):
+def create_region_label(annotations, patch_size, output, output_ext):
     for annotation in annotations:
         if annotation["ignore"]:
             continue
@@ -212,38 +218,38 @@ def create_region_label(annotations, output, output_ext=".png"):
         logger = logging.getLogger(f"{name}_{idx}")
         logger.info(f"Create Label; region: {annotation['region_size']}; bbox: {annotation['bbox']}; By: {referred_by}")
 
-        x, y, w, h = annotation["bbox"]
         loc_x, loc_y = annotation["region_top"]
         width, height = annotation["region_size"]
 
         label_np = np.zeros((height, width), dtype=np.uint8)  # Transposed
-        logger.info("Label NP Created!!")
+        logger.debug("Label NP Created!!")
 
         for r in referred_by:
             ra = get_matching(r, annotations)
             annotation_points = ra["points"]
             annotation_group = ra["group"]
 
-            logger.info(f"Adding Label For Index: {r}; size: {width} x {height}; points: {len(annotation_points)}")
+            logger.debug(f"Adding Label For Index: {r}; size: {width} x {height}; points: {len(annotation_points)}")
 
             contours = np.array([[p[0] - loc_x, p[1] - loc_y] for p in annotation_points])
-            color = (255, 255, 255) if annotation_group == 0 else (128, 128, 128) if annotation_group == 1 else (
-                0, 0, 0)
+            color = (
+                (255, 255, 255) if annotation_group == 0 else (128, 128, 128) if annotation_group == 1 else (0, 0, 0)
+            )
             cv2.fillPoly(label_np, pts=[contours], color=color)
 
         logger.info(f"Label Ready...")
-        save_patch(annotation, label_np, None, 0, output, output_ext)
+        save_patch(annotation, label_np, None, 0, patch_size, output, output_ext)
 
 
-def create_region(annotations, output, level, output_ext=".png"):
-    #create_region_image(annotations, os.path.join(output, "images"), level, output_ext)
-    create_region_label(annotations, os.path.join(output, "labels"), output_ext)
+def create_region(annotations, patch_size, output, level, output_ext):
+    create_region_image(annotations, patch_size, os.path.join(output, "images"), level, output_ext)
+    create_region_label(annotations, patch_size, os.path.join(output, "labels"), output_ext)
 
 
 def run_job(job):
     annotations = job["annotations"]
     args = job["args"]
-    create_region(annotations, args.output, args.level, args.extension)
+    create_region(annotations, args.patch_size, args.output, args.level, args.extension)
 
 
 def main():
@@ -258,15 +264,21 @@ def main():
     parser = argparse.ArgumentParser()
     parser.add_argument("-i", "--image", default=f"{root_dir}/79397/training/images/tumor/*.tif")
     parser.add_argument("-l", "--label", default=f"{root_dir}/79397/training/images/tumor/*.xml")
-    parser.add_argument("-o", "--output", default=f"{root_dir}/dataset/training/")
+    parser.add_argument("-o", "--output", default=f"{root_dir}/dataset_v2/training/")
     parser.add_argument("-n", "--level", type=int, default=0)
     parser.add_argument("-c", "--coverage", type=float, default=2.0)
     parser.add_argument("-s", "--min_size", default="[4096,4096]")
+    parser.add_argument("-p", "--patch_size", default="[1024,1024]")
     parser.add_argument("-x", "--extension", default=".png")
     parser.add_argument("-m", "--multiprcoess", type=bool, default=True)
 
     args = parser.parse_args()
     args.min_size = json.loads(args.min_size)
+    args.patch_size = json.loads(args.patch_size)
+
+    for arg in vars(args):
+        logging.info("USING:: {} = {}".format(arg, getattr(args, arg)))
+    print("")
 
     os.makedirs(os.path.join(args.output, "images"), exist_ok=True)
     os.makedirs(os.path.join(args.output, "labels"), exist_ok=True)
