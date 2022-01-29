@@ -10,13 +10,16 @@
 # limitations under the License.
 import logging
 
-from monai.inferers import SlidingWindowInferer
-from monai.losses import DiceCELoss
+from ignite.metrics import Accuracy
+from monai.handlers import from_engine
+from monai.inferers import SimpleInferer
 from monai.optimizers import Novograd
-from monai.transforms import Activationsd, AsDiscreted, EnsureTyped
+from monai.transforms import Activationsd, AsDiscreted
+from torch.nn import BCEWithLogitsLoss
 
 from monailabel.tasks.train.basic_train import BasicTrainTask, Context
 
+from .handlers import TensorBoardImageHandler
 from .transforms import ImageToGridd
 
 logger = logging.getLogger(__name__)
@@ -27,37 +30,47 @@ class MyTrain(BasicTrainTask):
         self,
         model_dir,
         network,
+        image_size=1024,
+        patch_size=64,
         description="Pathology Segmentation model",
         **kwargs,
     ):
         self._network = network
+        self._image_size = image_size
+        self._patch_size = patch_size
         super().__init__(model_dir, description, **kwargs)
 
     def network(self, context: Context):
         return self._network
 
     def optimizer(self, context: Context):
-        return Novograd(self._network.parameters(), 0.0001)
+        return Novograd(self._network.parameters(), 0.001)
 
     def loss_function(self, context: Context):
-        return DiceCELoss(to_onehot_y=True, softmax=True, squared_pred=True, batch=True)
+        return BCEWithLogitsLoss()
+
+    def train_key_metric(self, context: Context):
+        return {"train_acc": Accuracy(output_transform=from_engine(["pred", "label"]))}
 
     def train_pre_transforms(self, context: Context):
         return [
-            ImageToGridd(keys=("image", "label"), image_size=4096, patch_size=256),
+            ImageToGridd(keys=("image", "label"), image_size=self._image_size, patch_size=self._patch_size),
         ]
 
     def train_post_transforms(self, context: Context):
         return [
-            EnsureTyped(keys=("pred", "label")),
-            Activationsd(keys="pred", softmax=True),
-            AsDiscreted(
-                keys=("pred", "label"),
-                argmax=(True, False),
-                to_onehot=True,
-                n_classes=2,
-            ),
+            Activationsd(keys="pred", sigmoid=True),
+            AsDiscreted(keys="pred", threshold=0.5),
         ]
 
+    def val_key_metric(self, context: Context):
+        return {"val_acc": Accuracy(output_transform=from_engine(["pred", "label"]))}
+
     def val_inferer(self, context: Context):
-        return SlidingWindowInferer(roi_size=(256, 256), sw_batch_size=16, overlap=0.25)
+        return SimpleInferer()
+
+    def train_handlers(self, context: Context):
+        handlers = super().train_handlers(context)
+        if context.local_rank == 0:
+            handlers.append(TensorBoardImageHandler(log_dir=context.events_dir))
+        return handlers

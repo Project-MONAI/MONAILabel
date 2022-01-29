@@ -103,7 +103,7 @@ class ResNetWithCF(ResNet):
         width_per_group: int = 64,
         replace_stride_with_dilation: Optional[List[bool]] = None,
         norm_layer: Optional[Callable[..., nn.Module]] = None,
-        crf_nodes=1,
+        num_nodes=1,
     ):
         super().__init__(
             block,
@@ -116,7 +116,7 @@ class ResNetWithCF(ResNet):
             norm_layer,
         )
 
-        self.crf = CRF(crf_nodes)
+        self.crf = CRF(num_nodes)
 
     def forward(self, x):
         batch_size, grid_size, _, crop_size = x.shape[0:4]
@@ -143,3 +143,23 @@ class ResNetWithCF(ResNet):
 
         logits = self.crf(f, logits)
         return torch.squeeze(logits)
+
+
+def resnet18_cf(**kwargs):
+    return ResNetWithCF(BasicBlock, [2, 2, 2, 2], **kwargs)
+
+
+def resnet34_cf(**kwargs):
+    return ResNetWithCF(BasicBlock, [3, 4, 6, 3], **kwargs)
+
+
+def resnet50_cf(**kwargs):
+    return ResNetWithCF(Bottleneck, [3, 4, 6, 3], **kwargs)
+
+
+def resnet101_cf(**kwargs):
+    return ResNetWithCF(Bottleneck, [3, 4, 23, 3], **kwargs)
+
+
+def resnet152_cf(**kwargs):
+    return ResNetWithCF(Bottleneck, [3, 8, 36, 3], **kwargs)

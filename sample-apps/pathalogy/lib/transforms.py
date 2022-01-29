@@ -49,7 +49,7 @@ class ImageToGridd(MapTransform, RandomizableTransform):
     def __call__(self, data):
         d = dict(data)
         flip_right = self.R.uniform()
-        num_rotate = self.R.uniform(low=0, high=4)
+        num_rotate = self.R.randint(low=0, high=4)
 
         for key in self.keys:
             img = Image.open(d[key])
@@ -88,5 +88,5 @@ class ImageToGridd(MapTransform, RandomizableTransform):
                     else:
                         i = img[x_start:x_end, y_start:y_end]
                         grid.append(1 if np.sum(i) / i.size > 0.5 else 0)
-            d[key] = np.array(grid)
+            d[key] = np.array(grid, dtype=np.float32)
         return d
