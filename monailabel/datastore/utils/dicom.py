@@ -96,9 +96,9 @@ def dicom_web_download_series(study_id, series_id, save_dir, client: DICOMwebCli
             logger.info(f"++ Saved {file_name}")
             d.save_as(file_name)
 
-        meta = client.retrieve_series_metadata(study_id, series_id)
+        meta_list = client.retrieve_series_metadata(study_id, series_id)
         with ThreadPoolExecutor(max_workers=2, thread_name_prefix="DICOMFetch") as executor:
-            executor.map(save_from_frame, meta)
+            executor.map(save_from_frame, meta_list)
 
     logger.info(f"Time to download: {time.time() - start} (sec)")
 
