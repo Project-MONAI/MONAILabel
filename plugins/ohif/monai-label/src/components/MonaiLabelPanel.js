@@ -10,6 +10,7 @@ import cornerstone from 'cornerstone-core';
 import MD5 from 'md5.js';
 import AutoSegmentation from './actions/AutoSegmentation';
 import SmartEdit from './actions/SmartEdit';
+import Scribbles from './actions/Scribbles';
 import OptionTable from './actions/OptionTable';
 import ActiveLearning from './actions/ActiveLearning';
 import SettingsTable from './SettingsTable';
@@ -36,6 +37,7 @@ export default class MonaiLabelPanel extends Component {
       activelearning: React.createRef(),
       segmentation: React.createRef(),
       smartedit: React.createRef(),
+      scribbles: React.createRef(),
     };
 
     this.state = {
@@ -173,14 +175,52 @@ export default class MonaiLabelPanel extends Component {
       : {};
   };
 
-  updateView = async (response, labels, operation, slice, overlap) => {
+  updateView = async (
+    response,
+    labels,
+    operation,
+    slice,
+    overlap,
+    selectedIndex
+  ) => {
     this.segmentationList.current.updateView(
       response,
       labels,
       operation,
       slice,
-      overlap
+      overlap,
+      selectedIndex
     );
+  };
+
+  onAddSegment = (name, description, color, selectActive, newLabelMap) => {
+    this.segmentationList.current.onAddSegment(
+      name,
+      description,
+      color,
+      selectActive,
+      newLabelMap
+    );
+  };
+
+  onClearSegmentByName = name => {
+    this.segmentationList.current.onClearSegmentByName(name);
+  };
+
+  onDeleteSegmentByName = name => {
+    this.segmentationList.current.onDeleteSegmentByName(name);
+  };
+
+  getIndexByName = name => {
+    return this.segmentationList.current.getIndexByName(name);
+  };
+
+  getNameByIndex = selectedIndex => {
+    return this.segmentationList.current.getNameByIndex(selectedIndex);
+  };
+
+  getSelectedActiveIndex = () => {
+    return this.segmentationList.current.getSelectedActiveIndex();
   };
 
   render() {
@@ -223,6 +263,8 @@ export default class MonaiLabelPanel extends Component {
             updateView={this.updateView}
             onSelectActionTab={this.onSelectActionTab}
             onOptionsConfig={this.onOptionsConfig}
+            // additional function - delete scribbles before submit
+            onDeleteSegmentByName={this.onDeleteSegmentByName}
           />
 
           <AutoSegmentation
@@ -246,6 +288,24 @@ export default class MonaiLabelPanel extends Component {
             updateView={this.updateView}
             onSelectActionTab={this.onSelectActionTab}
             onOptionsConfig={this.onOptionsConfig}
+          />
+          <Scribbles
+            ref={this.actions['scribbles']}
+            tabIndex={5}
+            info={this.state.info}
+            viewConstants={this.viewConstants}
+            client={this.client}
+            notification={this.notification}
+            updateView={this.updateView}
+            onSelectActionTab={this.onSelectActionTab}
+            onOptionsConfig={this.onOptionsConfig}
+            // additional functions for scribbles volume updates
+            onAddSegment={this.onAddSegment}
+            onClearSegmentByName={this.onClearSegmentByName}
+            onDeleteSegmentByName={this.onDeleteSegmentByName}
+            getIndexByName={this.getIndexByName}
+            getNameByIndex={this.getNameByIndex}
+            getSelectedActiveIndex={this.getSelectedActiveIndex}
           />
         </div>
 
