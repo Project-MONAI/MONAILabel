@@ -10,7 +10,7 @@ pydantic==1.9.0
 python-dotenv==0.19.2
 filelock==3.4.2
 httpx==0.22.0
-dicomweb-client==0.54.4
+dicomweb-client==0.52.0
 pydicom==2.2.2
 pydicom-seg==0.4.0
 pynetdicom==2.0.1
