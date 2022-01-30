@@ -27,6 +27,10 @@ class ImageToGridd(MapTransform, RandomizableTransform):
         keys: KeysCollection,
         image_size,
         patch_size,
+        jitter=True,
+        flip=True,
+        rotate=True,
+        normalize=True,
         brightness=64.0 / 255.0,
         contrast=0.75,
         saturation=0.25,
@@ -43,6 +47,11 @@ class ImageToGridd(MapTransform, RandomizableTransform):
         self.patch_per_side = self.image_size // self.patch_size
         self.grid_size = self.patch_per_side * self.patch_per_side
 
+        self.jitter = jitter
+        self.flip = flip
+        self.rotate = rotate
+        self.normalize = normalize
+
         self.label_key = label_key
         self.color_jitter = ColorJitter(brightness=brightness, contrast=contrast, saturation=saturation, hue=hue)
 
@@ -55,15 +64,16 @@ class ImageToGridd(MapTransform, RandomizableTransform):
             img = Image.open(d[key])
 
             # jitter (image only)
-            if key != self.label_key:
+            if self.jitter and key != self.label_key:
                 img = self.color_jitter(img)
 
             # flip
-            if flip_right > 0.5:
+            if self.flip and flip_right > 0.5:
                 img = img.transpose(Image.FLIP_LEFT_RIGHT)
 
             # rotate
-            img = img.rotate(90 * num_rotate)
+            if self.rotate:
+                img = img.rotate(90 * num_rotate)
 
             # to numpy
             img = np.array(img, dtype=np.float32)
@@ -71,7 +81,8 @@ class ImageToGridd(MapTransform, RandomizableTransform):
 
             # normalize
             if key != self.label_key:
-                img = (img - 128.0) / 128.0
+                if self.normalize:
+                    img = (img - 128.0) / 128.0
             else:
                 img[img > 0] = 1
 

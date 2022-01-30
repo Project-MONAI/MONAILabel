@@ -9,26 +9,12 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-import numpy as np
-from monai.inferers import SimpleInferer, SlidingWindowInferer
-from monai.transforms import (
-    Activationsd,
-    AddChanneld,
-    AsDiscreted,
-    CastToTypeD,
-    EnsureChannelFirstd,
-    EnsureTyped,
-    LoadImaged,
-    ScaleIntensityd,
-    ScaleIntensityRanged,
-    Spacingd,
-    SqueezeDimd,
-    ToNumpyd,
-    ToTensord,
-)
+from monai.inferers import SimpleInferer
+from monai.transforms import Activationsd, AsDiscreted
 
 from monailabel.interfaces.tasks.infer import InferTask, InferType
-from monailabel.transform.post import BoundingBoxd, Restored
+
+from .transforms import ImageToGridd
 
 
 class MyInfer(InferTask):
@@ -40,11 +26,16 @@ class MyInfer(InferTask):
         self,
         path,
         network=None,
+        image_size=1024,
+        patch_size=64,
         type=InferType.SEGMENTATION,
-        labels="generic",
-        dimension=3,
-        description="A pre-trained model for volumetric (3D) segmentation over 3D Images",
+        labels="tumor",
+        dimension=2,
+        description="A pre-trained model Pathology",
     ):
+        self._image_size = image_size
+        self._patch_size = patch_size
+
         super().__init__(
             path=path,
             network=network,
@@ -56,17 +47,21 @@ class MyInfer(InferTask):
 
     def pre_transforms(self):
         return [
-            LoadImaged(keys="image"),
-            EnsureChannelFirstd(keys="image"),
+            ImageToGridd(
+                keys="image",
+                image_size=self._image_size,
+                patch_size=self._patch_size,
+                jitter=False,
+                flip=False,
+                rotate=False,
+            ),
         ]
 
     def inferer(self):
-        return SimpleInferer()  # SlidingWindowInferer(roi_size=(512, 512), sw_batch_size=4, overlap=0.25)
+        return SimpleInferer()
 
     def post_transforms(self):
         return [
-            # Activationsd(keys="pred", sigmoid=True),
-            # AsDiscreted(keys="pred", argmax=True),
-            # SqueezeDimd(keys="pred", dim=0),
-            ToNumpyd(keys="pred"),
+            Activationsd(keys="pred", sigmoid=True),
+            AsDiscreted(keys="pred", threshold=0.5),
         ]
