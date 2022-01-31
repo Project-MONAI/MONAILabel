@@ -447,11 +447,36 @@ function deleteSegment(element, labelmapIndex, segmentIndex) {
   cornerstone.updateImage(element);
 }
 
+function clearSegment(element, labelmapIndex, segmentIndex) {
+  console.debug(
+    'calling clear segment with ' + labelmapIndex + ' and ' + segmentIndex
+  );
+  if (!element || !segmentIndex) {
+    return;
+  }
+
+  const labelmap3D = getters.labelmap3D(element, labelmapIndex);
+  if (!labelmap3D) {
+    console.warn('Missing Label; so ignore');
+    return;
+  }
+
+  // cleanup buffer
+  let z = new Uint16Array(labelmap3D.buffer);
+  for (let i = 0; i < z.length; i++) {
+    if (z[i] === segmentIndex) {
+      z[i] = 0;
+    }
+  }
+  cornerstone.updateImage(element);
+}
+
 export {
   getImageIdsForDisplaySet,
   getLabelMaps,
   flattenLabelmaps,
   createSegment,
+  clearSegment,
   getSegmentInfo,
   updateSegment,
   deleteSegment,
