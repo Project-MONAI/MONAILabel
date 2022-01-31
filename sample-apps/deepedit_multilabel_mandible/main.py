@@ -42,22 +42,24 @@ class MyApp(MONAILabelApp):
         # Zero values are reserved to background. Non zero values are for the labels
         self.label_names = {
             "Alveolar": 1,
-            "17": 2,
-            "18": 3,
-            "19": 4,
-            "20": 5,
-            "21": 6,
-            "22": 7,
-            "23": 8,
-            "24": 9,
-            "25": 10,
-            "26": 11,
-            "27": 12,
-            "28": 13,
-            "29": 14,
-            "30": 15,
-            "31": 16,
-            "32": 17,
+            "teeth": 2,
+            # "19": 19,
+            # "20": 20,
+            # "21": 21,
+            # "22": 22,
+            # "23": 23,
+            # "24": 24,
+            # "25": 25,
+            # "26": 26,
+            # "27": 27,
+            # "28": 28,
+            # "29": 29,
+            # "30": 30,
+            # "31": 31,
+            # "32": 32,
+            # "33": 33,
+            # "34": 34,
+            # "35": 35,
             "background": 0,
         }
 
@@ -256,7 +258,7 @@ def main():
     parser.add_argument(
         "-s",
         "--studies",
-        default="/home/adp20local/Documents/Datasets/Mandible/NRRD",
+        default="/home/adp20local/Documents/Datasets/Mandible/NRRD_final",
     )
     parser.add_argument("-e", "--epoch", type=int, default=600)
     parser.add_argument("-l", "--lr", default=0.0001)
@@ -284,7 +286,7 @@ def main():
         "name": args.output,
         "device": "cuda",
         "model": "deepedit_train",
-        # "dataset": args.dataset,
+        "dataset": args.dataset,
         "max_epochs": args.epoch,
         "val_split": 0.05,
         "amp": False,
