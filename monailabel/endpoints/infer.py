@@ -23,6 +23,7 @@ from fastapi.background import BackgroundTasks
 from fastapi.responses import FileResponse, Response
 from requests_toolbelt import MultipartEncoder
 
+from monailabel.datastore.utils.convert import binary_to_image
 from monailabel.interfaces.app import MONAILabelApp
 from monailabel.interfaces.utils.app import app_instance
 from monailabel.utils.others.generic import get_mime_type, remove_file
@@ -72,7 +73,7 @@ class ResultType(str, Enum):
 
 
 def send_response(datastore, result, output, background_tasks):
-    res_img = result.get("label")
+    res_img = result.get("file") if result.get("file") else result.get("label")
     res_tag = result.get("tag")
     res_json = result.get("params")
 
@@ -92,7 +93,11 @@ def send_response(datastore, result, output, background_tasks):
 
     res_fields = dict()
     res_fields["params"] = (None, json.dumps(res_json), "application/json")
-    res_fields["image"] = (os.path.basename(res_img), open(res_img, "rb"), m_type)
+    if res_img and os.path.exists(res_img):
+        res_fields["image"] = (os.path.basename(res_img), open(res_img, "rb"), m_type)
+    else:
+        logger.info(f"Return only Result Json as Result Image is not available: {res_img}")
+        return res_json
 
     return_message = MultipartEncoder(fields=res_fields)
     return Response(content=return_message.to_string(), media_type=return_message.content_type)
@@ -113,6 +118,8 @@ def run_inference(
     if not file and not image and not session_id:
         raise HTTPException(status_code=500, detail="Neither Image nor File not Session ID input is provided")
 
+    instance: MONAILabelApp = app_instance()
+
     if file:
         file_ext = "".join(pathlib.Path(file.filename).suffixes) if file.filename else ".nii.gz"
         image_file = tempfile.NamedTemporaryFile(suffix=file_ext).name
@@ -128,10 +135,15 @@ def run_inference(
 
         with open(label_file, "wb") as buffer:
             shutil.copyfileobj(label.file, buffer)
-            request["label"] = label_file
             background_tasks.add_task(remove_file, label_file)
 
-    instance: MONAILabelApp = app_instance()
+        # if binary file received, e.g. scribbles from OHIF - then convert using reference image
+        if file_ext == ".bin":
+            image_uri = instance.datastore().get_image_uri(image)
+            label_file = binary_to_image(image_uri, label_file)
+
+        request["label"] = label_file
+
     config = instance.info().get("config", {}).get("infer", {})
     request.update(config)
 

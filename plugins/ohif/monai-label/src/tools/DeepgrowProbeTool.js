@@ -15,7 +15,7 @@ export class DeepgrowProbeTool extends ProbeTool {
         drawHandles: true,
         handleRadius: 2,
         eventName: 'monailabel_deepgrow_probe_event',
-        color: ['red', 'blue'],
+        color: ['green', 'red'],
       },
     };
 

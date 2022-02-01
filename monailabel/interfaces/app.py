@@ -236,12 +236,10 @@ class MONAILabelApp:
             save_label = request.get("save_label", True)
             if save_label:
                 label_id = datastore.save_label(image_id, result_file_name, tag, result_json)
-                if os.path.exists(result_file_name):
-                    os.unlink(result_file_name)
             else:
                 label_id = result_file_name
 
-        return {"label": label_id, "tag": DefaultLabelTag.ORIGINAL, "params": result_json}
+        return {"label": label_id, "tag": DefaultLabelTag.ORIGINAL, "file": result_file_name, "params": result_json}
 
     def batch_infer(self, request, datastore=None):
         """
