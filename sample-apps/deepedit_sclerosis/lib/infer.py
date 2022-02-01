@@ -19,13 +19,12 @@ from monai.transforms import (
     NormalizeIntensityd,
     Orientationd,
     Resized,
-    Spacingd,
     SqueezeDimd,
     ToNumpyd,
     ToTensord,
 )
 
-from monailabel.deepedit.transforms import DiscardAddGuidanced, ResizeGuidanceCustomd, SingleLabelSingleModalityd
+from monailabel.deepedit.transforms import DiscardAddGuidanced, ResizeGuidanceCustomd
 from monailabel.interfaces.tasks.infer import InferTask, InferType
 from monailabel.transform.post import Restored
 
@@ -64,9 +63,9 @@ class DeepEditSeg(InferTask):
     def pre_transforms(self):
         return [
             LoadImaged(keys="image"),
-            SingleLabelSingleModalityd(keys="image"),
+            # SingleLabelSingleModalityd(keys="image"),
             AddChanneld(keys="image"),
-            Spacingd(keys="image", pixdim=self.target_spacing, mode="bilinear"),
+            # Spacingd(keys="image", pixdim=self.target_spacing, mode="bilinear"),
             Orientationd(keys="image", axcodes="RAS"),
             NormalizeIntensityd(keys="image"),
             Resized(keys="image", spatial_size=self.spatial_size, mode="area"),
@@ -120,10 +119,10 @@ class DeepEdit(InferTask):
 
     def pre_transforms(self):
         return [
-            LoadImaged(keys="image", reader="nibabelreader"),
-            SingleLabelSingleModalityd(keys="image"),
+            LoadImaged(keys="image"),
+            # SingleLabelSingleModalityd(keys="image"),
             AddChanneld(keys="image"),
-            Spacingd(keys="image", pixdim=self.target_spacing, mode="bilinear"),
+            # Spacingd(keys="image", pixdim=self.target_spacing, mode="bilinear"),
             Orientationd(keys="image", axcodes="RAS"),
             SqueezeDimd(keys="image", dim=0),
             AddGuidanceFromPointsd(ref_image="image", guidance="guidance", dimensions=3),

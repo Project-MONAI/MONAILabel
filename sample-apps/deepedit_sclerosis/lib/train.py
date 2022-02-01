@@ -31,14 +31,13 @@ from monai.transforms import (
     RandHistogramShiftd,
     RandRotated,
     Resized,
-    Spacingd,
     ToNumpyd,
     ToTensord,
 )
 
 from monailabel.deepedit.handlers import TensorBoardImageHandler
 from monailabel.deepedit.interaction import Interaction
-from monailabel.deepedit.transforms import PosNegClickProbAddRandomGuidanced, SingleLabelSingleModalityd
+from monailabel.deepedit.transforms import PosNegClickProbAddRandomGuidanced
 from monailabel.tasks.train.basic_train import BasicTrainTask, Context
 
 logger = logging.getLogger(__name__)
@@ -93,11 +92,11 @@ class MyTrain(BasicTrainTask):
 
     def train_pre_transforms(self, context: Context):
         return [
-            LoadImaged(keys=("image", "label"), reader="nibabelreader"),
-            SingleLabelSingleModalityd(keys=("image", "label")),
+            LoadImaged(keys=("image", "label")),
+            # SingleLabelSingleModalityd(keys=("image", "label")),
             # RandZoomd(keys=("image", "label"), prob=0.4, min_zoom=0.3, max_zoom=1.9, mode=("bilinear", "nearest")),
             AddChanneld(keys=("image", "label")),
-            Spacingd(keys=["image", "label"], pixdim=self.target_spacing, mode=("bilinear", "nearest")),
+            # Spacingd(keys=["image", "label"], pixdim=self.target_spacing, mode=("bilinear", "nearest")),
             Orientationd(keys=["image", "label"], axcodes="RAS"),
             NormalizeIntensityd(keys="image"),
             RandAdjustContrastd(keys="image", gamma=6),
@@ -126,10 +125,10 @@ class MyTrain(BasicTrainTask):
 
     def val_pre_transforms(self, context: Context):
         return [
-            LoadImaged(keys=("image", "label"), reader="nibabelreader"),
-            SingleLabelSingleModalityd(keys=("image", "label")),
+            LoadImaged(keys=("image", "label")),
+            # SingleLabelSingleModalityd(keys=("image", "label")),
             AddChanneld(keys=("image", "label")),
-            Spacingd(keys=["image", "label"], pixdim=self.target_spacing, mode=("bilinear", "nearest")),
+            # Spacingd(keys=["image", "label"], pixdim=self.target_spacing, mode=("bilinear", "nearest")),
             Orientationd(keys=["image", "label"], axcodes="RAS"),
             NormalizeIntensityd(keys="image"),
             Resized(keys=("image", "label"), spatial_size=self.spatial_size, mode=("area", "nearest")),
