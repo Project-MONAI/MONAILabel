@@ -329,7 +329,7 @@ class InferTask:
 
         return network
 
-    def run_inferer(self, data, convert_to_batch=True, device="cuda"):
+    def run_inferer(self, data, convert_to_batch=True, device="cuda", output_squeezed=False):
         """
         Run Inferer over pre-processed Data.  Derive this logic to customize the normal behavior.
         In some cases, you want to implement your own for running chained inferers over pre-processed data
@@ -337,6 +337,7 @@ class InferTask:
         :param data: pre-processed data
         :param convert_to_batch: convert input to batched input
         :param device: device type run load the model and run inferer
+        :param output_squeezed: if input is batched but output is already squeezed by network
         :return: updated data with output_key stored that will be used for post-processing
         """
 
@@ -355,7 +356,7 @@ class InferTask:
             if device == "cuda":
                 torch.cuda.empty_cache()
 
-            outputs = outputs[0] if convert_to_batch else outputs
+            outputs = outputs[0] if convert_to_batch and not output_squeezed else outputs
             data[self.output_label_key] = outputs
         else:
             # consider them as callable transforms

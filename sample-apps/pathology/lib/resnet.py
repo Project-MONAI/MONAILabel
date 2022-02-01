@@ -116,7 +116,7 @@ class ResNetWithCF(ResNet):
             norm_layer,
         )
 
-        self.crf = CRF(num_nodes)
+        self.crf = CRF(num_nodes) if num_nodes else None
 
     def forward(self, x):
         batch_size, grid_size, _, crop_size = x.shape[0:4]
@@ -141,7 +141,8 @@ class ResNetWithCF(ResNet):
         f = f.view((batch_size, grid_size, -1))
         logits = logits.view((batch_size, grid_size, -1))
 
-        logits = self.crf(f, logits)
+        if self.crf:
+            logits = self.crf(f, logits)
         return torch.squeeze(logits)
 
 

@@ -8,13 +8,15 @@
 # WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 # See the License for the specific language governing permissions and
 # limitations under the License.
+import logging
 
 from monai.inferers import SimpleInferer
-from monai.transforms import Activationsd, AsDiscreted
 
 from monailabel.interfaces.tasks.infer import InferTask, InferType
 
-from .transforms import ImageToGridd
+from .transforms import GridToLabeld, ImageToGridd
+
+logger = logging.getLogger(__name__)
 
 
 class MyInfer(InferTask):
@@ -62,6 +64,8 @@ class MyInfer(InferTask):
 
     def post_transforms(self):
         return [
-            Activationsd(keys="pred", sigmoid=True),
-            AsDiscreted(keys="pred", threshold=0.5),
+            GridToLabeld(keys="pred", image_size=self._image_size, patch_size=self._patch_size),
         ]
+
+    def run_inferer(self, data, convert_to_batch=True, device="cuda", output_squeezed=False):
+        return super().run_inferer(data, convert_to_batch, device, True)

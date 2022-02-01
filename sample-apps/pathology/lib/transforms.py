@@ -59,8 +59,12 @@ class ImageToGridd(MapTransform, RandomizableTransform):
         d = dict(data)
         flip_right = self.R.uniform()
         num_rotate = self.R.randint(low=0, high=4)
+        logger.info(f"Keys: {self.keys}")
+        for k, v in d.items():
+            logger.info(f"{k} => {v}")
 
         for key in self.keys:
+            logger.info(f"Open Image: {d[key]}")
             img = Image.open(d[key])
 
             # jitter (image only)
@@ -100,4 +104,51 @@ class ImageToGridd(MapTransform, RandomizableTransform):
                         i = img[x_start:x_end, y_start:y_end]
                         grid.append(1 if np.sum(i) / i.size > 0.5 else 0)
             d[key] = np.array(grid, dtype=np.float32)
+        return d
+
+
+class GridToLabeld(MapTransform):
+    def __init__(
+        self,
+        keys: KeysCollection,
+        image_size,
+        patch_size,
+    ):
+        super().__init__(keys)
+
+        if image_size % patch_size != 0:
+            raise Exception("Image size / patch size != 0 : {} / {}".format(image_size, patch_size))
+
+        self.image_size = image_size
+        self.patch_size = patch_size
+        self.patch_per_side = self.image_size // self.patch_size
+        self.grid_size = self.patch_per_side * self.patch_per_side
+
+    def __call__(self, data):
+        d = dict(data)
+
+        for key in self.keys:
+            probs = d[key]
+            logger.info(f"{key}: {probs.shape} ({probs.dtype})")
+
+            probs = probs.sigmoid().cpu().data.numpy().flatten()
+            probs = np.where(probs > 0.5, 255, 0).astype(np.uint8)
+
+            label = np.zeros(
+                (self.patch_size * self.patch_per_side, self.patch_size * self.patch_per_side), dtype=probs.dtype
+            )
+
+            count = 0
+            for x_idx in range(self.patch_per_side):
+                for y_idx in range(self.patch_per_side):
+                    x_start = x_idx * self.patch_size
+                    x_end = x_start + self.patch_size
+                    y_start = y_idx * self.patch_size
+                    y_end = y_start + self.patch_size
+
+                    label[x_start:x_end, y_start:y_end] = probs[count]
+                    count += 1
+
+            logger.info(f"{key}: {label.shape} ({label.dtype})")
+            d[key] = label
         return d
