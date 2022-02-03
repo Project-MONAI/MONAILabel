@@ -306,6 +306,9 @@ class InferTask:
                 f"Model Path ({self.path}) does not exist/valid",
             )
 
+        if device.startswith("cuda") and not torch.cuda.is_available():
+            device = "cpu"
+
         cached = self._networks.get(device)
         statbuf = os.stat(path) if path else None
         network = None
@@ -319,23 +322,14 @@ class InferTask:
             if self.network:
                 network = self.network
                 if path:
-                    # If we are using a CPU-only machine, try to load the network for CPU inference
-                    if torch.cuda.is_available():
-                        checkpoint = torch.load(path)
-                    else:
-                        checkpoint = torch.load(path, map_location=torch.device("cpu"))
-
+                    checkpoint = torch.load(path, map_location=torch.device(device))
                     model_state_dict = checkpoint.get(self.model_state_dict, checkpoint)
                     network.load_state_dict(model_state_dict, strict=self.load_strict)
             else:
-                # If we are using a CPU-only machine, try to load the network for CPU inference
-                if torch.cuda.is_available():
-                    network = torch.jit.load(path)
-                else:
-                    network = torch.jit.load(path, map_location=torch.device("cpu"))
+                network = torch.jit.load(path, map_location=torch.device(device))
 
-            if device == "cuda":
-                network = network.cuda()
+            if device.startswith("cuda"):
+                network = network.cuda(device)
 
             network.eval()
             self._networks[device] = (network, statbuf.st_mtime if statbuf else 0)
@@ -356,7 +350,7 @@ class InferTask:
         inferer = self.inferer()
         logger.info("Running Inferer:: {}".format(inferer.__class__.__name__))
 
-        if device == "cuda" and not torch.cuda.is_available():
+        if device.startswith("cuda") and not torch.cuda.is_available():
             device = "cpu"
 
         network = self._get_network(device)
@@ -364,12 +358,12 @@ class InferTask:
             inputs = data[self.input_key]
             inputs = inputs if torch.is_tensor(inputs) else torch.from_numpy(inputs)
             inputs = inputs[None] if convert_to_batch else inputs
-            if device == "cuda":
-                inputs = inputs.cuda()
+            if device.startswith("cuda"):
+                inputs = inputs.cuda(device)
 
             with torch.no_grad():
                 outputs = inferer(inputs, network)
-            if device == "cuda":
+            if device.startswith("cuda"):
                 torch.cuda.empty_cache()
 
             outputs = outputs[0] if convert_to_batch else outputs

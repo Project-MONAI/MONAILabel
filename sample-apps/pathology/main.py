@@ -20,9 +20,9 @@ import cv2
 import numpy as np
 import openslide
 import pyvips
-from lib import MyInfer, MyTrain, resnet18_cf
 from PIL import Image
 
+from lib import MyInfer, MyTrain, resnet18_cf
 from monailabel.interfaces.app import MONAILabelApp
 from monailabel.interfaces.tasks.infer import InferTask
 from monailabel.interfaces.tasks.train import TrainTask
@@ -85,7 +85,7 @@ def main():
     os.putenv("MASTER_PORT", "1234")
 
     logging.basicConfig(
-        level=logging.INFO,
+        level=logging.WARN,
         format="[%(asctime)s] [%(process)s] [%(threadName)s] [%(levelname)s] (%(name)s:%(lineno)d) - %(message)s",
         datefmt="%Y-%m-%d %H:%M:%S",
     )
@@ -120,12 +120,14 @@ def main():
             }
         )
     else:
-        infer_roi(args, app)
+        # infer_roi(args, app)
+        # merge_labels(args)
+        infer_wsi(app)
 
 
 def infer_roi(args, app):
     images = [os.path.join(args.studies, f) for f in os.listdir(args.studies) if f.endswith(".png")]
-    images = [os.path.join(args.studies, "tumor_001_0_0x2.png")]
+    # images = [os.path.join(args.studies, "tumor_001_1_4x2.png")]
     for image in images:
         print(f"Infer Image: {image}")
         req = {
@@ -133,16 +135,20 @@ def infer_roi(args, app):
             "image": image,
         }
 
-        shutil.copy(image, f"/local/sachi/Downloads/image{file_ext(image)}")
-        o = os.path.join(os.path.dirname(image), "labels", "final", get_basename(image))
-        shutil.copy(o, f"/local/sachi/Downloads/original{file_ext(image)}")
+        name = get_basename(image)
+        ext = file_ext(name)
+
+        # shutil.copy(image, f"/local/sachi/Downloads/image{ext}")
+
+        # o = os.path.join(os.path.dirname(image), "labels", "final", name)
+        # shutil.copy(o, f"/local/sachi/Downloads/original{ext}")
 
         res = app.infer(request=req)
-        o = os.path.join(args.studies, "labels", "original", get_basename(req["image"]))
+        o = os.path.join(args.studies, "labels", "original", name)
         shutil.move(res["label"], o)
 
-        shutil.copy(o, f"/local/sachi/Downloads/predicated{file_ext(req['image'])}")
-        return
+        # shutil.copy(o, f"/local/sachi/Downloads/predicated{ext}")
+        # return
 
 
 def merge_labels(args):
@@ -180,8 +186,8 @@ def merge_labels(args):
                     img = Image.open(os.path.join(labels_dir, d[name][idx][i][j]))
                     sx = i * 1024
                     sy = j * 1024
-                    label_np[sx : (sx + 1024), sy : (sy + 1024)] = np.array(img)
-            cv2.imwrite(os.path.join(args.studies, "labels", f"{name}_{idx}.jpg"), label_np)
+                    label_np[sx: (sx + 1024), sy: (sy + 1024)] = np.array(img)
+            cv2.imwrite(os.path.join(args.studies, "labels", f"o_{name}_{idx}.jpg"), label_np)
 
     # os.path.join(args.studies, "labels", "original")
 
@@ -192,7 +198,7 @@ def infer_wsi(app):
 
     patch_size = [1024, 1024]
     task = app._infers.get("metastasis_detection")
-    devices = ["cuda"]  # ["cuda-0", "cuda-1"]
+    devices = ["cuda"]  # Not able to use multi-gpu for inference
     for device in devices:
         if task._get_network(device):
             logger.error(f"Model Loaded into {device}")
@@ -221,7 +227,7 @@ def infer_wsi(app):
         batches = []
         batch_coords = []
         tid = t["id"]
-        dev = devices[tid % 2]
+        dev = devices[tid % len(devices)]
         for c in t["coords"]:
             (tj, ti, tx, ty, tw, th) = c
             logger.info(f"Patch/Slide ({tj}, {ti}) => Top: ({tx}, {ty}); Size: {tw} x {th}")
@@ -235,17 +241,26 @@ def infer_wsi(app):
         _, res = task({"image": batches, "result_write_to_file": False, "device": dev})
         for bidx in range(len(batches)):
             tx, ty, tw, th = batch_coords[bidx]
-            label_np[tx : (tx + tw), ty : (ty + th)] = res["pred"][bidx]
+            label_np[tx: (tx + tw), ty: (ty + th)] = res["pred"][bidx]
 
         completed[tid] = 1
         logger.error(f"Current: {tid}; Device: {dev}; Completed: {sum(completed)} / {len(completed)}")
 
-    logger.error(f"Total Thread Tasks: {len(infer_tasks)}")
-    with ThreadPoolExecutor(max_workers=8, thread_name_prefix="Infer") as executor:
-        executor.map(run_task, infer_tasks)
+    logger.error(f"Total Tasks: {len(infer_tasks)}")
+    multi_thread = False
+    if multi_thread:
+        with ThreadPoolExecutor(max_workers=4, thread_name_prefix="Infer") as executor:
+            executor.map(run_task, infer_tasks)
+    else:
+        for t in infer_tasks:
+            run_task(t)
 
     logger.error("Infer Time Taken: {:.4f}".format(time.time() - start))
     label_file = os.path.join(root_dir, "label_batched_thread.tif")
+
+    logger.error(f"Saving Label PNG")
+    img = Image.fromarray(label_np).convert("RGB")
+    img.save(os.path.join(root_dir, "label_batched_thread.png"))
 
     logger.error(f"Creating Label: {label_file}")
     linear = label_np.reshape(-1)
@@ -282,14 +297,6 @@ def create_tasks(tiles_j, tiles_i, w, h, max_w, max_h):
         infer_tasks.append({"id": len(completed), "coords": coords})
         completed.append(0)
     return infer_tasks, completed
-
-
-def set_log_level(level):
-    logging.basicConfig(
-        level=level,
-        format="[%(asctime)s] [%(process)s] [%(threadName)s] [%(levelname)s] (%(name)s:%(lineno)d) - %(message)s",
-        datefmt="%Y-%m-%d %H:%M:%S",
-    )
 
 
 if __name__ == "__main__":

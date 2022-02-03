@@ -48,7 +48,7 @@ class MyInfer(InferTask):
         )
 
     def pre_transforms(self):
-        batch = False
+        batch = True
         if batch:
             return [
                 ImageToGridBatchd(

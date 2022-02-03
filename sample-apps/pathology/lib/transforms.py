@@ -23,19 +23,19 @@ logger = logging.getLogger(__name__)
 # You can write your transforms here... which can be used in your train/infer tasks
 class ImageToGridd(MapTransform, RandomizableTransform):
     def __init__(
-        self,
-        keys: KeysCollection,
-        image_size,
-        patch_size,
-        jitter=True,
-        flip=True,
-        rotate=True,
-        normalize=True,
-        brightness=64.0 / 255.0,
-        contrast=0.75,
-        saturation=0.25,
-        hue=0.04,
-        label_key="label",
+            self,
+            keys: KeysCollection,
+            image_size,
+            patch_size,
+            jitter=True,
+            flip=True,
+            rotate=True,
+            normalize=True,
+            brightness=64.0 / 255.0,
+            contrast=0.75,
+            saturation=0.25,
+            hue=0.04,
+            label_key="label",
     ):
         super().__init__(keys)
 
@@ -109,11 +109,11 @@ class ImageToGridd(MapTransform, RandomizableTransform):
 
 class ImageToGridBatchd(MapTransform):
     def __init__(
-        self,
-        keys: KeysCollection,
-        image_size,
-        patch_size,
-        normalize=True,
+            self,
+            keys: KeysCollection,
+            image_size,
+            patch_size,
+            normalize=True,
     ):
         super().__init__(keys)
 
@@ -161,10 +161,11 @@ class ImageToGridBatchd(MapTransform):
 
 class GridToLabeld(MapTransform):
     def __init__(
-        self,
-        keys: KeysCollection,
-        image_size,
-        patch_size,
+            self,
+            keys: KeysCollection,
+            image_size,
+            patch_size,
+            normalize=0.3,
     ):
         super().__init__(keys)
 
@@ -175,6 +176,7 @@ class GridToLabeld(MapTransform):
         self.patch_size = patch_size
         self.patch_per_side = self.image_size // self.patch_size
         self.grid_size = self.patch_per_side * self.patch_per_side
+        self.normalize = normalize
 
     def split(self, array, nrows, ncols):
         _, h = array.shape
@@ -188,7 +190,7 @@ class GridToLabeld(MapTransform):
             logger.info(f"{key}: {probs.shape} ({probs.dtype})")
 
             probs = probs.sigmoid().cpu().data.numpy()
-            probs = np.where(probs > 0.5, 255, 0).astype(np.uint8)
+            probs = np.where(probs > 0.5, 1, 0).astype(np.uint8)
             probs = probs[np.newaxis] if len(probs.shape) == 1 else probs
 
             label = np.zeros(
@@ -198,8 +200,8 @@ class GridToLabeld(MapTransform):
 
             for batch_idx in range(probs.shape[0]):
                 count = 0
-                # partitions = self.split(np.reshape(probs[batch_idx], (16, 16)), 4, 4)
-                # avg = [np.average(p) for p in partitions]
+                partitions = self.split(np.reshape(probs[batch_idx], (16, 16)), 4, 4)
+                avg = [np.average(p) for p in partitions]
 
                 for x_idx in range(self.patch_per_side):
                     for y_idx in range(self.patch_per_side):
@@ -208,14 +210,17 @@ class GridToLabeld(MapTransform):
                         y_start = y_idx * self.patch_size
                         y_end = y_start + self.patch_size
 
-                        label[batch_idx][x_start:x_end, y_start:y_end] = probs[batch_idx][count]
-
                         # normalize to grid/partition level
-                        # p_index = 4 * (x_idx // 4) + (y_idx // 4)
-                        # logger.debug(f"Index: {x_idx},{y_idx} => count:{count} => partition: {p_index} => {avg}")
-                        # label[batch_idx][x_start:x_end, y_start:y_end] = 1 if avg[p_index] >= 0.5 else 0
+                        if self.normalize > 0.0:
+                            p_index = 4 * (x_idx // 4) + (y_idx // 4)
+                            logger.debug(f"Index: {x_idx},{y_idx} => count:{count} => partition: {p_index} => {avg}")
+                            v = 255 if avg[p_index] >= self.normalize else 0
+                        else:
+                            v = probs[batch_idx][count] * 255
+
+                        label[batch_idx][x_start:x_end, y_start:y_end] = v
                         count += 1
 
-            logger.info(f"{key}: {label.shape} ({label.dtype})")
-            d[key] = label
+            logger.debug(f"{key}: {label.shape} ({label.dtype}) sum: {np.sum(label)}")
+            d[key] = label if probs.shape[0] > 1 else label[0]
         return d
