@@ -12,12 +12,11 @@ import logging
 from copy import deepcopy
 from typing import Optional
 
-import denseCRF
-import denseCRF3D
 import numpy as np
 import torch
 from monai.networks.blocks import CRF
 from monai.transforms import Transform
+from monai.utils import optional_import
 from scipy.special import softmax
 
 from monailabel.transform.writer import Writer
@@ -30,6 +29,10 @@ from .utils import (
     maxflow2d,
     maxflow3d,
 )
+
+densecrf, _ = optional_import("dennseCRF")
+densecrf3d, _ = optional_import("denseCRF3D")
+
 
 logger = logging.getLogger(__name__)
 
@@ -648,7 +651,7 @@ class ApplySimpleCRFOptimisationd(InteractiveSegmentationTransform):
             # Bilateral color
             simplecrf_params["BilateralModsStds"] = (self.bilateral_color_sigma,)
 
-            post_proc_label = denseCRF3D.densecrf3d(pairwise_term, unary_term, simplecrf_params)
+            post_proc_label = densecrf3d.densecrf3d(pairwise_term, unary_term, simplecrf_params)
         else:
             # 2D is not yet tested within this framework
             # 2D parameters are different, so prepare them
@@ -661,7 +664,7 @@ class ApplySimpleCRFOptimisationd(InteractiveSegmentationTransform):
                 self.iterations,
             )
 
-            post_proc_label = denseCRF.densecrf(pairwise_term, unary_term, simplecrf_params)
+            post_proc_label = densecrf.densecrf(pairwise_term, unary_term, simplecrf_params)
 
         post_proc_label = np.expand_dims(post_proc_label, axis=0).astype(np.float32)
         d[self.post_proc_label] = post_proc_label

@@ -10,8 +10,10 @@
 # limitations under the License.
 import logging
 
-import maxflow
 import numpy as np
+from monai.utils import optional_import
+
+maxflow, _ = optional_import("maxflow")
 
 logger = logging.getLogger(__name__)
 
