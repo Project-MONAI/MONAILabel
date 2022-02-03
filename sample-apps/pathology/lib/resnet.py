@@ -143,7 +143,7 @@ class ResNetWithCF(ResNet):
 
         if self.crf:
             logits = self.crf(f, logits)
-        return torch.squeeze(logits)
+        return torch.squeeze(logits, dim=2)  # exclude batch dim
 
 
 def resnet18_cf(**kwargs):

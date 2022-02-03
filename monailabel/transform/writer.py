@@ -17,6 +17,8 @@ import itk
 import numpy as np
 from monai.data import write_nifti
 
+from monailabel.utils.others.generic import file_ext
+
 logger = logging.getLogger(__name__)
 
 
@@ -66,6 +68,7 @@ class Writer:
         key_extension="result_extension",
         key_dtype="result_dtype",
         key_compress="result_compress",
+        key_write_to_file="result_write_to_file",
         meta_key_postfix="meta_dict",
         nibabel=False,
     ):
@@ -77,32 +80,39 @@ class Writer:
         self.key_extension = key_extension
         self.key_dtype = key_dtype
         self.key_compress = key_compress
+        self.key_write_to_file = key_write_to_file
         self.meta_key_postfix = meta_key_postfix
         self.nibabel = nibabel
 
     def __call__(self, data):
-        file_ext = "".join(pathlib.Path(data["image_path"]).suffixes)
+        ext = file_ext(data.get("image_path"))
         dtype = data.get(self.key_dtype, None)
         compress = data.get(self.key_compress, False)
-        file_ext = data.get(self.key_extension) if data.get(self.key_extension) else file_ext
-        logger.info("Result ext: {}".format(file_ext))
+        write_to_file = data.get(self.key_write_to_file, True)
+        ext = data.get(self.key_extension) if data.get(self.key_extension) else ext
+        logger.info("Result ext: {}".format(ext))
 
         image_np = data[self.label]
         meta_dict = data.get(f"{self.ref_image}_{self.meta_key_postfix}")
         affine = meta_dict.get("affine") if meta_dict else None
         logger.debug("Image: {}; Data Image: {}".format(image_np.shape, data[self.label].shape))
 
-        output_file = tempfile.NamedTemporaryFile(suffix=file_ext).name
-        logger.debug("Saving Image to: {}".format(output_file))
+        output_file = None
+        output_json = data.get(self.json, {})
+        if write_to_file:
+            output_file = tempfile.NamedTemporaryFile(suffix=ext).name
+            logger.debug("Saving Image to: {}".format(output_file))
 
-        # Issue with slicer:: https://discourse.itk.org/t/saving-non-orthogonal-volume-in-nifti-format/2760/22
-        if self.nibabel and file_ext.lower() in [".nii", ".nii.gz"]:
-            logger.debug("Using MONAI write_nifti...")
-            write_nifti(image_np, output_file, affine=affine, output_dtype=dtype)
+            # Issue with slicer:: https://discourse.itk.org/t/saving-non-orthogonal-volume-in-nifti-format/2760/22
+            if self.nibabel and ext.lower() in [".nii", ".nii.gz"]:
+                logger.debug("Using MONAI write_nifti...")
+                write_nifti(image_np, output_file, affine=affine, output_dtype=dtype)
+            else:
+                write_itk(image_np, output_file, affine, dtype, compress)
         else:
-            write_itk(image_np, output_file, affine, dtype, compress)
+            output_json[self.label] = image_np
 
-        return output_file, data.get(self.json, {})
+        return output_file, output_json
 
 
 class ClassificationWriter:

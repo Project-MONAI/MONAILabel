@@ -221,7 +221,8 @@ class InferTask:
         logger.info(f"Infer Request (final): {req}")
 
         data = copy.deepcopy(req)
-        data.update({"image_path": req.get("image")})
+        if req.get("image") and isinstance(req.get("image"), str):
+            data.update({"image_path": req.get("image")})
         device = req.get("device", "cuda")
 
         start = time.time()
@@ -260,8 +261,9 @@ class InferTask:
 
         result_json["label_names"] = self.labels
 
-        logger.info("Result File: {}".format(result_file_name))
-        logger.info("Result Json: {}".format(result_json))
+        if result_file_name:
+            logger.info("Result File: {}".format(result_file_name))
+            logger.info("Result Json: {}".format(result_json))
         return result_file_name, result_json
 
     def run_pre_transforms(self, data, transforms):
@@ -340,7 +342,7 @@ class InferTask:
 
         return network
 
-    def run_inferer(self, data, convert_to_batch=True, device="cuda", output_squeezed=False):
+    def run_inferer(self, data, convert_to_batch=True, device="cuda"):
         """
         Run Inferer over pre-processed Data.  Derive this logic to customize the normal behavior.
         In some cases, you want to implement your own for running chained inferers over pre-processed data
@@ -348,7 +350,6 @@ class InferTask:
         :param data: pre-processed data
         :param convert_to_batch: convert input to batched input
         :param device: device type run load the model and run inferer
-        :param output_squeezed: if input is batched but output is already squeezed by network
         :return: updated data with output_key stored that will be used for post-processing
         """
 
@@ -371,7 +372,7 @@ class InferTask:
             if device == "cuda":
                 torch.cuda.empty_cache()
 
-            outputs = outputs[0] if convert_to_batch and not output_squeezed else outputs
+            outputs = outputs[0] if convert_to_batch else outputs
             data[self.output_label_key] = outputs
         else:
             # consider them as callable transforms

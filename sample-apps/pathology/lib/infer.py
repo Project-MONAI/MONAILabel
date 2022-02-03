@@ -14,7 +14,7 @@ from monai.inferers import SimpleInferer
 
 from monailabel.interfaces.tasks.infer import InferTask, InferType
 
-from .transforms import GridToLabeld, ImageToGridd
+from .transforms import GridToLabeld, ImageToGridBatchd, ImageToGridd
 
 logger = logging.getLogger(__name__)
 
@@ -48,6 +48,16 @@ class MyInfer(InferTask):
         )
 
     def pre_transforms(self):
+        batch = False
+        if batch:
+            return [
+                ImageToGridBatchd(
+                    keys="image",
+                    image_size=self._image_size,
+                    patch_size=self._patch_size,
+                ),
+            ]
+
         return [
             ImageToGridd(
                 keys="image",
@@ -67,5 +77,6 @@ class MyInfer(InferTask):
             GridToLabeld(keys="pred", image_size=self._image_size, patch_size=self._patch_size),
         ]
 
-    def run_inferer(self, data, convert_to_batch=True, device="cuda", output_squeezed=False):
-        return super().run_inferer(data, convert_to_batch, device, True)
+    def run_inferer(self, data, convert_to_batch=True, device="cuda"):
+        convert_to_batch = True if len(data["image"].shape) == 4 else False
+        return super().run_inferer(data, convert_to_batch, device)

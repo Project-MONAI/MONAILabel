@@ -23,7 +23,7 @@ logger = logging.getLogger(__name__)
 
 
 def file_ext(name) -> str:
-    return "".join(pathlib.Path(name).suffixes)
+    return "".join(pathlib.Path(name).suffixes) if name else ""
 
 
 def remove_file(path: str) -> None:
