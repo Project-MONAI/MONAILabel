@@ -69,7 +69,7 @@ class Context:
         self.val_batch_size = None  # validation batch size
         self.device = None  # device on which training will run
         self.network = None  # network
-        self.dataset_type = "PersistentDataset"  # dataset type
+        self.dataset_type = "CacheDataset"  # dataset type
         self.dataloader_type = "ThreadDataLoader"  # dataloader type
         self.pretrained = False  # using pretrained model
         self.max_epochs = 1  # max epochs to run training
