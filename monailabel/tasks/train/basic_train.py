@@ -69,13 +69,14 @@ class Context:
         self.val_batch_size = None  # validation batch size
         self.device = None  # device on which training will run
         self.network = None  # network
-        self.dataset_type = "CacheDataset"  # dataset type
+        self.dataset_type = "PersistentDataset"  # dataset type
         self.dataloader_type = "ThreadDataLoader"  # dataloader type
         self.pretrained = False  # using pretrained model
         self.max_epochs = 1  # max epochs to run training
         self.multi_gpu = False  # multi gpu enabled
         self.local_rank = 0  # local rank in case of multi gpu
         self.world_size = 0  # world size in case of multi gpu
+        self.persistent_dir = None  # dir of PersistentDataset (if used)
 
         self.request = None
         self.trainer = None
@@ -107,6 +108,7 @@ class BasicTrainTask(TrainTask):
         model_dict_key="model",
         find_unused_parameters=False,
         load_strict=False,
+        persistent_dir=None,
     ):
         """
         :param model_dir: Base Model Dir to save the model checkpoints, events etc...
@@ -124,6 +126,7 @@ class BasicTrainTask(TrainTask):
         :param model_dict_key: key to save network weights into checkpoint
         :param find_unused_parameters: Applicable for DDP/Multi GPU training
         :param load_strict: Load pretrained model in strict mode
+        :param persistent_dir: Dir for PersistentDataset (if used)
         """
         super().__init__(description)
 
@@ -158,6 +161,8 @@ class BasicTrainTask(TrainTask):
         self._model_dict_key = model_dict_key
         self._find_unused_parameters = find_unused_parameters
         self._load_strict = load_strict
+        # by default, persistent dir is adjacent to model dir
+        self.persistent_dir = persistent_dir or os.path.join(os.path.dirname(model_dir), "PersistentDir")
 
     @abstractmethod
     def network(self, context: Context):
@@ -180,15 +185,14 @@ class BasicTrainTask(TrainTask):
                 ]
 
         transforms = self._validate_transforms(self.train_pre_transforms(context), "Training", "pre")
-        dataset = (
-            CacheDataset(datalist, transforms)
-            if context.dataset_type == "CacheDataset"
-            else SmartCacheDataset(datalist, transforms, replace_rate)
-            if context.dataset_type == "SmartCacheDataset"
-            else PersistentDataset(datalist, transforms, None)
-            if context.dataset_type == "PersistentDataset"
-            else Dataset(datalist, transforms)
-        )
+        if context.dataset_type == "CacheDataset":
+            dataset = CacheDataset(datalist, transforms)
+        elif context.dataset_type == "SmartCacheDataset":
+            dataset = SmartCacheDataset(datalist, transforms, replace_rate)
+        elif context.dataset_type == "PersistentDataset":
+            dataset = PersistentDataset(datalist, transforms, cache_dir=self.persistent_dir)
+        else:
+            dataset = Dataset(datalist, transforms)
         return dataset, datalist
 
     def _dataloader(self, context, dataset, batch_size, num_workers):
