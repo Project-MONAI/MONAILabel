@@ -61,6 +61,7 @@ class Context:
         self.start_ts = 0  # timestamp
         self.run_id = None  # unique run_id
         self.output_dir = None  # output dir for storing model
+        self.cache_dir = None  # cache dir for saving/caching temp data
         self.events_dir = None  # events dir for storing tensorboard events
         self.datalist = None  # input datalist
         self.train_datalist = None  # train datalist
@@ -185,7 +186,7 @@ class BasicTrainTask(TrainTask):
             if context.dataset_type == "CacheDataset"
             else SmartCacheDataset(datalist, transforms, replace_rate)
             if context.dataset_type == "SmartCacheDataset"
-            else PersistentDataset(datalist, transforms, None)
+            else PersistentDataset(datalist, transforms, cache_dir=os.path.join(context.cache_dir, "pds"))
             if context.dataset_type == "PersistentDataset"
             else Dataset(datalist, transforms)
         )
@@ -363,7 +364,9 @@ class BasicTrainTask(TrainTask):
             remove_file(tfile)
         else:
             logger.info("Distributed Training = FALSE")
-            return self.train(0, world_size, req, datalist)
+            res = self.train(0, world_size, req, datalist)
+            self.cleanup(req)
+            return res
 
         self.cleanup(req)
         if os.path.exists(self._stats_path):
@@ -398,6 +401,7 @@ class BasicTrainTask(TrainTask):
         context.dataloader_type = request["dataloader"]
 
         context.output_dir = os.path.join(self._model_dir, request["name"])
+        context.cache_dir = os.path.join(context.output_dir, f"cache_{context.run_id}")
         context.events_dir = os.path.join(context.output_dir, f"events_{context.run_id}")
 
         if not os.path.exists(context.output_dir):
@@ -451,7 +455,13 @@ class BasicTrainTask(TrainTask):
         return datastore.datalist()
 
     def cleanup(self, request):
-        pass
+        logger.info("Running cleanup...")
+        run_id = request["run_id"]
+        output_dir = os.path.join(self._model_dir, request["name"])
+
+        # delete/cleanup cache
+        cache_dir = os.path.join(output_dir, f"cache_{run_id}")
+        remove_file(cache_dir)
 
     def _device(self, context: Context):
         if context.multi_gpu:
