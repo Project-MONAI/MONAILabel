@@ -10,11 +10,19 @@
 # limitations under the License.
 import logging
 
-from monai.inferers import SimpleInferer
+import numpy as np
+from monai.inferers import SlidingWindowInferer
+from monai.transforms import (
+    Activationsd,
+    AsDiscreted,
+    EnsureChannelFirstd,
+    EnsureTyped,
+    LoadImaged,
+    ScaleIntensityd,
+    ToNumpyd,
+)
 
 from monailabel.interfaces.tasks.infer import InferTask, InferType
-
-from .transforms import GridToLabeld, ImageToGridBatchd, ImageToGridd
 
 logger = logging.getLogger(__name__)
 
@@ -28,16 +36,35 @@ class MyInfer(InferTask):
         self,
         path,
         network=None,
-        image_size=1024,
-        patch_size=64,
+        patch_size=(256, 256),
         type=InferType.SEGMENTATION,
-        labels="tumor",
+        labels=(
+            "tumor",
+            "stroma",
+            "lymphocytic_infiltrate",
+            "necrosis_or_debris",
+            "glandular_secretions",
+            "blood",
+            "exclude",
+            "metaplasia_NOS",
+            "fat",
+            "plasma_cells",
+            "other_immune_infiltrate",
+            "mucoid_material",
+            "normal_acinus_or_duct",
+            "lymphatics",
+            "undetermined",
+            "nerve",
+            "skin_adnexa",
+            "blood_vessel",
+            "angioinvasion",
+            "dcis",
+            "other",
+        ),
         dimension=2,
         description="A pre-trained model Pathology",
     ):
-        self._image_size = image_size
-        self._patch_size = patch_size
-
+        self.patch_size = patch_size
         super().__init__(
             path=path,
             network=network,
@@ -48,35 +75,19 @@ class MyInfer(InferTask):
         )
 
     def pre_transforms(self):
-        batch = True
-        if batch:
-            return [
-                ImageToGridBatchd(
-                    keys="image",
-                    image_size=self._image_size,
-                    patch_size=self._patch_size,
-                ),
-            ]
-
         return [
-            ImageToGridd(
-                keys="image",
-                image_size=self._image_size,
-                patch_size=self._patch_size,
-                jitter=False,
-                flip=False,
-                rotate=False,
-            ),
+            LoadImaged(keys="image", dtype=np.uint8),
+            EnsureChannelFirstd(keys="image"),
+            ScaleIntensityd(keys="image"),
+            EnsureTyped(keys="image"),
         ]
 
     def inferer(self):
-        return SimpleInferer()
+        return SlidingWindowInferer(roi_size=self.patch_size)
 
     def post_transforms(self):
         return [
-            GridToLabeld(keys="pred", image_size=self._image_size, patch_size=self._patch_size),
+            Activationsd(keys="pred", sigmoid=True),
+            AsDiscreted(keys="pred", threshold=0.5),
+            ToNumpyd(keys="pred"),
         ]
-
-    def run_inferer(self, data, convert_to_batch=True, device="cuda"):
-        convert_to_batch = True if len(data["image"].shape) == 4 else False
-        return super().run_inferer(data, convert_to_batch, device)
