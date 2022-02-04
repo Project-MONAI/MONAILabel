@@ -134,11 +134,6 @@
       </property>
       <item row="0" column="0">
        <widget class="QTableWidget" name="configTable">
-        <property name="font">
-         <font>
-          <pointsize>8</pointsize>
-         </font>
-        </property>
         <property name="autoFillBackground">
          <bool>true</bool>
         </property>
