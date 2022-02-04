@@ -61,6 +61,7 @@ class Context:
         self.start_ts = 0  # timestamp
         self.run_id = None  # unique run_id
         self.output_dir = None  # output dir for storing model
+        self.cache_dir = None  # cache dir for saving/caching temp data
         self.events_dir = None  # events dir for storing tensorboard events
         self.datalist = None  # input datalist
         self.train_datalist = None  # train datalist
@@ -76,7 +77,6 @@ class Context:
         self.multi_gpu = False  # multi gpu enabled
         self.local_rank = 0  # local rank in case of multi gpu
         self.world_size = 0  # world size in case of multi gpu
-        self.persistent_dir = None  # dir of PersistentDataset (if used)
 
         self.request = None
         self.trainer = None
@@ -108,7 +108,6 @@ class BasicTrainTask(TrainTask):
         model_dict_key="model",
         find_unused_parameters=False,
         load_strict=False,
-        persistent_dir=None,
     ):
         """
         :param model_dir: Base Model Dir to save the model checkpoints, events etc...
@@ -126,7 +125,6 @@ class BasicTrainTask(TrainTask):
         :param model_dict_key: key to save network weights into checkpoint
         :param find_unused_parameters: Applicable for DDP/Multi GPU training
         :param load_strict: Load pretrained model in strict mode
-        :param persistent_dir: Dir for PersistentDataset (if used)
         """
         super().__init__(description)
 
@@ -161,8 +159,6 @@ class BasicTrainTask(TrainTask):
         self._model_dict_key = model_dict_key
         self._find_unused_parameters = find_unused_parameters
         self._load_strict = load_strict
-        # by default, persistent dir is adjacent to model dir
-        self.persistent_dir = persistent_dir or os.path.join(os.path.dirname(model_dir), "PersistentDir")
 
     @abstractmethod
     def network(self, context: Context):
@@ -185,14 +181,15 @@ class BasicTrainTask(TrainTask):
                 ]
 
         transforms = self._validate_transforms(self.train_pre_transforms(context), "Training", "pre")
-        if context.dataset_type == "CacheDataset":
-            dataset = CacheDataset(datalist, transforms)
-        elif context.dataset_type == "SmartCacheDataset":
-            dataset = SmartCacheDataset(datalist, transforms, replace_rate)
-        elif context.dataset_type == "PersistentDataset":
-            dataset = PersistentDataset(datalist, transforms, cache_dir=self.persistent_dir)
-        else:
-            dataset = Dataset(datalist, transforms)
+        dataset = (
+            CacheDataset(datalist, transforms)
+            if context.dataset_type == "CacheDataset"
+            else SmartCacheDataset(datalist, transforms, replace_rate)
+            if context.dataset_type == "SmartCacheDataset"
+            else PersistentDataset(datalist, transforms, cache_dir=os.path.join(context.cache_dir, "pds"))
+            if context.dataset_type == "PersistentDataset"
+            else Dataset(datalist, transforms)
+        )
         return dataset, datalist
 
     def _dataloader(self, context, dataset, batch_size, num_workers):
@@ -402,6 +399,7 @@ class BasicTrainTask(TrainTask):
         context.dataloader_type = request["dataloader"]
 
         context.output_dir = os.path.join(self._model_dir, request["name"])
+        context.cache_dir = os.path.join(context.output_dir, f"cache_{context.run_id}")
         context.events_dir = os.path.join(context.output_dir, f"events_{context.run_id}")
 
         if not os.path.exists(context.output_dir):
@@ -423,6 +421,7 @@ class BasicTrainTask(TrainTask):
         if torch.cuda.is_available():
             torch.cuda.empty_cache()
 
+        remove_file(context.cache_dir)
         return prepare_stats(start_ts, context.trainer, context.evaluator)
 
     def finalize(self, context):
