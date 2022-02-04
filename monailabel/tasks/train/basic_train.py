@@ -364,7 +364,9 @@ class BasicTrainTask(TrainTask):
             remove_file(tfile)
         else:
             logger.info("Distributed Training = FALSE")
-            return self.train(0, world_size, req, datalist)
+            res = self.train(0, world_size, req, datalist)
+            self.cleanup(req)
+            return res
 
         self.cleanup(req)
         if os.path.exists(self._stats_path):
@@ -421,7 +423,6 @@ class BasicTrainTask(TrainTask):
         if torch.cuda.is_available():
             torch.cuda.empty_cache()
 
-        remove_file(context.cache_dir)
         return prepare_stats(start_ts, context.trainer, context.evaluator)
 
     def finalize(self, context):
@@ -454,7 +455,13 @@ class BasicTrainTask(TrainTask):
         return datastore.datalist()
 
     def cleanup(self, request):
-        pass
+        logger.info("Running cleanup...")
+        run_id = request["run_id"]
+        output_dir = os.path.join(self._model_dir, request["name"])
+
+        # delete/cleanup cache
+        cache_dir = os.path.join(output_dir, f"cache_{run_id}")
+        remove_file(cache_dir)
 
     def _device(self, context: Context):
         if context.multi_gpu:
