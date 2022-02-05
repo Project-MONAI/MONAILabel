@@ -23,17 +23,17 @@ logger = logging.getLogger(__name__)
 # You can write your transforms here... which can be used in your train/infer tasks
 class ImageToNumpyd(MapTransform, RandomizableTransform):
     def __init__(
-            self,
-            keys: KeysCollection,
-            jitter=True,
-            flip=False,
-            rotate=False,
-            normalize=True,
-            brightness=64.0 / 255.0,
-            contrast=0.75,
-            saturation=0.25,
-            hue=0.04,
-            label_key="label",
+        self,
+        keys: KeysCollection,
+        jitter=True,
+        flip=False,
+        rotate=False,
+        normalize=True,
+        brightness=64.0 / 255.0,
+        contrast=0.75,
+        saturation=0.25,
+        hue=0.04,
+        label_key="label",
     ):
         super().__init__(keys)
 

@@ -19,10 +19,10 @@ from typing import Dict
 import numpy as np
 import openslide
 import pyvips
-from PIL import Image
-from monai.networks.nets import UNet
-
 from lib import MyInfer, MyTrain
+from monai.networks.nets import UNet
+from PIL import Image
+
 from monailabel.interfaces.app import MONAILabelApp
 from monailabel.interfaces.tasks.infer import InferTask
 from monailabel.interfaces.tasks.train import TrainTask
@@ -124,9 +124,6 @@ def main():
 
     parser = argparse.ArgumentParser()
     parser.add_argument("-s", "--studies", default="/local/sachi/Data/Pathology/BCSS/images")
-    # parser.add_argument("-s", "--studies", default="/local/sachi/Data/Pathology/Camelyon/dataset_v2/training/images")
-    parser.add_argument("-e", "--epoch", type=int, default=100)
-    parser.add_argument("-o", "--output", default="model_01")
     args = parser.parse_args()
 
     app_dir = os.path.dirname(__file__)
@@ -144,7 +141,7 @@ def main():
                 "name": "model_01",
                 "model": "segmentation",
                 "max_epochs": 500,
-                "dataset": "Dataset",
+                "dataset": "PersistentDataset",
                 "train_batch_size": 4,
                 "val_batch_size": 2,
                 "multi_gpu": True,

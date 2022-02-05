@@ -9,7 +9,6 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 import logging
-import math
 from typing import TYPE_CHECKING, Callable, Optional
 
 import numpy as np
@@ -17,7 +16,6 @@ import torch
 from monai.config import IgniteInfo
 from monai.transforms import rescale_array
 from monai.utils import min_version, optional_import
-from monai.visualize import plot_2d_or_3d_image
 
 Events, _ = optional_import("ignite.engine", IgniteInfo.OPT_IMPORT_VERSION, min_version, "Events")
 nib, _ = optional_import("nibabel")
@@ -60,35 +58,21 @@ class TensorBoardImageHandler:
 
     def __call__(self, engine: Engine) -> None:
         epoch = engine.state.epoch
-        image_grid = rescale_array(self.batch_transform(engine.state.batch)[0]["image"].detach().cpu().numpy(), 0, 1)
-        label_grid = rescale_array(self.batch_transform(engine.state.batch)[0]["label"].detach().cpu().numpy(), 0, 1)
-        pred_grid = rescale_array(self.output_transform(engine.state.output)[0]["pred"].detach().cpu().numpy(), 0, 1)
-        self.logger.info(f"ImageGrid: {image_grid.shape}; LabelGrid: {label_grid.shape}; PredGrid: {pred_grid.shape}")
-
-        patch_size = image_grid.shape[-1]
-        patch_per_side = int(math.sqrt(image_grid.shape[0]))
-
-        image = np.zeros((3, patch_size * patch_per_side, patch_size * patch_per_side), dtype=image_grid.dtype)
-        label = np.zeros((patch_size * patch_per_side, patch_size * patch_per_side), dtype=image_grid.dtype)
-        pred = np.zeros((patch_size * patch_per_side, patch_size * patch_per_side), dtype=image_grid.dtype)
-
-        count = 0
-        for x_idx in range(patch_per_side):
-            for y_idx in range(patch_per_side):
-                x_start = x_idx * patch_size
-                x_end = x_start + patch_size
-                y_start = y_idx * patch_size
-                y_end = y_start + patch_size
-
-                image[:, x_start:x_end, y_start:y_end] = image_grid[count]
-                label[x_start:x_end, y_start:y_end] = label_grid[count]
-                pred[x_start:x_end, y_start:y_end] = pred_grid[count]
-                count += 1
-
-        label = label[np.newaxis]
-        pred = pred[np.newaxis]
+        image = rescale_array(self.batch_transform(engine.state.batch)[0]["image"].detach().cpu().numpy(), 0, 1)
+        label = rescale_array(self.batch_transform(engine.state.batch)[0]["label"].detach().cpu().numpy(), 0, 1)
+        pred = rescale_array(self.output_transform(engine.state.output)[0]["pred"].detach().cpu().numpy(), 0, 1)
         self.logger.info(f"Image: {image.shape}; Label: {label.shape}; Pred: {pred.shape}")
 
-        plot_2d_or_3d_image(data=image[None], step=epoch, max_channels=3, writer=self.writer, tag=f"Image")
-        plot_2d_or_3d_image(data=label[None], step=epoch, max_channels=3, writer=self.writer, tag=f"Label")
-        plot_2d_or_3d_image(data=pred[None], step=epoch, max_channels=3, writer=self.writer, tag=f"Pred")
+        # plot_2d_or_3d_image(data=image, step=epoch, max_channels=3, writer=self.writer, tag=f"Image")
+        img_tensor = make_grid(torch.from_numpy(image))
+        self.writer.add_image(tag=f"Image", img_tensor=img_tensor, global_step=epoch)
+
+        for i in range(label.shape[0]):
+            if np.sum(label[i]) > 0:
+                img_tensor = make_grid(
+                    tensor=torch.from_numpy(np.array([label[i][None], pred[i][None]])),
+                    nrow=2,
+                    normalize=True,
+                    pad_value=10,
+                )
+                self.writer.add_image(tag=f"Label vs Pred: {i}", img_tensor=img_tensor, global_step=epoch)
