@@ -19,3 +19,7 @@ schedule==1.1.0
 timeloop==1.0.2
 SimpleCRF==0.2.1.1
 numpy>=1.22.1
+pyvips==2.1.16
+openslide-python==1.1.2
+
+#sudo apt-get install openslide-tools libvips-tools -y

@@ -23,17 +23,17 @@ logger = logging.getLogger(__name__)
 # You can write your transforms here... which can be used in your train/infer tasks
 class ImageToNumpyd(MapTransform, RandomizableTransform):
     def __init__(
-        self,
-        keys: KeysCollection,
-        jitter=True,
-        flip=False,
-        rotate=False,
-        normalize=True,
-        brightness=64.0 / 255.0,
-        contrast=0.75,
-        saturation=0.25,
-        hue=0.04,
-        label_key="label",
+            self,
+            keys: KeysCollection,
+            jitter=True,
+            flip=False,
+            rotate=False,
+            normalize=True,
+            brightness=64.0 / 255.0,
+            contrast=0.75,
+            saturation=0.25,
+            hue=0.04,
+            label_key="label",
     ):
         super().__init__(keys)
 
@@ -86,7 +86,10 @@ class LabelToChanneld(MapTransform):
         for key in self.keys:
             mask = d[key]
             img = np.zeros((len(self.labels), mask.shape[0], mask.shape[1]))
-            for i in self.labels:
-                img[i - 1, mask == i] = 1
+
+            count = 0
+            for idx in self.labels:
+                img[count, mask == idx] = 1
+                count += 1
             d[key] = img
         return d

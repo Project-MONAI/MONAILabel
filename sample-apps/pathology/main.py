@@ -16,14 +16,13 @@ from concurrent.futures import ThreadPoolExecutor
 from math import ceil
 from typing import Dict
 
-import cv2
 import numpy as np
 import openslide
 import pyvips
-from lib import MyInfer, MyTrain
-from monai.networks.nets import UNet
 from PIL import Image
+from monai.networks.nets import UNet
 
+from lib import MyInfer, MyTrain
 from monailabel.interfaces.app import MONAILabelApp
 from monailabel.interfaces.tasks.infer import InferTask
 from monailabel.interfaces.tasks.train import TrainTask
@@ -37,7 +36,7 @@ class MyApp(MONAILabelApp):
         self.patch_size = (512, 512)
 
         # https://github.com/PathologyDataScience/BCSS/blob/master/meta/gtruth_codes.tsv
-        self.labels = {
+        labels = {
             1: "tumor",
             2: "stroma",
             3: "lymphocytic_infiltrate",
@@ -63,7 +62,7 @@ class MyApp(MONAILabelApp):
         self.network = UNet(
             spatial_dims=2,
             in_channels=3,
-            out_channels=1,
+            out_channels=len(labels),
             channels=(16, 32, 64, 128, 256),
             strides=(2, 2, 2, 2),
             num_res_units=2,
@@ -77,6 +76,7 @@ class MyApp(MONAILabelApp):
             app_dir=app_dir,
             studies=studies,
             conf=conf,
+            labels=labels,
             name="Metastasis Detection - Pathology",
             description="Active Learning solution for Pathology",
         )
@@ -145,7 +145,7 @@ def main():
                 "model": "segmentation",
                 "max_epochs": 500,
                 "dataset": "Dataset",
-                "train_batch_size": 2,
+                "train_batch_size": 4,
                 "val_batch_size": 2,
                 "multi_gpu": True,
                 "val_split": 0.2,
@@ -219,7 +219,8 @@ def merge_labels(args):
                     sx = i * 1024
                     sy = j * 1024
                     label_np[sx : (sx + 1024), sy : (sy + 1024)] = np.array(img)
-            cv2.imwrite(os.path.join(args.studies, "labels", f"o_{name}_{idx}.jpg"), label_np)
+            img = Image.fromarray(label_np).convert("RGB")
+            img.save(os.path.join(args.studies, "labels", f"o_{name}_{idx}.jpg"))
 
     # os.path.join(args.studies, "labels", "original")
 
