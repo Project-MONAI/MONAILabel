@@ -35,6 +35,31 @@ logger = logging.getLogger(__name__)
 class MyApp(MONAILabelApp):
     def __init__(self, app_dir, studies, conf):
         self.patch_size = (512, 512)
+
+        # https://github.com/PathologyDataScience/BCSS/blob/master/meta/gtruth_codes.tsv
+        self.labels = {
+            1: "tumor",
+            2: "stroma",
+            3: "lymphocytic_infiltrate",
+            4: "necrosis_or_debris",
+            5: "glandular_secretions",
+            6: "blood",
+            7: "exclude",
+            8: "metaplasia_NOS",
+            9: "fat",
+            10: "plasma_cells",
+            11: "other_immune_infiltrate",
+            12: "mucoid_material",
+            13: "normal_acinus_or_duct",
+            14: "lymphatics",
+            15: "undetermined",
+            16: "nerve",
+            17: "skin_adnexa",
+            18: "blood_vessel",
+            19: "angioinvasion",
+            20: "dcis",
+            21: "other",
+        }
         self.network = UNet(
             spatial_dims=2,
             in_channels=3,
@@ -58,7 +83,7 @@ class MyApp(MONAILabelApp):
 
     def init_infers(self) -> Dict[str, InferTask]:
         return {
-            "segmentation": MyInfer([self.pretrained_model, self.final_model], self.network),
+            "segmentation": MyInfer([self.pretrained_model, self.final_model], self.network, labels=self.labels),
         }
 
     def init_trainers(self) -> Dict[str, TrainTask]:
@@ -71,7 +96,7 @@ class MyApp(MONAILabelApp):
                 config={"max_epochs": 10, "train_batch_size": 1},
                 train_save_interval=1,
                 patch_size=self.patch_size,
-                labels=[1],  # https://github.com/PathologyDataScience/BCSS/blob/master/meta/gtruth_codes.tsv
+                labels=self.labels,
             )
         }
 
