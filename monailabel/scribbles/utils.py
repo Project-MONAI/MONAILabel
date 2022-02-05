@@ -10,8 +10,10 @@
 # limitations under the License.
 import logging
 
-import maxflow
 import numpy as np
+from monai.utils import optional_import
+
+maxflow, has_maxflow = optional_import("maxflow")
 
 logger = logging.getLogger(__name__)
 
@@ -23,13 +25,19 @@ def get_eps(data):
 def maxflow2d(image, prob, lamda=5, sigma=0.1):
     # lamda: weight of smoothing term
     # sigma: std of intensity values
-    return maxflow.maxflow2d(image, prob, (lamda, sigma))
+    if not has_maxflow:
+        raise ImportError("Unable to find maxflow, please ensure SimpleCRF is installed")
+    else:
+        return maxflow.maxflow2d(image, prob, (lamda, sigma))
 
 
 def maxflow3d(image, prob, lamda=5, sigma=0.1):
     # lamda: weight of smoothing term
     # sigma: std of intensity values
-    return maxflow.maxflow3d(image, prob, (lamda, sigma))
+    if not has_maxflow:
+        raise ImportError("Unable to find maxflow, please ensure SimpleCRF is installed")
+    else:
+        return maxflow.maxflow3d(image, prob, (lamda, sigma))
 
 
 def interactive_maxflow2d(image, prob, seed, lamda=5, sigma=0.1):

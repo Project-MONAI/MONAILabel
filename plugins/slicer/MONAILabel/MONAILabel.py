@@ -732,9 +732,6 @@ class MONAILabelWidget(ScriptedLoadableModuleWidget, VTKObservationMixin):
                     else:
                         table.setItem(n, 3, qt.QTableWidgetItem(str(val) if val else ""))
 
-                    table.item(n, 0).setBackground(qt.QColor(220, 220, 220))
-                    table.item(n, 1).setBackground(qt.QColor(240, 240, 240))
-                    table.item(n, 2).setBackground(qt.QColor(250, 250, 250))
                     # print(f"{n} => {section} => {name} => {key} => {val}")
                     n = n + 1
 
