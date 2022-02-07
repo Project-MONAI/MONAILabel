@@ -20,6 +20,7 @@ from monai.losses import DiceLoss
 from monai.transforms import (
     Activationsd,
     AsDiscreted,
+    BorderPadd,
     EnsureChannelFirstd,
     EnsureTyped,
     LoadImaged,
@@ -79,11 +80,12 @@ class MyTrain(BasicTrainTask):
             RandCropByPosNegLabeld(
                 keys=("image", "label"),
                 label_key="label",
-                spatial_size=self.patch_size,
+                spatial_size=(self.patch_size[0] - 4, self.patch_size[1] - 4),
                 pos=1,
                 neg=1,
                 num_samples=self.num_samples,
             ),
+            BorderPadd(keys=("image", "label"), spatial_border=2),
             RandRotate90d(keys=("image", "label"), prob=0.5, spatial_axes=(0, 1)),
             EnsureTyped(keys=("image", "label")),
         ]

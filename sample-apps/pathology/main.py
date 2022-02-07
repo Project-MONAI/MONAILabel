@@ -146,7 +146,7 @@ def main():
             request={
                 "name": "model_01",
                 "model": "segmentation",
-                "max_epochs": 500,
+                "max_epochs": 600,
                 "dataset": "PersistentDataset",
                 "train_batch_size": 1,
                 "val_batch_size": 1,

@@ -48,7 +48,7 @@ class RegionDice:
             self.data.append(score)
 
     def mean(self):
-        return statistics.mean(self.data)
+        return statistics.mean(self.data) if len(self.data) > 1 else 0
 
     def stdev(self):
         return statistics.stdev(self.data) if len(self.data) > 1 else 0
