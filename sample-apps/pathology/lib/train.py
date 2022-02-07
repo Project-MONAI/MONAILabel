@@ -46,11 +46,13 @@ class MyTrain(BasicTrainTask):
         network,
         labels,
         patch_size=(512, 512),
+        num_samples=16,
         description="Pathology Semantic Segmentation (BCSS Dataset)",
         **kwargs,
     ):
         self._network = network
         self.patch_size = patch_size
+        self.num_samples = num_samples
         self.labels = labels
         super().__init__(model_dir, description, **kwargs)
 
@@ -58,7 +60,7 @@ class MyTrain(BasicTrainTask):
         return self._network
 
     def optimizer(self, context: Context):
-        return torch.optim.Adam(self._network.parameters(), 1e-3)
+        return torch.optim.Adam(self._network.parameters(), 0.0001)
 
     def loss_function(self, context: Context):
         return DiceLoss(sigmoid=True)
@@ -75,7 +77,12 @@ class MyTrain(BasicTrainTask):
             ToNumpyd(keys="image"),
             ScaleIntensityd(keys=("image", "label")),
             RandCropByPosNegLabeld(
-                keys=("image", "label"), label_key="label", spatial_size=self.patch_size, pos=1, neg=1, num_samples=8
+                keys=("image", "label"),
+                label_key="label",
+                spatial_size=self.patch_size,
+                pos=1,
+                neg=1,
+                num_samples=self.num_samples,
             ),
             RandRotate90d(keys=("image", "label"), prob=0.5, spatial_axes=(0, 1)),
             EnsureTyped(keys=("image", "label")),

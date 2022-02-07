@@ -20,7 +20,7 @@ import numpy as np
 import openslide
 import pyvips
 from lib import MyInfer, MyTrain
-from monai.networks.nets import UNet
+from monai.networks.nets import BasicUNet, UNet
 from PIL import Image
 
 from monailabel.interfaces.app import MONAILabelApp
@@ -38,35 +38,41 @@ class MyApp(MONAILabelApp):
         # https://github.com/PathologyDataScience/BCSS/blob/master/meta/gtruth_codes.tsv
         labels = {
             1: "tumor",
-            2: "stroma",
-            3: "lymphocytic_infiltrate",
-            4: "necrosis_or_debris",
-            5: "glandular_secretions",
-            6: "blood",
-            7: "exclude",
-            8: "metaplasia_NOS",
-            9: "fat",
-            10: "plasma_cells",
-            11: "other_immune_infiltrate",
-            12: "mucoid_material",
-            13: "normal_acinus_or_duct",
-            14: "lymphatics",
-            15: "undetermined",
-            16: "nerve",
-            17: "skin_adnexa",
-            18: "blood_vessel",
-            19: "angioinvasion",
-            20: "dcis",
-            21: "other",
+            # 2: "stroma",
+            # 3: "lymphocytic_infiltrate",
+            # 4: "necrosis_or_debris",
+            # 5: "glandular_secretions",
+            # 6: "blood",
+            # 7: "exclude",
+            # 8: "metaplasia_NOS",
+            # 9: "fat",
+            # 10: "plasma_cells",
+            # 11: "other_immune_infiltrate",
+            # 12: "mucoid_material",
+            # 13: "normal_acinus_or_duct",
+            # 14: "lymphatics",
+            # 15: "undetermined",
+            # 16: "nerve",
+            # 17: "skin_adnexa",
+            # 18: "blood_vessel",
+            # 19: "angioinvasion",
+            # 20: "dcis",
+            # 21: "other",
         }
-        self.network = UNet(
-            spatial_dims=2,
-            in_channels=3,
-            out_channels=len(labels),
-            channels=(16, 32, 64, 128, 256),
-            strides=(2, 2, 2, 2),
-            num_res_units=2,
-        )
+        unet = False
+        if unet:
+            self.network = UNet(
+                spatial_dims=2,
+                in_channels=3,
+                out_channels=len(labels),
+                channels=(16, 32, 64, 128, 256),
+                strides=(2, 2, 2, 2),
+                num_res_units=2,
+            )
+        else:
+            self.network = BasicUNet(
+                spatial_dims=2, in_channels=3, out_channels=len(labels), features=(32, 64, 128, 256, 512, 32)
+            )
 
         self.model_dir = os.path.join(app_dir, "model")
         self.pretrained_model = os.path.join(self.model_dir, "pretrained.pt")
@@ -77,7 +83,7 @@ class MyApp(MONAILabelApp):
             studies=studies,
             conf=conf,
             labels=labels,
-            name="Metastasis Detection - Pathology",
+            name="Semantic Segmentation - Pathology",
             description="Active Learning solution for Pathology",
         )
 
@@ -141,11 +147,11 @@ def main():
                 "name": "model_01",
                 "model": "segmentation",
                 "max_epochs": 500,
-                "dataset": "PersistentDataset",
-                "train_batch_size": 4,
-                "val_batch_size": 2,
+                "dataset": "Dataset",
+                "train_batch_size": 1,
+                "val_batch_size": 1,
                 "multi_gpu": True,
-                "val_split": 0.2,
+                "val_split": 0.1,
             }
         )
     else:
