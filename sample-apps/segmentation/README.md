@@ -31,13 +31,13 @@ If researchers are interested on using this App, please clone the folder and adj
   > - [ToTensord](https://docs.monai.io/en/latest/_modules/monai/transforms/utility/dictionary.html#ToTensord) -> This converts the input image to a tensor without applying any other transformations,
 
 - Number of epochs
-  > Default value is 50 Epochs. Change this in the [info.YAML](./info.yaml) file.
+  > Default value is 50 Epochs. 
 
 - learning rate
-  > Default value is 0.0001. Change this in the [info.YAML](./info.yaml) file
+  > Default value is 0.0001. 
 
 - validation split used during training
-    > Default value is 0.2. Change this in the [info.YAML](./info.yaml) file
+    > Default value is 0.2.
 
 ### Inputs
 
@@ -53,7 +53,6 @@ If researchers are interested on using this App, please clone the folder and adj
 - **[./lib/train.py](./lib/train.py)** is the script to define the pre and post transforms to train the network/model
 - **[./lib/activelearning.py](./lib/activelearning.py)** is the file to define the image selection techniques.
 - **[./lib/transforms.py](./lib/transforms.py)** is the file to define customised transformations to be used in the App
-- **[info.yaml](./info.yaml)** is the file to define hyperparameters such as epochs, learning and validation split percentage.
 - **[main.py](./main.py)** is the script to define network architecture, enable the active learning strategy, etc  
 
 
