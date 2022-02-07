@@ -31,7 +31,6 @@ from monai.transforms import (
     RandHistogramShiftd,
     RandRotated,
     Resized,
-    Spacingd,
     ToNumpyd,
     ToTensord,
 )
@@ -95,9 +94,9 @@ class MyTrain(BasicTrainTask):
         return [
             LoadImaged(keys=("image", "label"), reader="nibabelreader"),
             SingleLabelSingleModalityd(keys=("image", "label")),
-            # RandZoomd(keys=("image", "label"), prob=0.4, min_zoom=0.3, max_zoom=1.9, mode=("bilinear", "nearest")),
             AddChanneld(keys=("image", "label")),
-            Spacingd(keys=["image", "label"], pixdim=self.target_spacing, mode=("bilinear", "nearest")),
+            # Spacing might not be needed as resize transform is used later.
+            # Spacingd(keys=["image", "label"], pixdim=self.target_spacing, mode=("bilinear", "nearest")),
             Orientationd(keys=["image", "label"], axcodes="RAS"),
             NormalizeIntensityd(keys="image"),
             RandAdjustContrastd(keys="image", gamma=6),
@@ -129,7 +128,8 @@ class MyTrain(BasicTrainTask):
             LoadImaged(keys=("image", "label"), reader="nibabelreader"),
             SingleLabelSingleModalityd(keys=("image", "label")),
             AddChanneld(keys=("image", "label")),
-            Spacingd(keys=["image", "label"], pixdim=self.target_spacing, mode=("bilinear", "nearest")),
+            # Spacing might not be needed as resize transform is used later.
+            # Spacingd(keys=["image", "label"], pixdim=self.target_spacing, mode=("bilinear", "nearest")),
             Orientationd(keys=["image", "label"], axcodes="RAS"),
             NormalizeIntensityd(keys="image"),
             Resized(keys=("image", "label"), spatial_size=self.spatial_size, mode=("area", "nearest")),

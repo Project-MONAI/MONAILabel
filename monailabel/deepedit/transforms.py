@@ -308,7 +308,7 @@ class SingleLabelSingleModalityd(MapTransform):
                 if d[key].max() > 1:
                     logger.info(
                         f"Label {meta_data['filename_or_obj'].split('/')[-1]} has more than one mask - "
-                        f"taking SINGLE mask ..."
+                        f"taking SINGLE mask ... Consider using Multilabel DeepEdit App"
                     )
                     result = []
                     # label bigger than 0 is foreground
@@ -333,6 +333,9 @@ class SingleLabelSingleModalityd(MapTransform):
 
                     d[key] = d[key][..., 0]
 
+                    # These lines may cause the following error if image metadata is not well saved.
+                    # ValueError: len(spatial_size) must be greater or equal to img spatial dimensions,
+                    # got spatial_size=2 img=3
                     meta_data["pixdim"][4] = 0.0
                     meta_data["dim"][0] = 3
                     meta_data["dim"][4] = 1
