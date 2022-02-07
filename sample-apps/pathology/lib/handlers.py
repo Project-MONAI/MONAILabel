@@ -101,24 +101,31 @@ class TensorBoardImageHandler:
         self.write_images(batch_data, output_data, epoch)
 
     def write_images(self, batch_data, output_data, epoch):
-        image = rescale_array(batch_data[0]["image"].detach().cpu().numpy(), 0, 1)
-        label = rescale_array(batch_data[0]["label"].detach().cpu().numpy(), 0, 1)
-        pred = rescale_array(output_data[0]["pred"].detach().cpu().numpy(), 0, 1)
-        self.logger.info(f"Image: {image.shape}; Label: {label.shape}; Pred: {pred.shape}")
+        for bidx in range(len(batch_data)):
+            image = rescale_array(batch_data[bidx]["image"].detach().cpu().numpy(), 0, 1)
+            label = rescale_array(batch_data[bidx]["label"].detach().cpu().numpy(), 0, 1)
+            pred = rescale_array(output_data[bidx]["pred"].detach().cpu().numpy(), 0, 1)
 
-        # plot_2d_or_3d_image(data=image, step=epoch, max_channels=3, writer=self.writer, tag=f"Image")
-        img_tensor = make_grid(torch.from_numpy(image))
-        self.writer.add_image(tag=f"Image", img_tensor=img_tensor, global_step=epoch)
+            # Only consider non empty labels
+            if np.sum(label) == 0:
+                continue
 
-        for i in range(label.shape[0]):
-            if np.sum(label[i]) > 0:
-                img_tensor = make_grid(
-                    tensor=torch.from_numpy(np.array([label[i][None], pred[i][None]])),
-                    nrow=2,
-                    normalize=True,
-                    pad_value=10,
-                )
-                self.writer.add_image(tag=f"Label vs Pred: {i}", img_tensor=img_tensor, global_step=epoch)
+            self.logger.info(f"Write Image: {image.shape}; Label: {label.shape}; Pred: {pred.shape}")
+
+            # plot_2d_or_3d_image(data=image, step=epoch, max_channels=3, writer=self.writer, tag=f"Image")
+            img_tensor = make_grid(torch.from_numpy(image))
+            self.writer.add_image(tag=f"Image", img_tensor=img_tensor, global_step=epoch)
+
+            for i in range(label.shape[0]):
+                if np.sum(label[i]) > 0:
+                    img_tensor = make_grid(
+                        tensor=torch.from_numpy(np.array([label[i][None], pred[i][None]])),
+                        nrow=2,
+                        normalize=True,
+                        pad_value=10,
+                    )
+                    self.writer.add_image(tag=f"Label vs Pred: {i}", img_tensor=img_tensor, global_step=epoch)
+            break
 
     def write_region_metrics(self, epoch):
         metric_sum = 0
