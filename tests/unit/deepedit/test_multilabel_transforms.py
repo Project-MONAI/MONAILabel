@@ -17,7 +17,7 @@ from parameterized import parameterized
 from monailabel.deepedit.multilabel.transforms import (
     AddGuidanceSignalCustomd,
     DiscardAddGuidanced,
-    SelectLabelsAbdomenDatasetd,
+    NormalizeLabelsInDatasetd,
     SingleLabelSelectiond,
     SplitPredsLabeld,
     ToCheckTransformd,
@@ -134,9 +134,9 @@ DATA_6 = {
     "image": IMAGE,
     "label": MULTI_LABEL,
     "guidance": {
-        "spleen": np.array([[[1, 0, 2, 2], [-1, -1, -1, -1]]]),
-        "right kidney": np.array([[[1, 0, 2, 2], [-1, -1, -1, -1]]]),
-        "background": np.array([[[1, 0, 2, 2], [-1, -1, -1, -1]]]),
+        "spleen": np.array([[1, 0, 2, 2], [-1, -1, -1, -1]]),
+        "right kidney": np.array([[1, 0, 2, 2], [-1, -1, -1, -1]]),
+        "background": np.array([[1, 0, 2, 2], [-1, -1, -1, -1]]),
     },
     "probability": 1.0,
     "label_names": LABEL_NAMES,
@@ -149,7 +149,7 @@ FindDiscrepancyRegionsCustomd_TEST_CASE = [
     (5, 5),
 ]
 
-SelectLabelsAbdomenDatasetd_TEST_CASE = [
+NormalizeLabelsDatasetd_TEST_CASE = [
     {"label_names": LABEL_NAMES},
     DATA_6,
     len(LABEL_NAMES),
@@ -219,10 +219,10 @@ class TestDiscardAddGuidanced(unittest.TestCase):
         np.testing.assert_equal(result["image"].shape[0], expected_result)
 
 
-class TestSelectLabelsAbdomenDatasetd(unittest.TestCase):
-    @parameterized.expand([SelectLabelsAbdomenDatasetd_TEST_CASE])
+class TestNormalizeLabelsDatasetd(unittest.TestCase):
+    @parameterized.expand([NormalizeLabelsDatasetd_TEST_CASE])
     def test_correct_results(self, arguments, input_data, expected_result):
-        add_fn = SelectLabelsAbdomenDatasetd(keys="label", **arguments)
+        add_fn = NormalizeLabelsInDatasetd(keys="label", **arguments)
         result = add_fn(input_data)
         self.assertEqual(len(np.unique(result["label"])), expected_result)
 
