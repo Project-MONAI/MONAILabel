@@ -13,7 +13,7 @@ import logging
 
 import numpy as np
 from monai.config import KeysCollection
-from monai.transforms import MapTransform, RandomizableTransform
+from monai.transforms import CenterSpatialCrop, MapTransform, RandomizableTransform
 from PIL import Image
 from torchvision.transforms import ColorJitter
 
@@ -92,4 +92,19 @@ class LabelToChanneld(MapTransform):
                 img[count, mask == idx] = 1
                 count += 1
             d[key] = img
+        return d
+
+
+class RemoveBorderd(MapTransform):
+    def __init__(self, keys: KeysCollection, border=2):
+        super().__init__(keys)
+        self.border = border
+
+    def __call__(self, data):
+        d = dict(data)
+        for key in self.keys:
+            img = d[key]
+            roi_size = (img.shape[-2] - self.border * 2, img.shape[-1] - self.border * 2)
+            crop = CenterSpatialCrop(roi_size=roi_size)
+            d[key] = crop(img)
         return d

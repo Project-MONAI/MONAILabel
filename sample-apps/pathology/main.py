@@ -129,7 +129,7 @@ def main():
     )
 
     parser = argparse.ArgumentParser()
-    parser.add_argument("-s", "--studies", default="/local/sachi/Data/Pathology/BCSS/images")
+    parser.add_argument("-s", "--studies", default="/local/sachi/Data/Pathology/BCSS/monai")
     args = parser.parse_args()
 
     app_dir = os.path.dirname(__file__)
@@ -146,11 +146,11 @@ def main():
             request={
                 "name": "model_01",
                 "model": "segmentation",
-                "max_epochs": 600,
+                "max_epochs": 10,
                 "dataset": "PersistentDataset",
                 "train_batch_size": 1,
                 "val_batch_size": 1,
-                "multi_gpu": True,
+                "multi_gpu": False,
                 "val_split": 0.1,
             }
         )

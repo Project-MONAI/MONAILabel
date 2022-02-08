@@ -20,7 +20,6 @@ from monai.losses import DiceLoss
 from monai.transforms import (
     Activationsd,
     AsDiscreted,
-    BorderPadd,
     EnsureChannelFirstd,
     EnsureTyped,
     LoadImaged,
@@ -35,7 +34,7 @@ from monai.transforms import (
 from monailabel.tasks.train.basic_train import BasicTrainTask, Context
 
 from .handlers import TensorBoardImageHandler
-from .transforms import LabelToChanneld
+from .transforms import LabelToChanneld, RemoveBorderd
 
 logger = logging.getLogger(__name__)
 
@@ -71,6 +70,7 @@ class MyTrain(BasicTrainTask):
             LoadImaged(keys=("image", "label"), dtype=np.uint8),
             EnsureChannelFirstd(keys="image"),
             LabelToChanneld(keys="label", labels=self.labels),
+            RemoveBorderd(keys=("image", "label"), border=4),
             ToTensord(keys="image"),
             TorchVisiond(
                 keys="image", name="ColorJitter", brightness=64.0 / 255.0, contrast=0.75, saturation=0.25, hue=0.04
@@ -80,12 +80,11 @@ class MyTrain(BasicTrainTask):
             RandCropByPosNegLabeld(
                 keys=("image", "label"),
                 label_key="label",
-                spatial_size=(self.patch_size[0] - 4, self.patch_size[1] - 4),
+                spatial_size=self.patch_size,
                 pos=1,
                 neg=1,
                 num_samples=self.num_samples,
             ),
-            BorderPadd(keys=("image", "label"), spatial_border=2),
             RandRotate90d(keys=("image", "label"), prob=0.5, spatial_axes=(0, 1)),
             EnsureTyped(keys=("image", "label")),
         ]
