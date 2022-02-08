@@ -131,7 +131,7 @@ def main():
     )
 
     parser = argparse.ArgumentParser()
-    parser.add_argument("-s", "--studies", default="/local/sachi/Data/Pathology/BCSS/monai")
+    parser.add_argument("-s", "--studies", default="/local/sachi/Data/Pathology/BCSS/images")
     args = parser.parse_args()
 
     app_dir = os.path.dirname(__file__)
@@ -142,7 +142,7 @@ def main():
     }
 
     app = MyApp(app_dir, studies, conf)
-    run_train = False
+    run_train = True
     if run_train:
         app.train(
             request={

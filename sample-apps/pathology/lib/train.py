@@ -23,8 +23,8 @@ from monai.transforms import (
     EnsureChannelFirstd,
     EnsureTyped,
     LoadImaged,
-    RandCropByPosNegLabeld,
     RandRotate90d,
+    RandSpatialCropSamplesd,
     ScaleIntensityd,
     ToNumpyd,
     TorchVisiond,
@@ -70,19 +70,17 @@ class MyTrain(BasicTrainTask):
             LoadImaged(keys=("image", "label"), dtype=np.uint8),
             EnsureChannelFirstd(keys="image"),
             LabelToChanneld(keys="label", labels=self.labels),
-            ClipBorderd(keys=("image", "label"), border=4),
+            ClipBorderd(keys=("image", "label"), border=100),
             ToTensord(keys="image"),
             TorchVisiond(
                 keys="image", name="ColorJitter", brightness=64.0 / 255.0, contrast=0.75, saturation=0.25, hue=0.04
             ),
             ToNumpyd(keys="image"),
             ScaleIntensityd(keys=("image", "label")),
-            RandCropByPosNegLabeld(
+            RandSpatialCropSamplesd(
                 keys=("image", "label"),
-                label_key="label",
-                spatial_size=self.patch_size,
-                pos=1,
-                neg=1,
+                roi_size=self.patch_size,
+                random_size=False,
                 num_samples=self.num_samples,
             ),
             RandRotate90d(keys=("image", "label"), prob=0.5, spatial_axes=(0, 1)),
