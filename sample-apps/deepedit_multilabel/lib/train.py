@@ -33,11 +33,11 @@ from monailabel.deepedit.handlers import TensorBoardImageHandler
 from monailabel.deepedit.multilabel.interaction import Interaction
 from monailabel.deepedit.multilabel.transforms import (
     AddGuidanceSignalCustomd,
-    AddInitialSeedPointCustomd,
-    FindAllValidSlicesCustomd,
+    AddInitialSeedPointMissingLabelsd,
+    FindAllValidSlicesMissingLabelsd,
     FindDiscrepancyRegionsCustomd,
+    NormalizeLabelsInDatasetd,
     PosNegClickProbAddRandomGuidanceCustomd,
-    SelectLabelsAbdomenDatasetd,
     SplitPredsLabeld,
 )
 from monailabel.tasks.train.basic_train import BasicTrainTask, Context
@@ -99,7 +99,7 @@ class MyTrain(BasicTrainTask):
     def train_pre_transforms(self, context: Context):
         return [
             LoadImaged(keys=("image", "label"), reader="ITKReader"),
-            SelectLabelsAbdomenDatasetd(keys="label", label_names=self.label_names),
+            NormalizeLabelsInDatasetd(keys="label", label_names=self.label_names),
             AddChanneld(keys=("image", "label")),
             Orientationd(keys=["image", "label"], axcodes="RAS"),
             # This transform may not work well for MR images
@@ -138,8 +138,8 @@ class MyTrain(BasicTrainTask):
             ),
             Resized(keys=("image", "label"), spatial_size=self.spatial_size, mode=("area", "nearest")),
             # Transforms for click simulation
-            FindAllValidSlicesCustomd(keys="label", sids="sids"),
-            AddInitialSeedPointCustomd(keys="label", guidance="guidance", sids="sids"),
+            FindAllValidSlicesMissingLabelsd(keys="label", sids="sids"),
+            AddInitialSeedPointMissingLabelsd(keys="label", guidance="guidance", sids="sids"),
             AddGuidanceSignalCustomd(keys="image", guidance="guidance"),
             #
             ToTensord(keys=("image", "label")),
@@ -162,7 +162,7 @@ class MyTrain(BasicTrainTask):
     def val_pre_transforms(self, context: Context):
         return [
             LoadImaged(keys=("image", "label"), reader="ITKReader"),
-            SelectLabelsAbdomenDatasetd(keys="label", label_names=self.label_names),
+            NormalizeLabelsInDatasetd(keys="label", label_names=self.label_names),
             AddChanneld(keys=("image", "label")),
             Orientationd(keys=["image", "label"], axcodes="RAS"),
             # This transform may not work well for MR images
@@ -176,8 +176,8 @@ class MyTrain(BasicTrainTask):
             ),
             Resized(keys=("image", "label"), spatial_size=self.spatial_size, mode=("area", "nearest")),
             # Transforms for click simulation
-            FindAllValidSlicesCustomd(keys="label", sids="sids"),
-            AddInitialSeedPointCustomd(keys="label", guidance="guidance", sids="sids"),
+            FindAllValidSlicesMissingLabelsd(keys="label", sids="sids"),
+            AddInitialSeedPointMissingLabelsd(keys="label", guidance="guidance", sids="sids"),
             AddGuidanceSignalCustomd(keys="image", guidance="guidance"),
             #
             ToTensord(keys=("image", "label")),
