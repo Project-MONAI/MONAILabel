@@ -17,7 +17,7 @@ from parameterized import parameterized
 from monailabel.deepedit.multilabel.transforms import (
     AddGuidanceSignalCustomd,
     DiscardAddGuidanced,
-    SelectLabelsAbdomenDatasetd,
+    NormalizeLabelsInDatasetd,
     SingleLabelSelectiond,
     SplitPredsLabeld,
     ToCheckTransformd,
@@ -222,7 +222,7 @@ class TestDiscardAddGuidanced(unittest.TestCase):
 class TestSelectLabelsAbdomenDatasetd(unittest.TestCase):
     @parameterized.expand([SelectLabelsAbdomenDatasetd_TEST_CASE])
     def test_correct_results(self, arguments, input_data, expected_result):
-        add_fn = SelectLabelsAbdomenDatasetd(keys="label", **arguments)
+        add_fn = NormalizeLabelsInDatasetd(keys="label", **arguments)
         result = add_fn(input_data)
         self.assertEqual(len(np.unique(result["label"])), expected_result)
 
