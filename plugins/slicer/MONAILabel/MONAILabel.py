@@ -91,7 +91,7 @@ class _ui_MONAILabelSettingsPanel(object):
         parent.registerProperty("MONAILabel/clientId", clientId, "text", str(qt.SIGNAL("textChanged(QString)")))
 
         autoRunSegmentationCheckBox = qt.QCheckBox()
-        autoRunSegmentationCheckBox.checked = True
+        autoRunSegmentationCheckBox.checked = False
         autoRunSegmentationCheckBox.toolTip = (
             "Enable this option to auto run segmentation if pre-trained model exists when Next Sample is fetched"
         )
