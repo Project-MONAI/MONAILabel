@@ -12,6 +12,7 @@ import json
 import logging
 import os
 import os.path
+import random
 import subprocess
 import sys
 import uuid
@@ -42,7 +43,7 @@ def _task_func(task, method, callback=None):
     if method == "train":
         my_env["MONAI_LABEL_DATASTORE_AUTO_RELOAD"] = "false"
         my_env["MASTER_ADDR"] = "127.0.0.1"
-        my_env["MASTER_PORT"] = "1234"
+        my_env["MASTER_PORT"] = str(random.randint(1234, 1334))
 
     cmd = [
         sys.executable,
