@@ -34,10 +34,10 @@ from monailabel.deepedit.multilabel.interaction import Interaction
 from monailabel.deepedit.multilabel.transforms import (
     AddGuidanceSignalCustomd,
     AddInitialSeedPointMissingLabelsd,
+    AddRandomGuidanceCustomd,
     FindAllValidSlicesMissingLabelsd,
     FindDiscrepancyRegionsCustomd,
     NormalizeLabelsInDatasetd,
-    PosNegClickProbAddRandomGuidanceCustomd,
     SplitPredsLabeld,
 )
 from monailabel.tasks.train.basic_train import BasicTrainTask, Context
@@ -85,7 +85,7 @@ class MyTrain(BasicTrainTask):
             ToNumpyd(keys=("image", "label", "pred")),
             # Transforms for click simulation
             FindDiscrepancyRegionsCustomd(keys="label", pred="pred", discrepancy="discrepancy"),
-            PosNegClickProbAddRandomGuidanceCustomd(
+            AddRandomGuidanceCustomd(
                 keys="NA",
                 guidance="guidance",
                 discrepancy="discrepancy",

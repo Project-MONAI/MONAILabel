@@ -206,7 +206,7 @@ class AddGuidanceSignalCustomd(MapTransform):
                 signal = np.zeros((1, image.shape[-2], image.shape[-1]), dtype=np.float32)
 
             sshape = signal.shape
-            for point in guidance[0]:  # TO DO: make the guidance a list only - it is currently a list of list
+            for point in guidance:  # TO DO: make the guidance a list only - it is currently a list of list
                 if np.any(np.asarray(point) < 0):
                     continue
 
@@ -509,7 +509,7 @@ class FindDiscrepancyRegionsCustomd(MapTransform):
         return d
 
 
-class PosNegClickProbAddRandomGuidanceCustomd(Randomizable, MapTransform):
+class AddRandomGuidanceCustomd(Randomizable, MapTransform):
     """
     Add random guidance based on discrepancies that were found between label and prediction.
 
@@ -584,12 +584,12 @@ class PosNegClickProbAddRandomGuidanceCustomd(Randomizable, MapTransform):
                     tmp_label = np.copy(labels)
                     tmp_label[tmp_label != label_names[key_label]] = 0
                     tmp_label = (tmp_label > 0.5).astype(np.float32)
-                    self.tmp_guidance[key_label][0].append(self.find_guidance(discrepancy[1] * tmp_label))
+                    self.tmp_guidance[key_label].append(self.find_guidance(discrepancy[1] * tmp_label))
                 else:
                     tmp_label = np.copy(labels)
                     tmp_label[tmp_label != label_names[key_label]] = 1
                     tmp_label = 1 - tmp_label
-                    self.tmp_guidance[key_label][0].append(self.find_guidance(discrepancy[1] * tmp_label))
+                    self.tmp_guidance[key_label].append(self.find_guidance(discrepancy[1] * tmp_label))
 
     def __call__(self, data: Mapping[Hashable, np.ndarray]) -> Dict[Hashable, np.ndarray]:
         d: Dict = dict(data)
@@ -603,12 +603,12 @@ class PosNegClickProbAddRandomGuidanceCustomd(Randomizable, MapTransform):
                 tmp_gui = guidance[key_label]
                 tmp_gui = tmp_gui.tolist() if isinstance(tmp_gui, np.ndarray) else tmp_gui
                 tmp_gui = json.loads(tmp_gui) if isinstance(tmp_gui, str) else tmp_gui
-                self.tmp_guidance[key_label] = [[j for j in tmp_gui[0] if -1 not in j]]
+                self.tmp_guidance[key_label] = [j for j in tmp_gui if -1 not in j]
 
             # Add guidance according to discrepancy
             for key_label in d["label_names"].keys():
                 # Add guidance based on discrepancy
-                self.add_guidance(self.tmp_guidance[key_label][0], discrepancy[key_label], d["label_names"], d["label"])
+                self.add_guidance(self.tmp_guidance[key_label], discrepancy[key_label], d["label_names"], d["label"])
 
             # Checking the number of clicks
             num_clicks = random.randint(1, 10)
@@ -621,12 +621,12 @@ class PosNegClickProbAddRandomGuidanceCustomd(Randomizable, MapTransform):
                     pass
                 else:
                     keep_guidance.append(aux_label)
-                    counter = counter + len(self.tmp_guidance[aux_label][0])
+                    counter = counter + len(self.tmp_guidance[aux_label])
                     # If collected clicks is bigger than max clicks, discard the others
                     if counter >= num_clicks:
                         for key_label in d["label_names"].keys():
                             if key_label not in keep_guidance:
-                                self.tmp_guidance[key_label][0] = []
+                                self.tmp_guidance[key_label] = []
                         break
 
             # Convert tmp_guidance back to json
@@ -713,7 +713,7 @@ class AddGuidanceFromPointsCustomd(Transform):
     def _apply(self, clicks, factor):
         if len(clicks):
             guidance = np.multiply(clicks, factor).astype(int).tolist()
-            return [guidance]
+            return guidance
         else:
             return []
 
@@ -877,10 +877,10 @@ class AddInitialSeedPointMissingLabelsd(Randomizable, MapTransform):
         # when they are neighbors and have the same value
         blobs_labels = measure.label(label.astype(int), background=0) if dims == 2 else label
 
-        pos_guidance = []
+        label_guidance = []
         # If there are is presence of that label in this slice
         if np.max(blobs_labels) <= 0:
-            pos_guidance.append(self.default_guidance)
+            label_guidance.append(self.default_guidance)
         else:
             # plt.imshow(blobs_labels[0])
             # plt.title(f'Blobs {key_label}')
@@ -890,7 +890,7 @@ class AddInitialSeedPointMissingLabelsd(Randomizable, MapTransform):
                 if dims == 2:
                     label = (blobs_labels == ridx).astype(np.float32)
                     if np.sum(label) == 0:
-                        pos_guidance.append(self.default_guidance)
+                        label_guidance.append(self.default_guidance)
                         continue
 
                 # plt.imshow(label[0])
@@ -914,12 +914,12 @@ class AddInitialSeedPointMissingLabelsd(Randomizable, MapTransform):
                 g = np.asarray(np.unravel_index(seed, label.shape)).transpose().tolist()[0]
                 g[0] = dst[0]  # for debug
                 if dimensions == 2 or dims == 3:
-                    pos_guidance.append(g)
+                    label_guidance.append(g)
                 else:
                     # Clicks are created using this convention Channel Height Width Depth (CHWD)
-                    pos_guidance.append([g[0], g[-2], g[-1], sid])  # Assume channel is first and depth is last CHWD
+                    label_guidance.append([g[0], g[-2], g[-1], sid])  # Assume channel is first and depth is last CHWD
 
-        return np.asarray([pos_guidance])
+        return np.asarray(label_guidance)
 
     def _randomize(self, d, key_label):
         sids = d.get(self.sids_key, None).get(key_label, None) if d.get(self.sids_key, None) is not None else None
