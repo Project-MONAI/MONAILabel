@@ -114,7 +114,7 @@ class TensorBoardImageHandler:
 
             # plot_2d_or_3d_image(data=image, step=epoch, max_channels=3, writer=self.writer, tag=f"Image")
             img_tensor = make_grid(torch.from_numpy(image))
-            self.writer.add_image(tag=f"Image", img_tensor=img_tensor, global_step=epoch)
+            self.writer.add_image(tag="Image", img_tensor=img_tensor, global_step=epoch)
 
             for i in range(label.shape[0]):
                 if np.sum(label[i]) > 0:

@@ -237,7 +237,7 @@ def create_region_label(annotations, patch_size, output, output_ext):
             )
             cv2.fillPoly(label_np, pts=[contours], color=color)
 
-        logger.info(f"Label Ready...")
+        logger.info("Label Ready...")
         save_patch(annotation, label_np, None, 0, patch_size, output, output_ext)
 
 

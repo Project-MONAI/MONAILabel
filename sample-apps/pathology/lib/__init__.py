@@ -12,5 +12,4 @@
 from .activelearning import MyStrategy
 from .handlers import TensorBoardImageHandler
 from .infer import MyInfer
-from .resnet import resnet18_cf
 from .train import MyTrain

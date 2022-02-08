@@ -34,7 +34,7 @@ from monai.transforms import (
 from monailabel.tasks.train.basic_train import BasicTrainTask, Context
 
 from .handlers import TensorBoardImageHandler
-from .transforms import LabelToChanneld, RemoveBorderd
+from .transforms import ClipBorderd, LabelToChanneld
 
 logger = logging.getLogger(__name__)
 
@@ -70,7 +70,7 @@ class MyTrain(BasicTrainTask):
             LoadImaged(keys=("image", "label"), dtype=np.uint8),
             EnsureChannelFirstd(keys="image"),
             LabelToChanneld(keys="label", labels=self.labels),
-            RemoveBorderd(keys=("image", "label"), border=4),
+            ClipBorderd(keys=("image", "label"), border=4),
             ToTensord(keys="image"),
             TorchVisiond(
                 keys="image", name="ColorJitter", brightness=64.0 / 255.0, contrast=0.75, saturation=0.25, hue=0.04

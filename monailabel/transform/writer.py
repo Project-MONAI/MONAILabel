@@ -10,7 +10,6 @@
 # limitations under the License.
 
 import logging
-import pathlib
 import tempfile
 
 import itk

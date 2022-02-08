@@ -294,7 +294,7 @@ def infer_wsi(app):
     logger.error("Infer Time Taken: {:.4f}".format(time.time() - start))
     label_file = os.path.join(root_dir, "label_batched_thread.tif")
 
-    logger.error(f"Saving Label PNG")
+    logger.error("Saving Label PNG")
     img = Image.fromarray(label_np).convert("RGB")
     img.save(os.path.join(root_dir, "label_batched_thread.png"))
 

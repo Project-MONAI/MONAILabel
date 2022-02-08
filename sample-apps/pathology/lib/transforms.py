@@ -95,7 +95,7 @@ class LabelToChanneld(MapTransform):
         return d
 
 
-class RemoveBorderd(MapTransform):
+class ClipBorderd(MapTransform):
     def __init__(self, keys: KeysCollection, border=2):
         super().__init__(keys)
         self.border = border
