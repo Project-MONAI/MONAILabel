@@ -19,8 +19,10 @@ from typing import Dict
 import numpy as np
 import openslide
 import pyvips
+import torch
 from lib import MyInfer, MyTrain
 from monai.networks.nets import BasicUNet, UNet
+from monai.transforms import ScaleIntensity, rescale_array
 from PIL import Image
 
 from monailabel.interfaces.app import MONAILabelApp
@@ -129,7 +131,7 @@ def main():
     )
 
     parser = argparse.ArgumentParser()
-    parser.add_argument("-s", "--studies", default="/local/sachi/Data/Pathology/BCSS/images")
+    parser.add_argument("-s", "--studies", default="/local/sachi/Data/Pathology/BCSS/monai")
     args = parser.parse_args()
 
     app_dir = os.path.dirname(__file__)
@@ -140,7 +142,7 @@ def main():
     }
 
     app = MyApp(app_dir, studies, conf)
-    run_train = True
+    run_train = False
     if run_train:
         app.train(
             request={
@@ -155,9 +157,9 @@ def main():
             }
         )
     else:
-        # infer_roi(args, app)
-        # merge_labels(args)
-        infer_wsi(app)
+        infer_roi(args, app)
+        # infer_wsi(app)
+        # infer_wsi_small(app)
 
 
 def infer_roi(args, app):
@@ -166,74 +168,91 @@ def infer_roi(args, app):
     for image in images:
         print(f"Infer Image: {image}")
         req = {
-            "model": "metastasis_detection",
+            "model": "segmentation",
             "image": image,
         }
 
         name = get_basename(image)
         ext = file_ext(name)
 
-        # shutil.copy(image, f"/local/sachi/Downloads/image{ext}")
+        shutil.copy(image, f"/local/sachi/Downloads/image{ext}")
 
-        # o = os.path.join(os.path.dirname(image), "labels", "final", name)
-        # shutil.copy(o, f"/local/sachi/Downloads/original{ext}")
+        o = os.path.join(os.path.dirname(image), "labels", "final", name)
+        shutil.copy(o, f"/local/sachi/Downloads/original{ext}")
 
         res = app.infer(request=req)
         o = os.path.join(args.studies, "labels", "original", name)
         shutil.move(res["label"], o)
 
-        # shutil.copy(o, f"/local/sachi/Downloads/predicated{ext}")
-        # return
+        shutil.copy(o, f"/local/sachi/Downloads/predicated{ext}")
+        return
 
 
-def merge_labels(args):
-    labels_dir = os.path.join(args.studies, "labels", "original")
-    labels = sorted([f for f in os.listdir(labels_dir) if f.endswith(".png")])
+def infer_wsi_small(app):
+    root_dir = "/local/sachi/Data/Pathology/BCSS"
+    # image = f"{root_dir}/wsis/TCGA-OL-A5RW-01Z-00-DX1.E16DE8EE-31AF-4EAF-A85F-DB3E3E2C3BFF.svs"
+    image = f"{root_dir}/wsis/TCGA-AC-A6IW-01Z-00-DX1.C4514189-E64F-4603-8970-230FA2BB77FC.svs"
 
-    d = {}
-    for label in labels:
-        l = label.replace(file_ext(label), "").split("_")  # "tumor_001_0_0x0.png"
-        name = f"{l[0]}_{l[1]}"
-        idx = int(l[2])
-        tj = int(l[3].split("x")[0])
-        ti = int(l[3].split("x")[1])
+    task = app._infers.get("segmentation")
+    devices = ["cuda"]
+    for device in devices:
+        if task._get_network(device):
+            logger.error(f"Model Loaded into {device}")
+        else:
+            logger.error(f"Model Not Loaded into {device}... can't run in parallel")
+            return
 
-        if d.get(name) is None:
-            d[name] = {}
-        if d[name].get(idx) is None:
-            d[name][idx] = {}
-        if d[name][idx].get(tj) is None:
-            d[name][idx][tj] = []
-        d[name][idx][tj].append(label)
+    logger.info(f"Input WSIS Image: {image}")
+    slide = openslide.OpenSlide(image)
+    logger.info(f"Slide : {slide.dimensions}")
+    start = time.time()
 
-        # print(f"Name: {name} => {idx} => {tj}x{ti}")
-    print(d)
-    for name in d:
-        for idx in d[name]:
-            r = len(d[name][idx].keys())
-            print(d[name][idx])
-            c = len(d[name][idx][0])
-            print(f"grid for {idx} = {r} x {c}")
+    level = 0
+    device = devices[0]
+    w, h = slide.dimensions
+    region_rgb = slide.read_region((0, 0), level, (w, h)).convert("RGB")
 
-            label_np = np.zeros((r * 1024, c * 1024), dtype=np.uint8)
-            for i in d[name][idx]:
-                for j in range(len(d[name][idx][i])):
-                    img = Image.open(os.path.join(labels_dir, d[name][idx][i][j]))
-                    sx = i * 1024
-                    sy = j * 1024
-                    label_np[sx : (sx + 1024), sy : (sy + 1024)] = np.array(img)
-            img = Image.fromarray(label_np).convert("RGB")
-            img.save(os.path.join(args.studies, "labels", f"o_{name}_{idx}.jpg"))
+    # region_rgb.save(os.path.join(res_dir, f"{tid}_{len(batches)}_img.png"))
+    scaler = ScaleIntensity()
+    image_np = scaler(np.array(region_rgb, np.uint8).transpose((2, 0, 1)))
+    logger.info(f"Input Image: {image_np.shape}")
 
-    # os.path.join(args.studies, "labels", "original")
+    res = task.run_inferer(data={"image": image_np}, device=device)
+    p = torch.sigmoid(res["pred"][0]).detach().cpu().numpy()
+    p[p > 0.5] = 255
+    p = p[0] if len(p.shape) >= 3 else p
+    p = p.astype(dtype=np.uint8)
+
+    logger.info(f"Output Pred: {p.shape}; {p.dtype}")
+
+    logger.info("Infer Time Taken: {:.4f}".format(time.time() - start))
+    label_file = os.path.join(root_dir, "label.tif")
+
+    logger.info(f"Saving Label PNG")
+    img = Image.fromarray(p).convert("RGB")
+    img.save(os.path.join(root_dir, "label.png"))
+
+    logger.info(f"Creating Label: {label_file}")
+    logger.info(f"Writing Label: {label_file}; shape: {p.shape}")
+
+    linear = p.reshape(-1)
+    im = pyvips.Image.new_from_memory(linear.data, p.shape[1], p.shape[0], bands=1, format="uchar")
+    im.write_to_file(label_file, pyramid=True, bigtiff=True, tile=True, compression="jpeg")
+
+    logger.info(f"TIF-Label dimensions: {openslide.OpenSlide(label_file).dimensions}")
+    logger.info("Total Time Taken: {:.4f}".format(time.time() - start))
 
 
 def infer_wsi(app):
-    root_dir = "/local/sachi/Data/Pathology/Camelyon"
-    image = f"{root_dir}/79397/training/images/tumor/tumor_001.tif"
+    root_dir = "/local/sachi/Data/Pathology/BCSS"
+    image = f"{root_dir}/wsis/TCGA-OL-A5RW-01Z-00-DX1.E16DE8EE-31AF-4EAF-A85F-DB3E3E2C3BFF.svs"
+    # image = f"{root_dir}/wsis/TCGA-A7-A6VY-01Z-00-DX1.38D4EBD7-40B0-4EE3-960A-1F00E8F83ADB.svs"
+    # image = f"{root_dir}/wsis/TCGA-AC-A6IW-01Z-00-DX1.C4514189-E64F-4603-8970-230FA2BB77FC.svs"
 
-    patch_size = [1024, 1024]
-    task = app._infers.get("metastasis_detection")
+    batch_size = 8
+    patch_size = (1024, 1024)
+    task = app._infers.get("segmentation")
+    task.sliding_window = False
     devices = ["cuda"]  # Not able to use multi-gpu for inference
     for device in devices:
         if task._get_network(device):
@@ -242,8 +261,9 @@ def infer_wsi(app):
             logger.error(f"Model Not Loaded into {device}... can't run in parallel")
             return
 
+    logger.error(f"Input WSIS Image: {image}")
     slide = openslide.OpenSlide(image)
-    logger.info(f"Slide : {slide.dimensions}")
+    logger.error(f"Slide : {slide.dimensions}")
     start = time.time()
 
     level = 0
@@ -255,32 +275,63 @@ def infer_wsi(app):
     tiles_j = ceil(h / max_h)  # ROW
 
     logger.error(f"Total Patches to infer {tiles_i} x {tiles_j}: {tiles_i * tiles_j}")
-    label_np = np.zeros((w, h), dtype=np.uint8)
+    label_np = np.zeros((h, w), dtype=np.uint8)
 
-    infer_tasks, completed = create_tasks(tiles_j, tiles_i, w, h, max_w, max_h)
+    infer_tasks, completed = create_tasks(batch_size, tiles_j, tiles_i, w, h, max_w, max_h)
+    res_dir = os.path.join(root_dir, "result")
+    os.makedirs(res_dir, exist_ok=True)
 
     def run_task(t):
         batches = []
         batch_coords = []
         tid = t["id"]
-        dev = devices[tid % len(devices)]
+        device = devices[tid % len(devices)]
+        scaler = ScaleIntensity()
+        padded = []
+
         for c in t["coords"]:
             (tj, ti, tx, ty, tw, th) = c
-            logger.info(f"Patch/Slide ({tj}, {ti}) => Top: ({tx}, {ty}); Size: {tw} x {th}")
+            logger.debug(f"Patch/Slide ({tj}, {ti}) => Top: ({tx}, {ty}); Size: {tw} x {th}")
+
             region_rgb = slide.read_region((tx, ty), level, (tw, th)).convert("RGB")
-            if region_rgb.size[0] != patch_size[0] or region_rgb.size[1] != patch_size[1]:
-                logger.info("Ignore this region... (Add padding later)")
-                continue
-            batches.append(region_rgb)
+            image_np = np.array(region_rgb, np.uint8)
+            if image_np.shape[0] != patch_size[0] or image_np.shape[1] != patch_size[1]:
+                background = np.zeros((patch_size[0], patch_size[1], 3), dtype=image_np.dtype)
+                background[0 : image_np.shape[0], 0 : image_np.shape[1]] = image_np
+                padded.append(image_np.shape[:2])
+                image_np = background
+            else:
+                padded.append(None)
+
+            image_np = scaler(image_np.transpose((2, 0, 1)))
+            batches.append(image_np)
             batch_coords.append((tx, ty, tw, th))
 
-        _, res = task({"image": batches, "result_write_to_file": False, "device": dev})
-        for bidx in range(len(batches)):
-            tx, ty, tw, th = batch_coords[bidx]
-            label_np[tx : (tx + tw), ty : (ty + th)] = res["pred"][bidx]
+        if len(batches):
+            image_b = np.array(batches)
+            logger.debug(f"Image Batch: {image_b.shape}")
+            res = task.run_inferer(data={"image": image_b}, convert_to_batch=False, device=device)
+            for bidx in range(len(batches)):
+                tx, ty, tw, th = batch_coords[bidx]
+                p = torch.sigmoid(res["pred"][bidx]).detach().cpu().numpy()
+                p[p > 0.5] = 255
+                p = p[0] if len(p.shape) >= 3 else p
+                p = p.astype(dtype=np.uint8)
+
+                logger.debug(f"Label Pred: {p.shape}")
+                if padded[bidx]:
+                    ox, oy = padded[bidx]
+                    p = p[0:ox, 0:oy]
+                label_np[ty : (ty + th), tx : (tx + tw)] = p
+
+                image_i = Image.fromarray(rescale_array(image_b[bidx], 0, 1).transpose(1, 2, 0), "RGB")
+                image_i.save(os.path.join(res_dir, f"{tid}_{bidx}_img.png"))
+
+                label_i = Image.fromarray(p).convert("RGB")
+                label_i.save(os.path.join(res_dir, f"{tid}_{bidx}_lab.png"))
 
         completed[tid] = 1
-        logger.error(f"Current: {tid}; Device: {dev}; Completed: {sum(completed)} / {len(completed)}")
+        logger.error(f"Current: {tid}; Device: {device}; Completed: {sum(completed)} / {len(completed)}")
 
     logger.error(f"Total Tasks: {len(infer_tasks)}")
     multi_thread = False
@@ -292,25 +343,28 @@ def infer_wsi(app):
             run_task(t)
 
     logger.error("Infer Time Taken: {:.4f}".format(time.time() - start))
-    label_file = os.path.join(root_dir, "label_batched_thread.tif")
+    label_file = os.path.join(root_dir, "label.tif")
 
     logger.error("Saving Label PNG")
     img = Image.fromarray(label_np).convert("RGB")
-    img.save(os.path.join(root_dir, "label_batched_thread.png"))
+    img.save(os.path.join(root_dir, "label.png"))
 
     logger.error(f"Creating Label: {label_file}")
     linear = label_np.reshape(-1)
     im = pyvips.Image.new_from_memory(linear.data, label_np.shape[1], label_np.shape[0], bands=1, format="uchar")
 
-    logger.error(f"Writing Label: {label_file}")
-    im.write_to_file(label_file, pyramid=True, bigtiff=True, tile=True, tile_width=512, tile_height=512)
+    logger.error(f"Writing Label: {label_file}; shape: {label_np.shape}")
+    im.write_to_file(
+        label_file, pyramid=True, bigtiff=True, tile=True, tile_width=512, tile_height=512, compression="jpeg"
+    )
+
+    logger.error(f"Label dimensions: {openslide.OpenSlide(label_file).dimensions}")
     logger.error("Total Time Taken: {:.4f}".format(time.time() - start))
 
 
-def create_tasks(tiles_j, tiles_i, w, h, max_w, max_h):
+def create_tasks(batch_size, tiles_j, tiles_i, w, h, max_w, max_h):
     coords = []
     infer_tasks = []
-    batch_size = 32
     completed = []
 
     for tj in range(tiles_j):

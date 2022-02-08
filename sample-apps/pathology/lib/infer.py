@@ -11,7 +11,7 @@
 import logging
 
 import numpy as np
-from monai.inferers import SlidingWindowInferer
+from monai.inferers import SimpleInferer, SlidingWindowInferer
 from monai.transforms import (
     Activationsd,
     AsDiscreted,
@@ -19,8 +19,11 @@ from monai.transforms import (
     EnsureTyped,
     LoadImaged,
     ScaleIntensityd,
+    SqueezeDimd,
     ToNumpyd,
+    Transposed,
 )
+from monai.utils import BlendMode
 
 from monailabel.interfaces.tasks.infer import InferTask, InferType
 
@@ -38,33 +41,13 @@ class MyInfer(InferTask):
         network=None,
         patch_size=(256, 256),
         type=InferType.SEGMENTATION,
-        labels=(
-            "tumor",
-            "stroma",
-            "lymphocytic_infiltrate",
-            "necrosis_or_debris",
-            "glandular_secretions",
-            "blood",
-            "exclude",
-            "metaplasia_NOS",
-            "fat",
-            "plasma_cells",
-            "other_immune_infiltrate",
-            "mucoid_material",
-            "normal_acinus_or_duct",
-            "lymphatics",
-            "undetermined",
-            "nerve",
-            "skin_adnexa",
-            "blood_vessel",
-            "angioinvasion",
-            "dcis",
-            "other",
-        ),
+        labels=None,
         dimension=2,
+        sliding_window=True,
         description="A pre-trained model Pathology",
     ):
         self.patch_size = patch_size
+        self.sliding_window = sliding_window
         super().__init__(
             path=path,
             network=network,
@@ -83,11 +66,22 @@ class MyInfer(InferTask):
         ]
 
     def inferer(self):
-        return SlidingWindowInferer(roi_size=self.patch_size)
+        return (
+            SlidingWindowInferer(
+                roi_size=(2048, 2048),
+                sw_batch_size=4,
+                overlap=0,
+                mode=BlendMode.GAUSSIAN,
+            )
+            if self.sliding_window
+            else SimpleInferer()
+        )
 
     def post_transforms(self):
         return [
             Activationsd(keys="pred", sigmoid=True),
             AsDiscreted(keys="pred", threshold=0.5),
-            ToNumpyd(keys="pred"),
+            SqueezeDimd(keys="pred"),
+            Transposed(keys="pred", indices=(1, 0)),
+            ToNumpyd(keys="pred", dtype=np.uint8),
         ]

@@ -20,6 +20,17 @@ from torchvision.transforms import ColorJitter
 logger = logging.getLogger(__name__)
 
 
+class LoadImagePatchd(MapTransform):
+    def __call__(self, data):
+        d = dict(data)
+        for key in self.keys:
+            print(f"Type of {key} is: ")
+            img = Image.open(d[key]) if isinstance(d[key], str) else d[key]
+            img = np.array(img, dtype=np.uint8)
+            d[key] = img
+        return d
+
+
 # You can write your transforms here... which can be used in your train/infer tasks
 class ImageToNumpyd(MapTransform, RandomizableTransform):
     def __init__(
