@@ -9,7 +9,7 @@ In this folder you will find examples of the **three available paradigms**: Two 
 
 Users that want to build deepgrow-based Apps, please refer to the [deepgrow App](./deepgrow). 
 
-`` This App is based on the work presented by Sakinis et al. (Sakinis, Tomas, et al. "Interactive segmentation of medical images through fully convolutional neural networks." arXiv preprint arXiv:1903.08205 (2019)) ``
+This app is based on the work presented by [Sakinis, Tomas, et al. "Interactive segmentation of medical images through fully convolutional neural networks." arXiv preprint arXiv:1903.08205 (2019)](https://arxiv.org/abs/1903.08205).
 
 
 
