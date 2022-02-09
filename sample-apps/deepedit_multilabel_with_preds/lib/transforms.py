@@ -26,7 +26,7 @@ logger = logging.getLogger(__name__)
 # You can write your transforms here... which can be used in your train/infer tasks
 
 
-class SelectLabelsAbdomenDatasetd(MapTransform):
+class NormalizeLabelsDatasetd(MapTransform):
     def __init__(
         self,
         keys: KeysCollection,
@@ -42,22 +42,6 @@ class SelectLabelsAbdomenDatasetd(MapTransform):
         super().__init__(keys, allow_missing_keys)
 
         self.label_names = label_names
-        self.all_label_values = {
-            "spleen": 1,
-            "right kidney": 2,
-            "left kidney": 3,
-            "gallbladder": 4,
-            "esophagus": 5,
-            "liver": 6,
-            "stomach": 7,
-            "aorta": 8,
-            "inferior vena cava": 9,
-            "portal vein": 10,
-            "splenic vein": 11,
-            "pancreas": 12,
-            "right adrenal gland": 13,
-            "left adrenal gland": 14,
-        }
 
     def __call__(self, data: Mapping[Hashable, np.ndarray]) -> Dict[Hashable, np.ndarray]:
         d: Dict = dict(data)
