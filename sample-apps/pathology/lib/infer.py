@@ -68,9 +68,8 @@ class MyInfer(InferTask):
     def inferer(self):
         return (
             SlidingWindowInferer(
-                roi_size=(2048, 2048),
-                sw_batch_size=4,
-                overlap=0,
+                roi_size=(1024, 1024),
+                sw_batch_size=2,
                 mode=BlendMode.GAUSSIAN,
             )
             if self.sliding_window

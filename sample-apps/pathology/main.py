@@ -125,7 +125,7 @@ def main():
     os.putenv("MASTER_PORT", "1234")
 
     logging.basicConfig(
-        level=logging.INFO,
+        level=logging.ERROR,
         format="[%(asctime)s] [%(process)s] [%(threadName)s] [%(levelname)s] (%(name)s:%(lineno)d) - %(message)s",
         datefmt="%Y-%m-%d %H:%M:%S",
     )
@@ -142,7 +142,7 @@ def main():
     }
 
     app = MyApp(app_dir, studies, conf)
-    run_train = True
+    run_train = False
     if run_train:
         app.train(
             request={
@@ -157,8 +157,8 @@ def main():
             }
         )
     else:
-        infer_roi(args, app)
-        # infer_wsi(app)
+        # infer_roi(args, app)
+        infer_wsi(app)
         # infer_wsi_small(app)
 
 
@@ -188,72 +188,22 @@ def infer_roi(args, app):
         return
 
 
-def infer_wsi_small(app):
-    root_dir = "/local/sachi/Data/Pathology/BCSS"
-    # image = f"{root_dir}/wsis/TCGA-OL-A5RW-01Z-00-DX1.E16DE8EE-31AF-4EAF-A85F-DB3E3E2C3BFF.svs"
-    image = f"{root_dir}/wsis/TCGA-AC-A6IW-01Z-00-DX1.C4514189-E64F-4603-8970-230FA2BB77FC.svs"
-
-    task = app._infers.get("segmentation")
-    devices = ["cuda"]
-    for device in devices:
-        if task._get_network(device):
-            logger.error(f"Model Loaded into {device}")
-        else:
-            logger.error(f"Model Not Loaded into {device}... can't run in parallel")
-            return
-
-    logger.info(f"Input WSIS Image: {image}")
-    slide = openslide.OpenSlide(image)
-    logger.info(f"Slide : {slide.dimensions}")
-    start = time.time()
-
-    level = 0
-    device = devices[0]
-    w, h = slide.dimensions
-    region_rgb = slide.read_region((0, 0), level, (w, h)).convert("RGB")
-
-    # region_rgb.save(os.path.join(res_dir, f"{tid}_{len(batches)}_img.png"))
-    scaler = ScaleIntensity()
-    image_np = scaler(np.array(region_rgb, np.uint8).transpose((2, 0, 1)))
-    logger.info(f"Input Image: {image_np.shape}")
-
-    res = task.run_inferer(data={"image": image_np}, device=device)
-    p = torch.sigmoid(res["pred"][0]).detach().cpu().numpy()
-    p[p > 0.5] = 255
-    p = p[0] if len(p.shape) >= 3 else p
-    p = p.astype(dtype=np.uint8)
-
-    logger.info(f"Output Pred: {p.shape}; {p.dtype}")
-
-    logger.info("Infer Time Taken: {:.4f}".format(time.time() - start))
-    label_file = os.path.join(root_dir, "label.tif")
-
-    logger.info(f"Saving Label PNG")
-    img = Image.fromarray(p).convert("RGB")
-    img.save(os.path.join(root_dir, "label.png"))
-
-    logger.info(f"Creating Label: {label_file}")
-    logger.info(f"Writing Label: {label_file}; shape: {p.shape}")
-
-    linear = p.reshape(-1)
-    im = pyvips.Image.new_from_memory(linear.data, p.shape[1], p.shape[0], bands=1, format="uchar")
-    im.write_to_file(label_file, pyramid=True, bigtiff=True, tile=True, compression="jpeg")
-
-    logger.info(f"TIF-Label dimensions: {openslide.OpenSlide(label_file).dimensions}")
-    logger.info("Total Time Taken: {:.4f}".format(time.time() - start))
-
-
 def infer_wsi(app):
+    batch_size = 1
+    patch_size = (4096, 4096)
+    devices = ["cuda"]
+    level = 0
+    multi_thread = False
+
     root_dir = "/local/sachi/Data/Pathology/BCSS"
     image = f"{root_dir}/wsis/TCGA-OL-A5RW-01Z-00-DX1.E16DE8EE-31AF-4EAF-A85F-DB3E3E2C3BFF.svs"
     # image = f"{root_dir}/wsis/TCGA-A7-A6VY-01Z-00-DX1.38D4EBD7-40B0-4EE3-960A-1F00E8F83ADB.svs"
     # image = f"{root_dir}/wsis/TCGA-AC-A6IW-01Z-00-DX1.C4514189-E64F-4603-8970-230FA2BB77FC.svs"
+    # image = "/local/sachi/Data/Pathology/Camelyon/79397/training/images/tumor/tumor_001.tif"
 
-    batch_size = 8
-    patch_size = (1024, 1024)
     task = app._infers.get("segmentation")
-    task.sliding_window = False
-    devices = ["cuda"]  # Not able to use multi-gpu for inference
+    #task.sliding_window = False
+
     for device in devices:
         if task._get_network(device):
             logger.error(f"Model Loaded into {device}")
@@ -266,7 +216,6 @@ def infer_wsi(app):
     logger.error(f"Slide : {slide.dimensions}")
     start = time.time()
 
-    level = 0
     w, h = slide.dimensions
     max_w = patch_size[0]
     max_h = patch_size[1]
@@ -282,11 +231,14 @@ def infer_wsi(app):
     os.makedirs(res_dir, exist_ok=True)
 
     def run_task(t):
-        batches = []
-        batch_coords = []
         tid = t["id"]
+        logger.debug(f"Running task : {tid}")
+
         device = devices[tid % len(devices)]
         scaler = ScaleIntensity()
+
+        batches = []
+        batch_coords = []
         padded = []
 
         for c in t["coords"]:
@@ -297,7 +249,7 @@ def infer_wsi(app):
             image_np = np.array(region_rgb, np.uint8)
             if image_np.shape[0] != patch_size[0] or image_np.shape[1] != patch_size[1]:
                 background = np.zeros((patch_size[0], patch_size[1], 3), dtype=image_np.dtype)
-                background[0 : image_np.shape[0], 0 : image_np.shape[1]] = image_np
+                background[0: image_np.shape[0], 0: image_np.shape[1]] = image_np
                 padded.append(image_np.shape[:2])
                 image_np = background
             else:
@@ -322,19 +274,18 @@ def infer_wsi(app):
                 if padded[bidx]:
                     ox, oy = padded[bidx]
                     p = p[0:ox, 0:oy]
-                label_np[ty : (ty + th), tx : (tx + tw)] = p
+                label_np[ty: (ty + th), tx: (tx + tw)] = p
 
-                image_i = Image.fromarray(rescale_array(image_b[bidx], 0, 1).transpose(1, 2, 0), "RGB")
-                image_i.save(os.path.join(res_dir, f"{tid}_{bidx}_img.png"))
-
-                label_i = Image.fromarray(p).convert("RGB")
-                label_i.save(os.path.join(res_dir, f"{tid}_{bidx}_lab.png"))
+                # image_i = Image.fromarray(rescale_array(image_b[bidx], 0, 1).transpose(1, 2, 0), "RGB")
+                # image_i.save(os.path.join(res_dir, f"{tid}_{bidx}_img.png"))
+                #
+                # label_i = Image.fromarray(p).convert("RGB")
+                # label_i.save(os.path.join(res_dir, f"{tid}_{bidx}_lab.png"))
 
         completed[tid] = 1
         logger.error(f"Current: {tid}; Device: {device}; Completed: {sum(completed)} / {len(completed)}")
 
     logger.error(f"Total Tasks: {len(infer_tasks)}")
-    multi_thread = False
     if multi_thread:
         with ThreadPoolExecutor(max_workers=4, thread_name_prefix="Infer") as executor:
             executor.map(run_task, infer_tasks)
@@ -343,11 +294,11 @@ def infer_wsi(app):
             run_task(t)
 
     logger.error("Infer Time Taken: {:.4f}".format(time.time() - start))
-    label_file = os.path.join(root_dir, "label.tif")
+    label_file = os.path.join(root_dir, get_basename(image).replace(file_ext(image), ".tif"))
 
-    logger.error("Saving Label PNG")
-    img = Image.fromarray(label_np).convert("RGB")
-    img.save(os.path.join(root_dir, "label.png"))
+    # logger.error("Saving Label PNG")
+    # img = Image.fromarray(label_np).convert("RGB")
+    # img.save(os.path.join(root_dir, "label.png"))
 
     logger.error(f"Creating Label: {label_file}")
     linear = label_np.reshape(-1)
