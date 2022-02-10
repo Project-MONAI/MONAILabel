@@ -60,11 +60,16 @@ sudo service orthanc restart
 
 - Download and Install Orthanc from https://www.orthanc-server.com/download.php
 
-## Converting NIFTI to DICOM
+## Converting NIFTI images to DICOM
 
 ```shell
 plastimatch convert --patient-id patient1 --input image.nii.gz --output-dicom test 
 ```
+
+## Converting NIFTI Annotations to DICOM-SEG
+
+If you'd like to upload image annotations to the DICOMWeb server (i.e. Orthanc), you should use DICOM-SEG. For that you could use itk tools such as `itkimage2segimage` (https://qiicr.gitbook.io/dcmqi-guide/opening/cmd_tools/seg/itkimage2segimage) or upload both image and mask in 3DSlicer and save them in DICOM/DICOM-SEG.  
+
 
 ## Uploading DICOM to Orthanc
 
