@@ -13,9 +13,10 @@ import logging
 
 import numpy as np
 from monai.config import KeysCollection
-from monai.transforms import CenterSpatialCrop, MapTransform, RandomizableTransform
+from monai.transforms import CenterSpatialCrop, MapTransform
 from PIL import Image
-from torchvision.transforms import ColorJitter
+from skimage.filters.thresholding import threshold_otsu
+from skimage.morphology import remove_small_holes, remove_small_objects
 
 logger = logging.getLogger(__name__)
 
@@ -31,62 +32,6 @@ class LoadImagePatchd(MapTransform):
         return d
 
 
-# You can write your transforms here... which can be used in your train/infer tasks
-class ImageToNumpyd(MapTransform, RandomizableTransform):
-    def __init__(
-        self,
-        keys: KeysCollection,
-        jitter=True,
-        flip=False,
-        rotate=False,
-        normalize=True,
-        brightness=64.0 / 255.0,
-        contrast=0.75,
-        saturation=0.25,
-        hue=0.04,
-        label_key="label",
-    ):
-        super().__init__(keys)
-
-        self.jitter = jitter
-        self.flip = flip
-        self.rotate = rotate
-        self.normalize = normalize
-
-        self.label_key = label_key
-        self.color_jitter = ColorJitter(brightness=brightness, contrast=contrast, saturation=saturation, hue=hue)
-
-    def __call__(self, data):
-        d = dict(data)
-        flip_right = self.R.uniform()
-        num_rotate = self.R.randint(low=0, high=4)
-
-        for key in self.keys:
-            img = Image.open(d[key]) if isinstance(d[key], str) else d[key]
-
-            # jitter (image only)
-            if self.jitter and key != self.label_key:
-                img = self.color_jitter(img)
-
-            # flip
-            if self.flip and flip_right > 0.5:
-                img = img.transpose(Image.FLIP_LEFT_RIGHT)
-
-            # rotate
-            if self.rotate:
-                img = img.rotate(90 * num_rotate)
-
-            # to numpy
-            img = np.array(img, dtype=np.float32)
-            img = img.transpose((2, 0, 1)) if len(img.shape) == 3 else img
-
-            # normalize (image only)
-            if self.normalize and key != self.label_key:
-                img = (img - 128.0) / 128.0
-            d[key] = img
-        return d
-
-
 class LabelToChanneld(MapTransform):
     def __init__(self, keys: KeysCollection, labels):
         super().__init__(keys)
@@ -98,10 +43,8 @@ class LabelToChanneld(MapTransform):
             mask = d[key]
             img = np.zeros((len(self.labels), mask.shape[0], mask.shape[1]))
 
-            count = 0
-            for idx in self.labels:
+            for count, idx in enumerate(self.labels):
                 img[count, mask == idx] = 1
-                count += 1
             d[key] = img
         return d
 
@@ -118,4 +61,73 @@ class ClipBorderd(MapTransform):
             roi_size = (img.shape[-2] - self.border * 2, img.shape[-1] - self.border * 2)
             crop = CenterSpatialCrop(roi_size=roi_size)
             d[key] = crop(img)
+        return d
+
+
+class FilterImaged(MapTransform):
+    def __init__(self, keys: KeysCollection):
+        super().__init__(keys)
+
+    def __call__(self, data):
+        d = dict(data)
+        for key in self.keys:
+            img = d[key]
+
+            # rgb = img
+            # tolerance = 30
+            # rg_diff = abs(rgb[:, :, 0] - rgb[:, :, 1]) <= tolerance
+            # rb_diff = abs(rgb[:, :, 0] - rgb[:, :, 2]) <= tolerance
+            # gb_diff = abs(rgb[:, :, 1] - rgb[:, :, 2]) <= tolerance
+            # mask = ~(rg_diff & rb_diff & gb_diff)
+
+            mask = np.dot(img[..., :3], [0.2125, 0.7154, 0.0721]).astype(np.uint8)
+            mask = 255 - mask
+            mask = mask > threshold_otsu(mask)
+
+            mask = remove_small_objects(mask)
+            mask = remove_small_holes(mask)
+
+            img = img * np.dstack([mask, mask, mask])
+            d[key] = img
+        return d
+
+
+class FilterImaged(MapTransform):
+    def __init__(self, keys: KeysCollection):
+        super().__init__(keys)
+
+    def __call__(self, data):
+        d = dict(data)
+        for key in self.keys:
+            img = d[key]
+
+            # rgb = img
+            # tolerance = 30
+            # rg_diff = abs(rgb[:, :, 0] - rgb[:, :, 1]) <= tolerance
+            # rb_diff = abs(rgb[:, :, 0] - rgb[:, :, 2]) <= tolerance
+            # gb_diff = abs(rgb[:, :, 1] - rgb[:, :, 2]) <= tolerance
+            # mask = ~(rg_diff & rb_diff & gb_diff)
+
+            mask = np.dot(img[..., :3], [0.2125, 0.7154, 0.0721]).astype(np.uint8)
+            mask = 255 - mask
+            mask = mask > threshold_otsu(mask)
+
+            mask = remove_small_objects(mask)
+            mask = remove_small_holes(mask)
+
+            img = img * np.dstack([mask, mask, mask])
+            d[key] = img
+        return d
+
+
+class NormalizeImaged(MapTransform):
+    def __init__(self, keys: KeysCollection):
+        super().__init__(keys)
+
+    def __call__(self, data):
+        d = dict(data)
+        for key in self.keys:
+            img = d[key]
+            img = (img - 128.0) / 128.0
+            d[key] = img.astype(np.float32)
         return d

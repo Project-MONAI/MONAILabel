@@ -125,7 +125,7 @@ def main():
     os.putenv("MASTER_PORT", "1234")
 
     logging.basicConfig(
-        level=logging.ERROR,
+        level=logging.INFO,
         format="[%(asctime)s] [%(process)s] [%(threadName)s] [%(levelname)s] (%(name)s:%(lineno)d) - %(message)s",
         datefmt="%Y-%m-%d %H:%M:%S",
     )
@@ -142,7 +142,7 @@ def main():
     }
 
     app = MyApp(app_dir, studies, conf)
-    run_train = False
+    run_train = True
     if run_train:
         app.train(
             request={
@@ -202,7 +202,7 @@ def infer_wsi(app):
     # image = "/local/sachi/Data/Pathology/Camelyon/79397/training/images/tumor/tumor_001.tif"
 
     task = app._infers.get("segmentation")
-    #task.sliding_window = False
+    # task.sliding_window = False
 
     for device in devices:
         if task._get_network(device):
@@ -249,7 +249,7 @@ def infer_wsi(app):
             image_np = np.array(region_rgb, np.uint8)
             if image_np.shape[0] != patch_size[0] or image_np.shape[1] != patch_size[1]:
                 background = np.zeros((patch_size[0], patch_size[1], 3), dtype=image_np.dtype)
-                background[0: image_np.shape[0], 0: image_np.shape[1]] = image_np
+                background[0 : image_np.shape[0], 0 : image_np.shape[1]] = image_np
                 padded.append(image_np.shape[:2])
                 image_np = background
             else:
@@ -274,7 +274,7 @@ def infer_wsi(app):
                 if padded[bidx]:
                     ox, oy = padded[bidx]
                     p = p[0:ox, 0:oy]
-                label_np[ty: (ty + th), tx: (tx + tw)] = p
+                label_np[ty : (ty + th), tx : (tx + tw)] = p
 
                 # image_i = Image.fromarray(rescale_array(image_b[bidx], 0, 1).transpose(1, 2, 0), "RGB")
                 # image_i.save(os.path.join(res_dir, f"{tid}_{bidx}_img.png"))

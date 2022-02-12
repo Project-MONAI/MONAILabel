@@ -20,12 +20,12 @@ from monai.losses import DiceLoss
 from monai.transforms import (
     Activationsd,
     AsDiscreted,
+    BorderPadd,
     EnsureChannelFirstd,
     EnsureTyped,
     LoadImaged,
     RandRotate90d,
     RandSpatialCropSamplesd,
-    ScaleIntensityd,
     ToNumpyd,
     TorchVisiond,
     ToTensord,
@@ -34,7 +34,7 @@ from monai.transforms import (
 from monailabel.tasks.train.basic_train import BasicTrainTask, Context
 
 from .handlers import TensorBoardImageHandler
-from .transforms import ClipBorderd, LabelToChanneld
+from .transforms import ClipBorderd, FilterImaged, LabelToChanneld, NormalizeImaged
 
 logger = logging.getLogger(__name__)
 
@@ -68,22 +68,25 @@ class MyTrain(BasicTrainTask):
     def train_pre_transforms(self, context: Context):
         return [
             LoadImaged(keys=("image", "label"), dtype=np.uint8),
+            FilterImaged(keys="image"),
             EnsureChannelFirstd(keys="image"),
             LabelToChanneld(keys="label", labels=self.labels),
             ClipBorderd(keys=("image", "label"), border=100),
+            BorderPadd(keys=("image", "label"), spatial_border=100),
             ToTensord(keys="image"),
             TorchVisiond(
                 keys="image", name="ColorJitter", brightness=64.0 / 255.0, contrast=0.75, saturation=0.25, hue=0.04
             ),
             ToNumpyd(keys="image"),
-            ScaleIntensityd(keys=("image", "label")),
             RandSpatialCropSamplesd(
                 keys=("image", "label"),
                 roi_size=self.patch_size,
+                random_center=True,
                 random_size=False,
                 num_samples=self.num_samples,
             ),
             RandRotate90d(keys=("image", "label"), prob=0.5, spatial_axes=(0, 1)),
+            NormalizeImaged(keys="image"),
             EnsureTyped(keys=("image", "label")),
         ]
 
