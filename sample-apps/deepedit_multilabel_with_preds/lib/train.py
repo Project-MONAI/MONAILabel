@@ -42,7 +42,7 @@ from .transforms import (
     AddGuidanceSignalAndPredsd,
     AddRandomGuidanceCustomd,
     FindDiscrepancyRegionsCustomd,
-    NormalizeLabelsDatasetd,
+    NormalizeLabelsInDatasetd,
 )
 
 logger = logging.getLogger(__name__)
@@ -102,7 +102,7 @@ class MyTrain(BasicTrainTask):
     def train_pre_transforms(self, context: Context):
         return [
             LoadImaged(keys=("image", "label"), reader="ITKReader"),
-            NormalizeLabelsDatasetd(keys="label", label_names=self.label_names),
+            NormalizeLabelsInDatasetd(keys="label", label_names=self.label_names),
             AddChanneld(keys=("image", "label")),
             Orientationd(keys=["image", "label"], axcodes="RAS"),
             # This transform may not work well for MR images
@@ -165,7 +165,7 @@ class MyTrain(BasicTrainTask):
     def val_pre_transforms(self, context: Context):
         return [
             LoadImaged(keys=("image", "label"), reader="ITKReader"),
-            NormalizeLabelsDatasetd(keys="label", label_names=self.label_names),
+            NormalizeLabelsInDatasetd(keys="label", label_names=self.label_names),
             AddChanneld(keys=("image", "label")),
             Orientationd(keys=["image", "label"], axcodes="RAS"),
             # This transform may not work well for MR images

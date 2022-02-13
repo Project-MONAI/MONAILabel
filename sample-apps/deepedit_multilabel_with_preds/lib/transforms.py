@@ -26,7 +26,7 @@ logger = logging.getLogger(__name__)
 # You can write your transforms here... which can be used in your train/infer tasks
 
 
-class NormalizeLabelsDatasetd(MapTransform):
+class NormalizeLabelsInDatasetd(MapTransform):
     def __init__(
         self,
         keys: KeysCollection,
@@ -34,7 +34,7 @@ class NormalizeLabelsDatasetd(MapTransform):
         allow_missing_keys: bool = False,
     ):
         """
-        Select labels according to label names dictionary
+        Normalize label values according to label names dictionary
 
         :param keys: The ``keys`` parameter will be used to get and set the actual data item to transform
         :param label_names: all label names
