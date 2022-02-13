@@ -105,15 +105,15 @@ class MyTrain(BasicTrainTask):
             NormalizeLabelsDatasetd(keys="label", label_names=self.label_names),
             AddChanneld(keys=("image", "label")),
             Orientationd(keys=["image", "label"], axcodes="RAS"),
-            # This transform may not work well for MR images
-            ScaleIntensityRanged(
-                keys="image",
-                a_min=-175,
-                a_max=250,
-                b_min=0.0,
-                b_max=1.0,
-                clip=True,
-            ),
+            # # This transform may not work well for MR images
+            # ScaleIntensityRanged(
+            #     keys="image",
+            #     a_min=-175,
+            #     a_max=250,
+            #     b_min=0.0,
+            #     b_max=1.0,
+            #     clip=True,
+            # ),
             RandFlipd(
                 keys=("image", "label"),
                 spatial_axis=[0],

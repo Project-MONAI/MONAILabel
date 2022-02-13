@@ -257,13 +257,13 @@ def main():
     parser.add_argument(
         "-s",
         "--studies",
-        default="/home/adp20local/Documents/Datasets/Mandible/NRRD_final",
+        default="/home/adp20local/Documents/Datasets/Mandible/NRRD_no_transplants",
     )
     parser.add_argument("-e", "--epoch", type=int, default=600)
     parser.add_argument("-l", "--lr", default=0.0001)
     parser.add_argument("-d", "--dataset", default="CacheDataset")
     parser.add_argument("-o", "--output", default="model_01")
-    parser.add_argument("-i", "--size", default="[256,256,128]")
+    parser.add_argument("-i", "--size", default="[128,128,128]")
     parser.add_argument("-b", "--batch", type=int, default=1)
     args = parser.parse_args()
 
