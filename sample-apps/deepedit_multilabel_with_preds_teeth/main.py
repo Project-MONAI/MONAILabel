@@ -283,6 +283,7 @@ def main():
     app = MyApp(app_dir, studies, conf)
     request = {
         "name": args.output,
+        "network": "unetr",
         "device": "cuda",
         "model": "deepedit_train",
         "dataset": args.dataset,
