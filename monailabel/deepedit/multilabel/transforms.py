@@ -82,7 +82,7 @@ class NormalizeLabelsInDatasetd(MapTransform):
         allow_missing_keys: bool = False,
     ):
         """
-        Normalize labels
+        Normalize label values according to label names dictionary
 
         :param keys: The ``keys`` parameter will be used to get and set the actual data item to transform
         :param label_names: all label names
@@ -93,18 +93,16 @@ class NormalizeLabelsInDatasetd(MapTransform):
 
     def __call__(self, data: Mapping[Hashable, np.ndarray]) -> Dict[Hashable, np.ndarray]:
         d: Dict = dict(data)
-        label_info = d.get("meta", {}).get("label", {}).get("label_info", [])
-        remap = {l["name"]: l["idx"] for l in label_info}
         for key in self.key_iterator(d):
             if key == "label":
+                # Dictionary containing new label numbers
                 new_label_names = dict()
                 label = np.zeros(d[key].shape)
-
                 # Making sure the range values and number of labels are the same
                 for idx, (key_label, val_label) in enumerate(self.label_names.items(), start=1):
                     if key_label != "background":
                         new_label_names[key_label] = idx
-                        label[d[key] == remap.get(key_label, val_label)] = idx
+                        label[d[key] == val_label] = idx
                     if key_label == "background":
                         new_label_names["background"] = 0
 
