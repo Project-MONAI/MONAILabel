@@ -8,8 +8,9 @@
 # WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 # See the License for the specific language governing permissions and
 # limitations under the License.
-
+import glob
 import logging
+import os
 
 import torch
 from monai.apps.deepgrow.transforms import (
@@ -53,8 +54,8 @@ class MyTrain(BasicTrainTask):
         target_spacing=(1.0, 1.0, 1.0),
         deepgrow_probability_train=0.5,
         deepgrow_probability_val=1.0,
-        max_train_interactions=20,
-        max_val_interactions=10,
+        max_train_interactions=10,
+        max_val_interactions=5,
         debug_mode=False,
         **kwargs,
     ):
@@ -165,3 +166,19 @@ class MyTrain(BasicTrainTask):
         if self.debug_mode and context.local_rank == 0:
             handlers.append(TensorBoardImageHandler(log_dir=context.events_dir))
         return handlers
+
+    def partition_datalist(self, context: Context, shuffle=False):
+        # Training images
+        train_d = context.datalist
+
+        # Validation images
+        data_dir = "/home/adp20local/Documents/Datasets/monailabel_datasets/Slicer/spleen/validation_imgs"
+        val_images = sorted(glob.glob(os.path.join(data_dir, "imagesTr", "*.nii.gz")))
+        val_labels = sorted(glob.glob(os.path.join(data_dir, "labelsTr", "*.nii.gz")))
+        val_d = [{"image": image_name, "label": label_name} for image_name, label_name in zip(val_images, val_labels)]
+
+        if context.local_rank == 0:
+            logger.info(f"Total Records for Training: {len(train_d)}")
+            logger.info(f"Total Records for Validation: {len(val_d)}")
+
+        return train_d, val_d

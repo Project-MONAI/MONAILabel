@@ -216,11 +216,13 @@ def main():
 
     parser = argparse.ArgumentParser()
     parser.add_argument("-n", "--network", default="dynunet", choices=["unet", "dynunet"])
-    parser.add_argument("-s", "--studies", default="/local/sachi/Datasets/Task09_Spleen/imagesTr")
+    parser.add_argument(
+        "-s", "--studies", default="/home/adp20local/Documents/Datasets/monailabel_datasets/Slicer/spleen/train"
+    )
     parser.add_argument("-e", "--epoch", type=int, default=100)
     parser.add_argument("-d", "--dataset", default="CacheDataset")
     parser.add_argument("-o", "--output", default="model_01")
-    parser.add_argument("-i", "--size", default="[256,256,128]")
+    parser.add_argument("-i", "--size", default="[128,128,128]")
     parser.add_argument("-b", "--batch", type=int, default=1)
     args = parser.parse_args()
 
