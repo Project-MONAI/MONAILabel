@@ -610,7 +610,6 @@ class AddRandomGuidanceCustomd(Randomizable, MapTransform):
 
             # Checking the number of clicks
             num_clicks = random.randint(1, 10)
-            logger.info(f"Number of simulated clicks: {num_clicks}")
             counter = 0
             keep_guidance = []
             while True:
@@ -625,12 +624,13 @@ class AddRandomGuidanceCustomd(Randomizable, MapTransform):
                         for key_label in d["label_names"].keys():
                             if key_label not in keep_guidance:
                                 self.tmp_guidance[key_label] = []
+                        logger.info(f"Number of simulated clicks: {counter}")
                         break
 
-            # Convert tmp_guidance back to json
-            for key_label in d["label_names"].keys():
-                d[self.guidance][key_label] = json.dumps(np.asarray(self.tmp_guidance[key_label]).astype(int).tolist())
-            #
+                # Breaking once all labels are covered
+                if len(keep_guidance) == len(d["label_names"].keys()):
+                    logger.info(f"Number of simulated clicks: {counter}")
+                    break
 
         return d
 
