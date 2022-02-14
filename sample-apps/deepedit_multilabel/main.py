@@ -42,12 +42,6 @@ class MyApp(MONAILabelApp):
         # Zero values are reserved to background. Non zero values are for the labels
         self.label_names = {
             "spleen": 1,
-            "right kidney": 2,
-            "left kidney": 3,
-            "liver": 6,
-            "stomach": 7,
-            "aorta": 8,
-            "inferior vena cava": 9,
             "background": 0,
         }
 
@@ -246,7 +240,7 @@ def main():
     parser.add_argument(
         "-s",
         "--studies",
-        default="/home/adp20local/Documents/Datasets/monailabel_datasets/multilabel_abdomen/NIFTI/train",
+        default="/home/adp20local/Documents/Datasets/monailabel_datasets/Slicer/spleen/train",
     )
     parser.add_argument("-e", "--epoch", type=int, default=600)
     parser.add_argument("-l", "--lr", default=0.0001)

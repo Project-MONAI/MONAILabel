@@ -52,7 +52,7 @@ class MyApp(MONAILabelApp):
 
         # Path to pretrained weights (currently use NVIDIA Clara Spleen model)
         ngc_path = "https://api.ngc.nvidia.com/v2/models/nvidia/med/"
-        use_pretrained_model = strtobool(conf.get("use_pretrained_model", "true"))
+        use_pretrained_model = strtobool(conf.get("use_pretrained_model", "false"))
         pretrained_model_uri = conf.get(
             "pretrained_model_path", f"{ngc_path}/clara_pt_spleen_ct_segmentation/versions/1/files/models/model.pt"
         )
@@ -129,3 +129,58 @@ class MyApp(MONAILabelApp):
                 spacing=(1.0, 1.0, 1.0),
             )
         return methods
+
+
+"""
+Example to run train/infer/scoring task(s) locally without actually running MONAI Label Server
+"""
+
+
+def main():
+    import argparse
+
+    from monailabel.config import settings
+
+    settings.MONAI_LABEL_DATASTORE_AUTO_RELOAD = False
+    os.putenv("MASTER_ADDR", "127.0.0.1")
+    os.putenv("MASTER_PORT", "1234")
+
+    logging.basicConfig(
+        level=logging.INFO,
+        format="[%(asctime)s] [%(process)s] [%(threadName)s] [%(levelname)s] (%(name)s:%(lineno)d) - %(message)s",
+        datefmt="%Y-%m-%d %H:%M:%S",
+    )
+
+    parser = argparse.ArgumentParser()
+    parser.add_argument(
+        "-s", "--studies", default="/home/adp20local/Documents/Datasets/monailabel_datasets/Slicer/spleen/train"
+    )
+    parser.add_argument("-e", "--epoch", type=int, default=600)
+    parser.add_argument("-d", "--dataset", default="CacheDataset")
+    parser.add_argument("-o", "--output", default="model_01")
+    parser.add_argument("-i", "--size", default="[128,128,128]")
+    parser.add_argument("-b", "--batch", type=int, default=1)
+    args = parser.parse_args()
+
+    app_dir = os.path.dirname(__file__)
+    studies = args.studies
+    conf = {
+        "use_pretrained_model": "false",
+        "spatial_size": args.size,
+    }
+
+    app = MyApp(app_dir, studies, conf)
+    app.train(
+        request={
+            "name": args.output,
+            "model": "segmentation",
+            "max_epochs": args.epoch,
+            "dataset": args.dataset,
+            "train_batch_size": args.batch,
+            "multi_gpu": False,
+        }
+    )
+
+
+if __name__ == "__main__":
+    main()
