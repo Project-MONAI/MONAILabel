@@ -16,9 +16,9 @@ import pathlib
 import cv2
 import numpy as np
 import openslide
-from PIL import Image
 from monai.config import KeysCollection
 from monai.transforms import CenterSpatialCrop, MapTransform
+from PIL import Image
 from skimage.filters.thresholding import threshold_otsu
 from skimage.morphology import remove_small_objects
 
@@ -26,8 +26,9 @@ logger = logging.getLogger(__name__)
 
 
 class LoadImagePatchd(MapTransform):
-    def __init__(self, keys: KeysCollection, meta_key_postfix: str = "meta_dict", conversion="RGB", dtype=np.uint8,
-                 padding=True):
+    def __init__(
+        self, keys: KeysCollection, meta_key_postfix: str = "meta_dict", conversion="RGB", dtype=np.uint8, padding=True
+    ):
         super().__init__(keys)
         self.meta_key_postfix = meta_key_postfix
         self.conversion = conversion
@@ -68,7 +69,7 @@ class LoadImagePatchd(MapTransform):
 
             if self.padding and image_np.shape[0] != size[0] or image_np.shape[1] != size[1]:
                 image_padded = np.zeros((size[0], size[1], 3), dtype=image_np.dtype)
-                image_padded[0: image_np.shape[0], 0: image_np.shape[1]] = image_np
+                image_padded[0 : image_np.shape[0], 0 : image_np.shape[1]] = image_np
                 image_np = image_padded
             d[key] = image_np
 
@@ -119,15 +120,17 @@ class FilterImaged(MapTransform):
             mask_percentage = 100 - np.count_nonzero(img_np) / img_np.size * 100
         return mask_percentage
 
-    def filter_green_channel(self, img_np, green_thresh=200, avoid_overmask=True, overmask_thresh=90,
-                             output_type="bool"):
+    def filter_green_channel(
+        self, img_np, green_thresh=200, avoid_overmask=True, overmask_thresh=90, output_type="bool"
+    ):
         g = img_np[:, :, 1]
         gr_ch_mask = (g < green_thresh) & (g > 0)
         mask_percentage = self.mask_percent(gr_ch_mask)
         if (mask_percentage >= overmask_thresh) and (green_thresh < 255) and (avoid_overmask is True):
             new_green_thresh = math.ceil((255 - green_thresh) / 2 + green_thresh)
-            gr_ch_mask = self.filter_green_channel(img_np, new_green_thresh, avoid_overmask, overmask_thresh,
-                                                   output_type)
+            gr_ch_mask = self.filter_green_channel(
+                img_np, new_green_thresh, avoid_overmask, overmask_thresh, output_type
+            )
         return gr_ch_mask
 
     def filter_grays(self, rgb, tolerance=15):
@@ -198,8 +201,15 @@ class PostFilterLabeld(MapTransform):
 
 
 class FindContoursd(MapTransform):
-    def __init__(self, keys: KeysCollection, min_positive=100, min_poly_size=20, result="result", bbox="bbox",
-                 contours="contours"):
+    def __init__(
+        self,
+        keys: KeysCollection,
+        min_positive=100,
+        min_poly_size=20,
+        result="result",
+        bbox="bbox",
+        contours="contours",
+    ):
         super().__init__(keys)
 
         self.min_positive = min_positive

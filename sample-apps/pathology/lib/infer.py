@@ -12,16 +12,11 @@ import logging
 
 import numpy as np
 from monai.inferers import SimpleInferer, SlidingWindowInferer
-from monai.transforms import (
-    Activationsd,
-    AsDiscreted,
-    EnsureChannelFirstd,
-    EnsureTyped,
-    SqueezeDimd, ToNumpyd,
-)
+from monai.transforms import Activationsd, AsDiscreted, EnsureChannelFirstd, EnsureTyped, SqueezeDimd, ToNumpyd
 
 from monailabel.interfaces.tasks.infer import InferTask, InferType
-from .transforms import LoadImagePatchd, FilterImaged, NormalizeImaged, PostFilterLabeld, FindContoursd
+
+from .transforms import FilterImaged, FindContoursd, LoadImagePatchd, NormalizeImaged, PostFilterLabeld
 
 logger = logging.getLogger(__name__)
 
@@ -53,10 +48,12 @@ class MyInfer(InferTask):
 
     def config(self):
         c = super().config()
-        c.update({
-            "roi_size": self.roi_size,
-            "sw_batch_size": 2,
-        })
+        c.update(
+            {
+                "roi_size": self.roi_size,
+                "sw_batch_size": 2,
+            }
+        )
         return c
 
     def pre_transforms(self, data):

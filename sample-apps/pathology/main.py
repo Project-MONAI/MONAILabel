@@ -8,19 +8,20 @@
 # WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 # See the License for the specific language governing permissions and
 # limitations under the License.
+import copy
 import json
 import logging
 import os
 import shutil
+import tempfile
 import time
-from concurrent.futures import ThreadPoolExecutor
 from math import ceil
 from typing import Dict
 
 import openslide
+from lib import MyInfer, MyTrain
 from monai.networks.nets import BasicUNet, UNet
 
-from lib import MyInfer, MyTrain
 from monailabel.interfaces.app import MONAILabelApp
 from monailabel.interfaces.tasks.infer import InferTask
 from monailabel.interfaces.tasks.train import TrainTask
@@ -104,6 +105,136 @@ class MyApp(MONAILabelApp):
             )
         }
 
+    def infer(self, request, datastore=None):
+        request = copy.deepcopy(request)
+        image = request["image"]
+        if not os.path.exists(image):
+            datastore = datastore if datastore else self.datastore()
+            image = datastore.get_image_uri(request["image"])
+
+        start = time.time()
+        logger.error(f"Input WSI Image: {image}")
+        infer_tasks = self._create_tasks(request, image)
+        logger.error(f"Total Tasks: {len(infer_tasks)}")
+
+        results = []
+        for t in infer_tasks:
+            tid = t["id"]
+            res = self._run_task(t)
+            results.append(res)
+            logger.error(f"{tid} => Completed: {len(results)} / {len(infer_tasks)}; Latencies: {res['latencies']}")
+
+        logger.error("Infer Time Taken: {:.4f}".format(time.time() - start))
+        res_json = {tid: v for tid, v in enumerate(results) if v and v.get("contours")}
+
+        res_xml = self._convert_to_xml(res_json)
+        logger.error("Total Time Taken: {:.4f}".format(time.time() - start))
+        return {"file": res_xml, "params": res_json}
+
+    def _run_task(self, task):
+        tid = task["id"]
+        (row, col, tx, ty, tw, th) = task["coords"]
+        logger.info(f"{tid} => Patch/Slide ({row}, {col}) => Top: ({tx}, {ty}); Size: {tw} x {th}")
+
+        req = {
+            "model": task["model"],
+            "image": task["image"],
+            "device": task.get("device", "cuda"),
+            "wsi": {"location": (tx, ty), "level": task["level"], "size": (tw, th)},
+            "roi_size": task["patch_size"],
+            "result_write_to_file": False,
+            "result_extension": ".png",
+        }
+
+        res = super().infer(req)
+        if res.get("params") and res["params"].get("contours"):
+            return {
+                "bbox": res["params"]["bbox"],
+                "contours": res["params"]["contours"],
+                "latencies": res["params"]["latencies"],
+            }
+        return {"latencies": res["params"]["latencies"]}
+
+    def _pt_in_roi(self, p, bbox):
+        return p[0] >= bbox[0][0] and p[0] <= bbox[1][0] and p[1] >= bbox[0][1] and p[1] < bbox[1][0]
+
+    def _create_tasks(self, request, image):
+        patch_size = request.get("patch_size", (2048, 2048))
+        roi = request.get("roi", None)
+        level = request.get("level", 0)
+
+        with openslide.OpenSlide(image) as slide:
+            w, h = slide.dimensions
+        logger.error(f"Input WSI Image Dimensions: ({w} x {h})")
+
+        cols = ceil(w / patch_size[0])  # COL
+        rows = ceil(h / patch_size[1])  # ROW
+
+        logger.error(f"Total Patches to infer {rows} x {cols}: {rows * cols}")
+
+        infer_tasks = []
+        count = 0
+        tw, th = patch_size[0], patch_size[1]
+        for row in range(rows):
+            for col in range(cols):
+                tx = col * tw
+                ty = row * th
+                # TODO:: Improve ROI specific sliding
+                if (
+                    roi
+                    and not self._pt_in_roi((tx, ty), roi)
+                    and not self._pt_in_roi((tx + tw, ty), roi)
+                    and not self._pt_in_roi((tx, ty + th), roi)
+                    and not self._pt_in_roi((tx + tw, ty + th), roi)
+                ):
+                    continue
+
+                task = copy.deepcopy(request)
+                task.update(
+                    {
+                        "id": count,
+                        "image": image,
+                        "level": level,
+                        "patch_size": patch_size,
+                        "coords": (row, col, tx, ty, tw, th),
+                    }
+                )
+                infer_tasks.append(task)
+                count += 1
+        return infer_tasks
+
+    def _convert_to_xml(self, data):
+        count = 0
+        label_xml = tempfile.NamedTemporaryFile(suffix=".xml").name
+        with open(label_xml, "w") as fp:
+            fp.write('<?xml version="1.0"?>\n')
+            fp.write("<ASAP_Annotations>\n")
+            fp.write("  <Annotations>\n")
+            for k, v in data.items():
+                contours = v["contours"]
+                for count, contour in enumerate(contours):
+                    fp.write(
+                        '    <Annotation Name="Tumor" Type="Polygon" PartOfGroup="Tumor" Color="#F4FA58">\n'.format(
+                            k, count
+                        )
+                    )
+                    fp.write("      <Coordinates>\n")
+                    for pcount, point in enumerate(contour):
+                        fp.write('        <Coordinate Order="{}" X="{}" Y="{}" />\n'.format(pcount, point[0], point[1]))
+                    fp.write("      </Coordinates>\n")
+                    count += 1
+                    fp.write("    </Annotation>\n")
+            fp.write("  </Annotations>\n")
+            fp.write("  <AnnotationGroups>\n")
+            fp.write('    <Group Name="Tumor" PartOfGroup="None" Color="#00ff00">\n')
+            fp.write("      <Attributes />\n")
+            fp.write("    </Group>\n")
+            fp.write("  </AnnotationGroups>\n")
+            fp.write("</ASAP_Annotations>\n")
+
+        logger.error(f"Total Polygons: {count}")
+        return label_xml
+
 
 """
 Example to run train/infer/scoring task(s) locally without actually running MONAI Label Server
@@ -116,7 +247,7 @@ def main():
     from monailabel.config import settings
 
     settings.MONAI_LABEL_DATASTORE_AUTO_RELOAD = False
-    settings.MONAI_LABEL_DATASTORE_FILE_EXT = ["*.png"]
+    settings.MONAI_LABEL_DATASTORE_FILE_EXT = ["*.svs"]
     os.putenv("MASTER_ADDR", "127.0.0.1")
     os.putenv("MASTER_PORT", "1234")
 
@@ -127,7 +258,7 @@ def main():
     )
 
     parser = argparse.ArgumentParser()
-    parser.add_argument("-s", "--studies", default="/local/sachi/Data/Pathology/BCSS/images")
+    parser.add_argument("-s", "--studies", default="/local/sachi/Data/Pathology/BCSS/wsis")
     args = parser.parse_args()
 
     app_dir = os.path.dirname(__file__)
@@ -153,8 +284,26 @@ def main():
             }
         )
     else:
-        # infer_roi(args, app)
-        infer_wsi(app)
+        root_dir = "/local/sachi/Data/Pathology/BCSS"
+        image = "TCGA-OL-A5RW-01Z-00-DX1.E16DE8EE-31AF-4EAF-A85F-DB3E3E2C3BFF"
+        res = app.infer(
+            request={
+                "model": "segmentation",
+                "image": image,
+                "level": 0,
+                "patch_size": (4096, 4096),
+                "roi": ((5000, 5000), (9000, 9000)),
+            }
+        )
+
+        label_json = os.path.join(root_dir, f"{image}.json")
+        logger.error(f"Writing Label JSON: {label_json}")
+        with open(label_json, "w") as fp:
+            json.dump(res["params"], fp, indent=2)
+
+        label_xml = os.path.join(root_dir, f"{image}.xml")
+        shutil.copy(res["file"], label_xml)
+        logger.error(f"Saving Label XML: {label_xml}")
 
 
 def infer_roi(args, app):
@@ -181,134 +330,6 @@ def infer_roi(args, app):
 
         shutil.copy(o, f"/local/sachi/Downloads/predicated{ext}")
         return
-
-
-def infer_wsi(app, image=None, level=0, patch_size=(4096, 4096), roi=((5000, 5000), (9000, 9000)), multi_thread=0):
-    root_dir = "/local/sachi/Data/Pathology/BCSS"
-    image = image if image else f"{root_dir}/wsis/TCGA-OL-A5RW-01Z-00-DX1.E16DE8EE-31AF-4EAF-A85F-DB3E3E2C3BFF.svs"
-
-    logger.error(f"Input WSI Image: {image}")
-    start = time.time()
-
-    with openslide.OpenSlide(image) as slide:
-        w, h = slide.dimensions
-    logger.error(f"Input WSI Image Dimensions: ({w} x {h})")
-
-    t_cols = ceil(w / patch_size[0])  # COL
-    t_rows = ceil(h / patch_size[1])  # ROW
-
-    logger.error(f"Total Patches to infer {t_rows} x {t_cols}: {t_rows * t_cols}")
-    infer_tasks = create_tasks(t_rows, t_cols, patch_size, roi)
-    completed = [0] * len(infer_tasks)
-    res_json = [None] * len(infer_tasks)
-
-    infer_task = app._infers.get("segmentation")
-    for device in ["cuda"]:
-        if infer_task._get_network(device):
-            logger.error(f"Model Loaded into {device}")
-        else:
-            logger.error(f"Model Not Loaded into {device}... can't run in parallel")
-            return
-
-    def run_task(task):
-        tid = task["id"]
-        (row, col, tx, ty, tw, th) = task["coords"]
-        dev = task["device"]
-
-        logger.info(f"{tid} => Patch/Slide ({row}, {col}) => Top: ({tx}, {ty}); Size: {tw} x {th}")
-        data = {
-            "model": "segmentation",
-            "image": image,
-            "device": dev,
-            "wsi": {
-                "location": (tx, ty),
-                "level": level,
-                "size": (tw, th)
-            },
-            "roi_size": patch_size,
-            "result_write_to_file": False,
-            "result_extension": ".png"
-        }
-
-        res = app.infer(data)
-        if res.get("params") and res["params"].get("contours"):
-            res_json[tid] = {"bbox": res["params"]["bbox"], "contours": res["params"]["contours"]}
-        completed[tid] = 1
-        logger.error(
-            f"Current: {tid}; Device: {device}; Completed: {sum(completed)} / {len(completed)}; Latencies: {res['params']['latencies']}")
-
-    logger.error(f"Total Tasks: {len(infer_tasks)}")
-    if multi_thread:
-        with ThreadPoolExecutor(max_workers=4, thread_name_prefix="Infer") as executor:
-            executor.map(run_task, infer_tasks)
-    else:
-        for t in infer_tasks:
-            run_task(t)
-
-    logger.error("Infer Time Taken: {:.4f}".format(time.time() - start))
-
-    label_json = os.path.join(root_dir, get_basename(image).replace(".svs", ".tif").replace(".tif", ".json"))
-    logger.error(f"Writing Label JSON: {label_json}")
-    with open(label_json, "w") as fp:
-        json.dump({tid: v for tid, v in enumerate(res_json) if v}, fp, indent=2)
-
-    convert_to_xml(label_json)
-    logger.error("Total Time Taken: {:.4f}".format(time.time() - start))
-
-
-def point_in_roi(p, bbox):
-    return p[0] >= bbox[0][0] and p[0] <= bbox[1][0] and p[1] >= bbox[0][1] and p[1] < bbox[1][0]
-
-
-def create_tasks(rows, cols, patch_size, roi=None):
-    infer_tasks = []
-    count = 0
-    tw, th = patch_size[0], patch_size[1]
-    for row in range(rows):
-        for col in range(cols):
-            tx = col * tw
-            ty = row * th
-            if roi and not point_in_roi((tx, ty), roi) and not point_in_roi((tx + tw, ty), roi) and not point_in_roi(
-                    (tx, ty + th), roi) and not point_in_roi((tx + tw, ty + th), roi):
-                continue
-
-            infer_tasks.append({"id": count, "coords": (row, col, tx, ty, tw, th), "device": "cuda"})
-            count += 1
-    return infer_tasks
-
-
-def convert_to_xml(label_json):
-    with open(label_json, "r") as fp:
-        data = json.load(fp)
-
-    label_xml = label_json.replace(".json", ".xml")
-    logger.error(f"Writing Label XML: {label_xml}")
-
-    count = 0
-    with open(label_xml, "w") as fp:
-        fp.write('<?xml version="1.0"?>\n')
-        fp.write('<ASAP_Annotations>\n')
-        fp.write('  <Annotations>\n')
-        for k, v in data.items():
-            contours = v["contours"]
-            for count, contour in enumerate(contours):
-                fp.write('    <Annotation Name="Tumor" Type="Polygon" PartOfGroup="Tumor" Color="#F4FA58">\n'.format(
-                    k, count))
-                fp.write('      <Coordinates>\n')
-                for pcount, point in enumerate(contour):
-                    fp.write('        <Coordinate Order="{}" X="{}" Y="{}" />\n'.format(pcount, point[0], point[1]))
-                fp.write('      </Coordinates>\n')
-                count += 1
-                fp.write('    </Annotation>\n')
-        fp.write('  </Annotations>\n')
-        fp.write('  <AnnotationGroups>\n')
-        fp.write('    <Group Name="Tumor" PartOfGroup="None" Color="#00ff00">\n')
-        fp.write('      <Attributes />\n')
-        fp.write('    </Group>\n')
-        fp.write('  </AnnotationGroups>\n')
-        fp.write('</ASAP_Annotations>\n')
-
-    logger.error(f"Total Polygons: {count}")
 
 
 if __name__ == "__main__":
