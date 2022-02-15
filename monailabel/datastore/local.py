@@ -26,7 +26,7 @@ from watchdog.observers import Observer
 
 from monailabel.interfaces.datastore import Datastore, DefaultLabelTag
 from monailabel.interfaces.exception import ImageNotFoundException, LabelNotFoundException
-from monailabel.utils.others.generic import file_checksum, remove_file
+from monailabel.utils.others.generic import file_checksum, remove_file, file_ext
 
 logger = logging.getLogger(__name__)
 
@@ -211,7 +211,7 @@ class LocalDatastore(Datastore):
         self._update_datastore_file()
 
     def _to_id(self, file: str) -> Tuple[str, str]:
-        ext = ""
+        ext = file_ext(file)
         extensions = [e.replace("*", "") for e in self._extensions]
         for e in extensions:
             if file.endswith(e):
