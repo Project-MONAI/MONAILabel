@@ -137,7 +137,7 @@ class InferTask:
         return None
 
     @abstractmethod
-    def pre_transforms(self):
+    def pre_transforms(self, data):
         """
         Provide List of pre-transforms
 
@@ -154,7 +154,7 @@ class InferTask:
         """
         pass
 
-    def inverse_transforms(self):
+    def inverse_transforms(self, data):
         """
         Provide List of inverse-transforms.  They are normally subset of pre-transforms.
         This task is performed on output_label (using the references from input_key)
@@ -174,7 +174,7 @@ class InferTask:
         return None
 
     @abstractmethod
-    def post_transforms(self):
+    def post_transforms(self, data):
         """
         Provide List of post-transforms
 
@@ -195,7 +195,7 @@ class InferTask:
         pass
 
     @abstractmethod
-    def inferer(self):
+    def inferer(self, data):
         """
         Provide Inferer Class
 
@@ -218,15 +218,18 @@ class InferTask:
         begin = time.time()
         req = copy.deepcopy(self._config)
         req.update(copy.deepcopy(request))
+
+        # device
+        device = req.get("device", "cuda")
+        req["device"] = device
         logger.info(f"Infer Request (final): {req}")
 
         data = copy.deepcopy(req)
         if req.get("image") and isinstance(req.get("image"), str):
             data.update({"image_path": req.get("image")})
-        device = req.get("device", "cuda")
 
         start = time.time()
-        pre_transforms = self.pre_transforms()
+        pre_transforms = self.pre_transforms(data)
         data = self.run_pre_transforms(data, pre_transforms)
         latency_pre = time.time() - start
 
@@ -235,11 +238,11 @@ class InferTask:
         latency_inferer = time.time() - start
 
         start = time.time()
-        data = self.run_invert_transforms(data, pre_transforms, self.inverse_transforms())
+        data = self.run_invert_transforms(data, pre_transforms, self.inverse_transforms(data))
         latency_invert = time.time() - start
 
         start = time.time()
-        data = self.run_post_transforms(data, self.post_transforms())
+        data = self.run_post_transforms(data, self.post_transforms(data))
         latency_post = time.time() - start
 
         start = time.time()
@@ -260,6 +263,14 @@ class InferTask:
         )
 
         result_json["label_names"] = self.labels
+        result_json["latencies"] = {
+            "pre": round(latency_pre, 2),
+            "infer": round(latency_inferer, 2),
+            "invert": round(latency_invert, 2),
+            "post": round(latency_post, 2),
+            "write": round(latency_write, 2),
+            "total": round(latency_total, 2),
+        }
 
         if result_file_name:
             logger.info("Result File: {}".format(result_file_name))
@@ -316,7 +327,7 @@ class InferTask:
             if statbuf and statbuf.st_mtime == cached[1]:
                 network = cached[0]
             elif statbuf:
-                logger.info(f"Reload model from cache.  Prev ts: {cached[1]}; Current ts: {statbuf.st_mtime}")
+                logger.warning(f"Reload model from cache.  Prev ts: {cached[1]}; Current ts: {statbuf.st_mtime}")
 
         if network is None:
             if self.network:
@@ -347,8 +358,8 @@ class InferTask:
         :return: updated data with output_key stored that will be used for post-processing
         """
 
-        inferer = self.inferer()
-        logger.info("Running Inferer:: {}".format(inferer.__class__.__name__))
+        inferer = self.inferer(data)
+        logger.info("Running Inferer:: {} => {}".format(inferer.__class__.__name__, inferer.__dict__))
 
         if device.startswith("cuda") and not torch.cuda.is_available():
             device = "cpu"
@@ -359,7 +370,7 @@ class InferTask:
             inputs = inputs if torch.is_tensor(inputs) else torch.from_numpy(inputs)
             inputs = inputs[None] if convert_to_batch else inputs
             if device.startswith("cuda"):
-                inputs = inputs.cuda(device)
+                inputs = inputs.cuda(torch.device(device))
 
             with torch.no_grad():
                 outputs = inferer(inputs, network)

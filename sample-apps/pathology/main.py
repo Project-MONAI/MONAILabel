@@ -8,6 +8,7 @@
 # WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 # See the License for the specific language governing permissions and
 # limitations under the License.
+import json
 import logging
 import os
 import shutil
@@ -16,15 +17,10 @@ from concurrent.futures import ThreadPoolExecutor
 from math import ceil
 from typing import Dict
 
-import numpy as np
 import openslide
-import pyvips
-import torch
-from lib import MyInfer, MyTrain
 from monai.networks.nets import BasicUNet, UNet
-from monai.transforms import ScaleIntensity, rescale_array
-from PIL import Image
 
+from lib import MyInfer, MyTrain
 from monailabel.interfaces.app import MONAILabelApp
 from monailabel.interfaces.tasks.infer import InferTask
 from monailabel.interfaces.tasks.train import TrainTask
@@ -125,7 +121,7 @@ def main():
     os.putenv("MASTER_PORT", "1234")
 
     logging.basicConfig(
-        level=logging.INFO,
+        level=logging.WARN,
         format="[%(asctime)s] [%(process)s] [%(threadName)s] [%(levelname)s] (%(name)s:%(lineno)d) - %(message)s",
         datefmt="%Y-%m-%d %H:%M:%S",
     )
@@ -142,7 +138,7 @@ def main():
     }
 
     app = MyApp(app_dir, studies, conf)
-    run_train = True
+    run_train = False
     if run_train:
         app.train(
             request={
@@ -159,7 +155,6 @@ def main():
     else:
         # infer_roi(args, app)
         infer_wsi(app)
-        # infer_wsi_small(app)
 
 
 def infer_roi(args, app):
@@ -188,102 +183,59 @@ def infer_roi(args, app):
         return
 
 
-def infer_wsi(app):
-    batch_size = 1
-    patch_size = (4096, 4096)
-    devices = ["cuda"]
-    level = 0
-    multi_thread = False
-
+def infer_wsi(app, image=None, level=0, patch_size=(4096, 4096), roi=((5000, 5000), (9000, 9000)), multi_thread=0):
     root_dir = "/local/sachi/Data/Pathology/BCSS"
-    image = f"{root_dir}/wsis/TCGA-OL-A5RW-01Z-00-DX1.E16DE8EE-31AF-4EAF-A85F-DB3E3E2C3BFF.svs"
-    # image = f"{root_dir}/wsis/TCGA-A7-A6VY-01Z-00-DX1.38D4EBD7-40B0-4EE3-960A-1F00E8F83ADB.svs"
-    # image = f"{root_dir}/wsis/TCGA-AC-A6IW-01Z-00-DX1.C4514189-E64F-4603-8970-230FA2BB77FC.svs"
-    # image = "/local/sachi/Data/Pathology/Camelyon/79397/training/images/tumor/tumor_001.tif"
+    image = image if image else f"{root_dir}/wsis/TCGA-OL-A5RW-01Z-00-DX1.E16DE8EE-31AF-4EAF-A85F-DB3E3E2C3BFF.svs"
 
-    task = app._infers.get("segmentation")
-    # task.sliding_window = False
+    logger.error(f"Input WSI Image: {image}")
+    start = time.time()
 
-    for device in devices:
-        if task._get_network(device):
+    with openslide.OpenSlide(image) as slide:
+        w, h = slide.dimensions
+    logger.error(f"Input WSI Image Dimensions: ({w} x {h})")
+
+    t_cols = ceil(w / patch_size[0])  # COL
+    t_rows = ceil(h / patch_size[1])  # ROW
+
+    logger.error(f"Total Patches to infer {t_rows} x {t_cols}: {t_rows * t_cols}")
+    infer_tasks = create_tasks(t_rows, t_cols, patch_size, roi)
+    completed = [0] * len(infer_tasks)
+    res_json = [None] * len(infer_tasks)
+
+    infer_task = app._infers.get("segmentation")
+    for device in ["cuda"]:
+        if infer_task._get_network(device):
             logger.error(f"Model Loaded into {device}")
         else:
             logger.error(f"Model Not Loaded into {device}... can't run in parallel")
             return
 
-    logger.error(f"Input WSIS Image: {image}")
-    slide = openslide.OpenSlide(image)
-    logger.error(f"Slide : {slide.dimensions}")
-    start = time.time()
+    def run_task(task):
+        tid = task["id"]
+        (row, col, tx, ty, tw, th) = task["coords"]
+        dev = task["device"]
 
-    w, h = slide.dimensions
-    max_w = patch_size[0]
-    max_h = patch_size[1]
+        logger.info(f"{tid} => Patch/Slide ({row}, {col}) => Top: ({tx}, {ty}); Size: {tw} x {th}")
+        data = {
+            "model": "segmentation",
+            "image": image,
+            "device": dev,
+            "wsi": {
+                "location": (tx, ty),
+                "level": level,
+                "size": (tw, th)
+            },
+            "roi_size": patch_size,
+            "result_write_to_file": False,
+            "result_extension": ".png"
+        }
 
-    tiles_i = ceil(w / max_w)  # COL
-    tiles_j = ceil(h / max_h)  # ROW
-
-    logger.error(f"Total Patches to infer {tiles_i} x {tiles_j}: {tiles_i * tiles_j}")
-    label_np = np.zeros((h, w), dtype=np.uint8)
-
-    infer_tasks, completed = create_tasks(batch_size, tiles_j, tiles_i, w, h, max_w, max_h)
-    res_dir = os.path.join(root_dir, "result")
-    os.makedirs(res_dir, exist_ok=True)
-
-    def run_task(t):
-        tid = t["id"]
-        logger.debug(f"Running task : {tid}")
-
-        device = devices[tid % len(devices)]
-        scaler = ScaleIntensity()
-
-        batches = []
-        batch_coords = []
-        padded = []
-
-        for c in t["coords"]:
-            (tj, ti, tx, ty, tw, th) = c
-            logger.debug(f"Patch/Slide ({tj}, {ti}) => Top: ({tx}, {ty}); Size: {tw} x {th}")
-
-            region_rgb = slide.read_region((tx, ty), level, (tw, th)).convert("RGB")
-            image_np = np.array(region_rgb, np.uint8)
-            if image_np.shape[0] != patch_size[0] or image_np.shape[1] != patch_size[1]:
-                background = np.zeros((patch_size[0], patch_size[1], 3), dtype=image_np.dtype)
-                background[0 : image_np.shape[0], 0 : image_np.shape[1]] = image_np
-                padded.append(image_np.shape[:2])
-                image_np = background
-            else:
-                padded.append(None)
-
-            image_np = scaler(image_np.transpose((2, 0, 1)))
-            batches.append(image_np)
-            batch_coords.append((tx, ty, tw, th))
-
-        if len(batches):
-            image_b = np.array(batches)
-            logger.debug(f"Image Batch: {image_b.shape}")
-            res = task.run_inferer(data={"image": image_b}, convert_to_batch=False, device=device)
-            for bidx in range(len(batches)):
-                tx, ty, tw, th = batch_coords[bidx]
-                p = torch.sigmoid(res["pred"][bidx]).detach().cpu().numpy()
-                p[p > 0.5] = 255
-                p = p[0] if len(p.shape) >= 3 else p
-                p = p.astype(dtype=np.uint8)
-
-                logger.debug(f"Label Pred: {p.shape}")
-                if padded[bidx]:
-                    ox, oy = padded[bidx]
-                    p = p[0:ox, 0:oy]
-                label_np[ty : (ty + th), tx : (tx + tw)] = p
-
-                # image_i = Image.fromarray(rescale_array(image_b[bidx], 0, 1).transpose(1, 2, 0), "RGB")
-                # image_i.save(os.path.join(res_dir, f"{tid}_{bidx}_img.png"))
-                #
-                # label_i = Image.fromarray(p).convert("RGB")
-                # label_i.save(os.path.join(res_dir, f"{tid}_{bidx}_lab.png"))
-
+        res = app.infer(data)
+        if res.get("params") and res["params"].get("contours"):
+            res_json[tid] = {"bbox": res["params"]["bbox"], "contours": res["params"]["contours"]}
         completed[tid] = 1
-        logger.error(f"Current: {tid}; Device: {device}; Completed: {sum(completed)} / {len(completed)}")
+        logger.error(
+            f"Current: {tid}; Device: {device}; Completed: {sum(completed)} / {len(completed)}; Latencies: {res['params']['latencies']}")
 
     logger.error(f"Total Tasks: {len(infer_tasks)}")
     if multi_thread:
@@ -294,50 +246,69 @@ def infer_wsi(app):
             run_task(t)
 
     logger.error("Infer Time Taken: {:.4f}".format(time.time() - start))
-    label_file = os.path.join(root_dir, get_basename(image).replace(file_ext(image), ".tif"))
 
-    # logger.error("Saving Label PNG")
-    # img = Image.fromarray(label_np).convert("RGB")
-    # img.save(os.path.join(root_dir, "label.png"))
+    label_json = os.path.join(root_dir, get_basename(image).replace(".svs", ".tif").replace(".tif", ".json"))
+    logger.error(f"Writing Label JSON: {label_json}")
+    with open(label_json, "w") as fp:
+        json.dump({tid: v for tid, v in enumerate(res_json) if v}, fp, indent=2)
 
-    logger.error(f"Creating Label: {label_file}")
-    linear = label_np.reshape(-1)
-    im = pyvips.Image.new_from_memory(linear.data, label_np.shape[1], label_np.shape[0], bands=1, format="uchar")
-
-    logger.error(f"Writing Label: {label_file}; shape: {label_np.shape}")
-    im.write_to_file(
-        label_file, pyramid=True, bigtiff=True, tile=True, tile_width=512, tile_height=512, compression="jpeg"
-    )
-
-    logger.error(f"Label dimensions: {openslide.OpenSlide(label_file).dimensions}")
+    convert_to_xml(label_json)
     logger.error("Total Time Taken: {:.4f}".format(time.time() - start))
 
 
-def create_tasks(batch_size, tiles_j, tiles_i, w, h, max_w, max_h):
-    coords = []
+def point_in_roi(p, bbox):
+    return p[0] >= bbox[0][0] and p[0] <= bbox[1][0] and p[1] >= bbox[0][1] and p[1] < bbox[1][0]
+
+
+def create_tasks(rows, cols, patch_size, roi=None):
     infer_tasks = []
-    completed = []
+    count = 0
+    tw, th = patch_size[0], patch_size[1]
+    for row in range(rows):
+        for col in range(cols):
+            tx = col * tw
+            ty = row * th
+            if roi and not point_in_roi((tx, ty), roi) and not point_in_roi((tx + tw, ty), roi) and not point_in_roi(
+                    (tx, ty + th), roi) and not point_in_roi((tx + tw, ty + th), roi):
+                continue
 
-    for tj in range(tiles_j):
-        for ti in range(tiles_i):
-            tw = min(max_w, w - ti * max_w)
-            th = min(max_h, h - tj * max_h)
+            infer_tasks.append({"id": count, "coords": (row, col, tx, ty, tw, th), "device": "cuda"})
+            count += 1
+    return infer_tasks
 
-            tx = ti * max_w
-            ty = tj * max_h
 
-            coords.append((tj, ti, tx, ty, tw, th))
-            if len(coords) == batch_size:
-                infer_tasks.append({"id": len(completed), "coords": coords})
-                completed.append(0)
-                coords = []
-                # return infer_tasks, completed
+def convert_to_xml(label_json):
+    with open(label_json, "r") as fp:
+        data = json.load(fp)
 
-    # Run Last Batch
-    if len(coords):
-        infer_tasks.append({"id": len(completed), "coords": coords})
-        completed.append(0)
-    return infer_tasks, completed
+    label_xml = label_json.replace(".json", ".xml")
+    logger.error(f"Writing Label XML: {label_xml}")
+
+    count = 0
+    with open(label_xml, "w") as fp:
+        fp.write('<?xml version="1.0"?>\n')
+        fp.write('<ASAP_Annotations>\n')
+        fp.write('  <Annotations>\n')
+        for k, v in data.items():
+            contours = v["contours"]
+            for count, contour in enumerate(contours):
+                fp.write('    <Annotation Name="Tumor" Type="Polygon" PartOfGroup="Tumor" Color="#F4FA58">\n'.format(
+                    k, count))
+                fp.write('      <Coordinates>\n')
+                for pcount, point in enumerate(contour):
+                    fp.write('        <Coordinate Order="{}" X="{}" Y="{}" />\n'.format(pcount, point[0], point[1]))
+                fp.write('      </Coordinates>\n')
+                count += 1
+                fp.write('    </Annotation>\n')
+        fp.write('  </Annotations>\n')
+        fp.write('  <AnnotationGroups>\n')
+        fp.write('    <Group Name="Tumor" PartOfGroup="None" Color="#00ff00">\n')
+        fp.write('      <Attributes />\n')
+        fp.write('    </Group>\n')
+        fp.write('  </AnnotationGroups>\n')
+        fp.write('</ASAP_Annotations>\n')
+
+    logger.error(f"Total Polygons: {count}")
 
 
 if __name__ == "__main__":

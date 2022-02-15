@@ -17,15 +17,11 @@ from monai.transforms import (
     AsDiscreted,
     EnsureChannelFirstd,
     EnsureTyped,
-    LoadImaged,
-    ScaleIntensityd,
-    SqueezeDimd,
-    ToNumpyd,
-    Transposed,
+    SqueezeDimd, ToNumpyd,
 )
-from monai.utils import BlendMode
 
 from monailabel.interfaces.tasks.infer import InferTask, InferType
+from .transforms import LoadImagePatchd, FilterImaged, NormalizeImaged, PostFilterLabeld, FindContoursd
 
 logger = logging.getLogger(__name__)
 
@@ -39,15 +35,13 @@ class MyInfer(InferTask):
         self,
         path,
         network=None,
-        patch_size=(256, 256),
+        roi_size=(1024, 1024),
         type=InferType.SEGMENTATION,
         labels=None,
         dimension=2,
-        sliding_window=True,
-        description="A pre-trained model Pathology",
+        description="A pre-trained semantic segmentation model for Tumor (Pathology)",
     ):
-        self.patch_size = patch_size
-        self.sliding_window = sliding_window
+        self.roi_size = roi_size
         super().__init__(
             path=path,
             network=network,
@@ -57,30 +51,44 @@ class MyInfer(InferTask):
             description=description,
         )
 
-    def pre_transforms(self):
+    def config(self):
+        c = super().config()
+        c.update({
+            "roi_size": self.roi_size,
+            "sw_batch_size": 2,
+        })
+        return c
+
+    def pre_transforms(self, data):
         return [
-            LoadImaged(keys="image", dtype=np.uint8),
+            LoadImagePatchd(keys="image", conversion="RGB", dtype=np.uint8),
+            FilterImaged(keys="image"),
             EnsureChannelFirstd(keys="image"),
-            ScaleIntensityd(keys="image"),
+            NormalizeImaged(keys="image"),
             EnsureTyped(keys="image"),
         ]
 
-    def inferer(self):
-        return (
-            SlidingWindowInferer(
-                roi_size=(1024, 1024),
-                sw_batch_size=2,
-                mode=BlendMode.GAUSSIAN,
-            )
-            if self.sliding_window
-            else SimpleInferer()
-        )
+    def inferer(self, data):
+        roi_size = data.get("roi_size", self.roi_size) if data else self.roi_size
+        input_shape = data["image"].shape if data else None
+        sw_batch_size = data.get("sw_batch_size", 2) if data else 2
+        device = data.get("device")
 
-    def post_transforms(self):
+        if input_shape and (input_shape[-1] > roi_size[-1] or input_shape[-2] > roi_size[-2]):
+            return SlidingWindowInferer(
+                roi_size=data.get("roi_size", roi_size),
+                sw_batch_size=data.get("sw_batch_size", sw_batch_size),
+                sw_device=device,
+                device=device,
+            )
+        return SimpleInferer()
+
+    def post_transforms(self, data):
         return [
             Activationsd(keys="pred", sigmoid=True),
             AsDiscreted(keys="pred", threshold=0.5),
             SqueezeDimd(keys="pred"),
-            Transposed(keys="pred", indices=(1, 0)),
-            ToNumpyd(keys="pred", dtype=np.uint8),
+            ToNumpyd(keys=("image", "pred")),
+            PostFilterLabeld(keys="pred", image="image"),
+            FindContoursd(keys="pred"),
         ]
