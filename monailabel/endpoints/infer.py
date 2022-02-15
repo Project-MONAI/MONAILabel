@@ -112,6 +112,7 @@ def run_inference(
     file: UploadFile = File(None),
     label: UploadFile = File(None),
     output: Optional[ResultType] = None,
+    wsi: bool = False,
 ):
     request = {"model": model, "image": image}
 
@@ -157,7 +158,7 @@ def run_inference(
             request["session"] = session.to_json()
 
     logger.info(f"Infer Request: {request}")
-    result = instance.infer(request)
+    result = instance.infer_wsi(request) if wsi else instance.infer(request)
     if result is None:
         raise HTTPException(status_code=500, detail="Failed to execute infer")
     return send_response(instance.datastore(), result, output, background_tasks)
@@ -168,10 +169,11 @@ async def api_run_inference(
     background_tasks: BackgroundTasks,
     model: str,
     image: str = "",
+    wsi: bool = False,
     session_id: str = "",
     params: str = Form("{}"),
     file: UploadFile = File(None),
     label: UploadFile = File(None),
     output: Optional[ResultType] = None,
 ):
-    return run_inference(background_tasks, model, image, session_id, params, file, label, output)
+    return run_inference(background_tasks, model, image, session_id, params, file, label, output, wsi)

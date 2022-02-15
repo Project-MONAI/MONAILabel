@@ -18,8 +18,10 @@ import tempfile
 import time
 from datetime import timedelta
 from distutils.util import strtobool
+from math import ceil
 from typing import Any, Callable, Dict, Optional, Sequence, Union
 
+import openslide
 import requests
 import schedule
 from dicomweb_client.session_utils import create_session_from_user_pass
@@ -42,6 +44,7 @@ from monailabel.tasks.infer.deepgrow_2d import InferDeepgrow2D
 from monailabel.tasks.infer.deepgrow_3d import InferDeepgrow3D
 from monailabel.tasks.infer.deepgrow_pipeline import InferDeepgrowPipeline
 from monailabel.utils.async_tasks.task import AsyncTask
+from monailabel.utils.others.pathology import create_annotations_xml
 from monailabel.utils.sessions import Sessions
 
 logger = logging.getLogger(__name__)
@@ -552,3 +555,101 @@ class MONAILabelApp:
                 description="Combines Deepgrow 2D model and 3D deepgrow model",
             )
         return infers
+
+    def infer_wsi(self, request, datastore=None):
+        request = copy.deepcopy(request)
+        image = request["image"]
+        if not os.path.exists(image):
+            datastore = datastore if datastore else self.datastore()
+            image = datastore.get_image_uri(request["image"])
+
+        start = time.time()
+        logger.error(f"Input WSI Image: {image}")
+        infer_tasks = self._create_infer_wsi_tasks(request, image)
+        logger.error(f"Total Tasks: {len(infer_tasks)}")
+
+        results = []
+        for t in infer_tasks:
+            tid = t["id"]
+            res = self._run_infer_wsi_task(t)
+            results.append(res)
+            logger.error(f"{tid} => Completed: {len(results)} / {len(infer_tasks)}; Latencies: {res['latencies']}")
+
+        logger.error("Infer Time Taken: {:.4f}".format(time.time() - start))
+        res_json = {tid: v for tid, v in enumerate(results) if v and v.get("contours")}
+
+        res_xml = create_annotations_xml(res_json)
+        logger.error("Total Time Taken: {:.4f}".format(time.time() - start))
+        return {"file": res_xml, "params": res_json}
+
+    def _run_infer_wsi_task(self, task):
+        tid = task["id"]
+        (row, col, tx, ty, tw, th) = task["coords"]
+        logger.info(f"{tid} => Patch/Slide ({row}, {col}) => Top: ({tx}, {ty}); Size: {tw} x {th}")
+
+        req = {
+            "model": task["model"],
+            "image": task["image"],
+            "device": task.get("device", "cuda"),
+            "wsi": {"location": (tx, ty), "level": task["level"], "size": (tw, th)},
+            "roi_size": task["patch_size"],
+            "result_write_to_file": False,
+            "result_extension": ".png",
+        }
+
+        res = self.infer(req)
+        if res.get("params") and res["params"].get("contours"):
+            return {
+                "bbox": res["params"]["bbox"],
+                "contours": res["params"]["contours"],
+                "latencies": res["params"]["latencies"],
+            }
+        return {"latencies": res["params"]["latencies"]}
+
+    def _create_infer_wsi_tasks(self, request, image):
+        def pt_in_roi(p, bbox):
+            return p[0] >= bbox[0][0] and p[0] <= bbox[1][0] and p[1] >= bbox[0][1] and p[1] < bbox[1][0]
+
+        patch_size = request.get("patch_size", (2048, 2048))
+        roi = request.get("roi", None)
+        level = request.get("level", 0)
+
+        with openslide.OpenSlide(image) as slide:
+            w, h = slide.dimensions
+        logger.error(f"Input WSI Image Dimensions: ({w} x {h})")
+
+        cols = ceil(w / patch_size[0])  # COL
+        rows = ceil(h / patch_size[1])  # ROW
+
+        logger.error(f"Total Patches to infer {rows} x {cols}: {rows * cols}")
+
+        infer_tasks = []
+        count = 0
+        tw, th = patch_size[0], patch_size[1]
+        for row in range(rows):
+            for col in range(cols):
+                tx = col * tw
+                ty = row * th
+                # TODO:: Improve ROI specific sliding
+                if (
+                    roi
+                    and not pt_in_roi((tx, ty), roi)
+                    and not pt_in_roi((tx + tw, ty), roi)
+                    and not pt_in_roi((tx, ty + th), roi)
+                    and not pt_in_roi((tx + tw, ty + th), roi)
+                ):
+                    continue
+
+                task = copy.deepcopy(request)
+                task.update(
+                    {
+                        "id": count,
+                        "image": image,
+                        "level": level,
+                        "patch_size": patch_size,
+                        "coords": (row, col, tx, ty, tw, th),
+                    }
+                )
+                infer_tasks.append(task)
+                count += 1
+        return infer_tasks
