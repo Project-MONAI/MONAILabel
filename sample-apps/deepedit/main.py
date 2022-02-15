@@ -151,6 +151,7 @@ class MyApp(MONAILabelApp):
             "deepedit_train": MyTrain(
                 self.model_dir,
                 self.network,
+                max_val_interactions=self.conf.get("max_val_interactions"),
                 spatial_size=self.planner.spatial_size,
                 target_spacing=self.planner.target_spacing,
                 load_path=self.pretrained_model,
@@ -228,24 +229,26 @@ def main():
 
     app_dir = os.path.dirname(__file__)
     studies = args.studies
-    conf = {
-        "use_pretrained_model": "false",
-        "auto_update_scoring": "false",
-        "spatial_size": args.size,
-        "network": args.network,
-    }
 
-    app = MyApp(app_dir, studies, conf)
-    app.train(
-        request={
-            "name": args.output,
-            "model": "deepedit_train",
-            "max_epochs": args.epoch,
-            "dataset": args.dataset,
-            "train_batch_size": args.batch,
-            "multi_gpu": True,
+    for j in [1, 5, 10, 15, 20]:
+        conf = {
+            "use_pretrained_model": "false",
+            "auto_update_scoring": "false",
+            "spatial_size": args.size,
+            "network": args.network,
+            "max_val_interactions": j,
         }
-    )
+        app = MyApp(app_dir, studies, conf)
+        app.train(
+            request={
+                "name": args.output + "_" + str(j) + "_clicks",
+                "model": "deepedit_train",
+                "max_epochs": args.epoch,
+                "dataset": args.dataset,
+                "train_batch_size": args.batch,
+                "multi_gpu": True,
+            }
+        )
 
 
 if __name__ == "__main__":

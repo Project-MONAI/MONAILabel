@@ -9,13 +9,14 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
+import json
 import logging
 import os
 from distutils.util import strtobool
 from typing import Dict
 
 from lib import MyInfer, MyStrategy, MyTrain
-from monai.networks.nets import UNet
+from monai.networks.nets import DynUNet
 
 from monailabel.interfaces.app import MONAILabelApp
 from monailabel.interfaces.tasks.infer import InferTask
@@ -34,18 +35,48 @@ logger = logging.getLogger(__name__)
 
 class MyApp(MONAILabelApp):
     def __init__(self, app_dir, studies, conf):
-        network_params = {
-            "dimensions": 3,
-            "in_channels": 1,
-            "out_channels": 2,
-            "channels": [16, 32, 64, 128, 256],
-            "strides": [2, 2, 2, 2],
-            "num_res_units": 2,
-            "norm": "batch",
+        # Zero values are reserved to background. Non zero values are for the labels
+        self.label_names = {
+            "spleen": 1,
+            "background": 0,
         }
-        self.network = UNet(**network_params)
-        self.network_with_dropout = UNet(**network_params, dropout=0.2)
+        network_params = {
+            "spatial_dims": 3,
+            "in_channels": 1,
+            "out_channels": len(self.label_names),  # All labels including background
+            "kernel_size": [
+                [3, 3, 3],
+                [3, 3, 3],
+                [3, 3, 3],
+                [3, 3, 3],
+                [3, 3, 3],
+                [3, 3, 3],
+            ],
+            "strides": [
+                [1, 1, 1],
+                [2, 2, 2],
+                [2, 2, 2],
+                [2, 2, 2],
+                [2, 2, 2],
+                [2, 2, 1],
+            ],
+            "upsample_kernel_size": [
+                [2, 2, 2],
+                [2, 2, 2],
+                [2, 2, 2],
+                [2, 2, 2],
+                [2, 2, 1],
+            ],
+            "norm_name": "instance",
+            "deep_supervision": False,
+            "res_block": True,
+        }
+        self.network = DynUNet(**network_params)
+        self.network_with_dropout = DynUNet(**network_params, dropout=0.2)
+        self.find_unused_parameters = True
+        logger.info("Working with Network DynUNet")
 
+        self.spatial_size = json.loads(conf.get("spatial_size", "[128, 128, 128]"))
         self.model_dir = os.path.join(app_dir, "model")
         self.pretrained_model = os.path.join(self.model_dir, "pretrained.pt")
         self.final_model = os.path.join(self.model_dir, "model.pt")
@@ -77,7 +108,12 @@ class MyApp(MONAILabelApp):
 
     def init_infers(self) -> Dict[str, InferTask]:
         infers = {
-            "segmentation": MyInfer([self.pretrained_model, self.final_model], self.network),
+            "segmentation": MyInfer(
+                path=[self.pretrained_model, self.final_model],
+                network=self.network,
+                spatial_size=self.spatial_size,
+                label_names=self.label_names,
+            ),
             # intensity range set for CT Soft Tissue
             "Histogram+GraphCut": HistogramBasedGraphCut(
                 intensity_range=(-300, 200, 0.0, 1.0, True), pix_dim=(2.5, 2.5, 5.0), lamda=1.0, sigma=0.1
@@ -96,6 +132,8 @@ class MyApp(MONAILabelApp):
                 load_path=self.pretrained_model,
                 publish_path=self.final_model,
                 config={"max_epochs": 100, "train_batch_size": 4, "to_gpu": True},
+                spatial_size=self.spatial_size,
+                label_names=self.label_names,
             )
         }
 
@@ -125,7 +163,7 @@ class MyApp(MONAILabelApp):
                 network=self.network,
                 deepedit=False,
                 num_samples=self.tta_samples,
-                spatial_size=(128, 128, 64),
+                spatial_size=self.spatial_size,
                 spacing=(1.0, 1.0, 1.0),
             )
         return methods
@@ -157,7 +195,7 @@ def main():
     )
     parser.add_argument("-e", "--epoch", type=int, default=600)
     parser.add_argument("-d", "--dataset", default="CacheDataset")
-    parser.add_argument("-o", "--output", default="model_01")
+    parser.add_argument("-o", "--output", default="model_ONLY_segmentation")
     parser.add_argument("-i", "--size", default="[128,128,128]")
     parser.add_argument("-b", "--batch", type=int, default=1)
     args = parser.parse_args()

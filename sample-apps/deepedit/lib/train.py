@@ -66,6 +66,7 @@ class MyTrain(BasicTrainTask):
         self.deepgrow_probability_val = deepgrow_probability_val
         self.max_train_interactions = max_train_interactions
         self.max_val_interactions = max_val_interactions
+        print(f"Runing for {self.max_val_interactions} clicks in validation")
         self.debug_mode = debug_mode
 
         super().__init__(model_dir, description, **kwargs)

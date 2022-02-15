@@ -59,6 +59,7 @@ class MyTrain(BasicTrainTask):
         deepgrow_probability_val=1.0,
         label_names=None,
         debug_mode=False,
+        num_clicks=1,
         **kwargs,
     ):
         self._network = network
@@ -68,6 +69,7 @@ class MyTrain(BasicTrainTask):
         self.deepgrow_probability_val = deepgrow_probability_val
         self.label_names = label_names
         self.debug_mode = debug_mode
+        self.num_clicks = num_clicks
 
         super().__init__(model_dir, description, **kwargs)
 
@@ -80,7 +82,7 @@ class MyTrain(BasicTrainTask):
     def loss_function(self, context: Context):
         return DiceCELoss(to_onehot_y=True, softmax=True)
 
-    def get_click_transforms(self, context: Context):
+    def get_click_transforms(self, context: Context, val):
         return [
             Activationsd(keys="pred", softmax=True),
             AsDiscreted(keys="pred", argmax=True),
@@ -92,6 +94,8 @@ class MyTrain(BasicTrainTask):
                 guidance="guidance",
                 discrepancy="discrepancy",
                 probability="probability",
+                num_clicks=self.num_clicks,
+                val=val,
             ),
             AddGuidanceSignalCustomd(keys="image", guidance="guidance"),
             #
@@ -191,7 +195,7 @@ class MyTrain(BasicTrainTask):
     def train_iteration_update(self, context: Context):
         return Interaction(
             deepgrow_probability=self.deepgrow_probability_train,
-            transforms=self.get_click_transforms(context),
+            transforms=self.get_click_transforms(context, val=False),
             click_probability_key="probability",
             train=True,
             label_names=self.label_names,
@@ -200,7 +204,7 @@ class MyTrain(BasicTrainTask):
     def val_iteration_update(self, context: Context):
         return Interaction(
             deepgrow_probability=self.deepgrow_probability_val,
-            transforms=self.get_click_transforms(context),
+            transforms=self.get_click_transforms(context, val=True),
             click_probability_key="probability",
             train=False,
             label_names=self.label_names,

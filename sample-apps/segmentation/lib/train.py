@@ -12,24 +12,26 @@ import glob
 import logging
 import os
 
-from monai.inferers import SlidingWindowInferer
+import torch
+from monai.inferers import SimpleInferer
 from monai.losses import DiceCELoss
-from monai.optimizers import Novograd
 from monai.transforms import (
     Activationsd,
     AddChanneld,
     AsDiscreted,
-    CropForegroundd,
     EnsureTyped,
     LoadImaged,
-    RandCropByPosNegLabeld,
+    Orientationd,
+    RandFlipd,
+    RandRotate90d,
     RandShiftIntensityd,
+    Resized,
     ScaleIntensityRanged,
-    Spacingd,
     ToDeviced,
     ToTensord,
 )
 
+from monailabel.deepedit.multilabel.transforms import NormalizeLabelsInDatasetd, SplitPredsLabeld
 from monailabel.tasks.train.basic_train import BasicTrainTask, Context
 
 logger = logging.getLogger(__name__)
@@ -40,17 +42,21 @@ class MyTrain(BasicTrainTask):
         self,
         model_dir,
         network,
+        spatial_size=(128, 128, 128),
+        label_names=None,
         description="Train generic Segmentation model",
         **kwargs,
     ):
-        self._network = network
         super().__init__(model_dir, description, **kwargs)
+        self._network = network
+        self.label_names = label_names
+        self.spatial_size = spatial_size
 
     def network(self, context: Context):
         return self._network
 
     def optimizer(self, context: Context):
-        return Novograd(self._network.parameters(), 0.0001)
+        return torch.optim.Adam(self._network.parameters(), lr=0.0001)
 
     def loss_function(self, context: Context):
         return DiceCELoss(to_onehot_y=True, softmax=True, squared_pred=True, batch=True)
@@ -58,32 +64,46 @@ class MyTrain(BasicTrainTask):
     def train_pre_transforms(self, context: Context):
         t = [
             LoadImaged(keys=("image", "label")),
+            NormalizeLabelsInDatasetd(keys="label", label_names=self.label_names),
             AddChanneld(keys=("image", "label")),
-            Spacingd(
-                keys=("image", "label"),
-                pixdim=(1.0, 1.0, 1.0),
-                mode=("bilinear", "nearest"),
+            Orientationd(keys=["image", "label"], axcodes="RAS"),
+            # This transform may not work well for MR images
+            ScaleIntensityRanged(
+                keys="image",
+                a_min=-175,
+                a_max=250,
+                b_min=0.0,
+                b_max=1.0,
+                clip=True,
             ),
-            ScaleIntensityRanged(keys="image", a_min=-57, a_max=164, b_min=0.0, b_max=1.0, clip=True),
-            CropForegroundd(keys=("image", "label"), source_key="image"),
+            RandFlipd(
+                keys=("image", "label"),
+                spatial_axis=[0],
+                prob=0.10,
+            ),
+            RandFlipd(
+                keys=("image", "label"),
+                spatial_axis=[1],
+                prob=0.10,
+            ),
+            RandFlipd(
+                keys=("image", "label"),
+                spatial_axis=[2],
+                prob=0.10,
+            ),
+            RandRotate90d(
+                keys=("image", "label"),
+                prob=0.10,
+                max_k=3,
+            ),
+            RandShiftIntensityd(
+                keys="image",
+                offsets=0.10,
+                prob=0.50,
+            ),
+            Resized(keys=("image", "label"), spatial_size=self.spatial_size, mode=("area", "nearest")),
+            EnsureTyped(keys=("image", "label")),
         ]
-        if context.request.get("to_gpu", False):
-            t.extend([EnsureTyped(keys=("image", "label")), ToDeviced(keys=("image", "label"), device=context.device)])
-        t.extend(
-            [
-                RandCropByPosNegLabeld(
-                    keys=("image", "label"),
-                    label_key="label",
-                    spatial_size=(96, 96, 96),
-                    pos=1,
-                    neg=1,
-                    num_samples=4,
-                    image_key="image",
-                    image_threshold=0,
-                ),
-                RandShiftIntensityd(keys="image", offsets=0.1, prob=0.5),
-            ]
-        )
         return t
 
     def train_post_transforms(self, context: Context):
@@ -93,28 +113,34 @@ class MyTrain(BasicTrainTask):
             AsDiscreted(
                 keys=("pred", "label"),
                 argmax=(True, False),
-                to_onehot=True,
-                n_classes=2,
+                to_onehot=(True, True),
+                n_classes=len(self.label_names),
             ),
+            SplitPredsLabeld(keys="pred"),
         ]
 
     def val_pre_transforms(self, context: Context):
         return [
             LoadImaged(keys=("image", "label")),
+            NormalizeLabelsInDatasetd(keys="label", label_names=self.label_names),
             AddChanneld(keys=("image", "label")),
-            Spacingd(
-                keys=("image", "label"),
-                pixdim=(1.0, 1.0, 1.0),
-                mode=("bilinear", "nearest"),
+            Orientationd(keys=["image", "label"], axcodes="RAS"),
+            # This transform may not work well for MR images
+            ScaleIntensityRanged(
+                keys=("image"),
+                a_min=-175,
+                a_max=250,
+                b_min=0.0,
+                b_max=1.0,
+                clip=True,
             ),
-            ScaleIntensityRanged(keys="image", a_min=-57, a_max=164, b_min=0.0, b_max=1.0, clip=True),
-            CropForegroundd(keys=("image", "label"), source_key="image"),
+            Resized(keys=("image", "label"), spatial_size=self.spatial_size, mode=("area", "nearest")),
             EnsureTyped(keys=("image", "label")),
             ToDeviced(keys=("image", "label"), device=context.device),
         ]
 
     def val_inferer(self, context: Context):
-        return SlidingWindowInferer(roi_size=(160, 160, 160), sw_batch_size=1, overlap=0.25)
+        return SimpleInferer()
 
     def partition_datalist(self, context: Context, shuffle=False):
         # Training images

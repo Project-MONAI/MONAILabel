@@ -524,12 +524,16 @@ class AddRandomGuidanceCustomd(Randomizable, MapTransform):
         discrepancy: str = "discrepancy",
         probability: str = "probability",
         allow_missing_keys: bool = False,
+        num_clicks: int = 1,
+        val: bool = True,
     ):
         super().__init__(keys, allow_missing_keys)
         self.guidance = guidance
         self.discrepancy = discrepancy
         self.probability = probability
         self._will_interact = None
+        self.num_clicks = num_clicks
+        self.val = val
 
     def randomize(self, data=None):
         probability = data[self.probability]
@@ -609,33 +613,42 @@ class AddRandomGuidanceCustomd(Randomizable, MapTransform):
                 self.add_guidance(self.tmp_guidance[key_label], discrepancy[key_label], d["label_names"], d["label"])
 
             # Checking the number of clicks
-            num_clicks = random.randint(1, 10)
-            counter = 0
-            keep_guidance = []
-            while True:
-                aux_label = random.choice(list(d["label_names"].keys()))
-                if aux_label in keep_guidance:
-                    pass
-                else:
-                    keep_guidance.append(aux_label)
-                    counter = counter + len(self.tmp_guidance[aux_label])
-                    # If collected clicks is bigger than max clicks, discard the others
-                    if counter >= num_clicks:
-                        for key_label in d["label_names"].keys():
-                            if key_label not in keep_guidance:
-                                self.tmp_guidance[key_label] = []
+            num_clicks = self.num_clicks if self.val else random.randint(1, 10)
+            # In validation mode and zero clicks
+            if num_clicks == 0 and self.val:
+                for key_label in d["label_names"].keys():
+                    d[self.guidance][key_label] = json.dumps(
+                        np.asarray(self.tmp_guidance[key_label]).astype(int).tolist()
+                    )
+            else:
+                counter = 0
+                keep_guidance = []
+                while True:
+                    aux_label = random.choice(list(d["label_names"].keys()))
+                    if aux_label in keep_guidance:
+                        pass
+                    else:
+                        keep_guidance.append(aux_label)
+                        counter = counter + len(self.tmp_guidance[aux_label])
+                        # If collected clicks is bigger than max clicks, discard the others
+                        if counter >= num_clicks:
+                            for key_label in d["label_names"].keys():
+                                if key_label not in keep_guidance:
+                                    self.tmp_guidance[key_label] = []
+                            logger.info(f"Number of simulated clicks: {counter}")
+                            break
+
+                    # Breaking once all labels are covered
+                    if len(keep_guidance) == len(d["label_names"].keys()):
                         logger.info(f"Number of simulated clicks: {counter}")
                         break
 
-                # Breaking once all labels are covered
-                if len(keep_guidance) == len(d["label_names"].keys()):
-                    logger.info(f"Number of simulated clicks: {counter}")
-                    break
-
-            # Convert tmp_guidance back to json
-            for key_label in d["label_names"].keys():
-                d[self.guidance][key_label] = json.dumps(np.asarray(self.tmp_guidance[key_label]).astype(int).tolist())
-            #
+                # Convert tmp_guidance back to json
+                for key_label in d["label_names"].keys():
+                    d[self.guidance][key_label] = json.dumps(
+                        np.asarray(self.tmp_guidance[key_label]).astype(int).tolist()
+                    )
+                #
 
         return d
 

@@ -9,20 +9,22 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-from monai.inferers import SlidingWindowInferer
+from monai.inferers import SimpleInferer
 from monai.transforms import (
     Activationsd,
     AddChanneld,
     AsDiscreted,
     LoadImaged,
+    Orientationd,
+    Resized,
     ScaleIntensityRanged,
-    Spacingd,
+    SqueezeDimd,
     ToNumpyd,
     ToTensord,
 )
 
 from monailabel.interfaces.tasks.infer import InferTask, InferType
-from monailabel.transform.post import BoundingBoxd, Restored
+from monailabel.transform.post import Restored
 
 
 class MyInfer(InferTask):
@@ -35,7 +37,8 @@ class MyInfer(InferTask):
         path,
         network=None,
         type=InferType.SEGMENTATION,
-        labels="generic",
+        label_names=None,
+        spatial_size=(128, 128, 128),
         dimension=3,
         description="A pre-trained model for volumetric (3D) segmentation over 3D Images",
     ):
@@ -43,28 +46,44 @@ class MyInfer(InferTask):
             path=path,
             network=network,
             type=type,
-            labels=labels,
+            labels=label_names,
             dimension=dimension,
             description=description,
         )
+        self.spatial_size = spatial_size
+        self.label_names = label_names
 
     def pre_transforms(self):
         return [
             LoadImaged(keys="image"),
             AddChanneld(keys="image"),
-            Spacingd(keys="image", pixdim=[1.0, 1.0, 1.0]),
-            ScaleIntensityRanged(keys="image", a_min=-57, a_max=164, b_min=0.0, b_max=1.0, clip=True),
+            # Spacingd(keys="image", pixdim=self.target_spacing, mode="bilinear"),
+            Orientationd(keys="image", axcodes="RAS"),
+            # This transform may not work well for MR images
+            ScaleIntensityRanged(
+                keys="image",
+                a_min=-175,
+                a_max=250,
+                b_min=0.0,
+                b_max=1.0,
+                clip=True,
+            ),
+            Resized(keys="image", spatial_size=self.spatial_size, mode="area"),
             ToTensord(keys="image"),
         ]
 
     def inferer(self):
-        return SlidingWindowInferer(roi_size=[160, 160, 160])
+        return SimpleInferer()
+
+    def inverse_transforms(self):
+        return []  # Self-determine from the list of pre-transforms provided
 
     def post_transforms(self):
         return [
+            ToTensord(keys="pred"),
             Activationsd(keys="pred", softmax=True),
             AsDiscreted(keys="pred", argmax=True),
+            SqueezeDimd(keys="pred", dim=0),
             ToNumpyd(keys="pred"),
             Restored(keys="pred", ref_image="image"),
-            BoundingBoxd(keys="pred", result="result", bbox="bbox"),
         ]

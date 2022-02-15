@@ -178,6 +178,7 @@ class MyApp(MONAILabelApp):
                 label_names=self.label_names,
                 debug_mode=False,
                 find_unused_parameters=self.find_unused_parameters,
+                num_clicks=self.conf.get("max_val_interactions"),
             )
         }
 
@@ -242,10 +243,10 @@ def main():
         "--studies",
         default="/home/adp20local/Documents/Datasets/monailabel_datasets/Slicer/spleen/train",
     )
-    parser.add_argument("-e", "--epoch", type=int, default=600)
+    parser.add_argument("-e", "--epoch", type=int, default=50)
     parser.add_argument("-l", "--lr", default=0.0001)
     parser.add_argument("-d", "--dataset", default="CacheDataset")
-    parser.add_argument("-o", "--output", default="model_01")
+    parser.add_argument("-o", "--output", default="model")
     parser.add_argument("-i", "--size", default="[128,128,128]")
     parser.add_argument("-b", "--batch", type=int, default=1)
     args = parser.parse_args()
@@ -253,27 +254,25 @@ def main():
     app_dir = os.path.dirname(__file__)
     studies = args.studies
 
-    # conf is Dict[str, str]
-    conf = {
-        "use_pretrained_model": "false",
-        "auto_update_scoring": "false",
-        "heuristic_planner": "false",
-        "tta_enabled": "false",
-        "tta_samples": "10",
-        "spatial_size": args.size,
-        "network": args.network,
-    }
-    app = MyApp(app_dir, studies, conf)
-    request = {
-        "name": args.output,
-        "device": "cuda",
-        "model": "deepedit_train",
-        "dataset": args.dataset,
-        "max_epochs": args.epoch,
-        "amp": False,
-        "lr": args.lr,
-    }
-    app.train(request=request)
+    for j in [0, 1, 5, 10]:
+        conf = {
+            "use_pretrained_model": "false",
+            "auto_update_scoring": "false",
+            "spatial_size": args.size,
+            "network": args.network,
+            "max_val_interactions": j,
+        }
+        app = MyApp(app_dir, studies, conf)
+        app.train(
+            request={
+                "name": args.output + "_" + str(j) + "_clicks",
+                "model": "deepedit_train",
+                "max_epochs": args.epoch,
+                "dataset": args.dataset,
+                "train_batch_size": args.batch,
+                "multi_gpu": True,
+            }
+        )
 
     # # PERFORMING INFERENCE USING INTERACTIVE MODEL
     # deepgrow_3d = {
