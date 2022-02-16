@@ -583,16 +583,17 @@ class MONAILabelApp:
         return {"file": res_xml, "params": res_json}
 
     def _run_infer_wsi_task(self, task):
+        logger.info(task)
         tid = task["id"]
         (row, col, tx, ty, tw, th) = task["coords"]
-        logger.info(f"{tid} => Patch/Slide ({row}, {col}) => Top: ({tx}, {ty}); Size: {tw} x {th}")
+        logger.info(f"{tid} => Patch/Slide ({row}, {col}) => Location: ({tx}, {ty}); Size: {tw} x {th}")
 
         req = {
             "model": task["model"],
             "image": task["image"],
             "device": task.get("device", "cuda"),
             "wsi": {"location": (tx, ty), "level": task["level"], "size": (tw, th)},
-            "roi_size": task["patch_size"],
+            "patch_size": task["patch_size"],
             "result_write_to_file": False,
             "result_extension": ".png",
         }
@@ -607,16 +608,20 @@ class MONAILabelApp:
         return {"latencies": res["params"]["latencies"]}
 
     def _create_infer_wsi_tasks(self, request, image):
-        def pt_in_roi(p, bbox):
-            return p[0] >= bbox[0][0] and p[0] <= bbox[1][0] and p[1] >= bbox[0][1] and p[1] < bbox[1][0]
-
         patch_size = request.get("patch_size", (2048, 2048))
+        patch_size = [int(p) for p in patch_size]
+
         roi = request.get("roi", None)
         level = request.get("level", 0)
 
         with openslide.OpenSlide(image) as slide:
             w, h = slide.dimensions
-        logger.error(f"Input WSI Image Dimensions: ({w} x {h})")
+        logger.error(f"Input WSI Image Dimensions: ({w} x {h}); Patch Size: {patch_size}")
+        x, y = 0, 0
+        if roi:
+            x, y = int(roi[0][0]), int(roi[0][1])
+            w, h = int(roi[1][0] - x), int(roi[1][1] - y)
+            logger.info(f"WSI ROI => Location: ({x}, {y}); Dimensions: ({w} x {h})")
 
         cols = ceil(w / patch_size[0])  # COL
         rows = ceil(h / patch_size[1])  # ROW
@@ -625,20 +630,14 @@ class MONAILabelApp:
 
         infer_tasks = []
         count = 0
-        tw, th = patch_size[0], patch_size[1]
+        pw, ph = patch_size[0], patch_size[1]
         for row in range(rows):
             for col in range(cols):
-                tx = col * tw
-                ty = row * th
-                # TODO:: Improve ROI specific sliding
-                if (
-                    roi
-                    and not pt_in_roi((tx, ty), roi)
-                    and not pt_in_roi((tx + tw, ty), roi)
-                    and not pt_in_roi((tx, ty + th), roi)
-                    and not pt_in_roi((tx + tw, ty + th), roi)
-                ):
-                    continue
+                tx = col * pw + x
+                ty = row * ph + y
+
+                tw = min(pw, x + w - tx)
+                th = min(ph, y + h - ty)
 
                 task = copy.deepcopy(request)
                 task.update(

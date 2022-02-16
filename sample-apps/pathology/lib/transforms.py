@@ -47,6 +47,9 @@ class LoadImagePatchd(MapTransform):
             level = wsi_meta.get("level", 0)
             size = wsi_meta.get("size", None)
 
+            # Model input size
+            patch_size = d.get("patch_size", size)
+
             name = d[key]
             ext = pathlib.Path(name).suffix
             if ext in (".bif", ".mrxs", ".ndpi", ".scn", ".svs", ".svslide", ".tif", ".tiff", ".vms", ".vmu"):
@@ -67,9 +70,10 @@ class LoadImagePatchd(MapTransform):
 
             meta_dict["spatial_shape"] = np.asarray(image_np.shape[:-1])
             meta_dict["original_channel_dim"] = -1
+            logger.info(f"Image shape: {image_np.shape} vs size: {size} vs patch_size: {patch_size}")
 
-            if self.padding and image_np.shape[0] != size[0] or image_np.shape[1] != size[1]:
-                image_padded = np.zeros((size[0], size[1], 3), dtype=image_np.dtype)
+            if self.padding and image_np.shape[0] != patch_size[0] or image_np.shape[1] != patch_size[1]:
+                image_padded = np.zeros((patch_size[0], patch_size[1], 3), dtype=image_np.dtype)
                 image_padded[0 : image_np.shape[0], 0 : image_np.shape[1]] = image_np
                 image_np = image_padded
             d[key] = image_np

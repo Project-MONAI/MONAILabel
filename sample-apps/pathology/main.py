@@ -32,26 +32,6 @@ class MyApp(MONAILabelApp):
         # https://github.com/PathologyDataScience/BCSS/blob/master/meta/gtruth_codes.tsv
         labels = {
             1: "tumor",
-            # 2: "stroma",
-            # 3: "lymphocytic_infiltrate",
-            # 4: "necrosis_or_debris",
-            # 5: "glandular_secretions",
-            # 6: "blood",
-            # 7: "exclude",
-            # 8: "metaplasia_NOS",
-            # 9: "fat",
-            # 10: "plasma_cells",
-            # 11: "other_immune_infiltrate",
-            # 12: "mucoid_material",
-            # 13: "normal_acinus_or_duct",
-            # 14: "lymphatics",
-            # 15: "undetermined",
-            # 16: "nerve",
-            # 17: "skin_adnexa",
-            # 18: "blood_vessel",
-            # 19: "angioinvasion",
-            # 20: "dcis",
-            # 21: "other",
         }
 
         self.network = BasicUNet(
@@ -166,8 +146,8 @@ def infer_wsi(app):
             "model": "segmentation",
             "image": image,
             "level": 0,
-            "patch_size": (4096, 4096),
-            "roi": ((5000, 5000), (9000, 9000)),
+            "patch_size": [2048, 2048],
+            "roi": [[5124.0, 7761.0], [8240.0, 9932.0]],
         }
     )
 
