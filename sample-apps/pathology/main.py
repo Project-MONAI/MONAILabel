@@ -14,7 +14,7 @@ import os
 import shutil
 from typing import Dict
 
-from lib import MyInfer, MyTrain
+from lib import MyDeepgrow, MyInfer, MyTrain
 from monai.networks.nets import BasicUNet
 
 from monailabel.interfaces.app import MONAILabelApp
@@ -57,6 +57,9 @@ class MyApp(MONAILabelApp):
         self.network = BasicUNet(
             spatial_dims=2, in_channels=3, out_channels=len(labels), features=(32, 64, 128, 256, 512, 32)
         )
+        self.network_deep = BasicUNet(
+            spatial_dims=2, in_channels=5, out_channels=len(labels), features=(32, 64, 128, 256, 512, 32)
+        )
 
         self.model_dir = os.path.join(app_dir, "model")
         self.pretrained_model = os.path.join(self.model_dir, "pretrained.pt")
@@ -87,7 +90,20 @@ class MyApp(MONAILabelApp):
                 train_save_interval=1,
                 patch_size=self.patch_size,
                 labels=self.labels,
-            )
+            ),
+            "deepgrow": MyDeepgrow(
+                model_dir=self.model_dir,
+                network=self.network_deep,
+                load_path=self.pretrained_model,
+                publish_path=self.final_model,
+                config={"max_epochs": 10, "train_batch_size": 1},
+                max_train_interactions=10,
+                max_val_interactions=5,
+                val_interval=5,
+                train_save_interval=1,
+                patch_size=self.patch_size,
+                labels=self.labels,
+            ),
         }
 
 
@@ -102,18 +118,18 @@ def main():
     from monailabel.config import settings
 
     settings.MONAI_LABEL_DATASTORE_AUTO_RELOAD = False
-    settings.MONAI_LABEL_DATASTORE_FILE_EXT = ["*.svs"]
+    settings.MONAI_LABEL_DATASTORE_FILE_EXT = ["*.svs", ".png"]
     os.putenv("MASTER_ADDR", "127.0.0.1")
     os.putenv("MASTER_PORT", "1234")
 
     logging.basicConfig(
-        level=logging.WARN,
+        level=logging.INFO,
         format="[%(asctime)s] [%(process)s] [%(threadName)s] [%(levelname)s] (%(name)s:%(lineno)d) - %(message)s",
         datefmt="%Y-%m-%d %H:%M:%S",
     )
 
     parser = argparse.ArgumentParser()
-    parser.add_argument("-s", "--studies", default="/local/sachi/Data/Pathology/BCSS/wsis")
+    parser.add_argument("-s", "--studies", default="/local/sachi/Data/Pathology/BCSS/images")
     args = parser.parse_args()
 
     app_dir = os.path.dirname(__file__)
@@ -124,13 +140,13 @@ def main():
     }
 
     app = MyApp(app_dir, studies, conf)
-    run_train = False
+    run_train = True
     if run_train:
         app.train(
             request={
                 "name": "model_01",
-                "model": "segmentation",
-                "max_epochs": 600,
+                "model": "deepgrow",
+                "max_epochs": 200,
                 "dataset": "PersistentDataset",
                 "train_batch_size": 1,
                 "val_batch_size": 1,

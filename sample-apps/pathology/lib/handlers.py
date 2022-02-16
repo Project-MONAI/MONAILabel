@@ -101,7 +101,7 @@ class TensorBoardImageHandler:
 
     def write_images(self, batch_data, output_data, epoch):
         for bidx in range(len(batch_data)):
-            image = batch_data[bidx]["image"].detach().cpu().numpy() * 128 + 128
+            image = batch_data[bidx]["image"].detach().cpu().numpy()
             label = batch_data[bidx]["label"].detach().cpu().numpy()
             pred = output_data[bidx]["pred"].detach().cpu().numpy()
 
@@ -112,16 +112,22 @@ class TensorBoardImageHandler:
             self.logger.info(f"Write Image: {image.shape}; Label: {label.shape}; Pred: {pred.shape}")
 
             # plot_2d_or_3d_image(data=image.astype(np.uint8), step=epoch, max_channels=3, writer=self.writer, tag="Image")
-            img_tensor = make_grid(torch.from_numpy(image), normalize=True)
+            img_tensor = make_grid(torch.from_numpy(image[:3] * 128 + 128), normalize=True)
             self.writer.add_image(tag="Image", img_tensor=img_tensor, global_step=epoch)
 
+            label_pred = [label, pred]
+            label_pred_tag = "Label vs Pred:"
+            if image.shape[0] == 5:
+                label_pred = [label, pred, image[3][None], image[4][None]]
+                label_pred_tag = "Label vs Pred vs Pos vs Neg"
+
             img_tensor = make_grid(
-                tensor=torch.from_numpy(np.array([label, pred])),
-                nrow=2,
+                tensor=torch.from_numpy(np.array(label_pred)),
+                nrow=4,
                 normalize=True,
                 pad_value=10,
             )
-            self.writer.add_image(tag=f"Label vs Pred:", img_tensor=img_tensor, global_step=epoch)
+            self.writer.add_image(tag=label_pred_tag, img_tensor=img_tensor, global_step=epoch)
             break
 
     def write_region_metrics(self, epoch):

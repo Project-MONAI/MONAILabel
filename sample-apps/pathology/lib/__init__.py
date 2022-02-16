@@ -13,3 +13,4 @@ from .activelearning import MyStrategy
 from .handlers import TensorBoardImageHandler
 from .infer import MyInfer
 from .train import MyTrain
+from .train_deep import MyDeepgrow

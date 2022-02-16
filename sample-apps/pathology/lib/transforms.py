@@ -16,6 +16,7 @@ import pathlib
 import cv2
 import numpy as np
 import openslide
+from monai.apps.deepgrow.transforms import AddInitialSeedPointd
 from monai.config import KeysCollection
 from monai.transforms import CenterSpatialCrop, MapTransform
 from PIL import Image
@@ -249,3 +250,13 @@ class FindContoursd(MapTransform):
                     d[self.result] = dict()
                 d[self.result].update({self.bbox: bbox, self.contours: polygons})
         return d
+
+
+class AddInitialSeedPointExd(AddInitialSeedPointd):
+    def _apply(self, label, sid):
+        try:
+            return super()._apply(label, sid)
+        except AssertionError:
+            dimensions = 2
+            default_guidance = [-1] * (dimensions + 1)
+            return np.asarray([[default_guidance], [default_guidance]])

@@ -26,7 +26,7 @@ from watchdog.observers import Observer
 
 from monailabel.interfaces.datastore import Datastore, DefaultLabelTag
 from monailabel.interfaces.exception import ImageNotFoundException, LabelNotFoundException
-from monailabel.utils.others.generic import file_checksum, remove_file, file_ext
+from monailabel.utils.others.generic import file_checksum, file_ext, remove_file
 
 logger = logging.getLogger(__name__)
 
