@@ -13,7 +13,6 @@ import logging
 import numpy as np
 import torch
 from ignite.metrics import Accuracy
-from monai.apps.deepgrow.interaction import Interaction
 from monai.apps.deepgrow.transforms import AddGuidanceSignald, AddRandomGuidanced, FindDiscrepancyRegionsd
 from monai.data import DataLoader, list_data_collate
 from monai.handlers import from_engine
@@ -33,6 +32,7 @@ from monai.transforms import (
     ToTensord,
 )
 
+from monailabel.deepedit.interaction import Interaction
 from monailabel.tasks.train.basic_train import BasicTrainTask, Context
 
 from .handlers import TensorBoardImageHandler
@@ -126,7 +126,7 @@ class MyDeepgrow(BasicTrainTask):
     def train_handlers(self, context: Context):
         handlers = super().train_handlers(context)
         if context.local_rank == 0:
-            handlers.append(TensorBoardImageHandler(log_dir=context.events_dir))
+            handlers.append(TensorBoardImageHandler(log_dir=context.events_dir, batch_limit=0))
         return handlers
 
     def _dataloader(self, context, dataset, batch_size, num_workers):
@@ -136,16 +136,16 @@ class MyDeepgrow(BasicTrainTask):
 
     def train_iteration_update(self, context: Context):
         return Interaction(
+            deepgrow_probability=0.5,
             transforms=self.get_click_transforms(context),
             max_interactions=self.max_train_interactions,
-            key_probability="probability",
             train=True,
         )
 
     def val_iteration_update(self, context: Context):
         return Interaction(
+            deepgrow_probability=1.0,
             transforms=self.get_click_transforms(context),
             max_interactions=self.max_val_interactions,
-            key_probability="probability",
             train=False,
         )

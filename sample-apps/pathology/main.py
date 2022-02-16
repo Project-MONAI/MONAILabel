@@ -99,7 +99,7 @@ class MyApp(MONAILabelApp):
                 config={"max_epochs": 10, "train_batch_size": 1},
                 max_train_interactions=10,
                 max_val_interactions=5,
-                val_interval=5,
+                val_interval=1,
                 train_save_interval=1,
                 patch_size=self.patch_size,
                 labels=self.labels,
@@ -146,7 +146,7 @@ def main():
             request={
                 "name": "model_01",
                 "model": "deepgrow",
-                "max_epochs": 200,
+                "max_epochs": 500,
                 "dataset": "PersistentDataset",
                 "train_batch_size": 1,
                 "val_batch_size": 1,

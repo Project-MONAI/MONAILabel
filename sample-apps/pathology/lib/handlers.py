@@ -62,12 +62,14 @@ class TensorBoardImageHandler:
         interval: int = 1,
         batch_transform: Callable = lambda x: x,
         output_transform: Callable = lambda x: x,
+        batch_limit=1,
     ) -> None:
         self.writer = SummaryWriter(log_dir=log_dir) if summary_writer is None else summary_writer
         self.tag_name = tag_name
         self.interval = interval
         self.batch_transform = batch_transform
         self.output_transform = output_transform
+        self.batch_limit = batch_limit
 
         self.logger = logging.getLogger(__name__)
 
@@ -105,21 +107,21 @@ class TensorBoardImageHandler:
             label = batch_data[bidx]["label"].detach().cpu().numpy()
             pred = output_data[bidx]["pred"].detach().cpu().numpy()
 
-            # Only consider non empty labels
-            if np.sum(label) == 0:
+            # Only consider non-empty label in case single write
+            if self.batch_limit == 1 and bidx < (len(batch_data) - 1) and np.sum(label) == 0:
                 continue
 
-            self.logger.info(f"Write Image: {image.shape}; Label: {label.shape}; Pred: {pred.shape}")
+            self.logger.info(f"{bidx} - Write Image: {image.shape}; Label: {label.shape}; Pred: {pred.shape}")
 
-            # plot_2d_or_3d_image(data=image.astype(np.uint8), step=epoch, max_channels=3, writer=self.writer, tag="Image")
+            tag_prefix = f"{bidx} -" if self.batch_limit != 1 else ""
             img_tensor = make_grid(torch.from_numpy(image[:3] * 128 + 128), normalize=True)
-            self.writer.add_image(tag="Image", img_tensor=img_tensor, global_step=epoch)
+            self.writer.add_image(tag=f"{tag_prefix}Image", img_tensor=img_tensor, global_step=epoch)
 
             label_pred = [label, pred]
-            label_pred_tag = "Label vs Pred:"
+            label_pred_tag = f"{tag_prefix}Label vs Pred:"
             if image.shape[0] == 5:
                 label_pred = [label, pred, image[3][None], image[4][None]]
-                label_pred_tag = "Label vs Pred vs Pos vs Neg"
+                label_pred_tag = f"{tag_prefix}Label vs Pred vs Pos vs Neg"
 
             img_tensor = make_grid(
                 tensor=torch.from_numpy(np.array(label_pred)),
@@ -128,7 +130,8 @@ class TensorBoardImageHandler:
                 pad_value=10,
             )
             self.writer.add_image(tag=label_pred_tag, img_tensor=img_tensor, global_step=epoch)
-            break
+            if self.batch_limit == 1 or bidx == (self.batch_limit - 1):
+                break
 
     def write_region_metrics(self, epoch):
         metric_sum = 0
