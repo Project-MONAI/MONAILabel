@@ -612,6 +612,9 @@ class MONAILabelApp:
         patch_size = [int(p) for p in patch_size]
 
         roi = request.get("roi", None)
+        if isinstance(roi, dict):
+            roi = [[roi.get("x", 0), roi.get("y", 0)], [roi.get("x2", 0), roi.get("y2", 0)]]
+        roi = roi if sum(roi[0]) + sum(roi[1]) else None
         level = request.get("level", 0)
 
         with openslide.OpenSlide(image) as slide:

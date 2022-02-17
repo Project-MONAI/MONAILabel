@@ -21,34 +21,22 @@ def bbox = [[roi.x, roi.y], [roi.x2, roi.y2]]
 
 def monailabel = 'http://127.0.0.1:8000'
 def model = 'segmentation'
-def server_url = monailabel + '/infer/' + model + '?image=' + image + '&wsi=true&output=image'
+def server_url = monailabel + '/infer/wsi/' + model + '?image=' + image
 print server_url
 
-final def boundary =  'abcd' + Long.toString(System.currentTimeMillis()) * 2 + 'dcba'
-final def twoHyphens = '--'
-final def lineEnd = '\r\n'
-final def hash = 'test'
-
-def json = '{"level": 0, "patch_size": [2048, 2048], "roi": '+ bbox + '}'
-print json
+def strROI = '{"x": '+ (int)roi.x + ', "y": '+ (int)roi.y + ', "x2": '+ (int)roi.x2 + ', "y2": '+ (int)roi.y2 + '}'
+def body = '{"level": 0, "patch_size": [4096, 4096], "roi": ' + strROI + '}'
+print body
 
 
 def connection = new URL(server_url).openConnection()
 connection.setDoInput(true)
 connection.setDoOutput(true)
 connection.setRequestMethod('POST')
-connection.setRequestProperty('Content-Type' , 'multipart/form-data; boundary=' + boundary)
-
-def outputStream = new DataOutputStream(connection.getOutputStream())
-outputStream.writeBytes(twoHyphens + boundary + lineEnd);
-outputStream.writeBytes('Content-Disposition: form-data; name="params"' + lineEnd)
-outputStream.writeBytes(lineEnd)
-outputStream.writeBytes(json)
-outputStream.writeBytes(lineEnd)
-
-outputStream.writeBytes(twoHyphens + boundary + twoHyphens + lineEnd)
-outputStream.flush()
-outputStream.close()
+connection.setRequestProperty('Content-Type' , 'application/json')
+connection.getOutputStream().withWriter("UTF-8") { w ->
+    w.write(body)
+}
 
 
 def responseBody
@@ -73,7 +61,6 @@ list.Annotations.Annotation.each {
 
     def poly = new PolygonROI(tmp_points_list)
     def annotation = new PathAnnotationObject(poly)
-
 
     // Set the class here below
     annotation.setPathClass(annotationClass)
