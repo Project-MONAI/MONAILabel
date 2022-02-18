@@ -24,8 +24,12 @@ def model = 'deepedit'
 def server_url = monailabel + '/infer/wsi/' + model + '?image=' + image
 print server_url
 
+def foreground = '[]'
 def strROI = '{"x": '+ (int)roi.x + ', "y": '+ (int)roi.y + ', "x2": '+ (int)roi.x2 + ', "y2": '+ (int)roi.y2 + '}'
-def body = '{"level": 0, "patch_size": [4096, 4096], "roi": ' + strROI + '}'
+def patch_size = '[4096, 4096]'
+def min_poly_area = '1000'
+
+def body = '{"level": 0, "patch_size": ' + patch_size + ', "min_poly_area": ' + min_poly_area + ', "roi": ' + strROI + ', "params": {"foreground": ' + foreground + '}}'
 print body
 
 
