@@ -55,7 +55,7 @@ class MyInfer(InferTask):
 
     def pre_transforms(self):
         return [
-            LoadImaged(keys="image"),
+            LoadImaged(keys="image", reader="ITKReader"),
             AddChanneld(keys="image"),
             # Spacingd(keys="image", pixdim=self.target_spacing, mode="bilinear"),
             Orientationd(keys="image", axcodes="RAS"),

@@ -40,10 +40,14 @@ class MyApp(MONAILabelApp):
     def __init__(self, app_dir, studies, conf):
 
         # Zero values are reserved to background. Non zero values are for the labels
-        self.label_names = {
-            "spleen": 1,
-            "background": 0,
-        }
+        # self.label_names = {
+        #     "spleen": 1,
+        #     "right_kidney": 2,
+        #     "left_kidney": 3,
+        #     "liver": 6,
+        #     "background": 0,
+        # }
+        self.label_names = conf.get("label_names")
 
         network = conf.get("network", "dynunet")
 
@@ -59,12 +63,13 @@ class MyApp(MONAILabelApp):
                 "in_channels": len(self.label_names) + 1,  # All labels plus Image
                 "out_channels": len(self.label_names),  # All labels including background
                 "img_size": spatial_size,
-                "feature_size": 64,
-                "hidden_size": 1536,
+                "feature_size": 16,
+                "hidden_size": 768,
                 "mlp_dim": 3072,
-                "num_heads": 48,
-                "pos_embed": "conv",
+                "num_heads": 12,
+                "pos_embed": "perceptron",
                 "norm_name": "instance",
+                "conv_block": True,
                 "res_block": True,
             }
             self.network = UNETR(**network_params, dropout_rate=0.0)
@@ -179,6 +184,7 @@ class MyApp(MONAILabelApp):
                 debug_mode=False,
                 find_unused_parameters=self.find_unused_parameters,
                 num_clicks=self.conf.get("max_val_interactions"),
+                train_percent=self.conf.get("train_percent"),
             )
         }
 
@@ -237,16 +243,16 @@ def main():
     )
 
     parser = argparse.ArgumentParser()
-    parser.add_argument("-n", "--network", default="dynunet", choices=["unetr", "dynunet"])
+    parser.add_argument("-n", "--network", default="unetr", choices=["unetr", "dynunet"])
     parser.add_argument(
         "-s",
         "--studies",
-        default="/home/adp20local/Documents/Datasets/monailabel_datasets/Slicer/spleen/train",
+        default="/home/adp20local/Documents/Datasets/monailabel_datasets/multilabel_abdomen/NIFTI_REORIENTED/train",
     )
-    parser.add_argument("-e", "--epoch", type=int, default=50)
+    parser.add_argument("-e", "--epoch", type=int, default=100)
     parser.add_argument("-l", "--lr", default=0.0001)
     parser.add_argument("-d", "--dataset", default="CacheDataset")
-    parser.add_argument("-o", "--output", default="model")
+    parser.add_argument("-o", "--output", default="model_DeepEdit")
     parser.add_argument("-i", "--size", default="[128,128,128]")
     parser.add_argument("-b", "--batch", type=int, default=1)
     args = parser.parse_args()
@@ -254,25 +260,53 @@ def main():
     app_dir = os.path.dirname(__file__)
     studies = args.studies
 
-    for j in [0, 1, 5, 10]:
-        conf = {
-            "use_pretrained_model": "false",
-            "auto_update_scoring": "false",
-            "spatial_size": args.size,
-            "network": args.network,
-            "max_val_interactions": j,
-        }
-        app = MyApp(app_dir, studies, conf)
-        app.train(
-            request={
-                "name": args.output + "_" + str(j) + "_clicks",
-                "model": "deepedit_train",
-                "max_epochs": args.epoch,
-                "dataset": args.dataset,
-                "train_batch_size": args.batch,
-                "multi_gpu": True,
-            }
-        )
+    label_names = [
+        {
+            "spleen": 1,
+            "background": 0,
+        },
+        {
+            "spleen": 1,
+            "right_kidney": 2,
+            "left_kidney": 3,
+            "liver": 6,
+            "background": 0,
+        },
+    ]
+
+    train_percent = [0.25, 0.50]
+
+    for j in [1, 5, 10]:
+        for l in label_names:
+            for p in train_percent:
+                conf = {
+                    "use_pretrained_model": "false",
+                    "auto_update_scoring": "false",
+                    "spatial_size": args.size,
+                    "network": args.network,
+                    "max_val_interactions": j,
+                    "label_names": l,
+                    "train_percent": p,
+                }
+                app = MyApp(app_dir, studies, conf)
+
+                if len(l.keys()) > 2:
+                    add_name = "_multilabel"
+                else:
+                    add_name = "_single_label"
+
+                print(f"Working on {str(j)} clicks for {add_name} using {str(p)} percent")
+
+                app.train(
+                    request={
+                        "name": args.output + "_" + str(j) + "_clicks" + add_name,
+                        "model": "deepedit_train",
+                        "max_epochs": args.epoch,
+                        "dataset": args.dataset,
+                        "train_batch_size": args.batch,
+                        "multi_gpu": True,
+                    }
+                )
 
     # # PERFORMING INFERENCE USING INTERACTIVE MODEL
     # deepgrow_3d = {

@@ -59,11 +59,11 @@ class MyTrain(BasicTrainTask):
         return torch.optim.Adam(self._network.parameters(), lr=0.0001)
 
     def loss_function(self, context: Context):
-        return DiceCELoss(to_onehot_y=True, softmax=True, squared_pred=True, batch=True)
+        return DiceCELoss(to_onehot_y=True, softmax=True)
 
     def train_pre_transforms(self, context: Context):
         t = [
-            LoadImaged(keys=("image", "label")),
+            LoadImaged(keys=("image", "label"), reader="ITKReader"),
             NormalizeLabelsInDatasetd(keys="label", label_names=self.label_names),
             AddChanneld(keys=("image", "label")),
             Orientationd(keys=["image", "label"], axcodes="RAS"),
@@ -102,8 +102,9 @@ class MyTrain(BasicTrainTask):
                 prob=0.50,
             ),
             Resized(keys=("image", "label"), spatial_size=self.spatial_size, mode=("area", "nearest")),
-            EnsureTyped(keys=("image", "label")),
         ]
+        if context.request.get("to_gpu", False):
+            t.extend([EnsureTyped(keys=("image", "label")), ToDeviced(keys=("image", "label"), device=context.device)])
         return t
 
     def train_post_transforms(self, context: Context):
@@ -121,7 +122,7 @@ class MyTrain(BasicTrainTask):
 
     def val_pre_transforms(self, context: Context):
         return [
-            LoadImaged(keys=("image", "label")),
+            LoadImaged(keys=("image", "label"), reader="ITKReader"),
             NormalizeLabelsInDatasetd(keys="label", label_names=self.label_names),
             AddChanneld(keys=("image", "label")),
             Orientationd(keys=["image", "label"], axcodes="RAS"),
@@ -147,9 +148,9 @@ class MyTrain(BasicTrainTask):
         train_d = context.datalist
 
         # Validation images
-        data_dir = "/home/adp20local/Documents/Datasets/monailabel_datasets/Slicer/spleen/validation_imgs"
-        val_images = sorted(glob.glob(os.path.join(data_dir, "imagesTr", "*.nii.gz")))
-        val_labels = sorted(glob.glob(os.path.join(data_dir, "labelsTr", "*.nii.gz")))
+        data_dir = "/home/adp20local/Documents/Datasets/monailabel_datasets/multilabel_abdomen/NIFTI_REORIENTED/val"
+        val_images = sorted(glob.glob(os.path.join(data_dir, "imgs", "*.nii.gz")))
+        val_labels = sorted(glob.glob(os.path.join(data_dir, "labels", "*.nii.gz")))
         val_d = [{"image": image_name, "label": label_name} for image_name, label_name in zip(val_images, val_labels)]
 
         if context.local_rank == 0:

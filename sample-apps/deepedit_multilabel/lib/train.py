@@ -55,17 +55,18 @@ class MyTrain(BasicTrainTask):
         description="Train DeepEdit model for 3D Images",
         spatial_size=(128, 128, 64),
         target_spacing=(1.0, 1.0, 1.0),
-        deepgrow_probability_train=0.4,
-        deepgrow_probability_val=1.0,
+        deepgrow_probability_train=0.25,
+        deepgrow_probability_val=1,
         label_names=None,
         debug_mode=False,
         num_clicks=1,
+        train_percent=0,
         **kwargs,
     ):
         self._network = network
         self.spatial_size = spatial_size
         self.target_spacing = target_spacing
-        self.deepgrow_probability_train = deepgrow_probability_train
+        self.deepgrow_probability_train = train_percent
         self.deepgrow_probability_val = deepgrow_probability_val
         self.label_names = label_names
         self.debug_mode = debug_mode
@@ -80,7 +81,7 @@ class MyTrain(BasicTrainTask):
         return torch.optim.Adam(self._network.parameters(), lr=0.0001)
 
     def loss_function(self, context: Context):
-        return DiceCELoss(to_onehot_y=True, softmax=True)
+        return DiceCELoss(to_onehot_y=True, softmax=True, squared_pred=True, batch=True)
 
     def get_click_transforms(self, context: Context, val):
         return [
@@ -243,9 +244,9 @@ class MyTrain(BasicTrainTask):
         train_d = context.datalist
 
         # Validation images
-        data_dir = "/home/adp20local/Documents/Datasets/monailabel_datasets/Slicer/spleen/validation_imgs"
-        val_images = sorted(glob.glob(os.path.join(data_dir, "imagesTr", "*.nii.gz")))
-        val_labels = sorted(glob.glob(os.path.join(data_dir, "labelsTr", "*.nii.gz")))
+        data_dir = "/home/adp20local/Documents/Datasets/monailabel_datasets/multilabel_abdomen/NIFTI_REORIENTED/val"
+        val_images = sorted(glob.glob(os.path.join(data_dir, "imgs", "*.nii.gz")))
+        val_labels = sorted(glob.glob(os.path.join(data_dir, "labels", "*.nii.gz")))
         val_d = [{"image": image_name, "label": label_name} for image_name, label_name in zip(val_images, val_labels)]
 
         if context.local_rank == 0:
