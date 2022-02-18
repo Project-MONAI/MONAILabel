@@ -20,7 +20,7 @@ def bbox = [[roi.x, roi.y], [roi.x2, roi.y2]]
 
 
 def monailabel = 'http://127.0.0.1:8000'
-def model = 'segmentation'
+def model = 'deepedit'
 def server_url = monailabel + '/infer/wsi/' + model + '?image=' + image
 print server_url
 
@@ -50,6 +50,7 @@ print "Added new annotation objects"
 
 def hierarchy = QP.getCurrentHierarchy()
 def list = new XmlSlurper().parseText(responseBody)
+def count = 0
 list.Annotations.Annotation.each {
     def annotationClass = getPathClass(it.@Name.toString())
     def tmp_points_list = []
@@ -65,8 +66,9 @@ list.Annotations.Annotation.each {
     // Set the class here below
     annotation.setPathClass(annotationClass)
     hierarchy.addPathObject(annotation, false)
+    count = count + 1
 }
 
 // Update hierarchy to see changes in QuPath's hierarchy
 fireHierarchyUpdate()
-print "Done!"
+print "Done! => Total Objects Added: " + count

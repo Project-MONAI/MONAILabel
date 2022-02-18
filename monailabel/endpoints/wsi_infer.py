@@ -43,6 +43,7 @@ class WSIInput(BaseModel):
     level: Optional[int] = Field(0, title="Resolution Level")
     roi: Optional[ROI] = Field(ROI(x=0, y=0, x2=0, y2=0), title="Region Of Interest [x, y, x2, y2]")
     patch_size: Optional[Sequence[int]] = Field([2048, 2048], title="Patch size for Inference")
+    min_poly_area: Optional[int] = Field(5000, title="Min Area to filter mask polygons")
     params: Optional[dict] = Field({}, title="Additional Params")
 
 

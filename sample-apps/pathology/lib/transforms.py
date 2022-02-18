@@ -18,8 +18,9 @@ import numpy as np
 import openslide
 from monai.apps.deepgrow.transforms import AddInitialSeedPointd
 from monai.config import KeysCollection
-from monai.transforms import CenterSpatialCrop, MapTransform
+from monai.transforms import CenterSpatialCrop, MapTransform, Transform
 from PIL import Image
+from shapely.geometry import Polygon
 from skimage.filters.thresholding import threshold_otsu
 from skimage.morphology import remove_small_objects
 
@@ -146,7 +147,7 @@ def filter_ostu(img):
 
 
 def filter_remove_small_objects(img_np, min_size=3000, avoid_overmask=True, overmask_thresh=95):
-    rem_sm = remove_small_objects(img_np, min_size=min_size)
+    rem_sm = remove_small_objects(img_np.astype(bool), min_size=min_size)
     mask_percentage = mask_percent(rem_sm)
     if (mask_percentage >= overmask_thresh) and (min_size >= 1) and (avoid_overmask is True):
         new_min_size = round(min_size / 2)
@@ -195,15 +196,17 @@ class PostFilterLabeld(MapTransform):
     def __call__(self, data):
         d = dict(data)
         img = d[self.image]
+        img = img[:3]
         img = np.moveaxis(img, 0, -1)  # to channel last
         img = img * 128 + 128
         img = img.astype(np.uint8)
 
         for key in self.keys:
             label = d[key].astype(np.uint8)
-            label = filter_remove_small_objects(label).astype(np.uint8)
             gray = np.dot(img, [0.2125, 0.7154, 0.0721])
-            d[key] = label * np.logical_xor(label, gray == 0)
+            label = label * np.logical_xor(label, gray == 0)
+            label = filter_remove_small_objects(label).astype(np.uint8)
+            d[key] = label
         return d
 
 
@@ -212,7 +215,7 @@ class FindContoursd(MapTransform):
         self,
         keys: KeysCollection,
         min_positive=500,
-        min_poly_size=50,
+        min_poly_area=3000,
         result="result",
         bbox="bbox",
         contours="contours",
@@ -220,7 +223,7 @@ class FindContoursd(MapTransform):
         super().__init__(keys)
 
         self.min_positive = min_positive
-        self.min_poly_size = min_poly_size
+        self.min_poly_area = min_poly_area
         self.result = result
         self.bbox = bbox
         self.contours = contours
@@ -230,6 +233,7 @@ class FindContoursd(MapTransform):
         wsi_meta = d.get("wsi", {})
         location = wsi_meta["location"]
         size = wsi_meta["size"]
+        min_poly_area = wsi_meta.get("min_poly_area", self.min_poly_area)
 
         tx, ty = location[0], location[1]
         tw, th = size[0], size[1]
@@ -242,19 +246,27 @@ class FindContoursd(MapTransform):
             bbox = [[tx, ty], [tx + tw, ty + th]]
             contours, _ = cv2.findContours(p, cv2.RETR_LIST, cv2.CHAIN_APPROX_SIMPLE)
             polygons = []
-            for cidx, contour in enumerate(contours):
+            for contour in contours:
                 contour = np.squeeze(contour)
-                if len(contour) < self.min_poly_size:  # Ignore poly with less than 3 points
+                if len(contour) < 3:
                     continue
 
                 contour[:, 0] += tx  # X
                 contour[:, 1] += ty  # Y
-                polygons.append(contour.astype(int).tolist())
+
+                coords = contour.astype(int).tolist()
+                pobj = Polygon(coords)
+                if pobj.area < min_poly_area:  # Ignore poly with lesser area
+                    continue
+
+                logger.debug(f"Area: {pobj.area}; Perimeter: {pobj.length}; Count: {len(coords)}")
+                polygons.append(coords)
 
             if len(polygons):
                 if d.get(self.result) is None:
                     d[self.result] = dict()
                 d[self.result].update({self.bbox: bbox, self.contours: polygons})
+            logger.info(f"+++++ Total polygons Found: {len(polygons)}")
         return d
 
 
@@ -266,3 +278,33 @@ class AddInitialSeedPointExd(AddInitialSeedPointd):
             dimensions = 2
             default_guidance = [-1] * (dimensions + 1)
             return np.asarray([[default_guidance], [default_guidance]])
+
+
+class AddClickGuidanced(Transform):
+    def __init__(
+        self,
+        image,
+        guidance="guidance",
+        foreground="foreground",
+        background="background",
+    ):
+        self.image = image
+        self.guidance = guidance
+        self.foreground = foreground
+        self.background = background
+
+    def __call__(self, data):
+        d = dict(data)
+
+        wsi_meta = d.get("wsi", {})
+        location = wsi_meta.get("location", (0, 0))
+        tx, ty = location[0], location[1]
+
+        pos = d.get(self.foreground)
+        pos = (np.array(pos) - (tx, ty)).astype(int).tolist() if pos else []
+
+        neg = d.get(self.background)
+        neg = (np.array(neg) - (tx, ty)).astype(int).tolist() if neg else []
+
+        d[self.guidance] = [pos, neg]
+        return d

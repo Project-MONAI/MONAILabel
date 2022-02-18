@@ -588,15 +588,13 @@ class MONAILabelApp:
         (row, col, tx, ty, tw, th) = task["coords"]
         logger.info(f"{tid} => Patch/Slide ({row}, {col}) => Location: ({tx}, {ty}); Size: {tw} x {th}")
 
-        req = {
-            "model": task["model"],
-            "image": task["image"],
-            "device": task.get("device", "cuda"),
-            "wsi": {"location": (tx, ty), "level": task["level"], "size": (tw, th)},
-            "patch_size": task["patch_size"],
-            "result_write_to_file": False,
-            "result_extension": ".png",
-        }
+        req = copy.deepcopy(task)
+        req.update(
+            {
+                "result_write_to_file": False,
+                "result_extension": ".png",
+            }
+        )
 
         res = self.infer(req)
         if res.get("params") and res["params"].get("contours"):
@@ -610,6 +608,9 @@ class MONAILabelApp:
     def _create_infer_wsi_tasks(self, request, image):
         patch_size = request.get("patch_size", (2048, 2048))
         patch_size = [int(p) for p in patch_size]
+
+        # TODO:: Auto-Detect based on WSI dimensions instead of 3000
+        min_poly_area = request.get("min_poly_area", 3000)
 
         roi = request.get("roi", None)
         if isinstance(roi, dict):
@@ -647,9 +648,14 @@ class MONAILabelApp:
                     {
                         "id": count,
                         "image": image,
-                        "level": level,
                         "patch_size": patch_size,
+                        "min_poly_area": min_poly_area,
                         "coords": (row, col, tx, ty, tw, th),
+                        "wsi": {
+                            "location": (tx, ty),
+                            "level": level,
+                            "size": (tw, th),
+                        },
                     }
                 )
                 infer_tasks.append(task)

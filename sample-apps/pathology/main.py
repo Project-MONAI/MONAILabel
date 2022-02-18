@@ -14,13 +14,12 @@ import os
 import shutil
 from typing import Dict
 
-from lib import MyDeepgrow, MyInfer, MyTrain
+from lib import InferDeep, MyInfer, MyTrain, TrainDeep
 from monai.networks.nets import BasicUNet
 
 from monailabel.interfaces.app import MONAILabelApp
 from monailabel.interfaces.tasks.infer import InferTask
 from monailabel.interfaces.tasks.train import TrainTask
-from monailabel.utils.others.generic import file_ext, get_basename
 
 logger = logging.getLogger(__name__)
 
@@ -34,48 +33,56 @@ class MyApp(MONAILabelApp):
             1: "tumor",
         }
 
-        self.network = BasicUNet(
+        self.seg_network = BasicUNet(
             spatial_dims=2, in_channels=3, out_channels=len(labels), features=(32, 64, 128, 256, 512, 32)
         )
-        self.network_deep = BasicUNet(
+        self.deep_network = BasicUNet(
             spatial_dims=2, in_channels=5, out_channels=len(labels), features=(32, 64, 128, 256, 512, 32)
         )
 
         self.model_dir = os.path.join(app_dir, "model")
-        self.pretrained_model = os.path.join(self.model_dir, "pretrained.pt")
-        self.final_model = os.path.join(self.model_dir, "model.pt")
+        self.seg_pretrained_model = os.path.join(self.model_dir, "segmentation_pretrained.pt")
+        self.seg_final_model = os.path.join(self.model_dir, "segmentation.pt")
+
+        self.deep_pretrained_model = os.path.join(self.model_dir, "deepedit_pretrained.pt")
+        self.deep_final_model = os.path.join(self.model_dir, "deepedit.pt")
 
         super().__init__(
             app_dir=app_dir,
             studies=studies,
             conf=conf,
             labels=labels,
-            name="Semantic Segmentation - Pathology",
-            description="Active Learning solution for Pathology",
+            name="pathology",
+            description="Active Learning solution for Pathology using Semantic Segmentation/Interaction (DeepEdit)",
         )
 
     def init_infers(self) -> Dict[str, InferTask]:
         return {
-            "segmentation": MyInfer([self.pretrained_model, self.final_model], self.network, labels=self.labels),
+            "segmentation": MyInfer(
+                [self.seg_pretrained_model, self.seg_final_model], self.seg_network, labels=self.labels
+            ),
+            "deepedit": InferDeep(
+                [self.deep_pretrained_model, self.deep_final_model], self.deep_network, labels=self.labels
+            ),
         }
 
     def init_trainers(self) -> Dict[str, TrainTask]:
         return {
             "segmentation": MyTrain(
-                model_dir=self.model_dir,
-                network=self.network,
-                load_path=self.pretrained_model,
-                publish_path=self.final_model,
+                model_dir=os.path.join(self.model_dir, "segmentation"),
+                network=self.seg_network,
+                load_path=self.seg_pretrained_model,
+                publish_path=self.seg_final_model,
                 config={"max_epochs": 10, "train_batch_size": 1},
                 train_save_interval=1,
                 patch_size=self.patch_size,
                 labels=self.labels,
             ),
-            "deepgrow": MyDeepgrow(
-                model_dir=self.model_dir,
-                network=self.network_deep,
-                load_path=self.pretrained_model,
-                publish_path=self.final_model,
+            "deepedit": TrainDeep(
+                model_dir=os.path.join(self.model_dir, "deepedit"),
+                network=self.deep_network,
+                load_path=self.deep_pretrained_model,
+                publish_path=self.deep_final_model,
                 config={"max_epochs": 10, "train_batch_size": 1},
                 max_train_interactions=10,
                 max_val_interactions=5,
@@ -109,7 +116,7 @@ def main():
     )
 
     parser = argparse.ArgumentParser()
-    parser.add_argument("-s", "--studies", default="/local/sachi/Data/Pathology/BCSS/images")
+    parser.add_argument("-s", "--studies", default="/local/sachi/Data/Pathology/BCSS/wsis")
     args = parser.parse_args()
 
     app_dir = os.path.dirname(__file__)
@@ -120,13 +127,13 @@ def main():
     }
 
     app = MyApp(app_dir, studies, conf)
-    run_train = True
+    run_train = False
     if run_train:
         app.train(
             request={
                 "name": "model_01",
-                "model": "deepgrow",
-                "max_epochs": 500,
+                "model": "deepedit",
+                "max_epochs": 200,
                 "dataset": "PersistentDataset",
                 "train_batch_size": 1,
                 "val_batch_size": 1,
@@ -140,14 +147,14 @@ def main():
 
 def infer_wsi(app):
     root_dir = "/local/sachi/Data/Pathology/BCSS"
-    image = "TCGA-OL-A5RW-01Z-00-DX1.E16DE8EE-31AF-4EAF-A85F-DB3E3E2C3BFF"
+    image = "TCGA-EW-A1OW-01Z-00-DX1.97888686-EBB6-4B13-AB5D-452F475E865B"
     res = app.infer_wsi(
         request={
-            "model": "segmentation",
+            "model": "deepedit",
             "image": image,
             "level": 0,
-            "patch_size": [2048, 2048],
-            "roi": [[5124.0, 7761.0], [8240.0, 9932.0]],
+            "patch_size": [4096, 4096],
+            "roi": {"x": 34679, "y": 54441, "x2": 46025, "y2": 64181},
         }
     )
 
@@ -159,32 +166,6 @@ def infer_wsi(app):
     label_xml = os.path.join(root_dir, f"{image}.xml")
     shutil.copy(res["file"], label_xml)
     logger.error(f"Saving Label XML: {label_xml}")
-
-
-def infer_roi(args, app):
-    images = [os.path.join(args.studies, f) for f in os.listdir(args.studies) if f.endswith(".png")]
-    # images = [os.path.join(args.studies, "tumor_001_1_4x2.png")]
-    for image in images:
-        print(f"Infer Image: {image}")
-        req = {
-            "model": "segmentation",
-            "image": image,
-        }
-
-        name = get_basename(image)
-        ext = file_ext(name)
-
-        shutil.copy(image, f"/local/sachi/Downloads/image{ext}")
-
-        o = os.path.join(os.path.dirname(image), "labels", "final", name)
-        shutil.copy(o, f"/local/sachi/Downloads/original{ext}")
-
-        res = app.infer(request=req)
-        o = os.path.join(args.studies, "labels", "original", name)
-        shutil.move(res["label"], o)
-
-        shutil.copy(o, f"/local/sachi/Downloads/predicated{ext}")
-        return
 
 
 if __name__ == "__main__":

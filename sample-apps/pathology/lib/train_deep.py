@@ -41,7 +41,7 @@ from .transforms import AddInitialSeedPointExd, ClipBorderd, FilterImaged, Label
 logger = logging.getLogger(__name__)
 
 
-class MyDeepgrow(BasicTrainTask):
+class TrainDeep(BasicTrainTask):
     def __init__(
         self,
         model_dir,
