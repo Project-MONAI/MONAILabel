@@ -63,13 +63,12 @@ class MyApp(MONAILabelApp):
                 "in_channels": len(self.label_names) + 1,  # All labels plus Image
                 "out_channels": len(self.label_names),  # All labels including background
                 "img_size": spatial_size,
-                "feature_size": 16,
-                "hidden_size": 768,
+                "feature_size": 32,
+                "hidden_size": 864,
                 "mlp_dim": 3072,
-                "num_heads": 12,
-                "pos_embed": "perceptron",
+                "num_heads": 36,
+                "pos_embed": "conv",
                 "norm_name": "instance",
-                "conv_block": True,
                 "res_block": True,
             }
             self.network = UNETR(**network_params, dropout_rate=0.0)
@@ -249,7 +248,7 @@ def main():
         "--studies",
         default="/home/adp20local/Documents/Datasets/monailabel_datasets/multilabel_abdomen/NIFTI_REORIENTED/train",
     )
-    parser.add_argument("-e", "--epoch", type=int, default=100)
+    parser.add_argument("-e", "--epoch", type=int, default=200)
     parser.add_argument("-l", "--lr", default=0.0001)
     parser.add_argument("-d", "--dataset", default="CacheDataset")
     parser.add_argument("-o", "--output", default="model_DeepEdit")
@@ -274,7 +273,7 @@ def main():
         },
     ]
 
-    train_percent = [0.25, 0.50]
+    train_percent = [0.25, 0.50, 1.0]
 
     for j in [1, 5, 10]:
         for l in label_names:
@@ -299,7 +298,7 @@ def main():
 
                 app.train(
                     request={
-                        "name": args.output + "_" + str(j) + "_clicks" + add_name,
+                        "name": args.output + add_name + "_" + str(j) + f"_clicks_{str(p)}_percent",
                         "model": "deepedit_train",
                         "max_epochs": args.epoch,
                         "dataset": args.dataset,
@@ -307,6 +306,10 @@ def main():
                         "multi_gpu": True,
                     }
                 )
+
+                # remove model files
+                os.remove("./model/model_" + args.network + ".pt")
+                os.remove("./model/train_stats.json")
 
     # # PERFORMING INFERENCE USING INTERACTIVE MODEL
     # deepgrow_3d = {
