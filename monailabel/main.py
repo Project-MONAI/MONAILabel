@@ -37,7 +37,9 @@ class Main:
     def args_start_server(self, parser):
         parser.add_argument("-a", "--app", help="App Directory")
         parser.add_argument("-s", "--studies", help="Studies Directory")
-        parser.add_argument("-d", "--debug", action="store_true", help="Enable debug logs")
+        parser.add_argument(
+            "-v", "--verbose", default="INFO", type=str, choices=["DEBUG", "INFO", "WARNING", "ERROR"], help="Log Level"
+        )
 
         # --conf key1 value1 --conf key2 value2
         parser.add_argument(
@@ -236,7 +238,7 @@ class Main:
         self.start_server_validate_args(args)
         self.start_server_init_settings(args)
 
-        log_config = init_log_config(args.log_config, args.app, "app.log")
+        log_config = init_log_config(args.log_config, args.app, "app.log", args.verbose)
 
         if args.dryrun:
             return
@@ -247,10 +249,10 @@ class Main:
             app,
             host=args.host,
             port=args.port,
-            log_level="debug" if args.debug else "info",
+            log_level="info",
             log_config=log_config,
             use_colors=True,
-            access_log=args.debug,
+            access_log="info",
             ssl_keyfile=args.ssl_keyfile,
             ssl_certfile=args.ssl_certfile,
             ssl_keyfile_password=args.ssl_keyfile_password,
