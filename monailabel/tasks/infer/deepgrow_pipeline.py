@@ -71,7 +71,7 @@ class InferDeepgrowPipeline(InferTask):
         self.random_point_density = random_point_density
         self.output_largest_cc = output_largest_cc
 
-    def pre_transforms(self):
+    def pre_transforms(self, data):
         return [
             LoadImaged(keys="image"),
             AsChannelFirstd(keys="image"),
@@ -85,10 +85,10 @@ class InferDeepgrowPipeline(InferTask):
             AddGuidanceSignald(image="image", guidance="guidance"),
         ]
 
-    def inferer(self):
+    def inferer(self, data):
         return SimpleInferer()
 
-    def post_transforms(self):
+    def post_transforms(self, data):
         return [
             LargestCCd(keys="pred"),
             RestoreLabeld(keys="pred", ref_image="image", mode="nearest"),

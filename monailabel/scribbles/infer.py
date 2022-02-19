@@ -64,7 +64,7 @@ class HistogramBasedGraphCut(InferTask):
         self.lamda = lamda
         self.sigma = sigma
 
-    def pre_transforms(self):
+    def pre_transforms(self, data):
         return [
             LoadImaged(keys=["image", "label"]),
             EnsureChannelFirstd(keys=["image", "label"]),
@@ -91,7 +91,7 @@ class HistogramBasedGraphCut(InferTask):
             ),
         ]
 
-    def inferer(self):
+    def inferer(self, data):
         return Compose(
             [
                 # unary term maker
@@ -114,7 +114,7 @@ class HistogramBasedGraphCut(InferTask):
             ]
         )
 
-    def post_transforms(self):
+    def post_transforms(self, data):
         return [
             Restored(keys="pred", ref_image="image"),
             BoundingBoxd(keys="pred", result="result", bbox="bbox"),
