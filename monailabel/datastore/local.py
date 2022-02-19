@@ -212,6 +212,10 @@ class LocalDatastore(Datastore):
 
     def _to_id(self, file: str) -> Tuple[str, str]:
         ext = file_ext(file)
+        extensions = [e.replace("*", "") for e in self._extensions]
+        for e in extensions:
+            if file.endswith(e):
+                ext = e
         id = file.replace(ext, "")
         return id, ext
 
@@ -403,7 +407,7 @@ class LocalDatastore(Datastore):
 
             image_info = image_info if image_info else {}
             image_info["ts"] = int(time.time())
-            image_info["checksum"] = file_checksum(dest)
+            # image_info["checksum"] = file_checksum(dest)
             image_info["name"] = name
 
             self._datastore.objects[image_id] = ImageLabelModel(image=DataModel(info=image_info, ext=image_ext))
@@ -553,7 +557,7 @@ class LocalDatastore(Datastore):
                 name = self._filename(image_id, image_ext)
                 image_info = {
                     "ts": int(time.time()),
-                    "checksum": file_checksum(os.path.join(self._datastore.image_path(), name)),
+                    # "checksum": file_checksum(os.path.join(self._datastore.image_path(), name)),
                     "name": name,
                 }
 

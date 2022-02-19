@@ -18,7 +18,7 @@ import tempfile
 import time
 from datetime import timedelta
 from distutils.util import strtobool
-from typing import Callable, Dict, Optional, Sequence
+from typing import Any, Callable, Dict, Optional, Sequence, Union
 
 import requests
 import schedule
@@ -62,7 +62,7 @@ class MONAILabelApp:
         name: str = "",
         description: str = "",
         version: str = "2.0",
-        labels: Optional[Sequence[str]] = None,
+        labels: Union[Optional[Sequence[str]], Optional[Dict[Any, Any]]] = None,
     ):
         """
         Base Class for Any MONAI Label App

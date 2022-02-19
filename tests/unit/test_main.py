@@ -29,7 +29,7 @@ class MyTestCase(unittest.TestCase):
             wado_prefix="",
             qido_prefix="",
             stow_prefix="",
-            debug=False,
+            verbose="INFO",
             dryrun=True,
             conf={},
             host="0.0.0.0",
