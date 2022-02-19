@@ -52,6 +52,11 @@ class Main:
 
         parser.add_argument("-i", "--host", default="0.0.0.0", type=str, help="Server IP")
         parser.add_argument("-p", "--port", default=8000, type=int, help="Server Port")
+        parser.add_argument("--ssl_keyfile", default=None, type=str, help="SSL key file")
+        parser.add_argument("--ssl_certfile", default=None, type=str, help="SSL certificate file")
+        parser.add_argument("--ssl_keyfile_password", default=None, type=str, help="SSL key file password")
+        parser.add_argument("--ssl_ca_certs", default=None, type=str, help="CA certificates file")
+
         parser.add_argument("-l", "--log_config", default=None, type=str, help="Logging config")
         parser.add_argument("--dryrun", action="store_true", help="Dry run without starting server")
 
@@ -248,6 +253,10 @@ class Main:
             log_config=log_config,
             use_colors=True,
             access_log="info",
+            ssl_keyfile=args.ssl_keyfile,
+            ssl_certfile=args.ssl_certfile,
+            ssl_keyfile_password=args.ssl_keyfile_password,
+            ssl_ca_certs=args.ssl_ca_certs,
         )
 
     def start_server_validate_args(self, args):

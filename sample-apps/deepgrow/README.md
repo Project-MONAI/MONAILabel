@@ -11,7 +11,7 @@ Example data inference can be tested on CT based datasets from [medical segmenta
 To those extending this App, use the below command through CLI and adjust the following hyper-parameters in the codebase:
 
 ```bash
-monailabel apps --name generic_deepgrow --download --output myapp
+monailabel apps --name deepgrow --download --output myapp
 ```
 
 - Network

@@ -7,12 +7,17 @@ In this folder you will find examples of the **three available paradigms**: Two 
 
 #### DeepGrow
 
-For the DeepGrow paradigm there are two cases: the [deepgrow for left atrium segmentation](./deepgrow_left_atrium) and 
-the [deepgrow App](./deepgrow). The latter one is meant for the users that want to build deepgrow-based Apps.
+Users that want to build deepgrow-based Apps, please refer to the [deepgrow App](./deepgrow). 
+
+This app is based on the work presented by [Sakinis, Tomas, et al. "Interactive segmentation of medical images through fully convolutional neural networks." arXiv preprint arXiv:1903.08205 (2019)](https://arxiv.org/abs/1903.08205).
+
+
 
 #### DeepEdit
 
-Similar to the deepgrow Apps, you'll find the one generic [deepedit](./deepedit) that researchers can use to build their own deepedit-based app.
+Similar to the deepgrow App, you'll find a generic [deepedit](./deepedit) that researchers can use to build their own deepedit-based app for single label segmentaion tasks.
+
+Users that want to work on multiple label segmentation tasks, please refer to the [deepedit_multilabel](./deepedit_multilabel) 
 
 
 #### Automated Segmentation
