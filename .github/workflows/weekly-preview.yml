@@ -22,7 +22,7 @@ jobs:
           python-version: 3.8
       - name: Install setuptools
         run: |
-          apt-get install openslide-tools -y
+          sudo apt-get install openslide-tools -y
           python -m pip install --user --upgrade setuptools wheel
       - name: Generate HEAD Commit Id
         run: |

@@ -35,7 +35,7 @@ jobs:
           key: ${{ runner.os }}-pip-${{ steps.pip-cache.outputs.datew }}
       - name: Install dependencies
         run: |
-          apt-get install openslide-tools -y
+          sudo apt-get install openslide-tools -y
           python -m pip install --user --upgrade pip setuptools wheel
           python -m pip install torch>=1.5 torchvision
       - name: Build Package
