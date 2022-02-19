@@ -66,7 +66,7 @@ class DeepEditSeg(InferTask):
         self.target_spacing = target_spacing
         self.label_names = label_names
 
-    def pre_transforms(self):
+    def pre_transforms(self, data):
         return [
             LoadImaged(keys="image", reader="ITKReader"),
             AddChanneld(keys="image"),
@@ -86,13 +86,13 @@ class DeepEditSeg(InferTask):
             ToTensord(keys="image"),
         ]
 
-    def inferer(self):
+    def inferer(self, data):
         return SimpleInferer()
 
-    def inverse_transforms(self):
+    def inverse_transforms(self, data):
         return []  # Self-determine from the list of pre-transforms provided
 
-    def post_transforms(self):
+    def post_transforms(self, data):
         return [
             ToTensord(keys="pred"),
             Activationsd(keys="pred", softmax=True),
@@ -133,7 +133,7 @@ class DeepEdit(InferTask):
         self.target_spacing = target_spacing
         self.label_names = label_names
 
-    def pre_transforms(self):
+    def pre_transforms(self, data):
         return [
             LoadImaged(keys="image", reader="ITKReader"),
             AddChanneld(keys="image"),
@@ -155,13 +155,13 @@ class DeepEdit(InferTask):
             ToTensord(keys="image"),
         ]
 
-    def inferer(self):
+    def inferer(self, data):
         return SimpleInferer()
 
-    def inverse_transforms(self):
+    def inverse_transforms(self, data):
         return []  # Self-determine from the list of pre-transforms provided
 
-    def post_transforms(self):
+    def post_transforms(self, data):
         return [
             ToTensord(keys="pred"),
             Activationsd(keys="pred", softmax=True),

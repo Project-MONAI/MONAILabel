@@ -63,7 +63,7 @@ class InferDeepgrow(InferTask):
         self.spatial_size = spatial_size
         self.model_size = model_size
 
-    def pre_transforms(self):
+    def pre_transforms(self, data):
         t = [
             LoadImaged(keys="image"),
             AsChannelFirstd(keys="image"),
@@ -84,10 +84,10 @@ class InferDeepgrow(InferTask):
         )
         return t
 
-    def inferer(self):
+    def inferer(self, data):
         return SimpleInferer()
 
-    def post_transforms(self):
+    def post_transforms(self, data):
         return [
             Activationsd(keys="pred", sigmoid=True),
             AsDiscreted(keys="pred", threshold_values=True, logit_thresh=0.5),

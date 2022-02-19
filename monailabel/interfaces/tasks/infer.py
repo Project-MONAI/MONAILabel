@@ -137,9 +137,11 @@ class InferTask:
         return None
 
     @abstractmethod
-    def pre_transforms(self):
+    def pre_transforms(self, data):
         """
         Provide List of pre-transforms
+
+        :param data: current data dictionary/request which can be helpful to define the transforms per-request basis
 
             For Example::
 
@@ -154,10 +156,12 @@ class InferTask:
         """
         pass
 
-    def inverse_transforms(self):
+    def inverse_transforms(self, data):
         """
         Provide List of inverse-transforms.  They are normally subset of pre-transforms.
         This task is performed on output_label (using the references from input_key)
+
+        :param data: current data dictionary/request which can be helpful to define the transforms per-request basis
 
         Return one of the following.
             - None: Return None to disable running any inverse transforms (default behavior).
@@ -174,9 +178,11 @@ class InferTask:
         return None
 
     @abstractmethod
-    def post_transforms(self):
+    def post_transforms(self, data):
         """
         Provide List of post-transforms
+
+        :param data: current data dictionary/request which can be helpful to define the transforms per-request basis
 
             For Example::
 
@@ -195,9 +201,11 @@ class InferTask:
         pass
 
     @abstractmethod
-    def inferer(self):
+    def inferer(self, data):
         """
         Provide Inferer Class
+
+        :param data: current data dictionary/request which can be helpful to define the inferer per-request basis
 
             For Example::
 
@@ -218,14 +226,18 @@ class InferTask:
         begin = time.time()
         req = copy.deepcopy(self._config)
         req.update(copy.deepcopy(request))
+
+        # device
+        device = req.get("device", "cuda")
+        req["device"] = device
         logger.info(f"Infer Request (final): {req}")
 
         data = copy.deepcopy(req)
-        data.update({"image_path": req.get("image")})
-        device = req.get("device", "cuda")
+        if req.get("image") and isinstance(req.get("image"), str):
+            data.update({"image_path": req.get("image")})
 
         start = time.time()
-        pre_transforms = self.pre_transforms()
+        pre_transforms = self.pre_transforms(data)
         data = self.run_pre_transforms(data, pre_transforms)
         latency_pre = time.time() - start
 
@@ -234,11 +246,11 @@ class InferTask:
         latency_inferer = time.time() - start
 
         start = time.time()
-        data = self.run_invert_transforms(data, pre_transforms, self.inverse_transforms())
+        data = self.run_invert_transforms(data, pre_transforms, self.inverse_transforms(data))
         latency_invert = time.time() - start
 
         start = time.time()
-        data = self.run_post_transforms(data, self.post_transforms())
+        data = self.run_post_transforms(data, self.post_transforms(data))
         latency_post = time.time() - start
 
         start = time.time()
@@ -259,9 +271,18 @@ class InferTask:
         )
 
         result_json["label_names"] = self.labels
+        result_json["latencies"] = {
+            "pre": round(latency_pre, 2),
+            "infer": round(latency_inferer, 2),
+            "invert": round(latency_invert, 2),
+            "post": round(latency_post, 2),
+            "write": round(latency_write, 2),
+            "total": round(latency_total, 2),
+        }
 
-        logger.info("Result File: {}".format(result_file_name))
-        logger.info("Result Json: {}".format(result_json))
+        if result_file_name:
+            logger.info("Result File: {}".format(result_file_name))
+            logger.info("Result Json: {}".format(result_json))
         return result_file_name, result_json
 
     def run_pre_transforms(self, data, transforms):
@@ -304,6 +325,9 @@ class InferTask:
                 f"Model Path ({self.path}) does not exist/valid",
             )
 
+        if device.startswith("cuda") and not torch.cuda.is_available():
+            device = "cpu"
+
         cached = self._networks.get(device)
         statbuf = os.stat(path) if path else None
         network = None
@@ -311,29 +335,20 @@ class InferTask:
             if statbuf and statbuf.st_mtime == cached[1]:
                 network = cached[0]
             elif statbuf:
-                logger.info(f"Reload model from cache.  Prev ts: {cached[1]}; Current ts: {statbuf.st_mtime}")
+                logger.warning(f"Reload model from cache.  Prev ts: {cached[1]}; Current ts: {statbuf.st_mtime}")
 
         if network is None:
             if self.network:
                 network = self.network
                 if path:
-                    # If we are using a CPU-only machine, try to load the network for CPU inference
-                    if torch.cuda.is_available():
-                        checkpoint = torch.load(path)
-                    else:
-                        checkpoint = torch.load(path, map_location=torch.device("cpu"))
-
+                    checkpoint = torch.load(path, map_location=torch.device(device))
                     model_state_dict = checkpoint.get(self.model_state_dict, checkpoint)
                     network.load_state_dict(model_state_dict, strict=self.load_strict)
             else:
-                # If we are using a CPU-only machine, try to load the network for CPU inference
-                if torch.cuda.is_available():
-                    network = torch.jit.load(path)
-                else:
-                    network = torch.jit.load(path, map_location=torch.device("cpu"))
+                network = torch.jit.load(path, map_location=torch.device(device))
 
-            if device == "cuda":
-                network = network.cuda()
+            if device.startswith("cuda"):
+                network = network.cuda(device)
 
             network.eval()
             self._networks[device] = (network, statbuf.st_mtime if statbuf else 0)
@@ -351,10 +366,10 @@ class InferTask:
         :return: updated data with output_key stored that will be used for post-processing
         """
 
-        inferer = self.inferer()
-        logger.info("Running Inferer:: {}".format(inferer.__class__.__name__))
+        inferer = self.inferer(data)
+        logger.info("Running Inferer:: {} => {}".format(inferer.__class__.__name__, inferer.__dict__))
 
-        if device == "cuda" and not torch.cuda.is_available():
+        if device.startswith("cuda") and not torch.cuda.is_available():
             device = "cpu"
 
         network = self._get_network(device)
@@ -362,12 +377,12 @@ class InferTask:
             inputs = data[self.input_key]
             inputs = inputs if torch.is_tensor(inputs) else torch.from_numpy(inputs)
             inputs = inputs[None] if convert_to_batch else inputs
-            if device == "cuda":
-                inputs = inputs.cuda()
+            if device.startswith("cuda"):
+                inputs = inputs.cuda(torch.device(device))
 
             with torch.no_grad():
                 outputs = inferer(inputs, network)
-            if device == "cuda":
+            if device.startswith("cuda"):
                 torch.cuda.empty_cache()
 
             outputs = outputs[0] if convert_to_batch else outputs

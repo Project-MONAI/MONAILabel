@@ -53,9 +53,9 @@ class TestInferDeepgrow2D(unittest.TestCase):
         output = model(input)
 
         deepgrow_3d_infer = InferDeepgrow3D(network=model, path=file_path)
-        pre_transform_list = deepgrow_3d_infer.pre_transforms()
-        post_transform_list = deepgrow_3d_infer.post_transforms()
-        deepgrow_inferer = deepgrow_3d_infer.inferer()
+        pre_transform_list = deepgrow_3d_infer.pre_transforms(None)
+        post_transform_list = deepgrow_3d_infer.post_transforms(None)
+        deepgrow_inferer = deepgrow_3d_infer.inferer(None)
         deepgrow_inferer_output = deepgrow_inferer(inputs=input, network=model)
 
         self.assertEqual(output.shape, deepgrow_inferer_output.shape)
