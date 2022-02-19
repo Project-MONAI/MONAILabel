@@ -21,5 +21,6 @@ SimpleCRF==0.2.1.1
 numpy>=1.22.1
 openslide-python==1.1.2
 opencv-python==4.5.4.60
+Shapely==1.8.0
 
 #sudo apt-get install openslide-tools -y
