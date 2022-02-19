@@ -50,7 +50,7 @@ class MyInfer(InferTask):
             description=description,
         )
 
-    def pre_transforms(self):
+    def pre_transforms(self, data):
         return [
             LoadImaged(keys=["image"]),
             EnsureChannelFirstd(keys="image"),
@@ -65,13 +65,13 @@ class MyInfer(InferTask):
             ToTensord(keys=["image"]),
         ]
 
-    def inferer(self):
+    def inferer(self, data):
         return SimpleInferer()
 
-    def inverse_transforms(self):
+    def inverse_transforms(self, data):
         return []  # Self-determine from the list of pre-transforms provided
 
-    def post_transforms(self):
+    def post_transforms(self, data):
         return [
             ToTensord(keys=("image", "pred")),
             Activationsd(keys="pred", softmax=True),

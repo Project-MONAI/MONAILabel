@@ -11,7 +11,7 @@
 import logging
 import math
 import statistics
-from typing import TYPE_CHECKING, Callable, Optional
+from typing import TYPE_CHECKING, Any, Callable, Dict, Optional
 
 import numpy as np
 import torch
@@ -75,7 +75,7 @@ class TensorBoardImageHandler:
 
         if torch.distributed.is_initialized():
             self.tag_name = "{}-r{}".format(self.tag_name, torch.distributed.get_rank())
-        self.metric_data = {}
+        self.metric_data: Dict[Any, Any] = dict()
 
     def attach(self, engine: Engine) -> None:
         engine.add_event_handler(Events.ITERATION_COMPLETED(every=self.interval), self, "iteration")
@@ -83,7 +83,6 @@ class TensorBoardImageHandler:
 
     def __call__(self, engine: Engine, action) -> None:
         epoch = engine.state.epoch
-        device = engine.state.device
         batch_data = self.batch_transform(engine.state.batch)
         output_data = self.output_transform(engine.state.output)
 
@@ -93,8 +92,8 @@ class TensorBoardImageHandler:
                     if self.metric_data.get(region) is None:
                         self.metric_data[region] = RegionDice()
                     self.metric_data[region].update(
-                        y_pred=output_data[bidx]["pred"].to(device),
-                        y=batch_data[bidx]["label"].to(device),
+                        y_pred=output_data[bidx]["pred"],
+                        y=batch_data[bidx]["label"],
                     )
             return
 

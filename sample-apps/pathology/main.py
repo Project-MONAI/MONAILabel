@@ -12,6 +12,7 @@ import json
 import logging
 import os
 import shutil
+from distutils.util import strtobool
 from typing import Dict
 
 from lib import InferDeep, MyInfer, MyTrain, TrainDeep
@@ -46,6 +47,25 @@ class MyApp(MONAILabelApp):
 
         self.deep_pretrained_model = os.path.join(self.model_dir, "deepedit_pretrained.pt")
         self.deep_final_model = os.path.join(self.model_dir, "deepedit.pt")
+
+        use_pretrained_model = strtobool(conf.get("use_pretrained_model", "true"))
+        seg_pretrained_model_uri = conf.get(
+            "seg_pretrained_model_path", f"{self.PRE_TRAINED_PATH}pathology_segmentation_tumor.pt"
+        )
+        deep_pretrained_model_uri = conf.get(
+            "deep_pretrained_model_path", f"{self.PRE_TRAINED_PATH}pathology_deepedit_tumor.pt"
+        )
+
+        # Path to pretrained weights
+        if use_pretrained_model:
+            logger.info(f"Segmentation Pretrained Model Path: {seg_pretrained_model_uri}")
+            logger.info(f"Deepedit Pretrained Model Path: {seg_pretrained_model_uri}")
+            self.download(
+                [
+                    (self.seg_pretrained_model, seg_pretrained_model_uri),
+                    (self.deep_pretrained_model, deep_pretrained_model_uri),
+                ]
+            )
 
         super().__init__(
             app_dir=app_dir,
