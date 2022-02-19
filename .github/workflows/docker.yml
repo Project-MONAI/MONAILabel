@@ -1,13 +1,5 @@
 name: docker
 on:
-  schedule:
-    - cron: "0 2 * * 0"  # 02:00 of every Sunday
-    inputs:
-      tag:
-        description: 'Tag name to publish'
-        required: false
-        default: 'latest'
-
   workflow_dispatch:
     inputs:
       tag:
