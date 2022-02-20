@@ -509,6 +509,7 @@ class BasicTrainTask(TrainTask):
                         save_dict={self._model_dict_key: context.network},
                         save_key_metric=True,
                         key_metric_filename=self._key_metric_filename,
+                        n_saved=5,
                     )
                 )
 
@@ -540,6 +541,7 @@ class BasicTrainTask(TrainTask):
                     key_metric_filename=f"train_{self._key_metric_filename}"
                     if context.evaluator
                     else self._key_metric_filename,
+                    n_saved=5,
                 )
             )
 

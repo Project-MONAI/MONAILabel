@@ -66,7 +66,13 @@ def dicom_web_download_series(study_id, series_id, save_dir, client: DICOMwebCli
 
     # Limitation for DICOMWeb Client as it needs StudyInstanceUID to fetch series
     if not study_id:
-        meta = load_json_dataset(client.search_for_series(search_filters={"SeriesInstanceUID": series_id})[0])
+        meta = load_json_dataset(
+            [
+                series
+                for series in client.search_for_series(search_filters={"SeriesInstanceUID": series_id})
+                if series["0020000E"]["Value"] == [series_id]
+            ][0]
+        )
         study_id = str(meta["StudyInstanceUID"].value)
 
     os.makedirs(save_dir, exist_ok=True)

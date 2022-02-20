@@ -82,7 +82,7 @@ class NormalizeLabelsInDatasetd(MapTransform):
         allow_missing_keys: bool = False,
     ):
         """
-        Normalize labels
+        Normalize label values according to label names dictionary
 
         :param keys: The ``keys`` parameter will be used to get and set the actual data item to transform
         :param label_names: all label names
@@ -93,18 +93,16 @@ class NormalizeLabelsInDatasetd(MapTransform):
 
     def __call__(self, data: Mapping[Hashable, np.ndarray]) -> Dict[Hashable, np.ndarray]:
         d: Dict = dict(data)
-        label_info = d.get("meta", {}).get("label", {}).get("label_info", [])
-        remap = {l["name"]: l["idx"] for l in label_info}
         for key in self.key_iterator(d):
             if key == "label":
+                # Dictionary containing new label numbers
                 new_label_names = dict()
                 label = np.zeros(d[key].shape)
-
                 # Making sure the range values and number of labels are the same
                 for idx, (key_label, val_label) in enumerate(self.label_names.items(), start=1):
                     if key_label != "background":
                         new_label_names[key_label] = idx
-                        label[d[key] == remap.get(key_label, val_label)] = idx
+                        label[d[key] == val_label] = idx
                     if key_label == "background":
                         new_label_names["background"] = 0
 
@@ -612,7 +610,6 @@ class AddRandomGuidanceCustomd(Randomizable, MapTransform):
 
             # Checking the number of clicks
             num_clicks = random.randint(1, 10)
-            logger.info(f"Number of simulated clicks: {num_clicks}")
             counter = 0
             keep_guidance = []
             while True:
@@ -627,12 +624,13 @@ class AddRandomGuidanceCustomd(Randomizable, MapTransform):
                         for key_label in d["label_names"].keys():
                             if key_label not in keep_guidance:
                                 self.tmp_guidance[key_label] = []
+                        logger.info(f"Number of simulated clicks: {counter}")
                         break
 
-            # Convert tmp_guidance back to json
-            for key_label in d["label_names"].keys():
-                d[self.guidance][key_label] = json.dumps(np.asarray(self.tmp_guidance[key_label]).astype(int).tolist())
-            #
+                # Breaking once all labels are covered
+                if len(keep_guidance) == len(d["label_names"].keys()):
+                    logger.info(f"Number of simulated clicks: {counter}")
+                    break
 
         return d
 

@@ -8,7 +8,6 @@
 # WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 # See the License for the specific language governing permissions and
 # limitations under the License.
-
 from typing import Callable, Dict, Sequence, Union
 
 import numpy as np
@@ -90,8 +89,8 @@ class Interaction:
                 batchdata = list_data_collate(batchdata_list)
 
                 # first item in batch only
-                pos_click_sum += (batchdata_list[0]["is_pos"]) * 1
-                neg_click_sum += (batchdata_list[0]["is_neg"]) * 1
+                pos_click_sum += (batchdata_list[0].get("is_pos", 0)) * 1
+                neg_click_sum += (batchdata_list[0].get("is_neg", 0)) * 1
 
                 engine.fire_event(IterationEvents.INNER_ITERATION_COMPLETED)
 
