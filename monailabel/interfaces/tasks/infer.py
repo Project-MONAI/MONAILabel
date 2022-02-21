@@ -137,7 +137,7 @@ class InferTask:
         return None
 
     @abstractmethod
-    def pre_transforms(self, data):
+    def pre_transforms(self, data=None):
         """
         Provide List of pre-transforms
 
@@ -156,7 +156,7 @@ class InferTask:
         """
         pass
 
-    def inverse_transforms(self, data):
+    def inverse_transforms(self, data=None):
         """
         Provide List of inverse-transforms.  They are normally subset of pre-transforms.
         This task is performed on output_label (using the references from input_key)
@@ -178,7 +178,7 @@ class InferTask:
         return None
 
     @abstractmethod
-    def post_transforms(self, data):
+    def post_transforms(self, data=None):
         """
         Provide List of post-transforms
 
@@ -201,7 +201,7 @@ class InferTask:
         pass
 
     @abstractmethod
-    def inferer(self, data):
+    def inferer(self, data=None):
         """
         Provide Inferer Class
 

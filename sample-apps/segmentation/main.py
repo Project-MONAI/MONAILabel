@@ -116,7 +116,7 @@ class MyApp(MONAILabelApp):
             methods["EPISTEMIC"] = EpistemicScoring(
                 model=[self.pretrained_model, self.final_model],
                 network=self.network_with_dropout,
-                transforms=self._infers["segmentation"].pre_transforms(None),
+                transforms=self._infers["segmentation"].pre_transforms(),
                 num_samples=self.epistemic_samples,
             )
         if self.tta_enabled:
