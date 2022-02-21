@@ -48,7 +48,7 @@ class MyInfer(InferTask):
             description=description,
         )
 
-    def pre_transforms(self):
+    def pre_transforms(self, data=None):
         return [
             LoadImaged(keys="image"),
             AddChanneld(keys="image"),
@@ -57,10 +57,10 @@ class MyInfer(InferTask):
             ToTensord(keys="image"),
         ]
 
-    def inferer(self):
+    def inferer(self, data=None):
         return SlidingWindowInferer(roi_size=[160, 160, 160])
 
-    def post_transforms(self):
+    def post_transforms(self, data=None):
         return [
             Activationsd(keys="pred", softmax=True),
             AsDiscreted(keys="pred", argmax=True),

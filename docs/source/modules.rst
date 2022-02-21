@@ -78,16 +78,16 @@ discretization.
 
   class MyInfer(InferTask):
 
-    def pre_transforms(self):
+    def pre_transforms(self, data=None):
         return [
             LoadImaged(keys="image"),
             ToNumpyd(keys="image"),
         ]
 
-    def inferer(self):
+    def inferer(self, data=None):
         return SimpleInferer()
 
-    def post_transforms(self):
+    def post_transforms(self, data=None):
         return [
             Activationsd(keys="pred", sigmoid=True),
             AsDiscreted(keys="pred", threshold_values=True, logit_thresh=0.5),
@@ -113,14 +113,14 @@ in this example they follow the default behavior in the base class.
   from monai.inferers import SlidingWindowInferer
   from monai.transforms import *
 
-  from monailabel.utils.train.basic_train import BasicTrainTask
+  from monailabel.utils.train.basic_train import BasicTrainTask, Context
 
   class MyTrainTask(BasicTrainTask):
 
-    def loss_function(self):
+    def loss_function(self, context: Context):
         return DiceLoss(sigmoid=True, squared_pred=True)
 
-    def train_pre_transforms(self):
+    def train_pre_transforms(self, context: Context):
         return Compose([
             LoadImaged(keys=("image", "label")),
             AsChannelFirstd(keys=("image", "label")),
@@ -128,13 +128,13 @@ in this example they follow the default behavior in the base class.
             NormalizeIntensityd(keys="image"),
         ])
 
-    def train_post_transforms(self):
+    def train_post_transforms(self, context: Context):
         return Compose([
             Activationsd(keys="pred", sigmoid=True),
             AsDiscreted(keys="pred", threshold_values=True, logit_thresh=0.5),
         ])
 
-    def val_pre_transforms(self):
+    def val_pre_transforms(self, context: Context):
         return Compose([
             LoadImaged(keys=("image", "label")),
             AsChannelFirstd(keys=("image", "label")),
