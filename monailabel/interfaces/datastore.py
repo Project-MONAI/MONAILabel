@@ -62,7 +62,7 @@ class Datastore(metaclass=ABCMeta):
         Return a dictionary of image and label pairs corresponding to the 'image' and 'label'
         keys respectively
 
-        :return: the {'label': image, 'label': label} pairs for training
+        :return: the {'image': image, 'label': label} pairs for training
         """
         pass
 

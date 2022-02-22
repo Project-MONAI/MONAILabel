@@ -99,6 +99,24 @@ class LabelToChanneld(MapTransform):
         return d
 
 
+class MergeLabelChannelsd(MapTransform):
+    def __init__(self, keys: KeysCollection, labels):
+        super().__init__(keys)
+        self.labels = labels
+
+    def __call__(self, data):
+        d = dict(data)
+        for key in self.keys:
+            mask = d[key]
+            mask[mask > 0] = 1
+            img = np.zeros((mask.shape[0], mask.shape[1]))
+
+            for idx in self.labels:
+                img = np.logical_or(img, mask[:, :, idx])
+            d[key] = img[np.newaxis]
+        return d
+
+
 class ClipBorderd(MapTransform):
     def __init__(self, keys: KeysCollection, border=2):
         super().__init__(keys)
@@ -156,14 +174,15 @@ def filter_remove_small_objects(img_np, min_size=3000, avoid_overmask=True, over
 
 
 class FilterImaged(MapTransform):
-    def __init__(self, keys: KeysCollection):
+    def __init__(self, keys: KeysCollection, min_size=500):
         super().__init__(keys)
+        self.min_size = min_size
 
     def filter(self, rgb):
         mask_not_green = filter_green_channel(rgb)
         mask_not_gray = filter_grays(rgb)
         mask_gray_green = mask_not_gray & mask_not_green
-        mask = filter_remove_small_objects(mask_gray_green, min_size=500)
+        mask = filter_remove_small_objects(mask_gray_green, min_size=self.min_size)
 
         return rgb * np.dstack([mask, mask, mask])
 

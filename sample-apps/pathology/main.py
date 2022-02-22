@@ -15,7 +15,7 @@ import shutil
 from distutils.util import strtobool
 from typing import Dict
 
-from lib import InferDeep, MyInfer, MyTrain, TrainDeep
+from lib import InferDeep, MyInfer, MyTrain, TrainDeep, TrainDeepNuke
 from monai.networks.nets import BasicUNet
 
 from monailabel.interfaces.app import MONAILabelApp
@@ -48,12 +48,18 @@ class MyApp(MONAILabelApp):
         self.deep_pretrained_model = os.path.join(self.model_dir, "deepedit_pretrained.pt")
         self.deep_final_model = os.path.join(self.model_dir, "deepedit.pt")
 
+        self.deep_nuke_pretrained_model = os.path.join(self.model_dir, "deepedit_nuke_pretrained.pt")
+        self.deep_nuke_final_model = os.path.join(self.model_dir, "deepedit_nuke.pt")
+
         use_pretrained_model = strtobool(conf.get("use_pretrained_model", "true"))
         seg_pretrained_model_uri = conf.get(
             "seg_pretrained_model_path", f"{self.PRE_TRAINED_PATH}pathology_segmentation_tumor.pt"
         )
         deep_pretrained_model_uri = conf.get(
             "deep_pretrained_model_path", f"{self.PRE_TRAINED_PATH}pathology_deepedit_tumor.pt"
+        )
+        deep_nuke_pretrained_model_uri = conf.get(
+            "deep_nuke_pretrained_model_path", f"{self.PRE_TRAINED_PATH}pathology_deepedit_nuke.pt"
         )
 
         # Path to pretrained weights
@@ -64,6 +70,7 @@ class MyApp(MONAILabelApp):
                 [
                     (self.seg_pretrained_model, seg_pretrained_model_uri),
                     (self.deep_pretrained_model, deep_pretrained_model_uri),
+                    # (self.deep_nuke_final_model, deep_nuke_pretrained_model_uri),
                 ]
             )
 
@@ -111,6 +118,25 @@ class MyApp(MONAILabelApp):
                 patch_size=self.patch_size,
                 labels=self.labels,
             ),
+            "deepedit_nuke": TrainDeepNuke(
+                model_dir=os.path.join(self.model_dir, "deepedit_nuke"),
+                network=self.deep_network,
+                load_path=self.deep_pretrained_model,
+                publish_path=self.deep_final_model,
+                config={"max_epochs": 10, "train_batch_size": 1},
+                max_train_interactions=10,
+                max_val_interactions=5,
+                val_interval=1,
+                train_save_interval=1,
+                patch_size=(256, 256),
+                labels={
+                    0: "Neoplastic cells",
+                    1: "Inflammatory",
+                    2: "Connective/Soft tissue cells",
+                    3: "Dead Cells",
+                    4: "Epithelial",
+                },
+            ),
         }
 
 
@@ -125,7 +151,7 @@ def main():
     from monailabel.config import settings
 
     settings.MONAI_LABEL_DATASTORE_AUTO_RELOAD = False
-    settings.MONAI_LABEL_DATASTORE_FILE_EXT = ["*.svs", ".png"]
+    settings.MONAI_LABEL_DATASTORE_FILE_EXT = ["*.svs", "*.png", "*.npy"]
     os.putenv("MASTER_ADDR", "127.0.0.1")
     os.putenv("MASTER_PORT", "1234")
 
@@ -136,7 +162,7 @@ def main():
     )
 
     parser = argparse.ArgumentParser()
-    parser.add_argument("-s", "--studies", default="/local/sachi/Data/Pathology/BCSS/wsis")
+    parser.add_argument("-s", "--studies", default="/local/sachi/Data/Pathology/PanNukeF")
     args = parser.parse_args()
 
     app_dir = os.path.dirname(__file__)
@@ -147,16 +173,16 @@ def main():
     }
 
     app = MyApp(app_dir, studies, conf)
-    run_train = False
+    run_train = True
     if run_train:
         app.train(
             request={
                 "name": "model_01",
-                "model": "deepedit",
-                "max_epochs": 200,
-                "dataset": "PersistentDataset",
-                "train_batch_size": 1,
-                "val_batch_size": 1,
+                "model": "deepedit_nuke",
+                "max_epochs": 300,
+                "dataset": "CacheDataset",  # PersistentDataset, CacheDataset
+                "train_batch_size": 16,
+                "val_batch_size": 12,
                 "multi_gpu": True,
                 "val_split": 0.1,
             }
