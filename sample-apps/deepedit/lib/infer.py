@@ -60,7 +60,7 @@ class DeepEditSeg(InferTask):
         self.spatial_size = spatial_size
         self.target_spacing = target_spacing
 
-    def pre_transforms(self, data):
+    def pre_transforms(self, data=None):
         return [
             LoadImaged(keys="image"),
             SingleLabelSingleModalityd(keys="image"),
@@ -72,13 +72,13 @@ class DeepEditSeg(InferTask):
             ToTensord(keys="image"),
         ]
 
-    def inferer(self, data):
+    def inferer(self, data=None):
         return SimpleInferer()
 
-    def inverse_transforms(self, data):
+    def inverse_transforms(self, data=None):
         return []  # Self-determine from the list of pre-transforms provided
 
-    def post_transforms(self, data):
+    def post_transforms(self, data=None):
         return [
             ToTensord(keys="pred"),
             Activationsd(keys="pred", sigmoid=True),
@@ -116,7 +116,7 @@ class DeepEdit(InferTask):
         self.spatial_size = spatial_size
         self.target_spacing = target_spacing
 
-    def pre_transforms(self, data):
+    def pre_transforms(self, data=None):
         return [
             LoadImaged(keys="image", reader="nibabelreader"),
             SingleLabelSingleModalityd(keys="image"),
@@ -134,13 +134,13 @@ class DeepEdit(InferTask):
             ToTensord(keys="image"),
         ]
 
-    def inferer(self, data):
+    def inferer(self, data=None):
         return SimpleInferer()
 
-    def inverse_transforms(self, data):
+    def inverse_transforms(self, data=None):
         return []  # Self-determine from the list of pre-transforms provided
 
-    def post_transforms(self, data):
+    def post_transforms(self, data=None):
         return [
             ToTensord(keys="pred"),
             Activationsd(keys="pred", sigmoid=True),

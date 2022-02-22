@@ -62,7 +62,7 @@ class InferDeepgrow3D(InferTask):
         self.spatial_size = spatial_size
         self.model_size = model_size
 
-    def pre_transforms(self, data):
+    def pre_transforms(self, data=None):
         return [
             LoadImaged(keys="image"),
             AsChannelFirstd(keys="image"),
@@ -76,10 +76,10 @@ class InferDeepgrow3D(InferTask):
             AddGuidanceSignald(image="image", guidance="guidance"),
         ]
 
-    def inferer(self, data):
+    def inferer(self, data=None):
         return SimpleInferer()
 
-    def post_transforms(self, data):
+    def post_transforms(self, data=None):
         return [
             Activationsd(keys="pred", sigmoid=True),
             AsDiscreted(keys="pred", threshold_values=True, logit_thresh=0.5),

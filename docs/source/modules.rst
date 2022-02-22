@@ -78,16 +78,16 @@ discretization.
 
   class MyInfer(InferTask):
 
-    def pre_transforms(self, data):
+    def pre_transforms(self, data=None):
         return [
             LoadImaged(keys="image"),
             ToNumpyd(keys="image"),
         ]
 
-    def inferer(self, data):
+    def inferer(self, data=None):
         return SimpleInferer()
 
-    def post_transforms(self, data):
+    def post_transforms(self, data=None):
         return [
             Activationsd(keys="pred", sigmoid=True),
             AsDiscreted(keys="pred", threshold_values=True, logit_thresh=0.5),
