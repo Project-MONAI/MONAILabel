@@ -135,7 +135,7 @@ def main():
     )
 
     parser = argparse.ArgumentParser()
-    parser.add_argument("-s", "--studies", default="/local/sachi/Data/Pathology/PanNukeFMin")
+    parser.add_argument("-s", "--studies", default="/local/sachi/Data/Pathology/PanNukeF")
     args = parser.parse_args()
 
     app_dir = os.path.dirname(__file__)
@@ -149,26 +149,26 @@ def main():
     run_train = True
     if run_train:
         app.train(
+            request={
+                "name": "model_01",
+                "model": "segmentation",
+                "max_epochs": 500,
+                "dataset": "PersistentDataset",  # PersistentDataset, CacheDataset
+                "train_batch_size": 32,
+                "val_batch_size": 12,
+                "multi_gpu": True,
+                "val_split": 0.1,
+            },
             # request={
             #     "name": "model_01",
-            #     "model": "segmentation",
-            #     "max_epochs": 10,
+            #     "model": "deepedit",
+            #     "max_epochs": 100,
             #     "dataset": "PersistentDataset",  # PersistentDataset, CacheDataset
             #     "train_batch_size": 16,
             #     "val_batch_size": 12,
-            #     "multi_gpu": False,
+            #     "multi_gpu": True,
             #     "val_split": 0.1,
             # },
-            request={
-                "name": "model_01",
-                "model": "deepedit",
-                "max_epochs": 10,
-                "dataset": "PersistentDataset",  # PersistentDataset, CacheDataset
-                "train_batch_size": 16,
-                "val_batch_size": 12,
-                "multi_gpu": False,
-                "val_split": 0.1,
-            },
         )
     else:
         infer_wsi(app)

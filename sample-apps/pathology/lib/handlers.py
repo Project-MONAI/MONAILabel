@@ -85,7 +85,7 @@ class TensorBoardImageHandler:
         epoch = engine.state.epoch
         batch_data = self.batch_transform(engine.state.batch)
         output_data = self.output_transform(engine.state.output)
-        device = engine.state.device
+        device = torch.device("cuda")
 
         if action == "iteration":
             for bidx in range(len(batch_data)):
@@ -93,8 +93,8 @@ class TensorBoardImageHandler:
                     if self.metric_data.get(region) is None:
                         self.metric_data[region] = RegionDice()
                     self.metric_data[region].update(
-                        y_pred=output_data[bidx]["pred"].to(device),
-                        y=batch_data[bidx]["label"].to(device),
+                        y_pred=output_data[bidx]["pred"][region][None].to(device),
+                        y=batch_data[bidx]["label"][region][None].to(device),
                     )
             return
 
