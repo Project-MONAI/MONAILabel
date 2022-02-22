@@ -63,6 +63,7 @@ class TensorBoardImageHandler:
         batch_transform: Callable = lambda x: x,
         output_transform: Callable = lambda x: x,
         batch_limit=1,
+        device=None,
     ) -> None:
         self.writer = SummaryWriter(log_dir=log_dir) if summary_writer is None else summary_writer
         self.tag_name = tag_name
@@ -70,6 +71,7 @@ class TensorBoardImageHandler:
         self.batch_transform = batch_transform
         self.output_transform = output_transform
         self.batch_limit = batch_limit
+        self.device = device
 
         self.logger = logging.getLogger(__name__)
 
@@ -85,7 +87,7 @@ class TensorBoardImageHandler:
         epoch = engine.state.epoch
         batch_data = self.batch_transform(engine.state.batch)
         output_data = self.output_transform(engine.state.output)
-        device = torch.device("cuda")
+        device = self.device if self.device else torch.device("cuda")
 
         if action == "iteration":
             for bidx in range(len(batch_data)):
