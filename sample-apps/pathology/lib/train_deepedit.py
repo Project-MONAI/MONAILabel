@@ -9,12 +9,12 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 import logging
+import os
 
 import numpy as np
 import torch
 from ignite.metrics import Accuracy
 from monai.apps.deepgrow.transforms import AddGuidanceSignald, AddRandomGuidanced, FindDiscrepancyRegionsd
-from monai.data import DataLoader, list_data_collate
 from monai.handlers import from_engine
 from monai.inferers import SimpleInferer
 from monai.losses import DiceLoss
@@ -25,21 +25,24 @@ from monai.transforms import (
     EnsureTyped,
     LoadImaged,
     RandRotate90d,
+    ScaleIntensityRangeD,
     ToNumpyd,
     TorchVisiond,
     ToTensord,
 )
 
 from monailabel.deepedit.interaction import Interaction
+from monailabel.interfaces.datastore import Datastore
 from monailabel.tasks.train.basic_train import BasicTrainTask, Context
 
+from .flatten_pannuke import split_pannuke_dataset
 from .handlers import TensorBoardImageHandler
-from .transforms import AddInitialSeedPointExd, FilterImaged, MergeLabelChannelsd, NormalizeImaged
+from .transforms import AddInitialSeedPointExd, FilterImaged, MergeLabelChannelsd
 
 logger = logging.getLogger(__name__)
 
 
-class TrainDeepNuke(BasicTrainTask):
+class TrainDeepEdit(BasicTrainTask):
     def __init__(
         self,
         model_dir,
@@ -47,12 +50,10 @@ class TrainDeepNuke(BasicTrainTask):
         labels,
         max_train_interactions=10,
         max_val_interactions=5,
-        patch_size=(256, 256),
-        description="Pathology Interactive Segmentation (PanNuke Dataset)",
+        description="Pathology DeepEdit Segmentation for Nuclei (PanNuke Dataset)",
         **kwargs,
     ):
         self._network = network
-        self.patch_size = patch_size
         self.labels = labels
         self.max_train_interactions = max_train_interactions
         self.max_val_interactions = max_val_interactions
@@ -66,6 +67,19 @@ class TrainDeepNuke(BasicTrainTask):
 
     def loss_function(self, context: Context):
         return DiceLoss(sigmoid=True, squared_pred=True)
+
+    def pre_process(self, request, datastore: Datastore):
+        self.cleanup(request)
+        cache_dir = os.path.join(self.get_cache_dir(request), "train_ds")
+
+        ds = datastore.datalist()
+        if len(ds) == 1:
+            image = np.load(ds[0]["image"])
+            if len(image.shape) > 3:
+                ds = split_pannuke_dataset(ds[0]["image"], ds[0]["label"], cache_dir)
+
+        logging.info("+++ Total Records: {}".format(len(ds)))
+        return ds
 
     def get_click_transforms(self, context: Context):
         return [
@@ -89,7 +103,7 @@ class TrainDeepNuke(BasicTrainTask):
             ),
             ToNumpyd(keys="image"),
             RandRotate90d(keys=("image", "label"), prob=0.5, spatial_axes=(0, 1)),
-            NormalizeImaged(keys="image"),
+            ScaleIntensityRangeD(keys="image", a_min=0.0, a_max=255.0, b_min=-1.0, b_max=1.0),
             AddInitialSeedPointExd(label="label", guidance="guidance"),
             AddGuidanceSignald(image="image", guidance="guidance", number_intensity_ch=3),
             EnsureTyped(keys=("image", "label")),
@@ -113,13 +127,8 @@ class TrainDeepNuke(BasicTrainTask):
     def train_handlers(self, context: Context):
         handlers = super().train_handlers(context)
         if context.local_rank == 0:
-            handlers.append(TensorBoardImageHandler(log_dir=context.events_dir, batch_limit=0))
+            handlers.append(TensorBoardImageHandler(log_dir=context.events_dir, batch_limit=4))
         return handlers
-
-    def _dataloader(self, context, dataset, batch_size, num_workers):
-        return DataLoader(
-            dataset=dataset, batch_size=batch_size, shuffle=False, num_workers=num_workers, collate_fn=list_data_collate
-        )
 
     def train_iteration_update(self, context: Context):
         return Interaction(

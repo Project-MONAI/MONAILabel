@@ -81,8 +81,8 @@ class TrainDeepgrow(BasicTrainTask):
     def pre_process(self, request, datastore: Datastore):
         self.cleanup(request)
 
-        # run_id = request["run_id"]
-        output_dir = os.path.join(pathlib.Path.home(), ".cache", "monailabel", f"deepgrow_{self.dimension}D_train")
+        cache_dir = self.get_cache_dir(request)
+        output_dir = os.path.join(cache_dir, f"deepgrow_{self.dimension}D_train")
         logger.info(f"Preparing Dataset for Deepgrow-{self.dimension}D:: {output_dir}")
 
         datalist = create_dataset(

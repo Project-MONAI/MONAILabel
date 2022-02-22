@@ -82,7 +82,7 @@ class LoadImagePatchd(MapTransform):
         return d
 
 
-class LabelToChanneld(MapTransform):
+class FilterLabelChannelsd(MapTransform):
     def __init__(self, keys: KeysCollection, labels):
         super().__init__(keys)
         self.labels = labels
@@ -92,9 +92,10 @@ class LabelToChanneld(MapTransform):
         for key in self.keys:
             mask = d[key]
             img = np.zeros((len(self.labels), mask.shape[0], mask.shape[1]))
-
-            for count, idx in enumerate(self.labels):
-                img[count, mask == idx] = 1
+            for idx in self.labels:
+                m = mask[:, :, idx]
+                img[idx, m > 0] = 1
+                assert np.count_nonzero(m) == np.count_nonzero(img[idx])
             d[key] = img
         return d
 
@@ -194,21 +195,8 @@ class FilterImaged(MapTransform):
         return d
 
 
-class NormalizeImaged(MapTransform):
-    def normalize(self, img):
-        img = (img - 128.0) / 128.0
-        return img.astype(np.float32)
-
-    def __call__(self, data):
-        d = dict(data)
-        for key in self.keys:
-            img = d[key]
-            d[key] = self.normalize(img)
-        return d
-
-
 class PostFilterLabeld(MapTransform):
-    def __init__(self, keys: KeysCollection, image="image", min_size=3000):
+    def __init__(self, keys: KeysCollection, image="image", min_size=80):
         super().__init__(keys)
         self.image = image
         self.min_size = min_size
@@ -234,8 +222,8 @@ class FindContoursd(MapTransform):
     def __init__(
         self,
         keys: KeysCollection,
-        min_positive=500,
-        min_poly_area=3000,
+        min_positive=10,
+        min_poly_area=80,
         result="result",
         bbox="bbox",
         contours="contours",

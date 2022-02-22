@@ -15,7 +15,7 @@ import shutil
 from distutils.util import strtobool
 from typing import Dict
 
-from lib import InferDeep, InferDeepNuke, MyInfer, MyTrain, TrainDeep, TrainDeepNuke
+from lib import InferDeepedit, InferSegmentation, TrainDeepEdit, TrainSegmentation
 from monai.networks.nets import BasicUNet
 
 from monailabel.interfaces.app import MONAILabelApp
@@ -27,39 +27,34 @@ logger = logging.getLogger(__name__)
 
 class MyApp(MONAILabelApp):
     def __init__(self, app_dir, studies, conf):
-        self.patch_size = (512, 512)
-
-        # https://github.com/PathologyDataScience/BCSS/blob/master/meta/gtruth_codes.tsv
         labels = {
-            1: "tumor",
+            0: "Neoplastic cells",
+            1: "Inflammatory",
+            2: "Connective/Soft tissue cells",
+            3: "Dead Cells",
+            4: "Epithelial",
         }
 
         self.seg_network = BasicUNet(
             spatial_dims=2, in_channels=3, out_channels=len(labels), features=(32, 64, 128, 256, 512, 32)
         )
-        self.deep_network = BasicUNet(
-            spatial_dims=2, in_channels=5, out_channels=len(labels), features=(32, 64, 128, 256, 512, 32)
+        self.deepedit_network = BasicUNet(
+            spatial_dims=2, in_channels=5, out_channels=1, features=(32, 64, 128, 256, 512, 32)
         )
 
         self.model_dir = os.path.join(app_dir, "model")
-        self.seg_pretrained_model = os.path.join(self.model_dir, "segmentation_pretrained.pt")
+        self.seg_pretrained_model = os.path.join(self.model_dir, "segmentation_nucleus_pretrained.pt")
         self.seg_final_model = os.path.join(self.model_dir, "segmentation.pt")
 
-        self.deep_pretrained_model = os.path.join(self.model_dir, "deepedit_pretrained.pt")
-        self.deep_final_model = os.path.join(self.model_dir, "deepedit.pt")
+        self.deepedit_pretrained_model = os.path.join(self.model_dir, "deepedit_nucleus_pretrained.pt")
+        self.deepedit_final_model = os.path.join(self.model_dir, "deepedit.pt")
 
-        self.deep_nuke_pretrained_model = os.path.join(self.model_dir, "deepedit_nuke_pretrained.pt")
-        self.deep_nuke_final_model = os.path.join(self.model_dir, "deepedit_nuke.pt")
-
-        use_pretrained_model = strtobool(conf.get("use_pretrained_model", "true"))
+        use_pretrained_model = strtobool(conf.get("use_pretrained_model", "false"))  # TODO:: Change it to True later
         seg_pretrained_model_uri = conf.get(
-            "seg_pretrained_model_path", f"{self.PRE_TRAINED_PATH}pathology_segmentation_tumor.pt"
+            "seg_pretrained_model_path", f"{self.PRE_TRAINED_PATH}pathology_segmentation_nuclei.pt"
         )
-        deep_pretrained_model_uri = conf.get(
-            "deep_pretrained_model_path", f"{self.PRE_TRAINED_PATH}pathology_deepedit_tumor.pt"
-        )
-        deep_nuke_pretrained_model_uri = conf.get(
-            "deep_nuke_pretrained_model_path", f"{self.PRE_TRAINED_PATH}pathology_deepedit_nuke.pt"
+        deepedit_pretrained_model_uri = conf.get(
+            "deepedit_pretrained_model_path", f"{self.PRE_TRAINED_PATH}pathology_deepedit_nuclei.pt"
         )
 
         # Path to pretrained weights
@@ -69,8 +64,7 @@ class MyApp(MONAILabelApp):
             self.download(
                 [
                     (self.seg_pretrained_model, seg_pretrained_model_uri),
-                    (self.deep_pretrained_model, deep_pretrained_model_uri),
-                    # (self.deep_nuke_final_model, deep_nuke_pretrained_model_uri),
+                    (self.deepedit_pretrained_model, deepedit_pretrained_model_uri),
                 ]
             )
 
@@ -80,65 +74,41 @@ class MyApp(MONAILabelApp):
             conf=conf,
             labels=labels,
             name="pathology",
-            description="Active Learning solution for Pathology using Semantic Segmentation/Interaction (DeepEdit)",
+            description="Active Learning solution for Nuclei Instance Segmentation",
         )
 
     def init_infers(self) -> Dict[str, InferTask]:
         return {
-            "segmentation": MyInfer(
+            "segmentation": InferSegmentation(
                 [self.seg_pretrained_model, self.seg_final_model], self.seg_network, labels=self.labels
             ),
-            "deepedit": InferDeep(
-                [self.deep_pretrained_model, self.deep_final_model], self.deep_network, labels=self.labels
-            ),
-            "deepedit_nuke": InferDeepNuke(
-                [self.deep_nuke_pretrained_model, self.deep_nuke_final_model], self.deep_network
+            "deepedit": InferDeepedit(
+                [self.deepedit_pretrained_model, self.deepedit_final_model], self.deepedit_network, labels=self.labels
             ),
         }
 
     def init_trainers(self) -> Dict[str, TrainTask]:
         return {
-            "segmentation": MyTrain(
+            "segmentation": TrainSegmentation(
                 model_dir=os.path.join(self.model_dir, "segmentation"),
                 network=self.seg_network,
                 load_path=self.seg_pretrained_model,
                 publish_path=self.seg_final_model,
                 config={"max_epochs": 10, "train_batch_size": 1},
                 train_save_interval=1,
-                patch_size=self.patch_size,
                 labels=self.labels,
             ),
-            "deepedit": TrainDeep(
+            "deepedit": TrainDeepEdit(
                 model_dir=os.path.join(self.model_dir, "deepedit"),
-                network=self.deep_network,
-                load_path=self.deep_pretrained_model,
-                publish_path=self.deep_final_model,
+                network=self.deepedit_network,
+                load_path=self.deepedit_pretrained_model,
+                publish_path=self.deepedit_final_model,
                 config={"max_epochs": 10, "train_batch_size": 1},
                 max_train_interactions=10,
                 max_val_interactions=5,
                 val_interval=1,
                 train_save_interval=1,
-                patch_size=self.patch_size,
                 labels=self.labels,
-            ),
-            "deepedit_nuke": TrainDeepNuke(
-                model_dir=os.path.join(self.model_dir, "deepedit_nuke"),
-                network=self.deep_network,
-                load_path=self.deep_pretrained_model,
-                publish_path=self.deep_nuke_final_model,
-                config={"max_epochs": 10, "train_batch_size": 1},
-                max_train_interactions=10,
-                max_val_interactions=5,
-                val_interval=1,
-                train_save_interval=1,
-                patch_size=(256, 256),
-                labels={
-                    0: "Neoplastic cells",
-                    1: "Inflammatory",
-                    2: "Connective/Soft tissue cells",
-                    3: "Dead Cells",
-                    4: "Epithelial",
-                },
             ),
         }
 
@@ -159,13 +129,13 @@ def main():
     os.putenv("MASTER_PORT", "1234")
 
     logging.basicConfig(
-        level=logging.WARNING,
+        level=logging.INFO,
         format="[%(asctime)s] [%(process)s] [%(threadName)s] [%(levelname)s] (%(name)s:%(lineno)d) - %(message)s",
         datefmt="%Y-%m-%d %H:%M:%S",
     )
 
     parser = argparse.ArgumentParser()
-    parser.add_argument("-s", "--studies", default="/local/sachi/Data/Pathology/BCSS/wsis")
+    parser.add_argument("-s", "--studies", default="/local/sachi/Data/Pathology/PanNukeFMin")
     args = parser.parse_args()
 
     app_dir = os.path.dirname(__file__)
@@ -176,19 +146,29 @@ def main():
     }
 
     app = MyApp(app_dir, studies, conf)
-    run_train = False
+    run_train = True
     if run_train:
         app.train(
+            # request={
+            #     "name": "model_01",
+            #     "model": "segmentation",
+            #     "max_epochs": 10,
+            #     "dataset": "PersistentDataset",  # PersistentDataset, CacheDataset
+            #     "train_batch_size": 16,
+            #     "val_batch_size": 12,
+            #     "multi_gpu": False,
+            #     "val_split": 0.1,
+            # },
             request={
                 "name": "model_01",
-                "model": "deepedit_nuke",
-                "max_epochs": 300,
-                "dataset": "CacheDataset",  # PersistentDataset, CacheDataset
+                "model": "deepedit",
+                "max_epochs": 10,
+                "dataset": "PersistentDataset",  # PersistentDataset, CacheDataset
                 "train_batch_size": 16,
                 "val_batch_size": 12,
-                "multi_gpu": True,
+                "multi_gpu": False,
                 "val_split": 0.1,
-            }
+            },
         )
     else:
         infer_wsi(app)
@@ -199,7 +179,7 @@ def infer_wsi(app):
     image = "TCGA-02-0010-01Z-00-DX4.07de2e55-a8fe-40ee-9e98-bcb78050b9f7"
     res = app.infer_wsi(
         request={
-            "model": "deepedit_nuke",
+            "model": "deepedit",
             "image": image,
             "level": 0,
             "patch_size": [2048, 2048],

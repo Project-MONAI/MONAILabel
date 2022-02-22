@@ -12,16 +12,24 @@ import logging
 
 import numpy as np
 from monai.inferers import SimpleInferer, SlidingWindowInferer
-from monai.transforms import Activationsd, AsDiscreted, EnsureChannelFirstd, EnsureTyped, SqueezeDimd, ToNumpyd
+from monai.transforms import (
+    Activationsd,
+    AsChannelFirstd,
+    AsDiscreted,
+    EnsureTyped,
+    ScaleIntensityRangeD,
+    SqueezeDimd,
+    ToNumpyd,
+)
 
 from monailabel.interfaces.tasks.infer import InferTask, InferType
 
-from .transforms import FilterImaged, FindContoursd, LoadImagePatchd, NormalizeImaged, PostFilterLabeld
+from .transforms import FilterImaged, FindContoursd, LoadImagePatchd, PostFilterLabeld
 
 logger = logging.getLogger(__name__)
 
 
-class MyInfer(InferTask):
+class InferSegmentation(InferTask):
     """
     This provides Inference Engine for pre-trained segmentation (UNet) model over MSD Dataset.
     """
@@ -30,11 +38,11 @@ class MyInfer(InferTask):
         self,
         path,
         network=None,
-        roi_size=(1024, 1024),
+        roi_size=(256, 256),
         type=InferType.SEGMENTATION,
         labels=None,
         dimension=2,
-        description="A pre-trained semantic segmentation model for Tumor (Pathology)",
+        description="A pre-trained semantic segmentation model for Nuclei (Pathology)",
     ):
         self.roi_size = roi_size
         super().__init__(
@@ -60,8 +68,8 @@ class MyInfer(InferTask):
         return [
             LoadImagePatchd(keys="image", conversion="RGB", dtype=np.uint8),
             FilterImaged(keys="image"),
-            EnsureChannelFirstd(keys="image"),
-            NormalizeImaged(keys="image"),
+            AsChannelFirstd(keys="image"),
+            ScaleIntensityRangeD(keys="image", a_min=0.0, a_max=255.0, b_min=-1.0, b_max=1.0),
             EnsureTyped(keys="image"),
         ]
 

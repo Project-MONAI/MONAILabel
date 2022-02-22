@@ -9,50 +9,47 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 import logging
+import os
 
 import numpy as np
 import torch
 from ignite.metrics import Accuracy
-from monai.data import DataLoader, list_data_collate
 from monai.handlers import from_engine
-from monai.inferers import SlidingWindowInferer
+from monai.inferers import SimpleInferer
 from monai.losses import DiceLoss
 from monai.transforms import (
     Activationsd,
+    AsChannelFirstd,
     AsDiscreted,
-    BorderPadd,
-    EnsureChannelFirstd,
     EnsureTyped,
     LoadImaged,
     RandRotate90d,
-    RandSpatialCropSamplesd,
+    ScaleIntensityRangeD,
     ToNumpyd,
     TorchVisiond,
     ToTensord,
 )
 
+from monailabel.interfaces.datastore import Datastore
 from monailabel.tasks.train.basic_train import BasicTrainTask, Context
 
+from .flatten_pannuke import split_pannuke_dataset
 from .handlers import TensorBoardImageHandler
-from .transforms import ClipBorderd, FilterImaged, LabelToChanneld, NormalizeImaged
+from .transforms import FilterImaged, FilterLabelChannelsd
 
 logger = logging.getLogger(__name__)
 
 
-class MyTrain(BasicTrainTask):
+class TrainSegmentation(BasicTrainTask):
     def __init__(
         self,
         model_dir,
         network,
         labels,
-        patch_size=(512, 512),
-        num_samples=16,
-        description="Pathology Semantic Segmentation (BCSS Dataset)",
+        description="Pathology Semantic Segmentation for Nuclei (PanNuke Dataset)",
         **kwargs,
     ):
         self._network = network
-        self.patch_size = patch_size
-        self.num_samples = num_samples
         self.labels = labels
         super().__init__(model_dir, description, **kwargs)
 
@@ -65,28 +62,32 @@ class MyTrain(BasicTrainTask):
     def loss_function(self, context: Context):
         return DiceLoss(sigmoid=True)
 
+    def pre_process(self, request, datastore: Datastore):
+        self.cleanup(request)
+        cache_dir = os.path.join(self.get_cache_dir(request), "train_ds")
+
+        ds = datastore.datalist()
+        if len(ds) == 1:
+            image = np.load(ds[0]["image"])
+            if len(image.shape) > 3:
+                ds = split_pannuke_dataset(ds[0]["image"], ds[0]["label"], cache_dir)
+
+        logging.info("+++ Total Records: {}".format(len(ds)))
+        return ds
+
     def train_pre_transforms(self, context: Context):
         return [
             LoadImaged(keys=("image", "label"), dtype=np.uint8),
-            FilterImaged(keys="image"),
-            EnsureChannelFirstd(keys="image"),
-            LabelToChanneld(keys="label", labels=self.labels),
-            ClipBorderd(keys=("image", "label"), border=100),
-            BorderPadd(keys=("image", "label"), spatial_border=100),
+            FilterImaged(keys="image", min_size=5),
+            AsChannelFirstd(keys="image"),
+            FilterLabelChannelsd(keys="label", labels=self.labels),
             ToTensord(keys="image"),
             TorchVisiond(
                 keys="image", name="ColorJitter", brightness=64.0 / 255.0, contrast=0.75, saturation=0.25, hue=0.04
             ),
             ToNumpyd(keys="image"),
-            RandSpatialCropSamplesd(
-                keys=("image", "label"),
-                roi_size=self.patch_size,
-                random_center=True,
-                random_size=False,
-                num_samples=self.num_samples,
-            ),
             RandRotate90d(keys=("image", "label"), prob=0.5, spatial_axes=(0, 1)),
-            NormalizeImaged(keys="image"),
+            ScaleIntensityRangeD(keys="image", a_min=0.0, a_max=255.0, b_min=-1.0, b_max=1.0),
             EnsureTyped(keys=("image", "label")),
         ]
 
@@ -103,15 +104,10 @@ class MyTrain(BasicTrainTask):
         return {"val_acc": Accuracy(output_transform=from_engine(["pred", "label"]))}
 
     def val_inferer(self, context: Context):
-        return SlidingWindowInferer(roi_size=self.patch_size, sw_batch_size=4)
+        return SimpleInferer()
 
     def train_handlers(self, context: Context):
         handlers = super().train_handlers(context)
         if context.local_rank == 0:
             handlers.append(TensorBoardImageHandler(log_dir=context.events_dir))
         return handlers
-
-    def _dataloader(self, context, dataset, batch_size, num_workers):
-        return DataLoader(
-            dataset=dataset, batch_size=batch_size, shuffle=False, num_workers=num_workers, collate_fn=list_data_collate
-        )
