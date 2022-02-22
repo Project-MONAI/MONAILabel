@@ -15,7 +15,7 @@ import shutil
 from distutils.util import strtobool
 from typing import Dict
 
-from lib import InferDeep, MyInfer, MyTrain, TrainDeep, TrainDeepNuke
+from lib import InferDeep, InferDeepNuke, MyInfer, MyTrain, TrainDeep, TrainDeepNuke
 from monai.networks.nets import BasicUNet
 
 from monailabel.interfaces.app import MONAILabelApp
@@ -91,6 +91,9 @@ class MyApp(MONAILabelApp):
             "deepedit": InferDeep(
                 [self.deep_pretrained_model, self.deep_final_model], self.deep_network, labels=self.labels
             ),
+            "deepedit_nuke": InferDeepNuke(
+                [self.deep_nuke_pretrained_model, self.deep_nuke_final_model], self.deep_network
+            ),
         }
 
     def init_trainers(self) -> Dict[str, TrainTask]:
@@ -122,7 +125,7 @@ class MyApp(MONAILabelApp):
                 model_dir=os.path.join(self.model_dir, "deepedit_nuke"),
                 network=self.deep_network,
                 load_path=self.deep_pretrained_model,
-                publish_path=self.deep_final_model,
+                publish_path=self.deep_nuke_final_model,
                 config={"max_epochs": 10, "train_batch_size": 1},
                 max_train_interactions=10,
                 max_val_interactions=5,
@@ -151,18 +154,18 @@ def main():
     from monailabel.config import settings
 
     settings.MONAI_LABEL_DATASTORE_AUTO_RELOAD = False
-    settings.MONAI_LABEL_DATASTORE_FILE_EXT = ["*.svs", "*.png", "*.npy"]
+    settings.MONAI_LABEL_DATASTORE_FILE_EXT = ["*.svs", "*.png", "*.npy", "*.tif"]
     os.putenv("MASTER_ADDR", "127.0.0.1")
     os.putenv("MASTER_PORT", "1234")
 
     logging.basicConfig(
-        level=logging.INFO,
+        level=logging.WARNING,
         format="[%(asctime)s] [%(process)s] [%(threadName)s] [%(levelname)s] (%(name)s:%(lineno)d) - %(message)s",
         datefmt="%Y-%m-%d %H:%M:%S",
     )
 
     parser = argparse.ArgumentParser()
-    parser.add_argument("-s", "--studies", default="/local/sachi/Data/Pathology/PanNukeF")
+    parser.add_argument("-s", "--studies", default="/local/sachi/Data/Pathology/BCSS/wsis")
     args = parser.parse_args()
 
     app_dir = os.path.dirname(__file__)
@@ -173,7 +176,7 @@ def main():
     }
 
     app = MyApp(app_dir, studies, conf)
-    run_train = True
+    run_train = False
     if run_train:
         app.train(
             request={
@@ -192,15 +195,16 @@ def main():
 
 
 def infer_wsi(app):
-    root_dir = "/local/sachi/Data/Pathology/BCSS"
-    image = "TCGA-EW-A1OW-01Z-00-DX1.97888686-EBB6-4B13-AB5D-452F475E865B"
+    root_dir = "/local/sachi/Data/Pathology/BCSS/wsis"
+    image = "TCGA-02-0010-01Z-00-DX4.07de2e55-a8fe-40ee-9e98-bcb78050b9f7"
     res = app.infer_wsi(
         request={
-            "model": "deepedit",
+            "model": "deepedit_nuke",
             "image": image,
             "level": 0,
-            "patch_size": [4096, 4096],
-            "roi": {"x": 34679, "y": 54441, "x2": 46025, "y2": 64181},
+            "patch_size": [2048, 2048],
+            "roi": {"x": 7737, "y": 20086, "x2": 9785, "y2": 22134},
+            "min_poly_area": 40,
         }
     )
 

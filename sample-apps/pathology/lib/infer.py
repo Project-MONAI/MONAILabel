@@ -56,7 +56,7 @@ class MyInfer(InferTask):
         )
         return c
 
-    def pre_transforms(self, data):
+    def pre_transforms(self, data=None):
         return [
             LoadImagePatchd(keys="image", conversion="RGB", dtype=np.uint8),
             FilterImaged(keys="image"),
@@ -65,7 +65,7 @@ class MyInfer(InferTask):
             EnsureTyped(keys="image"),
         ]
 
-    def inferer(self, data):
+    def inferer(self, data=None):
         roi_size = data.get("roi_size", self.roi_size) if data else self.roi_size
         input_shape = data["image"].shape if data else None
         sw_batch_size = data.get("sw_batch_size", 2) if data else 2
@@ -80,7 +80,7 @@ class MyInfer(InferTask):
             )
         return SimpleInferer()
 
-    def post_transforms(self, data):
+    def post_transforms(self, data=None):
         return [
             Activationsd(keys="pred", sigmoid=True),
             AsDiscreted(keys="pred", threshold=0.5),

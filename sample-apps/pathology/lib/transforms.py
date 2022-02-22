@@ -208,9 +208,10 @@ class NormalizeImaged(MapTransform):
 
 
 class PostFilterLabeld(MapTransform):
-    def __init__(self, keys: KeysCollection, image="image"):
+    def __init__(self, keys: KeysCollection, image="image", min_size=3000):
         super().__init__(keys)
         self.image = image
+        self.min_size = min_size
 
     def __call__(self, data):
         d = dict(data)
@@ -224,7 +225,7 @@ class PostFilterLabeld(MapTransform):
             label = d[key].astype(np.uint8)
             gray = np.dot(img, [0.2125, 0.7154, 0.0721])
             label = label * np.logical_xor(label, gray == 0)
-            label = filter_remove_small_objects(label).astype(np.uint8)
+            label = filter_remove_small_objects(label, min_size=self.min_size).astype(np.uint8)
             d[key] = label
         return d
 

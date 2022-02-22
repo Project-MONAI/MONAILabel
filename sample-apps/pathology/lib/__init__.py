@@ -13,6 +13,7 @@ from .activelearning import MyStrategy
 from .handlers import TensorBoardImageHandler
 from .infer import MyInfer
 from .infer_deep import InferDeep
+from .infer_deep_nuke import InferDeepNuke
 from .train import MyTrain
 from .train_deep import TrainDeep
 from .train_deep_nuke import TrainDeepNuke

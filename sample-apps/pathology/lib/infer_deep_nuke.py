@@ -29,7 +29,7 @@ from .transforms import (
 logger = logging.getLogger(__name__)
 
 
-class InferDeep(InferTask):
+class InferDeepNuke(InferTask):
     """
     This provides Inference Engine for pre-trained segmentation (UNet) model over MSD Dataset.
     """
@@ -38,11 +38,11 @@ class InferDeep(InferTask):
         self,
         path,
         network=None,
-        roi_size=(1024, 1024),
+        roi_size=(256, 256),
         type=InferType.SEGMENTATION,
         labels=None,
         dimension=2,
-        description="A pre-trained semantic segmentation model for Tumor (Pathology)",
+        description="A pre-trained semantic segmentation model for Nucleus (Pathology)",
     ):
         self.roi_size = roi_size
         super().__init__(
@@ -96,6 +96,6 @@ class InferDeep(InferTask):
             AsDiscreted(keys="pred", threshold=0.5),
             SqueezeDimd(keys="pred"),
             ToNumpyd(keys=("image", "pred")),
-            PostFilterLabeld(keys="pred", image="image"),
-            FindContoursd(keys="pred"),
+            PostFilterLabeld(keys="pred", image="image", min_size=80),
+            FindContoursd(keys="pred", min_positive=10, min_poly_area=40),
         ]
