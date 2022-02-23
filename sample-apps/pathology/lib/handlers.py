@@ -42,6 +42,9 @@ class RegionDice:
         self.data = []
 
     def update(self, y_pred, y):
+        y_pred = y_pred if torch.is_tensor(y_pred) else torch.from_numpy(y_pred)
+        y = y if torch.is_tensor(y) else torch.from_numpy(y)
+
         score = compute_meandice(y_pred=y_pred, y=y, include_background=True).mean().item()
         if not math.isnan(score):
             self.data.append(score)
@@ -87,16 +90,28 @@ class TensorBoardImageHandler:
         epoch = engine.state.epoch
         batch_data = self.batch_transform(engine.state.batch)
         output_data = self.output_transform(engine.state.output)
-        device = self.device if self.device else torch.device("cuda")
 
         if action == "iteration":
             for bidx in range(len(batch_data)):
-                for region in range(batch_data[bidx]["label"].shape[0]):
+                y = batch_data[bidx]["label"].detach().cpu().numpy()
+                y_pred = output_data[bidx]["pred"].detach().cpu().numpy()
+
+                for region in range(y_pred.shape[0]):
+                    if region == 0 and y_pred.shape[0] != y.shape[0] and y_pred.shape[0] > 1:  # one-hot; background
+                        continue
+
                     if self.metric_data.get(region) is None:
                         self.metric_data[region] = RegionDice()
+
+                    if y_pred.shape[0] == y.shape[0]:
+                        label = y[region][np.newaxis]
+                    else:
+                        label = np.zeros(y.shape)
+                        label[y == region] = region
+
                     self.metric_data[region].update(
-                        y_pred=output_data[bidx]["pred"][region][None].to(device),
-                        y=batch_data[bidx]["label"][region][None].to(device),
+                        y_pred=y_pred[region][np.newaxis],
+                        y=label,
                     )
             return
 
@@ -106,34 +121,45 @@ class TensorBoardImageHandler:
     def write_images(self, batch_data, output_data, epoch):
         for bidx in range(len(batch_data)):
             image = batch_data[bidx]["image"].detach().cpu().numpy()
-            label = batch_data[bidx]["label"].detach().cpu().numpy()
-            pred = output_data[bidx]["pred"].detach().cpu().numpy()
+            y = batch_data[bidx]["label"].detach().cpu().numpy()
+            y_pred = output_data[bidx]["pred"].detach().cpu().numpy()
 
             # Only consider non-empty label in case single write
-            if self.batch_limit == 1 and bidx < (len(batch_data) - 1) and np.sum(label) == 0:
+            if self.batch_limit == 1 and bidx < (len(batch_data) - 1) and np.sum(y) == 0:
                 continue
 
-            for region in range(label.shape[0]):
+            tag_prefix = f"b{bidx} - " if self.batch_limit != 1 else f""
+            img_tensor = make_grid(torch.from_numpy(image[:3] * 128 + 128), normalize=True)
+            self.writer.add_image(tag=f"{tag_prefix}Image", img_tensor=img_tensor, global_step=epoch)
+
+            for region in range(y_pred.shape[0]):
+                if region == 0 and y_pred.shape[0] != y.shape[0] and y_pred.shape[0] > 1:  # one-hot; background
+                    continue
+
+                if y_pred.shape[0] == y.shape[0]:
+                    label = y[region][np.newaxis]
+                else:
+                    label = np.zeros(y.shape)
+                    label[y == region] = region
+
                 self.logger.info(
                     "{} - {} - Image: {}; Label: {} (nz: {}); Pred: {} (nz: {})".format(
                         bidx,
                         region,
                         image.shape,
                         label.shape,
-                        np.count_nonzero(label[region]),
-                        pred.shape,
-                        np.count_nonzero(pred[region]),
+                        np.count_nonzero(label),
+                        y_pred.shape,
+                        np.count_nonzero(y_pred[region]),
                     )
                 )
 
                 tag_prefix = f"b{bidx}:l{region} - " if self.batch_limit != 1 else f"l{region} - "
-                img_tensor = make_grid(torch.from_numpy(image[:3] * 128 + 128), normalize=True)
-                self.writer.add_image(tag=f"{tag_prefix}Image", img_tensor=img_tensor, global_step=epoch)
 
-                label_pred = [label[region][None], pred[region][None]]
+                label_pred = [label, y_pred[region][None]]
                 label_pred_tag = f"{tag_prefix}Label vs Pred:"
                 if image.shape[0] == 5:
-                    label_pred = [label, pred, image[3][None], image[4][None]]
+                    label_pred = [label, y_pred[region][None], image[3][None], image[4][None]]
                     label_pred_tag = f"{tag_prefix}Label vs Pred vs Pos vs Neg"
 
                 img_tensor = make_grid(

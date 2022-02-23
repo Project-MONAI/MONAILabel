@@ -35,7 +35,7 @@ from monailabel.tasks.train.basic_train import BasicTrainTask, Context
 
 from .flatten_pannuke import split_pannuke_dataset
 from .handlers import TensorBoardImageHandler
-from .transforms import FilterImaged, FilterLabelChannelsd
+from .transforms import EncodeLabelChannelsd, FilterImaged
 
 logger = logging.getLogger(__name__)
 
@@ -60,7 +60,7 @@ class TrainSegmentation(BasicTrainTask):
         return torch.optim.Adam(self._network.parameters(), 0.0001)
 
     def loss_function(self, context: Context):
-        return DiceLoss(sigmoid=True)
+        return DiceLoss(to_onehot_y=True, softmax=True, squared_pred=True)
 
     def pre_process(self, request, datastore: Datastore):
         self.cleanup(request)
@@ -80,7 +80,7 @@ class TrainSegmentation(BasicTrainTask):
             LoadImaged(keys=("image", "label"), dtype=np.uint8),
             FilterImaged(keys="image", min_size=5),
             AsChannelFirstd(keys="image"),
-            FilterLabelChannelsd(keys="label", labels=self.labels),
+            EncodeLabelChannelsd(keys="label", labels=self.labels),
             ToTensord(keys="image"),
             TorchVisiond(
                 keys="image", name="ColorJitter", brightness=64.0 / 255.0, contrast=0.75, saturation=0.25, hue=0.04
@@ -93,8 +93,13 @@ class TrainSegmentation(BasicTrainTask):
 
     def train_post_transforms(self, context: Context):
         return [
-            Activationsd(keys="pred", sigmoid=True),
-            AsDiscreted(keys="pred", threshold=0.5),
+            Activationsd(keys="pred", softmax=True),
+            AsDiscreted(
+                keys=("pred", "label"),
+                argmax=(True, False),
+                to_onehot=(True, True),
+                n_classes=len(self.labels) + 1,
+            ),
         ]
 
     def train_key_metric(self, context: Context):

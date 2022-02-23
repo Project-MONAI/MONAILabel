@@ -36,20 +36,20 @@ class MyApp(MONAILabelApp):
         }
 
         self.seg_network = BasicUNet(
-            spatial_dims=2, in_channels=3, out_channels=len(labels), features=(32, 64, 128, 256, 512, 32)
+            spatial_dims=2, in_channels=3, out_channels=len(labels) + 1, features=(32, 64, 128, 256, 512, 32)
         )
         self.deepedit_network = BasicUNet(
             spatial_dims=2, in_channels=5, out_channels=1, features=(32, 64, 128, 256, 512, 32)
         )
 
         self.model_dir = os.path.join(app_dir, "model")
-        self.seg_pretrained_model = os.path.join(self.model_dir, "segmentation_nucleus_pretrained.pt")
+        self.seg_pretrained_model = os.path.join(self.model_dir, "segmentation_nuclei_pretrained.pt")
         self.seg_final_model = os.path.join(self.model_dir, "segmentation.pt")
 
-        self.deepedit_pretrained_model = os.path.join(self.model_dir, "deepedit_nucleus_pretrained.pt")
+        self.deepedit_pretrained_model = os.path.join(self.model_dir, "deepedit_nuclei_pretrained.pt")
         self.deepedit_final_model = os.path.join(self.model_dir, "deepedit.pt")
 
-        use_pretrained_model = strtobool(conf.get("use_pretrained_model", "false"))  # TODO:: Change it to True later
+        use_pretrained_model = strtobool(conf.get("use_pretrained_model", "false"))
         seg_pretrained_model_uri = conf.get(
             "seg_pretrained_model_path", f"{self.PRE_TRAINED_PATH}pathology_segmentation_nuclei.pt"
         )
@@ -153,8 +153,8 @@ def main():
                 "name": "model_01",
                 "model": "segmentation",
                 "max_epochs": 500,
-                "dataset": "PersistentDataset",  # PersistentDataset, CacheDataset
-                "train_batch_size": 32,
+                "dataset": "CacheDataset",  # PersistentDataset, CacheDataset
+                "train_batch_size": 16,
                 "val_batch_size": 12,
                 "multi_gpu": True,
                 "val_split": 0.1,
@@ -162,8 +162,8 @@ def main():
             # request={
             #     "name": "model_01",
             #     "model": "deepedit",
-            #     "max_epochs": 100,
-            #     "dataset": "PersistentDataset",  # PersistentDataset, CacheDataset
+            #     "max_epochs": 50,
+            #     "dataset": "CacheDataset",  # PersistentDataset, CacheDataset
             #     "train_batch_size": 16,
             #     "val_batch_size": 12,
             #     "multi_gpu": True,

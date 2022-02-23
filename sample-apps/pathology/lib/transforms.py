@@ -82,7 +82,7 @@ class LoadImagePatchd(MapTransform):
         return d
 
 
-class FilterLabelChannelsd(MapTransform):
+class EncodeLabelChannelsd(MapTransform):
     def __init__(self, keys: KeysCollection, labels):
         super().__init__(keys)
         self.labels = labels
@@ -91,12 +91,12 @@ class FilterLabelChannelsd(MapTransform):
         d = dict(data)
         for key in self.keys:
             mask = d[key]
-            img = np.zeros((len(self.labels), mask.shape[0], mask.shape[1]))
+            img = np.zeros((mask.shape[0], mask.shape[1]))
             for idx in self.labels:
                 m = mask[:, :, idx]
-                img[idx, m > 0] = 1
-                assert np.count_nonzero(m) == np.count_nonzero(img[idx])
-            d[key] = img
+                img[m > 0] = idx + 1
+
+            d[key] = img[np.newaxis]
         return d
 
 
