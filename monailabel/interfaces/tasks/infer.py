@@ -14,7 +14,7 @@ import logging
 import os
 import time
 from abc import abstractmethod
-from typing import Dict
+from typing import Any, Callable, Dict, Sequence, Tuple, Union
 
 import torch
 
@@ -39,13 +39,13 @@ class InferType:
         OTHERS -                  Other Model Type
     """
 
-    SEGMENTATION = "segmentation"
-    ANNOTATION = "annotation"
-    CLASSIFICATION = "classification"
-    DEEPGROW = "deepgrow"
-    DEEPEDIT = "deepedit"
-    SCRIBBLES = "scribbles"
-    OTHERS = "others"
+    SEGMENTATION: str = "segmentation"
+    ANNOTATION: str = "annotation"
+    CLASSIFICATION: str = "classification"
+    DEEPGROW: str = "deepgrow"
+    DEEPEDIT: str = "deepedit"
+    SCRIBBLES: str = "scribbles"
+    OTHERS: str = "others"
     KNOWN_TYPES = [SEGMENTATION, ANNOTATION, CLASSIFICATION, DEEPGROW, DEEPEDIT, SCRIBBLES, OTHERS]
 
 
@@ -56,18 +56,18 @@ class InferTask:
 
     def __init__(
         self,
-        path,
-        network,
-        type: InferType,
-        labels,
-        dimension,
-        description,
-        model_state_dict="model",
-        input_key="image",
-        output_label_key="pred",
-        output_json_key="result",
-        config=None,
-        load_strict=False,
+        path: Union[str, Sequence[str]],
+        network: Union[None, Any],
+        type: Union[str, InferType],
+        labels: Union[str, None, Sequence[str], Dict[Any, Any]],
+        dimension: int,
+        description: str,
+        model_state_dict: str = "model",
+        input_key: str = "image",
+        output_label_key: str = "pred",
+        output_json_key: str = "result",
+        config: Union[None, Dict[str, Any]] = None,
+        load_strict: bool = False,
     ):
         """
         :param path: Model File Path. Supports multiple paths to support versions (Last item will be picked as latest)
@@ -95,7 +95,7 @@ class InferTask:
         self.load_strict = load_strict
 
         self._networks: Dict = {}
-        self._config = {
+        self._config: Dict[str, Any] = {
             # "device": "cuda",
             # "result_extension": None,
             # "result_dtype": None,
@@ -104,7 +104,7 @@ class InferTask:
         if config:
             self._config.update(config)
 
-    def info(self):
+    def info(self) -> Dict[str, Any]:
         return {
             "type": self.type,
             "labels": self.labels,
@@ -113,10 +113,10 @@ class InferTask:
             "config": self.config(),
         }
 
-    def config(self):
+    def config(self) -> Dict[str, Any]:
         return self._config
 
-    def is_valid(self):
+    def is_valid(self) -> bool:
         if self.network or self.type == InferType.SCRIBBLES:
             return True
 
@@ -137,7 +137,7 @@ class InferTask:
         return None
 
     @abstractmethod
-    def pre_transforms(self, data=None):
+    def pre_transforms(self, data=None) -> Sequence[Callable]:
         """
         Provide List of pre-transforms
 
@@ -156,7 +156,7 @@ class InferTask:
         """
         pass
 
-    def inverse_transforms(self, data=None):
+    def inverse_transforms(self, data=None) -> Union[None, Sequence[Callable]]:
         """
         Provide List of inverse-transforms.  They are normally subset of pre-transforms.
         This task is performed on output_label (using the references from input_key)
@@ -178,7 +178,7 @@ class InferTask:
         return None
 
     @abstractmethod
-    def post_transforms(self, data=None):
+    def post_transforms(self, data=None) -> Sequence[Callable]:
         """
         Provide List of post-transforms
 
@@ -201,7 +201,7 @@ class InferTask:
         pass
 
     @abstractmethod
-    def inferer(self, data=None):
+    def inferer(self, data=None) -> Callable:
         """
         Provide Inferer Class
 
@@ -213,7 +213,7 @@ class InferTask:
         """
         pass
 
-    def __call__(self, request):
+    def __call__(self, request) -> Tuple[str, Dict[str, Any]]:
         """
         It provides basic implementation to run the following in order
             - Run Pre Transforms

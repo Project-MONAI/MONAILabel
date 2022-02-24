@@ -108,8 +108,6 @@ class Writer:
                 write_nifti(image_np, output_file, affine=affine, output_dtype=dtype)
             else:
                 write_itk(image_np, output_file, affine, dtype, compress)
-        else:
-            output_json[self.label] = image_np
 
         return output_file, output_json
 

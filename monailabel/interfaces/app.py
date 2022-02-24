@@ -537,8 +537,8 @@ class MONAILabelApp:
         """
         Dictionary of Default Infer Tasks for Deepgrow 2D/3D
         """
-        deepgrow_2d = load_from_mmar("clara_pt_deepgrow_2d_annotation_1", model_dir)
-        deepgrow_3d = load_from_mmar("clara_pt_deepgrow_3d_annotation_1", model_dir)
+        deepgrow_2d = load_from_mmar("clara_pt_deepgrow_2d_annotation", model_dir)
+        deepgrow_3d = load_from_mmar("clara_pt_deepgrow_3d_annotation", model_dir)
 
         infers = {
             "deepgrow_2d": InferDeepgrow2D(None, deepgrow_2d),
