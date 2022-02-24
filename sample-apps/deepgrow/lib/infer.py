@@ -79,7 +79,7 @@ class InferDeepgrow(InferTask):
                 SpatialCropGuidanced(keys="image", guidance="guidance", spatial_size=self.spatial_size),
                 Resized(keys="image", spatial_size=self.model_size, mode="area"),
                 ResizeGuidanced(guidance="guidance", ref_image="image"),
-                NormalizeIntensityd(keys="image", subtrahend=208, divisor=388), # type: ignore
+                NormalizeIntensityd(keys="image", subtrahend=208, divisor=388),  # type: ignore
                 AddGuidanceSignald(image="image", guidance="guidance"),
             ]
         )
