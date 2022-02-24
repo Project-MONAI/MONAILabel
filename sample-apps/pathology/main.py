@@ -28,6 +28,15 @@ logger = logging.getLogger(__name__)
 class MyApp(MONAILabelApp):
     def __init__(self, app_dir, studies, conf):
         labels = {
+            1: "Neoplastic cells",
+            2: "Inflammatory",
+            3: "Connective/Soft tissue cells",
+            4: "Dead Cells",
+            5: "Epithelial",
+        }
+
+        # PanNuke Dataset channels
+        self.label_channels = {
             0: "Neoplastic cells",
             1: "Inflammatory",
             2: "Connective/Soft tissue cells",
@@ -49,7 +58,7 @@ class MyApp(MONAILabelApp):
         self.deepedit_pretrained_model = os.path.join(self.model_dir, "deepedit_nuclei_pretrained.pt")
         self.deepedit_final_model = os.path.join(self.model_dir, "deepedit.pt")
 
-        use_pretrained_model = strtobool(conf.get("use_pretrained_model", "false"))
+        use_pretrained_model = strtobool(conf.get("use_pretrained_model", "true"))
         seg_pretrained_model_uri = conf.get(
             "seg_pretrained_model_path", f"{self.PRE_TRAINED_PATH}pathology_segmentation_nuclei.pt"
         )
@@ -83,7 +92,7 @@ class MyApp(MONAILabelApp):
                 [self.seg_pretrained_model, self.seg_final_model], self.seg_network, labels=self.labels
             ),
             "deepedit": InferDeepedit(
-                [self.deepedit_pretrained_model, self.deepedit_final_model], self.deepedit_network, labels=self.labels
+                [self.deepedit_pretrained_model, self.deepedit_final_model], self.deepedit_network, labels="Nuclei"
             ),
         }
 
@@ -97,6 +106,7 @@ class MyApp(MONAILabelApp):
                 config={"max_epochs": 10, "train_batch_size": 1},
                 train_save_interval=1,
                 labels=self.labels,
+                label_channels=self.label_channels,
             ),
             "deepedit": TrainDeepEdit(
                 model_dir=os.path.join(self.model_dir, "deepedit"),
@@ -108,7 +118,7 @@ class MyApp(MONAILabelApp):
                 max_val_interactions=5,
                 val_interval=1,
                 train_save_interval=1,
-                labels=self.labels,
+                label_channels=self.label_channels,
             ),
         }
 
@@ -135,7 +145,8 @@ def main():
     )
 
     parser = argparse.ArgumentParser()
-    parser.add_argument("-s", "--studies", default="/local/sachi/Data/Pathology/PanNukeF")
+    # parser.add_argument("-s", "--studies", default="/local/sachi/Data/Pathology/PanNukeF")
+    parser.add_argument("-s", "--studies", default="/local/sachi/Data/Pathology/BCSS/wsis")
     args = parser.parse_args()
 
     app_dir = os.path.dirname(__file__)
@@ -146,7 +157,7 @@ def main():
     }
 
     app = MyApp(app_dir, studies, conf)
-    run_train = True
+    run_train = False
     if run_train:
         app.train(
             request={
@@ -179,7 +190,7 @@ def infer_wsi(app):
     image = "TCGA-02-0010-01Z-00-DX4.07de2e55-a8fe-40ee-9e98-bcb78050b9f7"
     res = app.infer_wsi(
         request={
-            "model": "deepedit",
+            "model": "segmentation",
             "image": image,
             "level": 0,
             "patch_size": [2048, 2048],

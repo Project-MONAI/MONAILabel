@@ -8,6 +8,7 @@
 # WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 # See the License for the specific language governing permissions and
 # limitations under the License.
+from typing import Callable, Sequence
 
 from monai.inferers import SlidingWindowInferer
 from monai.transforms import (
@@ -48,7 +49,7 @@ class MyInfer(InferTask):
             description=description,
         )
 
-    def pre_transforms(self, data=None):
+    def pre_transforms(self, data=None) -> Sequence[Callable]:
         return [
             LoadImaged(keys="image"),
             AddChanneld(keys="image"),
@@ -57,10 +58,10 @@ class MyInfer(InferTask):
             ToTensord(keys="image"),
         ]
 
-    def inferer(self, data=None):
+    def inferer(self, data=None) -> Callable:
         return SlidingWindowInferer(roi_size=[160, 160, 160])
 
-    def post_transforms(self, data=None):
+    def post_transforms(self, data=None) -> Sequence[Callable]:
         return [
             Activationsd(keys="pred", softmax=True),
             AsDiscreted(keys="pred", argmax=True),

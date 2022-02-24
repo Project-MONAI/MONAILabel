@@ -8,6 +8,7 @@
 # WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 # See the License for the specific language governing permissions and
 # limitations under the License.
+from typing import Callable, Sequence, Union
 
 from monai.apps.deepgrow.transforms import AddGuidanceFromPointsd, AddGuidanceSignald
 from monai.inferers import SimpleInferer
@@ -60,7 +61,7 @@ class DeepEditSeg(InferTask):
         self.spatial_size = spatial_size
         self.target_spacing = target_spacing
 
-    def pre_transforms(self, data=None):
+    def pre_transforms(self, data=None) -> Sequence[Callable]:
         return [
             LoadImaged(keys="image"),
             SingleLabelSingleModalityd(keys="image"),
@@ -72,13 +73,13 @@ class DeepEditSeg(InferTask):
             ToTensord(keys="image"),
         ]
 
-    def inferer(self, data=None):
+    def inferer(self, data=None) -> Callable:
         return SimpleInferer()
 
-    def inverse_transforms(self, data=None):
+    def inverse_transforms(self, data=None) -> Union[None, Sequence[Callable]]:
         return []  # Self-determine from the list of pre-transforms provided
 
-    def post_transforms(self, data=None):
+    def post_transforms(self, data=None) -> Sequence[Callable]:
         return [
             ToTensord(keys="pred"),
             Activationsd(keys="pred", sigmoid=True),
@@ -116,7 +117,7 @@ class DeepEdit(InferTask):
         self.spatial_size = spatial_size
         self.target_spacing = target_spacing
 
-    def pre_transforms(self, data=None):
+    def pre_transforms(self, data=None) -> Sequence[Callable]:
         return [
             LoadImaged(keys="image", reader="nibabelreader"),
             SingleLabelSingleModalityd(keys="image"),
@@ -134,13 +135,13 @@ class DeepEdit(InferTask):
             ToTensord(keys="image"),
         ]
 
-    def inferer(self, data=None):
+    def inferer(self, data=None) -> Callable:
         return SimpleInferer()
 
-    def inverse_transforms(self, data=None):
+    def inverse_transforms(self, data=None) -> Union[None, Sequence[Callable]]:
         return []  # Self-determine from the list of pre-transforms provided
 
-    def post_transforms(self, data=None):
+    def post_transforms(self, data=None) -> Sequence[Callable]:
         return [
             ToTensord(keys="pred"),
             Activationsd(keys="pred", sigmoid=True),

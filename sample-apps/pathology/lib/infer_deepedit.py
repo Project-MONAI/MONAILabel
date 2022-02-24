@@ -8,16 +8,26 @@
 # WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 # See the License for the specific language governing permissions and
 # limitations under the License.
+
 import logging
+from typing import Callable, Sequence
 
 import numpy as np
 from monai.apps.deepgrow.transforms import AddGuidanceSignald
-from monai.transforms import AsChannelFirstd, EnsureTyped, ScaleIntensityRangeD
+from monai.transforms import (
+    Activationsd,
+    AsChannelFirstd,
+    AsDiscreted,
+    EnsureTyped,
+    ScaleIntensityRangeD,
+    SqueezeDimd,
+    ToNumpyd,
+)
 
 from monailabel.interfaces.tasks.infer import InferType
 
 from .infer import InferSegmentation
-from .transforms import AddClickGuidanced, FilterImaged, LoadImagePatchd
+from .transforms import AddClickGuidanced, FilterImaged, FindContoursd, LoadImagePatchd, PostFilterLabeld
 
 logger = logging.getLogger(__name__)
 
@@ -56,4 +66,14 @@ class InferDeepedit(InferSegmentation):
             AddClickGuidanced(image="image", guidance="guidance"),
             AddGuidanceSignald(image="image", guidance="guidance", number_intensity_ch=3),
             EnsureTyped(keys="image"),
+        ]
+
+    def post_transforms(self, data=None) -> Sequence[Callable]:
+        return [
+            Activationsd(keys="pred", sigmoid=True),
+            AsDiscreted(keys="pred", threshold=0.5),
+            SqueezeDimd(keys="pred"),
+            ToNumpyd(keys=("image", "pred")),
+            PostFilterLabeld(keys="pred", image="image"),
+            FindContoursd(keys="pred", labels=self.labels),
         ]

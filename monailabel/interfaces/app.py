@@ -568,15 +568,22 @@ class MONAILabelApp:
         infer_tasks = self._create_infer_wsi_tasks(request, image)
         logger.error(f"Total Tasks: {len(infer_tasks)}")
 
-        results = []
+        res_json = {"tasks": {}}
         for t in infer_tasks:
             tid = t["id"]
             res = self._run_infer_wsi_task(t)
-            results.append(res)
-            logger.error(f"{tid} => Completed: {len(results)} / {len(infer_tasks)}; Latencies: {res['latencies']}")
+            res_json["tasks"][tid] = res
+            logger.error(f"{tid} => Completed: {len(res_json)} / {len(infer_tasks)}; Latencies: {res.get('latencies')}")
 
-        logger.error("Infer Time Taken: {:.4f}".format(time.time() - start))
-        res_json = {tid: v for tid, v in enumerate(results) if v and v.get("contours")}
+        latency_total = time.time() - start
+        logger.error("WSI Infer Time Taken: {:.4f}".format(latency_total))
+        res_json.update(
+            {
+                "latencies": {
+                    "total": round(latency_total, 2),
+                },
+            }
+        )
 
         res_xml = create_annotations_xml(res_json)
         logger.error("Total Time Taken: {:.4f}".format(time.time() - start))
@@ -589,21 +596,10 @@ class MONAILabelApp:
         logger.info(f"{tid} => Patch/Slide ({row}, {col}) => Location: ({tx}, {ty}); Size: {tw} x {th}")
 
         req = copy.deepcopy(task)
-        req.update(
-            {
-                "result_write_to_file": False,
-                "result_extension": ".png",
-            }
-        )
+        req["result_write_to_file"] = False
 
         res = self.infer(req)
-        if res.get("params") and res["params"].get("contours"):
-            return {
-                "bbox": res["params"]["bbox"],
-                "contours": res["params"]["contours"],
-                "latencies": res["params"]["latencies"],
-            }
-        return {"latencies": res["params"]["latencies"]}
+        return res.get("params", {})
 
     def _create_infer_wsi_tasks(self, request, image):
         patch_size = request.get("patch_size", (2048, 2048))

@@ -47,14 +47,14 @@ class TrainDeepEdit(BasicTrainTask):
         self,
         model_dir,
         network,
-        labels,
+        label_channels,
         max_train_interactions=10,
         max_val_interactions=5,
         description="Pathology DeepEdit Segmentation for Nuclei (PanNuke Dataset)",
         **kwargs,
     ):
         self._network = network
-        self.labels = labels
+        self.label_channels = label_channels
         self.max_train_interactions = max_train_interactions
         self.max_val_interactions = max_val_interactions
         super().__init__(model_dir, description, **kwargs)
@@ -96,7 +96,7 @@ class TrainDeepEdit(BasicTrainTask):
             LoadImaged(keys=("image", "label"), dtype=np.uint8),
             FilterImaged(keys="image", min_size=5),
             AsChannelFirstd(keys="image"),
-            MergeLabelChannelsd(keys="label", labels=self.labels),
+            MergeLabelChannelsd(keys="label", label_channels=self.label_channels),
             ToTensord(keys="image"),
             TorchVisiond(
                 keys="image", name="ColorJitter", brightness=64.0 / 255.0, contrast=0.75, saturation=0.25, hue=0.04

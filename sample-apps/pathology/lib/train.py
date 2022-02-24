@@ -46,11 +46,13 @@ class TrainSegmentation(BasicTrainTask):
         model_dir,
         network,
         labels,
+        label_channels,
         description="Pathology Semantic Segmentation for Nuclei (PanNuke Dataset)",
         **kwargs,
     ):
         self._network = network
         self.labels = labels
+        self.label_channels = label_channels
         super().__init__(model_dir, description, **kwargs)
 
     def network(self, context: Context):
@@ -80,7 +82,7 @@ class TrainSegmentation(BasicTrainTask):
             LoadImaged(keys=("image", "label"), dtype=np.uint8),
             FilterImaged(keys="image", min_size=5),
             AsChannelFirstd(keys="image"),
-            EncodeLabelChannelsd(keys="label", labels=self.labels),
+            EncodeLabelChannelsd(keys="label", labels=self.labels, label_channels=self.label_channels),
             ToTensord(keys="image"),
             TorchVisiond(
                 keys="image", name="ColorJitter", brightness=64.0 / 255.0, contrast=0.75, saturation=0.25, hue=0.04

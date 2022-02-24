@@ -83,27 +83,28 @@ class LoadImagePatchd(MapTransform):
 
 
 class EncodeLabelChannelsd(MapTransform):
-    def __init__(self, keys: KeysCollection, labels):
+    def __init__(self, keys: KeysCollection, labels, label_channels):
         super().__init__(keys)
-        self.labels = labels
+        self.labels = {v: k for k, v in labels.items()}
+        self.label_channels = label_channels
 
     def __call__(self, data):
         d = dict(data)
         for key in self.keys:
             mask = d[key]
             img = np.zeros((mask.shape[0], mask.shape[1]))
-            for idx in self.labels:
+            for idx, name in self.label_channels:
                 m = mask[:, :, idx]
-                img[m > 0] = idx + 1
+                img[m > 0] = self.labels[name]
 
             d[key] = img[np.newaxis]
         return d
 
 
 class MergeLabelChannelsd(MapTransform):
-    def __init__(self, keys: KeysCollection, labels):
+    def __init__(self, keys: KeysCollection, label_channels):
         super().__init__(keys)
-        self.labels = labels
+        self.label_channels = label_channels
 
     def __call__(self, data):
         d = dict(data)
@@ -112,7 +113,7 @@ class MergeLabelChannelsd(MapTransform):
             mask[mask > 0] = 1
             img = np.zeros((mask.shape[0], mask.shape[1]))
 
-            for idx in self.labels:
+            for idx in self.label_channels:
                 img = np.logical_or(img, mask[:, :, idx])
             d[key] = img[np.newaxis]
         return d
@@ -225,16 +226,21 @@ class FindContoursd(MapTransform):
         min_positive=10,
         min_poly_area=80,
         result="result",
-        bbox="bbox",
-        contours="contours",
+        result_output_key="annotations",
+        labels=None,
     ):
         super().__init__(keys)
 
         self.min_positive = min_positive
         self.min_poly_area = min_poly_area
         self.result = result
-        self.bbox = bbox
-        self.contours = contours
+        self.result_output_key = result_output_key
+
+        labels = labels if labels else dict()
+        labels = [labels] if isinstance(labels, str) else labels
+        if not isinstance(labels, dict):
+            labels = {k + 1: v for k, v in enumerate(labels)}
+        self.labels = labels
 
     def __call__(self, data):
         d = dict(data)
@@ -246,35 +252,46 @@ class FindContoursd(MapTransform):
         tx, ty = location[0], location[1]
         tw, th = size[0], size[1]
 
+        all_polygons = []
         for key in self.keys:
             p = d[key]
             if np.count_nonzero(p) < self.min_positive:
                 continue
 
-            bbox = [[tx, ty], [tx + tw, ty + th]]
-            contours, _ = cv2.findContours(p, cv2.RETR_LIST, cv2.CHAIN_APPROX_SIMPLE)
-            polygons = []
-            for contour in contours:
-                contour = np.squeeze(contour)
-                if len(contour) < 3:
-                    continue
+            labels = [l for l in np.unique(p).tolist() if l > 0]
+            logger.info(f"Total Unique Masks (excluding background): {labels}")
+            for label in labels:
+                p = d[key]
+                p[p == label] = 1
 
-                contour[:, 0] += tx  # X
-                contour[:, 1] += ty  # Y
+                polygons = []
+                bbox = [[tx, ty], [tx + tw, ty + th]]
+                contours, _ = cv2.findContours(p, cv2.RETR_LIST, cv2.CHAIN_APPROX_SIMPLE)
+                for contour in contours:
+                    contour = np.squeeze(contour)
+                    if len(contour) < 3:
+                        continue
 
-                coords = contour.astype(int).tolist()
-                pobj = Polygon(coords)
-                if pobj.area < min_poly_area:  # Ignore poly with lesser area
-                    continue
+                    contour[:, 0] += tx  # X
+                    contour[:, 1] += ty  # Y
 
-                logger.debug(f"Area: {pobj.area}; Perimeter: {pobj.length}; Count: {len(coords)}")
-                polygons.append(coords)
+                    coords = contour.astype(int).tolist()
+                    pobj = Polygon(coords)
+                    if pobj.area < min_poly_area:  # Ignore poly with lesser area
+                        continue
 
-            if len(polygons):
-                if d.get(self.result) is None:
-                    d[self.result] = dict()
-                d[self.result].update({self.bbox: bbox, self.contours: polygons})
-            logger.info(f"+++++ Total polygons Found: {len(polygons)}")
+                    logger.debug(f"Area: {pobj.area}; Perimeter: {pobj.length}; Count: {len(coords)}")
+                    polygons.append(coords)
+
+                if len(polygons):
+                    all_polygons.append({"label": self.labels.get(label, label), "bbox": bbox, "contours": polygons})
+                    logger.info(f"+++++ {label} => Total polygons Found: {len(polygons)}")
+
+        if all_polygons:
+            if d.get(self.result) is None:
+                d[self.result] = dict()
+            d[self.result][self.result_output_key] = all_polygons
+            logger.info(f"+++++ ALL => Total polygons Found: {len(all_polygons)}")
         return d
 
 

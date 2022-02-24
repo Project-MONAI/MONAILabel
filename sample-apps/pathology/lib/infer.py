@@ -9,6 +9,7 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 import logging
+from typing import Any, Callable, Dict, Sequence
 
 import numpy as np
 from monai.inferers import SimpleInferer, SlidingWindowInferer
@@ -54,7 +55,7 @@ class InferSegmentation(InferTask):
             description=description,
         )
 
-    def config(self):
+    def config(self) -> Dict[str, Any]:
         c = super().config()
         c.update(
             {
@@ -64,7 +65,7 @@ class InferSegmentation(InferTask):
         )
         return c
 
-    def pre_transforms(self, data=None):
+    def pre_transforms(self, data=None) -> Sequence[Callable]:
         return [
             LoadImagePatchd(keys="image", conversion="RGB", dtype=np.uint8),
             FilterImaged(keys="image"),
@@ -73,7 +74,7 @@ class InferSegmentation(InferTask):
             EnsureTyped(keys="image"),
         ]
 
-    def inferer(self, data=None):
+    def inferer(self, data=None) -> Callable:
         roi_size = data.get("roi_size", self.roi_size) if data else self.roi_size
         input_shape = data["image"].shape if data else None
         sw_batch_size = data.get("sw_batch_size", 2) if data else 2
@@ -88,12 +89,15 @@ class InferSegmentation(InferTask):
             )
         return SimpleInferer()
 
-    def post_transforms(self, data=None):
+    def post_transforms(self, data=None) -> Sequence[Callable]:
         return [
-            Activationsd(keys="pred", sigmoid=True),
-            AsDiscreted(keys="pred", threshold=0.5),
-            SqueezeDimd(keys="pred"),
+            Activationsd(keys="pred", softmax=True),
+            AsDiscreted(
+                keys="pred",
+                argmax=True,
+            ),
+            SqueezeDimd(keys="pred", dim=0),
             ToNumpyd(keys=("image", "pred")),
             PostFilterLabeld(keys="pred", image="image"),
-            FindContoursd(keys="pred"),
+            FindContoursd(keys="pred", labels=self.labels),
         ]

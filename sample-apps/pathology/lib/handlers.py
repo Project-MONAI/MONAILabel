@@ -128,7 +128,7 @@ class TensorBoardImageHandler:
             if self.batch_limit == 1 and bidx < (len(batch_data) - 1) and np.sum(y) == 0:
                 continue
 
-            tag_prefix = f"b{bidx} - " if self.batch_limit != 1 else f""
+            tag_prefix = f"b{bidx} - " if self.batch_limit != 1 else ""
             img_tensor = make_grid(torch.from_numpy(image[:3] * 128 + 128), normalize=True)
             self.writer.add_image(tag=f"{tag_prefix}Image", img_tensor=img_tensor, global_step=epoch)
 

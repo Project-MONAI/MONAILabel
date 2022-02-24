@@ -8,7 +8,9 @@
 # WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 # See the License for the specific language governing permissions and
 # limitations under the License.
+from typing import Callable, Sequence
 
+import numpy as np
 from monai.apps.deepgrow.transforms import (
     AddGuidanceFromPointsd,
     AddGuidanceSignald,
@@ -63,7 +65,7 @@ class InferDeepgrow(InferTask):
         self.spatial_size = spatial_size
         self.model_size = model_size
 
-    def pre_transforms(self, data=None):
+    def pre_transforms(self, data=None) -> Sequence[Callable]:
         t = [
             LoadImaged(keys="image"),
             AsChannelFirstd(keys="image"),
@@ -78,16 +80,16 @@ class InferDeepgrow(InferTask):
                 SpatialCropGuidanced(keys="image", guidance="guidance", spatial_size=self.spatial_size),
                 Resized(keys="image", spatial_size=self.model_size, mode="area"),
                 ResizeGuidanced(guidance="guidance", ref_image="image"),
-                NormalizeIntensityd(keys="image", subtrahend=208, divisor=388),
+                NormalizeIntensityd(keys="image", subtrahend=np.array([208]), divisor=np.array([388])),
                 AddGuidanceSignald(image="image", guidance="guidance"),
             ]
         )
         return t
 
-    def inferer(self, data=None):
+    def inferer(self, data=None) -> Callable:
         return SimpleInferer()
 
-    def post_transforms(self, data=None):
+    def post_transforms(self, data=None) -> Sequence[Callable]:
         return [
             Activationsd(keys="pred", sigmoid=True),
             AsDiscreted(keys="pred", threshold_values=True, logit_thresh=0.5),
