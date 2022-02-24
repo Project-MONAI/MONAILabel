@@ -34,12 +34,12 @@ class MyApp(MONAILabelApp):
         self.model_dir_2d = os.path.join(self.model_dir, "deepgrow_2d")
         self.final_model_2d = os.path.join(self.model_dir, "deepgrow_2d", "model.pt")
         self.train_stats_path_2d = os.path.join(self.model_dir, "deepgrow_2d", "train_stats.json")
-        self.mmar_2d = "clara_pt_deepgrow_2d_annotation_1"
+        self.mmar_2d = "clara_pt_deepgrow_2d_annotation"
 
         self.model_dir_3d = os.path.join(self.model_dir, "deepgrow_3d")
         self.final_model_3d = os.path.join(self.model_dir, "deepgrow_3d", "model.pt")
         self.train_stats_path_3d = os.path.join(self.model_dir, "deepgrow_3d", "train_stats.json")
-        self.mmar_3d = "clara_pt_deepgrow_3d_annotation_1"
+        self.mmar_3d = "clara_pt_deepgrow_3d_annotation"
 
         super().__init__(
             app_dir=app_dir,

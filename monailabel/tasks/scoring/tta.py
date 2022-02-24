@@ -53,7 +53,9 @@ class TTAScoring(ScoringMethod):
     First version of test time augmentation active learning
     """
 
-    def __init__(self, model, network=None, deepedit=True, num_samples=5, spatial_size=None, spacing=None):
+    def __init__(
+        self, model, network=None, deepedit=True, num_samples=5, spatial_size=None, spacing=None, load_strict=False
+    ):
         super().__init__("Compute initial score based on TTA")
         if spacing is None:
             spacing = [1.0, 1.0, 1.0]
@@ -66,6 +68,7 @@ class TTAScoring(ScoringMethod):
         self.deepedit = deepedit
         self.spatial_size = spatial_size
         self.spacing = spacing
+        self.load_strict = load_strict
 
     def pre_transforms(self):
         t = [
@@ -115,8 +118,7 @@ class TTAScoring(ScoringMethod):
                 return path
         return None
 
-    @staticmethod
-    def _load_model(path, network):
+    def _load_model(self, path, network):
         model_file = TTAScoring._get_model_path(path)
         if not model_file and not network:
             logger.warning(f"Skip TTA Scoring:: Model(s) {path} not available yet")
@@ -129,7 +131,7 @@ class TTAScoring(ScoringMethod):
             if model_file:
                 checkpoint = torch.load(model_file)
                 model_state_dict = checkpoint.get("model", checkpoint)
-                model.load_state_dict(model_state_dict)
+                model.load_state_dict(model_state_dict, strict=self.load_strict)
         else:
             model = torch.jit.load(model_file)
         return model, model_ts

@@ -29,7 +29,9 @@ class EpistemicScoring(ScoringMethod):
     First version of Epistemic computation used as active learning strategy
     """
 
-    def __init__(self, model, network=None, transforms=None, roi_size=(128, 128, 64), num_samples=10):
+    def __init__(
+        self, model, network=None, transforms=None, roi_size=(128, 128, 64), num_samples=10, load_strict=False
+    ):
         super().__init__("Compute initial score based on dropout")
         self.model = model
         self.network = network
@@ -37,6 +39,7 @@ class EpistemicScoring(ScoringMethod):
         self.device = "cuda"
         self.roi_size = roi_size
         self.num_samples = num_samples
+        self.load_strict = load_strict
 
     def infer_seg(self, data, model, roi_size, sw_batch_size):
         pre_transforms = (
@@ -100,8 +103,7 @@ class EpistemicScoring(ScoringMethod):
                 return path
         return None
 
-    @staticmethod
-    def _load_model(path, network):
+    def _load_model(self, path, network):
         model_file = EpistemicScoring._get_model_path(path)
         if not model_file and not network:
             logger.warning(f"Skip Epistemic Scoring:: Model(s) {path} not available yet")
@@ -114,7 +116,7 @@ class EpistemicScoring(ScoringMethod):
             if model_file:
                 checkpoint = torch.load(model_file)
                 model_state_dict = checkpoint.get("model", checkpoint)
-                model.load_state_dict(model_state_dict)
+                model.load_state_dict(model_state_dict, strict=self.load_strict)
         else:
             model = torch.jit.load(model_file)
         return model, model_ts
