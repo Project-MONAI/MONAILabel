@@ -184,7 +184,9 @@ class FilterImaged(MapTransform):
         mask_not_green = filter_green_channel(rgb)
         mask_not_gray = filter_grays(rgb)
         mask_gray_green = mask_not_gray & mask_not_green
-        mask = filter_remove_small_objects(mask_gray_green, min_size=self.min_size)
+        mask = (
+            filter_remove_small_objects(mask_gray_green, min_size=self.min_size) if self.min_size else mask_gray_green
+        )
 
         return rgb * np.dstack([mask, mask, mask])
 

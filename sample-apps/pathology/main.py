@@ -163,7 +163,7 @@ def main():
             request={
                 "name": "model_01",
                 "model": "segmentation",
-                "max_epochs": 500,
+                "max_epochs": 300,
                 "dataset": "CacheDataset",  # PersistentDataset, CacheDataset
                 "train_batch_size": 16,
                 "val_batch_size": 12,

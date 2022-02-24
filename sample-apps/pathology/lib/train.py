@@ -80,7 +80,7 @@ class TrainSegmentation(BasicTrainTask):
     def train_pre_transforms(self, context: Context):
         return [
             LoadImaged(keys=("image", "label"), dtype=np.uint8),
-            FilterImaged(keys="image", min_size=5),
+            FilterImaged(keys="image", min_size=0),
             AsChannelFirstd(keys="image"),
             EncodeLabelChannelsd(keys="label", labels=self.labels, label_channels=self.label_channels),
             ToTensord(keys="image"),
@@ -99,8 +99,7 @@ class TrainSegmentation(BasicTrainTask):
             AsDiscreted(
                 keys=("pred", "label"),
                 argmax=(True, False),
-                to_onehot=(True, True),
-                n_classes=len(self.labels) + 1,
+                to_onehot=(len(self.labels) + 1, len(self.labels) + 1),
             ),
         ]
 
