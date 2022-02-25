@@ -564,9 +564,9 @@ class MONAILabelApp:
             image = datastore.get_image_uri(request["image"])
 
         start = time.time()
-        logger.error(f"Input WSI Image: {image}")
+        logger.info(f"Input WSI Image: {image}")
         infer_tasks = self._create_infer_wsi_tasks(request, image)
-        logger.error(f"Total Tasks: {len(infer_tasks)}")
+        logger.info(f"Total Tasks: {len(infer_tasks)}")
 
         res_json = {"tasks": {}}
         for t in infer_tasks:
@@ -576,7 +576,8 @@ class MONAILabelApp:
             logger.error(f"{tid} => Completed: {len(res_json)} / {len(infer_tasks)}; Latencies: {res.get('latencies')}")
 
         latency_total = time.time() - start
-        logger.error("WSI Infer Time Taken: {:.4f}".format(latency_total))
+        if len(infer_tasks) > 1:
+            logger.error("WSI Infer Time Taken: {:.4f}".format(latency_total))
         res_json.update(
             {
                 "latencies": {
@@ -590,15 +591,19 @@ class MONAILabelApp:
         logger.info(f"+++ WSI Inference Output Type: {output}")
 
         if output == "asap":
+            logger.info("+++ Generating ASAP XML Annotation")
             res_file = create_asap_annotations_xml(res_json, color_map=request.get("color_map"))
         elif output == "dsa":
+            logger.info("+++ Generating DSA JSON Annotation")
             model = request.get("model")
             task = self._infers.get(model)
             res_file = create_dsa_annotations_json(
                 res_json, name=f"MONAILabel - {model}", description=task.description, color_map=request.get("color_map")
             )
+        else:
+            logger.info("+++ Return Default JSON Annotation")
 
-        logger.error("Total Time Taken: {:.4f}".format(time.time() - start))
+        logger.info("Total Time Taken: {:.4f}".format(time.time() - start))
         return {"file": res_file, "params": res_json}
 
     def _run_infer_wsi_task(self, task):
@@ -609,6 +614,7 @@ class MONAILabelApp:
 
         req = copy.deepcopy(task)
         req["result_write_to_file"] = False
+        req["result_file_ext"] = ".anot"
 
         res = self.infer(req)
         return res.get("params", {})
@@ -628,7 +634,7 @@ class MONAILabelApp:
 
         with openslide.OpenSlide(image) as slide:
             w, h = slide.dimensions
-        logger.error(f"Input WSI Image Dimensions: ({w} x {h}); Patch Size: {patch_size}")
+        logger.info(f"Input WSI Image Dimensions: ({w} x {h}); Patch Size: {patch_size}")
         x, y = 0, 0
         if roi:
             x, y = int(roi[0][0]), int(roi[0][1])
@@ -638,7 +644,7 @@ class MONAILabelApp:
         cols = ceil(w / patch_size[0])  # COL
         rows = ceil(h / patch_size[1])  # ROW
 
-        logger.error(f"Total Patches to infer {rows} x {cols}: {rows * cols}")
+        logger.info(f"Total Patches to infer {rows} x {cols}: {rows * cols}")
 
         infer_tasks = []
         count = 0

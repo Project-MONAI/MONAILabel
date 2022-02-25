@@ -78,7 +78,7 @@ def run_wsi_inference(
     wsi: WSIInput = WSIInput(),
     output: Optional[ResultType] = ResultType.asap,
 ):
-    request = {"model": model, "image": image, output: output}
+    request = {"model": model, "image": image, "output": output.value if output else None}
 
     if not image and not session_id:
         raise HTTPException(status_code=500, detail="Neither Image nor File not Session ID input is provided")

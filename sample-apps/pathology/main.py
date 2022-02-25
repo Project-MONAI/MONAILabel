@@ -12,7 +12,6 @@ import json
 import logging
 import os
 import shutil
-import sys
 from distutils.util import strtobool
 from typing import Dict
 
@@ -124,6 +123,20 @@ class MyApp(MONAILabelApp):
             ),
         }
 
+    def infer_wsi(self, request, datastore=None):
+        color_map = {
+            "Neoplastic cells": (255, 0, 0),
+            "Inflammatory": (255, 255, 0),
+            "Connective/Soft tissue cells": (0, 255, 0),
+            "Dead Cells": (0, 0, 0),
+            "Epithelial": (0, 0, 255),
+            "Nuclei": (0, 255, 255),
+        }
+
+        color_map.update(request.get("color_map", {}))
+        request["color_map"] = color_map
+        return super().infer_wsi(request, datastore)
+
 
 """
 Example to run train/infer/scoring task(s) locally without actually running MONAI Label Server
@@ -226,10 +239,10 @@ def test_dsa():
         datefmt="%Y-%m-%d %H:%M:%S",
     )
 
-    APIURL = "http://127.0.0.1:8080/api/v1"
-    SLIDE_ID = "61f7236d466156ceb3257527"
+    api_url = "http://127.0.0.1:8080/api/v1"
+    slide_id = "61f7236d466156ceb3257527"
 
-    gc = girder_client.GirderClient(apiUrl=APIURL)
+    gc = girder_client.GirderClient(apiUrl=api_url)
     gc.authenticate(username="admin", password="password")
 
     res = "/local/sachi/Data/Pathology/TCGA-02-0010-01Z-00-DX4.07de2e55-a8fe-40ee-9e98-bcb78050b9f7_dsa.json"
@@ -241,7 +254,7 @@ def test_dsa():
     # json.dump(ann_doc, sys.stdout, indent=2)
 
     logger.info("Uploading Annotation doc...")
-    gc.post("/annotation?itemId=" + SLIDE_ID, json=ann_doc)
+    gc.post("/annotation?itemId=" + slide_id, json=ann_doc)
 
 
 if __name__ == "__main__":

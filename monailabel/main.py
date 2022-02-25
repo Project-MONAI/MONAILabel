@@ -252,7 +252,7 @@ class Main:
             log_level="info",
             log_config=log_config,
             use_colors=True,
-            access_log="info",
+            access_log="error",
             ssl_keyfile=args.ssl_keyfile,
             ssl_certfile=args.ssl_certfile,
             ssl_keyfile_password=args.ssl_keyfile_password,
