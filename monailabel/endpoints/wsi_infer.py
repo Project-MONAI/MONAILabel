@@ -43,12 +43,13 @@ class WSIInput(BaseModel):
     level: Optional[int] = Field(0, title="Resolution Level")
     roi: Optional[ROI] = Field(ROI(x=0, y=0, x2=0, y2=0), title="Region Of Interest [x, y, x2, y2]")
     patch_size: Optional[Sequence[int]] = Field([2048, 2048], title="Patch size for Inference")
-    min_poly_area: Optional[int] = Field(5000, title="Min Area to filter mask polygons")
+    min_poly_area: Optional[int] = Field(80, title="Min Area to filter mask polygons")
     params: Optional[dict] = Field({}, title="Additional Params")
 
 
 class ResultType(str, Enum):
-    xml = "xml"
+    asap = "asap"
+    dsa = "dsa"
     json = "json"
 
 
@@ -62,7 +63,7 @@ def send_response(datastore, result, output, background_tasks):
         else:
             background_tasks.add_task(remove_file, res_img)
 
-    if output == "json":
+    if not res_img or output == "json":
         return res_json
 
     m_type = get_mime_type(res_img)
@@ -75,9 +76,9 @@ def run_wsi_inference(
     image: str = "",
     session_id: str = "",
     wsi: WSIInput = WSIInput(),
-    output: Optional[ResultType] = None,
+    output: Optional[ResultType] = ResultType.asap,
 ):
-    request = {"model": model, "image": image}
+    request = {"model": model, "image": image, output: output}
 
     if not image and not session_id:
         raise HTTPException(status_code=500, detail="Neither Image nor File not Session ID input is provided")

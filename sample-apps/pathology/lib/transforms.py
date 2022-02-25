@@ -8,7 +8,6 @@
 # WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 # See the License for the specific language governing permissions and
 # limitations under the License.
-
 import logging
 import math
 import pathlib
@@ -253,6 +252,7 @@ class FindContoursd(MapTransform):
 
         tx, ty = location[0], location[1]
         tw, th = size[0], size[1]
+        bbox = [[tx, ty], [tx + tw, ty + th]]
 
         all_polygons = []
         for key in self.keys:
@@ -267,7 +267,6 @@ class FindContoursd(MapTransform):
                 p[p == label] = 1
 
                 polygons = []
-                bbox = [[tx, ty], [tx + tw, ty + th]]
                 contours, _ = cv2.findContours(p, cv2.RETR_LIST, cv2.CHAIN_APPROX_SIMPLE)
                 for contour in contours:
                     contour = np.squeeze(contour)
@@ -287,13 +286,13 @@ class FindContoursd(MapTransform):
 
                 if len(polygons):
                     all_polygons.append({"label": self.labels.get(label, label), "bbox": bbox, "contours": polygons})
-                    logger.info(f"+++++ {label} => Total polygons Found: {len(polygons)}")
+                    logger.info(f"+++++ {label} => Total Polygons Found: {len(polygons)}")
 
         if all_polygons:
             if d.get(self.result) is None:
                 d[self.result] = dict()
             d[self.result][self.result_output_key] = all_polygons
-            logger.info(f"+++++ ALL => Total polygons Found: {len(all_polygons)}")
+            logger.info(f"+++++ ALL => Total Polygons Groups Found: {len(all_polygons)}")
         return d
 
 

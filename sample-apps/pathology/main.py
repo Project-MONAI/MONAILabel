@@ -12,9 +12,11 @@ import json
 import logging
 import os
 import shutil
+import sys
 from distutils.util import strtobool
 from typing import Dict
 
+import girder_client
 from lib import InferDeepedit, InferSegmentation, TrainDeepEdit, TrainSegmentation
 from monai.networks.nets import BasicUNet
 
@@ -134,7 +136,7 @@ def main():
     from monailabel.config import settings
 
     settings.MONAI_LABEL_DATASTORE_AUTO_RELOAD = False
-    settings.MONAI_LABEL_DATASTORE_FILE_EXT = ["*.svs", "*.png", "*.npy", "*.tif"]
+    settings.MONAI_LABEL_DATASTORE_FILE_EXT = ["*.svs", "*.png", "*.npy", "*.tif", ".xml"]
     os.putenv("MASTER_ADDR", "127.0.0.1")
     os.putenv("MASTER_PORT", "1234")
 
@@ -186,12 +188,15 @@ def main():
 
 
 def infer_wsi(app):
-    root_dir = "/local/sachi/Data/Pathology/BCSS/wsis"
+    root_dir = "/local/sachi/Data/Pathology/"
     image = "TCGA-02-0010-01Z-00-DX4.07de2e55-a8fe-40ee-9e98-bcb78050b9f7"
+
+    output = "dsa"
     res = app.infer_wsi(
         request={
-            "model": "segmentation",
+            "model": "deepedit",
             "image": image,
+            "output": output,
             "level": 0,
             "patch_size": [2048, 2048],
             "roi": {"x": 7737, "y": 20086, "x2": 9785, "y2": 22134},
@@ -204,10 +209,41 @@ def infer_wsi(app):
     with open(label_json, "w") as fp:
         json.dump(res["params"], fp, indent=2)
 
-    label_xml = os.path.join(root_dir, f"{image}.xml")
-    shutil.copy(res["file"], label_xml)
-    logger.error(f"Saving Label XML: {label_xml}")
+    if output == "asap":
+        label_xml = os.path.join(root_dir, f"{image}.xml")
+        shutil.copy(res["file"], label_xml)
+        logger.error(f"Saving ASAP XML: {label_xml}")
+    elif output == "dsa":
+        label_dsa = os.path.join(root_dir, f"{image}_dsa.json")
+        shutil.copy(res["file"], label_dsa)
+        logger.error(f"Saving DSA JSON: {label_dsa}")
+
+
+def test_dsa():
+    logging.basicConfig(
+        level=logging.INFO,
+        format="[%(asctime)s] [%(process)s] [%(threadName)s] [%(levelname)s] (%(name)s:%(lineno)d) - %(message)s",
+        datefmt="%Y-%m-%d %H:%M:%S",
+    )
+
+    APIURL = "http://127.0.0.1:8080/api/v1"
+    SLIDE_ID = "61f7236d466156ceb3257527"
+
+    gc = girder_client.GirderClient(apiUrl=APIURL)
+    gc.authenticate(username="admin", password="password")
+
+    res = "/local/sachi/Data/Pathology/TCGA-02-0010-01Z-00-DX4.07de2e55-a8fe-40ee-9e98-bcb78050b9f7_dsa.json"
+    with open(res, "r") as fp:
+        ann_doc = json.load(fp)
+
+    # ann_doc["elements"] = ann_doc["elements"][:1]
+    # ann_doc["elements"][0]["points"] = ann_doc["elements"][0]["points"][:2]
+    # json.dump(ann_doc, sys.stdout, indent=2)
+
+    logger.info("Uploading Annotation doc...")
+    gc.post("/annotation?itemId=" + SLIDE_ID, json=ann_doc)
 
 
 if __name__ == "__main__":
     main()
+    test_dsa()

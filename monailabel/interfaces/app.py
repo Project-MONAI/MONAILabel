@@ -44,7 +44,7 @@ from monailabel.tasks.infer.deepgrow_2d import InferDeepgrow2D
 from monailabel.tasks.infer.deepgrow_3d import InferDeepgrow3D
 from monailabel.tasks.infer.deepgrow_pipeline import InferDeepgrowPipeline
 from monailabel.utils.async_tasks.task import AsyncTask
-from monailabel.utils.others.pathology import create_annotations_xml
+from monailabel.utils.others.pathology import create_asap_annotations_xml, create_dsa_annotations_json
 from monailabel.utils.sessions import Sessions
 
 logger = logging.getLogger(__name__)
@@ -585,9 +585,21 @@ class MONAILabelApp:
             }
         )
 
-        res_xml = create_annotations_xml(res_json)
+        res_file = None
+        output = request.get("output", "asap")
+        logger.info(f"+++ WSI Inference Output Type: {output}")
+
+        if output == "asap":
+            res_file = create_asap_annotations_xml(res_json, color_map=request.get("color_map"))
+        elif output == "dsa":
+            model = request.get("model")
+            task = self._infers.get(model)
+            res_file = create_dsa_annotations_json(
+                res_json, name=f"MONAILabel - {model}", description=task.description, color_map=request.get("color_map")
+            )
+
         logger.error("Total Time Taken: {:.4f}".format(time.time() - start))
-        return {"file": res_xml, "params": res_json}
+        return {"file": res_file, "params": res_json}
 
     def _run_infer_wsi_task(self, task):
         logger.info(task)
