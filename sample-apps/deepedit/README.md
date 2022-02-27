@@ -1,4 +1,6 @@
-# DeepEdit Default App
+# DeepEdit Default App 
+
+> This App works ONLY for single label segmentation - For multilabel segmentation please use the **[deepedit_multilabel App](../deepedit_multilabel)**
 
 ### Model Overview
 

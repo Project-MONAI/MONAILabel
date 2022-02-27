@@ -16,12 +16,12 @@ from parameterized import parameterized
 
 from monailabel.deepedit.transforms import (
     AddRandomGuidanced,
+    CheckSingleLabelSingleModalityd,
     CropGuidanceForegroundd,
     DiscardAddGuidanced,
     PosNegClickProbAddRandomGuidanced,
     ResizeGuidanceCustomd,
     ResizeGuidanceWithPadOrCropd,
-    SingleLabelSingleModalityd,
 )
 
 IMAGE = np.array([[[[1, 0, 2, 0, 1], [0, 1, 2, 1, 0], [2, 2, 3, 2, 2], [0, 1, 2, 1, 0], [1, 0, 2, 0, 1]]]])
@@ -214,7 +214,7 @@ class TestResizeGuidanced(unittest.TestCase):
 class TestSingleLabelSingleModalityd(unittest.TestCase):
     @parameterized.expand([SINGLE_LABEL_SINGLE_MODALITY_TEST_CASE_1])
     def test_correct_results(self, arguments, input_data, expected_result):
-        result = SingleLabelSingleModalityd(**arguments)(input_data)
+        result = CheckSingleLabelSingleModalityd(**arguments)(input_data)
         self.assertEqual(result["image"].shape, expected_result)
 
 
