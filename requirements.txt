@@ -19,3 +19,4 @@ schedule==1.1.0
 timeloop==1.0.2
 SimpleCRF==0.2.1.1
 numpy>=1.22.1
+einops==0.3.2
