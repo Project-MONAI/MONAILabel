@@ -41,7 +41,7 @@ from monai.transforms.utils import allow_missing_keys_mode
 from monai.utils.enums import CommonKeys, InverseKeys
 from tqdm import tqdm
 
-from monailabel.deepedit.transforms import DiscardAddGuidanced, SingleLabelSingleModalityd
+from monailabel.deepedit.transforms import CheckSingleLabelSingleModalityd, DiscardAddGuidanced
 from monailabel.interfaces.datastore import Datastore
 from monailabel.interfaces.tasks.scoring import ScoringMethod
 
@@ -73,7 +73,7 @@ class TTAScoring(ScoringMethod):
     def pre_transforms(self):
         t = [
             LoadImaged(keys="image", reader="nibabelreader"),
-            SingleLabelSingleModalityd(keys="image"),
+            CheckSingleLabelSingleModalityd(keys="image"),
             AddChanneld(keys="image"),
             Spacingd(keys="image", pixdim=self.spacing),
             RandAffined(
