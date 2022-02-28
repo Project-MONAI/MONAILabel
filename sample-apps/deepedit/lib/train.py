@@ -37,7 +37,7 @@ from monai.transforms import (
 
 from monailabel.deepedit.handlers import TensorBoardImageHandler
 from monailabel.deepedit.interaction import Interaction
-from monailabel.deepedit.transforms import CheckSingleLabelSingleModalityd, PosNegClickProbAddRandomGuidanced
+from monailabel.deepedit.transforms import PosNegClickProbAddRandomGuidanced
 from monailabel.tasks.train.basic_train import BasicTrainTask, Context
 
 logger = logging.getLogger(__name__)
@@ -94,7 +94,6 @@ class MyTrain(BasicTrainTask):
         return [
             LoadImaged(keys=("image", "label"), reader="nibabelreader"),
             EnsureChannelFirstd(keys=("image", "label")),
-            CheckSingleLabelSingleModalityd(keys=("image", "label")),
             # Spacing might not be needed as resize transform is used later.
             # Spacingd(keys=["image", "label"], pixdim=self.target_spacing, mode=("bilinear", "nearest")),
             Orientationd(keys=["image", "label"], axcodes="RAS"),
@@ -127,7 +126,6 @@ class MyTrain(BasicTrainTask):
         return [
             LoadImaged(keys=("image", "label"), reader="nibabelreader"),
             EnsureChannelFirstd(keys=("image", "label")),
-            CheckSingleLabelSingleModalityd(keys=("image", "label")),
             # Spacing might not be needed as resize transform is used later.
             # Spacingd(keys=["image", "label"], pixdim=self.target_spacing, mode=("bilinear", "nearest")),
             Orientationd(keys=["image", "label"], axcodes="RAS"),
