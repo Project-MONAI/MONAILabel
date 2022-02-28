@@ -36,7 +36,7 @@ class LiverAndTumor(InferTask):
         path,
         network=None,
         type=InferType.SEGMENTATION,
-        labels=["liver", "liver tumor"],
+        labels=("liver", "liver tumor"),
         dimension=3,
         description="A pre-trained model for volumetric (3D) segmentation of the spleen from CT image",
     ):
