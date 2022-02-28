@@ -37,6 +37,8 @@ class Settings(BaseSettings):
 
     MONAI_LABEL_SESSION_PATH: str = ""
     MONAI_LABEL_SESSION_EXPIRY: int = 3600
+    MONAI_LABEL_INFER_CONCURRENCY: int = -1
+    MONAI_LABEL_INFER_TIMEOUT: int = 600
 
     class Config:
         env_file = ".env"
