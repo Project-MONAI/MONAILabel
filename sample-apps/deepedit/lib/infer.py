@@ -26,7 +26,7 @@ from monai.transforms import (
     ToTensord,
 )
 
-from monailabel.deepedit.transforms import CheckSingleLabelSingleModalityd, DiscardAddGuidanced, ResizeGuidanceCustomd
+from monailabel.deepedit.transforms import DiscardAddGuidanced, ResizeGuidanceCustomd
 from monailabel.interfaces.tasks.infer import InferTask, InferType
 from monailabel.transform.post import Restored
 
@@ -66,7 +66,6 @@ class DeepEditSeg(InferTask):
         return [
             LoadImaged(keys="image"),
             EnsureChannelFirstd(keys="image"),
-            CheckSingleLabelSingleModalityd(keys="image"),
             Orientationd(keys="image", axcodes="RAS"),
             NormalizeIntensityd(keys="image"),
             Resized(keys="image", spatial_size=self.spatial_size, mode="area"),
@@ -122,7 +121,6 @@ class DeepEdit(InferTask):
         return [
             LoadImaged(keys="image", reader="nibabelreader"),
             EnsureChannelFirstd(keys="image"),
-            CheckSingleLabelSingleModalityd(keys="image"),
             # Spacing might not be needed as resize transform is used later.
             # Spacingd(keys=["image", "label"], pixdim=self.target_spacing, mode=("bilinear", "nearest")),
             Orientationd(keys="image", axcodes="RAS"),
