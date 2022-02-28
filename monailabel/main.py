@@ -52,6 +52,8 @@ class Main:
 
         parser.add_argument("-i", "--host", default="0.0.0.0", type=str, help="Server IP")
         parser.add_argument("-p", "--port", default=8000, type=int, help="Server Port")
+
+        parser.add_argument("--uvicorn_app", default="monailabel.app:app", type=str, help="Uvicorn App (<path>:<app>)")
         parser.add_argument("--ssl_keyfile", default=None, type=str, help="SSL key file")
         parser.add_argument("--ssl_certfile", default=None, type=str, help="SSL certificate file")
         parser.add_argument("--ssl_keyfile_password", default=None, type=str, help="SSL key file password")
@@ -247,7 +249,7 @@ class Main:
             return
 
         uvicorn.run(
-            "monailabel.app:app",
+            args.uvicorn_app,
             host=args.host,
             port=args.port,
             log_level="info",
