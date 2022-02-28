@@ -294,10 +294,10 @@ class PosNegClickProbAddRandomGuidanced(Randomizable, Transform):
         return d
 
 
-# A transform to get single modality and single label
-class SingleLabelSingleModalityd(MapTransform):
+# A transform to check for single modality and single label
+class CheckSingleLabelSingleModalityd(MapTransform):
     """
-    Gets single modality and single label
+    Checks single modality and single label
     """
 
     def __call__(self, data):
@@ -305,41 +305,21 @@ class SingleLabelSingleModalityd(MapTransform):
         for key in self.keys:
             if key == "label":
                 meta_data = d["label_meta_dict"]
-                if d[key].max() > 1:
+                if len(np.unique(d[key])) > 2:
                     logger.info(
                         f"Label {meta_data['filename_or_obj'].split('/')[-1]} has more than one mask - "
-                        f"taking SINGLE mask ... Consider using Multilabel DeepEdit App"
+                        f" Consider using Multilabel DeepEdit App ... FINISHING"
                     )
-                    result = []
-                    # label bigger than 0 is foreground
-                    result.append(d[key] > 0)
-                    # label 0 is background
-                    result.append(d[key] == 0)
-                    d[key] = np.stack(result, axis=0).astype(np.float32)
-
-                    d[key] = d[key][0, ...]
-
-                    meta_data["pixdim"][4] = 0.0
-                    meta_data["dim"][0] = 3
-                    meta_data["dim"][4] = 1
+                    raise Exception("Multilabel Error")
 
             if key == "image":
                 meta_data = d["image_meta_dict"]
-                if meta_data["pixdim"][4] > 0:
-                    logger.info(
+                if d[key].shape[0] > 1:
+                    logger.error(
                         f"Image {meta_data['filename_or_obj'].split('/')[-1]} has more than one modality "
-                        f"- taking FIRST modality ..."
+                        f"- Multimodality is not yet supported ... FINISHING"
                     )
-
-                    d[key] = d[key][..., 0]
-
-                    # These lines may cause the following error if image metadata is not well saved.
-                    # ValueError: len(spatial_size) must be greater or equal to img spatial dimensions,
-                    # got spatial_size=2 img=3
-                    meta_data["pixdim"][4] = 0.0
-                    meta_data["dim"][0] = 3
-                    meta_data["dim"][4] = 1
-
+                    raise Exception("Multimodality/Multisequence images NOT supported")
         return d
 
 
