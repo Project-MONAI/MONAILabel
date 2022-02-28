@@ -16,6 +16,7 @@ import platform
 import shutil
 import tempfile
 import time
+from concurrent.futures import ThreadPoolExecutor
 from datetime import timedelta
 from distutils.util import strtobool
 from math import ceil
@@ -97,6 +98,12 @@ class MONAILabelApp:
         self._server_mode = strtobool(conf.get("server_mode", "false"))
         self._auto_update_scoring = strtobool(conf.get("auto_update_scoring", "true"))
         self._sessions = self._load_sessions(strtobool(conf.get("sessions", "true")))
+
+        self._infers_threadpool = (
+            None
+            if settings.MONAI_LABEL_INFER_CONCURRENCY < 0
+            else ThreadPoolExecutor(max_workers=settings.MONAI_LABEL_INFER_CONCURRENCY, thread_name_prefix="INFER")
+        )
 
     def init_infers(self) -> Dict[str, InferTask]:
         return {}
@@ -231,7 +238,15 @@ class MONAILabelApp:
             request["image"] = [os.path.join(f, request["image"]) for f in os.listdir(request["image"])]
 
         logger.info(f"Image => {request['image']}")
-        result_file_name, result_json = task(request)
+        if self._infers_threadpool:
+
+            def run_infer_in_thread(t, r):
+                return t(r)
+
+            f = self._infers_threadpool.submit(run_infer_in_thread, t=task, r=request)
+            result_file_name, result_json = f.result(request.get("timeout", settings.MONAI_LABEL_INFER_TIMEOUT))
+        else:
+            result_file_name, result_json = task(request)
 
         label_id = None
         if result_file_name and os.path.exists(result_file_name):
