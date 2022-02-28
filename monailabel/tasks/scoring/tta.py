@@ -30,7 +30,6 @@ from monai.transforms import (
     RandFlipd,
     RandRotated,
     Resized,
-    Spacingd,
     ToTensord,
 )
 from monai.transforms.compose import Compose
@@ -41,7 +40,7 @@ from monai.transforms.utils import allow_missing_keys_mode
 from monai.utils.enums import CommonKeys, InverseKeys
 from tqdm import tqdm
 
-from monailabel.deepedit.transforms import CheckSingleLabelSingleModalityd, DiscardAddGuidanced
+from monailabel.deepedit.transforms import DiscardAddGuidanced
 from monailabel.interfaces.datastore import Datastore
 from monailabel.interfaces.tasks.scoring import ScoringMethod
 
@@ -73,9 +72,9 @@ class TTAScoring(ScoringMethod):
     def pre_transforms(self):
         t = [
             LoadImaged(keys="image", reader="nibabelreader"),
-            CheckSingleLabelSingleModalityd(keys="image"),
             AddChanneld(keys="image"),
-            Spacingd(keys="image", pixdim=self.spacing),
+            # Spacing might not be needed as resize transform is used later.
+            # Spacingd(keys="image", pixdim=self.spacing),
             RandAffined(
                 keys="image",
                 prob=1,

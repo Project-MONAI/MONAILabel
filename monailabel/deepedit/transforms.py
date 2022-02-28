@@ -294,35 +294,6 @@ class PosNegClickProbAddRandomGuidanced(Randomizable, Transform):
         return d
 
 
-# A transform to check for single modality and single label
-class CheckSingleLabelSingleModalityd(MapTransform):
-    """
-    Checks single modality and single label
-    """
-
-    def __call__(self, data):
-        d = dict(data)
-        for key in self.keys:
-            if key == "label":
-                meta_data = d["label_meta_dict"]
-                if len(np.unique(d[key])) > 2:
-                    logger.info(
-                        f"Label {meta_data['filename_or_obj'].split('/')[-1]} has more than one mask - "
-                        f" Consider using Multilabel DeepEdit App ... FINISHING"
-                    )
-                    raise Exception("Multilabel Error")
-
-            if key == "image":
-                meta_data = d["image_meta_dict"]
-                if d[key].shape[0] > 1:
-                    logger.error(
-                        f"Image {meta_data['filename_or_obj'].split('/')[-1]} has more than one modality "
-                        f"- Multimodality is not yet supported ... FINISHING"
-                    )
-                    raise Exception("Multimodality/Multisequence images NOT supported")
-        return d
-
-
 class CropGuidanceForegroundd(Transform):
     """
     Update guidance based on foreground crop.
