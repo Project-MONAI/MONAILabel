@@ -13,7 +13,8 @@ import logging
 import os
 from typing import Dict
 
-from lib import Spleen, Deepgrow, LiverAndTumor
+from lib import Deepgrow, LiverAndTumor, Spleen
+
 from monailabel.interfaces.app import MONAILabelApp
 from monailabel.interfaces.tasks.infer import InferTask
 from monailabel.scribbles.infer import HistogramBasedGraphCut
@@ -57,20 +58,20 @@ class MyApp(MONAILabelApp):
         self.download([(v["path"], v["uri"]) for v in models.values()])
 
         deepgrow_labels = [
-                "spleen",
-                "right kidney",
-                "left kidney",
-                "gallbladder",
-                "esophagus",
-                "liver",
-                "stomach",
-                "aorta",
-                "inferior vena cava",
-                "portal vein and splenic vein",
-                "pancreas",
-                "right adrenal gland",
-                "left adrenal gland",
-            ]
+            "spleen",
+            "right kidney",
+            "left kidney",
+            "gallbladder",
+            "esophagus",
+            "liver",
+            "stomach",
+            "aorta",
+            "inferior vena cava",
+            "portal vein and splenic vein",
+            "pancreas",
+            "right adrenal gland",
+            "left adrenal gland",
+        ]
 
         infers = {
             "clara_spleen": Spleen(models["clara_spleen"]["path"]),

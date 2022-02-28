@@ -9,6 +9,6 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-from .clara_spleen_segmentation import Spleen
 from .clara_deepgrow import Deepgrow
 from .clara_liver_and_tumor_segmentation import LiverAndTumor
+from .clara_spleen_segmentation import Spleen
