@@ -37,6 +37,9 @@ class MyApp(MONAILabelApp):
         # Zero values are reserved to background. Non zero values are for the labels
         self.label_names = {
             "spleen": 1,
+            # "right kidney": 2,
+            # "left kidney": 3,
+            # "liver": 6,
             "background": 0,
         }
         self.spatial_size = json.loads(conf.get("spatial_size", "[128, 128, 64]"))

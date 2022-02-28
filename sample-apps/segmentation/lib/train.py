@@ -64,7 +64,7 @@ class MyTrain(BasicTrainTask):
 
     def train_pre_transforms(self, context: Context):
         t = [
-            LoadImaged(keys=("image", "label")),
+            LoadImaged(keys=("image", "label"), reader="ITKReader"),
             NormalizeLabelsInDatasetd(keys="label", label_names=self.label_names),
             AddChanneld(keys=("image", "label")),
             Spacingd(
@@ -129,7 +129,7 @@ class MyTrain(BasicTrainTask):
 
     def val_pre_transforms(self, context: Context):
         return [
-            LoadImaged(keys=("image", "label")),
+            LoadImaged(keys=("image", "label"), reader="ITKReader"),
             NormalizeLabelsInDatasetd(keys="label", label_names=self.label_names),
             AddChanneld(keys=("image", "label")),
             Spacingd(
