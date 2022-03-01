@@ -70,7 +70,7 @@ class LoadImagePatchd(MapTransform):
 
             meta_dict["spatial_shape"] = np.asarray(image_np.shape[:-1])
             meta_dict["original_channel_dim"] = -1
-            logger.info(f"Image shape: {image_np.shape} vs size: {size} vs patch_size: {patch_size}")
+            logger.debug(f"Image shape: {image_np.shape} vs size: {size} vs patch_size: {patch_size}")
 
             if self.padding and image_np.shape[0] != patch_size[0] or image_np.shape[1] != patch_size[1]:
                 image_padded = np.zeros((patch_size[0], patch_size[1], 3), dtype=image_np.dtype)
@@ -261,7 +261,7 @@ class FindContoursd(MapTransform):
                 continue
 
             labels = [l for l in np.unique(p).tolist() if l > 0]
-            logger.info(f"Total Unique Masks (excluding background): {labels}")
+            logger.debug(f"Total Unique Masks (excluding background): {labels}")
             for label in labels:
                 p = d[key]
                 p[p == label] = 1
@@ -286,13 +286,13 @@ class FindContoursd(MapTransform):
 
                 if len(polygons):
                     all_polygons.append({"label": self.labels.get(label, label), "bbox": bbox, "contours": polygons})
-                    logger.info(f"+++++ {label} => Total Polygons Found: {len(polygons)}")
+                    logger.debug(f"+++++ {label} => Total Polygons Found: {len(polygons)}")
 
         if all_polygons:
             if d.get(self.result) is None:
                 d[self.result] = dict()
             d[self.result][self.result_output_key] = all_polygons
-            logger.info(f"+++++ ALL => Total Polygons Groups Found: {len(all_polygons)}")
+            logger.debug(f"+++++ ALL => Total Polygons Groups Found: {len(all_polygons)}")
         return d
 
 

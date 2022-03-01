@@ -28,13 +28,13 @@ def create_dsa_annotations_json(
     labels = set()
     annotation_doc = {"name": name, "description": description, "elements": []}
     for tid, r in json_data["tasks"].items():
-        logger.info(f"Adding annotations for task: {tid}")
+        logger.debug(f"Adding annotations for task: {tid}")
         for v in r.get("annotations", []):
             label = v["label"]
             labels.add(label)
 
             color = get_color(label, color_map)
-            logger.info(f"Adding Contours for label: {label}; color: {color}")
+            logger.debug(f"Adding Contours for label: {label}; color: {color}")
 
             contours = v["contours"]
             for contour in contours:
@@ -44,14 +44,14 @@ def create_dsa_annotations_json(
                     "group": label,
                     "type": "polyline",
                     "lineColor": color,
-                    "lineWidth": 4.0,
+                    "lineWidth": 2.0,
                     "closed": True,
                     "points": points,
                     "label": {"value": label},
                 }
                 annotation_doc["elements"].append(annotation_style)
 
-    logger.info(f"Total Elements: {len(annotation_doc['elements'])}")
+    logger.debug(f"Total Elements: {len(annotation_doc['elements'])}")
 
     label_json = tempfile.NamedTemporaryFile(suffix=".json").name
     with open(label_json, "w") as fp:
@@ -70,13 +70,13 @@ def create_asap_annotations_xml(json_data, color_map=None):
 
         labels = set()
         for tid, r in json_data["tasks"].items():
-            logger.info(f"Adding annotations for task: {tid}")
+            logger.debug(f"Adding annotations for task: {tid}")
             for v in r.get("annotations", []):
                 label = v["label"]
                 labels.add(label)
 
                 color = get_color(label, color_map)
-                logger.info(f"Adding Contours for label: {label}; color: {color}")
+                logger.debug(f"Adding Contours for label: {label}; color: {color}")
 
                 contours = v["contours"]
                 for contour in contours:
@@ -96,5 +96,5 @@ def create_asap_annotations_xml(json_data, color_map=None):
         fp.write("  </AnnotationGroups>\n")
         fp.write("</ASAP_Annotations>\n")
 
-    logger.info(f"Total Polygons: {total_count}")
+    logger.debug(f"Total Polygons: {total_count}")
     return label_xml

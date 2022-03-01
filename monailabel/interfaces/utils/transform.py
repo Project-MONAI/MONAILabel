@@ -58,8 +58,9 @@ def run_transforms(data, callables, inverse=False, log_prefix="POST", log_name="
     :param use_compose: Use Compose to run individual callables
     :return: Processed data after running transforms
     """
-    logger.info("{} - Run {}".format(log_prefix, log_name))
-    logger.info("{} - Input Keys: {}".format(log_prefix, data.keys()))
+    logger.setLevel(data.get("logging", "INFO").upper())
+    logger.info("{} - Run {}(s)".format(log_prefix, log_name))
+    logger.info("{} - Input Keys: {}".format(log_prefix, list(data.keys())))
 
     if not callables:
         return data

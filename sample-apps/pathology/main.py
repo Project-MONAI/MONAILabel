@@ -15,7 +15,6 @@ import shutil
 from distutils.util import strtobool
 from typing import Dict
 
-import girder_client
 from lib import InferDeepedit, InferSegmentation, TrainDeepEdit, TrainSegmentation
 from monai.networks.nets import BasicUNet
 
@@ -145,6 +144,7 @@ Example to run train/infer/scoring task(s) locally without actually running MONA
 
 def main():
     import argparse
+    from pathlib import Path
 
     from monailabel.config import settings
 
@@ -159,9 +159,15 @@ def main():
         datefmt="%Y-%m-%d %H:%M:%S",
     )
 
+    run_train = False
+    home = str(Path.home())
+    if run_train:
+        studies = f"{home}/Data/Pathology/PanNukeF"
+    else:
+        studies = f"{home}/Data/Pathology/Test"
+
     parser = argparse.ArgumentParser()
-    # parser.add_argument("-s", "--studies", default="/local/sachi/Data/Pathology/PanNukeF")
-    parser.add_argument("-s", "--studies", default="/local/sachi/Data/Pathology/BCSS/wsis")
+    parser.add_argument("-s", "--studies", default=studies)
     args = parser.parse_args()
 
     app_dir = os.path.dirname(__file__)
@@ -172,44 +178,39 @@ def main():
     }
 
     app = MyApp(app_dir, studies, conf)
-    run_train = False
+    model = "deepedit"  # deepedit, segmentation
     if run_train:
         app.train(
             request={
                 "name": "model_01",
-                "model": "segmentation",
-                "max_epochs": 300,
+                "model": model,
+                "max_epochs": 100 if model == "deepedit" else 300,
                 "dataset": "CacheDataset",  # PersistentDataset, CacheDataset
                 "train_batch_size": 16,
                 "val_batch_size": 12,
                 "multi_gpu": True,
                 "val_split": 0.1,
             },
-            # request={
-            #     "name": "model_01",
-            #     "model": "deepedit",
-            #     "max_epochs": 50,
-            #     "dataset": "CacheDataset",  # PersistentDataset, CacheDataset
-            #     "train_batch_size": 16,
-            #     "val_batch_size": 12,
-            #     "multi_gpu": True,
-            #     "val_split": 0.1,
-            # },
         )
     else:
         infer_wsi(app)
 
 
 def infer_wsi(app):
-    root_dir = "/local/sachi/Data/Pathology/"
+    from pathlib import Path
+
+    home = str(Path.home())
+
+    root_dir = f"{home}/Data/Pathology"
     image = "TCGA-02-0010-01Z-00-DX4.07de2e55-a8fe-40ee-9e98-bcb78050b9f7"
 
     output = "dsa"
     res = app.infer_wsi(
         request={
-            "model": "deepedit",
+            "model": "deepedit",  # deepedit, segmentation
             "image": image,
             "output": output,
+            "logging": "error",
             "level": 0,
             "patch_size": [2048, 2048],
             "roi": {"x": 7737, "y": 20086, "x2": 9785, "y2": 22134},
@@ -218,45 +219,19 @@ def infer_wsi(app):
     )
 
     label_json = os.path.join(root_dir, f"{image}.json")
-    logger.error(f"Writing Label JSON: {label_json}")
+    logger.info(f"Writing Label JSON: {label_json}")
     with open(label_json, "w") as fp:
         json.dump(res["params"], fp, indent=2)
 
     if output == "asap":
         label_xml = os.path.join(root_dir, f"{image}.xml")
         shutil.copy(res["file"], label_xml)
-        logger.error(f"Saving ASAP XML: {label_xml}")
+        logger.info(f"Saving ASAP XML: {label_xml}")
     elif output == "dsa":
         label_dsa = os.path.join(root_dir, f"{image}_dsa.json")
         shutil.copy(res["file"], label_dsa)
-        logger.error(f"Saving DSA JSON: {label_dsa}")
-
-
-def test_dsa():
-    logging.basicConfig(
-        level=logging.INFO,
-        format="[%(asctime)s] [%(process)s] [%(threadName)s] [%(levelname)s] (%(name)s:%(lineno)d) - %(message)s",
-        datefmt="%Y-%m-%d %H:%M:%S",
-    )
-
-    api_url = "http://127.0.0.1:8080/api/v1"
-    slide_id = "61f7236d466156ceb3257527"
-
-    gc = girder_client.GirderClient(apiUrl=api_url)
-    gc.authenticate(username="admin", password="password")
-
-    res = "/local/sachi/Data/Pathology/TCGA-02-0010-01Z-00-DX4.07de2e55-a8fe-40ee-9e98-bcb78050b9f7_dsa.json"
-    with open(res, "r") as fp:
-        ann_doc = json.load(fp)
-
-    # ann_doc["elements"] = ann_doc["elements"][:1]
-    # ann_doc["elements"][0]["points"] = ann_doc["elements"][0]["points"][:2]
-    # json.dump(ann_doc, sys.stdout, indent=2)
-
-    logger.info("Uploading Annotation doc...")
-    gc.post("/annotation?itemId=" + slide_id, json=ann_doc)
+        logger.info(f"Saving DSA JSON: {label_dsa}")
 
 
 if __name__ == "__main__":
     main()
-    test_dsa()

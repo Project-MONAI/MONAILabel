@@ -237,7 +237,7 @@ class MONAILabelApp:
             logger.info(os.listdir(request["image"]))
             request["image"] = [os.path.join(f, request["image"]) for f in os.listdir(request["image"])]
 
-        logger.info(f"Image => {request['image']}")
+        logger.debug(f"Image => {request['image']}")
         if self._infers_threadpool:
 
             def run_infer_in_thread(t, r):
@@ -579,20 +579,20 @@ class MONAILabelApp:
             image = datastore.get_image_uri(request["image"])
 
         start = time.time()
-        logger.info(f"Input WSI Image: {image}")
+        logger.debug(f"Input WSI Image: {image}")
         infer_tasks = self._create_infer_wsi_tasks(request, image)
-        logger.info(f"Total Tasks: {len(infer_tasks)}")
+        logger.debug(f"Total WSI Tasks: {len(infer_tasks)}")
 
         res_json = {"tasks": {}}
         for t in infer_tasks:
             tid = t["id"]
             res = self._run_infer_wsi_task(t)
             res_json["tasks"][tid] = res
-            logger.error(f"{tid} => Completed: {len(res_json)} / {len(infer_tasks)}; Latencies: {res.get('latencies')}")
+            logger.info(f"{tid} => Completed: {len(res_json)} / {len(infer_tasks)}; Latencies: {res.get('latencies')}")
 
         latency_total = time.time() - start
-        if len(infer_tasks) > 1:
-            logger.error("WSI Infer Time Taken: {:.4f}".format(latency_total))
+        logger.debug("WSI Infer Time Taken: {:.4f}".format(latency_total))
+
         res_json.update(
             {
                 "latencies": {
@@ -603,33 +603,34 @@ class MONAILabelApp:
 
         res_file = None
         output = request.get("output", "asap")
-        logger.info(f"+++ WSI Inference Output Type: {output}")
+        logger.debug(f"+++ WSI Inference Output Type: {output}")
 
         if output == "asap":
-            logger.info("+++ Generating ASAP XML Annotation")
+            logger.debug("+++ Generating ASAP XML Annotation")
             res_file = create_asap_annotations_xml(res_json, color_map=request.get("color_map"))
         elif output == "dsa":
-            logger.info("+++ Generating DSA JSON Annotation")
+            logger.debug("+++ Generating DSA JSON Annotation")
             model = request.get("model")
             task = self._infers.get(model)
             res_file = create_dsa_annotations_json(
                 res_json, name=f"MONAILabel - {model}", description=task.description, color_map=request.get("color_map")
             )
         else:
-            logger.info("+++ Return Default JSON Annotation")
+            logger.debug("+++ Return Default JSON Annotation")
 
-        logger.info("Total Time Taken: {:.4f}".format(time.time() - start))
+        if len(infer_tasks) > 1:
+            logger.info("Total Time Taken: {:.4f}; Total Infer Time: {:.4f}".format(time.time() - start, latency_total))
         return {"file": res_file, "params": res_json}
 
     def _run_infer_wsi_task(self, task):
-        logger.info(task)
         tid = task["id"]
         (row, col, tx, ty, tw, th) = task["coords"]
-        logger.info(f"{tid} => Patch/Slide ({row}, {col}) => Location: ({tx}, {ty}); Size: {tw} x {th}")
+        logger.debug(f"{tid} => Patch/Slide ({row}, {col}) => Location: ({tx}, {ty}); Size: {tw} x {th}")
 
         req = copy.deepcopy(task)
         req["result_write_to_file"] = False
         req["result_file_ext"] = ".anot"
+        req["logging"] = "WARNING"
 
         res = self.infer(req)
         return res.get("params", {})
@@ -649,17 +650,19 @@ class MONAILabelApp:
 
         with openslide.OpenSlide(image) as slide:
             w, h = slide.dimensions
-        logger.info(f"Input WSI Image Dimensions: ({w} x {h}); Patch Size: {patch_size}")
+        logger.debug(f"Input WSI Image Dimensions: ({w} x {h}); Patch Size: {patch_size}")
+
         x, y = 0, 0
         if roi:
             x, y = int(roi[0][0]), int(roi[0][1])
             w, h = int(roi[1][0] - x), int(roi[1][1] - y)
-            logger.info(f"WSI ROI => Location: ({x}, {y}); Dimensions: ({w} x {h})")
+            logger.debug(f"WSI ROI => Location: ({x}, {y}); Dimensions: ({w} x {h})")
 
         cols = ceil(w / patch_size[0])  # COL
         rows = ceil(h / patch_size[1])  # ROW
 
-        logger.info(f"Total Patches to infer {rows} x {cols}: {rows * cols}")
+        if rows * cols > 1:
+            logger.info(f"Total Patches to infer {rows} x {cols}: {rows * cols}")
 
         infer_tasks = []
         count = 0
