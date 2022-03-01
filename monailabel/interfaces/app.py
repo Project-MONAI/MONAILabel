@@ -223,21 +223,23 @@ class MONAILabelApp:
                 f"Inference Task is not Initialized. There is no model '{model}' available",
             )
 
-        request = copy.deepcopy(request)
         image_id = request["image"]
-        datastore = datastore if datastore else self.datastore()
-        if os.path.exists(image_id):
-            request["save_label"] = False
-        else:
-            request["image"] = datastore.get_image_uri(request["image"])
+        if isinstance(image_id, str):
+            request = copy.deepcopy(request)
+            datastore = datastore if datastore else self.datastore()
+            if os.path.exists(image_id):
+                request["save_label"] = False
+            else:
+                request["image"] = datastore.get_image_uri(request["image"])
 
-        # TODO:: BUG In MONAI? Currently can not load DICOM through ITK Loader
-        if os.path.isdir(request["image"]):
-            logger.info("Input is a Directory; Consider it as DICOM")
-            logger.info(os.listdir(request["image"]))
-            request["image"] = [os.path.join(f, request["image"]) for f in os.listdir(request["image"])]
+            # TODO:: BUG In MONAI? Currently can not load DICOM through ITK Loader
+            if os.path.isdir(request["image"]):
+                logger.info("Input is a Directory; Consider it as DICOM")
+                logger.info(os.listdir(request["image"]))
+                request["image"] = [os.path.join(f, request["image"]) for f in os.listdir(request["image"])]
 
-        logger.debug(f"Image => {request['image']}")
+            logger.debug(f"Image => {request['image']}")
+
         if self._infers_threadpool:
 
             def run_infer_in_thread(t, r):
@@ -251,9 +253,9 @@ class MONAILabelApp:
         label_id = None
         if result_file_name and os.path.exists(result_file_name):
             tag = request.get("label_tag", DefaultLabelTag.ORIGINAL)
-            save_label = request.get("save_label", True)
+            save_label = request.get("save_label", False)
             if save_label:
-                label_id = datastore.save_label(image_id, result_file_name, tag, result_json)
+                label_id = datastore.save_label(image_id, result_file_name, tag, dict())
             else:
                 label_id = result_file_name
 
@@ -572,8 +574,15 @@ class MONAILabelApp:
         return infers
 
     def infer_wsi(self, request, datastore=None):
-        request = copy.deepcopy(request)
         image = request["image"]
+
+        # Possibly direct image (numpy)
+        if not isinstance(image, str):
+            res = self.infer(request, datastore)
+            logger.info(f"Latencies: {res.get('params', {}).get('latencies')}")
+            return res
+
+        request = copy.deepcopy(request)
         if not os.path.exists(image):
             datastore = datastore if datastore else self.datastore()
             image = datastore.get_image_uri(request["image"])
@@ -629,44 +638,43 @@ class MONAILabelApp:
 
         req = copy.deepcopy(task)
         req["result_write_to_file"] = False
-        req["result_file_ext"] = ".anot"
-        req["logging"] = "WARNING"
+        req["logging"] = req.get("logging", "WARNING")
 
         res = self.infer(req)
         return res.get("params", {})
 
     def _create_infer_wsi_tasks(self, request, image):
-        patch_size = request.get("patch_size", (2048, 2048))
-        patch_size = [int(p) for p in patch_size]
+        tile_size = request.get("tile_size", (2048, 2048))
+        tile_size = [int(p) for p in tile_size]
 
         # TODO:: Auto-Detect based on WSI dimensions instead of 3000
         min_poly_area = request.get("min_poly_area", 3000)
 
-        roi = request.get("roi", None)
-        if isinstance(roi, dict):
-            roi = [[roi.get("x", 0), roi.get("y", 0)], [roi.get("x2", 0), roi.get("y2", 0)]]
-        roi = roi if roi and sum(roi[0]) + sum(roi[1]) else None
+        location = request.get("location", [0, 0])
+        size = request.get("size", [0, 0])
+        bbox = [[location[0], location[1]], [location[0] + size[0], location[1] + size[1]]]
+        bbox = bbox if bbox and sum(bbox[0]) + sum(bbox[1]) > 0 else None
         level = request.get("level", 0)
 
         with openslide.OpenSlide(image) as slide:
             w, h = slide.dimensions
-        logger.debug(f"Input WSI Image Dimensions: ({w} x {h}); Patch Size: {patch_size}")
+        logger.debug(f"Input WSI Image Dimensions: ({w} x {h}); Tile Size: {tile_size}")
 
         x, y = 0, 0
-        if roi:
-            x, y = int(roi[0][0]), int(roi[0][1])
-            w, h = int(roi[1][0] - x), int(roi[1][1] - y)
-            logger.debug(f"WSI ROI => Location: ({x}, {y}); Dimensions: ({w} x {h})")
+        if bbox:
+            x, y = int(bbox[0][0]), int(bbox[0][1])
+            w, h = int(bbox[1][0] - x), int(bbox[1][1] - y)
+            logger.debug(f"WSI Region => Location: ({x}, {y}); Dimensions: ({w} x {h})")
 
-        cols = ceil(w / patch_size[0])  # COL
-        rows = ceil(h / patch_size[1])  # ROW
+        cols = ceil(w / tile_size[0])  # COL
+        rows = ceil(h / tile_size[1])  # ROW
 
         if rows * cols > 1:
-            logger.info(f"Total Patches to infer {rows} x {cols}: {rows * cols}")
+            logger.info(f"Total Tiles to infer {rows} x {cols}: {rows * cols}")
 
         infer_tasks = []
         count = 0
-        pw, ph = patch_size[0], patch_size[1]
+        pw, ph = tile_size[0], tile_size[1]
         for row in range(rows):
             for col in range(cols):
                 tx = col * pw + x
@@ -680,14 +688,12 @@ class MONAILabelApp:
                     {
                         "id": count,
                         "image": image,
-                        "patch_size": patch_size,
+                        "tile_size": tile_size,
                         "min_poly_area": min_poly_area,
                         "coords": (row, col, tx, ty, tw, th),
-                        "wsi": {
-                            "location": (tx, ty),
-                            "level": level,
-                            "size": (tw, th),
-                        },
+                        "location": (tx, ty),
+                        "level": level,
+                        "size": (tw, th),
                     }
                 )
                 infer_tasks.append(task)

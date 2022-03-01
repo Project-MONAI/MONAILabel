@@ -32,17 +32,11 @@ router = APIRouter(
 )
 
 
-class ROI(BaseModel):
-    x: int
-    y: int
-    x2: int
-    y2: int
-
-
 class WSIInput(BaseModel):
     level: Optional[int] = Field(0, title="Resolution Level")
-    roi: Optional[ROI] = Field(ROI(x=0, y=0, x2=0, y2=0), title="Region Of Interest [x, y, x2, y2]")
-    patch_size: Optional[Sequence[int]] = Field([2048, 2048], title="Patch size for Inference")
+    location: Optional[Sequence[int]] = Field([0, 0], title="Location of Region")
+    size: Optional[Sequence[int]] = Field([2048, 2048], title="Size of Region")
+    tile_size: Optional[Sequence[int]] = Field([2048, 2048], title="Tile size")
     min_poly_area: Optional[int] = Field(80, title="Min Area to filter mask polygons")
     params: Optional[dict] = Field({}, title="Additional Params")
 

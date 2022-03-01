@@ -24,6 +24,7 @@ from monai.transforms import (
 )
 
 from monailabel.interfaces.tasks.infer import InferTask, InferType
+from monailabel.transform.writer import PolygonWriter
 
 from .transforms import FilterImaged, FindContoursd, LoadImagePatchd, PostFilterLabeld
 
@@ -101,3 +102,7 @@ class InferSegmentation(InferTask):
             PostFilterLabeld(keys="pred", image="image"),
             FindContoursd(keys="pred", labels=self.labels),
         ]
+
+    def writer(self, data, extension=None, dtype=None):
+        writer = PolygonWriter(label=self.output_label_key, json=self.output_json_key)
+        return writer(data)

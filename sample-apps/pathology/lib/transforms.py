@@ -42,13 +42,12 @@ class LoadImagePatchd(MapTransform):
             if not isinstance(d[key], str):
                 continue  # Support direct image in np (pass only transform)
 
-            wsi_meta = d.get("wsi", {})
-            location = wsi_meta.get("location", (0, 0))
-            level = wsi_meta.get("level", 0)
-            size = wsi_meta.get("size", None)
+            location = d.get("location", (0, 0))
+            level = d.get("level", 0)
+            size = d.get("size", None)
 
             # Model input size
-            patch_size = d.get("patch_size", size)
+            tile_size = d.get("tile_size", size)
 
             name = d[key]
             ext = pathlib.Path(name).suffix
@@ -70,10 +69,10 @@ class LoadImagePatchd(MapTransform):
 
             meta_dict["spatial_shape"] = np.asarray(image_np.shape[:-1])
             meta_dict["original_channel_dim"] = -1
-            logger.debug(f"Image shape: {image_np.shape} vs size: {size} vs patch_size: {patch_size}")
+            logger.debug(f"Image shape: {image_np.shape} vs size: {size} vs tile_size: {tile_size}")
 
-            if self.padding and image_np.shape[0] != patch_size[0] or image_np.shape[1] != patch_size[1]:
-                image_padded = np.zeros((patch_size[0], patch_size[1], 3), dtype=image_np.dtype)
+            if self.padding and image_np.shape[0] != tile_size[0] or image_np.shape[1] != tile_size[1]:
+                image_padded = np.zeros((tile_size[0], tile_size[1], 3), dtype=image_np.dtype)
                 image_padded[0 : image_np.shape[0], 0 : image_np.shape[1]] = image_np
                 image_np = image_padded
             d[key] = image_np
@@ -245,10 +244,9 @@ class FindContoursd(MapTransform):
 
     def __call__(self, data):
         d = dict(data)
-        wsi_meta = d.get("wsi", {})
-        location = wsi_meta["location"]
-        size = wsi_meta["size"]
-        min_poly_area = wsi_meta.get("min_poly_area", self.min_poly_area)
+        location = d.get("location", [0, 0])
+        size = d.get("size", [0, 0])
+        min_poly_area = d.get("min_poly_area", self.min_poly_area)
 
         tx, ty = location[0], location[1]
         tw, th = size[0], size[1]

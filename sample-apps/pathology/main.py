@@ -199,12 +199,20 @@ def main():
 def infer_wsi(app):
     from pathlib import Path
 
+    import numpy as np
+    import openslide
+
     home = str(Path.home())
 
     root_dir = f"{home}/Data/Pathology"
     image = "TCGA-02-0010-01Z-00-DX4.07de2e55-a8fe-40ee-9e98-bcb78050b9f7"
 
     output = "dsa"
+
+    slide = openslide.OpenSlide(f"{app.studies}/{image}.svs")
+    img = slide.read_region((7737, 20086), 0, (2048, 2048)).convert("RGB")
+    image_np = np.array(img, dtype=np.uint8)
+
     res = app.infer_wsi(
         request={
             "model": "deepedit",  # deepedit, segmentation
@@ -212,8 +220,9 @@ def infer_wsi(app):
             "output": output,
             "logging": "error",
             "level": 0,
-            "patch_size": [2048, 2048],
-            "roi": {"x": 7737, "y": 20086, "x2": 9785, "y2": 22134},
+            "location": [7737, 20086],
+            "size": [5522, 3311],
+            "tile_size": [2048, 2048],
             "min_poly_area": 40,
         }
     )

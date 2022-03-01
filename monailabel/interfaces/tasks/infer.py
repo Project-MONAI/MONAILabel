@@ -225,17 +225,24 @@ class InferTask:
         """
         begin = time.time()
         req = copy.deepcopy(self._config)
-        req.update(copy.deepcopy(request))
+        req.update(request)
 
         # device
         device = req.get("device", "cuda")
         req["device"] = device
         logger.setLevel(req.get("logging", "INFO").upper())
-        logger.info(f"Infer Request (final): {req}")
 
-        data = copy.deepcopy(req)
-        if req.get("image") and isinstance(req.get("image"), str):
-            data.update({"image_path": req.get("image")})
+        image = req.get("image")
+        if image is not None:
+            if isinstance(image, str):
+                data = copy.deepcopy(req)
+                data.update({"image_path": image})
+                logger.info(f"Infer Request (final): {data}")
+            else:
+                data = req
+                data["image"] = f"Image{image.shape}({image.dtype})"
+                logger.info(f"Infer Request (final): {data}")
+                data["image"] = image
 
         start = time.time()
         pre_transforms = self.pre_transforms(data)
@@ -283,7 +290,7 @@ class InferTask:
 
         if result_file_name:
             logger.info("Result File: {}".format(result_file_name))
-            logger.info("Result Json: {}".format(result_json))
+            logger.info("Result Json: {}".format(list(result_json.keys())))
         return result_file_name, result_json
 
     def run_pre_transforms(self, data, transforms):

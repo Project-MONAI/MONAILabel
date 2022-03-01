@@ -18,6 +18,7 @@ import tempfile
 from enum import Enum
 from typing import Optional
 
+import numpy as np
 from fastapi import APIRouter, File, Form, HTTPException, UploadFile
 from fastapi.background import BackgroundTasks
 from fastapi.responses import FileResponse, Response
@@ -122,12 +123,14 @@ def run_inference(
 
     if file:
         file_ext = "".join(pathlib.Path(file.filename).suffixes) if file.filename else ".nii.gz"
-        image_file = tempfile.NamedTemporaryFile(suffix=file_ext).name
-
-        with open(image_file, "wb") as buffer:
-            shutil.copyfileobj(file.file, buffer)
-            request["image"] = image_file
-            background_tasks.add_task(remove_file, image_file)
+        if file_ext == ".npy":
+            request["image"] = np.fromfile(file.file)
+        else:
+            image_file = tempfile.NamedTemporaryFile(suffix=file_ext).name
+            with open(image_file, "wb") as buffer:
+                shutil.copyfileobj(file.file, buffer)
+                request["image"] = image_file
+                background_tasks.add_task(remove_file, image_file)
 
     if label:
         file_ext = "".join(pathlib.Path(label.filename).suffixes) if label.filename else ".nii.gz"
