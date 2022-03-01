@@ -4,7 +4,7 @@ monai[nibabel, skimage, pillow, tensorboard, gdown, ignite, torchvision, itk, tq
 PyYAML==6.0
 python-multipart==0.0.5
 requests-toolbelt==0.9.1
-uvicorn==0.17.1
+uvicorn==0.17.5
 watchdog==2.1.6
 pydantic==1.9.0
 python-dotenv==0.19.2
@@ -18,7 +18,7 @@ expiringdict==1.2.1
 schedule==1.1.0
 timeloop==1.0.2
 SimpleCRF==0.2.1.1
-numpy>=1.22.1
+numpy>=1.21.5
 einops==0.3.2
 openslide-python==1.1.2
 opencv-python==4.5.4.60
