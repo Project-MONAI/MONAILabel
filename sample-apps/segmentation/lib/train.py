@@ -22,12 +22,12 @@ from monai.transforms import (
     CropForegroundd,
     EnsureTyped,
     LoadImaged,
+    NormalizeIntensityd,
     RandCropByPosNegLabeld,
     RandFlipd,
     RandRotate90d,
     RandShiftIntensityd,
-    ScaleIntensityRanged,
-    Spacingd,
+    Resized,
     ToDeviced,
     ToTensord,
 )
@@ -67,12 +67,8 @@ class MyTrain(BasicTrainTask):
             LoadImaged(keys=("image", "label"), reader="ITKReader"),
             NormalizeLabelsInDatasetd(keys="label", label_names=self.label_names),
             AddChanneld(keys=("image", "label")),
-            Spacingd(
-                keys=("image", "label"),
-                pixdim=(1.0, 1.0, 1.0),
-                mode=("bilinear", "nearest"),
-            ),
-            ScaleIntensityRanged(keys="image", a_min=-57, a_max=164, b_min=0.0, b_max=1.0, clip=True),
+            Resized(keys=("image", "label"), spatial_size=self.spatial_size),
+            NormalizeIntensityd(keys="image"),
             RandFlipd(
                 keys=("image", "label"),
                 spatial_axis=[0],
@@ -102,7 +98,7 @@ class MyTrain(BasicTrainTask):
                 RandCropByPosNegLabeld(
                     keys=("image", "label"),
                     label_key="label",
-                    spatial_size=(96, 96, 96),
+                    spatial_size=(48, 48, 48),
                     pos=1,
                     neg=1,
                     num_samples=4,
@@ -132,19 +128,15 @@ class MyTrain(BasicTrainTask):
             LoadImaged(keys=("image", "label"), reader="ITKReader"),
             NormalizeLabelsInDatasetd(keys="label", label_names=self.label_names),
             AddChanneld(keys=("image", "label")),
-            Spacingd(
-                keys=("image", "label"),
-                pixdim=(1.0, 1.0, 1.0),
-                mode=("bilinear", "nearest"),
-            ),
-            ScaleIntensityRanged(keys="image", a_min=-57, a_max=164, b_min=0.0, b_max=1.0, clip=True),
+            Resized(keys=("image", "label"), spatial_size=self.spatial_size),
+            NormalizeIntensityd(keys="image"),
             CropForegroundd(keys=("image", "label"), source_key="image"),
             EnsureTyped(keys=("image", "label")),
             ToDeviced(keys=("image", "label"), device=context.device),
         ]
 
     def val_inferer(self, context: Context):
-        return SlidingWindowInferer(roi_size=(160, 160, 160), sw_batch_size=1, overlap=0.25)
+        return SlidingWindowInferer(roi_size=(96, 96, 96), sw_batch_size=1, overlap=0.25)
 
     def train_key_metric(self, context: Context):
         all_metrics = dict()

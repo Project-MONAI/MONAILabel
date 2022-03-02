@@ -42,6 +42,7 @@ class MyApp(MONAILabelApp):
             # "liver": 6,
             "background": 0,
         }
+        self.label_names = conf.get("label_names", self.label_names)
         self.spatial_size = json.loads(conf.get("spatial_size", "[128, 128, 64]"))
         network_params = {
             "dimensions": 3,
@@ -171,12 +172,12 @@ def main():
     parser.add_argument(
         "-s",
         "--studies",
-        default="/home/adp20local/Documents/Datasets/monailabel_datasets/multilabel_abdomen/NIFTI_REORIENTED/train",
+        default="/home/adp20local/Documents/Datasets/Mandible/NRRD_no_transplants",
     )
-    parser.add_argument("-e", "--epoch", type=int, default=200)
+    parser.add_argument("-e", "--epoch", type=int, default=600)
     parser.add_argument("-d", "--dataset", default="CacheDataset")
-    parser.add_argument("-o", "--output", default="model_01")
-    parser.add_argument("-i", "--size", default="[128,128,128]")
+    parser.add_argument("-o", "--output", default="model_teeth")
+    parser.add_argument("-i", "--size", default="[256,256,128]")
     parser.add_argument("-b", "--batch", type=int, default=1)
     args = parser.parse_args()
 
@@ -185,7 +186,25 @@ def main():
 
     # Label names and values associated to each segment
     label_names = {
-        "spleen": 1,
+        "Alveolar": 1,
+        # "teeth": 2,
+        "19": 19,
+        "20": 20,
+        "21": 21,
+        "22": 22,
+        "23": 23,
+        "24": 24,
+        "25": 25,
+        "26": 26,
+        "27": 27,
+        "28": 28,
+        "29": 29,
+        "30": 30,
+        "31": 31,
+        "32": 32,
+        "33": 33,
+        "34": 34,
+        "35": 35,
         "background": 0,
     }
 
