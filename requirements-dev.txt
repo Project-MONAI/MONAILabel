@@ -23,3 +23,5 @@ parameterized
 types-PyYAML
 types-filelock
 types-requests
+click
+testresources

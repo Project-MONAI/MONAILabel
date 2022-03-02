@@ -234,7 +234,7 @@ class MONAILabelApp:
             logger.info(os.listdir(request["image"]))
             request["image"] = [os.path.join(f, request["image"]) for f in os.listdir(request["image"])]
 
-        logger.info(f"Image => {request['image']}")
+        logger.debug(f"Image => {request['image']}")
         if self._infers_threadpool:
 
             def run_infer_in_thread(t, r):
@@ -248,9 +248,9 @@ class MONAILabelApp:
         label_id = None
         if result_file_name and os.path.exists(result_file_name):
             tag = request.get("label_tag", DefaultLabelTag.ORIGINAL)
-            save_label = request.get("save_label", True)
+            save_label = request.get("save_label", False)
             if save_label:
-                label_id = datastore.save_label(image_id, result_file_name, tag, result_json)
+                label_id = datastore.save_label(image_id, result_file_name, tag, dict())
             else:
                 label_id = result_file_name
 
