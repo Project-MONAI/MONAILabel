@@ -11,6 +11,7 @@
 
 import logging
 
+from monai.handlers import MeanDice, from_engine
 from monai.inferers import SlidingWindowInferer
 from monai.losses import DiceCELoss
 from monai.optimizers import Novograd
@@ -22,6 +23,8 @@ from monai.transforms import (
     EnsureTyped,
     LoadImaged,
     RandCropByPosNegLabeld,
+    RandFlipd,
+    RandRotate90d,
     RandShiftIntensityd,
     ScaleIntensityRanged,
     Spacingd,
@@ -29,6 +32,7 @@ from monai.transforms import (
     ToTensord,
 )
 
+from monailabel.deepedit.multilabel.transforms import NormalizeLabelsInDatasetd, SplitPredsLabeld
 from monailabel.tasks.train.basic_train import BasicTrainTask, Context
 
 logger = logging.getLogger(__name__)
@@ -39,10 +43,14 @@ class MyTrain(BasicTrainTask):
         self,
         model_dir,
         network,
+        spatial_size=(128, 128, 128),
+        label_names=None,
         description="Train generic Segmentation model",
         **kwargs,
     ):
         self._network = network
+        self.label_names = label_names
+        self.spatial_size = spatial_size
         super().__init__(model_dir, description, **kwargs)
 
     def network(self, context: Context):
@@ -56,7 +64,8 @@ class MyTrain(BasicTrainTask):
 
     def train_pre_transforms(self, context: Context):
         t = [
-            LoadImaged(keys=("image", "label")),
+            LoadImaged(keys=("image", "label"), reader="ITKReader"),
+            NormalizeLabelsInDatasetd(keys="label", label_names=self.label_names),
             AddChanneld(keys=("image", "label")),
             Spacingd(
                 keys=("image", "label"),
@@ -64,6 +73,26 @@ class MyTrain(BasicTrainTask):
                 mode=("bilinear", "nearest"),
             ),
             ScaleIntensityRanged(keys="image", a_min=-57, a_max=164, b_min=0.0, b_max=1.0, clip=True),
+            RandFlipd(
+                keys=("image", "label"),
+                spatial_axis=[0],
+                prob=0.10,
+            ),
+            RandFlipd(
+                keys=("image", "label"),
+                spatial_axis=[1],
+                prob=0.10,
+            ),
+            RandFlipd(
+                keys=("image", "label"),
+                spatial_axis=[2],
+                prob=0.10,
+            ),
+            RandRotate90d(
+                keys=("image", "label"),
+                prob=0.10,
+                max_k=3,
+            ),
             CropForegroundd(keys=("image", "label"), source_key="image"),
         ]
         if context.request.get("to_gpu", False):
@@ -92,14 +121,16 @@ class MyTrain(BasicTrainTask):
             AsDiscreted(
                 keys=("pred", "label"),
                 argmax=(True, False),
-                to_onehot=True,
-                n_classes=2,
+                to_onehot=(True, True),
+                n_classes=len(self.label_names),
             ),
+            SplitPredsLabeld(keys="pred"),
         ]
 
     def val_pre_transforms(self, context: Context):
         return [
-            LoadImaged(keys=("image", "label")),
+            LoadImaged(keys=("image", "label"), reader="ITKReader"),
+            NormalizeLabelsInDatasetd(keys="label", label_names=self.label_names),
             AddChanneld(keys=("image", "label")),
             Spacingd(
                 keys=("image", "label"),
@@ -114,3 +145,25 @@ class MyTrain(BasicTrainTask):
 
     def val_inferer(self, context: Context):
         return SlidingWindowInferer(roi_size=(160, 160, 160), sw_batch_size=1, overlap=0.25)
+
+    def train_key_metric(self, context: Context):
+        all_metrics = dict()
+        all_metrics["train_dice"] = MeanDice(output_transform=from_engine(["pred", "label"]), include_background=False)
+        for _, (key_label, _) in enumerate(self.label_names.items()):
+            if key_label != "background":
+                all_metrics[key_label + "_dice"] = MeanDice(
+                    output_transform=from_engine(["pred_" + key_label, "label_" + key_label]), include_background=False
+                )
+        return all_metrics
+
+    def val_key_metric(self, context: Context):
+        all_metrics = dict()
+        all_metrics["val_mean_dice"] = MeanDice(
+            output_transform=from_engine(["pred", "label"]), include_background=False
+        )
+        for _, (key_label, _) in enumerate(self.label_names.items()):
+            if key_label != "background":
+                all_metrics[key_label + "_dice"] = MeanDice(
+                    output_transform=from_engine(["pred_" + key_label, "label_" + key_label]), include_background=False
+                )
+        return all_metrics
