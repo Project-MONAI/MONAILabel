@@ -230,6 +230,7 @@ class InferTask:
         # device
         device = req.get("device", "cuda")
         req["device"] = device
+        logger.setLevel(req.get("logging", "INFO").upper())
         logger.info(f"Infer Request (final): {req}")
 
         data = copy.deepcopy(req)
@@ -282,7 +283,7 @@ class InferTask:
 
         if result_file_name:
             logger.info("Result File: {}".format(result_file_name))
-            logger.info("Result Json: {}".format(result_json))
+            logger.info("Result Json Keys: {}".format(list(result_json.keys())))
         return result_file_name, result_json
 
     def run_pre_transforms(self, data, transforms):
@@ -367,7 +368,7 @@ class InferTask:
         """
 
         inferer = self.inferer(data)
-        logger.info("Running Inferer:: {} => {}".format(inferer.__class__.__name__, inferer.__dict__))
+        logger.info("Inferer:: {} => {}".format(inferer.__class__.__name__, inferer.__dict__))
 
         if device.startswith("cuda") and not torch.cuda.is_available():
             device = "cpu"
@@ -402,7 +403,7 @@ class InferTask:
         :param dtype: output label dtype
         :return: tuple of output_file and result_json
         """
-        logger.info("Writing Result")
+        logger.info("Writing Result...")
         if extension is not None:
             data["result_extension"] = extension
         if dtype is not None:
