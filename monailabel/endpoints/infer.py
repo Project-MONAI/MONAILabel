@@ -123,6 +123,7 @@ def run_inference(
     if file:
         file_ext = "".join(pathlib.Path(file.filename).suffixes) if file.filename else ".nii.gz"
         image_file = tempfile.NamedTemporaryFile(suffix=file_ext).name
+
         with open(image_file, "wb") as buffer:
             shutil.copyfileobj(file.file, buffer)
             request["image"] = image_file

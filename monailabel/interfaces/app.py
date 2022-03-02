@@ -223,23 +223,21 @@ class MONAILabelApp:
                 f"Inference Task is not Initialized. There is no model '{model}' available",
             )
 
+        request = copy.deepcopy(request)
         image_id = request["image"]
-        if isinstance(image_id, str):
-            request = copy.deepcopy(request)
-            datastore = datastore if datastore else self.datastore()
-            if os.path.exists(image_id):
-                request["save_label"] = False
-            else:
-                request["image"] = datastore.get_image_uri(request["image"])
+        datastore = datastore if datastore else self.datastore()
+        if os.path.exists(image_id):
+            request["save_label"] = False
+        else:
+            request["image"] = datastore.get_image_uri(request["image"])
 
-            # TODO:: BUG In MONAI? Currently can not load DICOM through ITK Loader
-            if os.path.isdir(request["image"]):
-                logger.info("Input is a Directory; Consider it as DICOM")
-                logger.info(os.listdir(request["image"]))
-                request["image"] = [os.path.join(f, request["image"]) for f in os.listdir(request["image"])]
+        # TODO:: BUG In MONAI? Currently can not load DICOM through ITK Loader
+        if os.path.isdir(request["image"]):
+            logger.info("Input is a Directory; Consider it as DICOM")
+            logger.info(os.listdir(request["image"]))
+            request["image"] = [os.path.join(f, request["image"]) for f in os.listdir(request["image"])]
 
-            logger.debug(f"Image => {request['image']}")
-
+        logger.debug(f"Image => {request['image']}")
         if self._infers_threadpool:
 
             def run_infer_in_thread(t, r):

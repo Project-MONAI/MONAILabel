@@ -46,7 +46,7 @@ class MONAILabelClient:
         selector = "/info/"
         status, response, _ = MONAILabelUtils.http_method("GET", self._server_url, selector)
         if status != 200:
-            raise MONAILabelException(
+            raise MONAILabelClientException(
                 MONAILabelError.SERVER_ERROR, "Status: {}; Response: {}".format(status, response), status, response
             )
 
@@ -59,7 +59,7 @@ class MONAILabelClient:
         selector = "/activelearning/{}".format(MONAILabelUtils.urllib_quote_plus(strategy))
         status, response, _ = MONAILabelUtils.http_method("POST", self._server_url, selector, params)
         if status != 200:
-            raise MONAILabelException(
+            raise MONAILabelClientException(
                 MONAILabelError.SERVER_ERROR, "Status: {}; Response: {}".format(status, response), status, response
             )
 
@@ -73,7 +73,7 @@ class MONAILabelClient:
 
         status, response, _ = MONAILabelUtils.http_upload("PUT", self._server_url, selector, params, [image_in])
         if status != 200:
-            raise MONAILabelException(
+            raise MONAILabelClientException(
                 MONAILabelError.SERVER_ERROR, "Status: {}; Response: {}".format(status, response), status, response
             )
 
@@ -85,7 +85,7 @@ class MONAILabelClient:
         selector = f"/session/{MONAILabelUtils.urllib_quote_plus(session_id)}"
         status, response, _ = MONAILabelUtils.http_method("GET", self._server_url, selector)
         if status != 200:
-            raise MONAILabelException(
+            raise MONAILabelClientException(
                 MONAILabelError.SERVER_ERROR, "Status: {}; Response: {}".format(status, response), status, response
             )
 
@@ -97,7 +97,7 @@ class MONAILabelClient:
         selector = f"/session/{MONAILabelUtils.urllib_quote_plus(session_id)}"
         status, response, _ = MONAILabelUtils.http_method("DELETE", self._server_url, selector)
         if status != 200:
-            raise MONAILabelException(
+            raise MONAILabelClientException(
                 MONAILabelError.SERVER_ERROR, "Status: {}; Response: {}".format(status, response), status, response
             )
 
@@ -114,7 +114,7 @@ class MONAILabelClient:
 
         status, response, _ = MONAILabelUtils.http_multipart("PUT", self._server_url, selector, fields, files)
         if status != 200:
-            raise MONAILabelException(
+            raise MONAILabelClientException(
                 MONAILabelError.SERVER_ERROR,
                 "Status: {}; Response: {}".format(status, response),
             )
@@ -136,7 +136,7 @@ class MONAILabelClient:
 
         status, response, _ = MONAILabelUtils.http_multipart("PUT", self._server_url, selector, fields, files)
         if status != 200:
-            raise MONAILabelException(
+            raise MONAILabelClientException(
                 MONAILabelError.SERVER_ERROR,
                 "Status: {}; Response: {}".format(status, response),
             )
@@ -160,7 +160,7 @@ class MONAILabelClient:
 
         status, form, files = MONAILabelUtils.http_multipart("POST", self._server_url, selector, fields, files)
         if status != 200:
-            raise MONAILabelException(
+            raise MONAILabelClientException(
                 MONAILabelError.SERVER_ERROR,
                 "Status: {}; Response: {}".format(status, form),
             )
@@ -185,7 +185,7 @@ class MONAILabelClient:
         body = self._update_client_id(body if body else {})
         status, form, _ = MONAILabelUtils.http_method("POST", self._server_url, selector, body)
         if status != 200:
-            raise MONAILabelException(
+            raise MONAILabelClientException(
                 MONAILabelError.SERVER_ERROR,
                 "Status: {}; Response: {}".format(status, form),
             )
@@ -201,7 +201,7 @@ class MONAILabelClient:
 
         status, response, _ = MONAILabelUtils.http_method("POST", self._server_url, selector, params)
         if status != 200:
-            raise MONAILabelException(
+            raise MONAILabelClientException(
                 MONAILabelError.SERVER_ERROR,
                 "Status: {}; Response: {}".format(status, response),
             )
@@ -214,7 +214,7 @@ class MONAILabelClient:
         selector = "/train/"
         status, response, _ = MONAILabelUtils.http_method("DELETE", self._server_url, selector)
         if status != 200:
-            raise MONAILabelException(
+            raise MONAILabelClientException(
                 MONAILabelError.SERVER_ERROR,
                 "Status: {}; Response: {}".format(status, response),
             )
@@ -232,7 +232,7 @@ class MONAILabelClient:
             return status == 200
 
         if status != 200:
-            raise MONAILabelException(
+            raise MONAILabelClientException(
                 MONAILabelError.SERVER_ERROR,
                 "Status: {}; Response: {}".format(status, response),
             )
@@ -249,7 +249,7 @@ class MONAILabelError:
     UNKNOWN = 4
 
 
-class MONAILabelException(Exception):
+class MONAILabelClientException(Exception):
     __slots__ = ["error", "msg"]
 
     def __init__(self, error, msg, status_code=None, response=None):
