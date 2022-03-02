@@ -283,7 +283,7 @@ class InferTask:
 
         if result_file_name:
             logger.info("Result File: {}".format(result_file_name))
-            logger.info("Result Json: {}".format(list(result_json.keys())))
+            logger.info("Result Json Keys: {}".format(list(result_json.keys())))
         return result_file_name, result_json
 
     def run_pre_transforms(self, data, transforms):
