@@ -1,5 +1,7 @@
 # Generic Segmentation using UNet
 
+> Use this App for single and multilabel segmentation and to import NGC models
+
 ### Model Overview
 
 This generic App could be utilised to train a standard (non-interactive) MONAI Label App using UNet to label 3D volumes

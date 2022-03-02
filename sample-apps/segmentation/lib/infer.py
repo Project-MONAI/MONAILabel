@@ -36,7 +36,8 @@ class MyInfer(InferTask):
         path,
         network=None,
         type=InferType.SEGMENTATION,
-        labels="generic",
+        label_names=None,
+        spatial_size=(128, 128, 128),
         dimension=3,
         description="A pre-trained model for volumetric (3D) segmentation over 3D Images",
     ):
@@ -44,14 +45,16 @@ class MyInfer(InferTask):
             path=path,
             network=network,
             type=type,
-            labels=labels,
+            labels=label_names,
             dimension=dimension,
             description=description,
         )
+        self.spatial_size = spatial_size
+        self.label_names = label_names
 
     def pre_transforms(self, data=None) -> Sequence[Callable]:
         return [
-            LoadImaged(keys="image"),
+            LoadImaged(keys="image", reader="ITKReader"),
             AddChanneld(keys="image"),
             Spacingd(keys="image", pixdim=[1.0, 1.0, 1.0]),
             ScaleIntensityRanged(keys="image", a_min=-57, a_max=164, b_min=0.0, b_max=1.0, clip=True),
@@ -60,6 +63,9 @@ class MyInfer(InferTask):
 
     def inferer(self, data=None) -> Callable:
         return SlidingWindowInferer(roi_size=[160, 160, 160])
+
+    def inverse_transforms(self, data=None) -> Sequence[Callable]:
+        return []  # Self-determine from the list of pre-transforms provided
 
     def post_transforms(self, data=None) -> Sequence[Callable]:
         return [
