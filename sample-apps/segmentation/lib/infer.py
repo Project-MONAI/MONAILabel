@@ -16,8 +16,8 @@ from monai.transforms import (
     AddChanneld,
     AsDiscreted,
     LoadImaged,
-    NormalizeIntensityd,
-    Resized,
+    ScaleIntensityRanged,
+    Spacingd,
     ToNumpyd,
     ToTensord,
 )
@@ -56,8 +56,12 @@ class MyInfer(InferTask):
         return [
             LoadImaged(keys="image", reader="ITKReader"),
             AddChanneld(keys="image"),
-            Resized(keys=("image", "label"), spatial_size=self.spatial_size),
-            NormalizeIntensityd(keys="image"),
+            Spacingd(
+                keys="image",
+                pixdim=(1.0, 1.0, 1.0),
+                mode="bilinear",
+            ),
+            ScaleIntensityRanged(keys="image", a_min=-57, a_max=164, b_min=0.0, b_max=1.0, clip=True),
             ToTensord(keys="image"),
         ]
 

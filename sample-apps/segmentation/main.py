@@ -62,7 +62,7 @@ class MyApp(MONAILabelApp):
 
         # Path to pretrained weights (currently use NVIDIA Clara Spleen model)
         ngc_path = "https://api.ngc.nvidia.com/v2/models/nvidia/med/"
-        use_pretrained_model = strtobool(conf.get("use_pretrained_model", "true"))
+        use_pretrained_model = strtobool(conf.get("use_pretrained_model", "false"))
         pretrained_model_uri = conf.get(
             "pretrained_model_path", f"{ngc_path}/clara_pt_spleen_ct_segmentation/versions/1/files/models/model.pt"
         )
@@ -100,7 +100,7 @@ class MyApp(MONAILabelApp):
         }
 
         # Simple way to Add deepgrow 2D+3D models for infer tasks
-        infers.update(self.deepgrow_infer_tasks(self.model_dir))
+        # infers.update(self.deepgrow_infer_tasks(self.model_dir))
         return infers
 
     def init_trainers(self) -> Dict[str, TrainTask]:
@@ -174,7 +174,7 @@ def main():
         "--studies",
         default="/home/adp20local/Documents/Datasets/Mandible/NRRD_no_transplants",
     )
-    parser.add_argument("-e", "--epoch", type=int, default=600)
+    parser.add_argument("-e", "--epoch", type=int, default=800)
     parser.add_argument("-d", "--dataset", default="CacheDataset")
     parser.add_argument("-o", "--output", default="model_teeth")
     parser.add_argument("-i", "--size", default="[256,256,128]")
