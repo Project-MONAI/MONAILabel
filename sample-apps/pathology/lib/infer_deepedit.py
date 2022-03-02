@@ -42,7 +42,7 @@ class InferDeepedit(InferSegmentation):
         path,
         network=None,
         roi_size=(256, 256),
-        type=InferType.SEGMENTATION,
+        type=InferType.DEEPEDIT,
         labels=None,
         dimension=2,
         description="A pre-trained interaction/deepedit model for Nuclei (Pathology)",

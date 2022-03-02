@@ -614,15 +614,20 @@ class MONAILabelApp:
         output = request.get("output", "asap")
         logger.debug(f"+++ WSI Inference Output Type: {output}")
 
+        loglevel = request.get("logging", "INFO").upper()
         if output == "asap":
             logger.debug("+++ Generating ASAP XML Annotation")
-            res_file = create_asap_annotations_xml(res_json, color_map=request.get("color_map"))
+            res_file = create_asap_annotations_xml(res_json, color_map=request.get("color_map"), loglevel=loglevel)
         elif output == "dsa":
             logger.debug("+++ Generating DSA JSON Annotation")
             model = request.get("model")
             task = self._infers.get(model)
             res_file = create_dsa_annotations_json(
-                res_json, name=f"MONAILabel - {model}", description=task.description, color_map=request.get("color_map")
+                res_json,
+                name=f"MONAILabel - {model}",
+                description=task.description,
+                color_map=request.get("color_map"),
+                loglevel=loglevel,
             )
         else:
             logger.debug("+++ Return Default JSON Annotation")

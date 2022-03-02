@@ -56,6 +56,11 @@ class InferSegmentation(InferTask):
             description=description,
         )
 
+    def info(self) -> Dict[str, Any]:
+        i = super().info()
+        i["pathology"] = True
+        return i
+
     def config(self) -> Dict[str, Any]:
         c = super().config()
         c.update(

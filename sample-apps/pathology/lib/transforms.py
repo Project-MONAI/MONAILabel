@@ -42,6 +42,12 @@ class LoadImagePatchd(MapTransform):
             if not isinstance(d[key], str):
                 continue  # Support direct image in np (pass only transform)
 
+            name = d[key]
+            ext = pathlib.Path(name).suffix
+            if ext == ".npy":
+                d[key] = np.load(d[key])
+                continue
+
             location = d.get("location", (0, 0))
             level = d.get("level", 0)
             size = d.get("size", None)
@@ -49,8 +55,6 @@ class LoadImagePatchd(MapTransform):
             # Model input size
             tile_size = d.get("tile_size", size)
 
-            name = d[key]
-            ext = pathlib.Path(name).suffix
             if ext in (".bif", ".mrxs", ".ndpi", ".scn", ".svs", ".svslide", ".tif", ".tiff", ".vms", ".vmu"):
                 slide = openslide.OpenSlide(name)
                 size = size if size else slide.dimensions

@@ -8,6 +8,7 @@
 # WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 # See the License for the specific language governing permissions and
 # limitations under the License.
+import copy
 import json
 import logging
 import os
@@ -33,6 +34,15 @@ class MyApp(MONAILabelApp):
             3: "Connective/Soft tissue cells",
             4: "Dead Cells",
             5: "Epithelial",
+        }
+
+        self.color_map = {
+            "Neoplastic cells": (255, 0, 0),
+            "Inflammatory": (255, 255, 0),
+            "Connective/Soft tissue cells": (0, 255, 0),
+            "Dead Cells": (0, 0, 0),
+            "Epithelial": (0, 0, 255),
+            "Nuclei": (0, 255, 255),
         }
 
         # PanNuke Dataset channels
@@ -122,16 +132,14 @@ class MyApp(MONAILabelApp):
             ),
         }
 
-    def infer_wsi(self, request, datastore=None):
-        color_map = {
-            "Neoplastic cells": (255, 0, 0),
-            "Inflammatory": (255, 255, 0),
-            "Connective/Soft tissue cells": (0, 255, 0),
-            "Dead Cells": (0, 0, 0),
-            "Epithelial": (0, 0, 255),
-            "Nuclei": (0, 255, 255),
-        }
+    def infer(self, request, datastore=None):
+        color_map = copy.deepcopy(self.color_map)
+        color_map.update(request.get("color_map", {}))
+        request["color_map"] = color_map
+        return super().infer(request, datastore)
 
+    def infer_wsi(self, request, datastore=None):
+        color_map = copy.deepcopy(self.color_map)
         color_map.update(request.get("color_map", {}))
         request["color_map"] = color_map
         return super().infer_wsi(request, datastore)
