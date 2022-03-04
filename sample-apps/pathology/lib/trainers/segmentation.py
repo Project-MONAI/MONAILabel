@@ -15,13 +15,14 @@ import numpy as np
 import torch
 from ignite.metrics import Accuracy
 from lib.handlers import TensorBoardImageHandler
-from lib.transforms import EncodeLabelChannelsd, FilterImaged
+from lib.transforms import FilterImaged
 from lib.utils import split_dataset
 from monai.handlers import from_engine
 from monai.inferers import SimpleInferer
 from monai.losses import DiceLoss
 from monai.transforms import (
     Activationsd,
+    AddChanneld,
     AsChannelFirstd,
     AsDiscreted,
     EnsureTyped,
@@ -45,14 +46,12 @@ class TrainSegmentation(BasicTrainTask):
         model_dir,
         network,
         labels,
-        label_channels,
         roi_size=(256, 256),
         description="Pathology Semantic Segmentation for Nuclei (PanNuke Dataset)",
         **kwargs,
     ):
         self._network = network
         self.labels = labels
-        self.label_channels = label_channels
         self.roi_size = roi_size
         super().__init__(model_dir, description, **kwargs)
 
@@ -69,15 +68,15 @@ class TrainSegmentation(BasicTrainTask):
         self.cleanup(request)
 
         cache_dir = os.path.join(self.get_cache_dir(request), "train_ds")
-        source = request.get("ds_source", "pannuke")
-        return split_dataset(datastore, cache_dir, source, self.roi_size)
+        source = request.get("dataset_source", "pannuke")
+        return split_dataset(datastore, cache_dir, source, self.labels, self.roi_size)
 
     def train_pre_transforms(self, context: Context):
         return [
             LoadImaged(keys=("image", "label"), dtype=np.uint8),
             FilterImaged(keys="image", min_size=0),
             AsChannelFirstd(keys="image"),
-            EncodeLabelChannelsd(keys="label", labels=self.labels, label_channels=self.label_channels),
+            AddChanneld(keys="label"),
             ToTensord(keys="image"),
             TorchVisiond(
                 keys="image", name="ColorJitter", brightness=64.0 / 255.0, contrast=0.75, saturation=0.25, hue=0.04

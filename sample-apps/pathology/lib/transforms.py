@@ -95,45 +95,6 @@ class LoadImagePatchd(MapTransform):
         return d
 
 
-class EncodeLabelChannelsd(MapTransform):
-    def __init__(self, keys: KeysCollection, labels, label_channels):
-        super().__init__(keys)
-        self.labels = {v: k for k, v in labels.items()}
-        self.label_channels = label_channels
-
-    def __call__(self, data):
-        d = dict(data)
-        for key in self.keys:
-            mask = d[key]
-            img = np.zeros((mask.shape[0], mask.shape[1]))
-            for idx, name in self.label_channels:
-                if idx > mask.shape[2]:
-                    m = mask[:, :, idx]
-                    img[m > 0] = self.labels[name]
-
-            d[key] = img[np.newaxis]
-        return d
-
-
-class MergeLabelChannelsd(MapTransform):
-    def __init__(self, keys: KeysCollection, label_channels):
-        super().__init__(keys)
-        self.label_channels = label_channels
-
-    def __call__(self, data):
-        d = dict(data)
-        for key in self.keys:
-            mask = d[key]
-            mask[mask > 0] = 1
-            img = np.zeros((mask.shape[0], mask.shape[1]))
-
-            for idx in self.label_channels:
-                if idx > mask.shape[2]:
-                    img = np.logical_or(img, mask[:, :, idx])
-            d[key] = img[np.newaxis]
-        return d
-
-
 class ClipBorderd(MapTransform):
     def __init__(self, keys: KeysCollection, border=2):
         super().__init__(keys)

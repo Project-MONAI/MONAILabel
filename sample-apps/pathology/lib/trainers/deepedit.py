@@ -15,7 +15,7 @@ import numpy as np
 import torch
 from ignite.metrics import Accuracy
 from lib.handlers import TensorBoardImageHandler
-from lib.transforms import AddInitialSeedPointExd, FilterImaged, MergeLabelChannelsd
+from lib.transforms import AddInitialSeedPointExd, FilterImaged
 from lib.utils import split_dataset
 from monai.apps.deepgrow.transforms import AddGuidanceSignald, AddRandomGuidanced, FindDiscrepancyRegionsd
 from monai.handlers import from_engine
@@ -23,6 +23,7 @@ from monai.inferers import SimpleInferer
 from monai.losses import DiceLoss
 from monai.transforms import (
     Activationsd,
+    AddChanneld,
     AsChannelFirstd,
     AsDiscreted,
     EnsureTyped,
@@ -47,7 +48,6 @@ class TrainDeepEdit(BasicTrainTask):
         model_dir,
         network,
         labels,
-        label_channels,
         roi_size=(256, 256),
         max_train_interactions=10,
         max_val_interactions=5,
@@ -55,8 +55,7 @@ class TrainDeepEdit(BasicTrainTask):
         **kwargs,
     ):
         self._network = network
-        self.labels = (labels,)
-        self.label_channels = label_channels
+        self.labels = labels
         self.roi_size = roi_size
         self.max_train_interactions = max_train_interactions
         self.max_val_interactions = max_val_interactions
@@ -75,8 +74,8 @@ class TrainDeepEdit(BasicTrainTask):
         self.cleanup(request)
 
         cache_dir = os.path.join(self.get_cache_dir(request), "train_ds")
-        source = request.get("ds_source", "pannuke")
-        return split_dataset(datastore, cache_dir, source, self.roi_size)
+        source = request.get("dataset_source", "pannuke")
+        return split_dataset(datastore, cache_dir, source, self.labels, self.roi_size)
 
     def get_click_transforms(self, context: Context):
         return [
@@ -93,7 +92,7 @@ class TrainDeepEdit(BasicTrainTask):
             LoadImaged(keys=("image", "label"), dtype=np.uint8),
             FilterImaged(keys="image", min_size=5),
             AsChannelFirstd(keys="image"),
-            MergeLabelChannelsd(keys="label", label_channels=self.label_channels),
+            AddChanneld(keys="label"),
             ToTensord(keys="image"),
             TorchVisiond(
                 keys="image", name="ColorJitter", brightness=64.0 / 255.0, contrast=0.75, saturation=0.25, hue=0.04

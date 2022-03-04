@@ -36,30 +36,15 @@ class MyApp(MONAILabelApp):
             "Dead Cells": (0, 0, 0),
             "Epithelial": (0, 0, 255),
             "Nuclei": (0, 255, 255),
-            "Tumor": (255, 0, 255),
         }
 
-        mt = "nuclei"  # tumor, nuclei
-        self.deep_labels = ["Nuclei"] if mt == "nuclei" else ["Tumor"]
-        self.seg_labels = (
-            {
-                1: "Neoplastic cells",
-                2: "Inflammatory",
-                3: "Connective/Soft tissue cells",
-                4: "Dead Cells",
-                5: "Epithelial",
-            }
-            if mt == "nuclei"
-            else ["Tumor"]
-        )
-
-        # Dataset channels
-        self.label_channels = {
-            0: "Neoplastic cells",
-            1: "Inflammatory",
-            2: "Connective/Soft tissue cells",
-            3: "Dead Cells",
-            4: "Epithelial",
+        self.deep_labels = ["Nuclei"]
+        self.seg_labels = {
+            "Neoplastic cells": 1,
+            "Inflammatory": 2,
+            "Connective/Soft tissue cells": 3,
+            "Dead Cells": 4,
+            "Epithelial": 5,
         }
 
         self.seg_network = BasicUNet(
@@ -76,24 +61,20 @@ class MyApp(MONAILabelApp):
         )
 
         self.model_dir = os.path.join(app_dir, "model")
-        self.seg_pretrained_model = os.path.join(self.model_dir, f"segmentation_{mt}_pretrained.pt")
-        self.seg_final_model = os.path.join(self.model_dir, f"segmentation_{mt}.pt")
+        self.seg_pretrained_model = os.path.join(self.model_dir, "segmentation_nuclei_pretrained.pt")
+        self.seg_final_model = os.path.join(self.model_dir, "segmentation_nuclei.pt")
 
-        self.deepedit_pretrained_model = os.path.join(self.model_dir, f"deepedit_{mt}_pretrained.pt")
-        self.deepedit_final_model = os.path.join(self.model_dir, f"deepedit_{mt}.pt")
+        self.deepedit_pretrained_model = os.path.join(self.model_dir, "deepedit_nuclei_pretrained.pt")
+        self.deepedit_final_model = os.path.join(self.model_dir, "deepedit_nuclei.pt")
 
         use_pretrained_model = strtobool(conf.get("use_pretrained_model", "true"))
-        seg_pretrained_model_uri = conf.get(
-            "seg_pretrained_model_path", f"{self.PRE_TRAINED_PATH}pathology_segmentation_{mt}.pt"
-        )
-        deepedit_pretrained_model_uri = conf.get(
-            "deepedit_pretrained_model_path", f"{self.PRE_TRAINED_PATH}pathology_deepedit_{mt}.pt"
-        )
+        seg_pretrained_model_uri = f"{self.PRE_TRAINED_PATH}/pathology_segmentation_nuclei.pt"
+        deepedit_pretrained_model_uri = f"{self.PRE_TRAINED_PATH}/pathology_deepedit_nuclei.pt"
 
         # Path to pretrained weights
         if use_pretrained_model:
-            logger.info(f"Segmentation Pretrained Model Path: {seg_pretrained_model_uri}")
-            logger.info(f"Deepedit Pretrained Model Path: {seg_pretrained_model_uri}")
+            logger.info(f"++ Segmentation Pretrained Model Path: {seg_pretrained_model_uri}")
+            logger.info(f"++ DeepEdit Pretrained Model Path: {deepedit_pretrained_model_uri}")
             self.download(
                 [
                     (self.seg_pretrained_model, seg_pretrained_model_uri),
@@ -147,7 +128,6 @@ class MyApp(MONAILabelApp):
                 config={"max_epochs": 10, "train_batch_size": 1},
                 train_save_interval=1,
                 labels=self.seg_labels,
-                label_channels=self.label_channels,
             ),
             "deepedit": TrainDeepEdit(
                 model_dir=os.path.join(self.model_dir, "deepedit"),
@@ -160,7 +140,6 @@ class MyApp(MONAILabelApp):
                 val_interval=1,
                 train_save_interval=1,
                 labels=self.deep_labels,
-                label_channels=self.label_channels,
             ),
         }
 
@@ -187,10 +166,10 @@ def main():
         datefmt="%Y-%m-%d %H:%M:%S",
     )
 
-    run_train = False
+    run_train = True
     home = str(Path.home())
     if run_train:
-        studies = f"{home}/Data/Pathology/PanNukeF"
+        studies = f"{home}/Data/Pathology/PanNuke"
     else:
         studies = f"{home}/Data/Pathology/Test"
 
@@ -218,7 +197,7 @@ def main():
                 "val_batch_size": 12,
                 "multi_gpu": True,
                 "val_split": 0.1,
-                "ds_source": "pannuke",
+                "dataset_source": "pannuke",
             },
         )
     else:

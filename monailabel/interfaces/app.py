@@ -56,7 +56,7 @@ class MONAILabelApp:
     Default Pre-trained Path for downloading models
     """
 
-    PRE_TRAINED_PATH: str = "https://github.com/Project-MONAI/MONAILabel/releases/download/data/"
+    PRE_TRAINED_PATH: str = "https://github.com/Project-MONAI/MONAILabel/releases/download/data"
 
     def __init__(
         self,

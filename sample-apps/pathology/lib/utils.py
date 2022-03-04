@@ -14,15 +14,32 @@ from monailabel.datastore.dsa import DSADatastore
 logger = logging.getLogger(__name__)
 
 
-def split_pannuke_dataset(image, label, output_dir):
+def split_pannuke_dataset(image, label, output_dir, groups):
+    groups = groups if groups else dict()
+    groups = [groups] if isinstance(groups, str) else groups
+    if not isinstance(groups, dict):
+        groups = {v: k + 1 for k, v in enumerate(groups)}
+
+    label_channels = {
+        0: "Neoplastic cells",
+        1: "Inflammatory",
+        2: "Connective/Soft tissue cells",
+        3: "Dead Cells",
+        4: "Epithelial",
+    }
+
+    logger.info(f"++ Using Groups: {groups}")
+    logger.info(f"++ Using Label Channels: {label_channels}")
+
     images = np.load(image)
     labels = np.load(label)
     logger.info(f"Image Shape: {images.shape}")
-    logger.info(f"Labels Shape: {images.shape}")
+    logger.info(f"Labels Shape: {labels.shape}")
 
     shutil.rmtree(output_dir, True)
-    images_dir = os.path.join(output_dir, "images")
-    labels_dir = os.path.join(output_dir, "labels")
+    images_dir = output_dir
+    labels_dir = os.path.join(output_dir, "labels", "final")
+    os.makedirs(images_dir, exist_ok=True)
     os.makedirs(labels_dir, exist_ok=True)
 
     dataset_json = []
@@ -31,8 +48,19 @@ def split_pannuke_dataset(image, label, output_dir):
         image_file = os.path.join(images_dir, name)
         label_file = os.path.join(labels_dir, name)
 
-        np.save(image_file, images[i])
-        np.save(label_file, labels[i])
+        image_np = images[i]
+        mask = labels[i]
+        label_np = np.zeros(shape=mask.shape[:2])
+
+        for idx, name in label_channels.items():
+            if idx < mask.shape[2]:
+                m = mask[:, :, idx]
+                if np.count_nonzero(m):
+                    m[m > 0] = groups.get(name, 1)
+                    label_np = np.where(m > 0, m, label_np)
+
+        np.save(image_file, image_np)
+        np.save(label_file, label_np)
         dataset_json.append({"image": image_file, "label": label_file})
     return dataset_json
 
@@ -46,7 +74,7 @@ def split_wsi_image(datastore, d, output_dir, roi_size, groups):
 
     annotations = datastore.get_label(label, "")
     groups = groups if groups else []
-    groups = set([g.lower() for g in groups])
+    groups = {g.lower() for g in groups}
 
     for annotation in annotations:
         points = []
@@ -105,12 +133,12 @@ def split_wsi_image(datastore, d, output_dir, roi_size, groups):
                     color = (255, 255, 255)
                     cv2.fillPoly(label_np, pts=contours, color=color)
 
-                    name = f"{label}_{x}_{y}_{w}_{h}_{group}"
-                    label_path = os.path.realpath(os.path.join(regions_dir, "labels", f"{name}.png"))
+                    name = f"{label}_{x}_{y}_{w}_{h}"
+                    label_path = os.path.realpath(os.path.join(regions_dir, "labels", group, f"{name}.png"))
                     os.makedirs(os.path.dirname(label_path), exist_ok=True)
                     cv2.imwrite(label_path, label_np)
                     logger.info(f"Label: {label_path}")
-                    region_to_tiles(name, w, h, label_np, roi_size, os.path.join(tiles_dir, "labels"))
+                    region_to_tiles(name, w, h, label_np, roi_size, os.path.join(tiles_dir, "labels", group))
 
 
 def region_to_tiles(name, w, h, input_np, tile_size, output):
@@ -131,43 +159,44 @@ def region_to_tiles(name, w, h, input_np, tile_size, output):
             sx = ti * max_w
             sy = tj * max_h
 
-            logger.info(f"Patch/Slice ({tj}, {ti}) => {sx}:{sx + tw}, {sy}:{sy + th}")
+            logger.debug(f"Patch/Slice ({tj}, {ti}) => {sx}:{sx + tw}, {sy}:{sy + th}")
             if len(input_np.shape) == 3:
-                region_rgb = input_np[sy: (sy + th), sx: (sx + tw), :]
+                region_rgb = input_np[sy : (sy + th), sx : (sx + tw), :]
                 image_np = np.zeros((max_h, max_w, 3), dtype=input_np.dtype)
             else:
-                region_rgb = input_np[sy: (sy + th), sx: (sx + tw)]
+                region_rgb = input_np[sy : (sy + th), sx : (sx + tw)]
                 image_np = np.zeros((max_h, max_w), dtype=input_np.dtype)
-            image_np[0:region_rgb.shape[0], 0:region_rgb.shape[1]] = region_rgb
+            image_np[0 : region_rgb.shape[0], 0 : region_rgb.shape[1]] = region_rgb
 
-            logger.info(f"Patch/Slice ({tj}, {ti}) => Size: {region_rgb.shape} / {input_np.shape}")
+            logger.debug(f"Patch/Slice ({tj}, {ti}) => Size: {region_rgb.shape} / {input_np.shape}")
             img = Image.fromarray(image_np.astype(np.uint8), "RGB" if len(input_np.shape) == 3 else None)
             img.save(os.path.join(output, f"{name}_{tj}x{ti}.png"))
-    logger.info(f"Patch(s) Saved...")
+    logger.debug("Patch(s) Saved...")
 
 
-def split_dataset(datastore, cache_dir, source, roi_size=(256, 256), groups=None):
+def split_dataset(datastore, cache_dir, source, groups, tile_size):
     ds = datastore.datalist()
 
     # PanNuke Dataset
     if source == "pannuke":
-        image = np.load(ds[0]["image"]) if len(ds) else None
+        image = np.load(ds[0]["image"]) if len(ds) == 1 else None
         if image is not None and len(image.shape) > 3:
-            ds = split_pannuke_dataset(ds[0]["image"], ds[0]["label"], cache_dir)
+            ds = split_pannuke_dataset(ds[0]["image"], ds[0]["label"], cache_dir, groups)
 
     # WSI (DSA) create patches of roi_size over wsi image+annotation
-    if source == "wsi":
-        logger.info(f"Split data based on roi: {roi_size}")
+    elif source == "wsi":
+        logger.info(f"Split data based on tile size: {tile_size}")
         for d in ds:
-            split_wsi_image(datastore, d, cache_dir, roi_size, groups)
+            split_wsi_image(datastore, d, cache_dir, tile_size, groups)
 
     logger.info("+++ Total Records: {}".format(len(ds)))
     return ds
 
 
-def main():
-    from monailabel.datastore.dsa import DSADatastore
+def main2():
     import json
+
+    from monailabel.datastore.dsa import DSADatastore
 
     logging.basicConfig(
         level=logging.INFO,
@@ -191,7 +220,7 @@ def main():
     ds = datastore.datalist()
 
     print(f"Dataset for Training: \n{json.dumps(ds, indent=2)}")
-    split_dataset(datastore, "/localhome/sachi/Downloads/cache", "wsi", (256, 256), ["Nuclei"])
+    split_dataset(datastore, "/localhome/sachi/Downloads/cache", "wsi", ["Nuclei"], (256, 256))
 
     # http://0.0.0.0:8080/api/v1/item/621e9513b6881a7a4bef517d/tiles/region
     # parameters = {
@@ -205,6 +234,24 @@ def main():
     #     "jpegQuality": 95,
     #     "jpegSubsampling": 0,
     # }
+
+
+def main():
+    import json
+
+    from monailabel.datastore.local import LocalDatastore
+
+    logging.basicConfig(
+        level=logging.INFO,
+        format="[%(asctime)s] [%(process)s] [%(threadName)s] [%(levelname)s] (%(name)s:%(lineno)d) - %(message)s",
+        datefmt="%Y-%m-%d %H:%M:%S",
+    )
+
+    datastore = LocalDatastore("/localhome/sachi/Data/Pathology/PanNuke", extensions=("*.nii.gz", "*.nii", "*.npy"))
+    ds = datastore.datalist()
+
+    print(f"Dataset for Training: \n{json.dumps(ds, indent=2)}")
+    split_dataset(datastore, "/localhome/sachi/Data/Pathology/PanNukeFMin", "pannuke", "Nuclei", (256, 256))
 
 
 if __name__ == "__main__":
