@@ -134,14 +134,14 @@ class PolygonWriter:
         json="result",
         key_write_to_file="result_write_to_file",
         key_annotations="annotations",
-        key_color_map="color_map",
+        key_label_colors="label_colors",
         key_output_format="output",
     ):
         self.label = label
         self.json = json
         self.key_write_to_file = key_write_to_file
         self.key_annotations = key_annotations
-        self.key_color_map = key_color_map
+        self.key_label_colors = key_label_colors
         self.key_output_format = key_output_format
         self.format = format
 
@@ -163,13 +163,13 @@ class PolygonWriter:
         if output == "asap":
             logger.info("+++ Generating ASAP XML Annotation")
             output_file = create_asap_annotations_xml(
-                json_data, color_map=data.get(self.key_color_map), loglevel=loglevel
+                json_data, color_map=data.get(self.key_label_colors), loglevel=loglevel
             )
         elif output == "dsa":
             logger.info("+++ Generating DSA JSON Annotation")
             model = data.get("model")
             output_file = create_dsa_annotations_json(
-                json_data, name=f"MONAILabel - {model}", color_map=data.get(self.key_color_map), loglevel=loglevel
+                json_data, name=f"MONAILabel - {model}", color_map=data.get(self.key_label_colors), loglevel=loglevel
             )
         else:
             logger.info("+++ Return Default JSON Annotation")

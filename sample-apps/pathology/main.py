@@ -8,7 +8,6 @@
 # WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 # See the License for the specific language governing permissions and
 # limitations under the License.
-import copy
 import json
 import logging
 import os
@@ -30,24 +29,31 @@ logger = logging.getLogger(__name__)
 
 class MyApp(MONAILabelApp):
     def __init__(self, app_dir, studies, conf):
-        labels = {
-            1: "Neoplastic cells",
-            2: "Inflammatory",
-            3: "Connective/Soft tissue cells",
-            4: "Dead Cells",
-            5: "Epithelial",
-        }
-
-        self.color_map = {
+        self.label_colors = {
             "Neoplastic cells": (255, 0, 0),
             "Inflammatory": (255, 255, 0),
             "Connective/Soft tissue cells": (0, 255, 0),
             "Dead Cells": (0, 0, 0),
             "Epithelial": (0, 0, 255),
             "Nuclei": (0, 255, 255),
+            "Tumor": (255, 0, 255),
         }
 
-        # PanNuke Dataset channels
+        mt = "nuclei"  # tumor, nuclei
+        self.deep_labels = ["Nuclei"] if mt == "nuclei" else ["Tumor"]
+        self.seg_labels = (
+            {
+                1: "Neoplastic cells",
+                2: "Inflammatory",
+                3: "Connective/Soft tissue cells",
+                4: "Dead Cells",
+                5: "Epithelial",
+            }
+            if mt == "nuclei"
+            else ["Tumor"]
+        )
+
+        # Dataset channels
         self.label_channels = {
             0: "Neoplastic cells",
             1: "Inflammatory",
@@ -57,25 +63,31 @@ class MyApp(MONAILabelApp):
         }
 
         self.seg_network = BasicUNet(
-            spatial_dims=2, in_channels=3, out_channels=len(labels) + 1, features=(32, 64, 128, 256, 512, 32)
+            spatial_dims=2,
+            in_channels=3,
+            out_channels=len(self.seg_labels) + 1 if len(self.seg_labels) > 1 else 1,
+            features=(32, 64, 128, 256, 512, 32),
         )
         self.deepedit_network = BasicUNet(
-            spatial_dims=2, in_channels=5, out_channels=1, features=(32, 64, 128, 256, 512, 32)
+            spatial_dims=2,
+            in_channels=5,
+            out_channels=len(self.deep_labels) + 1 if len(self.deep_labels) > 1 else 1,
+            features=(32, 64, 128, 256, 512, 32),
         )
 
         self.model_dir = os.path.join(app_dir, "model")
-        self.seg_pretrained_model = os.path.join(self.model_dir, "segmentation_nuclei_pretrained.pt")
-        self.seg_final_model = os.path.join(self.model_dir, "segmentation.pt")
+        self.seg_pretrained_model = os.path.join(self.model_dir, f"segmentation_{mt}_pretrained.pt")
+        self.seg_final_model = os.path.join(self.model_dir, f"segmentation_{mt}.pt")
 
-        self.deepedit_pretrained_model = os.path.join(self.model_dir, "deepedit_nuclei_pretrained.pt")
-        self.deepedit_final_model = os.path.join(self.model_dir, "deepedit.pt")
+        self.deepedit_pretrained_model = os.path.join(self.model_dir, f"deepedit_{mt}_pretrained.pt")
+        self.deepedit_final_model = os.path.join(self.model_dir, f"deepedit_{mt}.pt")
 
         use_pretrained_model = strtobool(conf.get("use_pretrained_model", "true"))
         seg_pretrained_model_uri = conf.get(
-            "seg_pretrained_model_path", f"{self.PRE_TRAINED_PATH}pathology_segmentation_nuclei.pt"
+            "seg_pretrained_model_path", f"{self.PRE_TRAINED_PATH}pathology_segmentation_{mt}.pt"
         )
         deepedit_pretrained_model_uri = conf.get(
-            "deepedit_pretrained_model_path", f"{self.PRE_TRAINED_PATH}pathology_deepedit_nuclei.pt"
+            "deepedit_pretrained_model_path", f"{self.PRE_TRAINED_PATH}pathology_deepedit_{mt}.pt"
         )
 
         # Path to pretrained weights
@@ -93,7 +105,6 @@ class MyApp(MONAILabelApp):
             app_dir=app_dir,
             studies=studies,
             conf=conf,
-            labels=labels,
             name="pathology",
             description="Active Learning solution for Nuclei Instance Segmentation",
         )
@@ -113,10 +124,16 @@ class MyApp(MONAILabelApp):
     def init_infers(self) -> Dict[str, InferTask]:
         return {
             "segmentation": InferSegmentation(
-                [self.seg_pretrained_model, self.seg_final_model], self.seg_network, labels=self.labels
+                path=[self.seg_pretrained_model, self.seg_final_model],
+                network=self.seg_network,
+                labels=self.seg_labels,
+                label_colors=self.label_colors,
             ),
             "deepedit": InferDeepedit(
-                [self.deepedit_pretrained_model, self.deepedit_final_model], self.deepedit_network, labels="Nuclei"
+                path=[self.deepedit_pretrained_model, self.deepedit_final_model],
+                network=self.deepedit_network,
+                labels=self.deep_labels,
+                label_colors=self.label_colors,
             ),
         }
 
@@ -129,7 +146,7 @@ class MyApp(MONAILabelApp):
                 publish_path=self.seg_final_model,
                 config={"max_epochs": 10, "train_batch_size": 1},
                 train_save_interval=1,
-                labels=self.labels,
+                labels=self.seg_labels,
                 label_channels=self.label_channels,
             ),
             "deepedit": TrainDeepEdit(
@@ -142,21 +159,10 @@ class MyApp(MONAILabelApp):
                 max_val_interactions=5,
                 val_interval=1,
                 train_save_interval=1,
+                labels=self.deep_labels,
                 label_channels=self.label_channels,
             ),
         }
-
-    def infer(self, request, datastore=None):
-        color_map = copy.deepcopy(self.color_map)
-        color_map.update(request.get("color_map", {}))
-        request["color_map"] = color_map
-        return super().infer(request, datastore)
-
-    def infer_wsi(self, request, datastore=None):
-        color_map = copy.deepcopy(self.color_map)
-        color_map.update(request.get("color_map", {}))
-        request["color_map"] = color_map
-        return super().infer_wsi(request, datastore)
 
 
 """
@@ -239,7 +245,7 @@ def infer_wsi(app):
     res = app.infer_wsi(
         request={
             "model": "deepedit",  # deepedit, segmentation
-            "image": image,
+            "image": image,  # image, image_np
             "output": output,
             "logging": "error",
             "level": 0,

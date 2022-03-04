@@ -42,8 +42,10 @@ class InferSegmentation(InferTask):
         type=InferType.SEGMENTATION,
         labels=None,
         dimension=2,
+        label_colors=None,
         description="A pre-trained semantic segmentation model for Pathology",
     ):
+        self.label_colors = label_colors
         super().__init__(
             path=path,
             network=network,
@@ -52,6 +54,7 @@ class InferSegmentation(InferTask):
             labels=labels,
             dimension=dimension,
             description=description,
+            config={"label_colors": label_colors},
         )
 
     def info(self) -> Dict[str, Any]:
@@ -70,11 +73,8 @@ class InferSegmentation(InferTask):
 
     def post_transforms(self, data=None) -> Sequence[Callable]:
         return [
-            Activationsd(keys="pred", softmax=True),
-            AsDiscreted(
-                keys="pred",
-                argmax=True,
-            ),
+            Activationsd(keys="pred", softmax=len(self.labels) > 1, sigmoid=len(self.labels) == 1),
+            AsDiscreted(keys="pred", argmax=len(self.labels) > 1, threshold=0.5 if len(self.labels) == 1 else None),
             SqueezeDimd(keys="pred", dim=0),
             ToNumpyd(keys=("image", "pred")),
             PostFilterLabeld(keys="pred", image="image"),

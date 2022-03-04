@@ -46,6 +46,7 @@ class TrainDeepEdit(BasicTrainTask):
         self,
         model_dir,
         network,
+        labels,
         label_channels,
         roi_size=(256, 256),
         max_train_interactions=10,
@@ -54,6 +55,7 @@ class TrainDeepEdit(BasicTrainTask):
         **kwargs,
     ):
         self._network = network
+        self.labels = (labels,)
         self.label_channels = label_channels
         self.roi_size = roi_size
         self.max_train_interactions = max_train_interactions

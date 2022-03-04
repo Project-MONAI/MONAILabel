@@ -43,8 +43,10 @@ class InferDeepedit(InferTask):
         type=InferType.DEEPEDIT,
         labels=None,
         dimension=2,
+        label_colors=None,
         description="A pre-trained interaction/deepedit model for Pathology",
     ):
+        self.label_colors = label_colors
         super().__init__(
             path=path,
             network=network,
@@ -53,6 +55,7 @@ class InferDeepedit(InferTask):
             labels=labels,
             dimension=dimension,
             description=description,
+            config={"label_colors": label_colors},
         )
 
     def pre_transforms(self, data=None):
