@@ -74,7 +74,7 @@ class DSADatastore(Datastore):
                 files = self.gc.get(f"/assetstore/{asset}/files", parameters={"limit": 0})
                 for f in files:
                     if f["itemId"] == image_id:
-                        return os.path.join(self.asset_store_path, f["path"])
+                        return str(os.path.join(self.asset_store_path, f["path"]))
 
         return f"{self.api_url}/item/{image_id}"
 
@@ -85,7 +85,7 @@ class DSADatastore(Datastore):
         return f"{self.api_url}/annotation/item/{label_id}"
 
     def get_image_info(self, image_id: str) -> Dict[str, Any]:
-        return self.gc.getItem(image_id)
+        return self.gc.getItem(image_id)  # type: ignore
 
     def get_label_info(self, label_id: str, label_tag: str) -> Dict[str, Any]:
         return {}

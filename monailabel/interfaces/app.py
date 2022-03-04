@@ -132,7 +132,7 @@ class MONAILabelApp:
             auto_reload=settings.MONAI_LABEL_DATASTORE_AUTO_RELOAD,
         )
 
-    def init_remote_datastore(self):
+    def init_remote_datastore(self) -> Datastore:
         logger.info(f"Using DICOM WEB: {self.studies}")
         dw_session = None
         if settings.MONAI_LABEL_DICOMWEB_USERNAME and settings.MONAI_LABEL_DICOMWEB_PASSWORD:

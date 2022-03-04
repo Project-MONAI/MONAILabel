@@ -212,6 +212,7 @@ def main():
                 "val_batch_size": 12,
                 "multi_gpu": True,
                 "val_split": 0.1,
+                "ds_source": "pannuke",
             },
         )
     else:
