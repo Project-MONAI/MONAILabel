@@ -14,6 +14,7 @@ import logging
 import os
 import tempfile
 import time
+from pathlib import Path
 
 import large_image
 import numpy as np
@@ -29,7 +30,7 @@ def run_monailabel_task(slide_path, level, location, size, tile_position, args, 
     logging.info(f"Run MONAILabel Task... and collect the annotations: {location} => {size}")
 
     client = MONAILabelClient(server_url=args.server)
-    image = os.path.basename(slide_path).replace(".svs", "").replace(".tif", "")
+    image = Path(os.path.basename(slide_path)).stem
     tile_size = [int(args.analysis_tile_size), int(args.analysis_tile_size)]
     min_poly_area = args.min_poly_area
     output = "dsa"

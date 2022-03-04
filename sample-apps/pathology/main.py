@@ -19,7 +19,9 @@ from typing import Dict
 from lib import InferDeepedit, InferSegmentation, TrainDeepEdit, TrainSegmentation
 from monai.networks.nets import BasicUNet
 
+from monailabel.datastore.dsa import DSADatastore
 from monailabel.interfaces.app import MONAILabelApp
+from monailabel.interfaces.datastore import Datastore
 from monailabel.interfaces.tasks.infer import InferTask
 from monailabel.interfaces.tasks.train import TrainTask
 
@@ -95,6 +97,18 @@ class MyApp(MONAILabelApp):
             name="pathology",
             description="Active Learning solution for Nuclei Instance Segmentation",
         )
+
+    def init_remote_datastore(self) -> Datastore:
+        # http://0.0.0.0:8080/api/v1
+        logger.info(f"Using DSA Server: {self.studies}")
+
+        folder = self.conf.get("folder", "621e94e2b6881a7a4bef5170")
+        annotation_groups = self.conf.get("groups", None)
+        api_key = self.conf.get("api_key", "OJDE9hjuOIS6R8oEqhnVYHUpRpk18NfJABMt36dJ")
+        asset_store_path = self.conf.get(
+            "asset_store_path", "/localhome/sachi/Projects/digital_slide_archive/devops/dsa/assetstore"
+        )
+        return DSADatastore(self.studies, folder, api_key, annotation_groups, asset_store_path)
 
     def init_infers(self) -> Dict[str, InferTask]:
         return {

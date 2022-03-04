@@ -55,7 +55,18 @@ class LoadImagePatchd(MapTransform):
             # Model input size
             tile_size = d.get("tile_size", size)
 
-            if ext in (".bif", ".mrxs", ".ndpi", ".scn", ".svs", ".svslide", ".tif", ".tiff", ".vms", ".vmu"):
+            if not ext or ext in (
+                ".bif",
+                ".mrxs",
+                ".ndpi",
+                ".scn",
+                ".svs",
+                ".svslide",
+                ".tif",
+                ".tiff",
+                ".vms",
+                ".vmu",
+            ):
                 slide = openslide.OpenSlide(name)
                 size = size if size else slide.dimensions
                 img = slide.read_region(location, level, size)
