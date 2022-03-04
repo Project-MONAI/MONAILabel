@@ -38,8 +38,8 @@ class DSADatastore(Datastore):
         return [
             {
                 "api_url": self.api_url,
-                "image": self.get_image_uri(image_id),
-                "label": self.get_label_uri(image_id, DefaultLabelTag.FINAL.name),
+                "image": image_id,
+                "label": image_id,
                 "groups": self.annotation_groups,
             }
             for image_id in self.get_labeled_images()
@@ -192,6 +192,7 @@ def main():
 
     print(f"Dataset for Training: \n{json.dumps(ds.datalist(), indent=2)}")
 
+    # http://0.0.0.0:8080/api/v1/item/621e9513b6881a7a4bef517d/tiles/region?left=7102&top=15020&regionWidth=1730&regionHeight=981&units=base_pixels&encoding=PNG
     # http://0.0.0.0:8080/api/v1/item/621e9513b6881a7a4bef517d/tiles/region
     # parameters = {
     #     "left": 6674,
@@ -200,9 +201,7 @@ def main():
     #     "regionHeight": 616,
     #     "units": "base_pixels",
     #     "exact": False,
-    #     "encoding": "JPEG",
-    #     "jpegQuality": 95,
-    #     "jpegSubsampling": 0,
+    #     "encoding": "PNG",
     # }
 
 

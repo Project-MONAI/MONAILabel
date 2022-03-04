@@ -107,8 +107,9 @@ class EncodeLabelChannelsd(MapTransform):
             mask = d[key]
             img = np.zeros((mask.shape[0], mask.shape[1]))
             for idx, name in self.label_channels:
-                m = mask[:, :, idx]
-                img[m > 0] = self.labels[name]
+                if idx > mask.shape[2]:
+                    m = mask[:, :, idx]
+                    img[m > 0] = self.labels[name]
 
             d[key] = img[np.newaxis]
         return d
@@ -127,7 +128,8 @@ class MergeLabelChannelsd(MapTransform):
             img = np.zeros((mask.shape[0], mask.shape[1]))
 
             for idx in self.label_channels:
-                img = np.logical_or(img, mask[:, :, idx])
+                if idx > mask.shape[2]:
+                    img = np.logical_or(img, mask[:, :, idx])
             d[key] = img[np.newaxis]
         return d
 
