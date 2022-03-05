@@ -5,6 +5,8 @@ RUN python -m pip install histomicstk --find-links https://girder.github.io/larg
 ADD . /opt/monailabel/dsa
 WORKDIR /opt/monailabel/dsa/cli
 
+ENV PYTHONPATH=$PYTHONPATH:/opt/monailabel/dsa
+
 RUN python -m slicer_cli_web.cli_list_entrypoint --list_cli
 RUN python -m slicer_cli_web.cli_list_entrypoint MONAILabel --help
 

@@ -18,7 +18,7 @@ from pathlib import Path
 
 import large_image
 import numpy as np
-from client import MONAILabelClient
+from cli.client import MONAILabelClient
 from histomicstk.cli import utils as cli_utils
 from histomicstk.cli.utils import CLIArgumentParser
 from histomicstk.utils import compute_tile_foreground_fraction

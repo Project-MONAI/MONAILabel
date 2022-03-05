@@ -1,8 +1,8 @@
 <?xml version="1.0" encoding="UTF-8"?>
 <executable>
   <category>HistomicsTK</category>
-  <title>MONAILabel Plugin</title>
-  <description>Active Learning Solution using MONAILabel Features</description>
+  <title>MONAILabel Annotations</title>
+  <description>Annotations using MONAILabel</description>
   <version>0.1.0</version>
   <documentation-url>https://digitalslidearchive.github.io/HistomicsTK</documentation-url>
   <license>Apache 2.0</license>
