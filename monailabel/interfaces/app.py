@@ -53,7 +53,7 @@ class MONAILabelApp:
     Default Pre-trained Path for downloading models
     """
 
-    PRE_TRAINED_PATH: str = "https://github.com/Project-MONAI/MONAILabel/releases/download/data/"
+    PRE_TRAINED_PATH: str = "https://github.com/Project-MONAI/MONAILabel/releases/download/data"
 
     def __init__(
         self,
@@ -121,13 +121,7 @@ class MONAILabelApp:
         logger.info(f"Init Datastore for: {self.studies}")
         if self.studies.startswith("http://") or self.studies.startswith("https://"):
             self.studies = self.studies.rstrip("/").strip()
-            logger.info(f"Using DICOM WEB: {self.studies}")
-
-            dw_session = None
-            if settings.MONAI_LABEL_DICOMWEB_USERNAME and settings.MONAI_LABEL_DICOMWEB_PASSWORD:
-                dw_session = create_session_from_user_pass(
-                    settings.MONAI_LABEL_DICOMWEB_USERNAME, settings.MONAI_LABEL_DICOMWEB_PASSWORD
-                )
+            return self.init_remote_datastore()
 
             dw_client = DICOMwebClientX(
                 url=self.studies,
@@ -150,6 +144,31 @@ class MONAILabelApp:
             self.studies,
             extensions=settings.MONAI_LABEL_DATASTORE_FILE_EXT,
             auto_reload=settings.MONAI_LABEL_DATASTORE_AUTO_RELOAD,
+        )
+
+    def init_remote_datastore(self) -> Datastore:
+        logger.info(f"Using DICOM WEB: {self.studies}")
+        dw_session = None
+        if settings.MONAI_LABEL_DICOMWEB_USERNAME and settings.MONAI_LABEL_DICOMWEB_PASSWORD:
+            dw_session = create_session_from_user_pass(
+                settings.MONAI_LABEL_DICOMWEB_USERNAME, settings.MONAI_LABEL_DICOMWEB_PASSWORD
+            )
+
+        dw_client = DICOMwebClientX(
+            url=self.studies,
+            session=dw_session,
+            qido_url_prefix=settings.MONAI_LABEL_QIDO_PREFIX,
+            wado_url_prefix=settings.MONAI_LABEL_WADO_PREFIX,
+            stow_url_prefix=settings.MONAI_LABEL_STOW_PREFIX,
+        )
+
+        cache_path = settings.MONAI_LABEL_DICOMWEB_CACHE_PATH
+        cache_path = cache_path.strip() if cache_path else ""
+        fetch_by_frame = settings.MONAI_LABEL_DICOMWEB_FETCH_BY_FRAME
+        return (
+            DICOMWebDatastore(dw_client, cache_path, fetch_by_frame=fetch_by_frame)
+            if cache_path
+            else DICOMWebDatastore(dw_client, fetch_by_frame=fetch_by_frame)
         )
 
     def info(self):

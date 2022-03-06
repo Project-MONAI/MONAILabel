@@ -97,7 +97,9 @@ class MyApp(MONAILabelApp):
         self.planner = HeuristicPlanner(spatial_size=spatial_size, target_spacing=target_spacing)
 
         use_pretrained_model = strtobool(conf.get("use_pretrained_model", "true"))
-        pretrained_model_uri = conf.get("pretrained_model_path", f"{self.PRE_TRAINED_PATH}deepedit_{network}_spleen.pt")
+        pretrained_model_uri = conf.get(
+            "pretrained_model_path", f"{self.PRE_TRAINED_PATH}/deepedit_{network}_spleen.pt"
+        )
 
         # Path to pretrained weights
         if use_pretrained_model:

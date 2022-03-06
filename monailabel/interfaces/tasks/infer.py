@@ -17,6 +17,7 @@ from abc import abstractmethod
 from typing import Any, Callable, Dict, Sequence, Tuple, Union
 
 import torch
+from monai.inferers import SimpleInferer, SlidingWindowInferer
 
 from monailabel.interfaces.exception import MONAILabelError, MONAILabelException
 from monailabel.interfaces.utils.transform import run_transforms
@@ -68,6 +69,7 @@ class InferTask:
         output_json_key: str = "result",
         config: Union[None, Dict[str, Any]] = None,
         load_strict: bool = False,
+        roi_size=None,
     ):
         """
         :param path: Model File Path. Supports multiple paths to support versions (Last item will be picked as latest)
@@ -81,6 +83,7 @@ class InferTask:
         :param output_json_key: Output key for storing result/label of inference
         :param config: K,V pairs to be part of user config
         :param load_strict: Load model in strict mode
+        :param roi_size: ROI size for scanning window inference
         """
         self.path = path
         self.network = network
@@ -93,6 +96,7 @@ class InferTask:
         self.output_label_key = output_label_key
         self.output_json_key = output_json_key
         self.load_strict = load_strict
+        self.roi_size = roi_size
 
         self._networks: Dict = {}
         self._config: Dict[str, Any] = {
@@ -100,6 +104,9 @@ class InferTask:
             # "result_extension": None,
             # "result_dtype": None,
             # "result_compress": False
+            # "roi_size": self.roi_size,
+            # "sw_batch_size": 1,
+            # "sw_overlap": 0.25,
         }
         if config:
             self._config.update(config)
@@ -200,18 +207,23 @@ class InferTask:
         """
         pass
 
-    @abstractmethod
     def inferer(self, data=None) -> Callable:
-        """
-        Provide Inferer Class
+        input_shape = data[self.input_key].shape if data else None
 
-        :param data: current data dictionary/request which can be helpful to define the inferer per-request basis
+        roi_size = data.get("roi_size", self.roi_size) if data else self.roi_size
+        sw_batch_size = data.get("sw_batch_size", 1) if data else 1
+        sw_overlap = data.get("sw_overlap", 0.25) if data else 0.25
+        device = data.get("device")
 
-            For Example::
-
-                return monai.inferers.SlidingWindowInferer(roi_size=[160, 160, 160])
-        """
-        pass
+        if input_shape and (input_shape[-1] > roi_size[-1] or input_shape[-2] > roi_size[-2]):
+            return SlidingWindowInferer(
+                roi_size=roi_size,
+                overlap=sw_overlap,
+                sw_batch_size=sw_batch_size,
+                sw_device=device,
+                device=device,
+            )
+        return SimpleInferer()
 
     def __call__(self, request) -> Tuple[str, Dict[str, Any]]:
         """
@@ -225,7 +237,7 @@ class InferTask:
         """
         begin = time.time()
         req = copy.deepcopy(self._config)
-        req.update(copy.deepcopy(request))
+        req.update(request)
 
         # device
         device = req.get("device", "cuda")
@@ -233,9 +245,11 @@ class InferTask:
         logger.setLevel(req.get("logging", "INFO").upper())
         logger.info(f"Infer Request (final): {req}")
 
-        data = copy.deepcopy(req)
         if req.get("image") and isinstance(req.get("image"), str):
+            data = copy.deepcopy(req)
             data.update({"image_path": req.get("image")})
+        else:
+            data = req
 
         start = time.time()
         pre_transforms = self.pre_transforms(data)
