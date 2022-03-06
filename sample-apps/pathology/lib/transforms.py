@@ -217,7 +217,9 @@ class FindContoursd(MapTransform):
         labels = labels if labels else dict()
         labels = [labels] if isinstance(labels, str) else labels
         if not isinstance(labels, dict):
-            labels = {k + 1: v for k, v in enumerate(labels)}
+            labels = {v: k + 1 for k, v in enumerate(labels)}
+
+        labels = {v: k for k, v in labels.items()}
         self.labels = labels
 
     def __call__(self, data):
