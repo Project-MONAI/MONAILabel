@@ -91,16 +91,20 @@ class MyApp(MONAILabelApp):
         )
 
     def init_remote_datastore(self) -> Datastore:
-        # http://0.0.0.0:8080/api/v1
-        logger.info(f"Using DSA Server: {self.studies}")
+        '''
+        -s http://0.0.0.0:8080/api/v1
+        -c dsa_folder 621e94e2b6881a7a4bef5170
+        -c dsa_api_key OJDE9hjuOIS6R8oEqhnVYHUpRpk18NfJABMt36dJ
+        -c dsa_asset_store_path /localhome/sachi/Projects/digital_slide_archive/devops/dsa/assetstore
+        '''
 
-        folder = self.conf.get("folder", "621e94e2b6881a7a4bef5170")
-        annotation_groups = self.conf.get("groups", None)
-        api_key = self.conf.get("api_key", "OJDE9hjuOIS6R8oEqhnVYHUpRpk18NfJABMt36dJ")
-        asset_store_path = self.conf.get(
-            "asset_store_path", "/localhome/sachi/Projects/digital_slide_archive/devops/dsa/assetstore"
-        )
-        return DSADatastore(self.studies, folder, api_key, annotation_groups, asset_store_path)
+        logger.info(f"Using DSA Server: {self.studies}")
+        folder = self.conf.get("dsa_folder")
+        annotation_groups = self.conf.get("dsa_groups", None)
+        api_key = self.conf.get("dsa_api_key")
+        asset_store_path = self.conf.get("dsa_asset_store_path")
+
+        return DSADatastore(api_url=self.studies, folder=folder, api_key=api_key, annotation_groups=annotation_groups, asset_store_path=asset_store_path)
 
     def init_infers(self) -> Dict[str, InferTask]:
         return {

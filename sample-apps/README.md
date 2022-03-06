@@ -25,7 +25,7 @@ Users that want to work on multiple label segmentation tasks, please refer to th
 As the deepgrow and deepedit Apps, researchers can try the non-interactive Apps for [spleen](./segmentation_spleen) and [left atrium](./segmentation_left_atrium) using UNet. There is also the generic segmentation App that researchers can clone to create their own App. 
 
 
-More examples of these Apps can be found in the [MONAI Label Apps Zoo](https://github.com/diazandr3s/MONAILabel-Apps)
+More examples of these Apps can be found in the [MONAI Label Apps Zoo](https://github.com/Project-MONAI/MONAILabel/tree/apps/sample-apps)
 
 
 

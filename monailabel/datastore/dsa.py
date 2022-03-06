@@ -18,6 +18,12 @@ class DSADatastore(Datastore):
         self.annotation_groups = [a.lower() if a else a for a in annotation_groups] if annotation_groups else []
         self.asset_store_path = asset_store_path
 
+        logger.info(f"DSA:: Api Url: {api_url}")
+        logger.info(f"DSA:: Api Key: {'*' * len(api_key) if api_key else ''}")
+        logger.info(f"DSA:: Folder (Images): {folder}")
+        logger.info(f"DSA:: Annotation Groups: {annotation_groups}")
+        logger.info(f"DSA:: Local Asset Store Path: {asset_store_path}")
+
         self.gc = girder_client.GirderClient(apiUrl=api_url)
         if api_key:
             self.gc.authenticate(apiKey=api_key)

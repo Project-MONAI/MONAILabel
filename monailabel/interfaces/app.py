@@ -608,9 +608,12 @@ class MONAILabelApp:
         logger.info(f"WSI Infer Request (final): {request}")
         infer_tasks = self._create_infer_wsi_tasks(request, image)
         logger.debug(f"Total WSI Tasks: {len(infer_tasks)}")
+        request["logging"] = request.get("logging", "WARNING" if len(infer_tasks) > 1 else "INFO")
 
         res_json = {"tasks": {}}
         for t in infer_tasks:
+            t["logging"] = request["logging"]
+
             tid = t["id"]
             res = self._run_infer_wsi_task(t)
             res_json["tasks"][tid] = res
@@ -660,7 +663,6 @@ class MONAILabelApp:
 
         req = copy.deepcopy(task)
         req["result_write_to_file"] = False
-        req["logging"] = req.get("logging", "WARNING")
 
         res = self.infer(req)
         return res.get("params", {})

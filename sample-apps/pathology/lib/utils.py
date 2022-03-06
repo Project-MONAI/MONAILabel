@@ -261,7 +261,7 @@ def main_nuke():
     )
 
     datastore = LocalDatastore("/localhome/sachi/Data/Pathology/PanNuke", extensions=("*.nii.gz", "*.nii", "*.npy"))
-    split_dataset(datastore, "/localhome/sachi/Data/Pathology/PanNukeFMin", "pannuke", "Nuclei", None)
+    split_dataset(datastore, "/localhome/sachi/Data/Pathology/PanNukeF", "pannuke", "Nuclei", None)
 
 
 if __name__ == "__main__":
