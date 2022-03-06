@@ -36,7 +36,7 @@ class WSIInput(BaseModel):
     level: Optional[int] = Field(0, title="Resolution Level")
     location: Optional[Sequence[int]] = Field([0, 0], title="Location of Region")
     size: Optional[Sequence[int]] = Field([2048, 2048], title="Size of Region")
-    tile_size: Optional[Sequence[int]] = Field([2048, 2048], title="Tile size")
+    tile_size: Optional[Sequence[int]] = Field([1024, 1024], title="Tile size")
     min_poly_area: Optional[int] = Field(80, title="Min Area to filter mask polygons")
     params: Optional[dict] = Field({}, title="Additional Params")
 
