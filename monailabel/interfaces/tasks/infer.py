@@ -215,7 +215,13 @@ class InferTask:
         sw_overlap = data.get("sw_overlap", 0.25) if data else 0.25
         device = data.get("device")
 
-        if input_shape and (input_shape[-1] > roi_size[-1] or input_shape[-2] > roi_size[-2]):
+        sliding = False
+        if input_shape and roi_size:
+            for i in range(len(roi_size)):
+                if input_shape[-i] > roi_size[-i]:
+                    sliding = True
+
+        if sliding:
             return SlidingWindowInferer(
                 roi_size=roi_size,
                 overlap=sw_overlap,
