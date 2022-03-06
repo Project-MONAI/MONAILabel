@@ -1,117 +1,120 @@
 <?xml version="1.0" encoding="UTF-8"?>
 <executable>
-  <category>HistomicsTK</category>
-  <title>MONAILabel Training</title>
-  <description>Annotations using MONAILabel</description>
-  <version>0.1.0</version>
-  <documentation-url>https://digitalslidearchive.github.io/HistomicsTK</documentation-url>
-  <license>Apache 2.0</license>
-  <contributor>Sachidanand Alle (NVIDIA)</contributor>
-  <acknowledgements>This work is part of the HistomicsTK/MONAILabel project.</acknowledgements>
-  <parameters>
-    <label>I/O</label>
-    <description>Input/output parameters.</description>
-    <string>
-      <name>server</name>
-      <label>MONAILabel Address</label>
-      <description>Address of a monailabel address in the format 'http://127.0.0.1:8000/'.</description>
-      <longflag>server</longflag>
-      <default>http://10.117.18.128:8000/</default>
-    </string>
-    <string-enumeration>
-      <name>model_name</name>
-      <label>Annotation Model</label>
-      <description>DeepLearning Model</description>
-      <longflag>model_name</longflag>
-      <element>segmentation</element>
-      <element>deepedit</element>
-      <default>deepedit</default>
-    </string-enumeration>
-  <parameters advanced="true">
-    <label>Training</label>
-    <description>Train parameters</description>
-    <string>
-      <name>train_name</name>
-      <label>Train Task</label>
-      <description>Training Task Name where all model and stats will be saved</description>
-      <longflag>train_name</longflag>
-      <default>model_01</default>
-    </string>
-    <int>
-      <name>max_epochs</name>
-      <label>Max Epochs</label>
-      <description>Maximum Number of Train Epochs</description>
-      <longflag>max_epochs</longflag>
-      <default>10</default>
-    </int>
-    <string-enumeration>
-      <name>dataset</name>
-      <label>Dataset</label>
-      <description>Dataset</description>
-      <longflag>dataset</longflag>
-      <element>CacheDataset</element>
-      <element>PersistentDataset</element>
-      <default>CacheDataset</default>
-    </string-enumeration>
-    <int>
-      <name>train_batch_size</name>
-      <label>Train Batch Size</label>
-      <description>Batch size for training</description>
-      <longflag>train_batch_size</longflag>
-      <default>16</default>
-    </int>
-    <int>
-      <name>val_batch_size</name>
-      <label>Validation Batch Size</label>
-      <description>Batch size for validation</description>
-      <longflag>val_batch_size</longflag>
-      <default>12</default>
-    </int>
-    <int>
-      <name>val_split</name>
-      <label>Validation Split</label>
-      <description>Split Ratio for validation</description>
-      <longflag>val_split</longflag>
-      <default>0.1</default>
-    </int>
-    <int>
-      <name>tile_size</name>
-      <label>Tile Size</label>
-      <description>Tile size for training</description>
-      <longflag>tile_size</longflag>
-      <default>256</default>
-    </int>
-    <boolean>
-      <name>multi_gpu</name>
-      <label>Use Multi GPU</label>
-      <description>Use Multi GPU</description>
-      <longflag>multi_gpu</longflag>
-      <default>true</default>
-    </boolean>
-  </parameters>
-  <parameters advanced="true">
-    <label>Dask parameters</label>
-    <description>Dask parameters</description>
-    <string>
-      <name>scheduler</name>
-      <label>Scheduler Address</label>
-      <description>Address of a dask scheduler in the format '127.0.0.1:8786'.  Not passing this parameter sets up a dask cluster on the local machine.  'multiprocessing' uses Python multiprocessing.  'multithreading' uses Python multiprocessing in threaded mode.</description>
-      <longflag>scheduler</longflag>
-      <default></default>
-    </string>
-    <integer>
-      <name>num_workers</name>
-      <label>Number of workers</label>
-      <description>Number of dask workers to start while setting up a local cluster internally. If a negative value is specified then the number of workers is set to number of cpu cores on the machine minus the number of workers specified.</description>
-      <longflag>num_workers</longflag>
-      <default>1</default>
-    </integer>
-      <integer>
-      <name>num_threads_per_worker</name>
-      <label>Number of threads per worker</label>
-      <description>Number of threads to use per worker while setting up a local cluster internally. Must be a positive integer >= 1.</description>
-      <longflag>num_threads_per_worker</longflag>
-      <default>1</default>
-    </integer>
-  </parameters>
+    <category>HistomicsTK</category>
+    <title>MONAILabel Training</title>
+    <description>Annotations using MONAILabel</description>
+    <version>0.1.0</version>
+    <documentation-url>https://digitalslidearchive.github.io/HistomicsTK</documentation-url>
+    <license>Apache 2.0</license>
+    <contributor>Sachidanand Alle (NVIDIA)</contributor>
+    <acknowledgements>This work is part of the HistomicsTK/MONAILabel project.</acknowledgements>
+    <parameters>
+        <label>I/O</label>
+        <description>Input/output parameters.</description>
+        <string>
+            <name>server</name>
+            <label>MONAILabel Address</label>
+            <description>Address of a monailabel address in the format 'http://127.0.0.1:8000/'.</description>
+            <longflag>server</longflag>
+            <default>http://10.117.18.128:8000/</default>
+        </string>
+        <string>
+            <name>model_name</name>
+            <label>Model Name</label>
+            <description>DeepLearning Model to Train/Finetune (For Example: deepedit, segmentation)</description>
+            <longflag>model_name</longflag>
+            <default>deepedit</default>
+        </string>
+    </parameters>
+    <parameters advanced="true">
+        <label>Training</label>
+        <description>Train parameters</description>
+        <string>
+            <name>train_name</name>
+            <label>Train Task</label>
+            <description>Training Task Name where all model and stats will be saved</description>
+            <longflag>train_name</longflag>
+            <default>model_01</default>
+        </string>
+        <integer>
+            <name>max_epochs</name>
+            <label>Max Epochs</label>
+            <description>Maximum Number of Train Epochs</description>
+            <longflag>max_epochs</longflag>
+            <default>10</default>
+        </integer>
+        <string-enumeration>
+            <name>dataset</name>
+            <label>Dataset</label>
+            <description>Dataset</description>
+            <longflag>dataset</longflag>
+            <element>CacheDataset</element>
+            <element>PersistentDataset</element>
+            <default>CacheDataset</default>
+        </string-enumeration>
+        <integer>
+            <name>train_batch_size</name>
+            <label>Train Batch Size</label>
+            <description>Batch size for training</description>
+            <longflag>train_batch_size</longflag>
+            <default>16</default>
+        </integer>
+        <integer>
+            <name>val_batch_size</name>
+            <label>Validation Batch Size</label>
+            <description>Batch size for validation</description>
+            <longflag>val_batch_size</longflag>
+            <default>12</default>
+        </integer>
+        <double>
+            <name>val_split</name>
+            <label>Validation Split</label>
+            <description>Split Ratio for validation</description>
+            <longflag>val_split</longflag>
+            <default>0.1</default>
+        </double>
+        <boolean>
+            <name>stop_previous</name>
+            <label>Stop Previous Training</label>
+            <description>Stop Any previously running Training Task</description>
+            <longflag>stop_previous</longflag>
+            <default>true</default>
+        </boolean>
+        <string>
+            <name>extra_params</name>
+            <label>Extra Params (JSON)</label>
+            <description>Extra/Other Config Parameters defined by MONAILabel training task</description>
+            <longflag>extra_params</longflag>
+            <default>{}</default>
+        </string>
+    </parameters>
+    <parameters advanced="true">
+        <label>Training Dataset</label>
+        <description>Training Dataset Preparation parameters</description>
+        <integer>
+            <name>dataset_limit</name>
+            <label>Limit Images</label>
+            <description>Maximum Number of Images allowed to fetch, in order to prevent accidentally running on
+                too large set of Images. Use -1 for no limit
+            </description>
+            <longflag>dataset_limit</longflag>
+            <default>-1</default>
+        </integer>
+        <boolean>
+            <name>dataset_randomize</name>
+            <label>Random Images</label>
+            <description>Pick Random Images when List of Images to be used for Training is limited</description>
+            <longflag>dataset_randomize</longflag>
+            <default>true</default>
+        </boolean>
+        <integer>
+            <name>dataset_max_region</name>
+            <label>Maximum region size</label>
+            <description>Maximum Region Size allowed when fetching an image, in order to prevent accidentally running on
+                too large a region
+            </description>
+            <longflag>dataset_max_region</longflag>
+            <default>10240</default>
+        </integer>
+    </parameters>
 </executable>

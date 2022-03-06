@@ -8,7 +8,7 @@
 # WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 # See the License for the specific language governing permissions and
 # limitations under the License.
-
+import json
 import logging
 import time
 
@@ -28,21 +28,25 @@ def main(args):
     start_time = time.time()
     params = {
         "name": args.train_name,
-        "model": args.model,
         "max_epochs": args.max_epochs,
         "dataset": args.dataset,
         "train_batch_size": args.train_batch_size,
         "val_batch_size": args.val_batch_size,
-        "multi_gpu": args.multi_gpu,
         "val_split": args.val_split,
+        "dataset_limit": args.dataset_limit,
+        "dataset_max_region": args.dataset_max_region,
+        "dataset_randomize": args.dataset_randomize,
     }
+    extra_params = json.loads(args.extra_params)
+    params.update(extra_params)
 
     client = MONAILabelClient(server_url=args.server)
-    print("Will stop any previous running tasks...")
-    client.train_stop()
+    if args.stop_previous:
+        print("Will stop any previous running tasks...")
+        client.train_stop()
 
-    print("Trigger new Training job...")
-    client.train_start(args.model, params)
+    print("Trigger Training job...")
+    client.train_start(model=args.model_name, params=params)
 
     total_time_taken = time.time() - start_time
     print("Training Job Triggered/Started = {}".format(cli_utils.disp_time_hms(total_time_taken)))

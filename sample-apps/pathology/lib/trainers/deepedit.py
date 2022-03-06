@@ -74,8 +74,19 @@ class TrainDeepEdit(BasicTrainTask):
         self.cleanup(request)
 
         cache_dir = os.path.join(self.get_cache_dir(request), "train_ds")
-        source = request.get("dataset_source", "pannuke")
-        return split_dataset(datastore, cache_dir, source, self.labels, self.roi_size)
+        source = request.get("dataset_source")
+        max_region = request.get("dataset_max_region", (10240, 10240))
+        max_region = (max_region, max_region) if isinstance(max_region, int) else max_region[:2]
+        return split_dataset(
+            datastore=datastore,
+            cache_dir=cache_dir,
+            source=source,
+            groups=self.labels,
+            tile_size=self.roi_size,
+            max_region=max_region,
+            limit=request.get("dataset_limit", 0),
+            randomize=request.get("dataset_randomize", True),
+        )
 
     def get_click_transforms(self, context: Context):
         return [

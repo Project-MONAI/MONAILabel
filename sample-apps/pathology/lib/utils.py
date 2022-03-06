@@ -204,7 +204,7 @@ def split_dataset(datastore, cache_dir, source, groups, tile_size, max_region=(1
     shutil.rmtree(cache_dir, ignore_errors=True)
 
     if isinstance(datastore, DSADatastore):
-        logger.info(f"Split data based on tile size: {tile_size}")
+        logger.info(f"DSA:: Split data based on tile size: {tile_size}; groups: {groups}")
         ds_new = []
         count = 0
         if limit > 0:
@@ -218,6 +218,7 @@ def split_dataset(datastore, cache_dir, source, groups, tile_size, max_region=(1
     elif source == "pannuke":
         image = np.load(ds[0]["image"]) if len(ds) == 1 else None
         if image is not None and len(image.shape) > 3:
+            logger.info(f"PANNuke (For Developer Mode only):: Split data; groups: {groups}")
             ds = split_pannuke_dataset(ds[0]["image"], ds[0]["label"], cache_dir, groups)
 
     logger.info("+++ Total Records: {}".format(len(ds)))

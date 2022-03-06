@@ -13,6 +13,7 @@ label_color_map: Dict[str, Any] = dict()
 
 def get_color(label, color_map, hex=False):
     color = color_map.get(label) if color_map else None
+    color = color if color else color_map.get(label.lower()) if color_map else None
     color = label_color_map.get(label) if not color else color
     if color is None:
         color = [random.randint(0, 255) for _ in range(3)]
@@ -36,7 +37,7 @@ def create_dsa_annotations_json(
             labels.add(label)
 
             color = get_color(label, color_map)
-            logger.debug(f"Adding Contours for label: {label}; color: {color}")
+            logger.info(f"Adding Contours for label: {label}; color: {color}; color_map: {color_map}")
 
             contours = v["contours"]
             for contour in contours:

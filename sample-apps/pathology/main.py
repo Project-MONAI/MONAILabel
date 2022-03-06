@@ -119,13 +119,20 @@ class MyApp(MONAILabelApp):
         }
 
     def init_trainers(self) -> Dict[str, TrainTask]:
+        config = {
+            "max_epochs": 10,
+            "train_batch_size": 1,
+            "dataset_max_region": (10240, 10240),
+            "dataset_limit": 0,
+            "dataset_randomize": True,
+        }
         return {
             "segmentation": TrainSegmentation(
                 model_dir=os.path.join(self.model_dir, "segmentation"),
                 network=self.seg_network,
                 load_path=self.seg_pretrained_model,
                 publish_path=self.seg_final_model,
-                config={"max_epochs": 10, "train_batch_size": 1},
+                config=config,
                 train_save_interval=1,
                 labels=self.seg_labels,
             ),
@@ -134,7 +141,7 @@ class MyApp(MONAILabelApp):
                 network=self.deepedit_network,
                 load_path=self.deepedit_pretrained_model,
                 publish_path=self.deepedit_final_model,
-                config={"max_epochs": 10, "train_batch_size": 1},
+                config=config,
                 max_train_interactions=10,
                 max_val_interactions=5,
                 val_interval=1,
@@ -169,7 +176,8 @@ def main():
     run_train = True
     home = str(Path.home())
     if run_train:
-        studies = f"{home}/Data/Pathology/PanNuke"
+        # studies = f"{home}/Data/Pathology/PanNuke"
+        studies = "http://0.0.0.0:8080/api/v1"
     else:
         studies = f"{home}/Data/Pathology/Test"
 
@@ -191,7 +199,7 @@ def main():
             request={
                 "name": "model_01",
                 "model": model,
-                "max_epochs": 100 if model == "deepedit" else 300,
+                "max_epochs": 10 if model == "deepedit" else 30,
                 "dataset": "CacheDataset",  # PersistentDataset, CacheDataset
                 "train_batch_size": 16,
                 "val_batch_size": 12,

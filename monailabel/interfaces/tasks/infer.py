@@ -237,7 +237,7 @@ class InferTask:
         """
         begin = time.time()
         req = copy.deepcopy(self._config)
-        req.update(copy.deepcopy(request))
+        req.update(request)
 
         # device
         device = req.get("device", "cuda")
@@ -245,9 +245,11 @@ class InferTask:
         logger.setLevel(req.get("logging", "INFO").upper())
         logger.info(f"Infer Request (final): {req}")
 
-        data = copy.deepcopy(req)
         if req.get("image") and isinstance(req.get("image"), str):
+            data = copy.deepcopy(req)
             data.update({"image_path": req.get("image")})
+        else:
+            data = req
 
         start = time.time()
         pre_transforms = self.pre_transforms(data)

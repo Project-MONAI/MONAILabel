@@ -10,7 +10,7 @@
 # limitations under the License.
 
 import logging
-from typing import Callable, Sequence
+from typing import Any, Callable, Dict, Sequence
 
 import numpy as np
 from lib.transforms import AddClickGuidanced, FilterImaged, FindContoursd, LoadImagePatchd, PostFilterLabeld
@@ -26,6 +26,7 @@ from monai.transforms import (
 )
 
 from monailabel.interfaces.tasks.infer import InferTask, InferType
+from monailabel.transform.writer import PolygonWriter
 
 logger = logging.getLogger(__name__)
 
@@ -58,6 +59,11 @@ class InferDeepedit(InferTask):
             config={"label_colors": label_colors},
         )
 
+    def info(self) -> Dict[str, Any]:
+        d = super().info()
+        d["pathology"] = True
+        return d
+
     def pre_transforms(self, data=None):
         return [
             LoadImagePatchd(keys="image", conversion="RGB", dtype=np.uint8),
@@ -78,3 +84,7 @@ class InferDeepedit(InferTask):
             PostFilterLabeld(keys="pred", image="image"),
             FindContoursd(keys="pred", labels=self.labels),
         ]
+
+    def writer(self, data, extension=None, dtype=None):
+        writer = PolygonWriter(label=self.output_label_key, json=self.output_json_key)
+        return writer(data)

@@ -1,133 +1,152 @@
 <?xml version="1.0" encoding="UTF-8"?>
 <executable>
-  <category>HistomicsTK</category>
-  <title>MONAILabel Annotations</title>
-  <description>Annotations using MONAILabel</description>
-  <version>0.1.0</version>
-  <documentation-url>https://digitalslidearchive.github.io/HistomicsTK</documentation-url>
-  <license>Apache 2.0</license>
-  <contributor>Sachidanand Alle (NVIDIA)</contributor>
-  <acknowledgements>This work is part of the HistomicsTK/MONAILabel project.</acknowledgements>
-  <parameters>
-    <label>I/O</label>
-    <description>Input/output parameters.</description>
-    <image>
-      <name>inputImageFile</name>
-      <label>Input Image</label>
-      <channel>input</channel>
-      <index>0</index>
-      <description>Input image in which to count and classify positive pixels</description>
-    </image>
-    <region>
-      <name>analysis_roi</name>
-      <label>Analysis ROI</label>
-      <description>Region of interest within which the analysis should be done. Must be a four element vector in the format "left, top, width, height" in the space of the base layer. Default value of "-1, -1, -1, -1" indicates that the whole image should be processed.</description>
-      <longflag>analysis_roi</longflag>
-      <default>-1,-1,-1,-1</default>
-    </region>
-    <string>
-      <name>server</name>
-      <label>MONAILabel Address</label>
-      <description>Address of a monailabel address in the format 'http://127.0.0.1:8000/'.</description>
-      <longflag>server</longflag>
-      <default>http://10.117.18.128:8000/</default>
-    </string>
-    <string-enumeration>
-      <name>model_name</name>
-      <label>Annotation Model</label>
-      <description>DeepLearning Model</description>
-      <longflag>model_name</longflag>
-      <element>segmentation</element>
-      <element>deepedit</element>
-      <default>deepedit</default>
-    </string-enumeration>
-    <file fileExtensions=".anot" reference="inputImageFile">
-      <name>outputAnnotationFile</name>
-      <label>Output Annotation File</label>
-      <description>Output annotation file (*.anot)</description>
-      <channel>output</channel>
-      <index>1</index>
-    </file>
-    <float>
-      <name>min_poly_area</name>
-      <label>Min Polygon Area</label>
-      <index>2</index>
-      <description>Filter Polygons based on min area size</description>
-      <default>40</default>
-    </float>
-    <string-enumeration>
-      <name>loglevel</name>
-      <label>Log Level</label>
-      <description>MONAILabel Server Log Level</description>
-      <longflag>loglevel</longflag>
-      <element>INFO</element>
-      <element>WARN</element>
-      <element>ERROR</element>
-      <default>ERROR</default>
-    </string-enumeration>
-  </parameters>
-  <parameters advanced="true">
-    <label>WSI Analysis</label>
-    <description>Whole-slide image analysis (WSI) parameters</description>
-    <boolean>
-      <name>send_image</name>
-      <label>Send Image Data</label>
-      <description>Send Raw Image Numpy to Server (slow)</description>
-      <longflag>send_image</longflag>
-      <default>false</default>
-    </boolean>
-    <double>
-      <name>analysis_tile_size</name>
-      <label>Analysis Tile Size</label>
-      <description>Tile size for blockwise analysis</description>
-      <longflag>analysis_tile_size</longflag>
-      <default>2048</default>
-    </double>
-    <double>
-      <name>analysis_mag</name>
-      <label>Analysis Magnification</label>
-      <description>The magnification at which the analysis should be performed.</description>
-      <longflag>analysis_mag</longflag>
-      <default>40</default>
-    </double>
-    <double>
-      <name>min_fgnd_frac</name>
-      <label>Minimum foreground fraction</label>
-      <description>The minimum amount of foreground that must be present in a tile for it to be analyzed</description>
-      <longflag>min_fgnd_frac</longflag>
-      <default>0.25</default>
-    </double>
-  </parameters>
-  <parameters advanced="true">
-    <label>Dask parameters</label>
-    <description>Dask parameters</description>
-    <string>
-      <name>scheduler</name>
-      <label>Scheduler Address</label>
-      <description>Address of a dask scheduler in the format '127.0.0.1:8786'.  Not passing this parameter sets up a dask cluster on the local machine.  'multiprocessing' uses Python multiprocessing.  'multithreading' uses Python multiprocessing in threaded mode.</description>
-      <longflag>scheduler</longflag>
-      <default></default>
-    </string>
-    <integer>
-      <name>num_workers</name>
-      <label>Number of workers</label>
-      <description>Number of dask workers to start while setting up a local cluster internally. If a negative value is specified then the number of workers is set to number of cpu cores on the machine minus the number of workers specified.</description>
-      <longflag>num_workers</longflag>
-      <default>1</default>
-    </integer>
-      <integer>
-      <name>num_threads_per_worker</name>
-      <label>Number of threads per worker</label>
-      <description>Number of threads to use per worker while setting up a local cluster internally. Must be a positive integer >= 1.</description>
-      <longflag>num_threads_per_worker</longflag>
-      <default>1</default>
-    </integer>
-    <integer>
-      <name>tile_grouping</name>
-      <label>Tile grouping</label>
-      <longflag>tileGrouping</longflag>
-      <description>Number of tiles to process as part of a single task</description>
-      <default>256</default>
-    </integer>
-  </parameters>
+    <category>HistomicsTK</category>
+    <title>MONAILabel Annotations</title>
+    <description>Annotations using MONAILabel</description>
+    <version>0.1.0</version>
+    <documentation-url>https://digitalslidearchive.github.io/HistomicsTK</documentation-url>
+    <license>Apache 2.0</license>
+    <contributor>Sachidanand Alle (NVIDIA)</contributor>
+    <acknowledgements>This work is part of the HistomicsTK/MONAILabel project.</acknowledgements>
+    <parameters>
+        <label>I/O</label>
+        <description>Input/output parameters.</description>
+        <image>
+            <name>inputImageFile</name>
+            <label>Input Image</label>
+            <channel>input</channel>
+            <index>0</index>
+            <description>Input image in which to count and classify positive pixels</description>
+        </image>
+        <region>
+            <name>analysis_roi</name>
+            <label>Analysis ROI</label>
+            <description>Region of interest within which the analysis should be done. Must be a four element vector in
+                the format "left, top, width, height" in the space of the base layer. Default value of "-1, -1, -1, -1"
+                indicates that the whole image should be processed.
+            </description>
+            <longflag>analysis_roi</longflag>
+            <default>-1,-1,-1,-1</default>
+        </region>
+        <string>
+            <name>server</name>
+            <label>MONAILabel Address</label>
+            <description>Address of a monailabel address in the format 'http://127.0.0.1:8000/'.</description>
+            <longflag>server</longflag>
+            <default>http://10.117.18.128:8000/</default>
+        </string>
+        <string>
+            <name>model_name</name>
+            <label>Model Name</label>
+            <description>DeepLearning Model to Infer (For Example: deepedit, segmentation)</description>
+            <longflag>model_name</longflag>
+            <default>deepedit</default>
+        </string>
+        <file fileExtensions=".anot" reference="inputImageFile">
+            <name>outputAnnotationFile</name>
+            <label>Output Annotation File</label>
+            <description>Output annotation file (*.anot)</description>
+            <channel>output</channel>
+            <index>1</index>
+        </file>
+        <float>
+            <name>min_poly_area</name>
+            <label>Min Polygon Area</label>
+            <index>2</index>
+            <description>Filter Polygons based on min area size</description>
+            <default>40</default>
+        </float>
+        <string-enumeration>
+            <name>loglevel</name>
+            <label>Log Level</label>
+            <description>MONAILabel Server Log Level</description>
+            <longflag>loglevel</longflag>
+            <element>INFO</element>
+            <element>WARN</element>
+            <element>ERROR</element>
+            <default>ERROR</default>
+        </string-enumeration>
+        <string>
+            <name>extra_params</name>
+            <label>Extra Params (JSON)</label>
+            <description>Extra/Other Config Parameters defined by MONAILabel inference task</description>
+            <longflag>extra_params</longflag>
+            <default>{}</default>
+        </string>
+    </parameters>
+    <parameters advanced="true">
+        <label>WSI Analysis</label>
+        <description>Whole-slide image analysis (WSI) parameters</description>
+        <boolean>
+            <name>send_image</name>
+            <label>Send Image Data</label>
+            <description>Send Raw Image Numpy to Server (slow). Enable this when MONAILabel server can not access the
+                image/region directly
+            </description>
+            <longflag>send_image</longflag>
+            <default>false</default>
+        </boolean>
+        <double>
+            <name>analysis_tile_size</name>
+            <label>Analysis Tile Size</label>
+            <description>Tile size for blockwise analysis</description>
+            <longflag>analysis_tile_size</longflag>
+            <default>2048</default>
+        </double>
+        <double>
+            <name>analysis_mag</name>
+            <label>Analysis Magnification</label>
+            <description>The magnification at which the analysis should be performed.</description>
+            <longflag>analysis_mag</longflag>
+            <default>40</default>
+        </double>
+        <double>
+            <name>min_fgnd_frac</name>
+            <label>Minimum foreground fraction</label>
+            <description>The minimum amount of foreground that must be present in a tile for it to be analyzed
+            </description>
+            <longflag>min_fgnd_frac</longflag>
+            <default>0.25</default>
+        </double>
+    </parameters>
+    <parameters advanced="true">
+        <label>Dask parameters</label>
+        <description>Dask parameters</description>
+        <string>
+            <name>scheduler</name>
+            <label>Scheduler Address</label>
+            <description>Address of a dask scheduler in the format '127.0.0.1:8786'. Not passing this parameter sets up
+                a dask cluster on the local machine. 'multiprocessing' uses Python multiprocessing. 'multithreading'
+                uses Python multiprocessing in threaded mode.
+            </description>
+            <longflag>scheduler</longflag>
+            <default></default>
+        </string>
+        <integer>
+            <name>num_workers</name>
+            <label>Number of workers</label>
+            <description>Number of dask workers to start while setting up a local cluster internally. If a negative
+                value is specified then the number of workers is set to number of cpu cores on the machine minus the
+                number of workers specified.
+            </description>
+            <longflag>num_workers</longflag>
+            <default>1</default>
+        </integer>
+        <integer>
+            <name>num_threads_per_worker</name>
+            <label>Number of threads per worker</label>
+            <description>Number of threads to use per worker while setting up a local cluster internally. Must be a
+                positive integer >= 1.
+            </description>
+            <longflag>num_threads_per_worker</longflag>
+            <default>1</default>
+        </integer>
+        <integer>
+            <name>tile_grouping</name>
+            <label>Tile grouping</label>
+            <longflag>tileGrouping</longflag>
+            <description>Number of tiles to process as part of a single task</description>
+            <default>256</default>
+        </integer>
+    </parameters>
 </executable>

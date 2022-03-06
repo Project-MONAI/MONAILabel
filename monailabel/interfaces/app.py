@@ -574,7 +574,24 @@ class MONAILabelApp:
         return infers
 
     def infer_wsi(self, request, datastore=None):
+        model = request.get("model")
+        if not model:
+            raise MONAILabelException(
+                MONAILabelError.INVALID_INPUT,
+                "Model is not provided for WSI/Inference Task",
+            )
+
+        task = self._infers.get(model)
+        if not task:
+            raise MONAILabelException(
+                MONAILabelError.INVALID_INPUT,
+                f"wSI/Inference Task is not Initialized. There is no model '{model}' available",
+            )
+
         image = request["image"]
+        request_c = copy.deepcopy(task.config())
+        request_c.update(request)
+        request = request_c
 
         # Possibly direct image (numpy)
         if not isinstance(image, str):
@@ -588,7 +605,7 @@ class MONAILabelApp:
             image = datastore.get_image_uri(request["image"])
 
         start = time.time()
-        logger.debug(f"Input WSI Image: {image}")
+        logger.info(f"WSI Infer Request (final): {request}")
         infer_tasks = self._create_infer_wsi_tasks(request, image)
         logger.debug(f"Total WSI Tasks: {len(infer_tasks)}")
 
@@ -617,7 +634,7 @@ class MONAILabelApp:
         loglevel = request.get("logging", "INFO").upper()
         if output == "asap":
             logger.debug("+++ Generating ASAP XML Annotation")
-            res_file = create_asap_annotations_xml(res_json, color_map=request.get("color_map"), loglevel=loglevel)
+            res_file = create_asap_annotations_xml(res_json, color_map=request.get("label_colors"), loglevel=loglevel)
         elif output == "dsa":
             logger.debug("+++ Generating DSA JSON Annotation")
             model = request.get("model")
@@ -626,7 +643,7 @@ class MONAILabelApp:
                 res_json,
                 name=f"MONAILabel - {model}",
                 description=task.description,
-                color_map=request.get("color_map"),
+                color_map=request.get("label_colors"),
                 loglevel=loglevel,
             )
         else:

@@ -34,15 +34,23 @@ def run_monailabel_task(slide_path, level, location, size, tile_position, args, 
     tile_size = [int(args.analysis_tile_size), int(args.analysis_tile_size)]
     min_poly_area = args.min_poly_area
     output = "dsa"
-    params = {
+    body = {
         "level": level,
         "location": location,
         "size": size,
         "tile_size": tile_size,
         "min_poly_area": min_poly_area,
         "output": output,
-        "logging": args.loglevel,
     }
+    extra_params = json.loads(args.extra_params)
+    if args.send_image:
+        body["logging"] = args.loglevel
+        body.update(extra_params)
+    else:
+        body["params"] = {
+            "logging": args.loglevel,
+            **extra_params,
+        }
 
     if args.send_image:
         ts = large_image.getTileSource(slide_path)
@@ -55,12 +63,12 @@ def run_monailabel_task(slide_path, level, location, size, tile_position, args, 
         logging.info(f"Send Image over wire: {image_np.shape}({image_np.dtype})")
         with tempfile.NamedTemporaryFile(suffix=".npy") as f:
             np.save(f.name, image_np)
-            res_j, _ = client.infer(model=args.model_name, image_in="", file=f.name, params=params)
+            res_j, _ = client.infer(model=args.model_name, image_in="", file=f.name, params=body)
 
         with open(res_j, "r") as fp:
             res = json.load(fp)
     else:
-        _, res = client.wsi_infer(model=args.model_name, image_in=image, body=params, output=output)
+        _, res = client.wsi_infer(model=args.model_name, image_in=image, body=body, output=output)
         res = json.loads(res)
     return res["elements"]
 
@@ -182,8 +190,9 @@ def main(args):
     print("Total Job time = {}".format(cli_utils.disp_time_hms(annotation_detection_time)))
 
     print("\n>> Writing annotation file ...\n")
+    postfix = "wsi" if process_whole_image else f"roi{args.analysis_roi}"
     annotation = {
-        "name": f"monailabel-{args.model_name} - " + "wsi" if is_wsi else f"roi{args.analysis_roi}",
+        "name": f"monailabel-{args.model_name} - {postfix}",
         "elements": annotation_list,
     }
 
