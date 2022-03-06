@@ -123,23 +123,6 @@ class MONAILabelApp:
             self.studies = self.studies.rstrip("/").strip()
             return self.init_remote_datastore()
 
-            dw_client = DICOMwebClientX(
-                url=self.studies,
-                session=dw_session,
-                qido_url_prefix=settings.MONAI_LABEL_QIDO_PREFIX,
-                wado_url_prefix=settings.MONAI_LABEL_WADO_PREFIX,
-                stow_url_prefix=settings.MONAI_LABEL_STOW_PREFIX,
-            )
-
-            cache_path = settings.MONAI_LABEL_DICOMWEB_CACHE_PATH
-            cache_path = cache_path.strip() if cache_path else ""
-            fetch_by_frame = settings.MONAI_LABEL_DICOMWEB_FETCH_BY_FRAME
-            return (
-                DICOMWebDatastore(dw_client, cache_path, fetch_by_frame=fetch_by_frame)
-                if cache_path
-                else DICOMWebDatastore(dw_client, fetch_by_frame=fetch_by_frame)
-            )
-
         return LocalDatastore(
             self.studies,
             extensions=settings.MONAI_LABEL_DATASTORE_FILE_EXT,
