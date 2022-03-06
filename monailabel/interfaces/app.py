@@ -90,8 +90,6 @@ class MONAILabelApp:
         self._scoring_methods = self.init_scoring_methods()
         self._batch_infer = self.init_batch_infer()
 
-        if strtobool(conf.get("download_tools", "true")):
-            self._download_tools()
         self._server_mode = strtobool(conf.get("server_mode", "false"))
         self._auto_update_scoring = strtobool(conf.get("auto_update_scoring", "true"))
         self._sessions = self._load_sessions(strtobool(conf.get("sessions", "true")))
@@ -144,6 +142,8 @@ class MONAILabelApp:
             wado_url_prefix=settings.MONAI_LABEL_WADO_PREFIX,
             stow_url_prefix=settings.MONAI_LABEL_STOW_PREFIX,
         )
+
+        self._download_dcmqi_tools()
 
         cache_path = settings.MONAI_LABEL_DICOMWEB_CACHE_PATH
         cache_path = cache_path.strip() if cache_path else ""
@@ -501,7 +501,7 @@ class MONAILabelApp:
             logger.error(f"Failed To Trigger {action}: {response.text}")
         return response.json() if response.status_code == 200 else None
 
-    def _download_tools(self):
+    def _download_dcmqi_tools(self):
         target = os.path.join(self.app_dir, "bin")
         os.makedirs(target, exist_ok=True)
 
