@@ -1,4 +1,4 @@
-# Multiple DeepLearning models for inference only use-caes.
+# Multiple DeepLearning models for inference only use-case(s).
 
 ### List of Pretrained Models
 
