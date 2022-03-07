@@ -15,13 +15,13 @@ from monai.transforms import (
     Activationsd,
     AddChanneld,
     AsDiscreted,
+    EnsureTyped,
     LoadImaged,
     NormalizeIntensityd,
     Orientationd,
     Resized,
     SqueezeDimd,
     ToNumpyd,
-    ToTensord,
 )
 
 from monailabel.deepedit.transforms import DiscardAddGuidanced, ResizeGuidanceCustomd
@@ -68,7 +68,7 @@ class DeepEditSeg(InferTask):
             NormalizeIntensityd(keys="image"),
             Resized(keys="image", spatial_size=self.spatial_size, mode="area"),
             DiscardAddGuidanced(keys="image"),
-            ToTensord(keys="image"),
+            EnsureTyped(keys="image", device=data.get("device") if data else None),
         ]
 
     def inferer(self, data=None):
@@ -79,7 +79,7 @@ class DeepEditSeg(InferTask):
 
     def post_transforms(self, data=None):
         return [
-            ToTensord(keys="pred"),
+            EnsureTyped(keys="pred", device=data.get("device") if data else None),
             Activationsd(keys="pred", sigmoid=True),
             AsDiscreted(keys="pred", threshold_values=True, logit_thresh=0.51),
             SqueezeDimd(keys="pred", dim=0),
@@ -129,7 +129,7 @@ class DeepEdit(InferTask):
             Resized(keys="image", spatial_size=self.spatial_size, mode="area"),
             ResizeGuidanceCustomd(guidance="guidance", ref_image="image"),
             AddGuidanceSignald(image="image", guidance="guidance"),
-            ToTensord(keys="image"),
+            EnsureTyped(keys="image", device=data.get("device") if data else None),
         ]
 
     def inferer(self, data=None):
@@ -140,7 +140,7 @@ class DeepEdit(InferTask):
 
     def post_transforms(self, data=None):
         return [
-            ToTensord(keys="pred"),
+            EnsureTyped(keys="pred", device=data.get("device") if data else None),
             Activationsd(keys="pred", sigmoid=True),
             AsDiscreted(keys="pred", threshold_values=True, logit_thresh=0.51),
             ToNumpyd(keys="pred"),
