@@ -390,6 +390,7 @@ class InferTask:
         inferer = self.inferer(data)
         logger.info("Inferer:: {} => {}".format(inferer.__class__.__name__, inferer.__dict__))
 
+        device = device if device else "cuda"
         if device.startswith("cuda") and not torch.cuda.is_available():
             device = "cpu"
 

@@ -91,12 +91,12 @@ class MyApp(MONAILabelApp):
         )
 
     def init_remote_datastore(self) -> Datastore:
-        '''
+        """
         -s http://0.0.0.0:8080/api/v1
         -c dsa_folder 621e94e2b6881a7a4bef5170
         -c dsa_api_key OJDE9hjuOIS6R8oEqhnVYHUpRpk18NfJABMt36dJ
         -c dsa_asset_store_path /localhome/sachi/Projects/digital_slide_archive/devops/dsa/assetstore
-        '''
+        """
 
         logger.info(f"Using DSA Server: {self.studies}")
         folder = self.conf.get("dsa_folder")
@@ -104,7 +104,13 @@ class MyApp(MONAILabelApp):
         api_key = self.conf.get("dsa_api_key")
         asset_store_path = self.conf.get("dsa_asset_store_path")
 
-        return DSADatastore(api_url=self.studies, folder=folder, api_key=api_key, annotation_groups=annotation_groups, asset_store_path=asset_store_path)
+        return DSADatastore(
+            api_url=self.studies,
+            folder=folder,
+            api_key=api_key,
+            annotation_groups=annotation_groups,
+            asset_store_path=asset_store_path,
+        )
 
     def init_infers(self) -> Dict[str, InferTask]:
         return {
@@ -177,7 +183,7 @@ def main():
         datefmt="%Y-%m-%d %H:%M:%S",
     )
 
-    run_train = True
+    run_train = False
     home = str(Path.home())
     if run_train:
         # studies = f"{home}/Data/Pathology/PanNuke"
@@ -191,12 +197,8 @@ def main():
 
     app_dir = os.path.dirname(__file__)
     studies = args.studies
-    conf = {
-        "use_pretrained_model": "false",
-        "auto_update_scoring": "false",
-    }
 
-    app = MyApp(app_dir, studies, conf)
+    app = MyApp(app_dir, studies, {})
     model = "deepedit"  # deepedit, segmentation
     if run_train:
         app.train(
@@ -244,6 +246,7 @@ def infer_wsi(app):
             "size": [5522, 3311],
             "tile_size": [2048, 2048],
             "min_poly_area": 40,
+            "gpus": "all",
         }
     )
 

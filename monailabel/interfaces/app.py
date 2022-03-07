@@ -25,6 +25,7 @@ from typing import Any, Callable, Dict, Optional, Sequence, Union
 import openslide
 import requests
 import schedule
+import torch
 from dicomweb_client.session_utils import create_session_from_user_pass
 from monai.apps import download_and_extract, download_url, load_from_mmar
 from monai.data import partition_dataset
@@ -610,14 +611,33 @@ class MONAILabelApp:
         logger.debug(f"Total WSI Tasks: {len(infer_tasks)}")
         request["logging"] = request.get("logging", "WARNING" if len(infer_tasks) > 1 else "INFO")
 
-        res_json = {"tasks": {}}
-        for t in infer_tasks:
-            t["logging"] = request["logging"]
+        multi_gpu = request.get("multi_gpu", False)
+        multi_gpus = request.get("gpus", "all")
+        gpus = (
+            list(range(torch.cuda.device_count())) if not multi_gpus or multi_gpus == "all" else multi_gpus.split(",")
+        )
+        device_ids = [f"cuda:{id}" for id in gpus] if multi_gpu else [request.get("device", "cuda")]
+        logger.info(f"MultiGpu: {multi_gpu}; Using Device(s): {device_ids}")
 
-            tid = t["id"]
-            res = self._run_infer_wsi_task(t)
-            res_json["tasks"][tid] = res
-            logger.info(f"{tid} => Completed: {len(res_json)} / {len(infer_tasks)}; Latencies: {res.get('latencies')}")
+        res_json = {"tasks": {}}
+        for idx, t in enumerate(infer_tasks):
+            t["logging"] = request["logging"]
+            t["device"] = device_ids[idx % len(device_ids)]
+
+        if len(infer_tasks) > 1 and len(device_ids) > 1:
+            with ThreadPoolExecutor(max_workers=len(device_ids), thread_name_prefix="WSI Infer") as executor:
+                for t in infer_tasks:
+                    tid = t["id"]
+                    future = executor.submit(self._run_infer_wsi_task, t)
+                    res = future.result()
+                    res_json["tasks"][tid] = res
+                    logger.info(f"{tid} => {len(res_json)} / {len(infer_tasks)}; Latencies: {res.get('latencies')}")
+        else:
+            for t in infer_tasks:
+                tid = t["id"]
+                res = self._run_infer_wsi_task(t)
+                res_json["tasks"][tid] = res
+                logger.info(f"{tid} => {len(res_json)} / {len(infer_tasks)}; Latencies: {res.get('latencies')}")
 
         latency_total = time.time() - start
         logger.debug("WSI Infer Time Taken: {:.4f}".format(latency_total))

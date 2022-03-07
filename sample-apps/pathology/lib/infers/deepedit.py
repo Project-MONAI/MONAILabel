@@ -72,11 +72,12 @@ class InferDeepedit(InferTask):
             ScaleIntensityRangeD(keys="image", a_min=0.0, a_max=255.0, b_min=-1.0, b_max=1.0),
             AddClickGuidanced(image="image", guidance="guidance"),
             AddGuidanceSignald(image="image", guidance="guidance", number_intensity_ch=3),
-            EnsureTyped(keys="image"),
+            EnsureTyped(keys="image", device=data.get("device") if data else None),
         ]
 
     def post_transforms(self, data=None) -> Sequence[Callable]:
         return [
+            EnsureTyped(keys="pred", device=data.get("device") if data else None),
             Activationsd(keys="pred", sigmoid=True),
             AsDiscreted(keys="pred", threshold=0.5),
             SqueezeDimd(keys="pred"),
