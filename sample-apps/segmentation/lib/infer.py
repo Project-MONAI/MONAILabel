@@ -15,11 +15,11 @@ from monai.transforms import (
     Activationsd,
     AddChanneld,
     AsDiscreted,
+    EnsureTyped,
     LoadImaged,
     ScaleIntensityRanged,
     Spacingd,
     ToNumpyd,
-    ToTensord,
 )
 
 from monailabel.interfaces.tasks.infer import InferTask, InferType
@@ -58,7 +58,7 @@ class MyInfer(InferTask):
             AddChanneld(keys="image"),
             Spacingd(keys="image", pixdim=[1.0, 1.0, 1.0]),
             ScaleIntensityRanged(keys="image", a_min=-57, a_max=164, b_min=0.0, b_max=1.0, clip=True),
-            ToTensord(keys="image"),
+            EnsureTyped(keys="image", device=data.get("device") if data else None),
         ]
 
     def inferer(self, data=None) -> Callable:
@@ -69,6 +69,7 @@ class MyInfer(InferTask):
 
     def post_transforms(self, data=None) -> Sequence[Callable]:
         return [
+            EnsureTyped(keys="pred", device=data.get("device") if data else None),
             Activationsd(keys="pred", softmax=True),
             AsDiscreted(keys="pred", argmax=True),
             ToNumpyd(keys="pred"),

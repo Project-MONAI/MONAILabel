@@ -36,7 +36,7 @@ class EpistemicScoring(ScoringMethod):
         self.model = model
         self.network = network
         self.transforms = transforms
-        self.device = "cuda"
+        self.device = "cuda" if torch.cuda.is_available() else "cpu"
         self.roi_size = roi_size
         self.num_samples = num_samples
         self.load_strict = load_strict
@@ -54,7 +54,10 @@ class EpistemicScoring(ScoringMethod):
 
         with torch.no_grad():
             preds = sliding_window_inference(
-                inputs=data["image"][None].cuda(), roi_size=roi_size, sw_batch_size=sw_batch_size, predictor=model
+                inputs=data["image"][None].to(self.device),
+                roi_size=roi_size,
+                sw_batch_size=sw_batch_size,
+                predictor=model,
             )
 
         soft_preds = torch.softmax(preds, dim=1) if preds.shape[1] > 1 else torch.sigmoid(preds)
@@ -114,11 +117,17 @@ class EpistemicScoring(ScoringMethod):
         if network:
             model = network
             if model_file:
-                checkpoint = torch.load(model_file)
+                if torch.cuda.is_available():
+                    checkpoint = torch.load(model_file)
+                else:
+                    checkpoint = torch.load(model_file, map_location=torch.device("cpu"))
                 model_state_dict = checkpoint.get("model", checkpoint)
                 model.load_state_dict(model_state_dict, strict=self.load_strict)
         else:
-            model = torch.jit.load(model_file)
+            if torch.cuda.is_available():
+                model = torch.jit.load(model_file)
+            else:
+                model = torch.jit.load(model_file, map_location=torch.device("cpu"))
         return model, model_ts
 
     def __call__(self, request, datastore: Datastore):

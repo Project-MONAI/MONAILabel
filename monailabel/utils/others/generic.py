@@ -24,7 +24,12 @@ logger = logging.getLogger(__name__)
 
 
 def file_ext(name) -> str:
-    return "".join(pathlib.Path(name).suffixes) if name else ""
+    suffixes = []
+    for s in reversed(pathlib.Path(name).suffixes):
+        if len(s) > 10:
+            break
+        suffixes.append(s)
+    return "".join(reversed(suffixes)) if name else ""
 
 
 def remove_file(path: str) -> None:
