@@ -32,6 +32,7 @@ from monailabel.endpoints import (
     scoring,
     session,
     train,
+    wsi_infer,
 )
 from monailabel.interfaces.utils.app import app_instance, clear_cache
 
@@ -63,6 +64,7 @@ app.mount(
 
 app.include_router(info.router, prefix=settings.MONAI_LABEL_API_STR)
 app.include_router(infer.router, prefix=settings.MONAI_LABEL_API_STR)
+app.include_router(wsi_infer.router, prefix=settings.MONAI_LABEL_API_STR)
 app.include_router(batch_infer.router, prefix=settings.MONAI_LABEL_API_STR)
 app.include_router(train.router, prefix=settings.MONAI_LABEL_API_STR)
 app.include_router(activelearning.router, prefix=settings.MONAI_LABEL_API_STR)

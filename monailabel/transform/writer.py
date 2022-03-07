@@ -17,6 +17,7 @@ import numpy as np
 from monai.data import write_nifti
 
 from monailabel.utils.others.generic import file_ext
+from monailabel.utils.others.pathology import create_asap_annotations_xml, create_dsa_annotations_json
 
 logger = logging.getLogger(__name__)
 
@@ -124,3 +125,53 @@ class ClassificationWriter:
         for label in data[self.label]:
             result.append(self.label_names[int(label)])
         return None, {"prediction": result}
+
+
+class PolygonWriter:
+    def __init__(
+        self,
+        label="pred",
+        json="result",
+        key_write_to_file="result_write_to_file",
+        key_annotations="annotations",
+        key_label_colors="label_colors",
+        key_output_format="output",
+    ):
+        self.label = label
+        self.json = json
+        self.key_write_to_file = key_write_to_file
+        self.key_annotations = key_annotations
+        self.key_label_colors = key_label_colors
+        self.key_output_format = key_output_format
+        self.format = format
+
+    def __call__(self, data):
+        loglevel = data.get("logging", "INFO").upper()
+        logger.setLevel(loglevel)
+
+        output = data.get(self.key_output_format, "asap")
+        logger.info(f"+++ Output Type: {output}")
+
+        write_to_file = data.get(self.key_write_to_file, True)
+        output_json = data.get(self.json, {})
+        if not write_to_file:
+            return None, output_json
+
+        json_data = {"tasks": {"tid-0": {"annotations": output_json.get(self.key_annotations, [])}}}
+
+        output_file = None
+        if output == "asap":
+            logger.info("+++ Generating ASAP XML Annotation")
+            output_file = create_asap_annotations_xml(
+                json_data, color_map=data.get(self.key_label_colors), loglevel=loglevel
+            )
+        elif output == "dsa":
+            logger.info("+++ Generating DSA JSON Annotation")
+            model = data.get("model")
+            output_file = create_dsa_annotations_json(
+                json_data, name=f"MONAILabel - {model}", color_map=data.get(self.key_label_colors), loglevel=loglevel
+            )
+        else:
+            logger.info("+++ Return Default JSON Annotation")
+
+        return output_file, output_json

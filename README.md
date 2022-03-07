@@ -80,7 +80,14 @@ MONAI Label comes with [pre-built plugin](plugins/ohif) for [OHIF Viewer](https:
 
 ![OHIF](https://raw.githubusercontent.com/Project-MONAI/MONAILabel/main/docs/images/ohif.png)
 
-> **_NOTE:_** OHIF does not yet support Scribbles-based annotations and Multi-Label interaction for DeepEdit.
+> **_NOTE:_** OHIF does not yet support Multi-Label interaction for DeepEdit.
+
+### Pathology using [Digital Slide Archive (DSA)](https://digitalslidearchive.github.io/digital_slide_archive/)
+Refer [Pathology](sample-apps/pathology) for running a sample pathology use-case in MONAILabel.
+> **_NOTE:_** The **Pathology App** and *DSA Plugin* are under *active development*.
+
+![image](https://user-images.githubusercontent.com/7339051/157100606-a281e038-5923-43a8-bb82-8fccae51fcff.png)
+
 
 ## Contributing
 
@@ -89,7 +96,7 @@ For guidance on making a contribution to MONAI Label, see the [contributing guid
 ## Community
 
 Join the conversation on Twitter [@ProjectMONAI](https://twitter.com/ProjectMONAI) or join
-our [Slack channel](https://forms.gle/QTxJq3hFictp31UM9).
+our [Slack channel](https://projectmonai.slack.com/archives/C031QRE0M1C).
 
 Ask and answer questions over
 on [MONAI Label's GitHub Discussions tab](https://github.com/Project-MONAI/MONAILabel/discussions).
