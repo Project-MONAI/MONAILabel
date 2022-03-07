@@ -1,4 +1,4 @@
-# Combination of Multiple DeepLearning models for inference only use-caes.
+# Multiple DeepLearning models for inference only use-caes.
 
 ### List of Pretrained Models
 
@@ -11,5 +11,8 @@
 
 - DeepEdit Models
 
-  - DeepEdit (spleen)
-  - DeepEdit Multi Label
+  - [DeepEdit Multi Label](https://github.com/Project-MONAI/MONAILabel/tree/main/sample-apps/deepedit_multilabel)
+
+- Others
+
+  - [Segmentation Left Atrium](https://github.com/Project-MONAI/MONAILabel/tree/main/sample-apps/segmentation_left_atrium)

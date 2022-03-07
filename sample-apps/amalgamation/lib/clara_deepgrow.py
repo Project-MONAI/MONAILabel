@@ -53,6 +53,23 @@ class Deepgrow(InferTask):
         spatial_size=(256, 256),
         model_size=(256, 256),
     ):
+        if labels is None:
+            labels = [
+                "spleen",
+                "right kidney",
+                "left kidney",
+                "gallbladder",
+                "esophagus",
+                "liver",
+                "stomach",
+                "aorta",
+                "inferior vena cava",
+                "portal vein and splenic vein",
+                "pancreas",
+                "right adrenal gland",
+                "left adrenal gland",
+            ]
+
         super().__init__(
             path=path,
             network=network,

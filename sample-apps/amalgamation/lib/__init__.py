@@ -12,3 +12,5 @@
 from .clara_deepgrow import Deepgrow
 from .clara_liver_and_tumor_segmentation import LiverAndTumor
 from .clara_spleen_segmentation import Spleen
+from .deepedit_multilabel import DeepEditAnnotation, DeepEditSegmentation
+from .left_atrium_segmentation import LeftAtriumSegmentation

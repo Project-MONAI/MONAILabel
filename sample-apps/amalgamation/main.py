@@ -13,7 +13,7 @@ import logging
 import os
 from typing import Dict
 
-from lib import Deepgrow, LiverAndTumor, Spleen
+from lib import DeepEditAnnotation, DeepEditSegmentation, Deepgrow, LeftAtriumSegmentation, LiverAndTumor, Spleen
 
 from monailabel.interfaces.app import MONAILabelApp
 from monailabel.interfaces.tasks.infer import InferTask
@@ -54,30 +54,25 @@ class MyApp(MONAILabelApp):
                 "path": os.path.join(self.model_dir, "clara_deepgrow_3d.pt"),
                 "uri": f"{ngc_path}/clara_pt_deepgrow_3d_annotation/versions/1/files/models/model.ts",
             },
+            "deepedit": {
+                "path": os.path.join(self.model_dir, "deepedit.pt"),
+                "uri": f"{self.PRE_TRAINED_PATH}/deepedit_dynunet_multilabel.pt",
+            },
+            "left_atrium": {
+                "path": os.path.join(self.model_dir, "left_atrium.pt"),
+                "uri": f"{self.PRE_TRAINED_PATH}/segmentation_left_atrium.pt",
+            },
         }
         self.download([(v["path"], v["uri"]) for v in models.values()])
-
-        deepgrow_labels = [
-            "spleen",
-            "right kidney",
-            "left kidney",
-            "gallbladder",
-            "esophagus",
-            "liver",
-            "stomach",
-            "aorta",
-            "inferior vena cava",
-            "portal vein and splenic vein",
-            "pancreas",
-            "right adrenal gland",
-            "left adrenal gland",
-        ]
 
         infers = {
             "clara_spleen": Spleen(models["clara_spleen"]["path"]),
             "clara_liver_tumor": LiverAndTumor(models["clara_liver_tumor"]["path"]),
-            "clara_deepgrow_2d": Deepgrow(models["clara_deepgrow_2d"]["path"], dimension=2, labels=deepgrow_labels),
-            "clara_deepgrow_3d": Deepgrow(models["clara_deepgrow_3d"]["path"], dimension=3, labels=deepgrow_labels),
+            "clara_deepgrow_2d": Deepgrow(models["clara_deepgrow_2d"]["path"], dimension=2),
+            "clara_deepgrow_3d": Deepgrow(models["clara_deepgrow_3d"]["path"], dimension=3),
+            "deepedit_segmentation": DeepEditSegmentation(models["deepedit"]["path"]),
+            "deepedit_annotation": DeepEditAnnotation(models["deepedit"]["path"]),
+            "left_atrium": LeftAtriumSegmentation(models["left_atrium"]["path"]),
             "Histogram+GraphCut": HistogramBasedGraphCut(
                 intensity_range=(-300, 200, 0.0, 1.0, True), pix_dim=(2.5, 2.5, 5.0), lamda=1.0, sigma=0.1
             ),
