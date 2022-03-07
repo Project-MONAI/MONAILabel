@@ -54,7 +54,10 @@ class EpistemicScoring(ScoringMethod):
 
         with torch.no_grad():
             preds = sliding_window_inference(
-                inputs=data["image"][None].to(self.device), roi_size=roi_size, sw_batch_size=sw_batch_size, predictor=model
+                inputs=data["image"][None].to(self.device),
+                roi_size=roi_size,
+                sw_batch_size=sw_batch_size,
+                predictor=model,
             )
 
         soft_preds = torch.softmax(preds, dim=1) if preds.shape[1] > 1 else torch.sigmoid(preds)
