@@ -25,6 +25,7 @@ from monai.transforms import (
     AsChannelFirstd,
     AsChannelLastd,
     AsDiscreted,
+    EnsureTyped,
     LoadImaged,
     NormalizeIntensityd,
     Resized,
@@ -81,6 +82,7 @@ class InferDeepgrow(InferTask):
                 ResizeGuidanced(guidance="guidance", ref_image="image"),
                 NormalizeIntensityd(keys="image", subtrahend=208, divisor=388),  # type: ignore
                 AddGuidanceSignald(image="image", guidance="guidance"),
+                EnsureTyped(keys="image", device=data.get("device") if data else None),
             ]
         )
         return t
@@ -90,6 +92,7 @@ class InferDeepgrow(InferTask):
 
     def post_transforms(self, data=None) -> Sequence[Callable]:
         return [
+            EnsureTyped(keys="pred", device=data.get("device") if data else None),
             Activationsd(keys="pred", sigmoid=True),
             AsDiscreted(keys="pred", threshold_values=True, logit_thresh=0.5),
             ToNumpyd(keys="pred"),
