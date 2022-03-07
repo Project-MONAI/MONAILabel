@@ -17,13 +17,13 @@ from monai.transforms import (
     AddChanneld,
     AsDiscreted,
     EnsureChannelFirstd,
+    EnsureTyped,
     LoadImaged,
     NormalizeIntensityd,
     Orientationd,
     Resized,
     SqueezeDimd,
     ToNumpyd,
-    ToTensord,
 )
 
 from monailabel.deepedit.transforms import DiscardAddGuidanced, ResizeGuidanceCustomd
@@ -70,7 +70,7 @@ class DeepEditSeg(InferTask):
             NormalizeIntensityd(keys="image"),
             Resized(keys="image", spatial_size=self.spatial_size, mode="area"),
             DiscardAddGuidanced(keys="image"),
-            ToTensord(keys="image"),
+            EnsureTyped(keys="image", device=data.get("device") if data else None),
         ]
 
     def inferer(self, data=None) -> Callable:
@@ -81,7 +81,7 @@ class DeepEditSeg(InferTask):
 
     def post_transforms(self, data=None) -> Sequence[Callable]:
         return [
-            ToTensord(keys="pred"),
+            EnsureTyped(keys="pred", device=data.get("device") if data else None),
             Activationsd(keys="pred", sigmoid=True),
             AsDiscreted(keys="pred", threshold_values=True, logit_thresh=0.51),
             SqueezeDimd(keys="pred", dim=0),
@@ -121,8 +121,6 @@ class DeepEdit(InferTask):
         return [
             LoadImaged(keys="image", reader="nibabelreader"),
             EnsureChannelFirstd(keys="image"),
-            # Spacing might not be needed as resize transform is used later.
-            # Spacingd(keys=["image", "label"], pixdim=self.target_spacing, mode=("bilinear", "nearest")),
             Orientationd(keys="image", axcodes="RAS"),
             SqueezeDimd(keys="image", dim=0),
             AddGuidanceFromPointsd(ref_image="image", guidance="guidance", dimensions=3),
@@ -131,7 +129,7 @@ class DeepEdit(InferTask):
             Resized(keys="image", spatial_size=self.spatial_size, mode="area"),
             ResizeGuidanceCustomd(guidance="guidance", ref_image="image"),
             AddGuidanceSignald(image="image", guidance="guidance"),
-            ToTensord(keys="image"),
+            EnsureTyped(keys="image", device=data.get("device") if data else None),
         ]
 
     def inferer(self, data=None) -> Callable:
@@ -142,7 +140,7 @@ class DeepEdit(InferTask):
 
     def post_transforms(self, data=None) -> Sequence[Callable]:
         return [
-            ToTensord(keys="pred"),
+            EnsureTyped(keys="pred", device=data.get("device") if data else None),
             Activationsd(keys="pred", sigmoid=True),
             AsDiscreted(keys="pred", threshold_values=True, logit_thresh=0.51),
             ToNumpyd(keys="pred"),
