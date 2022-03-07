@@ -84,12 +84,14 @@ class Writer:
         self.nibabel = nibabel
 
     def __call__(self, data):
+        logger.setLevel(data.get("logging", "INFO").upper())
+
         ext = file_ext(data.get("image_path"))
         dtype = data.get(self.key_dtype, None)
         compress = data.get(self.key_compress, False)
         write_to_file = data.get(self.key_write_to_file, True)
         ext = data.get(self.key_extension) if data.get(self.key_extension) else ext
-        logger.info("Result ext: {}".format(ext))
+        logger.info(f"Result ext: {ext}; write_to_file: {write_to_file}")
 
         image_np = data[self.label]
         meta_dict = data.get(f"{self.ref_image}_{self.meta_key_postfix}")
@@ -108,8 +110,6 @@ class Writer:
                 write_nifti(image_np, output_file, affine=affine, output_dtype=dtype)
             else:
                 write_itk(image_np, output_file, affine, dtype, compress)
-        else:
-            output_json[self.label] = image_np
 
         return output_file, output_json
 

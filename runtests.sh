@@ -131,6 +131,8 @@ function clean_py() {
   rm -rf docs/build/
   rm -rf docs/source/apidocs/
   rm -rf test-output.xml
+  rm -rf .coverage
+  rm -rf .env
 
   find ${TO_CLEAN} -type f -name "*.py[co]" -delete
   find ${TO_CLEAN} -type f -name "*.so" -delete

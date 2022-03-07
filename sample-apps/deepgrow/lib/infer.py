@@ -8,6 +8,7 @@
 # WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 # See the License for the specific language governing permissions and
 # limitations under the License.
+from typing import Callable, Sequence
 
 from monai.apps.deepgrow.transforms import (
     AddGuidanceFromPointsd,
@@ -24,6 +25,7 @@ from monai.transforms import (
     AsChannelFirstd,
     AsChannelLastd,
     AsDiscreted,
+    EnsureTyped,
     LoadImaged,
     NormalizeIntensityd,
     Resized,
@@ -63,7 +65,7 @@ class InferDeepgrow(InferTask):
         self.spatial_size = spatial_size
         self.model_size = model_size
 
-    def pre_transforms(self, data=None):
+    def pre_transforms(self, data=None) -> Sequence[Callable]:
         t = [
             LoadImaged(keys="image"),
             AsChannelFirstd(keys="image"),
@@ -78,17 +80,19 @@ class InferDeepgrow(InferTask):
                 SpatialCropGuidanced(keys="image", guidance="guidance", spatial_size=self.spatial_size),
                 Resized(keys="image", spatial_size=self.model_size, mode="area"),
                 ResizeGuidanced(guidance="guidance", ref_image="image"),
-                NormalizeIntensityd(keys="image", subtrahend=208, divisor=388),
+                NormalizeIntensityd(keys="image", subtrahend=208, divisor=388),  # type: ignore
                 AddGuidanceSignald(image="image", guidance="guidance"),
+                EnsureTyped(keys="image", device=data.get("device") if data else None),
             ]
         )
         return t
 
-    def inferer(self, data=None):
+    def inferer(self, data=None) -> Callable:
         return SimpleInferer()
 
-    def post_transforms(self, data=None):
+    def post_transforms(self, data=None) -> Sequence[Callable]:
         return [
+            EnsureTyped(keys="pred", device=data.get("device") if data else None),
             Activationsd(keys="pred", sigmoid=True),
             AsDiscreted(keys="pred", threshold_values=True, logit_thresh=0.5),
             ToNumpyd(keys="pred"),

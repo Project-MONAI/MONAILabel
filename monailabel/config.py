@@ -30,13 +30,15 @@ class Settings(BaseSettings):
     MONAI_LABEL_DICOMWEB_FETCH_BY_FRAME: bool = False
 
     MONAI_LABEL_DATASTORE_AUTO_RELOAD: bool = True
-    MONAI_LABEL_DATASTORE_FILE_EXT: List[str] = ["*.nii.gz", "*.nii", "*.nrrd", "*.png"]
+    MONAI_LABEL_DATASTORE_FILE_EXT: List[str] = ["*.nii.gz", "*.nii", "*.nrrd", "*.jpg", "*.png", "*.tif", "*.svs"]
 
     MONAI_LABEL_SERVER_PORT: int = 8000
     MONAI_LABEL_CORS_ORIGINS: List[AnyHttpUrl] = []
 
     MONAI_LABEL_SESSION_PATH: str = ""
     MONAI_LABEL_SESSION_EXPIRY: int = 3600
+    MONAI_LABEL_INFER_CONCURRENCY: int = -1
+    MONAI_LABEL_INFER_TIMEOUT: int = 600
 
     class Config:
         env_file = ".env"

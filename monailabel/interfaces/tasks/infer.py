@@ -14,9 +14,10 @@ import logging
 import os
 import time
 from abc import abstractmethod
-from typing import Dict
+from typing import Any, Callable, Dict, Sequence, Tuple, Union
 
 import torch
+from monai.inferers import SimpleInferer, SlidingWindowInferer
 
 from monailabel.interfaces.exception import MONAILabelError, MONAILabelException
 from monailabel.interfaces.utils.transform import run_transforms
@@ -39,13 +40,13 @@ class InferType:
         OTHERS -                  Other Model Type
     """
 
-    SEGMENTATION = "segmentation"
-    ANNOTATION = "annotation"
-    CLASSIFICATION = "classification"
-    DEEPGROW = "deepgrow"
-    DEEPEDIT = "deepedit"
-    SCRIBBLES = "scribbles"
-    OTHERS = "others"
+    SEGMENTATION: str = "segmentation"
+    ANNOTATION: str = "annotation"
+    CLASSIFICATION: str = "classification"
+    DEEPGROW: str = "deepgrow"
+    DEEPEDIT: str = "deepedit"
+    SCRIBBLES: str = "scribbles"
+    OTHERS: str = "others"
     KNOWN_TYPES = [SEGMENTATION, ANNOTATION, CLASSIFICATION, DEEPGROW, DEEPEDIT, SCRIBBLES, OTHERS]
 
 
@@ -56,18 +57,19 @@ class InferTask:
 
     def __init__(
         self,
-        path,
-        network,
-        type: InferType,
-        labels,
-        dimension,
-        description,
-        model_state_dict="model",
-        input_key="image",
-        output_label_key="pred",
-        output_json_key="result",
-        config=None,
-        load_strict=False,
+        path: Union[str, Sequence[str]],
+        network: Union[None, Any],
+        type: Union[str, InferType],
+        labels: Union[str, None, Sequence[str], Dict[Any, Any]],
+        dimension: int,
+        description: str,
+        model_state_dict: str = "model",
+        input_key: str = "image",
+        output_label_key: str = "pred",
+        output_json_key: str = "result",
+        config: Union[None, Dict[str, Any]] = None,
+        load_strict: bool = False,
+        roi_size=None,
     ):
         """
         :param path: Model File Path. Supports multiple paths to support versions (Last item will be picked as latest)
@@ -81,6 +83,7 @@ class InferTask:
         :param output_json_key: Output key for storing result/label of inference
         :param config: K,V pairs to be part of user config
         :param load_strict: Load model in strict mode
+        :param roi_size: ROI size for scanning window inference
         """
         self.path = path
         self.network = network
@@ -93,18 +96,22 @@ class InferTask:
         self.output_label_key = output_label_key
         self.output_json_key = output_json_key
         self.load_strict = load_strict
+        self.roi_size = roi_size
 
         self._networks: Dict = {}
-        self._config = {
+        self._config: Dict[str, Any] = {
             # "device": "cuda",
             # "result_extension": None,
             # "result_dtype": None,
             # "result_compress": False
+            # "roi_size": self.roi_size,
+            # "sw_batch_size": 1,
+            # "sw_overlap": 0.25,
         }
         if config:
             self._config.update(config)
 
-    def info(self):
+    def info(self) -> Dict[str, Any]:
         return {
             "type": self.type,
             "labels": self.labels,
@@ -113,10 +120,10 @@ class InferTask:
             "config": self.config(),
         }
 
-    def config(self):
+    def config(self) -> Dict[str, Any]:
         return self._config
 
-    def is_valid(self):
+    def is_valid(self) -> bool:
         if self.network or self.type == InferType.SCRIBBLES:
             return True
 
@@ -137,7 +144,7 @@ class InferTask:
         return None
 
     @abstractmethod
-    def pre_transforms(self, data=None):
+    def pre_transforms(self, data=None) -> Sequence[Callable]:
         """
         Provide List of pre-transforms
 
@@ -156,7 +163,7 @@ class InferTask:
         """
         pass
 
-    def inverse_transforms(self, data=None):
+    def inverse_transforms(self, data=None) -> Union[None, Sequence[Callable]]:
         """
         Provide List of inverse-transforms.  They are normally subset of pre-transforms.
         This task is performed on output_label (using the references from input_key)
@@ -178,7 +185,7 @@ class InferTask:
         return None
 
     @abstractmethod
-    def post_transforms(self, data=None):
+    def post_transforms(self, data=None) -> Sequence[Callable]:
         """
         Provide List of post-transforms
 
@@ -200,20 +207,31 @@ class InferTask:
         """
         pass
 
-    @abstractmethod
-    def inferer(self, data=None):
-        """
-        Provide Inferer Class
+    def inferer(self, data=None) -> Callable:
+        input_shape = data[self.input_key].shape if data else None
 
-        :param data: current data dictionary/request which can be helpful to define the inferer per-request basis
+        roi_size = data.get("roi_size", self.roi_size) if data else self.roi_size
+        sw_batch_size = data.get("sw_batch_size", 1) if data else 1
+        sw_overlap = data.get("sw_overlap", 0.25) if data else 0.25
+        device = data.get("device")
 
-            For Example::
+        sliding = False
+        if input_shape and roi_size:
+            for i in range(len(roi_size)):
+                if input_shape[-i] > roi_size[-i]:
+                    sliding = True
 
-                return monai.inferers.SlidingWindowInferer(roi_size=[160, 160, 160])
-        """
-        pass
+        if sliding:
+            return SlidingWindowInferer(
+                roi_size=roi_size,
+                overlap=sw_overlap,
+                sw_batch_size=sw_batch_size,
+                sw_device=device,
+                device=device,
+            )
+        return SimpleInferer()
 
-    def __call__(self, request):
+    def __call__(self, request) -> Tuple[str, Dict[str, Any]]:
         """
         It provides basic implementation to run the following in order
             - Run Pre Transforms
@@ -225,16 +243,19 @@ class InferTask:
         """
         begin = time.time()
         req = copy.deepcopy(self._config)
-        req.update(copy.deepcopy(request))
+        req.update(request)
 
         # device
         device = req.get("device", "cuda")
         req["device"] = device
+        logger.setLevel(req.get("logging", "INFO").upper())
         logger.info(f"Infer Request (final): {req}")
 
-        data = copy.deepcopy(req)
         if req.get("image") and isinstance(req.get("image"), str):
+            data = copy.deepcopy(req)
             data.update({"image_path": req.get("image")})
+        else:
+            data = req
 
         start = time.time()
         pre_transforms = self.pre_transforms(data)
@@ -282,7 +303,7 @@ class InferTask:
 
         if result_file_name:
             logger.info("Result File: {}".format(result_file_name))
-            logger.info("Result Json: {}".format(result_json))
+            logger.info("Result Json Keys: {}".format(list(result_json.keys())))
         return result_file_name, result_json
 
     def run_pre_transforms(self, data, transforms):
@@ -367,8 +388,9 @@ class InferTask:
         """
 
         inferer = self.inferer(data)
-        logger.info("Running Inferer:: {} => {}".format(inferer.__class__.__name__, inferer.__dict__))
+        logger.info("Inferer:: {} => {}".format(inferer.__class__.__name__, inferer.__dict__))
 
+        device = device if device else "cuda"
         if device.startswith("cuda") and not torch.cuda.is_available():
             device = "cpu"
 
@@ -402,7 +424,7 @@ class InferTask:
         :param dtype: output label dtype
         :return: tuple of output_file and result_json
         """
-        logger.info("Writing Result")
+        logger.info("Writing Result...")
         if extension is not None:
             data["result_extension"] = extension
         if dtype is not None:

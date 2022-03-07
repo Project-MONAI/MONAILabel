@@ -635,44 +635,6 @@ class AddRandomGuidanceCustomd(Randomizable, MapTransform):
         return d
 
 
-# A transform to get single modality if there are more and do label sanity
-class SingleModalityLabelSanityd(MapTransform):
-    """
-    Gets single modality and perform label sanity check
-
-    Error is the label is not in the same range:
-     https://stdworkflow.com/866/runtimeerror-cudnn-error-cudnn-status-not-initialized
-    """
-
-    def __init__(
-        self,
-        keys: KeysCollection,
-        label_names=None,
-        allow_missing_keys: bool = False,
-    ):
-        super().__init__(keys, allow_missing_keys)
-        self.label_names = label_names
-
-    def __call__(self, data):
-        d = dict(data)
-        for key in self.keys:
-            if key == "label":
-                logger.info(f"Input image shape check in SingleModalityLabelSanityd transform: {d[key].shape}")
-            if key == "image":
-                meta_data = d["image_meta_dict"]
-                if meta_data["spatial_shape"].shape[0] > 3:
-                    if meta_data["spatial_shape"][4] > 0:
-                        logger.info(
-                            f"Image {meta_data['filename_or_obj'].split('/')[-1]} has more than one modality "
-                            f"- taking FIRST modality ..."
-                        )
-
-                        d[key] = d[key][..., 0]
-                        meta_data["spatial_shape"][4] = 0.0
-
-        return d
-
-
 class AddGuidanceFromPointsCustomd(Transform):
     """
     Add guidance based on user clicks. ONLY WORKS FOR 3D

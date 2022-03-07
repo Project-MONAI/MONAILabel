@@ -8,19 +8,20 @@
 # WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 # See the License for the specific language governing permissions and
 # limitations under the License.
+from typing import Callable, Sequence, Union
 
 from monai.inferers import SimpleInferer
 from monai.transforms import (
     Activationsd,
     AddChanneld,
     AsDiscreted,
+    EnsureTyped,
     LoadImaged,
     Orientationd,
     Resized,
     ScaleIntensityRanged,
     SqueezeDimd,
     ToNumpyd,
-    ToTensord,
 )
 
 from monailabel.deepedit.multilabel.transforms import (
@@ -70,7 +71,6 @@ class DeepEditSeg(InferTask):
         return [
             LoadImaged(keys="image", reader="ITKReader"),
             AddChanneld(keys="image"),
-            # Spacingd(keys="image", pixdim=self.target_spacing, mode="bilinear"),
             Orientationd(keys="image", axcodes="RAS"),
             # This transform may not work well for MR images
             ScaleIntensityRanged(
@@ -83,18 +83,18 @@ class DeepEditSeg(InferTask):
             ),
             Resized(keys="image", spatial_size=self.spatial_size, mode="area"),
             DiscardAddGuidanced(keys="image", label_names=self.label_names),
-            ToTensord(keys="image"),
+            EnsureTyped(keys="image", device=data.get("device") if data else None),
         ]
 
-    def inferer(self, data=None):
+    def inferer(self, data=None) -> Callable:
         return SimpleInferer()
 
-    def inverse_transforms(self, data=None):
+    def inverse_transforms(self, data=None) -> Union[None, Sequence[Callable]]:
         return []  # Self-determine from the list of pre-transforms provided
 
-    def post_transforms(self, data=None):
+    def post_transforms(self, data=None) -> Sequence[Callable]:
         return [
-            ToTensord(keys="pred"),
+            EnsureTyped(keys="pred", device=data.get("device") if data else None),
             Activationsd(keys="pred", softmax=True),
             AsDiscreted(keys="pred", argmax=True),
             SqueezeDimd(keys="pred", dim=0),
@@ -133,11 +133,10 @@ class DeepEdit(InferTask):
         self.target_spacing = target_spacing
         self.label_names = label_names
 
-    def pre_transforms(self, data=None):
+    def pre_transforms(self, data=None) -> Sequence[Callable]:
         return [
             LoadImaged(keys="image", reader="ITKReader"),
             AddChanneld(keys="image"),
-            # Spacingd(keys="image", pixdim=self.target_spacing, mode="bilinear"),
             Orientationd(keys="image", axcodes="RAS"),
             # This transform may not work well for MR images
             ScaleIntensityRanged(
@@ -152,18 +151,18 @@ class DeepEdit(InferTask):
             Resized(keys="image", spatial_size=self.spatial_size, mode="area"),
             ResizeGuidanceMultipleLabelCustomd(guidance="guidance", ref_image="image"),
             AddGuidanceSignalCustomd(keys="image", guidance="guidance"),
-            ToTensord(keys="image"),
+            EnsureTyped(keys="image", device=data.get("device") if data else None),
         ]
 
-    def inferer(self, data=None):
+    def inferer(self, data=None) -> Callable:
         return SimpleInferer()
 
-    def inverse_transforms(self, data=None):
+    def inverse_transforms(self, data=None) -> Union[None, Sequence[Callable]]:
         return []  # Self-determine from the list of pre-transforms provided
 
-    def post_transforms(self, data=None):
+    def post_transforms(self, data=None) -> Sequence[Callable]:
         return [
-            ToTensord(keys="pred"),
+            EnsureTyped(keys="pred", device=data.get("device") if data else None),
             Activationsd(keys="pred", softmax=True),
             AsDiscreted(keys="pred", argmax=True),
             ToNumpyd(keys="pred"),

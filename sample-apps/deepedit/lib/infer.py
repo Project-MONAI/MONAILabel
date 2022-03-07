@@ -8,6 +8,7 @@
 # WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 # See the License for the specific language governing permissions and
 # limitations under the License.
+from typing import Callable, Sequence, Union
 
 from monai.apps.deepgrow.transforms import AddGuidanceFromPointsd, AddGuidanceSignald
 from monai.inferers import SimpleInferer
@@ -15,16 +16,17 @@ from monai.transforms import (
     Activationsd,
     AddChanneld,
     AsDiscreted,
+    EnsureChannelFirstd,
+    EnsureTyped,
     LoadImaged,
     NormalizeIntensityd,
     Orientationd,
     Resized,
     SqueezeDimd,
     ToNumpyd,
-    ToTensord,
 )
 
-from monailabel.deepedit.transforms import DiscardAddGuidanced, ResizeGuidanceCustomd, SingleLabelSingleModalityd
+from monailabel.deepedit.transforms import DiscardAddGuidanced, ResizeGuidanceCustomd
 from monailabel.interfaces.tasks.infer import InferTask, InferType
 from monailabel.transform.post import Restored
 
@@ -60,27 +62,26 @@ class DeepEditSeg(InferTask):
         self.spatial_size = spatial_size
         self.target_spacing = target_spacing
 
-    def pre_transforms(self, data=None):
+    def pre_transforms(self, data=None) -> Sequence[Callable]:
         return [
             LoadImaged(keys="image"),
-            SingleLabelSingleModalityd(keys="image"),
-            AddChanneld(keys="image"),
+            EnsureChannelFirstd(keys="image"),
             Orientationd(keys="image", axcodes="RAS"),
             NormalizeIntensityd(keys="image"),
             Resized(keys="image", spatial_size=self.spatial_size, mode="area"),
             DiscardAddGuidanced(keys="image"),
-            ToTensord(keys="image"),
+            EnsureTyped(keys="image", device=data.get("device") if data else None),
         ]
 
-    def inferer(self, data=None):
+    def inferer(self, data=None) -> Callable:
         return SimpleInferer()
 
-    def inverse_transforms(self, data=None):
+    def inverse_transforms(self, data=None) -> Union[None, Sequence[Callable]]:
         return []  # Self-determine from the list of pre-transforms provided
 
-    def post_transforms(self, data=None):
+    def post_transforms(self, data=None) -> Sequence[Callable]:
         return [
-            ToTensord(keys="pred"),
+            EnsureTyped(keys="pred", device=data.get("device") if data else None),
             Activationsd(keys="pred", sigmoid=True),
             AsDiscreted(keys="pred", threshold_values=True, logit_thresh=0.51),
             SqueezeDimd(keys="pred", dim=0),
@@ -116,13 +117,10 @@ class DeepEdit(InferTask):
         self.spatial_size = spatial_size
         self.target_spacing = target_spacing
 
-    def pre_transforms(self, data=None):
+    def pre_transforms(self, data=None) -> Sequence[Callable]:
         return [
             LoadImaged(keys="image", reader="nibabelreader"),
-            SingleLabelSingleModalityd(keys="image"),
-            AddChanneld(keys="image"),
-            # Spacing might not be needed as resize transform is used later.
-            # Spacingd(keys=["image", "label"], pixdim=self.target_spacing, mode=("bilinear", "nearest")),
+            EnsureChannelFirstd(keys="image"),
             Orientationd(keys="image", axcodes="RAS"),
             SqueezeDimd(keys="image", dim=0),
             AddGuidanceFromPointsd(ref_image="image", guidance="guidance", dimensions=3),
@@ -131,18 +129,18 @@ class DeepEdit(InferTask):
             Resized(keys="image", spatial_size=self.spatial_size, mode="area"),
             ResizeGuidanceCustomd(guidance="guidance", ref_image="image"),
             AddGuidanceSignald(image="image", guidance="guidance"),
-            ToTensord(keys="image"),
+            EnsureTyped(keys="image", device=data.get("device") if data else None),
         ]
 
-    def inferer(self, data=None):
+    def inferer(self, data=None) -> Callable:
         return SimpleInferer()
 
-    def inverse_transforms(self, data=None):
+    def inverse_transforms(self, data=None) -> Union[None, Sequence[Callable]]:
         return []  # Self-determine from the list of pre-transforms provided
 
-    def post_transforms(self, data=None):
+    def post_transforms(self, data=None) -> Sequence[Callable]:
         return [
-            ToTensord(keys="pred"),
+            EnsureTyped(keys="pred", device=data.get("device") if data else None),
             Activationsd(keys="pred", sigmoid=True),
             AsDiscreted(keys="pred", threshold_values=True, logit_thresh=0.51),
             ToNumpyd(keys="pred"),

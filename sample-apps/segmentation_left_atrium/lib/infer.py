@@ -8,6 +8,7 @@
 # WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 # See the License for the specific language governing permissions and
 # limitations under the License.
+from typing import Callable, Sequence, Union
 
 from monai.inferers import SimpleInferer
 from monai.transforms import (
@@ -15,12 +16,12 @@ from monai.transforms import (
     AsDiscreted,
     CenterSpatialCropd,
     EnsureChannelFirstd,
+    EnsureTyped,
     LoadImaged,
     NormalizeIntensityd,
     Orientationd,
     Spacingd,
     ToNumpyd,
-    ToTensord,
 )
 
 from monailabel.interfaces.tasks.infer import InferTask, InferType
@@ -50,7 +51,7 @@ class MyInfer(InferTask):
             description=description,
         )
 
-    def pre_transforms(self, data=None):
+    def pre_transforms(self, data=None) -> Sequence[Callable]:
         return [
             LoadImaged(keys=["image"]),
             EnsureChannelFirstd(keys="image"),
@@ -62,18 +63,18 @@ class MyInfer(InferTask):
             Orientationd(keys=["image"], axcodes="RAS"),
             NormalizeIntensityd(keys=["image"], nonzero=False, channel_wise=True),
             CenterSpatialCropd(keys="image", roi_size=(256, 256, 128)),
-            ToTensord(keys=["image"]),
+            EnsureTyped(keys="image", device=data.get("device") if data else None),
         ]
 
-    def inferer(self, data=None):
+    def inferer(self, data=None) -> Callable:
         return SimpleInferer()
 
-    def inverse_transforms(self, data=None):
+    def inverse_transforms(self, data=None) -> Union[None, Sequence[Callable]]:
         return []  # Self-determine from the list of pre-transforms provided
 
-    def post_transforms(self, data=None):
+    def post_transforms(self, data=None) -> Sequence[Callable]:
         return [
-            ToTensord(keys=("image", "pred")),
+            EnsureTyped(keys="pred", device=data.get("device") if data else None),
             Activationsd(keys="pred", softmax=True),
             AsDiscreted(keys="pred", argmax=True),
             ToNumpyd(keys="pred"),

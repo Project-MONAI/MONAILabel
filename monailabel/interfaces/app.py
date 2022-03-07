@@ -16,6 +16,7 @@ import platform
 import shutil
 import tempfile
 import time
+from concurrent.futures import ThreadPoolExecutor
 from datetime import timedelta
 from distutils.util import strtobool
 from typing import Any, Callable, Dict, Optional, Sequence, Union
@@ -52,7 +53,7 @@ class MONAILabelApp:
     Default Pre-trained Path for downloading models
     """
 
-    PRE_TRAINED_PATH: str = "https://github.com/Project-MONAI/MONAILabel/releases/download/data/"
+    PRE_TRAINED_PATH: str = "https://github.com/Project-MONAI/MONAILabel/releases/download/data"
 
     def __init__(
         self,
@@ -89,11 +90,15 @@ class MONAILabelApp:
         self._scoring_methods = self.init_scoring_methods()
         self._batch_infer = self.init_batch_infer()
 
-        if strtobool(conf.get("download_tools", "true")):
-            self._download_tools()
         self._server_mode = strtobool(conf.get("server_mode", "false"))
         self._auto_update_scoring = strtobool(conf.get("auto_update_scoring", "true"))
         self._sessions = self._load_sessions(strtobool(conf.get("sessions", "true")))
+
+        self._infers_threadpool = (
+            None
+            if settings.MONAI_LABEL_INFER_CONCURRENCY < 0
+            else ThreadPoolExecutor(max_workers=settings.MONAI_LABEL_INFER_CONCURRENCY, thread_name_prefix="INFER")
+        )
 
     def init_infers(self) -> Dict[str, InferTask]:
         return {}
@@ -114,35 +119,39 @@ class MONAILabelApp:
         logger.info(f"Init Datastore for: {self.studies}")
         if self.studies.startswith("http://") or self.studies.startswith("https://"):
             self.studies = self.studies.rstrip("/").strip()
-            logger.info(f"Using DICOM WEB: {self.studies}")
-
-            dw_session = None
-            if settings.MONAI_LABEL_DICOMWEB_USERNAME and settings.MONAI_LABEL_DICOMWEB_PASSWORD:
-                dw_session = create_session_from_user_pass(
-                    settings.MONAI_LABEL_DICOMWEB_USERNAME, settings.MONAI_LABEL_DICOMWEB_PASSWORD
-                )
-
-            dw_client = DICOMwebClientX(
-                url=self.studies,
-                session=dw_session,
-                qido_url_prefix=settings.MONAI_LABEL_QIDO_PREFIX,
-                wado_url_prefix=settings.MONAI_LABEL_WADO_PREFIX,
-                stow_url_prefix=settings.MONAI_LABEL_STOW_PREFIX,
-            )
-
-            cache_path = settings.MONAI_LABEL_DICOMWEB_CACHE_PATH
-            cache_path = cache_path.strip() if cache_path else ""
-            fetch_by_frame = settings.MONAI_LABEL_DICOMWEB_FETCH_BY_FRAME
-            return (
-                DICOMWebDatastore(dw_client, cache_path, fetch_by_frame=fetch_by_frame)
-                if cache_path
-                else DICOMWebDatastore(dw_client, fetch_by_frame=fetch_by_frame)
-            )
+            return self.init_remote_datastore()
 
         return LocalDatastore(
             self.studies,
             extensions=settings.MONAI_LABEL_DATASTORE_FILE_EXT,
             auto_reload=settings.MONAI_LABEL_DATASTORE_AUTO_RELOAD,
+        )
+
+    def init_remote_datastore(self) -> Datastore:
+        logger.info(f"Using DICOM WEB: {self.studies}")
+        dw_session = None
+        if settings.MONAI_LABEL_DICOMWEB_USERNAME and settings.MONAI_LABEL_DICOMWEB_PASSWORD:
+            dw_session = create_session_from_user_pass(
+                settings.MONAI_LABEL_DICOMWEB_USERNAME, settings.MONAI_LABEL_DICOMWEB_PASSWORD
+            )
+
+        dw_client = DICOMwebClientX(
+            url=self.studies,
+            session=dw_session,
+            qido_url_prefix=settings.MONAI_LABEL_QIDO_PREFIX,
+            wado_url_prefix=settings.MONAI_LABEL_WADO_PREFIX,
+            stow_url_prefix=settings.MONAI_LABEL_STOW_PREFIX,
+        )
+
+        self._download_dcmqi_tools()
+
+        cache_path = settings.MONAI_LABEL_DICOMWEB_CACHE_PATH
+        cache_path = cache_path.strip() if cache_path else ""
+        fetch_by_frame = settings.MONAI_LABEL_DICOMWEB_FETCH_BY_FRAME
+        return (
+            DICOMWebDatastore(dw_client, cache_path, fetch_by_frame=fetch_by_frame)
+            if cache_path
+            else DICOMWebDatastore(dw_client, fetch_by_frame=fetch_by_frame)
         )
 
     def info(self):
@@ -227,15 +236,23 @@ class MONAILabelApp:
             logger.info(os.listdir(request["image"]))
             request["image"] = [os.path.join(f, request["image"]) for f in os.listdir(request["image"])]
 
-        logger.info(f"Image => {request['image']}")
-        result_file_name, result_json = task(request)
+        logger.debug(f"Image => {request['image']}")
+        if self._infers_threadpool:
+
+            def run_infer_in_thread(t, r):
+                return t(r)
+
+            f = self._infers_threadpool.submit(run_infer_in_thread, t=task, r=request)
+            result_file_name, result_json = f.result(request.get("timeout", settings.MONAI_LABEL_INFER_TIMEOUT))
+        else:
+            result_file_name, result_json = task(request)
 
         label_id = None
         if result_file_name and os.path.exists(result_file_name):
             tag = request.get("label_tag", DefaultLabelTag.ORIGINAL)
-            save_label = request.get("save_label", True)
+            save_label = request.get("save_label", False)
             if save_label:
-                label_id = datastore.save_label(image_id, result_file_name, tag, result_json)
+                label_id = datastore.save_label(image_id, result_file_name, tag, dict())
             else:
                 label_id = result_file_name
 
@@ -484,7 +501,7 @@ class MONAILabelApp:
             logger.error(f"Failed To Trigger {action}: {response.text}")
         return response.json() if response.status_code == 200 else None
 
-    def _download_tools(self):
+    def _download_dcmqi_tools(self):
         target = os.path.join(self.app_dir, "bin")
         os.makedirs(target, exist_ok=True)
 
@@ -537,8 +554,8 @@ class MONAILabelApp:
         """
         Dictionary of Default Infer Tasks for Deepgrow 2D/3D
         """
-        deepgrow_2d = load_from_mmar("clara_pt_deepgrow_2d_annotation_1", model_dir)
-        deepgrow_3d = load_from_mmar("clara_pt_deepgrow_3d_annotation_1", model_dir)
+        deepgrow_2d = load_from_mmar("clara_pt_deepgrow_2d_annotation", model_dir)
+        deepgrow_3d = load_from_mmar("clara_pt_deepgrow_3d_annotation", model_dir)
 
         infers = {
             "deepgrow_2d": InferDeepgrow2D(None, deepgrow_2d),
