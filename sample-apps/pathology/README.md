@@ -1,4 +1,4 @@
-# Pathalogy Use Case
+# Pathology Use Case
 > _This App is currently under active development._
 
 ### Overview
