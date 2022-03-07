@@ -1,0 +1,8 @@
+{
+  "MONAILabelAnnotation": {
+    "type"    : "python"
+  },
+  "MONAILabelTraining": {
+    "type"    : "python"
+  }
+}

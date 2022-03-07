@@ -15,7 +15,6 @@ import json
 import logging
 import mimetypes
 import os
-import ssl
 import tempfile
 from urllib.parse import quote_plus, urlparse
 
@@ -270,14 +269,7 @@ class MONAILabelUtils:
         selector = path + "/" + selector.lstrip("/")
         logging.debug("URI Path: {}".format(selector))
 
-        parsed = urlparse(server_url)
-        if parsed.scheme == "https":
-            logger.debug("Using HTTPS mode")
-            # noinspection PyProtectedMember
-            conn = http.client.HTTPSConnection(parsed.hostname, parsed.port, context=ssl._create_unverified_context())
-        else:
-            conn = http.client.HTTPConnection(parsed.hostname, parsed.port)
-
+        conn = http.client.HTTPConnection(parsed.hostname, parsed.port)
         headers = {}
         if body:
             if isinstance(body, dict):
