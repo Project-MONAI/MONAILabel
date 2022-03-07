@@ -92,7 +92,7 @@ Upload new Task (under Slicer CLI Web Tasks) using the above docker image.  This
 ### Snapshots
 DSA
 ####
-![image](https://user-images.githubusercontent.com/7339051/157099835-dcb72fb8-a99b-4959-bd19-7fa8c3fb051d.png)
+![image](https://user-images.githubusercontent.com/7339051/157100606-a281e038-5923-43a8-bb82-8fccae51fcff.png)
 
 QuPath
 ####
