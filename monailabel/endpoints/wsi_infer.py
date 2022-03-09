@@ -70,7 +70,7 @@ def run_wsi_inference(
     image: str = "",
     session_id: str = "",
     wsi: WSIInput = WSIInput(),
-    output: Optional[ResultType] = ResultType.asap,
+    output: Optional[ResultType] = ResultType.dsa,
 ):
     request = {"model": model, "image": image, "output": output.value if output else None}
 
