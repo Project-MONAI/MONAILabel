@@ -56,6 +56,7 @@ pip install -r requirements.txt
   # 4. Menu -> MONAILabel -> Run
   
 ```
+> Submit Label + Run/Finetune training feature is not complete for filesystem based datastore.  You can train a model only if you use DSA as Datastore.
  
 #### Digital Slide Arhive (DSA) as Datastore
 ##### DSA
@@ -80,10 +81,12 @@ Following are some config options:
   
 ```
 
+> In some cases, you may want to enable **Send Image Data** option from *MONAILabel Annotation -> WSI Analysis* to send Image Numpy (raw data) to MONAILabel Server explicitly. 
+
 ##### DSA Client Plugin
 ```bash
   cd plugins/dsa
-  docker build -t projectmonai/monailabel/dsa:latest .
+  docker build -t projectmonai/monailabel-dsa:latest .
 ```
 
 Upload new Task (under Slicer CLI Web Tasks) using the above docker image.  This will add/enable MONAILabel under Analysis Page.

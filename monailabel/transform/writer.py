@@ -8,7 +8,6 @@
 # WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 # See the License for the specific language governing permissions and
 # limitations under the License.
-
 import logging
 import tempfile
 
@@ -149,29 +148,31 @@ class PolygonWriter:
         loglevel = data.get("logging", "INFO").upper()
         logger.setLevel(loglevel)
 
-        output = data.get(self.key_output_format, "asap")
+        output = data.get(self.key_output_format, "dsa")
         logger.info(f"+++ Output Type: {output}")
 
-        write_to_file = data.get(self.key_write_to_file, True)
         output_json = data.get(self.json, {})
+        write_to_file = data.get(self.key_write_to_file, True)
         if not write_to_file:
             return None, output_json
 
-        json_data = {"tasks": {"tid-0": {"annotations": output_json.get(self.key_annotations, [])}}}
+        res_json = {
+            "name": f"MONAILabel Annotations - {data.get('model')}",
+            "description": data.get("description"),
+            "model": data.get("model"),
+            "location": data.get("location"),
+            "size": data.get("size"),
+            "annotations": [output_json],
+        }
 
         output_file = None
         if output == "asap":
             logger.info("+++ Generating ASAP XML Annotation")
-            output_file = create_asap_annotations_xml(
-                json_data, color_map=data.get(self.key_label_colors), loglevel=loglevel
-            )
+            output_file = create_asap_annotations_xml(res_json, loglevel=loglevel)
         elif output == "dsa":
             logger.info("+++ Generating DSA JSON Annotation")
-            model = data.get("model")
-            output_file = create_dsa_annotations_json(
-                json_data, name=f"MONAILabel - {model}", color_map=data.get(self.key_label_colors), loglevel=loglevel
-            )
+            output_file = create_dsa_annotations_json(res_json, loglevel=loglevel)
         else:
             logger.info("+++ Return Default JSON Annotation")
 
-        return output_file, output_json
+        return output_file, res_json

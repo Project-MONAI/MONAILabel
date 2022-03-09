@@ -12,7 +12,7 @@ import logging
 from typing import Any, Callable, Dict, Sequence
 
 import numpy as np
-from lib.transforms import FilterImaged, FindContoursd, LoadImagePatchd, PostFilterLabeld
+from lib.transforms import FilterImaged, LoadImagePatchd, PostFilterLabeld
 from monai.transforms import (
     Activationsd,
     AsChannelFirstd,
@@ -24,6 +24,7 @@ from monai.transforms import (
 )
 
 from monailabel.interfaces.tasks.infer import InferTask, InferType
+from monailabel.transform.post import FindContoursd
 from monailabel.transform.writer import PolygonWriter
 
 logger = logging.getLogger(__name__)

@@ -12,14 +12,12 @@ import logging
 import math
 import pathlib
 
-import cv2
 import numpy as np
 import openslide
 from monai.apps.deepgrow.transforms import AddInitialSeedPointd
 from monai.config import KeysCollection
 from monai.transforms import CenterSpatialCrop, MapTransform, Transform
 from PIL import Image
-from shapely.geometry import Polygon
 from skimage.filters.thresholding import threshold_otsu
 from skimage.morphology import remove_small_objects
 
@@ -194,83 +192,6 @@ class PostFilterLabeld(MapTransform):
             label = label * np.logical_xor(label, gray == 0)
             label = filter_remove_small_objects(label, min_size=self.min_size).astype(np.uint8)
             d[key] = label
-        return d
-
-
-class FindContoursd(MapTransform):
-    def __init__(
-        self,
-        keys: KeysCollection,
-        min_positive=10,
-        min_poly_area=80,
-        result="result",
-        result_output_key="annotations",
-        labels=None,
-    ):
-        super().__init__(keys)
-
-        self.min_positive = min_positive
-        self.min_poly_area = min_poly_area
-        self.result = result
-        self.result_output_key = result_output_key
-
-        labels = labels if labels else dict()
-        labels = [labels] if isinstance(labels, str) else labels
-        if not isinstance(labels, dict):
-            labels = {v: k + 1 for k, v in enumerate(labels)}
-
-        labels = {v: k for k, v in labels.items()}
-        self.labels = labels
-
-    def __call__(self, data):
-        d = dict(data)
-        location = d.get("location", [0, 0])
-        size = d.get("size", [0, 0])
-        min_poly_area = d.get("min_poly_area", self.min_poly_area)
-
-        tx, ty = location[0], location[1]
-        tw, th = size[0], size[1]
-        bbox = [[tx, ty], [tx + tw, ty + th]]
-
-        all_polygons = []
-        for key in self.keys:
-            p = d[key]
-            if np.count_nonzero(p) < self.min_positive:
-                continue
-
-            labels = [l for l in np.unique(p).tolist() if l > 0]
-            logger.debug(f"Total Unique Masks (excluding background): {labels}")
-            for label in labels:
-                p = d[key]
-                p[p == label] = 1
-
-                polygons = []
-                contours, _ = cv2.findContours(p, cv2.RETR_LIST, cv2.CHAIN_APPROX_SIMPLE)
-                for contour in contours:
-                    contour = np.squeeze(contour)
-                    if len(contour) < 3:
-                        continue
-
-                    contour[:, 0] += tx  # X
-                    contour[:, 1] += ty  # Y
-
-                    coords = contour.astype(int).tolist()
-                    pobj = Polygon(coords)
-                    if pobj.area < min_poly_area:  # Ignore poly with lesser area
-                        continue
-
-                    logger.debug(f"Area: {pobj.area}; Perimeter: {pobj.length}; Count: {len(coords)}")
-                    polygons.append(coords)
-
-                if len(polygons):
-                    all_polygons.append({"label": self.labels.get(label, label), "bbox": bbox, "contours": polygons})
-                    logger.debug(f"+++++ {label} => Total Polygons Found: {len(polygons)}")
-
-        if all_polygons:
-            if d.get(self.result) is None:
-                d[self.result] = dict()
-            d[self.result][self.result_output_key] = all_polygons
-            logger.debug(f"+++++ ALL => Total Polygons Groups Found: {len(all_polygons)}")
         return d
 
 

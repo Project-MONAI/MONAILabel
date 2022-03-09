@@ -60,7 +60,7 @@ def run_monailabel_task(slide_path, level, location, size, tile_position, args, 
 
         # get tile image
         image_np = tile_info["tile"][:, :, :3].astype(np.uint8)
-        logging.info(f"Send Image over wire: {image_np.shape}({image_np.dtype})")
+        logging.info(f"+++ Sending Image (Numpy) over wire: {image_np.shape}({image_np.dtype})")
         with tempfile.NamedTemporaryFile(suffix=".npy") as f:
             np.save(f.name, image_np)
             res_j, _ = client.infer(model=args.model_name, image_in="", file=f.name, params=body)
