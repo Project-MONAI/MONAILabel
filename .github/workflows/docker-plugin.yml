@@ -1,4 +1,4 @@
-name: docker
+name: docker_plugin
 on:
   workflow_dispatch:
     inputs:
