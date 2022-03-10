@@ -33,6 +33,8 @@ cd MONAILabel
 pip install -r requirements.txt
 ```
 
+> Install [Openslide](https://openslide.org/) binaries manually and make sure .dll or .so files for openslide are in system load path.
+
 #### FileSystem as Datastore
 
 ```bash
