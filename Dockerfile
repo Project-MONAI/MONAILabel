@@ -21,7 +21,7 @@ FROM ${MONAI_IMAGE} as build
 LABEL maintainer="monai.contact@gmail.com"
 
 ADD . /opt/monailabel/
-RUN apt update -y && apt install npm -y && npm install --global yarn
+RUN apt update -y && apt install openslide-tools npm -y && npm install --global yarn
 RUN python -m pip install --upgrade --no-cache-dir pip setuptools wheel twine \
     && cd /opt/monailabel \
     && python setup.py sdist bdist_wheel --build-number $(date +'%Y%m%d%H%M')
