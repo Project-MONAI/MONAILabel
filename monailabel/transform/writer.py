@@ -91,7 +91,7 @@ class Writer:
         compress = data.get(self.key_compress, False)
         write_to_file = data.get(self.key_write_to_file, True)
         ext = data.get(self.key_extension) if data.get(self.key_extension) else ext
-        logger.info(f"Result ext: {ext}; write_to_file: {write_to_file}")
+        logger.info(f"Result ext: {ext}; write_to_file: {write_to_file}; dtype: {dtype}")
 
         image_np = data[self.label]
         meta_dict = data.get(f"{self.ref_image}_{self.meta_key_postfix}")

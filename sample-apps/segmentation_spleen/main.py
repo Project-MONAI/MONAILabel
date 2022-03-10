@@ -50,7 +50,7 @@ class MyApp(MONAILabelApp):
         self.model_dir = os.path.join(app_dir, "model")
         self.final_model = os.path.join(self.model_dir, "model.pt")
 
-        self.mmar = "clara_pt_spleen_ct_segmentation_1"
+        self.mmar = "clara_pt_spleen_ct_segmentation"
         self.pretrained_model = os.path.join(self.model_dir, self.mmar, "models", "model.pt")
 
         self.epistemic_enabled = strtobool(conf.get("epistemic_enabled", "false"))

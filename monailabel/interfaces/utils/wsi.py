@@ -13,7 +13,9 @@ import copy
 import logging
 from math import ceil
 
-import openslide
+from monai.utils import optional_import
+
+openslide, has_openslide = optional_import("openslide")
 
 logger = logging.getLogger(__name__)
 
@@ -30,6 +32,9 @@ def create_infer_wsi_tasks(request, image):
     bbox = [[location[0], location[1]], [location[0] + size[0], location[1] + size[1]]]
     bbox = bbox if bbox and sum(bbox[0]) + sum(bbox[1]) > 0 else None
     level = request.get("level", 0)
+
+    if not has_openslide:
+        raise ImportError("Unable to find openslide, please ensure openslide library packages are correctly installed")
 
     with openslide.OpenSlide(image) as slide:
         w, h = slide.dimensions
