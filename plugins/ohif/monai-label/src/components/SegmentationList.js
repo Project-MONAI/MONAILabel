@@ -10,7 +10,6 @@ import './SegmentationList.styl';
 
 import {
   createSegment,
-  clearSegment,
   deleteSegment,
   flattenLabelmaps,
   getFirstSegmentId,
@@ -77,46 +76,12 @@ export default class SegmentationList extends Component {
     return null;
   };
 
-  getIndexByName = name => {
-    console.info(this.state.segments);
-    for (let i = 0; i < this.state.segments.length; i++) {
-      if (this.state.segments[i].meta.SegmentLabel == name) {
-        let id = this.state.segments[i].id;
-        let index = id.split('+').map(Number);
-        return { id, labelmapIndex: index[0], segmentIndex: index[1] };
-      }
-    }
-    return null;
-  };
-
-  getNameByIndex = index => {
-    const id = index.id;
-    for (let i = 0; i < this.state.segments.length; i++) {
-      if (this.state.segments[i].id == id) {
-        return this.state.segments[i].meta.SegmentLabel;
-      }
-    }
-    return null;
-  };
-
-  onAddSegment = (
-    name,
-    description,
-    color,
-    selectActive = true,
-    newLabelMap = false
-  ) => {
+  onAddSegment = (name, description, color) => {
     this.uiModelService.hide();
 
     const { element } = this.props.viewConstants;
-    const { id } = createSegment(
-      element,
-      name,
-      description,
-      hexToRgb(color),
-      newLabelMap
-    );
-    this.refreshSegTable(id, selectActive);
+    const { id } = createSegment(element, name, description, hexToRgb(color));
+    this.refreshSegTable(id);
 
     if (this.props.onSegmentCreated) {
       this.props.onSegmentCreated(id);
@@ -218,58 +183,6 @@ export default class SegmentationList extends Component {
     }
   };
 
-  onDeleteSegmentByName = name => {
-    this.onDeleteSegmentByIndex(this.getIndexByName(name));
-  };
-
-  onDeleteSegmentByIndex = selectedIndex => {
-    const { element } = this.props.viewConstants;
-    console.info(selectedIndex);
-
-    if (selectedIndex) {
-      deleteSegment(
-        element,
-        selectedIndex.labelmapIndex,
-        selectedIndex.segmentIndex
-      );
-      this.setState({ selectedSegmentId: null });
-      this.refreshSegTable(null);
-
-      if (this.props.onSegmentDeleted) {
-        this.props.onSegmentDeleted(selectedIndex.id);
-      }
-    } else {
-      console.info(
-        'onDeleteSegmentByIndex: segment ' +
-          selectedIndex +
-          ' not found, skipping...'
-      );
-    }
-  };
-
-  onClearSegmentByName = name => {
-    this.onClearSegmentByIndex(this.getIndexByName(name));
-  };
-
-  onClearSegmentByIndex = selectedIndex => {
-    const { element } = this.props.viewConstants;
-    console.info(selectedIndex);
-
-    if (selectedIndex) {
-      clearSegment(
-        element,
-        selectedIndex.labelmapIndex,
-        selectedIndex.segmentIndex
-      );
-    } else {
-      console.info(
-        'onClearSegmentByIndex: segment ' +
-          selectedIndex +
-          ' not found, skipping...'
-      );
-    }
-  };
-
   onClickExportSegments = () => {
     const { getters } = cornerstoneTools.getModule('segmentation');
     const { labelmaps3D } = getters.labelmaps3D(
@@ -310,7 +223,7 @@ export default class SegmentationList extends Component {
     }
   };
 
-  refreshSegTable = (id, selectActive = true) => {
+  refreshSegTable = id => {
     const { element } = this.props.viewConstants;
 
     const labelmaps = getLabelMaps(element);
@@ -321,20 +234,7 @@ export default class SegmentationList extends Component {
       id = segments[segments.length - 1].id;
     }
 
-    // do not select if index is from a scribbles volume
-    // scribbles volumes exist in table
-    // but wont be shown or selectable through the table ui
-    for (let i = 0; i < segments.length; i++) {
-      if (
-        segments[i].meta.SegmentLabel.includes('scribbles') &&
-        segments[i].id == id
-      ) {
-        id = null;
-        break;
-      }
-    }
-
-    if (id && selectActive) {
+    if (id) {
       this.setState({ segments: segments, selectedSegmentId: id });
     } else {
       this.setState({ segments: segments });
@@ -359,21 +259,11 @@ export default class SegmentationList extends Component {
     }
   };
 
-  updateView = async (
-    response,
-    labels,
-    operation,
-    slice,
-    overlap,
-    selectedIndex
-  ) => {
+  updateView = async (response, labels, operation, slice, overlap) => {
     const { element, numberOfFrames } = this.props.viewConstants;
-    if (!selectedIndex) {
-      selectedIndex = this.getSelectedActiveIndex();
-    }
+    let activeIndex = this.getSelectedActiveIndex();
     const { header, image } = SegmentationReader.parseNrrdData(response.data);
     this.setState({ header: header });
-    console.debug(selectedIndex);
 
     if (labels) {
       let i = 0;
@@ -395,14 +285,14 @@ export default class SegmentationList extends Component {
           i === 0 ? !overlap : false
         );
         if (i === 0) {
-          selectedIndex = resp;
+          activeIndex = resp;
         }
         i++;
 
         if (this.state.selectedSegmentId) {
           this.refreshSegTable();
         } else {
-          this.refreshSegTable(selectedIndex.id);
+          this.refreshSegTable(activeIndex.id);
         }
       }
     }
@@ -413,8 +303,8 @@ export default class SegmentationList extends Component {
 
     updateSegment(
       element,
-      selectedIndex.labelmapIndex,
-      selectedIndex.segmentIndex,
+      activeIndex.labelmapIndex,
+      activeIndex.segmentIndex,
       image,
       numberOfFrames,
       operation,
@@ -493,48 +383,39 @@ export default class SegmentationList extends Component {
               </tr>
             </thead>
             <tbody>
-              {this.state.segments
-                .filter(
-                  // do not display anything related to scribbles
-                  function(seg) {
-                    return !seg.meta.SegmentLabel.includes('scribbles');
-                  }
-                )
-                .map(seg => (
-                  <tr key={seg.id}>
-                    <td>
-                      <input
-                        type="radio"
-                        name="segitem"
-                        value={seg.id}
-                        checked={seg.id === this.state.selectedSegmentId}
-                        onChange={this.onSelectSegment}
-                      />
-                    </td>
-                    <td>
-                      <ColoredCircle color={seg.color} />
-                    </td>
-                    <td
-                      className="segEdit"
-                      contentEditable="true"
-                      suppressContentEditableWarning="true"
-                      onKeyUp={evt =>
-                        this.onUpdateLabelOrDesc(seg.id, evt, true)
-                      }
-                    >
-                      {seg.meta.SegmentLabel}
-                    </td>
-                    <td
-                      contentEditable="true"
-                      suppressContentEditableWarning="true"
-                      onKeyUp={evt =>
-                        this.onUpdateLabelOrDesc(seg.id, evt, false)
-                      }
-                    >
-                      {seg.meta.SegmentDescription}
-                    </td>
-                  </tr>
-                ))}
+              {this.state.segments.map(seg => (
+                <tr key={seg.id}>
+                  <td>
+                    <input
+                      type="radio"
+                      name="segitem"
+                      value={seg.id}
+                      checked={seg.id === this.state.selectedSegmentId}
+                      onChange={this.onSelectSegment}
+                    />
+                  </td>
+                  <td>
+                    <ColoredCircle color={seg.color} />
+                  </td>
+                  <td
+                    className="segEdit"
+                    contentEditable="true"
+                    suppressContentEditableWarning="true"
+                    onKeyUp={evt => this.onUpdateLabelOrDesc(seg.id, evt, true)}
+                  >
+                    {seg.meta.SegmentLabel}
+                  </td>
+                  <td
+                    contentEditable="true"
+                    suppressContentEditableWarning="true"
+                    onKeyUp={evt =>
+                      this.onUpdateLabelOrDesc(seg.id, evt, false)
+                    }
+                  >
+                    {seg.meta.SegmentDescription}
+                  </td>
+                </tr>
+              ))}
             </tbody>
           </table>
         </div>

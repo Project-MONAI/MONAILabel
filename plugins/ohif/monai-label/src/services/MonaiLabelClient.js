@@ -10,10 +10,8 @@ export default class MonaiLabelClient {
     return await MonaiLabelClient.api_get(url.toString());
   }
 
-  async segmentation(model, image, params = {}, label = null) {
-    // label is used to send label volumes, e.g. scribbles,
-    // that are to be used during segmentation
-    return this.infer(model, image, params, label);
+  async segmentation(model, image, params = {}) {
+    return this.infer(model, image, params);
   }
 
   async deepgrow(model, image, foreground, background, params = {}) {
@@ -22,7 +20,7 @@ export default class MonaiLabelClient {
     return this.infer(model, image, params);
   }
 
-  async infer(model, image, params, label = null, result_extension = '.nrrd') {
+  async infer(model, image, params, result_extension = '.nrrd') {
     let url = new URL('infer/' + encodeURIComponent(model), this.server_url);
     url.searchParams.append('image', image);
     url.searchParams.append('output', 'image');
@@ -37,7 +35,7 @@ export default class MonaiLabelClient {
     return await MonaiLabelClient.api_post(
       url,
       params,
-      label,
+      null,
       true,
       'arraybuffer'
     );

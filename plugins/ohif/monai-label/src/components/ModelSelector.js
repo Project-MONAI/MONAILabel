@@ -12,7 +12,6 @@ export default class ModelSelector extends Component {
     usage: PropTypes.any,
     onClick: PropTypes.func,
     onSelectModel: PropTypes.func,
-    scribblesSelector: PropTypes.any,
   };
 
   constructor(props) {
@@ -105,7 +104,6 @@ export default class ModelSelector extends Component {
                 </button>
               </td>
             </tr>
-            {this.props.scribblesSelector}
           </tbody>
         </table>
         {this.props.usage}
