@@ -32,7 +32,7 @@ from monailabel.transform.writer import PolygonWriter
 logger = logging.getLogger(__name__)
 
 
-class InferDeepedit(InferTask):
+class DeepEditNuclei(InferTask):
     """
     This provides Inference Engine for pre-trained segmentation (UNet) model over MSD Dataset.
     """

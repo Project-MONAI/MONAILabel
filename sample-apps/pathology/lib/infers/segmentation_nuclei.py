@@ -30,7 +30,7 @@ from monailabel.transform.writer import PolygonWriter
 logger = logging.getLogger(__name__)
 
 
-class InferSegmentation(InferTask):
+class SegmentationNuclei(InferTask):
     """
     This provides Inference Engine for pre-trained segmentation (UNet) model over MSD Dataset.
     """
