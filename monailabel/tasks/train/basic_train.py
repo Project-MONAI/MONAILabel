@@ -108,6 +108,8 @@ class BasicTrainTask(TrainTask):
         model_dict_key="model",
         find_unused_parameters=False,
         load_strict=False,
+        labels=None,
+        **kwargs,
     ):
         """
         :param model_dir: Base Model Dir to save the model checkpoints, events etc...
@@ -159,6 +161,7 @@ class BasicTrainTask(TrainTask):
         self._model_dict_key = model_dict_key
         self._find_unused_parameters = find_unused_parameters
         self._load_strict = load_strict
+        self._labels = [] if labels is None else [labels] if isinstance(labels, str) else labels
 
     @abstractmethod
     def network(self, context: Context):

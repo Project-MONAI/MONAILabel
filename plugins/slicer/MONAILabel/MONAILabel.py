@@ -1226,6 +1226,7 @@ class MONAILabelWidget(ScriptedLoadableModuleWidget, VTKObservationMixin):
                     "Server Error:: Session creation Failed\nPlease upgrade to latest monailable version (> 0.2.0)",
                     detailedText=traceback.format_exc(),
                 )
+                self.current_sample["session_id"] = None
             else:
                 slicer.util.errorDisplay("Failed to upload volume to Server", detailedText=traceback.format_exc())
             return False

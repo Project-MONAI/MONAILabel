@@ -85,8 +85,6 @@ def class_args_to_exp(c, mappings=None):
 
 
 def get_class_info(exp, handle_bool=True):
-    logger = logging.getLogger(__name__)
-
     if isinstance(exp, dict):
         return exp["name"], exp["args"]
     if exp.find("(") == -1:

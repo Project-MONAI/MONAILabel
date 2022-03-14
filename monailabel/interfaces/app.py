@@ -88,20 +88,22 @@ class MONAILabelApp:
         self._datastore: Datastore = self.init_datastore()
 
         self._infers = self.init_infers()
-        self._trainers = self.init_trainers()
-        self._strategies = self.init_strategies()
-        self._scoring_methods = self.init_scoring_methods()
-        self._batch_infer = self.init_batch_infer()
+        self._trainers = self.init_trainers() if settings.MONAI_LABEL_TASKS_TRAIN else {}
+        self._strategies = self.init_strategies() if settings.MONAI_LABEL_TASKS_STRATEGY else {}
+        self._scoring_methods = self.init_scoring_methods() if settings.MONAI_LABEL_TASKS_SCORING else {}
+        self._batch_infer = self.init_batch_infer() if settings.MONAI_LABEL_TASKS_BATCH_INFER else {}
 
-        self._server_mode = strtobool(conf.get("server_mode", "false"))
-        self._auto_update_scoring = strtobool(conf.get("auto_update_scoring", "true"))
-        self._sessions = self._load_sessions(strtobool(conf.get("sessions", "true")))
+        self._auto_update_scoring = settings.MONAI_LABEL_AUTO_UPDATE_SCORING
+        self._sessions = self._load_sessions(load=settings.MONAI_LABEL_SESSIONS)
 
         self._infers_threadpool = (
             None
             if settings.MONAI_LABEL_INFER_CONCURRENCY < 0
             else ThreadPoolExecutor(max_workers=settings.MONAI_LABEL_INFER_CONCURRENCY, thread_name_prefix="INFER")
         )
+
+        # control call back requests
+        self._server_mode = strtobool(conf.get("server_mode", "false"))
 
     def init_infers(self) -> Dict[str, InferTask]:
         return {}
