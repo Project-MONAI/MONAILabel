@@ -2,17 +2,17 @@
 > _This App is currently under active development._
 
 ### Overview
-This is a reference app to run infer + train tasks to segment Nuclei. It comes with follwoing 2 pre-trained weights/model (UNET). 
- - Segmentation - This show-cases an example for multi-label segmentation.  It tries segment following labels.
+This is a reference app to run infer + train tasks to segment Nuclei. It comes with following 2 pre-trained weights/model (UNET). 
+ - **Segmentation Nuclei** - This show-cases an example for multi-label segmentation.  It tries segment following labels.
    - Neoplastic cells
    - Inflammatory 
    - Connective/Soft tissue cells
    - Dead Cells
    - Epithelial
- - DeepEdit - It is a combination of both [Interaction + Auto Segmentation](https://github.com/Project-MONAI/MONAILabel/wiki/DeepEdit) model which is trained to segment Nuclei cells that combines all above labels as *Nuclei*.
+ - **DeepEdit Nuclei** - It is a combination of both [Interaction + Auto Segmentation](https://github.com/Project-MONAI/MONAILabel/wiki/DeepEdit) model which is trained to segment Nuclei cells that combines all above labels as *Nuclei*.
 
 ### Dataset
-Above models are trained on [PanNuke Dataset for Nuclei Instance Segmentation and Classification](https://warwick.ac.uk/fac/cross_fac/tia/data/pannuke)
+Above _Nuclei_ models are trained on [PanNuke Dataset for Nuclei Instance Segmentation and Classification](https://warwick.ac.uk/fac/cross_fac/tia/data/pannuke)
 
 ### Inputs
 - WSI Images

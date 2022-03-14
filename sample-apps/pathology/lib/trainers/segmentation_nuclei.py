@@ -40,7 +40,7 @@ from monailabel.tasks.train.basic_train import BasicTrainTask, Context
 logger = logging.getLogger(__name__)
 
 
-class TrainSegmentation(BasicTrainTask):
+class SegmentationNuclei(BasicTrainTask):
     def __init__(
         self,
         model_dir,
@@ -71,6 +71,7 @@ class TrainSegmentation(BasicTrainTask):
         source = request.get("dataset_source")
         max_region = request.get("dataset_max_region", (10240, 10240))
         max_region = (max_region, max_region) if isinstance(max_region, int) else max_region[:2]
+
         return split_dataset(
             datastore=datastore,
             cache_dir=cache_dir,
@@ -100,7 +101,7 @@ class TrainSegmentation(BasicTrainTask):
 
     def train_post_transforms(self, context: Context):
         return [
-            Activationsd(keys="pred", softmax=True),
+            Activationsd(keys="pred", softmax=len(self.labels) > 1, sigmoid=len(self.labels) == 1),
             AsDiscreted(
                 keys=("pred", "label"),
                 argmax=(True, False),
