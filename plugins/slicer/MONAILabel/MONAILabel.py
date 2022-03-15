@@ -479,10 +479,26 @@ class MONAILabelWidget(ScriptedLoadableModuleWidget, VTKObservationMixin):
 
         if self.models and [k for k, v in self.models.items() if v["type"] == "segmentation"]:
             self.ui.segmentationCollapsibleButton.collapsed = False
+            self.ui.segmentationCollapsibleButton.show()
+        else:
+            self.ui.segmentationCollapsibleButton.hide()
+
         if self.models and [k for k, v in self.models.items() if v["type"] in ("deepgrow", "deepedit")]:
             self.ui.deepgrowCollapsibleButton.collapsed = False
+            self.ui.deepgrowCollapsibleButton.show()
+        else:
+            self.ui.deepgrowCollapsibleButton.hide()
+
         if self.models and [k for k, v in self.models.items() if v["type"] == "scribbles"]:
             self.ui.scribblesCollapsibleButton.collapsed = False
+            self.ui.scribblesCollapsibleButton.show()
+        else:
+            self.ui.scribblesCollapsibleButton.hide()
+
+        if self.info.get("trainers", {}):
+            self.ui.aclCollapsibleButton.show()
+        else:
+            self.ui.aclCollapsibleButton.hide()
 
         self.ui.labelComboBox.clear()
         if self._segmentNode:
@@ -1226,7 +1242,7 @@ class MONAILabelWidget(ScriptedLoadableModuleWidget, VTKObservationMixin):
                     "Server Error:: Session creation Failed\nPlease upgrade to latest monailable version (> 0.2.0)",
                     detailedText=traceback.format_exc(),
                 )
-                self.current_sample["session_id"] = None
+                self.current_sample["session"] = None
             else:
                 slicer.util.errorDisplay("Failed to upload volume to Server", detailedText=traceback.format_exc())
             return False
