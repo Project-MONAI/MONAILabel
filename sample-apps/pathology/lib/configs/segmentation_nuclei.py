@@ -22,7 +22,12 @@ config = {
         "Dead Cells": (0, 0, 0),
         "Epithelial": (0, 0, 255),
     },
-    "network": BasicUNet(spatial_dims=2, in_channels=3, out_channels=6),
+    "network": BasicUNet(
+        spatial_dims=2,
+        in_channels=3,
+        out_channels=6,
+        features=(32, 64, 128, 256, 512, 32),
+    ),
     "infer": lib.infers.SegmentationNuclei,
     "trainer": lib.trainers.SegmentationNuclei,
 }
