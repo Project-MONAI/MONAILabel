@@ -149,10 +149,13 @@ class DSADatastore(Datastore):
         raise NotImplementedError
 
     def status(self) -> Dict[str, Any]:
-        pass
+        return {
+            "total": len(self.list_images()),
+            "completed": len(self.get_labeled_images()),
+        }
 
     def json(self):
-        pass
+        return self.datalist()
 
 
 def main():
