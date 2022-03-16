@@ -76,6 +76,8 @@ class SegmentationNuclei(TaskConfig):
         task: TrainTask = lib.trainers.SegmentationNuclei(
             model_dir=output_dir,
             network=self.network,
+            load_path=self.path[0],
+            publish_path=self.path[1],
             labels=self.labels,
             description="Train Nuclei Segmentation Model",
             config={
