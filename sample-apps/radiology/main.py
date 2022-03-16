@@ -1,0 +1,196 @@
+# Copyright 2020 - 2021 MONAI Consortium
+# Licensed under the Apache License, Version 2.0 (the "License");
+# you may not use this file except in compliance with the License.
+# You may obtain a copy of the License at
+#     http://www.apache.org/licenses/LICENSE-2.0
+# Unless required by applicable law or agreed to in writing, software
+# distributed under the License is distributed on an "AS IS" BASIS,
+# WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+# See the License for the specific language governing permissions and
+# limitations under the License.
+import json
+import logging
+import os
+from distutils.util import strtobool
+from typing import Dict
+
+import lib.configs
+
+from monailabel.interfaces.app import MONAILabelApp
+from monailabel.interfaces.config import TaskConfig
+from monailabel.interfaces.datastore import Datastore
+from monailabel.interfaces.tasks.infer import InferTask
+from monailabel.interfaces.tasks.train import TrainTask
+from monailabel.scribbles.infer import HistogramBasedGraphCut
+from monailabel.tasks.infer.deepgrow_pipeline import InferDeepgrowPipeline
+from monailabel.utils.others.class_utils import get_class_names
+from monailabel.utils.others.planner import HeuristicPlanner
+
+logger = logging.getLogger(__name__)
+
+
+class MyApp(MONAILabelApp):
+    def __init__(self, app_dir, studies, conf):
+        self.model_dir = os.path.join(app_dir, "model")
+
+        configs = {}
+        for c in get_class_names(lib.configs, "TaskConfig"):
+            name = c.split(".")[-2].lower()
+            configs[name] = c
+
+        models = conf.get("models")
+        if not models:
+            print("")
+            print("---------------------------------------------------------------------------------------")
+            print("Provide --conf models <name>")
+            print("Following are the available models.  You can pass comma (,) seperated names to pass multiple")
+            print(f"    all, {', '.join(configs.keys())}")
+            print("---------------------------------------------------------------------------------------")
+            print("")
+            exit(-1)
+
+        models = models.split(",")
+        models = [m.strip() for m in models]
+        invalid = [m for m in models if m != "all" and not configs.get(m)]
+        if invalid:
+            print("")
+            print("---------------------------------------------------------------------------------------")
+            print(f"Invalid Model(s) are provided: {invalid}")
+            print("Following are the available models.  You can pass comma (,) seperated names to pass multiple")
+            print(f"    all, {', '.join(configs.keys())}")
+            print("---------------------------------------------------------------------------------------")
+            print("")
+            exit(-1)
+
+        # Use Heuristic Planner to determine target spacing and spatial size based on dataset+gpu
+        spatial_size = json.loads(conf.get("spatial_size", "[128, 128, 128]"))
+        target_spacing = json.loads(conf.get("target_spacing", "[1.0, 1.0, 1.0]"))
+        self.heuristic_planner = strtobool(conf.get("heuristic_planner", "false"))
+        self.planner = HeuristicPlanner(spatial_size=spatial_size, target_spacing=target_spacing)
+
+        self.models: Dict[str, TaskConfig] = {}
+        for n in models:
+            for k, v in configs.items():
+                if self.models.get(k):
+                    continue
+                if n == k or n == "all":
+                    logger.info(f"+++ Adding Model: {k} => {v}")
+                    self.models[k] = eval(f"{v}()")
+                    self.models[k].init(k, self.model_dir, conf, self.planner)
+
+        logger.info(f"+++ Using Models: {list(self.models.keys())}")
+
+        super().__init__(
+            app_dir=app_dir,
+            studies=studies,
+            conf=conf,
+            name="MONAILabel - Radiology",
+            description="DeepLearning models for radiology",
+        )
+
+    def init_datastore(self) -> Datastore:
+        datastore = super().init_datastore()
+        if self.heuristic_planner:
+            self.planner.run(datastore)
+        return datastore
+
+    def init_infers(self) -> Dict[str, InferTask]:
+        infers: Dict[str, InferTask] = {}
+        #################################################
+        # Models
+        #################################################
+        for n, task_config in self.models.items():
+            c = task_config.infer()
+            c = c if isinstance(c, dict) else {n: c}
+            for k, v in c.items():
+                logger.info(f"+++ Adding Inferer:: {k} => {v}")
+                infers[k] = v
+
+        #################################################
+        # Scribbles
+        #################################################
+        infers.update(
+            {
+                "Histogram+GraphCut": HistogramBasedGraphCut(
+                    intensity_range=(-300, 200, 0.0, 1.0, True), pix_dim=(2.5, 2.5, 5.0), lamda=1.0, sigma=0.1
+                ),
+            }
+        )
+
+        #################################################
+        # Pipeline based on existing infers
+        #################################################
+        if infers.get("deepgrow_2d") and infers.get("deepgrow_3d"):
+            infers["deepgrow_pipeline"] = InferDeepgrowPipeline(
+                path=self.models["deepgrow_2d"].path,
+                model_3d=infers["deepgrow_3d"],
+                description="Combines Clara Deepgrow 2D and 3D models",
+            )
+        return infers
+
+    def init_trainers(self) -> Dict[str, TrainTask]:
+        trainers: Dict[str, TrainTask] = {}
+        if strtobool(self.conf.get("skip_trainers", "false")):
+            return trainers
+
+        for n, task_config in self.models.items():
+            t = task_config.trainer()
+            if not t:
+                continue
+
+            logger.info(f"+++ Adding Trainer:: {n} => {t}")
+            trainers[n] = t
+        return trainers
+
+
+"""
+Example to run train/infer/scoring task(s) locally without actually running MONAI Label Server
+"""
+
+
+def main():
+    import argparse
+    from pathlib import Path
+
+    os.putenv("MASTER_ADDR", "127.0.0.1")
+    os.putenv("MASTER_PORT", "1234")
+
+    logging.basicConfig(
+        level=logging.INFO,
+        format="[%(asctime)s] [%(process)s] [%(threadName)s] [%(levelname)s] (%(name)s:%(lineno)d) - %(message)s",
+        datefmt="%Y-%m-%d %H:%M:%S",
+    )
+
+    home = str(Path.home())
+    studies = f"{home}/Data/Synapse/52432/Training/img"
+
+    parser = argparse.ArgumentParser()
+    parser.add_argument("-s", "--studies", default=studies)
+    args = parser.parse_args()
+
+    app_dir = os.path.dirname(__file__)
+    studies = args.studies
+    conf = {"models": "segmentation"}
+
+    app = MyApp(app_dir, studies, conf)
+
+    model = "segmentation"
+    app.train(
+        request={
+            "name": "train_01",
+            "model": model,
+            "max_epochs": 1000,
+            "dataset": "CacheDataset",  # PersistentDataset, CacheDataset
+            "train_batch_size": 1,
+            "val_batch_size": 1,
+            "multi_gpu": True,
+            "val_split": 0.2,
+        },
+    )
+
+
+if __name__ == "__main__":
+    # export PYTHONPATH=~/Projects/MONAILabel:`pwd`
+    # python main.py
+
+    main()
