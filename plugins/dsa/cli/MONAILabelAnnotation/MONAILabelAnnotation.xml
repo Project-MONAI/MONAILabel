@@ -33,14 +33,14 @@
             <label>MONAILabel Address</label>
             <description>Address of a monailabel address in the format 'http://127.0.0.1:8000/'.</description>
             <longflag>server</longflag>
-            <default>http://10.117.18.128:8000/</default>
+            <default>http://127.0.0.1:8000/</default>
         </string>
         <string>
             <name>model_name</name>
             <label>Model Name</label>
-            <description>DeepLearning Model to Infer (For Example: deepedit, segmentation)</description>
+            <description>DeepLearning Model to Infer (For Example: deepedit_nuclei, segmentation_nuclei)</description>
             <longflag>model_name</longflag>
-            <default>deepedit</default>
+            <default>deepedit_nuclei</default>
         </string>
         <file fileExtensions=".anot" reference="inputImageFile">
             <name>outputAnnotationFile</name>

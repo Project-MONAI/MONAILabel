@@ -8,19 +8,20 @@
 # WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 # See the License for the specific language governing permissions and
 # limitations under the License.
-import copy
 import logging
 import os
-import re
+from distutils.util import strtobool
 from typing import Dict
 
-from lib.configs import configs
+import lib.configs
 
 from monailabel.datastore.dsa import DSADatastore
 from monailabel.interfaces.app import MONAILabelApp
+from monailabel.interfaces.config import TaskConfig
 from monailabel.interfaces.datastore import Datastore
 from monailabel.interfaces.tasks.infer import InferTask
 from monailabel.interfaces.tasks.train import TrainTask
+from monailabel.utils.others.class_utils import get_class_names
 
 logger = logging.getLogger(__name__)
 
@@ -28,24 +29,47 @@ logger = logging.getLogger(__name__)
 class MyApp(MONAILabelApp):
     def __init__(self, app_dir, studies, conf):
         self.model_dir = os.path.join(app_dir, "model")
-        models = conf.get("models", "*")
-        models = configs.keys() if models.lower() in ("*", "all") else models.split(",")
-        models = [n.strip() for n in models]
 
-        self.models = {}
+        configs = {}
+        for c in get_class_names(lib.configs, "TaskConfig"):
+            name = c.split(".")[-2].lower()
+            configs[name] = c
+
+        models = conf.get("models", "all")
+        if not models:
+            print("")
+            print("---------------------------------------------------------------------------------------")
+            print("Provide --conf models <name>")
+            print("Following are the available models.  You can pass comma (,) seperated names to pass multiple")
+            print(f"    all, {', '.join(configs.keys())}")
+            print("---------------------------------------------------------------------------------------")
+            print("")
+            exit(-1)
+
+        models = models.split(",")
+        models = [m.strip() for m in models]
+        invalid = [m for m in models if m != "all" and not configs.get(m)]
+        if invalid:
+            print("")
+            print("---------------------------------------------------------------------------------------")
+            print(f"Invalid Model(s) are provided: {invalid}")
+            print("Following are the available models.  You can pass comma (,) seperated names to pass multiple")
+            print(f"    all, {', '.join(configs.keys())}")
+            print("---------------------------------------------------------------------------------------")
+            print("")
+            exit(-1)
+
+        self.models: Dict[str, TaskConfig] = {}
         for n in models:
-            for k in configs.keys():
-                if n == k or re.search(n, k):
-                    self.models[k] = copy.deepcopy(configs[k])
-                    self.models[k]["model_dir"] = os.path.join(self.model_dir, k)
-                    self.models[k]["path"] = [
-                        os.path.join(self.model_dir, f"pretrained_{k}.pt"),  # pretrained
-                        os.path.join(self.model_dir, f"{k}.pt"),  # published
-                    ]
-                    break
+            for k, v in configs.items():
+                if self.models.get(k):
+                    continue
+                if n == k or n == "all":
+                    logger.info(f"+++ Adding Model: {k} => {v}")
+                    self.models[k] = eval(f"{v}()")
+                    self.models[k].init(k, self.model_dir, conf, None)
 
         logger.info(f"+++ Using Models: {list(self.models.keys())}")
-        self.download([(v["path"][0], v["uri"]) for k, v in self.models.items() if v.get("uri")])
 
         super().__init__(
             app_dir=app_dir,
@@ -78,48 +102,30 @@ class MyApp(MONAILabelApp):
         )
 
     def init_infers(self) -> Dict[str, InferTask]:
-        infers = {}
-        for n, model in self.models.items():
-            c = model["infer"]
+        infers: Dict[str, InferTask] = {}
+        #################################################
+        # Models
+        #################################################
+        for n, task_config in self.models.items():
+            c = task_config.infer()
             c = c if isinstance(c, dict) else {n: c}
             for k, v in c.items():
-                logger.info(f"+++ Adding Infer: {k} => {v}")
-                infers[k] = v(
-                    network=model["network"],
-                    path=model["path"],
-                    labels=model["labels"],
-                    label_colors=model["label_colors"],
-                    dimension=model["dimension"],
-                )
+                logger.info(f"+++ Adding Inferer:: {k} => {v}")
+                infers[k] = v
         return infers
 
     def init_trainers(self) -> Dict[str, TrainTask]:
-        config = {
-            "max_epochs": 10,
-            "train_batch_size": 1,
-            "dataset_max_region": (10240, 10240),
-            "dataset_limit": 0,
-            "dataset_randomize": True,
-        }
+        trainers: Dict[str, TrainTask] = {}
+        if strtobool(self.conf.get("skip_trainers", "false")):
+            return trainers
 
-        trainers = {}
-        for n, model in self.models.items():
-            c = model.get("trainer")
-            if not c:
+        for n, task_config in self.models.items():
+            t = task_config.trainer()
+            if not t:
                 continue
 
-            c = c if isinstance(c, dict) else {n: c}
-            for k, v in c.items():
-                logger.info(f"+++ Adding Trainer: {k} => {v}")
-                trainers[k] = v(
-                    model_dir=model["model_dir"],
-                    network=model["network"],
-                    load_path=model["path"][0],
-                    publish_path=model["path"][1],
-                    labels=model["labels"],
-                    dimension=model["dimension"],
-                    config=config,
-                )
+            logger.info(f"+++ Adding Trainer:: {n} => {t}")
+            trainers[n] = t
         return trainers
 
 
@@ -165,7 +171,7 @@ def main():
     if run_train:
         app.train(
             request={
-                "name": "model_01",
+                "name": "train_01",
                 "model": model,
                 "max_epochs": 10 if model == "deepedit_nuclei" else 30,
                 "dataset": "CacheDataset",  # PersistentDataset, CacheDataset

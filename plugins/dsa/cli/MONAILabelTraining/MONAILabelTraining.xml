@@ -21,9 +21,9 @@
         <string>
             <name>model_name</name>
             <label>Model Name</label>
-            <description>DeepLearning Model to Train/Finetune (For Example: deepedit, segmentation)</description>
+            <description>DeepLearning Model to Train/Finetune (For Example: deepedit_nuclei, segmentation_nuclei)</description>
             <longflag>model_name</longflag>
-            <default>deepedit</default>
+            <default>deepedit_nuclei</default>
         </string>
     </parameters>
     <parameters>
@@ -34,7 +34,7 @@
             <label>Train Task</label>
             <description>Training Task Name where all model and stats will be saved</description>
             <longflag>train_name</longflag>
-            <default>model_01</default>
+            <default>train_01</default>
         </string>
         <integer>
             <name>max_epochs</name>
