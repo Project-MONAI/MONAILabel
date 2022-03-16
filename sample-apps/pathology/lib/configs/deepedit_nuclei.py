@@ -26,7 +26,7 @@ from monailabel.utils.others.generic import download_file
 logger = logging.getLogger(__name__)
 
 
-class SegmentationNuclei(TaskConfig):
+class DeepEditNuclei(TaskConfig):
     def init(self, name: str, model_dir: str, conf: Dict[str, str], planner: Any, **kwargs):
         super().init(name, model_dir, conf, planner, **kwargs)
 
@@ -65,7 +65,7 @@ class SegmentationNuclei(TaskConfig):
             model_dir=output_dir,
             network=self.network,
             labels=self.labels,
-            description="Train Nuclei Segmentation Model",
+            description="Train Nuclei DeepEdit Model",
             config={
                 "max_epochs": 10,
                 "train_batch_size": 1,
