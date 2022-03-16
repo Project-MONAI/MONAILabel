@@ -133,7 +133,7 @@ class BasicTrainTask(TrainTask):
         self._model_dir = model_dir
         self._amp = amp
         self._config = {
-            "name": "model_01",
+            "name": "train_01",
             "pretrained": True,
             "device": "cuda",
             "max_epochs": 50,
