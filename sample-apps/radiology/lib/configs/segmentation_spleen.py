@@ -46,7 +46,7 @@ class SegmentationSpleen(TaskConfig):
 
         # Network
         self.network = UNet(
-            dimensions=3,
+            spatial_dims=3,
             in_channels=1,
             out_channels=2,
             channels=[16, 32, 64, 128, 256],

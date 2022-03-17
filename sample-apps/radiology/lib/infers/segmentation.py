@@ -8,7 +8,7 @@
 # WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 # See the License for the specific language governing permissions and
 # limitations under the License.
-from typing import Callable, Sequence
+from typing import Any, Callable, Dict, Sequence
 
 from monai.inferers import SlidingWindowInferer
 from monai.transforms import (
@@ -38,7 +38,6 @@ class Segmentation(InferTask):
         network=None,
         type=InferType.SEGMENTATION,
         labels=None,
-        spatial_size=(128, 128, 128),
         dimension=3,
         description="A pre-trained model for volumetric (3D) segmentation over 3D Images",
     ):
@@ -50,7 +49,11 @@ class Segmentation(InferTask):
             dimension=dimension,
             description=description,
         )
-        self.spatial_size = spatial_size
+
+    def config(self) -> Dict[str, Any]:
+        c = super().config()
+        c["largest_cc"] = False
+        return c
 
     def pre_transforms(self, data=None) -> Sequence[Callable]:
         return [
@@ -58,7 +61,7 @@ class Segmentation(InferTask):
             AddChanneld(keys="image"),
             Spacingd(keys="image", pixdim=(1.0, 1.0, 1.0), align_corners=True),
             ScaleIntensityRanged(keys="image", a_min=-175, a_max=250, b_min=0.0, b_max=1.0, clip=True),
-            EnsureTyped(keys="image", device=data.get("device") if data else None),
+            EnsureTyped(keys="image"),
         ]
 
     def inferer(self, data=None) -> Callable:
@@ -68,13 +71,20 @@ class Segmentation(InferTask):
         return []  # Self-determine from the list of pre-transforms provided
 
     def post_transforms(self, data=None) -> Sequence[Callable]:
+        largest_cc = False if not data else data.get("largest_cc", False)
         applied_labels = list(self.labels.values()) if isinstance(self.labels, dict) else self.labels
-        return [
+        t = [
             EnsureTyped(keys="pred", device=data.get("device") if data else None),
             Activationsd(keys="pred", softmax=len(self.labels) > 1, sigmoid=len(self.labels) == 1),
             AsDiscreted(keys="pred", argmax=len(self.labels) > 1, threshold=0.5 if len(self.labels) == 1 else None),
-            KeepLargestConnectedComponentd(keys="pred", applied_labels=applied_labels),
-            ToNumpyd(keys="pred"),
-            Restored(keys="pred", ref_image="image"),
-            BoundingBoxd(keys="pred", result="result", bbox="bbox"),
         ]
+        if largest_cc:
+            t.append(KeepLargestConnectedComponentd(keys="pred", applied_labels=applied_labels))
+        t.extend(
+            [
+                ToNumpyd(keys="pred"),
+                Restored(keys="pred", ref_image="image"),
+                BoundingBoxd(keys="pred", result="result", bbox="bbox"),
+            ]
+        )
+        return t

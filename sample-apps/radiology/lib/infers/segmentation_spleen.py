@@ -55,11 +55,11 @@ class SegmentationSpleen(InferTask):
             AddChanneld(keys="image"),
             Spacingd(keys="image", pixdim=[1.0, 1.0, 1.0]),
             ScaleIntensityRanged(keys="image", a_min=-57, a_max=164, b_min=0.0, b_max=1.0, clip=True),
-            EnsureTyped(keys="image", device=data.get("device") if data else None),
+            EnsureTyped(keys="image"),
         ]
 
     def inferer(self, data=None) -> Callable:
-        return SlidingWindowInferer(roi_size=[160, 160, 160])
+        return SlidingWindowInferer(roi_size=(160, 160, 160))
 
     def post_transforms(self, data=None) -> Sequence[Callable]:
         return [

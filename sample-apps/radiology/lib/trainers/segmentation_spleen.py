@@ -25,7 +25,6 @@ from monai.transforms import (
     RandShiftIntensityd,
     ScaleIntensityRanged,
     Spacingd,
-    ToDeviced,
     ToTensord,
 )
 
@@ -49,7 +48,7 @@ class SegmentationSpleen(BasicTrainTask):
         return self._network
 
     def optimizer(self, context: Context):
-        return Novograd(self._network.parameters(), 0.0001)
+        return Novograd(context.network.parameters(), 0.0001)
 
     def loss_function(self, context: Context):
         return DiceCELoss(to_onehot_y=True, softmax=True, squared_pred=True, batch=True)
@@ -65,8 +64,7 @@ class SegmentationSpleen(BasicTrainTask):
             ),
             ScaleIntensityRanged(keys="image", a_min=-57, a_max=164, b_min=0.0, b_max=1.0, clip=True),
             CropForegroundd(keys=("image", "label"), source_key="image"),
-            EnsureTyped(keys=("image", "label")),
-            ToDeviced(keys=("image", "label"), device=context.device),
+            EnsureTyped(keys=("image", "label"), device=context.device),
             RandCropByPosNegLabeld(
                 keys=("image", "label"),
                 label_key="label",
@@ -103,8 +101,7 @@ class SegmentationSpleen(BasicTrainTask):
             ),
             ScaleIntensityRanged(keys="image", a_min=-57, a_max=164, b_min=0.0, b_max=1.0, clip=True),
             CropForegroundd(keys=("image", "label"), source_key="image"),
-            EnsureTyped(keys=("image", "label")),
-            ToDeviced(keys=("image", "label"), device=context.device),
+            EnsureTyped(keys=("image", "label"), device=context.device),
         ]
 
     def val_inferer(self, context: Context):

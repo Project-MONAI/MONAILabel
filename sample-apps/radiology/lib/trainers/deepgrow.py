@@ -72,7 +72,7 @@ class Deepgrow(BasicTrainTask):
         return self._network
 
     def optimizer(self, context: Context):
-        return torch.optim.Adam(self._network.parameters(), lr=0.0001)
+        return torch.optim.Adam(context.network.parameters(), lr=0.0001)
 
     def loss_function(self, context: Context):
         return DiceLoss(sigmoid=True, squared_pred=True)

@@ -59,7 +59,7 @@ class SegmentationNuclei(BasicTrainTask):
         return self._network
 
     def optimizer(self, context: Context):
-        return torch.optim.Adam(self._network.parameters(), 0.0001)
+        return torch.optim.Adam(context.network.parameters(), 0.0001)
 
     def loss_function(self, context: Context):
         return DiceLoss(to_onehot_y=True, softmax=True, squared_pred=True)
