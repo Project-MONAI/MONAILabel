@@ -16,7 +16,7 @@ from typing import Any, Dict, Optional, Union
 
 import lib.infers
 import lib.trainers
-from monai.networks.nets import UNet
+from monai.networks.nets import BasicUNet
 
 from monailabel.interfaces.config import TaskConfig
 from monailabel.interfaces.tasks.infer import InferTask
@@ -54,18 +54,15 @@ class Segmentation(TaskConfig):
         ]
 
         # Download PreTrained Model
-        if strtobool(self.conf.get("use_pretrained_model", "true")):
-            url = f"{self.PRE_TRAINED_PATH}/segmentation_unet_multilabel.pt"
+        if strtobool(self.conf.get("use_pretrained_model", "false")):
+            url = f"{self.PRE_TRAINED_PATH}/segmentation_bunet_multilabel.pt"
             download_file(url, self.path[0])
 
         # Network
-        self.network = UNet(
+        self.network = BasicUNet(
             spatial_dims=3,
             in_channels=1,
             out_channels=14,
-            channels=[16, 32, 64, 128, 256],
-            strides=[2, 2, 2, 2],
-            num_res_units=2,
         )
 
     def infer(self) -> Union[InferTask, Dict[str, InferTask]]:

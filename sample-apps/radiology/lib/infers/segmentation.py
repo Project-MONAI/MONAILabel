@@ -24,7 +24,7 @@ from monai.transforms import (
 )
 
 from monailabel.interfaces.tasks.infer import InferTask, InferType
-from monailabel.transform.post import BoundingBoxd, Restored
+from monailabel.transform.post import Restored
 
 
 class Segmentation(InferTask):
@@ -67,9 +67,6 @@ class Segmentation(InferTask):
     def inferer(self, data=None) -> Callable:
         return SlidingWindowInferer(roi_size=(160, 160, 160))
 
-    def inverse_transforms(self, data=None) -> Sequence[Callable]:
-        return []  # Self-determine from the list of pre-transforms provided
-
     def post_transforms(self, data=None) -> Sequence[Callable]:
         largest_cc = False if not data else data.get("largest_cc", False)
         applied_labels = list(self.labels.values()) if isinstance(self.labels, dict) else self.labels
@@ -84,7 +81,6 @@ class Segmentation(InferTask):
             [
                 ToNumpyd(keys="pred"),
                 Restored(keys="pred", ref_image="image"),
-                BoundingBoxd(keys="pred", result="result", bbox="bbox"),
             ]
         )
         return t
