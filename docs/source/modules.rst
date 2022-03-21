@@ -37,9 +37,8 @@ MONAI Label currently provides three template applications which developers
 may start using out of the box, or with few modifications to achieve the desired 
 behavior. Template applications currently available are
 
-- `Automated Segmentation <LINKREF_GITHUB_MONAILABEL/sample-apps/segmentation>`_
-- `DeepGrow AI Annotation <LINKREF_GITHUB_MONAILABEL/sample-apps/deepgrow>`_
-- `DeepEdit AI Annotation <LINKREF_GITHUB_MONAILABEL/sample-apps/deepedit>`_
+- `radiology <LINKREF_GITHUB_MONAILABEL/sample-apps/radiology>`_
+- `pathology <LINKREF_GITHUB_MONAILABEL/sample-apps/pathology>`_
 
 For a quickstart the developer may use
 
@@ -47,7 +46,7 @@ For a quickstart the developer may use
 
   monailabel apps --name <desired_app> --download --output myapp
 
-where ``desired_app`` may be any of ``segmentation``, ``deepgrow``, or ``deepedit``.
+where ``desired_app`` may be any of ``pathology``, ``radiology``.
 
 To better understand template apps, the next few sections we will go into the details of implementing
 
@@ -71,8 +70,7 @@ discretization.
   :emphasize-lines: 7, 9, 15, 18
 
   from monai.inferers import SimpleInferer
-  from monai.transforms import (LoadImaged, ToNumpyd, Activationsd
-                                AsDiscreted, ToNumpyd)
+  from monai.transforms import (LoadImaged, ToNumpyd, Activationsd AsDiscreted, ToNumpyd)
 
   from monailabel.interfaces.tasks import InferTask
 

@@ -29,6 +29,7 @@ def create_client(app_dir, studies, data_dir, conf=None):
         "server_mode": "true",
         "auto_update_scoring": "false",
         "debug": "true",
+        "models": "deepedit",
     }
     if conf:
         app_conf.update(conf)
@@ -56,7 +57,7 @@ class BasicEndpointTestSuite(unittest.TestCase):
     base_dir = os.path.realpath(os.path.dirname(os.path.dirname(os.path.dirname(os.path.dirname(__file__)))))
     data_dir = os.path.join(base_dir, "tests", "data")
 
-    app_dir = os.path.join(base_dir, "sample-apps", "deepedit")
+    app_dir = os.path.join(base_dir, "sample-apps", "radiology")
     studies = os.path.join(data_dir, "dataset", "local", "heart")
     rand_id = random.randint(0, 9999)
 
@@ -75,7 +76,7 @@ class DICOMWebEndpointTestSuite(unittest.TestCase):
     base_dir = os.path.realpath(os.path.dirname(os.path.dirname(os.path.dirname(os.path.dirname(__file__)))))
     data_dir = os.path.join(base_dir, "tests", "data", "dataset", "dicomweb")
 
-    app_dir = os.path.join(base_dir, "sample-apps", "deepedit")
+    app_dir = os.path.join(base_dir, "sample-apps", "radiology")
     studies = "http://faketesturl:8042/dicom-web"
 
     @classmethod
@@ -93,14 +94,14 @@ class BasicEndpointV2TestSuite(unittest.TestCase):
     base_dir = os.path.realpath(os.path.dirname(os.path.dirname(os.path.dirname(os.path.dirname(__file__)))))
     data_dir = os.path.join(base_dir, "tests", "data")
 
-    app_dir = os.path.join(base_dir, "sample-apps", "segmentation")
+    app_dir = os.path.join(base_dir, "sample-apps", "radiology")
     studies = os.path.join(data_dir, "dataset", "local", "heart")
     rand_id = random.randint(0, 9999)
 
     @classmethod
     def setUpClass(cls) -> None:
         sys.path.append(cls.app_dir)
-        cls.client = create_client(cls.app_dir, cls.studies, cls.data_dir)
+        cls.client = create_client(cls.app_dir, cls.studies, cls.data_dir, {"models": "segmentation_spleen"})
 
     @classmethod
     def tearDownClass(cls) -> None:
@@ -112,7 +113,7 @@ class BasicEndpointV3TestSuite(unittest.TestCase):
     base_dir = os.path.realpath(os.path.dirname(os.path.dirname(os.path.dirname(os.path.dirname(__file__)))))
     data_dir = os.path.join(base_dir, "tests", "data")
 
-    app_dir = os.path.join(base_dir, "sample-apps", "deepedit")
+    app_dir = os.path.join(base_dir, "sample-apps", "radiology")
     studies = os.path.join(data_dir, "dataset", "local", "heart")
     rand_id = random.randint(0, 9999)
 

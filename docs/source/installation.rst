@@ -83,7 +83,7 @@ You can download sample apps and datasets from *monailabel* CLI.
 
   # Download Sample Apps
   monailabel apps # List sample apps
-  monailabel apps --download --name deepedit --output apps
+  monailabel apps --download --name radiology --output apps
 
   # Download MSD Datasets
   monailabel datasets # List sample datasets
@@ -95,7 +95,11 @@ Starting Server
 You can start server using *monailabel* CLI
 ::
 
-  monailabel start_server --app apps/deepedit --studies datasets/Task09_Spleen/imagesTr
+  # Run Deepedit Model.
+  # Options can be (deepedit|deepgrow|segmentation|segmentation_spleen|all) in case of radiology app.
+  # You can also pass comma seperated models like --conf models deepedit,segmentation
+
+  monailabel start_server --app apps/radiology --studies datasets/Task09_Spleen/imagesTr --conf models deepedit
 
 
 .. note::
@@ -115,14 +119,14 @@ Deploying MONAI Label server for production use is out of project scope.  Howeve
 ::
 
   # dryrun the MONAI Label CLI for pre-init and dump the env variables to .env or env.bat
-  monailabel start_server --app apps/deepedit --studies datasets/Task09_Spleen/imagesTr --host 0.0.0.0 --port 8000 --dryrun
+  monailabel start_server --app apps/radiology --studies datasets/Task09_Spleen/imagesTr --host 0.0.0.0 --port 8000 --dryrun
 
   # Linux/Ubuntu
   source .env
   uvicorn monailabel.app:app \
     --host 0.0.0.0 \
     --port 8000 \
-    --log-config apps/deepedit/logs/logging.json \
+    --log-config apps/radiology/logs/logging.json \
     --no-access-log
 
 
@@ -131,7 +135,7 @@ Deploying MONAI Label server for production use is out of project scope.  Howeve
   uvicorn monailabel.app:app ^
     --host 0.0.0.0 ^
     --port 8000 ^
-    --log-config apps\deepedit\logs\logging.json ^
+    --log-config apps\radiology\logs\logging.json ^
     --no-access-log
 
 
@@ -153,7 +157,7 @@ MONAI Label comes with `pre-built plugin <https://github.com/Project-MONAI/MONAI
 
 ::
 
-  monailabel start_server --app apps/deepedit --studies http://127.0.0.1:8042/dicom-web
+  monailabel start_server --app apps/radiology --studies http://127.0.0.1:8042/dicom-web --conf models deepedit
 
 
 If you have authentication set for dicom-web then you can pass the credentials using environment `variables <https://github.com/Project-MONAI/MONAILabel/blob/main/monailabel/config.py>`_ while running the server.
@@ -162,7 +166,7 @@ If you have authentication set for dicom-web then you can pass the credentials u
 
   export MONAI_LABEL_DICOMWEB_USERNAME=xyz
   export MONAI_LABEL_DICOMWEB_PASSWORD=abc
-  monailabel start_server --app apps/deepedit --studies http://127.0.0.1:8042/dicom-web
+  monailabel start_server --app apps/radiology --studies http://127.0.0.1:8042/dicom-web --conf models deepedit
 
 
 .. note::

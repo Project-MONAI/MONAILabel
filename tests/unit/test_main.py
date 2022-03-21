@@ -11,7 +11,7 @@ class MyTestCase(unittest.TestCase):
     base_dir = os.path.realpath(os.path.dirname(os.path.dirname(os.path.dirname(__file__))))
     data_dir = os.path.join(base_dir, "tests", "data")
 
-    app_dir = os.path.join(base_dir, "sample-apps", "deepedit")
+    app_dir = os.path.join(base_dir, "sample-apps", "radiology")
     studies = os.path.join(data_dir, "dataset", "local", "heart")
 
     def test_run(self):
@@ -31,7 +31,7 @@ class MyTestCase(unittest.TestCase):
             stow_prefix="",
             verbose="INFO",
             dryrun=True,
-            conf={},
+            conf={"models", "deepedit"},
             host="0.0.0.0",
             port=8000,
             log_config=None,
@@ -44,7 +44,7 @@ class MyTestCase(unittest.TestCase):
 
     def test_apps_download(self):
         output = os.path.join(self.data_dir, "downloaded_app")
-        args = argparse.Namespace(download=True, name="segmentation", output=output)
+        args = argparse.Namespace(download=True, name="radiology", output=output)
         Main().action_apps(args)
         assert os.path.isdir(output)
         shutil.rmtree(output, ignore_errors=True)

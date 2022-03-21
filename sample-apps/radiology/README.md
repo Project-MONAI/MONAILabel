@@ -46,6 +46,9 @@ monailabel start_server --app workspace/radiology --studies workspace/images --c
 
 # Pick All
 monailabel start_server --app workspace/radiology --studies workspace/images --conf models all
+
+# Pick All (Skip Training Tasks or Infer only mode)
+monailabel start_server --app workspace/radiology --studies workspace/images --conf models all --conf skip_trainers true
 ```
 
 ### Model Overview

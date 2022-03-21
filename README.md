@@ -39,11 +39,11 @@ To install the [current release](https://pypi.org/project/monailabel/), you can 
   pip install monailabel
   
   # download sample apps/dataset
-  monailabel apps --download --name deepedit --output apps
+  monailabel apps --download --name radiology --output apps
   monailabel datasets --download --name Task09_Spleen --output datasets
   
   # run server
-  monailabel start_server --app apps/deepedit --studies datasets/Task09_Spleen/imagesTr
+  monailabel start_server --app apps/radiology --studies datasets/Task09_Spleen/imagesTr
 ```
 
 > If monailabel install path is not automatically determined, then you can provide explicit install path as: 
@@ -73,7 +73,7 @@ MONAI Label comes with [pre-built plugin](plugins/ohif) for [OHIF Viewer](https:
 
 ```bash
   # start server using DICOMWeb
-  monailabel start_server --app apps\deepedit --studies http://127.0.0.1:8042/dicom-web
+  monailabel start_server --app apps/radiology --studies http://127.0.0.1:8042/dicom-web
 ```
 
 > OHIF Viewer will be accessible at http://127.0.0.1:8000/ohif/

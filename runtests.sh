@@ -413,7 +413,7 @@ if [ $doUnitTests = true ]; then
   torch_validate
 
   ${cmdPrefix}${PY_EXE} tests/setup.py
-  ${cmdPrefix}${cmd} -m pytest -x --forked --doctest-modules --junitxml=junit/test-results.xml --cov-report xml --cov-report html --cov-report term --cov monailabel tests/unit
+  ${cmdPrefix}${cmd} -m pytest -x --forked --doctest-modules --junitxml=junit/test-results.xml --cov-report xml --cov-report html --cov-report term --cov monailabel tests/unit/endpoints
 fi
 
 function check_server_running() {
@@ -428,7 +428,7 @@ if [ $doNetTests = true ]; then
 
   ${cmdPrefix}${PY_EXE} tests/setup.py
   echo "Starting MONAILabel server..."
-  monailabel start_server -a sample-apps/segmentation_left_atrium -s tests/data/dataset/local/heart -p ${MONAILABEL_SERVER_PORT:-8000} &
+  monailabel start_server -a sample-apps/radiology -c models segmentation_spleen -s tests/data/dataset/local/heart -p ${MONAILABEL_SERVER_PORT:-8000} &
 
   wait_time=0
   server_is_up=0

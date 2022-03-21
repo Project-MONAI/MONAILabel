@@ -14,10 +14,10 @@ The MONAI Label Server endpoints are available at startup. The user may download
 .. code-block:: bash
 
   # download a sample app
-  monailabel apps --name deepedit --download --output .
+  monailabel apps --name radiology --download --output .
 
   # start the sample app locally
-  monailabel start_server --app deepedit --studies <path/to/datastore>
+  monailabel start_server --app radiology --studies <path/to/datastore> --conf models (deepedit|deepgrow|segmentation|segmentation_speen|all)
 
 and navigate to `http://127.0.0.1:8000/ <http://127.0.0.1:8000/>`_ on the browser (if the server
 is running on the local machine). The user may choose to use the web UI to invoke the various endpoints
