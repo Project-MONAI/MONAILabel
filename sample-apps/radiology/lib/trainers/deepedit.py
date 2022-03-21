@@ -25,6 +25,7 @@ from monai.transforms import (
     RandShiftIntensityd,
     Resized,
     ScaleIntensityRanged,
+    SelectItemsd,
     ToNumpyd,
     ToTensord,
 )
@@ -114,6 +115,7 @@ class DeepEdit(BasicTrainTask):
             AddGuidanceSignalCustomd(keys="image", guidance="guidance"),
             #
             ToTensord(keys=("image", "label")),
+            SelectItemsd(keys=("image", "label", "guidance")),
         ]
 
     def train_post_transforms(self, context: Context):
@@ -143,6 +145,7 @@ class DeepEdit(BasicTrainTask):
             AddGuidanceSignalCustomd(keys="image", guidance="guidance"),
             #
             ToTensord(keys=("image", "label")),
+            SelectItemsd(keys=("image", "label", "guidance")),
         ]
 
     def val_inferer(self, context: Context):

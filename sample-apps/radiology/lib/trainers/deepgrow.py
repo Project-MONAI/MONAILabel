@@ -36,6 +36,7 @@ from monai.transforms import (
     LoadImaged,
     NormalizeIntensityd,
     Resized,
+    SelectItemsd,
     ToNumpyd,
     ToTensord,
 )
@@ -127,6 +128,7 @@ class Deepgrow(BasicTrainTask):
                 AddInitialSeedPointd(label="label", guidance="guidance", sids="sids"),
                 AddGuidanceSignald(image="image", guidance="guidance"),
                 EnsureTyped(keys=("image", "label"), device=context.device),
+                SelectItemsd(keys=("image", "label", "guidance")),
             ]
         )
         return t

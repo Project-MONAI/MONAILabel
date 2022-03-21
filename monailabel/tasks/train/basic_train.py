@@ -203,28 +203,28 @@ class BasicTrainTask(TrainTask):
         )
         return dataset, datalist
 
-    def _dataloader(self, context, dataset, batch_size, num_workers):
+    def _dataloader(self, context, dataset, batch_size, num_workers, shuffle=False):
         if context.dataloader_type == "ThreadDataLoader":
             return ThreadDataLoader(
                 dataset=dataset,
                 batch_size=batch_size,
-                shuffle=False,
+                shuffle=shuffle,
                 num_workers=num_workers,
             )
 
         return DataLoader(
             dataset=dataset,
             batch_size=batch_size,
-            shuffle=False,
+            shuffle=shuffle,
             num_workers=num_workers,
         )
 
-    def train_data_loader(self, context, num_workers=0):
+    def train_data_loader(self, context, num_workers=0, shuffle=False):
         dataset, datalist = self._dataset(context, context.train_datalist)
         logger.info(f"{context.local_rank} - Records for Training: {len(datalist)}")
         logger.debug(f"{context.local_rank} - Training: {datalist}")
 
-        return self._dataloader(context, dataset, context.train_batch_size, num_workers)
+        return self._dataloader(context, dataset, context.train_batch_size, num_workers, shuffle)
 
     def train_inferer(self, context: Context):
         return SimpleInferer()

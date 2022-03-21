@@ -24,6 +24,7 @@ from monai.transforms import (
     RandCropByPosNegLabeld,
     RandShiftIntensityd,
     ScaleIntensityRanged,
+    SelectItemsd,
     Spacingd,
     ToTensord,
 )
@@ -76,6 +77,7 @@ class SegmentationSpleen(BasicTrainTask):
                 image_threshold=0,
             ),
             RandShiftIntensityd(keys="image", offsets=0.1, prob=0.5),
+            SelectItemsd(keys=("image", "label")),
         ]
 
     def train_post_transforms(self, context: Context):

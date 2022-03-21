@@ -21,12 +21,12 @@ from monai.transforms import (
     CropForegroundd,
     EnsureTyped,
     LoadImaged,
-    Orientationd,
     RandCropByPosNegLabeld,
     RandFlipd,
     RandRotate90d,
     RandShiftIntensityd,
     ScaleIntensityRanged,
+    SelectItemsd,
     Spacingd,
     SpatialPadd,
 )
@@ -42,8 +42,8 @@ class Segmentation(BasicTrainTask):
         self,
         model_dir,
         network,
-        spatial_size=(128, 128, 128),
-        num_samples=8,
+        spatial_size=(96, 96, 96),
+        num_samples=4,
         description="Train Segmentation model",
         **kwargs,
     ):
@@ -56,25 +56,25 @@ class Segmentation(BasicTrainTask):
         return self._network
 
     def optimizer(self, context: Context):
-        return torch.optim.AdamW(context.network.parameters())
+        return torch.optim.Adam(context.network.parameters(), lr=1e-3)
 
     def loss_function(self, context: Context):
         return DiceCELoss(to_onehot_y=True, softmax=True)
+
+    def lr_scheduler_handler(self, context: Context):
+        return None
+
+    def train_data_loader(self, context, num_workers=0, shuffle=False):
+        return super().train_data_loader(context, num_workers, True)
 
     def train_pre_transforms(self, context: Context):
         return [
             LoadImaged(keys=("image", "label"), reader="ITKReader"),
             AddChanneld(keys=("image", "label")),
-            Orientationd(keys=("image", "label"), axcodes="RAS"),
-            Spacingd(
-                keys=("image", "label"),
-                pixdim=(1.0, 1.0, 1.0),
-                mode=("bilinear", "nearest"),
-                align_corners=(True, True),
-            ),
-            ScaleIntensityRanged(keys="image", a_min=-175, a_max=250, b_min=0.0, b_max=1.0, clip=True),
+            Spacingd(keys=("image", "label"), pixdim=(1.0, 1.0, 1.0), mode=("bilinear", "nearest")),
             CropForegroundd(keys=("image", "label"), source_key="image"),
             SpatialPadd(keys=("image", "label"), spatial_size=self.spatial_size),
+            ScaleIntensityRanged(keys="image", a_min=-175, a_max=250, b_min=0.0, b_max=1.0, clip=True),
             RandCropByPosNegLabeld(
                 keys=("image", "label"),
                 label_key="label",
@@ -91,6 +91,7 @@ class Segmentation(BasicTrainTask):
             RandFlipd(keys=("image", "label"), spatial_axis=[2], prob=0.10),
             RandRotate90d(keys=("image", "label"), prob=0.10, max_k=3),
             RandShiftIntensityd(keys="image", offsets=0.1, prob=0.5),
+            SelectItemsd(keys=("image", "label")),
         ]
 
     def train_post_transforms(self, context: Context):
@@ -108,18 +109,14 @@ class Segmentation(BasicTrainTask):
         return [
             LoadImaged(keys=("image", "label"), reader="ITKReader"),
             AddChanneld(keys=("image", "label")),
-            Spacingd(
-                keys=("image", "label"),
-                pixdim=(1.0, 1.0, 1.0),
-                mode=("bilinear", "nearest"),
-                align_corners=(True, True),
-            ),
+            Spacingd(keys=("image", "label"), pixdim=(1.0, 1.0, 1.0), mode=("bilinear", "nearest")),
             ScaleIntensityRanged(keys="image", a_min=-175, a_max=250, b_min=0.0, b_max=1.0, clip=True),
             EnsureTyped(keys=("image", "label")),
+            SelectItemsd(keys=("image", "label")),
         ]
 
     def val_inferer(self, context: Context):
-        return SlidingWindowInferer(roi_size=self.spatial_size, sw_batch_size=4)
+        return SlidingWindowInferer(roi_size=self.spatial_size, sw_batch_size=8)
 
     def train_key_metric(self, context: Context):
         return region_wise_metrics(self._labels, self.TRAIN_KEY_METRIC, "train")
