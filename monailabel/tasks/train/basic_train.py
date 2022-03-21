@@ -18,7 +18,7 @@ import tempfile
 import time
 from abc import abstractmethod
 from datetime import datetime
-from typing import List
+from typing import Any, List
 
 import torch
 import torch.distributed
@@ -70,6 +70,7 @@ class Context:
         self.val_batch_size = None  # validation batch size
         self.device = None  # device on which training will run
         self.network = None  # network
+        self.optimizer = None  # optimizer
         self.dataset_type = "CacheDataset"  # dataset type
         self.dataloader_type = "ThreadDataLoader"  # dataloader type
         self.pretrained = False  # using pretrained model
@@ -175,6 +176,13 @@ class BasicTrainTask(TrainTask):
     def loss_function(self, context: Context):
         pass
 
+    def lr_scheduler_handler(self, context: Context):
+        # lr_scheduler = torch.optim.lr_scheduler.ReduceLROnPlateau(context.optimizer, mode="min")
+        # return LrScheduleHandler(lr_scheduler, print_lr=True, step_transform=lambda x: x.state.output[0]["loss"])
+
+        lr_scheduler = torch.optim.lr_scheduler.StepLR(context.optimizer, step_size=1000, gamma=0.1)
+        return LrScheduleHandler(lr_scheduler, print_lr=True)
+
     def _dataset(self, context, datalist, replace_rate=0.25):
         if context.multi_gpu:
             world_size = torch.distributed.get_world_size()
@@ -195,28 +203,28 @@ class BasicTrainTask(TrainTask):
         )
         return dataset, datalist
 
-    def _dataloader(self, context, dataset, batch_size, num_workers):
+    def _dataloader(self, context, dataset, batch_size, num_workers, shuffle=False):
         if context.dataloader_type == "ThreadDataLoader":
             return ThreadDataLoader(
                 dataset=dataset,
                 batch_size=batch_size,
-                shuffle=False,
+                shuffle=shuffle,
                 num_workers=num_workers,
             )
 
         return DataLoader(
             dataset=dataset,
             batch_size=batch_size,
-            shuffle=False,
+            shuffle=shuffle,
             num_workers=num_workers,
         )
 
-    def train_data_loader(self, context, num_workers=0):
+    def train_data_loader(self, context, num_workers=0, shuffle=False):
         dataset, datalist = self._dataset(context, context.train_datalist)
         logger.info(f"{context.local_rank} - Records for Training: {len(datalist)}")
         logger.debug(f"{context.local_rank} - Training: {datalist}")
 
-        return self._dataloader(context, dataset, context.train_batch_size, num_workers)
+        return self._dataloader(context, dataset, context.train_batch_size, num_workers, shuffle)
 
     def train_inferer(self, context: Context):
         return SimpleInferer()
@@ -231,29 +239,30 @@ class BasicTrainTask(TrainTask):
         return load_path
 
     def train_handlers(self, context: Context):
-        lr_scheduler = torch.optim.lr_scheduler.StepLR(self.optimizer(context), step_size=5000, gamma=0.1)
+        handlers: List[Any] = []
 
-        handlers = [
-            LrScheduleHandler(lr_scheduler=lr_scheduler, print_lr=True),
-            StatsHandler(tag_name="train_loss", output_transform=from_engine(["loss"], first=True)),
-            TensorBoardStatsHandler(
-                log_dir=context.events_dir,
-                tag_name="train_loss",
-                output_transform=from_engine(["loss"], first=True),
-            ),
-        ]
+        # LR Scheduler
+        lr_scheduler = self.lr_scheduler_handler(context)
+        if lr_scheduler:
+            handlers.append(lr_scheduler)
+
+        if context.local_rank == 0:
+            handlers.extend(
+                [
+                    StatsHandler(tag_name="train_loss", output_transform=from_engine(["loss"], first=True)),
+                    TensorBoardStatsHandler(
+                        log_dir=context.events_dir,
+                        tag_name="train_loss",
+                        output_transform=from_engine(["loss"], first=True),
+                    ),
+                ]
+            )
 
         if context.evaluator:
-            logger.info(
-                f"{context.local_rank} - Adding Validation Handler to run every '{self._val_interval}' interval"
-            )
-            handlers.append(
-                ValidationHandler(validator=context.evaluator, interval=self._val_interval, epoch_level=True)
-            )
+            logger.info(f"{context.local_rank} - Adding Validation to run every '{self._val_interval}' interval")
+            handlers.append(ValidationHandler(self._val_interval, validator=context.evaluator, epoch_level=True))
 
-        return (
-            handlers if context.local_rank == 0 else [handlers[0], handlers[-1]] if context.evaluator else handlers[:1]
-        )
+        return handlers
 
     def train_additional_metrics(self, context: Context):
         return None
@@ -411,7 +420,7 @@ class BasicTrainTask(TrainTask):
             os.makedirs(context.output_dir, exist_ok=True)
 
         context.train_datalist, context.val_datalist = self.partition_datalist(context)
-        context.network = self._create_network(context)
+        context.network, context.optimizer = self._create_network_and_optimizer(context)
         context.evaluator = self._create_evaluator(context)
         context.trainer = self._create_trainer(context)
 
@@ -492,8 +501,13 @@ class BasicTrainTask(TrainTask):
         logger.info(f"{context.local_rank} - Using Device: {device}; IDX: {device.index}")
         return device
 
-    def _create_network(self, context: Context):
+    def _create_network_and_optimizer(self, context: Context):
         network = self.network(context).to(context.device)
+
+        # optimizer needs network parameters
+        context.network = network
+        optimizer = self.optimizer(context)
+
         if context.multi_gpu:
             network = torch.nn.parallel.DistributedDataParallel(
                 network,
@@ -501,7 +515,7 @@ class BasicTrainTask(TrainTask):
                 output_device=context.device.index,
                 find_unused_parameters=self._find_unused_parameters,
             )
-        return network
+        return network, optimizer
 
     def _create_evaluator(self, context: Context):
         evaluator = None
@@ -557,7 +571,7 @@ class BasicTrainTask(TrainTask):
             max_epochs=context.max_epochs,
             train_data_loader=self.train_data_loader(context),
             network=context.network,
-            optimizer=self.optimizer(context),
+            optimizer=context.optimizer,
             loss_function=self.loss_function(context),
             inferer=self.train_inferer(context),
             amp=self._amp,
