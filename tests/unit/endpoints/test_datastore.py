@@ -17,7 +17,7 @@ from .context import BasicEndpointTestSuite
 
 class EndPointDatastore(BasicEndpointTestSuite):
     def setUp(self) -> None:
-        self.image_id = f"la_99{self.rand_id}"
+        self.image_id = f"spleen_99{self.rand_id}"
         self.image_file = f"{self.image_id}.nii.gz"
 
     def test_001_datastore(self):
@@ -29,14 +29,14 @@ class EndPointDatastore(BasicEndpointTestSuite):
         assert total > 0
 
     def test_002_add(self):
-        with open(os.path.join(self.studies, "la_003.nii.gz"), "rb") as f:
+        with open(os.path.join(self.studies, "spleen_3.nii.gz"), "rb") as f:
             response = self.client.put("/datastore/", files={"file": (self.image_file, f)})
             assert response.status_code == 200
         assert self.image_id in self.client.get("/datastore/?output=all").text
 
     def test_003_save_label(self):
         tag = "test"
-        with open(os.path.join(self.studies, "labels", "final", "la_003.nii.gz"), "rb") as f:
+        with open(os.path.join(self.studies, "labels", "final", "spleen_3.nii.gz"), "rb") as f:
             response = self.client.put(
                 f"/datastore/label?image={self.image_id}&tag={tag}", files={"label": (self.image_file, f)}
             )

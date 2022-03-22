@@ -203,9 +203,13 @@ from [NVIDIA Clara](https://catalog.ngc.nvidia.com/models?filters=&orderBy=dateM
 
 - Additional Configs *(pass them as **--conf name value**) while starting MONAILabelServer*
 
-| Name                 | Values             | Description                                                     |
-|----------------------|--------------------|-----------------------------------------------------------------|
-| use_pretrained_model | **true**, false        | Disable this NOT to load any pretrained weights                 |
+| Name                 | Values          | Description                                                        |
+|----------------------|-----------------|--------------------------------------------------------------------|
+| use_pretrained_model | **true**, false | Disable this NOT to load any pretrained weights                    |
+| epistemic_enabled    | true, **false** | Enable Epistemic based Active Learning Strategy                    |
+| epistemic_samples    | int             | Limit number of samples to run epistemic scoring                   |
+| tta_enabled          | true, **false** | Enable TTA (Test Time Augmentation) based Active Learning Strategy |
+| tta_samples          | int             | Limit number of samples to run tta scoring                         |
 
 - Network
   > This App uses the [UNet](https://docs.monai.io/en/latest/networks.html#unet) as the default network.

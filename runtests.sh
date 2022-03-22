@@ -413,7 +413,7 @@ if [ $doUnitTests = true ]; then
   torch_validate
 
   ${cmdPrefix}${PY_EXE} tests/setup.py
-  ${cmdPrefix}${cmd} -m pytest -x --forked --doctest-modules --junitxml=junit/test-results.xml --cov-report xml --cov-report html --cov-report term --cov monailabel tests/unit/endpoints
+  ${cmdPrefix}${cmd} -m pytest -x --forked --doctest-modules --junitxml=junit/test-results.xml --cov-report xml --cov-report html --cov-report term --cov monailabel tests/unit
 fi
 
 function check_server_running() {
@@ -428,11 +428,13 @@ if [ $doNetTests = true ]; then
 
   ${cmdPrefix}${PY_EXE} tests/setup.py
   echo "Starting MONAILabel server..."
-  monailabel start_server -a sample-apps/radiology -c models segmentation_spleen -s tests/data/dataset/local/heart -p ${MONAILABEL_SERVER_PORT:-8000} &
+  rm -rf tests/data/apps
+  monailabel apps -n radiology -o tests/data/apps -d
+  monailabel start_server -a tests/data/apps/radiology -c models all -s tests/data/dataset/local/spleen -p ${MONAILABEL_SERVER_PORT:-8000} &
 
   wait_time=0
   server_is_up=0
-  start_time_out=120
+  start_time_out=180
 
   while [[ $wait_time -le ${start_time_out} ]]; do
     if [ "$(check_server_running)" == "200" ]; then
@@ -452,9 +454,7 @@ if [ $doNetTests = true ]; then
     exit 1
   fi
 
-  {
-    ${cmdPrefix}${cmd} -m pytest -v tests/integration --no-summary -x
-  } || {
-    kill -9 $(ps -ef | grep monailabel | grep -v grep | awk '{print $2}')
-  }
+  ${cmdPrefix}${cmd} -m pytest -v tests/integration --no-summary -x
+  echo "Finished All Integration Tests;  Stop/Kill MONAILabel Server..."
+  kill -9 $(ps -ef | grep monailabel | grep start_server | grep -v grep | awk '{print $2}')
 fi

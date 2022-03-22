@@ -12,7 +12,7 @@ class MyTestCase(unittest.TestCase):
     data_dir = os.path.join(base_dir, "tests", "data")
 
     app_dir = os.path.join(base_dir, "sample-apps", "radiology")
-    studies = os.path.join(data_dir, "dataset", "local", "heart")
+    studies = os.path.join(data_dir, "dataset", "local", "spleen")
 
     def test_run(self):
         try:
@@ -31,7 +31,7 @@ class MyTestCase(unittest.TestCase):
             stow_prefix="",
             verbose="INFO",
             dryrun=True,
-            conf={"models", "deepedit"},
+            conf=[["models", "deepedit"]],
             host="0.0.0.0",
             port=8000,
             log_config=None,

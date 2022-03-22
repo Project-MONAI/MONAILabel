@@ -30,7 +30,7 @@ class TestInferDeepgrow2D(unittest.TestCase):
 
         base_dir = os.path.realpath(os.path.dirname(os.path.dirname(os.path.dirname(os.path.dirname(__file__)))))
         data_dir = os.path.join(base_dir, "tests", "data")
-        studies = os.path.join(data_dir, "dataset", "local", "heart")
+        studies = os.path.join(data_dir, "dataset", "local", "spleen")
 
         datastore = LocalDatastore(
             studies,

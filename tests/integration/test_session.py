@@ -18,8 +18,8 @@ from tests.integration import SERVER_URI
 
 class EndPointSession(unittest.TestCase):
     def test_session(self):
-        studies = "tests/data/dataset/local/heart"
-        files = [("files", ("la_003.nii.gz", open(os.path.join(studies, "la_003.nii.gz"), "rb")))]
+        studies = "tests/data/dataset/local/spleen"
+        files = [("files", ("spleen_3.nii.gz", open(os.path.join(studies, "spleen_3.nii.gz"), "rb")))]
 
         response = requests.put(f"{SERVER_URI}/session/?expiry=600", files=files)
         assert response.status_code == 200

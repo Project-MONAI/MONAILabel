@@ -58,7 +58,7 @@ class BasicEndpointTestSuite(unittest.TestCase):
     data_dir = os.path.join(base_dir, "tests", "data")
 
     app_dir = os.path.join(base_dir, "sample-apps", "radiology")
-    studies = os.path.join(data_dir, "dataset", "local", "heart")
+    studies = os.path.join(data_dir, "dataset", "local", "spleen")
     rand_id = random.randint(0, 9999)
 
     @classmethod
@@ -95,13 +95,15 @@ class BasicEndpointV2TestSuite(unittest.TestCase):
     data_dir = os.path.join(base_dir, "tests", "data")
 
     app_dir = os.path.join(base_dir, "sample-apps", "radiology")
-    studies = os.path.join(data_dir, "dataset", "local", "heart")
+    studies = os.path.join(data_dir, "dataset", "local", "spleen")
     rand_id = random.randint(0, 9999)
 
     @classmethod
     def setUpClass(cls) -> None:
         sys.path.append(cls.app_dir)
-        cls.client = create_client(cls.app_dir, cls.studies, cls.data_dir, {"models": "segmentation_spleen"})
+        cls.client = create_client(
+            cls.app_dir, cls.studies, cls.data_dir, {"models": "deepgrow_2d,deepgrow_3d,segmentation_spleen"}
+        )
 
     @classmethod
     def tearDownClass(cls) -> None:
@@ -114,7 +116,7 @@ class BasicEndpointV3TestSuite(unittest.TestCase):
     data_dir = os.path.join(base_dir, "tests", "data")
 
     app_dir = os.path.join(base_dir, "sample-apps", "radiology")
-    studies = os.path.join(data_dir, "dataset", "local", "heart")
+    studies = os.path.join(data_dir, "dataset", "local", "spleen")
     rand_id = random.randint(0, 9999)
 
     @classmethod
@@ -124,6 +126,9 @@ class BasicEndpointV3TestSuite(unittest.TestCase):
             "epistemic_enabled": "true",
             "epistemic_samples": "2",
             "tta_samples": "2",
+            "skip_strategies": "false",
+            "skip_scoring": "false",
+            "models": "segmentation_spleen",
         }
         sys.path.append(cls.app_dir)
         cls.client = create_client(cls.app_dir, cls.studies, cls.data_dir, conf=conf)

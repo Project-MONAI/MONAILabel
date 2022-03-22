@@ -21,7 +21,7 @@ from monailabel.datastore.utils.convert import binary_to_image, dicom_to_nifti, 
 
 class TestConvert(unittest.TestCase):
     base_dir = os.path.realpath(os.path.dirname(os.path.dirname(os.path.dirname(__file__))))
-    local_dataset = os.path.join(base_dir, "data", "dataset", "local", "heart")
+    local_dataset = os.path.join(base_dir, "data", "dataset", "local", "spleen")
     dicom_dataset = os.path.join(base_dir, "data", "dataset", "dicomweb", "e7567e0a064f0c334226a0658de23afd")
 
     def test_dicom_to_nifti(self):
@@ -33,7 +33,7 @@ class TestConvert(unittest.TestCase):
         os.unlink(result)
 
     def test_binary_to_image(self):
-        reference_image = os.path.join(self.local_dataset, "labels", "final", "la_003.nii.gz")
+        reference_image = os.path.join(self.local_dataset, "labels", "final", "spleen_3.nii.gz")
         label, _ = LoadImage()(reference_image)
         label = label.astype(np.uint16)
         label = label.flatten(order="F")

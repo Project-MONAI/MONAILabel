@@ -79,7 +79,7 @@ class HeuristicPlanner(object):
         self.min_pix = np.min(np.array(pix_img_min))
         self.mean_pix = np.mean(np.array(pix_img_mean))
         self.std_pix = np.mean(np.array(pix_img_std))
-        logger.info(f"Maximum pixel value: {self.max_pix}; Minimum pixel value: {self.min_pix}")
+        logger.info(f"Pix Max: {self.max_pix}; Min: {self.min_pix}; Mean: {self.mean_pix}; Std: {self.std_pix}")
 
     @staticmethod
     def _get_target_img_size(target_img_size):
