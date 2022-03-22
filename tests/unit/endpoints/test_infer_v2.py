@@ -22,8 +22,8 @@ class EndPointInfer(BasicEndpointV2TestSuite):
         if not torch.cuda.is_available():
             return
 
-        model = "segmentation"
-        image = "la_003"
+        model = "segmentation_spleen"
+        image = "spleen_3"
 
         response = self.client.post(f"/infer/{model}?image={image}")
         assert response.status_code == 200
@@ -33,8 +33,8 @@ class EndPointInfer(BasicEndpointV2TestSuite):
             return
 
         model = "deepgrow_pipeline"
-        image = "la_003"
-        params = {"foreground": [[153, 175, 60]], "background": []}
+        image = "spleen_3"
+        params = {"foreground": [[140, 210, 28]], "background": []}
 
         response = self.client.post(f"/infer/{model}?image={image}", data={"params": json.dumps(params)})
         assert response.status_code == 200

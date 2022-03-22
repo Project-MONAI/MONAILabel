@@ -115,11 +115,11 @@ class _ui_MONAILabelSettingsPanel(object):
         )
 
         autoUpdateModelCheckBox = qt.QCheckBox()
-        autoUpdateModelCheckBox.checked = True
+        autoUpdateModelCheckBox.checked = False
         autoUpdateModelCheckBox.toolTip = "Enable this option to auto update model after submitting the label"
         groupLayout.addRow("Auto-Update Model:", autoUpdateModelCheckBox)
         parent.registerProperty(
-            "MONAILabel/autoUpdateModel",
+            "MONAILabel/autoUpdateModelV2",
             ctk.ctkBooleanMapper(autoUpdateModelCheckBox, "checked", str(qt.SIGNAL("toggled(bool)"))),
             "valueAsInt",
             str(qt.SIGNAL("valueAsIntChanged(int)")),
@@ -1027,6 +1027,11 @@ class MONAILabelWidget(ScriptedLoadableModuleWidget, VTKObservationMixin):
             self.updateServerSettings()
 
             model = self.ui.trainerBox.currentText
+            if model == "ALL" and not slicer.util.confirmOkCancelDisplay(
+                "This will trigger Training task for all models.  Are you sure to continue?"
+            ):
+                return
+
             model = model if model and model != "ALL" else None
             params = self.getParamsFromConfig("train", model)
 
@@ -1309,7 +1314,7 @@ class MONAILabelWidget(ScriptedLoadableModuleWidget, VTKObservationMixin):
             result = self.logic.save_label(self.current_sample["id"], label_in, {"label_info": label_info})
             self.fetchInfo()
 
-            if slicer.util.settingsValue("MONAILabel/autoUpdateModel", True, converter=slicer.util.toBool):
+            if slicer.util.settingsValue("MONAILabel/autoUpdateModelV2", False, converter=slicer.util.toBool):
                 try:
                     if self.isTrainingRunning(check_only=True):
                         self.logic.train_stop()

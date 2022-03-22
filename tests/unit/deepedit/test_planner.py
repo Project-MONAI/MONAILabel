@@ -21,7 +21,7 @@ class TestPlanner(unittest.TestCase):
 
         base_dir = os.path.realpath(os.path.dirname(os.path.dirname(os.path.dirname(os.path.dirname(__file__)))))
         data_dir = os.path.join(base_dir, "tests", "data")
-        studies = os.path.join(data_dir, "dataset", "local", "heart")
+        studies = os.path.join(data_dir, "dataset", "local", "spleen")
 
         datastore = LocalDatastore(
             studies,
@@ -44,7 +44,7 @@ class TestPlanner(unittest.TestCase):
         self.assertIsNotNone(target_spacing)
         self.assertGreaterEqual(max_pix, 0)
         self.assertLessEqual(min_pix, 0)
-        self.assertGreaterEqual(mean_pix, 0)
+        self.assertLessEqual(mean_pix, 0)
         self.assertGreaterEqual(std_pix, 0)
 
     def test_planner(self):

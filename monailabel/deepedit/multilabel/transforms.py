@@ -695,7 +695,7 @@ class AddGuidanceFromPointsCustomd(Transform):
         # Creating guidance for all clicks
         all_guidances = dict()
         for key_label in self.label_names.keys():
-            clicks = d[key_label]
+            clicks = d.get(key_label, [])
             clicks = list(np.array(clicks).astype(int))
             all_guidances[key_label] = self._apply(clicks, factor)
         d[self.guidance] = all_guidances

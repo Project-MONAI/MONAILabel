@@ -67,7 +67,13 @@ class Deepgrow3D(TaskConfig):
         )
 
     def infer(self) -> Union[InferTask, Dict[str, InferTask]]:
-        task: InferTask = lib.infers.Deepgrow(path=self.path, network=self.network, labels=self.labels)
+        task: InferTask = lib.infers.Deepgrow(
+            path=self.path,
+            network=self.network,
+            labels=self.labels,
+            dimension=3,
+            model_size=(128, 192, 192),
+        )
         return task
 
     def trainer(self) -> Optional[TrainTask]:

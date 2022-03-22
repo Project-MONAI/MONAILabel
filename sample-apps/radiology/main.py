@@ -21,6 +21,7 @@ from monailabel.interfaces.app import MONAILabelApp
 from monailabel.interfaces.config import TaskConfig
 from monailabel.interfaces.datastore import Datastore
 from monailabel.interfaces.tasks.infer import InferTask
+from monailabel.interfaces.tasks.scoring import ScoringMethod
 from monailabel.interfaces.tasks.strategy import Strategy
 from monailabel.interfaces.tasks.train import TrainTask
 from monailabel.scribbles.infer import HistogramBasedGraphCut
@@ -40,6 +41,8 @@ class MyApp(MONAILabelApp):
         for c in get_class_names(lib.configs, "TaskConfig"):
             name = c.split(".")[-2].lower()
             configs[name] = c
+
+        configs = {k: v for k, v in sorted(configs.items())}
 
         models = conf.get("models")
         if not models:
@@ -126,6 +129,7 @@ class MyApp(MONAILabelApp):
         if infers.get("deepgrow_2d") and infers.get("deepgrow_3d"):
             infers["deepgrow_pipeline"] = InferDeepgrowPipeline(
                 path=self.models["deepgrow_2d"].path,
+                network=self.models["deepgrow_2d"].network,
                 model_3d=infers["deepgrow_3d"],
                 description="Combines Clara Deepgrow 2D and 3D models",
             )
@@ -146,10 +150,42 @@ class MyApp(MONAILabelApp):
         return trainers
 
     def init_strategies(self) -> Dict[str, Strategy]:
-        return {
+        strategies: Dict[str, Strategy] = {
             "random": Random(),
             "first": First(),
         }
+
+        if strtobool(self.conf.get("skip_strategies", "true")):
+            return strategies
+
+        for n, task_config in self.models.items():
+            s = task_config.strategy()
+            if not s:
+                continue
+            s = s if isinstance(s, dict) else {n: s}
+            for k, v in s.items():
+                logger.info(f"+++ Adding Strategy:: {k} => {v}")
+                strategies[k] = v
+
+        logger.info(f"Active Learning Strategies:: {list(strategies.keys())}")
+        return strategies
+
+    def init_scoring_methods(self) -> Dict[str, ScoringMethod]:
+        methods: Dict[str, ScoringMethod] = {}
+        if strtobool(self.conf.get("skip_scoring", "true")):
+            return methods
+
+        for n, task_config in self.models.items():
+            s = task_config.scoring_method()
+            if not s:
+                continue
+            s = s if isinstance(s, dict) else {n: s}
+            for k, v in s.items():
+                logger.info(f"+++ Adding Scoring Method:: {k} => {v}")
+                methods[k] = v
+
+        logger.info(f"Active Learning Scoring Methods:: {list(methods.keys())}")
+        return methods
 
 
 """

@@ -46,6 +46,9 @@ monailabel start_server --app workspace/radiology --studies workspace/images --c
 
 # Pick All
 monailabel start_server --app workspace/radiology --studies workspace/images --conf models all
+
+# Pick All (Skip Training Tasks or Infer only mode)
+monailabel start_server --app workspace/radiology --studies workspace/images --conf models all --conf skip_trainers true
 ```
 
 ### Model Overview
@@ -200,9 +203,13 @@ from [NVIDIA Clara](https://catalog.ngc.nvidia.com/models?filters=&orderBy=dateM
 
 - Additional Configs *(pass them as **--conf name value**) while starting MONAILabelServer*
 
-| Name                 | Values             | Description                                                     |
-|----------------------|--------------------|-----------------------------------------------------------------|
-| use_pretrained_model | **true**, false        | Disable this NOT to load any pretrained weights                 |
+| Name                 | Values          | Description                                                        |
+|----------------------|-----------------|--------------------------------------------------------------------|
+| use_pretrained_model | **true**, false | Disable this NOT to load any pretrained weights                    |
+| epistemic_enabled    | true, **false** | Enable Epistemic based Active Learning Strategy                    |
+| epistemic_samples    | int             | Limit number of samples to run epistemic scoring                   |
+| tta_enabled          | true, **false** | Enable TTA (Test Time Augmentation) based Active Learning Strategy |
+| tta_samples          | int             | Limit number of samples to run tta scoring                         |
 
 - Network
   > This App uses the [UNet](https://docs.monai.io/en/latest/networks.html#unet) as the default network.

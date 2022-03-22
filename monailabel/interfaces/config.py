@@ -13,6 +13,8 @@ from abc import ABCMeta, abstractmethod
 from typing import Any, Dict, Optional, Union
 
 from monailabel.interfaces.tasks.infer import InferTask
+from monailabel.interfaces.tasks.scoring import ScoringMethod
+from monailabel.interfaces.tasks.strategy import Strategy
 from monailabel.interfaces.tasks.train import TrainTask
 
 logger = logging.getLogger(__name__)
@@ -48,3 +50,9 @@ class TaskConfig(metaclass=ABCMeta):
     @abstractmethod
     def trainer(self) -> Optional[TrainTask]:
         pass
+
+    def strategy(self) -> Union[None, Strategy, Dict[str, Strategy]]:
+        return None
+
+    def scoring_method(self) -> Union[None, ScoringMethod, Dict[str, ScoringMethod]]:
+        return None

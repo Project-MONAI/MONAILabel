@@ -74,7 +74,7 @@ class Segmentation(TaskConfig):
             path=self.path,
             network=self.network,
             labels=self.labels,
-            config={"largest_cc": False},
+            config={"largest_cc": True},
         )
         return task
 
