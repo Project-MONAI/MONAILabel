@@ -36,14 +36,18 @@ MONAI Label supports following OS with **GPU/CUDA** enabled.
 
 ### Development Release
 
-To install the _**latest features**_ from github main branch/docker/weekly:
-
+To install the _**latest features**_ using one of the following options:
 ```bash
-# option1: github install (or you can install monailabel-weekly from PyPI)
+# option 1: github install (or you can install monailabel-weekly from PyPI)
 pip install git+https://github.com/Project-MONAI/MONAILabel#egg=monailabel
 
-# option2: install from docker
+# option 2: using docker
 docker run --gpus all --rm -ti --ipc=host --net=host projectmonai/monailabel:latest
+
+# option 2: git checkout
+git clone https://github.com/Project-MONAI/MONAILabel
+pip install -r MONAILabel/requirements.txt
+export PATH=$PATH:`pwd`MONAILabel/monailabel/scripts
 
 
 # download radiology app and sample dataset

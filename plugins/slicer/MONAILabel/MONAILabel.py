@@ -1027,6 +1027,11 @@ class MONAILabelWidget(ScriptedLoadableModuleWidget, VTKObservationMixin):
             self.updateServerSettings()
 
             model = self.ui.trainerBox.currentText
+            if model == "ALL" and not slicer.util.confirmOkCancelDisplay(
+                "This will trigger Training task for all models.  Are you sure to continue?"
+            ):
+                return
+
             model = model if model and model != "ALL" else None
             params = self.getParamsFromConfig("train", model)
 

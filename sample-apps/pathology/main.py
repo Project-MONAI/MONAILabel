@@ -35,6 +35,8 @@ class MyApp(MONAILabelApp):
             name = c.split(".")[-2].lower()
             configs[name] = c
 
+        configs = {k: v for k, v in sorted(configs.items())}
+
         models = conf.get("models", "all")
         if not models:
             print("")

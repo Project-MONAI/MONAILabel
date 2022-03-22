@@ -175,9 +175,8 @@ class Main:
         apps.sort()
 
         resource = {
-            "Deepedit based Apps": [a for a in apps if a.startswith("deepedit")],
-            "Deepgrow based Apps": [a for a in apps if a.startswith("deepgrow")],
-            "Standard Segmentation Apps": [a for a in apps if a.startswith("segmentation")],
+            "Radiology based Apps": [a for a in apps if a.startswith("radiology")],
+            "Pathology based Apps": [a for a in apps if a.startswith("pathology")],
         }
 
         if not args.download:
