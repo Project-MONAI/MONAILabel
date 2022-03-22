@@ -38,12 +38,19 @@ To install the [current release](https://pypi.org/project/monailabel/), you can 
 ```bash
   pip install monailabel
   
-  # download sample apps/dataset
+  # list available apps
+  monailabel apps
+  
+  # list available datasets
+  monailabel datasets
+
+  # download sample apps/dataset (radiology and Spleen Dataset)
   monailabel apps --download --name radiology --output apps
   monailabel datasets --download --name Task09_Spleen --output datasets
   
-  # run server
-  monailabel start_server --app apps/radiology --studies datasets/Task09_Spleen/imagesTr
+  # run server (radiology app with deepedit model)
+  # radiology app is available only if you are using monailabel-weekly or installing monailable from github
+  monailabel start_server --app apps/radiology --studies datasets/Task09_Spleen/imagesTr --conf models deepedit
 ```
 
 > If monailabel install path is not automatically determined, then you can provide explicit install path as: 
