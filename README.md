@@ -47,7 +47,7 @@ docker run --gpus all --rm -ti --ipc=host --net=host projectmonai/monailabel:lat
 # option 2: git checkout
 git clone https://github.com/Project-MONAI/MONAILabel
 pip install -r MONAILabel/requirements.txt
-export PATH=$PATH:`pwd`MONAILabel/monailabel/scripts
+export PATH=$PATH:`pwd`/MONAILabel/monailabel/scripts
 
 
 # download radiology app and sample dataset
