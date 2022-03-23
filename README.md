@@ -44,10 +44,13 @@ pip install git+https://github.com/Project-MONAI/MONAILabel#egg=monailabel
 # option 2: using docker
 docker run --gpus all --rm -ti --ipc=host --net=host projectmonai/monailabel:latest
 
-# option 2: git checkout
+# option 3: git checkout
 git clone https://github.com/Project-MONAI/MONAILabel
 pip install -r MONAILabel/requirements.txt
 export PATH=$PATH:`pwd`/MONAILabel/monailabel/scripts
+
+# option 4: release candidate (0.4.x)
+pip install pip install monailabel>=0.4*
 
 
 # download radiology app and sample dataset
@@ -58,7 +61,9 @@ monailabel datasets --download --name Task09_Spleen --output datasets
 monailabel start_server --app apps/radiology --studies datasets/Task09_Spleen/imagesTr --conf models deepedit
 ```
 
-### Current Release (3.x)
+> You can install [latest release candidates](https://pypi.org/project/monailabel/#history)
+
+### Current Release (0.3.x)
 
 To install the [current release](https://pypi.org/project/monailabel/), you can simply run:
 
