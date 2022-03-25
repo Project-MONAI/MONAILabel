@@ -50,7 +50,7 @@ pip install -r MONAILabel/requirements.txt
 export PATH=$PATH:`pwd`/MONAILabel/monailabel/scripts
 
 # option 4: release candidate (0.4.x)
-pip install pip install monailabel>=0.4*
+pip install monailabel>=0.4*
 
 
 # download radiology app and sample dataset
