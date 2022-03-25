@@ -124,6 +124,23 @@ Refer [Pathology](sample-apps/pathology) for running a sample pathology use-case
 
 ![image](https://user-images.githubusercontent.com/7339051/157100606-a281e038-5923-43a8-bb82-8fccae51fcff.png)
 
+## Cite
+
+If you are using MONAI Label in your research, please use the following citation:
+
+  ```bash
+@article{DiazPinto2022monailabel,
+   author = {Diaz-Pinto, Andres and Alle, Sachidanand and Ihsani, Alvin and Asad, Muhammad and 
+            Nath, Vishwesh and P{\'e}rez-Garc{\'\i}a, Fernando and Mehta, Pritesh and 
+            Li, Wenqi and Roth, Holger R. and Vercauteren, Tom and Xu, Daguang and 
+            Dogra, Prerna and Ourselin, Sebastien and Feng, Andrew and Cardoso, M. Jorge},
+    title = {{MONAI Label: A framework for AI-assisted Interactive Labeling of 3D Medical Images}},
+  journal = {arXiv e-prints},
+     year = 2022,
+     url  = {https://arxiv.org/pdf/2203.12362.pdf}
+}
+  ```
+
 ## Contributing
 
 For guidance on making a contribution to MONAI Label, see the [contributing guidelines](CONTRIBUTING.md).
