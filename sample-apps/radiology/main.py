@@ -195,7 +195,8 @@ Example to run train/infer/scoring task(s) locally without actually running MONA
 
 def main():
     import argparse
-    from pathlib import Path
+
+    # from pathlib import Path
 
     os.putenv("MASTER_ADDR", "127.0.0.1")
     os.putenv("MASTER_PORT", "1234")
@@ -206,8 +207,8 @@ def main():
         datefmt="%Y-%m-%d %H:%M:%S",
     )
 
-    home = str(Path.home())
-    studies = f"{home}/Data/Synapse/52432/Training/img"
+    # home = str(Path.home())
+    studies = "/home/adp20local/Documents/Datasets/monailabel_datasets/both_MSD_BTCV"
 
     parser = argparse.ArgumentParser()
     parser.add_argument("-s", "--studies", default=studies)
@@ -215,21 +216,24 @@ def main():
 
     app_dir = os.path.dirname(__file__)
     studies = args.studies
-    conf = {"models": "segmentation"}
+    conf = {
+        "models": "deepedit",
+        "use_pretrained_model": "false",
+    }
 
     app = MyApp(app_dir, studies, conf)
 
-    model = "segmentation"
+    model = "deepedit"
     app.train(
         request={
-            "name": "train_01",
+            "name": "spleen_model_depedit",
             "model": model,
-            "max_epochs": 2000,
+            "max_epochs": 1000,
             "dataset": "CacheDataset",  # PersistentDataset, CacheDataset
-            "train_batch_size": 4,
+            "train_batch_size": 1,
             "val_batch_size": 1,
             "multi_gpu": True,
-            "val_split": 0.2,
+            "val_split": 0.05,
         },
     )
 
@@ -237,5 +241,4 @@ def main():
 if __name__ == "__main__":
     # export PYTHONPATH=~/Projects/MONAILabel:`pwd`
     # python main.py
-
     main()

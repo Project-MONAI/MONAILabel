@@ -31,15 +31,21 @@ class DeepEdit(TaskConfig):
     def init(self, name: str, model_dir: str, conf: Dict[str, str], planner: Any, **kwargs):
         super().init(name, model_dir, conf, planner, **kwargs)
 
-        # Labels
+        # Multilabel
+        # self.labels = {
+        #     "spleen": 1,
+        #     "right kidney": 2,
+        #     "left kidney": 3,
+        #     "liver": 6,
+        #     "stomach": 7,
+        #     "aorta": 8,
+        #     "inferior vena cava": 9,
+        #     "background": 0,
+        # }
+
+        # Single label
         self.labels = {
             "spleen": 1,
-            "right kidney": 2,
-            "left kidney": 3,
-            "liver": 6,
-            "stomach": 7,
-            "aorta": 8,
-            "inferior vena cava": 9,
             "background": 0,
         }
 
@@ -53,7 +59,7 @@ class DeepEdit(TaskConfig):
 
         # Download PreTrained Model
         if strtobool(self.conf.get("use_pretrained_model", "true")):
-            url = f"{self.PRE_TRAINED_PATH}/deepedit_{network}_multilabel.pt"
+            url = f"{self.PRE_TRAINED_PATH}/deepedit_{network}_singlelabel.pt"
             download_file(url, self.path[0])
 
         # Network
@@ -100,7 +106,7 @@ class DeepEdit(TaskConfig):
             network=self.network,
             load_path=self.path[0],
             publish_path=self.path[1],
-            spatial_size=self.planner.spatial_size if self.planner else (128, 128, 64),
+            spatial_size=self.planner.spatial_size if self.planner else (128, 128, 128),
             target_spacing=self.planner.target_spacing if self.planner else (1.0, 1.0, 1.0),
             config={"pretrained": strtobool(self.conf.get("use_pretrained_model", "true"))},
             labels=self.labels,
