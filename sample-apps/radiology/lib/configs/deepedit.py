@@ -63,13 +63,13 @@ class DeepEdit(TaskConfig):
             download_file(url, self.path[0])
 
         # Network
-        spatial_size = json.loads(self.conf.get("spatial_size", "[128, 128, 128]"))
+        self.spatial_size = json.loads(self.conf.get("spatial_size", "[128, 128, 128]"))
         if network == "unetr":
             self.network = UNETR(
                 spatial_dims=3,
                 in_channels=len(self.labels) + 1,
                 out_channels=len(self.labels),
-                img_size=spatial_size,
+                img_size=self.spatial_size,
                 feature_size=64,
                 hidden_size=1536,
                 mlp_dim=3072,
@@ -93,9 +93,15 @@ class DeepEdit(TaskConfig):
 
     def infer(self) -> Union[InferTask, Dict[str, InferTask]]:
         return {
-            self.name: lib.infers.DeepEdit(path=self.path, network=self.network, labels=self.labels),
+            self.name: lib.infers.DeepEdit(
+                path=self.path, network=self.network, labels=self.labels, spatial_size=self.spatial_size
+            ),
             f"{self.name}_seg": lib.infers.DeepEdit(
-                path=self.path, network=self.network, labels=self.labels, type=InferType.SEGMENTATION
+                path=self.path,
+                network=self.network,
+                labels=self.labels,
+                spatial_size=self.spatial_size,
+                type=InferType.SEGMENTATION,
             ),
         }
 

@@ -219,6 +219,7 @@ def main():
     conf = {
         "models": "deepedit",
         "use_pretrained_model": "false",
+        "network": "unetr",
     }
 
     app = MyApp(app_dir, studies, conf)
