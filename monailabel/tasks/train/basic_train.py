@@ -330,9 +330,15 @@ class BasicTrainTask(TrainTask):
         return train_datalist, val_datalist
 
     def stats(self):
-        if self._stats_path and os.path.exists(self._stats_path):
-            with open(self._stats_path, "r") as fc:
-                return json.load(fc)
+        if self._stats_path:
+            if os.path.exists(self._stats_path):
+                with open(self._stats_path, "r") as fc:
+                    return json.load(fc)
+            # If stats is created in a different folder than app folder
+            else:
+                os.makedirs(self._stats_path)
+                with open(self._stats_path, "r") as fc:
+                    return json.load(fc)
         return {}
 
     def config(self):
