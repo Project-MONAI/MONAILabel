@@ -145,7 +145,7 @@ class DeepEdit(BasicTrainTask):
             AddGuidanceSignalCustomd(keys="image", guidance="guidance"),
             #
             ToTensord(keys=("image", "label")),
-            SelectItemsd(keys=("image", "label", "guidance")),
+            SelectItemsd(keys=("image", "label", "guidance", "label_names")),
         ]
 
     def val_inferer(self, context: Context):
