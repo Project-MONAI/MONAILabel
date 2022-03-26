@@ -219,7 +219,8 @@ def main():
     conf = {
         "models": "deepedit",
         "use_pretrained_model": "false",
-        "network": "unetr",
+        # "network": "unetr",
+        # "spatial_size": "[128,128,128]",
     }
 
     app = MyApp(app_dir, studies, conf)
