@@ -115,7 +115,7 @@ class DeepEdit(BasicTrainTask):
             AddGuidanceSignalCustomd(keys="image", guidance="guidance"),
             #
             ToTensord(keys=("image", "label")),
-            SelectItemsd(keys=("image", "label", "guidance")),
+            SelectItemsd(keys=("image", "label", "guidance", "label_names")),
         ]
 
     def train_post_transforms(self, context: Context):
