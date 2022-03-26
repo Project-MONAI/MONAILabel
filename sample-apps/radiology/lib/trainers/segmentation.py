@@ -31,6 +31,7 @@ from monai.transforms import (
     SpatialPadd,
 )
 
+from monailabel.deepedit.multilabel.transforms import NormalizeLabelsInDatasetd
 from monailabel.tasks.train.basic_train import BasicTrainTask, Context
 from monailabel.tasks.train.utils import region_wise_metrics
 
@@ -42,7 +43,7 @@ class Segmentation(BasicTrainTask):
         self,
         model_dir,
         network,
-        spatial_size=(96, 96, 96),
+        spatial_size=(48, 48, 48),  # Depends on original width, height and depth of the training images
         num_samples=4,
         description="Train Segmentation model",
         **kwargs,
@@ -70,6 +71,7 @@ class Segmentation(BasicTrainTask):
     def train_pre_transforms(self, context: Context):
         return [
             LoadImaged(keys=("image", "label"), reader="ITKReader"),
+            NormalizeLabelsInDatasetd(keys="label", label_names=self._labels),  # Specially for missing labels
             AddChanneld(keys=("image", "label")),
             Spacingd(keys=("image", "label"), pixdim=(1.0, 1.0, 1.0), mode=("bilinear", "nearest")),
             CropForegroundd(keys=("image", "label"), source_key="image"),
