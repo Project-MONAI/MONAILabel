@@ -14,16 +14,16 @@ import unittest
 
 import torch
 
-from .context import BasicEndpointTestSuite
+from .context import BasicEndpointV2TestSuite
 
 
-class TestEndPointTrain(BasicEndpointTestSuite):
+class TestEndPointTrain(BasicEndpointV2TestSuite):
     def test_001_train(self):
         if not torch.cuda.is_available():
             return
 
         params = {
-            "model": "deepedit_train",
+            "model": "segmentation_spleen",
             "max_epochs": 1,
             "name": "net_test_01",
             "val_split": 0.5,
@@ -39,7 +39,7 @@ class TestEndPointTrain(BasicEndpointTestSuite):
             return
 
         params = {
-            "model": "deepedit_train",
+            "model": "segmentation_spleen",
             "max_epochs": 1,
             "name": "net_test_01",
             "val_split": 0.5,
@@ -62,7 +62,7 @@ class TestEndPointTrain(BasicEndpointTestSuite):
             return
 
         params = {
-            "model": "deepedit_train",
+            "model": "segmentation_spleen",
             "max_epochs": 5,
             "name": "net_test_01",
             "multi_gpu": False,

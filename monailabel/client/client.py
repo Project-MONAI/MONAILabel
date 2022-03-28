@@ -15,6 +15,7 @@ import json
 import logging
 import mimetypes
 import os
+import ssl
 import tempfile
 from urllib.parse import quote_plus, urlparse
 
@@ -24,7 +25,17 @@ logger = logging.getLogger(__name__)
 
 
 class MONAILabelClient:
+    """
+    Basic MONAILabel Client to invoke infer/train APIs over http/https
+    """
+
     def __init__(self, server_url, tmpdir=None, client_id=None):
+        """
+        :param server_url: Server URL for MONAILabel (e.g. http://127.0.0.1:8000)
+        :param tmpdir: Temp directory to save temporary files.  If None then it uses tempfile.tempdir
+        :param client_id: Client ID that will be added for all basic requests
+        """
+
         self._server_url = server_url.rstrip("/").strip()
         self._tmpdir = tmpdir if tmpdir else tempfile.tempdir if tempfile.tempdir else "/tmp"
         self._client_id = client_id
@@ -37,12 +48,27 @@ class MONAILabelClient:
         return params
 
     def get_server_url(self):
+        """
+        Return server url
+
+        :return: the url for monailabel server
+        """
         return self._server_url
 
     def set_server_url(self, server_url):
+        """
+        Set url for monailabel server
+
+        :param server_url: server url for monailabel
+        """
         self._server_url = server_url.rstrip("/").strip()
 
     def info(self):
+        """
+        Invoke /info/ request over MONAILabel Server
+
+        :return: json response
+        """
         selector = "/info/"
         status, response, _ = MONAILabelUtils.http_method("GET", self._server_url, selector)
         if status != 200:
@@ -55,6 +81,13 @@ class MONAILabelClient:
         return json.loads(response)
 
     def next_sample(self, strategy, params):
+        """
+        Get Next sample
+
+        :param strategy: Name of strategy to be used for fetching next sample
+        :param params: Additional JSON params as part of strategy request
+        :return: json response which contains information about next image selected for annotation
+        """
         params = self._update_client_id(params)
         selector = "/activelearning/{}".format(MONAILabelUtils.urllib_quote_plus(strategy))
         status, response, _ = MONAILabelUtils.http_method("POST", self._server_url, selector, params)
@@ -68,6 +101,13 @@ class MONAILabelClient:
         return json.loads(response)
 
     def create_session(self, image_in, params=None):
+        """
+        Create New Session
+
+        :param image_in: filepath for image to be sent to server as part of session creation
+        :param params: additional JSON params as part of session reqeust
+        :return: json response which contains session id and other details
+        """
         selector = "/session/"
         params = self._update_client_id(params)
 
@@ -82,6 +122,12 @@ class MONAILabelClient:
         return json.loads(response)
 
     def get_session(self, session_id):
+        """
+        Get Session
+
+        :param session_id: Session Id
+        :return: json response which contains more details about the session
+        """
         selector = f"/session/{MONAILabelUtils.urllib_quote_plus(session_id)}"
         status, response, _ = MONAILabelUtils.http_method("GET", self._server_url, selector)
         if status != 200:
@@ -94,6 +140,12 @@ class MONAILabelClient:
         return json.loads(response)
 
     def remove_session(self, session_id):
+        """
+        Remove any existing Session
+
+        :param session_id: Session Id
+        :return: json response
+        """
         selector = f"/session/{MONAILabelUtils.urllib_quote_plus(session_id)}"
         status, response, _ = MONAILabelUtils.http_method("DELETE", self._server_url, selector)
         if status != 200:
@@ -106,6 +158,14 @@ class MONAILabelClient:
         return json.loads(response)
 
     def upload_image(self, image_in, image_id=None, params=None):
+        """
+        Upload New Image to MONAILabel Datastore
+
+        :param image_in: Image File Path
+        :param image_id: Force Image ID;  If not provided then Server it auto generate new Image ID
+        :param params: Additional JSON params
+        :return: json response which contains image id and other details
+        """
         selector = "/datastore/?image={}".format(MONAILabelUtils.urllib_quote_plus(image_id))
 
         files = {"file": image_in}
@@ -123,8 +183,17 @@ class MONAILabelClient:
         logging.debug("Response: {}".format(response))
         return json.loads(response)
 
-    def save_label(self, image_in, label_in, tag="", params=None):
-        selector = "/datastore/label?image={}".format(MONAILabelUtils.urllib_quote_plus(image_in))
+    def save_label(self, image_id, label_in, tag="", params=None):
+        """
+        Save/Submit Label
+
+        :param image_id: Image Id for which label needs to saved/submitted
+        :param label_in: Label File path which shall be saved/submitted
+        :param tag: Save label against tag in datastore
+        :param params: Additional JSON params for the request
+        :return: json response
+        """
+        selector = "/datastore/label?image={}".format(MONAILabelUtils.urllib_quote_plus(image_id))
         if tag:
             selector += "&tag={}".format(MONAILabelUtils.urllib_quote_plus(tag))
 
@@ -145,10 +214,21 @@ class MONAILabelClient:
         logging.debug("Response: {}".format(response))
         return json.loads(response)
 
-    def infer(self, model, image_in, params, label_in=None, file=None, session_id=None):
+    def infer(self, model, image_id, params, label_in=None, file=None, session_id=None):
+        """
+        Run Infer
+
+        :param model: Name of Model
+        :param image_id: Image Id
+        :param params: Additional configs/json params as part of Infer request
+        :param label_in: File path for label mask which is needed to run Inference (e.g. In case of Scribbles)
+        :param file: File path for Image (use raw image instead of image_id)
+        :param session_id: Session ID (use existing session id instead of image_id)
+        :return: response_file (label mask), response_body (json result/output params)
+        """
         selector = "/infer/{}?image={}".format(
             MONAILabelUtils.urllib_quote_plus(model),
-            MONAILabelUtils.urllib_quote_plus(image_in),
+            MONAILabelUtils.urllib_quote_plus(image_id),
         )
         if session_id:
             selector += f"&session_id={MONAILabelUtils.urllib_quote_plus(session_id)}"
@@ -172,7 +252,44 @@ class MONAILabelClient:
         image_out = MONAILabelUtils.save_result(files, self._tmpdir)
         return image_out, params
 
+    def wsi_infer(self, model, image_id, body=None, output="dsa", session_id=None):
+        """
+        Run WSI Infer in case of Pathology App
+
+        :param model: Name of Model
+        :param image_id: Image Id
+        :param body: Additional configs/json params as part of Infer request
+        :param output: Output File format (dsa|asap|json)
+        :param session_id: Session ID (use existing session id instead of image_id)
+        :return: response_file (None), response_body
+        """
+        selector = "/infer/wsi/{}?image={}".format(
+            MONAILabelUtils.urllib_quote_plus(model),
+            MONAILabelUtils.urllib_quote_plus(image_id),
+        )
+        if session_id:
+            selector += f"&session_id={MONAILabelUtils.urllib_quote_plus(session_id)}"
+        if output:
+            selector += f"&output={MONAILabelUtils.urllib_quote_plus(output)}"
+
+        body = self._update_client_id(body if body else {})
+        status, form, _ = MONAILabelUtils.http_method("POST", self._server_url, selector, body)
+        if status != 200:
+            raise MONAILabelClientException(
+                MONAILabelError.SERVER_ERROR,
+                "Status: {}; Response: {}".format(status, form),
+            )
+
+        return None, form
+
     def train_start(self, model, params):
+        """
+        Run Train Task
+
+        :param model: Name of Model
+        :param params: Additional configs/json params as part of Train request
+        :return: json response
+        """
         params = self._update_client_id(params)
 
         selector = "/train/"
@@ -191,6 +308,11 @@ class MONAILabelClient:
         return json.loads(response)
 
     def train_stop(self):
+        """
+        Stop any running Train Task(s)
+
+        :return: json response
+        """
         selector = "/train/"
         status, response, _ = MONAILabelUtils.http_method("DELETE", self._server_url, selector)
         if status != 200:
@@ -204,6 +326,12 @@ class MONAILabelClient:
         return json.loads(response)
 
     def train_status(self, check_if_running=False):
+        """
+        Check Train Task Status
+
+        :param check_if_running: Fast mode.  Only check if training is Running
+        :return: boolean if check_if_running is enabled; else json response that contains of full details
+        """
         selector = "/train/"
         if check_if_running:
             selector += "?check_if_running=true"
@@ -223,16 +351,34 @@ class MONAILabelClient:
 
 
 class MONAILabelError:
-    RESULT_NOT_FOUND = 1
-    SERVER_ERROR = 2
-    SESSION_EXPIRED = 3
-    UNKNOWN = 4
+    """
+    Type of Inference Model
+
+    Attributes:
+        SERVER_ERROR -           Server Error
+        SESSION_EXPIRED -        Session Expired
+        UNKNOWN -                Unknown Error
+    """
+
+    SERVER_ERROR = 1
+    SESSION_EXPIRED = 2
+    UNKNOWN = 3
 
 
 class MONAILabelClientException(Exception):
+    """
+    MONAILabel Client Exception
+    """
+
     __slots__ = ["error", "msg"]
 
     def __init__(self, error, msg, status_code=None, response=None):
+        """
+        :param error: Error code represented by MONAILabelError
+        :param msg: Error message
+        :param status_code: HTTP Response code
+        :param response: HTTP Response
+        """
         self.error = error
         self.msg = msg
         self.status_code = status_code
@@ -249,7 +395,14 @@ class MONAILabelUtils:
         selector = path + "/" + selector.lstrip("/")
         logging.debug("URI Path: {}".format(selector))
 
-        conn = http.client.HTTPConnection(parsed.hostname, parsed.port)
+        parsed = urlparse(server_url)
+        if parsed.scheme == "https":
+            logger.debug("Using HTTPS mode")
+            # noinspection PyProtectedMember
+            conn = http.client.HTTPSConnection(parsed.hostname, parsed.port, context=ssl._create_unverified_context())
+        else:
+            conn = http.client.HTTPConnection(parsed.hostname, parsed.port)
+
         headers = {}
         if body:
             if isinstance(body, dict):

@@ -1,0 +1,120 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<executable>
+    <category>HistomicsTK</category>
+    <title>MONAILabel Training</title>
+    <description>Annotations using MONAILabel</description>
+    <version>0.1.0</version>
+    <documentation-url>https://digitalslidearchive.github.io/HistomicsTK</documentation-url>
+    <license>Apache 2.0</license>
+    <contributor>Sachidanand Alle (NVIDIA)</contributor>
+    <acknowledgements>This work is part of the HistomicsTK/MONAILabel project.</acknowledgements>
+    <parameters>
+        <label>I/O</label>
+        <description>Input/output parameters.</description>
+        <string>
+            <name>server</name>
+            <label>MONAILabel Address</label>
+            <description>Address of a monailabel address in the format 'http://127.0.0.1:8000/'.</description>
+            <longflag>server</longflag>
+            <default>http://10.117.18.128:8000/</default>
+        </string>
+        <string>
+            <name>model_name</name>
+            <label>Model Name</label>
+            <description>DeepLearning Model to Train/Finetune (For Example: deepedit_nuclei, segmentation_nuclei)</description>
+            <longflag>model_name</longflag>
+            <default>deepedit_nuclei</default>
+        </string>
+    </parameters>
+    <parameters>
+        <label>Training</label>
+        <description>Train parameters</description>
+        <string>
+            <name>train_name</name>
+            <label>Train Task</label>
+            <description>Training Task Name where all model and stats will be saved</description>
+            <longflag>train_name</longflag>
+            <default>train_01</default>
+        </string>
+        <integer>
+            <name>max_epochs</name>
+            <label>Max Epochs</label>
+            <description>Maximum Number of Train Epochs</description>
+            <longflag>max_epochs</longflag>
+            <default>10</default>
+        </integer>
+        <string-enumeration>
+            <name>dataset</name>
+            <label>Dataset</label>
+            <description>Dataset</description>
+            <longflag>dataset</longflag>
+            <element>CacheDataset</element>
+            <element>PersistentDataset</element>
+            <default>CacheDataset</default>
+        </string-enumeration>
+        <integer>
+            <name>train_batch_size</name>
+            <label>Train Batch Size</label>
+            <description>Batch size for training</description>
+            <longflag>train_batch_size</longflag>
+            <default>16</default>
+        </integer>
+        <integer>
+            <name>val_batch_size</name>
+            <label>Validation Batch Size</label>
+            <description>Batch size for validation</description>
+            <longflag>val_batch_size</longflag>
+            <default>12</default>
+        </integer>
+        <double>
+            <name>val_split</name>
+            <label>Validation Split</label>
+            <description>Split Ratio for validation</description>
+            <longflag>val_split</longflag>
+            <default>0.1</default>
+        </double>
+        <boolean>
+            <name>stop_previous</name>
+            <label>Stop Previous Training</label>
+            <description>Stop Any previously running Training Task</description>
+            <longflag>stop_previous</longflag>
+            <default>true</default>
+        </boolean>
+        <string>
+            <name>extra_params</name>
+            <label>Extra Params (JSON)</label>
+            <description>Extra/Other Config Parameters defined by MONAILabel training task</description>
+            <longflag>extra_params</longflag>
+            <default>{}</default>
+        </string>
+    </parameters>
+    <parameters advanced="true">
+        <label>Training Dataset</label>
+        <description>Training Dataset Preparation parameters</description>
+        <integer>
+            <name>dataset_limit</name>
+            <label>Limit Images</label>
+            <description>Maximum Number of Images allowed to fetch, in order to prevent accidentally running on
+                too large set of Images. Use -1 for no limit
+            </description>
+            <longflag>dataset_limit</longflag>
+            <default>-1</default>
+        </integer>
+        <boolean>
+            <name>dataset_randomize</name>
+            <label>Random Images</label>
+            <description>Pick Random Images when List of Images to be used for Training is limited</description>
+            <longflag>dataset_randomize</longflag>
+            <default>true</default>
+        </boolean>
+        <integer>
+            <name>dataset_max_region</name>
+            <label>Maximum region size</label>
+            <description>Maximum Region Size allowed when fetching an image, in order to prevent accidentally running on
+                too large a region
+            </description>
+            <longflag>dataset_max_region</longflag>
+            <default>10240</default>
+        </integer>
+    </parameters>
+</executable>

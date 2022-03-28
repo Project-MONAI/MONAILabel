@@ -17,8 +17,10 @@ import os
 import pathlib
 import shutil
 import subprocess
+import time
 
 import torch.cuda
+from monai.apps import download_url
 
 logger = logging.getLogger(__name__)
 
@@ -159,3 +161,15 @@ def gpu_memory_map():
 
 def gpu_count():
     return torch.cuda.device_count()
+
+
+def download_file(url, path, delay=1, skip_on_exists=True):
+    if skip_on_exists and os.path.exists(path):
+        return
+
+    os.makedirs(os.path.dirname(path), exist_ok=True)
+    logger.info(f"Downloading resource: {path} from {url}")
+
+    download_url(url, path)
+    if delay > 0:
+        time.sleep(delay)

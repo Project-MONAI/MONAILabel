@@ -15,7 +15,7 @@ from monailabel.utils.others.class_utils import (
 class MyTestCase(unittest.TestCase):
     base_dir = os.path.realpath(os.path.dirname(os.path.dirname(os.path.dirname(os.path.dirname(__file__)))))
     data_dir = os.path.join(base_dir, "tests", "data")
-    app_dir = os.path.join(base_dir, "sample-apps", "deepedit")
+    app_dir = os.path.join(base_dir, "sample-apps", "radiology")
 
     def test_get_class_names_1(self):
         names = get_class_names(monailabel.interfaces)

@@ -8,7 +8,6 @@
 # WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 # See the License for the specific language governing permissions and
 # limitations under the License.
-
 import logging
 import tempfile
 
@@ -17,6 +16,7 @@ import numpy as np
 from monai.data import write_nifti
 
 from monailabel.utils.others.generic import file_ext
+from monailabel.utils.others.pathology import create_asap_annotations_xml, create_dsa_annotations_json
 
 logger = logging.getLogger(__name__)
 
@@ -91,7 +91,7 @@ class Writer:
         compress = data.get(self.key_compress, False)
         write_to_file = data.get(self.key_write_to_file, True)
         ext = data.get(self.key_extension) if data.get(self.key_extension) else ext
-        logger.info(f"Result ext: {ext}; write_to_file: {write_to_file}")
+        logger.info(f"Result ext: {ext}; write_to_file: {write_to_file}; dtype: {dtype}")
 
         image_np = data[self.label]
         meta_dict = data.get(f"{self.ref_image}_{self.meta_key_postfix}")
@@ -124,3 +124,55 @@ class ClassificationWriter:
         for label in data[self.label]:
             result.append(self.label_names[int(label)])
         return None, {"prediction": result}
+
+
+class PolygonWriter:
+    def __init__(
+        self,
+        label="pred",
+        json="result",
+        key_write_to_file="result_write_to_file",
+        key_annotations="annotations",
+        key_label_colors="label_colors",
+        key_output_format="output",
+    ):
+        self.label = label
+        self.json = json
+        self.key_write_to_file = key_write_to_file
+        self.key_annotations = key_annotations
+        self.key_label_colors = key_label_colors
+        self.key_output_format = key_output_format
+        self.format = format
+
+    def __call__(self, data):
+        loglevel = data.get("logging", "INFO").upper()
+        logger.setLevel(loglevel)
+
+        output = data.get(self.key_output_format, "dsa")
+        logger.info(f"+++ Output Type: {output}")
+
+        output_json = data.get(self.json, {})
+        write_to_file = data.get(self.key_write_to_file, True)
+        if not write_to_file:
+            return None, output_json
+
+        res_json = {
+            "name": f"MONAILabel Annotations - {data.get('model')}",
+            "description": data.get("description"),
+            "model": data.get("model"),
+            "location": data.get("location"),
+            "size": data.get("size"),
+            "annotations": [output_json],
+        }
+
+        output_file = None
+        if output == "asap":
+            logger.info("+++ Generating ASAP XML Annotation")
+            output_file = create_asap_annotations_xml(res_json, loglevel=loglevel)
+        elif output == "dsa":
+            logger.info("+++ Generating DSA JSON Annotation")
+            output_file = create_dsa_annotations_json(res_json, loglevel=loglevel)
+        else:
+            logger.info("+++ Return Default JSON Annotation")
+
+        return output_file, res_json

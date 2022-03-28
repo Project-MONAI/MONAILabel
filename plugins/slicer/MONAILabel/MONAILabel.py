@@ -115,11 +115,11 @@ class _ui_MONAILabelSettingsPanel(object):
         )
 
         autoUpdateModelCheckBox = qt.QCheckBox()
-        autoUpdateModelCheckBox.checked = True
+        autoUpdateModelCheckBox.checked = False
         autoUpdateModelCheckBox.toolTip = "Enable this option to auto update model after submitting the label"
         groupLayout.addRow("Auto-Update Model:", autoUpdateModelCheckBox)
         parent.registerProperty(
-            "MONAILabel/autoUpdateModel",
+            "MONAILabel/autoUpdateModelV2",
             ctk.ctkBooleanMapper(autoUpdateModelCheckBox, "checked", str(qt.SIGNAL("toggled(bool)"))),
             "valueAsInt",
             str(qt.SIGNAL("valueAsIntChanged(int)")),
@@ -479,10 +479,26 @@ class MONAILabelWidget(ScriptedLoadableModuleWidget, VTKObservationMixin):
 
         if self.models and [k for k, v in self.models.items() if v["type"] == "segmentation"]:
             self.ui.segmentationCollapsibleButton.collapsed = False
+            self.ui.segmentationCollapsibleButton.show()
+        else:
+            self.ui.segmentationCollapsibleButton.hide()
+
         if self.models and [k for k, v in self.models.items() if v["type"] in ("deepgrow", "deepedit")]:
             self.ui.deepgrowCollapsibleButton.collapsed = False
+            self.ui.deepgrowCollapsibleButton.show()
+        else:
+            self.ui.deepgrowCollapsibleButton.hide()
+
         if self.models and [k for k, v in self.models.items() if v["type"] == "scribbles"]:
             self.ui.scribblesCollapsibleButton.collapsed = False
+            self.ui.scribblesCollapsibleButton.show()
+        else:
+            self.ui.scribblesCollapsibleButton.hide()
+
+        if self.info.get("trainers", {}):
+            self.ui.aclCollapsibleButton.show()
+        else:
+            self.ui.aclCollapsibleButton.hide()
 
         self.ui.labelComboBox.clear()
         if self._segmentNode:
@@ -1011,6 +1027,11 @@ class MONAILabelWidget(ScriptedLoadableModuleWidget, VTKObservationMixin):
             self.updateServerSettings()
 
             model = self.ui.trainerBox.currentText
+            if model == "ALL" and not slicer.util.confirmOkCancelDisplay(
+                "This will trigger Training task for all models.  Are you sure to continue?"
+            ):
+                return
+
             model = model if model and model != "ALL" else None
             params = self.getParamsFromConfig("train", model)
 
@@ -1226,6 +1247,7 @@ class MONAILabelWidget(ScriptedLoadableModuleWidget, VTKObservationMixin):
                     "Server Error:: Session creation Failed\nPlease upgrade to latest monailable version (> 0.2.0)",
                     detailedText=traceback.format_exc(),
                 )
+                self.current_sample["session"] = None
             else:
                 slicer.util.errorDisplay("Failed to upload volume to Server", detailedText=traceback.format_exc())
             return False
@@ -1292,7 +1314,7 @@ class MONAILabelWidget(ScriptedLoadableModuleWidget, VTKObservationMixin):
             result = self.logic.save_label(self.current_sample["id"], label_in, {"label_info": label_info})
             self.fetchInfo()
 
-            if slicer.util.settingsValue("MONAILabel/autoUpdateModel", True, converter=slicer.util.toBool):
+            if slicer.util.settingsValue("MONAILabel/autoUpdateModelV2", False, converter=slicer.util.toBool):
                 try:
                     if self.isTrainingRunning(check_only=True):
                         self.logic.train_stop()

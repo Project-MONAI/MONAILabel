@@ -218,7 +218,7 @@
         <item row="0" column="0">
          <widget class="QLabel" name="label_10">
           <property name="text">
-           <string>Train:</string>
+           <string>Model:</string>
           </property>
          </widget>
         </item>
@@ -237,7 +237,7 @@
           <item>
            <widget class="QPushButton" name="trainingButton">
             <property name="text">
-             <string>Run</string>
+             <string>Train</string>
             </property>
            </widget>
           </item>
@@ -365,7 +365,7 @@
       <string>SmartEdit / Deepgrow</string>
      </property>
      <property name="collapsed">
-      <bool>false</bool>
+      <bool>true</bool>
      </property>
      <property name="collapsedHeight">
       <number>9</number>

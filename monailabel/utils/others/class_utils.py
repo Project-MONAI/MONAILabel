@@ -13,6 +13,7 @@ import importlib.util
 import inspect
 import logging
 import os
+from typing import List
 
 from monailabel.interfaces.exception import MONAILabelError, MONAILabelException
 
@@ -85,8 +86,6 @@ def class_args_to_exp(c, mappings=None):
 
 
 def get_class_info(exp, handle_bool=True):
-    logger = logging.getLogger(__name__)
-
     if isinstance(exp, dict):
         return exp["name"], exp["args"]
     if exp.find("(") == -1:
@@ -126,7 +125,7 @@ def init_class_from_exp(exp):
     return init_class(class_path, class_args)
 
 
-def get_class_names(p, subclass=None):
+def get_class_names(p, subclass=None) -> List[str]:
     logger = logging.getLogger(__name__)
 
     result = []

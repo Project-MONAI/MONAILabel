@@ -9,14 +9,22 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
+import logging
 from typing import Optional, Sequence, Union
 
+import cv2
 import numpy as np
 import skimage.measure as measure
 from monai.config import KeysCollection
 from monai.transforms import MapTransform, Resize, generate_spatial_bounding_box, get_extreme_points
 from monai.transforms.spatial.dictionary import InterpolateModeSequence
 from monai.utils import InterpolateMode, ensure_tuple_rep
+from shapely.geometry import Polygon
+
+from monailabel.utils.others.label_colors import get_color
+
+logger = logging.getLogger(__name__)
+
 
 # TODO:: Move to MONAI ??
 
@@ -116,4 +124,88 @@ class Restored(MapTransform):
                 meta = dict()
                 d[f"{key}_{self.meta_key_postfix}"] = meta
             meta["affine"] = meta_dict.get("original_affine")
+        return d
+
+
+class FindContoursd(MapTransform):
+    def __init__(
+        self,
+        keys: KeysCollection,
+        min_positive=10,
+        min_poly_area=80,
+        result="result",
+        result_output_key="annotation",
+        key_label_colors="label_colors",
+        labels=None,
+    ):
+        super().__init__(keys)
+
+        self.min_positive = min_positive
+        self.min_poly_area = min_poly_area
+        self.result = result
+        self.result_output_key = result_output_key
+        self.key_label_colors = key_label_colors
+
+        labels = labels if labels else dict()
+        labels = [labels] if isinstance(labels, str) else labels
+        if not isinstance(labels, dict):
+            labels = {v: k + 1 for k, v in enumerate(labels)}
+
+        labels = {v: k for k, v in labels.items()}
+        self.labels = labels
+
+    def __call__(self, data):
+        d = dict(data)
+        location = d.get("location", [0, 0])
+        size = d.get("size", [0, 0])
+        min_poly_area = d.get("min_poly_area", self.min_poly_area)
+        color_map = d.get(self.key_label_colors)
+
+        elements = []
+        label_names = set()
+        for key in self.keys:
+            p = d[key]
+            if np.count_nonzero(p) < self.min_positive:
+                continue
+
+            labels = [l for l in np.unique(p).tolist() if l > 0]
+            logger.debug(f"Total Unique Masks (excluding background): {labels}")
+            for label_idx in labels:
+                p = d[key]
+                p[p == label_idx] = 1
+                label_name = self.labels.get(label_idx, label_idx)
+                label_names.add(label_name)
+
+                polygons = []
+                contours, _ = cv2.findContours(p, cv2.RETR_LIST, cv2.CHAIN_APPROX_SIMPLE)
+                for contour in contours:
+                    contour = np.squeeze(contour)
+                    if len(contour) < 3:
+                        continue
+
+                    contour[:, 0] += location[0]  # X
+                    contour[:, 1] += location[1]  # Y
+
+                    coords = contour.astype(int).tolist()
+                    pobj = Polygon(coords)
+                    if pobj.area < min_poly_area:  # Ignore poly with lesser area
+                        continue
+
+                    logger.debug(f"Area: {pobj.area}; Perimeter: {pobj.length}; Count: {len(coords)}")
+                    polygons.append(coords)
+
+                if len(polygons):
+                    logger.debug(f"+++++ {label_idx} => Total Polygons Found: {len(polygons)}")
+                    elements.append({"label": label_name, "contours": polygons})
+
+        if elements:
+            if d.get(self.result) is None:
+                d[self.result] = dict()
+            d[self.result][self.result_output_key] = {
+                "location": location,
+                "size": size,
+                "elements": elements,
+                "labels": {n: get_color(n, color_map) for n in label_names},
+            }
+            logger.debug(f"+++++ ALL => Total Annotation Elements Found: {len(elements)}")
         return d

@@ -175,9 +175,8 @@ class Main:
         apps.sort()
 
         resource = {
-            "Deepedit based Apps": [a for a in apps if a.startswith("deepedit")],
-            "Deepgrow based Apps": [a for a in apps if a.startswith("deepgrow")],
-            "Standard Segmentation Apps": [a for a in apps if a.startswith("segmentation")],
+            "Radiology based Apps": [a for a in apps if a.startswith("radiology")],
+            "Pathology based Apps": [a for a in apps if a.startswith("pathology")],
         }
 
         if not args.download:
@@ -282,8 +281,8 @@ class Main:
             and not args.studies.startswith("https://")
             and not os.path.exists(args.studies)
         ):
-            print(f"STUDIES Directory {args.studies} NOT Found")
-            exit(1)
+            print(f"STUDIES Directory {args.studies} NOT Found;  Creating an EMPTY folder/placeholder")
+            os.makedirs(args.studies, exist_ok=True)
 
         args.app = os.path.realpath(args.app)
         if not args.studies.startswith("http://") and not args.studies.startswith("https://"):

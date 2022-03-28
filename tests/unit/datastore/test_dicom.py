@@ -48,7 +48,7 @@ class MockDICOMwebClient(DICOMwebClient):
 
 class TestDicom(unittest.TestCase):
     base_dir = os.path.realpath(os.path.dirname(os.path.dirname(os.path.dirname(__file__))))
-    local_dataset = os.path.join(base_dir, "data", "dataset", "local", "heart")
+    local_dataset = os.path.join(base_dir, "data", "dataset", "local", "spleen")
     dicom_dataset = os.path.join(base_dir, "data", "dataset", "dicomweb", "e7567e0a064f0c334226a0658de23afd")
 
     def xtest_generate_key(self):

@@ -61,6 +61,17 @@ Utils
     :noindex:
 
 
+Client
+======
+
+.. currentmodule:: monailabel.client.client
+.. autoclass:: MONAILabelClient
+    :members:
+    :noindex:
+.. autoclass:: MONAILabelError
+    :members:
+    :noindex:
+
 Modules
 =======
 

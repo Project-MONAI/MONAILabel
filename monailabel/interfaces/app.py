@@ -23,6 +23,7 @@ from typing import Any, Callable, Dict, Optional, Sequence, Union
 
 import requests
 import schedule
+import torch
 from dicomweb_client.session_utils import create_session_from_user_pass
 from monai.apps import download_and_extract, download_url, load_from_mmar
 from monai.data import partition_dataset
@@ -38,11 +39,13 @@ from monailabel.interfaces.tasks.infer import InferTask
 from monailabel.interfaces.tasks.scoring import ScoringMethod
 from monailabel.interfaces.tasks.strategy import Strategy
 from monailabel.interfaces.tasks.train import TrainTask
+from monailabel.interfaces.utils.wsi import create_infer_wsi_tasks
 from monailabel.tasks.activelearning.random import Random
 from monailabel.tasks.infer.deepgrow_2d import InferDeepgrow2D
 from monailabel.tasks.infer.deepgrow_3d import InferDeepgrow3D
 from monailabel.tasks.infer.deepgrow_pipeline import InferDeepgrowPipeline
 from monailabel.utils.async_tasks.task import AsyncTask
+from monailabel.utils.others.pathology import create_asap_annotations_xml, create_dsa_annotations_json
 from monailabel.utils.sessions import Sessions
 
 logger = logging.getLogger(__name__)
@@ -85,20 +88,22 @@ class MONAILabelApp:
         self._datastore: Datastore = self.init_datastore()
 
         self._infers = self.init_infers()
-        self._trainers = self.init_trainers()
-        self._strategies = self.init_strategies()
-        self._scoring_methods = self.init_scoring_methods()
-        self._batch_infer = self.init_batch_infer()
+        self._trainers = self.init_trainers() if settings.MONAI_LABEL_TASKS_TRAIN else {}
+        self._strategies = self.init_strategies() if settings.MONAI_LABEL_TASKS_STRATEGY else {}
+        self._scoring_methods = self.init_scoring_methods() if settings.MONAI_LABEL_TASKS_SCORING else {}
+        self._batch_infer = self.init_batch_infer() if settings.MONAI_LABEL_TASKS_BATCH_INFER else {}
 
-        self._server_mode = strtobool(conf.get("server_mode", "false"))
-        self._auto_update_scoring = strtobool(conf.get("auto_update_scoring", "true"))
-        self._sessions = self._load_sessions(strtobool(conf.get("sessions", "true")))
+        self._auto_update_scoring = settings.MONAI_LABEL_AUTO_UPDATE_SCORING
+        self._sessions = self._load_sessions(load=settings.MONAI_LABEL_SESSIONS)
 
         self._infers_threadpool = (
             None
             if settings.MONAI_LABEL_INFER_CONCURRENCY < 0
             else ThreadPoolExecutor(max_workers=settings.MONAI_LABEL_INFER_CONCURRENCY, thread_name_prefix="INFER")
         )
+
+        # control call back requests
+        self._server_mode = strtobool(conf.get("server_mode", "false"))
 
     def init_infers(self) -> Dict[str, InferTask]:
         return {}
@@ -223,6 +228,8 @@ class MONAILabelApp:
             )
 
         request = copy.deepcopy(request)
+        request["description"] = task.description
+
         image_id = request["image"]
         datastore = datastore if datastore else self.datastore()
         if os.path.exists(image_id):
@@ -569,3 +576,107 @@ class MONAILabelApp:
                 description="Combines Deepgrow 2D model and 3D deepgrow model",
             )
         return infers
+
+    def infer_wsi(self, request, datastore=None):
+        model = request.get("model")
+        if not model:
+            raise MONAILabelException(
+                MONAILabelError.INVALID_INPUT,
+                "Model is not provided for WSI/Inference Task",
+            )
+
+        task = self._infers.get(model)
+        if not task:
+            raise MONAILabelException(
+                MONAILabelError.INVALID_INPUT,
+                f"WSI/Inference Task is not Initialized. There is no model '{model}' available",
+            )
+
+        image = request["image"]
+        request_c = copy.deepcopy(task.config())
+        request_c.update(request)
+        request = request_c
+
+        # Possibly direct image (numpy)
+        if not isinstance(image, str):
+            res = self.infer(request, datastore)
+            logger.info(f"Latencies: {res.get('params', {}).get('latencies')}")
+            return res
+
+        request = copy.deepcopy(request)
+        if not os.path.exists(image):
+            datastore = datastore if datastore else self.datastore()
+            image = datastore.get_image_uri(request["image"])
+
+        start = time.time()
+        logger.info(f"WSI Infer Request (final): {request}")
+        infer_tasks = create_infer_wsi_tasks(request, image)
+        logger.debug(f"Total WSI Tasks: {len(infer_tasks)}")
+        request["logging"] = request.get("logging", "WARNING" if len(infer_tasks) > 1 else "INFO")
+
+        multi_gpu = request.get("multi_gpu", False)
+        multi_gpus = request.get("gpus", "all")
+        gpus = (
+            list(range(torch.cuda.device_count())) if not multi_gpus or multi_gpus == "all" else multi_gpus.split(",")
+        )
+        device_ids = [f"cuda:{id}" for id in gpus] if multi_gpu else [request.get("device", "cuda")]
+        logger.info(f"MultiGpu: {multi_gpu}; Using Device(s): {device_ids}")
+
+        res_json = {"annotations": [None] * len(infer_tasks)}
+        for idx, t in enumerate(infer_tasks):
+            t["logging"] = request["logging"]
+            t["device"] = device_ids[idx % len(device_ids)]
+
+        if len(infer_tasks) > 1 and len(device_ids) > 1:
+            with ThreadPoolExecutor(max_workers=len(device_ids), thread_name_prefix="WSI Infer") as executor:
+                for t in infer_tasks:
+                    tid = t["id"]
+                    future = executor.submit(self._run_infer_wsi_task, t)
+                    res = future.result()
+                    res_json["annotations"][tid] = res
+                    logger.info(f"{tid} => {len(res_json)} / {len(infer_tasks)}; Latencies: {res.get('latencies')}")
+        else:
+            for t in infer_tasks:
+                tid = t["id"]
+                res = self._run_infer_wsi_task(t)
+                res_json["annotations"][tid] = res
+                logger.info(f"{tid} => {len(res_json)} / {len(infer_tasks)}; Latencies: {res.get('latencies')}")
+
+        latency_total = time.time() - start
+        logger.debug("WSI Infer Time Taken: {:.4f}".format(latency_total))
+
+        res_json["name"] = f"MONAILabel Annotations - {model}"
+        res_json["description"] = task.description
+        res_json["model"] = request.get("model")
+        res_json["location"] = request.get("location")
+        res_json["size"] = request.get("size")
+        res_json["latencies"] = {"total": round(latency_total, 2)}
+
+        res_file = None
+        output = request.get("output", "dsa")
+        logger.debug(f"+++ WSI Inference Output Type: {output}")
+
+        loglevel = request.get("logging", "INFO").upper()
+        if output == "asap":
+            logger.debug("+++ Generating ASAP XML Annotation")
+            res_file = create_asap_annotations_xml(res_json, loglevel)
+        elif output == "dsa":
+            logger.debug("+++ Generating DSA JSON Annotation")
+            res_file = create_dsa_annotations_json(res_json, loglevel)
+        else:
+            logger.debug("+++ Return Default JSON Annotation")
+
+        if len(infer_tasks) > 1:
+            logger.info("Total Time Taken: {:.4f}; Total Infer Time: {:.4f}".format(time.time() - start, latency_total))
+        return {"file": res_file, "params": res_json}
+
+    def _run_infer_wsi_task(self, task):
+        tid = task["id"]
+        (row, col, tx, ty, tw, th) = task["coords"]
+        logger.debug(f"{tid} => Patch/Slide ({row}, {col}) => Location: ({tx}, {ty}); Size: {tw} x {th}")
+
+        req = copy.deepcopy(task)
+        req["result_write_to_file"] = False
+
+        res = self.infer(req)
+        return res.get("params", {})

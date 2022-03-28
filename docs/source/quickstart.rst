@@ -2,7 +2,10 @@
 Quickstart
 ==========
 
-MONAI Label server currently supports the annotation of local datasets via `3DSlicer <https://www.slicer.org/>`_, such as unlabeled images 
+Use Case - Radiology
+====================
+
+This example covers the annotation use-case for radiology using the sample MONAILabel App - **radiology**.  MONAI Label server currently supports the annotation of local datasets via `3DSlicer <https://www.slicer.org/>`_, such as unlabeled images
 residing on disk, and remote data residing on DICOMweb-enabled PACS systems via both `3DSlicer <https://www.slicer.org/>`_ and `OHIF <https://ohif.org/>`_.
 
   * To setup a local dataset for annotation follow the instructions under :ref:`DeepEdit Annotation with 3DSlicer`.
@@ -13,13 +16,13 @@ residing on disk, and remote data residing on DICOMweb-enabled PACS systems via 
 DeepEdit Annotation with 3DSlicer
 =================================
 
-.. _Deploy DeepEdit on MONAI Label Server:
+.. _Deploy MONAI Label Server:
 
-Deploy DeepEdit on MONAI Label Server
--------------------------------------
+Deploy MONAI Label Server
+-------------------------
 
 On the local machine follow the commands listed below to install MONAI Label, download
-a sample application (DeepEdit left atrium annotation), download a sample dataset (MSD
+a sample application (Radiology), download a sample dataset (MSD
 heart MRI), and deploy the sample app and standard dataset on the MONAI Label server.
 
 .. code-block:: bash
@@ -27,15 +30,15 @@ heart MRI), and deploy the sample app and standard dataset on the MONAI Label se
   # install MONAI Label
   pip install monailabel
 
-  # download DeepEdit sample app to local directory
-  monailabel apps --name deepedit --download --output .
+  # download Radiology sample app to local directory
+  monailabel apps --name radiology --download --output .
 
   # download Task 2 MSD dataset
-  monailabel datasets --download --name Task02_Heart --output .
+  monailabel datasets --download --name Task09_Spleen --output .
   
-  # start the DeepEdit app in MONAI label server
-  # and start annotating the downloaded images
-  monailabel start_server --app deepedit --studies Task02_Heart/imagesTr
+  # start the Radiology app in MONAI label server
+  # and start annotating the downloaded images using deepedit model
+  monailabel start_server --app radiology --studies Task09_Spleen/imagesTr --conf models deepedit
 
 
 Install MONAI Label Plugin in 3DSlicer
@@ -126,7 +129,7 @@ label storage location.
   
   # start the DeepEdit app in MONAI label server
   # on the empty dataset folder
-  monailabel start_server --app deepedit --studies my_dataset
+  monailabel start_server --app radiology --studies my_dataset --conf models deepedit
 
 We can follow the instructions in the previous section to install and connect 3DSlicer to MONAI
 Label Server, however, in this scenario we will instead load a file into MONAI Label Server *through*
@@ -153,7 +156,7 @@ the ``username`` and ``password`` for DICOM servers that require them).
 
 If you do not have a DICOM server available for usage but would like to set one up please follow the instructions in the 
 :ref:`next section<Setup Development DICOM Server>`, otherwise skip to 
-:ref:`Deploy DeepEdit for PACS Data Annotation`.
+:ref:`Deploy for PACS Data Annotation`.
 
 .. _Setup Development DICOM Server:
 
@@ -223,21 +226,21 @@ If you do not have access to DICOM data to upload to the DICOM server you can co
   sudo apt-get install plastimatch -y
 
   # download Task 2 MSD dataset
-  monailabel datasets --download --name Task02_Heart --output .
+  monailabel datasets --download --name Task09_Spleen --output .
 
   # convert one of the NIFTI images to DICOM
-  plastimatch convert --patient-id patient1 --input Task02_Heart/imagesTs/la_001.nii.gz --output-dicom la_001_dicom
+  plastimatch convert --patient-id patient1 --input Task09_Spleen/imagesTs/spleen_10.nii.gz --output-dicom dicom_output
 
-Now, we can upload the DICOM series in ``la_001_dicom`` using the `upload <http://127.0.0.1:8042/app/explorer.html#upload>`_ link in Orthanc.
+Now, we can upload the DICOM series in ``dicom_output`` using the `upload <http://127.0.0.1:8042/app/explorer.html#upload>`_ link in Orthanc.
 
 You may use ``plastimatch`` to convert more NIFTI files to DICOM to keep populating the development DICOM server.
 
-.. _Deploy DeepEdit for PACS Data Annotation:
+.. _Deploy for PACS Data Annotation:
 
 DeepEdit Annotation in OHIF
 ---------------------------
 
-We follow a very similar ser of commands as in :ref:`Deploy DeepEdit on MONAI Label Server`, however, we use the DICOMweb
+We follow a very similar set of commands as in :ref:`Deploy MONAI Label Server`, however, we use the DICOMweb
 endpoint of our DICOM server, which based on the last section is ``http://locahost:8042/dicom-web``.
 
 .. code-block:: bash
@@ -246,11 +249,11 @@ endpoint of our DICOM server, which based on the last section is ``http://locaho
   pip install monailabel
 
   # download DeepEdit sample app to local directory
-  monailabel apps --name deepedit --download --output .
+  monailabel apps --name radiology --download --output .
 
   # start the DeepEdit app in MONAI label server
   # and start annotating images in our DICOM server
-  monailabel start_server --app deepedit --studies http://locahost:8042/dicom-web --username orthanc --password orthanc
+  monailabel start_server --app radiology --studies http://locahost:8042/dicom-web --conf models deepedit --username orthanc --password orthanc
 
 
 At this point OHIF can be used to annotate the data in the DICOM server via the MONAI Label server ``/ohif`` endpoint 
