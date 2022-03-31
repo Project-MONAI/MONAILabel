@@ -1279,8 +1279,9 @@ class MONAILabelWidget(ScriptedLoadableModuleWidget, VTKObservationMixin):
             qt.QApplication.setOverrideCursor(qt.Qt.WaitCursor)
             segmentationNode = self._segmentNode
             labelmapVolumeNode = slicer.mrmlScene.AddNewNodeByClass("vtkMRMLLabelMapVolumeNode")
-            slicer.modules.segmentations.logic().ExportVisibleSegmentsToLabelmapNode(
-                segmentationNode, labelmapVolumeNode, self._volumeNode
+            save_segment_ids = [segment_id for segment_id in segmentationNode.GetSegmentation().GetSegmentIDs() if segment_id != "background"]
+            slicer.modules.segmentations.logic().ExportSegmentsToLabelmapNode(
+                segmentationNode, save_segment_ids, labelmapVolumeNode, self._volumeNode
             )
 
             segmentation = segmentationNode.GetSegmentation()
@@ -1722,8 +1723,11 @@ class MONAILabelWidget(ScriptedLoadableModuleWidget, VTKObservationMixin):
             # get scribbles + label
             segmentationNode = self._segmentNode
             labelmapVolumeNode = slicer.mrmlScene.AddNewNodeByClass("vtkMRMLLabelMapVolumeNode")
-            slicer.modules.segmentations.logic().ExportVisibleSegmentsToLabelmapNode(
-                segmentationNode, labelmapVolumeNode, self._volumeNode
+            _, segment = self.currentSegment()
+            selected_label_name = segment.GetName()
+            save_segment_ids = [selected_label_name, "background_scribbles", "foreground_scribbles"]
+            slicer.modules.segmentations.logic().ExportSegmentsToLabelmapNode(
+                segmentationNode, save_segment_ids, labelmapVolumeNode, self._volumeNode
             )
             scribbles_in = tempfile.NamedTemporaryFile(suffix=self.file_ext, dir=self.tmpdir).name
             self.reportProgress(5)
@@ -1753,9 +1757,7 @@ class MONAILabelWidget(ScriptedLoadableModuleWidget, VTKObservationMixin):
 
             # display result from server
             self.reportProgress(90)
-            _, segment = self.currentSegment()
-            label = segment.GetName()
-            self.updateSegmentationMask(result_file, [label])
+            self.updateSegmentationMask(result_file, [selected_label_name])
         except:
             slicer.util.errorDisplay(
                 "Failed to post process label on MONAI Label Server using {}".format(scribblesMethod),
