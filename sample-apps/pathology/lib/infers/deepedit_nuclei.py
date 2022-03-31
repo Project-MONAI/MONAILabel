@@ -45,10 +45,9 @@ class DeepEditNuclei(InferTask):
         type=InferType.DEEPEDIT,
         labels=None,
         dimension=2,
-        label_colors=None,
         description="A pre-trained interaction/deepedit model for Pathology",
+        **kwargs,
     ):
-        self.label_colors = label_colors
         super().__init__(
             path=path,
             network=network,
@@ -57,7 +56,7 @@ class DeepEditNuclei(InferTask):
             labels=labels,
             dimension=dimension,
             description=description,
-            config={"label_colors": label_colors},
+            **kwargs,
         )
 
     def info(self) -> Dict[str, Any]:

@@ -21,7 +21,7 @@ from monai.networks.nets import BasicUNet
 from monailabel.interfaces.config import TaskConfig
 from monailabel.interfaces.tasks.infer import InferTask
 from monailabel.interfaces.tasks.train import TrainTask
-from monailabel.utils.others.generic import download_file
+from monailabel.utils.others.generic import device_list, download_file
 
 logger = logging.getLogger(__name__)
 
@@ -55,7 +55,15 @@ class DeepEditNuclei(TaskConfig):
 
     def infer(self) -> Union[InferTask, Dict[str, InferTask]]:
         task: InferTask = lib.infers.DeepEditNuclei(
-            path=self.path, network=self.network, labels=self.labels, label_colors=self.label_colors
+            path=self.path,
+            network=self.network,
+            labels=self.labels,
+            preload=True,
+            roi_size=(2048, 2048),
+            config={
+                "label_colors": self.label_colors,
+                "max_workers": len(device_list()),
+            },
         )
         return task
 
