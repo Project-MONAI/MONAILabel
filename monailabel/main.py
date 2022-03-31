@@ -58,7 +58,7 @@ class Main:
         parser.add_argument("--ssl_certfile", default=None, type=str, help="SSL certificate file")
         parser.add_argument("--ssl_keyfile_password", default=None, type=str, help="SSL key file password")
         parser.add_argument("--ssl_ca_certs", default=None, type=str, help="CA certificates file")
-        parser.add_argument("--workers", default=1, type=int, help="Number of worker processes")
+        parser.add_argument("--workers", default=None, type=int, help="Number of worker processes")
         parser.add_argument("--limit_concurrency", default=None, type=int, help="Max concurrent connections")
         parser.add_argument("--access_log", action="store_true", help="Enable access log")
 

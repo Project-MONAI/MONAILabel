@@ -33,7 +33,7 @@
             <label>MONAILabel Address</label>
             <description>Address of a monailabel address in the format 'http://127.0.0.1:8000/'.</description>
             <longflag>server</longflag>
-            <default>http://127.0.0.1:8000/</default>
+            <default>http://10.117.18.128:8000/</default>
         </string>
         <string>
             <name>model_name</name>
@@ -77,15 +77,13 @@
     <parameters advanced="true">
         <label>WSI Analysis</label>
         <description>Whole-slide image analysis (WSI) parameters</description>
-        <boolean>
-            <name>send_image</name>
-            <label>Send Image Data</label>
-            <description>Send Raw Image Numpy to Server (slow). Enable this when MONAILabel server can not access the
-                image/region directly
-            </description>
-            <longflag>send_image</longflag>
-            <default>false</default>
-        </boolean>
+        <integer>
+            <name>analysis_level</name>
+            <label>Analysis Level of Image</label>
+            <description>Analysis Level of Image</description>
+            <longflag>analysis_level</longflag>
+            <default>1</default>
+        </integer>
         <double>
             <name>analysis_tile_size</name>
             <label>Analysis Tile Size</label>
@@ -93,60 +91,13 @@
             <longflag>analysis_tile_size</longflag>
             <default>2048</default>
         </double>
-        <double>
-            <name>analysis_mag</name>
-            <label>Analysis Magnification</label>
-            <description>The magnification at which the analysis should be performed.</description>
-            <longflag>analysis_mag</longflag>
-            <default>40</default>
-        </double>
-        <double>
-            <name>min_fgnd_frac</name>
-            <label>Minimum foreground fraction</label>
-            <description>The minimum amount of foreground that must be present in a tile for it to be analyzed
-            </description>
-            <longflag>min_fgnd_frac</longflag>
-            <default>0.25</default>
-        </double>
-    </parameters>
-    <parameters advanced="true">
-        <label>Dask parameters</label>
-        <description>Dask parameters</description>
-        <string>
-            <name>scheduler</name>
-            <label>Scheduler Address</label>
-            <description>Address of a dask scheduler in the format '127.0.0.1:8786'. Not passing this parameter sets up
-                a dask cluster on the local machine. 'multiprocessing' uses Python multiprocessing. 'multithreading'
-                uses Python multiprocessing in threaded mode.
-            </description>
-            <longflag>scheduler</longflag>
-            <default></default>
-        </string>
         <integer>
-            <name>num_workers</name>
+            <name>max_workers</name>
             <label>Number of workers</label>
-            <description>Number of dask workers to start while setting up a local cluster internally. If a negative
-                value is specified then the number of workers is set to number of cpu cores on the machine minus the
-                number of workers specified.
+            <description>Number of workers that shall be used by MONAILabel server to run inference on wsi patches
             </description>
-            <longflag>num_workers</longflag>
-            <default>1</default>
-        </integer>
-        <integer>
-            <name>num_threads_per_worker</name>
-            <label>Number of threads per worker</label>
-            <description>Number of threads to use per worker while setting up a local cluster internally. Must be a
-                positive integer >= 1.
-            </description>
-            <longflag>num_threads_per_worker</longflag>
-            <default>1</default>
-        </integer>
-        <integer>
-            <name>tile_grouping</name>
-            <label>Tile grouping</label>
-            <longflag>tileGrouping</longflag>
-            <description>Number of tiles to process as part of a single task</description>
-            <default>256</default>
+            <longflag>max_workers</longflag>
+            <default>8</default>
         </integer>
     </parameters>
 </executable>

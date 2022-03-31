@@ -19,7 +19,7 @@ import shutil
 import subprocess
 import time
 
-import torch.cuda
+import torch
 from monai.apps import download_url
 
 logger = logging.getLogger(__name__)
@@ -173,3 +173,11 @@ def download_file(url, path, delay=1, skip_on_exists=True):
     download_url(url, path)
     if delay > 0:
         time.sleep(delay)
+
+
+def device_list():
+    devices = [] if torch.cuda.is_available() else ["cpu"]
+    for i in range(torch.cuda.device_count()):
+        devices.append(f"cuda:{i}")
+
+    return devices

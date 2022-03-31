@@ -80,7 +80,9 @@ class SegmentationSpleen(TaskConfig):
         logger.info(f"TTA Enabled: {self.tta_enabled}; Samples: {self.tta_samples}")
 
     def infer(self) -> Union[InferTask, Dict[str, InferTask]]:
-        task: InferTask = lib.infers.SegmentationSpleen(path=self.path, network=self.network, labels=self.labels)
+        task: InferTask = lib.infers.SegmentationSpleen(
+            path=self.path, network=self.network, labels=self.labels, preload=True
+        )
         return task
 
     def trainer(self) -> Optional[TrainTask]:
