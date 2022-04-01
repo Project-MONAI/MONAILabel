@@ -1299,7 +1299,7 @@ class MONAILabelWidget(ScriptedLoadableModuleWidget, VTKObservationMixin):
             slicer.modules.segmentations.logic().ExportVisibleSegmentsToLabelmapNode(
                 segmentationNode, labelmapVolumeNode, self._volumeNode
             )
-            
+
             label_in = tempfile.NamedTemporaryFile(suffix=self.file_ext, dir=self.tmpdir).name
             self.reportProgress(5)
 
