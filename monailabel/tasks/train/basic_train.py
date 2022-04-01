@@ -51,7 +51,7 @@ from monai.transforms import Compose
 from monailabel.interfaces.datastore import Datastore
 from monailabel.interfaces.tasks.train import TrainTask
 from monailabel.tasks.train.handler import PublishStatsAndModel, prepare_stats
-from monailabel.utils.others.generic import device_list, remove_file
+from monailabel.utils.others.generic import remove_file
 
 logger = logging.getLogger(__name__)
 
@@ -136,7 +136,7 @@ class BasicTrainTask(TrainTask):
         self._config = {
             "name": "train_01",
             "pretrained": True,
-            "device": device_list(),
+            "device": "cuda",
             "max_epochs": 50,
             "early_stop_patience": -1,
             "val_split": 0.2,
