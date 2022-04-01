@@ -65,8 +65,8 @@ class HistogramBasedGraphCut(InferTask):
         self.sigma = sigma
 
         # set default scribbles labels
-        self.scribbles_bg_label = 3 if not self.labels else len(self.labels) + 1
-        self.scribbles_fg_label = 4 if not self.labels else len(self.labels) + 2
+        self.scribbles_bg_label = 2 if not self.labels else len(self.labels) + 1
+        self.scribbles_fg_label = 3 if not self.labels else len(self.labels) + 2
 
     def pre_transforms(self, data):
         return [
