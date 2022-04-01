@@ -50,7 +50,7 @@ def create_infer_wsi_tasks(request, image):
     rows = ceil(h / tile_size[1])  # ROW
 
     if rows * cols > 1:
-        logger.info(f"Total Tiles to infer {rows} x {cols}: {rows * cols}")
+        logger.info(f"Total Tiles to infer {rows} x {cols}: {rows * cols}; Dimensions: {w} x {h}")
 
     infer_tasks = []
     count = 0

@@ -43,10 +43,9 @@ class SegmentationNuclei(InferTask):
         type=InferType.SEGMENTATION,
         labels=None,
         dimension=2,
-        label_colors=None,
         description="A pre-trained semantic segmentation model for Pathology",
+        **kwargs,
     ):
-        self.label_colors = label_colors
         super().__init__(
             path=path,
             network=network,
@@ -55,7 +54,7 @@ class SegmentationNuclei(InferTask):
             labels=labels,
             dimension=dimension,
             description=description,
-            config={"label_colors": label_colors},
+            **kwargs,
         )
 
     def info(self) -> Dict[str, Any]:
@@ -69,7 +68,6 @@ class SegmentationNuclei(InferTask):
             FilterImaged(keys="image"),
             AsChannelFirstd(keys="image"),
             ScaleIntensityRangeD(keys="image", a_min=0.0, a_max=255.0, b_min=-1.0, b_max=1.0),
-            EnsureTyped(keys="image", device=data.get("device") if data else None),
         ]
 
     def post_transforms(self, data=None) -> Sequence[Callable]:
