@@ -1278,19 +1278,15 @@ class MONAILabelWidget(ScriptedLoadableModuleWidget, VTKObservationMixin):
         try:
             qt.QApplication.setOverrideCursor(qt.Qt.WaitCursor)
             segmentationNode = self._segmentNode
-            labelmapVolumeNode = slicer.mrmlScene.AddNewNodeByClass("vtkMRMLLabelMapVolumeNode")
-            slicer.modules.segmentations.logic().ExportVisibleSegmentsToLabelmapNode(
-                segmentationNode, labelmapVolumeNode, self._volumeNode
-            )
-
             segmentation = segmentationNode.GetSegmentation()
             totalSegments = segmentation.GetNumberOfSegments()
             segmentIds = [segmentation.GetNthSegmentID(i) for i in range(totalSegments)]
 
+            # remove background and scribbles labels
             label_info = []
             for idx, segmentId in enumerate(segmentIds):
                 segment = segmentation.GetSegment(segmentId)
-                if segment.GetName() in ["foreground_scribbles", "background_scribbles"]:
+                if segment.GetName() in ["background", "foreground_scribbles", "background_scribbles"]:
                     logging.info(f"Removing segment {segmentId}: {segment.GetName()}")
                     segmentationNode.RemoveSegment(segmentId)
                     continue
@@ -1298,6 +1294,12 @@ class MONAILabelWidget(ScriptedLoadableModuleWidget, VTKObservationMixin):
                 label_info.append({"name": segment.GetName(), "idx": idx + 1})
                 # label_info.append({"color": segment.GetColor()})
 
+            # export labelmap
+            labelmapVolumeNode = slicer.mrmlScene.AddNewNodeByClass("vtkMRMLLabelMapVolumeNode")
+            slicer.modules.segmentations.logic().ExportVisibleSegmentsToLabelmapNode(
+                segmentationNode, labelmapVolumeNode, self._volumeNode
+            )
+            
             label_in = tempfile.NamedTemporaryFile(suffix=self.file_ext, dir=self.tmpdir).name
             self.reportProgress(5)
 
@@ -1756,8 +1758,8 @@ class MONAILabelWidget(ScriptedLoadableModuleWidget, VTKObservationMixin):
             params.update({"roi": selected_roi})
             params.update({"label_info": label_info})
             _, segment = self.currentSegment()
-            current_segment = segment.GetName()
-            params.update({"current_segment": current_segment})
+            selected_label_name = segment.GetName()
+            params.update({"selected_label_name": selected_label_name})
 
             image_file = self.current_sample["id"]
             result_file, params = self.logic.infer(
@@ -1766,15 +1768,7 @@ class MONAILabelWidget(ScriptedLoadableModuleWidget, VTKObservationMixin):
 
             # display result from server
             self.reportProgress(90)
-            labels = (
-                params.get("label_names")
-                if params and params.get("label_names")
-                else self.models[scribblesMethod].get("labels")
-            )
-            if labels and isinstance(labels, dict):
-                labels = [k for k, _ in sorted(labels.items(), key=lambda item: item[1])]
-
-            self.updateSegmentationMask(result_file, labels)
+            self.updateSegmentationMask(result_file, [selected_label_name])
         except:
             slicer.util.errorDisplay(
                 "Failed to post process label on MONAI Label Server using {}".format(scribblesMethod),
