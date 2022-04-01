@@ -1755,6 +1755,9 @@ class MONAILabelWidget(ScriptedLoadableModuleWidget, VTKObservationMixin):
             params = self.getParamsFromConfig("infer", scribblesMethod)
             params.update({"roi": selected_roi})
             params.update({"label_info": label_info})
+            _, segment = self.currentSegment()
+            current_segment = segment.GetName()
+            params.update({"current_segment": current_segment})
 
             image_file = self.current_sample["id"]
             result_file, params = self.logic.infer(
