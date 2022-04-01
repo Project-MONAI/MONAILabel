@@ -122,7 +122,7 @@ class MyApp(MONAILabelApp):
                     pix_dim=(2.5, 2.5, 5.0),
                     lamda=1.0,
                     sigma=0.1,
-                    labels={"spleen": 1, "background": 0},
+                    labels=task_config.labels,
                 ),
             }
         )

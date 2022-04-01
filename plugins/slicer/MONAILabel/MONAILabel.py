@@ -285,6 +285,7 @@ class MONAILabelWidget(ScriptedLoadableModuleWidget, VTKObservationMixin):
         self.ui.uploadImageButton.connect("clicked(bool)", self.onUploadImage)
         self.ui.importLabelButton.connect("clicked(bool)", self.onImportLabel)
         self.ui.labelComboBox.connect("currentIndexChanged(int)", self.onSelectLabel)
+        self.ui.scribLabelComboBox.connect("currentIndexChanged(int)", self.onSelectScribLabel)
         self.ui.dgUpdateButton.connect("clicked(bool)", self.onUpdateDeepgrow)
         self.ui.dgUpdateCheckBox.setStyleSheet("padding-left: 10px;")
 
@@ -501,6 +502,7 @@ class MONAILabelWidget(ScriptedLoadableModuleWidget, VTKObservationMixin):
             self.ui.aclCollapsibleButton.hide()
 
         self.ui.labelComboBox.clear()
+        self.ui.scribLabelComboBox.clear()
         if self._segmentNode:
             segmentation = self._segmentNode.GetSegmentation()
             totalSegments = segmentation.GetNumberOfSegments()
@@ -511,14 +513,23 @@ class MONAILabelWidget(ScriptedLoadableModuleWidget, VTKObservationMixin):
                 if label in ["foreground_scribbles", "background_scribbles"]:
                     continue
                 self.ui.labelComboBox.addItem(label)
+                if label not in ["background"]:
+                    self.ui.scribLabelComboBox.addItem(label)
         else:
             for label in self.info.get("labels", {}):
                 self.ui.labelComboBox.addItem(label)
+                if label not in ["background"]:
+                    self.ui.scribLabelComboBox.addItem(label)
 
         currentLabel = self._parameterNode.GetParameter("CurrentLabel")
         idx = self.ui.labelComboBox.findText(currentLabel) if currentLabel else 0
         idx = 0 if idx < 0 < self.ui.labelComboBox.count else idx
         self.ui.labelComboBox.setCurrentIndex(idx)
+
+        currentScribLabel = self._parameterNode.GetParameter("CurrentScribLabel")
+        idx = self.ui.scribLabelComboBox.findText(currentScribLabel) if currentScribLabel else 0
+        idx = 0 if idx < 0 < self.ui.scribLabelComboBox.count else idx
+        self.ui.scribLabelComboBox.setCurrentIndex(idx)
 
         self.ui.appComboBox.clear()
         self.ui.appComboBox.addItem(self.info.get("name", ""))
@@ -641,6 +652,11 @@ class MONAILabelWidget(ScriptedLoadableModuleWidget, VTKObservationMixin):
         if currentLabelIndex >= 0:
             currentLabel = self.ui.labelComboBox.itemText(currentLabelIndex)
             self._parameterNode.SetParameter("CurrentLabel", currentLabel)
+        
+        currentScribLabelIndex = self.ui.scribLabelComboBox.currentIndex
+        if currentScribLabelIndex >= 0:
+            currentScribLabel = self.ui.scribLabelComboBox.itemText(currentScribLabelIndex)
+            self._parameterNode.SetParameter("CurrentScribLabel", currentScribLabel)
 
         currentStrategyIndex = self.ui.strategyBox.currentIndex
         if currentStrategyIndex >= 0:
@@ -899,6 +915,14 @@ class MONAILabelWidget(ScriptedLoadableModuleWidget, VTKObservationMixin):
 
         logging.debug("Current SegmentID: {}; Segment: {}".format(segmentId, segment))
         return segmentId, segment
+    
+    def currentScribSegment(self):
+        segmentation = self._segmentNode.GetSegmentation()
+        segmentId = segmentation.GetSegmentIdBySegmentName(self.ui.scribLabelComboBox.currentText)
+        segment = segmentation.GetSegment(segmentId)
+
+        logging.debug("Current SegmentID: {}; Segment: {}".format(segmentId, segment))
+        return segmentId, segment
 
     def onSelectLabel(self, caller=None, event=None):
         self.updateParameterNodeFromGUI(caller, event)
@@ -907,6 +931,14 @@ class MONAILabelWidget(ScriptedLoadableModuleWidget, VTKObservationMixin):
         self.onEditFiducialPoints(self.dgPositiveFiducialNode, "MONAILabel.ForegroundPoints")
         self.onEditFiducialPoints(self.dgNegativeFiducialNode, "MONAILabel.BackgroundPoints")
         self.ignoreFiducialNodeAddEvent = False
+    
+    def onSelectScribLabel(self, caller=None, event=None):
+        self.updateParameterNodeFromGUI(caller, event)
+
+        # self.ignoreFiducialNodeAddEvent = True
+        # self.onEditFiducialPoints(self.dgPositiveFiducialNode, "MONAILabel.ForegroundPoints")
+        # self.onEditFiducialPoints(self.dgNegativeFiducialNode, "MONAILabel.BackgroundPoints")
+        # self.ignoreFiducialNodeAddEvent = False
 
     def icon(self, name="MONAILabel.png"):
         # It should not be necessary to modify this method
@@ -1757,7 +1789,7 @@ class MONAILabelWidget(ScriptedLoadableModuleWidget, VTKObservationMixin):
             params = self.getParamsFromConfig("infer", scribblesMethod)
             params.update({"roi": selected_roi})
             params.update({"label_info": label_info})
-            _, segment = self.currentSegment()
+            _, segment = self.currentScribSegment()
             selected_label_name = segment.GetName()
             params.update({"selected_label_name": selected_label_name})
 
