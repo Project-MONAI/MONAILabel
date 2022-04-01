@@ -652,7 +652,7 @@ class MONAILabelWidget(ScriptedLoadableModuleWidget, VTKObservationMixin):
         if currentLabelIndex >= 0:
             currentLabel = self.ui.labelComboBox.itemText(currentLabelIndex)
             self._parameterNode.SetParameter("CurrentLabel", currentLabel)
-        
+
         currentScribLabelIndex = self.ui.scribLabelComboBox.currentIndex
         if currentScribLabelIndex >= 0:
             currentScribLabel = self.ui.scribLabelComboBox.itemText(currentScribLabelIndex)
@@ -915,7 +915,7 @@ class MONAILabelWidget(ScriptedLoadableModuleWidget, VTKObservationMixin):
 
         logging.debug("Current SegmentID: {}; Segment: {}".format(segmentId, segment))
         return segmentId, segment
-    
+
     def currentScribSegment(self):
         segmentation = self._segmentNode.GetSegmentation()
         segmentId = segmentation.GetSegmentIdBySegmentName(self.ui.scribLabelComboBox.currentText)
@@ -931,7 +931,7 @@ class MONAILabelWidget(ScriptedLoadableModuleWidget, VTKObservationMixin):
         self.onEditFiducialPoints(self.dgPositiveFiducialNode, "MONAILabel.ForegroundPoints")
         self.onEditFiducialPoints(self.dgNegativeFiducialNode, "MONAILabel.BackgroundPoints")
         self.ignoreFiducialNodeAddEvent = False
-    
+
     def onSelectScribLabel(self, caller=None, event=None):
         self.updateParameterNodeFromGUI(caller, event)
 
