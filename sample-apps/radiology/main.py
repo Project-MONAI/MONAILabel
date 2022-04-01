@@ -118,7 +118,11 @@ class MyApp(MONAILabelApp):
         infers.update(
             {
                 "Histogram+GraphCut": HistogramBasedGraphCut(
-                    intensity_range=(-300, 200, 0.0, 1.0, True), pix_dim=(2.5, 2.5, 5.0), lamda=1.0, sigma=0.1
+                    intensity_range=(-300, 200, 0.0, 1.0, True),
+                    pix_dim=(2.5, 2.5, 5.0),
+                    lamda=1.0,
+                    sigma=0.1,
+                    labels={"spleen": 1, "background": 0},
                 ),
             }
         )

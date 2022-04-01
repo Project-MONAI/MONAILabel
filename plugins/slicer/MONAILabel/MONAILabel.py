@@ -1725,6 +1725,15 @@ class MONAILabelWidget(ScriptedLoadableModuleWidget, VTKObservationMixin):
             slicer.modules.segmentations.logic().ExportVisibleSegmentsToLabelmapNode(
                 segmentationNode, labelmapVolumeNode, self._volumeNode
             )
+            segmentation = segmentationNode.GetSegmentation()
+            totalSegments = segmentation.GetNumberOfSegments()
+            segmentIds = [segmentation.GetNthSegmentID(i) for i in range(totalSegments)]
+
+            label_info = []
+            for idx, segmentId in enumerate(segmentIds):
+                segment = segmentation.GetSegment(segmentId)
+                label_info.append({"name": segment.GetName(), "id": idx + 1})
+
             scribbles_in = tempfile.NamedTemporaryFile(suffix=self.file_ext, dir=self.tmpdir).name
             self.reportProgress(5)
 
@@ -1745,6 +1754,7 @@ class MONAILabelWidget(ScriptedLoadableModuleWidget, VTKObservationMixin):
             # send scribbles + label to server along with selected scribbles method
             params = self.getParamsFromConfig("infer", scribblesMethod)
             params.update({"roi": selected_roi})
+            params.update({"label_info": label_info})
 
             image_file = self.current_sample["id"]
             result_file, params = self.logic.infer(
@@ -1753,9 +1763,15 @@ class MONAILabelWidget(ScriptedLoadableModuleWidget, VTKObservationMixin):
 
             # display result from server
             self.reportProgress(90)
-            _, segment = self.currentSegment()
-            label = segment.GetName()
-            self.updateSegmentationMask(result_file, [label])
+            labels = (
+                params.get("label_names")
+                if params and params.get("label_names")
+                else self.models[scribblesMethod].get("labels")
+            )
+            if labels and isinstance(labels, dict):
+                labels = [k for k, _ in sorted(labels.items(), key=lambda item: item[1])]
+
+            self.updateSegmentationMask(result_file, labels)
         except:
             slicer.util.errorDisplay(
                 "Failed to post process label on MONAI Label Server using {}".format(scribblesMethod),
