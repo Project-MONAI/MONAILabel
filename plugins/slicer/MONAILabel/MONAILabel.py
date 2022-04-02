@@ -832,13 +832,12 @@ class MONAILabelWidget(ScriptedLoadableModuleWidget, VTKObservationMixin):
         v.GetRASToIJKMatrix(RasToIjkMatrix)
 
         point_set = []
-        n = fiducialNode.GetNumberOfFiducials()
+        n = fiducialNode.GetNumberOfControlPoints()
         for i in range(n):
-            coord = [0.0, 0.0, 0.0]
-            fiducialNode.GetNthFiducialPosition(i, coord)
+            coord = fiducialNode.GetNthControlPointPosition(i)
 
             world = [0, 0, 0, 0]
-            fiducialNode.GetNthFiducialWorldCoordinates(i, world)
+            fiducialNode.GetNthControlPointPositionWorld(i, world)
 
             p_Ras = [coord[0], coord[1], coord[2], 1.0]
             p_Ijk = RasToIjkMatrix.MultiplyDoublePoint(p_Ras)
@@ -855,11 +854,10 @@ class MONAILabelWidget(ScriptedLoadableModuleWidget, VTKObservationMixin):
         RasToIjkMatrix = vtk.vtkMatrix4x4()
         v.GetRASToIJKMatrix(RasToIjkMatrix)
 
-        coord = [0.0, 0.0, 0.0]
-        fiducialNode.GetNthFiducialPosition(index, coord)
+        coord = fiducialNode.GetNthControlPointPosition(index)
 
         world = [0, 0, 0, 0]
-        fiducialNode.GetNthFiducialWorldCoordinates(index, world)
+        fiducialNode.GetNthControlPointPositionWorld(index, world)
 
         p_Ras = [coord[0], coord[1], coord[2], 1.0]
         p_Ijk = RasToIjkMatrix.MultiplyDoublePoint(p_Ras)
@@ -872,7 +870,7 @@ class MONAILabelWidget(ScriptedLoadableModuleWidget, VTKObservationMixin):
         if fiducialNode is None:
             return
 
-        fiducialNode.RemoveAllMarkups()
+        fiducialNode.RemoveAllControlPoints()
         segmentId, segment = self.currentSegment()
         if segment and segmentId:
             v = self._volumeNode
@@ -890,7 +888,7 @@ class MONAILabelWidget(ScriptedLoadableModuleWidget, VTKObservationMixin):
                     p_Ijk = [p[0], p[1], p[2], 1.0]
                     p_Ras = IjkToRasMatrix.MultiplyDoublePoint(p_Ijk)
                     logging.debug("Add Fiducial: {} => {}".format(p_Ijk, p_Ras))
-                    fiducialNode.AddFiducialFromArray(p_Ras[0:3])
+                    fiducialNode.AddControlPoint(p_Ras[0:3])
 
     def currentSegment(self):
         segmentation = self._segmentNode.GetSegmentation()
