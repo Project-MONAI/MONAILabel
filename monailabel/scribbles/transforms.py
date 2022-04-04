@@ -77,23 +77,15 @@ class InteractiveSegmentationTransform(Transform):
         return d
 
     def _set_scribbles_idx_from_labelinfo(self, d):
-        def convert_string(in_val):
-            if isinstance(in_val, str):
-                # OHIF format - given as "1+idx" string - extract idx
-                return int(in_val.split("+")[-1])
-            else:
-                # slicer format - already int
-                return in_val
-
         label_info = d.get("label_info", [])
         for lb in label_info:
             if lb.get("name", None) == "background_scribbles":
-                id = convert_string(lb.get("id", self.scribbles_bg_label))
+                id = lb.get("id", self.scribbles_bg_label)
                 self.scribbles_bg_label = id
                 logging.info("Loading background scribbles labels from: {} with index: {}".format(lb.get("name"), id))
 
             if lb.get("name", None) == "foreground_scribbles":
-                id = convert_string(lb.get("id", self.scribbles_fg_label))
+                id = lb.get("id", self.scribbles_fg_label)
                 self.scribbles_fg_label = id
                 logging.info("Loading foreground scribbles labels from: {} with index: {}".format(lb.get("name"), id))
 
