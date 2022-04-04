@@ -207,11 +207,11 @@ class MONAILabelWidget(ScriptedLoadableModuleWidget, VTKObservationMixin):
         }
         self.file_ext = ".nii.gz"
 
-        self.dgPositiveFiducialNode = None
-        self.dgPositiveFiducialNodeObservers = []
-        self.dgNegativeFiducialNode = None
-        self.dgNegativeFiducialNodeObservers = []
-        self.ignoreFiducialNodeAddEvent = False
+        self.dgPositivePointListNode = None
+        self.dgPositivePointListNodeObservers = []
+        self.dgNegativePointListNode = None
+        self.dgNegativePointListNodeObservers = []
+        self.ignorePointListNodeAddEvent = False
 
         self.progressBar = None
         self.tmpdir = None
@@ -259,17 +259,17 @@ class MONAILabelWidget(ScriptedLoadableModuleWidget, VTKObservationMixin):
         self.ui.uploadImageButton.setIcon(self.icon("upload.svg"))
         self.ui.importLabelButton.setIcon(self.icon("download.png"))
 
-        self.ui.dgPositiveFiducialPlacementWidget.setMRMLScene(slicer.mrmlScene)
-        self.ui.dgPositiveFiducialPlacementWidget.placeButton().toolTip = "Select +ve points"
-        self.ui.dgPositiveFiducialPlacementWidget.buttonsVisible = False
-        self.ui.dgPositiveFiducialPlacementWidget.placeButton().show()
-        self.ui.dgPositiveFiducialPlacementWidget.deleteButton().show()
+        self.ui.dgPositiveControlPointPlacementWidget.setMRMLScene(slicer.mrmlScene)
+        self.ui.dgPositiveControlPointPlacementWidget.placeButton().toolTip = "Select +ve points"
+        self.ui.dgPositiveControlPointPlacementWidget.buttonsVisible = False
+        self.ui.dgPositiveControlPointPlacementWidget.placeButton().show()
+        self.ui.dgPositiveControlPointPlacementWidget.deleteButton().show()
 
-        self.ui.dgNegativeFiducialPlacementWidget.setMRMLScene(slicer.mrmlScene)
-        self.ui.dgNegativeFiducialPlacementWidget.placeButton().toolTip = "Select -ve points"
-        self.ui.dgNegativeFiducialPlacementWidget.buttonsVisible = False
-        self.ui.dgNegativeFiducialPlacementWidget.placeButton().show()
-        self.ui.dgNegativeFiducialPlacementWidget.deleteButton().show()
+        self.ui.dgNegativeControlPointPlacementWidget.setMRMLScene(slicer.mrmlScene)
+        self.ui.dgNegativeControlPointPlacementWidget.placeButton().toolTip = "Select -ve points"
+        self.ui.dgNegativeControlPointPlacementWidget.buttonsVisible = False
+        self.ui.dgNegativeControlPointPlacementWidget.placeButton().show()
+        self.ui.dgNegativeControlPointPlacementWidget.deleteButton().show()
 
         self.ui.dgUpdateButton.setIcon(self.icon("segment.png"))
 
@@ -369,23 +369,27 @@ class MONAILabelWidget(ScriptedLoadableModuleWidget, VTKObservationMixin):
         self.current_sample = None
         self.samples.clear()
 
-        self.resetFiducial(
-            self.ui.dgPositiveFiducialPlacementWidget, self.dgPositiveFiducialNode, self.dgPositiveFiducialNodeObservers
+        self.resetPointList(
+            self.ui.dgPositiveControlPointPlacementWidget,
+            self.dgPositivePointListNode,
+            self.dgPositivePointListNodeObservers,
         )
-        self.dgPositiveFiducialNode = None
-        self.resetFiducial(
-            self.ui.dgNegativeFiducialPlacementWidget, self.dgNegativeFiducialNode, self.dgNegativeFiducialNodeObservers
+        self.dgPositivePointListNode = None
+        self.resetPointList(
+            self.ui.dgNegativeControlPointPlacementWidget,
+            self.dgNegativePointListNode,
+            self.dgNegativePointListNodeObservers,
         )
-        self.dgNegativeFiducialNode = None
+        self.dgNegativePointListNode = None
         self.onResetScribbles()
 
-    def resetFiducial(self, fiducialWidget, fiducialNode, fiducialNodeObservers):
-        if fiducialWidget.placeModeEnabled:
-            fiducialWidget.setPlaceModeEnabled(False)
+    def resetPointList(self, markupsPlaceWidget, pointListNode, pointListNodeObservers):
+        if markupsPlaceWidget.placeModeEnabled:
+            markupsPlaceWidget.setPlaceModeEnabled(False)
 
-        if fiducialNode:
-            slicer.mrmlScene.RemoveNode(fiducialNode)
-            self.removeFiducialNodeObservers(fiducialNode, fiducialNodeObservers)
+        if pointListNode:
+            slicer.mrmlScene.RemoveNode(pointListNode)
+            self.removePointListNodeObservers(pointListNode, pointListNodeObservers)
 
     def onSceneEndClose(self, caller, event):
         if self.parent.isEntered:
@@ -604,36 +608,36 @@ class MONAILabelWidget(ScriptedLoadableModuleWidget, VTKObservationMixin):
         self.ui.saveLabelButton.setEnabled(self._segmentNode is not None)
         self.ui.importLabelButton.setEnabled(self._segmentNode is not None)
 
-        # Create empty markup fiducial node for deep grow +ve and -ve
+        # Create empty markup point list node for deep grow +ve and -ve
         if self._segmentNode:
-            if not self.dgPositiveFiducialNode:
-                self.dgPositiveFiducialNode, self.dgPositiveFiducialNodeObservers = self.createFiducialNode(
-                    "P", self.onDeepGrowFiducialNodeModified, [0.5, 1, 0.5]
+            if not self.dgPositivePointListNode:
+                self.dgPositivePointListNode, self.dgPositivePointListNodeObservers = self.createPointListNode(
+                    "P", self.onDeepGrowPointListNodeModified, [0.5, 1, 0.5]
                 )
-                self.ui.dgPositiveFiducialPlacementWidget.setCurrentNode(self.dgPositiveFiducialNode)
-                self.ui.dgPositiveFiducialPlacementWidget.setPlaceModeEnabled(False)
+                self.ui.dgPositiveControlPointPlacementWidget.setCurrentNode(self.dgPositivePointListNode)
+                self.ui.dgPositiveControlPointPlacementWidget.setPlaceModeEnabled(False)
 
-            if not self.dgNegativeFiducialNode:
-                self.dgNegativeFiducialNode, self.dgNegativeFiducialNodeObservers = self.createFiducialNode(
-                    "N", self.onDeepGrowFiducialNodeModified, [0.5, 0.5, 1]
+            if not self.dgNegativePointListNode:
+                self.dgNegativePointListNode, self.dgNegativePointListNodeObservers = self.createPointListNode(
+                    "N", self.onDeepGrowPointListNodeModified, [0.5, 0.5, 1]
                 )
-                self.ui.dgNegativeFiducialPlacementWidget.setCurrentNode(self.dgNegativeFiducialNode)
-                self.ui.dgNegativeFiducialPlacementWidget.setPlaceModeEnabled(False)
+                self.ui.dgNegativeControlPointPlacementWidget.setCurrentNode(self.dgNegativePointListNode)
+                self.ui.dgNegativeControlPointPlacementWidget.setPlaceModeEnabled(False)
 
             self.ui.scribblesCollapsibleButton.setEnabled(self.ui.scribblesMethodSelector.count)
             self.ui.scribblesCollapsibleButton.collapsed = False
 
-        self.ui.dgPositiveFiducialPlacementWidget.setEnabled(self.ui.deepgrowModelSelector.currentText)
-        self.ui.dgNegativeFiducialPlacementWidget.setEnabled(self.ui.deepgrowModelSelector.currentText)
+        self.ui.dgPositiveControlPointPlacementWidget.setEnabled(self.ui.deepgrowModelSelector.currentText)
+        self.ui.dgNegativeControlPointPlacementWidget.setEnabled(self.ui.deepgrowModelSelector.currentText)
 
         self.multi_label = "background" in self.info.get("labels", [])
         if self.multi_label:
             self.ui.dgLabelBackground.hide()
-            self.ui.dgNegativeFiducialPlacementWidget.hide()
+            self.ui.dgNegativeControlPointPlacementWidget.hide()
             self.ui.freezeUpdateCheckBox.show()
             self.ui.dgLabelForeground.setText("Landmarks:")
         else:
-            self.ui.dgNegativeFiducialPlacementWidget.show()
+            self.ui.dgNegativeControlPointPlacementWidget.show()
             self.ui.freezeUpdateCheckBox.hide()
             self.ui.dgLabelForeground.setText("Foreground:")
 
@@ -839,17 +843,17 @@ class MONAILabelWidget(ScriptedLoadableModuleWidget, VTKObservationMixin):
         res = res.get(filter2, {}) if filter2 else res
         return res
 
-    def onDeepGrowFiducialNodeModified(self, observer, eventid):
+    def onDeepGrowPointListNodeModified(self, observer, eventid):
         logging.debug("Deepgrow Point Event!!")
 
-        if self.ignoreFiducialNodeAddEvent:
+        if self.ignorePointListNodeAddEvent:
             return
 
         markupsNode = observer
         movingMarkupIndex = markupsNode.GetDisplayNode().GetActiveControlPoint()
         logging.debug("Markup point added; point ID = {}".format(movingMarkupIndex))
 
-        current_point = self.getFiducialPointXYZ(markupsNode, movingMarkupIndex)
+        current_point = self.getControlPointXYZ(markupsNode, movingMarkupIndex)
 
         if not self.ui.dgUpdateCheckBox.checked:
             self.onClickDeepgrow(current_point, skip_infer=True)
@@ -857,24 +861,23 @@ class MONAILabelWidget(ScriptedLoadableModuleWidget, VTKObservationMixin):
 
         self.onClickDeepgrow(current_point)
 
-        self.ignoreFiducialNodeAddEvent = True
-        self.onEditFiducialPoints(self.dgPositiveFiducialNode, "MONAILabel.ForegroundPoints")
-        self.onEditFiducialPoints(self.dgNegativeFiducialNode, "MONAILabel.BackgroundPoints")
-        self.ignoreFiducialNodeAddEvent = False
+        self.ignorePointListNodeAddEvent = True
+        self.onEditControlPoints(self.dgPositivePointListNode, "MONAILabel.ForegroundPoints")
+        self.onEditControlPoints(self.dgNegativePointListNode, "MONAILabel.BackgroundPoints")
+        self.ignorePointListNodeAddEvent = False
 
-    def getFiducialPointsXYZ(self, fiducialNode, name):
+    def getControlPointsXYZ(self, pointListNode, name):
         v = self._volumeNode
         RasToIjkMatrix = vtk.vtkMatrix4x4()
         v.GetRASToIJKMatrix(RasToIjkMatrix)
 
         point_set = []
-        n = fiducialNode.GetNumberOfFiducials()
+        n = pointListNode.GetNumberOfControlPoints()
         for i in range(n):
-            coord = [0.0, 0.0, 0.0]
-            fiducialNode.GetNthFiducialPosition(i, coord)
+            coord = pointListNode.GetNthControlPointPosition(i)
 
             world = [0, 0, 0, 0]
-            fiducialNode.GetNthFiducialWorldCoordinates(i, world)
+            pointListNode.GetNthControlPointPositionWorld(i, world)
 
             p_Ras = [coord[0], coord[1], coord[2], 1.0]
             p_Ijk = RasToIjkMatrix.MultiplyDoublePoint(p_Ras)
@@ -883,19 +886,18 @@ class MONAILabelWidget(ScriptedLoadableModuleWidget, VTKObservationMixin):
             logging.debug("RAS: {}; WORLD: {}; IJK: {}".format(coord, world, p_Ijk))
             point_set.append(p_Ijk[0:3])
 
-        logging.info("{} => Current Fiducials-Points: {}".format(name, point_set))
+        logging.info("{} => Current control points: {}".format(name, point_set))
         return point_set
 
-    def getFiducialPointXYZ(self, fiducialNode, index):
+    def getControlPointXYZ(self, pointListNode, index):
         v = self._volumeNode
         RasToIjkMatrix = vtk.vtkMatrix4x4()
         v.GetRASToIJKMatrix(RasToIjkMatrix)
 
-        coord = [0.0, 0.0, 0.0]
-        fiducialNode.GetNthFiducialPosition(index, coord)
+        coord = pointListNode.GetNthControlPointPosition(index)
 
         world = [0, 0, 0, 0]
-        fiducialNode.GetNthFiducialWorldCoordinates(index, world)
+        pointListNode.GetNthControlPointPositionWorld(index, world)
 
         p_Ras = [coord[0], coord[1], coord[2], 1.0]
         p_Ijk = RasToIjkMatrix.MultiplyDoublePoint(p_Ras)
@@ -904,11 +906,11 @@ class MONAILabelWidget(ScriptedLoadableModuleWidget, VTKObservationMixin):
         logging.debug("RAS: {}; WORLD: {}; IJK: {}".format(coord, world, p_Ijk))
         return p_Ijk[0:3]
 
-    def onEditFiducialPoints(self, fiducialNode, tagName):
-        if fiducialNode is None:
+    def onEditControlPoints(self, pointListNode, tagName):
+        if pointListNode is None:
             return
 
-        fiducialNode.RemoveAllMarkups()
+        pointListNode.RemoveAllControlPoints()
         segmentId, segment = self.currentSegment()
         if segment and segmentId:
             v = self._volumeNode
@@ -918,15 +920,15 @@ class MONAILabelWidget(ScriptedLoadableModuleWidget, VTKObservationMixin):
             fPosStr = vtk.mutable("")
             segment.GetTag(tagName, fPosStr)
             pointset = str(fPosStr)
-            logging.debug("{} => {} Fiducial points are: {}".format(segmentId, segment.GetName(), pointset))
+            logging.debug("{} => {} Control points are: {}".format(segmentId, segment.GetName(), pointset))
 
             if fPosStr is not None and len(pointset) > 0:
                 points = json.loads(pointset)
                 for p in points:
                     p_Ijk = [p[0], p[1], p[2], 1.0]
                     p_Ras = IjkToRasMatrix.MultiplyDoublePoint(p_Ijk)
-                    logging.debug("Add Fiducial: {} => {}".format(p_Ijk, p_Ras))
-                    fiducialNode.AddFiducialFromArray(p_Ras[0:3])
+                    logging.debug("Add Control Point: {} => {}".format(p_Ijk, p_Ras))
+                    pointListNode.AddControlPoint(p_Ras[0:3])
 
     def currentSegment(self):
         segmentation = self._segmentNode.GetSegmentation()
@@ -947,10 +949,10 @@ class MONAILabelWidget(ScriptedLoadableModuleWidget, VTKObservationMixin):
     def onSelectLabel(self, caller=None, event=None):
         self.updateParameterNodeFromGUI(caller, event)
 
-        self.ignoreFiducialNodeAddEvent = True
-        self.onEditFiducialPoints(self.dgPositiveFiducialNode, "MONAILabel.ForegroundPoints")
-        self.onEditFiducialPoints(self.dgNegativeFiducialNode, "MONAILabel.BackgroundPoints")
-        self.ignoreFiducialNodeAddEvent = False
+        self.ignorePointListNodeAddEvent = True
+        self.onEditControlPoints(self.dgPositivePointListNode, "MONAILabel.ForegroundPoints")
+        self.onEditControlPoints(self.dgNegativePointListNode, "MONAILabel.BackgroundPoints")
+        self.ignorePointListNodeAddEvent = False
 
     def onSelectScribLabel(self, caller=None, event=None):
         if self.scribblesLayersPresent() and not self.ignoreScribblesLabelChangeEvent:
@@ -1463,8 +1465,8 @@ class MONAILabelWidget(ScriptedLoadableModuleWidget, VTKObservationMixin):
             slicer.util.warningDisplay("Please add the required label to run deepgrow")
             return
 
-        foreground_all = self.getFiducialPointsXYZ(self.dgPositiveFiducialNode, "foreground")
-        background_all = self.getFiducialPointsXYZ(self.dgNegativeFiducialNode, "background")
+        foreground_all = self.getControlPointsXYZ(self.dgPositivePointListNode, "foreground")
+        background_all = self.getControlPointsXYZ(self.dgNegativePointListNode, "background")
 
         segment.SetTag("MONAILabel.ForegroundPoints", json.dumps(foreground_all))
         segment.SetTag("MONAILabel.BackgroundPoints", json.dumps(background_all))
@@ -1500,7 +1502,7 @@ class MONAILabelWidget(ScriptedLoadableModuleWidget, VTKObservationMixin):
                         fPosStr = vtk.mutable("")
                         segment.GetTag("MONAILabel.ForegroundPoints", fPosStr)
                         pointset = str(fPosStr)
-                        print("{} => {} Fiducial points are: {}".format(segmentId, name, pointset))
+                        print("{} => {} Control points are: {}".format(segmentId, name, pointset))
                         if fPosStr is not None and len(pointset) > 0:
                             points = json.loads(pointset)
 
@@ -1690,31 +1692,31 @@ class MONAILabelWidget(ScriptedLoadableModuleWidget, VTKObservationMixin):
         self.ui.serverComboBox.setCurrentText(settings.value("MONAILabel/serverUrl"))
         self.ui.serverComboBox.blockSignals(wasBlocked)
 
-    def createFiducialNode(self, name, onMarkupNodeModified, color):
+    def createPointListNode(self, name, onMarkupNodeModified, color):
         displayNode = slicer.mrmlScene.AddNewNodeByClass("vtkMRMLMarkupsDisplayNode")
         displayNode.SetTextScale(0)
         displayNode.SetSelectedColor(color)
 
-        fiducialNode = slicer.mrmlScene.AddNewNodeByClass("vtkMRMLMarkupsFiducialNode")
-        fiducialNode.SetName(name)
-        fiducialNode.SetAndObserveDisplayNodeID(displayNode.GetID())
+        pointListNode = slicer.mrmlScene.AddNewNodeByClass("vtkMRMLMarkupsFiducialNode")
+        pointListNode.SetName(name)
+        pointListNode.SetAndObserveDisplayNodeID(displayNode.GetID())
 
-        fiducialNodeObservers = []
-        self.addFiducialNodeObserver(fiducialNode, onMarkupNodeModified)
-        return fiducialNode, fiducialNodeObservers
+        pointListNodeObservers = []
+        self.addPointListNodeObserver(pointListNode, onMarkupNodeModified)
+        return pointListNode, pointListNodeObservers
 
-    def removeFiducialNodeObservers(self, fiducialNode, fiducialNodeObservers):
-        if fiducialNode and fiducialNodeObservers:
-            for observer in fiducialNodeObservers:
-                fiducialNode.RemoveObserver(observer)
+    def removePointListNodeObservers(self, pointListNode, pointListNodeObservers):
+        if pointListNode and pointListNodeObservers:
+            for observer in pointListNodeObservers:
+                pointListNode.RemoveObserver(observer)
 
-    def addFiducialNodeObserver(self, fiducialNode, onMarkupNodeModified):
-        fiducialNodeObservers = []
-        if fiducialNode:
+    def addPointListNodeObserver(self, pointListNode, onMarkupNodeModified):
+        pointListNodeObservers = []
+        if pointListNode:
             eventIds = [slicer.vtkMRMLMarkupsNode.PointPositionDefinedEvent]
             for eventId in eventIds:
-                fiducialNodeObservers.append(fiducialNode.AddObserver(eventId, onMarkupNodeModified))
-        return fiducialNodeObservers
+                pointListNodeObservers.append(pointListNode.AddObserver(eventId, onMarkupNodeModified))
+        return pointListNodeObservers
 
     def scribblesLayersPresent(self):
         scribbles_exist = False
