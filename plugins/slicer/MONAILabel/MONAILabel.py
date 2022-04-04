@@ -218,6 +218,7 @@ class MONAILabelWidget(ScriptedLoadableModuleWidget, VTKObservationMixin):
         self.timer = None
 
         self.scribblesMode = None
+        self.ignoreScribblesLabelChangeEvent = False
         self.multi_label = False
 
     def setup(self):
@@ -952,7 +953,7 @@ class MONAILabelWidget(ScriptedLoadableModuleWidget, VTKObservationMixin):
         self.ignoreFiducialNodeAddEvent = False
 
     def onSelectScribLabel(self, caller=None, event=None):
-        if self.scribblesLayersPresent():
+        if self.scribblesLayersPresent() and not self.ignoreScribblesLabelChangeEvent:
             if not slicer.util.confirmOkCancelDisplay(
                 "This will clear current scribbles session.\n" "Are you sure to continue?"
             ):
@@ -1337,6 +1338,7 @@ class MONAILabelWidget(ScriptedLoadableModuleWidget, VTKObservationMixin):
 
             # remove background and scribbles labels
             label_info = []
+            save_segment_ids = vtk.vtkStringArray()
             for idx, segmentId in enumerate(segmentIds):
                 segment = segmentation.GetSegment(segmentId)
                 if segment.GetName() in ["background", "foreground_scribbles", "background_scribbles"]:
@@ -1344,13 +1346,14 @@ class MONAILabelWidget(ScriptedLoadableModuleWidget, VTKObservationMixin):
                     segmentationNode.RemoveSegment(segmentId)
                     continue
 
+                save_segment_ids.InsertNextValue(segmentId)
                 label_info.append({"name": segment.GetName(), "idx": idx + 1})
                 # label_info.append({"color": segment.GetColor()})
 
             # export labelmap
             labelmapVolumeNode = slicer.mrmlScene.AddNewNodeByClass("vtkMRMLLabelMapVolumeNode")
-            slicer.modules.segmentations.logic().ExportVisibleSegmentsToLabelmapNode(
-                segmentationNode, labelmapVolumeNode, self._volumeNode
+            slicer.modules.segmentations.logic().ExportSegmentsToLabelmapNode(
+                segmentationNode, save_segment_ids, labelmapVolumeNode, self._volumeNode
             )
 
             label_in = tempfile.NamedTemporaryFile(suffix=self.file_ext, dir=self.tmpdir).name
@@ -1777,8 +1780,10 @@ class MONAILabelWidget(ScriptedLoadableModuleWidget, VTKObservationMixin):
             # get scribbles + label
             segmentationNode = self._segmentNode
             labelmapVolumeNode = slicer.mrmlScene.AddNewNodeByClass("vtkMRMLLabelMapVolumeNode")
-            slicer.modules.segmentations.logic().ExportVisibleSegmentsToLabelmapNode(
-                segmentationNode, labelmapVolumeNode, self._volumeNode
+            save_segment_ids = vtk.vtkStringArray()
+            segmentationNode.GetSegmentation().GetSegmentIDs(save_segment_ids)
+            slicer.modules.segmentations.logic().ExportSegmentsToLabelmapNode(
+                segmentationNode, save_segment_ids, labelmapVolumeNode, self._volumeNode
             )
             segmentation = segmentationNode.GetSegmentation()
             totalSegments = segmentation.GetNumberOfSegments()
@@ -1899,8 +1904,8 @@ class MONAILabelWidget(ScriptedLoadableModuleWidget, VTKObservationMixin):
 
         # refresh segmentation view to clear scribbles segmentations
         # help from: https://discourse.slicer.org/t/refresh-volume-rendering/11847/6
-        segmentation.SetVisibility(False)
-        segmentation.SetVisibility(True)
+        segmentation.SetDisplayVisibility(False)
+        segmentation.SetDisplayVisibility(True)
 
     def onClearScribbles(self):
         # for clearing scribbles and resetting tools to default
@@ -1913,6 +1918,7 @@ class MONAILabelWidget(ScriptedLoadableModuleWidget, VTKObservationMixin):
         self.ui.scribblesLabelSelector.setCurrentIndex(0)
 
     def onResetScribbles(self):
+
         # reset scribbles mode
         self.scribblesMode = None
 
@@ -1932,6 +1938,9 @@ class MONAILabelWidget(ScriptedLoadableModuleWidget, VTKObservationMixin):
         self.ui.eraseScribblesButton.setChecked(False)
 
         self.ui.scribblesLabelSelector.setCurrentIndex(0)
+        self.ignoreScribblesLabelChangeEvent = True
+        self.ui.scribLabelComboBox.setCurrentIndex(0)
+        self.ignoreScribblesLabelChangeEvent = False
 
     def checkAndInitialiseScribbles(self):
         if not self._segmentNode:
