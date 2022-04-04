@@ -643,7 +643,7 @@
          </widget>
         </item>
         <item row="4" column="3">
-         <widget class="QComboBox" name="scribblesLabelSelector">
+         <widget class="QComboBox" name="scribblesSelector">
           <property name="sizePolicy">
            <sizepolicy hsizetype="Expanding" vsizetype="Fixed">
             <horstretch>0</horstretch>

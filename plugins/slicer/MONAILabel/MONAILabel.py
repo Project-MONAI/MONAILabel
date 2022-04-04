@@ -309,12 +309,12 @@ class MONAILabelWidget(ScriptedLoadableModuleWidget, VTKObservationMixin):
         self.ui.updateScribblesButton.clicked.connect(self.onUpdateScribbles)
         self.ui.paintScribblesButton.clicked.connect(self.onPaintScribbles)
         self.ui.eraseScribblesButton.clicked.connect(self.onEraseScribbles)
-        self.ui.scribblesLabelSelector.connect("currentIndexChanged(int)", self.onSelectScribblesLabel)
+        self.ui.scribblesSelector.connect("currentIndexChanged(int)", self.onSelectScribblesLabel)
 
         # creating editable combo box
-        self.ui.scribblesLabelSelector.addItem(self.icon("fg_green.png"), "Foreground")
-        self.ui.scribblesLabelSelector.addItem(self.icon("bg_red.png"), "Background")
-        self.ui.scribblesLabelSelector.setCurrentIndex(0)
+        self.ui.scribblesSelector.addItem(self.icon("fg_green.png"), "Foreground")
+        self.ui.scribblesSelector.addItem(self.icon("bg_red.png"), "Background")
+        self.ui.scribblesSelector.setCurrentIndex(0)
 
         # start with scribbles section disabled
         self.ui.scribblesCollapsibleButton.setEnabled(False)
@@ -1915,7 +1915,7 @@ class MONAILabelWidget(ScriptedLoadableModuleWidget, VTKObservationMixin):
         self.ui.paintScribblesButton.setChecked(True)
         self.ui.eraseScribblesButton.setChecked(False)
 
-        self.ui.scribblesLabelSelector.setCurrentIndex(0)
+        self.ui.scribblesSelector.setCurrentIndex(0)
 
     def onResetScribbles(self):
 
@@ -1937,7 +1937,7 @@ class MONAILabelWidget(ScriptedLoadableModuleWidget, VTKObservationMixin):
         self.ui.paintScribblesButton.setChecked(False)
         self.ui.eraseScribblesButton.setChecked(False)
 
-        self.ui.scribblesLabelSelector.setCurrentIndex(0)
+        self.ui.scribblesSelector.setCurrentIndex(0)
         self.ignoreScribblesLabelChangeEvent = True
         self.ui.scribLabelComboBox.setCurrentIndex(0)
         self.ignoreScribblesLabelChangeEvent = False
@@ -2014,9 +2014,9 @@ class MONAILabelWidget(ScriptedLoadableModuleWidget, VTKObservationMixin):
         if not self._segmentNode:
             return
 
-        index = self.ui.scribblesLabelSelector.currentIndex
+        index = self.ui.scribblesSelector.currentIndex
         index = 0 if index < 0 else index
-        selected = self.ui.scribblesLabelSelector.itemText(index)
+        selected = self.ui.scribblesSelector.itemText(index)
 
         layer = "foreground_scribbles" if selected == "Foreground" else "background_scribbles"
         self.changeScribblesMode(layer=layer)
