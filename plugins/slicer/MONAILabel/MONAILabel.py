@@ -219,7 +219,7 @@ class MONAILabelWidget(ScriptedLoadableModuleWidget, VTKObservationMixin):
 
         self.scribblesMode = None
         self.ignoreScribblesLabelChangeEvent = False
-        self.multi_label = False
+        self.deepedit_multi_label = False
 
     def setup(self):
         """
@@ -630,8 +630,11 @@ class MONAILabelWidget(ScriptedLoadableModuleWidget, VTKObservationMixin):
         self.ui.dgPositiveControlPointPlacementWidget.setEnabled(self.ui.deepgrowModelSelector.currentText)
         self.ui.dgNegativeControlPointPlacementWidget.setEnabled(self.ui.deepgrowModelSelector.currentText)
 
-        self.multi_label = "background" in self.info.get("labels", [])
-        if self.multi_label:
+        self.deepedit_multi_label = False
+        m = self.models.get(self.ui.deepgrowModelSelector.currentText) if self.models else None
+        self.deepedit_multi_label = m and m.get("type") == "deepedit" and len(m.get("labels")) > 0
+
+        if self.deepedit_multi_label:
             self.ui.dgLabelBackground.hide()
             self.ui.dgNegativeControlPointPlacementWidget.hide()
             self.ui.freezeUpdateCheckBox.show()
@@ -876,7 +879,7 @@ class MONAILabelWidget(ScriptedLoadableModuleWidget, VTKObservationMixin):
         for i in range(n):
             coord = pointListNode.GetNthControlPointPosition(i)
 
-            world = [0, 0, 0, 0]
+            world = [0, 0, 0]
             pointListNode.GetNthControlPointPositionWorld(i, world)
 
             p_Ras = [coord[0], coord[1], coord[2], 1.0]
@@ -896,7 +899,7 @@ class MONAILabelWidget(ScriptedLoadableModuleWidget, VTKObservationMixin):
 
         coord = pointListNode.GetNthControlPointPosition(index)
 
-        world = [0, 0, 0, 0]
+        world = [0, 0, 0]
         pointListNode.GetNthControlPointPositionWorld(index, world)
 
         p_Ras = [coord[0], coord[1], coord[2], 1.0]
@@ -1490,7 +1493,7 @@ class MONAILabelWidget(ScriptedLoadableModuleWidget, VTKObservationMixin):
             qt.QApplication.setOverrideCursor(qt.Qt.WaitCursor)
 
             sliceIndex = None
-            if self.multi_label:
+            if self.deepedit_multi_label:
                 params = {}
                 segmentation = self._segmentNode.GetSegmentation()
                 for name in self.info.get("labels", []):
