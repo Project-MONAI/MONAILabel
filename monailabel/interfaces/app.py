@@ -13,6 +13,7 @@ import copy
 import logging
 import os
 import platform
+import random
 import shutil
 import tempfile
 import time
@@ -592,7 +593,8 @@ class MONAILabelApp:
                 f"WSI/Inference Task is not Initialized. There is no model '{model}' available",
             )
 
-        image = request["image"]
+        img_id = request["image"]
+        image = img_id
         request_c = copy.deepcopy(task.config())
         request_c.update(request)
         request = request_c
@@ -609,38 +611,55 @@ class MONAILabelApp:
             image = datastore.get_image_uri(request["image"])
 
         start = time.time()
-        logger.info(f"WSI Infer Request (final): {request}")
         infer_tasks = create_infer_wsi_tasks(request, image)
+        if len(infer_tasks) > 1:
+            logger.info(f"WSI Infer Request (final): {request}")
+
         logger.debug(f"Total WSI Tasks: {len(infer_tasks)}")
         request["logging"] = request.get("logging", "WARNING" if len(infer_tasks) > 1 else "INFO")
 
-        multi_gpu = request.get("multi_gpu", False)
+        multi_gpu = request.get("multi_gpu", True)
         multi_gpus = request.get("gpus", "all")
         gpus = (
             list(range(torch.cuda.device_count())) if not multi_gpus or multi_gpus == "all" else multi_gpus.split(",")
         )
         device_ids = [f"cuda:{id}" for id in gpus] if multi_gpu else [request.get("device", "cuda")]
-        logger.info(f"MultiGpu: {multi_gpu}; Using Device(s): {device_ids}")
 
         res_json = {"annotations": [None] * len(infer_tasks)}
         for idx, t in enumerate(infer_tasks):
             t["logging"] = request["logging"]
-            t["device"] = device_ids[idx % len(device_ids)]
+            t["device"] = (
+                device_ids[idx % len(device_ids)]
+                if len(infer_tasks) > 1
+                else device_ids[random.randint(0, len(device_ids) - 1)]
+            )
 
-        if len(infer_tasks) > 1 and len(device_ids) > 1:
-            with ThreadPoolExecutor(max_workers=len(device_ids), thread_name_prefix="WSI Infer") as executor:
+        total = len(infer_tasks)
+        max_workers = request.get("max_workers", len(device_ids))
+
+        if len(infer_tasks) > 1 and (max_workers == 0 or max_workers > 1):
+            logger.info(f"MultiGpu: {multi_gpu}; Using Device(s): {device_ids}; Max Workers: {max_workers}")
+            futures = {}
+            with ThreadPoolExecutor(max_workers if max_workers else None, "WSI Infer") as executor:
                 for t in infer_tasks:
-                    tid = t["id"]
-                    future = executor.submit(self._run_infer_wsi_task, t)
+                    futures[t["id"]] = t, executor.submit(self._run_infer_wsi_task, t)
+
+                for tid, (t, future) in futures.items():
                     res = future.result()
                     res_json["annotations"][tid] = res
-                    logger.info(f"{tid} => {len(res_json)} / {len(infer_tasks)}; Latencies: {res.get('latencies')}")
+                    finished = len([a for a in res_json["annotations"] if a])
+                    logger.info(
+                        f"{img_id} => {tid} => {t['device']} => {finished} / {total}; Latencies: {res.get('latencies')}"
+                    )
         else:
             for t in infer_tasks:
                 tid = t["id"]
                 res = self._run_infer_wsi_task(t)
                 res_json["annotations"][tid] = res
-                logger.info(f"{tid} => {len(res_json)} / {len(infer_tasks)}; Latencies: {res.get('latencies')}")
+                finished = len([a for a in res_json["annotations"] if a])
+                logger.info(
+                    f"{img_id} => {tid} => {t['device']} => {finished} / {total}; Latencies: {res.get('latencies')}"
+                )
 
         latency_total = time.time() - start
         logger.debug("WSI Infer Time Taken: {:.4f}".format(latency_total))

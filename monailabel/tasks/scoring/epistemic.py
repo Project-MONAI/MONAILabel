@@ -8,7 +8,7 @@
 # WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 # See the License for the specific language governing permissions and
 # limitations under the License.
-
+import copy
 import logging
 import os
 import time
@@ -115,7 +115,7 @@ class EpistemicScoring(ScoringMethod):
         logger.info(f"Using {model_file} for running Epistemic")
         model_ts = int(os.stat(model_file).st_mtime) if model_file and os.path.exists(model_file) else 1
         if network:
-            model = network
+            model = copy.deepcopy(network)
             if model_file:
                 if torch.cuda.is_available():
                     checkpoint = torch.load(model_file)

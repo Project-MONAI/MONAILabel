@@ -195,8 +195,10 @@ Example to run train/infer/scoring task(s) locally without actually running MONA
 
 def main():
     import argparse
+    import shutil
+    from pathlib import Path
 
-    # from pathlib import Path
+    from monailabel.utils.others.generic import device_list, file_ext
 
     os.putenv("MASTER_ADDR", "127.0.0.1")
     os.putenv("MASTER_PORT", "1234")
@@ -207,35 +209,55 @@ def main():
         datefmt="%Y-%m-%d %H:%M:%S",
     )
 
-    # home = str(Path.home())
-    studies = "/home/adp20local/Documents/Datasets/monailabel_datasets/both_MSD_BTCV"
+    home = str(Path.home())
+    studies = f"{home}/Data/Test"
 
     parser = argparse.ArgumentParser()
     parser.add_argument("-s", "--studies", default=studies)
+    parser.add_argument("-m", "--model", default="segmentation_spleen")
+    parser.add_argument("-t", "--test", default="infer", choices=("train", "infer"))
     args = parser.parse_args()
 
     app_dir = os.path.dirname(__file__)
     studies = args.studies
     conf = {
-        "models": "deepedit",
-        "use_pretrained_model": "false",
-        # "network": "unetr",
-        # "spatial_size": "[128,128,128]",
+        "models": args.model,
     }
 
     app = MyApp(app_dir, studies, conf)
 
-    model = "deepedit"
+    # Infer
+    if args.test == "infer":
+        sample = app.next_sample(request={"strategy": "first"})
+        image_id = sample["id"]
+        image_path = sample["path"]
+
+        # Run on all devices
+        for device in device_list():
+            res = app.infer(request={"model": args.model, "image": image_id, "device": device})
+            label = res["file"]
+            label_json = res["params"]
+            test_dir = os.path.join(args.studies, "test_labels")
+            os.makedirs(test_dir, exist_ok=True)
+
+            label_file = os.path.join(test_dir, image_id + file_ext(image_path))
+            shutil.move(label, label_file)
+
+            print(label_json)
+            print(f"++++ Image File: {image_path}")
+            print(f"++++ Label File: {label_file}")
+        return
+
+    # Train
     app.train(
         request={
-            "name": "spleen_model_depedit",
-            "model": model,
-            "max_epochs": 1000,
+            "model": args.model,
+            "max_epochs": 10,
             "dataset": "CacheDataset",  # PersistentDataset, CacheDataset
             "train_batch_size": 1,
             "val_batch_size": 1,
             "multi_gpu": True,
-            "val_split": 0.05,
+            "val_split": 0.1,
         },
     )
 

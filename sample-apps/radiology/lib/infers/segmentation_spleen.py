@@ -39,6 +39,7 @@ class SegmentationSpleen(InferTask):
         labels="spleen",
         dimension=3,
         description="A pre-trained model for volumetric (3D) segmentation of the spleen from CT image",
+        **kwargs,
     ):
         super().__init__(
             path=path,
@@ -47,6 +48,7 @@ class SegmentationSpleen(InferTask):
             labels=labels,
             dimension=dimension,
             description=description,
+            **kwargs,
         )
 
     def pre_transforms(self, data=None) -> Sequence[Callable]:

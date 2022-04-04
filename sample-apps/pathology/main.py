@@ -193,9 +193,6 @@ def infer_wsi(app):
     import shutil
     from pathlib import Path
 
-    import numpy as np
-    import openslide
-
     home = str(Path.home())
 
     root_dir = f"{home}/Data/Pathology"
@@ -203,9 +200,9 @@ def infer_wsi(app):
 
     output = "dsa"
 
-    slide = openslide.OpenSlide(f"{app.studies}/{image}.svs")
-    img = slide.read_region((7737, 20086), 0, (2048, 2048)).convert("RGB")
-    image_np = np.array(img, dtype=np.uint8)
+    # slide = openslide.OpenSlide(f"{app.studies}/{image}.svs")
+    # img = slide.read_region((7737, 20086), 0, (2048, 2048)).convert("RGB")
+    # image_np = np.array(img, dtype=np.uint8)
 
     res = app.infer_wsi(
         request={
@@ -214,18 +211,20 @@ def infer_wsi(app):
             "output": output,
             "logging": "error",
             "level": 0,
-            "location": [7737, 20086],
-            "size": [5522, 3311],
+            "location": [0, 0],
+            "size": [0, 0],
             "tile_size": [2048, 2048],
             "min_poly_area": 40,
             "gpus": "all",
+            "multi_gpu": True,
+            "max_workers": 8,
         }
     )
 
     label_json = os.path.join(root_dir, f"{image}.json")
     logger.info(f"Writing Label JSON: {label_json}")
     with open(label_json, "w") as fp:
-        json.dump(res["params"], fp, indent=2)
+        json.dump(res["params"], fp)
 
     if output == "asap":
         label_xml = os.path.join(root_dir, f"{image}.xml")
@@ -235,6 +234,7 @@ def infer_wsi(app):
         label_dsa = os.path.join(root_dir, f"{image}_dsa.json")
         shutil.copy(res["file"], label_dsa)
         logger.info(f"Saving DSA JSON: {label_dsa}")
+    logger.info("All Done!")
 
 
 if __name__ == "__main__":

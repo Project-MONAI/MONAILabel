@@ -91,7 +91,7 @@ def run_wsi_inference(
             request["image"] = session.image
             request["session"] = session.to_json()
 
-    logger.info(f"WSI Infer Request: {request}")
+    logger.debug(f"WSI Infer Request: {request}")
 
     result = instance.infer_wsi(request)
     if result is None:

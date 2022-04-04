@@ -22,6 +22,7 @@ from monai.inferers import SimpleInferer, SlidingWindowInferer
 from monailabel.interfaces.exception import MONAILabelError, MONAILabelException
 from monailabel.interfaces.utils.transform import run_transforms
 from monailabel.transform.writer import Writer
+from monailabel.utils.others.generic import device_list
 
 logger = logging.getLogger(__name__)
 
@@ -57,7 +58,7 @@ class InferTask:
 
     def __init__(
         self,
-        path: Union[str, Sequence[str]],
+        path: Union[None, str, Sequence[str]],
         network: Union[None, Any],
         type: Union[str, InferType],
         labels: Union[str, None, Sequence[str], Dict[Any, Any]],
@@ -70,6 +71,7 @@ class InferTask:
         config: Union[None, Dict[str, Any]] = None,
         load_strict: bool = False,
         roi_size=None,
+        preload=False,
     ):
         """
         :param path: Model File Path. Supports multiple paths to support versions (Last item will be picked as latest)
@@ -84,8 +86,9 @@ class InferTask:
         :param config: K,V pairs to be part of user config
         :param load_strict: Load model in strict mode
         :param roi_size: ROI size for scanning window inference
+        :param preload: Preload model/network on all available GPU devices
         """
-        self.path = path
+        self.path = [] if not path else [path] if isinstance(path, str) else path
         self.network = network
         self.type = type
         self.labels = [] if labels is None else [labels] if isinstance(labels, str) else labels
@@ -99,8 +102,9 @@ class InferTask:
         self.roi_size = roi_size
 
         self._networks: Dict = {}
+
         self._config: Dict[str, Any] = {
-            # "device": "cuda",
+            # "device": device_list(),
             # "result_extension": None,
             # "result_dtype": None,
             # "result_compress": False
@@ -110,6 +114,11 @@ class InferTask:
         }
         if config:
             self._config.update(config)
+
+        if preload:
+            for device in device_list():
+                logger.info(f"Preload Network for device: {device}")
+                self._get_network(device)
 
     def info(self) -> Dict[str, Any]:
         return {
@@ -127,9 +136,9 @@ class InferTask:
         if self.network or self.type == InferType.SCRIBBLES:
             return True
 
-        paths = [self.path] if isinstance(self.path, str) else self.path
+        paths = self.path
         for path in reversed(paths):
-            if os.path.exists(path):
+            if path and os.path.exists(path):
                 return True
         return False
 
@@ -137,9 +146,9 @@ class InferTask:
         if not self.path:
             return None
 
-        paths = [self.path] if isinstance(self.path, str) else self.path
+        paths = self.path
         for path in reversed(paths):
-            if os.path.exists(path):
+            if path and os.path.exists(path):
                 return path
         return None
 
@@ -247,7 +256,10 @@ class InferTask:
 
         # device
         device = req.get("device", "cuda")
+        if device.startswith("cuda") and not torch.cuda.is_available():
+            device = "cpu"
         req["device"] = device
+
         logger.setLevel(req.get("logging", "INFO").upper())
         logger.info(f"Infer Request (final): {req}")
 
@@ -346,9 +358,6 @@ class InferTask:
                 f"Model Path ({self.path}) does not exist/valid",
             )
 
-        if device.startswith("cuda") and not torch.cuda.is_available():
-            device = "cpu"
-
         cached = self._networks.get(device)
         statbuf = os.stat(path) if path else None
         network = None
@@ -360,16 +369,15 @@ class InferTask:
 
         if network is None:
             if self.network:
-                network = self.network
+                network = copy.deepcopy(self.network)
+                network.to(torch.device(device))
+
                 if path:
                     checkpoint = torch.load(path, map_location=torch.device(device))
                     model_state_dict = checkpoint.get(self.model_state_dict, checkpoint)
                     network.load_state_dict(model_state_dict, strict=self.load_strict)
             else:
-                network = torch.jit.load(path, map_location=torch.device(device))
-
-            if device.startswith("cuda"):
-                network = network.cuda(device)
+                network = torch.jit.load(path, map_location=torch.device(device)).to(torch.device)
 
             network.eval()
             self._networks[device] = (network, statbuf.st_mtime if statbuf else 0)
@@ -388,22 +396,18 @@ class InferTask:
         """
 
         inferer = self.inferer(data)
-        logger.info("Inferer:: {} => {}".format(inferer.__class__.__name__, inferer.__dict__))
-
-        device = device if device else "cuda"
-        if device.startswith("cuda") and not torch.cuda.is_available():
-            device = "cpu"
+        logger.info("Inferer:: {} => {} => {}".format(device, inferer.__class__.__name__, inferer.__dict__))
 
         network = self._get_network(device)
         if network:
             inputs = data[self.input_key]
             inputs = inputs if torch.is_tensor(inputs) else torch.from_numpy(inputs)
             inputs = inputs[None] if convert_to_batch else inputs
-            if device.startswith("cuda"):
-                inputs = inputs.cuda(torch.device(device))
+            inputs = inputs.to(torch.device(device))
 
             with torch.no_grad():
                 outputs = inferer(inputs, network)
+
             if device.startswith("cuda"):
                 torch.cuda.empty_cache()
 
