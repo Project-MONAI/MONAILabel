@@ -1349,7 +1349,6 @@ class MONAILabelWidget(ScriptedLoadableModuleWidget, VTKObservationMixin):
                 segment = segmentation.GetSegment(segmentId)
                 if segment.GetName() in ["background", "foreground_scribbles", "background_scribbles"]:
                     logging.info(f"Removing segment {segmentId}: {segment.GetName()}")
-                    segmentationNode.RemoveSegment(segmentId)
                     continue
 
                 save_segment_ids.InsertNextValue(segmentId)
