@@ -957,6 +957,12 @@ class MONAILabelWidget(ScriptedLoadableModuleWidget, VTKObservationMixin):
             if not slicer.util.confirmOkCancelDisplay(
                 "This will clear current scribbles session.\n" "Are you sure to continue?"
             ):
+                # undo changes to combobox
+                currentScribLabel = self._parameterNode.GetParameter("CurrentScribLabel")
+                logging.info("Cancel: reverting to original selection {}".format(currentScribLabel))
+                self.ignoreScribblesLabelChangeEvent = True
+                self.ui.scribLabelComboBox.setCurrentIndex(self.ui.scribLabelComboBox.findText(currentScribLabel))
+                self.ignoreScribblesLabelChangeEvent = False
                 return
             self.onClearScribbles()
 
