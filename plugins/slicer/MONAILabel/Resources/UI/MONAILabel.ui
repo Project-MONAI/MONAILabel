@@ -450,7 +450,7 @@
         <item row="3" column="1">
          <layout class="QHBoxLayout" name="horizontalLayout_2">
           <item>
-           <widget class="qSlicerMarkupsPlaceWidget" name="dgPositiveFiducialPlacementWidget">
+           <widget class="qSlicerMarkupsPlaceWidget" name="dgPositiveControlPointPlacementWidget">
             <property name="sizePolicy">
              <sizepolicy hsizetype="Expanding" vsizetype="Preferred">
               <horstretch>0</horstretch>
@@ -470,7 +470,7 @@
            </widget>
           </item>
           <item>
-           <widget class="qSlicerMarkupsPlaceWidget" name="dgNegativeFiducialPlacementWidget">
+           <widget class="qSlicerMarkupsPlaceWidget" name="dgNegativeControlPointPlacementWidget">
             <property name="sizePolicy">
              <sizepolicy hsizetype="Expanding" vsizetype="Preferred">
               <horstretch>0</horstretch>
