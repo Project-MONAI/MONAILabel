@@ -42,10 +42,6 @@
        <property name="text">
         <string/>
        </property>
-       <property name="icon">
-        <iconset>
-         <normaloff>refresh-icon.png</normaloff>refresh-icon.png</iconset>
-       </property>
       </widget>
      </item>
      <item row="1" column="0">
@@ -105,10 +101,6 @@
        </property>
        <property name="text">
         <string/>
-       </property>
-       <property name="icon">
-        <iconset>
-         <normaloff>upload.svg</normaloff>upload.svg</iconset>
        </property>
       </widget>
      </item>
@@ -349,10 +341,6 @@
         </property>
         <property name="text">
          <string>Run</string>
-        </property>
-        <property name="icon">
-         <iconset>
-          <normaloff>monai-label-icon.png</normaloff>monai-label-icon.png</iconset>
         </property>
        </widget>
       </item>
