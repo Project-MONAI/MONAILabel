@@ -20,9 +20,6 @@ from parameterized import parameterized
 from monailabel.scribbles.infer import HistogramBasedGraphCut
 from monailabel.scribbles.transforms import (
     AddBackgroundScribblesFromROId,
-    ApplyGraphCutOptimisationd,
-    ApplyISegGraphCutPostProcd,
-    ApplySimpleCRFOptimisationd,
     InteractiveSegmentationTransform,
     MakeISegUnaryd,
     MakeLikelihoodFromScribblesHistogramd,
@@ -295,29 +292,6 @@ class TestScribblesTransforms(unittest.TestCase):
         np.testing.assert_equal(input_data, result["scribbles"])
         self.assertTupleEqual(expected_shape, result["scribbles"].shape)
         self.assertTupleEqual(test_input["scribbles"].shape, result["scribbles"].shape)
-
-    @parameterized.expand(TEST_CASE_OPTIM_TX)
-    def test_optimisation_transforms(self, input_param, test_input, output, expected_shape):
-        input_param.update({"post_proc_label": "pred"})
-        for current_tx in [ApplyGraphCutOptimisationd, ApplySimpleCRFOptimisationd]:
-            result = current_tx(**input_param)(test_input)
-            np.testing.assert_equal(output["target"], result["pred"])
-            self.assertTupleEqual(expected_shape, result["pred"].shape)
-
-        with self.assertRaises(ValueError):
-            test_input["prob"] = np.random.rand(3, 128, 128, 128)
-            result = ApplyGraphCutOptimisationd(**input_param)(test_input)
-
-    @parameterized.expand(TEST_CASE_ISEG_OPTIM_TX)
-    def test_interactive_graphcut_optimisation_transform(self, input_param, test_input, output, expected_shape):
-        input_param.update({"post_proc_label": "pred"})
-        result = ApplyISegGraphCutPostProcd(**input_param)(test_input)
-        np.testing.assert_equal(output["target"], result["pred"])
-        self.assertTupleEqual(expected_shape, result["pred"].shape)
-
-        with self.assertRaises(ValueError):
-            test_input["prob"] = np.random.rand(3, 128, 128, 128)
-            result = ApplyISegGraphCutPostProcd(**input_param)(test_input)
 
     @parameterized.expand(TEST_CASE_MAKE_ISEG_UNARY_TX)
     def test_make_iseg_unary_transform(self, input_param, test_input, output, expected_shape):
