@@ -13,7 +13,6 @@ import os
 import unittest
 
 import numpy as np
-from monai.transforms import LoadImage
 from monai.utils import set_determinism
 from parameterized import parameterized
 
@@ -25,7 +24,6 @@ from monailabel.scribbles.transforms import (
     SoftenProbSoftmax,
     WriteLogits,
 )
-from monailabel.transform.writer import Writer
 
 set_determinism(seed=123)
 
