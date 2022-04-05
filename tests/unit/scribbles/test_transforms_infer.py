@@ -17,7 +17,6 @@ from monai.transforms import LoadImage
 from monai.utils import set_determinism
 from parameterized import parameterized
 
-from monailabel.scribbles.infer import HistogramBasedGraphCut
 from monailabel.scribbles.transforms import (
     AddBackgroundScribblesFromROId,
     InteractiveSegmentationTransform,
@@ -362,30 +361,6 @@ class TestScribblesTransforms(unittest.TestCase):
 
         # shape should be same as input
         self.assertEqual(output_data["prob"].shape, data["logits"].shape)
-
-
-class TestScribblesInferers(unittest.TestCase):
-    @parameterized.expand(TEST_CASE_HISTOGRAM_GRAPHCUT)
-    def test_histogram_graphcut_inferer(self, test_input, expected_shape):
-        test_input.update({"image_path": "fakepath.nii"})
-
-        # save data to file and update test dictionary
-        image_file, data = Writer(label="image", nibabel=True)(test_input)
-        scribbles_file, data = Writer(label="label", nibabel=True)(test_input)
-
-        # add paths to file, remove any associated meta_dict
-        test_input["image"] = image_file
-        test_input["label"] = scribbles_file
-
-        test_input.pop("image_meta_dict", None)
-        test_input.pop("label_meta_dict", None)
-
-        # run scribbles inferer and load results
-        result_file, _ = HistogramBasedGraphCut()(test_input)
-        result = LoadImage()(result_file)[0]
-
-        # can only check output shape due to non-deterministic results
-        self.assertTupleEqual(expected_shape, result.shape)
 
 
 if __name__ == "__main__":
