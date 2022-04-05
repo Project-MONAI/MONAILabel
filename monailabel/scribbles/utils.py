@@ -11,45 +11,12 @@
 import logging
 
 import numpy as np
-from monai.utils import optional_import
-
-maxflow, has_maxflow = optional_import("maxflow")
 
 logger = logging.getLogger(__name__)
 
 
 def get_eps(data):
     return np.finfo(data.dtype).eps
-
-
-def maxflow2d(image, prob, lamda=5, sigma=0.1):
-    # lamda: weight of smoothing term
-    # sigma: std of intensity values
-    if not has_maxflow:
-        raise ImportError("Unable to find maxflow, please ensure SimpleCRF is installed")
-    else:
-        return maxflow.maxflow2d(image, prob, (lamda, sigma))
-
-
-def maxflow3d(image, prob, lamda=5, sigma=0.1):
-    # lamda: weight of smoothing term
-    # sigma: std of intensity values
-    if not has_maxflow:
-        raise ImportError("Unable to find maxflow, please ensure SimpleCRF is installed")
-    else:
-        return maxflow.maxflow3d(image, prob, (lamda, sigma))
-
-
-def interactive_maxflow2d(image, prob, seed, lamda=5, sigma=0.1):
-    # lamda: weight of smoothing term
-    # sigma: std of intensity values
-    return maxflow.interactive_maxflow2d(image, prob, seed, (lamda, sigma))
-
-
-def interactive_maxflow3d(image, prob, seed, lamda=5, sigma=0.1):
-    # lamda: weight of smoothing term
-    # sigma: std of intensity values
-    return maxflow.interactive_maxflow3d(image, prob, seed, (lamda, sigma))
 
 
 def make_iseg_unary(
