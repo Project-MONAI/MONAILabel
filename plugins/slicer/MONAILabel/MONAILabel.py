@@ -18,6 +18,7 @@ import tempfile
 import time
 import traceback
 from collections import OrderedDict
+from re import S
 from urllib.parse import quote_plus
 
 import ctk
@@ -506,7 +507,9 @@ class MONAILabelWidget(ScriptedLoadableModuleWidget, VTKObservationMixin):
         else:
             self.ui.aclCollapsibleButton.hide()
 
+        self.ignoreScribblesLabelChangeEvent = True
         self.ui.labelComboBox.clear()
+        self.ui.scribLabelComboBox.clear()
         if self._segmentNode:
             segmentation = self._segmentNode.GetSegmentation()
             totalSegments = segmentation.GetNumberOfSegments()
@@ -514,46 +517,26 @@ class MONAILabelWidget(ScriptedLoadableModuleWidget, VTKObservationMixin):
             for idx, segmentId in enumerate(segmentIds):
                 segment = segmentation.GetSegment(segmentId)
                 label = segment.GetName()
-                if label in ["foreground_scribbles", "background_scribbles"]:
-                    continue
-                self.ui.labelComboBox.addItem(label)
+                if label not in ["foreground_scribbles", "background_scribbles"]:
+                    self.ui.labelComboBox.addItem(label)
+                if label not in ["background", "foreground_scribbles", "background_scribbles"]:
+                    self.ui.scribLabelComboBox.addItem(label)
         else:
             for label in self.info.get("labels", {}):
                 self.ui.labelComboBox.addItem(label)
+                if label != "background":
+                    self.ui.scribLabelComboBox.addItem(label)
 
         currentLabel = self._parameterNode.GetParameter("CurrentLabel")
         idx = self.ui.labelComboBox.findText(currentLabel) if currentLabel else 0
         idx = 0 if idx < 0 < self.ui.labelComboBox.count else idx
         self.ui.labelComboBox.setCurrentIndex(idx)
 
-        if self._segmentNode:
-            segmentation = self._segmentNode.GetSegmentation()
-            totalSegments = segmentation.GetNumberOfSegments()
-            segmentIds = [
-                segmentation.GetNthSegmentID(i)
-                for i in range(totalSegments)
-                if segmentation.GetNthSegmentID(i) not in ["background", "background_scribbles", "foreground_scribbles"]
-            ]
-            currentItems = [self.ui.scribLabelComboBox.itemText(i) for i in range(self.ui.scribLabelComboBox.count)]
-            if len(segmentIds) == len(currentItems) and all([a == b for a, b in zip(segmentIds, currentItems)]):
-                logging.info("No change needed for Scribbles Label Combo")
-            else:
-                # some mismatch found, clear and repopulate scrib label combobox
-                self.ui.scribLabelComboBox.clear()
-                for idx, segmentId in enumerate(segmentIds):
-                    segment = segmentation.GetSegment(segmentId)
-                    label = segment.GetName()
-                    self.ui.scribLabelComboBox.addItem(label)
-
-                # update to current selection from parameters node
-                currentScribLabel = self._parameterNode.GetParameter("CurrentScribLabel")
-                idx = self.ui.scribLabelComboBox.findText(currentScribLabel) if currentScribLabel else 0
-                idx = 0 if idx < 0 < self.ui.scribLabelComboBox.count else idx
-                self.ui.scribLabelComboBox.setCurrentIndex(idx)
-        else:
-            for label in self.info.get("labels", {}):
-                if label not in ["background"]:
-                    self.ui.scribLabelComboBox.addItem(label)
+        currentScribbleLabel = self._parameterNode.GetParameter("CurrentScribLabel")
+        idx = self.ui.scribLabelComboBox.findText(currentScribbleLabel) if currentScribbleLabel else 0
+        idx = 0 if idx < 0 < self.ui.scribLabelComboBox.count else idx
+        self.ui.scribLabelComboBox.setCurrentIndex(idx)
+        self.ignoreScribblesLabelChangeEvent = False
 
         self.ui.appComboBox.clear()
         self.ui.appComboBox.addItem(self.info.get("name", ""))
