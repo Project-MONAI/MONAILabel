@@ -8,7 +8,7 @@
 # WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 # See the License for the specific language governing permissions and
 # limitations under the License.
-import json
+
 import logging
 import os
 from distutils.util import strtobool
@@ -49,7 +49,7 @@ class Segmentation(TaskConfig):
             download_file(url, self.path[0])
 
         # Network
-        self.spatial_size = json.loads(self.conf.get("spatial_size", "[128, 128, 64]"))
+        self.spatial_size = self.conf.get("spatial_size", "[128, 128, 64]")
         self.network = UNETR(
             spatial_dims=3,
             in_channels=1,
