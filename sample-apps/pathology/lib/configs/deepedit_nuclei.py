@@ -59,7 +59,7 @@ class DeepEditNuclei(TaskConfig):
             network=self.network,
             labels=self.labels,
             preload=strtobool(self.conf.get("preload", "false")),
-            roi_size=json.dumps(self.conf.get("roi_size", "[512, 512]")),
+            roi_size=json.loads(self.conf.get("roi_size", "[512, 512]")),
             config={
                 "label_colors": self.label_colors,
                 "max_workers": len(device_list()),
