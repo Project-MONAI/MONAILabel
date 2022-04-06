@@ -8,7 +8,7 @@
 # WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 # See the License for the specific language governing permissions and
 # limitations under the License.
-
+import json
 import logging
 import os
 from distutils.util import strtobool
@@ -59,6 +59,7 @@ class Segmentation(TaskConfig):
             download_file(url, self.path[0])
 
         # Network
+        self.spatial_size = json.loads(self.conf.get("spatial_size", "[48, 48, 48]"))
         self.network = UNet(
             spatial_dims=3,
             in_channels=1,
@@ -73,6 +74,7 @@ class Segmentation(TaskConfig):
         task: InferTask = lib.infers.Segmentation(
             path=self.path,
             network=self.network,
+            spatial_size=self.spatial_size,
             labels=self.labels,
             config={"largest_cc": True},
         )
@@ -83,6 +85,7 @@ class Segmentation(TaskConfig):
         task: TrainTask = lib.trainers.Segmentation(
             model_dir=output_dir,
             network=self.network,
+            spatial_size=self.spatial_size,
             load_path=self.path[0],
             publish_path=self.path[1],
             description="Train Multilabel Segmentation Model",
