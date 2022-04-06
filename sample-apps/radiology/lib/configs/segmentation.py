@@ -49,7 +49,7 @@ class Segmentation(TaskConfig):
             download_file(url, self.path[0])
 
         # Network
-        self.spatial_size = json.loads(self.conf.get("spatial_size", "[48, 48, 48]"))
+        self.spatial_size = json.loads(self.conf.get("spatial_size", "[128, 128, 64]"))
         self.network = UNETR(
             spatial_dims=3,
             in_channels=1,
@@ -68,6 +68,7 @@ class Segmentation(TaskConfig):
         task: InferTask = lib.infers.Segmentation(
             path=self.path,
             network=self.network,
+            spatial_size=self.spatial_size,
             labels=self.labels,
             config={"largest_cc": True},
         )
@@ -78,6 +79,7 @@ class Segmentation(TaskConfig):
         task: TrainTask = lib.trainers.Segmentation(
             model_dir=output_dir,
             network=self.network,
+            spatial_size=self.spatial_size,
             load_path=self.path[0],
             publish_path=self.path[1],
             description="Train Multilabel Segmentation Model",

@@ -10,11 +10,12 @@
 # limitations under the License.
 import logging
 
-import torch
+# import torch
 from lib.transforms.transforms_brats import GetSingleModalityBRATSd
 from monai.handlers import TensorBoardImageHandler, from_engine
 from monai.inferers import SlidingWindowInferer
 from monai.losses import DiceCELoss
+from monai.optimizers import Novograd
 from monai.transforms import (
     Activationsd,
     AddChanneld,
@@ -58,7 +59,8 @@ class Segmentation(BasicTrainTask):
         return self._network
 
     def optimizer(self, context: Context):
-        return torch.optim.Adam(context.network.parameters(), lr=1e-4)
+        return Novograd(context.network.parameters(), 0.0001)
+        # return torch.optim.Adam(context.network.parameters(), lr=1e-4)
 
     def loss_function(self, context: Context):
         return DiceCELoss(to_onehot_y=True, softmax=True)

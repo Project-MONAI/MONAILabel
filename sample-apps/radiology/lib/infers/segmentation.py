@@ -37,6 +37,7 @@ class Segmentation(InferTask):
         self,
         path,
         network=None,
+        spatial_size=(48, 48, 48),
         type=InferType.SEGMENTATION,
         labels=None,
         dimension=3,
@@ -52,10 +53,11 @@ class Segmentation(InferTask):
             description=description,
             **kwargs,
         )
+        self.spatial_size = spatial_size
 
     def pre_transforms(self, data=None) -> Sequence[Callable]:
         return [
-            LoadImaged(keys="image", reader="ITKReader"),
+            LoadImaged(keys="image"),
             GetSingleModalityBRATSd(keys="image"),
             AddChanneld(keys="image"),
             Spacingd(keys="image", pixdim=(1.0, 1.0, 1.0)),
@@ -64,7 +66,7 @@ class Segmentation(InferTask):
         ]
 
     def inferer(self, data=None) -> Callable:
-        return SlidingWindowInferer(roi_size=(160, 160, 160))
+        return SlidingWindowInferer(roi_size=self.spatial_size)
 
     def post_transforms(self, data=None) -> Sequence[Callable]:
         largest_cc = False if not data else data.get("largest_cc", False)
