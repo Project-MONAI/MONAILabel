@@ -8,7 +8,7 @@
 # WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 # See the License for the specific language governing permissions and
 # limitations under the License.
-
+import json
 import logging
 import os
 from distutils.util import strtobool
@@ -70,8 +70,8 @@ class SegmentationNuclei(TaskConfig):
             path=self.path,
             network=self.network,
             labels=self.labels,
-            preload=True,
-            roi_size=(2048, 2048),
+            preload=strtobool(self.conf.get("preload", "false")),
+            roi_size=json.dumps(self.conf.get("roi_size", "[512, 512]")),
             config={
                 "label_colors": self.label_colors,
                 "max_workers": len(device_list()),
