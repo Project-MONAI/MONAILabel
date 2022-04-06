@@ -18,7 +18,6 @@ import tempfile
 import time
 import traceback
 from collections import OrderedDict
-from re import S
 from urllib.parse import quote_plus
 
 import ctk
