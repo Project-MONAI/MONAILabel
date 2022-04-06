@@ -12,11 +12,21 @@ import logging
 
 import numpy as np
 
+# torch import is needed to execute torchmaxflow
+import torch  # type:ignore
+import torchmaxflow
+
 logger = logging.getLogger(__name__)
 
 
 def get_eps(data):
     return np.finfo(data.dtype).eps
+
+
+def maxflow(image, prob, lamda=5, sigma=0.1):
+    # lamda: weight of smoothing term
+    # sigma: std of intensity values
+    return torchmaxflow.maxflow(image, prob, lamda, sigma)
 
 
 def make_iseg_unary(

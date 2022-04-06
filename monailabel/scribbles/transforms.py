@@ -20,7 +20,7 @@ from scipy.special import softmax
 
 from monailabel.transform.writer import Writer
 
-from .utils import make_iseg_unary, make_likelihood_image_histogram
+from .utils import make_iseg_unary, make_likelihood_image_histogram, maxflow
 
 logger = logging.getLogger(__name__)
 
@@ -314,6 +314,91 @@ class MakeISegUnaryd(InteractiveSegmentationTransform):
 #######################
 #  Optimiser Transforms
 #######################
+class ApplyGraphCutOptimisationd(InteractiveSegmentationTransform):
+    """
+    Generic GraphCut optimisation transform.
+
+    This can be used in conjuction with any Make*Unaryd transform
+    (e.g. MakeISegUnaryd from above for implementing ISeg unary term).
+    It optimises a typical energy function for interactive segmentation methods using SimpleCRF's GraphCut method,
+    e.g. Equation 5 from https://arxiv.org/pdf/1710.04043.pdf.
+
+    Usage Example::
+
+        Compose(
+            [
+                # unary term maker
+                MakeISegUnaryd(
+                    image="image",
+                    logits="logits",
+                    scribbles="label",
+                    unary="unary",
+                    scribbles_bg_label=2,
+                    scribbles_fg_label=3,
+                ),
+                # optimiser
+                ApplyGraphCutOptimisationd(
+                    unary="unary",
+                    pairwise="image",
+                    post_proc_label="pred",
+                    lamda=10.0,
+                    sigma=15.0,
+                ),
+            ]
+        )
+    """
+
+    def __init__(
+        self,
+        unary: str,
+        pairwise: str,
+        meta_key_postfix: str = "meta_dict",
+        post_proc_label: str = "pred",
+        lamda: float = 8.0,
+        sigma: float = 0.1,
+    ) -> None:
+        super().__init__(meta_key_postfix)
+        self.unary = unary
+        self.pairwise = pairwise
+        self.post_proc_label = post_proc_label
+        self.lamda = lamda
+        self.sigma = sigma
+
+    def __call__(self, data):
+        d = dict(data)
+
+        # attempt to fetch algorithmic parameters from app if present
+        self.lamda = d.get("lamda", self.lamda)
+        self.sigma = d.get("sigma", self.sigma)
+
+        # copy affine meta data from pairwise input
+        self._copy_affine(d, self.pairwise, self.post_proc_label)
+
+        # read relevant terms from data
+        unary_term = self._fetch_data(d, self.unary)
+        pairwise_term = self._fetch_data(d, self.pairwise)
+
+        # check if input unary is compatible with GraphCut opt
+        if unary_term.shape[0] > 2:
+            raise ValueError(
+                "GraphCut can only be applied to binary probabilities, received {}".format(unary_term.shape[0])
+            )
+
+        # # attempt to unfold probability term
+        # unary_term = self._unfold_prob(unary_term, axis=0)
+
+        # prepare data for SimpleCRF's GraphCut
+        unary_term = torch.from_numpy(unary_term).unsqueeze(0)
+        pairwise_term = torch.from_numpy(pairwise_term).unsqueeze(0)
+
+        # run GraphCut
+        post_proc_label = maxflow(pairwise_term, unary_term, lamda=self.lamda, sigma=self.sigma).squeeze(0).numpy()
+
+        d[self.post_proc_label] = post_proc_label
+
+        return d
+
+
 class ApplyCRFOptimisationd(InteractiveSegmentationTransform):
     """
     Generic MONAI CRF optimisation transform.
