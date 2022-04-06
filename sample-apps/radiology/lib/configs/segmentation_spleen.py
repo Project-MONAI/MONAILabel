@@ -81,7 +81,7 @@ class SegmentationSpleen(TaskConfig):
 
     def infer(self) -> Union[InferTask, Dict[str, InferTask]]:
         task: InferTask = lib.infers.SegmentationSpleen(
-            path=self.path, network=self.network, labels=self.labels, preload=True
+            path=self.path, network=self.network, labels=self.labels, preload=False
         )
         return task
 

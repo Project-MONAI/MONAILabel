@@ -69,6 +69,8 @@ Following are some config options:
 
 | Name                 | Description                                                                                                      |
 |----------------------|------------------------------------------------------------------------------------------------------------------|
+| preload              | Preload models into GPU. Default is False.                                                                       |
+| roi_size             | Default ROI Size for inference in [x,y] format.  Default is [512,512].                                           |
 | dsa_folder           | DSA Folder ID. Normally it is <folder_id> of a folder under Collections where Images are stored.                 |
 | dsa_api_key          | Optional. API Key helps to query asset store to fetch direct local path for WSI Images.                          |
 | dsa_asset_store_path | Optional.  It is the DSA assetstore path that can be shared with MONAI Label server to directly read WSI Images. |
