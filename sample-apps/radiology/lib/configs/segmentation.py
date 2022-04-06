@@ -8,7 +8,7 @@
 # WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 # See the License for the specific language governing permissions and
 # limitations under the License.
-
+import json
 import logging
 import os
 from distutils.util import strtobool
@@ -16,7 +16,7 @@ from typing import Any, Dict, Optional, Union
 
 import lib.infers
 import lib.trainers
-from monai.networks.nets import UNet
+from monai.networks.nets import UNETR
 
 from monailabel.interfaces.config import TaskConfig
 from monailabel.interfaces.tasks.infer import InferTask
@@ -32,19 +32,9 @@ class Segmentation(TaskConfig):
 
         # Labels
         self.labels = {
-            "spleen": 1,
-            "right kidney": 2,
-            "left kidney": 3,
-            "gallbladder": 4,
-            "esophagus": 5,
-            "liver": 6,
-            "stomach": 7,
-            "aorta": 8,
-            "inferior vena cava": 9,
-            "portal vein and splenic vein": 10,
-            "pancreas": 11,
-            "right adrenal gland": 12,
-            "left adrenal gland": 13,
+            "edema": 1,
+            "non-enhancing tumor": 2,
+            "enhancing tumour": 3,
         }
 
         # Model Files
@@ -54,19 +44,24 @@ class Segmentation(TaskConfig):
         ]
 
         # Download PreTrained Model
-        if strtobool(self.conf.get("use_pretrained_model", "true")):
-            url = f"{self.PRE_TRAINED_PATH}/segmentation_unet_multilabel.pt"
+        if strtobool(self.conf.get("use_pretrained_model", "false")):
+            url = f"{self.PRE_TRAINED_PATH}/segmentation_unetr_multilabel.pt"
             download_file(url, self.path[0])
 
         # Network
-        self.network = UNet(
+        self.spatial_size = json.loads(self.conf.get("spatial_size", "[48, 48, 48]"))
+        self.network = UNETR(
             spatial_dims=3,
             in_channels=1,
-            out_channels=len(self.labels.keys()) + 1,  # All labels plus background
-            channels=[16, 32, 64, 128, 256],
-            strides=[2, 2, 2, 2],
-            num_res_units=2,
-            norm="batch",
+            out_channels=len(self.labels) + 1,  # labels plus background
+            img_size=self.spatial_size,
+            feature_size=64,
+            hidden_size=1536,
+            mlp_dim=3072,
+            num_heads=48,
+            pos_embed="conv",
+            norm_name="instance",
+            res_block=True,
         )
 
     def infer(self) -> Union[InferTask, Dict[str, InferTask]]:
@@ -88,5 +83,6 @@ class Segmentation(TaskConfig):
             description="Train Multilabel Segmentation Model",
             dimension=3,
             labels=self.labels,
+            find_unused_parameters=True,
         )
         return task

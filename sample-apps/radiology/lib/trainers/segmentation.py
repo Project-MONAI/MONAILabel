@@ -11,6 +11,7 @@
 import logging
 
 import torch
+from lib.transforms.transforms_brats import GetSingleModalityBRATSd
 from monai.handlers import TensorBoardImageHandler, from_engine
 from monai.inferers import SlidingWindowInferer
 from monai.losses import DiceCELoss
@@ -21,11 +22,11 @@ from monai.transforms import (
     CropForegroundd,
     EnsureTyped,
     LoadImaged,
+    NormalizeIntensityd,
     RandCropByPosNegLabeld,
     RandFlipd,
     RandRotate90d,
     RandShiftIntensityd,
-    ScaleIntensityRanged,
     SelectItemsd,
     Spacingd,
     SpatialPadd,
@@ -71,12 +72,13 @@ class Segmentation(BasicTrainTask):
     def train_pre_transforms(self, context: Context):
         return [
             LoadImaged(keys=("image", "label"), reader="ITKReader"),
+            GetSingleModalityBRATSd(keys="image"),
             NormalizeLabelsInDatasetd(keys="label", label_names=self._labels),  # Specially for missing labels
             AddChanneld(keys=("image", "label")),
             Spacingd(keys=("image", "label"), pixdim=(1.0, 1.0, 1.0), mode=("bilinear", "nearest")),
             CropForegroundd(keys=("image", "label"), source_key="image"),
             SpatialPadd(keys=("image", "label"), spatial_size=self.spatial_size),
-            ScaleIntensityRanged(keys="image", a_min=-175, a_max=250, b_min=0.0, b_max=1.0, clip=True),
+            NormalizeIntensityd(keys="image"),
             RandCropByPosNegLabeld(
                 keys=("image", "label"),
                 label_key="label",
@@ -112,7 +114,7 @@ class Segmentation(BasicTrainTask):
             LoadImaged(keys=("image", "label"), reader="ITKReader"),
             AddChanneld(keys=("image", "label")),
             Spacingd(keys=("image", "label"), pixdim=(1.0, 1.0, 1.0), mode=("bilinear", "nearest")),
-            ScaleIntensityRanged(keys="image", a_min=-175, a_max=250, b_min=0.0, b_max=1.0, clip=True),
+            NormalizeIntensityd(keys="image"),
             EnsureTyped(keys=("image", "label")),
             SelectItemsd(keys=("image", "label")),
         ]

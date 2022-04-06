@@ -184,8 +184,8 @@ Example to run train/infer/scoring task(s) locally without actually running MONA
 def main():
     import argparse
     import shutil
-    from pathlib import Path
 
+    # from pathlib import Path
     from monailabel.utils.others.generic import device_list, file_ext
 
     os.putenv("MASTER_ADDR", "127.0.0.1")
@@ -197,13 +197,12 @@ def main():
         datefmt="%Y-%m-%d %H:%M:%S",
     )
 
-    home = str(Path.home())
-    studies = f"{home}/Data/Test"
+    studies = "/home/andres/Documents/Datasets/MSD_datasets/Task01_BrainTumour/imagesTr"
 
     parser = argparse.ArgumentParser()
     parser.add_argument("-s", "--studies", default=studies)
-    parser.add_argument("-m", "--model", default="segmentation_spleen")
-    parser.add_argument("-t", "--test", default="infer", choices=("train", "infer"))
+    parser.add_argument("-m", "--model", default="segmentation")
+    parser.add_argument("-t", "--test", default="train", choices=("train", "infer"))
     args = parser.parse_args()
 
     app_dir = os.path.dirname(__file__)
@@ -240,12 +239,12 @@ def main():
     app.train(
         request={
             "model": args.model,
-            "max_epochs": 10,
+            "max_epochs": 2000,
             "dataset": "CacheDataset",  # PersistentDataset, CacheDataset
             "train_batch_size": 1,
             "val_batch_size": 1,
             "multi_gpu": True,
-            "val_split": 0.1,
+            "val_split": 0.05,
         },
     )
 
