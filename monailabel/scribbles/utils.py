@@ -11,9 +11,10 @@
 import logging
 
 import numpy as np
+from monai.utils import optional_import
 
 # torch import is needed to execute torchmaxflow
-import torch  # type:ignore
+optional_import("torch")
 import torchmaxflow
 
 logger = logging.getLogger(__name__)
