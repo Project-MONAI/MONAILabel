@@ -33,6 +33,8 @@ class GetSingleModalityBRATSd(MapTransform):
                 # Output is only one channel
                 # Get T1 Gadolinium. Better to describe brain tumour. FLAIR is better for edema (swelling in the brain)
                 d[key] = d[key][..., 2]
+                # d['image_meta_dict']["original_affine"] = d['image_meta_dict']["original_affine"][0, ...]
+                # d['image_meta_dict']["affine"] = d['image_meta_dict']["affine"][0, ...]
                 # d[key] = d[key][None] # Add dimension
             else:
                 print("Transform 'GetSingleModalityBRATSd' only works for the image key")
