@@ -184,8 +184,8 @@ Example to run train/infer/scoring task(s) locally without actually running MONA
 def main():
     import argparse
     import shutil
+    from pathlib import Path
 
-    # from pathlib import Path
     from monailabel.utils.others.generic import device_list, file_ext
 
     os.putenv("MASTER_ADDR", "127.0.0.1")
@@ -197,8 +197,8 @@ def main():
         datefmt="%Y-%m-%d %H:%M:%S",
     )
 
-    studies = "/home/andres/Documents/Datasets/MSD_datasets/Task01_BrainTumour/imagesTr"
-    # studies =  "/home/andres/Documents/Datasets/monailabel_datasets/Slicer/spleen/train"
+    home = str(Path.home())
+    studies = f"{home}/Documents/Datasets/MSD_datasets/Task01_BrainTumour/imagesTr"
 
     parser = argparse.ArgumentParser()
     parser.add_argument("-s", "--studies", default=studies)
