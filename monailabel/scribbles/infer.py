@@ -68,7 +68,7 @@ class HistogramBasedGraphCut(InferTask):
         return [
             LoadImaged(keys=["image", "label"]),
             EnsureChannelFirstd(keys=["image", "label"]),
-            AddBackgroundScribblesFromROId(scribbles="label", scribbles_bg_label=2, scribbles_fg_label=3),
+            AddBackgroundScribblesFromROId(scribbles="label", scribbles_bg_label=3, scribbles_fg_label=4),
             # at the moment optimisers are bottleneck taking a long time,
             # therefore scaling non-isotropic with big spacing
             Spacingd(keys=["image", "label"], pixdim=self.pix_dim, mode=["bilinear", "nearest"]),
@@ -85,8 +85,8 @@ class HistogramBasedGraphCut(InferTask):
                 image="image",
                 scribbles="label",
                 post_proc_label="prob",
-                scribbles_bg_label=2,
-                scribbles_fg_label=3,
+                scribbles_bg_label=3,
+                scribbles_fg_label=4,
                 normalise=True,
             ),
         ]
