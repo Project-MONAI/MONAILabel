@@ -198,6 +198,7 @@ def main():
     )
 
     studies = "/home/andres/Documents/Datasets/MSD_datasets/Task01_BrainTumour/imagesTr"
+    # studies =  "/home/andres/Documents/Datasets/monailabel_datasets/Slicer/spleen/train"
 
     parser = argparse.ArgumentParser()
     parser.add_argument("-s", "--studies", default=studies)

@@ -10,7 +10,7 @@
 # limitations under the License.
 from typing import Callable, Sequence
 
-from lib.transforms.transforms_brats import GetSingleModalityBRATSd
+# from lib.transforms.transforms_brats import GetSingleModalityBRATSd
 from monai.inferers import SlidingWindowInferer
 from monai.transforms import (
     Activationsd,
@@ -57,8 +57,8 @@ class Segmentation(InferTask):
 
     def pre_transforms(self, data=None) -> Sequence[Callable]:
         return [
-            LoadImaged(keys="image"),
-            GetSingleModalityBRATSd(keys="image"),
+            LoadImaged(keys="image", reader="ITKReader"),
+            # GetSingleModalityBRATSd(keys="image"),
             AddChanneld(keys="image"),
             Spacingd(keys="image", pixdim=(1.0, 1.0, 1.0)),
             NormalizeIntensityd(keys="image"),
@@ -67,6 +67,9 @@ class Segmentation(InferTask):
 
     def inferer(self, data=None) -> Callable:
         return SlidingWindowInferer(roi_size=self.spatial_size)
+
+    # def inverse_transforms(self, data=None):
+    #     return []
 
     def post_transforms(self, data=None) -> Sequence[Callable]:
         largest_cc = False if not data else data.get("largest_cc", False)

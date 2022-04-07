@@ -28,6 +28,8 @@ class GetSingleModalityBRATSd(MapTransform):
         d: Dict = dict(data)
         for key in self.key_iterator(d):
             if key == "image":
+                # TRANSFORM IN PROGRESS - SHOULD AFFINE AND ORIGINAL BE CHANGED??
+
                 # Output is only one channel
                 # Get T1 Gadolinium. Better to describe brain tumour. FLAIR is better for edema (swelling in the brain)
                 d[key] = d[key][..., 2]

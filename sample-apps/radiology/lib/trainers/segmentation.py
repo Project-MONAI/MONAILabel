@@ -11,7 +11,7 @@
 import logging
 
 # import torch
-from lib.transforms.transforms_brats import GetSingleModalityBRATSd
+# from lib.transforms.transforms_brats import GetSingleModalityBRATSd
 from monai.handlers import TensorBoardImageHandler, from_engine
 from monai.inferers import SlidingWindowInferer
 from monai.losses import DiceCELoss
@@ -74,7 +74,8 @@ class Segmentation(BasicTrainTask):
     def train_pre_transforms(self, context: Context):
         return [
             LoadImaged(keys=("image", "label"), reader="ITKReader"),
-            GetSingleModalityBRATSd(keys="image"),
+            # TRANSFORM IN PROGRESS - SHOULD AFFINE AND ORIGINAL BE CHANGED??
+            # GetSingleModalityBRATSd(keys="image"),
             NormalizeLabelsInDatasetd(keys="label", label_names=self._labels),  # Specially for missing labels
             AddChanneld(keys=("image", "label")),
             Spacingd(keys=("image", "label"), pixdim=(1.0, 1.0, 1.0), mode=("bilinear", "nearest")),

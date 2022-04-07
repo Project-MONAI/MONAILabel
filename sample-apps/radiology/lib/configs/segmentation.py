@@ -49,7 +49,7 @@ class Segmentation(TaskConfig):
             download_file(url, self.path[0])
 
         # Network
-        self.spatial_size = json.loads(self.conf.get("spatial_size", "[128, 128, 64]"))
+        self.spatial_size = json.loads(self.conf.get("spatial_size", "[96, 96, 64]"))
         self.network = UNETR(
             spatial_dims=3,
             in_channels=1,
