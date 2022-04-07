@@ -10,6 +10,7 @@
 # limitations under the License.
 from typing import Callable, Sequence
 
+# from lib.transforms.transforms_brats import GetSingleModalityBRATSd
 from monai.inferers import SlidingWindowInferer
 from monai.transforms import (
     Activationsd,
@@ -18,7 +19,7 @@ from monai.transforms import (
     EnsureTyped,
     KeepLargestConnectedComponentd,
     LoadImaged,
-    ScaleIntensityRanged,
+    NormalizeIntensityd,
     Spacingd,
     ToNumpyd,
 )
@@ -27,7 +28,7 @@ from monailabel.interfaces.tasks.infer import InferTask, InferType
 from monailabel.transform.post import Restored
 
 
-class Segmentation(InferTask):
+class SegmentationBrats(InferTask):
     """
     This provides Inference Engine for pre-trained segmentation (UNet) model over MSD Dataset.
     """
@@ -36,6 +37,7 @@ class Segmentation(InferTask):
         self,
         path,
         network=None,
+        spatial_size=(48, 48, 48),
         type=InferType.SEGMENTATION,
         labels=None,
         dimension=3,
@@ -51,18 +53,23 @@ class Segmentation(InferTask):
             description=description,
             **kwargs,
         )
+        self.spatial_size = spatial_size
 
     def pre_transforms(self, data=None) -> Sequence[Callable]:
         return [
             LoadImaged(keys="image", reader="ITKReader"),
+            # GetSingleModalityBRATSd(keys="image"),
             AddChanneld(keys="image"),
             Spacingd(keys="image", pixdim=(1.0, 1.0, 1.0)),
-            ScaleIntensityRanged(keys="image", a_min=-175, a_max=250, b_min=0.0, b_max=1.0, clip=True),
+            NormalizeIntensityd(keys="image"),
             EnsureTyped(keys="image"),
         ]
 
     def inferer(self, data=None) -> Callable:
-        return SlidingWindowInferer(roi_size=(160, 160, 160))
+        return SlidingWindowInferer(roi_size=self.spatial_size)
+
+    # def inverse_transforms(self, data=None):
+    #     return []
 
     def post_transforms(self, data=None) -> Sequence[Callable]:
         largest_cc = False if not data else data.get("largest_cc", False)

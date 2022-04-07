@@ -12,4 +12,5 @@
 from .deepedit import DeepEdit
 from .deepgrow import Deepgrow
 from .segmentation import Segmentation
+from .segmentation_brats import SegmentationBrats
 from .segmentation_spleen import SegmentationSpleen
