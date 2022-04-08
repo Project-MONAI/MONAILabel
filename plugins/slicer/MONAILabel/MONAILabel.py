@@ -1849,9 +1849,6 @@ class MONAILabelWidget(ScriptedLoadableModuleWidget, VTKObservationMixin):
         # remove "scribbles" segments from label
         self.onClearScribblesSegmentNodes()
 
-        # reset UI elements associated with scribbles
-        self.ui.scribblesCollapsibleButton.collapsed = True
-
         self.ui.paintScribblesButton.setChecked(False)
         self.ui.eraseScribblesButton.setChecked(False)
 
