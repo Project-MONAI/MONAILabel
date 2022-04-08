@@ -1,6 +1,6 @@
 # DeepLearning models for Radiology use-case(s).
 
-The App works in both 3DSlicer plugin and OHIF viewer. Researchers/clinicians can also place their studies in either the
+The App works in both 3D Slicer plugin and OHIF viewer. Researchers/clinicians can also place their studies in either the
 file archive or a DICOMweb server (i.e. Orthanc).
 
 ### Structure of the App
@@ -25,12 +25,13 @@ monailabel start_server --app /workspace/apps/radiology --studies /workspace/ima
 
 Following are the models which are currently added into Radiology App:
 
-| Name                                        | Description                                                                                                                                                                                |
-|---------------------------------------------|--------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------|
-| [deepedit](#deepedit)                       | This model is based on DeepEdit: an algorithm that combines the capabilities of multiple models into one, allowing for both interactive and automated segmentation.                        |
-| [deepgrow](#deepgrow)                       | This model is based on [DeepGrow](https://arxiv.org/abs/1903.08205) which allows for an interactive segmentation.                                                                          |
-| [segmentation](#segmentation)               | A standard (non-interactive) [multilabel](https://www.synapse.org/#!Synapse:syn3193805/wiki/217789) *[spleen, kidney, liver, stomach, aorta, etc..]* model using UNET to label 3D volumes. |
-| [segmentation_spleen](#segmentation_spleen) | It uses pre-trained weights/model (UNET) from [NVIDIA Clara](https://catalog.ngc.nvidia.com/orgs/nvidia/teams/med/models/clara_pt_spleen_ct_segmentation) for spleen segmentation.         |
+| Name                                        | Description                                                                                                                                                                                                                                                                                                                |
+|---------------------------------------------|----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------|
+| [deepedit](#deepedit)                       | This model is based on DeepEdit: an algorithm that combines the capabilities of multiple models into one, allowing for both interactive and automated segmentation.                                                                                                                                                        |
+| [deepgrow](#deepgrow)                       | This model is based on [DeepGrow](https://arxiv.org/abs/1903.08205) which allows for an interactive segmentation.                                                                                                                                                                                                          |
+| [segmentation](#segmentation)               | A standard (non-interactive) [multilabel](https://www.synapse.org/#!Synapse:syn3193805/wiki/217789) *[spleen, kidney, liver, stomach, aorta, etc..]* model using UNET to label 3D volumes.                                                                                                                                 |
+| [segmentation_brats](#segmentation_brats)   | This model uses pre-trained weights/model (UNETR) trained on the Task01 dataset from the [Medical Segmentation Decathlon](http://medicaldecathlon.com/) on T1 Gadolinium modality. [Here](https://emckclac-my.sharepoint.com/:u:/g/personal/k2039747_kcl_ac_uk/ERTrN7bY-tZAsitESjVNIu8BI7LxirdsO0p80_tK1kz2-A?e=BaJTjv) is the single modality dataset |
+| [segmentation_spleen](#segmentation_spleen) | It uses pre-trained weights/model (UNET) from [NVIDIA Clara](https://catalog.ngc.nvidia.com/orgs/nvidia/teams/med/models/clara_pt_spleen_ct_segmentation) for spleen segmentation.                                                                                                                                         |
 
 ### How To Use?
 
@@ -191,6 +192,40 @@ This model based on UNet for automated segmentation. This model works for single
 
 - Output
     - N channels representing the segmented organs/tumors/tissues
+
+#### [Segmentation_brats](./lib/configs/segmentation_brats.py)
+
+This model based on UNETR for automated segmentation of brain tumor. 
+
+> monailabel start_server --app workspace/radiology --studies workspace/images --conf models segmentation_brats
+
+- Additional Configs *(pass them as **--conf name value**) while starting MONAILabelServer*
+
+| Name                 | Values             | Description                                                     |
+|----------------------|--------------------|-----------------------------------------------------------------|
+| use_pretrained_model | **true**, false        | Disable this NOT to load any pretrained weights                 |
+
+- Network
+  > This App uses the [UNETR](https://docs.monai.io/en/latest/networks.html#unetr) as the default network.
+  > Researchers can define their own network or use one of the listed [here](https://docs.monai.io/en/latest/networks.html)
+
+- Labels
+  ```json
+  {
+  "edema": 1,
+  "non-enhancing tumor": 2,
+  "enhancing tumour": 3
+  }
+  ```
+- Dataset
+  > The model is pre-trained over dataset [Task01 Brain Tumor Single Modality](https://emckclac-my.sharepoint.com/:u:/g/personal/k2039747_kcl_ac_uk/ERTrN7bY-tZAsitESjVNIu8BI7LxirdsO0p80_tK1kz2-A?e=BaJTjv)
+
+- Inputs
+    - 1 channel for the image modality
+
+- Output
+    - 3 channels representing the edema, non-enhancing tumor and enhancing tumour.
+
 
 #### [Segmentation Spleen](./lib/configs/segmentation_spleen.py)
 
