@@ -17,9 +17,8 @@ set method=%3
 set request=%4
 
 set PY_EXE=python
-set LINE_LENGTH=120
 
-pip install flake8 black isort mypy
+pip install mypy
 
 echo "Clean up (Need powershell installed)"
 powershell -Command "& {rm -recurse -force sample-apps/*/logs}"
@@ -29,13 +28,5 @@ powershell -Command "& {rm -recurse -force tests/data/*}"
 git restore sample-apps/*/model/.gitignore
 git restore tests/data/.gitignore
 
-echo "Running Auto Format..."
-%PY_EXE% -m isort -l %LINE_LENGTH% --profile black .
-%PY_EXE% -m black -l %LINE_LENGTH% .
-
 echo "Running Auto Check..."
-%PY_EXE% -m isort -l %LINE_LENGTH% --profile black --check .
-%PY_EXE% -m black -l %LINE_LENGTH% --check .
-%PY_EXE% -m flake8 . --count --statistics --max-line-length %LINE_LENGTH%
 %PY_EXE% -m mypy .
-

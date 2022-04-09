@@ -25,3 +25,4 @@ types-filelock
 types-requests
 click
 testresources
+pre-commit
