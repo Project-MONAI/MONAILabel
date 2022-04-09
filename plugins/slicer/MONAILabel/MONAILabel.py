@@ -127,7 +127,10 @@ class _ui_MONAILabelSettingsPanel(object):
 
         askForUserNameCheckBox = qt.QCheckBox()
         askForUserNameCheckBox.checked = False
-        askForUserNameCheckBox.toolTip = "Enable this option to ask for the user name every time the MONAILabel extension is loaded for the first time"
+        askForUserNameCheckBox.toolTip = (
+            "Enable this option to ask for the user name every time the MONAILabel "
+            + "extension is loaded for the first time"
+        )
         groupLayout.addRow("Ask For User Name:", askForUserNameCheckBox)
         parent.registerProperty(
             "MONAILabel/askForUserName",
@@ -166,7 +169,8 @@ class _ui_MONAILabelSettingsPanel(object):
         if slicer.util.settingsValue("MONAILabel/allowOverlappingSegments", True, converter=slicer.util.toBool):
             if slicer.util.settingsValue("MONAILabel/fileExtension", None) != ".seg.nrrd":
                 slicer.util.warningDisplay(
-                    "Overlapping segmentations are only availabel with the '.seg.nrrd' file extension! Consider changing MONAILabel file extension."
+                    "Overlapping segmentations are only availabel with the '.seg.nrrd' file extension! "
+                    + "Consider changing MONAILabel file extension."
                 )
 
 
@@ -1600,7 +1604,8 @@ class MONAILabelWidget(ScriptedLoadableModuleWidget, VTKObservationMixin):
                 else:
                     # adding bypass masking to not overwrite other layers,
                     # needed for preserving scribbles during updates
-                    # help from: https://github.com/Slicer/Slicer/blob/master/Modules/Loadable/Segmentations/EditorEffects/Python/SegmentEditorLogicalEffect.py
+                    # help from: https://github.com/Slicer/Slicer/blob/master
+                    #            /Modules/Loadable/Segmentations/EditorEffects/Python/SegmentEditorLogicalEffect.py
                     bypassMask = True
                     effect.modifySelectedSegmentByLabelmap(
                         labelmap, slicer.qSlicerSegmentEditorAbstractEffect.ModificationModeSet, bypassMask
