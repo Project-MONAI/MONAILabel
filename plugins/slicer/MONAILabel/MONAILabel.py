@@ -1846,9 +1846,6 @@ class MONAILabelWidget(ScriptedLoadableModuleWidget, VTKObservationMixin):
         self.scribblesMode = None
 
         # clear scribbles editor widget
-        if self._scribblesEditorWidget:
-            widget = self._scribblesEditorWidget
-            del widget
         self._scribblesEditorWidget = None
 
         # remove "scribbles" segments from label
