@@ -21,7 +21,7 @@ jobs:
     steps:
       - uses: actions/checkout@v3
       - name: Set up Python 3.8
-        uses: actions/setup-python@v2
+        uses: actions/setup-python@v3
         with:
           python-version: 3.8
       - name: Install dependencies
@@ -54,7 +54,7 @@ jobs:
         with:
           fetch-depth: 0
       - name: Set up Python 3.8
-        uses: actions/setup-python@v2
+        uses: actions/setup-python@v3
         with:
           python-version: 3.8
       - name: cache weekly timestamp
@@ -111,7 +111,7 @@ jobs:
     steps:
       - uses: actions/checkout@v3
       - name: Set up Python 3.8
-        uses: actions/setup-python@v2
+        uses: actions/setup-python@v3
         with:
           python-version: 3.8
       - name: cache weekly timestamp
