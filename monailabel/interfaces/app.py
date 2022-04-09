@@ -183,9 +183,9 @@ class MONAILabelApp:
             for labels in [v.get("labels", []) for v in meta["models"].values()]:
                 if labels and isinstance(labels, dict):
                     labels = [k for k, _ in sorted(labels.items(), key=lambda item: item[1])]  # type: ignore
-                for l in labels:
-                    if l not in merged:
-                        merged.append(l)
+                for label in labels:
+                    if label not in merged:
+                        merged.append(label)
             meta["labels"] = merged
 
         return meta
