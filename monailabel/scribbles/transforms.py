@@ -110,9 +110,8 @@ class AddBackgroundScribblesFromROId(InteractiveSegmentationTransform):
             if not np.any(scribbles == self.scribbles_fg_label):
                 # issue a warning - the algorithm should still work
                 logging.info(
-                    "warning: no foreground scribbles received with label {}, adding foreground scribbles to ROI centre".format(
-                        self.scribbles_fg_label
-                    )
+                    "warning: no foreground scribbles received with label {}, ".format(self.scribbles_fg_label)
+                    + "adding foreground scribbles to ROI centre"
                 )
                 offset = 5
 
