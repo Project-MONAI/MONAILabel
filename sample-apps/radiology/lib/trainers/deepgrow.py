@@ -93,7 +93,7 @@ class Deepgrow(BasicTrainTask):
             pixdim=[1.0] * self.dimension,
         )
 
-        logging.info("+++ Total Records: {}".format(len(datalist)))
+        logging.info(f"+++ Total Records: {len(datalist)}")
         return datalist
 
     def cleanup(self, request):

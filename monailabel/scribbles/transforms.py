@@ -37,7 +37,7 @@ class InteractiveSegmentationTransform(Transform):
 
     def _fetch_data(self, data, key):
         if key not in data.keys():
-            raise ValueError("Key {} not found, present keys {}".format(key, data.keys()))
+            raise ValueError(f"Key {key} not found, present keys {data.keys()}")
 
         return data[key]
 
@@ -110,7 +110,7 @@ class AddBackgroundScribblesFromROId(InteractiveSegmentationTransform):
             if not np.any(scribbles == self.scribbles_fg_label):
                 # issue a warning - the algorithm should still work
                 logging.info(
-                    "warning: no foreground scribbles received with label {}, ".format(self.scribbles_fg_label)
+                    f"warning: no foreground scribbles received with label {self.scribbles_fg_label}, "
                     + "adding foreground scribbles to ROI centre"
                 )
                 offset = 5
@@ -286,9 +286,7 @@ class MakeISegUnaryd(InteractiveSegmentationTransform):
 
         # check if input logits are compatible with ISeg opt
         if logits.shape[0] > 2:
-            raise ValueError(
-                "ISeg can only be applied to binary probabilities for now, received {}".format(logits.shape[0])
-            )
+            raise ValueError(f"ISeg can only be applied to binary probabilities for now, received {logits.shape[0]}")
 
         # convert logits to probability
         prob = self._normalise_logits(logits, axis=0)

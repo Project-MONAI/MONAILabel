@@ -25,7 +25,7 @@ def main(args):
 
     print("\n>> CLI Parameters ...\n")
     for arg in vars(args):
-        print("USING:: {} = {}".format(arg, getattr(args, arg)))
+        print(f"USING:: {arg} = {getattr(args, arg)}")
 
     if not os.path.isfile(args.inputImageFile):
         raise OSError("Input image file does not exist.")
@@ -65,7 +65,7 @@ def main(args):
 
     res = json.loads(res)
     annotation_list = res["elements"]
-    logging.info("Number of annotations = {}".format(len(annotation_list)))
+    logging.info(f"Number of annotations = {len(annotation_list)}")
 
     logging.info("Writing annotation file...")
     annotation = {

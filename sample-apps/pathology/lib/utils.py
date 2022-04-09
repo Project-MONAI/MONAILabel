@@ -221,7 +221,7 @@ def split_dataset(datastore, cache_dir, source, groups, tile_size, max_region=(1
             logger.info(f"PANNuke (For Developer Mode only):: Split data; groups: {groups}")
             ds = split_pannuke_dataset(ds[0]["image"], ds[0]["label"], cache_dir, groups)
 
-    logger.info("+++ Total Records: {}".format(len(ds)))
+    logger.info(f"+++ Total Records: {len(ds)}")
     return ds
 
 
