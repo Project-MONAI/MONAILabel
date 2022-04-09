@@ -1746,7 +1746,7 @@ class MONAILabelWidget(ScriptedLoadableModuleWidget, VTKObservationMixin):
 
             # try to first fetch vtkMRMLAnnotationROINode
             roiNode = slicer.mrmlScene.GetFirstNodeByClass("vtkMRMLAnnotationROINode")
-            if roiNode == None:  # if vtkMRMLAnnotationROINode not present, then check for vtkMRMLMarkupsROINode node
+            if roiNode is None:  # if vtkMRMLAnnotationROINode not present, then check for vtkMRMLMarkupsROINode node
                 roiNode = slicer.mrmlScene.GetFirstNodeByClass("vtkMRMLMarkupsROINode")
 
             # if roi node found, then try to get roi
@@ -1783,7 +1783,7 @@ class MONAILabelWidget(ScriptedLoadableModuleWidget, VTKObservationMixin):
                 os.unlink(result_file)
 
     def getROIPointsXYZ(self, roiNode):
-        if roiNode == None:
+        if roiNode is None:
             return []
 
         v = self._volumeNode
@@ -1905,8 +1905,8 @@ class MONAILabelWidget(ScriptedLoadableModuleWidget, VTKObservationMixin):
     def changeScribblesMode(self, tool=None, layer=None):
         ctool, clayer = self.getToolAndLayerFromScribblesMode()
 
-        ctool = tool if tool != None else ctool
-        clayer = layer if layer != None else clayer
+        ctool = tool if tool is not None else ctool
+        clayer = layer if layer is not None else clayer
 
         self.scribblesMode = "+".join([ctool, clayer])
 
