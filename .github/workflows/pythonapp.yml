@@ -32,15 +32,6 @@ jobs:
       - name: Clean
         run: |
           $(pwd)/runtests.sh --clean
-      - name: ISort
-        run: |
-          $(pwd)/runtests.sh --isort
-      - name: Black
-        run: |
-          $(pwd)/runtests.sh --black
-      - name: Flake8
-        run: |
-          $(pwd)/runtests.sh --flake8
       - name: PyType
         run: |
           echo $(pwd)/runtests.sh --pytype
