@@ -83,7 +83,7 @@ def run_main():
 
     args = parser.parse_args()
     for arg in vars(args):
-        logger.debug("USING:: {} = {}".format(arg, getattr(args, arg)))
+        logger.debug(f"USING:: {arg} = {getattr(args, arg)}")
     logger.debug("")
 
     logger.debug("------------------------------------------------------")
