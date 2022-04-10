@@ -27,7 +27,7 @@ import monailabel
 # -- Project information -----------------------------------------------------
 
 project = "MONAI Label"
-copyright = "2020 - 2021 MONAI Consortium"
+copyright = "Copyright (c) MONAI Consortium"
 author = "MONAI Label Contributors"
 
 # The full version, including alpha/beta/rc tags
