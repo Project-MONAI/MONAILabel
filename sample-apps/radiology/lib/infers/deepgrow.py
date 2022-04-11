@@ -18,7 +18,7 @@ from monai.apps.deepgrow.transforms import (
     RestoreLabeld,
     SpatialCropGuidanced,
 )
-from monai.inferers import SimpleInferer
+from monai.inferers import Inferer, SimpleInferer
 from monai.transforms import (
     Activationsd,
     AddChanneld,
@@ -87,7 +87,7 @@ class Deepgrow(InferTask):
         )
         return t
 
-    def inferer(self, data=None) -> Callable:
+    def inferer(self, data=None) -> Inferer:
         return SimpleInferer()
 
     def post_transforms(self, data=None) -> Sequence[Callable]:

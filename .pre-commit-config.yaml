@@ -45,6 +45,14 @@ repos:
   - id: flake8
     args: ["--count", "--statistics", "--config=setup.cfg"]
 
+- repo: https://github.com/pre-commit/mirrors-mypy
+  rev: v0.942
+  hooks:
+  - id: mypy
+    exclude: ^tests/
+    exclude: ^plugins/
+    additional_dependencies: [types-PyYAML,types-filelock,types-requests,types-docutils]
+
 - repo: https://github.com/asottile/pyupgrade
   rev: v2.32.0
   hooks:
