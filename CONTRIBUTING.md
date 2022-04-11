@@ -24,7 +24,7 @@ We are happy to talk with you about your needs for MONAILabel and your ideas for
     Run `pre-commit` check from MonaiLabel working directory.
     ```
     cd MonaiLabel
-    python -m pre-commit run --all-files
+    python -m pre_commit run --all-files
     ```
     Run additional checks.
     ```
