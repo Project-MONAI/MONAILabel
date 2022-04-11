@@ -42,7 +42,7 @@ def make_iseg_unary(
 
     # expected input shape is [1, X, Y, [Z]], exit if first dimension doesnt comply
     if scrib_shape[0] != 1:
-        raise ValueError(f"scribbles should have single channel first, received {scrib_shape[0]}")
+        raise ValueError("scribbles should have single channel first, received {}".format(scrib_shape[0]))
 
     # unfold a single prob for background into bg/fg prob (if needed)
     if prob_shape[0] == 1:

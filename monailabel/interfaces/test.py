@@ -26,7 +26,7 @@ logger = logging.getLogger(__name__)
 
 def test_infer(args):
     app = app_instance(app_dir=args.app, studies=args.studies)
-    logger.info(f"Running Inference Task: {args.model}")
+    logger.info("Running Inference Task: {}".format(args.model))
 
     response = None
     for _ in range(args.runs):
@@ -45,14 +45,14 @@ def test_infer(args):
         print(f"Move: {res_img} => {result_image}")
         shutil.move(res_img, result_image)
         os.chmod(result_image, 0o777)
-        print(f"Check Result file: {result_image}")
+        print("Check Result file: {}".format(result_image))
 
-    print(f"Result JSON: {res_json}")
+    print("Result JSON: {}".format(res_json))
 
 
 def test_train(args):
     app = app_instance(app_dir=args.app, studies=args.studies)
-    logger.info(f"Running Training Task: {args.name}")
+    logger.info("Running Training Task: {}".format(args.name))
 
     request = {
         "name": args.name,
@@ -69,7 +69,7 @@ def test_info(args):
 
     class MyDumper(yaml.Dumper):
         def increase_indent(self, flow=False, indentless=False):
-            return super().increase_indent(flow, False)
+            return super(MyDumper, self).increase_indent(flow, False)
 
     yaml.dump(
         info,
@@ -126,7 +126,7 @@ def test_main():
     args.app = os.path.realpath(args.app)
     args.studies = os.path.realpath(args.studies)
     for arg in vars(args):
-        print(f"USING:: {arg} = {getattr(args, arg)}")
+        print("USING:: {} = {}".format(arg, getattr(args, arg)))
     print("")
 
     logging.basicConfig(

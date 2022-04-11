@@ -168,7 +168,7 @@ class FindContoursd(MapTransform):
             if np.count_nonzero(p) < self.min_positive:
                 continue
 
-            labels = [label for label in np.unique(p).tolist() if label > 0]
+            labels = [l for l in np.unique(p).tolist() if l > 0]
             logger.debug(f"Total Unique Masks (excluding background): {labels}")
             for label_idx in labels:
                 p = d[key]

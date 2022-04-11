@@ -73,7 +73,7 @@ def run_command(command, args=None, plogger=None):
         if line:
             plogger.info(line.rstrip()) if plogger else print(line)
 
-    plogger.info(f"Return code: {process.returncode}")
+    plogger.info("Return code: {}".format(process.returncode))
     process.stdout.close()
     return process.returncode
 
@@ -89,7 +89,7 @@ def init_log_config(log_config, app_dir, log_file, root_level=None):
 
         # if not os.path.exists(log_config):
         shutil.copy(default_config, log_config)
-        with open(log_config) as f:
+        with open(log_config, "r") as f:
             c = f.read()
 
         c = c.replace("${LOGDIR}", log_dir.replace("\\", r"\\"))
@@ -98,7 +98,7 @@ def init_log_config(log_config, app_dir, log_file, root_level=None):
         with open(log_config, "w") as f:
             f.write(c)
 
-    with open(log_config) as f:
+    with open(log_config, "r") as f:
         j = json.load(f)
 
     if root_level and j["root"]["level"] != root_level:

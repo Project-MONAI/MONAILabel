@@ -183,9 +183,9 @@ class MONAILabelApp:
             for labels in [v.get("labels", []) for v in meta["models"].values()]:
                 if labels and isinstance(labels, dict):
                     labels = [k for k, _ in sorted(labels.items(), key=lambda item: item[1])]  # type: ignore
-                for label in labels:
-                    if label not in merged:
-                        merged.append(label)
+                for l in labels:
+                    if l not in merged:
+                        merged.append(l)
             meta["labels"] = merged
 
         return meta
@@ -540,7 +540,7 @@ class MONAILabelApp:
         if not self._sessions:
             return
         count = self._sessions.remove_expired()
-        logger.debug(f"Total sessions cleaned up: {count}")
+        logger.debug("Total sessions cleaned up: {}".format(count))
 
     def sessions(self):
         return self._sessions
@@ -662,7 +662,7 @@ class MONAILabelApp:
                 )
 
         latency_total = time.time() - start
-        logger.debug(f"WSI Infer Time Taken: {latency_total:.4f}")
+        logger.debug("WSI Infer Time Taken: {:.4f}".format(latency_total))
 
         res_json["name"] = f"MONAILabel Annotations - {model}"
         res_json["description"] = task.description
@@ -686,7 +686,7 @@ class MONAILabelApp:
             logger.debug("+++ Return Default JSON Annotation")
 
         if len(infer_tasks) > 1:
-            logger.info(f"Total Time Taken: {time.time() - start:.4f}; Total Infer Time: {latency_total:.4f}")
+            logger.info("Total Time Taken: {:.4f}; Total Infer Time: {:.4f}".format(time.time() - start, latency_total))
         return {"file": res_file, "params": res_json}
 
     def _run_infer_wsi_task(self, task):

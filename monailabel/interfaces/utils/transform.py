@@ -42,7 +42,7 @@ def shape_info(data, keys=("image", "label", "logits", "pred", "model", "points"
     for key in keys:
         val = data.get(key) if hasattr(data, "get") else None
         if val is not None and hasattr(val, "shape"):
-            info.append(f"{key}: {val.shape}({val.dtype})")
+            info.append("{}: {}({})".format(key, val.shape, val.dtype))
     return "; ".join(info)
 
 
@@ -59,8 +59,8 @@ def run_transforms(data, callables, inverse=False, log_prefix="POST", log_name="
     :return: Processed data after running transforms
     """
     logger.setLevel(data.get("logging", "INFO").upper())
-    logger.info(f"{log_prefix} - Run {log_name}(s)")
-    logger.info(f"{log_prefix} - Input Keys: {list(data.keys())}")
+    logger.info("{} - Run {}(s)".format(log_prefix, log_name))
+    logger.info("{} - Input Keys: {}".format(log_prefix, list(data.keys())))
 
     if not callables:
         return data
@@ -82,7 +82,7 @@ def run_transforms(data, callables, inverse=False, log_prefix="POST", log_name="
             else:
                 raise MONAILabelException(
                     MONAILabelError.TRANSFORM_ERROR,
-                    f"{log_name} '{t.__class__.__name__}' has no invert method",
+                    "{} '{}' has no invert method".format(log_name, t.__class__.__name__),
                 )
         elif callable(t):
             if use_compose:
@@ -93,7 +93,7 @@ def run_transforms(data, callables, inverse=False, log_prefix="POST", log_name="
         else:
             raise MONAILabelException(
                 MONAILabelError.TRANSFORM_ERROR,
-                f"{log_name} '{t.__class__.__name__}' is not callable",
+                "{} '{}' is not callable".format(log_name, t.__class__.__name__),
             )
 
         logger.info(
