@@ -100,10 +100,10 @@ def get_class_info(exp, handle_bool=True):
     class_path = exp[: exp.find("(")]
     class_args = exp[exp.find("(") + 1 : -1] if exp.find("(") >= 0 else None
 
-    logger.debug(f"Eval Input:: {class_path} => {class_args}")
+    logger.debug("Eval Input:: {} => {}".format(class_path, class_args))
     class_args = eval("foo(" + class_args + ")")
 
-    logger.debug(f"{class_path} => {class_args}")
+    logger.debug("{} => {}".format(class_path, class_args))
     return class_path, class_args
 
 
@@ -129,7 +129,7 @@ def get_class_names(p, subclass=None) -> List[str]:
     logger = logging.getLogger(__name__)
 
     result = []
-    logger.debug(f"Module File Path: {p.__file__}")
+    logger.debug("Module File Path: {}".format(p.__file__))
 
     if os.path.basename(p.__file__).startswith("__"):
         current_dir = os.path.dirname(p.__file__)

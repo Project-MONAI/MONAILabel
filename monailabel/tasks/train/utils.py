@@ -32,9 +32,9 @@ def from_engine_idx(keys: KeysCollection, idx, first: bool = False):
     keys = ensure_tuple(keys)
 
     def _match(t, idx):
-        p, label = t
+        p, l = t
         p_n = [x[idx, ...][None] for x in p]
-        l_n = [x[idx, ...][None] for x in label]
+        l_n = [x[idx, ...][None] for x in l]
         return p_n, l_n
 
     def _wrapper(data):

@@ -130,9 +130,9 @@ If you are using MONAI Label in your research, please use the following citation
 
   ```bash
 @article{DiazPinto2022monailabel,
-   author = {Diaz-Pinto, Andres and Alle, Sachidanand and Ihsani, Alvin and Asad, Muhammad and
-            Nath, Vishwesh and P{\'e}rez-Garc{\'\i}a, Fernando and Mehta, Pritesh and
-            Li, Wenqi and Roth, Holger R. and Vercauteren, Tom and Xu, Daguang and
+   author = {Diaz-Pinto, Andres and Alle, Sachidanand and Ihsani, Alvin and Asad, Muhammad and 
+            Nath, Vishwesh and P{\'e}rez-Garc{\'\i}a, Fernando and Mehta, Pritesh and 
+            Li, Wenqi and Roth, Holger R. and Vercauteren, Tom and Xu, Daguang and 
             Dogra, Prerna and Ourselin, Sebastien and Feng, Andrew and Cardoso, M. Jorge},
     title = {{MONAI Label: A framework for AI-assisted Interactive Labeling of 3D Medical Images}},
   journal = {arXiv e-prints},

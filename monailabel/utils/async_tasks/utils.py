@@ -73,7 +73,7 @@ def _task_func(task, method, callback=None):
             plogger.info(line)
             task["details"].append(line)
 
-    logger.info(f"Return code: {process.returncode}")
+    logger.info("Return code: {}".format(process.returncode))
     background_processes[method].pop(task_id, None)
     process.stdout.close()
 
