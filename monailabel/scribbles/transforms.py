@@ -377,9 +377,7 @@ class ApplyGraphCutOptimisationd(InteractiveSegmentationTransform):
 
         # check if input unary is compatible with GraphCut opt
         if unary_term.shape[0] > 2:
-            raise ValueError(
-                f"GraphCut can only be applied to binary probabilities, received {unary_term.shape[0]}"
-            )
+            raise ValueError(f"GraphCut can only be applied to binary probabilities, received {unary_term.shape[0]}")
 
         # # attempt to unfold probability term
         # unary_term = self._unfold_prob(unary_term, axis=0)
