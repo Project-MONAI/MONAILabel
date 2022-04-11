@@ -26,7 +26,7 @@ a sample application (Radiology), download a sample dataset (MSD
 heart MRI), and deploy the sample app and standard dataset on the MONAI Label server.
 
 .. code-block:: bash
-  
+
   # install MONAI Label
   pip install monailabel
 
@@ -35,7 +35,7 @@ heart MRI), and deploy the sample app and standard dataset on the MONAI Label se
 
   # download Task 2 MSD dataset
   monailabel datasets --download --name Task09_Spleen --output .
-  
+
   # start the Radiology app in MONAI label server
   # and start annotating the downloaded images using deepedit model
   monailabel start_server --app radiology --studies Task09_Spleen/imagesTr --conf models deepedit
@@ -81,9 +81,9 @@ To connect 3DSlicer to MONAI Label Server
 
 - Click on the MONAI Label module icon
 - Click the refresh icon near next to the **MONAI Label server** input field
-  
+
   - If the MONAI Label server is running locally to 3DSlicer you do not need to enter the server address
-  
+
   .. image:: ../images/quickstart/monai-label-iconinput-field-refresh.png
     :alt: MONAI Label Refresh Button
 
@@ -95,7 +95,7 @@ To annotate the downloaded heart MR images using DeepEdit
     :alt: Next Sample
 
 - We can now start making adjustments to the initial segmentation provided by adding **foreground** and **background** points using the tools in the **SmartEdit** section
-  
+
   - For example, click on the **foreground** button and start clicking on the image panel to start seeing how foreground points affect the segmentation
 
   .. image:: ../images/quickstart/monai-smartedit-section.png
@@ -117,7 +117,7 @@ custom dataset annotation using the empty local directory ``my_dataset`` as the 
 label storage location.
 
 .. code-block:: bash
-  
+
   # install MONAI Label
   pip install monailabel
 
@@ -126,7 +126,7 @@ label storage location.
 
   # create an empty folder for the custom dataset
   mkdir my_dataset
-  
+
   # start the DeepEdit app in MONAI label server
   # on the empty dataset folder
   monailabel start_server --app radiology --studies my_dataset --conf models deepedit
@@ -152,10 +152,10 @@ DeepEdit Annotation Using OHIF
 
 As of version ``0.2.0``, MONAI Label server supports connectivity to a remote DICOM server via DICOMweb. All we need
 when starting MONAI Label server is to specify the URL of the DICOMweb service in the ``studies`` argument (and optionally
-the ``username`` and ``password`` for DICOM servers that require them). 
+the ``username`` and ``password`` for DICOM servers that require them).
 
-If you do not have a DICOM server available for usage but would like to set one up please follow the instructions in the 
-:ref:`next section<Setup Development DICOM Server>`, otherwise skip to 
+If you do not have a DICOM server available for usage but would like to set one up please follow the instructions in the
+:ref:`next section<Setup Development DICOM Server>`, otherwise skip to
 :ref:`Deploy for PACS Data Annotation`.
 
 .. _Setup Development DICOM Server:
@@ -170,7 +170,7 @@ Ubuntu
 ******
 
 .. code-block:: bash
-  
+
   # Install orthanc and dicomweb plugin
   sudo apt-get install orthanc orthanc-dicomweb -y
 
@@ -185,7 +185,7 @@ Ubuntu
   sudo wget https://lsb.orthanc-server.com/orthanc/1.9.7/libModalityWorklists.so --output-document /usr/share/orthanc/plugins/libModalityWorklists.so
   sudo wget https://lsb.orthanc-server.com/plugin-dicom-web/1.6/libOrthancDicomWeb.so --output-document /usr/share/orthanc/plugins/libOrthancDicomWeb.so
 
-  # start 
+  # start
   sudo service orthanc restart
 
 
@@ -222,7 +222,7 @@ If you do not have access to DICOM data to upload to the DICOM server you can co
   # install MONAI Label (if you have not already)
   pip install monailabel
 
-  # Install `plastimatch` NIFTI to DICOM converter 
+  # Install `plastimatch` NIFTI to DICOM converter
   sudo apt-get install plastimatch -y
 
   # download Task 2 MSD dataset
@@ -244,7 +244,7 @@ We follow a very similar set of commands as in :ref:`Deploy MONAI Label Server`,
 endpoint of our DICOM server, which based on the last section is ``http://locahost:8042/dicom-web``.
 
 .. code-block:: bash
-  
+
   # install MONAI Label (if you have not already)
   pip install monailabel
 
@@ -256,7 +256,7 @@ endpoint of our DICOM server, which based on the last section is ``http://locaho
   monailabel start_server --app radiology --studies http://locahost:8042/dicom-web --conf models deepedit --username orthanc --password orthanc
 
 
-At this point OHIF can be used to annotate the data in the DICOM server via the MONAI Label server ``/ohif`` endpoint 
+At this point OHIF can be used to annotate the data in the DICOM server via the MONAI Label server ``/ohif`` endpoint
 (e.g. via `http://127.0.0.1:8000/ohif <http://127.0.0.1:8000/ohif>`_).
 
 .. note::
