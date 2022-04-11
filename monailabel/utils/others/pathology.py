@@ -107,7 +107,7 @@ def create_asap_annotations_xml(json_data, loglevel="INFO"):
                     fp.write(f'    <Annotation Name="{label}" Type="Polygon" PartOfGroup="{label}" Color="{color}">\n')
                     fp.write("      <Coordinates>\n")
                     for pcount, point in enumerate(contour):
-                        fp.write('        <Coordinate Order="{}" X="{}" Y="{}" />\n'.format(pcount, point[0], point[1]))
+                        fp.write(f'        <Coordinate Order="{pcount}" X="{point[0]}" Y="{point[1]}" />\n')
                     fp.write("      </Coordinates>\n")
                     fp.write("    </Annotation>\n")
                     total_count += 1

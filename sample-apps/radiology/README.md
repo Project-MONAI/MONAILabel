@@ -20,7 +20,7 @@ reference.
 
 ```bash
 # List all the possible models
-monailabel start_server --app /workspace/apps/radiology --studies /workspace/images 
+monailabel start_server --app /workspace/apps/radiology --studies /workspace/images
 ```
 
 Following are the models which are currently added into Radiology App:

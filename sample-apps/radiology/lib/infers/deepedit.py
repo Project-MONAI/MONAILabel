@@ -10,7 +10,7 @@
 # limitations under the License.
 from typing import Callable, Sequence, Union
 
-from monai.inferers import SimpleInferer
+from monai.inferers import Inferer, SimpleInferer
 from monai.transforms import (
     Activationsd,
     AddChanneld,
@@ -93,7 +93,7 @@ class DeepEdit(InferTask):
         t.append(EnsureTyped(keys="image", device=data.get("device") if data else None))
         return t
 
-    def inferer(self, data=None) -> Callable:
+    def inferer(self, data=None) -> Inferer:
         return SimpleInferer()
 
     def inverse_transforms(self, data=None) -> Union[None, Sequence[Callable]]:

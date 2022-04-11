@@ -46,7 +46,7 @@ class Interaction:
             transforms = Compose(transforms)
 
         self.deepgrow_probability = deepgrow_probability
-        self.transforms = transforms
+        self.transforms = Compose(transforms) if not isinstance(transforms, Compose) else transforms
         self.train = train
         self.label_names = label_names
         self.click_probability_key = click_probability_key

@@ -34,10 +34,10 @@ def search_for_series(data_dir, **kwargs):
 
     response_dir = os.path.join(data_dir, "responses")
     if modality == "CT":
-        with open(os.path.join(response_dir, "search_for_series_ct.json"), "r") as f:
+        with open(os.path.join(response_dir, "search_for_series_ct.json")) as f:
             resp = json.load(f)
     elif modality == "SEG":
-        with open(os.path.join(response_dir, "search_for_series_seg.json"), "r") as f:
+        with open(os.path.join(response_dir, "search_for_series_seg.json")) as f:
             resp = json.load(f)
 
     return resp
@@ -74,16 +74,16 @@ class EndPointDICOMWebDatastore(DICOMWebEndpointTestSuite):
 
         with patch.object(DICOMWebDatastore.__init__, "__defaults__", (None, self.data_dir, False)):
             response = self.client.get("/datastore/?output=stats")
-            self.assertEquals(response.status_code, 200)
+            self.assertEqual(response.status_code, 200)
 
             res = response.json()
             total = res["total"]
             completed = res["completed"]
             label_tags = res["label_tags"]
-            self.assertEquals(total, 8)
-            self.assertEquals(completed, 3)
-            self.assertEquals(label_tags["original"], 2)
-            self.assertEquals(label_tags["final"], 1)
+            self.assertEqual(total, 8)
+            self.assertEqual(completed, 3)
+            self.assertEqual(label_tags["original"], 2)
+            self.assertEqual(label_tags["final"], 1)
 
     @patch("monailabel.interfaces.app.DICOMwebClientX")
     @patch("monailabel.datastore.dicom.dicom_web_download_series")
@@ -100,7 +100,7 @@ class EndPointDICOMWebDatastore(DICOMWebEndpointTestSuite):
 
         with patch.object(DICOMWebDatastore.__init__, "__defaults__", (None, self.data_dir, False)):
             response = self.client.get("/datastore/?output=all")
-            self.assertEquals(response.status_code, 200)
+            self.assertEqual(response.status_code, 200)
 
             res = response.json()
             for k in res["objects"].keys():
@@ -135,16 +135,16 @@ class EndPointDICOMWebDatastore(DICOMWebEndpointTestSuite):
                 response = self.client.put(
                     f"/datastore/label?image={image_id}&tag={test_tag}", files={"label": (image_file, f)}
                 )
-                self.assertEquals(response.status_code, 200)
+                self.assertEqual(response.status_code, 200)
                 res = response.json()
-                self.assertEquals(res["image"], image_id)
-                self.assertEquals(res["label"], image_id)
+                self.assertEqual(res["image"], image_id)
+                self.assertEqual(res["label"], image_id)
 
             response = self.client.get("/datastore/?output=stats")
-            self.assertEquals(response.status_code, 200)
+            self.assertEqual(response.status_code, 200)
             res = response.json()
             label_tags = res["label_tags"]
-            self.assertEquals(label_tags[test_tag], 1)
+            self.assertEqual(label_tags[test_tag], 1)
 
     @patch("monailabel.interfaces.app.DICOMwebClientX")
     @patch("monailabel.datastore.dicom.dicom_web_download_series")
@@ -161,7 +161,7 @@ class EndPointDICOMWebDatastore(DICOMWebEndpointTestSuite):
 
         with patch.object(DICOMWebDatastore.__init__, "__defaults__", (None, self.data_dir, False)):
             response = self.client.get("/datastore/?output=train")
-            self.assertEquals(response.status_code, 200)
+            self.assertEqual(response.status_code, 200)
             res = response.json()
             assert res
 
