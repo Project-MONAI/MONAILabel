@@ -331,7 +331,7 @@ class BasicTrainTask(TrainTask):
 
     def stats(self):
         if self._stats_path and os.path.exists(self._stats_path):
-            with open(self._stats_path) as fc:
+            with open(self._stats_path, "r") as fc:
                 return json.load(fc)
         return {}
 
@@ -493,7 +493,7 @@ class BasicTrainTask(TrainTask):
             gpu = multi_gpus[context.local_rank]
 
             logger.info(f"++++ Rank:{context.local_rank} => Using GPU-{gpu}")
-            device = torch.device(f"cuda:{gpu}")
+            device = torch.device("cuda:{}".format(gpu))
             torch.cuda.set_device(device)
         else:
             device = torch.device(context.request["device"] if torch.cuda.is_available() else "cpu")
@@ -588,7 +588,7 @@ class BasicTrainTask(TrainTask):
             logger.info(f"{context.local_rank} - Load Path {load_path}")
 
             load_dict = {self._model_dict_key: context.network} if self._load_dict is None else self._load_dict
-            map_location = {"cuda:0": f"cuda:{context.device.index}"} if context.multi_gpu else None
+            map_location = {"cuda:0": "cuda:{}".format(context.device.index)} if context.multi_gpu else None
             train_handlers.append(
                 CheckpointLoader(load_path, load_dict, map_location=map_location, strict=self._load_strict)
             )

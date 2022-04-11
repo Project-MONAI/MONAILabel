@@ -18,15 +18,12 @@ concurrency:
 jobs:
   build:
     runs-on: ubuntu-latest
-    strategy:
-      matrix:
-        python-version: ["3.8", "3.9"]
     steps:
-      - uses: actions/checkout@v3
-      - name: Set up Python
-        uses: actions/setup-python@v3
+      - uses: actions/checkout@v2
+      - name: Set up Python 3.8
+        uses: actions/setup-python@v2
         with:
-          python-version: ${{ matrix.python-version }}
+          python-version: 3.8
       - name: Install dependencies
         run: |
           sudo apt-get install openslide-tools -y
@@ -35,9 +32,21 @@ jobs:
       - name: Clean
         run: |
           $(pwd)/runtests.sh --clean
+      - name: ISort
+        run: |
+          $(pwd)/runtests.sh --isort
+      - name: Black
+        run: |
+          $(pwd)/runtests.sh --black
+      - name: Flake8
+        run: |
+          $(pwd)/runtests.sh --flake8
       - name: PyType
         run: |
           echo $(pwd)/runtests.sh --pytype
+      - name: MyPy
+        run: |
+          $(pwd)/runtests.sh --mypy
       - name: Unit Tests
         run: |
           $(pwd)/runtests.sh --unittests
@@ -49,17 +58,14 @@ jobs:
 
   packaging:
     runs-on: ubuntu-latest
-    strategy:
-      matrix:
-        python-version: ["3.8", "3.9"]
     steps:
-      - uses: actions/checkout@v3
+      - uses: actions/checkout@v2
         with:
           fetch-depth: 0
-      - name: Set up Python
-        uses: actions/setup-python@v3
+      - name: Set up Python 3.8
+        uses: actions/setup-python@v2
         with:
-          python-version: ${{ matrix.python-version }}
+          python-version: 3.8
       - name: cache weekly timestamp
         id: pip-cache
         run: |
@@ -111,15 +117,12 @@ jobs:
 
   build-docs:
     runs-on: ubuntu-latest
-    strategy:
-      matrix:
-        python-version: ["3.8", "3.9"]
     steps:
-      - uses: actions/checkout@v3
-      - name: Set up Python
-        uses: actions/setup-python@v3
+      - uses: actions/checkout@v2
+      - name: Set up Python 3.8
+        uses: actions/setup-python@v2
         with:
-          python-version: ${{ matrix.python-version }}
+          python-version: 3.8
       - name: cache weekly timestamp
         id: pip-cache
         run: |
