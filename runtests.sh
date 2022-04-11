@@ -45,7 +45,6 @@ doNetTests=false
 doDryRun=false
 doUnitTests=false
 doPytypeFormat=false
-doMypyFormat=false
 doCleanup=false
 
 NUM_PARALLEL=1
@@ -53,7 +52,7 @@ NUM_PARALLEL=1
 PY_EXE=${MONAILABEL_PY_EXE:-$(which python3)}
 
 function print_usage() {
-  echo "runtests.sh [--codeformat] [--pytype] [--mypy]"
+  echo "runtests.sh [--codeformat] [--pytype]"
   echo "            [--unittests] [--net] [--dryrun] [-j number] [--clean] [--help] [--version]"
   echo ""
   echo "MONAILABEL testing utilities."
@@ -66,7 +65,6 @@ function print_usage() {
   echo ""
   echo "Python type check options:"
   echo "    --pytype          : perform \"pytype\" static type checks"
-  echo "    --mypy            : perform \"mypy\" static type checks"
   echo "    -j, --jobs        : number of parallel jobs to run \"pytype\" (default $NUM_PARALLEL)"
   echo ""
   echo "MONAILABEL unit testing options:"
@@ -131,7 +129,6 @@ function clean_py() {
   find ${TO_CLEAN} -depth -maxdepth 1 -type d -name "monailabel.egg-info" -exec rm -r "{}" +
   find ${TO_CLEAN} -depth -maxdepth 1 -type d -name "build" -exec rm -r "{}" +
   find ${TO_CLEAN} -depth -maxdepth 1 -type d -name "dist" -exec rm -r "{}" +
-  find ${TO_CLEAN} -depth -maxdepth 1 -type d -name ".mypy_cache" -exec rm -r "{}" +
   find ${TO_CLEAN} -depth -maxdepth 1 -type d -name ".pytype" -exec rm -r "{}" +
   find ${TO_CLEAN} -depth -maxdepth 1 -type d -name ".coverage" -exec rm -r "{}" +
   find ${TO_CLEAN} -depth -maxdepth 1 -type d -name "__pycache__" -exec rm -r "{}" +
@@ -170,13 +167,9 @@ while [[ $# -gt 0 ]]; do
     ;;
   -f | --codeformat)
     doPytypeFormat=true
-    doMypyFormat=true
     ;;
   --pytype)
     doPytypeFormat=true
-    ;;
-  --mypy)
-    doMypyFormat=true
     ;;
   -j | --jobs)
     NUM_PARALLEL=$2
@@ -255,32 +248,6 @@ if [ $doPytypeFormat = true ]; then
     exit ${pytype_status}
   else
     echo "${green}passed!${noColor}"
-  fi
-  set -e # enable exit on failure
-fi
-
-if [ $doMypyFormat = true ]; then
-  set +e # disable exit on failure so that diagnostics can be given on failure
-  echo "${separator}${blue}mypy${noColor}"
-
-  # ensure that the necessary packages for code format testing are installed
-  if ! is_pip_installed mypy; then
-    install_deps
-  fi
-  ${cmdPrefix}${PY_EXE} -m mypy --version
-
-  if [ $doDryRun = true ]; then
-    ${cmdPrefix}MYPYPATH="$(pwd)"/monailabel ${PY_EXE} -m mypy "$(pwd)"
-  else
-    MYPYPATH="$(pwd)"/monailabel ${PY_EXE} -m mypy "$(pwd)" # cmdPrefix does not work with MYPYPATH
-  fi
-
-  mypy_status=$?
-  if [ ${mypy_status} -ne 0 ]; then
-    : # mypy output already follows format
-    exit ${mypy_status}
-  else
-    : # mypy output already follows format
   fi
   set -e # enable exit on failure
 fi
