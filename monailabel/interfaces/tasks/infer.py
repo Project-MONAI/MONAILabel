@@ -17,7 +17,7 @@ from abc import abstractmethod
 from typing import Any, Callable, Dict, Sequence, Tuple, Union
 
 import torch
-from monai.inferers import SimpleInferer, SlidingWindowInferer
+from monai.inferers import Inferer, SimpleInferer, SlidingWindowInferer
 
 from monailabel.interfaces.exception import MONAILabelError, MONAILabelException
 from monailabel.interfaces.utils.transform import run_transforms
@@ -216,7 +216,7 @@ class InferTask:
         """
         pass
 
-    def inferer(self, data=None) -> Callable:
+    def inferer(self, data=None) -> Inferer:
         input_shape = data[self.input_key].shape if data else None
 
         roi_size = data.get("roi_size", self.roi_size) if data else self.roi_size

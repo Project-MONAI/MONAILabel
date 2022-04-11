@@ -34,7 +34,7 @@ class DICOMwebClientX(DICOMwebClient):
         media_type, *ct_info = (ct.strip() for ct in content_type.split(";"))
         if media_type.lower() != "multipart/related":
             response.headers["content-type"] = "multipart/related"
-        return super()._decode_multipart_message(response, stream)
+        return super()._decode_multipart_message(response, stream)  # type: ignore
 
 
 class DICOMWebDatastore(LocalDatastore):
