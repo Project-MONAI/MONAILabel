@@ -89,13 +89,12 @@ def get_logs(logger_file, lines, html, text, refresh):
 
 @router.get("/", summary="Get Logs")
 async def api_get_logs(
-    logfile: Optional[str] = "app.log",
     lines: Optional[int] = 300,
     html: Optional[bool] = True,
     text: Optional[bool] = False,
     refresh: Optional[int] = 0,
 ):
-    return get_logs(os.path.join(settings.MONAI_LABEL_APP_DIR, "logs", str(logfile)), lines, html, text, refresh)
+    return get_logs(os.path.join(settings.MONAI_LABEL_APP_DIR, "logs", "app.log"), lines, html, text, refresh)
 
 
 @router.get("/gpu", summary="Get GPU Info (nvidia-smi)")
