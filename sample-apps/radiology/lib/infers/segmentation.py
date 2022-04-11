@@ -10,7 +10,7 @@
 # limitations under the License.
 from typing import Callable, Sequence
 
-from monai.inferers import SlidingWindowInferer
+from monai.inferers import Inferer, SlidingWindowInferer
 from monai.transforms import (
     Activationsd,
     AddChanneld,
@@ -63,7 +63,7 @@ class Segmentation(InferTask):
             EnsureTyped(keys="image"),
         ]
 
-    def inferer(self, data=None) -> Callable:
+    def inferer(self, data=None) -> Inferer:
         return SlidingWindowInferer(roi_size=self.spatial_size)
 
     def post_transforms(self, data=None) -> Sequence[Callable]:
