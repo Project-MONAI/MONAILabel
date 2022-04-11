@@ -25,7 +25,7 @@ What's New
   - Dataset (Cached, Persistence, SmartCache)
   - ThreadDataloader
   - Early Stopping
-- Strategy Improvements to support Multi User environment 
+- Strategy Improvements to support Multi User environment
 - Extensibility for Server APIs
 
 0.2.0
@@ -34,7 +34,7 @@ What's New
 - Support for DICOMWeb connectivity to PACS `➔ <quickstart.html#setup-development-dicom-server>`__
 - Annotations support via OHIF UI enabled in MONAI Label Server `➔ <quickstart.html#deepedit-annotation-in-ohif>`__
 - Support for native and custom scoring methods to support next image selection strategies `➔ <modules.html#image-selection-strategy>`__
-  
+
   - Native support for scoring and image selection using Epistemic Uncertainty and Test-time Augmentations (Aleatoric Uncertainty)
 
 - Scribbles-based annotation support for all sample apps
