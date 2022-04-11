@@ -38,9 +38,6 @@ jobs:
       - name: PyType
         run: |
           echo $(pwd)/runtests.sh --pytype
-      - name: MyPy
-        run: |
-          $(pwd)/runtests.sh --mypy
       - name: Unit Tests
         run: |
           $(pwd)/runtests.sh --unittests
