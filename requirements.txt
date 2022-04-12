@@ -24,6 +24,6 @@ openslide-python==1.1.2
 opencv-python-headless==4.5.5.64
 Shapely==1.8.0
 girder_client==3.1.8
-torchmaxflow==0.0.5
+torchmaxflow==0.0.6rc1
 
 #sudo apt-get install openslide-tools -y
