@@ -44,6 +44,7 @@ class HistogramBasedGraphCut(InferTask):
         pix_dim=(2.5, 2.5, 5.0),
         lamda=1.0,
         sigma=0.1,
+        labels=None,
         config=None,
     ):
         if config:
@@ -53,7 +54,7 @@ class HistogramBasedGraphCut(InferTask):
         super().__init__(
             path=None,
             network=None,
-            labels=None,
+            labels=labels,
             type=InferType.SCRIBBLES,
             dimension=dimension,
             description=description,
@@ -64,11 +65,19 @@ class HistogramBasedGraphCut(InferTask):
         self.lamda = lamda
         self.sigma = sigma
 
+        # set default scribbles labels
+        self.scribbles_bg_label = 2 if not self.labels else len(self.labels) + 1
+        self.scribbles_fg_label = 3 if not self.labels else len(self.labels) + 2
+
     def pre_transforms(self, data):
         return [
             LoadImaged(keys=["image", "label"]),
             EnsureChannelFirstd(keys=["image", "label"]),
-            AddBackgroundScribblesFromROId(scribbles="label", scribbles_bg_label=3, scribbles_fg_label=4),
+            AddBackgroundScribblesFromROId(
+                scribbles="label",
+                scribbles_bg_label=self.scribbles_bg_label,
+                scribbles_fg_label=self.scribbles_fg_label,
+            ),
             # at the moment optimisers are bottleneck taking a long time,
             # therefore scaling non-isotropic with big spacing
             Spacingd(keys=["image", "label"], pixdim=self.pix_dim, mode=["bilinear", "nearest"]),
@@ -85,8 +94,8 @@ class HistogramBasedGraphCut(InferTask):
                 image="image",
                 scribbles="label",
                 post_proc_label="prob",
-                scribbles_bg_label=3,
-                scribbles_fg_label=4,
+                scribbles_bg_label=self.scribbles_bg_label,
+                scribbles_fg_label=self.scribbles_fg_label,
                 normalise=True,
             ),
         ]
@@ -100,8 +109,8 @@ class HistogramBasedGraphCut(InferTask):
                     logits="prob",
                     scribbles="label",
                     unary="unary",
-                    scribbles_bg_label=3,
-                    scribbles_fg_label=4,
+                    scribbles_bg_label=self.scribbles_bg_label,
+                    scribbles_fg_label=self.scribbles_fg_label,
                 ),
                 # optimiser
                 ApplyGraphCutOptimisationd(

@@ -64,6 +64,19 @@ class InteractiveSegmentationTransform(Transform):
 
         return d
 
+    def _set_scribbles_idx_from_labelinfo(self, d):
+        label_info = d.get("label_info", [])
+        for lb in label_info:
+            if lb.get("name", None) == "background_scribbles":
+                id = lb.get("id", self.scribbles_bg_label)
+                self.scribbles_bg_label = id
+                logging.info("Loading background scribbles labels from: {} with index: {}".format(lb.get("name"), id))
+
+            if lb.get("name", None) == "foreground_scribbles":
+                id = lb.get("id", self.scribbles_fg_label)
+                self.scribbles_fg_label = id
+                logging.info("Loading foreground scribbles labels from: {} with index: {}".format(lb.get("name"), id))
+
 
 #######################################
 #######################################
@@ -88,6 +101,9 @@ class AddBackgroundScribblesFromROId(InteractiveSegmentationTransform):
 
     def __call__(self, data):
         d = dict(data)
+
+        # load scribbles idx from labels_info (if available)
+        self._set_scribbles_idx_from_labelinfo(d)
 
         # read relevant terms from data
         scribbles = self._fetch_data(d, self.scribbles)
@@ -157,6 +173,9 @@ class MakeLikelihoodFromScribblesHistogramd(InteractiveSegmentationTransform):
 
     def __call__(self, data):
         d = dict(data)
+
+        # load scribbles idx from labels_info (if available)
+        self._set_scribbles_idx_from_labelinfo(d)
 
         # copy affine meta data from image input
         d = self._copy_affine(d, src=self.image, dst=self.post_proc_label)
@@ -276,6 +295,9 @@ class MakeISegUnaryd(InteractiveSegmentationTransform):
 
     def __call__(self, data):
         d = dict(data)
+
+        # load scribbles idx from labels_info (if available)
+        self._set_scribbles_idx_from_labelinfo(d)
 
         # copy affine meta data from image input
         self._copy_affine(d, self.image, self.unary)
