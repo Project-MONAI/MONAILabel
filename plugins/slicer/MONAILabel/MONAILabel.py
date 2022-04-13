@@ -222,6 +222,7 @@ class MONAILabelWidget(ScriptedLoadableModuleWidget, VTKObservationMixin):
         self.timer = None
 
         self.scribblesMode = None
+        self.ignoreScribblesLabelChangeEvent = False
         self.deepedit_multi_label = False
 
     def setup(self):
@@ -289,6 +290,7 @@ class MONAILabelWidget(ScriptedLoadableModuleWidget, VTKObservationMixin):
         self.ui.uploadImageButton.connect("clicked(bool)", self.onUploadImage)
         self.ui.importLabelButton.connect("clicked(bool)", self.onImportLabel)
         self.ui.labelComboBox.connect("currentIndexChanged(int)", self.onSelectLabel)
+        self.ui.scribLabelComboBox.connect("currentIndexChanged(int)", self.onSelectScribLabel)
         self.ui.dgUpdateButton.connect("clicked(bool)", self.onUpdateDeepgrow)
         self.ui.dgUpdateCheckBox.setStyleSheet("padding-left: 10px;")
 
@@ -311,12 +313,12 @@ class MONAILabelWidget(ScriptedLoadableModuleWidget, VTKObservationMixin):
         self.ui.updateScribblesButton.clicked.connect(self.onUpdateScribbles)
         self.ui.paintScribblesButton.clicked.connect(self.onPaintScribbles)
         self.ui.eraseScribblesButton.clicked.connect(self.onEraseScribbles)
-        self.ui.scribblesLabelSelector.connect("currentIndexChanged(int)", self.onSelectScribblesLabel)
+        self.ui.scribblesSelector.connect("currentIndexChanged(int)", self.onSelectScribblesLabel)
 
         # creating editable combo box
-        self.ui.scribblesLabelSelector.addItem(self.icon("fg_green.png"), "Foreground")
-        self.ui.scribblesLabelSelector.addItem(self.icon("bg_red.png"), "Background")
-        self.ui.scribblesLabelSelector.setCurrentIndex(0)
+        self.ui.scribblesSelector.addItem(self.icon("fg_green.png"), "Foreground")
+        self.ui.scribblesSelector.addItem(self.icon("bg_red.png"), "Background")
+        self.ui.scribblesSelector.setCurrentIndex(0)
 
         # start with scribbles section disabled
         self.ui.scribblesCollapsibleButton.setEnabled(False)
@@ -383,7 +385,7 @@ class MONAILabelWidget(ScriptedLoadableModuleWidget, VTKObservationMixin):
             self.dgNegativePointListNodeObservers,
         )
         self.dgNegativePointListNode = None
-        self.onClearScribbles()
+        self.onResetScribbles()
 
     def resetPointList(self, markupsPlaceWidget, pointListNode, pointListNodeObservers):
         if markupsPlaceWidget.placeModeEnabled:
@@ -508,7 +510,9 @@ class MONAILabelWidget(ScriptedLoadableModuleWidget, VTKObservationMixin):
         else:
             self.ui.aclCollapsibleButton.hide()
 
+        self.ignoreScribblesLabelChangeEvent = True
         self.ui.labelComboBox.clear()
+        self.ui.scribLabelComboBox.clear()
         if self._segmentNode:
             segmentation = self._segmentNode.GetSegmentation()
             totalSegments = segmentation.GetNumberOfSegments()
@@ -516,17 +520,26 @@ class MONAILabelWidget(ScriptedLoadableModuleWidget, VTKObservationMixin):
             for idx, segmentId in enumerate(segmentIds):
                 segment = segmentation.GetSegment(segmentId)
                 label = segment.GetName()
-                if label in ["foreground_scribbles", "background_scribbles"]:
-                    continue
-                self.ui.labelComboBox.addItem(label)
+                if label not in ["foreground_scribbles", "background_scribbles"]:
+                    self.ui.labelComboBox.addItem(label)
+                if label not in ["background", "foreground_scribbles", "background_scribbles"]:
+                    self.ui.scribLabelComboBox.addItem(label)
         else:
             for label in self.info.get("labels", {}):
                 self.ui.labelComboBox.addItem(label)
+                if label != "background":
+                    self.ui.scribLabelComboBox.addItem(label)
 
         currentLabel = self._parameterNode.GetParameter("CurrentLabel")
         idx = self.ui.labelComboBox.findText(currentLabel) if currentLabel else 0
         idx = 0 if idx < 0 < self.ui.labelComboBox.count else idx
         self.ui.labelComboBox.setCurrentIndex(idx)
+
+        currentScribbleLabel = self._parameterNode.GetParameter("CurrentScribLabel")
+        idx = self.ui.scribLabelComboBox.findText(currentScribbleLabel) if currentScribbleLabel else 0
+        idx = 0 if idx < 0 < self.ui.scribLabelComboBox.count else idx
+        self.ui.scribLabelComboBox.setCurrentIndex(idx)
+        self.ignoreScribblesLabelChangeEvent = False
 
         self.ui.appComboBox.clear()
         self.ui.appComboBox.addItem(self.info.get("name", ""))
@@ -652,6 +665,11 @@ class MONAILabelWidget(ScriptedLoadableModuleWidget, VTKObservationMixin):
         if currentLabelIndex >= 0:
             currentLabel = self.ui.labelComboBox.itemText(currentLabelIndex)
             self._parameterNode.SetParameter("CurrentLabel", currentLabel)
+
+        currentScribLabelIndex = self.ui.scribLabelComboBox.currentIndex
+        if currentScribLabelIndex >= 0:
+            currentScribLabel = self.ui.scribLabelComboBox.itemText(currentScribLabelIndex)
+            self._parameterNode.SetParameter("CurrentScribLabel", currentScribLabel)
 
         currentStrategyIndex = self.ui.strategyBox.currentIndex
         if currentStrategyIndex >= 0:
@@ -909,6 +927,14 @@ class MONAILabelWidget(ScriptedLoadableModuleWidget, VTKObservationMixin):
         logging.debug(f"Current SegmentID: {segmentId}; Segment: {segment}")
         return segmentId, segment
 
+    def currentScribSegment(self):
+        segmentation = self._segmentNode.GetSegmentation()
+        segmentId = segmentation.GetSegmentIdBySegmentName(self.ui.scribLabelComboBox.currentText)
+        segment = segmentation.GetSegment(segmentId)
+
+        logging.debug(f"Current SegmentID: {segmentId}; Segment: {segment}")
+        return segmentId, segment
+
     def onSelectLabel(self, caller=None, event=None):
         self.updateParameterNodeFromGUI(caller, event)
 
@@ -916,6 +942,22 @@ class MONAILabelWidget(ScriptedLoadableModuleWidget, VTKObservationMixin):
         self.onEditControlPoints(self.dgPositivePointListNode, "MONAILabel.ForegroundPoints")
         self.onEditControlPoints(self.dgNegativePointListNode, "MONAILabel.BackgroundPoints")
         self.ignorePointListNodeAddEvent = False
+
+    def onSelectScribLabel(self, caller=None, event=None):
+        if self.scribblesLayersPresent() and not self.ignoreScribblesLabelChangeEvent:
+            if not slicer.util.confirmOkCancelDisplay(
+                "This will clear current scribbles session.\n" "Are you sure to continue?"
+            ):
+                # undo changes to combobox
+                currentScribLabel = self._parameterNode.GetParameter("CurrentScribLabel")
+                logging.info(f"Cancel: reverting to original selection {currentScribLabel}")
+                self.ignoreScribblesLabelChangeEvent = True
+                self.ui.scribLabelComboBox.setCurrentIndex(self.ui.scribLabelComboBox.findText(currentScribLabel))
+                self.ignoreScribblesLabelChangeEvent = False
+                return
+            self.onClearScribbles()
+
+        self.updateParameterNodeFromGUI(caller, event)
 
     def icon(self, name="MONAILabel.png"):
         # It should not be necessary to modify this method
@@ -1115,7 +1157,7 @@ class MONAILabelWidget(ScriptedLoadableModuleWidget, VTKObservationMixin):
                 "Are you sure to continue?"
             ):
                 return
-            self.onClearScribbles()
+            self.onResetScribbles()
             slicer.mrmlScene.Clear(0)
 
         start = time.time()
@@ -1278,7 +1320,7 @@ class MONAILabelWidget(ScriptedLoadableModuleWidget, VTKObservationMixin):
         start = time.time()
         labelmapVolumeNode = None
         result = None
-        self.onClearScribbles()
+        self.onResetScribbles()
 
         if self.current_sample.get("session"):
             if not self.onUploadImage(init_sample=False):
@@ -1287,25 +1329,28 @@ class MONAILabelWidget(ScriptedLoadableModuleWidget, VTKObservationMixin):
         try:
             qt.QApplication.setOverrideCursor(qt.Qt.WaitCursor)
             segmentationNode = self._segmentNode
-            labelmapVolumeNode = slicer.mrmlScene.AddNewNodeByClass("vtkMRMLLabelMapVolumeNode")
-            slicer.modules.segmentations.logic().ExportVisibleSegmentsToLabelmapNode(
-                segmentationNode, labelmapVolumeNode, self._volumeNode
-            )
-
             segmentation = segmentationNode.GetSegmentation()
             totalSegments = segmentation.GetNumberOfSegments()
             segmentIds = [segmentation.GetNthSegmentID(i) for i in range(totalSegments)]
 
+            # remove background and scribbles labels
             label_info = []
+            save_segment_ids = vtk.vtkStringArray()
             for idx, segmentId in enumerate(segmentIds):
                 segment = segmentation.GetSegment(segmentId)
-                if segment.GetName() in ["foreground_scribbles", "background_scribbles"]:
+                if segment.GetName() in ["background", "foreground_scribbles", "background_scribbles"]:
                     logging.info(f"Removing segment {segmentId}: {segment.GetName()}")
-                    segmentationNode.RemoveSegment(segmentId)
                     continue
 
+                save_segment_ids.InsertNextValue(segmentId)
                 label_info.append({"name": segment.GetName(), "idx": idx + 1})
                 # label_info.append({"color": segment.GetColor()})
+
+            # export labelmap
+            labelmapVolumeNode = slicer.mrmlScene.AddNewNodeByClass("vtkMRMLLabelMapVolumeNode")
+            slicer.modules.segmentations.logic().ExportSegmentsToLabelmapNode(
+                segmentationNode, save_segment_ids, labelmapVolumeNode, self._volumeNode
+            )
 
             label_in = tempfile.NamedTemporaryFile(suffix=self.file_ext, dir=self.tmpdir).name
             self.reportProgress(5)
@@ -1732,9 +1777,20 @@ class MONAILabelWidget(ScriptedLoadableModuleWidget, VTKObservationMixin):
             # get scribbles + label
             segmentationNode = self._segmentNode
             labelmapVolumeNode = slicer.mrmlScene.AddNewNodeByClass("vtkMRMLLabelMapVolumeNode")
-            slicer.modules.segmentations.logic().ExportVisibleSegmentsToLabelmapNode(
-                segmentationNode, labelmapVolumeNode, self._volumeNode
+            save_segment_ids = vtk.vtkStringArray()
+            segmentationNode.GetSegmentation().GetSegmentIDs(save_segment_ids)
+            slicer.modules.segmentations.logic().ExportSegmentsToLabelmapNode(
+                segmentationNode, save_segment_ids, labelmapVolumeNode, self._volumeNode
             )
+            segmentation = segmentationNode.GetSegmentation()
+            totalSegments = segmentation.GetNumberOfSegments()
+            segmentIds = [segmentation.GetNthSegmentID(i) for i in range(totalSegments)]
+
+            label_info = []
+            for idx, segmentId in enumerate(segmentIds):
+                segment = segmentation.GetSegment(segmentId)
+                label_info.append({"name": segment.GetName(), "id": idx + 1})
+
             scribbles_in = tempfile.NamedTemporaryFile(suffix=self.file_ext, dir=self.tmpdir).name
             self.reportProgress(5)
 
@@ -1755,6 +1811,10 @@ class MONAILabelWidget(ScriptedLoadableModuleWidget, VTKObservationMixin):
             # send scribbles + label to server along with selected scribbles method
             params = self.getParamsFromConfig("infer", scribblesMethod)
             params.update({"roi": selected_roi})
+            params.update({"label_info": label_info})
+            _, segment = self.currentScribSegment()
+            selected_label_name = segment.GetName()
+            params.update({"selected_label_name": selected_label_name})
 
             image_file = self.current_sample["id"]
             result_file, params = self.logic.infer(
@@ -1763,9 +1823,7 @@ class MONAILabelWidget(ScriptedLoadableModuleWidget, VTKObservationMixin):
 
             # display result from server
             self.reportProgress(90)
-            _, segment = self.currentSegment()
-            label = segment.GetName()
-            self.updateSegmentationMask(result_file, [label])
+            self.updateSegmentationMask(result_file, [selected_label_name])
         except:
             slicer.util.errorDisplay(
                 f"Failed to post process label on MONAI Label Server using {scribblesMethod}",
@@ -1841,7 +1899,23 @@ class MONAILabelWidget(ScriptedLoadableModuleWidget, VTKObservationMixin):
                     labelMapRep, segmentation, segmentId, slicer.vtkSlicerSegmentationsModuleLogic.MODE_REPLACE
                 )
 
+        # refresh segmentation view to clear scribbles segmentations
+        # help from: https://discourse.slicer.org/t/refresh-volume-rendering/11847/6
+        segmentation.SetDisplayVisibility(False)
+        segmentation.SetDisplayVisibility(True)
+
     def onClearScribbles(self):
+        # for clearing scribbles and resetting tools to default
+        # remove "scribbles" segments from label
+        self.onClearScribblesSegmentNodes()
+
+        self.ui.paintScribblesButton.setChecked(True)
+        self.ui.eraseScribblesButton.setChecked(False)
+
+        self.ui.scribblesSelector.setCurrentIndex(0)
+
+    def onResetScribbles(self):
+
         # reset scribbles mode
         self.scribblesMode = None
 
@@ -1851,13 +1925,13 @@ class MONAILabelWidget(ScriptedLoadableModuleWidget, VTKObservationMixin):
         # remove "scribbles" segments from label
         self.onClearScribblesSegmentNodes()
 
-        # reset UI elements associated with scribbles
-        self.ui.scribblesCollapsibleButton.collapsed = True
-
         self.ui.paintScribblesButton.setChecked(False)
         self.ui.eraseScribblesButton.setChecked(False)
 
-        self.ui.scribblesLabelSelector.setCurrentIndex(0)
+        self.ui.scribblesSelector.setCurrentIndex(0)
+        self.ignoreScribblesLabelChangeEvent = True
+        self.ui.scribLabelComboBox.setCurrentIndex(0)
+        self.ignoreScribblesLabelChangeEvent = False
 
     def checkAndInitialiseScribbles(self):
         if not self._segmentNode:
@@ -1931,9 +2005,9 @@ class MONAILabelWidget(ScriptedLoadableModuleWidget, VTKObservationMixin):
         if not self._segmentNode:
             return
 
-        index = self.ui.scribblesLabelSelector.currentIndex
+        index = self.ui.scribblesSelector.currentIndex
         index = 0 if index < 0 else index
-        selected = self.ui.scribblesLabelSelector.itemText(index)
+        selected = self.ui.scribblesSelector.itemText(index)
 
         layer = "foreground_scribbles" if selected == "Foreground" else "background_scribbles"
         self.changeScribblesMode(layer=layer)

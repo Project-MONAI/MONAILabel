@@ -513,15 +513,12 @@
       </property>
       <item row="2" column="1" colspan="2">
        <layout class="QGridLayout" name="gridLayout_7">
-        <item row="0" column="6">
+        <item row="4" column="6">
          <layout class="QGridLayout" name="gridLayout_8">
-          <item row="0" column="3">
-           <widget class="QPushButton" name="eraseScribblesButton">
+          <item row="0" column="4">
+           <widget class="QPushButton" name="updateScribblesButton">
             <property name="text">
-             <string>Erase</string>
-            </property>
-            <property name="checkable">
-             <bool>true</bool>
+             <string>Update</string>
             </property>
            </widget>
           </item>
@@ -535,43 +532,19 @@
             </property>
            </widget>
           </item>
-          <item row="0" column="4">
-           <widget class="QPushButton" name="updateScribblesButton">
+          <item row="0" column="3">
+           <widget class="QPushButton" name="eraseScribblesButton">
             <property name="text">
-             <string>Update</string>
+             <string>Erase</string>
+            </property>
+            <property name="checkable">
+             <bool>true</bool>
             </property>
            </widget>
           </item>
          </layout>
         </item>
-        <item row="0" column="2">
-         <widget class="QLabel" name="scribblesMethodLabel">
-          <property name="layoutDirection">
-           <enum>Qt::LeftToRight</enum>
-          </property>
-          <property name="text">
-           <string>Model:</string>
-          </property>
-         </widget>
-        </item>
-        <item row="0" column="3">
-         <widget class="QComboBox" name="scribblesMethodSelector">
-          <property name="sizePolicy">
-           <sizepolicy hsizetype="Expanding" vsizetype="Fixed">
-            <horstretch>0</horstretch>
-            <verstretch>0</verstretch>
-           </sizepolicy>
-          </property>
-         </widget>
-        </item>
-        <item row="1" column="2" rowspan="2">
-         <widget class="QLabel" name="label_13">
-          <property name="text">
-           <string>Label:</string>
-          </property>
-         </widget>
-        </item>
-        <item row="1" column="6">
+        <item row="2" column="6">
          <layout class="QHBoxLayout" name="horizontalLayout">
           <item>
            <widget class="QLabel" name="label_11">
@@ -623,19 +596,52 @@
           </item>
          </layout>
         </item>
-        <item row="1" column="3">
-         <layout class="QGridLayout" name="gridLayout_11">
-          <item row="0" column="0">
-           <widget class="QComboBox" name="scribblesLabelSelector">
-            <property name="sizePolicy">
-             <sizepolicy hsizetype="Expanding" vsizetype="Fixed">
-              <horstretch>0</horstretch>
-              <verstretch>0</verstretch>
-             </sizepolicy>
-            </property>
-           </widget>
-          </item>
-         </layout>
+        <item row="4" column="2">
+         <widget class="QLabel" name="label_2">
+          <property name="text">
+           <string>Scribbles:</string>
+          </property>
+         </widget>
+        </item>
+        <item row="2" column="2" rowspan="2">
+         <widget class="QLabel" name="label_13">
+          <property name="text">
+           <string>Label:</string>
+          </property>
+         </widget>
+        </item>
+        <item row="0" column="3">
+         <widget class="QComboBox" name="scribblesMethodSelector">
+          <property name="sizePolicy">
+           <sizepolicy hsizetype="Expanding" vsizetype="Fixed">
+            <horstretch>0</horstretch>
+            <verstretch>0</verstretch>
+           </sizepolicy>
+          </property>
+         </widget>
+        </item>
+        <item row="0" column="2">
+         <widget class="QLabel" name="scribblesMethodLabel">
+          <property name="layoutDirection">
+           <enum>Qt::LeftToRight</enum>
+          </property>
+          <property name="text">
+           <string>Model:</string>
+          </property>
+         </widget>
+        </item>
+        <item row="4" column="3">
+         <widget class="QComboBox" name="scribblesSelector">
+          <property name="sizePolicy">
+           <sizepolicy hsizetype="Expanding" vsizetype="Fixed">
+            <horstretch>0</horstretch>
+            <verstretch>0</verstretch>
+           </sizepolicy>
+          </property>
+         </widget>
+        </item>
+        <item row="2" column="3">
+         <widget class="QComboBox" name="scribLabelComboBox"/>
         </item>
        </layout>
       </item>
