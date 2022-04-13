@@ -1,4 +1,4 @@
-# Copyright 2020 - 2021 MONAI Consortium
+# Copyright (c) MONAI Consortium
 # Licensed under the Apache License, Version 2.0 (the "License");
 # you may not use this file except in compliance with the License.
 # You may obtain a copy of the License at
@@ -42,7 +42,7 @@ def make_iseg_unary(
 
     # expected input shape is [1, X, Y, [Z]], exit if first dimension doesnt comply
     if scrib_shape[0] != 1:
-        raise ValueError("scribbles should have single channel first, received {}".format(scrib_shape[0]))
+        raise ValueError(f"scribbles should have single channel first, received {scrib_shape[0]}")
 
     # unfold a single prob for background into bg/fg prob (if needed)
     if prob_shape[0] == 1:

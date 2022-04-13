@@ -1,4 +1,4 @@
-# Copyright 2020 - 2021 MONAI Consortium
+# Copyright (c) MONAI Consortium
 # Licensed under the Apache License, Version 2.0 (the "License");
 # you may not use this file except in compliance with the License.
 # You may obtain a copy of the License at
@@ -89,7 +89,7 @@ def generate_label_with_noise(height, width, label_key="label", noisy_key="noisy
                 tmp_list.append(noisy)
             noisy = np.concatenate(tmp_list, axis=1)
     else:
-        raise ValueError("unrecognised num_slices selected [{}]".format(num_slices))
+        raise ValueError(f"unrecognised num_slices selected [{num_slices}]")
 
     pred = label
     label = np.concatenate([1 - label, label], axis=0)

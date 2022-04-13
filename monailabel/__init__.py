@@ -1,4 +1,4 @@
-# Copyright 2020 - 2021 MONAI Consortium
+# Copyright (c) MONAI Consortium
 # Licensed under the Apache License, Version 2.0 (the "License");
 # you may not use this file except in compliance with the License.
 # You may obtain a copy of the License at
@@ -15,14 +15,14 @@ import sys
 from ._version import get_versions
 
 PY_REQUIRED_MAJOR = 3
-PY_REQUIRED_MINOR = 6
+PY_REQUIRED_MINOR = 7
 
 version_dict = get_versions()
 __version__ = version_dict.get("version", "0+unknown")
 __revision_id__ = version_dict.get("full-revisionid")
 del get_versions, version_dict
 
-__copyright__ = "(c) 2020 - 2021 MONAI Consortium"
+__copyright__ = "Copyright (c) MONAI Consortium"
 
 __basedir__ = os.path.dirname(__file__)
 

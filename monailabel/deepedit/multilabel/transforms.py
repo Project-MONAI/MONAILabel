@@ -1,4 +1,4 @@
-# Copyright 2020 - 2021 MONAI Consortium
+# Copyright (c) MONAI Consortium
 # Licensed under the Apache License, Version 2.0 (the "License");
 # you may not use this file except in compliance with the License.
 # You may obtain a copy of the License at
@@ -863,7 +863,8 @@ class AddInitialSeedPointMissingLabelsd(Randomizable, MapTransform):
 
                 # The distance transform provides a metric or measure of the separation of points in the image.
                 # This function calculates the distance between each pixel that is set to off (0) and
-                # the nearest nonzero pixel for binary images - http://matlab.izmiran.ru/help/toolbox/images/morph14.html
+                # the nearest nonzero pixel for binary images
+                # http://matlab.izmiran.ru/help/toolbox/images/morph14.html
                 distance = distance_transform_cdt(label).flatten()
                 probability = np.exp(distance) - 1.0
 

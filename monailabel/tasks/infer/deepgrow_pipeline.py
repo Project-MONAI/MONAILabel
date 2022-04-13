@@ -1,4 +1,4 @@
-# Copyright 2020 - 2021 MONAI Consortium
+# Copyright (c) MONAI Consortium
 # Licensed under the Apache License, Version 2.0 (the "License");
 # you may not use this file except in compliance with the License.
 # You may obtain a copy of the License at
@@ -121,12 +121,12 @@ class InferDeepgrowPipeline(InferTask):
     def run_inferer(self, data, convert_to_batch=True, device="cuda"):
         image = data[self.input_key]
         slices = data["slices"]
-        logger.debug("Pre processed Image shape: {}".format(image.shape))
+        logger.debug(f"Pre processed Image shape: {image.shape}")
 
         batched_data = []
         batched_slices = []
         pred = np.zeros(image.shape[1:])
-        logger.debug("Init pred: {}".format(pred.shape))
+        logger.debug(f"Init pred: {pred.shape}")
 
         for slice_idx in slices:
             img = np.array([image[0][slice_idx], image[1][slice_idx], image[2][slice_idx]])
@@ -144,7 +144,7 @@ class InferDeepgrowPipeline(InferTask):
             self.run_batch(super().run_inferer, batched_data, batched_slices, pred)
 
         pred = pred[np.newaxis]
-        logger.debug("Prediction: {}; sum: {}".format(pred.shape, np.sum(pred)))
+        logger.debug(f"Prediction: {pred.shape}; sum: {np.sum(pred)}")
 
         data[self.output_label_key] = pred
         return data
@@ -168,7 +168,7 @@ class InferDeepgrowPipeline(InferTask):
         return points
 
     def get_slices_points(self, label, initial_foreground):
-        logger.debug("Label shape: {}".format(label.shape))
+        logger.debug(f"Label shape: {label.shape}")
 
         foreground_all = initial_foreground
         max_slices = label.shape[0]
@@ -183,7 +183,7 @@ class InferDeepgrowPipeline(InferTask):
             # get largest cc
             lab = LargestCCd.get_largest_cc(lab)
             if np.sum(lab) < self.min_point_density:
-                logger.debug("Ignoring this slice: {}; min existing points: {}".format(i, self.min_point_density))
+                logger.debug(f"Ignoring this slice: {i}; min existing points: {self.min_point_density}")
                 continue
 
             # Add initial point  based on CDT/Distance
@@ -202,7 +202,7 @@ class InferDeepgrowPipeline(InferTask):
                 foreground_all.append([point[-2], point[-1], i])
             # logger.debug('Slice: {}; Sum: {}; Foreground Points: {}'.format(i, np.sum(lab), foreground))
 
-        logger.info("Total Foreground Points: {}".format(len(foreground_all)))
+        logger.info(f"Total Foreground Points: {len(foreground_all)}")
         slices = list(set((np.array(foreground_all)[:, 2]).astype(int).tolist()))
-        logger.info("Total slices: {}; min: {}; max: {}".format(len(slices), min(slices), max(slices)))
+        logger.info(f"Total slices: {len(slices)}; min: {min(slices)}; max: {max(slices)}")
         return foreground_all, slices

@@ -1,4 +1,4 @@
-# Copyright 2020 - 2021 MONAI Consortium
+# Copyright (c) MONAI Consortium
 # Licensed under the Apache License, Version 2.0 (the "License");
 # you may not use this file except in compliance with the License.
 # You may obtain a copy of the License at
@@ -83,7 +83,7 @@ def run_main():
 
     args = parser.parse_args()
     for arg in vars(args):
-        logger.debug("USING:: {} = {}".format(arg, getattr(args, arg)))
+        logger.debug(f"USING:: {arg} = {getattr(args, arg)}")
     logger.debug("")
 
     logger.debug("------------------------------------------------------")

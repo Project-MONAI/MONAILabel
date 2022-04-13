@@ -1,4 +1,4 @@
-# Copyright 2020 - 2021 MONAI Consortium
+# Copyright (c) MONAI Consortium
 # Licensed under the Apache License, Version 2.0 (the "License");
 # you may not use this file except in compliance with the License.
 # You may obtain a copy of the License at
@@ -17,7 +17,7 @@ from abc import abstractmethod
 from typing import Any, Callable, Dict, Sequence, Tuple, Union
 
 import torch
-from monai.inferers import SimpleInferer, SlidingWindowInferer
+from monai.inferers import Inferer, SimpleInferer, SlidingWindowInferer
 
 from monailabel.interfaces.exception import MONAILabelError, MONAILabelException
 from monailabel.interfaces.utils.transform import run_transforms
@@ -216,7 +216,7 @@ class InferTask:
         """
         pass
 
-    def inferer(self, data=None) -> Callable:
+    def inferer(self, data=None) -> Inferer:
         input_shape = data[self.input_key].shape if data else None
 
         roi_size = data.get("roi_size", self.roi_size) if data else self.roi_size
@@ -314,8 +314,8 @@ class InferTask:
         }
 
         if result_file_name:
-            logger.info("Result File: {}".format(result_file_name))
-            logger.info("Result Json Keys: {}".format(list(result_json.keys())))
+            logger.info(f"Result File: {result_file_name}")
+            logger.info(f"Result Json Keys: {list(result_json.keys())}")
         return result_file_name, result_json
 
     def run_pre_transforms(self, data, transforms):
@@ -348,7 +348,7 @@ class InferTask:
 
     def _get_network(self, device):
         path = self.get_path()
-        logger.info("Infer model path: {}".format(path))
+        logger.info(f"Infer model path: {path}")
         if not path and not self.network:
             if self.type == InferType.SCRIBBLES:
                 return None
@@ -396,7 +396,7 @@ class InferTask:
         """
 
         inferer = self.inferer(data)
-        logger.info("Inferer:: {} => {} => {}".format(device, inferer.__class__.__name__, inferer.__dict__))
+        logger.info(f"Inferer:: {device} => {inferer.__class__.__name__} => {inferer.__dict__}")
 
         network = self._get_network(device)
         if network:

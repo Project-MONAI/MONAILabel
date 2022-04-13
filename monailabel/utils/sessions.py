@@ -1,4 +1,4 @@
-# Copyright 2020 - 2021 MONAI Consortium
+# Copyright (c) MONAI Consortium
 # Licensed under the Apache License, Version 2.0 (the "License");
 # you may not use this file except in compliance with the License.
 # You may obtain a copy of the License at
@@ -22,7 +22,7 @@ from typing import Dict
 logger = logging.getLogger(__name__)
 
 
-class SessionInfo(object):
+class SessionInfo:
     def __init__(self, c=None):
         self.name: str = c.get("name") if c else ""
         self.path: str = c.get("path") if c else ""
@@ -61,7 +61,7 @@ class Sessions(dict):
                 expiry_ts = session_info.last_access_ts + session_info.expiry
 
                 if session_info and session_info.expiry > 0 and expiry_ts < current_ts:
-                    logger.info("Removing expired; current ts: {}\n{}".format(current_ts, session_info.to_str()))
+                    logger.info(f"Removing expired; current ts: {current_ts}\n{session_info.to_str()}")
                     self.remove_session(session_id)
                     count += 1
                 elif session_info:
@@ -71,7 +71,7 @@ class Sessions(dict):
                         )
                     )
                 else:
-                    logger.info("Invalid session-id: {} (will be removed)".format(session_id))
+                    logger.info(f"Invalid session-id: {session_id} (will be removed)")
                     self.remove_session(session_id)
         return count
 
@@ -82,12 +82,12 @@ class Sessions(dict):
             if os.path.exists(path):
                 meta_file = os.path.join(path, "meta.info")
                 if os.path.exists(meta_file):
-                    with open(meta_file, "r") as meta:
+                    with open(meta_file) as meta:
                         session_info = SessionInfo(json.loads(meta.readline()))
                     self[session_id] = session_info
 
         if session_info and not os.path.exists(session_info.image):
-            logger.info("Dangling session-id: {} (will be removed)".format(session_id))
+            logger.info(f"Dangling session-id: {session_id} (will be removed)")
             self.remove_session(session_id)
             session_info = None
 
@@ -105,7 +105,7 @@ class Sessions(dict):
 
     def add_session(self, data_file: str, expiry: int = 0, uncompress: bool = False):
         start = time.time()
-        logger.debug("Load Data from: {}".format(data_file))
+        logger.debug(f"Load Data from: {data_file}")
 
         if os.path.isdir(data_file):
             image_path = data_file

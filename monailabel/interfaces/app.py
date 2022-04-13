@@ -1,4 +1,4 @@
-# Copyright 2020 - 2021 MONAI Consortium
+# Copyright (c) MONAI Consortium
 # Licensed under the Apache License, Version 2.0 (the "License");
 # you may not use this file except in compliance with the License.
 # You may obtain a copy of the License at
@@ -183,9 +183,9 @@ class MONAILabelApp:
             for labels in [v.get("labels", []) for v in meta["models"].values()]:
                 if labels and isinstance(labels, dict):
                     labels = [k for k, _ in sorted(labels.items(), key=lambda item: item[1])]  # type: ignore
-                for l in labels:
-                    if l not in merged:
-                        merged.append(l)
+                for label in labels:
+                    if label not in merged:
+                        merged.append(label)
             meta["labels"] = merged
 
         return meta
@@ -540,7 +540,7 @@ class MONAILabelApp:
         if not self._sessions:
             return
         count = self._sessions.remove_expired()
-        logger.debug("Total sessions cleaned up: {}".format(count))
+        logger.debug(f"Total sessions cleaned up: {count}")
 
     def sessions(self):
         return self._sessions
@@ -662,7 +662,7 @@ class MONAILabelApp:
                 )
 
         latency_total = time.time() - start
-        logger.debug("WSI Infer Time Taken: {:.4f}".format(latency_total))
+        logger.debug(f"WSI Infer Time Taken: {latency_total:.4f}")
 
         res_json["name"] = f"MONAILabel Annotations - {model}"
         res_json["description"] = task.description
@@ -686,7 +686,7 @@ class MONAILabelApp:
             logger.debug("+++ Return Default JSON Annotation")
 
         if len(infer_tasks) > 1:
-            logger.info("Total Time Taken: {:.4f}; Total Infer Time: {:.4f}".format(time.time() - start, latency_total))
+            logger.info(f"Total Time Taken: {time.time() - start:.4f}; Total Infer Time: {latency_total:.4f}")
         return {"file": res_file, "params": res_json}
 
     def _run_infer_wsi_task(self, task):

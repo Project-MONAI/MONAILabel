@@ -1,4 +1,4 @@
-# Copyright 2020 - 2021 MONAI Consortium
+# Copyright (c) MONAI Consortium
 # Licensed under the Apache License, Version 2.0 (the "License");
 # you may not use this file except in compliance with the License.
 # You may obtain a copy of the License at
@@ -22,7 +22,7 @@ logging.basicConfig(level=logging.INFO)
 def main(args):
     print("\n>> CLI Parameters ...\n")
     for arg in vars(args):
-        print("USING:: {} = {}".format(arg, getattr(args, arg)))
+        print(f"USING:: {arg} = {getattr(args, arg)}")
 
     print("\n>> Running MONAI...\n")
     start_time = time.time()
@@ -49,7 +49,7 @@ def main(args):
     client.train_start(model=args.model_name, params=params)
 
     total_time_taken = time.time() - start_time
-    print("Training Job Triggered/Started = {}".format(cli_utils.disp_time_hms(total_time_taken)))
+    print(f"Training Job Triggered/Started = {cli_utils.disp_time_hms(total_time_taken)}")
 
 
 if __name__ == "__main__":

@@ -1,4 +1,4 @@
-# Copyright 2020 - 2021 MONAI Consortium
+# Copyright (c) MONAI Consortium
 # Licensed under the Apache License, Version 2.0 (the "License");
 # you may not use this file except in compliance with the License.
 # You may obtain a copy of the License at
@@ -73,7 +73,7 @@ def _task_func(task, method, callback=None):
             plogger.info(line)
             task["details"].append(line)
 
-    logger.info("Return code: {}".format(process.returncode))
+    logger.info(f"Return code: {process.returncode}")
     background_processes[method].pop(task_id, None)
     process.stdout.close()
 
