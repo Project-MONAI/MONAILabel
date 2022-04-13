@@ -22,7 +22,7 @@ numpy>=1.21.5
 einops>=0.3.2
 openslide-python==1.1.2
 opencv-python-headless==4.5.5.64
-Shapely==1.8.0
+Shapely==1.8.1.post1
 girder_client==3.1.8
 
 #sudo apt-get install openslide-tools -y
