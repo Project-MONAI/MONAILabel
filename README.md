@@ -29,6 +29,8 @@ with [MONAI](https://github.com/Project-MONAI).
 
 ## Installation
 
+**MONAI Label requires PyTorch version 1.10.0 or newer.**
+
 MONAI Label supports following OS with **GPU/CUDA** enabled.
 
 - Ubuntu
