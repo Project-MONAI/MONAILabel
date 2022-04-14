@@ -29,14 +29,14 @@ with [MONAI](https://github.com/Project-MONAI).
 
 ## Installation
 
+**MONAI Label requires PyTorch version 1.10.0 or newer.**
+
 MONAI Label supports following OS with **GPU/CUDA** enabled.
 
 - Ubuntu
 - [Windows](https://docs.monai.io/projects/label/en/latest/installation.html#windows)
 
 ### Development Release
-
-> **MONAI Label requires PyTorch version 1.10.0 or newer**
 
 To install the _**latest features**_ using one of the following options:
 ```bash
