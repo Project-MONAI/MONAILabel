@@ -36,6 +36,8 @@ MONAI Label supports following OS with **GPU/CUDA** enabled.
 
 ### Development Release
 
+> **MONAI Label requires PyTorch version 1.10.0 or newer**
+
 To install the _**latest features**_ using one of the following options:
 ```bash
 # option 1: github install (or you can install monailabel-weekly from PyPI)
