@@ -195,7 +195,7 @@ This model based on UNet for automated segmentation. This model works for single
 
 #### [Segmentation_brats](./lib/configs/segmentation_brats.py)
 
-This model based on UNETR for automated segmentation of brain tumor. 
+This model based on UNETR for automated segmentation of brain tumor.
 
 > monailabel start_server --app workspace/radiology --studies workspace/images --conf models segmentation_brats
 
