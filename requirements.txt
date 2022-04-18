@@ -1,5 +1,8 @@
 aiofiles==0.8.0
 fastapi==0.73.0
+# https://github.com/SimpleITK/SimpleITK/issues/1627#issuecomment-1094288209
+SimpleITK==2.1.1.1; python_version == '3.10'
+SimpleITK>=2.1.1
 monai[nibabel, skimage, pillow, tensorboard, gdown, ignite, torchvision, itk, tqdm, lmdb, psutil, openslide]>=0.8.1
 PyYAML==6.0
 python-multipart==0.0.5
@@ -21,7 +24,8 @@ numpy>=1.21.5
 einops>=0.3.2
 openslide-python==1.1.2
 opencv-python-headless==4.5.5.64
-Shapely==1.8.0
+Shapely==1.8.1.post1
 girder_client==3.1.8
+torchmaxflow==0.0.6rc1
 
 #sudo apt-get install openslide-tools -y

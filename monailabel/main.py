@@ -1,4 +1,4 @@
-# Copyright 2020 - 2021 MONAI Consortium
+# Copyright (c) MONAI Consortium
 # Licensed under the Apache License, Version 2.0 (the "License");
 # you may not use this file except in compliance with the License.
 # You may obtain a copy of the License at
@@ -136,7 +136,7 @@ class Main:
             print("Available Datasets are:")
             print("----------------------------------------------------")
             for k, v in resource.items():
-                print("  {:<30}: {}".format(k, v))
+                print(f"  {k:<30}: {v}")
             print("")
         else:
             url = resource.get(args.name) if args.name else None
@@ -220,7 +220,7 @@ class Main:
             print("Available Plugins are:")
             print("----------------------------------------------------")
             for k, v in resource.items():
-                print("  {:<30}: {}".format(k, v))
+                print(f"  {k:<30}: {v}")
             print("")
         else:
             plugin_dir = os.path.join(plugins_dir, args.name)
@@ -289,7 +289,7 @@ class Main:
             args.studies = os.path.realpath(args.studies)
 
         for arg in vars(args):
-            logger.info("USING:: {} = {}".format(arg, getattr(args, arg)))
+            logger.info(f"USING:: {arg} = {getattr(args, arg)}")
 
         for k, v in settings.dict().items():
             v = f"'{json.dumps(v)}'" if isinstance(v, list) or isinstance(v, dict) else v

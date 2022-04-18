@@ -16,6 +16,17 @@ We are happy to talk with you about your needs for MONAILabel and your ideas for
 >In progress.  Please wait for more instructions to follow
 
   - Before submitting Pull Request make sure basic CI checks are passed.
+
+    Install `pre-commit` if you have not already.
+    ```
+    python -m pip install pre-commit
+    ```
+    Run `pre-commit` check from MonaiLabel working directory.
+    ```
+    cd MonaiLabel
+    python -m pre_commit run --all-files
+    ```
+    Run additional checks.
     ```
     ./runtests.sh --codeformat
     ./runtests.sh --unittests

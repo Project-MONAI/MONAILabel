@@ -1,4 +1,4 @@
-# Copyright 2020 - 2021 MONAI Consortium
+# Copyright (c) MONAI Consortium
 # Licensed under the Apache License, Version 2.0 (the "License");
 # you may not use this file except in compliance with the License.
 # You may obtain a copy of the License at
@@ -10,7 +10,7 @@
 # limitations under the License.
 from typing import Callable, Sequence
 
-from monai.inferers import SlidingWindowInferer
+from monai.inferers import Inferer, SlidingWindowInferer
 from monai.transforms import (
     Activationsd,
     AddChanneld,
@@ -60,7 +60,7 @@ class SegmentationSpleen(InferTask):
             EnsureTyped(keys="image"),
         ]
 
-    def inferer(self, data=None) -> Callable:
+    def inferer(self, data=None) -> Inferer:
         return SlidingWindowInferer(roi_size=(160, 160, 160))
 
     def post_transforms(self, data=None) -> Sequence[Callable]:

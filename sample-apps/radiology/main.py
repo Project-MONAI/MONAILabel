@@ -1,4 +1,4 @@
-# Copyright 2020 - 2021 MONAI Consortium
+# Copyright (c) MONAI Consortium
 # Licensed under the Apache License, Version 2.0 (the "License");
 # you may not use this file except in compliance with the License.
 # You may obtain a copy of the License at
@@ -24,6 +24,7 @@ from monailabel.interfaces.tasks.infer import InferTask
 from monailabel.interfaces.tasks.scoring import ScoringMethod
 from monailabel.interfaces.tasks.strategy import Strategy
 from monailabel.interfaces.tasks.train import TrainTask
+from monailabel.scribbles.infer import HistogramBasedGraphCut
 from monailabel.tasks.activelearning.random import Random
 from monailabel.tasks.infer.deepgrow_pipeline import InferDeepgrowPipeline
 from monailabel.utils.others.class_utils import get_class_names
@@ -110,6 +111,21 @@ class MyApp(MONAILabelApp):
             for k, v in c.items():
                 logger.info(f"+++ Adding Inferer:: {k} => {v}")
                 infers[k] = v
+
+        #################################################
+        # Scribbles
+        #################################################
+        infers.update(
+            {
+                "Histogram+GraphCut": HistogramBasedGraphCut(
+                    intensity_range=(-300, 200, 0.0, 1.0, True),
+                    pix_dim=(2.5, 2.5, 5.0),
+                    lamda=1.0,
+                    sigma=0.1,
+                    labels=task_config.labels,
+                ),
+            }
+        )
 
         #################################################
         # Pipeline based on existing infers

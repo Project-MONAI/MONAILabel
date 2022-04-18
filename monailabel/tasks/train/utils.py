@@ -1,4 +1,4 @@
-# Copyright 2020 - 2021 MONAI Consortium
+# Copyright (c) MONAI Consortium
 # Licensed under the Apache License, Version 2.0 (the "License");
 # you may not use this file except in compliance with the License.
 # You may obtain a copy of the License at
@@ -32,9 +32,9 @@ def from_engine_idx(keys: KeysCollection, idx, first: bool = False):
     keys = ensure_tuple(keys)
 
     def _match(t, idx):
-        p, l = t
+        p, label = t
         p_n = [x[idx, ...][None] for x in p]
-        l_n = [x[idx, ...][None] for x in l]
+        l_n = [x[idx, ...][None] for x in label]
         return p_n, l_n
 
     def _wrapper(data):

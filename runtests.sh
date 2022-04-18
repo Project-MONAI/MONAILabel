@@ -1,6 +1,6 @@
 #! /bin/bash
 
-# Copyright 2020 - 2021 MONAI Consortium
+# Copyright (c) MONAI Consortium
 # Licensed under the Apache License, Version 2.0 (the "License");
 # you may not use this file except in compliance with the License.
 # You may obtain a copy of the License at
@@ -44,42 +44,27 @@ doQuickTests=false
 doNetTests=false
 doDryRun=false
 doUnitTests=false
-doBlackFormat=false
-doBlackFix=false
-doIsortFormat=false
-doIsortFix=false
-doFlake8Format=false
 doPytypeFormat=false
-doMypyFormat=false
 doCleanup=false
 
 NUM_PARALLEL=1
-LINE_LENGTH=120
 
 PY_EXE=${MONAILABEL_PY_EXE:-$(which python3)}
 
 function print_usage() {
-  echo "runtests.sh [--codeformat] [--autofix] [--isort] [--flake8] [--pytype] [--mypy]"
+  echo "runtests.sh [--codeformat] [--pytype]"
   echo "            [--unittests] [--net] [--dryrun] [-j number] [--clean] [--help] [--version]"
   echo ""
   echo "MONAILABEL testing utilities."
   echo ""
   echo "Examples:"
   echo "./runtests.sh --codeformat            # run static checks"
-  echo "./runtests.sh --autofix               # run automatic code formatting using \"isort\" and \"black\"."
   echo "./runtests.sh --unittests             # run unit tests with code coverage"
   echo "./runtests.sh --net                   # run integration tests (monailabel PIP package should have been installed)"
   echo "./runtests.sh --clean                 # clean up temporary files and run \"${PY_EXE} setup.py develop --uninstall\"."
   echo ""
-  echo "Code style check options:"
-  echo "    --black           : perform \"black\" code format checks"
-  echo "    --autofix         : format code using \"isort\" and \"black\""
-  echo "    --isort           : perform \"isort\" import sort checks"
-  echo "    --flake8          : perform \"flake8\" code format checks"
-  echo ""
   echo "Python type check options:"
   echo "    --pytype          : perform \"pytype\" static type checks"
-  echo "    --mypy            : perform \"mypy\" static type checks"
   echo "    -j, --jobs        : number of parallel jobs to run \"pytype\" (default $NUM_PARALLEL)"
   echo ""
   echo "MONAILABEL unit testing options:"
@@ -144,7 +129,6 @@ function clean_py() {
   find ${TO_CLEAN} -depth -maxdepth 1 -type d -name "monailabel.egg-info" -exec rm -r "{}" +
   find ${TO_CLEAN} -depth -maxdepth 1 -type d -name "build" -exec rm -r "{}" +
   find ${TO_CLEAN} -depth -maxdepth 1 -type d -name "dist" -exec rm -r "{}" +
-  find ${TO_CLEAN} -depth -maxdepth 1 -type d -name ".mypy_cache" -exec rm -r "{}" +
   find ${TO_CLEAN} -depth -maxdepth 1 -type d -name ".pytype" -exec rm -r "{}" +
   find ${TO_CLEAN} -depth -maxdepth 1 -type d -name ".coverage" -exec rm -r "{}" +
   find ${TO_CLEAN} -depth -maxdepth 1 -type d -name "__pycache__" -exec rm -r "{}" +
@@ -157,11 +141,6 @@ function torch_validate() {
 function print_error_msg() {
   echo "${red}Error: $1.${noColor}"
   echo ""
-}
-
-function print_style_fail_msg() {
-  echo "${red}Check failed!${noColor}"
-  echo "Please run auto style fixes: ${green}./runtests.sh --autofix${noColor}"
 }
 
 function is_pip_installed() {
@@ -187,32 +166,10 @@ while [[ $# -gt 0 ]]; do
     doUnitTests=true
     ;;
   -f | --codeformat)
-    doBlackFormat=true
-    doIsortFormat=true
-    doFlake8Format=true
     doPytypeFormat=true
-    doMypyFormat=true
-    ;;
-  --black)
-    doBlackFormat=true
-    ;;
-  --autofix)
-    doIsortFix=true
-    doBlackFix=true
-    doIsortFormat=true
-    doBlackFormat=true
-    ;;
-  --isort)
-    doIsortFormat=true
-    ;;
-  --flake8)
-    doFlake8Format=true
     ;;
   --pytype)
     doPytypeFormat=true
-    ;;
-  --mypy)
-    doMypyFormat=true
     ;;
   -j | --jobs)
     NUM_PARALLEL=$2
@@ -273,88 +230,6 @@ fi
 # unconditionally report on the state of monailabel
 print_version
 
-if [ $doIsortFormat = true ]; then
-  set +e # disable exit on failure so that diagnostics can be given on failure
-  if [ $doIsortFix = true ]; then
-    echo "${separator}${blue}isort-fix${noColor}"
-  else
-    echo "${separator}${blue}isort${noColor}"
-  fi
-
-  # ensure that the necessary packages for code format testing are installed
-  if ! is_pip_installed isort; then
-    install_deps
-  fi
-  ${cmdPrefix}${PY_EXE} -m isort --version
-
-  if [ $doIsortFix = true ]; then
-    ${cmdPrefix}${PY_EXE} -m isort -l ${LINE_LENGTH} --profile black "$(pwd)"
-  else
-    ${cmdPrefix}${PY_EXE} -m isort -l ${LINE_LENGTH} --profile black --check "$(pwd)"
-  fi
-
-  isort_status=$?
-  if [ ${isort_status} -ne 0 ]; then
-    print_style_fail_msg
-    exit ${isort_status}
-  else
-    echo "${green}passed!${noColor}"
-  fi
-  set -e # enable exit on failure
-fi
-
-if [ $doBlackFormat = true ]; then
-  set +e # disable exit on failure so that diagnostics can be given on failure
-  if [ $doBlackFix = true ]; then
-    echo "${separator}${blue}black-fix${noColor}"
-  else
-    echo "${separator}${blue}black${noColor}"
-  fi
-
-  # ensure that the necessary packages for code format testing are installed
-  if ! is_pip_installed black; then
-    install_deps
-  fi
-  ${cmdPrefix}${PY_EXE} -m black --version
-
-  if [ $doBlackFix = true ]; then
-    ${cmdPrefix}${PY_EXE} -m black -l ${LINE_LENGTH} "$(pwd)"
-  else
-    ${cmdPrefix}${PY_EXE} -m black -l ${LINE_LENGTH} --check "$(pwd)"
-  fi
-
-  black_status=$?
-  if [ ${black_status} -ne 0 ]; then
-    print_style_fail_msg
-    exit ${black_status}
-  else
-    echo "${green}passed!${noColor}"
-  fi
-  set -e # enable exit on failure
-fi
-
-if [ $doFlake8Format = true ]; then
-  set +e # disable exit on failure so that diagnostics can be given on failure
-  echo "${separator}${blue}flake8${noColor}"
-
-  # ensure that the necessary packages for code format testing are installed
-  if ! is_pip_installed flake8; then
-    install_deps
-  fi
-  ${cmdPrefix}${PY_EXE} -m flake8 --version
-
-  ${cmdPrefix}${PY_EXE} -m flake8 "$(pwd)" --count --statistics --max-line-length ${LINE_LENGTH}
-
-  flake8_status=$?
-  if [ ${flake8_status} -ne 0 ]; then
-    print_style_fail_msg
-    exit ${flake8_status}
-  else
-    echo "${green}passed!${noColor}"
-  fi
-  set -e # enable exit on failure
-fi
-
 if [ $doPytypeFormat = true ]; then
   set +e # disable exit on failure so that diagnostics can be given on failure
   echo "${separator}${blue}pytype${noColor}"
@@ -373,32 +248,6 @@ if [ $doPytypeFormat = true ]; then
     exit ${pytype_status}
   else
     echo "${green}passed!${noColor}"
-  fi
-  set -e # enable exit on failure
-fi
-
-if [ $doMypyFormat = true ]; then
-  set +e # disable exit on failure so that diagnostics can be given on failure
-  echo "${separator}${blue}mypy${noColor}"
-
-  # ensure that the necessary packages for code format testing are installed
-  if ! is_pip_installed mypy; then
-    install_deps
-  fi
-  ${cmdPrefix}${PY_EXE} -m mypy --version
-
-  if [ $doDryRun = true ]; then
-    ${cmdPrefix}MYPYPATH="$(pwd)"/monailabel ${PY_EXE} -m mypy "$(pwd)"
-  else
-    MYPYPATH="$(pwd)"/monailabel ${PY_EXE} -m mypy "$(pwd)" # cmdPrefix does not work with MYPYPATH
-  fi
-
-  mypy_status=$?
-  if [ ${mypy_status} -ne 0 ]; then
-    : # mypy output already follows format
-    exit ${mypy_status}
-  else
-    : # mypy output already follows format
   fi
   set -e # enable exit on failure
 fi

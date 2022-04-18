@@ -1,4 +1,4 @@
-# Copyright 2020 - 2021 MONAI Consortium
+# Copyright (c) MONAI Consortium
 # Licensed under the Apache License, Version 2.0 (the "License");
 # you may not use this file except in compliance with the License.
 # You may obtain a copy of the License at
@@ -168,7 +168,7 @@ class FindContoursd(MapTransform):
             if np.count_nonzero(p) < self.min_positive:
                 continue
 
-            labels = [l for l in np.unique(p).tolist() if l > 0]
+            labels = [label for label in np.unique(p).tolist() if label > 0]
             logger.debug(f"Total Unique Masks (excluding background): {labels}")
             for label_idx in labels:
                 p = d[key]

@@ -1,4 +1,4 @@
-# Copyright 2020 - 2021 MONAI Consortium
+# Copyright (c) MONAI Consortium
 # Licensed under the Apache License, Version 2.0 (the "License");
 # you may not use this file except in compliance with the License.
 # You may obtain a copy of the License at
@@ -41,11 +41,8 @@ class Interaction:
         click_probability_key: str = "probability",
     ) -> None:
 
-        if not isinstance(transforms, Compose):
-            transforms = Compose(transforms)
-
         self.deepgrow_probability = deepgrow_probability
-        self.transforms = transforms
+        self.transforms = Compose(transforms) if not isinstance(transforms, Compose) else transforms
         self.max_interactions = max_interactions
         self.train = train
         self.click_probability_key = click_probability_key

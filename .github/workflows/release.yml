@@ -18,11 +18,11 @@ jobs:
     if: github.repository == 'Project-MONAI/MONAILabel'
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v2
+      - uses: actions/checkout@v3
         with:
           fetch-depth: 0
       - name: Set up Python 3.8
-        uses: actions/setup-python@v2
+        uses: actions/setup-python@v3
         with:
           python-version: 3.8
       - name: Cache for pip
@@ -37,7 +37,7 @@ jobs:
         run: |
           sudo apt-get install openslide-tools -y
           python -m pip install --user --upgrade pip setuptools wheel
-          python -m pip install torch>=1.5 torchvision
+          python -m pip install torch>=1.7 torchvision
       - name: Build Package
         run: |
           python setup.py sdist bdist_wheel --build-number $(date +'%Y%m%d%H%M')

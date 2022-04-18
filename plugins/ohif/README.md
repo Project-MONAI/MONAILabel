@@ -3,7 +3,7 @@
 ![](Screenshots/1.png)
 
 ## Release mode
-`pip install monailabel` will install the OHIF that is pre-built with MONAI Label.  
+`pip install monailabel` will install the OHIF that is pre-built with MONAI Label.
 OHIF will be accessible at http://127.0.0.1:8000/ohif/ when you start monailabel server connecting to local/remote dicom-web storage.
 
 ## Development setup
@@ -19,7 +19,7 @@ OHIF will be accessible at http://127.0.0.1:8000/ohif/ when you start monailabel
 - Access OHIF: http://127.0.0.1:8000/ohif/
 
 ```shell
-# If you want to avoid building OHIF package for every code changes, 
+# If you want to avoid building OHIF package for every code changes,
 # you can run OHIF Viewer directly in checked-out git submodule
 cd plugins/ohif/Viewers
 
@@ -63,12 +63,12 @@ sudo service orthanc restart
 ## Converting NIFTI images to DICOM
 
 ```shell
-plastimatch convert --patient-id patient1 --input image.nii.gz --output-dicom test 
+plastimatch convert --patient-id patient1 --input image.nii.gz --output-dicom test
 ```
 
 ## Converting NIFTI Annotations to DICOM-SEG
 
-If you'd like to upload image annotations to the DICOMWeb server (i.e. Orthanc), you should use DICOM-SEG. For that you could use itk tools such as `itkimage2segimage` (https://qiicr.gitbook.io/dcmqi-guide/opening/cmd_tools/seg/itkimage2segimage).  
+If you'd like to upload image annotations to the DICOMWeb server (i.e. Orthanc), you should use DICOM-SEG. For that you could use itk tools such as `itkimage2segimage` (https://qiicr.gitbook.io/dcmqi-guide/opening/cmd_tools/seg/itkimage2segimage).
 
 
 ## Uploading DICOM to Orthanc

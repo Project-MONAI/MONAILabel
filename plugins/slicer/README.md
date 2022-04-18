@@ -25,6 +25,6 @@ Pick one of the following options to install MONAILabel Plugin for 3D Slicer
 
 ### Plugin Settings
 
-User can change some default behavior for the plugin.  
+User can change some default behavior for the plugin.
 Go to **Edit** -> **Application Settings** -> **MONAI Label**
 <img src="https://raw.githubusercontent.com/Project-MONAI/MONAILabel/main/plugins/slicer/MONAILabel/Screenshots/3.png" width="400"/>

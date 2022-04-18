@@ -1,4 +1,4 @@
-# Copyright 2020 - 2021 MONAI Consortium
+# Copyright (c) MONAI Consortium
 # Licensed under the Apache License, Version 2.0 (the "License");
 # you may not use this file except in compliance with the License.
 # You may obtain a copy of the License at
@@ -20,7 +20,7 @@ from monailabel.utils.others.generic import gpu_memory_map
 logger = logging.getLogger(__name__)
 
 
-class HeuristicPlanner(object):
+class HeuristicPlanner:
     def __init__(self, target_spacing=(1.0, 1.0, 1.0), spatial_size=(128, 128, 64), max_samples=10):
 
         self.target_spacing = target_spacing

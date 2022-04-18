@@ -1,4 +1,4 @@
-# Copyright 2020 - 2021 MONAI Consortium
+# Copyright (c) MONAI Consortium
 # Licensed under the Apache License, Version 2.0 (the "License");
 # you may not use this file except in compliance with the License.
 # You may obtain a copy of the License at
@@ -10,7 +10,7 @@
 # limitations under the License.
 from typing import Callable, Sequence, Union
 
-from monai.inferers import SimpleInferer
+from monai.inferers import Inferer, SimpleInferer
 from monai.transforms import (
     Activationsd,
     AddChanneld,
@@ -93,7 +93,7 @@ class DeepEdit(InferTask):
         t.append(EnsureTyped(keys="image", device=data.get("device") if data else None))
         return t
 
-    def inferer(self, data=None) -> Callable:
+    def inferer(self, data=None) -> Inferer:
         return SimpleInferer()
 
     def inverse_transforms(self, data=None) -> Union[None, Sequence[Callable]]:

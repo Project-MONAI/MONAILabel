@@ -1,4 +1,4 @@
-# Copyright 2020 - 2021 MONAI Consortium
+# Copyright (c) MONAI Consortium
 # Licensed under the Apache License, Version 2.0 (the "License");
 # you may not use this file except in compliance with the License.
 # You may obtain a copy of the License at
@@ -42,7 +42,7 @@ def shape_info(data, keys=("image", "label", "logits", "pred", "model", "points"
     for key in keys:
         val = data.get(key) if hasattr(data, "get") else None
         if val is not None and hasattr(val, "shape"):
-            info.append("{}: {}({})".format(key, val.shape, val.dtype))
+            info.append(f"{key}: {val.shape}({val.dtype})")
     return "; ".join(info)
 
 
@@ -59,8 +59,8 @@ def run_transforms(data, callables, inverse=False, log_prefix="POST", log_name="
     :return: Processed data after running transforms
     """
     logger.setLevel(data.get("logging", "INFO").upper())
-    logger.info("{} - Run {}(s)".format(log_prefix, log_name))
-    logger.info("{} - Input Keys: {}".format(log_prefix, list(data.keys())))
+    logger.info(f"{log_prefix} - Run {log_name}(s)")
+    logger.info(f"{log_prefix} - Input Keys: {list(data.keys())}")
 
     if not callables:
         return data
@@ -82,7 +82,7 @@ def run_transforms(data, callables, inverse=False, log_prefix="POST", log_name="
             else:
                 raise MONAILabelException(
                     MONAILabelError.TRANSFORM_ERROR,
-                    "{} '{}' has no invert method".format(log_name, t.__class__.__name__),
+                    f"{log_name} '{t.__class__.__name__}' has no invert method",
                 )
         elif callable(t):
             if use_compose:
@@ -93,7 +93,7 @@ def run_transforms(data, callables, inverse=False, log_prefix="POST", log_name="
         else:
             raise MONAILabelException(
                 MONAILabelError.TRANSFORM_ERROR,
-                "{} '{}' is not callable".format(log_name, t.__class__.__name__),
+                f"{log_name} '{t.__class__.__name__}' is not callable",
             )
 
         logger.info(

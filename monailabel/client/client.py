@@ -1,4 +1,4 @@
-# Copyright 2020 - 2021 MONAI Consortium
+# Copyright (c) MONAI Consortium
 # Licensed under the Apache License, Version 2.0 (the "License");
 # you may not use this file except in compliance with the License.
 # You may obtain a copy of the License at
@@ -73,11 +73,11 @@ class MONAILabelClient:
         status, response, _ = MONAILabelUtils.http_method("GET", self._server_url, selector)
         if status != 200:
             raise MONAILabelClientException(
-                MONAILabelError.SERVER_ERROR, "Status: {}; Response: {}".format(status, response), status, response
+                MONAILabelError.SERVER_ERROR, f"Status: {status}; Response: {response}", status, response
             )
 
         response = response.decode("utf-8") if isinstance(response, bytes) else response
-        logging.debug("Response: {}".format(response))
+        logging.debug(f"Response: {response}")
         return json.loads(response)
 
     def next_sample(self, strategy, params):
@@ -89,15 +89,15 @@ class MONAILabelClient:
         :return: json response which contains information about next image selected for annotation
         """
         params = self._update_client_id(params)
-        selector = "/activelearning/{}".format(MONAILabelUtils.urllib_quote_plus(strategy))
+        selector = f"/activelearning/{MONAILabelUtils.urllib_quote_plus(strategy)}"
         status, response, _ = MONAILabelUtils.http_method("POST", self._server_url, selector, params)
         if status != 200:
             raise MONAILabelClientException(
-                MONAILabelError.SERVER_ERROR, "Status: {}; Response: {}".format(status, response), status, response
+                MONAILabelError.SERVER_ERROR, f"Status: {status}; Response: {response}", status, response
             )
 
         response = response.decode("utf-8") if isinstance(response, bytes) else response
-        logging.debug("Response: {}".format(response))
+        logging.debug(f"Response: {response}")
         return json.loads(response)
 
     def create_session(self, image_in, params=None):
@@ -114,11 +114,11 @@ class MONAILabelClient:
         status, response, _ = MONAILabelUtils.http_upload("PUT", self._server_url, selector, params, [image_in])
         if status != 200:
             raise MONAILabelClientException(
-                MONAILabelError.SERVER_ERROR, "Status: {}; Response: {}".format(status, response), status, response
+                MONAILabelError.SERVER_ERROR, f"Status: {status}; Response: {response}", status, response
             )
 
         response = response.decode("utf-8") if isinstance(response, bytes) else response
-        logging.debug("Response: {}".format(response))
+        logging.debug(f"Response: {response}")
         return json.loads(response)
 
     def get_session(self, session_id):
@@ -132,11 +132,11 @@ class MONAILabelClient:
         status, response, _ = MONAILabelUtils.http_method("GET", self._server_url, selector)
         if status != 200:
             raise MONAILabelClientException(
-                MONAILabelError.SERVER_ERROR, "Status: {}; Response: {}".format(status, response), status, response
+                MONAILabelError.SERVER_ERROR, f"Status: {status}; Response: {response}", status, response
             )
 
         response = response.decode("utf-8") if isinstance(response, bytes) else response
-        logging.debug("Response: {}".format(response))
+        logging.debug(f"Response: {response}")
         return json.loads(response)
 
     def remove_session(self, session_id):
@@ -150,11 +150,11 @@ class MONAILabelClient:
         status, response, _ = MONAILabelUtils.http_method("DELETE", self._server_url, selector)
         if status != 200:
             raise MONAILabelClientException(
-                MONAILabelError.SERVER_ERROR, "Status: {}; Response: {}".format(status, response), status, response
+                MONAILabelError.SERVER_ERROR, f"Status: {status}; Response: {response}", status, response
             )
 
         response = response.decode("utf-8") if isinstance(response, bytes) else response
-        logging.debug("Response: {}".format(response))
+        logging.debug(f"Response: {response}")
         return json.loads(response)
 
     def upload_image(self, image_in, image_id=None, params=None):
@@ -166,7 +166,7 @@ class MONAILabelClient:
         :param params: Additional JSON params
         :return: json response which contains image id and other details
         """
-        selector = "/datastore/?image={}".format(MONAILabelUtils.urllib_quote_plus(image_id))
+        selector = f"/datastore/?image={MONAILabelUtils.urllib_quote_plus(image_id)}"
 
         files = {"file": image_in}
         params = self._update_client_id(params)
@@ -176,11 +176,11 @@ class MONAILabelClient:
         if status != 200:
             raise MONAILabelClientException(
                 MONAILabelError.SERVER_ERROR,
-                "Status: {}; Response: {}".format(status, response),
+                f"Status: {status}; Response: {response}",
             )
 
         response = response.decode("utf-8") if isinstance(response, bytes) else response
-        logging.debug("Response: {}".format(response))
+        logging.debug(f"Response: {response}")
         return json.loads(response)
 
     def save_label(self, image_id, label_in, tag="", params=None):
@@ -193,9 +193,9 @@ class MONAILabelClient:
         :param params: Additional JSON params for the request
         :return: json response
         """
-        selector = "/datastore/label?image={}".format(MONAILabelUtils.urllib_quote_plus(image_id))
+        selector = f"/datastore/label?image={MONAILabelUtils.urllib_quote_plus(image_id)}"
         if tag:
-            selector += "&tag={}".format(MONAILabelUtils.urllib_quote_plus(tag))
+            selector += f"&tag={MONAILabelUtils.urllib_quote_plus(tag)}"
 
         params = self._update_client_id(params)
         fields = {
@@ -207,11 +207,11 @@ class MONAILabelClient:
         if status != 200:
             raise MONAILabelClientException(
                 MONAILabelError.SERVER_ERROR,
-                "Status: {}; Response: {}".format(status, response),
+                f"Status: {status}; Response: {response}",
             )
 
         response = response.decode("utf-8") if isinstance(response, bytes) else response
-        logging.debug("Response: {}".format(response))
+        logging.debug(f"Response: {response}")
         return json.loads(response)
 
     def infer(self, model, image_id, params, label_in=None, file=None, session_id=None):
@@ -242,7 +242,7 @@ class MONAILabelClient:
         if status != 200:
             raise MONAILabelClientException(
                 MONAILabelError.SERVER_ERROR,
-                "Status: {}; Response: {}".format(status, form),
+                f"Status: {status}; Response: {form}",
             )
 
         form = json.loads(form) if isinstance(form, str) else form
@@ -277,7 +277,7 @@ class MONAILabelClient:
         if status != 200:
             raise MONAILabelClientException(
                 MONAILabelError.SERVER_ERROR,
-                "Status: {}; Response: {}".format(status, form),
+                f"Status: {status}; Response: {form}",
             )
 
         return None, form
@@ -300,11 +300,11 @@ class MONAILabelClient:
         if status != 200:
             raise MONAILabelClientException(
                 MONAILabelError.SERVER_ERROR,
-                "Status: {}; Response: {}".format(status, response),
+                f"Status: {status}; Response: {response}",
             )
 
         response = response.decode("utf-8") if isinstance(response, bytes) else response
-        logging.debug("Response: {}".format(response))
+        logging.debug(f"Response: {response}")
         return json.loads(response)
 
     def train_stop(self):
@@ -318,11 +318,11 @@ class MONAILabelClient:
         if status != 200:
             raise MONAILabelClientException(
                 MONAILabelError.SERVER_ERROR,
-                "Status: {}; Response: {}".format(status, response),
+                f"Status: {status}; Response: {response}",
             )
 
         response = response.decode("utf-8") if isinstance(response, bytes) else response
-        logging.debug("Response: {}".format(response))
+        logging.debug(f"Response: {response}")
         return json.loads(response)
 
     def train_status(self, check_if_running=False):
@@ -342,11 +342,11 @@ class MONAILabelClient:
         if status != 200:
             raise MONAILabelClientException(
                 MONAILabelError.SERVER_ERROR,
-                "Status: {}; Response: {}".format(status, response),
+                f"Status: {status}; Response: {response}",
             )
 
         response = response.decode("utf-8") if isinstance(response, bytes) else response
-        logging.debug("Response: {}".format(response))
+        logging.debug(f"Response: {response}")
         return json.loads(response)
 
 
@@ -388,12 +388,12 @@ class MONAILabelClientException(Exception):
 class MONAILabelUtils:
     @staticmethod
     def http_method(method, server_url, selector, body=None):
-        logging.debug("{} {}{}".format(method, server_url, selector))
+        logging.debug(f"{method} {server_url}{selector}")
 
         parsed = urlparse(server_url)
         path = parsed.path.rstrip("/")
         selector = path + "/" + selector.lstrip("/")
-        logging.debug("URI Path: {}".format(selector))
+        logging.debug(f"URI Path: {selector}")
 
         parsed = urlparse(server_url)
         if parsed.scheme == "https":
@@ -417,10 +417,10 @@ class MONAILabelUtils:
 
     @staticmethod
     def http_upload(method, server_url, selector, fields, files):
-        logging.debug("{} {}{}".format(method, server_url, selector))
+        logging.debug(f"{method} {server_url}{selector}")
 
         url = server_url.rstrip("/") + "/" + selector.lstrip("/")
-        logging.debug("URL: {}".format(url))
+        logging.debug(f"URL: {url}")
 
         files = [("files", (os.path.basename(f), open(f, "rb"))) for f in files]
         response = requests.post(url, files=files) if method == "POST" else requests.put(url, files=files, data=fields)
@@ -428,7 +428,7 @@ class MONAILabelUtils:
 
     @staticmethod
     def http_multipart(method, server_url, selector, fields, files):
-        logging.debug("{} {}{}".format(method, server_url, selector))
+        logging.debug(f"{method} {server_url}{selector}")
 
         content_type, body = MONAILabelUtils.encode_multipart_formdata(fields, files)
         headers = {"content-type": content_type, "content-length": str(len(body))}
@@ -436,7 +436,7 @@ class MONAILabelUtils:
         parsed = urlparse(server_url)
         path = parsed.path.rstrip("/")
         selector = path + "/" + selector.lstrip("/")
-        logging.debug("URI Path: {}".format(selector))
+        logging.debug(f"URI Path: {selector}")
 
         conn = http.client.HTTPConnection(parsed.hostname, parsed.port)
         conn.request(method, selector, body, headers)
@@ -445,18 +445,18 @@ class MONAILabelUtils:
     @staticmethod
     def send_response(conn, content_type="application/json"):
         response = conn.getresponse()
-        logging.debug("HTTP Response Code: {}".format(response.status))
-        logging.debug("HTTP Response Message: {}".format(response.reason))
-        logging.debug("HTTP Response Headers: {}".format(response.getheaders()))
+        logging.debug(f"HTTP Response Code: {response.status}")
+        logging.debug(f"HTTP Response Message: {response.reason}")
+        logging.debug(f"HTTP Response Headers: {response.getheaders()}")
 
         response_content_type = response.getheader("content-type", content_type)
-        logging.debug("HTTP Response Content-Type: {}".format(response_content_type))
+        logging.debug(f"HTTP Response Content-Type: {response_content_type}")
 
         if "multipart" in response_content_type:
             if response.status == 200:
                 form, files = MONAILabelUtils.parse_multipart(response.fp if response.fp else response, response.msg)
-                logging.debug("Response FORM: {}".format(form))
-                logging.debug("Response FILES: {}".format(files.keys()))
+                logging.debug(f"Response FORM: {form}")
+                logging.debug(f"Response FILES: {files.keys()}")
                 return response.status, form, files
             else:
                 return response.status, response.read(), None
@@ -471,7 +471,7 @@ class MONAILabelUtils:
             data = files[name]
             result_file = os.path.join(tmpdir, name)
 
-            logging.info("Saving {} to {}; Size: {}".format(name, result_file, len(data)))
+            logging.info(f"Saving {name} to {result_file}; Size: {len(data)}")
             dir_path = os.path.dirname(os.path.realpath(result_file))
             if not os.path.exists(dir_path):
                 os.makedirs(dir_path)
@@ -502,7 +502,7 @@ class MONAILabelUtils:
                     data = f.read()
 
             lines.append("--" + limit)
-            lines.append('Content-Disposition: form-data; name="%s"; filename="%s"' % (key, filename))
+            lines.append(f'Content-Disposition: form-data; name="{key}"; filename="{filename}"')
             lines.append("Content-Type: %s" % MONAILabelUtils.get_content_type(filename))
             lines.append("")
             lines.append(data)
@@ -533,7 +533,7 @@ class MONAILabelUtils:
         files = {}
         if hasattr(fs, "list") and isinstance(fs.list, list):
             for f in fs.list:
-                logger.debug("FILE-NAME: {}; NAME: {}; SIZE: {}".format(f.filename, f.name, len(f.value)))
+                logger.debug(f"FILE-NAME: {f.filename}; NAME: {f.name}; SIZE: {len(f.value)}")
                 if f.filename:
                     files[f.filename] = f.value
                 else:

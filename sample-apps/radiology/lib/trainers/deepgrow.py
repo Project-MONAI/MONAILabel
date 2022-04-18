@@ -1,4 +1,4 @@
-# Copyright 2020 - 2021 MONAI Consortium
+# Copyright (c) MONAI Consortium
 # Licensed under the Apache License, Version 2.0 (the "License");
 # you may not use this file except in compliance with the License.
 # You may obtain a copy of the License at
@@ -93,7 +93,7 @@ class Deepgrow(BasicTrainTask):
             pixdim=[1.0] * self.dimension,
         )
 
-        logging.info("+++ Total Records: {}".format(len(datalist)))
+        logging.info(f"+++ Total Records: {len(datalist)}")
         return datalist
 
     def cleanup(self, request):

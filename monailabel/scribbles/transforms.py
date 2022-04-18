@@ -1,4 +1,4 @@
-# Copyright 2020 - 2021 MONAI Consortium
+# Copyright (c) MONAI Consortium
 # Licensed under the Apache License, Version 2.0 (the "License");
 # you may not use this file except in compliance with the License.
 # You may obtain a copy of the License at
@@ -20,7 +20,7 @@ from scipy.special import softmax
 
 from monailabel.transform.writer import Writer
 
-from .utils import make_iseg_unary, make_likelihood_image_histogram
+from .utils import make_iseg_unary, make_likelihood_image_histogram, maxflow
 
 logger = logging.getLogger(__name__)
 
@@ -37,7 +37,7 @@ class InteractiveSegmentationTransform(Transform):
 
     def _fetch_data(self, data, key):
         if key not in data.keys():
-            raise ValueError("Key {} not found, present keys {}".format(key, data.keys()))
+            raise ValueError(f"Key {key} not found, present keys {data.keys()}")
 
         return data[key]
 
@@ -64,6 +64,19 @@ class InteractiveSegmentationTransform(Transform):
 
         return d
 
+    def _set_scribbles_idx_from_labelinfo(self, d):
+        label_info = d.get("label_info", [])
+        for lb in label_info:
+            if lb.get("name", None) == "background_scribbles":
+                id = lb.get("id", self.scribbles_bg_label)
+                self.scribbles_bg_label = id
+                logging.info("Loading background scribbles labels from: {} with index: {}".format(lb.get("name"), id))
+
+            if lb.get("name", None) == "foreground_scribbles":
+                id = lb.get("id", self.scribbles_fg_label)
+                self.scribbles_fg_label = id
+                logging.info("Loading foreground scribbles labels from: {} with index: {}".format(lb.get("name"), id))
+
 
 #######################################
 #######################################
@@ -89,6 +102,9 @@ class AddBackgroundScribblesFromROId(InteractiveSegmentationTransform):
     def __call__(self, data):
         d = dict(data)
 
+        # load scribbles idx from labels_info (if available)
+        self._set_scribbles_idx_from_labelinfo(d)
+
         # read relevant terms from data
         scribbles = self._fetch_data(d, self.scribbles)
 
@@ -110,9 +126,8 @@ class AddBackgroundScribblesFromROId(InteractiveSegmentationTransform):
             if not np.any(scribbles == self.scribbles_fg_label):
                 # issue a warning - the algorithm should still work
                 logging.info(
-                    "warning: no foreground scribbles received with label {}, adding foreground scribbles to ROI centre".format(
-                        self.scribbles_fg_label
-                    )
+                    f"warning: no foreground scribbles received with label {self.scribbles_fg_label}, "
+                    + "adding foreground scribbles to ROI centre"
                 )
                 offset = 5
 
@@ -158,6 +173,9 @@ class MakeLikelihoodFromScribblesHistogramd(InteractiveSegmentationTransform):
 
     def __call__(self, data):
         d = dict(data)
+
+        # load scribbles idx from labels_info (if available)
+        self._set_scribbles_idx_from_labelinfo(d)
 
         # copy affine meta data from image input
         d = self._copy_affine(d, src=self.image, dst=self.post_proc_label)
@@ -278,6 +296,9 @@ class MakeISegUnaryd(InteractiveSegmentationTransform):
     def __call__(self, data):
         d = dict(data)
 
+        # load scribbles idx from labels_info (if available)
+        self._set_scribbles_idx_from_labelinfo(d)
+
         # copy affine meta data from image input
         self._copy_affine(d, self.image, self.unary)
 
@@ -287,9 +308,7 @@ class MakeISegUnaryd(InteractiveSegmentationTransform):
 
         # check if input logits are compatible with ISeg opt
         if logits.shape[0] > 2:
-            raise ValueError(
-                "ISeg can only be applied to binary probabilities for now, received {}".format(logits.shape[0])
-            )
+            raise ValueError(f"ISeg can only be applied to binary probabilities for now, received {logits.shape[0]}")
 
         # convert logits to probability
         prob = self._normalise_logits(logits, axis=0)
@@ -314,6 +333,89 @@ class MakeISegUnaryd(InteractiveSegmentationTransform):
 #######################
 #  Optimiser Transforms
 #######################
+class ApplyGraphCutOptimisationd(InteractiveSegmentationTransform):
+    """
+    Generic GraphCut optimisation transform.
+
+    This can be used in conjuction with any Make*Unaryd transform
+    (e.g. MakeISegUnaryd from above for implementing ISeg unary term).
+    It optimises a typical energy function for interactive segmentation methods using SimpleCRF's GraphCut method,
+    e.g. Equation 5 from https://arxiv.org/pdf/1710.04043.pdf.
+
+    Usage Example::
+
+        Compose(
+            [
+                # unary term maker
+                MakeISegUnaryd(
+                    image="image",
+                    logits="logits",
+                    scribbles="label",
+                    unary="unary",
+                    scribbles_bg_label=2,
+                    scribbles_fg_label=3,
+                ),
+                # optimiser
+                ApplyGraphCutOptimisationd(
+                    unary="unary",
+                    pairwise="image",
+                    post_proc_label="pred",
+                    lamda=10.0,
+                    sigma=15.0,
+                ),
+            ]
+        )
+    """
+
+    def __init__(
+        self,
+        unary: str,
+        pairwise: str,
+        meta_key_postfix: str = "meta_dict",
+        post_proc_label: str = "pred",
+        lamda: float = 8.0,
+        sigma: float = 0.1,
+    ) -> None:
+        super().__init__(meta_key_postfix)
+        self.unary = unary
+        self.pairwise = pairwise
+        self.post_proc_label = post_proc_label
+        self.lamda = lamda
+        self.sigma = sigma
+
+    def __call__(self, data):
+        d = dict(data)
+
+        # attempt to fetch algorithmic parameters from app if present
+        self.lamda = d.get("lamda", self.lamda)
+        self.sigma = d.get("sigma", self.sigma)
+
+        # copy affine meta data from pairwise input
+        self._copy_affine(d, self.pairwise, self.post_proc_label)
+
+        # read relevant terms from data
+        unary_term = self._fetch_data(d, self.unary)
+        pairwise_term = self._fetch_data(d, self.pairwise)
+
+        # check if input unary is compatible with GraphCut opt
+        if unary_term.shape[0] > 2:
+            raise ValueError(f"GraphCut can only be applied to binary probabilities, received {unary_term.shape[0]}")
+
+        # # attempt to unfold probability term
+        # unary_term = self._unfold_prob(unary_term, axis=0)
+
+        # prepare data for SimpleCRF's GraphCut
+        unary_term = torch.from_numpy(unary_term).unsqueeze(0)
+        pairwise_term = torch.from_numpy(pairwise_term).unsqueeze(0)
+
+        # run GraphCut
+        post_proc_label = maxflow(pairwise_term, unary_term, lamda=self.lamda, sigma=self.sigma).squeeze(0).numpy()
+
+        d[self.post_proc_label] = post_proc_label
+
+        return d
+
+
 class ApplyCRFOptimisationd(InteractiveSegmentationTransform):
     """
     Generic MONAI CRF optimisation transform.
