@@ -12,7 +12,6 @@ import logging
 
 import numpy as np
 import numpymaxflow
-from monai.utils import optional_import
 
 logger = logging.getLogger(__name__)
 
