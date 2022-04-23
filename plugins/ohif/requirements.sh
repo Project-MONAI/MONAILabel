@@ -15,7 +15,8 @@ if which yarn >/dev/null; then
   echo "node/yarn is already installed"
 else
   echo "installing yarn..."
-  apt update -y
-  apt install npm -y
-  npm install --global yarn
+  curl -sS https://dl.yarnpkg.com/debian/pubkey.gpg | apt-key add -
+  echo "deb https://dl.yarnpkg.com/debian/ stable main" | tee /etc/apt/sources.list.d/yarn.list
+  apt update
+  apt-get install yarn -y
 fi
