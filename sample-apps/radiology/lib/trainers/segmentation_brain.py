@@ -11,7 +11,7 @@
 import logging
 
 # import torch
-# from lib.transforms.transforms_brats import GetSingleModalityBRATSd
+# from lib.transforms.transforms_brain import GetSingleModalityBRATSd
 from monai.handlers import TensorBoardImageHandler, from_engine
 from monai.inferers import SlidingWindowInferer
 from monai.losses import DiceCELoss
@@ -25,12 +25,10 @@ from monai.transforms import (
     LoadImaged,
     NormalizeIntensityd,
     RandCropByPosNegLabeld,
-    RandFlipd,
-    RandRotate90d,
     RandShiftIntensityd,
     SelectItemsd,
     Spacingd,
-    SpatialPadd,
+    SpatialPadd, Resized, RandAdjustContrastd, RandHistogramShiftd,
 )
 
 from monailabel.deepedit.multilabel.transforms import NormalizeLabelsInDatasetd
@@ -78,10 +76,13 @@ class SegmentationBrats(BasicTrainTask):
             # GetSingleModalityBRATSd(keys="image"),
             NormalizeLabelsInDatasetd(keys="label", label_names=self._labels),  # Specially for missing labels
             AddChanneld(keys=("image", "label")),
-            Spacingd(keys=("image", "label"), pixdim=(1.0, 1.0, 1.0), mode=("bilinear", "nearest")),
+            Resized(keys=("image", "label"), spatial_size=(256, 256, 256), mode=("area", "nearest")),
+            # Spacingd(keys=("image", "label"), pixdim=(1.0, 1.0, 1.0), mode=("bilinear", "nearest")),
             CropForegroundd(keys=("image", "label"), source_key="image"),
             SpatialPadd(keys=("image", "label"), spatial_size=self.spatial_size),
             NormalizeIntensityd(keys="image"),
+            RandAdjustContrastd(keys="image", gamma=6),
+            RandHistogramShiftd(keys="image", num_control_points=8, prob=0.5),
             RandCropByPosNegLabeld(
                 keys=("image", "label"),
                 label_key="label",
@@ -93,10 +94,6 @@ class SegmentationBrats(BasicTrainTask):
                 image_threshold=0,
             ),
             EnsureTyped(keys=("image", "label"), device=context.device),
-            RandFlipd(keys=("image", "label"), spatial_axis=[0], prob=0.10),
-            RandFlipd(keys=("image", "label"), spatial_axis=[1], prob=0.10),
-            RandFlipd(keys=("image", "label"), spatial_axis=[2], prob=0.10),
-            RandRotate90d(keys=("image", "label"), prob=0.10, max_k=3),
             RandShiftIntensityd(keys="image", offsets=0.1, prob=0.5),
             SelectItemsd(keys=("image", "label")),
         ]
@@ -116,7 +113,8 @@ class SegmentationBrats(BasicTrainTask):
         return [
             LoadImaged(keys=("image", "label"), reader="ITKReader"),
             AddChanneld(keys=("image", "label")),
-            Spacingd(keys=("image", "label"), pixdim=(1.0, 1.0, 1.0), mode=("bilinear", "nearest")),
+            Resized(keys=("image", "label"), spatial_size=(256, 256, 256), mode=("area", "nearest")),
+            # Spacingd(keys=("image", "label"), pixdim=(1.0, 1.0, 1.0), mode=("bilinear", "nearest")),
             NormalizeIntensityd(keys="image"),
             EnsureTyped(keys=("image", "label")),
             SelectItemsd(keys=("image", "label")),

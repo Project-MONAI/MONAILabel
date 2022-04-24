@@ -16,7 +16,7 @@ from typing import Any, Dict, Optional, Union
 
 import lib.infers
 import lib.trainers
-from monai.networks.nets import UNETR
+from monai.networks.nets import UNet
 
 from monailabel.interfaces.config import TaskConfig
 from monailabel.interfaces.tasks.infer import InferTask
@@ -32,9 +32,15 @@ class SegmentationBrats(TaskConfig):
 
         # Labels
         self.labels = {
-            "edema": 1,
-            "non-enhancing tumor": 2,
-            "enhancing tumour": 3,
+            "ROI": 1,
+            "Eye": 2,
+            "Optic Nerve": 3,
+            "Lateral Ventricle": 4,
+            "Third Ventricle": 5,
+            "Ischemic Gliotic Changes": 6,
+            "Peritumor Edema Area": 7,
+            "Contrast Enhancing Part of Tumour": 8,
+            "Necrosis of Tumour": 9,
         }
 
         # Model Files
@@ -49,19 +55,15 @@ class SegmentationBrats(TaskConfig):
             download_file(url, self.path[0])
 
         # Network
-        self.spatial_size = json.loads(self.conf.get("spatial_size", "[96, 96, 64]"))
-        self.network = UNETR(
+        self.spatial_size = json.loads(self.conf.get("spatial_size", "[64, 64, 64]"))
+        self.network = UNet(
             spatial_dims=3,
             in_channels=1,
-            out_channels=len(self.labels) + 1,  # labels plus background
-            img_size=self.spatial_size,
-            feature_size=64,
-            hidden_size=1536,
-            mlp_dim=3072,
-            num_heads=48,
-            pos_embed="conv",
-            norm_name="instance",
-            res_block=True,
+            out_channels=len(self.labels.keys()) + 1,  # All labels plus background
+            channels=[16, 32, 64, 128, 256],
+            strides=[2, 2, 2, 2],
+            num_res_units=2,
+            norm="batch",
         )
 
     def infer(self) -> Union[InferTask, Dict[str, InferTask]]:

@@ -45,7 +45,7 @@ class DeepEdit(TaskConfig):
 
         # Single label
         self.labels = {
-            "spleen": 1,
+            "tumor": 1,
             "background": 0,
         }
 
@@ -58,16 +58,16 @@ class DeepEdit(TaskConfig):
         ]
 
         # Download PreTrained Model
-        if strtobool(self.conf.get("use_pretrained_model", "true")):
+        if strtobool(self.conf.get("use_pretrained_model", "false")):
             url = f"{self.PRE_TRAINED_PATH}/deepedit_{network}_singlelabel.pt"
             download_file(url, self.path[0])
 
         # Network
-        self.spatial_size = json.loads(self.conf.get("spatial_size", "[128, 128, 128]"))
+        self.spatial_size = json.loads(self.conf.get("spatial_size", "[256, 256, 128]"))
         if network == "unetr":
             self.network = UNETR(
                 spatial_dims=3,
-                in_channels=len(self.labels) + 1,
+                in_channels=len(self.labels) + 4, # 4 modalities
                 out_channels=len(self.labels),
                 img_size=self.spatial_size,
                 feature_size=64,
@@ -81,7 +81,7 @@ class DeepEdit(TaskConfig):
         else:
             self.network = DynUNet(
                 spatial_dims=3,
-                in_channels=len(self.labels) + 1,
+                in_channels=len(self.labels) + 4, # 4 modalities
                 out_channels=len(self.labels),
                 kernel_size=[[3, 3, 3], [3, 3, 3], [3, 3, 3], [3, 3, 3], [3, 3, 3], [3, 3, 3]],
                 strides=[[1, 1, 1], [2, 2, 2], [2, 2, 2], [2, 2, 2], [2, 2, 2], [2, 2, 1]],

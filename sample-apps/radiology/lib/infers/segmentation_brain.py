@@ -10,7 +10,7 @@
 # limitations under the License.
 from typing import Callable, Sequence
 
-# from lib.transforms.transforms_brats import GetSingleModalityBRATSd
+# from lib.transforms.transforms_brain import GetSingleModalityBRATSd
 from monai.inferers import SlidingWindowInferer
 from monai.transforms import (
     Activationsd,
@@ -21,7 +21,7 @@ from monai.transforms import (
     LoadImaged,
     NormalizeIntensityd,
     Spacingd,
-    ToNumpyd,
+    ToNumpyd, Resized,
 )
 
 from monailabel.interfaces.tasks.infer import InferTask, InferType
@@ -60,7 +60,8 @@ class SegmentationBrats(InferTask):
             LoadImaged(keys="image", reader="ITKReader"),
             # GetSingleModalityBRATSd(keys="image"),
             AddChanneld(keys="image"),
-            Spacingd(keys="image", pixdim=(1.0, 1.0, 1.0)),
+            Resized(keys="image", spatial_size=(256, 256, 256)),
+            # Spacingd(keys="image", pixdim=(1.0, 1.0, 1.0)),
             NormalizeIntensityd(keys="image"),
             EnsureTyped(keys="image"),
         ]

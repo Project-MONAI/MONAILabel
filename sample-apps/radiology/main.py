@@ -69,7 +69,7 @@ class MyApp(MONAILabelApp):
             exit(-1)
 
         # Use Heuristic Planner to determine target spacing and spatial size based on dataset+gpu
-        spatial_size = json.loads(conf.get("spatial_size", "[128, 128, 128]"))
+        spatial_size = json.loads(conf.get("spatial_size", "[256, 256, 128]"))
         target_spacing = json.loads(conf.get("target_spacing", "[1.0, 1.0, 1.0]"))
         self.heuristic_planner = strtobool(conf.get("heuristic_planner", "false"))
         self.planner = HeuristicPlanner(spatial_size=spatial_size, target_spacing=target_spacing)
@@ -214,11 +214,11 @@ def main():
     )
 
     home = str(Path.home())
-    studies = f"{home}/Documents/Datasets/MSD_datasets/Task01_BrainTumour/imagesTr"
+    studies = f"{home}/Documents/workspace/Datasets/multimodality_singlelabel_BRATS"
 
     parser = argparse.ArgumentParser()
     parser.add_argument("-s", "--studies", default=studies)
-    parser.add_argument("-m", "--model", default="segmentation_brats")
+    parser.add_argument("-m", "--model", default="deepedit")
     parser.add_argument("-t", "--test", default="train", choices=("train", "infer"))
     args = parser.parse_args()
 
@@ -262,6 +262,7 @@ def main():
             "val_batch_size": 1,
             "multi_gpu": True,
             "val_split": 0.05,
+            "network": "dynunet",
         },
     )
 

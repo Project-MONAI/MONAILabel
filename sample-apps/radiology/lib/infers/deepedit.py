@@ -19,9 +19,8 @@ from monai.transforms import (
     LoadImaged,
     Orientationd,
     Resized,
-    ScaleIntensityRanged,
     SqueezeDimd,
-    ToNumpyd,
+    ToNumpyd, NormalizeIntensityd, EnsureChannelFirstd,
 )
 
 from monailabel.deepedit.multilabel.transforms import (
@@ -69,9 +68,9 @@ class DeepEdit(InferTask):
     def pre_transforms(self, data=None):
         t = [
             LoadImaged(keys="image", reader="ITKReader"),
-            AddChanneld(keys="image"),
+            EnsureChannelFirstd(keys="image"),
             Orientationd(keys="image", axcodes="RAS"),
-            ScaleIntensityRanged(keys="image", a_min=-175, a_max=250, b_min=0.0, b_max=1.0, clip=True),
+            NormalizeIntensityd(keys="image", nonzero=True, channel_wise=True),
         ]
         if self.type == InferType.DEEPEDIT:
             t.extend(
@@ -79,14 +78,14 @@ class DeepEdit(InferTask):
                     AddGuidanceFromPointsCustomd(ref_image="image", guidance="guidance", label_names=self.labels),
                     Resized(keys="image", spatial_size=self.spatial_size, mode="area"),
                     ResizeGuidanceMultipleLabelCustomd(guidance="guidance", ref_image="image"),
-                    AddGuidanceSignalCustomd(keys="image", guidance="guidance"),
+                    AddGuidanceSignalCustomd(keys="image", guidance="guidance", number_intensity_ch=4),
                 ]
             )
         else:
             t.extend(
                 [
                     Resized(keys="image", spatial_size=self.spatial_size, mode="area"),
-                    DiscardAddGuidanced(keys="image", label_names=self.labels),
+                    DiscardAddGuidanced(keys="image", label_names=self.labels, number_intensity_ch=4),
                 ]
             )
 
