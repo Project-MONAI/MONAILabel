@@ -58,8 +58,10 @@ class Segmentation(TaskConfig):
             url = f"{self.PRE_TRAINED_PATH}/segmentation_unet_multilabel.pt"
             download_file(url, self.path[0])
 
+        self.target_spacing = self.planner.target_spacing if self.planner else (1.0, 1.0, 1.0)
+
         # Network
-        self.spatial_size = self.planner.spatial_size if self.planner else (128, 128, 128)
+        self.spatial_size = self.planner.spatial_size if self.planner else (48, 48, 32)
         self.network = UNet(
             spatial_dims=3,
             in_channels=1,
@@ -75,6 +77,7 @@ class Segmentation(TaskConfig):
             path=self.path,
             network=self.network,
             spatial_size=self.spatial_size,
+            target_spacing=self.target_spacing,
             labels=self.labels,
             config={"largest_cc": True},
         )
@@ -86,6 +89,7 @@ class Segmentation(TaskConfig):
             model_dir=output_dir,
             network=self.network,
             spatial_size=self.spatial_size,
+            target_spacing=self.target_spacing,
             load_path=self.path[0],
             publish_path=self.path[1],
             description="Train Multilabel Segmentation Model",
