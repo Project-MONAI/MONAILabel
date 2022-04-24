@@ -1,3 +1,4 @@
+torch>=1.7
 aiofiles==0.8.0
 fastapi==0.73.0
 SimpleITK>=2.1
@@ -24,6 +25,6 @@ openslide-python==1.1.2
 opencv-python-headless==4.5.5.64
 Shapely==1.8.1.post1
 girder_client==3.1.8
-torchmaxflow==0.0.6rc1
+numpymaxflow==0.0.2
 
 #sudo apt-get install openslide-tools -y

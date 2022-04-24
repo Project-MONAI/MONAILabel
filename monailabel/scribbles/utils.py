@@ -11,11 +11,7 @@
 import logging
 
 import numpy as np
-from monai.utils import optional_import
-
-# torch import is needed to execute torchmaxflow
-optional_import("torch")
-import torchmaxflow
+import numpymaxflow
 
 logger = logging.getLogger(__name__)
 
@@ -27,7 +23,7 @@ def get_eps(data):
 def maxflow(image, prob, lamda=5, sigma=0.1):
     # lamda: weight of smoothing term
     # sigma: std of intensity values
-    return torchmaxflow.maxflow(image, prob, lamda, sigma)
+    return numpymaxflow.maxflow(image, prob, lamda, sigma)
 
 
 def make_iseg_unary(
