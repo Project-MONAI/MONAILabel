@@ -13,8 +13,8 @@ from typing import Callable, Sequence
 from monai.inferers import Inferer, SlidingWindowInferer
 from monai.transforms import (
     Activationsd,
-    AddChanneld,
     AsDiscreted,
+    EnsureChannelFirstd,
     EnsureTyped,
     KeepLargestConnectedComponentd,
     LoadImaged,
@@ -57,7 +57,7 @@ class Segmentation(InferTask):
     def pre_transforms(self, data=None) -> Sequence[Callable]:
         return [
             LoadImaged(keys="image", reader="ITKReader"),
-            AddChanneld(keys="image"),
+            EnsureChannelFirstd(keys="image"),
             Spacingd(keys="image", pixdim=(1.0, 1.0, 1.0)),
             ScaleIntensityRanged(keys="image", a_min=-175, a_max=250, b_min=0.0, b_max=1.0, clip=True),
             EnsureTyped(keys="image"),
