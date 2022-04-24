@@ -17,6 +17,7 @@ from monai.losses import DiceCELoss
 from monai.transforms import (
     Activationsd,
     AsDiscreted,
+    EnsureChannelFirstd,
     LoadImaged,
     Orientationd,
     RandFlipd,
@@ -27,7 +28,6 @@ from monai.transforms import (
     SelectItemsd,
     ToNumpyd,
     ToTensord,
-    EnsureChannelFirstd,
 )
 
 from monailabel.deepedit.handlers import TensorBoardImageHandler
