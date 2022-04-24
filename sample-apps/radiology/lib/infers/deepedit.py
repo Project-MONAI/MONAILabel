@@ -14,13 +14,14 @@ from monai.inferers import Inferer, SimpleInferer
 from monai.transforms import (
     Activationsd,
     AsDiscreted,
+    EnsureChannelFirstd,
     EnsureTyped,
     LoadImaged,
     Orientationd,
     Resized,
     ScaleIntensityRanged,
     SqueezeDimd,
-    ToNumpyd, EnsureChannelFirstd,
+    ToNumpyd,
 )
 
 from monailabel.deepedit.multilabel.transforms import (
@@ -80,14 +81,18 @@ class DeepEdit(InferTask):
                     AddGuidanceFromPointsCustomd(ref_image="image", guidance="guidance", label_names=self.labels),
                     Resized(keys="image", spatial_size=self.spatial_size, mode="area"),
                     ResizeGuidanceMultipleLabelCustomd(guidance="guidance", ref_image="image"),
-                    AddGuidanceSignalCustomd(keys="image", guidance="guidance", number_intensity_ch=self.number_intensity_ch),
+                    AddGuidanceSignalCustomd(
+                        keys="image", guidance="guidance", number_intensity_ch=self.number_intensity_ch
+                    ),
                 ]
             )
         else:
             t.extend(
                 [
                     Resized(keys="image", spatial_size=self.spatial_size, mode="area"),
-                    DiscardAddGuidanced(keys="image", label_names=self.labels, number_intensity_ch=self.number_intensity_ch),
+                    DiscardAddGuidanced(
+                        keys="image", label_names=self.labels, number_intensity_ch=self.number_intensity_ch
+                    ),
                 ]
             )
 
