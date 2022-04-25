@@ -90,7 +90,7 @@ public class RunInference implements Runnable {
 		List<PathObject> objs = imageData.getHierarchy().getFlattenedObjectList(null);
 		ArrayList<Point2> clicks = new ArrayList<Point2>();
 		for (int i = 0; i < objs.size(); i++) {
-			if (objs.get(i).getName() == name) {
+			if (objs.get(i).getPathClass() != null && objs.get(i).getPathClass().getName() == name) {
 				ROI r = objs.get(i).getROI();
 				List<Point2> points = r.getAllPoints();
 				for (Point2 p : points) {
@@ -130,8 +130,8 @@ public class RunInference implements Runnable {
 			req.size[1] = bbox[3];
 
 			ROI roi = ROIs.createRectangleROI(bbox[0], bbox[1], bbox[2], bbox[3], null);
-			req.params.addClicks(getClicks("M_POS", imageData, roi), true);
-			req.params.addClicks(getClicks("M_NEG", imageData, roi), false);
+			req.params.addClicks(getClicks("Positive", imageData, roi), true);
+			req.params.addClicks(getClicks("Negative", imageData, roi), false);
 
 			Document dom = MonaiLabelClient.infer(model, image, req);
 			NodeList annotation_list = dom.getElementsByTagName("Annotation");
