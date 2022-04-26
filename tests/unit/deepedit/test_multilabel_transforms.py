@@ -12,7 +12,6 @@
 import unittest
 
 import numpy as np
-from monai.utils.enums import PostFix
 from parameterized import parameterized
 
 from monailabel.deepedit.multilabel.transforms import (
@@ -44,8 +43,8 @@ DISCREPANCY = {
 DATA_1 = {
     "image": IMAGE,
     "label": LABEL,
-    PostFix.meta("image"): {"dim": IMAGE.shape, "spatial_shape": IMAGE[0, ...].shape},
-    PostFix.meta("label"): {},
+    "image_meta_dict": {"dim": IMAGE.shape, "spatial_shape": IMAGE[0, ...].shape},
+    "label_meta_dict": {},
 }
 
 DATA_2 = {
@@ -72,7 +71,7 @@ DATA_3 = {
 DATA_4 = {
     "image": IMAGE,
     "label": LABEL,
-    PostFix.meta("image"): {"dim": IMAGE.shape, "spatial_shape": IMAGE[0, ...].shape},
+    "image_meta_dict": {"dim": IMAGE.shape, "spatial_shape": IMAGE[0, ...].shape},
     "current_label": "spleen",
     "probability": 1.0,
     "label_names": LABEL_NAMES,
@@ -84,7 +83,7 @@ DATA_4 = {
 DATA_5 = {
     "image": IMAGE,
     "label": LABEL,
-    PostFix.meta("image"): {"dim": IMAGE.shape, "spatial_shape": IMAGE[0, ...].shape},
+    "image_meta_dict": {"dim": IMAGE.shape, "spatial_shape": IMAGE[0, ...].shape},
     "current_label": "spleen",
     "probability": 1.0,
     "label_names": LABEL_NAMES,
@@ -94,7 +93,7 @@ DATA_5 = {
 DATA_6 = {
     "image": IMAGE,
     "label": LABEL[None],
-    PostFix.meta("image"): {"dim": IMAGE.shape, "spatial_shape": IMAGE[0, ...].shape},
+    "image_meta_dict": {"dim": IMAGE.shape, "spatial_shape": IMAGE[0, ...].shape},
     "current_label": "spleen",
     "label_names": LABEL_NAMES,
 }
@@ -103,7 +102,7 @@ DATA_7 = {
     "image": IMAGE,
     "label": LABEL,
     "pred": PRED,
-    PostFix.meta("image"): {"dim": IMAGE.shape, "spatial_shape": IMAGE[0, ...].shape},
+    "image_meta_dict": {"dim": IMAGE.shape, "spatial_shape": IMAGE[0, ...].shape},
     "current_label": "spleen",
     "probability": 1.0,
     "label_names": LABEL_NAMES,
@@ -116,14 +115,14 @@ DATA_7 = {
 DATA_8 = {
     "image": IMAGE,
     "label": LABEL,
-    PostFix.meta("image"): {"dim": IMAGE.shape, "spatial_shape": IMAGE[0, ...].shape},
+    "image_meta_dict": {"dim": IMAGE.shape, "spatial_shape": IMAGE[0, ...].shape},
     "label_names": LABEL_NAMES,
 }
 
 DATA_9 = {
     "image": IMAGE,
     "label": LABEL,
-    PostFix.meta("image"): {"dim": IMAGE.shape, "spatial_shape": IMAGE[0, ...].shape},
+    "image_meta_dict": {"dim": IMAGE.shape, "spatial_shape": IMAGE[0, ...].shape},
     "label_names": LABEL_NAMES,
     "guidance": {
         "spleen": np.array([0, 2, 2]),
@@ -134,7 +133,7 @@ DATA_9 = {
 DATA_10 = {
     "image": IMAGE,
     "label": LABEL,
-    PostFix.meta("image"): {"dim": IMAGE.shape, "spatial_shape": IMAGE[0, ...].shape},
+    "image_meta_dict": {"dim": IMAGE.shape, "spatial_shape": IMAGE[0, ...].shape},
     "current_label": "spleen",
 }
 
