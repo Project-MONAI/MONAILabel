@@ -135,7 +135,7 @@ You can download sample whole slide images from [https://portal.gdc.cancer.gov/r
 
 Refer [QuPath](plugins/qupath-extension-monailabel) for installing and running MONAILabel plugin in QuPath.
 
-![image](docs/images/qupath.png)
+![image](docs/images/qupath.jpg)
 
 ### [Digital Slide Archive (DSA)](https://digitalslidearchive.github.io/digital_slide_archive/) (pathology)
 

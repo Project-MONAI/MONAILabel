@@ -24,4 +24,4 @@ extension.
 - Add/Select Rectangle ROI to run annotations using MONAI Label models.
 - For Interative model (e.g. DeepEdit) you can choose to provide `Positive` and `Negative` points through Annotation panel.
 
-![image](../../docs/images/qupath.png)
+![image](../../docs/images/qupath.jpg)
