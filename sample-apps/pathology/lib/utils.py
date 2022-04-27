@@ -19,6 +19,35 @@ from monailabel.utils.others.generic import get_basename
 logger = logging.getLogger(__name__)
 
 
+def split_dataset(datastore, cache_dir, source, groups, tile_size, max_region=(10240, 10240), limit=0, randomize=True):
+    ds = datastore.datalist()
+    shutil.rmtree(cache_dir, ignore_errors=True)
+
+    if source == "pannuke":
+        image = np.load(ds[0]["image"]) if len(ds) == 1 else None
+        if image is not None and len(image.shape) > 3:
+            logger.info(f"PANNuke (For Developer Mode only):: Split data; groups: {groups}")
+            ds = split_pannuke_dataset(ds[0]["image"], ds[0]["label"], cache_dir, groups)
+    else:
+        logger.info(f"Split data based on tile size: {tile_size}; groups: {groups}")
+        ds_new = []
+        count = 0
+        if limit > 0:
+            ds = random.sample(ds, limit) if randomize else ds[:limit]
+        for d in tqdm(ds):
+            if isinstance(datastore, DSADatastore):
+                ds_new.extend(split_dsa_dataset(datastore, d, cache_dir, groups, tile_size, max_region))
+            else:
+                ds_new.extend(split_local_dataset(datastore, d, cache_dir, groups, tile_size, max_region))
+            count += 1
+            if 0 < limit < count:
+                break
+        ds = ds_new
+
+    logger.info(f"+++ Total Records: {len(ds)}")
+    return ds
+
+
 def split_pannuke_dataset(image, label, output_dir, groups):
     groups = groups if groups else dict()
     groups = [groups] if isinstance(groups, str) else groups
@@ -70,7 +99,7 @@ def split_pannuke_dataset(image, label, output_dir, groups):
 
 
 def split_dsa_dataset(datastore, d, output_dir, groups, tile_size, max_region=(10240, 10240)):
-    groups, item_id = __pre_init(groups, d, output_dir)
+    groups, item_id = _group_item(groups, d, output_dir)
     dataset_json = []
 
     annotations = datastore.get_label(item_id, "")
@@ -93,7 +122,7 @@ def split_dsa_dataset(datastore, d, output_dir, groups, tile_size, max_region=(1
         if not points:
             continue
 
-        x, y, w, h = to_roi(points, max_region, polygons, annotation["_id"])
+        x, y, w, h = _to_roi(points, max_region, polygons, annotation["_id"])
 
         image_uri = datastore.get_image_uri(item_id)
         if not os.path.exists(image_uri):
@@ -112,12 +141,49 @@ def split_dsa_dataset(datastore, d, output_dir, groups, tile_size, max_region=(1
             slide = openslide.OpenSlide(datastore.get_image_uri(item_id))
             img = slide.read_region((x, y), 0, (w, h)).convert("RGB")
 
-        dataset_json.extend(to_dataset(item_id, x, y, w, h, img, tile_size, polygons, groups, output_dir))
+        dataset_json.extend(_to_dataset(item_id, x, y, w, h, img, tile_size, polygons, groups, output_dir))
 
     return dataset_json
 
 
-def __pre_init(groups, d, output_dir):
+def split_local_dataset(datastore, d, output_dir, groups, tile_size, max_region=(10240, 10240)):
+    groups, item_id = _group_item(groups, d, output_dir)
+    local: LocalDatastore = datastore
+    item_id = local._to_id(item_id)[0]
+
+    dataset_json = []
+
+    points = []
+    polygons = {g: [] for g in groups}
+
+    annotations_xml = ET.parse(d["label"]).getroot()
+    for annotation in annotations_xml.iter("Annotation"):
+        g = annotation.get("PartOfGroup")
+        g = g if g else "None"
+        g = g.lower()
+
+        if g not in groups:
+            continue
+
+        p = []
+        for e in annotation.iter("Coordinate"):
+            xy = [int(e.get("X")), int(e.get("Y"))]
+            if sum(xy):
+                p.append(xy)
+
+        if p:
+            polygons[g].append(p)
+            points.extend(p)
+
+    x, y, w, h = _to_roi(points, max_region, polygons, item_id)
+    slide = openslide.OpenSlide(d["image"])
+    img = slide.read_region((x, y), 0, (w, h)).convert("RGB")
+
+    dataset_json.extend(_to_dataset(item_id, x, y, w, h, img, tile_size, polygons, groups, output_dir))
+    return dataset_json
+
+
+def _group_item(groups, d, output_dir):
     groups = groups if groups else dict()
     groups = [groups] if isinstance(groups, str) else groups
     if not isinstance(groups, dict):
@@ -132,7 +198,7 @@ def __pre_init(groups, d, output_dir):
     return groups, item_id
 
 
-def to_roi(points, max_region, polygons, annotation_id):
+def _to_roi(points, max_region, polygons, annotation_id):
     logger.info(f"Total Points: {len(points)}")
     x, y, w, h = cv2.boundingRect(np.array(points))
     logger.info(f"ID: {annotation_id} => Groups: {polygons.keys()}; Location: ({x}, {y}); Size: {w} x {h}")
@@ -146,7 +212,7 @@ def to_roi(points, max_region, polygons, annotation_id):
     return x, y, w, h
 
 
-def to_dataset(item_id, x, y, w, h, img, tile_size, polygons, groups, output_dir, debug=False):
+def _to_dataset(item_id, x, y, w, h, img, tile_size, polygons, groups, output_dir, debug=False):
     dataset_json = []
 
     name = f"{item_id}_{x}_{y}_{w}_{h}"
@@ -158,7 +224,7 @@ def to_dataset(item_id, x, y, w, h, img, tile_size, polygons, groups, output_dir
 
     image_np = np.asarray(img, dtype=np.uint8)
     logger.debug(f"Image NP: {image_np.shape}; sum: {np.sum(image_np)}")
-    tiled_images = region_to_tiles(name, w, h, image_np, tile_size, output_dir, "Image")
+    tiled_images = _region_to_tiles(name, w, h, image_np, tile_size, output_dir, "Image")
 
     label_np = np.zeros((h, w), dtype=np.uint8)  # Transposed
     for group, contours in polygons.items():
@@ -174,7 +240,7 @@ def to_dataset(item_id, x, y, w, h, img, tile_size, polygons, groups, output_dir
             os.makedirs(os.path.dirname(label_path), exist_ok=True)
             cv2.imwrite(label_path, label_np)
 
-    tiled_labels = region_to_tiles(
+    tiled_labels = _region_to_tiles(
         name, w, h, label_np, tile_size, os.path.join(output_dir, "labels", "final"), "Label"
     )
     for k in tiled_images:
@@ -182,7 +248,7 @@ def to_dataset(item_id, x, y, w, h, img, tile_size, polygons, groups, output_dir
     return dataset_json
 
 
-def region_to_tiles(name, w, h, input_np, tile_size, output, prefix):
+def _region_to_tiles(name, w, h, input_np, tile_size, output, prefix):
     max_w = tile_size[0]
     max_h = tile_size[1]
 
@@ -219,72 +285,6 @@ def region_to_tiles(name, w, h, input_np, tile_size, output, prefix):
             result[filename] = save_path
     logger.debug(f"{prefix} => Total {len(result)} Patch(s) are Saved at: {output}")
     return result
-
-
-def split_local_dataset(datastore, d, output_dir, groups, tile_size, max_region=(10240, 10240)):
-    groups, item_id = __pre_init(groups, d, output_dir)
-    local: LocalDatastore = datastore
-    item_id = local._to_id(item_id)[0]
-
-    dataset_json = []
-
-    points = []
-    polygons = {g: [] for g in groups}
-
-    annotations_xml = ET.parse(d["label"]).getroot()
-    for annotation in annotations_xml.iter("Annotation"):
-        g = annotation.get("PartOfGroup")
-        g = g if g else "None"
-        g = g.lower()
-
-        if g not in groups:
-            continue
-
-        p = []
-        for e in annotation.iter("Coordinate"):
-            xy = [int(e.get("X")), int(e.get("Y"))]
-            if sum(xy):
-                p.append(xy)
-
-        if p:
-            polygons[g].append(p)
-            points.extend(p)
-
-    x, y, w, h = to_roi(points, max_region, polygons, item_id)
-    slide = openslide.OpenSlide(d["image"])
-    img = slide.read_region((x, y), 0, (w, h)).convert("RGB")
-
-    dataset_json.extend(to_dataset(item_id, x, y, w, h, img, tile_size, polygons, groups, output_dir))
-    return dataset_json
-
-
-def split_dataset(datastore, cache_dir, source, groups, tile_size, max_region=(10240, 10240), limit=0, randomize=True):
-    ds = datastore.datalist()
-    shutil.rmtree(cache_dir, ignore_errors=True)
-
-    if source == "pannuke":
-        image = np.load(ds[0]["image"]) if len(ds) == 1 else None
-        if image is not None and len(image.shape) > 3:
-            logger.info(f"PANNuke (For Developer Mode only):: Split data; groups: {groups}")
-            ds = split_pannuke_dataset(ds[0]["image"], ds[0]["label"], cache_dir, groups)
-    else:
-        logger.info(f"Split data based on tile size: {tile_size}; groups: {groups}")
-        ds_new = []
-        count = 0
-        if limit > 0:
-            ds = random.sample(ds, limit) if randomize else ds[:limit]
-        for d in tqdm(ds):
-            if isinstance(datastore, DSADatastore):
-                ds_new.extend(split_dsa_dataset(datastore, d, cache_dir, groups, tile_size, max_region))
-            else:
-                ds_new.extend(split_local_dataset(datastore, d, cache_dir, groups, tile_size, max_region))
-            count += 1
-            if 0 < limit < count:
-                break
-        ds = ds_new
-
-    logger.info(f"+++ Total Records: {len(ds)}")
-    return ds
 
 
 def main_dsa():

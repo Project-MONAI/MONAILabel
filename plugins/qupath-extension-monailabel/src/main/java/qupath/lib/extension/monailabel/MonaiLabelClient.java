@@ -14,9 +14,11 @@ limitations under the License.
 package qupath.lib.extension.monailabel;
 
 import java.io.ByteArrayInputStream;
+import java.io.File;
 import java.io.IOException;
 import java.io.InputStream;
 import java.lang.reflect.Type;
+import java.net.URLEncoder;
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.HashMap;
@@ -41,6 +43,7 @@ import com.google.gson.JsonElement;
 import com.google.gson.JsonObject;
 import com.google.gson.JsonParseException;
 
+import javafx.util.Pair;
 import qupath.lib.geom.Point2;
 
 public class MonaiLabelClient {
@@ -121,7 +124,7 @@ public class MonaiLabelClient {
 		public InferParams params = new InferParams();
 	};
 
-	public static ResponseInfo info() {
+	public static ResponseInfo info() throws IOException, InterruptedException {
 		String uri = "/info/";
 		String res = RequestUtils.request("GET", uri, null);
 		logger.info("MONAILabel Annotation - INFO => " + res);
@@ -131,9 +134,10 @@ public class MonaiLabelClient {
 	}
 
 	public static Document infer(String model, String image, RequestInfer req)
-			throws SAXException, IOException, ParserConfigurationException {
+			throws SAXException, IOException, ParserConfigurationException, InterruptedException {
 
-		String uri = "/infer/wsi/" + model + "?image=" + image + "&output=asap";
+		String uri = "/infer/wsi/" + URLEncoder.encode(model, "UTF-8") + "?image=" + URLEncoder.encode(image, "UTF-8")
+				+ "&output=asap";
 
 		String jsonBody = new Gson().toJson(req, RequestInfer.class);
 		logger.info("MONAILabel Annotation - BODY => " + jsonBody);
@@ -147,4 +151,18 @@ public class MonaiLabelClient {
 		return dom;
 	}
 
+	public static String train(String model, String params) throws IOException, InterruptedException {
+		String uri = "/train/" + URLEncoder.encode(model, "UTF-8");
+		return RequestUtils.request("POST", uri, params);
+	}
+
+	public static String saveLabel(String image, File label, String tag, String params)
+			throws IOException, InterruptedException {
+		String uri = "/datastore/label?image=" + URLEncoder.encode(image, "UTF-8");
+		if (tag != null && !tag.isEmpty()) {
+			uri += "&tag=" + tag;
+		}
+
+		return RequestUtils.requestMultiPart("PUT", uri, new Pair<String, File>("label", label), params);
+	}
 }

@@ -15,6 +15,7 @@ package qupath.lib.extension.monailabel.commands;
 
 import java.awt.Color;
 import java.awt.image.BufferedImage;
+import java.io.IOException;
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.HashMap;
@@ -23,18 +24,19 @@ import java.util.List;
 import java.util.Map;
 import java.util.Set;
 
+import javax.xml.parsers.ParserConfigurationException;
+
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.w3c.dom.Document;
 import org.w3c.dom.Node;
 import org.w3c.dom.NodeList;
-
-import com.google.common.io.Files;
+import org.xml.sax.SAXException;
 
 import qupath.lib.extension.monailabel.MonaiLabelClient;
-import qupath.lib.extension.monailabel.MonaiLabelClient.Model;
 import qupath.lib.extension.monailabel.MonaiLabelClient.RequestInfer;
 import qupath.lib.extension.monailabel.MonaiLabelClient.ResponseInfo;
+import qupath.lib.extension.monailabel.Utils;
 import qupath.lib.geom.Point2;
 import qupath.lib.gui.QuPathGUI;
 import qupath.lib.gui.dialogs.Dialogs;
@@ -61,35 +63,40 @@ public class RunInference implements Runnable {
 
 	@Override
 	public void run() {
-		var viewer = qupath.getViewer();
-		var imageData = viewer.getImageData();
-		var selected = imageData.getHierarchy().getSelectionModel().getSelectedObject();
-		var roi = selected != null ? selected.getROI() : null;
-		int[] bbox = getBBOX(roi);
+		try {
+			var viewer = qupath.getViewer();
+			var imageData = viewer.getImageData();
+			var selected = imageData.getHierarchy().getSelectionModel().getSelectedObject();
+			var roi = selected != null ? selected.getROI() : null;
+			int[] bbox = getBBOX(roi);
 
-		ResponseInfo info = MonaiLabelClient.info();
-		List<String> names = new ArrayList<String>();
-		Map<String, String[]> labels = new HashMap<String, String[]>();
-		for (String n : info.models.keySet()) {
-			names.add(n);
-			labels.put(n, info.models.get(n).labels.labels());
-		}
+			ResponseInfo info = MonaiLabelClient.info();
+			List<String> names = new ArrayList<String>();
+			Map<String, String[]> labels = new HashMap<String, String[]>();
+			for (String n : info.models.keySet()) {
+				names.add(n);
+				labels.put(n, info.models.get(n).labels.labels());
+			}
 
-		ParameterList list = new ParameterList();
-		list.addChoiceParameter("Model", "Model Name", names.isEmpty() ? "" : names.get(0), names);
-		list.addIntParameter("X", "Location-x", bbox[0]);
-		list.addIntParameter("Y", "Location-y", bbox[1]);
-		list.addIntParameter("Width", "Width", bbox[2]);
-		list.addIntParameter("Height", "Height", bbox[3]);
+			ParameterList list = new ParameterList();
+			list.addChoiceParameter("Model", "Model Name", names.isEmpty() ? "" : names.get(0), names);
+			list.addIntParameter("X", "Location-x", bbox[0]);
+			list.addIntParameter("Y", "Location-y", bbox[1]);
+			list.addIntParameter("Width", "Width", bbox[2]);
+			list.addIntParameter("Height", "Height", bbox[3]);
 
-		if (Dialogs.showParameterDialog("MONAI Label - Pathology", list)) {
-			String model = (String) list.getChoiceParameterValue("Model");
-			bbox[0] = list.getIntParameterValue("X").intValue();
-			bbox[1] = list.getIntParameterValue("Y").intValue();
-			bbox[2] = list.getIntParameterValue("Width").intValue();
-			bbox[3] = list.getIntParameterValue("Height").intValue();
+			if (Dialogs.showParameterDialog("MONAILabel", list)) {
+				String model = (String) list.getChoiceParameterValue("Model");
+				bbox[0] = list.getIntParameterValue("X").intValue();
+				bbox[1] = list.getIntParameterValue("Y").intValue();
+				bbox[2] = list.getIntParameterValue("Width").intValue();
+				bbox[3] = list.getIntParameterValue("Height").intValue();
 
-			runInference(model, new HashSet<String>(Arrays.asList(labels.get(model))), bbox, imageData);
+				runInference(model, new HashSet<String>(Arrays.asList(labels.get(model))), bbox, imageData);
+			}
+		} catch (Exception ex) {
+			ex.printStackTrace();
+			Dialogs.showErrorMessage("MONAILabel", ex);
 		}
 	}
 
@@ -122,34 +129,31 @@ public class RunInference implements Runnable {
 		return new int[] { x, y, w, h };
 	}
 
-	private void runInference(String model, Set<String> labels, int[] bbox, ImageData<BufferedImage> imageData) {
+	private void runInference(String model, Set<String> labels, int[] bbox, ImageData<BufferedImage> imageData)
+			throws SAXException, IOException, ParserConfigurationException, InterruptedException {
 		logger.info("MONAILabel Annotation - Run Inference...");
 		logger.info("Model: " + model);
 		logger.info("Labels: " + labels);
 
-		try {
-			String image = Files.getNameWithoutExtension(imageData.getServerPath());
+		String image = Utils.getNameWithoutExtension(imageData.getServerPath());
 
-			RequestInfer req = new RequestInfer();
-			req.location[0] = bbox[0];
-			req.location[1] = bbox[1];
-			req.size[0] = bbox[2];
-			req.size[1] = bbox[3];
+		RequestInfer req = new RequestInfer();
+		req.location[0] = bbox[0];
+		req.location[1] = bbox[1];
+		req.size[0] = bbox[2];
+		req.size[1] = bbox[3];
 
-			ROI roi = ROIs.createRectangleROI(bbox[0], bbox[1], bbox[2], bbox[3], null);
-			req.params.addClicks(getClicks("Positive", imageData, roi), true);
-			req.params.addClicks(getClicks("Negative", imageData, roi), false);
+		ROI roi = ROIs.createRectangleROI(bbox[0], bbox[1], bbox[2], bbox[3], null);
+		req.params.addClicks(getClicks("Positive", imageData, roi), true);
+		req.params.addClicks(getClicks("Negative", imageData, roi), false);
 
-			Document dom = MonaiLabelClient.infer(model, image, req);
-			NodeList annotation_list = dom.getElementsByTagName("Annotation");
-			int count = updateAnnotations(labels, annotation_list, roi, imageData);
+		Document dom = MonaiLabelClient.infer(model, image, req);
+		NodeList annotation_list = dom.getElementsByTagName("Annotation");
+		int count = updateAnnotations(labels, annotation_list, roi, imageData);
 
-			// Update hierarchy to see changes in QuPath's hierarchy
-			QP.fireHierarchyUpdate(imageData.getHierarchy());
-			logger.info("MONAILabel Annotation - Done! => Total Objects Added: " + count);
-		} catch (Exception ex) {
-			ex.printStackTrace();
-		}
+		// Update hierarchy to see changes in QuPath's hierarchy
+		QP.fireHierarchyUpdate(imageData.getHierarchy());
+		logger.info("MONAILabel Annotation - Done! => Total Objects Added: " + count);
 	}
 
 	private int updateAnnotations(Set<String> labels, NodeList annotation_list, ROI roi,
@@ -162,8 +166,6 @@ public class RunInference implements Runnable {
 				if (roi.contains(r.getCentroidX(), r.getCentroidY())) {
 					imageData.getHierarchy().removeObjectWithoutUpdate(objs.get(i), false);
 				}
-			} else {
-				logger.info("Name: " + name + " Not Found in: " + labels);
 			}
 		}
 

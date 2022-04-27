@@ -23,8 +23,6 @@ repositories {
 }
 
 dependencies {
-  implementation "com.google.guava:guava:31.1-jre"
-
   shadow "io.github.qupath:qupath-gui-fx:0.3.0"
   shadow "org.slf4j:slf4j-api:1.7.30"
 }

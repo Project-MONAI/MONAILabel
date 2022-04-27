@@ -13,44 +13,172 @@ limitations under the License.
 
 package qupath.lib.extension.monailabel;
 
-import java.io.BufferedReader;
-import java.io.InputStreamReader;
-import java.io.Reader;
-import java.net.HttpURLConnection;
-import java.net.URL;
+import java.io.ByteArrayOutputStream;
+import java.io.File;
+import java.io.IOException;
+import java.math.BigInteger;
+import java.net.URI;
+import java.net.http.HttpClient;
+import java.net.http.HttpRequest;
+import java.net.http.HttpRequest.BodyPublisher;
+import java.net.http.HttpRequest.BodyPublishers;
+import java.net.http.HttpResponse.BodyHandlers;
+import java.nio.charset.Charset;
+import java.nio.charset.StandardCharsets;
+import java.nio.file.Files;
+import java.nio.file.Path;
+import java.util.ArrayList;
+import java.util.LinkedHashMap;
+import java.util.List;
+import java.util.Map;
+import java.util.Random;
 
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
+import javafx.util.Pair;
+
 public class RequestUtils {
 	private final static Logger logger = LoggerFactory.getLogger(RequestUtils.class);
 
-	public static String request(String method, String uri, String body) {
-		try {
-			String monaiServer = Settings.serverURLProperty().get();
-			String requestURI = monaiServer + uri;
-			logger.info("MONAI Label Annotation - URL => " + requestURI);
+	public static String request(String method, String uri, String body) throws IOException, InterruptedException {
+		String monaiServer = Settings.serverURLProperty().get();
+		String requestURI = monaiServer + uri;
+		logger.info("MONAI Label Annotation - URL => " + requestURI);
 
-			HttpURLConnection connection = (HttpURLConnection) new URL(requestURI).openConnection();
-			connection.setRequestMethod(method);
-			connection.setRequestProperty("Content-Type", "application/json");
-			connection.setDoInput(true);
-			connection.setDoOutput(true);
+		var bodyPublisher = (body != null && !body.isEmpty()) ? HttpRequest.BodyPublishers.ofString(body)
+				: HttpRequest.BodyPublishers.noBody();
 
-			if (body != null && !body.isEmpty()) {
-				connection.getOutputStream().write(body.getBytes("UTF-8"));
-			}
+		var request = HttpRequest.newBuilder().version(HttpClient.Version.HTTP_1_1).method(method, bodyPublisher)
+				.uri(URI.create(requestURI)).build();
 
-			Reader in = new BufferedReader(new InputStreamReader(connection.getInputStream(), "UTF-8"));
-			StringBuilder sb = new StringBuilder();
-			for (int c; (c = in.read()) >= 0;)
-				sb.append((char) c);
-			return sb.toString();
-		} catch (Exception ex) {
-			ex.printStackTrace();
+		var httpClient = HttpClient.newBuilder().build();
+		var response = httpClient.send(request, BodyHandlers.ofString()); // supporting string response only
+		if (response.statusCode() != 200) {
+			throw new IOException(response.toString());
 		}
-
-		return null;
+		return response.body();
 	}
 
+	public static String requestMultiPart(String method, String uri, Pair<String, File> file, String params)
+			throws IOException, InterruptedException {
+		String monaiServer = Settings.serverURLProperty().get();
+		String requestURI = monaiServer + uri;
+		logger.info("MONAI Label Annotation - URL => " + requestURI);
+
+		var multipartData = MultipartData.newBuilder().withCharset(StandardCharsets.UTF_8)
+				.addFile(file.getKey(), file.getValue().toPath(), Files.probeContentType(file.getValue().toPath()))
+				.addText("params", params).build();
+
+		var request = HttpRequest.newBuilder().version(HttpClient.Version.HTTP_1_1)
+				.header("Content-Type", multipartData.getContentType()).method(method, multipartData.getBodyPublisher())
+				.uri(URI.create(requestURI)).build();
+
+		var httpClient = HttpClient.newBuilder().build();
+		var response = httpClient.send(request, BodyHandlers.ofString()); // supporting string response only
+		if (response.statusCode() != 200) {
+			throw new IOException(response.toString());
+		}
+		return response.body();
+	}
+
+	public static class MultipartData {
+
+		public static class Builder {
+
+			private String boundary;
+			private Charset charset = StandardCharsets.UTF_8;
+			private List<MimedFile> files = new ArrayList<MimedFile>();
+			private Map<String, String> texts = new LinkedHashMap<>();
+
+			private Builder() {
+				this.boundary = new BigInteger(128, new Random()).toString();
+			}
+
+			public Builder withCharset(Charset charset) {
+				this.charset = charset;
+				return this;
+			}
+
+			public Builder withBoundary(String boundary) {
+				this.boundary = boundary;
+				return this;
+			}
+
+			public Builder addFile(String name, Path path, String mimeType) {
+				this.files.add(new MimedFile(name, path, mimeType));
+				return this;
+			}
+
+			public Builder addText(String name, String text) {
+				texts.put(name, text);
+				return this;
+			}
+
+			public MultipartData build() throws IOException {
+				MultipartData multipartData = new MultipartData();
+				multipartData.boundary = boundary;
+
+				var newline = "\r\n".getBytes(charset);
+				var byteArrayOutputStream = new ByteArrayOutputStream();
+				for (var f : files) {
+					byteArrayOutputStream.write(("--" + boundary).getBytes(charset));
+					byteArrayOutputStream.write(newline);
+					byteArrayOutputStream.write(("Content-Disposition: form-data; name=\"" + f.name + "\"; filename=\""
+							+ f.path.getFileName() + "\"").getBytes(charset));
+					byteArrayOutputStream.write(newline);
+					byteArrayOutputStream.write(("Content-Type: " + f.mimeType).getBytes(charset));
+					byteArrayOutputStream.write(newline);
+					byteArrayOutputStream.write(newline);
+					byteArrayOutputStream.write(Files.readAllBytes(f.path));
+					byteArrayOutputStream.write(newline);
+				}
+				for (var entry : texts.entrySet()) {
+					byteArrayOutputStream.write(("--" + boundary).getBytes(charset));
+					byteArrayOutputStream.write(newline);
+					byteArrayOutputStream.write(
+							("Content-Disposition: form-data; name=\"" + entry.getKey() + "\"").getBytes(charset));
+					byteArrayOutputStream.write(newline);
+					byteArrayOutputStream.write(newline);
+					byteArrayOutputStream.write(entry.getValue().getBytes(charset));
+					byteArrayOutputStream.write(newline);
+				}
+				byteArrayOutputStream.write(("--" + boundary + "--").getBytes(charset));
+
+				multipartData.bodyPublisher = BodyPublishers.ofByteArray(byteArrayOutputStream.toByteArray());
+				return multipartData;
+			}
+
+			public class MimedFile {
+
+				public final String name;
+				public final Path path;
+				public final String mimeType;
+
+				public MimedFile(String name, Path path, String mimeType) {
+					this.name = name;
+					this.path = path;
+					this.mimeType = mimeType;
+				}
+			}
+		}
+
+		private String boundary;
+		private BodyPublisher bodyPublisher;
+
+		private MultipartData() {
+		}
+
+		public static Builder newBuilder() {
+			return new Builder();
+		}
+
+		public BodyPublisher getBodyPublisher() throws IOException {
+			return bodyPublisher;
+		}
+
+		public String getContentType() {
+			return "multipart/form-data; boundary=" + boundary;
+		}
+	}
 }

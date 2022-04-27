@@ -19,7 +19,6 @@ import org.controlsfx.control.action.ActionUtils;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
-import ij.ImageJ;
 import javafx.geometry.Orientation;
 import javafx.scene.control.Button;
 import javafx.scene.control.ContextMenu;
@@ -52,7 +51,7 @@ public class Extension implements QuPathExtension {
 
 		MenuTools.addMenuItems(qupath.getMenu("MONAI Label", true), ActionUtils.ACTION_SEPARATOR);
 
-		var training = ActionTools.createAction(new RunTraining(qupath), "Training...");
+		var training = ActionTools.createAction(new RunTraining(), "Training...");
 		MenuTools.addMenuItems(qupath.getMenu("MONAI Label", true), training);
 
 		new Settings().addProperties(qupath);
@@ -97,7 +96,7 @@ public class Extension implements QuPathExtension {
 
 	public static Image getMonaiLabelIcon(final int width, final int height) {
 		try {
-			URL url = ImageJ.class.getClassLoader().getResource("MONAI-Label.png");
+			URL url = Extension.class.getClassLoader().getResource("MONAI-Label.png");
 			return new Image(url.toString(), width, height, true, true);
 		} catch (Exception e) {
 			logger.error("Unable to load ImageJ icon!", e);
