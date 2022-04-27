@@ -257,7 +257,6 @@ class FindAllValidSlicesCustomd(MapTransform):
     """
     Find/List all valid slices in the labels.
     Label is assumed to be a 4D Volume with shape CHWD, where C=1.
-
     Args:
         label: key to the label source.
         sids: key to store slices indices having valid label map.
@@ -305,12 +304,9 @@ class FindAllValidSlicesCustomd(MapTransform):
 class AddInitialSeedPointCustomd(Randomizable, MapTransform):
     """
     Add random guidance as initial seed point for a given label.
-
     Note that the label is of size (C, D, H, W) or (C, H, W)
-
     The guidance is of size (2, N, # of dims) where N is number of guidance added.
     # of dims = 4 when C, D, H, W; # of dims = 3 when (C, H, W)
-
     Args:
         label: label source.
         guidance: key to store guidance.
@@ -781,9 +777,6 @@ class ToCheckTransformd(MapTransform):
         for key in self.key_iterator(d):
             logger.info(f"Printing key shape in ToCheckTransformd: {d[key].shape}")
         return d
-
-
-# For missing labels in multilabel task
 
 
 class AddInitialSeedPointMissingLabelsd(Randomizable, MapTransform):
