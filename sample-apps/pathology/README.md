@@ -70,6 +70,7 @@ available through Pathology App.
 The current version of plugin comes with **limited features** to support basic annotations, submitting label and trigger training.  _Looking for more contributions from QuPath Developer/Opensource community to make it better._
 
 - Make sure MONAILabel Server URL is correctly through `Preferences`.
+- Open Sample Whole Slide Image in QuPath (which is shared as studies for MONAILabel server)
 - Add/Select Rectangle ROI to run annotations using MONAI Label models.
 - For Interative model (e.g. DeepEdit) you can choose to provide `Positive` and `Negative` points through Annotation panel.
 
