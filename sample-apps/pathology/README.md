@@ -64,7 +64,7 @@ pip install -r requirements.txt
 ###### QuPath
 
 Once the server is up and running, download QuPath and
-install [MONAILabel plugin for QuPath](../../plugins/qupath-extension-monailabel) to run annotations using models
+install [MONAILabel plugin for QuPath](../../plugins/qupath) to run annotations using models
 available through Pathology App.
 
 The current version of plugin comes with **limited features** to support basic annotations, submitting label and trigger training.  _Looking for more contributions from QuPath Developer/Opensource community to make it better._

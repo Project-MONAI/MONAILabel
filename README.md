@@ -133,7 +133,7 @@ You can download sample whole slide images from [https://portal.gdc.cancer.gov/r
   monailabel start_server --app apps/pathology --studies wsi_images
 ```
 
-Refer [QuPath](plugins/qupath-extension-monailabel) for installing and running MONAILabel plugin in QuPath.
+Refer [QuPath](plugins/qupath) for installing and running MONAILabel plugin in QuPath.
 
 ![image](docs/images/qupath.jpg)
 
