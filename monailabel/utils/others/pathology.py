@@ -77,7 +77,7 @@ def create_asap_annotations_xml(json_data, loglevel="INFO"):
         fp.write('<?xml version="1.0"?>\n')
         fp.write("<ASAP_Annotations>\n")
         fp.write(
-            '  <Annotations name="{}" description="{}" model="{}" X="{}" Y="{}" W="{}" H="{}">\n'.format(
+            '  <Annotations Name="{}" Description="{}" Model="{}" X="{}" Y="{}" W="{}" H="{}">\n'.format(
                 name, description, model, location[0], location[1], size[0], size[1]
             )
         )
