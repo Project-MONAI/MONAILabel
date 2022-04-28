@@ -68,18 +68,21 @@ class NuClick(InferTask):
 
     def pre_transforms(self, data=None):
         return [
-            LoadImagePatchd(keys="image", conversion="RGB", dtype=np.uint8),
+            LoadImagePatchd(keys="image", conversion="RGB", dtype=np.uint8, padding=False),
             AsChannelFirstd(keys="image"),
             AddClickSignalsd(image="image"),
             EnsureTyped(keys="image", device=data.get("device") if data else None),
         ]
+
+    def run_inferer(self, data, convert_to_batch=True, device="cuda"):
+        return super().run_inferer(data, False, device)
 
     def post_transforms(self, data=None) -> Sequence[Callable]:
         return [
             EnsureTyped(keys="pred", device=data.get("device") if data else None),
             Activationsd(keys="pred", sigmoid=True),
             AsDiscreted(keys="pred", threshold=0.5),
-            SqueezeDimd(keys="pred"),
+            SqueezeDimd(keys="pred", dim=1),
             ToNumpyd(keys=("image", "pred")),
             PostFilterLabeld(keys="pred"),
             FindContoursd(keys="pred", labels=self.labels),
@@ -109,17 +112,19 @@ class AddClickSignalsd(Transform):
         cy = [xy[1] for xy in pos]
 
         img = d[self.image].astype(np.uint8)
-        img_width = img.shape[-2]
-        img_height = img.shape[-1]
+        img_width = img.shape[-1]
+        img_height = img.shape[-2]
 
         click_map, bounding_boxes = self.get_clickmap_boundingbox(cx, cy, img_height, img_width)
-        d["click_map"] = click_map
-        d["bounding_boxes"] = bounding_boxes
-
         patches, nuc_points, other_points = self.get_patches_and_signals(
             img, click_map, bounding_boxes, cx, cy, img_height, img_width
         )
         patches = patches / 255
+
+        d["bounding_boxes"] = bounding_boxes
+        d["img_width"] = img_width
+        d["img_height"] = img_height
+        d["nuc_points"] = nuc_points
 
         d[self.image] = np.concatenate((patches, nuc_points, other_points), axis=1, dtype=np.float32)
         return d
@@ -206,8 +211,8 @@ class PostFilterLabeld(MapTransform):
         keys: KeysCollection,
         nuc_points="nuc_points",
         bounding_boxes="bounding_boxes",
-        height="",
-        width="",
+        img_height="img_height",
+        img_width="img_width",
         thresh=0.33,
         min_size=10,
         min_hole=30,
@@ -216,8 +221,8 @@ class PostFilterLabeld(MapTransform):
         super().__init__(keys)
         self.nuc_points = nuc_points
         self.bounding_boxes = bounding_boxes
-        self.height = height
-        self.width = width
+        self.img_height = img_height
+        self.img_width = img_width
 
         self.thresh = thresh
         self.min_size = min_size
@@ -229,8 +234,8 @@ class PostFilterLabeld(MapTransform):
 
         nuc_points = d[self.nuc_points]
         bounding_boxes = d[self.bounding_boxes]
-        height = d[self.height]
-        width = d[self.width]
+        img_height = d[self.img_height]
+        img_width = d[self.img_width]
 
         for key in self.keys:
             label = d[key].astype(np.uint8)
@@ -243,7 +248,7 @@ class PostFilterLabeld(MapTransform):
                 nuc_points=nuc_points,
             )
 
-            d[key] = self.gen_instance_map(masks, bounding_boxes, height, width)
+            d[key] = self.gen_instance_map(masks, bounding_boxes, img_height, img_width).astype(np.uint8)
         return d
 
     @staticmethod

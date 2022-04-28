@@ -16,12 +16,12 @@ from typing import Any, Dict, Optional, Union
 
 import lib.infers
 import lib.trainers
-from monai.networks.nets import BasicUNet
+from lib.nets import UNet
 
 from monailabel.interfaces.config import TaskConfig
 from monailabel.interfaces.tasks.infer import InferTask
 from monailabel.interfaces.tasks.train import TrainTask
-from monailabel.utils.others.generic import device_list, download_file
+from monailabel.utils.others.generic import download_file
 
 logger = logging.getLogger(__name__)
 
@@ -46,12 +46,7 @@ class NuClick(TaskConfig):
             download_file(url, self.path[0])
 
         # Network
-        self.network = BasicUNet(
-            spatial_dims=2,
-            in_channels=5,
-            out_channels=1,
-            features=(32, 64, 128, 256, 512, 32),
-        )
+        self.network = UNet(n_channels=5, n_classes=1)
 
     def infer(self) -> Union[InferTask, Dict[str, InferTask]]:
         task: InferTask = lib.infers.NuClick(
@@ -60,10 +55,6 @@ class NuClick(TaskConfig):
             labels=self.labels,
             preload=strtobool(self.conf.get("preload", "false")),
             roi_size=json.loads(self.conf.get("roi_size", "[512, 512]")),
-            config={
-                "label_colors": self.label_colors,
-                "max_workers": len(device_list()),
-            },
         )
         return task
 

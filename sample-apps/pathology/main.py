@@ -159,7 +159,8 @@ def main():
         # studies = f"{home}/Data/Pathology/PanNuke"
         studies = "http://0.0.0.0:8080/api/v1"
     else:
-        studies = f"{home}/Data/Pathology/Test"
+        # studies = f"{home}/Data/Pathology/Test"
+        studies = "C:\\Projects\\Pathology\\Test"
 
     parser = argparse.ArgumentParser()
     parser.add_argument("-s", "--studies", default=studies)
@@ -169,23 +170,48 @@ def main():
     studies = args.studies
 
     app = MyApp(app_dir, studies, {})
-    model = "deepedit_nuclei"  # deepedit_nuclei, segmentation_nuclei
     if run_train:
-        app.train(
-            request={
-                "name": "train_01",
-                "model": model,
-                "max_epochs": 10 if model == "deepedit_nuclei" else 30,
-                "dataset": "CacheDataset",  # PersistentDataset, CacheDataset
-                "train_batch_size": 16,
-                "val_batch_size": 12,
-                "multi_gpu": True,
-                "val_split": 0.1,
-                "dataset_source": "pannuke",
-            },
-        )
+        train(app)
     else:
-        infer_wsi(app)
+        infer_nuclick(app)
+        # infer_wsi(app)
+
+
+def train(app):
+    model = "deepedit_nuclei"  # deepedit_nuclei, segmentation_nuclei
+    app.train(
+        request={
+            "name": "train_01",
+            "model": model,
+            "max_epochs": 10 if model == "deepedit_nuclei" else 30,
+            "dataset": "CacheDataset",  # PersistentDataset, CacheDataset
+            "train_batch_size": 16,
+            "val_batch_size": 12,
+            "multi_gpu": True,
+            "val_split": 0.1,
+            "dataset_source": "pannuke",
+        },
+    )
+
+
+def infer_nuclick(app):
+    import shutil
+
+    image = "C:\\Projects\\nuclick_torch\\test\\input_image.png"
+    res = app.infer(
+        request={
+            "model": "nuclick",
+            "image": image,
+            "output": "asap",
+            "foreground": [[390, 470], [1507, 190]],
+            "location": [0, 0],
+            "size": [0, 0],
+        }
+    )
+
+    # print(json.dumps(res, indent=2))
+    shutil.move(res["label"], "C:\\Projects\\nuclick_torch\\test\\output_image.png")
+    logger.info("All Done!")
 
 
 def infer_wsi(app):

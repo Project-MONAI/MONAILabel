@@ -84,7 +84,7 @@ class LoadImagePatchd(MapTransform):
             meta_dict["original_channel_dim"] = -1
             logger.debug(f"Image shape: {image_np.shape} vs size: {size} vs tile_size: {tile_size}")
 
-            if self.padding and image_np.shape[0] != tile_size[0] or image_np.shape[1] != tile_size[1]:
+            if self.padding and (image_np.shape[0] != tile_size[0] or image_np.shape[1] != tile_size[1]):
                 image_padded = np.zeros((tile_size[0], tile_size[1], 3), dtype=image_np.dtype)
                 image_padded[0 : image_np.shape[0], 0 : image_np.shape[1]] = image_np
                 image_np = image_padded
