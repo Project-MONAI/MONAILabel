@@ -1,0 +1,13 @@
+module qupath.extension.monailabel {
+
+    requires java.base;
+    requires java.desktop;
+
+    requires qupath.gui.fx;
+
+	requires slf4j.api;
+
+	provides qupath.lib.gui.extensions.QuPathExtension with
+		qupath.lib.extension.monailabel.Extension;
+
+}

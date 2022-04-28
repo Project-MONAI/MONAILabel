@@ -20,8 +20,6 @@ from monai.metrics import compute_meandice
 from monai.utils import min_version, optional_import
 
 Events, _ = optional_import("ignite.engine", IgniteInfo.OPT_IMPORT_VERSION, min_version, "Events")
-nib, _ = optional_import("nibabel")
-torchvision, _ = optional_import("torchvision")
 make_grid, _ = optional_import("torchvision.utils", name="make_grid")
 Image, _ = optional_import("PIL.Image")
 ImageDraw, _ = optional_import("PIL.ImageDraw")
