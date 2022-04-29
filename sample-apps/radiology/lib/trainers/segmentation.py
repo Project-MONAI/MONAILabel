@@ -16,9 +16,9 @@ from monai.inferers import SlidingWindowInferer
 from monai.losses import DiceCELoss
 from monai.transforms import (
     Activationsd,
-    AddChanneld,
     AsDiscreted,
     CropForegroundd,
+    EnsureChannelFirstd,
     EnsureTyped,
     LoadImaged,
     RandCropByPosNegLabeld,
@@ -44,12 +44,14 @@ class Segmentation(BasicTrainTask):
         model_dir,
         network,
         spatial_size=(48, 48, 48),  # Depends on original width, height and depth of the training images
+        target_spacing=(1.0, 1.0, 1.0),
         num_samples=4,
         description="Train Segmentation model",
         **kwargs,
     ):
         self._network = network
         self.spatial_size = spatial_size
+        self.target_spacing = target_spacing
         self.num_samples = num_samples
         super().__init__(model_dir, description, **kwargs)
 
@@ -72,8 +74,8 @@ class Segmentation(BasicTrainTask):
         return [
             LoadImaged(keys=("image", "label"), reader="ITKReader"),
             NormalizeLabelsInDatasetd(keys="label", label_names=self._labels),  # Specially for missing labels
-            AddChanneld(keys=("image", "label")),
-            Spacingd(keys=("image", "label"), pixdim=(1.0, 1.0, 1.0), mode=("bilinear", "nearest")),
+            EnsureChannelFirstd(keys=("image", "label")),
+            Spacingd(keys=("image", "label"), pixdim=self.target_spacing, mode=("bilinear", "nearest")),
             CropForegroundd(keys=("image", "label"), source_key="image"),
             SpatialPadd(keys=("image", "label"), spatial_size=self.spatial_size),
             ScaleIntensityRanged(keys="image", a_min=-175, a_max=250, b_min=0.0, b_max=1.0, clip=True),
@@ -110,8 +112,8 @@ class Segmentation(BasicTrainTask):
     def val_pre_transforms(self, context: Context):
         return [
             LoadImaged(keys=("image", "label"), reader="ITKReader"),
-            AddChanneld(keys=("image", "label")),
-            Spacingd(keys=("image", "label"), pixdim=(1.0, 1.0, 1.0), mode=("bilinear", "nearest")),
+            EnsureChannelFirstd(keys=("image", "label")),
+            Spacingd(keys=("image", "label"), pixdim=self.target_spacing, mode=("bilinear", "nearest")),
             ScaleIntensityRanged(keys="image", a_min=-175, a_max=250, b_min=0.0, b_max=1.0, clip=True),
             EnsureTyped(keys=("image", "label")),
             SelectItemsd(keys=("image", "label")),
