@@ -199,18 +199,31 @@ def infer_nuclick(app):
 
     image = "C:\\Projects\\nuclick_torch\\test\\input_image.png"
     res = app.infer(
+        # request={
+        #     "model": "nuclick",
+        #     "image": image,
+        #     "output": "asap",
+        #     "foreground": [[390, 470], [1507, 190]],
+        #     "location": [0, 0],
+        #     "size": [0, 0],
+        #     "result_extension": ".png",
+        # }
         request={
             "model": "nuclick",
-            "image": image,
+            "image": "JP2K-33003-1",
+            "level": 0,
+            "location": [2262, 4661],
+            "size": [294, 219],
+            "min_poly_area": 30,
+            "foreground": [[2411, 4797], [2331, 4775], [2323, 4713], [2421, 4684]],
+            "background": [],
             "output": "asap",
-            "foreground": [[390, 470], [1507, 190]],
-            "location": [0, 0],
-            "size": [0, 0],
+            # 'result_extension': '.png',
         }
     )
 
     # print(json.dumps(res, indent=2))
-    shutil.move(res["label"], "C:\\Projects\\nuclick_torch\\test\\output_image.png")
+    shutil.move(res["label"], "C:\\Projects\\nuclick_torch\\test\\output_image.xml")
     logger.info("All Done!")
 
 

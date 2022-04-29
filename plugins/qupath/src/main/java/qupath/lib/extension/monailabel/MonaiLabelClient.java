@@ -91,6 +91,8 @@ public class MonaiLabelClient {
 		public int dimension;
 		public String description;
 		public Labels labels;
+		public boolean pathology;
+		public boolean nuclick;
 	}
 
 	public static class ResponseInfo {

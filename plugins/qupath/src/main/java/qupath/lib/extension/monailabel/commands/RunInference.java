@@ -56,6 +56,8 @@ public class RunInference implements Runnable {
 	private final static Logger logger = LoggerFactory.getLogger(RunInference.class);
 
 	private QuPathGUI qupath;
+	private static String selectedModel;
+	private static int[] selectedBBox;
 
 	public RunInference(QuPathGUI qupath) {
 		this.qupath = qupath;
@@ -69,6 +71,9 @@ public class RunInference implements Runnable {
 			var selected = imageData.getHierarchy().getSelectionModel().getSelectedObject();
 			var roi = selected != null ? selected.getROI() : null;
 			int[] bbox = getBBOX(roi);
+			if (bbox[2] == 0 && bbox[3] == 0 && selectedBBox != null) {
+				bbox = selectedBBox;
+			}
 
 			ResponseInfo info = MonaiLabelClient.info();
 			List<String> names = new ArrayList<String>();
@@ -79,7 +84,11 @@ public class RunInference implements Runnable {
 			}
 
 			ParameterList list = new ParameterList();
-			list.addChoiceParameter("Model", "Model Name", names.isEmpty() ? "" : names.get(0), names);
+			if (selectedModel == null || selectedModel.isEmpty()) {
+				selectedModel = names.isEmpty() ? "" : names.get(0);
+			}
+
+			list.addChoiceParameter("Model", "Model Name", selectedModel, names);
 			list.addIntParameter("X", "Location-x", bbox[0]);
 			list.addIntParameter("Y", "Location-y", bbox[1]);
 			list.addIntParameter("Width", "Width", bbox[2]);
@@ -92,7 +101,10 @@ public class RunInference implements Runnable {
 				bbox[2] = list.getIntParameterValue("Width").intValue();
 				bbox[3] = list.getIntParameterValue("Height").intValue();
 
-				runInference(model, new HashSet<String>(Arrays.asList(labels.get(model))), bbox, imageData);
+				selectedModel = model;
+				selectedBBox = bbox;
+				boolean isNuClick = info.models.get(model).nuclick;
+				runInference(model, new HashSet<String>(Arrays.asList(labels.get(model))), bbox, imageData, isNuClick);
 			}
 		} catch (Exception ex) {
 			ex.printStackTrace();
@@ -104,7 +116,8 @@ public class RunInference implements Runnable {
 		List<PathObject> objs = imageData.getHierarchy().getFlattenedObjectList(null);
 		ArrayList<Point2> clicks = new ArrayList<Point2>();
 		for (int i = 0; i < objs.size(); i++) {
-			if (objs.get(i).getPathClass() != null && objs.get(i).getPathClass().getName() == name) {
+			String pname = objs.get(i).getPathClass() == null ? "" : objs.get(i).getPathClass().getName();
+			if (pname.equalsIgnoreCase(name)) {
 				ROI r = objs.get(i).getROI();
 				List<Point2> points = r.getAllPoints();
 				for (Point2 p : points) {
@@ -114,6 +127,8 @@ public class RunInference implements Runnable {
 				}
 			}
 		}
+
+		logger.info("Total " + name + " clicks/points: " + clicks.size());
 		return clicks;
 	}
 
@@ -129,11 +144,10 @@ public class RunInference implements Runnable {
 		return new int[] { x, y, w, h };
 	}
 
-	private void runInference(String model, Set<String> labels, int[] bbox, ImageData<BufferedImage> imageData)
-			throws SAXException, IOException, ParserConfigurationException, InterruptedException {
+	private void runInference(String model, Set<String> labels, int[] bbox, ImageData<BufferedImage> imageData,
+			boolean isNuClick) throws SAXException, IOException, ParserConfigurationException, InterruptedException {
 		logger.info("MONAILabel Annotation - Run Inference...");
-		logger.info("Model: " + model);
-		logger.info("Labels: " + labels);
+		logger.info("Model: " + model + "; IsNuClick: " + isNuClick + "; Labels: " + labels);
 
 		String image = Utils.getNameWithoutExtension(imageData.getServerPath());
 
@@ -149,7 +163,7 @@ public class RunInference implements Runnable {
 
 		Document dom = MonaiLabelClient.infer(model, image, req);
 		NodeList annotation_list = dom.getElementsByTagName("Annotation");
-		int count = updateAnnotations(labels, annotation_list, roi, imageData);
+		int count = updateAnnotations(labels, annotation_list, roi, imageData, !isNuClick);
 
 		// Update hierarchy to see changes in QuPath's hierarchy
 		QP.fireHierarchyUpdate(imageData.getHierarchy());
@@ -157,14 +171,16 @@ public class RunInference implements Runnable {
 	}
 
 	private int updateAnnotations(Set<String> labels, NodeList annotation_list, ROI roi,
-			ImageData<BufferedImage> imageData) {
-		List<PathObject> objs = imageData.getHierarchy().getFlattenedObjectList(null);
-		for (int i = 0; i < objs.size(); i++) {
-			String name = objs.get(i).getPathClass() != null ? objs.get(i).getPathClass().getName() : null;
-			if (name != null && labels.contains(name)) {
-				ROI r = objs.get(i).getROI();
-				if (roi.contains(r.getCentroidX(), r.getCentroidY())) {
-					imageData.getHierarchy().removeObjectWithoutUpdate(objs.get(i), false);
+			ImageData<BufferedImage> imageData, boolean override) {
+		if (override) {
+			List<PathObject> objs = imageData.getHierarchy().getFlattenedObjectList(null);
+			for (int i = 0; i < objs.size(); i++) {
+				String name = objs.get(i).getPathClass() != null ? objs.get(i).getPathClass().getName() : null;
+				if (name != null && labels.contains(name)) {
+					ROI r = objs.get(i).getROI();
+					if (roi.contains(r.getCentroidX(), r.getCentroidY())) {
+						imageData.getHierarchy().removeObjectWithoutUpdate(objs.get(i), false);
+					}
 				}
 			}
 		}

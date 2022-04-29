@@ -44,7 +44,7 @@ class NuClick(InferTask):
         path,
         network=None,
         roi_size=(128, 128),
-        type=InferType.DEEPEDIT,
+        type=InferType.OTHERS,
         labels=None,
         dimension=2,
         description="A pre-trained NuClick model for interactive cell segmentation for Pathology",
@@ -64,6 +64,7 @@ class NuClick(InferTask):
     def info(self) -> Dict[str, Any]:
         d = super().info()
         d["pathology"] = True
+        d["nuclick"] = True
         return d
 
     def pre_transforms(self, data=None):
@@ -101,8 +102,7 @@ class AddClickSignalsd(Transform):
     def __call__(self, data):
         d = dict(data)
 
-        wsi_meta = d.get("wsi", {})
-        location = wsi_meta.get("location", (0, 0))
+        location = d.get("location", (0, 0))
         tx, ty = location[0], location[1]
 
         pos = d.get(self.foreground)
@@ -269,12 +269,12 @@ class PostFilterLabeld(MapTransform):
         return masks  # masks(no.patches, 128, 128)
 
     @staticmethod
-    def gen_instance_map(masks, bounding_boxes, m, n):
+    def gen_instance_map(masks, bounding_boxes, m, n, flatten=True):
         instance_map = np.zeros((m, n), dtype=np.uint16)
         for i in range(len(masks)):
             this_bb = bounding_boxes[i]
             this_mask_pos = np.argwhere(masks[i] > 0)
             this_mask_pos[:, 0] = this_mask_pos[:, 0] + this_bb[1]
             this_mask_pos[:, 1] = this_mask_pos[:, 1] + this_bb[0]
-            instance_map[this_mask_pos[:, 0], this_mask_pos[:, 1]] = i + 1
+            instance_map[this_mask_pos[:, 0], this_mask_pos[:, 1]] = 1 if flatten else i + 1
         return instance_map

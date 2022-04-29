@@ -221,8 +221,7 @@ class AddClickGuidanced(Transform):
     def __call__(self, data):
         d = dict(data)
 
-        wsi_meta = d.get("wsi", {})
-        location = wsi_meta.get("location", (0, 0))
+        location = d.get("location", (0, 0))
         tx, ty = location[0], location[1]
 
         pos = d.get(self.foreground)
