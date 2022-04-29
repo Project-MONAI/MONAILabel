@@ -22,7 +22,95 @@ from monailabel.scribbles.transforms import (
 from monailabel.transform.post import BoundingBoxd, Restored
 
 
-class HistogramBasedGraphCut(InferTask):
+class MyScribblesLikelihoodInferTask(InferTask):
+    """
+    Defines a generic Scribbles Likelihood based segmentor infertask
+    """
+
+    def __init__(
+        self,
+        dimension=3,
+        description="A post processing step with likelihood + GraphCut for Generic segmentation",
+        intensity_range=(-300, 200, 0.0, 1.0, True),
+        pix_dim=(2.5, 2.5, 5.0),
+        lamda=1.0,
+        sigma=0.1,
+        labels=None,
+        config=None,
+    ):
+        if config:
+            config.update({"lamda": lamda, "sigma": sigma})
+        else:
+            config = {"lamda": lamda, "sigma": sigma}
+        super().__init__(
+            path=None,
+            network=None,
+            labels=labels,
+            type=InferType.SCRIBBLES,
+            dimension=dimension,
+            description=description,
+            config=config,
+        )
+        self.intensity_range = intensity_range
+        self.pix_dim = pix_dim
+        self.lamda = lamda
+        self.sigma = sigma
+
+        # set default scribbles labels
+        self.scribbles_bg_label = 2 if not self.labels else len(self.labels) + 1
+        self.scribbles_fg_label = 3 if not self.labels else len(self.labels) + 2
+
+    def pre_transforms(self, data):
+        return [
+            LoadImaged(keys=["image", "label"]),
+            EnsureChannelFirstd(keys=["image", "label"]),
+            AddBackgroundScribblesFromROId(
+                scribbles="label",
+                scribbles_bg_label=self.scribbles_bg_label,
+                scribbles_fg_label=self.scribbles_fg_label,
+            ),
+            # at the moment optimisers are bottleneck taking a long time,
+            # therefore scaling non-isotropic with big spacing
+            Spacingd(keys=["image", "label"], pixdim=self.pix_dim, mode=["bilinear", "nearest"]),
+            Orientationd(keys=["image", "label"], axcodes="RAS"),
+            ScaleIntensityRanged(
+                keys="image",
+                a_min=self.intensity_range[0],
+                a_max=self.intensity_range[1],
+                b_min=self.intensity_range[2],
+                b_max=self.intensity_range[3],
+                clip=self.intensity_range[4],
+            ),
+        ]
+
+    def inferer(self, data):
+        raise NotImplementedError("Inferer not implemented in MyScribblesLikelihoodInferTask")
+
+    def post_transforms(self, data):
+        return [
+            # unary term maker
+            MakeISegUnaryd(
+                image="image",
+                logits="prob",
+                scribbles="label",
+                unary="unary",
+                scribbles_bg_label=self.scribbles_bg_label,
+                scribbles_fg_label=self.scribbles_fg_label,
+            ),
+            # optimiser
+            ApplyGraphCutOptimisationd(
+                unary="unary",
+                pairwise="image",
+                post_proc_label="pred",
+                lamda=self.lamda,
+                sigma=self.sigma,
+            ),
+            Restored(keys="pred", ref_image="image"),
+            BoundingBoxd(keys="pred", result="result", bbox="bbox"),
+        ]
+
+
+class HistogramBasedGraphCut(MyScribblesLikelihoodInferTask):
     """
     Defines histogram-based GraphCut task for Generic segmentation from the following paper:
 
@@ -50,91 +138,39 @@ class HistogramBasedGraphCut(InferTask):
         config=None,
     ):
         if config:
-            config.update({"lamda": lamda, "sigma": sigma, "num_bins": num_bins})
+            config.update({"num_bins": num_bins})
         else:
-            config = {"lamda": lamda, "sigma": sigma, "num_bins": num_bins}
+            config = {"num_bins": num_bins}
+
         super().__init__(
-            path=None,
-            network=None,
-            labels=labels,
-            type=InferType.SCRIBBLES,
             dimension=dimension,
             description=description,
+            intensity_range=intensity_range,
+            pix_dim=pix_dim,
+            lamda=lamda,
+            sigma=sigma,
+            labels=labels,
             config=config,
         )
-        self.intensity_range = intensity_range
-        self.pix_dim = pix_dim
-        self.lamda = lamda
-        self.sigma = sigma
         self.num_bins = num_bins
-
-        # set default scribbles labels
-        self.scribbles_bg_label = 2 if not self.labels else len(self.labels) + 1
-        self.scribbles_fg_label = 3 if not self.labels else len(self.labels) + 2
-
-    def pre_transforms(self, data):
-        return [
-            LoadImaged(keys=["image", "label"]),
-            EnsureChannelFirstd(keys=["image", "label"]),
-            AddBackgroundScribblesFromROId(
-                scribbles="label",
-                scribbles_bg_label=self.scribbles_bg_label,
-                scribbles_fg_label=self.scribbles_fg_label,
-            ),
-            # at the moment optimisers are bottleneck taking a long time,
-            # therefore scaling non-isotropic with big spacing
-            Spacingd(keys=["image", "label"], pixdim=self.pix_dim, mode=["bilinear", "nearest"]),
-            Orientationd(keys=["image", "label"], axcodes="RAS"),
-            ScaleIntensityRanged(
-                keys="image",
-                a_min=self.intensity_range[0],
-                a_max=self.intensity_range[1],
-                b_min=self.intensity_range[2],
-                b_max=self.intensity_range[3],
-                clip=self.intensity_range[4],
-            ),
-            MakeLikelihoodFromScribblesHistogramd(
-                image="image",
-                scribbles="label",
-                post_proc_label="prob",
-                scribbles_bg_label=self.scribbles_bg_label,
-                scribbles_fg_label=self.scribbles_fg_label,
-                num_bins=self.num_bins,
-                normalise=True,
-            ),
-        ]
 
     def inferer(self, data):
         return Compose(
             [
-                # unary term maker
-                MakeISegUnaryd(
+                MakeLikelihoodFromScribblesHistogramd(
                     image="image",
-                    logits="prob",
                     scribbles="label",
-                    unary="unary",
+                    post_proc_label="prob",
                     scribbles_bg_label=self.scribbles_bg_label,
                     scribbles_fg_label=self.scribbles_fg_label,
-                ),
-                # optimiser
-                ApplyGraphCutOptimisationd(
-                    unary="unary",
-                    pairwise="image",
-                    post_proc_label="pred",
-                    lamda=self.lamda,
-                    sigma=self.sigma,
+                    num_bins=self.num_bins,
+                    normalise=True,
                 ),
             ]
         )
 
-    def post_transforms(self, data):
-        return [
-            Restored(keys="pred", ref_image="image"),
-            BoundingBoxd(keys="pred", result="result", bbox="bbox"),
-        ]
 
-
-class GMMBasedGraphCut(InferTask):
+class GMMBasedGraphCut(MyScribblesLikelihoodInferTask):
     """
     Defines Gaussian Mixture Model (GMM) based task for Generic segmentation from the following papers:
 
@@ -165,84 +201,32 @@ class GMMBasedGraphCut(InferTask):
         config=None,
     ):
         if config:
-            config.update({"lamda": lamda, "sigma": sigma, "mixture_size": mixture_size})
+            config.update({"mixture_size": mixture_size})
         else:
-            config = {"lamda": lamda, "sigma": sigma, "mixture_size": mixture_size}
+            config = {"mixture_size": mixture_size}
+
         super().__init__(
-            path=None,
-            network=None,
-            labels=labels,
-            type=InferType.SCRIBBLES,
             dimension=dimension,
             description=description,
+            intensity_range=intensity_range,
+            pix_dim=pix_dim,
+            lamda=lamda,
+            sigma=sigma,
+            labels=labels,
             config=config,
         )
-        self.intensity_range = intensity_range
-        self.pix_dim = pix_dim
-        self.lamda = lamda
-        self.sigma = sigma
         self.mixture_size = mixture_size
-
-        # set default scribbles labels
-        self.scribbles_bg_label = 2 if not self.labels else len(self.labels) + 1
-        self.scribbles_fg_label = 3 if not self.labels else len(self.labels) + 2
-
-    def pre_transforms(self, data):
-        return [
-            LoadImaged(keys=["image", "label"]),
-            EnsureChannelFirstd(keys=["image", "label"]),
-            AddBackgroundScribblesFromROId(
-                scribbles="label",
-                scribbles_bg_label=self.scribbles_bg_label,
-                scribbles_fg_label=self.scribbles_fg_label,
-            ),
-            # at the moment optimisers are bottleneck taking a long time,
-            # therefore scaling non-isotropic with big spacing
-            Spacingd(keys=["image", "label"], pixdim=self.pix_dim, mode=["bilinear", "nearest"]),
-            Orientationd(keys=["image", "label"], axcodes="RAS"),
-            ScaleIntensityRanged(
-                keys="image",
-                a_min=self.intensity_range[0],
-                a_max=self.intensity_range[1],
-                b_min=self.intensity_range[2],
-                b_max=self.intensity_range[3],
-                clip=self.intensity_range[4],
-            ),
-            MakeLikelihoodFromScribblesGMMd(
-                image="image",
-                scribbles="label",
-                post_proc_label="prob",
-                scribbles_bg_label=self.scribbles_bg_label,
-                scribbles_fg_label=self.scribbles_fg_label,
-                normalise=False,
-            ),
-        ]
 
     def inferer(self, data):
         return Compose(
             [
-                # unary term maker
-                MakeISegUnaryd(
+                MakeLikelihoodFromScribblesGMMd(
                     image="image",
-                    logits="prob",
                     scribbles="label",
-                    unary="unary",
+                    post_proc_label="prob",
                     scribbles_bg_label=self.scribbles_bg_label,
                     scribbles_fg_label=self.scribbles_fg_label,
-                ),
-                # optimiser
-                ApplyGraphCutOptimisationd(
-                    unary="unary",
-                    pairwise="image",
-                    post_proc_label="pred",
-                    lamda=self.lamda,
-                    sigma=self.sigma,
+                    normalise=False,
                 ),
             ]
         )
-
-    def post_transforms(self, data):
-        return [
-            Restored(keys="pred", ref_image="image"),
-            BoundingBoxd(keys="pred", result="result", bbox="bbox"),
-        ]
