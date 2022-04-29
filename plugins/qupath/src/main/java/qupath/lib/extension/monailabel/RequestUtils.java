@@ -55,6 +55,7 @@ public class RequestUtils {
 		var httpClient = HttpClient.newBuilder().build();
 		var response = httpClient.send(request, BodyHandlers.ofString()); // supporting string response only
 		if (response.statusCode() != 200) {
+			logger.info(response.body());
 			throw new IOException(response.toString());
 		}
 		return response.body();
@@ -66,17 +67,21 @@ public class RequestUtils {
 		String requestURI = monaiServer + uri;
 		logger.info("MONAI Label Annotation - URL => " + requestURI);
 
-		var multipartData = MultipartData.newBuilder().withCharset(StandardCharsets.UTF_8)
-				.addFile(file.getKey(), file.getValue().toPath(), Files.probeContentType(file.getValue().toPath()))
-				.addText("params", params).build();
+		var multipartData = MultipartData.newBuilder().withCharset(StandardCharsets.UTF_8);
+		if (file != null)
+			multipartData.addFile(file.getKey(), file.getValue().toPath(),
+					Files.probeContentType(file.getValue().toPath()));
+		multipartData.addText("params", params);
+		var mdata = multipartData.build();
 
 		var request = HttpRequest.newBuilder().version(HttpClient.Version.HTTP_1_1)
-				.header("Content-Type", multipartData.getContentType()).method(method, multipartData.getBodyPublisher())
+				.header("Content-Type", mdata.getContentType()).method(method, mdata.getBodyPublisher())
 				.uri(URI.create(requestURI)).build();
 
 		var httpClient = HttpClient.newBuilder().build();
 		var response = httpClient.send(request, BodyHandlers.ofString()); // supporting string response only
 		if (response.statusCode() != 200) {
+			logger.info(response.body());
 			throw new IOException(response.toString());
 		}
 		return response.body();
