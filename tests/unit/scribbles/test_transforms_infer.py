@@ -23,6 +23,7 @@ from monailabel.scribbles.transforms import (
     ApplyGraphCutOptimisationd,
     InteractiveSegmentationTransform,
     MakeISegUnaryd,
+    MakeLikelihoodFromScribblesGMMd,
     MakeLikelihoodFromScribblesHistogramd,
     SoftenProbSoftmax,
     WriteLogits,
@@ -198,7 +199,7 @@ TEST_CASE_MAKE_ISEG_UNARY_TX = [
     ),
 ]
 
-TEST_CASE_MAKE_LIKE_HIST_TX = [
+TEST_CASE_MAKE_LIKE_METHOD_TX = [
     # 2D case
     (
         {"image": "image", "scribbles": "scribbles", "scribbles_bg_label": 2, "scribbles_fg_label": 3},
@@ -328,10 +329,22 @@ class TestScribblesTransforms(unittest.TestCase):
             test_input["prob"] = np.random.rand(3, 128, 128, 128)
             result = MakeISegUnaryd(**input_param)(test_input)
 
-    @parameterized.expand(TEST_CASE_MAKE_LIKE_HIST_TX)
+    @parameterized.expand(TEST_CASE_MAKE_LIKE_METHOD_TX)
     def test_make_likelihood_histogram(self, input_param, test_input, output, expected_shape):
         input_param.update({"post_proc_label": "pred"})
         result = MakeLikelihoodFromScribblesHistogramd(**input_param)(test_input)
+
+        # make expected output
+        expected_result = np.argmax(output["target"].copy(), axis=0)
+
+        # compare
+        np.testing.assert_equal(expected_result, np.argmax(result["pred"], axis=0))
+        self.assertTupleEqual(expected_shape, result["pred"].shape)
+
+    @parameterized.expand(TEST_CASE_MAKE_LIKE_METHOD_TX)
+    def test_make_likelihood_GMM(self, input_param, test_input, output, expected_shape):
+        input_param.update({"post_proc_label": "pred"})
+        result = MakeLikelihoodFromScribblesGMMd(**input_param)(test_input)
 
         # make expected output
         expected_result = np.argmax(output["target"].copy(), axis=0)
