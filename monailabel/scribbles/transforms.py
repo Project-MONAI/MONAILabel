@@ -39,7 +39,7 @@ class InteractiveSegmentationTransform(Transform):
         if key not in data.keys():
             raise ValueError(f"Key {key} not found, present keys {data.keys()}")
 
-        return data[key]
+        return data[key].copy()
 
     def _normalise_logits(self, data, axis=0):
         # check if logits is a true prob, if not then apply softmax
