@@ -130,7 +130,7 @@ class MyApp(MONAILabelApp):
                     pix_dim=(2.5, 2.5, 5.0),
                     lamda=5.0,
                     sigma=0.5,
-                    mixture_size=20,
+                    num_mixtures=20,
                     labels=task_config.labels,
                 ),
             }

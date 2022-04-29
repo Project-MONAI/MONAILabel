@@ -216,7 +216,7 @@ class MakeLikelihoodFromScribblesGMMd(InteractiveSegmentationTransform):
         post_proc_label: str = "prob",
         scribbles_bg_label: int = 2,
         scribbles_fg_label: int = 3,
-        mixture_size: int = 20,
+        num_mixtures: int = 20,
         normalise: bool = False,
     ) -> None:
         super().__init__(meta_key_postfix)
@@ -225,14 +225,14 @@ class MakeLikelihoodFromScribblesGMMd(InteractiveSegmentationTransform):
         self.scribbles_bg_label = scribbles_bg_label
         self.scribbles_fg_label = scribbles_fg_label
         self.post_proc_label = post_proc_label
-        self.mixture_size = mixture_size
+        self.num_mixtures = num_mixtures
         self.normalise = normalise
 
     def __call__(self, data):
         d = dict(data)
 
         # attempt to fetch algorithmic parameters from app if present
-        self.mixture_size = d.get("mixture_size", self.mixture_size)
+        self.num_mixtures = d.get("num_mixtures", self.num_mixtures)
 
         # load scribbles idx from labels_info (if available)
         self._set_scribbles_idx_from_labelinfo(d)
@@ -250,7 +250,7 @@ class MakeLikelihoodFromScribblesGMMd(InteractiveSegmentationTransform):
             scribbles,
             scribbles_bg_label=self.scribbles_bg_label,
             scribbles_fg_label=self.scribbles_fg_label,
-            mixture_size=self.mixture_size,
+            num_mixtures=self.num_mixtures,
             return_label=False,
         )
 

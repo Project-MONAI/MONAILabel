@@ -196,14 +196,14 @@ class GMMBasedGraphCut(ScribblesLikelihoodInferTask):
         pix_dim=(2.5, 2.5, 5.0),
         lamda=1.0,
         sigma=0.1,
-        mixture_size=20,
+        num_mixtures=20,
         labels=None,
         config=None,
     ):
         if config:
-            config.update({"mixture_size": mixture_size})
+            config.update({"num_mixtures": num_mixtures})
         else:
-            config = {"mixture_size": mixture_size}
+            config = {"num_mixtures": num_mixtures}
 
         super().__init__(
             dimension=dimension,
@@ -215,7 +215,7 @@ class GMMBasedGraphCut(ScribblesLikelihoodInferTask):
             labels=labels,
             config=config,
         )
-        self.mixture_size = mixture_size
+        self.num_mixtures = num_mixtures
 
     def inferer(self, data):
         return Compose(
@@ -226,7 +226,7 @@ class GMMBasedGraphCut(ScribblesLikelihoodInferTask):
                     post_proc_label="prob",
                     scribbles_bg_label=self.scribbles_bg_label,
                     scribbles_fg_label=self.scribbles_fg_label,
-                    mixture_size=self.mixture_size,
+                    num_mixtures=self.num_mixtures,
                     normalise=False,
                 ),
             ]

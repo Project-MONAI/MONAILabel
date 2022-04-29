@@ -177,9 +177,9 @@ def sklearn_fit_gmm(image, scrib, scribbles_bg_label, scribbles_fg_label, n_comp
     return bg, fg
 
 
-def learn_and_apply_gmm_sklearn(image, scrib, scribbles_bg_label, scribbles_fg_label, mixture_size):
+def learn_and_apply_gmm_sklearn(image, scrib, scribbles_bg_label, scribbles_fg_label, num_mixtures):
     # based on https://github.com/jiviteshjain/grabcut/blob/main/src/grabcut.ipynb
-    bg_gmm, fg_gmm = sklearn_fit_gmm(image, scrib, scribbles_bg_label, scribbles_fg_label, mixture_size)
+    bg_gmm, fg_gmm = sklearn_fit_gmm(image, scrib, scribbles_bg_label, scribbles_fg_label, num_mixtures)
 
     # add empty channel to image and scrib to be inline with pytorch layout
     bg_prob = bg_gmm.score_samples(image.reshape((-1, 1))).reshape(image.shape).astype(np.float32)
@@ -193,7 +193,7 @@ def learn_and_apply_gmm_sklearn(image, scrib, scribbles_bg_label, scribbles_fg_l
     return gmm_output
 
 
-def learn_and_apply_gmm_monai(image, scrib, scribbles_bg_label, scribbles_fg_label, mixture_size):
+def learn_and_apply_gmm_monai(image, scrib, scribbles_bg_label, scribbles_fg_label, num_mixtures):
     # this function is limited to binary segmentation at the moment
     n_classes = 2
 
@@ -233,7 +233,7 @@ def learn_and_apply_gmm_monai(image, scrib, scribbles_bg_label, scribbles_fg_lab
     gmm = GaussianMixtureModel(
         image.size(1),
         mixture_count=n_classes,
-        mixture_size=mixture_size,
+        mixture_size=num_mixtures,
         verbose_build=False,
     )
     # gmm.reset()
@@ -252,7 +252,7 @@ def make_likelihood_image_gmm(
     scrib,
     scribbles_bg_label,
     scribbles_fg_label,
-    mixture_size=20,
+    num_mixtures=20,
     return_label=False,
 ):
     # learn gmm and apply to image, return output label prob
@@ -263,7 +263,7 @@ def make_likelihood_image_gmm(
             scrib=scrib,
             scribbles_bg_label=scribbles_bg_label,
             scribbles_fg_label=scribbles_fg_label,
-            mixture_size=mixture_size,
+            num_mixtures=num_mixtures,
         )
     except:
         logging.info("Unable to run MONAI's GMM, falling back to sklearn GMM")
@@ -272,7 +272,7 @@ def make_likelihood_image_gmm(
             scrib=scrib,
             scribbles_bg_label=scribbles_bg_label,
             scribbles_fg_label=scribbles_fg_label,
-            mixture_size=mixture_size,
+            num_mixtures=num_mixtures,
         )
 
     # if needed, convert to discrete labels instead of probability
