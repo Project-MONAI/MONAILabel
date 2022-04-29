@@ -203,10 +203,10 @@ def learn_and_apply_gmm_monai(image, scrib, scribbles_bg_label, scribbles_fg_lab
     # fetch anything that is not scribbles
     not_scribbles = ~((scrib == scribbles_bg_label) | (scrib == scribbles_fg_label))
 
-    # set these to 0 == unused
+    # set these to -1 == unused
     trimap[not_scribbles] = -1
 
-    # set background scrib to -1
+    # set background scrib to 0
     trimap[scrib == scribbles_bg_label] = 0
     # set foreground scrib to 1
     trimap[scrib == scribbles_fg_label] = 1
@@ -216,7 +216,7 @@ def learn_and_apply_gmm_monai(image, scrib, scribbles_bg_label, scribbles_fg_lab
     trimap = np.expand_dims(trimap, axis=0)
 
     # transfer everything to pytorch tensor,
-    # we only use CUDA as GMM from MONAI is only available on CUDA atm (2021/04/29)
+    # we only use CUDA as GMM from MONAI is only available on CUDA atm (2022/04/29)
     # if no cuda device found, then exit now
     if not torch.cuda.is_available():
         raise OSError("Unable to find CUDA device, check your torch/monai installation")
@@ -232,7 +232,6 @@ def learn_and_apply_gmm_monai(image, scrib, scribbles_bg_label, scribbles_fg_lab
         mixture_size=num_mixtures,
         verbose_build=False,
     )
-    # gmm.reset()
 
     # learn gmm from image and trimap
     gmm.learn(image, trimap)
@@ -240,6 +239,7 @@ def learn_and_apply_gmm_monai(image, scrib, scribbles_bg_label, scribbles_fg_lab
     # apply gmm on image
     gmm_output = gmm.apply(image)
 
+    # return output
     return gmm_output.squeeze(0).cpu().numpy()
 
 
@@ -254,6 +254,8 @@ def make_likelihood_image_gmm(
     # learn gmm and apply to image, return output label prob
     try:
         # this may fail if MONAI Cpp Extensions are not loaded properly
+        # or
+        # if CUDA device is not available (MONAI's GMM only supports CUDA atm (2022/04/29))
         retprob = learn_and_apply_gmm_monai(
             image=image,
             scrib=scrib,
@@ -262,7 +264,7 @@ def make_likelihood_image_gmm(
             num_mixtures=num_mixtures,
         )
     except:
-        # if MONAI's GMM fails, fallback to scikit-learn's GMM
+        # if MONAI's GMM fails, e.g. due to no CUDA device or JIT failed, fallback to scikit-learn's GMM
         logging.info("Unable to run MONAI's GMM, falling back to sklearn GMM")
         retprob = learn_and_apply_gmm_sklearn(
             image=image,
