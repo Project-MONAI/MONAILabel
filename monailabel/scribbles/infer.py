@@ -22,7 +22,7 @@ from monailabel.scribbles.transforms import (
 from monailabel.transform.post import BoundingBoxd, Restored
 
 
-class MyScribblesLikelihoodInferTask(InferTask):
+class ScribblesLikelihoodInferTask(InferTask):
     """
     Defines a generic Scribbles Likelihood based segmentor infertask
     """
@@ -84,7 +84,7 @@ class MyScribblesLikelihoodInferTask(InferTask):
         ]
 
     def inferer(self, data):
-        raise NotImplementedError("Inferer not implemented in MyScribblesLikelihoodInferTask")
+        raise NotImplementedError("Inferer not implemented in ScribblesLikelihoodInferTask")
 
     def post_transforms(self, data):
         return [
@@ -110,7 +110,7 @@ class MyScribblesLikelihoodInferTask(InferTask):
         ]
 
 
-class HistogramBasedGraphCut(MyScribblesLikelihoodInferTask):
+class HistogramBasedGraphCut(ScribblesLikelihoodInferTask):
     """
     Defines histogram-based GraphCut task for Generic segmentation from the following paper:
 
@@ -170,7 +170,7 @@ class HistogramBasedGraphCut(MyScribblesLikelihoodInferTask):
         )
 
 
-class GMMBasedGraphCut(MyScribblesLikelihoodInferTask):
+class GMMBasedGraphCut(ScribblesLikelihoodInferTask):
     """
     Defines Gaussian Mixture Model (GMM) based task for Generic segmentation from the following papers:
 
