@@ -211,12 +211,8 @@ def learn_and_apply_gmm_monai(image, scrib, scribbles_bg_label, scribbles_fg_lab
     # set foreground scrib to 1
     trimap[scrib == scribbles_fg_label] = 1
 
-    # image_tri = image[~not_scribbles]
-    # trimap = trimap[~not_scribbles]
-
     # add empty channel to image and scrib to be inline with pytorch layout
     image = np.expand_dims(image, axis=0)
-    # image_tri = np.expand_dims(image_tri, axis=0)
     trimap = np.expand_dims(trimap, axis=0)
 
     # transfer everything to pytorch tensor,
@@ -238,7 +234,7 @@ def learn_and_apply_gmm_monai(image, scrib, scribbles_bg_label, scribbles_fg_lab
     )
     # gmm.reset()
 
-    # learn gmm from image_tri and trimap
+    # learn gmm from image and trimap
     gmm.learn(image, trimap)
 
     # apply gmm on image
@@ -266,6 +262,7 @@ def make_likelihood_image_gmm(
             num_mixtures=num_mixtures,
         )
     except:
+        # if MONAI's GMM fails, fallback to scikit-learn's GMM
         logging.info("Unable to run MONAI's GMM, falling back to sklearn GMM")
         retprob = learn_and_apply_gmm_sklearn(
             image=image,
