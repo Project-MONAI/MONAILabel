@@ -226,6 +226,7 @@ class GMMBasedGraphCut(ScribblesLikelihoodInferTask):
                     post_proc_label="prob",
                     scribbles_bg_label=self.scribbles_bg_label,
                     scribbles_fg_label=self.scribbles_fg_label,
+                    mixture_size=self.mixture_size,
                     normalise=False,
                 ),
             ]
