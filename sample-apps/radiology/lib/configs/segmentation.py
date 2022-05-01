@@ -8,7 +8,7 @@
 # WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 # See the License for the specific language governing permissions and
 # limitations under the License.
-
+import json
 import logging
 import os
 from distutils.util import strtobool
@@ -58,10 +58,11 @@ class Segmentation(TaskConfig):
             url = f"{self.PRE_TRAINED_PATH}/segmentation_unet_multilabel.pt"
             download_file(url, self.path[0])
 
-        self.target_spacing = self.planner.target_spacing if self.planner else (1.0, 1.0, 1.0)
+        self.target_spacing = (1.0, 1.0, 1.0)  # target space for image
+        self.spatial_size = (96, 96, 96)  # train input size
+        self.roi_size = (128, 128, 128)  # sliding window size for infer
 
         # Network
-        self.spatial_size = self.planner.spatial_size if self.planner else (48, 48, 32)
         self.network = UNet(
             spatial_dims=3,
             in_channels=1,
@@ -76,7 +77,7 @@ class Segmentation(TaskConfig):
         task: InferTask = lib.infers.Segmentation(
             path=self.path,
             network=self.network,
-            spatial_size=self.spatial_size,
+            roi_size=self.roi_size,
             target_spacing=self.target_spacing,
             labels=self.labels,
             config={"largest_cc": True},

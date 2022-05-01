@@ -8,7 +8,6 @@
 # WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 # See the License for the specific language governing permissions and
 # limitations under the License.
-
 import logging
 import os
 from distutils.util import strtobool
@@ -64,8 +63,10 @@ class DeepEdit(TaskConfig):
             url = f"{self.PRE_TRAINED_PATH}/deepedit_{network}_singlelabel.pt"
             download_file(url, self.path[0])
 
+        self.target_spacing = (1.0, 1.0, 1.0)  # target space for image
+        self.spatial_size = (128, 128, 128)  # train input size
+
         # Network
-        self.spatial_size = self.planner.spatial_size if self.planner else (128, 128, 128)
         if network == "unetr":
             self.network = UNETR(
                 spatial_dims=3,
@@ -116,7 +117,7 @@ class DeepEdit(TaskConfig):
             load_path=self.path[0],
             publish_path=self.path[1],
             spatial_size=self.spatial_size,
-            target_spacing=self.planner.target_spacing if self.planner else (1.0, 1.0, 1.0),
+            target_spacing=self.target_spacing,
             number_intensity_ch=self.number_intensity_ch,
             config={"pretrained": strtobool(self.conf.get("use_pretrained_model", "true"))},
             labels=self.labels,
