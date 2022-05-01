@@ -43,7 +43,7 @@ class Segmentation(BasicTrainTask):
         self,
         model_dir,
         network,
-        spatial_size=(48, 48, 48),  # Depends on original width, height and depth of the training images
+        spatial_size=(96, 96, 96),  # Depends on original width, height and depth of the training images
         target_spacing=(1.0, 1.0, 1.0),
         num_samples=4,
         description="Train Segmentation model",
