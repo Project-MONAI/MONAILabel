@@ -30,7 +30,7 @@ logger = logging.getLogger(__name__)
 
 # For windows (preload openslide dll using file_library) https://github.com/openslide/openslide-python/pull/151
 if platform.system() == "Windows":
-    _lib = cdll.LoadLibrary(ctypes.util.find_library("libopenslide-0.dll"))
+    cdll.LoadLibrary(str(ctypes.util.find_library("libopenslide-0.dll")))
 
 
 class MyApp(MONAILabelApp):

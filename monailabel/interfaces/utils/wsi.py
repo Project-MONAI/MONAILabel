@@ -35,7 +35,7 @@ def create_infer_wsi_tasks(request, image):
     level = request.get("level", 0)
 
     if platform.system() == "Windows":
-        _lib = cdll.LoadLibrary(ctypes.util.find_library("libopenslide-0.dll"))
+        cdll.LoadLibrary(str(ctypes.util.find_library("libopenslide-0.dll")))
 
     openslide, has_openslide = optional_import("openslide")
     if not has_openslide:
