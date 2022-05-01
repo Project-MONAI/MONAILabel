@@ -46,7 +46,7 @@ cd MONAILabel
 pip install -r requirements.txt
 ```
 
-> Install [Openslide](https://openslide.org/) binaries manually and make sure .dll or .so files for openslide are in system load path. For windows, you might need a [manual hack](https://github.com/openslide/openslide-python/pull/151/files) to fix the load library issue.
+> Install [Openslide](https://openslide.org/) binaries manually and make sure .dll or .so files for openslide are in system load path. For windows, make sure **&lt;openslide_folder&gt;**/bin is added in PATH environment.
 
 #### FileSystem as Datastore
 

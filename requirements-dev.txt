@@ -16,7 +16,7 @@ pycodestyle
 pyflakes
 black
 isort
-pytype
+pytype; sys_platform != 'win32'
 mypy
 ninja
 parameterized

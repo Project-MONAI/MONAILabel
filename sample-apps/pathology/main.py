@@ -8,8 +8,11 @@
 # WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 # See the License for the specific language governing permissions and
 # limitations under the License.
+import ctypes.util
 import logging
 import os
+import platform
+from ctypes import cdll
 from distutils.util import strtobool
 from typing import Dict
 
@@ -24,6 +27,10 @@ from monailabel.interfaces.tasks.train import TrainTask
 from monailabel.utils.others.class_utils import get_class_names
 
 logger = logging.getLogger(__name__)
+
+# For windows (preload openslide dll using file_library) https://github.com/openslide/openslide-python/pull/151
+if platform.system() == "Windows":
+    cdll.LoadLibrary(str(ctypes.util.find_library("libopenslide-0.dll")))
 
 
 class MyApp(MONAILabelApp):
