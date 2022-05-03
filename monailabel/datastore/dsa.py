@@ -1,10 +1,14 @@
-import json
+import hashlib
 import logging
 import os
+import pathlib
+from io import BytesIO
 from pathlib import Path
 from typing import Any, Dict, List
 
 import girder_client
+import numpy as np
+from PIL import Image
 
 from monailabel.interfaces.datastore import Datastore, DefaultLabelTag
 
@@ -12,11 +16,20 @@ logger = logging.getLogger(__name__)
 
 
 class DSADatastore(Datastore):
-    def __init__(self, api_url, folder, api_key=None, annotation_groups=None, asset_store_path=""):
+    def __init__(self, api_url, folder=None, api_key=None, annotation_groups=None, asset_store_path="", cache_path=""):
         self.api_url = api_url
-        self.folder = folder
+        self.api_key = api_key
+        self.folders = folder.split(",") if folder else []
+        self.folders = {f.strip() for f in self.folders}
         self.annotation_groups = [a.lower() if a else a for a in annotation_groups] if annotation_groups else []
         self.asset_store_path = asset_store_path
+
+        uri_hash = hashlib.md5(api_url.encode("utf-8")).hexdigest()
+        self.cache_path = (
+            os.path.join(cache_path, uri_hash)
+            if cache_path
+            else os.path.join(pathlib.Path.home(), ".cache", "monailabel", uri_hash)
+        )
 
         logger.info(f"DSA:: Api Url: {api_url}")
         logger.info(f"DSA:: Api Key: {'*' * len(api_key) if api_key else ''}")
@@ -57,35 +70,66 @@ class DSADatastore(Datastore):
     def get_label_by_image_id(self, image_id: str, tag: str) -> str:
         return image_id
 
-    def get_image(self, image_id: str) -> Any:
-        return self.gc.get(f"/item/{image_id}")
+    def get_image(self, image_id: str, params=None) -> Any:
+        try:
+            name = self.get_image_info(image_id)["name"]
+        except girder_client.HttpError:
+            image_id, name = self._name_to_id(image_id)
 
-    def name_to_id(self, name):
-        data = self.gc.get("item", parameters={"folderId": self.folder, "limit": 0})
-        for d in data:
-            if d.get("largeImage") and d["name"] == name or Path(d["name"]).stem == name:
-                return d["_id"]
+        location = params.get("location", [0, 0])
+        size = params.get("size", [0, 0])
+        if sum(location) <= 0 and sum(size) <= 0:  # whole side image
+            dest = os.path.join(self.cache_path, name)
+            if not os.path.exists(dest):
+                logger.info(f"Downloading: {image_id} => {name} => {dest}")
+                self.gc.downloadItem(itemId=image_id, dest=self.cache_path)
+            return dest
+
+        parameters = {
+            "left": location[0],
+            "top": location[1],
+            "regionWidth": size[0],
+            "regionHeight": size[1],
+            "units": "base_pixels",
+            "encoding": "PNG",
+        }
+
+        resp = self.gc.get(f"item/{image_id}/tiles/region", parameters=parameters, jsonResp=False)
+        img = Image.open(BytesIO(resp.content)).convert("RGB")
+        return np.asarray(img, dtype=np.uint8)
+
+    def _name_to_id(self, name):
+        folders = self.folders if self.folders else self._get_all_folders()
+        for folder in folders:
+            data = self.gc.get("item", parameters={"folderId": folder, "limit": 0})
+            for d in data:
+                if d.get("largeImage") and d["name"] == name or Path(d["name"]).stem == name:
+                    return d["_id"], d["name"]
         return name
 
     def get_image_uri(self, image_id: str) -> str:
         try:
-            self.get_image_info(image_id)
+            name = self.get_image_info(image_id)["name"]
         except girder_client.HttpError:
-            image_id = self.name_to_id(image_id)
+            image_id, name = self._name_to_id(image_id)
 
         if self.asset_store_path:
-            data = self.gc.get(f"/item/{image_id}/files", parameters={"limit": 0})
+            data = self.gc.get(f"item/{image_id}/files", parameters={"limit": 0})
             assets = [d["assetstoreId"] for d in data]
             for asset in assets:
-                files = self.gc.get(f"/assetstore/{asset}/files", parameters={"limit": 0})
+                files = self.gc.get(f"assetstore/{asset}/files", parameters={"limit": 0})
                 for f in files:
                     if f["itemId"] == image_id:
                         return str(os.path.join(self.asset_store_path, f["path"]))
+        else:
+            cached = os.path.join(self.cache_path, name)
+            if os.path.exists(cached):
+                return str(cached)
 
         return f"{self.api_url}/item/{image_id}"
 
-    def get_label(self, label_id: str, label_tag: str) -> Any:
-        return self.gc.get(f"/annotation/item/{label_id}")
+    def get_label(self, label_id: str, label_tag: str, params=None) -> Any:
+        return self.gc.get(f"annotation/item/{label_id}")
 
     def get_label_uri(self, label_id: str, label_tag: str) -> str:
         return f"{self.api_url}/annotation/item/{label_id}"
@@ -123,9 +167,21 @@ class DSADatastore(Datastore):
         labeled = self.get_labeled_images()
         return [image for image in images if image not in labeled]
 
+    def _get_all_folders(self):
+        folders = []
+        for collection in self.gc.listCollection():
+            for folder in self.gc.listFolder(parentId=collection["_id"], parentFolderType="collection"):
+                folders.append(folder["_id"])
+        return folders
+
     def list_images(self) -> List[str]:
-        data = self.gc.get("item", parameters={"folderId": self.folder, "limit": 0})
-        return [d["_id"] for d in data if d.get("largeImage")]
+        images = []
+        folders = self.folders if self.folders else self._get_all_folders()
+        for folder in folders:
+            for item in self.gc.get("item", parameters={"folderId": folder, "limit": 0}):
+                if item.get("largeImage"):
+                    images.append(item["_id"])
+        return images
 
     def refresh(self) -> None:
         pass
@@ -159,6 +215,8 @@ class DSADatastore(Datastore):
 
 
 def main():
+    import json
+
     logging.basicConfig(
         level=logging.INFO,
         format="[%(asctime)s] [%(process)s] [%(threadName)s] [%(levelname)s] (%(name)s:%(lineno)d) - %(message)s",
@@ -166,10 +224,10 @@ def main():
     )
 
     api_url = "http://0.0.0.0:8080/api/v1"
-    folder = "621e94e2b6881a7a4bef5170"
+    folder = None
     annotation_groups = None
-    asset_store_path = "/localhome/sachi/Projects/digital_slide_archive/devops/dsa/assetstore"
-    api_key = "OJDE9hjuOIS6R8oEqhnVYHUpRpk18NfJABMt36dJ"
+    asset_store_path = None
+    api_key = None  # "zBsr184BByiRK0BUyMMB01v3O8kTqkXPbqxndpfi"
 
     # api_url = "https://demo.kitware.com/histomicstk/api/v1"
     # folder = "5bbdeba3e629140048d017bb"
@@ -194,24 +252,22 @@ def main():
     print(f"Image URI (name): {ds.get_image_uri('TCGA-02-0010-01Z-00-DX4.07de2e55-a8fe-40ee-9e98-bcb78050b9f7')}")
     print(f"Labels: {ds.get_labels_by_image_id(image_id)}")
 
-    label_id = labeled_images[0]
-    label_tag = "FINAL"
-    print(f"Label Info: {json.dumps(ds.get_label_info(label_id, label_tag), indent=2)}")
-    print(f"Label URI: {ds.get_label_uri(label_id, label_tag)}")
+    if labeled_images:
+        label_id = labeled_images[0]
+        label_tag = "FINAL"
+        print(f"Label Info: {json.dumps(ds.get_label_info(label_id, label_tag), indent=2)}")
+        print(f"Label URI: {ds.get_label_uri(label_id, label_tag)}")
 
     print(f"Dataset for Training: \n{json.dumps(ds.datalist(), indent=2)}")
 
-    # http://0.0.0.0:8080/api/v1/item/621e9513b6881a7a4bef517d/tiles/region?left=7102&top=15020&regionWidth=1730&regionHeight=981&units=base_pixels&encoding=PNG
-    # http://0.0.0.0:8080/api/v1/item/621e9513b6881a7a4bef517d/tiles/region
-    # parameters = {
-    #     "left": 6674,
-    #     "top": 22449,
-    #     "regionWidth": 1038,
-    #     "regionHeight": 616,
-    #     "units": "base_pixels",
-    #     "exact": False,
-    #     "encoding": "PNG",
-    # }
+    img = ds.get_image(
+        "TCGA-02-0010-01Z-00-DX4.07de2e55-a8fe-40ee-9e98-bcb78050b9f7",
+        params={
+            "location": (6090, 15863),
+            "size": (1071, 714),
+        },
+    )
+    print(f"Fetched Region: {img.shape}")
 
 
 if __name__ == "__main__":
