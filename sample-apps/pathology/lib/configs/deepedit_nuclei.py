@@ -54,12 +54,16 @@ class DeepEditNuclei(TaskConfig):
         )
 
     def infer(self) -> Union[InferTask, Dict[str, InferTask]]:
+        preload = strtobool(self.conf.get("preload", "false"))
+        roi_size = json.loads(self.conf.get("roi_size", "[512, 512]"))
+        logger.info(f"Using Preload: {preload}; ROI Size: {roi_size}")
+
         task: InferTask = lib.infers.DeepEditNuclei(
             path=self.path,
             network=self.network,
             labels=self.labels,
-            preload=strtobool(self.conf.get("preload", "false")),
-            roi_size=json.loads(self.conf.get("roi_size", "[512, 512]")),
+            preload=preload,
+            roi_size=roi_size,
             config={
                 "label_colors": self.label_colors,
                 "max_workers": len(device_list()),

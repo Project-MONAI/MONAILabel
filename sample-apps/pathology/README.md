@@ -16,6 +16,7 @@ weights/model (UNET).
 - **DeepEdit Nuclei** - It is a combination of
   both [Interaction + Auto Segmentation](https://github.com/Project-MONAI/MONAILabel/wiki/DeepEdit) model which is
   trained to segment Nuclei cells that combines all above labels as *Nuclei*.
+- **NuClick** - This is NuClick implementation (UNet model) as provided at: https://github.com/mostafajahanifar/nuclick_torch.  Training task for monailabel is not yet supported.
 
 ### Dataset
 
@@ -47,6 +48,7 @@ pip install -r requirements.txt
 ```
 
 > Install [Openslide](https://openslide.org/) binaries manually and make sure .dll or .so files for openslide are in system load path. For windows, make sure **&lt;openslide_folder&gt;**/bin is added in PATH environment.
+> For ubuntu: `apt install openslide-tools`
 
 #### FileSystem as Datastore
 
@@ -58,7 +60,7 @@ pip install -r requirements.txt
   cd -
 
   # run server
-  ./monailabel/scripts/monailabel start_server --app apps/pathology --studies datasets/wsi
+  ./monailabel/scripts/monailabel start_server --app sample-apps/pathology --studies datasets/wsi
 ```
 
 ###### QuPath
@@ -87,17 +89,21 @@ Refer: https://github.com/DigitalSlideArchive/digital_slide_archive/tree/master/
 
 Following are some config options:
 
-| Name                 | Description                                                                                                      |
-|----------------------|------------------------------------------------------------------------------------------------------------------|
-| preload              | Preload models into GPU. Default is False.                                                                       |
-| roi_size             | Default ROI Size for inference in [x,y] format. Default is [512,512].                                           |
-| dsa_folder           | DSA Folder ID. Normally it is <folder_id> of a folder under Collections where Images are stored.                 |
-| dsa_api_key          | Optional. API Key helps to query asset store to fetch direct local path for WSI Images.                          |
-| dsa_asset_store_path | Optional. It is the DSA assetstore path that can be shared with MONAI Label server to directly read WSI Images. |
+| Name                 | Description                                                                                                                 |
+|----------------------|-----------------------------------------------------------------------------------------------------------------------------|
+| preload              | Preload models into GPU. Default is False.                                                                                  |
+| roi_size             | Default ROI Size for inference in [x,y] format. Default is [512,512].                                                       |
+| dsa_folder           | Optional. Comma seperated DSA Folder IDs. Normally it is <folder_id> of a folder under Collections where Images are stored. |
+| dsa_api_key          | Optional. API Key helps to query asset store to fetch direct local path for WSI Images.                                     |
+| dsa_asset_store_path | Optional. It is the DSA assetstore path that can be shared with MONAI Label server to directly read WSI Images.             |
 
 ```bash
   # run server (Example: DSA API URL is http://0.0.0.0:8080/api/v1)
-  ./monailabel/scripts/monailabel start_server --app apps/pathology \
+  ./monailabel/scripts/monailabel start_server --app sample-apps/pathology \
+    --studies http://0.0.0.0:8080/api/v1 \
+
+  # run server (Advanced options)
+  ./monailabel/scripts/monailabel start_server --app sample-apps/pathology \
     --studies http://0.0.0.0:8080/api/v1 \
     --conf dsa_folder 621e94e2b6881a7a4bef5170 \
     --conf dsa_api_key OJDE9hjuOIS6R8oEqhnVYHUpRpk18NfJABMt36dJ \
