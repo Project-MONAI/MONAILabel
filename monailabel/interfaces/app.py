@@ -232,19 +232,22 @@ class MONAILabelApp:
         request["description"] = task.description
 
         image_id = request["image"]
-        datastore = datastore if datastore else self.datastore()
-        if os.path.exists(image_id):
-            request["save_label"] = False
+        if isinstance(image_id, str):
+            datastore = datastore if datastore else self.datastore()
+            if os.path.exists(image_id):
+                request["save_label"] = False
+            else:
+                request["image"] = datastore.get_image_uri(request["image"])
+
+            if os.path.isdir(request["image"]):
+                logger.info("Input is a Directory; Consider it as DICOM")
+                logger.info(os.listdir(request["image"]))
+                request["image"] = [os.path.join(f, request["image"]) for f in os.listdir(request["image"])]
+
+            logger.debug(f"Image => {request['image']}")
         else:
-            request["image"] = datastore.get_image_uri(request["image"])
+            request["save_label"] = False
 
-        # TODO:: BUG In MONAI? Currently can not load DICOM through ITK Loader
-        if os.path.isdir(request["image"]):
-            logger.info("Input is a Directory; Consider it as DICOM")
-            logger.info(os.listdir(request["image"]))
-            request["image"] = [os.path.join(f, request["image"]) for f in os.listdir(request["image"])]
-
-        logger.debug(f"Image => {request['image']}")
         if self._infers_threadpool:
 
             def run_infer_in_thread(t, r):
@@ -609,6 +612,15 @@ class MONAILabelApp:
         if not os.path.exists(image):
             datastore = datastore if datastore else self.datastore()
             image = datastore.get_image_uri(request["image"])
+
+        # Possibly region (e.g. DSA)
+        if not os.path.exists(image):
+            image = datastore.get_image(img_id, request)
+            if not isinstance(image, str):
+                request["image"] = image
+                res = self.infer(request, datastore)
+                logger.info(f"Latencies: {res.get('params', {}).get('latencies')}")
+                return res
 
         start = time.time()
         infer_tasks = create_infer_wsi_tasks(request, image)
