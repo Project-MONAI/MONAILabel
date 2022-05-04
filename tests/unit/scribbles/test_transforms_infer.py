@@ -13,6 +13,7 @@ import os
 import unittest
 
 import numpy as np
+import torch
 from monai.transforms import LoadImage
 from monai.utils import set_determinism
 from parameterized import parameterized
@@ -342,6 +343,7 @@ class TestScribblesTransforms(unittest.TestCase):
         self.assertTupleEqual(expected_shape, result["pred"].shape)
 
     @parameterized.expand(TEST_CASE_MAKE_LIKE_METHOD_TX)
+    @unittest.skipUnless(torch.cuda.is_available(), "Skipping CUDA-based tests")
     def test_make_likelihood_GMM(self, input_param, test_input, output, expected_shape):
         input_param.update({"post_proc_label": "pred"})
         result = MakeLikelihoodFromScribblesGMMd(**input_param)(test_input)
