@@ -10,12 +10,13 @@
 # limitations under the License.
 
 import copy
+import ctypes.util
 import logging
+import platform
+from ctypes import cdll
 from math import ceil
 
 from monai.utils import optional_import
-
-openslide, has_openslide = optional_import("openslide")
 
 logger = logging.getLogger(__name__)
 
@@ -33,6 +34,10 @@ def create_infer_wsi_tasks(request, image):
     bbox = bbox if bbox and sum(bbox[0]) + sum(bbox[1]) > 0 else None
     level = request.get("level", 0)
 
+    if platform.system() == "Windows":
+        cdll.LoadLibrary(str(ctypes.util.find_library("libopenslide-0.dll")))
+
+    openslide, has_openslide = optional_import("openslide")
     if not has_openslide:
         raise ImportError("Unable to find openslide, please ensure openslide library packages are correctly installed")
 
