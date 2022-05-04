@@ -14,7 +14,6 @@ import numpy as np
 import numpymaxflow
 import torch
 from monai.networks.layers import GaussianMixtureModel
-from sklearn.mixture import GaussianMixture
 
 logger = logging.getLogger(__name__)
 
@@ -167,32 +166,6 @@ def make_likelihood_image_histogram(
     return retprob
 
 
-def sklearn_fit_gmm(image, scrib, scribbles_bg_label, scribbles_fg_label, n_components):
-    bg = GaussianMixture(n_components=n_components)
-    bg.fit(image[scrib == scribbles_bg_label].reshape(-1, 1))
-
-    fg = GaussianMixture(n_components=n_components)
-    fg.fit(image[scrib == scribbles_fg_label].reshape(-1, 1))
-
-    return bg, fg
-
-
-def learn_and_apply_gmm_sklearn(image, scrib, scribbles_bg_label, scribbles_fg_label, num_mixtures):
-    # based on https://github.com/jiviteshjain/grabcut/blob/main/src/grabcut.ipynb
-    bg_gmm, fg_gmm = sklearn_fit_gmm(image, scrib, scribbles_bg_label, scribbles_fg_label, num_mixtures)
-
-    # add empty channel to image and scrib to be inline with pytorch layout
-    bg_prob = bg_gmm.score_samples(image.reshape((-1, 1))).reshape(image.shape).astype(np.float32)
-    fg_prob = fg_gmm.score_samples(image.reshape((-1, 1))).reshape(image.shape).astype(np.float32)
-
-    bg_prob = np.exp(bg_prob)
-    fg_prob = np.exp(fg_prob)
-
-    gmm_output = np.concatenate([bg_prob, fg_prob])
-
-    return gmm_output
-
-
 def learn_and_apply_gmm_monai(image, scrib, scribbles_bg_label, scribbles_fg_label, num_mixtures):
     # this function is limited to binary segmentation at the moment
     n_classes = 2
@@ -215,8 +188,8 @@ def learn_and_apply_gmm_monai(image, scrib, scribbles_bg_label, scribbles_fg_lab
     image = np.expand_dims(image, axis=0)
     trimap = np.expand_dims(trimap, axis=0)
 
-    # transfer everything to pytorch tensor,
-    # we only use CUDA as GMM from MONAI is only available on CUDA atm (2022/04/29)
+    # transfer everything to pytorch tensor
+    # we use CUDA as GMM from MONAI is only available on CUDA atm (29/04/2022)
     # if no cuda device found, then exit now
     if not torch.cuda.is_available():
         raise OSError("Unable to find CUDA device, check your torch/monai installation")
@@ -252,27 +225,13 @@ def make_likelihood_image_gmm(
     return_label=False,
 ):
     # learn gmm and apply to image, return output label prob
-    try:
-        # this may fail if MONAI Cpp Extensions are not loaded properly
-        # or
-        # if CUDA device is not available (MONAI's GMM only supports CUDA atm (2022/04/29))
-        retprob = learn_and_apply_gmm_monai(
-            image=image,
-            scrib=scrib,
-            scribbles_bg_label=scribbles_bg_label,
-            scribbles_fg_label=scribbles_fg_label,
-            num_mixtures=num_mixtures,
-        )
-    except:
-        # if MONAI's GMM fails, e.g. due to no CUDA device or JIT failed, fallback to scikit-learn's GMM
-        logging.info("Unable to run MONAI's GMM, falling back to sklearn GMM")
-        retprob = learn_and_apply_gmm_sklearn(
-            image=image,
-            scrib=scrib,
-            scribbles_bg_label=scribbles_bg_label,
-            scribbles_fg_label=scribbles_fg_label,
-            num_mixtures=num_mixtures,
-        )
+    retprob = learn_and_apply_gmm_monai(
+        image=image,
+        scrib=scrib,
+        scribbles_bg_label=scribbles_bg_label,
+        scribbles_fg_label=scribbles_fg_label,
+        num_mixtures=num_mixtures,
+    )
 
     # if needed, convert to discrete labels instead of probability
     if return_label:
