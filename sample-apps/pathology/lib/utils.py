@@ -1,25 +1,31 @@
+import copy
 import logging
 import os
 import random
 import shutil
-import xml.etree.ElementTree as ET
+import xml.etree.ElementTree
 from io import BytesIO
 from math import ceil
 
 import cv2
 import numpy as np
 import openslide
+from monai.transforms import LoadImage
 from PIL import Image
+from skimage.measure import regionprops
 from tqdm import tqdm
 
 from monailabel.datastore.dsa import DSADatastore
 from monailabel.datastore.local import LocalDatastore
+from monailabel.interfaces.datastore import Datastore
 from monailabel.utils.others.generic import get_basename
 
 logger = logging.getLogger(__name__)
 
 
-def split_dataset(datastore, cache_dir, source, groups, tile_size, max_region=(10240, 10240), limit=0, randomize=True):
+def split_dataset(
+    datastore: Datastore, cache_dir, source, groups, tile_size, max_region=(10240, 10240), limit=0, randomize=True
+):
     ds = datastore.datalist()
     shutil.rmtree(cache_dir, ignore_errors=True)
 
@@ -28,6 +34,15 @@ def split_dataset(datastore, cache_dir, source, groups, tile_size, max_region=(1
         if image is not None and len(image.shape) > 3:
             logger.info(f"PANNuke (For Developer Mode only):: Split data; groups: {groups}")
             ds = split_pannuke_dataset(ds[0]["image"], ds[0]["label"], cache_dir, groups)
+    elif source == "nuclick":
+        logger.info("Split data based on each nuclei")
+        ds_new = []
+        for d in tqdm(ds):
+            ds_new.extend(split_nuclei_dataset(d))
+            if 0 < limit < len(ds_new):
+                ds_new = ds_new[:limit]
+                break
+        ds = ds_new
     else:
         logger.info(f"Split data based on tile size: {tile_size}; groups: {groups}")
         ds_new = []
@@ -156,7 +171,7 @@ def split_local_dataset(datastore, d, output_dir, groups, tile_size, max_region=
     points = []
     polygons = {g: [] for g in groups}
 
-    annotations_xml = ET.parse(d["label"]).getroot()
+    annotations_xml = xml.etree.ElementTree.parse(d["label"]).getroot()
     for annotation in annotations_xml.iter("Annotation"):
         g = annotation.get("PartOfGroup")
         g = g if g else "None"
@@ -180,6 +195,22 @@ def split_local_dataset(datastore, d, output_dir, groups, tile_size, max_region=
     img = slide.read_region((x, y), 0, (w, h)).convert("RGB")
 
     dataset_json.extend(_to_dataset(item_id, x, y, w, h, img, tile_size, polygons, groups, output_dir))
+    return dataset_json
+
+
+def split_nuclei_dataset(d, centroid_key="centroid"):
+    dataset_json = []
+    mask = LoadImage(image_only=True, dtype=np.uint8)(d["label"])
+    stats = regionprops(mask)
+    for stat in stats:
+        y, x = stat.centroid
+        y = int(np.floor(y))
+        x = int(np.floor(x))
+
+        if mask[y, x]:
+            item = copy.deepcopy(d)
+            item[centroid_key] = (y, x)
+            dataset_json.append(item)
     return dataset_json
 
 
@@ -310,7 +341,7 @@ def main_dsa():
 
     datastore = DSADatastore(api_url, folder, api_key, annotation_groups, asset_store_path)
     print(json.dumps(datastore.datalist(), indent=2))
-    split_dataset(datastore, "/localhome/sachi/Downloads/dsa/mostly_tumor", None, annotation_groups, (256, 256))
+    split_dataset(datastore, "/localhome/sachi/Downloads/dsa/mostly_tumor", "", annotation_groups, (256, 256))
 
 
 def main_nuke():
@@ -341,9 +372,22 @@ def main_local():
     datastore = LocalDatastore("C:\\Projects\\Pathology\\Test", extensions=("*.svs", "*.xml"))
     print(json.dumps(datastore.datalist(), indent=2))
 
-    split_dataset(datastore, "C:\\Projects\\Pathology\\TestF", None, annotation_groups, (256, 256))
+    split_dataset(datastore, "C:\\Projects\\Pathology\\TestF", "", annotation_groups, (256, 256))
     # print(json.dumps(ds, indent=2))
 
 
+def main_nuclei():
+    from monailabel.datastore.local import LocalDatastore
+
+    logging.basicConfig(
+        level=logging.INFO,
+        format="[%(asctime)s] [%(process)s] [%(threadName)s] [%(levelname)s] (%(name)s:%(lineno)d) - %(message)s",
+        datefmt="%Y-%m-%d %H:%M:%S",
+    )
+
+    datastore = LocalDatastore("/localhome/sachi/Datasets/NuClick", extensions=("*.png", "*.npy"))
+    split_dataset(datastore, None, "nuclick", None, None, limit=0)
+
+
 if __name__ == "__main__":
-    main_local()
+    main_nuclei()

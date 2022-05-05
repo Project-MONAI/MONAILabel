@@ -59,4 +59,20 @@ class NuClick(TaskConfig):
         return task
 
     def trainer(self) -> Optional[TrainTask]:
-        return None
+        output_dir = os.path.join(self.model_dir, self.name)
+        task: TrainTask = lib.trainers.NuClick(
+            model_dir=output_dir,
+            network=self.network,
+            load_path=self.path[0],
+            publish_path=self.path[1],
+            labels=self.labels,
+            description="Train Nuclei DeepEdit Model",
+            config={
+                "max_epochs": 10,
+                "train_batch_size": 64,
+                "dataset_max_region": (10240, 10240),
+                "dataset_limit": 0,
+                "dataset_randomize": True,
+            },
+        )
+        return task
