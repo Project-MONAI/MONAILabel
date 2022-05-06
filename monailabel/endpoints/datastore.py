@@ -189,8 +189,9 @@ async def api_download_label(label: str, tag: str):
 async def api_update_label_info(image: str, params: str = Form("{}")):
     return update_label_info(image, params)
 
+
 def update_label_info(id: str, params: str = Form("{}")):
-     save_params: Dict[str, Any] = json.loads(params) if params else {}
-     instance: MONAILabelApp = app_instance()
-     instance.datastore().update_image_info(id, save_params)
-     return {}
+    save_params: Dict[str, Any] = json.loads(params) if params else {}
+    instance: MONAILabelApp = app_instance()
+    instance.datastore().update_image_info(id, save_params)
+    return {}
