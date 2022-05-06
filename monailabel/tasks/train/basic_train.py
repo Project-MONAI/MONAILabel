@@ -340,7 +340,7 @@ class BasicTrainTask(TrainTask):
 
     @staticmethod
     def _validate_transforms(transforms, step="Training", name="pre"):
-        if not transforms or isinstance(transforms, Compose):
+        if not transforms or isinstance(transforms, Compose) or callable(transforms):
             return transforms
         if isinstance(transforms, list):
             return Compose(transforms)

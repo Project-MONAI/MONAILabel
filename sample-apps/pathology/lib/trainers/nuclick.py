@@ -11,32 +11,18 @@
 import logging
 import os
 
+import albumentations as alb
 import cv2
 import numpy as np
 import skimage
 import torch
 from ignite.metrics import Accuracy
 from lib.handlers import TensorBoardImageHandler
-from lib.transforms import FilterImaged
 from lib.utils import split_dataset
-from monai.apps.deepgrow.transforms import AddGuidanceSignald, AddRandomGuidanced, FindDiscrepancyRegionsd
 from monai.handlers import from_engine
 from monai.inferers import SimpleInferer
 from monai.losses import DiceLoss
-from monai.transforms import (
-    Activationsd,
-    AddChanneld,
-    AsChannelFirstd,
-    AsDiscreted,
-    EnsureTyped,
-    LoadImaged,
-    RandRotate90d,
-    ScaleIntensityRangeD,
-    ToNumpyd,
-    TorchVisiond,
-    ToTensord,
-    Transform,
-)
+from monai.transforms import Activationsd, AsDiscreted, LoadImaged, RandomizableTransform, Transform
 
 from monailabel.interfaces.datastore import Datastore
 from monailabel.tasks.train.basic_train import BasicTrainTask, Context
@@ -89,31 +75,12 @@ class NuClick(BasicTrainTask):
             randomize=request.get("dataset_randomize", True),
         )
 
-    def get_click_transforms(self, context: Context):
-        return [
-            Activationsd(keys="pred", sigmoid=True),
-            ToNumpyd(keys=("image", "label", "pred")),
-            FindDiscrepancyRegionsd(label="label", pred="pred", discrepancy="discrepancy"),
-            AddRandomGuidanced(guidance="guidance", discrepancy="discrepancy", probability="probability"),
-            AddGuidanceSignald(image="image", guidance="guidance", number_intensity_ch=3),
-            ToTensord(keys=("image", "label")),
-        ]
-
     def train_pre_transforms(self, context: Context):
         return [
             LoadImaged(keys=("image", "label"), dtype=np.uint8),
-            FilterImaged(keys="image", min_size=5),
-            AsChannelFirstd(keys="image"),
-            AddChanneld(keys="label"),
-            ToTensord(keys="image"),
-            TorchVisiond(
-                keys="image", name="ColorJitter", brightness=64.0 / 255.0, contrast=0.75, saturation=0.25, hue=0.04
-            ),
-            ToNumpyd(keys="image"),
-            RandRotate90d(keys=("image", "label"), prob=0.5, spatial_axes=(0, 1)),
-            ScaleIntensityRangeD(keys="image", a_min=0.0, a_max=255.0, b_min=-1.0, b_max=1.0),
             ExtractPatchd(),
-            EnsureTyped(keys=("image", "label")),
+            Augmentd(),
+            AddSignald(),
         ]
 
     def train_post_transforms(self, context: Context):
@@ -139,22 +106,15 @@ class NuClick(BasicTrainTask):
 
 
 class ExtractPatchd(Transform):
-    def __init__(self, image="image", label="label", centroid="centroid"):
-        self.image = image
-        self.label = label
-        self.centroid = centroid
-
+    def __init__(self):
         self.patch_size = 128
-        self.perturb = "distance"
-        self.drop_rate = 0.5
-        self.jitter_range = 3
 
     def __call__(self, data):
         d = dict(data)
 
-        img = d[self.image]
-        mask = d[self.label][0]
-        y, x = d[self.centroid]
+        img = d["image"]
+        mask = d["label"]
+        y, x = d["centroid"]
         m, n = mask.shape[:2]
 
         x_start = int(max(x - self.patch_size / 2, 0))
@@ -170,42 +130,25 @@ class ExtractPatchd(Transform):
 
         mask_val = mask[y, x]
 
-        mask_patch = mask[y_start:y_end, x_start:x_end]
-        img_patch = img[:, y_start:y_end, x_start:x_end]
+        img_patch = img[y_start:y_end, x_start:x_end, :]
+        mask_p = mask[y_start:y_end, x_start:x_end]
 
-        mask_patch_in = (mask_patch == mask_val).astype(np.uint8)
-        others_patch_in = (1 - mask_patch_in) * mask_patch
-        others_patch_in = self.mask_relabeling(others_patch_in, size_limit=5).astype(np.uint8)
+        mask_patch = (mask_p == mask_val).astype(np.uint8)
+        others_patch = (1 - mask_patch) * mask_p
+        others_patch = self._mask_relabeling(others_patch, size_limit=5).astype(np.uint8)
 
         pad_size = (self.patch_size, self.patch_size)
         img_patch = self.pad_to_shape(img_patch, pad_size, False)
-        mask_patch_in = self.pad_to_shape(mask_patch_in, pad_size, True)
-        others_patch_in = self.pad_to_shape(others_patch_in, pad_size, True)
+        mask_patch = self.pad_to_shape(mask_patch, pad_size, True)
+        others_patch = self.pad_to_shape(others_patch, pad_size, True)
 
-        # create the guiding signals
-        signal_gen = PointGuidingSignal(mask_patch_in, others_patch_in, perturb=self.perturb)
-        inc_signal = signal_gen.inclusion_map()
-        exc_signal = signal_gen.exclusion_map(random_drop=self.drop_rate, random_jitter=self.jitter_range)
-
-        image_patch = np.concatenate((img_patch, inc_signal[np.newaxis, ...], exc_signal[np.newaxis, ...]), axis=0)
-        d[self.image] = image_patch
-        d[self.label] = mask_patch_in[np.newaxis]
+        d["image"] = img_patch
+        d["label"] = mask_patch
+        d["others"] = others_patch
         return d
 
     @staticmethod
-    def pad_to_shape(img, shape, is_mask):
-        img_shape = img.shape[-2:]
-        shape_diff = np.array(shape) - np.array(img_shape)
-        if is_mask:
-            img_padded = np.pad(img, [(0, shape_diff[0]), (0, shape_diff[1])], mode="constant", constant_values=0)
-        else:
-            img_padded = np.pad(
-                img, [(0, 0), (0, shape_diff[0]), (0, shape_diff[1])], mode="constant", constant_values=0
-            )
-        return img_padded
-
-    @staticmethod
-    def mask_relabeling(mask, size_limit=5):
+    def _mask_relabeling(mask, size_limit=5):
         out_mask = np.zeros_like(mask, dtype=np.uint16)
         unique_labels = np.unique(mask)
         if unique_labels[0] == 0:
@@ -221,51 +164,123 @@ class ExtractPatchd(Transform):
                     i += 1
         return out_mask
 
+    @staticmethod
+    def pad_to_shape(img, shape, is_mask):
+        img_shape = img.shape[:2]
+        s_diff = np.array(shape) - np.array(img_shape)
+        diff = [(0, s_diff[0]), (0, s_diff[1])]
+        if not is_mask:
+            diff.append((0, 0))
 
-def adaptive_distance_thresholding(mask):
-    """Refining the input mask using adaptive distance thresholding.
-
-    Distance map of the input mask is generated and the an adaptive
-    (random) threshold based on the distance map is calculated to
-    generate a new mask from distance map based on it.
-
-    Inputs:
-        mask (::np.ndarray::): Should be a 2D binary numpy array (uint8)
-    Outputs:
-        new_mask (::np.ndarray::): the refined mask
-        dist (::np.ndarray::): the distance map
-    """
-    dist = cv2.distanceTransform(mask, cv2.DIST_L2, 0)
-    tempMean = np.mean(dist[dist > 0])
-    tempStd = np.std(dist[dist > 0])
-    tempTol = tempStd / 2
-    low_thresh = np.max([tempMean - tempTol, 0])
-    high_thresh = np.min([tempMean + tempTol, np.max(dist) - tempTol])
-    if low_thresh >= high_thresh:
-        thresh = tempMean
-    else:
-        thresh = np.random.uniform(low_thresh, high_thresh)
-    new_mask = dist > thresh
-    if np.all(new_mask == np.zeros_like(new_mask)):
-        new_mask = dist > tempMean
-    return new_mask, dist
+        return np.pad(
+            img,
+            diff,
+            mode="constant",
+            constant_values=0,
+        )
 
 
-class GuidingSignal:
-    """A generic class for defining guiding signal generators.
+class Augmentd(RandomizableTransform):
+    def __init__(self):
+        self.train_augs = alb.Compose(
+            [
+                alb.OneOf(
+                    [
+                        alb.HueSaturationValue(
+                            hue_shift_limit=10,
+                            sat_shift_limit=(-30, 20),
+                            val_shift_limit=0,
+                            always_apply=False,
+                            p=0.75,
+                        ),  # .8
+                        alb.RGBShift(
+                            r_shift_limit=20,
+                            g_shift_limit=20,
+                            b_shift_limit=20,
+                            p=0.75,
+                        ),  # .7
+                    ],
+                    p=1.0,
+                ),
+                alb.OneOf(
+                    [
+                        alb.GaussianBlur(blur_limit=(3, 5), p=0.5),
+                        alb.Sharpen(alpha=(0.1, 0.3), lightness=(1.0, 1.0), p=0.5),
+                        alb.ImageCompression(quality_lower=30, quality_upper=80, p=0.5),
+                    ],
+                    p=1.0,
+                ),
+                alb.RandomBrightnessContrast(brightness_limit=0.2, contrast_limit=0.2, p=0.5),
+                alb.ShiftScaleRotate(
+                    shift_limit=0.1,
+                    scale_limit=0.2,
+                    rotate_limit=180,
+                    border_mode=cv2.BORDER_CONSTANT,
+                    value=0,
+                    p=0.5,
+                ),
+                alb.Flip(p=0.5),
+            ],
+            additional_targets={"others": "mask"},
+            p=0.5,
+        )
 
-    This class include some special methods that inclusion and exclusion guiding signals
-    for different application can be created based on.
-    """
+    def __call__(self, data):
+        d = dict(data)
+        img = d["image"]
+        mask = d["label"]
+        others = d["others"]
 
-    def __init__(self, mask: np.ndarray, others: np.ndarray, kernel_size: int = 0) -> None:
+        augmented_data = self.train_augs(image=img, mask=mask, others=others)
+        d["image"] = augmented_data["image"]
+        d["label"] = augmented_data["mask"]
+        d["others"] = augmented_data["others"]
+        return d
+
+
+class AddSignald(RandomizableTransform):
+    def __init__(self):
+        self.perturb = "distance"
+        self.drop_rate = 0.5
+        self.jitter_range = 3
+
+    def __call__(self, data):
+        d = dict(data)
+
+        img = d["image"]
+        mask = d["label"]
+        others = d["others"]
+
+        # Transform-x: create the guiding signals
+        signal_gen = PointGuidingSignal(mask, others, perturb=self.perturb)
+        inc_sig = signal_gen.inclusion_map()
+        exc_sig = signal_gen.exclusion_map(random_drop=self.drop_rate, random_jitter=self.jitter_range)
+
+        img = np.float32(img) / 255.0
+        img = np.moveaxis(img, -1, 0)
+
+        img = np.concatenate((img, inc_sig[np.newaxis, ...], exc_sig[np.newaxis, ...]), axis=0)
+        d["image"] = torch.as_tensor(img.copy()).float().contiguous()
+        d["label"] = torch.as_tensor(mask[np.newaxis, ...].copy()).long().contiguous()
+        return d
+
+
+class PointGuidingSignal:
+    def __init__(self, mask: np.ndarray, others: np.ndarray, kernel_size=0, perturb: str = "None") -> None:
         self.mask = self.mask_validator(mask > 0.5)
-        self.kernel_size = kernel_size
-        if kernel_size:
-            self.current_mask = self.mask_preprocess(self.mask, kernel_size=self.kernel_size)
-        else:
-            self.current_mask = self.mask_validator(mask > 0.5)
         self.others = others
+        self.kernel_size = kernel_size
+        self.current_mask = (
+            self.mask_preprocess(self.mask, kernel_size=self.kernel_size)
+            if kernel_size
+            else self.mask_validator(mask > 0.5)
+        )
+
+        if perturb.lower() not in {"none", "distance", "inside"}:
+            raise ValueError(
+                f'Invalid running perturb type of: {perturb}. Perturn type should be `"None"`, `"inside"`, or `"distance"`.'
+            )
+        self.perturb = perturb.lower()
 
     @staticmethod
     def mask_preprocess(mask, kernel_size=3):
@@ -287,24 +302,6 @@ class GuidingSignal:
         return mask
 
     def inclusion_map(self):
-        """A function to generate inclusion gioding signal"""
-        raise NotImplementedError
-
-    def exclusion_map(self):
-        """A function to generate exclusion gioding signal"""
-        raise NotImplementedError
-
-
-class PointGuidingSignal(GuidingSignal):
-    def __init__(self, mask: np.ndarray, others: np.ndarray, perturb: str = "None", **kwargs) -> None:
-        super().__init__(mask, others, **kwargs)
-        if perturb.lower() not in {"none", "distance", "inside"}:
-            raise ValueError(
-                f'Invalid running perturb type of: {perturb}. Perturn type should be `"None"`, `"inside"`, or `"distance"`.'
-            )
-        self.perturb = perturb.lower()
-
-    def inclusion_map(self):
         if self.perturb is None:  # if there is no purturbation
             indices = np.argwhere(self.current_mask == 1)  #
             centroid = np.mean(indices, axis=0)
@@ -312,7 +309,7 @@ class PointGuidingSignal(GuidingSignal):
             pointMask[int(centroid[0]), int(centroid[1]), 0] = 1
             return pointMask, self.current_mask
         elif self.perturb == "distance" and np.any(self.current_mask > 0):
-            new_mask, _ = adaptive_distance_thresholding(self.current_mask)
+            new_mask, _ = self.adaptive_distance_thresholding(self.current_mask)
         else:  # if self.perturb=='inside':
             new_mask = self.current_mask.copy()
 
@@ -355,3 +352,32 @@ class PointGuidingSignal(GuidingSignal):
         centroids[:, 0] = np.clip(centroids[:, 0], 0, shape[1] - 1)
         centroids[:, 1] = np.clip(centroids[:, 1], 0, shape[0] - 1)
         return centroids
+
+    @staticmethod
+    def adaptive_distance_thresholding(mask):
+        """Refining the input mask using adaptive distance thresholding.
+
+        Distance map of the input mask is generated and the an adaptive
+        (random) threshold based on the distance map is calculated to
+        generate a new mask from distance map based on it.
+
+        Inputs:
+            mask (::np.ndarray::): Should be a 2D binary numpy array (uint8)
+        Outputs:
+            new_mask (::np.ndarray::): the refined mask
+            dist (::np.ndarray::): the distance map
+        """
+        dist = cv2.distanceTransform(mask, cv2.DIST_L2, 0)
+        tempMean = np.mean(dist[dist > 0])
+        tempStd = np.std(dist[dist > 0])
+        tempTol = tempStd / 2
+        low_thresh = np.max([tempMean - tempTol, 0])
+        high_thresh = np.min([tempMean + tempTol, np.max(dist) - tempTol])
+        if low_thresh >= high_thresh:
+            thresh = tempMean
+        else:
+            thresh = np.random.uniform(low_thresh, high_thresh)
+        new_mask = dist > thresh
+        if np.all(new_mask == np.zeros_like(new_mask)):
+            new_mask = dist > tempMean
+        return new_mask, dist
