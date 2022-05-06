@@ -24,7 +24,7 @@ MonaiLabelReviewer has two usage modes, "Reviewer Mode" and "Basic Mode". The la
 2. Progress bar displays how many images have already been segmented in total.
 3. Progress bar displays how many images have already been segmented by the selected annotator
 4. Combobox: Selection of annotator (if option "All" is selected, the dataset includes segmentations of all annotators)
-5. Slide bar: Displays currently index of image within the selected dataset  
+5. Slide bar: Displays currently index of image within the selected dataset
 6. Lines which displays the meta data: imageId, annotator's name, date
 7. Segmentation selection box: Hide/Show-option of segmentation layers
 
