@@ -162,14 +162,7 @@ def main():
 
     run_train = True
     home = str(Path.home())
-    if run_train:
-        studies = f"{home}/Datasets/NuClick"
-        # studies = f"{home}/Data/Pathology/PanNuke"
-        # studies = "http://0.0.0.0:8080/api/v1"
-    else:
-        # studies = f"{home}/Datasets/Pathology/"
-        # studies = "C:\\Projects\\Pathology\\Test"
-        studies = f"{home}/Datasets/NuClick"
+    studies = f"{home}/Datasets/pannukeF"
 
     parser = argparse.ArgumentParser()
     parser.add_argument("-s", "--studies", default=studies)
@@ -193,13 +186,14 @@ def train_nuclick(app):
             "name": "train_01",
             "model": model,
             "max_epochs": 100,
-            "dataset": "CacheDataset",  # PersistentDataset, CacheDataset
-            "train_batch_size": 64,
-            "val_batch_size": 32,
-            "multi_gpu": False,
+            "dataset": "PersistentDataset",  # PersistentDataset, CacheDataset
+            "train_batch_size": 128,
+            "val_batch_size": 64,
+            "multi_gpu": True,
             "val_split": 0.2,
-            "dataset_source": "nuclick",
+            "dataset_source": "none",
             "dataset_limit": 0,
+            "pretrained": False,
         },
     )
 

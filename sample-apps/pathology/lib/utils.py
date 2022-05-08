@@ -1,5 +1,6 @@
 import copy
 import logging
+import math
 import os
 import random
 import shutil
@@ -29,7 +30,9 @@ def split_dataset(
     ds = datastore.datalist()
     shutil.rmtree(cache_dir, ignore_errors=True)
 
-    if source == "pannuke":
+    if source == "none":
+        pass
+    elif source == "pannuke":
         image = np.load(ds[0]["image"]) if len(ds) == 1 else None
         if image is not None and len(image.shape) > 3:
             logger.info(f"PANNuke (For Developer Mode only):: Split data; groups: {groups}")
@@ -198,19 +201,28 @@ def split_local_dataset(datastore, d, output_dir, groups, tile_size, max_region=
     return dataset_json
 
 
-def split_nuclei_dataset(d, centroid_key="centroid"):
+def split_nuclei_dataset(d, centroid_key="centroid", mask_value_key="mask_value", min_area=5):
     dataset_json = []
-    mask = LoadImage(image_only=True, dtype=np.uint8)(d["label"])
-    stats = regionprops(mask)
-    for stat in stats:
-        y, x = stat.centroid
-        y = int(np.floor(y))
-        x = int(np.floor(x))
 
-        if mask[y, x]:
-            item = copy.deepcopy(d)
-            item[centroid_key] = (y, x)
-            dataset_json.append(item)
+    mask = LoadImage(image_only=True, dtype=np.uint8)(d["label"])
+    _, labels, _, _ = cv2.connectedComponentsWithStats(mask, 4, cv2.CV_32S)
+
+    stats = regionprops(labels)
+    for stat in stats:
+        if stat.area < min_area:
+            logger.info(f"++++ Ignored label with smaller area => ( {stat.area} < {min_area})")
+            continue
+
+        x, y = stat.centroid
+        x = int(math.floor(x))
+        y = int(math.floor(y))
+
+        item = copy.deepcopy(d)
+        item[centroid_key] = (x, y)
+        item[mask_value_key] = stat.label
+
+        # logger.info(f"{d['label']} => {len(stats)} => {mask.shape} => {stat.label}")
+        dataset_json.append(item)
     return dataset_json
 
 
@@ -353,8 +365,15 @@ def main_nuke():
         datefmt="%Y-%m-%d %H:%M:%S",
     )
 
-    datastore = LocalDatastore("/localhome/sachi/Data/Pathology/PanNuke", extensions=("*.nii.gz", "*.nii", "*.npy"))
-    split_dataset(datastore, "/localhome/sachi/Data/Pathology/PanNukeF", "pannuke", "Nuclei", None)
+    datastore = LocalDatastore("/localhome/sachi/Datasets/pannuke", extensions=("*.npy"))
+    labels = {
+        "Neoplastic cells": 1,
+        "Inflammatory": 2,
+        "Connective/Soft tissue cells": 3,
+        "Dead Cells": 4,
+        "Epithelial": 5,
+    }
+    split_dataset(datastore, "/localhome/sachi/Datasets/pannukeF", "pannuke", labels, None)
 
 
 def main_local():
@@ -385,7 +404,9 @@ def main_nuclei():
         datefmt="%Y-%m-%d %H:%M:%S",
     )
 
-    datastore = LocalDatastore("/localhome/sachi/Datasets/NuClick", extensions=("*.png", "*.npy"))
+    # s = "/localhome/sachi/Datasets/NuClick"
+    s = "/localhome/sachi/Datasets/pannukeF"
+    datastore = LocalDatastore(s, extensions=("*.png", "*.npy"))
     split_dataset(datastore, None, "nuclick", None, None, limit=0)
 
 
