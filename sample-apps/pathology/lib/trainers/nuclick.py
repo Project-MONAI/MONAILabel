@@ -42,7 +42,6 @@ from monai.transforms import (
     ToTensord,
     Transform,
 )
-from skimage.measure import regionprops
 from tqdm import tqdm
 
 from monailabel.interfaces.datastore import Datastore
@@ -112,7 +111,7 @@ class NuClick(BasicTrainTask):
         return [
             LoadImaged(keys=("image", "label"), dtype=np.uint8),
             FilterImaged(keys="image", min_size=5),
-            FlattenLabel(keys="label"),
+            FlattenLabeld(keys="label"),
             AsChannelFirstd(keys="image"),
             AddChanneld(keys="label"),
             ExtractPatchd(keys=("image", "label"), patch_size=self.patch_size),
@@ -150,7 +149,7 @@ class NuClick(BasicTrainTask):
         return handlers
 
 
-class FlattenLabel(MapTransform):
+class FlattenLabeld(MapTransform):
     def __call__(self, data):
         d = dict(data)
         for key in self.keys:
@@ -285,7 +284,7 @@ class AddPointGuidanceSignald(RandomizableTransform):
         max_x = point_mask.shape[0] - 1
         max_y = point_mask.shape[1] - 1
 
-        stats = regionprops(others)
+        stats = skimage.measure.regionprops(others)
         for stat in stats:
             x, y = stat.centroid
             # random drop
