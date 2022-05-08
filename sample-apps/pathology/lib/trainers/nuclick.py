@@ -242,15 +242,12 @@ class SplitLabeld(Transform):
 
 
 class AddPointGuidanceSignald(RandomizableTransform):
-    def __init__(
-        self, image="image", label="label", others="others", perturb="distance", drop_rate=0.5, jitter_range=3
-    ):
+    def __init__(self, image="image", label="label", others="others", drop_rate=0.5, jitter_range=3):
         super().__init__()
 
         self.image = image
         self.label = label
         self.others = others
-        self.perturb = perturb
         self.drop_rate = drop_rate
         self.jitter_range = jitter_range
 
