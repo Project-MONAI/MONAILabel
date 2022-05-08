@@ -104,6 +104,7 @@ class BasicTrainTask(TrainTask):
         stats_path=None,
         train_save_interval=20,
         val_interval=1,
+        n_saved=5,
         final_filename="checkpoint_final.pt",
         key_metric_filename="model.pt",
         model_dict_key="model",
@@ -123,6 +124,7 @@ class BasicTrainTask(TrainTask):
         :param stats_path: Path to save the train stats
         :param train_save_interval: checkpoint save interval for training
         :param val_interval: validation interval (run every x epochs)
+        :param n_saved: max checkpoints to save
         :param final_filename: name of final checkpoint that will be saved
         :param key_metric_filename: best key metric model file name
         :param model_dict_key: key to save network weights into checkpoint
@@ -157,6 +159,7 @@ class BasicTrainTask(TrainTask):
 
         self._train_save_interval = train_save_interval
         self._val_interval = val_interval
+        self._n_saved = n_saved
         self._final_filename = final_filename
         self._key_metric_filename = key_metric_filename
         self._model_dict_key = model_dict_key
@@ -340,7 +343,7 @@ class BasicTrainTask(TrainTask):
 
     @staticmethod
     def _validate_transforms(transforms, step="Training", name="pre"):
-        if not transforms or isinstance(transforms, Compose):
+        if not transforms or isinstance(transforms, Compose) or callable(transforms):
             return transforms
         if isinstance(transforms, list):
             return Compose(transforms)
@@ -528,7 +531,7 @@ class BasicTrainTask(TrainTask):
                         save_dict={self._model_dict_key: context.network},
                         save_key_metric=True,
                         key_metric_filename=self._key_metric_filename,
-                        n_saved=5,
+                        n_saved=self._n_saved,
                     )
                 )
 
@@ -560,7 +563,7 @@ class BasicTrainTask(TrainTask):
                     key_metric_filename=f"train_{self._key_metric_filename}"
                     if context.evaluator
                     else self._key_metric_filename,
-                    n_saved=5,
+                    n_saved=self._n_saved,
                 )
             )
 

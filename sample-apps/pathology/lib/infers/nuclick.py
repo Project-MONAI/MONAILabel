@@ -130,8 +130,7 @@ class AddClickSignalsd(Transform):
         return d
 
     @staticmethod
-    def get_clickmap_boundingbox(cx, cy, m, n):
-        bb = 128
+    def get_clickmap_boundingbox(cx, cy, m, n, bb=128):
         click_map = np.zeros((m, n), dtype=np.uint8)
 
         # Removing points out of image dimension (these points may have been clicked unwanted)
@@ -162,9 +161,7 @@ class AddClickSignalsd(Transform):
         return click_map, bounding_boxes
 
     @staticmethod
-    def get_patches_and_signals(img, click_map, bounding_boxes, cx, cy, m, n):
-        bb = 128
-
+    def get_patches_and_signals(img, click_map, bounding_boxes, cx, cy, m, n, bb=128):
         # total = number of clicks
         total = len(bounding_boxes)
         img = np.array([img])  # img.shape=(1,3,m,n)
