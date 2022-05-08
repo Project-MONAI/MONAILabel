@@ -141,7 +141,7 @@ class TensorBoardImageHandler:
                     label[y == region] = region
 
                 self.logger.info(
-                    "{} - {} - Image: {}; Label: {} (nz: {}); Pred: {} (nz: {}); (pos-nz: {}); (neg-nz: {})".format(
+                    "{} - {} - Image: {}; Label: {} (nz: {}); Pred: {} (nz: {}); Sig: (pos-nz: {}, neg-nz: {})".format(
                         bidx,
                         region,
                         image.shape,
@@ -149,8 +149,8 @@ class TensorBoardImageHandler:
                         np.count_nonzero(label),
                         y_pred.shape,
                         np.count_nonzero(y_pred[region]),
-                        np.count_nonzero(image[-2]),
-                        np.count_nonzero(image[-1]),
+                        np.count_nonzero(image[3]) if image.shape == 5 else 0,
+                        np.count_nonzero(image[4]) if image.shape == 5 else 0,
                     )
                 )
 
