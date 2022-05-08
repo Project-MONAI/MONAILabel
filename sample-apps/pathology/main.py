@@ -185,7 +185,7 @@ def train_nuclick(app):
         request={
             "name": "train_01",
             "model": model,
-            "max_epochs": 100,
+            "max_epochs": 10,
             "dataset": "PersistentDataset",  # PersistentDataset, CacheDataset
             "train_batch_size": 128,
             "val_batch_size": 64,
@@ -194,6 +194,7 @@ def train_nuclick(app):
             "dataset_source": "none",
             "dataset_limit": 0,
             "pretrained": False,
+            "n_saved": 10,
         },
     )
 

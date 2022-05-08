@@ -16,7 +16,7 @@ from typing import Any, Dict, Optional, Union
 
 import lib.infers
 import lib.trainers
-from lib.nets import UNet
+from monai.networks.nets import BasicUNet
 
 from monailabel.interfaces.config import TaskConfig
 from monailabel.interfaces.tasks.infer import InferTask
@@ -42,11 +42,16 @@ class NuClick(TaskConfig):
 
         # Download PreTrained Model
         if strtobool(self.conf.get("use_pretrained_model", "true")):
-            url = f"{self.PRE_TRAINED_PATH}/NuClick_UNet_40xAll.pth"
+            url = f"{self.PRE_TRAINED_PATH}/pathology_nuclick_bunet.pt"
             download_file(url, self.path[0])
 
         # Network
-        self.network = UNet(n_channels=5, n_classes=1)
+        self.network = BasicUNet(
+            spatial_dims=2,
+            in_channels=5,
+            out_channels=1,
+            features=(32, 64, 128, 256, 512, 32),
+        )
 
     def infer(self) -> Union[InferTask, Dict[str, InferTask]]:
         task: InferTask = lib.infers.NuClick(
@@ -67,6 +72,7 @@ class NuClick(TaskConfig):
             publish_path=self.path[1],
             labels=self.labels,
             description="Train Nuclei DeepEdit Model",
+            train_save_interval=1,
             config={
                 "max_epochs": 10,
                 "train_batch_size": 64,

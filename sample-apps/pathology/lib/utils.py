@@ -210,7 +210,7 @@ def split_nuclei_dataset(d, centroid_key="centroid", mask_value_key="mask_value"
     stats = regionprops(labels)
     for stat in stats:
         if stat.area < min_area:
-            logger.info(f"++++ Ignored label with smaller area => ( {stat.area} < {min_area})")
+            logger.debug(f"++++ Ignored label with smaller area => ( {stat.area} < {min_area})")
             continue
 
         x, y = stat.centroid

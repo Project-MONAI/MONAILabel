@@ -174,15 +174,15 @@ class TensorBoardImageHandler:
                 break
 
     def write_region_metrics(self, epoch):
-        metric_sum = 0
-        for region in self.metric_data:
-            metric = self.metric_data[region].mean()
-            self.logger.info(f"Epoch[{epoch}] Metrics -- Region: {region:0>2d}, {self.tag_name}: {metric:.4f}")
-
-            self.writer.add_scalar(f"dice_{region:0>2d}", metric, epoch)
-            metric_sum += metric
-
         if len(self.metric_data) > 1:
+            metric_sum = 0
+            for region in self.metric_data:
+                metric = self.metric_data[region].mean()
+                self.logger.info(f"Epoch[{epoch}] Metrics -- Region: {region:0>2d}, {self.tag_name}: {metric:.4f}")
+
+                self.writer.add_scalar(f"dice_{region:0>2d}", metric, epoch)
+                metric_sum += metric
+
             metric_avg = metric_sum / len(self.metric_data)
             self.writer.add_scalar("dice_regions_avg", metric_avg, epoch)
 
