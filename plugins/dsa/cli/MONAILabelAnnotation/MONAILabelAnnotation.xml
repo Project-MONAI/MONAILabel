@@ -33,7 +33,7 @@
             <label>MONAILabel Address</label>
             <description>Address of a monailabel address in the format 'http://127.0.0.1:8000/'.</description>
             <longflag>server</longflag>
-            <default>http://10.117.18.128:8000/</default>
+            <default>http://10.117.16.216:8000/</default>
         </string>
         <string>
             <name>model_name</name>
@@ -82,22 +82,23 @@
             <label>Analysis Level of Image</label>
             <description>Analysis Level of Image</description>
             <longflag>analysis_level</longflag>
-            <default>1</default>
+            <default>0</default>
         </integer>
         <double>
             <name>analysis_tile_size</name>
             <label>Analysis Tile Size</label>
             <description>Tile size for blockwise analysis</description>
             <longflag>analysis_tile_size</longflag>
-            <default>2048</default>
+            <default>1024</default>
         </double>
         <integer>
             <name>max_workers</name>
             <label>Number of workers</label>
-            <description>Number of workers that shall be used by MONAILabel server to run inference on wsi patches
+            <description>Number of workers that shall be used by MONAILabel server to run inference on wsi patches. Use
+                zero to allow server to decide based on number of cpus.
             </description>
             <longflag>max_workers</longflag>
-            <default>8</default>
+            <default>0</default>
         </integer>
     </parameters>
 </executable>
