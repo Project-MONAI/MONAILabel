@@ -67,7 +67,7 @@ def write_seg_nrrd(image_np: np.ndarray,
                    affine: np.ndarray,
                    labels: List[str],
                    color_map: Dict[str, List[float]] = None,
-                   index_order: str = 'C',  # 'C' or 'F'
+                   index_order: str = 'C',
                    space: str = 'left-posterior-superior',
                    ) -> None:
     """Write seg.nrrd file.
