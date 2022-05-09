@@ -648,7 +648,9 @@ class MONAILabelApp:
             )
 
         total = len(infer_tasks)
-        max_workers = request.get("max_workers", max(1, multiprocessing.cpu_count() // 2))
+        max_workers = request.get("max_workers", 0)
+        max_workers = max_workers if max_workers else max(1, multiprocessing.cpu_count() // 2)
+        max_workers = min(max_workers, multiprocessing.cpu_count())
 
         if len(infer_tasks) > 1 and (max_workers == 0 or max_workers > 1):
             logger.info(f"MultiGpu: {multi_gpu}; Using Device(s): {device_ids}; Max Workers: {max_workers}")

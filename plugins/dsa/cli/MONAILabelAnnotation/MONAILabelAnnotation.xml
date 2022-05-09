@@ -94,10 +94,11 @@
         <integer>
             <name>max_workers</name>
             <label>Number of workers</label>
-            <description>Number of workers that shall be used by MONAILabel server to run inference on wsi patches
+            <description>Number of workers that shall be used by MONAILabel server to run inference on wsi patches. Use
+                zero to allow server to decide based on number of cpus.
             </description>
             <longflag>max_workers</longflag>
-            <default>8</default>
+            <default>0</default>
         </integer>
     </parameters>
 </executable>

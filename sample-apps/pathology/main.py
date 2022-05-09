@@ -271,13 +271,12 @@ def infer_wsi(app):
             "output": output,
             "logging": "error",
             "level": 0,
-            "location": [6000, 12000],
-            "size": [2000, 2000],
+            "location": [0, 0],
+            "size": [0, 0],
             "tile_size": [1024, 1024],
             "min_poly_area": 40,
             "gpus": "all",
             "multi_gpu": True,
-            "max_workers": 8,
         }
     )
 
