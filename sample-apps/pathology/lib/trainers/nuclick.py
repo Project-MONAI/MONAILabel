@@ -23,7 +23,7 @@ from lib.handlers import TensorBoardImageHandler
 from lib.transforms import FilterImaged
 from lib.utils import split_dataset, split_nuclei_dataset
 from monai.config import KeysCollection
-from monai.handlers import from_engine, MeanDice
+from monai.handlers import MeanDice, from_engine
 from monai.inferers import SimpleInferer
 from monai.losses import DiceLoss
 from monai.transforms import (
@@ -136,7 +136,7 @@ class NuClick(BasicTrainTask):
     def val_pre_transforms(self, context: Context):
         t = self.train_pre_transforms()
         # drop exclusion map for AddPointGuidanceSignald
-        t[-2] = AddPointGuidanceSignald(image="image", label="label", others="others", drop_rate=1.0),
+        t[-2] = (AddPointGuidanceSignald(image="image", label="label", others="others", drop_rate=1.0),)
         return t
 
     def train_key_metric(self, context: Context):
