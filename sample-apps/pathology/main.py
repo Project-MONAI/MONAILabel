@@ -160,9 +160,9 @@ def main():
         datefmt="%Y-%m-%d %H:%M:%S",
     )
 
-    run_train = True
+    run_train = False
     home = str(Path.home())
-    studies = f"{home}/Datasets/pannukeF"
+    studies = f"{home}/Datasets/Pathology"
 
     parser = argparse.ArgumentParser()
     parser.add_argument("-s", "--studies", default=studies)
@@ -171,7 +171,7 @@ def main():
     app_dir = os.path.dirname(__file__)
     studies = args.studies
 
-    app = MyApp(app_dir, studies, {"roi_size": "[1024,1024]", "preload": "false"})
+    app = MyApp(app_dir, studies, {"roi_size": "[1024,1024]", "preload": "true"})
     if run_train:
         train_nuclick(app)
     else:
@@ -250,7 +250,6 @@ def infer_nuclick(app):
 
 
 def infer_wsi(app):
-    import json
     import shutil
     from pathlib import Path
 
@@ -259,7 +258,7 @@ def infer_wsi(app):
     root_dir = f"{home}/Datasets/"
     image = "TCGA-02-0010-01Z-00-DX4.07de2e55-a8fe-40ee-9e98-bcb78050b9f7"
 
-    output = "asap"
+    output = "dsa"
 
     # slide = openslide.OpenSlide(f"{app.studies}/{image}.svs")
     # img = slide.read_region((7737, 20086), 0, (2048, 2048)).convert("RGB")
@@ -272,8 +271,8 @@ def infer_wsi(app):
             "output": output,
             "logging": "error",
             "level": 0,
-            "location": [0, 0],
-            "size": [0, 0],
+            "location": [6000, 12000],
+            "size": [2000, 2000],
             "tile_size": [1024, 1024],
             "min_poly_area": 40,
             "gpus": "all",
@@ -282,11 +281,11 @@ def infer_wsi(app):
         }
     )
 
-    label_json = os.path.join(root_dir, f"{image}.json")
-    logger.info(f"Writing Label JSON: {label_json}")
-    with open(label_json, "w") as fp:
-        json.dump(res["params"], fp)
-
+    # label_json = os.path.join(root_dir, f"{image}.json")
+    # logger.info(f"Writing Label JSON: {label_json}")
+    # with open(label_json, "w") as fp:
+    #     json.dump(res["params"], fp)
+    #
     if output == "asap":
         label_xml = os.path.join(root_dir, f"{image}.xml")
         shutil.copy(res["file"], label_xml)

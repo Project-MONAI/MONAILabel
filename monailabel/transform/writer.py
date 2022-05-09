@@ -168,10 +168,10 @@ class PolygonWriter:
         output_file = None
         if output == "asap":
             logger.info("+++ Generating ASAP XML Annotation")
-            output_file = create_asap_annotations_xml(res_json, loglevel=loglevel)
+            output_file, _ = create_asap_annotations_xml(res_json, loglevel=loglevel)
         elif output == "dsa":
             logger.info("+++ Generating DSA JSON Annotation")
-            output_file = create_dsa_annotations_json(res_json, loglevel=loglevel)
+            output_file, _ = create_dsa_annotations_json(res_json, loglevel=loglevel)
         else:
             logger.info("+++ Return Default JSON Annotation")
 

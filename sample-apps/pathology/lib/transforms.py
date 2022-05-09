@@ -19,7 +19,7 @@ from monai.config import KeysCollection
 from monai.transforms import CenterSpatialCrop, MapTransform, Transform
 from PIL import Image
 from skimage.filters.thresholding import threshold_otsu
-from skimage.morphology import remove_small_objects
+from skimage.morphology import remove_small_holes, remove_small_objects
 
 logger = logging.getLogger(__name__)
 
@@ -173,25 +173,22 @@ class FilterImaged(MapTransform):
 
 
 class PostFilterLabeld(MapTransform):
-    def __init__(self, keys: KeysCollection, image="image", min_size=80):
+    def __init__(self, keys: KeysCollection, image="image", min_size=10, min_hole=30):
         super().__init__(keys)
         self.image = image
         self.min_size = min_size
+        self.min_hole = min_hole
 
     def __call__(self, data):
         d = dict(data)
-        img = d[self.image]
-        img = img[:3]
-        img = np.moveaxis(img, 0, -1)  # to channel last
-        img = img * 128 + 128
-        img = img.astype(np.uint8)
-
         for key in self.keys:
             label = d[key].astype(np.uint8)
-            gray = np.dot(img, [0.2125, 0.7154, 0.0721])
-            label = label * np.logical_xor(label, gray == 0)
-            label = filter_remove_small_objects(label, min_size=self.min_size).astype(np.uint8)
-            d[key] = label
+            if self.min_size:
+                label = remove_small_objects(label, min_size=self.min_size)
+            if self.min_hole:
+                label = remove_small_holes(label, area_threshold=self.min_hole)
+
+            d[key] = label.astype(np.uint8)
         return d
 
 
