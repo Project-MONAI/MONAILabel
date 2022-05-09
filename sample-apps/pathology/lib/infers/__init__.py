@@ -10,4 +10,5 @@
 # limitations under the License.
 
 from .deepedit_nuclei import DeepEditNuclei
+from .nuclick import NuClick
 from .segmentation_nuclei import SegmentationNuclei

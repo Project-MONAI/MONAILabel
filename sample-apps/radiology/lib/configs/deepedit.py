@@ -8,8 +8,6 @@
 # WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 # See the License for the specific language governing permissions and
 # limitations under the License.
-
-import json
 import logging
 import os
 from distutils.util import strtobool
@@ -49,6 +47,9 @@ class DeepEdit(TaskConfig):
             "background": 0,
         }
 
+        # Number of input channels - 4 for BRATS and 1 for spleen
+        self.number_intensity_ch = 1
+
         network = self.conf.get("network", "dynunet")
 
         # Model Files
@@ -62,12 +63,14 @@ class DeepEdit(TaskConfig):
             url = f"{self.PRE_TRAINED_PATH}/deepedit_{network}_singlelabel.pt"
             download_file(url, self.path[0])
 
+        self.target_spacing = (1.0, 1.0, 1.0)  # target space for image
+        self.spatial_size = (128, 128, 128)  # train input size
+
         # Network
-        self.spatial_size = json.loads(self.conf.get("spatial_size", "[128, 128, 128]"))
         if network == "unetr":
             self.network = UNETR(
                 spatial_dims=3,
-                in_channels=len(self.labels) + 1,
+                in_channels=len(self.labels) + self.number_intensity_ch,
                 out_channels=len(self.labels),
                 img_size=self.spatial_size,
                 feature_size=64,
@@ -81,7 +84,7 @@ class DeepEdit(TaskConfig):
         else:
             self.network = DynUNet(
                 spatial_dims=3,
-                in_channels=len(self.labels) + 1,
+                in_channels=len(self.labels) + self.number_intensity_ch,
                 out_channels=len(self.labels),
                 kernel_size=[[3, 3, 3], [3, 3, 3], [3, 3, 3], [3, 3, 3], [3, 3, 3], [3, 3, 3]],
                 strides=[[1, 1, 1], [2, 2, 2], [2, 2, 2], [2, 2, 2], [2, 2, 2], [2, 2, 1]],
@@ -101,6 +104,7 @@ class DeepEdit(TaskConfig):
                 network=self.network,
                 labels=self.labels,
                 spatial_size=self.spatial_size,
+                number_intensity_ch=self.number_intensity_ch,
                 type=InferType.SEGMENTATION,
             ),
         }
@@ -112,8 +116,9 @@ class DeepEdit(TaskConfig):
             network=self.network,
             load_path=self.path[0],
             publish_path=self.path[1],
-            spatial_size=self.planner.spatial_size if self.planner else (128, 128, 128),
-            target_spacing=self.planner.target_spacing if self.planner else (1.0, 1.0, 1.0),
+            spatial_size=self.spatial_size,
+            target_spacing=self.target_spacing,
+            number_intensity_ch=self.number_intensity_ch,
             config={"pretrained": strtobool(self.conf.get("use_pretrained_model", "true"))},
             labels=self.labels,
             debug_mode=False,

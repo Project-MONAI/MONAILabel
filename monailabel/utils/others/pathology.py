@@ -9,7 +9,7 @@ from monailabel.utils.others.label_colors import to_hex, to_rgb
 logger = logging.getLogger(__name__)
 
 
-def create_dsa_annotations_json(json_data, loglevel="INFO"):
+def create_dsa_annotations_json_old(json_data, loglevel="INFO"):
     logger.setLevel(loglevel.upper())
 
     annotation_doc = {
@@ -58,7 +58,66 @@ def create_dsa_annotations_json(json_data, loglevel="INFO"):
     label_json = tempfile.NamedTemporaryFile(suffix=".json").name
     with open(label_json, "w") as fp:
         json.dump(annotation_doc, fp)
-    return label_json
+    return label_json, len(annotation_doc["elements"])
+
+
+def create_dsa_annotations_json(json_data, loglevel="INFO"):
+    logger.setLevel(loglevel.upper())
+
+    total_count = 0
+    label_json = tempfile.NamedTemporaryFile(suffix=".json").name
+    with open(label_json, "w") as fp:
+        fp.write("{\n")
+        fp.write(' "name": "{}",\n'.format(json_data["name"]))
+        fp.write(' "description": "{}",\n'.format(json_data["description"]))
+        fp.write(' "model": "{}",\n'.format(json_data["model"]))
+        fp.write(' "location": {},\n'.format(json_data["location"]))
+        fp.write(' "size": {},\n'.format(json_data["size"]))
+        fp.write(' "elements": [\n')
+
+        for tid, res in enumerate(json_data["annotations"]):
+            logger.debug(f"Adding annotations for tile: {tid}")
+            if not res:
+                continue
+
+            annotation = res.get("annotation")
+            if not annotation:
+                continue
+
+            color_map = annotation.get("labels")
+            elements = annotation.get("elements", [])
+            for element in elements:
+                label = element["label"]
+                color = to_rgb(color_map.get(label))
+
+                logger.info(f"Adding Contours for label: {label}; color: {color}; color_map: {color_map}")
+
+                contours = element["contours"]
+                for contour in contours:
+                    points = []
+                    for point in contour:
+                        points.append([point[0], point[1], 0])
+
+                    if total_count > 0:
+                        fp.write(",\n")
+
+                    annotation_style = {
+                        "group": label,
+                        "type": "polyline",
+                        "lineColor": color,
+                        "lineWidth": 2.0,
+                        "closed": True,
+                        "points": points,
+                        "label": {"value": label},
+                    }
+                    fp.write(f"  {json.dumps(annotation_style)}")
+                    total_count += 1
+
+        fp.write(" ]\n")  # close elements
+        fp.write("}")  # end of root
+
+    logger.info(f"Total Elements: {total_count}")
+    return label_json, total_count
 
 
 def create_asap_annotations_xml(json_data, loglevel="INFO"):
@@ -77,7 +136,7 @@ def create_asap_annotations_xml(json_data, loglevel="INFO"):
         fp.write('<?xml version="1.0"?>\n')
         fp.write("<ASAP_Annotations>\n")
         fp.write(
-            '  <Annotations name="{}" description="{}" model="{}" X="{}" Y="{}" W="{}" H="{}">\n'.format(
+            '  <Annotations Name="{}" Description="{}" Model="{}" X="{}" Y="{}" W="{}" H="{}">\n'.format(
                 name, description, model, location[0], location[1], size[0], size[1]
             )
         )
@@ -122,4 +181,4 @@ def create_asap_annotations_xml(json_data, loglevel="INFO"):
         fp.write("</ASAP_Annotations>\n")
 
     logger.info(f"Total Annotations: {total_count}")
-    return label_xml
+    return label_xml, total_count

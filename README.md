@@ -24,37 +24,44 @@ with [MONAI](https://github.com/Project-MONAI).
 - Framework for developing and deploying MONAI Label Apps to train and infer AI models
 - Compositional & portable APIs for ease of integration in existing workflows
 - Customizable labelling app design for varying user expertise
-- Annotation support via 3DSlicer & OHIF
+- Annotation support via 3DSlicer & OHIF for radiology
+- Annotation support via QuPath & Digital Slide Archive for pathology
 - PACS connectivity via DICOMWeb
 
 ## Installation
-
-**MONAI Label requires PyTorch version 1.10.0 or newer.**
 
 MONAI Label supports following OS with **GPU/CUDA** enabled.
 
 - Ubuntu
 - [Windows](https://docs.monai.io/projects/label/en/latest/installation.html#windows)
 
-### Development Release
+### Development version
 
 To install the _**latest features**_ using one of the following options:
+#### Git Checkout (developer mode)
 ```bash
-# option 1: github install (or you can install monailabel-weekly from PyPI)
-pip install git+https://github.com/Project-MONAI/MONAILabel#egg=monailabel
-
-# option 2: using docker
-docker run --gpus all --rm -ti --ipc=host --net=host projectmonai/monailabel:latest
-
-# option 3: git checkout
 git clone https://github.com/Project-MONAI/MONAILabel
 pip install -r MONAILabel/requirements.txt
 export PATH=$PATH:`pwd`/MONAILabel/monailabel/scripts
+```
 
-# option 4: release candidate (0.4.x)
+#### [Weekly Release](https://pypi.org/project/monailabel-weekly/)
+```bash
+pip install monailabel-weekly
+```
+
+#### [Docker](https://hub.docker.com/r/projectmonai/monailabel/tags)
+```bash
+docker run --gpus all --rm -ti --ipc=host --net=host projectmonai/monailabel:latest
+```
+
+#### [Release Candidate](https://pypi.org/project/monailabel/#history)
+```bash
 pip install monailabel>=0.4*
+```
 
-
+Once the package is installed, you can download sample `radiology` or `pathology` app and start monailabel server.
+```bash
 # download radiology app and sample dataset
 monailabel apps --download --name radiology --output apps
 monailabel datasets --download --name Task09_Spleen --output datasets
@@ -63,9 +70,7 @@ monailabel datasets --download --name Task09_Spleen --output datasets
 monailabel start_server --app apps/radiology --studies datasets/Task09_Spleen/imagesTr --conf models deepedit
 ```
 
-> You can install [latest release candidates](https://pypi.org/project/monailabel/#history)
-
-### Current Release (0.3.x)
+### Current/Stable version (0.3.x)
 
 To install the [current release](https://pypi.org/project/monailabel/), you can simply run:
 
@@ -83,7 +88,6 @@ More details refer docs: https://docs.monai.io/projects/label/en/stable/installa
 
 
 > If monailabel install path is not automatically determined, then you can provide explicit install path as:
->
 > `monailabel apps --prefix ~/.local`
 
 For **_prerequisites_**, other installation methods (using the default GitHub branch, using Docker, etc.), please refer
@@ -91,7 +95,8 @@ to the [installation guide](https://docs.monai.io/projects/label/en/latest/insta
 
 > Once you start the MONAI Label Server, by default server will be up and serving at http://127.0.0.1:8000/. Open the serving URL in browser. It will provide you the list of Rest APIs available. **For this, please make sure you use the HTTP protocol.** _You can provide ssl arguments to run server in HTTPS mode but this functionality is not fully verified._
 
-### 3D Slicer
+## Plugins
+### [3D Slicer](https://download.slicer.org/) (radiology)
 
 Download **Preview Release** from https://download.slicer.org/ and install MONAI Label plugin from Slicer Extension
 Manager.
@@ -99,7 +104,7 @@ Manager.
 Refer [3D Slicer plugin](plugins/slicer) for other options to install and run MONAI Label plugin in 3D Slicer.
 > To avoid accidentally using an older Slicer version, you may want to _uninstall_ any previously installed 3D Slicer package.
 
-### OHIF
+### [OHIF](https://ohif.org/) (radiology)
 
 MONAI Label comes with [pre-built plugin](plugins/ohif) for [OHIF Viewer](https://github.com/OHIF/Viewers). To use OHIF
 Viewer, you need to provide DICOMWeb instead of FileSystem as _studies_ when you start the server.
@@ -119,7 +124,20 @@ Viewer, you need to provide DICOMWeb instead of FileSystem as _studies_ when you
 
 > **_NOTE:_** OHIF does not yet support Multi-Label interaction for DeepEdit.
 
-### Pathology using [Digital Slide Archive (DSA)](https://digitalslidearchive.github.io/digital_slide_archive/)
+### [QuPath](https://qupath.github.io/) (pathology)
+
+You can download sample whole slide images from [https://portal.gdc.cancer.gov/repository](https://portal.gdc.cancer.gov/repository?filters=%7B%22op%22%3A%22and%22%2C%22content%22%3A%5B%7B%22op%22%3A%22in%22%2C%22content%22%3A%7B%22field%22%3A%22files.data_type%22%2C%22value%22%3A%5B%22Slide%20Image%22%5D%7D%7D%5D%7D)
+
+```bash
+  # start server using pathology over downloaded whole slide images
+  monailabel start_server --app apps/pathology --studies wsi_images
+```
+
+Refer [QuPath](plugins/qupath) for installing and running MONAILabel plugin in QuPath.
+
+![image](docs/images/qupath.jpg)
+
+### [Digital Slide Archive (DSA)](https://digitalslidearchive.github.io/digital_slide_archive/) (pathology)
 
 Refer [Pathology](sample-apps/pathology) for running a sample pathology use-case in MONAILabel.
 > **_NOTE:_** The **Pathology App** and *DSA Plugin* are under *active development*.

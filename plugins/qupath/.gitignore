@@ -1,0 +1,38 @@
+# Javadocs
+docs/
+
+# Maven
+deploy/
+target/
+log/
+
+# IntelliJ
+.idea/
+*.iml
+out/
+
+# Gradle
+# Use local properties (e.g. to set a specific JDK)
+gradle.properties
+build/
+.gradle/
+gradle.properties
+
+# Eclipse
+.settings/
+.project
+.classpath
+
+# Mac
+.DS_Store
+
+# Java
+hs_err*.log
+
+# Other
+*.tmp
+*.bak
+*.swp
+*~.nib
+*thumbs.db
+bin/

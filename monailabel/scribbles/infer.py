@@ -1,4 +1,4 @@
-# Copyright 2020 - 2021 MONAI Consortium
+# Copyright (c) MONAI Consortium
 # Licensed under the Apache License, Version 2.0 (the "License");
 # you may not use this file except in compliance with the License.
 # You may obtain a copy of the License at
@@ -32,7 +32,7 @@ class HistogramBasedGraphCut(InferTask):
     indicating foreground and background regions. A likelihood volume is generated using histogram method.
     User-scribbles are incorporated using Equation 7 on page 4 of the paper.
 
-    SimpleCRF's GraphCut layer is used to optimise Equation 5 from the paper, where unaries come from Equation 7
+    numpymaxflow's GraphCut layer is used to optimise Equation 5 from the paper, where unaries come from Equation 7
     and pairwise is the original input volume.
     """
 

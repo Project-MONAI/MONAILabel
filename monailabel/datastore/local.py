@@ -251,11 +251,12 @@ class LocalDatastore(Datastore):
             ds = json.loads(json.dumps(ds).replace(f"{self._datastore_path.rstrip(os.pathsep)}{os.pathsep}", ""))
         return ds
 
-    def get_image(self, image_id: str) -> Any:
+    def get_image(self, image_id: str, params=None) -> Any:
         """
         Retrieve image object based on image id
 
         :param image_id: the desired image's id
+        :param params: any optional params
         :return: return the "image"
         """
         uri = self.get_image_uri(image_id)
@@ -287,12 +288,13 @@ class LocalDatastore(Datastore):
             info["path"] = path
         return info
 
-    def get_label(self, label_id: str, label_tag: str) -> Any:
+    def get_label(self, label_id: str, label_tag: str, params=None) -> Any:
         """
         Retrieve image object based on label id
 
         :param label_id: the desired label's id
         :param label_tag: the matching label's tag
+        :param params: any optional params
         :return: return the "label"
         """
         uri = self.get_label_uri(label_id, label_tag)

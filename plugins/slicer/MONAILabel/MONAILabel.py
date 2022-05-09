@@ -506,9 +506,9 @@ class MONAILabelWidget(ScriptedLoadableModuleWidget, VTKObservationMixin):
             self.ui.scribblesCollapsibleButton.hide()
 
         if self.info.get("trainers", {}):
-            self.ui.aclCollapsibleButton.show()
+            self.ui.trainWidget.show()
         else:
-            self.ui.aclCollapsibleButton.hide()
+            self.ui.trainWidget.hide()
 
         self.ignoreScribblesLabelChangeEvent = True
         self.ui.labelComboBox.clear()
@@ -1796,6 +1796,7 @@ class MONAILabelWidget(ScriptedLoadableModuleWidget, VTKObservationMixin):
 
             # save scribbles + label to file
             slicer.util.saveNode(labelmapVolumeNode, scribbles_in)
+            slicer.mrmlScene.RemoveNode(labelmapVolumeNode)
             self.reportProgress(30)
             self.updateServerSettings()
             self.reportProgress(60)
@@ -1891,7 +1892,7 @@ class MONAILabelWidget(ScriptedLoadableModuleWidget, VTKObservationMixin):
         for i in range(num_segments):
             segmentId = segmentation.GetSegmentation().GetNthSegmentID(i)
             if "scribbles" in segmentId:
-                logging.info(f"clearning {segmentId}")
+                logging.info(f"clearing {segmentId}")
                 labelMapRep = slicer.vtkOrientedImageData()
                 segmentation.GetBinaryLabelmapRepresentation(segmentId, labelMapRep)
                 vtkSegmentationCore.vtkOrientedImageDataResample.FillImage(labelMapRep, 0, labelMapRep.GetExtent())

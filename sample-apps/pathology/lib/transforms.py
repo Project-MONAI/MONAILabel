@@ -19,7 +19,7 @@ from monai.config import KeysCollection
 from monai.transforms import CenterSpatialCrop, MapTransform, Transform
 from PIL import Image
 from skimage.filters.thresholding import threshold_otsu
-from skimage.morphology import remove_small_objects
+from skimage.morphology import remove_small_holes, remove_small_objects
 
 logger = logging.getLogger(__name__)
 
@@ -84,7 +84,7 @@ class LoadImagePatchd(MapTransform):
             meta_dict["original_channel_dim"] = -1
             logger.debug(f"Image shape: {image_np.shape} vs size: {size} vs tile_size: {tile_size}")
 
-            if self.padding and image_np.shape[0] != tile_size[0] or image_np.shape[1] != tile_size[1]:
+            if self.padding and (image_np.shape[0] != tile_size[0] or image_np.shape[1] != tile_size[1]):
                 image_padded = np.zeros((tile_size[0], tile_size[1], 3), dtype=image_np.dtype)
                 image_padded[0 : image_np.shape[0], 0 : image_np.shape[1]] = image_np
                 image_np = image_padded
@@ -173,25 +173,22 @@ class FilterImaged(MapTransform):
 
 
 class PostFilterLabeld(MapTransform):
-    def __init__(self, keys: KeysCollection, image="image", min_size=80):
+    def __init__(self, keys: KeysCollection, image="image", min_size=10, min_hole=30):
         super().__init__(keys)
         self.image = image
         self.min_size = min_size
+        self.min_hole = min_hole
 
     def __call__(self, data):
         d = dict(data)
-        img = d[self.image]
-        img = img[:3]
-        img = np.moveaxis(img, 0, -1)  # to channel last
-        img = img * 128 + 128
-        img = img.astype(np.uint8)
-
         for key in self.keys:
             label = d[key].astype(np.uint8)
-            gray = np.dot(img, [0.2125, 0.7154, 0.0721])
-            label = label * np.logical_xor(label, gray == 0)
-            label = filter_remove_small_objects(label, min_size=self.min_size).astype(np.uint8)
-            d[key] = label
+            if self.min_size:
+                label = remove_small_objects(label, min_size=self.min_size)
+            if self.min_hole:
+                label = remove_small_holes(label, area_threshold=self.min_hole)
+
+            d[key] = label.astype(np.uint8)
         return d
 
 
@@ -221,8 +218,7 @@ class AddClickGuidanced(Transform):
     def __call__(self, data):
         d = dict(data)
 
-        wsi_meta = d.get("wsi", {})
-        location = wsi_meta.get("location", (0, 0))
+        location = d.get("location", (0, 0))
         tx, ty = location[0], location[1]
 
         pos = d.get(self.foreground)

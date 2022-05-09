@@ -35,7 +35,16 @@ class Settings(BaseSettings):
     MONAI_LABEL_DICOMWEB_FETCH_BY_FRAME: bool = False
 
     MONAI_LABEL_DATASTORE_AUTO_RELOAD: bool = True
-    MONAI_LABEL_DATASTORE_FILE_EXT: List[str] = ["*.nii.gz", "*.nii", "*.nrrd", "*.jpg", "*.png", "*.tif", "*.svs"]
+    MONAI_LABEL_DATASTORE_FILE_EXT: List[str] = [
+        "*.nii.gz",
+        "*.nii",
+        "*.nrrd",
+        "*.jpg",
+        "*.png",
+        "*.tif",
+        "*.svs",
+        "*.xml",
+    ]
 
     MONAI_LABEL_SERVER_PORT: int = 8000
     MONAI_LABEL_CORS_ORIGINS: List[AnyHttpUrl] = []

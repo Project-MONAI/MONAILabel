@@ -11,6 +11,7 @@
 
 import copy
 import logging
+import multiprocessing
 import os
 import platform
 import random
@@ -232,19 +233,22 @@ class MONAILabelApp:
         request["description"] = task.description
 
         image_id = request["image"]
-        datastore = datastore if datastore else self.datastore()
-        if os.path.exists(image_id):
-            request["save_label"] = False
+        if isinstance(image_id, str):
+            datastore = datastore if datastore else self.datastore()
+            if os.path.exists(image_id):
+                request["save_label"] = False
+            else:
+                request["image"] = datastore.get_image_uri(request["image"])
+
+            if os.path.isdir(request["image"]):
+                logger.info("Input is a Directory; Consider it as DICOM")
+                logger.info(os.listdir(request["image"]))
+                request["image"] = [os.path.join(f, request["image"]) for f in os.listdir(request["image"])]
+
+            logger.debug(f"Image => {request['image']}")
         else:
-            request["image"] = datastore.get_image_uri(request["image"])
+            request["save_label"] = False
 
-        # TODO:: BUG In MONAI? Currently can not load DICOM through ITK Loader
-        if os.path.isdir(request["image"]):
-            logger.info("Input is a Directory; Consider it as DICOM")
-            logger.info(os.listdir(request["image"]))
-            request["image"] = [os.path.join(f, request["image"]) for f in os.listdir(request["image"])]
-
-        logger.debug(f"Image => {request['image']}")
         if self._infers_threadpool:
 
             def run_infer_in_thread(t, r):
@@ -610,6 +614,15 @@ class MONAILabelApp:
             datastore = datastore if datastore else self.datastore()
             image = datastore.get_image_uri(request["image"])
 
+        # Possibly region (e.g. DSA)
+        if not os.path.exists(image):
+            image = datastore.get_image(img_id, request)
+            if not isinstance(image, str):
+                request["image"] = image
+                res = self.infer(request, datastore)
+                logger.info(f"Latencies: {res.get('params', {}).get('latencies')}")
+                return res
+
         start = time.time()
         infer_tasks = create_infer_wsi_tasks(request, image)
         if len(infer_tasks) > 1:
@@ -635,7 +648,9 @@ class MONAILabelApp:
             )
 
         total = len(infer_tasks)
-        max_workers = request.get("max_workers", len(device_ids))
+        max_workers = request.get("max_workers", 0)
+        max_workers = max_workers if max_workers else max(1, multiprocessing.cpu_count() // 2)
+        max_workers = min(max_workers, multiprocessing.cpu_count())
 
         if len(infer_tasks) > 1 and (max_workers == 0 or max_workers > 1):
             logger.info(f"MultiGpu: {multi_gpu}; Using Device(s): {device_ids}; Max Workers: {max_workers}")
@@ -677,16 +692,21 @@ class MONAILabelApp:
 
         loglevel = request.get("logging", "INFO").upper()
         if output == "asap":
-            logger.debug("+++ Generating ASAP XML Annotation")
-            res_file = create_asap_annotations_xml(res_json, loglevel)
+            logger.info("+++ Generating ASAP XML Annotation")
+            res_file, total_annotations = create_asap_annotations_xml(res_json, loglevel)
         elif output == "dsa":
-            logger.debug("+++ Generating DSA JSON Annotation")
-            res_file = create_dsa_annotations_json(res_json, loglevel)
+            logger.info("+++ Generating DSA JSON Annotation")
+            res_file, total_annotations = create_dsa_annotations_json(res_json, loglevel)
         else:
-            logger.debug("+++ Return Default JSON Annotation")
+            logger.info("+++ Return Default JSON Annotation")
+            total_annotations = -1
 
         if len(infer_tasks) > 1:
-            logger.info(f"Total Time Taken: {time.time() - start:.4f}; Total Infer Time: {latency_total:.4f}")
+            logger.info(
+                f"Total Time Taken: {time.time() - start:.4f}; "
+                f"Total Infer Time: {latency_total:.4f}; "
+                f"Total Annotations: {total_annotations}"
+            )
         return {"file": res_file, "params": res_json}
 
     def _run_infer_wsi_task(self, task):
