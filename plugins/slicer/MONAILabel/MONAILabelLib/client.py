@@ -291,7 +291,13 @@ class MONAILabelUtils:
         selector = path + "/" + selector.lstrip("/")
         logging.debug(f"URI Path: {selector}")
 
-        conn = http.client.HTTPConnection(parsed.hostname, parsed.port)
+        if parsed.scheme == "https":
+            logger.debug("Using HTTPS mode")
+            # noinspection PyProtectedMember
+            conn = http.client.HTTPSConnection(parsed.hostname, parsed.port, context=ssl._create_unverified_context())
+        else:
+            conn = http.client.HTTPConnection(parsed.hostname, parsed.port)
+
         conn.request(method, selector, body, headers)
         return MONAILabelUtils.send_response(conn, content_type)
 
