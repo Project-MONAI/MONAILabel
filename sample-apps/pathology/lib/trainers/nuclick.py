@@ -23,7 +23,7 @@ from lib.handlers import TensorBoardImageHandler
 from lib.transforms import FilterImaged
 from lib.utils import split_dataset, split_nuclei_dataset
 from monai.config import KeysCollection
-from monai.handlers import from_engine
+from monai.handlers import from_engine, MeanDice
 from monai.inferers import SimpleInferer
 from monai.losses import DiceLoss
 from monai.transforms import (
@@ -133,11 +133,17 @@ class NuClick(BasicTrainTask):
             AsDiscreted(keys="pred", threshold_values=True, logit_thresh=0.5),
         ]
 
+    def val_pre_transforms(self, context: Context):
+        t = self.train_pre_transforms()
+        # drop exclusion map for AddPointGuidanceSignald
+        t[-2] = AddPointGuidanceSignald(image="image", label="label", others="others", drop_rate=1.0),
+        return t
+
     def train_key_metric(self, context: Context):
-        return {"train_acc": Accuracy(output_transform=from_engine(["pred", "label"]))}
+        return {"train_dice": MeanDice(include_background=False, output_transform=from_engine(["pred", "label"]))}
 
     def val_key_metric(self, context: Context):
-        return {"val_acc": Accuracy(output_transform=from_engine(["pred", "label"]))}
+        return {"val_dice": MeanDice(include_background=False, output_transform=from_engine(["pred", "label"]))}
 
     def val_inferer(self, context: Context):
         return SimpleInferer()
@@ -278,13 +284,14 @@ class AddPointGuidanceSignald(RandomizableTransform):
     @staticmethod
     def exclusion_map(others, jitter_range=3, drop_rate=0.5):
         point_mask = np.zeros_like(others)
+        if drop_rate == 1.0:
+            return point_mask
+
         max_x = point_mask.shape[0] - 1
         max_y = point_mask.shape[1] - 1
-
         stats = skimage.measure.regionprops(others)
         for stat in stats:
             x, y = stat.centroid
-            # random drop
             if np.random.choice([True, False], p=[drop_rate, 1 - drop_rate]):
                 continue
 
