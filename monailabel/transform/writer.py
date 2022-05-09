@@ -10,7 +10,9 @@
 # limitations under the License.
 import logging
 import tempfile
+from typing import Dict, List
 
+import nrrd
 import itk
 import numpy as np
 from monai.data import write_nifti
@@ -56,6 +58,77 @@ def write_itk(image_np, output_file, affine, dtype, compress):
         result_image.SetOrigin(origin)
 
     itk.imwrite(result_image, output_file, compress)
+
+
+
+def write_seg_nrrd(image_np: np.ndarray,
+                   output_file: str,
+                   dtype: type,
+                   affine: np.ndarray,
+                   labels: List[str],
+                   color_map: Dict[str, List[float]] = None,
+                   index_order: str = 'C',  # 'C' or 'F'
+                   space: str = 'left-posterior-superior',
+                   ) -> None:
+    """Write seg.nrrd file.
+
+    Args:
+        image_np: Image as numpy ndarray
+        output_file: Output file path that the nrrd file should be saved to
+        dtype: numpy type e.g. float32
+        affine: Affine matrix
+        labels: Labels of image segment which will be written to the nrrd header
+        color_map: Mapping from segment_name(str) to it's color e.g. {'heart': [255/255, 244/255, 209/255]}
+        index_order: Either 'C' or 'F' (see nrrd.write() documentation)
+
+    Raises:
+        ValueError: In case affine is not provided
+    """
+    if len(image_np.shape) > 2:
+        image_np = image_np.transpose().copy()
+    if dtype:
+        image_np = image_np.astype(dtype)
+
+    header = {}
+    for i, segment_name in enumerate(labels):
+        header.update({
+            f'Segment{i}_ID': segment_name,
+            f'Segment{i}_Name': segment_name,
+        })
+        if color_map is not None:
+            header[f'Segment{i}_Color'] = ' '.join(list(map(str, color_map[segment_name])))
+
+    if affine is None:
+        raise ValueError("Affine matrix has to be defined")
+
+    convert_aff_mat = np.diag([-1, -1, 1, 1])
+    kinds = ['list', 'domain', 'domain', 'domain']
+    if affine.shape[0] == 3:
+        convert_aff_mat = np.diag([-1, -1, 1])
+        kinds = ['list', 'domain', 'domain']
+    affine = convert_aff_mat @ affine
+
+    _origin_key = (slice(-1), -1)
+    origin = affine[_origin_key]
+
+    space_directions = np.array([
+        [np.nan, np.nan, np.nan],
+        affine[0, :3],
+        affine[1, :3],
+        affine[2, :3],
+    ])
+
+    header.update({
+        'kinds': kinds,
+        'space directions': space_directions,
+        'space origin': origin,
+        'space': space,
+    })
+    nrrd.write(output_file,
+               image_np,
+               header=header,
+               index_order=index_order,
+               )
 
 
 class Writer:
@@ -108,6 +181,11 @@ class Writer:
             if self.nibabel and ext.lower() in [".nii", ".nii.gz"]:
                 logger.debug("Using MONAI write_nifti...")
                 write_nifti(image_np, output_file, affine=affine, output_dtype=dtype)
+            elif ext.lower() in [".seg.nrrd"]:
+                labels = data.get("labels")
+                color_map = data.get("color_map")
+                logger.debug("Using MONAI write_seg_nrrd...")
+                write_seg_nrrd(image_np, output_file, dtype, affine, labels, color_map)
             else:
                 write_itk(image_np, output_file, affine, dtype, compress)
 
