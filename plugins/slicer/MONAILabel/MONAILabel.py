@@ -506,9 +506,9 @@ class MONAILabelWidget(ScriptedLoadableModuleWidget, VTKObservationMixin):
             self.ui.scribblesCollapsibleButton.hide()
 
         if self.info.get("trainers", {}):
-            self.ui.aclCollapsibleButton.show()
+            self.ui.trainWidget.show()
         else:
-            self.ui.aclCollapsibleButton.hide()
+            self.ui.trainWidget.hide()
 
         self.ignoreScribblesLabelChangeEvent = True
         self.ui.labelComboBox.clear()

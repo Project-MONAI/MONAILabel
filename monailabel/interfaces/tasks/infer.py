@@ -311,6 +311,7 @@ class InferTask:
             "post": round(latency_post, 2),
             "write": round(latency_write, 2),
             "total": round(latency_total, 2),
+            "transform": data.get("latencies"),
         }
 
         if result_file_name:

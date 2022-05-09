@@ -10,6 +10,7 @@
 # limitations under the License.
 import json
 import logging
+import multiprocessing
 import os
 from distutils.util import strtobool
 from typing import Any, Dict, Optional, Union
@@ -21,7 +22,7 @@ from monai.networks.nets import BasicUNet
 from monailabel.interfaces.config import TaskConfig
 from monailabel.interfaces.tasks.infer import InferTask
 from monailabel.interfaces.tasks.train import TrainTask
-from monailabel.utils.others.generic import device_list, download_file
+from monailabel.utils.others.generic import download_file
 
 logger = logging.getLogger(__name__)
 
@@ -78,7 +79,7 @@ class SegmentationNuclei(TaskConfig):
             roi_size=roi_size,
             config={
                 "label_colors": self.label_colors,
-                "max_workers": len(device_list()),
+                "max_workers": max(1, multiprocessing.cpu_count() // 2),
             },
         )
         return task
