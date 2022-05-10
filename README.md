@@ -93,7 +93,7 @@ More details refer docs: https://docs.monai.io/projects/label/en/stable/installa
 For **_prerequisites_**, other installation methods (using the default GitHub branch, using Docker, etc.), please refer
 to the [installation guide](https://docs.monai.io/projects/label/en/latest/installation.html).
 
-> Once you start the MONAI Label Server, by default server will be up and serving at http://127.0.0.1:8000/. Open the serving URL in browser. It will provide you the list of Rest APIs available. **For this, please make sure you use the HTTP protocol.** _You can provide ssl arguments to run server in HTTPS mode but this functionality is not fully verified._
+> Once you start the MONAI Label Server, by default server will be up and serving at http://127.0.0.1:8000/. Open the serving URL in browser. It will provide you the list of Rest APIs available. **For this, please make sure you use the HTTP protocol.** _You can provide ssl arguments to run server in **HTTPS mode** but this functionality is not fully verified across all clients._
 
 ## Plugins
 ### [3D Slicer](https://download.slicer.org/) (radiology)
