@@ -37,6 +37,9 @@ class SegmentationBrats(TaskConfig):
             "enhancing tumour": 3,
         }
 
+        # Number of input channels - 4 for BRATS and 1 for spleen
+        self.number_intensity_ch = 4
+
         # Model Files
         self.path = [
             os.path.join(self.model_dir, f"pretrained_{name}.pt"),  # pretrained
@@ -52,7 +55,7 @@ class SegmentationBrats(TaskConfig):
         self.spatial_size = json.loads(self.conf.get("spatial_size", "[96, 96, 64]"))
         self.network = UNETR(
             spatial_dims=3,
-            in_channels=1,
+            in_channels=self.number_intensity_ch,
             out_channels=len(self.labels) + 1,  # labels plus background
             img_size=self.spatial_size,
             feature_size=64,

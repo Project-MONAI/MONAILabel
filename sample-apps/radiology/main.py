@@ -214,7 +214,7 @@ def main():
     )
 
     home = str(Path.home())
-    studies = f"{home}/Documents/Datasets/MSD_datasets/Task01_BrainTumour/imagesTr"
+    studies = f"{home}/Documents/workspace/Datasets/multimodality-reoriented_alllabels_BRATS"
 
     parser = argparse.ArgumentParser()
     parser.add_argument("-s", "--studies", default=studies)

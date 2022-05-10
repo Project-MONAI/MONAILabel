@@ -18,9 +18,9 @@ from monai.losses import DiceCELoss
 from monai.optimizers import Novograd
 from monai.transforms import (
     Activationsd,
-    AddChanneld,
     AsDiscreted,
     CropForegroundd,
+    EnsureChannelFirstd,
     EnsureTyped,
     LoadImaged,
     NormalizeIntensityd,
@@ -74,10 +74,8 @@ class SegmentationBrats(BasicTrainTask):
     def train_pre_transforms(self, context: Context):
         return [
             LoadImaged(keys=("image", "label"), reader="ITKReader"),
-            # TRANSFORM IN PROGRESS - SHOULD AFFINE AND ORIGINAL BE CHANGED??
-            # GetSingleModalityBRATSd(keys="image"),
             NormalizeLabelsInDatasetd(keys="label", label_names=self._labels),  # Specially for missing labels
-            AddChanneld(keys=("image", "label")),
+            EnsureChannelFirstd(keys=("image", "label")),
             Spacingd(keys=("image", "label"), pixdim=(1.0, 1.0, 1.0), mode=("bilinear", "nearest")),
             CropForegroundd(keys=("image", "label"), source_key="image"),
             SpatialPadd(keys=("image", "label"), spatial_size=self.spatial_size),
@@ -115,7 +113,7 @@ class SegmentationBrats(BasicTrainTask):
     def val_pre_transforms(self, context: Context):
         return [
             LoadImaged(keys=("image", "label"), reader="ITKReader"),
-            AddChanneld(keys=("image", "label")),
+            EnsureChannelFirstd(keys=("image", "label")),
             Spacingd(keys=("image", "label"), pixdim=(1.0, 1.0, 1.0), mode=("bilinear", "nearest")),
             NormalizeIntensityd(keys="image"),
             EnsureTyped(keys=("image", "label")),

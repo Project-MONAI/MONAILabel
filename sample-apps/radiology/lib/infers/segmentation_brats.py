@@ -11,11 +11,11 @@
 from typing import Callable, Sequence
 
 # from lib.transforms.transforms_brats import GetSingleModalityBRATSd
-from monai.inferers import SlidingWindowInferer
+from monai.inferers import Inferer, SlidingWindowInferer
 from monai.transforms import (
     Activationsd,
-    AddChanneld,
     AsDiscreted,
+    EnsureChannelFirstd,
     EnsureTyped,
     KeepLargestConnectedComponentd,
     LoadImaged,
@@ -59,17 +59,17 @@ class SegmentationBrats(InferTask):
         return [
             LoadImaged(keys="image", reader="ITKReader"),
             # GetSingleModalityBRATSd(keys="image"),
-            AddChanneld(keys="image"),
+            EnsureChannelFirstd(keys="image"),
             Spacingd(keys="image", pixdim=(1.0, 1.0, 1.0)),
             NormalizeIntensityd(keys="image"),
             EnsureTyped(keys="image"),
         ]
 
-    def inferer(self, data=None) -> Callable:
+    def inferer(self, data=None) -> Inferer:
         return SlidingWindowInferer(roi_size=self.spatial_size)
 
-    # def inverse_transforms(self, data=None):
-    #     return []
+    def inverse_transforms(self, data=None):
+        return []
 
     def post_transforms(self, data=None) -> Sequence[Callable]:
         largest_cc = False if not data else data.get("largest_cc", False)
