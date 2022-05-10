@@ -254,7 +254,6 @@ def infer_wsi(app):
     from pathlib import Path
 
     home = str(Path.home())
-
     root_dir = f"{home}/Datasets/"
     image = "TCGA-02-0010-01Z-00-DX4.07de2e55-a8fe-40ee-9e98-bcb78050b9f7"
 
