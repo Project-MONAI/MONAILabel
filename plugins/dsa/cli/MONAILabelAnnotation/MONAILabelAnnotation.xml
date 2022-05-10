@@ -40,7 +40,7 @@
             <label>Model Name</label>
             <description>DeepLearning Model to Infer (For Example: deepedit_nuclei, segmentation_nuclei)</description>
             <longflag>model_name</longflag>
-            <default>deepedit_nuclei</default>
+            <default>segmentation_nuclei</default>
         </string>
         <file fileExtensions=".anot" reference="inputImageFile">
             <name>outputAnnotationFile</name>
