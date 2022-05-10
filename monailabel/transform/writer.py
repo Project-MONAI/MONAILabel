@@ -10,7 +10,7 @@
 # limitations under the License.
 import logging
 import tempfile
-from typing import Dict, List
+from typing import Dict, List, Iterable
 
 import nrrd
 import itk
@@ -88,6 +88,9 @@ def write_seg_nrrd(image_np: np.ndarray,
         image_np = image_np.transpose().copy()
     if dtype:
         image_np = image_np.astype(dtype)
+
+    if not isinstance(labels, Iterable):
+        raise ValueError("Labels have to be defined, e.g. as a list")
 
     header = {}
     for i, segment_name in enumerate(labels):

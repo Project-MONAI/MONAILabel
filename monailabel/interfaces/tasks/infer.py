@@ -433,6 +433,8 @@ class InferTask:
             data["result_extension"] = extension
         if dtype is not None:
             data["result_dtype"] = dtype
+        if self.labels is not None:
+            data["labels"] = self.labels
 
         writer = Writer(label=self.output_label_key, json=self.output_json_key)
         return writer(data)
