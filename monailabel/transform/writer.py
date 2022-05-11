@@ -70,11 +70,11 @@ def write_seg_nrrd(image_np: np.ndarray,
                    index_order: str = 'C',
                    space: str = 'left-posterior-superior',
                    ) -> None:
-    """Write multi-channel .seg.nrrd file. 
+    """Write multi-channel seg.nrrd file.
 
     Args:
         image_np: Image as numpy ndarray
-        output_file: Output file path that the nrrd file should be saved to
+        output_file: Output file path that the seg.nrrd file should be saved to
         dtype: numpy type e.g. float32
         affine: Affine matrix
         labels: Labels of image segment which will be written to the nrrd header
@@ -178,7 +178,7 @@ class Writer:
             output_file = tempfile.NamedTemporaryFile(suffix=ext).name
             logger.debug(f"Saving Image to: {output_file}")
 
-            if image_np.shape == 4 and image.np.shape[-1] > 1:
+            if image_np.shape == 4 and image_np.shape[-1] > 1:
                 if ext != ".seg.nrrd":
                     logger.debug(f"Using extension '{ext}' with multi-channel 4D label will probably fail" +
                                 "Consider to use extension '.seg.nrrd'")
