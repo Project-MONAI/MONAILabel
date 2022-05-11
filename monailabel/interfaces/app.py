@@ -679,7 +679,9 @@ class MONAILabelApp:
         latency_total = time.time() - start
         logger.debug(f"WSI Infer Time Taken: {latency_total:.4f}")
 
-        res_json["name"] = f"MONAILabel Annotations - {model}"
+        bbox = request.get("location", [0, 0])
+        bbox.extend(request.get("size", [0, 0]))
+        res_json["name"] = f"MONAILabel Annotations - {model} for {bbox}"
         res_json["description"] = task.description
         res_json["model"] = request.get("model")
         res_json["location"] = request.get("location")
@@ -710,10 +712,6 @@ class MONAILabelApp:
         return {"file": res_file, "params": res_json}
 
     def _run_infer_wsi_task(self, task):
-        tid = task["id"]
-        (row, col, tx, ty, tw, th) = task["coords"]
-        logger.debug(f"{tid} => Patch/Slide ({row}, {col}) => Location: ({tx}, {ty}); Size: {tw} x {th}")
-
         req = copy.deepcopy(task)
         req["result_write_to_file"] = False
 

@@ -70,9 +70,6 @@ def create_dsa_annotations_json(json_data, loglevel="INFO"):
         fp.write("{\n")
         fp.write(' "name": "{}",\n'.format(json_data["name"]))
         fp.write(' "description": "{}",\n'.format(json_data["description"]))
-        fp.write(' "model": "{}",\n'.format(json_data["model"]))
-        fp.write(' "location": {},\n'.format(json_data["location"]))
-        fp.write(' "size": {},\n'.format(json_data["size"]))
         fp.write(' "elements": [\n')
 
         for tid, res in enumerate(json_data["annotations"]):
