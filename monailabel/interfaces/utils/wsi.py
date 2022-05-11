@@ -22,17 +22,16 @@ logger = logging.getLogger(__name__)
 
 
 def create_infer_wsi_tasks(request, image):
+    if request.get("wsi_tiles"):
+        return create_infer_wsi_tasks_from_tiles(request, image)
+
     tile_size = request.get("tile_size", (2048, 2048))
     tile_size = [int(p) for p in tile_size]
-
-    # TODO:: Auto-Detect based on WSI dimensions instead of 3000
-    min_poly_area = request.get("min_poly_area", 3000)
 
     location = request.get("location", [0, 0])
     size = request.get("size", [0, 0])
     bbox = [[location[0], location[1]], [location[0] + size[0], location[1] + size[1]]]
     bbox = bbox if bbox and sum(bbox[0]) + sum(bbox[1]) > 0 else None
-    level = request.get("level", 0)
 
     if platform.system() == "Windows":
         cdll.LoadLibrary(str(ctypes.util.find_library("libopenslide-0.dll")))
@@ -74,13 +73,32 @@ def create_infer_wsi_tasks(request, image):
                     "id": count,
                     "image": image,
                     "tile_size": tile_size,
-                    "min_poly_area": min_poly_area,
-                    "coords": (row, col, tx, ty, tw, th),
                     "location": (tx, ty),
-                    "level": level,
                     "size": (tw, th),
                 }
             )
             infer_tasks.append(task)
             count += 1
+    return infer_tasks
+
+
+def create_infer_wsi_tasks_from_tiles(request, image):
+    request = copy.deepcopy(request)
+    tiles = request.pop("wsi_tiles")
+
+    infer_tasks = []
+    for count, tile in enumerate(tiles):
+        tx, ty = tile["location"]
+        tw, th = tile["size"]
+        task = copy.deepcopy(request)
+        task.update(
+            {
+                "id": count,
+                "image": image,
+                "tile_size": (tw, th),
+                "location": (tx, ty),
+                "size": (tw, th),
+            }
+        )
+        infer_tasks.append(task)
     return infer_tasks

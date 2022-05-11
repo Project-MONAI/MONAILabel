@@ -94,17 +94,20 @@ public class RunInference implements Runnable {
 			list.addIntParameter("Width", "Width", bbox[2]);
 			list.addIntParameter("Height", "Height", bbox[3]);
 
+			boolean override = !info.models.get(selectedModel).nuclick;
+			list.addBooleanParameter("Override", "Override", override);
+
 			if (Dialogs.showParameterDialog("MONAILabel", list)) {
 				String model = (String) list.getChoiceParameterValue("Model");
 				bbox[0] = list.getIntParameterValue("X").intValue();
 				bbox[1] = list.getIntParameterValue("Y").intValue();
 				bbox[2] = list.getIntParameterValue("Width").intValue();
 				bbox[3] = list.getIntParameterValue("Height").intValue();
+				override = list.getBooleanParameterValue("Override").booleanValue();
 
 				selectedModel = model;
 				selectedBBox = bbox;
-				boolean isNuClick = info.models.get(model).nuclick;
-				runInference(model, new HashSet<String>(Arrays.asList(labels.get(model))), bbox, imageData, isNuClick);
+				runInference(model, new HashSet<String>(Arrays.asList(labels.get(model))), bbox, imageData, override);
 			}
 		} catch (Exception ex) {
 			ex.printStackTrace();
@@ -145,9 +148,9 @@ public class RunInference implements Runnable {
 	}
 
 	private void runInference(String model, Set<String> labels, int[] bbox, ImageData<BufferedImage> imageData,
-			boolean isNuClick) throws SAXException, IOException, ParserConfigurationException, InterruptedException {
+			boolean override) throws SAXException, IOException, ParserConfigurationException, InterruptedException {
 		logger.info("MONAILabel Annotation - Run Inference...");
-		logger.info("Model: " + model + "; IsNuClick: " + isNuClick + "; Labels: " + labels);
+		logger.info("Model: " + model + "; override: " + override + "; Labels: " + labels);
 
 		String image = Utils.getNameWithoutExtension(imageData.getServerPath());
 
@@ -163,7 +166,7 @@ public class RunInference implements Runnable {
 
 		Document dom = MonaiLabelClient.infer(model, image, req);
 		NodeList annotation_list = dom.getElementsByTagName("Annotation");
-		int count = updateAnnotations(labels, annotation_list, roi, imageData, !isNuClick);
+		int count = updateAnnotations(labels, annotation_list, roi, imageData, override);
 
 		// Update hierarchy to see changes in QuPath's hierarchy
 		QP.fireHierarchyUpdate(imageData.getHierarchy());

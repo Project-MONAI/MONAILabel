@@ -11,6 +11,7 @@
 
 import copy
 import logging
+import multiprocessing
 import os
 import platform
 import random
@@ -647,7 +648,9 @@ class MONAILabelApp:
             )
 
         total = len(infer_tasks)
-        max_workers = request.get("max_workers", len(device_ids))
+        max_workers = request.get("max_workers", 0)
+        max_workers = max_workers if max_workers else max(1, multiprocessing.cpu_count() // 2)
+        max_workers = min(max_workers, multiprocessing.cpu_count())
 
         if len(infer_tasks) > 1 and (max_workers == 0 or max_workers > 1):
             logger.info(f"MultiGpu: {multi_gpu}; Using Device(s): {device_ids}; Max Workers: {max_workers}")
@@ -676,7 +679,9 @@ class MONAILabelApp:
         latency_total = time.time() - start
         logger.debug(f"WSI Infer Time Taken: {latency_total:.4f}")
 
-        res_json["name"] = f"MONAILabel Annotations - {model}"
+        bbox = request.get("location", [0, 0])
+        bbox.extend(request.get("size", [0, 0]))
+        res_json["name"] = f"MONAILabel Annotations - {model} for {bbox}"
         res_json["description"] = task.description
         res_json["model"] = request.get("model")
         res_json["location"] = request.get("location")
@@ -689,23 +694,24 @@ class MONAILabelApp:
 
         loglevel = request.get("logging", "INFO").upper()
         if output == "asap":
-            logger.debug("+++ Generating ASAP XML Annotation")
-            res_file = create_asap_annotations_xml(res_json, loglevel)
+            logger.info("+++ Generating ASAP XML Annotation")
+            res_file, total_annotations = create_asap_annotations_xml(res_json, loglevel)
         elif output == "dsa":
-            logger.debug("+++ Generating DSA JSON Annotation")
-            res_file = create_dsa_annotations_json(res_json, loglevel)
+            logger.info("+++ Generating DSA JSON Annotation")
+            res_file, total_annotations = create_dsa_annotations_json(res_json, loglevel)
         else:
-            logger.debug("+++ Return Default JSON Annotation")
+            logger.info("+++ Return Default JSON Annotation")
+            total_annotations = -1
 
         if len(infer_tasks) > 1:
-            logger.info(f"Total Time Taken: {time.time() - start:.4f}; Total Infer Time: {latency_total:.4f}")
+            logger.info(
+                f"Total Time Taken: {time.time() - start:.4f}; "
+                f"Total Infer Time: {latency_total:.4f}; "
+                f"Total Annotations: {total_annotations}"
+            )
         return {"file": res_file, "params": res_json}
 
     def _run_infer_wsi_task(self, task):
-        tid = task["id"]
-        (row, col, tx, ty, tw, th) = task["coords"]
-        logger.debug(f"{tid} => Patch/Slide ({row}, {col}) => Location: ({tx}, {ty}); Size: {tw} x {th}")
-
         req = copy.deepcopy(task)
         req["result_write_to_file"] = False
 
