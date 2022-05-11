@@ -85,8 +85,7 @@ def write_seg_nrrd(image_np: np.ndarray,
         ValueError: In case affine is not provided
         ValueError: In case labels are not provided
     """
-    if len(image_np.shape) > 2:
-        image_np = image_np.transpose().copy()
+    image_np = image_np.transpose().copy()
     if dtype:
         image_np = image_np.astype(dtype)
 
@@ -105,11 +104,9 @@ def write_seg_nrrd(image_np: np.ndarray,
     if affine is None:
         raise ValueError("Affine matrix has to be defined")
 
-    convert_aff_mat = np.diag([-1, -1, 1, 1])
     kinds = ['list', 'domain', 'domain', 'domain']
-    if affine.shape[0] == 3:
-        convert_aff_mat = np.diag([-1, -1, 1])
-        kinds = ['list', 'domain', 'domain']
+
+    convert_aff_mat = np.diag([-1, -1, 1, 1])
     affine = convert_aff_mat @ affine
 
     _origin_key = (slice(-1), -1)
