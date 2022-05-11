@@ -91,44 +91,4 @@
             <default>1024</default>
         </double>
     </parameters>
-    <parameters advanced="true">
-        <label>Dask parameters</label>
-        <description>Dask parameters</description>
-        <string>
-            <name>scheduler</name>
-            <label>Scheduler Address</label>
-            <description>Address of a dask scheduler in the format '127.0.0.1:8786'. Not passing this parameter sets up
-                a dask cluster on the local machine. 'multiprocessing' uses Python multiprocessing. 'multithreading'
-                uses Python multiprocessing in threaded mode.
-            </description>
-            <longflag>scheduler</longflag>
-            <default></default>
-        </string>
-        <integer>
-            <name>num_workers</name>
-            <label>Number of workers</label>
-            <description>Number of dask workers to start while setting up a local cluster internally. If a negative
-                value is specified then the number of workers is set to number of cpu cores on the machine minus the
-                number of workers specified.
-            </description>
-            <longflag>num_workers</longflag>
-            <default>1</default>
-        </integer>
-        <integer>
-            <name>num_threads_per_worker</name>
-            <label>Number of threads per worker</label>
-            <description>Number of threads to use per worker while setting up a local cluster internally. Must be a
-                positive integer >= 1.
-            </description>
-            <longflag>num_threads_per_worker</longflag>
-            <default>1</default>
-        </integer>
-        <integer>
-            <name>tile_grouping</name>
-            <label>Tile grouping</label>
-            <longflag>tileGrouping</longflag>
-            <description>Number of tiles to process as part of a single task</description>
-            <default>256</default>
-        </integer>
-    </parameters>
 </executable>
