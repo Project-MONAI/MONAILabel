@@ -49,23 +49,22 @@
             <channel>output</channel>
             <index>1</index>
         </file>
+        <double>
+            <name>min_fgnd_frac</name>
+            <label>Minimum foreground fraction</label>
+            <description>The minimum amount of foreground (example: 0.1) that must be present in a tile for it to be
+                analyzed. Use negative value to disable it.
+            </description>
+            <longflag>min_fgnd_frac</longflag>
+            <default>-1</default>
+        </double>
         <float>
             <name>min_poly_area</name>
             <label>Min Polygon Area</label>
-            <index>2</index>
             <description>Filter Polygons based on min area size</description>
+            <longflag>min_poly_area</longflag>
             <default>40</default>
         </float>
-        <string-enumeration>
-            <name>loglevel</name>
-            <label>Log Level</label>
-            <description>MONAILabel Server Log Level</description>
-            <longflag>loglevel</longflag>
-            <element>INFO</element>
-            <element>WARN</element>
-            <element>ERROR</element>
-            <default>ERROR</default>
-        </string-enumeration>
         <string>
             <name>extra_params</name>
             <label>Extra Params (JSON)</label>
@@ -91,14 +90,5 @@
             <longflag>analysis_tile_size</longflag>
             <default>1024</default>
         </double>
-        <integer>
-            <name>max_workers</name>
-            <label>Number of workers</label>
-            <description>Number of workers that shall be used by MONAILabel server to run inference on wsi patches. Use
-                zero to allow server to decide based on number of cpus.
-            </description>
-            <longflag>max_workers</longflag>
-            <default>0</default>
-        </integer>
     </parameters>
 </executable>
