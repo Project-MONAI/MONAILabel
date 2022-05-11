@@ -181,15 +181,18 @@ class Writer:
             output_file = tempfile.NamedTemporaryFile(suffix=ext).name
             logger.debug(f"Saving Image to: {output_file}")
 
-            # Issue with slicer:: https://discourse.itk.org/t/saving-non-orthogonal-volume-in-nifti-format/2760/22
-            if self.nibabel and ext.lower() in [".nii", ".nii.gz"]:
-                logger.debug("Using MONAI write_nifti...")
-                write_nifti(image_np, output_file, affine=affine, output_dtype=dtype)
-            elif ext.lower() in [".seg.nrrd"]:
+            if image_np.shape == 4 and image.np.shape[-1] > 1:
+                if ext != ".seg.nrrd":
+                    logger.debug(f"Using extension '{ext}' with multi-channel 4D label will probably fail" +
+                                "Consider to use extension '.seg.nrrd'")
                 labels = data.get("labels")
                 color_map = data.get("color_map")
-                logger.debug("Using MONAI write_seg_nrrd...")
+                logger.debug("Using write_seg_nrrd...")
                 write_seg_nrrd(image_np, output_file, dtype, affine, labels, color_map)
+            # Issue with slicer:: https://discourse.itk.org/t/saving-non-orthogonal-volume-in-nifti-format/2760/22
+            elif self.nibabel and ext.lower() in [".nii", ".nii.gz"]:
+                logger.debug("Using MONAI write_nifti...")
+                write_nifti(image_np, output_file, affine=affine, output_dtype=dtype)
             else:
                 write_itk(image_np, output_file, affine, dtype, compress)
 
