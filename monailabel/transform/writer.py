@@ -70,7 +70,7 @@ def write_seg_nrrd(image_np: np.ndarray,
                    index_order: str = 'C',
                    space: str = 'left-posterior-superior',
                    ) -> None:
-    """Write seg.nrrd file.
+    """Write multi-channel .seg.nrrd file. 
 
     Args:
         image_np: Image as numpy ndarray
@@ -83,6 +83,7 @@ def write_seg_nrrd(image_np: np.ndarray,
 
     Raises:
         ValueError: In case affine is not provided
+        ValueError: In case labels are not provided
     """
     if len(image_np.shape) > 2:
         image_np = image_np.transpose().copy()
