@@ -162,7 +162,7 @@ def main():
 
     run_train = True
     home = str(Path.home())
-    studies = f"{home}/Datasets/pannukeF"
+    studies = f"{home}/Datasets/Pathology"
 
     parser = argparse.ArgumentParser()
     parser.add_argument("-s", "--studies", default=studies)
@@ -171,7 +171,7 @@ def main():
     app_dir = os.path.dirname(__file__)
     studies = args.studies
 
-    app = MyApp(app_dir, studies, {"roi_size": "[1024,1024]", "preload": "false"})
+    app = MyApp(app_dir, studies, {"roi_size": "[1024,1024]", "preload": "true"})
     if run_train:
         train_nuclick(app)
     else:
@@ -250,12 +250,10 @@ def infer_nuclick(app):
 
 
 def infer_wsi(app):
-    import json
     import shutil
     from pathlib import Path
 
     home = str(Path.home())
-
     root_dir = f"{home}/Datasets/"
     image = "TCGA-02-0010-01Z-00-DX4.07de2e55-a8fe-40ee-9e98-bcb78050b9f7"
 
@@ -278,15 +276,14 @@ def infer_wsi(app):
             "min_poly_area": 40,
             "gpus": "all",
             "multi_gpu": True,
-            "max_workers": 8,
         }
     )
 
-    label_json = os.path.join(root_dir, f"{image}.json")
-    logger.info(f"Writing Label JSON: {label_json}")
-    with open(label_json, "w") as fp:
-        json.dump(res["params"], fp)
-
+    # label_json = os.path.join(root_dir, f"{image}.json")
+    # logger.info(f"Writing Label JSON: {label_json}")
+    # with open(label_json, "w") as fp:
+    #     json.dump(res["params"], fp)
+    #
     if output == "asap":
         label_xml = os.path.join(root_dir, f"{image}.xml")
         shutil.copy(res["file"], label_xml)

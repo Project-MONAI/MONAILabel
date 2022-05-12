@@ -64,7 +64,7 @@ class SegmentationNuclei(InferTask):
 
     def pre_transforms(self, data=None) -> Sequence[Callable]:
         return [
-            LoadImagePatchd(keys="image", conversion="RGB", dtype=np.uint8),
+            LoadImagePatchd(keys="image", conversion="RGB", dtype=np.uint8, padding=False),
             FilterImaged(keys="image"),
             AsChannelFirstd(keys="image"),
             ScaleIntensityRangeD(keys="image", a_min=0.0, a_max=255.0, b_min=-1.0, b_max=1.0),
@@ -78,7 +78,7 @@ class SegmentationNuclei(InferTask):
             SqueezeDimd(keys="pred", dim=0),
             ToNumpyd(keys=("image", "pred")),
             PostFilterLabeld(keys="pred", image="image"),
-            FindContoursd(keys="pred", labels=self.labels),
+            FindContoursd(keys="pred", labels=self.labels, max_poly_area=128 * 128),
         ]
 
     def writer(self, data, extension=None, dtype=None):

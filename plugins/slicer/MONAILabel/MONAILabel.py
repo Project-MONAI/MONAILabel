@@ -1578,85 +1578,98 @@ class MONAILabelWidget(ScriptedLoadableModuleWidget, VTKObservationMixin):
                     segmentation.AddEmptySegment(label, label, self.getLabelColor(label))
             return True
 
-        labels = [label for label in labels if label != "background"]
-        print(f"Update Segmentation Mask using Labels: {labels}")
+        if in_file.endswith(".seg.nrrd") and self.file_ext == ".seg.nrrd":
+            source_node = slicer.modules.segmentations.logic().LoadSegmentationFromFile(in_file, False)
+            destination_node = segmentationNode
+            destination_segmentations = destination_node.GetSegmentation()
+            source_segmentations = source_node.GetSegmentation()
 
-        # segmentId, segment = self.currentSegment()
-        labelImage = sitk.ReadImage(in_file)
-        labelmapVolumeNode = sitkUtils.PushVolumeToSlicer(labelImage, None, className="vtkMRMLLabelMapVolumeNode")
+            destination_segmentations.DeepCopy(source_segmentations)
 
-        existing_label_ids = {}
-        for label in labels:
-            id = segmentation.GetSegmentIdBySegmentName(label)
-            if id:
-                existing_label_ids[label] = id
+            if self._volumeNode:
+                destination_node.SetReferenceImageGeometryParameterFromVolumeNode(self._volumeNode)
 
-        freeze = [freeze] if freeze and isinstance(freeze, str) else freeze
-        print(f"Import only Freezed label: {freeze}")
+            slicer.mrmlScene.RemoveNode(source_node)
+        else:
+            labels = [label for label in labels if label != "background"]
+            print(f"Update Segmentation Mask using Labels: {labels}")
 
-        numberOfExistingSegments = segmentation.GetNumberOfSegments()
-        slicer.modules.segmentations.logic().ImportLabelmapToSegmentationNode(labelmapVolumeNode, segmentationNode)
-        slicer.mrmlScene.RemoveNode(labelmapVolumeNode)
+            # segmentId, segment = self.currentSegment()
+            labelImage = sitk.ReadImage(in_file)
+            labelmapVolumeNode = sitkUtils.PushVolumeToSlicer(labelImage, None, className="vtkMRMLLabelMapVolumeNode")
 
-        numberOfAddedSegments = segmentation.GetNumberOfSegments() - numberOfExistingSegments
-        logging.debug(f"Adding {numberOfAddedSegments} segments")
+            existing_label_ids = {}
+            for label in labels:
+                id = segmentation.GetSegmentIdBySegmentName(label)
+                if id:
+                    existing_label_ids[label] = id
 
-        addedSegmentIds = [
-            segmentation.GetNthSegmentID(numberOfExistingSegments + i) for i in range(numberOfAddedSegments)
-        ]
-        for i, segmentId in enumerate(addedSegmentIds):
-            segment = segmentation.GetSegment(segmentId)
-            print(f"Setting new segmentation with id: {segmentId} => {segment.GetName()}")
+            freeze = [freeze] if freeze and isinstance(freeze, str) else freeze
+            print(f"Import only Freezed label: {freeze}")
 
-            label = labels[i] if i < len(labels) else f"unknown {i}"
-            # segment.SetName(label)
-            # segment.SetColor(self.getLabelColor(label))
+            numberOfExistingSegments = segmentation.GetNumberOfSegments()
+            slicer.modules.segmentations.logic().ImportLabelmapToSegmentationNode(labelmapVolumeNode, segmentationNode)
+            slicer.mrmlScene.RemoveNode(labelmapVolumeNode)
 
-            if freeze and label not in freeze:
-                print(f"Discard label update for: {label}")
-            elif label in existing_label_ids:
-                segmentEditorWidget = slicer.modules.segmenteditor.widgetRepresentation().self().editor
-                segmentEditorWidget.setSegmentationNode(segmentationNode)
-                segmentEditorWidget.setMasterVolumeNode(self._volumeNode)
-                segmentEditorWidget.setCurrentSegmentID(existing_label_ids[label])
+            numberOfAddedSegments = segmentation.GetNumberOfSegments() - numberOfExistingSegments
+            logging.debug(f"Adding {numberOfAddedSegments} segments")
 
-                effect = segmentEditorWidget.effectByName("Logical operators")
-                labelmap = slicer.vtkOrientedImageData()
-                segmentationNode.GetBinaryLabelmapRepresentation(segmentId, labelmap)
+            addedSegmentIds = [
+                segmentation.GetNthSegmentID(numberOfExistingSegments + i) for i in range(numberOfAddedSegments)
+            ]
+            for i, segmentId in enumerate(addedSegmentIds):
+                segment = segmentation.GetSegment(segmentId)
+                print(f"Setting new segmentation with id: {segmentId} => {segment.GetName()}")
 
-                if sliceIndex:
-                    selectedSegmentLabelmap = effect.selectedSegmentLabelmap()
-                    dims = selectedSegmentLabelmap.GetDimensions()
-                    count = 0
-                    for x in range(dims[0]):
-                        for y in range(dims[1]):
-                            if selectedSegmentLabelmap.GetScalarComponentAsDouble(x, y, sliceIndex, 0):
-                                count = count + 1
-                            selectedSegmentLabelmap.SetScalarComponentFromDouble(x, y, sliceIndex, 0, 0)
+                label = labels[i] if i < len(labels) else f"unknown {i}"
+                # segment.SetName(label)
+                # segment.SetColor(self.getLabelColor(label))
 
-                    logging.debug(f"Total Non Zero: {count}")
+                if freeze and label not in freeze:
+                    print(f"Discard label update for: {label}")
+                elif label in existing_label_ids:
+                    segmentEditorWidget = slicer.modules.segmenteditor.widgetRepresentation().self().editor
+                    segmentEditorWidget.setSegmentationNode(segmentationNode)
+                    segmentEditorWidget.setMasterVolumeNode(self._volumeNode)
+                    segmentEditorWidget.setCurrentSegmentID(existing_label_ids[label])
 
-                    # Clear the Slice
-                    if count:
+                    effect = segmentEditorWidget.effectByName("Logical operators")
+                    labelmap = slicer.vtkOrientedImageData()
+                    segmentationNode.GetBinaryLabelmapRepresentation(segmentId, labelmap)
+
+                    if sliceIndex:
+                        selectedSegmentLabelmap = effect.selectedSegmentLabelmap()
+                        dims = selectedSegmentLabelmap.GetDimensions()
+                        count = 0
+                        for x in range(dims[0]):
+                            for y in range(dims[1]):
+                                if selectedSegmentLabelmap.GetScalarComponentAsDouble(x, y, sliceIndex, 0):
+                                    count = count + 1
+                                selectedSegmentLabelmap.SetScalarComponentFromDouble(x, y, sliceIndex, 0, 0)
+
+                        logging.debug(f"Total Non Zero: {count}")
+
+                        # Clear the Slice
+                        if count:
+                            effect.modifySelectedSegmentByLabelmap(
+                                selectedSegmentLabelmap, slicer.qSlicerSegmentEditorAbstractEffect.ModificationModeSet
+                            )
+
+                        # Union label map
                         effect.modifySelectedSegmentByLabelmap(
-                            selectedSegmentLabelmap, slicer.qSlicerSegmentEditorAbstractEffect.ModificationModeSet
+                            labelmap, slicer.qSlicerSegmentEditorAbstractEffect.ModificationModeAdd
+                        )
+                    else:
+                        # adding bypass masking to not overwrite other layers,
+                        # needed for preserving scribbles during updates
+                        # help from: https://github.com/Slicer/Slicer/blob/master
+                        #            /Modules/Loadable/Segmentations/EditorEffects/Python/SegmentEditorLogicalEffect.py
+                        bypassMask = True
+                        effect.modifySelectedSegmentByLabelmap(
+                            labelmap, slicer.qSlicerSegmentEditorAbstractEffect.ModificationModeSet, bypassMask
                         )
 
-                    # Union label map
-                    effect.modifySelectedSegmentByLabelmap(
-                        labelmap, slicer.qSlicerSegmentEditorAbstractEffect.ModificationModeAdd
-                    )
-                else:
-                    # adding bypass masking to not overwrite other layers,
-                    # needed for preserving scribbles during updates
-                    # help from: https://github.com/Slicer/Slicer/blob/master
-                    #            /Modules/Loadable/Segmentations/EditorEffects/Python/SegmentEditorLogicalEffect.py
-                    bypassMask = True
-                    effect.modifySelectedSegmentByLabelmap(
-                        labelmap, slicer.qSlicerSegmentEditorAbstractEffect.ModificationModeSet, bypassMask
-                    )
-
-            segmentationNode.RemoveSegment(segmentId)
+                segmentationNode.RemoveSegment(segmentId)
 
         self.showSegmentationsIn3D()
         logging.info(f"Time consumed by updateSegmentationMask: {time.time() - start:3.1f}")

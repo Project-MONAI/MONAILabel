@@ -33,14 +33,14 @@
             <label>MONAILabel Address</label>
             <description>Address of a monailabel address in the format 'http://127.0.0.1:8000/'.</description>
             <longflag>server</longflag>
-            <default>http://10.117.18.128:8000/</default>
+            <default>http://10.117.16.216:8000/</default>
         </string>
         <string>
             <name>model_name</name>
             <label>Model Name</label>
             <description>DeepLearning Model to Infer (For Example: deepedit_nuclei, segmentation_nuclei)</description>
             <longflag>model_name</longflag>
-            <default>deepedit_nuclei</default>
+            <default>segmentation_nuclei</default>
         </string>
         <file fileExtensions=".anot" reference="inputImageFile">
             <name>outputAnnotationFile</name>
@@ -49,23 +49,22 @@
             <channel>output</channel>
             <index>1</index>
         </file>
+        <double>
+            <name>min_fgnd_frac</name>
+            <label>Minimum foreground fraction</label>
+            <description>The minimum amount of foreground (example: 0.1) that must be present in a tile for it to be
+                analyzed. Use negative value to disable it.
+            </description>
+            <longflag>min_fgnd_frac</longflag>
+            <default>-1</default>
+        </double>
         <float>
             <name>min_poly_area</name>
             <label>Min Polygon Area</label>
-            <index>2</index>
             <description>Filter Polygons based on min area size</description>
+            <longflag>min_poly_area</longflag>
             <default>40</default>
         </float>
-        <string-enumeration>
-            <name>loglevel</name>
-            <label>Log Level</label>
-            <description>MONAILabel Server Log Level</description>
-            <longflag>loglevel</longflag>
-            <element>INFO</element>
-            <element>WARN</element>
-            <element>ERROR</element>
-            <default>ERROR</default>
-        </string-enumeration>
         <string>
             <name>extra_params</name>
             <label>Extra Params (JSON)</label>
@@ -82,22 +81,14 @@
             <label>Analysis Level of Image</label>
             <description>Analysis Level of Image</description>
             <longflag>analysis_level</longflag>
-            <default>1</default>
+            <default>0</default>
         </integer>
         <double>
             <name>analysis_tile_size</name>
             <label>Analysis Tile Size</label>
             <description>Tile size for blockwise analysis</description>
             <longflag>analysis_tile_size</longflag>
-            <default>2048</default>
+            <default>1024</default>
         </double>
-        <integer>
-            <name>max_workers</name>
-            <label>Number of workers</label>
-            <description>Number of workers that shall be used by MONAILabel server to run inference on wsi patches
-            </description>
-            <longflag>max_workers</longflag>
-            <default>8</default>
-        </integer>
     </parameters>
 </executable>
