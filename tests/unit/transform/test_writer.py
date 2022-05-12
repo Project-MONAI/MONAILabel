@@ -19,6 +19,8 @@ WRITER_DATA = [
     },
 ]
 
+MULTI_CHANNEL_DATA = np.array([[[[1, 0], [0, 1], [1, 0]], [[0, 1], [1, 0], [0, 1]]]]).astype(np.float32)
+
 COLOR_MAP = {
     # according to getLabelColor() [https://github.com/Project-MONAI/MONAILabel/blob/6cc72c542c9bc6c5181af89550e7e397537d74e3/plugins/slicer/MONAILabel/MONAILabel.py#L1485] # noqa
     'lung': [128/255, 174/255, 128/255],  # green
@@ -39,7 +41,8 @@ class TestWriter(unittest.TestCase):
     @parameterized.expand([WRITER_DATA])
     def test_seg_nrrd(self, args, input_data):
         args.update({"nibabel": False})
-        input_data["image_path"] = "fakepath.seg.nrrd"
+        input_data["pred"] = MULTI_CHANNEL_DATA
+        input_data["result_extension"] = ".seg.nrrd"
         input_data["labels"] = ["heart", "lung"]
         input_data["color_map"] = COLOR_MAP
 
@@ -60,7 +63,7 @@ class TestWriter(unittest.TestCase):
         self.assertEqual(header['Segment1_ID'], 'lung')
         self.assertEqual(header['Segment1_Color'], " ".join(map(str, COLOR_MAP['lung'])))
 
-        file_ext = "".join(pathlib.Path(input_data["image_path"]).suffixes)
+        file_ext = "".join(pathlib.Path(output_file).suffixes)
         self.assertIn(file_ext.lower(), [".seg.nrrd"])
 
     @parameterized.expand([WRITER_DATA])
