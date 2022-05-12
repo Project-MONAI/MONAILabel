@@ -10,10 +10,10 @@
 # limitations under the License.
 import logging
 import tempfile
-from typing import Dict, List, Iterable
+from typing import Dict, Iterable, List
 
-import nrrd
 import itk
+import nrrd
 import numpy as np
 from monai.data import write_nifti
 
@@ -60,16 +60,16 @@ def write_itk(image_np, output_file, affine, dtype, compress):
     itk.imwrite(result_image, output_file, compress)
 
 
-
-def write_seg_nrrd(image_np: np.ndarray,
-                   output_file: str,
-                   dtype: type,
-                   affine: np.ndarray,
-                   labels: List[str],
-                   color_map: Dict[str, List[float]] = None,
-                   index_order: str = 'C',
-                   space: str = 'left-posterior-superior',
-                   ) -> None:
+def write_seg_nrrd(
+    image_np: np.ndarray,
+    output_file: str,
+    dtype: type,
+    affine: np.ndarray,
+    labels: List[str],
+    color_map: Dict[str, List[float]] = None,
+    index_order: str = "C",
+    space: str = "left-posterior-superior",
+) -> None:
     """Write multi-channel seg.nrrd file.
 
     Args:
@@ -94,17 +94,19 @@ def write_seg_nrrd(image_np: np.ndarray,
 
     header = {}
     for i, segment_name in enumerate(labels):
-        header.update({
-            f'Segment{i}_ID': segment_name,
-            f'Segment{i}_Name': segment_name,
-        })
+        header.update(
+            {
+                f"Segment{i}_ID": segment_name,
+                f"Segment{i}_Name": segment_name,
+            }
+        )
         if color_map is not None:
-            header[f'Segment{i}_Color'] = ' '.join(list(map(str, color_map[segment_name])))
+            header[f"Segment{i}_Color"] = " ".join(list(map(str, color_map[segment_name])))
 
     if affine is None:
         raise ValueError("Affine matrix has to be defined")
 
-    kinds = ['list', 'domain', 'domain', 'domain']
+    kinds = ["list", "domain", "domain", "domain"]
 
     convert_aff_mat = np.diag([-1, -1, 1, 1])
     affine = convert_aff_mat @ affine
@@ -112,24 +114,29 @@ def write_seg_nrrd(image_np: np.ndarray,
     _origin_key = (slice(-1), -1)
     origin = affine[_origin_key]
 
-    space_directions = np.array([
-        [np.nan, np.nan, np.nan],
-        affine[0, :3],
-        affine[1, :3],
-        affine[2, :3],
-    ])
+    space_directions = np.array(
+        [
+            [np.nan, np.nan, np.nan],
+            affine[0, :3],
+            affine[1, :3],
+            affine[2, :3],
+        ]
+    )
 
-    header.update({
-        'kinds': kinds,
-        'space directions': space_directions,
-        'space origin': origin,
-        'space': space,
-    })
-    nrrd.write(output_file,
-               image_np,
-               header=header,
-               index_order=index_order,
-               )
+    header.update(
+        {
+            "kinds": kinds,
+            "space directions": space_directions,
+            "space origin": origin,
+            "space": space,
+        }
+    )
+    nrrd.write(
+        output_file,
+        image_np,
+        header=header,
+        index_order=index_order,
+    )
 
 
 class Writer:
@@ -180,8 +187,10 @@ class Writer:
 
             if self.is_multichannel_image(image_np):
                 if ext != ".seg.nrrd":
-                    logger.debug(f"Using extension '{ext}' with multi-channel 4D label will probably fail" +
-                                "Consider to use extension '.seg.nrrd'")
+                    logger.debug(
+                        f"Using extension '{ext}' with multi-channel 4D label will probably fail"
+                        + "Consider to use extension '.seg.nrrd'"
+                    )
                 labels = data.get("labels")
                 color_map = data.get("color_map")
                 logger.debug("Using write_seg_nrrd...")
