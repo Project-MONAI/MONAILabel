@@ -178,7 +178,7 @@ class Writer:
             output_file = tempfile.NamedTemporaryFile(suffix=ext).name
             logger.debug(f"Saving Image to: {output_file}")
 
-            if image_np.shape == 4 and image_np.shape[-1] > 1:
+            if len(image_np.shape == 4) and image_np.shape[-1] > 1:
                 if ext != ".seg.nrrd":
                     logger.debug(f"Using extension '{ext}' with multi-channel 4D label will probably fail" +
                                 "Consider to use extension '.seg.nrrd'")
