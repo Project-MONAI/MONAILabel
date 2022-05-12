@@ -160,7 +160,7 @@ def main():
         datefmt="%Y-%m-%d %H:%M:%S",
     )
 
-    run_train = True
+    run_train = False
     home = str(Path.home())
     studies = f"{home}/Datasets/Pathology"
 
@@ -257,7 +257,7 @@ def infer_wsi(app):
     root_dir = f"{home}/Datasets/"
     image = "TCGA-02-0010-01Z-00-DX4.07de2e55-a8fe-40ee-9e98-bcb78050b9f7"
 
-    output = "asap"
+    output = "dsa"
 
     # slide = openslide.OpenSlide(f"{app.studies}/{image}.svs")
     # img = slide.read_region((7737, 20086), 0, (2048, 2048)).convert("RGB")
