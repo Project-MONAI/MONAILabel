@@ -178,7 +178,7 @@ class Writer:
             output_file = tempfile.NamedTemporaryFile(suffix=ext).name
             logger.debug(f"Saving Image to: {output_file}")
 
-            if len(image_np.shape == 4) and image_np.shape[-1] > 1:
+            if self.is_multichannel_image(image_np):
                 if ext != ".seg.nrrd":
                     logger.debug(f"Using extension '{ext}' with multi-channel 4D label will probably fail" +
                                 "Consider to use extension '.seg.nrrd'")
@@ -194,6 +194,9 @@ class Writer:
                 write_itk(image_np, output_file, affine, dtype, compress)
 
         return output_file, output_json
+
+    def is_multichannel_image(self, image_np):
+        return len(image_np.shape) == 4 and image_np.shape[-1] > 1
 
 
 class ClassificationWriter:
