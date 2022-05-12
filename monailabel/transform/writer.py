@@ -10,7 +10,7 @@
 # limitations under the License.
 import logging
 import tempfile
-from typing import Dict, Iterable, List
+from typing import Any, Dict, Iterable, List, Optional
 
 import itk
 import nrrd
@@ -66,7 +66,7 @@ def write_seg_nrrd(
     dtype: type,
     affine: np.ndarray,
     labels: List[str],
-    color_map: Dict[str, List[float]] = None,
+    color_map: Optional[Dict[str, List[float]]] = None,
     index_order: str = "C",
     space: str = "left-posterior-superior",
 ) -> None:
@@ -92,7 +92,7 @@ def write_seg_nrrd(
     if not isinstance(labels, Iterable):
         raise ValueError("Labels have to be defined, e.g. as a list")
 
-    header = {}
+    header: Dict[str, Any] = {}
     for i, segment_name in enumerate(labels):
         header.update(
             {
