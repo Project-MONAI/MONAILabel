@@ -47,12 +47,12 @@ class SegmentationBrats(TaskConfig):
         ]
 
         # Download PreTrained Model
-        if strtobool(self.conf.get("use_pretrained_model", "false")):
+        if strtobool(self.conf.get("use_pretrained_model", "true")):
             url = f"{self.PRE_TRAINED_PATH}/segmentation_unetr_brats.pt"
             download_file(url, self.path[0])
 
         # Network
-        self.spatial_size = json.loads(self.conf.get("spatial_size", "[128, 128, 64]"))
+        self.spatial_size = json.loads(self.conf.get("spatial_size", "[96, 96, 64]"))
         self.network = UNETR(
             spatial_dims=3,
             in_channels=self.number_intensity_ch,
