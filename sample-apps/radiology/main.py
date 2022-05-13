@@ -214,12 +214,13 @@ def main():
     )
 
     home = str(Path.home())
-    studies = f"{home}/Documents/workspace/Datasets/multimodality-reoriented_alllabels_BRATS"
+    # studies = f"{home}/Documents/workspace/Datasets/multimodality-reoriented_alllabels_BRATS"
+    studies = f"{home}/Documents/workspace/Datasets/test-multimodality-reoriented_alllabels_BRATS"
 
     parser = argparse.ArgumentParser()
     parser.add_argument("-s", "--studies", default=studies)
     parser.add_argument("-m", "--model", default="segmentation_brats")
-    parser.add_argument("-t", "--test", default="train", choices=("train", "infer"))
+    parser.add_argument("-t", "--test", default="infer", choices=("train", "infer"))
     args = parser.parse_args()
 
     app_dir = os.path.dirname(__file__)

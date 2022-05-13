@@ -1195,7 +1195,7 @@ class MONAILabelWidget(ScriptedLoadableModuleWidget, VTKObservationMixin):
 
             logging.info(f"Check if file exists/shared locally: {image_file} => {local_exists}")
             if local_exists:
-                self._volumeNode = slicer.util.loadVolume(image_file)
+                self._volumeNode = slicer.util.loadVolume(image_file, {"discardOrientation": True})
                 self._volumeNode.SetName(node_name)
             else:
                 download_uri = f"{self.serverUrl()}/datastore/image?image={quote_plus(image_id)}"

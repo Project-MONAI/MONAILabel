@@ -10,8 +10,6 @@
 # limitations under the License.
 import logging
 
-# import torch
-# from lib.transforms.transforms_brats import GetSingleModalityBRATSd
 from monai.handlers import TensorBoardImageHandler, from_engine
 from monai.inferers import SlidingWindowInferer
 from monai.losses import DiceCELoss
