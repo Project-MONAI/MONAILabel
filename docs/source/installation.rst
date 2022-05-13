@@ -114,7 +114,22 @@ However user can deploy the application in any server that supports `ASGI specif
 
 There are `multiple choices <https://www.uvicorn.org/deployment/>`_ available for Uvicorn to run as Development Server vs Standalone Server vs Production.
 
-Deploying MONAI Label server for production use is out of project scope.  However for basic production deployment, you might need to run Uvicorn independently.  In such cases, you can following these simple steps.
+Deploying MONAI Label server for production use is out of project scope.
+
+Run MONAI Label server in ssl mode:
+***********************************
+You can run MONAILabel server in https mode.
+.. code-block::
+
+  # Create self-signed ssl cert
+  openssl req -x509 -nodes -days 365 -newkey rsa:2048 -keyout uvicorn-selfsigned.key -out uvicorn-selfsigned.crt
+
+  # Start server in ssl mode
+  monailabel start_server --app apps/radiology --studies datasets/Task09_Spleen/imagesTr --conf models deepedit --ssl_keyfile uvicorn-selfsigned.key --ssl_certfile uvicorn-selfsigned.crt
+
+
+
+However for basic production deployment, you might need to run Uvicorn independently.  In such cases, you can following these simple steps.
 
 ::
 
