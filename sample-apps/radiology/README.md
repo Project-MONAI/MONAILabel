@@ -68,6 +68,12 @@ This model works for single and multiple label segmentation tasks.
 |----------------------|--------------------|-----------------------------------------------------------------|
 | network              | **dynunet**, unetr | Using one of these network and corresponding pretrained weights |
 | use_pretrained_model | **true**, false        | Disable this NOT to load any pretrained weights                 |
+| epistemic_enabled    | true, **false** | Enable Epistemic based Active Learning Strategy                    |
+| epistemic_samples    | int             | Limit number of samples to run epistemic scoring                   |
+| tta_enabled          | true, **false** | Enable TTA (Test Time Augmentation) based Active Learning Strategy |
+| tta_samples          | int             | Limit number of samples to run tta scoring                         |
+
+
 
 - Network
   > This App uses the DynUNet as the default network. It also comes with pretrained model for [UNETR](https://docs.monai.io/en/latest/networks.html#unetr).
