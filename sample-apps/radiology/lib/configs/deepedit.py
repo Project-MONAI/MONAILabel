@@ -19,7 +19,15 @@ from monai.networks.nets import UNETR, DynUNet
 
 from monailabel.interfaces.config import TaskConfig
 from monailabel.interfaces.tasks.infer import InferTask, InferType
+from monailabel.interfaces.tasks.scoring import ScoringMethod
+from monailabel.interfaces.tasks.strategy import Strategy
 from monailabel.interfaces.tasks.train import TrainTask
+from monailabel.tasks.activelearning.epistemic import Epistemic
+from monailabel.tasks.activelearning.tta import TTA
+from monailabel.tasks.scoring.dice import Dice
+from monailabel.tasks.scoring.epistemic import EpistemicScoring
+from monailabel.tasks.scoring.sum import Sum
+from monailabel.tasks.scoring.tta import TTAScoring
 from monailabel.utils.others.generic import download_file
 
 logger = logging.getLogger(__name__)
@@ -28,6 +36,11 @@ logger = logging.getLogger(__name__)
 class DeepEdit(TaskConfig):
     def init(self, name: str, model_dir: str, conf: Dict[str, str], planner: Any, **kwargs):
         super().init(name, model_dir, conf, planner, **kwargs)
+
+        self.epistemic_enabled = None
+        self.epistemic_samples = None
+        self.tta_enabled = None
+        self.tta_samples = None
 
         # Multilabel
         # self.labels = {
@@ -68,31 +81,46 @@ class DeepEdit(TaskConfig):
 
         # Network
         if network == "unetr":
-            self.network = UNETR(
-                spatial_dims=3,
-                in_channels=len(self.labels) + self.number_intensity_ch,
-                out_channels=len(self.labels),
-                img_size=self.spatial_size,
-                feature_size=64,
-                hidden_size=1536,
-                mlp_dim=3072,
-                num_heads=48,
-                pos_embed="conv",
-                norm_name="instance",
-                res_block=True,
-            )
+            self.network_params = {
+                "spatial_dims": 3,
+                "in_channels": len(self.labels) + self.number_intensity_ch,
+                "out_channels": len(self.labels),
+                "img_size": self.spatial_size,
+                "feature_size": 64,
+                "hidden_size": 1536,
+                "mlp_dim": 3072,
+                "num_heads": 48,
+                "pos_embed": "conv",
+                "norm_name": "instance",
+                "res_block": True,
+            }
+            self.network = UNETR(**self.network_params)
+            self.network_with_dropout = UNETR(**self.network_params, dropout_rate=0.2)
+            self.find_unused_parameters = False
         else:
-            self.network = DynUNet(
-                spatial_dims=3,
-                in_channels=len(self.labels) + self.number_intensity_ch,
-                out_channels=len(self.labels),
-                kernel_size=[[3, 3, 3], [3, 3, 3], [3, 3, 3], [3, 3, 3], [3, 3, 3], [3, 3, 3]],
-                strides=[[1, 1, 1], [2, 2, 2], [2, 2, 2], [2, 2, 2], [2, 2, 2], [2, 2, 1]],
-                upsample_kernel_size=[[2, 2, 2], [2, 2, 2], [2, 2, 2], [2, 2, 2], [2, 2, 1]],
-                norm_name="instance",
-                deep_supervision=False,
-                res_block=True,
-            )
+            self.network_params = {
+                "spatial_dims": 3,
+                "in_channels": len(self.labels) + self.number_intensity_ch,
+                "out_channels": len(self.labels),
+                "kernel_size": [3, 3, 3, 3, 3, 3],
+                "strides": [1, 2, 2, 2, 2, [2, 2, 1]],
+                "upsample_kernel_size": [2, 2, 2, 2, [2, 2, 1]],
+                "norm_name": "instance",
+                "deep_supervision": False,
+                "res_block": True,
+            }
+            self.network = DynUNet(**self.network_params)
+            self.network_with_dropout = DynUNet(**self.network_params, dropout=0.2)
+            self.find_unused_parameters = False
+
+        # Others
+        self.epistemic_enabled = strtobool(conf.get("epistemic_enabled", "false"))
+        self.epistemic_samples = int(conf.get("epistemic_samples", "5"))
+        logger.info(f"EPISTEMIC Enabled: {self.epistemic_enabled}; Samples: {self.epistemic_samples}")
+
+        self.tta_enabled = strtobool(conf.get("tta_enabled", "false"))
+        self.tta_samples = int(conf.get("tta_samples", "5"))
+        logger.info(f"TTA Enabled: {self.tta_enabled}; Samples: {self.tta_samples}")
 
     def infer(self) -> Union[InferTask, Dict[str, InferTask]]:
         return {
@@ -125,3 +153,35 @@ class DeepEdit(TaskConfig):
             find_unused_parameters=True,
         )
         return task
+
+    def strategy(self) -> Union[None, Strategy, Dict[str, Strategy]]:
+        strategies: Dict[str, Strategy] = {}
+        if self.epistemic_enabled:
+            strategies[f"{self.name}_epistemic"] = Epistemic()
+        if self.tta_enabled:
+            strategies[f"{self.name}_tta"] = TTA()
+        return strategies
+
+    def scoring_method(self) -> Union[None, ScoringMethod, Dict[str, ScoringMethod]]:
+        methods: Dict[str, ScoringMethod] = {
+            "dice": Dice(),
+            "sum": Sum(),
+        }
+
+        if self.epistemic_enabled:
+            methods[f"{self.name}_epistemic"] = EpistemicScoring(
+                model=self.path,
+                network=self.network_with_dropout,
+                transforms=lib.infers.DeepEdit(type=InferType.DEEPEDIT).pre_transforms(),
+                num_samples=self.epistemic_samples,
+            )
+        if self.tta_enabled:
+            methods[f"{self.name}_tta"] = TTAScoring(
+                model=self.path,
+                network=self.network,
+                deepedit=True,
+                num_samples=self.tta_samples,
+                spatial_size=self.spatial_size,
+                spacing=self.target_spacing,
+            )
+        return methods

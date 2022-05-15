@@ -65,10 +65,20 @@ This model works for single and multiple label segmentation tasks.
 
 - Additional Configs *(pass them as **--conf name value**) while starting MONAILabelServer*
 
-| Name                 | Values             | Description                                                     |
-|----------------------|--------------------|-----------------------------------------------------------------|
-| network              | **dynunet**, unetr | Using one of these network and corresponding pretrained weights |
-| use_pretrained_model | **true**, false        | Disable this NOT to load any pretrained weights                 |
+| Name                 | Values             | Description                                                        |
+|----------------------|--------------------|--------------------------------------------------------------------|
+| network              | **dynunet**, unetr | Using one of these network and corresponding pretrained weights    |
+| use_pretrained_model | **true**, false    | Disable this NOT to load any pretrained weights                    |
+| skip_scoring         | **true**, false    | Disable this to allow scoring methods to be used                   |
+| skip_strategies      | **true**, false    | Disable this to add active learning strategies                     |
+| epistemic_enabled    | true, **false**    | Enable Epistemic based Active Learning Strategy                    |
+| epistemic_samples    | int                | Limit number of samples to run epistemic scoring                   |
+| tta_enabled          | true, **false**    | Enable TTA (Test Time Augmentation) based Active Learning Strategy |
+| tta_samples          | int                | Limit number of samples to run tta scoring                         |
+
+A command example to use active learning strategies with DeepEdit would be:
+
+> monailabel start_server --app workspace/radiology --studies workspace/images --conf models deepedit --conf skip_scoring false --conf skip_strategies false --conf tta_enabled true
 
 - Network
   > This App uses the DynUNet as the default network. It also comes with pretrained model for [UNETR](https://docs.monai.io/en/latest/networks.html#unetr).
@@ -241,10 +251,18 @@ from [NVIDIA Clara](https://catalog.ngc.nvidia.com/models?filters=&orderBy=dateM
 | Name                 | Values          | Description                                                        |
 |----------------------|-----------------|--------------------------------------------------------------------|
 | use_pretrained_model | **true**, false | Disable this NOT to load any pretrained weights                    |
+| skip_scoring         | **true**, false | Disable this to allow scoring methods to be used                   |
+| skip_strategies      | **true**, false | Disable this to add active learning strategies                     |
 | epistemic_enabled    | true, **false** | Enable Epistemic based Active Learning Strategy                    |
 | epistemic_samples    | int             | Limit number of samples to run epistemic scoring                   |
 | tta_enabled          | true, **false** | Enable TTA (Test Time Augmentation) based Active Learning Strategy |
 | tta_samples          | int             | Limit number of samples to run tta scoring                         |
+
+
+A command example to use active learning strategies with segmentation_spleen would be:
+
+> monailabel start_server --app workspace/radiology --studies workspace/images --conf models segmentation_spleen --conf skip_scoring false --conf skip_strategies false --conf tta_enabled true
+
 
 - Network
   > This App uses the [UNet](https://docs.monai.io/en/latest/networks.html#unet) as the default network.
