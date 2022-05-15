@@ -133,6 +133,7 @@ class FindContoursd(MapTransform):
         keys: KeysCollection,
         min_positive=10,
         min_poly_area=80,
+        max_poly_area=0,
         result="result",
         result_output_key="annotation",
         key_label_colors="label_colors",
@@ -142,6 +143,7 @@ class FindContoursd(MapTransform):
 
         self.min_positive = min_positive
         self.min_poly_area = min_poly_area
+        self.max_poly_area = max_poly_area
         self.result = result
         self.result_output_key = result_output_key
         self.key_label_colors = key_label_colors
@@ -159,6 +161,7 @@ class FindContoursd(MapTransform):
         location = d.get("location", [0, 0])
         size = d.get("size", [0, 0])
         min_poly_area = d.get("min_poly_area", self.min_poly_area)
+        max_poly_area = d.get("max_poly_area", self.max_poly_area)
         color_map = d.get(self.key_label_colors)
 
         elements = []
@@ -189,6 +192,8 @@ class FindContoursd(MapTransform):
                     coords = contour.astype(int).tolist()
                     pobj = Polygon(coords)
                     if pobj.area < min_poly_area:  # Ignore poly with lesser area
+                        continue
+                    if 0 < max_poly_area < pobj.area:  # Ignore very large poly (e.g. in case of nuclei)
                         continue
 
                     logger.debug(f"Area: {pobj.area}; Perimeter: {pobj.length}; Count: {len(coords)}")

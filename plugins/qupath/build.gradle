@@ -1,0 +1,50 @@
+plugins {
+  id 'java-library'
+  id 'com.github.johnrengelman.shadow' version '7.0.0'
+  id 'org.bytedeco.gradle-javacpp-platform' version '1.5.6'
+}
+
+ext.moduleName = 'qupath.extension.monailabel'
+archivesBaseName = 'qupath-extension-monailabel'
+description = "QuPath extension for MONAILabel"
+version = "0.3.0"
+
+repositories {
+  mavenCentral()
+
+  maven {
+    url "https://maven.scijava.org/content/repositories/releases"
+  }
+
+  maven {
+    url "https://maven.scijava.org/content/repositories/snapshots"
+  }
+
+}
+
+dependencies {
+  shadow "io.github.qupath:qupath-gui-fx:0.3.0"
+  shadow "org.slf4j:slf4j-api:1.7.30"
+}
+
+tasks.register("copyDependencies", Copy) {
+  description "Copy dependencies into the output libs directory"
+  group "QuPath"
+
+  from configurations.default
+  into 'build/libs'
+}
+
+java {
+    def version = project.findProperty('toolchain')
+    if (!version)
+        version = 11
+    else if (version.strip() == 'skip')
+        version = null
+    if (version != null) {
+        logger.quiet("Setting toolchain to {}", version)
+        toolchain {
+            languageVersion = JavaLanguageVersion.of(version)
+        }
+    }
+}

@@ -10,11 +10,17 @@
 # limitations under the License.
 from typing import Callable, Sequence, Union
 
+from monai.apps.deepedit.transforms import (
+    AddGuidanceFromPointsDeepEditd,
+    AddGuidanceSignalDeepEditd,
+    DiscardAddGuidanced,
+    ResizeGuidanceMultipleLabelDeepEditd,
+)
 from monai.inferers import Inferer, SimpleInferer
 from monai.transforms import (
     Activationsd,
-    AddChanneld,
     AsDiscreted,
+    EnsureChannelFirstd,
     EnsureTyped,
     LoadImaged,
     Orientationd,
@@ -24,12 +30,6 @@ from monai.transforms import (
     ToNumpyd,
 )
 
-from monailabel.deepedit.multilabel.transforms import (
-    AddGuidanceFromPointsCustomd,
-    AddGuidanceSignalCustomd,
-    DiscardAddGuidanced,
-    ResizeGuidanceMultipleLabelCustomd,
-)
 from monailabel.interfaces.tasks.infer import InferTask, InferType
 from monailabel.transform.post import Restored
 
@@ -49,6 +49,7 @@ class DeepEdit(InferTask):
         dimension=3,
         spatial_size=(128, 128, 64),
         target_spacing=(1.0, 1.0, 1.0),
+        number_intensity_ch=1,
         description="A DeepEdit model for volumetric (3D) segmentation over 3D Images",
     ):
         super().__init__(
@@ -65,28 +66,33 @@ class DeepEdit(InferTask):
 
         self.spatial_size = spatial_size
         self.target_spacing = target_spacing
+        self.number_intensity_ch = number_intensity_ch
 
     def pre_transforms(self, data=None):
         t = [
             LoadImaged(keys="image", reader="ITKReader"),
-            AddChanneld(keys="image"),
+            EnsureChannelFirstd(keys="image"),
             Orientationd(keys="image", axcodes="RAS"),
             ScaleIntensityRanged(keys="image", a_min=-175, a_max=250, b_min=0.0, b_max=1.0, clip=True),
         ]
         if self.type == InferType.DEEPEDIT:
             t.extend(
                 [
-                    AddGuidanceFromPointsCustomd(ref_image="image", guidance="guidance", label_names=self.labels),
+                    AddGuidanceFromPointsDeepEditd(ref_image="image", guidance="guidance", label_names=self.labels),
                     Resized(keys="image", spatial_size=self.spatial_size, mode="area"),
-                    ResizeGuidanceMultipleLabelCustomd(guidance="guidance", ref_image="image"),
-                    AddGuidanceSignalCustomd(keys="image", guidance="guidance"),
+                    ResizeGuidanceMultipleLabelDeepEditd(guidance="guidance", ref_image="image"),
+                    AddGuidanceSignalDeepEditd(
+                        keys="image", guidance="guidance", number_intensity_ch=self.number_intensity_ch
+                    ),
                 ]
             )
         else:
             t.extend(
                 [
                     Resized(keys="image", spatial_size=self.spatial_size, mode="area"),
-                    DiscardAddGuidanced(keys="image", label_names=self.labels),
+                    DiscardAddGuidanced(
+                        keys="image", label_names=self.labels, number_intensity_ch=self.number_intensity_ch
+                    ),
                 ]
             )
 

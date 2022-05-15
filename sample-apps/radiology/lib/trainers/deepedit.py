@@ -11,13 +11,23 @@
 import logging
 
 import torch
+from monai.apps.deepedit.interaction import Interaction
+from monai.apps.deepedit.transforms import (
+    AddGuidanceSignalDeepEditd,
+    AddInitialSeedPointMissingLabelsd,
+    AddRandomGuidanceDeepEditd,
+    FindAllValidSlicesMissingLabelsd,
+    FindDiscrepancyRegionsDeepEditd,
+    NormalizeLabelsInDatasetd,
+    SplitPredsLabeld,
+)
 from monai.handlers import MeanDice, from_engine
 from monai.inferers import SimpleInferer
 from monai.losses import DiceCELoss
 from monai.transforms import (
     Activationsd,
-    AddChanneld,
     AsDiscreted,
+    EnsureChannelFirstd,
     LoadImaged,
     Orientationd,
     RandFlipd,
@@ -31,16 +41,6 @@ from monai.transforms import (
 )
 
 from monailabel.deepedit.handlers import TensorBoardImageHandler
-from monailabel.deepedit.multilabel.interaction import Interaction
-from monailabel.deepedit.multilabel.transforms import (
-    AddGuidanceSignalCustomd,
-    AddInitialSeedPointMissingLabelsd,
-    AddRandomGuidanceCustomd,
-    FindAllValidSlicesMissingLabelsd,
-    FindDiscrepancyRegionsCustomd,
-    NormalizeLabelsInDatasetd,
-    SplitPredsLabeld,
-)
 from monailabel.tasks.train.basic_train import BasicTrainTask, Context
 
 logger = logging.getLogger(__name__)
@@ -54,6 +54,7 @@ class DeepEdit(BasicTrainTask):
         description="Train DeepEdit model for 3D Images",
         spatial_size=(128, 128, 64),
         target_spacing=(1.0, 1.0, 1.0),
+        number_intensity_ch=1,
         deepgrow_probability_train=0.4,
         deepgrow_probability_val=1.0,
         debug_mode=False,
@@ -62,6 +63,7 @@ class DeepEdit(BasicTrainTask):
         self._network = network
         self.spatial_size = spatial_size
         self.target_spacing = target_spacing
+        self.number_intensity_ch = number_intensity_ch
         self.deepgrow_probability_train = deepgrow_probability_train
         self.deepgrow_probability_val = deepgrow_probability_val
         self.debug_mode = debug_mode
@@ -83,14 +85,14 @@ class DeepEdit(BasicTrainTask):
             AsDiscreted(keys="pred", argmax=True),
             ToNumpyd(keys=("image", "label", "pred")),
             # Transforms for click simulation
-            FindDiscrepancyRegionsCustomd(keys="label", pred="pred", discrepancy="discrepancy"),
-            AddRandomGuidanceCustomd(
+            FindDiscrepancyRegionsDeepEditd(keys="label", pred="pred", discrepancy="discrepancy"),
+            AddRandomGuidanceDeepEditd(
                 keys="NA",
                 guidance="guidance",
                 discrepancy="discrepancy",
                 probability="probability",
             ),
-            AddGuidanceSignalCustomd(keys="image", guidance="guidance"),
+            AddGuidanceSignalDeepEditd(keys="image", guidance="guidance", number_intensity_ch=self.number_intensity_ch),
             #
             ToTensord(keys=("image", "label")),
         ]
@@ -99,7 +101,7 @@ class DeepEdit(BasicTrainTask):
         return [
             LoadImaged(keys=("image", "label"), reader="ITKReader"),
             NormalizeLabelsInDatasetd(keys="label", label_names=self._labels),
-            AddChanneld(keys=("image", "label")),
+            EnsureChannelFirstd(keys=("image", "label")),
             Orientationd(keys=["image", "label"], axcodes="RAS"),
             # This transform may not work well for MR images
             ScaleIntensityRanged(keys="image", a_min=-175, a_max=250, b_min=0.0, b_max=1.0, clip=True),
@@ -112,7 +114,7 @@ class DeepEdit(BasicTrainTask):
             # Transforms for click simulation
             FindAllValidSlicesMissingLabelsd(keys="label", sids="sids"),
             AddInitialSeedPointMissingLabelsd(keys="label", guidance="guidance", sids="sids"),
-            AddGuidanceSignalCustomd(keys="image", guidance="guidance"),
+            AddGuidanceSignalDeepEditd(keys="image", guidance="guidance", number_intensity_ch=self.number_intensity_ch),
             #
             ToTensord(keys=("image", "label")),
             SelectItemsd(keys=("image", "label", "guidance", "label_names")),
@@ -124,8 +126,7 @@ class DeepEdit(BasicTrainTask):
             AsDiscreted(
                 keys=("pred", "label"),
                 argmax=(True, False),
-                to_onehot=(True, True),
-                n_classes=len(self._labels),
+                to_onehot=(len(self._labels), len(self._labels)),
             ),
             SplitPredsLabeld(keys="pred"),
         ]
@@ -134,7 +135,7 @@ class DeepEdit(BasicTrainTask):
         return [
             LoadImaged(keys=("image", "label"), reader="ITKReader"),
             NormalizeLabelsInDatasetd(keys="label", label_names=self._labels),
-            AddChanneld(keys=("image", "label")),
+            EnsureChannelFirstd(keys=("image", "label")),
             Orientationd(keys=["image", "label"], axcodes="RAS"),
             # This transform may not work well for MR images
             ScaleIntensityRanged(keys=("image"), a_min=-175, a_max=250, b_min=0.0, b_max=1.0, clip=True),
@@ -142,7 +143,7 @@ class DeepEdit(BasicTrainTask):
             # Transforms for click simulation
             FindAllValidSlicesMissingLabelsd(keys="label", sids="sids"),
             AddInitialSeedPointMissingLabelsd(keys="label", guidance="guidance", sids="sids"),
-            AddGuidanceSignalCustomd(keys="image", guidance="guidance"),
+            AddGuidanceSignalDeepEditd(keys="image", guidance="guidance", number_intensity_ch=self.number_intensity_ch),
             #
             ToTensord(keys=("image", "label")),
             SelectItemsd(keys=("image", "label", "guidance", "label_names")),

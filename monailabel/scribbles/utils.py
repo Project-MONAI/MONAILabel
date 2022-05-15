@@ -11,12 +11,19 @@
 import logging
 
 import numpy as np
+import numpymaxflow
 
 logger = logging.getLogger(__name__)
 
 
 def get_eps(data):
     return np.finfo(data.dtype).eps
+
+
+def maxflow(image, prob, lamda=5, sigma=0.1):
+    # lamda: weight of smoothing term
+    # sigma: std of intensity values
+    return numpymaxflow.maxflow(image, prob, lamda, sigma)
 
 
 def make_iseg_unary(
@@ -139,7 +146,7 @@ def make_likelihood_image_histogram(image, scrib, scribbles_bg_label, scribbles_
 
     # generate histograms for background/foreground
     bg_hist, fg_hist, bin_edges = make_histograms(
-        image, scrib, scribbles_bg_label, scribbles_fg_label, alpha_bg=1, alpha_fg=1, bins=32
+        image, scrib, scribbles_bg_label, scribbles_fg_label, alpha_bg=1, alpha_fg=1, bins=64
     )
 
     # lookup values for each voxel for generating background/foreground probabilities

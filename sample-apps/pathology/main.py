@@ -8,8 +8,11 @@
 # WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 # See the License for the specific language governing permissions and
 # limitations under the License.
+import ctypes.util
 import logging
 import os
+import platform
+from ctypes import cdll
 from distutils.util import strtobool
 from typing import Dict
 
@@ -24,6 +27,10 @@ from monailabel.interfaces.tasks.train import TrainTask
 from monailabel.utils.others.class_utils import get_class_names
 
 logger = logging.getLogger(__name__)
+
+# For windows (preload openslide dll using file_library) https://github.com/openslide/openslide-python/pull/151
+if platform.system() == "Windows":
+    cdll.LoadLibrary(str(ctypes.util.find_library("libopenslide-0.dll")))
 
 
 class MyApp(MONAILabelApp):
@@ -155,11 +162,7 @@ def main():
 
     run_train = False
     home = str(Path.home())
-    if run_train:
-        # studies = f"{home}/Data/Pathology/PanNuke"
-        studies = "http://0.0.0.0:8080/api/v1"
-    else:
-        studies = f"{home}/Data/Pathology/Test"
+    studies = f"{home}/Datasets/Pathology"
 
     parser = argparse.ArgumentParser()
     parser.add_argument("-s", "--studies", default=studies)
@@ -168,34 +171,90 @@ def main():
     app_dir = os.path.dirname(__file__)
     studies = args.studies
 
-    app = MyApp(app_dir, studies, {})
-    model = "deepedit_nuclei"  # deepedit_nuclei, segmentation_nuclei
+    app = MyApp(app_dir, studies, {"roi_size": "[1024,1024]", "preload": "true"})
     if run_train:
-        app.train(
-            request={
-                "name": "train_01",
-                "model": model,
-                "max_epochs": 10 if model == "deepedit_nuclei" else 30,
-                "dataset": "CacheDataset",  # PersistentDataset, CacheDataset
-                "train_batch_size": 16,
-                "val_batch_size": 12,
-                "multi_gpu": True,
-                "val_split": 0.1,
-                "dataset_source": "pannuke",
-            },
-        )
+        train_nuclick(app)
     else:
+        # infer_nuclick(app)
         infer_wsi(app)
 
 
+def train_nuclick(app):
+    model = "nuclick"
+    app.train(
+        request={
+            "name": "train_01",
+            "model": model,
+            "max_epochs": 10,
+            "dataset": "PersistentDataset",  # PersistentDataset, CacheDataset
+            "train_batch_size": 128,
+            "val_batch_size": 64,
+            "multi_gpu": True,
+            "val_split": 0.2,
+            "dataset_source": "none",
+            "dataset_limit": 0,
+            "pretrained": False,
+            "n_saved": 10,
+        },
+    )
+
+
+def train(app):
+    model = "deepedit_nuclei"  # deepedit_nuclei, segmentation_nuclei
+    app.train(
+        request={
+            "name": "train_01",
+            "model": model,
+            "max_epochs": 10 if model == "deepedit_nuclei" else 30,
+            "dataset": "CacheDataset",  # PersistentDataset, CacheDataset
+            "train_batch_size": 16,
+            "val_batch_size": 12,
+            "multi_gpu": True,
+            "val_split": 0.1,
+            "dataset_source": "pannuke",
+        },
+    )
+
+
+def infer_nuclick(app):
+    import shutil
+
+    image = "C:\\Projects\\nuclick_torch\\test\\input_image.png"
+    res = app.infer(
+        # request={
+        #     "model": "nuclick",
+        #     "image": image,
+        #     "output": "asap",
+        #     "foreground": [[390, 470], [1507, 190]],
+        #     "location": [0, 0],
+        #     "size": [0, 0],
+        #     "result_extension": ".png",
+        # }
+        request={
+            "model": "nuclick",
+            "image": "JP2K-33003-1",
+            "level": 0,
+            "location": [2262, 4661],
+            "size": [294, 219],
+            "min_poly_area": 30,
+            "foreground": [[2411, 4797], [2331, 4775], [2323, 4713], [2421, 4684]],
+            "background": [],
+            "output": "asap",
+            # 'result_extension': '.png',
+        }
+    )
+
+    # print(json.dumps(res, indent=2))
+    shutil.move(res["label"], "C:\\Projects\\nuclick_torch\\test\\output_image.xml")
+    logger.info("All Done!")
+
+
 def infer_wsi(app):
-    import json
     import shutil
     from pathlib import Path
 
     home = str(Path.home())
-
-    root_dir = f"{home}/Data/Pathology"
+    root_dir = f"{home}/Datasets/"
     image = "TCGA-02-0010-01Z-00-DX4.07de2e55-a8fe-40ee-9e98-bcb78050b9f7"
 
     output = "dsa"
@@ -213,19 +272,18 @@ def infer_wsi(app):
             "level": 0,
             "location": [0, 0],
             "size": [0, 0],
-            "tile_size": [2048, 2048],
+            "tile_size": [1024, 1024],
             "min_poly_area": 40,
             "gpus": "all",
             "multi_gpu": True,
-            "max_workers": 8,
         }
     )
 
-    label_json = os.path.join(root_dir, f"{image}.json")
-    logger.info(f"Writing Label JSON: {label_json}")
-    with open(label_json, "w") as fp:
-        json.dump(res["params"], fp)
-
+    # label_json = os.path.join(root_dir, f"{image}.json")
+    # logger.info(f"Writing Label JSON: {label_json}")
+    # with open(label_json, "w") as fp:
+    #     json.dump(res["params"], fp)
+    #
     if output == "asap":
         label_xml = os.path.join(root_dir, f"{image}.xml")
         shutil.copy(res["file"], label_xml)

@@ -37,7 +37,7 @@ jobs:
         run: |
           sudo apt-get install openslide-tools -y
           python -m pip install --user --upgrade pip setuptools wheel
-          python -m pip install torch>=1.6 torchvision
+          python -m pip install torch>=1.7 torchvision
       - name: Build Package
         run: |
           python setup.py sdist bdist_wheel --build-number $(date +'%Y%m%d%H%M')

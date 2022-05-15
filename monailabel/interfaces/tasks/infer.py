@@ -263,7 +263,7 @@ class InferTask:
         logger.setLevel(req.get("logging", "INFO").upper())
         logger.info(f"Infer Request (final): {req}")
 
-        if req.get("image") and isinstance(req.get("image"), str):
+        if req.get("image") is not None and isinstance(req.get("image"), str):
             data = copy.deepcopy(req)
             data.update({"image_path": req.get("image")})
         else:
@@ -311,6 +311,7 @@ class InferTask:
             "post": round(latency_post, 2),
             "write": round(latency_write, 2),
             "total": round(latency_total, 2),
+            "transform": data.get("latencies"),
         }
 
         if result_file_name:

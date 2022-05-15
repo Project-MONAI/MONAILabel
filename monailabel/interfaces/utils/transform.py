@@ -96,15 +96,15 @@ def run_transforms(data, callables, inverse=False, log_prefix="POST", log_name="
                 f"{log_name} '{t.__class__.__name__}' is not callable",
             )
 
-        logger.info(
-            "{} - {} ({}): Time: {:.4f}; {}".format(
-                log_prefix,
-                log_name,
-                name,
-                float(time.time() - start),
-                shape_info(data),
-            )
-        )
+        latency = round(time.time() - start, 4)
+        stage = log_prefix.lower()
+        if data.get("latencies") is None:
+            data["latencies"] = {}
+        if data["latencies"].get(stage) is None:
+            data["latencies"][stage] = {}
+        data["latencies"][stage][name] = latency
+
+        logger.info(f"{log_prefix} - {log_name} ({name}): Time: {latency}; {shape_info(data)}")
         logger.debug("-----------------------------------------------------------------------------")
 
     dump_data(data)

@@ -24,6 +24,7 @@ from monailabel.interfaces.tasks.infer import InferTask
 from monailabel.interfaces.tasks.scoring import ScoringMethod
 from monailabel.interfaces.tasks.strategy import Strategy
 from monailabel.interfaces.tasks.train import TrainTask
+from monailabel.scribbles.infer import HistogramBasedGraphCut
 from monailabel.tasks.activelearning.random import Random
 from monailabel.tasks.infer.deepgrow_pipeline import InferDeepgrowPipeline
 from monailabel.utils.others.class_utils import get_class_names
@@ -68,7 +69,7 @@ class MyApp(MONAILabelApp):
             exit(-1)
 
         # Use Heuristic Planner to determine target spacing and spatial size based on dataset+gpu
-        spatial_size = json.loads(conf.get("spatial_size", "[128, 128, 128]"))
+        spatial_size = json.loads(conf.get("spatial_size", "[48, 48, 32]"))
         target_spacing = json.loads(conf.get("target_spacing", "[1.0, 1.0, 1.0]"))
         self.heuristic_planner = strtobool(conf.get("heuristic_planner", "false"))
         self.planner = HeuristicPlanner(spatial_size=spatial_size, target_spacing=target_spacing)
@@ -110,6 +111,21 @@ class MyApp(MONAILabelApp):
             for k, v in c.items():
                 logger.info(f"+++ Adding Inferer:: {k} => {v}")
                 infers[k] = v
+
+        #################################################
+        # Scribbles
+        #################################################
+        infers.update(
+            {
+                "Histogram+GraphCut": HistogramBasedGraphCut(
+                    intensity_range=(-300, 200, 0.0, 1.0, True),
+                    pix_dim=(2.5, 2.5, 5.0),
+                    lamda=1.0,
+                    sigma=0.1,
+                    labels=task_config.labels,
+                ),
+            }
+        )
 
         #################################################
         # Pipeline based on existing infers

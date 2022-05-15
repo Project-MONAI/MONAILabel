@@ -16,9 +16,9 @@ from monai.losses import DiceCELoss
 from monai.optimizers import Novograd
 from monai.transforms import (
     Activationsd,
-    AddChanneld,
     AsDiscreted,
     CropForegroundd,
+    EnsureChannelFirstd,
     EnsureTyped,
     LoadImaged,
     RandCropByPosNegLabeld,
@@ -57,7 +57,7 @@ class SegmentationSpleen(BasicTrainTask):
     def train_pre_transforms(self, context: Context):
         return [
             LoadImaged(keys=("image", "label")),
-            AddChanneld(keys=("image", "label")),
+            EnsureChannelFirstd(keys=("image", "label")),
             Spacingd(
                 keys=("image", "label"),
                 pixdim=(1.0, 1.0, 1.0),
@@ -95,7 +95,7 @@ class SegmentationSpleen(BasicTrainTask):
     def val_pre_transforms(self, context: Context):
         return [
             LoadImaged(keys=("image", "label")),
-            AddChanneld(keys=("image", "label")),
+            EnsureChannelFirstd(keys=("image", "label")),
             Spacingd(
                 keys=("image", "label"),
                 pixdim=(1.0, 1.0, 1.0),
