@@ -49,7 +49,7 @@ class Settings(BaseSettings):
     MONAI_LABEL_SERVER_PORT: int = 8000
     MONAI_LABEL_CORS_ORIGINS: List[AnyHttpUrl] = []
 
-    MONAI_LABEL_AUTO_UPDATE_SCORING = False
+    MONAI_LABEL_AUTO_UPDATE_SCORING = True
 
     MONAI_LABEL_SESSIONS: bool = True
     MONAI_LABEL_SESSION_PATH: str = ""
