@@ -19,6 +19,7 @@ import torch
 from monai.config import KeysCollection
 from monai.networks.layers import GaussianFilter
 from monai.transforms.transform import MapTransform, Randomizable, Transform
+from monai.utils import deprecated
 from skimage import measure
 
 logger = logging.getLogger(__name__)
@@ -28,6 +29,7 @@ from monai.utils import optional_import
 distance_transform_cdt, _ = optional_import("scipy.ndimage.morphology", name="distance_transform_cdt")
 
 
+@deprecated(since="0.4", msg_suffix="use monai.apps.deepedit.transforms.DiscardAddGuidanced instead.")
 class DiscardAddGuidanced(MapTransform):
     def __init__(
         self,
@@ -43,6 +45,10 @@ class DiscardAddGuidanced(MapTransform):
         :param keys: The ``keys`` parameter will be used to get and set the actual data item to transform
         :param number_intensity_ch: number of intensity channels
         :param probability: probability of discarding clicks
+
+        .. deprecated:: 0.4
+            Use :py:class:`monai.apps.deepedit.transforms.DiscardAddGuidanced` instead.
+
         """
         super().__init__(keys, allow_missing_keys)
 
@@ -73,6 +79,7 @@ class DiscardAddGuidanced(MapTransform):
         return d
 
 
+@deprecated(since="0.4", msg_suffix="use monai.apps.deepedit.transforms.NormalizeLabelsInDatasetd instead.")
 # Transform for multilabel DeepEdit segmentation
 class NormalizeLabelsInDatasetd(MapTransform):
     def __init__(
@@ -86,6 +93,10 @@ class NormalizeLabelsInDatasetd(MapTransform):
 
         :param keys: The ``keys`` parameter will be used to get and set the actual data item to transform
         :param label_names: all label names
+
+        .. deprecated:: 0.4
+            Use :py:class:`monai.apps.deepedit.transforms.NormalizeLabelsInDatasetd` instead.
+
         """
         super().__init__(keys, allow_missing_keys)
 
@@ -113,6 +124,7 @@ class NormalizeLabelsInDatasetd(MapTransform):
         return d
 
 
+@deprecated(since="0.4", msg_suffix="use monai.apps.deepedit.transforms.SingleLabelSelectiond instead.")
 # One label at a time transform - DeepEdit
 class SingleLabelSelectiond(MapTransform):
     def __init__(
@@ -126,6 +138,9 @@ class SingleLabelSelectiond(MapTransform):
 
         :param keys: The ``keys`` parameter will be used to get and set the actual data item to transform
         :param label_names: all label names
+
+        .. deprecated:: 0.4
+            Use :py:class:`monai.apps.deepedit.transforms.SingleLabelSelectiond` instead.
         """
         super().__init__(keys, allow_missing_keys)
 
@@ -164,6 +179,7 @@ class SingleLabelSelectiond(MapTransform):
         return d
 
 
+@deprecated(since="0.4", msg_suffix="use monai.apps.deepedit.transforms.AddGuidanceSignalDeepEditd instead.")
 class AddGuidanceSignalCustomd(MapTransform):
     """
     Add Guidance signal for input image. Multilabel DeepEdit
@@ -175,6 +191,9 @@ class AddGuidanceSignalCustomd(MapTransform):
         guidance: key to store guidance.
         sigma: standard deviation for Gaussian kernel.
         number_intensity_ch: channel index.
+
+    .. deprecated:: 0.4
+        Use :py:class:`monai.apps.deepedit.transforms.AddGuidanceSignalDeepEditd` instead.
     """
 
     def __init__(
@@ -253,6 +272,7 @@ class AddGuidanceSignalCustomd(MapTransform):
         return d
 
 
+@deprecated(since="0.4", msg_suffix="use monai.apps.deepedit.transforms.FindAllValidSlicesMissingLabelsd instead.")
 class FindAllValidSlicesCustomd(MapTransform):
     """
     Find/List all valid slices in the labels.
@@ -260,6 +280,9 @@ class FindAllValidSlicesCustomd(MapTransform):
     Args:
         label: key to the label source.
         sids: key to store slices indices having valid label map.
+
+    .. deprecated:: 0.4
+        Use :py:class:`monai.apps.deepedit.transforms.FindAllValidSlicesMissingLabelsd` instead.
     """
 
     def __init__(
@@ -301,6 +324,7 @@ class FindAllValidSlicesCustomd(MapTransform):
         return d
 
 
+@deprecated(since="0.4", msg_suffix="use monai.apps.deepedit.transforms.AddInitialSeedPointMissingLabelsd instead.")
 class AddInitialSeedPointCustomd(Randomizable, MapTransform):
     """
     Add random guidance as initial seed point for a given label.
@@ -313,6 +337,10 @@ class AddInitialSeedPointCustomd(Randomizable, MapTransform):
         sids: key that represents lists of valid slice indices for the given label.
         sid: key that represents the slice to add initial seed point.  If not present, random sid will be chosen.
         connected_regions: maximum connected regions to use for adding initial points.
+
+
+    .. deprecated:: 0.4
+        Use :py:class:`monai.apps.deepedit.transforms.AddInitialSeedPointMissingLabelsd` instead.
     """
 
     def __init__(
@@ -432,6 +460,7 @@ class AddInitialSeedPointCustomd(Randomizable, MapTransform):
         return d
 
 
+@deprecated(since="0.4", msg_suffix="use monai.apps.deepedit.transforms.FindDiscrepancyRegionsDeepEditd instead.")
 class FindDiscrepancyRegionsCustomd(MapTransform):
     """
     Find discrepancy between prediction and actual during click interactions during training.
@@ -440,6 +469,9 @@ class FindDiscrepancyRegionsCustomd(MapTransform):
         label: key to label source.
         pred: key to prediction source.
         discrepancy: key to store discrepancies found between label and prediction.
+
+    .. deprecated:: 0.4
+        Use :py:class:`monai.apps.deepedit.transforms.FindDiscrepancyRegionsDeepEditd` instead.
     """
 
     def __init__(
@@ -503,6 +535,7 @@ class FindDiscrepancyRegionsCustomd(MapTransform):
         return d
 
 
+@deprecated(since="0.4", msg_suffix="use monai.apps.deepedit.transforms.AddRandomGuidanceDeepEditd instead.")
 class AddRandomGuidanceCustomd(Randomizable, MapTransform):
     """
     Add random guidance based on discrepancies that were found between label and prediction.
@@ -511,6 +544,10 @@ class AddRandomGuidanceCustomd(Randomizable, MapTransform):
         guidance: key to guidance source, shape (2, N, # of dim)
         discrepancy: key to discrepancy map between label and prediction shape (2, C, H, W, D) or (2, C, H, W)
         probability: key to click/interaction probability, shape (1)
+
+    .. deprecated:: 0.4
+        Use :py:class:`monai.apps.deepedit.transforms.AddRandomGuidanceDeepEditd` instead.
+
     """
 
     def __init__(
@@ -631,6 +668,7 @@ class AddRandomGuidanceCustomd(Randomizable, MapTransform):
         return d
 
 
+@deprecated(since="0.4", msg_suffix="use monai.apps.deepedit.transforms.AddGuidanceFromPointsDeepEditd instead.")
 class AddGuidanceFromPointsCustomd(Transform):
     """
     Add guidance based on user clicks. ONLY WORKS FOR 3D
@@ -649,6 +687,10 @@ class AddGuidanceFromPointsCustomd(Transform):
             to the key data, default is `meta_dict`, the meta data is a dictionary object.
             For example, to handle key `image`,  read/write affine matrices from the
             metadata `image_meta_dict` dictionary's `affine` field.
+
+
+    .. deprecated:: 0.4
+        Use :py:class:`monai.apps.deepedit.transforms.AddGuidanceFromPointsDeepEditd` instead.
 
     """
 
@@ -698,9 +740,13 @@ class AddGuidanceFromPointsCustomd(Transform):
         return d
 
 
+@deprecated(since="0.4", msg_suffix="use monai.apps.deepedit.transforms.ResizeGuidanceMultipleLabelDeepEditd instead.")
 class ResizeGuidanceMultipleLabelCustomd(Transform):
     """
     Resize the guidance based on cropped vs resized image.
+
+    .. deprecated:: 0.4
+        Use :py:class:`monai.apps.deepedit.transforms.ResizeGuidanceMultipleLabelDeepEditd` instead.
     """
 
     def __init__(
@@ -733,9 +779,13 @@ class ResizeGuidanceMultipleLabelCustomd(Transform):
         return d
 
 
+@deprecated(since="0.4", msg_suffix="use monai.apps.deepedit.transforms.SplitPredsLabeld instead.")
 class SplitPredsLabeld(MapTransform):
     """
     Split preds and labels for individual evaluation
+
+    .. deprecated:: 0.4
+        Use :py:class:`monai.apps.deepedit.transforms.SplitPredsLabeld` instead.
 
     """
 
@@ -779,6 +829,7 @@ class ToCheckTransformd(MapTransform):
         return d
 
 
+@deprecated(since="0.4", msg_suffix="use monai.apps.deepedit.transforms.AddInitialSeedPointMissingLabelsd instead.")
 class AddInitialSeedPointMissingLabelsd(Randomizable, MapTransform):
     """
     Add random guidance as initial seed point for a given label.
@@ -791,6 +842,9 @@ class AddInitialSeedPointMissingLabelsd(Randomizable, MapTransform):
         sids: key that represents lists of valid slice indices for the given label.
         sid: key that represents the slice to add initial seed point.  If not present, random sid will be chosen.
         connected_regions: maximum connected regions to use for adding initial points.
+
+    .. deprecated:: 0.4
+        Use :py:class:`monai.apps.deepedit.transforms.AddInitialSeedPointMissingLabelsd` instead.
     """
 
     def __init__(
@@ -912,6 +966,7 @@ class AddInitialSeedPointMissingLabelsd(Randomizable, MapTransform):
         return d
 
 
+@deprecated(since="0.4", msg_suffix="use monai.apps.deepedit.transforms.FindAllValidSlicesMissingLabelsd instead.")
 class FindAllValidSlicesMissingLabelsd(MapTransform):
     """
     Find/List all valid slices in the labels.
@@ -919,6 +974,9 @@ class FindAllValidSlicesMissingLabelsd(MapTransform):
     Args:
         label: key to the label source.
         sids: key to store slices indices having valid label map.
+
+    .. deprecated:: 0.4
+        Use :py:class:`monai.apps.deepedit.transforms.FindAllValidSlicesMissingLabelsd` instead.
     """
 
     def __init__(

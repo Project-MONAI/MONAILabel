@@ -17,9 +17,11 @@ from monai.data import decollate_batch, list_data_collate
 from monai.engines import SupervisedEvaluator, SupervisedTrainer
 from monai.engines.utils import IterationEvents
 from monai.transforms import Compose
+from monai.utils import deprecated
 from monai.utils.enums import CommonKeys
 
 
+@deprecated(since="0.4", msg_suffix="For Radiology app use monai.apps.deepedit.interaction.Interaction instead")
 class Interaction:
     """
     Ignite process_function used to introduce interactions (simulation of clicks) for DeepEdit Training/Evaluation.
