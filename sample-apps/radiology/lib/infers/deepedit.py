@@ -10,6 +10,12 @@
 # limitations under the License.
 from typing import Callable, Sequence, Union
 
+from monai.apps.deepedit.transforms import (
+    AddGuidanceFromPointsDeepEditd,
+    AddGuidanceSignalDeepEditd,
+    DiscardAddGuidanced,
+    ResizeGuidanceMultipleLabelDeepEditd,
+)
 from monai.inferers import Inferer, SimpleInferer
 from monai.transforms import (
     Activationsd,
@@ -24,12 +30,6 @@ from monai.transforms import (
     ToNumpyd,
 )
 
-from monailabel.deepedit.multilabel.transforms import (
-    AddGuidanceFromPointsCustomd,
-    AddGuidanceSignalCustomd,
-    DiscardAddGuidanced,
-    ResizeGuidanceMultipleLabelCustomd,
-)
 from monailabel.interfaces.tasks.infer import InferTask, InferType
 from monailabel.transform.post import Restored
 
@@ -78,10 +78,10 @@ class DeepEdit(InferTask):
         if self.type == InferType.DEEPEDIT:
             t.extend(
                 [
-                    AddGuidanceFromPointsCustomd(ref_image="image", guidance="guidance", label_names=self.labels),
+                    AddGuidanceFromPointsDeepEditd(ref_image="image", guidance="guidance", label_names=self.labels),
                     Resized(keys="image", spatial_size=self.spatial_size, mode="area"),
-                    ResizeGuidanceMultipleLabelCustomd(guidance="guidance", ref_image="image"),
-                    AddGuidanceSignalCustomd(
+                    ResizeGuidanceMultipleLabelDeepEditd(guidance="guidance", ref_image="image"),
+                    AddGuidanceSignalDeepEditd(
                         keys="image", guidance="guidance", number_intensity_ch=self.number_intensity_ch
                     ),
                 ]
