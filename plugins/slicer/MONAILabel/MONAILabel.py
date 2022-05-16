@@ -1224,15 +1224,26 @@ class MONAILabelWidget(ScriptedLoadableModuleWidget, VTKObservationMixin):
 
                     sampleDataLogic = SampleData.SampleDataLogic()
 
-                    _ = sampleDataLogic.downloadFromURL(
+                    originalNode = sampleDataLogic.downloadFromURL(
                         nodeNames="segmentation_" + image_id,
                         loadFileTypes="SegmentationFile",
                         fileNames=image_name,
                         uris=download_uri,
-                        # How to load the proper label names - currently it loads another Segmentation node
-                        # loadFileProperties={"labels": self.info.get("labels")},
                         checksums=checksum,
                     )[0]
+
+                    previousSegmentation = self._segmentNode.GetSegmentation()
+                    originalSegmentation = originalNode.GetSegmentation()
+
+                    for idx, label in enumerate(self.info.get("labels")):
+                        segmentOriginal = originalSegmentation.GetSegment(f"Segment_{idx+1}")
+                        segmentOriginal.SetName(label)
+                        self._segmentNode.RemoveSegment(label)
+
+                    previousSegmentation.DeepCopy(originalSegmentation)
+                    # Delete original segmentation node
+                    slicer.mrmlScene.RemoveNode(originalNode)
+                    self.showSegmentationsIn3D()
 
                 except:
                     print("Original label not found ... ")
