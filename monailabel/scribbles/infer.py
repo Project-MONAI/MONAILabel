@@ -9,7 +9,7 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-from monai.transforms import Compose, EnsureChannelFirstd, LoadImaged, Orientationd, ScaleIntensityRanged, Spacingd
+from monai.transforms import Compose, EnsureChannelFirstd, LoadImaged, ScaleIntensityRanged, Spacingd
 
 from monailabel.interfaces.tasks.infer import InferTask, InferType
 from monailabel.scribbles.transforms import (
@@ -71,17 +71,14 @@ class HistogramBasedGraphCut(InferTask):
 
     def pre_transforms(self, data):
         return [
-            LoadImaged(keys=["image", "label"]),
+            LoadImaged(keys=["image", "label"], reader="ITKReader"),
             EnsureChannelFirstd(keys=["image", "label"]),
             AddBackgroundScribblesFromROId(
                 scribbles="label",
                 scribbles_bg_label=self.scribbles_bg_label,
                 scribbles_fg_label=self.scribbles_fg_label,
             ),
-            # at the moment optimisers are bottleneck taking a long time,
-            # therefore scaling non-isotropic with big spacing
             Spacingd(keys=["image", "label"], pixdim=self.pix_dim, mode=["bilinear", "nearest"]),
-            Orientationd(keys=["image", "label"], axcodes="RAS"),
             ScaleIntensityRanged(
                 keys="image",
                 a_min=self.intensity_range[0],
