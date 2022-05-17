@@ -19,7 +19,10 @@ WRITER_DATA = [
     },
 ]
 
-MULTI_CHANNEL_DATA = np.array([[[[1, 0], [0, 1], [1, 0]], [[0, 1], [1, 0], [0, 1]]]]).astype(np.float32)
+CHANNELS = 2
+WIDTH = 15
+HEIGHT = 10
+MULTI_CHANNEL_DATA = np.zeros((CHANNELS, WIDTH, HEIGHT, 1))
 
 COLOR_MAP = {
     # according to getLabelColor() [https://github.com/Project-MONAI/MONAILabel/blob/6cc72c542c9bc6c5181af89550e7e397537d74e3/plugins/slicer/MONAILabel/MONAILabel.py#L1485] # noqa
@@ -50,8 +53,7 @@ class TestWriter(unittest.TestCase):
         self.assertEqual(os.path.exists(output_file), True)
         arr_full, header = nrrd.read(output_file)
 
-        # DEBUG
-        print(header)
+        self.assertEqual(arr_full.shape, (CHANNELS, WIDTH, HEIGHT, 1))
 
         space_directions_expected = np.array(
             [[np.nan, np.nan, np.nan], [-1.0, 0.0, 0.0], [0.0, -1.0, 0.0], [0.0, 0.0, 1.0]]
