@@ -16,14 +16,28 @@
             <label>MONAILabel Address</label>
             <description>Address of a monailabel address in the format 'http://127.0.0.1:8000/'.</description>
             <longflag>server</longflag>
-            <default>http://10.117.16.216:8000/</default>
+            <default>{{env_MONAI_LABEL_SERVER|default("http://10.117.18.128:8000/")}}</default>
         </string>
-        <string>
+        <string datalist="{&quot;model_name&quot;: &quot;__datalist__&quot;}">
             <name>model_name</name>
             <label>Model Name</label>
             <description>DeepLearning Model to Train/Finetune (For Example: deepedit_nuclei, segmentation_nuclei)</description>
             <longflag>model_name</longflag>
             <default>deepedit_nuclei</default>
+        </string>
+        <string>
+            <name>girderApiUrl</name>
+            <longflag>api-url</longflag>
+            <label>Girder API URL</label>
+            <description>A Girder API URL (e.g., https://girder.example.com:443/api/v1)</description>
+            <default></default>
+        </string>
+        <string>
+            <name>girderToken</name>
+            <longflag>girder-token</longflag>
+            <label>Girder Token</label>
+            <description>A Girder token</description>
+            <default></default>
         </string>
     </parameters>
     <parameters>
