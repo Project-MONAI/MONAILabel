@@ -151,6 +151,17 @@ class _ui_MONAILabelSettingsPanel:
         )
         allowOverlapCheckBox.connect("toggled(bool)", self.onUpdateAllowOverlap)
 
+        originalLabelCheckBox = qt.QCheckBox()
+        originalLabelCheckBox.checked = True
+        originalLabelCheckBox.toolTip = "Enable this option to first read original label (predictions)"
+        groupLayout.addRow("Original Labels:", originalLabelCheckBox)
+        parent.registerProperty(
+            "MONAILabel/originalLabel",
+            ctk.ctkBooleanMapper(originalLabelCheckBox, "checked", str(qt.SIGNAL("toggled(bool)"))),
+            "valueAsInt",
+            str(qt.SIGNAL("valueAsIntChanged(int)")),
+        )
+
         developerModeCheckBox = qt.QCheckBox()
         developerModeCheckBox.checked = False
         developerModeCheckBox.toolTip = "Enable this option to find options tab etc..."
@@ -1205,6 +1216,37 @@ class MONAILabelWidget(ScriptedLoadableModuleWidget, VTKObservationMixin):
                 self._volumeNode = sampleDataLogic.downloadFromURL(
                     nodeNames=node_name, fileNames=image_name, uris=download_uri, checksums=checksum
                 )[0]
+
+            if slicer.util.settingsValue("MONAILabel/originalLabel", True, converter=slicer.util.toBool):
+                try:
+                    download_uri = f"{self.serverUrl()}/datastore/label?label={quote_plus(image_id)}&tag=original"
+                    logging.info(download_uri)
+
+                    sampleDataLogic = SampleData.SampleDataLogic()
+
+                    originalNode = sampleDataLogic.downloadFromURL(
+                        nodeNames="segmentation_" + image_id,
+                        loadFileTypes="SegmentationFile",
+                        fileNames=image_name,
+                        uris=download_uri,
+                        checksums=checksum,
+                    )[0]
+
+                    previousSegmentation = self._segmentNode.GetSegmentation()
+                    originalSegmentation = originalNode.GetSegmentation()
+
+                    for idx, label in enumerate(self.info.get("labels")):
+                        segmentOriginal = originalSegmentation.GetSegment(f"Segment_{idx+1}")
+                        segmentOriginal.SetName(label)
+                        self._segmentNode.RemoveSegment(label)
+
+                    previousSegmentation.DeepCopy(originalSegmentation)
+                    # Delete original segmentation node
+                    slicer.mrmlScene.RemoveNode(originalNode)
+                    self.showSegmentationsIn3D()
+
+                except:
+                    print("Original label not found ... ")
 
             self.initSample(sample)
 
