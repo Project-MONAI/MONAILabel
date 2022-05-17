@@ -57,6 +57,8 @@ def fetch_annotations(args, tiles=None):
         "tile_size": tile_size,
         "min_poly_area": min_poly_area,
         "output": output,
+        "girder_api_url": args.girderApiUrl,
+        "girder_token": args.girderToken,
     }
     extra_params = json.loads(args.extra_params)
     body["params"] = {
@@ -74,7 +76,15 @@ def fetch_annotations(args, tiles=None):
     logging.info(f"Total Annotation Fetch time = {round(total_time_taken, 2)}")
 
 
+def get_model_names(args):
+    client = MONAILabelClient(server_url=args.server)
+    for model_name in client.info()['models']:
+        print('<element>%s</element>' % model_name)
+
+
 def main(args):
+    if args.model_name == '__datalist__':
+        return get_model_names(args)
     total_start_time = time.time()
     print("\n>> CLI Parameters ...\n")
     for arg in vars(args):
