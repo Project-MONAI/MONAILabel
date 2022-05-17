@@ -204,8 +204,16 @@ class Writer:
 
         return output_file, output_json
 
-    def is_multichannel_image(self, image_np):
-        return len(image_np.shape) == 4 and image_np.shape[-1] > 1
+    def is_multichannel_image(self, image_np: np.ndarray) -> bool:
+        """Check if the provided image contains multiple channels
+
+        Args:
+            image_np : Expected shape (channels, width, height, batch)
+
+        Returns:
+            bool: If this is a multi-channel image or not
+        """
+        return len(image_np.shape) == 4 and image_np.shape[0] > 1
 
 
 class ClassificationWriter:
