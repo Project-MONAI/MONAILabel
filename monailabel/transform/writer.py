@@ -187,7 +187,7 @@ class Writer:
 
             if self.is_multichannel_image(image_np):
                 if ext != ".seg.nrrd":
-                    logger.debug(
+                    logger.warning(
                         f"Using extension '{ext}' with multi-channel 4D label will probably fail"
                         + "Consider to use extension '.seg.nrrd'"
                     )
