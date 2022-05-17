@@ -78,12 +78,12 @@ def fetch_annotations(args, tiles=None):
 
 def get_model_names(args):
     client = MONAILabelClient(server_url=args.server)
-    for model_name in client.info()['models']:
-        print('<element>%s</element>' % model_name)
+    for model_name in client.info()["models"]:
+        print("<element>%s</element>" % model_name)
 
 
 def main(args):
-    if args.model_name == '__datalist__':
+    if args.model_name == "__datalist__":
         return get_model_names(args)
     total_start_time = time.time()
     print("\n>> CLI Parameters ...\n")
