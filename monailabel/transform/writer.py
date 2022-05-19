@@ -10,8 +10,10 @@
 # limitations under the License.
 import logging
 import tempfile
+from typing import Any, Dict, Iterable, List, Optional
 
 import itk
+import nrrd
 import numpy as np
 from monai.data import write_nifti
 
@@ -56,6 +58,85 @@ def write_itk(image_np, output_file, affine, dtype, compress):
         result_image.SetOrigin(origin)
 
     itk.imwrite(result_image, output_file, compress)
+
+
+def write_seg_nrrd(
+    image_np: np.ndarray,
+    output_file: str,
+    dtype: type,
+    affine: np.ndarray,
+    labels: List[str],
+    color_map: Optional[Dict[str, List[float]]] = None,
+    index_order: str = "C",
+    space: str = "left-posterior-superior",
+) -> None:
+    """Write multi-channel seg.nrrd file.
+
+    Args:
+        image_np: Image as numpy ndarray
+        output_file: Output file path that the seg.nrrd file should be saved to
+        dtype: numpy type e.g. float32
+        affine: Affine matrix
+        labels: Labels of image segment which will be written to the nrrd header
+        color_map: Mapping from segment_name(str) to it's color e.g. {'heart': [255/255, 244/255, 209/255]}
+        index_order: Either 'C' or 'F' (see nrrd.write() documentation)
+
+    Raises:
+        ValueError: In case affine is not provided
+        ValueError: In case labels are not provided
+    """
+    image_np = image_np.transpose().copy()
+    if dtype:
+        image_np = image_np.astype(dtype)
+
+    if not isinstance(labels, Iterable):
+        raise ValueError("Labels have to be defined, e.g. as a list")
+
+    header: Dict[str, Any] = {}
+    for i, segment_name in enumerate(labels):
+        header.update(
+            {
+                f"Segment{i}_ID": segment_name,
+                f"Segment{i}_Name": segment_name,
+            }
+        )
+        if color_map is not None:
+            header[f"Segment{i}_Color"] = " ".join(list(map(str, color_map[segment_name])))
+
+    if affine is None:
+        raise ValueError("Affine matrix has to be defined")
+
+    kinds = ["list", "domain", "domain", "domain"]
+
+    convert_aff_mat = np.diag([-1, -1, 1, 1])
+    affine = convert_aff_mat @ affine
+
+    _origin_key = (slice(-1), -1)
+    origin = affine[_origin_key]
+
+    space_directions = np.array(
+        [
+            [np.nan, np.nan, np.nan],
+            affine[0, :3],
+            affine[1, :3],
+            affine[2, :3],
+        ]
+    )
+
+    header.update(
+        {
+            "kinds": kinds,
+            "space directions": space_directions,
+            "space origin": origin,
+            "space": space,
+        }
+    )
+    nrrd.write(
+        output_file,
+        image_np,
+        header=header,
+        index_order=index_order,
+    )
 
 
 class Writer:
@@ -104,14 +185,35 @@ class Writer:
             output_file = tempfile.NamedTemporaryFile(suffix=ext).name
             logger.debug(f"Saving Image to: {output_file}")
 
+            if self.is_multichannel_image(image_np):
+                if ext != ".seg.nrrd":
+                    logger.warning(
+                        f"Using extension '{ext}' with multi-channel 4D label will probably fail"
+                        + "Consider to use extension '.seg.nrrd'"
+                    )
+                labels = data.get("labels")
+                color_map = data.get("color_map")
+                logger.debug("Using write_seg_nrrd...")
+                write_seg_nrrd(image_np, output_file, dtype, affine, labels, color_map)
             # Issue with slicer:: https://discourse.itk.org/t/saving-non-orthogonal-volume-in-nifti-format/2760/22
-            if self.nibabel and ext.lower() in [".nii", ".nii.gz"]:
+            elif self.nibabel and ext.lower() in [".nii", ".nii.gz"]:
                 logger.debug("Using MONAI write_nifti...")
                 write_nifti(image_np, output_file, affine=affine, output_dtype=dtype)
             else:
                 write_itk(image_np, output_file, affine, dtype, compress)
 
         return output_file, output_json
+
+    def is_multichannel_image(self, image_np: np.ndarray) -> bool:
+        """Check if the provided image contains multiple channels
+
+        Args:
+            image_np : Expected shape (channels, width, height, batch)
+
+        Returns:
+            bool: If this is a multi-channel image or not
+        """
+        return len(image_np.shape) == 4 and image_np.shape[0] > 1
 
 
 class ClassificationWriter:
