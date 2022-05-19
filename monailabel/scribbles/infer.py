@@ -9,37 +9,28 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-from monai.transforms import Compose, EnsureChannelFirstd, LoadImaged, Orientationd, ScaleIntensityRanged, Spacingd
+from monai.transforms import Compose, EnsureChannelFirstd, LoadImaged, ScaleIntensityRanged, Spacingd
 
 from monailabel.interfaces.tasks.infer import InferTask, InferType
 from monailabel.scribbles.transforms import (
     AddBackgroundScribblesFromROId,
     ApplyGraphCutOptimisationd,
     MakeISegUnaryd,
+    MakeLikelihoodFromScribblesGMMd,
     MakeLikelihoodFromScribblesHistogramd,
 )
 from monailabel.transform.post import BoundingBoxd, Restored
 
 
-class HistogramBasedGraphCut(InferTask):
+class ScribblesLikelihoodInferTask(InferTask):
     """
-    Defines histogram-based GraphCut task for Generic segmentation from the following paper:
-
-    Wang, Guotai, et al. "Interactive medical image segmentation using deep learning with image-specific fine tuning."
-    IEEE transactions on medical imaging 37.7 (2018): 1562-1573. (preprint: https://arxiv.org/pdf/1710.04043.pdf)
-
-    This task takes as input 1) original image volume and 2) scribbles from user
-    indicating foreground and background regions. A likelihood volume is generated using histogram method.
-    User-scribbles are incorporated using Equation 7 on page 4 of the paper.
-
-    numpymaxflow's GraphCut layer is used to optimise Equation 5 from the paper, where unaries come from Equation 7
-    and pairwise is the original input volume.
+    Defines a generic Scribbles Likelihood based segmentor infertask
     """
 
     def __init__(
         self,
         dimension=3,
-        description="A post processing step with histogram-based GraphCut for Generic segmentation",
+        description="A post processing step with likelihood + GraphCut for Generic segmentation",
         intensity_range=(-300, 200, 0.0, 1.0, True),
         pix_dim=(2.5, 2.5, 5.0),
         lamda=1.0,
@@ -78,10 +69,7 @@ class HistogramBasedGraphCut(InferTask):
                 scribbles_bg_label=self.scribbles_bg_label,
                 scribbles_fg_label=self.scribbles_fg_label,
             ),
-            # at the moment optimisers are bottleneck taking a long time,
-            # therefore scaling non-isotropic with big spacing
             Spacingd(keys=["image", "label"], pixdim=self.pix_dim, mode=["bilinear", "nearest"]),
-            Orientationd(keys=["image", "label"], axcodes="RAS"),
             ScaleIntensityRanged(
                 keys="image",
                 a_min=self.intensity_range[0],
@@ -90,41 +78,153 @@ class HistogramBasedGraphCut(InferTask):
                 b_max=self.intensity_range[3],
                 clip=self.intensity_range[4],
             ),
-            MakeLikelihoodFromScribblesHistogramd(
+        ]
+
+    def inferer(self, data):
+        raise NotImplementedError("Inferer not implemented in ScribblesLikelihoodInferTask")
+
+    def post_transforms(self, data):
+        return [
+            # unary term maker
+            MakeISegUnaryd(
                 image="image",
+                logits="prob",
                 scribbles="label",
-                post_proc_label="prob",
+                unary="unary",
                 scribbles_bg_label=self.scribbles_bg_label,
                 scribbles_fg_label=self.scribbles_fg_label,
-                normalise=True,
             ),
+            # optimiser
+            ApplyGraphCutOptimisationd(
+                unary="unary",
+                pairwise="image",
+                post_proc_label="pred",
+                lamda=self.lamda,
+                sigma=self.sigma,
+            ),
+            Restored(keys="pred", ref_image="image"),
+            BoundingBoxd(keys="pred", result="result", bbox="bbox"),
         ]
+
+
+class HistogramBasedGraphCut(ScribblesLikelihoodInferTask):
+    """
+    Defines histogram-based GraphCut task for Generic segmentation from the following paper:
+
+    Wang, Guotai, et al. "Interactive medical image segmentation using deep learning with image-specific fine tuning."
+    IEEE transactions on medical imaging 37.7 (2018): 1562-1573. (preprint: https://arxiv.org/pdf/1710.04043.pdf)
+
+    This task takes as input 1) original image volume and 2) scribbles from user
+    indicating foreground and background regions. A likelihood volume is generated using histogram method.
+    User-scribbles are incorporated using Equation 7 on page 4 of the paper.
+
+    numpymaxflow's GraphCut layer is used to optimise Equation 5 from the paper, where unaries come from Equation 7
+    and pairwise is the original input volume.
+    """
+
+    def __init__(
+        self,
+        dimension=3,
+        description="A post processing step with histogram-based GraphCut for Generic segmentation",
+        intensity_range=(-300, 200, 0.0, 1.0, True),
+        pix_dim=(2.5, 2.5, 5.0),
+        lamda=1.0,
+        sigma=0.1,
+        num_bins=64,
+        labels=None,
+        config=None,
+    ):
+        if config:
+            config.update({"num_bins": num_bins})
+        else:
+            config = {"num_bins": num_bins}
+
+        super().__init__(
+            dimension=dimension,
+            description=description,
+            intensity_range=intensity_range,
+            pix_dim=pix_dim,
+            lamda=lamda,
+            sigma=sigma,
+            labels=labels,
+            config=config,
+        )
+        self.num_bins = num_bins
 
     def inferer(self, data):
         return Compose(
             [
-                # unary term maker
-                MakeISegUnaryd(
+                MakeLikelihoodFromScribblesHistogramd(
                     image="image",
-                    logits="prob",
                     scribbles="label",
-                    unary="unary",
+                    post_proc_label="prob",
                     scribbles_bg_label=self.scribbles_bg_label,
                     scribbles_fg_label=self.scribbles_fg_label,
-                ),
-                # optimiser
-                ApplyGraphCutOptimisationd(
-                    unary="unary",
-                    pairwise="image",
-                    post_proc_label="pred",
-                    lamda=self.lamda,
-                    sigma=self.sigma,
+                    num_bins=self.num_bins,
+                    normalise=True,
                 ),
             ]
         )
 
-    def post_transforms(self, data):
-        return [
-            Restored(keys="pred", ref_image="image"),
-            BoundingBoxd(keys="pred", result="result", bbox="bbox"),
-        ]
+
+class GMMBasedGraphCut(ScribblesLikelihoodInferTask):
+    """
+    Defines Gaussian Mixture Model (GMM) based task for Generic segmentation from the following papers:
+
+    Rother, Carsten, Vladimir Kolmogorov, and Andrew Blake. "" GrabCut" interactive foreground extraction using iterated graph cuts."
+    ACM transactions on graphics (TOG) 23.3 (2004): 309-314.
+
+    Wang, Guotai, et al. "Interactive medical image segmentation using deep learning with image-specific fine tuning."
+    IEEE transactions on medical imaging 37.7 (2018): 1562-1573. (preprint: https://arxiv.org/pdf/1710.04043.pdf)
+
+    This task takes as input 1) original image volume and 2) scribbles from user
+    indicating foreground and background regions. A likelihood volume is generated using GMM method.
+    User-scribbles are incorporated using Equation 7 on page 4 from Guotai et al.
+
+    numpymaxflow's GraphCut layer is used to optimise Equation 5 from Guotai et al., where unaries come from Equation 7
+    and pairwise is the original input volume.
+    """
+
+    def __init__(
+        self,
+        dimension=3,
+        description="A post processing step with GMM-based GraphCut for Generic segmentation",
+        intensity_range=(-300, 200, 0.0, 1.0, True),
+        pix_dim=(2.5, 2.5, 5.0),
+        lamda=1.0,
+        sigma=0.1,
+        num_mixtures=20,
+        labels=None,
+        config=None,
+    ):
+        if config:
+            config.update({"num_mixtures": num_mixtures})
+        else:
+            config = {"num_mixtures": num_mixtures}
+
+        super().__init__(
+            dimension=dimension,
+            description=description,
+            intensity_range=intensity_range,
+            pix_dim=pix_dim,
+            lamda=lamda,
+            sigma=sigma,
+            labels=labels,
+            config=config,
+        )
+        self.num_mixtures = num_mixtures
+
+    def inferer(self, data):
+        return Compose(
+            [
+                MakeLikelihoodFromScribblesGMMd(
+                    image="image",
+                    scribbles="label",
+                    post_proc_label="prob",
+                    scribbles_bg_label=self.scribbles_bg_label,
+                    scribbles_fg_label=self.scribbles_fg_label,
+                    num_mixtures=self.num_mixtures,
+                    normalise=False,
+                ),
+            ]
+        )
