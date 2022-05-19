@@ -27,5 +27,6 @@ Shapely==1.8.1.post1
 girder_client==3.1.8
 numpymaxflow==0.0.2
 pynrrd==0.4.2
+ninja==1.10.2.3
 
 #sudo apt-get install openslide-tools -y
