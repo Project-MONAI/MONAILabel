@@ -20,7 +20,7 @@ from scipy.special import softmax
 
 from monailabel.transform.writer import Writer
 
-from .utils import make_iseg_unary, make_likelihood_image_histogram, maxflow
+from .utils import make_iseg_unary, make_likelihood_image_gmm, make_likelihood_image_histogram, maxflow
 
 logger = logging.getLogger(__name__)
 
@@ -161,6 +161,7 @@ class MakeLikelihoodFromScribblesHistogramd(InteractiveSegmentationTransform):
         post_proc_label: str = "prob",
         scribbles_bg_label: int = 2,
         scribbles_fg_label: int = 3,
+        num_bins: int = 64,
         normalise: bool = True,
     ) -> None:
         super().__init__(meta_key_postfix)
@@ -169,10 +170,14 @@ class MakeLikelihoodFromScribblesHistogramd(InteractiveSegmentationTransform):
         self.scribbles_bg_label = scribbles_bg_label
         self.scribbles_fg_label = scribbles_fg_label
         self.post_proc_label = post_proc_label
+        self.num_bins = num_bins
         self.normalise = normalise
 
     def __call__(self, data):
         d = dict(data)
+
+        # attempt to fetch algorithmic parameters from app if present
+        self.num_bins = d.get("num_bins", self.num_bins)
 
         # load scribbles idx from labels_info (if available)
         self._set_scribbles_idx_from_labelinfo(d)
@@ -190,6 +195,62 @@ class MakeLikelihoodFromScribblesHistogramd(InteractiveSegmentationTransform):
             scribbles,
             scribbles_bg_label=self.scribbles_bg_label,
             scribbles_fg_label=self.scribbles_fg_label,
+            num_bins=self.num_bins,
+            return_label=False,
+        )
+
+        if self.normalise:
+            post_proc_label = self._normalise_logits(post_proc_label, axis=0)
+
+        d[self.post_proc_label] = post_proc_label
+
+        return d
+
+
+class MakeLikelihoodFromScribblesGMMd(InteractiveSegmentationTransform):
+    def __init__(
+        self,
+        image: str,
+        scribbles: str,
+        meta_key_postfix: str = "meta_dict",
+        post_proc_label: str = "prob",
+        scribbles_bg_label: int = 2,
+        scribbles_fg_label: int = 3,
+        num_mixtures: int = 20,
+        normalise: bool = False,
+    ) -> None:
+        super().__init__(meta_key_postfix)
+        self.image = image
+        self.scribbles = scribbles
+        self.scribbles_bg_label = scribbles_bg_label
+        self.scribbles_fg_label = scribbles_fg_label
+        self.post_proc_label = post_proc_label
+        self.num_mixtures = num_mixtures
+        self.normalise = normalise
+
+    def __call__(self, data):
+        d = dict(data)
+
+        # attempt to fetch algorithmic parameters from app if present
+        self.num_mixtures = d.get("num_mixtures", self.num_mixtures)
+
+        # load scribbles idx from labels_info (if available)
+        self._set_scribbles_idx_from_labelinfo(d)
+
+        # copy affine meta data from image input
+        d = self._copy_affine(d, src=self.image, dst=self.post_proc_label)
+
+        # read relevant terms from data
+        image = self._fetch_data(d, self.image)
+        scribbles = self._fetch_data(d, self.scribbles)
+
+        # make likelihood image
+        post_proc_label = make_likelihood_image_gmm(
+            image,
+            scribbles,
+            scribbles_bg_label=self.scribbles_bg_label,
+            scribbles_fg_label=self.scribbles_fg_label,
+            num_mixtures=self.num_mixtures,
             return_label=False,
         )
 
