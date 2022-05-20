@@ -1,0 +1,51 @@
+metadata:
+  name: monailabel.pathology.segmentation_nuclei
+  namespace: cvat
+  annotations:
+    name: Segmentation Nuclei
+    type: detector
+    framework: pytorch
+    spec: |
+      [
+        { "id": 1, "name": "Neoplastic cells" },
+        { "id": 2, "name": "Inflammatory" },
+        { "id": 3, "name": "Connective/Soft tissue cells" },
+        { "id": 4, "name": "Dead Cells" },
+        { "id": 5, "name": "Epithelial" }
+      ]
+
+spec:
+  description: A pre-trained semantic segmentation model for Pathology
+  runtime: 'python:3.8'
+  handler: main:handler
+  eventTimeout: 30s
+
+  build:
+    image: cvat/monailabel.pathology.segmentation_nuclei
+    baseImage: projectmonai/monailabel:latest
+
+    directives:
+      preCopy:
+        - kind: ENV
+          value: MONAI_LABEL_MODELS=segmentation_nuclei
+        - kind: ENV
+          value: PYTHONPATH=/opt/conda/monailabel/sample-apps/pathology
+
+  triggers:
+    myHttpTrigger:
+      maxWorkers: 1
+      kind: 'http'
+      workerAvailabilityTimeoutMilliseconds: 10000
+      attributes:
+        maxRequestBodySize: 33554432 # 32MB
+
+  resources:
+    limits:
+      nvidia.com/gpu: 1
+
+  platform:
+    attributes:
+      restartPolicy:
+        name: always
+        maximumRetryCount: 1
+      mountMode: volume
