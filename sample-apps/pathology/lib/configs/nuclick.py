@@ -42,7 +42,7 @@ class NuClick(TaskConfig):
 
         # Download PreTrained Model
         if strtobool(self.conf.get("use_pretrained_model", "true")):
-            url = f"{self.PRE_TRAINED_PATH}/pathology_nuclick_bunet.pt"
+            url = f"{self.conf.get('pretrained_path', self.PRE_TRAINED_PATH)}/pathology_nuclick_bunet.pt"
             download_file(url, self.path[0])
 
         # Network

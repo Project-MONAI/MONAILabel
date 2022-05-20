@@ -1,37 +1,36 @@
 metadata:
-  name: monailabel.pathology.segmentation_nuclei
+  name: monailabel.pathology.nuclick
   namespace: cvat
   annotations:
-    name: Segmentation Nuclei
-    type: detector
+    name: Nuclick
+    type: interactor
     framework: pytorch
-    spec: |
-      [
-        { "id": 1, "name": "Neoplastic cells" },
-        { "id": 2, "name": "Inflammatory" },
-        { "id": 3, "name": "Connective/Soft tissue cells" },
-        { "id": 4, "name": "Dead Cells" },
-        { "id": 5, "name": "Epithelial" }
-      ]
+    spec:
+    min_pos_points: 1
+    min_neg_points: 0
+    animated_gif: https://raw.githubusercontent.com/mostafajahanifar/nuclick_torch/master/docs/33.gif
+    help_message: The interactor allows to annotate a nuclei using pre-trained NuClick model
 
 spec:
-  description: A pre-trained semantic segmentation model for Pathology
+  description: A pre-trained NuClick model for interactive cell segmentation for Pathology
   runtime: 'python:3.8'
   handler: main:handler
   eventTimeout: 30s
 
   build:
-    image: cvat/monailabel.pathology.segmentation_nuclei
+    image: cvat/monailabel.pathology.nuclick
     baseImage: projectmonai/monailabel:latest
 
     directives:
       preCopy:
         - kind: ENV
-          value: MONAI_LABEL_MODELS=segmentation_nuclei
+          value: MONAI_LABEL_MODELS=nuclick
         - kind: ENV
           value: PYTHONPATH=/opt/conda/monailabel/sample-apps/pathology
         - kind: ENV
           value: MONAI_PRETRAINED_PATH=https://github.com/Project-MONAI/MONAILabel/releases/download/data
+        - kind: ENV
+          value: INTERACTOR_MODEL=true
 
   triggers:
     myHttpTrigger:
