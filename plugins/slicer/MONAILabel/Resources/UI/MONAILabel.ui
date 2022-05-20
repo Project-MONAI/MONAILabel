@@ -645,6 +645,30 @@
         <item row="2" column="3">
          <widget class="QComboBox" name="scribLabelComboBox"/>
         </item>
+        <item row="0" column="6">
+         <layout class="QHBoxLayout" name="horizontalLayout_4">
+          <item>
+           <widget class="QLabel" name="scribblesROILabel">
+            <property name="text">
+             <string>Place ROI:</string>
+            </property>
+           </widget>
+          </item>
+          <item>
+           <widget class="qSlicerMarkupsPlaceWidget" name="scribblesPlaceWidget">
+            <property name="placeMultipleMarkups">
+             <enum>qSlicerMarkupsPlaceWidget::ForcePlaceMultipleMarkups</enum>
+            </property>
+            <property name="sizePolicy">
+              <sizepolicy hsizetype="Expanding" vsizetype="Preferred">
+              <horstretch>0</horstretch>
+              <verstretch>0</verstretch>
+              </sizepolicy>
+            </property>
+           </widget>
+          </item>
+         </layout>
+        </item>
        </layout>
       </item>
      </layout>

@@ -331,6 +331,13 @@ class MONAILabelWidget(ScriptedLoadableModuleWidget, VTKObservationMixin):
         self.ui.scribblesSelector.addItem(self.icon("bg_red.png"), "Background")
         self.ui.scribblesSelector.setCurrentIndex(0)
 
+        # ROI placement for scribbles
+        scribblesROINode = self.createScribblesROINode()
+        self.ui.scribblesPlaceWidget.setButtonsVisible(False)
+        self.ui.scribblesPlaceWidget.placeButton().show()
+        self.ui.scribblesPlaceWidget.setMRMLScene(slicer.mrmlScene)
+        self.ui.scribblesPlaceWidget.setCurrentNode(scribblesROINode)
+
         # start with scribbles section disabled
         self.ui.scribblesCollapsibleButton.setEnabled(False)
         self.ui.scribblesCollapsibleButton.collapsed = True
@@ -1168,8 +1175,9 @@ class MONAILabelWidget(ScriptedLoadableModuleWidget, VTKObservationMixin):
                 "Are you sure to continue?"
             ):
                 return
-            self.onResetScribbles()
             slicer.mrmlScene.Clear(0)
+
+        self.onResetScribbles()
 
         start = time.time()
         try:
@@ -1856,12 +1864,8 @@ class MONAILabelWidget(ScriptedLoadableModuleWidget, VTKObservationMixin):
             self.updateServerSettings()
             self.reportProgress(60)
 
-            # try to first fetch vtkMRMLAnnotationROINode
-            roiNode = slicer.mrmlScene.GetFirstNodeByClass("vtkMRMLAnnotationROINode")
-            if roiNode is None:  # if vtkMRMLAnnotationROINode not present, then check for vtkMRMLMarkupsROINode node
-                roiNode = slicer.mrmlScene.GetFirstNodeByClass("vtkMRMLMarkupsROINode")
-
-            # if roi node found, then try to get roi
+            # try to get roi if placed
+            roiNode = self.ui.scribblesPlaceWidget.currentNode()
             selected_roi = self.getROIPointsXYZ(roiNode)
 
             # send scribbles + label to server along with selected scribbles method
@@ -1981,6 +1985,11 @@ class MONAILabelWidget(ScriptedLoadableModuleWidget, VTKObservationMixin):
         # remove "scribbles" segments from label
         self.onClearScribblesSegmentNodes()
 
+        # re-add ROI node if removed
+        if self.ui.scribblesPlaceWidget.currentNode() is None:
+            scribblesROINode = self.createScribblesROINode()
+            self.ui.scribblesPlaceWidget.setCurrentNode(scribblesROINode)
+
         self.ui.paintScribblesButton.setChecked(False)
         self.ui.eraseScribblesButton.setChecked(False)
 
@@ -2083,6 +2092,21 @@ class MONAILabelWidget(ScriptedLoadableModuleWidget, VTKObservationMixin):
             self.checkAndInitialiseScribbles()
             effect = self._scribblesEditorWidget.activeEffect()
             effect.setParameter("BrushAbsoluteDiameter", value)
+
+    def createScribblesROINode(self):
+        scribblesROINode = slicer.mrmlScene.AddNewNodeByClass("vtkMRMLMarkupsROINode")
+        scribblesROINode.AddObserver(scribblesROINode.PointPositionDefinedEvent, self.onROIPointPlaced)
+        scribblesROINode.SetName("Scribbles ROI")
+        scribblesROINode.CreateDefaultDisplayNodes()
+        scribblesROINode.GetDisplayNode().SetFillOpacity(0.0)
+        scribblesROINode.GetDisplayNode().SetSelectedColor(1, 1, 1)
+        scribblesROINode.GetDisplayNode().SetColor(1, 1, 1)
+        scribblesROINode.GetDisplayNode().SetActiveColor(1, 1, 1)
+        return scribblesROINode
+
+    def onROIPointPlaced(self, caller_roi_node, event):
+        if caller_roi_node.GetControlPointPlacementComplete():
+            self.ui.scribblesPlaceWidget.setPlaceModeEnabled(False)  # General ROI placement persists otherwise
 
 
 class MONAILabelLogic(ScriptedLoadableModuleLogic):
