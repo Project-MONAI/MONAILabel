@@ -207,7 +207,7 @@ class Main:
     def action_plugins(self, args):
         plugins_dir = os.path.join(os.path.dirname(os.path.dirname(os.path.realpath(__file__))), "plugins")
         if not os.path.exists(plugins_dir):
-            plugins_dir = os.path.join(args.prefix if args.prefix else sys.prefix, "scripts/monailabel", "plugins")
+            plugins_dir = os.path.join(args.prefix if args.prefix else sys.prefix, "monailabel", "plugins")
 
         plugins = os.listdir(plugins_dir)
         plugins = [os.path.basename(a) for a in plugins]
