@@ -20,7 +20,7 @@ import torch
 from monai.inferers import Inferer, SimpleInferer, SlidingWindowInferer
 
 from monailabel.interfaces.exception import MONAILabelError, MONAILabelException
-from monailabel.interfaces.utils.transform import run_transforms
+from monailabel.interfaces.utils.transform import dump_data, run_transforms
 from monailabel.transform.writer import Writer
 from monailabel.utils.others.generic import device_list
 
@@ -261,12 +261,12 @@ class InferTask:
         req["device"] = device
 
         logger.setLevel(req.get("logging", "INFO").upper())
-        logger.info(f"Infer Request (final): {req}")
-
         if req.get("image") is not None and isinstance(req.get("image"), str):
+            logger.info(f"Infer Request (final): {req}")
             data = copy.deepcopy(req)
             data.update({"image_path": req.get("image")})
         else:
+            dump_data(req, logger.level)
             data = req
 
         start = time.time()

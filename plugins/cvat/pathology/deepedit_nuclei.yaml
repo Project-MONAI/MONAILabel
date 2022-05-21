@@ -1,0 +1,49 @@
+metadata:
+  name: monailabel.pathology.deepedit_nuclei
+  namespace: cvat
+  annotations:
+    name: Deepedit Nuclei
+    type: detector
+    framework: pytorch
+    spec: |
+      [
+        { "id": 1, "name": "Nuclei" }
+      ]
+
+spec:
+  description: A pre-trained interaction/deepedit model for Pathology
+  runtime: 'python:3.8'
+  handler: main:handler
+  eventTimeout: 30s
+
+  build:
+    image: cvat/monailabel.pathology.deepedit_nuclei
+    baseImage: projectmonai/monailabel:latest
+
+    directives:
+      preCopy:
+        - kind: ENV
+          value: MONAI_LABEL_MODELS=deepedit_nuclei
+        - kind: ENV
+          value: PYTHONPATH=/opt/conda/monailabel/sample-apps/pathology
+        - kind: ENV
+          value: MONAI_PRETRAINED_PATH=https://github.com/Project-MONAI/MONAILabel/releases/download/data
+
+  triggers:
+    myHttpTrigger:
+      maxWorkers: 1
+      kind: 'http'
+      workerAvailabilityTimeoutMilliseconds: 10000
+      attributes:
+        maxRequestBodySize: 33554432 # 32MB
+
+  resources:
+    limits:
+      nvidia.com/gpu: 1
+
+  platform:
+    attributes:
+      restartPolicy:
+        name: always
+        maximumRetryCount: 1
+      mountMode: volume
