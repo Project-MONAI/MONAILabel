@@ -291,6 +291,7 @@ class MONAILabelWidget(ScriptedLoadableModuleWidget, VTKObservationMixin):
         # Connections
         self.ui.fetchServerInfoButton.connect("clicked(bool)", self.onClickFetchInfo)
         self.ui.serverComboBox.connect("currentIndexChanged(int)", self.onClickFetchInfo)
+        self.ui.strategyBox.connect("currentIndexChanged(int)", self.updateParameterNodeFromGUI)
         self.ui.segmentationModelSelector.connect("currentIndexChanged(int)", self.updateParameterNodeFromGUI)
         self.ui.segmentationButton.connect("clicked(bool)", self.onClickSegmentation)
         self.ui.deepgrowModelSelector.connect("currentIndexChanged(int)", self.updateParameterNodeFromGUI)
@@ -555,12 +556,6 @@ class MONAILabelWidget(ScriptedLoadableModuleWidget, VTKObservationMixin):
         self.ui.appComboBox.clear()
         self.ui.appComboBox.addItem(self.info.get("name", ""))
 
-        datastore_stats = self.info.get("datastore", {})
-        current = datastore_stats.get("completed", 0)
-        total = datastore_stats.get("total", 0)
-        self.ui.activeLearningProgressBar.setValue(current / max(total, 1) * 100)
-        self.ui.activeLearningProgressBar.setToolTip(f"{current}/{total} samples are labeled")
-
         train_stats = self.info.get("train_stats", {})
         train_stats = next(iter(train_stats.values())) if train_stats else train_stats
 
@@ -573,6 +568,17 @@ class MONAILabelWidget(ScriptedLoadableModuleWidget, VTKObservationMixin):
         currentStrategy = self._parameterNode.GetParameter("CurrentStrategy")
         currentStrategy = currentStrategy if currentStrategy else self.state["CurrentStrategy"]
         self.ui.strategyBox.setCurrentIndex(self.ui.strategyBox.findText(currentStrategy) if currentStrategy else 0)
+
+        datastore_stats = self.info.get("datastore", {})
+        current_strategy = self.ui.strategyBox.currentText
+        current_annotation_mode = self.info.get("strategies", {}).get(current_strategy, {}).get("annotation_mode", "collaborative")
+        if current_annotation_mode == 'competetive':
+            current = datastore_stats.get("label_tags", {}).get(slicer.util.settingsValue("MONAILabel/clientId", "user-xyz"), 0)
+        else:
+            current = datastore_stats.get("completed", 0)
+        total = datastore_stats.get("total", 0)
+        self.ui.activeLearningProgressBar.setValue(current / max(total, 1) * 100)
+        self.ui.activeLearningProgressBar.setToolTip(f"{current}/{total} samples are labeled")
 
         self.ui.trainerBox.clear()
         trainers = self.info.get("trainers", {})
@@ -1407,7 +1413,10 @@ class MONAILabelWidget(ScriptedLoadableModuleWidget, VTKObservationMixin):
             self.reportProgress(30)
 
             self.updateServerSettings()
-            result = self.logic.save_label(self.current_sample["id"], label_in, {"label_info": label_info})
+            current_strategy = self.ui.strategyBox.currentText
+            current_annotation_mode = self.info.get("strategies", {}).get(current_strategy, {}).get("annotation_mode", "collaborative")
+            tag = slicer.util.settingsValue("MONAILabel/clientId", "user-xyz") if current_annotation_mode == 'competetive' else ""
+            result = self.logic.save_label(self.current_sample["id"], label_in, {"label_info": label_info}, tag)
             self.fetchInfo()
 
             if slicer.util.settingsValue("MONAILabel/autoUpdateModelV2", False, converter=slicer.util.toBool):
@@ -2138,9 +2147,9 @@ class MONAILabelLogic(ScriptedLoadableModuleLogic):
     def upload_image(self, image_in, image_id=None):
         return MONAILabelClient(self.server_url, self.tmpdir, self.client_id).upload_image(image_in, image_id)
 
-    def save_label(self, image_in, label_in, params):
+    def save_label(self, image_in, label_in, params, tag=""):
         return MONAILabelClient(self.server_url, self.tmpdir, self.client_id).save_label(
-            image_in, label_in, params=params
+            image_in, label_in, params=params, tag=tag
         )
 
     def infer(self, model, image_in, params={}, label_in=None, file=None, session_id=None):
