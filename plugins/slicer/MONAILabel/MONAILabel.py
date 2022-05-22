@@ -571,9 +571,13 @@ class MONAILabelWidget(ScriptedLoadableModuleWidget, VTKObservationMixin):
 
         datastore_stats = self.info.get("datastore", {})
         current_strategy = self.ui.strategyBox.currentText
-        current_annotation_mode = self.info.get("strategies", {}).get(current_strategy, {}).get("annotation_mode", "collaborative")
-        if current_annotation_mode == 'competetive':
-            current = datastore_stats.get("label_tags", {}).get(slicer.util.settingsValue("MONAILabel/clientId", "user-xyz"), 0)
+        current_annotation_mode = (
+            self.info.get("strategies", {}).get(current_strategy, {}).get("annotation_mode", "collaborative")
+        )
+        if current_annotation_mode == "competetive":
+            current = datastore_stats.get("label_tags", {}).get(
+                slicer.util.settingsValue("MONAILabel/clientId", "user-xyz"), 0
+            )
         else:
             current = datastore_stats.get("completed", 0)
         total = datastore_stats.get("total", 0)
@@ -1414,8 +1418,14 @@ class MONAILabelWidget(ScriptedLoadableModuleWidget, VTKObservationMixin):
 
             self.updateServerSettings()
             current_strategy = self.ui.strategyBox.currentText
-            current_annotation_mode = self.info.get("strategies", {}).get(current_strategy, {}).get("annotation_mode", "collaborative")
-            tag = slicer.util.settingsValue("MONAILabel/clientId", "user-xyz") if current_annotation_mode == 'competetive' else ""
+            current_annotation_mode = (
+                self.info.get("strategies", {}).get(current_strategy, {}).get("annotation_mode", "collaborative")
+            )
+            tag = (
+                slicer.util.settingsValue("MONAILabel/clientId", "user-xyz")
+                if current_annotation_mode == "competetive"
+                else ""
+            )
             result = self.logic.save_label(self.current_sample["id"], label_in, {"label_info": label_info}, tag)
             self.fetchInfo()
 

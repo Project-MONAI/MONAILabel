@@ -12,7 +12,7 @@
 import logging
 
 from monailabel.interfaces.datastore import Datastore, DefaultLabelTag
-from monailabel.interfaces.tasks.strategy import Strategy, DefaultAnnotationMode
+from monailabel.interfaces.tasks.strategy import DefaultAnnotationMode, Strategy
 
 logger = logging.getLogger(__name__)
 
@@ -27,9 +27,9 @@ class First(Strategy):
 
     def __call__(self, request, datastore: Datastore):
         if self.annotation_mode == DefaultAnnotationMode.COMPETETIVE:
-            tag = request.get('client_id', DefaultLabelTag.FINAL)
+            tag = request.get("client_id", DefaultLabelTag.FINAL)
         else:
-             tag = DefaultLabelTag.FINAL
+            tag = DefaultLabelTag.FINAL
         images = datastore.get_unlabeled_images(tag)
         if not len(images):
             return None

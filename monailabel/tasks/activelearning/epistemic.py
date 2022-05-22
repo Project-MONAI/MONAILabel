@@ -14,7 +14,7 @@ import time
 from typing import Any, Dict
 
 from monailabel.interfaces.datastore import Datastore, DefaultLabelTag
-from monailabel.interfaces.tasks.strategy import Strategy, DefaultAnnotationMode
+from monailabel.interfaces.tasks.strategy import DefaultAnnotationMode, Strategy
 
 logger = logging.getLogger(__name__)
 
@@ -27,7 +27,12 @@ class Epistemic(Strategy):
     SECS_IN_DAY = 24 * 60 * 60
 
     def __init__(
-        self, k=0, reset=SECS_IN_DAY, key="epistemic_entropy", desc="Get First Sample Based on Epistemic score", annotation_mode: str = DefaultAnnotationMode.COLLABORATIVE
+        self,
+        k=0,
+        reset=SECS_IN_DAY,
+        key="epistemic_entropy",
+        desc="Get First Sample Based on Epistemic score",
+        annotation_mode: str = DefaultAnnotationMode.COLLABORATIVE,
     ):
         self.k = k
         self.reset = reset  # Reset previously served samples after N seconds (ex: every day)
@@ -36,9 +41,9 @@ class Epistemic(Strategy):
 
     def __call__(self, request, datastore: Datastore):
         if self.annotation_mode == DefaultAnnotationMode.COMPETETIVE:
-            tag = request.get('client_id', DefaultLabelTag.FINAL)
+            tag = request.get("client_id", DefaultLabelTag.FINAL)
         else:
-             tag = DefaultLabelTag.FINAL
+            tag = DefaultLabelTag.FINAL
         images = datastore.get_unlabeled_images(tag)
 
         if not len(images):
