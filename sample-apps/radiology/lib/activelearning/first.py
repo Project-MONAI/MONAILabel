@@ -11,8 +11,8 @@
 
 import logging
 
-from monailabel.interfaces.datastore import Datastore
-from monailabel.interfaces.tasks.strategy import Strategy
+from monailabel.interfaces.datastore import Datastore, DefaultLabelTag
+from monailabel.interfaces.tasks.strategy import Strategy, DefaultAnnotationMode
 
 logger = logging.getLogger(__name__)
 
@@ -22,11 +22,15 @@ class First(Strategy):
     Consider implementing a first strategy for active learning
     """
 
-    def __init__(self):
-        super().__init__("Get First Sample")
+    def __init__(self, annotation_mode: str = DefaultAnnotationMode.COLLABORATIVE):
+        super().__init__("Get First Sample", annotation_mode)
 
     def __call__(self, request, datastore: Datastore):
-        images = datastore.get_unlabeled_images()
+        if self.annotation_mode == DefaultAnnotationMode.COMPETETIVE:
+            tag = request.get('client_id', DefaultLabelTag.FINAL)
+        else:
+             tag = DefaultLabelTag.FINAL
+        images = datastore.get_unlabeled_images(tag)
         if not len(images):
             return None
 
