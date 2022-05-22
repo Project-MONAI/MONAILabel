@@ -162,7 +162,7 @@ class DSADatastore(Datastore):
         annotated = self._get_annotated_images()
         return [image for image in images if image in annotated]
 
-    def get_unlabeled_images(self) -> List[str]:
+    def get_unlabeled_images(self, tag: str = DefaultLabelTag.FINAL) -> List[str]:
         images = self.list_images()
         labeled = self.get_labeled_images()
         return [image for image in images if image not in labeled]
