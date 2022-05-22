@@ -22,7 +22,7 @@ from monailabel.interfaces.config import TaskConfig
 from monailabel.interfaces.datastore import Datastore
 from monailabel.interfaces.tasks.infer import InferTask
 from monailabel.interfaces.tasks.scoring import ScoringMethod
-from monailabel.interfaces.tasks.strategy import Strategy
+from monailabel.interfaces.tasks.strategy import Strategy, DefaultAnnotationMode
 from monailabel.interfaces.tasks.train import TrainTask
 from monailabel.scribbles.infer import GMMBasedGraphCut, HistogramBasedGraphCut
 from monailabel.tasks.activelearning.random import Random
@@ -165,6 +165,7 @@ class MyApp(MONAILabelApp):
     def init_strategies(self) -> Dict[str, Strategy]:
         strategies: Dict[str, Strategy] = {
             "random": Random(),
+            "random (competetive annotation mode)": Random(DefaultAnnotationMode.COMPETETIVE),
             "first": First(),
         }
 
