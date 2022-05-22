@@ -162,7 +162,7 @@ class Datastore(metaclass=ABCMeta):
         pass
 
     @abstractmethod
-    def get_unlabeled_images(self) -> List[str]:
+    def get_unlabeled_images(self, tag: str = DefaultLabelTag.FINAL) -> List[str]:
         """
         Get all images that have no corresponding final label
 
