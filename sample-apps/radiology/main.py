@@ -165,8 +165,8 @@ class MyApp(MONAILabelApp):
     def init_strategies(self) -> Dict[str, Strategy]:
         strategies: Dict[str, Strategy] = {
             "random": Random(),
-            "random (competetive annotation mode)": Random(DefaultAnnotationMode.COMPETETIVE),
             "first": First(),
+            "first (competetive annotation mode)": First(DefaultAnnotationMode.COMPETETIVE),
         }
 
         if strtobool(self.conf.get("skip_strategies", "true")):
