@@ -24,4 +24,4 @@ class TTA(Epistemic):
     """
 
     def __init__(self, annotation_mode: str = DefaultAnnotationMode.COLLABORATIVE):
-        super().__init__(key="tta_vvc", desc="Get First Sample Based on TTA score", annotation_mode)
+        super().__init__(key="tta_vvc", desc="Get First Sample Based on TTA score", annotation_mode = annotation_mode)
