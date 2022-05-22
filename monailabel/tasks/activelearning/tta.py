@@ -11,6 +11,8 @@
 
 import logging
 
+from monailabel.interfaces.tasks.strategy import DefaultAnnotationMode
+
 from .epistemic import Epistemic
 
 logger = logging.getLogger(__name__)
@@ -21,5 +23,5 @@ class TTA(Epistemic):
     Test Time Augmentation (TTA) as active learning strategy
     """
 
-    def __init__(self):
-        super().__init__(key="tta_vvc", desc="Get First Sample Based on TTA score")
+    def __init__(self, annotation_mode: str = DefaultAnnotationMode.COLLABORATIVE):
+        super().__init__(key="tta_vvc", desc="Get First Sample Based on TTA score", annotation_mode)
