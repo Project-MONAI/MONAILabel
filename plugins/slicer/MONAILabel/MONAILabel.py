@@ -1227,7 +1227,7 @@ class MONAILabelWidget(ScriptedLoadableModuleWidget, VTKObservationMixin):
                     originalNode = sampleDataLogic.downloadFromURL(
                         nodeNames="segmentation_" + image_id,
                         loadFileTypes="SegmentationFile",
-                        fileNames=image_name,
+                        fileNames="segmentation_" + image_name,
                         uris=download_uri,
                         checksums=checksum,
                     )[0]
