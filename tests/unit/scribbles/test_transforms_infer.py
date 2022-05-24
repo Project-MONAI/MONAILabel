@@ -17,6 +17,7 @@ import torch
 from monai.transforms import LoadImage
 from monai.utils import set_determinism
 from parameterized import parameterized
+from torch.utils.cpp_extension import CUDA_HOME
 
 from monailabel.scribbles.infer import HistogramBasedGraphCut
 from monailabel.scribbles.transforms import (
@@ -343,7 +344,7 @@ class TestScribblesTransforms(unittest.TestCase):
         self.assertTupleEqual(expected_shape, result["pred"].shape)
 
     @parameterized.expand(TEST_CASE_MAKE_LIKE_METHOD_TX)
-    @unittest.skipUnless(torch.cuda.is_available(), "Skipping CUDA-based tests")
+    @unittest.skipUnless(torch.cuda.is_available() and CUDA_HOME is not None, "Skipping CUDA-based tests")
     def test_make_likelihood_GMM(self, input_param, test_input, output, expected_shape):
         input_param.update({"post_proc_label": "pred"})
         result = MakeLikelihoodFromScribblesGMMd(**input_param)(test_input)
