@@ -650,7 +650,7 @@
           <item>
            <widget class="QLabel" name="scribblesROILabel">
             <property name="text">
-             <string>Place ROI:</string>
+             <string>ROI:</string>
             </property>
            </widget>
           </item>
