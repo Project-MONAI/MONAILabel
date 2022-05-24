@@ -1866,7 +1866,9 @@ class MONAILabelWidget(ScriptedLoadableModuleWidget, VTKObservationMixin):
 
             # try to get roi if placed
             roiNode = self.ui.scribblesPlaceWidget.currentNode()
-            selected_roi = self.getROIPointsXYZ(roiNode)
+            selected_roi = []
+            if roiNode and roiNode.GetControlPointPlacementComplete():
+                selected_roi = self.getROIPointsXYZ(roiNode)
 
             # send scribbles + label to server along with selected scribbles method
             params = self.getParamsFromConfig("infer", scribblesMethod)
