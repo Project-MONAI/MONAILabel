@@ -1931,15 +1931,10 @@ class MONAILabelWidget(ScriptedLoadableModuleWidget, VTKObservationMixin):
         roi_points_ras = [0.0] * 6
         if roiNode.__class__.__name__ == "vtkMRMLMarkupsROINode":
             # for vtkMRMLMarkupsROINode
-            print(roiNode.__class__.__name__)
             center = [0] * 3
             roiNode.GetCenter(center)
             roi_points_ras = [(x - s / 2, x + s / 2) for x, s in zip(center, roiNode.GetSize())]
             roi_points_ras = [item for sublist in roi_points_ras for item in sublist]
-        elif roiNode.__class__.__name__ == "vtkMRMLAnnotationROINode":
-            # for vtkMRMLAnnotationROINode (old method)
-            print(roiNode.__class__.__name__)
-            roiNode.GetBounds(roi_points_ras)
         else:
             # if none found then best to return empty list
             return []
