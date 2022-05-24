@@ -15,7 +15,7 @@ from functools import partial
 import numpy as np
 import torch
 import tqdm
-from monai.data import CacheDataset, DataLoader, create_test_image_3d
+from monai.data import CacheDataset, ThreadDataLoader, create_test_image_3d
 from monai.data.utils import pad_list_data_collate
 from monai.losses import DiceLoss
 from monai.networks.nets import UNet
@@ -86,7 +86,8 @@ class TestEpistemicScoring(unittest.TestCase):
 
         train_ds = CacheDataset(train_data, transforms)
         # output might be different size, so pad so that they match
-        train_loader = DataLoader(train_ds, batch_size=2, collate_fn=pad_list_data_collate)
+        # train_loader = DataLoader(train_ds, batch_size=2, collate_fn=pad_list_data_collate) # spawn error
+        train_loader = ThreadDataLoader(train_ds, num_workers=0, batch_size=2, collate_fn=pad_list_data_collate)
 
         model = UNet(3, 1, 1, channels=(6, 6), strides=(2, 2)).to(device)
         loss_function = DiceLoss(sigmoid=True)
