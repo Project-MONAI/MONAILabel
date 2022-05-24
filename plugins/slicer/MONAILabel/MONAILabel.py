@@ -2100,7 +2100,7 @@ class MONAILabelWidget(ScriptedLoadableModuleWidget, VTKObservationMixin):
         scribblesROINode.AddObserver(scribblesROINode.PointPositionDefinedEvent, self.onROIPointPlaced)
         scribblesROINode.SetName("Scribbles ROI")
         scribblesROINode.CreateDefaultDisplayNodes()
-        scribblesROINode.GetDisplayNode().SetFillOpacity(0.0)
+        scribblesROINode.GetDisplayNode().SetFillOpacity(0.4)
         scribblesROINode.GetDisplayNode().SetSelectedColor(1, 1, 1)
         scribblesROINode.GetDisplayNode().SetColor(1, 1, 1)
         scribblesROINode.GetDisplayNode().SetActiveColor(1, 1, 1)
