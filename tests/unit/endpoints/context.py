@@ -17,9 +17,6 @@ import unittest
 
 from fastapi.testclient import TestClient
 
-from monailabel.app import app
-from monailabel.config import settings
-
 
 def create_client(app_dir, studies, data_dir, conf=None):
     app_conf = {
@@ -33,6 +30,8 @@ def create_client(app_dir, studies, data_dir, conf=None):
     }
     if conf:
         app_conf.update(conf)
+
+    from monailabel.config import settings
 
     settings.MONAI_LABEL_APP_DIR = app_dir
     settings.MONAI_LABEL_STUDIES = studies
@@ -49,6 +48,10 @@ def create_client(app_dir, studies, data_dir, conf=None):
     os.makedirs(logs_dir, exist_ok=True)
     open(os.path.join(logs_dir, "app.log"), "a").close()
 
+    from monailabel.app import app
+    from monailabel.interfaces.utils.app import clear_cache
+
+    clear_cache()
     return TestClient(app)
 
 
