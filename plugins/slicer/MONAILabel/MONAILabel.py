@@ -203,6 +203,7 @@ class MONAILabelWidget(ScriptedLoadableModuleWidget, VTKObservationMixin):
         self._parameterNode = None
         self._volumeNode = None
         self._segmentNode = None
+        self._scribblesROINode = None
         self._volumeNodes = []
         self._updatingGUIFromParameterNode = False
         self._scribblesEditorWidget = None
@@ -332,11 +333,9 @@ class MONAILabelWidget(ScriptedLoadableModuleWidget, VTKObservationMixin):
         self.ui.scribblesSelector.setCurrentIndex(0)
 
         # ROI placement for scribbles
-        scribblesROINode = self.createScribblesROINode()
         self.ui.scribblesPlaceWidget.setButtonsVisible(False)
         self.ui.scribblesPlaceWidget.placeButton().show()
         self.ui.scribblesPlaceWidget.setMRMLScene(slicer.mrmlScene)
-        self.ui.scribblesPlaceWidget.setCurrentNode(scribblesROINode)
 
         # start with scribbles section disabled
         self.ui.scribblesCollapsibleButton.setEnabled(False)
@@ -390,6 +389,9 @@ class MONAILabelWidget(ScriptedLoadableModuleWidget, VTKObservationMixin):
         self.setParameterNode(None)
         self.current_sample = None
         self.samples.clear()
+        if self._scribblesROINode:
+            self._scribblesROINode.RemoveAllObservers()
+            self._scribblesROINode = None
 
         self.resetPointList(
             self.ui.dgPositiveControlPointPlacementWidget,
@@ -1175,9 +1177,8 @@ class MONAILabelWidget(ScriptedLoadableModuleWidget, VTKObservationMixin):
                 "Are you sure to continue?"
             ):
                 return
+            self.onResetScribbles()
             slicer.mrmlScene.Clear(0)
-
-        self.onResetScribbles()
 
         start = time.time()
         try:
@@ -1279,6 +1280,9 @@ class MONAILabelWidget(ScriptedLoadableModuleWidget, VTKObservationMixin):
         segmentEditorWidget = slicer.modules.segmenteditor.widgetRepresentation().self().editor
         segmentEditorWidget.setSegmentationNode(self._segmentNode)
         segmentEditorWidget.setMasterVolumeNode(self._volumeNode)
+
+        self.createScribblesROINode()
+        self.ui.scribblesPlaceWidget.setCurrentNode(self._scribblesROINode)
 
         # check if user allows overlapping segments
         if slicer.util.settingsValue("MONAILabel/allowOverlappingSegments", False, converter=slicer.util.toBool):
@@ -1607,6 +1611,20 @@ class MONAILabelWidget(ScriptedLoadableModuleWidget, VTKObservationMixin):
             self._segmentNode = slicer.mrmlScene.AddNewNodeByClass("vtkMRMLSegmentationNode")
             self._segmentNode.SetReferenceImageGeometryParameterFromVolumeNode(self._volumeNode)
             self._segmentNode.SetName(name)
+
+    def createScribblesROINode(self):
+        if self._volumeNode is None:
+            return
+        if self._scribblesROINode is None:
+            scribblesROINode = slicer.mrmlScene.AddNewNodeByClass("vtkMRMLMarkupsROINode")
+            scribblesROINode.AddObserver(scribblesROINode.PointPositionDefinedEvent, self.onROIPointPlaced)
+            scribblesROINode.SetName("Scribbles ROI")
+            scribblesROINode.CreateDefaultDisplayNodes()
+            scribblesROINode.GetDisplayNode().SetFillOpacity(0.4)
+            scribblesROINode.GetDisplayNode().SetSelectedColor(1, 1, 1)
+            scribblesROINode.GetDisplayNode().SetColor(1, 1, 1)
+            scribblesROINode.GetDisplayNode().SetActiveColor(1, 1, 1)
+            self._scribblesROINode = scribblesROINode
 
     def getLabelColor(self, name):
         color = GenericAnatomyColors.get(name.lower())
@@ -1966,10 +1984,16 @@ class MONAILabelWidget(ScriptedLoadableModuleWidget, VTKObservationMixin):
         segmentation.SetDisplayVisibility(False)
         segmentation.SetDisplayVisibility(True)
 
+    def resetScribblesROI(self):
+        if self._scribblesROINode:
+            self._scribblesROINode.RemoveAllControlPoints()
+
     def onClearScribbles(self):
         # for clearing scribbles and resetting tools to default
         # remove "scribbles" segments from label
         self.onClearScribblesSegmentNodes()
+
+        self.resetScribblesROI()
 
         self.ui.paintScribblesButton.setChecked(True)
         self.ui.eraseScribblesButton.setChecked(False)
@@ -1986,11 +2010,6 @@ class MONAILabelWidget(ScriptedLoadableModuleWidget, VTKObservationMixin):
 
         # remove "scribbles" segments from label
         self.onClearScribblesSegmentNodes()
-
-        # re-add ROI node if removed
-        if self.ui.scribblesPlaceWidget.currentNode() is None:
-            scribblesROINode = self.createScribblesROINode()
-            self.ui.scribblesPlaceWidget.setCurrentNode(scribblesROINode)
 
         self.ui.paintScribblesButton.setChecked(False)
         self.ui.eraseScribblesButton.setChecked(False)
@@ -2094,17 +2113,6 @@ class MONAILabelWidget(ScriptedLoadableModuleWidget, VTKObservationMixin):
             self.checkAndInitialiseScribbles()
             effect = self._scribblesEditorWidget.activeEffect()
             effect.setParameter("BrushAbsoluteDiameter", value)
-
-    def createScribblesROINode(self):
-        scribblesROINode = slicer.mrmlScene.AddNewNodeByClass("vtkMRMLMarkupsROINode")
-        scribblesROINode.AddObserver(scribblesROINode.PointPositionDefinedEvent, self.onROIPointPlaced)
-        scribblesROINode.SetName("Scribbles ROI")
-        scribblesROINode.CreateDefaultDisplayNodes()
-        scribblesROINode.GetDisplayNode().SetFillOpacity(0.4)
-        scribblesROINode.GetDisplayNode().SetSelectedColor(1, 1, 1)
-        scribblesROINode.GetDisplayNode().SetColor(1, 1, 1)
-        scribblesROINode.GetDisplayNode().SetActiveColor(1, 1, 1)
-        return scribblesROINode
 
     def onROIPointPlaced(self, caller_roi_node, event):
         if caller_roi_node.GetControlPointPlacementComplete():
