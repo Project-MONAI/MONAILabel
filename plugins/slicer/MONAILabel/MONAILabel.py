@@ -389,9 +389,7 @@ class MONAILabelWidget(ScriptedLoadableModuleWidget, VTKObservationMixin):
         self.setParameterNode(None)
         self.current_sample = None
         self.samples.clear()
-        if self._scribblesROINode:
-            self._scribblesROINode.RemoveAllObservers()
-            self._scribblesROINode = None
+        self._scribblesROINode = None
 
         self.resetPointList(
             self.ui.dgPositiveControlPointPlacementWidget,
@@ -1617,7 +1615,6 @@ class MONAILabelWidget(ScriptedLoadableModuleWidget, VTKObservationMixin):
             return
         if self._scribblesROINode is None:
             scribblesROINode = slicer.mrmlScene.AddNewNodeByClass("vtkMRMLMarkupsROINode")
-            scribblesROINode.AddObserver(scribblesROINode.PointPositionDefinedEvent, self.onROIPointPlaced)
             scribblesROINode.SetName("Scribbles ROI")
             scribblesROINode.CreateDefaultDisplayNodes()
             scribblesROINode.GetDisplayNode().SetFillOpacity(0.4)
@@ -2108,10 +2105,6 @@ class MONAILabelWidget(ScriptedLoadableModuleWidget, VTKObservationMixin):
             self.checkAndInitialiseScribbles()
             effect = self._scribblesEditorWidget.activeEffect()
             effect.setParameter("BrushAbsoluteDiameter", value)
-
-    def onROIPointPlaced(self, caller_roi_node, event):
-        if caller_roi_node.GetControlPointPlacementComplete():
-            self.ui.scribblesPlaceWidget.setPlaceModeEnabled(False)  # General ROI placement persists otherwise
 
 
 class MONAILabelLogic(ScriptedLoadableModuleLogic):

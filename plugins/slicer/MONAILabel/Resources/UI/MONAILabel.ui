@@ -657,7 +657,7 @@
           <item>
            <widget class="qSlicerMarkupsPlaceWidget" name="scribblesPlaceWidget">
             <property name="placeMultipleMarkups">
-             <enum>qSlicerMarkupsPlaceWidget::ForcePlaceMultipleMarkups</enum>
+             <enum>qSlicerMarkupsPlaceWidget::ForcePlaceSingleMarkup</enum>
             </property>
             <property name="sizePolicy">
               <sizepolicy hsizetype="Expanding" vsizetype="Preferred">
