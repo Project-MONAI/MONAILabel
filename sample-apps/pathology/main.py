@@ -263,27 +263,21 @@ def infer_wsi(app):
     # img = slide.read_region((7737, 20086), 0, (2048, 2048)).convert("RGB")
     # image_np = np.array(img, dtype=np.uint8)
 
-    res = app.infer_wsi(
-        request={
-            "model": "deepedit_nuclei",  # deepedit_nuclei, segmentation_nuclei
-            "image": image,  # image, image_np
-            "output": output,
-            "logging": "error",
-            "level": 0,
-            "location": [0, 0],
-            "size": [0, 0],
-            "tile_size": [1024, 1024],
-            "min_poly_area": 40,
-            "gpus": "all",
-            "multi_gpu": True,
-        }
-    )
+    req = {
+        "model": "deepedit_nuclei",  # deepedit_nuclei, segmentation_nuclei
+        "image": image,  # image, image_np
+        "output": output,
+        "logging": "error",
+        "level": 0,
+        "location": [0, 0],
+        "size": [0, 0],
+        "tile_size": [1024, 1024],
+        "min_poly_area": 80,
+        "gpus": "all",
+        "multi_gpu": True,
+    }
 
-    # label_json = os.path.join(root_dir, f"{image}.json")
-    # logger.info(f"Writing Label JSON: {label_json}")
-    # with open(label_json, "w") as fp:
-    #     json.dump(res["params"], fp)
-    #
+    res = app.infer_wsi(request=req)
     if output == "asap":
         label_xml = os.path.join(root_dir, f"{image}.xml")
         shutil.copy(res["file"], label_xml)
