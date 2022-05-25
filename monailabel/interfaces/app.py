@@ -686,7 +686,14 @@ class MONAILabelApp:
         res_json["model"] = request.get("model")
         res_json["location"] = request.get("location")
         res_json["size"] = request.get("size")
-        res_json["latencies"] = {"total": round(latency_total, 2)}
+
+        res_json["latencies"] = {
+            "total": round(latency_total, 2),
+            "tsum": round(sum(a["latencies"]["total"] for a in res_json["annotations"]) / max(1, max_workers), 2),
+            "pre": round(sum(a["latencies"]["pre"] for a in res_json["annotations"]) / max(1, max_workers), 2),
+            "post": round(sum(a["latencies"]["post"] for a in res_json["annotations"]) / max(1, max_workers), 2),
+            "infer": round(sum(a["latencies"]["infer"] for a in res_json["annotations"]) / max(1, max_workers), 2),
+        }
 
         res_file = None
         output = request.get("output", "dsa")
@@ -706,8 +713,9 @@ class MONAILabelApp:
         if len(infer_tasks) > 1:
             logger.info(
                 f"Total Time Taken: {time.time() - start:.4f}; "
-                f"Total Infer Time: {latency_total:.4f}; "
-                f"Total Annotations: {total_annotations}"
+                f"Total WSI Infer Time: {latency_total:.4f}; "
+                f"Total Annotations: {total_annotations}; "
+                f"Latencies: {res_json['latencies']}"
             )
         return {"file": res_file, "params": res_json}
 

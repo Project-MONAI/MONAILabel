@@ -68,7 +68,7 @@ class SegmentationNuclei(TaskConfig):
 
     def infer(self) -> Union[InferTask, Dict[str, InferTask]]:
         preload = strtobool(self.conf.get("preload", "false"))
-        roi_size = json.loads(self.conf.get("roi_size", "[512, 512]"))
+        roi_size = json.loads(self.conf.get("roi_size", "[1024, 1024]"))
         logger.info(f"Using Preload: {preload}; ROI Size: {roi_size}")
 
         task: InferTask = lib.infers.SegmentationNuclei(
