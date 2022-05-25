@@ -1926,15 +1926,10 @@ class MONAILabelWidget(ScriptedLoadableModuleWidget, VTKObservationMixin):
         v.GetRASToIJKMatrix(RasToIjkMatrix)
 
         roi_points_ras = [0.0] * 6
-        if roiNode.__class__.__name__ == "vtkMRMLMarkupsROINode":
-            # for vtkMRMLMarkupsROINode
-            center = [0] * 3
-            roiNode.GetCenter(center)
-            roi_points_ras = [(x - s / 2, x + s / 2) for x, s in zip(center, roiNode.GetSize())]
-            roi_points_ras = [item for sublist in roi_points_ras for item in sublist]
-        else:
-            # if none found then best to return empty list
-            return []
+        center = [0] * 3
+        roiNode.GetCenter(center)
+        roi_points_ras = [(x - s / 2, x + s / 2) for x, s in zip(center, roiNode.GetSize())]
+        roi_points_ras = [item for sublist in roi_points_ras for item in sublist]
 
         min_points_ras = [roi_points_ras[0], roi_points_ras[2], roi_points_ras[4], 1.0]
         max_points_ras = [roi_points_ras[0 + 1], roi_points_ras[2 + 1], roi_points_ras[4 + 1], 1.0]
