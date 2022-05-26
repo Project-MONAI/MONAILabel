@@ -11,7 +11,7 @@
 import logging
 import math
 import statistics
-from typing import TYPE_CHECKING, Any, Callable, Dict, Optional
+from typing import TYPE_CHECKING, Any, Callable, Dict
 
 import numpy as np
 import torch
@@ -57,7 +57,7 @@ class RegionDice:
 class TensorBoardImageHandler:
     def __init__(
         self,
-        summary_writer: Optional[SummaryWriter] = None,
+        summary_writer=None,
         log_dir: str = "./runs",
         tag_name="val_acc",
         interval: int = 1,
