@@ -2,7 +2,7 @@ torch>=1.7
 aiofiles==0.8.0
 fastapi==0.73.0
 SimpleITK>=2.1
-monai-weekly[nibabel, skimage, pillow, tensorboard, gdown, ignite, torchvision, itk, tqdm, lmdb, psutil, openslide]
+monai[nibabel, skimage, pillow, tensorboard, gdown, ignite, torchvision, itk, tqdm, lmdb, psutil, openslide]>=0.9.*
 PyYAML==6.0
 python-multipart==0.0.5
 requests-toolbelt==0.9.1
@@ -28,5 +28,6 @@ girder_client==3.1.8
 numpymaxflow==0.0.2
 pynrrd==0.4.2
 ninja==1.10.2.3
+protobuf==3.20.1
 
 #sudo apt-get install openslide-tools -y

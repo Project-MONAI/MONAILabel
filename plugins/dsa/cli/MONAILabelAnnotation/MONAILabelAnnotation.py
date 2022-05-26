@@ -28,16 +28,6 @@ logging.basicConfig(level=logging.INFO)
 def fetch_annotations(args, tiles=None):
     total_start_time = time.time()
 
-    print("\n>> CLI Parameters ...\n")
-    for arg in vars(args):
-        print(f"USING:: {arg} = {getattr(args, arg)}")
-
-    if not os.path.isfile(args.inputImageFile):
-        raise OSError("Input image file does not exist.")
-
-    if len(args.analysis_roi) != 4:
-        raise ValueError("Analysis ROI must be a vector of 4 elements.")
-
     location = [args.analysis_roi[0], args.analysis_roi[1]]
     size = [args.analysis_roi[2], args.analysis_roi[3]]
 
@@ -85,10 +75,11 @@ def get_model_names(args):
 def main(args):
     if args.model_name == "__datalist__":
         return get_model_names(args)
+
     total_start_time = time.time()
-    print("\n>> CLI Parameters ...\n")
+    logging.info("CLI Parameters ...\n")
     for arg in vars(args):
-        print(f"USING:: {arg} = {getattr(args, arg)}")
+        logging.info(f"USING:: {arg} = {getattr(args, arg)}")
 
     if not os.path.isfile(args.inputImageFile):
         raise OSError("Input image file does not exist.")
@@ -96,10 +87,10 @@ def main(args):
     if len(args.analysis_roi) != 4:
         raise ValueError("Analysis ROI must be a vector of 4 elements.")
 
-    print("\n>> Reading input image ... \n")
+    logging.info(">> Reading input image ... \n")
     ts = large_image.getTileSource(args.inputImageFile)
     ts_metadata = ts.getMetadata()
-    print(json.dumps(ts_metadata, indent=2))
+    logging.info(json.dumps(ts_metadata, indent=2))
 
     is_wsi = ts_metadata["magnification"] is not None
 
@@ -119,16 +110,15 @@ def main(args):
             }
 
         num_tiles = ts.getSingleTile(**it_kwargs)["iterator_range"]["position"]
-        print(f"Number of tiles = {num_tiles}")
+        logging.info(f"Number of tiles = {num_tiles}")
 
-        print("\n>> Computing tissue/foreground mask at low-res ...\n")
+        logging.info(">> Computing tissue/foreground mask at low-res ...\n")
         start_time = time.time()
 
         im_fgnd_mask_lres, fgnd_seg_scale = cli_utils.segment_wsi_foreground_at_low_res(ts)
-        fgnd_time = time.time() - start_time
-        print(f"low-res foreground mask computation time = {cli_utils.disp_time_hms(fgnd_time)}")
+        logging.info(f"low-res foreground mask computation time = {round(time.time() - start_time, 2)}")
 
-        print("\n>> Computing foreground fraction of all tiles ...\n")
+        logging.info(">> Computing foreground fraction of all tiles ...\n")
         start_time = time.time()
 
         tile_fgnd_frac_list = compute_tile_foreground_fraction(
@@ -140,10 +130,9 @@ def main(args):
 
         num_fgnd_tiles = np.count_nonzero(tile_fgnd_frac_list >= args.min_fgnd_frac)
         percent_fgnd_tiles = 100.0 * num_fgnd_tiles / num_tiles
-        fgnd_frac_comp_time = time.time() - start_time
 
-        print(f"Number of foreground tiles = {num_fgnd_tiles:d} ({percent_fgnd_tiles:2f}%%)")
-        print(f"Tile foreground fraction computation time = {cli_utils.disp_time_hms(fgnd_frac_comp_time)}")
+        logging.info(f"Number of foreground tiles = {num_fgnd_tiles:d} ({percent_fgnd_tiles:2f}%%)")
+        logging.info(f"Tile foreground fraction computation time = {round(time.time() - start_time, 2)}")
 
         skip_count = 0
         for tile in ts.tileIterator(**it_kwargs):
@@ -153,11 +142,11 @@ def main(args):
             frac = tile_fgnd_frac_list[tile_position]
 
             if frac <= args.min_fgnd_frac:
-                # print(f"Skip:: {tile_position} => {location}, {size} ({frac} <= {args.min_fgnd_frac})")
+                # logging.info(f"Skip:: {tile_position} => {location}, {size} ({frac} <= {args.min_fgnd_frac})")
                 skip_count += 1
                 continue
 
-            # print(f"Add:: {tile_position} => {location}, {size}")
+            # logging.info(f"Add:: {tile_position} => {location}, {size}")
             tiles.append(
                 {
                     "location": location,
@@ -165,11 +154,12 @@ def main(args):
                 }
             )
 
-        print(f"Total Tiles skipped: {skip_count}")
-        print(f"Total Tiles To Annotate: {len(tiles)}")
+        logging.info(f"Total Tiles skipped: {skip_count}")
+        logging.info(f"Total Tiles To Annotate: {len(tiles)}")
 
     fetch_annotations(args, tiles)
     logging.info(f"Total Job time = {round(time.time() - total_start_time)}")
+    print("All done!")
 
 
 if __name__ == "__main__":
@@ -182,17 +172,19 @@ if __name__ == "__main__":
     # args = {
     #     "inputImageFile": f"{root}/TCGA-02-0010-01Z-00-DX4.07de2e55-a8fe-40ee-9e98-bcb78050b9f7.svs",
     #     "outputAnnotationFile": f"{root}/TCGA-02-0010-01Z-00-DX4.07de2e55-a8fe-40ee-9e98-bcb78050b9f7.anot",
-    #     "min_poly_area": 40.0,
+    #     "min_poly_area": 80.0,
     #     "analysis_level": 0,
     #     "analysis_roi": [-1, -1, -1, -1],
     #     "analysis_tile_size": 1024.0,
-    #     "min_fgnd_frac": 0.8,
+    #     "min_fgnd_frac": 0.25,
     #     "model_name": "deepedit_nuclei",
     #     "extra_params": "{}",
     #     "num_threads_per_worker": 1,
     #     "num_workers": 0,
     #     "scheduler": "",
     #     "server": "http://10.117.16.216:8000/",
+    #     "girderApiUrl": "http://10.117.16.216/api/v1",
+    #     "girderToken": "zBsr184BByiRK0BUyMMB01v3O8kTqkXPbqxndpfi",
     # }
     # ns = Namespace(**args)
     # main(ns)

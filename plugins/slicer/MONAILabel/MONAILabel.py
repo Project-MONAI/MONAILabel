@@ -203,9 +203,9 @@ class MONAILabelWidget(ScriptedLoadableModuleWidget, VTKObservationMixin):
         self._parameterNode = None
         self._volumeNode = None
         self._segmentNode = None
+        self._scribblesROINode = None
         self._volumeNodes = []
         self._updatingGUIFromParameterNode = False
-        self._scribblesEditorWidget = None
 
         self.info = {}
         self.models = OrderedDict()
@@ -332,6 +332,11 @@ class MONAILabelWidget(ScriptedLoadableModuleWidget, VTKObservationMixin):
         self.ui.scribblesSelector.addItem(self.icon("bg_red.png"), "Background")
         self.ui.scribblesSelector.setCurrentIndex(0)
 
+        # ROI placement for scribbles
+        self.ui.scribblesPlaceWidget.setButtonsVisible(False)
+        self.ui.scribblesPlaceWidget.placeButton().show()
+        self.ui.scribblesPlaceWidget.setMRMLScene(slicer.mrmlScene)
+
         # start with scribbles section disabled
         self.ui.scribblesCollapsibleButton.setEnabled(False)
         self.ui.scribblesCollapsibleButton.collapsed = True
@@ -340,6 +345,7 @@ class MONAILabelWidget(ScriptedLoadableModuleWidget, VTKObservationMixin):
         self.ui.embeddedSegmentEditorWidget.setMRMLScene(slicer.mrmlScene)
         self.ui.embeddedSegmentEditorWidget.setSegmentationNodeSelectorVisible(False)
         self.ui.embeddedSegmentEditorWidget.setMasterVolumeNodeSelectorVisible(False)
+        self.ui.embeddedSegmentEditorWidget.setMRMLSegmentEditorNode(self.logic.get_segment_editor_node())
 
         self.initializeParameterNode()
         self.updateServerUrlGUIFromSettings()
@@ -384,6 +390,7 @@ class MONAILabelWidget(ScriptedLoadableModuleWidget, VTKObservationMixin):
         self.setParameterNode(None)
         self.current_sample = None
         self.samples.clear()
+        self._scribblesROINode = None
 
         self.resetPointList(
             self.ui.dgPositiveControlPointPlacementWidget,
@@ -653,10 +660,6 @@ class MONAILabelWidget(ScriptedLoadableModuleWidget, VTKObservationMixin):
 
         self.ui.dgUpdateCheckBox.setEnabled(self.ui.deepgrowModelSelector.currentText and self._segmentNode)
         self.ui.dgUpdateButton.setEnabled(self.ui.deepgrowModelSelector.currentText and self._segmentNode)
-
-        self.ui.embeddedSegmentEditorWidget.setMRMLSegmentEditorNode(
-            slicer.mrmlScene.GetFirstNodeByClass("vtkMRMLSegmentEditorNode")
-        )
 
         # All the GUI updates are done
         self._updatingGUIFromParameterNode = False
@@ -1278,14 +1281,16 @@ class MONAILabelWidget(ScriptedLoadableModuleWidget, VTKObservationMixin):
 
         # Create Empty Segments for all labels for this node
         self.createSegmentNode()
-        segmentEditorWidget = slicer.modules.segmenteditor.widgetRepresentation().self().editor
-        segmentEditorWidget.setSegmentationNode(self._segmentNode)
-        segmentEditorWidget.setMasterVolumeNode(self._volumeNode)
+        self.ui.embeddedSegmentEditorWidget.setSegmentationNode(self._segmentNode)
+        self.ui.embeddedSegmentEditorWidget.setMasterVolumeNode(self._volumeNode)
+
+        self.createScribblesROINode()
+        self.ui.scribblesPlaceWidget.setCurrentNode(self._scribblesROINode)
 
         # check if user allows overlapping segments
         if slicer.util.settingsValue("MONAILabel/allowOverlappingSegments", False, converter=slicer.util.toBool):
             # set segment editor to allow overlaps
-            slicer.util.getNodesByClass("vtkMRMLSegmentEditorNode")[0].SetOverwriteMode(2)
+            self.logic.get_segment_editor_node().SetOverwriteMode(slicer.vtkMRMLSegmentEditorNode.OverwriteNone)
 
         if self.info.get("labels"):
             self.updateSegmentationMask(None, self.info.get("labels"))
@@ -1619,6 +1624,19 @@ class MONAILabelWidget(ScriptedLoadableModuleWidget, VTKObservationMixin):
             self._segmentNode.SetReferenceImageGeometryParameterFromVolumeNode(self._volumeNode)
             self._segmentNode.SetName(name)
 
+    def createScribblesROINode(self):
+        if self._volumeNode is None:
+            return
+        if self._scribblesROINode is None:
+            scribblesROINode = slicer.mrmlScene.AddNewNodeByClass("vtkMRMLMarkupsROINode")
+            scribblesROINode.SetName("Scribbles ROI")
+            scribblesROINode.CreateDefaultDisplayNodes()
+            scribblesROINode.GetDisplayNode().SetFillOpacity(0.4)
+            scribblesROINode.GetDisplayNode().SetSelectedColor(1, 1, 1)
+            scribblesROINode.GetDisplayNode().SetColor(1, 1, 1)
+            scribblesROINode.GetDisplayNode().SetActiveColor(1, 1, 1)
+            self._scribblesROINode = scribblesROINode
+
     def getLabelColor(self, name):
         color = GenericAnatomyColors.get(name.lower())
         return [c / 255.0 for c in color] if color else None
@@ -1689,12 +1707,11 @@ class MONAILabelWidget(ScriptedLoadableModuleWidget, VTKObservationMixin):
                 if freeze and label not in freeze:
                     print(f"Discard label update for: {label}")
                 elif label in existing_label_ids:
-                    segmentEditorWidget = slicer.modules.segmenteditor.widgetRepresentation().self().editor
-                    segmentEditorWidget.setSegmentationNode(segmentationNode)
-                    segmentEditorWidget.setMasterVolumeNode(self._volumeNode)
-                    segmentEditorWidget.setCurrentSegmentID(existing_label_ids[label])
+                    self.ui.embeddedSegmentEditorWidget.setSegmentationNode(segmentationNode)
+                    self.ui.embeddedSegmentEditorWidget.setMasterVolumeNode(self._volumeNode)
+                    self.ui.embeddedSegmentEditorWidget.setCurrentSegmentID(existing_label_ids[label])
 
-                    effect = segmentEditorWidget.effectByName("Logical operators")
+                    effect = self.ui.embeddedSegmentEditorWidget.effectByName("Logical operators")
                     labelmap = slicer.vtkOrientedImageData()
                     segmentationNode.GetBinaryLabelmapRepresentation(segmentId, labelmap)
 
@@ -1791,53 +1808,33 @@ class MONAILabelWidget(ScriptedLoadableModuleWidget, VTKObservationMixin):
             scribbles_exist = sum(int("scribbles" in sid) for sid in segmentIds) > 0
         return scribbles_exist
 
-    def onStartScribbling(self):
-        if not self._segmentNode:
+    def ensureScribblesLayersPresent(self):
+        if (not self._segmentNode) or self.scribblesLayersPresent():
             return
 
-        logging.debug("Scribbles start event")
-        if (not self.scribblesLayersPresent()) and (self._scribblesEditorWidget is None):
-            # add background, layer index = -2 [2], color = red
-            self._segmentNode.GetSegmentation().AddEmptySegment(
-                "background_scribbles", "background_scribbles", [1.0, 0.0, 0.0]
-            )
+        # add background, layer index = -2 [2], color = red
+        self._segmentNode.GetSegmentation().AddEmptySegment(
+            "background_scribbles", "background_scribbles", [1.0, 0.0, 0.0]
+        )
 
-            # add foreground, layer index = -1 [3], color = green
-            self._segmentNode.GetSegmentation().AddEmptySegment(
-                "foreground_scribbles", "foreground_scribbles", [0.0, 1.0, 0.0]
-            )
+        # add foreground, layer index = -1 [3], color = green
+        self._segmentNode.GetSegmentation().AddEmptySegment(
+            "foreground_scribbles", "foreground_scribbles", [0.0, 1.0, 0.0]
+        )
 
-            # change segmentation display properties to "see through" the scribbles
-            # further explanation at:
-            # https://apidocs.slicer.org/master/classvtkMRMLSegmentationDisplayNode.html
-            segmentationDisplayNode = self._segmentNode.GetDisplayNode()
+        # change segmentation display properties to "see through" the scribbles
+        # further explanation at:
+        # https://apidocs.slicer.org/master/classvtkMRMLSegmentationDisplayNode.html
+        segmentationDisplayNode = self._segmentNode.GetDisplayNode()
 
-            # background
-            opacity = 0.2
-            segmentationDisplayNode.SetSegmentOpacity2DFill("background_scribbles", opacity)
-            segmentationDisplayNode.SetSegmentOpacity2DOutline("background_scribbles", opacity)
+        # background
+        opacity = 0.2
+        segmentationDisplayNode.SetSegmentOpacity2DFill("background_scribbles", opacity)
+        segmentationDisplayNode.SetSegmentOpacity2DOutline("background_scribbles", opacity)
 
-            # foreground
-            segmentationDisplayNode.SetSegmentOpacity2DFill("foreground_scribbles", opacity)
-            segmentationDisplayNode.SetSegmentOpacity2DOutline("foreground_scribbles", opacity)
-
-            # create segmentEditorWidget to access "Paint" and "Erase" segmentation tools
-            # these will be used to draw scribbles
-            self._scribblesEditorWidget = slicer.qMRMLSegmentEditorWidget()
-            self._scribblesEditorWidget.setMRMLScene(slicer.mrmlScene)
-            segmentEditorNode = slicer.vtkMRMLSegmentEditorNode()
-
-            # adding new scribbles can overwrite a new one-hot vector, hence erase any existing
-            # labels - this is not a desired behaviour hence we swith to overlay mode that enables drawing
-            # scribbles without changing existing labels. Further explanation at:
-            # https://discourse.slicer.org/t/how-can-i-set-masking-settings-on-a-segment-editor-effect-in-python/4406/7
-            segmentEditorNode.SetOverwriteMode(slicer.vtkMRMLSegmentEditorNode.OverwriteNone)
-
-            # add all nodes to the widget
-            slicer.mrmlScene.AddNode(segmentEditorNode)
-            self._scribblesEditorWidget.setMRMLSegmentEditorNode(segmentEditorNode)
-            self._scribblesEditorWidget.setSegmentationNode(self._segmentNode)
-            self._scribblesEditorWidget.setMasterVolumeNode(self._volumeNode)
+        # foreground
+        segmentationDisplayNode.SetSegmentOpacity2DFill("foreground_scribbles", opacity)
+        segmentationDisplayNode.SetSegmentOpacity2DOutline("foreground_scribbles", opacity)
 
     def onUpdateScribbles(self):
         logging.info("Scribbles update event")
@@ -1875,13 +1872,11 @@ class MONAILabelWidget(ScriptedLoadableModuleWidget, VTKObservationMixin):
             self.updateServerSettings()
             self.reportProgress(60)
 
-            # try to first fetch vtkMRMLAnnotationROINode
-            roiNode = slicer.mrmlScene.GetFirstNodeByClass("vtkMRMLAnnotationROINode")
-            if roiNode is None:  # if vtkMRMLAnnotationROINode not present, then check for vtkMRMLMarkupsROINode node
-                roiNode = slicer.mrmlScene.GetFirstNodeByClass("vtkMRMLMarkupsROINode")
-
-            # if roi node found, then try to get roi
-            selected_roi = self.getROIPointsXYZ(roiNode)
+            # try to get roi if placed
+            roiNode = self.ui.scribblesPlaceWidget.currentNode()
+            selected_roi = []
+            if roiNode and roiNode.GetControlPointPlacementComplete():
+                selected_roi = self.getROIPointsXYZ(roiNode)
 
             # send scribbles + label to server along with selected scribbles method
             params = self.getParamsFromConfig("infer", scribblesMethod)
@@ -1924,20 +1919,10 @@ class MONAILabelWidget(ScriptedLoadableModuleWidget, VTKObservationMixin):
         v.GetRASToIJKMatrix(RasToIjkMatrix)
 
         roi_points_ras = [0.0] * 6
-        if roiNode.__class__.__name__ == "vtkMRMLMarkupsROINode":
-            # for vtkMRMLMarkupsROINode
-            print(roiNode.__class__.__name__)
-            center = [0] * 3
-            roiNode.GetCenter(center)
-            roi_points_ras = [(x - s / 2, x + s / 2) for x, s in zip(center, roiNode.GetSize())]
-            roi_points_ras = [item for sublist in roi_points_ras for item in sublist]
-        elif roiNode.__class__.__name__ == "vtkMRMLAnnotationROINode":
-            # for vtkMRMLAnnotationROINode (old method)
-            print(roiNode.__class__.__name__)
-            roiNode.GetBounds(roi_points_ras)
-        else:
-            # if none found then best to return empty list
-            return []
+        center = [0] * 3
+        roiNode.GetCenter(center)
+        roi_points_ras = [(x - s / 2, x + s / 2) for x, s in zip(center, roiNode.GetSize())]
+        roi_points_ras = [item for sublist in roi_points_ras for item in sublist]
 
         min_points_ras = [roi_points_ras[0], roi_points_ras[2], roi_points_ras[4], 1.0]
         max_points_ras = [roi_points_ras[0 + 1], roi_points_ras[2 + 1], roi_points_ras[4 + 1], 1.0]
@@ -1979,10 +1964,16 @@ class MONAILabelWidget(ScriptedLoadableModuleWidget, VTKObservationMixin):
         segmentation.SetDisplayVisibility(False)
         segmentation.SetDisplayVisibility(True)
 
+    def resetScribblesROI(self):
+        if self._scribblesROINode:
+            self._scribblesROINode.RemoveAllControlPoints()
+
     def onClearScribbles(self):
         # for clearing scribbles and resetting tools to default
         # remove "scribbles" segments from label
         self.onClearScribblesSegmentNodes()
+
+        self.resetScribblesROI()
 
         self.ui.paintScribblesButton.setChecked(True)
         self.ui.eraseScribblesButton.setChecked(False)
@@ -1993,9 +1984,6 @@ class MONAILabelWidget(ScriptedLoadableModuleWidget, VTKObservationMixin):
 
         # reset scribbles mode
         self.scribblesMode = None
-
-        # clear scribbles editor widget
-        self._scribblesEditorWidget = None
 
         # remove "scribbles" segments from label
         self.onClearScribblesSegmentNodes()
@@ -2008,29 +1996,29 @@ class MONAILabelWidget(ScriptedLoadableModuleWidget, VTKObservationMixin):
         self.ui.scribLabelComboBox.setCurrentIndex(0)
         self.ignoreScribblesLabelChangeEvent = False
 
-    def checkAndInitialiseScribbles(self):
-        if not self._segmentNode:
-            return
-
-        if self._scribblesEditorWidget is None:
-            self.onStartScribbling()
-
-        if self.scribblesMode is None:
-            self.changeScribblesMode(tool="Paint", layer="foreground_scribbles")
-            self.updateScribToolLayerFromMode()
-
     def updateScribToolLayerFromMode(self):
         if not self._segmentNode:
             return
 
         logging.info(f"Scribbles mode {self.scribblesMode} ")
-        self.checkAndInitialiseScribbles()
+
+        if self.scribblesMode is None:
+            self.changeScribblesMode(tool="Paint", layer="foreground_scribbles")
+            self.updateScribToolLayerFromMode()
 
         # update tool/layer select for scribblesEditorWidget
         tool, layer = self.getToolAndLayerFromScribblesMode()
-        if self._scribblesEditorWidget:
-            self._scribblesEditorWidget.setActiveEffectByName(tool)
-            self._scribblesEditorWidget.setCurrentSegmentID(layer)
+        if self.scribblesMode is not None:
+            self.ensureScribblesLayersPresent()
+
+            # adding new scribbles can overwrite a new one-hot vector, hence erase any existing
+            # labels - this is not a desired behaviour hence we swith to overlay mode that enables drawing
+            # scribbles without changing existing labels. Further explanation at:
+            # https://discourse.slicer.org/t/how-can-i-set-masking-settings-on-a-segment-editor-effect-in-python/4406/7
+            self.logic.get_segment_editor_node().SetOverwriteMode(slicer.vtkMRMLSegmentEditorNode.OverwriteNone)
+
+            self.ui.embeddedSegmentEditorWidget.setActiveEffectByName(tool)
+            self.ui.embeddedSegmentEditorWidget.setCurrentSegmentID(layer)
 
         # update brush type from checkbox
         if tool in ("Paint", "Erase"):
@@ -2090,18 +2078,14 @@ class MONAILabelWidget(ScriptedLoadableModuleWidget, VTKObservationMixin):
 
     def on3dBrushCheckbox(self, state):
         logging.info(f"3D brush update {state}")
-        self.checkAndInitialiseScribbles()
-        effect = self._scribblesEditorWidget.activeEffect()
-
         # enable scribbles in 3d using a sphere brush
+        effect = self.ui.embeddedSegmentEditorWidget.effectByName("Paint")
         effect.setParameter("BrushSphere", state)
 
     def updateBrushSize(self, value):
         logging.info(f"brush size update {value}")
-        if self.ui.paintScribblesButton.checked or self.ui.eraseScribblesButton.checked:
-            self.checkAndInitialiseScribbles()
-            effect = self._scribblesEditorWidget.activeEffect()
-            effect.setParameter("BrushAbsoluteDiameter", value)
+        effect = self.ui.embeddedSegmentEditorWidget.effectByName("Paint")
+        effect.setParameter("BrushAbsoluteDiameter", value)
 
 
 class MONAILabelLogic(ScriptedLoadableModuleLogic):
@@ -2138,6 +2122,19 @@ class MONAILabelLogic(ScriptedLoadableModuleLogic):
     def reportProgress(self, progress):
         if self.progress_callback:
             self.progress_callback(progress)
+
+    def get_segment_editor_node(self):
+        # Use the Segment Editor module's parameter node for the embedded segment editor widget.
+        # This ensures that if the user switches to the Segment Editor then the selected
+        # segmentation node, volume node, etc. are the same.
+        segmentEditorSingletonTag = "SegmentEditor"
+        segmentEditorNode = slicer.mrmlScene.GetSingletonNode(segmentEditorSingletonTag, "vtkMRMLSegmentEditorNode")
+        if segmentEditorNode is None:
+            segmentEditorNode = slicer.mrmlScene.CreateNodeByClass("vtkMRMLSegmentEditorNode")
+            segmentEditorNode.UnRegister(None)
+            segmentEditorNode.SetSingletonTag(segmentEditorSingletonTag)
+            segmentEditorNode = slicer.mrmlScene.AddNode(segmentEditorNode)
+        return segmentEditorNode
 
     def info(self):
         return MONAILabelClient(self.server_url, self.tmpdir, self.client_id).info()

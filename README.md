@@ -15,13 +15,13 @@ with [MONAI](https://github.com/Project-MONAI).
 
 [MONAI Label Demo](https://youtu.be/o8HipCgSZIw?t=1319)
 
-![DEMO](docs/images/demo.png)
+![DEMO](https://raw.githubusercontent.com/Project-MONAI/MONAILabel/main/docs/images/demo.png)
 <table>
 <tr>
-<td><img src="docs/images/ohif.png" alt="drawing" width="150"/></td>
-<td><img src="docs/images/dsa.jpg" alt="drawing" width="150"/></td>
-<td><img src="docs/images/qupath.jpg" alt="drawing" width="150"/></td>
-<td><img src="docs/images/cvat_detector.jpeg" alt="drawing" width="150"/></td>
+<td><img src="https://raw.githubusercontent.com/Project-MONAI/MONAILabel/main/docs/images/ohif.png" alt="drawing" width="150"/></td>
+<td><img src="https://raw.githubusercontent.com/Project-MONAI/MONAILabel/main/docs/images/dsa.jpg" alt="drawing" width="150"/></td>
+<td><img src="https://raw.githubusercontent.com/Project-MONAI/MONAILabel/main/docs/images/qupath.jpg" alt="drawing" width="150"/></td>
+<td><img src="https://raw.githubusercontent.com/Project-MONAI/MONAILabel/main/docs/images/cvat_detector.jpeg" alt="drawing" width="150"/></td>
 </tr>
 </table>
 
@@ -32,8 +32,8 @@ with [MONAI](https://github.com/Project-MONAI).
 - Framework for developing and deploying MONAI Label Apps to train and infer AI models
 - Compositional & portable APIs for ease of integration in existing workflows
 - Customizable labelling app design for varying user expertise
-- Annotation support via [3DSlicer](plugins/slicer) & [OHIF](plugins/ohif) for radiology
-- Annotation support via [QuPath](plugins/qupath) , [Digital Slide Archive](plugins/dsa) & [CVAT](plugins/cvat) for
+- Annotation support via [3DSlicer](https://github.com/Project-MONAI/MONAILabel/tree/main/plugins/slicer) & [OHIF](https://github.com/Project-MONAI/MONAILabel/tree/main/plugins/ohif) for radiology
+- Annotation support via [QuPath](https://github.com/Project-MONAI/MONAILabel/tree/main/plugins/qupath) , [Digital Slide Archive](https://github.com/Project-MONAI/MONAILabel/tree/main/plugins/dsa) & [CVAT](https://github.com/Project-MONAI/MONAILabel/tree/main/plugins/cvat) for
   pathology
 - PACS connectivity via DICOMWeb
 
@@ -120,13 +120,13 @@ verified across all clients._
 Download **Preview Release** from https://download.slicer.org/ and install MONAI Label plugin from Slicer Extension
 Manager.
 
-Refer [3D Slicer plugin](plugins/slicer) for other options to install and run MONAI Label plugin in 3D Slicer.
+Refer [3D Slicer plugin](https://github.com/Project-MONAI/MONAILabel/tree/main/plugins/slicer) for other options to install and run MONAI Label plugin in 3D Slicer.
 > To avoid accidentally using an older Slicer version, you may want to _uninstall_ any previously installed 3D Slicer
 > package.
 
 ### [OHIF](https://ohif.org/) (radiology)
 
-MONAI Label comes with [pre-built plugin](plugins/ohif) for [OHIF Viewer](https://github.com/OHIF/Viewers). To use OHIF
+MONAI Label comes with [pre-built plugin](https://github.com/Project-MONAI/MONAILabel/tree/main/plugins/ohif) for [OHIF Viewer](https://github.com/OHIF/Viewers). To use OHIF
 Viewer, you need to provide DICOMWeb instead of FileSystem as _studies_ when you start the server.
 > Please install [Orthanc](https://www.orthanc-server.com/download.php) before using OHIF Viewer.
 > For Ubuntu 20.x, Orthanc can be installed as `apt-get install orthanc orthanc-dicomweb`. However, you have to **
@@ -142,7 +142,7 @@ Viewer, you need to provide DICOMWeb instead of FileSystem as _studies_ when you
 
 > OHIF Viewer will be accessible at http://127.0.0.1:8000/ohif/
 
-![OHIF](docs/images/ohif.png)
+![OHIF](https://raw.githubusercontent.com/Project-MONAI/MONAILabel/main/docs/images/ohif.png)
 
 > **_NOTE:_** OHIF does not yet support Multi-Label interaction for DeepEdit.
 
@@ -158,23 +158,23 @@ from [https://portal.gdc.cancer.gov/repository](https://portal.gdc.cancer.gov/re
 
 Refer [QuPath](plugins/qupath) for installing and running MONAILabel plugin in QuPath.
 
-![image](docs/images/qupath.jpg)
+![image](https://raw.githubusercontent.com/Project-MONAI/MONAILabel/main/docs/images/qupath.jpg)
 
 ### [Digital Slide Archive (DSA)](https://digitalslidearchive.github.io/digital_slide_archive/) (pathology)
 
 Refer [Pathology](sample-apps/pathology) for running a sample pathology use-case in MONAILabel.
 > **_NOTE:_** The **Pathology App** and *DSA Plugin* are under *active development*.
 
-![image](docs/images/dsa.jpg)
+![image](https://raw.githubusercontent.com/Project-MONAI/MONAILabel/main/docs/images/dsa.jpg)
 
 ### [CVAT](plugins/cvat) (pathology)
 
 Install [CVAT](https://openvinotoolkit.github.io/cvat/docs/getting_started) and
 enable [Semi-Automatic and Automatic Annotation](https://openvinotoolkit.github.io/cvat/docs/administration/advanced/installation_automatic_annotation/)
 .
-Refer [CVAT](plugins/cvat) for deploying available MONAILabel models into CVAT.
+Refer [CVAT](https://github.com/Project-MONAI/MONAILabel/tree/main/plugins/cvat) for deploying available MONAILabel models into CVAT.
 
-![image](docs/images/cvat_detector.jpeg)
+![image](https://raw.githubusercontent.com/Project-MONAI/MONAILabel/main/docs/images/cvat_detector.jpeg)
 
 ## Cite
 
@@ -195,7 +195,7 @@ If you are using MONAI Label in your research, please use the following citation
 
 ## Contributing
 
-For guidance on making a contribution to MONAI Label, see the [contributing guidelines](CONTRIBUTING.md).
+For guidance on making a contribution to MONAI Label, see the [contributing guidelines](https://github.com/Project-MONAI/MONAILabel/blob/main/CONTRIBUTING.md).
 
 ## Community
 
