@@ -9,7 +9,7 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-from typing import TYPE_CHECKING, Callable
+from typing import TYPE_CHECKING, Callable, Optional
 
 import numpy as np
 import torch
@@ -51,7 +51,7 @@ class TensorBoardImageHandler:
 
     def __init__(
         self,
-        summary_writer=None,
+        summary_writer: Optional[SummaryWriter] = None,
         log_dir: str = "./runs",
         interval: int = 1,
         batch_transform: Callable = lambda x: x,
