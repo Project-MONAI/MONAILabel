@@ -2114,7 +2114,7 @@ class MONAILabelLogic(ScriptedLoadableModuleLogic):
             segmentEditorNode = slicer.mrmlScene.CreateNodeByClass("vtkMRMLSegmentEditorNode")
             segmentEditorNode.UnRegister(None)
             segmentEditorNode.SetSingletonTag(segmentEditorSingletonTag)
-            segmentEditorNode = slicer.mrmlScene.AddNode(segmentEditorNode) 
+            segmentEditorNode = slicer.mrmlScene.AddNode(segmentEditorNode)
         return segmentEditorNode
 
     def info(self):
