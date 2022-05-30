@@ -93,8 +93,8 @@ class MONAILabelReviewerLogic(ScriptedLoadableModuleLogic):
         return self.imageDataController.getImageDataByLevel(isEasy=isEasy, isMedium=isMedium, isHard=isHard)
 
     # Section: Dicom stream
-    def updateLabeInfo(self, imageId, updatedMetaJson):
-        self.imageDataController.updateLabeInfo(imageId, updatedMetaJson)
+    def updateLabelInfo(self, imageId, updatedMetaJson):
+        self.imageDataController.updateLabelInfo(imageId, updatedMetaJson)
 
     def loadDicomAndSegmentation(self, imageData):
         """

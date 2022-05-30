@@ -186,12 +186,12 @@ async def api_download_label(label: str, tag: str):
 
 
 @router.put("/updatelabelinfo", summary="Update label info")
-async def api_update_label_info(image: str, params: str = Form("{}")):
-    return update_label_info(image, params)
+async def api_update_label_info(label: str, params: str = Form("{}")):
+    return update_label_info(label, params)
 
 
-def update_label_info(imageId: str, params: str = Form("{}")):
+def update_label_info(label_id: str, params: str = Form("{}")):
     save_params: Dict[str, Any] = json.loads(params) if params else {}
     instance: MONAILabelApp = app_instance()
-    instance.datastore().update_label_info(label_id=imageId, label_tag="final", info=save_params)
+    instance.datastore().update_label_info(label_id=label_id, label_tag="final", info=save_params)
     return {}

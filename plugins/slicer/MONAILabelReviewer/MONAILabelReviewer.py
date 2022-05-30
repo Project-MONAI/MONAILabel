@@ -867,7 +867,7 @@ class MONAILabelReviewerWidget(ScriptedLoadableModuleWidget, VTKObservationMixin
         logging.info(updatedMetaJson)
         if updatedMetaJson == "":
             return
-        self.logic.updateLabeInfo(imageId, updatedMetaJson)
+        self.logic.updateLabelInfo(imageId, updatedMetaJson)
 
     def updateImageData(self) -> str:
         """

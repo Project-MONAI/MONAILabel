@@ -67,7 +67,7 @@ class MonaiServerRESTTest(unittest.TestCase):
     def test_checkServerConnection_request_for_image_with_segmentation_meta_data(cls):
         client = MockServerFriendlyClient(cls.MOCK_SERVER_URL)
 
-        urlToBeTested = cls.MOCK_SERVER_URL + "/datastore/updatelabelinfo?image=6662775"
+        urlToBeTested = cls.MOCK_SERVER_URL + "/datastore/updatelabelinfo?label=6662775"
         body = {
             "segmentationMeta": {
                 "status": "approved",

@@ -346,7 +346,7 @@ class ImageDataControllerTest(unittest.TestCase):
         expectedImageData = self.nameToImageData["6667571"]
         self.assertTrue(self.areEqual(expectedImageData, idToImage["6667571"]))
 
-    def test_updateLabeInfo_successfully_update_label_info(self):
+    def test_updateLabelInfo_successfully_update_label_info(self):
         # Set up
         json_with_segmentation = json.loads(self.testDataStore_V2_json)
 
@@ -357,15 +357,15 @@ class ImageDataControllerTest(unittest.TestCase):
         success = self.controller.initMetaDataProcessing()
         self.assertTrue(success)
 
-        mockObject.updateLabeInfo = Mock(return_value=200)
+        mockObject.updateLabelInfo = Mock(return_value=200)
 
         # Test
-        successfullyUpdate = self.controller.updateLabeInfo(imageId="6667571", updatedMetaJson="")
+        successfullyUpdate = self.controller.updateLabelInfo(imageId="6667571", updatedMetaJson="")
 
         # Verify
         self.assertTrue(successfullyUpdate)
 
-    def test_updateLabeInfo_failed_update_label_info(self):
+    def test_updateLabelInfo_failed_update_label_info(self):
         # Set up
         json_with_segmentation = json.loads(self.testDataStore_V2_json)
 
@@ -376,10 +376,10 @@ class ImageDataControllerTest(unittest.TestCase):
         success = self.controller.initMetaDataProcessing()
         self.assertTrue(success)
 
-        mockObject.updateLabeInfo = Mock(return_value=400)
+        mockObject.updateLabelInfo = Mock(return_value=400)
 
         # Test
-        failedUpdate = self.controller.updateLabeInfo(imageId="6667571", updatedMetaJson="")
+        failedUpdate = self.controller.updateLabelInfo(imageId="6667571", updatedMetaJson="")
 
         # Verify
         self.assertFalse(failedUpdate)
