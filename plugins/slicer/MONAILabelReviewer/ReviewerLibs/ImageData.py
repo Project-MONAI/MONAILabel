@@ -58,38 +58,38 @@ class ImageData:
         return self.comment
 
     def getStatus(self) -> str:
-        if self.isSegemented() == False:
+        if self.isSegemented() is False:
             return self.STATUS.NOT_SEGMENTED
-        if self.hasSegmentationMeta() == False:
+        if self.hasSegmentationMeta() is False:
             return ""
         if self.hasSegmentationMeta():
             return self.segmentationMeta.getStatus()
 
     def getApprovedBy(self) -> str:
-        if self.isSegemented() == False:
+        if self.isSegemented() is False:
             return ""
-        if self.hasSegmentationMeta() == False:
+        if self.hasSegmentationMeta() is False:
             return ""
         return self.segmentationMeta.getApprovedBy()
 
     def isApproved(self) -> bool:
-        if self.hasSegmentationMeta() == False:
+        if self.hasSegmentationMeta() is False:
             return False
         if self.getStatus() == self.STATUS.APPROVED:
             return True
         return False
 
     def isFlagged(self) -> bool:
-        if self.hasSegmentationMeta() == False:
+        if self.hasSegmentationMeta() is False:
             return False
         if self.getStatus() == self.STATUS.FLAGGED:
             return True
         return False
 
     def getLevel(self) -> str:
-        if self.isSegemented() == False:
+        if self.isSegemented() is False:
             return ""
-        if self.hasSegmentationMeta() == False:
+        if self.hasSegmentationMeta() is False:
             return ""
         return self.segmentationMeta.getLevel()
 
@@ -108,7 +108,7 @@ class ImageData:
 
     def isEqualSegmentationMeta(self, status="", level="", approvedBy="", comment="") -> bool:
         if (
-            self.segmentationMeta == None
+            self.segmentationMeta is None
             and self.isBlank(status)
             and self.isBlank(level)
             and self.isBlank(approvedBy)
@@ -116,14 +116,14 @@ class ImageData:
         ):
             return True
 
-        if self.segmentationMeta == None:
+        if self.segmentationMeta is None:
             self.setSegmentationMeta(status, level, approvedBy, comment)
             return False
 
         return self.segmentationMeta.isEqual(status=status, level=level, approvedBy=approvedBy, comment=comment)
 
     def updateSegmentationMeta(self, status="", level="", approvedBy="", comment=""):
-        if self.segmentationMeta == None:
+        if self.segmentationMeta is None:
             self.segmentationMeta = SegmentationMeta()
             self.segmentationMeta.build(status=status, level=level, approvedBy=approvedBy, comment=comment)
             return
@@ -137,12 +137,12 @@ class ImageData:
         return not (string and string.strip())
 
     def getMeta(self) -> str:
-        if self.segmentationMeta == None:
+        if self.segmentationMeta is None:
             return None
         return self.segmentationMeta.getMeta()
 
     def hasSegmentationMeta(self) -> bool:
-        return self.segmentationMeta != None
+        return self.segmentationMeta is not None
 
     def display(self):
         print("name: ", self.name)

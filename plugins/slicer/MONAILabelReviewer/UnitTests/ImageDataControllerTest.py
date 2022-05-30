@@ -1,22 +1,18 @@
-import unittest
+import json
 import os
 import sys
-import json
-
+import unittest
 from typing import Dict
 from unittest.mock import Mock, patch
 
 sys.path.append("..")
-from ReviewerLibs.ImageDataController import ImageDataController
-from ReviewerLibs.MonaiServerREST import MonaiServerREST
 from ReviewerLibs.ImageData import ImageData
+from ReviewerLibs.ImageDataController import ImageDataController
+from ReviewerLibs.MONAILabelReviewerEnum import Level, SegStatus
+from ReviewerLibs.MonaiServerREST import MonaiServerREST
 
-from ReviewerLibs.MONAILabelReviewerEnum import SegStatus
-from ReviewerLibs.MONAILabelReviewerEnum import Level
 
 class ImageDataControllerTest(unittest.TestCase):
-
-    
     @classmethod
     def setUp(self):
         self.STATUS = SegStatus()
@@ -24,69 +20,98 @@ class ImageDataControllerTest(unittest.TestCase):
         self.url = "http://127.0.0.1:8000"
         self.controller = ImageDataController()
 
-        self.nameToImageData : Dict[str, ImageData] = {}
+        self.nameToImageData: Dict[str, ImageData] = {}
         self.createImageData()
         self.testDataStore_V2_json = ""
         self.loadJsonStr()
 
     @classmethod
     def loadJsonStr(self) -> str:
-        with open(os.path.join(sys.path[0], "TestDataSet/test_json_datastore_v2.json"), "r") as f:
+        with open(os.path.join(sys.path[0], "TestDataSet/test_json_datastore_v2.json")) as f:
             self.testDataStore_V2_json = json.dumps(json.load(f))
 
     @classmethod
     def createImageData(self):
-        
-        #is segmented
-        imageDataTest_1 = ImageData(name = "6667571", fileName = "6667571.dcm", nodeName = "6667571.dcm", checkSum = "SHA256:2a454e9ab8a33dc74996784163a362a53e04adcee2fd73a8b6299bf0ce5060d3", segmented=True, timeStamp=1639985938, comment="")
+
+        # is segmented
+        imageDataTest_1 = ImageData(
+            name="6667571",
+            fileName="6667571.dcm",
+            nodeName="6667571.dcm",
+            checkSum="SHA256:2a454e9ab8a33dc74996784163a362a53e04adcee2fd73a8b6299bf0ce5060d3",
+            segmented=True,
+            timeStamp=1639985938,
+            comment="",
+        )
         imageDataTest_1.setClientId("Test-Radiolgist-Segmented")
         imageDataTest_1.setSegmentationFileName("6667571.seg.nrrd")
-        imageDataTest_1.setSegmentationMeta(status=self.STATUS.APPROVED, level=self.LEVEL.HARD, approvedBy="Test-Reviewer",  comment="")
-        
-        
-        #is segmented
-        imageDataTest_2 = ImageData(name = "imageId_2", fileName = "fileName_2", nodeName = "nodeName_2", checkSum = "checkSum_2", segmented=True, timeStamp=1640171961, comment="comment_2")
+        imageDataTest_1.setSegmentationMeta(
+            status=self.STATUS.APPROVED, level=self.LEVEL.HARD, approvedBy="Test-Reviewer", comment=""
+        )
+
+        # is segmented
+        imageDataTest_2 = ImageData(
+            name="imageId_2",
+            fileName="fileName_2",
+            nodeName="nodeName_2",
+            checkSum="checkSum_2",
+            segmented=True,
+            timeStamp=1640171961,
+            comment="comment_2",
+        )
         imageDataTest_2.setClientId("client_id_1")
         imageDataTest_2.setSegmentationFileName("testSegementation_2.nrrd")
-        imageDataTest_2.setSegmentationMeta(status=self.STATUS.FLAGGED, level=self.LEVEL.MEDIUM, approvedBy="theRadologist_2",  comment="comment_2")
+        imageDataTest_2.setSegmentationMeta(
+            status=self.STATUS.FLAGGED, level=self.LEVEL.MEDIUM, approvedBy="theRadologist_2", comment="comment_2"
+        )
 
-        #is not segmented
-        imageDataTest_3 = ImageData(name = "6213798", fileName = "6213798.dcm", nodeName = "6213798.dcm", checkSum = "SHA256:5ca275af76a8fe88939058f9c91ecb72ce96bd5f012198fc366e4ef0214849b9", segmented=False, timeStamp=1642170835, comment="")
+        # is not segmented
+        imageDataTest_3 = ImageData(
+            name="6213798",
+            fileName="6213798.dcm",
+            nodeName="6213798.dcm",
+            checkSum="SHA256:5ca275af76a8fe88939058f9c91ecb72ce96bd5f012198fc366e4ef0214849b9",
+            segmented=False,
+            timeStamp=1642170835,
+            comment="",
+        )
 
-        
         self.nameToImageData["6667571"] = imageDataTest_1
         self.nameToImageData["imageId_2"] = imageDataTest_2
         self.nameToImageData["6213798"] = imageDataTest_3
-    
+
     @classmethod
-    def areEqual(self, imageData_1 : ImageData, imageData_2 : ImageData) -> bool:
-        if(imageData_1.getClientId() == imageData_2.getClientId()
+    def areEqual(self, imageData_1: ImageData, imageData_2: ImageData) -> bool:
+        if (
+            imageData_1.getClientId() == imageData_2.getClientId()
             and imageData_1.getName() == imageData_2.getName()
             and imageData_1.getFileName() == imageData_2.getFileName()
             and imageData_1.getNodeName() == imageData_2.getNodeName()
-            and imageData_1.isSegemented() == imageData_2.isSegemented()):
+            and imageData_1.isSegemented() == imageData_2.isSegemented()
+        ):
 
-            if(imageData_1.isSegemented() == False):
+            if imageData_1.isSegemented() is False:
                 return True
 
-            if(imageData_1.getSegmentationFileName() == imageData_2.getSegmentationFileName() 
+            if (
+                imageData_1.getSegmentationFileName() == imageData_2.getSegmentationFileName()
                 and imageData_1.isApproved() == imageData_2.isApproved()
                 and imageData_1.isFlagged() == imageData_2.isFlagged()
                 and imageData_1.getLevel() == imageData_2.getLevel()
-                and imageData_1.getApprovedBy() == imageData_2.getApprovedBy()):
+                and imageData_1.getApprovedBy() == imageData_2.getApprovedBy()
+            ):
                 return True
-                
-        
+
         return False
-    
-    @patch.object(MonaiServerREST, 'getServerUrl', return_value= "http://127.0.0.1:8000")
+
+    @patch.object(MonaiServerREST, "getServerUrl", return_value="http://127.0.0.1:8000")
     def test_returnedUrl(self, getServerUrl):
         self.controller.setMonaiServer(self.url)
         url = self.controller.getServerUrl()
         getServerUrl.assert_called_once()
         self.assertEqual(self.url, url)
 
-    @patch.object(MonaiServerREST, 'checkServerConnection', return_value = True)
+    @patch.object(MonaiServerREST, "checkServerConnection", return_value=True)
     def test_connectToMonaiServer(self, checkServerConnection):
         isConnected = self.controller.connectToMonaiServer(self.url)
         checkServerConnection.assert_called_once()
@@ -99,12 +124,11 @@ class ImageDataControllerTest(unittest.TestCase):
         mockObject = self.controller.monaiServerREST
         mockObject.requestDataStoreInfo = Mock(return_value=json_with_segmentation)
         returnedMap = self.controller.getMapIdToImageData()
-        
+
         selectedImageData = returnedMap["6213798"]
         expectedImageData = self.nameToImageData["6213798"]
-        
-        self.assertTrue(self.areEqual(expectedImageData, selectedImageData))
 
+        self.assertTrue(self.areEqual(expectedImageData, selectedImageData))
 
     def test_initMetaDataProcessing(self):
         json_with_segmentation = json.loads(self.testDataStore_V2_json)
@@ -114,157 +138,162 @@ class ImageDataControllerTest(unittest.TestCase):
         mockObject.requestDataStoreInfo = Mock(return_value=json_with_segmentation)
         success = self.controller.initMetaDataProcessing()
         self.assertTrue(success)
-        
+
     def test_getStatistics(self):
         json_with_segmentation = json.loads(self.testDataStore_V2_json)
 
         self.controller.monaiServerREST = MonaiServerREST(self.url)
         mockObject = self.controller.monaiServerREST
         mockObject.requestDataStoreInfo = Mock(return_value=json_with_segmentation)
-        
+
         success = self.controller.initMetaDataProcessing()
         self.assertTrue(success)
 
         statistics = self.controller.getStatistics()
 
-        self.assertEqual( 50,statistics['segmentationProgress'])
-        self.assertEqual( '2/4',statistics['idxTotalSegmented'])
-        self.assertEqual( '1/4',statistics['idxTotalApproved'])
-        self.assertEqual( 25,statistics['progressPercentage'])
-        self.assertEqual( 50,statistics['segmentationProgressAllPercentage'])
-        self.assertEqual( 25,statistics['approvalProgressPercentage'])
+        self.assertEqual(50, statistics["segmentationProgress"])
+        self.assertEqual("2/4", statistics["idxTotalSegmented"])
+        self.assertEqual("1/4", statistics["idxTotalApproved"])
+        self.assertEqual(25, statistics["progressPercentage"])
+        self.assertEqual(50, statistics["segmentationProgressAllPercentage"])
+        self.assertEqual(25, statistics["approvalProgressPercentage"])
 
-       
     def test_getClientIds(self):
-        #Set up
+        # Set up
         json_with_segmentation = json.loads(self.testDataStore_V2_json)
 
         self.controller.monaiServerREST = MonaiServerREST(self.url)
         mockObject = self.controller.monaiServerREST
         mockObject.requestDataStoreInfo = Mock(return_value=json_with_segmentation)
-        
+
         success = self.controller.initMetaDataProcessing()
         self.assertTrue(success)
 
-        #Test
+        # Test
         clientIds = self.controller.getClientIds()
-        
-        #Verify
+
+        # Verify
         self.assertListEqual(clientIds, ["Test-Radiolgist-Segmented"])
 
-
     def test_getReviewers(self):
-         #Set up
+        # Set up
         json_with_segmentation = json.loads(self.testDataStore_V2_json)
 
         self.controller.monaiServerREST = MonaiServerREST(self.url)
         mockObject = self.controller.monaiServerREST
         mockObject.requestDataStoreInfo = Mock(return_value=json_with_segmentation)
-        
+
         success = self.controller.initMetaDataProcessing()
         self.assertTrue(success)
 
-        #Test
+        # Test
         clientIds = self.controller.getReviewers()
-        
-        #Verify
+
+        # Verify
         self.assertListEqual(clientIds, ["Test-Reviewer"])
 
-
     def test_getAllImageData(self):
-        #Set up
+        # Set up
         json_with_segmentation = json.loads(self.testDataStore_V2_json)
 
         self.controller.monaiServerREST = MonaiServerREST(self.url)
         mockObject = self.controller.monaiServerREST
         mockObject.requestDataStoreInfo = Mock(return_value=json_with_segmentation)
-        
+
         success = self.controller.initMetaDataProcessing()
         self.assertTrue(success)
-       
-        #Test
-        imageDatas = self.controller.getAllImageData(segmented=True, isNotSegmented=False,  isApproved= True, isFlagged=False)
-        
-        #Verify
+
+        # Test
+        imageDatas = self.controller.getAllImageData(
+            segmented=True, isNotSegmented=False, isApproved=True, isFlagged=False
+        )
+
+        # Verify
         self.assertEqual(1, len(imageDatas))
         returnedImageData = imageDatas[0]
         expectedImageData = self.nameToImageData["6667571"]
         self.assertTrue(self.areEqual(expectedImageData, returnedImageData))
 
-
     def test_getImageDataByClientId(self):
-        #Set up
+        # Set up
         json_with_segmentation = json.loads(self.testDataStore_V2_json)
 
         self.controller.monaiServerREST = MonaiServerREST(self.url)
         mockObject = self.controller.monaiServerREST
         mockObject.requestDataStoreInfo = Mock(return_value=json_with_segmentation)
-        
+
         success = self.controller.initMetaDataProcessing()
         self.assertTrue(success)
-        
-        #Test
-        imageDatas = self.controller.getImageDataByClientId(selectedClientId="Test-Radiolgist-Segmented", isApproved=True, isFlagged=False)
 
-        #Verify
-        self.assertEqual(1, len(imageDatas)) 
+        # Test
+        imageDatas = self.controller.getImageDataByClientId(
+            selectedClientId="Test-Radiolgist-Segmented", isApproved=True, isFlagged=False
+        )
+
+        # Verify
+        self.assertEqual(1, len(imageDatas))
         returnedImageData = imageDatas[0]
         expectedImageData = self.nameToImageData["6667571"]
         self.assertTrue(self.areEqual(expectedImageData, returnedImageData))
 
     def test_getPercentageApproved(self):
-        #Set up
+        # Set up
         json_with_segmentation = json.loads(self.testDataStore_V2_json)
 
         self.controller.monaiServerREST = MonaiServerREST(self.url)
         mockObject = self.controller.monaiServerREST
         mockObject.requestDataStoreInfo = Mock(return_value=json_with_segmentation)
-        
+
         success = self.controller.initMetaDataProcessing()
         self.assertTrue(success)
 
-        #Test
-        percentageApprovedOfClient, idxApprovedOfClient = self.controller.getPercentageApproved(selectedClientId="Test-Radiolgist-Segmented")
-        
-        #Verify
-        self.assertEqual(50, percentageApprovedOfClient)
-        self.assertEqual('1/2', idxApprovedOfClient)
+        # Test
+        percentageApprovedOfClient, idxApprovedOfClient = self.controller.getPercentageApproved(
+            selectedClientId="Test-Radiolgist-Segmented"
+        )
 
+        # Verify
+        self.assertEqual(50, percentageApprovedOfClient)
+        self.assertEqual("1/2", idxApprovedOfClient)
 
     def test_getPercentageSemgmentedByClient(self):
-        #Set up
+        # Set up
         json_with_segmentation = json.loads(self.testDataStore_V2_json)
 
         self.controller.monaiServerREST = MonaiServerREST(self.url)
         mockObject = self.controller.monaiServerREST
         mockObject.requestDataStoreInfo = Mock(return_value=json_with_segmentation)
-        
+
         success = self.controller.initMetaDataProcessing()
         self.assertTrue(success)
 
-        #Test
-        percentageSemgmentedByClient,  idxSegmentedByClient = self.controller.getPercentageSemgmentedByClient(selectedClientId="Test-Radiolgist-Segmented")
-        
-        #Verify
+        # Test
+        percentageSemgmentedByClient, idxSegmentedByClient = self.controller.getPercentageSemgmentedByClient(
+            selectedClientId="Test-Radiolgist-Segmented"
+        )
+
+        # Verify
         self.assertEqual(50, percentageSemgmentedByClient)
-        self.assertEqual('2/4', idxSegmentedByClient)
+        self.assertEqual("2/4", idxSegmentedByClient)
 
     def test_getMultImageDataByIds(self):
-         #Set up
+        # Set up
         json_with_segmentation = json.loads(self.testDataStore_V2_json)
 
         self.controller.monaiServerREST = MonaiServerREST(self.url)
         mockObject = self.controller.monaiServerREST
         mockObject.requestDataStoreInfo = Mock(return_value=json_with_segmentation)
-        
+
         success = self.controller.initMetaDataProcessing()
         self.assertTrue(success)
 
-        #Test
+        # Test
         imageIdDummy = "1234567"
-        idToImage : Dict[str, ImageData] = self.controller.getMultImageDataByIds(imageIds=["6213798","6667571",imageIdDummy])
+        idToImage: Dict[str, ImageData] = self.controller.getMultImageDataByIds(
+            imageIds=["6213798", "6667571", imageIdDummy]
+        )
 
-        #Verify
+        # Verify
         self.assertTrue("6213798" in idToImage.keys())
         self.assertTrue("6667571" in idToImage.keys())
         self.assertTrue(imageIdDummy not in idToImage.keys())
@@ -275,84 +304,86 @@ class ImageDataControllerTest(unittest.TestCase):
         self.assertTrue(self.areEqual(expectedImageData_1, idToImage["6213798"]))
         self.assertTrue(self.areEqual(expectedImageData_2, idToImage["6667571"]))
 
-
     def test_searchByAnnotatorReviewer_selectedReviewer_is_all(self):
-        #Set up
+        # Set up
         json_with_segmentation = json.loads(self.testDataStore_V2_json)
 
         self.controller.monaiServerREST = MonaiServerREST(self.url)
         mockObject = self.controller.monaiServerREST
         mockObject.requestDataStoreInfo = Mock(return_value=json_with_segmentation)
-        
+
         success = self.controller.initMetaDataProcessing()
         self.assertTrue(success)
 
-        #Test
-        idToImage : Dict[str, ImageData] = self.controller.searchByAnnotatorReviewer(selectedAnnotator="Test-Radiolgist-Segmented", selectedReviewer="All", isApproved=True, isFlagged=False)
-        
-        #Verify
+        # Test
+        idToImage: Dict[str, ImageData] = self.controller.searchByAnnotatorReviewer(
+            selectedAnnotator="Test-Radiolgist-Segmented", selectedReviewer="All", isApproved=True, isFlagged=False
+        )
+
+        # Verify
         self.assertTrue("6667571" in idToImage.keys())
         expectedImageData = self.nameToImageData["6667571"]
         self.assertTrue(self.areEqual(expectedImageData, idToImage["6667571"]))
 
     def test_searchByAnnotatorReviewer_selectedReviewer_is_all_and_selectedReviewer_is_all(self):
-        #Set up
+        # Set up
         json_with_segmentation = json.loads(self.testDataStore_V2_json)
 
         self.controller.monaiServerREST = MonaiServerREST(self.url)
         mockObject = self.controller.monaiServerREST
         mockObject.requestDataStoreInfo = Mock(return_value=json_with_segmentation)
-        
+
         success = self.controller.initMetaDataProcessing()
         self.assertTrue(success)
 
-        #Test
-        idToImage : Dict[str, ImageData] = self.controller.searchByAnnotatorReviewer(selectedAnnotator="All", selectedReviewer="All", isApproved=True, isFlagged=False)
+        # Test
+        idToImage: Dict[str, ImageData] = self.controller.searchByAnnotatorReviewer(
+            selectedAnnotator="All", selectedReviewer="All", isApproved=True, isFlagged=False
+        )
 
-        #Verify
+        # Verify
         self.assertTrue("6667571" in idToImage.keys())
         expectedImageData = self.nameToImageData["6667571"]
         self.assertTrue(self.areEqual(expectedImageData, idToImage["6667571"]))
 
-
     def test_updateLabeInfo_successfully_update_label_info(self):
-        #Set up
+        # Set up
         json_with_segmentation = json.loads(self.testDataStore_V2_json)
 
         self.controller.monaiServerREST = MonaiServerREST(self.url)
         mockObject = self.controller.monaiServerREST
         mockObject.requestDataStoreInfo = Mock(return_value=json_with_segmentation)
-        
+
         success = self.controller.initMetaDataProcessing()
         self.assertTrue(success)
 
         mockObject.updateLabeInfo = Mock(return_value=200)
-        
-        #Test
+
+        # Test
         successfullyUpdate = self.controller.updateLabeInfo(imageId="6667571", updatedMetaJson="")
-        
-        #Verify
+
+        # Verify
         self.assertTrue(successfullyUpdate)
 
     def test_updateLabeInfo_failed_update_label_info(self):
-        #Set up
+        # Set up
         json_with_segmentation = json.loads(self.testDataStore_V2_json)
 
         self.controller.monaiServerREST = MonaiServerREST(self.url)
         mockObject = self.controller.monaiServerREST
         mockObject.requestDataStoreInfo = Mock(return_value=json_with_segmentation)
-        
+
         success = self.controller.initMetaDataProcessing()
         self.assertTrue(success)
 
         mockObject.updateLabeInfo = Mock(return_value=400)
-        
-        #Test
+
+        # Test
         failedUpdate = self.controller.updateLabeInfo(imageId="6667571", updatedMetaJson="")
-        
-        #Verify
+
+        # Verify
         self.assertFalse(failedUpdate)
 
-if __name__ == '__main__':
-    unittest.main()
 
+if __name__ == "__main__":
+    unittest.main()

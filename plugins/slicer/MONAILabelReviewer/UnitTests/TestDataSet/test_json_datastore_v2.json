@@ -155,7 +155,7 @@
               "client_id": "Test-Radiolgist-Segmented",
               "ts": 1639986085,
               "checksum": "SHA256:d58542b4ac321b137dd33edc86cd69a84aa6c1fd1c2cb704a124756ef8788e79",
-              "name": "8887571.seg.nrrd",            
+              "name": "8887571.seg.nrrd",
               "segmentationMeta": {
                 "status": "flagged",
                 "approvedBy": "Test-Reviewer",
@@ -168,4 +168,4 @@
         }
       }
     }
-  }  
+  }

@@ -2,8 +2,7 @@ import datetime
 import logging
 import os
 import tempfile
-from code import interact
-from typing import Any, Dict, List
+from typing import Dict, List
 
 import requests
 import SampleData
@@ -164,6 +163,6 @@ class MONAILabelReviewerLogic(ScriptedLoadableModuleLogic):
         """
         Create temporary dirctory to store the downloaded segmentation (.nrrd)
         """
-        if self.temp_dir == None:
+        if self.temp_dir is None:
             self.temp_dir = tempfile.TemporaryDirectory()
         logging.info(f"{self.getCurrentTime()}: Temporary Directory: '{self.temp_dir.name}'")

@@ -57,7 +57,7 @@ class ImageDataExtractor:
 
     def extractNotSegmentedImageIds(self):
         for imageId, imageData in self.nameToImageData.items():
-            if imageData.isSegemented() == False:
+            if imageData.isSegemented() is False:
                 self.idsOfNotSegmented.append(imageId)
 
     def getTotalNumImages(self) -> int:
@@ -137,20 +137,20 @@ class ImageDataExtractor:
             )
             return None
 
-        if notSegmented == False and segmented == False and approved == False and flagged == False:
+        if notSegmented is False and segmented is False and approved is False and flagged is False:
             return [*self.nameToImageData.values()]
 
         selectedImageData = []
         for imagedata in self.nameToImageData.values():
 
-            if notSegmented == True and segmented == False and imagedata.isSegemented() == False:
+            if notSegmented is True and segmented is False and imagedata.isSegemented() is False:
                 selectedImageData.append(imagedata)
                 continue
 
             if (
-                segmented == imagedata.isSegemented()
-                and approved == imagedata.isApproved()
-                and flagged == imagedata.isFlagged()
+                segmented is imagedata.isSegemented()
+                and approved is imagedata.isApproved()
+                and flagged is imagedata.isFlagged()
             ):
                 selectedImageData.append(imagedata)
                 continue
@@ -183,9 +183,9 @@ class ImageDataExtractor:
                 )
                 continue
             imageData = self.nameToImageData[id]
-            if approved and imageData.isApproved() == False:
+            if approved and imageData.isApproved() is False:
                 continue
-            if flagged and imageData.isFlagged() == False:
+            if flagged and imageData.isFlagged() is False:
                 continue
 
             imageDataList.append(imageData)
@@ -216,11 +216,11 @@ class ImageDataExtractor:
         filteredImageDataList = []
 
         for imageData in self.nameToImageData.values():
-            if imageData.isSegemented() == False:
+            if imageData.isSegemented() is False:
                 continue
-            if approved and imageData.isApproved() == False:
+            if approved and imageData.isApproved() is False:
                 continue
-            if flagged and imageData.isFlagged() == False:
+            if flagged and imageData.isFlagged() is False:
                 continue
             if imageData.getApprovedBy() == reviewerId:
                 filteredImageDataList.append(imageData)
@@ -233,7 +233,7 @@ class ImageDataExtractor:
         """
         filteredImageData = {}
         for id, imagedata in self.nameToImageData.items():
-            if imagedata == None:
+            if imagedata is None:
                 continue
             if imagedata.isSegemented == "False":
                 continue
@@ -270,7 +270,7 @@ class ImageDataExtractor:
             return idToimageData
         for id in ids:
             imageData = self.getSingleImageDataById(id)
-            if imageData == None:
+            if imageData is None:
                 continue
             idToimageData[imageData.getName()] = imageData
         return idToimageData
@@ -283,11 +283,11 @@ class ImageDataExtractor:
         return count
 
     def countApprovedSegmentation(self, imageDatas: List[ImageData]) -> int:
-        if imageDatas == None:
+        if imageDatas is None:
             return 0
         approvedCount = 0
         for imageData in imageDatas:
-            if imageData == None:
+            if imageData is None:
                 continue
             if imageData.isApproved():
                 approvedCount += 1

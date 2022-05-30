@@ -74,9 +74,7 @@ class MonaiServerREST:
         try:
             response = requests.get(url, timeout=5)
         except Exception as exception:
-            logging.warning(
-                f"{self.getCurrentTime()}: Connection to Monai Server failed due to '{exception}'"
-            )
+            logging.warning(f"{self.getCurrentTime()}: Connection to Monai Server failed due to '{exception}'")
             return False
         if response.status_code != 200:
             logging.warn(

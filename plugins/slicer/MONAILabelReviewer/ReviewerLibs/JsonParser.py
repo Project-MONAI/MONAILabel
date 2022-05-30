@@ -166,7 +166,7 @@ class JsonParser:
             clientId = self.getClientId(value)
             imageData.setClientId(clientId)
 
-        if self.hasLabels(value) == False:
+        if self.hasLabels(value) is False:
             return imageData
 
         label = ""

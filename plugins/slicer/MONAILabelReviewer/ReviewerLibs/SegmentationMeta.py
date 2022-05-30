@@ -24,10 +24,6 @@ class SegmentationMeta:
         self.approvedBy = approvedBy
         self.comment = comment
 
-    def setComment(self, comment: str):
-        self.setEditTime()
-        self.comment = comment
-
     def setApprovedBy(self, approvedBy: str):
         self.setEditTime()
         self.approvedBy = approvedBy
@@ -69,9 +65,6 @@ class SegmentationMeta:
 
     def getApprovedBy(self) -> str:
         return self.approvedBy
-
-    def getComment(self) -> str:
-        return self.comment
 
     def isEqual(self, status="", level="", approvedBy="", comment=""):
         if status != self.status:

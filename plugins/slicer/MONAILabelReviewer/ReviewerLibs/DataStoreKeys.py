@@ -41,7 +41,7 @@ class DataStoreKeys:
         self.SEGMENTATION_NAME_BY_FINAL = ["labels", "final", "info", "name"]
         self.SEGMENTATION_NAME_BY_ORIGINAL = ["labels", "original", "info", "name"]
 
-        ##Additional entries in json file which contains meta data
+        # Additional entries in json file which contains meta data
         self.META = "segmentationMeta"
         self.META_STATUS = "status"
         self.META_LEVEL = "level"

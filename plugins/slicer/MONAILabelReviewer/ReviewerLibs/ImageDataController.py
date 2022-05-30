@@ -1,7 +1,6 @@
 import datetime
 import logging
-from code import interact
-from typing import Any, Dict, List
+from typing import Dict, List
 
 import requests
 from ReviewerLibs.ImageData import ImageData
@@ -53,7 +52,7 @@ class ImageDataController:
         Returns dictionary (Dict[str:ImageData]) which maps id to Imagedata-object
         """
         jsonObj = self.monaiServerREST.requestDataStoreInfo()
-        if jsonObj == None:
+        if jsonObj is None:
             return None
 
         # Parse json file to ImageData object
@@ -71,7 +70,7 @@ class ImageDataController:
         else False
         """
         mapIdToImageData = self.getMapIdToImageData()
-        if mapIdToImageData == None:
+        if mapIdToImageData is None:
             return False
         self.imageDataExtractor = ImageDataExtractor(mapIdToImageData)
         self.imageDataExtractor.init()
@@ -156,7 +155,7 @@ class ImageDataController:
                 selectedAnnotator, selectedReviewer, isApproved, isFlagged
             )
 
-        if imageIdsOfAnnotator == None:
+        if imageIdsOfAnnotator is None:
             return idToImageData
 
         for imageData in imageIdsOfAnnotator:
@@ -184,9 +183,7 @@ class ImageDataController:
         """
         repsonseCode = self.monaiServerREST.updateLabeInfo(image_id=imageId, params=updatedMetaJson)
         if repsonseCode == 200:
-            logging.info(
-                f"{self.getCurrentTime()}: Successfully persist meta data for image (id='{imageId}')"
-            )
+            logging.info(f"{self.getCurrentTime()}: Successfully persist meta data for image (id='{imageId}')")
             return True
         else:
             logging.info(

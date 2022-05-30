@@ -1,7 +1,6 @@
 import datetime
 import logging
 import re
-from code import interact
 from typing import Dict, List
 
 import qSlicerSegmentationsModuleWidgetsPythonQt
@@ -145,9 +144,7 @@ class MONAILabelReviewerWidget(ScriptedLoadableModuleWidget, VTKObservationMixin
         self.removeObservers()
 
     def indexReviewerchanged(self, index):
-        logging.info(
-            f"{self.getCurrentTime()}: Selected reviewer: '{self.ui.comboBox_reviewers.currentText}'"
-        )
+        logging.info(f"{self.getCurrentTime()}: Selected reviewer: '{self.ui.comboBox_reviewers.currentText}'")
         self.selectedReviewer = self.ui.comboBox_reviewers.currentText
 
     def index_changed(self, index):
@@ -291,7 +288,7 @@ class MONAILabelReviewerWidget(ScriptedLoadableModuleWidget, VTKObservationMixin
             self.displayDialogInfo(title="Warning", message=warningMessage)
             return
         result = self.logic.initMetaDataProcessing()
-        if result == False:
+        if result is False:
             warningMessage = (
                 "Request for datastore-info failed.\nPlease check if server address is correct \n('{}')!".format(
                     serverUrl
@@ -394,7 +391,7 @@ class MONAILabelReviewerWidget(ScriptedLoadableModuleWidget, VTKObservationMixin
 
     # Section: Loading images
     def loadImageData(self):
-        if (self.selectedClientId == self.ui.comboBox_clients.currentText) and (self.isDifferentFilter() == False):
+        if (self.selectedClientId == self.ui.comboBox_clients.currentText) and (self.isDifferentFilter() is False):
             return
         self.imageCounter = 0
 
@@ -553,7 +550,7 @@ class MONAILabelReviewerWidget(ScriptedLoadableModuleWidget, VTKObservationMixin
     # CheckBox: segmented
     def checkSegmented(self):
         self.setLoadButtonColor(reload=True)
-        if self.ui.checkBox_segmented.isChecked() == False:
+        if self.ui.checkBox_segmented.isChecked() is False:
             self.ui.checkBox_approved.setChecked(False)
             self.ui.checkBox_flagged.setChecked(False)
             return
@@ -777,7 +774,7 @@ class MONAILabelReviewerWidget(ScriptedLoadableModuleWidget, VTKObservationMixin
         if levelEasy:
             self.finalLevel = self.LEVEL.EASY
 
-        if levelEasy == False and self.finalLevel == self.LEVEL.EASY:
+        if levelEasy is False and self.finalLevel == self.LEVEL.EASY:
             self.finalLevel = ""
 
         if levelMedium or levelHard or (self.finalLevel == self.LEVEL.HARD) or (self.finalLevel == self.LEVEL.MEDIUM):
@@ -798,7 +795,7 @@ class MONAILabelReviewerWidget(ScriptedLoadableModuleWidget, VTKObservationMixin
         if levelMedium:
             self.finalLevel = self.LEVEL.MEDIUM
 
-        if levelMedium == False and self.finalLevel == self.LEVEL.MEDIUM:
+        if levelMedium is False and self.finalLevel == self.LEVEL.MEDIUM:
             self.finalLevel = ""
 
         if levelEasy or levelHard or (self.finalLevel == self.LEVEL.HARD) or (self.finalLevel == self.LEVEL.EASY):
@@ -819,7 +816,7 @@ class MONAILabelReviewerWidget(ScriptedLoadableModuleWidget, VTKObservationMixin
         if levelHard:
             self.finalLevel = self.LEVEL.HARD
 
-        if levelHard == False and self.finalLevel == self.LEVEL.HARD:
+        if levelHard is False and self.finalLevel == self.LEVEL.HARD:
             self.finalLevel = ""
 
         if levelEasy or levelMedium or (self.finalLevel == self.LEVEL.MEDIUM) or (self.finalLevel == self.LEVEL.EASY):
@@ -885,9 +882,7 @@ class MONAILabelReviewerWidget(ScriptedLoadableModuleWidget, VTKObservationMixin
         if self.currentImageData.isEqualSegmentationMeta(
             status=self.finalStatus, level=self.finalLevel, approvedBy=self.selectedReviewer, comment=self.finalComment
         ):
-            logging.info(
-                f"{self.getCurrentTime()}: No changes for image (id='{self.currentImageData.getName()}')"
-            )
+            logging.info(f"{self.getCurrentTime()}: No changes for image (id='{self.currentImageData.getName()}')")
             return ""
 
         self.currentImageData.updateSegmentationMeta(
@@ -895,14 +890,10 @@ class MONAILabelReviewerWidget(ScriptedLoadableModuleWidget, VTKObservationMixin
         )
         jsonStr = self.currentImageData.getMeta()
 
-        if jsonStr == None:
-            logging.info(
-                f"{self.getCurrentTime()}: No update for Image (id='{self.currentImageData.getName()}')"
-            )
+        if jsonStr is None:
+            logging.info(f"{self.getCurrentTime()}: No update for Image (id='{self.currentImageData.getName()}')")
             return ""
-        logging.info(
-            f"{self.getCurrentTime()}: Successfully updated Image (id='{self.currentImageData.getName()}')"
-        )
+        logging.info(f"{self.getCurrentTime()}: Successfully updated Image (id='{self.currentImageData.getName()}')")
         return jsonStr
 
     # Button: Previouse
