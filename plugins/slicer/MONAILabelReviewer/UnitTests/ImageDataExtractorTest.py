@@ -131,7 +131,7 @@ class ImageDataExtractorTest(unittest.TestCase):
         percentage = self.imageDataExtractor.getSegmentationProgessInPercentage()
         self.assertEqual(66, percentage)
 
-    def test_getSegmentationProgessInPercentage(self):
+    def test_getSegmentationProgessInPercentage_as_fraction(self):
         idxTotalSegmented = self.imageDataExtractor.getSegmentationVsTotalStr()
         self.assertEqual("2/3", idxTotalSegmented)
 
