@@ -13,8 +13,7 @@ import logging
 from typing import Any, Callable, Dict, Sequence
 
 import numpy as np
-from lib.transforms import AddClickGuidanced, FilterImaged, LoadImagePatchd, PostFilterLabeld
-from monai.apps.deepgrow.transforms import AddGuidanceSignald
+from lib.transforms import AddClickGuidanced, AddClickGuidanceSignald, LoadImagePatchd, PostFilterLabeld
 from monai.transforms import (
     Activationsd,
     AsChannelFirstd,
@@ -66,13 +65,12 @@ class DeepEditNuclei(InferTask):
 
     def pre_transforms(self, data=None):
         return [
-            LoadImagePatchd(keys="image", conversion="RGB", dtype=np.uint8, padding=False),
-            FilterImaged(keys="image"),
+            LoadImagePatchd(keys="image", mode="RGB", dtype=np.uint8, padding=False),
+            EnsureTyped(keys="image", device=data.get("device") if data else None),
             AsChannelFirstd(keys="image"),
             ScaleIntensityRangeD(keys="image", a_min=0.0, a_max=255.0, b_min=-1.0, b_max=1.0),
-            AddClickGuidanced(image="image", guidance="guidance"),
-            AddGuidanceSignald(image="image", guidance="guidance", number_intensity_ch=3),
-            EnsureTyped(keys="image", device=data.get("device") if data else None),
+            AddClickGuidanced(guidance="guidance"),
+            AddClickGuidanceSignald(image="image", guidance="guidance", number_intensity_ch=3),
         ]
 
     def post_transforms(self, data=None) -> Sequence[Callable]:
