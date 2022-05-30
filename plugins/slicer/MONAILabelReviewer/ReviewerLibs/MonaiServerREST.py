@@ -88,10 +88,10 @@ class MonaiServerREST:
         return True
 
     def updateLabelInfo(self, image_id: str, params: str) -> int:
-        '''
+        """
         the image_id is the unique ID of an radiographic image
         If the image has a label/segmentation, its label/label_id corresponds to its image_id
-        '''
+        """
         url = f"{self.serverUrl}/datastore/updatelabelinfo?label={quote_plus(image_id)}"
         headers = CaseInsensitiveDict()
         headers["Content-Type"] = "application/x-www-form-urlencoded"
