@@ -1,34 +1,34 @@
-
 from datetime import datetime
 
 from ReviewerLibs.MONAILabelReviewerEnum import SegStatus
 from ReviewerLibs.SegmentationMeta import SegmentationMeta
 
-'''
+"""
 ImageData is a container for each segmentation/image.
 Such ImageData contains the meta data of corresponding segmentation/image (e.g. fileName, checkSum, comment, etc.)
 Each change (regarding the review process) will be monitored within ImageData.
 Once a user select the next segmentation during review the information in ImageData will be send to MONAI-Server in order
 to persist the data in datastore_v2.json file.
 
-'''
+"""
+
 
 class ImageData:
-    def __init__(self, name, fileName, nodeName, checkSum, segmented, timeStamp, comment=""): 
-        self.name : str  = name
-        self.fileName : str  = fileName
-        self.nodeName : str  = nodeName
-        self.checkSum : str  = checkSum
-        self.segmented : bool  = segmented
-        self.timeStamp : int = timeStamp
-        self.comment : str = comment
+    def __init__(self, name, fileName, nodeName, checkSum, segmented, timeStamp, comment=""):
+        self.name: str = name
+        self.fileName: str = fileName
+        self.nodeName: str = nodeName
+        self.checkSum: str = checkSum
+        self.segmented: bool = segmented
+        self.timeStamp: int = timeStamp
+        self.comment: str = comment
 
         self.STATUS = SegStatus()
 
-        self.client_id : str = None
-        self.segmentationFileName : str  = None
-        self.tempDirectory : str = None
-        self.segmentationMeta : SegmentationMeta = None
+        self.client_id: str = None
+        self.segmentationFileName: str = None
+        self.tempDirectory: str = None
+        self.segmentationMeta: SegmentationMeta = None
 
     def getName(self) -> str:
         return self.name
@@ -43,7 +43,7 @@ class ImageData:
         return self.checkSum
 
     def getClientId(self) -> str:
-        return self.client_id 
+        return self.client_id
 
     def getTimeStamp(self) -> int:
         return self.timeStamp
@@ -55,72 +55,77 @@ class ImageData:
         return self.segmented
 
     def getComment(self) -> str:
-         return self.comment
+        return self.comment
 
     def getStatus(self) -> str:
-        if(self.isSegemented() == False):
+        if self.isSegemented() == False:
             return self.STATUS.NOT_SEGMENTED
-        if(self.hasSegmentationMeta() == False):
+        if self.hasSegmentationMeta() == False:
             return ""
-        if(self.hasSegmentationMeta()):
+        if self.hasSegmentationMeta():
             return self.segmentationMeta.getStatus()
-   
+
     def getApprovedBy(self) -> str:
-        if(self.isSegemented()==False):
+        if self.isSegemented() == False:
             return ""
-        if (self.hasSegmentationMeta()==False):
+        if self.hasSegmentationMeta() == False:
             return ""
         return self.segmentationMeta.getApprovedBy()
 
     def isApproved(self) -> bool:
-        if (self.hasSegmentationMeta() == False):
+        if self.hasSegmentationMeta() == False:
             return False
-        if (self.getStatus()==self.STATUS.APPROVED):
+        if self.getStatus() == self.STATUS.APPROVED:
             return True
         return False
-    
+
     def isFlagged(self) -> bool:
-        if (self.hasSegmentationMeta() == False):
+        if self.hasSegmentationMeta() == False:
             return False
-        if (self.getStatus()==self.STATUS.FLAGGED):
+        if self.getStatus() == self.STATUS.FLAGGED:
             return True
         return False
 
     def getLevel(self) -> str:
-        if(self.isSegemented()==False):
+        if self.isSegemented() == False:
             return ""
-        if (self.hasSegmentationMeta()==False):
+        if self.hasSegmentationMeta() == False:
             return ""
         return self.segmentationMeta.getLevel()
-        
-    def setSegmentationFileName(self, fileName : str):
+
+    def setSegmentationFileName(self, fileName: str):
         self.segmentationFileName = fileName
 
     def getSegmentationFileName(self) -> str:
         return self.segmentationFileName
 
-    def setClientId(self, client_id : str):
+    def setClientId(self, client_id: str):
         self.client_id = client_id
 
     def setSegmentationMeta(self, status="", level="", approvedBy="", comment=""):
         self.segmentationMeta = SegmentationMeta()
         self.segmentationMeta.build(status=status, level=level, approvedBy=approvedBy, comment=comment)
-        
 
     def isEqualSegmentationMeta(self, status="", level="", approvedBy="", comment="") -> bool:
-        if(self.segmentationMeta == None and self.isBlank(status) and self.isBlank(level) and self.isBlank(approvedBy) and self.isBlank(comment)):
+        if (
+            self.segmentationMeta == None
+            and self.isBlank(status)
+            and self.isBlank(level)
+            and self.isBlank(approvedBy)
+            and self.isBlank(comment)
+        ):
             return True
 
-        if(self.segmentationMeta == None):
+        if self.segmentationMeta == None:
             self.setSegmentationMeta(status, level, approvedBy, comment)
             return False
 
         return self.segmentationMeta.isEqual(status=status, level=level, approvedBy=approvedBy, comment=comment)
-    
+
     def updateSegmentationMeta(self, status="", level="", approvedBy="", comment=""):
-        if(self.segmentationMeta == None):
+        if self.segmentationMeta == None:
             self.segmentationMeta = SegmentationMeta()
-            self.segmentationMeta.build(status=status, level=level, approvedBy=approvedBy,  comment=comment) 
+            self.segmentationMeta.build(status=status, level=level, approvedBy=approvedBy, comment=comment)
             return
 
         self.segmentationMeta.setStatus(status)
@@ -132,12 +137,12 @@ class ImageData:
         return not (string and string.strip())
 
     def getMeta(self) -> str:
-        if(self.segmentationMeta == None):
+        if self.segmentationMeta == None:
             return None
         return self.segmentationMeta.getMeta()
 
     def hasSegmentationMeta(self) -> bool:
-        return (self.segmentationMeta != None)    
+        return self.segmentationMeta != None
 
     def display(self):
         print("name: ", self.name)
@@ -146,9 +151,9 @@ class ImageData:
         print("checksum: ", self.checkSum)
         print("isSegmented: ", self.segmented)
         print("getTimeStamp: ", self.getTime())
-        if(self.isSegemented()):
+        if self.isSegemented():
             print("Client Id: ", self.client_id)
             print("segmentationFileName: ", self.segmentationFileName)
             print("=== Segmentation Meta ====")
-        if(self.hasSegmentationMeta()):
+        if self.hasSegmentationMeta():
             self.segmentationMeta.display()

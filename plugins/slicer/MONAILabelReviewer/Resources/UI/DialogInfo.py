@@ -1,5 +1,3 @@
-# -*- coding: utf-8 -*-
-
 # Form implementation generated from reading ui file 'DialogInfo.ui'
 #
 # Created by: PyQt5 UI code generator 5.15.6
@@ -11,7 +9,7 @@
 from PyQt5 import QtCore, QtGui, QtWidgets
 
 
-class Ui_Dialog(object):
+class Ui_Dialog:
     def setupUi(self, Dialog):
         Dialog.setObjectName("Dialog")
         Dialog.resize(393, 184)
@@ -23,7 +21,7 @@ class Ui_Dialog(object):
         self.verticalLayout.setObjectName("verticalLayout")
         self.label_title = QtWidgets.QLabel(self.widget)
         self.label_title.setLayoutDirection(QtCore.Qt.LeftToRight)
-        self.label_title.setStyleSheet("font: 18pt \"Helvetica\";")
+        self.label_title.setStyleSheet('font: 18pt "Helvetica";')
         self.label_title.setAlignment(QtCore.Qt.AlignCenter)
         self.label_title.setObjectName("label_title")
         self.verticalLayout.addWidget(self.label_title)
