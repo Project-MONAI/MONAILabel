@@ -14,7 +14,7 @@ OHIF will be accessible at http://127.0.0.1:8000/ohif/ when you start monailabel
 
 - Run App with Orthanc (DICOMWeb):
 
-  `./monailabel/monailabel start_server -a samples/segmentation_spleen -s http://127.0.0.1:8042/dicom-web`
+  `./monailabel/monailabel start_server -a apps/radiology -s http://127.0.0.1:8042/dicom-web --conf models segmentation_spleen`
 
 - Access OHIF: http://127.0.0.1:8000/ohif/
 
