@@ -15,12 +15,8 @@ import os
 import time
 from pathlib import Path
 
-import large_image
-import numpy as np
 from cli.client import MONAILabelClient
-from histomicstk.cli import utils as cli_utils
 from histomicstk.cli.utils import CLIArgumentParser
-from histomicstk.utils import compute_tile_foreground_fraction
 
 logging.basicConfig(level=logging.INFO)
 
@@ -88,14 +84,22 @@ def main(args):
         raise ValueError("Analysis ROI must be a vector of 4 elements.")
 
     logging.info(">> Reading input image ... \n")
-    ts = large_image.getTileSource(args.inputImageFile)
-    ts_metadata = ts.getMetadata()
-    logging.info(json.dumps(ts_metadata, indent=2))
-
-    is_wsi = ts_metadata["magnification"] is not None
-
     tiles = []
+    is_wsi = False
+    if args.min_fgnd_frac >= 0:
+        import large_image
+
+        ts = large_image.getTileSource(args.inputImageFile)
+        ts_metadata = ts.getMetadata()
+        logging.info(json.dumps(ts_metadata, indent=2))
+
+        is_wsi = ts_metadata["magnification"] is not None
+
     if is_wsi and args.min_fgnd_frac >= 0:
+        import numpy as np
+        from histomicstk.cli import utils as cli_utils
+        from histomicstk.utils import compute_tile_foreground_fraction
+
         it_kwargs = {
             "tile_size": {"width": args.analysis_tile_size},
             "scale": {"magnification": ts_metadata["magnification"]},
