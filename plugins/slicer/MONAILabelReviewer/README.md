@@ -9,7 +9,7 @@ MONAILABELReviewer is a tool for research groups to check the quality of the seg
 # Import MONAILABELReviewer into 3DSlicer
 1. Select "Edit"
 2. Select "Application Settings"
-3. Select "Moduls"
+3. Select "Modules"
 4. Select "Add"
 5. Within Browser select folder "MONAILabelReviewer"
 
