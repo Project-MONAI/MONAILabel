@@ -3,7 +3,6 @@ import logging
 import re
 from typing import Dict, List
 
-import qSlicerSegmentationsModuleWidgetsPythonQt
 import qt
 import slicer
 from ReviewerLibs.ImageData import ImageData
@@ -95,7 +94,7 @@ class MONAILabelReviewerWidget(ScriptedLoadableModuleWidget, VTKObservationMixin
         self.logic = MONAILabelReviewerLogic()
 
         self.setLightVersion()
-        self.segmentEditorWidget = qSlicerSegmentationsModuleWidgetsPythonQt.qMRMLSegmentEditorWidget()
+        self.segmentEditorWidget = slicer.qMRMLSegmentEditorWidget()
         self.addSegmentator()
         self.ui.verticalLayout_10.addWidget(self.segmentEditorWidget)
         self.loadServerSelection()
