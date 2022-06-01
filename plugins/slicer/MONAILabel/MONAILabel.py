@@ -1668,12 +1668,14 @@ class MONAILabelWidget(ScriptedLoadableModuleWidget, VTKObservationMixin):
             print(f"Import only Freezed label: {freeze}")
 
             # List of segments to import
-            segmentIds = vtk.vtkStringArray() 
+            segmentIds = vtk.vtkStringArray()
             for label in labels:
                 segmentIds.InsertNextValue(label)
 
             numberOfExistingSegments = segmentation.GetNumberOfSegments()
-            slicer.modules.segmentations.logic().ImportLabelmapToSegmentationNode(labelmapVolumeNode, segmentationNode, segmentIds)
+            slicer.modules.segmentations.logic().ImportLabelmapToSegmentationNode(
+                labelmapVolumeNode, segmentationNode, segmentIds
+            )
             slicer.mrmlScene.RemoveNode(labelmapVolumeNode)
 
             for i, label in enumerate(labels):
@@ -1725,7 +1727,6 @@ class MONAILabelWidget(ScriptedLoadableModuleWidget, VTKObservationMixin):
                         effect.modifySelectedSegmentByLabelmap(
                             labelmap, slicer.qSlicerSegmentEditorAbstractEffect.ModificationModeSet, bypassMask
                         )
-
 
         self.showSegmentationsIn3D()
         logging.info(f"Time consumed by updateSegmentationMask: {time.time() - start:3.1f}")
