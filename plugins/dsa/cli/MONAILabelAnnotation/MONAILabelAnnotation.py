@@ -55,8 +55,16 @@ def fetch_annotations(args, tiles=None):
     _, res = client.wsi_infer(model=args.model_name, image_in=image, body=body, output=output)
     logging.info(f"Annotation Detection Time = {round(time.time() - start_time, 2)}")
 
+    res = str(res, encoding="utf-8")
     with open(args.outputAnnotationFile, "w") as fp:
-        fp.write(str(res, encoding="utf-8"))
+        fp.write(res)
+
+    # print last but one line of result (description)
+    try:
+        d = json.loads(json.loads(res[-5000:].split("\n")[-2:][0].replace('"description": ', "")))
+        logging.info(f"\n{json.dumps(d, indent=2)}")
+    except:
+        pass
 
     total_time_taken = time.time() - total_start_time
     logging.info(f"Total Annotation Fetch time = {round(total_time_taken, 2)}")
@@ -85,24 +93,20 @@ def main(args):
 
     logging.info(">> Reading input image ... \n")
     tiles = []
-    is_wsi = False
+
     if args.min_fgnd_frac >= 0:
         import large_image
+        import numpy as np
+        from histomicstk.cli import utils as cli_utils
+        from histomicstk.utils import compute_tile_foreground_fraction
 
         ts = large_image.getTileSource(args.inputImageFile)
         ts_metadata = ts.getMetadata()
         logging.info(json.dumps(ts_metadata, indent=2))
 
-        is_wsi = ts_metadata["magnification"] is not None
-
-    if is_wsi and args.min_fgnd_frac >= 0:
-        import numpy as np
-        from histomicstk.cli import utils as cli_utils
-        from histomicstk.utils import compute_tile_foreground_fraction
-
         it_kwargs = {
             "tile_size": {"width": args.analysis_tile_size},
-            "scale": {"magnification": ts_metadata["magnification"]},
+            "scale": {"magnification": 0},
         }
         if not np.all(np.array(args.analysis_roi) <= 0):
             it_kwargs["region"] = {
