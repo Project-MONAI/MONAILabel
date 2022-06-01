@@ -83,7 +83,7 @@ for job in tqdm(jobList):
             continue
 
         # print(f"JOB {size} x {model} :: {job['_id']}")
-        jobFull = gc.get(f"/job/" + job["_id"])
+        jobFull = gc.get(f"/job/{job['_id']}")
         logs = []
         for l in jobFull["log"]:
             logs.extend(l.split("\n"))
@@ -154,10 +154,10 @@ for s in sizes:
 csv_lines.append(",".join(header))
 
 for name, w, h in itemList:
-    item = gc.get("resource/lookup", parameters={"path": "{}{}".format(resourceRoot, name)})
+    item = gc.get("resource/lookup", parameters={"path": f"{resourceRoot}{name}"})
     itemId = item["_id"]
     if len(sys.argv) == 2 and sys.argv[1] == "--purge":
-        print("Purging annotations for {} ({})".format(itemId, name))
+        print(f"Purging annotations for {itemId} ({name})")
         gc.delete("annotation/item/%s" % (itemId))
         continue
     if not jobSummary.get(name):
