@@ -54,10 +54,10 @@ class SegmentationSpleen(InferTask):
     def pre_transforms(self, data=None) -> Sequence[Callable]:
         return [
             LoadImaged(keys="image"),
+            EnsureTyped(keys="image", device=data.get("device") if data else None),
             EnsureChannelFirstd(keys="image"),
             Spacingd(keys="image", pixdim=[1.0, 1.0, 1.0]),
             ScaleIntensityRanged(keys="image", a_min=-57, a_max=164, b_min=0.0, b_max=1.0, clip=True),
-            EnsureTyped(keys="image"),
         ]
 
     def inferer(self, data=None) -> Inferer:

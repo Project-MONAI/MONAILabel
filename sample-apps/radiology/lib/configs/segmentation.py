@@ -82,7 +82,8 @@ class Segmentation(TaskConfig):
             roi_size=self.roi_size,
             target_spacing=self.target_spacing,
             labels=self.labels,
-            config={"largest_cc": True},
+            preload=strtobool(self.conf.get("preload", "false")),
+            config={"largest_cc": False},
         )
         return task
 

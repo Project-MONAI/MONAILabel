@@ -57,10 +57,10 @@ class Segmentation(InferTask):
     def pre_transforms(self, data=None) -> Sequence[Callable]:
         return [
             LoadImaged(keys="image", reader="ITKReader"),
+            EnsureTyped(keys="image", device=data.get("device") if data else None),
             EnsureChannelFirstd(keys="image"),
             Spacingd(keys="image", pixdim=self.target_spacing),
             ScaleIntensityRanged(keys="image", a_min=-175, a_max=250, b_min=0.0, b_max=1.0, clip=True),
-            EnsureTyped(keys="image"),
         ]
 
     def inferer(self, data=None) -> Inferer:
@@ -73,13 +73,9 @@ class Segmentation(InferTask):
             EnsureTyped(keys="pred", device=data.get("device") if data else None),
             Activationsd(keys="pred", softmax=True),
             AsDiscreted(keys="pred", argmax=True),
+            ToNumpyd(keys="pred"),
         ]
         if largest_cc:
             t.append(KeepLargestConnectedComponentd(keys="pred", applied_labels=applied_labels))
-        t.extend(
-            [
-                ToNumpyd(keys="pred"),
-                Restored(keys="pred", ref_image="image"),
-            ]
-        )
+        t.append(Restored(keys="pred", ref_image="image"))
         return t
