@@ -6,10 +6,10 @@ from typing import Dict
 from unittest.mock import Mock, patch
 
 sys.path.append("..")
-from ReviewerLibs.ImageData import ImageData
-from ReviewerLibs.ImageDataController import ImageDataController
-from ReviewerLibs.MONAILabelReviewerEnum import Level, SegStatus
-from ReviewerLibs.MonaiServerREST import MonaiServerREST
+from MONAILabelReviewerLib.ImageData import ImageData
+from MONAILabelReviewerLib.ImageDataController import ImageDataController
+from MONAILabelReviewerLib.MONAILabelReviewerEnum import Level, SegStatus
+from MONAILabelReviewerLib.MonaiServerREST import MonaiServerREST
 
 
 class ImageDataControllerTest(unittest.TestCase):

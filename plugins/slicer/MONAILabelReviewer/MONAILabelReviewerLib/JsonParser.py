@@ -1,8 +1,8 @@
 from typing import Dict
 
-from ReviewerLibs.DataStoreKeys import DataStoreKeys
-from ReviewerLibs.ImageData import ImageData
-from ReviewerLibs.MONAILabelReviewerEnum import Label
+from MONAILabelReviewerLib.DataStoreKeys import DataStoreKeys
+from MONAILabelReviewerLib.ImageData import ImageData
+from MONAILabelReviewerLib.MONAILabelReviewerEnum import Label
 
 """
 JsonParser parses the datastore.json file

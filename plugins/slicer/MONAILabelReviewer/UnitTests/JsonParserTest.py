@@ -4,8 +4,8 @@ import sys
 import unittest
 
 sys.path.append("..")
-from ReviewerLibs.ImageData import ImageData
-from ReviewerLibs.JsonParser import JsonParser
+from MONAILabelReviewerLib.ImageData import ImageData
+from MONAILabelReviewerLib.JsonParser import JsonParser
 
 
 class JsonParserTest(unittest.TestCase):

@@ -10,7 +10,7 @@ from mockserver_friendly import MockServerFriendlyClient, json_equals, request, 
 from python_on_whales import docker
 
 sys.path.append("..")
-from ReviewerLibs.MonaiServerREST import MonaiServerREST
+from MONAILabelReviewerLib.MonaiServerREST import MonaiServerREST
 
 
 class MonaiServerRESTTest(unittest.TestCase):

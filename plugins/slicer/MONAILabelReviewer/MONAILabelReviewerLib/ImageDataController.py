@@ -3,10 +3,10 @@ import logging
 from typing import Dict, List
 
 import requests
-from ReviewerLibs.ImageData import ImageData
-from ReviewerLibs.ImageDataExtractor import ImageDataExtractor
-from ReviewerLibs.JsonParser import JsonParser
-from ReviewerLibs.MonaiServerREST import MonaiServerREST
+from MONAILabelReviewerLib.ImageData import ImageData
+from MONAILabelReviewerLib.ImageDataExtractor import ImageDataExtractor
+from MONAILabelReviewerLib.JsonParser import JsonParser
+from MONAILabelReviewerLib.MonaiServerREST import MonaiServerREST
 
 """
 ImageDataController manages all data processing and data transactions via

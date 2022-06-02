@@ -3,9 +3,9 @@ import unittest
 from typing import Dict, List
 
 sys.path.append("..")
-from ReviewerLibs.ImageData import ImageData
-from ReviewerLibs.ImageDataExtractor import ImageDataExtractor
-from ReviewerLibs.MONAILabelReviewerEnum import Level, SegStatus
+from MONAILabelReviewerLib.ImageData import ImageData
+from MONAILabelReviewerLib.ImageDataExtractor import ImageDataExtractor
+from MONAILabelReviewerLib.MONAILabelReviewerEnum import Level, SegStatus
 
 
 class ImageDataExtractorTest(unittest.TestCase):

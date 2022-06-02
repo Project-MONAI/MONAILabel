@@ -5,9 +5,9 @@ from typing import Dict, List
 
 import qt
 import slicer
-from ReviewerLibs.ImageData import ImageData
-from ReviewerLibs.MONAILabelReviewerEnum import Level, SegStatus
-from ReviewerLibs.MONAILabelReviewerLogic import MONAILabelReviewerLogic
+from MONAILabelReviewerLib.ImageData import ImageData
+from MONAILabelReviewerLib.MONAILabelReviewerEnum import Level, SegStatus
+from MONAILabelReviewerLib.MONAILabelReviewerLogic import MONAILabelReviewerLogic
 from slicer.ScriptedLoadableModule import *
 from slicer.util import VTKObservationMixin
 
