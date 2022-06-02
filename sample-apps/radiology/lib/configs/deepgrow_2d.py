@@ -67,7 +67,12 @@ class Deepgrow2D(TaskConfig):
         )
 
     def infer(self) -> Union[InferTask, Dict[str, InferTask]]:
-        task: InferTask = lib.infers.Deepgrow(path=self.path, network=self.network, labels=self.labels)
+        task: InferTask = lib.infers.Deepgrow(
+            path=self.path,
+            network=self.network,
+            labels=self.labels,
+            preload=strtobool(self.conf.get("preload", "false")),
+        )
         return task
 
     def trainer(self) -> Optional[TrainTask]:

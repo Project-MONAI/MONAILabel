@@ -51,6 +51,7 @@ class DeepEdit(InferTask):
         target_spacing=(1.0, 1.0, 1.0),
         number_intensity_ch=1,
         description="A DeepEdit model for volumetric (3D) segmentation over 3D Images",
+        **kwargs,
     ):
         super().__init__(
             path=path,
@@ -62,6 +63,7 @@ class DeepEdit(InferTask):
             input_key="image",
             output_label_key="pred",
             output_json_key="result",
+            **kwargs,
         )
 
         self.spatial_size = spatial_size
