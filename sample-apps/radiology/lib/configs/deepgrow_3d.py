@@ -71,6 +71,7 @@ class Deepgrow3D(TaskConfig):
             path=self.path,
             network=self.network,
             labels=self.labels,
+            preload=strtobool(self.conf.get("preload", "false")),
             dimension=3,
             model_size=(128, 192, 192),
         )
