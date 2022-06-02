@@ -52,6 +52,7 @@ class Deepgrow(InferTask):
         description="A pre-trained DeepGrow model based on UNET",
         spatial_size=(256, 256),
         model_size=(256, 256),
+        **kwargs,
     ):
         super().__init__(
             path=path,
@@ -60,6 +61,7 @@ class Deepgrow(InferTask):
             labels=labels,
             dimension=dimension,
             description=description,
+            **kwargs,
         )
 
         self.spatial_size = spatial_size
