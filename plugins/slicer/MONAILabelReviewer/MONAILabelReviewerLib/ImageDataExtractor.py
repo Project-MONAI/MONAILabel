@@ -2,8 +2,8 @@ import datetime
 import logging
 from typing import Dict, List
 
-from ReviewerLibs.ImageData import ImageData
-from ReviewerLibs.MONAILabelReviewerEnum import Level
+from MONAILabelReviewerLib.ImageData import ImageData
+from MONAILabelReviewerLib.MONAILabelReviewerEnum import Level
 
 """
 ImageDataExtractor gets dictionary (mapping from id to ImageData from JsonParser) and caches

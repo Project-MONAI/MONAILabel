@@ -1,7 +1,7 @@
 from datetime import datetime
 
-from ReviewerLibs.MONAILabelReviewerEnum import SegStatus
-from ReviewerLibs.SegmentationMeta import SegmentationMeta
+from MONAILabelReviewerLib.MONAILabelReviewerEnum import SegStatus
+from MONAILabelReviewerLib.SegmentationMeta import SegmentationMeta
 
 """
 ImageData is a container for each segmentation/image.
