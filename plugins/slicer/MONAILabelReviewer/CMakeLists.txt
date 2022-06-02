@@ -4,11 +4,21 @@ set(MODULE_NAME MONAILabelReviewer)
 #-----------------------------------------------------------------------------
 set(MODULE_PYTHON_SCRIPTS
   ${MODULE_NAME}.py
+  ${MODULE_NAME}Lib/__init__
+  ${MODULE_NAME}Lib/DataStoreKeys.py
+  ${MODULE_NAME}Lib/ImageData.py
+  ${MODULE_NAME}Lib/ImageDataController.py
+  ${MODULE_NAME}Lib/ImageDataExtractor.py
+  ${MODULE_NAME}Lib/JsonParser.py
+  ${MODULE_NAME}Lib/MONAILabelReviewerEnum.py
+  ${MODULE_NAME}Lib/MonaiServerREST.py
+  ${MODULE_NAME}Lib/SegmentationMeta.py
   )
 
 set(MODULE_PYTHON_RESOURCES
   Resources/Icons/${MODULE_NAME}.png
   Resources/UI/${MODULE_NAME}.ui
+  Resources/UI/DialogInfo.ui
   )
 
 #-----------------------------------------------------------------------------
