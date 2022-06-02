@@ -87,7 +87,6 @@ class MONAILabelReviewerWidget(ScriptedLoadableModuleWidget, VTKObservationMixin
         self.layout.addWidget(uiWidget)
         self.ui = slicer.util.childWidgetVariables(uiWidget)
 
-        self.dialogWidget = slicer.util.loadUI(self.resourcePath("UI/DialogInfo.ui"))
         # Set scene in MRML widgets. Make sure that in Qt designer the top-level qMRMLWidget's
         # "mrmlSceneChanged(vtkMRMLScene*)" signal in is connected to each MRML widget's.
         # "setMRMLScene(vtkMRMLScene*)" slot.
@@ -133,7 +132,6 @@ class MONAILabelReviewerWidget(ScriptedLoadableModuleWidget, VTKObservationMixin
 
         self.ui.btn_basic_mode.clicked.connect(self.setLightVersion)
         self.ui.btn_reviewers_mode.clicked.connect(self.setReviewerVersion)
-        self.dialogWidget.pushButton.clicked.connect(self.closeDialog)
         self.ui.comboBox_clients.currentIndexChanged.connect(self.index_changed)
         self.ui.comboBox_reviewers.currentIndexChanged.connect(self.indexReviewerchanged)
 
@@ -152,15 +150,6 @@ class MONAILabelReviewerWidget(ScriptedLoadableModuleWidget, VTKObservationMixin
 
     def index_changed(self, index):
         self.loadImageData()
-
-    # Section: Dialog window
-    def displayDialogInfo(self, title: str, message: str):
-        self.dialogWidget.label_title.setText(title)
-        self.dialogWidget.label_message.setText(message)
-        self.dialogWidget.exec()
-
-    def closeDialog(self):
-        self.dialogWidget.close()
 
     def setReviewerVersion(self):
         self.reviewersModeIsActive = True
@@ -288,7 +277,7 @@ class MONAILabelReviewerWidget(ScriptedLoadableModuleWidget, VTKObservationMixin
         isConnected: bool = self.logic.connectToMonaiServer(serverUrl)
         if not isConnected:
             warningMessage = f"Connection to server failed \ndue to invalid ip '{serverUrl}'"
-            self.displayDialogInfo(title="Warning", message=warningMessage)
+            slicer.util.warningDisplay(warningMessage)
             return
         result = self.logic.initMetaDataProcessing()
         if result is False:
@@ -297,7 +286,7 @@ class MONAILabelReviewerWidget(ScriptedLoadableModuleWidget, VTKObservationMixin
                     serverUrl
                 )
             )
-            self.displayDialogInfo(title="Warning", message=warningMessage)
+            slicer.util.warningDisplay(warningMessage)
             return
         self.initUI()
 
@@ -315,8 +304,7 @@ class MONAILabelReviewerWidget(ScriptedLoadableModuleWidget, VTKObservationMixin
         self.selectedReviewer = self.ui.comboBox_reviewers.currentText
         if self.reviewersModeIsActive and self.selectedReviewer == "":
             warningMessage = "Missing reviewer's name.\nPlease enter your id or name in the reviewer's field!"
-            logging.warning(warningMessage)
-            self.displayDialogInfo(title="Warning", message=warningMessage)
+            slicer.util.warningDisplay(warningMessage)
             return
         self.ui.collapsibleButton_search_image.enabled = True
         self.ui.collapsibleButton_dicom_stream.enabled = True
@@ -848,8 +836,7 @@ class MONAILabelReviewerWidget(ScriptedLoadableModuleWidget, VTKObservationMixin
 
         if self.imageCounter >= len(self.listImageData):
             message = f"{self.getCurrentTime()}: End of list has been reached."
-            logging.warning(message)
-            self.displayDialogInfo(title="Warning", message=message)
+            slicer.util.warningDisplay(message)
             self.imageCounter = len(self.listImageData) - 1
             return
         self.updateHorizontalSlider()
@@ -908,8 +895,7 @@ class MONAILabelReviewerWidget(ScriptedLoadableModuleWidget, VTKObservationMixin
         self.imageCounter -= 1
         if self.imageCounter < 0:
             message = f"{self.getCurrentTime()}: Lower limit of data set has been reached."
-            logging.warning(message)
-            self.displayDialogInfo(title="Warning", message=message)
+            slicer.util.warningDisplay(message)
             self.imageCounter = 0
             return
         self.updateHorizontalSlider()
