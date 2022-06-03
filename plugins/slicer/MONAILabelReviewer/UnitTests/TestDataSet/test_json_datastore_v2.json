@@ -1,0 +1,171 @@
+{
+    "name": "new-dataset",
+    "description": "New Dataset",
+    "images_dir": ".",
+    "labels_dir": "labels",
+    "objects": {
+      "6213798": {
+        "image": {
+          "ext": ".dcm",
+          "info": {
+            "ts": 1642170799,
+            "checksum": "SHA256:5ca275af76a8fe88939058f9c91ecb72ce96bd5f012198fc366e4ef0214849b9",
+            "name": "6213798.dcm",
+            "strategy": {
+              "Random": {
+                "ts": 1642170835,
+                "client_id": "Test-Radiologist-not-segmented"
+              }
+            }
+          }
+        },
+        "labels": {}
+      },
+      "6245968": {
+        "image": {
+          "ext": ".dcm",
+          "info": {
+            "ts": 1642170799,
+            "checksum": "SHA256:f1f8ef13433b1f0966e589818f3180750606eff69b3bc4a55e0181d7a9da8da1",
+            "name": "6245968.dcm",
+            "strategy": {
+              "Random": {
+                "ts": 1642371057,
+                "client_id": "Test-Radiologist"
+              }
+            }
+          }
+        },
+        "labels": {
+          "original": {
+            "ext": ".seg.nrrd",
+            "info": {
+              "label_names": [
+                "Background",
+                "Mediastinum",
+                "Lung",
+                "Heart",
+                "Trachea",
+                "Clavicle"
+              ],
+              "ts": 1642371078,
+              "checksum": "SHA256:18f67b39871c68c7d62292b0b8bbec97dafeee66c607cf823d67303b8a59c953",
+              "name": "6245968.seg.nrrd"
+            }
+          }
+        }
+      },
+      "6667571": {
+        "image": {
+          "ext": ".dcm",
+          "info": {
+            "ts": 1639519453,
+            "checksum": "SHA256:2a454e9ab8a33dc74996784163a362a53e04adcee2fd73a8b6299bf0ce5060d3",
+            "name": "6667571.dcm",
+            "strategy": {
+              "annotate": {
+                "ts": 1639985938,
+                "client_id": "Test-Radiolgist-Segmented"
+              }
+            }
+          }
+        },
+        "labels": {
+          "final": {
+            "ext": ".seg.nrrd",
+            "info": {
+              "label_info": [
+                {
+                  "name": "Lung",
+                  "idx": 1
+                },
+                {
+                  "name": "Heart",
+                  "idx": 2
+                },
+                {
+                  "name": "Trachea",
+                  "idx": 3
+                },
+                {
+                  "name": "Mediastinum",
+                  "idx": 4
+                },
+                {
+                  "name": "Clavicle",
+                  "idx": 5
+                }
+              ],
+              "client_id": "Test-Radiolgist-Segmented",
+              "ts": 1639986085,
+              "checksum": "SHA256:d58542b4ac321b137dd33edc86cd69a84aa6c1fd1c2cb704a124756ef8788e79",
+              "name": "6667571.seg.nrrd",
+              "segmentationMeta": {
+                "status": "approved",
+                "approvedBy": "Test-Reviewer",
+                "level": "hard",
+                "comment": "",
+                "editTime": "Thu Apr 28 16:56:36 2022"
+              }
+            }
+          }
+        }
+      },
+      "8887571": {
+        "image": {
+          "ext": ".dcm",
+          "info": {
+            "ts": 1639519453,
+            "checksum": "SHA256:2a454e9ab8a33dc74996784163a362a53e04adcee2fd73a8b6299bf0ce5060d3",
+            "name": "8887571.dcm",
+            "strategy": {
+              "annotate": {
+                "ts": 1639985938,
+                "client_id": "Test-Radiolgist-Segmented"
+              }
+            }
+          }
+        },
+        "labels": {
+          "final": {
+            "ext": ".seg.nrrd",
+            "info": {
+              "label_info": [
+                {
+                  "name": "Lung",
+                  "idx": 1
+                },
+                {
+                  "name": "Heart",
+                  "idx": 2
+                },
+                {
+                  "name": "Trachea",
+                  "idx": 3
+                },
+                {
+                  "name": "Mediastinum",
+                  "idx": 4
+                },
+                {
+                  "name": "Clavicle",
+                  "idx": 5
+                }
+              ],
+              "client_id": "Test-Radiolgist-Segmented",
+              "ts": 1639986085,
+              "checksum": "SHA256:d58542b4ac321b137dd33edc86cd69a84aa6c1fd1c2cb704a124756ef8788e79",
+              "name": "8887571.seg.nrrd",
+              "segmentationMeta": {
+                "status": "flagged",
+                "approvedBy": "Test-Reviewer",
+                "level": "hard",
+                "comment": "",
+                "editTime": "Thu Apr 28 16:56:36 2022"
+              }
+            }
+          }
+        }
+      }
+    }
+  }

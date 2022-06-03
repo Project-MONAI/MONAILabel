@@ -20,6 +20,7 @@ include(${Slicer_USE_FILE})
 #-----------------------------------------------------------------------------
 # Extension modules
 add_subdirectory(MONAILabel)
+add_subdirectory(MONAILabelReviewer)
 ## NEXT_MODULE
 
 #-----------------------------------------------------------------------------

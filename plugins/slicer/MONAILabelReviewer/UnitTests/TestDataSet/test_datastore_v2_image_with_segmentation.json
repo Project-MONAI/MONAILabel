@@ -1,0 +1,56 @@
+{
+  "image": {
+    "ext": ".dcm",
+    "info": {
+      "ts": 1639519453,
+      "checksum": "SHA256:1b474d23bda3de0c28f4287a7c0380d461e9f71d0dc468e64f336412cb575327",
+      "name": "6662775.dcm",
+      "strategy": {
+        "annotate": {
+          "ts": 1639647351,
+          "client_id": "Annotator"
+        }
+      }
+    }
+  },
+  "labels": {
+    "final": {
+      "ext": ".seg.nrrd",
+      "info": {
+        "label_info": [
+          {
+            "name": "Lung",
+            "idx": 1
+          },
+          {
+            "name": "Heart",
+            "idx": 2
+          },
+          {
+            "name": "Trachea",
+            "idx": 3
+          },
+          {
+            "name": "Mediastinum",
+            "idx": 4
+          },
+          {
+            "name": "Clavicle",
+            "idx": 5
+          }
+        ],
+        "client_id": "Annotator",
+        "ts": 1639647550,
+        "checksum": "SHA256:7563c2dda16ac2db37fdcc0587f6bbf7c3c6646dcb5676891a264388cfb1c8ba",
+        "name": "6662775.seg.nrrd",
+        "segmentationMeta": {
+          "status": "flagged",
+          "approvedBy": "Prof Radiogolist",
+          "level": "easy",
+          "comment": "Segementation was not easy",
+          "editTime": "Thu Jan 13 12:21:01 2022"
+        }
+      }
+    }
+  }
+}
