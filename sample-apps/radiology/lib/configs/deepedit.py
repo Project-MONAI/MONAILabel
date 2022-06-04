@@ -177,7 +177,14 @@ class DeepEdit(TaskConfig):
             methods[f"{self.name}_epistemic"] = EpistemicScoring(
                 model=self.path,
                 network=self.network_with_dropout,
-                transforms=lib.infers.DeepEdit(type=InferType.DEEPEDIT).pre_transforms(),
+                transforms=lib.infers.DeepEdit(
+                    type=InferType.DEEPEDIT,
+                    path=self.path,
+                    network=self.network,
+                    labels=self.labels,
+                    preload=strtobool(self.conf.get("preload", "false")),
+                    spatial_size=self.spatial_size,
+                ).pre_transforms(),
                 num_samples=self.epistemic_samples,
             )
         if self.tta_enabled:
