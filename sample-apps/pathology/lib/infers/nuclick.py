@@ -25,6 +25,9 @@ from monai.transforms import (
     ToNumpyd,
     Transform,
 )
+
+from monai.apps.nuclick.transforms import AddClickSignalsd, PostFilterLabeld
+
 from skimage.morphology import disk, reconstruction, remove_small_holes, remove_small_objects
 
 from monailabel.interfaces.tasks.infer import InferTask, InferType
@@ -93,7 +96,7 @@ class NuClick(InferTask):
         writer = PolygonWriter(label=self.output_label_key, json=self.output_json_key)
         return writer(data)
 
-
+"""
 class AddClickSignalsd(Transform):
     def __init__(self, image, foreground="foreground"):
         self.image = image
@@ -201,7 +204,9 @@ class AddClickSignalsd(Transform):
         # other_points: (total, 1, m, n)
         return patches, nuc_points, other_points
 
+"""
 
+"""
 class PostFilterLabeld(MapTransform):
     def __init__(
         self,
@@ -275,3 +280,5 @@ class PostFilterLabeld(MapTransform):
             this_mask_pos[:, 1] = this_mask_pos[:, 1] + this_bb[0]
             instance_map[this_mask_pos[:, 0], this_mask_pos[:, 1]] = 1 if flatten else i + 1
         return instance_map
+        
+"""
