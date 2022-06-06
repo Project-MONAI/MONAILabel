@@ -49,8 +49,7 @@ repos:
   rev: v0.942
   hooks:
   - id: mypy
-    exclude: ^tests/
-    exclude: ^plugins/
+    exclude: (^tests/|^plugins/)
     additional_dependencies: [types-PyYAML,types-filelock,types-requests,types-docutils]
 
 - repo: https://github.com/asottile/pyupgrade

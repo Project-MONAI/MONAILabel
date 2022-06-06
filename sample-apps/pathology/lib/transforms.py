@@ -14,7 +14,8 @@ import pathlib
 
 import numpy as np
 import openslide
-from monai.apps.deepgrow.transforms import AddInitialSeedPointd
+import torch
+from monai.apps.deepgrow.transforms import AddGuidanceSignald, AddInitialSeedPointd
 from monai.config import KeysCollection
 from monai.transforms import CenterSpatialCrop, MapTransform, Transform
 from PIL import Image
@@ -26,11 +27,11 @@ logger = logging.getLogger(__name__)
 
 class LoadImagePatchd(MapTransform):
     def __init__(
-        self, keys: KeysCollection, meta_key_postfix: str = "meta_dict", conversion="RGB", dtype=np.uint8, padding=True
+        self, keys: KeysCollection, meta_key_postfix: str = "meta_dict", mode="RGB", dtype=np.uint8, padding=True
     ):
         super().__init__(keys)
         self.meta_key_postfix = meta_key_postfix
-        self.conversion = conversion
+        self.mode = mode
         self.dtype = dtype
         self.padding = padding
 
@@ -71,7 +72,7 @@ class LoadImagePatchd(MapTransform):
             else:
                 img = Image.open(d[key])
 
-            img = img.convert(self.conversion)
+            img = img.convert(self.mode)
             image_np = np.array(img, dtype=self.dtype)
 
             meta_dict_key = f"{key}_{self.meta_key_postfix}"
@@ -214,12 +215,10 @@ class AddInitialSeedPointExd(AddInitialSeedPointd):
 class AddClickGuidanced(Transform):
     def __init__(
         self,
-        image,
         guidance="guidance",
         foreground="foreground",
         background="background",
     ):
-        self.image = image
         self.guidance = guidance
         self.foreground = foreground
         self.background = background
@@ -238,3 +237,16 @@ class AddClickGuidanced(Transform):
 
         d[self.guidance] = [pos, neg]
         return d
+
+
+class AddClickGuidanceSignald(AddGuidanceSignald):
+    def _apply(self, image, guidance):
+        if guidance and (guidance[0] or guidance[1]):
+            return super()._apply(image, guidance)
+
+        if isinstance(image, torch.Tensor):
+            s = torch.zeros_like(image[0])[None]
+            return torch.concat([image, s, s])
+
+        ns = np.zeros_like(image[0])[np.newaxis]
+        return np.concatenate([image, ns, ns], axis=0)

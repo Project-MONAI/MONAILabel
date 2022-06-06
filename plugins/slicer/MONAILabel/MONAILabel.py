@@ -1667,21 +1667,21 @@ class MONAILabelWidget(ScriptedLoadableModuleWidget, VTKObservationMixin):
             freeze = [freeze] if freeze and isinstance(freeze, str) else freeze
             print(f"Import only Freezed label: {freeze}")
 
+            # List of segments to import
+            segmentIds = vtk.vtkStringArray()
+            for label in labels:
+                segmentIds.InsertNextValue(label)
+
             numberOfExistingSegments = segmentation.GetNumberOfSegments()
-            slicer.modules.segmentations.logic().ImportLabelmapToSegmentationNode(labelmapVolumeNode, segmentationNode)
+            slicer.modules.segmentations.logic().ImportLabelmapToSegmentationNode(
+                labelmapVolumeNode, segmentationNode, segmentIds
+            )
             slicer.mrmlScene.RemoveNode(labelmapVolumeNode)
 
-            numberOfAddedSegments = segmentation.GetNumberOfSegments() - numberOfExistingSegments
-            logging.debug(f"Adding {numberOfAddedSegments} segments")
+            for i, label in enumerate(labels):
+                segment = segmentation.GetSegment(label)
+                print(f"Setting new segmentation with id: {label} => {segment.GetName()}")
 
-            addedSegmentIds = [
-                segmentation.GetNthSegmentID(numberOfExistingSegments + i) for i in range(numberOfAddedSegments)
-            ]
-            for i, segmentId in enumerate(addedSegmentIds):
-                segment = segmentation.GetSegment(segmentId)
-                print(f"Setting new segmentation with id: {segmentId} => {segment.GetName()}")
-
-                label = labels[i] if i < len(labels) else f"unknown {i}"
                 # segment.SetName(label)
                 # segment.SetColor(self.getLabelColor(label))
 
@@ -1694,7 +1694,7 @@ class MONAILabelWidget(ScriptedLoadableModuleWidget, VTKObservationMixin):
 
                     effect = self.ui.embeddedSegmentEditorWidget.effectByName("Logical operators")
                     labelmap = slicer.vtkOrientedImageData()
-                    segmentationNode.GetBinaryLabelmapRepresentation(segmentId, labelmap)
+                    segmentationNode.GetBinaryLabelmapRepresentation(label, labelmap)
 
                     if sliceIndex:
                         selectedSegmentLabelmap = effect.selectedSegmentLabelmap()
@@ -1727,8 +1727,6 @@ class MONAILabelWidget(ScriptedLoadableModuleWidget, VTKObservationMixin):
                         effect.modifySelectedSegmentByLabelmap(
                             labelmap, slicer.qSlicerSegmentEditorAbstractEffect.ModificationModeSet, bypassMask
                         )
-
-                segmentationNode.RemoveSegment(segmentId)
 
         self.showSegmentationsIn3D()
         logging.info(f"Time consumed by updateSegmentationMask: {time.time() - start:3.1f}")

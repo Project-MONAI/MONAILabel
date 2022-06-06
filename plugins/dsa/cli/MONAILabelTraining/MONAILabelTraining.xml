@@ -16,7 +16,7 @@
             <label>MONAILabel Address</label>
             <description>Address of a monailabel address in the format 'http://127.0.0.1:8000/'.</description>
             <longflag>server</longflag>
-            <default>{{env_MONAI_LABEL_SERVER|default("http://10.117.18.128:8000/")}}</default>
+            <default>{{env_MONAI_LABEL_SERVER|default("http://127.0.0.1:8000/")}}</default>
         </string>
         <string datalist="{&quot;model_name&quot;: &quot;__datalist__&quot;}">
             <name>model_name</name>

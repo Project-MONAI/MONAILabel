@@ -59,7 +59,7 @@ class NuClick(InferTask):
 
     def pre_transforms(self, data=None):
         return [
-            LoadImagePatchd(keys="image", conversion="RGB", dtype=np.uint8, padding=False),
+            LoadImagePatchd(keys="image", mode="RGB", dtype=np.uint8, padding=False),
             AsChannelFirstd(keys="image"),
             AddClickSignalsd(image="image"),
             EnsureTyped(keys="image", device=data.get("device") if data else None),

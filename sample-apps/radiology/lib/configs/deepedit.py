@@ -125,12 +125,17 @@ class DeepEdit(TaskConfig):
     def infer(self) -> Union[InferTask, Dict[str, InferTask]]:
         return {
             self.name: lib.infers.DeepEdit(
-                path=self.path, network=self.network, labels=self.labels, spatial_size=self.spatial_size
+                path=self.path,
+                network=self.network,
+                labels=self.labels,
+                preload=strtobool(self.conf.get("preload", "false")),
+                spatial_size=self.spatial_size,
             ),
             f"{self.name}_seg": lib.infers.DeepEdit(
                 path=self.path,
                 network=self.network,
                 labels=self.labels,
+                preload=strtobool(self.conf.get("preload", "false")),
                 spatial_size=self.spatial_size,
                 number_intensity_ch=self.number_intensity_ch,
                 type=InferType.SEGMENTATION,
@@ -172,7 +177,14 @@ class DeepEdit(TaskConfig):
             methods[f"{self.name}_epistemic"] = EpistemicScoring(
                 model=self.path,
                 network=self.network_with_dropout,
-                transforms=lib.infers.DeepEdit(type=InferType.DEEPEDIT).pre_transforms(),
+                transforms=lib.infers.DeepEdit(
+                    type=InferType.DEEPEDIT,
+                    path=self.path,
+                    network=self.network,
+                    labels=self.labels,
+                    preload=strtobool(self.conf.get("preload", "false")),
+                    spatial_size=self.spatial_size,
+                ).pre_transforms(),
                 num_samples=self.epistemic_samples,
             )
         if self.tta_enabled:

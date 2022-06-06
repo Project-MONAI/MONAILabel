@@ -1,0 +1,34 @@
+{
+  "image": {
+    "ext": ".dcm",
+    "info": {
+      "ts": 1642170799,
+      "checksum": "SHA256:f1f8ef13433b1f0966e589818f3180750606eff69b3bc4a55e0181d7a9da8da1",
+      "name": "6245968.dcm",
+      "strategy": {
+        "Random": {
+          "ts": 1642371057,
+          "client_id": "Dr Radiologist"
+        }
+      }
+    }
+  },
+  "labels": {
+    "original": {
+      "ext": ".seg.nrrd",
+      "info": {
+        "label_names": [
+          "Background",
+          "Mediastinum",
+          "Lung",
+          "Heart",
+          "Trachea",
+          "Clavicle"
+        ],
+        "ts": 1642371078,
+        "checksum": "SHA256:18f67b39871c68c7d62292b0b8bbec97dafeee66c607cf823d67303b8a59c953",
+        "name": "6245968.seg.nrrd"
+      }
+    }
+  }
+}
