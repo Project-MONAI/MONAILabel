@@ -20,6 +20,13 @@ import skimage
 import torch
 from lib.handlers import TensorBoardImageHandler
 from lib.utils import split_dataset, split_nuclei_dataset
+from monai.apps.nuclick.transforms import (
+    AddPointGuidanceSignald,
+    ExtractPatchd,
+    FilterImaged,
+    FlattenLabeld,
+    SplitLabeld,
+)
 from monai.config import KeysCollection
 from monai.handlers import MeanDice, from_engine
 from monai.inferers import SimpleInferer
@@ -37,15 +44,6 @@ from monai.transforms import (
     TorchVisiond,
     ToTensord,
 )
-
-from monai.apps.nuclick.transforms import (
-    FilterImaged,
-    FlattenLabeld,
-    ExtractPatchd,
-    SplitLabeld,
-    AddPointGuidanceSignald
-)
-
 from tqdm import tqdm
 
 from monailabel.interfaces.datastore import Datastore
@@ -119,7 +117,7 @@ class NuClick(BasicTrainTask):
             AsChannelFirstd(keys="image"),
             AddChanneld(keys="label"),
             ExtractPatchd(keys=("image", "label"), patch_size=self.patch_size),
-            SplitLabeld(label="label", others="others", mask_value="mask_value", min_area=self.min_area),
+            SplitLabeld(keys="label", others="others", mask_value="mask_value", min_area=self.min_area),
             ToTensord(keys="image"),
             TorchVisiond(
                 keys="image", name="ColorJitter", brightness=64.0 / 255.0, contrast=0.75, saturation=0.25, hue=0.04
