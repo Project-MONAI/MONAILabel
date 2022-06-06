@@ -10,13 +10,9 @@
 # limitations under the License.
 
 import logging
-import math
 import os
-import random
 
-import cv2
 import numpy as np
-import skimage
 import torch
 from lib.handlers import TensorBoardImageHandler
 from lib.utils import split_dataset, split_nuclei_dataset
@@ -27,7 +23,6 @@ from monai.apps.nuclick.transforms import (
     FlattenLabeld,
     SplitLabeld,
 )
-from monai.config import KeysCollection
 from monai.handlers import MeanDice, from_engine
 from monai.inferers import SimpleInferer
 from monai.losses import DiceLoss
