@@ -52,7 +52,7 @@ itemNames = [n[0] for n in itemList]
 
 def get_sec(time_str):
     h, m, s = time_str.split(":")
-    return int(float(h) * 3600 + float(m) * 60 + float(s))
+    return round(float(h) * 3600 + float(m) * 60 + float(s), 2)
 
 
 jobList = gc.get(

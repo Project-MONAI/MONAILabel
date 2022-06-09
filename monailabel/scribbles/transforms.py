@@ -516,7 +516,7 @@ class ApplyCRFOptimisationd(InteractiveSegmentationTransform):
         gaussian_spatial_sigma: float = 0.5,
         update_factor: float = 5.0,
         compatibility_matrix: Optional[torch.Tensor] = None,
-        device: str = "cuda" if torch.cuda.is_available else "cpu",
+        device: str = "cuda" if torch.cuda.is_available() else "cpu",
     ) -> None:
         super().__init__(meta_key_postfix)
         self.unary = unary

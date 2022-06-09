@@ -15,7 +15,7 @@ from concurrent.futures import ThreadPoolExecutor
 from hashlib import md5
 
 from dicomweb_client import DICOMwebClient
-from dicomweb_client.api import load_json_dataset
+from pydicom.dataset import Dataset
 from pydicom.filereader import dcmread
 
 from monailabel.utils.others.generic import run_command
@@ -66,7 +66,7 @@ def dicom_web_download_series(study_id, series_id, save_dir, client: DICOMwebCli
 
     # Limitation for DICOMWeb Client as it needs StudyInstanceUID to fetch series
     if not study_id:
-        meta = load_json_dataset(
+        meta = Dataset.from_json(
             [
                 series
                 for series in client.search_for_series(search_filters={"SeriesInstanceUID": series_id})
@@ -85,7 +85,7 @@ def dicom_web_download_series(study_id, series_id, save_dir, client: DICOMwebCli
     else:
         # TODO:: This logic (combining meta+pixeldata) needs improvement
         def save_from_frame(m):
-            d = load_json_dataset(m)
+            d = Dataset.from_json(m)
             instance_id = str(d["SOPInstanceUID"].value)
 
             # Hack to merge Info + RawData
