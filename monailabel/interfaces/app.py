@@ -105,7 +105,7 @@ class MONAILabelApp:
         )
 
         # control call back requests
-        self._server_mode = strtobool(conf.get("server_mode", "false"))
+        self._server_mode = bool(strtobool(conf.get("server_mode", "false")))
 
     def init_infers(self) -> Dict[str, InferTask]:
         return {}

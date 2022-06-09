@@ -62,12 +62,12 @@ def create_dsa_annotations_json(json_data, loglevel="INFO"):
                 json.dumps(
                     json.dumps(
                         {
-                            "model": json_data["model"],
-                            "desc": json_data["description"],
-                            "location": json_data["location"],
-                            "size": json_data["size"],
+                            "model": json_data.get("model"),
+                            "desc": json_data.get("description"),
+                            "location": json_data.get("location"),
+                            "size": json_data.get("size"),
                             "count": total_count,
-                            "latencies": json_data["latencies"],
+                            "latencies": json_data.get("latencies"),
                         }
                     )
                 )

@@ -265,6 +265,7 @@ class PolygonWriter:
             "location": data.get("location"),
             "size": data.get("size"),
             "annotations": [output_json],
+            "latencies": data.get("latencies"),
         }
 
         output_file = None

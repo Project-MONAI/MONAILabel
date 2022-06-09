@@ -17,8 +17,8 @@ from typing import Any, Dict, Iterator, List, Optional, Tuple
 
 import requests
 from dicomweb_client import DICOMwebClient
-from dicomweb_client.api import load_json_dataset
 from expiringdict import ExpiringDict
+from pydicom.dataset import Dataset
 
 from monailabel.datastore.local import LocalDatastore
 from monailabel.datastore.utils.convert import binary_to_image, dicom_to_nifti, nifti_to_dicom_seg
@@ -102,7 +102,7 @@ class DICOMWebDatastore(LocalDatastore):
         return label_nii_gz
 
     def _dicom_info(self, series_id):
-        meta = load_json_dataset(self._client.search_for_series(search_filters={"SeriesInstanceUID": series_id})[0])
+        meta = Dataset.from_json(self._client.search_for_series(search_filters={"SeriesInstanceUID": series_id})[0])
         fields = ["StudyDate", "StudyTime", "Modality", "RetrieveURL", "PatientID", "StudyInstanceUID"]
 
         info = {"SeriesInstanceUID": series_id}
@@ -112,20 +112,20 @@ class DICOMWebDatastore(LocalDatastore):
 
     def list_images(self) -> List[str]:
         datasets = self._client.search_for_series(search_filters={"Modality": self._modality})
-        series = [str(load_json_dataset(ds)["SeriesInstanceUID"].value) for ds in datasets]
+        series = [str(Dataset.from_json(ds)["SeriesInstanceUID"].value) for ds in datasets]
         logger.debug("Total Series: {}\n{}".format(len(series), "\n".join(series)))
         return series
 
     def get_labeled_images(self) -> List[str]:
         datasets = self._client.search_for_series(search_filters={"Modality": "SEG"})
-        all_segs = [load_json_dataset(ds) for ds in datasets]
+        all_segs = [Dataset.from_json(ds) for ds in datasets]
 
         image_series = []
         for seg in all_segs:
             meta = self._client.retrieve_series_metadata(
                 str(seg["StudyInstanceUID"].value), str(seg["SeriesInstanceUID"].value)
             )
-            seg_meta = load_json_dataset(meta[0])
+            seg_meta = Dataset.from_json(meta[0])
             if seg_meta.get("ReferencedSeriesSequence"):
                 image_series.append(str(seg_meta["ReferencedSeriesSequence"].value[0]["SeriesInstanceUID"].value))
             else:
@@ -177,14 +177,14 @@ class DICOMWebDatastore(LocalDatastore):
 
     def _download_labeled_data(self):
         datasets = self._client.search_for_series(search_filters={"Modality": "SEG"})
-        all_segs = [load_json_dataset(ds) for ds in datasets]
+        all_segs = [Dataset.from_json(ds) for ds in datasets]
 
         image_labels = []
         for seg in all_segs:
             meta = self._client.retrieve_series_metadata(
                 str(seg["StudyInstanceUID"].value), str(seg["SeriesInstanceUID"].value)
             )
-            seg_meta = load_json_dataset(meta[0])
+            seg_meta = Dataset.from_json(meta[0])
             if not seg_meta.get("ReferencedSeriesSequence"):
                 logger.warning(
                     f"Label Ignored:: ReferencedSeriesSequence is NOT found: {str(seg['SeriesInstanceUID'].value)}"
