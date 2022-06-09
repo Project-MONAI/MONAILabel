@@ -41,7 +41,7 @@ class TestEndPointTrain(BasicEndpointV2TestSuite):
         params = {
             "model": "segmentation_spleen",
             "max_epochs": 1,
-            "name": "net_test_01",
+            "name": "net_test_02",
             "val_split": 0.5,
             "multi_gpu": False,
             "dataset": "CacheDataset",
@@ -64,7 +64,7 @@ class TestEndPointTrain(BasicEndpointV2TestSuite):
         params = {
             "model": "segmentation_spleen",
             "max_epochs": 5,
-            "name": "net_test_01",
+            "name": "net_test_03",
             "multi_gpu": False,
             "dataset": "CacheDataset",
         }
