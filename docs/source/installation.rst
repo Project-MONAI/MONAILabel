@@ -16,7 +16,7 @@ Make sure you have python 3.7/3.8/3.9 version environment with PyTorch and CUDA 
     python -m pip install --upgrade pip setuptools wheel
 
     # Install latest stable version for pytorch
-    pip install torch torchvision torchaudio --extra-index-url https://download.pytorch.org/whl/cu113
+    pip install torch==1.9.0+cu111 torchvision==0.10.0+cu111 torchaudio===0.9.0 -f https://download.pytorch.org/whl/torch_stable.html
 
     # Check if cuda enabled
     python -c "import torch; print(torch.cuda.is_available())"
@@ -194,29 +194,3 @@ If you have authentication set for dicom-web then you can pass the credentials u
     You can use `PlastiMatch <https://plastimatch.org/plastimatch.html#plastimatch-convert>`_ to convert NIFTI to DICOM
 
     OHIF Viewer will be accessible at http://127.0.0.1:8000/ohif/
-
-QuPath
--------
-For pathology usecase, you can install `QuPath <https://qupath.github.io/>`_ and basic monailabel extension in QuPath.
-You can download sample whole slide images
-from `https://portal.gdc.cancer.gov/repository <https://portal.gdc.cancer.gov/repository?filters=%7B%22op%22%3A%22and%22%2C%22content%22%3A%5B%7B%22op%22%3A%22in%22%2C%22content%22%3A%7B%22field%22%3A%22files.data_type%22%2C%22value%22%3A%5B%22Slide%20Image%22%5D%7D%7D%5D%7D>`_
-
-::
-
-  # start server using pathology over downloaded whole slide images
-  monailabel start_server --app apps/pathology --studies wsi_images
-
-
-Refer `QuPath Plugin <https://github.com/Project-MONAI/MONAILabel/tree/main/plugins/qupath>`_ for installing and running MONAILabel plugin in QuPath.
-
-
-Digital Slide Archive (DSA)
----------------------------
-If you have `DSA <https://digitalslidearchive.github.io/digital_slide_archive/>`_ setup running,  you can use the same for annotating Pathology images using MONAILabel.
-
-::
-
-  # start server using pathology connecting to DSA server
-  monailabel start_server --app apps/pathology --studies http://0.0.0.0:8080/api/v1
-
-Refer `DSA Plugin <https://github.com/Project-MONAI/MONAILabel/tree/main/plugins/dsa>`_ for running a sample pathology use-case in MONAILabel using DSA.
