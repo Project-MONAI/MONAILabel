@@ -54,12 +54,6 @@ jobs:
           cp dist/monailabel* "$tmp_dir"
           rm -r build monailabel*.egg-info
 
-          # install from tar.gz
-          python -m pip install "$tmp_dir"/monailabel*.tar.gz
-          python -c 'import monailabel; monailabel.print_config()' 2>&1 | grep -iv "unknown"
-          python -c 'import monailabel; print(monailabel.__file__)'
-          python -m pip uninstall -y monailabel-weekly
-
           # install from wheel
           python -m pip install "$tmp_dir"/monailabel*.whl
           python -c 'import monailabel; monailabel.print_config()' 2>&1 | grep -iv "unknown"
@@ -76,6 +70,9 @@ jobs:
           rm -r "$tmp_dir"
         env:
           shell: bash
+      - name: Check artifacts
+        run: |
+          rm dist/monai*.tar.gz
       - name: Publish to PyPI
         uses: pypa/gh-action-pypi-publish@master
         with:

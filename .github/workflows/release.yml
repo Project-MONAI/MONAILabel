@@ -49,12 +49,6 @@ jobs:
           cp dist/monailabel* "$tmp_dir"
           rm -r build monailabel*.egg-info
 
-          # install from tar.gz
-          python -m pip install "$tmp_dir"/monailabel*.tar.gz
-          python -c 'import monailabel; monailabel.print_config()' 2>&1 | grep -iv "unknown"
-          python -c 'import monailabel; print(monailabel.__file__)'
-          python -m pip uninstall -y monailabel
-
           # install from wheel
           python -m pip install "$tmp_dir"/monailabel*.whl
           python -c 'import monailabel; monailabel.print_config()' 2>&1 | grep -iv "unknown"
