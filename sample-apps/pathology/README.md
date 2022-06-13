@@ -45,7 +45,7 @@ cd MONAILabel
 pip install -r requirements.txt
 ```
 
-> Install [Openslide](https://openslide.org/) binaries manually and make sure .dll or .so files for openslide are in system load path. 
+> Install [Openslide](https://openslide.org/) binaries manually and make sure .dll or .so files for openslide are in system load path.
 > - For windows, make sure **&lt;openslide_folder&gt;**/bin is added in PATH environment.
 > - For ubuntu: `apt install openslide-tools`
 
