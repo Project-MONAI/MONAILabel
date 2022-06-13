@@ -96,7 +96,9 @@ jobs:
           python -m pip install torch>=1.7 torchvision
       - name: Build Package
         run: |
+          ./runtests.sh --clean
           python setup.py sdist bdist_wheel
+          ls -l dist
       - name: Verify Package
         run: |
           tmp_dir=$(mktemp -d)

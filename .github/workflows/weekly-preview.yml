@@ -45,7 +45,9 @@ jobs:
           git describe --tags --dirty --always --long
       - name: Build distribution
         run: |
+          ./runtests.sh --clean
           python setup.py sdist bdist_wheel
+          ls -l dist
       - name: Verify Package
         run: |
           tmp_dir=$(mktemp -d)
