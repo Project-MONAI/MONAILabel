@@ -32,7 +32,7 @@ services:
 Upload new Task (under Slicer CLI Web Tasks) using the above docker image. This will add/enable MONAILabel under
 Analysis Page.
 
-![image](https://user-images.githubusercontent.com/7339051/157100606-a281e038-5923-43a8-bb82-8fccae51fcff.png)
+![image](../../docs/images/dsa.jpg)
 
 
 > **NOTE::** Provide

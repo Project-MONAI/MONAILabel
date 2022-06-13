@@ -1,7 +1,5 @@
 # Pathology Use Case
 
-> _This App is currently under active development._
-
 ### Overview
 
 This is a reference app to run infer + train tasks to segment Nuclei. It comes with following 2 pre-trained
@@ -47,20 +45,21 @@ cd MONAILabel
 pip install -r requirements.txt
 ```
 
-> Install [Openslide](https://openslide.org/) binaries manually and make sure .dll or .so files for openslide are in system load path. For windows, make sure **&lt;openslide_folder&gt;**/bin is added in PATH environment.
-> For ubuntu: `apt install openslide-tools`
+> Install [Openslide](https://openslide.org/) binaries manually and make sure .dll or .so files for openslide are in system load path.
+> - For windows, make sure **&lt;openslide_folder&gt;**/bin is added in PATH environment.
+> - For ubuntu: `apt install openslide-tools`
 
 #### FileSystem as Datastore
 
 ```bash
-  # download sample wsi image (skip this if you already have some)
-  mkdir sample_wsi
-  cd sample_wsi
-  wget https://demo.kitware.com/histomicstk/api/v1/item/5d5c07539114c049342b66fb/download
-  cd -
+# download sample wsi image (skip this if you already have some)
+mkdir sample_wsi
+cd sample_wsi
+wget https://demo.kitware.com/histomicstk/api/v1/item/5d5c07539114c049342b66fb/download
+cd -
 
-  # run server
-  ./monailabel/scripts/monailabel start_server --app sample-apps/pathology --studies datasets/wsi
+# run server
+./monailabel/scripts/monailabel start_server --app sample-apps/pathology --studies datasets/wsi
 ```
 
 ###### QuPath
@@ -123,3 +122,23 @@ Analysis Page.
 
 ![image](https://user-images.githubusercontent.com/7339051/157100606-a281e038-5923-43a8-bb82-8fccae51fcff.png)
 
+
+### Performance Benchmarking
+
+The performance benchmarking is done using MONAILabel server and DSA client. All the details are
+captured [here](https://docs.google.com/spreadsheets/d/1TeSOGzcTeeIThEvd_eflJNx0hhZiELNGBiYzwKyYEFg/edit?usp=sharing).
+
+Following is summary of the same:
+
+- NucleiDetection (CPU Based DSA Algorithm)
+- Segmentation/DeepEdit (MONAILabel models)
+
+<table>
+<tr>
+<td colspan="2"><img src="../../docs/images/DSAPerf1.png"/></td>
+</tr>
+<tr>
+<td><img src="../../docs/images/DSAPerf2.png"/></td>
+<td><img src="../../docs/images/DSAPerf3.png"/></td>
+</tr>
+</table>
