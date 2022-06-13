@@ -117,13 +117,19 @@ class Main:
             exit(-1)
 
         if args.action == "apps":
-            self.action_xyz(args, "sample-apps", "App", None, shutil.ignore_patterns("logs", "model", "__pycache__"))
+            self.action_apps(args)
         elif args.action == "datasets":
             self.action_datasets(args)
         elif args.action == "plugins":
-            self.action_xyz(args, "plugins", "Plugin", None, shutil.ignore_patterns("__pycache__"))
+            self.action_plugins(args)
         else:
             self.action_start_server(args)
+
+    def action_apps(self, args):
+        self._action_xyz(args, "sample-apps", "App", None, shutil.ignore_patterns("logs", "model", "__pycache__"))
+
+    def action_plugins(self, args):
+        self._action_xyz(args, "plugins", "Plugin", None, shutil.ignore_patterns("__pycache__"))
 
     def action_datasets(self, args):
         from monai.apps.datasets import DecathlonDataset
@@ -176,7 +182,7 @@ class Main:
                     d = os.path.join(pathlib.Path.home(), ".local", "monailabel", name)
         return d
 
-    def action_xyz(self, args, name, title, exclude, ignore):
+    def _action_xyz(self, args, name, title, exclude, ignore):
         xyz_dir = self._get_installed_dir(args.prefix, name)
         exclude = (exclude) if isinstance(exclude, str) else exclude
 
