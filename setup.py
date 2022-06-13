@@ -32,7 +32,7 @@ def recursive_files(directory, prefix):
 
 data_files = [("logconfig", ["monailabel/logging.json"])]
 data_files.extend(recursive_files("sample-apps", "monailabel"))
-data_files.extend(recursive_files("plugins/slicer", "monailabel"))
+data_files.extend(recursive_files("plugins", "monailabel"))
 
 # Build OHIF Plugin
 build_ohif_s = os.environ.get("BUILD_OHIF", "true")

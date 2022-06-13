@@ -140,6 +140,9 @@ function clean_py() {
   find ${TO_CLEAN} -type d -name ".pytest_cache" -exec rm -r "{}" +
   find ${TO_CLEAN} -maxdepth 1 -type f -name ".coverage.*" -delete
 
+  find ${TO_CLEAN} -type d -name "node_modules" -exec rm -rf "{}" +
+  find ${TO_CLEAN} -type d -name ".gradle" -exec rm -rf "{}" +
+
   find ${TO_CLEAN} -depth -maxdepth 1 -type d -name ".eggs" -exec rm -r "{}" +
   find ${TO_CLEAN} -depth -maxdepth 1 -type d -name "monailabel.egg-info" -exec rm -r "{}" +
   find ${TO_CLEAN} -depth -maxdepth 1 -type d -name "build" -exec rm -r "{}" +
