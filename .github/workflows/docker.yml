@@ -29,6 +29,9 @@ jobs:
       - name: Build
         run: |
           DOCKER_BUILDKIT=1 docker build -t projectmonai/monailabel:${{ github.event.inputs.tag }} -f Dockerfile .
+      - name: Verify
+        run: |
+          docker run --gpus all --rm -ti --ipc=host --net=host -v $(pwd):/workspace projectmonai/monailabel:${{ github.event.inputs.tag }} /workspace/runtests.sh --net
       - name: Publish
         run: |
           echo "${{ secrets.DOCKER_PW }}" | docker login -u projectmonai --password-stdin
