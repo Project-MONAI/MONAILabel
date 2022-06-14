@@ -32,7 +32,6 @@ LABEL maintainer="monai.contact@gmail.com"
 COPY --from=build /opt/monailabel/dist/monailabel* /opt/monailabel/dist/
 RUN python -m pip install --upgrade --no-cache-dir pip \
     && python -m pip install /opt/monailabel/dist/monailabel*.whl
-RUN python3 -m pip install numpy --upgrade
 
 # Add Orthanc
 RUN if [ "${ORTHANC}" = "true" ] ; then  \
