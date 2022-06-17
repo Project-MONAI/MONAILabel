@@ -1203,7 +1203,7 @@ class MONAILabelWidget(ScriptedLoadableModuleWidget, VTKObservationMixin):
             image_id = sample["id"]
             image_file = sample.get("path")
             image_name = sample.get("name", image_id)
-            node_name = sample.get("PatientID", sample.get("name", image_id))[-20:]
+            node_name = sample.get("PatientID", sample.get("name", image_id))
             checksum = sample.get("checksum")
             local_exists = image_file and os.path.exists(image_file)
 
