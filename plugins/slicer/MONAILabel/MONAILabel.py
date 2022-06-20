@@ -13,6 +13,7 @@ import copy
 import json
 import logging
 import os
+import random
 import shutil
 import tempfile
 import time
@@ -1235,18 +1236,28 @@ class MONAILabelWidget(ScriptedLoadableModuleWidget, VTKObservationMixin):
                         checksums=checksum,
                     )[0]
 
-                    previousSegmentation = self._segmentNode.GetSegmentation()
+                    currentSegmentation = self._segmentNode.GetSegmentation()
                     originalSegmentation = originalNode.GetSegmentation()
 
+                    # DeepEdit Model - Adding background segment if it doesn't exist
+                    backgroundSegment = vtkSegmentationCore.vtkSegment()
+                    backgroundSegment.SetName("Segment_0")
+                    originalSegmentation.AddSegment(backgroundSegment)
+
                     for idx, label in enumerate(self.info.get("labels")):
-                        segmentOriginal = originalSegmentation.GetSegment(f"Segment_{idx+1}")
+                        segmentOriginal = originalSegmentation.GetSegment(f"Segment_{idx}")
                         segmentOriginal.SetName(label)
+                        color = self.getLabelColor(label)
+                        if color is None:
+                            color = (random.uniform(0.0, 1.0), random.uniform(0.0, 1.0), random.uniform(0.0, 1.0))
+                        segmentOriginal.SetColor(color)
                         self._segmentNode.RemoveSegment(label)
 
-                    previousSegmentation.DeepCopy(originalSegmentation)
+                    currentSegmentation.DeepCopy(originalSegmentation)
                     # Delete original segmentation node
                     slicer.mrmlScene.RemoveNode(originalNode)
                     self.showSegmentationsIn3D()
+                    print("Original label uploaded! ")
 
                 except:
                     print("Original label not found ... ")
