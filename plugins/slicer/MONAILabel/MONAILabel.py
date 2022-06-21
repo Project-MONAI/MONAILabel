@@ -13,7 +13,6 @@ import copy
 import json
 import logging
 import os
-import random
 import shutil
 import tempfile
 import time
@@ -1223,40 +1222,17 @@ class MONAILabelWidget(ScriptedLoadableModuleWidget, VTKObservationMixin):
 
             if slicer.util.settingsValue("MONAILabel/originalLabel", True, converter=slicer.util.toBool):
                 try:
-                    download_uri = f"{self.serverUrl()}/datastore/label?label={quote_plus(image_id)}&tag=original"
-                    logging.info(download_uri)
-
-                    sampleDataLogic = SampleData.SampleDataLogic()
-
-                    originalNode = sampleDataLogic.downloadFromURL(
-                        nodeNames="segmentation_" + image_id,
-                        loadFileTypes="SegmentationFile",
-                        fileNames="segmentation_" + image_name,
-                        uris=download_uri,
-                        checksums=checksum,
-                    )[0]
-
-                    currentSegmentation = self._segmentNode.GetSegmentation()
-                    originalSegmentation = originalNode.GetSegmentation()
-
-                    # DeepEdit Model - Adding background segment if it doesn't exist
-                    backgroundSegment = vtkSegmentationCore.vtkSegment()
-                    backgroundSegment.SetName("Segment_0")
-                    originalSegmentation.AddSegment(backgroundSegment)
-
-                    for idx, label in enumerate(self.info.get("labels")):
-                        segmentOriginal = originalSegmentation.GetSegment(f"Segment_{idx}")
-                        segmentOriginal.SetName(label)
-                        color = self.getLabelColor(label)
-                        if color is None:
-                            color = (random.uniform(0.0, 1.0), random.uniform(0.0, 1.0), random.uniform(0.0, 1.0))
-                        segmentOriginal.SetColor(color)
-                        self._segmentNode.RemoveSegment(label)
-
-                    currentSegmentation.DeepCopy(originalSegmentation)
-                    # Delete original segmentation node
-                    slicer.mrmlScene.RemoveNode(originalNode)
-                    self.showSegmentationsIn3D()
+                    # Get the datastore information
+                    datastore = self.logic.datastore()
+                    # Get the labels
+                    labels = datastore["objects"][image_id]["labels"]["original"]["info"]["params"]["label_names"]
+                    labels = labels.keys()
+                    # Get the file extension
+                    # ext = datastore['objects'][image_id]['labels']['original']['ext']
+                    # Get the file path
+                    maskFile = self.logic.download_label(image_id, "original")
+                    # Upload the original segmentation if exists
+                    self.updateSegmentationMask(maskFile, list(labels))
                     print("Original label uploaded! ")
 
                 except:
@@ -2128,6 +2104,12 @@ class MONAILabelLogic(ScriptedLoadableModuleLogic):
 
     def info(self):
         return MONAILabelClient(self.server_url, self.tmpdir, self.client_id).info()
+
+    def datastore(self):
+        return MONAILabelClient(self.server_url, self.tmpdir, self.client_id).datastore()
+
+    def download_label(self, label_id, tag):
+        return MONAILabelClient(self.server_url, self.tmpdir, self.client_id).download_label(label_id, tag)
 
     def next_sample(self, strategy, params={}):
         return MONAILabelClient(self.server_url, self.tmpdir, self.client_id).next_sample(strategy, params)
