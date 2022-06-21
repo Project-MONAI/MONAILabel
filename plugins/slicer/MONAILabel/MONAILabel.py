@@ -1222,16 +1222,11 @@ class MONAILabelWidget(ScriptedLoadableModuleWidget, VTKObservationMixin):
 
             if slicer.util.settingsValue("MONAILabel/originalLabel", True, converter=slicer.util.toBool):
                 try:
-                    # Get the datastore information
                     datastore = self.logic.datastore()
-                    # Get the labels
                     labels = datastore["objects"][image_id]["labels"]["original"]["info"]["params"]["label_names"]
                     labels = labels.keys()
-                    # Get the file extension
                     # ext = datastore['objects'][image_id]['labels']['original']['ext']
-                    # Get the file path
                     maskFile = self.logic.download_label(image_id, "original")
-                    # Upload the original segmentation if exists
                     self.updateSegmentationMask(maskFile, list(labels))
                     print("Original label uploaded! ")
 
