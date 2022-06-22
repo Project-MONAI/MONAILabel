@@ -2,6 +2,29 @@
 What's New
 ==========
 
+0.4.0
+=====
+- Pathology Sample App
+
+  - DeepEdit, Segmentation, NuClick models
+  - Digital Slide Archive plugin
+  - QuPath plugin
+- Histogram-based GraphCut and Gaussian Mixture Model (GMM) based methods for scribbles
+
+- Support for MONAI (supports 0.9.0 and above)
+- Radiology Sample App (Aggregation of previous radiology models)
+  - DeepEdit, Deepgrow, Segmentation, SegmentationSpleen models
+- NrrdWriter for multi-channel arrays
+- 3D Slicer Fixes
+
+  - Support Segmentation Editor and other UI enhancements
+  - Improvements for Scribble Interactions
+  - Support for .seg.nrrd segmentation files
+  - Support to pre-load existing label masks during image fetch/load
+- Static checks using pre-commit ci
+
+
+
 0.3.0
 =====
 - Multi GPU support for training
