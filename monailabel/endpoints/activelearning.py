@@ -13,8 +13,9 @@ import logging
 import time
 from typing import Dict, Optional
 
-from fastapi import APIRouter
+from fastapi import APIRouter, Depends
 
+from monailabel.endpoints.user.auth import User, get_basic_user
 from monailabel.interfaces.app import MONAILabelApp
 from monailabel.interfaces.utils.app import app_instance
 
@@ -29,7 +30,7 @@ router = APIRouter(
 cached_digest: Dict = dict()
 
 
-def sample(strategy: str, params: Optional[dict] = None):
+def sample(strategy: str, params: Optional[dict] = None, user: Optional[str] = None):
     request = {"strategy": strategy}
 
     instance: MONAILabelApp = app_instance()
@@ -48,7 +49,7 @@ def sample(strategy: str, params: Optional[dict] = None):
     image_info = instance.datastore().get_image_info(image_id)
 
     strategy_info = image_info.get("strategy", {})
-    strategy_info[strategy] = {"ts": int(time.time()), "client_id": params.get("client_id")}
+    strategy_info[strategy] = {"ts": int(time.time()), "client_id": user if user else params.get("client_id")}
     instance.datastore().update_image_info(image_id, {"strategy": strategy_info})
 
     result = {
@@ -60,5 +61,9 @@ def sample(strategy: str, params: Optional[dict] = None):
 
 
 @router.post("/{strategy}", summary="Run Active Learning strategy to get next sample")
-async def api_sample(strategy: str, params: Optional[dict] = None):
-    return sample(strategy, params)
+async def api_sample(
+    strategy: str,
+    params: Optional[dict] = None,
+    user: User = Depends(get_basic_user),
+):
+    return sample(strategy, params, user.username)

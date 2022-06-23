@@ -13,8 +13,9 @@ import logging
 from typing import Optional
 
 import torch
-from fastapi import APIRouter, HTTPException
+from fastapi import APIRouter, Depends, HTTPException
 
+from monailabel.endpoints.user.auth import User, get_admin_user, get_basic_user
 from monailabel.interfaces.app import MONAILabelApp
 from monailabel.interfaces.utils.app import app_instance
 from monailabel.utils.async_tasks.task import AsyncTask
@@ -67,22 +68,34 @@ def stop():
 
 
 @router.get("/", summary="Get Status of Training Task")
-async def api_status(all: bool = False, check_if_running: bool = False):
+async def api_status(
+    all: bool = False,
+    check_if_running: bool = False,
+    user: User = Depends(get_basic_user),
+):
     return status(all, check_if_running)
 
 
 @router.post("/", summary="Run All Training Tasks")
-async def api_run(params: Optional[dict] = None, run_sync: Optional[bool] = False):
+async def api_run(
+    params: Optional[dict] = None,
+    run_sync: Optional[bool] = False,
+    user: User = Depends(get_admin_user),
+):
     return run(params, run_sync)
 
 
 @router.post("/{model}", summary="Run Training Task for specific model")
 async def api_run_model(
-    model: str, params: Optional[dict] = None, run_sync: Optional[bool] = False, enqueue: Optional[bool] = False
+    model: str,
+    params: Optional[dict] = None,
+    run_sync: Optional[bool] = False,
+    enqueue: Optional[bool] = False,
+    user: User = Depends(get_admin_user),
 ):
     return run_model(model, params, run_sync, enqueue)
 
 
 @router.delete("/", summary="Stop Training Task")
-async def api_stop():
+async def api_stop(user: User = Depends(get_admin_user)):
     return stop()

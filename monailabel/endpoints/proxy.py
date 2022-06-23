@@ -1,10 +1,11 @@
 import logging
 
 import httpx
-from fastapi import APIRouter
+from fastapi import APIRouter, Depends
 from fastapi.responses import Response
 
 from monailabel.config import settings
+from monailabel.endpoints.user.auth import User, get_basic_user
 
 logger = logging.getLogger(__name__)
 
@@ -16,7 +17,7 @@ router = APIRouter(
 
 
 @router.get("/dicom/{path:path}", include_in_schema=False)
-async def proxy(path: str, response: Response):
+async def proxy(path: str, response: Response, user: User = Depends(get_basic_user)):
     auth = (
         (settings.MONAI_LABEL_DICOMWEB_USERNAME, settings.MONAI_LABEL_DICOMWEB_PASSWORD)
         if settings.MONAI_LABEL_DICOMWEB_USERNAME and settings.MONAI_LABEL_DICOMWEB_PASSWORD

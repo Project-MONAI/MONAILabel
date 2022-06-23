@@ -19,6 +19,8 @@ class Settings(BaseSettings):
 
     MONAI_LABEL_APP_DIR: str = ""
     MONAI_LABEL_STUDIES: str = ""
+    MONAI_LABEL_AUTH_ENABLE: bool = False
+    MONAI_LABEL_AUTH_DB: str = ""
     MONAI_LABEL_APP_CONF: Dict[str, str] = {}
 
     MONAI_LABEL_TASKS_TRAIN: bool = True
