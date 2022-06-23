@@ -49,7 +49,7 @@ def sample(strategy: str, params: Optional[dict] = None, user: Optional[str] = N
     image_info = instance.datastore().get_image_info(image_id)
 
     strategy_info = image_info.get("strategy", {})
-    strategy_info[strategy] = {"ts": int(time.time()), "client_id": user if user else params.get("client_id")}
+    strategy_info[strategy] = {"ts": int(time.time()), "client_id": params.get("client_id", user)}
     instance.datastore().update_image_info(image_id, {"strategy": strategy_info})
 
     result = {
