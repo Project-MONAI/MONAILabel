@@ -14,10 +14,11 @@ import shutil
 import tempfile
 from typing import List
 
-from fastapi import APIRouter, File, HTTPException, UploadFile
+from fastapi import APIRouter, Depends, File, HTTPException, UploadFile
 from fastapi.background import BackgroundTasks
 from fastapi.responses import FileResponse
 
+from monailabel.endpoints.user.auth import User, get_basic_user
 from monailabel.interfaces.app import MONAILabelApp
 from monailabel.interfaces.utils.app import app_instance
 from monailabel.utils.others.generic import get_basename, get_mime_type, remove_file
@@ -109,7 +110,12 @@ def remove_session(session_id: str):
 
 
 @router.get("/{session_id}", summary="Get Session ID")
-async def api_get_session(session_id: str, update_ts: bool = False, image: bool = False):
+async def api_get_session(
+    session_id: str,
+    update_ts: bool = False,
+    image: bool = False,
+    user: User = Depends(get_basic_user),
+):
     return get_session(session_id, update_ts, image)
 
 
@@ -119,10 +125,11 @@ async def api_create_session(
     uncompress: bool = False,
     expiry: int = 0,
     files: List[UploadFile] = File(...),
+    user: User = Depends(get_basic_user),
 ):
     return create_session(background_tasks, uncompress, expiry, files)
 
 
 @router.delete("/{session_id}", summary="Delete Session")
-async def api_remove_session(session_id: str):
+async def api_remove_session(session_id: str, user: User = Depends(get_basic_user)):
     return remove_session(session_id)
