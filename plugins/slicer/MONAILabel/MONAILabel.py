@@ -1222,31 +1222,13 @@ class MONAILabelWidget(ScriptedLoadableModuleWidget, VTKObservationMixin):
 
             if slicer.util.settingsValue("MONAILabel/originalLabel", True, converter=slicer.util.toBool):
                 try:
-                    download_uri = f"{self.serverUrl()}/datastore/label?label={quote_plus(image_id)}&tag=original"
-                    logging.info(download_uri)
-
-                    sampleDataLogic = SampleData.SampleDataLogic()
-
-                    originalNode = sampleDataLogic.downloadFromURL(
-                        nodeNames="segmentation_" + image_id,
-                        loadFileTypes="SegmentationFile",
-                        fileNames="segmentation_" + image_name,
-                        uris=download_uri,
-                        checksums=checksum,
-                    )[0]
-
-                    previousSegmentation = self._segmentNode.GetSegmentation()
-                    originalSegmentation = originalNode.GetSegmentation()
-
-                    for idx, label in enumerate(self.info.get("labels")):
-                        segmentOriginal = originalSegmentation.GetSegment(f"Segment_{idx+1}")
-                        segmentOriginal.SetName(label)
-                        self._segmentNode.RemoveSegment(label)
-
-                    previousSegmentation.DeepCopy(originalSegmentation)
-                    # Delete original segmentation node
-                    slicer.mrmlScene.RemoveNode(originalNode)
-                    self.showSegmentationsIn3D()
+                    datastore = self.logic.datastore()
+                    labels = datastore["objects"][image_id]["labels"]["original"]["info"]["params"]["label_names"]
+                    labels = labels.keys()
+                    # ext = datastore['objects'][image_id]['labels']['original']['ext']
+                    maskFile = self.logic.download_label(image_id, "original")
+                    self.updateSegmentationMask(maskFile, list(labels))
+                    print("Original label uploaded! ")
 
                 except:
                     print("Original label not found ... ")
@@ -2117,6 +2099,12 @@ class MONAILabelLogic(ScriptedLoadableModuleLogic):
 
     def info(self):
         return MONAILabelClient(self.server_url, self.tmpdir, self.client_id).info()
+
+    def datastore(self):
+        return MONAILabelClient(self.server_url, self.tmpdir, self.client_id).datastore()
+
+    def download_label(self, label_id, tag):
+        return MONAILabelClient(self.server_url, self.tmpdir, self.client_id).download_label(label_id, tag)
 
     def next_sample(self, strategy, params={}):
         return MONAILabelClient(self.server_url, self.tmpdir, self.client_id).next_sample(strategy, params)

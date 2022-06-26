@@ -264,7 +264,9 @@ class MONAILabelApp:
             tag = request.get("label_tag", DefaultLabelTag.ORIGINAL)
             save_label = request.get("save_label", False)
             if save_label:
-                label_id = datastore.save_label(image_id, result_file_name, tag, dict())
+                label_id = datastore.save_label(
+                    image_id, result_file_name, tag, {"model": model, "params": result_json}
+                )
             else:
                 label_id = result_file_name
 

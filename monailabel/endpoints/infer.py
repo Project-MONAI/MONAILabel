@@ -18,12 +18,13 @@ import tempfile
 from enum import Enum
 from typing import Optional
 
-from fastapi import APIRouter, File, Form, HTTPException, UploadFile
+from fastapi import APIRouter, Depends, File, Form, HTTPException, UploadFile
 from fastapi.background import BackgroundTasks
 from fastapi.responses import FileResponse, Response
 from requests_toolbelt import MultipartEncoder
 
 from monailabel.datastore.utils.convert import binary_to_image
+from monailabel.endpoints.user.auth import User, get_basic_user
 from monailabel.interfaces.app import MONAILabelApp
 from monailabel.interfaces.utils.app import app_instance
 from monailabel.utils.others.generic import get_mime_type, remove_file
@@ -173,5 +174,6 @@ async def api_run_inference(
     file: UploadFile = File(None),
     label: UploadFile = File(None),
     output: Optional[ResultType] = None,
+    user: User = Depends(get_basic_user),
 ):
     return run_inference(background_tasks, model, image, session_id, params, file, label, output)

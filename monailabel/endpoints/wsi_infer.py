@@ -14,11 +14,12 @@ import os
 from enum import Enum
 from typing import Optional, Sequence
 
-from fastapi import APIRouter, HTTPException
+from fastapi import APIRouter, Depends, HTTPException
 from fastapi.background import BackgroundTasks
 from fastapi.responses import FileResponse
 from pydantic import BaseModel, Field
 
+from monailabel.endpoints.user.auth import User, get_basic_user
 from monailabel.interfaces.app import MONAILabelApp
 from monailabel.interfaces.utils.app import app_instance
 from monailabel.utils.others.generic import get_mime_type, remove_file
@@ -107,5 +108,6 @@ async def api_run_wsi_inference(
     session_id: str = "",
     wsi: WSIInput = WSIInput(),
     output: Optional[ResultType] = None,
+    user: User = Depends(get_basic_user),
 ):
     return run_wsi_inference(background_tasks, model, image, session_id, wsi, output)
