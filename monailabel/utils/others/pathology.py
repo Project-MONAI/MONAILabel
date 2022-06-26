@@ -89,8 +89,10 @@ def create_asap_annotations_xml(json_data, loglevel="INFO"):
     name = json_data["name"]
     description = json_data["description"]
     model = json_data["model"]
-    location = json_data["location"]
-    size = json_data["size"]
+    location = json_data.get("location", (0, 0, 0, 0))
+    location = location if location else (0, 0, 0, 0)
+    size = json_data.get("size", (0, 0))
+    size = size if size else (0, 0)
 
     with open(label_xml, "w") as fp:
         fp.write('<?xml version="1.0"?>\n')
