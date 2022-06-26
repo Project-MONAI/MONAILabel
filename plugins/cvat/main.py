@@ -88,33 +88,32 @@ def handler(context, event):
     )
 
 
-#
-# if __name__ == "__main__":
-#     import logging
-#     from argparse import Namespace
-#
-#     logging.basicConfig(
-#         level=logging.INFO,
-#         format="[%(asctime)s] [%(process)s] [%(threadName)s] [%(levelname)s] (%(name)s:%(lineno)d) - %(message)s",
-#         datefmt="%Y-%m-%d %H:%M:%S",
-#     )
-#
-#     context = {
-#         "logger": logging.getLogger(__name__),
-#         "user_data": Namespace(**{"model": None, "model_handler": None}),
-#     }
-#     context = Namespace(**context)
-#
-#     with open("/localhome/sachi/Downloads/test.png", "rb") as fp:
-#         image = base64.b64encode(fp.read())
-#
-#     event = {
-#         "body": {
-#             "image": image,
-#         }
-#     }
-#     event = Namespace(**event)
-#
-#     init_context(context)
-#     response = handler(context, event)
-#     print(response)
+if __name__ == "__main__":
+    import logging
+    from argparse import Namespace
+
+    logging.basicConfig(
+        level=logging.INFO,
+        format="[%(asctime)s] [%(process)s] [%(threadName)s] [%(levelname)s] (%(name)s:%(lineno)d) - %(message)s",
+        datefmt="%Y-%m-%d %H:%M:%S",
+    )
+
+    context = {
+        "logger": logging.getLogger(__name__),
+        "user_data": Namespace(**{"model": None, "model_handler": None}),
+    }
+    context = Namespace(**context)
+
+    with open("test.jpg", "rb") as fp:
+        image = base64.b64encode(fp.read())
+
+    event = {
+        "body": {
+            "image": image,
+        }
+    }
+    event = Namespace(**event)
+
+    init_context(context)
+    response = handler(context, event)
+    print(response)

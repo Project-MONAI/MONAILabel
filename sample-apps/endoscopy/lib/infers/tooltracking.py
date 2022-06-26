@@ -12,14 +12,18 @@ import logging
 from typing import Any, Callable, Dict, Sequence
 
 import numpy as np
+from lib.transforms import LoadImageExd
 from monai.inferers import Inferer, SimpleInferer
 from monai.transforms import (
+    Activationsd,
     AsChannelFirstd,
     AsDiscreted,
     DivisiblePadd,
-    LoadImaged,
+    EnsureTyped,
     ScaleIntensityd,
-    ToTensord, ToNumpyd, SqueezeDimd, EnsureTyped, Activationsd,
+    SqueezeDimd,
+    ToNumpyd,
+    ToTensord,
 )
 
 from monailabel.interfaces.tasks.infer import InferTask, InferType
@@ -35,14 +39,14 @@ class ToolTracking(InferTask):
     """
 
     def __init__(
-            self,
-            path,
-            network=None,
-            type=InferType.SEGMENTATION,
-            labels=None,
-            dimension=2,
-            description="A pre-trained semantic segmentation model for Tool Tracking",
-            **kwargs,
+        self,
+        path,
+        network=None,
+        type=InferType.SEGMENTATION,
+        labels=None,
+        dimension=2,
+        description="A pre-trained semantic segmentation model for Tool Tracking",
+        **kwargs,
     ):
         super().__init__(
             path=path,
@@ -61,7 +65,7 @@ class ToolTracking(InferTask):
 
     def pre_transforms(self, data=None) -> Sequence[Callable]:
         return [
-            LoadImaged(keys="image", dtype=np.uint8),
+            LoadImageExd(keys="image", dtype=np.uint8),
             AsChannelFirstd(keys="image"),
             DivisiblePadd(keys="image", k=32),
             ScaleIntensityd(keys="image"),
