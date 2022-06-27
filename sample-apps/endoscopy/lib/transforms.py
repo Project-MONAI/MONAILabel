@@ -20,14 +20,14 @@ logger = logging.getLogger(__name__)
 class LoadImageExd(LoadImaged):
     def __call__(self, data, reader: Optional[ImageReader] = None):
         d = dict(data)
-        objs = {}
+
+        ignore = False
         for key in self.keys:
             if not isinstance(d[key], str):
-                objs[key] = d[key]
-                d.pop(key)
+                ignore = True
                 continue  # Support direct image in np (pass only transform)
 
-        if len(objs) < len(d):
-            d = super().__call__(data, reader)
-            d.update(objs)
+        if not ignore:
+            d = super().__call__(d, reader)
+
         return d

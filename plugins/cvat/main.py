@@ -88,6 +88,7 @@ def handler(context, event):
     )
 
 
+"""
 if __name__ == "__main__":
     import logging
     from argparse import Namespace
@@ -117,3 +118,4 @@ if __name__ == "__main__":
     init_context(context)
     response = handler(context, event)
     print(response)
+"""
