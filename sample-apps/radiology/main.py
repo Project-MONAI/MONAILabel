@@ -223,12 +223,12 @@ def main():
     )
 
     home = str(Path.home())
-    studies = f"{home}/Data/Test"
+    studies = f"{home}/Documents/workspace/Datasets/radiology/VerSe2020/small"
 
     parser = argparse.ArgumentParser()
     parser.add_argument("-s", "--studies", default=studies)
-    parser.add_argument("-m", "--model", default="segmentation_spleen")
-    parser.add_argument("-t", "--test", default="infer", choices=("train", "infer"))
+    parser.add_argument("-m", "--model", default="spine_loc")
+    parser.add_argument("-t", "--test", default="train", choices=("train", "infer"))
     args = parser.parse_args()
 
     app_dir = os.path.dirname(__file__)
@@ -265,12 +265,12 @@ def main():
     app.train(
         request={
             "model": args.model,
-            "max_epochs": 10,
-            "dataset": "CacheDataset",  # PersistentDataset, CacheDataset
+            "max_epochs": 400,
+            "dataset": "Dataset",  # PersistentDataset, CacheDataset
             "train_batch_size": 1,
             "val_batch_size": 1,
             "multi_gpu": True,
-            "val_split": 0.1,
+            "val_split": 0.2,
         },
     )
 
