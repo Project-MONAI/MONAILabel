@@ -23,6 +23,8 @@ spec:
     directives:
       preCopy:
         - kind: ENV
+          value: MONAI_LABEL_APP_DIR=/opt/conda/monailabel/sample-apps/pathology
+        - kind: ENV
           value: MONAI_LABEL_MODELS=deepedit_nuclei
         - kind: ENV
           value: PYTHONPATH=/opt/conda/monailabel/sample-apps/pathology

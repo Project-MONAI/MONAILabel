@@ -1,37 +1,33 @@
 metadata:
-  name: monailabel.pathology.segmentation_nuclei
+  name: monailabel.endoscopy.tooltracking
   namespace: cvat
   annotations:
-    name: Segmentation Nuclei
+    name: ToolTracking
     type: detector
     framework: pytorch
     spec: |
       [
-        { "id": 1, "name": "Neoplastic cells" },
-        { "id": 2, "name": "Inflammatory" },
-        { "id": 3, "name": "Connective/Soft tissue cells" },
-        { "id": 4, "name": "Dead Cells" },
-        { "id": 5, "name": "Epithelial" }
+        { "id": 1, "name": "Tool" }
       ]
 
 spec:
-  description: A pre-trained semantic segmentation model for Pathology
+  description: A pre-trained tool tracking model for Endoscopy
   runtime: 'python:3.8'
   handler: main:handler
   eventTimeout: 30s
 
   build:
-    image: cvat/monailabel.pathology.segmentation_nuclei
+    image: cvat/monailabel.endoscopy.tooltracking
     baseImage: projectmonai/monailabel:latest
 
     directives:
       preCopy:
         - kind: ENV
-          value: MONAI_LABEL_APP_DIR=/opt/conda/monailabel/sample-apps/pathology
+          value: MONAI_LABEL_APP_DIR=/opt/conda/monailabel/sample-apps/endoscopy
         - kind: ENV
-          value: MONAI_LABEL_MODELS=segmentation_nuclei
+          value: MONAI_LABEL_MODELS=tooltracking
         - kind: ENV
-          value: PYTHONPATH=/opt/conda/monailabel/sample-apps/pathology
+          value: PYTHONPATH=/opt/conda/monailabel/sample-apps/endoscopy
         - kind: ENV
           value: MONAI_PRETRAINED_PATH=https://github.com/Project-MONAI/MONAILabel/releases/download/data
 
