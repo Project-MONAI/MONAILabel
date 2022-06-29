@@ -265,8 +265,8 @@ def main():
     app.train(
         request={
             "model": args.model,
-            "max_epochs": 400,
-            "dataset": "Dataset",  # PersistentDataset, CacheDataset
+            "max_epochs": 500,
+            "dataset": "CacheDataset",  # PersistentDataset, CacheDataset
             "train_batch_size": 1,
             "val_batch_size": 1,
             "multi_gpu": True,

@@ -1043,7 +1043,7 @@ class HeatMapROId(MapTransform):
         for key in self.key_iterator(d):
             if key == "label":
                 # Convert to single label
-                d[key][d[key] >= 0] = 1
+                d[key][d[key] > 0] = 1
             else:
                 print("This transform only applies to the label")
         return d
