@@ -23,9 +23,19 @@ class LoadImageExd(LoadImaged):
 
         ignore = False
         for key in self.keys:
+            # Support direct image in np (pass only transform)
             if not isinstance(d[key], str):
                 ignore = True
-                continue  # Support direct image in np (pass only transform)
+                meta_dict_key = f"{key}_{self.meta_key_postfix}"
+                meta_dict = d.get(meta_dict_key)
+                if meta_dict is None:
+                    d[meta_dict_key] = dict()
+                    meta_dict = d.get(meta_dict_key)
+
+                image_np = d[key]
+                meta_dict["spatial_shape"] = image_np.shape[:-1]  # type: ignore
+                meta_dict["original_channel_dim"] = -1  # type: ignore
+                continue
 
         if not ignore:
             d = super().__call__(d, reader)
