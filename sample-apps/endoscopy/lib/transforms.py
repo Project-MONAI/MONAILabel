@@ -22,11 +22,11 @@ class LoadImageExd(LoadImaged):
         d = dict(data)
 
         ignore = False
-        for key in self.keys:
+        for i, key in enumerate(self.keys):
             # Support direct image in np (pass only transform)
             if not isinstance(d[key], str):
                 ignore = True
-                meta_dict_key = f"{key}_{self.meta_key_postfix}"
+                meta_dict_key = f"{key}_{self.meta_key_postfix[i]}"
                 meta_dict = d.get(meta_dict_key)
                 if meta_dict is None:
                     d[meta_dict_key] = dict()
