@@ -16,6 +16,7 @@ from monai.transforms import (
     AsDiscreted,
     EnsureChannelFirstd,
     EnsureTyped,
+    KeepLargestConnectedComponentd,
     LoadImaged,
     ScaleIntensityRanged,
     Spacingd,
@@ -23,7 +24,7 @@ from monai.transforms import (
 )
 
 from monailabel.interfaces.tasks.infer import InferTask, InferType
-from monailabel.transform.post import BoundingBoxd, Restored
+from monailabel.transform.post import Restored
 
 
 class SpineLoc(InferTask):
@@ -35,8 +36,9 @@ class SpineLoc(InferTask):
         self,
         path,
         network=None,
+        target_spacing=(1.0, 1.0, 1.0),
         type=InferType.SEGMENTATION,
-        labels="spine",
+        labels=None,
         dimension=3,
         description="A pre-trained model for volumetric (3D) spine localization from CT image",
         **kwargs,
@@ -50,25 +52,30 @@ class SpineLoc(InferTask):
             description=description,
             **kwargs,
         )
+        self.target_spacing = target_spacing
 
     def pre_transforms(self, data=None) -> Sequence[Callable]:
         return [
-            LoadImaged(keys="image"),
+            LoadImaged(keys="image", reader="ITKReader"),
             EnsureTyped(keys="image", device=data.get("device") if data else None),
             EnsureChannelFirstd(keys="image"),
-            Spacingd(keys="image", pixdim=[1.0, 1.0, 1.0]),
-            ScaleIntensityRanged(keys="image", a_min=-57, a_max=1000, b_min=0.0, b_max=1.0, clip=True),
+            Spacingd(keys="image", pixdim=self.target_spacing),
+            ScaleIntensityRanged(keys="image", a_min=-175, a_max=250, b_min=0.0, b_max=1.0, clip=True),
         ]
 
     def inferer(self, data=None) -> Inferer:
-        return SlidingWindowInferer(roi_size=(160, 160, 160))
+        return SlidingWindowInferer(roi_size=self.roi_size)
 
     def post_transforms(self, data=None) -> Sequence[Callable]:
-        return [
+        largest_cc = False if not data else data.get("largest_cc", False)
+        applied_labels = list(self.labels.values()) if isinstance(self.labels, dict) else self.labels
+        t = [
             EnsureTyped(keys="pred", device=data.get("device") if data else None),
             Activationsd(keys="pred", softmax=True),
             AsDiscreted(keys="pred", argmax=True),
             ToNumpyd(keys="pred"),
-            Restored(keys="pred", ref_image="image"),
-            BoundingBoxd(keys="pred", result="result", bbox="bbox"),
         ]
+        if largest_cc:
+            t.append(KeepLargestConnectedComponentd(keys="pred", applied_labels=applied_labels))
+        t.append(Restored(keys="pred", ref_image="image"))
+        return t

@@ -26,19 +26,16 @@ logger = logging.getLogger(__name__)
 
 
 class SpineLoc(TaskConfig):
-    def __init__(self):
-        super().__init__()
-
-        self.epistemic_enabled = None
-        self.epistemic_samples = None
-        self.tta_enabled = None
-        self.tta_samples = None
-
     def init(self, name: str, model_dir: str, conf: Dict[str, str], planner: Any, **kwargs):
         super().init(name, model_dir, conf, planner, **kwargs)
 
         # Labels
-        self.labels = ["spine"]
+        self.labels = {
+            "spine": 1,
+        }
+
+        # Number of input channels - i.e. 4 for BRATS and 1 for spleen
+        self.number_intensity_ch = 1
 
         # Model Files
         self.path = [
@@ -51,11 +48,15 @@ class SpineLoc(TaskConfig):
             url = f"{self.conf.get('pretrained_path', self.PRE_TRAINED_PATH)}/segmentation_unet_spine_loc.pt"
             download_file(url, self.path[0])
 
+        self.target_spacing = (1.0, 1.0, 1.0)  # target space for image
+        self.spatial_size = (96, 96, 96)  # train input size
+        self.roi_size = (128, 128, 128)  # sliding window size for infer
+
         # Network
         self.network = UNet(
             spatial_dims=3,
-            in_channels=1,
-            out_channels=2,
+            in_channels=self.number_intensity_ch,
+            out_channels=len(self.labels.keys()) + 1,  # All labels plus background
             channels=[16, 32, 64, 128, 256],
             strides=[2, 2, 2, 2],
             num_res_units=2,
@@ -63,22 +64,28 @@ class SpineLoc(TaskConfig):
         )
 
     def infer(self) -> Union[InferTask, Dict[str, InferTask]]:
-        task: InferTask = lib.infers.SpineLoc(
+        task: InferTask = lib.infers.Segmentation(
             path=self.path,
             network=self.network,
+            roi_size=self.roi_size,
+            target_spacing=self.target_spacing,
             labels=self.labels,
             preload=strtobool(self.conf.get("preload", "false")),
+            config={"largest_cc": True},
         )
         return task
 
     def trainer(self) -> Optional[TrainTask]:
         output_dir = os.path.join(self.model_dir, self.name)
-        task: TrainTask = lib.trainers.SpineLoc(
+        task: TrainTask = lib.trainers.Segmentation(
             model_dir=output_dir,
             network=self.network,
-            description="Train Spine Localization Model",
+            spatial_size=self.spatial_size,
+            target_spacing=self.target_spacing,
             load_path=self.path[0],
             publish_path=self.path[1],
+            description="Train spine localization Model",
+            dimension=3,
             labels=self.labels,
         )
         return task
