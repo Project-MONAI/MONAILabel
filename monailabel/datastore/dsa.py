@@ -28,7 +28,7 @@ class DSADatastore(Datastore):
         self.cache_path = (
             os.path.join(cache_path, uri_hash)
             if cache_path
-            else os.path.join(pathlib.Path.home(), ".cache", "monailabel", uri_hash)
+            else os.path.join(pathlib.Path.home(), ".cache", "monailabel", "dsa", uri_hash)
         )
 
         logger.info(f"DSA:: Api Url: {api_url}")
