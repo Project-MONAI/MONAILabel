@@ -150,7 +150,7 @@ def infer_tooltracking(app):
     res = app.infer(
         request={
             "model": "tooltracking",
-            "image": "Video_2_VTS_01_1_Trim_04-40.mp4.frame.600",
+            "image": "video_31_part020_1",
             "output": "asap",
             # 'result_extension': '.png',
         }
