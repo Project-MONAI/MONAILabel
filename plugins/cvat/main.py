@@ -54,8 +54,8 @@ def handler(context, event):
         request={
             "model": context.user_data.model,
             "image": image_np,
-            "foreground": pos_points,
-            "background": neg_points,
+            "foreground": np.flip(np.array(pos_points, int), 1).tolist() if pos_points else pos_points,
+            "background": np.flip(np.array(neg_points, int), 1).tolist() if neg_points else neg_points,
             "output": "json",
         }
     )
