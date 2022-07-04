@@ -21,6 +21,8 @@ from urllib.parse import quote_plus, urlparse
 
 import requests
 
+import slicer
+
 logger = logging.getLogger(__name__)
 
 
@@ -168,7 +170,8 @@ class MONAILabelClient:
                 MONAILabelError.SERVER_ERROR, f"Status: {status}; Response: {response}", status, response
             )
 
-        local_filename = tempfile.NamedTemporaryFile(dir=self._tmpdir, suffix=".nii.gz").name
+        file_ext = slicer.util.settingsValue("MONAILabel/fileExtension", ".nii.gz")
+        local_filename = tempfile.NamedTemporaryFile(dir=self._tmpdir, suffix=file_ext).name
         with open(local_filename, "wb") as f:
             f.write(response)
 
