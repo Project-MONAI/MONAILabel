@@ -20,7 +20,6 @@ import tempfile
 from urllib.parse import quote_plus, urlparse
 
 import requests
-
 import slicer
 
 logger = logging.getLogger(__name__)
