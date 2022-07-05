@@ -75,7 +75,6 @@ def create_dsa_annotations_json(json_data, loglevel="INFO"):
         )
         fp.write("}")  # end of root
 
-    shutil.copy(label_json, "/localhome/sachi/Downloads/dsa.json")
     logger.info(f"Total Elements: {total_count}")
     return label_json, total_count
 

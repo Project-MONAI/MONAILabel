@@ -74,7 +74,7 @@ async def get_current_user(
     security_scopes: SecurityScopes, token: str = Depends(oauth2_scheme) if settings.MONAI_LABEL_AUTH_ENABLE else ""
 ):
     if not settings.MONAI_LABEL_AUTH_ENABLE:
-        return get_user(username="admin")
+        return User(username="admin")
 
     if security_scopes.scopes:
         authenticate_value = f'Bearer scope="{security_scopes.scope_str}"'
