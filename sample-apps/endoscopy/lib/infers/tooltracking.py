@@ -15,11 +15,11 @@ import numpy as np
 from lib.transforms import LoadImageExd
 from monai.inferers import Inferer, SimpleInferer
 from monai.transforms import (
-    Activationsd,
     AsChannelFirstd,
     AsDiscreted,
     DivisiblePadd,
     EnsureTyped,
+    Resized,
     ScaleIntensityd,
     SqueezeDimd,
     ToNumpyd,
@@ -27,7 +27,7 @@ from monai.transforms import (
 )
 
 from monailabel.interfaces.tasks.infer import InferTask, InferType
-from monailabel.transform.post import FindContoursd
+from monailabel.transform.post import FindContoursd, Restored
 from monailabel.transform.writer import PolygonWriter
 
 logger = logging.getLogger(__name__)
@@ -67,6 +67,7 @@ class ToolTracking(InferTask):
         return [
             LoadImageExd(keys="image", dtype=np.uint8),
             AsChannelFirstd(keys="image"),
+            Resized(keys="image", spatial_size=(736, 480)),
             DivisiblePadd(keys="image", k=32),
             ScaleIntensityd(keys="image"),
             ToTensord(keys="image", device=data.get("device") if data else None),
@@ -78,10 +79,10 @@ class ToolTracking(InferTask):
     def post_transforms(self, data=None) -> Sequence[Callable]:
         return [
             EnsureTyped(keys="pred", device=data.get("device") if data else None),
-            Activationsd(keys="pred", softmax=True),
             AsDiscreted(keys="pred", argmax=True),
-            SqueezeDimd(keys="pred", dim=0),
             ToNumpyd(keys="pred", dtype=np.uint8),
+            Restored(keys="pred", ref_image="image"),
+            SqueezeDimd(keys="pred", dim=0),
             FindContoursd(keys="pred", labels=self.labels),
         ]
 

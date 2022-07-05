@@ -1,6 +1,7 @@
 import base64
 import io
 import json
+import logging
 import os
 from distutils.util import strtobool
 
@@ -8,6 +9,12 @@ import numpy as np
 from PIL import Image
 
 from monailabel.interfaces.utils.app import app_instance
+
+logging.basicConfig(
+    level=logging.INFO,
+    format="[%(asctime)s] [%(process)s] [%(threadName)s] [%(levelname)s] (%(name)s:%(lineno)d) - %(message)s",
+    datefmt="%Y-%m-%d %H:%M:%S",
+)
 
 
 def init_context(context):
@@ -36,36 +43,42 @@ def handler(context, event):
     context.logger.info(f"Run model: {context.user_data.model}")
     data = event.body
 
-    buf = io.BytesIO(base64.b64decode(data["image"]))
-    image = np.asarray(Image.open(buf).convert("RGB"), dtype=np.uint8)
+    image = Image.open(io.BytesIO(base64.b64decode(data["image"])))
+    image_np = np.asarray(image.convert("RGB"), dtype=np.uint8)
+    image_np = np.moveaxis(image_np, 0, 1)
+
     pos_points = data.get("pos_points")
     neg_points = data.get("neg_points")
 
     json_data = context.user_data.model_handler.infer(
         request={
             "model": context.user_data.model,
-            "image": image,
-            "foreground": pos_points,
-            "background": neg_points,
+            "image": image_np,
+            "foreground": np.flip(np.array(pos_points, int), 1).tolist() if pos_points else pos_points,
+            "background": np.flip(np.array(neg_points, int), 1).tolist() if neg_points else neg_points,
             "output": "json",
-            "result_write_to_file": False,
         }
     )
-    # print(json_data)
 
     results = []
     interactor = strtobool(os.environ.get("INTERACTOR_MODEL", "false"))
-    annotation = json_data["params"].get("annotation")
-    if annotation:
+    annotations = json_data["params"].get("annotations")
+    for a in annotations:
+        annotation = a.get("annotation", {})
+        if not annotation:
+            continue
+
         elements = annotation.get("elements", [])
         for element in elements:
             label = element["label"]
             contours = element["contours"]
             for contour in contours:
-                # limitation:: only one polygon result for interactor
+                points = np.flip(np.array(contour, int), axis=None)
+
+                # CVAT limitation:: only one polygon result for interactor
                 if interactor and contour:
                     return context.Response(
-                        body=json.dumps(contour),
+                        body=json.dumps(points.tolist()),
                         headers={},
                         content_type="application/json",
                         status_code=200,
@@ -74,12 +87,11 @@ def handler(context, event):
                 results.append(
                     {
                         "label": label,
-                        "points": np.array(contour, int).flatten().tolist(),
+                        "points": points.flatten().tolist(),
                         "type": "polygon",
                     }
                 )
 
-    # return json.dumps(results)
     return context.Response(
         body=json.dumps(results),
         headers={},
