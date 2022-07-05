@@ -1019,31 +1019,3 @@ class FindAllValidSlicesMissingLabelsd(MapTransform):
             else:
                 print("This transform only applies to label key")
         return d
-
-
-# WORK IN PROGRESS FOR MULTISTAGE MODEL
-
-
-class HeatMapROId(MapTransform):
-    def __init__(
-        self,
-        keys: KeysCollection,
-        allow_missing_keys: bool = False,
-    ):
-        """
-        Convert to single label - This should actually create the heat map for the first stage
-
-        :param keys: The ``keys`` parameter will be used to get and set the actual data item to transform
-
-        """
-        super().__init__(keys, allow_missing_keys)
-
-    def __call__(self, data: Mapping[Hashable, np.ndarray]) -> Dict[Hashable, np.ndarray]:
-        d: Dict = dict(data)
-        for key in self.key_iterator(d):
-            if key == "label":
-                # Convert to single label
-                d[key][d[key] > 0] = 1
-            else:
-                print("This transform only applies to the label")
-        return d

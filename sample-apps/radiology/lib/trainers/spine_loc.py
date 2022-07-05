@@ -10,10 +10,11 @@
 # limitations under the License.
 import logging
 
-import torch
+from lib.transforms.transforms import HeatMapROId
 from monai.handlers import TensorBoardImageHandler, from_engine
 from monai.inferers import SlidingWindowInferer
 from monai.losses import DiceCELoss
+from monai.optimizers import Novograd
 from monai.transforms import (
     Activationsd,
     AsDiscreted,
@@ -28,7 +29,6 @@ from monai.transforms import (
     SpatialPadd,
 )
 
-from monailabel.deepedit.multilabel.transforms import HeatMapROId
 from monailabel.tasks.train.basic_train import BasicTrainTask, Context
 from monailabel.tasks.train.utils import region_wise_metrics
 
@@ -56,7 +56,7 @@ class SpineLoc(BasicTrainTask):
         return self._network
 
     def optimizer(self, context: Context):
-        return torch.optim.Adam(context.network.parameters(), lr=1e-3)
+        return Novograd(context.network.parameters(), 0.0001)
 
     def loss_function(self, context: Context):
         return DiceCELoss(to_onehot_y=True, softmax=True)

@@ -43,22 +43,22 @@ class DeepEdit(TaskConfig):
         self.tta_samples = None
 
         # Multilabel
-        self.labels = {
-            "spleen": 1,
-            "right kidney": 2,
-            "left kidney": 3,
-            "liver": 6,
-            "stomach": 7,
-            "aorta": 8,
-            "inferior vena cava": 9,
-            "background": 0,
-        }
-
-        # Single label
         # self.labels = {
         #     "spleen": 1,
+        #     "right kidney": 2,
+        #     "left kidney": 3,
+        #     "liver": 6,
+        #     "stomach": 7,
+        #     "aorta": 8,
+        #     "inferior vena cava": 9,
         #     "background": 0,
         # }
+
+        # Single label
+        self.labels = {
+            "spleen": 1,
+            "background": 0,
+        }
 
         # Number of input channels - 4 for BRATS and 1 for spleen
         self.number_intensity_ch = 1
@@ -73,7 +73,7 @@ class DeepEdit(TaskConfig):
 
         # Download PreTrained Model
         if strtobool(self.conf.get("use_pretrained_model", "true")):
-            url = f"{self.conf.get('pretrained_path', self.PRE_TRAINED_PATH)}/deepedit_{network}_multilabel.pt"
+            url = f"{self.conf.get('pretrained_path', self.PRE_TRAINED_PATH)}/deepedit_{network}_singlelabel.pt"
             download_file(url, self.path[0])
 
         self.target_spacing = (1.0, 1.0, 1.0)  # target space for image
