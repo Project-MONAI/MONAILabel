@@ -1,6 +1,5 @@
 import json
 import logging
-import shutil
 import tempfile
 
 from monailabel.utils.others.label_colors import to_hex, to_rgb
