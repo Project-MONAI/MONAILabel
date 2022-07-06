@@ -54,6 +54,8 @@ MONAI Label supports following OS with **GPU/CUDA** enabled.
 pip install monailabel -U
 ```
 
+> If you have [monai](https://pypi.org/project/monai/) > 0.9.0 version, please downgrade it to **monai==0.9.0** version
+
 ### Development version
 
 To install the _**latest features**_ using one of the following options:
