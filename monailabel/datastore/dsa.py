@@ -16,7 +16,7 @@ logger = logging.getLogger(__name__)
 
 
 class DSADatastore(Datastore):
-    def __init__(self, api_url, folder=None, api_key=None, annotation_groups=None, asset_store_path="", cache_path=""):
+    def __init__(self, api_url, api_key=None, folder=None, annotation_groups=None, asset_store_path="", cache_path=""):
         self.api_url = api_url
         self.api_key = api_key
         self.folders = folder.split(",") if folder else []
@@ -28,7 +28,7 @@ class DSADatastore(Datastore):
         self.cache_path = (
             os.path.join(cache_path, uri_hash)
             if cache_path
-            else os.path.join(pathlib.Path.home(), ".cache", "monailabel", uri_hash)
+            else os.path.join(pathlib.Path.home(), ".cache", "monailabel", "dsa", uri_hash)
         )
 
         logger.info(f"DSA:: Api Url: {api_url}")
@@ -235,7 +235,13 @@ def main():
     # asset_store_path = None
     # api_key = None
 
-    ds = DSADatastore(api_url, folder, api_key, annotation_groups, asset_store_path)
+    ds = DSADatastore(
+        api_url=api_url,
+        api_key=api_key,
+        folder=folder,
+        annotation_groups=annotation_groups,
+        asset_store_path=asset_store_path,
+    )
 
     images = ds.list_images()
     print(f"Images: {images}")
