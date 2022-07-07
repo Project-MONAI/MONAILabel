@@ -45,7 +45,7 @@ class SpineLoc(TaskConfig):
 
         # Download PreTrained Model
         if strtobool(self.conf.get("use_pretrained_model", "false")):
-            url = f"{self.conf.get('pretrained_path', self.PRE_TRAINED_PATH)}/segmentation_unet_spine_loc.pt"
+            url = f"{self.conf.get('pretrained_path', self.PRE_TRAINED_PATH)}/spine_loc_unet.pt"
             download_file(url, self.path[0])
 
         self.target_spacing = (1.0, 1.0, 1.0)  # target space for image
@@ -64,7 +64,7 @@ class SpineLoc(TaskConfig):
         )
 
     def infer(self) -> Union[InferTask, Dict[str, InferTask]]:
-        task: InferTask = lib.infers.Segmentation(
+        task: InferTask = lib.infers.SpineLoc(
             path=self.path,
             network=self.network,
             roi_size=self.roi_size,
@@ -77,7 +77,7 @@ class SpineLoc(TaskConfig):
 
     def trainer(self) -> Optional[TrainTask]:
         output_dir = os.path.join(self.model_dir, self.name)
-        task: TrainTask = lib.trainers.Segmentation(
+        task: TrainTask = lib.trainers.SpineLoc(
             model_dir=output_dir,
             network=self.network,
             spatial_size=self.spatial_size,

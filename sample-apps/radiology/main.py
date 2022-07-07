@@ -266,10 +266,10 @@ def main():
         request={
             "model": args.model,
             "max_epochs": 2000,
-            "dataset": "CacheDataset",  # PersistentDataset, CacheDataset
+            "dataset": "Dataset",  # PersistentDataset, CacheDataset
             "train_batch_size": 1,
             "val_batch_size": 1,
-            "multi_gpu": True,
+            "multi_gpu": False,
             "val_split": 0.2,
         },
     )
