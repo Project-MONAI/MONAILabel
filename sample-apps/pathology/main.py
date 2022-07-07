@@ -104,8 +104,8 @@ class MyApp(MONAILabelApp):
 
         return DSADatastore(
             api_url=self.studies,
-            folder=folder,
             api_key=api_key,
+            folder=folder,
             annotation_groups=annotation_groups,
             asset_store_path=asset_store_path,
         )

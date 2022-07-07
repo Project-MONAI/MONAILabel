@@ -175,8 +175,8 @@ class MONAILabelApp:
         logger.info(f"Using DSA: {self.studies}")
         return DSADatastore(
             api_url=self.studies,
-            folder=settings.MONAI_LABEL_DATASTORE_PROJECT,
             api_key=settings.MONAI_LABEL_DATASTORE_API_KEY,
+            folder=settings.MONAI_LABEL_DATASTORE_PROJECT,
             annotation_groups=settings.MONAI_LABEL_DATASTORE_DSA_ANNOTATION_GROUPS,
             asset_store_path=settings.MONAI_LABEL_DATASTORE_ASSET_PATH,
         )
@@ -184,7 +184,7 @@ class MONAILabelApp:
     def _init_xnat_datastore(self) -> Datastore:
         logger.info(f"Using XNAT: {self.studies}")
         return XNATDatastore(
-            url=self.studies,
+            api_url=self.studies,
             username=settings.MONAI_LABEL_DATASTORE_USERNAME,
             password=settings.MONAI_LABEL_DATASTORE_PASSWORD,
             project=settings.MONAI_LABEL_DATASTORE_PROJECT,
