@@ -47,7 +47,7 @@ class DICOMWebDatastore(LocalDatastore):
         datastore_path = (
             os.path.join(cache_path, uri_hash)
             if cache_path
-            else os.path.join(pathlib.Path.home(), ".cache", "monailabel", uri_hash)
+            else os.path.join(pathlib.Path.home(), ".cache", "monailabel", "dicom", uri_hash)
         )
         logger.info(f"DICOMWeb Datastore (cache) Path: {datastore_path}; FetchByFrame: {fetch_by_frame}")
 

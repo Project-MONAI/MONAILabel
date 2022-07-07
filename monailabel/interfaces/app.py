@@ -33,7 +33,9 @@ from timeloop import Timeloop
 
 from monailabel.config import settings
 from monailabel.datastore.dicom import DICOMwebClientX, DICOMWebDatastore
+from monailabel.datastore.dsa import DSADatastore
 from monailabel.datastore.local import LocalDatastore
+from monailabel.datastore.xnat import XNATDatastore
 from monailabel.interfaces.datastore import Datastore, DefaultLabelTag
 from monailabel.interfaces.exception import MONAILabelError, MONAILabelException
 from monailabel.interfaces.tasks.batch_infer import BatchInferImageType, BatchInferTask
@@ -135,6 +137,14 @@ class MONAILabelApp:
         )
 
     def init_remote_datastore(self) -> Datastore:
+        if settings.MONAI_LABEL_DATASTORE.lower() == "xnat":
+            return self._init_xnat_datastore()
+        if settings.MONAI_LABEL_DATASTORE.lower() == "dsa":
+            return self._init_dsa_datastore()
+
+        return self._init_dicomweb_datastore()
+
+    def _init_dicomweb_datastore(self) -> Datastore:
         logger.info(f"Using DICOM WEB: {self.studies}")
         dw_session = None
         if settings.MONAI_LABEL_DICOMWEB_USERNAME and settings.MONAI_LABEL_DICOMWEB_PASSWORD:
@@ -159,6 +169,27 @@ class MONAILabelApp:
             DICOMWebDatastore(dw_client, cache_path, fetch_by_frame=fetch_by_frame)
             if cache_path
             else DICOMWebDatastore(dw_client, fetch_by_frame=fetch_by_frame)
+        )
+
+    def _init_dsa_datastore(self) -> Datastore:
+        logger.info(f"Using DSA: {self.studies}")
+        return DSADatastore(
+            api_url=self.studies,
+            api_key=settings.MONAI_LABEL_DATASTORE_API_KEY,
+            folder=settings.MONAI_LABEL_DATASTORE_PROJECT,
+            annotation_groups=settings.MONAI_LABEL_DATASTORE_DSA_ANNOTATION_GROUPS,
+            asset_store_path=settings.MONAI_LABEL_DATASTORE_ASSET_PATH,
+        )
+
+    def _init_xnat_datastore(self) -> Datastore:
+        logger.info(f"Using XNAT: {self.studies}")
+        return XNATDatastore(
+            api_url=self.studies,
+            username=settings.MONAI_LABEL_DATASTORE_USERNAME,
+            password=settings.MONAI_LABEL_DATASTORE_PASSWORD,
+            project=settings.MONAI_LABEL_DATASTORE_PROJECT,
+            asset_path=settings.MONAI_LABEL_DATASTORE_ASSET_PATH,
+            cache_path=settings.MONAI_LABEL_DATASTORE_CACHE_PATH,
         )
 
     def info(self):
@@ -242,8 +273,6 @@ class MONAILabelApp:
 
             if os.path.isdir(request["image"]):
                 logger.info("Input is a Directory; Consider it as DICOM")
-                logger.info(os.listdir(request["image"]))
-                request["image"] = [os.path.join(f, request["image"]) for f in os.listdir(request["image"])]
 
             logger.debug(f"Image => {request['image']}")
         else:
