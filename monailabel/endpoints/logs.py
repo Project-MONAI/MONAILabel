@@ -14,10 +14,11 @@ import subprocess
 from collections import deque
 from typing import Optional
 
-from fastapi import APIRouter, HTTPException
+from fastapi import APIRouter, Depends, HTTPException
 from fastapi.responses import FileResponse, Response
 
 from monailabel.config import settings
+from monailabel.endpoints.user.auth import User, get_basic_user
 
 router = APIRouter(
     prefix="/logs",
@@ -93,11 +94,12 @@ async def api_get_logs(
     html: Optional[bool] = True,
     text: Optional[bool] = False,
     refresh: Optional[int] = 0,
+    user: User = Depends(get_basic_user),
 ):
     return get_logs(os.path.join(settings.MONAI_LABEL_APP_DIR, "logs", "app.log"), lines, html, text, refresh)
 
 
 @router.get("/gpu", summary="Get GPU Info (nvidia-smi)")
-async def gpu_info():
+async def gpu_info(user: User = Depends(get_basic_user)):
     response = subprocess.run(["nvidia-smi"], stdout=subprocess.PIPE).stdout.decode("utf-8")
     return Response(content=response, media_type="text/plain")

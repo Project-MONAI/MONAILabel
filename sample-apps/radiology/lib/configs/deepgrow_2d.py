@@ -35,16 +35,10 @@ class Deepgrow2D(TaskConfig):
             "spleen",
             "right kidney",
             "left kidney",
-            "gallbladder",
-            "esophagus",
             "liver",
             "stomach",
             "aorta",
             "inferior vena cava",
-            "portal vein and splenic vein",
-            "pancreas",
-            "right adrenal gland",
-            "left adrenal gland",
         ]
 
         # Model Files
@@ -55,7 +49,7 @@ class Deepgrow2D(TaskConfig):
 
         # Download PreTrained Model
         if strtobool(self.conf.get("use_pretrained_model", "true")):
-            url = f"{self.NGC_PATH}/clara_pt_deepgrow_2d_annotation/versions/1/files/models/model.pt"
+            url = f"{self.conf.get('pretrained_path', self.PRE_TRAINED_PATH)}/deepgrow_2d_bunet.pt"
             download_file(url, self.path[0])
 
         # Network
@@ -67,7 +61,12 @@ class Deepgrow2D(TaskConfig):
         )
 
     def infer(self) -> Union[InferTask, Dict[str, InferTask]]:
-        task: InferTask = lib.infers.Deepgrow(path=self.path, network=self.network, labels=self.labels)
+        task: InferTask = lib.infers.Deepgrow(
+            path=self.path,
+            network=self.network,
+            labels=self.labels,
+            preload=strtobool(self.conf.get("preload", "false")),
+        )
         return task
 
     def trainer(self) -> Optional[TrainTask]:

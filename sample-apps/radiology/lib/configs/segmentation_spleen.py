@@ -56,7 +56,7 @@ class SegmentationSpleen(TaskConfig):
 
         # Download PreTrained Model
         if strtobool(self.conf.get("use_pretrained_model", "true")):
-            url = f"{self.NGC_PATH}/clara_pt_spleen_ct_segmentation/versions/1/files/models/model.pt"
+            url = f"{self.conf.get('pretrained_path', self.PRE_TRAINED_PATH)}/segmentation_unet_spleen.pt"
             download_file(url, self.path[0])
 
         # Network
@@ -81,7 +81,10 @@ class SegmentationSpleen(TaskConfig):
 
     def infer(self) -> Union[InferTask, Dict[str, InferTask]]:
         task: InferTask = lib.infers.SegmentationSpleen(
-            path=self.path, network=self.network, labels=self.labels, preload=False
+            path=self.path,
+            network=self.network,
+            labels=self.labels,
+            preload=strtobool(self.conf.get("preload", "false")),
         )
         return task
 

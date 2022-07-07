@@ -1,7 +1,5 @@
 # Pathology Use Case
 
-> _This App is currently under active development._
-
 ### Overview
 
 This is a reference app to run infer + train tasks to segment Nuclei. It comes with following 2 pre-trained
@@ -47,20 +45,21 @@ cd MONAILabel
 pip install -r requirements.txt
 ```
 
-> Install [Openslide](https://openslide.org/) binaries manually and make sure .dll or .so files for openslide are in system load path. For windows, make sure **&lt;openslide_folder&gt;**/bin is added in PATH environment.
-> For ubuntu: `apt install openslide-tools`
+> Install [Openslide](https://openslide.org/) binaries manually and make sure .dll or .so files for openslide are in system load path.
+> - For windows, make sure **&lt;openslide_folder&gt;**/bin is added in PATH environment.
+> - For ubuntu: `apt install openslide-tools`
 
 #### FileSystem as Datastore
 
 ```bash
-  # download sample wsi image (skip this if you already have some)
-  mkdir sample_wsi
-  cd sample_wsi
-  wget https://demo.kitware.com/histomicstk/api/v1/item/5d5c07539114c049342b66fb/download
-  cd -
+# download sample wsi image (skip this if you already have some)
+mkdir sample_wsi
+cd sample_wsi
+wget https://demo.kitware.com/histomicstk/api/v1/item/5d5c07539114c049342b66fb/download
+cd -
 
-  # run server
-  ./monailabel/scripts/monailabel start_server --app sample-apps/pathology --studies datasets/wsi
+# run server
+./monailabel/scripts/monailabel start_server --app sample-apps/pathology --studies datasets/wsi
 ```
 
 ###### QuPath
@@ -92,7 +91,7 @@ Following are some config options:
 | Name                 | Description                                                                                                                 |
 |----------------------|-----------------------------------------------------------------------------------------------------------------------------|
 | preload              | Preload models into GPU. Default is False.                                                                                  |
-| roi_size             | Default ROI Size for inference in [x,y] format. Default is [512,512].                                                       |
+| roi_size             | Default ROI Size for inference in [x,y] format. Default is [1024,1024].                                                       |
 | dsa_folder           | Optional. Comma seperated DSA Folder IDs. Normally it is <folder_id> of a folder under Collections where Images are stored. |
 | dsa_api_key          | Optional. API Key helps to query asset store to fetch direct local path for WSI Images.                                     |
 | dsa_asset_store_path | Optional. It is the DSA assetstore path that can be shared with MONAI Label server to directly read WSI Images.             |
@@ -111,10 +110,8 @@ Following are some config options:
 
 ```
 
-> In some cases, you may want to enable **Send Image Data** option from *MONAILabel Annotation -> WSI Analysis* to send Image Numpy (raw data) to MONAILabel Server explicitly.
-
 ##### DSA Client Plugin
-
+You can use [projectmonai/monailabel-dsa:latest](https://hub.docker.com/r/projectmonai/monailabel-dsa/tags) plugin from dockerhub.  Otherwise you can build from sources as follows.
 ```bash
   cd plugins/dsa
   docker build -t projectmonai/monailabel-dsa:latest .
@@ -125,3 +122,23 @@ Analysis Page.
 
 ![image](https://user-images.githubusercontent.com/7339051/157100606-a281e038-5923-43a8-bb82-8fccae51fcff.png)
 
+
+### Performance Benchmarking
+
+The performance benchmarking is done using MONAILabel server and DSA client. All the details are
+captured [here](https://docs.google.com/spreadsheets/d/1TeSOGzcTeeIThEvd_eflJNx0hhZiELNGBiYzwKyYEFg/edit?usp=sharing).
+
+Following is summary of the same:
+
+- NucleiDetection (CPU Based DSA Algorithm)
+- Segmentation/DeepEdit (MONAILabel models)
+
+<table>
+<tr>
+<td colspan="2"><img src="../../docs/images/DSAPerf1.png"/></td>
+</tr>
+<tr>
+<td><img src="../../docs/images/DSAPerf2.png"/></td>
+<td><img src="../../docs/images/DSAPerf3.png"/></td>
+</tr>
+</table>

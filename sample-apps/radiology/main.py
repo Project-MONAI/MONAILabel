@@ -24,7 +24,7 @@ from monailabel.interfaces.tasks.infer import InferTask
 from monailabel.interfaces.tasks.scoring import ScoringMethod
 from monailabel.interfaces.tasks.strategy import Strategy
 from monailabel.interfaces.tasks.train import TrainTask
-from monailabel.scribbles.infer import HistogramBasedGraphCut
+from monailabel.scribbles.infer import GMMBasedGraphCut, HistogramBasedGraphCut
 from monailabel.tasks.activelearning.random import Random
 from monailabel.tasks.infer.deepgrow_pipeline import InferDeepgrowPipeline
 from monailabel.utils.others.class_utils import get_class_names
@@ -122,6 +122,15 @@ class MyApp(MONAILabelApp):
                     pix_dim=(2.5, 2.5, 5.0),
                     lamda=1.0,
                     sigma=0.1,
+                    num_bins=64,
+                    labels=task_config.labels,
+                ),
+                "GMM+GraphCut": GMMBasedGraphCut(
+                    intensity_range=(-300, 200, 0.0, 1.0, True),
+                    pix_dim=(2.5, 2.5, 5.0),
+                    lamda=5.0,
+                    sigma=0.5,
+                    num_mixtures=20,
                     labels=task_config.labels,
                 ),
             }

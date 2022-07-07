@@ -18,11 +18,10 @@ black
 isort
 pytype; sys_platform != 'win32'
 mypy
-ninja
 parameterized
 types-PyYAML
 types-filelock
 types-requests
-click
+click>=8.1.3
 testresources
 pre-commit

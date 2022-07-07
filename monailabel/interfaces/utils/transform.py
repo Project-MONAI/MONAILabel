@@ -19,12 +19,13 @@ from monailabel.interfaces.exception import MONAILabelError, MONAILabelException
 logger = logging.getLogger(__name__)
 
 
-def dump_data(data):
-    if logging.getLogger().level == logging.DEBUG:
-        logger.debug("**************************** DATA ********************************************")
+def dump_data(data, level=logging.DEBUG):
+    if logging.getLogger().level == level:
+        logger.log(level, "**************************** DATA ********************************************")
         for k in data:
             v = data[k]
-            logger.debug(
+            logger.log(
+                level,
                 "Data key: {} = {}".format(
                     k,
                     v.shape
@@ -32,9 +33,9 @@ def dump_data(data):
                     else v
                     if type(v) in (int, float, bool, str, dict, tuple, list)
                     else type(v),
-                )
+                ),
             )
-        logger.debug("******************************************************************************")
+        logger.log(level, "******************************************************************************")
 
 
 def shape_info(data, keys=("image", "label", "logits", "pred", "model", "points")):

@@ -1,0 +1,51 @@
+metadata:
+  name: monailabel.endoscopy.tooltracking
+  namespace: cvat
+  annotations:
+    name: ToolTracking
+    type: detector
+    framework: pytorch
+    spec: |
+      [
+        { "id": 1, "name": "Tool" }
+      ]
+
+spec:
+  description: A pre-trained tool tracking model for Endoscopy
+  runtime: 'python:3.8'
+  handler: main:handler
+  eventTimeout: 30s
+
+  build:
+    image: cvat/monailabel.endoscopy.tooltracking
+    baseImage: projectmonai/monailabel:latest
+
+    directives:
+      preCopy:
+        - kind: ENV
+          value: MONAI_LABEL_APP_DIR=/opt/conda/monailabel/sample-apps/endoscopy
+        - kind: ENV
+          value: MONAI_LABEL_MODELS=tooltracking
+        - kind: ENV
+          value: PYTHONPATH=/opt/conda/monailabel/sample-apps/endoscopy
+        - kind: ENV
+          value: MONAI_PRETRAINED_PATH=https://github.com/Project-MONAI/MONAILabel/releases/download/data
+
+  triggers:
+    myHttpTrigger:
+      maxWorkers: 1
+      kind: 'http'
+      workerAvailabilityTimeoutMilliseconds: 10000
+      attributes:
+        maxRequestBodySize: 33554432 # 32MB
+
+  resources:
+    limits:
+      nvidia.com/gpu: 1
+
+  platform:
+    attributes:
+      restartPolicy:
+        name: always
+        maximumRetryCount: 1
+      mountMode: volume

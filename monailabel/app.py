@@ -26,6 +26,7 @@ from monailabel.endpoints import (
     datastore,
     infer,
     info,
+    login,
     logs,
     ohif,
     proxy,
@@ -62,6 +63,7 @@ app.mount(
     name="static",
 )
 
+app.include_router(login.router, prefix=settings.MONAI_LABEL_API_STR)
 app.include_router(info.router, prefix=settings.MONAI_LABEL_API_STR)
 app.include_router(infer.router, prefix=settings.MONAI_LABEL_API_STR)
 app.include_router(wsi_infer.router, prefix=settings.MONAI_LABEL_API_STR)

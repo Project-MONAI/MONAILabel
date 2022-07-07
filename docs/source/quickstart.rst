@@ -46,7 +46,7 @@ Install MONAI Label Plugin in 3DSlicer
 
 Install 3DSlicer Preview Version with in-built MONAI Label plugin
 
-- Download and Install `3D Slicer <https://download.slicer.org/>`_ and choose one of the download links under **Preview Release**
+- Download and Install `3D Slicer <https://download.slicer.org/>`_ version 5.0 or later.
 - Start 3DSlicer
 - On the menu bar navigate **View** -> **Extension Manager** -> **Active Learning** -> **MONAI Label**
 

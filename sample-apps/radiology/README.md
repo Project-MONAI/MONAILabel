@@ -43,10 +43,13 @@ monailabel apps --download --name radiology --output workspace
 monailabel start_server --app workspace/radiology --studies workspace/images --conf models deepedit
 
 # Pick Deepgrow And Segmentation model (multiple models)
-monailabel start_server --app workspace/radiology --studies workspace/images --conf models deepgrow_2d,deepgrow_3d,segmentation
+monailabel start_server --app workspace/radiology --studies workspace/images --conf models "deepgrow_2d,deepgrow_3d,segmentation"
 
 # Pick All
 monailabel start_server --app workspace/radiology --studies workspace/images --conf models all
+
+# Pick All + Preload into All GPU devices
+monailabel start_server --app workspace/radiology --studies workspace/images --conf models all --conf preload true
 
 # Pick All (Skip Training Tasks or Infer only mode)
 monailabel start_server --app workspace/radiology --studies workspace/images --conf models all --conf skip_trainers true
@@ -75,6 +78,7 @@ This model works for single and multiple label segmentation tasks.
 | epistemic_samples    | int                | Limit number of samples to run epistemic scoring                   |
 | tta_enabled          | true, **false**    | Enable TTA (Test Time Augmentation) based Active Learning Strategy |
 | tta_samples          | int                | Limit number of samples to run tta scoring                         |
+| preload              | true, **false**    | Preload model into GPU                                                                                |
 
 A command example to use active learning strategies with DeepEdit would be:
 
@@ -126,7 +130,10 @@ the model to learn on new organ.
 > monailabel start_server --app workspace/radiology --studies workspace/images --conf models deepgrow_2d,deepgrow_3d
 
 - Additional Configs *(pass them as **--conf name value**) while starting MONAILabelServer*
-  > None
+
+| Name                 | Values             | Description                                                     |
+|----------------------|--------------------|-----------------------------------------------------------------|
+| preload              | true, **false**    | Preload model into GPU                                                                                |
 
 - Network
   > This App uses the [BasicUNet](https://docs.monai.io/en/latest/networks.html#basicunet) as the default network.
@@ -170,7 +177,8 @@ This model based on UNet for automated segmentation. This model works for single
 
 | Name                 | Values             | Description                                                     |
 |----------------------|--------------------|-----------------------------------------------------------------|
-| use_pretrained_model | **true**, false        | Disable this NOT to load any pretrained weights                 |
+| use_pretrained_model | **true**, false    | Disable this NOT to load any pretrained weights                 |
+| preload              | true, **false**    | Preload model into GPU                                                                                |
 
 - Network
   > This App uses the [UNet](https://docs.monai.io/en/latest/networks.html#unet) as the default network.
@@ -257,6 +265,7 @@ from [NVIDIA Clara](https://catalog.ngc.nvidia.com/models?filters=&orderBy=dateM
 | epistemic_samples    | int             | Limit number of samples to run epistemic scoring                   |
 | tta_enabled          | true, **false** | Enable TTA (Test Time Augmentation) based Active Learning Strategy |
 | tta_samples          | int             | Limit number of samples to run tta scoring                         |
+| preload              | true, **false** | Preload model into GPU                                                                                |
 
 
 A command example to use active learning strategies with segmentation_spleen would be:

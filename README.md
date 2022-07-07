@@ -13,9 +13,18 @@ open-source and easy-to-install ecosystem that can run locally on a machine with
 and client work on the same/different machine. It shares the same principles
 with [MONAI](https://github.com/Project-MONAI).
 
-[MONAI Label Demo](https://youtu.be/o8HipCgSZIw?t=1319)
+[MONAI Label](https://youtu.be/m2rYorVwXk4) | [Demo](https://youtu.be/o8HipCgSZIw?t=1319)
+
 
 ![DEMO](https://raw.githubusercontent.com/Project-MONAI/MONAILabel/main/docs/images/demo.png)
+<table>
+<tr>
+<td><img src="https://raw.githubusercontent.com/Project-MONAI/MONAILabel/main/docs/images/ohif.png" alt="drawing" width="150"/></td>
+<td><img src="https://raw.githubusercontent.com/Project-MONAI/MONAILabel/main/docs/images/dsa.jpg" alt="drawing" width="150"/></td>
+<td><img src="https://raw.githubusercontent.com/Project-MONAI/MONAILabel/main/docs/images/qupath.jpg" alt="drawing" width="150"/></td>
+<td><img src="https://raw.githubusercontent.com/Project-MONAI/MONAILabel/main/docs/images/cvat_detector.jpeg" alt="drawing" width="150"/></td>
+</tr>
+</table>
 
 ## Features
 
@@ -24,9 +33,13 @@ with [MONAI](https://github.com/Project-MONAI).
 - Framework for developing and deploying MONAI Label Apps to train and infer AI models
 - Compositional & portable APIs for ease of integration in existing workflows
 - Customizable labelling app design for varying user expertise
-- Annotation support via 3DSlicer & OHIF for radiology
-- Annotation support via QuPath & Digital Slide Archive for pathology
-- PACS connectivity via DICOMWeb
+- Annotation support via [3DSlicer](https://github.com/Project-MONAI/MONAILabel/tree/main/plugins/slicer)
+  & [OHIF](https://github.com/Project-MONAI/MONAILabel/tree/main/plugins/ohif) for radiology
+- Annotation support via [QuPath](https://github.com/Project-MONAI/MONAILabel/tree/main/plugins/qupath)
+  , [Digital Slide Archive](https://github.com/Project-MONAI/MONAILabel/tree/main/plugins/dsa)
+  & [CVAT](https://github.com/Project-MONAI/MONAILabel/tree/main/plugins/cvat) for
+  pathology
+- PACS connectivity via [DICOMWeb](https://www.dicomstandard.org/using/dicomweb)
 
 ## Installation
 
@@ -35,10 +48,20 @@ MONAI Label supports following OS with **GPU/CUDA** enabled.
 - Ubuntu
 - [Windows](https://docs.monai.io/projects/label/en/latest/installation.html#windows)
 
+### [Current/Stable Version](https://pypi.org/project/monailabel/#history)
+
+```bash
+pip install monailabel -U
+```
+
+> If you have [monai](https://pypi.org/project/monai/) > 0.9.0 version, please downgrade it to **monai==0.9.0** version
+
 ### Development version
 
 To install the _**latest features**_ using one of the following options:
+
 #### Git Checkout (developer mode)
+
 ```bash
 git clone https://github.com/Project-MONAI/MONAILabel
 pip install -r MONAILabel/requirements.txt
@@ -46,21 +69,20 @@ export PATH=$PATH:`pwd`/MONAILabel/monailabel/scripts
 ```
 
 #### [Weekly Release](https://pypi.org/project/monailabel-weekly/)
+
 ```bash
-pip install monailabel-weekly
+pip install monailabel-weekly -U
 ```
 
 #### [Docker](https://hub.docker.com/r/projectmonai/monailabel/tags)
+
 ```bash
-docker run --gpus all --rm -ti --ipc=host --net=host projectmonai/monailabel:latest
+docker run --gpus all --rm -ti --ipc=host --net=host projectmonai/monailabel:latest bash
 ```
 
-#### [Release Candidate](https://pypi.org/project/monailabel/#history)
-```bash
-pip install monailabel>=0.4*
-```
-
+---
 Once the package is installed, you can download sample `radiology` or `pathology` app and start monailabel server.
+
 ```bash
 # download radiology app and sample dataset
 monailabel apps --download --name radiology --output apps
@@ -70,22 +92,7 @@ monailabel datasets --download --name Task09_Spleen --output datasets
 monailabel start_server --app apps/radiology --studies datasets/Task09_Spleen/imagesTr --conf models deepedit
 ```
 
-### Current/Stable version (0.3.x)
-
-To install the [current release](https://pypi.org/project/monailabel/), you can simply run:
-
-```bash
-pip install monailabel
-
-monailabel apps --download --name deepedit --output apps
-monailabel datasets --download --name Task09_Spleen --output datasets
-
-monailabel start_server --app apps/deepedit --studies datasets/Task09_Spleen/imagesTr
-```
-
 More details refer docs: https://docs.monai.io/projects/label/en/stable/installation.html
-
-
 
 > If monailabel install path is not automatically determined, then you can provide explicit install path as:
 > `monailabel apps --prefix ~/.local`
@@ -93,23 +100,32 @@ More details refer docs: https://docs.monai.io/projects/label/en/stable/installa
 For **_prerequisites_**, other installation methods (using the default GitHub branch, using Docker, etc.), please refer
 to the [installation guide](https://docs.monai.io/projects/label/en/latest/installation.html).
 
-> Once you start the MONAI Label Server, by default server will be up and serving at http://127.0.0.1:8000/. Open the serving URL in browser. It will provide you the list of Rest APIs available. **For this, please make sure you use the HTTP protocol.** _You can provide ssl arguments to run server in **HTTPS mode** but this functionality is not fully verified across all clients._
+> Once you start the MONAI Label Server, by default server will be up and serving at http://127.0.0.1:8000/. Open the
+> serving URL in browser. It will provide you the list of Rest APIs available. **For this, please make sure you use the
+HTTP protocol.** _You can provide ssl arguments to run server in **HTTPS mode** but this functionality is not fully
+verified across all clients._
 
 ## Plugins
+
 ### [3D Slicer](https://download.slicer.org/) (radiology)
 
 Download **Preview Release** from https://download.slicer.org/ and install MONAI Label plugin from Slicer Extension
 Manager.
 
-Refer [3D Slicer plugin](plugins/slicer) for other options to install and run MONAI Label plugin in 3D Slicer.
-> To avoid accidentally using an older Slicer version, you may want to _uninstall_ any previously installed 3D Slicer package.
+Refer [3D Slicer plugin](https://github.com/Project-MONAI/MONAILabel/tree/main/plugins/slicer) for other options to
+install and run MONAI Label plugin in 3D Slicer.
+> To avoid accidentally using an older Slicer version, you may want to _uninstall_ any previously installed 3D Slicer
+> package.
 
 ### [OHIF](https://ohif.org/) (radiology)
 
-MONAI Label comes with [pre-built plugin](plugins/ohif) for [OHIF Viewer](https://github.com/OHIF/Viewers). To use OHIF
-Viewer, you need to provide DICOMWeb instead of FileSystem as _studies_ when you start the server.
+MONAI Label comes with [pre-built plugin](https://github.com/Project-MONAI/MONAILabel/tree/main/plugins/ohif)
+for [OHIF Viewer](https://github.com/OHIF/Viewers). To use OHIF
+Viewer, you need to provide **DICOMWeb** instead of FileSystem as _studies_ when you start the server.
 > Please install [Orthanc](https://www.orthanc-server.com/download.php) before using OHIF Viewer.
-> For Ubuntu 20.x, Orthanc can be installed as `apt-get install orthanc orthanc-dicomweb`. However, you have to **upgrade to latest version** by following steps mentioned [here](https://book.orthanc-server.com/users/debian-packages.html#replacing-the-package-from-the-service-by-the-lsb-binaries)
+> For Ubuntu 20.x, Orthanc can be installed as `apt-get install orthanc orthanc-dicomweb`. However, you have to
+> **upgrade to latest version** by following steps
+> mentioned [here](https://book.orthanc-server.com/users/debian-packages.html#replacing-the-package-from-the-service-by-the-lsb-binaries).
 >
 > You can use [PlastiMatch](https://plastimatch.org/plastimatch.html#plastimatch-convert) to convert NIFTI to DICOM
 
@@ -122,11 +138,12 @@ Viewer, you need to provide DICOMWeb instead of FileSystem as _studies_ when you
 
 ![OHIF](https://raw.githubusercontent.com/Project-MONAI/MONAILabel/main/docs/images/ohif.png)
 
-> **_NOTE:_** OHIF does not yet support Multi-Label interaction for DeepEdit.
+> **NOTE:** OHIF does not yet support Multi-Label interaction for DeepEdit.  And you can still use 3D Slicer when MONAILabel is connected to DICOMWeb.
 
 ### [QuPath](https://qupath.github.io/) (pathology)
 
-You can download sample whole slide images from [https://portal.gdc.cancer.gov/repository](https://portal.gdc.cancer.gov/repository?filters=%7B%22op%22%3A%22and%22%2C%22content%22%3A%5B%7B%22op%22%3A%22in%22%2C%22content%22%3A%7B%22field%22%3A%22files.data_type%22%2C%22value%22%3A%5B%22Slide%20Image%22%5D%7D%7D%5D%7D)
+You can download sample whole slide images
+from [https://portal.gdc.cancer.gov/repository](https://portal.gdc.cancer.gov/repository?filters=%7B%22op%22%3A%22and%22%2C%22content%22%3A%5B%7B%22op%22%3A%22in%22%2C%22content%22%3A%7B%22field%22%3A%22files.data_type%22%2C%22value%22%3A%5B%22Slide%20Image%22%5D%7D%7D%5D%7D)
 
 ```bash
   # start server using pathology over downloaded whole slide images
@@ -135,14 +152,24 @@ You can download sample whole slide images from [https://portal.gdc.cancer.gov/r
 
 Refer [QuPath](plugins/qupath) for installing and running MONAILabel plugin in QuPath.
 
-![image](docs/images/qupath.jpg)
+![image](https://raw.githubusercontent.com/Project-MONAI/MONAILabel/main/docs/images/qupath.jpg)
 
 ### [Digital Slide Archive (DSA)](https://digitalslidearchive.github.io/digital_slide_archive/) (pathology)
 
 Refer [Pathology](sample-apps/pathology) for running a sample pathology use-case in MONAILabel.
-> **_NOTE:_** The **Pathology App** and *DSA Plugin* are under *active development*.
+> **NOTE:** The *DSA Plugin* is under *active development*.
 
-![image](https://user-images.githubusercontent.com/7339051/157100606-a281e038-5923-43a8-bb82-8fccae51fcff.png)
+![image](https://raw.githubusercontent.com/Project-MONAI/MONAILabel/main/docs/images/dsa.jpg)
+
+### [CVAT](plugins/cvat)
+
+Install [CVAT](https://openvinotoolkit.github.io/cvat/docs/getting_started) and
+enable [Semi-Automatic and Automatic Annotation](https://openvinotoolkit.github.io/cvat/docs/administration/advanced/installation_automatic_annotation/)
+.
+Refer [CVAT Instructions](https://github.com/Project-MONAI/MONAILabel/tree/main/plugins/cvat) for deploying available MONAILabel
+pathology models into CVAT.
+
+![image](https://raw.githubusercontent.com/Project-MONAI/MONAILabel/main/docs/images/cvat_detector.jpeg)
 
 ## Cite
 
@@ -163,7 +190,8 @@ If you are using MONAI Label in your research, please use the following citation
 
 ## Contributing
 
-For guidance on making a contribution to MONAI Label, see the [contributing guidelines](CONTRIBUTING.md).
+For guidance on making a contribution to MONAI Label, see
+the [contributing guidelines](https://github.com/Project-MONAI/MONAILabel/blob/main/CONTRIBUTING.md).
 
 ## Community
 

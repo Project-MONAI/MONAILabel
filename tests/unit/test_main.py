@@ -39,12 +39,12 @@ class MyTestCase(unittest.TestCase):
         Main().action_start_server(args)
 
     def test_apps(self):
-        args = argparse.Namespace(download=False)
+        args = argparse.Namespace(download=False, prefix="")
         Main().action_apps(args)
 
     def test_apps_download(self):
         output = os.path.join(self.data_dir, "downloaded_app")
-        args = argparse.Namespace(download=True, name="radiology", output=output)
+        args = argparse.Namespace(download=True, prefix="", name="radiology", output=output)
         Main().action_apps(args)
         assert os.path.isdir(output)
         shutil.rmtree(output, ignore_errors=True)
@@ -61,12 +61,12 @@ class MyTestCase(unittest.TestCase):
         shutil.rmtree(output, ignore_errors=True)
 
     def test_plugins(self):
-        args = argparse.Namespace(download=False)
+        args = argparse.Namespace(download=False, prefix="")
         Main().action_plugins(args)
 
     def test_plugins_download(self):
         output = os.path.join(self.data_dir, "downloaded_plugins")
-        args = argparse.Namespace(download=True, name="slicer", output=output)
+        args = argparse.Namespace(download=True, prefix="", name="slicer", output=output)
         Main().action_plugins(args)
         assert os.path.isdir(output)
         shutil.rmtree(output, ignore_errors=True)

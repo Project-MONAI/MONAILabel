@@ -33,14 +33,14 @@
             <label>MONAILabel Address</label>
             <description>Address of a monailabel address in the format 'http://127.0.0.1:8000/'.</description>
             <longflag>server</longflag>
-            <default>http://10.117.16.216:8000/</default>
+            <default>{{env_MONAI_LABEL_SERVER|default("http://127.0.0.1:8000/")}}</default>
         </string>
-        <string>
+        <string datalist="{&quot;model_name&quot;: &quot;__datalist__&quot;, &quot;inputImageFile&quot;: &quot;skip&quot;, &quot;outputAnnotationFile&quot;: &quot;skip&quot;, &quot;outputAnnotationFile_folder&quot;: &quot;skip&quot;}">
             <name>model_name</name>
             <label>Model Name</label>
             <description>DeepLearning Model to Infer (For Example: deepedit_nuclei, segmentation_nuclei)</description>
             <longflag>model_name</longflag>
-            <default>segmentation_nuclei</default>
+            <default>deepedit_nuclei</default>
         </string>
         <file fileExtensions=".anot" reference="inputImageFile">
             <name>outputAnnotationFile</name>
@@ -63,7 +63,7 @@
             <label>Min Polygon Area</label>
             <description>Filter Polygons based on min area size</description>
             <longflag>min_poly_area</longflag>
-            <default>40</default>
+            <default>80</default>
         </float>
         <string>
             <name>extra_params</name>
@@ -71,6 +71,20 @@
             <description>Extra/Other Config Parameters defined by MONAILabel inference task</description>
             <longflag>extra_params</longflag>
             <default>{}</default>
+        </string>
+        <string>
+            <name>girderApiUrl</name>
+            <longflag>api-url</longflag>
+            <label>Girder API URL</label>
+            <description>A Girder API URL (e.g., https://girder.example.com:443/api/v1)</description>
+            <default></default>
+        </string>
+        <string>
+            <name>girderToken</name>
+            <longflag>girder-token</longflag>
+            <label>Girder Token</label>
+            <description>A Girder token</description>
+            <default></default>
         </string>
     </parameters>
     <parameters advanced="true">

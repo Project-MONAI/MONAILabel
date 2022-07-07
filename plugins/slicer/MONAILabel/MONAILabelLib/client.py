@@ -146,6 +146,34 @@ class MONAILabelClient:
         logging.debug(f"Response: {response}")
         return json.loads(response)
 
+    def datastore(self):
+        selector = "/datastore/?output=all"
+        status, response, _ = MONAILabelUtils.http_method("GET", self._server_url, selector)
+        if status != 200:
+            raise MONAILabelException(
+                MONAILabelError.SERVER_ERROR, f"Status: {status}; Response: {response}", status, response
+            )
+
+        response = response.decode("utf-8") if isinstance(response, bytes) else response
+        logging.debug(f"Response: {response}")
+        return json.loads(response)
+
+    def download_label(self, label_id, tag):
+        selector = "/datastore/label?label={}&tag={}".format(
+            MONAILabelUtils.urllib_quote_plus(label_id), MONAILabelUtils.urllib_quote_plus(tag)
+        )
+        status, response, _ = MONAILabelUtils.http_method("GET", self._server_url, selector)
+        if status != 200:
+            raise MONAILabelException(
+                MONAILabelError.SERVER_ERROR, f"Status: {status}; Response: {response}", status, response
+            )
+
+        local_filename = tempfile.NamedTemporaryFile(dir=self._tmpdir, suffix=".nii.gz").name
+        with open(local_filename, "wb") as f:
+            f.write(response)
+
+        return local_filename
+
     def infer(self, model, image_in, params, label_in=None, file=None, session_id=None):
         selector = "/infer/{}?image={}".format(
             MONAILabelUtils.urllib_quote_plus(model),

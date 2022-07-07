@@ -12,6 +12,8 @@ import logging
 
 import numpy as np
 import numpymaxflow
+import torch
+from monai.networks.layers import GaussianMixtureModel
 
 logger = logging.getLogger(__name__)
 
@@ -137,7 +139,9 @@ def make_histograms(image, scrib, scribbles_bg_label, scribbles_fg_label, alpha_
     return bg_hist.astype(np.float32), fg_hist.astype(np.float32), fg_bin_edges.astype(np.float32)
 
 
-def make_likelihood_image_histogram(image, scrib, scribbles_bg_label, scribbles_fg_label, return_label=False):
+def make_likelihood_image_histogram(
+    image, scrib, scribbles_bg_label, scribbles_fg_label, num_bins=64, return_label=False
+):
     # normalise image in range [0, 1] if needed
     min_img = np.min(image)
     max_img = np.max(image)
@@ -146,7 +150,7 @@ def make_likelihood_image_histogram(image, scrib, scribbles_bg_label, scribbles_
 
     # generate histograms for background/foreground
     bg_hist, fg_hist, bin_edges = make_histograms(
-        image, scrib, scribbles_bg_label, scribbles_fg_label, alpha_bg=1, alpha_fg=1, bins=64
+        image, scrib, scribbles_bg_label, scribbles_fg_label, alpha_bg=1, alpha_fg=1, bins=num_bins
     )
 
     # lookup values for each voxel for generating background/foreground probabilities
@@ -154,6 +158,90 @@ def make_likelihood_image_histogram(image, scrib, scribbles_bg_label, scribbles_
     fprob = fg_hist[dimage]
     bprob = bg_hist[dimage]
     retprob = np.concatenate([bprob, fprob], axis=0)
+
+    # if needed, convert to discrete labels instead of probability
+    if return_label:
+        retprob = np.expand_dims(np.argmax(retprob, axis=0), axis=0).astype(np.float32)
+
+    return retprob
+
+
+def learn_and_apply_gmm_monai(image, scrib, scribbles_bg_label, scribbles_fg_label, num_mixtures):
+    # this function is limited to binary segmentation at the moment
+    n_classes = 2
+
+    # make trimap
+    trimap = np.zeros_like(scrib).astype(np.int32)
+
+    # fetch anything that is not scribbles
+    not_scribbles = ~((scrib == scribbles_bg_label) | (scrib == scribbles_fg_label))
+
+    # set these to -1 == unused
+    trimap[not_scribbles] = -1
+
+    # set background scrib to 0
+    trimap[scrib == scribbles_bg_label] = 0
+    # set foreground scrib to 1
+    trimap[scrib == scribbles_fg_label] = 1
+
+    # add empty channel to image and scrib to be inline with pytorch layout
+    image = np.expand_dims(image, axis=0)
+    trimap = np.expand_dims(trimap, axis=0)
+
+    # transfer everything to pytorch tensor
+    # we use CUDA as GMM from MONAI is only available on CUDA atm (29/04/2022)
+    # if no cuda device found, then exit now
+    if not torch.cuda.is_available():
+        raise OSError("Unable to find CUDA device, check your torch/monai installation")
+
+    from torch.utils.cpp_extension import CUDA_HOME
+
+    if not CUDA_HOME:
+        raise OSError(
+            "Unable to find CUDA_HOME.  Install CUDA Toolkit: https://developer.nvidia.com/cuda-downloads\n"
+            "Example for Ubuntu: \n"
+            "  1) wget https://developer.download.nvidia.com/compute/cuda/11.7.0/local_installers/cuda_11.7.0_515.43.04_linux.run\n"
+            "  2) sudo sh cuda_11.7.0_515.43.04_linux.run --silent --toolkit"
+        )
+
+    device = "cuda"
+    image = torch.from_numpy(image).type(torch.float32).to(device)
+    trimap = torch.from_numpy(trimap).type(torch.int32).to(device)
+
+    # initialise our GMM
+    gmm = GaussianMixtureModel(
+        image.size(1),
+        mixture_count=n_classes,
+        mixture_size=num_mixtures,
+        verbose_build=False,
+    )
+
+    # learn gmm from image and trimap
+    gmm.learn(image, trimap)
+
+    # apply gmm on image
+    gmm_output = gmm.apply(image)
+
+    # return output
+    return gmm_output.squeeze(0).cpu().numpy()
+
+
+def make_likelihood_image_gmm(
+    image,
+    scrib,
+    scribbles_bg_label,
+    scribbles_fg_label,
+    num_mixtures=20,
+    return_label=False,
+):
+    # learn gmm and apply to image, return output label prob
+    retprob = learn_and_apply_gmm_monai(
+        image=image,
+        scrib=scrib,
+        scribbles_bg_label=scribbles_bg_label,
+        scribbles_fg_label=scribbles_fg_label,
+        num_mixtures=num_mixtures,
+    )
 
     # if needed, convert to discrete labels instead of probability
     if return_label:

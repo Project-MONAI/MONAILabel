@@ -8,7 +8,6 @@
 # WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 # See the License for the specific language governing permissions and
 # limitations under the License.
-
 import logging
 from typing import Optional, Sequence, Union
 
@@ -19,7 +18,6 @@ from monai.config import KeysCollection
 from monai.transforms import MapTransform, Resize, generate_spatial_bounding_box, get_extreme_points
 from monai.transforms.spatial.dictionary import InterpolateModeSequence
 from monai.utils import InterpolateMode, ensure_tuple_rep
-from shapely.geometry import Polygon
 
 from monailabel.utils.others.label_colors import get_color
 
@@ -182,21 +180,20 @@ class FindContoursd(MapTransform):
                 polygons = []
                 contours, _ = cv2.findContours(p, cv2.RETR_LIST, cv2.CHAIN_APPROX_SIMPLE)
                 for contour in contours:
-                    contour = np.squeeze(contour)
                     if len(contour) < 3:
+                        continue
+
+                    contour = np.squeeze(contour)
+                    area = cv2.contourArea(contour)
+                    if area < min_poly_area:  # Ignore poly with lesser area
+                        continue
+                    if 0 < max_poly_area < area:  # Ignore very large poly (e.g. in case of nuclei)
                         continue
 
                     contour[:, 0] += location[0]  # X
                     contour[:, 1] += location[1]  # Y
 
                     coords = contour.astype(int).tolist()
-                    pobj = Polygon(coords)
-                    if pobj.area < min_poly_area:  # Ignore poly with lesser area
-                        continue
-                    if 0 < max_poly_area < pobj.area:  # Ignore very large poly (e.g. in case of nuclei)
-                        continue
-
-                    logger.debug(f"Area: {pobj.area}; Perimeter: {pobj.length}; Count: {len(coords)}")
                     polygons.append(coords)
 
                 if len(polygons):

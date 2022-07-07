@@ -46,6 +46,9 @@ class Segmentation(TaskConfig):
             "left adrenal gland": 13,
         }
 
+        # Number of input channels - 4 for BRATS and 1 for spleen
+        self.number_intensity_ch = 1
+
         # Model Files
         self.path = [
             os.path.join(self.model_dir, f"pretrained_{name}.pt"),  # pretrained
@@ -54,7 +57,7 @@ class Segmentation(TaskConfig):
 
         # Download PreTrained Model
         if strtobool(self.conf.get("use_pretrained_model", "true")):
-            url = f"{self.PRE_TRAINED_PATH}/segmentation_unet_multilabel.pt"
+            url = f"{self.conf.get('pretrained_path', self.PRE_TRAINED_PATH)}/segmentation_unet_multilabel.pt"
             download_file(url, self.path[0])
 
         self.target_spacing = (1.0, 1.0, 1.0)  # target space for image
@@ -64,7 +67,7 @@ class Segmentation(TaskConfig):
         # Network
         self.network = UNet(
             spatial_dims=3,
-            in_channels=1,
+            in_channels=self.number_intensity_ch,
             out_channels=len(self.labels.keys()) + 1,  # All labels plus background
             channels=[16, 32, 64, 128, 256],
             strides=[2, 2, 2, 2],
@@ -79,6 +82,7 @@ class Segmentation(TaskConfig):
             roi_size=self.roi_size,
             target_spacing=self.target_spacing,
             labels=self.labels,
+            preload=strtobool(self.conf.get("preload", "false")),
             config={"largest_cc": True},
         )
         return task

@@ -13,8 +13,9 @@ import logging
 from typing import Optional
 
 import torch
-from fastapi import APIRouter, HTTPException
+from fastapi import APIRouter, Depends, HTTPException
 
+from monailabel.endpoints.user.auth import User, get_annotator_user
 from monailabel.interfaces.tasks.batch_infer import BatchInferImageType
 from monailabel.utils.async_tasks.task import AsyncTask
 
@@ -57,7 +58,7 @@ def stop():
 
 
 @router.get("/infer", summary="Get Status of Batch Inference Task")
-async def api_status(all: bool = False, check_if_running: bool = False):
+async def api_status(all: bool = False, check_if_running: bool = False, user: User = Depends(get_annotator_user)):
     return status(all, check_if_running)
 
 
@@ -67,10 +68,11 @@ async def api_run(
     images: Optional[BatchInferImageType] = BatchInferImageType.IMAGES_ALL,
     params: Optional[dict] = None,
     run_sync: Optional[bool] = False,
+    user: User = Depends(get_annotator_user),
 ):
     return run(model, images, params, run_sync)
 
 
 @router.delete("/infer", summary="Stop Batch Inference Task")
-async def api_stop():
+async def api_stop(user: User = Depends(get_annotator_user)):
     return stop()

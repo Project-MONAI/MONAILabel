@@ -55,7 +55,7 @@ class SegmentationNuclei(TaskConfig):
 
         # Download PreTrained Model
         if strtobool(self.conf.get("use_pretrained_model", "true")):
-            url = f"{self.PRE_TRAINED_PATH}/pathology_segmentation_nuclei.pt"
+            url = f"{self.conf.get('pretrained_path', self.PRE_TRAINED_PATH)}/pathology_segmentation_nuclei.pt"
             download_file(url, self.path[0])
 
         # Network
@@ -68,7 +68,7 @@ class SegmentationNuclei(TaskConfig):
 
     def infer(self) -> Union[InferTask, Dict[str, InferTask]]:
         preload = strtobool(self.conf.get("preload", "false"))
-        roi_size = json.loads(self.conf.get("roi_size", "[512, 512]"))
+        roi_size = json.loads(self.conf.get("roi_size", "[1024, 1024]"))
         logger.info(f"Using Preload: {preload}; ROI Size: {roi_size}")
 
         task: InferTask = lib.infers.SegmentationNuclei(

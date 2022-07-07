@@ -9,8 +9,9 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-from fastapi import APIRouter
+from fastapi import APIRouter, Depends
 
+from monailabel.endpoints.user.auth import User, get_basic_user
 from monailabel.interfaces.app import MONAILabelApp
 from monailabel.interfaces.utils.app import app_instance
 
@@ -27,5 +28,5 @@ def app_info():
 
 
 @router.get("/", summary="Get App Info")
-async def api_app_info():
+async def api_app_info(user: User = Depends(get_basic_user)):
     return app_info()

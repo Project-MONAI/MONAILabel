@@ -1,0 +1,54 @@
+metadata:
+  name: monailabel.pathology.nuclick
+  namespace: cvat
+  annotations:
+    name: Nuclick
+    type: interactor
+    framework: pytorch
+    spec:
+    min_pos_points: 1
+    min_neg_points: 0
+    animated_gif: https://raw.githubusercontent.com/mostafajahanifar/nuclick_torch/master/docs/33.gif
+    help_message: The interactor allows to annotate a nuclei using pre-trained NuClick model
+
+spec:
+  description: A pre-trained NuClick model for interactive cell segmentation for Pathology
+  runtime: 'python:3.8'
+  handler: main:handler
+  eventTimeout: 30s
+
+  build:
+    image: cvat/monailabel.pathology.nuclick
+    baseImage: projectmonai/monailabel:latest
+
+    directives:
+      preCopy:
+        - kind: ENV
+          value: MONAI_LABEL_APP_DIR=/opt/conda/monailabel/sample-apps/pathology
+        - kind: ENV
+          value: MONAI_LABEL_MODELS=nuclick
+        - kind: ENV
+          value: PYTHONPATH=/opt/conda/monailabel/sample-apps/pathology
+        - kind: ENV
+          value: MONAI_PRETRAINED_PATH=https://github.com/Project-MONAI/MONAILabel/releases/download/data
+        - kind: ENV
+          value: INTERACTOR_MODEL=true
+
+  triggers:
+    myHttpTrigger:
+      maxWorkers: 1
+      kind: 'http'
+      workerAvailabilityTimeoutMilliseconds: 10000
+      attributes:
+        maxRequestBodySize: 33554432 # 32MB
+
+  resources:
+    limits:
+      nvidia.com/gpu: 1
+
+  platform:
+    attributes:
+      restartPolicy:
+        name: always
+        maximumRetryCount: 1
+      mountMode: volume

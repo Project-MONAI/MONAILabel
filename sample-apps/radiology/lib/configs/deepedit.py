@@ -43,22 +43,22 @@ class DeepEdit(TaskConfig):
         self.tta_samples = None
 
         # Multilabel
-        # self.labels = {
-        #     "spleen": 1,
-        #     "right kidney": 2,
-        #     "left kidney": 3,
-        #     "liver": 6,
-        #     "stomach": 7,
-        #     "aorta": 8,
-        #     "inferior vena cava": 9,
-        #     "background": 0,
-        # }
-
-        # Single label
         self.labels = {
             "spleen": 1,
+            "right kidney": 2,
+            "left kidney": 3,
+            "liver": 6,
+            "stomach": 7,
+            "aorta": 8,
+            "inferior vena cava": 9,
             "background": 0,
         }
+
+        # Single label
+        # self.labels = {
+        #     "spleen": 1,
+        #     "background": 0,
+        # }
 
         # Number of input channels - 4 for BRATS and 1 for spleen
         self.number_intensity_ch = 1
@@ -73,45 +73,70 @@ class DeepEdit(TaskConfig):
 
         # Download PreTrained Model
         if strtobool(self.conf.get("use_pretrained_model", "true")):
-            url = f"{self.PRE_TRAINED_PATH}/deepedit_{network}_singlelabel.pt"
+            url = f"{self.conf.get('pretrained_path', self.PRE_TRAINED_PATH)}/deepedit_{network}_multilabel.pt"
             download_file(url, self.path[0])
 
         self.target_spacing = (1.0, 1.0, 1.0)  # target space for image
         self.spatial_size = (128, 128, 128)  # train input size
 
         # Network
-        if network == "unetr":
-            self.network_params = {
-                "spatial_dims": 3,
-                "in_channels": len(self.labels) + self.number_intensity_ch,
-                "out_channels": len(self.labels),
-                "img_size": self.spatial_size,
-                "feature_size": 64,
-                "hidden_size": 1536,
-                "mlp_dim": 3072,
-                "num_heads": 48,
-                "pos_embed": "conv",
-                "norm_name": "instance",
-                "res_block": True,
-            }
-            self.network = UNETR(**self.network_params)
-            self.network_with_dropout = UNETR(**self.network_params, dropout_rate=0.2)
-            self.find_unused_parameters = False
-        else:
-            self.network_params = {
-                "spatial_dims": 3,
-                "in_channels": len(self.labels) + self.number_intensity_ch,
-                "out_channels": len(self.labels),
-                "kernel_size": [3, 3, 3, 3, 3, 3],
-                "strides": [1, 2, 2, 2, 2, [2, 2, 1]],
-                "upsample_kernel_size": [2, 2, 2, 2, [2, 2, 1]],
-                "norm_name": "instance",
-                "deep_supervision": False,
-                "res_block": True,
-            }
-            self.network = DynUNet(**self.network_params)
-            self.network_with_dropout = DynUNet(**self.network_params, dropout=0.2)
-            self.find_unused_parameters = False
+        self.network = (
+            UNETR(
+                spatial_dims=3,
+                in_channels=len(self.labels) + self.number_intensity_ch,
+                out_channels=len(self.labels),
+                img_size=self.spatial_size,
+                feature_size=64,
+                hidden_size=1536,
+                mlp_dim=3072,
+                num_heads=48,
+                pos_embed="conv",
+                norm_name="instance",
+                res_block=True,
+            )
+            if network == "unetr"
+            else DynUNet(
+                spatial_dims=3,
+                in_channels=len(self.labels) + self.number_intensity_ch,
+                out_channels=len(self.labels),
+                kernel_size=[3, 3, 3, 3, 3, 3],
+                strides=[1, 2, 2, 2, 2, [2, 2, 1]],
+                upsample_kernel_size=[2, 2, 2, 2, [2, 2, 1]],
+                norm_name="instance",
+                deep_supervision=False,
+                res_block=True,
+            )
+        )
+
+        self.network_with_dropout = (
+            UNETR(
+                spatial_dims=3,
+                in_channels=len(self.labels) + self.number_intensity_ch,
+                out_channels=len(self.labels),
+                img_size=self.spatial_size,
+                feature_size=64,
+                hidden_size=1536,
+                mlp_dim=3072,
+                num_heads=48,
+                pos_embed="conv",
+                norm_name="instance",
+                res_block=True,
+                dropout_rate=0.2,
+            )
+            if network == "unetr"
+            else DynUNet(
+                spatial_dims=3,
+                in_channels=len(self.labels) + self.number_intensity_ch,
+                out_channels=len(self.labels),
+                kernel_size=[3, 3, 3, 3, 3, 3],
+                strides=[1, 2, 2, 2, 2, [2, 2, 1]],
+                upsample_kernel_size=[2, 2, 2, 2, [2, 2, 1]],
+                norm_name="instance",
+                deep_supervision=False,
+                res_block=True,
+                dropout=0.2,
+            )
+        )
 
         # Others
         self.epistemic_enabled = strtobool(conf.get("epistemic_enabled", "false"))
@@ -125,12 +150,17 @@ class DeepEdit(TaskConfig):
     def infer(self) -> Union[InferTask, Dict[str, InferTask]]:
         return {
             self.name: lib.infers.DeepEdit(
-                path=self.path, network=self.network, labels=self.labels, spatial_size=self.spatial_size
+                path=self.path,
+                network=self.network,
+                labels=self.labels,
+                preload=strtobool(self.conf.get("preload", "false")),
+                spatial_size=self.spatial_size,
             ),
             f"{self.name}_seg": lib.infers.DeepEdit(
                 path=self.path,
                 network=self.network,
                 labels=self.labels,
+                preload=strtobool(self.conf.get("preload", "false")),
                 spatial_size=self.spatial_size,
                 number_intensity_ch=self.number_intensity_ch,
                 type=InferType.SEGMENTATION,
@@ -172,7 +202,14 @@ class DeepEdit(TaskConfig):
             methods[f"{self.name}_epistemic"] = EpistemicScoring(
                 model=self.path,
                 network=self.network_with_dropout,
-                transforms=lib.infers.DeepEdit(type=InferType.DEEPEDIT).pre_transforms(),
+                transforms=lib.infers.DeepEdit(
+                    type=InferType.DEEPEDIT,
+                    path=self.path,
+                    network=self.network,
+                    labels=self.labels,
+                    preload=strtobool(self.conf.get("preload", "false")),
+                    spatial_size=self.spatial_size,
+                ).pre_transforms(),
                 num_samples=self.epistemic_samples,
             )
         if self.tta_enabled:
