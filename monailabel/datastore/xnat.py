@@ -84,13 +84,23 @@ class XNATDatastore(Datastore):
 
     def get_image_info(self, image_id: str) -> Dict[str, Any]:
         info = {}
-        if self.get_image_uri(image_id):
-            project, subject, experiment, scan = self._id_to_fields(image_id)
+
+        project, subject, experiment, scan = self._id_to_fields(image_id)
+        url = "{}/data/projects/{}/subjects/{}/experiments/{}/scans/{}?format=xml".format(
+            self.api_url,
+            quote_plus(project),
+            quote_plus(subject),
+            quote_plus(experiment),
+            quote_plus(scan),
+        )
+
+        response = self._request_get(url)
+        if response.ok:
             info.update({"project": project, "subject": subject, "experiment": experiment, "scan": scan})
         return info
 
     def get_label_info(self, label_id: str, label_tag: str) -> Dict[str, Any]:
-        pass
+        return {}
 
     def get_labeled_images(self) -> List[str]:
         return []
@@ -140,10 +150,10 @@ class XNATDatastore(Datastore):
         raise NotImplementedError
 
     def update_image_info(self, image_id: str, info: Dict[str, Any]) -> None:
-        raise NotImplementedError
+        pass
 
     def update_label_info(self, label_id: str, label_tag: str, info: Dict[str, Any]) -> None:
-        raise NotImplementedError
+        pass
 
     def status(self) -> Dict[str, Any]:
         return {
