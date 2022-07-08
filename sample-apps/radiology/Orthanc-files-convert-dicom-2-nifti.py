@@ -9,7 +9,6 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 import glob
-
 import json
 import logging
 import os
@@ -109,7 +108,7 @@ def itk_image_to_dicom_seg(label, series_dir, template):
 
 def itk_dicom_seg_to_image(label, output_type="nifti"):
     # TODO:: Currently supports only one file
-    pre = label.split('/')[-2]
+    pre = label.split("/")[-2]
     filename = label if not os.path.isdir(label) else os.path.join(label, os.listdir(label)[0])
     command = "./segimage2itkimage"
     args = [
@@ -128,17 +127,18 @@ def itk_dicom_seg_to_image(label, output_type="nifti"):
         logger.warning(f"Failed to convert DICOM-SEG {label} to NIFTI")
         return None
 
+
 def main():
     # First, download the images from Orthanc
     # Second: Download the segimage2itkimage - This can be downloaded starting monailabel server with orthanc
     # CONVERT DICOM INTO NIFTI - IMAGES:
     # plastimatch convert --input LIDCIDRI0119/CT/ --output-img LIDCIDRI0119/LIDCIDRI0119.nii.gz
     # Then convert labels in nifti
-    image_names = glob.glob('/home/andres/Downloads/dicom-test/final/*')
+    image_names = glob.glob("/home/andres/Downloads/dicom-test/final/*")
     for l in image_names:
         print(f'Converting image: {l.split("/")[-1]}')
-        dicom_to_nifti(l + '/SEG/', is_seg=True)
+        dicom_to_nifti(l + "/SEG/", is_seg=True)
+
 
 if __name__ == "__main__":
     main()
-

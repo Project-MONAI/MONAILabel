@@ -9,17 +9,14 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-import os
 import glob
-import numpy as np
+import os
+
 import monai
+import numpy as np
 import torch
 from monai.data import DataLoader, list_data_collate, write_nifti
-from monai.transforms import (
-    Compose,
-    LoadImaged,
-    MapTransform,
-)
+from monai.transforms import Compose, LoadImaged, MapTransform
 from monai.utils import GridSampleMode, GridSamplePadMode
 
 
@@ -27,6 +24,7 @@ class MergeToSingleFiled(MapTransform):
     """
     Merge labels to one channel
     """
+
     def __call__(self, data):
         d = dict(data)
         factor = 10.0
@@ -43,31 +41,32 @@ class MergeToSingleFiled(MapTransform):
         return d
 
 
-
 data_dir = "/home/andres/Documents/workspace/Datasets/radiology/BRATS-2021/neuro-atlas-first-labels/ventricles/"
-output_folder = '/home/andres/Documents/workspace/Datasets/radiology/BRATS-2021/neuro-atlas-first-labels/mergedFiles/labels/'
+output_folder = (
+    "/home/andres/Documents/workspace/Datasets/radiology/BRATS-2021/neuro-atlas-first-labels/mergedFiles/labels/"
+)
 
 
 set_transforms = Compose(
-                        [
-                            LoadImaged(keys="label"),
-                            MergeToSingleFiled(keys="label"),
-                        ]
-                        )
+    [
+        LoadImaged(keys="label"),
+        MergeToSingleFiled(keys="label"),
+    ]
+)
 
 train_folders = glob.glob(os.path.join(data_dir, "*/"))
 train_d = []
 for image_path in train_folders:
-    file_name = image_path.split('/')[-2]
+    file_name = image_path.split("/")[-2]
     path_labels = []
     all_nifti = glob.glob(os.path.join(image_path + "/*.nii.gz"))
     for mod in all_nifti:
         dirname, file = os.path.split(mod)
-        if '_seg' in mod:
+        if "_seg" in mod:
             path_labels.append(mod)
-        elif 'Label' in mod:
+        elif "Label" in mod:
             path_labels.append(mod)
-        elif 'Untitled' in mod:
+        elif "Untitled" in mod:
             path_labels.append(mod)
         # ['seg.nii.gz', 'flair.nii.gz', 't1.nii.gz', 't1ce.nii.gz', 't2.nii.gz']
     train_d.append({"label": path_labels})
@@ -117,10 +116,7 @@ def save_nifti(data, meta_data, path, filename):
 
 
 for idx, img in enumerate(trainLoader):
-    dirname, file = os.path.split(img['label_meta_dict']['filename_or_obj'][0])
-    fname = dirname.split('/')[-1]
-    print('Processing label: ', fname + '.nii.gz')
-    save_nifti(img['label'],
-               img['label_meta_dict'],
-               output_folder,
-               fname + '.nii.gz')
+    dirname, file = os.path.split(img["label_meta_dict"]["filename_or_obj"][0])
+    fname = dirname.split("/")[-1]
+    print("Processing label: ", fname + ".nii.gz")
+    save_nifti(img["label"], img["label_meta_dict"], output_folder, fname + ".nii.gz")
