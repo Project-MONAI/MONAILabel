@@ -35,6 +35,7 @@ class SegmentationBrats(TaskConfig):
             "edema": 1,
             "non-enhancing tumor": 2,
             "enhancing tumour": 3,
+            "ventricle5": 4,
         }
 
         # Number of input channels - 4 for BRATS and 1 for spleen
@@ -48,7 +49,7 @@ class SegmentationBrats(TaskConfig):
 
         # Download PreTrained Model
         if strtobool(self.conf.get("use_pretrained_model", "true")):
-            url = f"{self.PRE_TRAINED_PATH}/segmentation_unetr_brats.pt"
+            url = f"{self.PRE_TRAINED_PATH}/segmentation_unetr_ventricle_brats.pt"
             download_file(url, self.path[0])
 
         # Network
