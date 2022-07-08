@@ -12,19 +12,14 @@ import glob
 import json
 import logging
 import os
-import pathlib
-import shutil
 import tempfile
 import time
 
 import numpy as np
-import pydicom_seg
 import SimpleITK
 from monai.data import write_nifti
 from monai.transforms import LoadImage
-from pydicom.filereader import dcmread
 
-from monailabel.datastore.utils.colors import GENERIC_ANATOMY_COLORS
 from monailabel.transform.writer import write_itk
 from monailabel.utils.others.generic import run_command
 
