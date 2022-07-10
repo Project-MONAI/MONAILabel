@@ -10,6 +10,7 @@
 # limitations under the License.
 from typing import Callable, Sequence
 
+from lib.transforms.transforms import AddROI, GaussianSmoothedCentroidd, GetCentroidAndCropd, PlaceCroppedAread
 from monai.inferers import Inferer, SimpleInferer
 from monai.transforms import (
     Activationsd,
@@ -18,9 +19,10 @@ from monai.transforms import (
     EnsureTyped,
     KeepLargestConnectedComponentd,
     LoadImaged,
+    Resized,
+    ScaleIntensityd,
     Spacingd,
     ToNumpyd,
-    ScaleIntensityd,
 )
 
 from monailabel.interfaces.tasks.infer import InferTask, InferType
@@ -59,8 +61,14 @@ class VerSeg(InferTask):
             LoadImaged(keys="image", reader="ITKReader"),
             EnsureTyped(keys="image", device=data.get("device") if data else None),
             EnsureChannelFirstd(keys="image"),
+            # This transform simulates previous stage
+            GetCentroidAndCropd(keys="label"),
+            ##
+            GaussianSmoothedCentroidd(keys="label"),
             Spacingd(keys="image", pixdim=self.target_spacing),
             ScaleIntensityd(keys="image"),
+            Resized(keys=("image", "label"), spatial_size=self.roi_size, mode=("area", "nearest")),
+            AddROI(keys="image"),
         ]
 
     def inferer(self, data=None) -> Inferer:
@@ -74,6 +82,7 @@ class VerSeg(InferTask):
             Activationsd(keys="pred", softmax=True),
             AsDiscreted(keys="pred", argmax=True),
             ToNumpyd(keys="pred"),
+            PlaceCroppedAread(keys="pred"),
         ]
         if largest_cc:
             t.append(KeepLargestConnectedComponentd(keys="pred", applied_labels=applied_labels))

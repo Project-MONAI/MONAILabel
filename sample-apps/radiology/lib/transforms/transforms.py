@@ -18,7 +18,8 @@ import numpy as np
 import torch
 from monai.config import KeysCollection
 from monai.networks.layers import GaussianFilter
-from monai.transforms import SaveImaged
+
+# from monai.transforms import SaveImaged, SpatialCrop
 from monai.transforms.transform import MapTransform
 
 logger = logging.getLogger(__name__)
@@ -89,43 +90,80 @@ class GetCentroidAndCropd(MapTransform):
         """
         super().__init__(keys, allow_missing_keys)
         if roi_size is None:
-            roi_size = [64, 64, 64]
+            roi_size = [256, 256, 256]
         self.roi_size = roi_size
 
     def __call__(self, data: Mapping[Hashable, np.ndarray]) -> Dict[Hashable, np.ndarray]:
         d: Dict = dict(data)
+        padd = 100
         for key in self.key_iterator(d):
             if key == "label":
                 point = []
                 # Obtain centroid
                 # x, y, z = scipy.ndimage.measurements.center_of_mass(d[key])
-                x, y, z = 50, 45, 50  # Test
+                x, y, z = 254, 194, 78  # Test
                 point.append(x)
                 point.append(y)
                 point.append(z)
                 d["centroid"] = point
                 d["original_size"] = d[key].shape[-3], d[key].shape[-2], d[key].shape[-1]
+
+                # Cropping
                 # cropper = SpatialCrop(roi_center=point, roi_size=self.roi_size)
                 # d[key] = cropper(d[key])
-                d[key] = d[key][0, 50:150, 40:140, 15:45]
+                # d[key] = d[key][0, 100:-1, 100:-1, 90:-1]
+                d[key] = d[key][
+                    0,
+                    point[-3] - padd : point[-3] + padd,
+                    point[-2] - padd : point[-2] + padd,
+                    point[-1] - int(padd / 4) : point[-1] + int(padd / 4),
+                ]
+
+                # Plotting
+                # from matplotlib.pyplot import imshow, show, close
+                # imshow(d[key][:,:,60])
+                # show()
+                # close()
+
             elif key == "image":
                 # d[key] = cropper(d[key])
-                d[key] = d[key][0, 50:150, 40:140, 15:45]
+                # d[key] = d[key][0, 100:-1, 100:-1, 90:-1]
+                d[key] = d[key][
+                    0,
+                    point[-3] - padd : point[-3] + padd,
+                    point[-2] - padd : point[-2] + padd,
+                    point[-1] - int(padd / 4) : point[-1] + int(padd / 4),
+                ]
+
+                # Plotting
+                # from matplotlib.pyplot import imshow, show, close
+                # imshow(d[key][:,:,60])
+                # show()
+                # close()
             else:
                 print("This transform only applies to the label or image")
 
         canvas_img = np.zeros(d["original_size"], dtype=np.float32)
         canvas_label = np.zeros(d["original_size"], dtype=np.float32)
-        canvas_img[50:150, 40:140, 15:45] = d["image"]
-        canvas_label[50:150, 40:140, 15:45] = d["label"]
-        d["image"] = canvas_img[None]
-        d["label"] = canvas_label[None]
-        SaveImaged(keys="image", output_postfix="", output_dir="/home/andres/Downloads", separate_folder=False)(
-            d["image"]
-        )
-        SaveImaged(keys="label", output_postfix="seg", output_dir="/home/andres/Downloads", separate_folder=False)(
-            d["label"]
-        )
+
+        canvas_img[
+            point[-3] - padd : point[-3] + padd,
+            point[-2] - padd : point[-2] + padd,
+            point[-1] - int(padd / 4) : point[-1] + int(padd / 4),
+        ] = d["image"]
+
+        canvas_label[
+            point[-3] - padd : point[-3] + padd,
+            point[-2] - padd : point[-2] + padd,
+            point[-1] - int(padd / 4) : point[-1] + int(padd / 4),
+        ] = d["label"]
+
+        d["image"] = canvas_img
+        d["label"] = canvas_label
+
+        # SaveImaged(keys="image", output_postfix="", output_dir="/home/andres/Downloads", separate_folder=False)(d)
+        # SaveImaged(keys="label", output_postfix="seg", output_dir="/home/andres/Downloads", separate_folder=False)(d)
+
         return d
 
 
@@ -166,6 +204,13 @@ class GaussianSmoothedCentroidd(MapTransform):
                 signal[0] = signal_tensor.detach().cpu().numpy()
                 signal[0] = (signal[0] - np.min(signal[0])) / (np.max(signal[0]) - np.min(signal[0]))
                 d["signal"] = signal
+
+                # # Plotting
+                # from matplotlib.pyplot import imshow, show, close
+                # imshow(d['signal'][0,:,:,60])
+                # show()
+                # close()
+
             else:
                 print("This transform only applies to the signal")
         return d
