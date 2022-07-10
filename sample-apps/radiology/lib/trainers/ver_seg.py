@@ -10,24 +10,20 @@
 # limitations under the License.
 import logging
 
-from lib.transforms.transforms import HeatMapROId
+from lib.transforms.transforms import GaussianSmoothedCentroidd, GetCentroidAndCropd, AddROI, BinaryMaskd
 from monai.handlers import TensorBoardImageHandler, from_engine
-from monai.inferers import SlidingWindowInferer
+from monai.inferers import SimpleInferer
 from monai.losses import DiceCELoss
 from monai.optimizers import Novograd
 from monai.transforms import (
     Activationsd,
     AsDiscreted,
-    CropForegroundd,
     EnsureChannelFirstd,
     EnsureTyped,
     LoadImaged,
-    RandCropByPosNegLabeld,
-    RandShiftIntensityd,
-    ScaleIntensityd,
     SelectItemsd,
     Spacingd,
-    SpatialPadd,
+    ScaleIntensityd, RandShiftIntensityd, Resized,
 )
 
 from monailabel.tasks.train.basic_train import BasicTrainTask, Context
@@ -36,7 +32,7 @@ from monailabel.tasks.train.utils import region_wise_metrics
 logger = logging.getLogger(__name__)
 
 
-class SpineLoc(BasicTrainTask):
+class VerSeg(BasicTrainTask):
     def __init__(
         self,
         model_dir,
@@ -44,7 +40,7 @@ class SpineLoc(BasicTrainTask):
         spatial_size=(96, 96, 96),  # Depends on original width, height and depth of the training images
         target_spacing=(1.0, 1.0, 1.0),
         num_samples=4,
-        description="Train spine localization model",
+        description="Train vertebra segmentation model",
         **kwargs,
     ):
         self._network = network
@@ -72,22 +68,14 @@ class SpineLoc(BasicTrainTask):
         return [
             LoadImaged(keys=("image", "label"), reader="ITKReader"),
             EnsureChannelFirstd(keys=("image", "label")),
-            HeatMapROId(keys="label"),
+            BinaryMaskd(keys="label"),
+            GetCentroidAndCropd(keys=["label", "image"]),
+            GaussianSmoothedCentroidd(keys="label"),
             Spacingd(keys=("image", "label"), pixdim=self.target_spacing, mode=("bilinear", "nearest")),
-            CropForegroundd(keys=("image", "label"), source_key="image"),
-            SpatialPadd(keys=("image", "label"), spatial_size=self.spatial_size),
             ScaleIntensityd(keys="image"),
             RandShiftIntensityd(keys="image", offsets=0.10, prob=0.50),
-            RandCropByPosNegLabeld(
-                keys=("image", "label"),
-                label_key="label",
-                spatial_size=self.spatial_size,
-                pos=1,
-                neg=1,
-                num_samples=self.num_samples,
-                image_key="image",
-                image_threshold=0,
-            ),
+            Resized(keys=("image", "label"), spatial_size=self.spatial_size, mode=("area", "nearest")),
+            AddROI(keys="signal"),
             EnsureTyped(keys=("image", "label"), device=context.device),
             SelectItemsd(keys=("image", "label")),
         ]
@@ -107,15 +95,19 @@ class SpineLoc(BasicTrainTask):
         return [
             LoadImaged(keys=("image", "label"), reader="ITKReader"),
             EnsureChannelFirstd(keys=("image", "label")),
-            HeatMapROId(keys="label"),
+            BinaryMaskd(keys="label"),
+            GetCentroidAndCropd(keys="label"),
+            GaussianSmoothedCentroidd(keys="label"),
             Spacingd(keys=("image", "label"), pixdim=self.target_spacing, mode=("bilinear", "nearest")),
             ScaleIntensityd(keys="image"),
+            Resized(keys=("image", "label"), spatial_size=self.spatial_size, mode=("area", "nearest")),
+            AddROI(keys="image"),
             EnsureTyped(keys=("image", "label")),
             SelectItemsd(keys=("image", "label")),
         ]
 
     def val_inferer(self, context: Context):
-        return SlidingWindowInferer(roi_size=self.spatial_size, sw_batch_size=8)
+        return SimpleInferer()
 
     def train_key_metric(self, context: Context):
         return region_wise_metrics(self._labels, self.TRAIN_KEY_METRIC, "train")

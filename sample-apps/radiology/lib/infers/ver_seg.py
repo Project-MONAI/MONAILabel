@@ -10,7 +10,7 @@
 # limitations under the License.
 from typing import Callable, Sequence
 
-from monai.inferers import Inferer, SlidingWindowInferer
+from monai.inferers import Inferer, SimpleInferer
 from monai.transforms import (
     Activationsd,
     AsDiscreted,
@@ -18,18 +18,18 @@ from monai.transforms import (
     EnsureTyped,
     KeepLargestConnectedComponentd,
     LoadImaged,
-    ScaleIntensityd,
     Spacingd,
     ToNumpyd,
+    ScaleIntensityd,
 )
 
 from monailabel.interfaces.tasks.infer import InferTask, InferType
 from monailabel.transform.post import Restored
 
 
-class SpineLoc(InferTask):
+class VerSeg(InferTask):
     """
-    This provides Inference Engine for pre-trained spine localization (UNet) model.
+    This provides Inference Engine for pre-trained vertebra segmentation (UNet) model.
     """
 
     def __init__(
@@ -40,7 +40,7 @@ class SpineLoc(InferTask):
         type=InferType.SEGMENTATION,
         labels=None,
         dimension=3,
-        description="A pre-trained model for volumetric (3D) spine localization from CT image",
+        description="A pre-trained model for volumetric (3D) vertebra segmentation from CT image",
         **kwargs,
     ):
         super().__init__(
@@ -64,7 +64,7 @@ class SpineLoc(InferTask):
         ]
 
     def inferer(self, data=None) -> Inferer:
-        return SlidingWindowInferer(roi_size=self.roi_size)
+        return SimpleInferer()
 
     def post_transforms(self, data=None) -> Sequence[Callable]:
         largest_cc = False if not data else data.get("largest_cc", False)

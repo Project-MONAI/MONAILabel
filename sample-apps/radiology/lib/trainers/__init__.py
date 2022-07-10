@@ -14,3 +14,4 @@ from .deepgrow import Deepgrow
 from .segmentation import Segmentation
 from .segmentation_spleen import SegmentationSpleen
 from .spine_loc import SpineLoc
+from .ver_seg import VerSeg
