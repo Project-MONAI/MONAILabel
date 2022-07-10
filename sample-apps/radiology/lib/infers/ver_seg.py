@@ -18,9 +18,9 @@ from monai.transforms import (
     EnsureTyped,
     KeepLargestConnectedComponentd,
     LoadImaged,
+    ScaleIntensityd,
     Spacingd,
     ToNumpyd,
-    ScaleIntensityd,
 )
 
 from monailabel.interfaces.tasks.infer import InferTask, InferType

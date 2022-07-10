@@ -10,7 +10,7 @@
 # limitations under the License.
 import logging
 
-from lib.transforms.transforms import GaussianSmoothedCentroidd, GetCentroidAndCropd, AddROI, BinaryMaskd
+from lib.transforms.transforms import AddROI, BinaryMaskd, GaussianSmoothedCentroidd, GetCentroidAndCropd
 from monai.handlers import TensorBoardImageHandler, from_engine
 from monai.inferers import SimpleInferer
 from monai.losses import DiceCELoss
@@ -21,9 +21,11 @@ from monai.transforms import (
     EnsureChannelFirstd,
     EnsureTyped,
     LoadImaged,
+    RandShiftIntensityd,
+    Resized,
+    ScaleIntensityd,
     SelectItemsd,
     Spacingd,
-    ScaleIntensityd, RandShiftIntensityd, Resized,
 )
 
 from monailabel.tasks.train.basic_train import BasicTrainTask, Context
