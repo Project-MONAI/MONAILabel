@@ -32,18 +32,18 @@ class Segmentation(TaskConfig):
         # Labels
         self.labels = {
             "spleen": 1,
-            # "right kidney": 2,
-            # "left kidney": 3,
-            # "gallbladder": 4,
-            # "esophagus": 5,
+            "right kidney": 2,
+            "left kidney": 3,
+            "gallbladder": 4,
+            "esophagus": 5,
             "liver": 6,
             "stomach": 7,
             "aorta": 8,
             "inferior vena cava": 9,
             "portal vein and splenic vein": 10,
             "pancreas": 11,
-            # "right adrenal gland": 12,
-            # "left adrenal gland": 13,
+            "right adrenal gland": 12,
+            "left adrenal gland": 13,
         }
 
         # Number of input channels - 4 for BRATS and 1 for spleen
@@ -56,7 +56,7 @@ class Segmentation(TaskConfig):
         ]
 
         # Download PreTrained Model
-        if strtobool(self.conf.get("use_pretrained_model", "false")):
+        if strtobool(self.conf.get("use_pretrained_model", "true")):
             url = f"{self.conf.get('pretrained_path', self.PRE_TRAINED_PATH)}/segmentation_unet_multilabel.pt"
             download_file(url, self.path[0])
 
