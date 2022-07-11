@@ -180,7 +180,9 @@ class Writer:
         dtype = data.get(self.key_dtype, None)
         compress = data.get(self.key_compress, False)
         write_to_file = data.get(self.key_write_to_file, True)
+
         ext = data.get(self.key_extension) if data.get(self.key_extension) else ext
+        ext = ext if ext else ".nii.gz"
         logger.info(f"Result ext: {ext}; write_to_file: {write_to_file}; dtype: {dtype}")
 
         image_np = data[self.label]

@@ -61,8 +61,8 @@ class Segmentation(TaskConfig):
             download_file(url, self.path[0])
 
         self.target_spacing = (1.0, 1.0, 1.0)  # target space for image
-        self.spatial_size = (96, 96, 96)  # train input size
-        self.roi_size = (128, 128, 128)  # sliding window size for infer
+        # Setting ROI size should consider max width, height and depth of the images
+        self.roi_size = (128, 128, 128)  # sliding window size for train and infer
 
         # Network
         self.network = UNet(
@@ -92,7 +92,7 @@ class Segmentation(TaskConfig):
         task: TrainTask = lib.trainers.Segmentation(
             model_dir=output_dir,
             network=self.network,
-            spatial_size=self.spatial_size,
+            roi_size=self.roi_size,
             target_spacing=self.target_spacing,
             load_path=self.path[0],
             publish_path=self.path[1],
