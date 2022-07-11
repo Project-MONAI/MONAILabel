@@ -39,14 +39,14 @@ class VerLoc(BasicTrainTask):
         self,
         model_dir,
         network,
-        spatial_size=(96, 96, 96),  # Depends on original width, height and depth of the training images
+        roi_size=(96, 96, 96),
         target_spacing=(1.0, 1.0, 1.0),
         num_samples=4,
         description="Train vertebra localization model",
         **kwargs,
     ):
         self._network = network
-        self.spatial_size = spatial_size
+        self.roi_size = roi_size
         self.target_spacing = target_spacing
         self.num_samples = num_samples
         super().__init__(model_dir, description, **kwargs)
@@ -77,7 +77,7 @@ class VerLoc(BasicTrainTask):
             Spacingd(keys=("image", "label"), pixdim=self.target_spacing, mode=("bilinear", "nearest")),
             ScaleIntensityd(keys="image"),
             RandShiftIntensityd(keys="image", offsets=0.10, prob=0.50),
-            Resized(keys=("image", "label"), spatial_size=self.spatial_size, mode=("area", "nearest")),
+            Resized(keys=("image", "label"), spatial_size=self.roi_size, mode=("area", "nearest")),
             EnsureTyped(keys=("image", "label"), device=context.device),
             SelectItemsd(keys=("image", "label")),
         ]
@@ -103,7 +103,7 @@ class VerLoc(BasicTrainTask):
             AddROI(keys="signal"),
             Spacingd(keys=("image", "label"), pixdim=self.target_spacing, mode=("bilinear", "nearest")),
             ScaleIntensityd(keys="image"),
-            Resized(keys=("image", "label"), spatial_size=self.spatial_size, mode=("area", "nearest")),
+            Resized(keys=("image", "label"), spatial_size=self.roi_size, mode=("area", "nearest")),
             EnsureTyped(keys=("image", "label")),
             SelectItemsd(keys=("image", "label")),
         ]

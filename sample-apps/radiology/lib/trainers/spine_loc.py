@@ -41,14 +41,14 @@ class SpineLoc(BasicTrainTask):
         self,
         model_dir,
         network,
-        spatial_size=(96, 96, 96),  # Depends on original width, height and depth of the training images
+        roi_size=(96, 96, 96),
         target_spacing=(1.0, 1.0, 1.0),
         num_samples=4,
         description="Train spine localization model",
         **kwargs,
     ):
         self._network = network
-        self.spatial_size = spatial_size
+        self.roi_size = roi_size
         self.target_spacing = target_spacing
         self.num_samples = num_samples
         super().__init__(model_dir, description, **kwargs)
@@ -75,13 +75,13 @@ class SpineLoc(BasicTrainTask):
             HeatMapROId(keys="label"),
             Spacingd(keys=("image", "label"), pixdim=self.target_spacing, mode=("bilinear", "nearest")),
             CropForegroundd(keys=("image", "label"), source_key="image"),
-            SpatialPadd(keys=("image", "label"), spatial_size=self.spatial_size),
+            SpatialPadd(keys=("image", "label"), spatial_size=self.roi_size),
             ScaleIntensityd(keys="image"),
             RandShiftIntensityd(keys="image", offsets=0.10, prob=0.50),
             RandCropByPosNegLabeld(
                 keys=("image", "label"),
                 label_key="label",
-                spatial_size=self.spatial_size,
+                spatial_size=self.roi_size,
                 pos=1,
                 neg=1,
                 num_samples=self.num_samples,
@@ -115,7 +115,7 @@ class SpineLoc(BasicTrainTask):
         ]
 
     def val_inferer(self, context: Context):
-        return SlidingWindowInferer(roi_size=self.spatial_size, sw_batch_size=8)
+        return SlidingWindowInferer(roi_size=self.roi_size, sw_batch_size=8)
 
     def train_key_metric(self, context: Context):
         return region_wise_metrics(self._labels, self.TRAIN_KEY_METRIC, "train")
