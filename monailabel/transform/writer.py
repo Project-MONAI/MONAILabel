@@ -12,10 +12,10 @@ import logging
 import tempfile
 from typing import Any, Dict, Iterable, List, Optional
 
-import torch
 import itk
 import nrrd
 import numpy as np
+import torch
 from monai.data import write_nifti
 
 from monailabel.utils.others.generic import file_ext

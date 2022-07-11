@@ -11,8 +11,8 @@
 
 import logging
 
-import torch
 import numpy as np
+import torch
 from monai.transforms import LoadImage
 
 from monailabel.interfaces.datastore import Datastore, DefaultLabelTag

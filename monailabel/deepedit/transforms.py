@@ -13,8 +13,8 @@ import json
 import logging
 from typing import Dict, Hashable, Mapping, Optional, Sequence, Union
 
-import torch
 import numpy as np
+import torch
 from monai.config import KeysCollection
 from monai.transforms import CropForeground, ResizeWithPadOrCrop
 from monai.transforms.transform import MapTransform, Randomizable, Transform
