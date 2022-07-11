@@ -13,8 +13,6 @@ import logging
 from typing import Dict, Hashable, Mapping
 
 import numpy as np
-
-# import scipy
 import torch
 from monai.config import KeysCollection
 from monai.networks.layers import GaussianFilter
@@ -93,25 +91,48 @@ class GetCentroidAndCropd(MapTransform):
             roi_size = [256, 256, 256]
         self.roi_size = roi_size
 
+    def _getCentroids(self, label):
+        centroids = []
+        # loop over all segments
+        for seg_class in np.unique(label):
+            c = {}
+            # skip background
+            if seg_class == 0:
+                continue
+            # get centre of mass (CoM)
+            centre = [np.average(indices).astype(int) for indices in np.where(label == seg_class)]
+            c["label"] = int(seg_class)
+            c["X"] = centre[-3]
+            c["Y"] = centre[-2]
+            c["Z"] = centre[-1]
+            centroids.append(c)
+        return centroids
+
     def __call__(self, data: Mapping[Hashable, np.ndarray]) -> Dict[Hashable, np.ndarray]:
         d: Dict = dict(data)
+        current_label = 0
         padd = 100
         for key in self.key_iterator(d):
             if key == "label":
-                point = []
-                # Obtain centroid
-                # x, y, z = scipy.ndimage.measurements.center_of_mass(d[key])
-                x, y, z = 254, 194, 78  # Test
-                point.append(x)
-                point.append(y)
-                point.append(z)
-                d["centroid"] = point
+
+                centroids = self._getCentroids(d[key])
+                d["centroids"] = centroids
+
                 d["original_size"] = d[key].shape[-3], d[key].shape[-2], d[key].shape[-1]
+
+                # TO DO: SELECT A DIFFERENT FOR EACH ITERATION
+                firstLabel = d["centroids"][current_label]
+
+                point = []
+                point.append(firstLabel["X"])
+                point.append(firstLabel["Y"])
+                point.append(firstLabel["Z"])
 
                 # Cropping
                 # cropper = SpatialCrop(roi_center=point, roi_size=self.roi_size)
                 # d[key] = cropper(d[key])
                 # d[key] = d[key][0, 100:-1, 100:-1, 90:-1]
+
                 d[key] = d[key][
                     0,
                     point[-3] - padd : point[-3] + padd,
@@ -119,9 +140,12 @@ class GetCentroidAndCropd(MapTransform):
                     point[-1] - int(padd / 4) : point[-1] + int(padd / 4),
                 ][None]
 
+                # Make the cropping binary
+                d[key][d[key] != firstLabel["label"]] = 0
+
                 # Plotting
                 # from matplotlib.pyplot import imshow, show, close
-                # imshow(d[key][:,:,60])
+                # imshow(d[key][0,:,:,int(d[key].shape[-1]/2)])
                 # show()
                 # close()
 

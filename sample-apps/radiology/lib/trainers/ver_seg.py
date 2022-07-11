@@ -10,7 +10,7 @@
 # limitations under the License.
 import logging
 
-from lib.transforms.transforms import AddROI, BinaryMaskd, GaussianSmoothedCentroidd, GetCentroidAndCropd
+from lib.transforms.transforms import AddROI, GaussianSmoothedCentroidd, GetCentroidAndCropd
 from monai.handlers import TensorBoardImageHandler, from_engine
 from monai.inferers import SimpleInferer
 from monai.losses import DiceCELoss
@@ -70,7 +70,6 @@ class VerSeg(BasicTrainTask):
         return [
             LoadImaged(keys=("image", "label"), reader="ITKReader"),
             EnsureChannelFirstd(keys=("image", "label")),
-            BinaryMaskd(keys="label"),
             GetCentroidAndCropd(keys=["label", "image"]),
             GaussianSmoothedCentroidd(keys="label"),
             AddROI(keys="signal"),
@@ -97,7 +96,6 @@ class VerSeg(BasicTrainTask):
         return [
             LoadImaged(keys=("image", "label"), reader="ITKReader"),
             EnsureChannelFirstd(keys=("image", "label")),
-            BinaryMaskd(keys="label"),
             GetCentroidAndCropd(keys="label"),
             GaussianSmoothedCentroidd(keys="label"),
             AddROI(keys="signal"),
