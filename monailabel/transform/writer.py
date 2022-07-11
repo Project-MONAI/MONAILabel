@@ -12,6 +12,7 @@ import logging
 import tempfile
 from typing import Any, Dict, Iterable, List, Optional
 
+import torch
 import itk
 import nrrd
 import numpy as np
@@ -25,6 +26,10 @@ logger = logging.getLogger(__name__)
 
 # TODO:: Move to MONAI ??
 def write_itk(image_np, output_file, affine, dtype, compress):
+    if isinstance(image_np, torch.Tensor):
+        image_np = image_np.numpy()
+    if isinstance(affine, torch.Tensor):
+        affine = affine.numpy()
     if len(image_np.shape) >= 2:
         image_np = image_np.transpose().copy()
     if dtype:
@@ -85,6 +90,10 @@ def write_seg_nrrd(
         ValueError: In case affine is not provided
         ValueError: In case labels are not provided
     """
+    if isinstance(image_np, torch.Tensor):
+        image_np = image_np.numpy()
+    if isinstance(affine, torch.Tensor):
+        affine = affine.numpy()
     image_np = image_np.transpose().copy()
     if dtype:
         image_np = image_np.astype(dtype)
@@ -175,8 +184,12 @@ class Writer:
         logger.info(f"Result ext: {ext}; write_to_file: {write_to_file}; dtype: {dtype}")
 
         image_np = data[self.label]
+        if isinstance(image_np, torch.Tensor):
+            image_np = image_np.numpy()
         meta_dict = data.get(f"{self.ref_image}_{self.meta_key_postfix}")
         affine = meta_dict.get("affine") if meta_dict else None
+        if isinstance(affine, torch.Tensor):
+            affine = affine.numpy()
         logger.debug(f"Image: {image_np.shape}; Data Image: {data[self.label].shape}")
 
         output_file = None

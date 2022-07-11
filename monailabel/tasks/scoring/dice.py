@@ -11,6 +11,7 @@
 
 import logging
 
+import torch
 import numpy as np
 from monai.transforms import LoadImage
 
@@ -44,7 +45,11 @@ class Dice(ScoringMethod):
                 y_pred = loader(datastore.get_label_uri(y_pred_i, tag_y_pred))
 
                 y = y.flatten()
+                if isinstance(y, torch.Tensor):
+                    y = y.numpy()
                 y_pred = y_pred.flatten()
+                if isinstance(y_pred, torch.Tensor):
+                    y_pred = y_pred.numpy()
                 union = np.sum(y) + np.sum(y_pred)
                 dice = 2.0 * np.sum(y * y_pred) / union if union != 0 else 1
 

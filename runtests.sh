@@ -407,6 +407,7 @@ if [ $doMypyFormat = true ]; then
 fi
 
 # testing command to run
+export USE_META_DICT=1
 cmd="${PY_EXE}"
 
 

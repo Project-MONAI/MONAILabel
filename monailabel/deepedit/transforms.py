@@ -13,6 +13,7 @@ import json
 import logging
 from typing import Dict, Hashable, Mapping, Optional, Sequence, Union
 
+import torch
 import numpy as np
 from monai.config import KeysCollection
 from monai.transforms import CropForeground, ResizeWithPadOrCrop
@@ -333,8 +334,12 @@ class CropGuidanceForegroundd(Transform):
                 signal = (
                     cropper.crop_pad(img=signal[np.newaxis, :], box_start=box_start, box_end=box_end).squeeze(0),
                 )  # requires channel dim
+                if isinstance(signal[0], torch.Tensor):
+                    s = signal[0].numpy()
+                else:
+                    s = signal[0]
                 new_guidance.append(
-                    np.argwhere(signal[0] == 1.0).astype(int).tolist()
+                    np.argwhere(s == 1.0).astype(int).tolist()
                 )  # signal is a tuple containing a numpy array
             else:
                 new_guidance.append([])
@@ -376,6 +381,8 @@ class ResizeGuidanceWithPadOrCropd(Transform):
                     else:
                         signal[point[0], point[1], point[2]] = 1.0
                 signal = croppad(signal[np.newaxis, :]).squeeze(0)  # croppad requires channel dim
+                if isinstance(signal, torch.Tensor):
+                    signal = signal.numpy()
                 new_guidance.append(np.argwhere(signal == 1.0).astype(int).tolist())
             else:
                 new_guidance.append([])
