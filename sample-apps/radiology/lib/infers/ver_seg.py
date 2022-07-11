@@ -63,7 +63,7 @@ class VerSeg(InferTask):
             EnsureChannelFirstd(keys="image"),
             # This transform simulates previous stage
             GetCentroidAndCropd(keys="label"),
-            ##
+            #
             GaussianSmoothedCentroidd(keys="label"),
             Spacingd(keys="image", pixdim=self.target_spacing),
             ScaleIntensityd(keys="image"),
