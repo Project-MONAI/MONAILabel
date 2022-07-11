@@ -190,6 +190,7 @@ class GaussianSmoothedCentroidd(MapTransform):
             if key == "label":
 
                 point = d["centroid"]
+                logger.info("Processing label: " + d["label_meta_dict"]["filename_or_obj"])
                 signal = np.zeros((1, d[key].shape[-3], d[key].shape[-2], d[key].shape[-1]), dtype=np.float32)
                 sshape = signal.shape
                 # Making sure points fall inside the image dimension
