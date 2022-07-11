@@ -223,7 +223,7 @@ def main():
     )
 
     home = str(Path.home())
-    studies = f"{home}/Documents/workspace/Datasets/radiology/VerSe2020/singleImage"
+    studies = f"{home}/Documents/workspace/Datasets/radiology/VerSe2020/multilabel"  # multilabel
 
     parser = argparse.ArgumentParser()
     parser.add_argument("-s", "--studies", default=studies)
@@ -265,8 +265,8 @@ def main():
     app.train(
         request={
             "model": args.model,
-            "max_epochs": 2000,
-            "dataset": "Dataset",  # PersistentDataset, CacheDataset
+            "max_epochs": 100,
+            "dataset": "CacheDataset",  # PersistentDataset, CacheDataset
             "train_batch_size": 1,
             "val_batch_size": 1,
             "multi_gpu": False,

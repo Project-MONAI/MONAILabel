@@ -117,7 +117,7 @@ class GetCentroidAndCropd(MapTransform):
                     point[-3] - padd : point[-3] + padd,
                     point[-2] - padd : point[-2] + padd,
                     point[-1] - int(padd / 4) : point[-1] + int(padd / 4),
-                ]
+                ][None]
 
                 # Plotting
                 # from matplotlib.pyplot import imshow, show, close
@@ -133,7 +133,7 @@ class GetCentroidAndCropd(MapTransform):
                     point[-3] - padd : point[-3] + padd,
                     point[-2] - padd : point[-2] + padd,
                     point[-1] - int(padd / 4) : point[-1] + int(padd / 4),
-                ]
+                ][None]
 
                 # Plotting
                 # from matplotlib.pyplot import imshow, show, close
@@ -143,23 +143,24 @@ class GetCentroidAndCropd(MapTransform):
             else:
                 print("This transform only applies to the label or image")
 
-        canvas_img = np.zeros(d["original_size"], dtype=np.float32)
-        canvas_label = np.zeros(d["original_size"], dtype=np.float32)
-
-        canvas_img[
-            point[-3] - padd : point[-3] + padd,
-            point[-2] - padd : point[-2] + padd,
-            point[-1] - int(padd / 4) : point[-1] + int(padd / 4),
-        ] = d["image"]
-
-        canvas_label[
-            point[-3] - padd : point[-3] + padd,
-            point[-2] - padd : point[-2] + padd,
-            point[-1] - int(padd / 4) : point[-1] + int(padd / 4),
-        ] = d["label"]
-
-        d["image"] = canvas_img
-        d["label"] = canvas_label
+        # For debugging
+        # canvas_img = np.zeros(d["original_size"], dtype=np.float32)
+        # canvas_label = np.zeros(d["original_size"], dtype=np.float32)
+        #
+        # canvas_img[
+        #     point[-3] - padd : point[-3] + padd,
+        #     point[-2] - padd : point[-2] + padd,
+        #     point[-1] - int(padd / 4) : point[-1] + int(padd / 4),
+        # ] = d["image"]
+        #
+        # canvas_label[
+        #     point[-3] - padd : point[-3] + padd,
+        #     point[-2] - padd : point[-2] + padd,
+        #     point[-1] - int(padd / 4) : point[-1] + int(padd / 4),
+        # ] = d["label"]
+        #
+        # d["image"] = canvas_img
+        # d["label"] = canvas_label
 
         # SaveImaged(keys="image", output_postfix="", output_dir="/home/andres/Downloads", separate_folder=False)(d)
         # SaveImaged(keys="label", output_postfix="seg", output_dir="/home/andres/Downloads", separate_folder=False)(d)
@@ -187,6 +188,7 @@ class GaussianSmoothedCentroidd(MapTransform):
         d: Dict = dict(data)
         for key in self.key_iterator(d):
             if key == "label":
+
                 point = d["centroid"]
                 signal = np.zeros((1, d[key].shape[-3], d[key].shape[-2], d[key].shape[-1]), dtype=np.float32)
                 sshape = signal.shape
@@ -248,7 +250,7 @@ class PlaceCroppedAread(MapTransform):
         allow_missing_keys: bool = False,
     ):
         """
-        Place the inference in full image - for inference
+        Place the ROI predicted in the full image
 
         :param keys: The ``keys`` parameter will be used to get and set the actual data item to transform
 
@@ -258,9 +260,15 @@ class PlaceCroppedAread(MapTransform):
     def __call__(self, data: Mapping[Hashable, np.ndarray]) -> Dict[Hashable, np.ndarray]:
         d: Dict = dict(data)
         for key in self.key_iterator(d):
-            if key == "signal":
-                tmp_image = np.concatenate([d["image"], d[key]], axis=0)
-                d["image"] = tmp_image
+            canvas_img = np.zeros(d["original_size"], dtype=np.float32)
+            if key == "pred":
+                # How to pass information from the pre-transform - the ROI specifically
+                # canvas_img[
+                # point[-3] - padd: point[-3] + padd,
+                # point[-2] - padd: point[-2] + padd,
+                # point[-1] - int(padd / 4): point[-1] + int(padd / 4),
+                # ] = d["pred"]
+                d["pred"] = canvas_img
             else:
-                print("This transform only applies to the signal")
+                print("This transform only applies to the pred")
         return d
