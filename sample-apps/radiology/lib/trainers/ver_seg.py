@@ -76,7 +76,7 @@ class VerSeg(BasicTrainTask):
             AddROI(keys="signal"),
             SpatialPadd(keys=("image", "label"), spatial_size=self.roi_size),
             EnsureTyped(keys=("image", "label"), device=context.device),
-            SelectItemsd(keys=("image", "label")),
+            SelectItemsd(keys=("image", "label", "centroids", "original_size", "current_label", "slices_cropped")),
         ]
 
     def train_post_transforms(self, context: Context):
@@ -100,7 +100,7 @@ class VerSeg(BasicTrainTask):
             AddROI(keys="signal"),
             SpatialPadd(keys=("image", "label"), spatial_size=self.roi_size),
             EnsureTyped(keys=("image", "label")),
-            SelectItemsd(keys=("image", "label")),
+            SelectItemsd(keys=("image", "label", "centroids", "original_size", "current_label", "slices_cropped")),
         ]
 
     def val_inferer(self, context: Context):

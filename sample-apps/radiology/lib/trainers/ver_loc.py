@@ -10,10 +10,10 @@
 # limitations under the License.
 import logging
 
+import torch
 from lib.transforms.transforms import VertHeatMap
 from monai.handlers import TensorBoardImageHandler, from_engine
-from monai.inferers import SimpleInferer
-from monai.losses import DiceCELoss
+from monai.inferers import SlidingWindowInferer
 from monai.optimizers import Novograd
 from monai.transforms import (
     Activationsd,
@@ -28,7 +28,8 @@ from monai.transforms import (
 )
 
 from monailabel.tasks.train.basic_train import BasicTrainTask, Context
-from monailabel.tasks.train.utils import region_wise_metrics
+
+# from monailabel.tasks.train.utils import region_wise_metrics
 
 logger = logging.getLogger(__name__)
 
@@ -57,7 +58,8 @@ class VerLoc(BasicTrainTask):
         return Novograd(context.network.parameters(), 0.0001)
 
     def loss_function(self, context: Context):
-        return DiceCELoss(to_onehot_y=True, softmax=True)
+        # return DiceCELoss(to_onehot_y=True, softmax=True)
+        return torch.nn.MSELoss()
 
     def lr_scheduler_handler(self, context: Context):
         return None
@@ -68,12 +70,13 @@ class VerLoc(BasicTrainTask):
     def train_pre_transforms(self, context: Context):
         return [
             LoadImaged(keys=("image", "label"), reader="ITKReader"),
+            EnsureTyped(keys=("image", "label"), device=context.device),
             EnsureChannelFirstd(keys=("image", "label")),
-            # CropForegroundd(keys=("image", "label"), source_key='label'),
-            VertHeatMap(keys="label"),
+            CropForegroundd(keys=("image", "label"), source_key="label"),
+            VertHeatMap(keys="label", label_names=self._labels),
             ScaleIntensityd(keys="image"),
             RandShiftIntensityd(keys="image", offsets=0.10, prob=0.50),
-            EnsureTyped(keys=("image", "label"), device=context.device),
+            # SpatialPadd(keys=("image", "label"), spatial_size=self.roi_size),
             SelectItemsd(keys=("image", "label")),
         ]
 
@@ -91,22 +94,23 @@ class VerLoc(BasicTrainTask):
     def val_pre_transforms(self, context: Context):
         return [
             LoadImaged(keys=("image", "label"), reader="ITKReader"),
+            EnsureTyped(keys=("image", "label")),
             EnsureChannelFirstd(keys=("image", "label")),
             CropForegroundd(keys=("image", "label"), source_key="label"),
             VertHeatMap(keys="label"),
             ScaleIntensityd(keys="image"),
-            EnsureTyped(keys=("image", "label")),
+            # SpatialPadd(keys=("image", "label"), spatial_size=self.roi_size),
             SelectItemsd(keys=("image", "label")),
         ]
 
     def val_inferer(self, context: Context):
-        return SimpleInferer()
+        return SlidingWindowInferer(roi_size=self.roi_size, sw_batch_size=2)
 
-    def train_key_metric(self, context: Context):
-        return region_wise_metrics(self._labels, self.TRAIN_KEY_METRIC, "train")
+    # def train_key_metric(self, context: Context):
+    #     return region_wise_metrics(self._labels, self.TRAIN_KEY_METRIC, "train")
 
-    def val_key_metric(self, context: Context):
-        return region_wise_metrics(self._labels, self.VAL_KEY_METRIC, "val")
+    # def val_key_metric(self, context: Context):
+    #     return region_wise_metrics(self._labels, self.VAL_KEY_METRIC, "val")
 
     def train_handlers(self, context: Context):
         handlers = super().train_handlers(context)

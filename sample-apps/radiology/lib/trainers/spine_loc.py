@@ -71,6 +71,7 @@ class SpineLoc(BasicTrainTask):
     def train_pre_transforms(self, context: Context):
         return [
             LoadImaged(keys=("image", "label"), reader="ITKReader"),
+            EnsureTyped(keys=("image", "label"), device=context.device),
             EnsureChannelFirstd(keys=("image", "label")),
             HeatMapROId(keys="label"),
             Spacingd(keys=("image", "label"), pixdim=self.target_spacing, mode=("bilinear", "nearest")),
@@ -88,7 +89,6 @@ class SpineLoc(BasicTrainTask):
                 image_key="image",
                 image_threshold=0,
             ),
-            EnsureTyped(keys=("image", "label"), device=context.device),
             SelectItemsd(keys=("image", "label")),
         ]
 
@@ -106,11 +106,11 @@ class SpineLoc(BasicTrainTask):
     def val_pre_transforms(self, context: Context):
         return [
             LoadImaged(keys=("image", "label"), reader="ITKReader"),
+            EnsureTyped(keys=("image", "label")),
             EnsureChannelFirstd(keys=("image", "label")),
             HeatMapROId(keys="label"),
             Spacingd(keys=("image", "label"), pixdim=self.target_spacing, mode=("bilinear", "nearest")),
             ScaleIntensityd(keys="image"),
-            EnsureTyped(keys=("image", "label")),
             SelectItemsd(keys=("image", "label")),
         ]
 

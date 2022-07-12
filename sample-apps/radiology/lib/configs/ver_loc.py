@@ -76,7 +76,7 @@ class VerLoc(TaskConfig):
         # Network
         self.network = UNet(
             spatial_dims=3,
-            in_channels=2,  # Image + Gaussian smoothed centroid
+            in_channels=1,
             out_channels=len(self.labels.keys()) + 1,  # All labels plus background
             channels=[16, 32, 64, 128, 256],
             strides=[2, 2, 2, 2],

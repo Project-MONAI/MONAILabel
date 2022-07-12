@@ -10,8 +10,8 @@
 # limitations under the License.
 from typing import Callable, Sequence
 
-from lib.transforms.transforms import AddROI, GaussianSmoothedCentroidd, GetCentroidAndCropd, PlaceCroppedAread
-from monai.inferers import Inferer, SimpleInferer
+from lib.transforms.transforms import PlaceCroppedAread, VertHeatMap
+from monai.inferers import Inferer, SlidingWindowInferer
 from monai.transforms import (
     Activationsd,
     AsDiscreted,
@@ -19,9 +19,7 @@ from monai.transforms import (
     EnsureTyped,
     KeepLargestConnectedComponentd,
     LoadImaged,
-    Resized,
     ScaleIntensityd,
-    Spacingd,
     ToNumpyd,
 )
 
@@ -62,17 +60,13 @@ class VerLoc(InferTask):
             EnsureTyped(keys="image", device=data.get("device") if data else None),
             EnsureChannelFirstd(keys="image"),
             # This transform simulates previous stage
-            GetCentroidAndCropd(keys="label"),
+            VertHeatMap(keys="label"),
             #
-            GaussianSmoothedCentroidd(keys="label"),
-            Spacingd(keys="image", pixdim=self.target_spacing),
             ScaleIntensityd(keys="image"),
-            Resized(keys=("image", "label"), spatial_size=self.roi_size, mode=("area", "nearest")),
-            AddROI(keys="image"),
         ]
 
     def inferer(self, data=None) -> Inferer:
-        return SimpleInferer()
+        return SlidingWindowInferer(roi_size=self.roi_size)
 
     def post_transforms(self, data=None) -> Sequence[Callable]:
         largest_cc = False if not data else data.get("largest_cc", False)

@@ -110,6 +110,20 @@ class GetCentroidAndCropd(MapTransform):
     def __call__(self, data: Mapping[Hashable, np.ndarray]) -> Dict[Hashable, np.ndarray]:
         d: Dict = dict(data)
         for key in self.key_iterator(d):
+            # Logic:
+
+            # 1/ get centroids
+            # 2/ randomly select vertebra
+            # 3/ spatial crop based on the centroid
+            # 4/ binarise cropped volume
+
+            # Alternative logic:
+
+            # 1/ get centroids
+            # 2/ randomly select vertebra
+            # 3/ binarise volume
+            # 4/ apply cropForeground transform
+
             if key == "label":
 
                 # Get centroids
@@ -281,45 +295,48 @@ class PlaceCroppedAread(MapTransform):
 
 
 class VertHeatMap(MapTransform):
-    def __init__(self, keys, sigma=1.0):
+    def __init__(self, keys, sigma=3.0, label_names=None):
         super().__init__(keys)
         self.sigma = sigma
-
-    def _getCentroids_pre_gaussian(self, label):
-        centroids = []
-        out = np.zeros(label.shape, dtype=np.float32)
-        # loop over all segments
-        for seg_class in np.unique(label):
-            c = {}
-            # skip background
-            if seg_class == 0:
-                continue
-            # get centre of mass (CoM)
-            centre = [np.average(indices).astype(int) for indices in np.where(label == seg_class)]
-            c["label"] = int(seg_class)
-            c["X"] = centre[-3]
-            c["Y"] = centre[-2]
-            c["Z"] = centre[-1]
-            centroids.append(c)
-            out[:, c["X"], c["Y"], c["Z"]] = 1.0
-        return centroids, out
+        self.label_names = label_names
 
     def __call__(self, data):
-        d: Dict = dict(data)
-        for key in self.keys:
 
-            centroids, out = self._getCentroids_pre_gaussian(d[key])
+        for k in self.keys:
+            i = data[k].long()
+            # one hot if necessary
+            is_onehot = i.shape[0] > 1
+            if is_onehot:
+                out = torch.zeros_like(i)
+            else:
+                out = torch.nn.functional.one_hot(i, len(self.label_names) + 1)  # plus background
+                out = torch.movedim(out[0], -1, 0)
+                out.fill_(0)
 
-            d["centroids"] = centroids
+            # loop over all segmentation classes
+            for seg_class in torch.unique(i):
+                # skip background
+                if seg_class == 0:
+                    continue
+                # get CoM for given segmentation class
+                centre = [np.average(indices.cpu()).astype(int) for indices in torch.where(i[0] == seg_class)]
+                centre.insert(0, seg_class.item())
+                out[tuple(centre)] = 1
+
+            # TO DO: Keep the centroids in the data dictionary!
 
             # Gaussian smooth
-            out = GaussianSmooth(self.sigma)(out)
+            out = GaussianSmooth(self.sigma, "scalespace")(out.cuda()).cpu()
 
             # Normalize to [0,1]
             out = ScaleIntensity()(out)
 
-            d[key] = out
+            # Fill in background
+            out[0] = 1 - out[1:].sum(0)
+            out = torch.clamp(out, min=0)
 
-            # SaveImaged(keys="label", output_postfix="", output_dir="/home/andres/Downloads", separate_folder=False)(d)
+            data[k] = out
 
-        return d
+            # SaveImaged(keys="label", output_postfix="", output_dir="/home/andres/Downloads", separate_folder=False)(data)
+
+        return data
