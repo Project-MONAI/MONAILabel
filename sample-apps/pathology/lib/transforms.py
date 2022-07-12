@@ -177,7 +177,7 @@ class FilterImaged(MapTransform):
     def __call__(self, data):
         d = dict(data)
         for key in self.keys:
-            img = d[key]
+            img = d[key].numpy() if isinstance(d[key], torch.Tensor) else d[key]
             d[key] = self.filter(img)
         return d
 
