@@ -10,7 +10,7 @@
 # limitations under the License.
 import logging
 
-from lib.transforms.transforms import AddROI, BinaryMaskd, GaussianSmoothedCentroidd, GetCentroidAndCropd
+from lib.transforms.transforms import VertHeatMap
 from monai.handlers import TensorBoardImageHandler, from_engine
 from monai.inferers import SimpleInferer
 from monai.losses import DiceCELoss
@@ -18,14 +18,13 @@ from monai.optimizers import Novograd
 from monai.transforms import (
     Activationsd,
     AsDiscreted,
+    CropForegroundd,
     EnsureChannelFirstd,
     EnsureTyped,
     LoadImaged,
     RandShiftIntensityd,
-    Resized,
     ScaleIntensityd,
     SelectItemsd,
-    Spacingd,
 )
 
 from monailabel.tasks.train.basic_train import BasicTrainTask, Context
@@ -70,14 +69,10 @@ class VerLoc(BasicTrainTask):
         return [
             LoadImaged(keys=("image", "label"), reader="ITKReader"),
             EnsureChannelFirstd(keys=("image", "label")),
-            BinaryMaskd(keys="label"),
-            GetCentroidAndCropd(keys=["label", "image"]),
-            GaussianSmoothedCentroidd(keys="label"),
-            AddROI(keys="signal"),
-            Spacingd(keys=("image", "label"), pixdim=self.target_spacing, mode=("bilinear", "nearest")),
+            # CropForegroundd(keys=("image", "label"), source_key='label'),
+            VertHeatMap(keys="label"),
             ScaleIntensityd(keys="image"),
             RandShiftIntensityd(keys="image", offsets=0.10, prob=0.50),
-            Resized(keys=("image", "label"), spatial_size=self.roi_size, mode=("area", "nearest")),
             EnsureTyped(keys=("image", "label"), device=context.device),
             SelectItemsd(keys=("image", "label")),
         ]
@@ -97,13 +92,9 @@ class VerLoc(BasicTrainTask):
         return [
             LoadImaged(keys=("image", "label"), reader="ITKReader"),
             EnsureChannelFirstd(keys=("image", "label")),
-            BinaryMaskd(keys="label"),
-            GetCentroidAndCropd(keys="label"),
-            GaussianSmoothedCentroidd(keys="label"),
-            AddROI(keys="signal"),
-            Spacingd(keys=("image", "label"), pixdim=self.target_spacing, mode=("bilinear", "nearest")),
+            CropForegroundd(keys=("image", "label"), source_key="label"),
+            VertHeatMap(keys="label"),
             ScaleIntensityd(keys="image"),
-            Resized(keys=("image", "label"), spatial_size=self.roi_size, mode=("area", "nearest")),
             EnsureTyped(keys=("image", "label")),
             SelectItemsd(keys=("image", "label")),
         ]

@@ -223,11 +223,11 @@ def main():
     )
 
     home = str(Path.home())
-    studies = f"{home}/Documents/workspace/Datasets/radiology/VerSe2020/small"  # multilabel
+    studies = f"{home}/Documents/workspace/Datasets/radiology/VerSe2020/singleImage"  # multilabel
 
     parser = argparse.ArgumentParser()
     parser.add_argument("-s", "--studies", default=studies)
-    parser.add_argument("-m", "--model", default="ver_seg")
+    parser.add_argument("-m", "--model", default="ver_loc")
     parser.add_argument("-t", "--test", default="train", choices=("train", "infer"))
     args = parser.parse_args()
 

@@ -16,8 +16,7 @@ import numpy as np
 import torch
 from monai.config import KeysCollection
 from monai.networks.layers import GaussianFilter
-
-# from monai.transforms import SaveImaged, SpatialCrop
+from monai.transforms import GaussianSmooth, ScaleIntensity, SpatialCrop
 from monai.transforms.transform import MapTransform
 
 logger = logging.getLogger(__name__)
@@ -81,14 +80,14 @@ class GetCentroidAndCropd(MapTransform):
         allow_missing_keys: bool = False,
     ):
         """
-        Compute centroid
+        Compute centroids and crop image and label
 
         :param keys: The ``keys`` parameter will be used to get and set the actual data item to transform
 
         """
         super().__init__(keys, allow_missing_keys)
         if roi_size is None:
-            roi_size = [256, 256, 256]
+            roi_size = [128, 128, 128]
         self.roi_size = roi_size
 
     def _getCentroids(self, label):
@@ -110,82 +109,70 @@ class GetCentroidAndCropd(MapTransform):
 
     def __call__(self, data: Mapping[Hashable, np.ndarray]) -> Dict[Hashable, np.ndarray]:
         d: Dict = dict(data)
-        current_label = 0
-        padd = 100
         for key in self.key_iterator(d):
             if key == "label":
 
-                centroids = self._getCentroids(d[key])
-                d["centroids"] = centroids
+                # Get centroids
+                d["centroids"] = self._getCentroids(d[key])
 
                 d["original_size"] = d[key].shape[-3], d[key].shape[-2], d[key].shape[-1]
 
-                # TO DO: SELECT A DIFFERENT FOR EACH ITERATION
-                firstLabel = d["centroids"][current_label]
+                # TO DO: WHAT'S THE BEST WAY TO SELECT A DIFFERENT SEGMENT EACH ITERATION
+                # PERHAPS DOING BATCHES AS IN TRANSFORM RandCropByPosNegLabeld
+                current_label = np.random.randint(0, len(d["centroids"]))
+                first_label = d["centroids"][current_label]
+                d["current_label"] = current_label
 
-                point = []
-                point.append(firstLabel["X"])
-                point.append(firstLabel["Y"])
-                point.append(firstLabel["Z"])
+                logger.info(f"Processing vertebra: {first_label['label']}")
+
+                centroid = [first_label["X"], first_label["Y"], first_label["Z"]]
 
                 # Cropping
-                # cropper = SpatialCrop(roi_center=point, roi_size=self.roi_size)
-                # d[key] = cropper(d[key])
-                # d[key] = d[key][0, 100:-1, 100:-1, 90:-1]
+                cropper = SpatialCrop(roi_center=centroid, roi_size=self.roi_size)
 
-                d[key] = d[key][
-                    0,
-                    point[-3] - padd : point[-3] + padd,
-                    point[-2] - padd : point[-2] + padd,
-                    point[-1] - int(padd / 4) : point[-1] + int(padd / 4),
-                ][None]
+                slices_cropped = [
+                    [cropper.slices[-3].start, cropper.slices[-3].stop],
+                    [cropper.slices[-2].start, cropper.slices[-2].stop],
+                    [cropper.slices[-1].start, cropper.slices[-1].stop],
+                ]
 
-                # Make the cropping binary
-                d[key][d[key] != firstLabel["label"]] = 0
+                d["slices_cropped"] = slices_cropped
+
+                d[key] = cropper(d[key])
+
+                # Make binary the cropped label
+                d[key][d[key] != first_label["label"]] = 0
+                d[key][d[key] > 0] = 1
 
                 # Plotting
                 # from matplotlib.pyplot import imshow, show, close
                 # imshow(d[key][0,:,:,int(d[key].shape[-1]/2)])
                 # show()
                 # close()
-
             elif key == "image":
-                # d[key] = cropper(d[key])
-                # d[key] = d[key][0, 100:-1, 100:-1, 90:-1]
-                d[key] = d[key][
-                    0,
-                    point[-3] - padd : point[-3] + padd,
-                    point[-2] - padd : point[-2] + padd,
-                    point[-1] - int(padd / 4) : point[-1] + int(padd / 4),
-                ][None]
-
-                # Plotting
-                # from matplotlib.pyplot import imshow, show, close
-                # imshow(d[key][:,:,60])
-                # show()
-                # close()
+                d[key] = cropper(d[key])
             else:
                 print("This transform only applies to the label or image")
 
-        # For debugging
+        # For debugging purposes
         # canvas_img = np.zeros(d["original_size"], dtype=np.float32)
         # canvas_label = np.zeros(d["original_size"], dtype=np.float32)
         #
         # canvas_img[
-        #     point[-3] - padd : point[-3] + padd,
-        #     point[-2] - padd : point[-2] + padd,
-        #     point[-1] - int(padd / 4) : point[-1] + int(padd / 4),
+        #     cropper.slices[-3].start : cropper.slices[-3].stop,
+        #     cropper.slices[-2].start : cropper.slices[-2].stop,
+        #     cropper.slices[-1].start : cropper.slices[-1].stop,
         # ] = d["image"]
         #
         # canvas_label[
-        #     point[-3] - padd : point[-3] + padd,
-        #     point[-2] - padd : point[-2] + padd,
-        #     point[-1] - int(padd / 4) : point[-1] + int(padd / 4),
+        #     cropper.slices[-3].start : cropper.slices[-3].stop,
+        #     cropper.slices[-2].start : cropper.slices[-2].stop,
+        #     cropper.slices[-1].start : cropper.slices[-1].stop,
         # ] = d["label"]
         #
         # d["image"] = canvas_img
         # d["label"] = canvas_label
-
+        #
         # SaveImaged(keys="image", output_postfix="", output_dir="/home/andres/Downloads", separate_folder=False)(d)
         # SaveImaged(keys="label", output_postfix="seg", output_dir="/home/andres/Downloads", separate_folder=False)(d)
 
@@ -211,17 +198,18 @@ class GaussianSmoothedCentroidd(MapTransform):
     def __call__(self, data: Mapping[Hashable, np.ndarray]) -> Dict[Hashable, np.ndarray]:
         d: Dict = dict(data)
         for key in self.key_iterator(d):
-            if key == "label":
-
-                point = d["centroid"]
+            if key == "image":
                 logger.info("Processing label: " + d["label_meta_dict"]["filename_or_obj"])
-                signal = np.zeros((1, d[key].shape[-3], d[key].shape[-2], d[key].shape[-1]), dtype=np.float32)
-                sshape = signal.shape
-                # Making sure points fall inside the image dimension
-                p1 = max(0, min(int(point[-3]), sshape[-3] - 1))
-                p2 = max(0, min(int(point[-2]), sshape[-2] - 1))
-                p3 = max(0, min(int(point[-1]), sshape[-1] - 1))
-                signal[:, p1, p2, p3] = 1.0
+
+                c_label = d["centroids"][d["current_label"]]
+                signal = np.zeros(d["original_size"], dtype=np.float32)
+                signal[c_label["X"], c_label["Y"], c_label["Z"]] = 1.0
+                signal = signal[
+                    d["slices_cropped"][-3][0] : d["slices_cropped"][-3][1],
+                    d["slices_cropped"][-2][0] : d["slices_cropped"][-2][1],
+                    d["slices_cropped"][-1][0] : d["slices_cropped"][-1][1],
+                ]
+                signal = signal[None]
 
                 # Apply a Gaussian filter to the signal
                 signal_tensor = torch.tensor(signal[0])
@@ -231,12 +219,6 @@ class GaussianSmoothedCentroidd(MapTransform):
                 signal[0] = signal_tensor.detach().cpu().numpy()
                 signal[0] = (signal[0] - np.min(signal[0])) / (np.max(signal[0]) - np.min(signal[0]))
                 d["signal"] = signal
-
-                # # Plotting
-                # from matplotlib.pyplot import imshow, show, close
-                # imshow(d['signal'][0,:,:,60])
-                # show()
-                # close()
 
             else:
                 print("This transform only applies to the signal")
@@ -287,13 +269,57 @@ class PlaceCroppedAread(MapTransform):
         for key in self.key_iterator(d):
             canvas_img = np.zeros(d["original_size"], dtype=np.float32)
             if key == "pred":
-                # How to pass information from the pre-transform - the ROI specifically
-                # canvas_img[
-                # point[-3] - padd: point[-3] + padd,
-                # point[-2] - padd: point[-2] + padd,
-                # point[-1] - int(padd / 4): point[-1] + int(padd / 4),
-                # ] = d["pred"]
-                d["pred"] = canvas_img
+                # How to get the ROI to reconstruct final image
+                # Iterate over all the vertebras
+                print(d[key].shape)
             else:
                 print("This transform only applies to the pred")
+        return d
+
+
+# For the second stage - Vertebra localization
+
+
+class VertHeatMap(MapTransform):
+    def __init__(self, keys, sigma=1.0):
+        super().__init__(keys)
+        self.sigma = sigma
+
+    def _getCentroids_pre_gaussian(self, label):
+        centroids = []
+        out = np.zeros(label.shape, dtype=np.float32)
+        # loop over all segments
+        for seg_class in np.unique(label):
+            c = {}
+            # skip background
+            if seg_class == 0:
+                continue
+            # get centre of mass (CoM)
+            centre = [np.average(indices).astype(int) for indices in np.where(label == seg_class)]
+            c["label"] = int(seg_class)
+            c["X"] = centre[-3]
+            c["Y"] = centre[-2]
+            c["Z"] = centre[-1]
+            centroids.append(c)
+            out[:, c["X"], c["Y"], c["Z"]] = 1.0
+        return centroids, out
+
+    def __call__(self, data):
+        d: Dict = dict(data)
+        for key in self.keys:
+
+            centroids, out = self._getCentroids_pre_gaussian(d[key])
+
+            d["centroids"] = centroids
+
+            # Gaussian smooth
+            out = GaussianSmooth(self.sigma)(out)
+
+            # Normalize to [0,1]
+            out = ScaleIntensity()(out)
+
+            d[key] = out
+
+            # SaveImaged(keys="label", output_postfix="", output_dir="/home/andres/Downloads", separate_folder=False)(d)
+
         return d

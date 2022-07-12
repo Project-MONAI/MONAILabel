@@ -47,13 +47,13 @@ class VerSeg(TaskConfig):
 
         self.target_spacing = (1.0, 1.0, 1.0)  # target space for image
         # Setting ROI size should consider max width, height and depth of the images
-        self.roi_size = (128, 128, 128)  # sliding window size for train and infer
+        self.roi_size = (128, 128, 128)  # cropped region covering vertebra
 
         # Network
         self.network = UNet(
             spatial_dims=3,
             in_channels=2,  # Image + Gaussian smoothed centroid
-            out_channels=len(self.labels.keys()) + 1,  # All labels plus background
+            out_channels=2,
             channels=[16, 32, 64, 128, 256],
             strides=[2, 2, 2, 2],
             num_res_units=2,

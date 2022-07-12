@@ -10,7 +10,7 @@
 # limitations under the License.
 from typing import Callable, Sequence
 
-from lib.transforms.transforms import AddROI, GaussianSmoothedCentroidd, GetCentroidAndCropd, PlaceCroppedAread
+from lib.transforms.transforms import AddROI, GaussianSmoothedCentroidd, PlaceCroppedAread
 from monai.inferers import Inferer, SimpleInferer
 from monai.transforms import (
     Activationsd,
@@ -19,9 +19,8 @@ from monai.transforms import (
     EnsureTyped,
     KeepLargestConnectedComponentd,
     LoadImaged,
-    Resized,
     ScaleIntensityd,
-    Spacingd,
+    SpatialPadd,
     ToNumpyd,
 )
 
@@ -61,14 +60,13 @@ class VerSeg(InferTask):
             LoadImaged(keys="image", reader="ITKReader"),
             EnsureTyped(keys="image", device=data.get("device") if data else None),
             EnsureChannelFirstd(keys="image"),
-            # This transform simulates previous stage
-            GetCentroidAndCropd(keys="label"),
-            #
-            GaussianSmoothedCentroidd(keys="label"),
-            Spacingd(keys="image", pixdim=self.target_spacing),
             ScaleIntensityd(keys="image"),
-            Resized(keys=("image", "label"), spatial_size=self.roi_size, mode=("area", "nearest")),
+            # This transform simulates previous stage
+            # GetCentroidAndCropd(keys="label"),
+            #
+            GaussianSmoothedCentroidd(keys="image"),
             AddROI(keys="image"),
+            SpatialPadd(keys="image", spatial_size=self.roi_size),
         ]
 
     def inferer(self, data=None) -> Inferer:

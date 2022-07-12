@@ -22,10 +22,9 @@ from monai.transforms import (
     EnsureTyped,
     LoadImaged,
     RandShiftIntensityd,
-    Resized,
     ScaleIntensityd,
     SelectItemsd,
-    Spacingd,
+    SpatialPadd,
 )
 
 from monailabel.tasks.train.basic_train import BasicTrainTask, Context
@@ -70,13 +69,12 @@ class VerSeg(BasicTrainTask):
         return [
             LoadImaged(keys=("image", "label"), reader="ITKReader"),
             EnsureChannelFirstd(keys=("image", "label")),
-            GetCentroidAndCropd(keys=["label", "image"]),
-            GaussianSmoothedCentroidd(keys="label"),
-            AddROI(keys="signal"),
-            Spacingd(keys=("image", "label"), pixdim=self.target_spacing, mode=("bilinear", "nearest")),
             ScaleIntensityd(keys="image"),
             RandShiftIntensityd(keys="image", offsets=0.10, prob=0.50),
-            Resized(keys=("image", "label"), spatial_size=self.roi_size, mode=("area", "nearest")),
+            GetCentroidAndCropd(keys=["label", "image"], roi_size=self.roi_size),
+            GaussianSmoothedCentroidd(keys="image"),
+            AddROI(keys="signal"),
+            SpatialPadd(keys=("image", "label"), spatial_size=self.roi_size),
             EnsureTyped(keys=("image", "label"), device=context.device),
             SelectItemsd(keys=("image", "label")),
         ]
@@ -96,12 +94,11 @@ class VerSeg(BasicTrainTask):
         return [
             LoadImaged(keys=("image", "label"), reader="ITKReader"),
             EnsureChannelFirstd(keys=("image", "label")),
-            GetCentroidAndCropd(keys="label"),
-            GaussianSmoothedCentroidd(keys="label"),
-            AddROI(keys="signal"),
-            Spacingd(keys=("image", "label"), pixdim=self.target_spacing, mode=("bilinear", "nearest")),
             ScaleIntensityd(keys="image"),
-            Resized(keys=("image", "label"), spatial_size=self.roi_size, mode=("area", "nearest")),
+            GetCentroidAndCropd(keys="label"),
+            GaussianSmoothedCentroidd(keys="image"),
+            AddROI(keys="signal"),
+            SpatialPadd(keys=("image", "label"), spatial_size=self.roi_size),
             EnsureTyped(keys=("image", "label")),
             SelectItemsd(keys=("image", "label")),
         ]
