@@ -13,11 +13,11 @@ import tempfile
 from typing import Any, Dict, Iterable, List, Optional
 
 import itk
+import monai
 import nrrd
 import numpy as np
 import torch
 from monai.data import write_nifti
-import monai
 
 from monailabel.utils.others.generic import file_ext
 from monailabel.utils.others.pathology import create_asap_annotations_xml, create_dsa_annotations_json

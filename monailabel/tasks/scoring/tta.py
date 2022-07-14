@@ -22,15 +22,7 @@ from monai.data.dataloader import DataLoader
 from monai.data.dataset import Dataset
 from monai.data.utils import list_data_collate, pad_list_data_collate
 from monai.inferers import SimpleInferer
-from monai.transforms import (
-    Activations,
-    AsDiscrete,
-    LoadImaged,
-    RandAffined,
-    RandFlipd,
-    RandRotated,
-    Resized,
-)
+from monai.transforms import Activations, AsDiscrete, LoadImaged, RandAffined, RandFlipd, RandRotated, Resized
 from monai.transforms.compose import Compose
 from monai.transforms.inverse import InvertibleTransform
 from monai.transforms.inverse_batch_transform import BatchInverseTransform

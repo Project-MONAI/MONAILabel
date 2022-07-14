@@ -10,8 +10,8 @@
 # limitations under the License.
 import logging
 
-import numpy as np
 import monai
+import numpy as np
 import numpymaxflow
 import torch
 from monai.networks.layers import GaussianMixtureModel
