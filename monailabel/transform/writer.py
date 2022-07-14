@@ -17,6 +17,7 @@ import nrrd
 import numpy as np
 import torch
 from monai.data import write_nifti
+import monai
 
 from monailabel.utils.others.generic import file_ext
 from monailabel.utils.others.pathology import create_asap_annotations_xml, create_dsa_annotations_json
@@ -26,9 +27,10 @@ logger = logging.getLogger(__name__)
 
 # TODO:: Move to MONAI ??
 def write_itk(image_np, output_file, affine, dtype, compress):
-    if isinstance(image_np, torch.Tensor):
-        image_np = image_np.numpy()
-    if isinstance(affine, torch.Tensor):
+    if isinstance(image_np, monai.data.MetaTensor):
+        affine = image_np.affine
+        image_np = image_np.array
+    elif isinstance(affine, torch.Tensor):
         affine = affine.numpy()
     if len(image_np.shape) >= 2:
         image_np = image_np.transpose().copy()
@@ -90,9 +92,10 @@ def write_seg_nrrd(
         ValueError: In case affine is not provided
         ValueError: In case labels are not provided
     """
-    if isinstance(image_np, torch.Tensor):
-        image_np = image_np.numpy()
-    if isinstance(affine, torch.Tensor):
+    if isinstance(image_np, monai.data.MetaTensor):
+        affine = image_np.affine
+        image_np = image_np.array
+    elif isinstance(affine, torch.Tensor):
         affine = affine.numpy()
     image_np = image_np.transpose().copy()
     if dtype:

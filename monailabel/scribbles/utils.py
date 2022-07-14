@@ -11,6 +11,7 @@
 import logging
 
 import numpy as np
+import monai
 import numpymaxflow
 import torch
 from monai.networks.layers import GaussianMixtureModel
@@ -142,8 +143,8 @@ def make_histograms(image, scrib, scribbles_bg_label, scribbles_fg_label, alpha_
 def make_likelihood_image_histogram(
     image, scrib, scribbles_bg_label, scribbles_fg_label, num_bins=64, return_label=False
 ):
-    if isinstance(image, torch.Tensor):
-        image = image.numpy()
+    if isinstance(image, monai.data.MetaTensor):
+        image = image.array
     # normalise image in range [0, 1] if needed
     min_img = np.min(image)
     max_img = np.max(image)

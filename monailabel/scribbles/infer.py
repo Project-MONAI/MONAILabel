@@ -62,8 +62,7 @@ class ScribblesLikelihoodInferTask(InferTask):
 
     def pre_transforms(self, data):
         return [
-            LoadImaged(keys=["image", "label"]),
-            EnsureChannelFirstd(keys=["image", "label"]),
+            LoadImaged(keys=["image", "label"], image_only=True, ensure_channel_first=True),
             FromMetaTensord(keys=["image", "label"]),
             AddBackgroundScribblesFromROId(
                 scribbles="label",

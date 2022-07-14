@@ -12,6 +12,7 @@ import logging
 from copy import deepcopy
 from typing import Optional
 
+import monai
 import numpy as np
 import torch
 from monai.networks.blocks import CRF
@@ -39,7 +40,7 @@ class InteractiveSegmentationTransform(Transform):
         if key not in data.keys():
             raise ValueError(f"Key {key} not found, present keys {data.keys()}")
 
-        return data[key].numpy() if isinstance(data[key], torch.Tensor) else data[key]
+        return data[key].array if isinstance(data[key], monai.data.MetaTensor) else data[key]
 
     def _normalise_logits(self, data, axis=0):
         # check if logits is a true prob, if not then apply softmax

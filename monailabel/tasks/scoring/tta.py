@@ -24,14 +24,12 @@ from monai.data.utils import list_data_collate, pad_list_data_collate
 from monai.inferers import SimpleInferer
 from monai.transforms import (
     Activations,
-    AddChanneld,
     AsDiscrete,
     LoadImaged,
     RandAffined,
     RandFlipd,
     RandRotated,
     Resized,
-    ToTensord,
 )
 from monai.transforms.compose import Compose
 from monai.transforms.inverse import InvertibleTransform
@@ -71,8 +69,7 @@ class TTAScoring(ScoringMethod):
 
     def pre_transforms(self):
         t = [
-            LoadImaged(keys="image", reader="nibabelreader"),
-            AddChanneld(keys="image"),
+            LoadImaged(keys="image", reader="nibabelreader", image_only=True, ensure_channel_first=True),
             # Spacing might not be needed as resize transform is used later.
             # Spacingd(keys="image", pixdim=self.spacing),
             RandAffined(
@@ -80,7 +77,6 @@ class TTAScoring(ScoringMethod):
                 prob=1,
                 rotate_range=(np.pi / 4, np.pi / 4, np.pi / 4),
                 padding_mode="zeros",
-                as_tensor_output=False,
             ),
             RandFlipd(keys="image", prob=0.5, spatial_axis=0),
             RandRotated(keys="image", range_x=(-5, 5), range_y=(-5, 5), range_z=(-5, 5)),
@@ -89,7 +85,6 @@ class TTAScoring(ScoringMethod):
         # If using TTA for deepedit
         if self.deepedit:
             t.append(DiscardAddGuidanced(keys="image"))
-        t.append(ToTensord(keys="image"))
         return Compose(t)
 
     def post_transforms(self):
@@ -317,8 +312,6 @@ class TestTimeAugmentation:
         ds = Dataset(data_in, self.transform)
         dl = DataLoader(ds, self.num_workers, batch_size=self.batch_size, collate_fn=pad_list_data_collate)
 
-        label_transform_key = self.label_key + InverseKeys.KEY_SUFFIX
-
         # create inverter
         inverter = BatchInverseTransform(self.transform, dl, collate_fn=list_data_collate)
 
@@ -328,18 +321,10 @@ class TestTimeAugmentation:
             batch_images = batch_data[self.image_key].to(self.device)
 
             # do model forward pass
-            batch_output = self.inferrer_fn(batch_images)
-            if isinstance(batch_output, torch.Tensor):
-                batch_output = batch_output.detach().cpu()
-            if isinstance(batch_output, np.ndarray):
-                batch_output = torch.Tensor(batch_output)
+            batch_output = self.inferrer_fn(batch_images)  # output MetaTensor
 
             # create a dictionary containing the inferred batch and their transforms
-            inferred_dict = {self.label_key: batch_output, label_transform_key: batch_data[label_transform_key]}
-            # if meta dict is present, add that too (required for some inverse transforms)
-            label_meta_dict_key = self.meta_keys or f"{self.label_key}_{self.meta_key_postfix}"
-            if label_meta_dict_key in batch_data:
-                inferred_dict[label_meta_dict_key] = batch_data[label_meta_dict_key]
+            inferred_dict = {self.label_key: batch_output}
 
             # do inverse transformation (allow missing keys as only inverting label)
             with allow_missing_keys_mode(self.transform):  # type: ignore
@@ -349,7 +334,7 @@ class TestTimeAugmentation:
             outputs.append(inv_batch[self.label_key])
 
         # output
-        output: np.ndarray = np.concatenate(outputs)
+        output: np.ndarray = np.concatenate(outputs)  # this drops metainfo, torch.stack will keep MetaTensors
 
         if self.return_full_data:
             return output

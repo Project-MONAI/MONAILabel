@@ -407,7 +407,7 @@ if [ $doMypyFormat = true ]; then
 fi
 
 # testing command to run
-export USE_META_DICT=1  # for 0.9.0 compatibility
+# export USE_META_DICT=1  # for 0.9.0 compatibility
 cmd="${PY_EXE}"
 
 
