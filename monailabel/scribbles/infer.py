@@ -112,6 +112,7 @@ class ScribblesLikelihoodInferTask(InferTask):
                 lamda=self.lamda,
                 sigma=self.sigma,
             ),
+            FromMetaTensord(keys=["image"]),
             Restored(keys="pred", ref_image="image"),
             BoundingBoxd(keys="pred", result="result", bbox="bbox"),
         ]
