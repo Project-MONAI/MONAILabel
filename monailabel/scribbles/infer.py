@@ -9,7 +9,15 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-from monai.transforms import Compose, EnsureChannelFirstd, FromMetaTensord, LoadImaged, ScaleIntensityRanged, Spacingd, ToMetaTensord
+from monai.transforms import (
+    Compose,
+    EnsureChannelFirstd,
+    FromMetaTensord,
+    LoadImaged,
+    ScaleIntensityRanged,
+    Spacingd,
+    ToMetaTensord,
+)
 
 from monailabel.interfaces.tasks.infer import InferTask, InferType
 from monailabel.scribbles.transforms import (
