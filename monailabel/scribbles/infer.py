@@ -9,7 +9,7 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-from monai.transforms import Compose, EnsureChannelFirstd, LoadImaged, ScaleIntensityRanged, Spacingd
+from monai.transforms import Compose, EnsureChannelFirstd, FromMetaTensord, LoadImaged, ScaleIntensityRanged, Spacingd
 
 from monailabel.interfaces.tasks.infer import InferTask, InferType
 from monailabel.scribbles.transforms import (
@@ -64,6 +64,7 @@ class ScribblesLikelihoodInferTask(InferTask):
         return [
             LoadImaged(keys=["image", "label"]),
             EnsureChannelFirstd(keys=["image", "label"]),
+            FromMetaTensord(keys=["image", "label"]),
             AddBackgroundScribblesFromROId(
                 scribbles="label",
                 scribbles_bg_label=self.scribbles_bg_label,
