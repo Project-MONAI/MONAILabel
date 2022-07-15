@@ -168,6 +168,8 @@ class InferDeepgrowPipeline(InferTask):
         return points
 
     def get_slices_points(self, label, initial_foreground):
+        if isinstance(label, torch.Tensor):
+            label = label.numpy()
         logger.debug(f"Label shape: {label.shape}")
 
         foreground_all = initial_foreground

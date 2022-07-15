@@ -9,7 +9,15 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-from monai.transforms import Compose, EnsureChannelFirstd, LoadImaged, ScaleIntensityRanged, Spacingd
+from monai.transforms import (
+    Compose,
+    EnsureChannelFirstd,
+    FromMetaTensord,
+    LoadImaged,
+    ScaleIntensityRanged,
+    Spacingd,
+    ToMetaTensord,
+)
 
 from monailabel.interfaces.tasks.infer import InferTask, InferType
 from monailabel.scribbles.transforms import (
@@ -64,11 +72,13 @@ class ScribblesLikelihoodInferTask(InferTask):
         return [
             LoadImaged(keys=["image", "label"]),
             EnsureChannelFirstd(keys=["image", "label"]),
+            FromMetaTensord(keys=["image", "label"]),
             AddBackgroundScribblesFromROId(
                 scribbles="label",
                 scribbles_bg_label=self.scribbles_bg_label,
                 scribbles_fg_label=self.scribbles_fg_label,
             ),
+            ToMetaTensord(keys=["image", "label"]),
             Spacingd(keys=["image", "label"], pixdim=self.pix_dim, mode=["bilinear", "nearest"]),
             ScaleIntensityRanged(
                 keys="image",
@@ -102,6 +112,7 @@ class ScribblesLikelihoodInferTask(InferTask):
                 lamda=self.lamda,
                 sigma=self.sigma,
             ),
+            FromMetaTensord(keys=["image"]),
             Restored(keys="pred", ref_image="image"),
             BoundingBoxd(keys="pred", result="result", bbox="bbox"),
         ]

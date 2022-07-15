@@ -36,7 +36,7 @@ class SegmentationSpleen(InferTask):
         path,
         network=None,
         type=InferType.SEGMENTATION,
-        labels="spleen",
+        labels=None,
         dimension=3,
         description="A pre-trained model for volumetric (3D) segmentation of the spleen from CT image",
         **kwargs,
