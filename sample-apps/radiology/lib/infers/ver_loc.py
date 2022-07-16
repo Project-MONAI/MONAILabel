@@ -10,16 +10,15 @@
 # limitations under the License.
 from typing import Callable, Sequence
 
-from lib.transforms.transforms import PlaceCroppedAread, VertHeatMap
+from lib.transforms.transforms import VertHeatMap
 from monai.inferers import Inferer, SlidingWindowInferer
 from monai.transforms import (
     Activationsd,
-    AsDiscreted,
     EnsureChannelFirstd,
     EnsureTyped,
-    KeepLargestConnectedComponentd,
     LoadImaged,
     ScaleIntensityd,
+    SpatialPadd,
     ToNumpyd,
 )
 
@@ -63,22 +62,17 @@ class VerLoc(InferTask):
             VertHeatMap(keys="label"),
             #
             ScaleIntensityd(keys="image"),
+            SpatialPadd(keys="label", spatial_size=self.roi_size),
         ]
 
     def inferer(self, data=None) -> Inferer:
         return SlidingWindowInferer(roi_size=(128, 128, 128))
 
     def post_transforms(self, data=None) -> Sequence[Callable]:
-        largest_cc = False if not data else data.get("largest_cc", False)
-        applied_labels = list(self.labels.values()) if isinstance(self.labels, dict) else self.labels
         t = [
             EnsureTyped(keys="pred", device=data.get("device") if data else None),
             Activationsd(keys="pred", softmax=True),
-            AsDiscreted(keys="pred", argmax=True),
             ToNumpyd(keys="pred"),
-            PlaceCroppedAread(keys="pred"),
+            Restored(keys="pred", ref_image="image"),
         ]
-        if largest_cc:
-            t.append(KeepLargestConnectedComponentd(keys="pred", applied_labels=applied_labels))
-        t.append(Restored(keys="pred", ref_image="image"))
         return t
