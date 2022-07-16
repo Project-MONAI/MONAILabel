@@ -71,7 +71,7 @@ class VerLoc(TaskConfig):
 
         self.target_spacing = (1.0, 1.0, 1.0)  # target space for image
         # Setting ROI size - This is for the image padding
-        self.roi_size = (256, 256, 256)  # sliding window size for train and infer
+        self.roi_size = (256, 256, 256)
 
         # Network
         self.network = UNet(
@@ -92,7 +92,7 @@ class VerLoc(TaskConfig):
             target_spacing=self.target_spacing,
             labels=self.labels,
             preload=strtobool(self.conf.get("preload", "false")),
-            config={"largest_cc": True},
+            config={"largest_cc": False},
         )
         return task
 

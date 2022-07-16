@@ -62,7 +62,7 @@ class VerLoc(InferTask):
             VertHeatMap(keys="label"),
             #
             ScaleIntensityd(keys="image"),
-            SpatialPadd(keys="label", spatial_size=self.roi_size),
+            SpatialPadd(keys="image", spatial_size=self.roi_size),
         ]
 
     def inferer(self, data=None) -> Inferer:

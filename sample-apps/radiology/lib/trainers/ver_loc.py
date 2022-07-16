@@ -22,9 +22,9 @@ from monai.transforms import (
     EnsureTyped,
     LoadImaged,
     RandShiftIntensityd,
+    Resized,
     ScaleIntensityd,
     SelectItemsd,
-    SpatialPadd,
 )
 
 from monailabel.tasks.train.basic_train import BasicTrainTask, Context
@@ -74,7 +74,7 @@ class VerLoc(BasicTrainTask):
             VertHeatMap(keys="label", label_names=self._labels),
             ScaleIntensityd(keys="image"),
             RandShiftIntensityd(keys="image", offsets=0.10, prob=0.50),
-            SpatialPadd(keys=("image", "label"), spatial_size=self.roi_size),
+            Resized(keys=("image", "label"), spatial_size=self.roi_size),
             SelectItemsd(keys=("image", "label")),
         ]
 
@@ -92,7 +92,7 @@ class VerLoc(BasicTrainTask):
             CropForegroundd(keys=("image", "label"), source_key="label"),
             VertHeatMap(keys="label"),
             ScaleIntensityd(keys="image"),
-            SpatialPadd(keys=("image", "label"), spatial_size=self.roi_size),
+            Resized(keys=("image", "label"), spatial_size=self.roi_size),
             SelectItemsd(keys=("image", "label")),
         ]
 
