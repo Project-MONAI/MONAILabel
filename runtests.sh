@@ -407,6 +407,7 @@ if [ $doMypyFormat = true ]; then
 fi
 
 # testing command to run
+export USE_META_DICT=1  # for 0.9.0 compatibility
 cmd="${PY_EXE}"
 
 
@@ -416,7 +417,8 @@ if [ $doUnitTests = true ]; then
   torch_validate
 
   ${cmdPrefix}${PY_EXE} tests/setup.py
-  ${cmdPrefix}${cmd} -m pytest --dist loadfile -n auto --exitfirst --doctest-modules --junitxml=junit/test-results.xml --cov-report xml --cov-report html --cov-report term --cov monailabel tests/unit
+  # --dist loadfile -n auto
+  ${cmdPrefix}${cmd} -m pytest --exitfirst --doctest-modules --junitxml=junit/test-results.xml --cov-report xml --cov-report html --cov-report term --cov monailabel tests/unit
 fi
 
 function check_server_running() {

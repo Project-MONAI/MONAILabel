@@ -22,11 +22,13 @@ from monai.transforms import (
     AsDiscreted,
     EnsureChannelFirstd,
     EnsureTyped,
+    FromMetaTensord,
     LoadImaged,
     Orientationd,
     Resized,
     ScaleIntensityRanged,
     SqueezeDimd,
+    ToMetaTensord,
     ToNumpyd,
 )
 
@@ -83,18 +85,22 @@ class DeepEdit(InferTask):
                     AddGuidanceFromPointsDeepEditd(ref_image="image", guidance="guidance", label_names=self.labels),
                     Resized(keys="image", spatial_size=self.spatial_size, mode="area"),
                     ResizeGuidanceMultipleLabelDeepEditd(guidance="guidance", ref_image="image"),
+                    FromMetaTensord(keys="image"),
                     AddGuidanceSignalDeepEditd(
                         keys="image", guidance="guidance", number_intensity_ch=self.number_intensity_ch
                     ),
+                    ToMetaTensord(keys="image"),
                 ]
             )
         else:
             t.extend(
                 [
                     Resized(keys="image", spatial_size=self.spatial_size, mode="area"),
+                    FromMetaTensord(keys="image"),
                     DiscardAddGuidanced(
                         keys="image", label_names=self.labels, number_intensity_ch=self.number_intensity_ch
                     ),
+                    ToMetaTensord(keys="image"),
                 ]
             )
 
@@ -114,5 +120,6 @@ class DeepEdit(InferTask):
             AsDiscreted(keys="pred", argmax=True),
             SqueezeDimd(keys="pred", dim=0),
             ToNumpyd(keys="pred"),
+            FromMetaTensord(keys="image"),
             Restored(keys="pred", ref_image="image"),
         ]
