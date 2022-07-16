@@ -17,7 +17,6 @@ from monai.inferers import SlidingWindowInferer
 from monai.optimizers import Novograd
 from monai.transforms import (
     Activationsd,
-    AsDiscreted,
     CropForegroundd,
     EnsureChannelFirstd,
     EnsureTyped,
@@ -25,11 +24,11 @@ from monai.transforms import (
     RandShiftIntensityd,
     ScaleIntensityd,
     SelectItemsd,
+    SpatialPadd,
 )
 
 from monailabel.tasks.train.basic_train import BasicTrainTask, Context
-
-# from monailabel.tasks.train.utils import region_wise_metrics
+from monailabel.tasks.train.utils import region_wise_rmse
 
 logger = logging.getLogger(__name__)
 
@@ -58,7 +57,6 @@ class VerLoc(BasicTrainTask):
         return Novograd(context.network.parameters(), 0.0001)
 
     def loss_function(self, context: Context):
-        # return DiceCELoss(to_onehot_y=True, softmax=True)
         return torch.nn.MSELoss()
 
     def lr_scheduler_handler(self, context: Context):
@@ -76,19 +74,14 @@ class VerLoc(BasicTrainTask):
             VertHeatMap(keys="label", label_names=self._labels),
             ScaleIntensityd(keys="image"),
             RandShiftIntensityd(keys="image", offsets=0.10, prob=0.50),
-            # SpatialPadd(keys=("image", "label"), spatial_size=self.roi_size),
+            SpatialPadd(keys=("image", "label"), spatial_size=self.roi_size),
             SelectItemsd(keys=("image", "label")),
         ]
 
     def train_post_transforms(self, context: Context):
         return [
             EnsureTyped(keys="pred", device=context.device),
-            Activationsd(keys="pred", softmax=len(self._labels) > 1, sigmoid=len(self._labels) == 1),
-            AsDiscreted(
-                keys=("pred", "label"),
-                argmax=(True, False),
-                to_onehot=(len(self._labels) + 1, len(self._labels) + 1),
-            ),
+            Activationsd(keys="pred", softmax=True),
         ]
 
     def val_pre_transforms(self, context: Context):
@@ -99,18 +92,18 @@ class VerLoc(BasicTrainTask):
             CropForegroundd(keys=("image", "label"), source_key="label"),
             VertHeatMap(keys="label"),
             ScaleIntensityd(keys="image"),
-            # SpatialPadd(keys=("image", "label"), spatial_size=self.roi_size),
+            SpatialPadd(keys=("image", "label"), spatial_size=self.roi_size),
             SelectItemsd(keys=("image", "label")),
         ]
 
     def val_inferer(self, context: Context):
-        return SlidingWindowInferer(roi_size=self.roi_size, sw_batch_size=2)
+        return SlidingWindowInferer(roi_size=(128, 128, 128), sw_batch_size=2)
 
-    # def train_key_metric(self, context: Context):
-    #     return region_wise_metrics(self._labels, self.TRAIN_KEY_METRIC, "train")
+    def train_key_metric(self, context: Context):
+        return region_wise_rmse(self._labels, "train_rmse", "train")
 
-    # def val_key_metric(self, context: Context):
-    #     return region_wise_metrics(self._labels, self.VAL_KEY_METRIC, "val")
+    def val_key_metric(self, context: Context):
+        return region_wise_rmse(self._labels, "val_mean_rmse", "val")
 
     def train_handlers(self, context: Context):
         handlers = super().train_handlers(context)
