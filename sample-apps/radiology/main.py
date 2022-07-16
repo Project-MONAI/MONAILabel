@@ -27,6 +27,7 @@ from monailabel.interfaces.tasks.train import TrainTask
 from monailabel.scribbles.infer import GMMBasedGraphCut, HistogramBasedGraphCut
 from monailabel.tasks.activelearning.random import Random
 from monailabel.tasks.infer.deepgrow_pipeline import InferDeepgrowPipeline
+from monailabel.tasks.infer.vertebra_pipeline import InferVertebraPipeline
 from monailabel.utils.others.class_utils import get_class_names
 from monailabel.utils.others.planner import HeuristicPlanner
 
@@ -137,7 +138,7 @@ class MyApp(MONAILabelApp):
         )
 
         #################################################
-        # Pipeline based on existing infers
+        # Pipeline based on existing infers for DeepGrow
         #################################################
         if infers.get("deepgrow_2d") and infers.get("deepgrow_3d"):
             infers["deepgrow_pipeline"] = InferDeepgrowPipeline(
@@ -146,6 +147,25 @@ class MyApp(MONAILabelApp):
                 model_3d=infers["deepgrow_3d"],
                 description="Combines Clara Deepgrow 2D and 3D models",
             )
+
+        #################################################
+        # Pipeline based on existing infers for vertebra segmentation
+        # Stages:
+        # 1/ spine_loc
+        # 2/ ver_loc
+        # 3/ ver_seg
+        #################################################
+        if infers.get("vertebra"):
+            infers["vertebra_pipeline"] = InferVertebraPipeline(
+                # third stage
+                path_ver_seg=self.models["ver_seg"].path,
+                network_ver_seg=self.models["ver_seg"].network,
+                #
+                model_spine_loc=infers["spine_loc"],  # first stage
+                model_ver_loc=infers["ver_loc"],  # second stage
+                description="Combines three stage for vertebra segmentation",
+            )
+
         return infers
 
     def init_trainers(self) -> Dict[str, TrainTask]:
@@ -227,7 +247,7 @@ def main():
 
     parser = argparse.ArgumentParser()
     parser.add_argument("-s", "--studies", default=studies)
-    parser.add_argument("-m", "--model", default="ver_loc")
+    parser.add_argument("-m", "--model", default="ver_seg")
     parser.add_argument("-t", "--test", default="train", choices=("train", "infer"))
     args = parser.parse_args()
 
@@ -265,11 +285,11 @@ def main():
     app.train(
         request={
             "model": args.model,
-            "max_epochs": 100,
-            "dataset": "Dataset",  # PersistentDataset, CacheDataset
+            "max_epochs": 2000,
+            "dataset": "CacheDataset",  # PersistentDataset, CacheDataset
             "train_batch_size": 1,
             "val_batch_size": 1,
-            "multi_gpu": False,
+            "multi_gpu": True,
             "val_split": 0.1,
         },
     )
