@@ -45,10 +45,10 @@ class SpineLoc(TaskConfig):
 
         # Download PreTrained Model
         if strtobool(self.conf.get("use_pretrained_model", "false")):
-            url = f"{self.conf.get('pretrained_path', self.PRE_TRAINED_PATH)}/spine_loc_unet.pt"
+            url = f"{self.conf.get('pretrained_path', self.PRE_TRAINED_PATH)}/v_spine_loc_unet.pt"
             download_file(url, self.path[0])
 
-        self.target_spacing = (8.0, 8.0, 8.0)  # target space for image
+        self.target_spacing = (1.0, 1.0, 1.0)  # target space for image
         # Setting ROI size should consider max width, height and depth of the images
         self.roi_size = (128, 128, 128)  # sliding window size for train and infer
 

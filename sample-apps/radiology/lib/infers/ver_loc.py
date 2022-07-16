@@ -10,7 +10,6 @@
 # limitations under the License.
 from typing import Callable, Sequence
 
-from lib.transforms.transforms import VertHeatMap
 from monai.inferers import Inferer, SlidingWindowInferer
 from monai.transforms import (
     Activationsd,
@@ -23,7 +22,6 @@ from monai.transforms import (
 )
 
 from monailabel.interfaces.tasks.infer import InferTask, InferType
-from monailabel.transform.post import Restored
 
 
 class VerLoc(InferTask):
@@ -58,9 +56,6 @@ class VerLoc(InferTask):
             LoadImaged(keys="image", reader="ITKReader"),
             EnsureTyped(keys="image", device=data.get("device") if data else None),
             EnsureChannelFirstd(keys="image"),
-            # This transform simulates previous stage
-            VertHeatMap(keys="label"),
-            #
             ScaleIntensityd(keys="image"),
             SpatialPadd(keys="image", spatial_size=self.roi_size),
         ]
@@ -73,6 +68,6 @@ class VerLoc(InferTask):
             EnsureTyped(keys="pred", device=data.get("device") if data else None),
             Activationsd(keys="pred", softmax=True),
             ToNumpyd(keys="pred"),
-            Restored(keys="pred", ref_image="image"),
+            # Restored(keys="pred", ref_image="image"),
         ]
         return t

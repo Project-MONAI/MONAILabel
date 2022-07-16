@@ -20,6 +20,7 @@ from monai.transforms import (
     AsChannelFirst,
     AsDiscreted,
     EnsureChannelFirstd,
+    EnsureType,
     EnsureTyped,
     LoadImage,
     LoadImaged,
@@ -97,27 +98,33 @@ class InferVertebraPipeline(InferTask):
 
     def __call__(self, request):
 
+        #################################################
         # Run first stage
+        #################################################
         result_file_first_stage, result_json_first_stage = self.model_spine_loc(request)
 
-        # Update request for second stage
-        print(request)
-        # request["roi"] = roi
-        # request["slices"] = slices
-
-        # Run second stage
-        result_file_second_stage, result_json_second_stage = self.model_ver_loc(request)
-
+        # Load predicted label
         label_first_stage = LoadImage(image_only=True)(result_file_first_stage)
         label_first_stage = AsChannelFirst()(label_first_stage)
+        label_first_stage = EnsureType(device=self._config.get("device"))(label_first_stage)
         logger.debug(f"Label shape: {label_first_stage.shape}")
 
+        # Update request for second stage
+        request["label"] = label_first_stage
+
+        #################################################
+        # Run second stage
+        #################################################
+        result_file_second_stage, result_json_second_stage = self.model_ver_loc(request)
+
+        # Load predicted label
         label_second_stage = LoadImage(image_only=True)(result_file_second_stage)
         label_second_stage = AsChannelFirst()(label_second_stage)
+        label_second_stage = EnsureType(device=self._config.get("device"))(label_second_stage)
         logger.debug(f"Label shape: {label_second_stage.shape}")
 
-        self.model_size = (label_second_stage.shape[0], self.model_size[-2], self.model_size[-1])
-        logger.info(f"Model Size: {self.model_size}")
+        # Update request for third stage
+        request["label"] = label_second_stage
 
         result_file, j = super().__call__(request)
         result_json_second_stage.update(j)
