@@ -10,7 +10,7 @@
 # limitations under the License.
 import logging
 
-from lib.transforms.transforms import HeatMapROId
+from lib.transforms.transforms import BinaryMaskd
 from monai.handlers import TensorBoardImageHandler, from_engine
 from monai.inferers import SlidingWindowInferer
 from monai.losses import DiceCELoss
@@ -18,7 +18,6 @@ from monai.optimizers import Novograd
 from monai.transforms import (
     Activationsd,
     AsDiscreted,
-    CropForegroundd,
     EnsureChannelFirstd,
     EnsureTyped,
     LoadImaged,
@@ -27,7 +26,6 @@ from monai.transforms import (
     ScaleIntensityd,
     SelectItemsd,
     Spacingd,
-    SpatialPadd,
 )
 
 from monailabel.tasks.train.basic_train import BasicTrainTask, Context
@@ -73,10 +71,10 @@ class SpineLoc(BasicTrainTask):
             LoadImaged(keys=("image", "label"), reader="ITKReader"),
             EnsureTyped(keys=("image", "label"), device=context.device),
             EnsureChannelFirstd(keys=("image", "label")),
-            HeatMapROId(keys="label"),
+            BinaryMaskd(keys="label"),
             Spacingd(keys=("image", "label"), pixdim=self.target_spacing, mode=("bilinear", "nearest")),
-            CropForegroundd(keys=("image", "label"), source_key="image"),
-            SpatialPadd(keys=("image", "label"), spatial_size=self.roi_size),
+            # CropForegroundd(keys=("image", "label"), source_key="image"),
+            # SpatialPadd(keys=("image", "label"), spatial_size=self.roi_size),
             ScaleIntensityd(keys="image"),
             RandShiftIntensityd(keys="image", offsets=0.10, prob=0.50),
             RandCropByPosNegLabeld(
@@ -108,7 +106,7 @@ class SpineLoc(BasicTrainTask):
             LoadImaged(keys=("image", "label"), reader="ITKReader"),
             EnsureTyped(keys=("image", "label")),
             EnsureChannelFirstd(keys=("image", "label")),
-            HeatMapROId(keys="label"),
+            BinaryMaskd(keys="label"),
             Spacingd(keys=("image", "label"), pixdim=self.target_spacing, mode=("bilinear", "nearest")),
             ScaleIntensityd(keys="image"),
             SelectItemsd(keys=("image", "label")),
