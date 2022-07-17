@@ -20,11 +20,16 @@ from monai.transforms import (
     CropForegroundd,
     EnsureChannelFirstd,
     EnsureTyped,
+    GaussianSmoothd,
     LoadImaged,
     NormalizeIntensityd,
+    Orientationd,
     RandCropByPosNegLabeld,
+    RandRotated,
     RandScaleIntensityd,
     RandShiftIntensityd,
+    RandZoomd,
+    ScaleIntensityd,
     SelectItemsd,
     Spacingd,
     SpatialPadd,
@@ -60,7 +65,7 @@ class VerLoc(BasicTrainTask):
         return Novograd(context.network.parameters(), 0.0001)
 
     def loss_function(self, context: Context):
-        return torch.nn.MSELoss(reduction="sum")
+        return torch.nn.MSELoss(reduction="mean")
 
     def lr_scheduler_handler(self, context: Context):
         return None
@@ -73,12 +78,21 @@ class VerLoc(BasicTrainTask):
             LoadImaged(keys=("image", "label"), reader="ITKReader"),
             EnsureTyped(keys=("image", "label"), device=context.device),
             EnsureChannelFirstd(keys=("image", "label")),
+            Orientationd(keys=("image", "label"), axcodes="RAS"),
             Spacingd(keys=("image", "label"), pixdim=self.target_spacing, mode=("bilinear", "nearest")),
             CropForegroundd(keys=("image", "label"), source_key="label"),
             VertHeatMap(keys="label", label_names=self._labels),
-            NormalizeIntensityd(keys="image"),
-            RandScaleIntensityd(keys="image", factors=0.1, prob=1.0),
-            RandShiftIntensityd(keys="image", offsets=0.10, prob=0.50),
+            GaussianSmoothd(keys="image", sigma=0.75),
+            NormalizeIntensityd(keys="image", divisor=2048.0),
+            ScaleIntensityd(keys="image", minv=-1.0, maxv=1.0),
+            RandScaleIntensityd(keys="image", factors=(0.75, 1.25), prob=0.80),
+            RandShiftIntensityd(keys="image", offsets=(-0.25, 0.25), prob=0.80),
+            RandRotated(
+                keys=("image", "label"), range_x=(-0.26, 0.26), range_y=(-0.26, 0.26), range_z=(-0.26, 0.26), prob=0.80
+            ),
+            # Does this do the function of scaling by [−0.85, 1.15] ?
+            RandZoomd(keys=("image", "label"), prob=0.70, min_zoom=0.6, max_zoom=1.15),
+            #
             SpatialPadd(keys=("image", "label"), spatial_size=self.roi_size),
             RandCropByPosNegLabeld(
                 keys=("image", "label"),
@@ -104,9 +118,12 @@ class VerLoc(BasicTrainTask):
             LoadImaged(keys=("image", "label"), reader="ITKReader"),
             EnsureTyped(keys=("image", "label")),
             EnsureChannelFirstd(keys=("image", "label")),
+            Orientationd(keys=["image", "label"], axcodes="RAS"),
             Spacingd(keys=("image", "label"), pixdim=self.target_spacing, mode=("bilinear", "nearest")),
             VertHeatMap(keys="label"),
-            NormalizeIntensityd(keys="image"),
+            GaussianSmoothd(keys="image", sigma=0.75),
+            NormalizeIntensityd(keys="image", divisor=2048.0),
+            ScaleIntensityd(keys="image", minv=-1.0, maxv=1.0),
             SpatialPadd(keys=("image", "label"), spatial_size=self.roi_size),
             SelectItemsd(keys=("image", "label")),
         ]

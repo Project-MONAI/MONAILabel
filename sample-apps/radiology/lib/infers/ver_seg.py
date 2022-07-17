@@ -17,8 +17,11 @@ from monai.transforms import (
     AsDiscreted,
     EnsureChannelFirstd,
     EnsureTyped,
+    GaussianSmoothd,
     LoadImaged,
     NormalizeIntensityd,
+    Orientationd,
+    ScaleIntensityd,
     Spacingd,
     SpatialPadd,
     ToNumpyd,
@@ -60,11 +63,14 @@ class VerSeg(InferTask):
             LoadImaged(keys="image", reader="ITKReader"),
             EnsureTyped(keys="image", device=data.get("device") if data else None),
             EnsureChannelFirstd(keys="image"),
-            Spacingd(keys=("image", "label"), pixdim=self.target_spacing, mode=("bilinear", "nearest")),
+            Orientationd(keys="image", axcodes="RAS"),
+            Spacingd(keys="image", pixdim=self.target_spacing),
             # This transform simulates previous stage
             # AddROI(keys="image"),
             #
-            NormalizeIntensityd(keys="image"),
+            GaussianSmoothd(keys="image", sigma=0.75),
+            NormalizeIntensityd(keys="image", divisor=2048.0),
+            ScaleIntensityd(keys="image", minv=-1.0, maxv=1.0),
             SpatialPadd(keys="image", spatial_size=self.roi_size),
         ]
 

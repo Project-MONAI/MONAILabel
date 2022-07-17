@@ -266,9 +266,8 @@ class PlaceCroppedAread(MapTransform):
 
 
 class VertHeatMap(MapTransform):
-    def __init__(self, keys, sigma=3.0, label_names=None):
+    def __init__(self, keys, label_names=None):
         super().__init__(keys)
-        self.sigma = sigma
         self.label_names = label_names
 
     def __call__(self, data):
@@ -282,7 +281,8 @@ class VertHeatMap(MapTransform):
             else:
                 out = torch.nn.functional.one_hot(i, len(self.label_names) + 1)  # plus background
                 out = torch.movedim(out[0], -1, 0)
-                out.fill_(0)
+                out.fill_(0.0)
+                out = out.float()
 
             # loop over all segmentation classes
             for seg_class in torch.unique(i):
@@ -291,23 +291,21 @@ class VertHeatMap(MapTransform):
                     continue
                 # get CoM for given segmentation class
                 centre = [np.average(indices.cpu()).astype(int) for indices in torch.where(i[0] == seg_class)]
-                centre.insert(0, seg_class.item())
-                out[tuple(centre)] = 1
+                label_num = seg_class.item()
+                centre.insert(0, label_num)
+                out[tuple(centre)] = 1.0
+                sigma = 0.8 + (label_num - 1.0) * 0.1
+                # Gaussian smooth
+                out[label_num] = GaussianSmooth(sigma)(out[label_num].cuda()).cpu()
+                # Normalize to [0,1]
+                out[label_num] = ScaleIntensity()(out[label_num])
 
-            # TO DO: Keep the centroids in the data dictionary!
-
-            # Gaussian smooth
-            out = GaussianSmooth(self.sigma, "scalespace")(out.cuda()).cpu()
-
-            # Normalize to [0,1]
-            out = ScaleIntensity()(out)
-
-            # Fill in background
-            out[0] = 1 - out[1:].sum(0)
-            out = torch.clamp(out, min=0)
+            # TO DO: Keep the centroids in the data dictionary?
 
             data[k] = out
 
-            # SaveImaged(keys="label", output_postfix="", output_dir="/home/andres/Downloads", separate_folder=False)(data)
+            # SaveImaged(keys="label", output_postfix="", output_dir="/home/andres/Downloads", separate_folder=False)(
+            #     data
+            # )
 
         return data
