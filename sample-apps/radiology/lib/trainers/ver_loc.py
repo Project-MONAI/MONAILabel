@@ -16,6 +16,7 @@ from monai.handlers import TensorBoardImageHandler, from_engine
 from monai.inferers import SlidingWindowInferer
 from monai.optimizers import Novograd
 from monai.transforms import (
+    Activationsd,
     CropForegroundd,
     EnsureChannelFirstd,
     EnsureTyped,
@@ -23,7 +24,6 @@ from monai.transforms import (
     LoadImaged,
     NormalizeIntensityd,
     Orientationd,
-    RandCropByPosNegLabeld,
     RandRotated,
     RandScaleIntensityd,
     RandShiftIntensityd,
@@ -93,23 +93,14 @@ class VerLoc(BasicTrainTask):
             RandZoomd(keys=("image", "label"), prob=0.70, min_zoom=0.6, max_zoom=1.15),
             #
             SpatialPadd(keys=("image", "label"), spatial_size=self.roi_size),
-            RandCropByPosNegLabeld(
-                keys=("image", "label"),
-                label_key="label",
-                spatial_size=self.roi_size,
-                pos=1,
-                neg=1,
-                num_samples=self.num_samples,
-                image_key="image",
-                image_threshold=0,
-            ),
             SelectItemsd(keys=("image", "label")),
         ]
 
     def train_post_transforms(self, context: Context):
         return [
             EnsureTyped(keys="pred", device=context.device),
-            # Activationsd(keys="pred"),
+            Activationsd(keys="pred", other=torch.nn.functional.leaky_relu),
+            # Activationsd(keys="pred", sigmoid=True),
         ]
 
     def val_pre_transforms(self, context: Context):
@@ -119,7 +110,7 @@ class VerLoc(BasicTrainTask):
             EnsureChannelFirstd(keys=("image", "label")),
             Orientationd(keys=["image", "label"], axcodes="RAS"),
             Spacingd(keys=("image", "label"), pixdim=self.target_spacing, mode=("bilinear", "nearest")),
-            VertHeatMap(keys="label"),
+            VertHeatMap(keys="label", label_names=self._labels),
             GaussianSmoothd(keys="image", sigma=0.75),
             NormalizeIntensityd(keys="image", divisor=2048.0),
             ScaleIntensityd(keys="image", minv=-1.0, maxv=1.0),

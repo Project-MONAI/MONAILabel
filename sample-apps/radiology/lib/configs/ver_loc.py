@@ -71,17 +71,19 @@ class VerLoc(TaskConfig):
 
         self.target_spacing = (2.0, 2.0, 2.0)  # target space for image
         # Setting ROI size - This is for the image padding
-        self.roi_size = (96, 96, 128)
+        self.roi_size = (96, 96, 256)
 
         # Network
+        # Should we implement the Spatial Configuration Network in Pytorch?
+        # https://github.com/christianpayer/MedicalDataAugmentationTool-VerSe/blob/master/verse2020/network.py
         self.network = UNet(
             spatial_dims=3,
             in_channels=1,
             out_channels=len(self.labels.keys()) + 1,  # All labels plus background
-            channels=[64, 64, 64, 64, 64],
+            channels=[128, 128, 128, 128, 128],
             strides=[2, 2, 2, 2],
             num_res_units=2,
-            dropout=0.2,
+            dropout=0.5,
             act="leakyrelu",
         )
 

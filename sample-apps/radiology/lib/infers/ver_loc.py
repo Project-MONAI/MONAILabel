@@ -10,8 +10,11 @@
 # limitations under the License.
 from typing import Callable, Sequence
 
+import torch
+from lib.transforms.transforms import VertebraLocalizationPostProcessing
 from monai.inferers import Inferer, SlidingWindowInferer
 from monai.transforms import (
+    Activationsd,
     EnsureChannelFirstd,
     EnsureTyped,
     GaussianSmoothd,
@@ -25,6 +28,7 @@ from monai.transforms import (
 )
 
 from monailabel.interfaces.tasks.infer import InferTask, InferType
+from monailabel.transform.post import Restored
 
 
 class VerLoc(InferTask):
@@ -73,8 +77,10 @@ class VerLoc(InferTask):
     def post_transforms(self, data=None) -> Sequence[Callable]:
         t = [
             EnsureTyped(keys="pred", device=data.get("device") if data else None),
-            # Activationsd(keys="pred"),
+            Activationsd(keys="pred", other=torch.nn.functional.leaky_relu),
+            # Activationsd(keys="pred", sigmoid=True),
             ToNumpyd(keys="pred"),
-            # Restored(keys="pred", ref_image="image"),
+            Restored(keys="pred", ref_image="image"),
+            VertebraLocalizationPostProcessing(keys="pred"),
         ]
         return t

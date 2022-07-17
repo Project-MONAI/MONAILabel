@@ -16,7 +16,7 @@ import numpy as np
 import torch
 from monai.config import KeysCollection
 from monai.networks.layers import GaussianFilter
-from monai.transforms import GaussianSmooth, ScaleIntensity, SpatialCrop
+from monai.transforms import GaussianSmooth, SaveImaged, ScaleIntensity, SpatialCrop
 from monai.transforms.transform import MapTransform
 
 logger = logging.getLogger(__name__)
@@ -266,7 +266,7 @@ class PlaceCroppedAread(MapTransform):
 
 
 class VertHeatMap(MapTransform):
-    def __init__(self, keys, gamma=1000, label_names=None):
+    def __init__(self, keys, gamma=100.0, label_names=None):
         super().__init__(keys)
         self.label_names = label_names
         self.gamma = gamma
@@ -295,7 +295,7 @@ class VertHeatMap(MapTransform):
                 label_num = seg_class.item()
                 centre.insert(0, label_num)
                 out[tuple(centre)] = 1.0
-                sigma = 0.8 + (label_num - 1.0) * 0.1
+                sigma = 1.6 + (label_num - 1.0) * 0.1
                 # Gaussian smooth
                 out[label_num] = GaussianSmooth(sigma)(out[label_num].cuda()).cpu()
                 # Normalize to [0,1]
@@ -311,3 +311,30 @@ class VertHeatMap(MapTransform):
             # )
 
         return data
+
+
+class VertebraLocalizationPostProcessing(MapTransform):
+    def __init__(
+        self,
+        keys: KeysCollection,
+        allow_missing_keys: bool = False,
+    ):
+        """
+        Postprocess Vertebra localization
+
+        :param keys: The ``keys`` parameter will be used to get and set the actual data item to transform
+
+        """
+        super().__init__(keys, allow_missing_keys)
+
+    def __call__(self, data: Mapping[Hashable, np.ndarray]) -> Dict[Hashable, np.ndarray]:
+        d: Dict = dict(data)
+        for key in self.key_iterator(d):
+            d["pred_meta_dict"] = d["image_meta_dict"]
+            SaveImaged(keys=key, output_postfix="", output_dir="/home/andres/Downloads", separate_folder=False)(d)
+            # # Plotting
+            # from matplotlib.pyplot import imshow, show, close
+            # imshow(d[key][0,:,:,int(d[key].shape[-1]/2)])
+            # show()
+            # close()
+        return d
