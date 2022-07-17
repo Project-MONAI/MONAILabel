@@ -16,7 +16,6 @@ from monai.handlers import TensorBoardImageHandler, from_engine
 from monai.inferers import SlidingWindowInferer
 from monai.optimizers import Novograd
 from monai.transforms import (
-    Activationsd,
     CropForegroundd,
     EnsureChannelFirstd,
     EnsureTyped,
@@ -110,7 +109,7 @@ class VerLoc(BasicTrainTask):
     def train_post_transforms(self, context: Context):
         return [
             EnsureTyped(keys="pred", device=context.device),
-            Activationsd(keys="pred", softmax=True),
+            # Activationsd(keys="pred"),
         ]
 
     def val_pre_transforms(self, context: Context):

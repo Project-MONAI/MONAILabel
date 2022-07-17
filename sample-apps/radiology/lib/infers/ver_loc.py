@@ -12,7 +12,6 @@ from typing import Callable, Sequence
 
 from monai.inferers import Inferer, SlidingWindowInferer
 from monai.transforms import (
-    Activationsd,
     EnsureChannelFirstd,
     EnsureTyped,
     GaussianSmoothd,
@@ -74,7 +73,7 @@ class VerLoc(InferTask):
     def post_transforms(self, data=None) -> Sequence[Callable]:
         t = [
             EnsureTyped(keys="pred", device=data.get("device") if data else None),
-            Activationsd(keys="pred", softmax=True),
+            # Activationsd(keys="pred"),
             ToNumpyd(keys="pred"),
             # Restored(keys="pred", ref_image="image"),
         ]
