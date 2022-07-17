@@ -266,9 +266,10 @@ class PlaceCroppedAread(MapTransform):
 
 
 class VertHeatMap(MapTransform):
-    def __init__(self, keys, label_names=None):
+    def __init__(self, keys, gamma=1000, label_names=None):
         super().__init__(keys)
         self.label_names = label_names
+        self.gamma = gamma
 
     def __call__(self, data):
 
@@ -299,6 +300,7 @@ class VertHeatMap(MapTransform):
                 out[label_num] = GaussianSmooth(sigma)(out[label_num].cuda()).cpu()
                 # Normalize to [0,1]
                 out[label_num] = ScaleIntensity()(out[label_num])
+                out[label_num] = out[label_num] * self.gamma
 
             # TO DO: Keep the centroids in the data dictionary?
 
