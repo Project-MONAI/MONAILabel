@@ -46,18 +46,18 @@ class VerSeg(TaskConfig):
             download_file(url, self.path[0])
 
         self.target_spacing = (1.0, 1.0, 1.0)  # target space for image
-        # Setting ROI size should consider max width, height and depth of the images
-        self.roi_size = (128, 128, 128)  # cropped region covering vertebra
+        # cropped region covering vertebra
+        self.roi_size = (128, 128, 96)
 
         # Network
         self.network = UNet(
             spatial_dims=3,
             in_channels=2,  # Image + Gaussian smoothed centroid
             out_channels=2,
-            channels=[16, 32, 64, 128, 256],
+            channels=[64, 64, 64, 64, 64],
             strides=[2, 2, 2, 2],
             num_res_units=2,
-            norm="batch",
+            dropout=0.2,
         )
 
     def infer(self) -> Union[InferTask, Dict[str, InferTask]]:

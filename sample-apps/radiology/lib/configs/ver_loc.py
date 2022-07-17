@@ -69,19 +69,20 @@ class VerLoc(TaskConfig):
             url = f"{self.conf.get('pretrained_path', self.PRE_TRAINED_PATH)}/v_ver_loc_unet.pt"
             download_file(url, self.path[0])
 
-        self.target_spacing = (1.0, 1.0, 1.0)  # target space for image
+        self.target_spacing = (2.0, 2.0, 2.0)  # target space for image
         # Setting ROI size - This is for the image padding
-        self.roi_size = (256, 256, 256)
+        self.roi_size = (96, 96, 128)
 
         # Network
         self.network = UNet(
             spatial_dims=3,
             in_channels=1,
             out_channels=len(self.labels.keys()) + 1,  # All labels plus background
-            channels=[16, 32, 64, 128, 256],
+            channels=[64, 64, 64, 64, 64],
             strides=[2, 2, 2, 2],
             num_res_units=2,
-            norm="batch",
+            dropout=0.2,
+            act="leakyrelu",
         )
 
     def infer(self) -> Union[InferTask, Dict[str, InferTask]]:

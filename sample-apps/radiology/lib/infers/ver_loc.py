@@ -16,7 +16,8 @@ from monai.transforms import (
     EnsureChannelFirstd,
     EnsureTyped,
     LoadImaged,
-    ScaleIntensityd,
+    NormalizeIntensityd,
+    Spacingd,
     SpatialPadd,
     ToNumpyd,
 )
@@ -56,12 +57,13 @@ class VerLoc(InferTask):
             LoadImaged(keys="image", reader="ITKReader"),
             EnsureTyped(keys="image", device=data.get("device") if data else None),
             EnsureChannelFirstd(keys="image"),
-            ScaleIntensityd(keys="image"),
+            Spacingd(keys="image", pixdim=self.target_spacing, mode="bilinear"),
+            NormalizeIntensityd(keys="image"),
             SpatialPadd(keys="image", spatial_size=self.roi_size),
         ]
 
     def inferer(self, data=None) -> Inferer:
-        return SlidingWindowInferer(roi_size=(128, 128, 128))
+        return SlidingWindowInferer(roi_size=self.roi_size)
 
     def post_transforms(self, data=None) -> Sequence[Callable]:
         t = [

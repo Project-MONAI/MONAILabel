@@ -34,9 +34,6 @@ class SpineLoc(TaskConfig):
             "spine": 1,
         }
 
-        # Number of input channels - i.e. 4 for BRATS and 1 for spleen
-        self.number_intensity_ch = 1
-
         # Model Files
         self.path = [
             os.path.join(self.model_dir, f"pretrained_{name}.pt"),  # pretrained
@@ -48,19 +45,19 @@ class SpineLoc(TaskConfig):
             url = f"{self.conf.get('pretrained_path', self.PRE_TRAINED_PATH)}/v_spine_loc_unet.pt"
             download_file(url, self.path[0])
 
-        self.target_spacing = (1.0, 1.0, 1.0)  # target space for image
+        self.target_spacing = (8.0, 8.0, 8.0)  # target space for image
         # Setting ROI size should consider max width, height and depth of the images
-        self.roi_size = (128, 128, 128)  # sliding window size for train and infer
+        self.roi_size = (64, 64, 128)  # sliding window size for train and infer
 
         # Network
         self.network = UNet(
             spatial_dims=3,
-            in_channels=self.number_intensity_ch,
+            in_channels=1,
             out_channels=len(self.labels.keys()) + 1,  # All labels plus background
-            channels=[16, 32, 64, 128, 256],
+            channels=[64, 64, 64, 64, 64],
             strides=[2, 2, 2, 2],
             num_res_units=2,
-            norm="batch",
+            dropout=0.2,
         )
 
     def infer(self) -> Union[InferTask, Dict[str, InferTask]]:

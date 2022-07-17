@@ -10,16 +10,16 @@
 # limitations under the License.
 from typing import Callable, Sequence
 
-from lib.transforms.transforms import AddROI, GaussianSmoothedCentroidd, PlaceCroppedAread
+from lib.transforms.transforms import PlaceCroppedAread
 from monai.inferers import Inferer, SimpleInferer
 from monai.transforms import (
     Activationsd,
     AsDiscreted,
     EnsureChannelFirstd,
     EnsureTyped,
-    KeepLargestConnectedComponentd,
     LoadImaged,
-    ScaleIntensityd,
+    NormalizeIntensityd,
+    Spacingd,
     SpatialPadd,
     ToNumpyd,
 )
@@ -60,12 +60,11 @@ class VerSeg(InferTask):
             LoadImaged(keys="image", reader="ITKReader"),
             EnsureTyped(keys="image", device=data.get("device") if data else None),
             EnsureChannelFirstd(keys="image"),
-            ScaleIntensityd(keys="image"),
+            Spacingd(keys=("image", "label"), pixdim=self.target_spacing, mode=("bilinear", "nearest")),
             # This transform simulates previous stage
-            # GetCentroidAndCropd(keys="label"),
+            # AddROI(keys="image"),
             #
-            GaussianSmoothedCentroidd(keys="image"),
-            AddROI(keys="image"),
+            NormalizeIntensityd(keys="image"),
             SpatialPadd(keys="image", spatial_size=self.roi_size),
         ]
 
@@ -73,16 +72,14 @@ class VerSeg(InferTask):
         return SimpleInferer()
 
     def post_transforms(self, data=None) -> Sequence[Callable]:
-        largest_cc = False if not data else data.get("largest_cc", False)
-        applied_labels = list(self.labels.values()) if isinstance(self.labels, dict) else self.labels
         t = [
             EnsureTyped(keys="pred", device=data.get("device") if data else None),
             Activationsd(keys="pred", softmax=True),
             AsDiscreted(keys="pred", argmax=True),
             ToNumpyd(keys="pred"),
+            # This can be done in vertebra pipeline
             PlaceCroppedAread(keys="pred"),
+            #
+            Restored(keys="pred", ref_image="image"),
         ]
-        if largest_cc:
-            t.append(KeepLargestConnectedComponentd(keys="pred", applied_labels=applied_labels))
-        t.append(Restored(keys="pred", ref_image="image"))
         return t

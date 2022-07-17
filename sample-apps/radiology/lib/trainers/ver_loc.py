@@ -21,10 +21,13 @@ from monai.transforms import (
     EnsureChannelFirstd,
     EnsureTyped,
     LoadImaged,
+    NormalizeIntensityd,
+    RandCropByPosNegLabeld,
+    RandScaleIntensityd,
     RandShiftIntensityd,
-    Resized,
-    ScaleIntensityd,
     SelectItemsd,
+    Spacingd,
+    SpatialPadd,
 )
 
 from monailabel.tasks.train.basic_train import BasicTrainTask, Context
@@ -57,7 +60,7 @@ class VerLoc(BasicTrainTask):
         return Novograd(context.network.parameters(), 0.0001)
 
     def loss_function(self, context: Context):
-        return torch.nn.MSELoss()
+        return torch.nn.MSELoss(reduction="sum")
 
     def lr_scheduler_handler(self, context: Context):
         return None
@@ -70,11 +73,23 @@ class VerLoc(BasicTrainTask):
             LoadImaged(keys=("image", "label"), reader="ITKReader"),
             EnsureTyped(keys=("image", "label"), device=context.device),
             EnsureChannelFirstd(keys=("image", "label")),
+            Spacingd(keys=("image", "label"), pixdim=self.target_spacing, mode=("bilinear", "nearest")),
             CropForegroundd(keys=("image", "label"), source_key="label"),
             VertHeatMap(keys="label", label_names=self._labels),
-            ScaleIntensityd(keys="image"),
+            NormalizeIntensityd(keys="image"),
+            RandScaleIntensityd(keys="image", factors=0.1, prob=1.0),
             RandShiftIntensityd(keys="image", offsets=0.10, prob=0.50),
-            Resized(keys=("image", "label"), spatial_size=self.roi_size),
+            SpatialPadd(keys=("image", "label"), spatial_size=self.roi_size),
+            RandCropByPosNegLabeld(
+                keys=("image", "label"),
+                label_key="label",
+                spatial_size=self.roi_size,
+                pos=1,
+                neg=1,
+                num_samples=self.num_samples,
+                image_key="image",
+                image_threshold=0,
+            ),
             SelectItemsd(keys=("image", "label")),
         ]
 
@@ -89,15 +104,15 @@ class VerLoc(BasicTrainTask):
             LoadImaged(keys=("image", "label"), reader="ITKReader"),
             EnsureTyped(keys=("image", "label")),
             EnsureChannelFirstd(keys=("image", "label")),
-            CropForegroundd(keys=("image", "label"), source_key="label"),
+            Spacingd(keys=("image", "label"), pixdim=self.target_spacing, mode=("bilinear", "nearest")),
             VertHeatMap(keys="label"),
-            ScaleIntensityd(keys="image"),
-            Resized(keys=("image", "label"), spatial_size=self.roi_size),
+            NormalizeIntensityd(keys="image"),
+            SpatialPadd(keys=("image", "label"), spatial_size=self.roi_size),
             SelectItemsd(keys=("image", "label")),
         ]
 
     def val_inferer(self, context: Context):
-        return SlidingWindowInferer(roi_size=(128, 128, 128), sw_batch_size=2)
+        return SlidingWindowInferer(roi_size=self.roi_size, sw_batch_size=8)
 
     def train_key_metric(self, context: Context):
         return region_wise_rmse(self._labels, "train_rmse", "train")

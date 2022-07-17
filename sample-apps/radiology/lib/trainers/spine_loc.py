@@ -18,14 +18,17 @@ from monai.optimizers import Novograd
 from monai.transforms import (
     Activationsd,
     AsDiscreted,
+    CropForegroundd,
     EnsureChannelFirstd,
     EnsureTyped,
     LoadImaged,
+    NormalizeIntensityd,
     RandCropByPosNegLabeld,
+    RandScaleIntensityd,
     RandShiftIntensityd,
-    ScaleIntensityd,
     SelectItemsd,
     Spacingd,
+    SpatialPadd,
 )
 
 from monailabel.tasks.train.basic_train import BasicTrainTask, Context
@@ -73,10 +76,11 @@ class SpineLoc(BasicTrainTask):
             EnsureChannelFirstd(keys=("image", "label")),
             BinaryMaskd(keys="label"),
             Spacingd(keys=("image", "label"), pixdim=self.target_spacing, mode=("bilinear", "nearest")),
-            # CropForegroundd(keys=("image", "label"), source_key="image"),
-            # SpatialPadd(keys=("image", "label"), spatial_size=self.roi_size),
-            ScaleIntensityd(keys="image"),
+            CropForegroundd(keys=("image", "label"), source_key="image"),
+            NormalizeIntensityd(keys="image"),
+            RandScaleIntensityd(keys="image", factors=0.1, prob=1.0),
             RandShiftIntensityd(keys="image", offsets=0.10, prob=0.50),
+            SpatialPadd(keys=("image", "label"), spatial_size=self.roi_size),
             RandCropByPosNegLabeld(
                 keys=("image", "label"),
                 label_key="label",
@@ -108,7 +112,8 @@ class SpineLoc(BasicTrainTask):
             EnsureChannelFirstd(keys=("image", "label")),
             BinaryMaskd(keys="label"),
             Spacingd(keys=("image", "label"), pixdim=self.target_spacing, mode=("bilinear", "nearest")),
-            ScaleIntensityd(keys="image"),
+            NormalizeIntensityd(keys="image"),
+            SpatialPadd(keys=("image", "label"), spatial_size=self.roi_size),
             SelectItemsd(keys=("image", "label")),
         ]
 

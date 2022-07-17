@@ -60,6 +60,7 @@ def region_wise_rmse(regions, metric, prefix, keys=("pred", "label")):
         labels = regions if isinstance(regions, dict) else {name: idx for idx, name in enumerate(regions, start=1)}
         for name, idx in labels.items():
             all_metrics[f"{prefix}_{name}_rmse"] = RootMeanSquaredError(
+                reduction="sum",
                 output_transform=from_engine_idx(keys, idx),
             )
     return all_metrics
