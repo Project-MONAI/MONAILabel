@@ -105,14 +105,13 @@ class Restored(MapTransform):
         d = dict(data)
         meta_dict = (
             d[self.ref_image].meta
-            if isinstance(d[self.ref_image], MetaTensor)
-            else d[f"{self.ref_image}_{self.meta_key_postfix}"]
+            if d.get(self.ref_image) is not None and isinstance(d[self.ref_image], MetaTensor)
+            else d.get(f"{self.ref_image}_{self.meta_key_postfix}", {})
         )
 
         for idx, key in enumerate(self.keys):
             result = d[key]
             current_size = result.shape[1:] if self.has_channel else result.shape
-            logger.info(f"meta_dict keys: {meta_dict.keys()}")
             spatial_shape = meta_dict.get("spatial_shape", current_size)
             spatial_size = spatial_shape[-len(current_size) :]
 
