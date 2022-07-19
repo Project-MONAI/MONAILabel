@@ -14,7 +14,7 @@ import unittest
 import requests
 import torch
 
-from . import SERVER_URI
+from tests.integration import SERVER_URI
 
 
 class EndPointInfer(unittest.TestCase):

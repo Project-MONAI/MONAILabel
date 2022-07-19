@@ -16,7 +16,7 @@ import itk
 import nrrd
 import numpy as np
 import torch
-from monai.data import write_nifti
+from monai.data import MetaTensor, write_nifti
 
 from monailabel.utils.others.generic import file_ext
 from monailabel.utils.others.pathology import create_asap_annotations_xml, create_dsa_annotations_json
@@ -185,13 +185,17 @@ class Writer:
         ext = ext if ext else ".nii.gz"
         logger.info(f"Result ext: {ext}; write_to_file: {write_to_file}; dtype: {dtype}")
 
-        image_np = data[self.label]
-        if isinstance(image_np, torch.Tensor):
-            image_np = image_np.numpy()
+        if isinstance(data[self.label], MetaTensor):
+            image_np = data[self.label].array
+        else:
+            image_np = data[self.label]
+
+        # Always using Restored as the last transform before writing
         meta_dict = data.get(f"{self.ref_image}_{self.meta_key_postfix}")
         affine = meta_dict.get("affine") if meta_dict else None
-        if isinstance(affine, torch.Tensor):
-            affine = affine.numpy()
+        if affine is None and isinstance(data[self.ref_image], MetaTensor):
+            affine = data[self.ref_image].affine
+
         logger.debug(f"Image: {image_np.shape}; Data Image: {data[self.label].shape}")
 
         output_file = None
