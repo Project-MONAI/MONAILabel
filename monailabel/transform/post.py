@@ -15,6 +15,7 @@ import cv2
 import numpy as np
 import skimage.measure as measure
 from monai.config import KeysCollection
+from monai.data import MetaTensor
 from monai.transforms import MapTransform, Resize, generate_spatial_bounding_box, get_extreme_points
 from monai.utils import InterpolateMode, ensure_tuple_rep
 
@@ -102,11 +103,17 @@ class Restored(MapTransform):
 
     def __call__(self, data):
         d = dict(data)
-        meta_dict = d[f"{self.ref_image}_{self.meta_key_postfix}"]
+        meta_dict = (
+            d[self.ref_image].meta
+            if isinstance(d[self.ref_image], MetaTensor)
+            else d[f"{self.ref_image}_{self.meta_key_postfix}"]
+        )
+
         for idx, key in enumerate(self.keys):
             result = d[key]
             current_size = result.shape[1:] if self.has_channel else result.shape
-            spatial_shape = meta_dict["spatial_shape"]
+            logger.info(f"meta_dict keys: {meta_dict.keys()}")
+            spatial_shape = meta_dict.get("spatial_shape", current_size)
             spatial_size = spatial_shape[-len(current_size) :]
 
             # Undo Spacing
