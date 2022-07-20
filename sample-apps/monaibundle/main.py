@@ -99,7 +99,7 @@ class MyApp(MONAILabelApp):
         # Models
         #################################################
         for n, b in self.models.items():
-            c = BundleInferTask(b)
+            c = BundleInferTask(b, self.conf)
             c = c if isinstance(c, dict) else {n: c}
             for k, v in c.items():
                 logger.info(f"+++ Adding Inferer:: {k} => {v}")
@@ -112,7 +112,7 @@ class MyApp(MONAILabelApp):
             return trainers
 
         for n, b in self.models.items():
-            t = BundleTrainTask(b)
+            t = BundleTrainTask(b, self.conf)
             if not t or not t.is_valid():
                 continue
 
@@ -162,7 +162,7 @@ def main():
     app_dir = os.path.dirname(__file__)
     studies = args.studies
 
-    app = MyApp(app_dir, studies, {"preload": "true"})
+    app = MyApp(app_dir, studies, {"preload": "true", "models": "all"})
     train(app)
 
 

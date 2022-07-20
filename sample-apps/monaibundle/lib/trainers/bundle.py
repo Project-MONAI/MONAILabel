@@ -24,43 +24,60 @@ from monailabel.interfaces.tasks.train import TrainTask
 logger = logging.getLogger(__name__)
 
 
-class BundleTrainTask(TrainTask):
-    def __init__(self, path):
-        self.bundle_config = None
+class Const:
+    CONFIGS = ("train.json", "train.yaml")
+    METADATA_JSON = "metadata.json"
+    MODEL_PYTORCH = "model.pt"
 
-        self.bundle_config_path = os.path.join(path, "configs", "train.json")
-        if not os.path.exists(self.bundle_config_path):
-            self.bundle_config_path = os.path.join(path, "configs", "train.yaml")
-        if not os.path.exists(self.bundle_config_path):
-            logger.warning(f"Ignore {path} as there is no infer/train config exists")
+    KEY_DEVICE = "device"
+    KEY_BUNDLE_ROOT = "bundle_root"
+    KEY_NETWORK_DEF = "network_def"
+    KEY_TRAIN_TRAINER_MAX_EPOCHS = "train#trainer#max_epochs"
+    KEY_TRAIN_DATASET_DATA = "train#dataset#data"
+    KEY_TRAIN_HANDLERS = "train#handlers"
+    KEY_VALIDATE_DATASET_DATA = "validate#dataset#data"
+
+
+class BundleTrainTask(TrainTask):
+    def __init__(self, path, conf):
+        self.valid: bool = False
+        config_paths = [c for c in Const.CONFIGS if os.path.exists(os.path.join(path, "configs", c))]
+        if not config_paths:
+            logger.warning(f"Ignore {path} as there is no train config {Const.CONFIGS} exists")
             return
 
         self.bundle_path = path
+        self.bundle_config_path = os.path.join(path, "configs", config_paths[0])
+
         self.bundle_config = ConfigParser()
         self.bundle_config.read_config(self.bundle_config_path)
+        self.bundle_config.config.update({Const.KEY_BUNDLE_ROOT: self.bundle_path})
 
-        self.bundle_metadata = os.path.join(path, "configs", "metadata.json")
-        with open(self.bundle_metadata) as fp:
-            self.metadata = json.load(fp)
+        # https://docs.monai.io/en/latest/mb_specification.html#metadata-json-file
+        self.bundle_metadata_path = os.path.join(path, "configs", "metadata.json")
+        with open(os.path.join(path, "configs", Const.METADATA_JSON)) as fp:
+            metadata = json.load(fp)
 
-        super().__init__(self.metadata["description"])
+        super().__init__(metadata.get("description", ""))
+        self.valid = True
 
     def is_valid(self):
-        return True if self.bundle_config else False
+        return self.valid
 
     def config(self):
         return {
-            "device": "cuda",
-            "pretrained": True,
-            "max_epochs": 10,
-            "val_split": 0.2,
-            "multi_gpu": True,
-            "gpus": "all",
+            "device": "cuda",  # DEVICE
+            "pretrained": True,  # USE EXISTING CHECKPOINT/PRETRAINED MODEL
+            "max_epochs": 50,  # TOTAL EPOCHS TO RUN
+            "val_split": 0.2,  # VALIDATION SPLIT; -1 TO USE DEFAULT FROM BUNDLE
+            "multi_gpu": True,  # USE MULTI-GPU
+            "gpus": "all",  # COMMA SEPARATE DEVICE INDEX
         }
 
     def _partition_datalist(self, datalist, request, shuffle=False):
-        for d in datalist:
-            d.pop("meta", None)
+        # only use image and label attributes; skip for other meta info from datastore for now
+        datalist = [{"image": d["image"], "label": d["label"]} for d in datalist if d]
+        logger.info(f"Total Records in Dataset: {len(datalist)}")
 
         val_split = request.get("val_split", 0.0)
         if val_split > 0.0:
@@ -69,22 +86,22 @@ class BundleTrainTask(TrainTask):
             )
         else:
             train_datalist = datalist
-            val_datalist = []
+            val_datalist = None if val_split < 0 else []
 
         logger.info(f"Total Records for Training: {len(train_datalist)}")
-        logger.info(f"Total Records for Validation: {len(val_datalist)}")
+        logger.info(f"Total Records for Validation: {len(val_datalist) if val_datalist else ''}")
         return train_datalist, val_datalist
 
     def _device(self, str):
         return torch.device(str if torch.cuda.is_available() else "cpu")
 
     def _load_checkpoint(self, output_dir, pretrained, multi_gpu, device, train_handlers):
-        load_path = os.path.join(output_dir, "model.pt") if pretrained else None
+        load_path = os.path.join(output_dir, Const.MODEL_PYTORCH) if pretrained else None
         if os.path.exists(load_path):
             logger.info(f"Add Checkpoint Loader for Path: {load_path}")
 
             map_location = {"cuda:0": f"cuda:{device.index}" if device.index else "cuda"} if multi_gpu else None
-            network = self.bundle_config.get_parsed_content("network_def", instantiate=True)
+            network = self.bundle_config.get_parsed_content(Const.KEY_NETWORK_DEF, instantiate=True)
             load_dict = {"model": network}
             train_handlers.append(CheckpointLoader(load_path, load_dict, map_location=map_location, strict=False))
 
@@ -93,24 +110,32 @@ class BundleTrainTask(TrainTask):
         train_ds, val_ds = self._partition_datalist(ds, request)
 
         max_epochs = request.get("max_epochs", 50)
-        train_handlers = self.bundle_config.get("train#handlers", [])
-        output_dir = os.path.join(self.bundle_path, "models")
         pretrained = request.get("pretrained", True)
         multi_gpu = request.get("multi_gpu", False)
-        device = self._device(request.get("device", "cuda"))
 
+        device = self._device(request.get("device", "cuda"))
         logger.info(f"Using device: {device}")
-        self._load_checkpoint(output_dir, pretrained, multi_gpu, device, train_handlers)
+
+        train_handlers = self.bundle_config.get(Const.KEY_TRAIN_HANDLERS, [])
+        self._load_checkpoint(os.path.join(self.bundle_path, "models"), pretrained, multi_gpu, device, train_handlers)
 
         overrides = {
-            "bundle_root": self.bundle_path,
-            "train#trainer#max_epochs": max_epochs,
-            "train#dataset#data": train_ds,
-            "validate#dataset#data": val_ds,
-            "device": device,
-            "train#handlers": train_handlers,
+            Const.KEY_BUNDLE_ROOT: self.bundle_path,
+            Const.KEY_TRAIN_TRAINER_MAX_EPOCHS: max_epochs,
+            Const.KEY_TRAIN_DATASET_DATA: train_ds,
+            Const.KEY_DEVICE: device,
+            Const.KEY_TRAIN_HANDLERS: train_handlers,
         }
 
-        monai.bundle.run("training", meta_file=self.bundle_metadata, config_file=self.bundle_config_path, **overrides)
+        # external validation datalist supported through bundle itself (pass -1 in the request to use the same)
+        if val_ds is not None:
+            overrides[Const.KEY_VALIDATE_DATASET_DATA] = val_ds
+
+        monai.bundle.run(
+            "training",
+            meta_file=self.bundle_metadata_path,
+            config_file=self.bundle_config_path,
+            **overrides,
+        )
         logger.info("Training Finished....")
         return {}

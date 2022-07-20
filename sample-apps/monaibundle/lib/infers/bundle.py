@@ -14,8 +14,8 @@ import os
 from typing import Callable, Sequence
 
 from monai.bundle import ConfigParser
-from monai.inferers import Inferer
-from monai.transforms import SaveImaged
+from monai.inferers import Inferer, SimpleInferer
+from monai.transforms import Compose, SaveImaged
 
 from monailabel.interfaces.tasks.infer import InferTask, InferType
 from monailabel.transform.post import Restored
@@ -23,46 +23,57 @@ from monailabel.transform.post import Restored
 logger = logging.getLogger(__name__)
 
 
+class Const:
+    CONFIGS = ["inference.json", "inference.yaml"]
+    METADATA_JSON = "metadata.json"
+    MODEL_PYTORCH = "model.pt"
+    MODEL_TORCHSCRIPT = "model.ts"
+
+    KEY_DEVICE = "device"
+    KEY_BUNDLE_ROOT = "bundle_root"
+    KEY_NETWORK_DEF = "network_def"
+    KEY_PREPROCESSING = ["preprocessing", "pre_transforms"]
+    KEY_POSTPROCESSING = ["postprocessing", "post_transforms"]
+    KEY_INFERER = ["inferer"]
+
+
 class BundleInferTask(InferTask):
     """
     This provides Inference Engine for Monai Bundle.
     """
 
-    def __init__(self, path):
-        self.bundle_config = None
-
-        self.bundle_config_path = os.path.join(path, "configs", "inference.json")
-        if not os.path.exists(self.bundle_config_path):
-            self.bundle_config_path = os.path.join(path, "configs", "inference.yaml")
-        if not os.path.exists(self.bundle_config_path):
-            logger.warning(f"Ignore {path} as there is no infer config exists")
+    def __init__(self, path, conf):
+        self.valid: bool = False
+        config_paths = [c for c in Const.CONFIGS if os.path.exists(os.path.join(path, "configs", c))]
+        if not config_paths:
+            logger.warning(f"Ignore {path} as there is no infer config {Const.CONFIGS} exists")
             return
 
-        self.bundle_path = path
         self.bundle_config = ConfigParser()
-        self.bundle_config.read_config(self.bundle_config_path)
-        self.bundle_config.config.update({"bundle_root": self.bundle_path})
+        self.bundle_config.read_config(os.path.join(path, "configs", config_paths[0]))
+        self.bundle_config.config.update({Const.KEY_BUNDLE_ROOT: path})
 
         network = None
-        model_path = os.path.join(path, "models", "model.pt")
+        model_path = os.path.join(path, "models", Const.MODEL_PYTORCH)
         if os.path.exists(model_path):
-            network = self.bundle_config.get_parsed_content("network_def", instantiate=True)
+            network = self.bundle_config.get_parsed_content(Const.KEY_NETWORK_DEF, instantiate=True)
         else:
-            model_path = os.path.join(path, "models", "model.ts")
+            model_path = os.path.join(path, "models", Const.MODEL_TORCHSCRIPT)
             if not os.path.exists(model_path):
-                logger.warning(f"Ignore {path} as there is no model.ts or model.pt exists")
+                logger.warning(f"Ignore {path} as neither {Const.MODEL_PYTORCH} nor {Const.MODEL_TORCHSCRIPT} exists")
                 return
 
-        with open(os.path.join(path, "configs", "metadata.json")) as fp:
-            self.metadata = json.load(fp)
+        # https://docs.monai.io/en/latest/mb_specification.html#metadata-json-file
+        with open(os.path.join(path, "configs", Const.METADATA_JSON)) as fp:
+            metadata = json.load(fp)
 
-        self.image_key, image = next(iter(self.metadata["network_data_format"]["inputs"].items()))
-        self.pred_key, pred = next(iter(self.metadata["network_data_format"]["outputs"].items()))
-        labels = {v: int(k) for k, v in pred["channel_def"].items()}
-        labels.pop("background", None)
+        self.key_image, image = next(iter(metadata["network_data_format"]["inputs"].items()))
+        self.key_pred, pred = next(iter(metadata["network_data_format"]["outputs"].items()))
 
-        description = self.metadata["description"]
-        dimension = len(image["spatial_shape"])
+        labels = {v.lower(): int(k) for k, v in pred.get("channel_def", {}).items() if v.lower() != "background"}
+        description = metadata.get("description")
+        spatial_shape = image.get("spatial_shape")
+        dimension = len(spatial_shape) if spatial_shape else 3
         type = (
             InferType.DEEPEDIT
             if "deepedit" in description.lower()
@@ -78,27 +89,34 @@ class BundleInferTask(InferTask):
             labels=labels,
             dimension=dimension,
             description=description,
+            preload=conf.get("preload", False),
         )
+        self.valid = True
 
     def is_valid(self) -> bool:
-        return True if self.bundle_config is not None else False
+        return self.valid
 
     def pre_transforms(self, data=None) -> Sequence[Callable]:
-        try:
-            pre = self.bundle_config.get_parsed_content("preprocessing", instantiate=True)
-        except:
-            pre = self.bundle_config.get_parsed_content("pre_transforms", instantiate=True)
-        return [t for t in pre.transforms]
+        pre = []
+        for k in Const.KEY_PREPROCESSING:
+            if self.bundle_config.get(k):
+                c = self.bundle_config.get_parsed_content(k, instantiate=True)
+                pre = [t for t in c.transforms] if isinstance(c, Compose) else c
+        return pre
 
     def inferer(self, data=None) -> Inferer:
-        infer: Inferer = self.bundle_config.get_parsed_content("inferer", instantiate=True)
-        return infer
+        for k in Const.KEY_INFERER:
+            if self.bundle_config.get(k):
+                return self.bundle_config.get_parsed_content(k, instantiate=True)
+        return SimpleInferer()
 
     def post_transforms(self, data=None) -> Sequence[Callable]:
-        try:
-            post = self.bundle_config.get_parsed_content("postprocessing", instantiate=True)
-        except:
-            post = self.bundle_config.get_parsed_content("post_transforms", instantiate=True)
-        p = [t for t in post.transforms if not isinstance(t, SaveImaged)]
-        p.append(Restored(keys=self.pred_key, ref_image=self.image_key))
-        return p
+        post = []
+        for k in Const.KEY_POSTPROCESSING:
+            if self.bundle_config.get(k):
+                c = self.bundle_config.get_parsed_content(k, instantiate=True)
+                post = [t for t in c.transforms] if isinstance(c, Compose) else c
+
+        post = [t for t in post if not isinstance(t, SaveImaged)]
+        post.append(Restored(keys=self.key_pred, ref_image=self.key_image))
+        return post
