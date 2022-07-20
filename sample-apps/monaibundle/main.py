@@ -43,13 +43,13 @@ class MyApp(MONAILabelApp):
         zoo_repo = conf.get("zoo_repo", MONAI_ZOO_REPO)
 
         available = {k.replace(".zip", ""): v for k, v in zoo_info.items()}
-        models = conf.get("models", "spleen_ct_segmentation_v0.1.0")
+        models = conf.get("models")
         if not models:
             print("")
             print("---------------------------------------------------------------------------------------")
             print("Provide --conf models <name>")
             print("Following are the available models.  You can pass comma (,) separated names to pass multiple")
-            print(f"    all, {', '.join(available.keys())}")
+            print("    -c models all\n    -c models {}".format("\n    -c models ".join(available.keys())))
             print("---------------------------------------------------------------------------------------")
             print("")
             exit(-1)
@@ -62,7 +62,7 @@ class MyApp(MONAILabelApp):
             print("---------------------------------------------------------------------------------------")
             print(f"Invalid Model(s) are provided: {invalid}")
             print("Following are the available models.  You can pass comma (,) separated names to pass multiple")
-            print(f"    all, {', '.join(available.keys())}")
+            print("    -c models all\n    -c models {}".format("\n    -c models ".join(available.keys())))
             print("---------------------------------------------------------------------------------------")
             print("")
             exit(-1)

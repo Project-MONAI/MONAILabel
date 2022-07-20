@@ -56,10 +56,12 @@ class BundleTrainTask(TrainTask):
             "val_split": 0.2,
             "multi_gpu": True,
             "gpus": "all",
-            "val_interval": 1,
         }
 
     def _partition_datalist(self, datalist, request, shuffle=False):
+        for d in datalist:
+            d.pop("meta", None)
+
         val_split = request.get("val_split", 0.0)
         if val_split > 0.0:
             train_datalist, val_datalist = partition_dataset(

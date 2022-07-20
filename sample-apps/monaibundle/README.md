@@ -11,7 +11,7 @@ monailabel start_server -a sample-apps/monaibundle/ \
 monailabel start_server -a sample-apps/monaibundle/ \
   -s ~/Datasets/Radiology/ \
   -c models all
- 
+
 # you can pass remove zoo info
 monailabel start_server -a sample-apps/monaibundle/ \
   -s ~/Datasets/Radiology/ \
