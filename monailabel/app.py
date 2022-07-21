@@ -37,6 +37,9 @@ from monailabel.endpoints import (
 )
 from monailabel.interfaces.utils.app import app_instance, clear_cache
 
+origins = [str(origin) for origin in settings.MONAI_LABEL_CORS_ORIGINS] if settings.MONAI_LABEL_CORS_ORIGINS else ["*"]
+print(f"Allow Origins: {origins}")
+
 app = FastAPI(
     title=settings.MONAI_LABEL_PROJECT_NAME,
     openapi_url="/openapi.json",
@@ -45,9 +48,7 @@ app = FastAPI(
     middleware=[
         Middleware(
             CORSMiddleware,
-            allow_origins=[str(origin) for origin in settings.MONAI_LABEL_CORS_ORIGINS]
-            if settings.MONAI_LABEL_CORS_ORIGINS
-            else ["*"],
+            allow_origins=origins,
             allow_credentials=True,
             allow_methods=["*"],
             allow_headers=["*"],

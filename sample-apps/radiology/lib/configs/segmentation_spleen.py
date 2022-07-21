@@ -46,7 +46,9 @@ class SegmentationSpleen(TaskConfig):
         super().init(name, model_dir, conf, planner, **kwargs)
 
         # Labels
-        self.labels = ["spleen"]
+        self.labels = {
+            "spleen": 1,
+        }
 
         # Model Files
         self.path = [

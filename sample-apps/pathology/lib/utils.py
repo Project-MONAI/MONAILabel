@@ -11,6 +11,7 @@ from math import ceil
 import cv2
 import numpy as np
 import openslide
+import torch
 from monai.transforms import LoadImage
 from PIL import Image
 from skimage.measure import regionprops
@@ -205,7 +206,8 @@ def split_nuclei_dataset(d, centroid_key="centroid", mask_value_key="mask_value"
     dataset_json = []
 
     mask = LoadImage(image_only=True, dtype=np.uint8)(d["label"])
-    _, labels, _, _ = cv2.connectedComponentsWithStats(mask, 4, cv2.CV_32S)
+    mask_np = mask.numpy() if isinstance(mask, torch.Tensor) else mask
+    _, labels, _, _ = cv2.connectedComponentsWithStats(mask_np, 4, cv2.CV_32S)
 
     stats = regionprops(labels)
     for stat in stats:
