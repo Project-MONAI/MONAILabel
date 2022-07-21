@@ -193,12 +193,12 @@ class ImageDataController:
             )
             return False
 
-    def reuqestSegmentation(self, image_id) -> requests.models.Response:
+    def reuqestSegmentation(self, image_id : str, tag : str) -> requests.models.Response:
         """
         after sending request to monai server
         rerturns response body (img_blob) which contains the segmentation data
         """
-        img_blob = self.monaiServerREST.requestSegmentation(image_id)
+        img_blob = self.monaiServerREST.requestSegmentation(image_id, tag)
         logging.info(
             "{}: Segmentation successfully requested from MONAIServer (image id: {})".format(
                 self.getCurrentTime(), image_id
@@ -208,3 +208,12 @@ class ImageDataController:
 
     def getDicomDownloadUri(self, image_id: str) -> str:
         return self.monaiServerREST.getDicomDownloadUri(image_id)
+
+    def saveLabelInMonaiServer(self, image_in : str, label_in : str, tag : str, params : Dict):
+        self.monaiServerREST.saveLabel(image_in, label_in, tag, params)
+
+    def deleteLabelByVersionTag(self, imageId : str, versionTag : str) -> bool:
+        reponseCode = self.monaiServerREST.deleteLabelByVersionTag(imageId, versionTag)
+        if (reponseCode is 200):
+            return True
+        return False

@@ -1,5 +1,6 @@
 import json
 import time
+import logging
 
 """
 SegmentationMeta stores all the meta data of its corresponding ImageData
@@ -17,12 +18,37 @@ class SegmentationMeta:
         self.editTime: str = ""
         self.comment: str = ""
 
-    def build(self, status="", level="", approvedBy="", comment=""):
+    def build(self, status="", level="", approvedBy="", comment="", editTime=""):
         self.setEditTime()
         self.status = status
         self.level = level
         self.approvedBy = approvedBy
         self.comment = comment
+        self.editTime = editTime
+
+    def update(self,  status="", level="", approvedBy="", comment="") -> bool:
+        logging.warn("=============== HEER ==============")
+        logging.warn("status={}, level={}, approvedBy={}, comment={}".format(status, level, approvedBy, comment))
+        isChanged = False
+        if(self.isBlank(status) is False and status != self.status):
+            self.status = status
+            isChanged = True
+
+        if(self.isBlank(level) is False and level != self.level):
+            self.level = level
+            isChanged = True
+
+        if(self.isBlank(comment) is False and comment != self.comment):
+            self.comment = comment
+            isChanged = True
+        
+        if(isChanged):
+            if(self.isBlank(approvedBy) is False and approvedBy != self.approvedBy):
+                self.approvedBy = approvedBy
+
+            self.setEditTime()
+            
+        return isChanged
 
     def setApprovedBy(self, approvedBy: str):
         self.setEditTime()
@@ -41,10 +67,9 @@ class SegmentationMeta:
         self.comment = comment
 
     def setEditTime(self):
-        self.editTime = str(time.ctime())
+        self.editTime = int(time.time())
 
-    def getMeta(self) -> str:
-        self.setEditTime()
+    def getMeta(self)-> dict:
         metaJson = {
             "segmentationMeta": {
                 "status": self.status,
@@ -54,8 +79,7 @@ class SegmentationMeta:
                 "editTime": self.editTime,
             }
         }
-        jsonStr = json.dumps(metaJson)
-        return self.preFix + jsonStr
+        return metaJson
 
     def getStatus(self) -> str:
         return self.status
@@ -65,6 +89,14 @@ class SegmentationMeta:
 
     def getApprovedBy(self) -> str:
         return self.approvedBy
+
+    def getComment(self) -> str:
+        return self.comment
+
+    def getEditTime(self) -> str:
+        return self.editTime
+
+
 
     def isEqual(self, status="", level="", approvedBy="", comment=""):
         if status != self.status:
@@ -76,6 +108,10 @@ class SegmentationMeta:
         if comment != self.comment:
             return False
         return True
+
+    def isBlank(self, string) -> bool:
+        return not (string and string.strip())
+
 
     def display(self):
         print("status: ", self.status)

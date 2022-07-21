@@ -22,6 +22,10 @@ class JsonParserTest(unittest.TestCase):
         json_with_segmentation_str = self.loadJsonStr(fileNameWithSegmentation)
         self.json_with_segmentation = json.loads(json_with_segmentation_str)
 
+        fileNameWithMultipleVersions = "test_datastore_v2_image_with_multiple_versions.json"
+        fileNameWithMultipleVersions_str = self.loadJsonStr(fileNameWithMultipleVersions)
+        self.json_with_multiple_versions= json.loads(fileNameWithMultipleVersions_str)
+
     @classmethod
     def loadJsonStr(self, fileName: str) -> str:
         with open(os.path.join(sys.path[0], "TestDataSet/" + fileName)) as f:
@@ -102,7 +106,56 @@ class JsonParserTest(unittest.TestCase):
         self.assertEqual(imageData.getStatus(), "flagged")
         self.assertEqual(imageData.getLevel(), "easy")
         self.assertEqual(imageData.getApprovedBy(), "Prof Radiogolist")
-        self.assertEqual(imageData.getTime(), "2021-12-16 10:35:51")
+        self.assertEqual(imageData.getTimeOfAnnotation(), "2021-12-16 10:35:51")
+
+    def test_extractLabelNames(self):
+        labelsDict = self.jsonParser.extractLabels(self.json_with_multiple_versions)
+        labelNames = self.jsonParser.extractLabelNames(labelsDict)
+        self.assertListEqual(labelNames, ['final', 'version_1', 'version_2', 'version_3'])
+
+    def test_jsonToImageData_with_multiple_versions(self):
+        imageData: ImageData = self.jsonParser.jsonToImageData("lan.dcm", self.json_with_multiple_versions)
+
+        self.assertEqual(imageData.getName(), "lan.dcm")
+        self.assertEqual(imageData.getFileName(), "lan.dcm")
+        self.assertEqual(
+            imageData.getCheckSum(), "SHA256:a48c454592a36c1d2895322320e5ab5479eb5e93d9d4f3e16825625033875d6f"
+        )
+
+        self.assertEqual(imageData.isSegemented(), True)
+        self.assertEqual(imageData.getClientId(), "user-xyz")
+        self.assertEqual(imageData.getTimeOfAnnotation(), "2022-01-02 17:52:47")
+        self.assertListEqual(imageData.getVersionNames(), ['final', 'version_1', 'version_2', 'version_3'])
+        # dictMeta = imageData.getsegmentationMetaDict()
+        # for k,v in dictMeta.items():
+        #     print("------- key: ", k)
+        #     v.display()
+
+    def test_extractLabelContentByName(self):
+        labelsDict = self.jsonParser.extractLabels(self.json_with_multiple_versions)
+        labelContent = self.jsonParser.extractLabelContentByName(labelsDict)
+        exspectedLabelContent = {'label_info': [{'name': 'Lung', 'idx': 1}, {'name': 'Heart', 'idx': 2}, {'name': 'Trachea', 'idx': 3}, {'name': 'Mediastinum', 'idx': 4}, {'name': 'Clavicle', 'idx': 5}]}
+        self.assertDictEqual(exspectedLabelContent,labelContent)
+
+    def test_extractSegmentationMetaOfVersion(self):
+        labelsDict = self.jsonParser.extractLabels(self.json_with_multiple_versions)
+        labelContent = self.jsonParser.extractSegmentationMetaOfVersion(labelsDict, labelName='version_3')
+        segmentationMeta = self.jsonParser.produceSegementationData(labelContent)
+        # segmentationMeta.display()
+
+    def test_extractSegmentationMetaOfVersion_final_as_label(self):
+        labelsDict = self.jsonParser.extractLabels(self.json_with_multiple_versions)
+        labelContent = self.jsonParser.extractSegmentationMetaOfVersion(labelsDict, labelName='final')
+        segmentationMeta = self.jsonParser.produceSegementationData(labelContent)
+        segmentationMeta.display()
+
+    def test_getAllSegmentationMetaOfAllLabels(self):
+        labelsDict = self.jsonParser.extractLabels(self.json_with_multiple_versions)
+        labelNames = self.jsonParser.extractLabelNames(labelsDict)
+        segmentationMetaDict = self.jsonParser.getAllSegmentationMetaOfAllLabels(labelsDict, labelNames)
+        # for k,v in segmentationMetaDict.items():
+        #     print("key->",k)
+        #     v.display()
 
 
 if __name__ == "__main__":

@@ -82,7 +82,7 @@ class MonaiServerRESTTest(unittest.TestCase):
             request(
                 method="PUT",
                 path="/datastore/updatelabelinfo",
-                querystring={"image": "6662775"},
+                querystring={"label": "6662775"},
                 headers={"content-Type": "application/json"},
                 body=json_equals(body),
             ),
@@ -92,7 +92,7 @@ class MonaiServerRESTTest(unittest.TestCase):
 
         result = requests.put(
             cls.MOCK_SERVER_URL + "/datastore/updatelabelinfo",
-            params={"image": "6662775"},
+            params={"label": "6662775"},
             json=body,
             headers={"content-Type": "application/json"},
         )

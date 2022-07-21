@@ -1,8 +1,9 @@
-from typing import Dict
+from typing import Dict, List
 
 from MONAILabelReviewerLib.DataStoreKeys import DataStoreKeys
 from MONAILabelReviewerLib.ImageData import ImageData
 from MONAILabelReviewerLib.MONAILabelReviewerEnum import Label
+from MONAILabelReviewerLib.SegmentationMeta import SegmentationMeta
 
 """
 JsonParser parses the datastore.json file
@@ -82,6 +83,55 @@ class JsonParser:
             return False
         return True
 
+    def extractLabels(self, obj: dict) -> dict:
+        return self.getValueByKey(self.dataStoreKeys.LABELS, obj)
+
+    def extractLabelNames(self, labelsDict: dict) -> List[str]:
+        return list(labelsDict.keys())
+
+    def extractLabelContentByName(self, labels : dict, labelName='final'):
+        if(labelName not in labels):
+            return {}
+        content = labels[labelName][self.dataStoreKeys.INFO]
+        
+        if(self.dataStoreKeys.LABEL_INFO not in content):
+            return {}
+        
+        labelDict = {}
+        labelDict[self.dataStoreKeys.LABEL_INFO] = content[self.dataStoreKeys.LABEL_INFO]
+        return labelDict
+
+    def extractSegmentationMetaOfVersion(self, labels : dict, labelName : str) -> dict:
+        if(labelName not in labels):
+            return {}
+        content = labels[labelName][self.dataStoreKeys.INFO]
+        
+        if(self.dataStoreKeys.META not in content):
+            return {}
+        return content[self.dataStoreKeys.META]
+
+    def getAllSegmentationMetaOfAllLabels(self, labels : dict, labelNames : List) -> Dict[str, SegmentationMeta]:
+        if(len(labelNames) == 0):
+            return {}
+
+        allSegMetaOfLabels = {}
+        for labelName in labelNames:
+            segMetaSingle = self.extractSegmentationMetaOfVersion(labels, labelName)
+            if(len(segMetaSingle) == 0):
+                continue
+            segmentationMeta = self.produceSegementationData(segMetaSingle)
+            allSegMetaOfLabels[labelName] = segmentationMeta
+        return allSegMetaOfLabels
+
+    def produceSegementationData(self, segmenatationDict : dict) -> SegmentationMeta:
+        status = segmenatationDict[self.dataStoreKeys.META_STATUS]
+        level = segmenatationDict[self.dataStoreKeys.META_LEVEL]
+        approvedBy = segmenatationDict[self.dataStoreKeys.APPROVED_BY]
+        comment = segmenatationDict[self.dataStoreKeys.META_COMMENT]
+        segmentationMeta = SegmentationMeta()
+        segmentationMeta.build(status=status, level=level, approvedBy=approvedBy, comment=comment)
+        return segmentationMeta
+
     def isSegmented(self, obj: dict) -> bool:
         labels = self.getValueByKey(self.dataStoreKeys.LABELS, obj)
         if len(labels) == 0:
@@ -157,9 +207,19 @@ class JsonParser:
             checkSum=checksum,
             segmented=isSegmented,
             timeStamp=timeStamp,
-        )
+        )        
 
         if isSegmented:
+
+            labelsDict = self.extractLabels(value)
+            labelNames = self.extractLabelNames(labelsDict)
+            labelContent = self.extractLabelContentByName(labelsDict)
+            labelSegmentationMeta : SegmentationMeta = self.getAllSegmentationMetaOfAllLabels(labelsDict, labelNames)
+
+            imageData.setVersionNames(labelNames)
+            imageData.setLabelContent(labelContent)
+            imageData.setSegmentationMetaDict(labelSegmentationMeta)
+
             segName = self.getSegmentationName(value)
             imageData.setSegmentationFileName(segName)
 
@@ -177,12 +237,14 @@ class JsonParser:
             label = self.LABEL.ORGINAL
 
         info = self.getInfoInLabels(label=label, obj=value)
-        if self.hasSegmentationMeta(info):
+        if  (info != "") and (self.hasSegmentationMeta(info)):
             status = self.getMetaStatus(label, value)
             level = self.getMetaLevel(label, value)
             approvedBy = self.getMetaApprovedBy(label, value)
             comment = self.getMetaComment(label, value)
-            imageData.setSegmentationMeta(status, level, approvedBy, comment)
+            timeOfEditing = self.getMetaEditTime(label, value)
+            imageData.setSegmentationMeta(status, level, approvedBy, comment, timeOfEditing)
+            
         return imageData
 
     def hasSegmentationMeta(self, info: dict) -> bool:
