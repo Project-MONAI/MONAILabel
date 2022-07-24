@@ -17,8 +17,8 @@ DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")/../.." >/dev/null 2>&1 && pwd)"
 export PYTHONPATH=$DIR:$PYTHONPATH
 echo Using PYTHONPATH=$PYTHONPATH
 
-PYEXE=python
-version=$(python --version 2>&1)
+PYEXE=${MONILABEL_PYEXE:-python}
+version=$(${PYEXE} --version 2>&1)
 if echo "$version" | grep "Python 2"; then
   echo "Trying python3 instead of python ($version)"
   PYEXE=python3
