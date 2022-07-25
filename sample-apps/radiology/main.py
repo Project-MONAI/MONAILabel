@@ -15,7 +15,7 @@ from distutils.util import strtobool
 from typing import Dict
 
 import lib.configs
-from lib.activelearning.first import First
+from lib.activelearning import First
 
 from monailabel.interfaces.app import MONAILabelApp
 from monailabel.interfaces.config import TaskConfig

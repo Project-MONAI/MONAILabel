@@ -426,20 +426,20 @@ function check_server_running() {
   echo ${code}
 }
 
-# network training/inference/eval integration tests
-if [ $doNetTests = true ]; then
+
+function run_integration_tests() {
   echo "${separator}${blue}integration${noColor}"
   torch_validate
 
   ${cmdPrefix}${PY_EXE} tests/setup.py
-  echo "Starting MONAILabel server..."
+  echo "$1 - Starting MONAILabel server..."
   rm -rf tests/data/apps
-  monailabel apps -n radiology -o tests/data/apps -d
-  monailabel start_server -a tests/data/apps/radiology -c models all -s tests/data/dataset/local/spleen -p ${MONAILABEL_SERVER_PORT:-8000} &
+  monailabel apps -n $1 -o tests/data/apps -d
+  monailabel start_server -a tests/data/apps/$1 -c models all -s $2 -p ${MONAILABEL_SERVER_PORT:-8000} &
 
   wait_time=0
   server_is_up=0
-  start_time_out=180
+  start_time_out=240
 
   while [[ $wait_time -le ${start_time_out} ]]; do
     if [ "$(check_server_running)" == "200" ]; then
@@ -448,18 +448,24 @@ if [ $doNetTests = true ]; then
     fi
     sleep 5
     wait_time=$((wait_time + 5))
-    echo "Waiting for MONAILabel to be up and running..."
+    echo "$1 - Waiting for MONAILabel to be up and running..."
   done
   echo ""
 
   if [ "$server_is_up" == "1" ]; then
-    echo "MONAILabel server is up and running."
+    echo "$1 - MONAILabel server is up and running."
   else
-    echo "Failed to start MONAILabel server. Exiting..."
+    echo "$1 - Failed to start MONAILabel server. Exiting..."
     exit 1
   fi
 
-  ${cmdPrefix}${cmd} -m pytest -v tests/integration --no-summary -x
-  echo "Finished All Integration Tests;  Stop/Kill MONAILabel Server..."
+  ${cmdPrefix}${cmd} -m pytest -v tests/integration/$1 --no-summary -x
+  echo "$1 - Finished All Integration Tests;  Stop/Kill MONAILabel Server..."
   kill -9 $(ps -ef | grep monailabel | grep start_server | grep -v grep | awk '{print $2}')
+}
+
+# network training/inference/eval integration tests
+if [ $doNetTests = true ]; then
+  run_integration_tests "radiology" "tests/data/dataset/local/spleen"
+  run_integration_tests "pathology" "tests/data/pathology"
 fi

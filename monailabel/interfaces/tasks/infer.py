@@ -378,7 +378,7 @@ class InferTask:
                     model_state_dict = checkpoint.get(self.model_state_dict, checkpoint)
                     network.load_state_dict(model_state_dict, strict=self.load_strict)
             else:
-                network = torch.jit.load(path, map_location=torch.device(device)).to(torch.device)
+                network = torch.jit.load(path, map_location=torch.device(device))
 
             network.eval()
             self._networks[device] = (network, statbuf.st_mtime if statbuf else 0)
