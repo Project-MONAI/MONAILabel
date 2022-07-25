@@ -4,14 +4,12 @@ What's New
 
 0.4.2
 =====
-- MONAI Bundle App - Pull compatible bundles from `MONAI Zoo <https://github.com/Project-MONAI/model-zoo>`_
+- MONAI Bundle App - Pull `compatible <https://github.com/Project-MONAI/MONAILabel/tree/main/sample-apps/monaibundle>`_ bundles from `MONAI Zoo <https://github.com/Project-MONAI/model-zoo>`_
 
   - spleen_ct_segmentation
   - spleen_deepedit_annotation
   - others
-- Support for MONAI (supports 0.9.1 and above)
-
-  - Meta Tensor
+- Support for MONAI `0.9.1 <https://github.com/Project-MONAI/MONAI/releases/tag/0.9.1>`_
 
 
 
