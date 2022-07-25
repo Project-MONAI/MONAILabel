@@ -4,7 +4,7 @@ What's New
 
 0.4.2
 =====
-- MONAI Bundle Sample App - Pull compatible bundles from `MONAI Zoo <https://github.com/Project-MONAI/model-zoo>`_
+- MONAI Bundle App - Pull compatible bundles from `MONAI Zoo <https://github.com/Project-MONAI/model-zoo>`_
 
   - spleen_ct_segmentation
   - spleen_deepedit_annotation
