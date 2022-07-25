@@ -24,6 +24,12 @@ def run_main():
             download_url(url=dataset_url, filepath=dataset_file)
         extractall(filepath=dataset_file, output_dir=TEST_DATA)
 
+    pathology_file = os.path.join(TEST_DATA, "pathology", "JP2K-33003-1.svs")
+    pathology_url = "https://demo.kitware.com/histomicstk/api/v1/item/5d5c07509114c049342b66f8/download"
+    if not os.path.exists(os.path.join(TEST_DATA, "pathology")):
+        if not os.path.exists(pathology_file):
+            download_url(url=pathology_url, filepath=pathology_file)
+
 
 if __name__ == "__main__":
     run_main()
