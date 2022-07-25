@@ -223,11 +223,11 @@ def main():
     )
 
     home = str(Path.home())
-    studies = f"{home}/Documents/workspace/Datasets/radiology/btcv/train"
+    studies = f"{home}/Documents/workspace/Datasets/radiology/BRATS-2021/neuro-atlas-first-labels/monailabel"
 
     parser = argparse.ArgumentParser()
     parser.add_argument("-s", "--studies", default=studies)
-    parser.add_argument("-m", "--model", default="segmentation")
+    parser.add_argument("-m", "--model", default="segmentation_brats")
     parser.add_argument("-t", "--test", default="train", choices=("train", "infer"))
     args = parser.parse_args()
 
@@ -265,12 +265,12 @@ def main():
     app.train(
         request={
             "model": args.model,
-            "max_epochs": 10,
+            "max_epochs": 2000,
             "dataset": "CacheDataset",  # PersistentDataset, CacheDataset
             "train_batch_size": 1,
             "val_batch_size": 1,
-            "multi_gpu": True,
-            "val_split": 0.1,
+            "multi_gpu": False,
+            "val_split": 0.05,
         },
     )
 
