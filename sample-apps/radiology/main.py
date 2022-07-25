@@ -223,7 +223,7 @@ def main():
     )
 
     home = str(Path.home())
-    studies = f"{home}/Documents/workspace/Datasets/all-brain/monailabel-Task01_BrainTumour"
+    studies = f"{home}/Documents/workspace/Datasets/radiology/BRATS-2021/neuro-atlas-first-labels/monailabel"
 
     parser = argparse.ArgumentParser()
     parser.add_argument("-s", "--studies", default=studies)
@@ -269,7 +269,7 @@ def main():
             "dataset": "CacheDataset",  # PersistentDataset, CacheDataset
             "train_batch_size": 1,
             "val_batch_size": 1,
-            "multi_gpu": True,
+            "multi_gpu": False,
             "val_split": 0.05,
         },
     )

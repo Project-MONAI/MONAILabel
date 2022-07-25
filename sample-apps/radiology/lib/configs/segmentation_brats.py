@@ -16,7 +16,7 @@ from typing import Any, Dict, Optional, Union
 
 import lib.infers
 import lib.trainers
-from monai.networks.nets import UNETR
+from monai.networks.nets import SwinUNETR
 
 from monailabel.interfaces.config import TaskConfig
 from monailabel.interfaces.tasks.infer import InferTask
@@ -49,23 +49,34 @@ class SegmentationBrats(TaskConfig):
 
         # Download PreTrained Model
         if strtobool(self.conf.get("use_pretrained_model", "true")):
-            url = f"{self.PRE_TRAINED_PATH}/segmentation_unetr_ventricle_brats.pt"
+            url = f"{self.PRE_TRAINED_PATH}/segmentation_swinunetr_ventricle_brats.pt"
             download_file(url, self.path[0])
 
         # Network
         self.spatial_size = json.loads(self.conf.get("spatial_size", "[96, 96, 64]"))
-        self.network = UNETR(
-            spatial_dims=3,
+        # self.network = UNETR(
+        #     spatial_dims=3,
+        #     in_channels=self.number_intensity_ch,
+        #     out_channels=len(self.labels) + 1,  # labels plus background
+        #     img_size=self.spatial_size,
+        #     feature_size=64,
+        #     hidden_size=1536,
+        #     mlp_dim=3072,
+        #     num_heads=48,
+        #     pos_embed="conv",
+        #     norm_name="instance",
+        #     res_block=True,
+        # )
+
+        self.network = SwinUNETR(
+            img_size=self.spatial_size,
             in_channels=self.number_intensity_ch,
             out_channels=len(self.labels) + 1,  # labels plus background
-            img_size=self.spatial_size,
-            feature_size=64,
-            hidden_size=1536,
-            mlp_dim=3072,
-            num_heads=48,
-            pos_embed="conv",
-            norm_name="instance",
-            res_block=True,
+            feature_size=48,
+            drop_rate=0.0,
+            attn_drop_rate=0.0,
+            dropout_path_rate=0.0,
+            use_checkpoint=True,
         )
 
     def infer(self) -> Union[InferTask, Dict[str, InferTask]]:
