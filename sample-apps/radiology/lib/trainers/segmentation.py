@@ -101,7 +101,7 @@ class Segmentation(BasicTrainTask):
     def train_post_transforms(self, context: Context):
         return [
             EnsureTyped(keys="pred", device=context.device),
-            Activationsd(keys="pred", softmax=len(self._labels) > 1, sigmoid=len(self._labels) == 1),
+            Activationsd(keys="pred", softmax=True),
             AsDiscreted(
                 keys=("pred", "label"),
                 argmax=(True, False),
