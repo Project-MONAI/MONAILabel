@@ -27,7 +27,6 @@ from monailabel.interfaces.tasks.train import TrainTask
 from monailabel.scribbles.infer import GMMBasedGraphCut, HistogramBasedGraphCut
 from monailabel.tasks.activelearning.random import Random
 from monailabel.tasks.infer.deepgrow_pipeline import InferDeepgrowPipeline
-from monailabel.tasks.infer.vertebra_pipeline import InferVertebraPipeline
 from monailabel.utils.others.class_utils import get_class_names
 from monailabel.utils.others.planner import HeuristicPlanner
 
@@ -146,28 +145,6 @@ class MyApp(MONAILabelApp):
                 network=self.models["deepgrow_2d"].network,
                 model_3d=infers["deepgrow_3d"],
                 description="Combines Clara Deepgrow 2D and 3D models",
-            )
-
-        #################################################
-        # Pipeline based on existing infers for vertebra segmentation
-        # Stages:
-        # 1/ localization_spine
-        # 2/ localization_vertebra
-        # 3/ segmentation_vertebra
-        #################################################
-        if (
-            infers.get("localization_spine")
-            and infers.get("localization_vertebra")
-            and infers.get("segmentation_vertebra")
-        ):
-            infers["vertebra_pipeline"] = InferVertebraPipeline(
-                # third stage
-                path_segmentation_vertebra=self.models["segmentation_vertebra"].path,
-                network_segmentation_vertebra=self.models["segmentation_vertebra"].network,
-                #
-                model_localization_spine=infers["localization_spine"],  # first stage
-                model_localization_vertebra=infers["localization_vertebra"],  # second stage
-                description="Combines three stage for vertebra segmentation",
             )
 
         return infers
