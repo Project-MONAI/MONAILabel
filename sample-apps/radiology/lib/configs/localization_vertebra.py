@@ -88,7 +88,7 @@ class LocalizationVertebra(TaskConfig):
         )
 
     def infer(self) -> Union[InferTask, Dict[str, InferTask]]:
-        task: InferTask = lib.infers.VerLoc(
+        task: InferTask = lib.infers.LocalizationVertebra(
             path=self.path,
             network=self.network,
             roi_size=self.roi_size,
@@ -101,7 +101,7 @@ class LocalizationVertebra(TaskConfig):
 
     def trainer(self) -> Optional[TrainTask]:
         output_dir = os.path.join(self.model_dir, self.name)
-        task: TrainTask = lib.trainers.VerLoc(
+        task: TrainTask = lib.trainers.LocalizationVertebra(
             model_dir=output_dir,
             network=self.network,
             roi_size=self.roi_size,

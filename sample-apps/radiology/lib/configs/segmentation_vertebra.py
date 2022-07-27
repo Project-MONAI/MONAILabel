@@ -61,7 +61,7 @@ class SegmentationVertebra(TaskConfig):
         )
 
     def infer(self) -> Union[InferTask, Dict[str, InferTask]]:
-        task: InferTask = lib.infers.VerSeg(
+        task: InferTask = lib.infers.SegmentationVertebra(
             path=self.path,
             network=self.network,
             roi_size=self.roi_size,
@@ -74,7 +74,7 @@ class SegmentationVertebra(TaskConfig):
 
     def trainer(self) -> Optional[TrainTask]:
         output_dir = os.path.join(self.model_dir, self.name)
-        task: TrainTask = lib.trainers.VerSeg(
+        task: TrainTask = lib.trainers.SegmentationVertebra(
             model_dir=output_dir,
             network=self.network,
             roi_size=self.roi_size,
