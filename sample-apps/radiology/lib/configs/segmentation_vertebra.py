@@ -42,7 +42,7 @@ class VerSeg(TaskConfig):
 
         # Download PreTrained Model
         if strtobool(self.conf.get("use_pretrained_model", "false")):
-            url = f"{self.conf.get('pretrained_path', self.PRE_TRAINED_PATH)}/v_ver_seg_unet.pt"
+            url = f"{self.conf.get('pretrained_path', self.PRE_TRAINED_PATH)}/segmentation_vertebra_unet.pt"
             download_file(url, self.path[0])
 
         self.target_spacing = (1.0, 1.0, 1.0)  # target space for image

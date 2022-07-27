@@ -151,18 +151,22 @@ class MyApp(MONAILabelApp):
         #################################################
         # Pipeline based on existing infers for vertebra segmentation
         # Stages:
-        # 1/ spine_loc
-        # 2/ ver_loc
-        # 3/ ver_seg
+        # 1/ localization_spine
+        # 2/ localization_vertebra
+        # 3/ segmentation_vertebra
         #################################################
-        if infers.get("spine_loc") and infers.get("ver_loc") and infers.get("ver_seg"):
+        if (
+            infers.get("localization_spine")
+            and infers.get("localization_vertebra")
+            and infers.get("segmentation_vertebra")
+        ):
             infers["vertebra_pipeline"] = InferVertebraPipeline(
                 # third stage
-                path_ver_seg=self.models["ver_seg"].path,
-                network_ver_seg=self.models["ver_seg"].network,
+                path_segmentation_vertebra=self.models["segmentation_vertebra"].path,
+                network_segmentation_vertebra=self.models["segmentation_vertebra"].network,
                 #
-                model_spine_loc=infers["spine_loc"],  # first stage
-                model_ver_loc=infers["ver_loc"],  # second stage
+                model_localization_spine=infers["localization_spine"],  # first stage
+                model_localization_vertebra=infers["localization_vertebra"],  # second stage
                 description="Combines three stage for vertebra segmentation",
             )
 

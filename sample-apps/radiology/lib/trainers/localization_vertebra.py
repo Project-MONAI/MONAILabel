@@ -10,14 +10,14 @@
 # limitations under the License.
 import logging
 
-from lib.transforms.transforms import AddROI, GaussianSmoothedCentroidd, GetCentroidAndCropd
+import torch
+from lib.transforms.transforms import VertHeatMap
 from monai.handlers import TensorBoardImageHandler, from_engine
-from monai.inferers import SimpleInferer
-from monai.losses import DiceCELoss
+from monai.inferers import SlidingWindowInferer
 from monai.optimizers import Novograd
 from monai.transforms import (
     Activationsd,
-    AsDiscreted,
+    CropForegroundd,
     EnsureChannelFirstd,
     EnsureTyped,
     GaussianSmoothd,
@@ -35,12 +35,12 @@ from monai.transforms import (
 )
 
 from monailabel.tasks.train.basic_train import BasicTrainTask, Context
-from monailabel.tasks.train.utils import region_wise_metrics
+from monailabel.tasks.train.utils import region_wise_rmse
 
 logger = logging.getLogger(__name__)
 
 
-class VerSeg(BasicTrainTask):
+class LocalizationVertebra(BasicTrainTask):
     def __init__(
         self,
         model_dir,
@@ -48,7 +48,7 @@ class VerSeg(BasicTrainTask):
         roi_size=(96, 96, 96),
         target_spacing=(1.0, 1.0, 1.0),
         num_samples=4,
-        description="Train vertebra segmentation model",
+        description="Train vertebra localization model",
         **kwargs,
     ):
         self._network = network
@@ -64,7 +64,7 @@ class VerSeg(BasicTrainTask):
         return Novograd(context.network.parameters(), 0.0001)
 
     def loss_function(self, context: Context):
-        return DiceCELoss(to_onehot_y=True, softmax=True)
+        return torch.nn.MSELoss(reduction="mean")
 
     def lr_scheduler_handler(self, context: Context):
         return None
@@ -76,11 +76,10 @@ class VerSeg(BasicTrainTask):
         return [
             LoadImaged(keys=("image", "label"), reader="ITKReader"),
             EnsureChannelFirstd(keys=("image", "label")),
-            Orientationd(keys=["image", "label"], axcodes="RAS"),
+            Orientationd(keys=("image", "label"), axcodes="RAS"),
             Spacingd(keys=("image", "label"), pixdim=self.target_spacing, mode=("bilinear", "nearest")),
-            GetCentroidAndCropd(keys=["label", "image"], roi_size=self.roi_size),
-            GaussianSmoothedCentroidd(keys="image"),
-            AddROI(keys="signal"),
+            CropForegroundd(keys=("image", "label"), source_key="label"),
+            VertHeatMap(keys="label", label_names=self._labels),
             GaussianSmoothd(keys="image", sigma=0.75),
             NormalizeIntensityd(keys="image", divisor=2048.0),
             ScaleIntensityd(keys="image", minv=-1.0, maxv=1.0),
@@ -94,45 +93,39 @@ class VerSeg(BasicTrainTask):
             #
             SpatialPadd(keys=("image", "label"), spatial_size=self.roi_size),
             EnsureTyped(keys=("image", "label"), device=context.device),
-            SelectItemsd(keys=("image", "label", "centroids", "original_size", "current_label", "slices_cropped")),
+            SelectItemsd(keys=("image", "label")),
         ]
 
     def train_post_transforms(self, context: Context):
         return [
             EnsureTyped(keys="pred", device=context.device),
-            Activationsd(keys="pred", softmax=len(self._labels) > 1, sigmoid=len(self._labels) == 1),
-            AsDiscreted(
-                keys=("pred", "label"),
-                argmax=(True, False),
-                to_onehot=(len(self._labels) + 1, len(self._labels) + 1),
-            ),
+            Activationsd(keys="pred", other=torch.nn.functional.leaky_relu),
+            # Activationsd(keys="pred", sigmoid=True),
         ]
 
     def val_pre_transforms(self, context: Context):
         return [
             LoadImaged(keys=("image", "label"), reader="ITKReader"),
+            EnsureTyped(keys=("image", "label")),
             EnsureChannelFirstd(keys=("image", "label")),
-            Orientationd(keys=("image", "label"), axcodes="RAS"),
+            Orientationd(keys=["image", "label"], axcodes="RAS"),
             Spacingd(keys=("image", "label"), pixdim=self.target_spacing, mode=("bilinear", "nearest")),
-            GetCentroidAndCropd(keys="label", roi_size=self.roi_size),
-            GaussianSmoothedCentroidd(keys="image"),
-            AddROI(keys="signal"),
+            VertHeatMap(keys="label", label_names=self._labels),
             GaussianSmoothd(keys="image", sigma=0.75),
             NormalizeIntensityd(keys="image", divisor=2048.0),
             ScaleIntensityd(keys="image", minv=-1.0, maxv=1.0),
             SpatialPadd(keys=("image", "label"), spatial_size=self.roi_size),
-            EnsureTyped(keys=("image", "label")),
-            SelectItemsd(keys=("image", "label", "centroids", "original_size", "current_label", "slices_cropped")),
+            SelectItemsd(keys=("image", "label")),
         ]
 
     def val_inferer(self, context: Context):
-        return SimpleInferer()
+        return SlidingWindowInferer(roi_size=self.roi_size, sw_batch_size=8)
 
     def train_key_metric(self, context: Context):
-        return region_wise_metrics(self._labels, self.TRAIN_KEY_METRIC, "train")
+        return region_wise_rmse(self._labels, "train_rmse", "train")
 
     def val_key_metric(self, context: Context):
-        return region_wise_metrics(self._labels, self.VAL_KEY_METRIC, "val")
+        return region_wise_rmse(self._labels, "val_mean_rmse", "val")
 
     def train_handlers(self, context: Context):
         handlers = super().train_handlers(context)

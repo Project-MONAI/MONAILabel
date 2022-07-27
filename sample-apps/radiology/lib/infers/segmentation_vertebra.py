@@ -31,7 +31,7 @@ from monailabel.interfaces.tasks.infer import InferTask, InferType
 from monailabel.transform.post import Restored
 
 
-class VerSeg(InferTask):
+class SegmentationVertebra(InferTask):
     """
     This provides Inference Engine for pre-trained vertebra segmentation (UNet) model.
     """
@@ -78,7 +78,7 @@ class VerSeg(InferTask):
         return SimpleInferer()
 
     def post_transforms(self, data=None) -> Sequence[Callable]:
-        t = [
+        return [
             EnsureTyped(keys="pred", device=data.get("device") if data else None),
             Activationsd(keys="pred", softmax=True),
             AsDiscreted(keys="pred", argmax=True),
@@ -88,4 +88,3 @@ class VerSeg(InferTask):
             #
             Restored(keys="pred", ref_image="image"),
         ]
-        return t

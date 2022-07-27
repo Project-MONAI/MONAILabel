@@ -10,22 +10,20 @@
 # limitations under the License.
 import logging
 
-from lib.transforms.transforms import BinaryMaskd
+from lib.transforms.transforms import AddROI, GaussianSmoothedCentroidd, GetCentroidAndCropd
 from monai.handlers import TensorBoardImageHandler, from_engine
-from monai.inferers import SlidingWindowInferer
+from monai.inferers import SimpleInferer
 from monai.losses import DiceCELoss
 from monai.optimizers import Novograd
 from monai.transforms import (
     Activationsd,
     AsDiscreted,
-    CropForegroundd,
     EnsureChannelFirstd,
     EnsureTyped,
     GaussianSmoothd,
     LoadImaged,
     NormalizeIntensityd,
     Orientationd,
-    RandCropByPosNegLabeld,
     RandRotated,
     RandScaleIntensityd,
     RandShiftIntensityd,
@@ -42,7 +40,7 @@ from monailabel.tasks.train.utils import region_wise_metrics
 logger = logging.getLogger(__name__)
 
 
-class SpineLoc(BasicTrainTask):
+class SegmentationVertebra(BasicTrainTask):
     def __init__(
         self,
         model_dir,
@@ -50,7 +48,7 @@ class SpineLoc(BasicTrainTask):
         roi_size=(96, 96, 96),
         target_spacing=(1.0, 1.0, 1.0),
         num_samples=4,
-        description="Train spine localization model",
+        description="Train vertebra segmentation model",
         **kwargs,
     ):
         self._network = network
@@ -77,12 +75,12 @@ class SpineLoc(BasicTrainTask):
     def train_pre_transforms(self, context: Context):
         return [
             LoadImaged(keys=("image", "label"), reader="ITKReader"),
-            EnsureTyped(keys=("image", "label"), device=context.device),
             EnsureChannelFirstd(keys=("image", "label")),
-            BinaryMaskd(keys="label"),
-            Orientationd(keys=("image", "label"), axcodes="RAS"),
+            Orientationd(keys=["image", "label"], axcodes="RAS"),
             Spacingd(keys=("image", "label"), pixdim=self.target_spacing, mode=("bilinear", "nearest")),
-            CropForegroundd(keys=("image", "label"), source_key="image"),
+            GetCentroidAndCropd(keys=["label", "image"], roi_size=self.roi_size),
+            GaussianSmoothedCentroidd(keys="image"),
+            AddROI(keys="signal"),
             GaussianSmoothd(keys="image", sigma=0.75),
             NormalizeIntensityd(keys="image", divisor=2048.0),
             ScaleIntensityd(keys="image", minv=-1.0, maxv=1.0),
@@ -95,17 +93,8 @@ class SpineLoc(BasicTrainTask):
             RandZoomd(keys=("image", "label"), prob=0.70, min_zoom=0.6, max_zoom=1.15),
             #
             SpatialPadd(keys=("image", "label"), spatial_size=self.roi_size),
-            RandCropByPosNegLabeld(
-                keys=("image", "label"),
-                label_key="label",
-                spatial_size=self.roi_size,
-                pos=1,
-                neg=1,
-                num_samples=self.num_samples,
-                image_key="image",
-                image_threshold=0,
-            ),
-            SelectItemsd(keys=("image", "label")),
+            EnsureTyped(keys=("image", "label"), device=context.device),
+            SelectItemsd(keys=("image", "label", "centroids", "original_size", "current_label", "slices_cropped")),
         ]
 
     def train_post_transforms(self, context: Context):
@@ -122,20 +111,22 @@ class SpineLoc(BasicTrainTask):
     def val_pre_transforms(self, context: Context):
         return [
             LoadImaged(keys=("image", "label"), reader="ITKReader"),
-            EnsureTyped(keys=("image", "label")),
             EnsureChannelFirstd(keys=("image", "label")),
-            BinaryMaskd(keys="label"),
-            Orientationd(keys=["image", "label"], axcodes="RAS"),
+            Orientationd(keys=("image", "label"), axcodes="RAS"),
             Spacingd(keys=("image", "label"), pixdim=self.target_spacing, mode=("bilinear", "nearest")),
+            GetCentroidAndCropd(keys="label", roi_size=self.roi_size),
+            GaussianSmoothedCentroidd(keys="image"),
+            AddROI(keys="signal"),
             GaussianSmoothd(keys="image", sigma=0.75),
             NormalizeIntensityd(keys="image", divisor=2048.0),
             ScaleIntensityd(keys="image", minv=-1.0, maxv=1.0),
             SpatialPadd(keys=("image", "label"), spatial_size=self.roi_size),
-            SelectItemsd(keys=("image", "label")),
+            EnsureTyped(keys=("image", "label")),
+            SelectItemsd(keys=("image", "label", "centroids", "original_size", "current_label", "slices_cropped")),
         ]
 
     def val_inferer(self, context: Context):
-        return SlidingWindowInferer(roi_size=self.roi_size, sw_batch_size=8)
+        return SimpleInferer()
 
     def train_key_metric(self, context: Context):
         return region_wise_metrics(self._labels, self.TRAIN_KEY_METRIC, "train")

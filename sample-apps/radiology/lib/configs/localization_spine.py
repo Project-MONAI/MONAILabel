@@ -25,37 +25,13 @@ from monailabel.utils.others.generic import download_file
 logger = logging.getLogger(__name__)
 
 
-class VerLoc(TaskConfig):
+class SpineLoc(TaskConfig):
     def init(self, name: str, model_dir: str, conf: Dict[str, str], planner: Any, **kwargs):
         super().init(name, model_dir, conf, planner, **kwargs)
 
         # Labels
         self.labels = {
-            "C1": 1,
-            "C2": 2,
-            "C3": 3,
-            "C4": 4,
-            "C5": 5,
-            "C6": 6,
-            "C7": 7,
-            "Th1": 8,
-            "Th2": 9,
-            "Th3": 10,
-            "Th4": 11,
-            "Th5": 12,
-            "Th6": 13,
-            "Th7": 14,
-            "Th8": 15,
-            "Th9": 16,
-            "Th10": 17,
-            "Th11": 18,
-            "Th12": 19,
-            "L1": 20,
-            "L2": 21,
-            "L3": 22,
-            "L4": 23,
-            "L5": 24,
-            "L6": 25,
+            "spine": 1,
         }
 
         # Model Files
@@ -66,49 +42,46 @@ class VerLoc(TaskConfig):
 
         # Download PreTrained Model
         if strtobool(self.conf.get("use_pretrained_model", "false")):
-            url = f"{self.conf.get('pretrained_path', self.PRE_TRAINED_PATH)}/v_ver_loc_unet.pt"
+            url = f"{self.conf.get('pretrained_path', self.PRE_TRAINED_PATH)}/localization_spine_unet.pt"
             download_file(url, self.path[0])
 
-        self.target_spacing = (2.0, 2.0, 2.0)  # target space for image
-        # Setting ROI size - This is for the image padding
-        self.roi_size = (96, 96, 256)
+        self.target_spacing = (8.0, 8.0, 8.0)  # target space for image
+        # Setting ROI size should consider max width, height and depth of the images
+        self.roi_size = (64, 64, 128)  # sliding window size for train and infer
 
         # Network
-        # Should we implement the Spatial Configuration Network in Pytorch?
-        # https://github.com/christianpayer/MedicalDataAugmentationTool-VerSe/blob/master/verse2020/network.py
         self.network = UNet(
             spatial_dims=3,
             in_channels=1,
             out_channels=len(self.labels.keys()) + 1,  # All labels plus background
-            channels=[128, 128, 128, 128, 128],
+            channels=[64, 64, 64, 64, 64],
             strides=[2, 2, 2, 2],
             num_res_units=2,
-            dropout=0.5,
-            act="leakyrelu",
+            dropout=0.2,
         )
 
     def infer(self) -> Union[InferTask, Dict[str, InferTask]]:
-        task: InferTask = lib.infers.VerLoc(
+        task: InferTask = lib.infers.SpineLoc(
             path=self.path,
             network=self.network,
             roi_size=self.roi_size,
             target_spacing=self.target_spacing,
             labels=self.labels,
             preload=strtobool(self.conf.get("preload", "false")),
-            config={"largest_cc": False},
+            config={"largest_cc": True},
         )
         return task
 
     def trainer(self) -> Optional[TrainTask]:
         output_dir = os.path.join(self.model_dir, self.name)
-        task: TrainTask = lib.trainers.VerLoc(
+        task: TrainTask = lib.trainers.SpineLoc(
             model_dir=output_dir,
             network=self.network,
             roi_size=self.roi_size,
             target_spacing=self.target_spacing,
             load_path=self.path[0],
             publish_path=self.path[1],
-            description="Train vertebra localization Model",
+            description="Train spine localization Model",
             dimension=3,
             labels=self.labels,
         )

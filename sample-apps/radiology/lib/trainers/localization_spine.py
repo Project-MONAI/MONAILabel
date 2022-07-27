@@ -10,13 +10,14 @@
 # limitations under the License.
 import logging
 
-import torch
-from lib.transforms.transforms import VertHeatMap
+from lib.transforms.transforms import BinaryMaskd
 from monai.handlers import TensorBoardImageHandler, from_engine
 from monai.inferers import SlidingWindowInferer
+from monai.losses import DiceCELoss
 from monai.optimizers import Novograd
 from monai.transforms import (
     Activationsd,
+    AsDiscreted,
     CropForegroundd,
     EnsureChannelFirstd,
     EnsureTyped,
@@ -24,11 +25,11 @@ from monai.transforms import (
     LoadImaged,
     NormalizeIntensityd,
     Orientationd,
+    RandCropByPosNegLabeld,
     RandRotated,
     RandScaleIntensityd,
     RandShiftIntensityd,
     RandZoomd,
-    SaveImaged,
     ScaleIntensityd,
     SelectItemsd,
     Spacingd,
@@ -36,12 +37,12 @@ from monai.transforms import (
 )
 
 from monailabel.tasks.train.basic_train import BasicTrainTask, Context
-from monailabel.tasks.train.utils import region_wise_rmse
+from monailabel.tasks.train.utils import region_wise_metrics
 
 logger = logging.getLogger(__name__)
 
 
-class VerLoc(BasicTrainTask):
+class LocalizationSpine(BasicTrainTask):
     def __init__(
         self,
         model_dir,
@@ -49,7 +50,7 @@ class VerLoc(BasicTrainTask):
         roi_size=(96, 96, 96),
         target_spacing=(1.0, 1.0, 1.0),
         num_samples=4,
-        description="Train vertebra localization model",
+        description="Train spine localization model",
         **kwargs,
     ):
         self._network = network
@@ -65,7 +66,7 @@ class VerLoc(BasicTrainTask):
         return Novograd(context.network.parameters(), 0.0001)
 
     def loss_function(self, context: Context):
-        return torch.nn.MSELoss(reduction="mean")
+        return DiceCELoss(to_onehot_y=True, softmax=True)
 
     def lr_scheduler_handler(self, context: Context):
         return None
@@ -76,12 +77,12 @@ class VerLoc(BasicTrainTask):
     def train_pre_transforms(self, context: Context):
         return [
             LoadImaged(keys=("image", "label"), reader="ITKReader"),
+            EnsureTyped(keys=("image", "label"), device=context.device),
             EnsureChannelFirstd(keys=("image", "label")),
+            BinaryMaskd(keys="label"),
             Orientationd(keys=("image", "label"), axcodes="RAS"),
             Spacingd(keys=("image", "label"), pixdim=self.target_spacing, mode=("bilinear", "nearest")),
-            CropForegroundd(keys=("image", "label"), source_key="label"),
-            VertHeatMap(keys="label", label_names=self._labels),
-            SaveImaged(keys="label", output_postfix="", output_dir="/home/andres/Downloads", separate_folder=False),
+            CropForegroundd(keys=("image", "label"), source_key="image"),
             GaussianSmoothd(keys="image", sigma=0.75),
             NormalizeIntensityd(keys="image", divisor=2048.0),
             ScaleIntensityd(keys="image", minv=-1.0, maxv=1.0),
@@ -94,15 +95,28 @@ class VerLoc(BasicTrainTask):
             RandZoomd(keys=("image", "label"), prob=0.70, min_zoom=0.6, max_zoom=1.15),
             #
             SpatialPadd(keys=("image", "label"), spatial_size=self.roi_size),
-            EnsureTyped(keys=("image", "label"), device=context.device),
+            RandCropByPosNegLabeld(
+                keys=("image", "label"),
+                label_key="label",
+                spatial_size=self.roi_size,
+                pos=1,
+                neg=1,
+                num_samples=self.num_samples,
+                image_key="image",
+                image_threshold=0,
+            ),
             SelectItemsd(keys=("image", "label")),
         ]
 
     def train_post_transforms(self, context: Context):
         return [
             EnsureTyped(keys="pred", device=context.device),
-            Activationsd(keys="pred", other=torch.nn.functional.leaky_relu),
-            # Activationsd(keys="pred", sigmoid=True),
+            Activationsd(keys="pred", softmax=len(self._labels) > 1, sigmoid=len(self._labels) == 1),
+            AsDiscreted(
+                keys=("pred", "label"),
+                argmax=(True, False),
+                to_onehot=(len(self._labels) + 1, len(self._labels) + 1),
+            ),
         ]
 
     def val_pre_transforms(self, context: Context):
@@ -110,9 +124,9 @@ class VerLoc(BasicTrainTask):
             LoadImaged(keys=("image", "label"), reader="ITKReader"),
             EnsureTyped(keys=("image", "label")),
             EnsureChannelFirstd(keys=("image", "label")),
+            BinaryMaskd(keys="label"),
             Orientationd(keys=["image", "label"], axcodes="RAS"),
             Spacingd(keys=("image", "label"), pixdim=self.target_spacing, mode=("bilinear", "nearest")),
-            VertHeatMap(keys="label", label_names=self._labels),
             GaussianSmoothd(keys="image", sigma=0.75),
             NormalizeIntensityd(keys="image", divisor=2048.0),
             ScaleIntensityd(keys="image", minv=-1.0, maxv=1.0),
@@ -124,10 +138,10 @@ class VerLoc(BasicTrainTask):
         return SlidingWindowInferer(roi_size=self.roi_size, sw_batch_size=8)
 
     def train_key_metric(self, context: Context):
-        return region_wise_rmse(self._labels, "train_rmse", "train")
+        return region_wise_metrics(self._labels, self.TRAIN_KEY_METRIC, "train")
 
     def val_key_metric(self, context: Context):
-        return region_wise_rmse(self._labels, "val_mean_rmse", "val")
+        return region_wise_metrics(self._labels, self.VAL_KEY_METRIC, "val")
 
     def train_handlers(self, context: Context):
         handlers = super().train_handlers(context)

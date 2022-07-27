@@ -31,7 +31,7 @@ from monailabel.interfaces.tasks.infer import InferTask, InferType
 from monailabel.transform.post import Restored
 
 
-class VerLoc(InferTask):
+class LocalizationVertebra(InferTask):
     """
     This provides Inference Engine for pre-trained vertebra localization (UNet) model.
     """
@@ -75,7 +75,7 @@ class VerLoc(InferTask):
         return SlidingWindowInferer(roi_size=self.roi_size)
 
     def post_transforms(self, data=None) -> Sequence[Callable]:
-        t = [
+        return [
             EnsureTyped(keys="pred", device=data.get("device") if data else None),
             Activationsd(keys="pred", other=torch.nn.functional.leaky_relu),
             # Activationsd(keys="pred", sigmoid=True),
@@ -84,4 +84,3 @@ class VerLoc(InferTask):
             ScaleIntensityd(keys="pred", minv=0.0, maxv=100.0),
             VertebraLocalizationPostProcessing(keys="pred"),
         ]
-        return t
