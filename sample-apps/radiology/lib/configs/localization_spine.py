@@ -25,7 +25,7 @@ from monailabel.utils.others.generic import download_file
 logger = logging.getLogger(__name__)
 
 
-class SpineLoc(TaskConfig):
+class LocalizationSpine(TaskConfig):
     def init(self, name: str, model_dir: str, conf: Dict[str, str], planner: Any, **kwargs):
         super().init(name, model_dir, conf, planner, **kwargs)
 

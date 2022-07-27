@@ -17,7 +17,6 @@ from monai.transforms import (
     EnsureChannelFirstd,
     EnsureTyped,
     GaussianSmoothd,
-    KeepLargestConnectedComponentd,
     LoadImaged,
     NormalizeIntensityd,
     Orientationd,
@@ -75,6 +74,8 @@ class LocalizationSpine(InferTask):
     def post_transforms(self, data=None) -> Sequence[Callable]:
         return [
             EnsureTyped(keys="pred", device=data.get("device") if data else None),
-            Activationsd(keys="pred", softmax=True), AsDiscreted(keys="pred", argmax=True), ToNumpyd(keys="pred"),
-            Restored(keys="pred", ref_image="image")
+            Activationsd(keys="pred", softmax=True),
+            AsDiscreted(keys="pred", argmax=True),
+            ToNumpyd(keys="pred"),
+            Restored(keys="pred", ref_image="image"),
         ]
