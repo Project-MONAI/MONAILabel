@@ -28,6 +28,7 @@ from monai.transforms import (
     RandScaleIntensityd,
     RandShiftIntensityd,
     RandZoomd,
+    SaveImaged,
     ScaleIntensityd,
     SelectItemsd,
     Spacingd,
@@ -75,12 +76,12 @@ class VerLoc(BasicTrainTask):
     def train_pre_transforms(self, context: Context):
         return [
             LoadImaged(keys=("image", "label"), reader="ITKReader"),
-            EnsureTyped(keys=("image", "label"), device=context.device),
             EnsureChannelFirstd(keys=("image", "label")),
             Orientationd(keys=("image", "label"), axcodes="RAS"),
             Spacingd(keys=("image", "label"), pixdim=self.target_spacing, mode=("bilinear", "nearest")),
             CropForegroundd(keys=("image", "label"), source_key="label"),
             VertHeatMap(keys="label", label_names=self._labels),
+            SaveImaged(keys="label", output_postfix="", output_dir="/home/andres/Downloads", separate_folder=False),
             GaussianSmoothd(keys="image", sigma=0.75),
             NormalizeIntensityd(keys="image", divisor=2048.0),
             ScaleIntensityd(keys="image", minv=-1.0, maxv=1.0),
@@ -93,6 +94,7 @@ class VerLoc(BasicTrainTask):
             RandZoomd(keys=("image", "label"), prob=0.70, min_zoom=0.6, max_zoom=1.15),
             #
             SpatialPadd(keys=("image", "label"), spatial_size=self.roi_size),
+            EnsureTyped(keys=("image", "label"), device=context.device),
             SelectItemsd(keys=("image", "label")),
         ]
 

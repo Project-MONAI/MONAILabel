@@ -81,6 +81,7 @@ class VerLoc(InferTask):
             # Activationsd(keys="pred", sigmoid=True),
             ToNumpyd(keys="pred"),
             Restored(keys="pred", ref_image="image"),
+            ScaleIntensityd(keys="pred", minv=0.0, maxv=100.0),
             VertebraLocalizationPostProcessing(keys="pred"),
         ]
         return t
