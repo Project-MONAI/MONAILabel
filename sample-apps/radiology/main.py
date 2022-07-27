@@ -223,18 +223,19 @@ def main():
     )
 
     home = str(Path.home())
-    studies = f"{home}/Documents/workspace/Datasets/radiology/btcv/train"
+    studies = f"{home}/Datasets/Radiology"
 
     parser = argparse.ArgumentParser()
     parser.add_argument("-s", "--studies", default=studies)
-    parser.add_argument("-m", "--model", default="segmentation")
-    parser.add_argument("-t", "--test", default="train", choices=("train", "infer"))
+    parser.add_argument("-m", "--model", default="deepedit")
+    parser.add_argument("-t", "--test", default="infer", choices=("train", "infer"))
     args = parser.parse_args()
 
     app_dir = os.path.dirname(__file__)
     studies = args.studies
     conf = {
         "models": args.model,
+        "preload": "true",
     }
 
     app = MyApp(app_dir, studies, conf)
@@ -247,18 +248,19 @@ def main():
 
         # Run on all devices
         for device in device_list():
-            res = app.infer(request={"model": args.model, "image": image_id, "device": device})
-            label = res["file"]
-            label_json = res["params"]
-            test_dir = os.path.join(args.studies, "test_labels")
-            os.makedirs(test_dir, exist_ok=True)
+            for i in range(5):
+                res = app.infer(request={"model": args.model, "image": image_id, "logging": "ERROR"})
+                label = res["file"]
+                label_json = res["params"]
+                test_dir = os.path.join(args.studies, "test_labels")
+                os.makedirs(test_dir, exist_ok=True)
 
-            label_file = os.path.join(test_dir, image_id + file_ext(image_path))
-            shutil.move(label, label_file)
+                label_file = os.path.join(test_dir, image_id + file_ext(image_path))
+                shutil.move(label, label_file)
 
-            print(label_json)
-            print(f"++++ Image File: {image_path}")
-            print(f"++++ Label File: {label_file}")
+                print(label_json)
+                # print(f"++++ Image File: {image_path}")
+                # print(f"++++ Label File: {label_file}")
         return
 
     # Train

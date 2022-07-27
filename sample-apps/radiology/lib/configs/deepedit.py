@@ -155,6 +155,7 @@ class DeepEdit(TaskConfig):
                 labels=self.labels,
                 preload=strtobool(self.conf.get("preload", "false")),
                 spatial_size=self.spatial_size,
+                config={"cache_transforms": True, "cache_transforms_in_memory": True, "cache_transforms_ttl": 300},
             ),
             f"{self.name}_seg": lib.infers.DeepEdit(
                 path=self.path,

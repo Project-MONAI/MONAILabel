@@ -20,7 +20,7 @@ logger = logging.getLogger(__name__)
 
 
 def dump_data(data, level=logging.DEBUG):
-    if logging.getLogger().level == level:
+    if data and logging.getLogger().level == level:
         logger.log(level, "**************************** DATA ********************************************")
         for k in data:
             v = data[k]
@@ -41,7 +41,7 @@ def dump_data(data, level=logging.DEBUG):
 def shape_info(data, keys=("image", "label", "logits", "pred", "model", "points")):
     info = []
     for key in keys:
-        val = data.get(key) if hasattr(data, "get") else None
+        val = data.get(key) if data and hasattr(data, "get") else None
         if val is not None and hasattr(val, "shape"):
             info.append(f"{key}: {val.shape}({val.dtype})")
     return "; ".join(info)
@@ -98,12 +98,13 @@ def run_transforms(data, callables, inverse=False, log_prefix="POST", log_name="
             )
 
         latency = round(time.time() - start, 4)
-        stage = log_prefix.lower()
-        if data.get("latencies") is None:
-            data["latencies"] = {}
-        if data["latencies"].get(stage) is None:
-            data["latencies"][stage] = {}
-        data["latencies"][stage][name] = latency
+        if data:
+            stage = log_prefix.lower()
+            if data.get("latencies") is None:
+                data["latencies"] = {}
+            if data["latencies"].get(stage) is None:
+                data["latencies"][stage] = {}
+            data["latencies"][stage][name] = latency
 
         logger.info(f"{log_prefix} - {log_name} ({name}): Time: {latency}; {shape_info(data)}")
         logger.debug("-----------------------------------------------------------------------------")
