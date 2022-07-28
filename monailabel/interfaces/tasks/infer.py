@@ -152,6 +152,13 @@ class InferTask:
                 return path
         return None
 
+    def add_cache_transform(self, t, data, keys=("image", "image_meta_dict"), hash_key=("image_path", "model")):
+        if data and data.get("cache_transforms", False):
+            in_memory = data.get("cache_transforms_in_memory", True)
+            ttl = data.get("cache_transforms_ttl", 300)
+
+            t.append(CacheTransformDatad(keys=keys, hash_key=hash_key, in_memory=in_memory, ttl=ttl))
+
     @abstractmethod
     def pre_transforms(self, data=None) -> Sequence[Callable]:
         """

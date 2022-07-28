@@ -32,7 +32,6 @@ from monai.transforms import (
 
 from monailabel.interfaces.tasks.infer import InferTask, InferType
 from monailabel.transform.post import Restored
-from monailabel.transform.pre import CacheTransformDatad
 
 
 class DeepEdit(InferTask):
@@ -79,17 +78,7 @@ class DeepEdit(InferTask):
             ScaleIntensityRanged(keys="image", a_min=-175, a_max=250, b_min=0.0, b_max=1.0, clip=True),
         ]
 
-        if data and data.get("cache_transforms", False):
-            in_memory = data.get("cache_transforms_in_memory", True)
-            ttl = data.get("cache_transforms_ttl", 300)
-            t.append(
-                CacheTransformDatad(
-                    keys=("image", "image_meta_dict"),
-                    hash_key=("image_path", "model"),
-                    in_memory=in_memory,
-                    ttl=ttl,
-                )
-            )
+        self.add_cache_transform(t, data)
 
         if self.type == InferType.DEEPEDIT:
             t.extend(

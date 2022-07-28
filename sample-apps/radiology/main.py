@@ -165,8 +165,8 @@ class MyApp(MONAILabelApp):
 
     def init_strategies(self) -> Dict[str, Strategy]:
         strategies: Dict[str, Strategy] = {
-            "random": Random(),
             "first": First(),
+            "random": Random(),
         }
 
         if strtobool(self.conf.get("skip_strategies", "true")):
