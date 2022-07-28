@@ -41,6 +41,6 @@ class Random(Strategy):
         weights = [current_ts - info.get("ts", 0) for info in images_info]
 
         image = random.choices(images, weights=weights)[0]
-        logger.info(f"Random: Images: {images}; Weight: {weights}")
-        logger.info(f"Random: Selected Image: {image}")
+        logger.debug(f"Random: Images: {images}; Weight: {weights}")
+        logger.info(f"Random: Selected Image: {image}; Weight: {weights[0]}")
         return image

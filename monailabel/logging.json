@@ -84,6 +84,13 @@
       "handlers": [
         "console"
       ]
+    },
+    "urllib3.connectionpool": {
+      "level": "ERROR",
+      "propagate": false,
+      "handlers": [
+        "console"
+      ]
     }
   }
 }

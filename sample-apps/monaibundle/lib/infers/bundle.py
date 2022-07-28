@@ -107,7 +107,7 @@ class BundleInferTask(InferTask):
     def inferer(self, data=None) -> Inferer:
         for k in Const.KEY_INFERER:
             if self.bundle_config.get(k):
-                return self.bundle_config.get_parsed_content(k, instantiate=True)
+                return self.bundle_config.get_parsed_content(k, instantiate=True)  # type: ignore
         return SimpleInferer()
 
     def post_transforms(self, data=None) -> Sequence[Callable]:

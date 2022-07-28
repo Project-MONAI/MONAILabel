@@ -137,7 +137,7 @@ class MyApp(MONAILabelApp):
         )
 
         #################################################
-        # Pipeline based on existing infers
+        # Pipeline based on existing infers for DeepGrow
         #################################################
         if infers.get("deepgrow_2d") and infers.get("deepgrow_3d"):
             infers["deepgrow_pipeline"] = InferDeepgrowPipeline(
@@ -146,6 +146,7 @@ class MyApp(MONAILabelApp):
                 model_3d=infers["deepgrow_3d"],
                 description="Combines Clara Deepgrow 2D and 3D models",
             )
+
         return infers
 
     def init_trainers(self) -> Dict[str, TrainTask]:
@@ -267,11 +268,11 @@ def main():
     app.train(
         request={
             "model": args.model,
-            "max_epochs": 10,
-            "dataset": "CacheDataset",  # PersistentDataset, CacheDataset
+            "max_epochs": 2000,
+            "dataset": "Dataset",  # PersistentDataset, CacheDataset
             "train_batch_size": 1,
             "val_batch_size": 1,
-            "multi_gpu": True,
+            "multi_gpu": False,
             "val_split": 0.1,
         },
     )
