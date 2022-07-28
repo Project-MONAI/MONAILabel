@@ -22,6 +22,7 @@ parameterized
 types-PyYAML
 types-filelock
 types-requests
+types-cachetools
 click>=8.1.3
 testresources
 pre-commit
