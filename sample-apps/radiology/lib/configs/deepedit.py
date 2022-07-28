@@ -154,7 +154,7 @@ class DeepEdit(TaskConfig):
         # Number of input channels - 4 for BRATS and 1 for spleen
         self.number_intensity_ch = 4
 
-        network = self.conf.get("network", "swinunetr")
+        network = self.conf.get("network", "dynunet")
 
         # Model Files
         self.path = [
@@ -168,7 +168,7 @@ class DeepEdit(TaskConfig):
             download_file(url, self.path[0])
 
         self.target_spacing = (1.0, 1.0, 1.0)  # target space for image
-        self.spatial_size = (256, 256, 128)  # train input size
+        self.spatial_size = (128, 128, 128)  # train input size
 
         # Network
         self.network = (
