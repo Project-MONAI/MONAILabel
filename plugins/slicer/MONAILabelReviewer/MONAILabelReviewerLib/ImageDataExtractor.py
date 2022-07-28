@@ -125,10 +125,10 @@ class ImageDataExtractor:
         returns fitered list of imageData which are filtered according to input parameters
         """
         if (
-            (notSegmented and segmented)
-            or (approved and flagged)
-            or (notSegmented and approved)
-            or (notSegmented and flagged)
+            (notSegmented is True and segmented is True)
+            or (approved is True and flagged is True)
+            or (notSegmented is True and approved is True)
+            or (notSegmented is True and flagged is True)
         ):
             logging.warning(
                 "{}: Selected filter options are not valid: segmented='{}' | notSegmented='{}' | approved='{}' | flagged='{}')".format(
@@ -146,12 +146,34 @@ class ImageDataExtractor:
             if notSegmented is True and segmented is False and imagedata.isSegemented() is False:
                 selectedImageData.append(imagedata)
                 continue
+            # logging.warning(
+            #     "==== Selected filter options are not valid: id: {} | isSegemented='{}' | approved='{}' | flagged='{}'".format(
+            #       imagedata.getFileName(),  imagedata.isSegemented(), imagedata.isApproved(), imagedata.isFlagged()
+            #     ))
 
-            if (
-                segmented is imagedata.isSegemented()
-                and approved is imagedata.isApproved()
-                and flagged is imagedata.isFlagged()
-            ):
+
+            if (imagedata.isSegemented() is segmented
+                and imagedata.isApproved() is True 
+                and approved is True):
+                #and imagedata.isFlagged() is flagged):
+                logging.warning(
+                "========== isApproved: Lilie id: {} ====  approved='{}' and flagged='{}')".format(
+                    imagedata.getFileName() , imagedata.isApproved(), imagedata.isFlagged()
+                ))
+
+                selectedImageData.append(imagedata)
+                continue
+
+
+            if (imagedata.isSegemented() is segmented
+                #and imagedata.isApproved() is approved
+                and imagedata.isFlagged() is True 
+                and flagged is True):
+                logging.warning(
+                "========== isSegemented: Lilie id: {} ====  approved='{}' and flagged='{}')".format(
+                    imagedata.getFileName() , imagedata.isApproved(), imagedata.isFlagged()
+                ))
+
                 selectedImageData.append(imagedata)
                 continue
 
@@ -174,6 +196,13 @@ class ImageDataExtractor:
 
         imageIds = self.clientToImageIds[clientId]
         imageDataList = []
+        if(approved is False and flagged is False):
+            # [imageData for imageData  in self.nameToImageData.values() if ]
+            for id in imageIds:
+                imageData = self.nameToImageData[id]
+                imageDataList.append(imageData)
+            return imageDataList
+
         for id in imageIds:
             if id not in self.nameToImageData:
                 logging.error(
@@ -183,6 +212,8 @@ class ImageDataExtractor:
                 )
                 continue
             imageData = self.nameToImageData[id]
+            if imageData.hasSegmentationMeta() is False:
+                continue
             if approved and imageData.isApproved() is False:
                 continue
             if flagged and imageData.isFlagged() is False:
@@ -216,6 +247,7 @@ class ImageDataExtractor:
         filteredImageDataList = []
 
         for imageData in self.nameToImageData.values():
+
             if imageData.isSegemented() is False:
                 continue
             if approved and imageData.isApproved() is False:

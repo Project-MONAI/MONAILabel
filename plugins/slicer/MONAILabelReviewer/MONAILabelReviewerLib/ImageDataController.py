@@ -160,7 +160,9 @@ class ImageDataController:
 
         for imageData in imageIdsOfAnnotator:
             idToImageData[imageData.getName()] = imageData
-
+            logging.warn("===== imageData Test Val ======")
+            imageData.display()
+        
         return idToImageData
 
     def getImageDataByLevel(self, isEasy: bool, isMedium: bool, isHard: bool) -> Dict[str, ImageData]:
@@ -173,7 +175,7 @@ class ImageDataController:
         return imageIdsOfAnnotator
 
     # Section: Dicom stream
-    def updateLabelInfo(self, imageId, updatedMetaJson) -> bool:
+    def updateLabelInfo(self, imageId, versionTag, updatedMetaJson) -> bool:
         """
         sends meta information via http request to monai server
         in order to perist the information in datastore_v2.json file
@@ -181,7 +183,7 @@ class ImageDataController:
         returns True if successfully sent http request
         else False
         """
-        repsonseCode = self.monaiServerREST.updateLabelInfo(image_id=imageId, params=updatedMetaJson)
+        repsonseCode = self.monaiServerREST.updateLabelInfo(image_id=imageId, tag=versionTag, params=updatedMetaJson)
         if repsonseCode == 200:
             logging.info(f"{self.getCurrentTime()}: Successfully persist meta data for image (id='{imageId}')")
             return True

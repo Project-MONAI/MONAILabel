@@ -141,13 +141,19 @@ class JsonParserTest(unittest.TestCase):
         labelsDict = self.jsonParser.extractLabels(self.json_with_multiple_versions)
         labelContent = self.jsonParser.extractSegmentationMetaOfVersion(labelsDict, labelName='version_3')
         segmentationMeta = self.jsonParser.produceSegementationData(labelContent)
-        # segmentationMeta.display()
+        
+        self.assertEqual("self.status_3", segmentationMeta.getStatus())
+        self.assertEqual("self.level_3", segmentationMeta.getLevel())
+        self.assertEqual("self.approvedBy_3", segmentationMeta.getApprovedBy())
+        self.assertEqual("self.comment_3", segmentationMeta.getComment())
+        self.assertEqual("1656312200", segmentationMeta.getEditTime())
+
 
     def test_extractSegmentationMetaOfVersion_final_as_label(self):
         labelsDict = self.jsonParser.extractLabels(self.json_with_multiple_versions)
         labelContent = self.jsonParser.extractSegmentationMetaOfVersion(labelsDict, labelName='final')
         segmentationMeta = self.jsonParser.produceSegementationData(labelContent)
-        segmentationMeta.display()
+        #segmentationMeta.display()
 
     def test_getAllSegmentationMetaOfAllLabels(self):
         labelsDict = self.jsonParser.extractLabels(self.json_with_multiple_versions)

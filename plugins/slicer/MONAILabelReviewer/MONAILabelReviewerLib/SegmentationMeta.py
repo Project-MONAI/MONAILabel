@@ -100,12 +100,17 @@ class SegmentationMeta:
 
     def isEqual(self, status="", level="", approvedBy="", comment=""):
         if status != self.status:
+            print("=== 1.1 ===", status)
+            print("=== 1.2 ===", self.status)
             return False
         if approvedBy != self.approvedBy:
+            print("=== 2 ===")
             return False
         if level != self.level:
+            print("=== 3 ===")
             return False
         if comment != self.comment:
+            print("=== 4 ===")
             return False
         return True
 

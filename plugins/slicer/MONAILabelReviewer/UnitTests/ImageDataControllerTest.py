@@ -45,7 +45,7 @@ class ImageDataControllerTest(unittest.TestCase):
         )
         imageDataTest_1.setClientId("Test-Radiolgist-Segmented")
         imageDataTest_1.setSegmentationFileName("6667571.seg.nrrd")
-        imageDataTest_1.setSegmentationMeta(
+        imageDataTest_1.addNewSegmentationMeta(tag="final",
             status=self.STATUS.APPROVED, level=self.LEVEL.HARD, approvedBy="Test-Reviewer", comment=""
         )
 
@@ -61,7 +61,7 @@ class ImageDataControllerTest(unittest.TestCase):
         )
         imageDataTest_2.setClientId("client_id_1")
         imageDataTest_2.setSegmentationFileName("testSegementation_2.nrrd")
-        imageDataTest_2.setSegmentationMeta(
+        imageDataTest_2.addNewSegmentationMeta(tag="final",
             status=self.STATUS.FLAGGED, level=self.LEVEL.MEDIUM, approvedBy="theRadologist_2", comment="comment_2"
         )
 

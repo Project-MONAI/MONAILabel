@@ -30,7 +30,7 @@ class ImageDataExtractorTest(unittest.TestCase):
         )
         imageDataTest_1.setClientId("client_id_1")
         imageDataTest_1.setSegmentationFileName("testSegementation_1.nrrd")
-        imageDataTest_1.setSegmentationMeta(
+        imageDataTest_1.addNewSegmentationMeta(tag="final",
             status=self.STATUS.APPROVED, level=self.LEVEL.HARD, approvedBy="theRadologist_1", comment="comment_1"
         )
 
@@ -46,7 +46,7 @@ class ImageDataExtractorTest(unittest.TestCase):
         )
         imageDataTest_2.setClientId("client_id_1")
         imageDataTest_2.setSegmentationFileName("testSegementation_2.nrrd")
-        imageDataTest_2.setSegmentationMeta(
+        imageDataTest_2.addNewSegmentationMeta(tag="final",
             status=self.STATUS.FLAGGED, level=self.LEVEL.MEDIUM, approvedBy="theRadologist_2", comment="comment_2"
         )
 
@@ -180,7 +180,7 @@ class ImageDataExtractorTest(unittest.TestCase):
         )
         imageDataTest_4.setClientId("client_id_1")
         imageDataTest_4.setSegmentationFileName("testSegementation_4.nrrd")
-        imageDataTest_4.setSegmentationMeta(
+        imageDataTest_4.addNewSegmentationMeta(tag="final",
             status=self.STATUS.APPROVED, level=self.LEVEL.MEDIUM, approvedBy="theRadologist_4", comment="comment_4"
         )
         self.nameToImageData["imageId_4"] = imageDataTest_4
@@ -284,7 +284,7 @@ class ImageDataExtractorTest(unittest.TestCase):
         )
         imageDataTest_4.setClientId("client_id_1")
         imageDataTest_4.setSegmentationFileName("testSegementation_4.nrrd")
-        imageDataTest_4.setSegmentationMeta(
+        imageDataTest_4.addNewSegmentationMeta(tag="final",
             status=self.STATUS.APPROVED, level=self.LEVEL.MEDIUM, approvedBy="theRadologist_4", comment="comment_4"
         )
         self.nameToImageData["imageId_4"] = imageDataTest_4
@@ -308,7 +308,7 @@ class ImageDataExtractorTest(unittest.TestCase):
         )
         imageDataTest_4.setClientId("client_id_1")
         imageDataTest_4.setSegmentationFileName("testSegementation_4.nrrd")
-        imageDataTest_4.setSegmentationMeta(
+        imageDataTest_4.addNewSegmentationMeta(tag="final",
             status=self.STATUS.APPROVED, level=self.LEVEL.MEDIUM, approvedBy="theRadologist_4", comment="comment_4"
         )
         self.nameToImageData["imageId_4"] = imageDataTest_4

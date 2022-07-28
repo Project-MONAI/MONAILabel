@@ -92,14 +92,14 @@ class MonaiServerREST:
         logging.info(f"{self.getCurrentTime()}: Successfully connected to server (server url: '{url}').")
         return True
 
-    def updateLabelInfo(self, image_id: str, params: dict) -> int:
+    def updateLabelInfo(self, image_id: str, tag : str, params: dict) -> int:
         """
         the image_id is the unique ID of an radiographic image
         If the image has a label/segmentation, its label/label_id corresponds to its image_id
         """
         embeddedParams = self.embeddedLabelContentInParams(params)
         logging.warn("REST: {}".format(embeddedParams))
-        url = f"{self.serverUrl}/datastore/updatelabelinfo?label_id={quote_plus(image_id)}"
+        url = f"{self.serverUrl}/datastore/updatelabelinfo?label_id={quote_plus(image_id)}&label_tag={quote_plus(tag)}"
         headers = CaseInsensitiveDict()
         headers["Content-Type"] = "application/x-www-form-urlencoded"
         headers["accept"] = "application/json"

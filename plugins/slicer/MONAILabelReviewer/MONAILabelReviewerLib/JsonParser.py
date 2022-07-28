@@ -128,8 +128,10 @@ class JsonParser:
         level = segmenatationDict[self.dataStoreKeys.META_LEVEL]
         approvedBy = segmenatationDict[self.dataStoreKeys.APPROVED_BY]
         comment = segmenatationDict[self.dataStoreKeys.META_COMMENT]
+        editTime = segmenatationDict[self.dataStoreKeys.META_EDIT_TIME]
+
         segmentationMeta = SegmentationMeta()
-        segmentationMeta.build(status=status, level=level, approvedBy=approvedBy, comment=comment)
+        segmentationMeta.build(status=status, level=level, approvedBy=approvedBy, comment=comment, editTime=editTime)
         return segmentationMeta
 
     def isSegmented(self, obj: dict) -> bool:
@@ -210,40 +212,21 @@ class JsonParser:
         )        
 
         if isSegmented:
-
-            labelsDict = self.extractLabels(value)
-            labelNames = self.extractLabelNames(labelsDict)
-            labelContent = self.extractLabelContentByName(labelsDict)
-            labelSegmentationMeta : SegmentationMeta = self.getAllSegmentationMetaOfAllLabels(labelsDict, labelNames)
-
-            imageData.setVersionNames(labelNames)
-            imageData.setLabelContent(labelContent)
-            imageData.setSegmentationMetaDict(labelSegmentationMeta)
-
             segName = self.getSegmentationName(value)
             imageData.setSegmentationFileName(segName)
 
             clientId = self.getClientId(value)
             imageData.setClientId(clientId)
 
-        if self.hasLabels(value) is False:
-            return imageData
+        if self.hasLabels(value) is True:
+            labelsDict = self.extractLabels(value)
+            labelNames = self.extractLabelNames(labelsDict)
+            labelContent = self.extractLabelContentByName(labelsDict)
+            labelSegmentationMeta : Dict[str, SegmentationMeta] = self.getAllSegmentationMetaOfAllLabels(labelsDict, labelNames)
 
-        label = ""
-        if self.hasKeyFinal(value):
-            label = self.LABEL.FINAL
-
-        if self.hasKeyOriginal(value):
-            label = self.LABEL.ORGINAL
-
-        info = self.getInfoInLabels(label=label, obj=value)
-        if  (info != "") and (self.hasSegmentationMeta(info)):
-            status = self.getMetaStatus(label, value)
-            level = self.getMetaLevel(label, value)
-            approvedBy = self.getMetaApprovedBy(label, value)
-            comment = self.getMetaComment(label, value)
-            timeOfEditing = self.getMetaEditTime(label, value)
-            imageData.setSegmentationMeta(status, level, approvedBy, comment, timeOfEditing)
+            imageData.setVersionNames(labelNames)
+            imageData.setLabelContent(labelContent)
+            imageData.setSegmentationMetaDict(labelSegmentationMeta)
             
         return imageData
 

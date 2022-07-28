@@ -6,7 +6,7 @@
    <rect>
     <x>0</x>
     <y>0</y>
-    <width>517</width>
+    <width>555</width>
     <height>752</height>
    </rect>
   </property>
@@ -61,7 +61,7 @@
         <item>
          <widget class="QTabWidget" name="tabWidget">
           <property name="currentIndex">
-           <number>2</number>
+           <number>0</number>
           </property>
           <widget class="QWidget" name="ById">
            <property name="minimumSize">
@@ -339,7 +339,7 @@
         <item row="1" column="2">
          <widget class="QPushButton" name="btn_connect_monai">
           <property name="styleSheet">
-           <string notr="true">background-color: rgba(0, 144, 81, 1);</string>
+           <string notr="true">background-color: rgb(169, 169, 169)</string>
           </property>
           <property name="text">
            <string>Connect</string>
@@ -380,7 +380,7 @@
         <item row="1" column="0">
          <widget class="QLabel" name="label_19">
           <property name="text">
-           <string>Server IP:</string>
+           <string>Server Url</string>
           </property>
          </widget>
         </item>
@@ -397,7 +397,7 @@
         <item row="2" column="0">
          <widget class="QLabel" name="label_20">
           <property name="text">
-           <string>Reviewer:</string>
+           <string>Reviewer</string>
           </property>
          </widget>
         </item>
@@ -415,7 +415,7 @@
       <string>Data Evaluation</string>
      </property>
      <property name="collapsed">
-      <bool>false</bool>
+      <bool>true</bool>
      </property>
      <layout class="QVBoxLayout" name="verticalLayout_12">
       <item>
@@ -633,14 +633,14 @@
              </widget>
             </item>
             <item>
-             <widget class="QLabel" name="label_5">
+             <widget class="QLabel" name="label_editor">
               <property name="text">
                <string>Editor: </string>
               </property>
              </widget>
             </item>
             <item>
-             <widget class="QLabel" name="label_11">
+             <widget class="QLabel" name="label_editing_date">
               <property name="text">
                <string>Editing Date:</string>
               </property>

@@ -34,7 +34,7 @@ class ImageData:
         self.client_id: str = None
         self.segmentationFileName: str = None
         self.tempDirectory: str = None
-        self.segmentationMeta: SegmentationMeta = None
+        #self.segmentationMeta: SegmentationMeta = None
         self.prefixVersion = "version_"
         self.FINAL = "final"
         self.ORIGIN = "origin"
@@ -64,10 +64,14 @@ class ImageData:
         return self.segmentationMetaDict
 
     def getClientId(self, versionTag = "final") -> str:
-        if(versionTag == self.FINAL or versionTag == self.ORIGIN):
-            return self.client_id
-        if(versionTag in self.segmentationMetaDict.keys()):
-            return self.segmentationMetaDict[versionTag].getApprovedBy()
+        return self.client_id
+        # if(versionTag == self.FINAL or versionTag == self.ORIGIN):
+        #     return self.client_id
+
+        # segmentationMeta = self.getSegmentationMetaByVersionTag(tag = versionTag)
+        # if(segmentationMeta is None):
+        #     return ""
+        # return segmentationMeta.getApprovedBy()
 
     def getTimeStamp(self) -> int:
         return self.timeStamp
@@ -81,14 +85,16 @@ class ImageData:
         return self.formatTimeStamp(self.timeStamp)
 
     def getTimeOfEditing(self, versionTag = "final"):
-        if(self.hasSegmentationMeta() is True 
-                and (versionTag == self.FINAL or versionTag == self.ORIGIN)):
-                formattedTime = self.formatTimeStamp(self.segmentationMeta.getEditTime())
-                return formattedTime
 
-        if(versionTag in self.segmentationMetaDict.keys()):
-            formattedTime = self.formatTimeStamp(self.segmentationMetaDict[versionTag].getEditTime())
-            return formattedTime
+        if self.isSegemented() is False or self.hasSegmentationMeta(tag = versionTag) is False:
+            return ""
+
+        segmentationMeta = self.getSegmentationMetaByVersionTag(tag = versionTag)
+        if(segmentationMeta is None):
+            return ""
+
+        formattedTime = self.formatTimeStamp(segmentationMeta.getEditTime())
+        return formattedTime
 
     def isSegemented(self) -> bool:
         return self.segmented
@@ -97,12 +103,14 @@ class ImageData:
         return self.labelContent
 
     def getComment(self, versionTag = "final") -> str:
-        if(self.hasSegmentationMeta() is True 
-                and (versionTag == self.FINAL or versionTag == self.ORIGIN)):
-            return self.segmentationMeta.getComment()
+        if self.isSegemented() is False or self.hasSegmentationMeta(tag = versionTag) is False:
+            return ""
 
-        if(versionTag in self.segmentationMetaDict.keys()):
-            return self.segmentationMetaDict[versionTag].getComment()
+        segmentationMeta = self.getSegmentationMetaByVersionTag(tag = versionTag)
+        if(segmentationMeta is None):
+            return ""
+
+        return segmentationMeta.getComment()
 
     def getSegmentationMetaDict(self) -> dict:
         return self.segmentationMetaDict
@@ -110,59 +118,70 @@ class ImageData:
     def getStatus(self, versionTag = "final") -> str:
         if self.isSegemented() is False:
             return self.STATUS.NOT_SEGMENTED
-        if(self.hasSegmentationMeta() is True 
-                and (versionTag == self.FINAL or versionTag == self.ORIGIN)):
-            return self.segmentationMeta.getStatus()
-        
-        if(versionTag in self.segmentationMetaDict.keys()):
-            return self.segmentationMetaDict[versionTag].getStatus()
+
+        segmentationMeta = self.getSegmentationMetaByVersionTag(tag = versionTag)
+        if(segmentationMeta is None):
+            return ""
+    
+        return segmentationMeta.getStatus()
 
     def getApprovedBy(self, versionTag = "final") -> str:
-        if self.isSegemented() is False:
+        if self.isSegemented() is False or self.hasSegmentationMeta(tag = versionTag) is False:
             return ""
 
-        if(self.hasSegmentationMeta() is True 
-                and (versionTag == self.FINAL or versionTag == self.ORIGIN)):
-            return self.segmentationMeta.getApprovedBy()
+        segmentationMeta = self.getSegmentationMetaByVersionTag(tag = versionTag)
+        if(segmentationMeta is None):
+            return ""
 
-        if(versionTag in self.segmentationMetaDict.keys()):
-            return self.segmentationMetaDict[versionTag].getApprovedBy()
+        return segmentationMeta.getApprovedBy()
 
+    def isApprovedVersion(self, versionTag = "final") -> bool:
+        if self.isSegemented() is False or self.hasSegmentationMeta(tag = versionTag) is False:
+            return False
+
+        segmentationMeta = self.getSegmentationMetaByVersionTag(tag = versionTag)
+        if(segmentationMeta is None):
+            return False
+
+        status = segmentationMeta.getStatus()
+        if (status == self.STATUS.APPROVED):
+                return True
+
+        return False
 
     def isApproved(self, versionTag = "final") -> bool:
-        if (self.hasSegmentationMeta() is True 
-                and (versionTag == self.FINAL or versionTag == self.ORIGIN)
-                and self.getStatus() == self.STATUS.APPROVED):
-            return True
+        if self.isSegemented() is False:
+            return False
 
-        if(versionTag in self.segmentationMetaDict.keys()):
-            status = self.segmentationMetaDict[versionTag].getStatus()
-            if (status == self.STATUS.APPROVED):
+        for segmentationMeta in self.segmentationMetaDict.values():
+            status = segmentationMeta.getStatus() 
+            if status == self.STATUS.APPROVED:
                 return True
         return False
 
     def isFlagged(self, versionTag = "final") -> bool:
-        if (self.hasSegmentationMeta() is True 
-                and (versionTag == self.FINAL or versionTag == self.ORIGIN)
-                and self.getStatus() == self.STATUS.FLAGGED):
-            return True
-        
-        if(versionTag in self.segmentationMetaDict.keys()):
-            meta = self.segmentationMetaDict[versionTag]
-            print(meta)
-            status = self.segmentationMetaDict[versionTag].getStatus()
-            if (status == self.STATUS.FLAGGED):
+        if self.isSegemented() is False or self.hasSegmentationMeta(tag = versionTag) is False:
+            return False
+
+        segmentationMeta = self.getSegmentationMetaByVersionTag(tag = versionTag)
+        if(segmentationMeta is None):
+            return False
+
+        status = segmentationMeta.getStatus()
+        if (status == self.STATUS.FLAGGED):
                 return True
 
         return False
 
-    def getLevel(self, versionTag = "final") -> str:
-        if(self.hasSegmentationMeta() is True 
-                and (versionTag == self.FINAL or versionTag == self.ORIGIN)):
-            return self.segmentationMeta.getLevel()
 
-        if(versionTag in self.segmentationMetaDict.keys()):
-            return self.segmentationMetaDict[versionTag].getLevel()
+    def getLevel(self, versionTag = "final") -> str:
+        if self.isSegemented() is False or self.hasSegmentationMeta(tag = versionTag) is False:
+            return ""
+
+        segmentationMeta = self.getSegmentationMetaByVersionTag(tag = versionTag)
+        if(segmentationMeta is None):
+            return ""
+        return segmentationMeta.getLevel()
 
 
     def setSegmentationFileName(self, fileName: str):
@@ -174,43 +193,60 @@ class ImageData:
     def setClientId(self, client_id: str):
         self.client_id = client_id
 
-    def setSegmentationMeta(self, status="", level="", approvedBy="", comment="", editTime=""):
-        self.segmentationMeta = SegmentationMeta()
-        self.segmentationMeta.build(status=status, level=level, approvedBy=approvedBy, comment=comment, editTime=editTime)
+    # def setSegmentationMeta(self, status="", level="", approvedBy="", comment="", editTime=""):
+    #     self.segmentationMeta = SegmentationMeta()
+    #     self.segmentationMeta.build(status=status, level=level, approvedBy=approvedBy, comment=comment, editTime=editTime)
 
-    def isEqualSegmentationMeta(self, status="", level="", approvedBy="", comment="") -> bool:
+    def addNewSegmentationMeta(self, tag : str, status : str, level : str, approvedBy  : str, comment  : str):
+        segmentationMeta = SegmentationMeta()
+        segmentationMeta.build(status=status, level=level, approvedBy=approvedBy, comment=comment, editTime="")
+        self.segmentationMetaDict[tag] = segmentationMeta
+
+    def getSegmentationMetaByVersionTag(self, tag : str):
+        if tag not in self.segmentationMetaDict:
+            return None
+        return self.segmentationMetaDict[tag]
+
+    def isEqualSegmentationMeta(self, tag : str, status : str, level : str, approvedBy  : str, comment  : str) -> bool:
+        segmentationMeta = self.getSegmentationMetaByVersionTag(tag)
         if (
-            self.segmentationMeta is None
+            segmentationMeta is None
             and self.isBlank(status)
             and self.isBlank(level)
             and self.isBlank(approvedBy)
             and self.isBlank(comment)
         ):
             return True
-
-        if self.segmentationMeta is None:
-            self.setSegmentationMeta(status, level, approvedBy, comment)
+        
+        if segmentationMeta is None:
+            self.addNewSegmentationMeta(tag, status, level, approvedBy, comment)
             return False
 
-        return self.segmentationMeta.isEqual(status=status, level=level, approvedBy=approvedBy, comment=comment)
+        return segmentationMeta.isEqual(status=status, level=level, approvedBy=approvedBy, comment=comment)
 
-    def updateSegmentationMeta(self, status="", level="", approvedBy="", comment=""):
-        if self.segmentationMeta is None:
-            self.segmentationMeta = SegmentationMeta()
-            self.segmentationMeta.build(status=status, level=level, approvedBy=approvedBy, comment=comment)
-            return
-        self.segmentationMeta.update( status=status, level=level, approvedBy=approvedBy, comment=comment)
+
+    # def updateSegmentationMeta(self, status="", level="", approvedBy="", comment=""):
+    #     if self.segmentationMeta is None:
+    #         self.segmentationMeta = SegmentationMeta()
+    #         self.segmentationMeta.build(status=status, level=level, approvedBy=approvedBy, comment=comment)
+    #         return
+    #     self.segmentationMeta.update( status=status, level=level, approvedBy=approvedBy, comment=comment)
 
     def isBlank(self, string) -> bool:
         return not (string and string.strip())
 
-    def getMeta(self) -> dict:
-        if self.segmentationMeta is None:
-            return ""
-        return self.segmentationMeta.getMeta()
+    def getMetaByVersionTag(self, tag : str) -> dict:
+        if(tag not in self.segmentationMetaDict):
+            return {}
+        segmentationMeta = self.getSegmentationMetaByVersionTag(tag)
+        return segmentationMeta.getMeta()
 
-    def hasSegmentationMeta(self) -> bool:
-        return self.segmentationMeta is not None
+    def hasSegmentationMeta(self, tag = "final") -> bool:
+
+        segmentationMeta = self.getSegmentationMetaByVersionTag(tag = tag)
+        if(segmentationMeta is None):
+            return False
+        return True
 
     def addSegementationMetaByVersionTag(self, tag="",  status="", level="", approvedBy="", comment=""):
         segmentationMeta = SegmentationMeta()
@@ -224,6 +260,16 @@ class ImageData:
             return None
         return self.segmentationMetaDict[tag]
 
+    def obtainUpdatedParams(self, tag : str) -> dict:
+        params = self.labelContent.copy()
+        segementationMeta = self.getSegementationMetaByVersionTag(tag = tag)
+        if(segementationMeta is None):
+            return params
+        metaData = segementationMeta.getMeta()
+        if(len(metaData) > 0):
+            params['segmentationMeta'] = metaData['segmentationMeta']
+        return params
+
     def updateSegmentationMetaByVerionTag(self, tag="", status="", level="", approvedBy="", comment="") -> bool:
         if (self.isBlank(tag)):
             return False
@@ -235,7 +281,28 @@ class ImageData:
             segmentationMeta.update(status=status, level=level, approvedBy=approvedBy, comment=comment)
         segmentationMeta.setEditTime()
         self.segmentationMetaDict[tag] = segmentationMeta
+
         return True
+
+    def updateApprovedStatusOfOtherThanSubjectedVersion(self, subjectedTag : str) -> Dict[str, dict]:
+        tagToSegmentationMeta = {}
+        for tag, segmentationMeta in self.segmentationMetaDict.items():
+            if subjectedTag == tag:
+                continue
+
+            if(segmentationMeta.getStatus() == self.STATUS.APPROVED):
+                segmentationMeta.setStatus("")
+                self.segmentationMetaDict[tag] = segmentationMeta
+                tagToSegmentationMeta[tag] = segmentationMeta.getMeta()
+                logging.warn("===== Update Check === tag: {}".format(tag))
+                segmentationMeta.display()
+        return tagToSegmentationMeta
+
+
+
+
+            
+
 
 
     #methods dealing with versions
@@ -317,7 +384,6 @@ class ImageData:
             print("=== Segmentation Meta ====")
        
         if self.hasSegmentationMeta():
-            self.segmentationMeta.display()
             for k, segmentationMeta in self.segmentationMetaDict.items():
                 print("version: ", k)
                 segmentationMeta.display()
