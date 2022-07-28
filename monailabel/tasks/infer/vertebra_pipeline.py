@@ -13,11 +13,7 @@ import logging
 
 import numpy as np
 import torch
-from monai.transforms import (
-    AsChannelFirst,
-    EnsureType,
-    LoadImage,
-)
+from monai.transforms import AsChannelFirst, EnsureType, LoadImage
 
 from monailabel.interfaces.tasks.infer import InferTask, InferType
 from monailabel.transform.post import LargestCCd, Restored
@@ -40,8 +36,8 @@ class InferVertebraPipeline(InferTask):
         output_largest_cc=False,
     ):
         super().__init__(
-            path=None, # THIS SHOULD BE NONE??
-            network=None, # THIS SHOULD BE NONE??
+            path=None,  # THIS SHOULD BE NONE??
+            network=None,  # THIS SHOULD BE NONE??
             type=type,
             labels=None,
             dimension=dimension,
