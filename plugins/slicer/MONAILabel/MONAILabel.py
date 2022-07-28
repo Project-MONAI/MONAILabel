@@ -173,6 +173,17 @@ class _ui_MONAILabelSettingsPanel:
             str(qt.SIGNAL("valueAsIntChanged(int)")),
         )
 
+        showSegmentsIn3DCheckBox = qt.QCheckBox()
+        showSegmentsIn3DCheckBox.checked = False
+        showSegmentsIn3DCheckBox.toolTip = "Enable this option to show segments in 3D (slow) after mask update..."
+        groupLayout.addRow("Show Segments In 3D:", showSegmentsIn3DCheckBox)
+        parent.registerProperty(
+            "MONAILabel/showSegmentsIn3D",
+            ctk.ctkBooleanMapper(showSegmentsIn3DCheckBox, "checked", str(qt.SIGNAL("toggled(bool)"))),
+            "valueAsInt",
+            str(qt.SIGNAL("valueAsIntChanged(int)")),
+        )
+
         vBoxLayout.addWidget(groupBox)
         vBoxLayout.addStretch(1)
 
@@ -1492,6 +1503,7 @@ class MONAILabelWidget(ScriptedLoadableModuleWidget, VTKObservationMixin):
 
         # use model info "deepgrow" to determine
         deepgrow_3d = False if self.models[model].get("dimension", 3) == 2 else True
+        print(f"Is DeepGrow 3D: {deepgrow_3d}")
         start = time.time()
 
         label = segment.GetName()
@@ -1528,7 +1540,7 @@ class MONAILabelWidget(ScriptedLoadableModuleWidget, VTKObservationMixin):
                 labels = None
             else:
                 sliceIndex = current_point[2] if current_point else None
-                logging.debug(f"Slice Index: {sliceIndex}")
+                print(f"Slice Index: {sliceIndex}")
 
                 if deepgrow_3d or not sliceIndex:
                     foreground = foreground_all
@@ -1634,83 +1646,87 @@ class MONAILabelWidget(ScriptedLoadableModuleWidget, VTKObservationMixin):
             slicer.mrmlScene.RemoveNode(source_node)
         else:
             labels = [label for label in labels if label != "background"]
-            print(f"Update Segmentation Mask using Labels: {labels}")
+            logging.info(f"Update Segmentation Mask using Labels: {labels}")
 
             # segmentId, segment = self.currentSegment()
             labelImage = sitk.ReadImage(in_file)
             labelmapVolumeNode = sitkUtils.PushVolumeToSlicer(labelImage, None, className="vtkMRMLLabelMapVolumeNode")
-
-            existing_label_ids = {}
-            for label in labels:
-                id = segmentation.GetSegmentIdBySegmentName(label)
-                if id:
-                    existing_label_ids[label] = id
+            logging.info(f"Time consumed by Import LabelMask: {time.time() - start:3.1f}")
 
             freeze = [freeze] if freeze and isinstance(freeze, str) else freeze
-            print(f"Import only Freezed label: {freeze}")
+            logging.info(f"Import only Freezed label: {freeze}")
 
-            # List of segments to import
-            segmentIds = vtk.vtkStringArray()
-            for label in labels:
-                segmentIds.InsertNextValue(label)
+            if sliceIndex is None and not freeze:
+                # List of segments to import
+                segmentIds = vtk.vtkStringArray()
+                for label in labels:
+                    segmentIds.InsertNextValue(label)
 
-            numberOfExistingSegments = segmentation.GetNumberOfSegments()
-            slicer.modules.segmentations.logic().ImportLabelmapToSegmentationNode(
-                labelmapVolumeNode, segmentationNode, segmentIds
-            )
-            slicer.mrmlScene.RemoveNode(labelmapVolumeNode)
+                # faster import (based on selected segmentIds)
+                slicer.modules.segmentations.logic().ImportLabelmapToSegmentationNode(
+                    labelmapVolumeNode, segmentationNode, segmentIds
+                )
+                slicer.mrmlScene.RemoveNode(labelmapVolumeNode)
+            else:
+                existingCount = segmentation.GetNumberOfSegments()
+                existing_label_ids = {}
+                for label in labels:
+                    id = segmentation.GetSegmentIdBySegmentName(label)
+                    if id:
+                        existing_label_ids[label] = id
 
-            for i, label in enumerate(labels):
-                segment = segmentation.GetSegment(label)
-                print(f"Setting new segmentation with id: {label} => {segment.GetName()}")
+                # slower import (import all - use only when you have to update one particular slice for 2D)
+                slicer.modules.segmentations.logic().ImportLabelmapToSegmentationNode(
+                    labelmapVolumeNode, segmentationNode
+                )
+                slicer.mrmlScene.RemoveNode(labelmapVolumeNode)
 
-                # segment.SetName(label)
-                # segment.SetColor(self.getLabelColor(label))
+                addedCount = segmentation.GetNumberOfSegments() - existingCount
+                addedSegmentIds = [segmentation.GetNthSegmentID(existingCount + i) for i in range(addedCount)]
 
-                if freeze and label not in freeze:
-                    print(f"Discard label update for: {label}")
-                elif label in existing_label_ids:
-                    self.ui.embeddedSegmentEditorWidget.setSegmentationNode(segmentationNode)
-                    self.ui.embeddedSegmentEditorWidget.setMasterVolumeNode(self._volumeNode)
-                    self.ui.embeddedSegmentEditorWidget.setCurrentSegmentID(existing_label_ids[label])
+                self.ui.embeddedSegmentEditorWidget.setSegmentationNode(segmentationNode)
+                self.ui.embeddedSegmentEditorWidget.setMasterVolumeNode(self._volumeNode)
 
-                    effect = self.ui.embeddedSegmentEditorWidget.effectByName("Logical operators")
-                    labelmap = slicer.vtkOrientedImageData()
-                    segmentationNode.GetBinaryLabelmapRepresentation(label, labelmap)
-
-                    if sliceIndex:
-                        selectedSegmentLabelmap = effect.selectedSegmentLabelmap()
-                        dims = selectedSegmentLabelmap.GetDimensions()
-                        count = 0
-                        for x in range(dims[0]):
-                            for y in range(dims[1]):
-                                if selectedSegmentLabelmap.GetScalarComponentAsDouble(x, y, sliceIndex, 0):
-                                    count = count + 1
-                                selectedSegmentLabelmap.SetScalarComponentFromDouble(x, y, sliceIndex, 0, 0)
-
-                        logging.debug(f"Total Non Zero: {count}")
-
-                        # Clear the Slice
-                        if count:
-                            effect.modifySelectedSegmentByLabelmap(
-                                selectedSegmentLabelmap, slicer.qSlicerSegmentEditorAbstractEffect.ModificationModeSet
-                            )
-
-                        # Union label map
-                        effect.modifySelectedSegmentByLabelmap(
-                            labelmap, slicer.qSlicerSegmentEditorAbstractEffect.ModificationModeAdd
-                        )
+                for i, segmentId in enumerate(addedSegmentIds):
+                    label = labels[i] if i < len(labels) else f"unknown {i}"
+                    if freeze and label not in freeze:
+                        logging.info(f"Discard label update for: {label}")
                     else:
-                        # adding bypass masking to not overwrite other layers,
-                        # needed for preserving scribbles during updates
-                        # help from: https://github.com/Slicer/Slicer/blob/master
-                        #            /Modules/Loadable/Segmentations/EditorEffects/Python/SegmentEditorLogicalEffect.py
-                        bypassMask = True
-                        effect.modifySelectedSegmentByLabelmap(
-                            labelmap, slicer.qSlicerSegmentEditorAbstractEffect.ModificationModeSet, bypassMask
-                        )
+                        segment = segmentation.GetSegment(segmentId)
+                        logging.info(f"select segmentation with id: {segmentId} => {segment.GetName()} => {label}")
+                        if label in existing_label_ids:
+                            l_start = time.time()
+                            label_id = existing_label_ids[label]
 
-        self.showSegmentationsIn3D()
+                            self.ui.embeddedSegmentEditorWidget.setCurrentSegmentID(label_id)
+                            effect = self.ui.embeddedSegmentEditorWidget.effectByName("Logical operators")
+
+                            if sliceIndex is not None:
+                                selectedSegmentLabelmap = effect.selectedSegmentLabelmap()
+                                dims = selectedSegmentLabelmap.GetDimensions()
+                                for x in range(dims[0]):
+                                    for y in range(dims[1]):
+                                        selectedSegmentLabelmap.SetScalarComponentFromDouble(x, y, sliceIndex, 0, 0)
+
+                                logging.info(f"{label} - Time to Clean the slice: {time.time() - l_start:3.1f}")
+
+                            l_start = time.time()
+                            newLabelmap = slicer.vtkOrientedImageData()
+                            segmentationNode.GetBinaryLabelmapRepresentation(segmentId, newLabelmap)
+                            op = (
+                                slicer.qSlicerSegmentEditorAbstractEffect.ModificationModeSet
+                                if sliceIndex is None
+                                else slicer.qSlicerSegmentEditorAbstractEffect.ModificationModeAdd
+                            )
+                            effect.modifySelectedSegmentByLabelmap(newLabelmap, op)
+                            logging.info(f"{label} - Time to Update the segment: {time.time() - l_start:3.1f}")
+
+                    segmentationNode.RemoveSegment(segmentId)
+                    logging.info(f"Time consumed until Import Segment => {label}: {time.time() - start:3.1f}")
+
+        if slicer.util.settingsValue("MONAILabel/showSegmentsIn3D", False, converter=slicer.util.toBool):
+            self.showSegmentationsIn3D()
+
         logging.info(f"Time consumed by updateSegmentationMask: {time.time() - start:3.1f}")
         return True
 
@@ -2131,6 +2147,8 @@ class MONAILabelLogic(ScriptedLoadableModuleLogic):
         self.reportProgress(0)
 
         client = MONAILabelClient(self.server_url, self.tmpdir, self.client_id)
+        params["result_extension"] = ".nrrd"  # expect .nrrd
+        params["result_dtype"] = "uint8"
         result_file, params = client.infer(model, image_in, params, label_in, file, session_id)
 
         logging.debug(f"Image Response: {result_file}")

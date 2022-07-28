@@ -236,6 +236,7 @@ def main():
     studies = args.studies
     conf = {
         "models": args.model,
+        "preload": "true",
     }
 
     app = MyApp(app_dir, studies, conf)

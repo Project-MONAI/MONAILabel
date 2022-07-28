@@ -11,6 +11,7 @@ schedule==1.1.0
 dicomweb-client==0.56.2
 timeloop==1.0.2
 expiringdict==1.2.1
+expiring_dict==1.1.0
 cachetools==5.2.0
 watchdog==2.1.8
 pydicom==2.3.0

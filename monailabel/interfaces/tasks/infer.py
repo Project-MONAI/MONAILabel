@@ -8,7 +8,6 @@
 # WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 # See the License for the specific language governing permissions and
 # limitations under the License.
-
 import copy
 import logging
 import os
@@ -21,6 +20,7 @@ from monai.inferers import Inferer, SimpleInferer, SlidingWindowInferer
 
 from monailabel.interfaces.exception import MONAILabelError, MONAILabelException
 from monailabel.interfaces.utils.transform import dump_data, run_transforms
+from monailabel.transform.pre import CacheTransformDatad
 from monailabel.transform.writer import Writer
 from monailabel.utils.others.generic import device_list
 
@@ -116,7 +116,7 @@ class InferTask:
             self._config.update(config)
 
         if preload:
-            for device in device_list():
+            for device in ["cuda", *device_list()]:
                 logger.info(f"Preload Network for device: {device}")
                 self._get_network(device)
 
@@ -151,6 +151,13 @@ class InferTask:
             if path and os.path.exists(path):
                 return path
         return None
+
+    def add_cache_transform(self, t, data, keys=("image", "image_meta_dict"), hash_key=("image_path", "model")):
+        if data and data.get("cache_transforms", False):
+            in_memory = data.get("cache_transforms_in_memory", True)
+            ttl = data.get("cache_transforms_ttl", 300)
+
+            t.append(CacheTransformDatad(keys=keys, hash_key=hash_key, in_memory=in_memory, ttl=ttl))
 
     @abstractmethod
     def pre_transforms(self, data=None) -> Sequence[Callable]:
@@ -320,6 +327,30 @@ class InferTask:
         return result_file_name, result_json
 
     def run_pre_transforms(self, data, transforms):
+        pre_cache = []
+        post_cache = []
+        current = pre_cache
+        cache_t = None
+        for idx, t in enumerate(transforms):
+            if isinstance(t, CacheTransformDatad):
+                cache_t = t
+                current = post_cache
+            else:
+                current.append(t)
+
+        if cache_t is not None:
+
+            class LoadFromCache:
+                def __call__(self, data):
+                    return cache_t.load(data)
+
+            d = run_transforms(data, [LoadFromCache()], log_prefix="PRE", use_compose=False)
+
+            # Failed/Cache-Miss (run everything)
+            if d is None:
+                return run_transforms(data, transforms, log_prefix="PRE", use_compose=False)
+            return run_transforms(d, post_cache, log_prefix="PRE", use_compose=False) if post_cache else d
+
         return run_transforms(data, transforms, log_prefix="PRE", use_compose=False)
 
     def run_invert_transforms(self, data, pre_transforms, names):
