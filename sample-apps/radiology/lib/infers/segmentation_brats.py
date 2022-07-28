@@ -16,10 +16,8 @@ from monai.transforms import (
     AsDiscreted,
     EnsureChannelFirstd,
     EnsureTyped,
-    KeepLargestConnectedComponentd,
     LoadImaged,
     NormalizeIntensityd,
-    Spacingd,
     ToNumpyd,
 )
 
@@ -36,7 +34,7 @@ class SegmentationBrats(InferTask):
         self,
         path,
         network=None,
-        spatial_size=(48, 48, 48),
+        spatial_size=(128, 128, 128),
         type=InferType.SEGMENTATION,
         labels=None,
         dimension=3,
@@ -58,31 +56,21 @@ class SegmentationBrats(InferTask):
         return [
             LoadImaged(keys="image", reader="ITKReader"),
             EnsureChannelFirstd(keys="image"),
-            Spacingd(keys="image", pixdim=(1.0, 1.0, 1.0)),
-            NormalizeIntensityd(keys="image"),
+            NormalizeIntensityd(keys="image", nonzero=True, channel_wise=True),
             EnsureTyped(keys="image"),
         ]
 
     def inferer(self, data=None) -> Inferer:
-        return SlidingWindowInferer(roi_size=self.spatial_size)
+        return SlidingWindowInferer(roi_size=self.spatial_size, sw_batch_size=1, overlap=0.6)
 
     def inverse_transforms(self, data=None):
         return []
 
     def post_transforms(self, data=None) -> Sequence[Callable]:
-        largest_cc = False if not data else data.get("largest_cc", False)
-        applied_labels = list(self.labels.values()) if isinstance(self.labels, dict) else self.labels
-        t = [
+        return [
             EnsureTyped(keys="pred", device=data.get("device") if data else None),
             Activationsd(keys="pred", softmax=len(self.labels) > 1, sigmoid=len(self.labels) == 1),
             AsDiscreted(keys="pred", argmax=len(self.labels) > 1, threshold=0.5 if len(self.labels) == 1 else None),
+            ToNumpyd(keys="pred"),
+            Restored(keys="pred", ref_image="image"),
         ]
-        if largest_cc:
-            t.append(KeepLargestConnectedComponentd(keys="pred", applied_labels=applied_labels))
-        t.extend(
-            [
-                ToNumpyd(keys="pred"),
-                Restored(keys="pred", ref_image="image"),
-            ]
-        )
-        return t

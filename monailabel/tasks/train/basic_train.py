@@ -183,7 +183,8 @@ class BasicTrainTask(TrainTask):
         # lr_scheduler = torch.optim.lr_scheduler.ReduceLROnPlateau(context.optimizer, mode="min")
         # return LrScheduleHandler(lr_scheduler, print_lr=True, step_transform=lambda x: x.state.output[0]["loss"])
 
-        lr_scheduler = torch.optim.lr_scheduler.StepLR(context.optimizer, step_size=1000, gamma=0.1)
+        # lr_scheduler = torch.optim.lr_scheduler.StepLR(context.optimizer, step_size=1000, gamma=0.1)
+        lr_scheduler = torch.optim.lr_scheduler.CosineAnnealingLR(context.optimizer, T_max=1000)
         return LrScheduleHandler(lr_scheduler, print_lr=True)
 
     def _dataset(self, context, datalist, replace_rate=0.25):

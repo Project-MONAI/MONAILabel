@@ -10,11 +10,11 @@
 # limitations under the License.
 import logging
 
+import torch
 from monai.apps.deepedit.transforms import NormalizeLabelsInDatasetd
 from monai.handlers import TensorBoardImageHandler, from_engine
 from monai.inferers import SlidingWindowInferer
-from monai.losses import DiceCELoss
-from monai.optimizers import Novograd
+from monai.losses import DiceLoss
 from monai.transforms import (
     Activationsd,
     AsDiscreted,
@@ -23,13 +23,11 @@ from monai.transforms import (
     EnsureTyped,
     LoadImaged,
     NormalizeIntensityd,
-    RandCropByPosNegLabeld,
     RandFlipd,
-    RandRotate90d,
+    RandScaleIntensityd,
     RandShiftIntensityd,
+    RandSpatialCropd,
     SelectItemsd,
-    Spacingd,
-    SpatialPadd,
 )
 
 from monailabel.tasks.train.basic_train import BasicTrainTask, Context
@@ -43,7 +41,7 @@ class SegmentationBrats(BasicTrainTask):
         self,
         model_dir,
         network,
-        spatial_size=(48, 48, 48),  # Depends on original width, height and depth of the training images
+        spatial_size=(128, 128, 128),  # Depends on original width, height and depth of the training images
         num_samples=4,
         description="Train Segmentation model",
         **kwargs,
@@ -57,11 +55,11 @@ class SegmentationBrats(BasicTrainTask):
         return self._network
 
     def optimizer(self, context: Context):
-        return Novograd(context.network.parameters(), 0.0001)
-        # return torch.optim.Adam(context.network.parameters(), lr=1e-4)
+        # return Novograd(context.network.parameters(), 0.0001)
+        return torch.optim.AdamW(context.network.parameters(), lr=1e-4, weight_decay=1e-5)
 
     def loss_function(self, context: Context):
-        return DiceCELoss(to_onehot_y=True, softmax=True)
+        return DiceLoss(to_onehot_y=True, softmax=True)
 
     def lr_scheduler_handler(self, context: Context):
         return None
@@ -74,26 +72,23 @@ class SegmentationBrats(BasicTrainTask):
             LoadImaged(keys=("image", "label"), reader="ITKReader"),
             NormalizeLabelsInDatasetd(keys="label", label_names=self._labels),  # Specially for missing labels
             EnsureChannelFirstd(keys=("image", "label")),
-            Spacingd(keys=("image", "label"), pixdim=(1.0, 1.0, 1.0), mode=("bilinear", "nearest")),
-            CropForegroundd(keys=("image", "label"), source_key="image"),
-            SpatialPadd(keys=("image", "label"), spatial_size=self.spatial_size),
-            NormalizeIntensityd(keys="image"),
-            RandCropByPosNegLabeld(
-                keys=("image", "label"),
-                label_key="label",
-                spatial_size=self.spatial_size,
-                pos=1,
-                neg=1,
-                num_samples=self.num_samples,
-                image_key="image",
-                image_threshold=0,
+            CropForegroundd(
+                keys=["image", "label"],
+                source_key="image",
+                k_divisible=[self.spatial_size[0], self.spatial_size[1], self.spatial_size[2]],
             ),
-            EnsureTyped(keys=("image", "label"), device=context.device),
-            RandFlipd(keys=("image", "label"), spatial_axis=[0], prob=0.10),
-            RandFlipd(keys=("image", "label"), spatial_axis=[1], prob=0.10),
-            RandFlipd(keys=("image", "label"), spatial_axis=[2], prob=0.10),
-            RandRotate90d(keys=("image", "label"), prob=0.10, max_k=3),
+            RandSpatialCropd(
+                keys=["image", "label"],
+                roi_size=[self.spatial_size[0], self.spatial_size[1], self.spatial_size[2]],
+                random_size=False,
+            ),
+            NormalizeIntensityd(keys="image", nonzero=True, channel_wise=True),
+            RandFlipd(keys=("image", "label"), spatial_axis=0, prob=0.50),
+            RandFlipd(keys=("image", "label"), spatial_axis=1, prob=0.50),
+            RandFlipd(keys=("image", "label"), spatial_axis=2, prob=0.50),
+            RandScaleIntensityd(keys="image", factors=0.1, prob=1.0),
             RandShiftIntensityd(keys="image", offsets=0.1, prob=0.5),
+            EnsureTyped(keys=("image", "label"), device=context.device),
             SelectItemsd(keys=("image", "label")),
         ]
 
@@ -112,14 +107,13 @@ class SegmentationBrats(BasicTrainTask):
         return [
             LoadImaged(keys=("image", "label"), reader="ITKReader"),
             EnsureChannelFirstd(keys=("image", "label")),
-            Spacingd(keys=("image", "label"), pixdim=(1.0, 1.0, 1.0), mode=("bilinear", "nearest")),
-            NormalizeIntensityd(keys="image"),
+            NormalizeIntensityd(keys="image", nonzero=True, channel_wise=True),
             EnsureTyped(keys=("image", "label")),
             SelectItemsd(keys=("image", "label")),
         ]
 
     def val_inferer(self, context: Context):
-        return SlidingWindowInferer(roi_size=self.spatial_size, sw_batch_size=8)
+        return SlidingWindowInferer(roi_size=self.spatial_size, sw_batch_size=8, overlap=0.5)
 
     def norm_labels(self):
         # This should be applied along with NormalizeLabelsInDatasetd transform
