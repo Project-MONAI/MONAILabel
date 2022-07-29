@@ -22,7 +22,6 @@ from monai.transforms import (
     Resized,
     ScaleIntensityd,
     SqueezeDimd,
-    ToNumpyd,
     ToTensord,
 )
 
@@ -80,7 +79,6 @@ class ToolTracking(InferTask):
         return [
             EnsureTyped(keys="pred", device=data.get("device") if data else None),
             AsDiscreted(keys="pred", argmax=True),
-            ToNumpyd(keys="pred", dtype=np.uint8),
             Restored(keys="pred", ref_image="image"),
             SqueezeDimd(keys="pred", dim=0),
             FindContoursd(keys="pred", labels=self.labels),

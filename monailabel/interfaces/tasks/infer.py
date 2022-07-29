@@ -72,6 +72,8 @@ class InferTask:
         load_strict: bool = False,
         roi_size=None,
         preload=False,
+        train_mode=False,
+        skip_writer=False,
     ):
         """
         :param path: Model File Path. Supports multiple paths to support versions (Last item will be picked as latest)
@@ -87,6 +89,8 @@ class InferTask:
         :param load_strict: Load model in strict mode
         :param roi_size: ROI size for scanning window inference
         :param preload: Preload model/network on all available GPU devices
+        :param train_mode: Run in Train mode instead of eval (when network has dropouts)
+        :param skip_writer: Skip Writer and return data dictionary
         """
         self.path = [] if not path else [path] if isinstance(path, str) else path
         self.network = network
@@ -100,6 +104,8 @@ class InferTask:
         self.output_json_key = output_json_key
         self.load_strict = load_strict
         self.roi_size = roi_size
+        self.train_mode = train_mode
+        self.skip_writer = skip_writer
 
         self._networks: Dict = {}
 
@@ -247,7 +253,7 @@ class InferTask:
             )
         return SimpleInferer()
 
-    def __call__(self, request) -> Tuple[str, Dict[str, Any]]:
+    def __call__(self, request) -> Union[Dict, Tuple[str, Dict[str, Any]]]:
         """
         It provides basic implementation to run the following in order
             - Run Pre Transforms
@@ -292,6 +298,9 @@ class InferTask:
         start = time.time()
         data = self.run_post_transforms(data, self.post_transforms(data))
         latency_post = time.time() - start
+
+        if self.skip_writer:
+            return dict(data)
 
         start = time.time()
         result_file_name, result_json = self.writer(data)
@@ -378,6 +387,9 @@ class InferTask:
     def run_post_transforms(self, data, transforms):
         return run_transforms(data, transforms, log_prefix="POST")
 
+    def clear_cache(self):
+        self._networks.clear()
+
     def _get_network(self, device):
         path = self.get_path()
         logger.info(f"Infer model path: {path}")
@@ -411,7 +423,10 @@ class InferTask:
             else:
                 network = torch.jit.load(path, map_location=torch.device(device))
 
-            network.eval()
+            if self.train_mode:
+                network.train()
+            else:
+                network.eval()
             self._networks[device] = (network, statbuf.st_mtime if statbuf else 0)
 
         return network

@@ -8,7 +8,14 @@ Install CVAT and enable Semi-Automatic and Automatic Annotation
 - https://openvinotoolkit.github.io/cvat/docs/administration/advanced/installation_automatic_annotation/
 
 ```
+# For Reference
+export CVAT_HOST=127.0.0.1
 docker-compose -f docker-compose.yml -f components/serverless/docker-compose.serverless.yml up -d
+docker exec -it cvat bash -ic 'python3 ~/manage.py createsuperuser'
+
+wget https://github.com/nuclio/nuclio/releases/download/1.5.16/nuctl-1.5.16-linux-amd64
+chmod +x nuctl-1.5.16-linux-amd64
+mv nuctl-1.5.16-linux-amd64 ~/.local/bin/nuctl
 ```
 
 ## Installation
