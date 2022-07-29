@@ -11,13 +11,12 @@
 import glob
 import os
 import shutil
-import time
 
 import monai
 from monai.data import DataLoader, list_data_collate
 from monai.transforms import Compose, LoadImaged, SaveImaged
 
-data_dir = "/home/andres/Documents/workspace/Datasets/radiology/BRATS-2021/test-ventricles/individual-files/"
+data_dir = "/home/andres/Documents/workspace/Datasets/radiology/BRATS-2021/ValidationData/"
 output_folder = "/home/andres/Documents/workspace/Datasets/radiology/BRATS-2021/test-ventricles/mergedFiles/"
 
 
@@ -47,5 +46,5 @@ for idx, img in enumerate(trainLoader):
     dirname, file = os.path.split(img["image_meta_dict"]["filename_or_obj"][0])
     fname = dirname.split("/")[-1]
     print("Processing image: ", fname + ".nii.gz")
-    time.sleep(2)
+    # time.sleep(2)
     shutil.move(output_folder + file, output_folder + fname + ".nii.gz")
