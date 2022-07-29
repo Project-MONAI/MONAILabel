@@ -18,7 +18,10 @@ import lib.configs
 from monailabel.interfaces.app import MONAILabelApp
 from monailabel.interfaces.config import TaskConfig
 from monailabel.interfaces.tasks.infer import InferTask
+from monailabel.interfaces.tasks.scoring import ScoringMethod
+from monailabel.interfaces.tasks.strategy import Strategy
 from monailabel.interfaces.tasks.train import TrainTask
+from monailabel.tasks.activelearning.random import Random
 from monailabel.utils.others.class_utils import get_class_names
 
 logger = logging.getLogger(__name__)
@@ -106,6 +109,43 @@ class MyApp(MONAILabelApp):
             trainers[n] = t
         return trainers
 
+    def init_strategies(self) -> Dict[str, Strategy]:
+        strategies: Dict[str, Strategy] = {
+            "random": Random(),
+        }
+
+        if strtobool(self.conf.get("skip_strategies", "true")):
+            return strategies
+
+        for n, task_config in self.models.items():
+            s = task_config.strategy()
+            if not s:
+                continue
+            s = s if isinstance(s, dict) else {n: s}
+            for k, v in s.items():
+                logger.info(f"+++ Adding Strategy:: {k} => {v}")
+                strategies[k] = v
+
+        logger.info(f"Active Learning Strategies:: {list(strategies.keys())}")
+        return strategies
+
+    def init_scoring_methods(self) -> Dict[str, ScoringMethod]:
+        methods: Dict[str, ScoringMethod] = {}
+        if strtobool(self.conf.get("skip_scoring", "true")):
+            return methods
+
+        for n, task_config in self.models.items():
+            s = task_config.scoring_method()
+            if not s:
+                continue
+            s = s if isinstance(s, dict) else {n: s}
+            for k, v in s.items():
+                logger.info(f"+++ Adding Scoring Method:: {k} => {v}")
+                methods[k] = v
+
+        logger.info(f"Active Learning Scoring Methods:: {list(methods.keys())}")
+        return methods
+
 
 """
 Example to run train/infer/scoring task(s) locally without actually running MONAI Label Server
@@ -130,8 +170,7 @@ def main():
     )
 
     home = str(Path.home())
-    studies = f"{home}/Datasets/Endoscopy"
-    studies = "C:\\Dataset\\Endoscopy"
+    studies = f"{home}/Datasets/Holoscan/tiny/images"
 
     parser = argparse.ArgumentParser()
     parser.add_argument("-s", "--studies", default=studies)
@@ -141,23 +180,42 @@ def main():
     studies = args.studies
 
     app = MyApp(app_dir, studies, {"preload": "true"})
-    infer_tooltracking(app)
+    logger.info(app.datastore().status())
+    train_tooltracking(app)
+
+
+def train_tooltracking(app):
+    res = app.train(
+        request={
+            "model": "tooltracking",
+            "max_epochs": 10,
+            "dataset": "Dataset",  # PersistentDataset, CacheDataset
+            "train_batch_size": 4,
+            "val_batch_size": 2,
+            "multi_gpu": False,
+            "val_split": 0.1,
+        }
+    )
+    print(res)
+    logger.info("All Done!")
 
 
 def infer_tooltracking(app):
     import shutil
+    from pathlib import Path
 
     res = app.infer(
         request={
             "model": "tooltracking",
-            "image": "video_31_part020_1",
+            "image": "Video_9_ch1_video_01_Trim_00-00_f2340",
             "output": "asap",
             # 'result_extension': '.png',
         }
     )
 
     # print(json.dumps(res, indent=2))
-    shutil.move(res["label"], "C:\\Dataset\\Endoscopy\\test\\output_image.xml")
+    home = str(Path.home())
+    shutil.move(res["label"], f"{home}/Datasets/Holoscan/output_image.xml")
     logger.info("All Done!")
 
 
