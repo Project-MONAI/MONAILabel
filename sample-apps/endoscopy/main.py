@@ -170,7 +170,7 @@ def main():
     )
 
     home = str(Path.home())
-    studies = f"{home}/Datasets/Holoscan/small/images"
+    studies = f"{home}/Datasets/Holoscan/tiny/images"
 
     parser = argparse.ArgumentParser()
     parser.add_argument("-s", "--studies", default=studies)
@@ -180,13 +180,20 @@ def main():
     studies = args.studies
 
     app = MyApp(app_dir, studies, {"preload": "true"})
-    infer_tooltracking(app)
+    logger.info(app.datastore().status())
+    train_tooltracking(app)
 
 
-def scoring_epistemic(app):
-    res = app.scoring(
+def train_tooltracking(app):
+    res = app.train(
         request={
-            "method": "tooltracking_epistemic",
+            "model": "tooltracking",
+            "max_epochs": 10,
+            "dataset": "Dataset",  # PersistentDataset, CacheDataset
+            "train_batch_size": 4,
+            "val_batch_size": 2,
+            "multi_gpu": False,
+            "val_split": 0.1,
         }
     )
     print(res)
