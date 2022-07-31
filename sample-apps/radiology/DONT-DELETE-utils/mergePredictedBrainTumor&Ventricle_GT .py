@@ -28,40 +28,38 @@ class MergeToSingleFiled(MapTransform):
     def __call__(self, data):
         d = dict(data)
         factor = 10.0
-        # Take only ventricles from prediction
-        d["ventricles"][d["ventricles"] != 4.0] = 0
-        d["ventricles"][d["ventricles"] == 4.0] = 50.0
-        # multiply GT by factor
+        # multiply ventricles by factor
         d["GT"] = d["GT"] * factor
-        d["label"] = np.add(d["ventricles"], d["GT"]).astype(np.float32)
-        d["label"][d["label"] == (factor + 50.0)] = 1.0
-        d["label"][d["label"] == factor] = 1.0
-        d["label"][d["label"] == (2 * factor) + 50.0] = 2.0
-        d["label"][d["label"] == (2 * factor)] = 2.0
-        d["label"][d["label"] == (4 * factor) + 50.0] = 4.0
-        d["label"][d["label"] == (4 * factor)] = 4.0
-        d["label"][d["label"] == 50.0] = 5.0
+        print("Size of GT ventricles: ")
+        print(d["GT"].shape)
+        print("Size of predicted tumors: ")
+        print(d["tumors"].shape)
+        d["label"] = np.add(d["GT"], d["tumors"]).astype(np.float32)
+        d["label"][d["label"] >= factor] = factor
+        d["label"][d["label"] == 3.0] = 4.0
+        d["label"][d["label"] == factor] = 5.0
         print(np.unique(d["label"]))
         return d
 
 
-data_ventricles = "/home/andres/Documents/workspace/Datasets/radiology/BRATS-2021/NeuroAtlas-Labels/predicted_ventricles/monailabel/labels/original/"
-data_tumor_GT = "/home/andres/Documents/workspace/Datasets/radiology/BRATS-2021/NeuroAtlas-Labels/to_train_tumors_only/monailabel/labels/final/"
-output_folder = "/home/andres/Documents/workspace/Datasets/radiology/BRATS-2021/NeuroAtlas-Labels/predicted_ventricles/mergeVentricles&GTTumors/"
+data_tumors = "/home/andres/Documents/workspace/Datasets/radiology/BRATS-2021/NeuroAtlas-Labels/predicted-brain-tumor-validation/monailabel/labels/original/"
+data_ventricles_GT = "/home/andres/Documents/workspace/Datasets/radiology/BRATS-2021/NeuroAtlas-Labels/ventricles-second-batch/monailabel/labels/final/"
+output_folder = "/home/andres/Documents/workspace/Datasets/radiology/BRATS-2021/NeuroAtlas-Labels/predicted-brain-tumor-validation/mergePredictedTumor&ventriclesGT/"
 
 
 set_transforms = Compose(
     [
-        LoadImaged(keys=("ventricles", "GT")),
+        LoadImaged(keys="GT", reader="Nrrdreader"),
+        LoadImaged(keys="tumors"),
         MergeToSingleFiled(keys="label"),
     ]
 )
 
-files_ventricle = glob.glob(os.path.join(data_ventricles, "*"))
+files_tumors = glob.glob(os.path.join(data_tumors, "*"))
 train_d = []
-for ventricle_path in files_ventricle:
-    dirname, file = os.path.split(ventricle_path)
-    train_d.append({"ventricles": ventricle_path, "GT": data_tumor_GT + file})
+for tumor_path in files_tumors:
+    dirname, file = os.path.split(tumor_path)
+    train_d.append({"tumors": tumor_path, "GT": data_ventricles_GT + file})
 
 print(len(train_d))
 
@@ -108,6 +106,6 @@ def save_nifti(data, meta_data, path, filename):
 
 
 for idx, img in enumerate(trainLoader):
-    dirname, file = os.path.split(img["GT_meta_dict"]["filename_or_obj"][0])
-    print("Processing label: ", file + ".nii.gz")
-    save_nifti(img["label"], img["GT_meta_dict"], output_folder, file)
+    dirname, file = os.path.split(img["tumors_meta_dict"]["filename_or_obj"][0])
+    print(f"Processing label: {idx}/{len(train_d)} {file}")
+    save_nifti(img["label"], img["tumors_meta_dict"], output_folder, file)

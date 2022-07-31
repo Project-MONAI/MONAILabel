@@ -49,7 +49,7 @@ class SegmentationBrats(TaskConfig):
 
         # Download PreTrained Model
         if strtobool(self.conf.get("use_pretrained_model", "false")):
-            url = f"{self.PRE_TRAINED_PATH}/segmentation_swinunetr_ventricle_brats.pt"
+            url = f"{self.PRE_TRAINED_PATH}/segmentation_swinunetr_tumor_ventricles_brats.pt"
             download_file(url, self.path[0])
 
         # Network

@@ -10,7 +10,6 @@
 # limitations under the License.
 import glob
 import os
-import shutil
 
 import monai
 from monai.data import DataLoader, list_data_collate
