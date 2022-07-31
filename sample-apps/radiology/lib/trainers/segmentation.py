@@ -22,13 +22,12 @@ from monai.transforms import (
     EnsureChannelFirstd,
     EnsureTyped,
     LoadImaged,
-    RandCropByPosNegLabeld,
+    NormalizeIntensityd,
     RandFlipd,
+    RandScaleIntensityd,
     RandShiftIntensityd,
-    ScaleIntensityRanged,
+    RandSpatialCropd,
     SelectItemsd,
-    Spacingd,
-    SpatialPadd,
 )
 
 from monailabel.tasks.train.basic_train import BasicTrainTask, Context
@@ -74,25 +73,23 @@ class Segmentation(BasicTrainTask):
             LoadImaged(keys=("image", "label"), reader="ITKReader"),
             NormalizeLabelsInDatasetd(keys="label", label_names=self._labels),  # Specially for missing labels
             EnsureChannelFirstd(keys=("image", "label")),
-            Spacingd(keys=("image", "label"), pixdim=self.target_spacing, mode=("bilinear", "nearest")),
-            CropForegroundd(keys=("image", "label"), source_key="image"),
-            SpatialPadd(keys=("image", "label"), spatial_size=self.roi_size),
-            ScaleIntensityRanged(keys="image", a_min=-175, a_max=250, b_min=0.0, b_max=1.0, clip=True),
-            RandCropByPosNegLabeld(
-                keys=("image", "label"),
-                label_key="label",
-                spatial_size=self.roi_size,
-                pos=1,
-                neg=1,
-                num_samples=self.num_samples,
-                image_key="image",
-                image_threshold=0,
+            CropForegroundd(
+                keys=["image", "label"],
+                source_key="image",
+                k_divisible=[self.roi_size[0], self.roi_size[1], self.roi_size[2]],
             ),
-            EnsureTyped(keys=("image", "label"), device=context.device),
-            RandFlipd(keys=("image", "label"), spatial_axis=[0], prob=0.50),
-            RandFlipd(keys=("image", "label"), spatial_axis=[1], prob=0.50),
-            RandFlipd(keys=("image", "label"), spatial_axis=[2], prob=0.50),
+            RandSpatialCropd(
+                keys=["image", "label"],
+                roi_size=[self.roi_size[0], self.roi_size[1], self.roi_size[2]],
+                random_size=False,
+            ),
+            NormalizeIntensityd(keys="image"),
+            RandFlipd(keys=("image", "label"), spatial_axis=0, prob=0.50),
+            RandFlipd(keys=("image", "label"), spatial_axis=1, prob=0.50),
+            RandFlipd(keys=("image", "label"), spatial_axis=2, prob=0.50),
+            RandScaleIntensityd(keys="image", factors=0.1, prob=1.0),
             RandShiftIntensityd(keys="image", offsets=0.1, prob=0.5),
+            EnsureTyped(keys=("image", "label"), device=context.device),
             SelectItemsd(keys=("image", "label")),
         ]
 
@@ -112,8 +109,7 @@ class Segmentation(BasicTrainTask):
             LoadImaged(keys=("image", "label"), reader="ITKReader"),
             NormalizeLabelsInDatasetd(keys="label", label_names=self._labels),  # Specially for missing labels
             EnsureChannelFirstd(keys=("image", "label")),
-            Spacingd(keys=("image", "label"), pixdim=self.target_spacing, mode=("bilinear", "nearest")),
-            ScaleIntensityRanged(keys="image", a_min=-175, a_max=250, b_min=0.0, b_max=1.0, clip=True),
+            NormalizeIntensityd(keys="image"),
             EnsureTyped(keys=("image", "label")),
             SelectItemsd(keys=("image", "label")),
         ]

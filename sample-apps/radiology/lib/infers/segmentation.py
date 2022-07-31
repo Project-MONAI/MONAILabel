@@ -16,10 +16,8 @@ from monai.transforms import (
     AsDiscreted,
     EnsureChannelFirstd,
     EnsureTyped,
-    KeepLargestConnectedComponentd,
     LoadImaged,
-    ScaleIntensityRanged,
-    Spacingd,
+    NormalizeIntensityd,
 )
 
 from monailabel.interfaces.tasks.infer import InferTask, InferType
@@ -58,22 +56,16 @@ class Segmentation(InferTask):
             LoadImaged(keys="image", reader="ITKReader"),
             EnsureTyped(keys="image", device=data.get("device") if data else None),
             EnsureChannelFirstd(keys="image"),
-            Spacingd(keys="image", pixdim=self.target_spacing),
-            ScaleIntensityRanged(keys="image", a_min=-175, a_max=250, b_min=0.0, b_max=1.0, clip=True),
+            NormalizeIntensityd(keys="image"),
         ]
 
     def inferer(self, data=None) -> Inferer:
         return SlidingWindowInferer(roi_size=self.roi_size)
 
     def post_transforms(self, data=None) -> Sequence[Callable]:
-        largest_cc = False if not data else data.get("largest_cc", False)
-        applied_labels = list(self.labels.values()) if isinstance(self.labels, dict) else self.labels
-        t = [
+        return [
             EnsureTyped(keys="pred", device=data.get("device") if data else None),
             Activationsd(keys="pred", softmax=True),
             AsDiscreted(keys="pred", argmax=True),
+            Restored(keys="pred", ref_image="image"),
         ]
-        if largest_cc:
-            t.append(KeepLargestConnectedComponentd(keys="pred", applied_labels=applied_labels))
-        t.append(Restored(keys="pred", ref_image="image"))
-        return t
