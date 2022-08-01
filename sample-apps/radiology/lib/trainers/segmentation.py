@@ -10,24 +10,27 @@
 # limitations under the License.
 import logging
 
-import torch
 from monai.apps.deepedit.transforms import NormalizeLabelsInDatasetd
 from monai.handlers import TensorBoardImageHandler, from_engine
 from monai.inferers import SlidingWindowInferer
-from monai.losses import DiceCELoss
+from monai.losses import DiceLoss
+from monai.optimizers import Novograd
 from monai.transforms import (
     Activationsd,
     AsDiscreted,
-    CropForegroundd,
     EnsureChannelFirstd,
     EnsureTyped,
+    GaussianSmoothd,
     LoadImaged,
     NormalizeIntensityd,
-    RandFlipd,
+    Orientationd,
+    RandCropByPosNegLabeld,
+    RandRotated,
     RandScaleIntensityd,
     RandShiftIntensityd,
-    RandSpatialCropd,
+    ScaleIntensityd,
     SelectItemsd,
+    SpatialPadd,
 )
 
 from monailabel.tasks.train.basic_train import BasicTrainTask, Context
@@ -57,10 +60,10 @@ class Segmentation(BasicTrainTask):
         return self._network
 
     def optimizer(self, context: Context):
-        return torch.optim.Adam(context.network.parameters(), lr=1e-3)
+        return Novograd(context.network.parameters(), 0.0001)
 
     def loss_function(self, context: Context):
-        return DiceCELoss(to_onehot_y=True, softmax=True)
+        return DiceLoss(to_onehot_y=True, softmax=True)
 
     def lr_scheduler_handler(self, context: Context):
         return None
@@ -73,22 +76,26 @@ class Segmentation(BasicTrainTask):
             LoadImaged(keys=("image", "label"), reader="ITKReader"),
             NormalizeLabelsInDatasetd(keys="label", label_names=self._labels),  # Specially for missing labels
             EnsureChannelFirstd(keys=("image", "label")),
-            CropForegroundd(
-                keys=["image", "label"],
-                source_key="image",
-                k_divisible=[self.roi_size[0], self.roi_size[1], self.roi_size[2]],
+            Orientationd(keys=("image", "label"), axcodes="RAS"),
+            GaussianSmoothd(keys="image", sigma=0.75),
+            NormalizeIntensityd(keys="image", divisor=2048.0),
+            ScaleIntensityd(keys="image", minv=-1.0, maxv=1.0),
+            RandScaleIntensityd(keys="image", factors=(0.75, 1.25), prob=0.80),
+            RandShiftIntensityd(keys="image", offsets=(-0.25, 0.25), prob=0.80),
+            RandRotated(
+                keys=("image", "label"), range_x=(-0.26, 0.26), range_y=(-0.26, 0.26), range_z=(-0.26, 0.26), prob=0.80
             ),
-            RandSpatialCropd(
-                keys=["image", "label"],
-                roi_size=[self.roi_size[0], self.roi_size[1], self.roi_size[2]],
-                random_size=False,
+            SpatialPadd(keys=("image", "label"), spatial_size=self.roi_size),
+            RandCropByPosNegLabeld(
+                keys=("image", "label"),
+                label_key="label",
+                spatial_size=self.roi_size,
+                pos=1,
+                neg=1,
+                num_samples=self.num_samples,
+                image_key="image",
+                image_threshold=0,
             ),
-            NormalizeIntensityd(keys="image"),
-            RandFlipd(keys=("image", "label"), spatial_axis=0, prob=0.50),
-            RandFlipd(keys=("image", "label"), spatial_axis=1, prob=0.50),
-            RandFlipd(keys=("image", "label"), spatial_axis=2, prob=0.50),
-            RandScaleIntensityd(keys="image", factors=0.1, prob=1.0),
-            RandShiftIntensityd(keys="image", offsets=0.1, prob=0.5),
             EnsureTyped(keys=("image", "label"), device=context.device),
             SelectItemsd(keys=("image", "label")),
         ]
@@ -109,7 +116,11 @@ class Segmentation(BasicTrainTask):
             LoadImaged(keys=("image", "label"), reader="ITKReader"),
             NormalizeLabelsInDatasetd(keys="label", label_names=self._labels),  # Specially for missing labels
             EnsureChannelFirstd(keys=("image", "label")),
-            NormalizeIntensityd(keys="image"),
+            Orientationd(keys=("image", "label"), axcodes="RAS"),
+            GaussianSmoothd(keys="image", sigma=0.75),
+            NormalizeIntensityd(keys="image", divisor=2048.0),
+            ScaleIntensityd(keys="image", minv=-1.0, maxv=1.0),
+            SpatialPadd(keys=("image", "label"), spatial_size=self.roi_size),
             EnsureTyped(keys=("image", "label")),
             SelectItemsd(keys=("image", "label")),
         ]

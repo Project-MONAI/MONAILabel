@@ -15,7 +15,7 @@ from typing import Any, Dict, Optional, Union
 
 import lib.infers
 import lib.trainers
-from monai.networks.nets import SwinUNETR
+from monai.networks.nets import UNet
 
 from monailabel.interfaces.config import TaskConfig
 from monailabel.interfaces.tasks.infer import InferTask
@@ -56,26 +56,26 @@ class Segmentation(TaskConfig):
 
         # Network
 
-        # self.network = UNet(
-        #     spatial_dims=3,
-        #     in_channels=self.number_intensity_ch,
-        #     out_channels=len(self.labels.keys()) + 1,  # All labels plus background
-        #     channels=[16, 32, 64, 128, 256],
-        #     strides=[2, 2, 2, 2],
-        #     num_res_units=2,
-        #     norm="batch",
-        # )
-
-        self.network = SwinUNETR(
-            img_size=self.roi_size,
+        self.network = UNet(
+            spatial_dims=3,
             in_channels=self.number_intensity_ch,
-            out_channels=len(self.labels.keys()) + 1,  # All labels plus background,
-            feature_size=48,
-            drop_rate=0.0,
-            attn_drop_rate=0.0,
-            dropout_path_rate=0.0,
-            use_checkpoint=True,
+            out_channels=len(self.labels.keys()) + 1,  # All labels plus background
+            channels=[16, 32, 64, 128, 256],
+            strides=[2, 2, 2, 2],
+            num_res_units=2,
+            norm="batch",
         )
+
+        # self.network = SwinUNETR(
+        #     img_size=self.roi_size,
+        #     in_channels=self.number_intensity_ch,
+        #     out_channels=len(self.labels.keys()) + 1,  # All labels plus background,
+        #     feature_size=48,
+        #     drop_rate=0.0,
+        #     attn_drop_rate=0.0,
+        #     dropout_path_rate=0.0,
+        #     use_checkpoint=True,
+        # )
 
     def infer(self) -> Union[InferTask, Dict[str, InferTask]]:
         task: InferTask = lib.infers.Segmentation(
