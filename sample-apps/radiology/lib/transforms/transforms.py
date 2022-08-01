@@ -16,7 +16,7 @@ import numpy as np
 import torch
 from monai.config import KeysCollection
 from monai.networks.layers import GaussianFilter
-from monai.transforms import GaussianSmooth, ScaleIntensity, SpatialCrop
+from monai.transforms import SpatialCrop
 from monai.transforms.transform import MapTransform
 
 logger = logging.getLogger(__name__)
@@ -129,10 +129,38 @@ class GetCentroidAndCropd(MapTransform):
                 d[key][d[key] != first_label["label"]] = 0
                 d[key][d[key] > 0] = 1
 
+                # Plotting
+                # from matplotlib.pyplot import imshow, show, close
+                # imshow(d[key][0,:,:,int(d[key].shape[-1]/2)])
+                # show()
+                # close()
             elif key == "image":
                 d[key] = cropper(d[key])
             else:
                 print("This transform only applies to the label or image")
+
+        # For debugging purposes
+        # canvas_img = np.zeros(d["original_size"], dtype=np.float32)
+        # canvas_label = np.zeros(d["original_size"], dtype=np.float32)
+        #
+        # canvas_img[
+        #     cropper.slices[-3].start : cropper.slices[-3].stop,
+        #     cropper.slices[-2].start : cropper.slices[-2].stop,
+        #     cropper.slices[-1].start : cropper.slices[-1].stop,
+        # ] = d["image"]
+        #
+        # canvas_label[
+        #     cropper.slices[-3].start : cropper.slices[-3].stop,
+        #     cropper.slices[-2].start : cropper.slices[-2].stop,
+        #     cropper.slices[-1].start : cropper.slices[-1].stop,
+        # ] = d["label"]
+        #
+        # d["image"] = canvas_img
+        # d["label"] = canvas_label
+        #
+        # SaveImaged(keys="image", output_postfix="", output_dir="/home/andres/Downloads", separate_folder=False)(d)
+        # SaveImaged(keys="label", output_postfix="seg", output_dir="/home/andres/Downloads", separate_folder=False)(d)
+
         return d
 
 
@@ -237,6 +265,54 @@ class PlaceCroppedAread(MapTransform):
 # For the second stage - Vertebra localization
 
 
+# class VertHeatMap(MapTransform):
+#     def __init__(self, keys, gamma=1000.0, label_names=None):
+#         super().__init__(keys)
+#         self.label_names = label_names
+#         self.gamma = gamma
+#
+#     def __call__(self, data):
+#
+#         for k in self.keys:
+#             i = data[k].long()
+#             # one hot if necessary
+#             is_onehot = i.shape[0] > 1
+#             if is_onehot:
+#                 out = torch.zeros_like(i)
+#             else:
+#                 out = torch.nn.functional.one_hot(i, len(self.label_names) + 1)  # plus background
+#                 out = torch.movedim(out[0], -1, 0)
+#                 out.fill_(0.0)
+#                 out = out.float()
+#
+#             # loop over all segmentation classes
+#             for seg_class in torch.unique(i):
+#                 # skip background
+#                 if seg_class == 0:
+#                     continue
+#                 # get CoM for given segmentation class
+#                 centre = [np.average(indices.cpu()).astype(int) for indices in torch.where(i[0] == seg_class)]
+#                 label_num = seg_class.item()
+#                 centre.insert(0, label_num)
+#                 out[tuple(centre)] = 1.0
+#                 sigma = 1.6 + (label_num - 1.0) * 0.1
+#                 # Gaussian smooth
+#                 out[label_num] = GaussianSmooth(sigma)(out[label_num].cuda()).cpu()
+#                 # Normalize to [0,1]
+#                 out[label_num] = ScaleIntensity()(out[label_num])
+#                 out[label_num] = out[label_num] * self.gamma
+#
+#             # TO DO: Keep the centroids in the data dictionary?
+#
+#             data[k] = out
+#
+#             # SaveImaged(keys="label", output_postfix="", output_dir="/home/andres/Downloads", separate_folder=False)(
+#             #     data
+#             # )
+#
+#         return data
+
+
 class VertHeatMap(MapTransform):
     def __init__(self, keys, gamma=1000.0, label_names=None):
         super().__init__(keys)
@@ -246,37 +322,41 @@ class VertHeatMap(MapTransform):
     def __call__(self, data):
 
         for k in self.keys:
-            i = data[k].long()
-            # one hot if necessary
-            is_onehot = i.shape[0] > 1
-            if is_onehot:
-                out = torch.zeros_like(i)
-            else:
-                out = torch.nn.functional.one_hot(i, len(self.label_names) + 1)  # plus background
-                out = torch.movedim(out[0], -1, 0)
-                out.fill_(0.0)
-                out = out.float()
+
+            out = np.zeros(
+                (len(self.label_names) + 1, data[k].shape[-3], data[k].shape[-2], data[k].shape[-1]), dtype=np.float32
+            )
 
             # loop over all segmentation classes
-            for seg_class in torch.unique(i):
+            for label_num in np.unique(data[k]):
                 # skip background
-                if seg_class == 0:
+                if label_num == 0:
                     continue
                 # get CoM for given segmentation class
-                centre = [np.average(indices.cpu()).astype(int) for indices in torch.where(i[0] == seg_class)]
-                label_num = seg_class.item()
+                centre = [np.average(indices).astype(int) for indices in np.where(data[k][0] == label_num)]
                 centre.insert(0, label_num)
-                out[tuple(centre)] = 1.0
+                out[int(centre[-4]), int(centre[-3]), int(centre[-2]), int(centre[-1])] = 1.0
                 sigma = 1.6 + (label_num - 1.0) * 0.1
+
                 # Gaussian smooth
-                out[label_num] = GaussianSmooth(sigma)(out[label_num].cuda()).cpu()
-                # Normalize to [0,1]
-                out[label_num] = ScaleIntensity()(out[label_num])
-                out[label_num] = out[label_num] * self.gamma
+                signal_tensor = torch.tensor(out[int(label_num)])
+                pt_gaussian = GaussianFilter(len(signal_tensor.shape), sigma=sigma)
+                signal_tensor = pt_gaussian(signal_tensor.unsqueeze(0).unsqueeze(0))
+                signal_tensor = signal_tensor.squeeze(0).squeeze(0)
+                signal_tensor = signal_tensor.detach().cpu().numpy()
+                signal_tensor = (signal_tensor - np.min(signal_tensor)) / (
+                    np.max(signal_tensor) - np.min(signal_tensor)
+                )
+
+                out[int(label_num)] = signal_tensor * self.gamma
 
             # TO DO: Keep the centroids in the data dictionary?
 
             data[k] = out
+
+            # SaveImaged(keys="label", output_postfix="", output_dir="/home/andres/Downloads", separate_folder=False)(
+            #     data
+            # )
 
         return data
 
@@ -309,6 +389,13 @@ class VertebraLocalizationPostProcessing(MapTransform):
                 X, Y, Z = X[0], Y[0], Z[0]
                 centroid[f"label_{l+1}"] = [X, Y, Z]
                 centroids.append(centroid)
-            d["pred_centroids"] = centroids
+
             print(centroids)
+            # d["pred_meta_dict"] = d["image_meta_dict"]
+            # SaveImaged(keys=key, output_postfix="", output_dir="/home/andres/Downloads", separate_folder=False)(d)
+            # # Plotting
+            # from matplotlib.pyplot import imshow, show, close
+            # imshow(d[key][0,:,:,int(d[key].shape[-1]/2)])
+            # show()
+            # close()
         return d
