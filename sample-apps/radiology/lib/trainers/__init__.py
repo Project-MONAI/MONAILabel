@@ -10,6 +10,7 @@
 # limitations under the License.
 
 from .deepedit import DeepEdit
+from .deepedit_brats import DeepEditBrats
 from .deepgrow import Deepgrow
 from .segmentation import Segmentation
 from .segmentation_brats import SegmentationBrats

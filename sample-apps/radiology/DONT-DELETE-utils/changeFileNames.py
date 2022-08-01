@@ -12,14 +12,14 @@ import glob
 import os
 import shutil
 
-data_dir = "/home/andres/Documents/workspace/Datasets/radiology/BRATS-2021/NeuroAtlas-Labels/to_train_tumors_only/monailabel/labels/final/"
-output_folder = "/home/andres/Documents/workspace/Datasets/radiology/BRATS-2021/NeuroAtlas-Labels/to_train_tumors_only/monailabel/labels/new_final/"
+data_dir = "/home/andres/Documents/workspace/Datasets/radiology/BRATS-2021/NeuroAtlas-Labels/brats-ns8/brats-ns8/"
+output_folder = "/home/andres/Documents/workspace/Datasets/radiology/BRATS-2021/NeuroAtlas-Labels/brats-ns8/monailabel/labels/final/"
 
-all_files = glob.glob(os.path.join(data_dir, "*.nii.gz"))
+all_files = glob.glob(os.path.join(data_dir, "*.nrrd"))
 
 
 for idx, img_path in enumerate(all_files):
     fname = img_path.split("/")[-1]
     print(f"Processing image: {idx}/{len(all_files)}")
     # time.sleep(1)
-    shutil.copy(img_path, output_folder + fname[:15] + ".nii.gz")
+    shutil.copy(img_path, output_folder + fname[:15] + ".nrrd")
