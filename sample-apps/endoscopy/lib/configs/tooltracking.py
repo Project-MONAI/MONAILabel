@@ -19,7 +19,11 @@ from lib.net.ranzcrnet import RanzcrNetV2
 
 from monailabel.interfaces.config import TaskConfig
 from monailabel.interfaces.tasks.infer import InferTask
+from monailabel.interfaces.tasks.scoring import ScoringMethod
+from monailabel.interfaces.tasks.strategy import Strategy
 from monailabel.interfaces.tasks.train import TrainTask
+from monailabel.tasks.activelearning.epistemic import Epistemic
+from monailabel.tasks.scoring.epistemic_v2 import EpistemicScoring
 from monailabel.utils.others.generic import download_file
 
 logger = logging.getLogger(__name__)
@@ -50,6 +54,12 @@ class ToolTracking(TaskConfig):
 
         # Network
         self.network = RanzcrNetV2(in_channels=3, out_channels=2, backbone="efficientnet-b0")
+        self.network_with_dropout = RanzcrNetV2(in_channels=3, out_channels=2, backbone="efficientnet-b0", dropout=0.2)
+
+        # Others
+        self.epistemic_enabled = strtobool(conf.get("epistemic_enabled", "false"))
+        self.epistemic_samples = int(conf.get("epistemic_samples", "5"))
+        logger.info(f"EPISTEMIC Enabled: {self.epistemic_enabled}; Samples: {self.epistemic_samples}")
 
     def infer(self) -> Union[InferTask, Dict[str, InferTask]]:
         preload = strtobool(self.conf.get("preload", "false"))
@@ -81,3 +91,26 @@ class ToolTracking(TaskConfig):
             },
         )
         return task
+
+    def strategy(self) -> Union[None, Strategy, Dict[str, Strategy]]:
+        strategies: Dict[str, Strategy] = {}
+        if self.epistemic_enabled:
+            strategies[f"{self.name}_epistemic"] = Epistemic()
+        return strategies
+
+    def scoring_method(self) -> Union[None, ScoringMethod, Dict[str, ScoringMethod]]:
+        methods: Dict[str, ScoringMethod] = {}
+
+        if self.epistemic_enabled:
+            methods[f"{self.name}_epistemic"] = EpistemicScoring(
+                lib.infers.ToolTracking(
+                    path=self.path,
+                    network=self.network_with_dropout,
+                    labels=self.labels,
+                    train_mode=True,
+                    skip_writer=True,
+                ),
+                num_samples=self.epistemic_samples,
+                use_variance=True,
+            )
+        return methods

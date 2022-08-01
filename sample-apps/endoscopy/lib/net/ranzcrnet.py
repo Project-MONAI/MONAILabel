@@ -139,7 +139,7 @@ class SegmentationHead(nn.Sequential):
 
 
 class RanzcrNetV2(nn.Module):
-    def __init__(self, in_channels, out_channels, backbone="efficientnet-b0", pretrained=True):
+    def __init__(self, in_channels, out_channels, backbone="efficientnet-b0", pretrained=True, dropout=0.0):
         super().__init__()
         print(f"Using backbone {backbone}.")
         if "efficientnet_b8" in backbone:
@@ -172,7 +172,7 @@ class RanzcrNetV2(nn.Module):
             pre_conv=None,
             interp_mode="nearest",
             align_corners=None,
-            dropout=0.0,
+            dropout=dropout,
         )
 
         self.segmentation_head = SegmentationHead(

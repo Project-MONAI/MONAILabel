@@ -27,7 +27,7 @@ import requests
 import schedule
 import torch
 from dicomweb_client.session_utils import create_session_from_user_pass
-from monai.apps import download_and_extract, download_url, load_from_mmar
+from monai.apps import download_and_extract, download_url
 from monai.data import partition_dataset
 from timeloop import Timeloop
 
@@ -45,9 +45,6 @@ from monailabel.interfaces.tasks.strategy import Strategy
 from monailabel.interfaces.tasks.train import TrainTask
 from monailabel.interfaces.utils.wsi import create_infer_wsi_tasks
 from monailabel.tasks.activelearning.random import Random
-from monailabel.tasks.infer.deepgrow_2d import InferDeepgrow2D
-from monailabel.tasks.infer.deepgrow_3d import InferDeepgrow3D
-from monailabel.tasks.infer.deepgrow_pipeline import InferDeepgrowPipeline
 from monailabel.utils.async_tasks.task import AsyncTask
 from monailabel.utils.others.pathology import create_asap_annotations_xml, create_dsa_annotations_json
 from monailabel.utils.sessions import Sessions
@@ -591,27 +588,6 @@ class MONAILabelApp:
                 logger.info(f"Downloading resource: {resource[0]} from {resource[1]}")
                 download_url(resource[1], resource[0])
                 time.sleep(1)
-
-    @staticmethod
-    def deepgrow_infer_tasks(model_dir, pipeline=True):
-        """
-        Dictionary of Default Infer Tasks for Deepgrow 2D/3D
-        """
-        deepgrow_2d = load_from_mmar("clara_pt_deepgrow_2d_annotation", model_dir)
-        deepgrow_3d = load_from_mmar("clara_pt_deepgrow_3d_annotation", model_dir)
-
-        infers = {
-            "deepgrow_2d": InferDeepgrow2D(None, deepgrow_2d),
-            "deepgrow_3d": InferDeepgrow3D(None, deepgrow_3d),
-        }
-        if pipeline:
-            infers["deepgrow_pipeline"] = InferDeepgrowPipeline(
-                path=None,
-                network=deepgrow_2d,
-                model_3d=infers["deepgrow_3d"],
-                description="Combines Deepgrow 2D model and 3D deepgrow model",
-            )
-        return infers
 
     def infer_wsi(self, request, datastore=None):
         model = request.get("model")

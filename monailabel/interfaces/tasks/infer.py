@@ -8,7 +8,6 @@
 # WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 # See the License for the specific language governing permissions and
 # limitations under the License.
-
 import copy
 import logging
 import os
@@ -21,6 +20,7 @@ from monai.inferers import Inferer, SimpleInferer, SlidingWindowInferer
 
 from monailabel.interfaces.exception import MONAILabelError, MONAILabelException
 from monailabel.interfaces.utils.transform import dump_data, run_transforms
+from monailabel.transform.pre import CacheTransformDatad
 from monailabel.transform.writer import Writer
 from monailabel.utils.others.generic import device_list
 
@@ -72,6 +72,8 @@ class InferTask:
         load_strict: bool = False,
         roi_size=None,
         preload=False,
+        train_mode=False,
+        skip_writer=False,
     ):
         """
         :param path: Model File Path. Supports multiple paths to support versions (Last item will be picked as latest)
@@ -87,6 +89,8 @@ class InferTask:
         :param load_strict: Load model in strict mode
         :param roi_size: ROI size for scanning window inference
         :param preload: Preload model/network on all available GPU devices
+        :param train_mode: Run in Train mode instead of eval (when network has dropouts)
+        :param skip_writer: Skip Writer and return data dictionary
         """
         self.path = [] if not path else [path] if isinstance(path, str) else path
         self.network = network
@@ -100,6 +104,8 @@ class InferTask:
         self.output_json_key = output_json_key
         self.load_strict = load_strict
         self.roi_size = roi_size
+        self.train_mode = train_mode
+        self.skip_writer = skip_writer
 
         self._networks: Dict = {}
 
@@ -116,7 +122,7 @@ class InferTask:
             self._config.update(config)
 
         if preload:
-            for device in device_list():
+            for device in ["cuda", *device_list()]:
                 logger.info(f"Preload Network for device: {device}")
                 self._get_network(device)
 
@@ -151,6 +157,13 @@ class InferTask:
             if path and os.path.exists(path):
                 return path
         return None
+
+    def add_cache_transform(self, t, data, keys=("image", "image_meta_dict"), hash_key=("image_path", "model")):
+        if data and data.get("cache_transforms", False):
+            in_memory = data.get("cache_transforms_in_memory", True)
+            ttl = data.get("cache_transforms_ttl", 300)
+
+            t.append(CacheTransformDatad(keys=keys, hash_key=hash_key, in_memory=in_memory, ttl=ttl))
 
     @abstractmethod
     def pre_transforms(self, data=None) -> Sequence[Callable]:
@@ -240,7 +253,7 @@ class InferTask:
             )
         return SimpleInferer()
 
-    def __call__(self, request) -> Tuple[str, Dict[str, Any]]:
+    def __call__(self, request) -> Union[Dict, Tuple[str, Dict[str, Any]]]:
         """
         It provides basic implementation to run the following in order
             - Run Pre Transforms
@@ -286,6 +299,9 @@ class InferTask:
         data = self.run_post_transforms(data, self.post_transforms(data))
         latency_post = time.time() - start
 
+        if self.skip_writer:
+            return dict(data)
+
         start = time.time()
         result_file_name, result_json = self.writer(data)
         latency_write = time.time() - start
@@ -320,6 +336,30 @@ class InferTask:
         return result_file_name, result_json
 
     def run_pre_transforms(self, data, transforms):
+        pre_cache = []
+        post_cache = []
+        current = pre_cache
+        cache_t = None
+        for idx, t in enumerate(transforms):
+            if isinstance(t, CacheTransformDatad):
+                cache_t = t
+                current = post_cache
+            else:
+                current.append(t)
+
+        if cache_t is not None:
+
+            class LoadFromCache:
+                def __call__(self, data):
+                    return cache_t.load(data)
+
+            d = run_transforms(data, [LoadFromCache()], log_prefix="PRE", use_compose=False)
+
+            # Failed/Cache-Miss (run everything)
+            if d is None:
+                return run_transforms(data, transforms, log_prefix="PRE", use_compose=False)
+            return run_transforms(d, post_cache, log_prefix="PRE", use_compose=False) if post_cache else d
+
         return run_transforms(data, transforms, log_prefix="PRE", use_compose=False)
 
     def run_invert_transforms(self, data, pre_transforms, names):
@@ -346,6 +386,9 @@ class InferTask:
 
     def run_post_transforms(self, data, transforms):
         return run_transforms(data, transforms, log_prefix="POST")
+
+    def clear_cache(self):
+        self._networks.clear()
 
     def _get_network(self, device):
         path = self.get_path()
@@ -380,7 +423,10 @@ class InferTask:
             else:
                 network = torch.jit.load(path, map_location=torch.device(device))
 
-            network.eval()
+            if self.train_mode:
+                network.train()
+            else:
+                network.eval()
             self._networks[device] = (network, statbuf.st_mtime if statbuf else 0)
 
         return network
