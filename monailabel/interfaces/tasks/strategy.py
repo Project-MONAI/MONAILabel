@@ -10,8 +10,14 @@
 # limitations under the License.
 
 from abc import ABCMeta, abstractmethod
+from enum import Enum
 
 from monailabel.interfaces.datastore import Datastore
+
+
+class DefaultAnnotationMode(str, Enum):
+    COLLABORATIVE = "collaborative"
+    COMPETETIVE = "competetive"
 
 
 class Strategy(metaclass=ABCMeta):
@@ -19,12 +25,14 @@ class Strategy(metaclass=ABCMeta):
     Basic Active Learning Strategy
     """
 
-    def __init__(self, description):
+    def __init__(self, description, annotation_mode: str = DefaultAnnotationMode.COLLABORATIVE):
         self.description = description
+        self.annotation_mode = annotation_mode
 
     def info(self):
         return {
             "description": self.description,
+            "annotation_mode": self.annotation_mode,
         }
 
     @abstractmethod
