@@ -18,12 +18,12 @@ from monai.losses import DiceLoss
 from monai.transforms import (
     Activationsd,
     AsDiscreted,
-    CropForegroundd,
     EnsureChannelFirstd,
     EnsureTyped,
     LoadImaged,
     NormalizeIntensityd,
     RandFlipd,
+    RandGaussianSmoothd,
     RandScaleIntensityd,
     RandShiftIntensityd,
     RandSpatialCropd,
@@ -72,22 +72,18 @@ class SegmentationBrats(BasicTrainTask):
             LoadImaged(keys=("image", "label"), reader="ITKReader"),
             NormalizeLabelsInDatasetd(keys="label", label_names=self._labels),  # Specially for missing labels
             EnsureChannelFirstd(keys=("image", "label")),
-            CropForegroundd(
-                keys=["image", "label"],
-                source_key="image",
-                k_divisible=[self.spatial_size[0], self.spatial_size[1], self.spatial_size[2]],
-            ),
+            NormalizeIntensityd(keys="image", nonzero=True, channel_wise=True),
             RandSpatialCropd(
                 keys=["image", "label"],
                 roi_size=[self.spatial_size[0], self.spatial_size[1], self.spatial_size[2]],
                 random_size=False,
             ),
-            NormalizeIntensityd(keys="image", nonzero=True, channel_wise=True),
             RandFlipd(keys=("image", "label"), spatial_axis=0, prob=0.50),
             RandFlipd(keys=("image", "label"), spatial_axis=1, prob=0.50),
             RandFlipd(keys=("image", "label"), spatial_axis=2, prob=0.50),
             RandScaleIntensityd(keys="image", factors=0.1, prob=1.0),
             RandShiftIntensityd(keys="image", offsets=0.1, prob=0.5),
+            RandGaussianSmoothd(keys="image", sigma_x=(0.25, 1.5), sigma_y=(0.25, 1.5), sigma_z=(0.25, 1.5), prob=0.5),
             EnsureTyped(keys=("image", "label"), device=context.device),
             SelectItemsd(keys=("image", "label")),
         ]
@@ -113,7 +109,9 @@ class SegmentationBrats(BasicTrainTask):
         ]
 
     def val_inferer(self, context: Context):
-        return SlidingWindowInferer(roi_size=self.spatial_size, sw_batch_size=8, overlap=0.5)
+        return SlidingWindowInferer(
+            roi_size=self.spatial_size, sw_batch_size=8, overlap=0.5, padding_mode="replicate", mode="gaussian"
+        )
 
     def norm_labels(self):
         # This should be applied along with NormalizeLabelsInDatasetd transform

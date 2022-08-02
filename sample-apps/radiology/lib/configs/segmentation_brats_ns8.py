@@ -16,7 +16,7 @@ from typing import Any, Dict, Optional, Union
 
 import lib.infers
 import lib.trainers
-from monai.networks.nets import SwinUNETR
+from monai.networks.nets import UNet
 
 from monailabel.interfaces.config import TaskConfig
 from monailabel.interfaces.tasks.infer import InferTask
@@ -53,11 +53,11 @@ class SegmentationBrats(TaskConfig):
 
         # Download PreTrained Model
         if strtobool(self.conf.get("use_pretrained_model", "false")):
-            url = f"{self.PRE_TRAINED_PATH}/segmentation_swinunetr_brats_ns8.pt"
+            url = f"{self.PRE_TRAINED_PATH}/segmentation_unet_brats_ns8.pt"
             download_file(url, self.path[0])
 
         # Network
-        self.spatial_size = json.loads(self.conf.get("spatial_size", "[64, 64, 32]"))
+        self.spatial_size = json.loads(self.conf.get("spatial_size", "[96, 96, 96]"))
         # self.network = UNETR(
         #     spatial_dims=3,
         #     in_channels=self.number_intensity_ch,
@@ -72,15 +72,25 @@ class SegmentationBrats(TaskConfig):
         #     res_block=True,
         # )
 
-        self.network = SwinUNETR(
-            img_size=self.spatial_size,
+        # self.network = SwinUNETR(
+        #     img_size=self.spatial_size,
+        #     in_channels=self.number_intensity_ch,
+        #     out_channels=len(self.labels) + 1,  # labels plus background
+        #     feature_size=48,
+        #     drop_rate=0.0,
+        #     attn_drop_rate=0.0,
+        #     dropout_path_rate=0.0,
+        #     use_checkpoint=True,
+        # )
+
+        self.network = UNet(
+            spatial_dims=3,
             in_channels=self.number_intensity_ch,
-            out_channels=len(self.labels) + 1,  # labels plus background
-            feature_size=48,
-            drop_rate=0.0,
-            attn_drop_rate=0.0,
-            dropout_path_rate=0.0,
-            use_checkpoint=True,
+            out_channels=len(self.labels) + 1,  # labels plus background,
+            channels=(16, 32, 64, 128, 256),
+            strides=(2, 2, 2, 2),
+            num_res_units=2,
+            dropout=0.2,
         )
 
     def infer(self) -> Union[InferTask, Dict[str, InferTask]]:

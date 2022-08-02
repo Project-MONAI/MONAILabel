@@ -1,0 +1,14 @@
+Sliding window hyperparameters and transform for brain parcellation
+
+1/ use the same bacth size for training and inference
+2/ padding mode should not be with zeros
+3/ the patches shouldn't contain lots of background OR not background at all. Don't use the crop foreground transform for brain parcellation
+4/ In sliding window use hte gaussian mode to give priority to the center
+5/ Use the same overlap for both training and testing (i.e. 0.5)
+6/ use blurring transfor during training to simulate test images
+7/ 96x96x96 patch size works great
+8/ do the intesnity normalization before the random cropping transform
+9/ Norm.INSTANCE works great in UNET. Should we try the batchnormalization?
+
+
+
