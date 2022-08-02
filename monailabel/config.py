@@ -29,6 +29,7 @@ class Settings(BaseSettings):
     MONAI_LABEL_TASKS_BATCH_INFER: bool = True
 
     MONAI_LABEL_DATASTORE: str = ""
+    MONAI_LABEL_DATASTORE_URL: str = ""
     MONAI_LABEL_DATASTORE_USERNAME: str = ""
     MONAI_LABEL_DATASTORE_PASSWORD: str = ""
     MONAI_LABEL_DATASTORE_API_KEY: str = ""

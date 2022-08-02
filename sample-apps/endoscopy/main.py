@@ -14,9 +14,12 @@ from distutils.util import strtobool
 from typing import Dict
 
 import lib.configs
+from monailabel.config import settings
+from monailabel.datastore.cvat import CVATDatastore
 
 from monailabel.interfaces.app import MONAILabelApp
 from monailabel.interfaces.config import TaskConfig
+from monailabel.interfaces.datastore import Datastore
 from monailabel.interfaces.tasks.infer import InferTask
 from monailabel.interfaces.tasks.scoring import ScoringMethod
 from monailabel.interfaces.tasks.strategy import Strategy
@@ -81,6 +84,22 @@ class MyApp(MONAILabelApp):
             name="MONAILabel - Endoscopy",
             description="DeepLearning models for endoscopy",
         )
+
+    def init_datastore(self) -> Datastore:
+        if settings.MONAI_LABEL_DATASTORE_URL and settings.MONAI_LABEL_DATASTORE.lower() == "cvat":
+            logger.info(f"Using CVAT: {self.studies}")
+            return CVATDatastore(
+                datastore_path=self.studies,
+                api_url=settings.MONAI_LABEL_DATASTORE_URL,
+                username=settings.MONAI_LABEL_DATASTORE_USERNAME,
+                password=settings.MONAI_LABEL_DATASTORE_PASSWORD,
+                project=settings.MONAI_LABEL_DATASTORE_PROJECT,
+                extensions=settings.MONAI_LABEL_DATASTORE_FILE_EXT,
+                auto_reload=settings.MONAI_LABEL_DATASTORE_AUTO_RELOAD,
+            )
+
+        return super().init_datastore()
+
 
     def init_infers(self) -> Dict[str, InferTask]:
         infers: Dict[str, InferTask] = {}
