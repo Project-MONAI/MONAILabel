@@ -8,7 +8,7 @@
 # WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 # See the License for the specific language governing permissions and
 # limitations under the License.
-import json
+import os
 import unittest
 
 import requests
@@ -16,39 +16,31 @@ import torch
 
 from tests.integration import SERVER_URI
 
-import os
+class EndPointSession(unittest.TestCase):
 
-class EndPointInfer(unittest.TestCase): 
-    def test_segmentation_spleen(self):
+    def test_segmentation_spleen_trainer(self):
         if not torch.cuda.is_available():
             return
 
         model = "spleen_ct_segmentation_v0.1.0"
-        image = "spleen_8"
 
-        response = requests.post(f"{SERVER_URI}/infer/{model}?image={image}")
+        response = requests.post(f"{SERVER_URI}/train/{model}")
         assert response.status_code == 200
 
-    def test_segmentation(self):
+    def test_multiorgan_segmentation_trainer(self):
         if not torch.cuda.is_available():
             return
 
         model = "swin_unetr_btcv_segmentation_v0.1.0"
-        image = "spleen_8"
-
-        response = requests.post(f"{SERVER_URI}/infer/{model}?image={image}")
+        response = requests.post(f"{SERVER_URI}/train/{model}")
         assert response.status_code == 200
-
-
 
     def test_segmentation_pancreas(self):
         if not torch.cuda.is_available():
             return
 
         model = "pancreas_ct_dints_segmentation_v0.1.0"
-        image = "spleen_8"
-
-        response = requests.post(f"{SERVER_URI}/infer/{model}?image={image}")
+        response = requests.post(f"{SERVER_URI}/train/{model}")
         assert response.status_code == 200
 
     def test_deepedit(self):
@@ -56,9 +48,7 @@ class EndPointInfer(unittest.TestCase):
             return
 
         model = "spleen_deepedit_annotation_v0.1.0"
-        image = "spleen_8"
-
-        response = requests.post(f"{SERVER_URI}/infer/{model}?image={image}")
+        response = requests.post(f"{SERVER_URI}/train/{model}")
         assert response.status_code == 200
 
 

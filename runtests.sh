@@ -466,6 +466,7 @@ function run_integration_tests() {
 
 # network training/inference/eval integration tests
 if [ $doNetTests = true ]; then
+  run_integration_tests "monaibundle" "tests/data/dataset/local/spleen"
   run_integration_tests "radiology" "tests/data/dataset/local/spleen"
   run_integration_tests "pathology" "tests/data/pathology"
 fi
