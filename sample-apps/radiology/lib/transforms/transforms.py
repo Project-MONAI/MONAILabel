@@ -365,6 +365,7 @@ class VertebraLocalizationPostProcessing(MapTransform):
     def __init__(
         self,
         keys: KeysCollection,
+        result: str = "result",
         allow_missing_keys: bool = False,
     ):
         """
@@ -374,6 +375,7 @@ class VertebraLocalizationPostProcessing(MapTransform):
 
         """
         super().__init__(keys, allow_missing_keys)
+        self.result = result
 
     def __call__(self, data: Mapping[Hashable, np.ndarray]) -> Dict[Hashable, np.ndarray]:
         d: Dict = dict(data)
@@ -391,6 +393,9 @@ class VertebraLocalizationPostProcessing(MapTransform):
                 centroids.append(centroid)
 
             print(centroids)
+            if d.get(self.result) is None:
+                d[self.result] = dict()
+            d[self.result]["centroids"] = centroids
             # d["pred_meta_dict"] = d["image_meta_dict"]
             # SaveImaged(keys=key, output_postfix="", output_dir="/home/andres/Downloads", separate_folder=False)(d)
             # # Plotting

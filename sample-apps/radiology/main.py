@@ -243,12 +243,12 @@ def main():
     )
 
     home = str(Path.home())
-    studies = f"{home}/Documents/workspace/Datasets/radiology/btcv/train"
+    studies = f"{home}/Documents/workspace/Datasets/radiology/VerSe2020/test"
 
     parser = argparse.ArgumentParser()
     parser.add_argument("-s", "--studies", default=studies)
-    parser.add_argument("-m", "--model", default="segmentation")
-    parser.add_argument("-t", "--test", default="train", choices=("train", "infer"))
+    parser.add_argument("-m", "--model", default="all")
+    parser.add_argument("-t", "--test", default="infer", choices=("train", "infer"))
     args = parser.parse_args()
 
     app_dir = os.path.dirname(__file__)
@@ -268,7 +268,8 @@ def main():
 
         # Run on all devices
         for device in device_list():
-            res = app.infer(request={"model": args.model, "image": image_id, "device": device})
+            # res = app.infer(request={"model": args.model, "image": image_id, "device": device})
+            res = app.infer(request={"model": "vertebra_pipeline", "image": image_id, "device": device})
             label = res["file"]
             label_json = res["params"]
             test_dir = os.path.join(args.studies, "test_labels")
@@ -290,7 +291,7 @@ def main():
             "dataset": "CacheDataset",  # PersistentDataset, CacheDataset
             "train_batch_size": 1,
             "val_batch_size": 1,
-            "multi_gpu": True,
+            "multi_gpu": False,
             "val_split": 0.1,
         },
     )
