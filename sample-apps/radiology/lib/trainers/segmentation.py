@@ -23,14 +23,10 @@ from monai.transforms import (
     GaussianSmoothd,
     LoadImaged,
     NormalizeIntensityd,
-    Orientationd,
-    RandCropByPosNegLabeld,
-    RandRotated,
     RandScaleIntensityd,
     RandShiftIntensityd,
-    ScaleIntensityd,
+    RandSpatialCropd,
     SelectItemsd,
-    SpatialPadd,
 )
 
 from monailabel.tasks.train.basic_train import BasicTrainTask, Context
@@ -76,26 +72,15 @@ class Segmentation(BasicTrainTask):
             LoadImaged(keys=("image", "label"), reader="ITKReader"),
             NormalizeLabelsInDatasetd(keys="label", label_names=self._labels),  # Specially for missing labels
             EnsureChannelFirstd(keys=("image", "label")),
-            Orientationd(keys=("image", "label"), axcodes="RAS"),
+            NormalizeIntensityd(keys="image"),
+            RandSpatialCropd(
+                keys=["image", "label"],
+                roi_size=[self.roi_size[0], self.roi_size[1], self.roi_size[2]],
+                random_size=False,
+            ),
             GaussianSmoothd(keys="image", sigma=0.75),
-            NormalizeIntensityd(keys="image", divisor=2048.0),
-            ScaleIntensityd(keys="image", minv=-1.0, maxv=1.0),
-            RandScaleIntensityd(keys="image", factors=(0.75, 1.25), prob=0.80),
-            RandShiftIntensityd(keys="image", offsets=(-0.25, 0.25), prob=0.80),
-            RandRotated(
-                keys=("image", "label"), range_x=(-0.26, 0.26), range_y=(-0.26, 0.26), range_z=(-0.26, 0.26), prob=0.80
-            ),
-            SpatialPadd(keys=("image", "label"), spatial_size=self.roi_size),
-            RandCropByPosNegLabeld(
-                keys=("image", "label"),
-                label_key="label",
-                spatial_size=self.roi_size,
-                pos=1,
-                neg=1,
-                num_samples=self.num_samples,
-                image_key="image",
-                image_threshold=0,
-            ),
+            RandScaleIntensityd(keys="image", factors=(0.75, 1.25), prob=0.50),
+            RandShiftIntensityd(keys="image", offsets=(-0.25, 0.25), prob=0.50),
             EnsureTyped(keys=("image", "label"), device=context.device),
             SelectItemsd(keys=("image", "label")),
         ]
@@ -116,17 +101,16 @@ class Segmentation(BasicTrainTask):
             LoadImaged(keys=("image", "label"), reader="ITKReader"),
             NormalizeLabelsInDatasetd(keys="label", label_names=self._labels),  # Specially for missing labels
             EnsureChannelFirstd(keys=("image", "label")),
-            Orientationd(keys=("image", "label"), axcodes="RAS"),
+            NormalizeIntensityd(keys="image"),
             GaussianSmoothd(keys="image", sigma=0.75),
-            NormalizeIntensityd(keys="image", divisor=2048.0),
-            ScaleIntensityd(keys="image", minv=-1.0, maxv=1.0),
-            SpatialPadd(keys=("image", "label"), spatial_size=self.roi_size),
             EnsureTyped(keys=("image", "label")),
             SelectItemsd(keys=("image", "label")),
         ]
 
     def val_inferer(self, context: Context):
-        return SlidingWindowInferer(roi_size=self.roi_size, sw_batch_size=8)
+        return SlidingWindowInferer(
+            roi_size=self.roi_size, sw_batch_size=4, overlap=0.5, padding_mode="replicate", mode="gaussian"
+        )
 
     def norm_labels(self):
         # This should be applied along with NormalizeLabelsInDatasetd transform
