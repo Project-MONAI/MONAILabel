@@ -10,21 +10,19 @@
 # limitations under the License.
 import logging
 
+import torch
 from monai.apps.deepedit.transforms import NormalizeLabelsInDatasetd
 from monai.handlers import TensorBoardImageHandler, from_engine
 from monai.inferers import SlidingWindowInferer
 from monai.losses import DiceLoss
-from monai.optimizers import Novograd
 from monai.transforms import (
     Activationsd,
     AsDiscreted,
     EnsureChannelFirstd,
     EnsureTyped,
-    GaussianSmoothd,
     LoadImaged,
     NormalizeIntensityd,
-    RandScaleIntensityd,
-    RandShiftIntensityd,
+    RandGaussianSmoothd,
     RandSpatialCropd,
     SelectItemsd,
 )
@@ -56,7 +54,7 @@ class Segmentation(BasicTrainTask):
         return self._network
 
     def optimizer(self, context: Context):
-        return Novograd(context.network.parameters(), 0.0001)
+        return torch.optim.AdamW(context.network.parameters(), lr=1e-4, weight_decay=1e-5)
 
     def loss_function(self, context: Context):
         return DiceLoss(to_onehot_y=True, softmax=True)
@@ -72,15 +70,13 @@ class Segmentation(BasicTrainTask):
             LoadImaged(keys=("image", "label"), reader="ITKReader"),
             NormalizeLabelsInDatasetd(keys="label", label_names=self._labels),  # Specially for missing labels
             EnsureChannelFirstd(keys=("image", "label")),
-            NormalizeIntensityd(keys="image"),
+            NormalizeIntensityd(keys="image", nonzero=True),
             RandSpatialCropd(
                 keys=["image", "label"],
                 roi_size=[self.roi_size[0], self.roi_size[1], self.roi_size[2]],
                 random_size=False,
             ),
-            GaussianSmoothd(keys="image", sigma=0.75),
-            RandScaleIntensityd(keys="image", factors=(0.75, 1.25), prob=0.50),
-            RandShiftIntensityd(keys="image", offsets=(-0.25, 0.25), prob=0.50),
+            RandGaussianSmoothd(keys="image", sigma_x=(0.25, 1.5), sigma_y=(0.25, 1.5), sigma_z=(0.25, 1.5), prob=0.5),
             EnsureTyped(keys=("image", "label"), device=context.device),
             SelectItemsd(keys=("image", "label")),
         ]
@@ -101,15 +97,14 @@ class Segmentation(BasicTrainTask):
             LoadImaged(keys=("image", "label"), reader="ITKReader"),
             NormalizeLabelsInDatasetd(keys="label", label_names=self._labels),  # Specially for missing labels
             EnsureChannelFirstd(keys=("image", "label")),
-            NormalizeIntensityd(keys="image"),
-            GaussianSmoothd(keys="image", sigma=0.75),
+            NormalizeIntensityd(keys="image", nonzero=True),
             EnsureTyped(keys=("image", "label")),
             SelectItemsd(keys=("image", "label")),
         ]
 
     def val_inferer(self, context: Context):
         return SlidingWindowInferer(
-            roi_size=self.roi_size, sw_batch_size=4, overlap=0.5, padding_mode="replicate", mode="gaussian"
+            roi_size=self.roi_size, sw_batch_size=8, overlap=0.5, padding_mode="replicate", mode="gaussian"
         )
 
     def norm_labels(self):

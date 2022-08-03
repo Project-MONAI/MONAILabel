@@ -31,9 +31,9 @@ class Segmentation(TaskConfig):
 
         # Labels
         self.labels = {
-            "segment1": 1,
-            "segment2": 2,
-            "segment3": 3,
+            "1sacro": 1,
+            "2iliaco der": 2,
+            "3iliaco izq": 3,
         }
 
         # Number of input channels - 4 for BRATS and 1 for spleen
@@ -59,11 +59,11 @@ class Segmentation(TaskConfig):
         self.network = UNet(
             spatial_dims=3,
             in_channels=self.number_intensity_ch,
-            out_channels=len(self.labels.keys()) + 1,  # All labels plus background
-            channels=[16, 32, 64, 128, 256],
-            strides=[2, 2, 2, 2],
+            out_channels=len(self.labels) + 1,  # labels plus background,
+            channels=(16, 32, 64, 128, 256),
+            strides=(2, 2, 2, 2),
             num_res_units=2,
-            norm="batch",
+            dropout=0.2,
         )
 
         # self.network = SwinUNETR(

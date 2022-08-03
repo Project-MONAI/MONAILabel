@@ -16,7 +16,6 @@ from monai.transforms import (
     AsDiscreted,
     EnsureChannelFirstd,
     EnsureTyped,
-    GaussianSmoothd,
     LoadImaged,
     NormalizeIntensityd,
 )
@@ -57,13 +56,12 @@ class Segmentation(InferTask):
             LoadImaged(keys="image", reader="ITKReader"),
             EnsureTyped(keys="image", device=data.get("device") if data else None),
             EnsureChannelFirstd(keys="image"),
-            NormalizeIntensityd(keys="image"),
-            GaussianSmoothd(keys="image", sigma=0.75),
+            NormalizeIntensityd(keys="image", nonzero=True),
         ]
 
     def inferer(self, data=None) -> Inferer:
         return SlidingWindowInferer(
-            roi_size=self.roi_size, sw_batch_size=4, overlap=0.5, padding_mode="replicate", mode="gaussian"
+            roi_size=self.roi_size, sw_batch_size=8, overlap=0.5, padding_mode="replicate", mode="gaussian"
         )
 
     def post_transforms(self, data=None) -> Sequence[Callable]:
