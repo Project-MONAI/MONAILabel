@@ -17,6 +17,7 @@ from typing import Any, Callable, Dict, List, Optional, Tuple, Union
 
 import numpy as np
 import torch
+from monai.apps.deepedit.transforms import DiscardAddGuidanced
 from monai.data.dataloader import DataLoader
 from monai.data.dataset import Dataset
 from monai.data.utils import list_data_collate, pad_list_data_collate
@@ -40,7 +41,6 @@ from monai.transforms.utils import allow_missing_keys_mode
 from monai.utils.enums import CommonKeys, InverseKeys
 from tqdm import tqdm
 
-from monailabel.deepedit.transforms import DiscardAddGuidanced
 from monailabel.interfaces.datastore import Datastore
 from monailabel.interfaces.tasks.scoring import ScoringMethod
 

@@ -15,8 +15,8 @@ import cv2
 import numpy as np
 import skimage.measure as measure
 from monai.config import KeysCollection
+from monai.data import MetaTensor
 from monai.transforms import MapTransform, Resize, generate_spatial_bounding_box, get_extreme_points
-from monai.transforms.spatial.dictionary import InterpolateModeSequence
 from monai.utils import InterpolateMode, ensure_tuple_rep
 
 from monailabel.utils.others.label_colors import get_color
@@ -90,7 +90,7 @@ class Restored(MapTransform):
         keys: KeysCollection,
         ref_image: str,
         has_channel: bool = True,
-        mode: InterpolateModeSequence = InterpolateMode.NEAREST,
+        mode: str = InterpolateMode.NEAREST,
         align_corners: Union[Sequence[Optional[bool]], Optional[bool]] = None,
         meta_key_postfix: str = "meta_dict",
     ):
@@ -103,11 +103,16 @@ class Restored(MapTransform):
 
     def __call__(self, data):
         d = dict(data)
-        meta_dict = d[f"{self.ref_image}_{self.meta_key_postfix}"]
+        meta_dict = (
+            d[self.ref_image].meta
+            if d.get(self.ref_image) is not None and isinstance(d[self.ref_image], MetaTensor)
+            else d.get(f"{self.ref_image}_{self.meta_key_postfix}", {})
+        )
+
         for idx, key in enumerate(self.keys):
             result = d[key]
             current_size = result.shape[1:] if self.has_channel else result.shape
-            spatial_shape = meta_dict["spatial_shape"]
+            spatial_shape = meta_dict.get("spatial_shape", current_size)
             spatial_size = spatial_shape[-len(current_size) :]
 
             # Undo Spacing
@@ -172,8 +177,10 @@ class FindContoursd(MapTransform):
             labels = [label for label in np.unique(p).tolist() if label > 0]
             logger.debug(f"Total Unique Masks (excluding background): {labels}")
             for label_idx in labels:
-                p = d[key]
+                p = d[key].array if isinstance(d[key], MetaTensor) else d[key]
+                p = p.astype(np.uint8)
                 p[p == label_idx] = 1
+
                 label_name = self.labels.get(label_idx, label_idx)
                 label_names.add(label_name)
 

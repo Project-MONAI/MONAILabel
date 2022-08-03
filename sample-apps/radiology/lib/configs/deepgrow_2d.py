@@ -66,6 +66,7 @@ class Deepgrow2D(TaskConfig):
             network=self.network,
             labels=self.labels,
             preload=strtobool(self.conf.get("preload", "false")),
+            config={"cache_transforms": True, "cache_transforms_in_memory": True, "cache_transforms_ttl": 300},
         )
         return task
 

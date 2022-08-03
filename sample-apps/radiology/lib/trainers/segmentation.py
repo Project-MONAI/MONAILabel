@@ -11,6 +11,7 @@
 import logging
 
 import torch
+from monai.apps.deepedit.transforms import NormalizeLabelsInDatasetd
 from monai.handlers import TensorBoardImageHandler, from_engine
 from monai.inferers import SlidingWindowInferer
 from monai.losses import DiceCELoss
@@ -31,7 +32,6 @@ from monai.transforms import (
     SpatialPadd,
 )
 
-from monailabel.deepedit.multilabel.transforms import NormalizeLabelsInDatasetd
 from monailabel.tasks.train.basic_train import BasicTrainTask, Context
 from monailabel.tasks.train.utils import region_wise_metrics
 
@@ -43,14 +43,14 @@ class Segmentation(BasicTrainTask):
         self,
         model_dir,
         network,
-        spatial_size=(96, 96, 96),  # Depends on original width, height and depth of the training images
+        roi_size=(96, 96, 96),
         target_spacing=(1.0, 1.0, 1.0),
         num_samples=4,
         description="Train Segmentation model",
         **kwargs,
     ):
         self._network = network
-        self.spatial_size = spatial_size
+        self.roi_size = roi_size
         self.target_spacing = target_spacing
         self.num_samples = num_samples
         super().__init__(model_dir, description, **kwargs)
@@ -77,12 +77,12 @@ class Segmentation(BasicTrainTask):
             EnsureChannelFirstd(keys=("image", "label")),
             Spacingd(keys=("image", "label"), pixdim=self.target_spacing, mode=("bilinear", "nearest")),
             CropForegroundd(keys=("image", "label"), source_key="image"),
-            SpatialPadd(keys=("image", "label"), spatial_size=self.spatial_size),
+            SpatialPadd(keys=("image", "label"), spatial_size=self.roi_size),
             ScaleIntensityRanged(keys="image", a_min=-175, a_max=250, b_min=0.0, b_max=1.0, clip=True),
             RandCropByPosNegLabeld(
                 keys=("image", "label"),
                 label_key="label",
-                spatial_size=self.spatial_size,
+                spatial_size=self.roi_size,
                 pos=1,
                 neg=1,
                 num_samples=self.num_samples,
@@ -101,7 +101,7 @@ class Segmentation(BasicTrainTask):
     def train_post_transforms(self, context: Context):
         return [
             EnsureTyped(keys="pred", device=context.device),
-            Activationsd(keys="pred", softmax=len(self._labels) > 1, sigmoid=len(self._labels) == 1),
+            Activationsd(keys="pred", softmax=True),
             AsDiscreted(
                 keys=("pred", "label"),
                 argmax=(True, False),
@@ -112,6 +112,7 @@ class Segmentation(BasicTrainTask):
     def val_pre_transforms(self, context: Context):
         return [
             LoadImaged(keys=("image", "label"), reader="ITKReader"),
+            NormalizeLabelsInDatasetd(keys="label", label_names=self._labels),  # Specially for missing labels
             EnsureChannelFirstd(keys=("image", "label")),
             Spacingd(keys=("image", "label"), pixdim=self.target_spacing, mode=("bilinear", "nearest")),
             ScaleIntensityRanged(keys="image", a_min=-175, a_max=250, b_min=0.0, b_max=1.0, clip=True),
@@ -120,13 +121,23 @@ class Segmentation(BasicTrainTask):
         ]
 
     def val_inferer(self, context: Context):
-        return SlidingWindowInferer(roi_size=self.spatial_size, sw_batch_size=8)
+        return SlidingWindowInferer(roi_size=self.roi_size, sw_batch_size=8)
+
+    def norm_labels(self):
+        # This should be applied along with NormalizeLabelsInDatasetd transform
+        new_label_nums = {}
+        for idx, (key_label, val_label) in enumerate(self._labels.items(), start=1):
+            if key_label != "background":
+                new_label_nums[key_label] = idx
+            if key_label == "background":
+                new_label_nums["background"] = 0
+        return new_label_nums
 
     def train_key_metric(self, context: Context):
-        return region_wise_metrics(self._labels, self.TRAIN_KEY_METRIC, "train")
+        return region_wise_metrics(self.norm_labels(), self.TRAIN_KEY_METRIC, "train")
 
     def val_key_metric(self, context: Context):
-        return region_wise_metrics(self._labels, self.VAL_KEY_METRIC, "val")
+        return region_wise_metrics(self.norm_labels(), self.VAL_KEY_METRIC, "val")
 
     def train_handlers(self, context: Context):
         handlers = super().train_handlers(context)

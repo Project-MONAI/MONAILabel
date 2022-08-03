@@ -68,6 +68,7 @@ class Deepgrow3D(TaskConfig):
             preload=strtobool(self.conf.get("preload", "false")),
             dimension=3,
             model_size=(128, 192, 192),
+            config={"cache_transforms": True, "cache_transforms_in_memory": True, "cache_transforms_ttl": 300},
         )
         return task
 

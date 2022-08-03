@@ -27,13 +27,15 @@ import requests
 import schedule
 import torch
 from dicomweb_client.session_utils import create_session_from_user_pass
-from monai.apps import download_and_extract, download_url, load_from_mmar
+from monai.apps import download_and_extract, download_url
 from monai.data import partition_dataset
 from timeloop import Timeloop
 
 from monailabel.config import settings
 from monailabel.datastore.dicom import DICOMwebClientX, DICOMWebDatastore
+from monailabel.datastore.dsa import DSADatastore
 from monailabel.datastore.local import LocalDatastore
+from monailabel.datastore.xnat import XNATDatastore
 from monailabel.interfaces.datastore import Datastore, DefaultLabelTag
 from monailabel.interfaces.exception import MONAILabelError, MONAILabelException
 from monailabel.interfaces.tasks.batch_infer import BatchInferImageType, BatchInferTask
@@ -43,9 +45,6 @@ from monailabel.interfaces.tasks.strategy import Strategy
 from monailabel.interfaces.tasks.train import TrainTask
 from monailabel.interfaces.utils.wsi import create_infer_wsi_tasks
 from monailabel.tasks.activelearning.random import Random
-from monailabel.tasks.infer.deepgrow_2d import InferDeepgrow2D
-from monailabel.tasks.infer.deepgrow_3d import InferDeepgrow3D
-from monailabel.tasks.infer.deepgrow_pipeline import InferDeepgrowPipeline
 from monailabel.utils.async_tasks.task import AsyncTask
 from monailabel.utils.others.pathology import create_asap_annotations_xml, create_dsa_annotations_json
 from monailabel.utils.sessions import Sessions
@@ -135,6 +134,14 @@ class MONAILabelApp:
         )
 
     def init_remote_datastore(self) -> Datastore:
+        if settings.MONAI_LABEL_DATASTORE.lower() == "xnat":
+            return self._init_xnat_datastore()
+        if settings.MONAI_LABEL_DATASTORE.lower() == "dsa":
+            return self._init_dsa_datastore()
+
+        return self._init_dicomweb_datastore()
+
+    def _init_dicomweb_datastore(self) -> Datastore:
         logger.info(f"Using DICOM WEB: {self.studies}")
         dw_session = None
         if settings.MONAI_LABEL_DICOMWEB_USERNAME and settings.MONAI_LABEL_DICOMWEB_PASSWORD:
@@ -159,6 +166,27 @@ class MONAILabelApp:
             DICOMWebDatastore(dw_client, cache_path, fetch_by_frame=fetch_by_frame)
             if cache_path
             else DICOMWebDatastore(dw_client, fetch_by_frame=fetch_by_frame)
+        )
+
+    def _init_dsa_datastore(self) -> Datastore:
+        logger.info(f"Using DSA: {self.studies}")
+        return DSADatastore(
+            api_url=self.studies,
+            api_key=settings.MONAI_LABEL_DATASTORE_API_KEY,
+            folder=settings.MONAI_LABEL_DATASTORE_PROJECT,
+            annotation_groups=settings.MONAI_LABEL_DATASTORE_DSA_ANNOTATION_GROUPS,
+            asset_store_path=settings.MONAI_LABEL_DATASTORE_ASSET_PATH,
+        )
+
+    def _init_xnat_datastore(self) -> Datastore:
+        logger.info(f"Using XNAT: {self.studies}")
+        return XNATDatastore(
+            api_url=self.studies,
+            username=settings.MONAI_LABEL_DATASTORE_USERNAME,
+            password=settings.MONAI_LABEL_DATASTORE_PASSWORD,
+            project=settings.MONAI_LABEL_DATASTORE_PROJECT,
+            asset_path=settings.MONAI_LABEL_DATASTORE_ASSET_PATH,
+            cache_path=settings.MONAI_LABEL_DATASTORE_CACHE_PATH,
         )
 
     def info(self):
@@ -242,8 +270,6 @@ class MONAILabelApp:
 
             if os.path.isdir(request["image"]):
                 logger.info("Input is a Directory; Consider it as DICOM")
-                logger.info(os.listdir(request["image"]))
-                request["image"] = [os.path.join(f, request["image"]) for f in os.listdir(request["image"])]
 
             logger.debug(f"Image => {request['image']}")
         else:
@@ -562,27 +588,6 @@ class MONAILabelApp:
                 logger.info(f"Downloading resource: {resource[0]} from {resource[1]}")
                 download_url(resource[1], resource[0])
                 time.sleep(1)
-
-    @staticmethod
-    def deepgrow_infer_tasks(model_dir, pipeline=True):
-        """
-        Dictionary of Default Infer Tasks for Deepgrow 2D/3D
-        """
-        deepgrow_2d = load_from_mmar("clara_pt_deepgrow_2d_annotation", model_dir)
-        deepgrow_3d = load_from_mmar("clara_pt_deepgrow_3d_annotation", model_dir)
-
-        infers = {
-            "deepgrow_2d": InferDeepgrow2D(None, deepgrow_2d),
-            "deepgrow_3d": InferDeepgrow3D(None, deepgrow_3d),
-        }
-        if pipeline:
-            infers["deepgrow_pipeline"] = InferDeepgrowPipeline(
-                path=None,
-                network=deepgrow_2d,
-                model_3d=infers["deepgrow_3d"],
-                description="Combines Deepgrow 2D model and 3D deepgrow model",
-            )
-        return infers
 
     def infer_wsi(self, request, datastore=None):
         model = request.get("model")

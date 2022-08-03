@@ -15,7 +15,7 @@ from distutils.util import strtobool
 from typing import Dict
 
 import lib.configs
-from lib.activelearning.first import First
+from lib.activelearning import First
 
 from monailabel.interfaces.app import MONAILabelApp
 from monailabel.interfaces.config import TaskConfig
@@ -137,7 +137,7 @@ class MyApp(MONAILabelApp):
         )
 
         #################################################
-        # Pipeline based on existing infers
+        # Pipeline based on existing infers for DeepGrow
         #################################################
         if infers.get("deepgrow_2d") and infers.get("deepgrow_3d"):
             infers["deepgrow_pipeline"] = InferDeepgrowPipeline(
@@ -146,6 +146,7 @@ class MyApp(MONAILabelApp):
                 model_3d=infers["deepgrow_3d"],
                 description="Combines Clara Deepgrow 2D and 3D models",
             )
+
         return infers
 
     def init_trainers(self) -> Dict[str, TrainTask]:
@@ -223,18 +224,19 @@ def main():
     )
 
     home = str(Path.home())
-    studies = f"{home}/Data/Test"
+    studies = f"{home}/Documents/workspace/Datasets/radiology/VerSe2020/small"  # test
 
     parser = argparse.ArgumentParser()
     parser.add_argument("-s", "--studies", default=studies)
-    parser.add_argument("-m", "--model", default="segmentation_spleen")
-    parser.add_argument("-t", "--test", default="infer", choices=("train", "infer"))
+    parser.add_argument("-m", "--model", default="ver_loc")
+    parser.add_argument("-t", "--test", default="train", choices=("train", "infer"))
     args = parser.parse_args()
 
     app_dir = os.path.dirname(__file__)
     studies = args.studies
     conf = {
         "models": args.model,
+        "preload": "true",
     }
 
     app = MyApp(app_dir, studies, conf)
@@ -247,7 +249,8 @@ def main():
 
         # Run on all devices
         for device in device_list():
-            res = app.infer(request={"model": args.model, "image": image_id, "device": device})
+            # res = app.infer(request={"model": args.model, "image": image_id, "device": device})
+            res = app.infer(request={"model": "vertebra_pipeline", "image": image_id, "device": device})
             label = res["file"]
             label_json = res["params"]
             test_dir = os.path.join(args.studies, "test_labels")
@@ -265,11 +268,11 @@ def main():
     app.train(
         request={
             "model": args.model,
-            "max_epochs": 10,
-            "dataset": "CacheDataset",  # PersistentDataset, CacheDataset
+            "max_epochs": 2000,
+            "dataset": "Dataset",  # PersistentDataset, CacheDataset
             "train_batch_size": 1,
             "val_batch_size": 1,
-            "multi_gpu": True,
+            "multi_gpu": False,
             "val_split": 0.1,
         },
     )

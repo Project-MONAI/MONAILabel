@@ -142,6 +142,8 @@ def make_histograms(image, scrib, scribbles_bg_label, scribbles_fg_label, alpha_
 def make_likelihood_image_histogram(
     image, scrib, scribbles_bg_label, scribbles_fg_label, num_bins=64, return_label=False
 ):
+    if isinstance(image, torch.Tensor):
+        image = image.numpy()
     # normalise image in range [0, 1] if needed
     min_img = np.min(image)
     max_img = np.max(image)

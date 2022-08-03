@@ -14,6 +14,7 @@ from typing import Optional
 
 import numpy as np
 import torch
+from monai.data import MetaTensor
 from monai.networks.blocks import CRF
 from monai.transforms import Transform
 from scipy.special import softmax
@@ -39,7 +40,7 @@ class InteractiveSegmentationTransform(Transform):
         if key not in data.keys():
             raise ValueError(f"Key {key} not found, present keys {data.keys()}")
 
-        return data[key]
+        return data[key].array if isinstance(data[key], MetaTensor) else data[key]
 
     def _normalise_logits(self, data, axis=0):
         # check if logits is a true prob, if not then apply softmax
@@ -107,6 +108,7 @@ class AddBackgroundScribblesFromROId(InteractiveSegmentationTransform):
 
         # read relevant terms from data
         scribbles = self._fetch_data(d, self.scribbles)
+        logger.info(f"Scribbles: {scribbles.shape}")
 
         # get any existing roi information and apply it to scribbles, skip otherwise
         selected_roi = d.get(self.roi_key, None)
