@@ -9,6 +9,7 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 import json
+import os
 import unittest
 
 import requests
@@ -16,9 +17,8 @@ import torch
 
 from tests.integration import SERVER_URI
 
-import os
 
-class EndPointInfer(unittest.TestCase): 
+class EndPointInfer(unittest.TestCase):
     def test_segmentation_spleen(self):
         if not torch.cuda.is_available():
             return
@@ -38,8 +38,6 @@ class EndPointInfer(unittest.TestCase):
 
         response = requests.post(f"{SERVER_URI}/infer/{model}?image={image}")
         assert response.status_code == 200
-
-
 
     def test_segmentation_pancreas(self):
         if not torch.cuda.is_available():
