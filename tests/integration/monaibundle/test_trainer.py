@@ -22,34 +22,49 @@ class EndPointSession(unittest.TestCase):
         if not torch.cuda.is_available():
             return
 
-        model = "spleen_ct_segmentation_v0.1.0"
+        params = {
+            "model": "spleen_ct_segmentation_v0.1.0",
+            "max_epochs": 1,
+            "name": "net_test_spleen_trainer_01",
+            "val_split": 0.5,
+            "multi_gpu": False,
+        }
 
-        response = requests.post(f"{SERVER_URI}/train/{model}")
+        response = requests.post(f"{SERVER_URI}/train/?run_sync=True", json=params)
         assert response.status_code == 200
+        assert response.json()
 
     def test_multiorgan_segmentation_trainer(self):
         if not torch.cuda.is_available():
             return
 
-        model = "swin_unetr_btcv_segmentation_v0.1.0"
-        response = requests.post(f"{SERVER_URI}/train/{model}")
-        assert response.status_code == 200
+        params = {
+            "model": "swin_unetr_btcv_segmentation_v0.1.0",
+            "max_epochs": 1,
+            "name": "net_test_multiorgan_trainer_01",
+            "val_split": 0.5,
+            "multi_gpu": False,
+        }
 
-    def test_segmentation_pancreas(self):
-        if not torch.cuda.is_available():
-            return
-
-        model = "pancreas_ct_dints_segmentation_v0.1.0"
-        response = requests.post(f"{SERVER_URI}/train/{model}")
+        response = requests.post(f"{SERVER_URI}/train/?run_sync=True", json=params)
         assert response.status_code == 200
+        assert response.json()
+
 
     def test_deepedit(self):
         if not torch.cuda.is_available():
             return
 
-        model = "spleen_deepedit_annotation_v0.1.0"
-        response = requests.post(f"{SERVER_URI}/train/{model}")
+        params = {
+            "model": "spleen_deepedit_annotation_v0.1.0",
+            "max_epochs": 1,
+            "name": "net_test_deepedit_trainer_01",
+            "val_split": 0.5,
+            "multi_gpu": False,
+        }
+        response = requests.post(f"{SERVER_URI}/train/?run_sync=True", json=params)
         assert response.status_code == 200
+        assert response.json()
 
 
 if __name__ == "__main__":
