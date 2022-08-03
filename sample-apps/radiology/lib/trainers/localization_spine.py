@@ -18,22 +18,20 @@ from monai.optimizers import Novograd
 from monai.transforms import (
     Activationsd,
     AsDiscreted,
-    CropForegroundd,
     EnsureChannelFirstd,
     EnsureTyped,
     GaussianSmoothd,
     LoadImaged,
     NormalizeIntensityd,
     Orientationd,
-    RandCropByPosNegLabeld,
     RandRotated,
     RandScaleIntensityd,
     RandShiftIntensityd,
+    RandSpatialCropd,
     RandZoomd,
     ScaleIntensityd,
     SelectItemsd,
     Spacingd,
-    SpatialPadd,
 )
 
 from monailabel.tasks.train.basic_train import BasicTrainTask, Context
@@ -82,9 +80,13 @@ class LocalizationSpine(BasicTrainTask):
             BinaryMaskd(keys="label"),
             Orientationd(keys=("image", "label"), axcodes="RAS"),
             Spacingd(keys=("image", "label"), pixdim=self.target_spacing, mode=("bilinear", "nearest")),
-            CropForegroundd(keys=("image", "label"), source_key="image"),
-            GaussianSmoothd(keys="image", sigma=0.75),
             NormalizeIntensityd(keys="image", divisor=2048.0),
+            RandSpatialCropd(
+                keys=["image", "label"],
+                roi_size=[self.roi_size[0], self.roi_size[1], self.roi_size[2]],
+                random_size=False,
+            ),
+            GaussianSmoothd(keys="image", sigma=0.75),
             ScaleIntensityd(keys="image", minv=-1.0, maxv=1.0),
             RandScaleIntensityd(keys="image", factors=(0.75, 1.25), prob=0.80),
             RandShiftIntensityd(keys="image", offsets=(-0.25, 0.25), prob=0.80),
@@ -94,17 +96,6 @@ class LocalizationSpine(BasicTrainTask):
             # Does this do the function of scaling by [−0.85, 1.15] ?
             RandZoomd(keys=("image", "label"), prob=0.70, min_zoom=0.6, max_zoom=1.15),
             #
-            SpatialPadd(keys=("image", "label"), spatial_size=self.roi_size),
-            RandCropByPosNegLabeld(
-                keys=("image", "label"),
-                label_key="label",
-                spatial_size=self.roi_size,
-                pos=1,
-                neg=1,
-                num_samples=self.num_samples,
-                image_key="image",
-                image_threshold=0,
-            ),
             SelectItemsd(keys=("image", "label")),
         ]
 
@@ -127,15 +118,16 @@ class LocalizationSpine(BasicTrainTask):
             BinaryMaskd(keys="label"),
             Orientationd(keys=["image", "label"], axcodes="RAS"),
             Spacingd(keys=("image", "label"), pixdim=self.target_spacing, mode=("bilinear", "nearest")),
-            GaussianSmoothd(keys="image", sigma=0.75),
             NormalizeIntensityd(keys="image", divisor=2048.0),
+            GaussianSmoothd(keys="image", sigma=0.75),
             ScaleIntensityd(keys="image", minv=-1.0, maxv=1.0),
-            SpatialPadd(keys=("image", "label"), spatial_size=self.roi_size),
             SelectItemsd(keys=("image", "label")),
         ]
 
     def val_inferer(self, context: Context):
-        return SlidingWindowInferer(roi_size=self.roi_size, sw_batch_size=8)
+        return SlidingWindowInferer(
+            roi_size=self.roi_size, sw_batch_size=8, overlap=0.5, padding_mode="replicate", mode="gaussian"
+        )
 
     def train_key_metric(self, context: Context):
         return region_wise_metrics(self._labels, self.TRAIN_KEY_METRIC, "train")

@@ -24,7 +24,6 @@ from monai.transforms import (
     Orientationd,
     ScaleIntensityd,
     Spacingd,
-    SpatialPadd,
     ToNumpyd,
 )
 
@@ -74,15 +73,17 @@ class LocalizationVertebra(InferTask):
             EnsureChannelFirstd(keys=("image", "first_stage_pred")),
             Orientationd(keys=("image", "first_stage_pred"), axcodes="RAS"),
             Spacingd(keys=("image", "first_stage_pred"), pixdim=self.target_spacing, mode="bilinear"),
+            NormalizeIntensityd(keys="image", divisor=2048.0),
+            # Actually, the cropping should be in X and Y only. Consider all the Z axis, right?
             CropForegroundd(keys=("image", "first_stage_pred"), source_key="image"),
             GaussianSmoothd(keys="image", sigma=0.75),
-            NormalizeIntensityd(keys="image", divisor=2048.0),
             ScaleIntensityd(keys="image", minv=-1.0, maxv=1.0),
-            SpatialPadd(keys="image", spatial_size=self.roi_size),
         ]
 
     def inferer(self, data=None) -> Inferer:
-        return SlidingWindowInferer(roi_size=self.roi_size)
+        return SlidingWindowInferer(
+            roi_size=self.roi_size, sw_batch_size=8, overlap=0.5, padding_mode="replicate", mode="gaussian"
+        )
 
     def post_transforms(self, data=None) -> Sequence[Callable]:
         return [
@@ -94,6 +95,7 @@ class LocalizationVertebra(InferTask):
             VertebraLocalizationPostProcessing(keys="pred", result="result"),
         ]
 
+    # This is to avoid saving the prediction
     def writer(self, data, extension=None, dtype=None):
         writer = SimpleJsonWriter(label=self.output_label_key)
         return writer(data)

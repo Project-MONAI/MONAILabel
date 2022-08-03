@@ -17,7 +17,6 @@ from monai.inferers import SlidingWindowInferer
 from monai.optimizers import Novograd
 from monai.transforms import (
     Activationsd,
-    CropForegroundd,
     EnsureChannelFirstd,
     EnsureTyped,
     GaussianSmoothd,
@@ -27,11 +26,11 @@ from monai.transforms import (
     RandRotated,
     RandScaleIntensityd,
     RandShiftIntensityd,
+    RandSpatialCropd,
     RandZoomd,
     ScaleIntensityd,
     SelectItemsd,
     Spacingd,
-    SpatialPadd,
 )
 
 from monailabel.tasks.train.basic_train import BasicTrainTask, Context
@@ -78,10 +77,14 @@ class LocalizationVertebra(BasicTrainTask):
             EnsureChannelFirstd(keys=("image", "label")),
             Orientationd(keys=("image", "label"), axcodes="RAS"),
             Spacingd(keys=("image", "label"), pixdim=self.target_spacing, mode=("bilinear", "nearest")),
-            CropForegroundd(keys=("image", "label"), source_key="label"),
+            NormalizeIntensityd(keys="image", divisor=2048.0),
+            RandSpatialCropd(
+                keys=["image", "label"],
+                roi_size=[self.roi_size[0], self.roi_size[1], self.roi_size[2]],
+                random_size=False,
+            ),
             VertHeatMap(keys="label", label_names=self._labels),
             GaussianSmoothd(keys="image", sigma=0.75),
-            NormalizeIntensityd(keys="image", divisor=2048.0),
             ScaleIntensityd(keys="image", minv=-1.0, maxv=1.0),
             RandScaleIntensityd(keys="image", factors=(0.75, 1.25), prob=0.80),
             RandShiftIntensityd(keys="image", offsets=(-0.25, 0.25), prob=0.80),
@@ -91,7 +94,6 @@ class LocalizationVertebra(BasicTrainTask):
             # Does this do the function of scaling by [−0.85, 1.15] ?
             RandZoomd(keys=("image", "label"), prob=0.70, min_zoom=0.6, max_zoom=1.15),
             #
-            SpatialPadd(keys=("image", "label"), spatial_size=self.roi_size),
             EnsureTyped(keys=("image", "label"), device=context.device),
             SelectItemsd(keys=("image", "label")),
         ]
@@ -100,7 +102,6 @@ class LocalizationVertebra(BasicTrainTask):
         return [
             EnsureTyped(keys="pred", device=context.device),
             Activationsd(keys="pred", other=torch.nn.functional.leaky_relu),
-            # Activationsd(keys="pred", sigmoid=True),
         ]
 
     def val_pre_transforms(self, context: Context):
@@ -110,16 +111,17 @@ class LocalizationVertebra(BasicTrainTask):
             EnsureChannelFirstd(keys=("image", "label")),
             Orientationd(keys=["image", "label"], axcodes="RAS"),
             Spacingd(keys=("image", "label"), pixdim=self.target_spacing, mode=("bilinear", "nearest")),
+            NormalizeIntensityd(keys="image", divisor=2048.0),
             VertHeatMap(keys="label", label_names=self._labels),
             GaussianSmoothd(keys="image", sigma=0.75),
-            NormalizeIntensityd(keys="image", divisor=2048.0),
             ScaleIntensityd(keys="image", minv=-1.0, maxv=1.0),
-            SpatialPadd(keys=("image", "label"), spatial_size=self.roi_size),
             SelectItemsd(keys=("image", "label")),
         ]
 
     def val_inferer(self, context: Context):
-        return SlidingWindowInferer(roi_size=self.roi_size, sw_batch_size=8)
+        return SlidingWindowInferer(
+            roi_size=self.roi_size, sw_batch_size=8, overlap=0.5, padding_mode="replicate", mode="gaussian"
+        )
 
     def train_key_metric(self, context: Context):
         return region_wise_rmse(self._labels, "train_rmse", "train")

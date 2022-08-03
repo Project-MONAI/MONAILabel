@@ -65,11 +65,11 @@ class SegmentationVertebra(InferTask):
             EnsureChannelFirstd(keys="image"),
             Orientationd(keys="image", axcodes="RAS"),
             Spacingd(keys="image", pixdim=self.target_spacing),
+            NormalizeIntensityd(keys="image", divisor=2048.0),
             # This transform simulates previous stage
             # AddROI(keys="image"),
             #
             GaussianSmoothd(keys="image", sigma=0.75),
-            NormalizeIntensityd(keys="image", divisor=2048.0),
             ScaleIntensityd(keys="image", minv=-1.0, maxv=1.0),
             SpatialPadd(keys="image", spatial_size=self.roi_size),
         ]
