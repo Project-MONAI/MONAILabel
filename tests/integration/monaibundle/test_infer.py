@@ -9,13 +9,10 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 import unittest
-
 import requests
 import torch
-
 from tests.integration import SERVER_URI
 
-import os
 
 class EndPointInfer(unittest.TestCase): 
     def test_segmentation_spleen(self):
