@@ -431,7 +431,7 @@ function run_integration_tests() {
   echo "${separator}${blue}integration${noColor}"
   torch_validate
 
-  rm -rf test/data
+  rm -rf tests/data
   ${cmdPrefix}${PY_EXE} tests/setup.py
   echo "$1 - Starting MONAILabel server..."
   rm -rf tests/data/apps
