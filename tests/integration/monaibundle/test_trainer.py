@@ -9,13 +9,14 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 import unittest
+
 import requests
 import torch
 
 from tests.integration import SERVER_URI
 
-class EndPointSession(unittest.TestCase):
 
+class EndPointSession(unittest.TestCase):
     def test_segmentation_spleen_trainer(self):
         if not torch.cuda.is_available():
             return
@@ -47,7 +48,6 @@ class EndPointSession(unittest.TestCase):
         response = requests.post(f"{SERVER_URI}/train/?run_sync=True", json=params)
         assert response.status_code == 200
         assert response.json()
-
 
     def test_deepedit(self):
         if not torch.cuda.is_available():

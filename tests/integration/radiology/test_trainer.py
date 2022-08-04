@@ -9,6 +9,7 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 import unittest
+
 import requests
 import torch
 
@@ -16,7 +17,6 @@ from tests.integration import SERVER_URI
 
 
 class EndPointSession(unittest.TestCase):
-
     def test_segmentation_spleen_trainer(self):
         if not torch.cuda.is_available():
             return
@@ -49,7 +49,6 @@ class EndPointSession(unittest.TestCase):
         assert response.status_code == 200
         assert response.json()
 
-
     def test_deepgrow_trainer(self):
         if not torch.cuda.is_available():
             return
@@ -60,14 +59,13 @@ class EndPointSession(unittest.TestCase):
             "name": "net_test_deepgrow_trainer_01",
             "val_split": 0.5,
             "multi_gpu": False,
-            "foreground": [[140, 210, 28]], 
-            "background": []
+            "foreground": [[140, 210, 28]],
+            "background": [],
         }
 
         response = requests.post(f"{SERVER_URI}/train/?run_sync=True", json=params)
         assert response.status_code == 200
         assert response.json()
-
 
     def test_deepedit(self):
         if not torch.cuda.is_available():
