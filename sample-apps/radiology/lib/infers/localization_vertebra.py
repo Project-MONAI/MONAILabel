@@ -15,6 +15,7 @@ from lib.transforms.transforms import VertebraLocalizationPostProcessing
 from monai.inferers import Inferer, SlidingWindowInferer
 from monai.transforms import (
     Activationsd,
+    CropForegroundd,
     EnsureChannelFirstd,
     EnsureTyped,
     GaussianSmoothd,
@@ -29,6 +30,14 @@ from monai.transforms import (
 
 from monailabel.interfaces.tasks.infer import InferTask, InferType
 from monailabel.transform.post import Restored
+
+
+class SimpleJsonWriter:
+    def __init__(self, label="pred"):
+        self.label = label
+
+    def __call__(self, data):
+        return None, data["result"]
 
 
 class LocalizationVertebra(InferTask):
@@ -60,11 +69,12 @@ class LocalizationVertebra(InferTask):
 
     def pre_transforms(self, data=None) -> Sequence[Callable]:
         return [
-            LoadImaged(keys="image", reader="ITKReader"),
-            EnsureTyped(keys="image", device=data.get("device") if data else None),
-            EnsureChannelFirstd(keys="image"),
-            Orientationd(keys="image", axcodes="RAS"),
-            Spacingd(keys="image", pixdim=self.target_spacing, mode="bilinear"),
+            LoadImaged(keys=("image", "first_stage_pred"), reader="ITKReader"),
+            EnsureTyped(keys=("image", "first_stage_pred"), device=data.get("device") if data else None),
+            EnsureChannelFirstd(keys=("image", "first_stage_pred")),
+            Orientationd(keys=("image", "first_stage_pred"), axcodes="RAS"),
+            Spacingd(keys=("image", "first_stage_pred"), pixdim=self.target_spacing, mode="bilinear"),
+            CropForegroundd(keys=("image", "first_stage_pred"), source_key="image"),
             GaussianSmoothd(keys="image", sigma=0.75),
             NormalizeIntensityd(keys="image", divisor=2048.0),
             ScaleIntensityd(keys="image", minv=-1.0, maxv=1.0),
@@ -78,9 +88,12 @@ class LocalizationVertebra(InferTask):
         return [
             EnsureTyped(keys="pred", device=data.get("device") if data else None),
             Activationsd(keys="pred", other=torch.nn.functional.leaky_relu),
-            # Activationsd(keys="pred", sigmoid=True),
             ToNumpyd(keys="pred"),
             Restored(keys="pred", ref_image="image"),
             ScaleIntensityd(keys="pred", minv=0.0, maxv=100.0),
-            VertebraLocalizationPostProcessing(keys="pred"),
+            VertebraLocalizationPostProcessing(keys="pred", result="result"),
         ]
+
+    def writer(self, data, extension=None, dtype=None):
+        writer = SimpleJsonWriter(label=self.output_label_key)
+        return writer(data)
