@@ -29,9 +29,8 @@ class EndPointSession(unittest.TestCase):
             "multi_gpu": False,
         }
 
-        response = requests.post(f"{SERVER_URI}/train/?run_sync=True", json=params)
+        response = requests.post(f"{SERVER_URI}/train/spleen_ct_segmentation_v0.1.0?run_sync=True", json=params)
         assert response.status_code == 200
-        assert response.json()
 
     def test_multiorgan_segmentation_trainer(self):
         if not torch.cuda.is_available():
@@ -45,9 +44,8 @@ class EndPointSession(unittest.TestCase):
             "multi_gpu": False,
         }
 
-        response = requests.post(f"{SERVER_URI}/train/?run_sync=True", json=params)
+        response = requests.post(f"{SERVER_URI}/train/swin_unetr_btcv_segmentation_v0.1.0?run_sync=True", json=params)
         assert response.status_code == 200
-        assert response.json()
 
     def test_deepedit(self):
         if not torch.cuda.is_available():
@@ -60,9 +58,8 @@ class EndPointSession(unittest.TestCase):
             "val_split": 0.5,
             "multi_gpu": False,
         }
-        response = requests.post(f"{SERVER_URI}/train/?run_sync=True", json=params)
+        response = requests.post(f"{SERVER_URI}/train/spleen_deepedit_annotation_v0.1.0?run_sync=True", json=params)
         assert response.status_code == 200
-        assert response.json()
 
 
 if __name__ == "__main__":

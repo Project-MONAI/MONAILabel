@@ -37,7 +37,7 @@ class EndPointInfer(unittest.TestCase):
         response = requests.post(f"{SERVER_URI}/infer/{model}?image={image}")
         assert response.status_code == 200
 
-    def test_segmentation_pancreas(self):
+    def disabled_test_segmentation_pancreas(self):
         if not torch.cuda.is_available():
             return
 
