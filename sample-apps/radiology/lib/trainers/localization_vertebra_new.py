@@ -11,10 +11,9 @@
 import logging
 
 import torch
-from lib.transforms.transforms import BinaryMaskd
+from lib.transforms.transforms import VertHeatMap
 from monai.handlers import TensorBoardImageHandler, from_engine
 from monai.inferers import SlidingWindowInferer
-from monai.losses import DiceLoss
 from monai.transforms import (
     Activationsd,
     AsDiscreted,
@@ -38,7 +37,7 @@ from monailabel.tasks.train.utils import region_wise_metrics
 logger = logging.getLogger(__name__)
 
 
-class LocalizationSpine(BasicTrainTask):
+class LocalizationVertebra(BasicTrainTask):
     def __init__(
         self,
         model_dir,
@@ -46,7 +45,7 @@ class LocalizationSpine(BasicTrainTask):
         roi_size=(96, 96, 96),
         target_spacing=(1.0, 1.0, 1.0),
         num_samples=4,
-        description="Train spine localization model",
+        description="Train vertebra localization model",
         **kwargs,
     ):
         self._network = network
@@ -63,7 +62,7 @@ class LocalizationSpine(BasicTrainTask):
         return torch.optim.AdamW(context.network.parameters(), lr=1e-4, weight_decay=1e-5)
 
     def loss_function(self, context: Context):
-        return DiceLoss(to_onehot_y=True, softmax=True)
+        return torch.nn.MSELoss(reduction="mean")
 
     def lr_scheduler_handler(self, context: Context):
         return None
@@ -74,15 +73,14 @@ class LocalizationSpine(BasicTrainTask):
     def train_pre_transforms(self, context: Context):
         return [
             LoadImaged(keys=("image", "label"), reader="ITKReader"),
-            EnsureTyped(keys=("image", "label"), device=context.device),
             EnsureChannelFirstd(keys=("image", "label")),
-            BinaryMaskd(keys="label"),
             NormalizeIntensityd(keys="image", divisor=2048.0),
             RandSpatialCropd(
                 keys=["image", "label"],
                 roi_size=[self.roi_size[0], self.roi_size[1], self.roi_size[2]],
                 random_size=False,
             ),
+            VertHeatMap(keys="label", label_names=self._labels),
             GaussianSmoothd(keys="image", sigma=0.75),
             ScaleIntensityd(keys="image", minv=-1.0, maxv=1.0),
             RandScaleIntensityd(keys="image", factors=(0.75, 1.25), prob=0.80),
@@ -93,13 +91,14 @@ class LocalizationSpine(BasicTrainTask):
             # Does this do the function of scaling by [−0.85, 1.15] ?
             RandZoomd(keys=("image", "label"), prob=0.70, min_zoom=0.6, max_zoom=1.15),
             #
+            EnsureTyped(keys=("image", "label"), device=context.device),
             SelectItemsd(keys=("image", "label")),
         ]
 
     def train_post_transforms(self, context: Context):
         return [
             EnsureTyped(keys="pred", device=context.device),
-            Activationsd(keys="pred", softmax=len(self._labels) > 1, sigmoid=len(self._labels) == 1),
+            Activationsd(keys="pred", sigmoid=len(self._labels) == 1),
             AsDiscreted(
                 keys=("pred", "label"),
                 argmax=(True, False),
@@ -112,7 +111,6 @@ class LocalizationSpine(BasicTrainTask):
             LoadImaged(keys=("image", "label"), reader="ITKReader"),
             EnsureTyped(keys=("image", "label")),
             EnsureChannelFirstd(keys=("image", "label")),
-            BinaryMaskd(keys="label"),
             NormalizeIntensityd(keys="image", divisor=2048.0),
             GaussianSmoothd(keys="image", sigma=0.75),
             ScaleIntensityd(keys="image", minv=-1.0, maxv=1.0),

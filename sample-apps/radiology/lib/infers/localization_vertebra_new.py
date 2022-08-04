@@ -10,20 +10,18 @@
 # limitations under the License.
 from typing import Callable, Sequence
 
-from lib.transforms.transforms import AddROIThirdStage, PlaceCroppedAread
-from monai.inferers import Inferer, SimpleInferer
+import torch
+from lib.transforms.transforms import VertebraLocalizationPostProcessing
+from monai.inferers import Inferer, SlidingWindowInferer
 from monai.transforms import (
     Activationsd,
-    AsDiscreted,
+    CropForegroundd,
     EnsureChannelFirstd,
     EnsureTyped,
     GaussianSmoothd,
     LoadImaged,
     NormalizeIntensityd,
-    Orientationd,
     ScaleIntensityd,
-    Spacingd,
-    SpatialPadd,
     ToNumpyd,
 )
 
@@ -31,9 +29,17 @@ from monailabel.interfaces.tasks.infer import InferTask, InferType
 from monailabel.transform.post import Restored
 
 
-class SegmentationVertebra(InferTask):
+class SimpleJsonWriter:
+    def __init__(self, label="pred"):
+        self.label = label
+
+    def __call__(self, data):
+        return None, data["result"]
+
+
+class LocalizationVertebra(InferTask):
     """
-    This provides Inference Engine for pre-trained vertebra segmentation (UNet) model.
+    This provides Inference Engine for pre-trained vertebra localization (UNet) model.
     """
 
     def __init__(
@@ -44,7 +50,7 @@ class SegmentationVertebra(InferTask):
         type=InferType.SEGMENTATION,
         labels=None,
         dimension=3,
-        description="A pre-trained model for volumetric (3D) vertebra segmentation from CT image",
+        description="A pre-trained model for volumetric (3D) vertebra localization from CT image",
         **kwargs,
     ):
         super().__init__(
@@ -60,29 +66,32 @@ class SegmentationVertebra(InferTask):
 
     def pre_transforms(self, data=None) -> Sequence[Callable]:
         return [
-            LoadImaged(keys="image", reader="ITKReader"),
-            EnsureTyped(keys="image", device=data.get("device") if data else None),
-            EnsureChannelFirstd(keys="image"),
-            Orientationd(keys="image", axcodes="RAS"),
-            Spacingd(keys="image", pixdim=self.target_spacing),
+            LoadImaged(keys=("image", "first_stage_pred"), reader="ITKReader"),
+            EnsureTyped(keys=("image", "first_stage_pred"), device=data.get("device") if data else None),
+            EnsureChannelFirstd(keys=("image", "first_stage_pred")),
             NormalizeIntensityd(keys="image", divisor=2048.0),
-            AddROIThirdStage(keys="image"),
             GaussianSmoothd(keys="image", sigma=0.75),
+            # Actually, the cropping should be in X and Y only. Consider all the Z axis, right?
+            CropForegroundd(keys=("image", "first_stage_pred"), source_key="image"),
             ScaleIntensityd(keys="image", minv=-1.0, maxv=1.0),
-            SpatialPadd(keys="image", spatial_size=self.roi_size),
         ]
 
     def inferer(self, data=None) -> Inferer:
-        return SimpleInferer()
+        return SlidingWindowInferer(
+            roi_size=self.roi_size, sw_batch_size=8, overlap=0.5, padding_mode="replicate", mode="gaussian"
+        )
 
     def post_transforms(self, data=None) -> Sequence[Callable]:
         return [
             EnsureTyped(keys="pred", device=data.get("device") if data else None),
-            Activationsd(keys="pred", softmax=True),
-            AsDiscreted(keys="pred", argmax=True),
+            Activationsd(keys="pred", other=torch.nn.functional.leaky_relu),
             ToNumpyd(keys="pred"),
-            # This can be done in vertebra pipeline
-            PlaceCroppedAread(keys="pred"),
-            #
             Restored(keys="pred", ref_image="image"),
+            ScaleIntensityd(keys="pred", minv=0.0, maxv=100.0),
+            VertebraLocalizationPostProcessing(keys="pred", result="result"),
         ]
+
+    # This is to avoid saving the prediction
+    def writer(self, data, extension=None, dtype=None):
+        writer = SimpleJsonWriter(label=self.output_label_key)
+        return writer(data)

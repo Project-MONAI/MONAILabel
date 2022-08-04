@@ -19,9 +19,7 @@ from monai.transforms import (
     GaussianSmoothd,
     LoadImaged,
     NormalizeIntensityd,
-    Orientationd,
     ScaleIntensityd,
-    Spacingd,
     ToNumpyd,
 )
 
@@ -61,8 +59,6 @@ class LocalizationSpine(InferTask):
             LoadImaged(keys="image", reader="ITKReader"),
             EnsureTyped(keys="image", device=data.get("device") if data else None),
             EnsureChannelFirstd(keys="image"),
-            Orientationd(keys="image", axcodes="RAS"),
-            Spacingd(keys="image", pixdim=self.target_spacing),
             NormalizeIntensityd(keys="image", divisor=2048.0),
             GaussianSmoothd(keys="image", sigma=0.75),
             ScaleIntensityd(keys="image", minv=-1.0, maxv=1.0),
