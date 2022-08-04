@@ -62,7 +62,18 @@ class InferVertebraPipeline(InferTask):
         #################################################
         # Run second stage
         #################################################
-        _, result_json_second_stage = self.model_localization_vertebra(second_stage_request)
+        # _, result_json_second_stage = self.model_localization_vertebra(second_stage_request)
+
+        # Centroids for verse111
+        result_json_second_stage = [
+            {"label_18": [18, 85, 92, 250]},
+            {"label_19": [19, 85, 97, 223]},
+            {"label_20": [20, 85, 105, 195]},
+            {"label_21": [21, 82, 112, 164]},
+            {"label_22": [22, 86, 119, 138]},
+            {"label_23": [23, 97, 129, 110]},
+            {"label_24": [24, 98, 129, 79]},
+        ]
 
         # Request for third stage
         third_stage_request = copy.deepcopy(second_stage_request)

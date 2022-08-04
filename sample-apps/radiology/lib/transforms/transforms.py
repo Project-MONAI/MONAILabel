@@ -129,37 +129,10 @@ class GetCentroidAndCropd(MapTransform):
                 d[key][d[key] != first_label["label"]] = 0
                 d[key][d[key] > 0] = 1
 
-                # Plotting
-                # from matplotlib.pyplot import imshow, show, close
-                # imshow(d[key][0,:,:,int(d[key].shape[-1]/2)])
-                # show()
-                # close()
             elif key == "image":
                 d[key] = cropper(d[key])
             else:
                 print("This transform only applies to the label or image")
-
-        # For debugging purposes
-        # canvas_img = np.zeros(d["original_size"], dtype=np.float32)
-        # canvas_label = np.zeros(d["original_size"], dtype=np.float32)
-        #
-        # canvas_img[
-        #     cropper.slices[-3].start : cropper.slices[-3].stop,
-        #     cropper.slices[-2].start : cropper.slices[-2].stop,
-        #     cropper.slices[-1].start : cropper.slices[-1].stop,
-        # ] = d["image"]
-        #
-        # canvas_label[
-        #     cropper.slices[-3].start : cropper.slices[-3].stop,
-        #     cropper.slices[-2].start : cropper.slices[-2].stop,
-        #     cropper.slices[-1].start : cropper.slices[-1].stop,
-        # ] = d["label"]
-        #
-        # d["image"] = canvas_img
-        # d["label"] = canvas_label
-        #
-        # SaveImaged(keys="image", output_postfix="", output_dir="/home/andres/Downloads", separate_folder=False)(d)
-        # SaveImaged(keys="label", output_postfix="seg", output_dir="/home/andres/Downloads", separate_folder=False)(d)
 
         return d
 
@@ -252,13 +225,15 @@ class PlaceCroppedAread(MapTransform):
     def __call__(self, data: Mapping[Hashable, np.ndarray]) -> Dict[Hashable, np.ndarray]:
         d: Dict = dict(data)
         for key in self.key_iterator(d):
-            canvas_img = np.zeros(d["original_size"], dtype=np.float32)
+            final_pred = np.zeros(d["original_size"], dtype=np.float32)
             if key == "pred":
-                # How to get the ROI to reconstruct final image
-                # Iterate over all the vertebras
-                print(d[key].shape)
-            else:
-                print("This transform only applies to the pred")
+                final_pred[
+                    d["slices_cropped"][-3][0] : d["slices_cropped"][-3][1],
+                    d["slices_cropped"][-2][0] : d["slices_cropped"][-2][1],
+                    d["slices_cropped"][-1][0] : d["slices_cropped"][-1][1],
+                ] = d["pred"]
+                d["pred"] = final_pred * int(d["current_label"])
+                # How to get the ROI to reconstruct final image? - Iterate over all the vertebras
         return d
 
 
@@ -306,59 +281,7 @@ class VertHeatMap(MapTransform):
 
             data[k] = out
 
-            # SaveImaged(keys="label", output_postfix="", output_dir="/home/andres/Downloads", separate_folder=False)(
-            #     data
-            # )
-
         return data
-
-
-# class VertHeatMap(MapTransform):
-#     def __init__(self, keys, gamma=1000.0, label_names=None):
-#         super().__init__(keys)
-#         self.label_names = label_names
-#         self.gamma = gamma
-#
-#     def __call__(self, data):
-#
-#         for k in self.keys:
-#
-#             out = np.zeros(
-#                 (len(self.label_names) + 1, data[k].shape[-3], data[k].shape[-2], data[k].shape[-1]), dtype=np.float32
-#             )
-#
-#             # loop over all segmentation classes
-#             for label_num in np.unique(data[k]):
-#                 # skip background
-#                 if label_num == 0:
-#                     continue
-#                 # get CoM for given segmentation class
-#                 centre = [np.average(indices).astype(int) for indices in np.where(data[k][0] == label_num)]
-#                 centre.insert(0, label_num)
-#                 out[int(centre[-4]), int(centre[-3]), int(centre[-2]), int(centre[-1])] = 1.0
-#                 sigma = 1.6 + (label_num - 1.0) * 0.1
-#
-#                 # Gaussian smooth
-#                 signal_tensor = torch.tensor(out[int(label_num)])
-#                 pt_gaussian = GaussianFilter(len(signal_tensor.shape), sigma=sigma)
-#                 signal_tensor = pt_gaussian(signal_tensor.unsqueeze(0).unsqueeze(0))
-#                 signal_tensor = signal_tensor.squeeze(0).squeeze(0)
-#                 signal_tensor = signal_tensor.detach().cpu().numpy()
-#                 signal_tensor = (signal_tensor - np.min(signal_tensor)) / (
-#                     np.max(signal_tensor) - np.min(signal_tensor)
-#                 )
-#
-#                 out[int(label_num)] = signal_tensor * self.gamma
-#
-#             # TO DO: Keep the centroids in the data dictionary?
-#
-#             data[k] = out
-#
-#             # SaveImaged(keys="label", output_postfix="", output_dir="/home/andres/Downloads", separate_folder=False)(
-#             #     data
-#             # )
-#
-#         return data
 
 
 class VertebraLocalizationPostProcessing(MapTransform):
@@ -396,13 +319,6 @@ class VertebraLocalizationPostProcessing(MapTransform):
             if d.get(self.result) is None:
                 d[self.result] = dict()
             d[self.result]["centroids"] = centroids
-            # d["pred_meta_dict"] = d["image_meta_dict"]
-            # SaveImaged(keys=key, output_postfix="", output_dir="/home/andres/Downloads", separate_folder=False)(d)
-            # # Plotting
-            # from matplotlib.pyplot import imshow, show, close
-            # imshow(d[key][0,:,:,int(d[key].shape[-1]/2)])
-            # show()
-            # close()
         return d
 
 
@@ -410,6 +326,7 @@ class AddROIThirdStage(MapTransform):
     def __init__(
         self,
         keys: KeysCollection,
+        sigma: int = 2,
         allow_missing_keys: bool = False,
     ):
         """
@@ -423,10 +340,63 @@ class AddROIThirdStage(MapTransform):
 
         """
         super().__init__(keys, allow_missing_keys)
+        self.sigma = sigma
 
     def __call__(self, data: Mapping[Hashable, np.ndarray]) -> Dict[Hashable, np.ndarray]:
         d: Dict = dict(data)
         for key in self.key_iterator(d):
             if key == "image":
-                print("Applying transform")
+
+                ###########
+                # Crop the image
+                ###########
+
+                d["original_size"] = d[key].shape[-3], d[key].shape[-2], d[key].shape[-1]
+                current_label = np.random.randint(0, len(d["centroids"]))
+                d["current_label"] = list(d["centroids"][current_label].values())[0][-4]
+                X, Y, Z, = (
+                    list(d["centroids"][current_label].values())[0][-3],
+                    list(d["centroids"][current_label].values())[0][-2],
+                    list(d["centroids"][current_label].values())[0][-1],
+                )
+                centroid = [X, Y, Z]
+                # Cropping
+                cropper = SpatialCrop(roi_center=centroid, roi_size=(128, 128, 96))
+                slices_cropped = [
+                    [cropper.slices[-3].start, cropper.slices[-3].stop],
+                    [cropper.slices[-2].start, cropper.slices[-2].stop],
+                    [cropper.slices[-1].start, cropper.slices[-1].stop],
+                ]
+                d["slices_cropped"] = slices_cropped
+                d[key] = cropper(d[key])
+                # Smooth the image as it was done during training
+                d[key] = GaussianSmooth(sigma=0.75)(d[key])
+
+                #################################
+                # Create signal based on centroid
+                #################################
+
+                signal = np.zeros(d["original_size"], dtype=np.float32)
+                signal[X, Y, Z] = 1.0
+                signal = signal[
+                    d["slices_cropped"][-3][0] : d["slices_cropped"][-3][1],
+                    d["slices_cropped"][-2][0] : d["slices_cropped"][-2][1],
+                    d["slices_cropped"][-1][0] : d["slices_cropped"][-1][1],
+                ]
+                signal = signal[None]
+
+                # Apply a Gaussian filter to the signal
+                signal_tensor = torch.tensor(signal[0])
+                pt_gaussian = GaussianFilter(len(signal_tensor.shape), sigma=self.sigma)
+                signal_tensor = pt_gaussian(signal_tensor.unsqueeze(0).unsqueeze(0))
+                signal_tensor = signal_tensor.squeeze(0).squeeze(0)
+                signal[0] = signal_tensor.detach().cpu().numpy()
+                signal[0] = (signal[0] - np.min(signal[0])) / (np.max(signal[0]) - np.min(signal[0]))
+
+                ##################################
+                # Concatenate signal with centroid
+                ##################################
+                tmp_image = np.concatenate([d[key], signal], axis=0)
+                d[key] = tmp_image
+
         return d

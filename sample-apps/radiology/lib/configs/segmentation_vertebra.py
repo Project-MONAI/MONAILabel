@@ -47,15 +47,15 @@ class SegmentationVertebra(TaskConfig):
 
         self.target_spacing = (1.0, 1.0, 1.0)  # target space for image
         # cropped region covering vertebra
-        self.roi_size = (128, 128, 96)
+        self.roi_size = (32, 32, 32)
 
         # Network
         self.network = UNet(
             spatial_dims=3,
-            in_channels=2,  # Image + Gaussian smoothed centroid
+            in_channels=2,
             out_channels=2,
-            channels=[64, 64, 64, 64, 64],
-            strides=[2, 2, 2, 2],
+            channels=(16, 32, 64, 128, 256),
+            strides=(2, 2, 2, 2),
             num_res_units=2,
             dropout=0.2,
         )
