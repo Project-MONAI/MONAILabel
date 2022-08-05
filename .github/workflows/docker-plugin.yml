@@ -29,6 +29,7 @@ jobs:
       - name: Build
         run: |
           cd plugins/dsa
+          docker system prune -f
           DOCKER_BUILDKIT=1 docker build -t projectmonai/monailabel-dsa:${{ github.event.inputs.tag }} -f Dockerfile .
       - name: Publish
         run: |
