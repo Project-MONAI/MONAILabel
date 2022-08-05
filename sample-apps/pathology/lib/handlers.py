@@ -149,8 +149,8 @@ class TensorBoardImageHandler:
                         np.count_nonzero(label),
                         y_pred.shape,
                         np.count_nonzero(y_pred[region]),
-                        np.count_nonzero(image[3]) if image.shape == 5 else 0,
-                        np.count_nonzero(image[4]) if image.shape == 5 else 0,
+                        np.count_nonzero(image[3]) if image.shape[0] == 5 else 0,
+                        np.count_nonzero(image[4]) if image.shape[0] == 5 else 0,
                     )
                 )
 
