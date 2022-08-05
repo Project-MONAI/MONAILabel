@@ -31,8 +31,8 @@ from monai.losses import DiceLoss
 from monai.transforms import (
     Activationsd,
     AsDiscreted,
-    EnsureTyped,
     EnsureChannelFirstd,
+    EnsureTyped,
     LoadImaged,
     NormalizeIntensityd,
     Resized,

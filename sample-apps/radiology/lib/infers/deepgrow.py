@@ -21,9 +21,9 @@ from monai.apps.deepgrow.transforms import (
 from monai.inferers import Inferer, SimpleInferer
 from monai.transforms import (
     Activationsd,
-    EnsureChannelFirst,
     AsChannelLastd,
     AsDiscreted,
+    EnsureChannelFirst,
     EnsureTyped,
     LoadImaged,
     NormalizeIntensityd,
