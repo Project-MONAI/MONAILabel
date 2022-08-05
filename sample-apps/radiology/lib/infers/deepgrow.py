@@ -22,7 +22,6 @@ from monai.inferers import Inferer, SimpleInferer
 from monai.transforms import (
     Activationsd,
     EnsureChannelFirst,
-    AsChannelFirstd,
     AsChannelLastd,
     AsDiscreted,
     EnsureTyped,
