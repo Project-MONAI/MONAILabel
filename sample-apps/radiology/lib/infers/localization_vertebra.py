@@ -20,7 +20,7 @@ from monai.transforms import (
     KeepLargestConnectedComponentd,
     LoadImaged,
     NormalizeIntensityd,
-    ScaleIntensityd,
+    Spacingd,
 )
 
 from monailabel.interfaces.tasks.infer import InferTask, InferType
@@ -67,9 +67,9 @@ class LocalizationVertebra(InferTask):
             LoadImaged(keys=("image", "first_stage_pred"), reader="ITKReader"),
             EnsureTyped(keys=("image", "first_stage_pred"), device=data.get("device") if data else None),
             EnsureChannelFirstd(keys=("image", "first_stage_pred")),
-            NormalizeIntensityd(keys="image", divisor=2048.0),
+            Spacingd(keys=("image", "first_stage_pred"), pixdim=self.target_spacing, mode=("bilinear", "nearest")),
+            NormalizeIntensityd(keys="image", nonzero=True),
             CropForegroundd(keys=("image", "first_stage_pred"), source_key="image"),
-            ScaleIntensityd(keys="image", minv=-1.0, maxv=1.0),
         ]
 
     def inferer(self, data=None) -> Inferer:

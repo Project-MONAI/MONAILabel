@@ -69,9 +69,9 @@ class LocalizationVertebra(TaskConfig):
             url = f"{self.conf.get('pretrained_path', self.PRE_TRAINED_PATH)}/localization_vertebra_unet.pt"
             download_file(url, self.path[0])
 
-        self.target_spacing = (1.0, 1.0, 1.0)  # target space for image
+        self.target_spacing = (4.0, 4.0, 4.0)  # target space for image
         # Setting ROI size - This is for the image padding
-        self.roi_size = (96, 96, 96)
+        self.roi_size = (32, 32, 32)
 
         # Network
         self.network = UNet(

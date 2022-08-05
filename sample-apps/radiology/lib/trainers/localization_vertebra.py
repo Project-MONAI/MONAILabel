@@ -18,6 +18,7 @@ from monai.losses import DiceLoss
 from monai.transforms import (
     Activationsd,
     AsDiscreted,
+    CropForegroundd,
     EnsureChannelFirstd,
     EnsureTyped,
     LoadImaged,
@@ -28,8 +29,8 @@ from monai.transforms import (
     RandShiftIntensityd,
     RandSpatialCropd,
     RandZoomd,
-    ScaleIntensityd,
     SelectItemsd,
+    Spacingd,
 )
 
 from monailabel.tasks.train.basic_train import BasicTrainTask, Context
@@ -76,7 +77,9 @@ class LocalizationVertebra(BasicTrainTask):
             LoadImaged(keys=("image", "label"), reader="ITKReader"),
             NormalizeLabelsInDatasetd(keys="label", label_names=self._labels),  # Specially for missing labels
             EnsureChannelFirstd(keys=("image", "label")),
-            NormalizeIntensityd(keys="image", divisor=2048.0),
+            Spacingd(keys=("image", "label"), pixdim=self.target_spacing, mode=("bilinear", "nearest")),
+            NormalizeIntensityd(keys="image", nonzero=True),
+            CropForegroundd(keys=("image", "label"), source_key="image", margin=32),
             RandSpatialCropd(
                 keys=["image", "label"],
                 roi_size=[self.roi_size[0], self.roi_size[1], self.roi_size[2]],
@@ -91,7 +94,6 @@ class LocalizationVertebra(BasicTrainTask):
             RandZoomd(keys=("image", "label"), prob=0.70, min_zoom=0.6, max_zoom=1.15),
             #
             RandGaussianSmoothd(keys="image", sigma_x=(0.25, 1.5), sigma_y=(0.25, 1.5), sigma_z=(0.25, 1.5), prob=0.5),
-            ScaleIntensityd(keys="image", minv=-1.0, maxv=1.0),
             EnsureTyped(keys=("image", "label"), device=context.device),
             SelectItemsd(keys=("image", "label")),
         ]
@@ -113,8 +115,8 @@ class LocalizationVertebra(BasicTrainTask):
             NormalizeLabelsInDatasetd(keys="label", label_names=self._labels),  # Specially for missing labels
             EnsureTyped(keys=("image", "label")),
             EnsureChannelFirstd(keys=("image", "label")),
-            NormalizeIntensityd(keys="image", divisor=2048.0),
-            ScaleIntensityd(keys="image", minv=-1.0, maxv=1.0),
+            Spacingd(keys=("image", "label"), pixdim=self.target_spacing, mode=("bilinear", "nearest")),
+            NormalizeIntensityd(keys="image", nonzero=True),
             SelectItemsd(keys=("image", "label")),
         ]
 
