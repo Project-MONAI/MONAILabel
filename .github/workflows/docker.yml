@@ -28,9 +28,12 @@ jobs:
           sudo apt-get install docker-ce
       - name: Build
         run: |
+          ./runtests.sh --clean
+          docker system prune -f
           DOCKER_BUILDKIT=1 docker build -t projectmonai/monailabel:${{ github.event.inputs.tag }} -f Dockerfile .
       - name: Verify
         run: |
+          ./runtests.sh --clean
           docker run --rm -i --ipc=host --net=host -v $(pwd):/workspace projectmonai/monailabel:${{ github.event.inputs.tag }} /workspace/runtests.sh --net
       - name: Publish
         run: |

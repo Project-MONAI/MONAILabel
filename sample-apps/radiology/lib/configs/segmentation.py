@@ -89,12 +89,14 @@ class Segmentation(TaskConfig):
 
     def trainer(self) -> Optional[TrainTask]:
         output_dir = os.path.join(self.model_dir, self.name)
+        load_path = self.path[0] if os.path.exists(self.path[0]) else self.path[1]
+
         task: TrainTask = lib.trainers.Segmentation(
             model_dir=output_dir,
             network=self.network,
             roi_size=self.roi_size,
             target_spacing=self.target_spacing,
-            load_path=self.path[0],
+            load_path=load_path,
             publish_path=self.path[1],
             description="Train Multilabel Segmentation Model",
             dimension=3,
