@@ -45,17 +45,17 @@ class LocalizationSpine(TaskConfig):
             url = f"{self.conf.get('pretrained_path', self.PRE_TRAINED_PATH)}/localization_spine_unet.pt"
             download_file(url, self.path[0])
 
-        self.target_spacing = (8.0, 8.0, 8.0)  # target space for image
+        self.target_spacing = (8.0, 8.0, 8.0)  # target space for image - NOT IN USE
         # Setting ROI size should consider max width, height and depth of the images
-        self.roi_size = (64, 64, 128)  # sliding window size for train and infer
+        self.roi_size = (96, 96, 96)  # sliding window size for train and infer
 
         # Network
         self.network = UNet(
             spatial_dims=3,
             in_channels=1,
-            out_channels=len(self.labels.keys()) + 1,  # All labels plus background
-            channels=[64, 64, 64, 64, 64],
-            strides=[2, 2, 2, 2],
+            out_channels=len(self.labels) + 1,  # labels plus background,
+            channels=(16, 32, 64, 128, 256),
+            strides=(2, 2, 2, 2),
             num_res_units=2,
             dropout=0.2,
         )
@@ -74,12 +74,14 @@ class LocalizationSpine(TaskConfig):
 
     def trainer(self) -> Optional[TrainTask]:
         output_dir = os.path.join(self.model_dir, self.name)
+        load_path = self.path[0] if os.path.exists(self.path[0]) else self.path[1]
+
         task: TrainTask = lib.trainers.LocalizationSpine(
             model_dir=output_dir,
             network=self.network,
             roi_size=self.roi_size,
             target_spacing=self.target_spacing,
-            load_path=self.path[0],
+            load_path=load_path,
             publish_path=self.path[1],
             description="Train spine localization Model",
             dimension=3,

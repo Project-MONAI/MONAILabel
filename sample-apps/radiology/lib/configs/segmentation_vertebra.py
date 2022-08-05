@@ -47,15 +47,15 @@ class SegmentationVertebra(TaskConfig):
 
         self.target_spacing = (1.0, 1.0, 1.0)  # target space for image
         # cropped region covering vertebra
-        self.roi_size = (128, 128, 96)
+        self.roi_size = (32, 32, 32)
 
         # Network
         self.network = UNet(
             spatial_dims=3,
-            in_channels=2,  # Image + Gaussian smoothed centroid
+            in_channels=2,
             out_channels=2,
-            channels=[64, 64, 64, 64, 64],
-            strides=[2, 2, 2, 2],
+            channels=(16, 32, 64, 128, 256),
+            strides=(2, 2, 2, 2),
             num_res_units=2,
             dropout=0.2,
         )
@@ -74,12 +74,14 @@ class SegmentationVertebra(TaskConfig):
 
     def trainer(self) -> Optional[TrainTask]:
         output_dir = os.path.join(self.model_dir, self.name)
+        load_path = self.path[0] if os.path.exists(self.path[0]) else self.path[1]
+
         task: TrainTask = lib.trainers.SegmentationVertebra(
             model_dir=output_dir,
             network=self.network,
             roi_size=self.roi_size,
             target_spacing=self.target_spacing,
-            load_path=self.path[0],
+            load_path=load_path,
             publish_path=self.path[1],
             description="Train vertebra segmentation Model",
             dimension=3,

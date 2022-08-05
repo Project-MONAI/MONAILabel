@@ -26,9 +26,21 @@ from monailabel.utils.sessions import Sessions
 
 logger = logging.getLogger(__name__)
 
-_cache_path = os.path.join(pathlib.Path.home(), ".cache", "monailabel", "cacheT")
-_data_mem_cache = ExpiringDict(ttl=600)
-_data_file_cache = Sessions(store_path=_cache_path, expiry=600)
+_cache_path = None
+_data_mem_cache = None
+_data_file_cache = None
+
+
+def init_cache():
+    global _cache_path
+    global _data_mem_cache
+    global _data_file_cache
+    if not _cache_path:
+        _cache_path = os.path.join(pathlib.Path.home(), ".cache", "monailabel", "cacheT")
+        _data_mem_cache = ExpiringDict(ttl=600)
+        _data_file_cache = Sessions(store_path=_cache_path, expiry=600)
+
+    _data_file_cache.remove_expired()
 
 
 class CacheTransformDatad(Transform):
@@ -47,7 +59,7 @@ class CacheTransformDatad(Transform):
         self.reset_applied_operations_id = reset_applied_operations_id
 
         # remove previous expired...
-        _data_file_cache.remove_expired()
+        init_cache()
 
     def __call__(self, data):
         return self.save(data)
