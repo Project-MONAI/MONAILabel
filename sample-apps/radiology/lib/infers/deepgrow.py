@@ -21,7 +21,7 @@ from monai.apps.deepgrow.transforms import (
 from monai.inferers import Inferer, SimpleInferer
 from monai.transforms import (
     Activationsd,
-    AddChanneld,
+    EnsureChannelFirst,
     AsChannelFirstd,
     AsChannelLastd,
     AsDiscreted,
@@ -70,7 +70,7 @@ class Deepgrow(InferTask):
     def pre_transforms(self, data=None) -> Sequence[Callable]:
         t = [
             LoadImaged(keys="image"),
-            AsChannelFirstd(keys="image"),
+            EnsureChannelFirst(keys="image"),
             Spacingd(keys="image", pixdim=[1.0] * self.dimension, mode="bilinear"),
         ]
 
@@ -81,7 +81,7 @@ class Deepgrow(InferTask):
             t.append(Fetch2DSliced(keys="image", guidance="guidance"))
         t.extend(
             [
-                AddChanneld(keys="image"),
+                EnsureChannelFirst(keys="image"),
                 SpatialCropGuidanced(keys="image", guidance="guidance", spatial_size=self.spatial_size),
                 Resized(keys="image", spatial_size=self.model_size, mode="area"),
                 ResizeGuidanced(guidance="guidance", ref_image="image"),
