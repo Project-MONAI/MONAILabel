@@ -10,22 +10,17 @@
 # limitations under the License.
 from typing import Callable, Sequence
 
-import torch
-from lib.transforms.transforms import VertebraLocalizationPostProcessing
 from monai.inferers import Inferer, SlidingWindowInferer
 from monai.transforms import (
     Activationsd,
+    AsDiscreted,
     CropForegroundd,
     EnsureChannelFirstd,
     EnsureTyped,
-    GaussianSmoothd,
+    KeepLargestConnectedComponentd,
     LoadImaged,
     NormalizeIntensityd,
-    Orientationd,
     ScaleIntensityd,
-    Spacingd,
-    SpatialPadd,
-    ToNumpyd,
 )
 
 from monailabel.interfaces.tasks.infer import InferTask, InferType
@@ -72,27 +67,29 @@ class LocalizationVertebra(InferTask):
             LoadImaged(keys=("image", "first_stage_pred"), reader="ITKReader"),
             EnsureTyped(keys=("image", "first_stage_pred"), device=data.get("device") if data else None),
             EnsureChannelFirstd(keys=("image", "first_stage_pred")),
-            Orientationd(keys=("image", "first_stage_pred"), axcodes="RAS"),
-            Spacingd(keys=("image", "first_stage_pred"), pixdim=self.target_spacing, mode="bilinear"),
-            CropForegroundd(keys=("image", "first_stage_pred"), source_key="image"),
-            GaussianSmoothd(keys="image", sigma=0.75),
             NormalizeIntensityd(keys="image", divisor=2048.0),
+            CropForegroundd(keys=("image", "first_stage_pred"), source_key="image"),
             ScaleIntensityd(keys="image", minv=-1.0, maxv=1.0),
-            SpatialPadd(keys="image", spatial_size=self.roi_size),
         ]
 
     def inferer(self, data=None) -> Inferer:
-        return SlidingWindowInferer(roi_size=self.roi_size)
+        return SlidingWindowInferer(
+            roi_size=self.roi_size, sw_batch_size=8, overlap=0.5, padding_mode="replicate", mode="gaussian"
+        )
 
     def post_transforms(self, data=None) -> Sequence[Callable]:
-        return [
+        largest_cc = False if not data else data.get("largest_cc", False)
+        applied_labels = list(self.labels.values()) if isinstance(self.labels, dict) else self.labels
+        t = [
             EnsureTyped(keys="pred", device=data.get("device") if data else None),
-            Activationsd(keys="pred", other=torch.nn.functional.leaky_relu),
-            ToNumpyd(keys="pred"),
-            Restored(keys="pred", ref_image="image"),
-            ScaleIntensityd(keys="pred", minv=0.0, maxv=100.0),
-            VertebraLocalizationPostProcessing(keys="pred", result="result"),
+            Activationsd(keys="pred", softmax=True),
+            AsDiscreted(keys="pred", argmax=True),
         ]
+        if largest_cc:
+            t.append(KeepLargestConnectedComponentd(keys="pred", applied_labels=applied_labels))
+        t.append(Restored(keys="pred", ref_image="image"))
+        # t.append(VertebraLocalizationSegmentation(keys="pred", result="result"))
+        return t
 
     def writer(self, data, extension=None, dtype=None):
         writer = SimpleJsonWriter(label=self.output_label_key)

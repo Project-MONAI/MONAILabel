@@ -322,6 +322,45 @@ class VertebraLocalizationPostProcessing(MapTransform):
         return d
 
 
+class VertebraLocalizationSegmentation(MapTransform):
+    def __init__(
+        self,
+        keys: KeysCollection,
+        result: str = "result",
+        allow_missing_keys: bool = False,
+    ):
+        """
+        Postprocess Vertebra localization using segmentation task
+
+        :param keys: The ``keys`` parameter will be used to get and set the actual data item to transform
+
+        """
+        super().__init__(keys, allow_missing_keys)
+        self.result = result
+
+    def __call__(self, data: Mapping[Hashable, np.ndarray]) -> Dict[Hashable, np.ndarray]:
+        d: Dict = dict(data)
+        centroids = []
+        for key in self.key_iterator(d):
+
+            # Getting centroids
+            for l in range(d[key].shape[0] - 1):
+                centroid = {}
+                # Check whether the area is higher than a threshold
+                if d[key][l + 1, ...].max() < 30.0:
+                    continue
+                X, Y, Z = np.where(d[key][l + 1, ...] == d[key][l + 1, ...].max())
+                X, Y, Z = X[0], Y[0], Z[0]
+                centroid[f"label_{l+1}"] = [X, Y, Z]
+                centroids.append(centroid)
+
+            print(centroids)
+            if d.get(self.result) is None:
+                d[self.result] = dict()
+            d[self.result]["centroids"] = centroids
+        return d
+
+
 class AddROIThirdStage(MapTransform):
     def __init__(
         self,
