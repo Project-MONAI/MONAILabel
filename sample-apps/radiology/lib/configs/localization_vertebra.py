@@ -71,7 +71,7 @@ class LocalizationVertebra(TaskConfig):
 
         self.target_spacing = (4.0, 4.0, 4.0)  # target space for image - NOT IN USE
         # Setting ROI size - This is for the image padding
-        self.roi_size = (96, 96, 96)
+        self.roi_size = (96, 96, 128)
 
         # Network
         self.network = UNet(

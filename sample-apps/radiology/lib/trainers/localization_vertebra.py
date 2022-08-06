@@ -73,16 +73,19 @@ class LocalizationVertebra(BasicTrainTask):
             NormalizeLabelsInDatasetd(keys="label", label_names=self._labels),  # Specially for missing labels
             EnsureChannelFirstd(keys=("image", "label")),
             EnsureTyped(keys=("image", "label"), device=context.device),
-            NormalizeIntensityd(keys="image", divisor=2048.0),
-            # Margin is high (64) to fit 96x96x96 patches
-            CropForegroundd(keys=("image", "label"), source_key="image", margin=64),
+            CropForegroundd(
+                keys=("image", "label"),
+                source_key="image",
+                k_divisible=[self.roi_size[0], self.roi_size[1], self.roi_size[2]],
+            ),
+            NormalizeIntensityd(keys="image", nonzero=True),
+            GaussianSmoothd(keys="image", sigma=0.75),
+            ScaleIntensityd(keys="image", minv=-1.0, maxv=1.0),
             RandSpatialCropd(
                 keys=["image", "label"],
                 roi_size=[self.roi_size[0], self.roi_size[1], self.roi_size[2]],
                 random_size=False,
             ),
-            GaussianSmoothd(keys="image", sigma=0.75),
-            ScaleIntensityd(keys="image", minv=-1.0, maxv=1.0),
             SelectItemsd(keys=("image", "label")),
         ]
 
@@ -103,15 +106,20 @@ class LocalizationVertebra(BasicTrainTask):
             NormalizeLabelsInDatasetd(keys="label", label_names=self._labels),  # Specially for missing labels
             EnsureTyped(keys=("image", "label")),
             EnsureChannelFirstd(keys=("image", "label")),
-            NormalizeIntensityd(keys="image", divisor=2048.0),
+            NormalizeIntensityd(keys="image", nonzero=True),
             GaussianSmoothd(keys="image", sigma=0.75),
             ScaleIntensityd(keys="image", minv=-1.0, maxv=1.0),
+            CropForegroundd(
+                keys=("image", "label"),
+                source_key="image",
+                k_divisible=[self.roi_size[0], self.roi_size[1], self.roi_size[2]],
+            ),
             SelectItemsd(keys=("image", "label")),
         ]
 
     def val_inferer(self, context: Context):
         return SlidingWindowInferer(
-            roi_size=self.roi_size, sw_batch_size=8, overlap=0.5, padding_mode="replicate", mode="gaussian"
+            roi_size=self.roi_size, sw_batch_size=4, overlap=0.4, padding_mode="replicate", mode="gaussian"
         )
 
     def norm_labels(self):

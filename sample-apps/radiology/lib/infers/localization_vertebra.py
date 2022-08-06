@@ -71,15 +71,15 @@ class LocalizationVertebra(InferTask):
                 keys=("image", "first_stage_pred"), device=data.get("device") if data else None, allow_missing_keys=True
             ),
             EnsureChannelFirstd(keys=("image", "first_stage_pred"), allow_missing_keys=True),
+            CropForegroundd(keys=("image", "first_stage_pred"), source_key="image", allow_missing_keys=True),
             NormalizeIntensityd(keys="image", nonzero=True),
             GaussianSmoothd(keys="image", sigma=0.75),
             ScaleIntensityd(keys="image", minv=-1.0, maxv=1.0),
-            CropForegroundd(keys=("image", "first_stage_pred"), source_key="image", allow_missing_keys=True),
         ]
 
     def inferer(self, data=None) -> Inferer:
         return SlidingWindowInferer(
-            roi_size=self.roi_size, sw_batch_size=8, overlap=0.5, padding_mode="replicate", mode="gaussian"
+            roi_size=self.roi_size, sw_batch_size=4, overlap=0.4, padding_mode="replicate", mode="gaussian"
         )
 
     def post_transforms(self, data=None) -> Sequence[Callable]:
