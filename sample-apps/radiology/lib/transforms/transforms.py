@@ -250,9 +250,12 @@ class PlaceCroppedAread(MapTransform):
     def __call__(self, data: Mapping[Hashable, np.ndarray]) -> Dict[Hashable, np.ndarray]:
         d: Dict = dict(data)
         for key in self.key_iterator(d):
-            final_pred = np.zeros(d["original_size"], dtype=np.float32)
+            final_pred = np.zeros(
+                (1, d["original_size"][-3], d["original_size"][-2], d["original_size"][-1]), dtype=np.float32
+            )
             if key == "pred":
                 final_pred[
+                    :,
                     d["slices_cropped"][-3][0] : d["slices_cropped"][-3][1],
                     d["slices_cropped"][-2][0] : d["slices_cropped"][-2][1],
                     d["slices_cropped"][-1][0] : d["slices_cropped"][-1][1],
@@ -406,7 +409,7 @@ class AddROIThirdStage(MapTransform):
     def __init__(
         self,
         keys: KeysCollection,
-        sigma: int = 2,
+        sigma: int = 5,
         allow_missing_keys: bool = False,
     ):
         """

@@ -29,6 +29,14 @@ from monailabel.interfaces.tasks.infer import InferTask, InferType
 from monailabel.transform.post import Restored
 
 
+class SimpleJsonWriter:
+    def __init__(self, label="pred"):
+        self.label = label
+
+    def __call__(self, data):
+        return None, data["result"]
+
+
 class LocalizationVertebra(InferTask):
     """
     This provides Inference Engine for pre-trained vertebra localization (UNet) model.
@@ -89,3 +97,8 @@ class LocalizationVertebra(InferTask):
         if not slicer:
             t.append(VertebraLocalizationSegmentation(keys="pred", result="result"))
         return t
+
+    # This is to avoid saving the prediction
+    def writer(self, data, extension=None, dtype=None):
+        writer = SimpleJsonWriter(label=self.output_label_key)
+        return writer(data)

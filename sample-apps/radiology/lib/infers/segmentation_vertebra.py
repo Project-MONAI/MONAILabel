@@ -76,10 +76,14 @@ class SegmentationVertebra(InferTask):
             EnsureTyped(keys="pred", device=data.get("device") if data else None),
             Activationsd(keys="pred", softmax=True),
             AsDiscreted(keys="pred", argmax=True),
-            ToNumpyd(keys="pred"),
-            PlaceCroppedAread(keys="pred"),
         ]
         if largest_cc:
             t.append(KeepLargestConnectedComponentd(keys="pred", applied_labels=applied_labels))
-        t.append(Restored(keys="pred", ref_image="image"))
+        t.extend(
+            [
+                ToNumpyd(keys="pred"),
+                PlaceCroppedAread(keys="pred"),
+                Restored(keys="pred", ref_image="image"),
+            ]
+        )
         return t
