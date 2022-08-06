@@ -194,14 +194,14 @@ class GaussianSmoothedCentroidd(MapTransform):
                 )
                 signal[:, X, Y, Z] = 1.0
 
+                signal = GaussianSmooth(self.sigma)(signal)
+
                 signal = signal[
                     :,
                     d["slices_cropped"][-3][0] : d["slices_cropped"][-3][1],
                     d["slices_cropped"][-2][0] : d["slices_cropped"][-2][1],
                     d["slices_cropped"][-1][0] : d["slices_cropped"][-1][1],
                 ]
-
-                signal = GaussianSmooth(self.sigma)(signal)
 
                 d["signal"] = signal * d["label"]
 
@@ -463,12 +463,18 @@ class AddROIThirdStage(MapTransform):
                     (1, d["original_size"][-3], d["original_size"][-2], d["original_size"][-1]), dtype=np.float32
                 )
                 X, Y, Z = (
-                    list(d["centroids"][d["current_idx"]].values())[0][-3],
-                    list(d["centroids"][d["current_idx"]].values())[0][-2],
-                    list(d["centroids"][d["current_idx"]].values())[0][-1],
+                    list(d["centroids"]["centroids"][current_label].values())[0][-3],
+                    list(d["centroids"]["centroids"][current_label].values())[0][-2],
+                    list(d["centroids"]["centroids"][current_label].values())[0][-1],
                 )
                 signal[:, X, Y, Z] = 1.0
                 signal = GaussianSmooth(self.sigma)(signal)
+                signal = signal[
+                    :,
+                    cropper.slices[-3].start : cropper.slices[-3].stop,
+                    cropper.slices[-2].start : cropper.slices[-2].stop,
+                    cropper.slices[-1].start : cropper.slices[-1].stop,
+                ]
 
                 ##################################
                 # Concatenate signal with centroid

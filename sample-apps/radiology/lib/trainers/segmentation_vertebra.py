@@ -72,10 +72,10 @@ class SegmentationVertebra(BasicTrainTask):
             EnsureChannelFirstd(keys=("image", "label")),
             NormalizeIntensityd(keys="image", divisor=2048.0),
             GetCentroidsd(keys="label"),
-            HeuristicCroppingd(keys=["label", "image"]),  # Size heuristically selected
-            GaussianSmoothedCentroidd(keys="image"),
             GaussianSmoothd(keys="image", sigma=0.75),
             ScaleIntensityd(keys="image", minv=-1.0, maxv=1.0),
+            HeuristicCroppingd(keys=["label", "image"]),  # Size heuristically selected
+            GaussianSmoothedCentroidd(keys="image"),
             AddROI(keys="signal"),
             RandSpatialCropd(
                 keys=["image", "label"],
@@ -103,12 +103,12 @@ class SegmentationVertebra(BasicTrainTask):
             EnsureChannelFirstd(keys=("image", "label")),
             NormalizeIntensityd(keys="image", divisor=2048.0),
             GetCentroidsd(keys="label"),
-            HeuristicCroppingd(keys=["label", "image"]),  # Size heuristically selected
-            GaussianSmoothedCentroidd(keys="image"),
             GaussianSmoothd(keys="image", sigma=0.75),
             ScaleIntensityd(keys="image", minv=-1.0, maxv=1.0),
+            HeuristicCroppingd(keys=["label", "image"]),  # Size heuristically selected
+            GaussianSmoothedCentroidd(keys="image"),
             AddROI(keys="signal"),
-            EnsureTyped(keys=("image", "label")),
+            EnsureTyped(keys=("image", "label"), device=context.device),
             SelectItemsd(keys=("image", "label", "centroids", "original_size", "current_label", "slices_cropped")),
         ]
 
