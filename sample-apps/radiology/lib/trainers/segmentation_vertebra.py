@@ -11,7 +11,7 @@
 import logging
 
 import torch
-from lib.transforms.transforms import AddROI, GaussianSmoothedCentroidd, GetCentroidAndCropd
+from lib.transforms.transforms import AddROI, GaussianSmoothedCentroidd, GetCentroidsd, HeuristicCroppingd
 from monai.handlers import TensorBoardImageHandler, from_engine
 from monai.inferers import SlidingWindowInferer
 from monai.losses import DiceCELoss
@@ -23,11 +23,7 @@ from monai.transforms import (
     GaussianSmoothd,
     LoadImaged,
     NormalizeIntensityd,
-    RandRotated,
-    RandScaleIntensityd,
-    RandShiftIntensityd,
     RandSpatialCropd,
-    RandZoomd,
     ScaleIntensityd,
     SelectItemsd,
 )
@@ -59,7 +55,6 @@ class SegmentationVertebra(BasicTrainTask):
         return self._network
 
     def optimizer(self, context: Context):
-        # return Novograd(context.network.parameters(), 0.0001)
         return torch.optim.AdamW(context.network.parameters(), lr=1e-4, weight_decay=1e-5)
 
     def loss_function(self, context: Context):
@@ -76,24 +71,17 @@ class SegmentationVertebra(BasicTrainTask):
             LoadImaged(keys=("image", "label"), reader="ITKReader"),
             EnsureChannelFirstd(keys=("image", "label")),
             NormalizeIntensityd(keys="image", divisor=2048.0),
-            GetCentroidAndCropd(keys=["label", "image"], roi_size=(128, 128, 64)),  # Size heuristically selected
-            GaussianSmoothedCentroidd(keys="image"),
+            GetCentroidsd(keys="label"),
             GaussianSmoothd(keys="image", sigma=0.75),
             ScaleIntensityd(keys="image", minv=-1.0, maxv=1.0),
-            RandScaleIntensityd(keys="image", factors=(0.75, 1.25), prob=0.80),
-            RandShiftIntensityd(keys="image", offsets=(-0.25, 0.25), prob=0.80),
+            HeuristicCroppingd(keys=["label", "image"]),  # Size heuristically selected
+            GaussianSmoothedCentroidd(keys="image"),
             AddROI(keys="signal"),
             RandSpatialCropd(
                 keys=["image", "label"],
                 roi_size=[self.roi_size[0], self.roi_size[1], self.roi_size[2]],
                 random_size=False,
             ),
-            RandRotated(
-                keys=("image", "label"), range_x=(-0.26, 0.26), range_y=(-0.26, 0.26), range_z=(-0.26, 0.26), prob=0.80
-            ),
-            # Does this do the function of scaling by [−0.85, 1.15] ?
-            RandZoomd(keys=("image", "label"), prob=0.70, min_zoom=0.6, max_zoom=1.15),
-            #
             EnsureTyped(keys=("image", "label"), device=context.device),
             SelectItemsd(keys=("image", "label", "centroids", "original_size", "current_label", "slices_cropped")),
         ]
@@ -114,12 +102,13 @@ class SegmentationVertebra(BasicTrainTask):
             LoadImaged(keys=("image", "label"), reader="ITKReader"),
             EnsureChannelFirstd(keys=("image", "label")),
             NormalizeIntensityd(keys="image", divisor=2048.0),
-            GetCentroidAndCropd(keys="label", roi_size=(128, 128, 64)),  # Size heuristically selected
-            GaussianSmoothedCentroidd(keys="image"),
+            GetCentroidsd(keys="label"),
             GaussianSmoothd(keys="image", sigma=0.75),
             ScaleIntensityd(keys="image", minv=-1.0, maxv=1.0),
+            HeuristicCroppingd(keys=["label", "image"]),  # Size heuristically selected
+            GaussianSmoothedCentroidd(keys="image"),
             AddROI(keys="signal"),
-            EnsureTyped(keys=("image", "label")),
+            EnsureTyped(keys=("image", "label"), device=context.device),
             SelectItemsd(keys=("image", "label", "centroids", "original_size", "current_label", "slices_cropped")),
         ]
 

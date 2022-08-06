@@ -166,6 +166,7 @@ class MyApp(MONAILabelApp):
                 model_segmentation_vertebra=infers["segmentation_vertebra"],  # third stage
                 description="Combines three stage for vertebra segmentation",
             )
+        logger.info(infers)
         return infers
 
     def init_trainers(self) -> Dict[str, TrainTask]:
@@ -269,7 +270,9 @@ def main():
         # Run on all devices
         for device in device_list():
             # res = app.infer(request={"model": args.model, "image": image_id, "device": device})
-            res = app.infer(request={"model": "vertebra_pipeline", "image": image_id, "device": device})
+            res = app.infer(
+                request={"model": "vertebra_pipeline", "image": image_id, "device": device, "slicer": False}
+            )
             label = res["file"]
             label_json = res["params"]
             test_dir = os.path.join(args.studies, "test_labels")
