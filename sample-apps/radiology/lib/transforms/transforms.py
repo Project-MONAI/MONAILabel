@@ -15,8 +15,7 @@ from typing import Dict, Hashable, Mapping
 import numpy as np
 import torch
 from monai.config import KeysCollection
-from monai.networks.layers import GaussianFilter
-from monai.transforms import GaussianSmooth, ScaleIntensity, SpatialCrop
+from monai.transforms import CropForeground, GaussianSmooth, ScaleIntensity, SpatialCrop
 from monai.transforms.transform import MapTransform
 
 logger = logging.getLogger(__name__)
@@ -43,97 +42,122 @@ class BinaryMaskd(MapTransform):
         return d
 
 
-class GetCentroidAndCropd(MapTransform):
+class HeuristicCroppingd(MapTransform):
     def __init__(
         self,
         keys: KeysCollection,
-        roi_size=None,
         allow_missing_keys: bool = False,
     ):
         """
-        Compute centroids and crop image and label
+        Crop image and label
 
         :param keys: The ``keys`` parameter will be used to get and set the actual data item to transform
 
         """
         super().__init__(keys, allow_missing_keys)
-        if roi_size is None:
-            roi_size = [128, 128, 128]
-        self.roi_size = roi_size
+
+    def __call__(self, data: Mapping[Hashable, np.ndarray]) -> Dict[Hashable, np.ndarray]:
+        d: Dict = dict(data)
+        for key in self.key_iterator(d):
+
+            # Alternative Logic:
+
+            # 1/ randomly select vertebra
+            # 2/ spatial crop based on the centroid
+            # 3/ binarise cropped volume
+
+            # logic:
+
+            # 1/ randomly select vertebra
+            # 2/ binarise volume
+            # 3/ apply cropForeground transform
+
+            if key == "label":
+                d["original_size"] = d[key].shape[-3], d[key].shape[-2], d[key].shape[-1]
+
+                # TO DO: WHAT'S THE BEST WAY TO SELECT A DIFFERENT SEGMENT EACH ITERATION
+                # PERHAPS DOING BATCHES AS IN TRANSFORM RandCropByPosNegLabeld ??
+
+                current_idx = np.random.randint(0, len(d["centroids"]))
+
+                d["current_idx"] = current_idx
+
+                d["current_label"] = list(d["centroids"][current_idx].values())[0][0]
+
+                logger.info(f'Processing vertebra: {d["current_label"]}')
+
+                # Make binary the label
+                d["label"][d["label"] != d["current_label"]] = 0
+                d["label"][d["label"] > 0] = 1
+
+                ##########
+                # Cropping
+                ##########
+                def condition(x):
+                    # threshold at 1
+                    return x > 0
+
+                cropper = CropForeground(select_fn=condition, margin=8, k_divisible=32)
+
+                start, stop = cropper.compute_bounding_box(d["label"])
+
+                slices_cropped = [
+                    [start[-3], stop[-3]],
+                    [start[-2], stop[-2]],
+                    [start[-1], stop[-1]],
+                ]
+
+                d["slices_cropped"] = slices_cropped
+
+                # Cropping label
+                d["label"] = d["label"][:, start[-3] : stop[-3], start[-2] : stop[-2], start[-1] : stop[-1]]
+
+                # Cropping image
+                d["image"] = d["image"][:, start[-3] : stop[-3], start[-2] : stop[-2], start[-1] : stop[-1]]
+
+        return d
+
+
+class GetCentroidsd(MapTransform):
+    def __init__(
+        self,
+        keys: KeysCollection,
+        centroids: str = "centroids",
+        allow_missing_keys: bool = False,
+    ):
+        """
+        Get centroids
+
+        :param keys: The ``keys`` parameter will be used to get and set the actual data item to transform
+
+        """
+        super().__init__(keys, allow_missing_keys)
+        self.centroids = centroids
 
     def _getCentroids(self, label):
         centroids = []
         # loop over all segments
+        areas = []
         for seg_class in np.unique(label):
             c = {}
             # skip background
             if seg_class == 0:
                 continue
             # get centre of mass (CoM)
-            centre = [np.average(indices).astype(int) for indices in np.where(label == seg_class)]
-            c["label"] = int(seg_class)
-            c["X"] = centre[-3]
-            c["Y"] = centre[-2]
-            c["Z"] = centre[-1]
+            centre = []
+            for indices in np.where(label == seg_class):
+                avg_indices = np.average(indices).astype(int)
+                centre.append(avg_indices)
+            c[f"label_{int(seg_class)}"] = [int(seg_class), centre[-3], centre[-2], centre[-1]]
             centroids.append(c)
+
         return centroids
 
     def __call__(self, data: Mapping[Hashable, np.ndarray]) -> Dict[Hashable, np.ndarray]:
         d: Dict = dict(data)
         for key in self.key_iterator(d):
-            # Logic:
-
-            # 1/ get centroids
-            # 2/ randomly select vertebra
-            # 3/ spatial crop based on the centroid
-            # 4/ binarise cropped volume
-
-            # Alternative logic:
-
-            # 1/ get centroids
-            # 2/ randomly select vertebra
-            # 3/ binarise volume
-            # 4/ apply cropForeground transform
-
-            if key == "label":
-
-                # Get centroids
-                d["centroids"] = self._getCentroids(d[key])
-
-                d["original_size"] = d[key].shape[-3], d[key].shape[-2], d[key].shape[-1]
-
-                # TO DO: WHAT'S THE BEST WAY TO SELECT A DIFFERENT SEGMENT EACH ITERATION
-                # PERHAPS DOING BATCHES AS IN TRANSFORM RandCropByPosNegLabeld
-                current_label = np.random.randint(0, len(d["centroids"]))
-                first_label = d["centroids"][current_label]
-                d["current_label"] = current_label
-
-                logger.info(f"Processing vertebra: {first_label['label']}")
-
-                centroid = [first_label["X"], first_label["Y"], first_label["Z"]]
-
-                # Cropping
-                cropper = SpatialCrop(roi_center=centroid, roi_size=self.roi_size)
-
-                slices_cropped = [
-                    [cropper.slices[-3].start, cropper.slices[-3].stop],
-                    [cropper.slices[-2].start, cropper.slices[-2].stop],
-                    [cropper.slices[-1].start, cropper.slices[-1].stop],
-                ]
-
-                d["slices_cropped"] = slices_cropped
-
-                d[key] = cropper(d[key])
-
-                # Make binary the cropped label
-                d[key][d[key] != first_label["label"]] = 0
-                d[key][d[key] > 0] = 1
-
-            elif key == "image":
-                d[key] = cropper(d[key])
-            else:
-                print("This transform only applies to the label or image")
-
+            # Get centroids
+            d[self.centroids] = self._getCentroids(d[key])
         return d
 
 
@@ -159,27 +183,28 @@ class GaussianSmoothedCentroidd(MapTransform):
             if key == "image":
                 logger.info("Processing label: " + d["label_meta_dict"]["filename_or_obj"])
 
-                c_label = d["centroids"][d["current_label"]]
-                signal = np.zeros(d["original_size"], dtype=np.float32)
-                signal[c_label["X"], c_label["Y"], c_label["Z"]] = 1.0
+                signal = np.zeros(
+                    (1, d["original_size"][-3], d["original_size"][-2], d["original_size"][-1]), dtype=np.float32
+                )
+
+                X, Y, Z = (
+                    list(d["centroids"][d["current_idx"]].values())[0][-3],
+                    list(d["centroids"][d["current_idx"]].values())[0][-2],
+                    list(d["centroids"][d["current_idx"]].values())[0][-1],
+                )
+                signal[:, X, Y, Z] = 1.0
+
                 signal = signal[
+                    :,
                     d["slices_cropped"][-3][0] : d["slices_cropped"][-3][1],
                     d["slices_cropped"][-2][0] : d["slices_cropped"][-2][1],
                     d["slices_cropped"][-1][0] : d["slices_cropped"][-1][1],
                 ]
-                signal = signal[None]
 
-                # Apply a Gaussian filter to the signal
-                signal_tensor = torch.tensor(signal[0])
-                pt_gaussian = GaussianFilter(len(signal_tensor.shape), sigma=self.sigma)
-                signal_tensor = pt_gaussian(signal_tensor.unsqueeze(0).unsqueeze(0))
-                signal_tensor = signal_tensor.squeeze(0).squeeze(0)
-                signal[0] = signal_tensor.detach().cpu().numpy()
-                signal[0] = (signal[0] - np.min(signal[0])) / (np.max(signal[0]) - np.min(signal[0]))
-                d["signal"] = signal
+                signal = GaussianSmooth(self.sigma)(signal)
 
-            else:
-                print("This transform only applies to the signal")
+                d["signal"] = signal * d["label"]
+
         return d
 
 
@@ -312,7 +337,7 @@ class VertebraLocalizationPostProcessing(MapTransform):
                     continue
                 X, Y, Z = np.where(d[key][l + 1, ...] == d[key][l + 1, ...].max())
                 X, Y, Z = X[0], Y[0], Z[0]
-                centroid[f"label_{l+1}"] = [X, Y, Z]
+                centroid[f"label_{l + 1}"] = [X, Y, Z]
                 centroids.append(centroid)
 
             print(centroids)
@@ -338,23 +363,39 @@ class VertebraLocalizationSegmentation(MapTransform):
         super().__init__(keys, allow_missing_keys)
         self.result = result
 
+    def _getCentroids(self, label):
+        centroids = []
+        # loop over all segments
+        areas = []
+        for seg_class in np.unique(label):
+            c = {}
+            # skip background
+            if seg_class == 0:
+                continue
+            # get centre of mass (CoM)
+            centre = []
+            for indices in np.where(label == seg_class):
+                most_indices = np.percentile(indices, 60).astype(int)
+                # avg_indices = np.average(indices).astype(int)
+                centre.append(most_indices)
+            if len(indices) < 1000:
+                continue
+            areas.append(len(indices))
+            c[f"label_{int(seg_class)}"] = [int(seg_class), centre[-3], centre[-2], centre[-1]]
+            centroids.append(c)
+
+        # Rules to discard centroids
+        # 1/ Should we consider the distance between centroids?
+        # 2/ Should we consider the area covered by the vertebra
+
+        return centroids
+
     def __call__(self, data: Mapping[Hashable, np.ndarray]) -> Dict[Hashable, np.ndarray]:
         d: Dict = dict(data)
         centroids = []
         for key in self.key_iterator(d):
-
             # Getting centroids
-            for l in range(d[key].shape[0] - 1):
-                centroid = {}
-                # Check whether the area is higher than a threshold
-                if d[key][l + 1, ...].max() < 30.0:
-                    continue
-                X, Y, Z = np.where(d[key][l + 1, ...] == d[key][l + 1, ...].max())
-                X, Y, Z = X[0], Y[0], Z[0]
-                centroid[f"label_{l+1}"] = [X, Y, Z]
-                centroids.append(centroid)
-
-            print(centroids)
+            centroids = self._getCentroids(d[key])
             if d.get(self.result) is None:
                 d[self.result] = dict()
             d[self.result]["centroids"] = centroids
@@ -385,22 +426,22 @@ class AddROIThirdStage(MapTransform):
         d: Dict = dict(data)
         for key in self.key_iterator(d):
             if key == "image":
-
                 ###########
                 # Crop the image
                 ###########
 
                 d["original_size"] = d[key].shape[-3], d[key].shape[-2], d[key].shape[-1]
                 current_label = np.random.randint(0, len(d["centroids"]))
-                d["current_label"] = list(d["centroids"][current_label].values())[0][-4]
+                d["current_label"] = list(d["centroids"]["centroids"][current_label].values())[0][-4]
                 X, Y, Z, = (
-                    list(d["centroids"][current_label].values())[0][-3],
-                    list(d["centroids"][current_label].values())[0][-2],
-                    list(d["centroids"][current_label].values())[0][-1],
+                    list(d["centroids"]["centroids"][current_label].values())[0][-3],
+                    list(d["centroids"]["centroids"][current_label].values())[0][-2],
+                    list(d["centroids"]["centroids"][current_label].values())[0][-1],
                 )
                 centroid = [X, Y, Z]
                 # Cropping
-                cropper = SpatialCrop(roi_center=centroid, roi_size=(128, 128, 96))
+                cropper = SpatialCrop(roi_center=centroid, roi_size=(128, 128, 128))
+
                 slices_cropped = [
                     [cropper.slices[-3].start, cropper.slices[-3].stop],
                     [cropper.slices[-2].start, cropper.slices[-2].stop],
@@ -408,29 +449,26 @@ class AddROIThirdStage(MapTransform):
                 ]
                 d["slices_cropped"] = slices_cropped
                 d[key] = cropper(d[key])
+
                 # Smooth the image as it was done during training
                 d[key] = GaussianSmooth(sigma=0.75)(d[key])
+
+                # Scale image intensity as it was done during training
+                d[key] = ScaleIntensity(minv=-1.0, maxv=1.0)(d[key])
 
                 #################################
                 # Create signal based on centroid
                 #################################
-
-                signal = np.zeros(d["original_size"], dtype=np.float32)
-                signal[X, Y, Z] = 1.0
-                signal = signal[
-                    d["slices_cropped"][-3][0] : d["slices_cropped"][-3][1],
-                    d["slices_cropped"][-2][0] : d["slices_cropped"][-2][1],
-                    d["slices_cropped"][-1][0] : d["slices_cropped"][-1][1],
-                ]
-                signal = signal[None]
-
-                # Apply a Gaussian filter to the signal
-                signal_tensor = torch.tensor(signal[0])
-                pt_gaussian = GaussianFilter(len(signal_tensor.shape), sigma=self.sigma)
-                signal_tensor = pt_gaussian(signal_tensor.unsqueeze(0).unsqueeze(0))
-                signal_tensor = signal_tensor.squeeze(0).squeeze(0)
-                signal[0] = signal_tensor.detach().cpu().numpy()
-                signal[0] = (signal[0] - np.min(signal[0])) / (np.max(signal[0]) - np.min(signal[0]))
+                signal = np.zeros(
+                    (1, d["original_size"][-3], d["original_size"][-2], d["original_size"][-1]), dtype=np.float32
+                )
+                X, Y, Z = (
+                    list(d["centroids"][d["current_idx"]].values())[0][-3],
+                    list(d["centroids"][d["current_idx"]].values())[0][-2],
+                    list(d["centroids"][d["current_idx"]].values())[0][-1],
+                )
+                signal[:, X, Y, Z] = 1.0
+                signal = GaussianSmooth(self.sigma)(signal)
 
                 ##################################
                 # Concatenate signal with centroid

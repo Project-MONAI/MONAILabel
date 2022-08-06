@@ -166,6 +166,7 @@ class MyApp(MONAILabelApp):
                 model_segmentation_vertebra=infers["segmentation_vertebra"],  # third stage
                 description="Combines three stage for vertebra segmentation",
             )
+        logger.info(infers)
         return infers
 
     def init_trainers(self) -> Dict[str, TrainTask]:
@@ -243,12 +244,12 @@ def main():
     )
 
     home = str(Path.home())
-    studies = f"{home}/Documents/workspace/Datasets/radiology/VerSe2020/test"
+    studies = f"{home}/Documents/workspace/Datasets/radiology/VerSe2020/small"
 
     parser = argparse.ArgumentParser()
     parser.add_argument("-s", "--studies", default=studies)
-    parser.add_argument("-m", "--model", default="all")
-    parser.add_argument("-t", "--test", default="infer", choices=("train", "infer"))
+    parser.add_argument("-m", "--model", default="segmentation_vertebra")
+    parser.add_argument("-t", "--test", default="train", choices=("train", "infer"))
     args = parser.parse_args()
 
     app_dir = os.path.dirname(__file__)
@@ -269,7 +270,9 @@ def main():
         # Run on all devices
         for device in device_list():
             # res = app.infer(request={"model": args.model, "image": image_id, "device": device})
-            res = app.infer(request={"model": "vertebra_pipeline", "image": image_id, "device": device})
+            res = app.infer(
+                request={"model": "vertebra_pipeline", "image": image_id, "device": device, "slicer": False}
+            )
             label = res["file"]
             label_json = res["params"]
             test_dir = os.path.join(args.studies, "test_labels")
@@ -288,7 +291,7 @@ def main():
         request={
             "model": args.model,
             "max_epochs": 10,
-            "dataset": "CacheDataset",  # PersistentDataset, CacheDataset
+            "dataset": "Dataset",  # PersistentDataset, CacheDataset
             "train_batch_size": 1,
             "val_batch_size": 1,
             "multi_gpu": False,

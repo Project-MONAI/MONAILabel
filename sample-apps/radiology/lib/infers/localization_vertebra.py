@@ -10,6 +10,7 @@
 # limitations under the License.
 from typing import Callable, Sequence
 
+from lib.transforms.transforms import VertebraLocalizationSegmentation
 from monai.inferers import Inferer, SlidingWindowInferer
 from monai.transforms import (
     Activationsd,
@@ -17,22 +18,15 @@ from monai.transforms import (
     CropForegroundd,
     EnsureChannelFirstd,
     EnsureTyped,
+    GaussianSmoothd,
     KeepLargestConnectedComponentd,
     LoadImaged,
     NormalizeIntensityd,
-    Spacingd,
+    ScaleIntensityd,
 )
 
 from monailabel.interfaces.tasks.infer import InferTask, InferType
 from monailabel.transform.post import Restored
-
-
-class SimpleJsonWriter:
-    def __init__(self, label="pred"):
-        self.label = label
-
-    def __call__(self, data):
-        return None, data["result"]
 
 
 class LocalizationVertebra(InferTask):
@@ -64,12 +58,15 @@ class LocalizationVertebra(InferTask):
 
     def pre_transforms(self, data=None) -> Sequence[Callable]:
         return [
-            LoadImaged(keys=("image", "first_stage_pred"), reader="ITKReader"),
-            EnsureTyped(keys=("image", "first_stage_pred"), device=data.get("device") if data else None),
-            EnsureChannelFirstd(keys=("image", "first_stage_pred")),
-            Spacingd(keys=("image", "first_stage_pred"), pixdim=self.target_spacing, mode=("bilinear", "nearest")),
+            LoadImaged(keys=("image", "first_stage_pred"), reader="ITKReader", allow_missing_keys=True),
+            EnsureTyped(
+                keys=("image", "first_stage_pred"), device=data.get("device") if data else None, allow_missing_keys=True
+            ),
+            EnsureChannelFirstd(keys=("image", "first_stage_pred"), allow_missing_keys=True),
             NormalizeIntensityd(keys="image", nonzero=True),
-            CropForegroundd(keys=("image", "first_stage_pred"), source_key="image"),
+            GaussianSmoothd(keys="image", sigma=0.75),
+            ScaleIntensityd(keys="image", minv=-1.0, maxv=1.0),
+            CropForegroundd(keys=("image", "first_stage_pred"), source_key="image", allow_missing_keys=True),
         ]
 
     def inferer(self, data=None) -> Inferer:
@@ -79,6 +76,7 @@ class LocalizationVertebra(InferTask):
 
     def post_transforms(self, data=None) -> Sequence[Callable]:
         largest_cc = False if not data else data.get("largest_cc", False)
+        slicer = False if not data else data.get("slicer", False)
         applied_labels = list(self.labels.values()) if isinstance(self.labels, dict) else self.labels
         t = [
             EnsureTyped(keys="pred", device=data.get("device") if data else None),
@@ -88,9 +86,6 @@ class LocalizationVertebra(InferTask):
         if largest_cc:
             t.append(KeepLargestConnectedComponentd(keys="pred", applied_labels=applied_labels))
         t.append(Restored(keys="pred", ref_image="image"))
-        # t.append(VertebraLocalizationSegmentation(keys="pred", result="result"))
+        if not slicer:
+            t.append(VertebraLocalizationSegmentation(keys="pred", result="result"))
         return t
-
-    def writer(self, data, extension=None, dtype=None):
-        writer = SimpleJsonWriter(label=self.output_label_key)
-        return writer(data)

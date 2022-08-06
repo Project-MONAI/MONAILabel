@@ -14,23 +14,19 @@ import torch
 from monai.apps.deepedit.transforms import NormalizeLabelsInDatasetd
 from monai.handlers import TensorBoardImageHandler, from_engine
 from monai.inferers import SlidingWindowInferer
-from monai.losses import DiceLoss
+from monai.losses import DiceCELoss
 from monai.transforms import (
     Activationsd,
     AsDiscreted,
     CropForegroundd,
     EnsureChannelFirstd,
     EnsureTyped,
+    GaussianSmoothd,
     LoadImaged,
     NormalizeIntensityd,
-    RandGaussianSmoothd,
-    RandRotated,
-    RandScaleIntensityd,
-    RandShiftIntensityd,
     RandSpatialCropd,
-    RandZoomd,
+    ScaleIntensityd,
     SelectItemsd,
-    Spacingd,
 )
 
 from monailabel.tasks.train.basic_train import BasicTrainTask, Context
@@ -60,11 +56,10 @@ class LocalizationVertebra(BasicTrainTask):
         return self._network
 
     def optimizer(self, context: Context):
-        # return Novograd(context.network.parameters(), 0.0001)
         return torch.optim.AdamW(context.network.parameters(), lr=1e-4, weight_decay=1e-5)
 
     def loss_function(self, context: Context):
-        return DiceLoss(to_onehot_y=True, softmax=True)
+        return DiceCELoss(to_onehot_y=True, softmax=True)
 
     def lr_scheduler_handler(self, context: Context):
         return None
@@ -77,24 +72,17 @@ class LocalizationVertebra(BasicTrainTask):
             LoadImaged(keys=("image", "label"), reader="ITKReader"),
             NormalizeLabelsInDatasetd(keys="label", label_names=self._labels),  # Specially for missing labels
             EnsureChannelFirstd(keys=("image", "label")),
-            Spacingd(keys=("image", "label"), pixdim=self.target_spacing, mode=("bilinear", "nearest")),
-            NormalizeIntensityd(keys="image", nonzero=True),
-            CropForegroundd(keys=("image", "label"), source_key="image", margin=32),
+            EnsureTyped(keys=("image", "label"), device=context.device),
+            NormalizeIntensityd(keys="image", divisor=2048.0),
+            # Margin is high (64) to fit 96x96x96 patches
+            CropForegroundd(keys=("image", "label"), source_key="image", margin=64),
             RandSpatialCropd(
                 keys=["image", "label"],
                 roi_size=[self.roi_size[0], self.roi_size[1], self.roi_size[2]],
                 random_size=False,
             ),
-            RandScaleIntensityd(keys="image", factors=(0.75, 1.25), prob=0.80),
-            RandShiftIntensityd(keys="image", offsets=(-0.25, 0.25), prob=0.80),
-            RandRotated(
-                keys=("image", "label"), range_x=(-0.26, 0.26), range_y=(-0.26, 0.26), range_z=(-0.26, 0.26), prob=0.80
-            ),
-            # Does this do the function of scaling by [−0.85, 1.15] ?
-            RandZoomd(keys=("image", "label"), prob=0.70, min_zoom=0.6, max_zoom=1.15),
-            #
-            RandGaussianSmoothd(keys="image", sigma_x=(0.25, 1.5), sigma_y=(0.25, 1.5), sigma_z=(0.25, 1.5), prob=0.5),
-            EnsureTyped(keys=("image", "label"), device=context.device),
+            GaussianSmoothd(keys="image", sigma=0.75),
+            ScaleIntensityd(keys="image", minv=-1.0, maxv=1.0),
             SelectItemsd(keys=("image", "label")),
         ]
 
@@ -115,8 +103,9 @@ class LocalizationVertebra(BasicTrainTask):
             NormalizeLabelsInDatasetd(keys="label", label_names=self._labels),  # Specially for missing labels
             EnsureTyped(keys=("image", "label")),
             EnsureChannelFirstd(keys=("image", "label")),
-            Spacingd(keys=("image", "label"), pixdim=self.target_spacing, mode=("bilinear", "nearest")),
-            NormalizeIntensityd(keys="image", nonzero=True),
+            NormalizeIntensityd(keys="image", divisor=2048.0),
+            GaussianSmoothd(keys="image", sigma=0.75),
+            ScaleIntensityd(keys="image", minv=-1.0, maxv=1.0),
             SelectItemsd(keys=("image", "label")),
         ]
 

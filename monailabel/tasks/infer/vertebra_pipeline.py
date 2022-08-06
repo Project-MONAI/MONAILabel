@@ -25,7 +25,6 @@ class InferVertebraPipeline(InferTask):
         type=InferType.SEGMENTATION,
         dimension=3,
         description="Combines three stages for vertebra segmentation",
-        batch_size=1,
         output_largest_cc=False,
     ):
         super().__init__(
@@ -39,7 +38,6 @@ class InferVertebraPipeline(InferTask):
         self.model_localization_spine = model_localization_spine
         self.model_localization_vertebra = model_localization_vertebra
         self.model_segmentation_vertebra = model_segmentation_vertebra
-        self.batch_size = batch_size
         self.output_largest_cc = output_largest_cc
 
     def post_transforms(self, data=None):
@@ -47,6 +45,9 @@ class InferVertebraPipeline(InferTask):
 
     def pre_transforms(self, data=None):
         return None
+
+    def is_valid(self) -> bool:
+        return True
 
     def __call__(self, request):
 

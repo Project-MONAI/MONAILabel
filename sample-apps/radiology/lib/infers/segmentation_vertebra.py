@@ -20,7 +20,6 @@ from monai.transforms import (
     KeepLargestConnectedComponentd,
     LoadImaged,
     NormalizeIntensityd,
-    ScaleIntensityd,
     ToNumpyd,
 )
 
@@ -61,8 +60,8 @@ class SegmentationVertebra(InferTask):
             EnsureTyped(keys="image", device=data.get("device") if data else None),
             EnsureChannelFirstd(keys="image"),
             NormalizeIntensityd(keys="image", divisor=2048.0),
+            # Gaussian smoothing and image normalization to images happens in the next transform
             AddROIThirdStage(keys="image"),
-            ScaleIntensityd(keys="image", minv=-1.0, maxv=1.0),
         ]
 
     def inferer(self, data=None) -> Inferer:

@@ -14,7 +14,7 @@ import torch
 from lib.transforms.transforms import BinaryMaskd
 from monai.handlers import TensorBoardImageHandler, from_engine
 from monai.inferers import SlidingWindowInferer
-from monai.losses import DiceLoss
+from monai.losses import DiceCELoss
 from monai.transforms import (
     Activationsd,
     AsDiscreted,
@@ -63,7 +63,7 @@ class LocalizationSpine(BasicTrainTask):
         return torch.optim.AdamW(context.network.parameters(), lr=1e-4, weight_decay=1e-5)
 
     def loss_function(self, context: Context):
-        return DiceLoss(to_onehot_y=True, softmax=True)
+        return DiceCELoss(to_onehot_y=True, softmax=True)
 
     def lr_scheduler_handler(self, context: Context):
         return None
