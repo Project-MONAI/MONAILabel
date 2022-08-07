@@ -19,7 +19,6 @@ from monai.transforms import (
     AsDiscreted,
     EnsureChannelFirstd,
     EnsureTyped,
-    GaussianSmoothd,
     LoadImaged,
     NormalizeIntensityd,
     RandScaleIntensityd,
@@ -73,7 +72,6 @@ class Segmentation(BasicTrainTask):
             EnsureChannelFirstd(keys=("image", "label")),
             EnsureTyped(keys=("image", "label"), device=context.device),
             NormalizeIntensityd(keys="image", nonzero=True),
-            GaussianSmoothd(keys="image", sigma=0.75),
             RandScaleIntensityd(keys="image", factors=0.1, prob=0.7),
             RandShiftIntensityd(keys="image", offsets=0.1, prob=0.7),
             ScaleIntensityd(keys="image", minv=-1.0, maxv=1.0),
@@ -102,14 +100,13 @@ class Segmentation(BasicTrainTask):
             EnsureChannelFirstd(keys=("image", "label")),
             EnsureTyped(keys=("image", "label")),
             NormalizeIntensityd(keys="image", nonzero=True),
-            GaussianSmoothd(keys="image", sigma=0.75),
             ScaleIntensityd(keys="image", minv=-1.0, maxv=1.0),
             SelectItemsd(keys=("image", "label")),
         ]
 
     def val_inferer(self, context: Context):
         return SlidingWindowInferer(
-            roi_size=self.roi_size, sw_batch_size=8, overlap=0.5, padding_mode="replicate", mode="gaussian"
+            roi_size=self.roi_size, sw_batch_size=4, overlap=0.4, padding_mode="replicate", mode="gaussian"
         )
 
     def train_key_metric(self, context: Context):
