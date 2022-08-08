@@ -16,9 +16,11 @@ from monai.transforms import (
     AsDiscreted,
     EnsureChannelFirstd,
     EnsureTyped,
+    GaussianSmoothd,
     KeepLargestConnectedComponentd,
     LoadImaged,
-    ScaleIntensityRanged,
+    NormalizeIntensityd,
+    ScaleIntensityd,
     Spacingd,
 )
 
@@ -59,11 +61,15 @@ class Segmentation(InferTask):
             EnsureTyped(keys="image", device=data.get("device") if data else None),
             EnsureChannelFirstd(keys="image"),
             Spacingd(keys="image", pixdim=self.target_spacing),
-            ScaleIntensityRanged(keys="image", a_min=-175, a_max=250, b_min=0.0, b_max=1.0, clip=True),
+            NormalizeIntensityd(keys="image", nonzero=True),
+            GaussianSmoothd(keys="image", sigma=0.75),
+            ScaleIntensityd(keys="image", minv=-1.0, maxv=1.0),
         ]
 
     def inferer(self, data=None) -> Inferer:
-        return SlidingWindowInferer(roi_size=self.roi_size)
+        return SlidingWindowInferer(
+            roi_size=self.roi_size, sw_batch_size=4, overlap=0.4, padding_mode="replicate", mode="gaussian"
+        )
 
     def post_transforms(self, data=None) -> Sequence[Callable]:
         largest_cc = False if not data else data.get("largest_cc", False)

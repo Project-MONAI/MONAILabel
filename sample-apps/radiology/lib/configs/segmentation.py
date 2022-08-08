@@ -56,13 +56,13 @@ class Segmentation(TaskConfig):
         ]
 
         # Download PreTrained Model
-        if strtobool(self.conf.get("use_pretrained_model", "true")):
+        if strtobool(self.conf.get("use_pretrained_model", "false")):
             url = f"{self.conf.get('pretrained_path', self.PRE_TRAINED_PATH)}/segmentation_unet_multilabel.pt"
             download_file(url, self.path[0])
 
         self.target_spacing = (1.0, 1.0, 1.0)  # target space for image
         # Setting ROI size should consider max width, height and depth of the images
-        self.roi_size = (128, 128, 128)  # sliding window size for train and infer
+        self.roi_size = (96, 96, 96)  # sliding window size for train and infer
 
         # Network
         self.network = UNet(
@@ -72,7 +72,7 @@ class Segmentation(TaskConfig):
             channels=[16, 32, 64, 128, 256],
             strides=[2, 2, 2, 2],
             num_res_units=2,
-            norm="batch",
+            dropout=0.2,
         )
 
     def infer(self) -> Union[InferTask, Dict[str, InferTask]]:
