@@ -12,8 +12,10 @@ import glob
 import os
 import shutil
 
-data_dir = "/home/andres/Documents/workspace/Datasets/radiology/BRATS-2021/NeuroAtlas-Labels/brats-ns16/brats-ns16/"
-output_folder = "/home/andres/Documents/workspace/Datasets/radiology/BRATS-2021/NeuroAtlas-Labels/brats-ns16/small_monailabel/labels/final/"
+data_dir = (
+    "/home/andres/Documents/workspace/Datasets/radiology/BRATS-2021/NeuroAtlas-Labels/discard-poor-quality/PoorQuality/"
+)
+output_folder = "/home/andres/Documents/workspace/Datasets/radiology/BRATS-2021/NeuroAtlas-Labels/discard-poor-quality/modified_name/"
 
 all_files = glob.glob(os.path.join(data_dir, "*.nrrd"))
 

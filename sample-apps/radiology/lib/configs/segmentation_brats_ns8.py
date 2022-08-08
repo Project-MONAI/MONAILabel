@@ -32,14 +32,14 @@ class SegmentationBrats(TaskConfig):
 
         # Labels
         self.labels = {
-            "segment1": 1,
-            "segment2": 2,
-            "segment3": 3,
-            "segment4": 4,
-            "segment5": 5,
-            "segment6": 6,
-            "segment7": 7,
-            "segment8": 8,
+            "Cerebral white matter": 1,
+            "Cerebral cortex": 2,
+            "Ventricles": 3,
+            "Cerebellum": 4,
+            "Subcortical nuclei": 5,
+            "Brain-stem": 6,
+            "Brain tumor + necrotic": 7,
+            "Edema": 8,
         }
 
         # Number of input channels - 4 for BRATS and 1 for spleen

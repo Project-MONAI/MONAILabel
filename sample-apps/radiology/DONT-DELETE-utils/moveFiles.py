@@ -27,11 +27,11 @@ import shutil
 #     shutil.copy(label_path, output_folder + new_filename + file[-5:])
 
 
-source_labels = "/home/andres/Documents/workspace/Datasets/radiology/BRATS-2021/neuro-atlas-third-labels-ventricles/monailabel/labels/final/"
-source_merged_images = "/home/andres/Documents/workspace/Datasets/radiology/BRATS-2021/test-ventricles/mergedFiles/"
-output_folder = (
-    "/home/andres/Documents/workspace/Datasets/radiology/BRATS-2021/neuro-atlas-third-labels-ventricles/monailabel/"
+source_labels = "/home/andres/Documents/workspace/Datasets/radiology/BRATS-2021/NeuroAtlas-Labels/discard-poor-quality/modified_name/"
+source_merged_images = (
+    "/home/andres/Documents/workspace/Datasets/radiology/BRATS-2021/NeuroAtlas-Labels/brats-ns8/monailabel/"
 )
+output_folder = "/home/andres/Documents/workspace/Datasets/radiology/BRATS-2021/NeuroAtlas-Labels/brats-ns8/tmp/"
 
 all_files = glob.glob(os.path.join(source_labels, "*.nrrd"))
 
