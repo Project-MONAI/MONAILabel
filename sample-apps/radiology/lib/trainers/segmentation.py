@@ -19,6 +19,7 @@ from monai.transforms import (
     AsDiscreted,
     EnsureChannelFirstd,
     EnsureTyped,
+    GaussianSmoothd,
     LoadImaged,
     NormalizeIntensityd,
     RandScaleIntensityd,
@@ -55,7 +56,7 @@ class Segmentation(BasicTrainTask):
         return self._network
 
     def optimizer(self, context: Context):
-        return torch.optim.Adam(context.network.parameters(), lr=1e-3)
+        return torch.optim.AdamW(context.network.parameters(), lr=1e-4, weight_decay=1e-5)
 
     def loss_function(self, context: Context):
         return DiceCELoss(to_onehot_y=True, softmax=True)
@@ -72,6 +73,7 @@ class Segmentation(BasicTrainTask):
             EnsureChannelFirstd(keys=("image", "label")),
             EnsureTyped(keys=("image", "label"), device=context.device),
             NormalizeIntensityd(keys="image", nonzero=True),
+            GaussianSmoothd(keys="image", sigma=0.75),
             RandScaleIntensityd(keys="image", factors=0.1, prob=0.7),
             RandShiftIntensityd(keys="image", offsets=0.1, prob=0.7),
             ScaleIntensityd(keys="image", minv=-1.0, maxv=1.0),
@@ -100,6 +102,7 @@ class Segmentation(BasicTrainTask):
             EnsureChannelFirstd(keys=("image", "label")),
             EnsureTyped(keys=("image", "label")),
             NormalizeIntensityd(keys="image", nonzero=True),
+            GaussianSmoothd(keys="image", sigma=0.75),
             ScaleIntensityd(keys="image", minv=-1.0, maxv=1.0),
             SelectItemsd(keys=("image", "label")),
         ]

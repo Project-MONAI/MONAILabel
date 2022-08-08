@@ -16,6 +16,7 @@ from monai.transforms import (
     AsDiscreted,
     EnsureChannelFirstd,
     EnsureTyped,
+    GaussianSmoothd,
     KeepLargestConnectedComponentd,
     LoadImaged,
     NormalizeIntensityd,
@@ -59,6 +60,7 @@ class Segmentation(InferTask):
             EnsureChannelFirstd(keys="image"),
             EnsureTyped(keys="image", device=data.get("device") if data else None),
             NormalizeIntensityd(keys="image", nonzero=True),
+            GaussianSmoothd(keys="image", sigma=0.75),
             ScaleIntensityd(keys="image", minv=-1.0, maxv=1.0),
         ]
 
