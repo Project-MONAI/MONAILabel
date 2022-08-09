@@ -56,8 +56,8 @@ class Segmentation(InferTask):
     def pre_transforms(self, data=None) -> Sequence[Callable]:
         return [
             LoadImaged(keys="image", reader="ITKReader"),
-            EnsureChannelFirstd(keys="image"),
             EnsureTyped(keys="image", device=data.get("device") if data else None),
+            EnsureChannelFirstd(keys="image"),
             Spacingd(keys="image", pixdim=self.target_spacing),
             ScaleIntensityRanged(keys="image", a_min=-175, a_max=250, b_min=0.0, b_max=1.0, clip=True),
         ]
