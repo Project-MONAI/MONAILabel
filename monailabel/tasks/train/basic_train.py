@@ -146,7 +146,7 @@ class BasicTrainTask(TrainTask):
             "val_batch_size": 1,
             "multi_gpu": True,
             "gpus": "all",
-            "dataset": ["CacheDataset", "PersistentDataset", "SmartCacheDataset", "Dataset"],
+            "dataset": ["SmartCacheDataset", "CacheDataset", "PersistentDataset", "Dataset"],
             "dataloader": ["ThreadDataLoader", "DataLoader"],
         }
         if config:

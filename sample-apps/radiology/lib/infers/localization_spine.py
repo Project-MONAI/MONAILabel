@@ -10,6 +10,7 @@
 # limitations under the License.
 from typing import Callable, Sequence
 
+from lib.transforms.transforms import BinaryMaskd
 from monai.inferers import Inferer, SlidingWindowInferer
 from monai.transforms import (
     Activationsd,
@@ -79,5 +80,6 @@ class LocalizationSpine(InferTask):
         ]
         if largest_cc:
             t.append(KeepLargestConnectedComponentd(keys="pred", applied_labels=applied_labels))
+        t.append(BinaryMaskd(keys="pred"))
         t.append(Restored(keys="pred", ref_image="image"))
         return t

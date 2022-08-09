@@ -11,6 +11,7 @@
 import logging
 
 import torch
+from lib.transforms.transforms import NormalizeLabelsInDatasetd
 from monai.apps.deepedit.interaction import Interaction
 from monai.apps.deepedit.transforms import (
     AddGuidanceSignalDeepEditd,
@@ -18,7 +19,6 @@ from monai.apps.deepedit.transforms import (
     AddRandomGuidanceDeepEditd,
     FindAllValidSlicesMissingLabelsd,
     FindDiscrepancyRegionsDeepEditd,
-    NormalizeLabelsInDatasetd,
     SplitPredsLabeld,
 )
 from monai.handlers import MeanDice, from_engine
@@ -100,8 +100,8 @@ class DeepEdit(BasicTrainTask):
     def train_pre_transforms(self, context: Context):
         return [
             LoadImaged(keys=("image", "label"), reader="ITKReader"),
-            NormalizeLabelsInDatasetd(keys="label", label_names=self._labels),
             EnsureChannelFirstd(keys=("image", "label")),
+            NormalizeLabelsInDatasetd(keys="label", label_names=self._labels),
             Orientationd(keys=["image", "label"], axcodes="RAS"),
             # This transform may not work well for MR images
             ScaleIntensityRanged(keys="image", a_min=-175, a_max=250, b_min=0.0, b_max=1.0, clip=True),
@@ -134,8 +134,8 @@ class DeepEdit(BasicTrainTask):
     def val_pre_transforms(self, context: Context):
         return [
             LoadImaged(keys=("image", "label"), reader="ITKReader"),
-            NormalizeLabelsInDatasetd(keys="label", label_names=self._labels),
             EnsureChannelFirstd(keys=("image", "label")),
+            NormalizeLabelsInDatasetd(keys="label", label_names=self._labels),
             Orientationd(keys=["image", "label"], axcodes="RAS"),
             # This transform may not work well for MR images
             ScaleIntensityRanged(keys=("image"), a_min=-175, a_max=250, b_min=0.0, b_max=1.0, clip=True),

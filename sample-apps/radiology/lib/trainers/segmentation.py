@@ -11,7 +11,7 @@
 import logging
 
 import torch
-from monai.apps.deepedit.transforms import NormalizeLabelsInDatasetd
+from lib.transforms.transforms import NormalizeLabelsInDatasetd
 from monai.handlers import TensorBoardImageHandler, from_engine
 from monai.inferers import SlidingWindowInferer
 from monai.losses import DiceCELoss
@@ -73,8 +73,8 @@ class Segmentation(BasicTrainTask):
     def train_pre_transforms(self, context: Context):
         return [
             LoadImaged(keys=("image", "label"), reader="ITKReader"),
-            NormalizeLabelsInDatasetd(keys="label", label_names=self._labels),  # Specially for missing labels
             EnsureChannelFirstd(keys=("image", "label")),
+            NormalizeLabelsInDatasetd(keys="label", label_names=self._labels),  # Specially for missing labels
             Spacingd(keys=("image", "label"), pixdim=self.target_spacing, mode=("bilinear", "nearest")),
             CropForegroundd(keys=("image", "label"), source_key="image"),
             SpatialPadd(keys=("image", "label"), spatial_size=self.roi_size),
@@ -112,8 +112,8 @@ class Segmentation(BasicTrainTask):
     def val_pre_transforms(self, context: Context):
         return [
             LoadImaged(keys=("image", "label"), reader="ITKReader"),
-            NormalizeLabelsInDatasetd(keys="label", label_names=self._labels),  # Specially for missing labels
             EnsureChannelFirstd(keys=("image", "label")),
+            NormalizeLabelsInDatasetd(keys="label", label_names=self._labels),  # Specially for missing labels
             Spacingd(keys=("image", "label"), pixdim=self.target_spacing, mode=("bilinear", "nearest")),
             ScaleIntensityRanged(keys="image", a_min=-175, a_max=250, b_min=0.0, b_max=1.0, clip=True),
             EnsureTyped(keys=("image", "label")),
