@@ -11,6 +11,7 @@
 import json
 import logging
 import os
+import subprocess
 from distutils.util import strtobool
 from typing import Dict
 
@@ -87,11 +88,18 @@ class MyApp(MONAILabelApp):
 
         logger.info(f"+++ Using Models: {list(self.models.keys())}")
 
+        app_name_w_version = subprocess.getoutput("python3 -c 'import monailabel; monailabel.print_config()'")
+        app_name_w_version = (
+            "MONAILabel Radiology version " + app_name_w_version.split("\n")[0].split(" ")[-1]
+            if app_name_w_version
+            else "MONAILabel Radiology"
+        )
+
         super().__init__(
             app_dir=app_dir,
             studies=studies,
             conf=conf,
-            name="MONAILabel - Radiology",
+            name=app_name_w_version,
             description="DeepLearning models for radiology",
         )
 
