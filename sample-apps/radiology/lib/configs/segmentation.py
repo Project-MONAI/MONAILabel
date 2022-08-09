@@ -29,7 +29,7 @@ class Segmentation(TaskConfig):
     def init(self, name: str, model_dir: str, conf: Dict[str, str], planner: Any, **kwargs):
         super().init(name, model_dir, conf, planner, **kwargs)
 
-        # Labels
+        # Labels - DON'T INCLUDE BACKGROUND LABEL
         self.labels = {
             "spleen": 1,
             "right kidney": 2,

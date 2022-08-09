@@ -14,8 +14,7 @@ from typing import Dict, Hashable, Mapping
 
 import numpy as np
 import torch
-from monai.config import KeysCollection
-from monai.data import MetaTensor
+from monai.config import KeysCollection, NdarrayOrTensor
 from monai.transforms import CropForeground, GaussianSmooth, ScaleIntensity, SpatialCrop
 from monai.transforms.transform import MapTransform
 
@@ -502,12 +501,12 @@ class NormalizeLabelsInDatasetd(MapTransform):
 
         self.label_names = label_names
 
-    def __call__(self, data: Mapping[Hashable, np.ndarray]) -> Dict[Hashable, np.ndarray]:
+    def __call__(self, data: Mapping[Hashable, NdarrayOrTensor]) -> Dict[Hashable, NdarrayOrTensor]:
         d: Dict = dict(data)
         for key in self.key_iterator(d):
             # Dictionary containing new label numbers
             new_label_names = {}
-            label = MetaTensor(torch.zeros_like(d[key]))
+            label = torch.zeros_like(d[key])
             # Making sure the range values and number of labels are the same
             for idx, (key_label, val_label) in enumerate(self.label_names.items(), start=1):
                 if key_label != "background":
@@ -517,5 +516,5 @@ class NormalizeLabelsInDatasetd(MapTransform):
                     new_label_names["background"] = 0
 
             d["label_names"] = new_label_names
-            d[key] = label
+            d[key].array = label
         return d

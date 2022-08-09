@@ -11,7 +11,7 @@
 import logging
 
 import torch
-from monai.apps.deepedit.transforms import NormalizeLabelsInDatasetd
+from lib.transforms.transforms import NormalizeLabelsInDatasetd
 from monai.handlers import TensorBoardImageHandler, from_engine
 from monai.inferers import SlidingWindowInferer
 from monai.losses import DiceCELoss
