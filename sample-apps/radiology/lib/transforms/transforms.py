@@ -15,6 +15,7 @@ from typing import Dict, Hashable, Mapping
 import numpy as np
 import torch
 from monai.config import KeysCollection
+from monai.data import MetaTensor
 from monai.transforms import CropForeground, GaussianSmooth, ScaleIntensity, SpatialCrop
 from monai.transforms.transform import MapTransform
 
@@ -485,4 +486,36 @@ class AddROIThirdStage(MapTransform):
                 tmp_image = np.concatenate([d[key], signal], axis=0)
                 d[key] = tmp_image
 
+        return d
+
+
+class NormalizeLabelsInDatasetd(MapTransform):
+    def __init__(self, keys: KeysCollection, label_names=None, allow_missing_keys: bool = False):
+        """
+        Normalize label values according to label names dictionary
+
+        Args:
+            keys: The ``keys`` parameter will be used to get and set the actual data item to transform
+            label_names: all label names
+        """
+        super().__init__(keys, allow_missing_keys)
+
+        self.label_names = label_names
+
+    def __call__(self, data: Mapping[Hashable, np.ndarray]) -> Dict[Hashable, np.ndarray]:
+        d: Dict = dict(data)
+        for key in self.key_iterator(d):
+            # Dictionary containing new label numbers
+            new_label_names = {}
+            label = MetaTensor(torch.zeros_like(d[key]))
+            # Making sure the range values and number of labels are the same
+            for idx, (key_label, val_label) in enumerate(self.label_names.items(), start=1):
+                if key_label != "background":
+                    new_label_names[key_label] = idx
+                    label[d[key] == val_label] = idx
+                if key_label == "background":
+                    new_label_names["background"] = 0
+
+            d["label_names"] = new_label_names
+            d[key] = label
         return d
