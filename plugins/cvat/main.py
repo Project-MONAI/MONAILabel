@@ -50,12 +50,19 @@ def handler(context, event):
     pos_points = data.get("pos_points")
     neg_points = data.get("neg_points")
 
+    if strtobool(os.environ.get("MONAI_LABEL_FLIP", "true")):
+        foreground = np.flip(np.array(pos_points, int), 1).tolist() if pos_points else pos_points
+        background = np.flip(np.array(neg_points, int), 1).tolist() if neg_points else neg_points
+    else:
+        foreground = np.array(pos_points, int).tolist() if pos_points else pos_points
+        background = np.array(neg_points, int).tolist() if neg_points else neg_points
+
     json_data = context.user_data.model_handler.infer(
         request={
             "model": context.user_data.model,
             "image": image_np,
-            "foreground": np.flip(np.array(pos_points, int), 1).tolist() if pos_points else pos_points,
-            "background": np.flip(np.array(neg_points, int), 1).tolist() if neg_points else neg_points,
+            "foreground": foreground,
+            "background": background,
             "output": "json",
         }
     )

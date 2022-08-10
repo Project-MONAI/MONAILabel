@@ -220,7 +220,7 @@ class Writer:
                 logger.debug("Using MONAI write_nifti...")
                 write_nifti(image_np, output_file, affine=affine, output_dtype=dtype)
             else:
-                write_itk(image_np, output_file, affine, dtype, compress)
+                write_itk(image_np, output_file, affine if len(image_np.shape) > 2 else None, dtype, compress)
 
         return output_file, output_json
 
