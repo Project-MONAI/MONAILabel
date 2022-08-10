@@ -31,6 +31,12 @@ We are happy to talk with you about your needs for MONAILabel and your ideas for
     ./runtests.sh --codeformat
     ./runtests.sh --unittests
     ```
+    Run integration checks.
+    ```
+    export PATH=$PATH:`pwd`/monailabel/scripts
+    ./runtests.sh --net
+    ```
+
 
 ### Signing your work
 MONAILabel enforces the [Developer Certificate of Origin](https://developercertificate.org/) (DCO) on all pull requests.
