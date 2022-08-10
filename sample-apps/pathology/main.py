@@ -87,6 +87,7 @@ class MyApp(MONAILabelApp):
             conf=conf,
             name=f"MONAILabel - Pathology ({monailabel.__version__})",
             description="DeepLearning models for pathology",
+            version=monailabel.__version__
         )
 
     def init_remote_datastore(self) -> Datastore:
