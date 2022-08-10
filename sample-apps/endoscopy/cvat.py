@@ -31,12 +31,12 @@ def get_mime_type(file):
 
 
 def main():
-    MONAI_LABEL_URL = "http://10.33.72.12:8000"
-    MONAI_LABEL_STUDIES_PATH = "/localhome/sachi/Datasets/Holoscan/tiny/images"
+    MONAI_LABEL_URL = "http://10.117.20.110:8000"
+    MONAI_LABEL_STUDIES_PATH = "/localhome/sachi/Dataset/Holoscan/tiny/images"
     MONAI_LABEL_TOP_ACTIVE_LEARNING_SAMPLES = 20
     MONAI_LABEL_TRAIN_EPOCHS = 10
 
-    CVAT_URL = "http://10.33.72.12:8080"
+    CVAT_URL = "http://10.117.20.110:8080"
     CVAT_USER = "sachi"
     CVAT_PASSWORD = "sachi"
 
@@ -49,7 +49,7 @@ def main():
     parser = argparse.ArgumentParser()
     parser.add_argument(
         "--action",
-        default="download",
+        default="upload",
         choices=("upload", "train"),
         help="upload: Upload Tasks to CVAT; train: Download Annotations from CVAT and run Trianing",
     )
