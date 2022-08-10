@@ -17,7 +17,7 @@ the visualization tools provide flexibility for label correction. The active lea
 can learn the new labels online to fine tune the current AI models. The fine-tuned model can be 
 improved and used for next batch of labeling task.
 
-.. figure:: ../images/workflow.png
+.. figure:: ../images/workflow.jpeg
   :alt: MONAI Label Auto Segmentation and Interactive Workflow
 
 **Features and Highlights**
@@ -34,6 +34,7 @@ the end users which want to benefit from these innovations.
 
 
 **Sample Apps in MONAILabel**
+
 Example developed labeling apps for use. Learn more apps and MONAILabel use cases here. 
 
 .. figure:: ../images/sampleApps_index.jpeg
