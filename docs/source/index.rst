@@ -36,7 +36,7 @@ the end users which want to benefit from these innovations.
 **Sample Apps in MONAILabel**
 Example developed labeling apps for use. Learn more apps and MONAILabel use cases here. 
 
-.. figure:: ../images/sampleApps_index.png
+.. figure:: ../images/sampleApps_index.jpeg
   :alt: MONAI Label Auto Segmentation and Interactive Workflow
 
 -----------------
