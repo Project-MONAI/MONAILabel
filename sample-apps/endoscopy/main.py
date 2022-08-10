@@ -16,14 +16,18 @@ from typing import Dict
 import lib.configs
 
 import monailabel
+from monailabel.config import settings
+from monailabel.datastore.cvat import CVATDatastore
 from monailabel.interfaces.app import MONAILabelApp
 from monailabel.interfaces.config import TaskConfig
+from monailabel.interfaces.datastore import Datastore
 from monailabel.interfaces.tasks.infer import InferTask
 from monailabel.interfaces.tasks.scoring import ScoringMethod
 from monailabel.interfaces.tasks.strategy import Strategy
 from monailabel.interfaces.tasks.train import TrainTask
 from monailabel.tasks.activelearning.random import Random
 from monailabel.utils.others.class_utils import get_class_names
+from monailabel.utils.others.generic import create_dataset_from_path
 
 logger = logging.getLogger(__name__)
 
@@ -83,6 +87,21 @@ class MyApp(MONAILabelApp):
             description="DeepLearning models for endoscopy",
             version=monailabel.__version__,
         )
+
+    def init_datastore(self) -> Datastore:
+        if settings.MONAI_LABEL_DATASTORE_URL and settings.MONAI_LABEL_DATASTORE.lower() == "cvat":
+            logger.info(f"Using CVAT: {self.studies}")
+            return CVATDatastore(
+                datastore_path=self.studies,
+                api_url=settings.MONAI_LABEL_DATASTORE_URL,
+                username=settings.MONAI_LABEL_DATASTORE_USERNAME,
+                password=settings.MONAI_LABEL_DATASTORE_PASSWORD,
+                project=settings.MONAI_LABEL_DATASTORE_PROJECT,
+                extensions=settings.MONAI_LABEL_DATASTORE_FILE_EXT,
+                auto_reload=settings.MONAI_LABEL_DATASTORE_AUTO_RELOAD,
+            )
+
+        return super().init_datastore()
 
     def init_infers(self) -> Dict[str, InferTask]:
         infers: Dict[str, InferTask] = {}
@@ -172,7 +191,9 @@ def main():
     )
 
     home = str(Path.home())
-    studies = f"{home}/Datasets/Holoscan/tiny/images"
+    studies = f"{home}/Dataset/Holoscan/tiny/images"
+    # studies = f"{home}/Dataset/Holoscan/flattened/images"
+    # studies = f"{home}/Dataset/Holoscan/tiny_flat/images"
 
     parser = argparse.ArgumentParser()
     parser.add_argument("-s", "--studies", default=studies)
@@ -181,9 +202,103 @@ def main():
     app_dir = os.path.dirname(__file__)
     studies = args.studies
 
-    app = MyApp(app_dir, studies, {"preload": "true"})
+    app = MyApp(app_dir, studies, {"preload": "false", "models": "deepedit"})
     logger.info(app.datastore().status())
-    train_tooltracking(app)
+    infer_deepedit(app)
+
+
+def randamize_ds(train_datalist, val_datalist):
+    import random
+
+    half_train = len(train_datalist) // 2
+    t1 = train_datalist[:half_train]
+    t2 = train_datalist[half_train:]
+    random.shuffle(t1)
+    random.shuffle(t2)
+    train_datalist = t1 + t2
+
+    half_val = len(val_datalist) // 2
+    v1 = val_datalist[:half_val]
+    v2 = val_datalist[half_val:]
+    random.shuffle(v1)
+    random.shuffle(v2)
+    val_datalist = v1 + v2
+
+    return train_datalist, val_datalist
+
+
+def deepedit_partition_datalist():
+    train_datalist = create_dataset_from_path("/localhome/sachi/Dataset/Holoscan/105162/train", lab_ext=".jpg")
+    val_datalist = create_dataset_from_path("/localhome/sachi/Dataset/Holoscan/105162/valid", lab_ext=".jpg")
+    logger.info(f"******* Total Training   Dataset: {len(train_datalist)}")
+    logger.info(f"******* Total Validation Dataset: {len(val_datalist)}")
+
+    train_datalist = train_datalist[:100]
+    val_datalist = val_datalist[:20]
+    # train_datalist = train_datalist[:3200]
+    # val_datalist = val_datalist[:400]
+
+    train_datalist, val_datalist = randamize_ds(train_datalist, val_datalist)
+
+    logger.info(f"******* Total Training   Dataset: {len(train_datalist)}")
+    logger.info(f"******* Total Validation Dataset: {len(val_datalist)}")
+    return train_datalist, val_datalist
+
+
+def train_deepedit(app):
+    import json
+
+    train_ds, val_ds = deepedit_partition_datalist()
+    train_ds_json = "/localhome/sachi/Dataset/Holoscan/deepedit_train_ds.json"
+    val_ds_json = "/localhome/sachi/Dataset/Holoscan/deepedit_val_ds.json"
+
+    with open(train_ds_json, "w") as fp:
+        json.dump(train_ds, fp, indent=2)
+    with open(val_ds_json, "w") as fp:
+        json.dump(val_ds, fp, indent=2)
+
+    res = app.train(
+        request={
+            "model": "deepedit",
+            "max_epochs": 10,
+            "dataset": "CacheDataset",  # PersistentDataset, CacheDataset
+            "train_batch_size": 10,
+            "val_batch_size": 10,
+            "multi_gpu": True,
+            "val_split": 0.15,
+            "pretrained": True,
+            "train_ds": train_ds_json,
+            "val_ds": val_ds_json,
+        }
+    )
+    print(res)
+    logger.info("All Done!")
+
+
+def infer_deepedit(app):
+    import shutil
+    from pathlib import Path
+
+    # import numpy as np
+    # from PIL import Image
+    # image = np.array(Image.open(os.path.join(app.studies, "Video_8_2020_01_13_Video2_Trim_01-25_f10200.jpg")))
+    image = "Video_8_2020_01_13_Video2_Trim_01-25_f10200"
+
+    res = app.infer(
+        request={
+            "model": "deepedit",
+            "image": image,
+            "foreground": [],
+            "background": [],
+            "output": "asap",
+            # "result_extension": ".png",
+        }
+    )
+
+    # print(json.dumps(res, indent=2))
+    home = str(Path.home())
+    shutil.move(res["label"], f"{home}/Dataset/output_image.xml")
+    logger.info("All Done!")
 
 
 def train_tooltracking(app):
@@ -217,7 +332,7 @@ def infer_tooltracking(app):
 
     # print(json.dumps(res, indent=2))
     home = str(Path.home())
-    shutil.move(res["label"], f"{home}/Datasets/Holoscan/output_image.xml")
+    shutil.move(res["label"], f"{home}/Dataset/Holoscan/output_image.xml")
     logger.info("All Done!")
 
 
