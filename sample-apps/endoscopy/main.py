@@ -81,7 +81,7 @@ class MyApp(MONAILabelApp):
             conf=conf,
             name=f"MONAILabel - Endoscopy ({monailabel.__version__})",
             description="DeepLearning models for endoscopy",
-            version=monailabel.__version__
+            version=monailabel.__version__,
         )
 
     def init_infers(self) -> Dict[str, InferTask]:

@@ -92,7 +92,7 @@ class MyApp(MONAILabelApp):
             conf=conf,
             name=f"MONAILabel - Zoo/Bundle ({monailabel.__version__})",
             description="DeepLearning models provided via MONAI Zoo/Bundle",
-            version=monailabel.__version__
+            version=monailabel.__version__,
         )
 
     def init_infers(self) -> Dict[str, InferTask]:
