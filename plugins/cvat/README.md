@@ -36,6 +36,7 @@ Currently, following sample models are available for CVAT.
 
 ### Endoscopy
 - [ToolTracking](https://github.com/Project-MONAI/MONAILabel/tree/main/sample-apps/endoscopy) ([Detector](https://openvinotoolkit.github.io/cvat/docs/manual/advanced/ai-tools/#detectors))
+- [DeepEdit](https://github.com/Project-MONAI/MONAILabel/tree/main/sample-apps/endoscopy) ([Interactor](https://openvinotoolkit.github.io/cvat/docs/manual/advanced/ai-tools/#interactors))
 
 ### Pathology
 - [Segmentation Nuclei](https://github.com/Project-MONAI/MONAILabel/tree/main/sample-apps/pathology#pathology-use-case) ([Detector](https://openvinotoolkit.github.io/cvat/docs/manual/advanced/ai-tools/#detectors))
