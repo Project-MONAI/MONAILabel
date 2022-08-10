@@ -15,6 +15,7 @@ from typing import Dict
 
 import lib.configs
 
+import monailabel
 from monailabel.interfaces.app import MONAILabelApp
 from monailabel.interfaces.config import TaskConfig
 from monailabel.interfaces.tasks.infer import InferTask
@@ -78,7 +79,7 @@ class MyApp(MONAILabelApp):
             app_dir=app_dir,
             studies=studies,
             conf=conf,
-            name="MONAILabel - Endoscopy",
+            name=f"MONAILabel - Endoscopy ({monailabel.__version__})",
             description="DeepLearning models for endoscopy",
         )
 

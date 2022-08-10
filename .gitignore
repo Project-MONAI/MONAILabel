@@ -154,3 +154,4 @@ bin
 junit
 test-output.xml
 studies
+tests/data

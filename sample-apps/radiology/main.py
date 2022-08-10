@@ -17,6 +17,7 @@ from typing import Dict
 import lib.configs
 from lib.activelearning import First
 
+import monailabel
 from monailabel.interfaces.app import MONAILabelApp
 from monailabel.interfaces.config import TaskConfig
 from monailabel.interfaces.datastore import Datastore
@@ -91,7 +92,7 @@ class MyApp(MONAILabelApp):
             app_dir=app_dir,
             studies=studies,
             conf=conf,
-            name="MONAILabel - Radiology",
+            name=f"MONAILabel - Radiology ({monailabel.__version__})",
             description="DeepLearning models for radiology",
         )
 

@@ -18,6 +18,7 @@ from typing import Dict
 
 import lib.configs
 
+import monailabel
 from monailabel.datastore.dsa import DSADatastore
 from monailabel.interfaces.app import MONAILabelApp
 from monailabel.interfaces.config import TaskConfig
@@ -84,7 +85,7 @@ class MyApp(MONAILabelApp):
             app_dir=app_dir,
             studies=studies,
             conf=conf,
-            name="MONAILabel - Pathology",
+            name=f"MONAILabel - Pathology ({monailabel.__version__})",
             description="DeepLearning models for pathology",
         )
 
