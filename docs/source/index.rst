@@ -9,6 +9,15 @@ users to create annotated datasets and build AI annotation models for clinical e
 MONAI Label enables application developers to build labeling apps in a *serverless* way,
 where custom labeling apps are exposed as a service through the MONAI Label Server.
 
+
+**Sample Apps in MONAILabel**
+
+Example developed labeling apps for use. Learn more apps and MONAILabel use cases here. 
+
+.. figure:: ../images/sampleApps_index.jpeg
+  :alt: MONAI Label Apps
+
+
 *Deploy Labeling and Medical AI Faster*
 
 The end-to-end ecosystem from research stage to easy model deployment. Combining clinical 
@@ -33,12 +42,7 @@ MONAI Label aims to fill the gap between developers creating new annotation appl
 the end users which want to benefit from these innovations.
 
 
-**Sample Apps in MONAILabel**
 
-Example developed labeling apps for use. Learn more apps and MONAILabel use cases here. 
-
-.. figure:: ../images/sampleApps_index.jpeg
-  :alt: MONAI Label Auto Segmentation and Interactive Workflow
 
 -----------------
 Table of Contents
