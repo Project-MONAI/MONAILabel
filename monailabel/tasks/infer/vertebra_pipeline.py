@@ -65,13 +65,15 @@ class InferVertebraPipeline(InferTask):
         #################################################
         _, result_json_second_stage = self.model_localization_vertebra(second_stage_request)
 
-        # Request for third stage
-        third_stage_request = copy.deepcopy(second_stage_request)
-        third_stage_request["centroids"] = result_json_second_stage
-
         #################################################
         # Run third stage
         #################################################
-        result_file_third_stage, result_json_third_stage = self.model_segmentation_vertebra(third_stage_request)
+        # Request for third stage
+        third_stage_request = copy.deepcopy(second_stage_request)
+        for centroid in result_json_second_stage:
+            third_stage_request["centroids"] = centroid
+            result_file_third_stage, result_json_third_stage = self.model_segmentation_vertebra(third_stage_request)
+            # Remove the AsDiscrete transform in infer so we get outputs
+        # Once all the predictions are obtained, use the label dict to reconstruct the output
 
         return result_file_third_stage, result_json_third_stage
