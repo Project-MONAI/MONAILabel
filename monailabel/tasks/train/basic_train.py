@@ -317,15 +317,26 @@ class BasicTrainTask(TrainTask):
     def val_inferer(self, context: Context):
         pass
 
+    def _load_external_ds(self, ds):
+        if ds and isinstance(ds, str) and os.path.exists(ds):
+            with open(ds) as fp:
+                ds = json.load(fp)
+        return ds
+
     def partition_datalist(self, context: Context, shuffle=False):
-        val_split = context.request.get("val_split", 0.0)
-        if val_split > 0.0:
-            train_datalist, val_datalist = partition_dataset(
-                context.datalist, ratios=[(1 - val_split), val_split], shuffle=shuffle
-            )
-        else:
-            train_datalist = context.datalist
-            val_datalist = []
+        # user can external validation/training datalist in the request
+        val_datalist = self._load_external_ds(context.request.get("val_ds"))
+        train_datalist = self._load_external_ds(context.request.get("train_ds", context.datalist))
+
+        if not val_datalist:
+            val_split = context.request.get("val_split", 0.0)
+            if val_split > 0.0:
+                train_datalist, val_datalist = partition_dataset(
+                    train_datalist, ratios=[(1 - val_split), val_split], shuffle=shuffle
+                )
+            else:
+                train_datalist = context.datalist
+                val_datalist = []
 
         if context.local_rank == 0:
             logger.info(f"Total Records for Training: {len(train_datalist)}")
