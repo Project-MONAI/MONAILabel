@@ -84,7 +84,6 @@ class LocalizationVertebra(InferTask):
 
     def post_transforms(self, data=None) -> Sequence[Callable]:
         largest_cc = False if not data else data.get("largest_cc", False)
-        slicer = False if not data else data.get("slicer", False)
         applied_labels = list(self.labels.values()) if isinstance(self.labels, dict) else self.labels
         t = [
             EnsureTyped(keys="pred", device=data.get("device") if data else None),
@@ -94,11 +93,12 @@ class LocalizationVertebra(InferTask):
         if largest_cc:
             t.append(KeepLargestConnectedComponentd(keys="pred", applied_labels=applied_labels))
         t.append(Restored(keys="pred", ref_image="image"))
-        if not slicer:
-            t.append(VertebraLocalizationSegmentation(keys="pred", result="result"))
+        t.append(VertebraLocalizationSegmentation(keys="pred", result="result"))
         return t
 
     # This is to avoid saving the prediction
     def writer(self, data, extension=None, dtype=None):
+        if data.get("result_mask", False):
+            return super().writer(data, extension, dtype)
         writer = SimpleJsonWriter(label=self.output_label_key)
         return writer(data)
