@@ -45,12 +45,17 @@ def handler(context, event):
 
     image = Image.open(io.BytesIO(base64.b64decode(data["image"])))
     image_np = np.asarray(image.convert("RGB"), dtype=np.uint8)
-    image_np = np.moveaxis(image_np, 0, 1)
+
+    flip_image = strtobool(os.environ.get("MONAI_LABEL_FLIP_INPUT_IMAGE", "true"))
+    flip_points = strtobool(os.environ.get("MONAI_LABEL_FLIP_INPUT_POINTS", "true"))
+    flip_output = strtobool(os.environ.get("MONAI_LABEL_FLIP_OUTPUT_POINTS", "true"))
+
+    if flip_image:
+        image_np = np.moveaxis(image_np, 0, 1)
 
     pos_points = data.get("pos_points")
     neg_points = data.get("neg_points")
-
-    if strtobool(os.environ.get("MONAI_LABEL_FLIP", "true")):
+    if flip_points:
         foreground = np.flip(np.array(pos_points, int), 1).tolist() if pos_points else pos_points
         background = np.flip(np.array(neg_points, int), 1).tolist() if neg_points else neg_points
     else:
@@ -80,7 +85,9 @@ def handler(context, event):
             label = element["label"]
             contours = element["contours"]
             for contour in contours:
-                points = np.flip(np.array(contour, int), axis=None)
+                points = np.array(contour, int)
+                if flip_output:
+                    points = np.flip(points, axis=None)
 
                 # CVAT limitation:: only one polygon result for interactor
                 if interactor and contour:
