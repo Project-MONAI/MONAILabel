@@ -10,7 +10,7 @@ Install MONAILabel
 
 Install: :ref:`MONAILabel <Monailable>`
 Install: :ref:`Tools <Starting Server>`
-Install: :ref:`Plugin <Plugin>`
+Install: Plugin_
 
 
 
