@@ -8,9 +8,9 @@ Installation
 Install MONAILabel
 
 
-1. Install: :ref:`MONAILabel <Monailable>`
-2. Install: :ref:`Tools <Tools>`
-3. Install: :ref:`Plugin <QuPath>`
+Install: :ref:`MONAILabel <Monailable>`
+Install: :ref:`Tools <Starting Server>`
+Install: :ref:`Plugin <Plugin>`
 
 
 
