@@ -8,8 +8,8 @@ Installation
 Install MONAILabel
 
 
-1. Install: :ref:`Monailable`.
-2. Install: :ref:`Tools`.
+1. Install: :ref:`Monailable`
+2. Install: :ref:`Tools`
 3. Install: :ref:`Plugin`.
 
 
