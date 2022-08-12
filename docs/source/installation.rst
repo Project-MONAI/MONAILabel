@@ -8,9 +8,9 @@ Installation
 Install MONAILabel
 
 
-1. Install :any:`Monailable`.
-2. Install :any:`Tools`.
-3. Install :any:`Plugin`.
+1. Install: :ref:`Monailable`.
+2. Install: :ref:`Tools`.
+3. Install: :ref:`Plugin`.
 
 
 
