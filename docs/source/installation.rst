@@ -10,7 +10,7 @@ Install MONAILabel
 
 1. Install: :ref:`MONAILabel <Monailable>`
 2. Install: :ref:`Tools <Tools>`
-3. Install: :ref:`Plugin <Plugin>`
+3. Install: :ref:`Plugin <QuPath>`
 
 
 
