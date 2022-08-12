@@ -8,9 +8,9 @@ Installation
 Install MONAILabel
 
 
-1. Install :ref:`MONAILabel<monailable>`_
-2. Install :ref:`Visualization Software<tools>`_
-3. Install :ref:`Add MONAILabel Plugin<plugin>`_
+1. Install :ref:`monailable`_
+2. Install :ref:`tools`_
+3. Install :ref:`plugin`_
 
 
 
