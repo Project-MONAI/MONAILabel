@@ -8,9 +8,9 @@ Installation
 Install MONAILabel
 
 
-1. Install :ref:`monailable`_
-2. Install :ref:`tools`_
-3. Install :ref:`plugin`_
+1. Install :ref:`monailable`
+2. Install :ref:`tools`
+3. Install :ref:`plugin`
 
 
 
@@ -172,7 +172,7 @@ However for basic production deployment, you might need to run Uvicorn independe
 For more options about Uvicorn (concurrency, SSL etc..) refer: https://www.uvicorn.org/#command-line-options
 
 
-.._tools:
+.. _tools:
 
 3D Slicer Plugin
 ----------------
@@ -240,4 +240,4 @@ If you have `DSA <https://digitalslidearchive.github.io/digital_slide_archive/>`
 Refer `DSA Plugin <https://github.com/Project-MONAI/MONAILabel/tree/main/plugins/dsa>`_ for running a sample pathology use-case in MONAILabel using DSA.
 
 
-.._plugin:
+.. _plugin:
