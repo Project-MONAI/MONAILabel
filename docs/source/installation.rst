@@ -8,9 +8,9 @@ Installation
 Install MONAILabel
 
 
-1. Install :ref:`A<monailable>`
-2. Install :ref:`B<tools>`
-3. Install :ref:`C<plugin>`
+1. Install :ref:`A<monailable>`.
+2. Install :ref:`B<tools>`.
+3. Install :ref:`C<plugin>`.
 
 
 
