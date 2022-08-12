@@ -8,9 +8,9 @@ Installation
 Install MONAILabel
 
 
-1. Install :ref:MONAILabel<Guide of MONAILabel Installation>
-2. Install :ref:Visualization Software<Reference of Open-Source Visualization Tools Installation>
-3. Install :ref:Add MONAILabel Plugin<Guide of adding plugins to Visualziation Tools>
+1. Install :ref:`MONAILabel<Guide of MONAILabel Installation>`
+2. Install :ref:`Visualization Software<Reference of Open-Source Visualization Tools Installation>`
+3. Install :ref:`Add MONAILabel Plugin<Guide of adding plugins to Visualziation Tools>`
 
 
 
@@ -170,6 +170,9 @@ However for basic production deployment, you might need to run Uvicorn independe
 
 For more options about Uvicorn (concurrency, SSL etc..) refer: https://www.uvicorn.org/#command-line-options
 
+
+Reference of Open-Source Visualization Tools Installation
+
 3D Slicer Plugin
 ----------------
 Download Preview Release from https://download.slicer.org/ and install MONAI Label plugin from Slicer Extension Manager.
@@ -234,3 +237,6 @@ If you have `DSA <https://digitalslidearchive.github.io/digital_slide_archive/>`
   monailabel start_server --app apps/pathology --studies http://0.0.0.0:8080/api/v1
 
 Refer `DSA Plugin <https://github.com/Project-MONAI/MONAILabel/tree/main/plugins/dsa>`_ for running a sample pathology use-case in MONAILabel using DSA.
+
+
+Guide of adding plugins to Visualziation Tools
