@@ -16,7 +16,6 @@ Install MONAILabel
 
 .. _Monailable:
 
-
 Prerequisites
 ---------------
 MONAI Label supports both **Ubuntu** and **Windows** OS with GPU/CUDA enabled.
@@ -173,7 +172,6 @@ For more options about Uvicorn (concurrency, SSL etc..) refer: https://www.uvico
 
 
 .. _Visualization Tools:
-
 3D Slicer Plugin
 ----------------
 Download Preview Release from https://download.slicer.org/ and install MONAI Label plugin from Slicer Extension Manager.
