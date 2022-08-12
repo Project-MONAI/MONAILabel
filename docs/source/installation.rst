@@ -6,7 +6,7 @@ Installation
   :alt: MONAI Label Instllation steps
 
 
-`Install Monailable`_ `Guide of Visualization Tools`_   `Adding Plugins`_ 
+|emsp| `Install Monailable`_ `Guide of Visualization Tools`_   `Adding Plugins`_ 
 
 Install Monailable
 ==================
