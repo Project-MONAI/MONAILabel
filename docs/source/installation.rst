@@ -8,9 +8,9 @@ Installation
 Install MONAILabel
 
 
-1. Install :ref:`MONAILabel<Guide of MONAILabel Installation>`
-2. Install :ref:`Visualization Software<Reference of Open-Source Visualization Tools Installation>`
-3. Install :ref:`Add MONAILabel Plugin<Guide of adding plugins to Visualziation Tools>`
+1. Install :ref:`MONAILabel<Guide of MONAILabel Installation>`_
+2. Install :ref:`Visualization Software<Reference of Open-Source Visualization Tools Installation>`_
+3. Install :ref:`Add MONAILabel Plugin<Guide of adding plugins to Visualziation Tools>`_
 
 
 
