@@ -8,11 +8,11 @@ Installation
 Install MONAILabel
 
 
-1. Install: `Monailable`_
-2. Install: `Visualization Tools`_
-3. Install: `Plugin`_
+1. Install: `Install Monailable`_
+2. Install: `Guide of Visualization Tools`_
+3. Install: `Adding Plugins`_
 
-Monailable
+Install Monailable
 ==================
 .. _Monailable:
 
@@ -173,8 +173,19 @@ For more options about Uvicorn (concurrency, SSL etc..) refer: https://www.uvico
 
 .. _Visualization Tools:
 
-Visualization Tools
+Guide of Visualization Tools
 =====================
+
+
+
+
+
+
+
+.. _Plugin:
+
+Adding Plugins
+===============
 
 3D Slicer Plugin
 ----------------
@@ -242,4 +253,3 @@ If you have `DSA <https://digitalslidearchive.github.io/digital_slide_archive/>`
 Refer `DSA Plugin <https://github.com/Project-MONAI/MONAILabel/tree/main/plugins/dsa>`_ for running a sample pathology use-case in MONAILabel using DSA.
 
 
-.. _Plugin:
