@@ -9,7 +9,7 @@ Install MONAILabel
 
 
 1. Install: `Monailable`_
-2. Install: `Visualization Tools`_
+2. Install: `Visualization-Tools`_
 3. Install: `Plugin`_
 
 
