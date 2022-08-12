@@ -171,7 +171,8 @@ However for basic production deployment, you might need to run Uvicorn independe
 For more options about Uvicorn (concurrency, SSL etc..) refer: https://www.uvicorn.org/#command-line-options
 
 
-.. _Visualization Tools:
+.. _Visualization-Tools:
+
 3D Slicer Plugin
 ----------------
 Download Preview Release from https://download.slicer.org/ and install MONAI Label plugin from Slicer Extension Manager.
