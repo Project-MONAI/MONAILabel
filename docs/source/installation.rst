@@ -5,12 +5,7 @@ Installation
 .. figure:: ../images/install_steps.jpeg
   :alt: MONAI Label Instllation steps
 
-Install MONAILabel
-
-
-1. Install: `Install Monailable`_
-2. Install: `Guide of Visualization Tools`_
-3. Install: `Adding Plugins`_
+ `Install Monailable`_           `Guide of Visualization Tools`_             `Adding Plugins`_
 
 Install Monailable
 ==================
