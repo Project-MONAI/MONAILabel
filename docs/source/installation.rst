@@ -8,9 +8,9 @@ Installation
 Install MONAILabel
 
 
-1. Install: `MONAILabel <Monailable>`
-2. Install: `Tools <Tools>`
-3. Install: `Plugin <Plugin>`
+1. Install: :ref:`MONAILabel <Monailable>`
+2. Install: :ref:`Tools <Tools>`
+3. Install: :ref:`Plugin <Plugin>`
 
 
 
