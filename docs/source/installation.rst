@@ -8,9 +8,9 @@ Installation
 Install MONAILabel
 
 
-1. Install: Monailable_
-2. Install: Tools_
-3. Install: Plugin_
+1. Install: `Monailable`_
+2. Install: `Visualization Tools`_
+3. Install: `Plugin`_
 
 
 
@@ -172,7 +172,7 @@ However for basic production deployment, you might need to run Uvicorn independe
 For more options about Uvicorn (concurrency, SSL etc..) refer: https://www.uvicorn.org/#command-line-options
 
 
-.. _Tools:
+.. _Visualization Tools:
 
 3D Slicer Plugin
 ----------------
