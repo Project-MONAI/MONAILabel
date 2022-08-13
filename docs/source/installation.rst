@@ -217,7 +217,7 @@ At this point OHIF can be used to annotate the data in the DICOM server via the 
 
 To use OHIF web-based application, refer to `extensible web imaging platform<https://ohif.org/>`_
 
-QuPath
+QuPath 
 --------------
 Quantitative Pathology & Bioimage Analysis (QuPath)
 
@@ -236,13 +236,43 @@ Add Plugins
 
 3D Slicer Plugin
 ----------------
-Download Preview Release from https://download.slicer.org/ and install MONAI Label plugin from Slicer Extension Manager.
 
-Refer `3D Slicer plugin <https://github.com/Project-MONAI/MONAILabel/tree/main/plugins/slicer>`_ for other options to install and run MONAI Label plugin in 3D Slicer.
 
 .. note::
 
     To avoid accidentally using an older Slicer version, you may want to *uninstall* any previously installed 3D Slicer package.
+
+
+Install 3DSlicer Preview Version with in-built MONAI Label plugin
+
+- Download and Install `3D Slicer <https://download.slicer.org/>`_ version 5.0 or later.
+- Start 3DSlicer
+- On the menu bar navigate **View** -> **Extension Manager** -> **Active Learning** -> **MONAI Label**
+
+  .. image:: ../images/quickstart/3dslicer-extensions-manager.png
+    :alt: 3DSlicer Extensions Manager
+    :width: 600
+
+- Install MONAI Label plugin (click "Install")
+- Restart 3D Slicer (click "Restart" in the same dialog box)
+
+To add the MONAI Label icon shortcut on the 3DSlicer toolbar
+
+- Navigate **Edit** -> **Application Settings**
+- Under the **Modules** panel drag **MONAI Label** into **Favorite Modules**
+
+  .. image:: ../images/quickstart/monai-label-plugin-favorite-modules-1.png
+    :alt: MONAI Label Favorite Module
+    :width: 600
+
+- Restart 3DSlicer
+- Look for the MONAI Label module icon |MLIcon| in the 3DSlicer toolbar
+
+.. |MLIcon| image:: ../images/quickstart/MONAILabel.png
+  :width: 20
+
+Refer `3D Slicer plugin <https://github.com/Project-MONAI/MONAILabel/tree/main/plugins/slicer>`_ for other options to install and run MONAI Label plugin in 3D Slicer.
+
 
 OHIF Plugin
 -----------
