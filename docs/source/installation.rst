@@ -10,7 +10,7 @@ Current Milestone Release of MONAI Label:
 
 * `0.4.2 <https://pypi.org/project/monailabel/>`_
 
-Stable and Supported Visualization Tools:
+MONAI Label Supported Stable Visualization Tools:
 
 * 3D Slicer: `Version 5.0.3 <https://download.slicer.org/>`_
 
