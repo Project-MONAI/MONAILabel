@@ -192,13 +192,44 @@ For more options about Uvicorn (concurrency, SSL etc..) refer: https://www.uvico
 Guide of Visualization Tools
 =====================
 
+MONAI Label now supports several mostly adopted open-source viewer software for radiology and pathology. 
+
+
+3D Slicer
+--------------
+
+3D Slicer, a free and open-source platform for analyzing and understanding medical image data. In MONAI Label, 3D Slicer is most tested with radiology studies and 
+algorithms, develpoment and integration.
+
+MONAI Label is most currently tested and supported with stable release of 3D Slicer every version. Preview version of 3D Slicer is not fully tested and supported. 
+
+To install stable released version of 3D Slicer, see `3D Slicer installation<https://download.slicer.org/>`_.
+
+Currently, Windows and Linux version are supported.
+
+OHIF (Web-based)
+--------------
+
+The Open Health Imaging Foundation (OHIF) Viewer is an open source, web-based, medical imaging platform. 
+It aims to provide a core framework for building complex imaging applications.
+
+At this point OHIF can be used to annotate the data in the DICOM server via the MONAI Label server.
+
+To use OHIF web-based application, refer to `extensible web imaging platform<https://ohif.org/>`_
+
+QuPath
+--------------
+Quantitative Pathology & Bioimage Analysis (QuPath)
+
+QuPath is an open, powerful, flexible, extensible software platform for bioimage analysis.
+
+
+To install stable released version of QuPath, see `QuPath installation<https://qupath.github.io/>`_.
+
+Currently, Windows and Linux version are supported. Detailed documentation can be found `here<https://qupath.readthedocs.io/en/stable/>`_
 
 
 
-
-
-
-.. _Plugin:
 
 Add Plugins
 ===============
