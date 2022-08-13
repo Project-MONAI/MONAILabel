@@ -5,16 +5,32 @@ Installation
 Start using MONAILabel locally and run installlation with your familiar visualization tools. Stable version software represents the currently tested
 and supported visualization tools with latest release of MONAILabel. Weekly preview version is available if users want the latest feature, not fully tested. 
 
+
+Current Release of MONAILabel: 0.4.2
+
+Stable and Supported Visualization Tools:
+3D Slicer: 
+OHIF: 
+QuPath: 
+
 Start using MONAIlabel with just three steps!
 
-.. button:: Documentation
-   :class: btn-large-square fa fa-book btn-hover-blue
-   :link: #
+.. panels::
+   :container: container-lg pb-3
+   :column: col-lg-4 col-md-4 col-sm-6 col-xs-12 p-2
 
-.. button:: GitLab
-   :class: btn-large-square fa fa-gitlab btn-hover-red
-   :link: #
+   panel1
+   ---
+   panel2
+   ---
+   panel3
+   ---
+   :column: col-lg-12 p-2
 
+   Header
+   ^^^^^^
+
+   panel4
 
 
 .. figure:: ../images/install_steps.jpeg
