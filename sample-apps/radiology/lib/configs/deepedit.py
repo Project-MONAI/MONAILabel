@@ -170,10 +170,12 @@ class DeepEdit(TaskConfig):
 
     def trainer(self) -> Optional[TrainTask]:
         output_dir = os.path.join(self.model_dir, f"{self.name}_" + self.conf.get("network", "dynunet"))
+        load_path = self.path[0] if os.path.exists(self.path[0]) else self.path[1]
+
         task: TrainTask = lib.trainers.DeepEdit(
             model_dir=output_dir,
             network=self.network,
-            load_path=self.path[0],
+            load_path=load_path,
             publish_path=self.path[1],
             spatial_size=self.spatial_size,
             target_spacing=self.target_spacing,

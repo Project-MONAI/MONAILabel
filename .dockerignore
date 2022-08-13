@@ -3,3 +3,4 @@ __pycache__
 .vscode
 
 Dockerfile
+sample-apps/**/model

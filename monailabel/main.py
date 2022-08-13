@@ -20,6 +20,7 @@ import sys
 
 import uvicorn
 
+from monailabel import print_config
 from monailabel.config import settings
 from monailabel.utils.others.generic import init_log_config
 
@@ -85,8 +86,9 @@ class Main:
 
     def args_parser(self, name="monailabel"):
         parser = argparse.ArgumentParser(name)
-        subparsers = parser.add_subparsers(help="sub-command help")
+        parser.add_argument("-v", "--version", action="store_true", help="print version")
 
+        subparsers = parser.add_subparsers(help="sub-command help")
         if "start_server" in self.actions:
             parser_a = subparsers.add_parser("start_server", help="Start Application Server")
             self.args_start_server(parser_a)
@@ -112,6 +114,11 @@ class Main:
     def run(self):
         parser = self.args_parser()
         args = parser.parse_args()
+
+        if args.version:
+            print_config()
+            exit(0)
+
         if not hasattr(args, "action"):
             parser.print_usage()
             exit(-1)

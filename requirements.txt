@@ -28,5 +28,6 @@ filelock==3.7.1
 passlib==1.7.4
 python-jose[cryptography]==3.3.0
 bcrypt==3.2.2
+shapely==1.8.2
 
 #sudo apt-get install openslide-tools -y
