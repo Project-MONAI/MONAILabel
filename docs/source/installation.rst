@@ -11,12 +11,8 @@ Start using MONAIlabel with just three steps!
    :class: btn-large-square fa fa-book btn-hover-blue
    :link: #
 
-.. button:: Documentation2
-   :class: btn-large-square fa fa-book btn-hover-blue
-   :link: #
-
-.. button:: Documentation3
-   :class: btn-large-square fa fa-book btn-hover-blue
+.. button:: GitLab
+   :class: btn-large-square fa fa-gitlab btn-hover-red
    :link: #
 
 
