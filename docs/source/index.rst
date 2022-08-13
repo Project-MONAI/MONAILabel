@@ -12,7 +12,7 @@ where custom labeling apps are exposed as a service through the MONAI Label Serv
 
 **Sample Apps in MONAILabel**
 
-Example developed labeling apps for use. Learn more apps and MONAILabel use cases here. 
+Example developed labeling apps for use. Learn more apps and MONAILabel use cases here.
 
 .. figure:: ../images/sampleApps_index.jpeg
   :alt: MONAI Label Apps
@@ -20,10 +20,10 @@ Example developed labeling apps for use. Learn more apps and MONAILabel use case
 
 *Deploy Labeling and Medical AI Faster*
 
-The end-to-end ecosystem from research stage to easy model deployment. Combining clinical 
-imaging data visualizations, curations with the model inference. After labeling automatically, 
-the visualization tools provide flexibility for label correction. The active learning modules 
-can learn the new labels online to fine tune the current AI models. The fine-tuned model can be 
+The end-to-end ecosystem from research stage to easy model deployment. Combining clinical
+imaging data visualizations, curations with the model inference. After labeling automatically,
+the visualization tools provide flexibility for label correction. The active learning modules
+can learn the new labels online to fine tune the current AI models. The fine-tuned model can be
 improved and used for next batch of labeling task.
 
 .. figure:: ../images/workflow.jpeg
