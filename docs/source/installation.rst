@@ -11,15 +11,16 @@ Start using MONAIlabel with just three steps!
    :class: btn-large-square fa fa-book btn-hover-blue
    :link: #
 
-.. button:: Documentation
+.. button:: Documentation2
    :class: btn-large-square fa fa-book btn-hover-blue
    :link: #
 
-.. button:: Documentation
+.. button:: Documentation3
    :class: btn-large-square fa fa-book btn-hover-blue
    :link: #
 
-   
+
+
 .. figure:: ../images/install_steps.jpeg
   :alt: MONAI Label Instllation steps
 
