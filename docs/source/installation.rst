@@ -6,15 +6,17 @@ Start using MONAILabel locally and run installlation with your familiar visualiz
 and supported visualization tools with latest release of MONAILabel. Weekly preview version is available if users want the latest feature, not fully tested. 
 
 
-Current Release of MONAILabel: 0.4.2
+Current Release of MONAILabel: 
+
+* `0.4.2 <https://pypi.org/project/monailabel/>`_
 
 Stable and Supported Visualization Tools:
 
-3D Slicer: `Version 5.0.3 <https://download.slicer.org/>`_
+* 3D Slicer: `Version 5.0.3 <https://download.slicer.org/>`_
 
-OHIF: `Version 3.1 <https://ohif.org/>`_
+* OHIF: `Version 3.1 <https://ohif.org/>`_
 
-QuPath: `Version 0.3.2 <https://qupath.github.io/>`_
+* QuPath: `Version 0.3.2 <https://qupath.github.io/>`_
 
 Start using MONAIlabel with just three steps!
 
