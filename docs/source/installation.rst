@@ -2,11 +2,11 @@
 Installation
 ========================
 
-Start using MONAILabel locally and run installlation with your familiar visualization tools. Stable version software represents the currently tested
-and supported visualization tools with latest release of MONAILabel. Weekly preview version is available if users want the latest feature, not fully tested. 
+Start using MONAI Label locally and run installlation with your familiar visualization tools. Stable version software represents the currently tested
+and supported visualization tools with latest release of MONAI Label. Weekly preview version is available if users want the latest feature, not fully tested. 
 
 
-Current Release of MONAILabel: 
+Current Milestone Release of MONAI Label: 
 
 * `0.4.2 <https://pypi.org/project/monailabel/>`_
 
@@ -18,18 +18,18 @@ Stable and Supported Visualization Tools:
 
 * QuPath: `Version 0.3.2 <https://qupath.github.io/>`_
 
-Start using MONAIlabel with just three steps!
+Start using MONAI Label with just three steps!
 
 
 .. figure:: ../images/install_steps.jpeg
   :alt: MONAI Label Instllation steps
 
 
---------------- `Install Monailable`_  -------------------- `Guide of Visualization Tools`_ ------------------------ `Adding Plugins`_ -----------------
+--------------- `Install MONAI Lable`_  -------------------- `Guide of Visualization Tools`_ ------------------------ `Add Plugins`_ -----------------
 
 
 
-Install Monailable
+Install MONAI Lable
 ==================
 .. _Monailable:
 
@@ -200,7 +200,7 @@ Guide of Visualization Tools
 
 .. _Plugin:
 
-Adding Plugins
+Add Plugins
 ===============
 
 3D Slicer Plugin
