@@ -2,6 +2,24 @@
 Installation
 ========================
 
+Start using MONAILabel locally and run installlation with your familiar visualization tools. Stable version software represents the currently tested
+and supported visualization tools with latest release of MONAILabel. Weekly preview version is available if users want the latest feature, not fully tested. 
+
+Start using MONAIlabel with just three steps!
+
+.. button:: Documentation
+   :class: btn-large-square fa fa-book btn-hover-blue
+   :link: #
+
+.. button:: Documentation
+   :class: btn-large-square fa fa-book btn-hover-blue
+   :link: #
+
+.. button:: Documentation
+   :class: btn-large-square fa fa-book btn-hover-blue
+   :link: #
+
+   
 .. figure:: ../images/install_steps.jpeg
   :alt: MONAI Label Instllation steps
 
@@ -9,9 +27,7 @@ Installation
 --------------- `Install Monailable`_  -------------------- `Guide of Visualization Tools`_ ------------------------ `Adding Plugins`_ -----------------
 
 
-+---------+---------+-----------+
-| `Install Monailable`_       |  `Guide of Visualization Tools`_ |  `Adding Plugins`_       |
-+---------+---------+-----------+
+
 
 Install Monailable
 ==================
