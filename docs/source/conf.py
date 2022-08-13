@@ -21,7 +21,6 @@ sys.path.insert(0, os.path.abspath("../../"))
 #
 from sphinx.application import Sphinx
 from sphinx.transforms import SphinxTransform
-import sphinx_panels
 
 import monailabel
 
@@ -62,7 +61,7 @@ extensions = [
     "sphinx.ext.autosectionlabel",
     "sphinxcontrib.exceltable",
     "sphinx_autodoc_typehints",
-    "sphinx_panels"
+    "sphinx_panels",
 ]
 
 autoclass_content = "both"
