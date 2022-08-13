@@ -15,7 +15,10 @@ QuPath:
 
 Start using MONAIlabel with just three steps!
 
-
+.. link-button:: https://example.com
+    :type: url
+    :text: some text
+    :tooltip: hallo
 
 
 .. figure:: ../images/install_steps.jpeg
@@ -25,10 +28,6 @@ Start using MONAIlabel with just three steps!
 --------------- `Install Monailable`_  -------------------- `Guide of Visualization Tools`_ ------------------------ `Adding Plugins`_ -----------------
 
 
-.. link-button:: https://example.com
-    :type: url
-    :text: some text
-    :tooltip: hallo
 
 Install Monailable
 ==================
@@ -53,11 +52,6 @@ Make sure you have python 3.7/3.8/3.9 version environment with PyTorch and CUDA 
     # Check if cuda enabled
     python -c "import torch; print(torch.cuda.is_available())"
 
-.. link-button:: https://example.com
-    :type: url
-    :text: some text
-    :tooltip: hallo
-    
 Install From PyPI
 -----------------
 

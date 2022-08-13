@@ -21,6 +21,7 @@ sys.path.insert(0, os.path.abspath("../../"))
 #
 from sphinx.application import Sphinx
 from sphinx.transforms import SphinxTransform
+import sphinx_panels
 
 import monailabel
 
