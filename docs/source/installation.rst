@@ -9,6 +9,7 @@ and supported visualization tools with latest release of MONAILabel. Weekly prev
 Current Release of MONAILabel: 0.4.2
 
 Stable and Supported Visualization Tools:
+
 3D Slicer: `Version 5.0.3 <https://download.slicer.org/>`_
 
 OHIF: `Version 3.1 <https://ohif.org/>`_
@@ -16,21 +17,6 @@ OHIF: `Version 3.1 <https://ohif.org/>`_
 QuPath: `Version 0.3.2 <https://qupath.github.io/>`_
 
 Start using MONAIlabel with just three steps!
-
-
-
-.. panels::
-    :container: container-lg pb-3
-    :column: col-lg-4 col-md-4 col-sm-6 col-xs-12 p-2
-
-    panel1
-    ---
-    panel2
-    ---
-    panel3
-    ---
-    :column: col-lg-12 p-2
-    panel4
 
 
 .. figure:: ../images/install_steps.jpeg
