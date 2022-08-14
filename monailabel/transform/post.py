@@ -14,10 +14,13 @@ from typing import Optional, Sequence, Union
 import cv2
 import numpy as np
 import skimage.measure as measure
+import torch
 from monai.config import KeysCollection
 from monai.data import MetaTensor
-from monai.transforms import MapTransform, Resize, generate_spatial_bounding_box, get_extreme_points
+from monai.transforms import MapTransform, Resize, Transform, generate_spatial_bounding_box, get_extreme_points
 from monai.utils import InterpolateMode, ensure_tuple_rep
+from shapely.geometry import Point, Polygon
+from torchvision.utils import make_grid, save_image
 
 from monailabel.utils.others.label_colors import get_color
 
@@ -140,6 +143,7 @@ class FindContoursd(MapTransform):
         result="result",
         result_output_key="annotation",
         key_label_colors="label_colors",
+        key_foreground_points=None,
         labels=None,
     ):
         super().__init__(keys)
@@ -150,6 +154,7 @@ class FindContoursd(MapTransform):
         self.result = result
         self.result_output_key = result_output_key
         self.key_label_colors = key_label_colors
+        self.key_foreground_points = key_foreground_points
 
         labels = labels if labels else dict()
         labels = [labels] if isinstance(labels, str) else labels
@@ -166,6 +171,9 @@ class FindContoursd(MapTransform):
         min_poly_area = d.get("min_poly_area", self.min_poly_area)
         max_poly_area = d.get("max_poly_area", self.max_poly_area)
         color_map = d.get(self.key_label_colors)
+
+        foreground_points = d.get(self.key_foreground_points, []) if self.key_foreground_points else []
+        foreground_points = [Point(pt[1], pt[0]) for pt in foreground_points]  # polygons in (y, x) format
 
         elements = []
         label_names = set()
@@ -201,7 +209,13 @@ class FindContoursd(MapTransform):
                     contour[:, 1] += location[1]  # Y
 
                     coords = contour.astype(int).tolist()
-                    polygons.append(coords)
+                    if foreground_points:
+                        for pt in foreground_points:
+                            if Polygon(coords).contains(pt):
+                                polygons.append(coords)
+                                break
+                    else:
+                        polygons.append(coords)
 
                 if len(polygons):
                     logger.debug(f"+++++ {label_idx} => Total Polygons Found: {len(polygons)}")
@@ -217,4 +231,31 @@ class FindContoursd(MapTransform):
                 "labels": {n: get_color(n, color_map) for n in label_names},
             }
             logger.debug(f"+++++ ALL => Total Annotation Elements Found: {len(elements)}")
+        return d
+
+
+class DumpImagePrediction2Dd(Transform):
+    def __init__(self, image_path, pred_path):
+        self.image_path = image_path
+        self.pred_path = pred_path
+
+    def __call__(self, data):
+        d = dict(data)
+        image = d["image"].array
+        pred = d["pred"].array
+
+        img_tensor = make_grid(torch.from_numpy(image[:3] * 128 + 128), normalize=True)
+        save_image(img_tensor, self.image_path)
+
+        image_pred = [pred, image[3][None], image[4][None]] if image.shape[0] == 5 else [pred]
+        image_pred_np = np.array(image_pred)
+        image_pred_t = torch.from_numpy(image_pred_np)
+
+        tensor = make_grid(
+            tensor=image_pred_t,
+            nrow=len(image_pred),
+            normalize=True,
+            pad_value=10,
+        )
+        save_image(tensor, self.pred_path)
         return d

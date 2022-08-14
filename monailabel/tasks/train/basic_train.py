@@ -146,7 +146,7 @@ class BasicTrainTask(TrainTask):
             "val_batch_size": 1,
             "multi_gpu": True,
             "gpus": "all",
-            "dataset": ["CacheDataset", "PersistentDataset", "SmartCacheDataset", "Dataset"],
+            "dataset": ["SmartCacheDataset", "CacheDataset", "PersistentDataset", "Dataset"],
             "dataloader": ["ThreadDataLoader", "DataLoader"],
         }
         if config:
@@ -317,15 +317,26 @@ class BasicTrainTask(TrainTask):
     def val_inferer(self, context: Context):
         pass
 
+    def _load_external_ds(self, ds):
+        if ds and isinstance(ds, str) and os.path.exists(ds):
+            with open(ds) as fp:
+                ds = json.load(fp)
+        return ds
+
     def partition_datalist(self, context: Context, shuffle=False):
-        val_split = context.request.get("val_split", 0.0)
-        if val_split > 0.0:
-            train_datalist, val_datalist = partition_dataset(
-                context.datalist, ratios=[(1 - val_split), val_split], shuffle=shuffle
-            )
-        else:
-            train_datalist = context.datalist
-            val_datalist = []
+        # user can external validation/training datalist in the request
+        val_datalist = self._load_external_ds(context.request.get("val_ds"))
+        train_datalist = self._load_external_ds(context.request.get("train_ds", context.datalist))
+
+        if not val_datalist:
+            val_split = context.request.get("val_split", 0.0)
+            if val_split > 0.0:
+                train_datalist, val_datalist = partition_dataset(
+                    train_datalist, ratios=[(1 - val_split), val_split], shuffle=shuffle
+                )
+            else:
+                train_datalist = context.datalist
+                val_datalist = []
 
         if context.local_rank == 0:
             logger.info(f"Total Records for Training: {len(train_datalist)}")
@@ -375,6 +386,8 @@ class BasicTrainTask(TrainTask):
             if any(platform.win32_ver()):
                 req["distributed_backend"] = "gloo"
                 req["distributed_url"] = f"file://{tfile}"
+
+            logger.info(f"Total proces to spawn: {world_size}")
             torch.multiprocessing.spawn(main_worker, nprocs=world_size, args=(world_size, req, datalist, self))
             remove_file(tfile)
         else:
@@ -406,6 +419,15 @@ class BasicTrainTask(TrainTask):
             os.environ["LOCAL_RANK"] = str(context.local_rank)
 
         logger.info(f"{context.local_rank} - Train Request (final): {request}")
+        if context.multi_gpu:
+            distributed_backend = context.request.get("distributed_backend", "nccl")
+            distributed_url = context.request.get("distributed_url", "env://")
+            torch.distributed.init_process_group(
+                backend=distributed_backend,
+                init_method=distributed_url,
+                world_size=context.world_size,
+                rank=context.local_rank,
+            )
 
         context.device = self._device(context)
         context.max_epochs = request["max_epochs"]
@@ -482,15 +504,6 @@ class BasicTrainTask(TrainTask):
 
     def _device(self, context: Context):
         if context.multi_gpu:
-            distributed_backend = context.request.get("distributed_backend", "nccl")
-            distributed_url = context.request.get("distributed_url", "env://")
-            torch.distributed.init_process_group(
-                backend=distributed_backend,
-                init_method=distributed_url,
-                world_size=context.world_size,
-                rank=context.local_rank,
-            )
-
             gpus = context.request.get("gpus", "all")
             multi_gpus = list(range(context.world_size)) if gpus == "all" else [int(g) for g in gpus.split(",")]
             gpu = multi_gpus[context.local_rank]
@@ -597,7 +610,7 @@ class BasicTrainTask(TrainTask):
             )
 
 
-def main_worker(rank, world_size, request, datastore: Datastore, task: BasicTrainTask):
+def main_worker(rank, world_size, request, datalist, task: BasicTrainTask):
     logging.basicConfig(
         level=logging.INFO,
         format="[%(asctime)s.%(msecs)03d][%(levelname)5s](%(name)s) - %(message)s",
@@ -605,4 +618,4 @@ def main_worker(rank, world_size, request, datastore: Datastore, task: BasicTrai
     )
 
     logger.info(f"Main Worker: {rank}")
-    task.train(rank, world_size, request, datastore)
+    task.train(rank, world_size, request, datalist)

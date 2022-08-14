@@ -8,20 +8,20 @@
 # WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 # See the License for the specific language governing permissions and
 # limitations under the License.
-import logging
-from typing import Any, Callable, Dict, Sequence
+from typing import Callable, Sequence
 
 import numpy as np
+from lib.transforms import AddClickGuidanced, AddGuidanceSignald, ResizeGuidanced
 from monai.inferers import Inferer, SimpleInferer
 from monai.transforms import (
-    AsChannelFirstd,
+    Activationsd,
     AsDiscreted,
-    DivisiblePadd,
+    EnsureChannelFirstd,
     EnsureTyped,
     Resized,
-    ScaleIntensityd,
+    ScaleIntensityRangeD,
     SqueezeDimd,
-    ToTensord,
+    ToNumpyd,
 )
 
 from monailabel.interfaces.tasks.infer import InferTask, InferType
@@ -29,22 +29,21 @@ from monailabel.transform.post import FindContoursd, Restored
 from monailabel.transform.pre import LoadImageExd
 from monailabel.transform.writer import PolygonWriter
 
-logger = logging.getLogger(__name__)
 
-
-class ToolTracking(InferTask):
+class DeepEdit(InferTask):
     """
-    This provides Inference Engine for pre-trained segmentation model for Tool Tracking.
+    This provides Inference Engine for Deepgrow 2D/3D pre-trained model.
+    For More Details, Refer https://github.com/Project-MONAI/tutorials/tree/master/deepgrow/ignite
     """
 
     def __init__(
         self,
         path,
         network=None,
-        type=InferType.SEGMENTATION,
+        type=InferType.DEEPEDIT,
         labels=None,
         dimension=2,
-        description="A pre-trained semantic segmentation model for Tool Tracking",
+        description="A pre-trained DeepEdit model based on UNET for Endoscopy",
         **kwargs,
     ):
         super().__init__(
@@ -57,19 +56,16 @@ class ToolTracking(InferTask):
             **kwargs,
         )
 
-    def info(self) -> Dict[str, Any]:
-        d = super().info()
-        d["endoscopy"] = True
-        return d
-
     def pre_transforms(self, data=None) -> Sequence[Callable]:
         return [
             LoadImageExd(keys="image", dtype=np.uint8),
-            AsChannelFirstd(keys="image"),
-            Resized(keys="image", spatial_size=(736, 480)),
-            DivisiblePadd(keys="image", k=32),
-            ScaleIntensityd(keys="image"),
-            ToTensord(keys="image", device=data.get("device") if data else None),
+            EnsureTyped(keys="image", device=data.get("device") if data else None),
+            EnsureChannelFirstd(keys="image"),
+            Resized(keys="image", spatial_size=self.roi_size, mode="area"),
+            ScaleIntensityRangeD(keys="image", a_min=0.0, a_max=255.0, b_min=-1.0, b_max=1.0),
+            AddClickGuidanced(keys=("foreground", "background"), guidance="guidance"),
+            ResizeGuidanced(keys="guidance", ref_image="image"),
+            AddGuidanceSignald(keys="image", guidance="guidance"),
         ]
 
     def inferer(self, data=None) -> Inferer:
@@ -78,10 +74,14 @@ class ToolTracking(InferTask):
     def post_transforms(self, data=None) -> Sequence[Callable]:
         return [
             EnsureTyped(keys="pred", device=data.get("device") if data else None),
-            AsDiscreted(keys="pred", argmax=True),
+            Activationsd(keys="pred", sigmoid=True),
+            AsDiscreted(keys="pred", threshold_values=True, logit_thresh=0.5),
+            # NormalizeLabeld(keys="pred"),
+            # DumpImagePrediction2Dd(image_path="img.png", pred_path="pred.png"),
             Restored(keys="pred", ref_image="image"),
-            SqueezeDimd(keys="pred", dim=0),
-            FindContoursd(keys="pred", labels=self.labels),
+            SqueezeDimd(keys="pred"),
+            ToNumpyd(keys="pred", dtype=np.uint8),
+            FindContoursd(keys="pred", labels=self.labels, key_foreground_points="foreground"),
         ]
 
     def writer(self, data, extension=None, dtype=None):

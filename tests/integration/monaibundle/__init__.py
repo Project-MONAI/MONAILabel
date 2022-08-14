@@ -1,5 +1,3 @@
-#!/bin/bash
-
 # Copyright (c) MONAI Consortium
 # Licensed under the Apache License, Version 2.0 (the "License");
 # you may not use this file except in compliance with the License.
@@ -10,19 +8,3 @@
 # WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 # See the License for the specific language governing permissions and
 # limitations under the License.
-
-set -e
-DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")/../.." >/dev/null 2>&1 && pwd)"
-
-export PYTHONPATH=$DIR:$PYTHONPATH
-echo Using PYTHONPATH=$PYTHONPATH
-echo ""
-
-PYEXE=${MONAILABEL_PYEXE:-python}
-version=$(${PYEXE} --version 2>&1)
-if echo "$version" | grep "Python 2"; then
-  echo "Trying python3 instead of python ($version)"
-  PYEXE=python3
-fi
-
-${PYEXE} -m monailabel.main $*
