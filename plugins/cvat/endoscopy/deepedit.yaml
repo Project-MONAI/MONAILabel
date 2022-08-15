@@ -33,7 +33,7 @@ spec:
         - kind: ENV
           value: INTERACTOR_MODEL=true
         - kind: ENV
-          value: MONAI_LABEL_FLIP=false
+          value: MONAI_LABEL_FLIP_INPUT_POINTS=false
 
   triggers:
     myHttpTrigger:
