@@ -38,8 +38,6 @@ class ImageDataController:
     def getCurrentTime(self) -> datetime:
         return datetime.datetime.now()
 
-
-
     # ImageDataExtractor methods
 
     def initMetaDataProcessing(self) -> bool:
@@ -70,43 +68,47 @@ class ImageDataController:
         """
         statistics = ImageDataStatistics()
 
-        statistics.build(segmentationProgress = self.imageDataExtractor.getSegmentationProgessInPercentage() , 
-                        idxTotalSegmented = self.imageDataExtractor.getSegmentationVsTotalStr(), 
-                        idxTotalApproved = self.imageDataExtractor.getApprovalVsTotal(), 
-                        progressPercentage  = self.imageDataExtractor.getApprovalProgressInPercentage(), 
-                        segmentationProgressAllPercentage = self.imageDataExtractor.getSegmentationProgessInPercentage(), 
-                        approvalProgressPercentage = self.imageDataExtractor.getApprovalProgressInPercentage())
-        
+        statistics.build(
+            segmentationProgress=self.imageDataExtractor.getSegmentationProgessInPercentage(),
+            idxTotalSegmented=self.imageDataExtractor.getSegmentationVsTotalStr(),
+            idxTotalApproved=self.imageDataExtractor.getApprovalVsTotal(),
+            progressPercentage=self.imageDataExtractor.getApprovalProgressInPercentage(),
+            segmentationProgressAllPercentage=self.imageDataExtractor.getSegmentationProgessInPercentage(),
+            approvalProgressPercentage=self.imageDataExtractor.getApprovalProgressInPercentage(),
+        )
+
         return statistics
 
     # Section: Loading images
     def getAllImageData(self, segmented, isNotSegmented, isApproved, isFlagged) -> List[ImageData]:
-        return self.imageDataExtractor.getAllImageData(segmented=segmented, 
-                                                        notSegmented=isNotSegmented, 
-                                                        approved=isApproved, 
-                                                        flagged=isFlagged)
+        return self.imageDataExtractor.getAllImageData(
+            segmented=segmented, notSegmented=isNotSegmented, approved=isApproved, flagged=isFlagged
+        )
 
     def getImageDataByClientId(self, selectedClientId, isApproved, isFlagged) -> List[ImageData]:
-        return self.imageDataExtractor.getImageDataByClientId(clientId=selectedClientId, 
-                                                            approved=isApproved, 
-                                                            flagged=isFlagged)
+        return self.imageDataExtractor.getImageDataByClientId(
+            clientId=selectedClientId, approved=isApproved, flagged=isFlagged
+        )
 
     def getPercentageApproved(self, selectedClientId):
-        percentageApprovedOfClient, idxApprovedOfClient = self.imageDataExtractor.getPercentageApproved(selectedClientId)
+        percentageApprovedOfClient, idxApprovedOfClient = self.imageDataExtractor.getPercentageApproved(
+            selectedClientId
+        )
         return percentageApprovedOfClient, idxApprovedOfClient
 
     def getPercentageSemgmentedByClient(self, selectedClientId):
-        percentageSemgmentedByClient, idxSegmentedByClient = self.imageDataExtractor.getPercentageSemgmentedByClient(selectedClientId)
+        percentageSemgmentedByClient, idxSegmentedByClient = self.imageDataExtractor.getPercentageSemgmentedByClient(
+            selectedClientId
+        )
         return percentageSemgmentedByClient, idxSegmentedByClient
 
     # Section: Search Image
     def getMultImageDataByIds(self, imageIds) -> Dict[str, ImageData]:
         return self.imageDataExtractor.getMultImageDataByIds(imageIds)
 
-    def searchByAnnotatorReviewer(self, selectedAnnotator: str, 
-                                        selectedReviewer: str, 
-                                        isApproved: bool, 
-                                        isFlagged: bool) -> Dict[str, ImageData]:
+    def searchByAnnotatorReviewer(
+        self, selectedAnnotator: str, selectedReviewer: str, isApproved: bool, isFlagged: bool
+    ) -> Dict[str, ImageData]:
         """
         returns set of imageData (imageId mapped to ImageData) according to given filter options
         """
@@ -137,7 +139,7 @@ class ImageDataController:
 
         for imageData in imageIdsOfAnnotator:
             idToImageData[imageData.getName()] = imageData
-        
+
         return idToImageData
 
     def getImageDataByLevel(self, isEasy: bool, isMedium: bool, isHard: bool) -> Dict[str, ImageData]:
@@ -148,8 +150,6 @@ class ImageDataController:
             isEasy=isEasy, isMedium=isMedium, isHard=isHard
         )
         return imageIdsOfAnnotator
-
-
 
     # MONAI server methods
 
@@ -178,13 +178,17 @@ class ImageDataController:
         return mapIdToImageData
 
     # Section: Dicom stream
-    def updateLabelInfoOfAllVersionTags(self, imageData : ImageData, versionTag : str, level : str, updatedMetaJson : dict) -> bool:
+    def updateLabelInfoOfAllVersionTags(
+        self, imageData: ImageData, versionTag: str, level: str, updatedMetaJson: dict
+    ) -> bool:
         imageId = imageData.getName()
         self.updateLabelInfo(imageId, versionTag, updatedMetaJson)
-        
-        tagToSegmentationMetaJson = imageData.updateApprovedStatusOfOtherThanSubjectedVersion(subjectedTag=versionTag, difficultyLevel=level)
+
+        tagToSegmentationMetaJson = imageData.updateApprovedStatusOfOtherThanSubjectedVersion(
+            subjectedTag=versionTag, difficultyLevel=level
+        )
         for tag, segmentationMetaJson in tagToSegmentationMetaJson.items():
-             self.updateLabelInfo(imageId, tag, segmentationMetaJson)
+            self.updateLabelInfo(imageId, tag, segmentationMetaJson)
 
     def updateLabelInfo(self, imageId, versionTag, updatedMetaJson) -> bool:
         """
@@ -206,7 +210,7 @@ class ImageDataController:
             )
             return False
 
-    def reuqestSegmentation(self, image_id : str, tag : str) -> requests.models.Response:
+    def reuqestSegmentation(self, image_id: str, tag: str) -> requests.models.Response:
         """
         after sending request to monai server
         rerturns response body (img_blob) which contains the segmentation data
@@ -222,11 +226,11 @@ class ImageDataController:
     def getDicomDownloadUri(self, image_id: str) -> str:
         return self.monaiServerREST.getDicomDownloadUri(image_id)
 
-    def saveLabelInMonaiServer(self, image_in : str, label_in : str, tag : str, params : Dict):
+    def saveLabelInMonaiServer(self, image_in: str, label_in: str, tag: str, params: Dict):
         self.monaiServerREST.saveLabel(image_in, label_in, tag, params)
 
-    def deleteLabelByVersionTag(self, imageId : str, versionTag : str) -> bool:
+    def deleteLabelByVersionTag(self, imageId: str, versionTag: str) -> bool:
         reponseCode = self.monaiServerREST.deleteLabelByVersionTag(imageId, versionTag)
-        if (reponseCode is 200):
+        if reponseCode == 200:
             return True
         return False

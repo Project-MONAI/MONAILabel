@@ -1,8 +1,8 @@
-import json
-import time
 import logging
+import time
 
 from MONAILabelReviewerLib.MONAILabelReviewerEnum import Label
+
 """
 SegmentationMeta stores all the meta data of its corresponding ImageData
 The class returns a json string which will be send to MONAI-Server to persist the
@@ -14,14 +14,14 @@ class SegmentationMeta:
     def __init__(self):
         self.preFix = "params="
         self.LABEL = Label()
-       
+
         self.status: str = ""
         self.level: str = ""
         self.approvedBy: str = ""
         self.editTime: str = ""
         self.comment: str = ""
 
-        self.versionNumber : int = 0
+        self.versionNumber: int = 0
 
     def build(self, status="", level="", approvedBy="", comment="", editTime=""):
         self.setEditTime()
@@ -31,41 +31,41 @@ class SegmentationMeta:
         self.comment = comment
         self.editTime = editTime
 
-    def setVersionNumber(self, versionTag : str):
-        if(versionTag == self.LABEL.FINAL or versionTag == self.LABEL.ORIGINAL):
+    def setVersionNumber(self, versionTag: str):
+        if versionTag == self.LABEL.FINAL or versionTag == self.LABEL.ORIGINAL:
             self.versionNumber = 0
         else:
             self.versionNumber = self.parsNumberFromVersionTagString(versionTag=versionTag)
 
-    def parsNumberFromVersionTagString(self, versionTag : str) -> int:
+    def parsNumberFromVersionTagString(self, versionTag: str) -> int:
         lastCharIndex = len(versionTag)
-        indexOfDelimeter = versionTag.index('_')
-        versionTagIndex = versionTag[indexOfDelimeter+1:lastCharIndex]
+        indexOfDelimeter = versionTag.index("_")
+        versionTagIndex = versionTag[indexOfDelimeter + 1 : lastCharIndex]
         return int(versionTagIndex)
 
     def getVersionNumber(self) -> int:
         return self.versionNumber
 
-    def update(self,  status="", level="", approvedBy="", comment="") -> bool:
+    def update(self, status="", level="", approvedBy="", comment="") -> bool:
         logging.warn("=============== HEER ==============")
-        logging.warn("status={}, level={}, approvedBy={}, comment={}".format(status, level, approvedBy, comment))
+        logging.warn(f"status={status}, level={level}, approvedBy={approvedBy}, comment={comment}")
         isChanged = False
-        if(self.isBlank(status) is False and status != self.status):
+        if self.isBlank(status) is False and status != self.status:
             self.status = status
             isChanged = True
 
-        if(self.isBlank(level) is False and level != self.level):
+        if self.isBlank(level) is False and level != self.level:
             self.level = level
             isChanged = True
 
-        if(self.isBlank(comment) is False and comment != self.comment):
+        if self.isBlank(comment) is False and comment != self.comment:
             self.comment = comment
             isChanged = True
-        
-        if(isChanged):
-            if(self.isBlank(approvedBy) is False and approvedBy != self.approvedBy):
+
+        if isChanged:
+            if self.isBlank(approvedBy) is False and approvedBy != self.approvedBy:
                 self.approvedBy = approvedBy
-            
+
         return isChanged
 
     def setApprovedBy(self, approvedBy: str):
@@ -83,7 +83,7 @@ class SegmentationMeta:
     def setEditTime(self):
         self.editTime = int(time.time())
 
-    def getMeta(self)-> dict:
+    def getMeta(self) -> dict:
         metaJson = {
             "segmentationMeta": {
                 "status": self.status,
@@ -110,8 +110,6 @@ class SegmentationMeta:
     def getEditTime(self) -> str:
         return self.editTime
 
-
-
     def isEqual(self, status="", level="", approvedBy="", comment=""):
         if status != self.status:
             return False
@@ -125,7 +123,6 @@ class SegmentationMeta:
 
     def isBlank(self, string) -> bool:
         return not (string and string.strip())
-
 
     def display(self):
         print("versionNumber: ", self.getVersionNumber)

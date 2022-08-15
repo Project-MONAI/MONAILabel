@@ -10,11 +10,12 @@ JsonParser parses the datastore.json file
 and caches the information in dictionary: Mapping from id to ImageData
 """
 
+
 class JsonParser:
     def __init__(self, jsonObject: dict):
         self.LABEL = Label()
         self.dataStoreKeys = DataStoreKeys()
-        
+
         self.jsonObject = jsonObject
         self.mapIdToImageData: Dict[str, ImageData] = {}
 
@@ -87,49 +88,50 @@ class JsonParser:
     def extractLabelNames(self, labelsDict: dict) -> List[str]:
         return list(labelsDict.keys())
 
-    def extractLabelContentByName(self, labels : dict, labelName='final') -> Dict[str, str]:
-        if(labelName not in labels):
+    def extractLabelContentByName(self, labels: dict, labelName="final") -> Dict[str, str]:
+        if labelName not in labels:
             return {}
         content = labels[labelName][self.dataStoreKeys.INFO]
-        
-        if(self.dataStoreKeys.LABEL_INFO not in content):
+
+        if self.dataStoreKeys.LABEL_INFO not in content:
             return {}
-        
+
         labelDict = {}
         labelDict[self.dataStoreKeys.LABEL_INFO] = content[self.dataStoreKeys.LABEL_INFO]
         return labelDict
 
-    def extractSegmentationMetaOfVersion(self, labels : dict, labelName : str) -> dict:
-        if(labelName not in labels):
+    def extractSegmentationMetaOfVersion(self, labels: dict, labelName: str) -> dict:
+        if labelName not in labels:
             return {}
         content = labels[labelName][self.dataStoreKeys.INFO]
-        
-        if(self.dataStoreKeys.META not in content):
+
+        if self.dataStoreKeys.META not in content:
             return {}
         return content[self.dataStoreKeys.META]
 
-    def getAllSegmentationMetaOfAllLabels(self, labels : dict, labelNames : List[str]) -> Dict[str, SegmentationMeta]:
-        if(len(labelNames) == 0):
+    def getAllSegmentationMetaOfAllLabels(self, labels: dict, labelNames: List[str]) -> Dict[str, SegmentationMeta]:
+        if len(labelNames) == 0:
             return {}
 
         allSegMetaOfLabels = {}
         for labelName in labelNames:
             segMetaSingle = self.extractSegmentationMetaOfVersion(labels, labelName)
-            if(len(segMetaSingle) == 0):
+            if len(segMetaSingle) == 0:
                 continue
             segmentationMeta = self.produceSegementationData(segMetaSingle)
-            segmentationMeta.setVersionNumber(versionTag = labelName)
+            segmentationMeta.setVersionNumber(versionTag=labelName)
             allSegMetaOfLabels[labelName] = segmentationMeta
         return allSegMetaOfLabels
 
-    def produceSegementationData(self, segmenatationDict : dict) -> SegmentationMeta:
+    def produceSegementationData(self, segmenatationDict: dict) -> SegmentationMeta:
         segmentationMeta = SegmentationMeta()
         segmentationMeta.build(
-            status = segmenatationDict[self.dataStoreKeys.META_STATUS], 
-            level = segmenatationDict[self.dataStoreKeys.META_LEVEL], 
-            approvedBy = segmenatationDict[self.dataStoreKeys.APPROVED_BY], 
-            comment = segmenatationDict[self.dataStoreKeys.META_COMMENT], 
-            editTime = segmenatationDict[self.dataStoreKeys.META_EDIT_TIME])
+            status=segmenatationDict[self.dataStoreKeys.META_STATUS],
+            level=segmenatationDict[self.dataStoreKeys.META_LEVEL],
+            approvedBy=segmenatationDict[self.dataStoreKeys.APPROVED_BY],
+            comment=segmenatationDict[self.dataStoreKeys.META_COMMENT],
+            editTime=segmenatationDict[self.dataStoreKeys.META_EDIT_TIME],
+        )
 
         return segmentationMeta
 
@@ -193,7 +195,7 @@ class JsonParser:
             imageData = self.jsonToImageData(key, value)
             self.mapIdToImageData[key] = imageData
 
-    def jsonToImageData(self, key : str, value : dict) -> ImageData:
+    def jsonToImageData(self, key: str, value: dict) -> ImageData:
 
         imageData = ImageData(
             name=key,
@@ -202,7 +204,7 @@ class JsonParser:
             checkSum=self.getCheckSum(value),
             segmented=self.isSegmented(value),
             timeStamp=self.getTimeStamp(value),
-        )        
+        )
 
         if self.isSegmented(value):
             segName = self.getSegmentationName(value)
@@ -215,12 +217,14 @@ class JsonParser:
             labelsDict = self.extractLabels(value)
             labelNames = self.extractLabelNames(labelsDict)
             labelContent = self.extractLabelContentByName(labelsDict)
-            labelSegmentationMeta : Dict[str, SegmentationMeta] = self.getAllSegmentationMetaOfAllLabels(labelsDict, labelNames)
+            labelSegmentationMeta: Dict[str, SegmentationMeta] = self.getAllSegmentationMetaOfAllLabels(
+                labelsDict, labelNames
+            )
 
             imageData.setVersionNames(labelNames)
             imageData.setLabelContent(labelContent)
             imageData.setSegmentationMetaDict(labelSegmentationMeta)
-            
+
         return imageData
 
     def hasSegmentationMeta(self, info: dict) -> bool:

@@ -119,14 +119,19 @@ class ImageDataExtractor:
         idxTotalApproved = f"{approvalCount}/{self.getTotalNumImages()}"
         return idxTotalApproved
 
-    def invalidFilterCombination(self, segmented : bool, notSegmented : bool , approved : bool , flagged : bool) -> bool:
-        return  (notSegmented is True and segmented is True) or (approved is True and flagged is True) or (notSegmented is True and approved is True) or (notSegmented is True and flagged is True)
+    def invalidFilterCombination(self, segmented: bool, notSegmented: bool, approved: bool, flagged: bool) -> bool:
+        return (
+            (notSegmented is True and segmented is True)
+            or (approved is True and flagged is True)
+            or (notSegmented is True and approved is True)
+            or (notSegmented is True and flagged is True)
+        )
 
     def getAllImageData(self, segmented=False, notSegmented=False, approved=False, flagged=False) -> List[ImageData]:
         """
         returns fitered list of imageData which are filtered according to input parameters
         """
-        if (self.invalidFilterCombination(segmented, notSegmented, approved, flagged)):
+        if self.invalidFilterCombination(segmented, notSegmented, approved, flagged):
             logging.warning(
                 "{}: Selected filter options are not valid: segmented='{}' | notSegmented='{}' | approved='{}' | flagged='{}')".format(
                     self.getCurrentTime(), segmented, notSegmented, approved, flagged
@@ -144,16 +149,16 @@ class ImageDataExtractor:
                 selectedImageData.append(imagedata)
                 continue
 
-            if (imagedata.isSegemented() is segmented
-                and imagedata.isApproved() is True 
-                and approved is True):
+            if imagedata.isSegemented() is segmented and imagedata.isApproved() is True and approved is True:
                 selectedImageData.append(imagedata)
                 continue
 
-            if (imagedata.isSegemented() is segmented
-                #and imagedata.isApproved() is approved
-                and imagedata.isFlagged() is True 
-                and flagged is True):
+            if (
+                imagedata.isSegemented() is segmented
+                # and imagedata.isApproved() is approved
+                and imagedata.isFlagged() is True
+                and flagged is True
+            ):
                 selectedImageData.append(imagedata)
                 continue
 
@@ -174,21 +179,22 @@ class ImageDataExtractor:
             return None
 
         imageIds = self.clientToImageIds[clientId]
-        
-        if(approved is False and flagged is False):
+
+        if approved is False and flagged is False:
             return self.extractImageDataByIds(imageIds)
         else:
-            return self.extractImageDataByApprovedAndFlaggedStatus(clientId, approved, flagged,  imageIds)
-    
+            return self.extractImageDataByApprovedAndFlaggedStatus(clientId, approved, flagged, imageIds)
 
-    def extractImageDataByIds(self, imageIds : List[str]) -> List[ImageData]:
+    def extractImageDataByIds(self, imageIds: List[str]) -> List[ImageData]:
         imageDataList = []
         for id in imageIds:
-                imageData = self.nameToImageData[id]
-                imageDataList.append(imageData)
+            imageData = self.nameToImageData[id]
+            imageDataList.append(imageData)
         return imageDataList
 
-    def extractImageDataByApprovedAndFlaggedStatus(self, clientId : str, approved : bool, flagged : bool,  imageIds : List[str]) -> List[ImageData]:
+    def extractImageDataByApprovedAndFlaggedStatus(
+        self, clientId: str, approved: bool, flagged: bool, imageIds: List[str]
+    ) -> List[ImageData]:
         imageDataList = []
         for id in imageIds:
             if id not in self.nameToImageData:
@@ -208,7 +214,6 @@ class ImageDataExtractor:
 
             imageDataList.append(imageData)
         return imageDataList
-
 
     def getImageDataByClientAndReviewer(
         self, clientId: str, reviewerId: str, approved=False, flagged=False

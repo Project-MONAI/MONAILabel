@@ -1,7 +1,7 @@
 import datetime
+import json
 import logging
 import os
-import json
 from urllib.parse import quote_plus
 
 import requests
@@ -14,7 +14,7 @@ MonaiServerREST provides the REST endpoints to the MONAIServer
 
 class MonaiServerREST:
     def __init__(self, serverUrl: str):
-        self.PARAMS_PREFIX_REST_REQUEST = 'params'
+        self.PARAMS_PREFIX_REST_REQUEST = "params"
         self.serverUrl = serverUrl
 
     def getServerUrl(self) -> str:
@@ -46,9 +46,9 @@ class MonaiServerREST:
         logging.info(f"{self.getCurrentTime()}: REST: request dicom image '{download_uri}'")
         return download_uri
 
-    def requestSegmentation(self, image_id: str, tag : str) -> requests.models.Response:
-        if(tag == ''):
-            tag = 'final'
+    def requestSegmentation(self, image_id: str, tag: str) -> requests.models.Response:
+        if tag == "":
+            tag = "final"
         download_uri = f"{self.serverUrl}/datastore/label?label={quote_plus(image_id)}&tag={quote_plus(tag)}"
         logging.info(f"{self.getCurrentTime()}: REST: request segmentation '{download_uri}'")
 
@@ -92,14 +92,14 @@ class MonaiServerREST:
         logging.info(f"{self.getCurrentTime()}: Successfully connected to server (server url: '{url}').")
         return True
 
-    def updateLabelInfo(self, image_id: str, tag : str, params: dict) -> int:
+    def updateLabelInfo(self, image_id: str, tag: str, params: dict) -> int:
         """
         the image_id is the unique ID of an radiographic image
         If the image has a label/segmentation, its label/label_id corresponds to its image_id
         """
         embeddedParams = self.embeddedLabelContentInParams(params)
-        logging.info("Sending updated label info: {}".format(embeddedParams))
-        
+        logging.info(f"Sending updated label info: {embeddedParams}")
+
         url = f"{self.serverUrl}/datastore/updatelabelinfo?label_id={quote_plus(image_id)}&label_tag={quote_plus(tag)}"
         headers = CaseInsensitiveDict()
         headers["Content-Type"] = "application/x-www-form-urlencoded"
@@ -114,7 +114,7 @@ class MonaiServerREST:
                 )
             )
             return None
-        if (response.status_code != 200):
+        if response.status_code != 200:
             logging.warn(
                 "{}: Update meta data (image id: '{}') failed due to response code = {}) ".format(
                     self.getCurrentTime(), image_id, response.status_code
@@ -125,57 +125,63 @@ class MonaiServerREST:
         logging.info(f"{self.getCurrentTime()}: Meta data was updated successfully (image id: '{image_id}').")
         return response.status_code
 
-    def embeddedLabelContentInParams(self, labelContent : dict) -> dict:
+    def embeddedLabelContentInParams(self, labelContent: dict) -> dict:
         params = {}
         params[self.PARAMS_PREFIX_REST_REQUEST] = json.dumps(labelContent)
         return params
 
-    def saveLabel(self, imageId : str , labelDirectory : str, tag : str, params : dict):
-        if(params is not None):
+    def saveLabel(self, imageId: str, labelDirectory: str, tag: str, params: dict):
+        if params is not None:
             embeddedParams = self.embeddedLabelContentInParams(params)
         logging.info(f"{self.getCurrentTime()}: Label and Meta data (image id: '{imageId}'): '{embeddedParams}'")
-        
-        url = "{}/datastore/label?image={}".format(self.serverUrl, imageId)
+
+        url = f"{self.serverUrl}/datastore/label?image={imageId}"
         if tag:
             url += f"&tag={tag}"
 
         try:
             with open(os.path.abspath(labelDirectory), "rb") as f:
-                    response = requests.put(url, data=embeddedParams, files={"label": (imageId+".nrrd", f)})
-        
-        except Exception as exception:
-            logging.error("{}: Label and Meta data update failed (image id: '{}', meta data: '{}', due to '{}'".format(self.getCurrentTime(), 
-                                                                                                            imageId, 
-                                                                                                            embeddedParams, 
-                                                                                                            exception))
+                response = requests.put(url, data=embeddedParams, files={"label": (imageId + ".nrrd", f)})
 
-        if(response.status_code == 200):
-            logging.info(f"{self.getCurrentTime()}: Label and Meta data was updated successfully (image id: '{imageId}').")
+        except Exception as exception:
+            logging.error(
+                "{}: Label and Meta data update failed (image id: '{}', meta data: '{}', due to '{}'".format(
+                    self.getCurrentTime(), imageId, embeddedParams, exception
+                )
+            )
+
+        if response.status_code == 200:
+            logging.info(
+                f"{self.getCurrentTime()}: Label and Meta data was updated successfully (image id: '{imageId}')."
+            )
             logging.warn(f"{self.getCurrentTime()}: Meta : '{embeddedParams}'")
         else:
             logging.warn(
-                    "{}: Update label (image id: '{}') failed due to response code = {}) ".format(
-                        self.getCurrentTime(), imageId, response.status_code
-                    )
+                "{}: Update label (image id: '{}') failed due to response code = {}) ".format(
+                    self.getCurrentTime(), imageId, response.status_code
                 )
+            )
         return response.status_code
 
-    def deleteLabelByVersionTag(self, imageId : str, versionTag : str) -> int:
-        url = "{}/datastore/label?id={}&tag={}".format(self.serverUrl, imageId, versionTag)
+    def deleteLabelByVersionTag(self, imageId: str, versionTag: str) -> int:
+        url = f"{self.serverUrl}/datastore/label?id={imageId}&tag={versionTag}"
         try:
             response = requests.delete(url)
         except Exception as exception:
-            logging.error("{}: Label and Meta data deletion failed (image id: '{}', version tag: '{}') due to '{}'".format(self.getCurrentTime(), 
-                                                                                                imageId,
-                                                                                                versionTag,
-                                                                                                exception))
-            
-        if(response.status_code == 200):
-            logging.info(f"{self.getCurrentTime()}: Label and Meta data was deleted successfully (image id: '{imageId}') | tae: '{versionTag}'.")
-        else:
-             logging.warn(
-                    "{}: Deletion of label (image id: '{}') failed due to response code = {}) ".format(
-                        self.getCurrentTime(), imageId, response.status_code
-                    )
+            logging.error(
+                "{}: Label and Meta data deletion failed (image id: '{}', version tag: '{}') due to '{}'".format(
+                    self.getCurrentTime(), imageId, versionTag, exception
                 )
+            )
+
+        if response.status_code == 200:
+            logging.info(
+                f"{self.getCurrentTime()}: Label and Meta data was deleted successfully (image id: '{imageId}') | tae: '{versionTag}'."
+            )
+        else:
+            logging.warn(
+                "{}: Deletion of label (image id: '{}') failed due to response code = {}) ".format(
+                    self.getCurrentTime(), imageId, response.status_code
+                )
+            )
         return response.status_code

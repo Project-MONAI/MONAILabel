@@ -10,9 +10,8 @@ import requests
 import SampleData
 import slicer
 from MONAILabelReviewerLib.ImageData import ImageData
-from MONAILabelReviewerLib.ImageDataController import ImageDataController
-from MONAILabelReviewerLib.ImageDataController import ImageDataStatistics
-from MONAILabelReviewerLib.MONAILabelReviewerEnum import Level, SegStatus, Label
+from MONAILabelReviewerLib.ImageDataController import ImageDataController, ImageDataStatistics
+from MONAILabelReviewerLib.MONAILabelReviewerEnum import Label, Level, SegStatus
 from slicer.ScriptedLoadableModule import *
 from slicer.util import VTKObservationMixin
 
@@ -48,8 +47,8 @@ class MONAILabelReviewerWidget(ScriptedLoadableModuleWidget, VTKObservationMixin
         """
         ScriptedLoadableModuleWidget.__init__(self, parent)
         VTKObservationMixin.__init__(self)  # needed for parameter node observation
-        
-        #Color set
+
+        # Color set
         self.colorGreenPressedButton = "background-color : rgb(0, 250, 146)"
         self.colorDarkGrayButton = "background-color : rgb(169, 169, 169)"
         self.colorGreenButtonAfterSuccessfulLoad = "background-color : rgb(0, 144, 81)"
@@ -73,8 +72,8 @@ class MONAILabelReviewerWidget(ScriptedLoadableModuleWidget, VTKObservationMixin
 
         self.selectedReviewer: str = ""
         self.selectedClientId: str = ""
-        self.currentImageId : str = ""
-        self.currentLabelVersion : str = ""
+        self.currentImageId: str = ""
+        self.currentLabelVersion: str = ""
         self.listImageData: List[ImageData] = None
         self.imageCounter: int = 0
         self.currentImageData: ImageData = None
@@ -117,7 +116,7 @@ class MONAILabelReviewerWidget(ScriptedLoadableModuleWidget, VTKObservationMixin
         # in batch mode, without a graphical user interface.
         self.logic = MONAILabelReviewerLogic()
 
-         # set segmentator editor
+        # set segmentator editor
         self.segmentEditorWidget = slicer.qMRMLSegmentEditorWidget()
         self.addSegmentator()
         self.setLightVersion()
@@ -169,24 +168,24 @@ class MONAILabelReviewerWidget(ScriptedLoadableModuleWidget, VTKObservationMixin
         return datetime.datetime.now()
 
     def getCurrentMetaStatus(self) -> str:
-        if(not self.finalStatus):
+        if not self.finalStatus:
             return ""
         return self.finalStatus
 
-    def setCurrentMetaStatus(self, status = ""):
+    def setCurrentMetaStatus(self, status=""):
         self.finalStatus = status
 
     def getCurrentMetaLevel(self) -> str:
-        if(not self.finalLevel):
+        if not self.finalLevel:
             return ""
         return self.finalLevel
 
-    def setCurrentMetaLevel(self, level = ""):
+    def setCurrentMetaLevel(self, level=""):
         self.finalLevel = level
 
     def getCurrentComment(self) -> str:
-        comment =  self.ui.plainText_comment.toPlainText()
-        if(not comment):
+        comment = self.ui.plainText_comment.toPlainText()
+        if not comment:
             return ""
         return comment
 
@@ -195,16 +194,15 @@ class MONAILabelReviewerWidget(ScriptedLoadableModuleWidget, VTKObservationMixin
 
     def getSelectedReviewer(self) -> str:
         selectedReviewer = self.ui.comboBox_reviewers.currentText
-        if(not selectedReviewer):
+        if not selectedReviewer:
             return ""
         return selectedReviewer
 
     def getSelectedClientFromComboBox(self) -> str:
         selectedClient = self.ui.comboBox_clients.currentText
-        if(not selectedClient):
+        if not selectedClient:
             return ""
         return selectedClient
-
 
     def cleanup(self):
         """
@@ -220,11 +218,13 @@ class MONAILabelReviewerWidget(ScriptedLoadableModuleWidget, VTKObservationMixin
         self.loadImageData()
 
     def indexLabelVersionChanged(self, index):
-        logging.warn(f"{self.getCurrentTime()}: Selected labal version: '{self.getCurrentLabelVersionFromComboBox()}', is enabled '{self.isSelectableByLabelVersion}'")
+        logging.warn(
+            f"{self.getCurrentTime()}: Selected labal version: '{self.getCurrentLabelVersionFromComboBox()}', is enabled '{self.isSelectableByLabelVersion}'"
+        )
         self.displayAdditionalMetaIfEdited(self.getCurrentLabelVersionFromComboBox())
-        if(self.isSelectableByLabelVersion):
-            self.disableDifficultyButtons(tag = self.getCurrentLabelVersion())
-            self.loadNextImage(imageData = self.currentImageData, tag = self.getCurrentLabelVersion())
+        if self.isSelectableByLabelVersion:
+            self.disableDifficultyButtons(tag=self.getCurrentLabelVersion())
+            self.loadNextImage(imageData=self.currentImageData, tag=self.getCurrentLabelVersion())
 
     def getCurrentLabelVersionFromComboBox(self) -> str:
         labelString = self.ui.comboBox_label_version.currentText
@@ -232,12 +232,12 @@ class MONAILabelReviewerWidget(ScriptedLoadableModuleWidget, VTKObservationMixin
 
     def getCurrentLabelVersion(self) -> str:
         label = self.getCurrentLabelVersionFromComboBox()
-        if(label == ""):
+        if label == "":
             label = self.LABEL.FINAL
         return label
 
-    def disableDifficultyButtons(self, tag : str):
-        if(self.LABEL.VERSION in tag):
+    def disableDifficultyButtons(self, tag: str):
+        if self.LABEL.VERSION in tag:
             self.ui.btn_easy.hide()
             self.ui.btn_medium.hide()
             self.ui.btn_hard.hide()
@@ -246,33 +246,32 @@ class MONAILabelReviewerWidget(ScriptedLoadableModuleWidget, VTKObservationMixin
             self.ui.btn_medium.show()
             self.ui.btn_hard.show()
 
-
     def setSaveAsNewVersion(self) -> bool:
         setToSave = bool(self.ui.btn_save_new_version.isChecked())
         self.ui.btn_update_version.enabled = True
-        if(setToSave):
+        if setToSave:
             self.ui.btn_overwrite_version.setChecked(False)
             self.ui.btn_overwrite_version.setStyleSheet(self.colorDarkGrayButton)
 
             self.ui.btn_delete_version.setChecked(False)
             self.ui.btn_delete_version.setStyleSheet(self.colorDarkGrayButton)
 
-            self.ui.btn_save_new_version.setStyleSheet( self.colorGreenPressedButton)
+            self.ui.btn_save_new_version.setStyleSheet(self.colorGreenPressedButton)
             self.ui.btn_update_version.setText("Confirm: Saving")
         return setToSave
 
     def setOverwriteCurrentVersion(self) -> bool:
-        setToOverwrite =  bool(self.ui.btn_overwrite_version.isChecked())
+        setToOverwrite = bool(self.ui.btn_overwrite_version.isChecked())
         self.ui.btn_update_version.enabled = True
-        if(setToOverwrite):
-            
+        if setToOverwrite:
+
             self.ui.btn_save_new_version.setChecked(False)
             self.ui.btn_save_new_version.setStyleSheet(self.colorDarkGrayButton)
 
             self.ui.btn_delete_version.setChecked(False)
             self.ui.btn_delete_version.setStyleSheet(self.colorDarkGrayButton)
 
-            self.ui.btn_overwrite_version.setStyleSheet( self.colorGreenPressedButton)
+            self.ui.btn_overwrite_version.setStyleSheet(self.colorGreenPressedButton)
             self.ui.btn_update_version.setText("Confirm: Overwriting")
 
         return setToOverwrite
@@ -280,20 +279,20 @@ class MONAILabelReviewerWidget(ScriptedLoadableModuleWidget, VTKObservationMixin
     def setDeleteVersion(self) -> bool:
         setToDelete = bool(self.ui.btn_delete_version.isChecked())
         self.ui.btn_update_version.enabled = True
-        if(setToDelete):
+        if setToDelete:
             self.ui.btn_save_new_version.setChecked(False)
             self.ui.btn_save_new_version.setStyleSheet(self.colorDarkGrayButton)
 
             self.ui.btn_overwrite_version.setChecked(False)
             self.ui.btn_overwrite_version.setStyleSheet(self.colorDarkGrayButton)
 
-            self.ui.btn_delete_version.setStyleSheet( self.colorGreenPressedButton)
+            self.ui.btn_delete_version.setStyleSheet(self.colorGreenPressedButton)
             self.ui.btn_update_version.setText("Confirm: Deletion")
 
         return setToDelete
 
-    def setButtonColorReviewerOrBasicMode(self, isReviewerMode : bool):
-        if(isReviewerMode):
+    def setButtonColorReviewerOrBasicMode(self, isReviewerMode: bool):
+        if isReviewerMode:
             self.ui.btn_reviewers_mode.setStyleSheet(self.colorRedReviewerModeButton)
             self.ui.btn_basic_mode.setStyleSheet(self.colorDarkGrayButton)
         else:
@@ -345,9 +344,9 @@ class MONAILabelReviewerWidget(ScriptedLoadableModuleWidget, VTKObservationMixin
             self.ui.btn_basic_mode.setChecked(False)
 
         self.collapseAllSecions()
-        
-        self.activateSegmentatorEditor(activated = False)
-        self.hideEditingSelectionOption(isHidden = False)
+
+        self.activateSegmentatorEditor(activated=False)
+        self.hideEditingSelectionOption(isHidden=False)
 
     # Section:  Light version Option
     def setLightVersion(self):
@@ -396,7 +395,7 @@ class MONAILabelReviewerWidget(ScriptedLoadableModuleWidget, VTKObservationMixin
         self.collapseAllSecions()
 
         self.activateSegmentatorEditor(activated=False)
-        self.hideEditingSelectionOption(isHidden = True)
+        self.hideEditingSelectionOption(isHidden=True)
 
     def cleanCache(self):
         self.logic = MONAILabelReviewerLogic()
@@ -409,9 +408,9 @@ class MONAILabelReviewerWidget(ScriptedLoadableModuleWidget, VTKObservationMixin
         self.idToimageData = None
 
         # Meta Information
-        self.setCurrentMetaStatus(status = "")
-        self.setCurrentMetaLevel(level = "")
-        self.setCurrentComment(comment = "")
+        self.setCurrentMetaStatus(status="")
+        self.setCurrentMetaLevel(level="")
+        self.setCurrentComment(comment="")
 
         logging.info(f"{self.getCurrentTime()}: Cache is cleaned")
 
@@ -495,7 +494,6 @@ class MONAILabelReviewerWidget(ScriptedLoadableModuleWidget, VTKObservationMixin
     def setProgessBar(self):
         statistics = self.logic.getStatistics()
 
-
         self.ui.progressBar_segmentation.setProperty("value", statistics.getSegmentationProgress())
         self.ui.label_idx_seg_image.setText(statistics.getIdxTotalSegmented())
         self.ui.label_idx_appr_image.setText(statistics.getIdxTotalApproved())
@@ -522,7 +520,7 @@ class MONAILabelReviewerWidget(ScriptedLoadableModuleWidget, VTKObservationMixin
         self.ui.comboBox_reviewers.addItem(self.selectedReviewer)
 
         for reviewer in reviewers:
-            if (reviewer == self.selectedReviewer):
+            if reviewer == self.selectedReviewer:
                 continue
             self.ui.comboBox_reviewers.addItem(str(reviewer))
         self.ui.comboBox_reviewers.setCurrentText(self.selectedReviewer)
@@ -535,9 +533,9 @@ class MONAILabelReviewerWidget(ScriptedLoadableModuleWidget, VTKObservationMixin
 
     def cleanDicomStreamSection(self):
 
-        self.setCurrentMetaStatus(status = "")
-        self.setCurrentMetaLevel(level = "")
-        self.setCurrentComment(comment = "")
+        self.setCurrentMetaStatus(status="")
+        self.setCurrentMetaLevel(level="")
+        self.setCurrentComment(comment="")
 
         self.selectedClientId = None
         self.imageCounter = 0
@@ -601,7 +599,7 @@ class MONAILabelReviewerWidget(ScriptedLoadableModuleWidget, VTKObservationMixin
         return self.logic.getImageDataByClientId(selectedClientId, isApproved, isFlagged)
 
     def setProgressBarOfAll(self):
-        statistics : ImageDataStatistics = self.logic.getStatistics()
+        statistics: ImageDataStatistics = self.logic.getStatistics()
         # Progress bar: Segmented/TotalImage
         self.ui.progressBar_segmented_client.setProperty("value", statistics.getSegmentationProgressAllPercentage())
         self.ui.label_idx_seg_image_client.setText(statistics.getIdxTotalSegmented())
@@ -757,7 +755,9 @@ class MONAILabelReviewerWidget(ScriptedLoadableModuleWidget, VTKObservationMixin
         selectedReviewer: str = self.ui.comboBox_search_reviewer.currentText
         isApproved: bool = bool(self.ui.checkBox_search_approved.isChecked())
         isFlagged: bool = bool(self.ui.checkBox_search_flagged.isChecked())
-        logging.warn(f"{self.getCurrentTime()}: Search by annontator: '{selectedAnnotator}' | reviewer: '{selectedReviewer}' | isApproved: '{isApproved}' | isFlagged: '{isFlagged}'")
+        logging.warn(
+            f"{self.getCurrentTime()}: Search by annontator: '{selectedAnnotator}' | reviewer: '{selectedReviewer}' | isApproved: '{isApproved}' | isFlagged: '{isFlagged}'"
+        )
 
         self.idToimageData = self.logic.searchByAnnotatorReviewer(
             selectedAnnotator, selectedReviewer, isApproved, isFlagged
@@ -886,13 +886,13 @@ class MONAILabelReviewerWidget(ScriptedLoadableModuleWidget, VTKObservationMixin
             self.ui.btn_mark_revision.setStyleSheet(self.colorDarkGrayButton)
 
         if statusApproved:
-            self.setCurrentMetaStatus(status = self.STATUS.APPROVED)
+            self.setCurrentMetaStatus(status=self.STATUS.APPROVED)
             self.ui.btn_approved.setChecked(True)
             self.ui.btn_approved.setStyleSheet(self.colorLightGreenButton)
             self.ui.btn_mark_revision.setStyleSheet(self.colorDarkGrayButton)
             self.ui.lineEdit_status.setStyleSheet(self.colorLightGreenButton)
         else:
-            self.setCurrentMetaStatus(status = "")
+            self.setCurrentMetaStatus(status="")
             self.resetButtonsOfApproveOrFlag()
         self.updateDisplayImageMetaData()
 
@@ -906,13 +906,13 @@ class MONAILabelReviewerWidget(ScriptedLoadableModuleWidget, VTKObservationMixin
             self.ui.btn_approved.setDown(False)
             self.ui.btn_approved.setStyleSheet(self.colorDarkGrayButton)
         if statusFlagged:
-            self.setCurrentMetaStatus(status = self.STATUS.FLAGGED)
+            self.setCurrentMetaStatus(status=self.STATUS.FLAGGED)
             self.ui.btn_mark_revision.setChecked(True)
             self.ui.btn_mark_revision.setStyleSheet(self.colorLightGreenButton)
             self.ui.btn_approved.setStyleSheet(self.colorDarkGrayButton)
             self.ui.lineEdit_status.setStyleSheet(self.colorLightYellow)
         else:
-            self.setCurrentMetaStatus(status = "")
+            self.setCurrentMetaStatus(status="")
             self.resetButtonsOfApproveOrFlag()
         self.updateDisplayImageMetaData()
 
@@ -920,7 +920,6 @@ class MONAILabelReviewerWidget(ScriptedLoadableModuleWidget, VTKObservationMixin
         self.ui.btn_mark_revision.setStyleSheet("")
         self.ui.btn_approved.setStyleSheet("")
         self.ui.lineEdit_status.setStyleSheet("")
-
 
     # Button: Clear
     def clearButtons(self):
@@ -947,22 +946,21 @@ class MONAILabelReviewerWidget(ScriptedLoadableModuleWidget, VTKObservationMixin
         self.ui.btn_medium.setDown(False)
         self.ui.btn_hard.setDown(False)
 
-    def setDifficultyButtonAccordingColorAndChecked(self, difficulty : str):
-        if (difficulty == self.LEVEL.EASY):
+    def setDifficultyButtonAccordingColorAndChecked(self, difficulty: str):
+        if difficulty == self.LEVEL.EASY:
             self.ui.btn_easy.setStyleSheet(self.colorGreenEasyButton)
             self.ui.lineEdit_level.setStyleSheet(self.colorGreenEasyButton)
-            
+
             self.ui.btn_medium.setChecked(False)
             self.ui.btn_hard.setChecked(False)
-            
+
             self.ui.btn_medium.setDown(False)
             self.ui.btn_hard.setDown(False)
-            
+
             self.ui.btn_medium.setStyleSheet(self.colorDarkGrayButton)
             self.ui.btn_hard.setStyleSheet(self.colorDarkGrayButton)
 
-
-        elif(difficulty == self.LEVEL.MEDIUM):
+        elif difficulty == self.LEVEL.MEDIUM:
             self.ui.btn_medium.setStyleSheet(self.colorYellowMediumButton)
             self.ui.lineEdit_level.setStyleSheet(self.colorYellowMediumButton)
 
@@ -975,8 +973,7 @@ class MONAILabelReviewerWidget(ScriptedLoadableModuleWidget, VTKObservationMixin
             self.ui.btn_easy.setStyleSheet(self.colorDarkGrayButton)
             self.ui.btn_hard.setStyleSheet(self.colorDarkGrayButton)
 
-
-        elif(difficulty == self.LEVEL.HARD):
+        elif difficulty == self.LEVEL.HARD:
             self.ui.btn_hard.setStyleSheet(self.colorRedHardButton)
             self.ui.lineEdit_level.setStyleSheet(self.colorRedHardButton)
 
@@ -996,7 +993,6 @@ class MONAILabelReviewerWidget(ScriptedLoadableModuleWidget, VTKObservationMixin
             self.setCurrentMetaLevel(level=self.LEVEL.EASY)
             self.setDifficultyButtonAccordingColorAndChecked(difficulty=self.LEVEL.EASY)
             self.ui.lineEdit_level.setText(self.getCurrentMetaLevel())
-            
 
         if levelEasy is False and self.getCurrentMetaLevel() == self.LEVEL.EASY:
             self.setCurrentMetaLevel(level="")
@@ -1051,7 +1047,7 @@ class MONAILabelReviewerWidget(ScriptedLoadableModuleWidget, VTKObservationMixin
         """
 
         self.persistMetaInMonaiServer()
-        
+
         # Re process Meta Data after image data was persisted
         self.reloadOverallStatistic()
         # Request Next Image
@@ -1076,12 +1072,14 @@ class MONAILabelReviewerWidget(ScriptedLoadableModuleWidget, VTKObservationMixin
         Sends the updated meta data of dicom and segmentation to monai-server
         Monai-server incorporates that information into datastore.json file
         """
-        self.logic.updateLabelInfo(imageData=self.currentImageData, 
-                                    versionTag=self.getCurrentLabelVersion(), 
-                                    status=self.getCurrentMetaStatus(),  
-                                    level=self.getCurrentMetaLevel(), 
-                                    approvedBy=self.selectedReviewer, 
-                                    comment=self.getCurrentComment())
+        self.logic.updateLabelInfo(
+            imageData=self.currentImageData,
+            versionTag=self.getCurrentLabelVersion(),
+            status=self.getCurrentMetaStatus(),
+            level=self.getCurrentMetaLevel(),
+            approvedBy=self.selectedReviewer,
+            comment=self.getCurrentComment(),
+        )
 
     # Button: Previouse
     def getPreviousSegmenation(self):
@@ -1096,12 +1094,12 @@ class MONAILabelReviewerWidget(ScriptedLoadableModuleWidget, VTKObservationMixin
             self.imageCounter = 0
             return
         self.updateHorizontalSlider()
-        self.currentImageData = self.listImageData[self.imageCounter]        
+        self.currentImageData = self.listImageData[self.imageCounter]
         self.currentImageData.display()
 
         self.fillComboBoxLabelVersions(self.currentImageData)
         approvedOrLatestVersionTag = self.currentImageData.getApprovedVersionTagElseReturnLatestVersion()
-        self.loadNextImage(self.currentImageData, tag = approvedOrLatestVersionTag)
+        self.loadNextImage(self.currentImageData, tag=approvedOrLatestVersionTag)
         self.resetSegmentationEditorTools()
 
     def cleanLineEditsContainingSegMeta(self):
@@ -1113,7 +1111,7 @@ class MONAILabelReviewerWidget(ScriptedLoadableModuleWidget, VTKObservationMixin
         self.ui.lineEdit_date.setText("")
         self.ui.plainText_comment.setPlainText("")
 
-    def displayImageMetaData(self, imageData : ImageData, currentLabelVersion : str):
+    def displayImageMetaData(self, imageData: ImageData, currentLabelVersion: str):
         """
         Displays meta info of dicom and segmentation in the info box on slicer
 
@@ -1123,35 +1121,34 @@ class MONAILabelReviewerWidget(ScriptedLoadableModuleWidget, VTKObservationMixin
         self.cleanLineEditsContainingSegMeta()
         self.clearButtons()
 
-        self.setCurrentMetaStatus(status = imageData.getStatus(currentLabelVersion))
-        
+        self.setCurrentMetaStatus(status=imageData.getStatus(currentLabelVersion))
+
         self.fillLineEditsWithSegmenationMeta(imageData, currentLabelVersion)
         self.setMetaButtonsAccordingToImageData(imageData, currentLabelVersion)
 
-        self.setCurrentMetaLevel(level = imageData.getLevel(currentLabelVersion))
+        self.setCurrentMetaLevel(level=imageData.getLevel(currentLabelVersion))
 
-    def setMetaButtonsAccordingToImageData(self, imageData : ImageData, currentLabelVersion : str):
+    def setMetaButtonsAccordingToImageData(self, imageData: ImageData, currentLabelVersion: str):
         finalLevel = imageData.getLevel(currentLabelVersion)
         if finalLevel != "":
             self.activateBtnLevelOfDifficulty(finalLevel)
-        
+
         if imageData.isApprovedVersion(currentLabelVersion):
             self.activateBtnApproved(True)
 
         if imageData.isFlagged(currentLabelVersion):
             self.activateBtnApproved(False)
 
-    
-    def fillLineEditsWithSegmenationMeta(self, imageData : ImageData, currentLabelVersion : str):
+    def fillLineEditsWithSegmenationMeta(self, imageData: ImageData, currentLabelVersion: str):
 
-        logging.info("==== currentLabelVersion: {}".format(currentLabelVersion))
-        logging.info("==== getName: {}".format(imageData.getName()))
-        logging.info("==== getClientId: {}".format(imageData.getClientId(currentLabelVersion)))
-        logging.info("==== getTime: {}".format(imageData.getTimeOfAnnotation()))
-        logging.info("==== getStatus: {}".format(imageData.getStatus(currentLabelVersion)))
-        logging.info("==== getComment: {}".format(imageData.getComment(currentLabelVersion)))
-        logging.info("==== getLevel: {}".format(imageData.getLevel(currentLabelVersion)))
-        logging.info("==== edtitingTme: {}".format(imageData.getTimeOfEditing(currentLabelVersion)))
+        logging.info(f"==== currentLabelVersion: {currentLabelVersion}")
+        logging.info(f"==== getName: {imageData.getName()}")
+        logging.info(f"==== getClientId: {imageData.getClientId(currentLabelVersion)}")
+        logging.info(f"==== getTime: {imageData.getTimeOfAnnotation()}")
+        logging.info(f"==== getStatus: {imageData.getStatus(currentLabelVersion)}")
+        logging.info(f"==== getComment: {imageData.getComment(currentLabelVersion)}")
+        logging.info(f"==== getLevel: {imageData.getLevel(currentLabelVersion)}")
+        logging.info(f"==== edtitingTme: {imageData.getTimeOfEditing(currentLabelVersion)}")
 
         name = imageData.getName()
         annotator = imageData.getClientId(currentLabelVersion)
@@ -1160,7 +1157,7 @@ class MONAILabelReviewerWidget(ScriptedLoadableModuleWidget, VTKObservationMixin
         annotationTime = imageData.getTimeOfAnnotation()
         status = imageData.getStatus(currentLabelVersion)
         comment = imageData.getComment(currentLabelVersion)
-        
+
         self.ui.lineEdit_image_id.setText(name)
         self.ui.lineEdit_segmentator.setText(annotator)
         self.ui.lineEdit_editor.setText(editor)
@@ -1206,20 +1203,20 @@ class MONAILabelReviewerWidget(ScriptedLoadableModuleWidget, VTKObservationMixin
             self.ui.lineEdit_level.setStyleSheet(self.colorRedHardButton)
             self.setHard()
 
-    def activateBtnApproved(self, activated : bool):
-            self.ui.btn_mark_revision.setChecked(not activated)
-            self.ui.btn_mark_revision.setDown(not activated)
-            self.ui.btn_approved.setChecked(activated)
-            self.ui.btn_approved.setDown(activated)
-            if activated:
-                self.ui.btn_approved.setStyleSheet(self.colorLightGreenButton)
-                self.ui.btn_mark_revision.setStyleSheet(self.colorDarkGrayButton)
-                self.ui.lineEdit_status.setStyleSheet(self.colorLightGreenButton)
-            else:
-                self.ui.btn_approved.setStyleSheet(self.colorDarkGrayButton)
-                self.ui.btn_mark_revision.setStyleSheet(self.colorLightGreenButton)
-                self.ui.lineEdit_status.setStyleSheet(self.colorLightYellow)
-    
+    def activateBtnApproved(self, activated: bool):
+        self.ui.btn_mark_revision.setChecked(not activated)
+        self.ui.btn_mark_revision.setDown(not activated)
+        self.ui.btn_approved.setChecked(activated)
+        self.ui.btn_approved.setDown(activated)
+        if activated:
+            self.ui.btn_approved.setStyleSheet(self.colorLightGreenButton)
+            self.ui.btn_mark_revision.setStyleSheet(self.colorDarkGrayButton)
+            self.ui.lineEdit_status.setStyleSheet(self.colorLightGreenButton)
+        else:
+            self.ui.btn_approved.setStyleSheet(self.colorDarkGrayButton)
+            self.ui.btn_mark_revision.setStyleSheet(self.colorLightGreenButton)
+            self.ui.lineEdit_status.setStyleSheet(self.colorLightYellow)
+
     def updateDisplayImageMetaData(self):
         """
         Displays updated level (easy, medium, hard)
@@ -1227,7 +1224,7 @@ class MONAILabelReviewerWidget(ScriptedLoadableModuleWidget, VTKObservationMixin
         """
         self.ui.lineEdit_status.setText(self.getCurrentMetaStatus())
 
-    def loadNextImage(self, imageData : ImageData, tag = ""):
+    def loadNextImage(self, imageData: ImageData, tag=""):
         """
         Loads original Dicom image and Segmentation into slicer window
         Parameters:
@@ -1238,12 +1235,12 @@ class MONAILabelReviewerWidget(ScriptedLoadableModuleWidget, VTKObservationMixin
         slicer.mrmlScene.Clear()
         self.clearInformationFields()
 
-        if(tag == ""):
+        if tag == "":
             tag = self.currentImageData.getApprovedVersionTagElseReturnLatestVersion()
-        if(tag == ""):
+        if tag == "":
             tag = self.getCurrentLabelVersion()
-        logging.warn("{} Loading image (id='{}', tag='{}')".format(self.getCurrentTime(), imageData.getName(), tag))
-        self.disableDifficultyButtons(tag = tag)
+        logging.warn(f"{self.getCurrentTime()} Loading image (id='{imageData.getName()}', tag='{tag}')")
+        self.disableDifficultyButtons(tag=tag)
         self.displayImageMetaData(imageData, tag)
 
         self.logic.loadDicomAndSegmentation(imageData, tag)
@@ -1251,46 +1248,44 @@ class MONAILabelReviewerWidget(ScriptedLoadableModuleWidget, VTKObservationMixin
         if imageData.getStatus() != self.STATUS.NOT_SEGMENTED:
             self.displayLabelOfSegmentation()
 
-        if(self.currentImageId is not imageData.getName()):
+        if self.currentImageId is not imageData.getName():
             self.currentImageId = imageData.getName()
             self.fillComboBoxLabelVersions(imageData)
 
-    def fillComboBoxLabelVersions(self, imageData : ImageData):
+    def fillComboBoxLabelVersions(self, imageData: ImageData):
         self.isSelectableByLabelVersion = False
         self.ui.comboBox_label_version.clear()
         labelVersions = imageData.getVersionNames()
         approvedVersion = ""
-        labelVersion= ""
+        labelVersion = ""
         for labelVersion in labelVersions:
-            if (imageData.isApprovedVersion(versionTag=labelVersion) is True): 
+            if imageData.isApprovedVersion(versionTag=labelVersion) is True:
                 labelVersion = "{} ({})".format(labelVersion, "approved")
                 approvedVersion = labelVersion
             self.ui.comboBox_label_version.addItem(labelVersion)
-        if(approvedVersion != ""):
+        if approvedVersion != "":
             self.setVersionTagInComboBox(approvedVersion)
-        elif(labelVersion != ""):
+        elif labelVersion != "":
             self.setVersionTagInComboBox(labelVersion)
         self.isSelectableByLabelVersion = True
 
-    def setVersionTagInComboBox(self, versionTag="", currentImageData = None):
-        if(self.isBlank(versionTag)):
+    def setVersionTagInComboBox(self, versionTag="", currentImageData=None):
+        if self.isBlank(versionTag):
             return
-        if (currentImageData != None) and (currentImageData.isApprovedVersion(versionTag=versionTag) is True):
+        if (currentImageData is not None) and (currentImageData.isApprovedVersion(versionTag=versionTag) is True):
             versionTag = "{} ({})".format(versionTag, "approved")
         self.ui.comboBox_label_version.setCurrentText(versionTag)
 
-
-
-    def parseSelectedVersionFromComboBox(self, versionTagString : str) -> str:
-        if(self.isBlank(versionTagString)):
+    def parseSelectedVersionFromComboBox(self, versionTagString: str) -> str:
+        if self.isBlank(versionTagString):
             return ""
         array = versionTagString.split()
-        if(len(array)== 0):
+        if len(array) == 0:
             return ""
         return array[0]
 
     # Sub Section: Display version selection option
-    def activateSegmentatorEditor(self, activated = False):
+    def activateSegmentatorEditor(self, activated=False):
         self.segmentEditorWidget.setMasterVolumeNodeSelectorVisible(activated)
         self.segmentEditorWidget.setSegmentationNodeSelectorVisible(activated)
         self.segmentEditorWidget.setSwitchToSegmentationsButtonVisible(activated)
@@ -1299,14 +1294,14 @@ class MONAILabelReviewerWidget(ScriptedLoadableModuleWidget, VTKObservationMixin
 
     def displayEditorTools(self):
         isCheckedForEdit = self.ui.btn_edit_label.isChecked()
-        if(isCheckedForEdit):
+        if isCheckedForEdit:
             self.clearButtons()
             self.ui.btn_edit_label.setText("Reset current label edit")
             self.cleanLineEditsContainingSegMetaWhenStartEditing()
             self.activatedEditorTools()
         else:
             self.deactivatedEditorTools()
-            self.loadNextImage(imageData = self.currentImageData, tag = self.getCurrentLabelVersion())
+            self.loadNextImage(imageData=self.currentImageData, tag=self.getCurrentLabelVersion())
 
     def cleanLineEditsContainingSegMetaWhenStartEditing(self):
         self.setCurrentMetaStatus(status="")
@@ -1321,59 +1316,58 @@ class MONAILabelReviewerWidget(ScriptedLoadableModuleWidget, VTKObservationMixin
         self.setCurrentMetaLevel(level="")
 
     def activatedEditorTools(self):
-            self.activateSegmentatorEditor(activated = True)
-            self.ui.btn_save_new_version.setChecked(False)
-            self.ui.btn_overwrite_version.setChecked(False)
-            self.ui.btn_delete_version.setChecked(False)
+        self.activateSegmentatorEditor(activated=True)
+        self.ui.btn_save_new_version.setChecked(False)
+        self.ui.btn_overwrite_version.setChecked(False)
+        self.ui.btn_delete_version.setChecked(False)
 
-            self.ui.btn_save_new_version.show()
-            self.ui.btn_save_new_version.setStyleSheet("")
+        self.ui.btn_save_new_version.show()
+        self.ui.btn_save_new_version.setStyleSheet("")
 
-            self.ui.btn_overwrite_version.show()
-            self.ui.btn_overwrite_version.setStyleSheet("")
+        self.ui.btn_overwrite_version.show()
+        self.ui.btn_overwrite_version.setStyleSheet("")
 
-            self.ui.btn_delete_version.show()
-            self.ui.btn_delete_version.setStyleSheet("")
-            self.ui.btn_update_version.show()
+        self.ui.btn_delete_version.show()
+        self.ui.btn_delete_version.setStyleSheet("")
+        self.ui.btn_update_version.show()
 
-            self.ui.btn_next.enabled = False
-            self.ui.btn_previous.enabled = False
-            self.ui.btn_easy.enabled = False
-            self.ui.btn_medium.enabled = False
-            self.ui.btn_hard.enabled = False
-            self.ui.btn_mark_revision.enabled = False
-            self.ui.btn_approved.enabled = False
+        self.ui.btn_next.enabled = False
+        self.ui.btn_previous.enabled = False
+        self.ui.btn_easy.enabled = False
+        self.ui.btn_medium.enabled = False
+        self.ui.btn_hard.enabled = False
+        self.ui.btn_mark_revision.enabled = False
+        self.ui.btn_approved.enabled = False
 
     def deactivatedEditorTools(self):
-            self.activateSegmentatorEditor(activated = False)
-            self.ui.btn_save_new_version.setChecked(False)
-            self.ui.btn_overwrite_version.setChecked(False)
-            self.ui.btn_delete_version.setChecked(False)
-           
-            self.ui.btn_save_new_version.hide()
-            self.ui.btn_overwrite_version.hide()
-            self.ui.btn_delete_version.hide()
-            self.ui.btn_update_version.hide()
-            self.ui.btn_update_version.enabled = False
+        self.activateSegmentatorEditor(activated=False)
+        self.ui.btn_save_new_version.setChecked(False)
+        self.ui.btn_overwrite_version.setChecked(False)
+        self.ui.btn_delete_version.setChecked(False)
 
-            self.ui.btn_next.enabled = True
-            self.ui.btn_previous.enabled = True
-            self.ui.btn_easy.enabled = True
-            self.ui.btn_medium.enabled = True
-            self.ui.btn_hard.enabled = True
-            self.ui.btn_mark_revision.enabled = True
-            self.ui.btn_approved.enabled = True
+        self.ui.btn_save_new_version.hide()
+        self.ui.btn_overwrite_version.hide()
+        self.ui.btn_delete_version.hide()
+        self.ui.btn_update_version.hide()
+        self.ui.btn_update_version.enabled = False
 
+        self.ui.btn_next.enabled = True
+        self.ui.btn_previous.enabled = True
+        self.ui.btn_easy.enabled = True
+        self.ui.btn_medium.enabled = True
+        self.ui.btn_hard.enabled = True
+        self.ui.btn_mark_revision.enabled = True
+        self.ui.btn_approved.enabled = True
 
-            self.ui.btn_update_version.setText("Confirm")
-            self.ui.btn_edit_label.setText("Start label edit")
-            
+        self.ui.btn_update_version.setText("Confirm")
+        self.ui.btn_edit_label.setText("Start label edit")
+
     def resetSegmentationEditorTools(self):
         self.ui.btn_edit_label.setChecked(False)
         self.deactivatedEditorTools()
 
-    def hideEditingSelectionOption(self, isHidden : bool):
-        if(isHidden):
+    def hideEditingSelectionOption(self, isHidden: bool):
+        if isHidden:
             self.ui.btn_edit_label.hide()
         else:
             self.ui.btn_edit_label.show()
@@ -1418,57 +1412,59 @@ class MONAILabelReviewerWidget(ScriptedLoadableModuleWidget, VTKObservationMixin
         # No background volume was found, so use the foreground volume (if any was found)
         return firstForegroundVolumeID
 
-    def getVersionName(self) -> str:  
-        if(self.setOverwriteCurrentVersion()):
+    def getVersionName(self) -> str:
+        if self.setOverwriteCurrentVersion():
             return self.getCurrentLabelVersion()
         else:
             return self.currentImageData.getNewVersionName()
 
-    def persistEditedSegmentation(self, newVersionName : str):
-        self.currentImageData.updateSegmentationMetaByVerionTag(tag=newVersionName, 
-                                                                status=self.getCurrentMetaStatus(),
-                                                                level=self.getCurrentMetaLevel(), 
-                                                                approvedBy=self.selectedReviewer, 
-                                                                comment=self.getCurrentComment())
+    def persistEditedSegmentation(self, newVersionName: str):
+        self.currentImageData.updateSegmentationMetaByVerionTag(
+            tag=newVersionName,
+            status=self.getCurrentMetaStatus(),
+            level=self.getCurrentMetaLevel(),
+            approvedBy=self.selectedReviewer,
+            comment=self.getCurrentComment(),
+        )
 
         segmentationNode = self.segmentEditorWidget.segmentationNode()
         self.tmpdir = slicer.util.tempDirectory("slicer-monai-reviewer")
         label_in = tempfile.NamedTemporaryFile(suffix=".nrrd", dir=self.tmpdir).name
         slicer.util.saveNode(segmentationNode, label_in)
-        
-        self.logic.saveLabelInMonaiServer(imageData = self.currentImageData, label_in = label_in, tag = newVersionName)
+
+        self.logic.saveLabelInMonaiServer(imageData=self.currentImageData, label_in=label_in, tag=newVersionName)
 
     def deleteLabelByVersionTag(self):
         imageVersionTag = self.getCurrentLabelVersion()
-        if(self.isBlank(imageVersionTag)):
+        if self.isBlank(imageVersionTag):
             return
-        if(self.currentImageData.hasVersionTag(versionTag=imageVersionTag) is False):
+        if self.currentImageData.hasVersionTag(versionTag=imageVersionTag) is False:
             return
-        self.logic.deleteLabelByVersionTag(imageData = self.currentImageData, versionTag = imageVersionTag)
-        
+        self.logic.deleteLabelByVersionTag(imageData=self.currentImageData, versionTag=imageVersionTag)
+
     def updateAfterEditingSegmentation(self):
         imageVersionTag = self.getCurrentLabelVersion()
         setToSave = bool(self.ui.btn_save_new_version.isChecked())
-        setToOverwrite =  bool(self.ui.btn_overwrite_version.isChecked())
+        setToOverwrite = bool(self.ui.btn_overwrite_version.isChecked())
         setToDelete = bool(self.ui.btn_delete_version.isChecked())
         newLabelNameCreated = ""
-        if(setToSave):
+        if setToSave:
             newLabelNameCreated = self.currentImageData.getNewVersionName()
-            self.persistEditedSegmentation(newVersionName = newLabelNameCreated)
+            self.persistEditedSegmentation(newVersionName=newLabelNameCreated)
 
-        elif(setToOverwrite):
-            if((imageVersionTag ==  self.LABEL.FINAL) or (imageVersionTag == self.LABEL.ORIGINAL)):
-                warningMessage : str = "Initial Segmentation with label 'final' or 'original' \ncannot be overwritten.\n Please save current edit as new version."
+        elif setToOverwrite:
+            if (imageVersionTag == self.LABEL.FINAL) or (imageVersionTag == self.LABEL.ORIGINAL):
+                warningMessage: str = "Initial Segmentation with label 'final' or 'original' \ncannot be overwritten.\n Please save current edit as new version."
                 slicer.util.warningDisplay(warningMessage)
                 logging.warn(warningMessage)
                 return
 
-            self.persistEditedSegmentation(newVersionName = imageVersionTag)
+            self.persistEditedSegmentation(newVersionName=imageVersionTag)
 
-        elif(setToDelete):
+        elif setToDelete:
 
-            if((imageVersionTag == self.LABEL.FINAL) or (imageVersionTag == self.LABEL.ORIGINAL)):
-                warningMessage : str = "Initial Segmentation with label 'final' or 'original' \ncannot be deleted."
+            if (imageVersionTag == self.LABEL.FINAL) or (imageVersionTag == self.LABEL.ORIGINAL):
+                warningMessage: str = "Initial Segmentation with label 'final' or 'original' \ncannot be deleted."
                 slicer.util.warningDisplay(warningMessage)
                 logging.warn(warningMessage)
                 return
@@ -1477,14 +1473,14 @@ class MONAILabelReviewerWidget(ScriptedLoadableModuleWidget, VTKObservationMixin
 
         self.resetSegmentationEditorTools()
         self.reloadImageAfterEditingLabel()
-        if(newLabelNameCreated != ""):
-            self.setVersionTagInComboBox(versionTag = newLabelNameCreated)
+        if newLabelNameCreated != "":
+            self.setVersionTagInComboBox(versionTag=newLabelNameCreated)
 
     def reloadImageAfterEditingLabel(self):
         imageId = self.currentImageData.getFileName()
         latestVersion = self.currentImageData.getLatestVersionTag()
-        logging.info("{}: Loading image (id='{}') with version tag = '{}'".format(self.getCurrentTime(), imageId, latestVersion))
-        self.loadNextImage(imageData = self.currentImageData, tag = latestVersion)
+        logging.info(f"{self.getCurrentTime()}: Loading image (id='{imageId}') with version tag = '{latestVersion}'")
+        self.loadNextImage(imageData=self.currentImageData, tag=latestVersion)
         self.fillComboBoxLabelVersions(self.currentImageData)
 
     def processDataStoreRecords(self):
@@ -1502,13 +1498,13 @@ class MONAILabelReviewerWidget(ScriptedLoadableModuleWidget, VTKObservationMixin
         logging.info(f"{self.getCurrentTime()}: Successfully processed all records in datastore.")
 
     def reloadOverallStatistic(self):
-        if(self.reviewersModeIsActive):
+        if self.reviewersModeIsActive:
             self.processDataStoreRecords()
             self.setProgessBar()
             self.setProgressBarOfAll()
 
-    def displayAdditionalMetaIfEdited(self, tag : str):
-        if(tag == self.LABEL.FINAL or tag == self.LABEL.ORIGINAL):
+    def displayAdditionalMetaIfEdited(self, tag: str):
+        if tag == self.LABEL.FINAL or tag == self.LABEL.ORIGINAL:
             self.ui.lineEdit_editor.hide()
             self.ui.lineEdit_editing_date.hide()
             self.ui.label_editor.hide()
@@ -1570,26 +1566,28 @@ class MONAILabelReviewerLogic(ScriptedLoadableModuleLogic):
         return self.imageDataController.getReviewers()
 
     # Section: Loading images
-    def getAllImageData(self, segmented : str, isNotSegmented : str, isApproved : bool, isFlagged : bool) -> List[ImageData]:
+    def getAllImageData(
+        self, segmented: str, isNotSegmented: str, isApproved: bool, isFlagged: bool
+    ) -> List[ImageData]:
         return self.imageDataController.getAllImageData(segmented, isNotSegmented, isApproved, isFlagged)
 
-    def getImageDataByClientId(self, selectedClientId : str, isApproved : bool, isFlagged : bool) -> List[ImageData]:
+    def getImageDataByClientId(self, selectedClientId: str, isApproved: bool, isFlagged: bool) -> List[ImageData]:
         return self.imageDataController.getImageDataByClientId(selectedClientId, isApproved, isFlagged)
 
-    def getPercentageApproved(self, selectedClientId : str):
+    def getPercentageApproved(self, selectedClientId: str):
         percentageApprovedOfClient, idxApprovedOfClient = self.imageDataController.getPercentageApproved(
             selectedClientId
         )
         return percentageApprovedOfClient, idxApprovedOfClient
 
-    def getPercentageSemgmentedByClient(self, selectedClientId : str):
+    def getPercentageSemgmentedByClient(self, selectedClientId: str):
         percentageSemgmentedByClient, idxSegmentedByClient = self.imageDataController.getPercentageSemgmentedByClient(
             selectedClientId
         )
         return percentageSemgmentedByClient, idxSegmentedByClient
 
     # Section: Search Image
-    def getMultImageDataByIds(self, idList : List[str] ) -> Dict[str, ImageData]:
+    def getMultImageDataByIds(self, idList: List[str]) -> Dict[str, ImageData]:
         return self.imageDataController.getMultImageDataByIds(idList)
 
     def searchByAnnotatorReviewer(
@@ -1602,26 +1600,24 @@ class MONAILabelReviewerLogic(ScriptedLoadableModuleLogic):
     def searchByLevel(self, isEasy: bool, isMedium: bool, isHard: bool) -> Dict[str, ImageData]:
         return self.imageDataController.getImageDataByLevel(isEasy=isEasy, isMedium=isMedium, isHard=isHard)
 
-    def updateImageData(self, imageData : ImageData, versionTag : str, status : str, level : str, approvedBy : str,  comment : str) -> dict:
+    def updateImageData(
+        self, imageData: ImageData, versionTag: str, status: str, level: str, approvedBy: str, comment: str
+    ) -> dict:
         """
         update meta data in information box
         Returns: jsonDict: json dictionary which contains updated meta data
         """
         imageId = imageData.getName()
-        isEqual = imageData.isEqualSegmentationMeta(tag=versionTag, 
-                                                    status=status,   
-                                                    level=level, 
-                                                    approvedBy=approvedBy, 
-                                                    comment=comment)
-        if (isEqual):
+        isEqual = imageData.isEqualSegmentationMeta(
+            tag=versionTag, status=status, level=level, approvedBy=approvedBy, comment=comment
+        )
+        if isEqual:
             logging.info(f"{self.getCurrentTime()}: No changes for image (id='{imageId}')")
             return ""
 
-        imageData.updateSegmentationMetaByVerionTag(tag=versionTag, 
-                                                    status=status,   
-                                                    level=level, 
-                                                    approvedBy=approvedBy, 
-                                                    comment=comment)
+        imageData.updateSegmentationMetaByVerionTag(
+            tag=versionTag, status=status, level=level, approvedBy=approvedBy, comment=comment
+        )
         jsonDict = imageData.getMetaByVersionTag(tag=versionTag)
 
         if jsonDict is None:
@@ -1631,18 +1627,26 @@ class MONAILabelReviewerLogic(ScriptedLoadableModuleLogic):
         return jsonDict
 
     # Section: Dicom stream
-    def updateLabelInfo(self, imageData : ImageData, versionTag : str, status : str, level : str, approvedBy : str,  comment : str):
+    def updateLabelInfo(
+        self, imageData: ImageData, versionTag: str, status: str, level: str, approvedBy: str, comment: str
+    ):
         imageId = imageData.getName()
-        updatedMetaJson = self.updateImageData(imageData, versionTag , status, level, approvedBy, comment)
+        updatedMetaJson = self.updateImageData(imageData, versionTag, status, level, approvedBy, comment)
         if updatedMetaJson == "":
-            logging.info("{} :  Image update (id='{}', version tag='{}') is empty".format(self.getCurrentTime(), imageId, versionTag))
+            logging.info(
+                "{} :  Image update (id='{}', version tag='{}') is empty".format(
+                    self.getCurrentTime(), imageId, versionTag
+                )
+            )
             return
-        
-        logging.info("{} : Image update (id='{}', version tag='{}')".format(self.getCurrentTime(), imageId, versionTag))
-        logging.info(updatedMetaJson)
-        self.imageDataController.updateLabelInfoOfAllVersionTags(imageData=imageData, versionTag=versionTag, level=level, updatedMetaJson=updatedMetaJson)
 
-    def loadDicomAndSegmentation(self, imageData : ImageData, tag : str):
+        logging.info(f"{self.getCurrentTime()} : Image update (id='{imageId}', version tag='{versionTag}')")
+        logging.info(updatedMetaJson)
+        self.imageDataController.updateLabelInfoOfAllVersionTags(
+            imageData=imageData, versionTag=versionTag, level=level, updatedMetaJson=updatedMetaJson
+        )
+
+    def loadDicomAndSegmentation(self, imageData: ImageData, tag: str):
         """
         Loads original Dicom image and Segmentation into slicer window
         Parameters:
@@ -1713,16 +1717,17 @@ class MONAILabelReviewerLogic(ScriptedLoadableModuleLogic):
             self.temp_dir = tempfile.TemporaryDirectory()
         logging.info(f"{self.getCurrentTime()}: Temporary Directory: '{self.temp_dir.name}'")
 
-    def saveLabelInMonaiServer(self, imageData : ImageData, label_in : str, tag : str):
+    def saveLabelInMonaiServer(self, imageData: ImageData, label_in: str, tag: str):
         imageName = imageData.getName()
-        params =  imageData.obtainUpdatedParams(tag)
+        params = imageData.obtainUpdatedParams(tag)
         self.imageDataController.saveLabelInMonaiServer(imageName, label_in, tag, params)
 
-    def deleteLabelByVersionTag(self, imageData : ImageData, versionTag : str) -> bool:
+    def deleteLabelByVersionTag(self, imageData: ImageData, versionTag: str) -> bool:
         imageId = imageData.getName()
         imageData.deleteVersionName(versionTag)
-        successfullyDeleted : bool = self.imageDataController.deleteLabelByVersionTag(imageId, versionTag)
+        successfullyDeleted: bool = self.imageDataController.deleteLabelByVersionTag(imageId, versionTag)
         return successfullyDeleted
+
 
 class MONAILabelReviewerTest(ScriptedLoadableModuleTest):
     """

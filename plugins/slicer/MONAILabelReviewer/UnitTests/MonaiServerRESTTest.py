@@ -104,7 +104,9 @@ class MonaiServerRESTTest(unittest.TestCase):
     def test_updateLabelInfo(cls):
         client = MockServerFriendlyClient(cls.MOCK_SERVER_URL)
 
-        urlToBeTested = "{}/datastore/updatelabelinfo?label_id={}&label_tag={}".format(cls.MOCK_SERVER_URL, str(6662775), 'final')
+        urlToBeTested = "{}/datastore/updatelabelinfo?label_id={}&label_tag={}".format(
+            cls.MOCK_SERVER_URL, str(6662775), "final"
+        )
         body = {
             "segmentationMeta": {
                 "status": "approved",
@@ -141,45 +143,30 @@ class MonaiServerRESTTest(unittest.TestCase):
     def test_saveLabel(cls):
         client = MockServerFriendlyClient(cls.MOCK_SERVER_URL)
         urlToBeTested = "{}/datastore/label?image={}&tag={}".format(cls.MOCK_SERVER_URL, 6662775, "version_1")
-        body = {'params': {
-                    "label_info": [
-                        {
-                            "name": "Lung",
-                            "idx": 1
-                        },
-                        {
-                            "name": "Heart",
-                            "idx": 2
-                        },
-                        {
-                            "name": "Trachea",
-                            "idx": 3
-                        },
-                        {
-                            "name": "Mediastinum",
-                            "idx": 4
-                        },
-                        {
-                            "name": "Clavicle",
-                            "idx": 5
-                        }
-                        ],
-                    "segmentationMeta": {
-                        "status": "approved",
-                        "approvedBy": "Approver",
-                        "level": "hard",
-                        "comment": "the_comment",
-                        "editTime": 1660488836
-                        }
-                    }
-                }
-
+        body = {
+            "params": {
+                "label_info": [
+                    {"name": "Lung", "idx": 1},
+                    {"name": "Heart", "idx": 2},
+                    {"name": "Trachea", "idx": 3},
+                    {"name": "Mediastinum", "idx": 4},
+                    {"name": "Clavicle", "idx": 5},
+                ],
+                "segmentationMeta": {
+                    "status": "approved",
+                    "approvedBy": "Approver",
+                    "level": "hard",
+                    "comment": "the_comment",
+                    "editTime": 1660488836,
+                },
+            }
+        }
 
         client.expect(
             request(
                 method="PUT",
                 path="/datastore/label",
-                querystring={"image": "6662775", "tag":  "version_1"},
+                querystring={"image": "6662775", "tag": "version_1"},
                 headers={"content-Type": "application/json"},
                 body=json_equals(body),
             ),
@@ -189,7 +176,7 @@ class MonaiServerRESTTest(unittest.TestCase):
 
         result = requests.put(
             cls.MOCK_SERVER_URL + "/datastore/label",
-            params={"image": "6662775", "tag":  "version_1"},
+            params={"image": "6662775", "tag": "version_1"},
             json=body,
             headers={"content-Type": "application/json"},
         )
@@ -201,14 +188,10 @@ class MonaiServerRESTTest(unittest.TestCase):
     def test_deleteLabelByVersionTag(cls):
         client = MockServerFriendlyClient(cls.MOCK_SERVER_URL)
 
-        urlToBeTested = "{}/datastore/label?id={}&tag={}".format(cls.MOCK_SERVER_URL, str(6662775), 'final')
+        urlToBeTested = "{}/datastore/label?id={}&tag={}".format(cls.MOCK_SERVER_URL, str(6662775), "final")
 
         client.expect(
-            request(
-                method="DELETE",
-                path="/datastore/label",
-                querystring={"id": "6662775", "tag": "final"}
-            ),
+            request(method="DELETE", path="/datastore/label", querystring={"id": "6662775", "tag": "final"}),
             response(code=200),
             times(1),
         )
