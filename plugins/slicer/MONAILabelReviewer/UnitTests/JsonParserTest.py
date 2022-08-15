@@ -111,7 +111,7 @@ class JsonParserTest(unittest.TestCase):
     def test_extractLabelNames(self):
         labelsDict = self.jsonParser.extractLabels(self.json_with_multiple_versions)
         labelNames = self.jsonParser.extractLabelNames(labelsDict)
-        self.assertListEqual(labelNames, ['final', 'version_1', 'version_2', 'version_3'])
+        self.assertListEqual(labelNames, ['final', 'version_1', 'version_2', 'version_3', 'version_4'])
 
     def test_jsonToImageData_with_multiple_versions(self):
         imageData: ImageData = self.jsonParser.jsonToImageData("lan.dcm", self.json_with_multiple_versions)
@@ -125,7 +125,7 @@ class JsonParserTest(unittest.TestCase):
         self.assertEqual(imageData.isSegemented(), True)
         self.assertEqual(imageData.getClientId(), "user-xyz")
         self.assertEqual(imageData.getTimeOfAnnotation(), "2022-01-02 17:52:47")
-        self.assertListEqual(imageData.getVersionNames(), ['final', 'version_1', 'version_2', 'version_3'])
+        self.assertListEqual(imageData.getVersionNames(), ['final', 'version_1', 'version_2', 'version_3', 'version_4'])
         # dictMeta = imageData.getsegmentationMetaDict()
         # for k,v in dictMeta.items():
         #     print("------- key: ", k)
@@ -146,23 +146,51 @@ class JsonParserTest(unittest.TestCase):
         self.assertEqual("self.level_3", segmentationMeta.getLevel())
         self.assertEqual("self.approvedBy_3", segmentationMeta.getApprovedBy())
         self.assertEqual("self.comment_3", segmentationMeta.getComment())
-        self.assertEqual("1656312200", segmentationMeta.getEditTime())
+        self.assertEqual(1656312200, segmentationMeta.getEditTime())
 
 
     def test_extractSegmentationMetaOfVersion_final_as_label(self):
         labelsDict = self.jsonParser.extractLabels(self.json_with_multiple_versions)
         labelContent = self.jsonParser.extractSegmentationMetaOfVersion(labelsDict, labelName='final')
         segmentationMeta = self.jsonParser.produceSegementationData(labelContent)
-        #segmentationMeta.display()
+
+        self.assertEqual("self.status_final", segmentationMeta.getStatus())
+        self.assertEqual("self.level_final", segmentationMeta.getLevel())
+        self.assertEqual("self.approvedBy_final", segmentationMeta.getApprovedBy())
+        self.assertEqual("self.comment_final", segmentationMeta.getComment())
+        self.assertEqual(1656312100, segmentationMeta.getEditTime())
 
     def test_getAllSegmentationMetaOfAllLabels(self):
         labelsDict = self.jsonParser.extractLabels(self.json_with_multiple_versions)
         labelNames = self.jsonParser.extractLabelNames(labelsDict)
         segmentationMetaDict = self.jsonParser.getAllSegmentationMetaOfAllLabels(labelsDict, labelNames)
-        # for k,v in segmentationMetaDict.items():
-        #     print("key->",k)
-        #     v.display()
 
+        self.assertNotIn('version_2', segmentationMetaDict)
+        self.assertListEqual(list(segmentationMetaDict.keys()), ['final', 'version_1', 'version_3', 'version_4'])
+
+        self.assertEqual("self.status_final", segmentationMetaDict['final'].getStatus())
+        self.assertEqual("self.level_final", segmentationMetaDict['final'].getLevel())
+        self.assertEqual("self.approvedBy_final", segmentationMetaDict['final'].getApprovedBy())
+        self.assertEqual("self.comment_final", segmentationMetaDict['final'].getComment())
+        self.assertEqual(1656312100, segmentationMetaDict['final'].getEditTime())
+
+        self.assertEqual("self.status_1", segmentationMetaDict['version_1'].getStatus())
+        self.assertEqual("self.level_1", segmentationMetaDict['version_1'].getLevel())
+        self.assertEqual("self.approvedBy_1", segmentationMetaDict['version_1'].getApprovedBy())
+        self.assertEqual("self.comment_1", segmentationMetaDict['version_1'].getComment())
+        self.assertEqual(1656312180, segmentationMetaDict['version_1'].getEditTime())
+
+        self.assertEqual("self.status_3", segmentationMetaDict['version_3'].getStatus())
+        self.assertEqual("self.level_3", segmentationMetaDict['version_3'].getLevel())
+        self.assertEqual("self.approvedBy_3", segmentationMetaDict['version_3'].getApprovedBy())
+        self.assertEqual("self.comment_3", segmentationMetaDict['version_3'].getComment())
+        self.assertEqual(1656312200, segmentationMetaDict['version_3'].getEditTime())
+
+        self.assertEqual("approved", segmentationMetaDict['version_4'].getStatus())
+        self.assertEqual("self.level_4", segmentationMetaDict['version_4'].getLevel())
+        self.assertEqual("self.approvedBy_4", segmentationMetaDict['version_4'].getApprovedBy())
+        self.assertEqual("self.comment_4", segmentationMetaDict['version_4'].getComment())
+        self.assertEqual(1656312200, segmentationMetaDict['version_4'].getEditTime())
 
 if __name__ == "__main__":
     unittest.main()

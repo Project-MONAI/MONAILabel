@@ -10,20 +10,18 @@ JsonParser parses the datastore.json file
 and caches the information in dictionary: Mapping from id to ImageData
 """
 
-
 class JsonParser:
     def __init__(self, jsonObject: dict):
         self.LABEL = Label()
-        self.SEGMENTATION_META = "segmentationMeta"
-
         self.dataStoreKeys = DataStoreKeys()
+        
         self.jsonObject = jsonObject
         self.mapIdToImageData: Dict[str, ImageData] = {}
 
     def init(self):
         self.parseJsonToImageData()
 
-    def getValueByKey(self, keyArr: list, jsonObj: dict):
+    def getValueByKey(self, keyArr: List[str], jsonObj: dict):
         if len(keyArr) == 0:
             return ""
         for key in keyArr:
@@ -89,7 +87,7 @@ class JsonParser:
     def extractLabelNames(self, labelsDict: dict) -> List[str]:
         return list(labelsDict.keys())
 
-    def extractLabelContentByName(self, labels : dict, labelName='final'):
+    def extractLabelContentByName(self, labels : dict, labelName='final') -> Dict[str, str]:
         if(labelName not in labels):
             return {}
         content = labels[labelName][self.dataStoreKeys.INFO]
@@ -110,7 +108,7 @@ class JsonParser:
             return {}
         return content[self.dataStoreKeys.META]
 
-    def getAllSegmentationMetaOfAllLabels(self, labels : dict, labelNames : List) -> Dict[str, SegmentationMeta]:
+    def getAllSegmentationMetaOfAllLabels(self, labels : dict, labelNames : List[str]) -> Dict[str, SegmentationMeta]:
         if(len(labelNames) == 0):
             return {}
 
@@ -120,18 +118,19 @@ class JsonParser:
             if(len(segMetaSingle) == 0):
                 continue
             segmentationMeta = self.produceSegementationData(segMetaSingle)
+            segmentationMeta.setVersionNumber(versionTag = labelName)
             allSegMetaOfLabels[labelName] = segmentationMeta
         return allSegMetaOfLabels
 
     def produceSegementationData(self, segmenatationDict : dict) -> SegmentationMeta:
-        status = segmenatationDict[self.dataStoreKeys.META_STATUS]
-        level = segmenatationDict[self.dataStoreKeys.META_LEVEL]
-        approvedBy = segmenatationDict[self.dataStoreKeys.APPROVED_BY]
-        comment = segmenatationDict[self.dataStoreKeys.META_COMMENT]
-        editTime = segmenatationDict[self.dataStoreKeys.META_EDIT_TIME]
-
         segmentationMeta = SegmentationMeta()
-        segmentationMeta.build(status=status, level=level, approvedBy=approvedBy, comment=comment, editTime=editTime)
+        segmentationMeta.build(
+            status = segmenatationDict[self.dataStoreKeys.META_STATUS], 
+            level = segmenatationDict[self.dataStoreKeys.META_LEVEL], 
+            approvedBy = segmenatationDict[self.dataStoreKeys.APPROVED_BY], 
+            comment = segmenatationDict[self.dataStoreKeys.META_COMMENT], 
+            editTime = segmenatationDict[self.dataStoreKeys.META_EDIT_TIME])
+
         return segmentationMeta
 
     def isSegmented(self, obj: dict) -> bool:
@@ -142,11 +141,11 @@ class JsonParser:
             return False
         return True
 
-    def hasKeyFinal(self, obj: dict):
+    def hasKeyFinal(self, obj: dict) -> bool:
         labelsDict = self.getValueByKey(self.dataStoreKeys.LABELS, obj)
         return self.dataStoreKeys.FINAL in labelsDict
 
-    def hasKeyOriginal(self, obj: dict):
+    def hasKeyOriginal(self, obj: dict) -> bool:
         labelsDict = self.getValueByKey(self.dataStoreKeys.LABELS, obj)
         return self.dataStoreKeys.ORIGINAL in labelsDict
 
@@ -156,11 +155,11 @@ class JsonParser:
         if self.hasKeyOriginal(obj):
             return self.getValueByKey(self.dataStoreKeys.SEGMENTATION_NAME_BY_ORIGINAL, obj)
 
-    def hasKeyAnnotate(self, obj: dict):
+    def hasKeyAnnotate(self, obj: dict) -> bool:
         strategyDict = self.getValueByKey(self.dataStoreKeys.STRATEGY, obj)
         return self.dataStoreKeys.ANNOTATE in strategyDict
 
-    def hasKeyRandom(self, obj: dict):
+    def hasKeyRandom(self, obj: dict) -> bool:
         strategyDict = self.getValueByKey(self.dataStoreKeys.STRATEGY, obj)
         return self.dataStoreKeys.RANDOM in strategyDict
 
@@ -190,35 +189,29 @@ class JsonParser:
 
     def parseJsonToImageData(self):
         objects = self.jsonObject[self.dataStoreKeys.OBJECT]
-        counter = 0
         for key, value in objects.items():
             imageData = self.jsonToImageData(key, value)
             self.mapIdToImageData[key] = imageData
-            counter += 1
 
-    def jsonToImageData(self, key, value):
-        fileName = self.getFileName(value)
-        nodeName = self.getNodeName(value)
-        checksum = self.getCheckSum(value)
-        isSegmented = self.isSegmented(value)
-        timeStamp = self.getTimeStamp(value)
+    def jsonToImageData(self, key : str, value : dict) -> ImageData:
+
         imageData = ImageData(
             name=key,
-            fileName=fileName,
-            nodeName=nodeName,
-            checkSum=checksum,
-            segmented=isSegmented,
-            timeStamp=timeStamp,
+            fileName=self.getFileName(value),
+            nodeName=self.getNodeName(value),
+            checkSum=self.getCheckSum(value),
+            segmented=self.isSegmented(value),
+            timeStamp=self.getTimeStamp(value),
         )        
 
-        if isSegmented:
+        if self.isSegmented(value):
             segName = self.getSegmentationName(value)
             imageData.setSegmentationFileName(segName)
 
             clientId = self.getClientId(value)
             imageData.setClientId(clientId)
 
-        if self.hasLabels(value) is True:
+        if self.hasLabels(value):
             labelsDict = self.extractLabels(value)
             labelNames = self.extractLabelNames(labelsDict)
             labelContent = self.extractLabelContentByName(labelsDict)
@@ -231,7 +224,7 @@ class JsonParser:
         return imageData
 
     def hasSegmentationMeta(self, info: dict) -> bool:
-        return self.SEGMENTATION_META in info.keys()
+        return self.dataStoreKeys.META in info.keys()
 
-    def getMapIdToImageData(self):
+    def getMapIdToImageData(self) -> Dict[str, ImageData]:
         return self.mapIdToImageData

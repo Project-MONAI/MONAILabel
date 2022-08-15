@@ -98,7 +98,8 @@ class MonaiServerREST:
         If the image has a label/segmentation, its label/label_id corresponds to its image_id
         """
         embeddedParams = self.embeddedLabelContentInParams(params)
-        logging.warn("REST: {}".format(embeddedParams))
+        logging.info("Sending updated label info: {}".format(embeddedParams))
+        
         url = f"{self.serverUrl}/datastore/updatelabelinfo?label_id={quote_plus(image_id)}&label_tag={quote_plus(tag)}"
         headers = CaseInsensitiveDict()
         headers["Content-Type"] = "application/x-www-form-urlencoded"
@@ -134,27 +135,41 @@ class MonaiServerREST:
             embeddedParams = self.embeddedLabelContentInParams(params)
         logging.info(f"{self.getCurrentTime()}: Label and Meta data (image id: '{imageId}'): '{embeddedParams}'")
         
-        url = "http://localhost:8000/datastore/label?image={}".format(imageId)
+        url = "{}/datastore/label?image={}".format(self.serverUrl, imageId)
         if tag:
             url += f"&tag={tag}"
 
-        with open(os.path.abspath(labelDirectory), "rb") as f:
-                response = requests.put(url, data=embeddedParams, files={"label": (imageId+".nrrd", f)})
+        try:
+            with open(os.path.abspath(labelDirectory), "rb") as f:
+                    response = requests.put(url, data=embeddedParams, files={"label": (imageId+".nrrd", f)})
+        
+        except Exception as exception:
+            logging.error("{}: Label and Meta data update failed (image id: '{}', meta data: '{}', due to '{}'".format(self.getCurrentTime(), 
+                                                                                                            imageId, 
+                                                                                                            embeddedParams, 
+                                                                                                            exception))
 
         if(response.status_code == 200):
             logging.info(f"{self.getCurrentTime()}: Label and Meta data was updated successfully (image id: '{imageId}').")
+            logging.warn(f"{self.getCurrentTime()}: Meta : '{embeddedParams}'")
         else:
             logging.warn(
                     "{}: Update label (image id: '{}') failed due to response code = {}) ".format(
                         self.getCurrentTime(), imageId, response.status_code
                     )
                 )
-
         return response.status_code
 
     def deleteLabelByVersionTag(self, imageId : str, versionTag : str) -> int:
-        url = "http://localhost:8000/datastore/label?id={}&tag={}".format(imageId, versionTag)
-        response = requests.delete(url)
+        url = "{}/datastore/label?id={}&tag={}".format(self.serverUrl, imageId, versionTag)
+        try:
+            response = requests.delete(url)
+        except Exception as exception:
+            logging.error("{}: Label and Meta data deletion failed (image id: '{}', version tag: '{}') due to '{}'".format(self.getCurrentTime(), 
+                                                                                                imageId,
+                                                                                                versionTag,
+                                                                                                exception))
+            
         if(response.status_code == 200):
             logging.info(f"{self.getCurrentTime()}: Label and Meta data was deleted successfully (image id: '{imageId}') | tae: '{versionTag}'.")
         else:

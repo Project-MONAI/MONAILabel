@@ -2,6 +2,7 @@ import json
 import time
 import logging
 
+from MONAILabelReviewerLib.MONAILabelReviewerEnum import Label
 """
 SegmentationMeta stores all the meta data of its corresponding ImageData
 The class returns a json string which will be send to MONAI-Server to persist the
@@ -12,11 +13,15 @@ information in datastore.json
 class SegmentationMeta:
     def __init__(self):
         self.preFix = "params="
+        self.LABEL = Label()
+       
         self.status: str = ""
         self.level: str = ""
         self.approvedBy: str = ""
         self.editTime: str = ""
         self.comment: str = ""
+
+        self.versionNumber : int = 0
 
     def build(self, status="", level="", approvedBy="", comment="", editTime=""):
         self.setEditTime()
@@ -25,6 +30,21 @@ class SegmentationMeta:
         self.approvedBy = approvedBy
         self.comment = comment
         self.editTime = editTime
+
+    def setVersionNumber(self, versionTag : str):
+        if(versionTag == self.LABEL.FINAL or versionTag == self.LABEL.ORIGINAL):
+            self.versionNumber = 0
+        else:
+            self.versionNumber = self.parsNumberFromVersionTagString(versionTag=versionTag)
+
+    def parsNumberFromVersionTagString(self, versionTag : str) -> int:
+        lastCharIndex = len(versionTag)
+        indexOfDelimeter = versionTag.index('_')
+        versionTagIndex = versionTag[indexOfDelimeter+1:lastCharIndex]
+        return int(versionTagIndex)
+
+    def getVersionNumber(self) -> int:
+        return self.versionNumber
 
     def update(self,  status="", level="", approvedBy="", comment="") -> bool:
         logging.warn("=============== HEER ==============")
@@ -45,25 +65,19 @@ class SegmentationMeta:
         if(isChanged):
             if(self.isBlank(approvedBy) is False and approvedBy != self.approvedBy):
                 self.approvedBy = approvedBy
-
-            self.setEditTime()
             
         return isChanged
 
     def setApprovedBy(self, approvedBy: str):
-        self.setEditTime()
         self.approvedBy = approvedBy
 
     def setStatus(self, status: str):
-        self.setEditTime()
         self.status = status
 
     def setLevel(self, level: str):
-        self.setEditTime()
         self.level = level
 
     def setComment(self, comment: str):
-        self.setEditTime()
         self.comment = comment
 
     def setEditTime(self):
@@ -100,17 +114,12 @@ class SegmentationMeta:
 
     def isEqual(self, status="", level="", approvedBy="", comment=""):
         if status != self.status:
-            print("=== 1.1 ===", status)
-            print("=== 1.2 ===", self.status)
             return False
         if approvedBy != self.approvedBy:
-            print("=== 2 ===")
             return False
         if level != self.level:
-            print("=== 3 ===")
             return False
         if comment != self.comment:
-            print("=== 4 ===")
             return False
         return True
 
@@ -119,6 +128,7 @@ class SegmentationMeta:
 
 
     def display(self):
+        print("versionNumber: ", self.getVersionNumber)
         print("status: ", self.status)
         print("level: ", self.level)
         print("approvedBy: ", self.approvedBy)

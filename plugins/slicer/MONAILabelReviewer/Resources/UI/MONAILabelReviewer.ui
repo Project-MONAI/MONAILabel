@@ -415,7 +415,7 @@
       <string>Data Evaluation</string>
      </property>
      <property name="collapsed">
-      <bool>true</bool>
+      <bool>false</bool>
      </property>
      <layout class="QVBoxLayout" name="verticalLayout_12">
       <item>

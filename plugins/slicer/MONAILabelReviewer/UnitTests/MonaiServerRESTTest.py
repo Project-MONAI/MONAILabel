@@ -64,7 +64,7 @@ class MonaiServerRESTTest(unittest.TestCase):
         cls.assertEqual(urlToBeTested, result.url)
         client.reset()
 
-    def test_checkServerConnection_request_for_image_with_segmentation_meta_data(cls):
+    def test_request_for_image_with_segmentation_meta_data(cls):
         client = MockServerFriendlyClient(cls.MOCK_SERVER_URL)
 
         urlToBeTested = cls.MOCK_SERVER_URL + "/datastore/updatelabelinfo?label=6662775"
@@ -98,6 +98,127 @@ class MonaiServerRESTTest(unittest.TestCase):
         )
 
         cls.assertEqual(200, result.status_code)
+        cls.assertEqual(urlToBeTested, result.url)
+        client.reset()
+
+    def test_updateLabelInfo(cls):
+        client = MockServerFriendlyClient(cls.MOCK_SERVER_URL)
+
+        urlToBeTested = "{}/datastore/updatelabelinfo?label_id={}&label_tag={}".format(cls.MOCK_SERVER_URL, str(6662775), 'final')
+        body = {
+            "segmentationMeta": {
+                "status": "approved",
+                "approvedBy": "",
+                "level": "hard",
+                "comment": "",
+                "editTime": "Fri May 27 07:41:08 2022",
+            }
+        }
+
+        client.expect(
+            request(
+                method="PUT",
+                path="/datastore/updatelabelinfo",
+                querystring={"label_id": "6662775", "label_tag": "final"},
+                headers={"content-Type": "application/json"},
+                body=json_equals(body),
+            ),
+            response(code=200),
+            times(1),
+        )
+
+        result = requests.put(
+            cls.MOCK_SERVER_URL + "/datastore/updatelabelinfo",
+            params={"label_id": "6662775", "label_tag": "final"},
+            json=body,
+            headers={"content-Type": "application/json"},
+        )
+        cls.assertEqual(200, result.status_code)
+
+        cls.assertEqual(urlToBeTested, result.url)
+        client.reset()
+
+    def test_saveLabel(cls):
+        client = MockServerFriendlyClient(cls.MOCK_SERVER_URL)
+        urlToBeTested = "{}/datastore/label?image={}&tag={}".format(cls.MOCK_SERVER_URL, 6662775, "version_1")
+        body = {'params': {
+                    "label_info": [
+                        {
+                            "name": "Lung",
+                            "idx": 1
+                        },
+                        {
+                            "name": "Heart",
+                            "idx": 2
+                        },
+                        {
+                            "name": "Trachea",
+                            "idx": 3
+                        },
+                        {
+                            "name": "Mediastinum",
+                            "idx": 4
+                        },
+                        {
+                            "name": "Clavicle",
+                            "idx": 5
+                        }
+                        ],
+                    "segmentationMeta": {
+                        "status": "approved",
+                        "approvedBy": "Approver",
+                        "level": "hard",
+                        "comment": "the_comment",
+                        "editTime": 1660488836
+                        }
+                    }
+                }
+
+
+        client.expect(
+            request(
+                method="PUT",
+                path="/datastore/label",
+                querystring={"image": "6662775", "tag":  "version_1"},
+                headers={"content-Type": "application/json"},
+                body=json_equals(body),
+            ),
+            response(code=200),
+            times(1),
+        )
+
+        result = requests.put(
+            cls.MOCK_SERVER_URL + "/datastore/label",
+            params={"image": "6662775", "tag":  "version_1"},
+            json=body,
+            headers={"content-Type": "application/json"},
+        )
+
+        cls.assertEqual(200, result.status_code)
+        cls.assertEqual(urlToBeTested, result.url)
+        client.reset()
+
+    def test_deleteLabelByVersionTag(cls):
+        client = MockServerFriendlyClient(cls.MOCK_SERVER_URL)
+
+        urlToBeTested = "{}/datastore/label?id={}&tag={}".format(cls.MOCK_SERVER_URL, str(6662775), 'final')
+
+        client.expect(
+            request(
+                method="DELETE",
+                path="/datastore/label",
+                querystring={"id": "6662775", "tag": "final"}
+            ),
+            response(code=200),
+            times(1),
+        )
+
+        result = requests.put(
+            cls.MOCK_SERVER_URL + "/datastore/updatelabelinfo",
+            params={"id": "6662775", "tag": "final"},
+        )
+        cls.assertEqual(200, result.status_code)
+
         cls.assertEqual(urlToBeTested, result.url)
         client.reset()
 

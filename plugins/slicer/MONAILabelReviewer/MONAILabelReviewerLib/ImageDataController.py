@@ -5,6 +5,7 @@ from typing import Dict, List
 import requests
 from MONAILabelReviewerLib.ImageData import ImageData
 from MONAILabelReviewerLib.ImageDataExtractor import ImageDataExtractor
+from MONAILabelReviewerLib.ImageDataStatistics import ImageDataStatistics
 from MONAILabelReviewerLib.JsonParser import JsonParser
 from MONAILabelReviewerLib.MonaiServerREST import MonaiServerREST
 
@@ -34,32 +35,12 @@ class ImageDataController:
         self.imageDataExtractor: ImageDataExtractor = None
         self.temp_dir = None
 
-    def getServerUrl(self) -> str:
-        return self.monaiServerREST.getServerUrl()
-
     def getCurrentTime(self) -> datetime:
         return datetime.datetime.now()
 
-    def setMonaiServer(self, serverUrl: str):
-        self.monaiServerREST = MonaiServerREST(serverUrl)
 
-    def connectToMonaiServer(self, serverUrl: str) -> bool:
-        self.setMonaiServer(serverUrl)
-        return self.monaiServerREST.checkServerConnection()
 
-    def getMapIdToImageData(self) -> Dict[str, ImageData]:
-        """
-        Returns dictionary (Dict[str:ImageData]) which maps id to Imagedata-object
-        """
-        jsonObj = self.monaiServerREST.requestDataStoreInfo()
-        if jsonObj is None:
-            return None
-
-        # Parse json file to ImageData object
-        jsonParser = JsonParser(jsonObj)
-        jsonParser.init()
-        mapIdToImageData = jsonParser.getMapIdToImageData()
-        return mapIdToImageData
+    # ImageDataExtractor methods
 
     def initMetaDataProcessing(self) -> bool:
         """
@@ -76,23 +57,6 @@ class ImageDataController:
         self.imageDataExtractor.init()
         return True
 
-    def getStatistics(self) -> dict:
-        """
-        returns a map which contains statistical values which are comming from ImageDataExtractor object
-        """
-        statistics = {}
-        # ProgressBar: TOTAL
-        statistics["segmentationProgress"] = self.imageDataExtractor.getSegmentationProgessInPercentage()
-        statistics["idxTotalSegmented"] = self.imageDataExtractor.getSegmentationVsTotalStr()
-        statistics["idxTotalApproved"] = self.imageDataExtractor.getApprovalVsTotal()
-        statistics["progressPercentage"] = self.imageDataExtractor.getApprovalProgressInPercentage()
-
-        # ProgressBar: FILTER (incl. idxTotalSegmented, idxTotalApproved)
-        statistics["segmentationProgressAllPercentage"] = self.imageDataExtractor.getSegmentationProgessInPercentage()
-        statistics["approvalProgressPercentage"] = self.imageDataExtractor.getApprovalProgressInPercentage()
-
-        return statistics
-
     # returns only client id of those images which are segemented
     def getClientIds(self) -> List[str]:
         return self.imageDataExtractor.getClientIds()
@@ -100,36 +64,66 @@ class ImageDataController:
     def getReviewers(self) -> List[str]:
         return self.imageDataExtractor.getReviewers()
 
+    # def getStatistics(self) -> dict:
+    #     """
+    #     returns a map which contains statistical values which are comming from ImageDataExtractor object
+    #     """
+    #     statistics = {}
+    #     # ProgressBar: TOTAL
+    #     statistics["segmentationProgress"] = self.imageDataExtractor.getSegmentationProgessInPercentage()
+    #     statistics["idxTotalSegmented"] = self.imageDataExtractor.getSegmentationVsTotalStr()
+    #     statistics["idxTotalApproved"] = self.imageDataExtractor.getApprovalVsTotal()
+    #     statistics["progressPercentage"] = self.imageDataExtractor.getApprovalProgressInPercentage()
+
+    #     # ProgressBar: FILTER (incl. idxTotalSegmented, idxTotalApproved)
+    #     statistics["segmentationProgressAllPercentage"] = self.imageDataExtractor.getSegmentationProgessInPercentage()
+    #     statistics["approvalProgressPercentage"] = self.imageDataExtractor.getApprovalProgressInPercentage()
+
+    #     return statistics
+
+    def getStatistics(self) -> ImageDataStatistics:
+        """
+        returns a map which contains statistical values which are comming from ImageDataExtractor object
+        """
+        statistics = ImageDataStatistics()
+
+        statistics.build(segmentationProgress = self.imageDataExtractor.getSegmentationProgessInPercentage() , 
+                        idxTotalSegmented = self.imageDataExtractor.getSegmentationVsTotalStr(), 
+                        idxTotalApproved = self.imageDataExtractor.getApprovalVsTotal(), 
+                        progressPercentage  = self.imageDataExtractor.getApprovalProgressInPercentage(), 
+                        segmentationProgressAllPercentage = self.imageDataExtractor.getSegmentationProgessInPercentage(), 
+                        approvalProgressPercentage = self.imageDataExtractor.getApprovalProgressInPercentage())
+        
+        return statistics
+
     # Section: Loading images
     def getAllImageData(self, segmented, isNotSegmented, isApproved, isFlagged) -> List[ImageData]:
-        return self.imageDataExtractor.getAllImageData(
-            segmented=segmented, notSegmented=isNotSegmented, approved=isApproved, flagged=isFlagged
-        )
+        return self.imageDataExtractor.getAllImageData(segmented=segmented, 
+                                                        notSegmented=isNotSegmented, 
+                                                        approved=isApproved, 
+                                                        flagged=isFlagged)
 
     def getImageDataByClientId(self, selectedClientId, isApproved, isFlagged) -> List[ImageData]:
-        return self.imageDataExtractor.getImageDataByClientId(
-            clientId=selectedClientId, approved=isApproved, flagged=isFlagged
-        )
+        return self.imageDataExtractor.getImageDataByClientId(clientId=selectedClientId, 
+                                                            approved=isApproved, 
+                                                            flagged=isFlagged)
 
     def getPercentageApproved(self, selectedClientId):
-        percentageApprovedOfClient, idxApprovedOfClient = self.imageDataExtractor.getPercentageApproved(
-            selectedClientId
-        )
+        percentageApprovedOfClient, idxApprovedOfClient = self.imageDataExtractor.getPercentageApproved(selectedClientId)
         return percentageApprovedOfClient, idxApprovedOfClient
 
     def getPercentageSemgmentedByClient(self, selectedClientId):
-        percentageSemgmentedByClient, idxSegmentedByClient = self.imageDataExtractor.getPercentageSemgmentedByClient(
-            selectedClientId
-        )
+        percentageSemgmentedByClient, idxSegmentedByClient = self.imageDataExtractor.getPercentageSemgmentedByClient(selectedClientId)
         return percentageSemgmentedByClient, idxSegmentedByClient
 
     # Section: Search Image
     def getMultImageDataByIds(self, imageIds) -> Dict[str, ImageData]:
         return self.imageDataExtractor.getMultImageDataByIds(imageIds)
 
-    def searchByAnnotatorReviewer(
-        self, selectedAnnotator: str, selectedReviewer: str, isApproved: bool, isFlagged: bool
-    ) -> Dict[str, ImageData]:
+    def searchByAnnotatorReviewer(self, selectedAnnotator: str, 
+                                        selectedReviewer: str, 
+                                        isApproved: bool, 
+                                        isFlagged: bool) -> Dict[str, ImageData]:
         """
         returns set of imageData (imageId mapped to ImageData) according to given filter options
         """
@@ -174,7 +168,43 @@ class ImageDataController:
         )
         return imageIdsOfAnnotator
 
+
+
+    # MONAI server methods
+
+    def getServerUrl(self) -> str:
+        return self.monaiServerREST.getServerUrl()
+
+    def setMonaiServer(self, serverUrl: str):
+        self.monaiServerREST = MonaiServerREST(serverUrl)
+
+    def connectToMonaiServer(self, serverUrl: str) -> bool:
+        self.setMonaiServer(serverUrl)
+        return self.monaiServerREST.checkServerConnection()
+
+    def getMapIdToImageData(self) -> Dict[str, ImageData]:
+        """
+        Returns dictionary (Dict[str:ImageData]) which maps id to Imagedata-object
+        """
+        jsonObj = self.monaiServerREST.requestDataStoreInfo()
+        if jsonObj is None:
+            return None
+
+        # Parse json file to ImageData object
+        jsonParser = JsonParser(jsonObj)
+        jsonParser.init()
+        mapIdToImageData = jsonParser.getMapIdToImageData()
+        return mapIdToImageData
+
     # Section: Dicom stream
+    def updateLabelInfoOfAllVersionTags(self, imageData : ImageData, versionTag : str, level : str, updatedMetaJson : dict) -> bool:
+        imageId = imageData.getName()
+        self.updateLabelInfo(imageId, versionTag, updatedMetaJson)
+        
+        tagToSegmentationMetaJson = imageData.updateApprovedStatusOfOtherThanSubjectedVersion(subjectedTag=versionTag, difficultyLevel=level)
+        for tag, segmentationMetaJson in tagToSegmentationMetaJson.items():
+             self.updateLabelInfo(imageId, tag, segmentationMetaJson)
+
     def updateLabelInfo(self, imageId, versionTag, updatedMetaJson) -> bool:
         """
         sends meta information via http request to monai server

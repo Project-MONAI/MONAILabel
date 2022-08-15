@@ -17,7 +17,7 @@ to persist the data in datastore_v2.json file.
 
 class ImageData:
     def __init__(self, name, fileName, nodeName, checkSum, segmented, timeStamp, comment=""):
-        self.name: str = name
+        self.name: str = name # equals imageId
         self.fileName: str = fileName
         self.nodeName: str = nodeName
         self.checkSum: str = checkSum
@@ -27,6 +27,31 @@ class ImageData:
 
         self.versionNames : List[str] = [] # equals to labelNames
         self.labelContent : dict = {}
+        '''
+        example of 'labelContent'
+            "label_info": [
+              {
+                "name": "Lung",
+                "idx": 1
+              },
+              {
+                "name": "Heart",
+                "idx": 2
+              },
+              {
+                "name": "Trachea",
+                "idx": 3
+              },
+              {
+                "name": "Mediastinum",
+                "idx": 4
+              },
+              {
+                "name": "Clavicle",
+                "idx": 5
+              }
+            ],
+        '''
         self.segmentationMetaDict : Dict[str, SegmentationMeta] = {}
 
         self.STATUS = SegStatus()
@@ -200,6 +225,7 @@ class ImageData:
     def addNewSegmentationMeta(self, tag : str, status : str, level : str, approvedBy  : str, comment  : str):
         segmentationMeta = SegmentationMeta()
         segmentationMeta.build(status=status, level=level, approvedBy=approvedBy, comment=comment, editTime="")
+        segmentationMeta.setVersionNumber(versionTag = tag)
         self.segmentationMetaDict[tag] = segmentationMeta
 
     def getSegmentationMetaByVersionTag(self, tag : str):
@@ -251,6 +277,7 @@ class ImageData:
     def addSegementationMetaByVersionTag(self, tag="",  status="", level="", approvedBy="", comment=""):
         segmentationMeta = SegmentationMeta()
         segmentationMeta.build(status=status, level=level, approvedBy=approvedBy, comment=comment)
+        segmentationMeta.setVersionNumber(versionTag = tag)
         self.segmentationMetaDict[tag] = segmentationMeta
 
     def getSegementationMetaByVersionTag(self, tag : str) -> SegmentationMeta:
@@ -265,6 +292,7 @@ class ImageData:
         segementationMeta = self.getSegementationMetaByVersionTag(tag = tag)
         if(segementationMeta is None):
             return params
+        segementationMeta.setEditTime()
         metaData = segementationMeta.getMeta()
         if(len(metaData) > 0):
             params['segmentationMeta'] = metaData['segmentationMeta']
@@ -277,6 +305,7 @@ class ImageData:
         if(segmentationMeta is None):
             segmentationMeta = SegmentationMeta()
             segmentationMeta.build(status=status, level=level, approvedBy=approvedBy, comment=comment)
+            segmentationMeta.setVersionNumber(versionTag = tag)
         else:
             segmentationMeta.update(status=status, level=level, approvedBy=approvedBy, comment=comment)
         segmentationMeta.setEditTime()
@@ -284,23 +313,45 @@ class ImageData:
 
         return True
 
-    def updateApprovedStatusOfOtherThanSubjectedVersion(self, subjectedTag : str) -> Dict[str, dict]:
-        tagToSegmentationMeta = {}
+    def updateApprovedStatusOfOtherThanSubjectedVersion(self, subjectedTag : str, difficultyLevel : str) -> Dict[str, dict]:
+        tagToSegmentationMetaJson = {}
         for tag, segmentationMeta in self.segmentationMetaDict.items():
             if subjectedTag == tag:
                 continue
-
+            
+            updated = False
             if(segmentationMeta.getStatus() == self.STATUS.APPROVED):
                 segmentationMeta.setStatus("")
+                updated = True
+            
+            if(segmentationMeta.getLevel != difficultyLevel):
+                segmentationMeta.setLevel(difficultyLevel)
+                updated = True
+            
+            if(updated):
                 self.segmentationMetaDict[tag] = segmentationMeta
-                tagToSegmentationMeta[tag] = segmentationMeta.getMeta()
-                logging.warn("===== Update Check === tag: {}".format(tag))
-                segmentationMeta.display()
-        return tagToSegmentationMeta
+                tagToSegmentationMetaJson[tag] = segmentationMeta.getMeta()
+        return tagToSegmentationMetaJson
 
+    def getApprovedVersionTagElseReturnLatestVersion(self) -> str:
+        latest = 0
+        latestVersion = ""
 
+        if(len(self.segmentationMetaDict)==1):
+            return [*self.segmentationMetaDict.keys()][0]
 
+        for tag, segmentationMeta in self.segmentationMetaDict.items():
+            
+            if(segmentationMeta.getStatus() == self.STATUS.APPROVED):
+                return tag
 
+            version = segmentationMeta.getVersionNumber()
+            
+            if(latest < version):
+                latest = version
+                latestVersion = tag
+        
+        return latestVersion
             
 
 

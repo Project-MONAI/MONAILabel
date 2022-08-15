@@ -15,5 +15,6 @@ class Level:
 
 class Label:
     def __init__(self):
-        self.ORGINAL = "original"
+        self.ORIGINAL = "original"
         self.FINAL = "final"
+        self.VERSION = "version"

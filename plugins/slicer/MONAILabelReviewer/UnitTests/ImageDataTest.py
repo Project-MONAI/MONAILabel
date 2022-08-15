@@ -16,14 +16,18 @@ class ImageDataTest(unittest.TestCase):
     def setUp(self):
         self.jsonParser = JsonParser(None)
         self.imageData = self.createTestImageData()
-        self.parsedImageData = self.parseJsonToImageData()
-
-    @classmethod
-    def parseJsonToImageData(self) -> ImageData:
+        
         fileNameWithMultipleVersions = "test_datastore_v2_image_with_multiple_versions.json"
-        fileNameWithMultipleVersions_str = self.loadJsonStr(fileNameWithMultipleVersions)
-        json_with_multiple_versions= json.loads(fileNameWithMultipleVersions_str)
-        return self.jsonParser.jsonToImageData("lan.dcm", json_with_multiple_versions)
+        self.parsedImageDataWithMultiVersions = self.parseJsonToImageData(path = fileNameWithMultipleVersions, fileName="lan.dcm")
+
+        fileNameWithSingleVersion = "test_datastore_v2_image_with_segmentation.json"
+        self.parsedImageDataWithSingleVersions = self.parseJsonToImageData(path = fileNameWithSingleVersion, fileName="mai.dcm")
+    
+    @classmethod
+    def parseJsonToImageData(self, path : str, fileName : str) -> ImageData:
+        path_str = self.loadJsonStr(path)
+        json_str = json.loads(path_str)
+        return self.jsonParser.jsonToImageData(fileName, json_str)
 
     @classmethod
     def loadJsonStr(self, fileName: str) -> str:
@@ -104,7 +108,7 @@ class ImageDataTest(unittest.TestCase):
         
 
     def test_obtainUpdatedParams(self):
-        params = self.parsedImageData.obtainUpdatedParams("version_3")
+        params = self.parsedImageDataWithMultiVersions.obtainUpdatedParams("version_3")
         exspectedParams = {
                             'label_info': 
                                 [
@@ -118,49 +122,55 @@ class ImageDataTest(unittest.TestCase):
                                 'status': 'self.status_3', 
                                 'approvedBy': 'self.approvedBy_3', 
                                 'level': 'self.level_3', 
-                                'comment': 'self.comment_3', 
-                                'editTime': 1656312200}
+                                'comment': 'self.comment_3'}
                             }
-        self.assertDictEqual(exspectedParams, params)
+
+        self.assertEqual(exspectedParams['label_info'], params['label_info'])
+        self.assertEqual(exspectedParams['segmentationMeta']['status'], params['segmentationMeta']['status'])
+        self.assertEqual(exspectedParams['segmentationMeta']['approvedBy'], params['segmentationMeta']['approvedBy'])
+        self.assertEqual(exspectedParams['segmentationMeta']['level'], params['segmentationMeta']['level'])
+        self.assertEqual(exspectedParams['segmentationMeta']['comment'], params['segmentationMeta']['comment'])
+
+
 
     def test_isEqualSegmentationMeta(self):
-        isEqual = self.parsedImageData.isEqualSegmentationMeta(tag = "version_3", status = "self.status_3", level  = "self.level_3", approvedBy  = "self.approvedBy_3", comment  = "self.comment_3")
+        isEqual = self.parsedImageDataWithMultiVersions.isEqualSegmentationMeta(tag = "version_3", status = "self.status_3", level  = "self.level_3", approvedBy  = "self.approvedBy_3", comment  = "self.comment_3")
         self.assertTrue(isEqual)
 
     def test_isEqualSegmentationMeta_when_segmentationmetadata_does_not_exit_add(self):
         
-        isEqual = self.parsedImageData.isEqualSegmentationMeta(tag = "version_4", status = "self.status_4", level  = "self.level_4", approvedBy  = "self.approvedBy_4", comment  = "self.comment_4")
+        isEqual = self.parsedImageDataWithMultiVersions.isEqualSegmentationMeta(tag = "version_4", status = "self.status_4", level  = "self.level_4", approvedBy  = "self.approvedBy_4", comment  = "self.comment_4")
         
         self.assertFalse(isEqual)
-        metas = self.parsedImageData.getsegmentationMetaDict()
+        metas = self.parsedImageDataWithMultiVersions.getsegmentationMetaDict()
         self.assertTrue("version_4" in metas)
         
     def test_getClientId_when_request_init_segmentation(self):
-        clientId = self.parsedImageData.getClientId("final")
+        clientId = self.parsedImageDataWithMultiVersions.getClientId("final")
         self.assertEqual('user-xyz', clientId)
 
     def test_getClientId_when_request_edit_version(self):
-        clientId = self.parsedImageData.getClientId("version_3")
+        clientId = self.parsedImageDataWithMultiVersions.getClientId("version_3")
         self.assertEqual('user-xyz', clientId)
 
     def test_getComment_when_request_init_segmentation(self):
-        comment = self.parsedImageData.getComment("final")
+        comment = self.parsedImageDataWithMultiVersions.getComment("final")
         self.assertEqual('self.comment_final', comment)
 
     def test_getComment_when_request_edit_version(self):
-        comment = self.parsedImageData.getComment("version_3")
+        comment = self.parsedImageDataWithMultiVersions.getComment("version_3")
         self.assertEqual('self.comment_3', comment)
 
     def test_getApprovedBy_when_request_init_segmentation(self):
-        approvedBy = self.parsedImageData.getApprovedBy("final")
+        approvedBy = self.parsedImageDataWithMultiVersions.getApprovedBy("final")
         self.assertEqual('self.approvedBy_final', approvedBy)
 
     def test_getApprovedBy_when_request_edit_version(self):
-        approvedBy = self.parsedImageData.getApprovedBy("version_3")
+        approvedBy = self.parsedImageDataWithMultiVersions.getApprovedBy("version_3")
         self.assertEqual('self.approvedBy_3', approvedBy)
 
     def test_isFlagged_when_segmentation_is_not_flagged(self):
-        isFlagged = self.parsedImageData.isFlagged("version_3")
+        isFlagged = self.parsedImageDataWithMultiVersions.isFlagged("version_3")
         self.assertFalse(isFlagged)
 
     def test_isFlagged_when_segmentation_is_flagged(self):
@@ -177,15 +187,12 @@ class ImageDataTest(unittest.TestCase):
 
 
     def test_getTimeOfEditing(self):
-        editTime = self.parsedImageData.getTimeOfEditing("version_1")
+        editTime = self.parsedImageDataWithMultiVersions.getTimeOfEditing("version_1")
         self.assertEqual("2022-06-27 08:43:00", editTime)
 
-        # for k,v in metas.items():
-        #     print("key: ", k)
-        #     v.display()
 
     def test_getSegmentationMetaByVersionTag(self):
-        segmentationData : SegmentationMeta =  self.parsedImageData.getSegmentationMetaByVersionTag("version_1")
+        segmentationData : SegmentationMeta =  self.parsedImageDataWithMultiVersions.getSegmentationMetaByVersionTag("version_1")
         self.assertEqual("self.status_1", segmentationData.getStatus())
         self.assertEqual("self.level_1", segmentationData.getLevel())
         self.assertEqual("self.approvedBy_1", segmentationData.getApprovedBy())
@@ -193,13 +200,21 @@ class ImageDataTest(unittest.TestCase):
         self.assertEqual("self.comment_1", segmentationData.getComment())
 
     def test_isApproved(self):
-        isApproved =  self.parsedImageData.isApproved()
-        print(isApproved)
+        isApproved =  self.parsedImageDataWithMultiVersions.isApproved()
+        self.assertTrue(isApproved)
 
+    def test_getApprovedVersionTagElseReturnLatestVersion_imagedata_with_multiple_versions(self):
+        metas = self.parsedImageDataWithMultiVersions.getsegmentationMetaDict()
+        latestVersion = self.parsedImageDataWithMultiVersions.getApprovedVersionTagElseReturnLatestVersion()
+        self.assertEqual("version_4", latestVersion)
 
-
-
-
+    def test_getApprovedVersionTagElseReturnLatestVersion_imagedata_with_single_version(self):
+        metas = self.parsedImageDataWithSingleVersions.getsegmentationMetaDict()
+        for k,v in metas.items():
+            print("key: ", k)
+            v.display()
+        latestVersion = self.parsedImageDataWithSingleVersions.getApprovedVersionTagElseReturnLatestVersion()
+        self.assertEqual("final", latestVersion)
 
 
 if __name__ == "__main__":
