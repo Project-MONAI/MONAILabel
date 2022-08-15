@@ -116,7 +116,7 @@ class MonaiServerRESTTest(unittest.TestCase):
     def test_updateLabelInfo(cls):
         client = MockServerFriendlyClient(cls.MOCK_SERVER_URL)
 
-        urlToBeTested = "{}/datastore/updatelabelinfo?label_id={}&label_tag={}".format(
+        urlToBeTested = "{}/datastore/updatelabelinfo?label={}&tag={}".format(
             cls.MOCK_SERVER_URL, str(6662775), "final"
         )
         body = {
@@ -133,7 +133,7 @@ class MonaiServerRESTTest(unittest.TestCase):
             request(
                 method="PUT",
                 path="/datastore/updatelabelinfo",
-                querystring={"label_id": "6662775", "label_tag": "final"},
+                querystring={"label": "6662775", "tag": "final"},
                 headers={"content-Type": "application/json"},
                 body=json_equals(body),
             ),
@@ -143,7 +143,7 @@ class MonaiServerRESTTest(unittest.TestCase):
 
         result = requests.put(
             cls.MOCK_SERVER_URL + "/datastore/updatelabelinfo",
-            params={"label_id": "6662775", "label_tag": "final"},
+            params={"label": "6662775", "tag": "final"},
             json=body,
             headers={"content-Type": "application/json"},
         )
@@ -200,7 +200,7 @@ class MonaiServerRESTTest(unittest.TestCase):
     def test_deleteLabelByVersionTag(cls):
         client = MockServerFriendlyClient(cls.MOCK_SERVER_URL)
 
-        urlToBeTested = "{}/datastore/label?id={}&tag={}".format(cls.MOCK_SERVER_URL, str(6662775), "final")
+        urlToBeTested = "{}/datastore/label?id={}&tag={}".format(cls.MOCK_SERVER_URL, "6662775", "final")
 
         client.expect(
             request(method="DELETE", path="/datastore/label", querystring={"id": "6662775", "tag": "final"}),
@@ -208,8 +208,8 @@ class MonaiServerRESTTest(unittest.TestCase):
             times(1),
         )
 
-        result = requests.put(
-            cls.MOCK_SERVER_URL + "/datastore/updatelabelinfo",
+        result = requests.delete(
+            cls.MOCK_SERVER_URL + "/datastore/label",
             params={"id": "6662775", "tag": "final"},
         )
         cls.assertEqual(200, result.status_code)

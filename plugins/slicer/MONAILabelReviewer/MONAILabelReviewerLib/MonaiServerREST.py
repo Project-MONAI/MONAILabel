@@ -111,7 +111,7 @@ class MonaiServerREST:
         embeddedParams = self.embeddedLabelContentInParams(params)
         logging.info(f"Sending updated label info: {embeddedParams}")
 
-        url = f"{self.serverUrl}/datastore/updatelabelinfo?label_id={quote_plus(image_id)}&label_tag={quote_plus(tag)}"
+        url = f"{self.serverUrl}/datastore/updatelabelinfo?label={quote_plus(image_id)}&tag={quote_plus(tag)}"
         headers = CaseInsensitiveDict()
         headers["Content-Type"] = "application/x-www-form-urlencoded"
         headers["accept"] = "application/json"
