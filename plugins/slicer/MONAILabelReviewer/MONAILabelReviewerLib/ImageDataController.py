@@ -64,23 +64,6 @@ class ImageDataController:
     def getReviewers(self) -> List[str]:
         return self.imageDataExtractor.getReviewers()
 
-    # def getStatistics(self) -> dict:
-    #     """
-    #     returns a map which contains statistical values which are comming from ImageDataExtractor object
-    #     """
-    #     statistics = {}
-    #     # ProgressBar: TOTAL
-    #     statistics["segmentationProgress"] = self.imageDataExtractor.getSegmentationProgessInPercentage()
-    #     statistics["idxTotalSegmented"] = self.imageDataExtractor.getSegmentationVsTotalStr()
-    #     statistics["idxTotalApproved"] = self.imageDataExtractor.getApprovalVsTotal()
-    #     statistics["progressPercentage"] = self.imageDataExtractor.getApprovalProgressInPercentage()
-
-    #     # ProgressBar: FILTER (incl. idxTotalSegmented, idxTotalApproved)
-    #     statistics["segmentationProgressAllPercentage"] = self.imageDataExtractor.getSegmentationProgessInPercentage()
-    #     statistics["approvalProgressPercentage"] = self.imageDataExtractor.getApprovalProgressInPercentage()
-
-    #     return statistics
-
     def getStatistics(self) -> ImageDataStatistics:
         """
         returns a map which contains statistical values which are comming from ImageDataExtractor object
@@ -154,8 +137,6 @@ class ImageDataController:
 
         for imageData in imageIdsOfAnnotator:
             idToImageData[imageData.getName()] = imageData
-            logging.warn("===== imageData Test Val ======")
-            imageData.display()
         
         return idToImageData
 

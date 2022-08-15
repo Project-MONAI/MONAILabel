@@ -1071,26 +1071,6 @@ class MONAILabelReviewerWidget(ScriptedLoadableModuleWidget, VTKObservationMixin
         self.activateSegmentatorEditor(activated=False)
 
     # Monai Server: Put
-
-    # def persistMetaInMonaiServer(self):
-    #     """
-    #     Sends the updated meta data of dicom and segmentation to monai-server
-    #     Monai-server incorporates that information into datastore.json file
-    #     """
-    #     updatedMetaJson = self.updateImageData()
-    #     imageId = self.currentImageData.getName()
-    #     versionTag = self.getCurrentLabelVersion()
-    #     logging.info("{} : Image update (id='{}', version tag='{}')".format(self.getCurrentTime(), imageId, versionTag))
-    #     logging.info(updatedMetaJson)
-    #     if updatedMetaJson == "":
-    #         return
-    #     self.logic.updateLabelInfo(imageId, versionTag, updatedMetaJson)
-
-    #     tagToSegmentationMeta = self.currentImageData.updateApprovedStatusOfOtherThanSubjectedVersion(subjectedTag=versionTag)
-    #     for tag, segmentationMeta in tagToSegmentationMeta.items():
-    #         self.logic.updateLabelInfo(imageId, tag, segmentationMeta)
-            
-
     def persistMetaInMonaiServer(self):
         """
         Sends the updated meta data of dicom and segmentation to monai-server
@@ -1102,37 +1082,6 @@ class MONAILabelReviewerWidget(ScriptedLoadableModuleWidget, VTKObservationMixin
                                     level=self.getCurrentMetaLevel(), 
                                     approvedBy=self.selectedReviewer, 
                                     comment=self.getCurrentComment())
-
-    # def isEqualPersistedMetaAndNewMeta(self) -> bool:
-
-    #     return (self.currentImageData.isEqualSegmentationMeta(  tag=self.getCurrentLabelVersion(),
-    #                                                             status=self.getCurrentMetaStatus(), 
-    #                                                             level=self.getCurrentMetaLevel(), 
-    #                                                             approvedBy=self.selectedReviewer, 
-    #                                                             comment=self.getCurrentComment()))
-
-    # def updateImageData(self) -> dict:
-    #     """
-    #     update meta data in information box
-    #     Returns: jsonDict: json dictionary which contains updated meta data
-    #     """
-    #     if (self.isEqualPersistedMetaAndNewMeta()):
-    #         logging.info(f"{self.getCurrentTime()}: No changes for image (id='{self.currentImageData.getName()}')")
-    #         return ""
-
-    #     self.currentImageData.updateSegmentationMetaByVerionTag( tag=self.getCurrentLabelVersion(), 
-    #                                                             status=self.getCurrentMetaStatus(),   
-    #                                                             level=self.getCurrentMetaLevel(), 
-    #                                                             approvedBy=self.selectedReviewer, 
-    #                                                             comment=self.getCurrentComment())
-
-    #     jsonDict = self.currentImageData.getMetaByVersionTag(tag=self.getCurrentLabelVersion())
-
-    #     if jsonDict is None:
-    #         logging.info(f"{self.getCurrentTime()}: No update for Image (id='{self.currentImageData.getName()}')")
-    #         return ""
-    #     logging.info(f"{self.getCurrentTime()}: Successfully updated Image (id='{self.currentImageData.getName()}')")
-    #     return jsonDict
 
     # Button: Previouse
     def getPreviousSegmenation(self):
@@ -1147,9 +1096,7 @@ class MONAILabelReviewerWidget(ScriptedLoadableModuleWidget, VTKObservationMixin
             self.imageCounter = 0
             return
         self.updateHorizontalSlider()
-        self.currentImageData = self.listImageData[self.imageCounter]
-        
-        logging.warn("==========================Button: Previouse==========================")
+        self.currentImageData = self.listImageData[self.imageCounter]        
         self.currentImageData.display()
 
         self.fillComboBoxLabelVersions(self.currentImageData)
@@ -1176,7 +1123,6 @@ class MONAILabelReviewerWidget(ScriptedLoadableModuleWidget, VTKObservationMixin
         self.cleanLineEditsContainingSegMeta()
         self.clearButtons()
 
-        #currentLabelVersion = self.getCurrentLabelVersion()      
         self.setCurrentMetaStatus(status = imageData.getStatus(currentLabelVersion))
         
         self.fillLineEditsWithSegmenationMeta(imageData, currentLabelVersion)
@@ -1186,7 +1132,6 @@ class MONAILabelReviewerWidget(ScriptedLoadableModuleWidget, VTKObservationMixin
 
     def setMetaButtonsAccordingToImageData(self, imageData : ImageData, currentLabelVersion : str):
         finalLevel = imageData.getLevel(currentLabelVersion)
-        logging.warn("finalLevel=======: "+finalLevel)
         if finalLevel != "":
             self.activateBtnLevelOfDifficulty(finalLevel)
         
@@ -1198,18 +1143,15 @@ class MONAILabelReviewerWidget(ScriptedLoadableModuleWidget, VTKObservationMixin
 
     
     def fillLineEditsWithSegmenationMeta(self, imageData : ImageData, currentLabelVersion : str):
-        logging.warn("+++++++++++++++")
-        imageData.display()
-        logging.warn("+++++++++++++++")
 
-        logging.warn("==== currentLabelVersion: {}".format(currentLabelVersion))
-        logging.warn("==== getName: {}".format(imageData.getName()))
-        logging.warn("==== getClientId: {}".format(imageData.getClientId(currentLabelVersion)))
-        logging.warn("==== getTime: {}".format(imageData.getTimeOfAnnotation()))
-        logging.warn("==== getStatus: {}".format(imageData.getStatus(currentLabelVersion)))
-        logging.warn("==== getComment: {}".format(imageData.getComment(currentLabelVersion)))
-        logging.warn("==== getLevel: {}".format(imageData.getLevel(currentLabelVersion)))
-        logging.warn("==== edtitingTme: {}".format(imageData.getTimeOfEditing(currentLabelVersion)))
+        logging.info("==== currentLabelVersion: {}".format(currentLabelVersion))
+        logging.info("==== getName: {}".format(imageData.getName()))
+        logging.info("==== getClientId: {}".format(imageData.getClientId(currentLabelVersion)))
+        logging.info("==== getTime: {}".format(imageData.getTimeOfAnnotation()))
+        logging.info("==== getStatus: {}".format(imageData.getStatus(currentLabelVersion)))
+        logging.info("==== getComment: {}".format(imageData.getComment(currentLabelVersion)))
+        logging.info("==== getLevel: {}".format(imageData.getLevel(currentLabelVersion)))
+        logging.info("==== edtitingTme: {}".format(imageData.getTimeOfEditing(currentLabelVersion)))
 
         name = imageData.getName()
         annotator = imageData.getClientId(currentLabelVersion)
@@ -1295,7 +1237,7 @@ class MONAILabelReviewerWidget(ScriptedLoadableModuleWidget, VTKObservationMixin
         """
         slicer.mrmlScene.Clear()
         self.clearInformationFields()
-        #self.clearButtons()
+
         if(tag == ""):
             tag = self.currentImageData.getApprovedVersionTagElseReturnLatestVersion()
         if(tag == ""):
@@ -1689,10 +1631,6 @@ class MONAILabelReviewerLogic(ScriptedLoadableModuleLogic):
         return jsonDict
 
     # Section: Dicom stream
-    # def updateLabelInfo(self, imageId, versionTag, updatedMetaJson):
-    #     self.imageDataController.updateLabelInfo(imageId, versionTag, updatedMetaJson)
-
-        # Section: Dicom stream
     def updateLabelInfo(self, imageData : ImageData, versionTag : str, status : str, level : str, approvedBy : str,  comment : str):
         imageId = imageData.getName()
         updatedMetaJson = self.updateImageData(imageData, versionTag , status, level, approvedBy, comment)
@@ -1703,12 +1641,6 @@ class MONAILabelReviewerLogic(ScriptedLoadableModuleLogic):
         logging.info("{} : Image update (id='{}', version tag='{}')".format(self.getCurrentTime(), imageId, versionTag))
         logging.info(updatedMetaJson)
         self.imageDataController.updateLabelInfoOfAllVersionTags(imageData=imageData, versionTag=versionTag, level=level, updatedMetaJson=updatedMetaJson)
-        
-        # self.imageDataController.updateLabelInfo(imageId, versionTag, updatedMetaJson)
-
-        # tagToSegmentationMetaJson = imageData.updateApprovedStatusOfOtherThanSubjectedVersion(subjectedTag=versionTag, difficultyLevel=level)
-        # for tag, segmentationMetaJson in tagToSegmentationMetaJson.items():
-        #      self.imageDataController.updateLabelInfo(imageId, tag, segmentationMetaJson)
 
     def loadDicomAndSegmentation(self, imageData : ImageData, tag : str):
         """

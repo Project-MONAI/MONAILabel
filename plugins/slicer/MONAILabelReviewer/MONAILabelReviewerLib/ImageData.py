@@ -59,7 +59,6 @@ class ImageData:
         self.client_id: str = None
         self.segmentationFileName: str = None
         self.tempDirectory: str = None
-        #self.segmentationMeta: SegmentationMeta = None
         self.prefixVersion = "version_"
         self.FINAL = "final"
         self.ORIGIN = "origin"
@@ -90,13 +89,6 @@ class ImageData:
 
     def getClientId(self, versionTag = "final") -> str:
         return self.client_id
-        # if(versionTag == self.FINAL or versionTag == self.ORIGIN):
-        #     return self.client_id
-
-        # segmentationMeta = self.getSegmentationMetaByVersionTag(tag = versionTag)
-        # if(segmentationMeta is None):
-        #     return ""
-        # return segmentationMeta.getApprovedBy()
 
     def getTimeStamp(self) -> int:
         return self.timeStamp
@@ -218,10 +210,6 @@ class ImageData:
     def setClientId(self, client_id: str):
         self.client_id = client_id
 
-    # def setSegmentationMeta(self, status="", level="", approvedBy="", comment="", editTime=""):
-    #     self.segmentationMeta = SegmentationMeta()
-    #     self.segmentationMeta.build(status=status, level=level, approvedBy=approvedBy, comment=comment, editTime=editTime)
-
     def addNewSegmentationMeta(self, tag : str, status : str, level : str, approvedBy  : str, comment  : str):
         segmentationMeta = SegmentationMeta()
         segmentationMeta.build(status=status, level=level, approvedBy=approvedBy, comment=comment, editTime="")
@@ -249,14 +237,6 @@ class ImageData:
             return False
 
         return segmentationMeta.isEqual(status=status, level=level, approvedBy=approvedBy, comment=comment)
-
-
-    # def updateSegmentationMeta(self, status="", level="", approvedBy="", comment=""):
-    #     if self.segmentationMeta is None:
-    #         self.segmentationMeta = SegmentationMeta()
-    #         self.segmentationMeta.build(status=status, level=level, approvedBy=approvedBy, comment=comment)
-    #         return
-    #     self.segmentationMeta.update( status=status, level=level, approvedBy=approvedBy, comment=comment)
 
     def isBlank(self, string) -> bool:
         return not (string and string.strip())
