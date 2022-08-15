@@ -1,3 +1,14 @@
+# Copyright (c) MONAI Consortium
+# Licensed under the Apache License, Version 2.0 (the "License");
+# you may not use this file except in compliance with the License.
+# You may obtain a copy of the License at
+#     http://www.apache.org/licenses/LICENSE-2.0
+# Unless required by applicable law or agreed to in writing, software
+# distributed under the License is distributed on an "AS IS" BASIS,
+# WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+# See the License for the specific language governing permissions and
+# limitations under the License.
+
 import sys
 import unittest
 from typing import Dict, List
@@ -30,8 +41,12 @@ class ImageDataExtractorTest(unittest.TestCase):
         )
         imageDataTest_1.setClientId("client_id_1")
         imageDataTest_1.setSegmentationFileName("testSegementation_1.nrrd")
-        imageDataTest_1.setSegmentationMeta(
-            status=self.STATUS.APPROVED, level=self.LEVEL.HARD, approvedBy="theRadologist_1", comment="comment_1"
+        imageDataTest_1.addNewSegmentationMeta(
+            tag="final",
+            status=self.STATUS.APPROVED,
+            level=self.LEVEL.HARD,
+            approvedBy="theRadologist_1",
+            comment="comment_1",
         )
 
         # is segmented
@@ -46,8 +61,12 @@ class ImageDataExtractorTest(unittest.TestCase):
         )
         imageDataTest_2.setClientId("client_id_1")
         imageDataTest_2.setSegmentationFileName("testSegementation_2.nrrd")
-        imageDataTest_2.setSegmentationMeta(
-            status=self.STATUS.FLAGGED, level=self.LEVEL.MEDIUM, approvedBy="theRadologist_2", comment="comment_2"
+        imageDataTest_2.addNewSegmentationMeta(
+            tag="final",
+            status=self.STATUS.FLAGGED,
+            level=self.LEVEL.MEDIUM,
+            approvedBy="theRadologist_2",
+            comment="comment_2",
         )
 
         # is not segmented
@@ -180,8 +199,12 @@ class ImageDataExtractorTest(unittest.TestCase):
         )
         imageDataTest_4.setClientId("client_id_1")
         imageDataTest_4.setSegmentationFileName("testSegementation_4.nrrd")
-        imageDataTest_4.setSegmentationMeta(
-            status=self.STATUS.APPROVED, level=self.LEVEL.MEDIUM, approvedBy="theRadologist_4", comment="comment_4"
+        imageDataTest_4.addNewSegmentationMeta(
+            tag="final",
+            status=self.STATUS.APPROVED,
+            level=self.LEVEL.MEDIUM,
+            approvedBy="theRadologist_4",
+            comment="comment_4",
         )
         self.nameToImageData["imageId_4"] = imageDataTest_4
 
@@ -284,8 +307,12 @@ class ImageDataExtractorTest(unittest.TestCase):
         )
         imageDataTest_4.setClientId("client_id_1")
         imageDataTest_4.setSegmentationFileName("testSegementation_4.nrrd")
-        imageDataTest_4.setSegmentationMeta(
-            status=self.STATUS.APPROVED, level=self.LEVEL.MEDIUM, approvedBy="theRadologist_4", comment="comment_4"
+        imageDataTest_4.addNewSegmentationMeta(
+            tag="final",
+            status=self.STATUS.APPROVED,
+            level=self.LEVEL.MEDIUM,
+            approvedBy="theRadologist_4",
+            comment="comment_4",
         )
         self.nameToImageData["imageId_4"] = imageDataTest_4
 
@@ -308,8 +335,12 @@ class ImageDataExtractorTest(unittest.TestCase):
         )
         imageDataTest_4.setClientId("client_id_1")
         imageDataTest_4.setSegmentationFileName("testSegementation_4.nrrd")
-        imageDataTest_4.setSegmentationMeta(
-            status=self.STATUS.APPROVED, level=self.LEVEL.MEDIUM, approvedBy="theRadologist_4", comment="comment_4"
+        imageDataTest_4.addNewSegmentationMeta(
+            tag="final",
+            status=self.STATUS.APPROVED,
+            level=self.LEVEL.MEDIUM,
+            approvedBy="theRadologist_4",
+            comment="comment_4",
         )
         self.nameToImageData["imageId_4"] = imageDataTest_4
 
