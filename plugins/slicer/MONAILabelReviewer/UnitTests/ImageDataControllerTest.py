@@ -1,3 +1,14 @@
+# Copyright (c) MONAI Consortium
+# Licensed under the Apache License, Version 2.0 (the "License");
+# you may not use this file except in compliance with the License.
+# You may obtain a copy of the License at
+#     http://www.apache.org/licenses/LICENSE-2.0
+# Unless required by applicable law or agreed to in writing, software
+# distributed under the License is distributed on an "AS IS" BASIS,
+# WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+# See the License for the specific language governing permissions and
+# limitations under the License.
+
 import json
 import os
 import sys
@@ -45,8 +56,8 @@ class ImageDataControllerTest(unittest.TestCase):
         )
         imageDataTest_1.setClientId("Test-Radiolgist-Segmented")
         imageDataTest_1.setSegmentationFileName("6667571.seg.nrrd")
-        imageDataTest_1.setSegmentationMeta(
-            status=self.STATUS.APPROVED, level=self.LEVEL.HARD, approvedBy="Test-Reviewer", comment=""
+        imageDataTest_1.addNewSegmentationMeta(
+            tag="final", status=self.STATUS.APPROVED, level=self.LEVEL.HARD, approvedBy="Test-Reviewer", comment=""
         )
 
         # is segmented
@@ -61,8 +72,12 @@ class ImageDataControllerTest(unittest.TestCase):
         )
         imageDataTest_2.setClientId("client_id_1")
         imageDataTest_2.setSegmentationFileName("testSegementation_2.nrrd")
-        imageDataTest_2.setSegmentationMeta(
-            status=self.STATUS.FLAGGED, level=self.LEVEL.MEDIUM, approvedBy="theRadologist_2", comment="comment_2"
+        imageDataTest_2.addNewSegmentationMeta(
+            tag="final",
+            status=self.STATUS.FLAGGED,
+            level=self.LEVEL.MEDIUM,
+            approvedBy="theRadologist_2",
+            comment="comment_2",
         )
 
         # is not segmented

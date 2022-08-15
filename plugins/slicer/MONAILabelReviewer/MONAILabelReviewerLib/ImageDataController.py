@@ -1,3 +1,14 @@
+# Copyright (c) MONAI Consortium
+# Licensed under the Apache License, Version 2.0 (the "License");
+# you may not use this file except in compliance with the License.
+# You may obtain a copy of the License at
+#     http://www.apache.org/licenses/LICENSE-2.0
+# Unless required by applicable law or agreed to in writing, software
+# distributed under the License is distributed on an "AS IS" BASIS,
+# WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+# See the License for the specific language governing permissions and
+# limitations under the License.
+
 import datetime
 import logging
 from typing import Dict, List
@@ -5,6 +16,7 @@ from typing import Dict, List
 import requests
 from MONAILabelReviewerLib.ImageData import ImageData
 from MONAILabelReviewerLib.ImageDataExtractor import ImageDataExtractor
+from MONAILabelReviewerLib.ImageDataStatistics import ImageDataStatistics
 from MONAILabelReviewerLib.JsonParser import JsonParser
 from MONAILabelReviewerLib.MonaiServerREST import MonaiServerREST
 
@@ -34,32 +46,10 @@ class ImageDataController:
         self.imageDataExtractor: ImageDataExtractor = None
         self.temp_dir = None
 
-    def getServerUrl(self) -> str:
-        return self.monaiServerREST.getServerUrl()
-
     def getCurrentTime(self) -> datetime:
         return datetime.datetime.now()
 
-    def setMonaiServer(self, serverUrl: str):
-        self.monaiServerREST = MonaiServerREST(serverUrl)
-
-    def connectToMonaiServer(self, serverUrl: str) -> bool:
-        self.setMonaiServer(serverUrl)
-        return self.monaiServerREST.checkServerConnection()
-
-    def getMapIdToImageData(self) -> Dict[str, ImageData]:
-        """
-        Returns dictionary (Dict[str:ImageData]) which maps id to Imagedata-object
-        """
-        jsonObj = self.monaiServerREST.requestDataStoreInfo()
-        if jsonObj is None:
-            return None
-
-        # Parse json file to ImageData object
-        jsonParser = JsonParser(jsonObj)
-        jsonParser.init()
-        mapIdToImageData = jsonParser.getMapIdToImageData()
-        return mapIdToImageData
+    # ImageDataExtractor methods
 
     def initMetaDataProcessing(self) -> bool:
         """
@@ -76,29 +66,29 @@ class ImageDataController:
         self.imageDataExtractor.init()
         return True
 
-    def getStatistics(self) -> dict:
-        """
-        returns a map which contains statistical values which are comming from ImageDataExtractor object
-        """
-        statistics = {}
-        # ProgressBar: TOTAL
-        statistics["segmentationProgress"] = self.imageDataExtractor.getSegmentationProgessInPercentage()
-        statistics["idxTotalSegmented"] = self.imageDataExtractor.getSegmentationVsTotalStr()
-        statistics["idxTotalApproved"] = self.imageDataExtractor.getApprovalVsTotal()
-        statistics["progressPercentage"] = self.imageDataExtractor.getApprovalProgressInPercentage()
-
-        # ProgressBar: FILTER (incl. idxTotalSegmented, idxTotalApproved)
-        statistics["segmentationProgressAllPercentage"] = self.imageDataExtractor.getSegmentationProgessInPercentage()
-        statistics["approvalProgressPercentage"] = self.imageDataExtractor.getApprovalProgressInPercentage()
-
-        return statistics
-
     # returns only client id of those images which are segemented
     def getClientIds(self) -> List[str]:
         return self.imageDataExtractor.getClientIds()
 
     def getReviewers(self) -> List[str]:
         return self.imageDataExtractor.getReviewers()
+
+    def getStatistics(self) -> ImageDataStatistics:
+        """
+        returns a map which contains statistical values which are comming from ImageDataExtractor object
+        """
+        statistics = ImageDataStatistics()
+
+        statistics.build(
+            segmentationProgress=self.imageDataExtractor.getSegmentationProgessInPercentage(),
+            idxTotalSegmented=self.imageDataExtractor.getSegmentationVsTotalStr(),
+            idxTotalApproved=self.imageDataExtractor.getApprovalVsTotal(),
+            progressPercentage=self.imageDataExtractor.getApprovalProgressInPercentage(),
+            segmentationProgressAllPercentage=self.imageDataExtractor.getSegmentationProgessInPercentage(),
+            approvalProgressPercentage=self.imageDataExtractor.getApprovalProgressInPercentage(),
+        )
+
+        return statistics
 
     # Section: Loading images
     def getAllImageData(self, segmented, isNotSegmented, isApproved, isFlagged) -> List[ImageData]:
@@ -172,8 +162,46 @@ class ImageDataController:
         )
         return imageIdsOfAnnotator
 
+    # MONAI server methods
+
+    def getServerUrl(self) -> str:
+        return self.monaiServerREST.getServerUrl()
+
+    def setMonaiServer(self, serverUrl: str):
+        self.monaiServerREST = MonaiServerREST(serverUrl)
+
+    def connectToMonaiServer(self, serverUrl: str) -> bool:
+        self.setMonaiServer(serverUrl)
+        return self.monaiServerREST.checkServerConnection()
+
+    def getMapIdToImageData(self) -> Dict[str, ImageData]:
+        """
+        Returns dictionary (Dict[str:ImageData]) which maps id to Imagedata-object
+        """
+        jsonObj = self.monaiServerREST.requestDataStoreInfo()
+        if jsonObj is None:
+            return None
+
+        # Parse json file to ImageData object
+        jsonParser = JsonParser(jsonObj)
+        jsonParser.init()
+        mapIdToImageData = jsonParser.getMapIdToImageData()
+        return mapIdToImageData
+
     # Section: Dicom stream
-    def updateLabelInfo(self, imageId, updatedMetaJson) -> bool:
+    def updateLabelInfoOfAllVersionTags(
+        self, imageData: ImageData, versionTag: str, level: str, updatedMetaJson: dict
+    ) -> bool:
+        imageId = imageData.getName()
+        self.updateLabelInfo(imageId, versionTag, updatedMetaJson)
+
+        tagToSegmentationMetaJson = imageData.updateApprovedStatusOfOtherThanSubjectedVersion(
+            subjectedTag=versionTag, difficultyLevel=level
+        )
+        for tag, segmentationMetaJson in tagToSegmentationMetaJson.items():
+            self.updateLabelInfo(imageId, tag, segmentationMetaJson)
+
+    def updateLabelInfo(self, imageId, versionTag, updatedMetaJson) -> bool:
         """
         sends meta information via http request to monai server
         in order to perist the information in datastore_v2.json file
@@ -181,7 +209,7 @@ class ImageDataController:
         returns True if successfully sent http request
         else False
         """
-        repsonseCode = self.monaiServerREST.updateLabelInfo(image_id=imageId, params=updatedMetaJson)
+        repsonseCode = self.monaiServerREST.updateLabelInfo(image_id=imageId, tag=versionTag, params=updatedMetaJson)
         if repsonseCode == 200:
             logging.info(f"{self.getCurrentTime()}: Successfully persist meta data for image (id='{imageId}')")
             return True
@@ -193,12 +221,12 @@ class ImageDataController:
             )
             return False
 
-    def reuqestSegmentation(self, image_id) -> requests.models.Response:
+    def reuqestSegmentation(self, image_id: str, tag: str) -> requests.models.Response:
         """
         after sending request to monai server
         rerturns response body (img_blob) which contains the segmentation data
         """
-        img_blob = self.monaiServerREST.requestSegmentation(image_id)
+        img_blob = self.monaiServerREST.requestSegmentation(image_id, tag)
         logging.info(
             "{}: Segmentation successfully requested from MONAIServer (image id: {})".format(
                 self.getCurrentTime(), image_id
@@ -208,3 +236,12 @@ class ImageDataController:
 
     def getDicomDownloadUri(self, image_id: str) -> str:
         return self.monaiServerREST.getDicomDownloadUri(image_id)
+
+    def saveLabelInMonaiServer(self, image_in: str, label_in: str, tag: str, params: Dict):
+        self.monaiServerREST.saveLabel(image_in, label_in, tag, params)
+
+    def deleteLabelByVersionTag(self, imageId: str, versionTag: str) -> bool:
+        reponseCode = self.monaiServerREST.deleteLabelByVersionTag(imageId, versionTag)
+        if reponseCode == 200:
+            return True
+        return False
