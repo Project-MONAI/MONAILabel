@@ -1,9 +1,9 @@
 ################################################################################
-## Form generated from reading UI file 'MONAILabelReviewer.ui'
-##
-## Created by: Qt User Interface Compiler version 5.15.2
-##
-## WARNING! All changes made in this file will be lost when recompiling UI file!
+# Form generated from reading UI file 'MONAILabelReviewer.ui'
+#
+# Created by: Qt User Interface Compiler version 5.15.2
+#
+# WARNING! All changes made in this file will be lost when recompiling UI file!
 ################################################################################
 
 from ctkCollapsibleButton import ctkCollapsibleButton
