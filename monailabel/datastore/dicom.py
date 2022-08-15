@@ -16,8 +16,8 @@ import shutil
 from typing import Any, Dict, Iterator, List, Optional, Tuple
 
 import requests
+from cachetools import TTLCache, cached
 from dicomweb_client import DICOMwebClient
-from expiringdict import ExpiringDict
 from pydicom.dataset import Dataset
 
 from monailabel.datastore.local import LocalDatastore
@@ -50,8 +50,6 @@ class DICOMWebDatastore(LocalDatastore):
             else os.path.join(pathlib.Path.home(), ".cache", "monailabel", "dicom", uri_hash)
         )
         logger.info(f"DICOMWeb Datastore (cache) Path: {datastore_path}; FetchByFrame: {fetch_by_frame}")
-
-        self._stats_cache = ExpiringDict(max_len=100, max_age_seconds=30)
         super().__init__(datastore_path=datastore_path, auto_reload=True)
 
     def name(self) -> str:
@@ -110,12 +108,14 @@ class DICOMWebDatastore(LocalDatastore):
             info[f] = str(meta[f].value) if meta.get(f) else "UNK"
         return info
 
+    @cached(cache=TTLCache(maxsize=16, ttl=600))
     def list_images(self) -> List[str]:
         datasets = self._client.search_for_series(search_filters={"Modality": self._modality})
         series = [str(Dataset.from_json(ds)["SeriesInstanceUID"].value) for ds in datasets]
         logger.debug("Total Series: {}\n{}".format(len(series), "\n".join(series)))
         return series
 
+    @cached(cache=TTLCache(maxsize=16, ttl=600))
     def get_labeled_images(self) -> List[str]:
         datasets = self._client.search_for_series(search_filters={"Modality": "SEG"})
         all_segs = [Dataset.from_json(ds) for ds in datasets]
@@ -165,7 +165,15 @@ class DICOMWebDatastore(LocalDatastore):
             label_file = nifti_to_dicom_seg(image_dir, label_filename, label_info.get("label_info"))
 
             label_series_id = dicom_web_upload_dcm(label_file, self._client)
-            label_info.update(self._dicom_info(label_series_id))
+            image_info = self.get_image_info(image_id)
+            label_info.update(
+                {
+                    "SeriesInstanceUID": label_series_id,
+                    "Modality": image_info.get("Modality"),
+                    "PatientID": image_info.get("PatientID"),
+                    "StudyInstanceUID": image_info.get("StudyInstanceUID"),
+                }
+            )
             os.unlink(label_file)
 
         label_id = super().save_label(image_id, label_filename, label_tag, label_info)
@@ -216,10 +224,3 @@ class DICOMWebDatastore(LocalDatastore):
     def datalist(self, full_path=True) -> List[Dict[str, Any]]:
         self._download_labeled_data()
         return super().datalist(full_path)
-
-    def status(self) -> Dict[str, Any]:
-        stats: Dict[str, Any] = self._stats_cache.get("stats")
-        if not stats:
-            stats = super().status()
-            self._stats_cache["stats"] = stats
-        return stats

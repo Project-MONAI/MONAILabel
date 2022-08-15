@@ -29,7 +29,7 @@ class Segmentation(TaskConfig):
     def init(self, name: str, model_dir: str, conf: Dict[str, str], planner: Any, **kwargs):
         super().init(name, model_dir, conf, planner, **kwargs)
 
-        # Labels
+        # Labels - DON'T INCLUDE BACKGROUND LABEL
         self.labels = {
             "spleen": 1,
             "right kidney": 2,
@@ -89,12 +89,14 @@ class Segmentation(TaskConfig):
 
     def trainer(self) -> Optional[TrainTask]:
         output_dir = os.path.join(self.model_dir, self.name)
+        load_path = self.path[0] if os.path.exists(self.path[0]) else self.path[1]
+
         task: TrainTask = lib.trainers.Segmentation(
             model_dir=output_dir,
             network=self.network,
             roi_size=self.roi_size,
             target_spacing=self.target_spacing,
-            load_path=self.path[0],
+            load_path=load_path,
             publish_path=self.path[1],
             description="Train Multilabel Segmentation Model",
             dimension=3,

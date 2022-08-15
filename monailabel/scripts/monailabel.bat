@@ -21,6 +21,7 @@ set BAK_PYTHONPATH=%PYTHONPATH%
 
 set PYTHONPATH=%PARENT%;%PYTHONPATH%
 echo Using PYTHONPATH=%PYTHONPATH%
+echo ""
 
 python -m monailabel.main %*
 set PYTHONPATH=%BAK_PYTHONPATH%

@@ -31,14 +31,7 @@ If you are developing any examples related to pathology, you should refer this a
     - Epithelial
 
 
-### Deprecated Apps
-Following apps are deprecated/removed.  It is recommended to use [Radiology](./radiology) and [Pathology](./pathology) apps for reference.
+## [MONAI Bundle](./monaibundle)
 
-##### ~~DeepGrow~~
-
-##### ~~DeepEdit~~
-
-##### ~~Segmentation~~
-
-
-
+This app has example models to do both interactive and automated segmentation using monai-bundles defined in [MONAI ZOO](https://github.com/Project-MONAI/model-zoo/tree/dev/models).
+It can pull any bundle defined in the zoo if it is compatible and follows the checklist as defined [here](./monaibundle).

@@ -19,11 +19,10 @@ from monai.transforms import (
     LoadImaged,
     ScaleIntensityRanged,
     Spacingd,
-    ToNumpyd,
 )
 
 from monailabel.interfaces.tasks.infer import InferTask, InferType
-from monailabel.transform.post import BoundingBoxd, Restored
+from monailabel.transform.post import Restored
 
 
 class SegmentationSpleen(InferTask):
@@ -68,7 +67,5 @@ class SegmentationSpleen(InferTask):
             EnsureTyped(keys="pred", device=data.get("device") if data else None),
             Activationsd(keys="pred", softmax=True),
             AsDiscreted(keys="pred", argmax=True),
-            ToNumpyd(keys="pred"),
             Restored(keys="pred", ref_image="image"),
-            BoundingBoxd(keys="pred", result="result", bbox="bbox"),
         ]

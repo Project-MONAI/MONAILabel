@@ -17,6 +17,7 @@ from typing import Dict
 import lib.configs
 from lib.activelearning import First
 
+import monailabel
 from monailabel.interfaces.app import MONAILabelApp
 from monailabel.interfaces.config import TaskConfig
 from monailabel.interfaces.datastore import Datastore
@@ -27,6 +28,7 @@ from monailabel.interfaces.tasks.train import TrainTask
 from monailabel.scribbles.infer import GMMBasedGraphCut, HistogramBasedGraphCut
 from monailabel.tasks.activelearning.random import Random
 from monailabel.tasks.infer.deepgrow_pipeline import InferDeepgrowPipeline
+from monailabel.tasks.infer.vertebra_pipeline import InferVertebraPipeline
 from monailabel.utils.others.class_utils import get_class_names
 from monailabel.utils.others.planner import HeuristicPlanner
 
@@ -90,8 +92,9 @@ class MyApp(MONAILabelApp):
             app_dir=app_dir,
             studies=studies,
             conf=conf,
-            name="MONAILabel - Radiology",
+            name=f"MONAILabel - Radiology ({monailabel.__version__})",
             description="DeepLearning models for radiology",
+            version=monailabel.__version__,
         )
 
     def init_datastore(self) -> Datastore:
@@ -146,6 +149,26 @@ class MyApp(MONAILabelApp):
                 model_3d=infers["deepgrow_3d"],
                 description="Combines Clara Deepgrow 2D and 3D models",
             )
+
+        #################################################
+        # Pipeline based on existing infers for vertebra segmentation
+        # Stages:
+        # 1/ localization spine
+        # 2/ localization vertebra
+        # 3/ segmentation vertebra
+        #################################################
+        if (
+            infers.get("localization_spine")
+            and infers.get("localization_vertebra")
+            and infers.get("segmentation_vertebra")
+        ):
+            infers["vertebra_pipeline"] = InferVertebraPipeline(
+                model_localization_spine=infers["localization_spine"],  # first stage
+                model_localization_vertebra=infers["localization_vertebra"],  # second stage
+                model_segmentation_vertebra=infers["segmentation_vertebra"],  # third stage
+                description="Combines three stage for vertebra segmentation",
+            )
+        logger.info(infers)
         return infers
 
     def init_trainers(self) -> Dict[str, TrainTask]:
@@ -223,7 +246,7 @@ def main():
     )
 
     home = str(Path.home())
-    studies = f"{home}/Documents/workspace/Datasets/radiology/btcv/train"
+    studies = f"{home}/Documents/workspace/Datasets/monailabel"
 
     parser = argparse.ArgumentParser()
     parser.add_argument("-s", "--studies", default=studies)
@@ -235,6 +258,7 @@ def main():
     studies = args.studies
     conf = {
         "models": args.model,
+        "preload": "true",
     }
 
     app = MyApp(app_dir, studies, conf)
@@ -247,7 +271,10 @@ def main():
 
         # Run on all devices
         for device in device_list():
-            res = app.infer(request={"model": args.model, "image": image_id, "device": device})
+            # res = app.infer(request={"model": args.model, "image": image_id, "device": device})
+            res = app.infer(
+                request={"model": "vertebra_pipeline", "image": image_id, "device": device, "slicer": False}
+            )
             label = res["file"]
             label_json = res["params"]
             test_dir = os.path.join(args.studies, "test_labels")
@@ -269,7 +296,7 @@ def main():
             "dataset": "CacheDataset",  # PersistentDataset, CacheDataset
             "train_batch_size": 1,
             "val_batch_size": 1,
-            "multi_gpu": True,
+            "multi_gpu": False,
             "val_split": 0.1,
         },
     )

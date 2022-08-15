@@ -54,7 +54,6 @@ MONAI Label supports following OS with **GPU/CUDA** enabled.
 pip install monailabel -U
 ```
 
-> If you have [monai](https://pypi.org/project/monai/) > 0.9.0 version, please downgrade it to **monai==0.9.0** version
 
 ### Development version
 
@@ -104,6 +103,13 @@ to the [installation guide](https://docs.monai.io/projects/label/en/latest/insta
 > serving URL in browser. It will provide you the list of Rest APIs available. **For this, please make sure you use the
 HTTP protocol.** _You can provide ssl arguments to run server in **HTTPS mode** but this functionality is not fully
 verified across all clients._
+
+
+### Optional Dependencies
+Following are the optional dependencies which can help you to accelerate some GPU based transforms from MONAI.
+These dependencies are by-default available if you are using `projectmonai/monailabel` docker.
+- [CUCIM](https://pypi.org/project/cucim/)
+- [CUPY](https://docs.cupy.dev/en/stable/install.html#installing-cupy)
 
 ## Plugins
 

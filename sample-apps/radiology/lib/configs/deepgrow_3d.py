@@ -68,15 +68,18 @@ class Deepgrow3D(TaskConfig):
             preload=strtobool(self.conf.get("preload", "false")),
             dimension=3,
             model_size=(128, 192, 192),
+            config={"cache_transforms": True, "cache_transforms_in_memory": True, "cache_transforms_ttl": 300},
         )
         return task
 
     def trainer(self) -> Optional[TrainTask]:
         output_dir = os.path.join(self.model_dir, self.name)
+        load_path = self.path[0] if os.path.exists(self.path[0]) else self.path[1]
+
         task: TrainTask = lib.trainers.Deepgrow(
             model_dir=output_dir,
             network=self.network,
-            load_path=self.path[0],
+            load_path=load_path,
             publish_path=self.path[1],
             description="Train 3D Deepgrow model",
             dimension=3,

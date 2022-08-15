@@ -72,8 +72,11 @@ class Deepgrow(InferTask):
             LoadImaged(keys="image"),
             AsChannelFirstd(keys="image"),
             Spacingd(keys="image", pixdim=[1.0] * self.dimension, mode="bilinear"),
-            AddGuidanceFromPointsd(ref_image="image", guidance="guidance", dimensions=self.dimension),
         ]
+
+        self.add_cache_transform(t, data)
+        t.append(AddGuidanceFromPointsd(ref_image="image", guidance="guidance", dimensions=self.dimension))
+
         if self.dimension == 2:
             t.append(Fetch2DSliced(keys="image", guidance="guidance"))
         t.extend(

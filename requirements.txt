@@ -1,5 +1,5 @@
 torch>=1.7
-monai[nibabel, skimage, pillow, tensorboard, gdown, ignite, torchvision, itk, tqdm, lmdb, psutil, openslide]>=0.9.1rc4
+monai[nibabel, skimage, pillow, tensorboard, gdown, ignite, torchvision, itk, tqdm, lmdb, psutil, openslide, fire]>=0.9.1
 uvicorn==0.17.6
 pydantic==1.9.1
 python-dotenv==0.20.0
@@ -11,6 +11,8 @@ schedule==1.1.0
 dicomweb-client==0.56.2
 timeloop==1.0.2
 expiringdict==1.2.1
+expiring_dict==1.1.0
+cachetools==5.2.0
 watchdog==2.1.8
 pydicom==2.3.0
 pydicom-seg==0.4.0
@@ -26,5 +28,6 @@ filelock==3.7.1
 passlib==1.7.4
 python-jose[cryptography]==3.3.0
 bcrypt==3.2.2
+shapely==1.8.2
 
 #sudo apt-get install openslide-tools -y

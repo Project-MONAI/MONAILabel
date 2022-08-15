@@ -11,6 +11,7 @@
 
 import logging
 import os
+from typing import Callable, Sequence
 
 import numpy as np
 import torch
@@ -22,7 +23,7 @@ from monai.apps.deepgrow.transforms import (
     RestoreLabeld,
     SpatialCropGuidanced,
 )
-from monai.inferers import SimpleInferer
+from monai.inferers import Inferer, SimpleInferer
 from monai.transforms import (
     AddChanneld,
     AsChannelFirst,
@@ -59,7 +60,13 @@ class InferDeepgrowPipeline(InferTask):
         output_largest_cc=False,
     ):
         super().__init__(
-            path=path, network=network, type=type, labels=None, dimension=dimension, description=description
+            path=path,
+            network=network,
+            type=type,
+            labels=None,
+            dimension=dimension,
+            description=description,
+            config={"cache_transforms": True, "cache_transforms_in_memory": True, "cache_transforms_ttl": 300},
         )
         self.model_3d = model_3d
         self.spatial_size = spatial_size
@@ -71,24 +78,32 @@ class InferDeepgrowPipeline(InferTask):
         self.random_point_density = random_point_density
         self.output_largest_cc = output_largest_cc
 
-    def pre_transforms(self, data):
-        return [
+    def pre_transforms(self, data=None) -> Sequence[Callable]:
+        t = [
             LoadImaged(keys="image"),
             AsChannelFirstd(keys="image"),
             Spacingd(keys="image", pixdim=[1.0, 1.0, 1.0], mode="bilinear"),
-            AddGuidanceFromPointsd(ref_image="image", guidance="guidance", dimensions=3),
-            AddChanneld(keys="image"),
-            SpatialCropGuidanced(keys="image", guidance="guidance", spatial_size=self.spatial_size),
-            Resized(keys="image", spatial_size=self.model_size, mode="area"),
-            ResizeGuidanced(guidance="guidance", ref_image="image"),
-            NormalizeIntensityd(keys="image", subtrahend=208, divisor=388),
-            AddGuidanceSignald(image="image", guidance="guidance"),
         ]
 
-    def inferer(self, data):
+        self.add_cache_transform(t, data)
+
+        t.extend(
+            [
+                AddGuidanceFromPointsd(ref_image="image", guidance="guidance", dimensions=3),
+                AddChanneld(keys="image"),
+                SpatialCropGuidanced(keys="image", guidance="guidance", spatial_size=self.spatial_size),
+                Resized(keys="image", spatial_size=self.model_size, mode="area"),
+                ResizeGuidanced(guidance="guidance", ref_image="image"),
+                NormalizeIntensityd(keys="image", subtrahend=208, divisor=388),
+                AddGuidanceSignald(image="image", guidance="guidance"),
+            ]
+        )
+        return t
+
+    def inferer(self, data=None) -> Inferer:
         return SimpleInferer()
 
-    def post_transforms(self, data):
+    def post_transforms(self, data=None) -> Sequence[Callable]:
         return [
             LargestCCd(keys="pred"),
             RestoreLabeld(keys="pred", ref_image="image", mode="nearest"),
