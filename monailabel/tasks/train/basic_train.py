@@ -20,6 +20,7 @@ from abc import abstractmethod
 from datetime import datetime
 from typing import Any, List
 
+import ignite
 import torch
 import torch.distributed
 from ignite.engine import Events
@@ -428,6 +429,9 @@ class BasicTrainTask(TrainTask):
                 world_size=context.world_size,
                 rank=context.local_rank,
             )
+
+            ignite.distributed.set_local_rank(rank)
+            ignite.distributed.sync()
 
         context.device = self._device(context)
         context.max_epochs = request["max_epochs"]
