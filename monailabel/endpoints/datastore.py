@@ -250,11 +250,4 @@ async def api_put_label_info(label: str, tag: str, info: str = Form("{}"), user:
 async def api_update_label_info(
     label: str, tag: str, params: str = Form("{}"), user: User = Depends(get_annotator_user)
 ):
-    return update_label_info_deprecated(label, tag, params)
-
-
-def update_label_info_deprecated(label_id: str, label_tag: str, params: str = Form("{}")):
-    save_params: Dict[str, Any] = json.loads(params) if params else {}
-    instance: MONAILabelApp = app_instance()
-    instance.datastore().update_label_info(label_id=label_id, label_tag=label_tag, info=save_params)
-    return {}
+    return update_label_info(label, tag, params, user.username)
