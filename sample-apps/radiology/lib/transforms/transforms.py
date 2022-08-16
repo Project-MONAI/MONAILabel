@@ -545,9 +545,11 @@ class MergeAllPreds(MapTransform):
 
     def __call__(self, data: Mapping[Hashable, NdarrayOrTensor]):
         d: Dict = dict(data)
-        merge_image = 0.0
-        for key in self.key_iterator(d):
-            merge_image = merge_image + d[key]
+        for idx, key in enumerate(self.key_iterator(d)):
+            if idx == 0:
+                merge_image = d[key]
+            else:
+                merge_image = merge_image + d[key]
             # For labels that overlap keep the last label number only
             merge_image[merge_image > d[key].max()] = d[key].max()
         return merge_image
