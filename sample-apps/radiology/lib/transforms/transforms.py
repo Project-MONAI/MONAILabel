@@ -378,9 +378,10 @@ class VertebraLocalizationSegmentation(MapTransform):
             # get centre of mass (CoM)
             centre = []
             for indices in np.where(label == seg_class):
-                most_indices = np.percentile(indices, 60).astype(int).tolist()
-                # avg_indices = np.average(indices).astype(int)
-                centre.append(most_indices)
+                # most_indices = np.percentile(indices, 60).astype(int).tolist()
+                # centre.append(most_indices)
+                avg_indices = np.average(indices).astype(int)
+                centre.append(avg_indices)
             if len(indices) < 1000:
                 continue
             areas.append(len(indices))
@@ -435,11 +436,17 @@ class AddROIThirdStage(MapTransform):
 
                 d["original_size"] = d[key].shape[-3], d[key].shape[-2], d[key].shape[-1]
                 current_label = np.random.randint(0, len(d["centroids"]))
-                d["current_label"] = list(d["centroids"]["centroids"][current_label].values())[0][-4]
+                # d["current_label"] = list(d["centroids"]["centroids"][current_label].values())[0][-4]
+                # X, Y, Z, = (
+                #     list(d["centroids"]["centroids"][current_label].values())[0][-3],
+                #     list(d["centroids"]["centroids"][current_label].values())[0][-2],
+                #     list(d["centroids"]["centroids"][current_label].values())[0][-1],
+                # )
+                d["current_label"] = list(d["centroids"][current_label].values())[0][-4]
                 X, Y, Z, = (
-                    list(d["centroids"]["centroids"][current_label].values())[0][-3],
-                    list(d["centroids"]["centroids"][current_label].values())[0][-2],
-                    list(d["centroids"]["centroids"][current_label].values())[0][-1],
+                    list(d["centroids"][current_label].values())[0][-3],
+                    list(d["centroids"][current_label].values())[0][-2],
+                    list(d["centroids"][current_label].values())[0][-1],
                 )
                 centroid = [X, Y, Z]
                 # Cropping
@@ -465,10 +472,15 @@ class AddROIThirdStage(MapTransform):
                 signal = np.zeros(
                     (1, d["original_size"][-3], d["original_size"][-2], d["original_size"][-1]), dtype=np.float32
                 )
+                # X, Y, Z = (
+                #     list(d["centroids"]["centroids"][current_label].values())[0][-3],
+                #     list(d["centroids"]["centroids"][current_label].values())[0][-2],
+                #     list(d["centroids"]["centroids"][current_label].values())[0][-1],
+                # )
                 X, Y, Z = (
-                    list(d["centroids"]["centroids"][current_label].values())[0][-3],
-                    list(d["centroids"]["centroids"][current_label].values())[0][-2],
-                    list(d["centroids"]["centroids"][current_label].values())[0][-1],
+                    list(d["centroids"][current_label].values())[0][-3],
+                    list(d["centroids"][current_label].values())[0][-2],
+                    list(d["centroids"][current_label].values())[0][-1],
                 )
                 signal[:, X, Y, Z] = 1.0
                 signal = GaussianSmooth(self.sigma)(signal)
@@ -518,3 +530,24 @@ class NormalizeLabelsInDatasetd(MapTransform):
             d["label_names"] = new_label_names
             d[key].array = label
         return d
+
+
+class MergeAllPreds(MapTransform):
+    def __init__(self, keys: KeysCollection, allow_missing_keys: bool = False):
+        """
+        Merge all predictions to one channel
+
+        Args:
+            keys: The ``keys`` parameter will be used to get and set the actual data item to transform
+            label_names: all label names
+        """
+        super().__init__(keys, allow_missing_keys)
+
+    def __call__(self, data: Mapping[Hashable, NdarrayOrTensor]):
+        d: Dict = dict(data)
+        merge_image = 0.0
+        for key in self.key_iterator(d):
+            merge_image = merge_image + d[key]
+            # For labels that overlap keep the last label number only
+            merge_image[merge_image > d[key].max()] = d[key].max()
+        return merge_image

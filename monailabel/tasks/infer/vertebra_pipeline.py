@@ -11,6 +11,9 @@
 import copy
 import logging
 
+from lib.transforms.transforms import MergeAllPreds
+from monai.transforms import LoadImaged, SaveImage
+
 from monailabel.interfaces.tasks.infer import InferTask, InferType
 
 logger = logging.getLogger(__name__)
@@ -27,6 +30,7 @@ class InferVertebraPipeline(InferTask):
         description="Combines three stages for vertebra segmentation",
         output_largest_cc=False,
     ):
+        # Should we consider this class as the last infer stage?
         super().__init__(
             path=None,  # THIS SHOULD BE NONE??
             network=None,  # THIS SHOULD BE NONE??
@@ -70,10 +74,23 @@ class InferVertebraPipeline(InferTask):
         #################################################
         # Request for third stage
         third_stage_request = copy.deepcopy(second_stage_request)
-        for centroid in result_json_second_stage:
-            third_stage_request["centroids"] = centroid
-            result_file_third_stage, result_json_third_stage = self.model_segmentation_vertebra(third_stage_request)
-            # Remove the AsDiscrete transform in infer so we get outputs
-        # Once all the predictions are obtained, use the label dict to reconstruct the output
+        all_outs = {}
+        all_keys = []
+        for centroid in result_json_second_stage["centroids"]:
+            third_stage_request["centroids"] = [centroid]
+            # TO DO:
+            # 1/ Remove the AsDiscrete transform in third stage infer so we get pre-activation outputs
+            # 2/ Don't load the volume everytime this performs inference
+            result_file, result_json_third_stage = self.model_segmentation_vertebra(third_stage_request)
+            all_keys.append(list(centroid.keys())[0])
+            all_outs[list(centroid.keys())[0]] = result_file
 
-        return result_file_third_stage, result_json_third_stage
+        # Once all the predictions are obtained, use the label dict to reconstruct the output
+        out = LoadImaged(keys=all_keys, reader="ITKReader")(all_outs)
+        result_file_third_stage = MergeAllPreds(keys=all_keys)(out)
+        SaveImage(output_postfix="", output_dir="/tmp/", separate_folder=False)(result_file_third_stage)
+
+        return (
+            "/tmp/" + result_file_third_stage.meta["filename_or_obj"].split("/")[-1].split(".")[0] + ".nii.gz",
+            result_json_third_stage,
+        )
