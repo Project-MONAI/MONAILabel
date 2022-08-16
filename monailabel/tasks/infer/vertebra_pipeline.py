@@ -10,6 +10,7 @@
 # limitations under the License.
 import copy
 import logging
+import tempfile
 
 from lib.transforms.transforms import MergeAllPreds
 from monai.transforms import LoadImaged, SaveImage
@@ -88,9 +89,9 @@ class InferVertebraPipeline(InferTask):
         # Once all the predictions are obtained, use the label dict to reconstruct the output
         out = LoadImaged(keys=all_keys, reader="ITKReader")(all_outs)
         result_file_third_stage = MergeAllPreds(keys=all_keys)(out)
+
+        output_file = tempfile.NamedTemporaryFile(suffix=".nii.gz").name
+        result_file_third_stage.meta["filename_or_obj"] = output_file
         SaveImage(output_postfix="", output_dir="/tmp/", separate_folder=False)(result_file_third_stage)
 
-        return (
-            "/tmp/" + result_file_third_stage.meta["filename_or_obj"].split("/")[-1].split(".")[0] + ".nii.gz",
-            result_json_third_stage,
-        )
+        return output_file, result_json_third_stage
