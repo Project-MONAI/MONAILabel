@@ -10,7 +10,6 @@
     See the License for the specific language governing permissions and
     limitations under the License.
 
-
 ===========
 MONAI Label
 ===========
@@ -21,7 +20,6 @@ MONAI Label is an intelligent open source image labeling and learning tool that 
 users to create annotated datasets and build AI annotation models for clinical evaluation.
 MONAI Label enables application developers to build labeling apps in a *serverless* way,
 where custom labeling apps are exposed as a service through the MONAI Label Server.
-
 
 **Sample Apps in MONAILabel**
 
@@ -44,8 +42,6 @@ Bundle
    The Bundle app enables users with customized models for inference, training or pre and post processing any target 
    anatomies. The specification for MONAILabel integration of the Bundle app links archived Model-Zoo for customized labeling 
    (e.g., the third-party transformer model for labeling renal cortex, medulla, and pelvicalyceal system. Interactive tools such as DeepEdits).
-
-
 
 *Deploy Labeling and Medical AI Faster*
 
