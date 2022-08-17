@@ -12,11 +12,11 @@ Current Milestone Release of MONAI Label:
 
 MONAI Label Supported Stable Visualization Tools:
 
-* 3D Slicer: `Version 5.0.3 <https://download.slicer.org/>`_
+* 3D Slicer: `Stable and Preview Version >= 5.0 <https://download.slicer.org/>`_
 
-* OHIF: `Version 3.1 <https://ohif.org/>`_
+* OHIF: `Version >= 3.1 <https://ohif.org/>`_
 
-* QuPath: `Version 0.3.2 <https://qupath.github.io/>`_
+* QuPath: `Version >= 0.3.2 <https://qupath.github.io/>`_
 
 Start using MONAI Label with just three steps!
 
@@ -25,13 +25,13 @@ Start using MONAI Label with just three steps!
   :alt: MONAI Label Instllation steps
 
 
---------------- `Install MONAI Lable`_  -------------------- `Guide of Visualization Tools`_ ------------------------ `Add Plugins`_ -----------------
+--------------- `Install MONAI Label`_  -------------------- `Guide of Visualization Tools`_ ------------------------ `Add Plugins`_ -----------------
 
 
 
-Install MONAI Lable
+Install MONAI Label
 ==================
-.. _Monailable:
+.. _Monailabel:
 
 Prerequisites
 ---------------
