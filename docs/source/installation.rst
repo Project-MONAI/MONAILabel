@@ -34,7 +34,7 @@ Install MONAI Label
 .. _Monailabel:
 
 Prerequisites
----------------
+--------------------
 MONAI Label supports both **Ubuntu** and **Windows** OS with GPU/CUDA enabled.
 
 Make sure you have python 3.7/3.8/3.9 version environment with PyTorch and CUDA installed.  MONAI Label features on other python version are not verified.
@@ -53,7 +53,7 @@ Make sure you have python 3.7/3.8/3.9 version environment with PyTorch and CUDA 
     python -c "import torch; print(torch.cuda.is_available())"
 
 Install From PyPI
------------------
+---------------------
 
 Milestone release
 *****************
@@ -196,7 +196,7 @@ MONAI Label now supports several mostly adopted open-source viewer software for 
 
 
 3D Slicer
---------------
+--------------------
 
 3D Slicer, a free and open-source platform for analyzing and understanding medical image data. In MONAI Label, 3D Slicer is most tested with radiology studies and
 algorithms, develpoment and integration.
@@ -208,7 +208,7 @@ To install stable released version of 3D Slicer, see `3D Slicer installation<htt
 Currently, Windows and Linux version are supported.
 
 OHIF (Web-based)
---------------
+--------------------
 
 The Open Health Imaging Foundation (OHIF) Viewer is an open source, web-based, medical imaging platform.
 It aims to provide a core framework for building complex imaging applications.
@@ -218,7 +218,7 @@ At this point OHIF can be used to annotate the data in the DICOM server via the 
 To use OHIF web-based application, refer to `extensible web imaging platform<https://ohif.org/>`_
 
 QuPath
---------------
+--------------------
 Quantitative Pathology & Bioimage Analysis (QuPath)
 
 QuPath is an open, powerful, flexible, extensible software platform for bioimage analysis.
@@ -232,10 +232,10 @@ Currently, Windows and Linux version are supported. Detailed documentation can b
 
 
 Add Plugins
-===============
+=====================
 
 3D Slicer Plugin
-----------------
+---------------------
 
 
 .. note::
@@ -303,8 +303,8 @@ If you have authentication set for dicom-web then you can pass the credentials u
 
     OHIF Viewer will be accessible at http://127.0.0.1:8000/ohif/
 
-QuPath
--------
+QuPath Plugin
+------------------
 For pathology usecase, you can install `QuPath <https://qupath.github.io/>`_ and basic monailabel extension in QuPath.
 You can download sample whole slide images
 from `https://portal.gdc.cancer.gov/repository <https://portal.gdc.cancer.gov/repository?filters=%7B%22op%22%3A%22and%22%2C%22content%22%3A%5B%7B%22op%22%3A%22in%22%2C%22content%22%3A%7B%22field%22%3A%22files.data_type%22%2C%22value%22%3A%5B%22Slide%20Image%22%5D%7D%7D%5D%7D>`_
