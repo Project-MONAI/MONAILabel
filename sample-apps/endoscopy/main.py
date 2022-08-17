@@ -10,10 +10,13 @@
 # limitations under the License.
 import logging
 import os
+from datetime import timedelta
 from distutils.util import strtobool
 from typing import Dict
 
 import lib.configs
+import schedule
+from timeloop import Timeloop
 
 import monailabel
 from monailabel.config import settings
@@ -96,7 +99,11 @@ class MyApp(MONAILabelApp):
                 api_url=settings.MONAI_LABEL_DATASTORE_URL,
                 username=settings.MONAI_LABEL_DATASTORE_USERNAME,
                 password=settings.MONAI_LABEL_DATASTORE_PASSWORD,
-                project=settings.MONAI_LABEL_DATASTORE_PROJECT,
+                project=self.conf.get("cvat_project", "MONAILabel"),
+                task_prefix=self.conf.get("cvat_task_prefix", "ActiveLearning_Iteration"),
+                image_quality=int(self.conf.get("cvat_image_quality", "70")),
+                labels=self.conf.get("cvat_labels", '[{"name": "Tool", "attributes": [], "color": "#66ff66"}]'),
+                normalize_label=strtobool(self.conf.get("cvat_normalize_label", "true")),
                 extensions=settings.MONAI_LABEL_DATASTORE_FILE_EXT,
                 auto_reload=settings.MONAI_LABEL_DATASTORE_AUTO_RELOAD,
             )
@@ -135,7 +142,7 @@ class MyApp(MONAILabelApp):
             "random": Random(),
         }
 
-        if strtobool(self.conf.get("skip_strategies", "true")):
+        if strtobool(self.conf.get("skip_strategies", "false")):
             return strategies
 
         for n, task_config in self.models.items():
@@ -152,7 +159,7 @@ class MyApp(MONAILabelApp):
 
     def init_scoring_methods(self) -> Dict[str, ScoringMethod]:
         methods: Dict[str, ScoringMethod] = {}
-        if strtobool(self.conf.get("skip_scoring", "true")):
+        if strtobool(self.conf.get("skip_scoring", "false")):
             return methods
 
         for n, task_config in self.models.items():
@@ -166,6 +173,33 @@ class MyApp(MONAILabelApp):
 
         logger.info(f"Active Learning Scoring Methods:: {list(methods.keys())}")
         return methods
+
+    def on_init_complete(self):
+        super().on_init_complete()
+        if not isinstance(self.datastore(), CVATDatastore):
+            return
+
+        # Check for CVAT Task if complete and trigger training
+        def update_model():
+            ds = self.datastore()
+            if isinstance(ds, CVATDatastore) and ds.download_from_cvat():
+                models = self.conf.get("auto_finetune_models", "tooltracking")
+                models = models.split(",")
+                logger.info(f"Trigger Training for model(s): {models}")
+
+                self.async_training(model=models)
+            else:
+                logger.info("Nothing to update;  No new labels downloaded/refreshed from CVAT")
+
+        time_loop = Timeloop()
+        interval_in_sec = int(self.conf.get("auto_finetune_check_interval", "60"))
+        schedule.every(interval_in_sec).seconds.do(update_model)
+
+        @time_loop.job(interval=timedelta(seconds=interval_in_sec))
+        def run_scheduler():
+            schedule.run_pending()
+
+        time_loop.start(block=False)
 
 
 """

@@ -16,6 +16,7 @@ from typing import Any, Dict, Optional, Union
 import lib.infers
 import lib.trainers
 from lib.net.ranzcrnet import RanzcrNetV2
+from lib.scoring.cvat import CVATEpistemicScoring
 
 from monailabel.interfaces.config import TaskConfig
 from monailabel.interfaces.tasks.infer import InferTask
@@ -23,7 +24,6 @@ from monailabel.interfaces.tasks.scoring import ScoringMethod
 from monailabel.interfaces.tasks.strategy import Strategy
 from monailabel.interfaces.tasks.train import TrainTask
 from monailabel.tasks.activelearning.epistemic import Epistemic
-from monailabel.tasks.scoring.epistemic_v2 import EpistemicScoring
 from monailabel.utils.others.generic import download_file
 
 logger = logging.getLogger(__name__)
@@ -62,14 +62,11 @@ class ToolTracking(TaskConfig):
         logger.info(f"EPISTEMIC Enabled: {self.epistemic_enabled}; Samples: {self.epistemic_samples}")
 
     def infer(self) -> Union[InferTask, Dict[str, InferTask]]:
-        preload = strtobool(self.conf.get("preload", "false"))
-        logger.info(f"Using Preload: {preload}")
-
         task: InferTask = lib.infers.ToolTracking(
             path=self.path,
             network=self.network,
             labels=self.labels,
-            preload=preload,
+            preload=strtobool(self.conf.get("preload", "false")),
             config={
                 "label_colors": self.label_colors,
             },
@@ -88,7 +85,9 @@ class ToolTracking(TaskConfig):
             config={
                 "max_epochs": 10,
                 "train_batch_size": 1,
+                "val_split": 0,
             },
+            find_unused_parameters=True,
         )
         return task
 
@@ -102,8 +101,9 @@ class ToolTracking(TaskConfig):
         methods: Dict[str, ScoringMethod] = {}
 
         if self.epistemic_enabled:
-            methods[f"{self.name}_epistemic"] = EpistemicScoring(
-                lib.infers.ToolTracking(
+            methods[f"{self.name}_epistemic"] = CVATEpistemicScoring(
+                top_k=int(self.conf.get("cvat_top_k", "10")),
+                infer_task=lib.infers.ToolTracking(
                     path=self.path,
                     network=self.network_with_dropout,
                     labels=self.labels,
