@@ -247,12 +247,7 @@ async def api_put_label_info(label: str, tag: str, info: str = Form("{}"), user:
 
 # This shall be deprecated and use above ones to update the label info
 @router.put("/updatelabelinfo", summary="Update label info")
-async def api_update_label_info(label: str, params: str = Form("{}"), user: User = Depends(get_annotator_user)):
-    return update_label_info_deprecated(label, params)
-
-
-def update_label_info_deprecated(label_id: str, params: str = Form("{}")):
-    save_params: Dict[str, Any] = json.loads(params) if params else {}
-    instance: MONAILabelApp = app_instance()
-    instance.datastore().update_label_info(label_id=label_id, label_tag="final", info=save_params)
-    return {}
+async def api_update_label_info(
+    label: str, tag: str, params: str = Form("{}"), user: User = Depends(get_annotator_user)
+):
+    return update_label_info(label, tag, params, user.username)
