@@ -509,8 +509,8 @@ class MONAILabelApp:
         if not model and not self._trainers:
             return {}
 
-        models = [model] if model else list(self._trainers.keys())
-        enqueue = True if model > 1 else enqueue
+        models = list(self._trainers.keys()) if not model else [model] if isinstance(model, str) else model
+        enqueue = True if len(models) > 1 else enqueue
         result = {}
         for m in models:
             if self._server_mode:
@@ -519,10 +519,10 @@ class MONAILabelApp:
                 res, _ = AsyncTask.run("train", request=request, params=params, enqueue=enqueue)
                 result[m] = res
             else:
-                url = f"/train/{model}?enqueue={enqueue}"
+                url = f"/train/{m}?enqueue={enqueue}"
                 p = params[m] if params and params.get(m) else None
                 result[m] = self._local_request(url, p, "Training")
-        return result[model] if model else result
+        return result[models[0]] if len(models) == 1 else result
 
     def async_batch_infer(self, model, images: BatchInferImageType, params=None):
         if self._server_mode:

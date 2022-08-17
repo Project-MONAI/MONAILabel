@@ -1,3 +1,16 @@
+<!--
+Copyright (c) MONAI Consortium
+Licensed under the Apache License, Version 2.0 (the "License");
+you may not use this file except in compliance with the License.
+You may obtain a copy of the License at
+    http://www.apache.org/licenses/LICENSE-2.0
+Unless required by applicable law or agreed to in writing, software
+distributed under the License is distributed on an "AS IS" BASIS,
+WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+See the License for the specific language governing permissions and
+limitations under the License.
+-->
+
 # CVAT MONAILabel extension
 
 ## Requirement
@@ -21,25 +34,28 @@ mv nuctl-1.5.16-linux-amd64 ~/.local/bin/nuctl
 ## Installation
 
 Run `./deploy.sh` to install all available models from MONAI Label into CVAT.
+```bash
+# all functions (endoscopy, pathology)
+./deploy.sh
+
+# to deploy specific function
+./deploy.sh endoscopy
+
+# to deploy specific function and model
+./deploy.sh endoscopy tooltracking
+```
+
 Currently, following sample models are available for CVAT.
 
 ### Endoscopy
 - [ToolTracking](https://github.com/Project-MONAI/MONAILabel/tree/main/sample-apps/endoscopy) ([Detector](https://openvinotoolkit.github.io/cvat/docs/manual/advanced/ai-tools/#detectors))
+- [DeepEdit](https://github.com/Project-MONAI/MONAILabel/tree/main/sample-apps/endoscopy) ([Interactor](https://openvinotoolkit.github.io/cvat/docs/manual/advanced/ai-tools/#interactors))
 
 ### Pathology
 - [Segmentation Nuclei](https://github.com/Project-MONAI/MONAILabel/tree/main/sample-apps/pathology#pathology-use-case) ([Detector](https://openvinotoolkit.github.io/cvat/docs/manual/advanced/ai-tools/#detectors))
 - [Deepedit Nuclei](https://github.com/Project-MONAI/MONAILabel/tree/main/sample-apps/pathology#pathology-use-case) ([Detector](https://openvinotoolkit.github.io/cvat/docs/manual/advanced/ai-tools/#detectors))
 - [NuClick](https://github.com/Project-MONAI/MONAILabel/tree/main/sample-apps/pathology#pathology-use-case) ([Interactor](https://openvinotoolkit.github.io/cvat/docs/manual/advanced/ai-tools/#interactors))
 
-
-If you want to deploy single model (e.g. **_tooltracking_** model for **_endoscopy_**) then you can run:
-```
-func_root=`pwd` # this should be plugins/cvat
-func_config=endoscopy/tooltracking.yaml
-
-nuctl create project cvat
-nuctl deploy --project-name cvat --path "$func_root" --file "$func_config" --platform local
-```
 
 ## Using Plugin
 

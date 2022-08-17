@@ -1,3 +1,16 @@
+<!--
+Copyright (c) MONAI Consortium
+Licensed under the Apache License, Version 2.0 (the "License");
+you may not use this file except in compliance with the License.
+You may obtain a copy of the License at
+    http://www.apache.org/licenses/LICENSE-2.0
+Unless required by applicable law or agreed to in writing, software
+distributed under the License is distributed on an "AS IS" BASIS,
+WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+See the License for the specific language governing permissions and
+limitations under the License.
+-->
+
 # Purpose
 Radiologists have different levels of experience reading X-ray images.
 Therefore, agreement of several radiologists on X-ray segmentations (especially in difficult cases) is required to increase the overall quality of a data set, which is then used to model a neural network.
@@ -44,14 +57,14 @@ In particular, the following methods (see below) need to be added in the datasto
 
 ```
 @router.put("/updatelabelinfo", summary="Update label info")
-async def api_update_label_info(image: str, params: str = Form("{}")):
-    return update_label_info(image, params)
+async def api_update_label_info(label_id: str, label_tag : str, params: str = Form("{}")):
+    return update_label_info(label_id, label_tag, params)
 
-def update_label_info(id: str, params: str = Form("{}")):
-  save_params: Dict[str, Any] = json.loads(params) if params else {}
-  instance: MONAILabelApp = app_instance()
-  instance.datastore().update_image_info(id, save_params)
-  return {}
+def update_label_info(label_id: str, label_tag : str, params: str = Form("{}")):
+   save_params: Dict[str, Any] = json.loads(params) if params else {}
+   instance: MONAILabelApp = app_instance()
+   instance.datastore().update_label_info(label_id=label_id, label_tag=label_tag, info=save_params)
+   return {}
 ```
 
 # UI in Reviewer mode
@@ -73,3 +86,45 @@ After entering a list of comma-separated image IDs in the left field, the right 
 That data set can be reviewed using the "Next"-"Previous"-Button.
 
 ![MonaiLabelReviewer SearchField](https://user-images.githubusercontent.com/30056369/159154537-0f97f004-0c61-4b63-947b-b7b55a3e61b1.png)
+
+# Editing/Improving segmentation & Version control
+1. After clicking the combo box, a list of segmentation version tags will appear.
+(The tag of the initial segmentation is "final". The tag of all subsequent improved/edited segmentations starts with "version_" (followed by a number).
+
+2. By clicking the "Start Label Editing" button, the user can start improving the subjected segmentation.
+
+<img src="ReadMeImages/MONAILabelReviewerEditorTools_1.png">
+
+3. Three new buttons appear:
+      * 1. Overwrite this version (Warning: "final" segmentation, cannot be overwritten, however)
+      * 2. Save as new version (Version_2 --> Version_3, ascending numbering)
+      * 3. Delete this version (Warning: "final" segmentation, cannot be deleted)
+
+4. Editing tools appear on the left side of the Hide/Show toolbar.
+
+5. Also, all buttons (like "Easy", "Medium", "Hard", "Previous", "Next") are disabled
+during the editing process; except for the "Flagged" and "Approved" buttons.
+
+<img src="ReadMeImages/MONAILabelReviewerEditorTools_2.png">
+
+6. After finishing editing the segmentation (a cross is drawn on the image for demonstration purposes)
+
+7. The user has 3 options:
+      * 1. Overwrite current version (Caution: "final" segmentation cannot be overwritten because it is the original segmentation)
+      * 2. Save as new version (e.g. Version_2 --> Version_3, ascending numbering)
+      * 3. Delete technical version (Caution: "final" segmentation cannot be deleted because it is the original segmentation)
+8. When one of the three options has been selected, the user must confirm their choice by clicking on the "Confirm:..." button.
+
+<img src="ReadMeImages/MONAILabelReviewerEditorTools_3.png">
+
+9. After confirming "Save as new version", the edited segmentation remains in the MONAIServer.
+In addition, the version (e.g. "version_1") now appears in the drop-down list.
+
+10. When you click the "Approve" button, the version tag (of the currently depicted segmentation) is marked as "Version_1 (approved)" in the drop-down list. Consequently, the previously approved segmentation is no longer approved.
+
+<img src="ReadMeImages/MONAILabelReviewerEditorTools_4.png">
+
+11. When you click the "Approve" button, the version tag (of the currently depicted segmentation) is marked as "Version_1 (approved)" in the drop-down list.
+12. The status "approved" is also displayed in the information field in green.
+
+<img src="ReadMeImages/MONAILabelReviewerEditorTools_5.png">

@@ -176,13 +176,14 @@ class Writer:
     def __call__(self, data):
         logger.setLevel(data.get("logging", "INFO").upper())
 
-        ext = file_ext(data.get("image_path"))
+        path = data.get("image_path")
+        ext = file_ext(path) if path else None
         dtype = data.get(self.key_dtype, None)
         compress = data.get(self.key_compress, False)
         write_to_file = data.get(self.key_write_to_file, True)
 
         ext = data.get(self.key_extension) if data.get(self.key_extension) else ext
-        ext = ext if ext else ".nii.gz"
+        write_to_file = write_to_file if ext else False
         logger.info(f"Result ext: {ext}; write_to_file: {write_to_file}; dtype: {dtype}")
 
         if isinstance(data[self.label], MetaTensor):
@@ -219,7 +220,7 @@ class Writer:
                 logger.debug("Using MONAI write_nifti...")
                 write_nifti(image_np, output_file, affine=affine, output_dtype=dtype)
             else:
-                write_itk(image_np, output_file, affine, dtype, compress)
+                write_itk(image_np, output_file, affine if len(image_np.shape) > 2 else None, dtype, compress)
 
         return output_file, output_json
 
