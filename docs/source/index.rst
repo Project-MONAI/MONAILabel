@@ -30,17 +30,17 @@ Example developed labeling apps for use. Learn more apps and MONAILabel use case
 .. figure:: ../images/sampleApps_index.jpeg
   :alt: MONAI Label Apps
 
-:Radiology: 
+:Radiology
    This app has example models to do both interactive and automated segmentation over radiology (3D) 
    images. Including auto segmentation with latest deep learning models (e.g., UNet, UNETR) for multiple abdominal 
    organs. Interactive tools includes DeepEdit and Deepgrow for actively improve trained models and deployment.
 
-:Pathology: 
+:Pathology
    This app has example models to do both interactive and automated segmentation over pathology (WSI) 
    images. Including nuclei multi-label segmentation for Neoplastic cells, Inflammatory, Connective/Soft tissue cells, Dead Cells, and 
    Epithelial. The app provides interactive tools includes DeepEdits for interactive nuclei segmentation.
 
-:Bundle: 
+:Bundle
    The Bundle app enables users with customized models for inference, training or pre and post processing any target 
    anatomies. The specification for MONAILabel integration of the Bundle app links archived Model-Zoo for customized labeling 
    (e.g., the third-party transformer model for labeling renal cortex, medulla, and pelvicalyceal system. Interactive tools such as DeepEdits).
