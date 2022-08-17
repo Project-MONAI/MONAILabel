@@ -12,10 +12,10 @@ import copy
 import logging
 import tempfile
 
-from lib.transforms.transforms import MergeAllPreds
 from monai.transforms import LoadImaged, SaveImage
 
 from monailabel.interfaces.tasks.infer import InferTask, InferType
+from monailabel.transform.post import MergeAllPreds
 
 logger = logging.getLogger(__name__)
 
