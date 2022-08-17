@@ -63,7 +63,7 @@ class DeepEdit(TaskConfig):
             network=self.network,
             labels=self.labels,
             roi_size=self.roi_size,
-            preload=strtobool(self.conf.get("preload", "true")),
+            preload=strtobool(self.conf.get("preload", "false")),
         )
         return task
 
@@ -88,6 +88,7 @@ class DeepEdit(TaskConfig):
                 "max_epochs": 10,
                 "train_batch_size": 8,
                 "val_batch_size": 4,
+                "val_split": 0,
             },
         )
         return task
