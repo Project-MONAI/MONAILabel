@@ -16,8 +16,8 @@ import monai
 from monai.data import DataLoader, list_data_collate
 from monai.transforms import Compose, LoadImaged, SaveImaged
 
-data_dir = "/home/andres/Documents/workspace/Datasets/radiology/BRATS-2021/original-BRATS-files/ValidationData/"
-output_folder = "/home/andres/Documents/workspace/Datasets/radiology/BRATS-2021/test-ventricles/mergedFiles/"
+data_dir = "/home/andres/Documents/workspace/Datasets/radiology/BRATS-2021/NeuroAtlas-Labels/Ture/Ture-case12/"
+output_folder = "/home/andres/Documents/workspace/Datasets/radiology/BRATS-2021/NeuroAtlas-Labels/Ture/merge/"
 
 
 set_transforms = Compose(
@@ -27,14 +27,13 @@ set_transforms = Compose(
     ]
 )
 
-train_folders = glob.glob(os.path.join(data_dir, "*/"))
+train_folders = glob.glob(os.path.join(data_dir, "*.nii.gz"))
 train_d = []
-for image_path in train_folders:
-    file_name = image_path.split("/")[-2]
-    path_imgs = []
-    for mod in ["flair.nii.gz", "t1.nii.gz", "t1ce.nii.gz", "t2.nii.gz"]:
-        path_imgs.append(image_path + file_name + "_" + mod)
-    train_d.append({"image": path_imgs})
+path_imgs = []
+for mod in ["flair.nii.gz", "t1.nii.gz", "t1ce.nii.gz", "t2.nii.gz"]:
+    path_imgs.append(data_dir + "Ture-012-" + mod)
+train_d.append({"image": path_imgs})
+
 
 print(len(train_d))
 
