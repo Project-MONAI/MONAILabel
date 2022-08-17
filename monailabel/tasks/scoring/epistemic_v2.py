@@ -34,6 +34,8 @@ class EpistemicScoring(ScoringMethod):
         infer_task: InferTask,
         num_samples=10,
         use_variance=False,
+        key_output_entropy="epistemic_entropy",
+        key_output_ts="epistemic_ts",
     ):
         super().__init__(f"Compute initial score based on dropout - {infer_task.description}")
         self.infer_task = infer_task
@@ -41,6 +43,8 @@ class EpistemicScoring(ScoringMethod):
 
         self.num_samples = num_samples
         self.use_variance = use_variance
+        self.key_output_entropy = key_output_entropy
+        self.key_output_ts = key_output_ts
 
     def entropy_volume(self, vol_input):
         # The input is assumed with repetitions, channels and then volumetric data
@@ -190,5 +194,5 @@ class EpistemicScoring(ScoringMethod):
         )
 
         # Add epistemic_entropy in datastore
-        info = {"epistemic_entropy": entropy, "epistemic_ts": model_ts}
+        info = {self.key_output_entropy: entropy, self.key_output_ts: model_ts}
         datastore.update_image_info(image_id, info)
