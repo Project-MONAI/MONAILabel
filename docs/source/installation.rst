@@ -226,7 +226,7 @@ QuPath is an open, powerful, flexible, extensible software platform for bioimage
 
 To install stable released version of QuPath, see `QuPath installation <https://qupath.github.io/>`_.
 
-Currently, Windows and Linux version are supported. Detailed documentation can be found `here <https://qupath.readthedocs.io/en/stable/>`_
+Currently, Windows and Linux version are supported. Detailed documentation can be found `QuPath Doc <https://qupath.readthedocs.io/en/stable/>`_
 
 
 
