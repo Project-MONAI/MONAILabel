@@ -61,7 +61,6 @@ extensions = [
     "sphinx.ext.autosectionlabel",
     "sphinxcontrib.exceltable",
     "sphinx_autodoc_typehints",
-    "sphinx_panels",
 ]
 
 autoclass_content = "both"
