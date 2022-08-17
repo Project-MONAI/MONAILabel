@@ -30,11 +30,11 @@ Start using MONAI Label with just three steps!
 
 
 Install MONAI Label
-==================
+===========================================
 .. _Monailabel:
 
 Prerequisites
---------------------
+--------------------------
 MONAI Label supports both **Ubuntu** and **Windows** OS with GPU/CUDA enabled.
 
 Make sure you have python 3.7/3.8/3.9 version environment with PyTorch and CUDA installed.  MONAI Label features on other python version are not verified.
@@ -53,10 +53,10 @@ Make sure you have python 3.7/3.8/3.9 version environment with PyTorch and CUDA 
     python -c "import torch; print(torch.cuda.is_available())"
 
 Install From PyPI
----------------------
+------------------------
 
 Milestone release
-*****************
+*********************
 
 To install the `current milestone release <https://pypi.org/project/monailabel/>`_:
 ::
@@ -73,7 +73,7 @@ To install the `weekly preview release <https://pypi.org/project/monailabel-week
 The weekly build is released to PyPI every Sunday with a pre-release build number *dev[%y%U]*.
 
 From GitHub
-***********
+*********************
 To install latest from github main branch
 ::
 
@@ -91,7 +91,7 @@ codebase is under active development, you may want to install MONAI from GitHub
 for the latest features
 
 From DockerHub
-**************
+********************
 To install latest from `DockerHub <https://hub.docker.com/r/projectmonai/monailabel>`_:
 ::
 
@@ -99,7 +99,7 @@ To install latest from `DockerHub <https://hub.docker.com/r/projectmonai/monaila
 
 
 MONAI Label CLI
----------------
+-----------------------
 Simple *monailabel* command will help user to download sample apps, datasets and run server.
 ::
 
@@ -121,7 +121,7 @@ You can download sample apps and datasets from *monailabel* CLI.
 
 
 Starting Server
-***************
+**********************
 You can start server using *monailabel* CLI
 ::
 
@@ -138,7 +138,7 @@ You can start server using *monailabel* CLI
     URL in browser. It will provide you the list of Rest APIs available.
 
 Deployment
-----------
+----------------------------
 MONAI Label Server uses `Uvicorn <https://www.uvicorn.org/>`_ which is a lightning-fast ASGI server implementation.
 However user can deploy the application in any server that supports `ASGI specification <https://asgi.readthedocs.io/en/latest/>`_
 
@@ -190,52 +190,52 @@ For more options about Uvicorn (concurrency, SSL etc..) refer: https://www.uvico
 .. _Visualization Tools:
 
 Guide of Visualization Tools
-=====================
+================================
 
 MONAI Label now supports several mostly adopted open-source viewer software for radiology and pathology.
 
 
 3D Slicer
---------------------
+-------------------------
 
 3D Slicer, a free and open-source platform for analyzing and understanding medical image data. In MONAI Label, 3D Slicer is most tested with radiology studies and
 algorithms, develpoment and integration.
 
 MONAI Label is most currently tested and supported with stable release of 3D Slicer every version. Preview version of 3D Slicer is not fully tested and supported.
 
-To install stable released version of 3D Slicer, see `3D Slicer installation<https://download.slicer.org/>`_.
+To install stable released version of 3D Slicer, see `3D Slicer installation <https://download.slicer.org/>`_.
 
 Currently, Windows and Linux version are supported.
 
 OHIF (Web-based)
---------------------
+-----------------------
 
 The Open Health Imaging Foundation (OHIF) Viewer is an open source, web-based, medical imaging platform.
 It aims to provide a core framework for building complex imaging applications.
 
 At this point OHIF can be used to annotate the data in the DICOM server via the MONAI Label server.
 
-To use OHIF web-based application, refer to `extensible web imaging platform<https://ohif.org/>`_
+To use OHIF web-based application, refer to `extensible web imaging platform <https://ohif.org/>`_
 
 QuPath
---------------------
+-----------------------
 Quantitative Pathology & Bioimage Analysis (QuPath)
 
 QuPath is an open, powerful, flexible, extensible software platform for bioimage analysis.
 
 
-To install stable released version of QuPath, see `QuPath installation<https://qupath.github.io/>`_.
+To install stable released version of QuPath, see `QuPath installation <https://qupath.github.io/>`_.
 
-Currently, Windows and Linux version are supported. Detailed documentation can be found `here<https://qupath.readthedocs.io/en/stable/>`_
+Currently, Windows and Linux version are supported. Detailed documentation can be found `here <https://qupath.readthedocs.io/en/stable/>`_
 
 
 
 
 Add Plugins
-=====================
+========================
 
 3D Slicer Plugin
----------------------
+------------------------
 
 
 .. note::
@@ -275,7 +275,7 @@ Refer `3D Slicer plugin <https://github.com/Project-MONAI/MONAILabel/tree/main/p
 
 
 OHIF Plugin
------------
+----------------------
 MONAI Label comes with `pre-built plugin <https://github.com/Project-MONAI/MONAILabel/tree/main/plugins/ohif>`_ for `OHIF Viewer <https://github.com/OHIF/Viewers>`_.  To use OHIF Viewer, you need to provide DICOMWeb instead of FileSystem as *studies* when you start the server.
 
 ::
@@ -304,7 +304,7 @@ If you have authentication set for dicom-web then you can pass the credentials u
     OHIF Viewer will be accessible at http://127.0.0.1:8000/ohif/
 
 QuPath Plugin
-------------------
+-----------------------
 For pathology usecase, you can install `QuPath <https://qupath.github.io/>`_ and basic monailabel extension in QuPath.
 You can download sample whole slide images
 from `https://portal.gdc.cancer.gov/repository <https://portal.gdc.cancer.gov/repository?filters=%7B%22op%22%3A%22and%22%2C%22content%22%3A%5B%7B%22op%22%3A%22in%22%2C%22content%22%3A%7B%22field%22%3A%22files.data_type%22%2C%22value%22%3A%5B%22Slide%20Image%22%5D%7D%7D%5D%7D>`_
