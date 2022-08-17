@@ -71,7 +71,7 @@ class LocalizationVertebra(InferTask):
                 keys=("image", "first_stage_pred"), device=data.get("device") if data else None, allow_missing_keys=True
             ),
             EnsureChannelFirstd(keys=("image", "first_stage_pred"), allow_missing_keys=True),
-            CropForegroundd(keys=("image", "first_stage_pred"), source_key="image", allow_missing_keys=True),
+            CropForegroundd(keys=("image", "first_stage_pred"), source_key="image", margin=10, allow_missing_keys=True),
             NormalizeIntensityd(keys="image", nonzero=True),
             GaussianSmoothd(keys="image", sigma=0.75),
             ScaleIntensityd(keys="image", minv=-1.0, maxv=1.0),
@@ -84,7 +84,6 @@ class LocalizationVertebra(InferTask):
 
     def post_transforms(self, data=None) -> Sequence[Callable]:
         largest_cc = False if not data else data.get("largest_cc", False)
-        slicer = False if not data else data.get("slicer", False)
         applied_labels = list(self.labels.values()) if isinstance(self.labels, dict) else self.labels
         t = [
             EnsureTyped(keys="pred", device=data.get("device") if data else None),
@@ -94,11 +93,12 @@ class LocalizationVertebra(InferTask):
         if largest_cc:
             t.append(KeepLargestConnectedComponentd(keys="pred", applied_labels=applied_labels))
         t.append(Restored(keys="pred", ref_image="image"))
-        if not slicer:
-            t.append(VertebraLocalizationSegmentation(keys="pred", result="result"))
+        t.append(VertebraLocalizationSegmentation(keys="pred", result="result"))
         return t
 
     # This is to avoid saving the prediction
     def writer(self, data, extension=None, dtype=None):
+        if data.get("result_mask", False):
+            return super().writer(data, extension, dtype)
         writer = SimpleJsonWriter(label=self.output_label_key)
         return writer(data)

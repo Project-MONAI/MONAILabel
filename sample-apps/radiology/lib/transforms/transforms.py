@@ -378,9 +378,10 @@ class VertebraLocalizationSegmentation(MapTransform):
             # get centre of mass (CoM)
             centre = []
             for indices in np.where(label == seg_class):
-                most_indices = np.percentile(indices, 60).astype(int)
-                # avg_indices = np.average(indices).astype(int)
-                centre.append(most_indices)
+                # most_indices = np.percentile(indices, 60).astype(int).tolist()
+                # centre.append(most_indices)
+                avg_indices = np.average(indices).astype(int)
+                centre.append(avg_indices)
             if len(indices) < 1000:
                 continue
             areas.append(len(indices))
@@ -435,11 +436,17 @@ class AddROIThirdStage(MapTransform):
 
                 d["original_size"] = d[key].shape[-3], d[key].shape[-2], d[key].shape[-1]
                 current_label = np.random.randint(0, len(d["centroids"]))
-                d["current_label"] = list(d["centroids"]["centroids"][current_label].values())[0][-4]
+                # d["current_label"] = list(d["centroids"]["centroids"][current_label].values())[0][-4]
+                # X, Y, Z, = (
+                #     list(d["centroids"]["centroids"][current_label].values())[0][-3],
+                #     list(d["centroids"]["centroids"][current_label].values())[0][-2],
+                #     list(d["centroids"]["centroids"][current_label].values())[0][-1],
+                # )
+                d["current_label"] = list(d["centroids"][current_label].values())[0][-4]
                 X, Y, Z, = (
-                    list(d["centroids"]["centroids"][current_label].values())[0][-3],
-                    list(d["centroids"]["centroids"][current_label].values())[0][-2],
-                    list(d["centroids"]["centroids"][current_label].values())[0][-1],
+                    list(d["centroids"][current_label].values())[0][-3],
+                    list(d["centroids"][current_label].values())[0][-2],
+                    list(d["centroids"][current_label].values())[0][-1],
                 )
                 centroid = [X, Y, Z]
                 # Cropping
@@ -465,10 +472,15 @@ class AddROIThirdStage(MapTransform):
                 signal = np.zeros(
                     (1, d["original_size"][-3], d["original_size"][-2], d["original_size"][-1]), dtype=np.float32
                 )
+                # X, Y, Z = (
+                #     list(d["centroids"]["centroids"][current_label].values())[0][-3],
+                #     list(d["centroids"]["centroids"][current_label].values())[0][-2],
+                #     list(d["centroids"]["centroids"][current_label].values())[0][-1],
+                # )
                 X, Y, Z = (
-                    list(d["centroids"]["centroids"][current_label].values())[0][-3],
-                    list(d["centroids"]["centroids"][current_label].values())[0][-2],
-                    list(d["centroids"]["centroids"][current_label].values())[0][-1],
+                    list(d["centroids"][current_label].values())[0][-3],
+                    list(d["centroids"][current_label].values())[0][-2],
+                    list(d["centroids"][current_label].values())[0][-1],
                 )
                 signal[:, X, Y, Z] = 1.0
                 signal = GaussianSmooth(self.sigma)(signal)
