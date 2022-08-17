@@ -182,12 +182,13 @@ class MyApp(MONAILabelApp):
         # Check for CVAT Task if complete and trigger training
         def update_model():
             ds = self.datastore()
-            if isinstance(ds, CVATDatastore) and ds.download_from_cvat():
-                models = self.conf.get("auto_finetune_models", "tooltracking")
-                models = models.split(",")
-                logger.info(f"Trigger Training for model(s): {models}")
-
-                self.async_training(model=models)
+            if isinstance(ds, CVATDatastore):
+                name = ds.download_from_cvat()
+                if name:
+                    models = self.conf.get("auto_finetune_models", "tooltracking")
+                    models = models.split(",")
+                    logger.info(f"Trigger Training for model(s): {models}; Iteration Name: {name}")
+                    self.async_training(model=models, params={"name": name})
             else:
                 logger.info("Nothing to update;  No new labels downloaded/refreshed from CVAT")
 

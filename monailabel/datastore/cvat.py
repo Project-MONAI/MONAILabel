@@ -98,14 +98,14 @@ class CVATDatastore(LocalDatastore):
         for task in tasks["results"]:
             if task["name"].startswith(self.task_prefix):
                 task_id = task["id"]
-                task_name = task["name"]
+                task_name = task["name"] if task["name"] > task_name else task_name
 
         # increment to next iteration based on latest done_xxx
         if create:
             if not task_name:
                 for task in tasks["results"]:
                     if task["name"].startswith(f"{self.done_prefix}_{self.task_prefix}"):
-                        task_name = task["name"]
+                        task_name = task["name"] if task["name"] > task_name else task_name
 
             version = int(task_name.split("_")[-1]) + 1 if task_name else 1
             task_name = f"{self.task_prefix}_{version}"
@@ -145,7 +145,7 @@ class CVATDatastore(LocalDatastore):
     def download_from_cvat(self, max_retry_count=5, retry_wait_time=10):
         if self.task_status() != "completed":
             logger.info("No Tasks exists with completed status to refresh/download the final labels")
-            return False
+            return None
 
         project_id = self.get_cvat_project_id(create=False)
         task_id, task_name = self.get_cvat_task_id(project_id, create=False)
@@ -183,11 +183,10 @@ class CVATDatastore(LocalDatastore):
                 # Rename after consuming/downloading the labels
                 patch_url = f"{self.api_url}/api/tasks/{task_id}"
                 body = {"name": f"{self.done_prefix}_{task_name}"}
-                r = requests.patch(patch_url, allow_redirects=True, auth=self.auth, json=body).json()
-                logger.info(r)
-                return True
+                requests.patch(patch_url, allow_redirects=True, auth=self.auth, json=body)
+                return task_name
             except Exception as e:
                 logger.exception(e)
                 logger.error(f"{retry} => Failed to download...")
             retry_count = retry_count + 1
-        return False
+        return None
