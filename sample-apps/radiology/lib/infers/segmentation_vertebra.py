@@ -87,3 +87,6 @@ class SegmentationVertebra(InferTask):
             ]
         )
         return t
+
+    def is_valid(self) -> bool:
+        return False
