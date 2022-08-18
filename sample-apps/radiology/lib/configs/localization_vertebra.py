@@ -55,7 +55,6 @@ class LocalizationVertebra(TaskConfig):
             "L3": 22,
             "L4": 23,
             "L5": 24,
-            # "L6": 25,
         }
 
         # Model Files
@@ -92,7 +91,7 @@ class LocalizationVertebra(TaskConfig):
             target_spacing=self.target_spacing,
             labels=self.labels,
             preload=strtobool(self.conf.get("preload", "false")),
-            config={"largest_cc": True, "slicer": False},
+            config={"largest_cc": True, "result_mask": False},
         )
         return task
 

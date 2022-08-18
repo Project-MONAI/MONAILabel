@@ -9,13 +9,13 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 import logging
-from typing import Optional, Sequence, Union
+from typing import Dict, Hashable, Mapping, Optional, Sequence, Union
 
 import cv2
 import numpy as np
 import skimage.measure as measure
 import torch
-from monai.config import KeysCollection
+from monai.config import KeysCollection, NdarrayOrTensor
 from monai.data import MetaTensor
 from monai.transforms import MapTransform, Resize, Transform, generate_spatial_bounding_box, get_extreme_points
 from monai.utils import InterpolateMode, ensure_tuple_rep
@@ -259,3 +259,26 @@ class DumpImagePrediction2Dd(Transform):
         )
         save_image(tensor, self.pred_path)
         return d
+
+
+class MergeAllPreds(MapTransform):
+    def __init__(self, keys: KeysCollection, allow_missing_keys: bool = False):
+        """
+        Merge all predictions to one channel
+
+        Args:
+            keys: The ``keys`` parameter will be used to get and set the actual data item to transform
+            label_names: all label names
+        """
+        super().__init__(keys, allow_missing_keys)
+
+    def __call__(self, data: Mapping[Hashable, NdarrayOrTensor]):
+        d: Dict = dict(data)
+        for idx, key in enumerate(self.key_iterator(d)):
+            if idx == 0:
+                merge_image = d[key]
+            else:
+                merge_image = merge_image + d[key]
+            # For labels that overlap keep the last label number only
+            merge_image[merge_image > d[key].max()] = d[key].max()
+        return merge_image
