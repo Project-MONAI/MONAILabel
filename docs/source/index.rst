@@ -10,7 +10,6 @@
     See the License for the specific language governing permissions and
     limitations under the License.
 
-
 ===========
 MONAI Label
 ===========
@@ -22,7 +21,6 @@ users to create annotated datasets and build AI annotation models for clinical e
 MONAI Label enables application developers to build labeling apps in a *serverless* way,
 where custom labeling apps are exposed as a service through the MONAI Label Server.
 
-
 **Sample Apps in MONAILabel**
 
 Example developed labeling apps for use. Learn more apps and MONAILabel use cases here.
@@ -30,6 +28,20 @@ Example developed labeling apps for use. Learn more apps and MONAILabel use case
 .. figure:: ../images/sampleApps_index.jpeg
   :alt: MONAI Label Apps
 
+Radiology
+   This app has example models to do both interactive and automated segmentation over radiology (3D) 
+   images. Including auto segmentation with latest deep learning models (e.g., UNet, UNETR) for multiple abdominal 
+   organs. Interactive tools includes DeepEdit and Deepgrow for actively improve trained models and deployment.
+
+Pathology
+   This app has example models to do both interactive and automated segmentation over pathology (WSI) 
+   images. Including nuclei multi-label segmentation for Neoplastic cells, Inflammatory, Connective/Soft tissue cells, Dead Cells, and 
+   Epithelial. The app provides interactive tools includes DeepEdits for interactive nuclei segmentation.
+
+Bundle
+   The Bundle app enables users with customized models for inference, training or pre and post processing any target 
+   anatomies. The specification for MONAILabel integration of the Bundle app links archived Model-Zoo for customized labeling 
+   (e.g., the third-party transformer model for labeling renal cortex, medulla, and pelvicalyceal system. Interactive tools such as DeepEdits).
 
 *Deploy Labeling and Medical AI Faster*
 
@@ -53,9 +65,6 @@ end-user is trying to annotate.
 
 MONAI Label aims to fill the gap between developers creating new annotation applications, and
 the end users which want to benefit from these innovations.
-
-
-
 
 -----------------
 Table of Contents
