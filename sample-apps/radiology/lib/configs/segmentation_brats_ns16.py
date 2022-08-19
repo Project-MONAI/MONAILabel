@@ -16,7 +16,7 @@ from typing import Any, Dict, Optional, Union
 
 import lib.infers
 import lib.trainers
-from monai.networks.nets import SwinUNETR
+from monai.networks.nets import UNet
 
 from monailabel.interfaces.config import TaskConfig
 from monailabel.interfaces.tasks.infer import InferTask
@@ -80,26 +80,26 @@ class SegmentationBrats(TaskConfig):
         #     res_block=True,
         # )
 
-        self.network = SwinUNETR(
-            img_size=self.spatial_size,
-            in_channels=self.number_intensity_ch,
-            out_channels=len(self.labels) + 1,  # labels plus background
-            feature_size=48,
-            drop_rate=0.0,
-            attn_drop_rate=0.0,
-            dropout_path_rate=0.0,
-            use_checkpoint=True,
-        )
-
-        # self.network = UNet(
-        #     spatial_dims=3,
+        # self.network = SwinUNETR(
+        #     img_size=self.spatial_size,
         #     in_channels=self.number_intensity_ch,
-        #     out_channels=len(self.labels) + 1,  # labels plus background,
-        #     channels=(16, 32, 64, 128, 256),
-        #     strides=(2, 2, 2, 2),
-        #     num_res_units=2,
-        #     dropout=0.2,
+        #     out_channels=len(self.labels) + 1,  # labels plus background
+        #     feature_size=48,
+        #     drop_rate=0.0,
+        #     attn_drop_rate=0.0,
+        #     dropout_path_rate=0.0,
+        #     use_checkpoint=True,
         # )
+
+        self.network = UNet(
+            spatial_dims=3,
+            in_channels=self.number_intensity_ch,
+            out_channels=len(self.labels) + 1,  # labels plus background,
+            channels=(16, 32, 64, 128, 256),
+            strides=(2, 2, 2, 2),
+            num_res_units=2,
+            dropout=0.2,
+        )
 
     def infer(self) -> Union[InferTask, Dict[str, InferTask]]:
         task: InferTask = lib.infers.SegmentationBrats(
