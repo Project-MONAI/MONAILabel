@@ -16,7 +16,7 @@ import monai
 from monai.data import DataLoader, list_data_collate
 from monai.transforms import Compose, LoadImaged, SaveImaged
 
-data_dir = "/home/andres/Documents/workspace/Datasets/radiology/BRATS-2021/NeuroAtlas-Labels/Ture/Ture-case12/"
+data_dir = "/home/andres/Documents/workspace/Datasets/radiology/BRATS-2021/NeuroAtlas-Labels/Ture/originals/mni-crop/"
 output_folder = "/home/andres/Documents/workspace/Datasets/radiology/BRATS-2021/NeuroAtlas-Labels/Ture/merge/"
 
 
@@ -27,12 +27,16 @@ set_transforms = Compose(
     ]
 )
 
-train_folders = glob.glob(os.path.join(data_dir, "*.nii.gz"))
+folders = glob.glob(os.path.join(data_dir, "*"))
 train_d = []
 path_imgs = []
-for mod in ["flair.nii.gz", "t1.nii.gz", "t1ce.nii.gz", "t2.nii.gz"]:
-    path_imgs.append(data_dir + "Ture-012-" + mod)
-train_d.append({"image": path_imgs})
+for path in folders:
+    patient = path.split("/")[-1]
+    path_mods = glob.glob(os.path.join(data_dir + patient, "*"))
+    for mod in ["/FLAIR", "/T1", "/T1CE", "/T2"]:
+        path_img = glob.glob(os.path.join(data_dir + patient + mod, "*.nii.gz"))
+        path_imgs.append(path_img[0])
+    train_d.append({"image": path_imgs})
 
 
 print(len(train_d))
@@ -43,7 +47,7 @@ trainLoader = DataLoader(train_ds, batch_size=1, num_workers=1, collate_fn=list_
 
 for idx, img in enumerate(trainLoader):
     dirname, file = os.path.split(img["image_meta_dict"]["filename_or_obj"][0])
-    fname = dirname.split("/")[-1]
+    fname = dirname.split("/")[-2]
     print("Processing image: ", fname + ".nii.gz")
     # time.sleep(2)
     shutil.move(output_folder + file, output_folder + fname + ".nii.gz")
