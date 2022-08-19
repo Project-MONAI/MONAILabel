@@ -26,11 +26,12 @@ class CVATEpistemicScoring(EpistemicScoring):
         self,
         top_k,
         infer_task: InferTask,
-        num_samples=10,
+        max_samples=0,
+        simulation_size=5,
         use_variance=False,
     ):
         self.top_k = top_k
-        super().__init__(infer_task, num_samples, use_variance)
+        super().__init__(infer_task, max_samples, simulation_size, use_variance)
 
     def get_top_k(self, datastore: Datastore):
         scores: Dict[str, Any] = {}
