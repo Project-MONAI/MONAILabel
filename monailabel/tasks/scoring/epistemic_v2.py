@@ -32,7 +32,8 @@ class EpistemicScoring(ScoringMethod):
     def __init__(
         self,
         infer_task: InferTask,
-        num_samples=10,
+        max_samples=0,
+        simulation_size=5,
         use_variance=False,
         key_output_entropy="epistemic_entropy",
         key_output_ts="epistemic_ts",
@@ -41,7 +42,8 @@ class EpistemicScoring(ScoringMethod):
         self.infer_task = infer_task
         self.dimension = infer_task.dimension
 
-        self.num_samples = num_samples
+        self.max_samples = max_samples
+        self.simulation_size = simulation_size
         self.use_variance = use_variance
         self.key_output_entropy = key_output_entropy
         self.key_output_ts = key_output_ts
@@ -104,12 +106,13 @@ class EpistemicScoring(ScoringMethod):
         # Performing Epistemic for all unlabeled images
         skipped = 0
         unlabeled_images = datastore.get_unlabeled_images()
-        num_samples = request.get("num_samples", self.num_samples)
-        if num_samples < 2:
-            num_samples = 2
-            logger.warning("EPISTEMIC:: Fixing 'num_samples=2' as min 2 samples are needed to compute entropy")
+        max_samples = request.get("max_samples", self.max_samples)
+        simulation_size = request.get("simulation_size", self.simulation_size)
+        if simulation_size < 2:
+            simulation_size = 2
+            logger.warning("EPISTEMIC:: Fixing 'simulation_size=2' as min 2 simulations are needed to compute entropy")
 
-        logger.info(f"EPISTEMIC:: Total unlabeled images: {len(unlabeled_images)}")
+        logger.info(f"EPISTEMIC:: Total unlabeled images: {len(unlabeled_images)}; max_samples: {max_samples}")
         t_start = time.time()
 
         image_ids = []
@@ -120,6 +123,7 @@ class EpistemicScoring(ScoringMethod):
                 skipped += 1
                 continue
             image_ids.append(image_id)
+        image_ids = image_ids[:max_samples] if max_samples else image_ids
 
         max_workers = request.get("max_workers", 2)
         multi_gpu = request.get("multi_gpu", True)
@@ -137,12 +141,12 @@ class EpistemicScoring(ScoringMethod):
             futures = []
             with ThreadPoolExecutor(max_workers if max_workers else None, "ScoreInfer") as e:
                 for image_id in image_ids:
-                    futures.append(e.submit(self.run_scoring, image_id, num_samples, model_ts, datastore))
+                    futures.append(e.submit(self.run_scoring, image_id, simulation_size, model_ts, datastore))
                 for future in futures:
                     future.result()
         else:
             for image_id in image_ids:
-                self.run_scoring(image_id, num_samples, model_ts, datastore)
+                self.run_scoring(image_id, simulation_size, model_ts, datastore)
 
         summary = {
             "total": len(unlabeled_images),
@@ -155,7 +159,7 @@ class EpistemicScoring(ScoringMethod):
         self.infer_task.clear_cache()
         return summary
 
-    def run_scoring(self, image_id, num_samples, model_ts, datastore):
+    def run_scoring(self, image_id, simulation_size, model_ts, datastore):
         start = time.time()
         request = {
             "image": datastore.get_image_uri(image_id),
@@ -164,7 +168,7 @@ class EpistemicScoring(ScoringMethod):
         }
 
         accum_unl_outputs = []
-        for i in range(num_samples):
+        for i in range(simulation_size):
             data = self.infer_task(request=request)
             pred = data[self.infer_task.output_label_key] if isinstance(data, dict) else None
             if pred is not None:
@@ -187,7 +191,7 @@ class EpistemicScoring(ScoringMethod):
         logger.info(
             "EPISTEMIC:: {} => iters: {}; entropy: {}; latency: {};".format(
                 image_id,
-                num_samples,
+                simulation_size,
                 round(entropy, 4),
                 round(latency, 3),
             )
