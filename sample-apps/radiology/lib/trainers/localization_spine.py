@@ -74,7 +74,7 @@ class LocalizationSpine(BasicTrainTask):
             EnsureChannelFirstd(keys=("image", "label")),
             EnsureTyped(keys=("image", "label"), device=context.device),
             # NormalizeIntensityd(keys="image", divisor=2048.0),
-            ScaleIntensityRanged(keys="image", a_min=-1000, a_max=1900, clip=True),
+            ScaleIntensityRanged(keys="image", a_min=-1000, a_max=1900, b_min=0.0, b_max=1.0, clip=True),
             GaussianSmoothd(keys="image", sigma=0.4),
             ScaleIntensityd(keys="image", minv=-1.0, maxv=1.0),
             RandSpatialCropd(
@@ -103,7 +103,7 @@ class LocalizationSpine(BasicTrainTask):
             EnsureTyped(keys=("image", "label")),
             EnsureChannelFirstd(keys=("image", "label")),
             # NormalizeIntensityd(keys="image", divisor=2048.0),
-            ScaleIntensityRanged(keys="image", a_min=-1000, a_max=1900, clip=True),
+            ScaleIntensityRanged(keys="image", a_min=-1000, a_max=1900, b_min=0.0, b_max=1.0, clip=True),
             GaussianSmoothd(keys="image", sigma=0.4),
             ScaleIntensityd(keys="image", minv=-1.0, maxv=1.0),
             SelectItemsd(keys=("image", "label")),

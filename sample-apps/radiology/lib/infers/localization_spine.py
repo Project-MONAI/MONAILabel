@@ -61,7 +61,7 @@ class LocalizationSpine(InferTask):
             EnsureTyped(keys="image", device=data.get("device") if data else None),
             EnsureChannelFirstd(keys="image"),
             # NormalizeIntensityd(keys="image", divisor=2048.0),
-            ScaleIntensityRanged(keys="image", a_min=-1000, a_max=1900, clip=True),
+            ScaleIntensityRanged(keys="image", a_min=-1000, a_max=1900, b_min=0.0, b_max=1.0, clip=True),
             GaussianSmoothd(keys="image", sigma=0.4),
             ScaleIntensityd(keys="image", minv=-1.0, maxv=1.0),
         ]
