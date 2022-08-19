@@ -31,33 +31,6 @@ class SegmentationVertebra(TaskConfig):
 
         # Labels
         self.labels = {
-<<<<<<< HEAD
-            "vertebra": 1,
-            # "C1": 1,
-            # "C2": 2,
-            # "C3": 3,
-            # "C4": 4,
-            # "C5": 5,
-            # "C6": 6,
-            # "C7": 7,
-            # "Th1": 8,
-            # "Th2": 9,
-            # "Th3": 10,
-            # "Th4": 11,
-            # "Th5": 12,
-            # "Th6": 13,
-            # "Th7": 14,
-            # "Th8": 15,
-            # "Th9": 16,
-            # "Th10": 17,
-            # "Th11": 18,
-            # "Th12": 19,
-            # "L1": 20,
-            # "L2": 21,
-            # "L3": 22,
-            # "L4": 23,
-            # "L5": 24,
-=======
             # "vertebra": 1,
             "C1": 1,
             "C2": 2,
@@ -83,7 +56,6 @@ class SegmentationVertebra(TaskConfig):
             "L3": 22,
             "L4": 23,
             "L5": 24,
->>>>>>> d5fa3d8685e67f9a96cfb29e2df7fd2f12e06036
         }
 
         # Model Files
