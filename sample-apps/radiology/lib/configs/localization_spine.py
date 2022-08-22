@@ -68,7 +68,7 @@ class LocalizationSpine(TaskConfig):
             url = f"{self.conf.get('pretrained_path', self.PRE_TRAINED_PATH)}/localization_spine_unet.pt"
             download_file(url, self.path[0])
 
-        self.target_spacing = (8.0, 8.0, 8.0)  # target space for image - NOT IN USE
+        self.target_spacing = (1.5, 1.5, 1.5)  # target space for image
         # Setting ROI size should consider max width, height and depth of the images
         self.roi_size = (96, 96, 96)  # sliding window size for train and infer
 
@@ -77,8 +77,8 @@ class LocalizationSpine(TaskConfig):
             spatial_dims=3,
             in_channels=1,
             out_channels=len(self.labels) + 1,  # labels plus background,
-            channels=(16, 32, 64, 128),
-            strides=(2, 2, 2),
+            channels=(16, 32, 64, 128, 256),
+            strides=(2, 2, 2, 2),
             num_res_units=2,
             dropout=0.2,
         )

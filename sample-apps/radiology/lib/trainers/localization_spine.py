@@ -26,6 +26,7 @@ from monai.transforms import (
     ScaleIntensityd,
     ScaleIntensityRanged,
     SelectItemsd,
+    Spacingd,
 )
 
 from monailabel.tasks.train.basic_train import BasicTrainTask, Context
@@ -73,6 +74,7 @@ class LocalizationSpine(BasicTrainTask):
             NormalizeLabelsInDatasetd(keys="label", label_names=self._labels),  # Specially for missing labels
             EnsureChannelFirstd(keys=("image", "label")),
             EnsureTyped(keys=("image", "label"), device=context.device),
+            Spacingd(keys=("image", "label"), pixdim=self.target_spacing, mode=("bilinear", "nearest")),
             # NormalizeIntensityd(keys="image", divisor=2048.0),
             ScaleIntensityRanged(keys="image", a_min=-1000, a_max=1900, b_min=0.0, b_max=1.0, clip=True),
             GaussianSmoothd(keys="image", sigma=0.4),
@@ -102,6 +104,7 @@ class LocalizationSpine(BasicTrainTask):
             NormalizeLabelsInDatasetd(keys="label", label_names=self._labels),  # Specially for missing labels
             EnsureTyped(keys=("image", "label")),
             EnsureChannelFirstd(keys=("image", "label")),
+            Spacingd(keys=("image", "label"), pixdim=self.target_spacing, mode=("bilinear", "nearest")),
             # NormalizeIntensityd(keys="image", divisor=2048.0),
             ScaleIntensityRanged(keys="image", a_min=-1000, a_max=1900, b_min=0.0, b_max=1.0, clip=True),
             GaussianSmoothd(keys="image", sigma=0.4),
