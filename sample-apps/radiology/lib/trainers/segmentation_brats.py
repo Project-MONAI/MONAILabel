@@ -22,7 +22,7 @@ from monai.transforms import (
     EnsureTyped,
     LoadImaged,
     NormalizeIntensityd,
-    RandFlipd,
+    Orientationd,
     RandGaussianSmoothd,
     RandScaleIntensityd,
     RandShiftIntensityd,
@@ -59,13 +59,11 @@ class SegmentationBrats(BasicTrainTask):
         return torch.optim.AdamW(context.network.parameters(), lr=1e-4, weight_decay=1e-5)
 
     def loss_function(self, context: Context):
+        # ce_weight = torch.tensor([1.0, 1.0, 1.0, 1.2, 1.0, 1.5, 1.5, 1.5, 1.5, 1.0, 1.0, 1.0, 1.0, 1.0, 1.0, 1.0,
+        # 1.0], device=context.device, )
         return DiceCELoss(
             to_onehot_y=True,
             softmax=True,
-            ce_weight=torch.tensor(
-                [1.0, 1.0, 1.0, 1.2, 1.0, 1.5, 1.5, 1.5, 1.5, 1.0, 1.0, 1.0, 1.0, 1.0, 1.0, 1.0, 1.0],
-                device=context.device,
-            ),
         )
 
     def lr_scheduler_handler(self, context: Context):
@@ -79,15 +77,13 @@ class SegmentationBrats(BasicTrainTask):
             LoadImaged(keys=("image", "label"), reader="ITKReader"),
             NormalizeLabelsInDatasetd(keys="label", label_names=self._labels),  # Specially for missing labels
             EnsureChannelFirstd(keys=("image", "label")),
+            Orientationd(keys=("image", "label"), axcodes="RAS"),
             NormalizeIntensityd(keys="image", nonzero=True, channel_wise=True),
             RandSpatialCropd(
                 keys=["image", "label"],
                 roi_size=[self.spatial_size[0], self.spatial_size[1], self.spatial_size[2]],
                 random_size=False,
             ),
-            RandFlipd(keys=("image", "label"), spatial_axis=0, prob=0.50),
-            RandFlipd(keys=("image", "label"), spatial_axis=1, prob=0.50),
-            RandFlipd(keys=("image", "label"), spatial_axis=2, prob=0.50),
             RandScaleIntensityd(keys="image", factors=0.1, prob=1.0),
             RandShiftIntensityd(keys="image", offsets=0.1, prob=0.5),
             RandGaussianSmoothd(keys="image", sigma_x=(0.25, 1.5), sigma_y=(0.25, 1.5), sigma_z=(0.25, 1.5), prob=0.5),
@@ -110,6 +106,7 @@ class SegmentationBrats(BasicTrainTask):
         return [
             LoadImaged(keys=("image", "label"), reader="ITKReader"),
             EnsureChannelFirstd(keys=("image", "label")),
+            Orientationd(keys=("image", "label"), axcodes="RAS"),
             NormalizeIntensityd(keys="image", nonzero=True, channel_wise=True),
             EnsureTyped(keys=("image", "label")),
             SelectItemsd(keys=("image", "label")),

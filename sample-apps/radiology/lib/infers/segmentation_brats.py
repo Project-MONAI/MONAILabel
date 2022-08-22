@@ -19,6 +19,7 @@ from monai.transforms import (
     KeepLargestConnectedComponentd,
     LoadImaged,
     NormalizeIntensityd,
+    Orientationd,
     ToNumpyd,
 )
 
@@ -57,6 +58,7 @@ class SegmentationBrats(InferTask):
         return [
             LoadImaged(keys="image", reader="ITKReader"),
             EnsureChannelFirstd(keys="image"),
+            Orientationd(keys=("image", "label"), axcodes="RAS"),
             NormalizeIntensityd(keys="image", nonzero=True, channel_wise=True),
             EnsureTyped(keys="image"),
         ]
