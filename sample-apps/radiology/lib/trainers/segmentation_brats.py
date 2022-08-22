@@ -22,7 +22,6 @@ from monai.transforms import (
     EnsureTyped,
     LoadImaged,
     NormalizeIntensityd,
-    Orientationd,
     RandGaussianSmoothd,
     RandScaleIntensityd,
     RandShiftIntensityd,
@@ -77,7 +76,6 @@ class SegmentationBrats(BasicTrainTask):
             LoadImaged(keys=("image", "label"), reader="ITKReader"),
             NormalizeLabelsInDatasetd(keys="label", label_names=self._labels),  # Specially for missing labels
             EnsureChannelFirstd(keys=("image", "label")),
-            Orientationd(keys=("image", "label"), axcodes="RAS"),
             NormalizeIntensityd(keys="image", nonzero=True, channel_wise=True),
             RandSpatialCropd(
                 keys=["image", "label"],
@@ -106,7 +104,6 @@ class SegmentationBrats(BasicTrainTask):
         return [
             LoadImaged(keys=("image", "label"), reader="ITKReader"),
             EnsureChannelFirstd(keys=("image", "label")),
-            Orientationd(keys=("image", "label"), axcodes="RAS"),
             NormalizeIntensityd(keys="image", nonzero=True, channel_wise=True),
             EnsureTyped(keys=("image", "label")),
             SelectItemsd(keys=("image", "label")),

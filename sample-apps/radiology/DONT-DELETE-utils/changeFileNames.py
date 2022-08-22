@@ -23,3 +23,18 @@ for idx, img_path in enumerate(all_files):
     print(f"Processing image: {idx}/{len(all_files)}")
     # time.sleep(1)
     shutil.copy(img_path, output_folder + fname[:15] + ".nrrd")
+
+
+# Take only modality
+
+# data_dir = "/home/andres/Documents/workspace/Datasets/radiology/BRATS-2021/original-BRATS-files/TrainingData/"
+# output_folder = "/home/andres/Documents/workspace/Datasets/radiology/BRATS-2021/NeuroAtlas-Labels/brats-ns16/corrected-reviewed-ns16/monailabel/"
+#
+# all_files = glob.glob(os.path.join(data_dir, "*"))
+#
+#
+# for idx, img_path in enumerate(all_files):
+#     fname = img_path.split("/")[-1]
+#     print(f"Processing image: {idx}/{len(all_files)}")
+#     # time.sleep(1)
+#     shutil.copy(img_path + '/' + fname + '_t1.nii.gz', output_folder + fname + '.nii.gz')
