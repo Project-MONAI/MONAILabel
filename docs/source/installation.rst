@@ -74,7 +74,7 @@ To install latest from github main branch
     default prefers the milestone release.
 
     This will not build/include OHIF by default.
-    To include OHIF as part of this setup/build, make sure YARN is installed and `export OHIF_BUILD=true` before running the above command.
+    To include OHIF as part of this setup/build, make sure `YARN <https://classic.yarnpkg.com/lang/en/docs/install/#windows-stable/>`_ is installed and `export OHIF_BUILD=true` before running the above command.
 
 
 From DockerHub
