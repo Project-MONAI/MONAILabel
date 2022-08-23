@@ -32,22 +32,22 @@ class SegmentationBrats(TaskConfig):
 
         # Labels
         self.labels = {
-            "Cerebral white matter": 1,
-            "Cerebral cortex": 2,
+            # "Cerebral white matter": 1,
+            # "Cerebral cortex": 2,
             "Ventricles": 3,
-            "Cerebellum white matter": 4,
-            "Cerebellum cortex": 5,
+            # "Cerebellum white matter": 4,
+            # "Cerebellum cortex": 5,
             "Thalamus": 6,
             "Caudate": 7,
             "Putamen": 8,
             "Pallidum": 9,
-            "Brain-stem": 10,
+            # "Brain-stem": 10,
             "Hippocampus": 11,
             "Amygdala": 12,
             "Accumbens area": 13,
             "Ventral diencephalon": 14,
-            "Brain tumor + necrotic": 15,
-            "Edema": 16,
+            # "Brain tumor + necrotic": 15,
+            # "Edema": 16,
         }
 
         # Number of input channels - 4 for BRATS and 1 for spleen
