@@ -8,13 +8,14 @@
 # WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 # See the License for the specific language governing permissions and
 # limitations under the License.
+
 import logging
 
-from lib.transforms.transforms import AddROI, GaussianSmoothedCentroidd, GetCentroidAndCropd
+import torch
+from lib.transforms.transforms import AddROI, GaussianSmoothedCentroidd, GetCentroidsd, HeuristicCroppingd
 from monai.handlers import TensorBoardImageHandler, from_engine
-from monai.inferers import SimpleInferer
+from monai.inferers import SlidingWindowInferer
 from monai.losses import DiceCELoss
-from monai.optimizers import Novograd
 from monai.transforms import (
     Activationsd,
     AsDiscreted,
@@ -23,15 +24,9 @@ from monai.transforms import (
     GaussianSmoothd,
     LoadImaged,
     NormalizeIntensityd,
-    Orientationd,
-    RandRotated,
-    RandScaleIntensityd,
-    RandShiftIntensityd,
-    RandZoomd,
+    RandSpatialCropd,
     ScaleIntensityd,
     SelectItemsd,
-    Spacingd,
-    SpatialPadd,
 )
 
 from monailabel.tasks.train.basic_train import BasicTrainTask, Context
@@ -61,7 +56,7 @@ class SegmentationVertebra(BasicTrainTask):
         return self._network
 
     def optimizer(self, context: Context):
-        return Novograd(context.network.parameters(), 0.0001)
+        return torch.optim.AdamW(context.network.parameters(), lr=1e-4, weight_decay=1e-5)
 
     def loss_function(self, context: Context):
         return DiceCELoss(to_onehot_y=True, softmax=True)
@@ -76,23 +71,18 @@ class SegmentationVertebra(BasicTrainTask):
         return [
             LoadImaged(keys=("image", "label"), reader="ITKReader"),
             EnsureChannelFirstd(keys=("image", "label")),
-            Orientationd(keys=["image", "label"], axcodes="RAS"),
-            Spacingd(keys=("image", "label"), pixdim=self.target_spacing, mode=("bilinear", "nearest")),
-            GetCentroidAndCropd(keys=["label", "image"], roi_size=self.roi_size),
+            NormalizeIntensityd(keys="image", divisor=2048.0),
+            GetCentroidsd(keys="label"),
+            GaussianSmoothd(keys="image", sigma=0.75),
+            ScaleIntensityd(keys="image", minv=-1.0, maxv=1.0),
+            HeuristicCroppingd(keys=["label", "image"]),  # Size heuristically selected
             GaussianSmoothedCentroidd(keys="image"),
             AddROI(keys="signal"),
-            GaussianSmoothd(keys="image", sigma=0.75),
-            NormalizeIntensityd(keys="image", divisor=2048.0),
-            ScaleIntensityd(keys="image", minv=-1.0, maxv=1.0),
-            RandScaleIntensityd(keys="image", factors=(0.75, 1.25), prob=0.80),
-            RandShiftIntensityd(keys="image", offsets=(-0.25, 0.25), prob=0.80),
-            RandRotated(
-                keys=("image", "label"), range_x=(-0.26, 0.26), range_y=(-0.26, 0.26), range_z=(-0.26, 0.26), prob=0.80
+            RandSpatialCropd(
+                keys=["image", "label"],
+                roi_size=[self.roi_size[0], self.roi_size[1], self.roi_size[2]],
+                random_size=False,
             ),
-            # Does this do the function of scaling by [−0.85, 1.15] ?
-            RandZoomd(keys=("image", "label"), prob=0.70, min_zoom=0.6, max_zoom=1.15),
-            #
-            SpatialPadd(keys=("image", "label"), spatial_size=self.roi_size),
             EnsureTyped(keys=("image", "label"), device=context.device),
             SelectItemsd(keys=("image", "label", "centroids", "original_size", "current_label", "slices_cropped")),
         ]
@@ -100,7 +90,7 @@ class SegmentationVertebra(BasicTrainTask):
     def train_post_transforms(self, context: Context):
         return [
             EnsureTyped(keys="pred", device=context.device),
-            Activationsd(keys="pred", softmax=len(self._labels) > 1, sigmoid=len(self._labels) == 1),
+            Activationsd(keys="pred", softmax=True),
             AsDiscreted(
                 keys=("pred", "label"),
                 argmax=(True, False),
@@ -112,21 +102,21 @@ class SegmentationVertebra(BasicTrainTask):
         return [
             LoadImaged(keys=("image", "label"), reader="ITKReader"),
             EnsureChannelFirstd(keys=("image", "label")),
-            Orientationd(keys=("image", "label"), axcodes="RAS"),
-            Spacingd(keys=("image", "label"), pixdim=self.target_spacing, mode=("bilinear", "nearest")),
-            GetCentroidAndCropd(keys="label", roi_size=self.roi_size),
+            NormalizeIntensityd(keys="image", divisor=2048.0),
+            GetCentroidsd(keys="label"),
+            GaussianSmoothd(keys="image", sigma=0.75),
+            ScaleIntensityd(keys="image", minv=-1.0, maxv=1.0),
+            HeuristicCroppingd(keys=["label", "image"]),  # Size heuristically selected
             GaussianSmoothedCentroidd(keys="image"),
             AddROI(keys="signal"),
-            GaussianSmoothd(keys="image", sigma=0.75),
-            NormalizeIntensityd(keys="image", divisor=2048.0),
-            ScaleIntensityd(keys="image", minv=-1.0, maxv=1.0),
-            SpatialPadd(keys=("image", "label"), spatial_size=self.roi_size),
-            EnsureTyped(keys=("image", "label")),
+            EnsureTyped(keys=("image", "label"), device=context.device),
             SelectItemsd(keys=("image", "label", "centroids", "original_size", "current_label", "slices_cropped")),
         ]
 
     def val_inferer(self, context: Context):
-        return SimpleInferer()
+        return SlidingWindowInferer(
+            roi_size=self.roi_size, sw_batch_size=8, overlap=0.5, padding_mode="replicate", mode="gaussian"
+        )
 
     def train_key_metric(self, context: Context):
         return region_wise_metrics(self._labels, self.TRAIN_KEY_METRIC, "train")

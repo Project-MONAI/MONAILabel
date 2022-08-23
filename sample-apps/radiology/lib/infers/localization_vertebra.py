@@ -8,27 +8,34 @@
 # WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 # See the License for the specific language governing permissions and
 # limitations under the License.
+
 from typing import Callable, Sequence
 
-import torch
-from lib.transforms.transforms import VertebraLocalizationPostProcessing
+from lib.transforms.transforms import VertebraLocalizationSegmentation
 from monai.inferers import Inferer, SlidingWindowInferer
 from monai.transforms import (
     Activationsd,
+    AsDiscreted,
+    CropForegroundd,
     EnsureChannelFirstd,
     EnsureTyped,
     GaussianSmoothd,
+    KeepLargestConnectedComponentd,
     LoadImaged,
     NormalizeIntensityd,
-    Orientationd,
     ScaleIntensityd,
-    Spacingd,
-    SpatialPadd,
-    ToNumpyd,
 )
 
 from monailabel.interfaces.tasks.infer import InferTask, InferType
 from monailabel.transform.post import Restored
+
+
+class SimpleJsonWriter:
+    def __init__(self, label="pred"):
+        self.label = label
+
+    def __call__(self, data):
+        return None, data["result"]
 
 
 class LocalizationVertebra(InferTask):
@@ -60,27 +67,39 @@ class LocalizationVertebra(InferTask):
 
     def pre_transforms(self, data=None) -> Sequence[Callable]:
         return [
-            LoadImaged(keys="image", reader="ITKReader"),
-            EnsureTyped(keys="image", device=data.get("device") if data else None),
-            EnsureChannelFirstd(keys="image"),
-            Orientationd(keys="image", axcodes="RAS"),
-            Spacingd(keys="image", pixdim=self.target_spacing, mode="bilinear"),
+            LoadImaged(keys=("image", "first_stage_pred"), reader="ITKReader", allow_missing_keys=True),
+            EnsureTyped(
+                keys=("image", "first_stage_pred"), device=data.get("device") if data else None, allow_missing_keys=True
+            ),
+            EnsureChannelFirstd(keys=("image", "first_stage_pred"), allow_missing_keys=True),
+            CropForegroundd(keys=("image", "first_stage_pred"), source_key="image", margin=10, allow_missing_keys=True),
+            NormalizeIntensityd(keys="image", nonzero=True),
             GaussianSmoothd(keys="image", sigma=0.75),
-            NormalizeIntensityd(keys="image", divisor=2048.0),
             ScaleIntensityd(keys="image", minv=-1.0, maxv=1.0),
-            SpatialPadd(keys="image", spatial_size=self.roi_size),
         ]
 
     def inferer(self, data=None) -> Inferer:
-        return SlidingWindowInferer(roi_size=self.roi_size)
+        return SlidingWindowInferer(
+            roi_size=self.roi_size, sw_batch_size=4, overlap=0.4, padding_mode="replicate", mode="gaussian"
+        )
 
     def post_transforms(self, data=None) -> Sequence[Callable]:
-        return [
+        largest_cc = False if not data else data.get("largest_cc", False)
+        applied_labels = list(self.labels.values()) if isinstance(self.labels, dict) else self.labels
+        t = [
             EnsureTyped(keys="pred", device=data.get("device") if data else None),
-            Activationsd(keys="pred", other=torch.nn.functional.leaky_relu),
-            # Activationsd(keys="pred", sigmoid=True),
-            ToNumpyd(keys="pred"),
-            Restored(keys="pred", ref_image="image"),
-            ScaleIntensityd(keys="pred", minv=0.0, maxv=100.0),
-            VertebraLocalizationPostProcessing(keys="pred"),
+            Activationsd(keys="pred", softmax=True),
+            AsDiscreted(keys="pred", argmax=True),
         ]
+        if largest_cc:
+            t.append(KeepLargestConnectedComponentd(keys="pred", applied_labels=applied_labels))
+        t.append(Restored(keys="pred", ref_image="image"))
+        t.append(VertebraLocalizationSegmentation(keys="pred", result="result"))
+        return t
+
+    # This is to avoid saving the prediction
+    def writer(self, data, extension=None, dtype=None):
+        if data.get("result_mask", False):
+            return super().writer(data, extension, dtype)
+        writer = SimpleJsonWriter(label=self.output_label_key)
+        return writer(data)

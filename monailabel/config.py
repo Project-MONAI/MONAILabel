@@ -8,6 +8,7 @@
 # WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 # See the License for the specific language governing permissions and
 # limitations under the License.
+
 from typing import Dict, List
 
 from pydantic import AnyHttpUrl, BaseSettings
@@ -29,6 +30,7 @@ class Settings(BaseSettings):
     MONAI_LABEL_TASKS_BATCH_INFER: bool = True
 
     MONAI_LABEL_DATASTORE: str = ""
+    MONAI_LABEL_DATASTORE_URL: str = ""
     MONAI_LABEL_DATASTORE_USERNAME: str = ""
     MONAI_LABEL_DATASTORE_PASSWORD: str = ""
     MONAI_LABEL_DATASTORE_API_KEY: str = ""

@@ -8,6 +8,7 @@
 # WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 # See the License for the specific language governing permissions and
 # limitations under the License.
+
 import logging
 import os
 import re
@@ -21,6 +22,7 @@ from lib.infers import BundleInferTask
 from lib.trainers import BundleTrainTask
 from monai.bundle import download
 
+import monailabel
 from monailabel.interfaces.app import MONAILabelApp
 from monailabel.interfaces.tasks.infer import InferTask
 from monailabel.interfaces.tasks.strategy import Strategy
@@ -89,8 +91,9 @@ class MyApp(MONAILabelApp):
             app_dir=app_dir,
             studies=studies,
             conf=conf,
-            name="MONAILabel - Zoo/Bundle",
+            name=f"MONAILabel - Zoo/Bundle ({monailabel.__version__})",
             description="DeepLearning models provided via MONAI Zoo/Bundle",
+            version=monailabel.__version__,
         )
 
     def init_infers(self) -> Dict[str, InferTask]:

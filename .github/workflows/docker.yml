@@ -1,3 +1,14 @@
+# Copyright (c) MONAI Consortium
+# Licensed under the Apache License, Version 2.0 (the "License");
+# you may not use this file except in compliance with the License.
+# You may obtain a copy of the License at
+#     http://www.apache.org/licenses/LICENSE-2.0
+# Unless required by applicable law or agreed to in writing, software
+# distributed under the License is distributed on an "AS IS" BASIS,
+# WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+# See the License for the specific language governing permissions and
+# limitations under the License.
+
 name: docker
 on:
   workflow_dispatch:
@@ -28,9 +39,12 @@ jobs:
           sudo apt-get install docker-ce
       - name: Build
         run: |
+          ./runtests.sh --clean
+          docker system prune -f
           DOCKER_BUILDKIT=1 docker build -t projectmonai/monailabel:${{ github.event.inputs.tag }} -f Dockerfile .
       - name: Verify
         run: |
+          ./runtests.sh --clean
           docker run --rm -i --ipc=host --net=host -v $(pwd):/workspace projectmonai/monailabel:${{ github.event.inputs.tag }} /workspace/runtests.sh --net
       - name: Publish
         run: |

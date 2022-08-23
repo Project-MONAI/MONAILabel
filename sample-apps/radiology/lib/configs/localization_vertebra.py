@@ -8,6 +8,7 @@
 # WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 # See the License for the specific language governing permissions and
 # limitations under the License.
+
 import logging
 import os
 from distutils.util import strtobool
@@ -55,7 +56,6 @@ class LocalizationVertebra(TaskConfig):
             "L3": 22,
             "L4": 23,
             "L5": 24,
-            "L6": 25,
         }
 
         # Model Files
@@ -69,22 +69,19 @@ class LocalizationVertebra(TaskConfig):
             url = f"{self.conf.get('pretrained_path', self.PRE_TRAINED_PATH)}/localization_vertebra_unet.pt"
             download_file(url, self.path[0])
 
-        self.target_spacing = (2.0, 2.0, 2.0)  # target space for image
+        self.target_spacing = (4.0, 4.0, 4.0)  # target space for image - NOT IN USE
         # Setting ROI size - This is for the image padding
-        self.roi_size = (96, 96, 256)
+        self.roi_size = (96, 96, 128)
 
         # Network
-        # Should we implement the Spatial Configuration Network in Pytorch?
-        # https://github.com/christianpayer/MedicalDataAugmentationTool-VerSe/blob/master/verse2020/network.py
         self.network = UNet(
             spatial_dims=3,
             in_channels=1,
-            out_channels=len(self.labels.keys()) + 1,  # All labels plus background
-            channels=[128, 128, 128, 128, 128],
-            strides=[2, 2, 2, 2],
+            out_channels=len(self.labels) + 1,  # labels plus background,
+            channels=(16, 32, 64, 128, 256),
+            strides=(2, 2, 2, 2),
             num_res_units=2,
-            dropout=0.5,
-            act="leakyrelu",
+            dropout=0.2,
         )
 
     def infer(self) -> Union[InferTask, Dict[str, InferTask]]:
@@ -95,18 +92,20 @@ class LocalizationVertebra(TaskConfig):
             target_spacing=self.target_spacing,
             labels=self.labels,
             preload=strtobool(self.conf.get("preload", "false")),
-            config={"largest_cc": False},
+            config={"largest_cc": True, "result_mask": False},
         )
         return task
 
     def trainer(self) -> Optional[TrainTask]:
         output_dir = os.path.join(self.model_dir, self.name)
+        load_path = self.path[0] if os.path.exists(self.path[0]) else self.path[1]
+
         task: TrainTask = lib.trainers.LocalizationVertebra(
             model_dir=output_dir,
             network=self.network,
             roi_size=self.roi_size,
             target_spacing=self.target_spacing,
-            load_path=self.path[0],
+            load_path=load_path,
             publish_path=self.path[1],
             description="Train vertebra localization Model",
             dimension=3,

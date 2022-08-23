@@ -8,6 +8,7 @@
 # WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 # See the License for the specific language governing permissions and
 # limitations under the License.
+
 import copy
 import logging
 import os
@@ -20,7 +21,7 @@ from monai.inferers import Inferer, SimpleInferer, SlidingWindowInferer
 
 from monailabel.interfaces.exception import MONAILabelError, MONAILabelException
 from monailabel.interfaces.utils.transform import dump_data, run_transforms
-from monailabel.transform.pre import CacheTransformDatad
+from monailabel.transform.cache import CacheTransformDatad
 from monailabel.transform.writer import Writer
 from monailabel.utils.others.generic import device_list
 

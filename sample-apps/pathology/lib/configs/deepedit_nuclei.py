@@ -8,6 +8,7 @@
 # WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 # See the License for the specific language governing permissions and
 # limitations under the License.
+
 import json
 import logging
 import multiprocessing
@@ -74,10 +75,12 @@ class DeepEditNuclei(TaskConfig):
 
     def trainer(self) -> Optional[TrainTask]:
         output_dir = os.path.join(self.model_dir, self.name)
+        load_path = self.path[0] if os.path.exists(self.path[0]) else self.path[1]
+
         task: TrainTask = lib.trainers.DeepEditNuclei(
             model_dir=output_dir,
             network=self.network,
-            load_path=self.path[0],
+            load_path=load_path,
             publish_path=self.path[1],
             labels=self.labels,
             description="Train Nuclei DeepEdit Model",

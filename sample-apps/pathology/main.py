@@ -8,6 +8,7 @@
 # WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 # See the License for the specific language governing permissions and
 # limitations under the License.
+
 import ctypes.util
 import logging
 import os
@@ -18,6 +19,7 @@ from typing import Dict
 
 import lib.configs
 
+import monailabel
 from monailabel.datastore.dsa import DSADatastore
 from monailabel.interfaces.app import MONAILabelApp
 from monailabel.interfaces.config import TaskConfig
@@ -84,8 +86,9 @@ class MyApp(MONAILabelApp):
             app_dir=app_dir,
             studies=studies,
             conf=conf,
-            name="MONAILabel - Pathology",
+            name=f"MONAILabel - Pathology ({monailabel.__version__})",
             description="DeepLearning models for pathology",
+            version=monailabel.__version__,
         )
 
     def init_remote_datastore(self) -> Datastore:
