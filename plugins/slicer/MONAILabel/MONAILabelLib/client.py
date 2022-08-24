@@ -15,12 +15,13 @@ import json
 import logging
 import mimetypes
 import os
+import re
 import ssl
 import tempfile
+from pathlib import Path
 from urllib.parse import quote_plus, urlparse
 
 import requests
-import slicer
 
 logger = logging.getLogger(__name__)
 
@@ -169,7 +170,9 @@ class MONAILabelClient:
                 MONAILabelError.SERVER_ERROR, f"Status: {status}; Response: {response}", status, response
             )
 
-        file_ext = slicer.util.settingsValue("MONAILabel/fileExtension", ".nii.gz")
+        content_disposition = response.getheader('content-disposition')
+        file_name = re.findall("filename=\"(.+)\"", content_disposition)[0]
+        file_ext = "".join(Path(file_name).suffixes)
         local_filename = tempfile.NamedTemporaryFile(dir=self._tmpdir, suffix=file_ext).name
         with open(local_filename, "wb") as f:
             f.write(response)
