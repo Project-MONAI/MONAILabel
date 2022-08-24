@@ -23,6 +23,7 @@ from monai.transforms import (
     AsDiscreted,
     EnsureChannelFirstd,
     EnsureTyped,
+    KeepLargestConnectedComponentd,
     LoadImaged,
     NormalizeIntensityd,
     Orientationd,
@@ -112,10 +113,12 @@ class DeepEdit(InferTask):
         return []  # Self-determine from the list of pre-transforms provided
 
     def post_transforms(self, data=None) -> Sequence[Callable]:
+        applied_labels = list(self.labels.values()) if isinstance(self.labels, dict) else self.labels
         return [
             EnsureTyped(keys="pred", device=data.get("device") if data else None),
             Activationsd(keys="pred", softmax=True),
             AsDiscreted(keys="pred", argmax=True),
+            KeepLargestConnectedComponentd(keys="pred", applied_labels=applied_labels),
             SqueezeDimd(keys="pred", dim=0),
             ToNumpyd(keys="pred"),
             Restored(keys="pred", ref_image="image"),
