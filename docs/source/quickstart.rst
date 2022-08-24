@@ -31,7 +31,7 @@ This example covers the annotation use-case for radiology using the sample MONAI
 residing on disk, and remote data residing on DICOMweb-enabled PACS systems via both `3D Slicer <https://www.slicer.org/>`_ and `OHIF <https://ohif.org/>`_.
 
   * To setup a local dataset for annotation follow the instructions under :ref:`DeepEdit Annotation with 3D Slicer`.
-  * To perform annotation of data residing on a remote DICOMweb-accessible PACS follow the instructions under :ref:`DeepEdit Annotation Using OHIF`
+  * To perform annotation of data residing on a remote DICOMweb-accessible PACS follow the instructions under :ref:`DeepEdit Annotation Using OHIF`.
 
 .. _DeepEdit Annotation with 3D Slicer:
 
@@ -386,13 +386,13 @@ On the local machine follow the commands listed below to install MONAI Label, an
     :alt: 3D Slicer setup
     :width: 800
 
-- Check the Model Zoo loading, MONAI Bundle app, and load study image.
+- Check the Model Zoo loading, MONAI Bundle app, and load study image
 
   .. image:: ../images/quickstart/bundle_tutorial_2.jpeg
     :alt: load data
     :width: 800
 
-- Select bundle models and obtain automatic labels.
+- Select bundle models and obtain automatic labels
 
   .. image:: ../images/quickstart/bundle_tutorial_3.jpeg
     :alt: inference
@@ -400,7 +400,7 @@ On the local machine follow the commands listed below to install MONAI Label, an
 
 Now get the automatic inference of the trained SwinUNETR model!
 
-- Submit refined labels and train to fine-tune the model. 
+- Submit refined labels and train to fine-tune the model
 
   .. image:: ../images/quickstart/bundle_tutorial_4.jpeg
     :alt: training
@@ -437,9 +437,9 @@ Prerequisite: Check Model Zoo `Release <https://github.com/Project-MONAI/model-z
 
 
 
-- Start 3D Slicer and follow same MONAI Label plugin process **MONAI Label** .
+- Start 3D Slicer and follow same MONAI Label plugin process **MONAI Label**
 
-- Select the customized bundle and inference with pre-trained model for renal structure segmentation.
+- Select the customized bundle and inference with pre-trained model for renal structure segmentation
 
   .. image:: ../images/quickstart/bundle_tutorial_5.jpeg
     :alt: renal inference
