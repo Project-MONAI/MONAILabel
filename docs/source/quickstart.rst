@@ -68,7 +68,7 @@ Install MONAI Label Plugin in 3D Slicer
 
 Install 3D Slicer Preview Version with in-built MONAI Label plugin
 
-- Download and Install `3D Slicer <https://download.slicer.org/>`_ version 5.0 or later.
+- Download and Install `3D Slicer Viewer <https://download.slicer.org/>`_ version 5.0 or later.
 - Start 3D Slicer
 - On the menu bar navigate **View** -> **Extension Manager** -> **Active Learning** -> **MONAI Label**
 
@@ -302,7 +302,7 @@ Customized Networks for MONAI Label
 This tutorial introduces the usage of the Bundle app in MONAILabel  - **monai bundle**.  
 
 The Bundle App empowers MONAILabel with customized models, pre- and post-processing, and any anatomies for labeling tasks. 
-The Bundle App supports various bundle based training / inference pipelines within the `Model Zoo Release<https://github.com/Project-MONAI/model-zoo/releases/tag/hosting_storage_v1>`_
+The Bundle App supports various bundle based training / inference pipelines within the `Model Zoo Release <https://github.com/Project-MONAI/model-zoo/releases/tag/hosting_storage_v1>`_
 
 Learn more about `MONAI Bundle <https://docs.monai.io/en/latest/mb_specification.html>`_
 
