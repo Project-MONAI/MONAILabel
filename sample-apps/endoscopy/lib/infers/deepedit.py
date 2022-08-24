@@ -12,7 +12,6 @@
 from typing import Callable, Sequence
 
 import numpy as np
-from lib.transforms import AddClickGuidanced, AddGuidanceSignald, ResizeGuidanced
 from monai.inferers import Inferer, SimpleInferer
 from monai.transforms import (
     Activationsd,
@@ -25,6 +24,7 @@ from monai.transforms import (
     ToNumpyd,
 )
 
+from monailabel.deepedit.transforms import AddClickGuidanced, AddGuidanceSignald, ResizeGuidanced
 from monailabel.interfaces.tasks.infer import InferTask, InferType
 from monailabel.transform.post import FindContoursd, Restored
 from monailabel.transform.pre import LoadImageExd
