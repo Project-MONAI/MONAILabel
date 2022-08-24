@@ -35,14 +35,17 @@ data_files.extend(recursive_files("sample-apps", "monailabel"))
 data_files.extend(recursive_files("plugins", "monailabel"))
 
 # Build OHIF Plugin
-build_ohif_s = os.environ.get("BUILD_OHIF", "true")
+build_ohif_s = os.environ.get("BUILD_OHIF", "false")
 print(f"BUILD_OHIF = {build_ohif_s}")
-build_ohif = True if not build_ohif_s else strtobool(build_ohif_s)
+build_ohif = bool(strtobool(build_ohif_s)) if build_ohif_s else False
 if build_ohif:
+    print("Building OHIF...")
     script = "build.bat" if any(platform.win32_ver()) else "build.sh"
     command = os.path.realpath(os.path.join(os.path.dirname(__file__), "plugins", "ohif", script))
     if os.path.exists(command):
         subprocess.call(["sh", command])
+else:
+    print("Building OHIF (SKIPPED)...")
 
 
 setup(

@@ -46,6 +46,10 @@ To install the `current milestone release <https://pypi.org/project/monailabel/>
 
     pip install monailabel
 
+The milestone versions are currently planned and released every few months.  As the
+codebase is under active development, you may want to install MONAI from GitHub
+for the latest features
+
 Weekly preview release
 **********************
 To install the `weekly preview release <https://pypi.org/project/monailabel-weekly/>`_:
@@ -69,9 +73,9 @@ To install latest from github main branch
     monailabel`` before using the commands from this section. Because ``pip`` by
     default prefers the milestone release.
 
-The milestone versions are currently planned and released every few months.  As the
-codebase is under active development, you may want to install MONAI from GitHub
-for the latest features
+    This will not build/include OHIF by default.
+    To include OHIF as part of this setup/build, make sure `YARN <https://classic.yarnpkg.com/lang/en/docs/install/#windows-stable/>`_ is installed and `export OHIF_BUILD=true` before running the above command.
+
 
 From DockerHub
 **************
