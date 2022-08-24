@@ -11,9 +11,9 @@
     limitations under the License.
 
 
-==========
+===========
 Quickstart
-==========
+===========
 
 Start Using MONAI Label with Sample Apps:
 
@@ -27,7 +27,7 @@ Start Using MONAI Label with Sample Apps:
 Tutorial 1 - Radiology
 ========================
 
-This example covers the annotation use-case for radiology using the sample MONAILabel App - **radiology**.  MONAI Label server currently supports the annotation of local datasets via `3D Slicer <https://www.slicer.org/>`_, such as unlabeled images
+This example covers the annotation use-case for radiology using the sample MONAILabel App - **radiology**.  MONAI Label server currently supports the annotation of local datasets via 3D Slicer, such as unlabeled images
 residing on disk, and remote data residing on DICOMweb-enabled PACS systems via both `3D Slicer <https://www.slicer.org/>`_ and `OHIF <https://ohif.org/>`_.
 
   * To setup a local dataset for annotation follow the instructions under :ref:`DeepEdit Annotation with 3D Slicer`.
@@ -41,7 +41,7 @@ DeepEdit Annotation with 3D Slicer
 .. _Deploy MONAI Label Server:
 
 Deploy MONAI Label Server
--------------------------
+----------------------------
 
 On the local machine follow the commands listed below to install MONAI Label, download
 a sample application (Radiology), download a sample dataset (MSD
@@ -64,7 +64,7 @@ heart MRI), and deploy the sample app and standard dataset on the MONAI Label se
 
 
 Install MONAI Label Plugin in 3D Slicer
---------------------------------------
+------------------------------------------
 
 Install 3D Slicer Preview Version with in-built MONAI Label plugin
 
@@ -97,7 +97,7 @@ To add the MONAI Label icon shortcut on the 3D Slicer toolbar
 .. _DeepEdit Annotation in 3D Slicer:
 
 DeepEdit Annotation in 3D Slicer
--------------------------------
+-----------------------------------
 
 To connect 3D Slicer to MONAI Label Server
 
@@ -302,7 +302,7 @@ Customized Networks for MONAI Label
 This tutorial introduces the usage of the Bundle app in MONAILabel  - **monai bundle**.  
 
 The Bundle App empowers MONAILabel with customized models, pre- and post-processing, and any anatomies for labeling tasks. 
-The Bundle App supports various bundle based training / inference pipelines within the `Model-Zoo <https://github.com/Project-MONAI/model-zoo>`_
+The Bundle App supports various bundle based training / inference pipelines within the `Model Zoo Release<https://github.com/Project-MONAI/model-zoo/releases/tag/hosting_storage_v1>`_
 
 Learn more about `MONAI Bundle <https://docs.monai.io/en/latest/mb_specification.html>`_
 
@@ -346,7 +346,7 @@ For detailed setups of MONAILabel and 3D Slicer, refer to the `installation step
 if MONAILabel is not installed yet. 
 
 2. Add MONAI Label Plugin in 3D Slicer
---------------------------------------
+-----------------------------------------
 
 Add 3D Slicer with in-built MONAI Label plugin if not setup yet. Refer to **Step 3** 
 in `installation <https://docs.monai.io/projects/label/en/latest/installation.html>`_ guide.
@@ -406,14 +406,12 @@ Now get the automatic inference of the trained SwinUNETR model!
     :alt: training
     :width: 800
 
-.. image:: ../images/quickstart/MONAILabel.png
-  :width: 20
-
 Use Case 2: Bundle with Customized Scripts for Renal Substructure Segmentation
 =================================================================================
 
 This use case provides an instruction on using bundle model with customized scripts. 
 
+Prerequisite: Check Model Zoo `Release <https://github.com/Project-MONAI/model-zoo/releases/tag/hosting_storage_v1>`_
 
 .. code-block:: bash
 
@@ -426,14 +424,15 @@ This use case provides an instruction on using bundle model with customized scri
   # download a local study images, sample dataset such as spleen:
   monailabel datasets --download --name Task09_Spleen --output .
  
-  # download the bundle and save to the monaibundle/model and direct to the customized bundle folder
+  # download the bundle move the downloaded ZIP file to the MONAILable/sample-apps/monaibundle/model and unzip
+  # and save to the monaibundle/model and direct to the customized bundle folder
   cd <path to the bundle model>/renalStructures_UNEST_segmentation_v0.1.0
 
   # add customized scripts in the downloaded bundle
   export PYTHONPATH=$PYTHONPATH:"'/monaibundle/model/renalStructures_UNEST_segmentation_v0.1.0/scripts"
 
-  # start the bundle app in MONAI label server, the command will automatically download the specific config files and model. 
-  monailabel start_server --app <full path to the monaibundle app/monaibundle> --studies <path to the local dataset/Task09_Spleen/imagesTr> 
+  # start the bundle app in MONAI label server
+    monailabel start_server --app <full path to the monaibundle app/monaibundle> --studies <path to the local dataset/Task09_Spleen/imagesTr> 
   --conf models renalStructures_UNEST_segmentation_v0.1.0
 
 
