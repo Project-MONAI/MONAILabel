@@ -302,9 +302,9 @@ Customized Networks for MONAI Label
 This tutorial introduces the usage of the Bundle app in MONAILabel  - **monai bundle**.  
 
 The Bundle App empowers MONAILabel with customized models, pre- and post-processing, and any anatomies for labeling tasks. 
-The Bundle App supports various bundle based training / inference pipelines within the `Model Zoo Release <https://github.com/Project-MONAI/model-zoo/releases/tag/hosting_storage_v1>`_
+The Bundle App supports various bundle based training / inference pipelines within the `Model Zoo Release <https://github.com/Project-MONAI/model-zoo/releases/tag/hosting_storage_v1>`_.
 
-Learn more about `MONAI Bundle <https://docs.monai.io/en/latest/mb_specification.html>`_
+Learn more about `MONAI Bundle <https://docs.monai.io/en/latest/mb_specification.html>`_.
 
 Highlights and Features:
 
@@ -324,15 +324,15 @@ it will be archived as a .zip file (named in the form of bundle_name_version.zip
 
 The MONAI Bundle defines the model package and supports building python-based workflows via structured configurations
 
-1. Self-contained model package with all the necessary information
+1. Self-contained model package with all the necessary information.
 
-2. Structured config that easy to override or reconstruct the workflow
+2. Structured config that easy to override or reconstruct the workflow.
 
-3. Config provides good readability and usability by separating parameter settings from the python code
+3. Config provides good readability and usability by separating parameter settings from the python code.
 
-4. Config describes flexible workflow and components, allows for different low-level python implementations
+4. Config describes flexible workflow and components, allows for different low-level python implementations.
 
-Currently available bundles: `Model-Zoo <https://github.com/Project-MONAI/model-zoo/releases/tag/hosting_storage_v1>`_
+Currently available bundles: `Model-Zoo <https://github.com/Project-MONAI/model-zoo/releases/tag/hosting_storage_v1>`_.
 
 .. _MONAI Label with 3D Slicer:
 
@@ -358,7 +358,7 @@ Use Case 1: Bundle for SwinUNETR Multi-Organ Segmentation
 
 On the local machine follow the commands listed below to install MONAI Label, and deploy the bundle app and standard dataset on the MONAI Label server.
 
-* Step 1: Install and start MONAI Label server with the Bundle app
+* Step 1: Install and start MONAI Label server with the Bundle app.
 
 .. code-block:: bash
 
@@ -376,9 +376,9 @@ On the local machine follow the commands listed below to install MONAI Label, an
   monailabel start_server --app monaibundle --studies Task09_Spleen/imagesTr --conf models swin_unetr_btcv_segmentation_v0.1.0
 
 
-* Step 2: Start 3D Slicer
+* Step 2: Start 3D Slicer.
 
-* Step 3: Start the SwinUNETR bundle and follow clicks
+* Step 3: Start the SwinUNETR bundle and follow clicks.
 
 - On the menu bar navigate click **MONAI Label** 
 
@@ -392,7 +392,7 @@ On the local machine follow the commands listed below to install MONAI Label, an
     :alt: load data
     :width: 800
 
-- Select bundle models and obtain automatic labels
+- Select bundle models and obtain automatic labels.
 
   .. image:: ../images/quickstart/bundle_tutorial_3.jpeg
     :alt: inference
@@ -411,7 +411,7 @@ Use Case 2: Bundle with Customized Scripts for Renal Substructure Segmentation
 
 This use case provides an instruction on using bundle model with customized scripts. 
 
-Prerequisite: Check Model Zoo `Release <https://github.com/Project-MONAI/model-zoo/releases/tag/hosting_storage_v1>`_
+Prerequisite: Check Model Zoo `Release <https://github.com/Project-MONAI/model-zoo/releases/tag/hosting_storage_v1>`_.
 
 .. code-block:: bash
 
@@ -437,9 +437,9 @@ Prerequisite: Check Model Zoo `Release <https://github.com/Project-MONAI/model-z
 
 
 
-- Start 3D Slicer and follow same MONAI Label plugin process **MONAI Label** 
+- Start 3D Slicer and follow same MONAI Label plugin process **MONAI Label** .
 
-- Select the customized bundle and inference with pre-trained model for renal structure segmentation
+- Select the customized bundle and inference with pre-trained model for renal structure segmentation.
 
   .. image:: ../images/quickstart/bundle_tutorial_5.jpeg
     :alt: renal inference
