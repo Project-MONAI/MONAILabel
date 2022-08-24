@@ -205,13 +205,13 @@ For more options about Uvicorn (concurrency, SSL etc..) refer: https://www.uvico
 Guide of Visualization Tools
 ================================
 
-MONAI Label now supports several mostly adopted open-source viewer software for radiology and pathology.
+MONAI Label supports the most adopted open-source viewers for Radiology and Pathology
 
 
 3D Slicer
 -------------------------
 
-3D Slicer, a free and open-source platform for analyzing and understanding medical image data. In MONAI Label, 3D Slicer is most tested with radiology studies and
+3D Slicer, a free and open-source platform for analyzing, visualizing and understanding medical image data. In MONAI Label, 3D Slicer is most tested with radiology studies and
 algorithms, develpoment and integration.
 
 MONAI Label is most currently tested and supported with stable release of 3D Slicer every version. Preview version of 3D Slicer is not fully tested and supported.
