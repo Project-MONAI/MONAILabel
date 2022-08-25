@@ -12,8 +12,9 @@
 import logging
 from typing import Optional
 
+from monai.config import KeysCollection
 from monai.data import ImageReader, MetaTensor
-from monai.transforms import LoadImaged
+from monai.transforms import LoadImaged, MapTransform
 
 logger = logging.getLogger(__name__)
 
@@ -44,4 +45,18 @@ class LoadImageExd(LoadImaged):
         if not ignore:
             d = super().__call__(d, reader)
 
+        return d
+
+
+class NormalizeLabeld(MapTransform):
+    def __init__(self, keys: KeysCollection, allow_missing_keys: bool = False, value=1) -> None:
+        super().__init__(keys, allow_missing_keys)
+        self.value = value
+
+    def __call__(self, data):
+        d = dict(data)
+        for key in self.keys:
+            label = d[key].array
+            label[label > 0] = self.value
+            d[key].array = label
         return d
