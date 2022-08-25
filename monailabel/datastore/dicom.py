@@ -39,7 +39,13 @@ class DICOMwebClientX(DICOMwebClient):
 
 
 class DICOMWebDatastore(LocalDatastore):
-    def __init__(self, client: DICOMwebClient, search_filter: Dict[str, Any], cache_path: Optional[str] = None, fetch_by_frame=False):
+    def __init__(
+        self,
+        client: DICOMwebClient,
+        search_filter: Dict[str, Any],
+        cache_path: Optional[str] = None,
+        fetch_by_frame=False,
+    ):
         self._client = client
         self._search_filter = search_filter
         self._fetch_by_frame = fetch_by_frame
@@ -127,7 +133,9 @@ class DICOMWebDatastore(LocalDatastore):
             )
             seg_meta = Dataset.from_json(meta[0])
             if seg_meta.get("ReferencedSeriesSequence"):
-                referenced_series_instance_UID = str(seg_meta["ReferencedSeriesSequence"].value[0]["SeriesInstanceUID"].value)
+                referenced_series_instance_UID = str(
+                    seg_meta["ReferencedSeriesSequence"].value[0]["SeriesInstanceUID"].value
+                )
                 if referenced_series_instance_UID in self.list_images():
                     image_series.append(referenced_series_instance_UID)
                 else:
