@@ -131,7 +131,7 @@ weights
 from [NVIDIA Clara](https://catalog.ngc.nvidia.com/models?filters=&orderBy=dateModifiedDESC&query=clara_pt_deepgrow).
 
 It provides both [2D](./lib/configs/deepgrow_2d.py) and [3D](./lib/configs/deepgrow_3d.py) version to annotate images.
-Additionally it also provides [DeepgrowPipeline](../../monailabel/tasks/infer/deepgrow_pipeline.py) _(infer only)_ that
+Additionally it also provides [DeepgrowPipeline](lib/infers/deepgrow_pipeline.py) _(infer only)_ that
 combines best results of 3D and 2D results.
 _Deepgrow 2D model trains faster with higher accuracy compared to Deepgrow 3D model._
 

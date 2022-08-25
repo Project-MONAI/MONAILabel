@@ -17,6 +17,8 @@ from typing import Dict
 
 import lib.configs
 from lib.activelearning import First
+from lib.infers.deepgrow_pipeline import InferDeepgrowPipeline
+from lib.infers.vertebra_pipeline import InferVertebraPipeline
 
 import monailabel
 from monailabel.interfaces.app import MONAILabelApp
@@ -28,8 +30,6 @@ from monailabel.interfaces.tasks.strategy import Strategy
 from monailabel.interfaces.tasks.train import TrainTask
 from monailabel.scribbles.infer import GMMBasedGraphCut, HistogramBasedGraphCut
 from monailabel.tasks.activelearning.random import Random
-from monailabel.tasks.infer.deepgrow_pipeline import InferDeepgrowPipeline
-from monailabel.tasks.infer.vertebra_pipeline import InferVertebraPipeline
 from monailabel.utils.others.class_utils import get_class_names
 from monailabel.utils.others.planner import HeuristicPlanner
 
@@ -244,6 +244,7 @@ def main():
         level=logging.INFO,
         format="[%(asctime)s] [%(process)s] [%(threadName)s] [%(levelname)s] (%(name)s:%(lineno)d) - %(message)s",
         datefmt="%Y-%m-%d %H:%M:%S",
+        force=True,
     )
 
     home = str(Path.home())

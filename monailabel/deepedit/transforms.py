@@ -50,7 +50,7 @@ class AddInitialSeedPointd(Randomizable, MapTransform):
         self.connected_regions = connected_regions
 
     def _apply(self, label):
-        default_guidance = [-1, -1, -1]
+        default_guidance = [-1] * len(label.shape)
 
         if self.connected_regions > 1:
             blobs_labels = measure.label(label, background=0)
@@ -107,11 +107,15 @@ class AddGuidanceSignald(MapTransform):
 
     def signal(self, shape, points):
         signal = np.zeros(shape, dtype=np.float32)
+        assert 1 < len(signal) < 4
         flag = False
         for p in points:
             if np.any(np.asarray(p) < 0):
                 continue
-            signal[int(p[-2]), int(p[-1])] = 1.0
+            if len(shape) == 3:
+                signal[int(p[-3]), int(p[-2]), int(p[-1])] = 1.0
+            else:
+                signal[int(p[-2]), int(p[-1])] = 1.0
             flag = True
 
         if flag:
@@ -129,7 +133,7 @@ class AddGuidanceSignald(MapTransform):
             if guidance and (guidance[0] or guidance[1]):
                 img = img[0 : 0 + self.number_intensity_ch, ...]
 
-                shape = img.shape[-2:]
+                shape = img.shape[-2:] if len(img.shape) == 3 else img.shape[-3:]
                 device = img.device if isinstance(img, torch.Tensor) else None
                 pos = self.signal(shape, guidance[0]).to(device=device)
                 neg = self.signal(shape, guidance[1]).to(device=device)
@@ -373,18 +377,4 @@ class ResizeGuidanced(MapTransform):
             neg = np.multiply(neg_clicks, factor).astype(int, copy=False).tolist() if len(neg_clicks) else []
 
             d[key] = [pos, neg]
-        return d
-
-
-class NormalizeLabeld(MapTransform):
-    def __init__(self, keys: KeysCollection, allow_missing_keys: bool = False, value=1) -> None:
-        super().__init__(keys, allow_missing_keys)
-        self.value = value
-
-    def __call__(self, data):
-        d = dict(data)
-        for key in self.keys:
-            label = d[key].array
-            label[label > 0] = self.value
-            d[key].array = label
         return d
