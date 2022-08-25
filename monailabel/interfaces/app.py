@@ -162,10 +162,11 @@ class MONAILabelApp:
         cache_path = settings.MONAI_LABEL_DICOMWEB_CACHE_PATH
         cache_path = cache_path.strip() if cache_path else ""
         fetch_by_frame = settings.MONAI_LABEL_DICOMWEB_FETCH_BY_FRAME
+        search_filter = settings.MONAI_LABEL_DICOMWEB_SEARCH_FILTER
         return (
-            DICOMWebDatastore(dw_client, cache_path, fetch_by_frame=fetch_by_frame)
+            DICOMWebDatastore(dw_client, search_filter, cache_path, fetch_by_frame)
             if cache_path
-            else DICOMWebDatastore(dw_client, fetch_by_frame=fetch_by_frame)
+            else DICOMWebDatastore(dw_client, search_filter, fetch_by_frame=fetch_by_frame)
         )
 
     def _init_dsa_datastore(self) -> Datastore:
