@@ -52,7 +52,7 @@ jobs:
       - name: Build Package
         run: |
           ./runtests.sh --clean
-          python setup.py sdist bdist_wheel --build-number $(date +'%Y%m%d%H%M')
+          BUILD_OHIF=true python setup.py sdist bdist_wheel --build-number $(date +'%Y%m%d%H%M')
           ls -l dist
       - name: Verify Package
         run: |
