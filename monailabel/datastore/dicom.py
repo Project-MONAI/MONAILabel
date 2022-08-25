@@ -39,7 +39,7 @@ class DICOMwebClientX(DICOMwebClient):
 
 
 class DICOMWebDatastore(LocalDatastore):
-    def __init__(self, client: DICOMwebClient, cache_path: Optional[str] = None, fetch_by_frame=False, search_filter: Dict[str, Any] = {'Modality': 'CT'}):
+    def __init__(self, client: DICOMwebClient, search_filter: Dict[str, Any], cache_path: Optional[str] = None, fetch_by_frame=False):
         self._client = client
         self._search_filter = search_filter
         self._fetch_by_frame = fetch_by_frame
@@ -111,13 +111,13 @@ class DICOMWebDatastore(LocalDatastore):
 
     @cached(cache=TTLCache(maxsize=16, ttl=60))
     def list_images(self) -> List[str]:
-        datasets = self._client.search_for_series(search_filters={"Modality": self._modality})
+        datasets = self._client.search_for_series(search_filters=self._search_filter)
         series = [str(Dataset.from_json(ds)["SeriesInstanceUID"].value) for ds in datasets]
         logger.debug("Total Series: {}\n{}".format(len(series), "\n".join(series)))
         return series
 
     def get_labeled_images(self) -> List[str]:
-        datasets = self._client.search_for_series(search_filters=self.search_filter)
+        datasets = self._client.search_for_series(search_filters={"Modality": "SEG"})
         all_segs = [Dataset.from_json(ds) for ds in datasets]
 
         image_series = []
