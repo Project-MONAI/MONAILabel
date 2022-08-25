@@ -21,6 +21,7 @@ from cachetools import TTLCache, cached
 from dicomweb_client import DICOMwebClient
 from pydicom.dataset import Dataset
 
+from monailabel.config import settings
 from monailabel.datastore.local import LocalDatastore
 from monailabel.datastore.utils.convert import binary_to_image, dicom_to_nifti, nifti_to_dicom_seg
 from monailabel.datastore.utils.dicom import dicom_web_download_series, dicom_web_upload_dcm
@@ -115,7 +116,7 @@ class DICOMWebDatastore(LocalDatastore):
             info[f] = str(meta[f].value) if meta.get(f) else "UNK"
         return info
 
-    @cached(cache=TTLCache(maxsize=16, ttl=60))
+    @cached(cache=TTLCache(maxsize=16, ttl=settings.MONAI_LABEL_DICOMWEB_CACHE_EXPIRY))
     def list_images(self) -> List[str]:
         datasets = self._client.search_for_series(search_filters=self._search_filter)
         series = [str(Dataset.from_json(ds)["SeriesInstanceUID"].value) for ds in datasets]
