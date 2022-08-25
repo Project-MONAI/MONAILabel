@@ -13,10 +13,7 @@ import logging
 
 import numpy as np
 import torch
-from lib.handlers import TensorBoardImageHandler
-from lib.interaction import Interaction
 from lib.trainers.tooltracking import MeanIoUMetric
-from lib.transforms import AddGuidanceSignald, AddInitialSeedPointd, NormalizeLabeld
 from monai.apps.deepgrow.transforms import AddRandomGuidanced, FindDiscrepancyRegionsd
 from monai.handlers import MeanDice, from_engine
 from monai.inferers import SimpleInferer
@@ -38,7 +35,11 @@ from monai.transforms import (
     ToTensord,
 )
 
+from monailabel.deepedit.handlers import TensorBoard2DImageHandler
+from monailabel.deepedit.interaction import Interaction
+from monailabel.deepedit.transforms import AddGuidanceSignald, AddInitialSeedPointd
 from monailabel.tasks.train.basic_train import BasicTrainTask, Context
+from monailabel.transform.pre import NormalizeLabeld
 
 logger = logging.getLogger(__name__)
 
@@ -120,13 +121,13 @@ class DeepEdit(BasicTrainTask):
     def train_handlers(self, context: Context):
         handlers = super().train_handlers(context)
         if context.local_rank == 0:
-            handlers.append(TensorBoardImageHandler(log_dir=context.events_dir, batch_limit=0))
+            handlers.append(TensorBoard2DImageHandler(log_dir=context.events_dir, batch_limit=0))
         return handlers
 
     def val_handlers(self, context: Context):
         handlers = super().val_handlers(context)
         if context.local_rank == 0 and handlers:
-            handlers.append(TensorBoardImageHandler(log_dir=context.events_dir, batch_limit=0, tag_prefix="val-"))
+            handlers.append(TensorBoard2DImageHandler(log_dir=context.events_dir, batch_limit=0, tag_prefix="val-"))
         return handlers
 
     def train_iteration_update(self, context: Context):

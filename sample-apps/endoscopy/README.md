@@ -142,7 +142,7 @@ This model is currently trained to segment **Tool** from 2D in-body images.
 This model based on UNet for automated segmentation. This model works for single label segmentation tasks.
 > monailabel start_server --app workspace/endoscopy --studies workspace/images --conf models tooltracking
 
-- Network: This model uses the [UNet](./lib/net/ranzcrnet.py) as the default network.
+- Network: This model uses the [FlexibleUNet](https://docs.monai.io/en/latest/networks.html#flexibleunet) as the default network.
 - Labels: `{ "Tool": 1 }`
 - Dataset: The model is pre-trained over few in-body Images related to Endoscopy
 - Inputs: 1 channel for the image modality
