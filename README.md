@@ -128,7 +128,7 @@ These dependencies are by-default available if you are using `projectmonai/monai
 
 ### [3D Slicer](https://download.slicer.org/) (radiology)
 
-Download and install 3D Slicer with the [installation page](https://docs.monai.io/projects/label/en/latest/installation.html). 
+Download and install 3D Slicer with the [installation page](https://docs.monai.io/projects/label/en/latest/installation.html).
 Install MONAI Label plugin from Slicer Extension Manager.
 
 Refer [3D Slicer plugin](https://github.com/Project-MONAI/MONAILabel/tree/main/plugins/slicer) for other options to
