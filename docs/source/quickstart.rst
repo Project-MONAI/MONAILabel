@@ -293,15 +293,15 @@ At this point OHIF can be used to annotate the data in the DICOM server via the 
 Tutorial 2 - Bundle App Tutorial and Use Cases
 ================================================
 
-Introduction: 
+Introduction:
 ===============
 
 Customized Networks for MONAI Label
 ------------------------------------
 
-This tutorial introduces the usage of the Bundle app in MONAILabel  - **monai bundle**.  
+This tutorial introduces the usage of the Bundle app in MONAILabel  - **monai bundle**.
 
-The Bundle App empowers MONAILabel with customized models, pre- and post-processing, and any anatomies for labeling tasks. 
+The Bundle App empowers MONAILabel with customized models, pre- and post-processing, and any anatomies for labeling tasks.
 The Bundle App supports various bundle based training / inference pipelines within the `Model Zoo Release <https://github.com/Project-MONAI/model-zoo/releases/tag/hosting_storage_v1>`_.
 
 Learn more about `MONAI Bundle <https://docs.monai.io/en/latest/mb_specification.html>`_.
@@ -309,17 +309,17 @@ Learn more about `MONAI Bundle <https://docs.monai.io/en/latest/mb_specification
 Highlights and Features:
 
   * Supporting customized models and networks such as SwinUNETR, AutoML, etc.
-  * Advancing heterogeneous dataset (e.g., CT, MRI, Pathology, etc) with corresponding pre- and post-processing modules. 
+  * Advancing heterogeneous dataset (e.g., CT, MRI, Pathology, etc) with corresponding pre- and post-processing modules.
   * Ready-to-Use inference of hundreds of anatomies (e.g., multi-organ abdominal segmentation, whole-brain segmentation) with trained model checkpoints.
   * Deploying robust interactive labeling tools such as DeepEdit.
 
 .. _Model Zoo for MONAI Label:
 
-Model Zoo for MONAI Label 
+Model Zoo for MONAI Label
 -----------------------------
 
-MONAI `Model Zoo <https://github.com/Project-MONAI/model-zoo/releases/tag/hosting_storage_v1>`_ hosts a collection of medical imaging models in the MONAI Bundle format. 
-All source code of models (bundles) are tracked in models/, and for each distinct version of a bundle, 
+MONAI `Model Zoo <https://github.com/Project-MONAI/model-zoo/releases/tag/hosting_storage_v1>`_ hosts a collection of medical imaging models in the MONAI Bundle format.
+All source code of models (bundles) are tracked in models/, and for each distinct version of a bundle,
 it will be archived as a .zip file (named in the form of bundle_name_version.zip) and stored in Releases.
 
 The MONAI Bundle defines the model package and supports building python-based workflows via structured configurations
@@ -342,13 +342,13 @@ Prerequisite Setup
 1. Install MONAI Label and 3D Slicer
 --------------------------------------
 
-For detailed setups of MONAILabel and 3D Slicer, refer to the `installation steps <https://docs.monai.io/projects/label/en/latest/installation.html>`_ guide 
-if MONAILabel is not installed yet. 
+For detailed setups of MONAILabel and 3D Slicer, refer to the `installation steps <https://docs.monai.io/projects/label/en/latest/installation.html>`_ guide
+if MONAILabel is not installed yet.
 
 2. Add MONAI Label Plugin in 3D Slicer
 -----------------------------------------
 
-Add 3D Slicer with in-built MONAI Label plugin if not setup yet. Refer to **Step 3** 
+Add 3D Slicer with in-built MONAI Label plugin if not setup yet. Refer to **Step 3**
 in `installation <https://docs.monai.io/projects/label/en/latest/installation.html>`_ guide.
 
 .. _Select Bundle and Load Configuration to MONAI Label:
@@ -380,7 +380,7 @@ On the local machine follow the commands listed below to install MONAI Label, an
 
 * Step 3: Start the SwinUNETR bundle and follow clicks.
 
-- On the menu bar navigate click **MONAI Label** 
+- On the menu bar navigate click **MONAI Label**
 
   .. image:: ../images/quickstart/bundle_tutorial_1.jpeg
     :alt: 3D Slicer setup
@@ -409,7 +409,7 @@ Now get the automatic inference of the trained SwinUNETR model!
 Use Case 2: Bundle with Customized Scripts for Renal Substructure Segmentation
 =================================================================================
 
-This use case provides an instruction on using bundle model with customized scripts. 
+This use case provides an instruction on using bundle model with customized scripts.
 
 Prerequisite: Check Model Zoo `Release <https://github.com/Project-MONAI/model-zoo/releases/tag/hosting_storage_v1>`_.
 
@@ -423,7 +423,7 @@ Prerequisite: Check Model Zoo `Release <https://github.com/Project-MONAI/model-z
 
   # download a local study images, sample dataset such as spleen:
   monailabel datasets --download --name Task09_Spleen --output .
- 
+
   # download the bundle move the downloaded ZIP file to the MONAILable/sample-apps/monaibundle/model and unzip
   # and save to the monaibundle/model and direct to the customized bundle folder
   cd <path to the bundle model>/renalStructures_UNEST_segmentation_v0.1.0
@@ -432,7 +432,7 @@ Prerequisite: Check Model Zoo `Release <https://github.com/Project-MONAI/model-z
   export PYTHONPATH=$PYTHONPATH:"'/monaibundle/model/renalStructures_UNEST_segmentation_v0.1.0/scripts"
 
   # start the bundle app in MONAI label server
-    monailabel start_server --app <full path to the monaibundle app/monaibundle> --studies <path to the local dataset/Task09_Spleen/imagesTr> 
+    monailabel start_server --app <full path to the monaibundle app/monaibundle> --studies <path to the local dataset/Task09_Spleen/imagesTr>
   --conf models renalStructures_UNEST_segmentation_v0.1.0
 
 
