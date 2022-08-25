@@ -9,7 +9,7 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-from typing import Dict, List
+from typing import Any, Dict, List
 
 from pydantic import AnyHttpUrl, BaseSettings
 
@@ -47,6 +47,8 @@ class Settings(BaseSettings):
     MONAI_LABEL_WADO_PREFIX: str = ""
     MONAI_LABEL_STOW_PREFIX: str = ""
     MONAI_LABEL_DICOMWEB_FETCH_BY_FRAME: bool = False
+    MONAI_LABEL_DICOMWEB_SEARCH_FILTER: Dict[str, Any] = {"Modality": "CT"}
+    MONAI_LABEL_DICOMWEB_CACHE_EXPIRY: int = 180
 
     MONAI_LABEL_DATASTORE_AUTO_RELOAD: bool = True
     MONAI_LABEL_DATASTORE_FILE_EXT: List[str] = [
