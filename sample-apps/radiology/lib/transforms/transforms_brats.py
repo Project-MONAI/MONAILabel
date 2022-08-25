@@ -8,6 +8,7 @@
 # WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 # See the License for the specific language governing permissions and
 # limitations under the License.
+import copy
 from typing import Dict
 
 from monai.transforms import MapTransform
@@ -39,4 +40,24 @@ class GetSingleModalityBRATSd(MapTransform):
             else:
                 print("Transform 'GetSingleModalityBRATSd' only works for the image key")
 
+        return d
+
+
+class MaskTumord(MapTransform):
+    """
+    Mask the tumor and edema labels
+
+    """
+
+    def __call__(self, data):
+        d: Dict = dict(data)
+        mask_tumor_edema = copy.deepcopy(d["label"])
+        mask_tumor_edema[mask_tumor_edema < 15] = 1
+        mask_tumor_edema[mask_tumor_edema > 1] = 0
+        for key in self.key_iterator(d):
+            if len(d[key].shape) == 4:
+                for i in range(d[key].shape[-1]):
+                    d[key][..., i] = d[key][..., i] * mask_tumor_edema
+            else:
+                d[key] = d[key] * mask_tumor_edema
         return d

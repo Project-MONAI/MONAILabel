@@ -32,16 +32,16 @@ class SegmentationBrats(TaskConfig):
 
         # Labels
         self.labels = {
-            # "Cerebral white matter": 1,
-            # "Cerebral cortex": 2,
+            "Cerebral white matter": 1,
+            "Cerebral cortex": 2,
             "Ventricles": 3,
-            # "Cerebellum white matter": 4,
-            # "Cerebellum cortex": 5,
+            "Cerebellum white matter": 4,
+            "Cerebellum cortex": 5,
             "Thalamus": 6,
             "Caudate": 7,
             "Putamen": 8,
             "Pallidum": 9,
-            # "Brain-stem": 10,
+            "Brain-stem": 10,
             "Hippocampus": 11,
             "Amygdala": 12,
             "Accumbens area": 13,
@@ -65,7 +65,7 @@ class SegmentationBrats(TaskConfig):
             download_file(url, self.path[0])
 
         # Network
-        self.spatial_size = json.loads(self.conf.get("spatial_size", "[128, 128, 128]"))
+        self.spatial_size = json.loads(self.conf.get("spatial_size", "[96, 96, 96]"))
         # self.network = UNETR(
         #     spatial_dims=3,
         #     in_channels=self.number_intensity_ch,

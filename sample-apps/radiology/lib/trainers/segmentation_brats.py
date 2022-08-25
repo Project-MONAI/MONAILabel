@@ -11,6 +11,7 @@
 import logging
 
 import torch
+from lib.transforms.transforms_brats import MaskTumord
 from monai.apps.deepedit.transforms import NormalizeLabelsInDatasetd
 from monai.handlers import TensorBoardImageHandler, from_engine
 from monai.inferers import SlidingWindowInferer
@@ -22,6 +23,9 @@ from monai.transforms import (
     EnsureTyped,
     LoadImaged,
     NormalizeIntensityd,
+    RandGaussianSmoothd,
+    RandScaleIntensityd,
+    RandShiftIntensityd,
     RandSpatialCropd,
     SelectItemsd,
 )
@@ -60,10 +64,6 @@ class SegmentationBrats(BasicTrainTask):
         return DiceCELoss(
             to_onehot_y=True,
             softmax=True,
-            ce_weight=torch.tensor(
-                [0.9, 0.9, 0.9, 5.0, 0.9, 0.9, 0.9, 0.9, 0.9, 0.9],
-                device=context.device,
-            ),
         )
 
     def lr_scheduler_handler(self, context: Context):
@@ -75,17 +75,19 @@ class SegmentationBrats(BasicTrainTask):
     def train_pre_transforms(self, context: Context):
         return [
             LoadImaged(keys=("image", "label"), reader="ITKReader"),
+            MaskTumord(keys="image"),
             NormalizeLabelsInDatasetd(keys="label", label_names=self._labels),  # Specially for missing labels
             EnsureChannelFirstd(keys=("image", "label")),
+            # SaveImaged(keys="image", output_postfix="", output_dir="/home/andres/Downloads", separate_folder=False),
             NormalizeIntensityd(keys="image", nonzero=True, channel_wise=True),
             RandSpatialCropd(
                 keys=["image", "label"],
                 roi_size=[self.spatial_size[0], self.spatial_size[1], self.spatial_size[2]],
                 random_size=False,
             ),
-            # RandScaleIntensityd(keys="image", factors=0.1, prob=1.0),
-            # RandShiftIntensityd(keys="image", offsets=0.1, prob=0.5),
-            # RandGaussianSmoothd(keys="image", sigma_x=(0.25, 1.5), sigma_y=(0.25, 1.5), sigma_z=(0.25, 1.5), prob=0.5),
+            RandScaleIntensityd(keys="image", factors=0.1, prob=1.0),
+            RandShiftIntensityd(keys="image", offsets=0.1, prob=0.5),
+            RandGaussianSmoothd(keys="image", sigma_x=(0.25, 1.5), sigma_y=(0.25, 1.5), sigma_z=(0.25, 1.5), prob=0.5),
             EnsureTyped(keys=("image", "label"), device=context.device),
             SelectItemsd(keys=("image", "label")),
         ]
@@ -104,6 +106,7 @@ class SegmentationBrats(BasicTrainTask):
     def val_pre_transforms(self, context: Context):
         return [
             LoadImaged(keys=("image", "label"), reader="ITKReader"),
+            MaskTumord(keys="image"),
             EnsureChannelFirstd(keys=("image", "label")),
             NormalizeIntensityd(keys="image", nonzero=True, channel_wise=True),
             EnsureTyped(keys=("image", "label")),
@@ -112,7 +115,7 @@ class SegmentationBrats(BasicTrainTask):
 
     def val_inferer(self, context: Context):
         return SlidingWindowInferer(
-            roi_size=self.spatial_size, sw_batch_size=4, overlap=0.3, padding_mode="replicate", mode="gaussian"
+            roi_size=self.spatial_size, sw_batch_size=2, overlap=0.1, padding_mode="replicate", mode="gaussian"
         )
 
     def norm_labels(self):

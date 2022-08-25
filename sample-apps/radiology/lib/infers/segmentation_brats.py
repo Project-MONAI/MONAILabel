@@ -63,7 +63,7 @@ class SegmentationBrats(InferTask):
 
     def inferer(self, data=None) -> Inferer:
         return SlidingWindowInferer(
-            roi_size=self.spatial_size, sw_batch_size=4, overlap=0.3, padding_mode="replicate", mode="gaussian"
+            roi_size=self.spatial_size, sw_batch_size=2, overlap=0.1, padding_mode="replicate", mode="gaussian"
         )
 
     def inverse_transforms(self, data=None):
