@@ -108,7 +108,7 @@ jobs:
       - name: Build Package
         run: |
           ./runtests.sh --clean
-          python setup.py sdist bdist_wheel
+          BUILD_OHIF=true python setup.py sdist bdist_wheel
           ls -l dist
       - name: Verify Package
         run: |

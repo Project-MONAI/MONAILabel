@@ -22,12 +22,19 @@ OHIF will be accessible at http://127.0.0.1:8000/ohif/ when you start monailabel
 ## Development setup
 
 - Build the OHIF plugin for development:
-
-  `(cd plugins/ohif && ./build.sh)`
+  ```shell
+  sudo sh requirements.sh # installs yarn
+  sh build.sh
+  ```
 
 - Run App with Orthanc (DICOMWeb):
 
-  `monailabel start_server -a apps/radiology -s http://127.0.0.1:8042/dicom-web --conf models segmentation_spleen`
+  ```shell
+  monailabel start_server \
+    -a apps/radiology \
+    -s http://127.0.0.1:8042/dicom-web \
+    --conf models segmentation_spleen
+  ```
 
 - Access OHIF: http://127.0.0.1:8000/ohif/
 
