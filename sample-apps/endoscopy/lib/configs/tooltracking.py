@@ -8,6 +8,7 @@
 # WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 # See the License for the specific language governing permissions and
 # limitations under the License.
+
 import logging
 import os
 from distutils.util import strtobool
@@ -58,8 +59,10 @@ class ToolTracking(TaskConfig):
 
         # Others
         self.epistemic_enabled = strtobool(conf.get("epistemic_enabled", "false"))
-        self.epistemic_samples = int(conf.get("epistemic_samples", "5"))
-        logger.info(f"EPISTEMIC Enabled: {self.epistemic_enabled}; Samples: {self.epistemic_samples}")
+        self.epistemic_max_samples = int(conf.get("epistemic_max_samples", "0"))
+        self.epistemic_simulation_size = int(conf.get("epistemic_simulation_size", "5"))
+
+        logger.info(f"EPISTEMIC Enabled: {self.epistemic_enabled}; Samples: {self.epistemic_max_samples}")
 
     def infer(self) -> Union[InferTask, Dict[str, InferTask]]:
         task: InferTask = lib.infers.ToolTracking(
@@ -102,7 +105,7 @@ class ToolTracking(TaskConfig):
 
         if self.epistemic_enabled:
             methods[f"{self.name}_epistemic"] = CVATEpistemicScoring(
-                top_k=int(self.conf.get("cvat_top_k", "10")),
+                top_k=int(self.conf.get("epistemic_top_k", "10")),
                 infer_task=lib.infers.ToolTracking(
                     path=self.path,
                     network=self.network_with_dropout,
@@ -110,7 +113,8 @@ class ToolTracking(TaskConfig):
                     train_mode=True,
                     skip_writer=True,
                 ),
-                num_samples=self.epistemic_samples,
+                max_samples=self.epistemic_max_samples,
+                simulation_size=self.epistemic_simulation_size,
                 use_variance=True,
             )
         return methods

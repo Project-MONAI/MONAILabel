@@ -8,6 +8,7 @@
 # WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 # See the License for the specific language governing permissions and
 # limitations under the License.
+
 import logging
 import os
 from datetime import timedelta
@@ -185,8 +186,8 @@ class MyApp(MONAILabelApp):
             if isinstance(ds, CVATDatastore):
                 name = ds.download_from_cvat()
                 if name:
-                    models = self.conf.get("auto_finetune_models", "tooltracking")
-                    models = models.split(",")
+                    models = self.conf.get("auto_finetune_models")
+                    models = models.split(",") if models else models
                     logger.info(f"Trigger Training for model(s): {models}; Iteration Name: {name}")
                     self.async_training(model=models, params={"name": name})
             else:

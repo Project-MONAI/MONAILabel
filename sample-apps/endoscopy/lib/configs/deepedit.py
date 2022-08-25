@@ -16,11 +16,15 @@ from typing import Any, Dict, Optional, Union
 
 import lib.infers
 import lib.trainers
+from lib.scoring import CVATEpistemicScoring
 from monai.networks.nets import BasicUNet
 
 from monailabel.interfaces.config import TaskConfig
 from monailabel.interfaces.tasks.infer import InferTask
+from monailabel.interfaces.tasks.scoring import ScoringMethod
+from monailabel.interfaces.tasks.strategy import Strategy
 from monailabel.interfaces.tasks.train import TrainTask
+from monailabel.tasks.activelearning.epistemic import Epistemic
 from monailabel.utils.others.generic import download_file
 
 logger = logging.getLogger(__name__)
@@ -47,15 +51,18 @@ class DeepEdit(TaskConfig):
             download_file(url, self.path[0])
 
         # Network
-        self.network = BasicUNet(
-            spatial_dims=2,
-            in_channels=5,
-            out_channels=1,
-            features=(32, 64, 128, 256, 512, 32),
-        )
+        f = (32, 64, 128, 256, 512, 32)
+        self.network = BasicUNet(spatial_dims=2, in_channels=5, out_channels=1, features=f)
+        self.network_with_dropout = BasicUNet(spatial_dims=2, in_channels=5, out_channels=1, features=f, dropout=0.2)
 
         # others
         self.roi_size = (736, 480)
+        self.epistemic_enabled = bool(strtobool(conf.get("epistemic_enabled", "false")))
+        self.epistemic_enabled = self.epistemic_enabled if self.conf.get("models") == "deepedit" else False
+        self.epistemic_max_samples = int(conf.get("epistemic_max_samples", "0"))
+        self.epistemic_simulation_size = int(conf.get("epistemic_simulation_size", "5"))
+
+        logger.info(f"EPISTEMIC Enabled: {self.epistemic_enabled}; Samples: {self.epistemic_max_samples}")
 
     def infer(self) -> Union[InferTask, Dict[str, InferTask]]:
         task: InferTask = lib.infers.DeepEdit(
@@ -92,3 +99,29 @@ class DeepEdit(TaskConfig):
             },
         )
         return task
+
+    def strategy(self) -> Union[None, Strategy, Dict[str, Strategy]]:
+        strategies: Dict[str, Strategy] = {}
+        if self.epistemic_enabled:
+            strategies[f"{self.name}_epistemic"] = Epistemic()
+        return strategies
+
+    def scoring_method(self) -> Union[None, ScoringMethod, Dict[str, ScoringMethod]]:
+        methods: Dict[str, ScoringMethod] = {}
+
+        if self.epistemic_enabled:
+            methods[f"{self.name}_epistemic"] = CVATEpistemicScoring(
+                top_k=int(self.conf.get("epistemic_top_k", "10")),
+                infer_task=lib.infers.DeepEdit(
+                    path=self.path,
+                    network=self.network_with_dropout,
+                    labels=self.labels,
+                    roi_size=self.roi_size,
+                    train_mode=True,
+                    skip_writer=True,
+                ),
+                max_samples=self.epistemic_max_samples,
+                simulation_size=self.epistemic_simulation_size,
+                use_variance=True,
+            )
+        return methods
