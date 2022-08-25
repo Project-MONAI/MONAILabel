@@ -8,11 +8,13 @@
 # WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 # See the License for the specific language governing permissions and
 # limitations under the License.
+
 import logging
 from typing import Optional
 
-from monai.data import ImageReader
-from monai.transforms import LoadImaged
+from monai.config import KeysCollection
+from monai.data import ImageReader, MetaTensor
+from monai.transforms import LoadImaged, MapTransform
 
 logger = logging.getLogger(__name__)
 
@@ -35,9 +37,26 @@ class LoadImageExd(LoadImaged):
                 image_np = d[key]
                 meta_dict["spatial_shape"] = image_np.shape[:-1]  # type: ignore
                 meta_dict["original_channel_dim"] = -1  # type: ignore
+                meta_dict["original_affine"] = None  # type: ignore
+
+                d[key] = MetaTensor(image_np, meta=meta_dict)
                 continue
 
         if not ignore:
             d = super().__call__(d, reader)
 
+        return d
+
+
+class NormalizeLabeld(MapTransform):
+    def __init__(self, keys: KeysCollection, allow_missing_keys: bool = False, value=1) -> None:
+        super().__init__(keys, allow_missing_keys)
+        self.value = value
+
+    def __call__(self, data):
+        d = dict(data)
+        for key in self.keys:
+            label = d[key].array
+            label[label > 0] = self.value
+            d[key].array = label
         return d

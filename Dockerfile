@@ -14,7 +14,7 @@
 # to use different version of MONAI pass `--build-arg MONAI_IMAGE=...`
 # to exclude ORTHANC pass `--build-arg ORTHANC=false`
 
-ARG MONAI_IMAGE=projectmonai/monai:latest
+ARG MONAI_IMAGE=projectmonai/monai:0.9.1
 ARG ORTHANC=false
 
 FROM ${MONAI_IMAGE} as build
@@ -24,7 +24,7 @@ ADD . /opt/monailabel/
 RUN apt update -y && apt install openslide-tools npm -y && npm install --global yarn
 RUN python -m pip install --upgrade --no-cache-dir pip setuptools wheel twine \
     && cd /opt/monailabel \
-    && python setup.py sdist bdist_wheel --build-number $(date +'%Y%m%d%H%M')
+    && BUILD_OHIF=true python setup.py sdist bdist_wheel --build-number $(date +'%Y%m%d%H%M')
 
 FROM ${MONAI_IMAGE}
 LABEL maintainer="monai.contact@gmail.com"

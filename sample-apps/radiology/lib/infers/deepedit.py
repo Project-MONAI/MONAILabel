@@ -8,6 +8,7 @@
 # WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 # See the License for the specific language governing permissions and
 # limitations under the License.
+
 from typing import Callable, Sequence, Union
 
 from monai.apps.deepedit.transforms import (
@@ -77,6 +78,9 @@ class DeepEdit(InferTask):
             Orientationd(keys="image", axcodes="RAS"),
             ScaleIntensityRanged(keys="image", a_min=-175, a_max=250, b_min=0.0, b_max=1.0, clip=True),
         ]
+
+        self.add_cache_transform(t, data)
+
         if self.type == InferType.DEEPEDIT:
             t.extend(
                 [

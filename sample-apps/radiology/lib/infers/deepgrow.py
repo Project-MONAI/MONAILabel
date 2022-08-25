@@ -8,6 +8,7 @@
 # WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 # See the License for the specific language governing permissions and
 # limitations under the License.
+
 from typing import Callable, Sequence
 
 from monai.apps.deepgrow.transforms import (
@@ -72,8 +73,11 @@ class Deepgrow(InferTask):
             LoadImaged(keys="image"),
             AsChannelFirstd(keys="image"),
             Spacingd(keys="image", pixdim=[1.0] * self.dimension, mode="bilinear"),
-            AddGuidanceFromPointsd(ref_image="image", guidance="guidance", dimensions=self.dimension),
         ]
+
+        self.add_cache_transform(t, data)
+        t.append(AddGuidanceFromPointsd(ref_image="image", guidance="guidance", dimensions=self.dimension))
+
         if self.dimension == 2:
             t.append(Fetch2DSliced(keys="image", guidance="guidance"))
         t.extend(

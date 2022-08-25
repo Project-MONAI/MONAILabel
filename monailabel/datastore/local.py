@@ -8,6 +8,7 @@
 # WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 # See the License for the specific language governing permissions and
 # limitations under the License.
+
 import copy
 import fnmatch
 import io
@@ -243,7 +244,6 @@ class LocalDatastore(Datastore):
                 {
                     "image": os.path.realpath(os.path.join(image_path, self._filename(k, v.image.ext))),
                     "label": os.path.realpath(os.path.join(label_path, self._filename(k, v.labels[tag].ext))),
-                    "meta": {"image": v.image.info, "label": v.labels[tag].info},
                 }
             )
 

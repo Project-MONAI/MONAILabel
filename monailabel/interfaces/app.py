@@ -27,7 +27,7 @@ import requests
 import schedule
 import torch
 from dicomweb_client.session_utils import create_session_from_user_pass
-from monai.apps import download_and_extract, download_url, load_from_mmar
+from monai.apps import download_and_extract, download_url
 from monai.data import partition_dataset
 from timeloop import Timeloop
 
@@ -45,9 +45,6 @@ from monailabel.interfaces.tasks.strategy import Strategy
 from monailabel.interfaces.tasks.train import TrainTask
 from monailabel.interfaces.utils.wsi import create_infer_wsi_tasks
 from monailabel.tasks.activelearning.random import Random
-from monailabel.tasks.infer.deepgrow_2d import InferDeepgrow2D
-from monailabel.tasks.infer.deepgrow_3d import InferDeepgrow3D
-from monailabel.tasks.infer.deepgrow_pipeline import InferDeepgrowPipeline
 from monailabel.utils.async_tasks.task import AsyncTask
 from monailabel.utils.others.pathology import create_asap_annotations_xml, create_dsa_annotations_json
 from monailabel.utils.sessions import Sessions
@@ -512,8 +509,8 @@ class MONAILabelApp:
         if not model and not self._trainers:
             return {}
 
-        models = [model] if model else list(self._trainers.keys())
-        enqueue = True if model > 1 else enqueue
+        models = list(self._trainers.keys()) if not model else [model] if isinstance(model, str) else model
+        enqueue = True if len(models) > 1 else enqueue
         result = {}
         for m in models:
             if self._server_mode:
@@ -522,10 +519,10 @@ class MONAILabelApp:
                 res, _ = AsyncTask.run("train", request=request, params=params, enqueue=enqueue)
                 result[m] = res
             else:
-                url = f"/train/{model}?enqueue={enqueue}"
+                url = f"/train/{m}?enqueue={enqueue}"
                 p = params[m] if params and params.get(m) else None
                 result[m] = self._local_request(url, p, "Training")
-        return result[model] if model else result
+        return result[models[0]] if len(models) == 1 else result
 
     def async_batch_infer(self, model, images: BatchInferImageType, params=None):
         if self._server_mode:
@@ -591,27 +588,6 @@ class MONAILabelApp:
                 logger.info(f"Downloading resource: {resource[0]} from {resource[1]}")
                 download_url(resource[1], resource[0])
                 time.sleep(1)
-
-    @staticmethod
-    def deepgrow_infer_tasks(model_dir, pipeline=True):
-        """
-        Dictionary of Default Infer Tasks for Deepgrow 2D/3D
-        """
-        deepgrow_2d = load_from_mmar("clara_pt_deepgrow_2d_annotation", model_dir)
-        deepgrow_3d = load_from_mmar("clara_pt_deepgrow_3d_annotation", model_dir)
-
-        infers = {
-            "deepgrow_2d": InferDeepgrow2D(None, deepgrow_2d),
-            "deepgrow_3d": InferDeepgrow3D(None, deepgrow_3d),
-        }
-        if pipeline:
-            infers["deepgrow_pipeline"] = InferDeepgrowPipeline(
-                path=None,
-                network=deepgrow_2d,
-                model_3d=infers["deepgrow_3d"],
-                description="Combines Deepgrow 2D model and 3D deepgrow model",
-            )
-        return infers
 
     def infer_wsi(self, request, datastore=None):
         model = request.get("model")

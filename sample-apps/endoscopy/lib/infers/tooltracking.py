@@ -8,11 +8,11 @@
 # WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 # See the License for the specific language governing permissions and
 # limitations under the License.
+
 import logging
 from typing import Any, Callable, Dict, Sequence
 
 import numpy as np
-from lib.transforms import LoadImageExd
 from monai.inferers import Inferer, SimpleInferer
 from monai.transforms import (
     AsChannelFirstd,
@@ -22,12 +22,12 @@ from monai.transforms import (
     Resized,
     ScaleIntensityd,
     SqueezeDimd,
-    ToNumpyd,
     ToTensord,
 )
 
 from monailabel.interfaces.tasks.infer import InferTask, InferType
 from monailabel.transform.post import FindContoursd, Restored
+from monailabel.transform.pre import LoadImageExd
 from monailabel.transform.writer import PolygonWriter
 
 logger = logging.getLogger(__name__)
@@ -80,7 +80,6 @@ class ToolTracking(InferTask):
         return [
             EnsureTyped(keys="pred", device=data.get("device") if data else None),
             AsDiscreted(keys="pred", argmax=True),
-            ToNumpyd(keys="pred", dtype=np.uint8),
             Restored(keys="pred", ref_image="image"),
             SqueezeDimd(keys="pred", dim=0),
             FindContoursd(keys="pred", labels=self.labels),

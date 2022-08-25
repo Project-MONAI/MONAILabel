@@ -10,7 +10,7 @@
 # limitations under the License.
 
 from monai.config import KeysCollection
-from monai.handlers import MeanDice, from_engine
+from monai.handlers import MeanDice, RootMeanSquaredError, from_engine
 from monai.utils import ensure_tuple
 
 
@@ -46,3 +46,21 @@ def from_engine_idx(keys: KeysCollection, idx, first: bool = False):
             return _match(tuple(ret) if len(ret) > 1 else ret[0], idx)
 
     return _wrapper
+
+
+# For regression
+
+
+def region_wise_rmse(regions, metric, prefix, keys=("pred", "label")):
+
+    all_metrics = dict()
+    all_metrics[metric] = RootMeanSquaredError(output_transform=from_engine(keys))
+
+    if regions:
+        labels = regions if isinstance(regions, dict) else {name: idx for idx, name in enumerate(regions, start=1)}
+        for name, idx in labels.items():
+            all_metrics[f"{prefix}_{name}_rmse"] = RootMeanSquaredError(
+                reduction="mean",
+                output_transform=from_engine_idx(keys, idx),
+            )
+    return all_metrics

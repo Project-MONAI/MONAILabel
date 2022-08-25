@@ -1,3 +1,16 @@
+<!--
+Copyright (c) MONAI Consortium
+Licensed under the Apache License, Version 2.0 (the "License");
+you may not use this file except in compliance with the License.
+You may obtain a copy of the License at
+    http://www.apache.org/licenses/LICENSE-2.0
+Unless required by applicable law or agreed to in writing, software
+distributed under the License is distributed on an "AS IS" BASIS,
+WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+See the License for the specific language governing permissions and
+limitations under the License.
+-->
+
 ## MONAILabel Plugin for OHIF Viewer
 
 ![](Screenshots/1.png)
@@ -9,12 +22,19 @@ OHIF will be accessible at http://127.0.0.1:8000/ohif/ when you start monailabel
 ## Development setup
 
 - Build the OHIF plugin for development:
-
-  `(cd plugins/ohif && ./build.sh)`
+  ```shell
+  sudo sh requirements.sh # installs yarn
+  sh build.sh
+  ```
 
 - Run App with Orthanc (DICOMWeb):
 
-  `monailabel start_server -a apps/radiology -s http://127.0.0.1:8042/dicom-web --conf models segmentation_spleen`
+  ```shell
+  monailabel start_server \
+    -a apps/radiology \
+    -s http://127.0.0.1:8042/dicom-web \
+    --conf models segmentation_spleen
+  ```
 
 - Access OHIF: http://127.0.0.1:8000/ohif/
 

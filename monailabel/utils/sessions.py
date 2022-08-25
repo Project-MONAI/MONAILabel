@@ -54,6 +54,10 @@ class Sessions(dict):
     def remove_expired(self):
         count = 0
         current_ts = int(time.time())
+
+        if not os.path.isdir(self.store_path):
+            return count
+
         for item in os.listdir(self.store_path):
             if os.path.isdir(os.path.join(self.store_path, item)):
                 session_id = item
@@ -103,7 +107,7 @@ class Sessions(dict):
         path = os.path.join(self.store_path, session_id)
         shutil.rmtree(path, ignore_errors=True)
 
-    def add_session(self, data_file: str, expiry: int = 0, uncompress: bool = False):
+    def add_session(self, data_file: str, expiry: int = 0, uncompress: bool = False, session_id=None):
         start = time.time()
         logger.debug(f"Load Data from: {data_file}")
 
@@ -122,7 +126,7 @@ class Sessions(dict):
                 shutil.unpack_archive(data_file, tmp_folder)
                 image_path = tmp_folder
 
-        session_id = str(uuid.uuid1()).lower()
+        session_id = session_id if session_id else str(uuid.uuid1()).lower()
         path = os.path.join(self.store_path, session_id)
         expiry = expiry if expiry > 0 else self.expiry
 

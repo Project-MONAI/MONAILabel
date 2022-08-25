@@ -51,6 +51,12 @@ def get_basename(path):
     return tail or os.path.basename(head)
 
 
+def get_basename_no_ext(path):
+    p = get_basename(path)
+    e = file_ext(p)
+    return p.rstrip(e)
+
+
 def run_command(command, args=None, plogger=None):
     plogger = plogger if plogger else logger
     cmd = [command]
@@ -181,3 +187,19 @@ def device_list():
         devices.append(f"cuda:{i}")
 
     return devices
+
+
+def create_dataset_from_path(folder, images="images", labels="labels", img_ext=".jpg", lab_ext=".png"):
+    images = [i for i in os.listdir(os.path.join(folder, images)) if i.endswith(img_ext)]
+    images = sorted(os.path.join(folder, "images", i) for i in images)
+
+    labels = [i for i in os.listdir(os.path.join(folder, labels)) if i.endswith(lab_ext)]
+    labels = sorted(os.path.join(folder, "labels", i) for i in labels)
+
+    for i, l in zip(images, labels):
+        if get_basename_no_ext(i) != get_basename_no_ext(l):
+            logger.warning(f"NO MATCH: {i} => {l}")
+
+    return [
+        {"image": i, "label": l} for i, l in zip(images, labels) if get_basename_no_ext(i) == get_basename_no_ext(l)
+    ]

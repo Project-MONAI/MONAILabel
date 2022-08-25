@@ -8,6 +8,7 @@
 # WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 # See the License for the specific language governing permissions and
 # limitations under the License.
+
 import logging
 import os
 import time
@@ -99,10 +100,11 @@ def dicom_web_download_series(study_id, series_id, save_dir, client: DICOMwebCli
             )[0]
 
             file_name = os.path.join(save_dir, f"{instance_id}.dcm")
-            logger.info(f"++ Saved {file_name}")
+            logger.info(f"++ Saved {os.path.basename(file_name)}")
             d.save_as(file_name)
 
         meta_list = client.retrieve_series_metadata(study_id, series_id)
+        logger.info(f"++ Saving DCM into: {save_dir}")
         with ThreadPoolExecutor(max_workers=2, thread_name_prefix="DICOMFetch") as executor:
             executor.map(save_from_frame, meta_list)
 

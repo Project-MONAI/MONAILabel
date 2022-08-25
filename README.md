@@ -1,3 +1,16 @@
+<!--
+Copyright (c) MONAI Consortium
+Licensed under the Apache License, Version 2.0 (the "License");
+you may not use this file except in compliance with the License.
+You may obtain a copy of the License at
+    http://www.apache.org/licenses/LICENSE-2.0
+Unless required by applicable law or agreed to in writing, software
+distributed under the License is distributed on an "AS IS" BASIS,
+WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+See the License for the specific language governing permissions and
+limitations under the License.
+-->
+
 # MONAI Label
 
 [![License](https://img.shields.io/badge/license-Apache%202.0-green.svg)](https://opensource.org/licenses/Apache-2.0)
@@ -104,12 +117,19 @@ to the [installation guide](https://docs.monai.io/projects/label/en/latest/insta
 HTTP protocol.** _You can provide ssl arguments to run server in **HTTPS mode** but this functionality is not fully
 verified across all clients._
 
+
+### Optional Dependencies
+Following are the optional dependencies which can help you to accelerate some GPU based transforms from MONAI.
+These dependencies are by-default available if you are using `projectmonai/monailabel` docker.
+- [CUCIM](https://pypi.org/project/cucim/)
+- [CUPY](https://docs.cupy.dev/en/stable/install.html#installing-cupy)
+
 ## Plugins
 
 ### [3D Slicer](https://download.slicer.org/) (radiology)
 
-Download **Preview Release** from https://download.slicer.org/ and install MONAI Label plugin from Slicer Extension
-Manager.
+Download and install 3D Slicer with the [installation page](https://docs.monai.io/projects/label/en/latest/installation.html).
+Install MONAI Label plugin from Slicer Extension Manager.
 
 Refer [3D Slicer plugin](https://github.com/Project-MONAI/MONAILabel/tree/main/plugins/slicer) for other options to
 install and run MONAI Label plugin in 3D Slicer.

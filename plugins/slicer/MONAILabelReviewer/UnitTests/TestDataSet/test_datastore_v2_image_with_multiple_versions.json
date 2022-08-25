@@ -1,0 +1,204 @@
+{
+    "image": {
+      "ext": ".dcm",
+      "info": {
+        "ts": 1640005767,
+        "checksum": "SHA256:a48c454592a36c1d2895322320e5ab5479eb5e93d9d4f3e16825625033875d6f",
+        "name": "lan.dcm",
+        "strategy": {
+          "annotate": {
+            "ts": 1641142367,
+            "client_id": "user-xyz"
+          }
+        },
+        "segmentationMeta": {
+          "status": "approved",
+          "approvedBy": "",
+          "level": "medium",
+          "comment": "",
+          "editTime": 1641142567
+        }
+      }
+    },
+    "labels": {
+      "final": {
+        "ext": ".nrrd",
+        "info": {
+          "label_info": [
+            {
+              "name": "Lung",
+              "idx": 1
+            },
+            {
+              "name": "Heart",
+              "idx": 2
+            },
+            {
+              "name": "Trachea",
+              "idx": 3
+            },
+            {
+              "name": "Mediastinum",
+              "idx": 4
+            },
+            {
+              "name": "Clavicle",
+              "idx": 5
+            }
+          ],
+          "client_id": "user-xyz",
+          "ts": 1641142448,
+          "checksum": "SHA256:46f01fd17dbe3e812e03ca3495b0282e90c7224d02ec85e63e9b5b4da83ba5af",
+          "name": "lan.nrrd",
+          "segmentationMeta": {
+            "status": "self.status_final",
+            "approvedBy": "self.approvedBy_final",
+            "level": "self.level_final",
+            "comment": "self.comment_final",
+            "editTime": 1656312100
+          }
+        }
+      },
+      "version_1": {
+        "ext": ".nrrd",
+        "info": {
+          "label_info": [
+            {
+              "name": "Lung",
+              "idx": 1
+            },
+            {
+              "name": "Heart",
+              "idx": 2
+            },
+            {
+              "name": "Trachea",
+              "idx": 3
+            },
+            {
+              "name": "Mediastinum",
+              "idx": 4
+            },
+            {
+              "name": "Clavicle",
+              "idx": 5
+            }
+          ],
+          "segmentationMeta": {
+            "status": "self.status_1",
+            "approvedBy": "self.approvedBy_1",
+            "level": "self.level_1",
+            "comment": "self.comment_1",
+            "editTime": 1656312180
+          },
+          "ts": 1656312180,
+          "checksum": "SHA256:6abdbcacccd5dabaeaf1c933802b6964c4a021a04d56cbe1a342cc04d6049cb5",
+          "name": "lan.nrrd"
+        }
+      },
+      "version_2": {
+        "ext": ".nrrd",
+        "info": {
+          "label_info": [
+            {
+              "name": "Lung",
+              "idx": 1
+            },
+            {
+              "name": "Heart",
+              "idx": 2
+            },
+            {
+              "name": "Trachea",
+              "idx": 3
+            },
+            {
+              "name": "Mediastinum",
+              "idx": 4
+            },
+            {
+              "name": "Clavicle",
+              "idx": 5
+            }
+          ],
+          "ts": 1656312196,
+          "checksum": "SHA256:6abdbcacccd5dabaeaf1c933802b6964c4a021a04d56cbe1a342cc04d6049cb5",
+          "name": "lan.nrrd"
+        }
+      },
+      "version_3": {
+        "ext": ".nrrd",
+        "info": {
+          "label_info": [
+            {
+              "name": "Lung",
+              "idx": 1
+            },
+            {
+              "name": "Heart",
+              "idx": 2
+            },
+            {
+              "name": "Trachea",
+              "idx": 3
+            },
+            {
+              "name": "Mediastinum",
+              "idx": 4
+            },
+            {
+              "name": "Clavicle",
+              "idx": 5
+            }
+          ],
+          "segmentationMeta": {
+            "status": "self.status_3",
+            "approvedBy": "self.approvedBy_3",
+            "level": "self.level_3",
+            "comment": "self.comment_3",
+            "editTime": 1656312200
+          },
+          "ts": 1656312200,
+          "checksum": "SHA256:6abdbcacccd5dabaeaf1c933802b6964c4a021a04d56cbe1a342cc04d6049cb5",
+          "name": "lan.nrrd"
+        }
+      },
+      "version_4": {
+        "ext": ".nrrd",
+        "info": {
+          "label_info": [
+            {
+              "name": "Lung",
+              "idx": 1
+            },
+            {
+              "name": "Heart",
+              "idx": 2
+            },
+            {
+              "name": "Trachea",
+              "idx": 3
+            },
+            {
+              "name": "Mediastinum",
+              "idx": 4
+            },
+            {
+              "name": "Clavicle",
+              "idx": 5
+            }
+          ],
+          "segmentationMeta": {
+            "status": "approved",
+            "approvedBy": "self.approvedBy_4",
+            "level": "self.level_4",
+            "comment": "self.comment_4",
+            "editTime": 1656312200
+          },
+          "ts": 1656312200,
+          "checksum": "SHA256:6abdbcacccd5dabaeaf1c933802b6964c4a021a04d56cbe1a342cc04d6049cb5",
+          "name": "lan.nrrd"
+        }
+      }
+    }
+  }
