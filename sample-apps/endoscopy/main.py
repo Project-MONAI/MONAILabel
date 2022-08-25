@@ -224,6 +224,7 @@ def main():
         level=logging.INFO,
         format="[%(asctime)s] [%(process)s] [%(threadName)s] [%(levelname)s] (%(name)s:%(lineno)d) - %(message)s",
         datefmt="%Y-%m-%d %H:%M:%S",
+        force=True,
     )
 
     home = str(Path.home())
@@ -238,9 +239,9 @@ def main():
     app_dir = os.path.dirname(__file__)
     studies = args.studies
 
-    app = MyApp(app_dir, studies, {"preload": "false", "models": "deepedit"})
+    app = MyApp(app_dir, studies, {"preload": "false", "models": "tooltracking"})
     logger.info(app.datastore().status())
-    infer_deepedit(app)
+    infer_tooltracking(app)
 
 
 def randamize_ds(train_datalist, val_datalist):
@@ -360,7 +361,7 @@ def infer_tooltracking(app):
     res = app.infer(
         request={
             "model": "tooltracking",
-            "image": "Video_9_ch1_video_01_Trim_00-00_f2340",
+            "image": "Video_8_2020_01_13_Video2_Trim_01-25_f10200",
             "output": "asap",
             # 'result_extension': '.png',
         }
@@ -368,7 +369,7 @@ def infer_tooltracking(app):
 
     # print(json.dumps(res, indent=2))
     home = str(Path.home())
-    shutil.move(res["label"], f"{home}/Dataset/Holoscan/output_image.xml")
+    shutil.move(res["label"], f"{home}/Dataset/output_image.xml")
     logger.info("All Done!")
 
 
