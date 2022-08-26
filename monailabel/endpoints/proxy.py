@@ -11,6 +11,8 @@
 
 import logging
 
+import google.auth
+import google.auth.transport.requests
 import httpx
 from fastapi import APIRouter, Depends
 from fastapi.responses import Response
@@ -25,6 +27,16 @@ router = APIRouter(
     tags=["Others"],
     responses={404: {"description": "Not found"}},
 )
+
+
+class Google_auth(httpx.Auth):
+    def __init__(self, token):
+        self.token = token
+
+    def auth_flow(self, request):
+        # Send the request, with a custom `Authorization` header.
+        request.headers["Authorization"] = "Bearer %s" % self.token
+        yield request
 
 
 async def proxy_dicom(op: str, path: str, response: Response):
@@ -73,3 +85,35 @@ async def proxy_qido(path: str, response: Response, user: User = Depends(get_bas
 @router.get("/dicom/stow/{path:path}", include_in_schema=False)
 async def proxy_stow(path: str, response: Response, user: User = Depends(get_basic_user)):
     return await proxy_dicom("stow", path, response)
+
+
+@router.get("/dicom/{path:path}", include_in_schema=False)
+async def proxy(path: str, response: Response, user: User = Depends(get_basic_user)):
+    auth = (
+        (settings.MONAI_LABEL_DICOMWEB_USERNAME, settings.MONAI_LABEL_DICOMWEB_PASSWORD)
+        if settings.MONAI_LABEL_DICOMWEB_USERNAME and settings.MONAI_LABEL_DICOMWEB_PASSWORD
+        else None
+    )
+
+    if "googleapis.com" in settings.MONAI_LABEL_STUDIES:
+        google_credentials, _ = google.auth.default(scopes=["https://www.googleapis.com/auth/cloud-platform"])
+        auth_req = google.auth.transport.requests.Request()
+        google_credentials.refresh(auth_req)
+        token = google_credentials.token
+        auth = Google_auth(token)
+
+    async with httpx.AsyncClient(auth=auth) as client:
+        server = f"{settings.MONAI_LABEL_STUDIES.rstrip('/')}"
+        # Assuming all prefix QIDO/WADO/STOW are same (proxy requests to support OHIF viewer)
+        if settings.MONAI_LABEL_WADO_PREFIX:
+            proxy_path = f"{server}/{settings.MONAI_LABEL_WADO_PREFIX}/{path}"
+        else:
+            proxy_path = f"{server}/{path}"
+
+        logger.debug(f"Proxy connecting to {proxy_path}")
+
+        proxy = await client.get(proxy_path)
+
+    response.body = proxy.content
+    response.status_code = proxy.status_code
+    return response
