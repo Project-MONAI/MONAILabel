@@ -22,8 +22,9 @@ from monai.transforms import (
     GaussianSmoothd,
     KeepLargestConnectedComponentd,
     LoadImaged,
-    NormalizeIntensityd,
     ScaleIntensityd,
+    ScaleIntensityRanged,
+    Spacingd,
 )
 
 from monailabel.interfaces.tasks.infer import InferTask, InferType
@@ -72,15 +73,17 @@ class LocalizationVertebra(InferTask):
                 keys=("image", "first_stage_pred"), device=data.get("device") if data else None, allow_missing_keys=True
             ),
             EnsureChannelFirstd(keys=("image", "first_stage_pred"), allow_missing_keys=True),
+            Spacingd(keys="image", pixdim=self.target_spacing),
             CropForegroundd(keys=("image", "first_stage_pred"), source_key="image", margin=10, allow_missing_keys=True),
-            NormalizeIntensityd(keys="image", nonzero=True),
-            GaussianSmoothd(keys="image", sigma=0.75),
+            # NormalizeIntensityd(keys="image", nonzero=True),
+            ScaleIntensityRanged(keys="image", a_min=-1000, a_max=1900, b_min=0.0, b_max=1.0, clip=True),
+            GaussianSmoothd(keys="image", sigma=0.4),
             ScaleIntensityd(keys="image", minv=-1.0, maxv=1.0),
         ]
 
     def inferer(self, data=None) -> Inferer:
         return SlidingWindowInferer(
-            roi_size=self.roi_size, sw_batch_size=4, overlap=0.4, padding_mode="replicate", mode="gaussian"
+            roi_size=self.roi_size, sw_batch_size=2, overlap=0.4, padding_mode="replicate", mode="gaussian"
         )
 
     def post_transforms(self, data=None) -> Sequence[Callable]:

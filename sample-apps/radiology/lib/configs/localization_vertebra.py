@@ -69,17 +69,17 @@ class LocalizationVertebra(TaskConfig):
             url = f"{self.conf.get('pretrained_path', self.PRE_TRAINED_PATH)}/localization_vertebra_unet.pt"
             download_file(url, self.path[0])
 
-        self.target_spacing = (4.0, 4.0, 4.0)  # target space for image - NOT IN USE
+        self.target_spacing = (1.3, 1.3, 1.3)  # target space for image
         # Setting ROI size - This is for the image padding
-        self.roi_size = (96, 96, 128)
+        self.roi_size = (96, 96, 96)
 
         # Network
         self.network = UNet(
             spatial_dims=3,
             in_channels=1,
             out_channels=len(self.labels) + 1,  # labels plus background,
-            channels=(16, 32, 64, 128, 256),
-            strides=(2, 2, 2, 2),
+            channels=(16, 32, 64, 128),
+            strides=(2, 2, 2),
             num_res_units=2,
             dropout=0.2,
         )
@@ -92,7 +92,7 @@ class LocalizationVertebra(TaskConfig):
             target_spacing=self.target_spacing,
             labels=self.labels,
             preload=strtobool(self.conf.get("preload", "false")),
-            config={"largest_cc": True, "result_mask": False},
+            config={"largest_cc": True, "result_mask": True},
         )
         return task
 

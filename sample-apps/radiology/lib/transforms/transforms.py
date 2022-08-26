@@ -380,7 +380,7 @@ class VertebraLocalizationSegmentation(MapTransform):
             for indices in np.where(label == seg_class):
                 # most_indices = np.percentile(indices, 60).astype(int).tolist()
                 # centre.append(most_indices)
-                avg_indices = np.average(indices).astype(int)
+                avg_indices = np.average(indices).astype(int).tolist()
                 centre.append(avg_indices)
             if len(indices) < 1000:
                 continue

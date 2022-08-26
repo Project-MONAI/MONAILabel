@@ -24,10 +24,11 @@ from monai.transforms import (
     EnsureTyped,
     GaussianSmoothd,
     LoadImaged,
-    NormalizeIntensityd,
     RandSpatialCropd,
     ScaleIntensityd,
+    ScaleIntensityRanged,
     SelectItemsd,
+    Spacingd,
 )
 
 from monailabel.tasks.train.basic_train import BasicTrainTask, Context
@@ -74,13 +75,16 @@ class LocalizationVertebra(BasicTrainTask):
             NormalizeLabelsInDatasetd(keys="label", label_names=self._labels),  # Specially for missing labels
             EnsureChannelFirstd(keys=("image", "label")),
             EnsureTyped(keys=("image", "label"), device=context.device),
+            Spacingd(keys=("image", "label"), pixdim=self.target_spacing, mode=("bilinear", "nearest")),
+            ScaleIntensityRanged(keys="image", a_min=-1000, a_max=1900, b_min=0.0, b_max=1.0, clip=True),
             CropForegroundd(
                 keys=("image", "label"),
                 source_key="image",
+                margin=10,
                 k_divisible=[self.roi_size[0], self.roi_size[1], self.roi_size[2]],
             ),
-            NormalizeIntensityd(keys="image", nonzero=True),
-            GaussianSmoothd(keys="image", sigma=0.75),
+            # NormalizeIntensityd(keys="image", nonzero=True),
+            GaussianSmoothd(keys="image", sigma=0.4),
             ScaleIntensityd(keys="image", minv=-1.0, maxv=1.0),
             RandSpatialCropd(
                 keys=["image", "label"],
@@ -107,12 +111,15 @@ class LocalizationVertebra(BasicTrainTask):
             NormalizeLabelsInDatasetd(keys="label", label_names=self._labels),  # Specially for missing labels
             EnsureTyped(keys=("image", "label")),
             EnsureChannelFirstd(keys=("image", "label")),
-            NormalizeIntensityd(keys="image", nonzero=True),
-            GaussianSmoothd(keys="image", sigma=0.75),
+            Spacingd(keys=("image", "label"), pixdim=self.target_spacing, mode=("bilinear", "nearest")),
+            # NormalizeIntensityd(keys="image", nonzero=True),
+            ScaleIntensityRanged(keys="image", a_min=-1000, a_max=1900, b_min=0.0, b_max=1.0, clip=True),
+            GaussianSmoothd(keys="image", sigma=0.4),
             ScaleIntensityd(keys="image", minv=-1.0, maxv=1.0),
             CropForegroundd(
                 keys=("image", "label"),
                 source_key="image",
+                margin=10,
                 k_divisible=[self.roi_size[0], self.roi_size[1], self.roi_size[2]],
             ),
             SelectItemsd(keys=("image", "label")),
@@ -120,7 +127,7 @@ class LocalizationVertebra(BasicTrainTask):
 
     def val_inferer(self, context: Context):
         return SlidingWindowInferer(
-            roi_size=self.roi_size, sw_batch_size=4, overlap=0.4, padding_mode="replicate", mode="gaussian"
+            roi_size=self.roi_size, sw_batch_size=2, overlap=0.4, padding_mode="replicate", mode="gaussian"
         )
 
     def norm_labels(self):
