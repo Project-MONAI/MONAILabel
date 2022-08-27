@@ -239,9 +239,9 @@ def main():
     app_dir = os.path.dirname(__file__)
     studies = args.studies
 
-    app = MyApp(app_dir, studies, {"preload": "false", "models": "tooltracking"})
+    app = MyApp(app_dir, studies, {"preload": "false", "models": "deid"})
     logger.info(app.datastore().status())
-    infer_tooltracking(app)
+    infer_deid(app)
 
 
 def randamize_ds(train_datalist, val_datalist):
@@ -371,6 +371,19 @@ def infer_tooltracking(app):
     home = str(Path.home())
     shutil.move(res["label"], f"{home}/Dataset/output_image.xml")
     logger.info("All Done!")
+
+
+def infer_deid(app):
+    import json
+
+    res = app.infer(
+        request={
+            "model": "deid",
+            "image": "Video_8_2020_01_13_Video2_Trim_01-25_f10200",
+        }
+    )
+
+    print(json.dumps(res, indent=2))
 
 
 if __name__ == "__main__":
