@@ -11,6 +11,7 @@
 import logging
 
 import torch
+from lib.transforms.transforms_brats import AddUnknownLabeld
 from monai.apps.deepedit.transforms import NormalizeLabelsInDatasetd
 from monai.handlers import TensorBoardImageHandler, from_engine
 from monai.inferers import SlidingWindowInferer
@@ -75,10 +76,12 @@ class SegmentationBrats(BasicTrainTask):
         return [
             LoadImaged(keys=("image", "label"), reader="ITKReader"),
             # MaskTumord(keys="image"),
+            AddUnknownLabeld(keys="label", max_labels=len(self._labels)),
             NormalizeLabelsInDatasetd(keys="label", label_names=self._labels),  # Specially for missing labels
             EnsureChannelFirstd(keys=("image", "label")),
-            # SaveImaged(keys="image", output_postfix="", output_dir="/home/andres/Downloads", separate_folder=False),
-            NormalizeIntensityd(keys="image", nonzero=True, channel_wise=True),
+            # SaveImaged(keys="label", output_postfix="", output_dir="/home/andres/Downloads", separate_folder=False),
+            # NormalizeIntensityd(keys="image", nonzero=True, channel_wise=True),
+            NormalizeIntensityd(keys="image"),
             RandSpatialCropd(
                 keys=["image", "label"],
                 roi_size=[self.spatial_size[0], self.spatial_size[1], self.spatial_size[2]],
@@ -106,8 +109,10 @@ class SegmentationBrats(BasicTrainTask):
         return [
             LoadImaged(keys=("image", "label"), reader="ITKReader"),
             # MaskTumord(keys="image"),
+            AddUnknownLabeld(keys="label", max_labels=len(self._labels)),
             EnsureChannelFirstd(keys=("image", "label")),
-            NormalizeIntensityd(keys="image", nonzero=True, channel_wise=True),
+            # NormalizeIntensityd(keys="image", nonzero=True, channel_wise=True),
+            NormalizeIntensityd(keys="image"),
             EnsureTyped(keys=("image", "label")),
             SelectItemsd(keys=("image", "label")),
         ]

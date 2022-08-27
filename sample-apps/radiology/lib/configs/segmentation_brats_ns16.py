@@ -48,6 +48,7 @@ class SegmentationBrats(TaskConfig):
             "Ventral diencephalon": 14,
             "Brain tumor + necrotic": 15,
             "Edema": 16,
+            "unknown label": 17,
         }
 
         # Number of input channels - 4 for BRATS and 1 for spleen
@@ -99,7 +100,6 @@ class SegmentationBrats(TaskConfig):
             strides=(2, 2, 2, 2),
             num_res_units=2,
             dropout=0.2,
-            norm="batch",
         )
 
     def infer(self) -> Union[InferTask, Dict[str, InferTask]]:

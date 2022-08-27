@@ -11,6 +11,7 @@
 import copy
 from typing import Dict
 
+from monai.config import KeysCollection
 from monai.transforms import MapTransform
 
 
@@ -60,4 +61,31 @@ class MaskTumord(MapTransform):
                     d[key][..., i] = d[key][..., i] * mask_tumor_edema
             else:
                 d[key] = d[key] * mask_tumor_edema
+        return d
+
+
+class AddUnknownLabeld(MapTransform):
+    def __init__(self, keys: KeysCollection, max_labels=None, allow_missing_keys: bool = False):
+        """
+        Assign unknown label to intensities bigger than 0 - background is anything else
+
+        Args:
+            keys: The ``keys`` parameter will be used to get and set the actual data item to transform
+            label_names: all label names
+        """
+        super().__init__(keys, allow_missing_keys)
+
+        self.max_labels = max_labels
+
+    def __call__(self, data):
+        d: Dict = dict(data)
+        for key in self.key_iterator(d):
+            unknown_mask = copy.deepcopy(d["image"][..., 0])
+            unknown_mask[unknown_mask > 0] = 1
+            mask_all_labels = copy.deepcopy(d[key])
+            mask_all_labels[mask_all_labels > 0] = 1
+            unknown_mask = unknown_mask - mask_all_labels
+            unknown_mask[unknown_mask < 0] = 0
+            unknown_mask[unknown_mask == 1] = self.max_labels
+            d[key] = d[key] + unknown_mask
         return d
