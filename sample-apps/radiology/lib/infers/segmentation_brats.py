@@ -57,8 +57,7 @@ class SegmentationBrats(InferTask):
         return [
             LoadImaged(keys="image", reader="ITKReader"),
             EnsureChannelFirstd(keys="image"),
-            # NormalizeIntensityd(keys="image", nonzero=True, channel_wise=True),
-            NormalizeIntensityd(keys="image"),
+            NormalizeIntensityd(keys="image", nonzero=True, channel_wise=True),
             EnsureTyped(keys="image"),
         ]
 

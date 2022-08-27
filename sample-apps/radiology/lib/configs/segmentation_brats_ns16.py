@@ -30,7 +30,28 @@ class SegmentationBrats(TaskConfig):
     def init(self, name: str, model_dir: str, conf: Dict[str, str], planner: Any, **kwargs):
         super().init(name, model_dir, conf, planner, **kwargs)
 
-        # Labels
+        # Labels that works when using keep largest connected components transform
+        # self.labels = {
+        #     "Cerebral white matter": 1,
+        #     "Cerebral cortex": 2,
+        #     "Ventricles": 3,
+        #     "Cerebellum white matter": 4,
+        #     "Cerebellum cortex": 5,
+        #     # "Thalamus": 6,
+        #     # "Caudate": 7,
+        #     "Thalamus + Caudate": 6,
+        #     # "Putamen": 8,
+        #     # "Pallidum": 9,
+        #     "Putamen + Pallidum": 8,
+        #     "Brain-stem": 10,
+        #     "Hippocampus": 11,
+        #     "Amygdala": 12,
+        #     "Accumbens area": 13,
+        #     "Ventral diencephalon": 14,
+        #     "Brain tumor + necrotic": 15,
+        #     "Edema": 16,
+        #     "unknown label": 17,
+        # }
         self.labels = {
             "Cerebral white matter": 1,
             "Cerebral cortex": 2,

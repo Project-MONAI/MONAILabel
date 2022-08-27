@@ -64,6 +64,24 @@ class MaskTumord(MapTransform):
         return d
 
 
+class MergeLabelsd(MapTransform):
+    """
+    Merge conflicting labels into single one
+
+    """
+
+    def __call__(self, data):
+        d: Dict = dict(data)
+        for key in self.key_iterator(d):
+            merged_labels = copy.deepcopy(d[key])
+            merged_labels[merged_labels == 6] = 6  # Thalamus
+            merged_labels[merged_labels == 7] = 6  # Caudate
+            merged_labels[merged_labels == 8] = 8  # Putamen
+            merged_labels[merged_labels == 9] = 8  # Pallidum
+            d[key] = merged_labels
+        return d
+
+
 class AddUnknownLabeld(MapTransform):
     def __init__(self, keys: KeysCollection, max_labels=None, allow_missing_keys: bool = False):
         """
