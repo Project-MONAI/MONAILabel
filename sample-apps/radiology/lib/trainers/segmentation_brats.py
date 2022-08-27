@@ -75,8 +75,6 @@ class SegmentationBrats(BasicTrainTask):
     def train_pre_transforms(self, context: Context):
         return [
             LoadImaged(keys=("image", "label"), reader="ITKReader"),
-            # MaskTumord(keys="image"),
-            # MergeLabelsd(keys="label"),
             AddUnknownLabeld(keys="label", max_labels=self._labels[max(self._labels, key=self._labels.get)]),
             NormalizeLabelsInDatasetd(keys="label", label_names=self._labels),  # Specially for missing labels
             EnsureChannelFirstd(keys=("image", "label")),
@@ -108,8 +106,6 @@ class SegmentationBrats(BasicTrainTask):
     def val_pre_transforms(self, context: Context):
         return [
             LoadImaged(keys=("image", "label"), reader="ITKReader"),
-            # MaskTumord(keys="image"),
-            # MergeLabelsd(keys="label"),
             AddUnknownLabeld(keys="label", max_labels=self._labels[max(self._labels, key=self._labels.get)]),
             NormalizeLabelsInDatasetd(keys="label", label_names=self._labels),  # Specially for missing labels
             EnsureChannelFirstd(keys=("image", "label")),
