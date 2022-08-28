@@ -12,7 +12,7 @@
 from typing import Callable, Sequence
 
 from lib.transforms.transforms import AddROIThirdStage, PlaceCroppedAread
-from monai.inferers import Inferer, SlidingWindowInferer
+from monai.inferers import Inferer, SimpleInferer
 from monai.transforms import (
     Activationsd,
     AsDiscreted,
@@ -66,9 +66,7 @@ class SegmentationVertebra(InferTask):
         ]
 
     def inferer(self, data=None) -> Inferer:
-        return SlidingWindowInferer(
-            roi_size=self.roi_size, sw_batch_size=8, overlap=0.5, padding_mode="replicate", mode="gaussian"
-        )
+        return SimpleInferer()
 
     def post_transforms(self, data=None) -> Sequence[Callable]:
         largest_cc = False if not data else data.get("largest_cc", False)

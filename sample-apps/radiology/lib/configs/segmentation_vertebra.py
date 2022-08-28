@@ -32,7 +32,6 @@ class SegmentationVertebra(TaskConfig):
 
         # Labels
         self.labels = {
-            # "vertebra": 1,
             "C1": 1,
             "C2": 2,
             "C3": 3,
@@ -72,7 +71,7 @@ class SegmentationVertebra(TaskConfig):
 
         self.target_spacing = (1.0, 1.0, 1.0)  # target space for image
         # cropped region covering vertebra
-        self.roi_size = (32, 32, 32)
+        self.roi_size = (96, 96, 96)
 
         # Network
         self.network = UNet(
