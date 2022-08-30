@@ -51,7 +51,8 @@ class EpistemicScoring(ScoringMethod):
             else Compose(self.transforms)
         )
         # data = run_transforms(data, pre_transforms, log_prefix="EPISTEMIC-PRE") if pre_transforms else data
-        data = pre_transforms(data)
+        if pre_transforms:
+            data = pre_transforms(data)
 
         with torch.no_grad():
             preds = sliding_window_inference(

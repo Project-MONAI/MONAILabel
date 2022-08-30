@@ -191,7 +191,7 @@ class Main:
 
     def _action_xyz(self, args, name, title, exclude, ignore):
         xyz_dir = self._get_installed_dir(args.prefix, name)
-        exclude = (exclude) if isinstance(exclude, str) else exclude
+        exclude = [exclude] if isinstance(exclude, str) else exclude
 
         xyz = os.listdir(xyz_dir)
         xyz = [os.path.basename(a) for a in xyz if os.path.isdir(os.path.join(xyz_dir, a))]

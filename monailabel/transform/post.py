@@ -275,6 +275,7 @@ class MergeAllPreds(MapTransform):
 
     def __call__(self, data: Mapping[Hashable, NdarrayOrTensor]):
         d: Dict = dict(data)
+        merge_image = None
         for idx, key in enumerate(self.key_iterator(d)):
             if idx == 0:
                 merge_image = d[key]
