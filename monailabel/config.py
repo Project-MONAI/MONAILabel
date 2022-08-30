@@ -51,7 +51,6 @@ class Settings(BaseSettings):
     MONAI_LABEL_DICOMWEB_CACHE_EXPIRY: int = 180
     MONAI_LABEL_DICOMWEB_READ_TIMEOUT = 5.0
 
-
     MONAI_LABEL_DATASTORE_AUTO_RELOAD: bool = True
     MONAI_LABEL_DATASTORE_FILE_EXT: List[str] = [
         "*.nii.gz",
