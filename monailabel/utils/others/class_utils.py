@@ -102,7 +102,7 @@ def get_class_info(exp, handle_bool=True):
     class_args = exp[exp.find("(") + 1 : -1] if exp.find("(") >= 0 else None
 
     logger.debug(f"Eval Input:: {class_path} => {class_args}")
-    class_args = eval("foo(" + class_args + ")")
+    class_args = eval("foo(" + class_args + ")") if class_args else None
 
     logger.debug(f"{class_path} => {class_args}")
     return class_path, class_args
