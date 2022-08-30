@@ -90,7 +90,7 @@ export default class OptionTable extends BaseTab {
     const training = this.state.training;
     console.debug('Current training status: ' + training);
     const config = this.props.onOptionsConfig();
-    const params = config && config.train && config.train ? config.train : {};
+    const params = config && config.train ? config.train : {};
 
     const response = training
       ? await this.props.client().stop_train()
