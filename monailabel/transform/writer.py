@@ -243,9 +243,15 @@ class ClassificationWriter:
         self.label_names = label_names
 
     def __call__(self, data):
+        logger.info(data[self.label].array)
+
         result = []
-        for label in data[self.label]:
-            result.append(self.label_names[int(label)])
+        for idx, score in enumerate(data[self.label]):
+            name = f"label_{idx}"
+            name = self.label_names.get(idx) if self.label_names else name
+            if name:
+                result.append({"idx": idx, "label": name, "score": float(score)})
+
         return None, {"prediction": result}
 
 
