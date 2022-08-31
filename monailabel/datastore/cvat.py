@@ -92,7 +92,7 @@ class CVATDatastore(LocalDatastore):
             logger.info(project)
             project_id = project["id"]
 
-        logger.info(f"Using Project ID: {project_id}")
+        logger.debug(f"Using Project ID: {project_id}")
         return project_id
 
     def get_cvat_task_id(self, project_id, create):
@@ -122,7 +122,7 @@ class CVATDatastore(LocalDatastore):
             logger.debug(task)
             task_id = task["id"]
 
-        logger.info(f"Using Task ID: {task_id}; Task Name: {task_name}")
+        logger.debug(f"Using Task ID: {task_id}; Task Name: {task_name}")
         return task_id, task_name
 
     def task_status(self):

@@ -62,7 +62,7 @@ class CVATEpistemicScoring(EpistemicScoring):
             status = datastore.task_status()
             logger.info(f"Existing Task Status: {status}; Scoring/Result: {res}")
 
-            if res and (status is None or res.get("executed")):
+            if status is None and res and res.get("executed"):
                 logger.info(f"Creating new CVAT Task for top-k {self.top_k} samples")
                 top_k = self.get_top_k(datastore)
                 logger.info(f"{self.key_output_entropy}: Top-N: {list(top_k.keys())}")

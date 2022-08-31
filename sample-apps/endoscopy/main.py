@@ -91,6 +91,7 @@ class MyApp(MONAILabelApp):
             description="DeepLearning models for endoscopy",
             version=monailabel.__version__,
         )
+        self.downloading = False
 
     def init_datastore(self) -> Datastore:
         if settings.MONAI_LABEL_DATASTORE_URL and settings.MONAI_LABEL_DATASTORE.lower() == "cvat":
@@ -182,16 +183,23 @@ class MyApp(MONAILabelApp):
 
         # Check for CVAT Task if complete and trigger training
         def update_model():
-            ds = self.datastore()
-            if isinstance(ds, CVATDatastore):
-                name = ds.download_from_cvat()
-                if name:
-                    models = self.conf.get("auto_finetune_models")
-                    models = models.split(",") if models else models
-                    logger.info(f"Trigger Training for model(s): {models}; Iteration Name: {name}")
-                    self.async_training(model=models, params={"name": name})
-            else:
-                logger.info("Nothing to update;  No new labels downloaded/refreshed from CVAT")
+            if self.downloading:
+                return
+
+            try:
+                self.downloading = True
+                ds = self.datastore()
+                if isinstance(ds, CVATDatastore):
+                    name = ds.download_from_cvat()
+                    if name:
+                        models = self.conf.get("auto_finetune_models")
+                        models = models.split(",") if models else models
+                        logger.info(f"Trigger Training for model(s): {models}; Iteration Name: {name}")
+                        self.async_training(model=models, params={"name": name})
+                else:
+                    logger.info("Nothing to update;  No new labels downloaded/refreshed from CVAT")
+            finally:
+                self.downloading = False
 
         time_loop = Timeloop()
         interval_in_sec = int(self.conf.get("auto_finetune_check_interval", "60"))
