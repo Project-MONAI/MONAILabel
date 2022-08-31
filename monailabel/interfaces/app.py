@@ -26,9 +26,7 @@ from typing import Any, Callable, Dict, Optional, Sequence, Union
 import requests
 import schedule
 import torch
-
 # added to support connecting to DICOM Store Google Cloud
-from dicomweb_client.api import DICOMwebClient
 from dicomweb_client.ext.gcp.session_utils import create_session_from_gcp_credentials
 from dicomweb_client.session_utils import create_session_from_user_pass
 from monai.apps import download_and_extract, download_url
@@ -147,24 +145,23 @@ class MONAILabelApp:
 
     def _init_dicomweb_datastore(self) -> Datastore:
         logger.info(f"Using DICOM WEB: {self.studies}")
+
         dw_session = None
-        if settings.MONAI_LABEL_DICOMWEB_USERNAME and settings.MONAI_LABEL_DICOMWEB_PASSWORD:
+        if "googleapis.com" in self.studies:
+            logger.info("Creating DICOM Credentials for Google Cloud")
+            dw_session = create_session_from_gcp_credentials()
+        elif settings.MONAI_LABEL_DICOMWEB_USERNAME and settings.MONAI_LABEL_DICOMWEB_PASSWORD:
             dw_session = create_session_from_user_pass(
                 settings.MONAI_LABEL_DICOMWEB_USERNAME, settings.MONAI_LABEL_DICOMWEB_PASSWORD
             )
 
-        if "googleapis.com" in self.studies:
-            logger.info("Creating DICOM Credentials for Google Cloud")
-            dw_session = create_session_from_gcp_credentials()
-            dw_client = DICOMwebClient(url=self.studies, session=dw_session)
-        else:
-            dw_client = DICOMwebClientX(
-                url=self.studies,
-                session=dw_session,
-                qido_url_prefix=settings.MONAI_LABEL_QIDO_PREFIX,
-                wado_url_prefix=settings.MONAI_LABEL_WADO_PREFIX,
-                stow_url_prefix=settings.MONAI_LABEL_STOW_PREFIX,
-            )
+        dw_client = DICOMwebClientX(
+            url=self.studies,
+            session=dw_session,
+            qido_url_prefix=settings.MONAI_LABEL_QIDO_PREFIX,
+            wado_url_prefix=settings.MONAI_LABEL_WADO_PREFIX,
+            stow_url_prefix=settings.MONAI_LABEL_STOW_PREFIX,
+        )
 
         self._download_dcmqi_tools()
 
