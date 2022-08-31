@@ -127,7 +127,7 @@ class EpistemicScoring(ScoringMethod):
         image_ids = image_ids[:max_samples] if max_samples else image_ids
 
         max_workers = request.get("max_workers", 2)
-        multi_gpu = request.get("multi_gpu", True)
+        multi_gpu = request.get("multi_gpu", False)
         multi_gpus = request.get("gpus", "all")
         gpus = (
             list(range(torch.cuda.device_count())) if not multi_gpus or multi_gpus == "all" else multi_gpus.split(",")

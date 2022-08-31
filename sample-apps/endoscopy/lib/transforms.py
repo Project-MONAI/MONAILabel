@@ -9,6 +9,17 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-from .deepedit import DeepEdit
-from .deid import DeID
-from .tooltracking import ToolTracking
+import logging
+
+from monai.transforms import MapTransform
+
+logger = logging.getLogger(__name__)
+
+
+class LabelToBinaryClassd(MapTransform):
+    def __call__(self, data):
+        d = dict(data)
+        for key in self.keys:
+            label = int((d[key].array > 0).any())
+            d[key] = label
+        return d

@@ -462,7 +462,7 @@ class MONAILabelWidget(ScriptedLoadableModuleWidget, VTKObservationMixin):
             if not train_stats:
                 return
 
-            train_stats = next(iter(train_stats.values())) if train_stats else train_stats
+            train_stats = next(iter(train_stats.values()))
 
             current = 0 if train_stats.get("total_time") else train_stats.get("epoch", 1)
             total = train_stats.get("total_epochs", 1)
