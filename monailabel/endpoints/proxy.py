@@ -40,18 +40,17 @@ class Google_auth(httpx.Auth):
 
 
 async def proxy_dicom(op: str, path: str, response: Response):
+    auth = (
+        (settings.MONAI_LABEL_DICOMWEB_USERNAME, settings.MONAI_LABEL_DICOMWEB_PASSWORD)
+        if settings.MONAI_LABEL_DICOMWEB_USERNAME and settings.MONAI_LABEL_DICOMWEB_PASSWORD
+        else None
+    )
     if "googleapis.com" in settings.MONAI_LABEL_STUDIES:
         google_credentials, _ = google.auth.default(scopes=["https://www.googleapis.com/auth/cloud-platform"])
         auth_req = google.auth.transport.requests.Request()
         google_credentials.refresh(auth_req)
         token = google_credentials.token
         auth = Google_auth(token)
-    else:
-        auth = (
-            (settings.MONAI_LABEL_DICOMWEB_USERNAME, settings.MONAI_LABEL_DICOMWEB_PASSWORD)
-            if settings.MONAI_LABEL_DICOMWEB_USERNAME and settings.MONAI_LABEL_DICOMWEB_PASSWORD
-            else None
-        )
 
     async with httpx.AsyncClient(auth=auth) as client:
         server = f"{settings.MONAI_LABEL_STUDIES.rstrip('/')}"
