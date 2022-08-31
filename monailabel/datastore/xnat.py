@@ -34,7 +34,7 @@ class XNATDatastore(Datastore):
         self.api_url = api_url
         self.xnat_session = requests.sessions.session()
         self.auth = HTTPBasicAuth(username, password) if username else None
-        self.xnat_csrf = ''
+        self.xnat_csrf = ""
         self._login_xnat()
 
         self.projects = project.split(",") if project else []
@@ -277,13 +277,10 @@ class XNATDatastore(Datastore):
             logger.error("XNAT:: Could not get XNAT CSRF token")
             raise Exception("Could not get XNAT CSRF token")
         content = csrf_response.content
-        self.xnat_csrf = content.decode('utf-8').strip().split('=')[1]
+        self.xnat_csrf = content.decode("utf-8").strip().split("=")[1]
 
         # Log in to XNAT
-        url = "{}/data/JSESSION?XNAT_CSRF={}".format(
-            self.api_url,
-            self.xnat_csrf
-        )
+        url = f"{self.api_url}/data/JSESSION?XNAT_CSRF={self.xnat_csrf}"
         login_response = self.xnat_session.post(url, auth=self.auth, allow_redirects=True)
         if not login_response.ok:
             logger.error("XNAT:: Could not log in to XNAT")
@@ -293,6 +290,7 @@ class XNATDatastore(Datastore):
 
     def _request_get(self, url):
         return self.xnat_session.get(url, allow_redirects=True)
+
 
 def main():
     from monai.transforms import LoadImage
