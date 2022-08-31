@@ -107,7 +107,6 @@ class AddGuidanceSignald(MapTransform):
 
     def signal(self, shape, points):
         signal = np.zeros(shape, dtype=np.float32)
-        assert 1 < len(signal) < 4
         flag = False
         for p in points:
             if np.any(np.asarray(p) < 0):

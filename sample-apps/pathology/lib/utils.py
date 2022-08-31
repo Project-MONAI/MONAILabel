@@ -263,7 +263,7 @@ def _to_roi(points, max_region, polygons, annotation_id):
         logger.warning(f"Reducing Region to Max-Width; w: {w}; max_w: {max_region[0]}")
         w = max_region[0]
     if h > max_region[1]:
-        logger.warning(f"Reducing Region to Max-Height; h: {w}; max_h: {max_region[1]}")
+        logger.warning(f"Reducing Region to Max-Height; h: {h}; max_h: {max_region[1]}")
         h = max_region[1]
     return x, y, w, h
 

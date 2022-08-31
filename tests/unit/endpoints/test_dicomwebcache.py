@@ -29,7 +29,7 @@ def search_for_series(data_dir, **kwargs):
         search_filters = kwargs["search_filters"]
 
     modality = "CT"
-    if "Modality" in search_filters:
+    if search_filters and "Modality" in search_filters:
         modality = search_filters["Modality"]
 
     response_dir = os.path.join(data_dir, "responses")
