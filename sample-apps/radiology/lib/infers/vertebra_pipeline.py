@@ -203,6 +203,7 @@ class InferVertebraPipeline(InferTask):
         for centroid in result_json_second_stage["centroids"]:
             third_stage_request["centroids"] = [centroid]
             # TO DO:
+            # 0/ Remove the infer.py class for segmentation vertebra and use this instead?
             # 1/ Remove the AsDiscrete transform in third stage infer so we get pre-activation outputs
             # 2/ Don't load the volume everytime this performs inference
             result_file, result_json_third_stage = self.model_segmentation_vertebra(third_stage_request)

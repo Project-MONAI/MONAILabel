@@ -15,7 +15,7 @@ from typing import Dict, Hashable, Mapping
 import numpy as np
 import torch
 from monai.config import KeysCollection, NdarrayOrTensor
-from monai.transforms import CropForeground, GaussianSmooth, Randomizable, ScaleIntensity, SpatialCrop
+from monai.transforms import CropForeground, GaussianSmooth, Randomizable, Resize, ScaleIntensity, SpatialCrop
 from monai.transforms.transform import MapTransform
 
 logger = logging.getLogger(__name__)
@@ -249,15 +249,15 @@ class PlaceCroppedAread(MapTransform):
             final_pred = np.zeros(
                 (1, d["original_size"][-3], d["original_size"][-2], d["original_size"][-1]), dtype=np.float32
             )
-            if key == "pred":
-                #  Here we need to undo/invert the resize to d["pred"] #
-                final_pred[
-                    :,
-                    d["slices_cropped"][-3][0] : d["slices_cropped"][-3][1],
-                    d["slices_cropped"][-2][0] : d["slices_cropped"][-2][1],
-                    d["slices_cropped"][-1][0] : d["slices_cropped"][-1][1],
-                ] = d["pred"]
-                d["pred"] = final_pred * int(d["current_label"])
+            #  Undo/invert the resize of d["pred"] #
+            d["pred"] = Resize(spatial_size=d["cropped_size"], mode="nearest")(d["pred"])
+            final_pred[
+                :,
+                d["slices_cropped"][-3][0] : d["slices_cropped"][-3][1],
+                d["slices_cropped"][-2][0] : d["slices_cropped"][-2][1],
+                d["slices_cropped"][-1][0] : d["slices_cropped"][-1][1],
+            ] = d["pred"]
+            d["pred"] = final_pred * int(d["current_label"])
         return d
 
 
@@ -424,12 +424,10 @@ class CropAndCreateSignald(MapTransform):
     def __call__(self, data: Mapping[Hashable, np.ndarray]) -> Dict[Hashable, np.ndarray]:
         d: Dict = dict(data)
         for key in self.key_iterator(d):
+
             ###########
             # Crop the image
             ###########
-
-            d["original_size"] = d[key].shape[-3], d[key].shape[-2], d[key].shape[-1]
-
             d["current_label"] = list(d["centroids"][0].values())[0][-4]
 
             X, Y, Z, = (
@@ -439,7 +437,7 @@ class CropAndCreateSignald(MapTransform):
             )
             centroid = [X, Y, Z]
             # Cropping
-            cropper = SpatialCrop(roi_center=centroid, roi_size=(128, 128, 128))
+            cropper = SpatialCrop(roi_center=centroid, roi_size=(96, 96, 64))
 
             slices_cropped = [
                 [cropper.slices[-3].start, cropper.slices[-3].stop],
@@ -448,6 +446,7 @@ class CropAndCreateSignald(MapTransform):
             ]
             d["slices_cropped"] = slices_cropped
             d[key] = cropper(d[key])
+            d["cropped_size"] = d[key].shape[1:]
 
             #################################
             # Create signal based on centroid
@@ -455,24 +454,31 @@ class CropAndCreateSignald(MapTransform):
             signal = np.zeros(
                 (1, d["original_size"][-3], d["original_size"][-2], d["original_size"][-1]), dtype=np.float32
             )
-            X, Y, Z = (
-                list(d["centroids"][0].values())[0][-3],
-                list(d["centroids"][0].values())[0][-2],
-                list(d["centroids"][0].values())[0][-1],
-            )
             signal[:, X, Y, Z] = 1.0
-
             sigma = 1.6 + (d["current_label"] - 1.0) * 0.1
             signal = GaussianSmooth(sigma)(signal)
-            signal = signal[
-                :,
-                cropper.slices[-3].start : cropper.slices[-3].stop,
-                cropper.slices[-2].start : cropper.slices[-2].stop,
-                cropper.slices[-1].start : cropper.slices[-1].stop,
-            ]
-
+            signal = cropper(signal)
             d[self.signal_key] = signal
 
+        return d
+
+
+class GetOriginalInformation(MapTransform):
+    def __init__(
+        self,
+        keys: KeysCollection,
+        allow_missing_keys: bool = False,
+    ):
+        """
+        Get information from original image
+
+        """
+        super().__init__(keys, allow_missing_keys)
+
+    def __call__(self, data: Mapping[Hashable, np.ndarray]) -> Dict[Hashable, np.ndarray]:
+        d: Dict = dict(data)
+        for key in self.key_iterator(d):
+            d["original_size"] = d[key].shape[-3], d[key].shape[-2], d[key].shape[-1]
         return d
 
 

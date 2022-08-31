@@ -11,7 +11,7 @@
 
 from typing import Callable, Sequence
 
-from lib.transforms.transforms import ConcatenateROId, CropAndCreateSignald, PlaceCroppedAread
+from lib.transforms.transforms import ConcatenateROId, CropAndCreateSignald, GetOriginalInformation, PlaceCroppedAread
 from monai.inferers import Inferer, SimpleInferer
 from monai.transforms import (
     Activationsd,
@@ -65,6 +65,7 @@ class SegmentationVertebra(InferTask):
             EnsureChannelFirstd(keys="image"),
             # NormalizeIntensityd(keys="image", divisor=2048.0),
             # to make sure the target size is same as train
+            GetOriginalInformation(keys="image"),
             Spacingd(keys="image", pixdim=self.target_spacing, mode="bilinear"),
             ScaleIntensityRanged(keys="image", a_min=-1000, a_max=1900, b_min=0.0, b_max=1.0, clip=True),
             GaussianSmoothd(keys="image", sigma=0.4),
@@ -78,10 +79,6 @@ class SegmentationVertebra(InferTask):
 
     def inferer(self, data=None) -> Inferer:
         return SimpleInferer()
-
-    # SHOULD WE DO THIS? HOW TO RESIZE THE PREDICTION?
-    # def inverse_transforms(self, data=None) -> Union[None, Sequence[Callable]]:
-    #     return []  # Self-determine from the list of pre-transforms provided
 
     def post_transforms(self, data=None) -> Sequence[Callable]:
         largest_cc = False if not data else data.get("largest_cc", False)
