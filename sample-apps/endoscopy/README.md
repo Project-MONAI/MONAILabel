@@ -32,6 +32,12 @@ The App works best with [CVAT](https://github.com/opencv/cvat). Researchers/clin
    - Project: **MONAILABEL**,  Task: **ActiveLearning_Iteration_2**
 9. Cycle (Step 3 to Step 8) continues until you get some good enough model
 
+Following is the summary of Active Learning workflow tests carried over roughly 4k samples.
+> Using Active Learning strategy there is a big potential to reduce the number of annoations needed to train a good model.  The following table says, only 15% samples are good to label/annotate out of 4K unlabeled data to train a better model.
+
+![image](https://user-images.githubusercontent.com/7339051/187589950-17c4476c-21d5-4ca5-a2f1-86681b667bfb.png)
+
+
 > Publishing new fine-tuned model back to CVAT is not automated yet.  It will continue using pre-trained model.  Work is in progress...
 
 ![image](../../docs/images/cvat_active_learning.jpeg)
