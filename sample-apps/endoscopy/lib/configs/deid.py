@@ -16,7 +16,7 @@ from typing import Any, Dict, Optional, Union
 
 import lib.infers
 import lib.trainers
-from lib.scoring.cvat import CVATEpistemicScoring
+from lib.scoring.cvat import CVATRandomScoring
 from monai.networks.nets import SEResNet50
 
 from monailabel.interfaces.config import TaskConfig
@@ -35,10 +35,7 @@ class DeID(TaskConfig):
         super().init(name, model_dir, conf, planner, **kwargs)
 
         # Labels
-        self.labels = {
-            "in": 0,
-            "out": 1,
-        }
+        self.labels = {"Tool": 0}
 
         # Model Files
         self.path = [
@@ -56,7 +53,8 @@ class DeID(TaskConfig):
         self.network_with_dropout = SEResNet50(spatial_dims=2, in_channels=3, num_classes=2, dropout_prob=0.2)
 
         # Others
-        self.epistemic_enabled = strtobool(conf.get("epistemic_enabled", "false"))
+        self.epistemic_enabled = bool(strtobool(conf.get("epistemic_enabled", "false")))
+        self.epistemic_enabled = self.epistemic_enabled if self.conf.get("models") == "deid" else False
         self.epistemic_max_samples = int(conf.get("epistemic_max_samples", "0"))
         self.epistemic_simulation_size = int(conf.get("epistemic_simulation_size", "5"))
 
@@ -99,17 +97,7 @@ class DeID(TaskConfig):
         methods: Dict[str, ScoringMethod] = {}
 
         if self.epistemic_enabled:
-            methods[f"{self.name}_epistemic"] = CVATEpistemicScoring(
-                top_k=int(self.conf.get("epistemic_top_k", "10")),
-                infer_task=lib.infers.ToolTracking(
-                    path=self.path,
-                    network=self.network_with_dropout,
-                    labels=self.labels,
-                    train_mode=True,
-                    skip_writer=True,
-                ),
-                max_samples=self.epistemic_max_samples,
-                simulation_size=self.epistemic_simulation_size,
-                use_variance=True,
+            methods[f"{self.name}_epistemic"] = CVATRandomScoring(
+                top_k=int(self.conf.get("epistemic_top_k", "10")), function="monailabel.endoscopy.deid"
             )
         return methods

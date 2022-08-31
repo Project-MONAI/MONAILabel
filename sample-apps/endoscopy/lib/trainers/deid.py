@@ -11,15 +11,17 @@
 
 import logging
 
+import numpy as np
 import torch
 from ignite.metrics import Accuracy
+from lib.transforms import LabelToBinaryClassd
 from monai.handlers import from_engine
 from monai.inferers import SimpleInferer
 from monai.transforms import (
-    AddChanneld,
     AsChannelFirstd,
     AsDiscreted,
     CastToTyped,
+    EnsureTyped,
     LoadImaged,
     NormalizeIntensityd,
     RandFlipd,
@@ -30,7 +32,6 @@ from monai.transforms import (
     Resized,
     ToTensord,
 )
-from torch.nn import CrossEntropyLoss
 
 from monailabel.tasks.train.basic_train import BasicTrainTask, Context
 
@@ -57,17 +58,18 @@ class DeID(BasicTrainTask):
         return torch.optim.Adam(context.network.parameters(), 0.001)
 
     def loss_function(self, context: Context):
-        return CrossEntropyLoss(reduction="sum")
+        return torch.nn.CrossEntropyLoss(reduction="sum")
 
     def train_pre_transforms(self, context: Context):
         return [
-            LoadImaged(keys="image"),
+            LoadImaged(keys=("image", "label"), dtype=np.uint8),
+            LabelToBinaryClassd(keys="label"),
             ToTensord(keys=("image", "label")),
             AsChannelFirstd("image"),
-            AddChanneld(keys="label"),
             Resized(keys="image", spatial_size=(256, 256), mode="bilinear"),
             CastToTyped(keys="image", dtype=torch.float32),
             NormalizeIntensityd(keys="image", nonzero=True, channel_wise=True),
+            EnsureTyped(keys="image"),
             RandRotated(keys="image", range_x=0.3, prob=0.5, mode="bilinear"),
             RandScaleIntensityd(keys="image", factors=0.3, prob=0.5),
             RandShiftIntensityd(keys="image", offsets=0.1, prob=0.5),
@@ -81,13 +83,14 @@ class DeID(BasicTrainTask):
 
     def val_pre_transforms(self, context: Context):
         return [
-            LoadImaged(keys="image"),
+            LoadImaged(keys=("image", "label"), dtype=np.uint8),
+            LabelToBinaryClassd(keys="label"),
             ToTensord(keys=("image", "label")),
             AsChannelFirstd("image"),
-            AddChanneld(keys="label"),
             Resized(keys="image", spatial_size=(256, 256), mode="bilinear"),
             CastToTyped(keys="image", dtype=torch.float32),
             NormalizeIntensityd(keys="image", nonzero=True, channel_wise=True),
+            EnsureTyped(keys="image"),
         ]
 
     def val_inferer(self, context: Context):

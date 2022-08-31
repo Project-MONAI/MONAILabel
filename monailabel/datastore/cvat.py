@@ -41,7 +41,12 @@ class CVATDatastore(LocalDatastore):
         normalize_label=True,
         **kwargs,
     ):
-        labels = labels if labels else [{"name": "Tool", "attributes": [], "color": "#66ff66"}]
+        default_labels = [
+            {"name": "Tool", "attributes": [], "color": "#66ff66"},
+            {"name": "InBody", "attributes": [], "color": "#ff0000"},
+            {"name": "OutBody", "attributes": [], "color": "#0000ff"},
+        ]
+        labels = labels if labels else default_labels
         labels = json.loads(labels) if isinstance(labels, str) else self.json()
 
         self.api_url = api_url.rstrip("/").strip()
@@ -143,6 +148,15 @@ class CVATDatastore(LocalDatastore):
         r = requests.post(f"{self.api_url}/api/tasks/{task_id}/data", files=file_list, auth=self.auth).json()
         logger.info(r)
 
+    def trigger_automation(self, function):
+        project_id = self.get_cvat_project_id(create=False)
+        if project_id is not None:
+            task_id, _ = self.get_cvat_task_id(project_id, create=False)
+            if task_id is not None:
+                body = {"cleanup": True, "task": task_id, "function": function}
+                r = requests.post(f"{self.api_url}/api/lambda/requests?org=", json=body, auth=self.auth).json()
+                logger.info(r)
+
     def download_from_cvat(self, max_retry_count=5, retry_wait_time=10):
         if self.task_status() != "completed":
             logger.info("No Tasks exists with completed status to refresh/download the final labels")
@@ -187,7 +201,8 @@ class CVATDatastore(LocalDatastore):
                 requests.patch(patch_url, allow_redirects=True, auth=self.auth, json=body)
                 return task_name
             except Exception as e:
-                logger.exception(e)
+                if retry_count:
+                    logger.exception(e)
                 logger.error(f"{retry} => Failed to download...")
             retry_count = retry_count + 1
         return None

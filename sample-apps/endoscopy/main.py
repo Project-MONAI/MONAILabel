@@ -379,11 +379,27 @@ def infer_deid(app):
     res = app.infer(
         request={
             "model": "deid",
-            "image": "Video_8_2020_01_13_Video2_Trim_01-25_f10200",
+            "image": "Video_8_2020_01_13_Video2_Trim_01-25_f26100",
         }
     )
 
     print(json.dumps(res, indent=2))
+
+
+def train_deid(app):
+    res = app.train(
+        request={
+            "model": "deid",
+            "max_epochs": 10,
+            "dataset": "Dataset",  # PersistentDataset, CacheDataset
+            "train_batch_size": 1,
+            "val_batch_size": 1,
+            "multi_gpu": False,
+            "val_split": 0.1,
+        }
+    )
+    print(res)
+    logger.info("All Done!")
 
 
 if __name__ == "__main__":

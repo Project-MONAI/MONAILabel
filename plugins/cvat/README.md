@@ -17,17 +17,19 @@ limitations under the License.
 
 Install CVAT and enable Semi-Automatic and Automatic Annotation
 
-- https://cvat-ai.github.io/cvat/docs/administration/basics/installation/
-- https://cvat-ai.github.io/cvat/docs/administration/advanced/installation_automatic_annotation/
+- https://opencv.github.io/cvat/docs/administration/basics/installation/
+- https://opencv.github.io/cvat/docs/administration/advanced/installation_automatic_annotation/
 
 > #### Reference Guide for installing CVAT
 
 ```bash
 git clone https://github.com/opencv/cvat
 cd cvat
+git checkout v2.1.0
 
 # use real-ip instead of localhost if you want to share it on network
 export CVAT_HOST=127.0.0.1
+export CVAT_VERSION=v2.1.0
 
 docker-compose -f docker-compose.yml -f components/serverless/docker-compose.serverless.yml up -d
 docker exec -it cvat bash -ic 'python3 ~/manage.py createsuperuser'
