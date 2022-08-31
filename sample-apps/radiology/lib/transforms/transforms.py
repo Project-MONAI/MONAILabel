@@ -250,6 +250,7 @@ class PlaceCroppedAread(MapTransform):
                 (1, d["original_size"][-3], d["original_size"][-2], d["original_size"][-1]), dtype=np.float32
             )
             if key == "pred":
+                #  Here we need to undo/invert the resize to d["pred"] #
                 final_pred[
                     :,
                     d["slices_cropped"][-3][0] : d["slices_cropped"][-3][1],

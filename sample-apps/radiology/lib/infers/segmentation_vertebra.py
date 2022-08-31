@@ -9,7 +9,7 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-from typing import Callable, Sequence, Union
+from typing import Callable, Sequence
 
 from lib.transforms.transforms import ConcatenateROId, CropAndCreateSignald, PlaceCroppedAread
 from monai.inferers import Inferer, SimpleInferer
@@ -80,8 +80,8 @@ class SegmentationVertebra(InferTask):
         return SimpleInferer()
 
     # SHOULD WE DO THIS? HOW TO RESIZE THE PREDICTION?
-    def inverse_transforms(self, data=None) -> Union[None, Sequence[Callable]]:
-        return []  # Self-determine from the list of pre-transforms provided
+    # def inverse_transforms(self, data=None) -> Union[None, Sequence[Callable]]:
+    #     return []  # Self-determine from the list of pre-transforms provided
 
     def post_transforms(self, data=None) -> Sequence[Callable]:
         largest_cc = False if not data else data.get("largest_cc", False)
