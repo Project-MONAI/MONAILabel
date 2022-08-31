@@ -32,7 +32,11 @@ xnat_ns = {"xnat": "http://nrg.wustl.edu/xnat"}
 class XNATDatastore(Datastore):
     def __init__(self, api_url, username=None, password=None, project=None, asset_path="", cache_path=""):
         self.api_url = api_url
+        self.xnat_session = requests.sessions.session()
         self.auth = HTTPBasicAuth(username, password) if username else None
+        self.xnat_csrf = ""
+        self._login_xnat()
+
         self.projects = project.split(",") if project else []
         self.projects = {p.strip() for p in self.projects}
         self.asset_path = asset_path
@@ -263,8 +267,29 @@ class XNATDatastore(Datastore):
         scan = fields[3]
         return project, subject, experiment, scan
 
+    def _login_xnat(self):
+        # Get CSRF token
+        url = "{}/data/JSESSION?CSRF=true".format(
+            self.api_url,
+        )
+        csrf_response = self._request_get(url)
+        if not csrf_response.ok:
+            logger.error("XNAT:: Could not get XNAT CSRF token")
+            raise Exception("Could not get XNAT CSRF token")
+        content = csrf_response.content
+        self.xnat_csrf = content.decode("utf-8").strip().split("=")[1]
+
+        # Log in to XNAT
+        url = f"{self.api_url}/data/JSESSION?XNAT_CSRF={self.xnat_csrf}"
+        login_response = self.xnat_session.post(url, auth=self.auth, allow_redirects=True)
+        if not login_response.ok:
+            logger.error("XNAT:: Could not log in to XNAT")
+            raise Exception("Could not log in to XNAT")
+
+        logger.info("XNAT:: Logged in XNAT")
+
     def _request_get(self, url):
-        return requests.get(url, auth=self.auth, allow_redirects=True)
+        return self.xnat_session.get(url, allow_redirects=True)
 
 
 def main():
