@@ -11,6 +11,8 @@
 
 import logging
 
+import google.auth
+import google.auth.transport.requests
 import httpx
 from fastapi import APIRouter, Depends
 from fastapi.responses import Response
@@ -27,12 +29,28 @@ router = APIRouter(
 )
 
 
+class Google_auth(httpx.Auth):
+    def __init__(self, token):
+        self.token = token
+
+    def auth_flow(self, request):
+        # Send the request, with a custom `Authorization` header.
+        request.headers["Authorization"] = "Bearer %s" % self.token
+        yield request
+
+
 async def proxy_dicom(op: str, path: str, response: Response):
     auth = (
         (settings.MONAI_LABEL_DICOMWEB_USERNAME, settings.MONAI_LABEL_DICOMWEB_PASSWORD)
         if settings.MONAI_LABEL_DICOMWEB_USERNAME and settings.MONAI_LABEL_DICOMWEB_PASSWORD
         else None
     )
+    if "googleapis.com" in settings.MONAI_LABEL_STUDIES:
+        google_credentials, _ = google.auth.default(scopes=["https://www.googleapis.com/auth/cloud-platform"])
+        auth_req = google.auth.transport.requests.Request()
+        google_credentials.refresh(auth_req)
+        token = google_credentials.token
+        auth = Google_auth(token)
 
     async with httpx.AsyncClient(auth=auth) as client:
         server = f"{settings.MONAI_LABEL_STUDIES.rstrip('/')}"
@@ -56,6 +74,7 @@ async def proxy_dicom(op: str, path: str, response: Response):
         logger.debug(f"Proxy connecting to /dicom/{op}/{path} => {proxy_path}")
         timeout = httpx.Timeout(5.0, read=settings.MONAI_LABEL_DICOMWEB_READ_TIMEOUT)
         proxy = await client.get(proxy_path, timeout=timeout)
+
     response.body = proxy.content
     response.status_code = proxy.status_code
     return response
