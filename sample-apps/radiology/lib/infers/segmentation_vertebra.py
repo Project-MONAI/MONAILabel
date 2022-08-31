@@ -9,18 +9,22 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-from typing import Callable, Sequence
+from typing import Callable, Sequence, Union
 
-from lib.transforms.transforms import AddROIThirdStage, PlaceCroppedAread
+from lib.transforms.transforms import ConcatenateROId, CropAndCreateSignald, PlaceCroppedAread
 from monai.inferers import Inferer, SimpleInferer
 from monai.transforms import (
     Activationsd,
     AsDiscreted,
     EnsureChannelFirstd,
     EnsureTyped,
+    GaussianSmoothd,
     KeepLargestConnectedComponentd,
     LoadImaged,
-    NormalizeIntensityd,
+    Resized,
+    ScaleIntensityd,
+    ScaleIntensityRanged,
+    Spacingd,
     ToNumpyd,
 )
 
@@ -58,15 +62,26 @@ class SegmentationVertebra(InferTask):
     def pre_transforms(self, data=None) -> Sequence[Callable]:
         return [
             LoadImaged(keys="image", reader="ITKReader"),
-            EnsureTyped(keys="image", device=data.get("device") if data else None),
             EnsureChannelFirstd(keys="image"),
-            NormalizeIntensityd(keys="image", divisor=2048.0),
-            # Gaussian smoothing and image normalization to images happens in the next transform
-            AddROIThirdStage(keys="image"),
+            # NormalizeIntensityd(keys="image", divisor=2048.0),
+            # to make sure the target size is same as train
+            Spacingd(keys="image", pixdim=self.target_spacing, mode="bilinear"),
+            ScaleIntensityRanged(keys="image", a_min=-1000, a_max=1900, b_min=0.0, b_max=1.0, clip=True),
+            GaussianSmoothd(keys="image", sigma=0.4),
+            ScaleIntensityd(keys="image", minv=-1.0, maxv=1.0),
+            CropAndCreateSignald(keys="image", signal_key="signal"),
+            # Make sure the image and signal have the same size as roi
+            Resized(keys=("image", "signal"), spatial_size=self.roi_size, mode=("area", "area")),
+            ConcatenateROId(keys="signal"),
+            EnsureTyped(keys="image", device=data.get("device") if data else None),
         ]
 
     def inferer(self, data=None) -> Inferer:
         return SimpleInferer()
+
+    # SHOULD WE DO THIS? HOW TO RESIZE THE PREDICTION?
+    def inverse_transforms(self, data=None) -> Union[None, Sequence[Callable]]:
+        return []  # Self-determine from the list of pre-transforms provided
 
     def post_transforms(self, data=None) -> Sequence[Callable]:
         largest_cc = False if not data else data.get("largest_cc", False)

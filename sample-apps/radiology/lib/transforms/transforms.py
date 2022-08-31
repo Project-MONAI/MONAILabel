@@ -8,14 +8,14 @@
 # WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 # See the License for the specific language governing permissions and
 # limitations under the License.
-
+import copy
 import logging
 from typing import Dict, Hashable, Mapping
 
 import numpy as np
 import torch
 from monai.config import KeysCollection, NdarrayOrTensor
-from monai.transforms import CropForeground, GaussianSmooth, ScaleIntensity, SpatialCrop
+from monai.transforms import CropForeground, GaussianSmooth, Randomizable, ScaleIntensity, SpatialCrop
 from monai.transforms.transform import MapTransform
 
 logger = logging.getLogger(__name__)
@@ -42,7 +42,7 @@ class BinaryMaskd(MapTransform):
         return d
 
 
-class HeuristicCroppingd(MapTransform):
+class SelectVertebraAndCroppingd(Randomizable, MapTransform):
     def __init__(
         self,
         keys: KeysCollection,
@@ -59,6 +59,11 @@ class HeuristicCroppingd(MapTransform):
     def __call__(self, data: Mapping[Hashable, np.ndarray]) -> Dict[Hashable, np.ndarray]:
         d: Dict = dict(data)
         for key in self.key_iterator(d):
+            # Logic:
+
+            # 1/ randomly select vertebra
+            # 2/ binarise volume
+            # 3/ apply cropForeground transform
 
             # Alternative Logic:
 
@@ -66,54 +71,48 @@ class HeuristicCroppingd(MapTransform):
             # 2/ spatial crop based on the centroid
             # 3/ binarise cropped volume
 
-            # logic:
+            d["original_size"] = d[key].shape[-3], d[key].shape[-2], d[key].shape[-1]
+            tmp_label = copy.deepcopy(d[key])
 
-            # 1/ randomly select vertebra
-            # 2/ binarise volume
-            # 3/ apply cropForeground transform
+            # TO DO: WHAT'S THE BEST WAY TO SELECT A DIFFERENT SEGMENT EACH ITERATION - Randomizable should work?
+            # PERHAPS DOING BATCHES AS IN TRANSFORM RandCropByLabelClassesd??
 
-            if key == "label":
-                d["original_size"] = d[key].shape[-3], d[key].shape[-2], d[key].shape[-1]
+            current_idx = self.R.randint(0, len(d["centroids"]))
 
-                # TO DO: WHAT'S THE BEST WAY TO SELECT A DIFFERENT SEGMENT EACH ITERATION
-                # PERHAPS DOING BATCHES AS IN TRANSFORM RandCropByPosNegLabeld ??
+            d["current_idx"] = current_idx
 
-                current_idx = np.random.randint(0, len(d["centroids"]))
+            d["current_label"] = list(d["centroids"][current_idx].values())[0][0]
 
-                d["current_idx"] = current_idx
+            logger.info(f'Processing vertebra: {d["current_label"]}')
 
-                d["current_label"] = list(d["centroids"][current_idx].values())[0][0]
+            # Make binary the label
+            tmp_label[tmp_label != d["current_label"]] = 0
+            tmp_label[tmp_label > 0] = 1
 
-                logger.info(f'Processing vertebra: {d["current_label"]}')
+            ##########
+            # Cropping
+            ##########
+            def condition(x):
+                # threshold at 1
+                return x > 0
 
-                # Make binary the label
-                d["label"][d["label"] != d["current_label"]] = 0
-                d["label"][d["label"] > 0] = 1
+            cropper = CropForeground(select_fn=condition, margin=4)
 
-                ##########
-                # Cropping
-                ##########
-                def condition(x):
-                    # threshold at 1
-                    return x > 0
+            start, stop = cropper.compute_bounding_box(tmp_label)
 
-                cropper = CropForeground(select_fn=condition, margin=8, k_divisible=32)
+            slices_cropped = [
+                [start[-3], stop[-3]],
+                [start[-2], stop[-2]],
+                [start[-1], stop[-1]],
+            ]
 
-                start, stop = cropper.compute_bounding_box(d["label"])
+            d["slices_cropped"] = slices_cropped
 
-                slices_cropped = [
-                    [start[-3], stop[-3]],
-                    [start[-2], stop[-2]],
-                    [start[-1], stop[-1]],
-                ]
+            # Cropping label
+            d["label"] = tmp_label[:, start[-3] : stop[-3], start[-2] : stop[-2], start[-1] : stop[-1]]
 
-                d["slices_cropped"] = slices_cropped
-
-                # Cropping label
-                d["label"] = d["label"][:, start[-3] : stop[-3], start[-2] : stop[-2], start[-1] : stop[-1]]
-
-                # Cropping image
-                d["image"] = d["image"][:, start[-3] : stop[-3], start[-2] : stop[-2], start[-1] : stop[-1]]
+            # Cropping image
+            d["image"] = d["image"][:, start[-3] : stop[-3], start[-2] : stop[-2], start[-1] : stop[-1]]
 
         return d
 
@@ -122,7 +121,7 @@ class GetCentroidsd(MapTransform):
     def __init__(
         self,
         keys: KeysCollection,
-        centroids: str = "centroids",
+        centroids_key: str = "centroids",
         allow_missing_keys: bool = False,
     ):
         """
@@ -132,7 +131,7 @@ class GetCentroidsd(MapTransform):
 
         """
         super().__init__(keys, allow_missing_keys)
-        self.centroids = centroids
+        self.centroids_key = centroids_key
 
     def _getCentroids(self, label):
         centroids = []
@@ -157,7 +156,7 @@ class GetCentroidsd(MapTransform):
         d: Dict = dict(data)
         for key in self.key_iterator(d):
             # Get centroids
-            d[self.centroids] = self._getCentroids(d[key])
+            d[self.centroids_key] = self._getCentroids(d[key])
         return d
 
 
@@ -165,7 +164,7 @@ class GaussianSmoothedCentroidd(MapTransform):
     def __init__(
         self,
         keys: KeysCollection,
-        sigma: int = 5,
+        signal_key: str = "signal",
         allow_missing_keys: bool = False,
     ):
         """
@@ -175,40 +174,40 @@ class GaussianSmoothedCentroidd(MapTransform):
 
         """
         super().__init__(keys, allow_missing_keys)
-        self.sigma = sigma
+        self.signal_key = signal_key
 
     def __call__(self, data: Mapping[Hashable, np.ndarray]) -> Dict[Hashable, np.ndarray]:
         d: Dict = dict(data)
-        for key in self.key_iterator(d):
-            if key == "image":
-                logger.info("Processing label: " + d["label_meta_dict"]["filename_or_obj"])
 
-                signal = np.zeros(
-                    (1, d["original_size"][-3], d["original_size"][-2], d["original_size"][-1]), dtype=np.float32
-                )
+        logger.info("Processing label: " + d["label_meta_dict"]["filename_or_obj"])
 
-                X, Y, Z = (
-                    list(d["centroids"][d["current_idx"]].values())[0][-3],
-                    list(d["centroids"][d["current_idx"]].values())[0][-2],
-                    list(d["centroids"][d["current_idx"]].values())[0][-1],
-                )
-                signal[:, X, Y, Z] = 1.0
+        signal = np.zeros((1, d["original_size"][-3], d["original_size"][-2], d["original_size"][-1]), dtype=np.float32)
 
-                signal = GaussianSmooth(self.sigma)(signal)
+        X, Y, Z = (
+            list(d["centroids"][d["current_idx"]].values())[0][-3],
+            list(d["centroids"][d["current_idx"]].values())[0][-2],
+            list(d["centroids"][d["current_idx"]].values())[0][-1],
+        )
+        signal[:, X, Y, Z] = 1.0
 
-                signal = signal[
-                    :,
-                    d["slices_cropped"][-3][0] : d["slices_cropped"][-3][1],
-                    d["slices_cropped"][-2][0] : d["slices_cropped"][-2][1],
-                    d["slices_cropped"][-1][0] : d["slices_cropped"][-1][1],
-                ]
+        signal = signal[
+            :,
+            d["slices_cropped"][-3][0] : d["slices_cropped"][-3][1],
+            d["slices_cropped"][-2][0] : d["slices_cropped"][-2][1],
+            d["slices_cropped"][-1][0] : d["slices_cropped"][-1][1],
+        ]
 
-                d["signal"] = signal * d["label"]
+        sigma = 1.6 + (d["current_label"] - 1.0) * 0.1
+
+        signal = GaussianSmooth(sigma)(signal)
+
+        # d[self.signal_key] = signal * d["label"] # use signal only inside mask?
+        d[self.signal_key] = signal
 
         return d
 
 
-class AddROI(MapTransform):
+class ConcatenateROId(MapTransform):
     def __init__(
         self,
         keys: KeysCollection,
@@ -225,11 +224,8 @@ class AddROI(MapTransform):
     def __call__(self, data: Mapping[Hashable, np.ndarray]) -> Dict[Hashable, np.ndarray]:
         d: Dict = dict(data)
         for key in self.key_iterator(d):
-            if key == "signal":
-                tmp_image = np.concatenate([d["image"], d[key]], axis=0)
-                d["image"] = tmp_image
-            else:
-                print("This transform only applies to the signal")
+            tmp_image = np.concatenate([d["image"], d[key]], axis=0)
+            d["image"] = tmp_image
         return d
 
 
@@ -261,7 +257,6 @@ class PlaceCroppedAread(MapTransform):
                     d["slices_cropped"][-1][0] : d["slices_cropped"][-1][1],
                 ] = d["pred"]
                 d["pred"] = final_pred * int(d["current_label"])
-                # How to get the ROI to reconstruct final image? - Iterate over all the vertebras
         return d
 
 
@@ -406,11 +401,11 @@ class VertebraLocalizationSegmentation(MapTransform):
         return d
 
 
-class AddROIThirdStage(MapTransform):
+class CropAndCreateSignald(MapTransform):
     def __init__(
         self,
         keys: KeysCollection,
-        sigma: int = 5,
+        signal_key,
         allow_missing_keys: bool = False,
     ):
         """
@@ -418,84 +413,64 @@ class AddROIThirdStage(MapTransform):
 
         1/ Crop the image around the centroid,
         2/ Create Gaussian smoothed signal
-        3/ Concatenate signal to the cropped volume
 
         :param keys: The ``keys`` parameter will be used to get and set the actual data item to transform
 
         """
         super().__init__(keys, allow_missing_keys)
-        self.sigma = sigma
+        self.signal_key = signal_key
 
     def __call__(self, data: Mapping[Hashable, np.ndarray]) -> Dict[Hashable, np.ndarray]:
         d: Dict = dict(data)
         for key in self.key_iterator(d):
-            if key == "image":
-                ###########
-                # Crop the image
-                ###########
+            ###########
+            # Crop the image
+            ###########
 
-                d["original_size"] = d[key].shape[-3], d[key].shape[-2], d[key].shape[-1]
-                current_label = np.random.randint(0, len(d["centroids"]))
-                # d["current_label"] = list(d["centroids"]["centroids"][current_label].values())[0][-4]
-                # X, Y, Z, = (
-                #     list(d["centroids"]["centroids"][current_label].values())[0][-3],
-                #     list(d["centroids"]["centroids"][current_label].values())[0][-2],
-                #     list(d["centroids"]["centroids"][current_label].values())[0][-1],
-                # )
-                d["current_label"] = list(d["centroids"][current_label].values())[0][-4]
-                X, Y, Z, = (
-                    list(d["centroids"][current_label].values())[0][-3],
-                    list(d["centroids"][current_label].values())[0][-2],
-                    list(d["centroids"][current_label].values())[0][-1],
-                )
-                centroid = [X, Y, Z]
-                # Cropping
-                cropper = SpatialCrop(roi_center=centroid, roi_size=(128, 128, 128))
+            d["original_size"] = d[key].shape[-3], d[key].shape[-2], d[key].shape[-1]
 
-                slices_cropped = [
-                    [cropper.slices[-3].start, cropper.slices[-3].stop],
-                    [cropper.slices[-2].start, cropper.slices[-2].stop],
-                    [cropper.slices[-1].start, cropper.slices[-1].stop],
-                ]
-                d["slices_cropped"] = slices_cropped
-                d[key] = cropper(d[key])
+            d["current_label"] = list(d["centroids"][0].values())[0][-4]
 
-                # Smooth the image as it was done during training
-                d[key] = GaussianSmooth(sigma=0.75)(d[key])
+            X, Y, Z, = (
+                list(d["centroids"][0].values())[0][-3],
+                list(d["centroids"][0].values())[0][-2],
+                list(d["centroids"][0].values())[0][-1],
+            )
+            centroid = [X, Y, Z]
+            # Cropping
+            cropper = SpatialCrop(roi_center=centroid, roi_size=(128, 128, 128))
 
-                # Scale image intensity as it was done during training
-                d[key] = ScaleIntensity(minv=-1.0, maxv=1.0)(d[key])
+            slices_cropped = [
+                [cropper.slices[-3].start, cropper.slices[-3].stop],
+                [cropper.slices[-2].start, cropper.slices[-2].stop],
+                [cropper.slices[-1].start, cropper.slices[-1].stop],
+            ]
+            d["slices_cropped"] = slices_cropped
+            d[key] = cropper(d[key])
 
-                #################################
-                # Create signal based on centroid
-                #################################
-                signal = np.zeros(
-                    (1, d["original_size"][-3], d["original_size"][-2], d["original_size"][-1]), dtype=np.float32
-                )
-                # X, Y, Z = (
-                #     list(d["centroids"]["centroids"][current_label].values())[0][-3],
-                #     list(d["centroids"]["centroids"][current_label].values())[0][-2],
-                #     list(d["centroids"]["centroids"][current_label].values())[0][-1],
-                # )
-                X, Y, Z = (
-                    list(d["centroids"][current_label].values())[0][-3],
-                    list(d["centroids"][current_label].values())[0][-2],
-                    list(d["centroids"][current_label].values())[0][-1],
-                )
-                signal[:, X, Y, Z] = 1.0
-                signal = GaussianSmooth(self.sigma)(signal)
-                signal = signal[
-                    :,
-                    cropper.slices[-3].start : cropper.slices[-3].stop,
-                    cropper.slices[-2].start : cropper.slices[-2].stop,
-                    cropper.slices[-1].start : cropper.slices[-1].stop,
-                ]
+            #################################
+            # Create signal based on centroid
+            #################################
+            signal = np.zeros(
+                (1, d["original_size"][-3], d["original_size"][-2], d["original_size"][-1]), dtype=np.float32
+            )
+            X, Y, Z = (
+                list(d["centroids"][0].values())[0][-3],
+                list(d["centroids"][0].values())[0][-2],
+                list(d["centroids"][0].values())[0][-1],
+            )
+            signal[:, X, Y, Z] = 1.0
 
-                ##################################
-                # Concatenate signal with centroid
-                ##################################
-                tmp_image = np.concatenate([d[key], signal], axis=0)
-                d[key] = tmp_image
+            sigma = 1.6 + (d["current_label"] - 1.0) * 0.1
+            signal = GaussianSmooth(sigma)(signal)
+            signal = signal[
+                :,
+                cropper.slices[-3].start : cropper.slices[-3].stop,
+                cropper.slices[-2].start : cropper.slices[-2].stop,
+                cropper.slices[-1].start : cropper.slices[-1].stop,
+            ]
+
+            d[self.signal_key] = signal
 
         return d
 

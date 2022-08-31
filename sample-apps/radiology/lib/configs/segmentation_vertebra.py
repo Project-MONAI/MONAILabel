@@ -70,8 +70,7 @@ class SegmentationVertebra(TaskConfig):
             download_file(url, self.path[0])
 
         self.target_spacing = (1.0, 1.0, 1.0)  # target space for image
-        # cropped region covering vertebra
-        self.roi_size = (96, 96, 96)
+        self.roi_size = (128, 128, 96)
 
         # Network
         self.network = UNet(
