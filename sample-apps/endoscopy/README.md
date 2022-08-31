@@ -34,7 +34,7 @@ The App works best with [CVAT](https://github.com/opencv/cvat). Researchers/clin
 
 #
 Following is the summary of Active Learning workflow tests carried over roughly 4k samples.
-> Using Active Learning strategy there is a big potential to reduce the number of annoations needed to train a good model.  The following table says, only 15% samples are good to label/annotate out of 4K unlabeled data to train a better model.
+> Using Active Learning strategy there is a big potential to reduce the number of annotations needed to train a good model.  The following table (last row) says, only ~15% samples are good to label/annotate out of 4K unlabeled data to train a better model.
 
 ![image](https://user-images.githubusercontent.com/7339051/187589950-17c4476c-21d5-4ca5-a2f1-86681b667bfb.png)
 
