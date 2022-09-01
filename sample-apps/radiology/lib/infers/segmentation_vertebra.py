@@ -59,3 +59,61 @@ class SegmentationVertebra(InferTask):
         )
         self.target_spacing = target_spacing
 
+    def pre_transforms(self, data=None) -> Sequence[Callable]:
+        if data and isinstance(data.get("image"), str):
+            t = [
+                LoadImaged(keys="image", reader="ITKReader"),
+                EnsureChannelFirstd(keys="image"),
+                GetOriginalInformation(keys="image"),
+                Spacingd(keys="image", pixdim=self.target_spacing, mode="bilinear"),
+                ScaleIntensityRanged(keys="image", a_min=-1000, a_max=1900, b_min=0.0, b_max=1.0, clip=True),
+                GaussianSmoothd(keys="image", sigma=0.4),
+                ScaleIntensityd(keys="image", minv=-1.0, maxv=1.0),
+            ]
+        else:
+            t = []
+
+        t.extend(
+            [
+                CropAndCreateSignald(keys="image", signal_key="signal"),
+                Resized(keys=("image", "signal"), spatial_size=self.roi_size, mode=("area", "area")),
+                ConcatenateROId(keys="signal"),
+            ]
+        )
+        return t
+
+    def inferer(self, data=None) -> Inferer:
+        return SimpleInferer()
+
+    def post_transforms(self, data=None) -> Sequence[Callable]:
+        applied_labels = list(self.labels.values()) if isinstance(self.labels, dict) else self.labels
+        t = [
+            EnsureTyped(keys="pred", device=data.get("device") if data else None),
+            Activationsd(keys="pred", softmax=True),
+            AsDiscreted(keys="pred", argmax=True),
+            KeepLargestConnectedComponentd(keys="pred", applied_labels=applied_labels),
+        ]
+
+        if not data or not data.get("pipeline_mode", False):
+            t.extend(
+                [
+                    ToNumpyd(keys="pred"),
+                    PlaceCroppedAread(keys="pred"),
+                    Restored(keys="pred", ref_image="image"),
+                ]
+            )
+        return t
+
+    def is_valid(self) -> bool:
+        return False
+
+    def writer(self, data, extension=None, dtype=None):
+        if data.get("pipeline_mode", False):
+            return {
+                "image": data["image"],
+                "pred": data["pred"],
+                "slices_cropped": data["slices_cropped"],
+                "cropped_size": data["cropped_size"],
+            }, {}
+
+        return super().writer(data, extension, dtype)

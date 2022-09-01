@@ -217,7 +217,7 @@ class Writer:
                 logger.debug("Using write_seg_nrrd...")
                 write_seg_nrrd(image_np, output_file, dtype, affine, labels, color_map)
             # Issue with slicer:: https://discourse.itk.org/t/saving-non-orthogonal-volume-in-nifti-format/2760/22
-            elif self.nibabel and ext.lower() in [".nii", ".nii.gz"]:
+            elif self.nibabel and ext and ext.lower() in [".nii", ".nii.gz"]:
                 logger.debug("Using MONAI write_nifti...")
                 write_nifti(image_np, output_file, affine=affine, output_dtype=dtype)
             else:

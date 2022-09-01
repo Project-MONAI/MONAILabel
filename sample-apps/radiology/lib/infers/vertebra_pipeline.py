@@ -10,45 +10,35 @@
 # limitations under the License.
 import copy
 import logging
-import tempfile
+import time
 from typing import Callable, Sequence
 
-from monai.inferers import Inferer, SimpleInferer
-from monai.transforms import (
-    Activationsd,
-    AsDiscreted,
-    EnsureTyped,
-    KeepLargestConnectedComponentd,
-    LoadImaged,
-    Resized,
-    ToNumpyd,
-)
-from monai.transforms import SaveImage
+import numpy as np
+from tqdm import tqdm
 
-from lib.transforms.transforms import ConcatenateROId, CropAndCreateSignald, PlaceCroppedAread
 from monailabel.interfaces.tasks.infer import InferTask, InferType
-from monailabel.transform.post import MergeAllPreds
+from monailabel.interfaces.utils.transform import run_transforms
 from monailabel.transform.post import Restored
+from monailabel.transform.writer import Writer
 
 logger = logging.getLogger(__name__)
 
 
 class InferVertebraPipeline(InferTask):
     def __init__(
-            self,
-            path,
-            task_loc_spine: InferTask,
-            task_loc_vertebra: InferTask,
-            network=None,
-            type=InferType.SEGMENTATION,
-            labels=None,
-            dimension=3,
-            description="Combines three stages for vertebra segmentation",
-            **kwargs,
+        self,
+        task_loc_spine: InferTask,
+        task_loc_vertebra: InferTask,
+        task_seg_vertebra: InferTask,
+        type=InferType.SEGMENTATION,
+        labels=None,
+        dimension=3,
+        description="Combines three stages for vertebra segmentation",
+        **kwargs,
     ):
         super().__init__(
-            path=path,
-            network=network,
+            path=None,
+            network=None,
             type=type,
             labels=labels,
             dimension=dimension,
@@ -57,64 +47,109 @@ class InferVertebraPipeline(InferTask):
         )
         self.task_loc_spine = task_loc_spine
         self.task_loc_vertebra = task_loc_vertebra
+        self.task_seg_vertebra = task_seg_vertebra
 
     def pre_transforms(self, data=None) -> Sequence[Callable]:
-        return [
-            CropAndCreateSignald(keys="image", signal_key="signal"),
-            Resized(keys=("image", "signal"), spatial_size=self.roi_size, mode=("area", "area")),
-            ConcatenateROId(keys="signal"),
-            EnsureTyped(keys="image", device=data.get("device") if data else None),
-        ]
-
-    def inferer(self, data=None) -> Inferer:
-        return SimpleInferer()
+        return []
 
     def post_transforms(self, data=None) -> Sequence[Callable]:
-        applied_labels = list(self.labels.values()) if isinstance(self.labels, dict) else self.labels
-        return [
-            EnsureTyped(keys="pred", device=data.get("device") if data else None),
-            Activationsd(keys="pred", softmax=True),
-            AsDiscreted(keys="pred", argmax=True),
-            KeepLargestConnectedComponentd(keys="pred", applied_labels=applied_labels),
-            ToNumpyd(keys="pred"),
-            PlaceCroppedAread(keys="pred"),
-            Restored(keys="pred", ref_image="image"),
-        ]
+        return []
+
+    def _latencies(self, r, e=None):
+        if not e:
+            e = {"pre": 0, "infer": 0, "invert": 0, "post": 0, "write": 0, "total": 0}
+
+        for key in e:
+            e[key] = e[key] + r.get("latencies", {}).get(key, 0)
+        return e
+
+    def locate_spine(self, request):
+        req = copy.deepcopy(request)
+        req.update({"pipeline_mode": True})
+
+        d, r = self.task_loc_spine(req)
+        return d, r, self._latencies(r)
+
+    def locate_vertebra(self, request, image, label):
+        req = copy.deepcopy(request)
+        req.update({"image": image, "label": label, "pipeline_mode": True})
+
+        d, r = self.task_loc_vertebra(req)
+        return d, r, self._latencies(r)
+
+    def segment_vertebra(self, request, image, centroids):
+        current_size = list(image.shape)
+        result_mask = np.zeros(current_size, np.float)
+
+        l = None
+        for centroid in tqdm(centroids):
+            req = copy.deepcopy(request)
+            req.update(
+                {
+                    "image": image,
+                    "original_size": current_size,
+                    "centroids": [centroid],
+                    "pipeline_mode": True,
+                    "logging": "ERROR" if l else "INFO",
+                }
+            )
+
+            d, r = self.task_seg_vertebra(req)
+            l = self._latencies(r, l)
+
+            # Paste each mask
+            c = d["slices_cropped"]
+            s = d["cropped_size"]
+            c00 = c[0][0]
+            c01 = c00 + s[0]
+            c10 = c[1][0]
+            c11 = c10 + s[1]
+            c20 = c[2][0]
+            c21 = c20 + s[2]
+
+            m = d["pred"].array
+            m = m[:, : s[0], : s[1], : s[2]]
+            result_mask[:, c00:c01, c10:c11, c20:c21] = m
+
+        return result_mask, l
 
     def __call__(self, request):
+        start = time.time()
+        request.update({"image_path": request.get("image")})
+
         # Run first stage
-        req = copy.deepcopy(request)
-        req["pipeline_mode"] = True
-        image, label = self.task_loc_spine(req)
+        d1, r1, l1 = self.locate_spine(request)
+        image = d1["image"]
+        label = d1["pred"]
 
         # Run second stage
-        req = copy.deepcopy(request)
-        req["image"] = image
-        req["label"] = label
-        _, res_json = self.task_loc_vertebra(req)
+        d2, r2, l2 = self.locate_vertebra(request, image, label)
+        centroids = r2["centroids"]
 
         # Run third stage
-        all_outs = {}
-        all_keys = []
-        result_jsons = []
-        for centroid in res_json["centroids"]:
-            req = copy.deepcopy(request)
-            req.update({
-                "centroids": [centroid],
-                "pipeline_mode": True
-            })
+        result_mask, l3 = self.segment_vertebra(request, image, centroids)
 
-            result_file, result_json = self.run_inferer(req)
-            all_keys.append(list(centroid.keys())[0])
-            all_outs[list(centroid.keys())[0]] = result_file
-            result_jsons.append(result_json)
+        # Finalize the mask/result
+        data = copy.deepcopy(request)
+        data.update({"pred": result_mask, "image": image})
+        data = run_transforms(data, [Restored(keys="pred", ref_image="image")], log_prefix="POST", use_compose=False)
 
-        # Once all the predictions are obtained, use the label dict to reconstruct the output
-        out = LoadImaged(keys=all_keys, reader="ITKReader")(all_outs)
-        merged_result = MergeAllPreds(keys=all_keys)(out)
+        begin = time.time()
+        result_file, _ = Writer(label="pred")(data)
+        latency_write = round(time.time() - begin, 2)
 
-        output_file = tempfile.NamedTemporaryFile(suffix=".nii.gz").name
-        merged_result.meta["filename_or_obj"] = output_file
-        SaveImage(output_postfix="", output_dir="/tmp/", separate_folder=False)(merged_result)
+        total_latency = round(time.time() - start, 2)
+        result_json = {
+            "labels": self.labels,
+            "centroids": centroids,
+            "latencies": {
+                "locate_spine": l1,
+                "locate_vertebra": l2,
+                "segment_vertebra": l3,
+                "write": latency_write,
+                "total": total_latency,
+            },
+        }
 
-        return output_file, result_jsons
+        logger.info(f"Result Mask (aggregated): {result_mask.shape}; total_latency: {total_latency}")
+        return result_file, result_json

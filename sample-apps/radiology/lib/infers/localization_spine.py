@@ -75,17 +75,19 @@ class LocalizationSpine(InferTask):
 
     def post_transforms(self, data=None) -> Sequence[Callable]:
         applied_labels = list(self.labels.values()) if isinstance(self.labels, dict) else self.labels
-        return [
+        t = [
             EnsureTyped(keys="pred", device=data.get("device") if data else None),
             Activationsd(keys="pred", softmax=True),
             AsDiscreted(keys="pred", argmax=True),
             KeepLargestConnectedComponentd(keys="pred", applied_labels=applied_labels),
             BinaryMaskd(keys="pred"),
-            Restored(keys="pred", ref_image="image")
         ]
+        if not data or not data.get("pipeline_mode", False):
+            t.append(Restored(keys="pred", ref_image="image"))
+        return t
 
     def writer(self, data, extension=None, dtype=None):
         if data.get("pipeline_mode", False):
-            return super().writer(data, extension, dtype)
+            return {"image": data["image"], "pred": data["pred"]}, {}
 
-        return data["image"], data["pred"]
+        return super().writer(data, extension, dtype)

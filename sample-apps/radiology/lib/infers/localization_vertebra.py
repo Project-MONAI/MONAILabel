@@ -9,8 +9,9 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-from typing import Callable, Sequence
+from typing import Any, Callable, Sequence, Tuple
 
+from lib.transforms.transforms import VertebraLocalizationSegmentation
 from monai.inferers import Inferer, SlidingWindowInferer
 from monai.transforms import (
     Activationsd,
@@ -26,7 +27,6 @@ from monai.transforms import (
     Spacingd,
 )
 
-from lib.transforms.transforms import VertebraLocalizationSegmentation
 from monailabel.interfaces.tasks.infer import InferTask, InferType
 from monailabel.transform.post import Restored
 
@@ -83,17 +83,19 @@ class LocalizationVertebra(InferTask):
 
     def post_transforms(self, data=None) -> Sequence[Callable]:
         applied_labels = list(self.labels.values()) if isinstance(self.labels, dict) else self.labels
-        return [
+        t = [
             EnsureTyped(keys="pred", device=data.get("device") if data else None),
             Activationsd(keys="pred", softmax=True),
             AsDiscreted(keys="pred", argmax=True),
             KeepLargestConnectedComponentd(keys="pred", applied_labels=applied_labels),
-            Restored(keys="pred", ref_image="image"),
-            VertebraLocalizationSegmentation(keys="pred", result="result")
         ]
+        if not data or not data.get("pipeline_mode", False):
+            t.append(Restored(keys="pred", ref_image="image"))
+        t.append(VertebraLocalizationSegmentation(keys="pred", result="result"))
+        return t
 
-    def writer(self, data, extension=None, dtype=None):
+    def writer(self, data, extension=None, dtype=None) -> Tuple[Any, Any]:
         if data.get("pipeline_mode", False):
-            return super().writer(data, extension, dtype)
+            return {"image": data["image"], "pred": data["pred"]}, data["result"]
 
-        return data["image"], data["result"]
+        return super().writer(data, extension, dtype)
