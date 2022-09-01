@@ -11,88 +11,110 @@
 import copy
 import logging
 import tempfile
+from typing import Callable, Sequence
 
-from monai.transforms import LoadImaged, SaveImage
+from monai.inferers import Inferer, SimpleInferer
+from monai.transforms import (
+    Activationsd,
+    AsDiscreted,
+    EnsureTyped,
+    KeepLargestConnectedComponentd,
+    LoadImaged,
+    Resized,
+    ToNumpyd,
+)
+from monai.transforms import SaveImage
 
+from lib.transforms.transforms import ConcatenateROId, CropAndCreateSignald, PlaceCroppedAread
 from monailabel.interfaces.tasks.infer import InferTask, InferType
 from monailabel.transform.post import MergeAllPreds
+from monailabel.transform.post import Restored
 
 logger = logging.getLogger(__name__)
 
 
 class InferVertebraPipeline(InferTask):
     def __init__(
-        self,
-        model_localization_spine: InferTask,
-        model_localization_vertebra: InferTask,
-        model_segmentation_vertebra: InferTask,
-        type=InferType.SEGMENTATION,
-        dimension=3,
-        description="Combines three stages for vertebra segmentation",
-        output_largest_cc=False,
-    ):
-        # Should we consider this class as the last infer stage?
-        super().__init__(
-            path=None,  # THIS SHOULD BE NONE??
-            network=None,  # THIS SHOULD BE NONE??
-            type=type,
+            self,
+            path,
+            task_loc_spine: InferTask,
+            task_loc_vertebra: InferTask,
+            network=None,
+            type=InferType.SEGMENTATION,
             labels=None,
+            dimension=3,
+            description="Combines three stages for vertebra segmentation",
+            **kwargs,
+    ):
+        super().__init__(
+            path=path,
+            network=network,
+            type=type,
+            labels=labels,
             dimension=dimension,
             description=description,
+            **kwargs,
         )
-        self.model_localization_spine = model_localization_spine
-        self.model_localization_vertebra = model_localization_vertebra
-        self.model_segmentation_vertebra = model_segmentation_vertebra
-        self.output_largest_cc = output_largest_cc
+        self.task_loc_spine = task_loc_spine
+        self.task_loc_vertebra = task_loc_vertebra
 
-    def post_transforms(self, data=None):
-        return None
+    def pre_transforms(self, data=None) -> Sequence[Callable]:
+        return [
+            CropAndCreateSignald(keys="image", signal_key="signal"),
+            Resized(keys=("image", "signal"), spatial_size=self.roi_size, mode=("area", "area")),
+            ConcatenateROId(keys="signal"),
+            EnsureTyped(keys="image", device=data.get("device") if data else None),
+        ]
 
-    def pre_transforms(self, data=None):
-        return None
+    def inferer(self, data=None) -> Inferer:
+        return SimpleInferer()
 
-    def is_valid(self) -> bool:
-        return True
+    def post_transforms(self, data=None) -> Sequence[Callable]:
+        applied_labels = list(self.labels.values()) if isinstance(self.labels, dict) else self.labels
+        return [
+            EnsureTyped(keys="pred", device=data.get("device") if data else None),
+            Activationsd(keys="pred", softmax=True),
+            AsDiscreted(keys="pred", argmax=True),
+            KeepLargestConnectedComponentd(keys="pred", applied_labels=applied_labels),
+            ToNumpyd(keys="pred"),
+            PlaceCroppedAread(keys="pred"),
+            Restored(keys="pred", ref_image="image"),
+        ]
 
     def __call__(self, request):
-
-        #################################################
         # Run first stage
-        #################################################
-        result_file_first_stage, result_json_first_stage = self.model_localization_spine(request)
+        req = copy.deepcopy(request)
+        req["pipeline_mode"] = True
+        image, label = self.task_loc_spine(req)
 
-        # Request for second stage
-        second_stage_request = copy.deepcopy(request)
-        second_stage_request["first_stage_pred"] = result_file_first_stage
-
-        #################################################
         # Run second stage
-        #################################################
-        _, result_json_second_stage = self.model_localization_vertebra(second_stage_request)
+        req = copy.deepcopy(request)
+        req["image"] = image
+        req["label"] = label
+        _, res_json = self.task_loc_vertebra(req)
 
-        #################################################
         # Run third stage
-        #################################################
-        # Request for third stage
-        third_stage_request = copy.deepcopy(second_stage_request)
         all_outs = {}
         all_keys = []
-        for centroid in result_json_second_stage["centroids"]:
-            third_stage_request["centroids"] = [centroid]
-            # TO DO:
-            # 0/ Remove the infer.py class for segmentation vertebra and use this instead?
-            # 1/ Remove the AsDiscrete transform in third stage infer so we get pre-activation outputs
-            # 2/ Don't load the volume everytime this performs inference
-            result_file, result_json_third_stage = self.model_segmentation_vertebra(third_stage_request)
+        result_jsons = []
+        for centroid in res_json["centroids"]:
+            req = copy.deepcopy(request)
+            req.update({
+                "centroids": [centroid],
+                "pipeline_mode": True
+            })
+
+            result_file, result_json = self.run_inferer(req)
             all_keys.append(list(centroid.keys())[0])
             all_outs[list(centroid.keys())[0]] = result_file
+            result_jsons.append(result_json)
 
         # Once all the predictions are obtained, use the label dict to reconstruct the output
         out = LoadImaged(keys=all_keys, reader="ITKReader")(all_outs)
-        result_file_third_stage = MergeAllPreds(keys=all_keys)(out)
+        merged_result = MergeAllPreds(keys=all_keys)(out)
 
         output_file = tempfile.NamedTemporaryFile(suffix=".nii.gz").name
-        result_file_third_stage.meta["filename_or_obj"] = output_file
-        SaveImage(output_postfix="", output_dir="/tmp/", separate_folder=False)(result_file_third_stage)
+        merged_result.meta["filename_or_obj"] = output_file
+        SaveImage(output_postfix="", output_dir="/tmp/", separate_folder=False)(merged_result)
 
-        return output_file, result_json_third_stage
+        return output_file, result_jsons

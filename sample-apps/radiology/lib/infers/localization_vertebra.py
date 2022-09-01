@@ -11,7 +11,6 @@
 
 from typing import Callable, Sequence
 
-from lib.transforms.transforms import VertebraLocalizationSegmentation
 from monai.inferers import Inferer, SlidingWindowInferer
 from monai.transforms import (
     Activationsd,
@@ -27,16 +26,9 @@ from monai.transforms import (
     Spacingd,
 )
 
+from lib.transforms.transforms import VertebraLocalizationSegmentation
 from monailabel.interfaces.tasks.infer import InferTask, InferType
 from monailabel.transform.post import Restored
-
-
-class SimpleJsonWriter:
-    def __init__(self, label="pred"):
-        self.label = label
-
-    def __call__(self, data):
-        return None, data["result"]
 
 
 class LocalizationVertebra(InferTask):
@@ -67,19 +59,22 @@ class LocalizationVertebra(InferTask):
         self.target_spacing = target_spacing
 
     def pre_transforms(self, data=None) -> Sequence[Callable]:
-        return [
-            LoadImaged(keys=("image", "first_stage_pred"), reader="ITKReader", allow_missing_keys=True),
-            EnsureTyped(
-                keys=("image", "first_stage_pred"), device=data.get("device") if data else None, allow_missing_keys=True
-            ),
-            EnsureChannelFirstd(keys=("image", "first_stage_pred"), allow_missing_keys=True),
-            Spacingd(keys="image", pixdim=self.target_spacing),
-            CropForegroundd(keys=("image", "first_stage_pred"), source_key="image", margin=10, allow_missing_keys=True),
-            # NormalizeIntensityd(keys="image", nonzero=True),
-            ScaleIntensityRanged(keys="image", a_min=-1000, a_max=1900, b_min=0.0, b_max=1.0, clip=True),
-            GaussianSmoothd(keys="image", sigma=0.4),
-            ScaleIntensityd(keys="image", minv=-1.0, maxv=1.0),
-        ]
+        if data and isinstance(data.get("image"), str):
+            t = [
+                LoadImaged(keys="image", reader="ITKReader"),
+                EnsureTyped(keys="image", device=data.get("device") if data else None),
+                EnsureChannelFirstd(keys="image"),
+                Spacingd(keys="image", pixdim=self.target_spacing),
+                ScaleIntensityRanged(keys="image", a_min=-1000, a_max=1900, b_min=0.0, b_max=1.0, clip=True),
+                GaussianSmoothd(keys="image", sigma=0.4),
+                ScaleIntensityd(keys="image", minv=-1.0, maxv=1.0),
+            ]
+        else:
+            t = []
+
+        if data and data.get("label") is not None:
+            t.append(CropForegroundd(keys=("image", "label"), source_key="image", margin=10))
+        return t
 
     def inferer(self, data=None) -> Inferer:
         return SlidingWindowInferer(
@@ -87,22 +82,18 @@ class LocalizationVertebra(InferTask):
         )
 
     def post_transforms(self, data=None) -> Sequence[Callable]:
-        largest_cc = False if not data else data.get("largest_cc", False)
         applied_labels = list(self.labels.values()) if isinstance(self.labels, dict) else self.labels
-        t = [
+        return [
             EnsureTyped(keys="pred", device=data.get("device") if data else None),
             Activationsd(keys="pred", softmax=True),
             AsDiscreted(keys="pred", argmax=True),
+            KeepLargestConnectedComponentd(keys="pred", applied_labels=applied_labels),
+            Restored(keys="pred", ref_image="image"),
+            VertebraLocalizationSegmentation(keys="pred", result="result")
         ]
-        if largest_cc:
-            t.append(KeepLargestConnectedComponentd(keys="pred", applied_labels=applied_labels))
-        t.append(Restored(keys="pred", ref_image="image"))
-        t.append(VertebraLocalizationSegmentation(keys="pred", result="result"))
-        return t
 
-    # This is to avoid saving the prediction
     def writer(self, data, extension=None, dtype=None):
-        if data.get("result_mask", False):
+        if data.get("pipeline_mode", False):
             return super().writer(data, extension, dtype)
-        writer = SimpleJsonWriter(label=self.output_label_key)
-        return writer(data)
+
+        return data["image"], data["result"]

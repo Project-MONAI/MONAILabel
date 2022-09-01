@@ -466,9 +466,9 @@ class InferTask:
             data = run_transforms(data, inferer, log_prefix="INF", log_name="Inferer")
         return data
 
-    def writer(self, data, extension=None, dtype=None):
+    def writer(self, data, extension=None, dtype=None) -> Tuple[Any, Any]:
         """
-        You can provide your own writer.  However this writer saves the prediction/label mask to file
+        You can provide your own writer.  However, this writer saves the prediction/label mask to file
         and fetches result json
 
         :param data: typically it is post processed data
