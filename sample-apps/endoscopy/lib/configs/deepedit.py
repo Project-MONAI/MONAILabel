@@ -35,9 +35,7 @@ class DeepEdit(TaskConfig):
         super().init(name, model_dir, conf, planner, **kwargs)
 
         # Labels
-        self.labels = {
-            "Tool": 1,
-        }
+        self.labels = {"Tool": 1}
 
         # Model Files
         self.path = [
@@ -120,6 +118,7 @@ class DeepEdit(TaskConfig):
                     train_mode=True,
                     skip_writer=True,
                 ),
+                function="monailabel.endoscopy.tooltracking",
                 max_samples=self.epistemic_max_samples,
                 simulation_size=self.epistemic_simulation_size,
                 use_variance=True,

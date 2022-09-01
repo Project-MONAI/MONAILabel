@@ -91,6 +91,7 @@ class MyApp(MONAILabelApp):
             description="DeepLearning models for endoscopy",
             version=monailabel.__version__,
         )
+        self.downloading = False
 
     def init_datastore(self) -> Datastore:
         if settings.MONAI_LABEL_DATASTORE_URL and settings.MONAI_LABEL_DATASTORE.lower() == "cvat":
@@ -182,16 +183,23 @@ class MyApp(MONAILabelApp):
 
         # Check for CVAT Task if complete and trigger training
         def update_model():
-            ds = self.datastore()
-            if isinstance(ds, CVATDatastore):
-                name = ds.download_from_cvat()
-                if name:
-                    models = self.conf.get("auto_finetune_models")
-                    models = models.split(",") if models else models
-                    logger.info(f"Trigger Training for model(s): {models}; Iteration Name: {name}")
-                    self.async_training(model=models, params={"name": name})
-            else:
-                logger.info("Nothing to update;  No new labels downloaded/refreshed from CVAT")
+            if self.downloading:
+                return
+
+            try:
+                self.downloading = True
+                ds = self.datastore()
+                if isinstance(ds, CVATDatastore):
+                    name = ds.download_from_cvat()
+                    if name:
+                        models = self.conf.get("auto_finetune_models")
+                        models = models.split(",") if models else models
+                        logger.info(f"Trigger Training for model(s): {models}; Iteration Name: {name}")
+                        self.async_training(model=models, params={"name": name})
+                else:
+                    logger.info("Nothing to update;  No new labels downloaded/refreshed from CVAT")
+            finally:
+                self.downloading = False
 
         time_loop = Timeloop()
         interval_in_sec = int(self.conf.get("auto_finetune_check_interval", "60"))
@@ -239,9 +247,9 @@ def main():
     app_dir = os.path.dirname(__file__)
     studies = args.studies
 
-    app = MyApp(app_dir, studies, {"preload": "false", "models": "tooltracking"})
+    app = MyApp(app_dir, studies, {"preload": "false", "models": "deid"})
     logger.info(app.datastore().status())
-    infer_tooltracking(app)
+    infer_deid(app)
 
 
 def randamize_ds(train_datalist, val_datalist):
@@ -370,6 +378,35 @@ def infer_tooltracking(app):
     # print(json.dumps(res, indent=2))
     home = str(Path.home())
     shutil.move(res["label"], f"{home}/Dataset/output_image.xml")
+    logger.info("All Done!")
+
+
+def infer_deid(app):
+    import json
+
+    res = app.infer(
+        request={
+            "model": "deid",
+            "image": "Video_8_2020_01_13_Video2_Trim_01-25_f26100",
+        }
+    )
+
+    print(json.dumps(res, indent=2))
+
+
+def train_deid(app):
+    res = app.train(
+        request={
+            "model": "deid",
+            "max_epochs": 10,
+            "dataset": "Dataset",  # PersistentDataset, CacheDataset
+            "train_batch_size": 1,
+            "val_batch_size": 1,
+            "multi_gpu": False,
+            "val_split": 0.1,
+        }
+    )
+    print(res)
     logger.info("All Done!")
 
 
