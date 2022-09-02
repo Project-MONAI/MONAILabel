@@ -31,29 +31,31 @@ class InferVertebraPipeline(InferTask):
         task_loc_vertebra: InferTask,
         task_seg_vertebra: InferTask,
         type=InferType.SEGMENTATION,
-        labels=None,
-        dimension=3,
         description="Combines three stages for vertebra segmentation",
         **kwargs,
     ):
+        self.task_loc_spine = task_loc_spine
+        self.task_loc_vertebra = task_loc_vertebra
+        self.task_seg_vertebra = task_seg_vertebra
+
         super().__init__(
             path=None,
             network=None,
             type=type,
-            labels=labels,
-            dimension=dimension,
+            labels=task_seg_vertebra.labels,
+            dimension=task_seg_vertebra.dimension,
             description=description,
             **kwargs,
         )
-        self.task_loc_spine = task_loc_spine
-        self.task_loc_vertebra = task_loc_vertebra
-        self.task_seg_vertebra = task_seg_vertebra
 
     def pre_transforms(self, data=None) -> Sequence[Callable]:
         return []
 
     def post_transforms(self, data=None) -> Sequence[Callable]:
         return []
+
+    def is_valid(self) -> bool:
+        return True
 
     def _latencies(self, r, e=None):
         if not e:
@@ -140,8 +142,8 @@ class InferVertebraPipeline(InferTask):
 
         total_latency = round(time.time() - start, 2)
         result_json = {
-            "labels": self.labels,
-            "centroids": centroids,
+            "label_names": self.task_seg_vertebra.labels,
+            # "centroids": centroids,
             "latencies": {
                 "locate_spine": l1,
                 "locate_vertebra": l2,
