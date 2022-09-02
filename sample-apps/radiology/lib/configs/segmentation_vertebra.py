@@ -32,7 +32,6 @@ class SegmentationVertebra(TaskConfig):
 
         # Labels
         self.labels = {
-            # "vertebra": 1,
             "C1": 1,
             "C2": 2,
             "C3": 3,
@@ -66,13 +65,12 @@ class SegmentationVertebra(TaskConfig):
         ]
 
         # Download PreTrained Model
-        if strtobool(self.conf.get("use_pretrained_model", "false")):
+        if strtobool(self.conf.get("use_pretrained_model", "true")):
             url = f"{self.conf.get('pretrained_path', self.PRE_TRAINED_PATH)}/segmentation_vertebra_unet.pt"
             download_file(url, self.path[0])
 
         self.target_spacing = (1.0, 1.0, 1.0)  # target space for image
-        # cropped region covering vertebra
-        self.roi_size = (32, 32, 32)
+        self.roi_size = (128, 128, 96)
 
         # Network
         self.network = UNet(
@@ -93,7 +91,6 @@ class SegmentationVertebra(TaskConfig):
             target_spacing=self.target_spacing,
             labels=self.labels,
             preload=strtobool(self.conf.get("preload", "false")),
-            config={"largest_cc": True},
         )
         return task
 

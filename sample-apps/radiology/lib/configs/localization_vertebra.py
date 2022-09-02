@@ -65,7 +65,7 @@ class LocalizationVertebra(TaskConfig):
         ]
 
         # Download PreTrained Model
-        if strtobool(self.conf.get("use_pretrained_model", "false")):
+        if strtobool(self.conf.get("use_pretrained_model", "true")):
             url = f"{self.conf.get('pretrained_path', self.PRE_TRAINED_PATH)}/localization_vertebra_unet.pt"
             download_file(url, self.path[0])
 
@@ -92,7 +92,6 @@ class LocalizationVertebra(TaskConfig):
             target_spacing=self.target_spacing,
             labels=self.labels,
             preload=strtobool(self.conf.get("preload", "false")),
-            config={"largest_cc": True, "result_mask": True},
         )
         return task
 

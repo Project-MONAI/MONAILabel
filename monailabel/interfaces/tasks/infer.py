@@ -331,9 +331,9 @@ class InferTask:
             "transform": data.get("latencies"),
         }
 
-        if result_file_name:
+        if result_file_name is not None and isinstance(result_file_name, str):
             logger.info(f"Result File: {result_file_name}")
-            logger.info(f"Result Json Keys: {list(result_json.keys())}")
+        logger.info(f"Result Json Keys: {list(result_json.keys())}")
         return result_file_name, result_json
 
     def run_pre_transforms(self, data, transforms):
@@ -466,9 +466,9 @@ class InferTask:
             data = run_transforms(data, inferer, log_prefix="INF", log_name="Inferer")
         return data
 
-    def writer(self, data, extension=None, dtype=None):
+    def writer(self, data, extension=None, dtype=None) -> Tuple[Any, Any]:
         """
-        You can provide your own writer.  However this writer saves the prediction/label mask to file
+        You can provide your own writer.  However, this writer saves the prediction/label mask to file
         and fetches result json
 
         :param data: typically it is post processed data

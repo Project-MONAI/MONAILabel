@@ -12,9 +12,14 @@
 import logging
 
 import torch
-from lib.transforms.transforms import AddROI, GaussianSmoothedCentroidd, GetCentroidsd, HeuristicCroppingd
+from lib.transforms.transforms import (
+    ConcatenateROId,
+    GaussianSmoothedCentroidd,
+    GetCentroidsd,
+    SelectVertebraAndCroppingd,
+)
 from monai.handlers import TensorBoardImageHandler, from_engine
-from monai.inferers import SlidingWindowInferer
+from monai.inferers import SimpleInferer
 from monai.losses import DiceCELoss
 from monai.transforms import (
     Activationsd,
@@ -23,9 +28,11 @@ from monai.transforms import (
     EnsureTyped,
     GaussianSmoothd,
     LoadImaged,
-    NormalizeIntensityd,
-    RandSpatialCropd,
+    RandScaleIntensityd,
+    RandShiftIntensityd,
+    Resized,
     ScaleIntensityd,
+    ScaleIntensityRanged,
     SelectItemsd,
 )
 
@@ -71,18 +78,18 @@ class SegmentationVertebra(BasicTrainTask):
         return [
             LoadImaged(keys=("image", "label"), reader="ITKReader"),
             EnsureChannelFirstd(keys=("image", "label")),
-            NormalizeIntensityd(keys="image", divisor=2048.0),
-            GetCentroidsd(keys="label"),
-            GaussianSmoothd(keys="image", sigma=0.75),
+            # NormalizeIntensityd(keys="image", divisor=2048.0),
+            ScaleIntensityRanged(keys="image", a_min=-1000, a_max=1900, b_min=0.0, b_max=1.0, clip=True),
+            GaussianSmoothd(keys="image", sigma=0.4),
             ScaleIntensityd(keys="image", minv=-1.0, maxv=1.0),
-            HeuristicCroppingd(keys=["label", "image"]),  # Size heuristically selected
-            GaussianSmoothedCentroidd(keys="image"),
-            AddROI(keys="signal"),
-            RandSpatialCropd(
-                keys=["image", "label"],
-                roi_size=[self.roi_size[0], self.roi_size[1], self.roi_size[2]],
-                random_size=False,
-            ),
+            GetCentroidsd(keys="label", centroids_key="centroids"),
+            SelectVertebraAndCroppingd(keys="label"),
+            RandShiftIntensityd(keys="image", offsets=0.1, prob=1.0),
+            RandScaleIntensityd(keys="image", factors=0.1, prob=1.0),
+            GaussianSmoothedCentroidd(keys="NA", signal_key="signal"),
+            Resized(keys=("image", "label", "signal"), spatial_size=self.roi_size, mode=("area", "nearest", "area")),
+            # SaveImaged(keys="label", output_postfix="", output_dir="/home/andres/Downloads", separate_folder=False),
+            ConcatenateROId(keys="signal"),
             EnsureTyped(keys=("image", "label"), device=context.device),
             SelectItemsd(keys=("image", "label", "centroids", "original_size", "current_label", "slices_cropped")),
         ]
@@ -102,21 +109,21 @@ class SegmentationVertebra(BasicTrainTask):
         return [
             LoadImaged(keys=("image", "label"), reader="ITKReader"),
             EnsureChannelFirstd(keys=("image", "label")),
-            NormalizeIntensityd(keys="image", divisor=2048.0),
-            GetCentroidsd(keys="label"),
-            GaussianSmoothd(keys="image", sigma=0.75),
+            # NormalizeIntensityd(keys="image", divisor=2048.0),
+            ScaleIntensityRanged(keys="image", a_min=-1000, a_max=1900, b_min=0.0, b_max=1.0, clip=True),
+            GaussianSmoothd(keys="image", sigma=0.4),
             ScaleIntensityd(keys="image", minv=-1.0, maxv=1.0),
-            HeuristicCroppingd(keys=["label", "image"]),  # Size heuristically selected
-            GaussianSmoothedCentroidd(keys="image"),
-            AddROI(keys="signal"),
+            GetCentroidsd(keys="label", centroids_key="centroids"),
+            SelectVertebraAndCroppingd(keys="label"),
+            GaussianSmoothedCentroidd(keys="NA", signal_key="signal"),
+            Resized(keys=("image", "label", "signal"), spatial_size=self.roi_size, mode=("area", "nearest", "area")),
+            ConcatenateROId(keys="signal"),
             EnsureTyped(keys=("image", "label"), device=context.device),
             SelectItemsd(keys=("image", "label", "centroids", "original_size", "current_label", "slices_cropped")),
         ]
 
     def val_inferer(self, context: Context):
-        return SlidingWindowInferer(
-            roi_size=self.roi_size, sw_batch_size=8, overlap=0.5, padding_mode="replicate", mode="gaussian"
-        )
+        return SimpleInferer()
 
     def train_key_metric(self, context: Context):
         return region_wise_metrics(self._labels, self.TRAIN_KEY_METRIC, "train")
