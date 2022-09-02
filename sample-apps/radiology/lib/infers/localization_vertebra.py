@@ -71,9 +71,6 @@ class LocalizationVertebra(InferTask):
             ]
         else:
             t = []
-
-        if data and data.get("label") is not None:
-            t.append(CropForegroundd(keys=("image", "label"), source_key="image", margin=10))
         return t
 
     def inferer(self, data=None) -> Inferer:

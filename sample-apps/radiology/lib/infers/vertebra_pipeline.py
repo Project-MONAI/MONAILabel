@@ -111,7 +111,7 @@ class InferVertebraPipeline(InferTask):
 
             m = d["pred"].array
             m = m[:, : s[0], : s[1], : s[2]]
-            result_mask[:, c00:c01, c10:c11, c20:c21] = m
+            result_mask[:, c00:c01, c10:c11, c20:c21] = m * d["current_label"]
 
         return result_mask, l
 

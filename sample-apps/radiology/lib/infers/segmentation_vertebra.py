@@ -114,6 +114,7 @@ class SegmentationVertebra(InferTask):
                 "pred": data["pred"],
                 "slices_cropped": data["slices_cropped"],
                 "cropped_size": data["cropped_size"],
+                "current_label" : data["current_label"],
             }, {}
 
         return super().writer(data, extension, dtype)
