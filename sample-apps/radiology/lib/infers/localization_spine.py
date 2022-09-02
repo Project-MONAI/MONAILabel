@@ -11,7 +11,7 @@
 
 from typing import Callable, Sequence
 
-from lib.transforms.transforms import BinaryMaskd
+from lib.transforms.transforms import BinaryMaskd, CacheObjectd
 from monai.inferers import Inferer, SlidingWindowInferer
 from monai.transforms import (
     Activationsd,
@@ -62,6 +62,7 @@ class LocalizationSpine(InferTask):
             LoadImaged(keys="image", reader="ITKReader"),
             EnsureTyped(keys="image", device=data.get("device") if data else None),
             EnsureChannelFirstd(keys="image"),
+            CacheObjectd(keys="image"),
             Spacingd(keys="image", pixdim=self.target_spacing),
             ScaleIntensityRanged(keys="image", a_min=-1000, a_max=1900, b_min=0.0, b_max=1.0, clip=True),
             GaussianSmoothd(keys="image", sigma=0.4),
@@ -75,19 +76,17 @@ class LocalizationSpine(InferTask):
 
     def post_transforms(self, data=None) -> Sequence[Callable]:
         applied_labels = list(self.labels.values()) if isinstance(self.labels, dict) else self.labels
-        t = [
+        return [
             EnsureTyped(keys="pred", device=data.get("device") if data else None),
             Activationsd(keys="pred", softmax=True),
             AsDiscreted(keys="pred", argmax=True),
-            KeepLargestConnectedComponentd(keys="pred", applied_labels=applied_labels),
+            KeepLargestConnectedComponentd(keys="pred"),
             BinaryMaskd(keys="pred"),
+            Restored(keys="pred", ref_image="image"),
         ]
-        if not data or not data.get("pipeline_mode", False):
-            t.append(Restored(keys="pred", ref_image="image"))
-        return t
 
     def writer(self, data, extension=None, dtype=None):
         if data.get("pipeline_mode", False):
-            return {"image": data["image"], "pred": data["pred"]}, {}
+            return {"image": data["image_cached"], "pred": data["pred"]}, {}
 
         return super().writer(data, extension, dtype)

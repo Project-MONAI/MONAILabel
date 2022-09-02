@@ -16,7 +16,7 @@ import numpy as np
 import torch
 from monai.config import KeysCollection, NdarrayOrTensor
 from monai.transforms import CropForeground, GaussianSmooth, Randomizable, Resize, ScaleIntensity, SpatialCrop
-from monai.transforms.transform import MapTransform
+from monai.transforms.transform import MapTransform, Transform
 
 logger = logging.getLogger(__name__)
 
@@ -35,7 +35,7 @@ class BinaryMaskd(MapTransform):
         """
         super().__init__(keys, allow_missing_keys)
 
-    def __call__(self, data: Mapping[Hashable, np.ndarray]) -> Dict[Hashable, np.ndarray]:
+    def __call__(self, data):
         d: Dict = dict(data)
         for key in self.key_iterator(d):
             d[key][d[key] > 0] = 1
@@ -56,7 +56,7 @@ class SelectVertebraAndCroppingd(Randomizable, MapTransform):
         """
         super().__init__(keys, allow_missing_keys)
 
-    def __call__(self, data: Mapping[Hashable, np.ndarray]) -> Dict[Hashable, np.ndarray]:
+    def __call__(self, data):
         d: Dict = dict(data)
         for key in self.key_iterator(d):
             # Logic:
@@ -152,7 +152,7 @@ class GetCentroidsd(MapTransform):
 
         return centroids
 
-    def __call__(self, data: Mapping[Hashable, np.ndarray]) -> Dict[Hashable, np.ndarray]:
+    def __call__(self, data):
         d: Dict = dict(data)
         for key in self.key_iterator(d):
             # Get centroids
@@ -176,7 +176,7 @@ class GaussianSmoothedCentroidd(MapTransform):
         super().__init__(keys, allow_missing_keys)
         self.signal_key = signal_key
 
-    def __call__(self, data: Mapping[Hashable, np.ndarray]) -> Dict[Hashable, np.ndarray]:
+    def __call__(self, data):
         d: Dict = dict(data)
 
         logger.info("Processing label: " + d["label_meta_dict"]["filename_or_obj"])
@@ -221,7 +221,7 @@ class ConcatenateROId(MapTransform):
         """
         super().__init__(keys, allow_missing_keys)
 
-    def __call__(self, data: Mapping[Hashable, np.ndarray]) -> Dict[Hashable, np.ndarray]:
+    def __call__(self, data):
         d: Dict = dict(data)
         for key in self.key_iterator(d):
             tmp_image = np.concatenate([d["image"], d[key]], axis=0)
@@ -243,7 +243,7 @@ class PlaceCroppedAread(MapTransform):
         """
         super().__init__(keys, allow_missing_keys)
 
-    def __call__(self, data: Mapping[Hashable, np.ndarray]) -> Dict[Hashable, np.ndarray]:
+    def __call__(self, data):
         d: Dict = dict(data)
         for key in self.key_iterator(d):
             final_pred = np.zeros(
@@ -324,7 +324,7 @@ class VertebraLocalizationPostProcessing(MapTransform):
         super().__init__(keys, allow_missing_keys)
         self.result = result
 
-    def __call__(self, data: Mapping[Hashable, np.ndarray]) -> Dict[Hashable, np.ndarray]:
+    def __call__(self, data):
         d: Dict = dict(data)
         centroids = []
         for key in self.key_iterator(d):
@@ -366,20 +366,23 @@ class VertebraLocalizationSegmentation(MapTransform):
         centroids = []
         # loop over all segments
         areas = []
-        for seg_class in np.unique(label):
+        for seg_class in torch.unique(label):
             c = {}
             # skip background
             if seg_class == 0:
                 continue
+
             # get centre of mass (CoM)
             centre = []
-            for indices in np.where(label == seg_class):
+            for indices in torch.where(label == seg_class):
                 # most_indices = np.percentile(indices, 60).astype(int).tolist()
                 # centre.append(most_indices)
                 avg_indices = np.average(indices).astype(int).tolist()
                 centre.append(avg_indices)
+
             if len(indices) < 1000:
                 continue
+
             areas.append(len(indices))
             c[f"label_{int(seg_class)}"] = [int(seg_class), centre[-3], centre[-2], centre[-1]]
             centroids.append(c)
@@ -390,7 +393,7 @@ class VertebraLocalizationSegmentation(MapTransform):
 
         return centroids
 
-    def __call__(self, data: Mapping[Hashable, np.ndarray]) -> Dict[Hashable, np.ndarray]:
+    def __call__(self, data):
         d: Dict = dict(data)
         centroids = []
         for key in self.key_iterator(d):
@@ -421,10 +424,9 @@ class CropAndCreateSignald(MapTransform):
         super().__init__(keys, allow_missing_keys)
         self.signal_key = signal_key
 
-    def __call__(self, data: Mapping[Hashable, np.ndarray]) -> Dict[Hashable, np.ndarray]:
+    def __call__(self, data):
         d: Dict = dict(data)
         for key in self.key_iterator(d):
-
             ###########
             # Crop the image
             ###########
@@ -435,9 +437,9 @@ class CropAndCreateSignald(MapTransform):
                 list(d["centroids"][0].values())[0][-2],
                 list(d["centroids"][0].values())[0][-1],
             )
-            centroid = [X, Y, Z]
+
             # Cropping
-            cropper = SpatialCrop(roi_center=centroid, roi_size=(96, 96, 64))
+            cropper = SpatialCrop(roi_center=[X, Y, Z], roi_size=(96, 96, 64))
 
             slices_cropped = [
                 [cropper.slices[-3].start, cropper.slices[-3].stop],
@@ -446,18 +448,18 @@ class CropAndCreateSignald(MapTransform):
             ]
             d["slices_cropped"] = slices_cropped
             d[key] = cropper(d[key])
-            d["cropped_size"] = d[key].shape[1:]
+
+            cropped_size = d[key].shape[1:]
+            d["cropped_size"] = cropped_size
 
             #################################
             # Create signal based on centroid
             #################################
-            signal = np.zeros(
-                (1, d["original_size"][-3], d["original_size"][-2], d["original_size"][-1]), dtype=np.float32
-            )
-            signal[:, X, Y, Z] = 1.0
+            signal = torch.zeros_like(d[key])
+            signal[:, cropped_size[0] // 2, cropped_size[1] // 2, cropped_size[2] // 2] = 1.0
+
             sigma = 1.6 + (d["current_label"] - 1.0) * 0.1
             signal = GaussianSmooth(sigma)(signal)
-            signal = cropper(signal)
             d[self.signal_key] = signal
 
         return d
@@ -475,10 +477,31 @@ class GetOriginalInformation(MapTransform):
         """
         super().__init__(keys, allow_missing_keys)
 
-    def __call__(self, data: Mapping[Hashable, np.ndarray]) -> Dict[Hashable, np.ndarray]:
+    def __call__(self, data):
         d: Dict = dict(data)
         for key in self.key_iterator(d):
             d["original_size"] = d[key].shape[-3], d[key].shape[-2], d[key].shape[-1]
+        return d
+
+
+class AddCentroidFromClicks(Transform, Randomizable):
+    def __init__(self, label_names, key_label="label", key_clicks="foreground", key_centroids="centroids"):
+        self.label_names = label_names
+        self.key_label = key_label
+        self.key_clicks = key_clicks
+        self.key_centroids = key_centroids
+
+    def __call__(self, data):
+        d: Dict = dict(data)
+
+        clicks = d.get(self.key_clicks, [])
+        if clicks:
+            label = d.get(self.key_label, "label")
+            label_idx = self.label_names.get(label, 0)
+            for click in clicks:
+                d[self.key_centroids] = [{f"label_{label_idx}": [label_idx, click[-3], click[-2], click[-1]]}]
+
+        logger.info(f"Using Centroid:  {label} => {d[self.key_centroids]}")
         return d
 
 
@@ -511,4 +534,14 @@ class NormalizeLabelsInDatasetd(MapTransform):
 
             d["label_names"] = new_label_names
             d[key].array = label
+        return d
+
+
+class CacheObjectd(MapTransform):
+    def __call__(self, data: Mapping[Hashable, NdarrayOrTensor]) -> Dict[Hashable, NdarrayOrTensor]:
+        d: Dict = dict(data)
+        for key in self.key_iterator(d):
+            cache_key = f"{key}_cached"
+            if d.get(cache_key) is None:
+                d[cache_key] = copy.deepcopy(d[key])
         return d

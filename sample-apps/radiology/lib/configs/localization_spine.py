@@ -92,7 +92,6 @@ class LocalizationSpine(TaskConfig):
             target_spacing=self.target_spacing,
             labels=self.labels,
             preload=strtobool(self.conf.get("preload", "false")),
-            config={"largest_cc": True},
         )
         return task
 

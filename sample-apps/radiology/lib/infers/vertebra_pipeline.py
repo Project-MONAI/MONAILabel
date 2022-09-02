@@ -13,7 +13,7 @@ import logging
 import time
 from typing import Callable, Sequence
 
-import numpy as np
+import torch
 from tqdm import tqdm
 
 from monailabel.interfaces.tasks.infer import InferTask, InferType
@@ -80,38 +80,39 @@ class InferVertebraPipeline(InferTask):
         return d, r, self._latencies(r)
 
     def segment_vertebra(self, request, image, centroids):
-        current_size = list(image.shape)
-        result_mask = np.zeros(current_size, np.float)
+        original_size = list(image.shape)
+        result_mask = None
 
         l = None
+        image_cached = None
+        count = 0
         for centroid in tqdm(centroids):
             req = copy.deepcopy(request)
             req.update(
                 {
                     "image": image,
-                    "original_size": current_size,
+                    "image_cached": image_cached,
+                    "original_size": original_size,
                     "centroids": [centroid],
                     "pipeline_mode": True,
-                    "logging": "ERROR" if l else "INFO",
+                    # "logging": "ERROR" if count > 1 else "INFO",
                 }
             )
 
             d, r = self.task_seg_vertebra(req)
             l = self._latencies(r, l)
 
-            # Paste each mask
-            c = d["slices_cropped"]
-            s = d["cropped_size"]
-            c00 = c[0][0]
-            c01 = c00 + s[0]
-            c10 = c[1][0]
-            c11 = c10 + s[1]
-            c20 = c[2][0]
-            c21 = c20 + s[2]
+            image = d["image"]
+            image_cached = image
 
-            m = d["pred"].array
-            m = m[:, : s[0], : s[1], : s[2]]
-            result_mask[:, c00:c01, c10:c11, c20:c21] = m * d["current_label"]
+            # Paste each mask
+            if result_mask is None:
+                result_mask = torch.zeros_like(image)
+
+            s = d["slices_cropped"]
+            m = d["pred"] * d["current_label"]
+            result_mask[:, s[-3][0] : s[-3][1], s[-2][0] : s[-2][1], s[-1][0] : s[-1][1]] = m
+            count = count + 1
 
         return result_mask, l
 
@@ -134,7 +135,7 @@ class InferVertebraPipeline(InferTask):
         # Finalize the mask/result
         data = copy.deepcopy(request)
         data.update({"pred": result_mask, "image": image})
-        data = run_transforms(data, [Restored(keys="pred", ref_image="image")], log_prefix="POST", use_compose=False)
+        data = run_transforms(data, [Restored(keys="pred", ref_image="image")], log_prefix="POST(P)", use_compose=False)
 
         begin = time.time()
         result_file, _ = Writer(label="pred")(data)
@@ -143,7 +144,7 @@ class InferVertebraPipeline(InferTask):
         total_latency = round(time.time() - start, 2)
         result_json = {
             "label_names": self.task_seg_vertebra.labels,
-            # "centroids": centroids,
+            "centroids": centroids,
             "latencies": {
                 "locate_spine": l1,
                 "locate_vertebra": l2,
@@ -153,5 +154,5 @@ class InferVertebraPipeline(InferTask):
             },
         }
 
-        logger.info(f"Result Mask (aggregated): {result_mask.shape}; total_latency: {total_latency}")
+        logger.info(f"Result Mask (aggregated/pre-restore): {result_mask.shape}; total_latency: {total_latency}")
         return result_file, result_json

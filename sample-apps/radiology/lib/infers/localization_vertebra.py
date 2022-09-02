@@ -16,7 +16,6 @@ from monai.inferers import Inferer, SlidingWindowInferer
 from monai.transforms import (
     Activationsd,
     AsDiscreted,
-    CropForegroundd,
     EnsureChannelFirstd,
     EnsureTyped,
     GaussianSmoothd,
@@ -64,13 +63,18 @@ class LocalizationVertebra(InferTask):
                 LoadImaged(keys="image", reader="ITKReader"),
                 EnsureTyped(keys="image", device=data.get("device") if data else None),
                 EnsureChannelFirstd(keys="image"),
+            ]
+        else:
+            t = []
+
+        t.extend(
+            [
                 Spacingd(keys="image", pixdim=self.target_spacing),
                 ScaleIntensityRanged(keys="image", a_min=-1000, a_max=1900, b_min=0.0, b_max=1.0, clip=True),
                 GaussianSmoothd(keys="image", sigma=0.4),
                 ScaleIntensityd(keys="image", minv=-1.0, maxv=1.0),
             ]
-        else:
-            t = []
+        )
         return t
 
     def inferer(self, data=None) -> Inferer:
@@ -79,17 +83,14 @@ class LocalizationVertebra(InferTask):
         )
 
     def post_transforms(self, data=None) -> Sequence[Callable]:
-        applied_labels = list(self.labels.values()) if isinstance(self.labels, dict) else self.labels
-        t = [
+        return [
             EnsureTyped(keys="pred", device=data.get("device") if data else None),
             Activationsd(keys="pred", softmax=True),
             AsDiscreted(keys="pred", argmax=True),
-            KeepLargestConnectedComponentd(keys="pred", applied_labels=applied_labels),
+            KeepLargestConnectedComponentd(keys="pred"),
+            Restored(keys="pred", ref_image="image"),
+            VertebraLocalizationSegmentation(keys="pred", result="result"),
         ]
-        if not data or not data.get("pipeline_mode", False):
-            t.append(Restored(keys="pred", ref_image="image"))
-        t.append(VertebraLocalizationSegmentation(keys="pred", result="result"))
-        return t
 
     def writer(self, data, extension=None, dtype=None) -> Tuple[Any, Any]:
         if data.get("pipeline_mode", False):

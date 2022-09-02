@@ -11,7 +11,14 @@
 
 from typing import Callable, Sequence
 
-from lib.transforms.transforms import ConcatenateROId, CropAndCreateSignald, GetOriginalInformation, PlaceCroppedAread
+from lib.transforms.transforms import (
+    AddCentroidFromClicks,
+    CacheObjectd,
+    ConcatenateROId,
+    CropAndCreateSignald,
+    GetOriginalInformation,
+    PlaceCroppedAread,
+)
 from monai.inferers import Inferer, SimpleInferer
 from monai.transforms import (
     Activationsd,
@@ -42,7 +49,7 @@ class SegmentationVertebra(InferTask):
         path,
         network=None,
         target_spacing=(1.0, 1.0, 1.0),
-        type=InferType.SEGMENTATION,
+        type=InferType.DEEPGROW,
         labels=None,
         dimension=3,
         description="A pre-trained model for volumetric (3D) vertebra segmentation from CT image",
@@ -60,18 +67,34 @@ class SegmentationVertebra(InferTask):
         self.target_spacing = target_spacing
 
     def pre_transforms(self, data=None) -> Sequence[Callable]:
+        t = []
+        add_cache = False
         if data and isinstance(data.get("image"), str):
-            t = [
-                LoadImaged(keys="image", reader="ITKReader"),
-                EnsureChannelFirstd(keys="image"),
-                GetOriginalInformation(keys="image"),
-                Spacingd(keys="image", pixdim=self.target_spacing, mode="bilinear"),
-                ScaleIntensityRanged(keys="image", a_min=-1000, a_max=1900, b_min=0.0, b_max=1.0, clip=True),
-                GaussianSmoothd(keys="image", sigma=0.4),
-                ScaleIntensityd(keys="image", minv=-1.0, maxv=1.0),
-            ]
-        else:
-            t = []
+            add_cache = True
+            t.extend(
+                [
+                    LoadImaged(keys="image", reader="ITKReader"),
+                    EnsureTyped(keys="image", device=data.get("device") if data else None),
+                    EnsureChannelFirstd(keys="image"),
+                    GetOriginalInformation(keys="image"),
+                    AddCentroidFromClicks(label_names=self.labels),
+                ]
+            )
+
+        if data and data.get("image_cached") is None:
+            t.extend(
+                [
+                    Spacingd(keys="image", pixdim=self.target_spacing, mode="bilinear"),
+                    ScaleIntensityRanged(keys="image", a_min=-1000, a_max=1900, b_min=0.0, b_max=1.0, clip=True),
+                    GaussianSmoothd(keys="image", sigma=0.4),
+                    ScaleIntensityd(keys="image", minv=-1.0, maxv=1.0),
+                    CacheObjectd(keys="image"),
+                ]
+            )
+
+        # Support caching for deepgrow interactions from the client
+        if add_cache:
+            self.add_cache_transform(t, data)
 
         t.extend(
             [
@@ -86,12 +109,11 @@ class SegmentationVertebra(InferTask):
         return SimpleInferer()
 
     def post_transforms(self, data=None) -> Sequence[Callable]:
-        applied_labels = list(self.labels.values()) if isinstance(self.labels, dict) else self.labels
         t = [
             EnsureTyped(keys="pred", device=data.get("device") if data else None),
             Activationsd(keys="pred", softmax=True),
             AsDiscreted(keys="pred", argmax=True),
-            KeepLargestConnectedComponentd(keys="pred", applied_labels=applied_labels),
+            KeepLargestConnectedComponentd(keys="pred"),
         ]
 
         if not data or not data.get("pipeline_mode", False):
@@ -102,19 +124,17 @@ class SegmentationVertebra(InferTask):
                     Restored(keys="pred", ref_image="image"),
                 ]
             )
+        else:
+            t.append(Resized(keys="pred", spatial_size=data["cropped_size"], mode="nearest"))
         return t
-
-    def is_valid(self) -> bool:
-        return False
 
     def writer(self, data, extension=None, dtype=None):
         if data.get("pipeline_mode", False):
             return {
-                "image": data["image"],
+                "image": data["image_cached"],
                 "pred": data["pred"],
                 "slices_cropped": data["slices_cropped"],
-                "cropped_size": data["cropped_size"],
-                "current_label" : data["current_label"],
+                "current_label": data["current_label"],
             }, {}
 
         return super().writer(data, extension, dtype)
