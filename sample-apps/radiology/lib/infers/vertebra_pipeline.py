@@ -87,6 +87,12 @@ class InferVertebraPipeline(InferTask):
         image_cached = None
         count = 0
         for centroid in tqdm(centroids):
+            # For Debuging - select few label...
+            # logger.info(f"Centroid: {centroid}")
+            # lkey = list(centroid.keys())[0]
+            # if lkey not in ("label_20", "label_22", "label_24"):
+            #     continue
+
             req = copy.deepcopy(request)
             req.update(
                 {
@@ -95,7 +101,7 @@ class InferVertebraPipeline(InferTask):
                     "original_size": original_size,
                     "centroids": [centroid],
                     "pipeline_mode": True,
-                    # "logging": "ERROR" if count > 1 else "INFO",
+                    "logging": "ERROR" if count > 1 else "INFO",
                 }
             )
 
@@ -105,13 +111,21 @@ class InferVertebraPipeline(InferTask):
             image = d["image"]
             image_cached = image
 
-            # Paste each mask
-            if result_mask is None:
-                result_mask = torch.zeros_like(image)
-
+            # Paste/Merge each mask
+            v = d["current_label"]
             s = d["slices_cropped"]
-            m = d["pred"] * d["current_label"]
-            result_mask[:, s[-3][0] : s[-3][1], s[-2][0] : s[-2][1], s[-1][0] : s[-1][1]] = m
+            m = d["pred"]
+            m[m > 0] = v
+
+            mask = torch.zeros_like(image)
+            mask[:, s[-3][0] : s[-3][1], s[-2][0] : s[-2][1], s[-1][0] : s[-1][1]] = m
+
+            if result_mask is None:
+                result_mask = mask
+            else:
+                result_mask = result_mask + mask
+                result_mask[result_mask > v] = v
+
             count = count + 1
 
         return result_mask, l
