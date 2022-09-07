@@ -21,7 +21,7 @@ import torch
 from monailabel.interfaces.datastore import Datastore
 from monailabel.interfaces.tasks.infer import InferTask
 from monailabel.interfaces.tasks.scoring import ScoringMethod
-
+from monai.metrics.active_learning_metrics import VarianceMetric
 logger = logging.getLogger(__name__)
 
 
@@ -84,14 +84,17 @@ class EpistemicScoring(ScoringMethod):
 
     def variance_volume(self, vol_input):
         vol_input = vol_input.astype(dtype="float32")
+        variance_metric = VarianceMetric(include_background=True,
+                                         threshold=0.0005,
+                                         spatial_map=True)
 
+        variance = variance_metric(vol_input)
         # Threshold values less than or equal to zero
-        threshold = 0.0005
-        vol_input[vol_input <= 0] = threshold
+        # threshold = 0.0005
+        # vol_input[vol_input <= 0] = threshold
 
-        vari = np.nanvar(vol_input, axis=0)
-        variance = np.sum(vari, axis=0)
-
+        #vari = np.nanvar(vol_input, axis=0)
+        #variance = np.sum(vari, axis=0)
         if self.dimension == 3:
             variance = np.expand_dims(variance, axis=0)
             variance = np.expand_dims(variance, axis=0)
