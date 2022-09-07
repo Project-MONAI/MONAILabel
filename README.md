@@ -26,6 +26,21 @@ open-source and easy-to-install ecosystem that can run locally on a machine with
 and client work on the same/different machine. It shares the same principles
 with [MONAI](https://github.com/Project-MONAI).
 
+
+- [MONAI Label Demo: Sample Apps](#sample-apps-in-monailabel)
+- [Highlights and Features](#hightlights-and-features)
+- [Installation and Usage](#installation)
+  - [MONAI Label Server](#current-stable-version)
+  - [Visualization Tools Guide](#visualization-tools)
+  - [Plugin Guide](#plugins)
+- [Contributing Guide and Communities](#contributing)
+
+## Sample Apps in MONAILabel
+
+![DEMO](https://raw.githubusercontent.com/Project-MONAI/MONAILabel/main/docs/images/sampleApps_index.jpeg)
+
+Demo on labeling tasks with visualization tools 3D Slicer, OHIF, and QuPath
+
 [MONAI Label](https://youtu.be/m2rYorVwXk4) | [Demo](https://youtu.be/o8HipCgSZIw?t=1319)
 
 
@@ -39,29 +54,51 @@ with [MONAI](https://github.com/Project-MONAI).
 </tr>
 </table>
 
-## Features
+## Highlights and Features
 
 > _The codebase is currently under active development._
 
+Radiology App
+   This app has example models to do both interactive and automated segmentation over radiology (3D)
+   images. Including auto segmentation with the latest deep learning models (e.g., UNet, UNETR) for multiple abdominal
+   organs. Interactive tools include DeepEdit and Deepgrow for actively improving trained models and deployment.
+
+Pathology App
+   This app has example models to do both interactive and automated segmentation over pathology (WSI)
+   images. Including nuclei multi-label segmentation for Neoplastic cells, Inflammatory, Connective/Soft tissue cells, Dead Cells, and
+   Epithelial. The app provides interactive tools including DeepEdits for interactive nuclei segmentation.
+
+Bundle App
+   The Bundle app enables users with customized models for inference, training or pre and post processing any target
+   anatomies. The specification for MONAILabel integration of the Bundle app links archived Model-Zoo for customized labeling
+   (e.g., the third-party transformer model for labeling renal cortex, medulla, and pelvicalyceal system. Interactive tools such as DeepEdits).
+
 - Framework for developing and deploying MONAI Label Apps to train and infer AI models
 - Compositional & portable APIs for ease of integration in existing workflows
-- Customizable labelling app design for varying user expertise
+- Customizable labeling app design for varying user expertise
 - Annotation support via [3DSlicer](https://github.com/Project-MONAI/MONAILabel/tree/main/plugins/slicer)
   & [OHIF](https://github.com/Project-MONAI/MONAILabel/tree/main/plugins/ohif) for radiology
 - Annotation support via [QuPath](https://github.com/Project-MONAI/MONAILabel/tree/main/plugins/qupath)
   , [Digital Slide Archive](https://github.com/Project-MONAI/MONAILabel/tree/main/plugins/dsa)
   & [CVAT](https://github.com/Project-MONAI/MONAILabel/tree/main/plugins/cvat) for
   pathology
+- Annotation support via [CVAT](https://github.com/Project-MONAI/MONAILabel/tree/main/plugins/cvat) for Endoscopy
 - PACS connectivity via [DICOMWeb](https://www.dicomstandard.org/using/dicomweb)
 
 ## Installation
 
+Start using MONAI Label with just three steps:
+
+![DEMO](https://raw.githubusercontent.com/Project-MONAI/MONAILabel/main/docs/images/install_steps.jpeg)
+
+
+
 MONAI Label supports following OS with **GPU/CUDA** enabled.
 
-- Ubuntu
+- Ubuntu: Please see the [installation guide](https://docs.monai.io/projects/label/en/latest/installation.html). 
 - [Windows](https://docs.monai.io/projects/label/en/latest/installation.html#windows)
 
-### [Current/Stable Version](https://pypi.org/project/monailabel/#history)
+### [Current Stable Version](https://pypi.org/project/monailabel/#history)
 
 ```bash
 pip install monailabel -U
@@ -123,15 +160,40 @@ Following are the optional dependencies which can help you to accelerate some GP
 These dependencies are by-default available if you are using `projectmonai/monailabel` docker.
 - [CUCIM](https://pypi.org/project/cucim/)
 - [CUPY](https://docs.cupy.dev/en/stable/install.html#installing-cupy)
-- [CUDA Toolkit](https://developer.nvidia.com/cuda-downloads)
-```bash
-  # Example:: Installing CUDA + CUPY + CUCIM For Linux
-  wget https://developer.download.nvidia.com/compute/cuda/11.7.0/local_installers/cuda_11.7.0_515.43.04_linux.run
-  sudo sh cuda_11.7.0_515.43.04_linux.run --silent --toolkit
 
-  export LD_LIBRARY_PATH=/usr/local/cuda/lib64
-  pip install cupy-cuda11x cucim
-```
+## Visualization Tools
+
+MONAI Label supports the most adopted open-source viewers for Radiology,  Pathology, and Endoscopy images.
+
+### 3D Slicer
+
+3D Slicer, a free and open-source platform for analyzing, visualizing and understanding medical image data. In MONAI Label, 3D Slicer is most tested with radiology studies and
+algorithms, develpoment and integration.
+
+MONAI Label is most currently tested and supported with stable release of 3D Slicer every version. Preview version of 3D Slicer is not fully tested and supported.
+
+To install stable released version of 3D Slicer, see [3D Slicer installation](https://download.slicer.org/).
+
+Currently, Windows and Linux version are supported.
+
+### OHIF (Web-based)
+
+The Open Health Imaging Foundation (OHIF) Viewer is an open source, web-based, medical imaging platform.
+It aims to provide a core framework for building complex imaging applications.
+
+At this point OHIF can be used to annotate the data in the DICOM server via the MONAI Label server.
+
+To use OHIF web-based application, refer to [extensible web imaging platform](https://ohif.org/)
+
+### QuPath
+
+Quantitative Pathology & Bioimage Analysis (QuPath)
+
+QuPath is an open, powerful, flexible, extensible software platform for bioimage analysis.
+
+To install stable released version of QuPath, see [QuPath installation](https://qupath.github.io/).
+
+Currently, Windows and Linux version are supported. Detailed documentation can be found [QuPath Doc](https://qupath.readthedocs.io/en/stable/).
 
 ## Plugins
 
