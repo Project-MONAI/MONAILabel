@@ -95,7 +95,7 @@ Start using MONAI Label with just three steps:
 
 MONAI Label supports following OS with **GPU/CUDA** enabled.
 
-- Ubuntu: Please see the [installation guide](https://docs.monai.io/projects/label/en/latest/installation.html). 
+- Ubuntu: Please see the [installation guide](https://docs.monai.io/projects/label/en/latest/installation.html).
 - [Windows](https://docs.monai.io/projects/label/en/latest/installation.html#windows)
 
 ### [Current Stable Version](https://pypi.org/project/monailabel/#history)
