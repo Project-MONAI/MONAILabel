@@ -24,7 +24,7 @@ limitations under the License.
 MONAI Label is a server-client system that facilitates interactive medical image annotation by using AI. It is an
 open-source and easy-to-install ecosystem that can run locally on a machine with single or multiple GPUs. Both server
 and client work on the same/different machine. It shares the same principles
-with [MONAI](https://github.com/Project-MONAI).
+with [MONAI](https://github.com/Project-MONAI). Refer to full [MONAI Label documentations](https://docs.monai.io/projects/label/en/latest/index.html) for more details.
 
 
 - [MONAI Label Demo: Sample Apps](#sample-apps-in-monailabel)
@@ -58,17 +58,17 @@ Demo on labeling tasks with visualization tools 3D Slicer, OHIF, and QuPath
 
 > _The codebase is currently under active development._
 
-Radiology App
+**Radiology App**
    This app has example models to do both interactive and automated segmentation over radiology (3D)
    images. Including auto segmentation with the latest deep learning models (e.g., UNet, UNETR) for multiple abdominal
    organs. Interactive tools include DeepEdit and Deepgrow for actively improving trained models and deployment.
 
-Pathology App
+**Pathology App**
    This app has example models to do both interactive and automated segmentation over pathology (WSI)
    images. Including nuclei multi-label segmentation for Neoplastic cells, Inflammatory, Connective/Soft tissue cells, Dead Cells, and
    Epithelial. The app provides interactive tools including DeepEdits for interactive nuclei segmentation.
 
-Bundle App
+**Bundle App**
    The Bundle app enables users with customized models for inference, training or pre and post processing any target
    anatomies. The specification for MONAILabel integration of the Bundle app links archived Model-Zoo for customized labeling
    (e.g., the third-party transformer model for labeling renal cortex, medulla, and pelvicalyceal system. Interactive tools such as DeepEdits).
