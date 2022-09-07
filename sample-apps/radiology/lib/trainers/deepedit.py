@@ -127,7 +127,7 @@ class DeepEdit(BasicTrainTask):
             AsDiscreted(
                 keys=("pred", "label"),
                 argmax=(True, False),
-                to_onehot=(len(self._labels), len(self._labels)),
+                to_onehot=len(self._labels),
             ),
             SplitPredsLabeld(keys="pred"),
         ]

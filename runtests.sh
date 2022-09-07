@@ -460,14 +460,14 @@ function run_integration_tests() {
     exit 1
   fi
 
-  ${cmdPrefix}${cmd} -m pytest -v tests/integration/$1 --no-summary -x
+  ${cmdPrefix}${cmd} -m pytest -v tests/integration/$1/test_trainer.py --no-summary -x
   echo "$1 - Finished All Integration Tests;  Stop/Kill MONAILabel Server..."
   kill -9 $(ps -ef | grep monailabel | grep start_server | grep -v grep | awk '{print $2}')
 }
 
 # network training/inference/eval integration tests
 if [ $doNetTests = true ]; then
-  run_integration_tests "monaibundle" "tests/data/dataset/local/spleen" "spleen_ct_segmentation_v0.1.0,spleen_deepedit_annotation_v0.1.0,swin_unetr_btcv_segmentation_v0.1.0"
   run_integration_tests "radiology" "tests/data/dataset/local/spleen" "deepedit,segmentation_spleen,segmentation,deepgrow_2d,deepgrow_3d"
   run_integration_tests "pathology" "tests/data/pathology" "deepedit_nuclei,segmentation_nuclei,nuclick"
+  run_integration_tests "monaibundle" "tests/data/dataset/local/spleen" "spleen_ct_segmentation_v0.1.0,spleen_deepedit_annotation_v0.1.0,swin_unetr_btcv_segmentation_v0.1.0"
 fi

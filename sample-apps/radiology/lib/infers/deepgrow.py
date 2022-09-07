@@ -100,7 +100,7 @@ class Deepgrow(InferTask):
         return [
             EnsureTyped(keys="pred", device=data.get("device") if data else None),
             Activationsd(keys="pred", sigmoid=True),
-            AsDiscreted(keys="pred", threshold_values=True, logit_thresh=0.5),
+            AsDiscreted(keys="pred", threshold=0.5),
             ToNumpyd(keys="pred"),
             RestoreLabeld(keys="pred", ref_image="image", mode="nearest"),
             AsChannelLastd(keys="pred"),

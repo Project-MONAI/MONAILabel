@@ -17,7 +17,7 @@ from tests.integration import SERVER_URI
 
 
 class EndPointSession(unittest.TestCase):
-    def test_segmentation_spleen_trainer(self):
+    def vtest_segmentation_spleen_trainer(self):
         if not torch.cuda.is_available():
             return
 
@@ -32,7 +32,7 @@ class EndPointSession(unittest.TestCase):
         response = requests.post(f"{SERVER_URI}/train/segmentation_spleen?run_sync=True", json=params)
         assert response.status_code == 200
 
-    def test_segmentation_trainer(self):
+    def vtest_segmentation_trainer(self):
         if not torch.cuda.is_available():
             return
 
@@ -47,7 +47,22 @@ class EndPointSession(unittest.TestCase):
         response = requests.post(f"{SERVER_URI}/train/segmentation?run_sync=True", json=params)
         assert response.status_code == 200
 
-    def test_deepgrow_trainer(self):
+    def test_deepgrow_2d_trainer(self):
+        if not torch.cuda.is_available():
+            return
+
+        params = {
+            "model": "deepgrow_2d",
+            "max_epochs": 1,
+            "name": "net_test_deepgrow_trainer_01",
+            "val_split": 0.5,
+            "multi_gpu": False,
+        }
+
+        response = requests.post(f"{SERVER_URI}/train/deepgrow_2d?run_sync=True", json=params)
+        assert response.status_code == 200
+
+    def test_deepgrow_3d_trainer(self):
         if not torch.cuda.is_available():
             return
 
@@ -57,14 +72,12 @@ class EndPointSession(unittest.TestCase):
             "name": "net_test_deepgrow_trainer_01",
             "val_split": 0.5,
             "multi_gpu": False,
-            "foreground": [[140, 210, 28]],
-            "background": [],
         }
 
         response = requests.post(f"{SERVER_URI}/train/deepgrow_3d?run_sync=True", json=params)
         assert response.status_code == 200
 
-    def test_deepedit(self):
+    def vtest_deepedit(self):
         if not torch.cuda.is_available():
             return
 

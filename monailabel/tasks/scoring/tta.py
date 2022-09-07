@@ -81,7 +81,6 @@ class TTAScoring(ScoringMethod):
                 prob=1,
                 rotate_range=(np.pi / 4, np.pi / 4, np.pi / 4),
                 padding_mode="zeros",
-                as_tensor_output=False,
             ),
             RandFlipd(keys="image", prob=0.5, spatial_axis=0),
             RandRotated(keys="image", range_x=(-5, 5), range_y=(-5, 5), range_z=(-5, 5)),
@@ -97,7 +96,7 @@ class TTAScoring(ScoringMethod):
         return Compose(
             [
                 Activations(sigmoid=True),
-                AsDiscrete(threshold_values=True),
+                AsDiscrete(),
             ]
         )
 

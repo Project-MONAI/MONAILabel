@@ -133,7 +133,7 @@ class GetCentroidsd(MapTransform):
         super().__init__(keys, allow_missing_keys)
         self.centroids_key = centroids_key
 
-    def _getCentroids(self, label):
+    def _get_centroids(self, label):
         centroids = []
         # loop over all segments
         areas = []
@@ -156,7 +156,7 @@ class GetCentroidsd(MapTransform):
         d: Dict = dict(data)
         for key in self.key_iterator(d):
             # Get centroids
-            d[self.centroids_key] = self._getCentroids(d[key])
+            d[self.centroids_key] = self._get_centroids(d[key])
         return d
 
 
@@ -183,12 +183,12 @@ class GaussianSmoothedCentroidd(MapTransform):
 
         signal = np.zeros((1, d["original_size"][-3], d["original_size"][-2], d["original_size"][-1]), dtype=np.float32)
 
-        X, Y, Z = (
+        x, y, z = (
             list(d["centroids"][d["current_idx"]].values())[0][-3],
             list(d["centroids"][d["current_idx"]].values())[0][-2],
             list(d["centroids"][d["current_idx"]].values())[0][-1],
         )
-        signal[:, X, Y, Z] = 1.0
+        signal[:, x, y, z] = 1.0
 
         signal = signal[
             :,
@@ -245,7 +245,7 @@ class PlaceCroppedAread(MapTransform):
 
     def __call__(self, data):
         d: Dict = dict(data)
-        for key in self.key_iterator(d):
+        for _ in self.key_iterator(d):
             final_pred = np.zeros(
                 (1, d["original_size"][-3], d["original_size"][-2], d["original_size"][-1]), dtype=np.float32
             )
@@ -334,9 +334,9 @@ class VertebraLocalizationPostProcessing(MapTransform):
                 centroid = {}
                 if d[key][l + 1, ...].max() < 30.0:
                     continue
-                X, Y, Z = np.where(d[key][l + 1, ...] == d[key][l + 1, ...].max())
-                X, Y, Z = X[0], Y[0], Z[0]
-                centroid[f"label_{l + 1}"] = [X, Y, Z]
+                x, y, z = np.where(d[key][l + 1, ...] == d[key][l + 1, ...].max())
+                x, y, z = x[0], y[0], z[0]
+                centroid[f"label_{l + 1}"] = [x, y, z]
                 centroids.append(centroid)
 
             print(centroids)
@@ -362,7 +362,7 @@ class VertebraLocalizationSegmentation(MapTransform):
         super().__init__(keys, allow_missing_keys)
         self.result = result
 
-    def _getCentroids(self, label):
+    def _get_centroids(self, label):
         centroids = []
         # loop over all segments
         areas = []
@@ -398,7 +398,7 @@ class VertebraLocalizationSegmentation(MapTransform):
         centroids = []
         for key in self.key_iterator(d):
             # Getting centroids
-            centroids = self._getCentroids(d[key])
+            centroids = self._get_centroids(d[key])
             if d.get(self.result) is None:
                 d[self.result] = dict()
             d[self.result]["centroids"] = centroids
@@ -432,14 +432,14 @@ class CropAndCreateSignald(MapTransform):
             ###########
             d["current_label"] = list(d["centroids"][0].values())[0][-4]
 
-            X, Y, Z, = (
+            x, y, z, = (
                 list(d["centroids"][0].values())[0][-3],
                 list(d["centroids"][0].values())[0][-2],
                 list(d["centroids"][0].values())[0][-1],
             )
 
             # Cropping
-            cropper = SpatialCrop(roi_center=[X, Y, Z], roi_size=(96, 96, 64))
+            cropper = SpatialCrop(roi_center=[x, y, z], roi_size=(96, 96, 64))
 
             slices_cropped = [
                 [cropper.slices[-3].start, cropper.slices[-3].stop],

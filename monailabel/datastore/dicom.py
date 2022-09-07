@@ -134,18 +134,22 @@ class DICOMWebDatastore(LocalDatastore):
             )
             seg_meta = Dataset.from_json(meta[0])
             if seg_meta.get("ReferencedSeriesSequence"):
-                referenced_series_instance_UID = str(
+                referenced_series_instance_uid = str(
                     seg_meta["ReferencedSeriesSequence"].value[0]["SeriesInstanceUID"].value
                 )
-                if referenced_series_instance_UID in self.list_images():
-                    image_series.append(referenced_series_instance_UID)
+                if referenced_series_instance_uid in self.list_images():
+                    image_series.append(referenced_series_instance_uid)
                 else:
                     logger.warning(
-                        f"Label Ignored:: ReferencedSeriesSequence is NOT in filtered image list: {str(seg['SeriesInstanceUID'].value)}"
+                        "Label Ignored:: ReferencedSeriesSequence is NOT in filtered image list: {}".format(
+                            str(seg["SeriesInstanceUID"].value)
+                        )
                     )
             else:
                 logger.warning(
-                    f"Label Ignored:: ReferencedSeriesSequence is NOT found: {str(seg['SeriesInstanceUID'].value)}"
+                    "Label Ignored:: ReferencedSeriesSequence is NOT found: {}".format(
+                        str(seg["SeriesInstanceUID"].value)
+                    )
                 )
         return image_series
 
