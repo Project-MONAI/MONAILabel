@@ -160,6 +160,7 @@ Following are the optional dependencies which can help you to accelerate some GP
 These dependencies are by-default available if you are using `projectmonai/monailabel` docker.
 - [CUCIM](https://pypi.org/project/cucim/)
 - [CUPY](https://docs.cupy.dev/en/stable/install.html#installing-cupy)
+- [CUDA Toolkit](https://developer.nvidia.com/cuda-downloads)
 
 ## Visualization Tools
 
