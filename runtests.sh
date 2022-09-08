@@ -460,7 +460,7 @@ function run_integration_tests() {
     exit 1
   fi
 
-  ${cmdPrefix}${cmd} -m pytest -v tests/integration/$1/test_trainer.py --no-summary -x
+  ${cmdPrefix}${cmd} -m pytest -v tests/integration/$1 --no-summary -x
   echo "$1 - Finished All Integration Tests;  Stop/Kill MONAILabel Server..."
   kill -9 $(ps -ef | grep monailabel | grep start_server | grep -v grep | awk '{print $2}')
 }

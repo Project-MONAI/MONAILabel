@@ -17,7 +17,7 @@ from tests.integration import SERVER_URI
 
 
 class EndPointSession(unittest.TestCase):
-    def vtest_segmentation_spleen_trainer(self):
+    def test_segmentation_spleen_trainer(self):
         if not torch.cuda.is_available():
             return
 
@@ -32,7 +32,7 @@ class EndPointSession(unittest.TestCase):
         response = requests.post(f"{SERVER_URI}/train/segmentation_spleen?run_sync=True", json=params)
         assert response.status_code == 200
 
-    def vtest_segmentation_trainer(self):
+    def test_segmentation_trainer(self):
         if not torch.cuda.is_available():
             return
 
@@ -47,6 +47,7 @@ class EndPointSession(unittest.TestCase):
         response = requests.post(f"{SERVER_URI}/train/segmentation?run_sync=True", json=params)
         assert response.status_code == 200
 
+    @unittest.skip("Disable until monai > 1.0.0rc1 is available")
     def test_deepgrow_2d_trainer(self):
         if not torch.cuda.is_available():
             return
@@ -62,6 +63,7 @@ class EndPointSession(unittest.TestCase):
         response = requests.post(f"{SERVER_URI}/train/deepgrow_2d?run_sync=True", json=params)
         assert response.status_code == 200
 
+    @unittest.skip("Disable until monai > 1.0.0rc1 is available")
     def test_deepgrow_3d_trainer(self):
         if not torch.cuda.is_available():
             return
@@ -77,7 +79,7 @@ class EndPointSession(unittest.TestCase):
         response = requests.post(f"{SERVER_URI}/train/deepgrow_3d?run_sync=True", json=params)
         assert response.status_code == 200
 
-    def vtest_deepedit(self):
+    def test_deepedit(self):
         if not torch.cuda.is_available():
             return
 
