@@ -16,6 +16,7 @@ import torch
 from monai.config import IgniteInfo
 from monai.utils import min_version, optional_import
 from monai.visualize import plot_2d_or_3d_image
+from torch import distributed as dist
 from torchvision.utils import make_grid
 
 Events, _ = optional_import("ignite.engine", IgniteInfo.OPT_IMPORT_VERSION, min_version, "Events")
@@ -249,8 +250,8 @@ class TensorBoard2DImageHandler:
 
         self.logger = logging.getLogger(__name__)
 
-        if torch.distributed.is_initialized():
-            self.tag_prefix = f"{self.tag_prefix}r{torch.distributed.get_rank()}-"
+        if dist.is_initialized():
+            self.tag_prefix = f"{self.tag_prefix}r{dist.get_rank()}-"
         self.metric_data: Dict[Any, Any] = dict()
 
     def attach(self, engine: Engine) -> None:

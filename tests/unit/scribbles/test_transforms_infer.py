@@ -357,7 +357,7 @@ class TestScribblesTransforms(unittest.TestCase):
 
     @parameterized.expand(TEST_CASE_MAKE_LIKE_METHOD_TX)
     @unittest.skipUnless(torch.cuda.is_available() and CUDA_HOME is not None, "Skipping CUDA-based tests")
-    def test_make_likelihood_GMM(self, input_param, test_input, output, expected_shape):
+    def test_make_likelihood_gmm(self, input_param, test_input, output, expected_shape):
         input_param.update({"post_proc_label": "pred"})
         result = MakeLikelihoodFromScribblesGMMd(**input_param)(test_input)
 

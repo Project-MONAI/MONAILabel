@@ -49,6 +49,11 @@ We are happy to talk with you about your needs for MONAILabel and your ideas for
     export PATH=$PATH:`pwd`/monailabel/scripts
     ./runtests.sh --net
     ```
+    Stricter static checks.
+    ```
+    pip install -r requirements-dev.txt
+    ./runtests.sh --codeformat
+    ```
 
 
 ### Signing your work

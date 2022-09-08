@@ -47,7 +47,24 @@ class EndPointSession(unittest.TestCase):
         response = requests.post(f"{SERVER_URI}/train/segmentation?run_sync=True", json=params)
         assert response.status_code == 200
 
-    def test_deepgrow_trainer(self):
+    @unittest.skip("Disable until monai > 1.0.0rc1 is available")
+    def test_deepgrow_2d_trainer(self):
+        if not torch.cuda.is_available():
+            return
+
+        params = {
+            "model": "deepgrow_2d",
+            "max_epochs": 1,
+            "name": "net_test_deepgrow_trainer_01",
+            "val_split": 0.5,
+            "multi_gpu": False,
+        }
+
+        response = requests.post(f"{SERVER_URI}/train/deepgrow_2d?run_sync=True", json=params)
+        assert response.status_code == 200
+
+    @unittest.skip("Disable until monai > 1.0.0rc1 is available")
+    def test_deepgrow_3d_trainer(self):
         if not torch.cuda.is_available():
             return
 
@@ -57,8 +74,6 @@ class EndPointSession(unittest.TestCase):
             "name": "net_test_deepgrow_trainer_01",
             "val_split": 0.5,
             "multi_gpu": False,
-            "foreground": [[140, 210, 28]],
-            "background": [],
         }
 
         response = requests.post(f"{SERVER_URI}/train/deepgrow_3d?run_sync=True", json=params)

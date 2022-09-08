@@ -14,7 +14,7 @@
 # to use different version of MONAI pass `--build-arg MONAI_IMAGE=...`
 # to exclude ORTHANC pass `--build-arg ORTHANC=false`
 
-ARG MONAI_IMAGE=projectmonai/monai:0.9.1
+ARG MONAI_IMAGE=projectmonai/monai:1.0.0rc1
 ARG ORTHANC=false
 ARG BUILD_OHIF=true
 

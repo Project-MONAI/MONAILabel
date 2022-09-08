@@ -269,7 +269,6 @@ class MergeAllPreds(MapTransform):
 
         Args:
             keys: The ``keys`` parameter will be used to get and set the actual data item to transform
-            label_names: all label names
         """
         super().__init__(keys, allow_missing_keys)
 
