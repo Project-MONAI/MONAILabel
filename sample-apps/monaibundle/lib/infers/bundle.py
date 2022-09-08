@@ -102,7 +102,7 @@ class BundleInferTask(InferTask):
         for k in Const.KEY_PREPROCESSING:
             if self.bundle_config.get(k):
                 c = self.bundle_config.get_parsed_content(k, instantiate=True)
-                pre = [t for t in c.transforms] if isinstance(c, Compose) else c
+                pre = list(c.transforms) if isinstance(c, Compose) else c
         return pre
 
     def inferer(self, data=None) -> Inferer:
@@ -116,7 +116,7 @@ class BundleInferTask(InferTask):
         for k in Const.KEY_POSTPROCESSING:
             if self.bundle_config.get(k):
                 c = self.bundle_config.get_parsed_content(k, instantiate=True)
-                post = [t for t in c.transforms] if isinstance(c, Compose) else c
+                post = list(c.transforms) if isinstance(c, Compose) else c
 
         post = [t for t in post if not isinstance(t, SaveImaged)]
         post.append(Restored(keys=self.key_pred, ref_image=self.key_image))

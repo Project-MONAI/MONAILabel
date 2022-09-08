@@ -106,7 +106,7 @@ class Segmentation(BasicTrainTask):
             AsDiscreted(
                 keys=("pred", "label"),
                 argmax=(True, False),
-                to_onehot=(len(self._labels) + 1, len(self._labels) + 1),
+                to_onehot=len(self._labels) + 1,
             ),
         ]
 
@@ -127,7 +127,7 @@ class Segmentation(BasicTrainTask):
     def norm_labels(self):
         # This should be applied along with NormalizeLabelsInDatasetd transform
         new_label_nums = {}
-        for idx, (key_label, val_label) in enumerate(self._labels.items(), start=1):
+        for idx, (key_label, _) in enumerate(self._labels.items(), start=1):
             if key_label != "background":
                 new_label_nums[key_label] = idx
             if key_label == "background":

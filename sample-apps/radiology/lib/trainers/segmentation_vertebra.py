@@ -101,7 +101,7 @@ class SegmentationVertebra(BasicTrainTask):
             AsDiscreted(
                 keys=("pred", "label"),
                 argmax=(True, False),
-                to_onehot=(len(self._labels) + 1, len(self._labels) + 1),
+                to_onehot=len(self._labels) + 1,
             ),
         ]
 

@@ -341,7 +341,7 @@ class InferTask:
         post_cache = []
         current = pre_cache
         cache_t = None
-        for idx, t in enumerate(transforms):
+        for t in transforms:
             if isinstance(t, CacheTransformDatad):
                 cache_t = t
                 current = post_cache

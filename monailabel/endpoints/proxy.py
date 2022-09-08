@@ -29,7 +29,7 @@ router = APIRouter(
 )
 
 
-class Google_auth(httpx.Auth):
+class GoogleAuth(httpx.Auth):
     def __init__(self, token):
         self.token = token
 
@@ -50,7 +50,7 @@ async def proxy_dicom(op: str, path: str, response: Response):
         auth_req = google.auth.transport.requests.Request()
         google_credentials.refresh(auth_req)
         token = google_credentials.token
-        auth = Google_auth(token)
+        auth = GoogleAuth(token)
 
     async with httpx.AsyncClient(auth=auth) as client:
         server = f"{settings.MONAI_LABEL_STUDIES.rstrip('/')}"

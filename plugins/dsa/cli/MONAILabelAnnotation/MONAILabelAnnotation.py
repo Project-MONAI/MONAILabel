@@ -63,7 +63,7 @@ def fetch_annotations(args, tiles=None):
     try:
         d = json.loads(json.loads(res[-5000:].split("\n")[-2:][0].replace('"description": ', "")))
         logging.info(f"\n{json.dumps(d, indent=2)}")
-    except:
+    except Exception:
         pass
 
     total_time_taken = time.time() - total_start_time
