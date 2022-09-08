@@ -89,12 +89,6 @@ class EpistemicScoring(ScoringMethod):
                                          spatial_map=True)
 
         variance = variance_metric(vol_input)
-        # Threshold values less than or equal to zero
-        # threshold = 0.0005
-        # vol_input[vol_input <= 0] = threshold
-
-        #vari = np.nanvar(vol_input, axis=0)
-        #variance = np.sum(vari, axis=0)
         if self.dimension == 3:
             variance = np.expand_dims(variance, axis=0)
             variance = np.expand_dims(variance, axis=0)
