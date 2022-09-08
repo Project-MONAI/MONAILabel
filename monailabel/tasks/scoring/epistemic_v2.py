@@ -17,11 +17,12 @@ from concurrent.futures import ThreadPoolExecutor
 
 import numpy as np
 import torch
+from monai.metrics.active_learning_metrics import VarianceMetric
 
 from monailabel.interfaces.datastore import Datastore
 from monailabel.interfaces.tasks.infer import InferTask
 from monailabel.interfaces.tasks.scoring import ScoringMethod
-from monai.metrics.active_learning_metrics import VarianceMetric
+
 logger = logging.getLogger(__name__)
 
 
@@ -84,9 +85,7 @@ class EpistemicScoring(ScoringMethod):
 
     def variance_volume(self, vol_input):
         vol_input = vol_input.astype(dtype="float32")
-        variance_metric = VarianceMetric(include_background=True,
-                                         threshold=0.0005,
-                                         spatial_map=True)
+        variance_metric = VarianceMetric(include_background=True, threshold=0.0005, spatial_map=True)
 
         variance = variance_metric(vol_input)
         if self.dimension == 3:
