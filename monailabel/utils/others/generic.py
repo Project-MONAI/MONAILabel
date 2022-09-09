@@ -9,6 +9,7 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
+import distutils.util
 import hashlib
 import json
 import logging
@@ -203,3 +204,7 @@ def create_dataset_from_path(folder, images="images", labels="labels", img_ext="
     return [
         {"image": i, "label": l} for i, l in zip(images, labels) if get_basename_no_ext(i) == get_basename_no_ext(l)
     ]
+
+
+def strtobool(str):
+    return bool(distutils.util.strtobool(str))
