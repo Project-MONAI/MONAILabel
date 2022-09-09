@@ -439,9 +439,9 @@ class CropAndCreateSignald(MapTransform):
             )
             current_size = d[key].shape[1:]
             original_size = d[key].meta["spatial_shape"]
-            X = int(X * current_size[0] / original_size[0])
-            Y = int(Y * current_size[1] / original_size[1])
-            Z = int(Z * current_size[2] / original_size[2])
+            x = int(x * current_size[0] / original_size[0])
+            y = int(y * current_size[1] / original_size[1])
+            z = int(z * current_size[2] / original_size[2])
 
             # Cropping
             cropper = SpatialCrop(roi_center=[x, y, z], roi_size=(96, 96, 64))
