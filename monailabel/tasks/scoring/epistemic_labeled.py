@@ -17,7 +17,7 @@ from concurrent.futures import ThreadPoolExecutor
 
 import numpy as np
 import torch
-from monai.metrics.active_learning_metrics import VarianceMetric, LabelQualityScore
+from monai.metrics.active_learning_metrics import LabelQualityScore, VarianceMetric
 
 from monailabel.interfaces.datastore import Datastore
 from monailabel.interfaces.tasks.infer import InferTask
@@ -62,8 +62,7 @@ class EpistemicScoringWithLabels(ScoringMethod):
 
         vol_input = vol_input.astype(dtype="float32")
         vol_label = vol_label.astype(dtype="float32")
-        label_qual_score = LabelQualityScore(include_background=True,
-                                             reduction='sum')
+        label_qual_score = LabelQualityScore(include_background=True, reduction="sum")
         lq_score = label_qual_score(vol_input, vol_label)
         return lq_score
 
