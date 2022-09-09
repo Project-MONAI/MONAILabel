@@ -33,7 +33,7 @@ The App works best with [CVAT](https://github.com/opencv/cvat). Researchers/clin
 9. Cycle (Step 3 to Step 8) continues until you get some good enough model
 
 #
-Following is the summary of Active Learning workflow tests carried over roughly 4,281 samples of 2D frames from 
+Following is the summary of Active Learning workflow tests carried over roughly 4,281 samples of 2D frames from
 multiple surgical videos. The dataset breakdown for the experiment is as follows:
 - Training: 3,217 samples (The samples were treated as unlabeled except for the initial pool, the selected samples as queries were added with their corresponding labels)
 - Validation: 400 samples
@@ -43,17 +43,17 @@ multiple surgical videos. The dataset breakdown for the experiment is as follows
 
 | Method   | Initial Pool | Samples Added Per Active Iteration | Active Iteration | % of Data Used | Test IoU   |
 |----------|--------------|------------------------------------|------------------|----------------|------------|
-| Random   | 20           | 20                                 | 8                | 5.6%           | 0.7446     | 
+| Random   | 20           | 20                                 | 8                | 5.6%           | 0.7446     |
 | Variance | 20           | 20                                 | 8                | 5.6%           | 0.7617     |
 | Random   | 50           | 50                                 | 8                | 14%            | 0.7712     |
 | Variance | 50           | 50                                 | 7                | **12.5%**      | **0.8028** |
 | Random   | 50           | 50                                 | 15               | 25%            | 0.7900     |
 | Variance | 50           | 50                                 | 15               | **25%**        | **0.8311** |
 
-> Using Active Learning strategy there is tremendous potential to reduce the number of annotations required to train a 
+> Using Active Learning strategy there is tremendous potential to reduce the number of annotations required to train a
 > good model. The above table shows that only ~15% samples are good enough to get quite close to full dataset performance
 > and it is not necessary to label/annotate all 4K unlabeled data to train a high-performing model. With the right subset
-> of data a better performing model can be achieved with 25% data as compared to labeling all data with unverified quality 
+> of data a better performing model can be achieved with 25% data as compared to labeling all data with unverified quality
 > of labels.
 
 ![image](../../docs/images/active_learning_endoscopy_results.png)
