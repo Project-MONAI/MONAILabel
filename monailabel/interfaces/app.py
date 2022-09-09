@@ -20,7 +20,6 @@ import tempfile
 import time
 from concurrent.futures import ThreadPoolExecutor
 from datetime import timedelta
-from distutils.util import strtobool
 from typing import Any, Callable, Dict, Optional, Sequence, Union
 
 import requests
@@ -49,6 +48,7 @@ from monailabel.interfaces.tasks.train import TrainTask
 from monailabel.interfaces.utils.wsi import create_infer_wsi_tasks
 from monailabel.tasks.activelearning.random import Random
 from monailabel.utils.async_tasks.task import AsyncTask
+from monailabel.utils.others.generic import strtobool
 from monailabel.utils.others.pathology import create_asap_annotations_xml, create_dsa_annotations_json
 from monailabel.utils.sessions import Sessions
 

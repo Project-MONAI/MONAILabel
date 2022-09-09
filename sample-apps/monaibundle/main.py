@@ -13,7 +13,6 @@ import logging
 import os
 import re
 import shutil
-from distutils.util import strtobool
 from typing import Dict
 
 import requests
@@ -28,6 +27,7 @@ from monailabel.interfaces.tasks.infer import InferTask
 from monailabel.interfaces.tasks.strategy import Strategy
 from monailabel.interfaces.tasks.train import TrainTask
 from monailabel.tasks.activelearning.random import Random
+from monailabel.utils.others.generic import strtobool
 
 logger = logging.getLogger(__name__)
 

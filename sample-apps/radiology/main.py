@@ -12,7 +12,6 @@
 import json
 import logging
 import os
-from distutils.util import strtobool
 from typing import Dict
 
 import lib.configs
@@ -31,6 +30,7 @@ from monailabel.interfaces.tasks.train import TrainTask
 from monailabel.scribbles.infer import GMMBasedGraphCut, HistogramBasedGraphCut
 from monailabel.tasks.activelearning.random import Random
 from monailabel.utils.others.class_utils import get_class_names
+from monailabel.utils.others.generic import strtobool
 from monailabel.utils.others.planner import HeuristicPlanner
 
 logger = logging.getLogger(__name__)

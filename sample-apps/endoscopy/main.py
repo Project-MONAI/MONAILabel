@@ -12,7 +12,6 @@
 import logging
 import os
 from datetime import timedelta
-from distutils.util import strtobool
 from typing import Dict
 
 import lib.configs
@@ -31,7 +30,7 @@ from monailabel.interfaces.tasks.strategy import Strategy
 from monailabel.interfaces.tasks.train import TrainTask
 from monailabel.tasks.activelearning.random import Random
 from monailabel.utils.others.class_utils import get_class_names
-from monailabel.utils.others.generic import create_dataset_from_path
+from monailabel.utils.others.generic import create_dataset_from_path, strtobool
 
 logger = logging.getLogger(__name__)
 

@@ -14,7 +14,6 @@ import logging
 import os
 import platform
 from ctypes import cdll
-from distutils.util import strtobool
 from typing import Dict
 
 import lib.configs
@@ -27,6 +26,7 @@ from monailabel.interfaces.datastore import Datastore
 from monailabel.interfaces.tasks.infer import InferTask
 from monailabel.interfaces.tasks.train import TrainTask
 from monailabel.utils.others.class_utils import get_class_names
+from monailabel.utils.others.generic import strtobool
 
 logger = logging.getLogger(__name__)
 
