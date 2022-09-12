@@ -266,7 +266,7 @@ pathology models into CVAT.
 
 If you are using MONAI Label in your research, please use the following citation:
 
-  ```bash
+```bash
 @article{DiazPinto2022monailabel,
    author = {Diaz-Pinto, Andres and Alle, Sachidanand and Ihsani, Alvin and Asad, Muhammad and
             Nath, Vishwesh and P{\'e}rez-Garc{\'\i}a, Fernando and Mehta, Pritesh and
@@ -277,7 +277,22 @@ If you are using MONAI Label in your research, please use the following citation
      year = 2022,
      url  = {https://arxiv.org/pdf/2203.12362.pdf}
 }
-  ```
+ ```
+
+Optional Citation: if you are using active learning functionality from MONAI Label, please support us:
+
+```bash
+@article{nath2020diminishing,
+  title={Diminishing uncertainty within the training pool: Active learning for medical image segmentation},
+  author={Nath, Vishwesh and Yang, Dong and Landman, Bennett A and Xu, Daguang and Roth, Holger R},
+  journal={IEEE Transactions on Medical Imaging},
+  volume={40},
+  number={10},
+  pages={2534--2547},
+  year={2020},
+  publisher={IEEE}
+}
+```
 
 ## Contributing
 
