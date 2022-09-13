@@ -122,6 +122,7 @@ class ToolTracking(TaskConfig):
                     labels=self.labels,
                     train_mode=True,
                     skip_writer=True,
+                    find_contours=False,
                 ),
                 function="monailabel.endoscopy.tooltracking",
                 max_samples=self.epistemic_max_samples,
