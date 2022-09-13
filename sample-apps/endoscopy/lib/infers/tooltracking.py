@@ -22,7 +22,6 @@ from monai.transforms import (
     Resized,
     ScaleIntensityd,
     SqueezeDimd,
-    ToTensord,
 )
 
 from monailabel.interfaces.tasks.infer import InferTask, InferType
@@ -70,7 +69,6 @@ class ToolTracking(InferTask):
             Resized(keys="image", spatial_size=(736, 480)),
             DivisiblePadd(keys="image", k=32),
             ScaleIntensityd(keys="image"),
-            ToTensord(keys="image", device=data.get("device") if data else None),
         ]
 
     def inferer(self, data=None) -> Inferer:

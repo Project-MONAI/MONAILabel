@@ -15,8 +15,8 @@ from typing import Any, Dict, Optional, Union
 
 import lib.infers
 import lib.trainers
-from lib.net.ranzcrnet import RanzcrNetV2
 from lib.scoring.cvat import CVATEpistemicScoring
+from monai.networks.nets import FlexibleUNet
 
 from monailabel.interfaces.config import TaskConfig
 from monailabel.interfaces.tasks.infer import InferTask
@@ -49,8 +49,23 @@ class ToolTracking(TaskConfig):
             download_file(url, self.path[0])
 
         # Network
-        self.network = RanzcrNetV2(in_channels=3, out_channels=2, backbone="efficientnet-b0")
-        self.network_with_dropout = RanzcrNetV2(in_channels=3, out_channels=2, backbone="efficientnet-b0", dropout=0.2)
+        self.network = FlexibleUNet(
+            in_channels=3,
+            out_channels=2,
+            backbone="efficientnet-b0",
+            spatial_dims=2,
+            is_pad=True,
+            pretrained=True,
+        )
+        self.network_with_dropout = FlexibleUNet(
+            in_channels=3,
+            out_channels=2,
+            backbone="efficientnet-b0",
+            spatial_dims=2,
+            is_pad=True,
+            pretrained=True,
+            dropout=0.2,
+        )
 
         # Others
         self.epistemic_enabled = strtobool(conf.get("epistemic_enabled", "false"))

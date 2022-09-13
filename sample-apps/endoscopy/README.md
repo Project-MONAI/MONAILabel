@@ -152,7 +152,7 @@ Following are additional configs *(pass them as **--conf name value**) are usefu
 
 #### [DeepEdit](./lib/configs/deepedit.py)
 
-This model based on DeepEdit. An algorithm that combines the capabilities of multiple models into one, allowing for both
+This model is based on DeepEdit. An algorithm that combines the capabilities of multiple models into one, allowing for both
 interactive and automated segmentation.
 
 This model is currently trained to segment **Tool** from 2D in-body images.
@@ -169,7 +169,7 @@ This model is currently trained to segment **Tool** from 2D in-body images.
 
 #### [ToolTracking](./lib/configs/tooltracking.py)
 
-This model based on UNet for automated segmentation. This model works for single label segmentation tasks.
+This model is based on UNet for automated segmentation. This model works for single label segmentation tasks.
 > monailabel start_server --app workspace/endoscopy --studies workspace/images --conf models tooltracking
 
 - Network: This model uses the [FlexibleUNet](https://docs.monai.io/en/latest/networks.html#flexibleunet) as the default network.
@@ -177,6 +177,18 @@ This model based on UNet for automated segmentation. This model works for single
 - Dataset: The model is pre-trained over few in-body Images related to Endoscopy
 - Inputs: 1 channel for the image modality
 - Output: 1 channel representing the segmented Tool
+
+
+#### [DeID](./lib/configs/deid.py)
+
+This model is based on SEResNet50 for classification. This model determines if tool is present or not (in-body vs out-body).
+> monailabel start_server --app workspace/endoscopy --studies workspace/images --conf models deid
+
+- Network: This model uses the [SEResNet50](https://docs.monai.io/en/latest/networks.html#seresnet50) as the default network.
+- Labels: `{ "Tool": 1 }`
+- Dataset: The model is pre-trained over few in-body Images related to Endoscopy
+- Inputs: 1 channel for the image modality
+- Output: 2 classes (0: in_body, 1: out_body)
 
 
 ### How To Add New Model?
