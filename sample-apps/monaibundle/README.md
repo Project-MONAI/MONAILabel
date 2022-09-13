@@ -33,6 +33,25 @@ However the following constraints has to be met for any monai bundle to directly
 ### Overview
 
 
+### Supported Models 
+
+The Bundle App supports most labeling models in the Model Zoo, please see the table for labeling tasks.
+
+
+| Bundle | Model | Objects | Modality | Note |
+|:----:|:-----:|:-------:|:--------:|:----:|
+| [spleen_ct_segmentation](https://github.com/Project-MONAI/model-zoo/tree/dev/models/spleen_ct_segmentation) | UNet | Spleen | CT | A model for (3D) segmentation of the spleen |
+| [swin_unetr_btcv_segmentation](https://github.com/Project-MONAI/model-zoo/tree/dev/models/swin_unetr_btcv_segmentation) | SwinUNETR | Multi-Organ | CT | A model for (3D) multi-organ segmentation | 
+| [prostate_mri_anatomy](https://github.com/Project-MONAI/model-zoo/tree/dev/models/prostate_mri_anatomy) | UNet | Prostate | MRI | A model for (3D) prostate segmentation from MRI image |
+| [pancreas_ct_dints_segmentation](https://github.com/Project-MONAI/model-zoo/tree/dev/models/pancreas_ct_dints_segmentation) | DiNTS | Pancreas/Tumor | CT | An automl method for (3D) pancreas/tumor segmentation | 
+| [renalStructures_UNEST_segmentation](https://github.com/Project-MONAI/model-zoo/tree/dev/models/renalStructures_UNEST_segmentation) | UNesT | Kidney Substructure | CT |  A pre-trained for inference (3D) kidney cortex/medulla/pelvis segmentation |
+| [wholeBrainSeg_UNEST_segmentation](https://github.com/Project-MONAI/model-zoo/tree/dev/models/wholeBrainSeg_Large_UNEST_segmentation) | UNesT | Whole Brain | MRI T1 |  A pre-trained for inference (3D) 133 whole brain structures segmentation | 
+| [brats_mri_segmentation](https://github.com/Project-MONAI/model-zoo/tree/dev/models/brats_mri_segmentation) | SegResNet | Brain Tumor | MRI |  A pre-trained for brain tumor subregions segmentation |
+| [spleen_deepedit_annotation](https://github.com/Project-MONAI/model-zoo/tree/dev/models/spleen_deepedit_annotation) | DeepEdit | Spleen| CT | An interactive method for 3D spleen Segmentation | 
+
+
+Supported tasks update based on [Model-Zoo](https://github.com/Project-MONAI/model-zoo/tree/dev/models) release.
+
 ### How To Use?
 ```bash
 # skip this if you have already downloaded the app or using github repository (dev mode)
@@ -49,9 +68,6 @@ monailabel start_server --app workspace/monaibundle --studies workspace/images -
 
 # Pick DeepEdit And Segmentation model (multiple models)
 monailabel start_server --app workspace/monaibundle --studies workspace/images --conf models "spleen_ct_segmentation_v0.1.0,spleen_deepedit_annotation_v0.1.0"
-
-# Pick All
-monailabel start_server --app workspace/monaibundle --studies workspace/images --conf models all
 
 # Pick All (Skip Training Tasks or Infer only mode)
 monailabel start_server --app workspace/monaibundle --studies workspace/images --conf models all --conf skip_trainers true
