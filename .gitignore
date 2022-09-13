@@ -161,7 +161,7 @@ docs/source/apidocs
 *.nii.gz
 .DS_Store
 *.DS_Store
-#bin
+bin
 junit
 test-output.xml
 studies

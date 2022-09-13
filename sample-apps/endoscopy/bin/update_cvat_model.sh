@@ -11,7 +11,7 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-# Sample commands to publish active learning trained latest model to nuclio functions
+# Sample commands to publish trained latest model to nuclio functions
 # bash /bin/update_cvat_model.sh <FUNCTION_NAME> <MODEL_PATH>
 
 FUNC_NAME=$1
@@ -33,12 +33,12 @@ fi
 # default published model name
 MODEL_CONTAINER="/opt/conda/monailabel/sample-apps/endoscopy/model/pretrained_$FUNC_NAME.pt" # default model path at function container
 
-# Check if latest active learning model checkpoint is done and saved, error if blank.
+# Check if latest  model checkpoint is done and saved, error if blank.
 if [ -z "$MODEL_PATH" ] || [ ! -f "$MODEL_PATH" ]; then
-    echo "Active learning model checkpoint not provided or published, exiting..."
+    echo "Latest model checkpoint not provided or published, exiting..."
 else
     # Replace prior pretrained model with lastest model as current pre-trained model
     $(docker cp "$MODEL_PATH" "$FUNC_CONTAINER:$MODEL_CONTAINER")
     echo "Published latest mode: $MODEL_PATH into $FUNC_NAME nuclio function container."
 fi
-kkjkjj
+

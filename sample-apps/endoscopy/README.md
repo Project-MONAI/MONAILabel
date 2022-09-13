@@ -129,7 +129,7 @@ monailabel start_server \
   --conf auto_finetune_models tooltracking \
   --conf auto_finetune_check_interval 30
 
-# Active Learning for Inference
+# Update/publish latest model back to CVAT
 # After fine-tuned model is saved, push the model to nuclio function container
 # workspace/endoscopy/bin/update_cvat_model.sh tootracking ./workspace/endoscopy/model/tooltracking.pt
 workspace/endoscopy/bin/update_cvat_model.sh <FUNCTION_NAME> <MODEL_PATH>
