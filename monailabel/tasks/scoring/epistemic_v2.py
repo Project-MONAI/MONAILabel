@@ -87,7 +87,7 @@ class EpistemicScoring(ScoringMethod):
     def variance_volume(self, vol_input, ignore_nans=True):
         if ignore_nans:
             vol_input[vol_input <= 0] = 0.0005
-            vari = np.nanvar(vol_input.cpu().detach().numpy(), axis=0)  # torch.var vs np.nonvar (ignore_nans)
+            vari = np.nanvar(vol_input.cpu().detach().numpy(), axis=0)  # torch.var vs np.nanvar (ignore_nans)
             variance = np.sum(vari, axis=0)
         else:
             variance_metric = VarianceMetric(threshold=0.0005, spatial_map=True, scalar_reduction="sum")
