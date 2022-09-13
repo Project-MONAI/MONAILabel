@@ -23,12 +23,12 @@ if [ $# -eq 0 ];then
 fi
 
 # get function container name by argument
-FUNC_CONTAINER="nuclio-nuclio-monailabel.endoscopy.$FUNC_NAME" 
+FUNC_CONTAINER="nuclio-nuclio-monailabel.endoscopy.$FUNC_NAME"
 
 # check if function containers are running
 if [ ! $(docker inspect -f '{{.State.Status}}' $FUNC_CONTAINER) == "running" ]; then
     echo "$FUNC_CONTAINER container is not running, can not publish to container..."
-fi 
+fi
 
 # default published model name
 MODEL_CONTAINER="/opt/conda/monailabel/sample-apps/endoscopy/model/pretrained_$FUNC_NAME.pt" # default model path at function container
