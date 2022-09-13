@@ -109,7 +109,7 @@ monailabel start_server \
 
 # Active Learning for Inference
 # After fine-tuned model is saved, push the model to nuclio function container
-/workspace-apps/endoscopy/pushActiveLearningModel.sh
+bash /workspace-apps/endoscopy/bin/pushActiveLearningModel.sh
 
 ```
 
