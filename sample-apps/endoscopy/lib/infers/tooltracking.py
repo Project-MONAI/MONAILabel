@@ -22,7 +22,6 @@ from monai.transforms import (
     Resized,
     ScaleIntensityd,
     SqueezeDimd,
-    ToTensord,
 )
 
 from monailabel.interfaces.tasks.infer import InferTask, InferType
@@ -46,8 +45,10 @@ class ToolTracking(InferTask):
         labels=None,
         dimension=2,
         description="A pre-trained semantic segmentation model for Tool Tracking",
+        find_contours=True,
         **kwargs,
     ):
+        self.find_contours = find_contours
         super().__init__(
             path=path,
             network=network,
@@ -70,21 +71,26 @@ class ToolTracking(InferTask):
             Resized(keys="image", spatial_size=(736, 480)),
             DivisiblePadd(keys="image", k=32),
             ScaleIntensityd(keys="image"),
-            ToTensord(keys="image", device=data.get("device") if data else None),
         ]
 
     def inferer(self, data=None) -> Inferer:
         return SimpleInferer()
 
     def post_transforms(self, data=None) -> Sequence[Callable]:
-        return [
+        t = [
             EnsureTyped(keys="pred", device=data.get("device") if data else None),
             AsDiscreted(keys="pred", argmax=True),
             Restored(keys="pred", ref_image="image"),
             SqueezeDimd(keys="pred", dim=0),
-            FindContoursd(keys="pred", labels=self.labels),
         ]
 
+        if self.find_contours:
+            t.append(FindContoursd(keys="pred", labels=self.labels))
+        return t
+
     def writer(self, data, extension=None, dtype=None):
-        writer = PolygonWriter(label=self.output_label_key, json=self.output_json_key)
-        return writer(data)
+        if self.find_contours:
+            writer = PolygonWriter(label=self.output_label_key, json=self.output_json_key)
+            return writer(data)
+
+        return super().writer(data, extension, dtype)

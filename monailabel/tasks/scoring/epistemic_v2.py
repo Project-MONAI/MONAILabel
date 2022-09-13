@@ -52,6 +52,7 @@ class EpistemicScoring(ScoringMethod):
 
     def entropy_volume(self, vol_input):
         # The input is assumed with repetitions, channels and then volumetric data
+        vol_input = vol_input.cpu().detach().numpy() if isinstance(vol_input, torch.Tensor) else vol_input
         vol_input = vol_input.astype(dtype="float32")
         dims = vol_input.shape
         reps = dims[0]
@@ -83,11 +84,15 @@ class EpistemicScoring(ScoringMethod):
         # Returns a 3D volume of entropy
         return entropy
 
-    def variance_volume(self, vol_input):
-        vol_input = vol_input.astype(dtype="float32")
-        variance_metric = VarianceMetric(include_background=True, threshold=0.0005, spatial_map=True)
+    def variance_volume(self, vol_input, ignore_nans=True):
+        if ignore_nans:
+            vol_input[vol_input <= 0] = 0.0005
+            vari = np.nanvar(vol_input.cpu().detach().numpy(), axis=0)  # torch.var vs np.nanvar (ignore_nans)
+            variance = np.sum(vari, axis=0)
+        else:
+            variance_metric = VarianceMetric(threshold=0.0005, spatial_map=True, scalar_reduction="sum")
+            variance = variance_metric(vol_input).cpu().detach().numpy()
 
-        variance = variance_metric(vol_input)
         if self.dimension == 3:
             variance = np.expand_dims(variance, axis=0)
             variance = np.expand_dims(variance, axis=0)
@@ -174,14 +179,14 @@ class EpistemicScoring(ScoringMethod):
             else:
                 logger.info(f"EPISTEMIC:: {image_id} => {i} => pred: None")
 
-        accum_numpy = np.stack(accum_unl_outputs)
-        accum_numpy = np.squeeze(accum_numpy)
+        accum = torch.stack(accum_unl_outputs)
+        accum = torch.squeeze(accum)
         if self.dimension == 3:
-            accum_numpy = accum_numpy[:, 1:, :, :, :] if len(accum_numpy.shape) > 4 else accum_numpy
+            accum = accum[:, 1:, :, :, :] if len(accum.shape) > 4 else accum
         else:
-            accum_numpy = accum_numpy[:, 1:, :, :] if len(accum_numpy.shape) > 3 else accum_numpy
+            accum = accum[:, 1:, :, :] if len(accum.shape) > 3 else accum
 
-        entropy = self.variance_volume(accum_numpy) if self.use_variance else self.entropy_volume(accum_numpy)
+        entropy = self.variance_volume(accum) if self.use_variance else self.entropy_volume(accum)
         entropy = float(np.nanmean(entropy))
 
         latency = time.time() - start
