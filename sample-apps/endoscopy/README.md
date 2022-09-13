@@ -131,7 +131,7 @@ monailabel start_server \
 
 # Active Learning for Inference
 # After fine-tuned model is saved, push the model to nuclio function container
-bash /workspace-apps/endoscopy/bin/pushActiveLearningModel.sh
+workspace/endoscopy/bin/update_cvat_model.sh
 
 ```
 
