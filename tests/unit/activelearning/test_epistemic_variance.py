@@ -107,7 +107,7 @@ class TestEpistemicScoring(unittest.TestCase):
 
             epoch_loss /= len(train_loader)
 
-        #TODO Question for Sachi: Can this be defined here?
+        # TODO Question for Sachi: Can this be defined here?
         infer_task_1 = lib.infers.DeepEdit(
             network=model,
             labels=self.labels,
@@ -117,7 +117,7 @@ class TestEpistemicScoring(unittest.TestCase):
         )
 
         entropy_score = EpistemicScoring(
-            infer_task='UNDEFINED', simulation_size=5, use_variance=False, key_output_entropy="epi_entropy"
+            infer_task="UNDEFINED", simulation_size=5, use_variance=False, key_output_entropy="epi_entropy"
         )
         variance_score = EpistemicScoring(
             model=model, transforms=infer_transforms, roi_size=[20, 20, 20], num_samples=10, use_variance=True
@@ -132,6 +132,7 @@ class TestEpistemicScoring(unittest.TestCase):
         self.assertEqual(score_3d.shape, input_size)
         self.assertIsInstance(score_3d_sum, np.float32)
         self.assertGreater(score_3d_sum, 3.0)
+
 
 if __name__ == "__main__":
     unittest.main()
