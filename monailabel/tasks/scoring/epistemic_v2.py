@@ -92,7 +92,7 @@ class EpistemicScoring(ScoringMethod):
         else:
             variance_metric = VarianceMetric(threshold=0.0005, spatial_map=True, scalar_reduction="sum")
             variance = variance_metric(vol_input)
-            
+
         if self.dimension == 3:
             variance = np.expand_dims(variance, axis=0)
             variance = np.expand_dims(variance, axis=0)
@@ -181,17 +181,17 @@ class EpistemicScoring(ScoringMethod):
 
         accum = torch.stack(accum_unl_outputs)
         accum = torch.squeeze(accum)
-        
+
         # Accum Expected shape for 2D images is (N, C, H, W) for 3D (N, C, H, W, D)
-        # To handle cases where only a single class of segmentation is present, an extra dimension is added 
-        if self.dimension==2 and len(accum.shape) == 3: 
+        # To handle cases where only a single class of segmentation is present, an extra dimension is added
+        if self.dimension == 2 and len(accum.shape) == 3:
             accum = torch.unsqueeze(accum, dim=1)
-        elif self.dimension==3 and len(accum.shape) == 4:
+        elif self.dimension == 3 and len(accum.shape) == 4:
             accum = torch.unsqueeze(accum, dim=1)
-        
+
         entropy = self.variance_volume(accum) if self.use_variance else self.entropy_volume(accum)
         entropy = float(np.nanmean(entropy))
-        
+
         latency = time.time() - start
         logger.info(
             "EPISTEMIC:: {} => iters: {}; entropy: {}; latency: {};".format(
