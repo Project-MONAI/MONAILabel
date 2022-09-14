@@ -38,13 +38,13 @@ monailabel start_server --app /workspace/apps/radiology --studies /workspace/ima
 
 Following are the models which are currently added into Radiology App:
 
-| Name                                        | Description                                                                                                                                                                                |
-|---------------------------------------------|--------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------|
-| [deepedit](#deepedit)                       | This model is based on DeepEdit: an algorithm that combines the capabilities of multiple models into one, allowing for both interactive and automated segmentation.                        |
-| [deepgrow](#deepgrow)                       | This model is based on [DeepGrow](https://arxiv.org/abs/1903.08205) which allows for an interactive segmentation.                                                                          |
-| [segmentation](#segmentation)               | A standard (non-interactive) [multilabel](https://www.synapse.org/#!Synapse:syn3193805/wiki/217789) *[spleen, kidney, liver, stomach, aorta, etc..]* model using UNET to label 3D volumes. |
-| [segmentation_spleen](#segmentation_spleen) | It uses pre-trained weights/model (UNET) from [NVIDIA Clara](https://catalog.ngc.nvidia.com/orgs/nvidia/teams/med/models/clara_pt_spleen_ct_segmentation) for spleen segmentation.         |
-
+| Name                                                                  | Description                                                                                                                                                                                |
+|-----------------------------------------------------------------------|--------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------|
+| [deepedit](#deepedit)                                                 | This model is based on DeepEdit: an algorithm that combines the capabilities of multiple models into one, allowing for both interactive and automated segmentation.                        |
+| [deepgrow](#deepgrow)                                                 | This model is based on [DeepGrow](https://arxiv.org/abs/1903.08205) which allows for an interactive segmentation.                                                                          |
+| [segmentation](#segmentation)                                         | A standard (non-interactive) [multilabel](https://www.synapse.org/#!Synapse:syn3193805/wiki/217789) *[spleen, kidney, liver, stomach, aorta, etc..]* model using UNET to label 3D volumes. |
+| [segmentation_spleen](#segmentation_spleen)                           | It uses pre-trained weights/model (UNET) from [NVIDIA Clara](https://catalog.ngc.nvidia.com/orgs/nvidia/teams/med/models/clara_pt_spleen_ct_segmentation) for spleen segmentation.         |
+| [Multistage Vertebra Segmentation](#Multistage Vertebra Segmentation) | This is an example of a multistage approach for segmenting several structures on a CT image.                                                                                               |
 ### How To Use?
 
 ```bash
@@ -56,6 +56,9 @@ monailabel start_server --app workspace/radiology --studies workspace/images --c
 
 # Pick Deepgrow And Segmentation model (multiple models)
 monailabel start_server --app workspace/radiology --studies workspace/images --conf models "deepgrow_2d,deepgrow_3d,segmentation"
+
+# Pick all stages for vertebra segmentaion
+monailabel start_server --app workspace/radiology --studies workspace/images --conf models "localization_spine,localization_vertebra,segmentation_vertebra"
 
 # Pick All
 monailabel start_server --app workspace/radiology --studies workspace/images --conf models all
@@ -267,6 +270,82 @@ A command example to use active learning strategies with segmentation_spleen wou
 
 - Output
     - 1 channels representing the segmented spleen
+
+
+#### Multistage Vertebra Segmentation
+
+This is an example of a multistage approach for segmenting several structures on a CT image. The model has three stages that can be use together or independently:
+
+Stage 1:  [localization_spine](./lib/configs/localization_spine.py)
+
+As the name suggests, this stage localizes the spine as a single label. See the following image:
+
+![Localization Spine](https://raw.githubusercontent.com/Project-MONAI/MONAILabel/main/docs/images/localization_spine.png)
+
+Stage 2:  [localization_vertebra](./lib/configs/localization_vertebra.py)
+
+This images uses the ouput of the first stage, crop the volume around the spine and roughly segments the vertebras.
+
+Stage 3:  [segmentation_vertebra](./lib/configs/segmentation_vertebra.py)
+
+Finally, this stage takes the output of the second stage, compute the centroids and then segments each vertebra at a time. See the folloiwng image:
+
+![Vertebra pipeline](https://raw.githubusercontent.com/Project-MONAI/MONAILabel/main/docs/images/vertebra-pipeline.png)
+
+
+The difference between second and third stage is that third stage get a more fine segmentation of each vertebra.
+
+> monailabel start_server --app workspace/radiology --studies workspace/images --conf models localization_spine,localization_vertebra,segmentation_vertebra
+
+- Additional Configs *(pass them as **--conf name value**) while starting MONAILabelServer*
+
+| Name                 | Values             | Description                                                     |
+|----------------------|--------------------|-----------------------------------------------------------------|
+| use_pretrained_model | **true**, false    | Disable this NOT to load any pretrained weights                 |
+
+- Network
+  > This App uses the [UNet](https://docs.monai.io/en/latest/networks.html#unet) as the default network.
+  > Researchers can define their own network or use one of the listed [here](https://docs.monai.io/en/latest/networks.html)
+
+- Labels
+  ```json
+  {
+            "C1": 1,
+            "C2": 2,
+            "C3": 3,
+            "C4": 4,
+            "C5": 5,
+            "C6": 6,
+            "C7": 7,
+            "Th1": 8,
+            "Th2": 9,
+            "Th3": 10,
+            "Th4": 11,
+            "Th5": 12,
+            "Th6": 13,
+            "Th7": 14,
+            "Th8": 15,
+            "Th9": 16,
+            "Th10": 17,
+            "Th11": 18,
+            "Th12": 19,
+            "L1": 20,
+            "L2": 21,
+            "L3": 22,
+            "L4": 23,
+            "L5": 24
+  }
+  ```
+- Dataset
+  > The model is pre-trained over VerSe dataset: https://github.com/anjany/verse
+
+- Inputs
+    - 1 channel for the CT image
+
+- Output
+    - N channels representing the segmented vertebras
+
+
 
 ### How To Add New Model?
 
