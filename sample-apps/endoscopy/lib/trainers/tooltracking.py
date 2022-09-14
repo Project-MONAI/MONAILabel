@@ -34,6 +34,7 @@ from monai.transforms import (
 from monai.utils import MetricReduction
 
 from monailabel.tasks.train.basic_train import BasicTrainTask, Context
+from monailabel.transform.pre import NormalizeLabeld
 
 logger = logging.getLogger(__name__)
 
@@ -65,6 +66,7 @@ class ToolTracking(BasicTrainTask):
             LoadImaged(keys=("image", "label")),
             AsChannelFirstd("image"),
             AddChanneld(keys="label"),
+            NormalizeLabeld(keys="label"),
             Resized(keys=("image", "label"), spatial_size=(736, 480), mode=("area", "nearest")),
             DivisiblePadd(keys=("image", "label"), k=32),
             ScaleIntensityd(keys=("image", "label")),
@@ -89,6 +91,7 @@ class ToolTracking(BasicTrainTask):
             LoadImaged(keys=("image", "label")),
             AsChannelFirstd("image"),
             AddChanneld(keys="label"),
+            NormalizeLabeld(keys="label"),
             Resized(keys=("image", "label"), spatial_size=(736, 480), mode=("area", "nearest")),
             DivisiblePadd(keys=("image", "label"), k=32),
             ScaleIntensityd(keys=("image", "label")),
