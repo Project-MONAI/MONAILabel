@@ -280,7 +280,7 @@ Stage 1:  [localization_spine](./lib/configs/localization_spine.py)
 
 As the name suggests, this stage localizes the spine as a single label. See the following image:
 
-![Localization Spine](https://raw.githubusercontent.com/Project-MONAI/MONAILabel/main/docs/images/localization_spine.png)
+![Localization Spine](../../docs/images/localization_spine.png)
 
 Stage 2:  [localization_vertebra](./lib/configs/localization_vertebra.py)
 
@@ -290,7 +290,7 @@ Stage 3:  [segmentation_vertebra](./lib/configs/segmentation_vertebra.py)
 
 Finally, this stage takes the output of the second stage, compute the centroids and then segments each vertebra at a time. See the folloiwng image:
 
-![Vertebra pipeline](https://raw.githubusercontent.com/Project-MONAI/MONAILabel/main/docs/images/vertebra-pipeline.png)
+![Vertebra pipeline](../../docs/images/vertebra-pipeline.png)
 
 
 The difference between second and third stage is that third stage get a more fine segmentation of each vertebra.
