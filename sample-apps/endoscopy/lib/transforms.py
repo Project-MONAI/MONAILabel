@@ -11,6 +11,7 @@
 
 import logging
 
+import torch
 from monai.transforms import MapTransform
 
 logger = logging.getLogger(__name__)
@@ -20,6 +21,6 @@ class LabelToBinaryClassd(MapTransform):
     def __call__(self, data):
         d = dict(data)
         for key in self.keys:
-            label = int((d[key].array > 0).any())
-            d[key] = label
+            label = int(torch.max(d[key]))
+            d[key] = label - 2 if label else 0
         return d

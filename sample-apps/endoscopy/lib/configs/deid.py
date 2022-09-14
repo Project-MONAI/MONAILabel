@@ -34,7 +34,7 @@ class DeID(TaskConfig):
         super().init(name, model_dir, conf, planner, **kwargs)
 
         # Labels
-        self.labels = {"Tool": 0}
+        self.labels = {"InBody": 0, "OutBody": 1}
 
         # Model Files
         self.path = [

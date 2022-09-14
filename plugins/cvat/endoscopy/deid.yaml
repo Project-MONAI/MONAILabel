@@ -18,11 +18,12 @@ metadata:
     framework: pytorch
     spec: |
       [
-        { "id": 1, "name": "Tool" }
+        { "id": 1, "name": "InBody" },
+        { "id": 2, "name": "OutBody" }
       ]
 
 spec:
-  description: A pre-trained classification model for Endoscopy to flag if image contains Tool
+  description: A pre-trained classification model for Endoscopy to flag if image follows InBody or OutBody
   runtime: 'python:3.8'
   handler: main:handler
   eventTimeout: 30s
