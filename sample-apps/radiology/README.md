@@ -44,7 +44,7 @@ Following are the models which are currently added into Radiology App:
 | [deepgrow](#deepgrow)                                                 | This model is based on [DeepGrow](https://arxiv.org/abs/1903.08205) which allows for an interactive segmentation.                                                                          |
 | [segmentation](#segmentation)                                         | A standard (non-interactive) [multilabel](https://www.synapse.org/#!Synapse:syn3193805/wiki/217789) *[spleen, kidney, liver, stomach, aorta, etc..]* model using UNET to label 3D volumes. |
 | [segmentation_spleen](#segmentation_spleen)                           | It uses pre-trained weights/model (UNET) from [NVIDIA Clara](https://catalog.ngc.nvidia.com/orgs/nvidia/teams/med/models/clara_pt_spleen_ct_segmentation) for spleen segmentation.         |
-| [Multistage Vertebra Segmentation](#Multistage Vertebra Segmentation) | This is an example of a multistage approach for segmenting several structures on a CT image.                                                                                               |
+| [Multistage Vertebra Segmentation](#Multistage-Vertebra-Segmentation) | This is an example of a multistage approach for segmenting several structures on a CT image.                                                                                               |
 ### How To Use?
 
 ```bash
