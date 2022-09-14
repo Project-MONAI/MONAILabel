@@ -81,8 +81,7 @@ class ToolTracking(BasicTrainTask):
             AsDiscreted(
                 keys=("pred", "label"),
                 argmax=(True, False),
-                to_onehot=True,
-                n_classes=2,
+                to_onehot=(2, 2),
             ),
         ]
 

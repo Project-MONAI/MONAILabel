@@ -76,9 +76,7 @@ class DeepEdit(InferTask):
         return [
             EnsureTyped(keys="pred", device=data.get("device") if data else None),
             Activationsd(keys="pred", sigmoid=True),
-            AsDiscreted(keys="pred", threshold_values=True, logit_thresh=0.5),
-            # NormalizeLabeld(keys="pred"),
-            # DumpImagePrediction2Dd(image_path="img.png", pred_path="pred.png"),
+            AsDiscreted(keys="pred", threshold=0.5),
             Restored(keys="pred", ref_image="image"),
             SqueezeDimd(keys="pred"),
             ToNumpyd(keys="pred", dtype=np.uint8),

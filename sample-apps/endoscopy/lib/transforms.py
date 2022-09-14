@@ -29,13 +29,3 @@ class LabelToBinaryClassd(MapTransform):
             label = int(torch.max(d[key]))
             d[key] = label - self.offset if label else 0
         return d
-
-
-class NormalLabeld(MapTransform):
-    def __call__(self, data):
-        d = dict(data)
-        for key in self.keys:
-            label = d[key]
-            label[label > 0] = 1
-            d[key] = label
-        return d
