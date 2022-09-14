@@ -107,9 +107,6 @@ monailabel start_server --app workspace/endoscopy --studies workspace/images --c
 # Pick All
 monailabel start_server --app workspace/endoscopy --studies workspace/images --conf models all
 
-# Pick All
-monailabel start_server --app workspace/endoscopy --studies workspace/images --conf models all
-
 # Pick All + Preload into All GPU devices
 monailabel start_server --app workspace/endoscopy --studies workspace/images --conf models all --conf preload true
 
@@ -131,6 +128,12 @@ monailabel start_server \
   --conf epistemic_top_k 3 \
   --conf auto_finetune_models tooltracking \
   --conf auto_finetune_check_interval 30
+
+# Update/publish latest model back to CVAT
+# After fine-tuned model is saved, push the model to nuclio function container
+# workspace/endoscopy/bin/update_cvat_model.sh tootracking ./workspace/endoscopy/model/tooltracking.pt
+workspace/endoscopy/bin/update_cvat_model.sh <FUNCTION_NAME> <MODEL_PATH>
+
 ```
 
 Following are additional configs *(pass them as **--conf name value**) are useful when you use CVAT for Active Learning workflow.
