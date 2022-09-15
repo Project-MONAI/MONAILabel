@@ -89,17 +89,25 @@ def handler(context, event):
     prediction = json_data["params"].get("prediction")
     if prediction:
         context.logger.info(f"(Classification) Prediction: {prediction}")
+
+        # CVAT Limitation:: tag is not yet supported https://github.com/opencv/cvat/issues/4212
+        # CVAT Limitation:: select highest score and create bbox to represent as tag
+        e = None
         for element in prediction:
             if element["score"] > 0:
-                # CVAT Limitation:: tag is not yet supported https://github.com/opencv/cvat/issues/4212
-                results.append(
-                    {
-                        "label": element["label"],
-                        "confidence": element["score"],
-                        "type": "rectangle",
-                        "points": [0, 0, image_np.shape[0] - 1, image_np.shape[1] - 1],
-                    }
-                )
+                e = element if e is None or element["score"] > e["score"] else e
+                context.logger.info(f"New Max Element: {e}")
+
+        context.logger.info(f"Final Element with Max Score: {e}")
+        if e:
+            results.append(
+                {
+                    "label": e["label"],
+                    "confidence": e["score"],
+                    "type": "rectangle",
+                    "points": [0, 0, image_np.shape[0] - 1, image_np.shape[1] - 1],
+                }
+            )
         context.logger.info(f"(Classification) Results: {results}")
     else:
         interactor = strtobool(os.environ.get("INTERACTOR_MODEL", "false"))

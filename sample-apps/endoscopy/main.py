@@ -103,8 +103,9 @@ class MyApp(MONAILabelApp):
                 project=self.conf.get("cvat_project", "MONAILabel"),
                 task_prefix=self.conf.get("cvat_task_prefix", "ActiveLearning_Iteration"),
                 image_quality=int(self.conf.get("cvat_image_quality", "70")),
-                labels=self.conf.get("cvat_labels", '[{"name": "Tool", "attributes": [], "color": "#66ff66"}]'),
+                labels=self.conf.get("cvat_labels"),
                 normalize_label=strtobool(self.conf.get("cvat_normalize_label", "true")),
+                segment_size=int(self.conf.get("cvat_segment_size", "1")),
                 extensions=settings.MONAI_LABEL_DATASTORE_FILE_EXT,
                 auto_reload=settings.MONAI_LABEL_DATASTORE_AUTO_RELOAD,
             )
@@ -236,6 +237,7 @@ def main():
 
     home = str(Path.home())
     studies = f"{home}/Dataset/Holoscan/tiny/images"
+    studies = f"{home}/Dataset/picked/all"
     # studies = f"{home}/Dataset/Holoscan/flattened/images"
     # studies = f"{home}/Dataset/Holoscan/tiny_flat/images"
 
@@ -248,7 +250,7 @@ def main():
 
     app = MyApp(app_dir, studies, {"preload": "false", "models": "deid"})
     logger.info(app.datastore().status())
-    infer_deid(app)
+    train_deid(app)
 
 
 def randamize_ds(train_datalist, val_datalist):
@@ -386,11 +388,12 @@ def infer_deid(app):
     res = app.infer(
         request={
             "model": "deid",
-            "image": "Video_8_2020_01_13_Video2_Trim_01-25_f26100",
+            "image": "100",
+            # "logging": "ERROR",
         }
     )
 
-    print(json.dumps(res, indent=2))
+    print(json.dumps(res["params"]["prediction"]))
 
 
 def train_deid(app):
