@@ -18,7 +18,7 @@ from monai.transforms import (
     EnsureTyped,
     KeepLargestConnectedComponentd,
     LoadImaged,
-    NormalizeIntensityd,
+    ScaleIntensityRanged,
     ToNumpyd,
 )
 
@@ -57,13 +57,14 @@ class SegmentationDrTure(InferTask):
         return [
             LoadImaged(keys="image", reader="ITKReader"),
             EnsureChannelFirstd(keys="image"),
-            NormalizeIntensityd(keys="image"),
+            # NormalizeIntensityd(keys="image"),
+            ScaleIntensityRanged(keys="image", a_min=800, a_max=5000, b_min=0.0, b_max=1.0, clip=True),
             EnsureTyped(keys="image"),
         ]
 
     def inferer(self, data=None) -> Inferer:
         return SlidingWindowInferer(
-            roi_size=self.spatial_size, sw_batch_size=4, overlap=0.5, padding_mode="replicate", mode="gaussian"
+            roi_size=self.spatial_size, sw_batch_size=4, overlap=0.3, padding_mode="replicate", mode="gaussian"
         )
 
     def inverse_transforms(self, data=None):
