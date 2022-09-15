@@ -70,15 +70,14 @@ class SegmentationBrats(InferTask):
         return []
 
     def post_transforms(self, data=None) -> Sequence[Callable]:
-        largest_cc = False if not data else data.get("largest_cc", False)
-        applied_labels = list(self.labels.values()) if isinstance(self.labels, dict) else self.labels
+        # Apply KeepLargestConnectedComponentd to specific joint big labels
+        applied_labels = [1, 2, 4, 5, 10, 12]
         t = [
             EnsureTyped(keys="pred", device=data.get("device") if data else None),
             Activationsd(keys="pred", softmax=True),
             AsDiscreted(keys="pred", argmax=True),
             ToNumpyd(keys="pred"),
+            KeepLargestConnectedComponentd(keys="pred", applied_labels=applied_labels),
+            Restored(keys="pred", ref_image="image"),
         ]
-        if largest_cc:
-            t.append(KeepLargestConnectedComponentd(keys="pred", applied_labels=applied_labels))
-        t.append(Restored(keys="pred", ref_image="image"))
         return t

@@ -16,8 +16,8 @@ import monai
 from monai.data import DataLoader, list_data_collate
 from monai.transforms import Compose, LoadImaged, SaveImaged
 
-data_dir = "/home/andres/Documents/workspace/disk-workspace/Datasets/radiology/brain/NeuroAtlas-Labels/DrTures/all-images/10-cases-stripped-not stripped/images/"
-output_folder = "/home/andres/Documents/workspace/disk-workspace/Datasets/radiology/brain/NeuroAtlas-Labels/DrTures/all-images/10-cases-stripped-not stripped/merged/"
+data_dir = "/home/andres/Documents/workspace/disk-workspace/Datasets/radiology/brain/NeuroAtlas-Labels/DrTures/all-images/co-registered-volumes/DrTure/ALL-CASES/"
+output_folder = "/home/andres/Documents/workspace/disk-workspace/Datasets/radiology/brain/NeuroAtlas-Labels/DrTures/all-images/co-registered-volumes/DrTure/merged/"
 
 
 set_transforms = Compose(
@@ -27,7 +27,7 @@ set_transforms = Compose(
     ]
 )
 
-images = glob.glob(os.path.join(data_dir, "*"))
+images = glob.glob(os.path.join(data_dir, "*/*"))
 loader_d = []
 all_patients = []
 
@@ -42,7 +42,7 @@ for p in images:
 for patient in all_patients:
     path_imgs = []
     for mod in ["FLAIR", "T1", "T1C", "T2"]:
-        path_img = data_dir + "Ture-" + patient + "-" + mod + "-stripped.nii.gz"
+        path_img = data_dir + "/Ture-" + patient + "/Ture-" + patient + "-" + mod + ".nrrd"
         path_imgs.append(path_img)
     loader_d.append({"image": path_imgs})
 
@@ -58,4 +58,5 @@ for idx, img in enumerate(trainLoader):
     tures_number = file.split("-")[1]
     print("Processing image: ", tures_number + ".nii.gz")
     # time.sleep(2)
-    shutil.move(output_folder + file, output_folder + "Ture-" + tures_number + ".nii.gz")
+    filename, extension = os.path.splitext(file)
+    shutil.move(output_folder + filename + ".nii.gz", output_folder + "Ture-" + tures_number + ".nii.gz")
