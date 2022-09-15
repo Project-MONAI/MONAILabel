@@ -45,7 +45,10 @@ class DeID(TaskConfig):
         # Download PreTrained Model
         if strtobool(self.conf.get("use_pretrained_model", "true")):
             url = f"{self.conf.get('pretrained_path', self.PRE_TRAINED_PATH)}/endoscopy_deid.pt"
-            download_file(url, self.path[0])
+            try:
+                download_file(url, self.path[0])
+            except:
+                logger.warning(f"Failed to download pre-trained model from {url}; Ignoring the same...")
 
         # Network
         self.network = SEResNet50(spatial_dims=2, in_channels=3, num_classes=2)

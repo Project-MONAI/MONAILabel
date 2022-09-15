@@ -132,7 +132,7 @@ monailabel start_server \
 # Update/publish latest model back to CVAT
 # After fine-tuned model is saved, push the model to nuclio function container
 # workspace/endoscopy/bin/update_cvat_model.sh tootracking ./workspace/endoscopy/model/tooltracking.pt
-workspace/endoscopy/bin/update_cvat_model.sh <FUNCTION_NAME> <MODEL_PATH>
+workspace/endoscopy/update_cvat_model.sh <FUNCTION_NAME> <MODEL_PATH>
 
 ```
 
