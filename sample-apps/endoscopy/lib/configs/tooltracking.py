@@ -46,7 +46,10 @@ class ToolTracking(TaskConfig):
         # Download PreTrained Model
         if strtobool(self.conf.get("use_pretrained_model", "true")):
             url = f"{self.conf.get('pretrained_path', self.PRE_TRAINED_PATH)}/endoscopy_tooltracking.pt"
-            download_file(url, self.path[0])
+            try:
+                download_file(url, self.path[0])
+            except:
+                logger.warning(f"Failed to download pre-trained model from {url}; Ignoring the same...")
 
         # Network
         self.network = FlexibleUNet(
