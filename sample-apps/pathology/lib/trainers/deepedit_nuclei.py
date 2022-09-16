@@ -117,7 +117,7 @@ class DeepEditNuclei(BasicTrainTask):
     def train_post_transforms(self, context: Context):
         return [
             Activationsd(keys="pred", sigmoid=True),
-            AsDiscreted(keys="pred", threshold_values=True, logit_thresh=0.5),
+            AsDiscreted(keys="pred", threshold=0.5),
         ]
 
     def train_key_metric(self, context: Context):

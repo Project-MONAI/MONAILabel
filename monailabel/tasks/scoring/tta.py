@@ -39,6 +39,7 @@ from monai.transforms.inverse import InvertibleTransform
 from monai.transforms.inverse_batch_transform import BatchInverseTransform
 from monai.transforms.transform import Randomizable
 from monai.transforms.utils import allow_missing_keys_mode
+from monai.utils import deprecated
 from monai.utils.enums import CommonKeys, InverseKeys
 from tqdm import tqdm
 
@@ -48,6 +49,7 @@ from monailabel.interfaces.tasks.scoring import ScoringMethod
 logger = logging.getLogger(__name__)
 
 
+@deprecated(since="0.5.0", msg_suffix="please use Epistemic based strategy instead")
 class TTAScoring(ScoringMethod):
     """
     First version of test time augmentation active learning
@@ -236,7 +238,7 @@ class TestTimeAugmentation:
         .. code-block:: python
 
             transform = RandAffined(keys, ...)
-            post_trans = Compose([Activations(sigmoid=True), AsDiscrete(threshold_values=True)])
+            post_trans = Compose([Activations(sigmoid=True), AsDiscrete()])
 
             tt_aug = TestTimeAugmentation(
                 transform, batch_size=5, num_workers=0, inferrer_fn=lambda x: post_trans(model(x)), device=device
