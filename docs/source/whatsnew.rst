@@ -17,7 +17,7 @@ What's New
 
 0.5.0
 =====
-- `Endoscopy Sample <https://github.com/Project-MONAI/MONAILabel/tree/main/sample-apps/endoscopy>`_
+- Endoscopy Sample App
 
   - Tool Tracking segmentation model
   - InBody vs OutBody (DeID) classification model
