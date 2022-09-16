@@ -37,14 +37,12 @@ with [MONAI](https://github.com/Project-MONAI). Refer to full [MONAI Label docum
 
 ## Sample Apps in MONAILabel
 
-![DEMO](https://raw.githubusercontent.com/Project-MONAI/MONAILabel/main/docs/images/sampleApps_index.jpeg)
+![image](https://raw.githubusercontent.com/Project-MONAI/MONAILabel/main/docs/images/sampleApps_index.jpeg)
 
-Demo on labeling tasks with visualization tools 3D Slicer, OHIF, and QuPath
+[MONAI Label](https://youtu.be/m2rYorVwXk4) | [Demo Videos](https://www.youtube.com/c/ProjectMONAI)
 
-[MONAI Label](https://youtu.be/m2rYorVwXk4) | [Demo](https://youtu.be/o8HipCgSZIw?t=1319)
-
-
-![DEMO](https://raw.githubusercontent.com/Project-MONAI/MONAILabel/main/docs/images/demo.png)
+MONAI Label with visualization tools 3D Slicer, OHIF, DSA, QuPath, CVAT etc..
+![image](https://raw.githubusercontent.com/Project-MONAI/MONAILabel/main/docs/images/demo.png)
 <table>
 <tr>
 <td><img src="https://raw.githubusercontent.com/Project-MONAI/MONAILabel/main/docs/images/ohif.png" alt="drawing" width="150"/></td>
@@ -57,6 +55,19 @@ Demo on labeling tasks with visualization tools 3D Slicer, OHIF, and QuPath
 ## Highlights and Features
 
 > _The codebase is currently under active development._
+
+- Framework for developing and deploying MONAI Label Apps to train and infer AI models
+- Compositional & portable APIs for ease of integration in existing workflows
+- Customizable labeling app design for varying user expertise
+- Annotation support via [3DSlicer](https://github.com/Project-MONAI/MONAILabel/tree/main/plugins/slicer)
+  & [OHIF](https://github.com/Project-MONAI/MONAILabel/tree/main/plugins/ohif) for radiology
+- Annotation support via [QuPath](https://github.com/Project-MONAI/MONAILabel/tree/main/plugins/qupath)
+  , [Digital Slide Archive](https://github.com/Project-MONAI/MONAILabel/tree/main/plugins/dsa)
+  & [CVAT](https://github.com/Project-MONAI/MONAILabel/tree/main/plugins/cvat) for
+  pathology
+- Annotation support via [CVAT](https://github.com/Project-MONAI/MONAILabel/tree/main/plugins/cvat) for Endoscopy
+- PACS connectivity via [DICOMWeb](https://www.dicomstandard.org/using/dicomweb)
+- Automated Active Learning workflow for endoscopy using [CVAT](https://github.com/Project-MONAI/MONAILabel/tree/main/plugins/cvat)
 
 **Radiology App**
    This app has example models to do both interactive and automated segmentation over radiology (3D)
@@ -73,29 +84,16 @@ Demo on labeling tasks with visualization tools 3D Slicer, OHIF, and QuPath
    anatomies. The specification for MONAILabel integration of the Bundle app links archived Model-Zoo for customized labeling
    (e.g., the third-party transformer model for labeling renal cortex, medulla, and pelvicalyceal system. Interactive tools such as DeepEdits).
 
-- Framework for developing and deploying MONAI Label Apps to train and infer AI models
-- Compositional & portable APIs for ease of integration in existing workflows
-- Customizable labeling app design for varying user expertise
-- Annotation support via [3DSlicer](https://github.com/Project-MONAI/MONAILabel/tree/main/plugins/slicer)
-  & [OHIF](https://github.com/Project-MONAI/MONAILabel/tree/main/plugins/ohif) for radiology
-- Annotation support via [QuPath](https://github.com/Project-MONAI/MONAILabel/tree/main/plugins/qupath)
-  , [Digital Slide Archive](https://github.com/Project-MONAI/MONAILabel/tree/main/plugins/dsa)
-  & [CVAT](https://github.com/Project-MONAI/MONAILabel/tree/main/plugins/cvat) for
-  pathology
-- Annotation support via [CVAT](https://github.com/Project-MONAI/MONAILabel/tree/main/plugins/cvat) for Endoscopy
-- PACS connectivity via [DICOMWeb](https://www.dicomstandard.org/using/dicomweb)
-- Automated Active Learning workflow for endoscopy using [CVAT](https://github.com/Project-MONAI/MONAILabel/tree/main/plugins/cvat)
+**Endoscopy App**
+   The Bundle app enables users to use interactive, automated segmentation and classification models over 2D images for endoscopy usecase.
+   Combined with CVAT, it will demonstrate the fully automated Active Learning workflow to train + fine-tune a model.
 
 ## Installation
 
 Start using MONAI Label with just three steps:
-
-![DEMO](https://raw.githubusercontent.com/Project-MONAI/MONAILabel/main/docs/images/install_steps.jpeg)
-
-
+![image](https://raw.githubusercontent.com/Project-MONAI/MONAILabel/main/docs/images/install_steps.jpeg)
 
 MONAI Label supports following OS with **GPU/CUDA** enabled.
-
 - Ubuntu: Please see the [installation guide](https://docs.monai.io/projects/label/en/latest/installation.html).
 - [Windows](https://docs.monai.io/projects/label/en/latest/installation.html#windows)
 
@@ -330,3 +328,5 @@ on [MONAI Label's GitHub Discussions tab](https://github.com/Project-MONAI/MONAI
 - PyPI package: https://pypi.org/project/monailabel/
 - Weekly previews: https://pypi.org/project/monailabel-weekly/
 - Docker Hub: https://hub.docker.com/r/projectmonai/monailabel
+- Client API: https://www.youtube.com/watch?v=mPMYJyzSmyo
+- Demo Videos: https://www.youtube.com/c/ProjectMONAI
