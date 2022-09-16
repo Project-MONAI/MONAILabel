@@ -99,11 +99,8 @@ A command example to use active learning strategies with DeepEdit would be:
 
 > monailabel start_server --app workspace/radiology --studies workspace/images --conf models deepedit --conf skip_scoring false --conf skip_strategies false --conf tta_enabled true
 
-- Network
-  > This App uses the DynUNet as the default network. It also comes with pretrained model for [UNETR](https://docs.monai.io/en/latest/networks.html#unetr).
-  > Researchers can define their own network or use one of the listed [here](https://docs.monai.io/en/latest/networks.html)
-
-- Labels
+- Network: This model uses the DynUNet as the default network. It also comes with pretrained model for [UNETR](https://docs.monai.io/en/latest/networks.html#unetr). Researchers can define their own network or use one of the listed [here](https://docs.monai.io/en/latest/networks.html)
+- Labels:
   ```json
   {
       "spleen": 1,
@@ -116,15 +113,13 @@ A command example to use active learning strategies with DeepEdit would be:
       "background": 0
   }
   ```
-- Dataset
-  > The model is pre-trained over dataset: https://www.synapse.org/#!Synapse:syn3193805/wiki/217789
+- Dataset: The model is pre-trained over dataset: https://www.synapse.org/#!Synapse:syn3193805/wiki/217789
 
 - Inputs
     - 1 channel for the image modality -> Automated mode
     - 1+N channels (image modality + points for N labels including background) -> Interactive mode
 
-- Output
-    - N channels representing the segmented organs/tumors/tissues
+- Output: N channels representing the segmented organs/tumors/tissues
 
 #### [Deepgrow](./lib/configs)
 
@@ -134,7 +129,7 @@ weights
 from [NVIDIA Clara](https://catalog.ngc.nvidia.com/models?filters=&orderBy=dateModifiedDESC&query=clara_pt_deepgrow).
 
 It provides both [2D](./lib/configs/deepgrow_2d.py) and [3D](./lib/configs/deepgrow_3d.py) version to annotate images.
-Additionally it also provides [DeepgrowPipeline](lib/infers/deepgrow_pipeline.py) _(infer only)_ that
+Additionally, it also provides [DeepgrowPipeline](lib/infers/deepgrow_pipeline.py) _(infer only)_ that
 combines best results of 3D and 2D results.
 _Deepgrow 2D model trains faster with higher accuracy compared to Deepgrow 3D model._
 
@@ -150,11 +145,8 @@ the model to learn on new organ.
 |----------------------|--------------------|-----------------------------------------------------------------|
 | preload              | true, **false**    | Preload model into GPU                                                                                |
 
-- Network
-  > This App uses the [BasicUNet](https://docs.monai.io/en/latest/networks.html#basicunet) as the default network.
-  > Researchers can define their own network or use one of the listed [here](https://docs.monai.io/en/latest/networks.html)
-
-- Labels
+- Network: This App uses the [BasicUNet](https://docs.monai.io/en/latest/networks.html#basicunet) as the default network.
+- Labels:
   ```json
   [
     "spleen",
@@ -173,14 +165,9 @@ the model to learn on new organ.
   ]
   ```
   > **NOTE::** You can feed any new labels to the network to learn on new organs/tissues etc..
-- Dataset
-  > The model is pre-trained over dataset: https://www.synapse.org/#!Synapse:syn3193805/wiki/217789
-
-- Inputs
-    - 3 channel that represents image + foreground clicks + background clicks
-
-- Output
-    - 1 channel representing the segmented organs/tumors/tissues
+- Dataset: The model is pre-trained over dataset: https://www.synapse.org/#!Synapse:syn3193805/wiki/217789
+- Inputs: 3 channel that represents image + foreground clicks + background clicks
+- Output: 1 channel representing the segmented organs/tumors/tissues
 
 #### [Segmentation](./lib/configs/segmentation.py)
 
@@ -195,10 +182,7 @@ This model based on UNet for automated segmentation. This model works for single
 | use_pretrained_model | **true**, false    | Disable this NOT to load any pretrained weights                 |
 | preload              | true, **false**    | Preload model into GPU                                                                                |
 
-- Network
-  > This App uses the [UNet](https://docs.monai.io/en/latest/networks.html#unet) as the default network.
-  > Researchers can define their own network or use one of the listed [here](https://docs.monai.io/en/latest/networks.html)
-
+- Network: This model uses the [UNet](https://docs.monai.io/en/latest/networks.html#unet) as the default network. Researchers can define their own network or use one of the listed [here](https://docs.monai.io/en/latest/networks.html)
 - Labels
   ```json
   {
@@ -217,14 +201,9 @@ This model based on UNet for automated segmentation. This model works for single
     "left adrenal gland": 13
   }
   ```
-- Dataset
-  > The model is pre-trained over dataset: https://www.synapse.org/#!Synapse:syn3193805/wiki/217789
-
-- Inputs
-    - 1 channel for the image modality
-
-- Output
-    - N channels representing the segmented organs/tumors/tissues
+- Dataset: The model is pre-trained over dataset: https://www.synapse.org/#!Synapse:syn3193805/wiki/217789
+- Inputs: 1 channel for the image modality
+- Output: N channels representing the segmented organs/tumors/tissues
 
 #### [Segmentation Spleen](./lib/configs/segmentation_spleen.py)
 
@@ -254,42 +233,29 @@ A command example to use active learning strategies with segmentation_spleen wou
 > monailabel start_server --app workspace/radiology --studies workspace/images --conf models segmentation_spleen --conf skip_scoring false --conf skip_strategies false --conf tta_enabled true
 
 
-- Network
-  > This App uses the [UNet](https://docs.monai.io/en/latest/networks.html#unet) as the default network.
-  > Researchers can define their own network or use one of the listed [here](https://docs.monai.io/en/latest/networks.html)
-
-- Labels
-  ```json
-  ["spleen"]
-  ```
-- Dataset
-  > The model is pre-trained over dataset: http://medicaldecathlon.com/
-
-- Inputs
-    - 1 channel for the image modality
-
-- Output
-    - 1 channels representing the segmented spleen
+- Network: This App uses the [UNet](https://docs.monai.io/en/latest/networks.html#unet) as the default network.
+- Labels: `{ "Spleen": 1 }`
+- Dataset: The model is pre-trained over dataset: http://medicaldecathlon.com/
+- Inputs: 1 channel for the image modality
+- Output: 1 channels representing the segmented spleen
 
 
-#### Multistage Vertebra Segmentation
+#### [Multistage Vertebra Segmentation](./lib/infers/vertebra_pipeline.py)
 
 This is an example of a multistage approach for segmenting several structures on a CT image. The model has three stages that can be use together or independently:
 
-Stage 1:  [localization_spine](./lib/configs/localization_spine.py)
+**_Stage 1:_**  [Spine Localization](./lib/configs/localization_spine.py)
 
 As the name suggests, this stage localizes the spine as a single label. See the following image:
-
 ![Localization Spine](../../docs/images/localization_spine.png)
 
-Stage 2:  [localization_vertebra](./lib/configs/localization_vertebra.py)
+**_Stage 2:_**  [Vertebra Localization](./lib/configs/localization_vertebra.py)
 
 This images uses the ouput of the first stage, crop the volume around the spine and roughly segments the vertebras.
 
-Stage 3:  [segmentation_vertebra](./lib/configs/segmentation_vertebra.py)
+**_Stage 3:_**  [Vertebra Segmentation](./lib/configs/segmentation_vertebra.py)
 
 Finally, this stage takes the output of the second stage, compute the centroids and then segments each vertebra at a time. See the folloiwng image:
-
 ![Vertebra pipeline](../../docs/images/vertebra-pipeline.png)
 
 
@@ -303,11 +269,8 @@ The difference between second and third stage is that third stage get a more fin
 |----------------------|--------------------|-----------------------------------------------------------------|
 | use_pretrained_model | **true**, false    | Disable this NOT to load any pretrained weights                 |
 
-- Network
-  > This App uses the [UNet](https://docs.monai.io/en/latest/networks.html#unet) as the default network.
-  > Researchers can define their own network or use one of the listed [here](https://docs.monai.io/en/latest/networks.html)
-
-- Labels
+- Network: This App uses the [UNet](https://docs.monai.io/en/latest/networks.html#unet) as the default network.
+- Labels:
   ```json
   {
             "C1": 1,
@@ -336,15 +299,9 @@ The difference between second and third stage is that third stage get a more fin
             "L5": 24
   }
   ```
-- Dataset
-  > The model is pre-trained over VerSe dataset: https://github.com/anjany/verse
-
-- Inputs
-    - 1 channel for the CT image
-
-- Output
-    - N channels representing the segmented vertebras
-
+- Dataset: The model is pre-trained over VerSe dataset: https://github.com/anjany/verse
+- Inputs: 1 channel for the CT image
+- Output: N channels representing the segmented vertebras
 
 
 ### How To Add New Model?

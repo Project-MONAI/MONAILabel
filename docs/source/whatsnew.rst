@@ -15,6 +15,26 @@
 What's New
 ==========
 
+0.5.0
+=====
+- `Endoscopy Sample <https://github.com/Project-MONAI/MONAILabel/tree/main/sample-apps/endoscopy>`_
+
+  - Tool Tracking segmentation model
+  - InBody vs OutBody (DeID) classification model
+  - DeepEdit interaction model for annotating tool
+  - CVAT Integration to support automated workflow to run Active Learning Iterations
+- Improving performance for Radiology App
+
+  - Support cache for pre-transforms in case repeated inference for interaction models
+  - Support cache for DICOM Web API responses
+  - Fix DICOM Proxy for wado/qido
+
+- Multi Stage `vertebra <https://github.com/Project-MONAI/MONAILabel/tree/main/sample-apps/radiology#multistage-vertebra-segmentation>`_ segmentation
+- Improvements for Epistemic based active learning strategy
+- Support for MONAI `1.0.0 <https://github.com/Project-MONAI/MONAI/releases/tag/0.9.1>`_
+
+
+
 0.4.2
 =====
 - MONAI Bundle App - Pull `compatible <https://github.com/Project-MONAI/MONAILabel/tree/main/sample-apps/monaibundle>`_ bundles from `MONAI Zoo <https://github.com/Project-MONAI/model-zoo>`_

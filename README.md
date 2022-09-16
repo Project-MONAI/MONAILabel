@@ -84,6 +84,7 @@ Demo on labeling tasks with visualization tools 3D Slicer, OHIF, and QuPath
   pathology
 - Annotation support via [CVAT](https://github.com/Project-MONAI/MONAILabel/tree/main/plugins/cvat) for Endoscopy
 - PACS connectivity via [DICOMWeb](https://www.dicomstandard.org/using/dicomweb)
+- Automated Active Learning workflow for endoscopy using [CVAT](https://github.com/Project-MONAI/MONAILabel/tree/main/plugins/cvat)
 
 ## Installation
 
@@ -116,6 +117,7 @@ git clone https://github.com/Project-MONAI/MONAILabel
 pip install -r MONAILabel/requirements.txt
 export PATH=$PATH:`pwd`/MONAILabel/monailabel/scripts
 ```
+If you are using DICOM-Web + OHIF then you have to build OHIF package separate.  Please refer [here](https://github.com/Project-MONAI/MONAILabel/tree/main/plugins/ohif#development-setup).
 
 #### [Weekly Release](https://pypi.org/project/monailabel-weekly/)
 
@@ -174,7 +176,6 @@ algorithms, develpoment and integration.
 MONAI Label is most currently tested and supported with stable release of 3D Slicer every version. Preview version of 3D Slicer is not fully tested and supported.
 
 To install stable released version of 3D Slicer, see [3D Slicer installation](https://download.slicer.org/).
-
 Currently, Windows and Linux version are supported.
 
 ### OHIF (Web-based)
@@ -183,18 +184,23 @@ The Open Health Imaging Foundation (OHIF) Viewer is an open source, web-based, m
 It aims to provide a core framework for building complex imaging applications.
 
 At this point OHIF can be used to annotate the data in the DICOM server via the MONAI Label server.
-
 To use OHIF web-based application, refer to [extensible web imaging platform](https://ohif.org/)
 
 ### QuPath
 
-Quantitative Pathology & Bioimage Analysis (QuPath)
-
-QuPath is an open, powerful, flexible, extensible software platform for bioimage analysis.
+Quantitative Pathology & Bioimage Analysis (QuPath) is an open, powerful, flexible, extensible software platform for bioimage analysis.
 
 To install stable released version of QuPath, see [QuPath installation](https://qupath.github.io/).
-
 Currently, Windows and Linux version are supported. Detailed documentation can be found [QuPath Doc](https://qupath.readthedocs.io/en/stable/).
+
+
+### CVAT
+
+CVAT is an interactive video and image annotation tool for computer vision.
+
+To install stable released version of CVAT, see [CVAT installation](https://github.com/opencv/cvat).
+Currently, Windows and Linux version are supported. Detailed documentation can be found [CVAT Doc](https://opencv.github.io/cvat/docs/).
+
 
 ## Plugins
 
@@ -258,9 +264,14 @@ Install [CVAT](https://openvinotoolkit.github.io/cvat/docs/getting_started) and
 enable [Semi-Automatic and Automatic Annotation](https://openvinotoolkit.github.io/cvat/docs/administration/advanced/installation_automatic_annotation/)
 .
 Refer [CVAT Instructions](https://github.com/Project-MONAI/MONAILabel/tree/main/plugins/cvat) for deploying available MONAILabel
-pathology models into CVAT.
+pathology/endoscopy models into CVAT.
 
-![image](https://raw.githubusercontent.com/Project-MONAI/MONAILabel/main/docs/images/cvat_detector.jpeg)
+<table>
+<tr>
+<td><img src="https://raw.githubusercontent.com/Project-MONAI/MONAILabel/main/docs/images/cvat_detector.jpeg" width="300"/></td>
+<td><img src="https://raw.githubusercontent.com/Project-MONAI/MONAILabel/main/docs/images/cvat_active_learning.jpeg" width="300"/></td>
+</tr>
+</table>
 
 ## Cite
 
