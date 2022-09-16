@@ -31,7 +31,7 @@ What's New
 
 - Multi Stage `vertebra <https://github.com/Project-MONAI/MONAILabel/tree/main/sample-apps/radiology#multistage-vertebra-segmentation>`_ segmentation
 - Improvements for Epistemic based active learning strategy
-- Support for MONAI `1.0.0 <https://github.com/Project-MONAI/MONAI/releases/tag/0.9.1>`_
+- Support for MONAI `1.0.0 <https://github.com/Project-MONAI/MONAI/releases/tag/1.0.0>`_
 
 
 
