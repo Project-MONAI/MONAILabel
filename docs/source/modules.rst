@@ -101,7 +101,7 @@ discretization.
     def post_transforms(self, data=None):
         return [
             Activationsd(keys="pred", sigmoid=True),
-            AsDiscreted(keys="pred", threshold_values=True, logit_thresh=0.5),
+            AsDiscreted(keys="pred", threshold=0.5),
             ToNumpyd(keys="pred"),
         ]
 
@@ -142,7 +142,7 @@ in this example they follow the default behavior in the base class.
     def train_post_transforms(self, context: Context):
         return Compose([
             Activationsd(keys="pred", sigmoid=True),
-            AsDiscreted(keys="pred", threshold_values=True, logit_thresh=0.5),
+            AsDiscreted(keys="pred", threshold=0.5),
         ])
 
     def val_pre_transforms(self, context: Context):
