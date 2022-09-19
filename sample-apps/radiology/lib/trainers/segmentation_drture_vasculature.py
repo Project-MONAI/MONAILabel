@@ -21,11 +21,8 @@ from monai.transforms import (
     EnsureChannelFirstd,
     EnsureTyped,
     LoadImaged,
-    RandCropByPosNegLabeld,
-    RandGaussianSmoothd,
-    RandScaleIntensityd,
-    RandShiftIntensityd,
-    ScaleIntensityRanged,
+    NormalizeIntensityd,
+    RandSpatialCropd,
     SelectItemsd,
 )
 
@@ -75,26 +72,16 @@ class SegmentationDrTure(BasicTrainTask):
             NormalizeLabelsInDatasetd(keys="label", label_names=self._labels),  # Specially for missing labels
             EnsureChannelFirstd(keys=("image", "label")),
             # SaveImaged(keys="label", output_postfix="", output_dir="/home/andres/Downloads", separate_folder=False),
-            # NormalizeIntensityd(keys="image"),
-            ScaleIntensityRanged(keys="image", a_min=800, a_max=5000, b_min=0.0, b_max=1.0, clip=True),
-            # RandSpatialCropd(
-            #     keys=["image", "label"],
-            #     roi_size=[self.spatial_size[0], self.spatial_size[1], self.spatial_size[2]],
-            #     random_size=False,
-            # ),
-            RandCropByPosNegLabeld(
+            NormalizeIntensityd(keys="image", nonzero=True, channel_wise=True),
+            # ScaleIntensityRanged(keys="image", a_min=800, a_max=5000, b_min=0.0, b_max=1.0, clip=True),
+            RandSpatialCropd(
                 keys=["image", "label"],
-                label_key="label",
-                spatial_size=[self.spatial_size[0], self.spatial_size[1], self.spatial_size[2]],
-                pos=1,
-                neg=1,
-                num_samples=4,
-                image_key="image",
-                image_threshold=0,
+                roi_size=[self.spatial_size[0], self.spatial_size[1], self.spatial_size[2]],
+                random_size=False,
             ),
-            RandScaleIntensityd(keys="image", factors=0.1, prob=0.8),
-            RandShiftIntensityd(keys="image", offsets=0.1, prob=0.8),
-            RandGaussianSmoothd(keys="image", sigma_x=(0.25, 1.5), sigma_y=(0.25, 1.5), sigma_z=(0.25, 1.5), prob=0.8),
+            # RandScaleIntensityd(keys="image", factors=0.1, prob=0.8),
+            # RandShiftIntensityd(keys="image", offsets=0.1, prob=0.8),
+            # RandGaussianSmoothd(keys="image", sigma_x=(0.25, 1.5), sigma_y=(0.25, 1.5), sigma_z=(0.25, 1.5), prob=0.8),
             EnsureTyped(keys=("image", "label"), device=context.device),
             SelectItemsd(keys=("image", "label")),
         ]
@@ -115,8 +102,8 @@ class SegmentationDrTure(BasicTrainTask):
             LoadImaged(keys=("image", "label"), reader="ITKReader"),
             NormalizeLabelsInDatasetd(keys="label", label_names=self._labels),  # Specially for missing labels
             EnsureChannelFirstd(keys=("image", "label")),
-            # NormalizeIntensityd(keys="image"),
-            ScaleIntensityRanged(keys="image", a_min=500, a_max=5000, b_min=0.0, b_max=1.0, clip=True),
+            NormalizeIntensityd(keys="image", nonzero=True, channel_wise=True),
+            # ScaleIntensityRanged(keys="image", a_min=500, a_max=5000, b_min=0.0, b_max=1.0, clip=True),
             EnsureTyped(keys=("image", "label")),
             SelectItemsd(keys=("image", "label")),
         ]

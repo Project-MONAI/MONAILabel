@@ -18,7 +18,7 @@ from monai.transforms import (
     EnsureTyped,
     KeepLargestConnectedComponentd,
     LoadImaged,
-    ScaleIntensityRanged,
+    NormalizeIntensityd,
     ToNumpyd,
 )
 
@@ -57,8 +57,8 @@ class SegmentationDrTure(InferTask):
         return [
             LoadImaged(keys="image", reader="ITKReader"),
             EnsureChannelFirstd(keys="image"),
-            # NormalizeIntensityd(keys="image"),
-            ScaleIntensityRanged(keys="image", a_min=800, a_max=5000, b_min=0.0, b_max=1.0, clip=True),
+            NormalizeIntensityd(keys="image", nonzero=True, channel_wise=True),
+            # ScaleIntensityRanged(keys="image", a_min=800, a_max=5000, b_min=0.0, b_max=1.0, clip=True),
             EnsureTyped(keys="image"),
         ]
 
