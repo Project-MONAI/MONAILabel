@@ -15,12 +15,12 @@
 What's New
 ==========
 
-0.5.0
+0.5.1
 =====
 - Endoscopy Sample App
 
   - Tool Tracking segmentation model
-  - InBody vs OutBody (DeID) classification model
+  - InBody vs OutBody classification model
   - DeepEdit interaction model for annotating tool
   - CVAT Integration to support automated workflow to run Active Learning Iterations
 - Improving performance for Radiology App

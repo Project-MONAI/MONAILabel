@@ -88,7 +88,7 @@ Following are the models which are currently added into Endosocpy App:
 |-------------------------------|------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------|
 | [deepedit](#deepedit)         | This model is based on DeepEdit: an algorithm that combines the capabilities of multiple models into one, allowing for both interactive and automated segmentation to label **Tool** among in-body images. |
 | [tooltracking](#tooltracking) | A standard (non-interactive) segmentation model to label **Tool** among in-body images.                                                                                                                    |
-| [deid](#deid)                 | A standard (non-interactive) classification model to determine **InBody** or **OutBody** images.                                                                                                           |
+| [inbody](#inbody)             | A standard (non-interactive) classification model to determine **InBody** or **OutBody** images.                                                                                                           |
 
 > If both models are enabled, then Active Learning strategy uses [tooltracking](#tooltracking) model to rank the images.
 
@@ -187,10 +187,10 @@ This model is based on UNet for automated segmentation. This model works for sin
 - Output: 1 channel representing the segmented Tool
 
 
-#### [DeID](./lib/configs/deid.py)
+#### [InBody](./lib/configs/inbody.py)
 
 This model is based on SEResNet50 for classification. This model determines if tool is present or not (in-body vs out-body).
-> monailabel start_server --app workspace/endoscopy --studies workspace/images --conf models deid
+> monailabel start_server --app workspace/endoscopy --studies workspace/images --conf models inbody
 
 - Network: This model uses the [SEResNet50](https://docs.monai.io/en/latest/networks.html#seresnet50) as the default network.
 - Labels: `{ "InBody": 0, "OutBody": 1 }`
@@ -231,3 +231,17 @@ tasks in headless mode.
 export PYTHONPATH=workspace/endoscopy:$PYTHONPATH
 python workspace/endoscopy/main.py
 ```
+
+
+### Performance Benchmarking
+
+The performance benchmarking is done using MONAILabel server for endoscopy models.
+Following is summary of the same:
+
+| Model        | Pre | Infer | Post | Total | Remarks                                                               |
+|--------------|-----|-------|------|-------|-----------------------------------------------------------------------|
+| tooltracking | 60  | 40    | 71   | 171   | **_(pre)_** Load Image: 35 ms<br/>**_(post)_** Mask to Polygon: 68 ms |
+| inbody       | 50  | 30    | 1    | 81    | **_(pre)_** Load Image: 35 ms                                         |
+| deepedit     | 38  | 28    | 40   | 106   | **_(pre)_** Load Image: 35 ms<br/>**_(post)_** Mask to Polygon: 32 ms |
+
+> Latencies are in **milliseconds (ms)**; <br/>Input Image size: **1920 x 1080**

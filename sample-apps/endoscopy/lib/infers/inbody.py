@@ -24,7 +24,7 @@ from monailabel.transform.writer import ClassificationWriter
 logger = logging.getLogger(__name__)
 
 
-class DeID(InferTask):
+class InBody(InferTask):
     """
     This provides Inference Engine for pre-trained segmentation model for Tool Tracking.
     """
@@ -36,7 +36,7 @@ class DeID(InferTask):
         type=InferType.CLASSIFICATION,
         labels=None,
         dimension=2,
-        description="A pre-trained semantic classification model for DeID",
+        description="A pre-trained semantic classification model for InBody/OutBody",
         **kwargs,
     ):
         super().__init__(
