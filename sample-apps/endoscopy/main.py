@@ -237,7 +237,7 @@ def main():
 
     home = str(Path.home())
     studies = f"{home}/Dataset/Holoscan/tiny/images"
-    studies = f"{home}/Dataset/picked/all"
+    # studies = f"{home}/Dataset/picked/all"
     # studies = f"{home}/Dataset/Holoscan/flattened/images"
     # studies = f"{home}/Dataset/Holoscan/tiny_flat/images"
 
@@ -248,9 +248,10 @@ def main():
     app_dir = os.path.dirname(__file__)
     studies = args.studies
 
-    app = MyApp(app_dir, studies, {"preload": "false", "models": "deid"})
+    app = MyApp(app_dir, studies, {"preload": "true", "models": "deepedit"})
     logger.info(app.datastore().status())
-    train_deid(app)
+    for _ in range(3):
+        infer_deepedit(app)
 
 
 def randamize_ds(train_datalist, val_datalist):
@@ -382,13 +383,13 @@ def infer_tooltracking(app):
     logger.info("All Done!")
 
 
-def infer_deid(app):
+def infer_inbody(app):
     import json
 
     res = app.infer(
         request={
-            "model": "deid",
-            "image": "100",
+            "model": "inbody",
+            "image": "Video_8_2020_01_13_Video2_Trim_01-25_f10200",
             # "logging": "ERROR",
         }
     )
@@ -396,10 +397,10 @@ def infer_deid(app):
     print(json.dumps(res["params"]["prediction"]))
 
 
-def train_deid(app):
+def train_inbody(app):
     res = app.train(
         request={
-            "model": "deid",
+            "model": "inbody",
             "max_epochs": 10,
             "dataset": "Dataset",  # PersistentDataset, CacheDataset
             "train_batch_size": 1,

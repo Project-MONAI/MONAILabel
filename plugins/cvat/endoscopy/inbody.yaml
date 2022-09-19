@@ -10,10 +10,10 @@
 # limitations under the License.
 
 metadata:
-  name: monailabel.endoscopy.deid
+  name: monailabel.endoscopy.inbody
   namespace: cvat
   annotations:
-    name: DeID
+    name: InBody
     type: detector
     framework: pytorch
     spec: |
@@ -29,7 +29,7 @@ spec:
   eventTimeout: 30s
 
   build:
-    image: cvat/monailabel.endoscopy.deid
+    image: cvat/monailabel.endoscopy.inbody
     baseImage: projectmonai/monailabel:latest
 
     directives:
@@ -37,7 +37,7 @@ spec:
         - kind: ENV
           value: MONAI_LABEL_APP_DIR=/opt/conda/monailabel/sample-apps/endoscopy
         - kind: ENV
-          value: MONAI_LABEL_MODELS=deid
+          value: MONAI_LABEL_MODELS=inbody
         - kind: ENV
           value: PYTHONPATH=/opt/conda/monailabel/sample-apps/endoscopy
         - kind: ENV
