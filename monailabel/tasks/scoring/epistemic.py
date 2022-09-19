@@ -18,6 +18,7 @@ import numpy as np
 import torch
 from monai.inferers import sliding_window_inference
 from monai.transforms import Compose
+from monai.utils import deprecated
 
 from monailabel.interfaces.datastore import Datastore
 from monailabel.interfaces.tasks.scoring import ScoringMethod
@@ -25,6 +26,7 @@ from monailabel.interfaces.tasks.scoring import ScoringMethod
 logger = logging.getLogger(__name__)
 
 
+@deprecated(since="0.5.0", msg_suffix="please use Epistemic v2 based strategy instead")
 class EpistemicScoring(ScoringMethod):
     """
     First version of Epistemic computation used as active learning strategy
@@ -51,7 +53,8 @@ class EpistemicScoring(ScoringMethod):
             else Compose(self.transforms)
         )
         # data = run_transforms(data, pre_transforms, log_prefix="EPISTEMIC-PRE") if pre_transforms else data
-        data = pre_transforms(data)
+        if pre_transforms:
+            data = pre_transforms(data)
 
         with torch.no_grad():
             preds = sliding_window_inference(

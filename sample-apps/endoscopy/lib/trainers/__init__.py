@@ -10,4 +10,5 @@
 # limitations under the License.
 
 from .deepedit import DeepEdit
+from .deid import DeID
 from .tooltracking import ToolTracking

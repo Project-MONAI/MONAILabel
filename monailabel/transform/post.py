@@ -269,12 +269,12 @@ class MergeAllPreds(MapTransform):
 
         Args:
             keys: The ``keys`` parameter will be used to get and set the actual data item to transform
-            label_names: all label names
         """
         super().__init__(keys, allow_missing_keys)
 
     def __call__(self, data: Mapping[Hashable, NdarrayOrTensor]):
         d: Dict = dict(data)
+        merge_image = None
         for idx, key in enumerate(self.key_iterator(d)):
             if idx == 0:
                 merge_image = d[key]

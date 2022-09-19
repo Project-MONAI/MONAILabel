@@ -13,26 +13,18 @@ import logging
 from typing import Any, Callable, Dict, Sequence
 
 import numpy as np
+import torch
 from monai.inferers import Inferer, SimpleInferer
-from monai.transforms import (
-    AsChannelFirstd,
-    AsDiscreted,
-    DivisiblePadd,
-    EnsureTyped,
-    Resized,
-    ScaleIntensityd,
-    SqueezeDimd,
-)
+from monai.transforms import AsChannelFirstd, AsDiscreted, CastToTyped, NormalizeIntensityd, Resized
 
 from monailabel.interfaces.tasks.infer import InferTask, InferType
-from monailabel.transform.post import FindContoursd, Restored
 from monailabel.transform.pre import LoadImageExd
-from monailabel.transform.writer import PolygonWriter
+from monailabel.transform.writer import ClassificationWriter
 
 logger = logging.getLogger(__name__)
 
 
-class ToolTracking(InferTask):
+class DeID(InferTask):
     """
     This provides Inference Engine for pre-trained segmentation model for Tool Tracking.
     """
@@ -41,14 +33,12 @@ class ToolTracking(InferTask):
         self,
         path,
         network=None,
-        type=InferType.SEGMENTATION,
+        type=InferType.CLASSIFICATION,
         labels=None,
         dimension=2,
-        description="A pre-trained semantic segmentation model for Tool Tracking",
-        find_contours=True,
+        description="A pre-trained semantic classification model for DeID",
         **kwargs,
     ):
-        self.find_contours = find_contours
         super().__init__(
             path=path,
             network=network,
@@ -68,29 +58,19 @@ class ToolTracking(InferTask):
         return [
             LoadImageExd(keys="image", dtype=np.uint8),
             AsChannelFirstd(keys="image"),
-            Resized(keys="image", spatial_size=(736, 480)),
-            DivisiblePadd(keys="image", k=32),
-            ScaleIntensityd(keys="image"),
+            Resized(keys="image", spatial_size=(256, 256), mode="bilinear"),
+            CastToTyped(keys="image", dtype=torch.float32),
+            NormalizeIntensityd(keys="image", nonzero=True, channel_wise=True),
         ]
 
     def inferer(self, data=None) -> Inferer:
         return SimpleInferer()
 
     def post_transforms(self, data=None) -> Sequence[Callable]:
-        t = [
-            EnsureTyped(keys="pred", device=data.get("device") if data else None),
-            AsDiscreted(keys="pred", argmax=True),
-            Restored(keys="pred", ref_image="image"),
-            SqueezeDimd(keys="pred", dim=0),
+        return [
+            AsDiscreted(keys="pred", argmax=True, to_onehot=2),
         ]
 
-        if self.find_contours:
-            t.append(FindContoursd(keys="pred", labels=self.labels))
-        return t
-
     def writer(self, data, extension=None, dtype=None):
-        if self.find_contours:
-            writer = PolygonWriter(label=self.output_label_key, json=self.output_json_key)
-            return writer(data)
-
-        return super().writer(data, extension, dtype)
+        writer = ClassificationWriter(label=self.output_label_key, label_names={v: k for k, v in self.labels.items()})
+        return writer(data)

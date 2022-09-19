@@ -10,7 +10,7 @@
 # limitations under the License.
 
 torch>=1.7
-monai[nibabel, skimage, pillow, tensorboard, gdown, ignite, torchvision, itk, tqdm, lmdb, psutil, openslide, fire]>=0.9.1
+monai[nibabel, skimage, pillow, tensorboard, gdown, ignite, torchvision, itk, tqdm, lmdb, psutil, openslide, fire]>=1.0.0
 uvicorn==0.17.6
 pydantic==1.9.1
 python-dotenv==0.20.0
@@ -40,5 +40,6 @@ passlib==1.7.4
 python-jose[cryptography]==3.3.0
 bcrypt==3.2.2
 shapely==1.8.2
+requests==2.28.1
 
 #sudo apt-get install openslide-tools -y

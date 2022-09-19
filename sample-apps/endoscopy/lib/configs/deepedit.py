@@ -11,7 +11,6 @@
 
 import logging
 import os
-from distutils.util import strtobool
 from typing import Any, Dict, Optional, Union
 
 import lib.infers
@@ -25,7 +24,7 @@ from monailabel.interfaces.tasks.scoring import ScoringMethod
 from monailabel.interfaces.tasks.strategy import Strategy
 from monailabel.interfaces.tasks.train import TrainTask
 from monailabel.tasks.activelearning.epistemic import Epistemic
-from monailabel.utils.others.generic import download_file
+from monailabel.utils.others.generic import download_file, strtobool
 
 logger = logging.getLogger(__name__)
 
@@ -35,9 +34,7 @@ class DeepEdit(TaskConfig):
         super().init(name, model_dir, conf, planner, **kwargs)
 
         # Labels
-        self.labels = {
-            "Tool": 1,
-        }
+        self.labels = {"Tool": 1}
 
         # Model Files
         self.path = [
@@ -48,7 +45,10 @@ class DeepEdit(TaskConfig):
         # Download PreTrained Model
         if strtobool(self.conf.get("use_pretrained_model", "true")):
             url = f"{self.conf.get('pretrained_path', self.PRE_TRAINED_PATH)}/endoscopy_deepedit_tooltracking.pt"
-            download_file(url, self.path[0])
+            try:
+                download_file(url, self.path[0])
+            except:
+                logger.warning(f"Failed to download pre-trained model from {url}; Ignoring the same...")
 
         # Network
         f = (32, 64, 128, 256, 512, 32)
@@ -120,6 +120,7 @@ class DeepEdit(TaskConfig):
                     train_mode=True,
                     skip_writer=True,
                 ),
+                function="monailabel.endoscopy.tooltracking",
                 max_samples=self.epistemic_max_samples,
                 simulation_size=self.epistemic_simulation_size,
                 use_variance=True,

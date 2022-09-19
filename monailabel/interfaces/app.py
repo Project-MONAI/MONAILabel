@@ -20,12 +20,14 @@ import tempfile
 import time
 from concurrent.futures import ThreadPoolExecutor
 from datetime import timedelta
-from distutils.util import strtobool
 from typing import Any, Callable, Dict, Optional, Sequence, Union
 
 import requests
 import schedule
 import torch
+
+# added to support connecting to DICOM Store Google Cloud
+from dicomweb_client.ext.gcp.session_utils import create_session_from_gcp_credentials
 from dicomweb_client.session_utils import create_session_from_user_pass
 from monai.apps import download_and_extract, download_url
 from monai.data import partition_dataset
@@ -46,6 +48,7 @@ from monailabel.interfaces.tasks.train import TrainTask
 from monailabel.interfaces.utils.wsi import create_infer_wsi_tasks
 from monailabel.tasks.activelearning.random import Random
 from monailabel.utils.async_tasks.task import AsyncTask
+from monailabel.utils.others.generic import strtobool
 from monailabel.utils.others.pathology import create_asap_annotations_xml, create_dsa_annotations_json
 from monailabel.utils.sessions import Sessions
 
@@ -143,8 +146,12 @@ class MONAILabelApp:
 
     def _init_dicomweb_datastore(self) -> Datastore:
         logger.info(f"Using DICOM WEB: {self.studies}")
+
         dw_session = None
-        if settings.MONAI_LABEL_DICOMWEB_USERNAME and settings.MONAI_LABEL_DICOMWEB_PASSWORD:
+        if "googleapis.com" in self.studies:
+            logger.info("Creating DICOM Credentials for Google Cloud")
+            dw_session = create_session_from_gcp_credentials()
+        elif settings.MONAI_LABEL_DICOMWEB_USERNAME and settings.MONAI_LABEL_DICOMWEB_PASSWORD:
             dw_session = create_session_from_user_pass(
                 settings.MONAI_LABEL_DICOMWEB_USERNAME, settings.MONAI_LABEL_DICOMWEB_PASSWORD
             )
@@ -162,10 +169,11 @@ class MONAILabelApp:
         cache_path = settings.MONAI_LABEL_DICOMWEB_CACHE_PATH
         cache_path = cache_path.strip() if cache_path else ""
         fetch_by_frame = settings.MONAI_LABEL_DICOMWEB_FETCH_BY_FRAME
+        search_filter = settings.MONAI_LABEL_DICOMWEB_SEARCH_FILTER
         return (
-            DICOMWebDatastore(dw_client, cache_path, fetch_by_frame=fetch_by_frame)
+            DICOMWebDatastore(dw_client, search_filter, cache_path, fetch_by_frame)
             if cache_path
-            else DICOMWebDatastore(dw_client, fetch_by_frame=fetch_by_frame)
+            else DICOMWebDatastore(dw_client, search_filter, fetch_by_frame=fetch_by_frame)
         )
 
     def _init_dsa_datastore(self) -> Datastore:

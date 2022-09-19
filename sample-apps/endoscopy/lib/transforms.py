@@ -8,3 +8,24 @@
 # WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 # See the License for the specific language governing permissions and
 # limitations under the License.
+
+import logging
+
+import torch
+from monai.config import KeysCollection
+from monai.transforms import MapTransform
+
+logger = logging.getLogger(__name__)
+
+
+class LabelToBinaryClassd(MapTransform):
+    def __init__(self, keys: KeysCollection, allow_missing_keys: bool = False, offset=2) -> None:
+        super().__init__(keys, allow_missing_keys)
+        self.offset = offset
+
+    def __call__(self, data):
+        d = dict(data)
+        for key in self.keys:
+            label = int(torch.max(d[key]))
+            d[key] = label - self.offset if label else 0
+        return d

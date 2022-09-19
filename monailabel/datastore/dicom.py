@@ -21,6 +21,7 @@ from cachetools import TTLCache, cached
 from dicomweb_client import DICOMwebClient
 from pydicom.dataset import Dataset
 
+from monailabel.config import settings
 from monailabel.datastore.local import LocalDatastore
 from monailabel.datastore.utils.convert import binary_to_image, dicom_to_nifti, nifti_to_dicom_seg
 from monailabel.datastore.utils.dicom import dicom_web_download_series, dicom_web_upload_dcm
@@ -39,9 +40,15 @@ class DICOMwebClientX(DICOMwebClient):
 
 
 class DICOMWebDatastore(LocalDatastore):
-    def __init__(self, client: DICOMwebClient, cache_path: Optional[str] = None, fetch_by_frame=False):
+    def __init__(
+        self,
+        client: DICOMwebClient,
+        search_filter: Dict[str, Any],
+        cache_path: Optional[str] = None,
+        fetch_by_frame=False,
+    ):
         self._client = client
-        self._modality = "CT"
+        self._search_filter = search_filter
         self._fetch_by_frame = fetch_by_frame
 
         uri_hash = hashlib.md5(self._client.base_url.encode("utf-8")).hexdigest()
@@ -109,14 +116,13 @@ class DICOMWebDatastore(LocalDatastore):
             info[f] = str(meta[f].value) if meta.get(f) else "UNK"
         return info
 
-    @cached(cache=TTLCache(maxsize=16, ttl=600))
+    @cached(cache=TTLCache(maxsize=16, ttl=settings.MONAI_LABEL_DICOMWEB_CACHE_EXPIRY))
     def list_images(self) -> List[str]:
-        datasets = self._client.search_for_series(search_filters={"Modality": self._modality})
+        datasets = self._client.search_for_series(search_filters=self._search_filter)
         series = [str(Dataset.from_json(ds)["SeriesInstanceUID"].value) for ds in datasets]
         logger.debug("Total Series: {}\n{}".format(len(series), "\n".join(series)))
         return series
 
-    @cached(cache=TTLCache(maxsize=16, ttl=600))
     def get_labeled_images(self) -> List[str]:
         datasets = self._client.search_for_series(search_filters={"Modality": "SEG"})
         all_segs = [Dataset.from_json(ds) for ds in datasets]
@@ -128,10 +134,22 @@ class DICOMWebDatastore(LocalDatastore):
             )
             seg_meta = Dataset.from_json(meta[0])
             if seg_meta.get("ReferencedSeriesSequence"):
-                image_series.append(str(seg_meta["ReferencedSeriesSequence"].value[0]["SeriesInstanceUID"].value))
+                referenced_series_instance_uid = str(
+                    seg_meta["ReferencedSeriesSequence"].value[0]["SeriesInstanceUID"].value
+                )
+                if referenced_series_instance_uid in self.list_images():
+                    image_series.append(referenced_series_instance_uid)
+                else:
+                    logger.warning(
+                        "Label Ignored:: ReferencedSeriesSequence is NOT in filtered image list: {}".format(
+                            str(seg["SeriesInstanceUID"].value)
+                        )
+                    )
             else:
                 logger.warning(
-                    f"Label Ignored:: ReferencedSeriesSequence is NOT found: {str(seg['SeriesInstanceUID'].value)}"
+                    "Label Ignored:: ReferencedSeriesSequence is NOT found: {}".format(
+                        str(seg["SeriesInstanceUID"].value)
+                    )
                 )
         return image_series
 

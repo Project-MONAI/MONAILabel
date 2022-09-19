@@ -12,7 +12,6 @@
 import logging
 import os
 from datetime import timedelta
-from distutils.util import strtobool
 from typing import Dict
 
 import lib.configs
@@ -31,7 +30,7 @@ from monailabel.interfaces.tasks.strategy import Strategy
 from monailabel.interfaces.tasks.train import TrainTask
 from monailabel.tasks.activelearning.random import Random
 from monailabel.utils.others.class_utils import get_class_names
-from monailabel.utils.others.generic import create_dataset_from_path
+from monailabel.utils.others.generic import create_dataset_from_path, strtobool
 
 logger = logging.getLogger(__name__)
 
@@ -91,6 +90,7 @@ class MyApp(MONAILabelApp):
             description="DeepLearning models for endoscopy",
             version=monailabel.__version__,
         )
+        self.downloading = False
 
     def init_datastore(self) -> Datastore:
         if settings.MONAI_LABEL_DATASTORE_URL and settings.MONAI_LABEL_DATASTORE.lower() == "cvat":
@@ -103,8 +103,9 @@ class MyApp(MONAILabelApp):
                 project=self.conf.get("cvat_project", "MONAILabel"),
                 task_prefix=self.conf.get("cvat_task_prefix", "ActiveLearning_Iteration"),
                 image_quality=int(self.conf.get("cvat_image_quality", "70")),
-                labels=self.conf.get("cvat_labels", '[{"name": "Tool", "attributes": [], "color": "#66ff66"}]'),
+                labels=self.conf.get("cvat_labels"),
                 normalize_label=strtobool(self.conf.get("cvat_normalize_label", "true")),
+                segment_size=int(self.conf.get("cvat_segment_size", "1")),
                 extensions=settings.MONAI_LABEL_DATASTORE_FILE_EXT,
                 auto_reload=settings.MONAI_LABEL_DATASTORE_AUTO_RELOAD,
             )
@@ -182,16 +183,23 @@ class MyApp(MONAILabelApp):
 
         # Check for CVAT Task if complete and trigger training
         def update_model():
-            ds = self.datastore()
-            if isinstance(ds, CVATDatastore):
-                name = ds.download_from_cvat()
-                if name:
-                    models = self.conf.get("auto_finetune_models")
-                    models = models.split(",") if models else models
-                    logger.info(f"Trigger Training for model(s): {models}; Iteration Name: {name}")
-                    self.async_training(model=models, params={"name": name})
-            else:
-                logger.info("Nothing to update;  No new labels downloaded/refreshed from CVAT")
+            if self.downloading:
+                return
+
+            try:
+                self.downloading = True
+                ds = self.datastore()
+                if isinstance(ds, CVATDatastore):
+                    name = ds.download_from_cvat()
+                    if name:
+                        models = self.conf.get("auto_finetune_models")
+                        models = models.split(",") if models else models
+                        logger.info(f"Trigger Training for model(s): {models}; Iteration Name: {name}")
+                        self.async_training(model=models, params={"name": name})
+                else:
+                    logger.info("Nothing to update;  No new labels downloaded/refreshed from CVAT")
+            finally:
+                self.downloading = False
 
         time_loop = Timeloop()
         interval_in_sec = int(self.conf.get("auto_finetune_check_interval", "60"))
@@ -229,6 +237,7 @@ def main():
 
     home = str(Path.home())
     studies = f"{home}/Dataset/Holoscan/tiny/images"
+    studies = f"{home}/Dataset/picked/all"
     # studies = f"{home}/Dataset/Holoscan/flattened/images"
     # studies = f"{home}/Dataset/Holoscan/tiny_flat/images"
 
@@ -239,9 +248,9 @@ def main():
     app_dir = os.path.dirname(__file__)
     studies = args.studies
 
-    app = MyApp(app_dir, studies, {"preload": "false", "models": "tooltracking"})
+    app = MyApp(app_dir, studies, {"preload": "false", "models": "deid"})
     logger.info(app.datastore().status())
-    infer_tooltracking(app)
+    train_deid(app)
 
 
 def randamize_ds(train_datalist, val_datalist):
@@ -370,6 +379,36 @@ def infer_tooltracking(app):
     # print(json.dumps(res, indent=2))
     home = str(Path.home())
     shutil.move(res["label"], f"{home}/Dataset/output_image.xml")
+    logger.info("All Done!")
+
+
+def infer_deid(app):
+    import json
+
+    res = app.infer(
+        request={
+            "model": "deid",
+            "image": "100",
+            # "logging": "ERROR",
+        }
+    )
+
+    print(json.dumps(res["params"]["prediction"]))
+
+
+def train_deid(app):
+    res = app.train(
+        request={
+            "model": "deid",
+            "max_epochs": 10,
+            "dataset": "Dataset",  # PersistentDataset, CacheDataset
+            "train_batch_size": 1,
+            "val_batch_size": 1,
+            "multi_gpu": False,
+            "val_split": 0.1,
+        }
+    )
+    print(res)
     logger.info("All Done!")
 
 

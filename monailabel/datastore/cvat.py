@@ -16,6 +16,7 @@ import shutil
 import tempfile
 import time
 
+import numpy as np
 import requests
 from PIL import Image
 from requests.auth import HTTPBasicAuth
@@ -39,10 +40,16 @@ class CVATDatastore(LocalDatastore):
         image_quality=70,
         labels=None,
         normalize_label=True,
+        segment_size=1,
         **kwargs,
     ):
-        labels = labels if labels else [{"name": "Tool", "attributes": [], "color": "#66ff66"}]
-        labels = json.loads(labels) if isinstance(labels, str) else self.json()
+        default_labels = [
+            {"name": "Tool", "attributes": [], "color": "#66ff66"},
+            {"name": "InBody", "attributes": [], "color": "#ff0000"},
+            {"name": "OutBody", "attributes": [], "color": "#0000ff"},
+        ]
+        labels = labels if labels else default_labels
+        labels = json.loads(labels) if isinstance(labels, str) else labels
 
         self.api_url = api_url.rstrip("/").strip()
         self.auth = HTTPBasicAuth(username, password) if username else None
@@ -50,7 +57,9 @@ class CVATDatastore(LocalDatastore):
         self.task_prefix = task_prefix
         self.image_quality = image_quality
         self.labels = labels
+        self.label_map = {l["name"]: idx for idx, l in enumerate(labels, start=1)}
         self.normalize_label = normalize_label
+        self.segment_size = segment_size
 
         logger.info(f"CVAT:: API URL: {api_url}")
         logger.info(f"CVAT:: UserName: {username}")
@@ -60,6 +69,7 @@ class CVATDatastore(LocalDatastore):
         logger.info(f"CVAT:: Image Quality: {image_quality}")
         logger.info(f"CVAT:: Labels: {labels}")
         logger.info(f"CVAT:: Normalize Label: {normalize_label}")
+        logger.info(f"CVAT:: Segment Size: {normalize_label}")
 
         super().__init__(datastore_path=datastore_path, **kwargs)
 
@@ -87,7 +97,7 @@ class CVATDatastore(LocalDatastore):
             logger.info(project)
             project_id = project["id"]
 
-        logger.info(f"Using Project ID: {project_id}")
+        logger.debug(f"Using Project ID: {project_id}")
         return project_id
 
     def get_cvat_task_id(self, project_id, create):
@@ -112,12 +122,15 @@ class CVATDatastore(LocalDatastore):
             task_name = f"{self.task_prefix}_{version}"
             logger.info(f"Creating new CVAT Task: {task_name}; project: {self.project}")
 
-            body = {"name": task_name, "labels": [], "project_id": project_id, "subset": "Train", "segment_size": 1}
+            body = {"name": task_name, "labels": [], "project_id": project_id, "subset": "Train"}
+            if self.segment_size:
+                body["segment_size"] = self.segment_size
+
             task = requests.post(f"{self.api_url}/api/tasks", auth=self.auth, json=body).json()
             logger.debug(task)
             task_id = task["id"]
 
-        logger.info(f"Using Task ID: {task_id}; Task Name: {task_name}")
+        logger.debug(f"Using Task ID: {task_id}; Task Name: {task_name}")
         return task_id, task_name
 
     def task_status(self):
@@ -142,6 +155,27 @@ class CVATDatastore(LocalDatastore):
 
         r = requests.post(f"{self.api_url}/api/tasks/{task_id}/data", files=file_list, auth=self.auth).json()
         logger.info(r)
+
+    def trigger_automation(self, function):
+        project_id = self.get_cvat_project_id(create=False)
+        if project_id is not None:
+            task_id, _ = self.get_cvat_task_id(project_id, create=False)
+            if task_id is not None:
+                body = {"cleanup": True, "task": task_id, "function": function}
+                r = requests.post(f"{self.api_url}/api/lambda/requests?org=", json=body, auth=self.auth).json()
+                logger.info(r)
+
+    def _load_labelmap_txt(self, file):
+        labelmap = {}
+        if os.path.exists(file):
+            with open(file) as f:
+                for line in f.readlines():
+                    if line and not line.startswith("#"):
+                        fields = line.split(":")
+                        name = fields[0]
+                        rgb = tuple(int(c) for c in fields[1].split(","))
+                        labelmap[name] = rgb
+        return labelmap
 
     def download_from_cvat(self, max_retry_count=5, retry_wait_time=10):
         if self.task_status() != "completed":
@@ -176,10 +210,19 @@ class CVATDatastore(LocalDatastore):
 
                         dest = os.path.join(final_labels, f)
                         if self.normalize_label:
-                            Image.open(label).convert("L").point(lambda x: 0 if x < 128 else 255, "1").save(dest)
+                            img = np.array(Image.open(label))
+                            mask = np.zeros_like(img)
+
+                            labelmap = self._load_labelmap_txt(os.path.join(tmp_folder, "labelmap.txt"))
+                            for name, color in labelmap.items():
+                                if name in self.label_map:
+                                    idx = self.label_map.get(name)
+                                    mask[np.all(img == color, axis=-1)] = idx
+                            Image.fromarray(mask[:, :, 0]).save(dest)  # single channel
+                            logger.info(f"Copy Final Label: {label} to {dest}; unique: {np.unique(mask)}")
                         else:
                             Image.open(label).save(dest)
-                        logger.info(f"Copy Final Label: {label} to {dest}")
+                            logger.info(f"Copy Final Label: {label} to {dest}")
 
                 # Rename after consuming/downloading the labels
                 patch_url = f"{self.api_url}/api/tasks/{task_id}"
@@ -187,7 +230,56 @@ class CVATDatastore(LocalDatastore):
                 requests.patch(patch_url, allow_redirects=True, auth=self.auth, json=body)
                 return task_name
             except Exception as e:
-                logger.exception(e)
+                if retry_count:
+                    logger.exception(e)
                 logger.error(f"{retry} => Failed to download...")
             retry_count = retry_count + 1
         return None
+
+
+def main():
+    from pathlib import Path
+
+    from monailabel.config import settings
+
+    settings.MONAI_LABEL_DATASTORE_AUTO_RELOAD = False
+    settings.MONAI_LABEL_DATASTORE_FILE_EXT = ["*.png", "*.jpg", "*.jpeg", ".xml"]
+    settings.MONAI_LABEL_DATASTORE = "cvat"
+    settings.MONAI_LABEL_DATASTORE_URL = "http://10.117.19.88:8080"
+    settings.MONAI_LABEL_DATASTORE_USERNAME = "sachi"
+    settings.MONAI_LABEL_DATASTORE_PASSWORD = "sachi"
+
+    os.putenv("MASTER_ADDR", "127.0.0.1")
+    os.putenv("MASTER_PORT", "1234")
+
+    logging.basicConfig(
+        level=logging.INFO,
+        format="[%(asctime)s] [%(process)s] [%(threadName)s] [%(levelname)s] (%(name)s:%(lineno)d) - %(message)s",
+        datefmt="%Y-%m-%d %H:%M:%S",
+        force=True,
+    )
+
+    home = str(Path.home())
+    studies = f"{home}/Dataset/picked/all"
+
+    ds = CVATDatastore(
+        datastore_path=studies,
+        api_url=settings.MONAI_LABEL_DATASTORE_URL,
+        username=settings.MONAI_LABEL_DATASTORE_USERNAME,
+        password=settings.MONAI_LABEL_DATASTORE_PASSWORD,
+        project="MONAILabel",
+        task_prefix="ActiveLearning_Iteration",
+        image_quality=70,
+        labels=None,
+        normalize_label=True,
+        segment_size=0,
+        extensions=settings.MONAI_LABEL_DATASTORE_FILE_EXT,
+        auto_reload=settings.MONAI_LABEL_DATASTORE_AUTO_RELOAD,
+    )
+    ds.download_from_cvat()
+
+    # studies = f"{home}/Dataset/Holoscan/flattened/images"
+
+
+if __name__ == "__main__":
+    main()

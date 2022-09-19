@@ -86,38 +86,62 @@ def handler(context, event):
     )
 
     results = []
-    interactor = strtobool(os.environ.get("INTERACTOR_MODEL", "false"))
-    annotations = json_data["params"].get("annotations")
-    for a in annotations:
-        annotation = a.get("annotation", {})
-        if not annotation:
-            continue
+    prediction = json_data["params"].get("prediction")
+    if prediction:
+        context.logger.info(f"(Classification) Prediction: {prediction}")
 
-        elements = annotation.get("elements", [])
-        for element in elements:
-            label = element["label"]
-            contours = element["contours"]
-            for contour in contours:
-                points = np.array(contour, int)
-                if flip_output:
-                    points = np.flip(points, axis=None)
+        # CVAT Limitation:: tag is not yet supported https://github.com/opencv/cvat/issues/4212
+        # CVAT Limitation:: select highest score and create bbox to represent as tag
+        e = None
+        for element in prediction:
+            if element["score"] > 0:
+                e = element if e is None or element["score"] > e["score"] else e
+                context.logger.info(f"New Max Element: {e}")
 
-                # CVAT limitation:: only one polygon result for interactor
-                if interactor and contour:
-                    return context.Response(
-                        body=json.dumps(points.tolist()),
-                        headers={},
-                        content_type="application/json",
-                        status_code=200,
+        context.logger.info(f"Final Element with Max Score: {e}")
+        if e:
+            results.append(
+                {
+                    "label": e["label"],
+                    "confidence": e["score"],
+                    "type": "rectangle",
+                    "points": [0, 0, image_np.shape[0] - 1, image_np.shape[1] - 1],
+                }
+            )
+        context.logger.info(f"(Classification) Results: {results}")
+    else:
+        interactor = strtobool(os.environ.get("INTERACTOR_MODEL", "false"))
+        annotations = json_data["params"].get("annotations")
+        for a in annotations:
+            annotation = a.get("annotation", {})
+            if not annotation:
+                continue
+
+            elements = annotation.get("elements", [])
+            for element in elements:
+                label = element["label"]
+                contours = element["contours"]
+                for contour in contours:
+                    points = np.array(contour, int)
+                    if flip_output:
+                        points = np.flip(points, axis=None)
+
+                    # CVAT limitation:: only one polygon result for interactor
+                    if interactor and contour:
+                        return context.Response(
+                            body=json.dumps(points.tolist()),
+                            headers={},
+                            content_type="application/json",
+                            status_code=200,
+                        )
+
+                    results.append(
+                        {
+                            "label": label,
+                            "points": points.flatten().tolist(),
+                            "type": "polygon",
+                        }
                     )
-
-                results.append(
-                    {
-                        "label": label,
-                        "points": points.flatten().tolist(),
-                        "type": "polygon",
-                    }
-                )
 
     return context.Response(
         body=json.dumps(results),

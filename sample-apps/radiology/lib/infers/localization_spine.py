@@ -11,7 +11,7 @@
 
 from typing import Callable, Sequence
 
-from lib.transforms.transforms import BinaryMaskd
+from lib.transforms.transforms import BinaryMaskd, CacheObjectd
 from monai.inferers import Inferer, SlidingWindowInferer
 from monai.transforms import (
     Activationsd,
@@ -21,8 +21,9 @@ from monai.transforms import (
     GaussianSmoothd,
     KeepLargestConnectedComponentd,
     LoadImaged,
-    NormalizeIntensityd,
     ScaleIntensityd,
+    ScaleIntensityRanged,
+    Spacingd,
 )
 
 from monailabel.interfaces.tasks.infer import InferTask, InferType
@@ -61,26 +62,31 @@ class LocalizationSpine(InferTask):
             LoadImaged(keys="image", reader="ITKReader"),
             EnsureTyped(keys="image", device=data.get("device") if data else None),
             EnsureChannelFirstd(keys="image"),
-            NormalizeIntensityd(keys="image", divisor=2048.0),
-            GaussianSmoothd(keys="image", sigma=0.75),
+            CacheObjectd(keys="image"),
+            Spacingd(keys="image", pixdim=self.target_spacing),
+            ScaleIntensityRanged(keys="image", a_min=-1000, a_max=1900, b_min=0.0, b_max=1.0, clip=True),
+            GaussianSmoothd(keys="image", sigma=0.4),
             ScaleIntensityd(keys="image", minv=-1.0, maxv=1.0),
         ]
 
     def inferer(self, data=None) -> Inferer:
         return SlidingWindowInferer(
-            roi_size=self.roi_size, sw_batch_size=8, overlap=0.5, padding_mode="replicate", mode="gaussian"
+            roi_size=self.roi_size, sw_batch_size=2, overlap=0.4, padding_mode="replicate", mode="gaussian"
         )
 
     def post_transforms(self, data=None) -> Sequence[Callable]:
-        largest_cc = False if not data else data.get("largest_cc", False)
         applied_labels = list(self.labels.values()) if isinstance(self.labels, dict) else self.labels
-        t = [
+        return [
             EnsureTyped(keys="pred", device=data.get("device") if data else None),
             Activationsd(keys="pred", softmax=True),
             AsDiscreted(keys="pred", argmax=True),
+            KeepLargestConnectedComponentd(keys="pred"),
+            BinaryMaskd(keys="pred"),
+            Restored(keys="pred", ref_image="image"),
         ]
-        if largest_cc:
-            t.append(KeepLargestConnectedComponentd(keys="pred", applied_labels=applied_labels))
-        t.append(BinaryMaskd(keys="pred"))
-        t.append(Restored(keys="pred", ref_image="image"))
-        return t
+
+    def writer(self, data, extension=None, dtype=None):
+        if data.get("pipeline_mode", False):
+            return {"image": data["image_cached"], "pred": data["pred"]}, {}
+
+        return super().writer(data, extension, dtype)

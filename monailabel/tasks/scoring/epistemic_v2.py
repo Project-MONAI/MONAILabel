@@ -17,6 +17,7 @@ from concurrent.futures import ThreadPoolExecutor
 
 import numpy as np
 import torch
+from monai.metrics.active_learning_metrics import VarianceMetric
 
 from monailabel.interfaces.datastore import Datastore
 from monailabel.interfaces.tasks.infer import InferTask
@@ -51,6 +52,7 @@ class EpistemicScoring(ScoringMethod):
 
     def entropy_volume(self, vol_input):
         # The input is assumed with repetitions, channels and then volumetric data
+        vol_input = vol_input.cpu().detach().numpy() if isinstance(vol_input, torch.Tensor) else vol_input
         vol_input = vol_input.astype(dtype="float32")
         dims = vol_input.shape
         reps = dims[0]
@@ -82,15 +84,14 @@ class EpistemicScoring(ScoringMethod):
         # Returns a 3D volume of entropy
         return entropy
 
-    def variance_volume(self, vol_input):
-        vol_input = vol_input.astype(dtype="float32")
-
-        # Threshold values less than or equal to zero
-        threshold = 0.0005
-        vol_input[vol_input <= 0] = threshold
-
-        vari = np.nanvar(vol_input, axis=0)
-        variance = np.sum(vari, axis=0)
+    def variance_volume(self, vol_input, ignore_nans=True):
+        if ignore_nans:
+            vol_input[vol_input <= 0] = 0.0005
+            vari = np.nanvar(vol_input.cpu().detach().numpy(), axis=0)  # torch.var vs np.nanvar (ignore_nans)
+            variance = np.sum(vari, axis=0)
+        else:
+            variance_metric = VarianceMetric(threshold=0.0005, spatial_map=True, scalar_reduction="sum")
+            variance = variance_metric(vol_input)
 
         if self.dimension == 3:
             variance = np.expand_dims(variance, axis=0)
@@ -127,7 +128,7 @@ class EpistemicScoring(ScoringMethod):
         image_ids = image_ids[:max_samples] if max_samples else image_ids
 
         max_workers = request.get("max_workers", 2)
-        multi_gpu = request.get("multi_gpu", True)
+        multi_gpu = request.get("multi_gpu", False)
         multi_gpus = request.get("gpus", "all")
         gpus = (
             list(range(torch.cuda.device_count())) if not multi_gpus or multi_gpus == "all" else multi_gpus.split(",")
@@ -178,14 +179,17 @@ class EpistemicScoring(ScoringMethod):
             else:
                 logger.info(f"EPISTEMIC:: {image_id} => {i} => pred: None")
 
-        accum_numpy = np.stack(accum_unl_outputs)
-        accum_numpy = np.squeeze(accum_numpy)
-        if self.dimension == 3:
-            accum_numpy = accum_numpy[:, 1:, :, :, :] if len(accum_numpy.shape) > 4 else accum_numpy
-        else:
-            accum_numpy = accum_numpy[:, 1:, :, :] if len(accum_numpy.shape) > 3 else accum_numpy
+        accum = torch.stack(accum_unl_outputs)
+        accum = torch.squeeze(accum)
 
-        entropy = self.variance_volume(accum_numpy) if self.use_variance else self.entropy_volume(accum_numpy)
+        # Accum Expected shape for 2D images is (N, C, H, W) for 3D (N, C, H, W, D)
+        # To handle cases where only a single class of segmentation is present, an extra dimension is added
+        if self.dimension == 2 and len(accum.shape) == 3:
+            accum = torch.unsqueeze(accum, dim=1)
+        elif self.dimension == 3 and len(accum.shape) == 4:
+            accum = torch.unsqueeze(accum, dim=1)
+
+        entropy = self.variance_volume(accum) if self.use_variance else self.entropy_volume(accum)
         entropy = float(np.nanmean(entropy))
 
         latency = time.time() - start

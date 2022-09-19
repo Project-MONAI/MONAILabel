@@ -13,9 +13,8 @@ limitations under the License.
 
 # DeepLearning models for Endoscopy use-case(s).
 
-> **_Development In Progress_**
+![image](../../docs/images/cvat_al_workflow.png)
 
-![image](https://user-images.githubusercontent.com/7339051/182906351-4bb079dd-f211-450a-a526-ed753d05b093.png)
 
 The App works best with [CVAT](https://github.com/opencv/cvat). Researchers/clinicians can place their studies in the local file folder.
 1. Start with N images (for example total 100 unlabeled images)
@@ -32,9 +31,36 @@ The App works best with [CVAT](https://github.com/opencv/cvat). Researchers/clin
    - Project: **MONAILABEL**,  Task: **ActiveLearning_Iteration_2**
 9. Cycle (Step 3 to Step 8) continues until you get some good enough model
 
-> Publishing new fine-tuned model back to CVAT is not automated yet.  It will continue using pre-trained model.  Work is in progress...
+#
+Following is the summary of Active Learning workflow tests carried over roughly 4,281 samples of 2D frames from
+multiple surgical videos. The dataset breakdown for the experiment is as follows:
+- Training: 3,217 samples (The samples were treated as unlabeled except for the initial pool, the selected samples as queries were added with their corresponding labels)
+- Validation: 400 samples
+- Testing: 664 samples
+- Total: 4,281 samples
 
+| Method         | Active Iterations | Samples Per Iteration | % of Data Used | Test IoU   |
+|----------------|-------------------|-----------------------|----------------|------------|
+| _Random_       | 8                 | 20                    | 5.6%           | 0.7446     |
+| _**Variance**_ | 8                 | 20                    | 5.6%           | 0.7617     |
+| _Random_       | 8                 | 50                    | 14%            | 0.7712     |
+| _**Variance**_ | 7                 | 50                    | **12.5%**      | **0.8028** |
+| _Random_       | 15                | 50                    | 25%            | 0.7900     |
+| _**Variance**_ | 15                | 50                    | **25%**        | **0.8311** |
+
+> Using Active Learning strategy there is tremendous potential to reduce the number of annotations required to train a
+> good model. The above table shows that only ~15% samples are good enough to get quite close to full dataset performance
+> and it is not necessary to label/annotate all 4K unlabeled data to train a high-performing model. With the right subset
+> of data a better performing model can be achieved with 25% data as compared to labeling all data with unverified quality
+> of labels.
+
+Following snapshot shows Iteration cycles and progress for each Active Learning cycle for two different strategies and
+also the outcome of random acquisition of data
+![image](../../docs/images/active_learning_endoscopy_results.png)
+
+Following snapshot shows Iteration cycles and progress for each Active Learning batch annotations in CVAT.
 ![image](../../docs/images/cvat_active_learning.jpeg)
+> Once the model is fine-tuned you can publish the model back to CVAT manually using the script.
 
 ### Structure of the App
 
@@ -62,6 +88,7 @@ Following are the models which are currently added into Endosocpy App:
 |-------------------------------|------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------|
 | [deepedit](#deepedit)         | This model is based on DeepEdit: an algorithm that combines the capabilities of multiple models into one, allowing for both interactive and automated segmentation to label **Tool** among in-body images. |
 | [tooltracking](#tooltracking) | A standard (non-interactive) segmentation model to label **Tool** among in-body images.                                                                                                                    |
+| [deid](#deid)                 | A standard (non-interactive) classification model to determine **InBody** or **OutBody** images.                                                                                                           |
 
 > If both models are enabled, then Active Learning strategy uses [tooltracking](#tooltracking) model to rank the images.
 
@@ -73,9 +100,6 @@ monailabel apps --download --name endoscopy --output workspace
 
 # Pick DeepEdit model
 monailabel start_server --app workspace/endoscopy --studies workspace/images --conf models deepedit
-
-# Pick All
-monailabel start_server --app workspace/endoscopy --studies workspace/images --conf models all
 
 # Pick All
 monailabel start_server --app workspace/endoscopy --studies workspace/images --conf models all
@@ -95,7 +119,7 @@ export MONAI_LABEL_DATASTORE_USERNAME=myuser
 export MONAI_LABEL_DATASTORE_PASSWORD=mypass
 
 monailabel start_server \
-  --app workspace-apps/endoscopy \
+  --app workspace/endoscopy \
   --studies workspace/images \
   --conf epistemic_enabled true \
   --conf epistemic_top_k 3 \
@@ -103,33 +127,47 @@ monailabel start_server \
   --conf auto_finetune_check_interval 30
 ```
 
+#### Update/Publish latest model back to CVAT
+After re-train the fine-tuned model meets all the conditions to be considered as a good model.  You can push the model to cvat/nuclio function container.
+```bash
+workspace/endoscopy/update_cvat_model.sh <FUNCTION_NAME> <MODEL_PATH>
+
+# publish tool tracking model (run this command on the node where cvat/nuclio containers are running)
+workspace/endoscopy/update_cvat_model.sh tootracking ./workspace/endoscopy/model/tooltracking.pt
+
+```
+
 Following are additional configs *(pass them as **--conf name value**) are useful when you use CVAT for Active Learning workflow.
 
-| Name                         | Values | Default | Description                                                                                               |
-|------------------------------|--------|---------|-----------------------------------------------------------------------------------------------------------|
-| use_pretrained_model         | bool   | true    | Disable this NOT to load any pretrained weights                                                           |
-| preload                      | bool   | false   | Preload model into GPU                                                                                    |
-| skip_scoring                 | bool   | false   | Disable this to allow scoring methods to be used                                                          |
-| skip_strategies              | bool   | false   | Disable this to add active learning strategies                                                            |
-| epistemic_enabled            | bool   | false   | Enable Epistemic based Active Learning Strategy                                                           |
-| epistemic_max_samples        | int    | 0       | Limit number of samples to run epistemic scoring (**_zero_** for no limit)                                |
-| epistemic_simulation_size    | int    | 5       | Number of simulations per image to run epistemic scoring                                                  |
-| epistemic_top_k              | int    | 10      | Select Top-K unlabeled for every active learning learning iteration                                       |
-| auto_finetune_models         | str    |         | List of models to run fine-tuning when active learning task is completed  (**_None/Empty_** to train all) |
-| auto_finetune_check_interval | int    | 60      | Interval in seconds for server to poll on **_CVAT_** to determine if active learning task is completed          |
+| Name                         | Values | Default                  | Description                                                                                               |
+|------------------------------|--------|--------------------------|-----------------------------------------------------------------------------------------------------------|
+| use_pretrained_model         | bool   | true                     | Disable this NOT to load any pretrained weights                                                           |
+| preload                      | bool   | false                    | Preload model into GPU                                                                                    |
+| skip_scoring                 | bool   | false                    | Disable this to allow scoring methods to be used                                                          |
+| skip_strategies              | bool   | false                    | Disable this to add active learning strategies                                                            |
+| epistemic_enabled            | bool   | false                    | Enable Epistemic based Active Learning Strategy                                                           |
+| epistemic_max_samples        | int    | 0                        | Limit number of samples to run epistemic scoring (**_zero_** for no limit)                                |
+| epistemic_simulation_size    | int    | 5                        | Number of simulations per image to run epistemic scoring                                                  |
+| epistemic_top_k              | int    | 10                       | Select Top-K unlabeled for every active learning learning iteration                                       |
+| auto_finetune_models         | str    |                          | List of models to run fine-tuning when active learning task is completed  (**_None/Empty_** to train all) |
+| auto_finetune_check_interval | int    | 60                       | Interval in seconds for server to poll on **_CVAT_** to determine if active learning task is completed    |
+| cvat_project                 | str    | MONAILabel               | CVAT Project Name                                                                                         |
+| cvat_task_prefix             | str    | ActiveLearning_Iteration | Prefix for creating CVAT Tasks                                                                            |
+| cvat_image_quality           | int    | 70                       | Image quality for uploading them to CVAT Tasks                                                            |
+| cvat_segment_size            | int    | 1                        | Number of Jobs per CVAT Task                                                                              |
 
 ### Model Overview
 
 #### [DeepEdit](./lib/configs/deepedit.py)
 
-This model based on DeepEdit. An algorithm that combines the capabilities of multiple models into one, allowing for both
+This model is based on DeepEdit. An algorithm that combines the capabilities of multiple models into one, allowing for both
 interactive and automated segmentation.
 
 This model is currently trained to segment **Tool** from 2D in-body images.
 
 > monailabel start_server --app workspace/endoscopy --studies workspace/images --conf models deepedit
 
-- Network: This App uses the [BasicUNet](https://docs.monai.io/en/latest/networks.html#basicunet) as the default network.
+- Network: This model uses the [BasicUNet](https://docs.monai.io/en/latest/networks.html#basicunet) as the default network.
 - Labels: `{ "Tool": 1 }`
 - Dataset: The model is pre-trained over few in-body Images related to Endoscopy
 - Inputs: 3 channels.
@@ -139,7 +177,7 @@ This model is currently trained to segment **Tool** from 2D in-body images.
 
 #### [ToolTracking](./lib/configs/tooltracking.py)
 
-This model based on UNet for automated segmentation. This model works for single label segmentation tasks.
+This model is based on UNet for automated segmentation. This model works for single label segmentation tasks.
 > monailabel start_server --app workspace/endoscopy --studies workspace/images --conf models tooltracking
 
 - Network: This model uses the [FlexibleUNet](https://docs.monai.io/en/latest/networks.html#flexibleunet) as the default network.
@@ -147,6 +185,18 @@ This model based on UNet for automated segmentation. This model works for single
 - Dataset: The model is pre-trained over few in-body Images related to Endoscopy
 - Inputs: 1 channel for the image modality
 - Output: 1 channel representing the segmented Tool
+
+
+#### [DeID](./lib/configs/deid.py)
+
+This model is based on SEResNet50 for classification. This model determines if tool is present or not (in-body vs out-body).
+> monailabel start_server --app workspace/endoscopy --studies workspace/images --conf models deid
+
+- Network: This model uses the [SEResNet50](https://docs.monai.io/en/latest/networks.html#seresnet50) as the default network.
+- Labels: `{ "InBody": 0, "OutBody": 1 }`
+- Dataset: The model is pre-trained over few in-body Images related to Endoscopy
+- Inputs: 1 channel for the image modality
+- Output: 2 classes (0: in_body, 1: out_body)
 
 
 ### How To Add New Model?

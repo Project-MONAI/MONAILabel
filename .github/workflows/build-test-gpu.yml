@@ -13,7 +13,7 @@ name: "Build & Test w/GPU"
 
 on:
   push:
-    branches: [ main ]
+    branches: [ main_disabled ]
   workflow_dispatch:
 
 jobs:
