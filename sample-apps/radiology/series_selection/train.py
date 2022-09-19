@@ -21,7 +21,18 @@ from ignite.engine import Events, _prepare_batch, create_supervised_evaluator, c
 from ignite.handlers import EarlyStopping, ModelCheckpoint
 from monai.data import DataLoader, decollate_batch
 from monai.handlers import ROCAUC, StatsHandler, TensorBoardStatsHandler, stopping_fn_from_metric
-from monai.transforms import Activations, AsDiscrete, Compose, LoadImaged, NormalizeIntensityd, RandRotate90d, Resized
+from monai.transforms import (
+    Activations,
+    AsDiscrete,
+    Compose,
+    LoadImaged,
+    NormalizeIntensityd,
+    RandGaussianSmoothd,
+    RandRotate90d,
+    RandScaleIntensityd,
+    RandShiftIntensityd,
+    Resized,
+)
 
 
 def main():
@@ -36,8 +47,8 @@ def main():
         "--input",
         default="/home/andres/Documents/workspace/disk-workspace/Datasets/radiology/brain/series_selection/train/",
     )
-    parser.add_argument("-e", "--epochs", type=int, default=200)
-    parser.add_argument("-batch", "--train_batch_size", type=int, default=8)
+    parser.add_argument("-e", "--epochs", type=int, default=2000)
+    parser.add_argument("-batch", "--train_batch_size", type=int, default=4)
     parser.add_argument("-lr", "--learning_rate", type=float, default=0.0001)
     args = parser.parse_args()
 
@@ -60,8 +71,8 @@ def main():
             labels.append(3)
 
     labels = np.array(labels, dtype=np.int64)
-    images = images[:50]
-    labels = labels[:50]
+    images = images[:500]
+    labels = labels[:500]
     val_samples = int(len(labels) * args.val)
     train_files = [{"img": img, "label": label} for img, label in zip(images[:val_samples], labels[:val_samples])]
     val_files = [{"img": img, "label": label} for img, label in zip(images[-val_samples:], labels[-val_samples:])]
@@ -72,9 +83,12 @@ def main():
     train_transforms = Compose(
         [
             LoadImaged(keys="img", reader="ITKReader", ensure_channel_first=True),
+            Resized(keys="img", spatial_size=(128, 128, 128)),
             NormalizeIntensityd(keys="img"),
-            Resized(keys=["img"], spatial_size=(128, 128, 128)),
-            RandRotate90d(keys=["img"], prob=0.8, spatial_axes=[0, 2]),
+            RandScaleIntensityd(keys="img", factors=0.1, prob=0.8),
+            RandShiftIntensityd(keys="img", offsets=0.1, prob=0.8),
+            RandGaussianSmoothd(keys="img", sigma_x=(0.25, 1.5), sigma_y=(0.25, 1.5), sigma_z=(0.25, 1.5), prob=0.8),
+            RandRotate90d(keys="img", prob=0.8, spatial_axes=[0, 2]),
         ]
     )
     val_transforms = Compose(
@@ -87,9 +101,10 @@ def main():
 
     # create DenseNet121, CrossEntropyLoss and Adam optimizer
     device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
+    # Other networks: https://github.com/Project-MONAI/MONAI/blob/dev/monai/networks/nets/densenet.py
     net = monai.networks.nets.DenseNet121(spatial_dims=3, in_channels=1, out_channels=num_labels).to(device)
     loss = torch.nn.CrossEntropyLoss()
-    opt = torch.optim.Adam(net.parameters(), args.learning_rate)
+    opt = torch.optim.AdamW(net.parameters(), args.learning_rate, weight_decay=1e-5)
 
     # Ignite trainer expects batch=(img, label) and returns output=loss at every iteration,
     # user can add output_transform to return other values, like: y_pred, y, etc.
@@ -99,7 +114,7 @@ def main():
     trainer = create_supervised_trainer(net, opt, loss, device, False, prepare_batch=prepare_batch)
 
     # adding checkpoint handler to save models (network params and optimizer stats) during training
-    checkpoint_handler = ModelCheckpoint("./runs_dict/", "net", n_saved=args.val_freq, require_empty=False)
+    checkpoint_handler = ModelCheckpoint("./runs_dict/", "net", n_saved=10, require_empty=False)
     trainer.add_event_handler(
         event_name=Events.EPOCH_COMPLETED, handler=checkpoint_handler, to_save={"net": net, "opt": opt}
     )
@@ -149,7 +164,7 @@ def main():
     val_tensorboard_stats_handler.attach(evaluator)
 
     # add early stopping handler to evaluator
-    early_stopper = EarlyStopping(patience=4, score_function=stopping_fn_from_metric("AUC"), trainer=trainer)
+    early_stopper = EarlyStopping(patience=10, score_function=stopping_fn_from_metric("AUC"), trainer=trainer)
     evaluator.add_event_handler(event_name=Events.EPOCH_COMPLETED, handler=early_stopper)
 
     # create a validation data loader

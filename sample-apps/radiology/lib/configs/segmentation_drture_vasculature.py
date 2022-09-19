@@ -33,10 +33,11 @@ class SegmentationBrats(TaskConfig):
         # REMEMBER: DO NOT USE largest connected components transform for inference!
         self.labels = {
             "1artery": 1,
+            "2vein": 2,
         }
 
         # Number of input channels
-        self.number_intensity_ch = 1
+        self.number_intensity_ch = 2
 
         # Model Files
         self.path = [
@@ -46,7 +47,7 @@ class SegmentationBrats(TaskConfig):
 
         # Download PreTrained Model
         if strtobool(self.conf.get("use_pretrained_model", "false")):
-            url = f"{self.PRE_TRAINED_PATH}/segmentation_unet_drture_artery.pt"
+            url = f"{self.PRE_TRAINED_PATH}/segmentation_unet_drture_artery-vein.pt"
             download_file(url, self.path[0])
 
         # Network

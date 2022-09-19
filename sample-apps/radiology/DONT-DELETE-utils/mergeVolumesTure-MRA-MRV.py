@@ -10,14 +10,13 @@
 # limitations under the License.
 import glob
 import os
-import shutil
 
 import monai
 from monai.data import DataLoader, list_data_collate
 from monai.transforms import Compose, LoadImaged, SaveImaged
 
-data_dir = "/home/andres/Documents/workspace/disk-workspace/Datasets/radiology/brain/NeuroAtlas-Labels/DrTures/all-images/Steve-stripping/Ture-subset3-nii/"
-output_folder = "/home/andres/Documents/workspace/disk-workspace/Datasets/radiology/brain/NeuroAtlas-Labels/DrTures/all-images/Steve-stripping/merged/"
+data_dir = "/home/andres/Documents/workspace/disk-workspace/Datasets/radiology/brain/NeuroAtlas-Labels/DrTures/vasculature-segmentation/MRA-MRV-volumes/"
+output_folder = "/home/andres/Documents/workspace/disk-workspace/Datasets/radiology/brain/NeuroAtlas-Labels/DrTures/vasculature-segmentation/MRA-MRV-volumes/merged/"
 
 
 set_transforms = Compose(
@@ -27,24 +26,25 @@ set_transforms = Compose(
     ]
 )
 
-images = glob.glob(os.path.join(data_dir, "*"))
+images = glob.glob(os.path.join(data_dir, "MRA/*"))
 loader_d = []
 all_patients = []
 
 # Getting all unique patients
 for p in images:
     _, file = os.path.split(p)
-    p_name = file.split("-")[1]
+    p_name = file.split("-")[1].split(".")[0]
     if p_name not in all_patients:
         all_patients.append(p_name)
 
 # creating dict for merging files
 for patient in all_patients:
     path_imgs = []
-    for mod in ["FLAIR", "T1", "T1C", "T2"]:
-        path_img = data_dir + "/Ture-" + patient + "-" + mod + "-stripped.nii.gz"
-        path_imgs.append(path_img)
-    loader_d.append({"image": path_imgs})
+    mrv_path = data_dir + "MRV/Ture-" + patient + "-MRV.nrrd"
+    if os.path.exists(mrv_path):
+        path_imgs.append(data_dir + "MRA/Ture-" + patient + ".nrrd")
+        path_imgs.append(mrv_path)
+        loader_d.append({"image": path_imgs})
 
 
 print(len(loader_d))
@@ -57,6 +57,3 @@ for idx, img in enumerate(trainLoader):
     dirname, file = os.path.split(img["image_meta_dict"]["filename_or_obj"][0])
     tures_number = file.split("-")[1]
     print("Processing image: ", tures_number + ".nii.gz")
-    # time.sleep(2)
-    # filename, extension = os.path.splitext(file)
-    shutil.move(output_folder + file, output_folder + "Ture-" + tures_number + ".nii.gz")
