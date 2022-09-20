@@ -18,6 +18,7 @@ import tempfile
 import time
 
 import numpy as np
+import pydicom
 import pydicom_seg
 import SimpleITK
 from monai.data import write_nifti
@@ -35,7 +36,7 @@ def dicom_to_nifti(series_dir, is_seg=False):
     start = time.time()
 
     if is_seg:
-        output_file = itk_dicom_seg_to_image(series_dir)
+        output_file = dicom_seg_to_itk_image(series_dir)
     else:
         # https://simpleitk.readthedocs.io/en/master/link_DicomConvert_docs.html
         if os.path.isdir(series_dir) and len(os.listdir(series_dir)) > 1:
@@ -193,29 +194,21 @@ def itk_image_to_dicom_seg(label, series_dir, template):
     return output_file
 
 
-def dicom_seg_to_itk_image(label, output_type="nifti"):
+def dicom_seg_to_itk_image(label, output_ext=".seg.nrrd"):
     filename = label if not os.path.isdir(label) else os.path.join(label, os.listdir(label)[0])
-    with tempfile.TemporaryDirectory() as output_dir:
-        command = "segimage2itkimage"
-        args = [
-            "--inputDICOM",
-            filename,
-            "--outputType",
-            output_type,
-            "--prefix",
-            "segment",
-            "--outputDirectory",
-            output_dir,
-        ]
-        run_command(command, args)
-        output_files = [f for f in os.listdir(output_dir) if f.startswith("segment") and f.endswith(".nii.gz")]
-        if not output_files:
-            logger.warning(f"Failed to convert DICOM-SEG {label} to NIFTI")
-            return None
 
-        result_file = os.path.join(output_dir, output_files[0])
-        logger.info(f"Result/Output (NII) File: {result_file}")
+    dcm = pydicom.dcmread(filename)
+    reader = pydicom_seg.MultiClassReader()
+    result = reader.read(dcm)
+    image = result.image
 
-        output_file = tempfile.NamedTemporaryFile(suffix=".nii.gz").name
-        shutil.move(result_file, output_file)
-        return output_file
+    output_file = tempfile.NamedTemporaryFile(suffix=output_ext).name
+
+    SimpleITK.WriteImage(image, output_file, True)
+
+    if not os.path.exists(output_file):
+        logger.warning(f"Failed to convert DICOM-SEG {label} to ITK image")
+        return None
+
+    logger.info(f"Result/Output File: {output_file}")
+    return output_file
