@@ -193,8 +193,7 @@ def itk_image_to_dicom_seg(label, series_dir, template):
     return output_file
 
 
-def itk_dicom_seg_to_image(label, output_type="nifti"):
-    # TODO:: Currently supports only one file
+def dicom_seg_to_itk_image(label, output_type="nifti"):
     filename = label if not os.path.isdir(label) else os.path.join(label, os.listdir(label)[0])
     with tempfile.TemporaryDirectory() as output_dir:
         command = "segimage2itkimage"
