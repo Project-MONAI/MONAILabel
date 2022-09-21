@@ -9,39 +9,36 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-import logging
-from typing import Optional
-
-from monai.config import KeysCollection
-from monai.data import ImageReader, MetaTensor
-from monai.transforms import LoadImaged, MapTransform
-
-from monai.utils.enums import ColorOrder
-
 import inspect
 import logging
+import os
 import sys
 import traceback
 import warnings
 from pathlib import Path
 from pydoc import locate
-from typing import Dict, List, Optional, Sequence, Type, Union, TYPE_CHECKING
+from typing import TYPE_CHECKING, Dict, List, Optional, Sequence, Type, Union
 
 import numpy as np
 import torch
-
-from monai.config import DtypeLike, NdarrayOrTensor, PathLike
-from monai.data import image_writer
+from monai.config import DtypeLike, KeysCollection, NdarrayOrTensor, PathLike
+from monai.data import ImageReader, MetaTensor, image_writer
 from monai.data.folder_layout import FolderLayout
-
 from monai.data.meta_tensor import MetaTensor
+from monai.transforms import LoadImaged, MapTransform
 from monai.transforms.transform import Transform
 from monai.transforms.utility.array import EnsureChannelFirst
-from monai.utils import GridSamplePadMode, ensure_tuple_rep
+from monai.utils import GridSamplePadMode
 from monai.utils import ImageMetaKey as Key
-from monai.utils import OptionalImportError, convert_to_dst_type, ensure_tuple, look_up_option, optional_import
-from monai.utils.enums import PostFix
-import os
+from monai.utils import (
+    OptionalImportError,
+    convert_to_dst_type,
+    ensure_tuple,
+    ensure_tuple_rep,
+    look_up_option,
+    optional_import,
+)
+from monai.utils.enums import ColorOrder, PostFix
 
 if TYPE_CHECKING:
     import cv2
@@ -98,8 +95,6 @@ class NormalizeLabeld(MapTransform):
         return d
 
 
-
-
 class SuppressStderr:
     """Suppress stderr. Useful as OpenCV (and dependencies) can produce a lot of output."""
 
@@ -117,6 +112,7 @@ class SuppressStderr:
         os.dup2(self.old_stderr_fileno, self.old_stderr_fileno_undup)
         os.close(self.old_stderr_fileno)
         self.errnull_file.close()
+
 
 class LoadVideoFrame(Transform):
     def __init__(
@@ -154,7 +150,8 @@ class LoadVideoFrame(Transform):
         if not cap.isOpened():
             raise RuntimeError(f"Failed to open video: {video_source}")
 
-        cap.set(1,frame_id); # Where frame_no is the frame you want
+        cap.set(1, frame_id)
+        # Where frame_no is the frame you want
 
         ret, frame = cap.read()
 
@@ -170,9 +167,7 @@ class LoadVideoFrame(Transform):
 
 
 class LoadVideoFramed(MapTransform):
-    """
-
-    """
+    """ """
 
     def __init__(
         self,
@@ -218,21 +213,9 @@ class LoadVideoFramed(MapTransform):
 
         """
         d = dict(data)
-        frame_id = d['frame_id'] if frame_id == None else frame_id
+        frame_id = d["frame_id"] if frame_id == None else frame_id
         for key, meta_key, meta_key_postfix in self.key_iterator(d, self.meta_keys, self.meta_key_postfix):
             data = self._loader(d[key], frame_id)
             d[key] = data
 
         return d
-
-
-
-
-
-
-
-
-
-
-
-

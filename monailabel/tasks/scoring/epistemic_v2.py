@@ -177,7 +177,7 @@ class EpistemicScoringVideo(ScoringMethod):
                 "image": datastore.get_image_uri(image_id),
                 "logging": "error",
                 "cache_transforms": False,
-                "frame_id": frame_id
+                "frame_id": frame_id,
             }
 
             accum_unl_outputs = []
@@ -220,6 +220,7 @@ class EpistemicScoringVideo(ScoringMethod):
         # Add epistemic_entropy in datastore
         info = {self.key_output_entropy: entropy_video, self.key_output_ts: model_ts}
         datastore.update_image_info(image_id, info)
+
 
 class EpistemicScoring(ScoringMethod):
     """

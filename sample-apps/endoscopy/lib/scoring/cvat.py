@@ -21,6 +21,7 @@ from monailabel.tasks.scoring.epistemic_v2 import EpistemicScoring, EpistemicSco
 
 logger = logging.getLogger(__name__)
 
+
 class CVATEpistemicScoringVideo(EpistemicScoringVideo):
     def __init__(
         self,
@@ -75,6 +76,7 @@ class CVATEpistemicScoringVideo(EpistemicScoringVideo):
                 logger.info("Latest Active Learning Task in CVAT is under progress/not-consumed. Skip to create new!")
 
         return res
+
 
 class CVATEpistemicScoring(EpistemicScoring):
     def __init__(
