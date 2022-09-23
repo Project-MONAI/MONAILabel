@@ -43,6 +43,10 @@ Bundle
    anatomies. The specification for MONAILabel integration of the Bundle app links archived Model-Zoo for customized labeling
    (e.g., the third-party transformer model for labeling renal cortex, medulla, and pelvicalyceal system. Interactive tools such as DeepEdits).
 
+Endoscopy App
+   The Endoscopy app enables users to use interactive, automated segmentation and classification models over 2D images for endoscopy usecase.
+   Combined with CVAT, it will demonstrate the fully automated Active Learning workflow to train + fine-tune a model.
+
 *Deploy Labeling and Medical AI Faster*
 
 The end-to-end ecosystem from research stage to easy model deployment. Combining clinical

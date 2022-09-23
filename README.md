@@ -85,7 +85,7 @@ MONAI Label with visualization tools 3D Slicer, OHIF, DSA, QuPath, CVAT etc..
    (e.g., the third-party transformer model for labeling renal cortex, medulla, and pelvicalyceal system. Interactive tools such as DeepEdits).
 
 **Endoscopy App**
-   The Bundle app enables users to use interactive, automated segmentation and classification models over 2D images for endoscopy usecase.
+   The Endoscopy app enables users to use interactive, automated segmentation and classification models over 2D images for endoscopy usecase.
    Combined with CVAT, it will demonstrate the fully automated Active Learning workflow to train + fine-tune a model.
 
 ## Installation
@@ -258,9 +258,8 @@ Refer [Pathology](sample-apps/pathology) for running a sample pathology use-case
 
 ### [CVAT](plugins/cvat)
 
-Install [CVAT](https://openvinotoolkit.github.io/cvat/docs/getting_started) and
-enable [Semi-Automatic and Automatic Annotation](https://openvinotoolkit.github.io/cvat/docs/administration/advanced/installation_automatic_annotation/)
-.
+Install [CVAT](https://opencv.github.io/cvat/docs/administration/basics/installation/) and
+enable [Semi-Automatic and Automatic Annotation](https://opencv.github.io/cvat/docs/administration/advanced/installation_automatic_annotation/).
 Refer [CVAT Instructions](https://github.com/Project-MONAI/MONAILabel/tree/main/plugins/cvat) for deploying available MONAILabel
 pathology/endoscopy models into CVAT.
 
