@@ -13,6 +13,7 @@ import json
 import logging
 import os
 import subprocess
+from typing import Dict, Optional, Sequence
 
 import monai.bundle
 import torch
@@ -26,28 +27,53 @@ from monailabel.interfaces.tasks.train import TrainTask
 logger = logging.getLogger(__name__)
 
 
-class Const:
-    CONFIGS = ("train.json", "train.yaml")
-    MULTI_GPU_CONFIGS = ("multi_gpu_train.json", "multi_gpu_train.yaml")
-    METADATA_JSON = "metadata.json"
-    MODEL_PYTORCH = "model.pt"
+class BundleConstants:
+    def configs(self) -> Sequence[str]:
+        return ["train.json", "train.yaml"]
 
-    KEY_DEVICE = "device"
-    KEY_BUNDLE_ROOT = "bundle_root"
-    KEY_NETWORK = "network"
-    KEY_NETWORK_DEF = "network_def"
-    KEY_TRAIN_TRAINER_MAX_EPOCHS = "train#trainer#max_epochs"
-    KEY_TRAIN_DATASET_DATA = "train#dataset#data"
-    KEY_TRAIN_HANDLERS = "train#handlers"
-    KEY_VALIDATE_DATASET_DATA = "validate#dataset#data"
+    def multi_gpu_configs(self) -> Sequence[str]:
+        return ["multi_gpu_train.json", "multi_gpu_train.yaml"]
+
+    def metadata_json(self) -> str:
+        return "metadata.json"
+
+    def model_pytorch(self) -> str:
+        return "model.pt"
+
+    def key_device(self) -> str:
+        return "device"
+
+    def key_bundle_root(self) -> str:
+        return "bundle_root"
+
+    def key_network(self) -> str:
+        return "network"
+
+    def key_network_def(self) -> str:
+        return "network_def"
+
+    def key_train_trainer_max_epochs(self) -> str:
+        return "train#trainer#max_epochs"
+
+    def key_train_dataset_data(self) -> str:
+        return "train#dataset#data"
+
+    def key_train_handlers(self) -> str:
+        return "train#handlers"
+
+    def key_validate_dataset_data(self) -> str:
+        return "validate#dataset#data"
 
 
 class BundleTrainTask(TrainTask):
-    def __init__(self, path, conf):
+    def __init__(self, path: str, conf: Dict[str, str], const: Optional[BundleConstants] = None):
         self.valid: bool = False
-        config_paths = [c for c in Const.CONFIGS if os.path.exists(os.path.join(path, "configs", c))]
+        self.conf = conf
+        self.const = const if const else BundleConstants()
+
+        config_paths = [c for c in self.const.configs() if os.path.exists(os.path.join(path, "configs", c))]
         if not config_paths:
-            logger.warning(f"Ignore {path} as there is no train config {Const.CONFIGS} exists")
+            logger.warning(f"Ignore {path} as there is no train config {self.const.configs()} exists")
             return
 
         self.bundle_path = path
@@ -55,11 +81,11 @@ class BundleTrainTask(TrainTask):
 
         self.bundle_config = ConfigParser()
         self.bundle_config.read_config(self.bundle_config_path)
-        self.bundle_config.config.update({Const.KEY_BUNDLE_ROOT: self.bundle_path})
+        self.bundle_config.config.update({self.const.key_bundle_root(): self.bundle_path})
 
         # https://docs.monai.io/en/latest/mb_specification.html#metadata-json-file
         self.bundle_metadata_path = os.path.join(path, "configs", "metadata.json")
-        with open(os.path.join(path, "configs", Const.METADATA_JSON)) as fp:
+        with open(os.path.join(path, "configs", self.const.metadata_json())) as fp:
             metadata = json.load(fp)
 
         super().__init__(metadata.get("description", ""))
@@ -100,11 +126,11 @@ class BundleTrainTask(TrainTask):
         return torch.device(str if torch.cuda.is_available() else "cpu")
 
     def _load_checkpoint(self, output_dir, pretrained, train_handlers):
-        load_path = os.path.join(output_dir, Const.MODEL_PYTORCH) if pretrained else None
+        load_path = os.path.join(output_dir, self.const.model_pytorch()) if pretrained else None
         if os.path.exists(load_path):
             logger.info(f"Add Checkpoint Loader for Path: {load_path}")
 
-            load_dict = {"model": f"$@{Const.KEY_NETWORK}"}
+            load_dict = {"model": f"$@{self.const.key_network()}"}
             if not [t for t in train_handlers if t.get("_target_") == CheckpointLoader.__name__]:
                 loader = {
                     "_target_": CheckpointLoader.__name__,
@@ -131,34 +157,38 @@ class BundleTrainTask(TrainTask):
         device = self._device(request.get("device", "cuda"))
         logger.info(f"Using device: {device}")
 
-        train_handlers = self.bundle_config.get(Const.KEY_TRAIN_HANDLERS, [])
+        train_handlers = self.bundle_config.get(self.const.key_train_handlers(), [])
         self._load_checkpoint(os.path.join(self.bundle_path, "models"), pretrained, train_handlers)
 
         overrides = {
-            Const.KEY_BUNDLE_ROOT: self.bundle_path,
-            Const.KEY_TRAIN_TRAINER_MAX_EPOCHS: max_epochs,
-            Const.KEY_TRAIN_DATASET_DATA: train_ds,
-            Const.KEY_DEVICE: device,
-            Const.KEY_TRAIN_HANDLERS: train_handlers,
+            self.const.key_bundle_root(): self.bundle_path,
+            self.const.key_train_trainer_max_epochs(): max_epochs,
+            self.const.key_train_dataset_data(): train_ds,
+            self.const.key_device(): device,
+            self.const.key_train_handlers(): train_handlers,
         }
 
         # external validation datalist supported through bundle itself (pass -1 in the request to use the same)
         if val_ds is not None:
-            overrides[Const.KEY_VALIDATE_DATASET_DATA] = val_ds
+            overrides[self.const.key_validate_dataset_data()] = val_ds
 
         if multi_gpu:
             config_paths = [
-                c for c in Const.MULTI_GPU_CONFIGS if os.path.exists(os.path.join(self.bundle_path, "configs", c))
+                c
+                for c in self.const.multi_gpu_configs()
+                if os.path.exists(os.path.join(self.bundle_path, "configs", c))
             ]
             if not config_paths:
-                logger.warning(f"Ignore Multi-GPU Training; No multi-gpu train config {Const.MULTI_GPU_CONFIGS} exists")
+                logger.warning(
+                    f"Ignore Multi-GPU Training; No multi-gpu train config {self.const.multi_gpu_configs()} exists"
+                )
                 return
 
             train_path = os.path.join(self.bundle_path, "configs", "monailabel_train.json")
             multi_gpu_train_path = os.path.join(self.bundle_path, "configs", config_paths[0])
             logging_file = os.path.join(self.bundle_path, "configs", "logging.conf")
             for k, v in overrides.items():
-                if k != Const.KEY_DEVICE:
+                if k != self.const.key_device():
                     self.bundle_config.set(v, k)
             ConfigParser.export_config_file(self.bundle_config.config, train_path, indent=2)
 
