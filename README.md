@@ -285,6 +285,15 @@ If you are using MONAI Label in your research, please use the following citation
      year = 2022,
      url  = {https://arxiv.org/pdf/2203.12362.pdf}
 }
+
+@inproceedings{DiazPinto2022DeepEdit,
+      title={{DeepEdit: Deep Editable Learning for Interactive Segmentation of 3D Medical Images}},
+      author={Diaz-Pinto, Andres and Mehta, Pritesh and Alle, Sachidanand and Asad, Muhammad and Brown, Richard and Nath, Vishwesh and Ihsani, Alvin and Antonelli, Michela and Palkovics, Daniel and Pinter, Csaba and others},
+      booktitle={MICCAI Workshop on Data Augmentation, Labelling, and Imperfections},
+      pages={11--21},
+      year={2022},
+      organization={Springer}
+}
  ```
 
 Optional Citation: if you are using active learning functionality from MONAI Label, please support us:
