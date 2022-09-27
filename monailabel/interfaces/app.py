@@ -164,6 +164,8 @@ class MONAILabelApp:
                 wado_url_prefix=settings.MONAI_LABEL_WADO_PREFIX,
                 stow_url_prefix=settings.MONAI_LABEL_STOW_PREFIX,
             )
+        else:
+            dw_client = DICOMwebClient(url=self.studies, session=dw_session)
 
         self._download_dcmqi_tools()
 
