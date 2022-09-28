@@ -556,7 +556,7 @@ class MONAILabelApp:
         target = os.path.join(self.app_dir, "bin")
         os.makedirs(target, exist_ok=True)
 
-        dcmqi_tools = ["segimage2itkimage", "itkimage2segimage", "segimage2itkimage.exe", "itkimage2segimage.exe"]
+        dcmqi_tools = ["itkimage2segimage", "itkimage2segimage.exe"]
         existing = [tool for tool in dcmqi_tools if shutil.which(tool) or os.path.exists(os.path.join(target, tool))]
         logger.debug(f"Existing Tools: {existing}")
 
