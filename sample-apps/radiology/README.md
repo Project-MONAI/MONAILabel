@@ -58,7 +58,7 @@ monailabel start_server --app workspace/radiology --studies workspace/images --c
 # Pick Deepgrow And Segmentation model (multiple models)
 monailabel start_server --app workspace/radiology --studies workspace/images --conf models "deepgrow_2d,deepgrow_3d,segmentation"
 
-# Pick all stages for vertebra segmentaion
+# Pick all stages for vertebra segmentation
 monailabel start_server --app workspace/radiology --studies workspace/images --conf models "localization_spine,localization_vertebra,segmentation_vertebra"
 
 # Pick All

@@ -29,7 +29,7 @@ from monailabel.utils.others.generic import download_file, strtobool
 logger = logging.getLogger(__name__)
 
 
-class DeID(TaskConfig):
+class InBody(TaskConfig):
     def init(self, name: str, model_dir: str, conf: Dict[str, str], planner: Any, **kwargs):
         super().init(name, model_dir, conf, planner, **kwargs)
 
@@ -44,7 +44,7 @@ class DeID(TaskConfig):
 
         # Download PreTrained Model
         if strtobool(self.conf.get("use_pretrained_model", "true")):
-            url = f"{self.conf.get('pretrained_path', self.PRE_TRAINED_PATH)}/endoscopy_deid.pt"
+            url = f"{self.conf.get('pretrained_path', self.PRE_TRAINED_PATH)}/endoscopy_inbody.pt"
             try:
                 download_file(url, self.path[0])
             except:
@@ -56,14 +56,14 @@ class DeID(TaskConfig):
 
         # Others
         self.epistemic_enabled = bool(strtobool(conf.get("epistemic_enabled", "false")))
-        self.epistemic_enabled = self.epistemic_enabled if self.conf.get("models") == "deid" else False
+        self.epistemic_enabled = self.epistemic_enabled if self.conf.get("models") == "inbody" else False
         self.epistemic_max_samples = int(conf.get("epistemic_max_samples", "0"))
         self.epistemic_simulation_size = int(conf.get("epistemic_simulation_size", "5"))
 
         logger.info(f"EPISTEMIC Enabled: {self.epistemic_enabled}; Samples: {self.epistemic_max_samples}")
 
     def infer(self) -> Union[InferTask, Dict[str, InferTask]]:
-        task: InferTask = lib.infers.DeID(
+        task: InferTask = lib.infers.InBody(
             path=self.path,
             network=self.network,
             labels=self.labels,
@@ -73,13 +73,13 @@ class DeID(TaskConfig):
 
     def trainer(self) -> Optional[TrainTask]:
         output_dir = os.path.join(self.model_dir, self.name)
-        task: TrainTask = lib.trainers.DeID(
+        task: TrainTask = lib.trainers.InBody(
             model_dir=output_dir,
             network=self.network,
             load_path=self.path[0],
             publish_path=self.path[1],
             labels=self.labels,
-            description="Train DeID Model",
+            description="Train InBody/OutBody Classification Model",
             config={
                 "max_epochs": 10,
                 "train_batch_size": 1,
@@ -100,6 +100,6 @@ class DeID(TaskConfig):
 
         if self.epistemic_enabled:
             methods[f"{self.name}_epistemic"] = CVATRandomScoring(
-                top_k=int(self.conf.get("epistemic_top_k", "10")), function="monailabel.endoscopy.deid"
+                top_k=int(self.conf.get("epistemic_top_k", "10")), function="monailabel.endoscopy.inbody"
             )
         return methods

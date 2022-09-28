@@ -38,13 +38,13 @@ from monailabel.tasks.train.basic_train import BasicTrainTask, Context
 logger = logging.getLogger(__name__)
 
 
-class DeID(BasicTrainTask):
+class InBody(BasicTrainTask):
     def __init__(
         self,
         model_dir,
         network,
         labels,
-        description="Endoscopy Classification for DeID",
+        description="Endoscopy Classification for InBody/OutBody",
         **kwargs,
     ):
         self._network = network

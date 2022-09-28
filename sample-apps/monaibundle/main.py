@@ -16,9 +16,6 @@ import shutil
 from typing import Dict
 
 import requests
-from lib.activelearning import First
-from lib.infers import BundleInferTask
-from lib.trainers import BundleTrainTask
 from monai.bundle import download
 
 import monailabel
@@ -26,7 +23,10 @@ from monailabel.interfaces.app import MONAILabelApp
 from monailabel.interfaces.tasks.infer import InferTask
 from monailabel.interfaces.tasks.strategy import Strategy
 from monailabel.interfaces.tasks.train import TrainTask
+from monailabel.tasks.activelearning.first import First
 from monailabel.tasks.activelearning.random import Random
+from monailabel.tasks.infer.bundle import BundleInferTask
+from monailabel.tasks.train.bundle import BundleTrainTask
 from monailabel.utils.others.generic import strtobool
 
 logger = logging.getLogger(__name__)
@@ -102,11 +102,9 @@ class MyApp(MONAILabelApp):
         # Models
         #################################################
         for n, b in self.models.items():
-            c = BundleInferTask(b, self.conf)
-            c = c if isinstance(c, dict) else {n: c}
-            for k, v in c.items():
-                logger.info(f"+++ Adding Inferer:: {k} => {v}")
-                infers[k] = v
+            i = BundleInferTask(b, self.conf)
+            logger.info(f"+++ Adding Inferer:: {n} => {i}")
+            infers[n] = i
         return infers
 
     def init_trainers(self) -> Dict[str, TrainTask]:

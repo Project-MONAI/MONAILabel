@@ -14,6 +14,7 @@ import logging
 import os
 import time
 from abc import abstractmethod
+from enum import Enum
 from typing import Any, Callable, Dict, Sequence, Tuple, Union
 
 import torch
@@ -28,7 +29,7 @@ from monailabel.utils.others.generic import device_list
 logger = logging.getLogger(__name__)
 
 
-class InferType:
+class InferType(str, Enum):
     """
     Type of Inference Model
 
@@ -49,7 +50,6 @@ class InferType:
     DEEPEDIT: str = "deepedit"
     SCRIBBLES: str = "scribbles"
     OTHERS: str = "others"
-    KNOWN_TYPES = [SEGMENTATION, ANNOTATION, CLASSIFICATION, DEEPGROW, DEEPEDIT, SCRIBBLES, OTHERS]
 
 
 class InferTask:
