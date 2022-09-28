@@ -12,7 +12,7 @@
 import json
 import logging
 import os
-from typing import Callable, Sequence
+from typing import Callable, Dict, Optional, Sequence
 
 from monai.bundle import ConfigParser
 from monai.inferers import Inferer, SimpleInferer
@@ -24,18 +24,36 @@ from monailabel.transform.post import Restored
 logger = logging.getLogger(__name__)
 
 
-class Const:
-    CONFIGS = ["inference.json", "inference.yaml"]
-    METADATA_JSON = "metadata.json"
-    MODEL_PYTORCH = "model.pt"
-    MODEL_TORCHSCRIPT = "model.ts"
+class BundleConstants:
+    def configs(self) -> Sequence[str]:
+        return ["inference.json", "inference.yaml"]
 
-    KEY_DEVICE = "device"
-    KEY_BUNDLE_ROOT = "bundle_root"
-    KEY_NETWORK_DEF = "network_def"
-    KEY_PREPROCESSING = ["preprocessing", "pre_transforms"]
-    KEY_POSTPROCESSING = ["postprocessing", "post_transforms"]
-    KEY_INFERER = ["inferer"]
+    def metadata_json(self) -> str:
+        return "metadata.json"
+
+    def model_pytorch(self) -> str:
+        return "model.pt"
+
+    def model_torchscript(self) -> str:
+        return "model.ts"
+
+    def key_device(self) -> str:
+        return "device"
+
+    def key_bundle_root(self) -> str:
+        return "bundle_root"
+
+    def key_network_def(self) -> str:
+        return "network_def"
+
+    def key_preprocessing(self) -> Sequence[str]:
+        return ["preprocessing", "pre_transforms"]
+
+    def key_postprocessing(self) -> Sequence[str]:
+        return ["postprocessing", "post_transforms"]
+
+    def key_inferer(self) -> Sequence[str]:
+        return ["inferer"]
 
 
 class BundleInferTask(InferTask):
@@ -43,29 +61,35 @@ class BundleInferTask(InferTask):
     This provides Inference Engine for Monai Bundle.
     """
 
-    def __init__(self, path, conf):
+    def __init__(
+        self, path: str, conf: Dict[str, str], const: Optional[BundleConstants] = None, type: Optional[InferType] = None
+    ):
         self.valid: bool = False
-        config_paths = [c for c in Const.CONFIGS if os.path.exists(os.path.join(path, "configs", c))]
+        self.const = const if const else BundleConstants()
+
+        config_paths = [c for c in self.const.configs() if os.path.exists(os.path.join(path, "configs", c))]
         if not config_paths:
-            logger.warning(f"Ignore {path} as there is no infer config {Const.CONFIGS} exists")
+            logger.warning(f"Ignore {path} as there is no infer config {self.const.configs()} exists")
             return
 
         self.bundle_config = ConfigParser()
         self.bundle_config.read_config(os.path.join(path, "configs", config_paths[0]))
-        self.bundle_config.config.update({Const.KEY_BUNDLE_ROOT: path})
+        self.bundle_config.config.update({self.const.key_bundle_root(): path})
 
         network = None
-        model_path = os.path.join(path, "models", Const.MODEL_PYTORCH)
+        model_path = os.path.join(path, "models", self.const.model_pytorch())
         if os.path.exists(model_path):
-            network = self.bundle_config.get_parsed_content(Const.KEY_NETWORK_DEF, instantiate=True)
+            network = self.bundle_config.get_parsed_content(self.const.key_network_def(), instantiate=True)
         else:
-            model_path = os.path.join(path, "models", Const.MODEL_TORCHSCRIPT)
+            model_path = os.path.join(path, "models", self.const.model_torchscript())
             if not os.path.exists(model_path):
-                logger.warning(f"Ignore {path} as neither {Const.MODEL_PYTORCH} nor {Const.MODEL_TORCHSCRIPT} exists")
+                logger.warning(
+                    f"Ignore {path} as neither {self.const.model_pytorch()} nor {self.const.model_torchscript()} exists"
+                )
                 return
 
         # https://docs.monai.io/en/latest/mb_specification.html#metadata-json-file
-        with open(os.path.join(path, "configs", Const.METADATA_JSON)) as fp:
+        with open(os.path.join(path, "configs", self.const.metadata_json())) as fp:
             metadata = json.load(fp)
 
         self.key_image, image = next(iter(metadata["network_data_format"]["inputs"].items()))
@@ -76,11 +100,15 @@ class BundleInferTask(InferTask):
         spatial_shape = image.get("spatial_shape")
         dimension = len(spatial_shape) if spatial_shape else 3
         type = (
-            InferType.DEEPEDIT
-            if "deepedit" in description.lower()
-            else InferType.DEEPGROW
-            if "deepgrow" in description.lower()
-            else InferType.SEGMENTATION
+            (
+                InferType.DEEPEDIT
+                if "deepedit" in description.lower()
+                else InferType.DEEPGROW
+                if "deepgrow" in description.lower()
+                else InferType.SEGMENTATION
+            )
+            if not type
+            else type
         )
 
         super().__init__(
@@ -99,21 +127,21 @@ class BundleInferTask(InferTask):
 
     def pre_transforms(self, data=None) -> Sequence[Callable]:
         pre = []
-        for k in Const.KEY_PREPROCESSING:
+        for k in self.const.key_preprocessing():
             if self.bundle_config.get(k):
                 c = self.bundle_config.get_parsed_content(k, instantiate=True)
                 pre = list(c.transforms) if isinstance(c, Compose) else c
         return pre
 
     def inferer(self, data=None) -> Inferer:
-        for k in Const.KEY_INFERER:
+        for k in self.const.key_inferer():
             if self.bundle_config.get(k):
                 return self.bundle_config.get_parsed_content(k, instantiate=True)  # type: ignore
         return SimpleInferer()
 
     def post_transforms(self, data=None) -> Sequence[Callable]:
         post = []
-        for k in Const.KEY_POSTPROCESSING:
+        for k in self.const.key_postprocessing():
             if self.bundle_config.get(k):
                 c = self.bundle_config.get_parsed_content(k, instantiate=True)
                 post = list(c.transforms) if isinstance(c, Compose) else c

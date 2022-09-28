@@ -15,7 +15,7 @@ import os
 from typing import Dict
 
 import lib.configs
-from lib.activelearning import First
+from lib.activelearning import Last
 from lib.infers.deepgrow_pipeline import InferDeepgrowPipeline
 from lib.infers.vertebra_pipeline import InferVertebraPipeline
 
@@ -28,6 +28,7 @@ from monailabel.interfaces.tasks.scoring import ScoringMethod
 from monailabel.interfaces.tasks.strategy import Strategy
 from monailabel.interfaces.tasks.train import TrainTask
 from monailabel.scribbles.infer import GMMBasedGraphCut, HistogramBasedGraphCut
+from monailabel.tasks.activelearning.first import First
 from monailabel.tasks.activelearning.random import Random
 from monailabel.utils.others.class_utils import get_class_names
 from monailabel.utils.others.generic import strtobool
@@ -190,6 +191,7 @@ class MyApp(MONAILabelApp):
         strategies: Dict[str, Strategy] = {
             "random": Random(),
             "first": First(),
+            "last": Last(),
         }
 
         if strtobool(self.conf.get("skip_strategies", "true")):
