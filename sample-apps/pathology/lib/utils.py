@@ -31,7 +31,7 @@ from tqdm import tqdm
 from monailabel.datastore.dsa import DSADatastore
 from monailabel.datastore.local import LocalDatastore
 from monailabel.interfaces.datastore import Datastore
-from monailabel.utils.others.generic import get_basename
+from monailabel.utils.others.generic import get_basename, is_openslide_supported
 
 logger = logging.getLogger(__name__)
 
@@ -206,8 +206,13 @@ def split_local_dataset(datastore, d, output_dir, groups, tile_size, max_region=
             points.extend(p)
 
     x, y, w, h = _to_roi(points, max_region, polygons, item_id)
-    slide = openslide.OpenSlide(d["image"])
-    img = slide.read_region((x, y), 0, (w, h)).convert("RGB")
+    if is_openslide_supported(d["image"]):
+        slide = openslide.OpenSlide(d["image"])
+        img = slide.read_region((x, y), 0, (w, h)).convert("RGB")
+    else:
+        img = Image.open(d["image"]).convert("RGB")
+        w = img.size[0]
+        h = img.size[1]
 
     dataset_json.extend(_to_dataset(item_id, x, y, w, h, img, tile_size, polygons, groups, output_dir))
     return dataset_json
