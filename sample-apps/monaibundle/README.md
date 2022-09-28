@@ -15,8 +15,8 @@ limitations under the License.
 The App helps to pull any MONAI Bundle from [MONAI ZOO](https://github.com/Project-MONAI/model-zoo/tree/dev/models).
 However the following constraints has to be met for any monai bundle to directly import and use in MONAI Label.
  - Has to meet [MONAI Bundle Specification](https://docs.monai.io/en/latest/mb_specification.html).
- - For Inference, the bundle has defined **inference.json** or **inference.yaml** and defines [these keys](./lib/infers/bundle.py)
- - For Training, the bundle has defined **train.json** or **train.yaml** and defines [these keys](./lib/trainers/bundle.py)
+ - For Inference, the bundle has defined **inference.json** or **inference.yaml** and defines [these keys](../../monailabel/tasks/infer/bundle.py)
+ - For Training, the bundle has defined **train.json** or **train.yaml** and defines [these keys](../../monailabel/tasks/train/bundle.py)
  - For Multi-GPU Training, the bundle has defined **multi_gpu_train.json** or **multi_gpu_train.yaml**
 
 > By default models are picked from https://github.com/Project-MONAI/model-zoo/blob/dev/models/model_info.json
@@ -28,7 +28,7 @@ However the following constraints has to be met for any monai bundle to directly
 - **[lib/activelearning](./lib/activelearning)** is the module to define the image selection techniques.
 - **[main.py](./main.py)** is the script to extend [MONAILabelApp](../../monailabel/interfaces/app.py) class
 
-> Modify Constants defined in [Infer](./lib/infers/bundle.py) and [Train](./lib/trainers/bundle.py) to customize and adopt if the basic standard/schema is not met for your bundle.
+> Modify Constants defined in [Infer](../../monailabel/tasks/infer/bundle.py) and [Train](../../monailabel/tasks/train/bundle.py) to customize and adopt if the basic standard/schema is not met for your bundle.
 
 ### Overview
 
