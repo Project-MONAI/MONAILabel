@@ -148,7 +148,6 @@ class MONAILabelApp:
     def _init_dicomweb_datastore(self) -> Datastore:
         logger.info(f"Using DICOM WEB: {self.studies}")
 
-        dw_session = None
         if "googleapis.com" in self.studies:
             logger.info("Creating DICOM Credentials for Google Cloud")
             dw_session = create_session_from_gcp_credentials()
@@ -164,6 +163,8 @@ class MONAILabelApp:
                 wado_url_prefix=settings.MONAI_LABEL_WADO_PREFIX,
                 stow_url_prefix=settings.MONAI_LABEL_STOW_PREFIX,
             )
+        else:
+            dw_client = DICOMwebClient(url=self.studies)
 
         self._download_dcmqi_tools()
 
