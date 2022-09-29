@@ -95,7 +95,7 @@ public class NextSample implements Runnable {
 					ImagePlane plane = ImagePlane.getPlane(0, 0);
 					ROI roi = ROIs.createRectangleROI(sample.bbox[0], sample.bbox[1], sample.bbox[2], sample.bbox[3],
 							plane);
-			
+
 					var obj = PathObjects.createAnnotationObject(roi);
 					imageData.getHierarchy().addPathObject(obj);
 					imageData.getHierarchy().getSelectionModel().setSelectedObject(obj);
