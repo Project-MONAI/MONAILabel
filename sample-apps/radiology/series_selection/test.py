@@ -26,11 +26,11 @@ def main():
     parser.add_argument(
         "-i",
         "--input",
-        default="/home/andres/Documents/workspace/disk-workspace/Datasets/radiology/brain/series_selection/test/",
+        default="/home/andres/Documents/workspace/disk-workspace/Datasets/radiology/brain/NeuroAtlas-Labels/DrTures/test-raw-dicom/",
     )
     args = parser.parse_args()
 
-    images = glob.glob(os.path.join(args.input, "*/*"))
+    images = glob.glob(os.path.join(args.input, "*/*/*"))
 
     # images = images[:10]
 
@@ -52,7 +52,7 @@ def main():
     model = monai.networks.nets.DenseNet121(spatial_dims=3, in_channels=1, out_channels=num_labels).to(device)
 
     # load params
-    model.load_state_dict(torch.load("./runs_dict/net_checkpoint_5500.pt")["net"])
+    model.load_state_dict(torch.load("./runs_dict_DrTure/net_checkpoint_2200.pt")["net"])
     model.eval()
 
     # create a validation data loader
