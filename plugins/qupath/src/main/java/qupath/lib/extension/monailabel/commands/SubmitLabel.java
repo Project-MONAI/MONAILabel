@@ -17,6 +17,7 @@ import java.awt.image.BufferedImage;
 import java.io.FileOutputStream;
 import java.io.IOException;
 import java.nio.file.Path;
+import java.util.Arrays;
 import java.util.HashMap;
 import java.util.List;
 
@@ -77,15 +78,14 @@ public class SubmitLabel implements Runnable {
 					return;
 				}
 
+				String patchName = image + String.format("-patch-%d_%d_%d_%d", bbox[0], bbox[1], bbox[2], bbox[3]);
 				ParameterList list = new ParameterList();
-				list.addStringParameter("Location", "Patch (x,y,w,h)",
-						String.format("[%d, %d, %d, %d]", bbox[0], bbox[1], bbox[2], bbox[3]));
-				list.addStringParameter("Patch", "Patch Name",
-						image + String.format("-patch-%d_%d_%d_%d", bbox[0], bbox[1], bbox[2], bbox[3]));
+				list.addStringParameter("Location", "Patch (x,y,w,h)", Arrays.toString(bbox));
+				list.addStringParameter("Patch", "Patch Name", patchName);
 
 				if (Dialogs.showParameterDialog("MONAILabel - Save Patch + Label", list)) {
-					bbox = Utils.locationToBBox(list.getStringParameterValue("Location"));
-					String patchName = list.getStringParameterValue("Patch");
+					bbox = Utils.parseStringArray(list.getStringParameterValue("Location"));
+					patchName = list.getStringParameterValue("Patch");
 					if (Dialogs.showYesNoDialog("MONAILabel",
 							"This will upload BOTH image patch + annotation to MONAI Label Server.\n\n"
 									+ "Do you want to continue?")) {

@@ -94,12 +94,17 @@ public class MonaiLabelClient {
 		public boolean nuclick;
 	}
 
+	public static class Strategy {
+		public String description;
+	}
+
 	public static class ResponseInfo {
 		public String name;
 		public String description;
 		public String version;
 		public Labels labels;
 		public Map<String, Model> models;
+		public Map<String, Strategy> strategies;
 	}
 
 	public static class ImageInfo {
@@ -108,6 +113,11 @@ public class MonaiLabelClient {
 
 	public static class LabelInfo {
 		public String label;
+	}
+
+	public static class NextSampleInfo {
+		public String id;
+		public int[] bbox = { 0, 0, 0, 0 };
 	}
 
 	public static class InferParams {
@@ -221,5 +231,13 @@ public class MonaiLabelClient {
 		} catch (IOException | InterruptedException e) {
 			return false;
 		}
+	}
+
+	public static NextSampleInfo nextSample(String strategy, String params) throws IOException, InterruptedException {
+		String uri = "/activelearning/" + URLEncoder.encode(strategy, "UTF-8");
+		logger.info("MONAILabel:: Next Sample Request (" + strategy + ") => " + params);
+
+		String res = RequestUtils.request("POST", uri, params);
+		return new GsonBuilder().create().fromJson(res, NextSampleInfo.class);
 	}
 }

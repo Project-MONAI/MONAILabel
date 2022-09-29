@@ -53,7 +53,8 @@ public class RequestUtils {
 		var httpClient = HttpClient.newBuilder().build();
 		var response = httpClient.send(request, BodyHandlers.ofString()); // supporting string response only
 		if (response.statusCode() != 200) {
-			logger.info(response.body());
+			logger.info("Error Response (code): " + response.statusCode());
+			logger.info("Error Response (body): " + response.body());
 			throw new IOException(response.toString());
 		}
 		return response.body();
@@ -86,7 +87,8 @@ public class RequestUtils {
 		var httpClient = HttpClient.newBuilder().build();
 		var response = httpClient.send(request, BodyHandlers.ofString()); // supporting string response only
 		if (response.statusCode() != 200) {
-			logger.info(response.body());
+			logger.info("Error Response (code): " + response.statusCode());
+			logger.info("Error Response (body): " + response.body());
 			throw new IOException(response.toString());
 		}
 		return response.body();
