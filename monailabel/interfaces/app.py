@@ -446,20 +446,17 @@ class MONAILabelApp:
                 f"ActiveLearning Task is not Initialized. There is no such strategy '{strategy}' available",
             )
 
-        image_id = task(request, self.datastore())
-        if not image_id:
+        res = task(request, self.datastore())
+        if not res or not res.get("id"):
             return {}
 
-        image_path = self._datastore.get_image_uri(image_id)
+        res["path"] = self._datastore.get_image_uri(res["id"])
 
         # Run all scoring methods
         if self._auto_update_scoring:
             self.async_scoring(None)
 
-        return {
-            "id": image_id,
-            "path": image_path,
-        }
+        return res
 
     def on_init_complete(self):
         logger.info("App Init - completed")

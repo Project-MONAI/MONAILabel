@@ -50,12 +50,12 @@ def sample(strategy: str, params: Optional[dict] = None, user: Optional[str] = N
 
     strategy_info = image_info.get("strategy", {})
     strategy_info[strategy] = {"ts": int(time.time()), "client_id": params.get("client_id", user)}
-    instance.datastore().update_image_info(image_id, {"strategy": strategy_info})
+    try:
+        instance.datastore().update_image_info(image_id, {"strategy": strategy_info})
+    except:
+        logger.warning(f"Failed to update Image info for {image_id}")
 
-    result = {
-        "id": image_id,
-        **image_info,
-    }
+    result.update(image_info)
     logger.info(f"Next sample: {result}")
     return result
 

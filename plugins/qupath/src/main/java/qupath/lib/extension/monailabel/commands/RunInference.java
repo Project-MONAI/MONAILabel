@@ -93,8 +93,7 @@ public class RunInference implements Runnable {
 			}
 
 			list.addChoiceParameter("Model", "Model Name", selectedModel, names);
-			list.addStringParameter("Location", "Location (x,y,w,h)",
-					String.format("[%d, %d, %d, %d]", bbox[0], bbox[1], bbox[2], bbox[3]));
+			list.addStringParameter("Location", "Location (x,y,w,h)", Arrays.toString(bbox));
 			list.addIntParameter("TileSize", "TileSize", tileSize);
 
 			boolean override = !info.models.get(selectedModel).nuclick;
@@ -102,7 +101,7 @@ public class RunInference implements Runnable {
 
 			if (Dialogs.showParameterDialog("MONAILabel", list)) {
 				String model = (String) list.getChoiceParameterValue("Model");
-				bbox = Utils.locationToBBox(list.getStringParameterValue("Location"));
+				bbox = Utils.parseStringArray(list.getStringParameterValue("Location"));
 				override = list.getBooleanParameterValue("Override").booleanValue();
 				tileSize = list.getIntParameterValue("TileSize").intValue();
 
