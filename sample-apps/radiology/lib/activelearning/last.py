@@ -34,4 +34,4 @@ class Last(Strategy):
         image = images[-1]
 
         logger.info(f"First: Selected Image: {image}")
-        return image
+        return {"id": image}

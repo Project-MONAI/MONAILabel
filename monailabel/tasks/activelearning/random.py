@@ -43,4 +43,4 @@ class Random(Strategy):
         image = random.choices(images, weights=weights)[0]
         logger.debug(f"Random: Images: {images}; Weight: {weights}")
         logger.info(f"Random: Selected Image: {image}; Weight: {weights[0]}")
-        return image
+        return {"id": image, "weight": weights[0]}

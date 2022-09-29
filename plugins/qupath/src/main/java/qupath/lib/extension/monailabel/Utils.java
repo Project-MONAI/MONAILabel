@@ -42,15 +42,13 @@ public class Utils {
 		return new int[] { x, y, w, h };
 	}
 
-	public static int[] locationToBBox(String location) {
-		String[] f = location.trim().replace("[", "").replace("]", "").split(",");
+	public static int[] parseStringArray(String str) {
+		String[] fields = str.trim().replace("[", "").replace("]", "").split(",");
+		int res[] = new int[fields.length];
 
-		int bbox[] = new int[4];
-		bbox[0] = Integer.parseInt(f[0].trim());
-		bbox[1] = Integer.parseInt(f[1].trim());
-		bbox[2] = Integer.parseInt(f[2].trim());
-		bbox[3] = Integer.parseInt(f[3].trim());
-		return bbox;
+		for (int i = 0; i < fields.length; i++)
+			res[i] = Integer.parseInt(fields[i].trim());
+		return res;
 	}
 
 	public static void deleteFile(Path path) {

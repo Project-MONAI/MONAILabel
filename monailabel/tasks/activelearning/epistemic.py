@@ -72,4 +72,4 @@ class Epistemic(Strategy):
 
         image = next(iter(top_k))
         logger.info(f"{strategy}: Selected Image: {image}; epistemic_entropy: {top_k[image]}")
-        return image
+        return {"id": image, "epistemic_entropy": top_k[image]}
