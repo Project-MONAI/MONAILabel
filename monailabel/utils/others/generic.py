@@ -208,3 +208,11 @@ def create_dataset_from_path(folder, images="images", labels="labels", img_ext="
 
 def strtobool(str):
     return bool(distutils.util.strtobool(str))
+
+
+def is_openslide_supported(name):
+    ext = file_ext(name)
+    supported_ext = (".bif", ".mrxs", ".ndpi", ".scn", ".svs", ".svslide", ".tif", ".tiff", ".vms", ".vmu")
+    if ext and ext in supported_ext:
+        return True
+    return False

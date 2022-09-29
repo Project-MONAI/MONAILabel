@@ -26,6 +26,7 @@ import javafx.scene.control.Separator;
 import javafx.scene.control.Tooltip;
 import javafx.scene.image.Image;
 import javafx.scene.image.ImageView;
+import javafx.scene.input.KeyCombination;
 import qupath.lib.common.Version;
 import qupath.lib.extension.monailabel.commands.RunInference;
 import qupath.lib.extension.monailabel.commands.RunTraining;
@@ -42,16 +43,19 @@ public class Extension implements QuPathExtension {
 	public void installExtension(QuPathGUI qupath) {
 
 		var runInfer = ActionTools.createAction(new RunInference(qupath), "Annotations...");
+		runInfer.setAccelerator(KeyCombination.keyCombination("ctrl+m"));
 		runInfer.disabledProperty().bind(qupath.imageDataProperty().isNull());
 		MenuTools.addMenuItems(qupath.getMenu("MONAI Label", true), runInfer);
 
 		var submit = ActionTools.createAction(new SubmitLabel(qupath), "Submit Label");
+		submit.setAccelerator(KeyCombination.keyCombination("alt+m"));
 		submit.disabledProperty().bind(qupath.imageDataProperty().isNull());
 		MenuTools.addMenuItems(qupath.getMenu("MONAI Label", true), submit);
 
 		MenuTools.addMenuItems(qupath.getMenu("MONAI Label", true), ActionUtils.ACTION_SEPARATOR);
 
 		var training = ActionTools.createAction(new RunTraining(), "Training...");
+		training.setAccelerator(KeyCombination.keyCombination("ctrl+t"));
 		MenuTools.addMenuItems(qupath.getMenu("MONAI Label", true), training);
 
 		new Settings().addProperties(qupath);

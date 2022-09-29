@@ -49,7 +49,7 @@ from monailabel.interfaces.tasks.train import TrainTask
 from monailabel.interfaces.utils.wsi import create_infer_wsi_tasks
 from monailabel.tasks.activelearning.random import Random
 from monailabel.utils.async_tasks.task import AsyncTask
-from monailabel.utils.others.generic import strtobool
+from monailabel.utils.others.generic import is_openslide_supported, strtobool
 from monailabel.utils.others.pathology import create_asap_annotations_xml, create_dsa_annotations_json
 from monailabel.utils.sessions import Sessions
 
@@ -638,6 +638,12 @@ class MONAILabelApp:
                 res = self.infer(request, datastore)
                 logger.info(f"Latencies: {res.get('params', {}).get('latencies')}")
                 return res
+
+        # simple image
+        if not is_openslide_supported(image):
+            res = self.infer(request, datastore)
+            logger.info(f"Latencies: {res.get('params', {}).get('latencies')}")
+            return res
 
         start = time.time()
         infer_tasks = create_infer_wsi_tasks(request, image)

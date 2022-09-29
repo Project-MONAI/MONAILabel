@@ -14,6 +14,14 @@ limitations under the License.
 package qupath.lib.extension.monailabel;
 
 import java.io.File;
+import java.io.IOException;
+import java.nio.file.Files;
+import java.nio.file.Path;
+import java.util.List;
+
+import qupath.lib.geom.Point2;
+import qupath.lib.roi.RectangleROI;
+import qupath.lib.roi.interfaces.ROI;
 
 public class Utils {
 	public static String getNameWithoutExtension(String file) {
@@ -21,4 +29,38 @@ public class Utils {
 		int dotIndex = fileName.lastIndexOf('.');
 		return (dotIndex == -1) ? fileName : fileName.substring(0, dotIndex);
 	}
+
+	public static int[] getBBOX(ROI roi) {
+		int x = 0, y = 0, w = 0, h = 0;
+		if (roi != null && roi instanceof RectangleROI) {
+			List<Point2> points = roi.getAllPoints();
+			x = (int) points.get(0).getX();
+			y = (int) points.get(0).getY();
+			w = (int) points.get(2).getX() - x;
+			h = (int) points.get(2).getY() - y;
+		}
+		return new int[] { x, y, w, h };
+	}
+
+	public static int[] locationToBBox(String location) {
+		String[] f = location.trim().replace("[", "").replace("]", "").split(",");
+
+		int bbox[] = new int[4];
+		bbox[0] = Integer.parseInt(f[0].trim());
+		bbox[1] = Integer.parseInt(f[1].trim());
+		bbox[2] = Integer.parseInt(f[2].trim());
+		bbox[3] = Integer.parseInt(f[3].trim());
+		return bbox;
+	}
+
+	public static void deleteFile(Path path) {
+		if (path != null) {
+			try {
+				Files.deleteIfExists(path);
+			} catch (IOException e) {
+				e.printStackTrace();
+			}
+		}
+	}
+
 }
