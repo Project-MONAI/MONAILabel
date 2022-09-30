@@ -164,13 +164,12 @@ class MONAILabelClient:
         selector = "/datastore/label?label={}&tag={}".format(
             MONAILabelUtils.urllib_quote_plus(label_id), MONAILabelUtils.urllib_quote_plus(tag)
         )
-        status, response, _ = MONAILabelUtils.http_method("GET", self._server_url, selector)
+        status, response, content_disposition = MONAILabelUtils.http_method("GET", self._server_url, selector)
         if status != 200:
             raise MONAILabelException(
                 MONAILabelError.SERVER_ERROR, f"Status: {status}; Response: {response}", status, response
             )
 
-        content_disposition = response.getheader("content-disposition")
         file_name = re.findall('filename="(.+)"', content_disposition)[0]
         file_ext = "".join(Path(file_name).suffixes)
         local_filename = tempfile.NamedTemporaryFile(dir=self._tmpdir, suffix=file_ext).name
@@ -342,6 +341,7 @@ class MONAILabelUtils:
         logging.debug(f"HTTP Response Headers: {response.getheaders()}")
 
         response_content_type = response.getheader("content-type", content_type)
+        content_disposition = response.getheader("content-disposition")
         logging.debug(f"HTTP Response Content-Type: {response_content_type}")
 
         if "multipart" in response_content_type:
@@ -351,10 +351,10 @@ class MONAILabelUtils:
                 logging.debug(f"Response FILES: {files.keys()}")
                 return response.status, form, files
             else:
-                return response.status, response.read(), None
+                return response.status, response.read(), content_disposition
 
         logging.debug("Reading status/content from simple response!")
-        return response.status, response.read(), None
+        return response.status, response.read(), content_disposition
 
     @staticmethod
     def save_result(files, tmpdir):
