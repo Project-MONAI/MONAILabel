@@ -148,14 +148,19 @@ class MONAILabelApp:
     def _init_dicomweb_datastore(self) -> Datastore:
         logger.info(f"Using DICOM WEB: {self.studies}")
 
+        dw_session = None
         if "googleapis.com" in self.studies:
+            # google auth case
             logger.info("Creating DICOM Credentials for Google Cloud")
             dw_session = create_session_from_gcp_credentials()
             dw_client = DICOMwebClient(url=self.studies, session=dw_session)
-        elif settings.MONAI_LABEL_DICOMWEB_USERNAME and settings.MONAI_LABEL_DICOMWEB_PASSWORD:
-            dw_session = create_session_from_user_pass(
-                settings.MONAI_LABEL_DICOMWEB_USERNAME, settings.MONAI_LABEL_DICOMWEB_PASSWORD
-            )
+        else:
+            if settings.MONAI_LABEL_DICOMWEB_USERNAME and settings.MONAI_LABEL_DICOMWEB_PASSWORD:
+                # userID/passwd case
+                dw_session = create_session_from_user_pass(
+                    settings.MONAI_LABEL_DICOMWEB_USERNAME, settings.MONAI_LABEL_DICOMWEB_PASSWORD
+                )
+            # create dw_client using either dw_session with userID/passwd or None
             dw_client = DICOMwebClientX(
                 url=self.studies,
                 session=dw_session,
