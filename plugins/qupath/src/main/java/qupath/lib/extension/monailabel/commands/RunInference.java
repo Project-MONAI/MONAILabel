@@ -108,8 +108,10 @@ public class RunInference implements Runnable {
 				selectedModel = model;
 				selectedBBox = bbox;
 				selectedTileSize = tileSize;
+
+				boolean validateClicks = info.models.get(selectedModel).nuclick;
 				runInference(model, new HashSet<String>(Arrays.asList(labels.get(model))), bbox, tileSize, imageData,
-						override);
+						override, validateClicks);
 			}
 		} catch (Exception ex) {
 			ex.printStackTrace();
@@ -117,7 +119,8 @@ public class RunInference implements Runnable {
 		}
 	}
 
-	ArrayList<Point2> getClicks(String name, ImageData<BufferedImage> imageData, ROI monaiLabelROI) {
+	ArrayList<Point2> getClicks(String name, ImageData<BufferedImage> imageData, ROI monaiLabelROI, int offsetX,
+			int offsetY) {
 		List<PathObject> objs = imageData.getHierarchy().getFlattenedObjectList(null);
 		ArrayList<Point2> clicks = new ArrayList<Point2>();
 		for (int i = 0; i < objs.size(); i++) {
@@ -127,7 +130,7 @@ public class RunInference implements Runnable {
 				List<Point2> points = r.getAllPoints();
 				for (Point2 p : points) {
 					if (monaiLabelROI.contains(p.getX(), p.getY())) {
-						clicks.add(p);
+						clicks.add(new Point2(p.getX() - offsetX, p.getY() - offsetY));
 					}
 				}
 			}
@@ -138,10 +141,11 @@ public class RunInference implements Runnable {
 	}
 
 	private void runInference(String model, Set<String> labels, int[] bbox, int tileSize,
-			ImageData<BufferedImage> imageData, boolean override)
+			ImageData<BufferedImage> imageData, boolean override, boolean validateClicks)
 			throws SAXException, IOException, ParserConfigurationException, InterruptedException {
 		logger.info("MONAILabel:: Running Inference...");
-		logger.info("MONAILabel:: Model: " + model + "; override: " + override + "; Labels: " + labels);
+		logger.info("MONAILabel:: Model: " + model + "; override: " + override + "; clicks:" + validateClicks
+				+ "; Labels: " + labels);
 
 		Path imagePatch = null;
 		try {
@@ -154,9 +158,6 @@ public class RunInference implements Runnable {
 			req.tile_size[1] = tileSize;
 
 			ROI roi = ROIs.createRectangleROI(bbox[0], bbox[1], bbox[2], bbox[3], null);
-			req.params.addClicks(getClicks("Positive", imageData, roi), true);
-			req.params.addClicks(getClicks("Negative", imageData, roi), false);
-
 			String imageFile = imageData.getServerPath();
 			if (imageFile.startsWith("file:/"))
 				imageFile = imageFile.replace("file:/", "");
@@ -176,6 +177,24 @@ public class RunInference implements Runnable {
 
 				req.location[0] = req.location[1] = 0;
 				req.size[0] = req.size[1] = 0;
+
+				var fg = getClicks("Positive", imageData, roi, offsetX, offsetY);
+				var bg = getClicks("Negative", imageData, roi, offsetX, offsetY);
+				if (validateClicks) {
+					if (fg.size() == 0 && bg.size() == 0) {
+						Dialogs.showErrorMessage("MONAILabel",
+								"Need atleast one Postive/Negative annotation/click point within the ROI");
+						return;
+					}
+					if (roi.getBoundsHeight() < 128 || roi.getBoundsWidth() < 128) {
+						Dialogs.showErrorMessage("MONAILabel",
+								"Min Height/Width of ROI should be more than 128");
+						return;
+					}
+				}
+
+				req.params.addClicks(fg, true);
+				req.params.addClicks(bg, false);
 
 				imagePatch = java.nio.file.Files.createTempFile("patch", ".png");
 				imageFile = imagePatch.toString();
