@@ -17,6 +17,7 @@ import shutil
 import tempfile
 from enum import Enum
 from typing import Any, Dict, List, Optional
+import zipfile
 
 from fastapi import APIRouter, Depends, File, Form, HTTPException, UploadFile
 from fastapi.background import BackgroundTasks
@@ -181,6 +182,24 @@ def update_label_info(label: str, tag: str, info: str = Form("{}"), user: Option
     return instance.datastore().update_label_info(label, tag, i)
 
 
+def download_dataset(max_cases: Optional[int] = None):
+    instance: MONAILabelApp = app_instance()
+    dl = instance.datastore().datalist(full_path=True)
+
+    if(max_cases > 0):
+        logger.info(f"Number of cases in datalist reduced to: {max_cases} of {len(dl)} case(s)")
+        dl = dl[:max_cases]
+
+    with zipfile.ZipFile("dataset.zip", mode="w") as archive:
+        logger.info(f"ZIP archive will be written to: {archive.filename}")
+        for d in dl:
+            image_path = d["image"]
+            label_path = d["label"]
+            archive.write(image_path, arcname=os.path.join("images", os.path.basename(image_path)))
+            archive.write(label_path, arcname=os.path.join("labels", os.path.basename(label_path)))
+    return FileResponse(archive.filename, filename=os.path.basename(archive.filename))
+
+
 @router.get("/", summary="Get All Images/Labels from datastore")
 async def api_datastore(output: Optional[ResultType] = None, user: User = Depends(get_basic_user)):
     return datastore(output)
@@ -266,3 +285,8 @@ async def api_update_label_info(
     label: str, tag: str, params: str = Form("{}"), user: User = Depends(get_annotator_user)
 ):
     return update_label_info(label, tag, params, user.username)
+
+
+@router.get("/downloaddataset", summary="Download Full Available Dataset as ZIP archive")
+async def api_download_dataset(max_cases: Optional[int] = None):
+    return download_dataset(max_cases)
