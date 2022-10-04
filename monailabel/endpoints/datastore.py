@@ -182,16 +182,16 @@ def update_label_info(label: str, tag: str, info: str = Form("{}"), user: Option
     return instance.datastore().update_label_info(label, tag, i)
 
 
-def download_dataset(max_cases: Optional[int] = None):
+def download_dataset(limit_cases: Optional[int] = None):
     instance: MONAILabelApp = app_instance()
     dl = instance.datastore().datalist(full_path=True)
 
     if not len(dl) > 0:
         return {}
 
-    if max_cases > 0 and max_cases < len(dl):
-        logger.info(f"Number of cases in datalist reduced to: {max_cases} of {len(dl)} case(s)")
-        dl = dl[:max_cases]
+    if limit_cases > 0 and limit_cases < len(dl):
+        logger.info(f"Number of cases in datalist reduced to: {limit_cases} of {len(dl)} case(s)")
+        dl = dl[:limit_cases]
 
     with zipfile.ZipFile("dataset.zip", mode="w") as archive:
         logger.info(f"ZIP archive will be written to: {archive.filename}")
@@ -290,6 +290,6 @@ async def api_update_label_info(
     return update_label_info(label, tag, params, user.username)
 
 
-@router.get("/downloaddataset", summary="Download Full Available Dataset as ZIP archive")
-async def api_download_dataset(max_cases: Optional[int] = None):
-    return download_dataset(max_cases)
+@router.get("/downloadlabeleddataset", summary="Download labeled dataset (image and corresponding label files) as ZIP archive")
+async def api_download_dataset(limit_cases: Optional[int] = None):
+    return download_dataset(limit_cases)
