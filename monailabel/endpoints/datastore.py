@@ -15,9 +15,9 @@ import os
 import pathlib
 import shutil
 import tempfile
+import zipfile
 from enum import Enum
 from typing import Any, Dict, List, Optional
-import zipfile
 
 from fastapi import APIRouter, Depends, File, Form, HTTPException, UploadFile
 from fastapi.background import BackgroundTasks
@@ -290,6 +290,8 @@ async def api_update_label_info(
     return update_label_info(label, tag, params, user.username)
 
 
-@router.get("/downloadlabeleddataset", summary="Download labeled dataset (image and corresponding label files) as ZIP archive")
+@router.get(
+    "/downloadlabeleddataset", summary="Download labeled dataset (image and corresponding label files) as ZIP archive"
+)
 async def api_download_dataset(limit_cases: Optional[int] = None):
     return download_dataset(limit_cases)
