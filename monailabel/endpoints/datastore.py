@@ -196,10 +196,10 @@ def download_dataset(limit_cases: Optional[int] = None):
     with zipfile.ZipFile("dataset.zip", mode="w") as archive:
         logger.info(f"ZIP archive will be written to: {archive.filename}")
         for d in dl:
-            image_path = d["image"]
-            label_path = d["label"]
-            archive.write(image_path, arcname=os.path.join("images", os.path.basename(image_path)))
-            archive.write(label_path, arcname=os.path.join("labels", os.path.basename(label_path)))
+            # write image and corresponding label file to archive
+            for key in d.keys():
+                path = d[key]
+                archive.write(path, arcname=os.path.join(key, os.path.basename(path)))
     return FileResponse(archive.filename, filename=os.path.basename(archive.filename))
 
 
