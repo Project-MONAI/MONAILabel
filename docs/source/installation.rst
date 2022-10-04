@@ -309,6 +309,14 @@ If you have authentication set for dicom-web then you can pass the credentials u
   monailabel start_server --app apps/radiology --studies http://127.0.0.1:8042/dicom-web --conf models deepedit
 
 
+If you are using only OHIF, it is recommended to disable DICOM to NIFTI conversion for faster performance.
+
+::
+
+  export MONAI_LABEL_DICOMWEB_CONVERT_TO_NIFTI=false
+  monailabel start_server --app apps/radiology --studies http://127.0.0.1:8042/dicom-web --conf models deepedit
+
+
 .. note::
 
     Please install `Orthanc <https://www.orthanc-server.com/download.php>`_ before using OHIF Viewer.

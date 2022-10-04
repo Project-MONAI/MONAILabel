@@ -170,10 +170,13 @@ class MONAILabelApp:
         cache_path = cache_path.strip() if cache_path else ""
         fetch_by_frame = settings.MONAI_LABEL_DICOMWEB_FETCH_BY_FRAME
         search_filter = settings.MONAI_LABEL_DICOMWEB_SEARCH_FILTER
-        return (
-            DICOMWebDatastore(dw_client, search_filter, cache_path, fetch_by_frame)
-            if cache_path
-            else DICOMWebDatastore(dw_client, search_filter, fetch_by_frame=fetch_by_frame)
+        convert_to_nifti = settings.MONAI_LABEL_DICOMWEB_CONVERT_TO_NIFTI
+        return DICOMWebDatastore(
+            client=dw_client,
+            search_filter=search_filter,
+            cache_path=cache_path if cache_path else None,
+            fetch_by_frame=fetch_by_frame,
+            convert_to_nifti=convert_to_nifti,
         )
 
     def _init_dsa_datastore(self) -> Datastore:
