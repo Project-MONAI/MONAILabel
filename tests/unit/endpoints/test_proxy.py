@@ -19,7 +19,7 @@ class MockHttpClient(MagicMock):
     def __init__(self, auth):
         pass
 
-    async def get(self, url):
+    async def get(self, url, **kwargs):
         return SimpleNamespace(content=b"xyz", status_code=400)
 
     async def __aenter__(self):
