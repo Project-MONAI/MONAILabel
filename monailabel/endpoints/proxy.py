@@ -72,7 +72,10 @@ async def proxy_dicom(op: str, path: str, response: Response):
             proxy_path = f"{server}/{path}"
 
         logger.debug(f"Proxy connecting to /dicom/{op}/{path} => {proxy_path}")
-        timeout = httpx.Timeout(5.0, read=settings.MONAI_LABEL_DICOMWEB_READ_TIMEOUT)
+        timeout = httpx.Timeout(
+            settings.MONAI_LABEL_DICOMWEB_PROXY_TIMEOUT,
+            read=settings.MONAI_LABEL_DICOMWEB_READ_TIMEOUT,
+        )
         proxy = await client.get(proxy_path, timeout=timeout)
 
     response.body = proxy.content

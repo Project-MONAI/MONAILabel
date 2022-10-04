@@ -46,10 +46,12 @@ class DICOMWebDatastore(LocalDatastore):
         search_filter: Dict[str, Any],
         cache_path: Optional[str] = None,
         fetch_by_frame=False,
+        convert_to_nifti=True,
     ):
         self._client = client
         self._search_filter = search_filter
         self._fetch_by_frame = fetch_by_frame
+        self._convert_to_nifti = convert_to_nifti
 
         uri_hash = hashlib.md5(self._client.base_url.encode("utf-8")).hexdigest()
         datastore_path = (
@@ -58,6 +60,7 @@ class DICOMWebDatastore(LocalDatastore):
             else os.path.join(pathlib.Path.home(), ".cache", "monailabel", "dicom", uri_hash)
         )
         logger.info(f"DICOMWeb Datastore (cache) Path: {datastore_path}; FetchByFrame: {fetch_by_frame}")
+        logger.info(f"DICOMWeb Convert To Nifti: {convert_to_nifti}")
         super().__init__(datastore_path=datastore_path, auto_reload=True)
 
     def name(self) -> str:
@@ -79,6 +82,9 @@ class DICOMWebDatastore(LocalDatastore):
         if not os.path.exists(image_dir) or not os.listdir(image_dir):
             dicom_web_download_series(None, image_id, image_dir, self._client, self._fetch_by_frame)
 
+        if not self._convert_to_nifti:
+            return image_dir
+
         image_nii_gz = os.path.realpath(os.path.join(self._datastore.image_path(), f"{image_id}.nii.gz"))
         if not os.path.exists(image_nii_gz):
             image_nii_gz = dicom_to_nifti(image_dir)
@@ -96,6 +102,9 @@ class DICOMWebDatastore(LocalDatastore):
 
         if not os.path.exists(label_dir) or not os.listdir(label_dir):
             dicom_web_download_series(None, label_id, label_dir, self._client, self._fetch_by_frame)
+
+        if not self._convert_to_nifti:
+            return label_dir
 
         label_nii_gz = os.path.realpath(
             os.path.join(self._datastore.label_path(DefaultLabelTag.FINAL), f"{image_id}.nii.gz")
