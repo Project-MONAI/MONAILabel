@@ -227,8 +227,13 @@ Viewer, you need to provide **DICOMWeb** instead of FileSystem as _studies_ when
 ```bash
   # start server using DICOMWeb
   monailabel start_server --app apps/radiology --studies http://127.0.0.1:8042/dicom-web
-```
 
+  # to disable DICOM to NIFTI conversion for faster performance
+  export MONAI_LABEL_DICOMWEB_CONVERT_TO_NIFTI=false
+  monailabel start_server --app apps/radiology --studies http://127.0.0.1:8042/dicom-web
+```
+> NOTE:: 3D-Slicer is not supported without DICOM to NIFTI conversion
+>
 > OHIF Viewer will be accessible at http://127.0.0.1:8000/ohif/
 
 ![OHIF](https://raw.githubusercontent.com/Project-MONAI/MONAILabel/main/docs/images/ohif.png)
