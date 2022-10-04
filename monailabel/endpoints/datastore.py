@@ -186,7 +186,10 @@ def download_dataset(max_cases: Optional[int] = None):
     instance: MONAILabelApp = app_instance()
     dl = instance.datastore().datalist(full_path=True)
 
-    if(max_cases > 0):
+    if not len(dl) > 0:
+        return {}
+
+    if max_cases > 0 and max_cases < len(dl):
         logger.info(f"Number of cases in datalist reduced to: {max_cases} of {len(dl)} case(s)")
         dl = dl[:max_cases]
 
