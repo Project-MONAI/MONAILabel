@@ -60,6 +60,8 @@ async def proxy_dicom(op: str, path: str, response: Response):
             else settings.MONAI_LABEL_QIDO_PREFIX
             if op == "qido"
             else settings.MONAI_LABEL_STOW_PREFIX
+            if op == "stow"
+            else ""
         )
 
         # some version of ohif requests metadata using qido so change it to wado
@@ -78,6 +80,11 @@ async def proxy_dicom(op: str, path: str, response: Response):
     response.body = proxy.content
     response.status_code = proxy.status_code
     return response
+
+
+@router.get("/dicom/{path:path}", include_in_schema=False)
+async def proxy(path: str, response: Response, user: User = Depends(get_basic_user)):
+    return await proxy_dicom("", path, response)
 
 
 @router.get("/dicom/wado/{path:path}", include_in_schema=False)
