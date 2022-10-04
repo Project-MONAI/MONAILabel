@@ -184,12 +184,12 @@ def update_label_info(label: str, tag: str, info: str = Form("{}"), user: Option
 
 def download_dataset(limit_cases: Optional[int] = None):
     instance: MONAILabelApp = app_instance()
-    dl = instance.datastore().datalist(full_path=True)
+    dl = instance.datastore().datalist()
 
     if not len(dl) > 0:
         return {}
 
-    if limit_cases > 0 and limit_cases < len(dl):
+    if limit_cases and limit_cases in list(range(1, len(dl))):
         logger.info(f"Number of cases in datalist reduced to: {limit_cases} of {len(dl)} case(s)")
         dl = dl[:limit_cases]
 
@@ -200,6 +200,7 @@ def download_dataset(limit_cases: Optional[int] = None):
             for key in d.keys():
                 path = d[key]
                 archive.write(path, arcname=os.path.join(key, os.path.basename(path)))
+    assert archive.filename is not None
     return FileResponse(archive.filename, filename=os.path.basename(archive.filename))
 
 
