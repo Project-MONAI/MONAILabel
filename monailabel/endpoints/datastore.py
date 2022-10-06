@@ -15,7 +15,6 @@ import os
 import pathlib
 import shutil
 import tempfile
-import zipfile
 from enum import Enum
 from typing import Any, Dict, List, Optional
 
@@ -184,24 +183,10 @@ def update_label_info(label: str, tag: str, info: str = Form("{}"), user: Option
 
 def download_dataset(limit_cases: Optional[int] = None):
     instance: MONAILabelApp = app_instance()
-    dl = instance.datastore().datalist()
-
-    if not len(dl) > 0:
-        return {}
-
-    if limit_cases and limit_cases in list(range(1, len(dl))):
-        logger.info(f"Number of cases in datalist reduced to: {limit_cases} of {len(dl)} case(s)")
-        dl = dl[:limit_cases]
-
-    with zipfile.ZipFile("dataset.zip", mode="w") as archive:
-        logger.info(f"ZIP archive will be written to: {archive.filename}")
-        for d in dl:
-            # write image and corresponding label file to archive
-            for key in d.keys():
-                path = d[key]
-                archive.write(path, arcname=os.path.join(key, os.path.basename(path)))
-    assert archive.filename is not None
-    return FileResponse(archive.filename, filename=os.path.basename(archive.filename))
+    path = instance.datastore().get_dataset_archive(limit_cases)
+    if not os.path.isfile(path):
+        raise HTTPException(status_code=404, detail="ZIP archive NOT Found")
+    return FileResponse(path, media_type=get_mime_type(path), filename="dataset.zip")
 
 
 @router.get("/", summary="Get All Images/Labels from datastore")
@@ -291,8 +276,6 @@ async def api_update_label_info(
     return update_label_info(label, tag, params, user.username)
 
 
-@router.get(
-    "/downloadlabeleddataset", summary="Download labeled dataset (image and corresponding label files) as ZIP archive"
-)
+@router.get("/dataset", summary="Download full dataset as ZIP archive")
 async def api_download_dataset(limit_cases: Optional[int] = None):
     return download_dataset(limit_cases)

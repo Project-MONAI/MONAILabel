@@ -16,7 +16,7 @@ import os
 import pathlib
 import shutil
 import time
-from typing import Any, Dict, List
+from typing import Any, Dict, List, Optional
 from urllib.parse import quote_plus
 from xml.etree import ElementTree
 
@@ -169,6 +169,9 @@ class XNATDatastore(Datastore):
 
     def update_label_info(self, label_id: str, label_tag: str, info: Dict[str, Any]) -> None:
         pass
+
+    def get_dataset_archive(self, limit_cases: Optional[int]) -> str:
+        raise NotImplementedError
 
     def status(self) -> Dict[str, Any]:
         return {
