@@ -9,7 +9,7 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-from typing import Any, Dict, List
+from typing import Any, Dict, List, Optional
 
 from pydantic import AnyHttpUrl, BaseSettings
 
@@ -43,9 +43,9 @@ class Settings(BaseSettings):
     MONAI_LABEL_DICOMWEB_USERNAME: str = ""  # will be deprecated; use MONAI_LABEL_DATASTORE_USERNAME
     MONAI_LABEL_DICOMWEB_PASSWORD: str = ""  # will be deprecated; use MONAI_LABEL_DATASTORE_PASSWORD
     MONAI_LABEL_DICOMWEB_CACHE_PATH: str = ""  # will be deprecated; use MONAI_LABEL_DATASTORE_CACHE_PATH
-    MONAI_LABEL_QIDO_PREFIX: str = None
-    MONAI_LABEL_WADO_PREFIX: str = None
-    MONAI_LABEL_STOW_PREFIX: str = None
+    MONAI_LABEL_QIDO_PREFIX: Optional[str] = None
+    MONAI_LABEL_WADO_PREFIX: Optional[str] = None
+    MONAI_LABEL_STOW_PREFIX: Optional[str] = None
     MONAI_LABEL_DICOMWEB_FETCH_BY_FRAME: bool = False
     MONAI_LABEL_DICOMWEB_CONVERT_TO_NIFTI: bool = True
     MONAI_LABEL_DICOMWEB_SEARCH_FILTER: Dict[str, Any] = {"Modality": "CT"}
