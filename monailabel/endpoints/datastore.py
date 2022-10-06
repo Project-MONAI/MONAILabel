@@ -181,6 +181,14 @@ def update_label_info(label: str, tag: str, info: str = Form("{}"), user: Option
     return instance.datastore().update_label_info(label, tag, i)
 
 
+def download_dataset(limit_cases: Optional[int] = None):
+    instance: MONAILabelApp = app_instance()
+    path = instance.datastore().get_dataset_archive(limit_cases)
+    if not os.path.isfile(path):
+        raise HTTPException(status_code=404, detail="ZIP archive NOT Found")
+    return FileResponse(path, media_type=get_mime_type(path), filename="dataset.zip")
+
+
 @router.get("/", summary="Get All Images/Labels from datastore")
 async def api_datastore(output: Optional[ResultType] = None, user: User = Depends(get_basic_user)):
     return datastore(output)
@@ -266,3 +274,8 @@ async def api_update_label_info(
     label: str, tag: str, params: str = Form("{}"), user: User = Depends(get_annotator_user)
 ):
     return update_label_info(label, tag, params, user.username)
+
+
+@router.get("/dataset", summary="Download full dataset as ZIP archive")
+async def api_download_dataset(limit_cases: Optional[int] = None):
+    return download_dataset(limit_cases)
