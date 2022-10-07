@@ -30,13 +30,13 @@ from monailabel.interfaces.tasks.train import TrainTask
 from monailabel.scribbles.infer import GMMBasedGraphCut, HistogramBasedGraphCut
 from monailabel.tasks.activelearning.first import First
 from monailabel.tasks.activelearning.random import Random
-from monailabel.utils.others.class_utils import get_class_names
-from monailabel.utils.others.generic import strtobool, get_bundle
-from monailabel.utils.others.planner import HeuristicPlanner
 
 # bundle
 from monailabel.tasks.infer.bundle import BundleInferTask
 from monailabel.tasks.train.bundle import BundleTrainTask
+from monailabel.utils.others.class_utils import get_class_names
+from monailabel.utils.others.generic import get_bundle, strtobool
+from monailabel.utils.others.planner import HeuristicPlanner
 
 logger = logging.getLogger(__name__)
 
@@ -77,7 +77,6 @@ class MyApp(MONAILabelApp):
             print("")
             exit(-1)
 
-
         # Use Heuristic Planner to determine target spacing and spatial size based on dataset+gpu
         spatial_size = json.loads(conf.get("spatial_size", "[48, 48, 32]"))
         target_spacing = json.loads(conf.get("target_spacing", "[1.0, 1.0, 1.0]"))
@@ -95,7 +94,6 @@ class MyApp(MONAILabelApp):
                     self.models[k] = eval(f"{v}()")
                     self.models[k].init(k, self.model_dir, conf, self.planner)
         logger.info(f"+++ Using Models: {list(self.models.keys())}")
-
 
         # Load models from bundle config files, local or released in Model-Zoo, e.g., --conf bundles <spleen_ct_segmentation_v0.1.0>
         self.bundles = get_bundle(app_dir, conf) if conf.get("bundles") else None

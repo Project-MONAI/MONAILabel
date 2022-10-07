@@ -16,12 +16,12 @@ import logging
 import mimetypes
 import os
 import pathlib
+import re
 import shutil
 import subprocess
 import time
-import requests
-import re
 
+import requests
 import torch
 from monai.apps import download_url
 from monai.bundle import download
@@ -262,7 +262,6 @@ def get_bundle(app_dir, conf):
         print("---------------------------------------------------------------------------------------")
         print("")
         exit(-1)
-
 
     # bundle models
     bundles: Dict[str, str] = {}
