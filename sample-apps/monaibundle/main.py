@@ -58,23 +58,34 @@ class MyApp(MONAILabelApp):
 
         models = models.split(",")
         models = [m.strip() for m in models]
-        invalid = [m for m in models if m != "all" and not available.get(m)]
+        # First check whether the bundle model directory is in model-zoo, if no, check local bundle directory.
+        # Use zoo bundle if both exist
+        invalid_zoo = [m for m in models if m != "all" and not available.get(m)]
+        invalid = [m for m in invalid_zoo if not os.path.isdir(os.path.join(self.model_dir, m))]
+
+        # Exit if model is not in zoo and local directory
         if invalid:
             print("")
             print("---------------------------------------------------------------------------------------")
             print(f"Invalid Model(s) are provided: {invalid}")
             print("Following are the available models.  You can pass comma (,) separated names to pass multiple")
             print("    -c models all\n    -c models {}".format("\n    -c models ".join(available.keys())))
+            print("Or provide valid local bundle directories")
             print("---------------------------------------------------------------------------------------")
             print("")
             exit(-1)
-
         self.models: Dict[str, str] = {}
+
         for n in models:
+            # Load from local if any bundle is not in Zoo
+            if n != "all" and n not in available.keys():
+                b = os.path.join(self.model_dir, n)
+                logger.info(f"+++ Adding Local Model: {n} => {b}")
+                self.models[n] = b
+            # Otherwise load from model zoo, download if do not exist
             for k, v in available.items():
                 if self.models.get(k):
                     continue
-
                 if n == k or n == "all":
                     b = os.path.join(os.path.join(self.model_dir, k))
                     logger.info(f"+++ Adding Model: {k} => {v} => {b}")

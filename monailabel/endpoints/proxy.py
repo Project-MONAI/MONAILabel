@@ -60,6 +60,8 @@ async def proxy_dicom(op: str, path: str, response: Response):
             else settings.MONAI_LABEL_QIDO_PREFIX
             if op == "qido"
             else settings.MONAI_LABEL_STOW_PREFIX
+            if op == "stow"
+            else ""
         )
 
         # some version of ohif requests metadata using qido so change it to wado
@@ -96,3 +98,9 @@ async def proxy_qido(path: str, response: Response, user: User = Depends(get_bas
 @router.get("/dicom/stow/{path:path}", include_in_schema=False)
 async def proxy_stow(path: str, response: Response, user: User = Depends(get_basic_user)):
     return await proxy_dicom("stow", path, response)
+
+
+# https://fastapi.tiangolo.com/tutorial/path-params/#order-matters
+@router.get("/dicom/{path:path}", include_in_schema=False)
+async def proxy(path: str, response: Response, user: User = Depends(get_basic_user)):
+    return await proxy_dicom("", path, response)

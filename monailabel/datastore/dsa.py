@@ -15,7 +15,7 @@ import os
 import pathlib
 from io import BytesIO
 from pathlib import Path
-from typing import Any, Dict, List
+from typing import Any, Dict, List, Optional
 
 import girder_client
 import numpy as np
@@ -213,6 +213,9 @@ class DSADatastore(Datastore):
         raise NotImplementedError
 
     def update_label_info(self, label_id: str, label_tag: str, info: Dict[str, Any]) -> None:
+        raise NotImplementedError
+
+    def get_dataset_archive(self, limit_cases: Optional[int]) -> str:
         raise NotImplementedError
 
     def status(self) -> Dict[str, Any]:
