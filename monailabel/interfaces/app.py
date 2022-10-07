@@ -25,6 +25,7 @@ from typing import Any, Callable, Dict, Optional, Sequence, Union
 import requests
 import schedule
 import torch
+from dicomweb_client import DICOMwebClient
 
 # added to support connecting to DICOM Store Google Cloud
 from dicomweb_client.ext.gcp.session_utils import create_session_from_gcp_credentials
@@ -48,7 +49,7 @@ from monailabel.interfaces.tasks.train import TrainTask
 from monailabel.interfaces.utils.wsi import create_infer_wsi_tasks
 from monailabel.tasks.activelearning.random import Random
 from monailabel.utils.async_tasks.task import AsyncTask
-from monailabel.utils.others.generic import strtobool
+from monailabel.utils.others.generic import is_openslide_supported, strtobool
 from monailabel.utils.others.pathology import create_asap_annotations_xml, create_dsa_annotations_json
 from monailabel.utils.sessions import Sessions
 
@@ -151,18 +152,19 @@ class MONAILabelApp:
         if "googleapis.com" in self.studies:
             logger.info("Creating DICOM Credentials for Google Cloud")
             dw_session = create_session_from_gcp_credentials()
-        elif settings.MONAI_LABEL_DICOMWEB_USERNAME and settings.MONAI_LABEL_DICOMWEB_PASSWORD:
-            dw_session = create_session_from_user_pass(
-                settings.MONAI_LABEL_DICOMWEB_USERNAME, settings.MONAI_LABEL_DICOMWEB_PASSWORD
+            dw_client = DICOMwebClient(url=self.studies, session=dw_session)
+        else:
+            if settings.MONAI_LABEL_DICOMWEB_USERNAME and settings.MONAI_LABEL_DICOMWEB_PASSWORD:
+                dw_session = create_session_from_user_pass(
+                    settings.MONAI_LABEL_DICOMWEB_USERNAME, settings.MONAI_LABEL_DICOMWEB_PASSWORD
+                )
+            dw_client = DICOMwebClientX(
+                url=self.studies,
+                session=dw_session,
+                qido_url_prefix=settings.MONAI_LABEL_QIDO_PREFIX,
+                wado_url_prefix=settings.MONAI_LABEL_WADO_PREFIX,
+                stow_url_prefix=settings.MONAI_LABEL_STOW_PREFIX,
             )
-
-        dw_client = DICOMwebClientX(
-            url=self.studies,
-            session=dw_session,
-            qido_url_prefix=settings.MONAI_LABEL_QIDO_PREFIX,
-            wado_url_prefix=settings.MONAI_LABEL_WADO_PREFIX,
-            stow_url_prefix=settings.MONAI_LABEL_STOW_PREFIX,
-        )
 
         self._download_dcmqi_tools()
 
@@ -170,10 +172,13 @@ class MONAILabelApp:
         cache_path = cache_path.strip() if cache_path else ""
         fetch_by_frame = settings.MONAI_LABEL_DICOMWEB_FETCH_BY_FRAME
         search_filter = settings.MONAI_LABEL_DICOMWEB_SEARCH_FILTER
-        return (
-            DICOMWebDatastore(dw_client, search_filter, cache_path, fetch_by_frame)
-            if cache_path
-            else DICOMWebDatastore(dw_client, search_filter, fetch_by_frame=fetch_by_frame)
+        convert_to_nifti = settings.MONAI_LABEL_DICOMWEB_CONVERT_TO_NIFTI
+        return DICOMWebDatastore(
+            client=dw_client,
+            search_filter=search_filter,
+            cache_path=cache_path if cache_path else None,
+            fetch_by_frame=fetch_by_frame,
+            convert_to_nifti=convert_to_nifti,
         )
 
     def _init_dsa_datastore(self) -> Datastore:
@@ -446,20 +451,17 @@ class MONAILabelApp:
                 f"ActiveLearning Task is not Initialized. There is no such strategy '{strategy}' available",
             )
 
-        image_id = task(request, self.datastore())
-        if not image_id:
+        res = task(request, self.datastore())
+        if not res or not res.get("id"):
             return {}
 
-        image_path = self._datastore.get_image_uri(image_id)
+        res["path"] = self._datastore.get_image_uri(res["id"])
 
         # Run all scoring methods
         if self._auto_update_scoring:
             self.async_scoring(None)
 
-        return {
-            "id": image_id,
-            "path": image_path,
-        }
+        return res
 
     def on_init_complete(self):
         logger.info("App Init - completed")
@@ -637,6 +639,12 @@ class MONAILabelApp:
                 res = self.infer(request, datastore)
                 logger.info(f"Latencies: {res.get('params', {}).get('latencies')}")
                 return res
+
+        # simple image
+        if not is_openslide_supported(image):
+            res = self.infer(request, datastore)
+            logger.info(f"Latencies: {res.get('params', {}).get('latencies')}")
+            return res
 
         start = time.time()
         infer_tasks = create_infer_wsi_tasks(request, image)

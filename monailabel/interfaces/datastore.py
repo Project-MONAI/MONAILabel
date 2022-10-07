@@ -11,7 +11,7 @@
 
 from abc import ABCMeta, abstractmethod
 from enum import Enum
-from typing import Any, Dict, List
+from typing import Any, Dict, List, Optional
 
 
 class DefaultLabelTag(str, Enum):
@@ -176,6 +176,17 @@ class Datastore(metaclass=ABCMeta):
         Return list of image ids available in the datastore
 
         :return: list of image ids List[str]
+        """
+        pass
+
+    @abstractmethod
+    def get_dataset_archive(self, limit_cases: Optional[int]) -> str:
+        """
+        Retrieve ZIP archive of the full dataset containing images,
+        labels and metadata
+
+        :param limit_cases: limit the included cases to this number
+        :return: path to ZIP archive of the full dataset
         """
         pass
 

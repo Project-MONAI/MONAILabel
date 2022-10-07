@@ -19,6 +19,9 @@ Download QuPath from: https://qupath.github.io/ and then install monailabel plug
 
 Download [qupath-extension-monailabel-0.3.0.jar](https://github.com/Project-MONAI/MONAILabel/releases/download/data/qupath-extension-monailabel-0.3.0.jar)
 and **drag the jar** on top of the running QuPath application window (black screen area) to install the extension.
+If you are have previously installed then make sure to **_remove/uninstall_** the extension before updating.
+
+> Development in progress.  If you are using latest MONAI Label, please build from source or use latest QuPath plugin available from [here](https://github.com/Project-MONAI/MONAILabel/releases/tag/data) and vice versa.
 
 ## Building from source
 

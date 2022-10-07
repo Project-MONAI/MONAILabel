@@ -11,5 +11,17 @@ See the License for the specific language governing permissions and
 limitations under the License.
 -->
 
-## Version 0.3.0-SNAPSHOT
-*In progress*
+## Version 0.3.1
+
+ - Bring your own image (need not to be shared/located with MONAI Label)
+   - Region/ROI based annotation
+   - Save/Submit ROI + annotation to server
+   - Submit multiple patches per image
+ - Accelerator Keys for MONAILabel actions
+
+## Version 0.3.0
+
+ - Auto Segmentation (DeepEdit/Segmentation models)
+ - Interactive Segmentation (DeepEdit/NuClick models)
+ - Submit Label
+ - Train model

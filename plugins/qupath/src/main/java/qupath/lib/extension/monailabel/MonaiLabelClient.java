@@ -43,7 +43,6 @@ import com.google.gson.JsonElement;
 import com.google.gson.JsonObject;
 import com.google.gson.JsonParseException;
 
-import javafx.util.Pair;
 import qupath.lib.geom.Point2;
 
 public class MonaiLabelClient {
@@ -95,12 +94,30 @@ public class MonaiLabelClient {
 		public boolean nuclick;
 	}
 
+	public static class Strategy {
+		public String description;
+	}
+
 	public static class ResponseInfo {
 		public String name;
 		public String description;
 		public String version;
 		public Labels labels;
 		public Map<String, Model> models;
+		public Map<String, Strategy> strategies;
+	}
+
+	public static class ImageInfo {
+		public String image;
+	}
+
+	public static class LabelInfo {
+		public String label;
+	}
+
+	public static class NextSampleInfo {
+		public String id;
+		public int[] bbox = { 0, 0, 0, 0 };
 	}
 
 	public static class InferParams {
@@ -121,7 +138,7 @@ public class MonaiLabelClient {
 		public int level = 0;
 		public int[] location = { 0, 0 };
 		public int[] size = { 0, 0 };
-		public int[] tile_size = { 2048, 2048 };
+		public int[] tile_size = { 1024, 1024 };
 		public int min_poly_area = 30;
 		public InferParams params = new InferParams();
 	};
@@ -129,22 +146,37 @@ public class MonaiLabelClient {
 	public static ResponseInfo info() throws IOException, InterruptedException {
 		String uri = "/info/";
 		String res = RequestUtils.request("GET", uri, null);
-		logger.info("MONAILabel Annotation - INFO => " + res);
+		logger.info("MONAILabel:: INFO Response => " + res);
 
 		Gson gson = new GsonBuilder().registerTypeAdapter(Labels.class, new LabelsDeserializer()).create();
 		return gson.fromJson(res, ResponseInfo.class);
 	}
 
-	public static Document infer(String model, String image, RequestInfer req)
+	public static Document infer(String model, String image, String imageFile, String sessionId, RequestInfer req)
 			throws SAXException, IOException, ParserConfigurationException, InterruptedException {
 
-		String uri = "/infer/wsi/" + URLEncoder.encode(model, "UTF-8") + "?image=" + URLEncoder.encode(image, "UTF-8")
-				+ "&output=asap";
+		String uri = "/infer/wsi_v2/" + URLEncoder.encode(model, "UTF-8") + "?output=asap";
+		if (image != null && !image.isEmpty())
+			uri += "&image=" + URLEncoder.encode(image, "UTF-8");
+		if (sessionId != null && !sessionId.isEmpty())
+			uri += "&session_id=" + URLEncoder.encode(sessionId, "UTF-8");
 
 		String jsonBody = new Gson().toJson(req, RequestInfer.class);
-		logger.info("MONAILabel Annotation - BODY => " + jsonBody);
+		logger.info("MONAILabel:: Request BODY => " + jsonBody);
 
-		String response = RequestUtils.request("POST", uri, jsonBody);
+		String response;
+		if (image == null) {
+			var files = new HashMap<String, File>();
+			files.put("file", new File(imageFile));
+
+			var fields = new HashMap<String, String>();
+			fields.put("wsi", jsonBody);
+
+			response = RequestUtils.requestMultiPart("POST", uri, files, fields);
+		} else {
+			uri = uri.replace("/infer/wsi_v2/", "/infer/wsi/");
+			response = RequestUtils.request("POST", uri, jsonBody);
+		}
 
 		DocumentBuilderFactory factory = DocumentBuilderFactory.newInstance();
 		DocumentBuilder builder = factory.newDocumentBuilder();
@@ -158,13 +190,54 @@ public class MonaiLabelClient {
 		return RequestUtils.request("POST", uri, params);
 	}
 
-	public static String saveLabel(String image, File label, String tag, String params)
+	public static ImageInfo saveImage(String image, File imageFile, String params)
+			throws IOException, InterruptedException {
+		String uri = "/datastore/image?image=" + URLEncoder.encode(image, "UTF-8");
+
+		var files = new HashMap<String, File>();
+		files.put("file", imageFile);
+
+		var fields = new HashMap<String, String>();
+		fields.put("params", params);
+
+		String res = RequestUtils.requestMultiPart("PUT", uri, files, fields);
+		return new GsonBuilder().create().fromJson(res, ImageInfo.class);
+	}
+
+	public static LabelInfo saveLabel(String image, File label, String tag, String params)
 			throws IOException, InterruptedException {
 		String uri = "/datastore/label?image=" + URLEncoder.encode(image, "UTF-8");
 		if (tag != null && !tag.isEmpty()) {
 			uri += "&tag=" + tag;
 		}
 
-		return RequestUtils.requestMultiPart("PUT", uri, new Pair<String, File>("label", label), params);
+		var files = new HashMap<String, File>();
+		files.put("label", label);
+
+		var fields = new HashMap<String, String>();
+		fields.put("params", params);
+
+		String res = RequestUtils.requestMultiPart("PUT", uri, files, fields);
+		return new GsonBuilder().create().fromJson(res, LabelInfo.class);
+	}
+
+	public static boolean imageExists(String image) {
+		try {
+			String uri = "/datastore/image?image=" + URLEncoder.encode(image, "UTF-8");
+			String res = RequestUtils.request("HEAD", uri, null);
+
+			logger.info("MONAILabel:: (Image Exists) Response => " + res);
+			return true;
+		} catch (IOException | InterruptedException e) {
+			return false;
+		}
+	}
+
+	public static NextSampleInfo nextSample(String strategy, String params) throws IOException, InterruptedException {
+		String uri = "/activelearning/" + URLEncoder.encode(strategy, "UTF-8");
+		logger.info("MONAILabel:: Next Sample Request (" + strategy + ") => " + params);
+
+		String res = RequestUtils.request("POST", uri, params);
+		return new GsonBuilder().create().fromJson(res, NextSampleInfo.class);
 	}
 }

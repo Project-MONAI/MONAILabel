@@ -17,6 +17,7 @@ from ctypes import cdll
 from typing import Dict
 
 import lib.configs
+from lib.activelearning.random import WSIRandom
 
 import monailabel
 from monailabel.datastore.dsa import DSADatastore
@@ -24,6 +25,7 @@ from monailabel.interfaces.app import MONAILabelApp
 from monailabel.interfaces.config import TaskConfig
 from monailabel.interfaces.datastore import Datastore
 from monailabel.interfaces.tasks.infer import InferTask
+from monailabel.interfaces.tasks.strategy import Strategy
 from monailabel.interfaces.tasks.train import TrainTask
 from monailabel.utils.others.class_utils import get_class_names
 from monailabel.utils.others.generic import strtobool
@@ -139,6 +141,26 @@ class MyApp(MONAILabelApp):
             logger.info(f"+++ Adding Trainer:: {n} => {t}")
             trainers[n] = t
         return trainers
+
+    def init_strategies(self) -> Dict[str, Strategy]:
+        strategies: Dict[str, Strategy] = {
+            "wsi_random": WSIRandom(),
+        }
+
+        if strtobool(self.conf.get("skip_strategies", "false")):
+            return strategies
+
+        for n, task_config in self.models.items():
+            s = task_config.strategy()
+            if not s:
+                continue
+            s = s if isinstance(s, dict) else {n: s}
+            for k, v in s.items():
+                logger.info(f"+++ Adding Strategy:: {k} => {v}")
+                strategies[k] = v
+
+        logger.info(f"Active Learning Strategies:: {list(strategies.keys())}")
+        return strategies
 
 
 """
