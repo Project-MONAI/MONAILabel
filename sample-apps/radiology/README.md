@@ -70,6 +70,20 @@ monailabel start_server --app workspace/radiology --studies workspace/images --c
 monailabel start_server --app workspace/radiology --studies workspace/images --conf models all --conf skip_trainers true
 ```
 
+### Hybrid Radiology App with Models and Bundles
+
+Radiology app now supports loading models from local or from bundles in Model-Zoo
+
+```bash
+# Example: Pick two models of spleen and multi-organ segmentation model, and two model-zoo bundles.
+monailabel start_server \
+  --app workspace/radiology \
+  --studies workspace/images \
+  --conf models segmentation_spleen,segmentation \
+  --conf bundles spleen_ct_segmentation_v0.2.0,swin_unetr_btcv_segmentation_v0.2.0
+```
+
+
 ### Model Overview
 
 #### [DeepEdit](./lib/configs/deepedit.py)
