@@ -111,7 +111,7 @@ class InferTask:
         self._networks: Dict = {}
 
         self._config: Dict[str, Any] = {
-            # "device": device_list(),
+            "device": device_list(),
             # "result_extension": None,
             # "result_dtype": None,
             # "result_compress": False
