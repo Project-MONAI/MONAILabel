@@ -758,9 +758,9 @@ class MONAILabelWidget(ScriptedLoadableModuleWidget, VTKObservationMixin):
         logging.info(f"Current Selection Options Name: {optionsName}")
         return optionsName
 
-    def invalidateConfigTable(self):
-        section = self.getSelectedOptionSection(self.optionsSectionIndex)
-        name = self.getSelectedOptionName(self.optionsNameIndex)
+    def invalidateConfigTable(self, selection=-1, name=-1):
+        section = self.getSelectedOptionSection(selection)
+        name = self.getSelectedOptionName(name)
         if not section or not name:
             return
 
@@ -862,6 +862,8 @@ class MONAILabelWidget(ScriptedLoadableModuleWidget, VTKObservationMixin):
         self.ui.accuracyProgressBar.setToolTip(f"Accuracy: {dice:.4f}")
 
     def getParamsFromConfig(self, section, name):
+        self.invalidateConfigTable()
+
         mapping = {"infer": "models", "train": "trainers", "activelearning": "strategies", "scoring": "scoring"}
         section = mapping.get(section, section)
         sectionConfig = self.info.get(section, {})
@@ -984,7 +986,7 @@ class MONAILabelWidget(ScriptedLoadableModuleWidget, VTKObservationMixin):
         self.updateParameterNodeFromGUI(caller, event)
         logging.info(f"Options Section Selection Changed.... current:{index}; prev: {self.optionsSectionIndex}")
 
-        self.invalidateConfigTable()
+        self.invalidateConfigTable(self.optionsSectionIndex, self.optionsNameIndex)
         self.optionsSectionIndex = index
         self.optionsNameIndex = 0
         self.updateConfigTable()
@@ -993,7 +995,7 @@ class MONAILabelWidget(ScriptedLoadableModuleWidget, VTKObservationMixin):
         self.updateParameterNodeFromGUI(caller, event)
         logging.info(f"Options Name Selection Changed.... current:{index}; prev: {self.optionsNameIndex}")
 
-        self.invalidateConfigTable()
+        self.invalidateConfigTable(self.optionsSectionIndex, self.optionsNameIndex)
         self.optionsNameIndex = index
         self.updateConfigTable(refresh=False)
 
