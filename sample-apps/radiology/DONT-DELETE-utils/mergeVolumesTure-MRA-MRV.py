@@ -15,8 +15,8 @@ import monai
 from monai.data import DataLoader, list_data_collate
 from monai.transforms import Compose, LoadImaged, SaveImaged
 
-data_dir = "/home/andres/Documents/workspace/disk-workspace/Datasets/radiology/brain/NeuroAtlas-Labels/DrTures/vasculature-segmentation/MRA-MRV-volumes/"
-output_folder = "/home/andres/Documents/workspace/disk-workspace/Datasets/radiology/brain/NeuroAtlas-Labels/DrTures/vasculature-segmentation/MRA-MRV-volumes/merged/"
+data_dir = "/home/andres/Documents/workspace/disk-workspace/Datasets/radiology/brain/NeurosurgicalAtlas/DrTures/vasculature-segmentation/MRA-MRV-volumes/"
+output_folder = "/home/andres/Documents/workspace/disk-workspace/Datasets/radiology/brain/NeurosurgicalAtlas/DrTures/vasculature-segmentation/MRA-MRV-volumes/merged/"
 
 
 set_transforms = Compose(
@@ -52,8 +52,12 @@ print(len(loader_d))
 train_ds = monai.data.Dataset(data=loader_d, transform=set_transforms)
 trainLoader = DataLoader(train_ds, batch_size=1, num_workers=1, collate_fn=list_data_collate)
 
-
-for idx, img in enumerate(trainLoader):
-    dirname, file = os.path.split(img["image_meta_dict"]["filename_or_obj"][0])
-    tures_number = file.split("-")[1]
-    print("Processing image: ", tures_number + ".nii.gz")
+dataset_iterator = trainLoader._get_iterator()
+for idx in range(len(loader_d)):
+    try:
+        img = next(dataset_iterator)
+        dirname, file = os.path.split(img["image_meta_dict"]["filename_or_obj"][0])
+        tures_number = file.split("-")[1]
+        print("Processing image: ", tures_number)
+    except:
+        print("Error merging images")

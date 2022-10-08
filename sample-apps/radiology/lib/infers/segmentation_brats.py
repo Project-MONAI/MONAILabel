@@ -16,7 +16,6 @@ from monai.transforms import (
     AsDiscreted,
     EnsureChannelFirstd,
     EnsureTyped,
-    KeepLargestConnectedComponentd,
     LoadImaged,
     NormalizeIntensityd,
     ToNumpyd,
@@ -71,13 +70,13 @@ class SegmentationBrats(InferTask):
 
     def post_transforms(self, data=None) -> Sequence[Callable]:
         # Apply KeepLargestConnectedComponentd to specific joint big labels
-        applied_labels = [1, 2, 4, 5, 10, 12]
+        # applied_labels = []
         t = [
             EnsureTyped(keys="pred", device=data.get("device") if data else None),
             Activationsd(keys="pred", softmax=True),
             AsDiscreted(keys="pred", argmax=True),
             ToNumpyd(keys="pred"),
-            KeepLargestConnectedComponentd(keys="pred", applied_labels=applied_labels),
+            # KeepLargestConnectedComponentd(keys="pred", applied_labels=applied_labels),
             Restored(keys="pred", ref_image="image"),
         ]
         return t
