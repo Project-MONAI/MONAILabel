@@ -116,7 +116,7 @@ class SegmentationBrats(BasicTrainTask):
 
     def val_inferer(self, context: Context):
         return SlidingWindowInferer(
-            roi_size=self.spatial_size, sw_batch_size=4, overlap=0.5, padding_mode="replicate", mode="gaussian"
+            roi_size=self.spatial_size, sw_batch_size=2, overlap=0.5, padding_mode="replicate", mode="gaussian"
         )
 
     def norm_labels(self):
