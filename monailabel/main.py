@@ -325,9 +325,10 @@ class Main:
             logger.debug("                  ENV VARIABLES/SETTINGS                  ")
             logger.debug("**********************************************************")
             for k, v in settings.dict().items():
-                v = json.dumps(v) if isinstance(v, list) or isinstance(v, dict) else str(v)
+                v = json.dumps(v) if isinstance(v, list) or isinstance(v, dict) else (str(v) if v else None)
                 logger.debug(f"{'set' if any(platform.win32_ver()) else 'export'} {k}={v}")
-                os.environ[k] = v
+                if v:
+                    os.environ[k] = v
             logger.debug("**********************************************************")
             logger.debug("")
 
