@@ -634,8 +634,10 @@ class MONAILabelApp:
         # Possibly region (e.g. DSA)
         if not os.path.exists(image):
             image = datastore.get_image(img_id, request)
+            annotations = datastore.get_annotations_by_image_id(img_id)
             if not isinstance(image, str):
                 request["image"] = image
+                request["annotations"] = annotations
                 res = self.infer(request, datastore)
                 logger.info(f"Latencies: {res.get('params', {}).get('latencies')}")
                 return res
