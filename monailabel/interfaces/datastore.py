@@ -88,6 +88,17 @@ class Datastore(metaclass=ABCMeta):
         pass
 
     @abstractmethod
+    def get_annotations_by_image_id(self, image_id: str) -> Dict[str, Dict[str, List]]:
+        """
+        Retrieve annotations for the given image id
+
+        :param image_id: the desired image's id
+        :return: A dictionary containing all annotations, of the format:
+                 Dict[<annotation name given by user>, Dict[<primitive type>, List<coordinates>]]
+        """
+        pass
+
+    @abstractmethod
     def get_image(self, image_id: str, params=None) -> Any:
         """
         Retrieve image object based on image id
