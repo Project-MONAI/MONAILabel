@@ -26,11 +26,12 @@ from monai.transforms import (
     Spacingd,
 )
 
-from monailabel.interfaces.tasks.infer import InferTask, InferType
+from monailabel.interfaces.tasks.infer_v2 import InferType
+from monailabel.tasks.infer.basic_infer import BasicInferTask
 from monailabel.transform.post import Restored
 
 
-class LocalizationSpine(InferTask):
+class LocalizationSpine(BasicInferTask):
     """
     This provides Inference Engine for pre-trained spine localization (UNet) model.
     """

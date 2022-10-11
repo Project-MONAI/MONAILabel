@@ -334,9 +334,6 @@ class LocalDatastore(Datastore):
         """
         return self.get_labels_by_image_id(image_id).get(tag, "")
 
-    def get_annotations_by_image_id(self, image_id: str) -> Dict[str, Dict[str, List]]:
-        pass
-
     def get_label_info(self, label_id: str, label_tag: str) -> Dict[str, Any]:
         """
         Get the label information for the given label id

@@ -83,9 +83,6 @@ class XNATDatastore(Datastore):
     def get_label_by_image_id(self, image_id: str, tag: str) -> str:
         pass
 
-    def get_annotations_by_image_id(self, image_id: str) -> Dict[str, Dict[str, List]]:
-        pass
-
     def get_image(self, image_id: str, params=None) -> Any:
         p = self._download_image(image_id, check_zip=True)
         uri = os.path.join(os.path.dirname(p), "files.zip")
