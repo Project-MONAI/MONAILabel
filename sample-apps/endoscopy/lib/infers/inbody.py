@@ -10,68 +10,25 @@
 # limitations under the License.
 
 import logging
-from typing import Any, Callable, Dict, Sequence
-
-import numpy as np
-import torch
-from monai.inferers import Inferer, SimpleInferer
-from monai.transforms import AsChannelFirstd, AsDiscreted, CastToTyped, NormalizeIntensityd, Resized
+from typing import Any, Dict
 
 from monailabel.interfaces.tasks.infer_v2 import InferType
-from monailabel.tasks.infer.basic_infer import BasicInferTask
-from monailabel.transform.pre import LoadImageExd
-from monailabel.transform.writer import ClassificationWriter
+from monailabel.tasks.infer.bundle import BundleInferTask
 
 logger = logging.getLogger(__name__)
 
 
-class InBody(BasicInferTask):
+class InBody(BundleInferTask):
     """
-    This provides Inference Engine for pre-trained segmentation model for Tool Tracking.
+    This provides Inference Engine for pre-trained classification model for InBody/OutBody.
     """
 
-    def __init__(
-        self,
-        path,
-        network=None,
-        type=InferType.CLASSIFICATION,
-        labels=None,
-        dimension=2,
-        description="A pre-trained semantic classification model for InBody/OutBody",
-        **kwargs,
-    ):
-        super().__init__(
-            path=path,
-            network=network,
-            type=type,
-            labels=labels,
-            dimension=dimension,
-            description=description,
-            **kwargs,
+    def __init__(self, path: str, conf: Dict[str, str], **kwargs):
+        BundleInferTask(
+            path, conf, type=InferType.CLASSIFICATION, extend_load_image=True, add_post_restore=False, **kwargs
         )
 
     def info(self) -> Dict[str, Any]:
         d = super().info()
         d["endoscopy"] = True
         return d
-
-    def pre_transforms(self, data=None) -> Sequence[Callable]:
-        return [
-            LoadImageExd(keys="image", dtype=np.uint8),
-            AsChannelFirstd(keys="image"),
-            Resized(keys="image", spatial_size=(256, 256), mode="bilinear"),
-            CastToTyped(keys="image", dtype=torch.float32),
-            NormalizeIntensityd(keys="image", nonzero=True, channel_wise=True),
-        ]
-
-    def inferer(self, data=None) -> Inferer:
-        return SimpleInferer()
-
-    def post_transforms(self, data=None) -> Sequence[Callable]:
-        return [
-            AsDiscreted(keys="pred", argmax=True, to_onehot=2),
-        ]
-
-    def writer(self, data, extension=None, dtype=None):
-        writer = ClassificationWriter(label=self.output_label_key, label_names={v: k for k, v in self.labels.items()})
-        return writer(data)

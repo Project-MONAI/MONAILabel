@@ -104,6 +104,9 @@ class BundleTrainTask(TrainTask):
             "gpus": "all",  # COMMA SEPARATE DEVICE INDEX
         }
 
+    def _prepare_datalist(self, datalist):
+        return datalist
+
     def _partition_datalist(self, datalist, request, shuffle=False):
         # only use image and label attributes; skip for other meta info from datastore for now
         datalist = [{"image": d["image"], "label": d["label"]} for d in datalist if d]
@@ -142,6 +145,7 @@ class BundleTrainTask(TrainTask):
 
     def __call__(self, request, datastore: Datastore):
         ds = datastore.datalist()
+        ds = self._prepare_datalist(ds)
         train_ds, val_ds = self._partition_datalist(ds, request)
 
         max_epochs = request.get("max_epochs", 50)
