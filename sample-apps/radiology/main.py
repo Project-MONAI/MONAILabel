@@ -128,6 +128,7 @@ class MyApp(MONAILabelApp):
                     lamda=1.0,
                     sigma=0.1,
                     num_bins=64,
+                    labels=task_config.labels,
                 ),
                 "GMM+GraphCut": GMMBasedGraphCut(
                     intensity_range=(-300, 200, 0.0, 1.0, True),
@@ -135,6 +136,7 @@ class MyApp(MONAILabelApp):
                     lamda=5.0,
                     sigma=0.5,
                     num_mixtures=20,
+                    labels=task_config.labels,
                 ),
             }
         )
