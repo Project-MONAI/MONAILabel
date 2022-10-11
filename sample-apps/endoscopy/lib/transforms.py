@@ -8,36 +8,24 @@
 # WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 # See the License for the specific language governing permissions and
 # limitations under the License.
-import logging
-from typing import Optional
 
-from monai.data import ImageReader
-from monai.transforms import LoadImaged
+import logging
+
+import torch
+from monai.config import KeysCollection
+from monai.transforms import MapTransform
 
 logger = logging.getLogger(__name__)
 
 
-class LoadImageExd(LoadImaged):
-    def __call__(self, data, reader: Optional[ImageReader] = None):
+class LabelToBinaryClassd(MapTransform):
+    def __init__(self, keys: KeysCollection, allow_missing_keys: bool = False, offset=2) -> None:
+        super().__init__(keys, allow_missing_keys)
+        self.offset = offset
+
+    def __call__(self, data):
         d = dict(data)
-
-        ignore = False
-        for i, key in enumerate(self.keys):
-            # Support direct image in np (pass only transform)
-            if not isinstance(d[key], str):
-                ignore = True
-                meta_dict_key = f"{key}_{self.meta_key_postfix[i]}"
-                meta_dict = d.get(meta_dict_key)
-                if meta_dict is None:
-                    d[meta_dict_key] = dict()
-                    meta_dict = d.get(meta_dict_key)
-
-                image_np = d[key]
-                meta_dict["spatial_shape"] = image_np.shape[:-1]  # type: ignore
-                meta_dict["original_channel_dim"] = -1  # type: ignore
-                continue
-
-        if not ignore:
-            d = super().__call__(d, reader)
-
+        for key in self.keys:
+            label = int(torch.max(d[key]))
+            d[key] = label - self.offset if label else 0
         return d

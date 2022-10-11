@@ -1,8 +1,20 @@
-from typing import Dict
+# Copyright (c) MONAI Consortium
+# Licensed under the Apache License, Version 2.0 (the "License");
+# you may not use this file except in compliance with the License.
+# You may obtain a copy of the License at
+#     http://www.apache.org/licenses/LICENSE-2.0
+# Unless required by applicable law or agreed to in writing, software
+# distributed under the License is distributed on an "AS IS" BASIS,
+# WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+# See the License for the specific language governing permissions and
+# limitations under the License.
+
+from typing import Dict, List
 
 from MONAILabelReviewerLib.DataStoreKeys import DataStoreKeys
 from MONAILabelReviewerLib.ImageData import ImageData
 from MONAILabelReviewerLib.MONAILabelReviewerEnum import Label
+from MONAILabelReviewerLib.SegmentationMeta import SegmentationMeta
 
 """
 JsonParser parses the datastore.json file
@@ -13,16 +25,15 @@ and caches the information in dictionary: Mapping from id to ImageData
 class JsonParser:
     def __init__(self, jsonObject: dict):
         self.LABEL = Label()
-        self.SEGMENTATION_META = "segmentationMeta"
-
         self.dataStoreKeys = DataStoreKeys()
+
         self.jsonObject = jsonObject
         self.mapIdToImageData: Dict[str, ImageData] = {}
 
     def init(self):
         self.parseJsonToImageData()
 
-    def getValueByKey(self, keyArr: list, jsonObj: dict):
+    def getValueByKey(self, keyArr: List[str], jsonObj: dict):
         if len(keyArr) == 0:
             return ""
         for key in keyArr:
@@ -82,6 +93,59 @@ class JsonParser:
             return False
         return True
 
+    def extractLabels(self, obj: dict) -> dict:
+        return self.getValueByKey(self.dataStoreKeys.LABELS, obj)
+
+    def extractLabelNames(self, labelsDict: dict) -> List[str]:
+        return list(labelsDict.keys())
+
+    def extractLabelContentByName(self, labels: dict, labelName="final") -> Dict[str, str]:
+        if labelName not in labels:
+            return {}
+        content = labels[labelName][self.dataStoreKeys.INFO]
+
+        if self.dataStoreKeys.LABEL_INFO not in content:
+            return {}
+
+        labelDict = {}
+        labelDict[self.dataStoreKeys.LABEL_INFO] = content[self.dataStoreKeys.LABEL_INFO]
+        return labelDict
+
+    def extractSegmentationMetaOfVersion(self, labels: dict, labelName: str) -> dict:
+        if labelName not in labels:
+            return {}
+        content = labels[labelName][self.dataStoreKeys.INFO]
+
+        if self.dataStoreKeys.META not in content:
+            return {}
+        return content[self.dataStoreKeys.META]
+
+    def getAllSegmentationMetaOfAllLabels(self, labels: dict, labelNames: List[str]) -> Dict[str, SegmentationMeta]:
+        if len(labelNames) == 0:
+            return {}
+
+        allSegMetaOfLabels = {}
+        for labelName in labelNames:
+            segMetaSingle = self.extractSegmentationMetaOfVersion(labels, labelName)
+            if len(segMetaSingle) == 0:
+                continue
+            segmentationMeta = self.produceSegementationData(segMetaSingle)
+            segmentationMeta.setVersionNumber(versionTag=labelName)
+            allSegMetaOfLabels[labelName] = segmentationMeta
+        return allSegMetaOfLabels
+
+    def produceSegementationData(self, segmenatationDict: dict) -> SegmentationMeta:
+        segmentationMeta = SegmentationMeta()
+        segmentationMeta.build(
+            status=segmenatationDict[self.dataStoreKeys.META_STATUS],
+            level=segmenatationDict[self.dataStoreKeys.META_LEVEL],
+            approvedBy=segmenatationDict[self.dataStoreKeys.APPROVED_BY],
+            comment=segmenatationDict[self.dataStoreKeys.META_COMMENT],
+            editTime=segmenatationDict[self.dataStoreKeys.META_EDIT_TIME],
+        )
+
+        return segmentationMeta
+
     def isSegmented(self, obj: dict) -> bool:
         labels = self.getValueByKey(self.dataStoreKeys.LABELS, obj)
         if len(labels) == 0:
@@ -90,11 +154,11 @@ class JsonParser:
             return False
         return True
 
-    def hasKeyFinal(self, obj: dict):
+    def hasKeyFinal(self, obj: dict) -> bool:
         labelsDict = self.getValueByKey(self.dataStoreKeys.LABELS, obj)
         return self.dataStoreKeys.FINAL in labelsDict
 
-    def hasKeyOriginal(self, obj: dict):
+    def hasKeyOriginal(self, obj: dict) -> bool:
         labelsDict = self.getValueByKey(self.dataStoreKeys.LABELS, obj)
         return self.dataStoreKeys.ORIGINAL in labelsDict
 
@@ -104,11 +168,11 @@ class JsonParser:
         if self.hasKeyOriginal(obj):
             return self.getValueByKey(self.dataStoreKeys.SEGMENTATION_NAME_BY_ORIGINAL, obj)
 
-    def hasKeyAnnotate(self, obj: dict):
+    def hasKeyAnnotate(self, obj: dict) -> bool:
         strategyDict = self.getValueByKey(self.dataStoreKeys.STRATEGY, obj)
         return self.dataStoreKeys.ANNOTATE in strategyDict
 
-    def hasKeyRandom(self, obj: dict):
+    def hasKeyRandom(self, obj: dict) -> bool:
         strategyDict = self.getValueByKey(self.dataStoreKeys.STRATEGY, obj)
         return self.dataStoreKeys.RANDOM in strategyDict
 
@@ -138,55 +202,44 @@ class JsonParser:
 
     def parseJsonToImageData(self):
         objects = self.jsonObject[self.dataStoreKeys.OBJECT]
-        counter = 0
         for key, value in objects.items():
             imageData = self.jsonToImageData(key, value)
             self.mapIdToImageData[key] = imageData
-            counter += 1
 
-    def jsonToImageData(self, key, value):
-        fileName = self.getFileName(value)
-        nodeName = self.getNodeName(value)
-        checksum = self.getCheckSum(value)
-        isSegmented = self.isSegmented(value)
-        timeStamp = self.getTimeStamp(value)
+    def jsonToImageData(self, key: str, value: dict) -> ImageData:
+
         imageData = ImageData(
             name=key,
-            fileName=fileName,
-            nodeName=nodeName,
-            checkSum=checksum,
-            segmented=isSegmented,
-            timeStamp=timeStamp,
+            fileName=self.getFileName(value),
+            nodeName=self.getNodeName(value),
+            checkSum=self.getCheckSum(value),
+            segmented=self.isSegmented(value),
+            timeStamp=self.getTimeStamp(value),
         )
 
-        if isSegmented:
+        if self.isSegmented(value):
             segName = self.getSegmentationName(value)
             imageData.setSegmentationFileName(segName)
 
             clientId = self.getClientId(value)
             imageData.setClientId(clientId)
 
-        if self.hasLabels(value) is False:
-            return imageData
+        if self.hasLabels(value):
+            labelsDict = self.extractLabels(value)
+            labelNames = self.extractLabelNames(labelsDict)
+            labelContent = self.extractLabelContentByName(labelsDict)
+            labelSegmentationMeta: Dict[str, SegmentationMeta] = self.getAllSegmentationMetaOfAllLabels(
+                labelsDict, labelNames
+            )
 
-        label = ""
-        if self.hasKeyFinal(value):
-            label = self.LABEL.FINAL
+            imageData.setVersionNames(labelNames)
+            imageData.setLabelContent(labelContent)
+            imageData.setSegmentationMetaDict(labelSegmentationMeta)
 
-        if self.hasKeyOriginal(value):
-            label = self.LABEL.ORGINAL
-
-        info = self.getInfoInLabels(label=label, obj=value)
-        if self.hasSegmentationMeta(info):
-            status = self.getMetaStatus(label, value)
-            level = self.getMetaLevel(label, value)
-            approvedBy = self.getMetaApprovedBy(label, value)
-            comment = self.getMetaComment(label, value)
-            imageData.setSegmentationMeta(status, level, approvedBy, comment)
         return imageData
 
     def hasSegmentationMeta(self, info: dict) -> bool:
-        return self.SEGMENTATION_META in info.keys()
+        return self.dataStoreKeys.META in info.keys()
 
-    def getMapIdToImageData(self):
+    def getMapIdToImageData(self) -> Dict[str, ImageData]:
         return self.mapIdToImageData

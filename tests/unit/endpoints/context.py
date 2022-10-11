@@ -17,6 +17,8 @@ import unittest
 
 from fastapi.testclient import TestClient
 
+from monailabel.config import settings
+
 
 def create_client(app_dir, studies, data_dir, conf=None):
     app_conf = {
@@ -78,6 +80,8 @@ class DICOMWebEndpointTestSuite(unittest.TestCase):
     client = None
     base_dir = os.path.realpath(os.path.dirname(os.path.dirname(os.path.dirname(os.path.dirname(__file__)))))
     data_dir = os.path.join(base_dir, "tests", "data", "dataset", "dicomweb")
+
+    settings.MONAI_LABEL_DICOMWEB_CACHE_PATH = data_dir
 
     app_dir = os.path.join(base_dir, "sample-apps", "radiology")
     studies = "http://faketesturl:8042/dicom-web"

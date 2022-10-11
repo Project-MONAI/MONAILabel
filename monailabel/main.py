@@ -20,6 +20,7 @@ import sys
 
 import uvicorn
 
+from monailabel import print_config
 from monailabel.config import settings
 from monailabel.utils.others.generic import init_log_config
 
@@ -85,8 +86,9 @@ class Main:
 
     def args_parser(self, name="monailabel"):
         parser = argparse.ArgumentParser(name)
-        subparsers = parser.add_subparsers(help="sub-command help")
+        parser.add_argument("-v", "--version", action="store_true", help="print version")
 
+        subparsers = parser.add_subparsers(help="sub-command help")
         if "start_server" in self.actions:
             parser_a = subparsers.add_parser("start_server", help="Start Application Server")
             self.args_start_server(parser_a)
@@ -112,6 +114,11 @@ class Main:
     def run(self):
         parser = self.args_parser()
         args = parser.parse_args()
+
+        if args.version:
+            print_config()
+            exit(0)
+
         if not hasattr(args, "action"):
             parser.print_usage()
             exit(-1)
@@ -184,7 +191,7 @@ class Main:
 
     def _action_xyz(self, args, name, title, exclude, ignore):
         xyz_dir = self._get_installed_dir(args.prefix, name)
-        exclude = (exclude) if isinstance(exclude, str) else exclude
+        exclude = [exclude] if isinstance(exclude, str) else exclude
 
         xyz = os.listdir(xyz_dir)
         xyz = [os.path.basename(a) for a in xyz if os.path.isdir(os.path.join(xyz_dir, a))]
@@ -318,9 +325,15 @@ class Main:
             logger.debug("                  ENV VARIABLES/SETTINGS                  ")
             logger.debug("**********************************************************")
             for k, v in settings.dict().items():
-                v = json.dumps(v) if isinstance(v, list) or isinstance(v, dict) else str(v)
+                if isinstance(v, list) or isinstance(v, dict):
+                    v = json.dumps(v)
+                elif v is not None:
+                    v = str(v)
+                else:
+                    v = None
                 logger.debug(f"{'set' if any(platform.win32_ver()) else 'export'} {k}={v}")
-                os.environ[k] = v
+                if v is not None:
+                    os.environ[k] = v
             logger.debug("**********************************************************")
             logger.debug("")
 

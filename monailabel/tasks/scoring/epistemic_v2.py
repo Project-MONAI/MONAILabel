@@ -8,6 +8,7 @@
 # WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 # See the License for the specific language governing permissions and
 # limitations under the License.
+
 import logging
 import multiprocessing
 import os
@@ -16,6 +17,7 @@ from concurrent.futures import ThreadPoolExecutor
 
 import numpy as np
 import torch
+from monai.metrics.active_learning_metrics import VarianceMetric
 
 from monailabel.interfaces.datastore import Datastore
 from monailabel.interfaces.tasks.infer import InferTask
@@ -32,18 +34,25 @@ class EpistemicScoring(ScoringMethod):
     def __init__(
         self,
         infer_task: InferTask,
-        num_samples=10,
+        max_samples=0,
+        simulation_size=5,
         use_variance=False,
+        key_output_entropy="epistemic_entropy",
+        key_output_ts="epistemic_ts",
     ):
         super().__init__(f"Compute initial score based on dropout - {infer_task.description}")
         self.infer_task = infer_task
         self.dimension = infer_task.dimension
 
-        self.num_samples = num_samples
+        self.max_samples = max_samples
+        self.simulation_size = simulation_size
         self.use_variance = use_variance
+        self.key_output_entropy = key_output_entropy
+        self.key_output_ts = key_output_ts
 
     def entropy_volume(self, vol_input):
         # The input is assumed with repetitions, channels and then volumetric data
+        vol_input = vol_input.cpu().detach().numpy() if isinstance(vol_input, torch.Tensor) else vol_input
         vol_input = vol_input.astype(dtype="float32")
         dims = vol_input.shape
         reps = dims[0]
@@ -75,15 +84,14 @@ class EpistemicScoring(ScoringMethod):
         # Returns a 3D volume of entropy
         return entropy
 
-    def variance_volume(self, vol_input):
-        vol_input = vol_input.astype(dtype="float32")
-
-        # Threshold values less than or equal to zero
-        threshold = 0.0005
-        vol_input[vol_input <= 0] = threshold
-
-        vari = np.nanvar(vol_input, axis=0)
-        variance = np.sum(vari, axis=0)
+    def variance_volume(self, vol_input, ignore_nans=True):
+        if ignore_nans:
+            vol_input[vol_input <= 0] = 0.0005
+            vari = np.nanvar(vol_input.cpu().detach().numpy(), axis=0)  # torch.var vs np.nanvar (ignore_nans)
+            variance = np.sum(vari, axis=0)
+        else:
+            variance_metric = VarianceMetric(threshold=0.0005, spatial_map=True, scalar_reduction="sum")
+            variance = variance_metric(vol_input)
 
         if self.dimension == 3:
             variance = np.expand_dims(variance, axis=0)
@@ -100,12 +108,13 @@ class EpistemicScoring(ScoringMethod):
         # Performing Epistemic for all unlabeled images
         skipped = 0
         unlabeled_images = datastore.get_unlabeled_images()
-        num_samples = request.get("num_samples", self.num_samples)
-        if num_samples < 2:
-            num_samples = 2
-            logger.warning("EPISTEMIC:: Fixing 'num_samples=2' as min 2 samples are needed to compute entropy")
+        max_samples = request.get("max_samples", self.max_samples)
+        simulation_size = request.get("simulation_size", self.simulation_size)
+        if simulation_size < 2:
+            simulation_size = 2
+            logger.warning("EPISTEMIC:: Fixing 'simulation_size=2' as min 2 simulations are needed to compute entropy")
 
-        logger.info(f"EPISTEMIC:: Total unlabeled images: {len(unlabeled_images)}")
+        logger.info(f"EPISTEMIC:: Total unlabeled images: {len(unlabeled_images)}; max_samples: {max_samples}")
         t_start = time.time()
 
         image_ids = []
@@ -116,9 +125,10 @@ class EpistemicScoring(ScoringMethod):
                 skipped += 1
                 continue
             image_ids.append(image_id)
+        image_ids = image_ids[:max_samples] if max_samples else image_ids
 
         max_workers = request.get("max_workers", 2)
-        multi_gpu = request.get("multi_gpu", True)
+        multi_gpu = request.get("multi_gpu", False)
         multi_gpus = request.get("gpus", "all")
         gpus = (
             list(range(torch.cuda.device_count())) if not multi_gpus or multi_gpus == "all" else multi_gpus.split(",")
@@ -133,12 +143,12 @@ class EpistemicScoring(ScoringMethod):
             futures = []
             with ThreadPoolExecutor(max_workers if max_workers else None, "ScoreInfer") as e:
                 for image_id in image_ids:
-                    futures.append(e.submit(self.run_scoring, image_id, num_samples, model_ts, datastore))
+                    futures.append(e.submit(self.run_scoring, image_id, simulation_size, model_ts, datastore))
                 for future in futures:
                     future.result()
         else:
             for image_id in image_ids:
-                self.run_scoring(image_id, num_samples, model_ts, datastore)
+                self.run_scoring(image_id, simulation_size, model_ts, datastore)
 
         summary = {
             "total": len(unlabeled_images),
@@ -151,7 +161,7 @@ class EpistemicScoring(ScoringMethod):
         self.infer_task.clear_cache()
         return summary
 
-    def run_scoring(self, image_id, num_samples, model_ts, datastore):
+    def run_scoring(self, image_id, simulation_size, model_ts, datastore):
         start = time.time()
         request = {
             "image": datastore.get_image_uri(image_id),
@@ -160,7 +170,7 @@ class EpistemicScoring(ScoringMethod):
         }
 
         accum_unl_outputs = []
-        for i in range(num_samples):
+        for i in range(simulation_size):
             data = self.infer_task(request=request)
             pred = data[self.infer_task.output_label_key] if isinstance(data, dict) else None
             if pred is not None:
@@ -169,26 +179,29 @@ class EpistemicScoring(ScoringMethod):
             else:
                 logger.info(f"EPISTEMIC:: {image_id} => {i} => pred: None")
 
-        accum_numpy = np.stack(accum_unl_outputs)
-        accum_numpy = np.squeeze(accum_numpy)
-        if self.dimension == 3:
-            accum_numpy = accum_numpy[:, 1:, :, :, :] if len(accum_numpy.shape) > 4 else accum_numpy
-        else:
-            accum_numpy = accum_numpy[:, 1:, :, :] if len(accum_numpy.shape) > 3 else accum_numpy
+        accum = torch.stack(accum_unl_outputs)
+        accum = torch.squeeze(accum)
 
-        entropy = self.variance_volume(accum_numpy) if self.use_variance else self.entropy_volume(accum_numpy)
+        # Accum Expected shape for 2D images is (N, C, H, W) for 3D (N, C, H, W, D)
+        # To handle cases where only a single class of segmentation is present, an extra dimension is added
+        if self.dimension == 2 and len(accum.shape) == 3:
+            accum = torch.unsqueeze(accum, dim=1)
+        elif self.dimension == 3 and len(accum.shape) == 4:
+            accum = torch.unsqueeze(accum, dim=1)
+
+        entropy = self.variance_volume(accum) if self.use_variance else self.entropy_volume(accum)
         entropy = float(np.nanmean(entropy))
 
         latency = time.time() - start
         logger.info(
             "EPISTEMIC:: {} => iters: {}; entropy: {}; latency: {};".format(
                 image_id,
-                num_samples,
+                simulation_size,
                 round(entropy, 4),
                 round(latency, 3),
             )
         )
 
         # Add epistemic_entropy in datastore
-        info = {"epistemic_entropy": entropy, "epistemic_ts": model_ts}
+        info = {self.key_output_entropy: entropy, self.key_output_ts: model_ts}
         datastore.update_image_info(image_id, info)

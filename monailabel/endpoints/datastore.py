@@ -129,21 +129,25 @@ def remove_label(id: str, tag: str, user: Optional[str] = None):
     return {}
 
 
-def download_image(image: str):
+def download_image(image: str, check_only=False):
     instance: MONAILabelApp = app_instance()
     image = instance.datastore().get_image_uri(image)
     if not os.path.isfile(image):
         raise HTTPException(status_code=404, detail="Image NOT Found")
 
+    if check_only:
+        return {}
     return FileResponse(image, media_type=get_mime_type(image), filename=os.path.basename(image))
 
 
-def download_label(label: str, tag: str):
+def download_label(label: str, tag: str, check_only=False):
     instance: MONAILabelApp = app_instance()
     label = instance.datastore().get_label_uri(label, tag)
     if not os.path.isfile(label):
         raise HTTPException(status_code=404, detail="Label NOT Found")
 
+    if check_only:
+        return {}
     return FileResponse(label, media_type=get_mime_type(label), filename=os.path.basename(label))
 
 
@@ -177,12 +181,21 @@ def update_label_info(label: str, tag: str, info: str = Form("{}"), user: Option
     return instance.datastore().update_label_info(label, tag, i)
 
 
+def download_dataset(limit_cases: Optional[int] = None):
+    instance: MONAILabelApp = app_instance()
+    path = instance.datastore().get_dataset_archive(limit_cases)
+    if not os.path.isfile(path):
+        raise HTTPException(status_code=404, detail="ZIP archive NOT Found")
+    return FileResponse(path, media_type=get_mime_type(path), filename="dataset.zip")
+
+
 @router.get("/", summary="Get All Images/Labels from datastore")
 async def api_datastore(output: Optional[ResultType] = None, user: User = Depends(get_basic_user)):
     return datastore(output)
 
 
-@router.put("/", summary="Upload new Image")
+@router.put("/", summary="Upload new Image", deprecated=True)
+@router.put("/image", summary="Upload new Image")
 async def api_add_image(
     background_tasks: BackgroundTasks,
     image: Optional[str] = None,
@@ -193,9 +206,30 @@ async def api_add_image(
     return add_image(background_tasks, image, params, file, user.username)
 
 
-@router.delete("/", summary="Remove Image and corresponding labels")
+@router.delete("/", summary="Remove Image and corresponding labels", deprecated=True)
+@router.delete("/image", summary="Remove Image and corresponding labels")
 async def api_remove_image(id: str, user: User = Depends(get_admin_user)):
     return remove_image(id, user.username)
+
+
+@router.head("/image", summary="Check If Image Exists")
+async def api_check_image(image: str, user: User = Depends(get_basic_user)):
+    return download_image(image, check_only=True)
+
+
+@router.get("/image", summary="Download Image")
+async def api_download_image(image: str, user: User = Depends(get_basic_user)):
+    return download_image(image)
+
+
+@router.get("/image/info", summary="Get Image Info")
+async def api_get_image_info(image: str, user: User = Depends(get_basic_user)):
+    return get_image_info(image)
+
+
+@router.put("/image/info", summary="Update Image Info")
+async def api_put_image_info(image: str, info: str = Form("{}"), user: User = Depends(get_annotator_user)):
+    return update_image_info(image, info, user.username)
 
 
 @router.put("/label", summary="Save Finished Label")
@@ -215,19 +249,9 @@ async def api_remove_label(id: str, tag: str, user: User = Depends(get_reviwer_u
     return remove_label(id, tag, user.username)
 
 
-@router.get("/image", summary="Download Image")
-async def api_download_image(image: str, user: User = Depends(get_basic_user)):
-    return download_image(image)
-
-
-@router.get("/image/info", summary="Get Image Info")
-async def api_get_image_info(image: str, user: User = Depends(get_basic_user)):
-    return get_image_info(image)
-
-
-@router.put("/image/info", summary="Update Image Info")
-async def api_put_image_info(image: str, info: str = Form("{}"), user: User = Depends(get_annotator_user)):
-    return update_image_info(image, info, user.username)
+@router.head("/label", summary="Check If Label Exists")
+async def api_check_label(image: str, tag: str, user: User = Depends(get_basic_user)):
+    return download_label(image, tag, check_only=True)
 
 
 @router.get("/label", summary="Download Label")
@@ -245,14 +269,13 @@ async def api_put_label_info(label: str, tag: str, info: str = Form("{}"), user:
     return update_label_info(label, tag, info, user.username)
 
 
-# This shall be deprecated and use above ones to update the label info
-@router.put("/updatelabelinfo", summary="Update label info")
-async def api_update_label_info(label: str, params: str = Form("{}"), user: User = Depends(get_annotator_user)):
-    return update_label_info_deprecated(label, params)
+@router.put("/updatelabelinfo", summary="Update label info", deprecated=True)
+async def api_update_label_info(
+    label: str, tag: str, params: str = Form("{}"), user: User = Depends(get_annotator_user)
+):
+    return update_label_info(label, tag, params, user.username)
 
 
-def update_label_info_deprecated(label_id: str, params: str = Form("{}")):
-    save_params: Dict[str, Any] = json.loads(params) if params else {}
-    instance: MONAILabelApp = app_instance()
-    instance.datastore().update_label_info(label_id=label_id, label_tag="final", info=save_params)
-    return {}
+@router.get("/dataset", summary="Download full dataset as ZIP archive")
+async def api_download_dataset(limit_cases: Optional[int] = None):
+    return download_dataset(limit_cases)

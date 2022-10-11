@@ -8,24 +8,26 @@
 # WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 # See the License for the specific language governing permissions and
 # limitations under the License.
+
 import logging
 import os
 import re
 import shutil
-from distutils.util import strtobool
 from typing import Dict
 
 import requests
-from lib.activelearning import First
-from lib.infers import BundleInferTask
-from lib.trainers import BundleTrainTask
 from monai.bundle import download
 
+import monailabel
 from monailabel.interfaces.app import MONAILabelApp
 from monailabel.interfaces.tasks.infer import InferTask
 from monailabel.interfaces.tasks.strategy import Strategy
 from monailabel.interfaces.tasks.train import TrainTask
+from monailabel.tasks.activelearning.first import First
 from monailabel.tasks.activelearning.random import Random
+from monailabel.tasks.infer.bundle import BundleInferTask
+from monailabel.tasks.train.bundle import BundleTrainTask
+from monailabel.utils.others.generic import strtobool
 
 logger = logging.getLogger(__name__)
 
@@ -56,23 +58,34 @@ class MyApp(MONAILabelApp):
 
         models = models.split(",")
         models = [m.strip() for m in models]
-        invalid = [m for m in models if m != "all" and not available.get(m)]
+        # First check whether the bundle model directory is in model-zoo, if no, check local bundle directory.
+        # Use zoo bundle if both exist
+        invalid_zoo = [m for m in models if m != "all" and not available.get(m)]
+        invalid = [m for m in invalid_zoo if not os.path.isdir(os.path.join(self.model_dir, m))]
+
+        # Exit if model is not in zoo and local directory
         if invalid:
             print("")
             print("---------------------------------------------------------------------------------------")
             print(f"Invalid Model(s) are provided: {invalid}")
             print("Following are the available models.  You can pass comma (,) separated names to pass multiple")
             print("    -c models all\n    -c models {}".format("\n    -c models ".join(available.keys())))
+            print("Or provide valid local bundle directories")
             print("---------------------------------------------------------------------------------------")
             print("")
             exit(-1)
-
         self.models: Dict[str, str] = {}
+
         for n in models:
+            # Load from local if any bundle is not in Zoo
+            if n != "all" and n not in available.keys():
+                b = os.path.join(self.model_dir, n)
+                logger.info(f"+++ Adding Local Model: {n} => {b}")
+                self.models[n] = b
+            # Otherwise load from model zoo, download if do not exist
             for k, v in available.items():
                 if self.models.get(k):
                     continue
-
                 if n == k or n == "all":
                     b = os.path.join(os.path.join(self.model_dir, k))
                     logger.info(f"+++ Adding Model: {k} => {v} => {b}")
@@ -89,8 +102,9 @@ class MyApp(MONAILabelApp):
             app_dir=app_dir,
             studies=studies,
             conf=conf,
-            name="MONAILabel - Zoo/Bundle",
+            name=f"MONAILabel - Zoo/Bundle ({monailabel.__version__})",
             description="DeepLearning models provided via MONAI Zoo/Bundle",
+            version=monailabel.__version__,
         )
 
     def init_infers(self) -> Dict[str, InferTask]:
@@ -99,11 +113,9 @@ class MyApp(MONAILabelApp):
         # Models
         #################################################
         for n, b in self.models.items():
-            c = BundleInferTask(b, self.conf)
-            c = c if isinstance(c, dict) else {n: c}
-            for k, v in c.items():
-                logger.info(f"+++ Adding Inferer:: {k} => {v}")
-                infers[k] = v
+            i = BundleInferTask(b, self.conf)
+            logger.info(f"+++ Adding Inferer:: {n} => {i}")
+            infers[n] = i
         return infers
 
     def init_trainers(self) -> Dict[str, TrainTask]:
@@ -150,6 +162,7 @@ def main():
         level=logging.INFO,
         format="[%(asctime)s] [%(process)s] [%(threadName)s] [%(levelname)s] (%(name)s:%(lineno)d) - %(message)s",
         datefmt="%Y-%m-%d %H:%M:%S",
+        force=True,
     )
 
     home = str(Path.home())

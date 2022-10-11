@@ -8,6 +8,7 @@
 # WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 # See the License for the specific language governing permissions and
 # limitations under the License.
+
 import hashlib
 import logging
 import os
@@ -20,6 +21,7 @@ from cachetools import TTLCache, cached
 from dicomweb_client import DICOMwebClient
 from pydicom.dataset import Dataset
 
+from monailabel.config import settings
 from monailabel.datastore.local import LocalDatastore
 from monailabel.datastore.utils.convert import binary_to_image, dicom_to_nifti, nifti_to_dicom_seg
 from monailabel.datastore.utils.dicom import dicom_web_download_series, dicom_web_upload_dcm
@@ -38,10 +40,18 @@ class DICOMwebClientX(DICOMwebClient):
 
 
 class DICOMWebDatastore(LocalDatastore):
-    def __init__(self, client: DICOMwebClient, cache_path: Optional[str] = None, fetch_by_frame=False):
+    def __init__(
+        self,
+        client: DICOMwebClient,
+        search_filter: Dict[str, Any],
+        cache_path: Optional[str] = None,
+        fetch_by_frame=False,
+        convert_to_nifti=True,
+    ):
         self._client = client
-        self._modality = "CT"
+        self._search_filter = search_filter
         self._fetch_by_frame = fetch_by_frame
+        self._convert_to_nifti = convert_to_nifti
 
         uri_hash = hashlib.md5(self._client.base_url.encode("utf-8")).hexdigest()
         datastore_path = (
@@ -50,6 +60,7 @@ class DICOMWebDatastore(LocalDatastore):
             else os.path.join(pathlib.Path.home(), ".cache", "monailabel", "dicom", uri_hash)
         )
         logger.info(f"DICOMWeb Datastore (cache) Path: {datastore_path}; FetchByFrame: {fetch_by_frame}")
+        logger.info(f"DICOMWeb Convert To Nifti: {convert_to_nifti}")
         super().__init__(datastore_path=datastore_path, auto_reload=True)
 
     def name(self) -> str:
@@ -71,6 +82,9 @@ class DICOMWebDatastore(LocalDatastore):
         if not os.path.exists(image_dir) or not os.listdir(image_dir):
             dicom_web_download_series(None, image_id, image_dir, self._client, self._fetch_by_frame)
 
+        if not self._convert_to_nifti:
+            return image_dir
+
         image_nii_gz = os.path.realpath(os.path.join(self._datastore.image_path(), f"{image_id}.nii.gz"))
         if not os.path.exists(image_nii_gz):
             image_nii_gz = dicom_to_nifti(image_dir)
@@ -88,6 +102,9 @@ class DICOMWebDatastore(LocalDatastore):
 
         if not os.path.exists(label_dir) or not os.listdir(label_dir):
             dicom_web_download_series(None, label_id, label_dir, self._client, self._fetch_by_frame)
+
+        if not self._convert_to_nifti:
+            return label_dir
 
         label_nii_gz = os.path.realpath(
             os.path.join(self._datastore.label_path(DefaultLabelTag.FINAL), f"{image_id}.nii.gz")
@@ -108,14 +125,14 @@ class DICOMWebDatastore(LocalDatastore):
             info[f] = str(meta[f].value) if meta.get(f) else "UNK"
         return info
 
-    @cached(cache=TTLCache(maxsize=16, ttl=600))
+    @cached(cache=TTLCache(maxsize=16, ttl=settings.MONAI_LABEL_DICOMWEB_CACHE_EXPIRY))
     def list_images(self) -> List[str]:
-        datasets = self._client.search_for_series(search_filters={"Modality": self._modality})
+        datasets = self._client.search_for_series(search_filters=self._search_filter)
         series = [str(Dataset.from_json(ds)["SeriesInstanceUID"].value) for ds in datasets]
         logger.debug("Total Series: {}\n{}".format(len(series), "\n".join(series)))
         return series
 
-    @cached(cache=TTLCache(maxsize=16, ttl=600))
+    @cached(cache=TTLCache(maxsize=16, ttl=settings.MONAI_LABEL_DICOMWEB_CACHE_EXPIRY))
     def get_labeled_images(self) -> List[str]:
         datasets = self._client.search_for_series(search_filters={"Modality": "SEG"})
         all_segs = [Dataset.from_json(ds) for ds in datasets]
@@ -127,10 +144,22 @@ class DICOMWebDatastore(LocalDatastore):
             )
             seg_meta = Dataset.from_json(meta[0])
             if seg_meta.get("ReferencedSeriesSequence"):
-                image_series.append(str(seg_meta["ReferencedSeriesSequence"].value[0]["SeriesInstanceUID"].value))
+                referenced_series_instance_uid = str(
+                    seg_meta["ReferencedSeriesSequence"].value[0]["SeriesInstanceUID"].value
+                )
+                if referenced_series_instance_uid in self.list_images():
+                    image_series.append(referenced_series_instance_uid)
+                else:
+                    logger.warning(
+                        "Label Ignored:: ReferencedSeriesSequence is NOT in filtered image list: {}".format(
+                            str(seg["SeriesInstanceUID"].value)
+                        )
+                    )
             else:
                 logger.warning(
-                    f"Label Ignored:: ReferencedSeriesSequence is NOT found: {str(seg['SeriesInstanceUID'].value)}"
+                    "Label Ignored:: ReferencedSeriesSequence is NOT found: {}".format(
+                        str(seg["SeriesInstanceUID"].value)
+                    )
                 )
         return image_series
 

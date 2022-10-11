@@ -8,9 +8,10 @@
 # WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 # See the License for the specific language governing permissions and
 # limitations under the License.
+
 import logging
 import tempfile
-from typing import Any, Dict, Iterable, List, Optional
+from typing import Any, Dict, Iterable, List, Optional, Tuple
 
 import itk
 import nrrd
@@ -173,7 +174,7 @@ class Writer:
         self.meta_key_postfix = meta_key_postfix
         self.nibabel = nibabel
 
-    def __call__(self, data):
+    def __call__(self, data) -> Tuple[Any, Any]:
         logger.setLevel(data.get("logging", "INFO").upper())
 
         path = data.get("image_path")
@@ -216,11 +217,13 @@ class Writer:
                 logger.debug("Using write_seg_nrrd...")
                 write_seg_nrrd(image_np, output_file, dtype, affine, labels, color_map)
             # Issue with slicer:: https://discourse.itk.org/t/saving-non-orthogonal-volume-in-nifti-format/2760/22
-            elif self.nibabel and ext.lower() in [".nii", ".nii.gz"]:
+            elif self.nibabel and ext and ext.lower() in [".nii", ".nii.gz"]:
                 logger.debug("Using MONAI write_nifti...")
                 write_nifti(image_np, output_file, affine=affine, output_dtype=dtype)
             else:
-                write_itk(image_np, output_file, affine, dtype, compress)
+                write_itk(image_np, output_file, affine if len(image_np.shape) > 2 else None, dtype, compress)
+        else:
+            output_file = image_np
 
         return output_file, output_json
 
@@ -242,9 +245,15 @@ class ClassificationWriter:
         self.label_names = label_names
 
     def __call__(self, data):
+        logger.info(data[self.label].array)
+
         result = []
-        for label in data[self.label]:
-            result.append(self.label_names[int(label)])
+        for idx, score in enumerate(data[self.label]):
+            name = f"label_{idx}"
+            name = self.label_names.get(idx) if self.label_names else name
+            if name:
+                result.append({"idx": idx, "label": name, "score": float(score)})
+
         return None, {"prediction": result}
 
 

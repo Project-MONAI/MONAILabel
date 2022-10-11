@@ -8,6 +8,7 @@
 # WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 # See the License for the specific language governing permissions and
 # limitations under the License.
+
 import logging
 import os
 
@@ -116,7 +117,7 @@ class DeepEditNuclei(BasicTrainTask):
     def train_post_transforms(self, context: Context):
         return [
             Activationsd(keys="pred", sigmoid=True),
-            AsDiscreted(keys="pred", threshold_values=True, logit_thresh=0.5),
+            AsDiscreted(keys="pred", threshold=0.5),
         ]
 
     def train_key_metric(self, context: Context):

@@ -17,13 +17,13 @@ from monailabel.interfaces.tasks.strategy import Strategy
 logger = logging.getLogger(__name__)
 
 
-class First(Strategy):
+class Last(Strategy):
     """
     Consider implementing a first strategy for active learning
     """
 
     def __init__(self):
-        super().__init__("Get First Sample")
+        super().__init__("Get Last Sample")
 
     def __call__(self, request, datastore: Datastore):
         images = datastore.get_unlabeled_images()
@@ -31,7 +31,7 @@ class First(Strategy):
             return None
 
         images.sort()
-        image = images[0]
+        image = images[-1]
 
         logger.info(f"First: Selected Image: {image}")
-        return image
+        return {"id": image}

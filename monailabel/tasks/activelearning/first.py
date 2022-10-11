@@ -34,4 +34,4 @@ class First(Strategy):
         image = images[0]
 
         logger.info(f"First: Selected Image: {image}")
-        return image
+        return {"id": image}

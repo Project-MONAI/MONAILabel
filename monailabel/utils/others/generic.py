@@ -9,6 +9,7 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
+import distutils.util
 import hashlib
 import json
 import logging
@@ -49,6 +50,12 @@ def get_basename(path):
     """
     head, tail = os.path.split(path)
     return tail or os.path.basename(head)
+
+
+def get_basename_no_ext(path):
+    p = get_basename(path)
+    e = file_ext(p)
+    return p.rstrip(e)
 
 
 def run_command(command, args=None, plogger=None):
@@ -181,3 +188,31 @@ def device_list():
         devices.append(f"cuda:{i}")
 
     return devices
+
+
+def create_dataset_from_path(folder, images="images", labels="labels", img_ext=".jpg", lab_ext=".png"):
+    images = [i for i in os.listdir(os.path.join(folder, images)) if i.endswith(img_ext)]
+    images = sorted(os.path.join(folder, "images", i) for i in images)
+
+    labels = [i for i in os.listdir(os.path.join(folder, labels)) if i.endswith(lab_ext)]
+    labels = sorted(os.path.join(folder, "labels", i) for i in labels)
+
+    for i, l in zip(images, labels):
+        if get_basename_no_ext(i) != get_basename_no_ext(l):
+            logger.warning(f"NO MATCH: {i} => {l}")
+
+    return [
+        {"image": i, "label": l} for i, l in zip(images, labels) if get_basename_no_ext(i) == get_basename_no_ext(l)
+    ]
+
+
+def strtobool(str):
+    return bool(distutils.util.strtobool(str))
+
+
+def is_openslide_supported(name):
+    ext = file_ext(name)
+    supported_ext = (".bif", ".mrxs", ".ndpi", ".scn", ".svs", ".svslide", ".tif", ".tiff", ".vms", ".vmu")
+    if ext and ext in supported_ext:
+        return True
+    return False

@@ -171,7 +171,8 @@ class GMMBasedGraphCut(ScribblesLikelihoodInferTask):
     """
     Defines Gaussian Mixture Model (GMM) based task for Generic segmentation from the following papers:
 
-    Rother, Carsten, Vladimir Kolmogorov, and Andrew Blake. "" GrabCut" interactive foreground extraction using iterated graph cuts."
+    Rother, Carsten, Vladimir Kolmogorov, and Andrew Blake. "" GrabCut" interactive foreground extraction
+    using iterated graph cuts."
     ACM transactions on graphics (TOG) 23.3 (2004): 309-314.
 
     Wang, Guotai, et al. "Interactive medical image segmentation using deep learning with image-specific fine tuning."

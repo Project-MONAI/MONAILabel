@@ -9,7 +9,6 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-import copy
 import json
 import logging
 import os
@@ -247,6 +246,9 @@ class MONAILabelWidget(ScriptedLoadableModuleWidget, VTKObservationMixin):
         self.ignoreScribblesLabelChangeEvent = False
         self.deepedit_multi_label = False
 
+        self.optionsSectionIndex = 0
+        self.optionsNameIndex = 0
+
     def setup(self):
         """
         Called when the user opens the module the first time and the widget is initialized.
@@ -315,6 +317,8 @@ class MONAILabelWidget(ScriptedLoadableModuleWidget, VTKObservationMixin):
         self.ui.scribLabelComboBox.connect("currentIndexChanged(int)", self.onSelectScribLabel)
         self.ui.dgUpdateButton.connect("clicked(bool)", self.onUpdateDeepgrow)
         self.ui.dgUpdateCheckBox.setStyleSheet("padding-left: 10px;")
+        self.ui.optionsSection.connect("currentIndexChanged(int)", self.onSelectOptionsSection)
+        self.ui.optionsName.connect("currentIndexChanged(int)", self.onSelectOptionsName)
 
         # Scribbles
         # brush and eraser icon from: https://tablericons.com/
@@ -356,6 +360,12 @@ class MONAILabelWidget(ScriptedLoadableModuleWidget, VTKObservationMixin):
         self.ui.embeddedSegmentEditorWidget.setSegmentationNodeSelectorVisible(False)
         self.ui.embeddedSegmentEditorWidget.setMasterVolumeNodeSelectorVisible(False)
         self.ui.embeddedSegmentEditorWidget.setMRMLSegmentEditorNode(self.logic.get_segment_editor_node())
+
+        # options section
+        self.ui.optionsSection.addItem("infer")
+        self.ui.optionsSection.addItem("train")
+        self.ui.optionsSection.addItem("activelearning")
+        self.ui.optionsSection.addItem("scoring")
 
         self.initializeParameterNode()
         self.updateServerUrlGUIFromSettings()
@@ -462,7 +472,7 @@ class MONAILabelWidget(ScriptedLoadableModuleWidget, VTKObservationMixin):
             if not train_stats:
                 return
 
-            train_stats = next(iter(train_stats.values())) if train_stats else train_stats
+            train_stats = next(iter(train_stats.values()))
 
             current = 0 if train_stats.get("total_time") else train_stats.get("epoch", 1)
             total = train_stats.get("total_epochs", 1)
@@ -730,80 +740,106 @@ class MONAILabelWidget(ScriptedLoadableModuleWidget, VTKObservationMixin):
             selector.setToolTip("")
         selector.blockSignals(wasSelectorBlocked)
 
-    def updateConfigTable(self):
+    def getSelectedOptionSection(self, index=-1):
+        optionsSectionIndex = index if index >= 0 else self.ui.optionsSection.currentIndex
+        optionsSectionIndex = optionsSectionIndex if optionsSectionIndex > 0 else 0
+        optionsSection = self.ui.optionsSection.itemText(optionsSectionIndex)
+
+        logging.info(f"Current Selection Options Section: {optionsSection}")
+        mapping = {"infer": "models", "train": "trainers", "activelearning": "strategies", "scoring": "scoring"}
+
+        return mapping.get(optionsSection)
+
+    def getSelectedOptionName(self, index=-1):
+        optionsNameIndex = index if index >= 0 else self.ui.optionsName.currentIndex
+        optionsNameIndex = optionsNameIndex if optionsNameIndex > 0 else 0
+        optionsName = self.ui.optionsName.itemText(optionsNameIndex)
+
+        logging.info(f"Current Selection Options Name: {optionsName}")
+        return optionsName
+
+    def invalidateConfigTable(self, selection=-1, name=-1):
+        section = self.getSelectedOptionSection(selection)
+        name = self.getSelectedOptionName(name)
+        if not section or not name:
+            return
+
+        mapping = {"infer": "models", "train": "trainers", "activelearning": "strategies", "scoring": "scoring"}
+        section = mapping.get(section, section)
+        for row in range(self.ui.configTable.rowCount):
+            key = str(self.ui.configTable.item(row, 0).text())
+            value = self.ui.configTable.item(row, 1)
+
+            v = self.info.get(section, {}).get(name, {}).get("config", {}).get(key, {})
+            if value is None:
+                value = self.ui.configTable.cellWidget(row, 1)
+                if isinstance(value, qt.QCheckBox):
+                    value = True if value.checked else False
+                else:
+                    value = value.currentText
+            else:
+                value = str(value.text())
+
+            if isinstance(v, bool):
+                value = True if value else False
+            elif isinstance(v, int):
+                value = int(value) if value else 0
+            elif isinstance(v, float):
+                value = float(value) if value else 0.0
+            elif isinstance(v, list):
+                v.remove(value)
+                v.insert(0, value)
+                value = v
+
+            logging.info(f"Invalidate:: {section} => {name} => {key} => {value} => {type(v)}")
+            self.info.get(section, {}).get(name, {}).get("config", {})[key] = value
+
+    def updateConfigTable(self, refresh=True):
+        logging.info(f"updateConfigTable => refresh:{refresh}")
+        section = self.getSelectedOptionSection()
+        sectionConfig = self.info.get(section, {})
+        if refresh:
+            self.ui.optionsName.blockSignals(True)
+            self.ui.optionsName.clear()
+            for k in sectionConfig.keys():
+                if sectionConfig[k].get("config"):
+                    self.ui.optionsName.addItem(k)
+            if self.ui.optionsName.count:
+                self.ui.optionsName.setCurrentIndex(0)
+            self.ui.optionsName.blockSignals(False)
+
+        name = self.getSelectedOptionName()
+        nameConfig = sectionConfig.get(name, {}).get("config", {})
+
         table = self.ui.configTable
         table.clear()
-        headers = ["section", "name", "key", "value"]
+        headers = ["key", "value"]
         table.setColumnCount(len(headers))
         table.setHorizontalHeaderLabels(headers)
-        table.setColumnWidth(0, 50)
-
-        config = copy.deepcopy(self.info)
-        infer = config.get("models", {})
-        train = config.get("trainers", {})
-        activelearning = config.get("strategies", {})
-        scoring = config.get("scoring", {})
-
-        row_count = 0
-        config = {"infer": infer, "train": train, "activelearning": activelearning, "scoring": scoring}
-        for c in config.values():
-            row_count += sum(len(c[k].get("config", {})) for k in c.keys())
-        # print(f"Total rows: {row_count}")
-
-        table.setRowCount(row_count)
+        table.setColumnWidth(0, 250)
+        table.setRowCount(len(nameConfig))
 
         n = 0
-        for section in config:
-            if not config[section]:
-                continue
+        for key, val in nameConfig.items():
+            item = qt.QTableWidgetItem(key)
+            table.setItem(n, 0, item)
+            item.setFlags(item.flags() & ~qt.Qt.ItemIsEditable)
 
-            c_section = config[section]
-            l_section = sum(len(c_section[k].get("config", {})) for k in c_section.keys())
-            if not l_section:
-                continue
+            if isinstance(val, dict) or isinstance(val, list):
+                combo = qt.QComboBox()
+                for m, v in enumerate(val):
+                    combo.addItem(v)
+                combo.setCurrentIndex(0)
+                table.setCellWidget(n, 1, combo)
+            elif isinstance(val, bool):
+                checkbox = qt.QCheckBox()
+                checkbox.setChecked(val)
+                table.setCellWidget(n, 1, checkbox)
+            else:
+                table.setItem(n, 1, qt.QTableWidgetItem(str(val) if val else ""))
 
-            # print(f"{n} => l_section = {l_section}")
-            if l_section:
-                table.setSpan(n, 0, l_section, 1)
-
-            for name in c_section:
-                c_name = c_section[name]
-                l_name = len(c_name.get("config", {}))
-                if not l_name:
-                    continue
-
-                # print(f"{n} => l_name = {l_name}")
-                if l_name:
-                    table.setSpan(n, 1, l_name, 1)
-
-                for key, val in c_name.get("config", {}).items():
-                    item = qt.QTableWidgetItem(section)
-                    item.setFlags(item.flags() & ~qt.Qt.ItemIsEditable)
-                    table.setItem(n, 0, item)
-
-                    item = qt.QTableWidgetItem(name)
-                    table.setItem(n, 1, item)
-                    item.setFlags(item.flags() & ~qt.Qt.ItemIsEditable)
-
-                    item = qt.QTableWidgetItem(key)
-                    table.setItem(n, 2, item)
-                    item.setFlags(item.flags() & ~qt.Qt.ItemIsEditable)
-
-                    if isinstance(val, dict) or isinstance(val, list):
-                        combo = qt.QComboBox()
-                        for m, v in enumerate(val):
-                            combo.addItem(v)
-                        combo.setCurrentIndex(0)
-                        table.setCellWidget(n, 3, combo)
-                    elif isinstance(val, bool):
-                        checkbox = qt.QCheckBox()
-                        checkbox.setChecked(val)
-                        table.setCellWidget(n, 3, checkbox)
-                    else:
-                        table.setItem(n, 3, qt.QTableWidgetItem(str(val) if val else ""))
-
-                    # print(f"{n} => {section} => {name} => {key} => {val}")
-                    n = n + 1
+            logging.info(f"{n} => {section} => {name} => {key} => {val}")
+            n = n + 1
 
     def updateAccuracyBar(self, dice):
         self.ui.accuracyProgressBar.setValue(dice * 100)
@@ -825,37 +861,15 @@ class MONAILabelWidget(ScriptedLoadableModuleWidget, VTKObservationMixin):
         )
         self.ui.accuracyProgressBar.setToolTip(f"Accuracy: {dice:.4f}")
 
-    def getParamsFromConfig(self, filter, filter2=None):
+    def getParamsFromConfig(self, section, name):
+        self.invalidateConfigTable()
+
         mapping = {"infer": "models", "train": "trainers", "activelearning": "strategies", "scoring": "scoring"}
-        config = {}
-        for row in range(self.ui.configTable.rowCount):
-            section = str(self.ui.configTable.item(row, 0).text())
-            name = str(self.ui.configTable.item(row, 1).text())
-            key = str(self.ui.configTable.item(row, 2).text())
-            value = self.ui.configTable.item(row, 3)
-            if value is None:
-                value = self.ui.configTable.cellWidget(row, 3)
-                value = value.checked if isinstance(value, qt.QCheckBox) else value.currentText
-            else:
-                value = str(value.text())
-                v = self.info.get(mapping.get(section, ""), {}).get(name, {}).get("config", {}).get(key, {})
-                if isinstance(v, int):
-                    value = int(value) if value else 0
-                elif isinstance(v, float):
-                    value = float(value) if value else 0.0
+        section = mapping.get(section, section)
+        sectionConfig = self.info.get(section, {})
+        nameConfig = sectionConfig.get(name, {}).get("config", {})
 
-            # print(f"{section} => {name} => {key} => {value}")
-
-            if config.get(section) is None:
-                config[section] = {}
-            if config[section].get(name) is None:
-                config[section][name] = {}
-            config[section][name][key] = value
-            # print(f"row: {row}, section: {section}, name: {name}, value: {value}, type: {type(v)}")
-
-        res = config.get(filter, {})
-        res = res.get(filter2, {}) if filter2 else res
-        return res
+        return {k: v[0] if isinstance(v, list) else v for k, v in nameConfig.items()}
 
     def onDeepGrowPointListNodeModified(self, observer, eventid):
         logging.debug("Deepgrow Point Event!!")
@@ -967,6 +981,23 @@ class MONAILabelWidget(ScriptedLoadableModuleWidget, VTKObservationMixin):
         self.onEditControlPoints(self.dgPositivePointListNode, "MONAILabel.ForegroundPoints")
         self.onEditControlPoints(self.dgNegativePointListNode, "MONAILabel.BackgroundPoints")
         self.ignorePointListNodeAddEvent = False
+
+    def onSelectOptionsSection(self, index, caller=None, event=None):
+        self.updateParameterNodeFromGUI(caller, event)
+        logging.info(f"Options Section Selection Changed.... current:{index}; prev: {self.optionsSectionIndex}")
+
+        self.invalidateConfigTable(self.optionsSectionIndex, self.optionsNameIndex)
+        self.optionsSectionIndex = index
+        self.optionsNameIndex = 0
+        self.updateConfigTable()
+
+    def onSelectOptionsName(self, index, caller=None, event=None):
+        self.updateParameterNodeFromGUI(caller, event)
+        logging.info(f"Options Name Selection Changed.... current:{index}; prev: {self.optionsNameIndex}")
+
+        self.invalidateConfigTable(self.optionsSectionIndex, self.optionsNameIndex)
+        self.optionsNameIndex = index
+        self.updateConfigTable(refresh=False)
 
     def onSelectScribLabel(self, caller=None, event=None):
         if self.scribblesLayersPresent() and not self.ignoreScribblesLabelChangeEvent:

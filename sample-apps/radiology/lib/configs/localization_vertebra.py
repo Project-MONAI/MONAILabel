@@ -8,9 +8,9 @@
 # WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 # See the License for the specific language governing permissions and
 # limitations under the License.
+
 import logging
 import os
-from distutils.util import strtobool
 from typing import Any, Dict, Optional, Union
 
 import lib.infers
@@ -20,7 +20,7 @@ from monai.networks.nets import UNet
 from monailabel.interfaces.config import TaskConfig
 from monailabel.interfaces.tasks.infer import InferTask
 from monailabel.interfaces.tasks.train import TrainTask
-from monailabel.utils.others.generic import download_file
+from monailabel.utils.others.generic import download_file, strtobool
 
 logger = logging.getLogger(__name__)
 
@@ -55,7 +55,6 @@ class LocalizationVertebra(TaskConfig):
             "L3": 22,
             "L4": 23,
             "L5": 24,
-            # "L6": 25,
         }
 
         # Model Files
@@ -65,21 +64,21 @@ class LocalizationVertebra(TaskConfig):
         ]
 
         # Download PreTrained Model
-        if strtobool(self.conf.get("use_pretrained_model", "false")):
+        if strtobool(self.conf.get("use_pretrained_model", "true")):
             url = f"{self.conf.get('pretrained_path', self.PRE_TRAINED_PATH)}/localization_vertebra_unet.pt"
             download_file(url, self.path[0])
 
-        self.target_spacing = (4.0, 4.0, 4.0)  # target space for image - NOT IN USE
+        self.target_spacing = (1.3, 1.3, 1.3)  # target space for image
         # Setting ROI size - This is for the image padding
-        self.roi_size = (96, 96, 128)
+        self.roi_size = (96, 96, 96)
 
         # Network
         self.network = UNet(
             spatial_dims=3,
             in_channels=1,
             out_channels=len(self.labels) + 1,  # labels plus background,
-            channels=(16, 32, 64, 128, 256),
-            strides=(2, 2, 2, 2),
+            channels=(16, 32, 64, 128),
+            strides=(2, 2, 2),
             num_res_units=2,
             dropout=0.2,
         )
@@ -92,7 +91,6 @@ class LocalizationVertebra(TaskConfig):
             target_spacing=self.target_spacing,
             labels=self.labels,
             preload=strtobool(self.conf.get("preload", "false")),
-            config={"largest_cc": True, "slicer": False},
         )
         return task
 

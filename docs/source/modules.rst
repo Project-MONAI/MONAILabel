@@ -1,3 +1,16 @@
+.. comment
+    Copyright (c) MONAI Consortium
+    Licensed under the Apache License, Version 2.0 (the "License");
+    you may not use this file except in compliance with the License.
+    You may obtain a copy of the License at
+        http://www.apache.org/licenses/LICENSE-2.0
+    Unless required by applicable law or agreed to in writing, software
+    distributed under the License is distributed on an "AS IS" BASIS,
+    WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+    See the License for the specific language governing permissions and
+    limitations under the License.
+
+
 ================
 Modules Overview
 ================
@@ -88,7 +101,7 @@ discretization.
     def post_transforms(self, data=None):
         return [
             Activationsd(keys="pred", sigmoid=True),
-            AsDiscreted(keys="pred", threshold_values=True, logit_thresh=0.5),
+            AsDiscreted(keys="pred", threshold=0.5),
             ToNumpyd(keys="pred"),
         ]
 
@@ -129,7 +142,7 @@ in this example they follow the default behavior in the base class.
     def train_post_transforms(self, context: Context):
         return Compose([
             Activationsd(keys="pred", sigmoid=True),
-            AsDiscreted(keys="pred", threshold_values=True, logit_thresh=0.5),
+            AsDiscreted(keys="pred", threshold=0.5),
         ])
 
     def val_pre_transforms(self, context: Context):

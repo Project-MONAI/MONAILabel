@@ -20,12 +20,15 @@ import tempfile
 import time
 from concurrent.futures import ThreadPoolExecutor
 from datetime import timedelta
-from distutils.util import strtobool
 from typing import Any, Callable, Dict, Optional, Sequence, Union
 
 import requests
 import schedule
 import torch
+from dicomweb_client import DICOMwebClient
+
+# added to support connecting to DICOM Store Google Cloud
+from dicomweb_client.ext.gcp.session_utils import create_session_from_gcp_credentials
 from dicomweb_client.session_utils import create_session_from_user_pass
 from monai.apps import download_and_extract, download_url
 from monai.data import partition_dataset
@@ -46,6 +49,7 @@ from monailabel.interfaces.tasks.train import TrainTask
 from monailabel.interfaces.utils.wsi import create_infer_wsi_tasks
 from monailabel.tasks.activelearning.random import Random
 from monailabel.utils.async_tasks.task import AsyncTask
+from monailabel.utils.others.generic import is_openslide_supported, strtobool
 from monailabel.utils.others.pathology import create_asap_annotations_xml, create_dsa_annotations_json
 from monailabel.utils.sessions import Sessions
 
@@ -143,29 +147,38 @@ class MONAILabelApp:
 
     def _init_dicomweb_datastore(self) -> Datastore:
         logger.info(f"Using DICOM WEB: {self.studies}")
-        dw_session = None
-        if settings.MONAI_LABEL_DICOMWEB_USERNAME and settings.MONAI_LABEL_DICOMWEB_PASSWORD:
-            dw_session = create_session_from_user_pass(
-                settings.MONAI_LABEL_DICOMWEB_USERNAME, settings.MONAI_LABEL_DICOMWEB_PASSWORD
-            )
 
-        dw_client = DICOMwebClientX(
-            url=self.studies,
-            session=dw_session,
-            qido_url_prefix=settings.MONAI_LABEL_QIDO_PREFIX,
-            wado_url_prefix=settings.MONAI_LABEL_WADO_PREFIX,
-            stow_url_prefix=settings.MONAI_LABEL_STOW_PREFIX,
-        )
+        dw_session = None
+        if "googleapis.com" in self.studies:
+            logger.info("Creating DICOM Credentials for Google Cloud")
+            dw_session = create_session_from_gcp_credentials()
+            dw_client = DICOMwebClient(url=self.studies, session=dw_session)
+        else:
+            if settings.MONAI_LABEL_DICOMWEB_USERNAME and settings.MONAI_LABEL_DICOMWEB_PASSWORD:
+                dw_session = create_session_from_user_pass(
+                    settings.MONAI_LABEL_DICOMWEB_USERNAME, settings.MONAI_LABEL_DICOMWEB_PASSWORD
+                )
+            dw_client = DICOMwebClientX(
+                url=self.studies,
+                session=dw_session,
+                qido_url_prefix=settings.MONAI_LABEL_QIDO_PREFIX,
+                wado_url_prefix=settings.MONAI_LABEL_WADO_PREFIX,
+                stow_url_prefix=settings.MONAI_LABEL_STOW_PREFIX,
+            )
 
         self._download_dcmqi_tools()
 
         cache_path = settings.MONAI_LABEL_DICOMWEB_CACHE_PATH
         cache_path = cache_path.strip() if cache_path else ""
         fetch_by_frame = settings.MONAI_LABEL_DICOMWEB_FETCH_BY_FRAME
-        return (
-            DICOMWebDatastore(dw_client, cache_path, fetch_by_frame=fetch_by_frame)
-            if cache_path
-            else DICOMWebDatastore(dw_client, fetch_by_frame=fetch_by_frame)
+        search_filter = settings.MONAI_LABEL_DICOMWEB_SEARCH_FILTER
+        convert_to_nifti = settings.MONAI_LABEL_DICOMWEB_CONVERT_TO_NIFTI
+        return DICOMWebDatastore(
+            client=dw_client,
+            search_filter=search_filter,
+            cache_path=cache_path if cache_path else None,
+            fetch_by_frame=fetch_by_frame,
+            convert_to_nifti=convert_to_nifti,
         )
 
     def _init_dsa_datastore(self) -> Datastore:
@@ -438,20 +451,17 @@ class MONAILabelApp:
                 f"ActiveLearning Task is not Initialized. There is no such strategy '{strategy}' available",
             )
 
-        image_id = task(request, self.datastore())
-        if not image_id:
+        res = task(request, self.datastore())
+        if not res or not res.get("id"):
             return {}
 
-        image_path = self._datastore.get_image_uri(image_id)
+        res["path"] = self._datastore.get_image_uri(res["id"])
 
         # Run all scoring methods
         if self._auto_update_scoring:
             self.async_scoring(None)
 
-        return {
-            "id": image_id,
-            "path": image_path,
-        }
+        return res
 
     def on_init_complete(self):
         logger.info("App Init - completed")
@@ -509,8 +519,8 @@ class MONAILabelApp:
         if not model and not self._trainers:
             return {}
 
-        models = [model] if model else list(self._trainers.keys())
-        enqueue = True if model > 1 else enqueue
+        models = list(self._trainers.keys()) if not model else [model] if isinstance(model, str) else model
+        enqueue = True if len(models) > 1 else enqueue
         result = {}
         for m in models:
             if self._server_mode:
@@ -519,10 +529,10 @@ class MONAILabelApp:
                 res, _ = AsyncTask.run("train", request=request, params=params, enqueue=enqueue)
                 result[m] = res
             else:
-                url = f"/train/{model}?enqueue={enqueue}"
+                url = f"/train/{m}?enqueue={enqueue}"
                 p = params[m] if params and params.get(m) else None
                 result[m] = self._local_request(url, p, "Training")
-        return result[model] if model else result
+        return result[models[0]] if len(models) == 1 else result
 
     def async_batch_infer(self, model, images: BatchInferImageType, params=None):
         if self._server_mode:
@@ -545,7 +555,7 @@ class MONAILabelApp:
         target = os.path.join(self.app_dir, "bin")
         os.makedirs(target, exist_ok=True)
 
-        dcmqi_tools = ["segimage2itkimage", "itkimage2segimage", "segimage2itkimage.exe", "itkimage2segimage.exe"]
+        dcmqi_tools = ["itkimage2segimage", "itkimage2segimage.exe"]
         existing = [tool for tool in dcmqi_tools if shutil.which(tool) or os.path.exists(os.path.join(target, tool))]
         logger.debug(f"Existing Tools: {existing}")
 
@@ -624,11 +634,19 @@ class MONAILabelApp:
         # Possibly region (e.g. DSA)
         if not os.path.exists(image):
             image = datastore.get_image(img_id, request)
+            annotations = datastore.get_annotations_by_image_id(img_id)
             if not isinstance(image, str):
                 request["image"] = image
+                request["annotations"] = annotations
                 res = self.infer(request, datastore)
                 logger.info(f"Latencies: {res.get('params', {}).get('latencies')}")
                 return res
+
+        # simple image
+        if not is_openslide_supported(image):
+            res = self.infer(request, datastore)
+            logger.info(f"Latencies: {res.get('params', {}).get('latencies')}")
+            return res
 
         start = time.time()
         infer_tasks = create_infer_wsi_tasks(request, image)

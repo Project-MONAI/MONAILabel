@@ -1,3 +1,14 @@
+# Copyright (c) MONAI Consortium
+# Licensed under the Apache License, Version 2.0 (the "License");
+# you may not use this file except in compliance with the License.
+# You may obtain a copy of the License at
+#     http://www.apache.org/licenses/LICENSE-2.0
+# Unless required by applicable law or agreed to in writing, software
+# distributed under the License is distributed on an "AS IS" BASIS,
+# WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+# See the License for the specific language governing permissions and
+# limitations under the License.
+
 import copy
 import logging
 import math
@@ -20,7 +31,7 @@ from tqdm import tqdm
 from monailabel.datastore.dsa import DSADatastore
 from monailabel.datastore.local import LocalDatastore
 from monailabel.interfaces.datastore import Datastore
-from monailabel.utils.others.generic import get_basename
+from monailabel.utils.others.generic import get_basename, is_openslide_supported
 
 logger = logging.getLogger(__name__)
 
@@ -195,8 +206,13 @@ def split_local_dataset(datastore, d, output_dir, groups, tile_size, max_region=
             points.extend(p)
 
     x, y, w, h = _to_roi(points, max_region, polygons, item_id)
-    slide = openslide.OpenSlide(d["image"])
-    img = slide.read_region((x, y), 0, (w, h)).convert("RGB")
+    if is_openslide_supported(d["image"]):
+        slide = openslide.OpenSlide(d["image"])
+        img = slide.read_region((x, y), 0, (w, h)).convert("RGB")
+    else:
+        img = Image.open(d["image"]).convert("RGB")
+        w = img.size[0]
+        h = img.size[1]
 
     dataset_json.extend(_to_dataset(item_id, x, y, w, h, img, tile_size, polygons, groups, output_dir))
     return dataset_json
@@ -252,7 +268,7 @@ def _to_roi(points, max_region, polygons, annotation_id):
         logger.warning(f"Reducing Region to Max-Width; w: {w}; max_w: {max_region[0]}")
         w = max_region[0]
     if h > max_region[1]:
-        logger.warning(f"Reducing Region to Max-Height; h: {w}; max_h: {max_region[1]}")
+        logger.warning(f"Reducing Region to Max-Height; h: {h}; max_h: {max_region[1]}")
         h = max_region[1]
     return x, y, w, h
 

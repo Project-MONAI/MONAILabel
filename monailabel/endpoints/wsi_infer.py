@@ -8,13 +8,16 @@
 # WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 # See the License for the specific language governing permissions and
 # limitations under the License.
-
+import json
 import logging
 import os
+import pathlib
+import shutil
+import tempfile
 from enum import Enum
-from typing import Optional, Sequence
+from typing import Optional, Sequence, Union
 
-from fastapi import APIRouter, Depends, HTTPException
+from fastapi import APIRouter, Depends, File, Form, HTTPException, UploadFile
 from fastapi.background import BackgroundTasks
 from fastapi.responses import FileResponse
 from pydantic import BaseModel, Field
@@ -70,15 +73,25 @@ def run_wsi_inference(
     model: str,
     image: str = "",
     session_id: str = "",
+    file: Union[UploadFile, None] = None,
     wsi: WSIInput = WSIInput(),
     output: Optional[ResultType] = ResultType.dsa,
 ):
     request = {"model": model, "image": image, "output": output.value if output else None}
 
-    if not image and not session_id:
+    if not file and not image and not session_id:
         raise HTTPException(status_code=500, detail="Neither Image nor File not Session ID input is provided")
 
     instance: MONAILabelApp = app_instance()
+
+    if file and file.filename:
+        file_ext = "".join(pathlib.Path(file.filename).suffixes) if file.filename else ".png"
+        image_file = tempfile.NamedTemporaryFile(suffix=file_ext).name
+
+        with open(image_file, "wb") as buffer:
+            shutil.copyfileobj(file.file, buffer)
+            request["image"] = image_file
+            background_tasks.add_task(remove_file, image_file)
 
     config = instance.info().get("config", {}).get("infer", {})
     request.update(config)
@@ -92,7 +105,7 @@ def run_wsi_inference(
             request["image"] = session.image
             request["session"] = session.to_json()
 
-    logger.debug(f"WSI Infer Request: {request}")
+    logger.info(f"WSI Infer Request: {request}")
 
     result = instance.infer_wsi(request)
     if result is None:
@@ -100,7 +113,7 @@ def run_wsi_inference(
     return send_response(instance.datastore(), result, output, background_tasks)
 
 
-@router.post("/wsi/{model}", summary="Run WSI Inference for supported model")
+@router.post("/wsi/{model}", summary="Run WSI Inference for supported model", deprecated=True)
 async def api_run_wsi_inference(
     background_tasks: BackgroundTasks,
     model: str,
@@ -110,4 +123,19 @@ async def api_run_wsi_inference(
     output: Optional[ResultType] = None,
     user: User = Depends(get_basic_user),
 ):
-    return run_wsi_inference(background_tasks, model, image, session_id, wsi, output)
+    return run_wsi_inference(background_tasks, model, image, session_id, None, wsi, output)
+
+
+@router.post("/wsi_v2/{model}", summary="Run WSI Inference for supported model")
+async def api_run_wsi_v2_inference(
+    background_tasks: BackgroundTasks,
+    model: str,
+    image: str = "",
+    session_id: str = "",
+    file: UploadFile = File(None),
+    wsi: str = Form(WSIInput().json()),
+    output: Optional[ResultType] = None,
+    user: User = Depends(get_basic_user),
+):
+    w = WSIInput.parse_obj(json.loads(wsi))
+    return run_wsi_inference(background_tasks, model, image, session_id, file, w, output)

@@ -1,25 +1,47 @@
-==========
+.. comment
+    Copyright (c) MONAI Consortium
+    Licensed under the Apache License, Version 2.0 (the "License");
+    you may not use this file except in compliance with the License.
+    You may obtain a copy of the License at
+        http://www.apache.org/licenses/LICENSE-2.0
+    Unless required by applicable law or agreed to in writing, software
+    distributed under the License is distributed on an "AS IS" BASIS,
+    WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+    See the License for the specific language governing permissions and
+    limitations under the License.
+
+
+===========
 Quickstart
-==========
+===========
 
-Use Case - Radiology
-====================
+Start Using MONAI Label with Sample Apps:
 
-This example covers the annotation use-case for radiology using the sample MONAILabel App - **radiology**.  MONAI Label server currently supports the annotation of local datasets via `3DSlicer <https://www.slicer.org/>`_, such as unlabeled images
-residing on disk, and remote data residing on DICOMweb-enabled PACS systems via both `3DSlicer <https://www.slicer.org/>`_ and `OHIF <https://ohif.org/>`_.
+1. `Tutorial 1 - Radiology`_
 
-  * To setup a local dataset for annotation follow the instructions under :ref:`DeepEdit Annotation with 3DSlicer`.
-  * To perform annotation of data residing on a remote DICOMweb-accessible PACS follow the instructions under :ref:`DeepEdit Annotation Using OHIF`
+2. `Tutorial 2 - Bundle App Tutorial and Use Cases`_
 
-.. _DeepEdit Annotation with 3DSlicer:
 
-DeepEdit Annotation with 3DSlicer
-=================================
+.. _Radiology:
+
+Tutorial 1 - Radiology
+========================
+
+This example covers the annotation use-case for radiology using the sample MONAILabel App - **radiology**.  MONAI Label server currently supports the annotation of local datasets via 3D Slicer, such as unlabeled images
+residing on disk, and remote data residing on DICOMweb-enabled PACS systems via both `3D Slicer <https://www.slicer.org/>`_ and `OHIF <https://ohif.org/>`_.
+
+  * To setup a local dataset for annotation follow the instructions under :ref:`DeepEdit Annotation with 3D Slicer`.
+  * To perform annotation of data residing on a remote DICOMweb-accessible PACS follow the instructions under :ref:`DeepEdit Annotation Using OHIF`.
+
+.. _DeepEdit Annotation with 3D Slicer:
+
+DeepEdit Annotation with 3D Slicer
+====================================
 
 .. _Deploy MONAI Label Server:
 
 Deploy MONAI Label Server
--------------------------
+----------------------------
 
 On the local machine follow the commands listed below to install MONAI Label, download
 a sample application (Radiology), download a sample dataset (MSD
@@ -41,23 +63,23 @@ heart MRI), and deploy the sample app and standard dataset on the MONAI Label se
   monailabel start_server --app radiology --studies Task09_Spleen/imagesTr --conf models deepedit
 
 
-Install MONAI Label Plugin in 3DSlicer
---------------------------------------
+Install MONAI Label Plugin in 3D Slicer
+------------------------------------------
 
-Install 3DSlicer Preview Version with in-built MONAI Label plugin
+Install 3D Slicer Preview Version with in-built MONAI Label plugin
 
-- Download and Install `3D Slicer <https://download.slicer.org/>`_ version 5.0 or later.
-- Start 3DSlicer
+- Download and Install `3D Slicer Viewer <https://download.slicer.org/>`_ version 5.0 or later.
+- Start 3D Slicer
 - On the menu bar navigate **View** -> **Extension Manager** -> **Active Learning** -> **MONAI Label**
 
   .. image:: ../images/quickstart/3dslicer-extensions-manager.png
-    :alt: 3DSlicer Extensions Manager
+    :alt: 3D Slicer Extensions Manager
     :width: 600
 
 - Install MONAI Label plugin (click "Install")
 - Restart 3D Slicer (click "Restart" in the same dialog box)
 
-To add the MONAI Label icon shortcut on the 3DSlicer toolbar
+To add the MONAI Label icon shortcut on the 3D Slicer toolbar
 
 - Navigate **Edit** -> **Application Settings**
 - Under the **Modules** panel drag **MONAI Label** into **Favorite Modules**
@@ -66,23 +88,23 @@ To add the MONAI Label icon shortcut on the 3DSlicer toolbar
     :alt: MONAI Label Favorite Module
     :width: 600
 
-- Restart 3DSlicer
-- Look for the MONAI Label module icon |MLIcon| in the 3DSlicer toolbar
+- Restart 3D Slicer
+- Look for the MONAI Label module icon |MLIcon| in the 3D Slicer toolbar
 
 .. |MLIcon| image:: ../images/quickstart/MONAILabel.png
   :width: 20
 
-.. _DeepEdit Annotation in 3DSlicer:
+.. _DeepEdit Annotation in 3D Slicer:
 
-DeepEdit Annotation in 3DSlicer
--------------------------------
+DeepEdit Annotation in 3D Slicer
+-----------------------------------
 
-To connect 3DSlicer to MONAI Label Server
+To connect 3D Slicer to MONAI Label Server
 
 - Click on the MONAI Label module icon
 - Click the refresh icon near next to the **MONAI Label server** input field
 
-  - If the MONAI Label server is running locally to 3DSlicer you do not need to enter the server address
+  - If the MONAI Label server is running locally to 3D Slicer you do not need to enter the server address
 
   .. image:: ../images/quickstart/monai-label-iconinput-field-refresh.png
     :alt: MONAI Label Refresh Button
@@ -122,7 +144,7 @@ label storage location.
   pip install monailabel
 
   # download DeepEdit sample app to local directory
-  monailabel apps --name deepedit --download --output .
+  monailabel apps --name radiology --download --output .
 
   # create an empty folder for the custom dataset
   mkdir my_dataset
@@ -131,9 +153,9 @@ label storage location.
   # on the empty dataset folder
   monailabel start_server --app radiology --studies my_dataset --conf models deepedit
 
-We can follow the instructions in the previous section to install and connect 3DSlicer to MONAI
+We can follow the instructions in the previous section to install and connect 3D Slicer to MONAI
 Label Server, however, in this scenario we will instead load a file into MONAI Label Server *through*
-3DSlicer.
+3D Slicer.
 
 - Load an image file by navigating the menu bar **File** -> **Add Data**
 - Click the referesh button under **MONAI Label Server** to connect to the server
@@ -261,4 +283,166 @@ At this point OHIF can be used to annotate the data in the DICOM server via the 
 
 .. note::
 
-  Here, user may also perform annotation using 3DSlicer by following the same instructions as in section :ref:`DeepEdit Annotation in 3DSlicer`.
+  Here, user may also perform annotation using 3D Slicer by following the same instructions as in section :ref:`DeepEdit Annotation in 3D Slicer`.
+
+
+
+.. _Bundle:
+
+================================================
+Tutorial 2 - Bundle App Tutorial and Use Cases
+================================================
+
+Introduction:
+===============
+
+Customized Networks for MONAI Label
+------------------------------------
+
+This tutorial introduces the usage of the Bundle app in MONAILabel  - **monai bundle**.
+
+The Bundle App empowers MONAILabel with customized models, pre- and post-processing, and any anatomies for labeling tasks.
+The Bundle App supports various bundle based training / inference pipelines within the `Model Zoo Release <https://github.com/Project-MONAI/model-zoo/releases/tag/hosting_storage_v1>`_.
+
+Learn more about `MONAI Bundle <https://docs.monai.io/en/latest/mb_specification.html>`_.
+
+Highlights and Features:
+
+  * Supporting customized models and networks such as SwinUNETR, AutoML, etc.
+  * Advancing heterogeneous dataset (e.g., CT, MRI, Pathology, etc) with corresponding pre- and post-processing modules.
+  * Ready-to-Use inference of hundreds of anatomies (e.g., multi-organ abdominal segmentation, whole-brain segmentation) with trained model checkpoints.
+  * Deploying robust interactive labeling tools such as DeepEdit.
+
+.. _Model Zoo for MONAI Label:
+
+Model Zoo for MONAI Label
+-----------------------------
+
+MONAI `Model Zoo <https://github.com/Project-MONAI/model-zoo/releases/tag/hosting_storage_v1>`_ hosts a collection of medical imaging models in the MONAI Bundle format.
+All source code of models (bundles) are tracked in models/, and for each distinct version of a bundle,
+it will be archived as a .zip file (named in the form of bundle_name_version.zip) and stored in Releases.
+
+The MONAI Bundle defines the model package and supports building python-based workflows via structured configurations
+
+1. Self-contained model package with all the necessary information.
+
+2. Structured config that easy to override or reconstruct the workflow.
+
+3. Config provides good readability and usability by separating parameter settings from the python code.
+
+4. Config describes flexible workflow and components, allows for different low-level python implementations.
+
+Currently available bundles: `Model-Zoo <https://github.com/Project-MONAI/model-zoo/releases/tag/hosting_storage_v1>`_.
+
+.. _MONAI Label with 3D Slicer:
+
+Prerequisite Setup
+=================================
+
+1. Install MONAI Label and 3D Slicer
+--------------------------------------
+
+For detailed setups of MONAILabel and 3D Slicer, refer to the `installation steps <https://docs.monai.io/projects/label/en/latest/installation.html>`_ guide
+if MONAILabel is not installed yet.
+
+2. Add MONAI Label Plugin in 3D Slicer
+-----------------------------------------
+
+Add 3D Slicer with in-built MONAI Label plugin if not setup yet. Refer to **Step 3**
+in `installation <https://docs.monai.io/projects/label/en/latest/installation.html>`_ guide.
+
+.. _Select Bundle and Load Configuration to MONAI Label:
+
+Use Case 1: Bundle for SwinUNETR Multi-Organ Segmentation
+================================================================================
+
+On the local machine follow the commands listed below to install MONAI Label, and deploy the bundle app and standard dataset on the MONAI Label server.
+
+* Step 1: Install and start MONAI Label server with the Bundle app.
+
+.. code-block:: bash
+
+  # install MONAI Label
+  pip install monailabel
+
+  # download Bundle sample app to local directory
+  monailabel apps --name monaibundle --download --output .
+
+  # download a local study images, sample dataset such as spleen:
+  monailabel datasets --download --name Task09_Spleen --output .
+
+  # start the bundle app in MONAI label server
+  # and start annotating the images using bundle with the Swin UNETR bundle
+  monailabel start_server --app monaibundle --studies Task09_Spleen/imagesTr --conf models swin_unetr_btcv_segmentation_v0.1.0
+
+
+* Step 2: Start 3D Slicer.
+
+* Step 3: Start the SwinUNETR bundle and follow clicks.
+
+- On the menu bar navigate click **MONAI Label**
+
+  .. image:: ../images/quickstart/bundle_tutorial_1.jpeg
+    :alt: 3D Slicer setup
+    :width: 800
+
+- Check the Model Zoo loading, MONAI Bundle app, and load study image
+
+  .. image:: ../images/quickstart/bundle_tutorial_2.jpeg
+    :alt: load data
+    :width: 800
+
+- Select bundle models and obtain automatic labels
+
+  .. image:: ../images/quickstart/bundle_tutorial_3.jpeg
+    :alt: inference
+    :width: 800
+
+Now get the automatic inference of the trained SwinUNETR model!
+
+- Submit refined labels and train to fine-tune the model
+
+  .. image:: ../images/quickstart/bundle_tutorial_4.jpeg
+    :alt: training
+    :width: 800
+
+Use Case 2: Bundle with Customized Scripts for Renal Substructure Segmentation
+=================================================================================
+
+This use case provides an instruction on using bundle model with customized scripts.
+
+Prerequisite: Check Model Zoo `Release <https://github.com/Project-MONAI/model-zoo/releases/tag/hosting_storage_v1>`_.
+
+.. code-block:: bash
+
+  # install MONAI Label
+  pip install monailabel
+
+  # download Bundle sample app to local directory
+  monailabel apps --name monaibundle --download --output .
+
+  # download a local study images, sample dataset such as spleen:
+  monailabel datasets --download --name Task09_Spleen --output .
+
+  # download the bundle move the downloaded ZIP file to the MONAILable/sample-apps/monaibundle/model and unzip
+  # and save to the monaibundle/model and direct to the customized bundle folder
+  cd <path to the bundle model>/renalStructures_UNEST_segmentation_v0.1.0
+
+  # add customized scripts in the downloaded bundle
+  export PYTHONPATH=$PYTHONPATH:"'/monaibundle/model/renalStructures_UNEST_segmentation_v0.1.0/scripts"
+
+  # start the bundle app in MONAI label server
+    monailabel start_server --app <full path to the monaibundle app/monaibundle> --studies <path to the local dataset/Task09_Spleen/imagesTr>
+  --conf models renalStructures_UNEST_segmentation_v0.1.0
+
+
+
+- Start 3D Slicer and follow same MONAI Label plugin process **MONAI Label**
+
+- Select the customized bundle and inference with pre-trained model for renal structure segmentation
+
+  .. image:: ../images/quickstart/bundle_tutorial_5.jpeg
+    :alt: renal inference
+    :width: 800
+
+Get inferred label with renal cortex, medulla, and collecting system.

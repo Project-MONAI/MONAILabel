@@ -36,15 +36,13 @@ import java.util.Random;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
-import javafx.util.Pair;
-
 public class RequestUtils {
 	private final static Logger logger = LoggerFactory.getLogger(RequestUtils.class);
 
 	public static String request(String method, String uri, String body) throws IOException, InterruptedException {
 		String monaiServer = Settings.serverURLProperty().get();
 		String requestURI = monaiServer + uri;
-		logger.info("MONAI Label Annotation - URL => " + requestURI);
+		logger.info("MONAILabel:: Request URL => " + requestURI);
 
 		var bodyPublisher = (body != null && !body.isEmpty()) ? HttpRequest.BodyPublishers.ofString(body)
 				: HttpRequest.BodyPublishers.noBody();
@@ -55,25 +53,33 @@ public class RequestUtils {
 		var httpClient = HttpClient.newBuilder().build();
 		var response = httpClient.send(request, BodyHandlers.ofString()); // supporting string response only
 		if (response.statusCode() != 200) {
-			logger.info(response.body());
+			logger.info("Error Response (code): " + response.statusCode());
+			logger.info("Error Response (body): " + response.body());
 			throw new IOException(response.toString());
 		}
 		return response.body();
 	}
 
-	public static String requestMultiPart(String method, String uri, Pair<String, File> file, String params)
-			throws IOException, InterruptedException {
+	public static String requestMultiPart(String method, String uri, Map<String, File> files,
+			Map<String, String> fields) throws IOException, InterruptedException {
 		String monaiServer = Settings.serverURLProperty().get();
 		String requestURI = monaiServer + uri;
-		logger.info("MONAI Label Annotation - URL => " + requestURI);
+		logger.info("MONAILabel:: MultiPart Request URL => " + requestURI);
 
 		var multipartData = MultipartData.newBuilder().withCharset(StandardCharsets.UTF_8);
-		if (file != null)
-			multipartData.addFile(file.getKey(), file.getValue().toPath(),
-					Files.probeContentType(file.getValue().toPath()));
-		multipartData.addText("params", params);
-		var mdata = multipartData.build();
 
+		// Add Files
+		if (files != null && !files.isEmpty())
+			for (var file : files.entrySet())
+				multipartData.addFile(file.getKey(), file.getValue().toPath(),
+						Files.probeContentType(file.getValue().toPath()));
+
+		// Add fields
+		if (fields != null && !fields.isEmpty())
+			for (var field : fields.entrySet())
+				multipartData.addText(field.getKey(), field.getValue());
+
+		var mdata = multipartData.build();
 		var request = HttpRequest.newBuilder().version(HttpClient.Version.HTTP_1_1)
 				.header("Content-Type", mdata.getContentType()).method(method, mdata.getBodyPublisher())
 				.uri(URI.create(requestURI)).build();
@@ -81,7 +87,8 @@ public class RequestUtils {
 		var httpClient = HttpClient.newBuilder().build();
 		var response = httpClient.send(request, BodyHandlers.ofString()); // supporting string response only
 		if (response.statusCode() != 200) {
-			logger.info(response.body());
+			logger.info("Error Response (code): " + response.statusCode());
+			logger.info("Error Response (body): " + response.body());
 			throw new IOException(response.toString());
 		}
 		return response.body();

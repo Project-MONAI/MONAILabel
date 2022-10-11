@@ -8,6 +8,7 @@
 # WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 # See the License for the specific language governing permissions and
 # limitations under the License.
+
 from typing import Callable, Sequence
 
 from monai.apps.deepgrow.transforms import (
@@ -99,7 +100,7 @@ class Deepgrow(InferTask):
         return [
             EnsureTyped(keys="pred", device=data.get("device") if data else None),
             Activationsd(keys="pred", sigmoid=True),
-            AsDiscreted(keys="pred", threshold_values=True, logit_thresh=0.5),
+            AsDiscreted(keys="pred", threshold=0.5),
             ToNumpyd(keys="pred"),
             RestoreLabeld(keys="pred", ref_image="image", mode="nearest"),
             AsChannelLastd(keys="pred"),

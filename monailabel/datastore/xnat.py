@@ -1,3 +1,14 @@
+# Copyright (c) MONAI Consortium
+# Licensed under the Apache License, Version 2.0 (the "License");
+# you may not use this file except in compliance with the License.
+# You may obtain a copy of the License at
+#     http://www.apache.org/licenses/LICENSE-2.0
+# Unless required by applicable law or agreed to in writing, software
+# distributed under the License is distributed on an "AS IS" BASIS,
+# WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+# See the License for the specific language governing permissions and
+# limitations under the License.
+
 import hashlib
 import io
 import logging
@@ -5,7 +16,7 @@ import os
 import pathlib
 import shutil
 import time
-from typing import Any, Dict, List
+from typing import Any, Dict, List, Optional
 from urllib.parse import quote_plus
 from xml.etree import ElementTree
 
@@ -21,7 +32,11 @@ xnat_ns = {"xnat": "http://nrg.wustl.edu/xnat"}
 class XNATDatastore(Datastore):
     def __init__(self, api_url, username=None, password=None, project=None, asset_path="", cache_path=""):
         self.api_url = api_url
+        self.xnat_session = requests.sessions.session()
         self.auth = HTTPBasicAuth(username, password) if username else None
+        self.xnat_csrf = ""
+        self._login_xnat()
+
         self.projects = project.split(",") if project else []
         self.projects = {p.strip() for p in self.projects}
         self.asset_path = asset_path
@@ -66,6 +81,9 @@ class XNATDatastore(Datastore):
         pass
 
     def get_label_by_image_id(self, image_id: str, tag: str) -> str:
+        pass
+
+    def get_annotations_by_image_id(self, image_id: str) -> Dict[str, Dict[str, List]]:
         pass
 
     def get_image(self, image_id: str, params=None) -> Any:
@@ -154,6 +172,9 @@ class XNATDatastore(Datastore):
 
     def update_label_info(self, label_id: str, label_tag: str, info: Dict[str, Any]) -> None:
         pass
+
+    def get_dataset_archive(self, limit_cases: Optional[int]) -> str:
+        raise NotImplementedError
 
     def status(self) -> Dict[str, Any]:
         return {
@@ -252,8 +273,29 @@ class XNATDatastore(Datastore):
         scan = fields[3]
         return project, subject, experiment, scan
 
+    def _login_xnat(self):
+        # Get CSRF token
+        url = "{}/data/JSESSION?CSRF=true".format(
+            self.api_url,
+        )
+        csrf_response = self._request_get(url)
+        if not csrf_response.ok:
+            logger.error("XNAT:: Could not get XNAT CSRF token")
+            raise Exception("Could not get XNAT CSRF token")
+        content = csrf_response.content
+        self.xnat_csrf = content.decode("utf-8").strip().split("=")[1]
+
+        # Log in to XNAT
+        url = f"{self.api_url}/data/JSESSION?XNAT_CSRF={self.xnat_csrf}"
+        login_response = self.xnat_session.post(url, auth=self.auth, allow_redirects=True)
+        if not login_response.ok:
+            logger.error("XNAT:: Could not log in to XNAT")
+            raise Exception("Could not log in to XNAT")
+
+        logger.info("XNAT:: Logged in XNAT")
+
     def _request_get(self, url):
-        return requests.get(url, auth=self.auth, allow_redirects=True)
+        return self.xnat_session.get(url, allow_redirects=True)
 
 
 def main():

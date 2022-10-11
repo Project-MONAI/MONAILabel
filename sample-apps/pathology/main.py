@@ -8,23 +8,27 @@
 # WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 # See the License for the specific language governing permissions and
 # limitations under the License.
+
 import ctypes.util
 import logging
 import os
 import platform
 from ctypes import cdll
-from distutils.util import strtobool
 from typing import Dict
 
 import lib.configs
+from lib.activelearning.random import WSIRandom
 
+import monailabel
 from monailabel.datastore.dsa import DSADatastore
 from monailabel.interfaces.app import MONAILabelApp
 from monailabel.interfaces.config import TaskConfig
 from monailabel.interfaces.datastore import Datastore
 from monailabel.interfaces.tasks.infer import InferTask
+from monailabel.interfaces.tasks.strategy import Strategy
 from monailabel.interfaces.tasks.train import TrainTask
 from monailabel.utils.others.class_utils import get_class_names
+from monailabel.utils.others.generic import strtobool
 
 logger = logging.getLogger(__name__)
 
@@ -84,8 +88,9 @@ class MyApp(MONAILabelApp):
             app_dir=app_dir,
             studies=studies,
             conf=conf,
-            name="MONAILabel - Pathology",
+            name=f"MONAILabel - Pathology ({monailabel.__version__})",
             description="DeepLearning models for pathology",
+            version=monailabel.__version__,
         )
 
     def init_remote_datastore(self) -> Datastore:
@@ -137,6 +142,26 @@ class MyApp(MONAILabelApp):
             trainers[n] = t
         return trainers
 
+    def init_strategies(self) -> Dict[str, Strategy]:
+        strategies: Dict[str, Strategy] = {
+            "wsi_random": WSIRandom(),
+        }
+
+        if strtobool(self.conf.get("skip_strategies", "false")):
+            return strategies
+
+        for n, task_config in self.models.items():
+            s = task_config.strategy()
+            if not s:
+                continue
+            s = s if isinstance(s, dict) else {n: s}
+            for k, v in s.items():
+                logger.info(f"+++ Adding Strategy:: {k} => {v}")
+                strategies[k] = v
+
+        logger.info(f"Active Learning Strategies:: {list(strategies.keys())}")
+        return strategies
+
 
 """
 Example to run train/infer/scoring task(s) locally without actually running MONAI Label Server
@@ -158,21 +183,22 @@ def main():
         level=logging.INFO,
         format="[%(asctime)s] [%(process)s] [%(threadName)s] [%(levelname)s] (%(name)s:%(lineno)d) - %(message)s",
         datefmt="%Y-%m-%d %H:%M:%S",
+        force=True,
     )
 
-    run_train = False
     home = str(Path.home())
     studies = f"{home}/Datasets/Pathology"
 
     parser = argparse.ArgumentParser()
     parser.add_argument("-s", "--studies", default=studies)
+    parser.add_argument("-t", "--train", default=False)
     args = parser.parse_args()
 
     app_dir = os.path.dirname(__file__)
     studies = args.studies
 
     app = MyApp(app_dir, studies, {"roi_size": "[1024,1024]", "preload": "true"})
-    if run_train:
+    if args.train:
         train_nuclick(app)
     else:
         # infer_nuclick(app)

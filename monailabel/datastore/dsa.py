@@ -1,10 +1,21 @@
+# Copyright (c) MONAI Consortium
+# Licensed under the Apache License, Version 2.0 (the "License");
+# you may not use this file except in compliance with the License.
+# You may obtain a copy of the License at
+#     http://www.apache.org/licenses/LICENSE-2.0
+# Unless required by applicable law or agreed to in writing, software
+# distributed under the License is distributed on an "AS IS" BASIS,
+# WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+# See the License for the specific language governing permissions and
+# limitations under the License.
+
 import hashlib
 import logging
 import os
 import pathlib
 from io import BytesIO
 from pathlib import Path
-from typing import Any, Dict, List
+from typing import Any, Dict, List, Optional
 
 import girder_client
 import numpy as np
@@ -69,6 +80,30 @@ class DSADatastore(Datastore):
 
     def get_label_by_image_id(self, image_id: str, tag: str) -> str:
         return image_id
+
+    def get_annotations_by_image_id(self, image_id: str) -> Dict[str, Dict[str, List]]:
+        image_id, name = self._name_to_id(image_id)
+
+        data = self.gc.get("annotation", parameters={"limit": 0})
+        result: Dict[str, Dict[str, List]] = {}
+
+        # TODO(avirodov): probably can request only annotation for a given image_id, need to check how.
+        # TODO(avirodov): download only "relevant" annotations. Maybe a flag to start_server?
+        for d in data:
+            if d["itemId"] == image_id:
+                annotation_data = self.gc.get(f'annotation/{d["_id"]}')
+                name = d["annotation"]["name"]
+                result[name] = {}
+                result[name]["points"] = []
+                for element in annotation_data["annotation"]["elements"]:
+                    # TODO(avirodov): support other elements for other training types. For now only NuClick points.
+                    if element["type"] == "point":
+                        # TODO(avirodov): Define a proper annotation model for Monai-Label (DSA's model could be it).
+                        result[name]["points"].append(
+                            (float(element["center"][0]), float(element["center"][1]), float(element["center"][2]))
+                        )
+
+        return result
 
     def get_image(self, image_id: str, params=None) -> Any:
         try:
@@ -202,6 +237,9 @@ class DSADatastore(Datastore):
         raise NotImplementedError
 
     def update_label_info(self, label_id: str, label_tag: str, info: Dict[str, Any]) -> None:
+        raise NotImplementedError
+
+    def get_dataset_archive(self, limit_cases: Optional[int]) -> str:
         raise NotImplementedError
 
     def status(self) -> Dict[str, Any]:

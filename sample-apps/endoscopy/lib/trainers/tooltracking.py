@@ -8,6 +8,7 @@
 # WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 # See the License for the specific language governing permissions and
 # limitations under the License.
+
 import logging
 from typing import Callable, Union
 
@@ -33,6 +34,7 @@ from monai.transforms import (
 from monai.utils import MetricReduction
 
 from monailabel.tasks.train.basic_train import BasicTrainTask, Context
+from monailabel.transform.pre import NormalizeLabeld
 
 logger = logging.getLogger(__name__)
 
@@ -64,6 +66,7 @@ class ToolTracking(BasicTrainTask):
             LoadImaged(keys=("image", "label")),
             AsChannelFirstd("image"),
             AddChanneld(keys="label"),
+            NormalizeLabeld(keys="label"),
             Resized(keys=("image", "label"), spatial_size=(736, 480), mode=("area", "nearest")),
             DivisiblePadd(keys=("image", "label"), k=32),
             ScaleIntensityd(keys=("image", "label")),
@@ -78,8 +81,7 @@ class ToolTracking(BasicTrainTask):
             AsDiscreted(
                 keys=("pred", "label"),
                 argmax=(True, False),
-                to_onehot=True,
-                n_classes=2,
+                to_onehot=(2, 2),
             ),
         ]
 
@@ -88,6 +90,7 @@ class ToolTracking(BasicTrainTask):
             LoadImaged(keys=("image", "label")),
             AsChannelFirstd("image"),
             AddChanneld(keys="label"),
+            NormalizeLabeld(keys="label"),
             Resized(keys=("image", "label"), spatial_size=(736, 480), mode=("area", "nearest")),
             DivisiblePadd(keys=("image", "label"), k=32),
             ScaleIntensityd(keys=("image", "label")),

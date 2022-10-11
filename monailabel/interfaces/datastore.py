@@ -11,7 +11,7 @@
 
 from abc import ABCMeta, abstractmethod
 from enum import Enum
-from typing import Any, Dict, List
+from typing import Any, Dict, List, Optional
 
 
 class DefaultLabelTag(str, Enum):
@@ -84,6 +84,17 @@ class Datastore(metaclass=ABCMeta):
         :param image_id: the desired image's id
         :param tag: matching tag name
         :return: label id
+        """
+        pass
+
+    @abstractmethod
+    def get_annotations_by_image_id(self, image_id: str) -> Dict[str, Dict[str, List]]:
+        """
+        Retrieve annotations for the given image id
+
+        :param image_id: the desired image's id
+        :return: A dictionary containing all annotations, of the format:
+                 Dict[<annotation name given by user>, Dict[<primitive type>, List<coordinates>]]
         """
         pass
 
@@ -176,6 +187,17 @@ class Datastore(metaclass=ABCMeta):
         Return list of image ids available in the datastore
 
         :return: list of image ids List[str]
+        """
+        pass
+
+    @abstractmethod
+    def get_dataset_archive(self, limit_cases: Optional[int]) -> str:
+        """
+        Retrieve ZIP archive of the full dataset containing images,
+        labels and metadata
+
+        :param limit_cases: limit the included cases to this number
+        :return: path to ZIP archive of the full dataset
         """
         pass
 

@@ -111,6 +111,12 @@ export default class Scribbles extends BaseTab {
     ).filter(function(seg) {
       return seg.labelmapIndex == scribblesLabelMapIndex;
     });
+
+    // convert  indices to expected label - needed for scribbles server to identify scribbles label
+    for (let i = 0; i < segments.length; i++)
+    {
+      segments[i].id = parseInt(segments[i].id.split("+")[1]);
+    }
     console.debug(segments);
 
     // perform sanity check and exit if not passed
