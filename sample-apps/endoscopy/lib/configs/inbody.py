@@ -19,7 +19,7 @@ from lib.scoring.cvat import CVATRandomScoring
 from monai.networks.nets import SEResNet50
 
 from monailabel.interfaces.config import TaskConfig
-from monailabel.interfaces.tasks.infer import InferTask
+from monailabel.interfaces.tasks.infer_v2 import InferTask
 from monailabel.interfaces.tasks.scoring import ScoringMethod
 from monailabel.interfaces.tasks.strategy import Strategy
 from monailabel.interfaces.tasks.train import TrainTask

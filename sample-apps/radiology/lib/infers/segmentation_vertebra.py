@@ -35,11 +35,12 @@ from monai.transforms import (
     ToNumpyd,
 )
 
-from monailabel.interfaces.tasks.infer import InferTask, InferType
+from monailabel.interfaces.tasks.infer_v2 import InferType
+from monailabel.tasks.infer.basic_infer import BasicInferTask
 from monailabel.transform.post import Restored
 
 
-class SegmentationVertebra(InferTask):
+class SegmentationVertebra(BasicInferTask):
     """
     This provides Inference Engine for pre-trained vertebra segmentation (UNet) model.
     """
