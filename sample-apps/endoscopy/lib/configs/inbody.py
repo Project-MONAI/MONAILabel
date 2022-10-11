@@ -10,11 +10,13 @@
 # limitations under the License.
 
 import logging
+import os
 from typing import Any, Dict, Optional, Union
 
 import lib.infers
 import lib.trainers
 from lib.scoring.cvat import CVATRandomScoring
+from monai.bundle import download
 
 from monailabel.interfaces.config import TaskConfig
 from monailabel.interfaces.tasks.infer_v2 import InferTask
@@ -30,6 +32,12 @@ logger = logging.getLogger(__name__)
 class InBody(TaskConfig):
     def init(self, name: str, model_dir: str, conf: Dict[str, str], planner: Any, **kwargs):
         super().init(name, model_dir, conf, planner, **kwargs)
+
+        bundle_name = "endoscopy_inbody_classification"
+        bundle_version = "0.1.0"
+        self.bundle_path = os.path.join(self.model_dir, bundle_name)
+        if not os.path.exists(self.bundle_path):
+            download(name=bundle_name, version=bundle_version, bundle_dir=self.model_dir)
 
         # Others
         self.epistemic_enabled = bool(strtobool(conf.get("epistemic_enabled", "false")))

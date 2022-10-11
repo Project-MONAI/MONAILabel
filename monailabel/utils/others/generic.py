@@ -25,6 +25,10 @@ from monai.apps import download_url
 
 logger = logging.getLogger(__name__)
 
+MONAI_ZOO_INFO = "https://raw.githubusercontent.com/Project-MONAI/model-zoo/dev/models/model_info.json"
+MONAI_ZOO_SOURCE = "github"
+MONAI_ZOO_REPO = "Project-MONAI/model-zoo/hosting_storage_v1"
+
 
 def file_ext(name) -> str:
     suffixes = []

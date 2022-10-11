@@ -10,11 +10,13 @@
 # limitations under the License.
 
 import logging
+import os
 from typing import Any, Dict, Optional, Union
 
 import lib.infers
 import lib.trainers
 from lib.scoring.cvat import CVATEpistemicScoring
+from monai.bundle import download
 
 from monailabel.interfaces.config import TaskConfig
 from monailabel.interfaces.tasks.infer_v2 import InferTask
@@ -31,6 +33,12 @@ class ToolTracking(TaskConfig):
     def init(self, name: str, model_dir: str, conf: Dict[str, str], planner: Any, **kwargs):
         super().init(name, model_dir, conf, planner, **kwargs)
 
+        bundle_name = "surgical_tool_segmentation"
+        bundle_version = "0.1.0"
+        self.bundle_path = os.path.join(self.model_dir, bundle_name)
+        if not os.path.exists(self.bundle_path):
+            download(name=bundle_name, version=bundle_version, bundle_dir=self.model_dir)
+
         # Others
         self.epistemic_enabled = strtobool(conf.get("epistemic_enabled", "false"))
         self.epistemic_max_samples = int(conf.get("epistemic_max_samples", "0"))
@@ -39,11 +47,11 @@ class ToolTracking(TaskConfig):
         logger.info(f"EPISTEMIC Enabled: {self.epistemic_enabled}; Samples: {self.epistemic_max_samples}")
 
     def infer(self) -> Union[InferTask, Dict[str, InferTask]]:
-        task: InferTask = lib.infers.ToolTracking(self.model_dir, self.conf)
+        task: InferTask = lib.infers.ToolTracking(self.bundle_path, self.conf)
         return task
 
     def trainer(self) -> Optional[TrainTask]:
-        task: TrainTask = lib.trainers.ToolTracking(self.model_dir)
+        task: TrainTask = lib.trainers.ToolTracking(self.bundle_path)
         return task
 
     def strategy(self) -> Union[None, Strategy, Dict[str, Strategy]]:
