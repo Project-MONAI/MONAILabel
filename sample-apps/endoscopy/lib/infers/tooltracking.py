@@ -24,7 +24,8 @@ from monai.transforms import (
     SqueezeDimd,
 )
 
-from monailabel.interfaces.tasks.infer import InferTask, InferType
+from monailabel.interfaces.tasks.infer_v2 import InferType
+from monailabel.tasks.infer.basic_infer import BasicInferTask
 from monailabel.transform.post import FindContoursd, Restored
 from monailabel.transform.pre import LoadImageExd
 from monailabel.transform.writer import PolygonWriter
@@ -32,7 +33,7 @@ from monailabel.transform.writer import PolygonWriter
 logger = logging.getLogger(__name__)
 
 
-class ToolTracking(InferTask):
+class ToolTracking(BasicInferTask):
     """
     This provides Inference Engine for pre-trained segmentation model for Tool Tracking.
     """

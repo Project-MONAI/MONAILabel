@@ -146,6 +146,7 @@ class FindContoursd(MapTransform):
         key_label_colors="label_colors",
         key_foreground_points=None,
         labels=None,
+        colormap=None,
     ):
         super().__init__(keys)
 
@@ -156,6 +157,7 @@ class FindContoursd(MapTransform):
         self.result_output_key = result_output_key
         self.key_label_colors = key_label_colors
         self.key_foreground_points = key_foreground_points
+        self.colormap = colormap
 
         labels = labels if labels else dict()
         labels = [labels] if isinstance(labels, str) else labels
@@ -171,7 +173,7 @@ class FindContoursd(MapTransform):
         size = d.get("size", [0, 0])
         min_poly_area = d.get("min_poly_area", self.min_poly_area)
         max_poly_area = d.get("max_poly_area", self.max_poly_area)
-        color_map = d.get(self.key_label_colors)
+        color_map = d.get(self.key_label_colors) if self.colormap is None else self.colormap
 
         foreground_points = d.get(self.key_foreground_points, []) if self.key_foreground_points else []
         foreground_points = [Point(pt[1], pt[0]) for pt in foreground_points]  # polygons in (y, x) format

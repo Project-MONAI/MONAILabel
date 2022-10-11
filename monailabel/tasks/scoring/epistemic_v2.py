@@ -20,8 +20,8 @@ import torch
 from monai.metrics.active_learning_metrics import VarianceMetric
 
 from monailabel.interfaces.datastore import Datastore
-from monailabel.interfaces.tasks.infer import InferTask
 from monailabel.interfaces.tasks.scoring import ScoringMethod
+from monailabel.tasks.infer.basic_infer import BasicInferTask
 
 logger = logging.getLogger(__name__)
 
@@ -33,7 +33,7 @@ class EpistemicScoring(ScoringMethod):
 
     def __init__(
         self,
-        infer_task: InferTask,
+        infer_task: BasicInferTask,
         max_samples=0,
         simulation_size=5,
         use_variance=False,

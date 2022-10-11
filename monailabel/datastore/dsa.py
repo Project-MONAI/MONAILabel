@@ -81,6 +81,30 @@ class DSADatastore(Datastore):
     def get_label_by_image_id(self, image_id: str, tag: str) -> str:
         return image_id
 
+    def get_annotations_by_image_id(self, image_id: str) -> Dict[str, Dict[str, List]]:
+        image_id, name = self._name_to_id(image_id)
+
+        data = self.gc.get("annotation", parameters={"limit": 0})
+        result: Dict[str, Dict[str, List]] = {}
+
+        # TODO(avirodov): probably can request only annotation for a given image_id, need to check how.
+        # TODO(avirodov): download only "relevant" annotations. Maybe a flag to start_server?
+        for d in data:
+            if d["itemId"] == image_id:
+                annotation_data = self.gc.get(f'annotation/{d["_id"]}')
+                name = d["annotation"]["name"]
+                result[name] = {}
+                result[name]["points"] = []
+                for element in annotation_data["annotation"]["elements"]:
+                    # TODO(avirodov): support other elements for other training types. For now only NuClick points.
+                    if element["type"] == "point":
+                        # TODO(avirodov): Define a proper annotation model for Monai-Label (DSA's model could be it).
+                        result[name]["points"].append(
+                            (float(element["center"][0]), float(element["center"][1]), float(element["center"][2]))
+                        )
+
+        return result
+
     def get_image(self, image_id: str, params=None) -> Any:
         try:
             name = self.get_image_info(image_id)["name"]

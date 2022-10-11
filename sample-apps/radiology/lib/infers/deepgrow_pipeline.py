@@ -36,13 +36,14 @@ from monai.transforms import (
     Spacingd,
 )
 
-from monailabel.interfaces.tasks.infer import InferTask, InferType
+from monailabel.interfaces.tasks.infer_v2 import InferTask, InferType
+from monailabel.tasks.infer.basic_infer import BasicInferTask
 from monailabel.transform.post import BoundingBoxd, LargestCCd
 
 logger = logging.getLogger(__name__)
 
 
-class InferDeepgrowPipeline(InferTask):
+class InferDeepgrowPipeline(BasicInferTask):
     def __init__(
         self,
         path,

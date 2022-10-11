@@ -34,10 +34,11 @@ from monai.transforms import (
     ToNumpyd,
 )
 
-from monailabel.interfaces.tasks.infer import InferTask, InferType
+from monailabel.interfaces.tasks.infer_v2 import InferType
+from monailabel.tasks.infer.basic_infer import BasicInferTask
 
 
-class Deepgrow(InferTask):
+class Deepgrow(BasicInferTask):
     """
     This provides Inference Engine for Deepgrow 2D/3D pre-trained model.
     For More Details, Refer https://github.com/Project-MONAI/tutorials/tree/master/deepgrow/ignite
