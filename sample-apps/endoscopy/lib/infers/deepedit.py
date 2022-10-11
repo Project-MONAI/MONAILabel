@@ -25,13 +25,14 @@ from monai.transforms import (
 )
 
 from monailabel.deepedit.transforms import AddClickGuidanced, AddGuidanceSignald, ResizeGuidanced
-from monailabel.interfaces.tasks.infer import InferTask, InferType
+from monailabel.interfaces.tasks.infer_v2 import InferType
+from monailabel.tasks.infer.basic_infer import BasicInferTask
 from monailabel.transform.post import FindContoursd, Restored
 from monailabel.transform.pre import LoadImageExd
 from monailabel.transform.writer import PolygonWriter
 
 
-class DeepEdit(InferTask):
+class DeepEdit(BasicInferTask):
     """
     This provides Inference Engine for Deepgrow 2D/3D pre-trained model.
     For More Details, Refer https://github.com/Project-MONAI/tutorials/tree/master/deepgrow/ignite

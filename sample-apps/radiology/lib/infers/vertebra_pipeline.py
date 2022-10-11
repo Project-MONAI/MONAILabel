@@ -16,15 +16,16 @@ from typing import Callable, Sequence
 import torch
 from tqdm import tqdm
 
-from monailabel.interfaces.tasks.infer import InferTask, InferType
+from monailabel.interfaces.tasks.infer_v2 import InferTask, InferType
 from monailabel.interfaces.utils.transform import run_transforms
+from monailabel.tasks.infer.basic_infer import BasicInferTask
 from monailabel.transform.post import Restored
 from monailabel.transform.writer import Writer
 
 logger = logging.getLogger(__name__)
 
 
-class InferVertebraPipeline(InferTask):
+class InferVertebraPipeline(BasicInferTask):
     def __init__(
         self,
         task_loc_spine: InferTask,

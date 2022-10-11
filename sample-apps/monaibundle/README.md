@@ -69,8 +69,8 @@ monailabel start_server --app workspace/monaibundle --studies workspace/images -
 # Pick DeepEdit And Segmentation model (multiple models)
 monailabel start_server --app workspace/monaibundle --studies workspace/images --conf models "spleen_ct_segmentation_v0.1.0,spleen_deepedit_annotation_v0.1.0"
 
-# Pick All (Skip Training Tasks or Infer only mode)
-monailabel start_server --app workspace/monaibundle --studies workspace/images --conf models all --conf skip_trainers true
+# Skip Training Tasks or Infer only mode
+monailabel start_server --app workspace/monaibundle --studies workspace/images --conf models spleen_ct_segmentation_v0.1.0 --conf skip_trainers true
 ```
 
 
