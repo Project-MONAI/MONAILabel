@@ -71,7 +71,7 @@ class BundleInferTask(BasicInferTask):
         type: Union[str, InferType] = InferType.SEGMENTATION,
         pre_filter: Optional[Sequence] = None,
         post_filter: Optional[Sequence] = (Lambdad, SaveImaged),
-        extend_load_image: bool = True,
+        extend_load_image: bool = False,
         add_post_restore: bool = True,
         dropout: float = 0.0,
     ):
@@ -92,13 +92,20 @@ class BundleInferTask(BasicInferTask):
         self.bundle_config = ConfigParser()
         self.bundle_config.read_config(os.path.join(path, "configs", config_paths[0]))
         self.bundle_config.config.update({self.const.key_bundle_root(): path})
+        # Set dropout for scoring models
         if self.dropout > 0:
             self.bundle_config["network_def"]["dropout"] = self.dropout
 
         network = None
         model_path = os.path.join(path, "models", self.const.model_pytorch())
         if os.path.exists(model_path):
-            network = self.bundle_config.get_parsed_content(self.const.key_network_def(), instantiate=True)
+            try:
+                network = self.bundle_config.get_parsed_content(self.const.key_network_def(), instantiate=True)
+            except RuntimeError:
+                logger.warning(
+                    f"Hint: if this is a scoring inference, the provided {path.split('/')[-1]} model do not support instantiation with dropout, skip this epistemic scoring method"
+                )
+                return
         else:
             model_path = os.path.join(path, "models", self.const.model_torchscript())
             if not os.path.exists(model_path):
@@ -135,13 +142,15 @@ class BundleInferTask(BasicInferTask):
         return self.valid
 
     def pre_transforms(self, data=None) -> Sequence[Callable]:
+        # read bundle config pre-transforms
         pre = []
         for k in self.const.key_preprocessing():
             if self.bundle_config.get(k):
                 c = self.bundle_config.get_parsed_content(k, instantiate=True)
                 pre = list(c.transforms) if isinstance(c, Compose) else c
-
+        # get transforms compatible to MONAI Label, filter transforms
         pre = self._filter_transforms(pre, self.post_filter)
+        # If the input needs support direct image in np, such as work with CVAT, replace LoadImaged
         if pre and self.extend_load_image:
             res = []
             for t in pre:
@@ -165,6 +174,7 @@ class BundleInferTask(BasicInferTask):
                 post = list(c.transforms) if isinstance(c, Compose) else c
 
         post = self._filter_transforms(post, self.post_filter)
+        # Add restore to invert back to image space for compatible with Clients
         if self.add_post_restore:
             post.append(Restored(keys=self.key_pred, ref_image=self.key_image))
         return post

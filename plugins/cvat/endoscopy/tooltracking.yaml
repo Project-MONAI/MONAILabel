@@ -29,7 +29,7 @@ spec:
 
   build:
     image: cvat/monailabel.endoscopy.tooltracking
-    baseImage: projectmonai/monailabel:latest
+    baseImage: endoscopybundle:latest
 
     directives:
       preCopy:
@@ -41,6 +41,13 @@ spec:
           value: PYTHONPATH=/opt/conda/monailabel/sample-apps/endoscopy
         - kind: ENV
           value: MONAI_PRETRAINED_PATH=https://github.com/Project-MONAI/MONAILabel/releases/download/data
+        # - kind: RUN
+        #   value: mkdir /opt/conda/monailabel/sample-apps/endoscopy/model
+        # - kind: RUN
+        #   value: wget -O /opt/conda/monailabel/sample-apps/endoscopy/surgical_tool_segmentation.zip "https://www.dropbox.com/s/hc7yubkx6rrb6vb/surgical_tool_segmentation.zip?dl=0"
+        # - kind: RUN
+        #   value: unzip /opt/conda/monailabel/sample-apps/endoscopy/surgical_tool_segmentation.zip -d /opt/conda/monailabel/sample-apps/endoscopy/model
+                     
 
   triggers:
     myHttpTrigger:

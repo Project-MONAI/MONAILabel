@@ -31,6 +31,7 @@ class ToolTracking(BundleInferTask):
         self,
         path: str,
         conf: Dict[str, str],
+        extend_load_image: bool = True,
         **kwargs,
     ):
         super().__init__(path, conf, type=InferType.SEGMENTATION, extend_load_image=True, **kwargs)
