@@ -75,6 +75,7 @@ class BundleInferTask(BasicInferTask):
         extend_load_image: bool = True,
         add_post_restore: bool = True,
         dropout: float = 0.0,
+        **kwargs,
     ):
         self.valid: bool = False
         self.const = const if const else BundleConstants()
@@ -129,6 +130,7 @@ class BundleInferTask(BasicInferTask):
             dimension=dimension,
             description=description,
             preload=strtobool(conf.get("preload", "false")),
+            **kwargs,
         )
         self.valid = True
 

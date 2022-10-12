@@ -66,7 +66,13 @@ class ToolTracking(TaskConfig):
         if self.epistemic_enabled:
             methods[f"{self.name}_epistemic"] = CVATEpistemicScoring(
                 top_k=int(self.conf.get("epistemic_top_k", "10")),
-                infer_task=lib.infers.ToolTracking(self.model_dir, self.conf, dropout=0.2),
+                infer_task=lib.infers.ToolTracking(
+                    self.bundle_path,
+                    self.conf,
+                    dropout=0.2,
+                    train_mode=True,
+                    skip_writer=True,
+                ),
                 function="monailabel.endoscopy.tooltracking",
                 max_samples=self.epistemic_max_samples,
                 simulation_size=self.epistemic_simulation_size,

@@ -46,7 +46,7 @@ class MyApp(MONAILabelApp):
 
         configs = {k: v for k, v in sorted(configs.items())}
 
-        models = conf.get("models", "all")
+        models = conf.get("models")
         if not models:
             print("")
             print("---------------------------------------------------------------------------------------")
@@ -223,6 +223,7 @@ def main():
 
     from monailabel.config import settings
 
+    settings.MONAI_LABEL_AUTO_UPDATE_SCORING = False
     settings.MONAI_LABEL_DATASTORE_AUTO_RELOAD = False
     settings.MONAI_LABEL_DATASTORE_FILE_EXT = ["*.png", "*.jpg", "*.jpeg", ".xml"]
     os.putenv("MASTER_ADDR", "127.0.0.1")
@@ -248,9 +249,18 @@ def main():
     app_dir = os.path.dirname(__file__)
     studies = args.studies
 
-    app = MyApp(app_dir, studies, {"preload": "false", "models": "tooltracking"})
+    app = MyApp(
+        app_dir,
+        studies,
+        {
+            "preload": "false",
+            "models": "tooltracking",
+            "epistemic_enabled": "true",
+            "epistemic_max_samples": "3",
+        },
+    )
     logger.info(app.datastore().status())
-    train_tooltracking(app)
+    score_tooltracking(app)
 
 
 def randamize_ds(train_datalist, val_datalist):
@@ -357,6 +367,16 @@ def train_tooltracking(app):
             "val_batch_size": 2,
             "multi_gpu": False,
             "val_split": 0.1,
+        }
+    )
+    print(res)
+    logger.info("All Done!")
+
+
+def score_tooltracking(app):
+    res = app.scoring(
+        request={
+            "method": "tooltracking_epistemic",
         }
     )
     print(res)
