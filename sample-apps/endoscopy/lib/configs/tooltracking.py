@@ -51,7 +51,7 @@ class ToolTracking(TaskConfig):
         return task
 
     def trainer(self) -> Optional[TrainTask]:
-        task: TrainTask = lib.trainers.ToolTracking(self.bundle_path)
+        task: TrainTask = lib.trainers.ToolTracking(self.bundle_path, self.conf)
         return task
 
     def strategy(self) -> Union[None, Strategy, Dict[str, Strategy]]:

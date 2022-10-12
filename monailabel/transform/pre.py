@@ -15,8 +15,40 @@ from typing import Optional
 from monai.config import KeysCollection
 from monai.data import ImageReader, MetaTensor
 from monai.transforms import LoadImaged, MapTransform
+from monai.utils import PostFix
 
 logger = logging.getLogger(__name__)
+
+
+class LoadImageTensord(MapTransform):
+    def __init__(self, keys: KeysCollection, allow_missing_keys: bool = False, load_image_d=None) -> None:
+        super().__init__(keys, allow_missing_keys)
+        self.load_image_d = load_image_d
+
+    def __call__(self, data, reader: Optional[ImageReader] = None):
+        d = dict(data)
+
+        use_default = True
+        for i, key in enumerate(self.keys):
+            if not isinstance(d[key], str):
+                meta_dict_key = f"{key}_{PostFix.meta()}"
+                meta_dict = d.get(meta_dict_key)
+                if meta_dict is None:
+                    d[meta_dict_key] = dict()
+                    meta_dict = d.get(meta_dict_key)
+
+                image_np = d[key]
+                meta_dict["spatial_shape"] = image_np.shape[:-1]  # type: ignore
+                meta_dict["original_channel_dim"] = -1  # type: ignore
+                meta_dict["original_affine"] = None  # type: ignore
+
+                d[key] = MetaTensor(image_np, meta=meta_dict)
+                use_default = False
+
+        if use_default:
+            d = self.load_image_d(d, reader)
+
+        return d
 
 
 class LoadImageExd(LoadImaged):

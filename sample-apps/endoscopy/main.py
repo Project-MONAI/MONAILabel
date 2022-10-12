@@ -248,10 +248,10 @@ def main():
     app_dir = os.path.dirname(__file__)
     studies = args.studies
 
-    app = MyApp(app_dir, studies, {"preload": "true", "models": "deepedit"})
+    app = MyApp(app_dir, studies, {"preload": "false", "models": "inbody"})
     logger.info(app.datastore().status())
-    for _ in range(3):
-        infer_deepedit(app)
+    for _ in range(1):
+        infer_inbody(app)
 
 
 def randamize_ds(train_datalist, val_datalist):

@@ -24,9 +24,7 @@ class InBody(BundleInferTask):
     """
 
     def __init__(self, path: str, conf: Dict[str, str], **kwargs):
-        BundleInferTask(
-            path, conf, type=InferType.CLASSIFICATION, extend_load_image=True, add_post_restore=False, **kwargs
-        )
+        super().__init__(path, conf, type=InferType.CLASSIFICATION, add_post_restore=False, **kwargs)
 
     def info(self) -> Dict[str, Any]:
         d = super().info()

@@ -27,14 +27,8 @@ class ToolTracking(BundleInferTask):
     This provides Inference Engine for pre-trained segmentation model for Tool Tracking.
     """
 
-    def __init__(
-        self,
-        path: str,
-        conf: Dict[str, str],
-        extend_load_image: bool = True,
-        **kwargs,
-    ):
-        super().__init__(path, conf, type=InferType.SEGMENTATION, extend_load_image=True, **kwargs)
+    def __init__(self, path: str, conf: Dict[str, str], **kwargs):
+        super().__init__(path, conf, type=InferType.SEGMENTATION, **kwargs)
 
     def info(self) -> Dict[str, Any]:
         d = super().info()

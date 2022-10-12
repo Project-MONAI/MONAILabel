@@ -45,11 +45,11 @@ class InBody(TaskConfig):
         logger.info(f"EPISTEMIC Enabled: {self.epistemic_enabled}")
 
     def infer(self) -> Union[InferTask, Dict[str, InferTask]]:
-        task: InferTask = lib.infers.InBody(self.model_dir, self.conf)
+        task: InferTask = lib.infers.InBody(self.bundle_path, self.conf)
         return task
 
     def trainer(self) -> Optional[TrainTask]:
-        task: TrainTask = lib.trainers.InBody(self.model_dir)
+        task: TrainTask = lib.trainers.InBody(self.bundle_path, self.conf)
         return task
 
     def strategy(self) -> Union[None, Strategy, Dict[str, Strategy]]:

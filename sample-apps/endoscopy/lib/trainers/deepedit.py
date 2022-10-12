@@ -19,6 +19,7 @@ from monai.handlers import MeanDice, from_engine
 from monai.handlers.ignite_metric import IgniteMetric
 from monai.inferers import SimpleInferer
 from monai.losses import DiceLoss
+from monai.metrics import MeanIoU
 from monai.transforms import (
     Activationsd,
     AddChanneld,
@@ -35,13 +36,13 @@ from monai.transforms import (
     TorchVisiond,
     ToTensord,
 )
+from monai.utils import MetricReduction
 
 from monailabel.deepedit.handlers import TensorBoard2DImageHandler
 from monailabel.deepedit.interaction import Interaction
 from monailabel.deepedit.transforms import AddGuidanceSignald, AddInitialSeedPointd
 from monailabel.tasks.train.basic_train import BasicTrainTask, Context
 from monailabel.transform.pre import NormalizeLabeld
-from monai.utils import MetricReduction
 
 logger = logging.getLogger(__name__)
 
@@ -147,6 +148,7 @@ class DeepEdit(BasicTrainTask):
             max_interactions=self.max_val_interactions,
             train=False,
         )
+
 
 class MeanIoUMetric(IgniteMetric):
     def __init__(
