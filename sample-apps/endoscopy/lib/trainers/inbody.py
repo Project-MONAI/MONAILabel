@@ -10,11 +10,28 @@
 # limitations under the License.
 
 import logging
+import os.path
 
+import numpy as np
+import torch
+from monai.transforms import LoadImage
+
+from monailabel.datastore.cvat import CVATDatastore
+from monailabel.interfaces.datastore import Datastore
 from monailabel.tasks.train.bundle import BundleTrainTask
 
 logger = logging.getLogger(__name__)
 
 
 class InBody(BundleTrainTask):
-    pass
+    def _fetch_datalist(self, datastore: Datastore):
+        ds = super()._fetch_datalist(datastore)
+
+        out_body = datastore.label_map.get("OutBody", 3) if isinstance(datastore, CVATDatastore) else 1
+        load = LoadImage(dtype=np.uint8, image_only=True)
+
+        for d in ds:
+            label = d.get("label")
+            if label is not None and isinstance(label, str) and os.path.exists(label):
+                d["label"] = int(torch.max(torch.where(load(d["label"]) == out_body, 1, 0)))
+        return ds

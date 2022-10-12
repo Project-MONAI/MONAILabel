@@ -51,7 +51,7 @@ class MyApp(MONAILabelApp):
             print("")
             print("---------------------------------------------------------------------------------------")
             print("Provide --conf models <name>")
-            print("Following are the available models.  You can pass comma (,) seperated names to pass multiple")
+            print("Following are the available models.  You can pass comma (,) separated names to pass multiple")
             print(f"    all, {', '.join(configs.keys())}")
             print("---------------------------------------------------------------------------------------")
             print("")
@@ -64,7 +64,7 @@ class MyApp(MONAILabelApp):
             print("")
             print("---------------------------------------------------------------------------------------")
             print(f"Invalid Model(s) are provided: {invalid}")
-            print("Following are the available models.  You can pass comma (,) seperated names to pass multiple")
+            print("Following are the available models.  You can pass comma (,) separated names to pass multiple")
             print(f"    all, {', '.join(configs.keys())}")
             print("---------------------------------------------------------------------------------------")
             print("")
@@ -248,10 +248,9 @@ def main():
     app_dir = os.path.dirname(__file__)
     studies = args.studies
 
-    app = MyApp(app_dir, studies, {"preload": "false", "models": "inbody"})
+    app = MyApp(app_dir, studies, {"preload": "false", "models": "tooltracking"})
     logger.info(app.datastore().status())
-    for _ in range(1):
-        infer_inbody(app)
+    train_tooltracking(app)
 
 
 def randamize_ds(train_datalist, val_datalist):
