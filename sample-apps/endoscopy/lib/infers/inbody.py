@@ -17,14 +17,15 @@ import torch
 from monai.inferers import Inferer, SimpleInferer
 from monai.transforms import AsChannelFirstd, AsDiscreted, CastToTyped, NormalizeIntensityd, Resized
 
-from monailabel.interfaces.tasks.infer import InferTask, InferType
+from monailabel.interfaces.tasks.infer_v2 import InferType
+from monailabel.tasks.infer.basic_infer import BasicInferTask
 from monailabel.transform.pre import LoadImageExd
 from monailabel.transform.writer import ClassificationWriter
 
 logger = logging.getLogger(__name__)
 
 
-class InBody(InferTask):
+class InBody(BasicInferTask):
     """
     This provides Inference Engine for pre-trained segmentation model for Tool Tracking.
     """

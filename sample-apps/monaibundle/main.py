@@ -20,7 +20,7 @@ from monai.bundle import download
 
 import monailabel
 from monailabel.interfaces.app import MONAILabelApp
-from monailabel.interfaces.tasks.infer import InferTask
+from monailabel.interfaces.tasks.infer_v2 import InferTask
 from monailabel.interfaces.tasks.strategy import Strategy
 from monailabel.interfaces.tasks.train import TrainTask
 from monailabel.tasks.activelearning.first import First
@@ -51,50 +51,41 @@ class MyApp(MONAILabelApp):
             print("---------------------------------------------------------------------------------------")
             print("Provide --conf models <name>")
             print("Following are the available models.  You can pass comma (,) separated names to pass multiple")
-            print("    -c models all\n    -c models {}".format("\n    -c models ".join(available.keys())))
+            print("    -c models {}".format("\n    -c models ".join(available.keys())))
             print("---------------------------------------------------------------------------------------")
             print("")
             exit(-1)
 
         models = models.split(",")
         models = [m.strip() for m in models]
-        # First check whether the bundle model directory is in model-zoo, if no, check local bundle directory.
-        # Use zoo bundle if both exist
-        invalid_zoo = [m for m in models if m != "all" and not available.get(m)]
-        invalid = [m for m in invalid_zoo if not os.path.isdir(os.path.join(self.model_dir, m))]
+        invalid = [m for m in models if not available.get(m) and not os.path.isdir(os.path.join(self.model_dir, m))]
 
-        # Exit if model is not in zoo and local directory
         if invalid:
             print("")
             print("---------------------------------------------------------------------------------------")
             print(f"Invalid Model(s) are provided: {invalid}")
             print("Following are the available models.  You can pass comma (,) separated names to pass multiple")
-            print("    -c models all\n    -c models {}".format("\n    -c models ".join(available.keys())))
-            print("Or provide valid local bundle directories")
+            print("    -c models {}".format("\n    -c models ".join(available.keys())))
+            print(f"Or provide valid local bundle directories under: {self.model_dir}")
             print("---------------------------------------------------------------------------------------")
             print("")
             exit(-1)
         self.models: Dict[str, str] = {}
 
-        for n in models:
-            # Load from local if any bundle is not in Zoo
-            if n != "all" and n not in available.keys():
-                b = os.path.join(self.model_dir, n)
-                logger.info(f"+++ Adding Local Model: {n} => {b}")
-                self.models[n] = b
-            # Otherwise load from model zoo, download if do not exist
-            for k, v in available.items():
-                if self.models.get(k):
-                    continue
-                if n == k or n == "all":
-                    b = os.path.join(os.path.join(self.model_dir, k))
-                    logger.info(f"+++ Adding Model: {k} => {v} => {b}")
-                    if not os.path.exists(b):
-                        download(name=k, bundle_dir=self.model_dir, source=zoo_source, repo=zoo_repo)
-                        e = os.path.join(self.model_dir, re.sub(r"_v.*.zip", "", f"{k}.zip"))
-                        if os.path.isdir(e):
-                            shutil.move(e, b)
-                    self.models[k] = b
+        for k in models:
+            v = available.get(k)
+            p = os.path.join(self.model_dir, k)
+            if not v:
+                logger.info(f"+++ Adding Bundle from Local: {k} => {p}")
+            else:
+                logger.info(f"+++ Adding Bundle from Zoo: {k} => {v} => {p}")
+                if not os.path.exists(p):
+                    download(name=k, bundle_dir=self.model_dir, source=zoo_source, repo=zoo_repo)
+                    e = os.path.join(self.model_dir, re.sub(r"_v.*.zip", "", f"{k}.zip"))
+                    if os.path.isdir(e):
+                        shutil.move(e, p)
+
+            self.models[k] = p
 
         logger.info(f"+++ Using Models: {list(self.models.keys())}")
 
@@ -175,7 +166,7 @@ def main():
     app_dir = os.path.dirname(__file__)
     studies = args.studies
 
-    app = MyApp(app_dir, studies, {"preload": "true", "models": "all"})
+    app = MyApp(app_dir, studies, {"preload": "true", "models": "spleen_ct_segmentation_v0.1.0"})
     train(app)
 
 

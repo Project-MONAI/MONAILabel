@@ -11,7 +11,7 @@
 
 from monai.transforms import Compose, EnsureChannelFirstd, LoadImaged, ScaleIntensityRanged, Spacingd
 
-from monailabel.interfaces.tasks.infer import InferTask, InferType
+from monailabel.interfaces.tasks.infer_v2 import InferType
 from monailabel.scribbles.transforms import (
     AddBackgroundScribblesFromROId,
     ApplyGraphCutOptimisationd,
@@ -19,10 +19,11 @@ from monailabel.scribbles.transforms import (
     MakeLikelihoodFromScribblesGMMd,
     MakeLikelihoodFromScribblesHistogramd,
 )
+from monailabel.tasks.infer.basic_infer import BasicInferTask
 from monailabel.transform.post import BoundingBoxd, Restored
 
 
-class ScribblesLikelihoodInferTask(InferTask):
+class ScribblesLikelihoodInferTask(BasicInferTask):
     """
     Defines a generic Scribbles Likelihood based segmentor infertask
     """

@@ -15,8 +15,8 @@ from typing import Any, Dict
 
 from monailabel.datastore.cvat import CVATDatastore
 from monailabel.interfaces.datastore import Datastore
-from monailabel.interfaces.tasks.infer import InferTask
 from monailabel.interfaces.tasks.scoring import ScoringMethod
+from monailabel.tasks.infer.basic_infer import BasicInferTask
 from monailabel.tasks.scoring.epistemic_v2 import EpistemicScoring
 
 logger = logging.getLogger(__name__)
@@ -26,7 +26,7 @@ class CVATEpistemicScoring(EpistemicScoring):
     def __init__(
         self,
         top_k,
-        infer_task: InferTask,
+        infer_task: BasicInferTask,
         function,
         max_samples=0,
         simulation_size=5,

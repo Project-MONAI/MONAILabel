@@ -42,7 +42,7 @@ from monailabel.datastore.xnat import XNATDatastore
 from monailabel.interfaces.datastore import Datastore, DefaultLabelTag
 from monailabel.interfaces.exception import MONAILabelError, MONAILabelException
 from monailabel.interfaces.tasks.batch_infer import BatchInferImageType, BatchInferTask
-from monailabel.interfaces.tasks.infer import InferTask
+from monailabel.interfaces.tasks.infer_v2 import InferTask
 from monailabel.interfaces.tasks.scoring import ScoringMethod
 from monailabel.interfaces.tasks.strategy import Strategy
 from monailabel.interfaces.tasks.train import TrainTask
@@ -634,6 +634,9 @@ class MONAILabelApp:
         # Possibly region (e.g. DSA)
         if not os.path.exists(image):
             image = datastore.get_image(img_id, request)
+            if isinstance(datastore, DSADatastore):
+                request["annotations"] = datastore.get_annotations_by_image_id(img_id)
+
             if not isinstance(image, str):
                 request["image"] = image
                 res = self.infer(request, datastore)

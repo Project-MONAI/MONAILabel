@@ -16,7 +16,7 @@ from monailabel.interfaces.datastore import Datastore
 
 class TrainTask(metaclass=ABCMeta):
     """
-    Basic Train Task
+    Train Task
     """
 
     def __init__(self, description):

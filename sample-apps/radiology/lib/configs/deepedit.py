@@ -18,7 +18,7 @@ import lib.trainers
 from monai.networks.nets import DynUNet, SwinUNETR
 
 from monailabel.interfaces.config import TaskConfig
-from monailabel.interfaces.tasks.infer import InferTask, InferType
+from monailabel.interfaces.tasks.infer_v2 import InferTask, InferType
 from monailabel.interfaces.tasks.scoring import ScoringMethod
 from monailabel.interfaces.tasks.strategy import Strategy
 from monailabel.interfaces.tasks.train import TrainTask

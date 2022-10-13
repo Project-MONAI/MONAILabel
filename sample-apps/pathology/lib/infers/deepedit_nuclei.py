@@ -24,14 +24,15 @@ from monai.transforms import (
     ToNumpyd,
 )
 
-from monailabel.interfaces.tasks.infer import InferTask, InferType
+from monailabel.interfaces.tasks.infer_v2 import InferType
+from monailabel.tasks.infer.basic_infer import BasicInferTask
 from monailabel.transform.post import FindContoursd
 from monailabel.transform.writer import PolygonWriter
 
 logger = logging.getLogger(__name__)
 
 
-class DeepEditNuclei(InferTask):
+class DeepEditNuclei(BasicInferTask):
     """
     This provides Inference Engine for pre-trained segmentation (UNet) model over MSD Dataset.
     """

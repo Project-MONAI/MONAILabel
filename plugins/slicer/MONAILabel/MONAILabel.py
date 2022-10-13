@@ -604,13 +604,12 @@ class MONAILabelWidget(ScriptedLoadableModuleWidget, VTKObservationMixin):
 
         self.ui.trainerBox.clear()
         trainers = self.info.get("trainers", {})
-        if trainers:
-            self.ui.trainerBox.addItem("ALL")
         for t in trainers:
             self.ui.trainerBox.addItem(t)
-        currentTrainer = self._parameterNode.GetParameter("CurrentTrainer")
-        currentTrainer = currentTrainer if currentTrainer else self.state["CurrentTrainer"]
-        self.ui.trainerBox.setCurrentIndex(self.ui.trainerBox.findText(currentTrainer) if currentTrainer else 0)
+        if trainers:
+            currentTrainer = self._parameterNode.GetParameter("CurrentTrainer")
+            currentTrainer = currentTrainer if currentTrainer else self.state["CurrentTrainer"]
+            self.ui.trainerBox.setCurrentIndex(self.ui.trainerBox.findText(currentTrainer) if currentTrainer else 0)
 
         developer_mode = slicer.util.settingsValue("MONAILabel/developerMode", True, converter=slicer.util.toBool)
         self.ui.optionsCollapsibleButton.setVisible(developer_mode)
@@ -1134,14 +1133,13 @@ class MONAILabelWidget(ScriptedLoadableModuleWidget, VTKObservationMixin):
             self.updateServerSettings()
 
             model = self.ui.trainerBox.currentText
-            if model == "ALL" and not slicer.util.confirmOkCancelDisplay(
-                "This will trigger Training task for all models.  Are you sure to continue?"
-            ):
+            if not model:
+                slicer.util.errorDisplay(
+                    "No Model selected is to run the training", detailedText=traceback.format_exc()
+                )
                 return
 
-            model = model if model and model != "ALL" else None
             params = self.getParamsFromConfig("train", model)
-
             status = self.logic.train_start(model, params)
 
             self.ui.trainingProgressBar.setValue(1)

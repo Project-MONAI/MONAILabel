@@ -18,7 +18,8 @@ from monai.bundle import ConfigParser
 from monai.inferers import Inferer, SimpleInferer
 from monai.transforms import Compose, SaveImaged
 
-from monailabel.interfaces.tasks.infer import InferTask, InferType
+from monailabel.interfaces.tasks.infer_v2 import InferType
+from monailabel.tasks.infer.basic_infer import BasicInferTask
 from monailabel.transform.post import Restored
 
 logger = logging.getLogger(__name__)
@@ -56,7 +57,7 @@ class BundleConstants:
         return ["inferer"]
 
 
-class BundleInferTask(InferTask):
+class BundleInferTask(BasicInferTask):
     """
     This provides Inference Engine for Monai Bundle.
     """

@@ -31,11 +31,12 @@ from monai.transforms import (
     ToNumpyd,
 )
 
-from monailabel.interfaces.tasks.infer import InferTask, InferType
+from monailabel.interfaces.tasks.infer_v2 import InferType
+from monailabel.tasks.infer.basic_infer import BasicInferTask
 from monailabel.transform.post import Restored
 
 
-class DeepEdit(InferTask):
+class DeepEdit(BasicInferTask):
     """
     This provides Inference Engine for pre-trained model over Multi Atlas Labeling Beyond The Cranial Vault (BTCV)
     dataset.
