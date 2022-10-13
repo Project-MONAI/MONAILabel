@@ -180,8 +180,8 @@ class SegmentationBrats(TaskConfig):
             spatial_dims=3,
             in_channels=self.number_intensity_ch,
             out_channels=len(self.labels) + 1,  # labels plus background,
-            channels=(16, 32, 64, 128),
-            strides=(2, 2, 2),
+            channels=(16, 32, 64),
+            strides=(2, 2),
             num_res_units=2,
             dropout=0.2,
         )

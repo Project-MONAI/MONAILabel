@@ -99,7 +99,7 @@ class AddUnknownLabeld(MapTransform):
         d: Dict = dict(data)
         for key in self.key_iterator(d):
             unknown_mask = copy.deepcopy(d["image"][..., 0])
-            unknown_mask[unknown_mask > 0] = 1
+            unknown_mask[unknown_mask > unknown_mask.max() * 0.10] = 1
             mask_all_labels = copy.deepcopy(d[key])
             mask_all_labels[mask_all_labels > 0] = 1
             unknown_mask = unknown_mask - mask_all_labels
