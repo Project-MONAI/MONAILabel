@@ -26,6 +26,9 @@ class InBody(BundleInferTask):
     def __init__(self, path: str, conf: Dict[str, str], **kwargs):
         super().__init__(path, conf, type=InferType.CLASSIFICATION, add_post_restore=False, **kwargs)
 
+        # Override Labels
+        self.labels = {"InBody": 0, "OutBody": 1}
+
     def info(self) -> Dict[str, Any]:
         d = super().info()
         d["endoscopy"] = True

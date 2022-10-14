@@ -30,6 +30,10 @@ class ToolTracking(BundleInferTask):
     def __init__(self, path: str, conf: Dict[str, str], **kwargs):
         super().__init__(path, conf, type=InferType.SEGMENTATION, **kwargs)
 
+        # Override Labels
+        self.labels = {"Tool": 1}
+        self.label_colors = {"Tool": (255, 0, 0)}
+
     def info(self) -> Dict[str, Any]:
         d = super().info()
         d["endoscopy"] = True
