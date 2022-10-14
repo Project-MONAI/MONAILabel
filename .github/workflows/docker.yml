@@ -11,6 +11,8 @@
 
 name: docker
 on:
+  schedule:
+    - cron: "0 2 * * 0"  # 02:00 of every Sunday
   workflow_dispatch:
     inputs:
       tag:
@@ -41,14 +43,14 @@ jobs:
         run: |
           ./runtests.sh --clean
           docker system prune -f
-          DOCKER_BUILDKIT=1 docker build -t projectmonai/monailabel:${{ github.event.inputs.tag }} -f Dockerfile .
+          DOCKER_BUILDKIT=1 docker build -t projectmonai/monailabel:${{ github.event.inputs.tag || 'latest'  }} -f Dockerfile .
       - name: Verify
         run: |
           ./runtests.sh --clean
-          docker run --rm -i --ipc=host --net=host -v $(pwd):/workspace projectmonai/monailabel:${{ github.event.inputs.tag }} /workspace/runtests.sh --net
+          docker run --rm -i --ipc=host --net=host -v $(pwd):/workspace projectmonai/monailabel:${{ github.event.inputs.tag || 'latest'  }} /workspace/runtests.sh --net
       - name: Publish
         run: |
           echo "${{ secrets.DOCKER_PW }}" | docker login -u projectmonai --password-stdin
-          docker push projectmonai/monailabel:${{ github.event.inputs.tag }}
+          docker push projectmonai/monailabel:${{ github.event.inputs.tag || 'latest' }}
           docker logout
           docker image prune -f
