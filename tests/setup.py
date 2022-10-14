@@ -42,5 +42,6 @@ def run_main():
         os.makedirs(os.path.join(TEST_DATA, "endoscopy"))
         extractall(filepath=downloaded_endoscopy_file, output_dir=os.path.join(TEST_DATA, "endoscopy"))
 
+
 if __name__ == "__main__":
     run_main()

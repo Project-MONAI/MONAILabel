@@ -12,6 +12,7 @@ import unittest
 
 import requests
 import torch
+
 from tests.integration import SERVER_URI
 
 
