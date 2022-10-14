@@ -25,7 +25,7 @@ class LoadImageTensord(MapTransform):
         super().__init__(keys, allow_missing_keys)
         self.load_image_d = load_image_d
 
-    def __call__(self, data, reader: Optional[ImageReader] = None):
+    def __call__(self, data):
         d = dict(data)
 
         use_default = True
@@ -46,7 +46,7 @@ class LoadImageTensord(MapTransform):
                 use_default = False
 
         if use_default:
-            d = self.load_image_d(d, reader)
+            d = self.load_image_d(d)
 
         return d
 

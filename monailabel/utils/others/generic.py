@@ -188,8 +188,11 @@ def download_file(url, path, delay=1, skip_on_exists=True):
 
 def device_list():
     devices = [] if torch.cuda.is_available() else ["cpu"]
-    for i in range(torch.cuda.device_count()):
-        devices.append(f"cuda:{i}")
+    if torch.cuda.device_count():
+        devices.append("cuda")
+    if torch.cuda.device_count() > 1:
+        for i in range(torch.cuda.device_count()):
+            devices.append(f"cuda:{i}")
 
     return devices
 

@@ -11,6 +11,8 @@
 
 import logging
 import os
+import re
+import shutil
 from typing import Dict
 
 import requests
@@ -67,17 +69,17 @@ class MyApp(MONAILabelApp):
         self.models: Dict[str, str] = {}
 
         for k in models:
+            v = available.get(k)
             p = os.path.join(self.model_dir, k)
-            name = available.get(k)
-            if not name:
+            if not v:
                 logger.info(f"+++ Adding Bundle from Local: {k} => {p}")
             else:
-                fields = k.split("_v0.")
-                version = fields[-1] if len(fields) > 1 else None
-                name = "".join(fields[:-1]) if version else k
-
-                logger.info(f"+++ Adding Bundle from Zoo: {k} => ({name}, {version}) => {p}")
-                download(name=name, version=version, bundle_dir=self.model_dir, source=zoo_source, repo=zoo_repo)
+                logger.info(f"+++ Adding Bundle from Zoo: {k} => {v} => {p}")
+                if not os.path.exists(p):
+                    download(name=k, bundle_dir=self.model_dir, source=zoo_source, repo=zoo_repo)
+                    e = os.path.join(self.model_dir, re.sub(r"_v.*.zip", "", f"{k}.zip"))
+                    if os.path.isdir(e):
+                        shutil.move(e, p)
 
             self.models[k] = p
 
