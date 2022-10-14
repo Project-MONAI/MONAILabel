@@ -101,14 +101,11 @@ monailabel apps --download --name endoscopy --output workspace
 # Pick DeepEdit model
 monailabel start_server --app workspace/endoscopy --studies workspace/images --conf models deepedit
 
-# Pick All
-monailabel start_server --app workspace/endoscopy --studies workspace/images --conf models all
+# Pick DeepEdit model + Preload into All GPU devices
+monailabel start_server --app workspace/endoscopy --studies workspace/images --conf models deepedit --conf preload true
 
-# Pick All + Preload into All GPU devices
-monailabel start_server --app workspace/endoscopy --studies workspace/images --conf models all --conf preload true
-
-# Pick All (Skip Training Tasks or Infer only mode)
-monailabel start_server --app workspace/endoscopy --studies workspace/images --conf models all --conf skip_trainers true
+# Pick DeepEdit (Skip Training Tasks or Infer only mode)
+monailabel start_server --app workspace/endoscopy --studies workspace/images --conf models deepedit --conf skip_trainers true
 ```
 
 #### With CVAT (Active Learning)
