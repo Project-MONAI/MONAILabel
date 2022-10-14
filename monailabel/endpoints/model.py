@@ -24,7 +24,7 @@ logger = logging.getLogger(__name__)
 
 router = APIRouter(
     prefix="/model",
-    tags=["AppService"],
+    tags=["Model"],
     responses={404: {"description": "Not found"}},
 )
 
