@@ -75,8 +75,8 @@ class SegmentationNuclei(BasicInferTask):
     def post_transforms(self, data=None) -> Sequence[Callable]:
         return [
             EnsureTyped(keys="pred", device=data.get("device") if data else None),
-            Activationsd(keys="pred", softmax=len(self.labels) > 1, sigmoid=len(self.labels) == 1),
-            AsDiscreted(keys="pred", argmax=len(self.labels) > 1, threshold=0.5 if len(self.labels) == 1 else None),
+            Activationsd(keys="pred", softmax=True),
+            AsDiscreted(keys="pred", argmax=True),
             SqueezeDimd(keys="pred", dim=0),
             ToNumpyd(keys=("image", "pred")),
             PostFilterLabeld(keys="pred", image="image"),
