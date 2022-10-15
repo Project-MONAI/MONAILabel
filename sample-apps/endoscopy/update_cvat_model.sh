@@ -34,7 +34,7 @@ if [ ! $(docker inspect -f '{{.State.Status}}' $FUNC_CONTAINER) == "running" ]; 
     echo "$FUNC_CONTAINER container is not running, can not publish to container..."
 fi
 
-# Fetch latest model 
+# Fetch latest model
 if [ $FUNC_NAME == "deepedit" ];then
     MODEL_PATH="$APP_ROOT/model/$FUNC_NAME.pt"
     # Replace prior pretrained model with lastest model as current pre-trained model
