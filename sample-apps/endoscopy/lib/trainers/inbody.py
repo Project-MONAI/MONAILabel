@@ -10,94 +10,28 @@
 # limitations under the License.
 
 import logging
+import os.path
 
 import numpy as np
 import torch
-from ignite.metrics import Accuracy
-from lib.transforms import LabelToBinaryClassd
-from monai.handlers import from_engine
-from monai.inferers import SimpleInferer
-from monai.transforms import (
-    AsChannelFirstd,
-    AsDiscreted,
-    CastToTyped,
-    EnsureTyped,
-    LoadImaged,
-    NormalizeIntensityd,
-    RandFlipd,
-    RandGaussianNoised,
-    RandRotated,
-    RandScaleIntensityd,
-    RandShiftIntensityd,
-    Resized,
-    ToTensord,
-)
+from monai.transforms import LoadImage
 
-from monailabel.tasks.train.basic_train import BasicTrainTask, Context
+from monailabel.datastore.cvat import CVATDatastore
+from monailabel.interfaces.datastore import Datastore
+from monailabel.tasks.train.bundle import BundleTrainTask
 
 logger = logging.getLogger(__name__)
 
 
-class InBody(BasicTrainTask):
-    def __init__(
-        self,
-        model_dir,
-        network,
-        labels,
-        description="Endoscopy Classification for InBody/OutBody",
-        **kwargs,
-    ):
-        self._network = network
-        self.labels = labels
-        super().__init__(model_dir, description, **kwargs)
+class InBody(BundleTrainTask):
+    def _fetch_datalist(self, datastore: Datastore):
+        ds = super()._fetch_datalist(datastore)
 
-    def network(self, context: Context):
-        return self._network
+        out_body = datastore.label_map.get("OutBody", 3) if isinstance(datastore, CVATDatastore) else 1
+        load = LoadImage(dtype=np.uint8, image_only=True)
 
-    def optimizer(self, context: Context):
-        return torch.optim.Adam(context.network.parameters(), 0.001)
-
-    def loss_function(self, context: Context):
-        return torch.nn.CrossEntropyLoss(reduction="sum")
-
-    def train_pre_transforms(self, context: Context):
-        return [
-            LoadImaged(keys=("image", "label"), dtype=np.uint8),
-            LabelToBinaryClassd(keys="label", offset=2),
-            ToTensord(keys=("image", "label")),
-            AsChannelFirstd("image"),
-            Resized(keys="image", spatial_size=(256, 256), mode="bilinear"),
-            CastToTyped(keys="image", dtype=torch.float32),
-            NormalizeIntensityd(keys="image", nonzero=True, channel_wise=True),
-            EnsureTyped(keys="image"),
-            RandRotated(keys="image", range_x=0.3, prob=0.5, mode="bilinear"),
-            RandScaleIntensityd(keys="image", factors=0.3, prob=0.5),
-            RandShiftIntensityd(keys="image", offsets=0.1, prob=0.5),
-            RandGaussianNoised(keys="image", std=0.01, prob=0.5),
-            RandFlipd(keys="image", spatial_axis=0, prob=0.5),
-            RandFlipd(keys="image", spatial_axis=1, prob=0.5),
-        ]
-
-    def train_post_transforms(self, context: Context):
-        return [AsDiscreted(keys=("pred", "label"), argmax=(True, False), to_onehot=(2, 2))]
-
-    def val_pre_transforms(self, context: Context):
-        return [
-            LoadImaged(keys=("image", "label"), dtype=np.uint8),
-            LabelToBinaryClassd(keys="label", offset=2),
-            ToTensord(keys=("image", "label")),
-            AsChannelFirstd("image"),
-            Resized(keys="image", spatial_size=(256, 256), mode="bilinear"),
-            CastToTyped(keys="image", dtype=torch.float32),
-            NormalizeIntensityd(keys="image", nonzero=True, channel_wise=True),
-            EnsureTyped(keys="image"),
-        ]
-
-    def val_inferer(self, context: Context):
-        return SimpleInferer()
-
-    def train_key_metric(self, context: Context):
-        return {"train_acc": Accuracy(output_transform=from_engine(["pred", "label"]))}
-
-    def val_key_metric(self, context):
-        return {"val_mean_acc": Accuracy(output_transform=from_engine(["pred", "label"]))}
+        for d in ds:
+            label = d.get("label")
+            if label is not None and isinstance(label, str) and os.path.exists(label):
+                d["label"] = int(torch.max(torch.where(load(d["label"]) == out_body, 1, 0)))
+        return ds

@@ -25,6 +25,10 @@ from monai.apps import download_url
 
 logger = logging.getLogger(__name__)
 
+MONAI_ZOO_INFO = "https://raw.githubusercontent.com/Project-MONAI/model-zoo/dev/models/model_info.json"
+MONAI_ZOO_SOURCE = "github"
+MONAI_ZOO_REPO = "Project-MONAI/model-zoo/hosting_storage_v1"
+
 
 def file_ext(name) -> str:
     suffixes = []
@@ -184,8 +188,11 @@ def download_file(url, path, delay=1, skip_on_exists=True):
 
 def device_list():
     devices = [] if torch.cuda.is_available() else ["cpu"]
-    for i in range(torch.cuda.device_count()):
-        devices.append(f"cuda:{i}")
+    if torch.cuda.device_count():
+        devices.append("cuda")
+    if torch.cuda.device_count() > 1:
+        for i in range(torch.cuda.device_count()):
+            devices.append(f"cuda:{i}")
 
     return devices
 
