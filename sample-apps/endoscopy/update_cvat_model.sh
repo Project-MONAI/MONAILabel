@@ -15,7 +15,11 @@
 # bash /bin/update_cvat_model.sh <FUNCTION_NAME> <MODEL_PATH>
 
 FUNC_NAME=$1
-MODEL_PATH=$2
+
+APP_ROOT=$( cd -- "$( dirname -- "${BASH_SOURCE[0]}" )" &> /dev/null && pwd )
+
+# Hash table for bundle names
+declare -A BUNDLENAMES=( ["inbody"]="endoscopic_inbody_classification" ["tooltracking"]="endoscopic_tool_segmentation")
 
 if [ $# -eq 0 ];then
     echo "Usage: No function name provided, exiting..."
@@ -30,15 +34,23 @@ if [ ! $(docker inspect -f '{{.State.Status}}' $FUNC_CONTAINER) == "running" ]; 
     echo "$FUNC_CONTAINER container is not running, can not publish to container..."
 fi
 
-# default published model name
-MODEL_CONTAINER="/opt/conda/monailabel/sample-apps/endoscopy/model/pretrained_$FUNC_NAME.pt" # default model path at function container
+# Fetch latest model 
+if [ $FUNC_NAME == "deepedit" ];then
+    MODEL_PATH="$APP_ROOT/model/$FUNC_NAME.pt"
+    # Replace prior pretrained model with lastest model as current pre-trained model
+    MODEL_CONTAINER="/opt/conda/monailabel/sample-apps/endoscopy/model/pretrained_$FUNC_NAME.pt" # default model path at function container
+else
+    # if bundle is used, get bundle name and fetch the model
+    BUNDLE_NAME=${BUNDLENAMES[$FUNC_NAME]}
+    MODEL_PATH="$APP_ROOT/model/$BUNDLE_NAME/models/model.pt"
+    # Update to bundle nuclio container
+    MODEL_CONTAINER="/opt/conda/monailabel/sample-apps/endoscopy/model/$BUNDLE_NAME/models/model_new2.pt" # default model path at function container
+fi
 
-# Check if latest  model checkpoint is done and saved, error if blank.
+# Check if latest  model checkpoint is done and saved.
 if [ -z "$MODEL_PATH" ] || [ ! -f "$MODEL_PATH" ]; then
     echo "Latest model checkpoint not provided or published, exiting..."
 else
-    # Replace prior pretrained model with lastest model as current pre-trained model
     $(docker cp "$MODEL_PATH" "$FUNC_CONTAINER:$MODEL_CONTAINER")
-    echo "Published latest mode: $MODEL_PATH into $FUNC_NAME nuclio function container."
+    echo "Fetched and Published latest model: $FUNC_NAME to the nuclio function container."
 fi
-

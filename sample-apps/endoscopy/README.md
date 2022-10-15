@@ -124,14 +124,17 @@ monailabel start_server \
   --conf auto_finetune_check_interval 30
 ```
 
-#### Update/Publish latest model back to CVAT
+#### Fetch and Publish latest model to CVAT/Nuclio
 After re-train the fine-tuned model meets all the conditions to be considered as a good model.  You can push the model to cvat/nuclio function container.
 ```bash
-workspace/endoscopy/update_cvat_model.sh <FUNCTION_NAME> <MODEL_PATH>
+workspace/endoscopy/update_cvat_model.sh <FUNCTION_NAME> 
 
-# publish tool tracking model (run this command on the node where cvat/nuclio containers are running)
-workspace/endoscopy/update_cvat_model.sh tootracking ./workspace/endoscopy/model/tooltracking.pt
-
+# Bundle Example: publish tool tracking bundle trained model (run this command on the node where cvat/nuclio containers are running)
+workspace/endoscopy/update_cvat_model.sh tootracking 
+# Bundle Example: publish inbody trained model 
+workspace/endoscopy/update_cvat_model.sh inbody 
+# DeepEdit Example: publish deepedit trained model (Not from bundle)
+workspace/endoscopy/update_cvat_model.sh deepedit 
 ```
 
 Following are additional configs *(pass them as **--conf name value**) are useful when you use CVAT for Active Learning workflow.
