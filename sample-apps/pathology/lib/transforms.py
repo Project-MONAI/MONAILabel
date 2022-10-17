@@ -199,7 +199,7 @@ class PostFilterLabeld(MapTransform):
             if self.min_hole:
                 label = remove_small_holes(label, area_threshold=self.min_hole)
 
-            d[key] = label.astype(np.uint8)
+            d[key] = np.where(label > 0, d[key], 0)
         return d
 
 

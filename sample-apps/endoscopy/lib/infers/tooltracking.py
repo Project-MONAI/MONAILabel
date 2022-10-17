@@ -12,86 +12,39 @@
 import logging
 from typing import Any, Callable, Dict, Sequence
 
-import numpy as np
-from monai.inferers import Inferer, SimpleInferer
-from monai.transforms import (
-    AsChannelFirstd,
-    AsDiscreted,
-    DivisiblePadd,
-    EnsureTyped,
-    Resized,
-    ScaleIntensityd,
-    SqueezeDimd,
-)
+from monai.transforms import SqueezeDimd
 
 from monailabel.interfaces.tasks.infer_v2 import InferType
-from monailabel.tasks.infer.basic_infer import BasicInferTask
-from monailabel.transform.post import FindContoursd, Restored
-from monailabel.transform.pre import LoadImageExd
+from monailabel.tasks.infer.bundle import BundleInferTask
+from monailabel.transform.post import FindContoursd
 from monailabel.transform.writer import PolygonWriter
 
 logger = logging.getLogger(__name__)
 
 
-class ToolTracking(BasicInferTask):
+class ToolTracking(BundleInferTask):
     """
     This provides Inference Engine for pre-trained segmentation model for Tool Tracking.
     """
 
-    def __init__(
-        self,
-        path,
-        network=None,
-        type=InferType.SEGMENTATION,
-        labels=None,
-        dimension=2,
-        description="A pre-trained semantic segmentation model for Tool Tracking",
-        find_contours=True,
-        **kwargs,
-    ):
-        self.find_contours = find_contours
-        super().__init__(
-            path=path,
-            network=network,
-            type=type,
-            labels=labels,
-            dimension=dimension,
-            description=description,
-            **kwargs,
-        )
+    def __init__(self, path: str, conf: Dict[str, str], **kwargs):
+        super().__init__(path, conf, type=InferType.SEGMENTATION, **kwargs)
+
+        # Override Labels
+        self.labels = {"Tool": 1}
+        self.label_colors = {"Tool": (255, 0, 0)}
 
     def info(self) -> Dict[str, Any]:
         d = super().info()
         d["endoscopy"] = True
         return d
 
-    def pre_transforms(self, data=None) -> Sequence[Callable]:
-        return [
-            LoadImageExd(keys="image", dtype=np.uint8),
-            AsChannelFirstd(keys="image"),
-            Resized(keys="image", spatial_size=(736, 480)),
-            DivisiblePadd(keys="image", k=32),
-            ScaleIntensityd(keys="image"),
-        ]
-
-    def inferer(self, data=None) -> Inferer:
-        return SimpleInferer()
-
     def post_transforms(self, data=None) -> Sequence[Callable]:
-        t = [
-            EnsureTyped(keys="pred", device=data.get("device") if data else None),
-            AsDiscreted(keys="pred", argmax=True),
-            Restored(keys="pred", ref_image="image"),
-            SqueezeDimd(keys="pred", dim=0),
-        ]
-
-        if self.find_contours:
-            t.append(FindContoursd(keys="pred", labels=self.labels))
+        t = list(super().post_transforms())
+        t.append(SqueezeDimd(keys="pred", dim=0))
+        t.append(FindContoursd(keys="pred", labels=self.labels))
         return t
 
     def writer(self, data, extension=None, dtype=None):
-        if self.find_contours:
-            writer = PolygonWriter(label=self.output_label_key, json=self.output_json_key)
-            return writer(data)
-
-        return super().writer(data, extension, dtype)
+        writer = PolygonWriter(label=self.output_label_key, json=self.output_json_key)
+        return writer(data)

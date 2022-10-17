@@ -23,7 +23,7 @@ from monailabel.interfaces.exception import MONAILabelError, MONAILabelException
 from monailabel.interfaces.tasks.infer_v2 import InferTask, InferType
 from monailabel.interfaces.utils.transform import dump_data, run_transforms
 from monailabel.transform.cache import CacheTransformDatad
-from monailabel.transform.writer import Writer
+from monailabel.transform.writer import ClassificationWriter, Writer
 from monailabel.utils.others.generic import device_list
 
 logger = logging.getLogger(__name__)
@@ -462,6 +462,14 @@ class BasicInferTask(InferTask):
             data["result_dtype"] = dtype
         if self.labels is not None:
             data["labels"] = self.labels
+
+        if self.type == InferType.CLASSIFICATION:
+            if isinstance(self.labels, dict):
+                label_names = {v: k for k, v in self.labels.items()}
+            else:
+                label_names = {v: k for v, k in enumerate(self.labels)}
+            cw = ClassificationWriter(label=self.output_label_key, label_names=label_names)
+            return cw(data)
 
         writer = Writer(label=self.output_label_key, json=self.output_json_key)
         return writer(data)

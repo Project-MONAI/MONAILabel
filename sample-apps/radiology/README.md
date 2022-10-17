@@ -61,14 +61,11 @@ monailabel start_server --app workspace/radiology --studies workspace/images --c
 # Pick all stages for vertebra segmentation
 monailabel start_server --app workspace/radiology --studies workspace/images --conf models "localization_spine,localization_vertebra,segmentation_vertebra"
 
-# Pick All
-monailabel start_server --app workspace/radiology --studies workspace/images --conf models all
+# Pick DeepEdit + Preload into All GPU devices
+monailabel start_server --app workspace/radiology --studies workspace/images --conf models deepedit --conf preload true
 
-# Pick All + Preload into All GPU devices
-monailabel start_server --app workspace/radiology --studies workspace/images --conf models all --conf preload true
-
-# Pick All (Skip Training Tasks or Infer only mode)
-monailabel start_server --app workspace/radiology --studies workspace/images --conf models all --conf skip_trainers true
+# Pick DeepEdit (Skip Training Tasks or Infer only mode)
+monailabel start_server --app workspace/radiology --studies workspace/images --conf models deepedit --conf skip_trainers true
 ```
 
 ### Model Overview

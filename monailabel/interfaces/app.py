@@ -49,7 +49,7 @@ from monailabel.interfaces.tasks.train import TrainTask
 from monailabel.interfaces.utils.wsi import create_infer_wsi_tasks
 from monailabel.tasks.activelearning.random import Random
 from monailabel.utils.async_tasks.task import AsyncTask
-from monailabel.utils.others.generic import is_openslide_supported, strtobool
+from monailabel.utils.others.generic import file_checksum, is_openslide_supported, strtobool
 from monailabel.utils.others.pathology import create_asap_annotations_xml, create_dsa_annotations_json
 from monailabel.utils.sessions import Sessions
 
@@ -751,3 +751,22 @@ class MONAILabelApp:
 
         res = self.infer(req)
         return res.get("params", {})
+
+    def model_file(self, model):
+        task = self._infers.get(model)
+        return task.get_path() if task else None
+
+    def model_info(self, model):
+        file = self.model_file(model)
+        if not file or not os.path.exists(file):
+            return None
+
+        s = os.stat(file)
+        checksum = file_checksum(file)
+
+        info = {"checksum": checksum, "modified_time": int(s.st_mtime)}
+        task = self._trainers.get(model)
+        train_stats = task.stats() if task else None
+        if train_stats:
+            info["train_stats"] = train_stats
+        return info
