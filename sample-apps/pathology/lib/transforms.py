@@ -251,3 +251,31 @@ class AddClickGuidanceSignald(AddGuidanceSignald):
 
         ns = np.zeros_like(image[0])[np.newaxis]
         return np.concatenate([image, ns, ns], axis=0)
+
+
+class FilterLabelByClassd(MapTransform):
+    def __init__(self, keys: KeysCollection, allow_missing_keys: bool = False, key_class="class") -> None:
+        super().__init__(keys, allow_missing_keys)
+        self.key_class = key_class
+
+    def __call__(self, data):
+        d = dict(data)
+        for key in self.keys:
+            label = d[key]
+            cval = d[self.key_class]
+            label[label != cval] = 0
+            d[key] = label
+        return d
+
+
+class FromClassd(MapTransform):
+    def __init__(self, keys: KeysCollection, allow_missing_keys: bool = False, key_class="class", offset=-1) -> None:
+        super().__init__(keys, allow_missing_keys)
+        self.key_class = key_class
+        self.offset = offset
+
+    def __call__(self, data):
+        d = dict(data)
+        for key in self.keys:
+            d[key] = int(d[self.key_class] + self.offset)
+        return

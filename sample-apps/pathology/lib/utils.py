@@ -218,7 +218,7 @@ def split_local_dataset(datastore, d, output_dir, groups, tile_size, max_region=
     return dataset_json
 
 
-def split_nuclei_dataset(d, centroid_key="centroid", mask_value_key="mask_value", min_area=5):
+def split_nuclei_dataset(d, centroid_key="centroid", mask_value_key="mask_value", class_key="class", min_area=5):
     dataset_json = []
 
     mask = LoadImage(image_only=True, dtype=np.uint8)(d["label"])
@@ -234,12 +234,18 @@ def split_nuclei_dataset(d, centroid_key="centroid", mask_value_key="mask_value"
         x, y = stat.centroid
         x = int(math.floor(x))
         y = int(math.floor(y))
+        cval = int(mask_np[x][y])
+
+        if mask_np[x][y] == 0:
+            logger.debug(f"++++ Ignored label with centroid falling over background => ({x},{y}) => {cval})")
+            continue
 
         item = copy.deepcopy(d)
         item[centroid_key] = (x, y)
         item[mask_value_key] = stat.label
+        item[class_key] = cval
 
-        # logger.info(f"{d['label']} => {len(stats)} => {mask.shape} => {stat.label}")
+        # logger.info(f"{d['label']} => {len(stats)} => {mask.shape} => {stat.label} => {cval}")
         dataset_json.append(item)
     return dataset_json
 
