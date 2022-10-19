@@ -427,10 +427,8 @@ Prerequisite: Check Model Zoo `Release <https://github.com/Project-MONAI/model-z
   # Step4: set customised bundle scripts to python path (the bundle models and code are downloaded when start monai label server)
   export PYTHONPATH=$PYTHONPATH:"monaibundle/model/renalStructures_UNEST_segmentation_v0.2.0"
 
-
   # Step 5: start the bundle app in MONAI label server
-    monailabel start_server --app monaibundle --studies Task09_Spleen/imagesTr
-  --conf models renalStructures_UNEST_segmentation_v0.2.0
+    monailabel start_server --app monaibundle --studies Task09_Spleen/imagesTr --conf models renalStructures_UNEST_segmentation_v0.2.0
 
 
 
