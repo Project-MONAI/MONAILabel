@@ -409,31 +409,28 @@ Now get the automatic inference of the trained SwinUNETR model!
 Use Case 2: Bundle with Customized Scripts for Renal Substructure Segmentation
 =================================================================================
 
-This use case provides an instruction on using bundle model with customized scripts.
+This use case (renalStructures_UNEST_segmentation_v0.2.0) provides an instruction on using bundle model with customized scripts.
 
 Prerequisite: Check Model Zoo `Release <https://github.com/Project-MONAI/model-zoo/releases/tag/hosting_storage_v1>`_.
 
 .. code-block:: bash
 
-  # install MONAI Label
+  # Step 1: install MONAI Label
   pip install monailabel
 
-  # download Bundle sample app to local directory
+  # Step 2: download Bundle sample app to local directory
   monailabel apps --name monaibundle --download --output .
 
-  # download a local study images, sample dataset such as spleen:
+  # Step 3: download a local study images, sample dataset such as spleen CT (contrast enhanced CTs are better):
   monailabel datasets --download --name Task09_Spleen --output .
 
-  # download the bundle move the downloaded ZIP file to the MONAILable/sample-apps/monaibundle/model and unzip
-  # and save to the monaibundle/model and direct to the customized bundle folder
-  cd <path to the bundle model>/renalStructures_UNEST_segmentation_v0.1.0
+  # Step4: set customised bundle scripts to python path (the bundle models and code are downloaded when start monai label server)
+  export PYTHONPATH=$PYTHONPATH:"monaibundle/model/renalStructures_UNEST_segmentation_v0.2.0"
 
-  # add customized scripts in the downloaded bundle
-  export PYTHONPATH=$PYTHONPATH:"'/monaibundle/model/renalStructures_UNEST_segmentation_v0.1.0/scripts"
 
-  # start the bundle app in MONAI label server
-    monailabel start_server --app <full path to the monaibundle app/monaibundle> --studies <path to the local dataset/Task09_Spleen/imagesTr>
-  --conf models renalStructures_UNEST_segmentation_v0.1.0
+  # Step 5: start the bundle app in MONAI label server
+    monailabel start_server --app monaibundle --studies Task09_Spleen/imagesTr
+  --conf models renalStructures_UNEST_segmentation_v0.2.0
 
 
 
