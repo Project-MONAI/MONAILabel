@@ -24,7 +24,7 @@ logger = logging.getLogger(__name__)
 
 class ClassificationNuclei(BasicInferTask):
     """
-    This provides Inference Engine for pre-trained segmentation (UNet) model over MSD Dataset.
+    This provides Inference Engine for pre-trained classification model.
     """
 
     def __init__(

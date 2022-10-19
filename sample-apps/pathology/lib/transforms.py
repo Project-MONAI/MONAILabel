@@ -278,4 +278,4 @@ class FromClassd(MapTransform):
         d = dict(data)
         for key in self.keys:
             d[key] = int(d[self.key_class] + self.offset)
-        return
+        return d

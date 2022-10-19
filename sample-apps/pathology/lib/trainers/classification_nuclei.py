@@ -15,15 +15,12 @@ import os
 import numpy as np
 import torch
 from ignite.metrics import Accuracy
-from lib.handlers import TensorBoardImageHandler
-from lib.transforms import FilterImaged, FilterLabelByClassd, FromClassd
+from lib.transforms import FilterImaged, FromClassd
 from lib.utils import split_dataset, split_nuclei_dataset
-from monai.apps.nuclick.transforms import ExtractPatchd, FlattenLabeld
+from monai.apps.nuclick.transforms import ExtractPatchd, FlattenLabeld, SplitLabeld
 from monai.handlers import from_engine
 from monai.inferers import SimpleInferer
-from monai.losses import DiceLoss
 from monai.transforms import (
-    Activationsd,
     AddChanneld,
     AsChannelFirstd,
     AsDiscreted,
@@ -32,9 +29,9 @@ from monai.transforms import (
     LoadImaged,
     RandRotate90d,
     ScaleIntensityRangeD,
-    ToNumpyd,
+    SelectItemsd,
+    SpatialPadd,
     TorchVisiond,
-    ToTensord,
 )
 from tqdm import tqdm
 
@@ -67,10 +64,10 @@ class ClassificationNuclei(BasicTrainTask):
         return self._network
 
     def optimizer(self, context: Context):
-        return torch.optim.Adam(context.network.parameters(), 0.0001)
+        return torch.optim.Adam(context.network.parameters(), 0.001)
 
     def loss_function(self, context: Context):
-        return DiceLoss(to_onehot_y=True, softmax=True, squared_pred=True)
+        return torch.nn.CrossEntropyLoss(reduction="sum")
 
     def pre_process(self, request, datastore: Datastore):
         self.cleanup(request)
@@ -103,32 +100,30 @@ class ClassificationNuclei(BasicTrainTask):
     def train_pre_transforms(self, context: Context):
         return [
             LoadImaged(keys=("image", "label"), dtype=np.uint8),
-            FilterImaged(keys="image", min_size=80),
+            FilterImaged(keys="image", min_size=self.min_area),
             FlattenLabeld(keys="label"),
             AsChannelFirstd(keys="image"),
             AddChanneld(keys="label"),
-            FilterLabelByClassd(keys="label", key_class="class"),
             ExtractPatchd(keys=("image", "label"), patch_size=self.patch_size),
+            SplitLabeld(keys="label", others="others", mask_value="mask_value", min_area=self.min_area),
             CropForegroundd(keys=("image", "label"), source_key="label"),
-            ToTensord(keys="image"),
+            SpatialPadd(keys="image", spatial_size=(self.patch_size, self.patch_size)),
             TorchVisiond(
                 keys="image", name="ColorJitter", brightness=64.0 / 255.0, contrast=0.75, saturation=0.25, hue=0.04
             ),
-            ToNumpyd(keys="image"),
-            FromClassd(keys="label", key_class="class"),
-            ToTensord(keys="label"),
+            FromClassd(keys="label", key_class="class", offset=-1),
             RandRotate90d(keys="image", prob=0.5, spatial_axes=(0, 1)),
             ScaleIntensityRangeD(keys="image", a_min=0.0, a_max=255.0, b_min=-1.0, b_max=1.0),
             EnsureTyped(keys=("image", "label")),
+            SelectItemsd(keys=("image", "label")),
         ]
 
     def train_post_transforms(self, context: Context):
         return [
-            Activationsd(keys="pred", softmax=len(self.labels) > 1, sigmoid=len(self.labels) == 1),
             AsDiscreted(
                 keys=("pred", "label"),
                 argmax=(True, False),
-                to_onehot=(len(self.labels) + 1, len(self.labels) + 1),
+                to_onehot=(len(self.labels), len(self.labels)),
             ),
         ]
 
@@ -140,9 +135,3 @@ class ClassificationNuclei(BasicTrainTask):
 
     def val_inferer(self, context: Context):
         return SimpleInferer()
-
-    def train_handlers(self, context: Context):
-        handlers = super().train_handlers(context)
-        if context.local_rank == 0:
-            handlers.append(TensorBoardImageHandler(log_dir=context.events_dir))
-        return handlers

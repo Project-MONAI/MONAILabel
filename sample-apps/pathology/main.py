@@ -169,7 +169,6 @@ Example to run train/infer/scoring task(s) locally without actually running MONA
 
 
 def main():
-    import argparse
     from pathlib import Path
 
     from monailabel.config import settings
@@ -187,22 +186,35 @@ def main():
     )
 
     home = str(Path.home())
-    studies = f"{home}/Datasets/Pathology"
-
-    parser = argparse.ArgumentParser()
-    parser.add_argument("-s", "--studies", default=studies)
-    parser.add_argument("-t", "--train", default=False)
-    args = parser.parse_args()
+    studies = f"{home}/Dataset/Pathology/pannukeF"
 
     app_dir = os.path.dirname(__file__)
-    studies = args.studies
+    app = MyApp(app_dir, studies, {"roi_size": "[1024,1024]", "preload": "false", "models": "classification_nuclei"})
 
-    app = MyApp(app_dir, studies, {"roi_size": "[1024,1024]", "preload": "true"})
-    if args.train:
-        train_nuclick(app)
-    else:
-        # infer_nuclick(app)
-        infer_wsi(app)
+    train_classify(app)
+    # train_nuclick(app)
+    # infer_nuclick(app)
+    # infer_wsi(app)
+
+
+def train_classify(app):
+    model = "classification_nuclei"
+    app.train(
+        request={
+            "name": "train_01",
+            "model": model,
+            "max_epochs": 10,
+            "dataset": "PersistentDataset",  # PersistentDataset, CacheDataset
+            "train_batch_size": 128,
+            "val_batch_size": 64,
+            "multi_gpu": False,
+            "val_split": 0.2,
+            "dataset_source": "none",
+            "dataset_limit": 0,
+            "pretrained": False,
+            "n_saved": 10,
+        },
+    )
 
 
 def train_nuclick(app):
