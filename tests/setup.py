@@ -35,7 +35,7 @@ def run_main():
         shutil.copy(downloaded_pathology_file, os.path.join(TEST_DATA, "pathology"))
 
     downloaded_endoscopy_file = os.path.join(TEST_DIR, "downloads", "endoscopy_frames.zip")
-    endoscopy_url = "https://drive.google.com/uc?export=download&id=115fS_RZxOXMFb3wgepS2aJA2XYpXjHOU"
+    endoscopy_url = "https://github.com/Project-MONAI/MONAILabel/releases/download/data/endoscopy_frames.zip"
     if not os.path.exists(downloaded_endoscopy_file):
         download_url(url=endoscopy_url, filepath=downloaded_endoscopy_file)
     if not os.path.exists(os.path.join(TEST_DATA, "endoscopy")):
