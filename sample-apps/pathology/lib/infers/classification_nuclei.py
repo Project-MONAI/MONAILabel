@@ -13,8 +13,16 @@ import logging
 from typing import Any, Callable, Dict, Sequence
 
 import numpy as np
-from lib.transforms import LoadImagePatchd
-from monai.transforms import AsChannelFirstd, AsDiscreted, EnsureTyped, ScaleIntensityRangeD
+from lib.transforms import LoadFromContours, LoadImagePatchd
+from monai.inferers import Inferer, SimpleInferer
+from monai.transforms import (
+    AddChanneld,
+    AsChannelFirstd,
+    AsDiscreted,
+    CropForegroundd,
+    ScaleIntensityRangeD,
+    SpatialPadd,
+)
 
 from monailabel.interfaces.tasks.infer_v2 import InferType
 from monailabel.tasks.infer.basic_infer import BasicInferTask
@@ -56,11 +64,18 @@ class ClassificationNuclei(BasicInferTask):
 
     def pre_transforms(self, data=None) -> Sequence[Callable]:
         return [
-            LoadImagePatchd(keys="image", mode="RGB", dtype=np.uint8, padding=False),
-            EnsureTyped(keys="image", device=data.get("device") if data else None),
+            LoadImagePatchd(keys="image", dtype=np.uint8),
             AsChannelFirstd(keys="image"),
+            LoadFromContours(keys="label", source_key="image"),
+            AddChanneld(keys="label"),
+            # ExtractPatchd(keys=("image", "label"), patch_size=self.roi_size),
+            CropForegroundd(keys=("image", "label"), source_key="label"),
+            SpatialPadd(keys="image", spatial_size=(128, 128)),
             ScaleIntensityRangeD(keys="image", a_min=0.0, a_max=255.0, b_min=-1.0, b_max=1.0),
         ]
+
+    def inferer(self, data=None) -> Inferer:
+        return SimpleInferer()
 
     def post_transforms(self, data=None) -> Sequence[Callable]:
         return [

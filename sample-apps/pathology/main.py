@@ -8,7 +8,7 @@
 # WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 # See the License for the specific language governing permissions and
 # limitations under the License.
-
+import copy
 import ctypes.util
 import logging
 import os
@@ -186,12 +186,16 @@ def main():
     )
 
     home = str(Path.home())
-    studies = f"{home}/Dataset/Pathology/pannukeF"
+    # studies = f"{home}/Dataset/Pathology/pannukeF"
+    studies = f"{home}/Dataset/Pathology"
 
     app_dir = os.path.dirname(__file__)
-    app = MyApp(app_dir, studies, {"roi_size": "[1024,1024]", "preload": "false", "models": "classification_nuclei"})
+    app = MyApp(
+        app_dir, studies, {"roi_size": "[1024,1024]", "preload": "false", "models": "nuclick,classification_nuclei"}
+    )
 
-    train_classify(app)
+    # train_classify(app)
+    infer_classify(app)
     # train_nuclick(app)
     # infer_nuclick(app)
     # infer_wsi(app)
@@ -203,11 +207,11 @@ def train_classify(app):
         request={
             "name": "train_01",
             "model": model,
-            "max_epochs": 10,
+            "max_epochs": 50,
             "dataset": "PersistentDataset",  # PersistentDataset, CacheDataset
             "train_batch_size": 128,
             "val_batch_size": 64,
-            "multi_gpu": False,
+            "multi_gpu": True,
             "val_split": 0.2,
             "dataset_source": "none",
             "dataset_limit": 0,
@@ -254,37 +258,78 @@ def train(app):
     )
 
 
-def infer_nuclick(app):
+def infer_classify(app):
+    import json
+
+    request = {
+        "model": "classification_nuclei",
+        "image": "JP2K-33003-1",
+        "level": 0,
+        "location": [2262, 4661],
+        "size": [294, 219],
+        "min_poly_area": 30,
+        "foreground": [[2411, 4797], [2331, 4775], [2323, 4713], [2421, 4684]],
+        "background": [],
+        "output": "json",
+        "label": [
+            [2410, 4792],
+            [2409, 4793],
+            [2407, 4793],
+            [2405, 4795],
+            [2405, 4797],
+            [2404, 4798],
+            [2404, 4802],
+            [2405, 4803],
+            [2405, 4804],
+            [2407, 4806],
+            [2413, 4806],
+            [2414, 4805],
+            [2415, 4805],
+            [2416, 4804],
+            [2416, 4803],
+            [2417, 4802],
+            [2417, 4796],
+            [2414, 4793],
+            [2413, 4793],
+            [2412, 4792],
+        ],
+    }
+    res = app.infer_wsi(request)
+    print(json.dumps(res, indent=2))
+
+
+def infer_nuclick(app, classify=True):
+    import json
     import shutil
 
-    image = "C:\\Projects\\nuclick_torch\\test\\input_image.png"
-    res = app.infer(
-        # request={
-        #     "model": "nuclick",
-        #     "image": image,
-        #     "output": "asap",
-        #     "foreground": [[390, 470], [1507, 190]],
-        #     "location": [0, 0],
-        #     "size": [0, 0],
-        #     "result_extension": ".png",
-        # }
-        request={
-            "model": "nuclick",
-            "image": "JP2K-33003-1",
-            "level": 0,
-            "location": [2262, 4661],
-            "size": [294, 219],
-            "min_poly_area": 30,
-            "foreground": [[2411, 4797], [2331, 4775], [2323, 4713], [2421, 4684]],
-            "background": [],
-            "output": "asap",
-            # 'result_extension': '.png',
-        }
-    )
+    request = {
+        "model": "nuclick",
+        "image": "JP2K-33003-1",
+        "level": 0,
+        "location": [2262, 4661],
+        "size": [294, 219],
+        "min_poly_area": 30,
+        "foreground": [[2411, 4797], [2331, 4775], [2323, 4713], [2421, 4684]],
+        "background": [],
+        "output": "json" if classify else "asap",
+    }
 
-    # print(json.dumps(res, indent=2))
-    shutil.move(res["label"], "C:\\Projects\\nuclick_torch\\test\\output_image.xml")
-    logger.info("All Done!")
+    res = app.infer(request)
+
+    if not classify:
+        shutil.move(res["label"], os.path.join(app.studies, "..", "output_image.xml"))
+        logger.info("All Done!")
+    else:
+        logger.info("NuClick Done!")
+        for annotation in res["params"]["annotations"]:
+            for element in annotation["elements"]:
+                req2 = copy.deepcopy(request)
+                req2["model"] = "classify_nuclei"
+                request["contours"] = element["contours"]
+
+                res2 = app.infer(request)
+                print(json.dumps(res2, indent=2))
+                break
 
 
 def infer_wsi(app):

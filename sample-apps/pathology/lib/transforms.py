@@ -13,6 +13,7 @@ import logging
 import math
 import pathlib
 
+import cv2
 import numpy as np
 import openslide
 import torch
@@ -278,4 +279,27 @@ class FromClassd(MapTransform):
         d = dict(data)
         for key in self.keys:
             d[key] = int(d[self.key_class] + self.offset)
+        return d
+
+
+class LoadFromContours(MapTransform):
+    def __init__(self, keys: KeysCollection, allow_missing_keys: bool = False, source_key="image") -> None:
+        super().__init__(keys, allow_missing_keys)
+        self.source_key = source_key
+
+    def __call__(self, data):
+        d = dict(data)
+        location = d.get("location")
+        x = location[0] if location else 0
+        y = location[1] if location else 0
+
+        for key in self.keys:
+            contour = d[key]
+            pts = [np.array([[p[0] - x, p[1] - y] for p in contour])]
+
+            label_np = np.zeros(d[self.source_key].shape[-2:], dtype=np.uint8)
+            cv2.fillPoly(label_np, pts=pts, color=(255, 0, 0))
+            logger.info(f"Label NP: {np.unique(label_np, return_counts=True)}")
+            d[key] = label_np
+
         return d

@@ -64,10 +64,10 @@ class ClassificationNuclei(BasicTrainTask):
         return self._network
 
     def optimizer(self, context: Context):
-        return torch.optim.Adam(context.network.parameters(), 0.001)
+        return torch.optim.Adam(context.network.parameters(), 0.0001)
 
     def loss_function(self, context: Context):
-        return torch.nn.CrossEntropyLoss(reduction="sum")
+        return torch.nn.CrossEntropyLoss()
 
     def pre_process(self, request, datastore: Datastore):
         self.cleanup(request)
@@ -131,7 +131,15 @@ class ClassificationNuclei(BasicTrainTask):
         return {"train_acc": Accuracy(output_transform=from_engine(["pred", "label"]))}
 
     def val_key_metric(self, context: Context):
-        return {"val_acc": Accuracy(output_transform=from_engine(["pred", "label"]))}
+        return {
+            "val_acc": Accuracy(output_transform=from_engine(["pred", "label"])),
+            # "cr": ClassificationReport(
+            #     output_transform=from_engine(["pred", "label"]),
+            #     output_dict=True,
+            #     # is_multilabel=True,
+            #     # labels=list(self.labels.keys()),
+            # ),
+        }
 
     def val_inferer(self, context: Context):
         return SimpleInferer()
