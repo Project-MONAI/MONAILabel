@@ -18,11 +18,22 @@ import numpy as np
 import openslide
 import torch
 from monai.apps.deepgrow.transforms import AddGuidanceSignald, AddInitialSeedPointd
+from monai.apps.nuclick.transforms import ExtractPatchd
 from monai.config import KeysCollection
-from monai.transforms import CenterSpatialCrop, MapTransform, Transform
+from monai.transforms import (
+    AddChanneld,
+    CenterSpatialCrop,
+    Compose,
+    CropForegroundd,
+    MapTransform,
+    SpatialPadd,
+    Transform,
+)
 from PIL import Image
 from skimage.filters.thresholding import threshold_otsu
 from skimage.morphology import remove_small_holes, remove_small_objects
+
+from monailabel.interfaces.utils.transform import run_transforms
 
 logger = logging.getLogger(__name__)
 
@@ -269,20 +280,21 @@ class FilterLabelByClassd(MapTransform):
         return d
 
 
-class FromClassd(MapTransform):
-    def __init__(self, keys: KeysCollection, allow_missing_keys: bool = False, key_class="class", offset=-1) -> None:
-        super().__init__(keys, allow_missing_keys)
+class FixNuclickClassd(Transform):
+    def __init__(self, image="image", label="label", key_class="class", offset=-1) -> None:
+        self.image = image
+        self.label = label
         self.key_class = key_class
         self.offset = offset
 
     def __call__(self, data):
         d = dict(data)
-        for key in self.keys:
-            d[key] = int(d[self.key_class] + self.offset)
+        d[self.image] = data[self.image][:4]  # Drop Others
+        d[self.label] = int(d[self.key_class] + self.offset)
         return d
 
 
-class LoadFromContours(MapTransform):
+class LoadFromContoursd(MapTransform):
     def __init__(self, keys: KeysCollection, allow_missing_keys: bool = False, source_key="image") -> None:
         super().__init__(keys, allow_missing_keys)
         self.source_key = source_key
@@ -302,4 +314,29 @@ class LoadFromContours(MapTransform):
             logger.info(f"Label NP: {np.unique(label_np, return_counts=True)}")
             d[key] = label_np
 
+        return d
+
+
+class CropNuclied(Transform):
+    def __init__(self, patch_size=128, debug=True):
+        self.patch_size = patch_size
+        self.debug = debug
+
+    def __call__(self, data):
+        d = dict(data)
+        t = []
+        if d.get("label") is not None:
+            t = [
+                LoadFromContoursd(keys="label", source_key="image"),
+                AddChanneld(keys="label"),
+                CropForegroundd(keys=("image", "label"), source_key="label"),
+                SpatialPadd(keys="image", spatial_size=(self.patch_size, self.patch_size)),
+            ]
+        if d.get("centroid") is not None:
+            t = [ExtractPatchd(keys="image", patch_size=self.patch_size)]
+
+        if self.debug:
+            run_transforms(d, t, log_prefix="PRE")
+        else:
+            d = Compose(t)(d)
         return d

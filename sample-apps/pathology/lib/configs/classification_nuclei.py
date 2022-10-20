@@ -51,7 +51,7 @@ class NuClick(TaskConfig):
             download_file(url, self.path[0])
 
         # Network
-        self.network = SEResNet50(spatial_dims=2, in_channels=3, num_classes=len(self.labels))
+        self.network = SEResNet50(spatial_dims=2, in_channels=4, num_classes=len(self.labels))
 
     def infer(self) -> Union[InferTask, Dict[str, InferTask]]:
         task: InferTask = lib.infers.ClassificationNuclei(

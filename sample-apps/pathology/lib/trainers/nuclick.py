@@ -35,9 +35,8 @@ from monai.transforms import (
     LoadImaged,
     RandRotate90d,
     ScaleIntensityRangeD,
-    ToNumpyd,
+    SelectItemsd,
     TorchVisiond,
-    ToTensord,
 )
 from tqdm import tqdm
 
@@ -113,15 +112,14 @@ class NuClick(BasicTrainTask):
             AddChanneld(keys="label"),
             ExtractPatchd(keys=("image", "label"), patch_size=self.patch_size),
             SplitLabeld(keys="label", others="others", mask_value="mask_value", min_area=self.min_area),
-            ToTensord(keys="image"),
             TorchVisiond(
                 keys="image", name="ColorJitter", brightness=64.0 / 255.0, contrast=0.75, saturation=0.25, hue=0.04
             ),
-            ToNumpyd(keys="image"),
             RandRotate90d(keys=("image", "label", "others"), prob=0.5, spatial_axes=(0, 1)),
             ScaleIntensityRangeD(keys="image", a_min=0.0, a_max=255.0, b_min=-1.0, b_max=1.0),
             AddPointGuidanceSignald(image="image", label="label", others="others"),
             EnsureTyped(keys=("image", "label")),
+            SelectItemsd(keys=("image", "label")),
         ]
 
     def train_post_transforms(self, context: Context):

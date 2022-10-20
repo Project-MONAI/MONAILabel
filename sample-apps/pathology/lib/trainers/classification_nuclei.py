@@ -15,22 +15,22 @@ import os
 import numpy as np
 import torch
 from ignite.metrics import Accuracy
-from lib.transforms import FilterImaged, FromClassd
+from lib.handlers import TensorBoardImageHandler
+from lib.transforms import FilterImaged, FixNuclickClassd
 from lib.utils import split_dataset, split_nuclei_dataset
-from monai.apps.nuclick.transforms import ExtractPatchd, FlattenLabeld, SplitLabeld
+from monai.apps.nuclick.transforms import AddPointGuidanceSignald, ExtractPatchd, FlattenLabeld, SplitLabeld
 from monai.handlers import from_engine
 from monai.inferers import SimpleInferer
 from monai.transforms import (
+    Activationsd,
     AddChanneld,
     AsChannelFirstd,
     AsDiscreted,
-    CropForegroundd,
     EnsureTyped,
     LoadImaged,
     RandRotate90d,
     ScaleIntensityRangeD,
     SelectItemsd,
-    SpatialPadd,
     TorchVisiond,
 )
 from tqdm import tqdm
@@ -67,7 +67,7 @@ class ClassificationNuclei(BasicTrainTask):
         return torch.optim.Adam(context.network.parameters(), 0.0001)
 
     def loss_function(self, context: Context):
-        return torch.nn.CrossEntropyLoss()
+        return torch.nn.CrossEntropyLoss(reduction="mean")
 
     def pre_process(self, request, datastore: Datastore):
         self.cleanup(request)
@@ -100,31 +100,27 @@ class ClassificationNuclei(BasicTrainTask):
     def train_pre_transforms(self, context: Context):
         return [
             LoadImaged(keys=("image", "label"), dtype=np.uint8),
-            FilterImaged(keys="image", min_size=self.min_area),
+            FilterImaged(keys="image", min_size=5),
             FlattenLabeld(keys="label"),
             AsChannelFirstd(keys="image"),
             AddChanneld(keys="label"),
             ExtractPatchd(keys=("image", "label"), patch_size=self.patch_size),
             SplitLabeld(keys="label", others="others", mask_value="mask_value", min_area=self.min_area),
-            CropForegroundd(keys=("image", "label"), source_key="label"),
-            SpatialPadd(keys="image", spatial_size=(self.patch_size, self.patch_size)),
             TorchVisiond(
                 keys="image", name="ColorJitter", brightness=64.0 / 255.0, contrast=0.75, saturation=0.25, hue=0.04
             ),
-            FromClassd(keys="label", key_class="class", offset=-1),
-            RandRotate90d(keys="image", prob=0.5, spatial_axes=(0, 1)),
+            RandRotate90d(keys=("image", "label", "others"), prob=0.5, spatial_axes=(0, 1)),
             ScaleIntensityRangeD(keys="image", a_min=0.0, a_max=255.0, b_min=-1.0, b_max=1.0),
+            AddPointGuidanceSignald(image="image", label="label", others="others"),
+            FixNuclickClassd(image="image", label="label", key_class="class", offset=-1),
             EnsureTyped(keys=("image", "label")),
             SelectItemsd(keys=("image", "label")),
         ]
 
     def train_post_transforms(self, context: Context):
         return [
-            AsDiscreted(
-                keys=("pred", "label"),
-                argmax=(True, False),
-                to_onehot=(len(self.labels), len(self.labels)),
-            ),
+            Activationsd(keys="pred", softmax=True),
+            AsDiscreted(keys=("pred", "label"), argmax=(True, False), to_onehot=len(self.labels)),
         ]
 
     def train_key_metric(self, context: Context):
@@ -133,13 +129,19 @@ class ClassificationNuclei(BasicTrainTask):
     def val_key_metric(self, context: Context):
         return {
             "val_acc": Accuracy(output_transform=from_engine(["pred", "label"])),
-            # "cr": ClassificationReport(
-            #     output_transform=from_engine(["pred", "label"]),
-            #     output_dict=True,
-            #     # is_multilabel=True,
-            #     # labels=list(self.labels.keys()),
-            # ),
         }
 
     def val_inferer(self, context: Context):
         return SimpleInferer()
+
+    def val_handlers(self, context: Context):
+        handlers = super().val_handlers(context)
+        if context.local_rank == 0:
+            handlers.append(
+                TensorBoardImageHandler(
+                    log_dir=context.events_dir,
+                    class_names={str(v): k for k, v in self.labels.items()},
+                    batch_limit=4,
+                )
+            )
+        return handlers

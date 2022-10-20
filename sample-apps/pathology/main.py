@@ -18,6 +18,7 @@ from typing import Dict
 
 import lib.configs
 from lib.activelearning.random import WSIRandom
+from lib.infers import NuClickPipeline
 
 import monailabel
 from monailabel.datastore.dsa import DSADatastore
@@ -42,7 +43,9 @@ class MyApp(MONAILabelApp):
         self.model_dir = os.path.join(app_dir, "model")
 
         configs = {}
-        for c in get_class_names(lib.configs, "TaskConfig"):
+        candidates = get_class_names(lib.configs, "TaskConfig")
+        candidates.extend(get_class_names(lib.configs, "NuClick"))
+        for c in candidates:
             name = c.split(".")[-2].lower()
             configs[name] = c
 
@@ -126,6 +129,16 @@ class MyApp(MONAILabelApp):
             for k, v in c.items():
                 logger.info(f"+++ Adding Inferer:: {k} => {v}")
                 infers[k] = v
+
+        #################################################
+        # Pipeline based on existing infers
+        #################################################
+        if infers.get("nuclick_pipeline") and infers.get("classification_nuclei"):
+            p = infers["nuclick_pipeline"]
+            c = infers["classification_nuclei"]
+            if isinstance(p, NuClickPipeline):
+                p.init_classification(c)
+
         return infers
 
     def init_trainers(self) -> Dict[str, TrainTask]:
@@ -186,16 +199,18 @@ def main():
     )
 
     home = str(Path.home())
-    # studies = f"{home}/Dataset/Pathology/pannukeF"
-    studies = f"{home}/Dataset/Pathology"
+    studies = f"{home}/Dataset/Pathology/pannukeF"
+    # studies = f"{home}/Dataset/Pathology"
 
     app_dir = os.path.dirname(__file__)
     app = MyApp(
-        app_dir, studies, {"roi_size": "[1024,1024]", "preload": "false", "models": "nuclick,classification_nuclei"}
+        app_dir,
+        studies,
+        {"roi_size": "[1024,1024]", "preload": "false", "models": "classification_nuclei"},
     )
 
-    # train_classify(app)
-    infer_classify(app)
+    train_classify(app)
+    # infer_nuclick_pipeline(app)
     # train_nuclick(app)
     # infer_nuclick(app)
     # infer_wsi(app)
@@ -208,7 +223,7 @@ def train_classify(app):
             "name": "train_01",
             "model": model,
             "max_epochs": 50,
-            "dataset": "PersistentDataset",  # PersistentDataset, CacheDataset
+            "dataset": "CacheDataset",  # PersistentDataset, CacheDataset
             "train_batch_size": 128,
             "val_batch_size": 64,
             "multi_gpu": True,
@@ -259,8 +274,6 @@ def train(app):
 
 
 def infer_classify(app):
-    import json
-
     request = {
         "model": "classification_nuclei",
         "image": "JP2K-33003-1",
@@ -295,7 +308,7 @@ def infer_classify(app):
         ],
     }
     res = app.infer_wsi(request)
-    print(json.dumps(res, indent=2))
+    # print(json.dumps(res, indent=2))
 
 
 def infer_nuclick(app, classify=True):
@@ -330,6 +343,27 @@ def infer_nuclick(app, classify=True):
                 res2 = app.infer(request)
                 print(json.dumps(res2, indent=2))
                 break
+
+
+def infer_nuclick_pipeline(app):
+    import shutil
+
+    request = {
+        "model": "nuclick_pipeline",
+        "image": "JP2K-33003-1",
+        "level": 0,
+        "location": [2262, 4661],
+        "size": [294, 219],
+        "min_poly_area": 30,
+        "foreground": [[2411, 4797], [2331, 4775], [2323, 4713], [2421, 4684]],
+        "background": [],
+        "output": "asap",
+    }
+
+    res = app.infer(request)
+
+    shutil.move(res["label"], os.path.join(app.studies, "..", "output_image.xml"))
+    logger.info("All Done!")
 
 
 def infer_wsi(app):

@@ -32,7 +32,7 @@ def prepare_stats(start_ts, trainer, evaluator):
         return r
 
     stats: Dict[str, Any] = dict()
-    stats.update(trainer.get_train_stats())
+    stats.update(trainer.get_stats())
     stats["epoch"] = trainer.state.epoch
     stats["start_ts"] = int(start_ts)
 
