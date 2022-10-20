@@ -12,6 +12,7 @@
 import logging
 import os
 import re
+import sys
 import shutil
 from typing import Dict
 
@@ -80,6 +81,7 @@ class MyApp(MONAILabelApp):
                     e = os.path.join(self.model_dir, re.sub(r"_v.*.zip", "", f"{k}.zip"))
                     if os.path.isdir(e):
                         shutil.move(e, p)
+            sys.path.append(p)
 
             self.models[k] = p
 

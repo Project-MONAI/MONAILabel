@@ -10,9 +10,9 @@
 # limitations under the License.
 
 torch>=1.7
-monai[nibabel, skimage, pillow, tensorboard, gdown, ignite, torchvision, itk, tqdm, lmdb, psutil, openslide, fire]>=1.0.1rc2
+monai[nibabel, skimage, pillow, tensorboard, gdown, ignite, torchvision, itk, tqdm, lmdb, psutil, openslide, fire]>=1.0.1rc3
 uvicorn==0.17.6
-pydantic==1.9.1
+pydantic>=1.8.2
 python-dotenv==0.20.0
 fastapi==0.78.0
 python-multipart==0.0.5
