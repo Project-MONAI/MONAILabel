@@ -12,8 +12,8 @@
 import logging
 import os
 import re
-import sys
 import shutil
+import sys
 from typing import Dict
 
 import requests

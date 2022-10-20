@@ -277,7 +277,7 @@ endpoint of our DICOM server, which based on the last section is ``http://locaho
   # and start annotating images in our DICOM server
   monailabel start_server --app radiology --studies http://locahost:8042/dicom-web --conf models deepedit --username orthanc --password orthanc
 
-  # For MONAI label version >=0.3.0, if you have authentication set for dicom-web then you can pass the credentials using environment 
+  # For MONAI label version >=0.3.0, if you have authentication set for dicom-web then you can pass the credentials using environment
   #`variables <https://github.com/Project-MONAI/MONAILabel/blob/main/monailabel/config.py>`_ while running the server.
   export MONAI_LABEL_DICOMWEB_USERNAME=xyz
   export MONAI_LABEL_DICOMWEB_PASSWORD=abc
