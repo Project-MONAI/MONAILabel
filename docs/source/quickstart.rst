@@ -273,10 +273,15 @@ endpoint of our DICOM server, which based on the last section is ``http://locaho
   # download DeepEdit sample app to local directory
   monailabel apps --name radiology --download --output .
 
-  # start the DeepEdit app in MONAI label server
+  # For MONAI Label version <=0.2.0, pass credentials and start the DeepEdit app in MONAI label server
   # and start annotating images in our DICOM server
   monailabel start_server --app radiology --studies http://locahost:8042/dicom-web --conf models deepedit --username orthanc --password orthanc
 
+  # For MONAI label version >=0.3.0, if you have authentication set for dicom-web then you can pass the credentials using environment
+  #`variables <https://github.com/Project-MONAI/MONAILabel/blob/main/monailabel/config.py>`_ while running the server.
+  export MONAI_LABEL_DICOMWEB_USERNAME=xyz
+  export MONAI_LABEL_DICOMWEB_PASSWORD=abc
+  monailabel start_server --app apps/radiology --studies http://127.0.0.1:8042/dicom-web --conf models deepedit
 
 At this point OHIF can be used to annotate the data in the DICOM server via the MONAI Label server ``/ohif`` endpoint
 (e.g. via `http://127.0.0.1:8000/ohif <http://127.0.0.1:8000/ohif>`_).
@@ -424,11 +429,8 @@ Prerequisite: Check Model Zoo `Release <https://github.com/Project-MONAI/model-z
   # Step 3: download a local study images, sample dataset such as spleen CT (contrast enhanced CTs are better):
   monailabel datasets --download --name Task09_Spleen --output .
 
-  # Step4: set customised bundle scripts to python path (the bundle models and code are downloaded when start monai label server)
-  export PYTHONPATH=$PYTHONPATH:"monaibundle/model/renalStructures_UNEST_segmentation_v0.2.0"
-
-  # Step 5: start the bundle app in MONAI label server
-    monailabel start_server --app monaibundle --studies Task09_Spleen/imagesTr --conf models renalStructures_UNEST_segmentation_v0.2.0
+  # Step 4: start the bundle app in MONAI label server
+  monailabel start_server --app monaibundle --studies Task09_Spleen/imagesTr --conf models renalStructures_UNEST_segmentation_v0.2.0
 
 
 
