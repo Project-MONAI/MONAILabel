@@ -281,16 +281,15 @@ class FilterLabelByClassd(MapTransform):
 
 
 class FixNuclickClassd(Transform):
-    def __init__(self, image="image", label="label", key_class="class", offset=-1) -> None:
+    def __init__(self, image="image", label="label", offset=-1) -> None:
         self.image = image
         self.label = label
-        self.key_class = key_class
         self.offset = offset
 
     def __call__(self, data):
         d = dict(data)
-        d[self.image] = data[self.image][:4]  # Drop Others
-        d[self.label] = int(d[self.key_class] + self.offset)
+        d[self.image] = torch.concat([data[self.image], data[self.label]])
+        d[self.label] = int(torch.max(data[self.label]) + self.offset)
         return d
 
 

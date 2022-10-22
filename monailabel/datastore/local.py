@@ -103,6 +103,7 @@ class LocalDatastore(Datastore):
         datastore_config: str = "datastore_v2.json",
         extensions=("*.nii.gz", "*.nii"),
         auto_reload=False,
+        read_only=False,
     ):
         """
         Creates a `LocalDataset` object
@@ -142,7 +143,8 @@ class LocalDatastore(Datastore):
         os.makedirs(self._datastore.label_path(DefaultLabelTag.ORIGINAL), exist_ok=True)
 
         # reconcile the loaded datastore file with any existing files in the path
-        self._reconcile_datastore()
+        if not read_only:
+            self._reconcile_datastore()
 
         if auto_reload:
             logger.info("Start observing external modifications on datastore (AUTO RELOAD)")

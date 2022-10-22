@@ -16,16 +16,14 @@ import numpy as np
 import torch
 from ignite.metrics import Accuracy
 from lib.handlers import TensorBoardImageHandler
-from lib.transforms import FilterImaged, FixNuclickClassd
-from lib.utils import split_dataset, split_nuclei_dataset
-from monai.apps.nuclick.transforms import AddPointGuidanceSignald, ExtractPatchd, FlattenLabeld, SplitLabeld
+from lib.transforms import FixNuclickClassd
+from lib.utils import split_dataset
 from monai.handlers import from_engine
 from monai.inferers import SimpleInferer
 from monai.transforms import (
     Activationsd,
-    AddChanneld,
-    AsChannelFirstd,
     AsDiscreted,
+    EnsureChannelFirstd,
     EnsureTyped,
     LoadImaged,
     RandRotate90d,
@@ -33,7 +31,6 @@ from monai.transforms import (
     SelectItemsd,
     TorchVisiond,
 )
-from tqdm import tqdm
 
 from monailabel.interfaces.datastore import Datastore
 from monailabel.tasks.train.basic_train import BasicTrainTask, Context
@@ -48,8 +45,8 @@ class ClassificationNuclei(BasicTrainTask):
         network,
         labels,
         tile_size=(256, 256),
-        patch_size=128,
-        min_area=5,
+        patch_size=64,
+        min_area=80,
         description="Pathology Classification Nuclei",
         **kwargs,
     ):
@@ -67,7 +64,7 @@ class ClassificationNuclei(BasicTrainTask):
         return torch.optim.Adam(context.network.parameters(), 0.0001)
 
     def loss_function(self, context: Context):
-        return torch.nn.CrossEntropyLoss(reduction="mean")
+        return torch.nn.CrossEntropyLoss()
 
     def pre_process(self, request, datastore: Datastore):
         self.cleanup(request)
@@ -88,32 +85,26 @@ class ClassificationNuclei(BasicTrainTask):
             randomize=request.get("dataset_randomize", True),
         )
         logger.info(f"Split data (len: {len(ds)}) based on each nuclei")
-        ds_new = []
+        # ds_new = []
         limit = request.get("dataset_limit", 0)
-        for d in tqdm(ds):
-            ds_new.extend(split_nuclei_dataset(d, min_area=self.min_area))
-            if 0 < limit < len(ds_new):
-                ds_new = ds_new[:limit]
-                break
-        return ds_new
+        # for d in tqdm(ds):
+        #     ds_new.extend(split_nuclei_dataset(d, min_area=self.min_area))
+        #     if 0 < limit < len(ds_new):
+        #         ds_new = ds_new[:limit]
+        #         break
+        return ds[:limit] if 0 < limit < len(ds) else ds
 
     def train_pre_transforms(self, context: Context):
         return [
             LoadImaged(keys=("image", "label"), dtype=np.uint8),
-            FilterImaged(keys="image", min_size=5),
-            FlattenLabeld(keys="label"),
-            AsChannelFirstd(keys="image"),
-            AddChanneld(keys="label"),
-            ExtractPatchd(keys=("image", "label"), patch_size=self.patch_size),
-            SplitLabeld(keys="label", others="others", mask_value="mask_value", min_area=self.min_area),
+            EnsureTyped(keys=("image", "label")),
+            EnsureChannelFirstd(keys=("image", "label")),
             TorchVisiond(
                 keys="image", name="ColorJitter", brightness=64.0 / 255.0, contrast=0.75, saturation=0.25, hue=0.04
             ),
-            RandRotate90d(keys=("image", "label", "others"), prob=0.5, spatial_axes=(0, 1)),
+            RandRotate90d(keys=("image", "label"), prob=0.5, spatial_axes=(0, 1)),
             ScaleIntensityRangeD(keys="image", a_min=0.0, a_max=255.0, b_min=-1.0, b_max=1.0),
-            AddPointGuidanceSignald(image="image", label="label", others="others"),
-            FixNuclickClassd(image="image", label="label", key_class="class", offset=-1),
-            EnsureTyped(keys=("image", "label")),
+            FixNuclickClassd(image="image", label="label", offset=-1),
             SelectItemsd(keys=("image", "label")),
         ]
 
@@ -140,8 +131,8 @@ class ClassificationNuclei(BasicTrainTask):
             handlers.append(
                 TensorBoardImageHandler(
                     log_dir=context.events_dir,
-                    class_names={str(v): k for k, v in self.labels.items()},
-                    batch_limit=4,
+                    class_names={str(v - 1): k for k, v in self.labels.items()},
+                    batch_limit=8,
                 )
             )
         return handlers

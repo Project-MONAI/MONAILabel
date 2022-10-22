@@ -16,7 +16,7 @@ from typing import Any, Dict, Optional, Union
 
 import lib.infers
 import lib.trainers
-from monai.networks.nets import SEResNet50
+from monai.networks.nets import DenseNet121
 
 from monailabel.interfaces.config import TaskConfig
 from monailabel.interfaces.tasks.infer_v2 import InferTask
@@ -32,11 +32,11 @@ class NuClick(TaskConfig):
 
         # Labels
         self.labels = {
-            "Neoplastic cells": 0,
-            "Inflammatory": 1,
-            "Connective/Soft tissue cells": 2,
-            "Dead Cells": 3,
-            "Epithelial": 4,
+            "Neoplastic cells": 1,
+            "Inflammatory": 2,
+            "Connective/Soft tissue cells": 3,
+            "Dead Cells": 4,
+            "Epithelial": 5,
         }
 
         # Model Files
@@ -51,7 +51,7 @@ class NuClick(TaskConfig):
             download_file(url, self.path[0])
 
         # Network
-        self.network = SEResNet50(spatial_dims=2, in_channels=4, num_classes=len(self.labels))
+        self.network = DenseNet121(spatial_dims=2, in_channels=4, out_channels=len(self.labels))
 
     def infer(self) -> Union[InferTask, Dict[str, InferTask]]:
         task: InferTask = lib.infers.ClassificationNuclei(

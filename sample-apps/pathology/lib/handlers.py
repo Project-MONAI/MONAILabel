@@ -139,8 +139,10 @@ class TensorBoardImageHandler:
             self.writer.add_image(tag=f"{tag_prefix}Image", img_tensor=img_tensor, global_step=epoch)
 
             if self.class_names:
-                sig_tensor = make_grid(torch.from_numpy(image[3] * 128 + 128), normalize=True)
+                sig_tensor = make_grid(torch.from_numpy(np.where(image[3] > 0, 1, 0)), normalize=False)
                 self.writer.add_image(tag=f"{tag_prefix}Signal", img_tensor=sig_tensor, global_step=epoch)
+                if np.count_nonzero(image[3]) == 0:
+                    self.logger.info("+++++++++ BUG (Signal is ZERO)")
 
                 y = output_data[bidx]["label"].detach().cpu().numpy()
                 y_pred = output_data[bidx]["pred"].detach().cpu().numpy()

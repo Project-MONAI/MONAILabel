@@ -187,6 +187,7 @@ def main():
     from monailabel.config import settings
 
     settings.MONAI_LABEL_DATASTORE_AUTO_RELOAD = False
+    settings.MONAI_LABEL_DATASTORE_READ_ONLY = True
     settings.MONAI_LABEL_DATASTORE_FILE_EXT = ["*.svs", "*.png", "*.npy", "*.tif", ".xml"]
     os.putenv("MASTER_ADDR", "127.0.0.1")
     os.putenv("MASTER_PORT", "1234")
@@ -199,7 +200,7 @@ def main():
     )
 
     home = str(Path.home())
-    studies = f"{home}/Dataset/Pathology/pannukeF"
+    studies = f"{home}/Dataset/Pathology/pannukeFF"
     # studies = f"{home}/Dataset/Pathology"
 
     app_dir = os.path.dirname(__file__)
@@ -223,7 +224,7 @@ def train_classify(app):
             "name": "train_01",
             "model": model,
             "max_epochs": 50,
-            "dataset": "CacheDataset",  # PersistentDataset, CacheDataset
+            "dataset": "PersistentDataset",  # PersistentDataset, CacheDataset
             "train_batch_size": 128,
             "val_batch_size": 64,
             "multi_gpu": True,
