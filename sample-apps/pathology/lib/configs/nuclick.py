@@ -60,6 +60,7 @@ class NuClick(TaskConfig):
             labels=self.labels,
             preload=strtobool(self.conf.get("preload", "false")),
             roi_size=json.loads(self.conf.get("roi_size", "[512, 512]")),
+            config={"label_colors": self.label_colors}
         )
         return task
 

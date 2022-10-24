@@ -8,19 +8,20 @@
 # WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 # See the License for the specific language governing permissions and
 # limitations under the License.
+import copy
 import logging
 
 from lib.infers import NuClick
-
+from lib.transforms import FixNuclickClassd
 from monailabel.tasks.infer.basic_infer import BasicInferTask
 
 logger = logging.getLogger(__name__)
 
 
-class NuClickPipeline(NuClick):
+class NuClickClassification(NuClick):
     def __init__(
-        self,
-        **kwargs,
+            self,
+            **kwargs,
     ):
         self.task_classification = None
         super().__init__(**kwargs)
@@ -36,10 +37,15 @@ class NuClickPipeline(NuClick):
     def run_inferer(self, data, convert_to_batch=True, device="cuda"):
         output = super().run_inferer(data, False, device)
         if self.task_classification:
-            data2 = {"image": data["image"][:, :4], "device": device}
+            data2 = copy.deepcopy(self.task_classification.config())
+            data2.update({"image": output["image"][:, :3], "label": output["pred"], "device": device})
+
+            data2 = self.task_classification.run_pre_transforms(data2, [FixNuclickClassd(image="image", label="label")])
+
             output2 = self.task_classification.run_inferer(data2, False, device)
             output2 = self.task_classification.run_post_transforms(
                 output2, self.task_classification.post_transforms(output2)
             )
             logger.info(output2["pred"])
+            output["classification"] = output2
         return output

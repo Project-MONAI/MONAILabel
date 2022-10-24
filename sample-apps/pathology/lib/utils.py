@@ -247,7 +247,7 @@ def split_nuclei_dataset(
     class_key="class",
     min_area=80,
     min_distance=20,
-    crop_size=96,
+    crop_size=128,
 ):
     dataset_json = []
     ignored = 0
@@ -324,6 +324,8 @@ def split_nuclei_dataset(
             cropped_label.save(label_file)
 
             # logger.info(f"{d['label']} => {len(stats)} => {mask.shape} => {stat.label} => {cval}")
+            item["image"] = image_file
+            item["label"] = label_file
             dataset_json.append(item)
             nuclei_id += 1
 
@@ -531,7 +533,7 @@ def main_nuclei():
 
     home = str(Path.home())
     studies = f"{home}/Dataset/Pathology/pannukeF"
-    output_dir = f"{home}/Dataset/Pathology/pannukeFF"
+    output_dir = f"{home}/Dataset/Pathology/pannukeFFF"
 
     datastore = LocalDatastore(studies, extensions=("*.png", "*.npy"))
     split_dataset(datastore, output_dir, "nuclick", None, None, limit=0)

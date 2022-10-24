@@ -22,9 +22,9 @@ from monailabel.utils.others.generic import strtobool
 logger = logging.getLogger(__name__)
 
 
-class NuClickPipeline(NuClick):
+class NuClickClassification(NuClick):
     def infer(self) -> Union[InferTask, Dict[str, InferTask]]:
-        task: InferTask = lib.infers.NuClickPipeline(
+        task: InferTask = lib.infers.NuClickClassification(
             path=self.path,
             network=self.network,
             labels=self.labels,

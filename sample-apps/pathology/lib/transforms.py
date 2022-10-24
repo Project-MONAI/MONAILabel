@@ -289,7 +289,10 @@ class FixNuclickClassd(Transform):
     def __call__(self, data):
         d = dict(data)
         signal = torch.where(data[self.label] > 0, 1, 0)
-        d[self.image] = torch.concat([data[self.image], signal])
+        if len(signal.shape) < len(data[self.image]):
+            signal = signal[None]
+
+        d[self.image] = torch.cat([data[self.image], signal], dim=len(signal.shape) - 3)
         d[self.label] = int(torch.max(data[self.label]) + self.offset)
         return d
 

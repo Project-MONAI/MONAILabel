@@ -38,6 +38,13 @@ class NuClick(TaskConfig):
             "Dead Cells": 4,
             "Epithelial": 5,
         }
+        self.label_colors = {
+            "Neoplastic cells": (255, 0, 0),
+            "Inflammatory": (255, 255, 0),
+            "Connective/Soft tissue cells": (0, 255, 0),
+            "Dead Cells": (0, 0, 0),
+            "Epithelial": (0, 0, 255),
+        }
 
         # Model Files
         self.path = [
@@ -60,6 +67,9 @@ class NuClick(TaskConfig):
             labels=self.labels,
             preload=strtobool(self.conf.get("preload", "false")),
             roi_size=json.loads(self.conf.get("roi_size", "[128, 128]")),
+            config={
+                "label_colors": self.label_colors,
+            },
         )
         return task
 

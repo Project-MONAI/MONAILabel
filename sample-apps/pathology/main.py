@@ -18,7 +18,7 @@ from typing import Dict
 
 import lib.configs
 from lib.activelearning.random import WSIRandom
-from lib.infers import NuClickPipeline
+from lib.infers import NuClickClassification
 
 import monailabel
 from monailabel.datastore.dsa import DSADatastore
@@ -133,11 +133,14 @@ class MyApp(MONAILabelApp):
         #################################################
         # Pipeline based on existing infers
         #################################################
-        if infers.get("nuclick_pipeline") and infers.get("classification_nuclei"):
-            p = infers["nuclick_pipeline"]
-            c = infers["classification_nuclei"]
-            if isinstance(p, NuClickPipeline):
-                p.init_classification(c)
+        if infers.get("nuclick_classification"):
+            if not infers.get("classification_nuclei"):
+                logger.warning("Nuclick Classification (pipeline) requires nuclei classification model")
+            else:
+                p = infers["nuclick_classification"]
+                c = infers["classification_nuclei"]
+                if isinstance(p, NuClickClassification):
+                    p.init_classification(c)
 
         return infers
 
@@ -187,7 +190,7 @@ def main():
     from monailabel.config import settings
 
     settings.MONAI_LABEL_DATASTORE_AUTO_RELOAD = False
-    settings.MONAI_LABEL_DATASTORE_READ_ONLY = True
+    # settings.MONAI_LABEL_DATASTORE_READ_ONLY = True
     settings.MONAI_LABEL_DATASTORE_FILE_EXT = ["*.svs", "*.png", "*.npy", "*.tif", ".xml"]
     os.putenv("MASTER_ADDR", "127.0.0.1")
     os.putenv("MASTER_PORT", "1234")
@@ -200,18 +203,22 @@ def main():
     )
 
     home = str(Path.home())
-    studies = f"{home}/Dataset/Pathology/pannukeFF"
-    # studies = f"{home}/Dataset/Pathology"
+    # studies = f"{home}/Dataset/Pathology/pannukeFFF"
+    studies = f"{home}/Dataset/Pathology"
 
     app_dir = os.path.dirname(__file__)
     app = MyApp(
         app_dir,
         studies,
-        {"roi_size": "[1024,1024]", "preload": "false", "models": "classification_nuclei"},
+        {
+            "roi_size": "[1024,1024]",
+            "preload": "false",
+            "models": "classification_nuclei,nuclick_classification",
+        },
     )
 
-    train_classify(app)
-    # infer_nuclick_pipeline(app)
+    # train_classify(app)
+    infer_nuclick_classification(app)
     # train_nuclick(app)
     # infer_nuclick(app)
     # infer_wsi(app)
@@ -223,10 +230,10 @@ def train_classify(app):
         request={
             "name": "train_01",
             "model": model,
-            "max_epochs": 50,
+            "max_epochs": 20,
             "dataset": "PersistentDataset",  # PersistentDataset, CacheDataset
             "train_batch_size": 128,
-            "val_batch_size": 64,
+            "val_batch_size": 128,
             "multi_gpu": True,
             "val_split": 0.2,
             "dataset_source": "none",
@@ -346,11 +353,11 @@ def infer_nuclick(app, classify=True):
                 break
 
 
-def infer_nuclick_pipeline(app):
+def infer_nuclick_classification(app):
     import shutil
 
     request = {
-        "model": "nuclick_pipeline",
+        "model": "nuclick_classification",
         "image": "JP2K-33003-1",
         "level": 0,
         "location": [2262, 4661],

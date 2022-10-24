@@ -121,7 +121,7 @@ class NuClick(BasicInferTask):
             SqueezeDimd(keys="pred", dim=1),
             ToNumpyd(keys=("image", "pred")),
             PostFilterLabeld(keys="pred"),
-            FindContoursd(keys="pred", labels=self.labels, colormap={"Nuclei": [0, 255, 255]}),
+            FindContoursd(keys="pred", labels=self.labels),
         ]
 
     def writer(self, data, extension=None, dtype=None):
