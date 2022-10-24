@@ -15,6 +15,23 @@
 What's New
 ==========
 
+0.5.2
+=====
+
+- Bundle support (Endoscopy Sample App)
+
+  - `Tool Tracking segmentation model <https://github.com/Project-MONAI/model-zoo/tree/dev/models/endoscopic_tool_segmentation>`_
+  - `InBody vs OutBody classification model <https://github.com/Project-MONAI/model-zoo/tree/dev/models/endoscopic_inbody_classification>`_
+- Rest APIs to download latest trained model and stats
+- Interactive NuClick segmentation in DSA | `Demo <https://medicine.ai.uky.edu/wp-content/uploads/2022/10/interactive_cell_labeling_via_nucklick_in_dsa.mp4>`_
+- 3D Slicer UI Improvements
+- Improvements on MONAI Bundle App
+
+  - support local bundles (pre-downloaded)
+  - support customized scripts
+- Support for MONAI `1.0.1 <https://github.com/Project-MONAI/MONAI/releases/tag/1.0.1>`_
+
+
 0.5.1
 =====
 - Endoscopy Sample App
