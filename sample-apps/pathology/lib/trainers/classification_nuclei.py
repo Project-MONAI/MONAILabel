@@ -17,7 +17,7 @@ import torch
 from ignite.metrics import Accuracy
 from lib.handlers import TensorBoardImageHandler
 from lib.transforms import FixNuclickClassd
-from lib.utils import split_dataset
+from lib.utils import split_dataset, split_nuclei_dataset
 from monai.handlers import from_engine
 from monai.inferers import SimpleInferer
 from monai.transforms import (
@@ -31,6 +31,7 @@ from monai.transforms import (
     SelectItemsd,
     TorchVisiond,
 )
+from tqdm import tqdm
 
 from monailabel.interfaces.datastore import Datastore
 from monailabel.tasks.train.basic_train import BasicTrainTask, Context
@@ -78,21 +79,24 @@ class ClassificationNuclei(BasicTrainTask):
             datastore=datastore,
             cache_dir=cache_dir,
             source=source,
-            groups=self.labels,
+            groups={k: v + 1 for k, v in self.labels.items()},
             tile_size=self.tile_size,
             max_region=max_region,
             limit=request.get("dataset_limit", 0),
             randomize=request.get("dataset_randomize", True),
         )
         logger.info(f"Split data (len: {len(ds)}) based on each nuclei")
-        # ds_new = []
+
         limit = request.get("dataset_limit", 0)
-        # for d in tqdm(ds):
-        #     ds_new.extend(split_nuclei_dataset(d, min_area=self.min_area))
-        #     if 0 < limit < len(ds_new):
-        #         ds_new = ds_new[:limit]
-        #         break
-        return ds[:limit] if 0 < limit < len(ds) else ds
+        # return ds[:limit] if 0 < limit < len(ds) else ds
+
+        ds_new = []
+        for d in tqdm(ds):
+            ds_new.extend(split_nuclei_dataset(d, os.path.join(cache_dir, "nuclei_flattened")))
+            if 0 < limit < len(ds_new):
+                ds_new = ds_new[:limit]
+                break
+        return ds_new
 
     def train_pre_transforms(self, context: Context):
         return [

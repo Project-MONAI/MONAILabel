@@ -19,6 +19,7 @@ import openslide
 import torch
 from monai.apps.deepgrow.transforms import AddGuidanceSignald, AddInitialSeedPointd
 from monai.apps.nuclick.transforms import ExtractPatchd
+from monai.apps.nuclick.transforms import PostFilterLabeld as NuClickPostFilterLabeld
 from monai.config import KeysCollection
 from monai.transforms import (
     AddChanneld,
@@ -85,7 +86,7 @@ class LoadImagePatchd(MapTransform):
             else:
                 img = Image.open(d[key])
 
-            img = img.convert(self.mode)
+            img = img.convert(self.mode) if self.mode else img
             image_np = np.array(img, dtype=self.dtype)
 
             meta_dict_key = f"{key}_{self.meta_key_postfix}"
@@ -98,7 +99,7 @@ class LoadImagePatchd(MapTransform):
             meta_dict["original_channel_dim"] = -1
             logger.debug(f"Image shape: {image_np.shape} vs size: {size} vs tile_size: {tile_size}")
 
-            if self.padding and (image_np.shape[0] != tile_size[0] or image_np.shape[1] != tile_size[1]):
+            if self.padding and tile_size and (image_np.shape[0] != tile_size[0] or image_np.shape[1] != tile_size[1]):
                 image_np = self.pad_to_shape(image_np, tile_size)
             d[key] = image_np
         return d
@@ -343,3 +344,42 @@ class CropNuclied(Transform):
         else:
             d = Compose(t)(d)
         return d
+
+
+class NuClickPostFilterLabelExd(NuClickPostFilterLabeld):
+    def __call__(self, data):
+        d = dict(data)
+
+        nuc_points = d[self.nuc_points]
+        bounding_boxes = d[self.bounding_boxes]
+        img_height = d[self.img_height]
+        img_width = d[self.img_width]
+
+        for key in self.keys:
+            label = d[key].astype(np.uint8)
+            masks = self.post_processing(
+                label,
+                thresh=self.thresh,
+                min_size=self.min_size,
+                min_hole=self.min_hole,
+                do_reconstruction=self.do_reconstruction,
+                nuc_points=nuc_points,
+            )
+
+            pred_classes = d.get("pred_classes")
+            d[key] = self.gen_instance_map(
+                masks, bounding_boxes, img_height, img_width, pred_classes=pred_classes
+            ).astype(np.uint8)
+        return d
+
+    def gen_instance_map(self, masks, bounding_boxes, m, n, flatten=True, pred_classes=None):
+        instance_map = np.zeros((m, n), dtype=np.uint16)
+        for i, item in enumerate(masks):
+            this_bb = bounding_boxes[i]
+            this_mask_pos = np.argwhere(item > 0)
+            this_mask_pos[:, 0] = this_mask_pos[:, 0] + this_bb[1]
+            this_mask_pos[:, 1] = this_mask_pos[:, 1] + this_bb[0]
+
+            c = pred_classes[i] if pred_classes and i < len(pred_classes) else 1
+            instance_map[this_mask_pos[:, 0], this_mask_pos[:, 1]] = c if flatten else i + 1
+        return instance_map

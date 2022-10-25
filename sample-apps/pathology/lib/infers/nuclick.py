@@ -13,8 +13,8 @@ import logging
 from typing import Any, Callable, Dict, Sequence
 
 import numpy as np
-from lib.transforms import LoadImagePatchd
-from monai.apps.nuclick.transforms import AddClickSignalsd, NuclickKeys, PostFilterLabeld
+from lib.transforms import LoadImagePatchd, NuClickPostFilterLabelExd
+from monai.apps.nuclick.transforms import AddClickSignalsd, NuclickKeys
 from monai.config import KeysCollection
 from monai.transforms import (
     Activationsd,
@@ -120,7 +120,7 @@ class NuClick(BasicInferTask):
             AsDiscreted(keys="pred", threshold=0.5),
             SqueezeDimd(keys="pred", dim=1),
             ToNumpyd(keys=("image", "pred")),
-            PostFilterLabeld(keys="pred"),
+            NuClickPostFilterLabelExd(keys="pred"),
             FindContoursd(keys="pred", labels=self.labels),
         ]
 

@@ -11,8 +11,10 @@
 import copy
 import logging
 
+import torch
 from lib.infers import NuClick
 from lib.transforms import FixNuclickClassd
+
 from monailabel.tasks.infer.basic_infer import BasicInferTask
 
 logger = logging.getLogger(__name__)
@@ -20,19 +22,19 @@ logger = logging.getLogger(__name__)
 
 class NuClickClassification(NuClick):
     def __init__(
-            self,
-            **kwargs,
+        self,
+        **kwargs,
     ):
         self.task_classification = None
         super().__init__(**kwargs)
 
     def init_classification(self, task_classification: BasicInferTask):
         self.task_classification = task_classification
-        self.labels = task_classification.labels
+        self.labels = {k: v + 1 for k, v in task_classification.labels.items()}  # type: ignore
         self.description = "Combines Nuclick and Classification"
 
     def is_valid(self) -> bool:
-        return super().is_valid() and (not self.task_classification or self.task_classification.is_valid())
+        return True if super().is_valid() and self.task_classification else False
 
     def run_inferer(self, data, convert_to_batch=True, device="cuda"):
         output = super().run_inferer(data, False, device)
@@ -43,9 +45,11 @@ class NuClickClassification(NuClick):
             data2 = self.task_classification.run_pre_transforms(data2, [FixNuclickClassd(image="image", label="label")])
 
             output2 = self.task_classification.run_inferer(data2, False, device)
-            output2 = self.task_classification.run_post_transforms(
-                output2, self.task_classification.post_transforms(output2)
-            )
-            logger.info(output2["pred"])
-            output["classification"] = output2
+            pred2 = output2["pred"]
+            pred2 = torch.softmax(pred2, dim=1)
+            pred2 = torch.argmax(pred2, dim=1)
+            pred2 = [int(p) for p in pred2]
+
+            output["pred_classes"] = [v + 1 for v in pred2]
+            logger.info(f"Predicted Classes: {output['pred_classes']}")
         return output

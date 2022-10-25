@@ -190,7 +190,7 @@ def main():
     from monailabel.config import settings
 
     settings.MONAI_LABEL_DATASTORE_AUTO_RELOAD = False
-    # settings.MONAI_LABEL_DATASTORE_READ_ONLY = True
+    settings.MONAI_LABEL_DATASTORE_READ_ONLY = True
     settings.MONAI_LABEL_DATASTORE_FILE_EXT = ["*.svs", "*.png", "*.npy", "*.tif", ".xml"]
     os.putenv("MASTER_ADDR", "127.0.0.1")
     os.putenv("MASTER_PORT", "1234")
@@ -218,6 +218,7 @@ def main():
     )
 
     # train_classify(app)
+    # infer_classify(app)
     infer_nuclick_classification(app)
     # train_nuclick(app)
     # infer_nuclick(app)
@@ -282,41 +283,16 @@ def train(app):
 
 
 def infer_classify(app):
+    import json
+
     request = {
         "model": "classification_nuclei",
-        "image": "JP2K-33003-1",
-        "level": 0,
-        "location": [2262, 4661],
-        "size": [294, 219],
-        "min_poly_area": 30,
-        "foreground": [[2411, 4797], [2331, 4775], [2323, 4713], [2421, 4684]],
-        "background": [],
+        "image": "/localhome/sachi/Dataset/Pathology/pannukeFFF/fold1_0000_1_0001.png",
+        "label": "/localhome/sachi/Dataset/Pathology/pannukeFFF/labels/final/fold1_0000_1_0001.png",
         "output": "json",
-        "label": [
-            [2410, 4792],
-            [2409, 4793],
-            [2407, 4793],
-            [2405, 4795],
-            [2405, 4797],
-            [2404, 4798],
-            [2404, 4802],
-            [2405, 4803],
-            [2405, 4804],
-            [2407, 4806],
-            [2413, 4806],
-            [2414, 4805],
-            [2415, 4805],
-            [2416, 4804],
-            [2416, 4803],
-            [2417, 4802],
-            [2417, 4796],
-            [2414, 4793],
-            [2413, 4793],
-            [2412, 4792],
-        ],
     }
-    res = app.infer_wsi(request)
-    # print(json.dumps(res, indent=2))
+    res = app.infer(request)
+    print(json.dumps(res, indent=2))
 
 
 def infer_nuclick(app, classify=True):

@@ -26,17 +26,17 @@ from monailabel.utils.others.generic import download_file, strtobool
 logger = logging.getLogger(__name__)
 
 
-class NuClick(TaskConfig):
+class ClassificationNuclei(TaskConfig):
     def init(self, name: str, model_dir: str, conf: Dict[str, str], planner: Any, **kwargs):
         super().init(name, model_dir, conf, planner, **kwargs)
 
         # Labels
         self.labels = {
-            "Neoplastic cells": 1,
-            "Inflammatory": 2,
-            "Connective/Soft tissue cells": 3,
-            "Dead Cells": 4,
-            "Epithelial": 5,
+            "Neoplastic cells": 0,
+            "Inflammatory": 1,
+            "Connective/Soft tissue cells": 2,
+            "Dead Cells": 3,
+            "Epithelial": 4,
         }
         self.label_colors = {
             "Neoplastic cells": (255, 0, 0),
@@ -53,7 +53,7 @@ class NuClick(TaskConfig):
         ]
 
         # Download PreTrained Model
-        if strtobool(self.conf.get("use_pretrained_model", "false")):
+        if strtobool(self.conf.get("use_pretrained_model", "true")):
             url = f"{self.conf.get('pretrained_path', self.PRE_TRAINED_PATH)}/pathology_classification_nuclei.pt"
             download_file(url, self.path[0])
 

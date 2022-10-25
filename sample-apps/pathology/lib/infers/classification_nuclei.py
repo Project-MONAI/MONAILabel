@@ -13,10 +13,10 @@ import logging
 from typing import Any, Callable, Dict, Sequence
 
 import numpy as np
-from monai.inferers import Inferer, SimpleInferer
-from monai.transforms import AsDiscreted, EnsureChannelFirstd, EnsureTyped, ScaleIntensityRangeD, Activationsd
-
 from lib.transforms import FixNuclickClassd, LoadImagePatchd
+from monai.inferers import Inferer, SimpleInferer
+from monai.transforms import Activationsd, AsChannelFirstd, EnsureTyped, ScaleIntensityRangeD
+
 from monailabel.interfaces.tasks.infer_v2 import InferType
 from monailabel.tasks.infer.basic_infer import BasicInferTask
 
@@ -55,11 +55,15 @@ class ClassificationNuclei(BasicInferTask):
         d["pathology"] = True
         return d
 
+    def is_valid(self) -> bool:
+        return False
+
     def pre_transforms(self, data=None) -> Sequence[Callable]:
         return [
-            LoadImagePatchd(keys=("image", "label"), dtype=np.uint8),
+            LoadImagePatchd(keys="image", dtype=np.uint8),
+            LoadImagePatchd(keys="label", dtype=np.uint8, mode="L"),
             EnsureTyped(keys=("image", "label")),
-            EnsureChannelFirstd(keys=("image", "label")),
+            AsChannelFirstd(keys="image"),
             ScaleIntensityRangeD(keys="image", a_min=0.0, a_max=255.0, b_min=-1.0, b_max=1.0),
             FixNuclickClassd(image="image", label="label", offset=-1),
         ]
@@ -70,5 +74,4 @@ class ClassificationNuclei(BasicInferTask):
     def post_transforms(self, data=None) -> Sequence[Callable]:
         return [
             Activationsd(keys="pred", softmax=True),
-            AsDiscreted(keys="pred", argmax=True),
         ]
