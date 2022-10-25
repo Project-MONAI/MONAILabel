@@ -44,7 +44,7 @@ else
     BUNDLE_NAME=${BUNDLENAMES[$FUNC_NAME]}
     MODEL_PATH="$APP_ROOT/model/$BUNDLE_NAME/models/model.pt"
     # Update to bundle nuclio container
-    MODEL_CONTAINER="/opt/conda/monailabel/sample-apps/endoscopy/model/$BUNDLE_NAME/models/model_new2.pt" # default model path at function container
+    MODEL_CONTAINER="/opt/conda/monailabel/sample-apps/endoscopy/model/$BUNDLE_NAME/models/model.pt" # default model path at function container
 fi
 
 # Check if latest  model checkpoint is done and saved.
