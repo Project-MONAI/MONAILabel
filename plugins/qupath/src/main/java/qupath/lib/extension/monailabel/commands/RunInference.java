@@ -94,7 +94,7 @@ public class RunInference implements Runnable {
 				String model = (String) list.getChoiceParameterValue("Model");
 				bbox = Utils.parseStringArray(list.getStringParameterValue("Location"));
 				tileSize = list.getIntParameterValue("TileSize").intValue();
-				
+
 				selectedModel = model;
 				selectedBBox = bbox;
 				selectedTileSize = tileSize;
@@ -135,7 +135,7 @@ public class RunInference implements Runnable {
 			ImageData<BufferedImage> imageData)
 			throws SAXException, IOException, ParserConfigurationException, InterruptedException {
 		logger.info("MONAILabel:: Running Inference...");
-		
+
 		boolean isNuClick = info.models.get(model).nuclick;
 		boolean override = !isNuClick;
 		boolean validateClicks = isNuClick;
@@ -180,7 +180,7 @@ public class RunInference implements Runnable {
 				var requestROI = RegionRequest.createInstance(imageData.getServer().getPath(), 1, roi);
 				ImageWriterTools.writeImageRegion(imageData.getServer(), requestROI, imageFile);
 			}
-			
+
 			ArrayList<Point2> fg = new ArrayList<>();
 			ArrayList<Point2> bg = new ArrayList<>();
 			if (isNuClick) {
@@ -189,7 +189,7 @@ public class RunInference implements Runnable {
 				fg = getClicks("Positive", imageData, roi, offsetX, offsetY);
 				bg = getClicks("Negative", imageData, roi, offsetX, offsetY);
 			}
-			
+
 			if (validateClicks) {
 				if (fg.size() == 0 && bg.size() == 0) {
 					Dialogs.showErrorMessage("MONAILabel",
