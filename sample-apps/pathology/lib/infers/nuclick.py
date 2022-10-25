@@ -74,7 +74,7 @@ class NuClick(BasicInferTask):
         path,
         network=None,
         roi_size=(128, 128),
-        type=InferType.OTHERS,
+        type=InferType.ANNOTATION,
         labels=None,
         dimension=2,
         description="A pre-trained NuClick model for interactive cell segmentation for Pathology",

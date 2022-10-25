@@ -335,13 +335,14 @@ def infer_nuclick_classification(app):
     request = {
         "model": "nuclick_classification",
         "image": "JP2K-33003-1",
-        "level": 0,
-        "location": [2262, 4661],
-        "size": [294, 219],
-        "min_poly_area": 30,
-        "foreground": [[2411, 4797], [2331, 4775], [2323, 4713], [2421, 4684]],
-        "background": [],
         "output": "asap",
+        "level": 0,
+        "location": [2387, 4845],
+        "size": [215, 165],
+        "tile_size": [1024, 1024],
+        "min_poly_area": 30,
+        "foreground": [[2486, 4870], [2534, 4941], [2500, 4947], [2418, 4936], [2462, 4979], [2429, 4976]],
+        "background": [],
     }
 
     res = app.infer(request)
