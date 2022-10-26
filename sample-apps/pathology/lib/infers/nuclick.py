@@ -56,11 +56,13 @@ class ConvertInteractiveClickSignals(MapTransform):
         for source_annotation_key, target_data_key in zip(self.source_annotation_keys, self.target_data_keys):
             if source_annotation_key in annotations:
                 points = annotations.get(source_annotation_key)["points"]
-                print(f"{points=}")
+                print(f"points={points}")
                 points = [coords[0:2] for coords in points]
                 data[target_data_key] = points
             elif not self.allow_missing_keys:
-                raise KeyError(f"{source_annotation_key=} not found in {annotations.keys()=}")
+                raise KeyError(
+                    f"source_annotation_key={source_annotation_key} not found in annotations.keys()={annotations.keys()}"
+                )
         return data
 
 
