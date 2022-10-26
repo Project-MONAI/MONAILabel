@@ -98,6 +98,11 @@ public class MonaiLabelClient {
 		public String description;
 	}
 
+	public static class Trainer {
+		public String description;
+		public Map<String, Object> config;
+	}
+
 	public static class ResponseInfo {
 		public String name;
 		public String description;
@@ -105,6 +110,7 @@ public class MonaiLabelClient {
 		public Labels labels;
 		public Map<String, Model> models;
 		public Map<String, Strategy> strategies;
+		public Map<String, Trainer> trainers;
 	}
 
 	public static class ImageInfo {

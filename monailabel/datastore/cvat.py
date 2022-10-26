@@ -15,6 +15,7 @@ import os
 import shutil
 import tempfile
 import time
+import urllib.parse
 
 import numpy as np
 import requests
@@ -101,8 +102,9 @@ class CVATDatastore(LocalDatastore):
         return project_id
 
     def get_cvat_task_id(self, project_id, create):
-        tasks = requests.get(f"{self.api_url}/api/tasks", auth=self.auth).json()
-        logger.debug(tasks)
+        filter = {"and": [{"==": [{"var": "project_id"}, project_id]}]}
+        filter = urllib.parse.quote_plus(json.dumps(filter))
+        tasks = requests.get(f"{self.api_url}/api/tasks?filter={filter}", auth=self.auth).json()
 
         task_id = None
         task_name = ""

@@ -13,39 +13,30 @@ import logging
 from typing import Any, Callable, Dict, Sequence
 
 import numpy as np
-from lib.transforms import LoadImagePatchd, PostFilterLabeld
-from monai.transforms import (
-    Activationsd,
-    AsChannelFirstd,
-    AsDiscreted,
-    EnsureTyped,
-    ScaleIntensityRangeD,
-    SqueezeDimd,
-    ToNumpyd,
-)
+from lib.transforms import FixNuclickClassd, LoadImagePatchd
+from monai.inferers import Inferer, SimpleInferer
+from monai.transforms import Activationsd, AsChannelFirstd, EnsureTyped, ScaleIntensityRangeD
 
 from monailabel.interfaces.tasks.infer_v2 import InferType
 from monailabel.tasks.infer.basic_infer import BasicInferTask
-from monailabel.transform.post import FindContoursd
-from monailabel.transform.writer import PolygonWriter
 
 logger = logging.getLogger(__name__)
 
 
-class SegmentationNuclei(BasicInferTask):
+class ClassificationNuclei(BasicInferTask):
     """
-    This provides Inference Engine for pre-trained segmentation (UNet) model over MSD Dataset.
+    This provides Inference Engine for pre-trained classification model.
     """
 
     def __init__(
         self,
         path,
         network=None,
-        roi_size=(256, 256),
-        type=InferType.SEGMENTATION,
+        roi_size=(128, 128),
+        type=InferType.CLASSIFICATION,
         labels=None,
         dimension=2,
-        description="A pre-trained semantic segmentation model for Pathology",
+        description="A pre-trained classification model for Pathology",
         **kwargs,
     ):
         super().__init__(
@@ -64,25 +55,23 @@ class SegmentationNuclei(BasicInferTask):
         d["pathology"] = True
         return d
 
+    def is_valid(self) -> bool:
+        return False
+
     def pre_transforms(self, data=None) -> Sequence[Callable]:
         return [
-            LoadImagePatchd(keys="image", mode="RGB", dtype=np.uint8, padding=False),
-            EnsureTyped(keys="image", device=data.get("device") if data else None),
+            LoadImagePatchd(keys="image", dtype=np.uint8),
+            LoadImagePatchd(keys="label", dtype=np.uint8, mode="L"),
+            EnsureTyped(keys=("image", "label")),
             AsChannelFirstd(keys="image"),
             ScaleIntensityRangeD(keys="image", a_min=0.0, a_max=255.0, b_min=-1.0, b_max=1.0),
+            FixNuclickClassd(image="image", label="label", offset=-1),
         ]
+
+    def inferer(self, data=None) -> Inferer:
+        return SimpleInferer()
 
     def post_transforms(self, data=None) -> Sequence[Callable]:
         return [
-            EnsureTyped(keys="pred", device=data.get("device") if data else None),
             Activationsd(keys="pred", softmax=True),
-            AsDiscreted(keys="pred", argmax=True),
-            SqueezeDimd(keys="pred", dim=0),
-            ToNumpyd(keys=("image", "pred")),
-            PostFilterLabeld(keys="pred", image="image"),
-            FindContoursd(keys="pred", labels=self.labels, max_poly_area=128 * 128),
         ]
-
-    def writer(self, data, extension=None, dtype=None):
-        writer = PolygonWriter(label=self.output_label_key, json=self.output_json_key)
-        return writer(data)

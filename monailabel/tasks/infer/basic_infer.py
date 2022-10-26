@@ -14,6 +14,7 @@ import logging
 import os
 import time
 from abc import abstractmethod
+from enum import Enum
 from typing import Any, Callable, Dict, Sequence, Tuple, Union
 
 import torch
@@ -23,10 +24,18 @@ from monailabel.interfaces.exception import MONAILabelError, MONAILabelException
 from monailabel.interfaces.tasks.infer_v2 import InferTask, InferType
 from monailabel.interfaces.utils.transform import dump_data, run_transforms
 from monailabel.transform.cache import CacheTransformDatad
-from monailabel.transform.writer import Writer
+from monailabel.transform.writer import ClassificationWriter, Writer
 from monailabel.utils.others.generic import device_list
 
 logger = logging.getLogger(__name__)
+
+
+class CallBackTypes(str, Enum):
+    PRE_TRANSFORMS = "PRE_TRANSFORMS"
+    INFERER = "INFERER"
+    INVERT_TRANSFORMS = "INVERT_TRANSFORMS"
+    POST_TRANSFORMS = "POST_TRANSFORMS"
+    WRITER = "WRITER"
 
 
 class BasicInferTask(InferTask):
@@ -71,12 +80,11 @@ class BasicInferTask(InferTask):
         :param train_mode: Run in Train mode instead of eval (when network has dropouts)
         :param skip_writer: Skip Writer and return data dictionary
         """
+
+        super().__init__(type, labels, dimension, description, config)
+
         self.path = [] if not path else [path] if isinstance(path, str) else path
         self.network = network
-        self.type = type
-        self.labels = [] if labels is None else [labels] if isinstance(labels, str) else labels
-        self.dimension = dimension
-        self.description = description
         self.model_state_dict = model_state_dict
         self.input_key = input_key
         self.output_label_key = output_label_key
@@ -88,15 +96,18 @@ class BasicInferTask(InferTask):
 
         self._networks: Dict = {}
 
-        self._config: Dict[str, Any] = {
-            "device": device_list(),
-            # "result_extension": None,
-            # "result_dtype": None,
-            # "result_compress": False
-            # "roi_size": self.roi_size,
-            # "sw_batch_size": 1,
-            # "sw_overlap": 0.25,
-        }
+        self._config.update(
+            {
+                "device": device_list(),
+                # "result_extension": None,
+                # "result_dtype": None,
+                # "result_compress": False
+                # "roi_size": self.roi_size,
+                # "sw_batch_size": 1,
+                # "sw_overlap": 0.25,
+            }
+        )
+
         if config:
             self._config.update(config)
 
@@ -232,13 +243,19 @@ class BasicInferTask(InferTask):
             )
         return SimpleInferer()
 
-    def __call__(self, request) -> Union[Dict, Tuple[str, Dict[str, Any]]]:
+    def __call__(
+        self, request, callbacks: Union[Dict[CallBackTypes, Any], None] = None
+    ) -> Union[Dict, Tuple[str, Dict[str, Any]]]:
         """
         It provides basic implementation to run the following in order
             - Run Pre Transforms
             - Run Inferer
+            - Run Invert Transforms
             - Run Post Transforms
             - Run Writer to save the label mask and result params
+
+        You can provide callbacks which can be useful while writing pipelines to consume intermediate outputs
+        Callback function should consume data and return data (modified/updated) e.g. `def my_cb(data): return data`
 
         Returns: Label (File Path) and Result Params (JSON)
         """
@@ -262,21 +279,38 @@ class BasicInferTask(InferTask):
             dump_data(req, logger.level)
             data = req
 
+        # callbacks useful in case of pipeliens to consume intermediate output from each of the following stages
+        # callback function should consume data and returns data (modified/updated)
+        callbacks = callbacks if callbacks else {}
+        callback_run_pre_transforms = callbacks.get(CallBackTypes.PRE_TRANSFORMS)
+        callback_run_inferer = callbacks.get(CallBackTypes.INFERER)
+        callback_run_invert_transforms = callbacks.get(CallBackTypes.INVERT_TRANSFORMS)
+        callback_run_post_transforms = callbacks.get(CallBackTypes.POST_TRANSFORMS)
+        callback_writer = callbacks.get(CallBackTypes.WRITER)
+
         start = time.time()
         pre_transforms = self.pre_transforms(data)
         data = self.run_pre_transforms(data, pre_transforms)
+        if callback_run_pre_transforms:
+            data = callback_run_pre_transforms(data)
         latency_pre = time.time() - start
 
         start = time.time()
         data = self.run_inferer(data, device=device)
+        if callback_run_inferer:
+            data = callback_run_inferer(data)
         latency_inferer = time.time() - start
 
         start = time.time()
         data = self.run_invert_transforms(data, pre_transforms, self.inverse_transforms(data))
+        if callback_run_invert_transforms:
+            data = callback_run_invert_transforms(data)
         latency_invert = time.time() - start
 
         start = time.time()
         data = self.run_post_transforms(data, self.post_transforms(data))
+        if callback_run_post_transforms:
+            data = callback_run_post_transforms(data)
         latency_post = time.time() - start
 
         if self.skip_writer:
@@ -284,6 +318,8 @@ class BasicInferTask(InferTask):
 
         start = time.time()
         result_file_name, result_json = self.writer(data)
+        if callback_writer:
+            data = callback_writer(data)
         latency_write = time.time() - start
 
         latency_total = time.time() - begin
@@ -462,6 +498,15 @@ class BasicInferTask(InferTask):
             data["result_dtype"] = dtype
         if self.labels is not None:
             data["labels"] = self.labels
+
+        if self.type == InferType.CLASSIFICATION:
+            if isinstance(self.labels, dict):
+                label_names = {v: k for k, v in self.labels.items()}
+            else:
+                label_names = {v: k for v, k in enumerate(self.labels)} if isinstance(self.labels, Sequence) else None
+
+            cw = ClassificationWriter(label=self.output_label_key, label_names=label_names)
+            return cw(data)
 
         writer = Writer(label=self.output_label_key, json=self.output_json_key)
         return writer(data)

@@ -13,7 +13,7 @@
 # please run `./runtests.sh --clean && DOCKER_BUILDKIT=1 docker build -t projectmonai/monailabel:latest .`
 # to use different version of MONAI pass `--build-arg MONAI_IMAGE=...`
 
-ARG MONAI_IMAGE=projectmonai/monai:1.0.0
+ARG MONAI_IMAGE=projectmonai/monai:1.0.1
 ARG BUILD_OHIF=true
 
 FROM ${MONAI_IMAGE} as build

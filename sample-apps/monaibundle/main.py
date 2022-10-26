@@ -13,6 +13,7 @@ import logging
 import os
 import re
 import shutil
+import sys
 from typing import Dict
 
 import requests
@@ -27,13 +28,9 @@ from monailabel.tasks.activelearning.first import First
 from monailabel.tasks.activelearning.random import Random
 from monailabel.tasks.infer.bundle import BundleInferTask
 from monailabel.tasks.train.bundle import BundleTrainTask
-from monailabel.utils.others.generic import strtobool
+from monailabel.utils.others.generic import MONAI_ZOO_INFO, MONAI_ZOO_REPO, MONAI_ZOO_SOURCE, strtobool
 
 logger = logging.getLogger(__name__)
-
-MONAI_ZOO_INFO = "https://raw.githubusercontent.com/Project-MONAI/model-zoo/dev/models/model_info.json"
-MONAI_ZOO_SOURCE = "github"
-MONAI_ZOO_REPO = "Project-MONAI/model-zoo/hosting_storage_v1"
 
 
 class MyApp(MONAILabelApp):
@@ -84,6 +81,7 @@ class MyApp(MONAILabelApp):
                     e = os.path.join(self.model_dir, re.sub(r"_v.*.zip", "", f"{k}.zip"))
                     if os.path.isdir(e):
                         shutil.move(e, p)
+            sys.path.append(p)
 
             self.models[k] = p
 

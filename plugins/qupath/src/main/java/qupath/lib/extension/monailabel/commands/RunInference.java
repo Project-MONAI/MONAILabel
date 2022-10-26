@@ -19,10 +19,8 @@ import java.io.IOException;
 import java.nio.file.Path;
 import java.util.ArrayList;
 import java.util.Arrays;
-import java.util.HashMap;
 import java.util.HashSet;
 import java.util.List;
-import java.util.Map;
 import java.util.Set;
 
 import javax.xml.parsers.ParserConfigurationException;
@@ -50,6 +48,7 @@ import qupath.lib.objects.classes.PathClassFactory;
 import qupath.lib.plugins.parameters.ParameterList;
 import qupath.lib.regions.ImagePlane;
 import qupath.lib.regions.RegionRequest;
+import qupath.lib.roi.PointsROI;
 import qupath.lib.roi.ROIs;
 import qupath.lib.roi.interfaces.ROI;
 import qupath.lib.scripting.QP;
@@ -80,38 +79,27 @@ public class RunInference implements Runnable {
 			}
 
 			ResponseInfo info = MonaiLabelClient.info();
-			List<String> names = new ArrayList<String>();
-			Map<String, String[]> labels = new HashMap<String, String[]>();
-			for (String n : info.models.keySet()) {
-				names.add(n);
-				labels.put(n, info.models.get(n).labels.labels());
-			}
+			List<String> names = Arrays.asList(info.models.keySet().toArray(new String[0]));
 
-			ParameterList list = new ParameterList();
 			if (selectedModel == null || selectedModel.isEmpty()) {
 				selectedModel = names.isEmpty() ? "" : names.get(0);
 			}
 
+			ParameterList list = new ParameterList();
 			list.addChoiceParameter("Model", "Model Name", selectedModel, names);
 			list.addStringParameter("Location", "Location (x,y,w,h)", Arrays.toString(bbox));
 			list.addIntParameter("TileSize", "TileSize", tileSize);
 
-			boolean override = !info.models.get(selectedModel).nuclick;
-			list.addBooleanParameter("Override", "Override", override);
-
 			if (Dialogs.showParameterDialog("MONAILabel", list)) {
 				String model = (String) list.getChoiceParameterValue("Model");
 				bbox = Utils.parseStringArray(list.getStringParameterValue("Location"));
-				override = list.getBooleanParameterValue("Override").booleanValue();
 				tileSize = list.getIntParameterValue("TileSize").intValue();
 
 				selectedModel = model;
 				selectedBBox = bbox;
 				selectedTileSize = tileSize;
 
-				boolean validateClicks = info.models.get(selectedModel).nuclick;
-				runInference(model, new HashSet<String>(Arrays.asList(labels.get(model))), bbox, tileSize, imageData,
-						override, validateClicks);
+				runInference(model, info, bbox, tileSize, imageData);
 			}
 		} catch (Exception ex) {
 			ex.printStackTrace();
@@ -124,13 +112,16 @@ public class RunInference implements Runnable {
 		List<PathObject> objs = imageData.getHierarchy().getFlattenedObjectList(null);
 		ArrayList<Point2> clicks = new ArrayList<Point2>();
 		for (int i = 0; i < objs.size(); i++) {
-			String pname = objs.get(i).getPathClass() == null ? "" : objs.get(i).getPathClass().getName();
-			if (pname.equalsIgnoreCase(name)) {
-				ROI r = objs.get(i).getROI();
-				List<Point2> points = r.getAllPoints();
-				for (Point2 p : points) {
-					if (monaiLabelROI.contains(p.getX(), p.getY())) {
-						clicks.add(new Point2(p.getX() - offsetX, p.getY() - offsetY));
+			var obj = objs.get(i);
+			String pname = obj.getPathClass() == null ? "" : obj.getPathClass().getName();
+			if (name.isEmpty() || pname.equalsIgnoreCase(name)) {
+				ROI r = obj.getROI();
+				if (r instanceof PointsROI) {
+					List<Point2> points = r.getAllPoints();
+					for (Point2 p : points) {
+						if (monaiLabelROI.contains(p.getX(), p.getY())) {
+							clicks.add(new Point2(p.getX() - offsetX, p.getY() - offsetY));
+						}
 					}
 				}
 			}
@@ -140,12 +131,17 @@ public class RunInference implements Runnable {
 		return clicks;
 	}
 
-	private void runInference(String model, Set<String> labels, int[] bbox, int tileSize,
-			ImageData<BufferedImage> imageData, boolean override, boolean validateClicks)
+	private void runInference(String model, ResponseInfo info, int[] bbox, int tileSize,
+			ImageData<BufferedImage> imageData)
 			throws SAXException, IOException, ParserConfigurationException, InterruptedException {
 		logger.info("MONAILabel:: Running Inference...");
-		logger.info("MONAILabel:: Model: " + model + "; override: " + override + "; clicks:" + validateClicks
-				+ "; Labels: " + labels);
+
+		boolean isNuClick = info.models.get(model).nuclick;
+		boolean override = !isNuClick;
+		boolean validateClicks = isNuClick;
+		var labels = new HashSet<String>(Arrays.asList(info.models.get(model).labels.labels()));
+
+		logger.info("MONAILabel:: Model: " + model + "; Labels: " + labels);
 
 		Path imagePatch = null;
 		try {
@@ -178,29 +174,37 @@ public class RunInference implements Runnable {
 				req.location[0] = req.location[1] = 0;
 				req.size[0] = req.size[1] = 0;
 
-				var fg = getClicks("Positive", imageData, roi, offsetX, offsetY);
-				var bg = getClicks("Negative", imageData, roi, offsetX, offsetY);
-				if (validateClicks) {
-					if (fg.size() == 0 && bg.size() == 0) {
-						Dialogs.showErrorMessage("MONAILabel",
-								"Need atleast one Postive/Negative annotation/click point within the ROI");
-						return;
-					}
-					if (roi.getBoundsHeight() < 128 || roi.getBoundsWidth() < 128) {
-						Dialogs.showErrorMessage("MONAILabel",
-								"Min Height/Width of ROI should be more than 128");
-						return;
-					}
-				}
-
-				req.params.addClicks(fg, true);
-				req.params.addClicks(bg, false);
 
 				imagePatch = java.nio.file.Files.createTempFile("patch", ".png");
 				imageFile = imagePatch.toString();
 				var requestROI = RegionRequest.createInstance(imageData.getServer().getPath(), 1, roi);
 				ImageWriterTools.writeImageRegion(imageData.getServer(), requestROI, imageFile);
 			}
+
+			ArrayList<Point2> fg = new ArrayList<>();
+			ArrayList<Point2> bg = new ArrayList<>();
+			if (isNuClick) {
+				fg = getClicks("", imageData, roi, offsetX, offsetY);
+			} else {
+				fg = getClicks("Positive", imageData, roi, offsetX, offsetY);
+				bg = getClicks("Negative", imageData, roi, offsetX, offsetY);
+			}
+
+			if (validateClicks) {
+				if (fg.size() == 0 && bg.size() == 0) {
+					Dialogs.showErrorMessage("MONAILabel",
+							"Need atleast one Postive/Negative annotation/click point within the ROI");
+					return;
+				}
+				if (roi.getBoundsHeight() < 128 || roi.getBoundsWidth() < 128) {
+					Dialogs.showErrorMessage("MONAILabel",
+							"Min Height/Width of ROI should be more than 128");
+					return;
+				}
+			}
+			req.params.addClicks(fg, true);
+			req.params.addClicks(bg, false);
+
 
 			Document dom = MonaiLabelClient.infer(model, image, imageFile, sessionId, req);
 			NodeList annotation_list = dom.getElementsByTagName("Annotation");
@@ -227,6 +231,20 @@ public class RunInference implements Runnable {
 					}
 				}
 			}
+		} else {
+			List<PathObject> objs = imageData.getHierarchy().getFlattenedObjectList(null);
+			for (int i = 0; i < objs.size(); i++) {
+				var obj = objs.get(i);
+				ROI r = obj.getROI();
+				if (r instanceof PointsROI) {
+					String pname = obj.getPathClass() == null ? "" : obj.getPathClass().getName();
+					if (pname.equalsIgnoreCase("Positive") || pname.equalsIgnoreCase("Negative")) {
+						continue;
+					}
+					imageData.getHierarchy().removeObjectWithoutUpdate(obj, false);
+				}
+			}
+			QP.fireHierarchyUpdate(imageData.getHierarchy());
 		}
 
 		int count = 0;

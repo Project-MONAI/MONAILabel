@@ -13,8 +13,8 @@ import logging
 from typing import Any, Callable, Dict, Sequence
 
 import numpy as np
-from lib.transforms import LoadImagePatchd
-from monai.apps.nuclick.transforms import AddClickSignalsd, NuclickKeys, PostFilterLabeld
+from lib.transforms import LoadImagePatchd, NuClickPostFilterLabelExd
+from monai.apps.nuclick.transforms import AddClickSignalsd, NuclickKeys
 from monai.config import KeysCollection
 from monai.transforms import (
     Activationsd,
@@ -56,11 +56,13 @@ class ConvertInteractiveClickSignals(MapTransform):
         for source_annotation_key, target_data_key in zip(self.source_annotation_keys, self.target_data_keys):
             if source_annotation_key in annotations:
                 points = annotations.get(source_annotation_key)["points"]
-                print(f"{points=}")
+                print(f"points={points}")
                 points = [coords[0:2] for coords in points]
                 data[target_data_key] = points
             elif not self.allow_missing_keys:
-                raise KeyError(f"{source_annotation_key=} not found in {annotations.keys()=}")
+                raise KeyError(
+                    f"source_annotation_key={source_annotation_key} not found in annotations.keys()={annotations.keys()}"
+                )
         return data
 
 
@@ -74,7 +76,7 @@ class NuClick(BasicInferTask):
         path,
         network=None,
         roi_size=(128, 128),
-        type=InferType.OTHERS,
+        type=InferType.ANNOTATION,
         labels=None,
         dimension=2,
         description="A pre-trained NuClick model for interactive cell segmentation for Pathology",
@@ -120,8 +122,8 @@ class NuClick(BasicInferTask):
             AsDiscreted(keys="pred", threshold=0.5),
             SqueezeDimd(keys="pred", dim=1),
             ToNumpyd(keys=("image", "pred")),
-            PostFilterLabeld(keys="pred"),
-            FindContoursd(keys="pred", labels=self.labels, colormap={"Nuclei": [0, 255, 255]}),
+            NuClickPostFilterLabelExd(keys="pred"),
+            FindContoursd(keys="pred", labels=self.labels),
         ]
 
     def writer(self, data, extension=None, dtype=None):

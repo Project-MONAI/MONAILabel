@@ -10,14 +10,16 @@
 # limitations under the License.
 
 import logging
+from typing import Callable, Union
 
 import numpy as np
 import torch
-from lib.trainers.tooltracking import MeanIoUMetric
 from monai.apps.deepgrow.transforms import AddRandomGuidanced, FindDiscrepancyRegionsd
 from monai.handlers import MeanDice, from_engine
+from monai.handlers.ignite_metric import IgniteMetric
 from monai.inferers import SimpleInferer
 from monai.losses import DiceLoss
+from monai.metrics import MeanIoU
 from monai.transforms import (
     Activationsd,
     AddChanneld,
@@ -34,6 +36,7 @@ from monai.transforms import (
     TorchVisiond,
     ToTensord,
 )
+from monai.utils import MetricReduction
 
 from monailabel.deepedit.handlers import TensorBoard2DImageHandler
 from monailabel.deepedit.interaction import Interaction
@@ -145,3 +148,15 @@ class DeepEdit(BasicTrainTask):
             max_interactions=self.max_val_interactions,
             train=False,
         )
+
+
+class MeanIoUMetric(IgniteMetric):
+    def __init__(
+        self,
+        include_background: bool = True,
+        reduction: Union[MetricReduction, str] = MetricReduction.MEAN,
+        output_transform: Callable = lambda x: x,
+        save_details: bool = True,
+    ) -> None:
+        metric_fn = MeanIoU(include_background=include_background, reduction=reduction)
+        super().__init__(metric_fn=metric_fn, output_transform=output_transform, save_details=save_details)

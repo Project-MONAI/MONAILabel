@@ -244,7 +244,7 @@ class ClassificationWriter:
         self.label = label
         self.label_names = label_names
 
-    def __call__(self, data):
+    def __call__(self, data) -> Tuple[Any, Any]:
         logger.info(data[self.label].array)
 
         result = []
@@ -275,7 +275,7 @@ class PolygonWriter:
         self.key_output_format = key_output_format
         self.format = format
 
-    def __call__(self, data):
+    def __call__(self, data) -> Tuple[Any, Any]:
         loglevel = data.get("logging", "INFO").upper()
         logger.setLevel(loglevel)
 

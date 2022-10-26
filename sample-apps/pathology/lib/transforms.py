@@ -13,15 +13,28 @@ import logging
 import math
 import pathlib
 
+import cv2
 import numpy as np
 import openslide
 import torch
 from monai.apps.deepgrow.transforms import AddGuidanceSignald, AddInitialSeedPointd
+from monai.apps.nuclick.transforms import ExtractPatchd
+from monai.apps.nuclick.transforms import PostFilterLabeld as NuClickPostFilterLabeld
 from monai.config import KeysCollection
-from monai.transforms import CenterSpatialCrop, MapTransform, Transform
+from monai.transforms import (
+    AddChanneld,
+    CenterSpatialCrop,
+    Compose,
+    CropForegroundd,
+    MapTransform,
+    SpatialPadd,
+    Transform,
+)
 from PIL import Image
 from skimage.filters.thresholding import threshold_otsu
 from skimage.morphology import remove_small_holes, remove_small_objects
+
+from monailabel.interfaces.utils.transform import run_transforms
 
 logger = logging.getLogger(__name__)
 
@@ -73,7 +86,7 @@ class LoadImagePatchd(MapTransform):
             else:
                 img = Image.open(d[key])
 
-            img = img.convert(self.mode)
+            img = img.convert(self.mode) if self.mode else img
             image_np = np.array(img, dtype=self.dtype)
 
             meta_dict_key = f"{key}_{self.meta_key_postfix}"
@@ -86,7 +99,7 @@ class LoadImagePatchd(MapTransform):
             meta_dict["original_channel_dim"] = -1
             logger.debug(f"Image shape: {image_np.shape} vs size: {size} vs tile_size: {tile_size}")
 
-            if self.padding and (image_np.shape[0] != tile_size[0] or image_np.shape[1] != tile_size[1]):
+            if self.padding and tile_size and (image_np.shape[0] != tile_size[0] or image_np.shape[1] != tile_size[1]):
                 image_np = self.pad_to_shape(image_np, tile_size)
             d[key] = image_np
         return d
@@ -199,7 +212,7 @@ class PostFilterLabeld(MapTransform):
             if self.min_hole:
                 label = remove_small_holes(label, area_threshold=self.min_hole)
 
-            d[key] = label.astype(np.uint8)
+            d[key] = np.where(label > 0, d[key], 0)
         return d
 
 
@@ -251,3 +264,122 @@ class AddClickGuidanceSignald(AddGuidanceSignald):
 
         ns = np.zeros_like(image[0])[np.newaxis]
         return np.concatenate([image, ns, ns], axis=0)
+
+
+class FilterLabelByClassd(MapTransform):
+    def __init__(self, keys: KeysCollection, allow_missing_keys: bool = False, key_class="class") -> None:
+        super().__init__(keys, allow_missing_keys)
+        self.key_class = key_class
+
+    def __call__(self, data):
+        d = dict(data)
+        for key in self.keys:
+            label = d[key]
+            cval = d[self.key_class]
+            label[label != cval] = 0
+            d[key] = label
+        return d
+
+
+class FixNuclickClassd(Transform):
+    def __init__(self, image="image", label="label", offset=-1) -> None:
+        self.image = image
+        self.label = label
+        self.offset = offset
+
+    def __call__(self, data):
+        d = dict(data)
+        signal = torch.where(data[self.label] > 0, 1, 0)
+        if len(signal.shape) < len(data[self.image].shape):
+            signal = signal[None]
+
+        d[self.image] = torch.cat([data[self.image], signal], dim=len(signal.shape) - 3)
+        d[self.label] = int(torch.max(data[self.label]) + self.offset)
+        return d
+
+
+class LoadFromContoursd(MapTransform):
+    def __init__(self, keys: KeysCollection, allow_missing_keys: bool = False, source_key="image") -> None:
+        super().__init__(keys, allow_missing_keys)
+        self.source_key = source_key
+
+    def __call__(self, data):
+        d = dict(data)
+        location = d.get("location")
+        x = location[0] if location else 0
+        y = location[1] if location else 0
+
+        for key in self.keys:
+            contour = d[key]
+            pts = [np.array([[p[0] - x, p[1] - y] for p in contour])]
+
+            label_np = np.zeros(d[self.source_key].shape[-2:], dtype=np.uint8)
+            cv2.fillPoly(label_np, pts=pts, color=(255, 0, 0))
+            logger.info(f"Label NP: {np.unique(label_np, return_counts=True)}")
+            d[key] = label_np
+
+        return d
+
+
+class CropNuclied(Transform):
+    def __init__(self, patch_size=128, debug=True):
+        self.patch_size = patch_size
+        self.debug = debug
+
+    def __call__(self, data):
+        d = dict(data)
+        t = []
+        if d.get("label") is not None:
+            t = [
+                LoadFromContoursd(keys="label", source_key="image"),
+                AddChanneld(keys="label"),
+                CropForegroundd(keys=("image", "label"), source_key="label"),
+                SpatialPadd(keys="image", spatial_size=(self.patch_size, self.patch_size)),
+            ]
+        if d.get("centroid") is not None:
+            t = [ExtractPatchd(keys="image", patch_size=self.patch_size)]
+
+        if self.debug:
+            run_transforms(d, t, log_prefix="PRE")
+        else:
+            d = Compose(t)(d)
+        return d
+
+
+class NuClickPostFilterLabelExd(NuClickPostFilterLabeld):
+    def __call__(self, data):
+        d = dict(data)
+
+        nuc_points = d[self.nuc_points]
+        bounding_boxes = d[self.bounding_boxes]
+        img_height = d[self.img_height]
+        img_width = d[self.img_width]
+
+        for key in self.keys:
+            label = d[key].astype(np.uint8)
+            masks = self.post_processing(
+                label,
+                thresh=self.thresh,
+                min_size=self.min_size,
+                min_hole=self.min_hole,
+                do_reconstruction=self.do_reconstruction,
+                nuc_points=nuc_points,
+            )
+
+            pred_classes = d.get("pred_classes")
+            d[key] = self.gen_instance_map(
+                masks, bounding_boxes, img_height, img_width, pred_classes=pred_classes
+            ).astype(np.uint8)
+        return d
+
+    def gen_instance_map(self, masks, bounding_boxes, m, n, flatten=True, pred_classes=None):
+        instance_map = np.zeros((m, n), dtype=np.uint16)
+        for i, item in enumerate(masks):
+            this_bb = bounding_boxes[i]
+            this_mask_pos = np.argwhere(item > 0)
+            this_mask_pos[:, 0] = this_mask_pos[:, 0] + this_bb[1]
+            this_mask_pos[:, 1] = this_mask_pos[:, 1] + this_bb[0]
+
+            c = pred_classes[i] if pred_classes and i < len(pred_classes) else 1
+            instance_map[this_mask_pos[:, 0], this_mask_pos[:, 1]] = c if flatten else i + 1
+        return instance_map

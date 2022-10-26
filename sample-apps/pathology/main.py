@@ -8,7 +8,7 @@
 # WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 # See the License for the specific language governing permissions and
 # limitations under the License.
-
+import copy
 import ctypes.util
 import logging
 import os
@@ -18,6 +18,7 @@ from typing import Dict
 
 import lib.configs
 from lib.activelearning.random import WSIRandom
+from lib.infers import NuClickClassification
 
 import monailabel
 from monailabel.datastore.dsa import DSADatastore
@@ -42,7 +43,9 @@ class MyApp(MONAILabelApp):
         self.model_dir = os.path.join(app_dir, "model")
 
         configs = {}
-        for c in get_class_names(lib.configs, "TaskConfig"):
+        candidates = get_class_names(lib.configs, "TaskConfig")
+        candidates.extend(get_class_names(lib.configs, "NuClick"))
+        for c in candidates:
             name = c.split(".")[-2].lower()
             configs[name] = c
 
@@ -126,6 +129,19 @@ class MyApp(MONAILabelApp):
             for k, v in c.items():
                 logger.info(f"+++ Adding Inferer:: {k} => {v}")
                 infers[k] = v
+
+        #################################################
+        # Pipeline based on existing infers
+        #################################################
+        if infers.get("nuclick_classification"):
+            if not infers.get("classification_nuclei"):
+                logger.warning("Nuclick Classification (pipeline) requires nuclei classification model")
+            else:
+                p = infers["nuclick_classification"]
+                c = infers["classification_nuclei"]
+                if isinstance(p, NuClickClassification):
+                    p.init_classification(c)
+
         return infers
 
     def init_trainers(self) -> Dict[str, TrainTask]:
@@ -169,12 +185,12 @@ Example to run train/infer/scoring task(s) locally without actually running MONA
 
 
 def main():
-    import argparse
     from pathlib import Path
 
     from monailabel.config import settings
 
     settings.MONAI_LABEL_DATASTORE_AUTO_RELOAD = False
+    settings.MONAI_LABEL_DATASTORE_READ_ONLY = True
     settings.MONAI_LABEL_DATASTORE_FILE_EXT = ["*.svs", "*.png", "*.npy", "*.tif", ".xml"]
     os.putenv("MASTER_ADDR", "127.0.0.1")
     os.putenv("MASTER_PORT", "1234")
@@ -187,22 +203,46 @@ def main():
     )
 
     home = str(Path.home())
-    studies = f"{home}/Datasets/Pathology"
-
-    parser = argparse.ArgumentParser()
-    parser.add_argument("-s", "--studies", default=studies)
-    parser.add_argument("-t", "--train", default=False)
-    args = parser.parse_args()
+    # studies = f"{home}/Dataset/Pathology/pannukeFFF"
+    studies = f"{home}/Dataset/Pathology"
 
     app_dir = os.path.dirname(__file__)
-    studies = args.studies
+    app = MyApp(
+        app_dir,
+        studies,
+        {
+            "roi_size": "[1024,1024]",
+            "preload": "false",
+            "models": "classification_nuclei,nuclick_classification",
+        },
+    )
 
-    app = MyApp(app_dir, studies, {"roi_size": "[1024,1024]", "preload": "true"})
-    if args.train:
-        train_nuclick(app)
-    else:
-        # infer_nuclick(app)
-        infer_wsi(app)
+    # train_classify(app)
+    # infer_classify(app)
+    infer_nuclick_classification(app)
+    # train_nuclick(app)
+    # infer_nuclick(app)
+    # infer_wsi(app)
+
+
+def train_classify(app):
+    model = "classification_nuclei"
+    app.train(
+        request={
+            "name": "train_01",
+            "model": model,
+            "max_epochs": 20,
+            "dataset": "PersistentDataset",  # PersistentDataset, CacheDataset
+            "train_batch_size": 128,
+            "val_batch_size": 128,
+            "multi_gpu": True,
+            "val_split": 0.2,
+            "dataset_source": "none",
+            "dataset_limit": 0,
+            "pretrained": False,
+            "n_saved": 10,
+        },
+    )
 
 
 def train_nuclick(app):
@@ -242,36 +282,72 @@ def train(app):
     )
 
 
-def infer_nuclick(app):
+def infer_classify(app):
+    import json
+
+    request = {
+        "model": "classification_nuclei",
+        "image": "/localhome/sachi/Dataset/Pathology/pannukeFFF/fold1_0000_1_0001.png",
+        "label": "/localhome/sachi/Dataset/Pathology/pannukeFFF/labels/final/fold1_0000_1_0001.png",
+        "output": "json",
+    }
+    res = app.infer(request)
+    print(json.dumps(res, indent=2))
+
+
+def infer_nuclick(app, classify=True):
+    import json
     import shutil
 
-    image = "C:\\Projects\\nuclick_torch\\test\\input_image.png"
-    res = app.infer(
-        # request={
-        #     "model": "nuclick",
-        #     "image": image,
-        #     "output": "asap",
-        #     "foreground": [[390, 470], [1507, 190]],
-        #     "location": [0, 0],
-        #     "size": [0, 0],
-        #     "result_extension": ".png",
-        # }
-        request={
-            "model": "nuclick",
-            "image": "JP2K-33003-1",
-            "level": 0,
-            "location": [2262, 4661],
-            "size": [294, 219],
-            "min_poly_area": 30,
-            "foreground": [[2411, 4797], [2331, 4775], [2323, 4713], [2421, 4684]],
-            "background": [],
-            "output": "asap",
-            # 'result_extension': '.png',
-        }
-    )
+    request = {
+        "model": "nuclick",
+        "image": "JP2K-33003-1",
+        "level": 0,
+        "location": [2262, 4661],
+        "size": [294, 219],
+        "min_poly_area": 30,
+        "foreground": [[2411, 4797], [2331, 4775], [2323, 4713], [2421, 4684]],
+        "background": [],
+        "output": "json" if classify else "asap",
+    }
 
-    # print(json.dumps(res, indent=2))
-    shutil.move(res["label"], "C:\\Projects\\nuclick_torch\\test\\output_image.xml")
+    res = app.infer(request)
+
+    if not classify:
+        shutil.move(res["label"], os.path.join(app.studies, "..", "output_image.xml"))
+        logger.info("All Done!")
+    else:
+        logger.info("NuClick Done!")
+        for annotation in res["params"]["annotations"]:
+            for element in annotation["elements"]:
+                req2 = copy.deepcopy(request)
+                req2["model"] = "classify_nuclei"
+                request["contours"] = element["contours"]
+
+                res2 = app.infer(request)
+                print(json.dumps(res2, indent=2))
+                break
+
+
+def infer_nuclick_classification(app):
+    import shutil
+
+    request = {
+        "model": "nuclick_classification",
+        "image": "JP2K-33003-1",
+        "output": "asap",
+        "level": 0,
+        "location": [2387, 4845],
+        "size": [215, 165],
+        "tile_size": [1024, 1024],
+        "min_poly_area": 30,
+        "foreground": [[2486, 4870], [2534, 4941], [2500, 4947], [2418, 4936], [2462, 4979], [2429, 4976]],
+        "background": [],
+    }
+
+    res = app.infer(request)
+
+    shutil.move(res["label"], os.path.join(app.studies, "..", "output_image.xml"))
     logger.info("All Done!")
 
 

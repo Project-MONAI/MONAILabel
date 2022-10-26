@@ -189,8 +189,7 @@ class FindContoursd(MapTransform):
             logger.debug(f"Total Unique Masks (excluding background): {labels}")
             for label_idx in labels:
                 p = d[key].array if isinstance(d[key], MetaTensor) else d[key]
-                p = p.astype(np.uint8)
-                p[p == label_idx] = 1
+                p = np.where(p == label_idx, 1, 0).astype(np.uint8)
 
                 label_name = self.labels.get(label_idx, label_idx)
                 label_names.add(label_name)
