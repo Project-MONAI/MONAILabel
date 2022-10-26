@@ -619,6 +619,7 @@ def main_worker(rank, world_size, request, datalist, task: BasicTrainTask):
         level=logging.INFO,
         format="[%(asctime)s.%(msecs)03d][%(levelname)5s](%(name)s) - %(message)s",
         datefmt="%Y-%m-%d %H:%M:%S",
+        force=True,
     )
 
     logger.info(f"Main Worker: {rank}")
