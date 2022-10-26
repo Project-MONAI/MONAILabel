@@ -14,9 +14,7 @@ limitations under the License.
 package qupath.lib.extension.monailabel.commands;
 
 import java.util.ArrayList;
-import java.util.HashMap;
 import java.util.List;
-import java.util.Map;
 
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -34,10 +32,8 @@ public class RunTraining implements Runnable {
 		try {
 			ResponseInfo info = MonaiLabelClient.info();
 			List<String> names = new ArrayList<String>();
-			Map<String, String[]> labels = new HashMap<String, String[]>();
-			for (String n : info.models.keySet()) {
+			for (String n : info.trainers.keySet()) {
 				names.add(n);
-				labels.put(n, info.models.get(n).labels.labels());
 			}
 
 			ParameterList list = new ParameterList();

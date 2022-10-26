@@ -135,6 +135,7 @@ class MONAILabelApp:
             self.studies,
             extensions=settings.MONAI_LABEL_DATASTORE_FILE_EXT,
             auto_reload=settings.MONAI_LABEL_DATASTORE_AUTO_RELOAD,
+            read_only=settings.MONAI_LABEL_DATASTORE_READ_ONLY,
         )
 
     def init_remote_datastore(self) -> Datastore:
