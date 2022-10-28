@@ -32,7 +32,9 @@ from monai.data import (
     PersistentDataset,
     SmartCacheDataset,
     ThreadDataLoader,
+    get_track_meta,
     partition_dataset,
+    set_track_meta,
 )
 from monai.engines import SupervisedEvaluator, SupervisedTrainer
 from monai.handlers import (
@@ -167,6 +169,7 @@ class BasicTrainTask(TrainTask):
         self._find_unused_parameters = find_unused_parameters
         self._load_strict = load_strict
         self._labels = [] if labels is None else [labels] if isinstance(labels, str) else labels
+        self._disable_tracking = kwargs.get("disable_tracking", True)
 
     @abstractmethod
     def network(self, context: Context):
@@ -455,7 +458,16 @@ class BasicTrainTask(TrainTask):
 
         # Finalize and Run Training
         self.finalize(context)
-        context.trainer.run()
+
+        # Disable Tracking
+        meta_tracking = get_track_meta()
+        if self._disable_tracking:
+            set_track_meta(False)
+
+        try:
+            context.trainer.run()
+        finally:
+            set_track_meta(meta_tracking)  # In case of same process (restore)
 
         if context.multi_gpu:
             torch.distributed.destroy_process_group()
