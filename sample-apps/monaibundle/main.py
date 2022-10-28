@@ -11,13 +11,7 @@
 
 import logging
 import os
-import re
-import shutil
-import sys
 from typing import Dict
-
-import requests
-from monai.bundle import download
 
 import monailabel
 from monailabel.interfaces.app import MONAILabelApp
