@@ -35,7 +35,7 @@ from monailabel.tasks.activelearning.random import Random
 from monailabel.tasks.infer.bundle import BundleInferTask
 from monailabel.tasks.train.bundle import BundleTrainTask
 from monailabel.utils.others.class_utils import get_class_names
-from monailabel.utils.others.generic import get_bundle, strtobool
+from monailabel.utils.others.generic import get_bundle_models, strtobool
 from monailabel.utils.others.planner import HeuristicPlanner
 
 logger = logging.getLogger(__name__)
@@ -96,7 +96,7 @@ class MyApp(MONAILabelApp):
         logger.info(f"+++ Using Models: {list(self.models.keys())}")
 
         # Load models from bundle config files, local or released in Model-Zoo, e.g., --conf bundles <spleen_ct_segmentation_v0.1.0>
-        self.bundles = get_bundle(app_dir, conf) if conf.get("bundles") else None
+        self.bundles = get_bundle_models(app_dir, conf, conf_key="bundles") if conf.get("bundles") else None
 
         super().__init__(
             app_dir=app_dir,

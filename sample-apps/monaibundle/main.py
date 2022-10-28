@@ -28,64 +28,15 @@ from monailabel.tasks.activelearning.first import First
 from monailabel.tasks.activelearning.random import Random
 from monailabel.tasks.infer.bundle import BundleInferTask
 from monailabel.tasks.train.bundle import BundleTrainTask
-from monailabel.utils.others.generic import MONAI_ZOO_INFO, MONAI_ZOO_REPO, MONAI_ZOO_SOURCE, strtobool
+from monailabel.utils.others.generic import strtobool
+from monailabel.utils.others.generic import get_bundle_models, strtobool
 
 logger = logging.getLogger(__name__)
 
 
 class MyApp(MONAILabelApp):
     def __init__(self, app_dir, studies, conf):
-        self.model_dir = os.path.join(app_dir, "model")
-
-        zoo_info = requests.get(conf.get("zoo_info", MONAI_ZOO_INFO)).json()
-        zoo_source = conf.get("zoo_source", MONAI_ZOO_SOURCE)
-        zoo_repo = conf.get("zoo_repo", MONAI_ZOO_REPO)
-
-        available = {k.replace(".zip", ""): v for k, v in zoo_info.items()}
-        models = conf.get("models")
-        if not models:
-            print("")
-            print("---------------------------------------------------------------------------------------")
-            print("Provide --conf models <name>")
-            print("Following are the available models.  You can pass comma (,) separated names to pass multiple")
-            print("    -c models {}".format("\n    -c models ".join(available.keys())))
-            print("---------------------------------------------------------------------------------------")
-            print("")
-            exit(-1)
-
-        models = models.split(",")
-        models = [m.strip() for m in models]
-        invalid = [m for m in models if not available.get(m) and not os.path.isdir(os.path.join(self.model_dir, m))]
-
-        if invalid:
-            print("")
-            print("---------------------------------------------------------------------------------------")
-            print(f"Invalid Model(s) are provided: {invalid}")
-            print("Following are the available models.  You can pass comma (,) separated names to pass multiple")
-            print("    -c models {}".format("\n    -c models ".join(available.keys())))
-            print(f"Or provide valid local bundle directories under: {self.model_dir}")
-            print("---------------------------------------------------------------------------------------")
-            print("")
-            exit(-1)
-        self.models: Dict[str, str] = {}
-
-        for k in models:
-            v = available.get(k)
-            p = os.path.join(self.model_dir, k)
-            if not v:
-                logger.info(f"+++ Adding Bundle from Local: {k} => {p}")
-            else:
-                logger.info(f"+++ Adding Bundle from Zoo: {k} => {v} => {p}")
-                if not os.path.exists(p):
-                    download(name=k, bundle_dir=self.model_dir, source=zoo_source, repo=zoo_repo)
-                    e = os.path.join(self.model_dir, re.sub(r"_v.*.zip", "", f"{k}.zip"))
-                    if os.path.isdir(e):
-                        shutil.move(e, p)
-            sys.path.append(p)
-
-            self.models[k] = p
-
-        logger.info(f"+++ Using Models: {list(self.models.keys())}")
+        self.models = get_bundle_models(app_dir, conf)
 
         super().__init__(
             app_dir=app_dir,
