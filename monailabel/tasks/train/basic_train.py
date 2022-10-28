@@ -464,10 +464,10 @@ class BasicTrainTask(TrainTask):
         if self._disable_tracking:
             set_track_meta(False)
 
-        context.trainer.run()
-
-        # In case of same process (restore)
-        set_track_meta(meta_tracking)
+        try:
+            context.trainer.run()
+        finally:
+            set_track_meta(meta_tracking)  # In case of same process (restore)
 
         if context.multi_gpu:
             torch.distributed.destroy_process_group()
