@@ -155,11 +155,11 @@ class TensorBoardImageHandler:
 
                 y_img = Image.new("RGB", (200, 100))
                 draw = ImageDraw.Draw(y_img)
-                draw.text((10, 50), self.class_names[str(y_c)])
+                draw.text((10, 50), self.class_names.get(f"{y_c}", f"{y_c}"))
 
                 y_pred_img = Image.new("RGB", (200, 100), "green" if y_c == y_pred_c else "red")
                 draw = ImageDraw.Draw(y_pred_img)
-                draw.text((10, 50), self.class_names[str(y_pred_c)])
+                draw.text((10, 50), self.class_names.get(f"{y_pred_c}", f"{y_pred_c}"))
 
                 label_pred = [np.moveaxis(np.array(y_img), -1, 0), np.moveaxis(np.array(y_pred_img), -1, 0)]
                 img_tensor = make_grid(
