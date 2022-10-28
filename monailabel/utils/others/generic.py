@@ -19,17 +19,19 @@ import pathlib
 import re
 import shutil
 import subprocess
-import time
 import sys
+import time
 from typing import Dict
 
 import requests
 import torch
-from monailabel.utils.others.modelzoo_list import MAINTAINED_BUNDLES
 from monai.apps import download_url
 from monai.bundle import download
 
+from monailabel.utils.others.modelzoo_list import MAINTAINED_BUNDLES
+
 logger = logging.getLogger(__name__)
+
 
 def file_ext(name) -> str:
     suffixes = []
@@ -225,11 +227,12 @@ def is_openslide_supported(name):
         return True
     return False
 
+
 def get_bundle_models(app_dir, conf, conf_key="models"):
     """
     The funtion to get bundle models either from available model zoo or local files.
-    MONAI Label maintains a list of supported bundles, non-labeling bundles are not supported. 
-    This function will filter available bundles according to the maintaining list. 
+    MONAI Label maintains a list of supported bundles, non-labeling bundles are not supported.
+    This function will filter available bundles according to the maintaining list.
 
     Args:
         app_dir: the app directory path
@@ -250,7 +253,7 @@ def get_bundle_models(app_dir, conf, conf_key="models"):
     zoo_repo = conf.get("zoo_repo", MONAI_ZOO_REPO)
 
     # filter model zoo bundle with MONAI Label supported bundles according to the maintaining list
-    available = {k: v for k, v in zoo_info.items() if re.compile("_v\d*.").split(k)[0] in MAINTAINED_BUNDLES}
+    available = {k: v for k, v in zoo_info.items() if re.compile(r"_v\d*.").split(k)[0] in MAINTAINED_BUNDLES}
 
     models = conf.get(conf_key)
     if not models:

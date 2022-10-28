@@ -10,11 +10,11 @@
 # limitations under the License.
 
 """
-This constant is a list maintaining bundle models that can be used in MONAI Label. 
+This constant is a list maintaining bundle models that can be used in MONAI Label.
     MONAI Label supports most labeling models presented in MODEL ZOO, however, some bundles are not labeling tasks.
-    For instance, MedNISTGAN, pathology tumor, valve_landmarks, etc are not suitable for MONAI Label. 
-    The MONAI Label team maintains and verifies usable bundles for MONAI Label support. 
-Get the latest version, as well as all existing versions of a bundle that is stored in the release of specified 
+    For instance, MedNISTGAN, pathology tumor, valve_landmarks, etc are not suitable for MONAI Label.
+    The MONAI Label team maintains and verifies usable bundles for MONAI Label support.
+Get the latest version, as well as all existing versions of a bundle that is stored in the release of specified
     repository with the provided tag. https://github.com/Project-MONAI/model-zoo/releases/tag/hosting_storage_v1
 
 The list is updating upon latest version of MODEL ZOO.
@@ -23,11 +23,11 @@ Note: Version tags are not needed.
 """
 
 MAINTAINED_BUNDLES = [
-    "pancreas_ct_dints_segmentation", # Pancreas segmentation with radiology/monaibundle app support
-    "prostate_mri_anatomy", # prostate segmentation with radiology/monaibundle app support
-    "renalStructures_UNEST_segmentation", # renal cortex, medulla, pelvis segmentation with radiology/monaibundle support
-    "spleen_ct_segmentation", # spleen segmentation with radiology/monaibundle support
-    "spleen_deepedit_annotation", # spleen deepedit model annotation for CT images
-    "swin_unetr_btcv_segmentation", # 3D transformer model for multi-organ segmentation
-    "wholeBrainSeg_Large_UNEST_segmentation" # whole brain segmentation for T1 MRI brain images.
+    "pancreas_ct_dints_segmentation",  # Pancreas segmentation with radiology/monaibundle app support
+    "prostate_mri_anatomy",  # prostate segmentation with radiology/monaibundle app support
+    "renalStructures_UNEST_segmentation",  # renal cortex, medulla, pelvis segmentation with radiology/monaibundle support
+    "spleen_ct_segmentation",  # spleen segmentation with radiology/monaibundle support
+    "spleen_deepedit_annotation",  # spleen deepedit model annotation for CT images
+    "swin_unetr_btcv_segmentation",  # 3D transformer model for multi-organ segmentation
+    "wholeBrainSeg_Large_UNEST_segmentation",  # whole brain segmentation for T1 MRI brain images.
 ]

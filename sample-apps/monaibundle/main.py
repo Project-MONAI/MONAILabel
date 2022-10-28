@@ -22,7 +22,6 @@ from monailabel.tasks.activelearning.first import First
 from monailabel.tasks.activelearning.random import Random
 from monailabel.tasks.infer.bundle import BundleInferTask
 from monailabel.tasks.train.bundle import BundleTrainTask
-from monailabel.utils.others.generic import strtobool
 from monailabel.utils.others.generic import get_bundle_models, strtobool
 
 logger = logging.getLogger(__name__)
