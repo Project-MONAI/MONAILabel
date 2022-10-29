@@ -197,12 +197,16 @@ def device_list():
     return devices
 
 
-def create_dataset_from_path(folder, images="images", labels="labels", img_ext=".jpg", lab_ext=".png"):
-    images = [i for i in os.listdir(os.path.join(folder, images)) if i.endswith(img_ext)]
-    images = sorted(os.path.join(folder, "images", i) for i in images)
+def create_dataset_from_path(folder, image_dir="images", label_dir="labels", img_ext=".jpg", lab_ext=".png"):
+    def _list_files(d, ext):
+        files = [i for i in os.listdir(d) if i.endswith(ext)]
+        return sorted(os.path.join(d, i) for i in files)
 
-    labels = [i for i in os.listdir(os.path.join(folder, labels)) if i.endswith(lab_ext)]
-    labels = sorted(os.path.join(folder, "labels", i) for i in labels)
+    image_dir = os.path.join(folder, image_dir) if image_dir else folder
+    images = _list_files(image_dir, img_ext)
+
+    label_dir = os.path.join(folder, label_dir) if label_dir else folder
+    labels = _list_files(label_dir, img_ext)
 
     for i, l in zip(images, labels):
         if get_basename_no_ext(i) != get_basename_no_ext(l):

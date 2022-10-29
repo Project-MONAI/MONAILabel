@@ -15,9 +15,6 @@ import os
 import numpy as np
 import torch
 from ignite.metrics import Accuracy
-from lib.handlers import TensorBoardImageHandler
-from lib.transforms import FixNuclickClassd
-from lib.utils import split_dataset, split_nuclei_dataset
 from monai.handlers import from_engine
 from monai.inferers import SimpleInferer
 from monai.transforms import (
@@ -26,13 +23,14 @@ from monai.transforms import (
     EnsureChannelFirstd,
     EnsureTyped,
     LoadImaged,
-    RandRotate90d,
     ScaleIntensityRangeD,
     SelectItemsd,
-    TorchVisiond,
-)
+    TorchVisiond, RandFlipd, RandRotate90d, )
 from tqdm import tqdm
 
+from lib.handlers import TensorBoardImageHandler
+from lib.transforms import FixNuclickClassd
+from lib.utils import split_dataset, split_nuclei_dataset
 from monailabel.interfaces.datastore import Datastore
 from monailabel.tasks.train.basic_train import BasicTrainTask, Context
 
@@ -106,7 +104,8 @@ class ClassificationNuclei(BasicTrainTask):
             TorchVisiond(
                 keys="image", name="ColorJitter", brightness=64.0 / 255.0, contrast=0.75, saturation=0.25, hue=0.04
             ),
-            RandRotate90d(keys=("image", "label"), prob=0.5, spatial_axes=(0, 1)),
+            RandFlipd(keys=("image", "label"), prob=0.5),
+            RandRotate90d(keys=("image", "label"), prob=0.5, max_k=3, spatial_axes=(-2, -1)),
             ScaleIntensityRangeD(keys="image", a_min=0.0, a_max=255.0, b_min=-1.0, b_max=1.0),
             FixNuclickClassd(image="image", label="label", offset=-1),
             SelectItemsd(keys=("image", "label")),

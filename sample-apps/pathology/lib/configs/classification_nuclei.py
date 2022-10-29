@@ -32,18 +32,16 @@ class ClassificationNuclei(TaskConfig):
 
         # Labels
         self.labels = {
-            "Neoplastic cells": 0,
-            "Inflammatory": 1,
-            "Connective/Soft tissue cells": 2,
-            "Dead Cells": 3,
-            "Epithelial": 4,
+            "Other": 1,
+            "Inflammatory": 2,
+            "Epithelial": 3,
+            "Spindle-Shaped": 4,
         }
         self.label_colors = {
-            "Neoplastic cells": (255, 0, 0),
+            "Other": (255, 0, 0),
             "Inflammatory": (255, 255, 0),
-            "Connective/Soft tissue cells": (0, 255, 0),
-            "Dead Cells": (0, 0, 0),
             "Epithelial": (0, 0, 255),
+            "Spindle-Shaped": (0, 255, 0),
         }
 
         # Model Files
@@ -53,7 +51,7 @@ class ClassificationNuclei(TaskConfig):
         ]
 
         # Download PreTrained Model
-        if strtobool(self.conf.get("use_pretrained_model", "true")):
+        if strtobool(self.conf.get("use_pretrained_model", "false")):
             url = f"{self.conf.get('pretrained_path', self.PRE_TRAINED_PATH)}/pathology_classification_nuclei.pt"
             download_file(url, self.path[0])
 

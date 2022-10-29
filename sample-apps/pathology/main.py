@@ -203,8 +203,7 @@ def main():
     )
 
     home = str(Path.home())
-    # studies = f"{home}/Dataset/Pathology/pannukeFFF"
-    studies = f"{home}/Dataset/Pathology"
+    studies = f"{home}/Dataset/Pathology/dummy"
 
     app_dir = os.path.dirname(__file__)
     app = MyApp(
@@ -213,34 +212,62 @@ def main():
         {
             "roi_size": "[1024,1024]",
             "preload": "false",
-            "models": "classification_nuclei,nuclick_classification",
+            "models": "classification_nuclei",
         },
     )
 
-    # train_classify(app)
+    train_classify(app)
     # infer_classify(app)
-    infer_nuclick_classification(app)
+    # infer_nuclick_classification(app)
     # train_nuclick(app)
     # infer_nuclick(app)
     # infer_wsi(app)
 
 
 def train_classify(app):
+    import json
+    from pathlib import Path
+    import random
+
+    from monailabel.utils.others.generic import create_dataset_from_path
+
+    home = str(Path.home())
+    train_dir = f"{home}/Dataset/Pathology/CoNSeP/trainingF"
+    val_dir = f"{home}/Dataset/Pathology/CoNSeP/validationF"
+
+    train_ds = create_dataset_from_path(train_dir, img_ext=".png", image_dir="", label_dir="labels/final")
+    val_ds = create_dataset_from_path(val_dir, img_ext=".png", image_dir="", label_dir="labels/final")
+    random.shuffle(train_ds)
+    random.shuffle(val_ds)
+
+    # train_ds = train_ds[:2048]
+    # val_ds = val_ds[:512]
+
+    train_ds_json = f"{home}/Dataset/Pathology/CoNSeP/train_ds.json"
+    val_ds_json = f"{home}/Dataset/Pathology/CoNSeP/val_ds.json"
+
+    with open(train_ds_json, "w") as fp:
+        json.dump(train_ds, fp, indent=2)
+    with open(val_ds_json, "w") as fp:
+        json.dump(val_ds, fp, indent=2)
+
     model = "classification_nuclei"
     app.train(
         request={
             "name": "train_01",
             "model": model,
-            "max_epochs": 20,
-            "dataset": "PersistentDataset",  # PersistentDataset, CacheDataset
+            "max_epochs": 100,
+            "dataset": "CacheDataset",  # PersistentDataset, CacheDataset
             "train_batch_size": 128,
             "val_batch_size": 128,
-            "multi_gpu": True,
+            "multi_gpu": False,
             "val_split": 0.2,
             "dataset_source": "none",
             "dataset_limit": 0,
             "pretrained": False,
             "n_saved": 10,
+            "train_ds": train_ds_json,
+            "val_ds": val_ds_json,
         },
     )
 

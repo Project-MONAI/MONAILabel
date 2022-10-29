@@ -10,7 +10,8 @@
 # limitations under the License.
 
 torch>=1.7
-monai[nibabel, skimage, pillow, tensorboard, gdown, ignite, torchvision, itk, tqdm, lmdb, psutil, openslide, fire]>=1.0.1
+itk>=5.3rc4.post3
+monai[nibabel, skimage, pillow, tensorboard, gdown, ignite, torchvision, tqdm, lmdb, psutil, openslide, fire]>=1.0.1
 uvicorn==0.17.6
 pydantic>=1.8.2
 python-dotenv==0.20.0
@@ -30,7 +31,7 @@ pydicom-seg==0.4.0
 pynetdicom==2.0.2
 pynrrd==0.4.3
 opencv-python-headless==4.5.5.64
-numpymaxflow==0.0.2
+numpymaxflow==0.0.5
 girder-client==3.1.14
 ninja==1.10.2.3
 einops>=0.3.2

@@ -22,6 +22,7 @@ from math import ceil
 import cv2
 import numpy as np
 import openslide
+import scipy
 from PIL import Image
 from skimage.measure import regionprops
 from tqdm import tqdm
@@ -44,6 +45,17 @@ def split_dataset(
 
     if source == "none":
         pass
+    elif source == "consep":
+        logger.info("Prepare from CoNSeP Dataset")
+
+        ds_new = []
+        for d in tqdm(ds):
+            ds_new.extend(split_nuclei_consep_dataset(d, output_dir))
+            if 0 < limit < len(ds_new):
+                ds_new = ds_new[:limit]
+                break
+        ds = ds_new
+        logger.info(f"Total Dataset Records: {len(ds)}")
     elif source == "pannuke":
         logger.info("Prepare from PanNuke Dataset")
 
@@ -236,6 +248,69 @@ def split_local_dataset(datastore, d, output_dir, groups, tile_size, max_region=
         h = img.size[1]
 
     dataset_json.extend(_to_dataset(item_id, x, y, w, h, img, tile_size, polygons, groups, output_dir))
+    return dataset_json
+
+
+def split_nuclei_consep_dataset(
+    d,
+    output_dir,
+    centroid_key="centroid",
+    nuclei_id_key="nuclei_id",
+    class_key="class",
+    crop_size=128,
+):
+    dataset_json = []
+    # logger.debug(f"Process Image: {d['image']} => Label: {d['label']}")
+
+    images_dir = output_dir
+    labels_dir = os.path.join(output_dir, "labels", "final")
+    os.makedirs(images_dir, exist_ok=True)
+    os.makedirs(labels_dir, exist_ok=True)
+
+    # Image
+    image = Image.open(d["image"]).convert("RGB")
+    image_np = np.array(image)
+    image_id = get_basename_no_ext(d["image"])
+
+    # Label
+    m = scipy.io.loadmat(d["label"])
+    instances = m["inst_map"]
+
+    for idx, (c, (y, x)) in enumerate(zip(m["inst_type"], m["inst_centroid"]), start=1):
+        x, y = (int(x), int(y))
+        c = int(c)
+        c = 3 if c in (3, 4) else 4 if c in (5, 6, 7) else c  # override
+
+        bbox = compute_bbox(crop_size, (x, y), image.size)
+        # bbox = 0, 0, image.size[0], image.size[1] - 1
+
+        this_label = np.zeros_like(instances)
+        this_label[instances == idx] = c
+        this_label = this_label.astype(np.uint8)
+
+        cropped_label_np = this_label[bbox[0] : bbox[2], bbox[1] : bbox[3]]
+        cropped_label = Image.fromarray(cropped_label_np.astype(np.uint8), None)
+
+        cropped_image_np = image_np[bbox[0] : bbox[2], bbox[1] : bbox[3], :]
+        # cropped_image_np = np.array(cropped_image_np)
+        # cropped_image_np[:, :, 0] = np.where(cropped_label_np > 0, 1, cropped_image_np[:, :, 0])
+        cropped_image = Image.fromarray(cropped_image_np, "RGB")
+
+        filename = f"{image_id}_{c}_{str(idx).zfill(4)}.png"
+        image_file = os.path.join(images_dir, filename)
+        label_file = os.path.join(labels_dir, filename)
+
+        cropped_image.save(image_file)
+        cropped_label.save(label_file)
+
+        item = copy.deepcopy(d)
+        item[centroid_key] = (x, y)
+        item[nuclei_id_key] = idx
+        item[class_key] = c
+        item["image"] = image_file
+        item["label"] = label_file
+        dataset_json.append(item)
+
     return dataset_json
 
 
@@ -455,71 +530,6 @@ def _region_to_tiles(name, w, h, input_np, tile_size, output, prefix):
     return result
 
 
-def main_dsa():
-    import json
-
-    logging.basicConfig(
-        level=logging.INFO,
-        format="[%(asctime)s] [%(process)s] [%(threadName)s] [%(levelname)s] (%(name)s:%(lineno)d) - %(message)s",
-        datefmt="%Y-%m-%d %H:%M:%S",
-    )
-
-    # api_url = "http://0.0.0.0:8080/api/v1"
-    # folder = "621e94e2b6881a7a4bef5170"
-    # annotation_groups = ["Nuclei"]
-    # asset_store_path = "/localhome/sachi/Projects/digital_slide_archive/devops/dsa/assetstore"
-    # api_key = "OJDE9hjuOIS6R8oEqhnVYHUpRpk18NfJABMt36dJ"
-
-    api_url = "https://demo.kitware.com/histomicstk/api/v1"
-    folder = "5bbdeba3e629140048d017bb"
-    annotation_groups = ["mostly_tumor"]
-    asset_store_path = None
-    api_key = None
-
-    datastore = DSADatastore(api_url, folder, api_key, annotation_groups, asset_store_path)
-    print(json.dumps(datastore.datalist(), indent=2))
-    split_dataset(datastore, "/localhome/sachi/Downloads/dsa/mostly_tumor", "", annotation_groups, (256, 256))
-
-
-def main_nuke():
-    from monailabel.datastore.local import LocalDatastore
-
-    logging.basicConfig(
-        level=logging.INFO,
-        format="[%(asctime)s] [%(process)s] [%(threadName)s] [%(levelname)s] (%(name)s:%(lineno)d) - %(message)s",
-        datefmt="%Y-%m-%d %H:%M:%S",
-    )
-
-    datastore = LocalDatastore("/localhome/sachi/Datasets/pannuke", extensions=("*.npy"))
-    labels = {
-        "Neoplastic cells": 1,
-        "Inflammatory": 2,
-        "Connective/Soft tissue cells": 3,
-        "Dead Cells": 4,
-        "Epithelial": 5,
-    }
-    split_dataset(datastore, "/localhome/sachi/Datasets/pannukeF", "pannuke", labels, None)
-
-
-def main_local():
-    import json
-
-    from monailabel.datastore.local import LocalDatastore
-
-    logging.basicConfig(
-        level=logging.INFO,
-        format="[%(asctime)s] [%(process)s] [%(threadName)s] [%(levelname)s] (%(name)s:%(lineno)d) - %(message)s",
-        datefmt="%Y-%m-%d %H:%M:%S",
-    )
-
-    annotation_groups = ["Nuclei"]
-    datastore = LocalDatastore("C:\\Projects\\Pathology\\Test", extensions=("*.svs", "*.xml"))
-    print(json.dumps(datastore.datalist(), indent=2))
-
-    split_dataset(datastore, "C:\\Projects\\Pathology\\TestF", "", annotation_groups, (256, 256))
-    # print(json.dumps(ds, indent=2))
-
-
 def main_nuclei():
     from pathlib import Path
 
@@ -529,14 +539,17 @@ def main_nuclei():
         level=logging.INFO,
         format="[%(asctime)s] [%(process)s] [%(threadName)s] [%(levelname)s] (%(name)s:%(lineno)d) - %(message)s",
         datefmt="%Y-%m-%d %H:%M:%S",
+        force=True,
     )
 
     home = str(Path.home())
-    studies = f"{home}/Dataset/Pathology/pannukeF"
-    output_dir = f"{home}/Dataset/Pathology/pannukeFFF"
+    for f in ("validation", "training"):
+        studies = f"{home}/Dataset/Pathology/CoNSeP/{f}"
+        output_dir = f"{home}/Dataset/Pathology/CoNSeP/{f}F"
 
-    datastore = LocalDatastore(studies, extensions=("*.png", "*.npy"))
-    split_dataset(datastore, output_dir, "nuclick", None, None, limit=0)
+        logger.info(f"Generate Nuclei Dataset for: {studies}")
+        datastore = LocalDatastore(studies, extensions=("*.png", "*.mat"))
+        split_dataset(datastore, output_dir, "consep", None, None, limit=0)
 
 
 if __name__ == "__main__":
