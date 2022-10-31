@@ -23,7 +23,6 @@ import sys
 import time
 from typing import Dict
 
-import requests
 import torch
 from monai.apps import download_url
 from monai.bundle import download
