@@ -16,18 +16,21 @@ import logging
 import mimetypes
 import os
 import pathlib
+import re
 import shutil
 import subprocess
+import sys
 import time
+from typing import Dict
 
 import torch
 from monai.apps import download_url
+from monai.bundle import download
+from monai.bundle.scripts import get_all_bundles_list, get_bundle_versions
+
+from monailabel.utils.others.modelzoo_list import MAINTAINED_BUNDLES
 
 logger = logging.getLogger(__name__)
-
-MONAI_ZOO_INFO = "https://raw.githubusercontent.com/Project-MONAI/model-zoo/dev/models/model_info.json"
-MONAI_ZOO_SOURCE = "github"
-MONAI_ZOO_REPO = "Project-MONAI/model-zoo/hosting_storage_v1"
 
 
 def file_ext(name) -> str:
@@ -223,3 +226,89 @@ def is_openslide_supported(name):
     if ext and ext in supported_ext:
         return True
     return False
+
+
+def get_bundle_models(app_dir, conf, conf_key="models"):
+    """
+    The funtion to get bundle models either from available model zoo or local files.
+    MONAI Label maintains a list of supported bundles, non-labeling bundles are not supported.
+    This function will filter available bundles according to the maintaining list.
+
+    Args:
+        app_dir: the app directory path
+        conf: configs of start_server command
+        conf_key: default to "models" for monaibundle app, if radiology app wants to use bundle models, "--conf bundles <names>" is used.
+
+    Returns:
+        a dictionary that contains the available bundles.
+    """
+    MONAI_ZOO_SOURCE = "github"
+    MONAI_ZOO_REPO = "Project-MONAI/model-zoo/hosting_storage_v1"
+
+    model_dir = os.path.join(app_dir, "model")
+
+    zoo_info = get_all_bundles_list()
+    zoo_source = conf.get("zoo_source", MONAI_ZOO_SOURCE)
+    zoo_repo = conf.get("zoo_repo", MONAI_ZOO_REPO)
+
+    # filter model zoo bundle with MONAI Label supported bundles according to the maintaining list, return all version bundles list
+    available = [
+        i[0] + "_v" + v
+        for i in zoo_info
+        if i[0] in MAINTAINED_BUNDLES
+        for v in get_bundle_versions(i[0])["all_versions"]
+    ]
+
+    models = conf.get(conf_key)
+    if not models:
+        print("")
+        print("---------------------------------------------------------------------------------------")
+        print("Get models from bundle configs, Please provide --conf models <bundle name>")
+        print("Following are the available bundles.  You can pass comma (,) separated names to pass multiple")
+        print(f"   -c {conf_key}")
+        print("        {}".format(" \n        ".join(available)))
+        print("---------------------------------------------------------------------------------------")
+        print("")
+        exit(-1)
+
+    models = models.split(",")
+    models = [m.strip() for m in models]
+    # First check whether the bundle model directory is available and in model-zoo, if no, check local bundle directory.
+    # Use zoo bundle if both exist
+    invalid_zoo = [m for m in models if m not in available]
+
+    invalid = [m for m in invalid_zoo if not os.path.isdir(os.path.join(model_dir, m))]
+
+    # Exit if model is not in zoo and local directory
+    if invalid:
+        print("")
+        print("---------------------------------------------------------------------------------------")
+        print(f"Invalid Model(s) are provided: {invalid}, either not in model zoo or not supported with MONAI Label")
+        print("Following are the available models.  You can pass comma (,) separated names to pass multiple")
+        print("Available bunlde with latest tags:")
+        print(f"   -c {conf_key}")
+        print("        {}".format(" \n        ".join(available)))
+        print("Or provide valid local bundle directories")
+        print("---------------------------------------------------------------------------------------")
+        print("")
+        exit(-1)
+
+    bundles: Dict[str, str] = {}
+    for k in models:
+        p = os.path.join(model_dir, k)
+        if k not in available:
+            logger.info(f"+++ Adding Bundle from Local: {k} => {p}")
+        else:
+            logger.info(f"+++ Adding Bundle from Zoo: {k} => {p}")
+            if not os.path.exists(p):
+                download(name=k, bundle_dir=model_dir, source=zoo_source, repo=zoo_repo)
+                e = os.path.join(model_dir, re.sub(r"_v.*.zip", "", f"{k}.zip"))
+                if os.path.isdir(e):
+                    shutil.move(e, p)
+        sys.path.append(p)
+
+        bundles[k] = p
+
+    logger.info(f"+++ Using Bundle Models: {list(bundles.keys())}")
+
+    return bundles
