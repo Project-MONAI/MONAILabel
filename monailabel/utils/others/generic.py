@@ -27,6 +27,7 @@ import torch
 from monai.apps import download_url
 from monai.bundle import download
 from monai.bundle.scripts import get_all_bundles_list, get_bundle_versions
+
 from monailabel.utils.others.modelzoo_list import MAINTAINED_BUNDLES
 
 logger = logging.getLogger(__name__)
@@ -251,7 +252,12 @@ def get_bundle_models(app_dir, conf, conf_key="models"):
     zoo_repo = conf.get("zoo_repo", MONAI_ZOO_REPO)
 
     # filter model zoo bundle with MONAI Label supported bundles according to the maintaining list, return all version bundles list
-    available = [i[0]+'_v'+v for i in zoo_info if i[0] in MAINTAINED_BUNDLES for v in get_bundle_versions(i[0])["all_versions"]]
+    available = [
+        i[0] + "_v" + v
+        for i in zoo_info
+        if i[0] in MAINTAINED_BUNDLES
+        for v in get_bundle_versions(i[0])["all_versions"]
+    ]
 
     models = conf.get(conf_key)
     if not models:
@@ -259,7 +265,7 @@ def get_bundle_models(app_dir, conf, conf_key="models"):
         print("---------------------------------------------------------------------------------------")
         print("Get models from bundle configs, Please provide --conf models <bundle name>")
         print("Following are the available bundles.  You can pass comma (,) separated names to pass multiple")
-        print("   -c {}".format(conf_key))
+        print(f"   -c {conf_key}")
         print("        {}".format(" \n        ".join(available)))
         print("---------------------------------------------------------------------------------------")
         print("")
@@ -280,7 +286,7 @@ def get_bundle_models(app_dir, conf, conf_key="models"):
         print(f"Invalid Model(s) are provided: {invalid}, either not in model zoo or not supported with MONAI Label")
         print("Following are the available models.  You can pass comma (,) separated names to pass multiple")
         print("Available bunlde with latest tags:")
-        print("   -c {}".format(conf_key))
+        print(f"   -c {conf_key}")
         print("        {}".format(" \n        ".join(available)))
         print("Or provide valid local bundle directories")
         print("---------------------------------------------------------------------------------------")
