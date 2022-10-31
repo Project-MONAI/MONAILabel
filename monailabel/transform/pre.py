@@ -88,7 +88,7 @@ class NormalizeLabeld(MapTransform):
     def __call__(self, data):
         d = dict(data)
         for key in self.keys:
-            label = d[key].array
+            label = d[key]
             label[label > 0] = self.value
-            d[key].array = label
+            d[key] = label
         return d

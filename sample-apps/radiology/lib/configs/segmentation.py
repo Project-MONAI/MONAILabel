@@ -99,7 +99,7 @@ class Segmentation(TaskConfig):
             load_path=load_path,
             publish_path=self.path[1],
             description="Train Multilabel Segmentation Model",
-            dimension=3,
             labels=self.labels,
+            disable_tracking=False,
         )
         return task
