@@ -27,7 +27,7 @@ import requests
 import torch
 from monai.apps import download_url
 from monai.bundle import download
-
+from monai.bundle.scripts import get_all_bundles_list
 from monailabel.utils.others.modelzoo_list import MAINTAINED_BUNDLES
 
 logger = logging.getLogger(__name__)
@@ -242,18 +242,17 @@ def get_bundle_models(app_dir, conf, conf_key="models"):
     Returns:
         a dictionary that contains the available bundles.
     """
-    MONAI_ZOO_INFO = "https://raw.githubusercontent.com/Project-MONAI/model-zoo/dev/models/model_info.json"
     MONAI_ZOO_SOURCE = "github"
     MONAI_ZOO_REPO = "Project-MONAI/model-zoo/hosting_storage_v1"
 
     model_dir = os.path.join(app_dir, "model")
 
-    zoo_info = requests.get(conf.get("zoo_info", MONAI_ZOO_INFO)).json()
+    zoo_info = get_all_bundles_list()
     zoo_source = conf.get("zoo_source", MONAI_ZOO_SOURCE)
     zoo_repo = conf.get("zoo_repo", MONAI_ZOO_REPO)
 
     # filter model zoo bundle with MONAI Label supported bundles according to the maintaining list
-    available = {k: v for k, v in zoo_info.items() if re.compile(r"_v\d*.").split(k)[0] in MAINTAINED_BUNDLES}
+    available = ['_v'.join(i) for i in zoo_info if re.compile(r"_v\d*.").split(i[0])[0] in MAINTAINED_BUNDLES]
 
     models = conf.get(conf_key)
     if not models:
@@ -261,7 +260,8 @@ def get_bundle_models(app_dir, conf, conf_key="models"):
         print("---------------------------------------------------------------------------------------")
         print("Get models from bundle configs, Please provide --conf models <bundle name>")
         print("Following are the available bundles.  You can pass comma (,) separated names to pass multiple")
-        print("   -c {} {}".format(conf_key, "\n   ".join(available.keys())))
+        print("   -c {}".format(conf_key))
+        print("        {}".format(" \n        ".join(available)))
         print("---------------------------------------------------------------------------------------")
         print("")
         exit(-1)
@@ -270,7 +270,8 @@ def get_bundle_models(app_dir, conf, conf_key="models"):
     models = [m.strip() for m in models]
     # First check whether the bundle model directory is available and in model-zoo, if no, check local bundle directory.
     # Use zoo bundle if both exist
-    invalid_zoo = [m for m in models if not available.get(m)]
+    invalid_zoo = [m for m in models if m not in available]
+
     invalid = [m for m in invalid_zoo if not os.path.isdir(os.path.join(model_dir, m))]
 
     # Exit if model is not in zoo and local directory
@@ -279,7 +280,9 @@ def get_bundle_models(app_dir, conf, conf_key="models"):
         print("---------------------------------------------------------------------------------------")
         print(f"Invalid Model(s) are provided: {invalid}, either not in model zoo or not supported with MONAI Label")
         print("Following are the available models.  You can pass comma (,) separated names to pass multiple")
-        print("    -c {} {}".format(conf_key, "\n    ".join(available.keys())))
+        print("Available bunlde with latest tags:")
+        print("   -c {}".format(conf_key))
+        print("        {}".format(" \n        ".join(available)))
         print("Or provide valid local bundle directories")
         print("---------------------------------------------------------------------------------------")
         print("")
@@ -287,12 +290,11 @@ def get_bundle_models(app_dir, conf, conf_key="models"):
 
     bundles: Dict[str, str] = {}
     for k in models:
-        v = available.get(k)
         p = os.path.join(model_dir, k)
-        if not v:
+        if k not in available:
             logger.info(f"+++ Adding Bundle from Local: {k} => {p}")
         else:
-            logger.info(f"+++ Adding Bundle from Zoo: {k} => {v} => {p}")
+            logger.info(f"+++ Adding Bundle from Zoo: {k} => {p}")
             if not os.path.exists(p):
                 download(name=k, bundle_dir=model_dir, source=zoo_source, repo=zoo_repo)
                 e = os.path.join(model_dir, re.sub(r"_v.*.zip", "", f"{k}.zip"))
