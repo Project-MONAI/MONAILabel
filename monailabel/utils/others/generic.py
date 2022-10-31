@@ -26,7 +26,7 @@ from typing import Dict
 import torch
 from monai.apps import download_url
 from monai.bundle import download
-from monai.bundle.scripts import get_all_bundles_list
+from monai.bundle.scripts import get_all_bundles_list, get_bundle_versions
 from monailabel.utils.others.modelzoo_list import MAINTAINED_BUNDLES
 
 logger = logging.getLogger(__name__)
@@ -250,8 +250,8 @@ def get_bundle_models(app_dir, conf, conf_key="models"):
     zoo_source = conf.get("zoo_source", MONAI_ZOO_SOURCE)
     zoo_repo = conf.get("zoo_repo", MONAI_ZOO_REPO)
 
-    # filter model zoo bundle with MONAI Label supported bundles according to the maintaining list
-    available = ['_v'.join(i) for i in zoo_info if re.compile(r"_v\d*.").split(i[0])[0] in MAINTAINED_BUNDLES]
+    # filter model zoo bundle with MONAI Label supported bundles according to the maintaining list, return all version bundles list
+    available = [i[0]+'_v'+v for i in zoo_info if i[0] in MAINTAINED_BUNDLES for v in get_bundle_versions(i[0])["all_versions"]]
 
     models = conf.get(conf_key)
     if not models:
