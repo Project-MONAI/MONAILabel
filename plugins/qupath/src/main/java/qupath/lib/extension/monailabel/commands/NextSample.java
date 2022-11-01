@@ -13,6 +13,7 @@ limitations under the License.
 
 package qupath.lib.extension.monailabel.commands;
 
+import java.io.File;
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.List;
@@ -48,7 +49,7 @@ public class NextSample implements Runnable {
 		try {
 			var viewer = qupath.getViewer();
 			var imageData = viewer.getImageData();
-			String image = Utils.getNameWithoutExtension(imageData.getServerPath());
+			String image = imageData != null ? Utils.getNameWithoutExtension(imageData.getServerPath()) : "";
 
 			ResponseInfo info = MonaiLabelClient.info();
 			List<String> names = new ArrayList<String>();
@@ -60,19 +61,27 @@ public class NextSample implements Runnable {
 				selectedStrategy = names.isEmpty() ? "" : names.get(0);
 			}
 
+			boolean imageLoaded = qupath.imageDataProperty() == null || qupath.imageDataProperty().isNull().get() ? false : true;
+			boolean nextPatch = imageLoaded;
+			int[] patchSize = {1024, 1024};
+			int[] imageSize = {0, 0};
+
 			ParameterList list = new ParameterList();
 			list.addChoiceParameter("Strategy", "Active Learning Strategy", selectedStrategy, names);
-			list.addBooleanParameter("NextPatch", "Next Patch (from current Image)", true);
-			list.addStringParameter("PatchSize", "PatchSize", Arrays.toString(selectedPatchSize));
+			if (nextPatch) {
+				list.addBooleanParameter("NextPatch", "Next Patch (from current Image)", nextPatch);
+				list.addStringParameter("PatchSize", "PatchSize", Arrays.toString(selectedPatchSize));
+			}
 
 			if (Dialogs.showParameterDialog("MONAILabel", list)) {
 				String strategy = (String) list.getChoiceParameterValue("Strategy");
-				boolean nextPatch = list.getBooleanParameterValue("NextPatch").booleanValue();
-				int[] patchSize = Utils.parseStringArray(list.getStringParameterValue("PatchSize"));
+				if (nextPatch) {
+					nextPatch = list.getBooleanParameterValue("NextPatch").booleanValue();
+					patchSize = Utils.parseStringArray(list.getStringParameterValue("PatchSize"));
+					imageSize = new int[] { imageData.getServer().getWidth(), imageData.getServer().getHeight() };
 
-				var server = imageData.getServer();
-				int[] imageSize = new int[] { server.getWidth(), server.getHeight() };
-				logger.info(String.join(",", imageData.getProperties().keySet()));
+					logger.info(String.join(",", imageData.getProperties().keySet()));
+				}
 
 				selectedStrategy = strategy;
 				selectedPatchSize = patchSize;
@@ -99,6 +108,17 @@ public class NextSample implements Runnable {
 					var obj = PathObjects.createAnnotationObject(roi);
 					imageData.getHierarchy().addPathObject(obj);
 					imageData.getHierarchy().getSelectionModel().setSelectedObject(obj);
+				} else {
+					String message = "This will close the current image without saving.\nAre you sure to continue?";
+					if (!imageLoaded || Dialogs.showConfirmDialog("MONAILabel", message)) {
+						File f = new File(sample.path);
+						if (f.isFile() && f.exists()) {
+							qupath.openImage(f.getAbsolutePath(), false, false);
+						} else {
+							// TODO:: Download and Open image (wsi) from Remote
+							// String f = "C:\\Dataset\\Pathology\\TCGA-02-0010-01Z-00-DX4.07de2e55-a8fe-40ee-9e98-bcb78050b9f7.svs";
+						}
+					}
 				}
 			}
 

@@ -124,11 +124,13 @@ public class MonaiLabelClient {
 	public static class NextSampleInfo {
 		public String id;
 		public int[] bbox = { 0, 0, 0, 0 };
+		public String path;
 	}
 
 	public static class InferParams {
 		public List<List<Integer>> foreground = new ArrayList<>();
 		public List<List<Integer>> background = new ArrayList<>();
+		public int max_workers = 1;
 
 		public void addClicks(ArrayList<Point2> clicks, boolean f) {
 			List<List<Integer>> t = f ? foreground : background;

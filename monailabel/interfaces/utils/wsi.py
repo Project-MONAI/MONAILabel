@@ -59,6 +59,8 @@ def create_infer_wsi_tasks(request, image):
     infer_tasks = []
     count = 0
     pw, ph = tile_size[0], tile_size[1]
+
+    ignore_small_patches = request.get("ignore_small_patches", False)
     for row in range(rows):
         for col in range(cols):
             tx = col * pw + x
@@ -66,6 +68,9 @@ def create_infer_wsi_tasks(request, image):
 
             tw = min(pw, x + w - tx)
             th = min(ph, y + h - ty)
+
+            if ignore_small_patches and (tw < pw or th < ph):
+                continue
 
             task = copy.deepcopy(request)
             task.update(

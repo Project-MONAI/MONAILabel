@@ -14,7 +14,7 @@ limitations under the License.
 package qupath.lib.extension.monailabel;
 
 import javafx.application.Platform;
-import javafx.beans.property.BooleanProperty;
+import javafx.beans.property.IntegerProperty;
 import javafx.beans.property.StringProperty;
 import qupath.lib.gui.QuPathGUI;
 import qupath.lib.gui.prefs.PathPrefs;
@@ -27,10 +27,10 @@ public class Settings {
 		return serverURL;
 	}
 
-	private static BooleanProperty wsi = PathPrefs.createPersistentPreference("wsi", Boolean.FALSE);
+	private static IntegerProperty maxWorkers = PathPrefs.createPersistentPreference("max_workers", 1);
 
-	public static BooleanProperty wsiProperty() {
-		return wsi;
+	public static IntegerProperty maxWorkersProperty() {
+		return maxWorkers;
 	}
 
 	void addProperties(QuPathGUI qupath) {
@@ -41,8 +41,8 @@ public class Settings {
 
 		qupath.getPreferencePane().addPropertyPreference(Settings.serverURLProperty(), String.class, "Server URL",
 				"MONAI Label", "Set MONAI Label Server URL (default: http://127.0.0.1:8000)");
-		qupath.getPreferencePane().addPropertyPreference(Settings.wsiProperty(), Boolean.class, "Enable WSI",
-				"MONAI Label", "Allow WSI Inference when ROI is not selected");
+		qupath.getPreferencePane().addPropertyPreference(Settings.maxWorkersProperty(), Integer.class, "Max Workers",
+				"MONAI Label", "Max Workers (WSI Inference)");
 
 	}
 }
