@@ -40,7 +40,11 @@ class NuClickClassification(NuClick):
         output = super().run_inferer(data, False, device)
         if self.task_classification:
             data2 = copy.deepcopy(self.task_classification.config())
-            data2.update({"image": output["image"][:, :3], "label": output["pred"], "device": device})
+            pred1 = output["pred"]
+            pred1 = torch.sigmoid(pred1)
+            pred1 = pred1 >= 0.5
+
+            data2.update({"image": output["image"][:, :3], "label": pred1, "device": device})
 
             data2 = self.task_classification.run_pre_transforms(data2, [FixNuclickClassd(image="image", label="label")])
 
