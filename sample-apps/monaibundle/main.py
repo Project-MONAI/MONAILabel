@@ -95,7 +95,7 @@ class MyApp(MONAILabelApp):
             methods[n] = EpistemicScoring(i, max_samples=self.epistemic_max_samples, simulation_size=self.epistemic_simulation_size)
             if not methods:
                 continue
-            methods = methods if isinstance(methods, dict) else {n: methods}
+            methods = methods if isinstance(methods, dict) else {n: methods[n]}
             logger.info(f"+++ Adding Scoring Method:: {n} => {b}")
 
         logger.info(f"Active Learning Scoring Methods:: {list(methods.keys())}")
