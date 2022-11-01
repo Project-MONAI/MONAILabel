@@ -18,11 +18,14 @@ from monailabel.interfaces.app import MONAILabelApp
 from monailabel.interfaces.tasks.infer_v2 import InferTask
 from monailabel.interfaces.tasks.strategy import Strategy
 from monailabel.interfaces.tasks.train import TrainTask
+from monailabel.interfaces.tasks.scoring import ScoringMethod
 from monailabel.tasks.activelearning.first import First
 from monailabel.tasks.activelearning.random import Random
 from monailabel.tasks.infer.bundle import BundleInferTask
 from monailabel.tasks.train.bundle import BundleTrainTask
+from monailabel.tasks.scoring.epistemic_v2 import EpistemicScoring
 from monailabel.utils.others.generic import get_bundle_models, strtobool
+from monai.transforms import SaveImaged, Invertd
 
 logger = logging.getLogger(__name__)
 
@@ -30,6 +33,13 @@ logger = logging.getLogger(__name__)
 class MyApp(MONAILabelApp):
     def __init__(self, app_dir, studies, conf):
         self.models = get_bundle_models(app_dir, conf)
+        # Add Epistemic model for scoring
+        self.epistemic_models = get_bundle_models(app_dir, conf, conf_key="epistemic_model") if conf.get("epistemic_model") else None
+        if self.epistemic_models:
+            # Get epistemic parameters
+            self.epistemic_max_samples = int(conf.get("epistemic_max_samples", "0"))
+            self.epistemic_simulation_size = int(conf.get("epistemic_simulation_size", "5"))
+            self.scoring_dropout = float(conf.get("scoring_dropout", "0.2"))
 
         super().__init__(
             app_dir=app_dir,
@@ -74,6 +84,22 @@ class MyApp(MONAILabelApp):
         logger.info(f"Active Learning Strategies:: {list(strategies.keys())}")
         return strategies
 
+    def init_scoring_methods(self) -> Dict[str, ScoringMethod]:
+        methods: Dict[str, ScoringMethod] = {}
+        if not self.conf.get("epistemic_model"):
+            return methods
+
+        for n, b in self.epistemic_models.items():
+            # Create BundleInferTask task with dropout instantiation for scoring inference
+            i = BundleInferTask(b, self.conf, train_mode=True, skip_writer=True, dropout=self.scoring_dropout, post_filter=[SaveImaged, Invertd])
+            methods[n] = EpistemicScoring(i, max_samples=self.epistemic_max_samples, simulation_size=self.epistemic_simulation_size)
+            if not methods:
+                continue
+            methods = methods if isinstance(methods, dict) else {n: methods}
+            logger.info(f"+++ Adding Scoring Method:: {n} => {b}")
+
+        logger.info(f"Active Learning Scoring Methods:: {list(methods.keys())}")
+        return methods
 
 """
 Example to run train/infer/scoring task(s) locally without actually running MONAI Label Server

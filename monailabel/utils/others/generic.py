@@ -247,16 +247,17 @@ def get_bundle_models(app_dir, conf, conf_key="models"):
 
     model_dir = os.path.join(app_dir, "model")
 
-    zoo_info = get_all_bundles_list()
     zoo_source = conf.get("zoo_source", MONAI_ZOO_SOURCE)
     zoo_repo = conf.get("zoo_repo", MONAI_ZOO_REPO)
+    auth_token = conf.get("auth_token", None)
+    zoo_info = get_all_bundles_list(auth_token=auth_token)
 
     # filter model zoo bundle with MONAI Label supported bundles according to the maintaining list, return all version bundles list
     available = [
         i[0] + "_v" + v
         for i in zoo_info
         if i[0] in MAINTAINED_BUNDLES
-        for v in get_bundle_versions(i[0])["all_versions"]
+        for v in get_bundle_versions(i[0], auth_token=auth_token)["all_versions"]
     ]
 
     models = conf.get(conf_key)
