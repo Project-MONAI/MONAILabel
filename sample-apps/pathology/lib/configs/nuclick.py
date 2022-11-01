@@ -42,7 +42,11 @@ class NuClick(TaskConfig):
 
         # Download PreTrained Model
         if strtobool(self.conf.get("use_pretrained_model", "true")):
-            url = f"{self.conf.get('pretrained_path', self.PRE_TRAINED_PATH)}/pathology_nuclick_bunet.pt"
+            pt = "pathology_nuclick_bunet_nuclei_consep.pt"
+            if self.conf.get("pannuke", "false"):
+                pt = "pathology_nuclick_bunet.pt"
+
+            url = f"{self.conf.get('pretrained_path', self.PRE_TRAINED_PATH)}/{pt}"
             download_file(url, self.path[0])
 
         # Network
@@ -74,7 +78,7 @@ class NuClick(TaskConfig):
             load_path=load_path,
             publish_path=self.path[1],
             labels=self.labels,
-            description="Train Nuclei DeepEdit Model",
+            description="Train NuClick Model",
             train_save_interval=1,
             config={
                 "max_epochs": 10,

@@ -30,7 +30,7 @@ class NuClickClassification(NuClick):
 
     def init_classification(self, task_classification: BasicInferTask):
         self.task_classification = task_classification
-        self.labels = {k: v + 1 for k, v in task_classification.labels.items()}  # type: ignore
+        self.labels = task_classification.labels
         self.description = "Combines Nuclick and Classification"
 
     def is_valid(self) -> bool:

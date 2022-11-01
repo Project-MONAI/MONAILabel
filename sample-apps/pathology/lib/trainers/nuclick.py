@@ -15,27 +15,22 @@ import os
 import numpy as np
 import torch
 from lib.handlers import TensorBoardImageHandler
+from lib.transforms import AddMaskValued
 from lib.utils import split_dataset, split_nuclei_dataset
-from monai.apps.nuclick.transforms import (
-    AddPointGuidanceSignald,
-    ExtractPatchd,
-    FilterImaged,
-    FlattenLabeld,
-    SplitLabeld,
-)
+from monai.apps.nuclick.transforms import AddPointGuidanceSignald, SplitLabeld
 from monai.handlers import MeanDice, from_engine
 from monai.inferers import SimpleInferer
 from monai.losses import DiceLoss
 from monai.transforms import (
     Activationsd,
-    AddChanneld,
-    AsChannelFirstd,
     AsDiscreted,
+    EnsureChannelFirstd,
     EnsureTyped,
     LoadImaged,
     RandRotate90d,
     ScaleIntensityRangeD,
     SelectItemsd,
+    ToMetaTensord,
     TorchVisiond,
 )
 from tqdm import tqdm
@@ -96,6 +91,9 @@ class NuClick(BasicTrainTask):
         logger.info(f"Split data (len: {len(ds)}) based on each nuclei")
         ds_new = []
         limit = request.get("dataset_limit", 0)
+        if source == "consep_nuclick":
+            return ds[:limit] if 0 < limit < len(ds) else ds
+
         for d in tqdm(ds):
             ds_new.extend(split_nuclei_dataset(d, min_area=self.min_area))
             if 0 < limit < len(ds_new):
@@ -106,17 +104,15 @@ class NuClick(BasicTrainTask):
     def train_pre_transforms(self, context: Context):
         return [
             LoadImaged(keys=("image", "label"), dtype=np.uint8),
-            FilterImaged(keys="image", min_size=5),
-            FlattenLabeld(keys="label"),
-            AsChannelFirstd(keys="image"),
-            AddChanneld(keys="label"),
-            ExtractPatchd(keys=("image", "label"), patch_size=self.patch_size),
+            EnsureChannelFirstd(keys=("image", "label")),
+            AddMaskValued(keys="mask_value", source_key="label"),
             SplitLabeld(keys="label", others="others", mask_value="mask_value", min_area=self.min_area),
             TorchVisiond(
                 keys="image", name="ColorJitter", brightness=64.0 / 255.0, contrast=0.75, saturation=0.25, hue=0.04
             ),
             RandRotate90d(keys=("image", "label", "others"), prob=0.5, spatial_axes=(0, 1)),
             ScaleIntensityRangeD(keys="image", a_min=0.0, a_max=255.0, b_min=-1.0, b_max=1.0),
+            ToMetaTensord(keys=("image", "label", "others")),
             AddPointGuidanceSignald(image="image", label="label", others="others"),
             EnsureTyped(keys=("image", "label")),
             SelectItemsd(keys=("image", "label")),

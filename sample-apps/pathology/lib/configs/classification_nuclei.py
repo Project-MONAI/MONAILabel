@@ -44,6 +44,23 @@ class ClassificationNuclei(TaskConfig):
             "Spindle-Shaped": (0, 255, 0),
         }
 
+        pannuke = strtobool(self.conf.get("pannuke", "false"))
+        if pannuke:
+            self.labels = {
+                "Neoplastic cells": 1,
+                "Inflammatory": 2,
+                "Connective/Soft tissue cells": 3,
+                "Dead Cells": 4,
+                "Epithelial": 5,
+            }
+            self.label_colors = {
+                "Neoplastic cells": (255, 0, 0),
+                "Inflammatory": (255, 255, 0),
+                "Connective/Soft tissue cells": (0, 255, 0),
+                "Dead Cells": (0, 0, 0),
+                "Epithelial": (0, 0, 255),
+            }
+
         # Model Files
         self.path = [
             os.path.join(self.model_dir, f"pretrained_{name}.pt"),  # pretrained
@@ -51,8 +68,12 @@ class ClassificationNuclei(TaskConfig):
         ]
 
         # Download PreTrained Model
-        if strtobool(self.conf.get("use_pretrained_model", "false")):
-            url = f"{self.conf.get('pretrained_path', self.PRE_TRAINED_PATH)}/pathology_classification_nuclei.pt"
+        if strtobool(self.conf.get("use_pretrained_model", "true")):
+            pt = "pathology_classification_densenet121_nuclei_consep.pt"
+            if pannuke:
+                pt = "pathology_classification_nuclei.pt"
+
+            url = f"{self.conf.get('pretrained_path', self.PRE_TRAINED_PATH)}/{pt}"
             download_file(url, self.path[0])
 
         # Network

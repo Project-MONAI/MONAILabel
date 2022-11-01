@@ -190,7 +190,7 @@ def main():
     from monailabel.config import settings
 
     settings.MONAI_LABEL_DATASTORE_AUTO_RELOAD = False
-    settings.MONAI_LABEL_DATASTORE_READ_ONLY = True
+    settings.MONAI_LABEL_DATASTORE_READ_ONLY = False
     settings.MONAI_LABEL_DATASTORE_FILE_EXT = ["*.svs", "*.png", "*.npy", "*.tif", ".xml"]
     os.putenv("MASTER_ADDR", "127.0.0.1")
     os.putenv("MASTER_PORT", "1234")
@@ -212,28 +212,29 @@ def main():
         {
             "roi_size": "[1024,1024]",
             "preload": "false",
-            "models": "classification_nuclei",
+            "models": "nuclick,classification_nuclei,nuclick_classification",
+            # "use_pretrained_model": "false",
         },
     )
 
-    train_classify(app)
+    # train_nuclick(app, "classification_nuclei")
+    # train_nuclick(app, "nuclick")
     # infer_classify(app)
-    # infer_nuclick_classification(app)
-    # train_nuclick(app)
+    infer_nuclick_classification(app)
     # infer_nuclick(app)
     # infer_wsi(app)
 
 
-def train_classify(app):
+def train_nuclick(app, model):
     import json
-    from pathlib import Path
     import random
+    from pathlib import Path
 
     from monailabel.utils.others.generic import create_dataset_from_path
 
     home = str(Path.home())
-    train_dir = f"{home}/Dataset/Pathology/CoNSeP/trainingF"
-    val_dir = f"{home}/Dataset/Pathology/CoNSeP/validationF"
+    train_dir = f"{home}/Dataset/Pathology/CoNSeP/trainingFN"
+    val_dir = f"{home}/Dataset/Pathology/CoNSeP/validationFN"
 
     train_ds = create_dataset_from_path(train_dir, img_ext=".png", image_dir="", label_dir="labels/final")
     val_ds = create_dataset_from_path(val_dir, img_ext=".png", image_dir="", label_dir="labels/final")
@@ -251,12 +252,11 @@ def train_classify(app):
     with open(val_ds_json, "w") as fp:
         json.dump(val_ds, fp, indent=2)
 
-    model = "classification_nuclei"
     app.train(
         request={
             "name": "train_01",
             "model": model,
-            "max_epochs": 100,
+            "max_epochs": 50,
             "dataset": "CacheDataset",  # PersistentDataset, CacheDataset
             "train_batch_size": 128,
             "val_batch_size": 128,
@@ -268,26 +268,6 @@ def train_classify(app):
             "n_saved": 10,
             "train_ds": train_ds_json,
             "val_ds": val_ds_json,
-        },
-    )
-
-
-def train_nuclick(app):
-    model = "nuclick"
-    app.train(
-        request={
-            "name": "train_01",
-            "model": model,
-            "max_epochs": 10,
-            "dataset": "PersistentDataset",  # PersistentDataset, CacheDataset
-            "train_batch_size": 128,
-            "val_batch_size": 64,
-            "multi_gpu": True,
-            "val_split": 0.2,
-            "dataset_source": "none",
-            "dataset_limit": 0,
-            "pretrained": False,
-            "n_saved": 10,
         },
     )
 

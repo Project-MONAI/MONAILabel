@@ -45,12 +45,12 @@ def split_dataset(
 
     if source == "none":
         pass
-    elif source == "consep":
+    elif source == "consep_nuclei":
         logger.info("Prepare from CoNSeP Dataset")
 
         ds_new = []
         for d in tqdm(ds):
-            ds_new.extend(split_nuclei_consep_dataset(d, output_dir))
+            ds_new.extend(split_consep_nuclei_dataset(d, output_dir))
             if 0 < limit < len(ds_new):
                 ds_new = ds_new[:limit]
                 break
@@ -69,16 +69,6 @@ def split_dataset(
             ds_new.extend(d)
         ds = ds_new
         logger.info(f"Total Dataset Records: {len(ds)}")
-    elif source == "nuclick":
-        logger.info("Split data based on each nuclei")
-
-        ds_new = []
-        for d in tqdm(ds):
-            ds_new.extend(split_nuclei_dataset(d, output_dir))
-            if 0 < limit < len(ds_new):
-                ds_new = ds_new[:limit]
-                break
-        ds = ds_new
     else:
         logger.info(f"Split data based on tile size: {tile_size}; groups: {groups}")
         ds_new = []
@@ -251,12 +241,12 @@ def split_local_dataset(datastore, d, output_dir, groups, tile_size, max_region=
     return dataset_json
 
 
-def split_nuclei_consep_dataset(
+def split_consep_nuclei_dataset(
     d,
     output_dir,
     centroid_key="centroid",
     nuclei_id_key="nuclei_id",
-    class_key="class",
+    mask_value_key="mask_value",
     crop_size=128,
 ):
     dataset_json = []
@@ -282,18 +272,18 @@ def split_nuclei_consep_dataset(
         c = 3 if c in (3, 4) else 4 if c in (5, 6, 7) else c  # override
 
         bbox = compute_bbox(crop_size, (x, y), image.size)
-        # bbox = 0, 0, image.size[0], image.size[1] - 1
 
-        this_label = np.zeros_like(instances)
-        this_label[instances == idx] = c
-        this_label = this_label.astype(np.uint8)
-
-        cropped_label_np = this_label[bbox[0] : bbox[2], bbox[1] : bbox[3]]
+        cropped_label_np = instances[bbox[0] : bbox[2], bbox[1] : bbox[3]]
+        cropped_label_np = np.array(cropped_label_np)
+        signal = np.where(cropped_label_np == idx, c, 0)
+        others = np.where(np.logical_and(cropped_label_np > 0, cropped_label_np != idx), 255, 0)
+        cropped_label_np = signal + others
         cropped_label = Image.fromarray(cropped_label_np.astype(np.uint8), None)
 
         cropped_image_np = image_np[bbox[0] : bbox[2], bbox[1] : bbox[3], :]
         # cropped_image_np = np.array(cropped_image_np)
-        # cropped_image_np[:, :, 0] = np.where(cropped_label_np > 0, 1, cropped_image_np[:, :, 0])
+        # cropped_image_np[:, :, 0] = np.where(cropped_label_np == c, 1, cropped_image_np[:, :, 0])
+        # cropped_image_np[:, :, 1] = np.where(cropped_label_np == 255, 1, cropped_image_np[:, :, 1])
         cropped_image = Image.fromarray(cropped_image_np, "RGB")
 
         filename = f"{image_id}_{c}_{str(idx).zfill(4)}.png"
@@ -306,7 +296,7 @@ def split_nuclei_consep_dataset(
         item = copy.deepcopy(d)
         item[centroid_key] = (x, y)
         item[nuclei_id_key] = idx
-        item[class_key] = c
+        item[mask_value_key] = c
         item["image"] = image_file
         item["label"] = label_file
         dataset_json.append(item)
@@ -319,7 +309,7 @@ def split_nuclei_dataset(
     output_dir,
     centroid_key="centroid",
     nuclei_id_key="nuclei_id",
-    class_key="class",
+    mask_value_key="mask_value",
     min_area=80,
     min_distance=20,
     crop_size=128,
@@ -340,6 +330,7 @@ def split_nuclei_dataset(
     mask_np = np.array(mask)
 
     nuclei_id = 1
+    stats = []
     for label_idx in np.unique(mask_np):
         if label_idx == 0:
             continue
@@ -380,7 +371,7 @@ def split_nuclei_dataset(
             item = copy.deepcopy(d)
             item[centroid_key] = (x, y)
             item[nuclei_id_key] = nuclei_id
-            item[class_key] = label_idx
+            item[mask_value_key] = label_idx
             item["image_path"] = item["image"]
 
             bbox = compute_bbox(crop_size, (x, y), image.size)
@@ -391,9 +382,9 @@ def split_nuclei_dataset(
             cropped_label_np = this_label[bbox[0] : bbox[2], bbox[1] : bbox[3]]
             cropped_label = Image.fromarray(cropped_label_np.astype(np.uint8), None)
 
-            filename = f"{image_id}_{label_idx}_{str(nuclei_id).zfill(4)}.npy"
-            image_file = os.path.join(images_dir, filename.replace(".npy", ".png"))
-            label_file = os.path.join(labels_dir, filename.replace(".npy", ".png"))
+            filename = f"{image_id}_{label_idx}_{str(nuclei_id).zfill(4)}.png"
+            image_file = os.path.join(images_dir, filename)
+            label_file = os.path.join(labels_dir, filename)
 
             cropped_image.save(image_file)
             cropped_label.save(label_file)
@@ -543,13 +534,13 @@ def main_nuclei():
     )
 
     home = str(Path.home())
-    for f in ("validation", "training"):
+    for f in ("training", "validation"):
         studies = f"{home}/Dataset/Pathology/CoNSeP/{f}"
-        output_dir = f"{home}/Dataset/Pathology/CoNSeP/{f}F"
+        output_dir = f"{home}/Dataset/Pathology/CoNSeP/{f}FN"
 
         logger.info(f"Generate Nuclei Dataset for: {studies}")
         datastore = LocalDatastore(studies, extensions=("*.png", "*.mat"))
-        split_dataset(datastore, output_dir, "consep", None, None, limit=0)
+        split_dataset(datastore, output_dir, "consep_nuclei", None, None, limit=0)
 
 
 if __name__ == "__main__":

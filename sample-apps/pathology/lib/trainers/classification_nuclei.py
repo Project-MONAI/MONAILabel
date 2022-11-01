@@ -15,6 +15,9 @@ import os
 import numpy as np
 import torch
 from ignite.metrics import Accuracy
+from lib.handlers import TensorBoardImageHandler
+from lib.transforms import FixNuclickClassd
+from lib.utils import split_dataset, split_nuclei_dataset
 from monai.handlers import from_engine
 from monai.inferers import SimpleInferer
 from monai.transforms import (
@@ -23,14 +26,14 @@ from monai.transforms import (
     EnsureChannelFirstd,
     EnsureTyped,
     LoadImaged,
+    RandFlipd,
+    RandRotate90d,
     ScaleIntensityRangeD,
     SelectItemsd,
-    TorchVisiond, RandFlipd, RandRotate90d, )
+    TorchVisiond,
+)
 from tqdm import tqdm
 
-from lib.handlers import TensorBoardImageHandler
-from lib.transforms import FixNuclickClassd
-from lib.utils import split_dataset, split_nuclei_dataset
 from monailabel.interfaces.datastore import Datastore
 from monailabel.tasks.train.basic_train import BasicTrainTask, Context
 
@@ -86,7 +89,8 @@ class ClassificationNuclei(BasicTrainTask):
         logger.info(f"Split data (len: {len(ds)}) based on each nuclei")
 
         limit = request.get("dataset_limit", 0)
-        # return ds[:limit] if 0 < limit < len(ds) else ds
+        if source == "consep_nuclick":
+            return ds[:limit] if 0 < limit < len(ds) else ds
 
         ds_new = []
         for d in tqdm(ds):

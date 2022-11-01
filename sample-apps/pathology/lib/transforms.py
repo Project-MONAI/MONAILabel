@@ -266,18 +266,18 @@ class AddClickGuidanceSignald(AddGuidanceSignald):
         return np.concatenate([image, ns, ns], axis=0)
 
 
-class FilterLabelByClassd(MapTransform):
-    def __init__(self, keys: KeysCollection, allow_missing_keys: bool = False, key_class="class") -> None:
+class AddMaskValued(MapTransform):
+    def __init__(self, keys: KeysCollection, allow_missing_keys: bool = False, source_key="label") -> None:
         super().__init__(keys, allow_missing_keys)
-        self.key_class = key_class
+        self.source_key = source_key
 
     def __call__(self, data):
         d = dict(data)
         for key in self.keys:
-            label = d[key]
-            cval = d[self.key_class]
-            label[label != cval] = 0
-            d[key] = label
+            if d.get(key) is None:
+                label = d[self.source_key]
+                mask_value = int(torch.max(torch.where(torch.logical_and(label > 0, label < 255), label, 0)))
+                d[key] = mask_value
         return d
 
 
@@ -289,12 +289,14 @@ class FixNuclickClassd(Transform):
 
     def __call__(self, data):
         d = dict(data)
-        signal = torch.where(data[self.label] > 0, 1, 0)
-        if len(signal.shape) < len(data[self.image].shape):
+        signal = torch.where(torch.logical_and(d[self.label] > 0, d[self.label] < 255), 1, 0)
+        max_c = int(torch.max(torch.where(signal > 0, d[self.label], 0)))
+
+        if len(signal.shape) < len(d[self.image].shape):
             signal = signal[None]
 
-        d[self.image] = torch.cat([data[self.image], signal], dim=len(signal.shape) - 3)
-        d[self.label] = int(torch.max(data[self.label]) + self.offset)
+        d[self.image] = torch.cat([d[self.image], signal], dim=len(signal.shape) - 3)
+        d[self.label] = max_c + self.offset
         return d
 
 
