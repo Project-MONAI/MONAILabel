@@ -85,7 +85,7 @@ If a valid scoring bundle model is provided with **--conf epistemic_model <bundl
 The loaded scoring bundle model can be either model-zoo models or local bundles, the network must support **dropout** argument.
 
 ```bash
-# Use the UNet in spleen_ct_segmentation_v0.2.0 bundle as epistemic scoring model. 
+# Use the UNet in spleen_ct_segmentation_v0.2.0 bundle as epistemic scoring model.
 # Manual define epistemic scoring parameters
 monailabel start_server \
   --app workspace/monaibundle \
