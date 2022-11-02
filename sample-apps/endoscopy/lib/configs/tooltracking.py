@@ -32,9 +32,9 @@ logger = logging.getLogger(__name__)
 class ToolTracking(TaskConfig):
     def init(self, name: str, model_dir: str, conf: Dict[str, str], planner: Any, **kwargs):
         super().init(name, model_dir, conf, planner, **kwargs)
-        
+
         bundle_name = conf.get("bundle_name", "endoscopic_tool_segmentation")
-        bundle_version = "0.2.0"
+        bundle_version = conf.get("bundle_version", "0.2.0")
         self.bundle_path = os.path.join(self.model_dir, bundle_name)
         if not os.path.exists(self.bundle_path):
             download(name=bundle_name, version=bundle_version, bundle_dir=self.model_dir)
