@@ -50,6 +50,12 @@ Supported tasks update based on [Model-Zoo](https://github.com/Project-MONAI/mod
 
 Note: MONAI Label support labeling bundle models in the MODEL ZOO, non-labeling tasks are not available for MONAI Label.
 
+Note: the monaibundle app uses monai bundle api to get information of latest Model-Zoo. In order to increase the rate limits of calling GIthub APIs, you can input your personal access token.
+    Please check the following link for more details about rate limiting:
+    https://docs.github.com/en/rest/overview/resources-in-the-rest-api#rate-limiting
+
+Set **--conf auth_token <github personal access token>** to increate rate limits.
+
 ### How To Use?
 
 ```bash
@@ -72,14 +78,38 @@ monailabel start_server --app workspace/monaibundle --studies workspace/images -
 monailabel start_server --app workspace/monaibundle --studies workspace/images --conf models spleen_ct_segmentation_v0.1.0 --conf skip_trainers true
 ```
 
+### Epistemic Scoring for monaibundle app
+
+The monaibundle app supports epistemic scoring using bundles models. The monaibundle consumes **epistemic_model** as config parameter.
+If a valid scoring bundle model is provided with **--conf epistemic_model <bundlename>**, scoring inference will be triggered.
+The loaded scoring bundle model can be either model-zoo models or local bundles, the network must support **dropout** argument.
+
+```bash
+# Use the UNet in spleen_ct_segmentation_v0.2.0 bundle as epistemic scoring model.
+# Manual define epistemic scoring parameters
+monailabel start_server \
+  --app workspace/monaibundle \
+  --studies workspace/images \
+  --conf models spleen_ct_segmentation_v0.2.0,swin_unetr_btcv_segmentation_v0.2.0 \
+  --conf epistemic_model spleen_ct_segmentation_v0.2.0
+  --conf epistemic_max_samples 0 \
+  --conf epistemic_simulation_size 5
+  --conf epistemic_dropout 0.2
+
+```
+
+Users can then select active learning strategies for selecting data to label.
+
 #### Additional Configs
 
 Pass them as **--conf _name_ _value_** while starting MONAILabelServer
 
-| Name          | Values          | Description                                                                                 |
-|---------------|-----------------|---------------------------------------------------------------------------------------------|
-| zoo_info      | string          | _Default value:_ https://github.com/Project-MONAI/model-zoo/blob/dev/models/model_info.json |
-| zoo_source    | string          | _Default value:_ github                                                                     |
-| zoo_repo      | string          | _Default value:_ Project-MONAI/model-zoo/hosting_storage_v1                                 |
-| preload       | true, **false** | Preload model into GPU                                                                      |
-| skip_trainers | true, **false** | Skip adding training tasks (Run in Infer mode only)                                         |
+| Name                      | Values          | Description                                                                                 |
+|---------------------------|-----------------|---------------------------------------------------------------------------------------------|
+| zoo_source                | string          | _Default value:_ github                                                                     |
+| zoo_repo                  | string          | _Default value:_ Project-MONAI/model-zoo/hosting_storage_v1                                 |
+| preload                   | true, **false** | Preload model into GPU                                                                      |
+| skip_trainers             | true, **false** | Skip adding training tasks (Run in Infer mode only)                                         |
+| epistemic_max_samples     | int             | _Default value:_ 0    ;  Epistemic scoring parameters                                       |
+| epistemic_simulation_size | int             | _Default value:_ 5    ;  Epistemic simulation size parameters                               |
+| epistemic_dropout         | float           | _Default value:_ 0.2  ;  Epistemic scoring parameters: Dropout rate for scoring models      |                               |
