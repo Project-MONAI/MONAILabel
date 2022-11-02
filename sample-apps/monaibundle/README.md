@@ -102,10 +102,13 @@ Users can then select active learning strategies for selecting data to label.
 
 Pass them as **--conf _name_ _value_** while starting MONAILabelServer
 
-| Name          | Values          | Description                                                                                 |
-|---------------|-----------------|---------------------------------------------------------------------------------------------|
-| zoo_info      | string          | _Default value:_ https://github.com/Project-MONAI/model-zoo/blob/dev/models/model_info.json |
-| zoo_source    | string          | _Default value:_ github                                                                     |
-| zoo_repo      | string          | _Default value:_ Project-MONAI/model-zoo/hosting_storage_v1                                 |
-| preload       | true, **false** | Preload model into GPU                                                                      |
-| skip_trainers | true, **false** | Skip adding training tasks (Run in Infer mode only)                                         |
+| Name                      | Values          | Description                                                                                 |
+|---------------------------|-----------------|---------------------------------------------------------------------------------------------|
+| zoo_info                  | string          | _Default value:_ https://github.com/Project-MONAI/model-zoo/blob/dev/models/model_info.json |
+| zoo_source                | string          | _Default value:_ github                                                                     |
+| zoo_repo                  | string          | _Default value:_ Project-MONAI/model-zoo/hosting_storage_v1                                 |
+| preload                   | true, **false** | Preload model into GPU                                                                      |
+| skip_trainers             | true, **false** | Skip adding training tasks (Run in Infer mode only)                                         |
+| epistemic_max_samples     | int             | _Default value:_ 0    ;  Epistemic scoring parameters                                       |
+| epistemic_simulation_size | int             | _Default value:_ 5    ;  Epistemic simulation size parameters                               |
+| epistemic_dropot          | float           | _Default value:_ 0.2  ;  Epistemic scoring parameters: Dropot rate for scoring models       |                               |

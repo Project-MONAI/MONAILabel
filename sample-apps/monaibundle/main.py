@@ -39,7 +39,7 @@ class MyApp(MONAILabelApp):
             # Get epistemic parameters
             self.epistemic_max_samples = int(conf.get("epistemic_max_samples", "0"))
             self.epistemic_simulation_size = int(conf.get("epistemic_simulation_size", "5"))
-            self.scoring_dropout = float(conf.get("scoring_dropout", "0.2"))
+            self.epistemic_dropot = float(conf.get("epistemic_dropot", "0.2"))
 
         super().__init__(
             app_dir=app_dir,
@@ -91,7 +91,7 @@ class MyApp(MONAILabelApp):
 
         for n, b in self.epistemic_models.items():
             # Create BundleInferTask task with dropout instantiation for scoring inference
-            i = BundleInferTask(b, self.conf, train_mode=True, skip_writer=True, dropout=self.scoring_dropout, post_filter=[SaveImaged, Invertd])
+            i = BundleInferTask(b, self.conf, train_mode=True, skip_writer=True, dropout=self.epistemic_dropot, post_filter=[SaveImaged, Invertd])
             methods[n] = EpistemicScoring(i, max_samples=self.epistemic_max_samples, simulation_size=self.epistemic_simulation_size)
             if not methods:
                 continue
