@@ -106,7 +106,6 @@ Pass them as **--conf _name_ _value_** while starting MONAILabelServer
 
 | Name                      | Values          | Description                                                                                 |
 |---------------------------|-----------------|---------------------------------------------------------------------------------------------|
-| zoo_info                  | string          | _Default value:_ https://github.com/Project-MONAI/model-zoo/blob/dev/models/model_info.json |
 | zoo_source                | string          | _Default value:_ github                                                                     |
 | zoo_repo                  | string          | _Default value:_ Project-MONAI/model-zoo/hosting_storage_v1                                 |
 | preload                   | true, **false** | Preload model into GPU                                                                      |
