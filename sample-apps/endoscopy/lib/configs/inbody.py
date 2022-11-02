@@ -34,8 +34,6 @@ class InBody(TaskConfig):
         super().init(name, model_dir, conf, planner, **kwargs)
 
         bundle_name = conf.get("bundle_name", "endoscopic_inbody_classification")
-
-        bundle_name = "endoscopic_inbody_classification"
         bundle_version = "0.2.0"
         self.bundle_path = os.path.join(self.model_dir, bundle_name)
         if not os.path.exists(self.bundle_path):
