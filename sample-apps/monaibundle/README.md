@@ -112,4 +112,4 @@ Pass them as **--conf _name_ _value_** while starting MONAILabelServer
 | skip_trainers             | true, **false** | Skip adding training tasks (Run in Infer mode only)                                         |
 | epistemic_max_samples     | int             | _Default value:_ 0    ;  Epistemic scoring parameters                                       |
 | epistemic_simulation_size | int             | _Default value:_ 5    ;  Epistemic simulation size parameters                               |
-| epistemic_dropot          | float           | _Default value:_ 0.2  ;  Epistemic scoring parameters: Dropot rate for scoring models       |                               |
+| epistemic_dropout         | float           | _Default value:_ 0.2  ;  Epistemic scoring parameters: Dropout rate for scoring models      |                               |
