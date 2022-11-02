@@ -94,6 +94,8 @@ monailabel start_server \
   --conf epistemic_model spleen_ct_segmentation_v0.2.0
   --conf epistemic_max_samples 0 \
   --conf epistemic_simulation_size 5
+  --conf epistemic_dropout 0.2
+
 ```
 
 Users can then select active learning strategies for selecting data to label.
