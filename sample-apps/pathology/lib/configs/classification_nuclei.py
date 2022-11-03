@@ -54,7 +54,8 @@ class ClassificationNuclei(TaskConfig):
 
         # Download PreTrained Model
         if strtobool(self.conf.get("use_pretrained_model", "true")):
-            url = f"{self.conf.get('pretrained_path', self.PRE_TRAINED_PATH)}/pathology_classification_nuclei.pt"
+            url = f"{self.conf.get('pretrained_path', self.PRE_TRAINED_PATH)}"
+            url = f"{url}/pathology_classification_densenet121_nuclei.pt"
             download_file(url, self.path[0])
 
         # Network

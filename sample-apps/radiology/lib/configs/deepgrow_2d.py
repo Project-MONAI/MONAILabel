@@ -48,7 +48,8 @@ class Deepgrow2D(TaskConfig):
 
         # Download PreTrained Model
         if strtobool(self.conf.get("use_pretrained_model", "true")):
-            url = f"{self.conf.get('pretrained_path', self.PRE_TRAINED_PATH)}/deepgrow_2d_bunet.pt"
+            url = f"{self.conf.get('pretrained_path', self.PRE_TRAINED_PATH)}"
+            url = f"{url}/radiology_deepgrow_2d_bunet.pt"
             download_file(url, self.path[0])
 
         # Network
