@@ -114,7 +114,7 @@ class BasicTrainTask(TrainTask):
         find_unused_parameters=False,
         load_strict=False,
         labels=None,
-        **kwargs,
+        disable_tracking=True,
     ):
         """
         :param model_dir: Base Model Dir to save the model checkpoints, events etc...
@@ -132,7 +132,9 @@ class BasicTrainTask(TrainTask):
         :param key_metric_filename: best key metric model file name
         :param model_dict_key: key to save network weights into checkpoint
         :param find_unused_parameters: Applicable for DDP/Multi GPU training
-        :param load_strict: Load pretrained model in strict mode
+        :param load_strict: Load pre-trained model in strict mode
+        :param labels: Labels to be used as part of training context (some transform might need)
+        :param disable_tracking: Disable tracking for faster training rate (unless you are using batched transforms)
         """
         super().__init__(description)
 
@@ -169,7 +171,7 @@ class BasicTrainTask(TrainTask):
         self._find_unused_parameters = find_unused_parameters
         self._load_strict = load_strict
         self._labels = [] if labels is None else [labels] if isinstance(labels, str) else labels
-        self._disable_tracking = kwargs.get("disable_tracking", True)
+        self._disable_tracking = disable_tracking
 
     @abstractmethod
     def network(self, context: Context):

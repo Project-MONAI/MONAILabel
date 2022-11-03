@@ -30,8 +30,12 @@ from monailabel.interfaces.tasks.train import TrainTask
 from monailabel.scribbles.infer import GMMBasedGraphCut, HistogramBasedGraphCut
 from monailabel.tasks.activelearning.first import First
 from monailabel.tasks.activelearning.random import Random
+
+# bundle
+from monailabel.tasks.infer.bundle import BundleInferTask
+from monailabel.tasks.train.bundle import BundleTrainTask
 from monailabel.utils.others.class_utils import get_class_names
-from monailabel.utils.others.generic import strtobool
+from monailabel.utils.others.generic import get_bundle_models, strtobool
 from monailabel.utils.others.planner import HeuristicPlanner
 
 logger = logging.getLogger(__name__)
@@ -48,6 +52,7 @@ class MyApp(MONAILabelApp):
 
         configs = {k: v for k, v in sorted(configs.items())}
 
+        # Load models from app model implementation, e.g., --conf models <segmentation_spleen>
         models = conf.get("models")
         if not models:
             print("")
@@ -78,6 +83,7 @@ class MyApp(MONAILabelApp):
         self.heuristic_planner = strtobool(conf.get("heuristic_planner", "false"))
         self.planner = HeuristicPlanner(spatial_size=spatial_size, target_spacing=target_spacing)
 
+        # app models
         self.models: Dict[str, TaskConfig] = {}
         for n in models:
             for k, v in configs.items():
@@ -87,8 +93,10 @@ class MyApp(MONAILabelApp):
                     logger.info(f"+++ Adding Model: {k} => {v}")
                     self.models[k] = eval(f"{v}()")
                     self.models[k].init(k, self.model_dir, conf, self.planner)
-
         logger.info(f"+++ Using Models: {list(self.models.keys())}")
+
+        # Load models from bundle config files, local or released in Model-Zoo, e.g., --conf bundles <spleen_ct_segmentation_v0.1.0>
+        self.bundles = get_bundle_models(app_dir, conf, conf_key="bundles") if conf.get("bundles") else None
 
         super().__init__(
             app_dir=app_dir,
@@ -107,6 +115,7 @@ class MyApp(MONAILabelApp):
 
     def init_infers(self) -> Dict[str, InferTask]:
         infers: Dict[str, InferTask] = {}
+
         #################################################
         # Models
         #################################################
@@ -116,6 +125,15 @@ class MyApp(MONAILabelApp):
             for k, v in c.items():
                 logger.info(f"+++ Adding Inferer:: {k} => {v}")
                 infers[k] = v
+
+        #################################################
+        # Bundle Models
+        #################################################
+        if self.bundles:
+            for n, b in self.bundles.items():
+                i = BundleInferTask(b, self.conf)
+                logger.info(f"+++ Adding Bundle Inferer:: {n} => {i}")
+                infers[n] = i
 
         #################################################
         # Scribbles
@@ -177,7 +195,9 @@ class MyApp(MONAILabelApp):
         trainers: Dict[str, TrainTask] = {}
         if strtobool(self.conf.get("skip_trainers", "false")):
             return trainers
-
+        #################################################
+        # Models
+        #################################################
         for n, task_config in self.models.items():
             t = task_config.trainer()
             if not t:
@@ -185,6 +205,19 @@ class MyApp(MONAILabelApp):
 
             logger.info(f"+++ Adding Trainer:: {n} => {t}")
             trainers[n] = t
+
+        #################################################
+        # Bundle Models
+        #################################################
+        if self.bundles:
+            for n, b in self.bundles.items():
+                t = BundleTrainTask(b, self.conf)
+                if not t or not t.is_valid():
+                    continue
+
+                logger.info(f"+++ Adding Bundle Trainer:: {n} => {t}")
+                trainers[n] = t
+
         return trainers
 
     def init_strategies(self) -> Dict[str, Strategy]:

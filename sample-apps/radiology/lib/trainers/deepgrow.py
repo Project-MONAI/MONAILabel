@@ -120,6 +120,7 @@ class Deepgrow(BasicTrainTask):
             SpatialCropForegroundd(keys=("image", "label"), source_key="label", spatial_size=self.roi_size),
             Resized(keys=("image", "label"), spatial_size=self.model_size, mode=("area", "nearest")),
             NormalizeIntensityd(keys="image", subtrahend=208.0, divisor=388.0),  # type: ignore
+            ToNumpyd(keys="label"),
         ]
         if self.dimension == 3:
             t.append(FindAllValidSlicesd(label="label", sids="sids"))
