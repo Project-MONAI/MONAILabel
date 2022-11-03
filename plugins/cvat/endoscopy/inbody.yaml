@@ -50,6 +50,7 @@ spec:
       workerAvailabilityTimeoutMilliseconds: 10000
       attributes:
         maxRequestBodySize: 33554432 # 32MB
+        port: 8901
 
   resources:
     limits:
@@ -61,3 +62,4 @@ spec:
         name: always
         maximumRetryCount: 1
       mountMode: volume
+      network: cvat_cvat

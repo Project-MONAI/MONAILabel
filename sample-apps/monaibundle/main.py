@@ -11,81 +11,38 @@
 
 import logging
 import os
-import re
-import shutil
-import sys
 from typing import Dict
 
-import requests
-from monai.bundle import download
+from monai.transforms import Invertd, SaveImaged
 
 import monailabel
 from monailabel.interfaces.app import MONAILabelApp
 from monailabel.interfaces.tasks.infer_v2 import InferTask
+from monailabel.interfaces.tasks.scoring import ScoringMethod
 from monailabel.interfaces.tasks.strategy import Strategy
 from monailabel.interfaces.tasks.train import TrainTask
 from monailabel.tasks.activelearning.first import First
 from monailabel.tasks.activelearning.random import Random
 from monailabel.tasks.infer.bundle import BundleInferTask
+from monailabel.tasks.scoring.epistemic_v2 import EpistemicScoring
 from monailabel.tasks.train.bundle import BundleTrainTask
-from monailabel.utils.others.generic import MONAI_ZOO_INFO, MONAI_ZOO_REPO, MONAI_ZOO_SOURCE, strtobool
+from monailabel.utils.others.generic import get_bundle_models, strtobool
 
 logger = logging.getLogger(__name__)
 
 
 class MyApp(MONAILabelApp):
     def __init__(self, app_dir, studies, conf):
-        self.model_dir = os.path.join(app_dir, "model")
-
-        zoo_info = requests.get(conf.get("zoo_info", MONAI_ZOO_INFO)).json()
-        zoo_source = conf.get("zoo_source", MONAI_ZOO_SOURCE)
-        zoo_repo = conf.get("zoo_repo", MONAI_ZOO_REPO)
-
-        available = {k.replace(".zip", ""): v for k, v in zoo_info.items()}
-        models = conf.get("models")
-        if not models:
-            print("")
-            print("---------------------------------------------------------------------------------------")
-            print("Provide --conf models <name>")
-            print("Following are the available models.  You can pass comma (,) separated names to pass multiple")
-            print("    -c models {}".format("\n    -c models ".join(available.keys())))
-            print("---------------------------------------------------------------------------------------")
-            print("")
-            exit(-1)
-
-        models = models.split(",")
-        models = [m.strip() for m in models]
-        invalid = [m for m in models if not available.get(m) and not os.path.isdir(os.path.join(self.model_dir, m))]
-
-        if invalid:
-            print("")
-            print("---------------------------------------------------------------------------------------")
-            print(f"Invalid Model(s) are provided: {invalid}")
-            print("Following are the available models.  You can pass comma (,) separated names to pass multiple")
-            print("    -c models {}".format("\n    -c models ".join(available.keys())))
-            print(f"Or provide valid local bundle directories under: {self.model_dir}")
-            print("---------------------------------------------------------------------------------------")
-            print("")
-            exit(-1)
-        self.models: Dict[str, str] = {}
-
-        for k in models:
-            v = available.get(k)
-            p = os.path.join(self.model_dir, k)
-            if not v:
-                logger.info(f"+++ Adding Bundle from Local: {k} => {p}")
-            else:
-                logger.info(f"+++ Adding Bundle from Zoo: {k} => {v} => {p}")
-                if not os.path.exists(p):
-                    download(name=k, bundle_dir=self.model_dir, source=zoo_source, repo=zoo_repo)
-                    e = os.path.join(self.model_dir, re.sub(r"_v.*.zip", "", f"{k}.zip"))
-                    if os.path.isdir(e):
-                        shutil.move(e, p)
-            sys.path.append(p)
-
-            self.models[k] = p
-
-        logger.info(f"+++ Using Models: {list(self.models.keys())}")
+        self.models = get_bundle_models(app_dir, conf)
+        # Add Epistemic model for scoring
+        self.epistemic_models = (
+            get_bundle_models(app_dir, conf, conf_key="epistemic_model") if conf.get("epistemic_model") else None
+        )
+        if self.epistemic_models:
+            # Get epistemic parameters
+            self.epistemic_max_samples = int(conf.get("epistemic_max_samples", "0"))
+            self.epistemic_simulation_size = int(conf.get("epistemic_simulation_size", "5"))
+            self.epistemic_dropout = float(conf.get("epistemic_dropout", "0.2"))
 
         super().__init__(
             app_dir=app_dir,
@@ -129,6 +86,32 @@ class MyApp(MONAILabelApp):
 
         logger.info(f"Active Learning Strategies:: {list(strategies.keys())}")
         return strategies
+
+    def init_scoring_methods(self) -> Dict[str, ScoringMethod]:
+        methods: Dict[str, ScoringMethod] = {}
+        if not self.conf.get("epistemic_model"):
+            return methods
+
+        for n, b in self.epistemic_models.items():
+            # Create BundleInferTask task with dropout instantiation for scoring inference
+            i = BundleInferTask(
+                b,
+                self.conf,
+                train_mode=True,
+                skip_writer=True,
+                dropout=self.epistemic_dropout,
+                post_filter=[SaveImaged, Invertd],
+            )
+            methods[n] = EpistemicScoring(
+                i, max_samples=self.epistemic_max_samples, simulation_size=self.epistemic_simulation_size
+            )
+            if not methods:
+                continue
+            methods = methods if isinstance(methods, dict) else {n: methods[n]}
+            logger.info(f"+++ Adding Scoring Method:: {n} => {b}")
+
+        logger.info(f"Active Learning Scoring Methods:: {list(methods.keys())}")
+        return methods
 
 
 """

@@ -14,10 +14,10 @@
 # to use different version of MONAI pass `--build-arg MONAI_IMAGE=...`
 
 ARG MONAI_IMAGE=projectmonai/monai:1.0.1
-ARG BUILD_OHIF=true
 
 FROM ${MONAI_IMAGE} as build
 LABEL maintainer="monai.contact@gmail.com"
+ARG BUILD_OHIF=true
 
 ADD . /opt/monailabel/
 RUN apt update -y && apt install openslide-tools npm -y && npm install --global yarn
