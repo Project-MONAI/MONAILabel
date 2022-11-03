@@ -44,7 +44,8 @@ class DeepEdit(TaskConfig):
 
         # Download PreTrained Model
         if strtobool(self.conf.get("use_pretrained_model", "true")):
-            url = f"{self.conf.get('pretrained_path', self.PRE_TRAINED_PATH)}/endoscopy_deepedit_tooltracking.pt"
+            url = f"{self.conf.get('pretrained_path', self.PRE_TRAINED_PATH)}"
+            url = f"{url}/endoscopy_deepedit_bunet_tooltracking.pt"
             try:
                 download_file(url, self.path[0])
             except:

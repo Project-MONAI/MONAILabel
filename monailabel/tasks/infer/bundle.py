@@ -93,7 +93,7 @@ class BundleInferTask(BasicInferTask):
 
         self.bundle_config = ConfigParser()
         self.bundle_config.read_config(os.path.join(path, "configs", config_paths[0]))
-        self.bundle_config.config.update({self.const.key_bundle_root(): path})
+        self.bundle_config.config.update({self.const.key_bundle_root(): path})  # type: ignore
         if self.dropout > 0:
             self.bundle_config["network_def"]["dropout"] = self.dropout
 
