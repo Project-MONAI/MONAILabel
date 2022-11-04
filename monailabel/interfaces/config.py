@@ -22,7 +22,7 @@ logger = logging.getLogger(__name__)
 
 
 class TaskConfig(metaclass=ABCMeta):
-    PRE_TRAINED_PATH = "https://github.com/Project-MONAI/MONAILabel/releases/download/data"
+    PRE_TRAINED_PATH = "https://github.com/Project-MONAI/MONAILabel/releases/download/pretrained"
     NGC_PATH = "https://api.ngc.nvidia.com/v2/models/nvidia/med"
 
     def __init__(self):

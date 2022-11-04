@@ -81,7 +81,7 @@ class BundleTrainTask(TrainTask):
 
         self.bundle_config = ConfigParser()
         self.bundle_config.read_config(self.bundle_config_path)
-        self.bundle_config.config.update({self.const.key_bundle_root(): self.bundle_path})
+        self.bundle_config.config.update({self.const.key_bundle_root(): self.bundle_path})  # type: ignore
 
         # https://docs.monai.io/en/latest/mb_specification.html#metadata-json-file
         self.bundle_metadata_path = os.path.join(path, "configs", "metadata.json")
@@ -193,7 +193,7 @@ class BundleTrainTask(TrainTask):
             for k, v in overrides.items():
                 if k != self.const.key_device():
                     self.bundle_config.set(v, k)
-            ConfigParser.export_config_file(self.bundle_config.config, train_path, indent=2)
+            ConfigParser.export_config_file(self.bundle_config.config, train_path, indent=2)  # type: ignore
 
             env = os.environ.copy()
             env["CUDA_VISIBLE_DEVICES"] = ",".join([str(g) for g in gpus])

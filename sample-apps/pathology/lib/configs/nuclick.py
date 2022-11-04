@@ -78,7 +78,7 @@ class NuClick(TaskConfig):
             load_path=load_path,
             publish_path=self.path[1],
             labels=self.labels,
-            description="Train NuClick Model",
+            description="Train Nuclei DeepEdit Model",
             train_save_interval=1,
             config={
                 "max_epochs": 10,

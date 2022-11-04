@@ -32,13 +32,6 @@ class EndPointScoring(BasicEndpointV3TestSuite):
         response = self.client.post("/scoring/segmentation_spleen_epistemic?run_sync=true")
         assert response.status_code == 200
 
-    def test_tta(self):
-        if not torch.cuda.is_available():
-            return
-
-        response = self.client.post("/scoring/segmentation_spleen_tta?run_sync=true")
-        assert response.status_code == 200
-
     def test_status(self):
         self.client.get("/scoring/")
 

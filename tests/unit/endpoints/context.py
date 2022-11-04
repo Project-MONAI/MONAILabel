@@ -23,8 +23,6 @@ from monailabel.config import settings
 def create_client(app_dir, studies, data_dir, conf=None):
     app_conf = {
         "heuristic_planner": "false",
-        "tta_enabled": "false",
-        "tta_samples": "1",
         "server_mode": "true",
         "auto_update_scoring": "false",
         "debug": "true",
@@ -129,10 +127,8 @@ class BasicEndpointV3TestSuite(unittest.TestCase):
     @classmethod
     def setUpClass(cls) -> None:
         conf = {
-            "tta_enabled": "true",
             "epistemic_enabled": "true",
             "epistemic_samples": "2",
-            "tta_samples": "2",
             "skip_strategies": "false",
             "skip_scoring": "false",
             "models": "segmentation_spleen",

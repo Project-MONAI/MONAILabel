@@ -23,11 +23,9 @@ from monailabel.interfaces.tasks.scoring import ScoringMethod
 from monailabel.interfaces.tasks.strategy import Strategy
 from monailabel.interfaces.tasks.train import TrainTask
 from monailabel.tasks.activelearning.epistemic import Epistemic
-from monailabel.tasks.activelearning.tta import TTA
 from monailabel.tasks.scoring.dice import Dice
 from monailabel.tasks.scoring.epistemic import EpistemicScoring
 from monailabel.tasks.scoring.sum import Sum
-from monailabel.tasks.scoring.tta import TTAScoring
 from monailabel.utils.others.generic import download_file, strtobool
 
 logger = logging.getLogger(__name__)
@@ -39,8 +37,6 @@ class DeepEdit(TaskConfig):
 
         self.epistemic_enabled = None
         self.epistemic_samples = None
-        self.tta_enabled = None
-        self.tta_samples = None
 
         # Multilabel
         self.labels = {
@@ -73,7 +69,8 @@ class DeepEdit(TaskConfig):
 
         # Download PreTrained Model
         if strtobool(self.conf.get("use_pretrained_model", "true")):
-            url = f"{self.conf.get('pretrained_path', self.PRE_TRAINED_PATH)}/deepedit_{network}_multilabel.pt"
+            url = f"{self.conf.get('pretrained_path', self.PRE_TRAINED_PATH)}"
+            url = f"{url}/radiology_deepedit_{network}_multilabel.pt"
             download_file(url, self.path[0])
 
         self.target_spacing = (1.0, 1.0, 1.0)  # target space for image
@@ -143,10 +140,6 @@ class DeepEdit(TaskConfig):
         self.epistemic_samples = int(conf.get("epistemic_samples", "5"))
         logger.info(f"EPISTEMIC Enabled: {self.epistemic_enabled}; Samples: {self.epistemic_samples}")
 
-        self.tta_enabled = strtobool(conf.get("tta_enabled", "false"))
-        self.tta_samples = int(conf.get("tta_samples", "5"))
-        logger.info(f"TTA Enabled: {self.tta_enabled}; Samples: {self.tta_samples}")
-
     def infer(self) -> Union[InferTask, Dict[str, InferTask]]:
         return {
             self.name: lib.infers.DeepEdit(
@@ -191,8 +184,6 @@ class DeepEdit(TaskConfig):
         strategies: Dict[str, Strategy] = {}
         if self.epistemic_enabled:
             strategies[f"{self.name}_epistemic"] = Epistemic()
-        if self.tta_enabled:
-            strategies[f"{self.name}_tta"] = TTA()
         return strategies
 
     def scoring_method(self) -> Union[None, ScoringMethod, Dict[str, ScoringMethod]]:
@@ -214,14 +205,5 @@ class DeepEdit(TaskConfig):
                     spatial_size=self.spatial_size,
                 ).pre_transforms(),
                 num_samples=self.epistemic_samples,
-            )
-        if self.tta_enabled:
-            methods[f"{self.name}_tta"] = TTAScoring(
-                model=self.path,
-                network=self.network,
-                deepedit=True,
-                num_samples=self.tta_samples,
-                spatial_size=self.spatial_size,
-                spacing=self.target_spacing,
             )
         return methods
