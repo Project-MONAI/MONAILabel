@@ -32,48 +32,45 @@ class ClassificationNuclei(TaskConfig):
 
         # Labels
         self.labels = {
-            "Other": 1,
+            "Neoplastic cells": 1,
             "Inflammatory": 2,
-            "Epithelial": 3,
-            "Spindle-Shaped": 4,
+            "Connective/Soft tissue cells": 3,
+            "Dead Cells": 4,
+            "Epithelial": 5,
         }
         self.label_colors = {
-            "Other": (255, 0, 0),
+            "Neoplastic cells": (255, 0, 0),
             "Inflammatory": (255, 255, 0),
+            "Connective/Soft tissue cells": (0, 255, 0),
+            "Dead Cells": (0, 0, 0),
             "Epithelial": (0, 0, 255),
-            "Spindle-Shaped": (0, 255, 0),
         }
 
-        pannuke = strtobool(self.conf.get("pannuke", "false"))
-        if pannuke:
+        consep = strtobool(self.conf.get("consep", "false"))
+        if consep:
             self.labels = {
-                "Neoplastic cells": 1,
+                "Other": 1,
                 "Inflammatory": 2,
-                "Connective/Soft tissue cells": 3,
-                "Dead Cells": 4,
-                "Epithelial": 5,
+                "Epithelial": 3,
+                "Spindle-Shaped": 4,
             }
             self.label_colors = {
-                "Neoplastic cells": (255, 0, 0),
+                "Other": (255, 0, 0),
                 "Inflammatory": (255, 255, 0),
-                "Connective/Soft tissue cells": (0, 255, 0),
-                "Dead Cells": (0, 0, 0),
                 "Epithelial": (0, 0, 255),
+                "Spindle-Shaped": (0, 255, 0),
             }
 
         # Model Files
         self.path = [
-            os.path.join(self.model_dir, f"pretrained_{name}.pt"),  # pretrained
-            os.path.join(self.model_dir, f"{name}.pt"),  # published
+            os.path.join(self.model_dir, f"pretrained_{name}{'_consep' if consep else ''}.pt"),  # pretrained
+            os.path.join(self.model_dir, f"{name}{'_consep' if consep else ''}.pt"),  # published
         ]
 
         # Download PreTrained Model
         if strtobool(self.conf.get("use_pretrained_model", "true")):
-            pt = "pathology_classification_densenet121_nuclei_consep.pt"
-            if pannuke:
-                pt = "pathology_classification_nuclei.pt"
-
-            url = f"{self.conf.get('pretrained_path', self.PRE_TRAINED_PATH)}/{pt}"
+            url = f"{self.conf.get('pretrained_path', self.PRE_TRAINED_PATH)}"
+            url = f"{url}/pathology_classification_densenet121_nuclei{'_consep' if consep else ''}.pt"
             download_file(url, self.path[0])
 
         # Network

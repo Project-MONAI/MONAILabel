@@ -34,19 +34,18 @@ class NuClick(TaskConfig):
         self.labels = ["Nuclei"]
         self.label_colors = {"Nuclei": (0, 255, 255)}
 
+        consep = strtobool(self.conf.get("consep", "false"))
+
         # Model Files
         self.path = [
-            os.path.join(self.model_dir, f"pretrained_{name}.pt"),  # pretrained
+            os.path.join(self.model_dir, f"pretrained_{name}{'_consep' if consep else ''}.pt"),  # pretrained
             os.path.join(self.model_dir, f"{name}.pt"),  # published
         ]
 
         # Download PreTrained Model
         if strtobool(self.conf.get("use_pretrained_model", "true")):
-            pt = "pathology_nuclick_bunet_nuclei_consep.pt"
-            if self.conf.get("pannuke", "false"):
-                pt = "pathology_nuclick_bunet.pt"
-
-            url = f"{self.conf.get('pretrained_path', self.PRE_TRAINED_PATH)}/{pt}"
+            url = f"{self.conf.get('pretrained_path', self.PRE_TRAINED_PATH)}"
+            url = f"{url}/pathology_nuclick_bunet_nuclei{'_consep' if consep else ''}"
             download_file(url, self.path[0])
 
         # Network
