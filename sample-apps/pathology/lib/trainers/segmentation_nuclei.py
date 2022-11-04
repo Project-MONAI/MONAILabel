@@ -46,13 +46,11 @@ class SegmentationNuclei(BasicTrainTask):
         self,
         model_dir,
         network,
-        labels,
         roi_size=(256, 256),
         description="Pathology Semantic Segmentation for Nuclei (PanNuke Dataset)",
         **kwargs,
     ):
         self._network = network
-        self.labels = labels
         self.roi_size = roi_size
         super().__init__(model_dir, description, **kwargs)
 
@@ -77,7 +75,7 @@ class SegmentationNuclei(BasicTrainTask):
             datastore=datastore,
             cache_dir=cache_dir,
             source=source,
-            groups=self.labels,
+            groups=self._labels,
             tile_size=self.roi_size,
             max_region=max_region,
             limit=request.get("dataset_limit", 0),
@@ -102,11 +100,11 @@ class SegmentationNuclei(BasicTrainTask):
 
     def train_post_transforms(self, context: Context):
         return [
-            Activationsd(keys="pred", softmax=len(self.labels) > 1, sigmoid=len(self.labels) == 1),
+            Activationsd(keys="pred", softmax=len(self._labels) > 1, sigmoid=len(self._labels) == 1),
             AsDiscreted(
                 keys=("pred", "label"),
                 argmax=(True, False),
-                to_onehot=(len(self.labels) + 1, len(self.labels) + 1),
+                to_onehot=(len(self._labels) + 1, len(self._labels) + 1),
             ),
         ]
 

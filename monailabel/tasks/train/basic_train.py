@@ -173,6 +173,12 @@ class BasicTrainTask(TrainTask):
         self._labels = [] if labels is None else [labels] if isinstance(labels, str) else labels
         self._disable_tracking = disable_tracking
 
+    def info(self):
+        r = super().info()
+        if self._labels:
+            r["labels"] = self._labels
+        return r
+
     @abstractmethod
     def network(self, context: Context):
         pass

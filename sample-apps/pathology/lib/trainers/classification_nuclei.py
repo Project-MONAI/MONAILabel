@@ -45,7 +45,6 @@ class ClassificationNuclei(BasicTrainTask):
         self,
         model_dir,
         network,
-        labels,
         tile_size=(256, 256),
         patch_size=64,
         min_area=80,
@@ -53,7 +52,6 @@ class ClassificationNuclei(BasicTrainTask):
         **kwargs,
     ):
         self._network = network
-        self.labels = labels
         self.tile_size = tile_size
         self.patch_size = patch_size
         self.min_area = min_area
@@ -80,7 +78,7 @@ class ClassificationNuclei(BasicTrainTask):
             datastore=datastore,
             cache_dir=cache_dir,
             source=source,
-            groups={k: v + 1 for k, v in self.labels.items()},
+            groups={k: v + 1 for k, v in self._labels.items()},
             tile_size=self.tile_size,
             max_region=max_region,
             limit=request.get("dataset_limit", 0),
@@ -118,7 +116,7 @@ class ClassificationNuclei(BasicTrainTask):
     def train_post_transforms(self, context: Context):
         return [
             Activationsd(keys="pred", softmax=True),
-            AsDiscreted(keys=("pred", "label"), argmax=(True, False), to_onehot=len(self.labels)),
+            AsDiscreted(keys=("pred", "label"), argmax=(True, False), to_onehot=len(self._labels)),
         ]
 
     def train_key_metric(self, context: Context):
@@ -138,7 +136,7 @@ class ClassificationNuclei(BasicTrainTask):
             handlers.append(
                 TensorBoardImageHandler(
                     log_dir=context.events_dir,
-                    class_names={str(v - 1): k for k, v in self.labels.items()},
+                    class_names={str(v - 1): k for k, v in self._labels.items()},
                     batch_limit=8,
                 )
             )

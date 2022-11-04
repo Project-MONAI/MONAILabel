@@ -46,7 +46,6 @@ class NuClick(BasicTrainTask):
         self,
         model_dir,
         network,
-        labels,
         tile_size=(256, 256),
         patch_size=128,
         min_area=5,
@@ -54,7 +53,6 @@ class NuClick(BasicTrainTask):
         **kwargs,
     ):
         self._network = network
-        self.labels = labels
         self.tile_size = tile_size
         self.patch_size = patch_size
         self.min_area = min_area
@@ -81,7 +79,7 @@ class NuClick(BasicTrainTask):
             datastore=datastore,
             cache_dir=cache_dir,
             source=source,
-            groups=self.labels,
+            groups=self._labels,
             tile_size=self.tile_size,
             max_region=max_region,
             limit=request.get("dataset_limit", 0),
