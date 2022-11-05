@@ -16,6 +16,7 @@ import platform
 from ctypes import cdll
 from math import ceil
 
+import numpy as np
 from monai.utils import optional_import
 
 logger = logging.getLogger(__name__)
@@ -61,6 +62,8 @@ def create_infer_wsi_tasks(request, image):
     pw, ph = tile_size[0], tile_size[1]
 
     ignore_small_patches = request.get("ignore_small_patches", False)
+    ignore_non_click_patches = request.get("ignore_non_click_patches", True)
+
     for row in range(rows):
         for col in range(cols):
             tx = col * pw + x
@@ -71,6 +74,19 @@ def create_infer_wsi_tasks(request, image):
 
             if ignore_small_patches and (tw < pw or th < ph):
                 continue
+
+            if ignore_non_click_patches:
+
+                def filter_points(ptype):
+                    pos = request.get(ptype)
+                    pos = (np.array(pos) - (tx, ty)).astype(int).tolist() if pos else []
+                    pos = [p for p in pos if 0 < p[0] < tw and 0 < p[1] < th]
+                    return pos
+
+                fg = filter_points("foreground")
+                bg = filter_points("background")
+                if not fg and not bg:
+                    continue
 
             task = copy.deepcopy(request)
             task.update(

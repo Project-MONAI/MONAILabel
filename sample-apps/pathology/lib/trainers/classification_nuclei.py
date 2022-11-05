@@ -78,7 +78,7 @@ class ClassificationNuclei(BasicTrainTask):
             datastore=datastore,
             cache_dir=cache_dir,
             source=source,
-            groups={k: v + 1 for k, v in self._labels.items()},
+            groups=self._labels,
             tile_size=self.tile_size,
             max_region=max_region,
             limit=request.get("dataset_limit", 0),

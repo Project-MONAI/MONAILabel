@@ -77,7 +77,7 @@ class DeepEditNuclei(BasicTrainTask):
             datastore=datastore,
             cache_dir=cache_dir,
             source=source,
-            groups=self._labels,
+            groups=None,
             tile_size=self.roi_size,
             max_region=max_region,
             limit=request.get("dataset_limit", 0),

@@ -8,7 +8,6 @@
 # WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 # See the License for the specific language governing permissions and
 # limitations under the License.
-import copy
 import ctypes.util
 import logging
 import os
@@ -18,7 +17,7 @@ from typing import Dict
 
 import lib.configs
 from lib.activelearning.random import WSIRandom
-from lib.infers import NuClickClassification
+from lib.infers import NuClick
 
 import monailabel
 from monailabel.datastore.dsa import DSADatastore
@@ -28,6 +27,7 @@ from monailabel.interfaces.datastore import Datastore
 from monailabel.interfaces.tasks.infer_v2 import InferTask
 from monailabel.interfaces.tasks.strategy import Strategy
 from monailabel.interfaces.tasks.train import TrainTask
+from monailabel.tasks.infer.basic_infer import BasicInferTask
 from monailabel.utils.others.class_utils import get_class_names
 from monailabel.utils.others.generic import strtobool
 
@@ -44,14 +44,13 @@ class MyApp(MONAILabelApp):
 
         configs = {}
         candidates = get_class_names(lib.configs, "TaskConfig")
-        candidates.extend(get_class_names(lib.configs, "NuClick"))
         for c in candidates:
             name = c.split(".")[-2].lower()
             configs[name] = c
 
         configs = {k: v for k, v in sorted(configs.items())}
 
-        models = conf.get("models", "nuclick,nuclick_classification,classification_nuclei,segmentation_nuclei")
+        models = conf.get("models", "segmentation_nuclei,nuclick,classification_nuclei")
         if not models:
             print("")
             print("---------------------------------------------------------------------------------------")
@@ -133,14 +132,11 @@ class MyApp(MONAILabelApp):
         #################################################
         # Pipeline based on existing infers
         #################################################
-        if infers.get("nuclick_classification"):
-            if not infers.get("classification_nuclei"):
-                logger.warning("Nuclick Classification (pipeline) requires nuclei classification model")
-            else:
-                p = infers["nuclick_classification"]
-                c = infers["classification_nuclei"]
-                if isinstance(p, NuClickClassification):
-                    p.init_classification(c)
+        if infers.get("nuclick") and infers.get("classification_nuclei"):
+            p = infers["nuclick"]
+            c = infers["classification_nuclei"]
+            if isinstance(p, NuClick) and isinstance(c, BasicInferTask):
+                p.init_classification(c)
 
         return infers
 
@@ -217,10 +213,10 @@ def main():
         },
     )
 
-    # train_nuclick(app, "classification_nuclei")
-    # train_nuclick(app, "nuclick")
+    train_nuclick(app, "classification_nuclei")
+    # train_nuclick(app, "nuclick_classification")
     # infer_classify(app)
-    infer_nuclick_classification(app)
+    # infer_nuclick_classification(app)
     # infer_nuclick(app)
     # infer_wsi(app)
 
@@ -272,19 +268,19 @@ def train_nuclick(app, model):
     )
 
 
-def train(app):
-    model = "deepedit_nuclei"  # deepedit_nuclei, segmentation_nuclei
+def train(app, model):
     app.train(
         request={
             "name": "train_01",
             "model": model,
-            "max_epochs": 10 if model == "deepedit_nuclei" else 30,
+            "max_epochs": 5,
             "dataset": "CacheDataset",  # PersistentDataset, CacheDataset
             "train_batch_size": 16,
-            "val_batch_size": 12,
-            "multi_gpu": True,
-            "val_split": 0.1,
-            "dataset_source": "pannuke",
+            "val_batch_size": 16,
+            "multi_gpu": False,
+            "val_split": 0.2,
+            "dataset_limit": 0,
+            "pretrained": False,
         },
     )
 
@@ -303,7 +299,6 @@ def infer_classify(app):
 
 
 def infer_nuclick(app, classify=True):
-    import json
     import shutil
 
     request = {
@@ -319,21 +314,8 @@ def infer_nuclick(app, classify=True):
     }
 
     res = app.infer(request)
-
-    if not classify:
-        shutil.move(res["label"], os.path.join(app.studies, "..", "output_image.xml"))
-        logger.info("All Done!")
-    else:
-        logger.info("NuClick Done!")
-        for annotation in res["params"]["annotations"]:
-            for element in annotation["elements"]:
-                req2 = copy.deepcopy(request)
-                req2["model"] = "classify_nuclei"
-                request["contours"] = element["contours"]
-
-                res2 = app.infer(request)
-                print(json.dumps(res2, indent=2))
-                break
+    shutil.move(res["label"], os.path.join(app.studies, "..", "output_image.xml"))
+    logger.info("All Done!")
 
 
 def infer_nuclick_classification(app):
@@ -353,19 +335,14 @@ def infer_nuclick_classification(app):
     }
 
     res = app.infer(request)
-
     shutil.move(res["label"], os.path.join(app.studies, "..", "output_image.xml"))
     logger.info("All Done!")
 
 
 def infer_wsi(app):
     import shutil
-    from pathlib import Path
 
-    home = str(Path.home())
-    root_dir = f"{home}/Datasets/"
     image = "TCGA-02-0010-01Z-00-DX4.07de2e55-a8fe-40ee-9e98-bcb78050b9f7"
-
     output = "dsa"
 
     # slide = openslide.OpenSlide(f"{app.studies}/{image}.svs")
@@ -373,7 +350,7 @@ def infer_wsi(app):
     # image_np = np.array(img, dtype=np.uint8)
 
     req = {
-        "model": "deepedit_nuclei",  # deepedit_nuclei, segmentation_nuclei
+        "model": "segmentation_nuclei",
         "image": image,  # image, image_np
         "output": output,
         "logging": "error",
@@ -385,6 +362,8 @@ def infer_wsi(app):
         "gpus": "all",
         "multi_gpu": True,
     }
+
+    root_dir = os.path.join(app.studies, "..")
 
     res = app.infer_wsi(request=req)
     if output == "asap":

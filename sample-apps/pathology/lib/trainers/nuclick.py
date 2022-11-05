@@ -8,7 +8,7 @@
 # WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 # See the License for the specific language governing permissions and
 # limitations under the License.
-
+import copy
 import logging
 import os
 
@@ -30,7 +30,6 @@ from monai.transforms import (
     RandRotate90d,
     ScaleIntensityRangeD,
     SelectItemsd,
-    ToMetaTensord,
     TorchVisiond,
 )
 from tqdm import tqdm
@@ -75,11 +74,13 @@ class NuClick(BasicTrainTask):
         max_region = request.get("dataset_max_region", (10240, 10240))
         max_region = (max_region, max_region) if isinstance(max_region, int) else max_region[:2]
 
+        groups = copy.deepcopy(self._labels)
+        groups.update({})
         ds = split_dataset(
             datastore=datastore,
             cache_dir=cache_dir,
             source=source,
-            groups=self._labels,
+            groups=None,
             tile_size=self.tile_size,
             max_region=max_region,
             limit=request.get("dataset_limit", 0),
@@ -93,7 +94,7 @@ class NuClick(BasicTrainTask):
             return ds[:limit] if 0 < limit < len(ds) else ds
 
         for d in tqdm(ds):
-            ds_new.extend(split_nuclei_dataset(d, min_area=self.min_area))
+            ds_new.extend(split_nuclei_dataset(d, os.path.join(cache_dir, "nuclei_flattened")))
             if 0 < limit < len(ds_new):
                 ds_new = ds_new[:limit]
                 break
@@ -110,7 +111,6 @@ class NuClick(BasicTrainTask):
             ),
             RandRotate90d(keys=("image", "label", "others"), prob=0.5, spatial_axes=(0, 1)),
             ScaleIntensityRangeD(keys="image", a_min=0.0, a_max=255.0, b_min=-1.0, b_max=1.0),
-            ToMetaTensord(keys=("image", "label", "others")),
             AddPointGuidanceSignald(image="image", label="label", others="others"),
             EnsureTyped(keys=("image", "label")),
             SelectItemsd(keys=("image", "label")),
@@ -125,7 +125,7 @@ class NuClick(BasicTrainTask):
     def val_pre_transforms(self, context: Context):
         t = self.train_pre_transforms(context)
         # drop exclusion map for AddPointGuidanceSignald
-        t[-2] = (AddPointGuidanceSignald(image="image", label="label", others="others", drop_rate=1.0),)
+        t[-2] = AddPointGuidanceSignald(image="image", label="label", others="others", drop_rate=1.0)
         return t
 
     def train_key_metric(self, context: Context):

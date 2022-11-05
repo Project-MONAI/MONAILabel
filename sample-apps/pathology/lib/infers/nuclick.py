@@ -8,12 +8,13 @@
 # WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 # See the License for the specific language governing permissions and
 # limitations under the License.
-
+import copy
 import logging
 from typing import Any, Callable, Dict, Sequence
 
 import numpy as np
-from lib.transforms import LoadImagePatchd, NuClickPostFilterLabelExd
+import torch
+from lib.transforms import FixNuclickClassd, LoadImagePatchd, NuClickPostFilterLabelExd
 from monai.apps.nuclick.transforms import AddClickSignalsd, NuclickKeys
 from monai.config import KeysCollection
 from monai.transforms import (
@@ -82,6 +83,7 @@ class NuClick(BasicInferTask):
         description="A pre-trained NuClick model for interactive cell segmentation for Pathology",
         **kwargs,
     ):
+        self.task_classification = None
         super().__init__(
             path=path,
             network=network,
@@ -91,6 +93,15 @@ class NuClick(BasicInferTask):
             dimension=dimension,
             description=description,
             **kwargs,
+        )
+
+    def init_classification(self, task_classification: BasicInferTask):
+        self.task_classification = task_classification
+        self.labels = task_classification.labels
+        self._config.update(task_classification._config)
+        self.description = (
+            "Nuclick with Classification Support using "
+            "NuClick (nuclei segmentation) and Segmentation Nuclei (nuclei classification) models"
         )
 
     def info(self) -> Dict[str, Any]:
@@ -113,7 +124,26 @@ class NuClick(BasicInferTask):
         ]
 
     def run_inferer(self, data, convert_to_batch=True, device="cuda"):
-        return super().run_inferer(data, False, device)
+        output = super().run_inferer(data, False, device)
+        if self.task_classification:
+            data2 = copy.deepcopy(self.task_classification.config())
+            pred1 = output["pred"]
+            pred1 = torch.sigmoid(pred1)
+            pred1 = pred1 >= 0.5
+
+            data2.update({"image": output["image"][:, :3], "label": pred1, "device": device})
+
+            data2 = self.task_classification.run_pre_transforms(data2, [FixNuclickClassd(image="image", label="label")])
+
+            output2 = self.task_classification.run_inferer(data2, False, device)
+            pred2 = output2["pred"]
+            pred2 = torch.softmax(pred2, dim=1)
+            pred2 = torch.argmax(pred2, dim=1)
+            pred2 = [int(p) for p in pred2]
+
+            output["pred_classes"] = [v + 1 for v in pred2]
+            logger.info(f"Predicted Classes: {output['pred_classes']}")
+        return output
 
     def post_transforms(self, data=None) -> Sequence[Callable]:
         return [

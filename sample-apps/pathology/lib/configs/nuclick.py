@@ -31,7 +31,7 @@ class NuClick(TaskConfig):
         super().init(name, model_dir, conf, planner, **kwargs)
 
         # Labels
-        self.labels = ["Nuclei"]
+        self.labels = {"Nuclei": 1}
         self.label_colors = {"Nuclei": (0, 255, 255)}
 
         consep = strtobool(self.conf.get("consep", "false"))
@@ -63,7 +63,7 @@ class NuClick(TaskConfig):
             labels=self.labels,
             preload=strtobool(self.conf.get("preload", "false")),
             roi_size=json.loads(self.conf.get("roi_size", "[512, 512]")),
-            config={"label_colors": self.label_colors},
+            config={"label_colors": self.label_colors, "ignore_non_click_patches": True},
         )
         return task
 

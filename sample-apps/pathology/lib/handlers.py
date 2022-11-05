@@ -16,6 +16,7 @@ from typing import TYPE_CHECKING, Any, Callable, Dict, List, Optional
 
 import numpy as np
 import torch
+import torch.distributed
 from monai.config import IgniteInfo
 from monai.metrics import compute_meandice
 from monai.utils import min_version, optional_import
@@ -133,6 +134,7 @@ class TensorBoardImageHandler:
     def write_images(self, batch_data, output_data, epoch):
         for bidx in range(len(batch_data)):
             image = batch_data[bidx]["image"].detach().cpu().numpy()
+            y = output_data[bidx]["label"].detach().cpu().numpy()
 
             tag_prefix = f"b{bidx} - " if self.batch_limit != 1 else ""
             img_tensor = make_grid(torch.from_numpy(image[:3] * 128 + 128), normalize=True)
@@ -146,7 +148,6 @@ class TensorBoardImageHandler:
                 if np.count_nonzero(image[3]) == 0:
                     self.logger.info("+++++++++ BUG (Signal is ZERO)")
 
-                y = output_data[bidx]["label"].detach().cpu().numpy()
                 y_pred = output_data[bidx]["pred"].detach().cpu().numpy()
 
                 y_c = np.argmax(y)
@@ -235,9 +236,9 @@ class TensorBoardImageHandler:
                         ltext.append(f"{n} => {m:.4f}")
                         cname = self.class_names.get(k, k)
                         self.writer.add_scalar(f"cr_{k}_{n}", m, epoch)
-                    self.logger.info(f"Epoch[{epoch}] Metrics -- Class: {cname}; {'; '.join(ltext)}")
+                        self.logger.info(f"Epoch[{epoch}] Metrics -- Class: {cname}; {'; '.join(ltext)}")
                 else:
-                    self.logger.info(f"Epoch[{epoch}] Metrics -- {k} => {m:.4f}")
+                    self.logger.info(f"Epoch[{epoch}] Metrics -- {k} => {v:.4f}")
                     self.writer.add_scalar(f"cr_{k}", v, epoch)
 
             self.class_y = []

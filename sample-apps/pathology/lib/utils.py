@@ -11,7 +11,6 @@
 
 import copy
 import logging
-import math
 import os
 import random
 import shutil
@@ -24,7 +23,6 @@ import numpy as np
 import openslide
 import scipy
 from PIL import Image
-from skimage.measure import regionprops
 from tqdm import tqdm
 
 from monailabel.datastore.dsa import DSADatastore
@@ -165,10 +163,12 @@ def split_dsa_dataset(datastore, d, output_dir, groups, tile_size, max_region=(1
             g = g if g else "None"
             g = g.lower()
 
-            if g in groups:
+            if groups and g in groups:
                 p = e["points"]
                 p = np.delete(np.array(p), 2, 1).tolist()
                 if p:
+                    if polygons.get(g) is None:
+                        polygons[g] = []
                     polygons[g].append(p)
                     points.extend(p)
 
@@ -215,7 +215,7 @@ def split_local_dataset(datastore, d, output_dir, groups, tile_size, max_region=
         g = g if g else "None"
         g = g.lower()
 
-        if g not in groups:
+        if groups and g not in groups:
             continue
 
         p = []
@@ -225,8 +225,14 @@ def split_local_dataset(datastore, d, output_dir, groups, tile_size, max_region=
                 p.append(xy)
 
         if p:
+            if polygons.get(g) is None:
+                polygons[g] = []
             polygons[g].append(p)
             points.extend(p)
+
+    if not points:
+        logger.warning(f"No Corresponding Labels {groups} found.")
+        return dataset_json
 
     x, y, w, h = _to_roi(points, max_region, polygons, item_id)
     if is_openslide_supported(d["image"]):
@@ -244,10 +250,11 @@ def split_local_dataset(datastore, d, output_dir, groups, tile_size, max_region=
 def split_consep_nuclei_dataset(
     d,
     output_dir,
-    centroid_key="centroid",
     nuclei_id_key="nuclei_id",
     mask_value_key="mask_value",
     crop_size=128,
+    min_area=80,
+    min_distance=20,
 ):
     dataset_json = []
     # logger.debug(f"Process Image: {d['image']} => Label: {d['label']}")
@@ -266,48 +273,104 @@ def split_consep_nuclei_dataset(
     m = scipy.io.loadmat(d["label"])
     instances = m["inst_map"]
 
-    for idx, (c, (y, x)) in enumerate(zip(m["inst_type"], m["inst_centroid"]), start=1):
+    for nuclei_id, (class_id, (y, x)) in enumerate(zip(m["inst_type"], m["inst_centroid"]), start=1):
         x, y = (int(x), int(y))
-        c = int(c)
-        c = 3 if c in (3, 4) else 4 if c in (5, 6, 7) else c  # override
+        class_id = int(class_id)
+        class_id = 3 if class_id in (3, 4) else 4 if class_id in (5, 6, 7) else class_id  # override
 
-        bbox = compute_bbox(crop_size, (x, y), image.size)
-
-        cropped_label_np = instances[bbox[0] : bbox[2], bbox[1] : bbox[3]]
-        cropped_label_np = np.array(cropped_label_np)
-        signal = np.where(cropped_label_np == idx, c, 0)
-        others = np.where(np.logical_and(cropped_label_np > 0, cropped_label_np != idx), 255, 0)
-        cropped_label_np = signal + others
-        cropped_label = Image.fromarray(cropped_label_np.astype(np.uint8), None)
-
-        cropped_image_np = image_np[bbox[0] : bbox[2], bbox[1] : bbox[3], :]
-        # cropped_image_np = np.array(cropped_image_np)
-        # cropped_image_np[:, :, 0] = np.where(cropped_label_np == c, 1, cropped_image_np[:, :, 0])
-        # cropped_image_np[:, :, 1] = np.where(cropped_label_np == 255, 1, cropped_image_np[:, :, 1])
-        cropped_image = Image.fromarray(cropped_image_np, "RGB")
-
-        filename = f"{image_id}_{c}_{str(idx).zfill(4)}.png"
-        image_file = os.path.join(images_dir, filename)
-        label_file = os.path.join(labels_dir, filename)
-
-        cropped_image.save(image_file)
-        cropped_label.save(label_file)
-
-        item = copy.deepcopy(d)
-        item[centroid_key] = (x, y)
-        item[nuclei_id_key] = idx
-        item[mask_value_key] = c
-        item["image"] = image_file
-        item["label"] = label_file
-        dataset_json.append(item)
+        item = _process_item(
+            d,
+            nuclei_id_key,
+            mask_value_key,
+            image_id,
+            nuclei_id,
+            images_dir,
+            labels_dir,
+            image_np,
+            instances,
+            nuclei_id,
+            crop_size,
+            image.size,
+            class_id,
+            (x, y),
+            min_area,
+            min_distance,
+        )
+        if item:
+            dataset_json.append(item)
 
     return dataset_json
+
+
+def _process_item(
+    d,
+    nuclei_id_key,
+    mask_value_key,
+    image_id,
+    nuclei_id,
+    images_dir,
+    labels_dir,
+    image_np,
+    instances,
+    instance_idx,
+    crop_size,
+    image_size,
+    class_id,
+    centroid,
+    min_area,
+    min_distance,
+):
+    bbox = compute_bbox(crop_size, centroid, image_size)
+
+    cropped_label_np = instances[bbox[0] : bbox[2], bbox[1] : bbox[3]]
+    cropped_label_np = np.array(cropped_label_np)
+
+    signal = np.where(cropped_label_np == instance_idx, class_id, 0)
+    if np.count_nonzero(signal) < min_area:
+        return None
+
+    x, y = centroid
+    if x < min_distance or y < min_distance or (image_size[0] - x) < min_distance or (image_size[1] - y < min_distance):
+        return None
+
+    others = np.where(np.logical_and(cropped_label_np > 0, cropped_label_np != instance_idx), 255, 0)
+    cropped_label_np = signal + others
+    cropped_label = Image.fromarray(cropped_label_np.astype(np.uint8), None)
+
+    cropped_image_np = image_np[bbox[0] : bbox[2], bbox[1] : bbox[3], :]
+    cropped_image = Image.fromarray(cropped_image_np, "RGB")
+
+    # # For Debug Only (draw polyline for this and other nuclei cells)
+    # from PIL import ImageDraw
+    # for mask, color in zip([signal, others], ['green', 'blue']):
+    #     mask[mask > 0] = 1
+    #     contours, _ = cv2.findContours(mask.astype(np.uint8), cv2.RETR_LIST, cv2.CHAIN_APPROX_SIMPLE)
+    #     for contour in contours:
+    #         if len(contour) < 3:
+    #             continue
+    #         contour = np.squeeze(contour)
+    #         coords = contour.astype(int).tolist()
+    #         coords = [tuple(c) for c in coords]
+    #         ImageDraw.Draw(cropped_image).polygon(coords, outline=color)
+
+    filename = f"{image_id}_{class_id}_{str(instance_idx).zfill(4)}.png"
+    image_file = os.path.join(images_dir, filename)
+    label_file = os.path.join(labels_dir, filename)
+
+    cropped_image.save(image_file)
+    cropped_label.save(label_file)
+
+    item = copy.deepcopy(d)
+    item[nuclei_id_key] = nuclei_id
+    item[mask_value_key] = class_id
+    item["image"] = image_file
+    item["label"] = label_file
+    return item
 
 
 def split_nuclei_dataset(
     d,
     output_dir,
-    centroid_key="centroid",
     nuclei_id_key="nuclei_id",
     mask_value_key="mask_value",
     min_area=80,
@@ -329,71 +392,44 @@ def split_nuclei_dataset(
     mask = Image.open(d["label"])
     mask_np = np.array(mask)
 
-    nuclei_id = 1
-    stats = []
-    for label_idx in np.unique(mask_np):
-        if label_idx == 0:
+    numLabels, instances, stats, centroids = cv2.connectedComponentsWithStats(mask_np, 4, cv2.CV_32S)
+    # logger.info(f"Total Labels: {numLabels}")
+    # logger.info(f"Total Instances: {np.unique(instances)}")
+    # logger.info(f"Total Stats: {len(stats)}")
+    # logger.info(f"Total Centroids: {len(centroids)}")
+
+    for nuclei_id, (x, y) in enumerate(centroids):
+        if nuclei_id == 0:
             continue
 
-        label_np = np.where(mask_np == label_idx, label_idx, 0).astype(np.uint8)
-        _, labels, _, _ = cv2.connectedComponentsWithStats(label_np, 4, cv2.CV_32S)
+        x, y = (int(x), int(y))
 
-        stats = regionprops(labels)
-        for stat in stats:
-            x, y = stat.centroid
-            x = int(math.floor(x))
-            y = int(math.floor(y))
+        this_instance = np.where(instances == nuclei_id, mask_np, 0)
+        class_id = int(np.max(this_instance))
 
-            if stat.area < min_area:
-                logger.debug(f"++++ Ignored label-{label_idx} with smaller area => ( {stat.area} < {min_area})")
-                ignored += 1
-                continue
+        item = _process_item(
+            d,
+            nuclei_id_key,
+            mask_value_key,
+            image_id,
+            nuclei_id,
+            images_dir,
+            labels_dir,
+            image_np,
+            instances,
+            nuclei_id,
+            crop_size,
+            image.size,
+            class_id,
+            (x, y),
+            min_area,
+            min_distance,
+        )
 
-            if (
-                x < min_distance
-                or y < min_distance
-                or (image.size[-2] - x) < min_distance
-                or (image.size[-1] - y < min_distance)
-            ):
-                logger.debug(
-                    f"++++ Ignored label-{label_idx} with close to boundary edge => ({x},{y}) < {min_distance} in {image.size}"
-                )
-                ignored += 1
-                continue
-
-            if label_np[x][y] == 0:
-                logger.debug(
-                    f"++++ Ignored label-{label_idx} with centroid falling over background => ({x},{y}) => {label_idx})"
-                )
-                ignored += 1
-                continue
-
-            item = copy.deepcopy(d)
-            item[centroid_key] = (x, y)
-            item[nuclei_id_key] = nuclei_id
-            item[mask_value_key] = label_idx
-            item["image_path"] = item["image"]
-
-            bbox = compute_bbox(crop_size, (x, y), image.size)
-            cropped_image_np = image_np[bbox[0] : bbox[2], bbox[1] : bbox[3], :]
-            cropped_image = Image.fromarray(cropped_image_np, "RGB")
-
-            this_label = np.where(labels == stat.label, label_idx, 0).astype(np.uint8)
-            cropped_label_np = this_label[bbox[0] : bbox[2], bbox[1] : bbox[3]]
-            cropped_label = Image.fromarray(cropped_label_np.astype(np.uint8), None)
-
-            filename = f"{image_id}_{label_idx}_{str(nuclei_id).zfill(4)}.png"
-            image_file = os.path.join(images_dir, filename)
-            label_file = os.path.join(labels_dir, filename)
-
-            cropped_image.save(image_file)
-            cropped_label.save(label_file)
-
-            # logger.info(f"{d['label']} => {len(stats)} => {mask.shape} => {stat.label} => {cval}")
-            item["image"] = image_file
-            item["label"] = label_file
+        if item:
             dataset_json.append(item)
-            nuclei_id += 1
+        else:
+            ignored += 1
 
     if ignored:
         logger.debug(f"Total Ignored => {d['label']} => {ignored}/{len(stats)}")

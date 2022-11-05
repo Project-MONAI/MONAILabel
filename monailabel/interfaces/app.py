@@ -656,7 +656,7 @@ class MONAILabelApp:
             logger.info(f"WSI Infer Request (final): {request}")
 
         logger.debug(f"Total WSI Tasks: {len(infer_tasks)}")
-        request["logging"] = request.get("logging", "WARNING" if len(infer_tasks) > 1 else "INFO")
+        request["logging"] = request.get("logging", "INFO" if len(infer_tasks) > 1 else "INFO")
 
         multi_gpu = request.get("multi_gpu", True)
         multi_gpus = request.get("gpus", "all")
