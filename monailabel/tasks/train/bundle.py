@@ -112,7 +112,7 @@ class BundleTrainTask(TrainTask):
         datalist = [{"image": d["image"], "label": d["label"]} for d in datalist if d]
         logger.info(f"Total Records in Dataset: {len(datalist)}")
 
-        val_split = request.get("val_split", 0.0)
+        val_split = request.get("val_split", 0.2)
         if val_split > 0.0:
             train_datalist, val_datalist = partition_dataset(
                 datalist, ratios=[(1 - val_split), val_split], shuffle=shuffle
