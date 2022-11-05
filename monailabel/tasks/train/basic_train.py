@@ -114,7 +114,7 @@ class BasicTrainTask(TrainTask):
         find_unused_parameters=False,
         load_strict=False,
         labels=None,
-        disable_tracking=True,
+        disable_tracking=False,
     ):
         """
         :param model_dir: Base Model Dir to save the model checkpoints, events etc...
@@ -134,7 +134,7 @@ class BasicTrainTask(TrainTask):
         :param find_unused_parameters: Applicable for DDP/Multi GPU training
         :param load_strict: Load pre-trained model in strict mode
         :param labels: Labels to be used as part of training context (some transform might need)
-        :param disable_tracking: Disable tracking for faster training rate (unless you are using batched transforms)
+        :param disable_tracking: Disable tracking for faster training rate (unless you are using MetaTensor/batched transforms)
         """
         super().__init__(description)
 
