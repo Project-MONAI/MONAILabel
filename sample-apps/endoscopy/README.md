@@ -118,6 +118,7 @@ export MONAI_LABEL_DATASTORE_PASSWORD=mypass
 monailabel start_server \
   --app workspace/endoscopy \
   --studies workspace/images \
+  --conf models tooltracking \
   --conf epistemic_enabled true \
   --conf epistemic_top_k 10 \
   --conf auto_finetune_models tooltracking \
