@@ -118,11 +118,16 @@ export MONAI_LABEL_DATASTORE_PASSWORD=mypass
 monailabel start_server \
   --app workspace/endoscopy \
   --studies workspace/images \
+  --conf models tooltracking \
   --conf epistemic_enabled true \
-  --conf epistemic_top_k 3 \
+  --conf epistemic_top_k 10 \
   --conf auto_finetune_models tooltracking \
   --conf auto_finetune_check_interval 30
 ```
+
+Note: the argument ```epistemic_top_k``` specifies the number of images to label in each iteration, provide a number above 5 if there is no externally provided validation data
+MONAI Label server will automatically split annotated data into train and validation by percentage. No external validation data and ```epistemic_top_k``` < 5 will lead to traning with no
+saved model.
 
 #### Fetch and Publish latest model to CVAT/Nuclio
 After re-train the fine-tuned model meets all the conditions to be considered as a good model.  You can push the model to cvat/nuclio function container.
