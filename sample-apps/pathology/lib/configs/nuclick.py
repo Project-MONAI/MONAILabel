@@ -39,7 +39,7 @@ class NuClick(TaskConfig):
         # Model Files
         self.path = [
             os.path.join(self.model_dir, f"pretrained_{name}{'_consep' if consep else ''}.pt"),  # pretrained
-            os.path.join(self.model_dir, f"{name}.pt"),  # published
+            os.path.join(self.model_dir, f"{name}{'_consep' if consep else ''}.pt"),  # published
         ]
 
         # Download PreTrained Model

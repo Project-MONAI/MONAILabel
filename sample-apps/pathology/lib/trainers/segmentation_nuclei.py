@@ -16,23 +16,20 @@ import numpy as np
 import torch
 from ignite.metrics import Accuracy
 from lib.handlers import TensorBoardImageHandler
-from lib.transforms import FilterImaged
 from lib.utils import split_dataset
 from monai.handlers import from_engine
 from monai.inferers import SimpleInferer
 from monai.losses import DiceLoss
 from monai.transforms import (
     Activationsd,
-    AddChanneld,
-    AsChannelFirstd,
     AsDiscreted,
+    EnsureChannelFirstd,
     EnsureTyped,
     LoadImaged,
+    RandFlipd,
     RandRotate90d,
     ScaleIntensityRangeD,
-    ToNumpyd,
     TorchVisiond,
-    ToTensord,
 )
 
 from monailabel.interfaces.datastore import Datastore
@@ -85,27 +82,21 @@ class SegmentationNuclei(BasicTrainTask):
     def train_pre_transforms(self, context: Context):
         return [
             LoadImaged(keys=("image", "label"), dtype=np.uint8),
-            FilterImaged(keys="image", min_size=0),
-            AsChannelFirstd(keys="image"),
-            AddChanneld(keys="label"),
-            ToTensord(keys="image"),
+            EnsureTyped(keys=("image", "label")),
+            EnsureChannelFirstd(keys=("image", "label")),
             TorchVisiond(
                 keys="image", name="ColorJitter", brightness=64.0 / 255.0, contrast=0.75, saturation=0.25, hue=0.04
             ),
-            ToNumpyd(keys="image"),
-            RandRotate90d(keys=("image", "label"), prob=0.5, spatial_axes=(0, 1)),
+            RandFlipd(keys=("image", "label"), prob=0.5),
+            RandRotate90d(keys=("image", "label"), prob=0.5, max_k=3, spatial_axes=(-2, -1)),
             ScaleIntensityRangeD(keys="image", a_min=0.0, a_max=255.0, b_min=-1.0, b_max=1.0),
-            EnsureTyped(keys=("image", "label")),
         ]
 
     def train_post_transforms(self, context: Context):
         return [
-            Activationsd(keys="pred", softmax=len(self._labels) > 1, sigmoid=len(self._labels) == 1),
-            AsDiscreted(
-                keys=("pred", "label"),
-                argmax=(True, False),
-                to_onehot=(len(self._labels) + 1, len(self._labels) + 1),
-            ),
+            EnsureTyped(keys="pred", device=context.device),
+            Activationsd(keys="pred", softmax=True),
+            AsDiscreted(keys=("pred", "label"), argmax=(True, False), to_onehot=len(self._labels) + 1),
         ]
 
     def train_key_metric(self, context: Context):

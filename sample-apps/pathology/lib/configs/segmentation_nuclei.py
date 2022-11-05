@@ -47,10 +47,25 @@ class SegmentationNuclei(TaskConfig):
             "Epithelial": (0, 0, 255),
         }
 
+        consep = strtobool(self.conf.get("consep", "false"))
+        if consep:
+            self.labels = {
+                "Other": 1,
+                "Inflammatory": 2,
+                "Epithelial": 3,
+                "Spindle-Shaped": 4,
+            }
+            self.label_colors = {
+                "Other": (255, 0, 0),
+                "Inflammatory": (255, 255, 0),
+                "Epithelial": (0, 0, 255),
+                "Spindle-Shaped": (0, 255, 0),
+            }
+
         # Model Files
         self.path = [
-            os.path.join(self.model_dir, f"pretrained_{name}.pt"),  # pretrained
-            os.path.join(self.model_dir, f"{name}.pt"),  # published
+            os.path.join(self.model_dir, f"pretrained_{name}{'_consep' if consep else ''}.pt"),  # pretrained
+            os.path.join(self.model_dir, f"{name}{'_consep' if consep else ''}.pt"),  # published
         ]
 
         # Download PreTrained Model
@@ -63,7 +78,7 @@ class SegmentationNuclei(TaskConfig):
         self.network = BasicUNet(
             spatial_dims=2,
             in_channels=3,
-            out_channels=6,
+            out_channels=len(self.labels) + 1,
             features=(32, 64, 128, 256, 512, 32),
         )
 

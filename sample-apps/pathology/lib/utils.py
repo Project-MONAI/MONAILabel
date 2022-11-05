@@ -34,7 +34,15 @@ logger = logging.getLogger(__name__)
 
 
 def split_dataset(
-    datastore: Datastore, cache_dir, source, groups, tile_size, max_region=(10240, 10240), limit=0, randomize=True
+    datastore: Datastore,
+    cache_dir,
+    source,
+    groups,
+    tile_size,
+    max_region=(10240, 10240),
+    limit=0,
+    randomize=True,
+    crop_size=0,
 ):
     ds = datastore.datalist()
     output_dir = cache_dir
@@ -43,12 +51,23 @@ def split_dataset(
 
     if source == "none":
         pass
-    elif source == "consep_nuclei":
+    elif source == "consep":
         logger.info("Prepare from CoNSeP Dataset")
 
         ds_new = []
         for d in tqdm(ds):
-            ds_new.extend(split_consep_nuclei_dataset(d, output_dir))
+            ds_new.extend(split_consep_dataset(d, output_dir, crop_size=crop_size))
+            if 0 < limit < len(ds_new):
+                ds_new = ds_new[:limit]
+                break
+        ds = ds_new
+        logger.info(f"Total Dataset Records: {len(ds)}")
+    elif source == "consep_nuclei":
+        logger.info("Prepare from CoNSeP Dataset (Flatten by Nuclei)")
+
+        ds_new = []
+        for d in tqdm(ds):
+            ds_new.extend(split_consep_nuclei_dataset(d, output_dir, crop_size=crop_size if crop_size else 128))
             if 0 < limit < len(ds_new):
                 ds_new = ds_new[:limit]
                 break
@@ -244,6 +263,72 @@ def split_local_dataset(datastore, d, output_dir, groups, tile_size, max_region=
         h = img.size[1]
 
     dataset_json.extend(_to_dataset(item_id, x, y, w, h, img, tile_size, polygons, groups, output_dir))
+    return dataset_json
+
+
+def split_consep_dataset(
+    d,
+    output_dir,
+    nuclei_id_key="nuclei_id",
+    crop_size=256,
+):
+    dataset_json = []
+    # logger.debug(f"Process Image: {d['image']} => Label: {d['label']}")
+
+    images_dir = output_dir
+    labels_dir = os.path.join(output_dir, "labels", "final")
+    os.makedirs(images_dir, exist_ok=True)
+    os.makedirs(labels_dir, exist_ok=True)
+
+    # Image
+    image = Image.open(d["image"]).convert("RGB")
+    image_np = np.array(image)
+    image_id = get_basename_no_ext(d["image"])
+
+    # Label
+    m = scipy.io.loadmat(d["label"])
+    label_map = m["type_map"]
+
+    label_map[label_map == 4] = 3
+    label_map[label_map > 4] = 4
+
+    for nuclei_id, (class_id, (y, x)) in enumerate(zip(m["inst_type"], m["inst_centroid"]), start=1):
+        x, y = (int(x), int(y))
+        class_id = int(class_id)
+        class_id = 3 if class_id in (3, 4) else 4 if class_id in (5, 6, 7) else class_id  # override
+
+        if crop_size:
+            bbox = compute_bbox(crop_size, (x, y), image.size)
+            cropped_image_np = image_np[bbox[0] : bbox[2], bbox[1] : bbox[3], :]
+            cropped_label_np = label_map[bbox[0] : bbox[2], bbox[1] : bbox[3]]
+
+            # cropped_image_np = np.array(cropped_image_np)
+            # cropped_image_np[:, :, 0] = np.where(cropped_label_np > 0, cropped_label_np * 20, cropped_image_np[:, :, 0])
+            filename = f"{image_id}_{class_id}_{str(nuclei_id).zfill(4)}.png"
+        else:
+            cropped_image_np = image_np
+            cropped_label_np = label_map
+
+            filename = f"{image_id}.png"
+
+        cropped_image = Image.fromarray(cropped_image_np, "RGB")
+        cropped_label = Image.fromarray(cropped_label_np.astype(np.uint8), None)
+
+        image_file = os.path.join(images_dir, filename)
+        label_file = os.path.join(labels_dir, filename)
+
+        cropped_image.save(image_file)
+        cropped_label.save(label_file)
+
+        item = copy.deepcopy(d)
+        item[nuclei_id_key] = nuclei_id
+        item["image"] = image_file
+        item["label"] = label_file
+
+        dataset_json.append(item)
+        if not crop_size:
+            break
+
     return dataset_json
 
 
@@ -570,13 +655,13 @@ def main_nuclei():
     )
 
     home = str(Path.home())
-    for f in ("training", "validation"):
+    for f in ["validation"]:
         studies = f"{home}/Dataset/Pathology/CoNSeP/{f}"
-        output_dir = f"{home}/Dataset/Pathology/CoNSeP/{f}FN"
+        output_dir = f"{home}/Dataset/Pathology/CoNSeP/{f}Seg"
 
         logger.info(f"Generate Nuclei Dataset for: {studies}")
         datastore = LocalDatastore(studies, extensions=("*.png", "*.mat"))
-        split_dataset(datastore, output_dir, "consep_nuclei", None, None, limit=0)
+        split_dataset(datastore, output_dir, "consep", None, None, limit=0, crop_size=0)
 
 
 if __name__ == "__main__":

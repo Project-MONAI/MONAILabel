@@ -206,22 +206,17 @@ def main():
         app_dir,
         studies,
         {
-            "roi_size": "[1024,1024]",
             "preload": "false",
-            "models": "nuclick,classification_nuclei,nuclick_classification",
-            # "use_pretrained_model": "false",
+            "models": "segmentation_nuclei,nuclick,classification_nuclei",
+            "use_pretrained_model": "false",
+            "consep": "true",
         },
     )
 
-    train_nuclick(app, "classification_nuclei")
-    # train_nuclick(app, "nuclick_classification")
-    # infer_classify(app)
-    # infer_nuclick_classification(app)
-    # infer_nuclick(app)
-    # infer_wsi(app)
+    train_from_dataset(app, "segmentation_nuclei", "Seg")
 
 
-def train_nuclick(app, model):
+def train_from_dataset(app, model, postfix):
     import json
     import random
     from pathlib import Path
@@ -229,16 +224,16 @@ def train_nuclick(app, model):
     from monailabel.utils.others.generic import create_dataset_from_path
 
     home = str(Path.home())
-    train_dir = f"{home}/Dataset/Pathology/CoNSeP/trainingFN"
-    val_dir = f"{home}/Dataset/Pathology/CoNSeP/validationFN"
+    train_dir = f"{home}/Dataset/Pathology/CoNSeP/training{postfix}"
+    val_dir = f"{home}/Dataset/Pathology/CoNSeP/validation{postfix}"
 
     train_ds = create_dataset_from_path(train_dir, img_ext=".png", image_dir="", label_dir="labels/final")
     val_ds = create_dataset_from_path(val_dir, img_ext=".png", image_dir="", label_dir="labels/final")
     random.shuffle(train_ds)
     random.shuffle(val_ds)
 
-    # train_ds = train_ds[:2048]
-    # val_ds = val_ds[:512]
+    # train_ds = train_ds[:256]
+    # val_ds = val_ds[:16]
 
     train_ds_json = f"{home}/Dataset/Pathology/CoNSeP/train_ds.json"
     val_ds_json = f"{home}/Dataset/Pathology/CoNSeP/val_ds.json"
@@ -253,9 +248,9 @@ def train_nuclick(app, model):
             "name": "train_01",
             "model": model,
             "max_epochs": 50,
-            "dataset": "CacheDataset",  # PersistentDataset, CacheDataset
+            "dataset": "PersistentDataset",  # PersistentDataset, CacheDataset
             "train_batch_size": 128,
-            "val_batch_size": 128,
+            "val_batch_size": 8,
             "multi_gpu": False,
             "val_split": 0.2,
             "dataset_source": "none",
