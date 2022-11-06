@@ -71,7 +71,7 @@ class SegmentationNuclei(TaskConfig):
         # Download PreTrained Model
         if strtobool(self.conf.get("use_pretrained_model", "true")):
             url = f"{self.conf.get('pretrained_path', self.PRE_TRAINED_PATH)}"
-            url = f"{url}/pathology_segmentation_bunet_nuclei.pt"
+            url = f"{url}/pathology_segmentation_bunet_nuclei{'_consep' if consep else ''}.pt"
             download_file(url, self.path[0])
 
         # Network

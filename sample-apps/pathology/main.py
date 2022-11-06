@@ -213,7 +213,7 @@ def main():
         },
     )
 
-    train_from_dataset(app, "segmentation_nuclei", "Seg")
+    train_from_dataset(app, "segmentation_nuclei", "SegV2")
 
 
 def train_from_dataset(app, model, postfix):
@@ -247,10 +247,10 @@ def train_from_dataset(app, model, postfix):
         request={
             "name": "train_01",
             "model": model,
-            "max_epochs": 50,
-            "dataset": "PersistentDataset",  # PersistentDataset, CacheDataset
-            "train_batch_size": 128,
-            "val_batch_size": 8,
+            "max_epochs": 1000,
+            "dataset": "CacheDataset",  # PersistentDataset, CacheDataset
+            "train_batch_size": 1,
+            "val_batch_size": 14,
             "multi_gpu": False,
             "val_split": 0.2,
             "dataset_source": "none",

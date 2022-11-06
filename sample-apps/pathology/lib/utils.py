@@ -655,9 +655,9 @@ def main_nuclei():
     )
 
     home = str(Path.home())
-    for f in ["validation"]:
+    for f in ["training", "validation"]:
         studies = f"{home}/Dataset/Pathology/CoNSeP/{f}"
-        output_dir = f"{home}/Dataset/Pathology/CoNSeP/{f}Seg"
+        output_dir = f"{home}/Dataset/Pathology/CoNSeP/{f}SegV2"
 
         logger.info(f"Generate Nuclei Dataset for: {studies}")
         datastore = LocalDatastore(studies, extensions=("*.png", "*.mat"))
