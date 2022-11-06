@@ -32,7 +32,7 @@ class DeepEditNuclei(TaskConfig):
         super().init(name, model_dir, conf, planner, **kwargs)
 
         # Labels
-        self.labels = ["Nuclei"]
+        self.labels = {"Nuclei": 1}
         self.label_colors = {"Nuclei": (0, 255, 255)}
 
         # Model Files

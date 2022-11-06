@@ -8,29 +8,24 @@
 # WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 # See the License for the specific language governing permissions and
 # limitations under the License.
-
+import copy
 import logging
 import os
 
 import numpy as np
 import torch
+from ignite.metrics import Accuracy
 from lib.handlers import TensorBoardImageHandler
+from lib.transforms import AddMaskValued
 from lib.utils import split_dataset, split_nuclei_dataset
-from monai.apps.nuclick.transforms import (
-    AddPointGuidanceSignald,
-    ExtractPatchd,
-    FilterImaged,
-    FlattenLabeld,
-    SplitLabeld,
-)
-from monai.handlers import MeanDice, from_engine
+from monai.apps.nuclick.transforms import AddPointGuidanceSignald, SplitLabeld
+from monai.handlers import from_engine
 from monai.inferers import SimpleInferer
 from monai.losses import DiceLoss
 from monai.transforms import (
     Activationsd,
-    AddChanneld,
-    AsChannelFirstd,
     AsDiscreted,
+    EnsureChannelFirstd,
     EnsureTyped,
     LoadImaged,
     RandRotate90d,
@@ -51,7 +46,6 @@ class NuClick(BasicTrainTask):
         self,
         model_dir,
         network,
-        labels,
         tile_size=(256, 256),
         patch_size=128,
         min_area=5,
@@ -59,7 +53,6 @@ class NuClick(BasicTrainTask):
         **kwargs,
     ):
         self._network = network
-        self.labels = labels
         self.tile_size = tile_size
         self.patch_size = patch_size
         self.min_area = min_area
@@ -82,11 +75,13 @@ class NuClick(BasicTrainTask):
         max_region = request.get("dataset_max_region", (10240, 10240))
         max_region = (max_region, max_region) if isinstance(max_region, int) else max_region[:2]
 
+        groups = copy.deepcopy(self._labels)
+        groups.update({})
         ds = split_dataset(
             datastore=datastore,
             cache_dir=cache_dir,
             source=source,
-            groups=self.labels,
+            groups=None,
             tile_size=self.tile_size,
             max_region=max_region,
             limit=request.get("dataset_limit", 0),
@@ -96,8 +91,11 @@ class NuClick(BasicTrainTask):
         logger.info(f"Split data (len: {len(ds)}) based on each nuclei")
         ds_new = []
         limit = request.get("dataset_limit", 0)
+        if source == "consep_nuclick":
+            return ds[:limit] if 0 < limit < len(ds) else ds
+
         for d in tqdm(ds):
-            ds_new.extend(split_nuclei_dataset(d, min_area=self.min_area))
+            ds_new.extend(split_nuclei_dataset(d, os.path.join(cache_dir, "nuclei_flattened")))
             if 0 < limit < len(ds_new):
                 ds_new = ds_new[:limit]
                 break
@@ -106,11 +104,8 @@ class NuClick(BasicTrainTask):
     def train_pre_transforms(self, context: Context):
         return [
             LoadImaged(keys=("image", "label"), dtype=np.uint8),
-            FilterImaged(keys="image", min_size=5),
-            FlattenLabeld(keys="label"),
-            AsChannelFirstd(keys="image"),
-            AddChanneld(keys="label"),
-            ExtractPatchd(keys=("image", "label"), patch_size=self.patch_size),
+            EnsureChannelFirstd(keys=("image", "label")),
+            AddMaskValued(keys="mask_value", source_key="label"),
             SplitLabeld(keys="label", others="others", mask_value="mask_value", min_area=self.min_area),
             TorchVisiond(
                 keys="image", name="ColorJitter", brightness=64.0 / 255.0, contrast=0.75, saturation=0.25, hue=0.04
@@ -131,20 +126,20 @@ class NuClick(BasicTrainTask):
     def val_pre_transforms(self, context: Context):
         t = self.train_pre_transforms(context)
         # drop exclusion map for AddPointGuidanceSignald
-        t[-2] = (AddPointGuidanceSignald(image="image", label="label", others="others", drop_rate=1.0),)
+        t[-2] = AddPointGuidanceSignald(image="image", label="label", others="others", drop_rate=1.0)
         return t
 
-    def train_key_metric(self, context: Context):
-        return {"train_dice": MeanDice(include_background=False, output_transform=from_engine(["pred", "label"]))}
+    def train_additional_metrics(self, context: Context):
+        return {"train_acc": Accuracy(output_transform=from_engine(["pred", "label"]))}
 
-    def val_key_metric(self, context: Context):
-        return {"val_dice": MeanDice(include_background=False, output_transform=from_engine(["pred", "label"]))}
+    def val_additional_metrics(self, context: Context):
+        return {"val_acc": Accuracy(output_transform=from_engine(["pred", "label"]))}
 
     def val_inferer(self, context: Context):
         return SimpleInferer()
 
-    def train_handlers(self, context: Context):
-        handlers = super().train_handlers(context)
+    def val_handlers(self, context: Context):
+        handlers = super().val_handlers(context)
         if context.local_rank == 0:
             handlers.append(TensorBoardImageHandler(log_dir=context.events_dir, batch_limit=4))
         return handlers

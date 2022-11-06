@@ -8,7 +8,6 @@
 # WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 # See the License for the specific language governing permissions and
 # limitations under the License.
-import copy
 import ctypes.util
 import logging
 import os
@@ -18,7 +17,7 @@ from typing import Dict
 
 import lib.configs
 from lib.activelearning.random import WSIRandom
-from lib.infers import NuClickClassification
+from lib.infers import NuClick
 
 import monailabel
 from monailabel.datastore.dsa import DSADatastore
@@ -28,6 +27,7 @@ from monailabel.interfaces.datastore import Datastore
 from monailabel.interfaces.tasks.infer_v2 import InferTask
 from monailabel.interfaces.tasks.strategy import Strategy
 from monailabel.interfaces.tasks.train import TrainTask
+from monailabel.tasks.infer.basic_infer import BasicInferTask
 from monailabel.utils.others.class_utils import get_class_names
 from monailabel.utils.others.generic import strtobool
 
@@ -44,14 +44,13 @@ class MyApp(MONAILabelApp):
 
         configs = {}
         candidates = get_class_names(lib.configs, "TaskConfig")
-        candidates.extend(get_class_names(lib.configs, "NuClick"))
         for c in candidates:
             name = c.split(".")[-2].lower()
             configs[name] = c
 
         configs = {k: v for k, v in sorted(configs.items())}
 
-        models = conf.get("models", "all")
+        models = conf.get("models", "segmentation_nuclei,nuclick,classification_nuclei")
         if not models:
             print("")
             print("---------------------------------------------------------------------------------------")
@@ -133,14 +132,11 @@ class MyApp(MONAILabelApp):
         #################################################
         # Pipeline based on existing infers
         #################################################
-        if infers.get("nuclick_classification"):
-            if not infers.get("classification_nuclei"):
-                logger.warning("Nuclick Classification (pipeline) requires nuclei classification model")
-            else:
-                p = infers["nuclick_classification"]
-                c = infers["classification_nuclei"]
-                if isinstance(p, NuClickClassification):
-                    p.init_classification(c)
+        if infers.get("nuclick") and infers.get("classification_nuclei"):
+            p = infers["nuclick"]
+            c = infers["classification_nuclei"]
+            if isinstance(p, NuClick) and isinstance(c, BasicInferTask):
+                p.init_classification(c)
 
         return infers
 
@@ -190,7 +186,7 @@ def main():
     from monailabel.config import settings
 
     settings.MONAI_LABEL_DATASTORE_AUTO_RELOAD = False
-    settings.MONAI_LABEL_DATASTORE_READ_ONLY = True
+    settings.MONAI_LABEL_DATASTORE_READ_ONLY = False
     settings.MONAI_LABEL_DATASTORE_FILE_EXT = ["*.svs", "*.png", "*.npy", "*.tif", ".xml"]
     os.putenv("MASTER_ADDR", "127.0.0.1")
     os.putenv("MASTER_PORT", "1234")
@@ -203,81 +199,83 @@ def main():
     )
 
     home = str(Path.home())
-    # studies = f"{home}/Dataset/Pathology/pannukeFFF"
-    studies = f"{home}/Dataset/Pathology"
+    studies = f"{home}/Dataset/Pathology/dummy"
 
     app_dir = os.path.dirname(__file__)
     app = MyApp(
         app_dir,
         studies,
         {
-            "roi_size": "[1024,1024]",
             "preload": "false",
-            "models": "classification_nuclei,nuclick_classification",
+            "models": "segmentation_nuclei,nuclick,classification_nuclei",
+            "use_pretrained_model": "false",
+            "consep": "true",
         },
     )
 
-    # train_classify(app)
-    # infer_classify(app)
-    infer_nuclick_classification(app)
-    # train_nuclick(app)
-    # infer_nuclick(app)
-    # infer_wsi(app)
+    train_from_dataset(app, "nuclick", "Nuclei")
 
 
-def train_classify(app):
-    model = "classification_nuclei"
+def train_from_dataset(app, model, postfix):
+    import json
+    import random
+    from pathlib import Path
+
+    from monailabel.utils.others.generic import create_dataset_from_path
+
+    home = str(Path.home())
+    train_dir = f"{home}/Dataset/Pathology/CoNSeP/training{postfix}"
+    val_dir = f"{home}/Dataset/Pathology/CoNSeP/validation{postfix}"
+
+    train_ds = create_dataset_from_path(train_dir, img_ext=".png", image_dir="", label_dir="labels/final")
+    val_ds = create_dataset_from_path(val_dir, img_ext=".png", image_dir="", label_dir="labels/final")
+    random.shuffle(train_ds)
+    random.shuffle(val_ds)
+
+    # train_ds = train_ds[:1024]
+    # val_ds = val_ds[:64]
+
+    train_ds_json = f"{home}/Dataset/Pathology/CoNSeP/train_ds.json"
+    val_ds_json = f"{home}/Dataset/Pathology/CoNSeP/val_ds.json"
+
+    with open(train_ds_json, "w") as fp:
+        json.dump(train_ds, fp, indent=2)
+    with open(val_ds_json, "w") as fp:
+        json.dump(val_ds, fp, indent=2)
+
     app.train(
         request={
             "name": "train_01",
             "model": model,
-            "max_epochs": 20,
+            "max_epochs": 50,
             "dataset": "PersistentDataset",  # PersistentDataset, CacheDataset
             "train_batch_size": 128,
             "val_batch_size": 128,
-            "multi_gpu": True,
+            "multi_gpu": False,
             "val_split": 0.2,
             "dataset_source": "none",
             "dataset_limit": 0,
             "pretrained": False,
             "n_saved": 10,
+            "train_ds": train_ds_json,
+            "val_ds": val_ds_json,
         },
     )
 
 
-def train_nuclick(app):
-    model = "nuclick"
+def train(app, model):
     app.train(
         request={
             "name": "train_01",
             "model": model,
-            "max_epochs": 10,
-            "dataset": "PersistentDataset",  # PersistentDataset, CacheDataset
-            "train_batch_size": 128,
-            "val_batch_size": 64,
-            "multi_gpu": True,
-            "val_split": 0.2,
-            "dataset_source": "none",
-            "dataset_limit": 0,
-            "pretrained": False,
-            "n_saved": 10,
-        },
-    )
-
-
-def train(app):
-    model = "deepedit_nuclei"  # deepedit_nuclei, segmentation_nuclei
-    app.train(
-        request={
-            "name": "train_01",
-            "model": model,
-            "max_epochs": 10 if model == "deepedit_nuclei" else 30,
+            "max_epochs": 5,
             "dataset": "CacheDataset",  # PersistentDataset, CacheDataset
             "train_batch_size": 16,
-            "val_batch_size": 12,
-            "multi_gpu": True,
-            "val_split": 0.1,
-            "dataset_source": "pannuke",
+            "val_batch_size": 16,
+            "multi_gpu": False,
+            "val_split": 0.2,
+            "dataset_limit": 0,
+            "pretrained": False,
         },
     )
 
@@ -296,7 +294,6 @@ def infer_classify(app):
 
 
 def infer_nuclick(app, classify=True):
-    import json
     import shutil
 
     request = {
@@ -312,21 +309,8 @@ def infer_nuclick(app, classify=True):
     }
 
     res = app.infer(request)
-
-    if not classify:
-        shutil.move(res["label"], os.path.join(app.studies, "..", "output_image.xml"))
-        logger.info("All Done!")
-    else:
-        logger.info("NuClick Done!")
-        for annotation in res["params"]["annotations"]:
-            for element in annotation["elements"]:
-                req2 = copy.deepcopy(request)
-                req2["model"] = "classify_nuclei"
-                request["contours"] = element["contours"]
-
-                res2 = app.infer(request)
-                print(json.dumps(res2, indent=2))
-                break
+    shutil.move(res["label"], os.path.join(app.studies, "..", "output_image.xml"))
+    logger.info("All Done!")
 
 
 def infer_nuclick_classification(app):
@@ -346,19 +330,14 @@ def infer_nuclick_classification(app):
     }
 
     res = app.infer(request)
-
     shutil.move(res["label"], os.path.join(app.studies, "..", "output_image.xml"))
     logger.info("All Done!")
 
 
 def infer_wsi(app):
     import shutil
-    from pathlib import Path
 
-    home = str(Path.home())
-    root_dir = f"{home}/Datasets/"
     image = "TCGA-02-0010-01Z-00-DX4.07de2e55-a8fe-40ee-9e98-bcb78050b9f7"
-
     output = "dsa"
 
     # slide = openslide.OpenSlide(f"{app.studies}/{image}.svs")
@@ -366,7 +345,7 @@ def infer_wsi(app):
     # image_np = np.array(img, dtype=np.uint8)
 
     req = {
-        "model": "deepedit_nuclei",  # deepedit_nuclei, segmentation_nuclei
+        "model": "segmentation_nuclei",
         "image": image,  # image, image_np
         "output": output,
         "logging": "error",
@@ -378,6 +357,8 @@ def infer_wsi(app):
         "gpus": "all",
         "multi_gpu": True,
     }
+
+    root_dir = os.path.join(app.studies, "..")
 
     res = app.infer_wsi(request=req)
     if output == "asap":

@@ -12,6 +12,7 @@
 import logging
 import math
 import pathlib
+from typing import Dict, Hashable, Mapping, Optional
 
 import cv2
 import numpy as np
@@ -27,10 +28,13 @@ from monai.transforms import (
     Compose,
     CropForegroundd,
     MapTransform,
+    RandomizableTransform,
     SpatialPadd,
+    TorchVision,
     Transform,
 )
 from PIL import Image
+from scipy.ndimage import binary_fill_holes
 from skimage.filters.thresholding import threshold_otsu
 from skimage.morphology import remove_small_holes, remove_small_objects
 
@@ -197,9 +201,8 @@ class FilterImaged(MapTransform):
 
 
 class PostFilterLabeld(MapTransform):
-    def __init__(self, keys: KeysCollection, image="image", min_size=10, min_hole=30):
+    def __init__(self, keys: KeysCollection, min_size=64, min_hole=64):
         super().__init__(keys)
-        self.image = image
         self.min_size = min_size
         self.min_hole = min_hole
 
@@ -207,10 +210,11 @@ class PostFilterLabeld(MapTransform):
         d = dict(data)
         for key in self.keys:
             label = d[key].astype(np.uint8)
-            if self.min_size:
-                label = remove_small_objects(label, min_size=self.min_size)
             if self.min_hole:
                 label = remove_small_holes(label, area_threshold=self.min_hole)
+            label = binary_fill_holes(label).astype(np.uint8)
+            if self.min_size:
+                label = remove_small_objects(label, min_size=self.min_size)
 
             d[key] = np.where(label > 0, d[key], 0)
         return d
@@ -266,18 +270,18 @@ class AddClickGuidanceSignald(AddGuidanceSignald):
         return np.concatenate([image, ns, ns], axis=0)
 
 
-class FilterLabelByClassd(MapTransform):
-    def __init__(self, keys: KeysCollection, allow_missing_keys: bool = False, key_class="class") -> None:
+class AddMaskValued(MapTransform):
+    def __init__(self, keys: KeysCollection, allow_missing_keys: bool = False, source_key="label") -> None:
         super().__init__(keys, allow_missing_keys)
-        self.key_class = key_class
+        self.source_key = source_key
 
     def __call__(self, data):
         d = dict(data)
         for key in self.keys:
-            label = d[key]
-            cval = d[self.key_class]
-            label[label != cval] = 0
-            d[key] = label
+            if d.get(key) is None:
+                label = d[self.source_key]
+                mask_value = int(torch.max(torch.where(torch.logical_and(label > 0, label < 255), label, 0)))
+                d[key] = mask_value
         return d
 
 
@@ -289,12 +293,14 @@ class FixNuclickClassd(Transform):
 
     def __call__(self, data):
         d = dict(data)
-        signal = torch.where(data[self.label] > 0, 1, 0)
-        if len(signal.shape) < len(data[self.image].shape):
+        signal = torch.where(torch.logical_and(d[self.label] > 0, d[self.label] < 255), 1, 0)
+        max_c = sorted([int(i) for i in torch.unique(d[self.label]) if i != 255])[-1]
+
+        if len(signal.shape) < len(d[self.image].shape):
             signal = signal[None]
 
-        d[self.image] = torch.cat([data[self.image], signal], dim=len(signal.shape) - 3)
-        d[self.label] = int(torch.max(data[self.label]) + self.offset)
+        d[self.image] = torch.cat([d[self.image], signal], dim=len(signal.shape) - 3)
+        d[self.label] = max_c + self.offset
         return d
 
 
@@ -383,3 +389,30 @@ class NuClickPostFilterLabelExd(NuClickPostFilterLabeld):
             c = pred_classes[i] if pred_classes and i < len(pred_classes) else 1
             instance_map[this_mask_pos[:, 0], this_mask_pos[:, 1]] = c if flatten else i + 1
         return instance_map
+
+
+class RandTorchVisiond(RandomizableTransform, MapTransform):
+    backend = TorchVision.backend
+
+    def __init__(
+        self, keys: KeysCollection, name: str, allow_missing_keys: bool = False, prob: float = 0.5, *args, **kwargs
+    ) -> None:
+        MapTransform.__init__(self, keys, allow_missing_keys)
+        RandomizableTransform.__init__(self, prob)
+        self.name = name
+        self.trans = TorchVision(name, *args, **kwargs)
+
+    def set_random_state(
+        self, seed: Optional[int] = None, state: Optional[np.random.RandomState] = None
+    ) -> "RandTorchVisiond":
+        super().set_random_state(seed, state)
+        return self
+
+    def __call__(self, data: Mapping[Hashable, torch.Tensor]) -> Dict[Hashable, torch.Tensor]:
+        d = dict(data)
+        self.randomize(None)
+
+        for key in self.key_iterator(d):
+            if self._do_transform:
+                d[key] = self.trans(d[key])
+        return d

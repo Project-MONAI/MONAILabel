@@ -16,23 +16,20 @@ import numpy as np
 import torch
 from ignite.metrics import Accuracy
 from lib.handlers import TensorBoardImageHandler
-from lib.transforms import FilterImaged
+from lib.transforms import RandTorchVisiond
 from lib.utils import split_dataset
 from monai.handlers import from_engine
 from monai.inferers import SimpleInferer
 from monai.losses import DiceLoss
 from monai.transforms import (
     Activationsd,
-    AddChanneld,
-    AsChannelFirstd,
     AsDiscreted,
+    EnsureChannelFirstd,
     EnsureTyped,
     LoadImaged,
+    RandFlipd,
     RandRotate90d,
     ScaleIntensityRangeD,
-    ToNumpyd,
-    TorchVisiond,
-    ToTensord,
 )
 
 from monailabel.interfaces.datastore import Datastore
@@ -46,13 +43,11 @@ class SegmentationNuclei(BasicTrainTask):
         self,
         model_dir,
         network,
-        labels,
         roi_size=(256, 256),
         description="Pathology Semantic Segmentation for Nuclei (PanNuke Dataset)",
         **kwargs,
     ):
         self._network = network
-        self.labels = labels
         self.roi_size = roi_size
         super().__init__(model_dir, description, **kwargs)
 
@@ -77,7 +72,7 @@ class SegmentationNuclei(BasicTrainTask):
             datastore=datastore,
             cache_dir=cache_dir,
             source=source,
-            groups=self.labels,
+            groups=self._labels,
             tile_size=self.roi_size,
             max_region=max_region,
             limit=request.get("dataset_limit", 0),
@@ -87,40 +82,42 @@ class SegmentationNuclei(BasicTrainTask):
     def train_pre_transforms(self, context: Context):
         return [
             LoadImaged(keys=("image", "label"), dtype=np.uint8),
-            FilterImaged(keys="image", min_size=0),
-            AsChannelFirstd(keys="image"),
-            AddChanneld(keys="label"),
-            ToTensord(keys="image"),
-            TorchVisiond(
+            EnsureTyped(keys=("image", "label")),
+            EnsureChannelFirstd(keys=("image", "label")),
+            RandTorchVisiond(
                 keys="image", name="ColorJitter", brightness=64.0 / 255.0, contrast=0.75, saturation=0.25, hue=0.04
             ),
-            ToNumpyd(keys="image"),
-            RandRotate90d(keys=("image", "label"), prob=0.5, spatial_axes=(0, 1)),
+            RandFlipd(keys=("image", "label"), prob=0.5),
+            RandRotate90d(keys=("image", "label"), prob=0.5, max_k=3, spatial_axes=(-2, -1)),
             ScaleIntensityRangeD(keys="image", a_min=0.0, a_max=255.0, b_min=-1.0, b_max=1.0),
-            EnsureTyped(keys=("image", "label")),
         ]
 
     def train_post_transforms(self, context: Context):
         return [
-            Activationsd(keys="pred", softmax=len(self.labels) > 1, sigmoid=len(self.labels) == 1),
-            AsDiscreted(
-                keys=("pred", "label"),
-                argmax=(True, False),
-                to_onehot=(len(self.labels) + 1, len(self.labels) + 1),
-            ),
+            EnsureTyped(keys="pred", device=context.device),
+            Activationsd(keys="pred", softmax=True),
+            AsDiscreted(keys=("pred", "label"), argmax=(True, False), to_onehot=len(self._labels) + 1),
         ]
 
-    def train_key_metric(self, context: Context):
+    def val_pre_transforms(self, context: Context):
+        return [
+            LoadImaged(keys=("image", "label"), dtype=np.uint8),
+            EnsureTyped(keys=("image", "label")),
+            EnsureChannelFirstd(keys=("image", "label")),
+            ScaleIntensityRangeD(keys="image", a_min=0.0, a_max=255.0, b_min=-1.0, b_max=1.0),
+        ]
+
+    def train_additional_metrics(self, context: Context):
         return {"train_acc": Accuracy(output_transform=from_engine(["pred", "label"]))}
 
-    def val_key_metric(self, context: Context):
+    def val_additional_metrics(self, context: Context):
         return {"val_acc": Accuracy(output_transform=from_engine(["pred", "label"]))}
 
     def val_inferer(self, context: Context):
         return SimpleInferer()
 
-    def train_handlers(self, context: Context):
-        handlers = super().train_handlers(context)
+    def val_handlers(self, context: Context):
+        handlers = super().val_handlers(context)
         if context.local_rank == 0:
-            handlers.append(TensorBoardImageHandler(log_dir=context.events_dir))
+            handlers.append(TensorBoardImageHandler(log_dir=context.events_dir, batch_limit=4))
         return handlers

@@ -48,13 +48,11 @@ class DeepEditNuclei(BasicTrainTask):
         self,
         model_dir,
         network,
-        labels,
         roi_size=(256, 256),
         description="Pathology DeepEdit Segmentation",
         **kwargs,
     ):
         self._network = network
-        self.labels = labels
         self.roi_size = roi_size
         super().__init__(model_dir, description, **kwargs)
 
@@ -79,7 +77,7 @@ class DeepEditNuclei(BasicTrainTask):
             datastore=datastore,
             cache_dir=cache_dir,
             source=source,
-            groups=self.labels,
+            groups=None,
             tile_size=self.roi_size,
             max_region=max_region,
             limit=request.get("dataset_limit", 0),

@@ -31,19 +31,21 @@ class NuClick(TaskConfig):
         super().init(name, model_dir, conf, planner, **kwargs)
 
         # Labels
-        self.labels = ["Nuclei"]
+        self.labels = {"Nuclei": 1}
         self.label_colors = {"Nuclei": (0, 255, 255)}
+
+        consep = strtobool(self.conf.get("consep", "false"))
 
         # Model Files
         self.path = [
-            os.path.join(self.model_dir, f"pretrained_{name}.pt"),  # pretrained
-            os.path.join(self.model_dir, f"{name}.pt"),  # published
+            os.path.join(self.model_dir, f"pretrained_{name}{'_consep' if consep else ''}.pt"),  # pretrained
+            os.path.join(self.model_dir, f"{name}{'_consep' if consep else ''}.pt"),  # published
         ]
 
         # Download PreTrained Model
         if strtobool(self.conf.get("use_pretrained_model", "true")):
             url = f"{self.conf.get('pretrained_path', self.PRE_TRAINED_PATH)}"
-            url = f"{url}/pathology_nuclick_bunet_nuclei.pt"
+            url = f"{url}/pathology_nuclick_bunet_nuclei{'_consep' if consep else ''}.pt"
             download_file(url, self.path[0])
 
         # Network
@@ -61,7 +63,7 @@ class NuClick(TaskConfig):
             labels=self.labels,
             preload=strtobool(self.conf.get("preload", "false")),
             roi_size=json.loads(self.conf.get("roi_size", "[512, 512]")),
-            config={"label_colors": self.label_colors},
+            config={"label_colors": self.label_colors, "ignore_non_click_patches": True},
         )
         return task
 

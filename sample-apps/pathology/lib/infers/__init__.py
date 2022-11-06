@@ -12,5 +12,4 @@
 from .classification_nuclei import ClassificationNuclei
 from .deepedit_nuclei import DeepEditNuclei
 from .nuclick import NuClick
-from .nuclick_classification import NuClickClassification
 from .segmentation_nuclei import SegmentationNuclei

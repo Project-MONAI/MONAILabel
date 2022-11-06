@@ -26,6 +26,7 @@ from monai.transforms import (
     EnsureChannelFirstd,
     EnsureTyped,
     LoadImaged,
+    RandFlipd,
     RandRotate90d,
     ScaleIntensityRangeD,
     SelectItemsd,
@@ -44,7 +45,6 @@ class ClassificationNuclei(BasicTrainTask):
         self,
         model_dir,
         network,
-        labels,
         tile_size=(256, 256),
         patch_size=64,
         min_area=80,
@@ -52,7 +52,6 @@ class ClassificationNuclei(BasicTrainTask):
         **kwargs,
     ):
         self._network = network
-        self.labels = labels
         self.tile_size = tile_size
         self.patch_size = patch_size
         self.min_area = min_area
@@ -79,7 +78,7 @@ class ClassificationNuclei(BasicTrainTask):
             datastore=datastore,
             cache_dir=cache_dir,
             source=source,
-            groups={k: v + 1 for k, v in self.labels.items()},
+            groups=self._labels,
             tile_size=self.tile_size,
             max_region=max_region,
             limit=request.get("dataset_limit", 0),
@@ -88,7 +87,8 @@ class ClassificationNuclei(BasicTrainTask):
         logger.info(f"Split data (len: {len(ds)}) based on each nuclei")
 
         limit = request.get("dataset_limit", 0)
-        # return ds[:limit] if 0 < limit < len(ds) else ds
+        if source == "consep_nuclick":
+            return ds[:limit] if 0 < limit < len(ds) else ds
 
         ds_new = []
         for d in tqdm(ds):
@@ -106,7 +106,8 @@ class ClassificationNuclei(BasicTrainTask):
             TorchVisiond(
                 keys="image", name="ColorJitter", brightness=64.0 / 255.0, contrast=0.75, saturation=0.25, hue=0.04
             ),
-            RandRotate90d(keys=("image", "label"), prob=0.5, spatial_axes=(0, 1)),
+            RandFlipd(keys=("image", "label"), prob=0.5),
+            RandRotate90d(keys=("image", "label"), prob=0.5, max_k=3, spatial_axes=(-2, -1)),
             ScaleIntensityRangeD(keys="image", a_min=0.0, a_max=255.0, b_min=-1.0, b_max=1.0),
             FixNuclickClassd(image="image", label="label", offset=-1),
             SelectItemsd(keys=("image", "label")),
@@ -115,16 +116,14 @@ class ClassificationNuclei(BasicTrainTask):
     def train_post_transforms(self, context: Context):
         return [
             Activationsd(keys="pred", softmax=True),
-            AsDiscreted(keys=("pred", "label"), argmax=(True, False), to_onehot=len(self.labels)),
+            AsDiscreted(keys=("pred", "label"), argmax=(True, False), to_onehot=len(self._labels)),
         ]
 
     def train_key_metric(self, context: Context):
         return {"train_acc": Accuracy(output_transform=from_engine(["pred", "label"]))}
 
     def val_key_metric(self, context: Context):
-        return {
-            "val_acc": Accuracy(output_transform=from_engine(["pred", "label"])),
-        }
+        return {"val_acc": Accuracy(output_transform=from_engine(["pred", "label"]))}
 
     def val_inferer(self, context: Context):
         return SimpleInferer()
@@ -135,7 +134,7 @@ class ClassificationNuclei(BasicTrainTask):
             handlers.append(
                 TensorBoardImageHandler(
                     log_dir=context.events_dir,
-                    class_names={str(v - 1): k for k, v in self.labels.items()},
+                    class_names={str(v - 1): k for k, v in self._labels.items()},
                     batch_limit=8,
                 )
             )

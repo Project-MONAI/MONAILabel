@@ -173,6 +173,12 @@ class BasicTrainTask(TrainTask):
         self._labels = [] if labels is None else [labels] if isinstance(labels, str) else labels
         self._disable_tracking = disable_tracking
 
+    def info(self):
+        r = super().info()
+        if self._labels:
+            r["labels"] = self._labels
+        return r
+
     @abstractmethod
     def network(self, context: Context):
         pass
@@ -239,7 +245,12 @@ class BasicTrainTask(TrainTask):
         return SimpleInferer()
 
     def train_key_metric(self, context: Context):
-        return {self.TRAIN_KEY_METRIC: MeanDice(output_transform=from_engine(["pred", "label"]))}
+        return {
+            self.TRAIN_KEY_METRIC: MeanDice(
+                output_transform=from_engine(["pred", "label"]),
+                include_background=False,
+            )
+        }
 
     def load_path(self, output_dir, pretrained=True):
         load_path = os.path.join(output_dir, self._key_metric_filename)
@@ -297,7 +308,12 @@ class BasicTrainTask(TrainTask):
         return val_handlers if context.local_rank == 0 else None
 
     def val_key_metric(self, context):
-        return {self.VAL_KEY_METRIC: MeanDice(output_transform=from_engine(["pred", "label"]))}
+        return {
+            self.VAL_KEY_METRIC: MeanDice(
+                output_transform=from_engine(["pred", "label"]),
+                include_background=False,
+            )
+        }
 
     def train_iteration_update(self, context: Context):
         return None

@@ -45,7 +45,6 @@ public class Extension implements QuPathExtension {
 
 		var activeLearning = ActionTools.createAction(new NextSample(qupath), "Next Sample/Patch...");
 		activeLearning.setAccelerator(KeyCombination.keyCombination("ctrl+n"));
-		activeLearning.disabledProperty().bind(qupath.imageDataProperty().isNull());
 		MenuTools.addMenuItems(qupath.getMenu("MONAI Label", true), activeLearning);
 
 		MenuTools.addMenuItems(qupath.getMenu("MONAI Label", true), ActionUtils.ACTION_SEPARATOR);

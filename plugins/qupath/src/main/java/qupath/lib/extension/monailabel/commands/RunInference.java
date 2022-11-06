@@ -35,6 +35,7 @@ import org.xml.sax.SAXException;
 import qupath.lib.extension.monailabel.MonaiLabelClient;
 import qupath.lib.extension.monailabel.MonaiLabelClient.RequestInfer;
 import qupath.lib.extension.monailabel.MonaiLabelClient.ResponseInfo;
+import qupath.lib.extension.monailabel.Settings;
 import qupath.lib.extension.monailabel.Utils;
 import qupath.lib.geom.Point2;
 import qupath.lib.gui.QuPathGUI;
@@ -50,6 +51,7 @@ import qupath.lib.regions.ImagePlane;
 import qupath.lib.regions.RegionRequest;
 import qupath.lib.roi.PointsROI;
 import qupath.lib.roi.ROIs;
+import qupath.lib.roi.RectangleROI;
 import qupath.lib.roi.interfaces.ROI;
 import qupath.lib.scripting.QP;
 
@@ -72,6 +74,22 @@ public class RunInference implements Runnable {
 			var imageData = viewer.getImageData();
 			var selected = imageData.getHierarchy().getSelectionModel().getSelectedObject();
 			var roi = selected != null ? selected.getROI() : null;
+
+			// Select first RectangleROI if not selected explicitly
+			if (roi == null || !(roi instanceof RectangleROI)) {
+				List<PathObject> objs = imageData.getHierarchy().getFlattenedObjectList(null);
+				for (int i = 0; i < objs.size(); i++) {
+					var obj = objs.get(i);
+					ROI r = obj.getROI();
+					if (r instanceof RectangleROI) {
+						roi = r;
+						Dialogs.showWarningNotification("MONALabel", "ROI is NOT explicitly selected; using first Rectangle ROI from Hierarchy");
+						imageData.getHierarchy().getSelectionModel().setSelectedObject(obj);
+						break;
+					}
+				}
+			}
+
 			int[] bbox = Utils.getBBOX(roi);
 			int tileSize = selectedTileSize;
 			if (bbox[2] == 0 && bbox[3] == 0 && selectedBBox != null) {
@@ -204,6 +222,7 @@ public class RunInference implements Runnable {
 			}
 			req.params.addClicks(fg, true);
 			req.params.addClicks(bg, false);
+			req.params.max_workers = Settings.maxWorkersProperty().intValue();
 
 
 			Document dom = MonaiLabelClient.infer(model, image, imageFile, sessionId, req);

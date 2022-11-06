@@ -16,8 +16,9 @@ from typing import TYPE_CHECKING, Any, Callable, Dict, List, Optional
 
 import numpy as np
 import torch
+import torch.distributed
 from monai.config import IgniteInfo
-from monai.metrics import compute_meandice
+from monai.metrics import compute_dice
 from monai.utils import min_version, optional_import
 from sklearn.metrics import classification_report
 
@@ -45,8 +46,8 @@ class RegionDice:
         y_pred = y_pred if torch.is_tensor(y_pred) else torch.from_numpy(y_pred)
         y = y if torch.is_tensor(y) else torch.from_numpy(y)
 
-        score = compute_meandice(y_pred=y_pred, y=y, include_background=True).mean().item()
-        if not math.isnan(score):
+        score = compute_dice(y_pred=y_pred, y=y, include_background=False).mean().item()
+        if not math.isnan(score) and score > 0:
             self.data.append(score)
 
     def mean(self):
@@ -105,25 +106,19 @@ class TensorBoardImageHandler:
                     self.class_y_pred.append(np.argmax(y_pred))
                     continue
 
-                y = batch_data[bidx]["label"].detach().cpu().numpy()
+                y = output_data[bidx]["label"].detach().cpu().numpy()
                 y_pred = output_data[bidx]["pred"].detach().cpu().numpy()
 
                 for region in range(y_pred.shape[0]):
-                    if region == 0 and y_pred.shape[0] != y.shape[0] and y_pred.shape[0] > 1:  # one-hot; background
+                    if region == 0 and y_pred.shape[0] > 1:  # one-hot; background
                         continue
 
                     if self.metric_data.get(region) is None:
                         self.metric_data[region] = RegionDice()
 
-                    if y_pred.shape[0] == y.shape[0]:
-                        label = y[region][np.newaxis]
-                    else:
-                        label = np.zeros(y.shape)
-                        label[y == region] = region
-
                     self.metric_data[region].update(
                         y_pred=y_pred[region][np.newaxis],
-                        y=label,
+                        y=y[region][np.newaxis],
                     )
             return
 
@@ -133,18 +128,20 @@ class TensorBoardImageHandler:
     def write_images(self, batch_data, output_data, epoch):
         for bidx in range(len(batch_data)):
             image = batch_data[bidx]["image"].detach().cpu().numpy()
+            y = output_data[bidx]["label"].detach().cpu().numpy()
 
             tag_prefix = f"b{bidx} - " if self.batch_limit != 1 else ""
             img_tensor = make_grid(torch.from_numpy(image[:3] * 128 + 128), normalize=True)
             self.writer.add_image(tag=f"{tag_prefix}Image", img_tensor=img_tensor, global_step=epoch)
 
             if self.class_names:
-                sig_tensor = make_grid(torch.from_numpy(np.where(image[3] > 0, 1, 0)), normalize=False)
+                sig_np = image[:3] * 128 + 128
+                sig_np[0, :, :] = np.where(image[3] > 0, 1, sig_np[0, :, :])
+                sig_tensor = make_grid(torch.from_numpy(sig_np), normalize=True)
                 self.writer.add_image(tag=f"{tag_prefix}Signal", img_tensor=sig_tensor, global_step=epoch)
                 if np.count_nonzero(image[3]) == 0:
                     self.logger.info("+++++++++ BUG (Signal is ZERO)")
 
-                y = output_data[bidx]["label"].detach().cpu().numpy()
                 y_pred = output_data[bidx]["pred"].detach().cpu().numpy()
 
                 y_c = np.argmax(y)
@@ -174,18 +171,11 @@ class TensorBoardImageHandler:
                 if self.batch_limit == 1 and bidx < (len(batch_data) - 1) and np.sum(y) == 0:
                     continue
 
-                y = batch_data[bidx]["label"].detach().cpu().numpy()
                 y_pred = output_data[bidx]["pred"].detach().cpu().numpy()
 
                 for region in range(y_pred.shape[0]):
-                    if region == 0 and y_pred.shape[0] != y.shape[0] and y_pred.shape[0] > 1:  # one-hot; background
+                    if region == 0 and y_pred.shape[0] > 1:  # one-hot; background
                         continue
-
-                    if y_pred.shape[0] == y.shape[0]:
-                        label = y[region][np.newaxis]
-                    else:
-                        label = np.zeros(y.shape)
-                        label[y == region] = region
 
                     self.logger.info(
                         "{} - {} - Image: {};"
@@ -195,8 +185,8 @@ class TensorBoardImageHandler:
                             bidx,
                             region,
                             image.shape,
-                            label.shape,
-                            np.count_nonzero(label),
+                            y.shape,
+                            np.count_nonzero(y[region]),
                             y_pred.shape,
                             np.count_nonzero(y_pred[region]),
                             np.count_nonzero(image[3]) if image.shape[0] == 5 else 0,
@@ -206,10 +196,10 @@ class TensorBoardImageHandler:
 
                     tag_prefix = f"b{bidx}:l{region} - " if self.batch_limit != 1 else f"l{region} - "
 
-                    label_pred = [label, y_pred[region][None]]
+                    label_pred = [y[region][None], y_pred[region][None]]
                     label_pred_tag = f"{tag_prefix}Label vs Pred:"
                     if image.shape[0] == 5:
-                        label_pred = [label, y_pred[region][None], image[3][None], image[4][None]]
+                        label_pred = [y[region][None], y_pred[region][None], image[3][None], image[4][None]]
                         label_pred_tag = f"{tag_prefix}Label vs Pred vs Pos vs Neg"
 
                     img_tensor = make_grid(
@@ -233,9 +223,10 @@ class TensorBoardImageHandler:
                         ltext.append(f"{n} => {m:.4f}")
                         cname = self.class_names.get(k, k)
                         self.writer.add_scalar(f"cr_{k}_{n}", m, epoch)
+
                     self.logger.info(f"Epoch[{epoch}] Metrics -- Class: {cname}; {'; '.join(ltext)}")
                 else:
-                    self.logger.info(f"Epoch[{epoch}] Metrics -- {k} => {m:.4f}")
+                    self.logger.info(f"Epoch[{epoch}] Metrics -- {k} => {v:.4f}")
                     self.writer.add_scalar(f"cr_{k}", v, epoch)
 
             self.class_y = []
