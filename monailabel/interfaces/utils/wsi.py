@@ -62,7 +62,7 @@ def create_infer_wsi_tasks(request, image):
     pw, ph = tile_size[0], tile_size[1]
 
     ignore_small_patches = request.get("ignore_small_patches", False)
-    ignore_non_click_patches = request.get("ignore_non_click_patches", True)
+    ignore_non_click_patches = request.get("ignore_non_click_patches", False)
 
     for row in range(rows):
         for col in range(cols):

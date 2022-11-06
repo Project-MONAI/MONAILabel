@@ -246,7 +246,10 @@ class BasicTrainTask(TrainTask):
 
     def train_key_metric(self, context: Context):
         return {
-            self.TRAIN_KEY_METRIC: MeanDice(output_transform=from_engine(["pred", "label"]), include_background=False)
+            self.TRAIN_KEY_METRIC: MeanDice(
+                output_transform=from_engine(["pred", "label"]),
+                include_background=False,
+            )
         }
 
     def load_path(self, output_dir, pretrained=True):
@@ -306,7 +309,10 @@ class BasicTrainTask(TrainTask):
 
     def val_key_metric(self, context):
         return {
-            self.VAL_KEY_METRIC: MeanDice(output_transform=from_engine(["pred", "label"]), include_background=False)
+            self.VAL_KEY_METRIC: MeanDice(
+                output_transform=from_engine(["pred", "label"]),
+                include_background=False,
+            )
         }
 
     def train_iteration_update(self, context: Context):

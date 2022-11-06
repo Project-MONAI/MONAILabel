@@ -119,5 +119,5 @@ class SegmentationNuclei(BasicTrainTask):
     def val_handlers(self, context: Context):
         handlers = super().val_handlers(context)
         if context.local_rank == 0:
-            handlers.append(TensorBoardImageHandler(log_dir=context.events_dir, batch_limit=14))
+            handlers.append(TensorBoardImageHandler(log_dir=context.events_dir, batch_limit=4))
         return handlers

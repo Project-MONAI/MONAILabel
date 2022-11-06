@@ -81,7 +81,7 @@ class DeepEditNuclei(BasicInferTask):
             AsDiscreted(keys="pred", threshold=0.5),
             SqueezeDimd(keys="pred"),
             ToNumpyd(keys=("image", "pred"), dtype=np.uint8),
-            PostFilterLabeld(keys="pred", image="image"),
+            PostFilterLabeld(keys="pred"),
             FindContoursd(keys="pred", labels=self.labels, max_poly_area=128 * 128),
         ]
 
