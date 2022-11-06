@@ -16,6 +16,7 @@ import numpy as np
 import torch
 from ignite.metrics import Accuracy
 from lib.handlers import TensorBoardImageHandler
+from lib.transforms import RandTorchVisiond
 from lib.utils import split_dataset
 from monai.handlers import from_engine
 from monai.inferers import SimpleInferer
@@ -29,7 +30,6 @@ from monai.transforms import (
     RandFlipd,
     RandRotate90d,
     ScaleIntensityRangeD,
-    TorchVisiond,
 )
 
 from monailabel.interfaces.datastore import Datastore
@@ -84,7 +84,7 @@ class SegmentationNuclei(BasicTrainTask):
             LoadImaged(keys=("image", "label"), dtype=np.uint8),
             EnsureTyped(keys=("image", "label")),
             EnsureChannelFirstd(keys=("image", "label")),
-            TorchVisiond(
+            RandTorchVisiond(
                 keys="image", name="ColorJitter", brightness=64.0 / 255.0, contrast=0.75, saturation=0.25, hue=0.04
             ),
             RandFlipd(keys=("image", "label"), prob=0.5),
@@ -99,17 +99,25 @@ class SegmentationNuclei(BasicTrainTask):
             AsDiscreted(keys=("pred", "label"), argmax=(True, False), to_onehot=len(self._labels) + 1),
         ]
 
-    def train_key_metric(self, context: Context):
+    def val_pre_transforms(self, context: Context):
+        return [
+            LoadImaged(keys=("image", "label"), dtype=np.uint8),
+            EnsureTyped(keys=("image", "label")),
+            EnsureChannelFirstd(keys=("image", "label")),
+            ScaleIntensityRangeD(keys="image", a_min=0.0, a_max=255.0, b_min=-1.0, b_max=1.0),
+        ]
+
+    def train_additional_metrics(self, context: Context):
         return {"train_acc": Accuracy(output_transform=from_engine(["pred", "label"]))}
 
-    def val_key_metric(self, context: Context):
+    def val_additional_metrics(self, context: Context):
         return {"val_acc": Accuracy(output_transform=from_engine(["pred", "label"]))}
 
     def val_inferer(self, context: Context):
         return SimpleInferer()
 
-    def train_handlers(self, context: Context):
-        handlers = super().train_handlers(context)
+    def val_handlers(self, context: Context):
+        handlers = super().val_handlers(context)
         if context.local_rank == 0:
-            handlers.append(TensorBoardImageHandler(log_dir=context.events_dir))
+            handlers.append(TensorBoardImageHandler(log_dir=context.events_dir, batch_limit=14))
         return handlers

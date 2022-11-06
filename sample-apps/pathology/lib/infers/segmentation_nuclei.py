@@ -78,8 +78,8 @@ class SegmentationNuclei(BasicInferTask):
             Activationsd(keys="pred", softmax=True),
             AsDiscreted(keys="pred", argmax=True),
             SqueezeDimd(keys="pred", dim=0),
-            ToNumpyd(keys=("image", "pred")),
-            PostFilterLabeld(keys="pred", image="image"),
+            ToNumpyd(keys="pred"),
+            PostFilterLabeld(keys="pred"),
             FindContoursd(keys="pred", labels=self.labels, max_poly_area=128 * 128),
         ]
 

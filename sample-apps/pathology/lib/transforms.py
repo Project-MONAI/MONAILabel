@@ -12,6 +12,7 @@
 import logging
 import math
 import pathlib
+from typing import Dict, Hashable, Mapping, Optional
 
 import cv2
 import numpy as np
@@ -27,10 +28,13 @@ from monai.transforms import (
     Compose,
     CropForegroundd,
     MapTransform,
+    RandomizableTransform,
     SpatialPadd,
+    TorchVision,
     Transform,
 )
 from PIL import Image
+from scipy.ndimage import binary_fill_holes
 from skimage.filters.thresholding import threshold_otsu
 from skimage.morphology import remove_small_holes, remove_small_objects
 
@@ -197,9 +201,8 @@ class FilterImaged(MapTransform):
 
 
 class PostFilterLabeld(MapTransform):
-    def __init__(self, keys: KeysCollection, image="image", min_size=10, min_hole=30):
+    def __init__(self, keys: KeysCollection, min_size=64, min_hole=64):
         super().__init__(keys)
-        self.image = image
         self.min_size = min_size
         self.min_hole = min_hole
 
@@ -207,10 +210,11 @@ class PostFilterLabeld(MapTransform):
         d = dict(data)
         for key in self.keys:
             label = d[key].astype(np.uint8)
-            if self.min_size:
-                label = remove_small_objects(label, min_size=self.min_size)
             if self.min_hole:
                 label = remove_small_holes(label, area_threshold=self.min_hole)
+            label = binary_fill_holes(label).astype(np.uint8)
+            if self.min_size:
+                label = remove_small_objects(label, min_size=self.min_size)
 
             d[key] = np.where(label > 0, d[key], 0)
         return d
@@ -385,3 +389,30 @@ class NuClickPostFilterLabelExd(NuClickPostFilterLabeld):
             c = pred_classes[i] if pred_classes and i < len(pred_classes) else 1
             instance_map[this_mask_pos[:, 0], this_mask_pos[:, 1]] = c if flatten else i + 1
         return instance_map
+
+
+class RandTorchVisiond(RandomizableTransform, MapTransform):
+    backend = TorchVision.backend
+
+    def __init__(
+        self, keys: KeysCollection, name: str, allow_missing_keys: bool = False, prob: float = 0.5, *args, **kwargs
+    ) -> None:
+        MapTransform.__init__(self, keys, allow_missing_keys)
+        RandomizableTransform.__init__(self, prob)
+        self.name = name
+        self.trans = TorchVision(name, *args, **kwargs)
+
+    def set_random_state(
+        self, seed: Optional[int] = None, state: Optional[np.random.RandomState] = None
+    ) -> "RandTorchVisiond":
+        super().set_random_state(seed, state)
+        return self
+
+    def __call__(self, data: Mapping[Hashable, torch.Tensor]) -> Dict[Hashable, torch.Tensor]:
+        d = dict(data)
+        self.randomize(None)
+
+        for key in self.key_iterator(d):
+            if self._do_transform:
+                d[key] = self.trans(d[key])
+        return d

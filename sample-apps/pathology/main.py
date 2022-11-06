@@ -199,7 +199,7 @@ def main():
     )
 
     home = str(Path.home())
-    studies = f"{home}/Dataset/Pathology/dummy2"
+    studies = f"{home}/Dataset/Pathology/dummy"
 
     app_dir = os.path.dirname(__file__)
     app = MyApp(
