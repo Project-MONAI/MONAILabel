@@ -123,9 +123,7 @@ class ClassificationNuclei(BasicTrainTask):
         return {"train_acc": Accuracy(output_transform=from_engine(["pred", "label"]))}
 
     def val_key_metric(self, context: Context):
-        return {
-            "val_acc": Accuracy(output_transform=from_engine(["pred", "label"])),
-        }
+        return {"val_acc": Accuracy(output_transform=from_engine(["pred", "label"]))}
 
     def val_inferer(self, context: Context):
         return SimpleInferer()

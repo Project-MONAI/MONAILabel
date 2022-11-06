@@ -14,6 +14,8 @@ import os
 
 import numpy as np
 import torch
+from ignite.metrics import Accuracy
+
 from lib.handlers import TensorBoardImageHandler
 from lib.transforms import AddMaskValued
 from lib.utils import split_dataset, split_nuclei_dataset
@@ -128,17 +130,17 @@ class NuClick(BasicTrainTask):
         t[-2] = AddPointGuidanceSignald(image="image", label="label", others="others", drop_rate=1.0)
         return t
 
-    def train_key_metric(self, context: Context):
-        return {"train_dice": MeanDice(include_background=False, output_transform=from_engine(["pred", "label"]))}
+    def train_additional_metrics(self, context: Context):
+        return {"train_acc": Accuracy(output_transform=from_engine(["pred", "label"]))}
 
-    def val_key_metric(self, context: Context):
-        return {"val_dice": MeanDice(include_background=False, output_transform=from_engine(["pred", "label"]))}
+    def val_additional_metrics(self, context: Context):
+        return {"val_acc": Accuracy(output_transform=from_engine(["pred", "label"]))}
 
     def val_inferer(self, context: Context):
         return SimpleInferer()
 
-    def train_handlers(self, context: Context):
-        handlers = super().train_handlers(context)
+    def val_handlers(self, context: Context):
+        handlers = super().val_handlers(context)
         if context.local_rank == 0:
             handlers.append(TensorBoardImageHandler(log_dir=context.events_dir, batch_limit=4))
         return handlers

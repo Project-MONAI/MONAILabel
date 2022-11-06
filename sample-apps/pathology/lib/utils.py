@@ -655,13 +655,13 @@ def main_nuclei():
     )
 
     home = str(Path.home())
-    for f in ["validation"]:
+    for f in ["training", "validation"]:
         studies = f"{home}/Dataset/Pathology/CoNSeP/{f}"
-        output_dir = f"{home}/Dataset/Pathology/CoNSeP/{f}Seg"
+        output_dir = f"{home}/Dataset/Pathology/CoNSeP/{f}Nuclei"
 
         logger.info(f"Generate Nuclei Dataset for: {studies}")
         datastore = LocalDatastore(studies, extensions=("*.png", "*.mat"))
-        split_dataset(datastore, output_dir, "consep", None, None, limit=0, crop_size=0)
+        split_dataset(datastore, output_dir, "consep_nuclei", None, None, limit=0)
 
 
 if __name__ == "__main__":
