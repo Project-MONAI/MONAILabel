@@ -75,7 +75,7 @@ def create_infer_wsi_tasks(request, image):
             if ignore_small_patches and (tw < pw or th < ph):
                 continue
 
-            if ignore_non_click_patches:
+            if ignore_non_click_patches and (request.get("foreground") or request.get("background")):
 
                 def filter_points(ptype):
                     pos = request.get(ptype)
