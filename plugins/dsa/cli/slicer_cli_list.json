@@ -1,6 +1,9 @@
 {
   "MONAILabelAnnotation": {
-    "type"    : "python"
+    "type": "python",
+    "docker-params": {
+        "network_mode": "host"
+    }
   },
   "MONAILabelTraining": {
     "type"    : "python"
