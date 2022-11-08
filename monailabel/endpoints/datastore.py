@@ -26,7 +26,7 @@ from monailabel.endpoints.user.auth import User, get_admin_user, get_annotator_u
 from monailabel.interfaces.app import MONAILabelApp
 from monailabel.interfaces.datastore import Datastore, DefaultLabelTag
 from monailabel.interfaces.utils.app import app_instance
-from monailabel.utils.others.generic import get_mime_type, remove_file
+from monailabel.utils.others.generic import file_checksum, get_mime_type, remove_file
 
 logger = logging.getLogger(__name__)
 train_tasks: List = []
@@ -129,13 +129,19 @@ def remove_label(id: str, tag: str, user: Optional[str] = None):
     return {}
 
 
-def download_image(image: str, check_only=False):
+def download_image(image: str, check_only=False, check_sum=None):
     instance: MONAILabelApp = app_instance()
     image = instance.datastore().get_image_uri(image)
     if not os.path.isfile(image):
         raise HTTPException(status_code=404, detail="Image NOT Found")
 
     if check_only:
+        if check_sum:
+            fields = check_sum.split(":")
+            algo = "SHA256" if len(fields) == 1 else fields[0]
+            digest = check_sum.lstrip(algo + ":") if len(fields) > 1 else check_sum
+            if digest != file_checksum(image, algo=algo):
+                raise HTTPException(status_code=404, detail="Image NOT Found (checksum failed)")
         return {}
     return FileResponse(image, media_type=get_mime_type(image), filename=os.path.basename(image))
 
@@ -213,8 +219,8 @@ async def api_remove_image(id: str, user: User = Depends(get_admin_user)):
 
 
 @router.head("/image", summary="Check If Image Exists")
-async def api_check_image(image: str, user: User = Depends(get_basic_user)):
-    return download_image(image, check_only=True)
+async def api_check_image(image: str, check_sum: Optional[str] = None, user: User = Depends(get_basic_user)):
+    return download_image(image, check_only=True, check_sum=check_sum)
 
 
 @router.get("/image", summary="Download Image")

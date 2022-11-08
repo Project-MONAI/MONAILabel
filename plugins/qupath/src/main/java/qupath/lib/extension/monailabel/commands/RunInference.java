@@ -15,6 +15,7 @@ package qupath.lib.extension.monailabel.commands;
 
 import java.awt.Color;
 import java.awt.image.BufferedImage;
+import java.io.File;
 import java.io.IOException;
 import java.nio.file.Path;
 import java.util.ArrayList;
@@ -83,7 +84,8 @@ public class RunInference implements Runnable {
 					ROI r = obj.getROI();
 					if (r instanceof RectangleROI) {
 						roi = r;
-						Dialogs.showWarningNotification("MONALabel", "ROI is NOT explicitly selected; using first Rectangle ROI from Hierarchy");
+						Dialogs.showWarningNotification("MONALabel",
+								"ROI is NOT explicitly selected; using first Rectangle ROI from Hierarchy");
 						imageData.getHierarchy().getSelectionModel().setSelectedObject(obj);
 						break;
 					}
@@ -125,8 +127,8 @@ public class RunInference implements Runnable {
 		}
 	}
 
-	ArrayList<Point2> getClicks(String name, ImageData<BufferedImage> imageData, ROI monaiLabelROI, int offsetX,
-			int offsetY) {
+	public static ArrayList<Point2> getClicks(String name, ImageData<BufferedImage> imageData, ROI monaiLabelROI,
+			int offsetX, int offsetY) {
 		List<PathObject> objs = imageData.getHierarchy().getFlattenedObjectList(null);
 		ArrayList<Point2> clicks = new ArrayList<Point2>();
 		for (int i = 0; i < objs.size(); i++) {
@@ -149,7 +151,7 @@ public class RunInference implements Runnable {
 		return clicks;
 	}
 
-	private void runInference(String model, ResponseInfo info, int[] bbox, int tileSize,
+	public static void runInference(String model, ResponseInfo info, int[] bbox, int tileSize,
 			ImageData<BufferedImage> imageData)
 			throws SAXException, IOException, ParserConfigurationException, InterruptedException {
 		logger.info("MONAILabel:: Running Inference...");
@@ -173,8 +175,11 @@ public class RunInference implements Runnable {
 
 			ROI roi = ROIs.createRectangleROI(bbox[0], bbox[1], bbox[2], bbox[3], null);
 			String imageFile = imageData.getServerPath();
-			if (imageFile.startsWith("file:/"))
-				imageFile = imageFile.replace("file:/", "");
+			if (imageFile.indexOf("file:/") >= 0)
+				imageFile = imageFile.substring(imageFile.indexOf("file:/") + "file:/".length());
+
+			int pos = imageFile.indexOf("[");
+			imageFile = imageFile.substring(0, pos > 0 ? pos : imageFile.length());
 			logger.info("MONAILabel:: Image File: " + imageFile);
 
 			String image = Utils.getNameWithoutExtension(imageFile);
@@ -185,6 +190,7 @@ public class RunInference implements Runnable {
 			// check if image exists on server
 			if (!MonaiLabelClient.imageExists(image) && (sessionId == null || sessionId.isEmpty())) {
 				logger.info("MONAILabel:: Image does not exist on Server.");
+
 				image = null;
 				offsetX = req.location[0];
 				offsetY = req.location[1];
@@ -192,11 +198,22 @@ public class RunInference implements Runnable {
 				req.location[0] = req.location[1] = 0;
 				req.size[0] = req.size[1] = 0;
 
+				String im = imageFile.toLowerCase();
+				if ((im.endsWith(".png") || im.endsWith(".jpg") || im.endsWith(".jpeg"))
+						&& new File(imageFile).exists()) {
+					logger.info("Simple Image.. will directly upload the same");
+				} else {
+					if (bbox[2] == 0 && bbox[3] == 0) {
+						Dialogs.showErrorMessage("MONAILabel",
+								"Can not run WSI Inference on a remote image (Not exists in Datastore)");
+						return;
+					}
 
-				imagePatch = java.nio.file.Files.createTempFile("patch", ".png");
-				imageFile = imagePatch.toString();
-				var requestROI = RegionRequest.createInstance(imageData.getServer().getPath(), 1, roi);
-				ImageWriterTools.writeImageRegion(imageData.getServer(), requestROI, imageFile);
+					imagePatch = java.nio.file.Files.createTempFile("patch", ".png");
+					imageFile = imagePatch.toString();
+					var requestROI = RegionRequest.createInstance(imageData.getServer().getPath(), 1, roi);
+					ImageWriterTools.writeImageRegion(imageData.getServer(), requestROI, imageFile);
+				}
 			}
 
 			ArrayList<Point2> fg = new ArrayList<>();
@@ -215,15 +232,13 @@ public class RunInference implements Runnable {
 					return;
 				}
 				if (roi.getBoundsHeight() < 128 || roi.getBoundsWidth() < 128) {
-					Dialogs.showErrorMessage("MONAILabel",
-							"Min Height/Width of ROI should be more than 128");
+					Dialogs.showErrorMessage("MONAILabel", "Min Height/Width of ROI should be more than 128");
 					return;
 				}
 			}
 			req.params.addClicks(fg, true);
 			req.params.addClicks(bg, false);
 			req.params.max_workers = Settings.maxWorkersProperty().intValue();
-
 
 			Document dom = MonaiLabelClient.infer(model, image, imageFile, sessionId, req);
 			NodeList annotation_list = dom.getElementsByTagName("Annotation");
@@ -237,7 +252,7 @@ public class RunInference implements Runnable {
 		}
 	}
 
-	private int updateAnnotations(Set<String> labels, NodeList annotation_list, ROI roi,
+	public static int updateAnnotations(Set<String> labels, NodeList annotation_list, ROI roi,
 			ImageData<BufferedImage> imageData, boolean override, int offsetX, int offsetY) {
 		if (override) {
 			List<PathObject> objs = imageData.getHierarchy().getFlattenedObjectList(null);

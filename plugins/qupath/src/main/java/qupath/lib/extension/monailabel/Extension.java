@@ -15,18 +15,27 @@ package qupath.lib.extension.monailabel;
 
 import java.net.URL;
 
+import org.bytedeco.openblas.global.openblas;
 import org.controlsfx.control.action.ActionUtils;
+import org.controlsfx.glyphfont.Glyph;
+import org.controlsfx.glyphfont.GlyphFontRegistry;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
+import javafx.application.Platform;
 import javafx.geometry.Orientation;
+import javafx.scene.Node;
 import javafx.scene.control.Button;
 import javafx.scene.control.ContextMenu;
 import javafx.scene.control.Separator;
 import javafx.scene.control.Tooltip;
 import javafx.scene.image.Image;
 import javafx.scene.image.ImageView;
+import javafx.scene.input.KeyCode;
+import javafx.scene.input.KeyCodeCombination;
 import javafx.scene.input.KeyCombination;
+import javafx.scene.paint.Color;
+import qupath.lib.common.GeneralTools;
 import qupath.lib.common.Version;
 import qupath.lib.extension.monailabel.commands.NextSample;
 import qupath.lib.extension.monailabel.commands.RunInference;
@@ -35,10 +44,13 @@ import qupath.lib.extension.monailabel.commands.SubmitLabel;
 import qupath.lib.gui.ActionTools;
 import qupath.lib.gui.QuPathGUI;
 import qupath.lib.gui.extensions.QuPathExtension;
+import qupath.lib.gui.tools.IconFactory;
 import qupath.lib.gui.tools.MenuTools;
+import qupath.lib.gui.viewer.tools.PathTools;
 
 public class Extension implements QuPathExtension {
 	final private static Logger logger = LoggerFactory.getLogger(Extension.class);
+
 
 	@Override
 	public void installExtension(QuPathGUI qupath) {
@@ -85,10 +97,49 @@ public class Extension implements QuPathExtension {
 			});
 
 			toolbar.getItems().add(btnAnnotation);
+
+			installInteractor(qupath);
 		} catch (Exception e) {
 			logger.error("Error adding toolbar buttons", e);
 		}
 	}
+
+	public static Node createIconNode(char code, Color color) {
+		try {
+            GlyphFontRegistry.register("icomoon", IconFactory.class.getClassLoader().getResourceAsStream("fonts/icomoon.ttf") , 12);
+	        var font = GlyphFontRegistry.font("FontAwesome");
+
+	        Glyph g = font.create(code).size(QuPathGUI.TOOLBAR_ICON_SIZE);
+			g.setIcon(code);
+			g.color(color);
+			g.getStyleClass().add("qupath-icon");
+			return g;
+		}
+		catch (Exception e) {
+			logger.error("Unable to load icon {}", code, e);
+			return null;
+		}
+	}
+
+
+    private void installInteractor(QuPathGUI qupath) {
+    	var t = new Thread(() -> {
+	    	if (!GeneralTools.isWindows()) {
+	    		openblas.blas_set_num_threads(1);
+	    	}
+
+			var interactorTool = PathTools.createTool(new InteractorTool(), "Interactor",
+					Extension.createIconNode('\uf192', Color.DARKCYAN));
+
+			logger.info("Installing Interactor Tool");
+			Platform.runLater(() -> {
+				qupath.installTool(interactorTool, new KeyCodeCombination(KeyCode.I));
+				qupath.getToolAction(interactorTool).setLongText("Click to annotate using MONAILabel Interaction models.");
+			});
+		});
+		t.start();
+    }
+
 
 	@Override
 	public String getName() {
