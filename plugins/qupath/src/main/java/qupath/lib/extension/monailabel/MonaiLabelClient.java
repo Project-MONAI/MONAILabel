@@ -234,6 +234,7 @@ public class MonaiLabelClient {
 			String uri = "/datastore/image?image=" + URLEncoder.encode(image, "UTF-8");
 			String res = RequestUtils.request("HEAD", uri, null);
 
+			// TODO:: Also verify checksum to make sure it's the same file
 			logger.info("MONAILabel:: (Image Exists) Response => " + res);
 			return true;
 		} catch (IOException | InterruptedException e) {
