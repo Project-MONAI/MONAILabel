@@ -77,7 +77,7 @@ public class InteractorTool extends PointsTool {
 			int[] bbox = { x, y, w, h };
 
 			RunInference.runInference(selectedModel, info, bbox, selectedPatchSize, viewer.getImageData());
-			//currentObject.setROI(ROIs.createPointsROI(viewer.getImagePlane()));
+			// currentObject.setROI(ROIs.createPointsROI(viewer.getImagePlane()));
 			viewer.getHierarchy().getSelectionModel().clearSelection();
 		} catch (Exception ex) {
 			ex.printStackTrace();

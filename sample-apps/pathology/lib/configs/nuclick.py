@@ -81,10 +81,8 @@ class NuClick(TaskConfig):
             train_save_interval=1,
             config={
                 "max_epochs": 10,
-                "train_batch_size": 64,
-                "dataset_max_region": (10240, 10240),
-                "dataset_limit": 0,
-                "dataset_randomize": True,
+                "train_batch_size": 16,
+                "val_batch_size": 16,
             },
         )
         return task

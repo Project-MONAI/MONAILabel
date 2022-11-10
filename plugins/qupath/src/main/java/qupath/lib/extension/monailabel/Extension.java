@@ -51,7 +51,6 @@ import qupath.lib.gui.viewer.tools.PathTools;
 public class Extension implements QuPathExtension {
 	final private static Logger logger = LoggerFactory.getLogger(Extension.class);
 
-
 	@Override
 	public void installExtension(QuPathGUI qupath) {
 
@@ -106,27 +105,26 @@ public class Extension implements QuPathExtension {
 
 	public static Node createIconNode(char code, Color color) {
 		try {
-            GlyphFontRegistry.register("icomoon", IconFactory.class.getClassLoader().getResourceAsStream("fonts/icomoon.ttf") , 12);
-	        var font = GlyphFontRegistry.font("FontAwesome");
+			GlyphFontRegistry.register("icomoon",
+					IconFactory.class.getClassLoader().getResourceAsStream("fonts/icomoon.ttf"), 12);
+			var font = GlyphFontRegistry.font("FontAwesome");
 
-	        Glyph g = font.create(code).size(QuPathGUI.TOOLBAR_ICON_SIZE);
+			Glyph g = font.create(code).size(QuPathGUI.TOOLBAR_ICON_SIZE);
 			g.setIcon(code);
 			g.color(color);
 			g.getStyleClass().add("qupath-icon");
 			return g;
-		}
-		catch (Exception e) {
+		} catch (Exception e) {
 			logger.error("Unable to load icon {}", code, e);
 			return null;
 		}
 	}
 
-
-    private void installInteractor(QuPathGUI qupath) {
-    	var t = new Thread(() -> {
-	    	if (!GeneralTools.isWindows()) {
-	    		openblas.blas_set_num_threads(1);
-	    	}
+	private void installInteractor(QuPathGUI qupath) {
+		var t = new Thread(() -> {
+			if (!GeneralTools.isWindows()) {
+				openblas.blas_set_num_threads(1);
+			}
 
 			var interactorTool = PathTools.createTool(new InteractorTool(), "Interactor",
 					Extension.createIconNode('\uf192', Color.DARKCYAN));
@@ -134,12 +132,12 @@ public class Extension implements QuPathExtension {
 			logger.info("Installing Interactor Tool");
 			Platform.runLater(() -> {
 				qupath.installTool(interactorTool, new KeyCodeCombination(KeyCode.I));
-				qupath.getToolAction(interactorTool).setLongText("Click to annotate using MONAILabel Interaction models.");
+				qupath.getToolAction(interactorTool)
+						.setLongText("Click to annotate using MONAILabel Interaction models.");
 			});
 		});
 		t.start();
-    }
-
+	}
 
 	@Override
 	public String getName() {

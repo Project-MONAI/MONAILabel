@@ -86,10 +86,8 @@ class DeepEditNuclei(TaskConfig):
             description="Train Nuclei DeepEdit Model",
             config={
                 "max_epochs": 10,
-                "train_batch_size": 1,
-                "dataset_max_region": (10240, 10240),
-                "dataset_limit": 0,
-                "dataset_randomize": True,
+                "train_batch_size": 16,
+                "val_batch_size": 16,
             },
         )
         return task

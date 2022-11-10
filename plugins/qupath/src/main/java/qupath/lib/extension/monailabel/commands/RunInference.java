@@ -174,12 +174,7 @@ public class RunInference implements Runnable {
 			req.tile_size[1] = tileSize;
 
 			ROI roi = ROIs.createRectangleROI(bbox[0], bbox[1], bbox[2], bbox[3], null);
-			String imageFile = imageData.getServerPath();
-			if (imageFile.indexOf("file:/") >= 0)
-				imageFile = imageFile.substring(imageFile.indexOf("file:/") + "file:/".length());
-
-			int pos = imageFile.indexOf("[");
-			imageFile = imageFile.substring(0, pos > 0 ? pos : imageFile.length());
+			String imageFile = Utils.getFileName(imageData.getServerPath());
 			logger.info("MONAILabel:: Image File: " + imageFile);
 
 			String image = Utils.getNameWithoutExtension(imageFile);

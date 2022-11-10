@@ -42,6 +42,7 @@ import com.google.gson.JsonDeserializer;
 import com.google.gson.JsonElement;
 import com.google.gson.JsonObject;
 import com.google.gson.JsonParseException;
+import com.google.gson.ToNumberPolicy;
 
 import qupath.lib.geom.Point2;
 
@@ -156,7 +157,8 @@ public class MonaiLabelClient {
 		String res = RequestUtils.request("GET", uri, null);
 		logger.info("MONAILabel:: INFO Response => " + res);
 
-		Gson gson = new GsonBuilder().registerTypeAdapter(Labels.class, new LabelsDeserializer()).create();
+		Gson gson = new GsonBuilder().setObjectToNumberStrategy(ToNumberPolicy.LONG_OR_DOUBLE)
+				.registerTypeAdapter(Labels.class, new LabelsDeserializer()).create();
 		return gson.fromJson(res, ResponseInfo.class);
 	}
 
@@ -209,7 +211,8 @@ public class MonaiLabelClient {
 		fields.put("params", params);
 
 		String res = RequestUtils.requestMultiPart("PUT", uri, files, fields);
-		return new GsonBuilder().create().fromJson(res, ImageInfo.class);
+		return new GsonBuilder().setObjectToNumberStrategy(ToNumberPolicy.LONG_OR_DOUBLE).create().fromJson(res,
+				ImageInfo.class);
 	}
 
 	public static LabelInfo saveLabel(String image, File label, String tag, String params)
@@ -226,7 +229,8 @@ public class MonaiLabelClient {
 		fields.put("params", params);
 
 		String res = RequestUtils.requestMultiPart("PUT", uri, files, fields);
-		return new GsonBuilder().create().fromJson(res, LabelInfo.class);
+		return new GsonBuilder().setObjectToNumberStrategy(ToNumberPolicy.LONG_OR_DOUBLE).create().fromJson(res,
+				LabelInfo.class);
 	}
 
 	public static boolean imageExists(String image) {
@@ -247,6 +251,7 @@ public class MonaiLabelClient {
 		logger.info("MONAILabel:: Next Sample Request (" + strategy + ") => " + params);
 
 		String res = RequestUtils.request("POST", uri, params);
-		return new GsonBuilder().create().fromJson(res, NextSampleInfo.class);
+		return new GsonBuilder().setObjectToNumberStrategy(ToNumberPolicy.LONG_OR_DOUBLE).create().fromJson(res,
+				NextSampleInfo.class);
 	}
 }

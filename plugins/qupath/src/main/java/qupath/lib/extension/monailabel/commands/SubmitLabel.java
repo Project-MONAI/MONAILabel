@@ -41,6 +41,7 @@ import qupath.lib.extension.monailabel.MonaiLabelClient.ImageInfo;
 import qupath.lib.extension.monailabel.Utils;
 import qupath.lib.gui.QuPathGUI;
 import qupath.lib.gui.dialogs.Dialogs;
+import qupath.lib.gui.dialogs.Dialogs.DialogButton;
 import qupath.lib.images.ImageData;
 import qupath.lib.images.writers.ImageWriterTools;
 import qupath.lib.objects.PathObject;
@@ -65,56 +66,64 @@ public class SubmitLabel implements Runnable {
 		try {
 			var viewer = qupath.getViewer();
 			var imageData = viewer.getImageData();
-			String image = Utils.getNameWithoutExtension(imageData.getServerPath());
+			String imageFile = Utils.getFileName(imageData.getServerPath());
+			String image = Utils.getNameWithoutExtension(imageFile);
 
-			if (!MonaiLabelClient.imageExists(image)) {
-				logger.info("Image does not exist on Server.");
-				var selected = imageData.getHierarchy().getSelectionModel().getSelectedObject();
-				var roi = selected != null ? selected.getROI() : null;
-				int[] bbox = Utils.getBBOX(roi);
-				if (bbox[2] <= 0 && bbox[3] <= 0) {
-					Dialogs.showWarningNotification("MONAILabel",
-							"Please select the Annotation ROI/Rectangle for submission");
-					return;
-				}
+			boolean validImage = MonaiLabelClient.imageExists(image);
+			logger.info("Image exist on Server: " + validImage);
 
-				String patchName = image + String.format("-patch-%d_%d_%d_%d", bbox[0], bbox[1], bbox[2], bbox[3]);
-				ParameterList list = new ParameterList();
-				list.addStringParameter("Location", "Patch (x,y,w,h)", Arrays.toString(bbox));
-				list.addStringParameter("Patch", "Patch Name", patchName);
+			if (validImage) {
+				var choice = Dialogs.showYesNoCancelDialog("MONAILabel",
+						"This will submit annotation to MONAI Label Server and override existing annotations for: '"
+								+ image + "'\n"
+								+ "\nDo you want to save Annotation for selected ROI instead of WSI Image?"
+								+ "  Click 'No' to save for WSI instead of ROI.");
 
-				if (Dialogs.showParameterDialog("MONAILabel - Save Patch + Label", list)) {
-					bbox = Utils.parseStringArray(list.getStringParameterValue("Location"));
-					patchName = list.getStringParameterValue("Patch");
-					if (Dialogs.showYesNoDialog("MONAILabel",
-							"This will upload BOTH image patch + annotation to MONAI Label Server.\n\n"
-									+ "Do you want to continue?")) {
-
-						annotationXML = getAnnotationsXml(image, imageData, bbox);
-						logger.info("MONAILabel:: Annotations XML: " + annotationXML);
-
-						imagePatch = java.nio.file.Files.createTempFile("patch", ".png");
-						var requestROI = RegionRequest.createInstance(imageData.getServer().getPath(), 1, roi);
-						ImageWriterTools.writeImageRegion(imageData.getServer(), requestROI, imagePatch.toString());
-
-						ImageInfo imageInfo = MonaiLabelClient.saveImage(patchName, imagePatch.toFile(), "{}");
-						logger.info("MONAILabel:: New Image ID => " + imageInfo.image);
-						Dialogs.showInfoNotification("MONALabel", "Image Patch uploaded to MONAILabel Server");
-
-						MonaiLabelClient.saveLabel(imageInfo.image, annotationXML.toFile(), null, "{}");
-						Dialogs.showInfoNotification("MONALabel", "Label/Annotations saved in Server");
-					}
-				}
-			} else {
-				if (Dialogs.showYesNoDialog("MONAILabel",
-						"Do you like to submit this annotation to MONAI Label Server?\n\n"
-								+ "This might override any existing annotations in MONAI Label server for: '" + image
-								+ "'")) {
-
+				if (choice == DialogButton.YES) {
 					annotationXML = getAnnotationsXml(image, imageData, new int[4]);
 					logger.info("Annotations XML: " + annotationXML);
 
 					MonaiLabelClient.saveLabel(image, annotationXML.toFile(), null, "{}");
+					Dialogs.showInfoNotification("MONALabel", "Label/Annotations saved in Server");
+					return;
+				} else if (choice == DialogButton.CANCEL) {
+					return;
+				}
+			}
+
+			var selected = imageData.getHierarchy().getSelectionModel().getSelectedObject();
+			var roi = selected != null ? selected.getROI() : null;
+			int[] bbox = Utils.getBBOX(roi);
+			if (bbox[2] <= 0 && bbox[3] <= 0) {
+				Dialogs.showWarningNotification("MONAILabel",
+						"Please select the Annotation ROI/Rectangle for submission");
+				return;
+			}
+
+			String patchName = image + String.format("-patch-%d_%d_%d_%d", bbox[0], bbox[1], bbox[2], bbox[3]);
+			ParameterList list = new ParameterList();
+			list.addStringParameter("Location", "Patch (x,y,w,h)", Arrays.toString(bbox));
+			list.addStringParameter("Patch", "Patch Name", patchName);
+
+			if (Dialogs.showParameterDialog("MONAILabel - Save Patch + Label", list)) {
+				bbox = Utils.parseStringArray(list.getStringParameterValue("Location"));
+				patchName = list.getStringParameterValue("Patch");
+				if (validImage || Dialogs.showYesNoDialog("MONAILabel",
+						"This will upload BOTH image patch + annotation to MONAI Label Server.\n\n"
+								+ "Do you want to continue?")) {
+
+					annotationXML = getAnnotationsXml(image, imageData, bbox);
+					logger.info("MONAILabel:: Annotations XML: " + annotationXML);
+
+					imagePatch = java.nio.file.Files.createTempFile("patch", ".png");
+					var requestROI = RegionRequest.createInstance(imageData.getServer().getPath(), 1, roi);
+					ImageWriterTools.writeImageRegion(imageData.getServer(), requestROI, imagePatch.toString());
+
+					ImageInfo imageInfo = MonaiLabelClient.saveImage(patchName, imagePatch.toFile(), "{}");
+					logger.info("MONAILabel:: New Image ID => " + imageInfo.image);
+					Dialogs.showInfoNotification("MONALabel", "Image Patch uploaded to MONAILabel Server");
+
+					MonaiLabelClient.saveLabel(imageInfo.image, annotationXML.toFile(), null, "{}");
 					Dialogs.showInfoNotification("MONALabel", "Label/Annotations saved in Server");
 				}
 			}
