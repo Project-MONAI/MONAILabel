@@ -52,6 +52,9 @@ public class InteractorTool extends PointsTool {
 					}
 				}
 				int patchSize = selectedPatchSize;
+				if (names.size() == 0) {
+					return;
+				}
 				if (names.size() == 1) {
 					selectedModel = names.get(0);
 				}
