@@ -25,6 +25,7 @@ repositories {
 dependencies {
   shadow "io.github.qupath:qupath-gui-fx:0.3.0"
   shadow "org.slf4j:slf4j-api:1.7.30"
+  implementation "com.google.code.gson:gson:2.10"
 }
 
 tasks.register("copyDependencies", Copy) {

@@ -24,6 +24,16 @@ import qupath.lib.roi.RectangleROI;
 import qupath.lib.roi.interfaces.ROI;
 
 public class Utils {
+
+	public static String getFileName(String file) {
+		if (file.indexOf("file:/") >= 0)
+			file = file.substring(file.indexOf("file:/") + "file:/".length());
+
+		int pos = file.indexOf("[");
+		file = file.substring(0, pos > 0 ? pos : file.length());
+		return file;
+	}
+
 	public static String getNameWithoutExtension(String file) {
 		String fileName = new File(file).getName();
 		int dotIndex = fileName.lastIndexOf('.');

@@ -61,10 +61,12 @@ public class NextSample implements Runnable {
 				selectedStrategy = names.isEmpty() ? "" : names.get(0);
 			}
 
-			boolean imageLoaded = qupath.imageDataProperty() == null || qupath.imageDataProperty().isNull().get() ? false : true;
+			boolean imageLoaded = qupath.imageDataProperty() == null || qupath.imageDataProperty().isNull().get()
+					? false
+					: true;
 			boolean nextPatch = imageLoaded;
-			int[] patchSize = {1024, 1024};
-			int[] imageSize = {0, 0};
+			int[] patchSize = { 1024, 1024 };
+			int[] imageSize = { 0, 0 };
 
 			ParameterList list = new ParameterList();
 			list.addChoiceParameter("Strategy", "Active Learning Strategy", selectedStrategy, names);
@@ -116,7 +118,8 @@ public class NextSample implements Runnable {
 							qupath.openImage(f.getAbsolutePath(), false, false);
 						} else {
 							// TODO:: Download and Open image (wsi) from Remote
-							// String f = "C:\\Dataset\\Pathology\\TCGA-02-0010-01Z-00-DX4.07de2e55-a8fe-40ee-9e98-bcb78050b9f7.svs";
+							// String f =
+							// "C:\\Dataset\\Pathology\\TCGA-02-0010-01Z-00-DX4.07de2e55-a8fe-40ee-9e98-bcb78050b9f7.svs";
 						}
 					}
 				}
