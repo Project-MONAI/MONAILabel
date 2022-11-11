@@ -97,17 +97,17 @@ public class Extension implements QuPathExtension {
 
 			toolbar.getItems().add(btnAnnotation);
 
-			installInteractor(qupath);
+			installToolbarActions(qupath);
 		} catch (Exception e) {
 			logger.error("Error adding toolbar buttons", e);
 		}
 	}
 
-	public static Node createIconNode(char code, Color color) {
+	public static Node createIconNode(char code, Color color, boolean icoMoon) {
 		try {
 			GlyphFontRegistry.register("icomoon",
 					IconFactory.class.getClassLoader().getResourceAsStream("fonts/icomoon.ttf"), 12);
-			var font = GlyphFontRegistry.font("FontAwesome");
+			var font = icoMoon ? GlyphFontRegistry.font("icomoon") : GlyphFontRegistry.font("FontAwesome");
 
 			Glyph g = font.create(code).size(QuPathGUI.TOOLBAR_ICON_SIZE);
 			g.setIcon(code);
@@ -120,20 +120,26 @@ public class Extension implements QuPathExtension {
 		}
 	}
 
-	private void installInteractor(QuPathGUI qupath) {
+	private void installToolbarActions(QuPathGUI qupath) {
 		var t = new Thread(() -> {
 			if (!GeneralTools.isWindows()) {
 				openblas.blas_set_num_threads(1);
 			}
 
-			var interactorTool = PathTools.createTool(new InteractorTool(), "Interactor",
-					Extension.createIconNode('\uf192', Color.DARKCYAN));
-
-			logger.info("Installing Interactor Tool");
+			logger.info("Installing MONAILabel Toolbar actions");
 			Platform.runLater(() -> {
-				qupath.installTool(interactorTool, new KeyCodeCombination(KeyCode.I));
+				var segmentationTool = PathTools.createTool(new SegmentationTool(), "Segmentation",
+						Extension.createIconNode('\ue916', Color.DARKCYAN, true));
+				qupath.installTool(segmentationTool, new KeyCodeCombination(KeyCode.S, KeyCombination.ALT_ANY));
+				qupath.getToolAction(segmentationTool)
+						.setLongText("Click to annotate using MONAILabel Segmentation models.");
+
+				var interactorTool = PathTools.createTool(new InteractorTool(), "Interactor",
+						Extension.createIconNode('\uf192', Color.DARKCYAN, false));
+				qupath.installTool(interactorTool, new KeyCodeCombination(KeyCode.I, KeyCombination.ALT_ANY));
 				qupath.getToolAction(interactorTool)
 						.setLongText("Click to annotate using MONAILabel Interaction models.");
+
 			});
 		});
 		t.start();
