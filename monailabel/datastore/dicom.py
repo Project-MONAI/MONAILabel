@@ -133,7 +133,7 @@ class DICOMWebDatastore(LocalDatastore):
         return series
 
     @cached(cache=TTLCache(maxsize=16, ttl=settings.MONAI_LABEL_DICOMWEB_CACHE_EXPIRY))
-    def get_labeled_images(self) -> List[str]:
+    def get_labeled_images(self, label_tag: Optional[str] = None, labels: Optional[List[str]] = None) -> List[str]:
         datasets = self._client.search_for_series(search_filters={"Modality": "SEG"})
         all_segs = [Dataset.from_json(ds) for ds in datasets]
 
@@ -163,7 +163,7 @@ class DICOMWebDatastore(LocalDatastore):
                 )
         return image_series
 
-    def get_unlabeled_images(self) -> List[str]:
+    def get_unlabeled_images(self, label_tag: Optional[str] = None, labels: Optional[List[str]] = None) -> List[str]:
         series = self.list_images()
 
         seg_series = self.get_labeled_images()

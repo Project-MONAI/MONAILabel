@@ -38,7 +38,20 @@ def dump_data(data, level=logging.DEBUG):
         logger.log(level, "******************************************************************************")
 
 
-def shape_info(data, keys=("image", "label", "logits", "pred", "model", "points")):
+def shape_info(
+    data,
+    keys=(
+        "image",
+        "label",
+        "logits",
+        "pred",
+        "model",
+        "points",
+        "horizontal_vertical",
+        "nucleus_prediction",
+        "type_prediction",
+    ),
+):
     info = []
     for key in keys:
         val = data.get(key) if data and hasattr(data, "get") else None

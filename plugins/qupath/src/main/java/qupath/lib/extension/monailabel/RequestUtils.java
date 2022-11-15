@@ -15,14 +15,18 @@ package qupath.lib.extension.monailabel;
 
 import java.io.ByteArrayOutputStream;
 import java.io.File;
+import java.io.FileOutputStream;
 import java.io.IOException;
 import java.math.BigInteger;
 import java.net.URI;
+import java.net.URL;
 import java.net.http.HttpClient;
 import java.net.http.HttpRequest;
 import java.net.http.HttpRequest.BodyPublisher;
 import java.net.http.HttpRequest.BodyPublishers;
 import java.net.http.HttpResponse.BodyHandlers;
+import java.nio.channels.Channels;
+import java.nio.channels.ReadableByteChannel;
 import java.nio.charset.Charset;
 import java.nio.charset.StandardCharsets;
 import java.nio.file.Files;
@@ -58,6 +62,18 @@ public class RequestUtils {
 			throw new IOException(response.toString());
 		}
 		return response.body();
+	}
+
+	public static void download(String uri, File file) throws IOException, InterruptedException {
+		String monaiServer = Settings.serverURLProperty().get();
+		String requestURI = monaiServer + uri;
+		logger.info("MONAILabel:: Download URL => " + requestURI);
+
+		ReadableByteChannel rbc = Channels.newChannel(new URL(requestURI).openStream());
+		FileOutputStream fos = new FileOutputStream(file);
+		fos.getChannel().transferFrom(rbc, 0, Long.MAX_VALUE);
+		fos.close();
+		rbc.close();
 	}
 
 	public static String requestMultiPart(String method, String uri, Map<String, File> files,

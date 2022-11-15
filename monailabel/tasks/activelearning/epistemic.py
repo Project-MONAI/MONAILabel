@@ -35,7 +35,9 @@ class Epistemic(Strategy):
         super().__init__(desc)
 
     def __call__(self, request, datastore: Datastore):
-        images = datastore.get_unlabeled_images()
+        label_tag = request.get("label_tag")
+        labels = request.get("labels")
+        images = datastore.get_unlabeled_images(label_tag, labels)
 
         if not len(images):
             return None

@@ -13,11 +13,14 @@ limitations under the License.
 
 ## Version 0.3.1
 
- - Bring your own image (need not to be shared/located with MONAI Label)
+ - Bring your own image (not required be shared/located with MONAI Label)
    - Region/ROI based annotation
    - Save/Submit ROI + annotation to server
    - Submit multiple patches per image
  - Accelerator Keys for MONAILabel actions
+ - Enhanced Training Options
+ - Enhance Toolbar Options to directly run segmentation/interaction models
+ - Option to Fetch Next Sample/Patch (Active Learning)
 
 ## Version 0.3.0
 

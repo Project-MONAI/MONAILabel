@@ -254,4 +254,12 @@ public class MonaiLabelClient {
 		return new GsonBuilder().setObjectToNumberStrategy(ToNumberPolicy.LONG_OR_DOUBLE).create().fromJson(res,
 				NextSampleInfo.class);
 	}
+
+	public static void downloadImage(String image, File file) throws IOException, InterruptedException {
+		String uri = "/datastore/image?image=" + URLEncoder.encode(image, "UTF-8");
+		RequestUtils.download(uri, file);
+
+		// TODO:: Also verify checksum to make sure it's the same file
+		logger.info("MONAILabel:: (Image Downloaded/Exists) Response => " + file.exists());
+	}
 }

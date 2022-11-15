@@ -15,9 +15,10 @@ import os
 import time
 from abc import abstractmethod
 from enum import Enum
-from typing import Any, Callable, Dict, Sequence, Tuple, Union
+from typing import Any, Callable, Dict, List, Sequence, Tuple, Union
 
 import torch
+from monai.data import decollate_batch
 from monai.inferers import Inferer, SimpleInferer, SlidingWindowInferer
 
 from monailabel.interfaces.exception import MONAILabelError, MONAILabelException
@@ -351,9 +352,10 @@ class BasicInferTask(InferTask):
         logger.info(f"Result Json Keys: {list(result_json.keys())}")
         return result_file_name, result_json
 
-    def run_pre_transforms(self, data, transforms):
-        pre_cache = []
-        post_cache = []
+    def run_pre_transforms(self, data: Dict[str, Any], transforms):
+        pre_cache: List[Any] = []
+        post_cache: List[Any] = []
+
         current = pre_cache
         cache_t = None
         for t in transforms:
@@ -378,7 +380,7 @@ class BasicInferTask(InferTask):
 
         return run_transforms(data, transforms, log_prefix="PRE", use_compose=False)
 
-    def run_invert_transforms(self, data, pre_transforms, names):
+    def run_invert_transforms(self, data: Dict[str, Any], pre_transforms, names):
         if names is None:
             return data
 
@@ -400,7 +402,7 @@ class BasicInferTask(InferTask):
         data[self.output_label_key] = d[self.input_key]
         return data
 
-    def run_post_transforms(self, data, transforms):
+    def run_post_transforms(self, data: Dict[str, Any], transforms):
         return run_transforms(data, transforms, log_prefix="POST")
 
     def clear_cache(self):
@@ -447,7 +449,7 @@ class BasicInferTask(InferTask):
 
         return network
 
-    def run_inferer(self, data, convert_to_batch=True, device="cuda"):
+    def run_inferer(self, data: Dict[str, Any], convert_to_batch=True, device="cuda"):
         """
         Run Inferer over pre-processed Data.  Derive this logic to customize the normal behavior.
         In some cases, you want to implement your own for running chained inferers over pre-processed data
@@ -474,14 +476,20 @@ class BasicInferTask(InferTask):
             if device.startswith("cuda"):
                 torch.cuda.empty_cache()
 
-            outputs = outputs[0] if convert_to_batch else outputs
-            data[self.output_label_key] = outputs
+            if convert_to_batch:
+                outputs_d = decollate_batch(outputs)
+                outputs = outputs_d[0]
+
+            if isinstance(outputs, dict):
+                data.update(outputs)
+            else:
+                data[self.output_label_key] = outputs
         else:
             # consider them as callable transforms
             data = run_transforms(data, inferer, log_prefix="INF", log_name="Inferer")
         return data
 
-    def writer(self, data, extension=None, dtype=None) -> Tuple[Any, Any]:
+    def writer(self, data: Dict[str, Any], extension=None, dtype=None) -> Tuple[Any, Any]:
         """
         You can provide your own writer.  However, this writer saves the prediction/label mask to file
         and fetches result json
