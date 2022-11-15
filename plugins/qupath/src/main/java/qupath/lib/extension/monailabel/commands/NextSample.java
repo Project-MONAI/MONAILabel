@@ -24,6 +24,7 @@ import org.slf4j.LoggerFactory;
 import qupath.lib.extension.monailabel.MonaiLabelClient;
 import qupath.lib.extension.monailabel.MonaiLabelClient.NextSampleInfo;
 import qupath.lib.extension.monailabel.MonaiLabelClient.ResponseInfo;
+import qupath.lib.extension.monailabel.Settings;
 import qupath.lib.extension.monailabel.Utils;
 import qupath.lib.gui.QuPathGUI;
 import qupath.lib.gui.dialogs.Dialogs;
@@ -117,9 +118,17 @@ public class NextSample implements Runnable {
 						if (f.isFile() && f.exists()) {
 							qupath.openImage(f.getAbsolutePath(), false, false);
 						} else {
-							// TODO:: Download and Open image (wsi) from Remote
-							// String f =
-							// "C:\\Dataset\\Pathology\\TCGA-02-0010-01Z-00-DX4.07de2e55-a8fe-40ee-9e98-bcb78050b9f7.svs";
+							File path = new File(Settings.localStoragePathProperty().get());
+							if (!path.exists()) {
+								path.mkdirs();
+							}
+							File o = new File(path.getPath() + File.separator + f.getName());
+							if (!o.exists()) {
+								logger.info("Image (" + sample.id + ") exists;  Will try to download it from Server");
+								//Dialogs.showInfoNotification("MONALabel", "Downloading Sample.  Please wait...");
+								MonaiLabelClient.downloadImage(sample.id, o);
+							}
+							qupath.openImage(o.getAbsolutePath(), false, false);
 						}
 					}
 				}

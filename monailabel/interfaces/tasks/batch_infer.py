@@ -36,11 +36,14 @@ class BatchInferTask:
         Override this method to get all eligible images for your task to run batch infer
         """
         images = request.get("images", BatchInferImageType.IMAGES_ALL)
+        label_tag = request.get("label_tag")
+        labels = request.get("labels")
+
         if isinstance(images, str):
             if images == BatchInferImageType.IMAGES_LABELED:
-                return datastore.get_labeled_images()
+                return datastore.get_labeled_images(label_tag, labels)
             if images == BatchInferImageType.IMAGES_UNLABELED:
-                return datastore.get_unlabeled_images()
+                return datastore.get_unlabeled_images(label_tag, labels)
             return datastore.list_images()
         return images
 

@@ -348,7 +348,7 @@ class LocalDatastore(Datastore):
         info: Dict[str, Any] = label.info if label else {}
         return info
 
-    def get_labeled_images(self) -> List[str]:
+    def get_labeled_images(self, label_tag: Optional[str] = None, labels: Optional[List[str]] = None) -> List[str]:
         """
         Get all images that have a corresponding label
 
@@ -356,7 +356,7 @@ class LocalDatastore(Datastore):
         """
         return [k for k, v in self._datastore.objects.items() if v.labels.get(DefaultLabelTag.FINAL)]
 
-    def get_unlabeled_images(self) -> List[str]:
+    def get_unlabeled_images(self, label_tag: Optional[str] = None, labels: Optional[List[str]] = None) -> List[str]:
         """
         Get all images that have no corresponding label
 

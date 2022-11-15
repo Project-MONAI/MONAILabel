@@ -192,12 +192,12 @@ class DSADatastore(Datastore):
                 images.append(d["itemId"])
         return images
 
-    def get_labeled_images(self) -> List[str]:
+    def get_labeled_images(self, label_tag: Optional[str] = None, labels: Optional[List[str]] = None) -> List[str]:
         images = self.list_images()
         annotated = self._get_annotated_images()
         return [image for image in images if image in annotated]
 
-    def get_unlabeled_images(self) -> List[str]:
+    def get_unlabeled_images(self, label_tag: Optional[str] = None, labels: Optional[List[str]] = None) -> List[str]:
         images = self.list_images()
         labeled = self.get_labeled_images()
         return [image for image in images if image not in labeled]

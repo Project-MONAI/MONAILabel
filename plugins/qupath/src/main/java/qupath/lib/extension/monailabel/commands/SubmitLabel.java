@@ -79,7 +79,7 @@ public class SubmitLabel implements Runnable {
 								+ "\nDo you want to save Annotation for selected ROI instead of WSI Image?"
 								+ "  Click 'No' to save for WSI instead of ROI.");
 
-				if (choice == DialogButton.YES) {
+				if (choice == DialogButton.NO) {
 					annotationXML = getAnnotationsXml(image, imageData, new int[4]);
 					logger.info("Annotations XML: " + annotationXML);
 

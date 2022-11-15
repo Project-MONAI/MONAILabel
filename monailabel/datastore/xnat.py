@@ -117,10 +117,10 @@ class XNATDatastore(Datastore):
     def get_label_info(self, label_id: str, label_tag: str) -> Dict[str, Any]:
         return {}
 
-    def get_labeled_images(self) -> List[str]:
+    def get_labeled_images(self, label_tag: Optional[str] = None, labels: Optional[List[str]] = None) -> List[str]:
         return []
 
-    def get_unlabeled_images(self) -> List[str]:
+    def get_unlabeled_images(self, label_tag: Optional[str] = None, labels: Optional[List[str]] = None) -> List[str]:
         return self.list_images()
 
     def list_images(self) -> List[str]:

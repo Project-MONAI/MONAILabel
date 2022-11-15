@@ -153,19 +153,23 @@ class Datastore(metaclass=ABCMeta):
         pass
 
     @abstractmethod
-    def get_labeled_images(self) -> List[str]:
+    def get_labeled_images(self, label_tag: Optional[str] = None, labels: Optional[List[str]] = None) -> List[str]:
         """
         Get all images that have a corresponding final label
 
+        :param label_tag: the matching label tag
+        :param labels: list of matching labels
         :return: list of image ids List[str]
         """
         pass
 
     @abstractmethod
-    def get_unlabeled_images(self) -> List[str]:
+    def get_unlabeled_images(self, label_tag: Optional[str] = None, labels: Optional[List[str]] = None) -> List[str]:
         """
         Get all images that have no corresponding final label
 
+        :param label_tag: the matching label tag
+        :param labels: list of matching labels
         :return: list of image ids List[str]
         """
         pass
