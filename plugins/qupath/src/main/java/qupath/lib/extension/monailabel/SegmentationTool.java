@@ -19,11 +19,11 @@ import qupath.lib.roi.interfaces.ROI;
 public class SegmentationTool extends RectangleTool {
 	private final static Logger logger = LoggerFactory.getLogger(SegmentationTool.class);
 
-	private static String selectedModel;
-	private static int selectedTileSize = 1024;
-	private static ResponseInfo info;
-
 	public void mouseReleased(MouseEvent e) {
+		String selectedModel = null;
+		int selectedTileSize = 1024;
+		ResponseInfo info = null;
+
 		var viewer = getViewer();
 		if (viewer == null || viewer.getImageData() == null) {
 			return;
