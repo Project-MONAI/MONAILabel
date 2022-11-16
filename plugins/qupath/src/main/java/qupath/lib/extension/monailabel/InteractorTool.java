@@ -85,6 +85,9 @@ public class InteractorTool extends PointsTool {
 		} catch (Exception ex) {
 			ex.printStackTrace();
 			Dialogs.showErrorMessage("MONAILabel", ex);
+
+			selectedModel = null;
+			info = null;
 		}
 	}
 }
