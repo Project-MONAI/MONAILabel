@@ -209,7 +209,7 @@ def create_dataset_from_path(folder, image_dir="images", label_dir="labels", img
     images = _list_files(image_dir, img_ext)
 
     label_dir = os.path.join(folder, label_dir) if label_dir else folder
-    labels = _list_files(label_dir, img_ext)
+    labels = _list_files(label_dir, lab_ext)
 
     for i, l in zip(images, labels):
         if get_basename_no_ext(i) != get_basename_no_ext(l):
