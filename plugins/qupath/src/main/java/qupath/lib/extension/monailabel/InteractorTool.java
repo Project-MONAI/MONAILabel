@@ -73,10 +73,23 @@ public class InteractorTool extends PointsTool {
 				}
 			}
 
-			int w = Math.max((int) roi.getBoundsWidth() + 20, selectedPatchSize);
-			int h = Math.max((int) roi.getBoundsHeight() + 20, selectedPatchSize);
-			int x = Math.max(0, (int) roi.getCentroidX() - w / 2);
-			int y = Math.max(0, (int) roi.getCentroidY() - h / 2);
+			int min_x = Integer.MAX_VALUE;
+			int min_y = Integer.MAX_VALUE;
+			int max_x = 0;
+			int max_y = 0;
+			for (var p : roi.getAllPoints()) {
+				int x = (int) p.getX();
+				int y = (int) p.getY();
+				min_x = Math.min(x, min_x);
+				min_y = Math.min(y, min_y);
+				max_x = Math.max(x, max_x);
+				max_y = Math.max(y, max_y);
+			}
+
+			int w = Math.max(max_x - min_x + 20, selectedPatchSize);
+			int h = Math.max(max_y - min_y + 20, selectedPatchSize);
+			int x = Math.max(0, min_x + (max_x - min_x) / 2 - w / 2);
+			int y = Math.max(0, min_y + (max_y - min_y) / 2 - h / 2);
 			int[] bbox = { x, y, w, h };
 
 			RunInference.runInference(selectedModel, info, bbox, selectedPatchSize, viewer.getImageData());

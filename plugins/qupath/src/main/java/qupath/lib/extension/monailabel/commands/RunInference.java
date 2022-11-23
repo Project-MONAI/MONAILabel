@@ -197,6 +197,7 @@ public class RunInference implements Runnable {
 				if ((im.endsWith(".png") || im.endsWith(".jpg") || im.endsWith(".jpeg"))
 						&& new File(imageFile).exists()) {
 					logger.info("Simple Image.. will directly upload the same");
+					offsetX = offsetY = 0;
 				} else {
 					if (bbox[2] == 0 && bbox[3] == 0) {
 						Dialogs.showErrorMessage("MONAILabel",
