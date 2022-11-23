@@ -477,8 +477,11 @@ class BasicInferTask(InferTask):
                 torch.cuda.empty_cache()
 
             if convert_to_batch:
-                outputs_d = decollate_batch(outputs)
-                outputs = outputs_d[0]
+                if data.get("decollate_batch", False):  # TODO:: Use automatically depending on the input/output
+                    outputs_d = decollate_batch(outputs)
+                    outputs = outputs_d[0]
+                else:
+                    outputs = outputs[0]
 
             if isinstance(outputs, dict):
                 data.update(outputs)
