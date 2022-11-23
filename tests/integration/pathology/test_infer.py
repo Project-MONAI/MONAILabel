@@ -17,24 +17,6 @@ from tests.integration import SERVER_URI
 
 
 class EndPointInfer(unittest.TestCase):
-    def test_deepedit_nuclei(self):
-        if not torch.cuda.is_available():
-            return
-
-        model = "deepedit_nuclei"
-        image = "JP2K-33003-1"
-        body = {
-            "level": 0,
-            "location": [2206, 4925],
-            "size": [360, 292],
-            "tile_size": [2048, 2048],
-            "min_poly_area": 30,
-            "params": {"foreground": [], "background": []},
-        }
-
-        response = requests.post(f"{SERVER_URI}/infer/wsi/{model}?image={image}&output=dsa", json=body)
-        assert response.status_code == 200
-
     def test_segmentation_nuclei(self):
         if not torch.cuda.is_available():
             return

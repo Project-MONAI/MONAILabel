@@ -198,7 +198,7 @@ class BasicTrainTask(TrainTask):
         lr_scheduler = torch.optim.lr_scheduler.StepLR(context.optimizer, step_size=1000, gamma=0.1)
         return LrScheduleHandler(lr_scheduler, print_lr=True)
 
-    def _dataset(self, context, datalist, replace_rate=0.25):
+    def _dataset(self, context, datalist, is_train, replace_rate=0.25):
         if context.multi_gpu:
             world_size = torch.distributed.get_world_size()
             if len(datalist) // world_size:  # every gpu gets full data when datalist is smaller
@@ -206,7 +206,11 @@ class BasicTrainTask(TrainTask):
                     context.local_rank
                 ]
 
-        transforms = self._validate_transforms(self.train_pre_transforms(context), "Training", "pre")
+        transforms = (
+            self._validate_transforms(self.train_pre_transforms(context), "Training", "pre")
+            if is_train
+            else self._validate_transforms(self.val_pre_transforms(context), "Validation", "pre")
+        )
         dataset = (
             CacheDataset(datalist, transforms)
             if context.dataset_type == "CacheDataset"
@@ -234,8 +238,8 @@ class BasicTrainTask(TrainTask):
             num_workers=num_workers,
         )
 
-    def train_data_loader(self, context, num_workers=0, shuffle=False):
-        dataset, datalist = self._dataset(context, context.train_datalist)
+    def train_data_loader(self, context, num_workers=0, shuffle=True):
+        dataset, datalist = self._dataset(context, context.train_datalist, is_train=True)
         logger.info(f"{context.local_rank} - Records for Training: {len(datalist)}")
         logger.debug(f"{context.local_rank} - Training: {datalist}")
 
@@ -288,7 +292,7 @@ class BasicTrainTask(TrainTask):
         return None
 
     def val_data_loader(self, context: Context, num_workers=0):
-        dataset, datalist = self._dataset(context, context.val_datalist)
+        dataset, datalist = self._dataset(context, context.val_datalist, is_train=False)
         logger.info(f"{context.local_rank} - Records for Validation: {len(datalist)}")
         logger.debug(f"{context.local_rank} - Validation: {datalist}")
 
