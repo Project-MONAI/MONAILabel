@@ -24,15 +24,16 @@ weights/model (UNET).
     - Connective/Soft tissue cells
     - Dead Cells
     - Epithelial
-- **DeepEdit Nuclei** - It is a combination of
-  both [Interaction + Auto Segmentation](https://github.com/Project-MONAI/MONAILabel/wiki/DeepEdit) model which is
-  trained to segment Nuclei cells that combines all above labels as *Nuclei*.
-- **NuClick** - This is NuClick implementation (UNet model) as provided at: https://github.com/mostafajahanifar/nuclick_torch.  Training task for monailabel is not yet supported.
+- **NuClick** - This is NuClick implementation (UNet model) as provided at: https://github.com/mostafajahanifar/nuclick_torch.
+- **Classification Nuclei** - It is a simple classification model which can be used along with NuClick model to classify Nuclei cells.
 
 ### Dataset
 
-Above _Nuclei_ models are trained
-on [PanNuke Dataset for Nuclei Instance Segmentation and Classification](https://warwick.ac.uk/fac/cross_fac/tia/data/pannuke)
+Above _Nuclei_ models are trained either on
+ - [PanNuke Dataset for Nuclei Instance Segmentation and Classification](https://warwick.ac.uk/fac/cross_fac/tia/data/pannuke)
+ - [CoNSeP Dataset](https://warwick.ac.uk/fac/cross_fac/tia/data/hovernet)
+
+Pass `--conf consep true` option while starting MONAILabel server to use models trained on CoNSeP Dataset
 
 ### Inputs
 
@@ -86,7 +87,7 @@ The current version of plugin comes with **limited features** to support basic a
 - Make sure MONAILabel Server URL is correctly through `Preferences`.
 - Open Sample Whole Slide Image in QuPath (which is shared as studies for MONAILabel server)
 - Add/Select Rectangle ROI to run annotations using MONAI Label models.
-- For Interative model (e.g. DeepEdit) you can choose to provide `Positive` and `Negative` points through Annotation panel.
+- For Interactive model you can choose to provide `Positive` and `Negative` points through Annotation panel.
 
 ![image](../../docs/images/qupath.jpg)
 
