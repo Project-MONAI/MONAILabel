@@ -23,7 +23,7 @@ measure, _ = optional_import("skimage.measure")
 morphology, _ = optional_import("skimage.morphology")
 distance_transform_cdt, _ = optional_import("scipy.ndimage.morphology", name="distance_transform_cdt")
 
-# TODO:: Delete this file once MONAI core supports all these transform as part of 1.1 release
+
 class NuclickKeys(StrEnum):
     """
     Keys for nuclick transforms.
@@ -166,14 +166,19 @@ class SplitLabeld(MapTransform):
         for key in self.keys:
             label = d[key] if isinstance(d[key], torch.Tensor) else torch.from_numpy(d[key])
 
+            mask = torch.clone(label)
             if self.mask_value:
                 mask_value = d[self.mask_value]
+                mask[label != mask_value] = 0
             else:
-                mask = torch.where(torch.logical_and(label > 0, label < self.others_value), label, 0)
+                mask[label >= self.others_value] = 0
                 mask_value = int(torch.max(mask))
 
-            mask = torch.where(label == mask_value, 1 if self.to_binary_mask else mask_value, 0)
-            others = torch.where(label == mask_value, 0, label)
+            if self.to_binary_mask:
+                mask[mask > 0] = 1
+
+            others = torch.clone(label)
+            others[label == mask_value] = 0
             others[others > 0] = 1
             if torch.count_nonzero(others):
                 others = measure.label(convert_to_numpy(others)[0], connectivity=1)
@@ -331,10 +336,15 @@ class AddPointGuidanceSignald(Randomizable, MapTransform):
 
     def _seed_point(self, label):
         if distance_transform_cdt is None or not self.use_distance:
-            indices = torch.argwhere(label > 0)
+            if hasattr(torch, "argwhere"):
+                indices = torch.argwhere(label > 0)
+            else:
+                indices = np.argwhere(convert_to_numpy(label) > 0)
+
             if len(indices) > 0:
                 idx = self.R.randint(0, len(indices))
                 return indices[idx, 0], indices[idx, 1]
+            return None
 
         distance = distance_transform_cdt(label).flatten()
         probability = np.exp(distance) - 1.0
@@ -346,10 +356,9 @@ class AddPointGuidanceSignald(Randomizable, MapTransform):
 
     def inclusion_map(self, mask, dtype):
         point_mask = torch.zeros_like(mask, dtype=dtype)
-        indices = torch.argwhere(mask > 0)
-        if len(indices) > 0:
-            x, y = self._seed_point(mask)
-            point_mask[x, y] = 1
+        pt = self._seed_point(mask)
+        if pt is not None:
+            point_mask[pt[0], pt[1]] = 1
 
         return point_mask
 
@@ -440,7 +449,7 @@ class AddClickSignalsd(MapTransform):
         return d
 
     def get_clickmap_boundingbox(self, img, cx, cy, x, y, bb=128):
-        click_map = torch.zeros((x, y), dtype=img.dtype, device=img.get_device())
+        click_map = torch.zeros_like(img[0])
 
         x_del_indices = {i for i in range(len(cx)) if cx[i] >= x or cx[i] < 0}
         y_del_indices = {i for i in range(len(cy)) if cy[i] >= y or cy[i] < 0}
@@ -483,7 +492,7 @@ class AddClickSignalsd(MapTransform):
 
             patch = img[:, x_start:x_end, y_start:y_end]
 
-            this_click_map = torch.zeros((x, y), dtype=img.dtype, device=img.get_device())
+            this_click_map = torch.zeros_like(img[0])
             this_click_map[cx[i], cy[i]] = 1
 
             nuc_points = this_click_map[x_start:x_end, y_start:y_end]
