@@ -19,7 +19,7 @@ import torch
 from monai.config import KeysCollection, NdarrayOrTensor
 from monai.data import MetaTensor
 from monai.transforms import MapTransform, Resize, Transform, generate_spatial_bounding_box, get_extreme_points
-from monai.utils import InterpolateMode, ensure_tuple_rep
+from monai.utils import InterpolateMode, convert_to_numpy, ensure_tuple_rep
 from shapely.geometry import Point, Polygon
 from torchvision.utils import make_grid, save_image
 
@@ -176,7 +176,7 @@ class FindContoursd(MapTransform):
         color_map = d.get(self.key_label_colors) if self.colormap is None else self.colormap
 
         foreground_points = d.get(self.key_foreground_points, []) if self.key_foreground_points else []
-        foreground_points = [Point(pt[1], pt[0]) for pt in foreground_points]  # polygons in (y, x) format
+        foreground_points = [Point(pt[0], pt[1]) for pt in foreground_points]  # polygons in (x, y) format
 
         elements = []
         label_names = set()
@@ -188,8 +188,9 @@ class FindContoursd(MapTransform):
             labels = [label for label in np.unique(p).tolist() if label > 0]
             logger.debug(f"Total Unique Masks (excluding background): {labels}")
             for label_idx in labels:
-                p = d[key].array if isinstance(d[key], MetaTensor) else d[key]
+                p = convert_to_numpy(d[key]) if isinstance(d[key], torch.Tensor) else d[key]
                 p = np.where(p == label_idx, 1, 0).astype(np.uint8)
+                p = np.moveaxis(p, 0, 1)  # for cv2
 
                 label_name = self.labels.get(label_idx, label_idx)
                 label_names.add(label_name)
@@ -237,29 +238,36 @@ class FindContoursd(MapTransform):
 
 
 class DumpImagePrediction2Dd(Transform):
-    def __init__(self, image_path, pred_path):
+    def __init__(self, image_path, pred_path, pred_only=True):
         self.image_path = image_path
         self.pred_path = pred_path
+        self.pred_only = pred_only
 
     def __call__(self, data):
         d = dict(data)
-        image = d["image"].array
-        pred = d["pred"].array
+        for bidx in range(d["image"].shape[0]):
+            image = np.moveaxis(d["image"][bidx], 1, 2)
+            pred = np.moveaxis(d["pred"][bidx], 0, 1)
 
-        img_tensor = make_grid(torch.from_numpy(image[:3] * 128 + 128), normalize=True)
-        save_image(img_tensor, self.image_path)
+            img_tensor = make_grid(torch.from_numpy(image[:3] * 128 + 128), normalize=True)
+            save_image(img_tensor, self.image_path)
 
-        image_pred = [pred, image[3][None], image[4][None]] if image.shape[0] == 5 else [pred]
-        image_pred_np = np.array(image_pred)
-        image_pred_t = torch.from_numpy(image_pred_np)
+            if self.pred_only:
+                pred_tensor = make_grid(torch.from_numpy(pred), normalize=True)
+                save_image(pred_tensor[0], self.pred_path)
+                return d
 
-        tensor = make_grid(
-            tensor=image_pred_t,
-            nrow=len(image_pred),
-            normalize=True,
-            pad_value=10,
-        )
-        save_image(tensor, self.pred_path)
+            image_pred = [pred[None], image[3][None], image[4][None]] if image.shape[0] == 5 else [pred[None]]
+            image_pred_np = np.array(image_pred)
+            image_pred_t = torch.from_numpy(image_pred_np)
+
+            tensor = make_grid(
+                tensor=image_pred_t,
+                nrow=len(image_pred),
+                normalize=True,
+                pad_value=10,
+            )
+            save_image(tensor, self.pred_path)
         return d
 
 
