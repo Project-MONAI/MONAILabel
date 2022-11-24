@@ -16,8 +16,8 @@ import numpy as np
 import torch
 from ignite.metrics import Accuracy
 from lib.handlers import TensorBoardImageHandler
-from lib.utils import split_dataset, split_nuclei_dataset
 from lib.nuclick import AddPointGuidanceSignald, SplitLabeld
+from lib.utils import split_dataset, split_nuclei_dataset
 from monai.handlers import from_engine
 from monai.inferers import SimpleInferer
 from monai.losses import DiceLoss
