@@ -62,7 +62,7 @@ class TensorBoardImageHandler:
         self,
         summary_writer: Optional[SummaryWriter] = None,
         log_dir: str = "./runs",
-        tag_name="val_acc",
+        tag_name="val",
         interval: int = 1,
         batch_transform: Callable = lambda x: x,
         output_transform: Callable = lambda x: x,
@@ -88,7 +88,8 @@ class TensorBoardImageHandler:
         self.class_y_pred: List[Any] = []
 
     def attach(self, engine: Engine) -> None:
-        engine.add_event_handler(Events.ITERATION_COMPLETED(every=self.interval), self, "iteration")
+        if self.interval == 1:
+            engine.add_event_handler(Events.ITERATION_COMPLETED(every=self.interval), self, "iteration")
         engine.add_event_handler(Events.EPOCH_COMPLETED(every=self.interval), self, "epoch")
 
     def __call__(self, engine: Engine, action) -> None:
@@ -130,39 +131,37 @@ class TensorBoardImageHandler:
             image = batch_data[bidx]["image"].detach().cpu().numpy()
             y = output_data[bidx]["label"].detach().cpu().numpy()
 
-            tag_prefix = f"b{bidx} - " if self.batch_limit != 1 else ""
-            img_tensor = make_grid(torch.from_numpy(image[:3] * 128 + 128), normalize=True)
-            self.writer.add_image(tag=f"{tag_prefix}Image", img_tensor=img_tensor, global_step=epoch)
-
             if self.class_names:
                 sig_np = image[:3] * 128 + 128
                 sig_np[0, :, :] = np.where(image[3] > 0, 1, sig_np[0, :, :])
-                sig_tensor = make_grid(torch.from_numpy(sig_np), normalize=True)
-                self.writer.add_image(tag=f"{tag_prefix}Signal", img_tensor=sig_tensor, global_step=epoch)
                 if np.count_nonzero(image[3]) == 0:
-                    self.logger.info("+++++++++ BUG (Signal is ZERO)")
+                    self.logger.info(f"{self.tag_name} => +++++++++ BUG (Signal is ZERO)")
 
                 y_pred = output_data[bidx]["pred"].detach().cpu().numpy()
 
                 y_c = np.argmax(y)
                 y_pred_c = np.argmax(y_pred)
 
-                tag_prefix = f"b{bidx} - " if self.batch_limit != 1 else ""
-                label_pred_tag = f"{tag_prefix}Label vs Pred:"
+                tag_prefix = f"{self.tag_name} - b{bidx} - " if self.batch_limit != 1 else f"{self.tag_name} - "
+                label_pred_tag = f"{tag_prefix}Image/Signal/Label/Pred:"
 
-                y_img = Image.new("RGB", (200, 100))
+                y_img = Image.new("RGB", image.shape[-2:])
                 draw = ImageDraw.Draw(y_img)
                 draw.text((10, 50), self.class_names.get(f"{y_c}", f"{y_c}"))
 
-                y_pred_img = Image.new("RGB", (200, 100), "green" if y_c == y_pred_c else "red")
+                y_pred_img = Image.new("RGB", image.shape[-2:], "green" if y_c == y_pred_c else "red")
                 draw = ImageDraw.Draw(y_pred_img)
                 draw.text((10, 50), self.class_names.get(f"{y_pred_c}", f"{y_pred_c}"))
 
-                label_pred = [np.moveaxis(np.array(y_img), -1, 0), np.moveaxis(np.array(y_pred_img), -1, 0)]
                 img_tensor = make_grid(
-                    tensor=torch.from_numpy(np.array(label_pred)),
-                    nrow=3,
-                    normalize=False,
+                    tensor=[
+                        torch.from_numpy(sig_np),
+                        torch.from_numpy(np.stack((np.where(image[3] > 0, 255, 0),) * 3)),
+                        torch.from_numpy(np.moveaxis(np.array(y_img), -1, 0)),
+                        torch.from_numpy(np.moveaxis(np.array(y_pred_img), -1, 0)),
+                    ],
+                    nrow=4,
+                    normalize=True,
                     pad_value=10,
                 )
                 self.writer.add_image(tag=label_pred_tag, img_tensor=img_tensor, global_step=epoch)
@@ -171,35 +170,60 @@ class TensorBoardImageHandler:
                 if self.batch_limit == 1 and bidx < (len(batch_data) - 1) and np.sum(y) == 0:
                     continue
 
+                tag_prefix = f"{self.tag_name} - b{bidx} - " if self.batch_limit != 1 else ""
+                img_np = image[:3] * 128 + 128
+                if image.shape[0] > 3:
+                    img_np[0, :, :] = np.where(image[3] > 0, 1, img_np[0, :, :])
+                img_tensor = make_grid(torch.from_numpy(img_np), normalize=True)
+                self.writer.add_image(tag=f"{tag_prefix}Image", img_tensor=img_tensor, global_step=epoch)
+
                 y_pred = output_data[bidx]["pred"].detach().cpu().numpy()
 
                 for region in range(y_pred.shape[0]):
                     if region == 0 and y_pred.shape[0] > 1:  # one-hot; background
                         continue
 
+                    cl = np.count_nonzero(y[region])
+                    cp = np.count_nonzero(y_pred[region])
                     self.logger.info(
-                        "{} - {} - Image: {};"
+                        "{} => {} - {} - Image: {};"
                         " Label: {} (nz: {});"
                         " Pred: {} (nz: {});"
-                        " Sig: (pos-nz: {}, neg-nz: {})".format(
+                        " Diff: {:.2f}%; "
+                        "{}".format(
+                            self.tag_name,
                             bidx,
                             region,
                             image.shape,
                             y.shape,
-                            np.count_nonzero(y[region]),
+                            cl,
                             y_pred.shape,
-                            np.count_nonzero(y_pred[region]),
-                            np.count_nonzero(image[3]) if image.shape[0] == 5 else 0,
-                            np.count_nonzero(image[4]) if image.shape[0] == 5 else 0,
+                            cp,
+                            100 * (cp - cl) / (cl + 1),
+                            " Sig: (pos-nz: {}, neg-nz: {})".format(
+                                np.count_nonzero(image[3]) if image.shape[0] == 5 else 0,
+                                np.count_nonzero(image[4]) if image.shape[0] == 5 else 0,
+                            )
+                            if image.shape[0] == 5
+                            else "",
                         )
                     )
 
-                    tag_prefix = f"b{bidx}:l{region} - " if self.batch_limit != 1 else f"l{region} - "
+                    tag_prefix = (
+                        f"{self.tag_name} - b{bidx}:l{region} - "
+                        if self.batch_limit != 1
+                        else f"{self.tag_name} - l{region} - "
+                    )
 
                     label_pred = [y[region][None], y_pred[region][None]]
                     label_pred_tag = f"{tag_prefix}Label vs Pred:"
                     if image.shape[0] == 5:
-                        label_pred = [y[region][None], y_pred[region][None], image[3][None], image[4][None]]
+                        label_pred = [
+                            y[region][None],
+                            y_pred[region][None],
+                            image[3][None] > 0,
+                            image[4][None] > 0,
+                        ]
                         label_pred_tag = f"{tag_prefix}Label vs Pred vs Pos vs Neg"
 
                     img_tensor = make_grid(
@@ -222,12 +246,12 @@ class TensorBoardImageHandler:
                     for n, m in v.items():
                         ltext.append(f"{n} => {m:.4f}")
                         cname = self.class_names.get(k, k)
-                        self.writer.add_scalar(f"cr_{k}_{n}", m, epoch)
+                        self.writer.add_scalar(f"{self.tag_name}_cr_{k}_{n}", m, epoch)
 
-                    self.logger.info(f"Epoch[{epoch}] Metrics -- Class: {cname}; {'; '.join(ltext)}")
+                    self.logger.info(f"{self.tag_name} => Epoch[{epoch}] Metrics -- Class: {cname}; {'; '.join(ltext)}")
                 else:
-                    self.logger.info(f"Epoch[{epoch}] Metrics -- {k} => {v:.4f}")
-                    self.writer.add_scalar(f"cr_{k}", v, epoch)
+                    self.logger.info(f"{self.tag_name} => Epoch[{epoch}] Metrics -- {k} => {v:.4f}")
+                    self.writer.add_scalar(f"{self.tag_name}_cr_{k}", v, epoch)
 
             self.class_y = []
             self.class_y_pred = []
@@ -237,13 +261,15 @@ class TensorBoardImageHandler:
             metric_sum = 0
             for region in self.metric_data:
                 metric = self.metric_data[region].mean()
-                self.logger.info(f"Epoch[{epoch}] Metrics -- Region: {region:0>2d}, {self.tag_name}: {metric:.4f}")
+                self.logger.info(
+                    f"{self.tag_name} => Epoch[{epoch}] Metrics (Dice) -- Region: {region:0>2d}: {metric:.4f}"
+                )
 
-                self.writer.add_scalar(f"dice_{region:0>2d}", metric, epoch)
+                self.writer.add_scalar(f"{self.tag_name}_dice_{region:0>2d}", metric, epoch)
                 metric_sum += metric
 
             metric_avg = metric_sum / len(self.metric_data)
-            self.writer.add_scalar("dice_regions_avg", metric_avg, epoch)
+            self.writer.add_scalar(f"{self.tag_name}_dice_regions_avg", metric_avg, epoch)
 
         self.writer.flush()
         self.metric_data = {}

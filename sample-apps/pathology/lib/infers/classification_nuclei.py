@@ -13,9 +13,10 @@ import logging
 from typing import Any, Callable, Dict, Sequence
 
 import numpy as np
-from lib.transforms import FixNuclickClassd, LoadImagePatchd
+from lib.nuclick import AddLabelAsGuidanced
+from lib.transforms import LoadImagePatchd
 from monai.inferers import Inferer, SimpleInferer
-from monai.transforms import Activationsd, AsChannelFirstd, EnsureTyped, ScaleIntensityRangeD
+from monai.transforms import Activationsd, EnsureChannelFirstd, ScaleIntensityRangeD
 
 from monailabel.interfaces.tasks.infer_v2 import InferType
 from monailabel.tasks.infer.basic_infer import BasicInferTask
@@ -62,10 +63,9 @@ class ClassificationNuclei(BasicInferTask):
         return [
             LoadImagePatchd(keys="image", dtype=np.uint8),
             LoadImagePatchd(keys="label", dtype=np.uint8, mode="L"),
-            EnsureTyped(keys=("image", "label")),
-            AsChannelFirstd(keys="image"),
+            EnsureChannelFirstd(keys=("image", "label")),
             ScaleIntensityRangeD(keys="image", a_min=0.0, a_max=255.0, b_min=-1.0, b_max=1.0),
-            FixNuclickClassd(image="image", label="label", offset=-1),
+            AddLabelAsGuidanced(keys="image", source="label"),
         ]
 
     def inferer(self, data=None) -> Inferer:

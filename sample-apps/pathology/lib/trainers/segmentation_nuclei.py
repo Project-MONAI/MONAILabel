@@ -16,11 +16,10 @@ import numpy as np
 import torch
 from ignite.metrics import Accuracy
 from lib.handlers import TensorBoardImageHandler
-from lib.transforms import RandTorchVisiond
 from lib.utils import split_dataset
 from monai.handlers import from_engine
 from monai.inferers import SimpleInferer
-from monai.losses import DiceLoss
+from monai.losses import DiceCELoss
 from monai.transforms import (
     Activationsd,
     AsDiscreted,
@@ -29,7 +28,9 @@ from monai.transforms import (
     LoadImaged,
     RandFlipd,
     RandRotate90d,
+    RandTorchVisiond,
     ScaleIntensityRangeD,
+    ScaleIntensityRanged,
 )
 
 from monailabel.interfaces.datastore import Datastore
@@ -43,12 +44,14 @@ class SegmentationNuclei(BasicTrainTask):
         self,
         model_dir,
         network,
-        roi_size=(256, 256),
-        description="Pathology Semantic Segmentation for Nuclei (PanNuke Dataset)",
+        tile_size=(512, 512),
+        patch_size=256,
+        description="Pathology Semantic Segmentation for Nuclei",
         **kwargs,
     ):
         self._network = network
-        self.roi_size = roi_size
+        self.tile_size = tile_size
+        self.patch_size = patch_size
         super().__init__(model_dir, description, **kwargs)
 
     def network(self, context: Context):
@@ -58,7 +61,7 @@ class SegmentationNuclei(BasicTrainTask):
         return torch.optim.Adam(context.network.parameters(), 0.0001)
 
     def loss_function(self, context: Context):
-        return DiceLoss(to_onehot_y=True, softmax=True, squared_pred=True)
+        return DiceCELoss(to_onehot_y=True, softmax=True)
 
     def pre_process(self, request, datastore: Datastore):
         self.cleanup(request)
@@ -73,10 +76,11 @@ class SegmentationNuclei(BasicTrainTask):
             cache_dir=cache_dir,
             source=source,
             groups=self._labels,
-            tile_size=self.roi_size,
+            tile_size=self.tile_size,
             max_region=max_region,
             limit=request.get("dataset_limit", 0),
             randomize=request.get("dataset_randomize", True),
+            crop_size=self.patch_size,
         )
 
     def train_pre_transforms(self, context: Context):
@@ -85,11 +89,17 @@ class SegmentationNuclei(BasicTrainTask):
             EnsureTyped(keys=("image", "label")),
             EnsureChannelFirstd(keys=("image", "label")),
             RandTorchVisiond(
-                keys="image", name="ColorJitter", brightness=64.0 / 255.0, contrast=0.75, saturation=0.25, hue=0.04
+                keys="image",
+                name="ColorJitter",
+                # prob=0.5,
+                brightness=64.0 / 255.0,
+                contrast=0.75,
+                saturation=0.25,
+                hue=0.04,
             ),
             RandFlipd(keys=("image", "label"), prob=0.5),
-            RandRotate90d(keys=("image", "label"), prob=0.5, max_k=3, spatial_axes=(-2, -1)),
-            ScaleIntensityRangeD(keys="image", a_min=0.0, a_max=255.0, b_min=-1.0, b_max=1.0),
+            RandRotate90d(keys=("image", "label"), prob=0.5, max_k=3, spatial_axes=(0, 1)),
+            ScaleIntensityRanged(keys="image", a_min=0.0, a_max=255.0, b_min=-1.0, b_max=1.0),
         ]
 
     def train_post_transforms(self, context: Context):
@@ -116,8 +126,14 @@ class SegmentationNuclei(BasicTrainTask):
     def val_inferer(self, context: Context):
         return SimpleInferer()
 
+    def train_handlers(self, context: Context):
+        handlers = super().train_handlers(context)
+        if context.local_rank == 0:
+            handlers.append(TensorBoardImageHandler(log_dir=context.events_dir, batch_limit=4, tag_name="train"))
+        return handlers
+
     def val_handlers(self, context: Context):
         handlers = super().val_handlers(context)
         if context.local_rank == 0:
-            handlers.append(TensorBoardImageHandler(log_dir=context.events_dir, batch_limit=4))
+            handlers.append(TensorBoardImageHandler(log_dir=context.events_dir, batch_limit=8, tag_name="val"))
         return handlers

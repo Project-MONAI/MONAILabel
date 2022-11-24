@@ -14,23 +14,22 @@ import os
 
 import numpy as np
 import torch
-from ignite.metrics import Accuracy
 from lib.handlers import TensorBoardImageHandler
-from lib.transforms import FixNuclickClassd
+from lib.nuclick import AddLabelAsGuidanced, SetLabelClassd, SplitLabeld
 from lib.utils import split_dataset, split_nuclei_dataset
-from monai.handlers import from_engine
+from monai.handlers import ConfusionMatrix, from_engine
 from monai.inferers import SimpleInferer
 from monai.transforms import (
     Activationsd,
     AsDiscreted,
     EnsureChannelFirstd,
-    EnsureTyped,
     LoadImaged,
     RandFlipd,
     RandRotate90d,
+    RandTorchVisiond,
     ScaleIntensityRangeD,
     SelectItemsd,
-    TorchVisiond,
+    ToTensord,
 )
 from tqdm import tqdm
 
@@ -46,7 +45,7 @@ class ClassificationNuclei(BasicTrainTask):
         model_dir,
         network,
         tile_size=(256, 256),
-        patch_size=64,
+        patch_size=128,
         min_area=80,
         description="Pathology Classification Nuclei",
         **kwargs,
@@ -87,29 +86,34 @@ class ClassificationNuclei(BasicTrainTask):
         logger.info(f"Split data (len: {len(ds)}) based on each nuclei")
 
         limit = request.get("dataset_limit", 0)
-        if source == "consep_nuclick":
-            return ds[:limit] if 0 < limit < len(ds) else ds
-
         ds_new = []
         for d in tqdm(ds):
             ds_new.extend(split_nuclei_dataset(d, os.path.join(cache_dir, "nuclei_flattened")))
             if 0 < limit < len(ds_new):
                 ds_new = ds_new[:limit]
                 break
+        logger.info(f"Final Records with nuclei split: {len(ds_new)}")
         return ds_new
 
     def train_pre_transforms(self, context: Context):
         return [
             LoadImaged(keys=("image", "label"), dtype=np.uint8),
-            EnsureTyped(keys=("image", "label")),
             EnsureChannelFirstd(keys=("image", "label")),
-            TorchVisiond(
-                keys="image", name="ColorJitter", brightness=64.0 / 255.0, contrast=0.75, saturation=0.25, hue=0.04
+            SplitLabeld(keys="label", mask_value=None, others_value=255, to_binary_mask=False),
+            RandTorchVisiond(
+                keys="image",
+                name="ColorJitter",
+                # prob=0.5,
+                brightness=64.0 / 255.0,
+                contrast=0.75,
+                saturation=0.25,
+                hue=0.04,
             ),
             RandFlipd(keys=("image", "label"), prob=0.5),
             RandRotate90d(keys=("image", "label"), prob=0.5, max_k=3, spatial_axes=(-2, -1)),
             ScaleIntensityRangeD(keys="image", a_min=0.0, a_max=255.0, b_min=-1.0, b_max=1.0),
-            FixNuclickClassd(image="image", label="label", offset=-1),
+            AddLabelAsGuidanced(keys="image", source="label"),
+            SetLabelClassd(keys="label", offset=-1),
             SelectItemsd(keys=("image", "label")),
         ]
 
@@ -117,16 +121,41 @@ class ClassificationNuclei(BasicTrainTask):
         return [
             Activationsd(keys="pred", softmax=True),
             AsDiscreted(keys=("pred", "label"), argmax=(True, False), to_onehot=len(self._labels)),
+            ToTensord(keys=("pred", "label"), device=context.device),
+        ]
+
+    def val_pre_transforms(self, context: Context):
+        return [
+            LoadImaged(keys=("image", "label"), dtype=np.uint8),
+            EnsureChannelFirstd(keys=("image", "label")),
+            SplitLabeld(keys="label", mask_value=None, others_value=255, to_binary_mask=False),
+            ScaleIntensityRangeD(keys="image", a_min=0.0, a_max=255.0, b_min=-1.0, b_max=1.0),
+            AddLabelAsGuidanced(keys="image", source="label"),
+            SetLabelClassd(keys="label", offset=-1),
+            SelectItemsd(keys=("image", "label")),
         ]
 
     def train_key_metric(self, context: Context):
-        return {"train_acc": Accuracy(output_transform=from_engine(["pred", "label"]))}
+        return {"train_f1": ConfusionMatrix(output_transform=from_engine(["pred", "label"]), metric_name="f1 score")}
 
     def val_key_metric(self, context: Context):
-        return {"val_acc": Accuracy(output_transform=from_engine(["pred", "label"]))}
+        return {"val_f1": ConfusionMatrix(output_transform=from_engine(["pred", "label"]), metric_name="f1 score")}
 
     def val_inferer(self, context: Context):
         return SimpleInferer()
+
+    def train_handlers(self, context: Context):
+        handlers = super().train_handlers(context)
+        if context.local_rank == 0:
+            handlers.append(
+                TensorBoardImageHandler(
+                    log_dir=context.events_dir,
+                    class_names={str(v - 1): k for k, v in self._labels.items()},
+                    batch_limit=4,
+                    tag_name="train",
+                )
+            )
+        return handlers
 
     def val_handlers(self, context: Context):
         handlers = super().val_handlers(context)
@@ -136,6 +165,7 @@ class ClassificationNuclei(BasicTrainTask):
                     log_dir=context.events_dir,
                     class_names={str(v - 1): k for k, v in self._labels.items()},
                     batch_limit=8,
+                    tag_name="val",
                 )
             )
         return handlers
