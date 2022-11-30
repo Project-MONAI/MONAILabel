@@ -104,7 +104,7 @@ class BundleTrainTask(TrainTask):
             "gpus": "all",  # COMMA SEPARATE DEVICE INDEX
         }
 
-    def _fetch_datalist(self, datastore: Datastore):
+    def _fetch_datalist(self, request, datastore: Datastore):
         return datastore.datalist()
 
     def _partition_datalist(self, datalist, request, shuffle=False):
@@ -144,7 +144,7 @@ class BundleTrainTask(TrainTask):
                 train_handlers.insert(0, loader)
 
     def __call__(self, request, datastore: Datastore):
-        ds = self._fetch_datalist(datastore)
+        ds = self._fetch_datalist(request, datastore)
         train_ds, val_ds = self._partition_datalist(ds, request)
 
         max_epochs = request.get("max_epochs", 50)

@@ -10,91 +10,43 @@
 # limitations under the License.
 import copy
 import logging
-from typing import Any, Callable, Dict, Sequence
+from typing import Any, Callable, Dict, Optional, Sequence
 
 import numpy as np
 import torch
 from lib.nuclick import AddClickSignalsd, AddLabelAsGuidanced, NuclickKeys, PostFilterLabeld
-from lib.transforms import LoadImagePatchd
-from monai.config import KeysCollection
+from lib.transforms import ConvertInteractiveClickSignals, LoadImagePatchd
 from monai.transforms import (
     Activationsd,
     AsChannelFirstd,
     AsDiscreted,
     EnsureTyped,
-    MapTransform,
     ScaleIntensityRangeD,
     SqueezeDimd,
     ToNumpyd,
 )
-from monai.utils import ensure_tuple
 
 from monailabel.interfaces.tasks.infer_v2 import InferType
 from monailabel.tasks.infer.basic_infer import BasicInferTask
+from monailabel.tasks.infer.bundle import BundleInferTask
 from monailabel.transform.post import FindContoursd
 from monailabel.transform.writer import PolygonWriter
 
 logger = logging.getLogger(__name__)
 
 
-class ConvertInteractiveClickSignals(MapTransform):
-    """
-    ConvertInteractiveClickSignals converts interactive annotation information (e.g. from DSA) into a format expected
-    by NuClick. Typically, it will take point annotations from data["annotations"][<source_annotation_key>], convert
-    it to 2d points, and place it in data[<target_data_key>].
-    """
-
-    def __init__(
-        self, source_annotation_keys: KeysCollection, target_data_keys: KeysCollection, allow_missing_keys: bool = False
-    ):
-        super().__init__(target_data_keys, allow_missing_keys)
-        self.source_annotation_keys = ensure_tuple(source_annotation_keys)
-        self.target_data_keys = ensure_tuple(target_data_keys)
-
-    def __call__(self, data):
-        data = dict(data)
-        annotations = data.get("annotations", {})
-        annotations = {} if annotations is None else annotations
-        for source_annotation_key, target_data_key in zip(self.source_annotation_keys, self.target_data_keys):
-            if source_annotation_key in annotations:
-                points = annotations.get(source_annotation_key)["points"]
-                print(f"points={points}")
-                points = [coords[0:2] for coords in points]
-                data[target_data_key] = points
-            elif not self.allow_missing_keys:
-                raise KeyError(
-                    f"source_annotation_key={source_annotation_key} not found in annotations.keys()={annotations.keys()}"
-                )
-        return data
-
-
-class NuClick(BasicInferTask):
+class NuClick(BundleInferTask):
     """
     This provides Inference Engine for pre-trained NuClick segmentation (UNet) model.
     """
 
-    def __init__(
-        self,
-        path,
-        network=None,
-        roi_size=(128, 128),
-        type=InferType.ANNOTATION,
-        labels=None,
-        dimension=2,
-        description="A pre-trained NuClick model for interactive cell segmentation for Pathology",
-        **kwargs,
-    ):
-        self.task_classification = None
-        super().__init__(
-            path=path,
-            network=network,
-            roi_size=roi_size,
-            type=type,
-            labels=labels,
-            dimension=dimension,
-            description=description,
-            **kwargs,
-        )
+    def __init__(self, path: str, conf: Dict[str, str], **kwargs):
+        super().__init__(path, conf, type=InferType.ANNOTATION, add_post_restore=False, **kwargs)
+
+        # Override Labels
+        self.labels = {"Nuclei": 1}
+        self.label_colors = {"Nuclei": (0, 255, 255)}
+        self.task_classification: Optional[BasicInferTask] = None
 
     def init_classification(self, task_classification: BasicInferTask):
         self.task_classification = task_classification

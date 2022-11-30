@@ -16,6 +16,7 @@ import numpy as np
 import openslide
 from monai.config import KeysCollection
 from monai.transforms import MapTransform
+from monai.utils import ensure_tuple
 from PIL import Image
 from scipy.ndimage import binary_fill_holes
 from skimage.morphology import remove_small_holes, remove_small_objects
@@ -122,3 +123,34 @@ class PostFilterLabeld(MapTransform):
 
             d[key] = np.where(label > 0, d[key], 0)
         return d
+
+
+class ConvertInteractiveClickSignals(MapTransform):
+    """
+    ConvertInteractiveClickSignals converts interactive annotation information (e.g. from DSA) into a format expected
+    by NuClick. Typically, it will take point annotations from data["annotations"][<source_annotation_key>], convert
+    it to 2d points, and place it in data[<target_data_key>].
+    """
+
+    def __init__(
+        self, source_annotation_keys: KeysCollection, target_data_keys: KeysCollection, allow_missing_keys: bool = False
+    ):
+        super().__init__(target_data_keys, allow_missing_keys)
+        self.source_annotation_keys = ensure_tuple(source_annotation_keys)
+        self.target_data_keys = ensure_tuple(target_data_keys)
+
+    def __call__(self, data):
+        data = dict(data)
+        annotations = data.get("annotations", {})
+        annotations = {} if annotations is None else annotations
+        for source_annotation_key, target_data_key in zip(self.source_annotation_keys, self.target_data_keys):
+            if source_annotation_key in annotations:
+                points = annotations.get(source_annotation_key)["points"]
+                print(f"points={points}")
+                points = [coords[0:2] for coords in points]
+                data[target_data_key] = points
+            elif not self.allow_missing_keys:
+                raise KeyError(
+                    f"source_annotation_key={source_annotation_key} not found in annotations.keys()={annotations.keys()}"
+                )
+        return data

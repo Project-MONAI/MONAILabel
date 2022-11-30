@@ -631,6 +631,7 @@ class BasicTrainTask(TrainTask):
             amp=self._amp,
             postprocessing=self._validate_transforms(self.train_post_transforms(context), "Training", "post"),
             key_train_metric=self.train_key_metric(context),
+            additional_metrics=self.train_additional_metrics(context),
             train_handlers=train_handlers,
             iteration_update=self.train_iteration_update(context),
             event_names=self.event_names(context),

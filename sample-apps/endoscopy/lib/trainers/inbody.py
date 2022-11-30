@@ -24,8 +24,8 @@ logger = logging.getLogger(__name__)
 
 
 class InBody(BundleTrainTask):
-    def _fetch_datalist(self, datastore: Datastore):
-        ds = super()._fetch_datalist(datastore)
+    def _fetch_datalist(self, request, datastore: Datastore):
+        ds = super()._fetch_datalist(request, datastore)
 
         out_body = datastore.label_map.get("OutBody", 3) if isinstance(datastore, CVATDatastore) else 1
         load = LoadImage(dtype=np.uint8, image_only=True)

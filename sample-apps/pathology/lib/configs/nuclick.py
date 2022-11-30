@@ -9,19 +9,17 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-import json
 import logging
 import os
 from typing import Any, Dict, Optional, Union
 
 import lib.infers
 import lib.trainers
-from monai.networks.nets import BasicUNet
+from monai.bundle import download
 
 from monailabel.interfaces.config import TaskConfig
 from monailabel.interfaces.tasks.infer_v2 import InferTask
 from monailabel.interfaces.tasks.train import TrainTask
-from monailabel.utils.others.generic import download_file, strtobool
 
 logger = logging.getLogger(__name__)
 
@@ -30,59 +28,16 @@ class NuClick(TaskConfig):
     def init(self, name: str, model_dir: str, conf: Dict[str, str], planner: Any, **kwargs):
         super().init(name, model_dir, conf, planner, **kwargs)
 
-        # Labels
-        self.labels = {"Nuclei": 1}
-        self.label_colors = {"Nuclei": (0, 255, 255)}
-
-        consep = strtobool(self.conf.get("consep", "false"))
-
-        # Model Files
-        self.path = [
-            os.path.join(self.model_dir, f"pretrained_{name}{'_consep' if consep else ''}.pt"),  # pretrained
-            os.path.join(self.model_dir, f"{name}{'_consep' if consep else ''}.pt"),  # published
-        ]
-
-        # Download PreTrained Model
-        if strtobool(self.conf.get("use_pretrained_model", "true")):
-            url = f"{self.conf.get('pretrained_path', self.PRE_TRAINED_PATH)}"
-            url = f"{url}/pathology_nuclick_bunet_nuclei{'_consep' if consep else ''}.pt"
-            download_file(url, self.path[0])
-
-        # Network
-        self.network = BasicUNet(
-            spatial_dims=2,
-            in_channels=5,
-            out_channels=1,
-            features=(32, 64, 128, 256, 512, 32),
-        )
+        bundle_name = conf.get("bundle_name", "pathology_nuclick_annotation")
+        bundle_version = conf.get("bundle_version", "0.0.1")
+        self.bundle_path = os.path.join(self.model_dir, bundle_name)
+        if not os.path.exists(self.bundle_path):
+            download(name=bundle_name, version=bundle_version, bundle_dir=self.model_dir)
 
     def infer(self) -> Union[InferTask, Dict[str, InferTask]]:
-        task: InferTask = lib.infers.NuClick(
-            path=self.path,
-            network=self.network,
-            labels=self.labels,
-            preload=strtobool(self.conf.get("preload", "false")),
-            roi_size=json.loads(self.conf.get("roi_size", "[512, 512]")),
-            config={"label_colors": self.label_colors, "ignore_non_click_patches": True},
-        )
+        task: InferTask = lib.infers.NuClick(self.bundle_path, self.conf)
         return task
 
     def trainer(self) -> Optional[TrainTask]:
-        output_dir = os.path.join(self.model_dir, self.name)
-        load_path = self.path[0] if os.path.exists(self.path[0]) else self.path[1]
-
-        task: TrainTask = lib.trainers.NuClick(
-            model_dir=output_dir,
-            network=self.network,
-            load_path=load_path,
-            publish_path=self.path[1],
-            labels=self.labels,
-            description="Train Nuclei DeepEdit Model",
-            train_save_interval=1,
-            config={
-                "max_epochs": 10,
-                "train_batch_size": 16,
-                "val_batch_size": 16,
-            },
-        )
+        task: TrainTask = lib.trainers.NuClick(self.bundle_path, self.conf)
         return task
