@@ -484,6 +484,7 @@ def split_nuclei_dataset(
     logger.info(f"Total Instances: {np.unique(instances)}")
     logger.info(f"Total Stats: {len(stats)}")
     logger.info(f"Total Centroids: {len(centroids)}")
+    logger.info(f"Total Classes in Mask: {np.unique(mask_np)}")
 
     for nuclei_id, (x, y) in enumerate(centroids):
         if nuclei_id == 0:

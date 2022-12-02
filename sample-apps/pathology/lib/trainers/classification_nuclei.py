@@ -32,7 +32,7 @@ class ClassificationNuclei(BundleTrainTask):
             "Epithelial": 3,
             "Spindle-Shaped": 4,
         }
-        self.tile_size = 256
+        self.tile_size = (256, 256)
 
     def _fetch_datalist(self, request, datastore: Datastore):
         cache_dir = os.path.join(self.bundle_path, "cache", "train_ds")

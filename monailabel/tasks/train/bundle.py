@@ -144,16 +144,18 @@ class BundleTrainTask(TrainTask):
                 train_handlers.insert(0, loader)
 
     def __call__(self, request, datastore: Datastore):
+        logger.info(f"Train Request: {request}")
         ds = self._fetch_datalist(request, datastore)
         train_ds, val_ds = self._partition_datalist(ds, request)
 
         max_epochs = request.get("max_epochs", 50)
         pretrained = request.get("pretrained", True)
-        multi_gpu = request.get("multi_gpu", False)
+        multi_gpu = request.get("multi_gpu", True)
         multi_gpu = multi_gpu if torch.cuda.device_count() > 1 else False
 
         gpus = request.get("gpus", "all")
         gpus = list(range(torch.cuda.device_count())) if gpus == "all" else [int(g) for g in gpus.split(",")]
+        multi_gpu = True if multi_gpu and len(gpus) > 1 else False
         logger.info(f"Using Multi GPU: {multi_gpu}; GPUS: {gpus}")
         logger.info(f"CUDA_VISIBLE_DEVICES: {os.environ.get('CUDA_VISIBLE_DEVICES')}")
 
