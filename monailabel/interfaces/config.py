@@ -36,6 +36,7 @@ class TaskConfig(metaclass=ABCMeta):
         self.path = None
         self.labels = None
         self.label_colors = None
+        self.bundle_path = None
 
     def init(self, name: str, model_dir: str, conf: Dict[str, str], planner: Any, **kwargs):
         self.name = name
