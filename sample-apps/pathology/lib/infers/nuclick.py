@@ -14,8 +14,8 @@ from typing import Any, Callable, Dict, Optional, Sequence
 
 import numpy as np
 import torch
-from lib.nuclick import AddClickSignalsd, AddLabelAsGuidanced, NuclickKeys, PostFilterLabeld
 from lib.transforms import ConvertInteractiveClickSignals, LoadImagePatchd
+from monai.apps.nuclick.transforms import AddClickSignalsd, AddLabelAsGuidanced, NuclickKeys, PostFilterLabeld
 from monai.transforms import (
     Activationsd,
     AsChannelFirstd,
