@@ -118,7 +118,7 @@ class LocalizationVertebra(BasicTrainTask):
             ScaleIntensityd(keys="image", minv=-1.0, maxv=1.0),
             CropForegroundd(
                 keys=("image", "label"),
-                source_key="image",
+                source_key="label",
                 margin=10,
                 k_divisible=[self.roi_size[0], self.roi_size[1], self.roi_size[2]],
             ),

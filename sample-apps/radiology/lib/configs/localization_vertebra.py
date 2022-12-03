@@ -107,7 +107,6 @@ class LocalizationVertebra(TaskConfig):
             load_path=load_path,
             publish_path=self.path[1],
             description="Train vertebra localization Model",
-            dimension=3,
             labels=self.labels,
         )
         return task
