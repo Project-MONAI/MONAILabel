@@ -10,11 +10,14 @@ assignees: ''
 **Describe the bug**
 A clear and concise description of what the bug is.
 
+**Server logs**
+If applicable attach 100+ lines of monailabel server logs which covers the error trace etc...
+
 **To Reproduce**
 Steps to reproduce the behavior:
 1. Go to '...'
 2. Install '....'
-3. Run commands '....'
+3. Run commands '....' (how you have started monailabel server)
 
 **Expected behavior**
 A clear and concise description of what you expected to happen.
