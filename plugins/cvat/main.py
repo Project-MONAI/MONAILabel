@@ -59,7 +59,7 @@ def handler(context, event):
 
     flip_image = strtobool(os.environ.get("MONAI_LABEL_FLIP_INPUT_IMAGE", "true"))
     flip_points = strtobool(os.environ.get("MONAI_LABEL_FLIP_INPUT_POINTS", "true"))
-    flip_output = strtobool(os.environ.get("MONAI_LABEL_FLIP_OUTPUT_POINTS", "true"))
+    flip_output = strtobool(os.environ.get("MONAI_LABEL_FLIP_OUTPUT_POINTS", "false"))
 
     if flip_image:
         image_np = np.moveaxis(image_np, 0, 1)
