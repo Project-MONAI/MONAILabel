@@ -36,7 +36,7 @@ docker exec -it cvat bash -ic 'python3 ~/manage.py createsuperuser'
 
 wget https://github.com/nuclio/nuclio/releases/download/1.5.16/nuctl-1.5.16-linux-amd64
 chmod +x nuctl-1.5.16-linux-amd64
-mv nuctl-1.5.16-linux-amd64 ~/.local/bin/nuctl
+sudo mv nuctl-1.5.16-linux-amd64 /usr/bin/nuctl
 ```
 
 ## Installation
