@@ -18,15 +18,15 @@ from enum import Enum
 from typing import Any, Callable, Dict, List, Sequence, Tuple, Union
 
 import torch
+from monai.apps.detection.networks.retinanet_detector import RetinaNetDetector
 from monai.data import decollate_batch
 from monai.inferers import Inferer, SimpleInferer, SlidingWindowInferer
-from monai.apps.detection.networks.retinanet_detector import RetinaNetDetector
 
 from monailabel.interfaces.exception import MONAILabelError, MONAILabelException
 from monailabel.interfaces.tasks.infer_v2 import InferTask, InferType
 from monailabel.interfaces.utils.transform import dump_data, run_transforms
 from monailabel.transform.cache import CacheTransformDatad
-from monailabel.transform.writer import ClassificationWriter, Writer, DetectionWriter
+from monailabel.transform.writer import ClassificationWriter, DetectionWriter, Writer
 from monailabel.utils.others.generic import device_list
 
 logger = logging.getLogger(__name__)
@@ -87,7 +87,7 @@ class BasicInferTask(InferTask):
 
         self.path = [] if not path else [path] if isinstance(path, str) else path
         self.network = network
-        self.type=type
+        self.type = type
         self.model_state_dict = model_state_dict
         self.input_key = input_key
         self.output_label_key = output_label_key
@@ -302,7 +302,11 @@ class BasicInferTask(InferTask):
         latency_pre = time.time() - start
 
         start = time.time()
-        data = self.run_inferer(data, device=device) if not self.type == InferType.DETECTION else self.run_detector(data, device=device)
+        data = (
+            self.run_inferer(data, device=device)
+            if not self.type == InferType.DETECTION
+            else self.run_detector(data, device=device)
+        )
         if callback_run_inferer:
             data = callback_run_inferer(data)
         latency_inferer = time.time() - start
@@ -512,7 +516,9 @@ class BasicInferTask(InferTask):
         self.target_box_key = detector.target_box_key
         self.target_label_key = detector.target_label_key
 
-        logger.info(f"Detector Inferer:: {device} => {detector.inferer.__class__.__name__} => {detector.inferer.__dict__}")
+        logger.info(
+            f"Detector Inferer:: {device} => {detector.inferer.__class__.__name__} => {detector.inferer.__dict__}"
+        )
         network = self._get_network(device)
 
         if network:
@@ -560,9 +566,9 @@ class BasicInferTask(InferTask):
         if self.type == InferType.DETECTION:
             dw = DetectionWriter(pred_box_key=self.target_box_key, pred_label_key=self.target_label_key)
             return dw(data)
-        
-        writer = Writer(label=self.output_label_key, json=self.output_json_key)        
-            
+
+        writer = Writer(label=self.output_label_key, json=self.output_json_key)
+
         return writer(data)
 
     def clear(self):

@@ -30,5 +30,5 @@ MAINTAINED_BUNDLES = [
     "spleen_deepedit_annotation",  # spleen deepedit model annotation for CT images. Added Oct 2022
     "swin_unetr_btcv_segmentation",  # 3D transformer model for multi-organ segmentation. Added Oct 2022
     "wholeBrainSeg_Large_UNEST_segmentation",  # whole brain segmentation for T1 MRI brain images. Added Oct 2022
-    "lung_nodule_ct_detection"  # The first lung nodule detection task can be used for MONAI Label. Added Dec 2022
+    "lung_nodule_ct_detection",  # The first lung nodule detection task can be used for MONAI Label. Added Dec 2022
 ]

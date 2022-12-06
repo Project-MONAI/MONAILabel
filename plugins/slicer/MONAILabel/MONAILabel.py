@@ -1674,10 +1674,10 @@ class MONAILabelWidget(ScriptedLoadableModuleWidget, VTKObservationMixin):
 
             slicer.mrmlScene.RemoveNode(source_node)
         elif in_file.endswith(".json"):
-            # Add bounding box ROI node 
+            # Add bounding box ROI node
             logging.info("Update Detection ROI Bounding Box")
             detectionROINode = slicer.util.loadMarkups(in_file)
-            detectionROINode.SetName('Detection ROI')
+            detectionROINode.SetName("Detection ROI")
             detectionROINode.GetDisplayNode().SetInteractionHandleScale(0.7)
         else:
             labels = [label for label in labels if label != "background"]

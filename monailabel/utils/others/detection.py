@@ -13,7 +13,6 @@ import json
 import logging
 import tempfile
 
-
 logger = logging.getLogger(__name__)
 
 
@@ -22,7 +21,7 @@ def create_slicer_detection_json(json_data, loglevel="INFO"):
 
     total_count = 0
 
-    item = json_data["box"][0] # return highest prob box #TODO: return multiple boxes.
+    item = json_data["box"][0]  # return highest prob box #TODO: return multiple boxes.
 
     center = item[0:3]
     size = item[3:]
@@ -33,7 +32,9 @@ def create_slicer_detection_json(json_data, loglevel="INFO"):
 
     with open(label_json, "w") as fp:
         fp.write("{\n")
-        fp.write(' "@schema": "https://raw.githubusercontent.com/slicer/slicer/master/Modules/Loadable/Markups/Resources/Schema/markups-schema-v1.0.3.json#",\n')
+        fp.write(
+            ' "@schema": "https://raw.githubusercontent.com/slicer/slicer/master/Modules/Loadable/Markups/Resources/Schema/markups-schema-v1.0.3.json#",\n'
+        )
 
         fp.write(' "markups": [\n')
 
@@ -47,18 +48,13 @@ def create_slicer_detection_json(json_data, loglevel="INFO"):
             "selected": True,
             "locked": False,
             "visibility": True,
-            "positionStatus": "defined"                
+            "positionStatus": "defined",
         }
-        measurements = {
-                "name": "volume",
-                "enabled": False,
-                "units": "cm3",
-                "printFormat": "%-#4.4g%s"                
-        }
+        measurements = {"name": "volume", "enabled": False, "units": "cm3", "printFormat": "%-#4.4g%s"}
         detection_node = {
             "name": json_data["image"].split("/")[-1],
             "type": "ROI",
-            "coordinateSystem": "LPS", # use LPS coordinate system by default, which is defined by the bundle
+            "coordinateSystem": "LPS",  # use LPS coordinate system by default, which is defined by the bundle
             "coordinateUnits": "mm",
             "locked": False,
             "fixedNumberOfControlPoints": False,
@@ -71,7 +67,7 @@ def create_slicer_detection_json(json_data, loglevel="INFO"):
             "insideOut": False,
             "label": {"value": label},
             "controlPoints": [control_points],
-            "measurements": [measurements]
+            "measurements": [measurements],
         }
         fp.write(f"  {json.dumps(detection_node)}")
 
@@ -80,4 +76,3 @@ def create_slicer_detection_json(json_data, loglevel="INFO"):
 
     logger.info(f"Total Elements: {total_count}")
     return label_json, total_count
-

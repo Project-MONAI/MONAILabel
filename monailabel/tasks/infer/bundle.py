@@ -14,10 +14,10 @@ import logging
 import os
 from typing import Callable, Dict, Optional, Sequence, Union
 
+from monai.apps.detection.networks.retinanet_detector import RetinaNetDetector
 from monai.bundle import ConfigParser
 from monai.inferers import Inferer, SimpleInferer
 from monai.transforms import Compose, LoadImaged, SaveImaged
-from monai.apps.detection.networks.retinanet_detector import RetinaNetDetector
 
 from monailabel.interfaces.tasks.infer_v2 import InferType
 from monailabel.tasks.infer.basic_infer import BasicInferTask
@@ -64,6 +64,7 @@ class BundleConstants:
 
     def key_detector_ops(self) -> Sequence[str]:
         return ["detector_ops"]
+
 
 class BundleInferTask(BasicInferTask):
     """
@@ -126,7 +127,9 @@ class BundleInferTask(BasicInferTask):
         spatial_shape = image.get("spatial_shape")
         dimension = len(spatial_shape) if spatial_shape else 3
         type = self._get_type(description, type)
-        self.add_post_restore = False if type == "detection" else add_post_restore # if detection task, set post restore to False by default.
+        self.add_post_restore = (
+            False if type == "detection" else add_post_restore
+        )  # if detection task, set post restore to False by default.
 
         super().__init__(
             path=model_path,
@@ -190,15 +193,13 @@ class BundleInferTask(BasicInferTask):
 
     def _get_type(self, description, type):
         return (
-            (
-                InferType.DEEPEDIT
-                if "deepedit" in description.lower()
-                else InferType.DEEPGROW
-                if "deepgrow" in description.lower()
-                else InferType.DETECTION
-                if "detection" in description.lower()
-                else InferType.SEGMENTATION
-            )
+            InferType.DEEPEDIT
+            if "deepedit" in description.lower()
+            else InferType.DEEPGROW
+            if "deepgrow" in description.lower()
+            else InferType.DETECTION
+            if "detection" in description.lower()
+            else InferType.SEGMENTATION
         )
 
     def _filter_transforms(self, transforms, filters):

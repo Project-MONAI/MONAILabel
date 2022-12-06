@@ -19,9 +19,9 @@ import numpy as np
 import torch
 from monai.data import MetaTensor, write_nifti
 
+from monailabel.utils.others.detection import create_slicer_detection_json
 from monailabel.utils.others.generic import file_ext
 from monailabel.utils.others.pathology import create_asap_annotations_xml, create_dsa_annotations_json
-from monailabel.utils.others.detection import create_slicer_detection_json
 
 logger = logging.getLogger(__name__)
 
@@ -310,6 +310,7 @@ class PolygonWriter:
 
         return output_file, res_json
 
+
 class DetectionWriter:
     def __init__(
         self,
@@ -338,7 +339,7 @@ class DetectionWriter:
         write_to_file = data.get(self.key_write_to_file, True)
         if not write_to_file:
             return None, output_json
-            
+
         res_json = {
             "name": f"MONAILabel Annotations - {data.get('model')}",
             "description": data.get("description"),
