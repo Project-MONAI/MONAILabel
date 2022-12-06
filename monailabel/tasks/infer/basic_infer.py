@@ -20,12 +20,13 @@ from typing import Any, Callable, Dict, List, Sequence, Tuple, Union
 import torch
 from monai.data import decollate_batch
 from monai.inferers import Inferer, SimpleInferer, SlidingWindowInferer
+from monai.apps.detection.networks.retinanet_detector import RetinaNetDetector
 
 from monailabel.interfaces.exception import MONAILabelError, MONAILabelException
 from monailabel.interfaces.tasks.infer_v2 import InferTask, InferType
 from monailabel.interfaces.utils.transform import dump_data, run_transforms
 from monailabel.transform.cache import CacheTransformDatad
-from monailabel.transform.writer import ClassificationWriter, Writer
+from monailabel.transform.writer import ClassificationWriter, Writer, DetectionWriter
 from monailabel.utils.others.generic import device_list
 
 logger = logging.getLogger(__name__)
@@ -86,6 +87,7 @@ class BasicInferTask(InferTask):
 
         self.path = [] if not path else [path] if isinstance(path, str) else path
         self.network = network
+        self.type=type
         self.model_state_dict = model_state_dict
         self.input_key = input_key
         self.output_label_key = output_label_key
@@ -244,6 +246,9 @@ class BasicInferTask(InferTask):
             )
         return SimpleInferer()
 
+    def detector(self, data=None) -> RetinaNetDetector:
+        pass
+
     def __call__(
         self, request, callbacks: Union[Dict[CallBackTypes, Any], None] = None
     ) -> Union[Dict, Tuple[str, Dict[str, Any]]]:
@@ -297,7 +302,7 @@ class BasicInferTask(InferTask):
         latency_pre = time.time() - start
 
         start = time.time()
-        data = self.run_inferer(data, device=device)
+        data = self.run_inferer(data, device=device) if not self.type == InferType.DETECTION else self.run_detector(data, device=device)
         if callback_run_inferer:
             data = callback_run_inferer(data)
         latency_inferer = time.time() - start
@@ -492,6 +497,39 @@ class BasicInferTask(InferTask):
             data = run_transforms(data, inferer, log_prefix="INF", log_name="Inferer")
         return data
 
+    def run_detector(self, data, device="cuda"):
+        """
+        Run Inferer over pre-processed Data.  Derive this logic to customize the normal behavior.
+        In some cases, you want to implement your own for running chained inferers over pre-processed data
+
+        :param data: pre-processed data
+        :param convert_to_batch: convert input to batched input
+        :param device: device type run load the model and run inferer
+        :return: updated data with output_key stored that will be used for post-processing
+        """
+        detector = self.detector(data)
+
+        self.target_box_key = detector.target_box_key
+        self.target_label_key = detector.target_label_key
+
+        logger.info(f"Detector Inferer:: {device} => {detector.inferer.__class__.__name__} => {detector.inferer.__dict__}")
+        network = self._get_network(device)
+
+        if network:
+            inputs = [data[self.input_key].to(torch.device(device))]
+
+            with torch.no_grad():
+                detector.network = network
+                detector.eval()
+                outputs = detector(inputs, use_inferer=True)
+
+            if device.startswith("cuda"):
+                torch.cuda.empty_cache()
+
+            data[self.target_box_key] = outputs[0][detector.target_box_key]
+            data[self.target_label_key] = outputs[0][detector.target_label_key]
+        return data
+
     def writer(self, data: Dict[str, Any], extension=None, dtype=None) -> Tuple[Any, Any]:
         """
         You can provide your own writer.  However, this writer saves the prediction/label mask to file
@@ -519,7 +557,11 @@ class BasicInferTask(InferTask):
             cw = ClassificationWriter(label=self.output_label_key, label_names=label_names)
             return cw(data)
 
-        writer = Writer(label=self.output_label_key, json=self.output_json_key)
+        if self.type == InferType.DETECTION:
+            writer = DetectionWriter(pred_box_key=self.target_box_key, pred_label_key=self.target_label_key)
+        else:
+            writer = Writer(label=self.output_label_key, json=self.output_json_key)        
+            
         return writer(data)
 
     def clear(self):

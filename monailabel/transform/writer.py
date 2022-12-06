@@ -21,6 +21,7 @@ from monai.data import MetaTensor, write_nifti
 
 from monailabel.utils.others.generic import file_ext
 from monailabel.utils.others.pathology import create_asap_annotations_xml, create_dsa_annotations_json
+from monailabel.utils.others.detection import create_slicer_detection_json
 
 logger = logging.getLogger(__name__)
 
@@ -308,3 +309,54 @@ class PolygonWriter:
             logger.info("+++ Return Default JSON Annotation")
 
         return output_file, res_json
+
+class DetectionWriter:
+    def __init__(
+        self,
+        json="result",
+        pred_box_key="box",
+        pred_label_key="label",
+        key_write_to_file="result_write_to_file",
+        key_output_format="slicer",
+    ):
+        self.json = json
+        self.pred_box_key = pred_box_key
+        self.pred_label_key = pred_label_key
+        self.key_write_to_file = key_write_to_file
+        self.key_output_format = key_output_format
+        self.format = format
+
+    def __call__(self, data) -> Tuple[Any, Any]:
+
+        loglevel = data.get("logging", "INFO").upper()
+        logger.setLevel(loglevel)
+
+        output = data.get(self.key_output_format, "slicer")
+        logger.info(f"+++ Output Type: {output}")
+
+        output_json = data.get(self.json, {})
+        write_to_file = data.get(self.key_write_to_file, True)
+        if not write_to_file:
+            return None, output_json
+            
+        res_json = {
+            "name": f"MONAILabel Annotations - {data.get('model')}",
+            "description": data.get("description"),
+            "model": data.get("model"),
+            "location": data.get("location"),
+            "size": data.get("size"),
+            "box": data.get(self.pred_box_key).cpu().detach().tolist(),
+            "label": data.get(self.pred_label_key).cpu().detach().tolist(),
+            "image": data.get("image_path", None),
+            "latencies": data.get("latencies"),
+        }
+
+        output_files = None
+
+        if output == "slicer":
+            logger.info("+++ Generating Slicer Detection ROI Node JSON file")
+            output_files, _ = create_slicer_detection_json(res_json, loglevel=loglevel)
+        else:
+            logger.info("+++ Return Default JSON Annotation")
+
+        return output_files, res_json

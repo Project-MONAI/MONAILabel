@@ -23,11 +23,12 @@ Note: Version tags are not needed.
 """
 
 MAINTAINED_BUNDLES = [
-    "pancreas_ct_dints_segmentation",  # Pancreas segmentation with radiology/monaibundle app support
-    "prostate_mri_anatomy",  # prostate segmentation with radiology/monaibundle app support
-    "renalStructures_UNEST_segmentation",  # renal cortex, medulla, pelvis segmentation with radiology/monaibundle support
-    "spleen_ct_segmentation",  # spleen segmentation with radiology/monaibundle support
-    "spleen_deepedit_annotation",  # spleen deepedit model annotation for CT images
-    "swin_unetr_btcv_segmentation",  # 3D transformer model for multi-organ segmentation
-    "wholeBrainSeg_Large_UNEST_segmentation",  # whole brain segmentation for T1 MRI brain images.
+    "pancreas_ct_dints_segmentation",  # Pancreas segmentation with radiology/monaibundle app support. Added Oct 2022
+    "prostate_mri_anatomy",  # prostate segmentation with radiology/monaibundle app support. Added Oct 2022
+    "renalStructures_UNEST_segmentation",  # renal cortex, medulla, pelvis segmentation with radiology/monaibundle support. Added Oct 2022
+    "spleen_ct_segmentation",  # spleen segmentation with radiology/monaibundle support. Added Oct 2022
+    "spleen_deepedit_annotation",  # spleen deepedit model annotation for CT images. Added Oct 2022
+    "swin_unetr_btcv_segmentation",  # 3D transformer model for multi-organ segmentation. Added Oct 2022
+    "wholeBrainSeg_Large_UNEST_segmentation",  # whole brain segmentation for T1 MRI brain images. Added Oct 2022
+    "lung_nodule_ct_detection"  # The first lung nodule detection task can be used for MONAI Label. Added Dec 2022
 ]
