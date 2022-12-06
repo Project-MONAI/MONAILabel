@@ -558,9 +558,10 @@ class BasicInferTask(InferTask):
             return cw(data)
 
         if self.type == InferType.DETECTION:
-            writer = DetectionWriter(pred_box_key=self.target_box_key, pred_label_key=self.target_label_key)
-        else:
-            writer = Writer(label=self.output_label_key, json=self.output_json_key)        
+            dw = DetectionWriter(pred_box_key=self.target_box_key, pred_label_key=self.target_label_key)
+            return dw(data)
+        
+        writer = Writer(label=self.output_label_key, json=self.output_json_key)        
             
         return writer(data)
 

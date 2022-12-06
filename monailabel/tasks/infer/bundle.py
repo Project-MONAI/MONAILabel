@@ -75,7 +75,7 @@ class BundleInferTask(BasicInferTask):
         path: str,
         conf: Dict[str, str],
         const: Optional[BundleConstants] = None,
-        type: Union[str, InferType] = None,
+        type: Union[str, InferType] = InferType.SEGMENTATION,
         pre_filter: Optional[Sequence] = None,
         post_filter: Optional[Sequence] = [SaveImaged],
         extend_load_image: bool = True,
@@ -199,8 +199,6 @@ class BundleInferTask(BasicInferTask):
                 if "detection" in description.lower()
                 else InferType.SEGMENTATION
             )
-            if not type
-            else type
         )
 
     def _filter_transforms(self, transforms, filters):
