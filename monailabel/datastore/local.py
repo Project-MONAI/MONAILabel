@@ -29,7 +29,7 @@ from watchdog.observers import Observer
 
 from monailabel.interfaces.datastore import Datastore, DefaultLabelTag
 from monailabel.interfaces.exception import ImageNotFoundException, LabelNotFoundException
-from monailabel.utils.others.generic import file_checksum, file_ext, remove_file
+from monailabel.utils.others.generic import file_ext, remove_file
 
 logger = logging.getLogger(__name__)
 
@@ -502,7 +502,7 @@ class LocalDatastore(Datastore):
 
             label_info = label_info if label_info else {}
             label_info["ts"] = int(time.time())
-            label_info["checksum"] = file_checksum(dest)
+            # label_info["checksum"] = file_checksum(dest)
             label_info["name"] = name
 
             obj.labels[label_tag] = DataModel(info=label_info, ext=label_ext)
@@ -625,7 +625,7 @@ class LocalDatastore(Datastore):
                 name = self._filename(label_id, label_ext)
                 label_info = {
                     "ts": int(time.time()),
-                    "checksum": file_checksum(os.path.join(self._datastore.label_path(tag), name)),
+                    # "checksum": file_checksum(os.path.join(self._datastore.label_path(tag), name)),
                     "name": name,
                 }
 

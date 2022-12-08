@@ -57,7 +57,7 @@ class BasicInferTask(InferTask):
         output_label_key: str = "pred",
         output_json_key: str = "result",
         config: Union[None, Dict[str, Any]] = None,
-        load_strict: bool = True,
+        load_strict: bool = False,
         roi_size=None,
         preload=False,
         train_mode=False,

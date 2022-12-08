@@ -12,12 +12,12 @@ import logging
 from typing import Any, Callable, Dict, Sequence
 
 import numpy as np
-from lib.transforms import LoadImagePatchd, PostFilterLabeld, RenameKeyd
+from lib.transforms import LoadImagePatchd, PostFilterLabeld
 from monai.transforms import FromMetaTensord, LoadImaged, SaveImaged, SqueezeDimd
 
 from monailabel.interfaces.tasks.infer_v2 import InferType
 from monailabel.tasks.infer.bundle import BundleInferTask
-from monailabel.transform.post import FindContoursd
+from monailabel.transform.post import FindContoursd, RenameKeyd
 from monailabel.transform.writer import PolygonWriter
 
 logger = logging.getLogger(__name__)

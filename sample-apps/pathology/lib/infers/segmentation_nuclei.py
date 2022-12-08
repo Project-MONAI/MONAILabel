@@ -14,7 +14,7 @@ from typing import Any, Callable, Dict, Sequence
 
 import numpy as np
 from lib.transforms import LoadImagePatchd, PostFilterLabeld
-from monai.transforms import Activationsd, AsChannelFirstd, AsDiscreted, EnsureTyped, ScaleIntensityRangeD, SqueezeDimd
+from monai.transforms import Activationsd, AsChannelFirstd, AsDiscreted, ScaleIntensityRangeD, SqueezeDimd
 
 from monailabel.interfaces.tasks.infer_v2 import InferType
 from monailabel.tasks.infer.basic_infer import BasicInferTask
@@ -59,14 +59,12 @@ class SegmentationNuclei(BasicInferTask):
     def pre_transforms(self, data=None) -> Sequence[Callable]:
         return [
             LoadImagePatchd(keys="image", mode="RGB", dtype=np.uint8, padding=False),
-            EnsureTyped(keys="image", device=data.get("device") if data else None),
             AsChannelFirstd(keys="image"),
             ScaleIntensityRangeD(keys="image", a_min=0.0, a_max=255.0, b_min=-1.0, b_max=1.0),
         ]
 
     def post_transforms(self, data=None) -> Sequence[Callable]:
         return [
-            EnsureTyped(keys="pred", device=data.get("device") if data else None),
             Activationsd(keys="pred", softmax=True),
             AsDiscreted(keys="pred", argmax=True),
             SqueezeDimd(keys="pred", dim=0),

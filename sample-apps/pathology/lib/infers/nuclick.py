@@ -99,7 +99,7 @@ class NuClick(BundleInferTask):
         return output
 
     def post_transforms(self, data=None) -> Sequence[Callable]:
-        t = [x for x in super().pre_transforms(data)]
+        t = [x for x in super().post_transforms(data)]
         t.extend(
             [
                 SqueezeDimd(keys="pred", dim=1),

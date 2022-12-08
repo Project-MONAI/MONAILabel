@@ -10,22 +10,18 @@
 # limitations under the License.
 
 import logging
-import math
 import pathlib
 
 import numpy as np
 import openslide
 import torch
-from monai.apps.pathology.transforms import GenerateInstanceType
 from monai.config import KeysCollection
 from monai.data import MetaTensor
-from monai.transforms import BoundingRect, MapTransform, Pad, Transform
-from monai.utils import HoVerNetBranch, PostFix, convert_to_numpy, ensure_tuple
+from monai.transforms import MapTransform
+from monai.utils import PostFix, convert_to_numpy, ensure_tuple
 from PIL import Image
 from scipy.ndimage import binary_fill_holes
 from skimage.morphology import remove_small_holes, remove_small_objects
-
-from monailabel.utils.others.label_colors import get_color
 
 logger = logging.getLogger(__name__)
 
@@ -93,7 +89,7 @@ class LoadImagePatchd(MapTransform):
 
             if self.padding and tile_size and (image_np.shape[0] != tile_size[0] or image_np.shape[1] != tile_size[1]):
                 image_np = self.pad_to_shape(image_np, tile_size)
-            d[key] = MetaTensor(image_np, meta=meta_dict)
+            d[key] = MetaTensor(image_np, meta=meta_dict, device=d.get("device"))
         return d
 
     @staticmethod
@@ -159,237 +155,3 @@ class ConvertInteractiveClickSignals(MapTransform):
                     f"source_annotation_key={source_annotation_key} not found in annotations.keys()={annotations.keys()}"
                 )
         return data
-
-
-class ContoursFromHovernetInstanceInfod(MapTransform):
-    def __init__(
-        self,
-        keys: KeysCollection,
-        result="result",
-        result_output_key="annotation",
-        key_label_colors="label_colors",
-        labels=None,
-        colormap=None,
-    ):
-        super().__init__(keys)
-
-        self.result = result
-        self.result_output_key = result_output_key
-        self.key_label_colors = key_label_colors
-        self.colormap = colormap
-
-        labels = labels if labels else dict()
-        labels = [labels] if isinstance(labels, str) else labels
-        if not isinstance(labels, dict):
-            labels = {v: k + 1 for k, v in enumerate(labels)}
-
-        labels = {v: k for k, v in labels.items()}
-        self.labels = labels
-
-    def __call__(self, data):
-        d = dict(data)
-        location = d.get("location", [0, 0])
-        size = d.get("size", [0, 0])
-        color_map = d.get(self.key_label_colors) if self.colormap is None else self.colormap
-
-        elements = []
-        label_names = set()
-        for key in self.keys:
-            labels = {}
-            for instance in d[key].values():
-                label_idx = instance["type"]
-                if not labels.get(label_idx):
-                    labels[label_idx] = []
-                labels[label_idx].append(instance)
-            logger.info(f"Total Unique Masks (excluding background): {list(labels.keys())}")
-
-            for label_idx, instances in labels.items():
-                label_name = self.labels.get(label_idx, label_idx)
-                label_names.add(label_name)
-
-                polygons = []
-                contours = [instance["contour"] for instance in instances]
-                for contour in contours:
-                    if len(contour) < 3:
-                        continue
-
-                    contour[:, 0] += location[0]  # X
-                    contour[:, 1] += location[1]  # Y
-
-                    coords = contour.astype(int).tolist()
-                    polygons.append(coords)
-
-                if len(polygons):
-                    logger.info(f"+++++ {label_idx} => Total Polygons Found: {len(polygons)}")
-                    elements.append({"label": label_name, "contours": polygons})
-
-        if elements:
-            if d.get(self.result) is None:
-                d[self.result] = dict()
-            d[self.result][self.result_output_key] = {
-                "location": location,
-                "size": size,
-                "elements": elements,
-                "labels": {n: get_color(n, color_map) for n in label_names},
-            }
-            logger.debug(f"+++++ ALL => Total Annotation Elements Found: {len(elements)}")
-        return d
-
-
-class ToHoverNetPatchesd(Transform):
-    def __init__(self, image="image", input_size=(270, 270), output_size=(80, 80)):
-        self.image = image
-        self.input_size = input_size
-        self.output_size = output_size
-
-    def __call__(self, data):
-        d = dict(data)
-
-        img = d[self.image]
-        w = img.shape[-2]
-        h = img.shape[-1]
-
-        x = self.output_size[0]
-        y = self.output_size[1]
-
-        # debug = data.get("debug", False)
-
-        win_size = self.input_size
-        msk_size = step_size = self.output_size
-
-        def get_last_steps(length, msk_size, step_size):
-            nr_step = math.ceil((length - msk_size) / step_size)
-            last_step = (nr_step + 1) * step_size
-            return int(last_step), int(nr_step + 1)
-
-        last_w, _ = get_last_steps(w, msk_size[0], step_size[0])
-        last_h, _ = get_last_steps(h, msk_size[1], step_size[1])
-
-        padl = (win_size[0] - step_size[0]) // 2
-        padt = (win_size[1] - step_size[1]) // 2
-        padr = last_w + win_size[0] - w
-        padb = last_h + win_size[1] - h
-
-        padding = Pad()
-        img = padding(img, to_pad=[(0, 0), (padl, padr), (padt, padb)], mode="reflect")
-
-        patches = []
-        for i in range(math.ceil(w / x)):
-            for j in range(math.ceil(h / y)):
-                x1 = i * self.output_size[0]
-                y1 = j * self.output_size[1]
-                x2 = x1 + self.input_size[0]
-                y2 = y1 + self.input_size[1]
-
-                p = img[:, x1:x2, y1:y2]
-                patches.append(p)
-
-                # if debug:
-                #     p = p[:3] * 255
-                #     p = torch.moveaxis(p, 0, -1).type(torch.uint8)
-                #     im = Image.fromarray(p.array, mode="RGB")
-                #     im.save(f"/localhome/sachi/Dataset/Pathology/dummy/patches/img/{i}x{j}.png")
-
-        d[self.image] = torch.stack(patches, dim=0)
-        d["image_spatial_size"] = (w, h)
-        return d
-
-
-class FromHoverNetPatchesd(MapTransform):
-    def __init__(
-        self,
-        keys: KeysCollection,
-        allow_missing_keys: bool = False,
-        image_spatial_size="image_spatial_size",
-        output_size=(80, 80),
-    ):
-        super().__init__(keys, allow_missing_keys)
-
-        self.image_spatial_size = image_spatial_size
-        self.output_size = output_size
-
-    def __call__(self, data):
-        d = dict(data)
-
-        img = d[self.image_spatial_size]
-        w = img[-2]
-        h = img[-1]
-
-        x = self.output_size[0]
-        y = self.output_size[1]
-        # debug = data.get("debug", False)
-
-        for key in self.key_iterator(d):
-            patches = d[key]
-            c = patches[0].shape[0]
-
-            count = 0
-            pred = torch.zeros((c, w, h), dtype=patches.dtype)
-            for i in range(math.ceil(w / x)):
-                for j in range(math.ceil(h / y)):
-                    x1 = i * self.output_size[0]
-                    y1 = j * self.output_size[1]
-                    x2 = min(w, x1 + self.output_size[0])
-                    y2 = min(h, y1 + self.output_size[1])
-
-                    p = patches[count]
-                    pred[:, x1:x2, y1:y2] = p[:, 0 : (x2 - x1), 0 : (y2 - y1)]
-                    count += 1
-
-                    # if debug and key == "nucleus_prediction":
-                    #     p = torch.softmax(p, dim=0)
-                    #     p = torch.argmax(p, dim=0, keepdim=True)
-                    #     p[p > 0] = 255
-                    #     p = p[0].type(torch.uint8)
-                    #     im = Image.fromarray(p.array if isinstance(p, MetaTensor) else p.cpu().detach().numpy())
-                    #     im.save(f"/localhome/sachi/Dataset/Pathology/dummy/patches/lab/{i}x{j}.png")
-
-            d[key] = pred
-        return d
-
-
-class RenameKeyd(Transform):
-    def __init__(self, source_key, target_key):
-        self.source_key = source_key
-        self.target_key = target_key
-
-    def __call__(self, data):
-        d = dict(data)
-        d[self.target_key] = d.pop(self.source_key)
-        return d
-
-
-class HoverNetPostProcessWS(Transform):
-    def __init__(
-        self,
-        output_key="pred",
-        mask_key="mask",
-        labels=None,
-    ):
-        self.output_key = output_key
-        self.mask_key = mask_key
-        self.labels = {v: k for k, v in labels.items()}
-
-    def __call__(self, data):
-        d = dict(data)
-
-        seg_pred = d[self.mask_key]
-        type_pred = d[HoVerNetBranch.NC]
-
-        result = torch.zeros(seg_pred.shape, dtype=torch.uint8)
-        inst_id_list = sorted(torch.unique(seg_pred))[1:]  # exclude background
-        for inst_id in inst_id_list:
-            inst_map = torch.where(seg_pred == inst_id, 1, 0)
-            inst_bbox = BoundingRect()(inst_map)
-
-            inst_type, type_prob = GenerateInstanceType()(
-                bbox=inst_bbox,
-                type_pred=type_pred,
-                seg_pred=seg_pred,
-                instance_id=inst_id,
-            )
-            result = torch.where(seg_pred == inst_id, inst_type, result)
-
-        logger.info(f"Total Labels Types: {torch.unique(result)}")
-        d[self.output_key] = result
-        return d
