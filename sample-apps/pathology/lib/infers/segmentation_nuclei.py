@@ -14,15 +14,7 @@ from typing import Any, Callable, Dict, Sequence
 
 import numpy as np
 from lib.transforms import LoadImagePatchd, PostFilterLabeld
-from monai.transforms import (
-    Activationsd,
-    AsChannelFirstd,
-    AsDiscreted,
-    EnsureTyped,
-    ScaleIntensityRangeD,
-    SqueezeDimd,
-    ToNumpyd,
-)
+from monai.transforms import Activationsd, AsChannelFirstd, AsDiscreted, EnsureTyped, ScaleIntensityRangeD, SqueezeDimd
 
 from monailabel.interfaces.tasks.infer_v2 import InferType
 from monailabel.tasks.infer.basic_infer import BasicInferTask
@@ -78,7 +70,6 @@ class SegmentationNuclei(BasicInferTask):
             Activationsd(keys="pred", softmax=True),
             AsDiscreted(keys="pred", argmax=True),
             SqueezeDimd(keys="pred", dim=0),
-            ToNumpyd(keys="pred"),
             PostFilterLabeld(keys="pred"),
             FindContoursd(keys="pred", labels=self.labels, max_poly_area=128 * 128),
         ]

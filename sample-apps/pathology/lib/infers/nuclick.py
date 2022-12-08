@@ -15,16 +15,8 @@ from typing import Any, Callable, Dict, Optional, Sequence
 import numpy as np
 import torch
 from lib.transforms import ConvertInteractiveClickSignals, LoadImagePatchd
-from monai.apps.nuclick.transforms import AddClickSignalsd, AddLabelAsGuidanced, NuclickKeys, PostFilterLabeld
-from monai.transforms import (
-    Activationsd,
-    AsChannelFirstd,
-    AsDiscreted,
-    EnsureTyped,
-    ScaleIntensityRangeD,
-    SqueezeDimd,
-    ToNumpyd,
-)
+from monai.apps.nuclick.transforms import AddLabelAsGuidanced, NuclickKeys, PostFilterLabeld
+from monai.transforms import KeepLargestConnectedComponentd, LoadImaged, SaveImaged, SqueezeDimd
 
 from monailabel.interfaces.tasks.infer_v2 import InferType
 from monailabel.tasks.infer.basic_infer import BasicInferTask
@@ -41,7 +33,15 @@ class NuClick(BundleInferTask):
     """
 
     def __init__(self, path: str, conf: Dict[str, str], **kwargs):
-        super().__init__(path, conf, type=InferType.ANNOTATION, add_post_restore=False, **kwargs)
+        super().__init__(
+            path,
+            conf,
+            type=InferType.ANNOTATION,
+            add_post_restore=False,
+            **kwargs,
+            pre_filter=[LoadImaged, SqueezeDimd],
+            post_filter=[KeepLargestConnectedComponentd, SaveImaged],
+        )
 
         # Override Labels
         self.labels = {"Nuclei": 1}
@@ -63,19 +63,17 @@ class NuClick(BundleInferTask):
         d["nuclick"] = True
         return d
 
-    def pre_transforms(self, data=None):
-        return [
+    def pre_transforms(self, data=None) -> Sequence[Callable]:
+        t = [
             LoadImagePatchd(keys="image", mode="RGB", dtype=np.uint8, padding=False),
-            EnsureTyped(keys="image", device=data.get("device") if data else None),
-            AsChannelFirstd(keys="image"),
             ConvertInteractiveClickSignals(
                 source_annotation_keys="nuclick points",
                 target_data_keys=NuclickKeys.FOREGROUND,
                 allow_missing_keys=True,
             ),
-            ScaleIntensityRangeD(keys="image", a_min=0.0, a_max=255.0, b_min=-1.0, b_max=1.0),
-            AddClickSignalsd(image="image", foreground=NuclickKeys.FOREGROUND, gaussian=False),
         ]
+        t.extend([x for x in super().pre_transforms(data)])
+        return t
 
     def run_inferer(self, data, convert_to_batch=True, device="cuda"):
         output = super().run_inferer(data, False, device)
@@ -101,15 +99,15 @@ class NuClick(BundleInferTask):
         return output
 
     def post_transforms(self, data=None) -> Sequence[Callable]:
-        return [
-            EnsureTyped(keys="pred", device=data.get("device") if data else None),
-            Activationsd(keys="pred", sigmoid=True),
-            AsDiscreted(keys="pred", threshold=0.5),
-            SqueezeDimd(keys="pred", dim=1),
-            ToNumpyd(keys=("image", "pred")),
-            PostFilterLabeld(keys="pred"),
-            FindContoursd(keys="pred", labels=self.labels),
-        ]
+        t = [x for x in super().pre_transforms(data)]
+        t.extend(
+            [
+                SqueezeDimd(keys="pred", dim=1),
+                PostFilterLabeld(keys="pred"),
+                FindContoursd(keys="pred", labels=self.labels),
+            ]
+        )
+        return t
 
     def writer(self, data, extension=None, dtype=None):
         writer = PolygonWriter(label=self.output_label_key, json=self.output_json_key)
