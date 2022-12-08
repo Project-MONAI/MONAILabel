@@ -41,37 +41,45 @@ public class InteractorTool extends PointsTool {
 			return;
 
 		PointsROI roi = (PointsROI) currentObject.getROI();
+		String model = selectedModel;
+		int patchSize = selectedPatchSize;
 
 		try {
 			if (info == null) {
 				info = MonaiLabelClient.info();
-				List<String> names = new ArrayList<String>();
-				for (String n : info.models.keySet()) {
-					if (info.models.get(n).nuclick) {
-						names.add(n);
-					}
-				}
-				int patchSize = selectedPatchSize;
-				if (names.size() == 0) {
-					return;
-				}
-				if (names.size() == 1) {
-					selectedModel = names.get(0);
-				}
+			}
 
-				if (selectedModel == null || selectedModel.isEmpty()) {
-					ParameterList list = new ParameterList();
-					list.addChoiceParameter("Model", "Model Name", names.get(0), names);
-					list.addIntParameter("PatchSize", "PatchSize", patchSize);
-
-					if (!Dialogs.showParameterDialog("MONAILabel", list)) {
-						return;
-					}
-
-					selectedModel = (String) list.getChoiceParameterValue("Model");
-					selectedPatchSize = list.getIntParameterValue("PatchSize").intValue();
+			List<String> names = new ArrayList<String>();
+			for (String n : info.models.keySet()) {
+				if (info.models.get(n).nuclick) {
+					names.add(n);
 				}
 			}
+			if (names.size() == 1) {
+				model = names.get(0);
+			}
+
+			if (model == null || model.isEmpty()) {
+				ParameterList list = new ParameterList();
+				list.addChoiceParameter("Model", "Model Name", names.get(0), names);
+				list.addIntParameter("PatchSize", "PatchSize", patchSize);
+				list.addBooleanParameter("RememberMe", "Remember My Choice", true);
+
+				if (!Dialogs.showParameterDialog("MONAILabel", list)) {
+					return;
+				}
+
+				model = (String) list.getChoiceParameterValue("Model");
+				patchSize = list.getIntParameterValue("PatchSize").intValue();
+				if (list.getBooleanParameterValue("RememberMe").booleanValue()) {
+					selectedModel = model;
+					selectedPatchSize = patchSize;
+				} else {
+					selectedModel = null;
+					selectedPatchSize = 128;
+				}
+			}
+
 
 			int min_x = Integer.MAX_VALUE;
 			int min_y = Integer.MAX_VALUE;
@@ -86,13 +94,13 @@ public class InteractorTool extends PointsTool {
 				max_y = Math.max(y, max_y);
 			}
 
-			int w = Math.max(max_x - min_x + 20, selectedPatchSize);
-			int h = Math.max(max_y - min_y + 20, selectedPatchSize);
+			int w = Math.max(max_x - min_x + 20, patchSize);
+			int h = Math.max(max_y - min_y + 20, patchSize);
 			int x = Math.max(0, min_x + (max_x - min_x) / 2 - w / 2);
 			int y = Math.max(0, min_y + (max_y - min_y) / 2 - h / 2);
 			int[] bbox = { x, y, w, h };
 
-			RunInference.runInference(selectedModel, info, bbox, selectedPatchSize, viewer.getImageData());
+			RunInference.runInference(model, info, bbox, patchSize, viewer.getImageData());
 			// currentObject.setROI(ROIs.createPointsROI(viewer.getImagePlane()));
 			viewer.getHierarchy().getSelectionModel().clearSelection();
 		} catch (Exception ex) {
@@ -100,6 +108,7 @@ public class InteractorTool extends PointsTool {
 			Dialogs.showErrorMessage("MONAILabel", ex);
 
 			selectedModel = null;
+			selectedPatchSize = 128;
 			info = null;
 		}
 	}

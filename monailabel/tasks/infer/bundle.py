@@ -152,7 +152,7 @@ class BundleInferTask(BasicInferTask):
             if self.bundle_config.get(k):
                 c = self.bundle_config.get_parsed_content(k, instantiate=True)
                 pre = list(c.transforms) if isinstance(c, Compose) else c
-        pre = self._filter_transforms(pre, self.post_filter)
+        pre = self._filter_transforms(pre, self.pre_filter)
 
         if pre and self.extend_load_image:
             res = []

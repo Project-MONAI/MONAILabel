@@ -486,16 +486,13 @@ class BasicInferTask(InferTask):
                 torch.cuda.empty_cache()
 
             if convert_to_batch:
-                if data.get("decollate_batch", False):  # TODO:: Use automatically depending on the input/output
+                if isinstance(outputs, dict):
                     outputs_d = decollate_batch(outputs)
                     outputs = outputs_d[0]
                 else:
                     outputs = outputs[0]
 
-            if isinstance(outputs, dict):
-                data.update(outputs)
-            else:
-                data[self.output_label_key] = outputs
+            data[self.output_label_key] = outputs
         else:
             # consider them as callable transforms
             data = run_transforms(data, inferer, log_prefix="INF", log_name="Inferer")
@@ -573,3 +570,6 @@ class BasicInferTask(InferTask):
 
     def clear(self):
         self._networks.clear()
+
+    def set_loglevel(self, level: str):
+        logger.setLevel(level.upper())
