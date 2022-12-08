@@ -14,9 +14,11 @@ import pathlib
 
 import numpy as np
 import openslide
+import torch
 from monai.config import KeysCollection
+from monai.data import MetaTensor
 from monai.transforms import MapTransform
-from monai.utils import ensure_tuple
+from monai.utils import PostFix, convert_to_numpy, ensure_tuple
 from PIL import Image
 from scipy.ndimage import binary_fill_holes
 from skimage.morphology import remove_small_holes, remove_small_objects
@@ -25,11 +27,8 @@ logger = logging.getLogger(__name__)
 
 
 class LoadImagePatchd(MapTransform):
-    def __init__(
-        self, keys: KeysCollection, meta_key_postfix: str = "meta_dict", mode="RGB", dtype=np.uint8, padding=True
-    ):
+    def __init__(self, keys: KeysCollection, mode="RGB", dtype=np.uint8, padding=True):
         super().__init__(keys)
-        self.meta_key_postfix = meta_key_postfix
         self.mode = mode
         self.dtype = dtype
         self.padding = padding
@@ -77,7 +76,7 @@ class LoadImagePatchd(MapTransform):
             image_np = np.array(img, dtype=self.dtype)
             image_np = np.moveaxis(image_np, 0, 1)
 
-            meta_dict_key = f"{key}_{self.meta_key_postfix}"
+            meta_dict_key = f"{key}_{PostFix.meta()}"
             meta_dict = d.get(meta_dict_key)
             if meta_dict is None:
                 d[meta_dict_key] = dict()
@@ -85,11 +84,12 @@ class LoadImagePatchd(MapTransform):
 
             meta_dict["spatial_shape"] = np.asarray(image_np.shape[:-1])
             meta_dict["original_channel_dim"] = -1
+            meta_dict["original_affine"] = None  # type: ignore
             logger.debug(f"Image shape: {image_np.shape} vs size: {size} vs tile_size: {tile_size}")
 
             if self.padding and tile_size and (image_np.shape[0] != tile_size[0] or image_np.shape[1] != tile_size[1]):
                 image_np = self.pad_to_shape(image_np, tile_size)
-            d[key] = image_np
+            d[key] = MetaTensor(image_np, meta=meta_dict, device=d.get("device"))
         return d
 
     @staticmethod
@@ -114,7 +114,8 @@ class PostFilterLabeld(MapTransform):
     def __call__(self, data):
         d = dict(data)
         for key in self.keys:
-            label = d[key].astype(np.uint8)
+            label = convert_to_numpy(d[key]) if isinstance(d[key], torch.Tensor) else d[key]
+            label = label.astype(np.uint8)
             if self.min_hole:
                 label = remove_small_holes(label, area_threshold=self.min_hole)
             label = binary_fill_holes(label).astype(np.uint8)
