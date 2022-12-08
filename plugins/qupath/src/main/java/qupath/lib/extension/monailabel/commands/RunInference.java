@@ -154,7 +154,7 @@ public class RunInference implements Runnable {
 	public static void runInference(String model, ResponseInfo info, int[] bbox, int tileSize,
 			ImageData<BufferedImage> imageData)
 			throws SAXException, IOException, ParserConfigurationException, InterruptedException {
-		logger.info("MONAILabel:: Running Inference...");
+		logger.info("MONAILabel:: Running Inference...; model = " + model);
 
 		boolean isNuClick = info.models.get(model).nuclick;
 		boolean override = !isNuClick;

@@ -292,3 +292,14 @@ class MergeAllPreds(MapTransform):
             # For labels that overlap keep the last label number only
             merge_image[merge_image > d[key].max()] = d[key].max()
         return merge_image
+
+
+class RenameKeyd(Transform):
+    def __init__(self, source_key, target_key):
+        self.source_key = source_key
+        self.target_key = target_key
+
+    def __call__(self, data):
+        d = dict(data)
+        d[self.target_key] = d.pop(self.source_key)
+        return d
