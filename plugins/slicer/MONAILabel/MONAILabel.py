@@ -522,11 +522,11 @@ class MONAILabelWidget(ScriptedLoadableModuleWidget, VTKObservationMixin):
 
         self.ui.uploadImageButton.setEnabled(self.current_sample and self.current_sample.get("session"))
 
-        self.updateSelector(self.ui.segmentationModelSelector, ["segmentation"], "SegmentationModel", 0)
+        self.updateSelector(self.ui.segmentationModelSelector, ["segmentation", "detection"], "SegmentationModel", 0)
         self.updateSelector(self.ui.deepgrowModelSelector, ["deepgrow", "deepedit"], "DeepgrowModel", 0)
         self.updateSelector(self.ui.scribblesMethodSelector, ["scribbles"], "ScribblesMethod", 0)
 
-        if self.models and [k for k, v in self.models.items() if v["type"] == "segmentation"]:
+        if self.models and [k for k, v in self.models.items() if v["type"] in ("segmentation", "detection")]:
             self.ui.segmentationCollapsibleButton.collapsed = False
             self.ui.segmentationCollapsibleButton.show()
         else:
@@ -1673,6 +1673,12 @@ class MONAILabelWidget(ScriptedLoadableModuleWidget, VTKObservationMixin):
                 destination_node.SetReferenceImageGeometryParameterFromVolumeNode(self._volumeNode)
 
             slicer.mrmlScene.RemoveNode(source_node)
+        elif in_file.endswith(".json"):
+            # Add bounding box ROI node
+            logging.info("Update Detection ROI Bounding Box")
+            detectionROINode = slicer.util.loadMarkups(in_file)
+            detectionROINode.SetName("Detection ROI")
+            detectionROINode.GetDisplayNode().SetInteractionHandleScale(0.7)
         else:
             labels = [label for label in labels if label != "background"]
             logging.info(f"Update Segmentation Mask using Labels: {labels}")

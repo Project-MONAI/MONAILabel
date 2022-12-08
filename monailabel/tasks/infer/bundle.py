@@ -14,6 +14,7 @@ import logging
 import os
 from typing import Callable, Dict, Optional, Sequence, Union
 
+from monai.apps.detection.networks.retinanet_detector import RetinaNetDetector
 from monai.bundle import ConfigParser
 from monai.inferers import Inferer, SimpleInferer
 from monai.transforms import Compose, LoadImaged, SaveImaged
@@ -58,6 +59,12 @@ class BundleConstants:
     def key_inferer(self) -> Sequence[str]:
         return ["inferer"]
 
+    def key_detector(self) -> Sequence[str]:
+        return ["detector"]
+
+    def key_detector_ops(self) -> Sequence[str]:
+        return ["detector_ops"]
+
 
 class BundleInferTask(BasicInferTask):
     """
@@ -83,7 +90,6 @@ class BundleInferTask(BasicInferTask):
         self.pre_filter = pre_filter
         self.post_filter = post_filter
         self.extend_load_image = extend_load_image
-        self.add_post_restore = add_post_restore
         self.dropout = dropout
 
         config_paths = [c for c in self.const.configs() if os.path.exists(os.path.join(path, "configs", c))]
@@ -121,6 +127,9 @@ class BundleInferTask(BasicInferTask):
         spatial_shape = image.get("spatial_shape")
         dimension = len(spatial_shape) if spatial_shape else 3
         type = self._get_type(description, type)
+        self.add_post_restore = (
+            False if type == "detection" else add_post_restore
+        )  # if detection task, set post restore to False by default.
 
         super().__init__(
             path=model_path,
@@ -161,6 +170,15 @@ class BundleInferTask(BasicInferTask):
                 return self.bundle_config.get_parsed_content(k, instantiate=True)  # type: ignore
         return SimpleInferer()
 
+    def detector(self, data=None) -> Inferer:
+        for k in self.const.key_detector():
+            if self.bundle_config.get(k):
+                detector = self.bundle_config.get_parsed_content(k, instantiate=True)  # type: ignore
+                for k in self.const.key_detector_ops():
+                    self.bundle_config.get_parsed_content(k, instantiate=True)
+                return detector
+        return RetinaNetDetector()
+
     def post_transforms(self, data=None) -> Sequence[Callable]:
         post = []
         for k in self.const.key_postprocessing():
@@ -175,15 +193,13 @@ class BundleInferTask(BasicInferTask):
 
     def _get_type(self, description, type):
         return (
-            (
-                InferType.DEEPEDIT
-                if "deepedit" in description.lower()
-                else InferType.DEEPGROW
-                if "deepgrow" in description.lower()
-                else InferType.SEGMENTATION
-            )
-            if not type
-            else type
+            InferType.DEEPEDIT
+            if "deepedit" in description.lower()
+            else InferType.DEEPGROW
+            if "deepgrow" in description.lower()
+            else InferType.DETECTION
+            if "detection" in description.lower()
+            else InferType.SEGMENTATION
         )
 
     def _filter_transforms(self, transforms, filters):
