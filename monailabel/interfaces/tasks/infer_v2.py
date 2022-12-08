@@ -28,6 +28,7 @@ class InferType(str, Enum):
         DEEPGROW -                Deepgrow Interactive Model
         DEEPEDIT -                DeepEdit Interactive Model
         SCRIBBLES -               Scribbles Model
+        DETECTION -               Detection Model
         OTHERS -                  Other Model Type
     """
 
@@ -37,6 +38,7 @@ class InferType(str, Enum):
     DEEPGROW: str = "deepgrow"
     DEEPEDIT: str = "deepedit"
     SCRIBBLES: str = "scribbles"
+    DETECTION: str = "detection"
     OTHERS: str = "others"
 
 
