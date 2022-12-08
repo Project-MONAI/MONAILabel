@@ -14,8 +14,7 @@ import logging
 import os
 from typing import Callable, Dict, Optional, Sequence, Union
 
-from monai.apps.detection.networks.retinanet_detector import RetinaNetDetector
-from monai.bundle import ConfigParser
+from monai.bundle import ConfigItem, ConfigParser
 from monai.inferers import Inferer, SimpleInferer
 from monai.transforms import Compose, LoadImaged, SaveImaged
 
@@ -126,10 +125,10 @@ class BundleInferTask(BasicInferTask):
         description = metadata.get("description")
         spatial_shape = image.get("spatial_shape")
         dimension = len(spatial_shape) if spatial_shape else 3
-        type = self._get_type(description, type)
-        self.add_post_restore = (
-            False if type == "detection" else add_post_restore
-        )  # if detection task, set post restore to False by default.
+        type = self._get_type(os.path.basename(path), type)
+
+        # if detection task, set post restore to False by default.
+        self.add_post_restore = False if type == "detection" else add_post_restore
 
         super().__init__(
             path=model_path,
@@ -147,6 +146,8 @@ class BundleInferTask(BasicInferTask):
         return self.valid
 
     def pre_transforms(self, data=None) -> Sequence[Callable]:
+        self._update_device(data)
+
         pre = []
         for k in self.const.key_preprocessing():
             if self.bundle_config.get(k):
@@ -165,21 +166,29 @@ class BundleInferTask(BasicInferTask):
         return pre
 
     def inferer(self, data=None) -> Inferer:
+        self._update_device(data)
+
         for k in self.const.key_inferer():
             if self.bundle_config.get(k):
                 return self.bundle_config.get_parsed_content(k, instantiate=True)  # type: ignore
         return SimpleInferer()
 
-    def detector(self, data=None) -> Inferer:
+    def detector(self, data=None) -> Optional[Callable]:
+        self._update_device(data)
+
         for k in self.const.key_detector():
             if self.bundle_config.get(k):
                 detector = self.bundle_config.get_parsed_content(k, instantiate=True)  # type: ignore
                 for k in self.const.key_detector_ops():
                     self.bundle_config.get_parsed_content(k, instantiate=True)
-                return detector
-        return RetinaNetDetector()
+                if detector is None or callable(detector):
+                    return detector  # type: ignore
+                raise ValueError("Invalid Detector type;  It's not callable")
+        return None
 
     def post_transforms(self, data=None) -> Sequence[Callable]:
+        self._update_device(data)
+
         post = []
         for k in self.const.key_postprocessing():
             if self.bundle_config.get(k):
@@ -191,15 +200,24 @@ class BundleInferTask(BasicInferTask):
             post.append(Restored(keys=self.key_pred, ref_image=self.key_image))
         return post
 
-    def _get_type(self, description, type):
+    def _get_type(self, name, type):
+        name = name.lower() if name else ""
         return (
-            InferType.DEEPEDIT
-            if "deepedit" in description.lower()
-            else InferType.DEEPGROW
-            if "deepgrow" in description.lower()
-            else InferType.DETECTION
-            if "detection" in description.lower()
-            else InferType.SEGMENTATION
+            (
+                InferType.DEEPEDIT
+                if "deepedit" in name
+                else InferType.DEEPGROW
+                if "deepgrow" in name
+                else InferType.DETECTION
+                if "detection" in name
+                else InferType.SEGMENTATION
+                if "segmentation" in name
+                else InferType.CLASSIFICATION
+                if "classification" in name
+                else InferType.SEGMENTATION
+            )
+            if not type
+            else type
         )
 
     def _filter_transforms(self, transforms, filters):
@@ -211,3 +229,11 @@ class BundleInferTask(BasicInferTask):
             if not [f for f in filters if isinstance(t, f)]:
                 res.append(t)
         return res
+
+    def _update_device(self, data):
+        k_device = self.const.key_device()
+        device = data.get(k_device) if data else None
+        if device:
+            self.bundle_config.config.update({k_device: device})  # type: ignore
+            if self.bundle_config.ref_resolver.items.get(k_device):
+                self.bundle_config.ref_resolver.items[k_device] = ConfigItem(config=device, id=k_device)
