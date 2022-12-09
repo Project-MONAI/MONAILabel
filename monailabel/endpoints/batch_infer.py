@@ -16,6 +16,7 @@ import torch
 from fastapi import APIRouter, Depends, HTTPException
 
 from monailabel.endpoints.user.auth import User, get_annotator_user
+from monailabel.interfaces.datastore import DefaultLabelTag
 from monailabel.interfaces.tasks.batch_infer import BatchInferImageType
 from monailabel.utils.async_tasks.task import AsyncTask
 
@@ -66,7 +67,16 @@ async def api_status(all: bool = False, check_if_running: bool = False, user: Us
 async def api_run(
     model: str,
     images: Optional[BatchInferImageType] = BatchInferImageType.IMAGES_ALL,
-    params: Optional[dict] = None,
+    params: Optional[dict] = {
+        "device": "cuda",
+        "multi_gpu": True,
+        "gpus": "all",
+        "logging": "WARNING",
+        "save_label": True,
+        "label_tag": DefaultLabelTag.ORIGINAL,
+        "max_workers": 1,
+        "max_batch_size": 0,
+    },
     run_sync: Optional[bool] = False,
     user: User = Depends(get_annotator_user),
 ):
