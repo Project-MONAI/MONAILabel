@@ -75,7 +75,7 @@ class BundleInferTask(BasicInferTask):
         path: str,
         conf: Dict[str, str],
         const: Optional[BundleConstants] = None,
-        type: Union[str, InferType] = InferType.SEGMENTATION,
+        type: Union[str, InferType] = '',
         pre_filter: Optional[Sequence] = None,
         post_filter: Optional[Sequence] = [SaveImaged],
         extend_load_image: bool = True,

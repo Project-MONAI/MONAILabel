@@ -519,7 +519,6 @@ class BasicInferTask(InferTask):
         if detector is None:
             raise ValueError("Detector is Not Provided")
 
-        logger.info(f"Detector:: {device} => {detector.__class__.__name__} => {detector.__dict__}")
         if hasattr(detector, "inferer"):
             logger.info(
                 f"Detector Inferer:: {device} => {detector.inferer.__class__.__name__} => {detector.inferer.__dict__}"  # type: ignore
