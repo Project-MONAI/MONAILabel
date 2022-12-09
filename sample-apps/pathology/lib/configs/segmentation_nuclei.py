@@ -47,7 +47,7 @@ class SegmentationNuclei(TaskConfig):
             "Epithelial": (0, 0, 255),
         }
 
-        consep = strtobool(self.conf.get("consep", "false"))
+        consep = strtobool(self.conf.get("consep", "true"))
         if consep:
             self.labels = {
                 "Other": 1,
