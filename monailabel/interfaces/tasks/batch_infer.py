@@ -123,6 +123,12 @@ class BatchInferTask:
 
 
 def run_infer_task(req, datastore, infer):
+    try:
+        if torch.cuda.is_available():
+            torch.inverse(torch.eye(1, device=req.get("device")))
+    except RuntimeError:
+        pass
+
     image_id = req.get("image")
     logger.info(f"Running inference for image id {image_id}")
     r = infer(req, datastore)
