@@ -12,6 +12,7 @@
 import json
 import logging
 import tempfile
+
 import numpy as np
 
 from monailabel.utils.others.label_colors import to_hex, to_rgb
@@ -40,7 +41,7 @@ def create_dsa_annotations_json(json_data, loglevel="INFO"):
 
             color_map = annotation.get("labels")
             elements = annotation.get("elements", [])
-            location = annotation.get("location", []) 
+            location = annotation.get("location", [])
 
             for element in elements:
                 label = element["label"]
