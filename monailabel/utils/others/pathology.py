@@ -12,6 +12,7 @@
 import json
 import logging
 import tempfile
+import numpy as np
 
 from monailabel.utils.others.label_colors import to_hex, to_rgb
 
@@ -39,6 +40,8 @@ def create_dsa_annotations_json(json_data, loglevel="INFO"):
 
             color_map = annotation.get("labels")
             elements = annotation.get("elements", [])
+            location = annotation.get("location", []) 
+
             for element in elements:
                 label = element["label"]
                 color = to_rgb(color_map.get(label))
@@ -48,6 +51,11 @@ def create_dsa_annotations_json(json_data, loglevel="INFO"):
                 contours = element["contours"]
                 for contour in contours:
                     points = []
+                    # flip the contour for DSA, need to flip at patch coordinate. Convert back to WSI coordinate
+                    contour = [[point[0] - location[0], point[1] - location[1]] for point in contour]
+                    contour = np.flip(np.array(contour), axis=None)
+                    contour = [[int(point[0] + location[0]), int(point[1] + location[1])] for point in contour]
+
                     for point in contour:
                         points.append([point[0], point[1], 0])
 
