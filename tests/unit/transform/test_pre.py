@@ -10,10 +10,7 @@
 # limitations under the License.
 
 import unittest
-import os
 import numpy as np
-import nibabel as nib
-import tempfile
 from parameterized import parameterized
 
 from monailabel.transform.pre import LoadImageTensord, LoadImageExd, NormalizeLabeld
