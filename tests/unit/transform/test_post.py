@@ -10,12 +10,22 @@
 # limitations under the License.
 
 import os
-import unittest
 import tempfile
+import unittest
+
 import numpy as np
 from parameterized import parameterized
 
-from monailabel.transform.post import BoundingBoxd, ExtremePointsd, LargestCCd, Restored, FindContoursd, DumpImagePrediction2Dd, MergeAllPreds, RenameKeyd
+from monailabel.transform.post import (
+    BoundingBoxd,
+    DumpImagePrediction2Dd,
+    ExtremePointsd,
+    FindContoursd,
+    LargestCCd,
+    MergeAllPreds,
+    RenameKeyd,
+    Restored,
+)
 
 CCD_DATA = [
     {"keys": ("pred",)},
@@ -75,11 +85,13 @@ RENAMEKEY_DATA = [
     {"pred": np.array([[[0, 0, 0, 0], [0, 1, 0, 0], [0, 0, 0, 0], [0, 0, 0, 0]]])},
 ]
 
+
 class TestLargestCCd(unittest.TestCase):
     @parameterized.expand([CCD_DATA])
     def test_result(self, args, input_data, expected_output):
         res = LargestCCd(**args)(input_data)
         np.testing.assert_equal(res["pred"], expected_output)
+
 
 class TestExtremePointsd(unittest.TestCase):
     @parameterized.expand([EXTREME_POINTS_DATA])
@@ -87,11 +99,13 @@ class TestExtremePointsd(unittest.TestCase):
         res = ExtremePointsd(**args)(input_data)
         self.assertEqual(res["result"]["points"], expected_data)
 
+
 class TestBoundingBoxd(unittest.TestCase):
     @parameterized.expand([BB_DATA])
     def test_result(self, args, input_data, expected_data):
         res = BoundingBoxd(**args)(input_data)
         self.assertEqual(res["result"]["bbox"], expected_data)
+
 
 class TestRestored(unittest.TestCase):
     @parameterized.expand([RESTORED_DATA])
@@ -99,11 +113,13 @@ class TestRestored(unittest.TestCase):
         res = Restored(**args)(input_data)
         self.assertEqual(res["pred"].shape, expected_shape)
 
+
 class TestFindContoursd(unittest.TestCase):
     @parameterized.expand([FINDCONTOURSD_DATA])
     def test_result(self, args, input_data, expected_output):
         res = FindContoursd(**args)(input_data)
         self.assertEqual(res["result"]["annotation"]["elements"][0]["contours"], expected_output)
+
 
 class TestDumpImagePrediction2Dd(unittest.TestCase):
     @parameterized.expand([DUMPIMAGEPREDICTION2DD_DATA])
@@ -115,17 +131,20 @@ class TestDumpImagePrediction2Dd(unittest.TestCase):
             self.assertTrue(os.path.exists(image_path))
             self.assertTrue(os.path.exists(pred_path))
 
+
 class TestMergeAllPreds(unittest.TestCase):
     @parameterized.expand([METGEAllPREDS_DATA])
     def test_merge_pred(self, args, input_data, expected_output):
         res = MergeAllPreds(**args)(input_data)
         self.assertEqual(res.tolist(), expected_output)
 
+
 class TestRenameKeyd(unittest.TestCase):
     @parameterized.expand([RENAMEKEY_DATA])
     def test_rename_key(self, args, input_data):
         res = RenameKeyd(**args)(input_data)
         self.assertEqual(list(res.keys())[0], args["target_key"])
+
 
 if __name__ == "__main__":
     unittest.main()

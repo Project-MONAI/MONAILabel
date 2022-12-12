@@ -10,11 +10,11 @@
 # limitations under the License.
 
 import unittest
+
 import numpy as np
 from parameterized import parameterized
 
-from monailabel.transform.pre import LoadImageTensord, LoadImageExd, NormalizeLabeld
-
+from monailabel.transform.pre import LoadImageExd, LoadImageTensord, NormalizeLabeld
 
 LOADIMAGETENSOR_DATA = [
     {"keys": "image"},
@@ -32,11 +32,13 @@ NORMALIZELABELD_DATA = [
     [[[0, 0, 0, 0], [0, 1, 1, 0], [0, 1, 1, 0], [0, 1, 0, 0]]],
 ]
 
+
 class TestLoadImageTensord(unittest.TestCase):
     @parameterized.expand([LOADIMAGETENSOR_DATA])
     def test_load_image_shape(self, args, input_data, expected_shape):
         res = LoadImageTensord(**args)(input_data)
         self.assertTupleEqual(res["image"].shape, expected_shape)
+
 
 class TestLoadImageExd(unittest.TestCase):
     @parameterized.expand([LOADIMAGETENSOR_DATA])
@@ -44,11 +46,13 @@ class TestLoadImageExd(unittest.TestCase):
         res = LoadImageExd(**args)(input_data)
         self.assertTupleEqual(res["image"].shape, expected_shape)
 
+
 class TestNormalizeLabeld(unittest.TestCase):
     @parameterized.expand([NORMALIZELABELD_DATA])
     def test_result(self, args, input_data, expected_data):
         res = NormalizeLabeld(**args)(input_data)
         self.assertEqual(res["label"].tolist(), expected_data)
+
 
 if __name__ == "__main__":
     unittest.main()
