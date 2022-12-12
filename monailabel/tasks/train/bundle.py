@@ -108,8 +108,19 @@ class BundleTrainTask(TrainTask):
         return datastore.datalist()
 
     def _partition_datalist(self, datalist, request, shuffle=False):
-        # only use image and label attributes; skip for other meta info from datastore for now
-        datalist = [{"image": d["image"], "label": d["label"]} for d in datalist if d]
+        if "detection" in request.get("model"):
+            # Generate datalist for detection task, box and label keys are used by default. 
+            # Future: either use box and label keys for all detection models, or set these keys by config.
+            for idx, d in enumerate(datalist):
+                with open(d["label"]) as fp:
+                    json_object = json.loads(fp.read()) # load box coordinates from subject JSON
+                    bboxes = [bdict["center"] + bdict["size"] for bdict in json_object["markups"]]
+                # Only support detection, classification label do not suppot in bundle yet, 0 is used for all positive boxes, wait for sync.
+                datalist[idx] = {"image": d["image"], "box": bboxes, "label": [0]*len(bboxes)}
+        else:
+            # only use image and label attributes; skip for other meta info from datastore for now
+            datalist = [{"image": d["image"], "label": d["label"]} for d in datalist if d]
+
         logger.info(f"Total Records in Dataset: {len(datalist)}")
 
         val_split = request.get("val_split", 0.2)

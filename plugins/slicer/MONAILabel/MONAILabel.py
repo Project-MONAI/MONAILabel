@@ -1397,41 +1397,47 @@ class MONAILabelWidget(ScriptedLoadableModuleWidget, VTKObservationMixin):
 
         try:
             qt.QApplication.setOverrideCursor(qt.Qt.WaitCursor)
-            segmentationNode = self._segmentNode
-            segmentation = segmentationNode.GetSegmentation()
-            totalSegments = segmentation.GetNumberOfSegments()
-            segmentIds = [segmentation.GetNthSegmentID(i) for i in range(totalSegments)]
+            model = self.ui.segmentationModelSelector.currentText
 
-            # remove background and scribbles labels
-            label_info = []
-            save_segment_ids = vtk.vtkStringArray()
-            for idx, segmentId in enumerate(segmentIds):
-                segment = segmentation.GetSegment(segmentId)
-                if segment.GetName() in ["background", "foreground_scribbles", "background_scribbles"]:
-                    logging.info(f"Removing segment {segmentId}: {segment.GetName()}")
-                    continue
-
-                save_segment_ids.InsertNextValue(segmentId)
-                label_info.append({"name": segment.GetName(), "idx": idx + 1})
-                # label_info.append({"color": segment.GetColor()})
-
-            # export labelmap
-            labelmapVolumeNode = slicer.mrmlScene.AddNewNodeByClass("vtkMRMLLabelMapVolumeNode")
-            slicer.modules.segmentations.logic().ExportSegmentsToLabelmapNode(
-                segmentationNode, save_segment_ids, labelmapVolumeNode, self._volumeNode
-            )
-
-            label_in = tempfile.NamedTemporaryFile(suffix=self.file_ext, dir=self.tmpdir).name
-            self.reportProgress(5)
-
-            if (
-                slicer.util.settingsValue("MONAILabel/allowOverlappingSegments", True, converter=slicer.util.toBool)
-                and slicer.util.settingsValue("MONAILabel/fileExtension", self.file_ext) == ".seg.nrrd"
-            ):
-                slicer.util.saveNode(segmentationNode, label_in)
+            if self.models[model]["type"] == "detection":
+                label_in, label_info = self.onGenerateJSONFromMulipltROIs()
+                self.reportProgress(30)
             else:
-                slicer.util.saveNode(labelmapVolumeNode, label_in)
-            self.reportProgress(30)
+                segmentationNode = self._segmentNode
+                segmentation = segmentationNode.GetSegmentation()
+                totalSegments = segmentation.GetNumberOfSegments()
+                segmentIds = [segmentation.GetNthSegmentID(i) for i in range(totalSegments)]
+
+                # remove background and scribbles labels
+                label_info = []
+                save_segment_ids = vtk.vtkStringArray()
+                for idx, segmentId in enumerate(segmentIds):
+                    segment = segmentation.GetSegment(segmentId)
+                    if segment.GetName() in ["background", "foreground_scribbles", "background_scribbles"]:
+                        logging.info(f"Removing segment {segmentId}: {segment.GetName()}")
+                        continue
+
+                    save_segment_ids.InsertNextValue(segmentId)
+                    label_info.append({"name": segment.GetName(), "idx": idx + 1})
+                    # label_info.append({"color": segment.GetColor()})
+
+                # export labelmap
+                labelmapVolumeNode = slicer.mrmlScene.AddNewNodeByClass("vtkMRMLLabelMapVolumeNode")
+                slicer.modules.segmentations.logic().ExportSegmentsToLabelmapNode(
+                    segmentationNode, save_segment_ids, labelmapVolumeNode, self._volumeNode
+                )
+
+                label_in = tempfile.NamedTemporaryFile(suffix=self.file_ext, dir=self.tmpdir).name
+                self.reportProgress(5)
+
+                if (
+                    slicer.util.settingsValue("MONAILabel/allowOverlappingSegments", True, converter=slicer.util.toBool)
+                    and slicer.util.settingsValue("MONAILabel/fileExtension", self.file_ext) == ".seg.nrrd"
+                ):
+                    slicer.util.saveNode(segmentationNode, label_in)
+                else:
+                    slicer.util.saveNode(labelmapVolumeNode, label_in)
+                self.reportProgress(30)
 
             self.updateServerSettings()
             result = self.logic.save_label(self.current_sample["id"], label_in, {"label_info": label_info})
@@ -1674,11 +1680,16 @@ class MONAILabelWidget(ScriptedLoadableModuleWidget, VTKObservationMixin):
 
             slicer.mrmlScene.RemoveNode(source_node)
         elif in_file.endswith(".json"):
-            # Add bounding box ROI node
+            # Add bounding box ROI nodes, load multiple ROI nodes in the same scene.
             logging.info("Update Detection ROI Bounding Box")
-            detectionROINode = slicer.util.loadMarkups(in_file)
-            detectionROINode.SetName("Detection ROI")
-            detectionROINode.GetDisplayNode().SetInteractionHandleScale(0.7)
+            slicer.util.loadMarkups(in_file)
+            detectionROIs = slicer.mrmlScene.GetNodesByClass("vtkMRMLMarkupsROINode") # Get all ROI node from scene
+            numNodes = detectionROIs.GetNumberOfItems()
+            for i in range(numNodes):
+                ROINode = detectionROIs.GetItemAsObject(i)
+                if ROINode.GetName() != "Scribbles ROI":
+                    ROINode.SetName('Detection ROI - {}'.format(i))
+                    ROINode.GetDisplayNode().SetInteractionHandleScale(0.7) # set handle size
         else:
             labels = [label for label in labels if label != "background"]
             logging.info(f"Update Segmentation Mask using Labels: {labels}")
@@ -2099,7 +2110,37 @@ class MONAILabelWidget(ScriptedLoadableModuleWidget, VTKObservationMixin):
         effect = self.ui.embeddedSegmentEditorWidget.effectByName("Paint")
         effect.setParameter("BrushAbsoluteDiameter", value)
 
+    def onGenerateJSONFromMulipltROIs(self):
+        """
+        The functon to generate output JSON label fils with multiple ROI nodes. 
+        """
+        detectionROIs = slicer.mrmlScene.GetNodesByClass("vtkMRMLMarkupsROINode")
+        numNodes = detectionROIs.GetNumberOfItems()
 
+        label_in = tempfile.NamedTemporaryFile(suffix=".json", dir=self.tmpdir).name
+        total_count = 0
+        with open(label_in, "w") as fp:
+            fp.write("{\n")
+            fp.write(' "@schema": "https://raw.githubusercontent.com/slicer/slicer/master/Modules/Loadable/Markups/Resources/Schema/markups-schema-v1.0.3.json#",\n')
+            fp.write(' "markups": [\n')
+            for i in range(numNodes):
+                ROINode = detectionROIs.GetItemAsObject(i)
+                if ROINode.GetName() != "Scribbles ROI":
+                    box_label = tempfile.NamedTemporaryFile(suffix=".json", dir=self.tmpdir).name
+                    slicer.util.saveNode(ROINode, box_label)
+                    f = open(box_label)
+                    jsob = json.load(f)
+                    markupsDict = jsob["markups"][0]
+                    if total_count > 0:
+                        fp.write(",\n")
+                    fp.write(f"  {json.dumps(markupsDict)}")
+                    total_count += 1
+                    f.close()
+            fp.write("]\n")  # close elements
+            fp.write("}")  # end of root
+        label_info = []
+        return label_in, label_info
+        
 class MONAILabelLogic(ScriptedLoadableModuleLogic):
     def __init__(self, tmpdir=None, server_url=None, progress_callback=None, client_id=None):
         ScriptedLoadableModuleLogic.__init__(self)
