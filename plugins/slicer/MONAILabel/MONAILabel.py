@@ -1683,13 +1683,13 @@ class MONAILabelWidget(ScriptedLoadableModuleWidget, VTKObservationMixin):
             # Add bounding box ROI nodes, load multiple ROI nodes in the same scene.
             logging.info("Update Detection ROI Bounding Box")
             slicer.util.loadMarkups(in_file)
-            detectionROIs = slicer.mrmlScene.GetNodesByClass("vtkMRMLMarkupsROINode") # Get all ROI node from scene
+            detectionROIs = slicer.mrmlScene.GetNodesByClass("vtkMRMLMarkupsROINode")  # Get all ROI node from scene
             numNodes = detectionROIs.GetNumberOfItems()
             for i in range(numNodes):
                 ROINode = detectionROIs.GetItemAsObject(i)
                 if ROINode.GetName() != "Scribbles ROI":
-                    ROINode.SetName('Detection ROI - {}'.format(i))
-                    ROINode.GetDisplayNode().SetInteractionHandleScale(0.7) # set handle size
+                    ROINode.SetName(f"Detection ROI - {i}")
+                    ROINode.GetDisplayNode().SetInteractionHandleScale(0.7)  # set handle size
         else:
             labels = [label for label in labels if label != "background"]
             logging.info(f"Update Segmentation Mask using Labels: {labels}")
@@ -2112,7 +2112,7 @@ class MONAILabelWidget(ScriptedLoadableModuleWidget, VTKObservationMixin):
 
     def onGenerateJSONFromMulipltROIs(self):
         """
-        The functon to generate output JSON label fils with multiple ROI nodes. 
+        The functon to generate output JSON label fils with multiple ROI nodes.
         """
         detectionROIs = slicer.mrmlScene.GetNodesByClass("vtkMRMLMarkupsROINode")
         numNodes = detectionROIs.GetNumberOfItems()
@@ -2121,7 +2121,9 @@ class MONAILabelWidget(ScriptedLoadableModuleWidget, VTKObservationMixin):
         total_count = 0
         with open(label_in, "w") as fp:
             fp.write("{\n")
-            fp.write(' "@schema": "https://raw.githubusercontent.com/slicer/slicer/master/Modules/Loadable/Markups/Resources/Schema/markups-schema-v1.0.3.json#",\n')
+            fp.write(
+                ' "@schema": "https://raw.githubusercontent.com/slicer/slicer/master/Modules/Loadable/Markups/Resources/Schema/markups-schema-v1.0.3.json#",\n'
+            )
             fp.write(' "markups": [\n')
             for i in range(numNodes):
                 ROINode = detectionROIs.GetItemAsObject(i)
@@ -2140,7 +2142,8 @@ class MONAILabelWidget(ScriptedLoadableModuleWidget, VTKObservationMixin):
             fp.write("}")  # end of root
         label_info = []
         return label_in, label_info
-        
+
+
 class MONAILabelLogic(ScriptedLoadableModuleLogic):
     def __init__(self, tmpdir=None, server_url=None, progress_callback=None, client_id=None):
         ScriptedLoadableModuleLogic.__init__(self)
