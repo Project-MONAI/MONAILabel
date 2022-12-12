@@ -20,14 +20,6 @@ def create_slicer_detection_json(json_data, loglevel="INFO"):
     logger.setLevel(loglevel.upper())
 
     total_count = 0
-
-    item = json_data["box"][0]  # return highest prob box #TODO: return multiple boxes.
-
-    center = item[0:3]
-    size = item[3:]
-    orientation = [-1.0, -0.0, -0.0, -0.0, -1.0, -0.0, 0.0, 0.0, 1.0]
-    label = json_data["label"][0]
-
     label_json = tempfile.NamedTemporaryFile(suffix=".json").name
 
     with open(label_json, "w") as fp:
@@ -38,38 +30,49 @@ def create_slicer_detection_json(json_data, loglevel="INFO"):
 
         fp.write(' "markups": [\n')
 
-        control_points = {
-            "id": "1",
-            "label": "ROI",
-            "description": "",
-            "associatedNodeID": "vtkMRMLScalarVolumeNode1",
-            "position": center,
-            "orientation": orientation,
-            "selected": True,
-            "locked": False,
-            "visibility": True,
-            "positionStatus": "defined",
-        }
-        measurements = {"name": "volume", "enabled": False, "units": "cm3", "printFormat": "%-#4.4g%s"}
-        detection_node = {
-            "name": json_data["image"].split("/")[-1],
-            "type": "ROI",
-            "coordinateSystem": "LPS",  # use LPS coordinate system by default, which is defined by the bundle
-            "coordinateUnits": "mm",
-            "locked": False,
-            "fixedNumberOfControlPoints": False,
-            "labelFormat": "%N-%d",
-            "lastUsedControlPointNumber": 1,
-            "roiType": "Box",
-            "center": center,
-            "orientation": orientation,
-            "size": size,
-            "insideOut": False,
-            "label": {"value": label},
-            "controlPoints": [control_points],
-            "measurements": [measurements],
-        }
-        fp.write(f"  {json.dumps(detection_node)}")
+        for idx, item in enumerate(json_data["box"]):
+
+            center = item[0:3]
+            size = item[3:]
+            orientation = [-1.0, -0.0, -0.0, -0.0, -1.0, -0.0, 0.0, 0.0, 1.0]
+            label = json_data["label"][idx]
+
+            if total_count > 0:
+                fp.write(",\n")
+
+            control_points = {
+                "id": "1",
+                "label": "ROI",
+                "description": "",
+                "associatedNodeID": "vtkMRMLScalarVolumeNode1",
+                "position": center,
+                "orientation": orientation,
+                "selected": True,
+                "locked": False,
+                "visibility": True,
+                "positionStatus": "defined",
+            }
+            measurements = {"name": "volume", "enabled": False, "units": "cm3", "printFormat": "%-#4.4g%s"}
+            detection_node = {
+                "name": json_data["image"].split("/")[-1],
+                "type": "ROI",
+                "coordinateSystem": "LPS",  # use LPS coordinate system by default, which is defined by the bundle
+                "coordinateUnits": "mm",
+                "locked": False,
+                "fixedNumberOfControlPoints": False,
+                "labelFormat": "%N-%d",
+                "lastUsedControlPointNumber": 1,
+                "roiType": "Box",
+                "center": center,
+                "orientation": orientation,
+                "size": size,
+                "insideOut": False,
+                "label": {"value": label},
+                "controlPoints": [control_points],
+                "measurements": [measurements],
+            }
+            fp.write(f"  {json.dumps(detection_node)}")
+            total_count += 1
 
         fp.write("]\n")  # close elements
         fp.write("}")  # end of root
