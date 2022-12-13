@@ -317,3 +317,15 @@ def get_bundle_models(app_dir, conf, conf_key="models"):
     logger.info(f"+++ Using Bundle Models: {list(bundles.keys())}")
 
     return bundles
+
+
+def path_to_uri(path) -> str:
+    return pathlib.Path(path).absolute().as_uri()
+
+
+def handle_torch_linalg_multithread(req):
+    try:
+        if torch.cuda.is_available():
+            torch.inverse(torch.eye(1, device=req.get("device") if req else None))
+    except RuntimeError:
+        pass

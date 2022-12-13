@@ -118,7 +118,7 @@ class DeepEdit(BasicTrainTask):
     def val_key_metric(self, context):
         return {
             "val_mean_iou": MeanIoUMetric(output_transform=from_engine(["pred", "label"])),
-            self.VAL_KEY_METRIC: MeanDice(output_transform=from_engine(["pred", "label"])),
+            self.VAL_METRIC_MEAN_DICE: MeanDice(output_transform=from_engine(["pred", "label"])),
         }
 
     def train_handlers(self, context: Context):

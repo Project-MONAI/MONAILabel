@@ -21,6 +21,7 @@ from monai.bundle import ConfigParser
 from monai.data import partition_dataset
 from monai.handlers import CheckpointLoader
 
+from monailabel.config import settings
 from monailabel.interfaces.datastore import Datastore
 from monailabel.interfaces.tasks.train import TrainTask
 
@@ -114,8 +115,8 @@ class BundleTrainTask(TrainTask):
             "val_split": 0.2,  # VALIDATION SPLIT; -1 TO USE DEFAULT FROM BUNDLE
             "multi_gpu": True,  # USE MULTI-GPU
             "gpus": "all",  # COMMA SEPARATE DEVICE INDEX
-            "tracking": ["None", "mlflow"],
-            "tracking_uri": "",
+            "tracking": ["mlflow", "None"],
+            "tracking_uri": settings.MONAI_LABEL_TRACKING_URI,
             "tracking_experiment_name": "",
         }
 
@@ -151,9 +152,6 @@ class BundleTrainTask(TrainTask):
         logger.info(f"Total Records for Validation: {len(val_datalist) if val_datalist else ''}")
         return train_datalist, val_datalist
 
-    def _device(self, str):
-        return torch.device(str if torch.cuda.is_available() else "cpu")
-
     def _load_checkpoint(self, output_dir, pretrained, train_handlers):
         load_path = os.path.join(output_dir, self.const.model_pytorch()) if pretrained else None
         if os.path.exists(load_path):
@@ -185,12 +183,15 @@ class BundleTrainTask(TrainTask):
         logger.info(f"Using Multi GPU: {multi_gpu}; GPUS: {gpus}")
         logger.info(f"CUDA_VISIBLE_DEVICES: {os.environ.get('CUDA_VISIBLE_DEVICES')}")
 
-        device = self._device(request.get("device", "cuda"))
-        logger.info(f"Using device: {device}")
+        device = request.get("device", "cuda")
+        logger.info(f"Using device: {device}; Type: {type(device)}")
 
-        tracking = request.get("tracking")
+        tracking = request.get("tracking", "mlflow")
+        tracking = tracking[0] if isinstance(tracking, list) else tracking
         tracking_uri = request.get("tracking_uri")
+        tracking_uri = tracking_uri if tracking_uri else settings.MONAI_LABEL_TRACKING_URI
         tracking_experiment_name = request.get("tracking_experiment_name")
+        tracking_experiment_name = tracking_experiment_name if tracking_experiment_name else request.get("model")
         tracking_run_name = request.get("tracking_run_name")
         logger.info(f"(Experiment Management) Tracking: {tracking}")
         logger.info(f"(Experiment Management) Tracking URI: {tracking_uri}")
@@ -237,8 +238,7 @@ class BundleTrainTask(TrainTask):
             multi_gpu_train_path = os.path.join(self.bundle_path, "configs", config_paths[0])
             logging_file = os.path.join(self.bundle_path, "configs", "logging.conf")
             for k, v in overrides.items():
-                if k != self.const.key_device():
-                    self.bundle_config.set(v, k)
+                self.bundle_config.set(v, k)
             ConfigParser.export_config_file(self.bundle_config.config, train_path, indent=2)  # type: ignore
 
             env = os.environ.copy()
@@ -261,8 +261,10 @@ class BundleTrainTask(TrainTask):
                 logging_file,
             ]
 
-            if tracking and tracking_uri:
-                cmd.extend(["--tracking", tracking, "tracking_uri", tracking_uri])
+            if tracking:
+                cmd.extend(["--tracking", tracking])
+                if tracking_uri:
+                    cmd.extend(["tracking_uri", tracking_uri])
 
             self.run_command(cmd, env)
         else:

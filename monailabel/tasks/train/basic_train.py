@@ -51,12 +51,12 @@ from monai.handlers import (
 )
 from monai.inferers import SimpleInferer
 from monai.transforms import Compose
-from monai.utils import path_to_uri
 
+from monailabel.config import settings
 from monailabel.interfaces.datastore import Datastore
 from monailabel.interfaces.tasks.train import TrainTask
 from monailabel.tasks.train.handler import PublishStatsAndModel, prepare_stats
-from monailabel.utils.others.generic import remove_file
+from monailabel.utils.others.generic import path_to_uri, remove_file
 
 logger = logging.getLogger(__name__)
 
@@ -123,8 +123,8 @@ class BasicTrainTask(TrainTask):
         load_strict=False,
         labels=None,
         disable_meta_tracking=False,
-        tracking=None,
-        tracking_uri=None,
+        tracking="mlflow",
+        tracking_uri=settings.MONAI_LABEL_TRACKING_URI,
         tracking_experiment_name=None,
     ):
         """
@@ -167,8 +167,8 @@ class BasicTrainTask(TrainTask):
             "gpus": "all",
             "dataset": ["SmartCacheDataset", "CacheDataset", "PersistentDataset", "Dataset"],
             "dataloader": ["ThreadDataLoader", "DataLoader"],
-            "tracking": ["None", "mlflow"],
-            "tracking_uri": "",
+            "tracking": ["mlflow", "None"],
+            "tracking_uri": tracking_uri if tracking_uri else "",
             "tracking_experiment_name": "",
         }
         if config:
@@ -431,7 +431,7 @@ class BasicTrainTask(TrainTask):
 
         req = copy.deepcopy(self._config)
         req.update(copy.deepcopy(request))
-        req["run_id"] = datetime.now().strftime("%Y%m%d_%H%M")
+        req["run_id"] = datetime.now().strftime("%Y%m%d_%H%M%S")
 
         multi_gpu = req["multi_gpu"]
         multi_gpus = req.get("gpus", "all")
@@ -515,14 +515,19 @@ class BasicTrainTask(TrainTask):
         if not tracking_uri:
             tracking_uri = path_to_uri(os.path.join(context.output_dir, "mlruns"))
         experiment_name = request.get("tracking_experiment_name")
-        experiment_name = experiment_name if experiment_name else f"{os.path.dirname(self._model_dir)}_{name}"
+        experiment_name = experiment_name if experiment_name else request.get("model")
         run_name = request.get("tracking_run_name")
-        run_name = run_name if run_name else context.run_id
+        run_name = run_name if run_name else f"run_{context.run_id}"
 
         context.tracking = request.get("tracking", self._tracking)
+        context.tracking = context.tracking[0] if isinstance(context.tracking, list) else context.tracking
         context.tracking_uri = tracking_uri
         context.tracking_experiment_name = experiment_name
         context.tracking_run_name = run_name
+
+        logger.info(f"Run/Output Path: {context.output_dir}")
+        logger.info(f"Tracking URI: {context.tracking_uri}; ")
+        logger.info(f"Tracking Experiment Name: {experiment_name}; Run Name: {run_name}")
 
         if not os.path.exists(context.output_dir):
             os.makedirs(context.output_dir, exist_ok=True)
