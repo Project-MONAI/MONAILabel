@@ -21,7 +21,7 @@ def region_wise_metrics(regions, metric, prefix, keys=("pred", "label")):
     if regions:
         labels = regions if isinstance(regions, dict) else {name: idx for idx, name in enumerate(regions, start=1)}
         for name, idx in labels.items():
-            all_metrics[f"{prefix}_{name}_dice"] = MeanDice(
+            all_metrics[f"{prefix}_{name}_mean_dice"] = MeanDice(
                 output_transform=from_engine_idx(keys, idx),
                 include_background=False,
             )

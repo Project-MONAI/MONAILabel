@@ -42,6 +42,7 @@ from monai.handlers import (
     CheckpointSaver,
     LrScheduleHandler,
     MeanDice,
+    MLFlowHandler,
     StatsHandler,
     TensorBoardStatsHandler,
     ValidationHandler,
@@ -50,6 +51,7 @@ from monai.handlers import (
 )
 from monai.inferers import SimpleInferer
 from monai.transforms import Compose
+from monai.utils import path_to_uri
 
 from monailabel.interfaces.datastore import Datastore
 from monailabel.interfaces.tasks.train import TrainTask
@@ -85,6 +87,10 @@ class Context:
         self.request = None
         self.trainer = None
         self.evaluator = None
+        self.tracking = None
+        self.tracking_uri = None
+        self.tracking_experiment_name = None
+        self.tracking_run_name = None
 
 
 class BasicTrainTask(TrainTask):
@@ -92,8 +98,10 @@ class BasicTrainTask(TrainTask):
     This provides Basic Train Task to train a model using SupervisedTrainer and SupervisedEvaluator from MONAI
     """
 
-    TRAIN_KEY_METRIC = "train_dice"
-    VAL_KEY_METRIC = "val_mean_dice"
+    TRAIN_METRIC_MEAN_DICE = "train_mean_dice"
+    VAL_METRIC_MEAN_DICE = "val_mean_dice"
+    TRAIN_METRIC_ACCURACY = "train_acc"
+    VAL_METRIC_ACCURACY = "val_acc"
 
     def __init__(
         self,
@@ -114,7 +122,10 @@ class BasicTrainTask(TrainTask):
         find_unused_parameters=False,
         load_strict=False,
         labels=None,
-        disable_tracking=False,
+        disable_meta_tracking=False,
+        tracking=None,
+        tracking_uri=None,
+        tracking_experiment_name=None,
     ):
         """
         :param model_dir: Base Model Dir to save the model checkpoints, events etc...
@@ -134,7 +145,10 @@ class BasicTrainTask(TrainTask):
         :param find_unused_parameters: Applicable for DDP/Multi GPU training
         :param load_strict: Load pre-trained model in strict mode
         :param labels: Labels to be used as part of training context (some transform might need)
-        :param disable_tracking: Disable tracking for faster training rate (unless you are using MetaTensor/batched transforms)
+        :param disable_meta_tracking: Disable tracking for faster training rate (unless you are using MetaTensor/batched transforms)
+        :param tracking: Tracking Manager for Experiment Management (only 'mlflow' is supported)
+        :param tracking_uri: Tracking URI for Experiment Management
+        :param tracking_experiment_name: Name for tracking experiment
         """
         super().__init__(description)
 
@@ -153,6 +167,9 @@ class BasicTrainTask(TrainTask):
             "gpus": "all",
             "dataset": ["SmartCacheDataset", "CacheDataset", "PersistentDataset", "Dataset"],
             "dataloader": ["ThreadDataLoader", "DataLoader"],
+            "tracking": ["None", "mlflow"],
+            "tracking_uri": "",
+            "tracking_experiment_name": "",
         }
         if config:
             self._config.update(config)
@@ -171,7 +188,11 @@ class BasicTrainTask(TrainTask):
         self._find_unused_parameters = find_unused_parameters
         self._load_strict = load_strict
         self._labels = [] if labels is None else [labels] if isinstance(labels, str) else labels
-        self._disable_tracking = disable_tracking
+        self._disable_meta_tracking = disable_meta_tracking
+
+        self._tracking = tracking
+        self._tracking_uri = tracking_uri
+        self._tracking_experiment_name = tracking_experiment_name
 
     def info(self):
         r = super().info()
@@ -250,7 +271,7 @@ class BasicTrainTask(TrainTask):
 
     def train_key_metric(self, context: Context):
         return {
-            self.TRAIN_KEY_METRIC: MeanDice(
+            self.TRAIN_METRIC_MEAN_DICE: MeanDice(
                 output_transform=from_engine(["pred", "label"]),
                 include_background=False,
             )
@@ -281,6 +302,16 @@ class BasicTrainTask(TrainTask):
                     ),
                 ]
             )
+            if context.tracking and context.tracking.lower() == "mlflow":
+                handlers.append(
+                    MLFlowHandler(
+                        tracking_uri=context.tracking_uri,
+                        experiment_name=context.tracking_experiment_name,
+                        run_name=context.tracking_run_name,
+                        iteration_log=True,
+                        output_transform=from_engine(["loss"], first=True),
+                    )
+                )
 
         if context.evaluator:
             logger.info(f"{context.local_rank} - Adding Validation to run every '{self._val_interval}' interval")
@@ -305,15 +336,24 @@ class BasicTrainTask(TrainTask):
         return self.train_post_transforms(context)
 
     def val_handlers(self, context: Context):
-        val_handlers = [
-            StatsHandler(output_transform=lambda x: None),
-            TensorBoardStatsHandler(log_dir=context.events_dir, output_transform=lambda x: None),
+        handlers = [
+            StatsHandler(output_transform=lambda x: None, iteration_log=False),
+            TensorBoardStatsHandler(log_dir=context.events_dir, output_transform=lambda x: None, iteration_log=False),
         ]
-        return val_handlers if context.local_rank == 0 else None
+        if context.tracking and context.tracking.lower() == "mlflow":
+            handlers.append(
+                MLFlowHandler(
+                    tracking_uri=context.tracking_uri,
+                    experiment_name=context.tracking_experiment_name,
+                    run_name=context.tracking_run_name,
+                    iteration_log=False,
+                )
+            )
+        return handlers if context.local_rank == 0 else None
 
     def val_key_metric(self, context):
         return {
-            self.VAL_KEY_METRIC: MeanDice(
+            self.VAL_METRIC_MEAN_DICE: MeanDice(
                 output_transform=from_engine(["pred", "label"]),
                 include_background=False,
             )
@@ -466,9 +506,23 @@ class BasicTrainTask(TrainTask):
         context.dataset_type = request["dataset"]
         context.dataloader_type = request["dataloader"]
 
-        context.output_dir = os.path.join(self._model_dir, request["name"])
+        name = request["name"]
+        context.output_dir = os.path.join(self._model_dir, name)
         context.cache_dir = os.path.join(context.output_dir, f"cache_{context.run_id}")
         context.events_dir = os.path.join(context.output_dir, f"events_{context.run_id}")
+
+        tracking_uri = request.get("tracking_uri", self._tracking_uri)
+        if not tracking_uri:
+            tracking_uri = path_to_uri(os.path.join(context.output_dir, "mlruns"))
+        experiment_name = request.get("tracking_experiment_name")
+        experiment_name = experiment_name if experiment_name else f"{os.path.dirname(self._model_dir)}_{name}"
+        run_name = request.get("tracking_run_name")
+        run_name = run_name if run_name else context.run_id
+
+        context.tracking = request.get("tracking", self._tracking)
+        context.tracking_uri = tracking_uri
+        context.tracking_experiment_name = experiment_name
+        context.tracking_run_name = run_name
 
         if not os.path.exists(context.output_dir):
             os.makedirs(context.output_dir, exist_ok=True)
@@ -483,7 +537,7 @@ class BasicTrainTask(TrainTask):
 
         # Disable Tracking
         meta_tracking = get_track_meta()
-        if self._disable_tracking:
+        if self._disable_meta_tracking:
             set_track_meta(False)
 
         try:
@@ -519,12 +573,17 @@ class BasicTrainTask(TrainTask):
 
         early_stop_patience = int(context.request.get("early_stop_patience", 0))
         if early_stop_patience > 0 and context.evaluator:
-            early_stopper = EarlyStopping(
-                patience=early_stop_patience,
-                score_function=stopping_fn_from_metric(self.VAL_KEY_METRIC),
-                trainer=context.trainer,
-            )
-            context.evaluator.add_event_handler(event_name=Events.EPOCH_COMPLETED, handler=early_stopper)
+            kw = self.val_key_metric(context)
+            metric_name = kw.keys()[0] if kw else None
+            if metric_name:
+                early_stopper = EarlyStopping(
+                    patience=early_stop_patience,
+                    score_function=stopping_fn_from_metric(metric_name),
+                    trainer=context.trainer,
+                )
+                context.evaluator.add_event_handler(event_name=Events.EPOCH_COMPLETED, handler=early_stopper)
+            else:
+                logger.warning("No Validation Key Metric has been defined to enable Early Stopper")
 
     def pre_process(self, request, datastore: Datastore):
         return datastore.datalist()

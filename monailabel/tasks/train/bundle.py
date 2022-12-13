@@ -64,6 +64,18 @@ class BundleConstants:
     def key_validate_dataset_data(self) -> str:
         return "validate#dataset#data"
 
+    def key_tracking(self) -> str:
+        return "tracking"
+
+    def key_tracking_uri(self) -> str:
+        return "tracking_uri"
+
+    def key_experiment_name(self) -> str:
+        return "experiment_name"
+
+    def key_run_name(self) -> str:
+        return "run_name"
+
 
 class BundleTrainTask(TrainTask):
     def __init__(self, path: str, conf: Dict[str, str], const: Optional[BundleConstants] = None):
@@ -102,6 +114,9 @@ class BundleTrainTask(TrainTask):
             "val_split": 0.2,  # VALIDATION SPLIT; -1 TO USE DEFAULT FROM BUNDLE
             "multi_gpu": True,  # USE MULTI-GPU
             "gpus": "all",  # COMMA SEPARATE DEVICE INDEX
+            "tracking": ["None", "mlflow"],
+            "tracking_uri": "",
+            "tracking_experiment_name": "",
         }
 
     def _fetch_datalist(self, request, datastore: Datastore):
@@ -173,6 +188,15 @@ class BundleTrainTask(TrainTask):
         device = self._device(request.get("device", "cuda"))
         logger.info(f"Using device: {device}")
 
+        tracking = request.get("tracking")
+        tracking_uri = request.get("tracking_uri")
+        tracking_experiment_name = request.get("tracking_experiment_name")
+        tracking_run_name = request.get("tracking_run_name")
+        logger.info(f"(Experiment Management) Tracking: {tracking}")
+        logger.info(f"(Experiment Management) Tracking URI: {tracking_uri}")
+        logger.info(f"(Experiment Management) Experiment Name: {tracking_experiment_name}")
+        logger.info(f"(Experiment Management) Run Name: {tracking_run_name}")
+
         train_handlers = self.bundle_config.get(self.const.key_train_handlers(), [])
         self._load_checkpoint(os.path.join(self.bundle_path, "models"), pretrained, train_handlers)
 
@@ -183,6 +207,15 @@ class BundleTrainTask(TrainTask):
             self.const.key_device(): device,
             self.const.key_train_handlers(): train_handlers,
         }
+
+        if tracking and tracking.lower() != "none":
+            overrides[self.const.key_tracking()] = tracking
+            if tracking_uri:
+                overrides[self.const.key_tracking_uri()] = tracking_uri
+            if tracking_experiment_name:
+                overrides[self.const.key_experiment_name()] = tracking_experiment_name
+            if tracking_run_name:
+                overrides[self.const.key_run_name()] = tracking_run_name
 
         # external validation datalist supported through bundle itself (pass -1 in the request to use the same)
         if val_ds is not None:
@@ -227,6 +260,10 @@ class BundleTrainTask(TrainTask):
                 "--logging_file",
                 logging_file,
             ]
+
+            if tracking and tracking_uri:
+                cmd.extend(["--tracking", tracking, "tracking_uri", tracking_uri])
+
             self.run_command(cmd, env)
         else:
             monai.bundle.run(
