@@ -94,7 +94,7 @@ class SegmentationSpleen(TaskConfig):
             load_path=load_path,
             publish_path=self.path[1],
             labels=self.labels,
-            disable_tracking=False,
+            disable_meta_tracking=False,
         )
         return task
 

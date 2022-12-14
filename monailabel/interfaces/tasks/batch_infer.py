@@ -20,7 +20,7 @@ from typing import Callable
 import torch
 
 from monailabel.interfaces.datastore import Datastore, DefaultLabelTag
-from monailabel.utils.others.generic import remove_file
+from monailabel.utils.others.generic import handle_torch_linalg_multithread, remove_file
 
 logger = logging.getLogger(__name__)
 
@@ -123,11 +123,7 @@ class BatchInferTask:
 
 
 def run_infer_task(req, datastore, infer):
-    try:
-        if torch.cuda.is_available():
-            torch.inverse(torch.eye(1, device=req.get("device")))
-    except RuntimeError:
-        pass
+    handle_torch_linalg_multithread(req)
 
     image_id = req.get("image")
     logger.info(f"Running inference for image id {image_id}")
