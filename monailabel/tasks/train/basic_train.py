@@ -123,7 +123,7 @@ class BasicTrainTask(TrainTask):
         load_strict=False,
         labels=None,
         disable_meta_tracking=False,
-        tracking="mlflow",
+        tracking="mlflow" if settings.MONAI_LABEL_TRACKING_ENABLED else None,
         tracking_uri=settings.MONAI_LABEL_TRACKING_URI,
         tracking_experiment_name=None,
     ):
@@ -167,7 +167,7 @@ class BasicTrainTask(TrainTask):
             "gpus": "all",
             "dataset": ["SmartCacheDataset", "CacheDataset", "PersistentDataset", "Dataset"],
             "dataloader": ["ThreadDataLoader", "DataLoader"],
-            "tracking": ["mlflow", "None"],
+            "tracking": ["mlflow", "None"] if settings.MONAI_LABEL_TRACKING_ENABLED else ["None", "mlflow"],
             "tracking_uri": tracking_uri if tracking_uri else "",
             "tracking_experiment_name": "",
         }
@@ -510,6 +510,7 @@ class BasicTrainTask(TrainTask):
         context.output_dir = os.path.join(self._model_dir, name)
         context.cache_dir = os.path.join(context.output_dir, f"cache_{context.run_id}")
         context.events_dir = os.path.join(context.output_dir, f"events_{context.run_id}")
+        logger.info(f"Run/Output Path: {context.output_dir}")
 
         tracking_uri = request.get("tracking_uri", self._tracking_uri)
         if not tracking_uri:
@@ -525,7 +526,7 @@ class BasicTrainTask(TrainTask):
         context.tracking_experiment_name = experiment_name
         context.tracking_run_name = run_name
 
-        logger.info(f"Run/Output Path: {context.output_dir}")
+        logger.info(f"Tracking: {context.tracking} ")
         logger.info(f"Tracking URI: {context.tracking_uri}; ")
         logger.info(f"Tracking Experiment Name: {experiment_name}; Run Name: {run_name}")
 
