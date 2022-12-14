@@ -115,7 +115,7 @@ class BundleTrainTask(TrainTask):
             "val_split": 0.2,  # VALIDATION SPLIT; -1 TO USE DEFAULT FROM BUNDLE
             "multi_gpu": True,  # USE MULTI-GPU
             "gpus": "all",  # COMMA SEPARATE DEVICE INDEX
-            "tracking": ["mlflow", "None"],
+            "tracking": ["mlflow", "None"] if settings.MONAI_LABEL_TRACKING_ENABLED else ["None", "mlflow"],
             "tracking_uri": settings.MONAI_LABEL_TRACKING_URI,
             "tracking_experiment_name": "",
         }
@@ -186,7 +186,7 @@ class BundleTrainTask(TrainTask):
         device = request.get("device", "cuda")
         logger.info(f"Using device: {device}; Type: {type(device)}")
 
-        tracking = request.get("tracking", "mlflow")
+        tracking = request.get("tracking", "mlflow" if settings.MONAI_LABEL_TRACKING_ENABLED else "")
         tracking = tracking[0] if isinstance(tracking, list) else tracking
         tracking_uri = request.get("tracking_uri")
         tracking_uri = tracking_uri if tracking_uri else settings.MONAI_LABEL_TRACKING_URI

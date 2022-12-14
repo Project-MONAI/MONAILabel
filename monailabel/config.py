@@ -77,6 +77,7 @@ class Settings(BaseSettings):
 
     MONAI_LABEL_INFER_CONCURRENCY: int = -1
     MONAI_LABEL_INFER_TIMEOUT: int = 600
+    MONAI_LABEL_TRACKING_ENABLED: bool = True
     MONAI_LABEL_TRACKING_URI: str = ""
 
     class Config:
