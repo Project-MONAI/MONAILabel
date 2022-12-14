@@ -310,6 +310,7 @@ class BasicTrainTask(TrainTask):
                         run_name=context.tracking_run_name,
                         iteration_log=True,
                         output_transform=from_engine(["loss"], first=True),
+                        close_on_complete=True,
                     )
                 )
 
@@ -347,6 +348,7 @@ class BasicTrainTask(TrainTask):
                     experiment_name=context.tracking_experiment_name,
                     run_name=context.tracking_run_name,
                     iteration_log=False,
+                    close_on_complete=True,
                 )
             )
         return handlers if context.local_rank == 0 else None
