@@ -11,6 +11,7 @@
 
 import logging
 import os.path
+from typing import Dict, Optional
 
 import numpy as np
 import torch
@@ -18,12 +19,15 @@ from monai.transforms import LoadImage
 
 from monailabel.datastore.cvat import CVATDatastore
 from monailabel.interfaces.datastore import Datastore
-from monailabel.tasks.train.bundle import BundleTrainTask
+from monailabel.tasks.train.bundle import BundleConstants, BundleTrainTask
 
 logger = logging.getLogger(__name__)
 
 
 class InBody(BundleTrainTask):
+    def __init__(self, path: str, conf: Dict[str, str], const: Optional[BundleConstants] = None, enable_tracking=True):
+        super().__init__(path, conf, const, enable_tracking)
+
     def _fetch_datalist(self, request, datastore: Datastore):
         ds = super()._fetch_datalist(request, datastore)
 

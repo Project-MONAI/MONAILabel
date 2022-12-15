@@ -10,11 +10,13 @@
 # limitations under the License.
 
 import logging
+from typing import Dict, Optional
 
-from monailabel.tasks.train.bundle import BundleTrainTask
+from monailabel.tasks.train.bundle import BundleConstants, BundleTrainTask
 
 logger = logging.getLogger(__name__)
 
 
 class ToolTracking(BundleTrainTask):
-    pass
+    def __init__(self, path: str, conf: Dict[str, str], const: Optional[BundleConstants] = None, enable_tracking=True):
+        super().__init__(path, conf, const, enable_tracking)
