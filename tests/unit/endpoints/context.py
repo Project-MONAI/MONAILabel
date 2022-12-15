@@ -25,14 +25,14 @@ def create_client(app_dir, studies, data_dir, conf=None):
         "heuristic_planner": "false",
         "server_mode": "true",
         "auto_update_scoring": "false",
-        "debug": "false",
+        "debug": "true",
         "models": "deepedit",
         "tracking": True
     }
     if conf:
         app_conf.update(conf)
-    from monailabel.config import settings
 
+    from monailabel.config import settings
 
     settings.MONAI_LABEL_APP_DIR = app_dir
     settings.MONAI_LABEL_STUDIES = studies
