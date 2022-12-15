@@ -206,26 +206,6 @@ class BasicBundleTestSuite(unittest.TestCase):
     def tearDownClass(cls) -> None:
         sys.path.remove(cls.app_dir)
 
-class BasicBundleTestSuite(unittest.TestCase):
-    client = None
-    base_dir = os.path.realpath(os.path.dirname(os.path.dirname(os.path.dirname(os.path.dirname(__file__)))))
-    data_dir = os.path.join(base_dir, "tests", "data")
-
-    app_dir = os.path.join(base_dir, "sample-apps", "monaibundle")
-    studies = os.path.join(data_dir, "dataset", "local", "spleen")
-    rand_id = random.randint(0, 9999)
-
-    @classmethod
-    def setUpClass(cls) -> None:
-        sys.path.append(cls.app_dir)
-        cls.client = create_client(
-            cls.app_dir, cls.studies, cls.data_dir, {"models": "spleen_ct_segmentation_v0.3.1"}
-        )
-
-    @classmethod
-    def tearDownClass(cls) -> None:
-        sys.path.remove(cls.app_dir)
-
 class BasicBundleV2TestSuite(unittest.TestCase):
     client = None
     base_dir = os.path.realpath(os.path.dirname(os.path.dirname(os.path.dirname(os.path.dirname(__file__)))))
@@ -252,4 +232,3 @@ class BasicBundleV2TestSuite(unittest.TestCase):
     @classmethod
     def tearDownClass(cls) -> None:
         sys.path.remove(cls.app_dir)
-        

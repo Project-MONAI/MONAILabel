@@ -13,11 +13,9 @@ import os
 import unittest
 
 import numpy as np
-import torch
 from monai.transforms import LoadImage
 from monai.utils import set_determinism
 from parameterized import parameterized
-from torch.utils.cpp_extension import CUDA_HOME
 
 from monailabel.scribbles.infer import HistogramBasedGraphCut
 from monailabel.scribbles.transforms import (
@@ -25,7 +23,6 @@ from monailabel.scribbles.transforms import (
     ApplyGraphCutOptimisationd,
     InteractiveSegmentationTransform,
     MakeISegUnaryd,
-    MakeLikelihoodFromScribblesGMMd,
     MakeLikelihoodFromScribblesHistogramd,
     SoftenProbSoftmax,
     WriteLogits,

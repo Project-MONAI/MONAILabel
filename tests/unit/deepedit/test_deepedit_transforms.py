@@ -166,7 +166,7 @@ class TestAddInitialSeedPointd(unittest.TestCase):
         add_fn = AddInitialSeedPointd(**args)
         add_fn.set_random_state(seed)
         result = add_fn(input_data)
-        assert result["guidance"] != None
+        assert result["guidance"] is not None
 
 class TestAddGuidanceSignald(unittest.TestCase):
     @parameterized.expand([ADD_GUIDANCE_CUSTOM_TEST_CASE])
