@@ -27,7 +27,7 @@ def create_client(app_dir, studies, data_dir, conf=None):
         "auto_update_scoring": "false",
         "debug": "true",
         "models": "deepedit",
-        "tracking": True
+        "tracking": True,
     }
     if conf:
         app_conf.update(conf)
@@ -142,6 +142,7 @@ class BasicEndpointV3TestSuite(unittest.TestCase):
     def tearDownClass(cls) -> None:
         sys.path.remove(cls.app_dir)
 
+
 class BasicEndpointV4TestSuite(unittest.TestCase):
     client = None
     base_dir = os.path.realpath(os.path.dirname(os.path.dirname(os.path.dirname(os.path.dirname(__file__)))))
@@ -156,7 +157,9 @@ class BasicEndpointV4TestSuite(unittest.TestCase):
         # sys.path.append(os.path.join(cls.app_dir, "lib", "activelearning", "random.py"))
         # sys.path.append(os.path.join(cls.app_dir, "lib", "infers", "nuclick.py"))
 
-        cls.client = create_client(cls.app_dir, cls.studies, cls.data_dir, {"models":"segmentation_nuclei,nuclick,classification_nuclei"})
+        cls.client = create_client(
+            cls.app_dir, cls.studies, cls.data_dir, {"models": "segmentation_nuclei,nuclick,classification_nuclei"}
+        )
         response = cls.client.get("/info/")
         # check if following fields exist in the response
         res = response.json()
@@ -165,6 +168,7 @@ class BasicEndpointV4TestSuite(unittest.TestCase):
     @classmethod
     def tearDownClass(cls) -> None:
         sys.path.remove(cls.app_dir)
+
 
 class BasicDetectionBundleTestSuite(unittest.TestCase):
     client = None
@@ -186,6 +190,7 @@ class BasicDetectionBundleTestSuite(unittest.TestCase):
     def tearDownClass(cls) -> None:
         sys.path.remove(cls.app_dir)
 
+
 class BasicBundleTestSuite(unittest.TestCase):
     client = None
     base_dir = os.path.realpath(os.path.dirname(os.path.dirname(os.path.dirname(os.path.dirname(__file__)))))
@@ -198,13 +203,12 @@ class BasicBundleTestSuite(unittest.TestCase):
     @classmethod
     def setUpClass(cls) -> None:
         sys.path.append(cls.app_dir)
-        cls.client = create_client(
-            cls.app_dir, cls.studies, cls.data_dir, {"models": "spleen_ct_segmentation_v0.3.1"}
-        )
+        cls.client = create_client(cls.app_dir, cls.studies, cls.data_dir, {"models": "spleen_ct_segmentation_v0.3.1"})
 
     @classmethod
     def tearDownClass(cls) -> None:
         sys.path.remove(cls.app_dir)
+
 
 class BasicBundleV2TestSuite(unittest.TestCase):
     client = None
@@ -225,9 +229,7 @@ class BasicBundleV2TestSuite(unittest.TestCase):
             "models": "spleen_ct_segmentation_v0.3.1",
         }
         sys.path.append(cls.app_dir)
-        cls.client = create_client(
-            cls.app_dir, cls.studies, cls.data_dir, conf=conf
-        )
+        cls.client = create_client(cls.app_dir, cls.studies, cls.data_dir, conf=conf)
 
     @classmethod
     def tearDownClass(cls) -> None:

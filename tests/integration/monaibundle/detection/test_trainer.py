@@ -12,7 +12,9 @@ import unittest
 
 import requests
 import torch
+
 from tests.integration import SERVER_URI
+
 
 class EndPointSession(unittest.TestCase):
     def test_lung_nodule_detection(self):

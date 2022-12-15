@@ -56,5 +56,6 @@ class EndPointInfer(unittest.TestCase):
         response = requests.post(f"{SERVER_URI}/infer/wsi/{model}?image={image}&output=asap", json=body)
         assert response.status_code == 200
 
+
 if __name__ == "__main__":
     unittest.main()

@@ -129,7 +129,7 @@ Or to use the developer mode of MONAI Label plugin by:
 
 #### Step 2: Download `monaibundle` App
 
-Sample-app with built-in versions are in the downloads, fetch the `monaibundle` app using monailabel API 
+Sample-app with built-in versions are in the downloads, fetch the `monaibundle` app using monailabel API
 
 ```bash
   monailabel apps --download --name monaibundle --output apps
@@ -143,11 +143,11 @@ LUNA16 is a public dataset of CT lung nodule detection. Using raw CT scans, the 
 
 Disclaimer: We are not the host of the data. Please make sure to read the requirements and usage policies of the data and give credit to the authors of the dataset! We acknowledge the National Cancer Institute and the Foundation for the National Institutes of Health, and their critical role in the creation of the free publicly available LIDC/IDRI Database used in this study.
 
- - If you are going to use full datset of LUNA16, please refer to the dataset link, download the data, create and preprocess the images following [this page](        https://github.com/Project-MONAI/model-zoo/tree/dev/models/lung_nodule_ct_detection#data 
+ - If you are going to use full datset of LUNA16, please refer to the dataset link, download the data, create and preprocess the images following [this page](        https://github.com/Project-MONAI/model-zoo/tree/dev/models/lung_nodule_ct_detection#data
 ).
- 
+
  - In this tutorial, we prepared a sample subset, resampled and ready to use. The subset is only for demonstration. Download [here](https://github.com/Project-MONAI/MONAILabel/releases/download/data/detection_dataset.zip).
-  
+
   Or use these commands to download and extract directly.
 
 ```bash
@@ -155,7 +155,7 @@ mkdir datasets
 wget "https://github.com/Project-MONAI/MONAILabel/releases/download/data/detection_dataset.zip" -O datasets/detection_dataset.zip
 unzip datasets/detection_dataset.zip -d datasets/detection_dataset
 ```
-  
+
  - The detection model also supports MSD Task06_Lung dataset for inference. Note this dataset is created for nodule segmentation task. We do not use the segmentation mask, only the images for inference. Use the following monailabel API to automatically download the dataset.
 
 ```bash
@@ -175,7 +175,7 @@ monailabel start_server --app apps/monaibundle --studies datasets/detection_data
 
 #### Step 5: Modify Detection Parameters in the Bundle (Optional)
 
-The lung_nodule_ct_detection bundle can set the box prediction probability threshold. In `apps/monaibundle/model/lung_nodule_ct_detection_v0.5.0/configs/inference.json`, it's define here `score_thresh=0.02`: 
+The lung_nodule_ct_detection bundle can set the box prediction probability threshold. In `apps/monaibundle/model/lung_nodule_ct_detection_v0.5.0/configs/inference.json`, it's define here `score_thresh=0.02`:
 
 ```json
     "detector_ops": [

@@ -17,6 +17,7 @@ from monai.apps import download_url, extractall
 TEST_DIR = os.path.realpath(os.path.dirname(__file__))
 TEST_DATA = os.path.join(TEST_DIR, "data")
 
+
 def run_main():
     downloaded_dataset_file = os.path.join(TEST_DIR, "downloads", "dataset.zip")
     dataset_url = "https://github.com/Project-MONAI/MONAILabel/releases/download/data/test_dataset.zip"
@@ -48,6 +49,7 @@ def run_main():
     if not os.path.exists(os.path.join(TEST_DATA, "detection")):
         os.makedirs(os.path.join(TEST_DATA, "detection"))
         extractall(filepath=downloaded_detection_file, output_dir=os.path.join(TEST_DATA, "detection"))
+
 
 if __name__ == "__main__":
     run_main()

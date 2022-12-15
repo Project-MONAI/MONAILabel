@@ -33,5 +33,6 @@ class EndPointActiveLearning(BasicEndpointTestSuite):
         for f in ["id", "name"]:
             assert res[f]
 
+
 if __name__ == "__main__":
     unittest.main()

@@ -13,7 +13,7 @@ import unittest
 
 import torch
 
-from .context import BasicEndpointV3TestSuite, BasicBundleV2TestSuite
+from .context import BasicBundleV2TestSuite, BasicEndpointV3TestSuite
 
 
 class EndPointScoring(BasicEndpointV3TestSuite):
@@ -41,15 +41,16 @@ class EndPointScoring(BasicEndpointV3TestSuite):
         res = response.json()
         for f in ["id", "name"]:
             assert res[f]
-            
+
     def test_status(self):
         self.client.get("/scoring/")
 
     def test_stop(self):
         self.client.delete("/scoring/")
 
+
 class EndPointBundleScoring(BasicBundleV2TestSuite):
-    # test epistemic_v2 
+    # test epistemic_v2
     def test_bundle_epistemic(self):
         if not torch.cuda.is_available():
             return
@@ -62,6 +63,7 @@ class EndPointBundleScoring(BasicBundleV2TestSuite):
 
     def test_stop(self):
         self.client.delete("/scoring/")
+
 
 if __name__ == "__main__":
     unittest.main()

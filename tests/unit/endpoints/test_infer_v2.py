@@ -14,7 +14,7 @@ import unittest
 
 import torch
 
-from .context import BasicEndpointV2TestSuite, BasicBundleTestSuite, BasicDetectionBundleTestSuite
+from .context import BasicBundleTestSuite, BasicDetectionBundleTestSuite, BasicEndpointV2TestSuite
 
 
 class EndPointInfer(BasicEndpointV2TestSuite):
@@ -39,6 +39,7 @@ class EndPointInfer(BasicEndpointV2TestSuite):
         response = self.client.post(f"/infer/{model}?image={image}", data={"params": json.dumps(params)})
         assert response.status_code == 200
 
+
 class TestBundleInferTask(BasicBundleTestSuite):
     def test_spleen_bundle_infer(self):
         if not torch.cuda.is_available():
@@ -50,6 +51,7 @@ class TestBundleInferTask(BasicBundleTestSuite):
         response = self.client.post(f"/infer/{model}?image={image}")
         assert response.status_code == 200
 
+
 class TestDetectionBundleInferTask(BasicDetectionBundleTestSuite):
     def test_lung_nodule_detector_infer(self):
         if not torch.cuda.is_available():
@@ -60,6 +62,7 @@ class TestDetectionBundleInferTask(BasicDetectionBundleTestSuite):
 
         response = self.client.post(f"/infer/{model}?image={image}")
         assert response.status_code == 200
+
 
 if __name__ == "__main__":
     unittest.main()

@@ -13,8 +13,6 @@ import unittest
 
 import numpy as np
 import torch
-
-from monailabel.deepedit.interaction import Interaction
 from monai.apps.deepedit.transforms import (
     AddGuidanceSignalDeepEditd,
     AddInitialSeedPointMissingLabelsd,
@@ -28,6 +26,8 @@ from monai.engines import SupervisedTrainer
 from monai.engines.utils import IterationEvents
 from monai.losses import DiceCELoss
 from monai.transforms import Activationsd, AsDiscreted, Compose, ToTensord
+
+from monailabel.deepedit.interaction import Interaction
 
 
 def add_one(engine):
@@ -117,4 +117,3 @@ class TestInteractions(unittest.TestCase):
 
 if __name__ == "__main__":
     unittest.main()
-    

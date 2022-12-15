@@ -14,7 +14,8 @@ import unittest
 
 import torch
 
-from .context import BasicEndpointV2TestSuite, BasicBundleTestSuite, BasicDetectionBundleTestSuite
+from .context import BasicBundleTestSuite, BasicDetectionBundleTestSuite, BasicEndpointV2TestSuite
+
 
 class TestEndPointTrain(BasicEndpointV2TestSuite):
     def test_001_train(self):
@@ -81,6 +82,7 @@ class TestEndPointTrain(BasicEndpointV2TestSuite):
     def test_005_stop(self):
         self.client.delete("/train/")
 
+
 class TestBundleTrainTask(BasicBundleTestSuite):
     def test_spleen_bundle_train(self):
         if not torch.cuda.is_available():
@@ -97,6 +99,7 @@ class TestBundleTrainTask(BasicBundleTestSuite):
         response = self.client.post("/train/?run_sync=True", json=params)
         assert response.status_code == 200
 
+
 class TestDetectionBundleTrainTask(BasicDetectionBundleTestSuite):
     def test_lung_nodule_detection_train(self):
         if not torch.cuda.is_available():
@@ -112,7 +115,7 @@ class TestDetectionBundleTrainTask(BasicDetectionBundleTestSuite):
         }
         response = self.client.post("/train/?run_sync=True", json=params)
         assert response.status_code == 200
-        
+
     def test_bundle_stop(self):
         if not torch.cuda.is_available():
             return

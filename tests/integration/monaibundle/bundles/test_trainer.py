@@ -12,7 +12,9 @@ import unittest
 
 import requests
 import torch
+
 from tests.integration import SERVER_URI
+
 
 class EndPointSession(unittest.TestCase):
     def test_segmentation_spleen_trainer(self):
@@ -58,6 +60,7 @@ class EndPointSession(unittest.TestCase):
         }
         response = requests.post(f"{SERVER_URI}/train/spleen_deepedit_annotation_v0.1.0?run_sync=True", json=params)
         assert response.status_code == 200
+
 
 if __name__ == "__main__":
     unittest.main()

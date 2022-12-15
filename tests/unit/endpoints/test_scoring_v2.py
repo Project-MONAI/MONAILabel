@@ -17,7 +17,7 @@ from .context import BasicBundleV2TestSuite
 
 
 class EndPointBundleScoring(BasicBundleV2TestSuite):
-    # test epistemic_v2 
+    # test epistemic_v2
     def test_bundle_epistemic(self):
         if not torch.cuda.is_available():
             return
@@ -30,6 +30,7 @@ class EndPointBundleScoring(BasicBundleV2TestSuite):
 
     def test_stop(self):
         self.client.delete("/scoring/")
+
 
 if __name__ == "__main__":
     unittest.main()

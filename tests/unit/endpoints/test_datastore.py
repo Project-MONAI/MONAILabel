@@ -47,7 +47,6 @@ class EndPointDatastore(BasicEndpointTestSuite):
             assert response.status_code == 200
             assert tag not in self.client.get("/datastore/").json()["label_tags"]
 
-
     def test_004_remove_image(self):
         total = self.client.get("/datastore/").json()["total"]
         response = self.client.delete(f"/datastore/?id={self.image_id}")
@@ -56,39 +55,28 @@ class EndPointDatastore(BasicEndpointTestSuite):
         current = self.client.get("/datastore/").json()["total"]
         assert current == total - 1
 
-
     def test_005_download_image(self):
-        response = self.client.get(
-            "/datastore/image?image=spleen_3"
-        )
+        response = self.client.get("/datastore/image?image=spleen_3")
         assert response.status_code == 200
 
     def test_006_download_label(self):
-        response = self.client.get(
-            "/datastore/label?label=spleen_3&tag=final"
-        )
+        response = self.client.get("/datastore/label?label=spleen_3&tag=final")
         assert response.status_code == 200
 
     def test_007_get_image_info(self):
-        response = self.client.get(
-            "/datastore/image/info?image=spleen_3"
-        )
+        response = self.client.get("/datastore/image/info?image=spleen_3")
         assert response.status_code == 200
         name = self.client.get("/datastore/image/info?image=spleen_3").json()["name"]
         assert name == "spleen_3.nii.gz"
 
     def test_008_get_label_info(self):
-        response = self.client.get(
-            "/datastore/label/info?label=spleen_3&tag=final"
-        )
+        response = self.client.get("/datastore/label/info?label=spleen_3&tag=final")
         name = self.client.get("/datastore/label/info?label=spleen_3&tag=final").json()["name"]
         assert response.status_code == 200
         assert name == "spleen_3.nii.gz"
 
     def test_009_update_image_info(self):
-        response = self.client.put(
-            "/datastore/image/info?image=spleen_3"
-        )
+        response = self.client.put("/datastore/image/info?image=spleen_3")
         name = self.client.get("/datastore/image/info?image=spleen_3").json()["name"]
         assert response.status_code == 200
         assert name == "spleen_3.nii.gz"
@@ -100,10 +88,9 @@ class EndPointDatastore(BasicEndpointTestSuite):
         assert response.status_code == 200
 
     def test_011_download_dataset(self):
-        response = self.client.get(
-            "/datastore/dataset"
-        )
+        response = self.client.get("/datastore/dataset")
         assert response.status_code == 200
+
 
 if __name__ == "__main__":
     unittest.main()

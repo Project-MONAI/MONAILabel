@@ -12,6 +12,7 @@ import unittest
 
 import requests
 import torch
+
 from tests.integration import SERVER_URI
 
 
@@ -25,6 +26,7 @@ class EndPointInfer(unittest.TestCase):
 
         response = requests.post(f"{SERVER_URI}/infer/{model}?image={image}")
         assert response.status_code == 200
+
 
 if __name__ == "__main__":
     unittest.main()
