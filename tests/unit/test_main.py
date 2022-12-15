@@ -26,6 +26,10 @@ class MyTestCase(unittest.TestCase):
     studies = os.path.join(data_dir, "dataset", "local", "spleen")
 
     def test_run(self):
+        args = argparse.Namespace(
+            version=True,
+            action="apps",
+        )
         try:
             Main().run()
         except BaseException:

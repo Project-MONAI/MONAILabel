@@ -8,30 +8,23 @@
 # WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 # See the License for the specific language governing permissions and
 # limitations under the License.
-
 import unittest
 
-from .context import BasicEndpointTestSuite
+import requests
+import torch
+from tests.integration import SERVER_URI
 
 
-class EndPointActiveLearning(BasicEndpointTestSuite):
-    def test_strategy_random(self):
-        response = self.client.post("/activelearning/random")
+class EndPointInfer(unittest.TestCase):
+    def test_lung_nodule_detection(self):
+        if not torch.cuda.is_available():
+            return
+
+        model = "lung_nodule_ct_detection_v0.5.0"
+        image = "1.3.6.1.4.1.14519.5.2.1.6279.6001.188385286346390202873004762827"
+
+        response = requests.post(f"{SERVER_URI}/infer/{model}?image={image}")
         assert response.status_code == 200
-
-        # check if following fields exist in the response
-        res = response.json()
-        for f in ["id", "name"]:
-            assert res[f]
-
-    def test_strategy_first(self):
-        response = self.client.post("/activelearning/first")
-        assert response.status_code == 200
-
-        # check if following fields exist in the response
-        res = response.json()
-        for f in ["id", "name"]:
-            assert res[f]
 
 if __name__ == "__main__":
     unittest.main()

@@ -125,6 +125,7 @@ class BundleTrainTask(TrainTask):
 
     def _partition_datalist(self, datalist, request, shuffle=False):
         if "detection" in request.get("model"):
+            settings.MONAI_LABEL_TRACKING_ENABLED = False # detection bundle currently do not support mlflow and tracking
             # Generate datalist for detection task, box and label keys are used by default.
             # Future: either use box and label keys for all detection models, or set these keys by config.
             for idx, d in enumerate(datalist):

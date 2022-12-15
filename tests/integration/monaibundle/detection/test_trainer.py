@@ -12,28 +12,21 @@ import unittest
 
 import requests
 import torch
-
 from tests.integration import SERVER_URI
 
-
-class EndPointBatchInfer(unittest.TestCase):
-    def test_batch_segmentation_spleen(self):
+class EndPointSession(unittest.TestCase):
+    def test_lung_nodule_detection(self):
         if not torch.cuda.is_available():
             return
 
-        model = "segmentation_spleen"
         params = {
-            "device": "cuda",
-            "multi_gpu": True,
-            "gpus": "all",
-            "logging": "WARNING",
-            "save_label": True,
-            "label_tag": "original",
-            "max_workers": 0,
-            "max_batch_size": 3,
+            "model": "lung_nodule_ct_detection_v0.5.0",
+            "max_epochs": 1,
+            "name": "net_test_lung_nodule_detection_trainer_01",
+            "val_split": 0.5,
+            "multi_gpu": False,
         }
-
-        response = requests.post(f"{SERVER_URI}/batch/infer/{model}?images=all&run_sync=true", json=params)
+        response = requests.post(f"{SERVER_URI}/train/lung_nodule_ct_detection_v0.5.0?run_sync=True", json=params)
         assert response.status_code == 200
 
 

@@ -25,19 +25,21 @@ def create_client(app_dir, studies, data_dir, conf=None):
         "heuristic_planner": "false",
         "server_mode": "true",
         "auto_update_scoring": "false",
-        "debug": "true",
+        "debug": "false",
         "models": "deepedit",
+        "tracking": True
     }
     if conf:
         app_conf.update(conf)
-
     from monailabel.config import settings
+
 
     settings.MONAI_LABEL_APP_DIR = app_dir
     settings.MONAI_LABEL_STUDIES = studies
     settings.MONAI_LABEL_DATASTORE_AUTO_RELOAD = False
     settings.MONAI_LABEL_APP_CONF = app_conf
     settings.MONAI_LABEL_SESSION_PATH = os.path.join(data_dir, "sessions")
+    settings.MONAI_LABEL_TRACKING_ENABLED = app_conf["tracking"]
 
     for k, v in settings.dict().items():
         v = json.dumps(v) if isinstance(v, list) or isinstance(v, dict) else str(v)
@@ -107,7 +109,7 @@ class BasicEndpointV2TestSuite(unittest.TestCase):
     def setUpClass(cls) -> None:
         sys.path.append(cls.app_dir)
         cls.client = create_client(
-            cls.app_dir, cls.studies, cls.data_dir, {"models": "deepgrow_2d,deepgrow_3d,segmentation_spleen"}
+            cls.app_dir, cls.studies, cls.data_dir, {"models": "deepgrow_2d,deepgrow_3d,segmentation_spleen,deepedit"}
         )
 
     @classmethod
@@ -135,6 +137,117 @@ class BasicEndpointV3TestSuite(unittest.TestCase):
         }
         sys.path.append(cls.app_dir)
         cls.client = create_client(cls.app_dir, cls.studies, cls.data_dir, conf=conf)
+
+    @classmethod
+    def tearDownClass(cls) -> None:
+        sys.path.remove(cls.app_dir)
+
+class BasicEndpointV4TestSuite(unittest.TestCase):
+    client = None
+    base_dir = os.path.realpath(os.path.dirname(os.path.dirname(os.path.dirname(os.path.dirname(__file__)))))
+    data_dir = os.path.join(base_dir, "tests", "data")
+    app_dir = os.path.join(base_dir, "sample-apps", "pathology")
+    studies = os.path.join(data_dir, "pathology")
+    rand_id = random.randint(0, 9999)
+
+    @classmethod
+    def setUpClass(cls) -> None:
+        sys.path.append(cls.app_dir)
+        # sys.path.append(os.path.join(cls.app_dir, "lib", "activelearning", "random.py"))
+        # sys.path.append(os.path.join(cls.app_dir, "lib", "infers", "nuclick.py"))
+
+        cls.client = create_client(cls.app_dir, cls.studies, cls.data_dir, {"models":"segmentation_nuclei,nuclick,classification_nuclei"})
+        response = cls.client.get("/info/")
+        # check if following fields exist in the response
+        res = response.json()
+        print(res)
+
+    @classmethod
+    def tearDownClass(cls) -> None:
+        sys.path.remove(cls.app_dir)
+
+class BasicDetectionBundleTestSuite(unittest.TestCase):
+    client = None
+    base_dir = os.path.realpath(os.path.dirname(os.path.dirname(os.path.dirname(os.path.dirname(__file__)))))
+    data_dir = os.path.join(base_dir, "tests", "data")
+
+    app_dir = os.path.join(base_dir, "sample-apps", "monaibundle")
+    studies = os.path.join(data_dir, "detection")
+    rand_id = random.randint(0, 9999)
+
+    @classmethod
+    def setUpClass(cls) -> None:
+        sys.path.append(cls.app_dir)
+        cls.client = create_client(
+            cls.app_dir, cls.studies, cls.data_dir, {"models": "lung_nodule_ct_detection_v0.5.0", "tracking": False}
+        )
+
+    @classmethod
+    def tearDownClass(cls) -> None:
+        sys.path.remove(cls.app_dir)
+
+class BasicBundleTestSuite(unittest.TestCase):
+    client = None
+    base_dir = os.path.realpath(os.path.dirname(os.path.dirname(os.path.dirname(os.path.dirname(__file__)))))
+    data_dir = os.path.join(base_dir, "tests", "data")
+
+    app_dir = os.path.join(base_dir, "sample-apps", "monaibundle")
+    studies = os.path.join(data_dir, "dataset", "local", "spleen")
+    rand_id = random.randint(0, 9999)
+
+    @classmethod
+    def setUpClass(cls) -> None:
+        sys.path.append(cls.app_dir)
+        cls.client = create_client(
+            cls.app_dir, cls.studies, cls.data_dir, {"models": "spleen_ct_segmentation_v0.3.1"}
+        )
+
+    @classmethod
+    def tearDownClass(cls) -> None:
+        sys.path.remove(cls.app_dir)
+
+class BasicBundleTestSuite(unittest.TestCase):
+    client = None
+    base_dir = os.path.realpath(os.path.dirname(os.path.dirname(os.path.dirname(os.path.dirname(__file__)))))
+    data_dir = os.path.join(base_dir, "tests", "data")
+
+    app_dir = os.path.join(base_dir, "sample-apps", "monaibundle")
+    studies = os.path.join(data_dir, "dataset", "local", "spleen")
+    rand_id = random.randint(0, 9999)
+
+    @classmethod
+    def setUpClass(cls) -> None:
+        sys.path.append(cls.app_dir)
+        cls.client = create_client(
+            cls.app_dir, cls.studies, cls.data_dir, {"models": "spleen_ct_segmentation_v0.3.1"}
+        )
+
+    @classmethod
+    def tearDownClass(cls) -> None:
+        sys.path.remove(cls.app_dir)
+
+class BasicBundleV2TestSuite(unittest.TestCase):
+    client = None
+    base_dir = os.path.realpath(os.path.dirname(os.path.dirname(os.path.dirname(os.path.dirname(__file__)))))
+    data_dir = os.path.join(base_dir, "tests", "data")
+
+    app_dir = os.path.join(base_dir, "sample-apps", "monaibundle")
+    studies = os.path.join(data_dir, "dataset", "local", "spleen")
+    rand_id = random.randint(0, 9999)
+
+    @classmethod
+    def setUpClass(cls) -> None:
+        conf = {
+            "epistemic_model": "spleen_ct_segmentation_v0.3.1",
+            "epistemic_max_samples": 0,
+            "epistemic_simulation_size": 5,
+            "epistemic_dropout": 0.2,
+            "models": "spleen_ct_segmentation_v0.3.1",
+        }
+        sys.path.append(cls.app_dir)
+        cls.client = create_client(
+            cls.app_dir, cls.studies, cls.data_dir, conf=conf
+        )
 
     @classmethod
     def tearDownClass(cls) -> None:

@@ -13,7 +13,7 @@ import unittest
 
 import torch
 
-from .context import BasicEndpointV3TestSuite
+from .context import BasicEndpointV3TestSuite, BasicBundleV2TestSuite
 
 
 class EndPointScoring(BasicEndpointV3TestSuite):
@@ -32,12 +32,36 @@ class EndPointScoring(BasicEndpointV3TestSuite):
         response = self.client.post("/scoring/segmentation_spleen_epistemic?run_sync=true")
         assert response.status_code == 200
 
+    def test_strategy_epistemic(self):
+        # test active larning epistemic strategy within this Test Suite
+        response = self.client.post("/activelearning/segmentation_spleen_epistemic")
+        assert response.status_code == 200
+
+        # check if following fields exist in the response
+        res = response.json()
+        for f in ["id", "name"]:
+            assert res[f]
+            
     def test_status(self):
         self.client.get("/scoring/")
 
     def test_stop(self):
         self.client.delete("/scoring/")
 
+class EndPointBundleScoring(BasicBundleV2TestSuite):
+    # test epistemic_v2 
+    def test_bundle_epistemic(self):
+        if not torch.cuda.is_available():
+            return
+
+        response = self.client.post("/scoring/?run_sync=true")
+        assert response.status_code == 200
+
+    def test_status(self):
+        self.client.get("/scoring/")
+
+    def test_stop(self):
+        self.client.delete("/scoring/")
 
 if __name__ == "__main__":
     unittest.main()
