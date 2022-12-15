@@ -79,10 +79,11 @@ class BundleConstants:
 
 
 class BundleTrainTask(TrainTask):
-    def __init__(self, path: str, conf: Dict[str, str], const: Optional[BundleConstants] = None):
+    def __init__(self, path: str, conf: Dict[str, str], const: Optional[BundleConstants] = None, enable_tracking=False):
         self.valid: bool = False
         self.conf = conf
         self.const = const if const else BundleConstants()
+        self.enable_tracking = enable_tracking
 
         config_paths = [c for c in self.const.configs() if os.path.exists(os.path.join(path, "configs", c))]
         if not config_paths:
@@ -115,7 +116,9 @@ class BundleTrainTask(TrainTask):
             "val_split": 0.2,  # VALIDATION SPLIT; -1 TO USE DEFAULT FROM BUNDLE
             "multi_gpu": True,  # USE MULTI-GPU
             "gpus": "all",  # COMMA SEPARATE DEVICE INDEX
-            "tracking": ["mlflow", "None"] if settings.MONAI_LABEL_TRACKING_ENABLED else ["None", "mlflow"],
+            "tracking": ["mlflow", "None"]
+            if self.enable_tracking and settings.MONAI_LABEL_TRACKING_ENABLED
+            else ["None", "mlflow"],
             "tracking_uri": settings.MONAI_LABEL_TRACKING_URI,
             "tracking_experiment_name": "",
         }
