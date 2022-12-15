@@ -49,7 +49,12 @@ from monailabel.interfaces.tasks.train import TrainTask
 from monailabel.interfaces.utils.wsi import create_infer_wsi_tasks
 from monailabel.tasks.activelearning.random import Random
 from monailabel.utils.async_tasks.task import AsyncTask
-from monailabel.utils.others.generic import file_checksum, is_openslide_supported, strtobool
+from monailabel.utils.others.generic import (
+    file_checksum,
+    handle_torch_linalg_multithread,
+    is_openslide_supported,
+    strtobool,
+)
 from monailabel.utils.others.pathology import create_asap_annotations_xml, create_dsa_annotations_json
 from monailabel.utils.sessions import Sessions
 
@@ -292,6 +297,7 @@ class MONAILabelApp:
         if self._infers_threadpool:
 
             def run_infer_in_thread(t, r):
+                handle_torch_linalg_multithread(r)
                 return t(r)
 
             f = self._infers_threadpool.submit(run_infer_in_thread, t=task, r=request)
@@ -696,7 +702,7 @@ class MONAILabelApp:
         else:
             for t in infer_tasks:
                 tid = t["id"]
-                res = self._run_infer_wsi_task(t)
+                res = self._run_infer_wsi_task(t, multi_thread=False)
                 res_json["annotations"][tid] = res
                 finished = len([a for a in res_json["annotations"] if a])
                 logger.info(
@@ -746,10 +752,12 @@ class MONAILabelApp:
             )
         return {"file": res_file, "params": res_json}
 
-    def _run_infer_wsi_task(self, task):
+    def _run_infer_wsi_task(self, task, multi_thread=True):
         req = copy.deepcopy(task)
         req["result_write_to_file"] = False
 
+        if multi_thread:
+            handle_torch_linalg_multithread(req)
         res = self.infer(req)
         return res.get("params", {})
 

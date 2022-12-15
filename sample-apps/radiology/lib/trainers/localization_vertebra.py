@@ -141,10 +141,10 @@ class LocalizationVertebra(BasicTrainTask):
         return new_label_nums
 
     def train_key_metric(self, context: Context):
-        return region_wise_metrics(self.norm_labels(), self.TRAIN_KEY_METRIC, "train")
+        return region_wise_metrics(self.norm_labels(), "train_mean_dice", "train")
 
     def val_key_metric(self, context: Context):
-        return region_wise_metrics(self.norm_labels(), self.VAL_KEY_METRIC, "val")
+        return region_wise_metrics(self.norm_labels(), "val_mean_dice", "val")
 
     def train_handlers(self, context: Context):
         handlers = super().train_handlers(context)

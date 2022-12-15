@@ -25,4 +25,4 @@ if echo "$version" | grep "Python 2"; then
   PYEXE=python3
 fi
 
-${PYEXE} -m monailabel.main $*
+exec ${PYEXE} -m monailabel.main $*

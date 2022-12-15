@@ -21,6 +21,7 @@ from monai.bundle import ConfigParser
 from monai.data import partition_dataset
 from monai.handlers import CheckpointLoader
 
+from monailabel.config import settings
 from monailabel.interfaces.datastore import Datastore
 from monailabel.interfaces.tasks.train import TrainTask
 
@@ -64,6 +65,18 @@ class BundleConstants:
     def key_validate_dataset_data(self) -> str:
         return "validate#dataset#data"
 
+    def key_tracking(self) -> str:
+        return "tracking"
+
+    def key_tracking_uri(self) -> str:
+        return "tracking_uri"
+
+    def key_experiment_name(self) -> str:
+        return "experiment_name"
+
+    def key_run_name(self) -> str:
+        return "run_name"
+
 
 class BundleTrainTask(TrainTask):
     def __init__(self, path: str, conf: Dict[str, str], const: Optional[BundleConstants] = None):
@@ -102,14 +115,28 @@ class BundleTrainTask(TrainTask):
             "val_split": 0.2,  # VALIDATION SPLIT; -1 TO USE DEFAULT FROM BUNDLE
             "multi_gpu": True,  # USE MULTI-GPU
             "gpus": "all",  # COMMA SEPARATE DEVICE INDEX
+            "tracking": ["mlflow", "None"] if settings.MONAI_LABEL_TRACKING_ENABLED else ["None", "mlflow"],
+            "tracking_uri": settings.MONAI_LABEL_TRACKING_URI,
+            "tracking_experiment_name": "",
         }
 
     def _fetch_datalist(self, request, datastore: Datastore):
         return datastore.datalist()
 
     def _partition_datalist(self, datalist, request, shuffle=False):
-        # only use image and label attributes; skip for other meta info from datastore for now
-        datalist = [{"image": d["image"], "label": d["label"]} for d in datalist if d]
+        if "detection" in request.get("model"):
+            # Generate datalist for detection task, box and label keys are used by default.
+            # Future: either use box and label keys for all detection models, or set these keys by config.
+            for idx, d in enumerate(datalist):
+                with open(d["label"]) as fp:
+                    json_object = json.loads(fp.read())  # load box coordinates from subject JSON
+                    bboxes = [bdict["center"] + bdict["size"] for bdict in json_object["markups"]]
+                # Only support detection, classification label do not suppot in bundle yet, 0 is used for all positive boxes, wait for sync.
+                datalist[idx] = {"image": d["image"], "box": bboxes, "label": [0] * len(bboxes)}
+        else:
+            # only use image and label attributes; skip for other meta info from datastore for now
+            datalist = [{"image": d["image"], "label": d["label"]} for d in datalist if d]
+
         logger.info(f"Total Records in Dataset: {len(datalist)}")
 
         val_split = request.get("val_split", 0.2)
@@ -124,9 +151,6 @@ class BundleTrainTask(TrainTask):
         logger.info(f"Total Records for Training: {len(train_datalist)}")
         logger.info(f"Total Records for Validation: {len(val_datalist) if val_datalist else ''}")
         return train_datalist, val_datalist
-
-    def _device(self, str):
-        return torch.device(str if torch.cuda.is_available() else "cpu")
 
     def _load_checkpoint(self, output_dir, pretrained, train_handlers):
         load_path = os.path.join(output_dir, self.const.model_pytorch()) if pretrained else None
@@ -159,8 +183,20 @@ class BundleTrainTask(TrainTask):
         logger.info(f"Using Multi GPU: {multi_gpu}; GPUS: {gpus}")
         logger.info(f"CUDA_VISIBLE_DEVICES: {os.environ.get('CUDA_VISIBLE_DEVICES')}")
 
-        device = self._device(request.get("device", "cuda"))
-        logger.info(f"Using device: {device}")
+        device = request.get("device", "cuda")
+        logger.info(f"Using device: {device}; Type: {type(device)}")
+
+        tracking = request.get("tracking", "mlflow" if settings.MONAI_LABEL_TRACKING_ENABLED else "")
+        tracking = tracking[0] if isinstance(tracking, list) else tracking
+        tracking_uri = request.get("tracking_uri")
+        tracking_uri = tracking_uri if tracking_uri else settings.MONAI_LABEL_TRACKING_URI
+        tracking_experiment_name = request.get("tracking_experiment_name")
+        tracking_experiment_name = tracking_experiment_name if tracking_experiment_name else request.get("model")
+        tracking_run_name = request.get("tracking_run_name")
+        logger.info(f"(Experiment Management) Tracking: {tracking}")
+        logger.info(f"(Experiment Management) Tracking URI: {tracking_uri}")
+        logger.info(f"(Experiment Management) Experiment Name: {tracking_experiment_name}")
+        logger.info(f"(Experiment Management) Run Name: {tracking_run_name}")
 
         train_handlers = self.bundle_config.get(self.const.key_train_handlers(), [])
         self._load_checkpoint(os.path.join(self.bundle_path, "models"), pretrained, train_handlers)
@@ -172,6 +208,15 @@ class BundleTrainTask(TrainTask):
             self.const.key_device(): device,
             self.const.key_train_handlers(): train_handlers,
         }
+
+        if tracking and tracking.lower() != "none":
+            overrides[self.const.key_tracking()] = tracking
+            if tracking_uri:
+                overrides[self.const.key_tracking_uri()] = tracking_uri
+            if tracking_experiment_name:
+                overrides[self.const.key_experiment_name()] = tracking_experiment_name
+            if tracking_run_name:
+                overrides[self.const.key_run_name()] = tracking_run_name
 
         # external validation datalist supported through bundle itself (pass -1 in the request to use the same)
         if val_ds is not None:
@@ -193,8 +238,7 @@ class BundleTrainTask(TrainTask):
             multi_gpu_train_path = os.path.join(self.bundle_path, "configs", config_paths[0])
             logging_file = os.path.join(self.bundle_path, "configs", "logging.conf")
             for k, v in overrides.items():
-                if k != self.const.key_device():
-                    self.bundle_config.set(v, k)
+                self.bundle_config.set(v, k)
             ConfigParser.export_config_file(self.bundle_config.config, train_path, indent=2)  # type: ignore
 
             env = os.environ.copy()
@@ -216,6 +260,12 @@ class BundleTrainTask(TrainTask):
                 "--logging_file",
                 logging_file,
             ]
+
+            if tracking:
+                cmd.extend(["--tracking", tracking])
+                if tracking_uri:
+                    cmd.extend(["tracking_uri", tracking_uri])
+
             self.run_command(cmd, env)
         else:
             monai.bundle.run(

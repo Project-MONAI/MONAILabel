@@ -101,6 +101,6 @@ class Segmentation(TaskConfig):
             publish_path=self.path[1],
             description="Train Multilabel Segmentation Model",
             labels=self.labels,
-            disable_tracking=False,
+            disable_meta_tracking=False,
         )
         return task
