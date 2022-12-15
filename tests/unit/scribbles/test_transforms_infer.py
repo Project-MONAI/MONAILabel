@@ -355,19 +355,6 @@ class TestScribblesTransforms(unittest.TestCase):
         np.testing.assert_equal(expected_result, np.argmax(result["pred"], axis=0))
         self.assertTupleEqual(expected_shape, result["pred"].shape)
 
-    @parameterized.expand(TEST_CASE_MAKE_LIKE_METHOD_TX)
-    @unittest.skipUnless(torch.cuda.is_available() and CUDA_HOME is not None, "Skipping CUDA-based tests")
-    def test_make_likelihood_gmm(self, input_param, test_input, output, expected_shape):
-        input_param.update({"post_proc_label": "pred"})
-        result = MakeLikelihoodFromScribblesGMMd(**input_param)(test_input)
-
-        # make expected output
-        expected_result = np.argmax(output["target"].copy(), axis=0)
-
-        # compare
-        np.testing.assert_equal(expected_result, np.argmax(result["pred"], axis=0))
-        self.assertTupleEqual(expected_shape, result["pred"].shape)
-
     @parameterized.expand(TEST_CASE_ISEG_OPTIM_TX)
     def test_writelogits(self, input_param, test_input, output, expected_shape):
         test_input.update({"image_path": "./image.nii.gz"})
@@ -434,4 +421,4 @@ class TestScribblesInferers(unittest.TestCase):
 
 if __name__ == "__main__":
     unittest.main()
-    
+
