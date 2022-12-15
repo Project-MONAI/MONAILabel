@@ -36,7 +36,7 @@ class HovernetNuclei(BundleInferTask):
             add_post_restore=False,
             pre_filter=[LoadImaged],
             post_filter=[FromMetaTensord, SaveImaged],
-            model_state_dict="net",
+            load_strict=True,
             **kwargs,
         )
 
