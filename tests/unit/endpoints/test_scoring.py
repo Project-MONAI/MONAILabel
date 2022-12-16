@@ -9,21 +9,19 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
+import time
 import unittest
 
 import torch
 
-from .context import BasicEndpointV3TestSuite
+from .context import BasicBundleV2TestSuite, BasicEndpointV3TestSuite
 
 
 class EndPointScoring(BasicEndpointV3TestSuite):
     def test_dice(self):
         response = self.client.post("/scoring/dice?run_sync=true")
         assert response.status_code == 200
-
-    def test_sum(self):
-        response = self.client.post("/scoring/sum?run_sync=true")
-        assert response.status_code == 200
+        time.sleep(1)
 
     def test_epistemic(self):
         if not torch.cuda.is_available():
@@ -32,11 +30,43 @@ class EndPointScoring(BasicEndpointV3TestSuite):
         response = self.client.post("/scoring/segmentation_spleen_epistemic?run_sync=true")
         assert response.status_code == 200
 
+    def test_strategy_epistemic(self):
+        # test active larning epistemic strategy within this Test Suite
+        response = self.client.post("/activelearning/segmentation_spleen_epistemic")
+        assert response.status_code == 200
+
+        # check if following fields exist in the response
+        res = response.json()
+        for f in ["id", "name"]:
+            assert res[f]
+        time.sleep(1)
+
     def test_status(self):
         self.client.get("/scoring/")
+        time.sleep(1)
 
     def test_stop(self):
         self.client.delete("/scoring/")
+        time.sleep(1)
+
+
+class EndPointBundleScoring(BasicBundleV2TestSuite):
+    # test epistemic_v2
+    def test_bundle_epistemic(self):
+        if not torch.cuda.is_available():
+            return
+
+        response = self.client.post("/scoring/?run_sync=true")
+        assert response.status_code == 200
+        time.sleep(1)
+
+    def test_status(self):
+        self.client.get("/scoring/")
+        time.sleep(1)
+
+    def test_stop(self):
+        self.client.delete("/scoring/")
+        time.sleep(1)
 
 
 if __name__ == "__main__":

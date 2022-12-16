@@ -14,7 +14,7 @@ import unittest
 
 import torch
 
-from .context import BasicEndpointV2TestSuite
+from .context import BasicBundleTestSuite, BasicDetectionBundleTestSuite, BasicEndpointV2TestSuite
 
 
 class TestEndPointTrain(BasicEndpointV2TestSuite):
@@ -81,6 +81,59 @@ class TestEndPointTrain(BasicEndpointV2TestSuite):
 
     def test_005_stop(self):
         self.client.delete("/train/")
+
+
+class TestBundleTrainTask(BasicBundleTestSuite):
+    def test_spleen_bundle_train(self):
+        if not torch.cuda.is_available():
+            return
+
+        params = {
+            "model": "spleen_ct_segmentation_v0.3.1",
+            "max_epochs": 1,
+            "name": "net_test_spleen_bundle_trainer_01",
+            "val_split": 0.5,
+            "multi_gpu": False,
+            "dataset": "CacheDataset",
+        }
+        response = self.client.post("/train/?run_sync=True", json=params)
+        assert response.status_code == 200
+
+
+class TestDetectionBundleTrainTask(BasicDetectionBundleTestSuite):
+    def test_lung_nodule_detection_train(self):
+        if not torch.cuda.is_available():
+            return
+
+        params = {
+            "model": "lung_nodule_ct_detection_v0.5.0",
+            "max_epochs": 1,
+            "name": "net_test_lung_nodule_detection_trainer_01",
+            "val_split": 0.5,
+            "multi_gpu": False,
+            "dataset": "CacheDataset",
+        }
+        response = self.client.post("/train/?run_sync=True", json=params)
+        assert response.status_code == 200
+
+    def test_bundle_stop(self):
+        if not torch.cuda.is_available():
+            return
+
+        params = {
+            "model": "lung_nodule_ct_detection_v0.5.0",
+            "max_epochs": 2,
+            "name": "net_test_bundle_train",
+            "multi_gpu": False,
+            "dataset": "CacheDataset",
+        }
+        response = self.client.post("/train/", json=params)
+        assert response.status_code == 200
+
+        time.sleep(5)
+
+        response = self.client.delete("/train/")
+        assert response.status_code == 200
 
 
 if __name__ == "__main__":

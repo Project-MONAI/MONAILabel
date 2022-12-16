@@ -10,11 +10,12 @@
 # limitations under the License.
 
 import json
+import time
 import unittest
 
 import torch
 
-from .context import BasicEndpointV2TestSuite
+from .context import BasicBundleTestSuite, BasicDetectionBundleTestSuite, BasicEndpointV2TestSuite
 
 
 class EndPointInfer(BasicEndpointV2TestSuite):
@@ -27,6 +28,7 @@ class EndPointInfer(BasicEndpointV2TestSuite):
 
         response = self.client.post(f"/infer/{model}?image={image}")
         assert response.status_code == 200
+        time.sleep(1)
 
     def test_deepgrow_pipeline(self):
         if not torch.cuda.is_available():
@@ -38,6 +40,33 @@ class EndPointInfer(BasicEndpointV2TestSuite):
 
         response = self.client.post(f"/infer/{model}?image={image}", data={"params": json.dumps(params)})
         assert response.status_code == 200
+        time.sleep(1)
+
+
+class TestBundleInferTask(BasicBundleTestSuite):
+    def test_spleen_bundle_infer(self):
+        if not torch.cuda.is_available():
+            return
+
+        model = "spleen_ct_segmentation_v0.3.1"
+        image = "spleen_8"
+
+        response = self.client.post(f"/infer/{model}?image={image}")
+        assert response.status_code == 200
+        time.sleep(1)
+
+
+class TestDetectionBundleInferTask(BasicDetectionBundleTestSuite):
+    def test_lung_nodule_detector_infer(self):
+        if not torch.cuda.is_available():
+            return
+
+        model = "lung_nodule_ct_detection_v0.5.0"
+        image = "1.3.6.1.4.1.14519.5.2.1.6279.6001.188385286346390202873004762827"
+
+        response = self.client.post(f"/infer/{model}?image={image}")
+        assert response.status_code == 200
+        time.sleep(1)
 
 
 if __name__ == "__main__":
