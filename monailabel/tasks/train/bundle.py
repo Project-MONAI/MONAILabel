@@ -79,11 +79,21 @@ class BundleConstants:
 
 
 class BundleTrainTask(TrainTask):
-    def __init__(self, path: str, conf: Dict[str, str], const: Optional[BundleConstants] = None, enable_tracking=False):
+    def __init__(
+        self,
+        path: str,
+        conf: Dict[str, str],
+        const: Optional[BundleConstants] = None,
+        enable_tracking=False,
+        model_dict_key="model",
+        load_strict=False,
+    ):
         self.valid: bool = False
         self.conf = conf
         self.const = const if const else BundleConstants()
         self.enable_tracking = enable_tracking
+        self.model_dict_key = model_dict_key
+        self.load_strict = load_strict
 
         config_paths = [c for c in self.const.configs() if os.path.exists(os.path.join(path, "configs", c))]
         if not config_paths:
@@ -164,13 +174,13 @@ class BundleTrainTask(TrainTask):
         if os.path.exists(load_path):
             logger.info(f"Add Checkpoint Loader for Path: {load_path}")
 
-            load_dict = {"model": f"$@{self.const.key_network()}"}
+            load_dict = {self.model_dict_key: f"$@{self.const.key_network()}"}
             if not [t for t in train_handlers if t.get("_target_") == CheckpointLoader.__name__]:
                 loader = {
                     "_target_": CheckpointLoader.__name__,
                     "load_path": load_path,
                     "load_dict": load_dict,
-                    "strict": False,
+                    "strict": self.load_strict,
                 }
                 train_handlers.insert(0, loader)
 
@@ -271,21 +281,28 @@ class BundleTrainTask(TrainTask):
             if tracking:
                 cmd.extend(["--tracking", tracking])
                 if tracking_uri:
-                    cmd.extend(["tracking_uri", tracking_uri])
+                    cmd.extend(["--tracking_uri", tracking_uri])
 
-            self.run_command(cmd, env)
+            self.run_multi_gpu(request, cmd, env)
         else:
-            monai.bundle.run(
-                "training",
-                meta_file=self.bundle_metadata_path,
-                config_file=self.bundle_config_path,
-                **overrides,
-            )
+            self.run_single_gpu(request, overrides)
 
         logger.info("Training Finished....")
         return {}
 
-    def run_command(self, cmd, env):
+    def run_single_gpu(self, request, overrides):
+        monai.bundle.run(
+            "training",
+            meta_file=self.bundle_metadata_path,
+            config_file=self.bundle_config_path,
+            **overrides,
+        )
+
+    def run_multi_gpu(self, request, cmd, env):
+        self._run_command(cmd, env)
+
+    def _run_command(self, cmd, env):
+        logger.info(f"RUNNING COMMAND:: {cmd}")
         process = subprocess.Popen(cmd, stdout=subprocess.PIPE, universal_newlines=True, env=env)
         while process.poll() is None:
             line = process.stdout.readline()
