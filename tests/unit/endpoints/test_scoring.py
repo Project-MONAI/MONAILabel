@@ -22,13 +22,6 @@ class EndPointScoring(BasicEndpointV3TestSuite):
         assert response.status_code == 200
         time.sleep(1)
 
-    def test_sum(self):
-        time.sleep(5)
-
-        response = self.client.post("/scoring/sum?run_sync=true")
-        assert response.status_code == 200
-        time.sleep(1)
-
     def test_epistemic(self):
         if not torch.cuda.is_available():
             return
