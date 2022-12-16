@@ -30,7 +30,7 @@ logger = logging.getLogger(__name__)
 
 class HovernetNuclei(BundleTrainTask):
     def __init__(self, path: str, conf: Dict[str, str], const: Optional[BundleConstants] = None):
-        super().__init__(path, conf, const)
+        super().__init__(path, conf, const, enable_tracking=True)
         self.tile_size = (1024, 1024)
         self.patch_size = (540, 540)
         self.step_size = (164, 164)

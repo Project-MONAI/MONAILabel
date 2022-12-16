@@ -203,7 +203,9 @@ class BundleTrainTask(TrainTask):
         device = request.get("device", "cuda")
         logger.info(f"Using device: {device}; Type: {type(device)}")
 
-        tracking = request.get("tracking", "mlflow" if settings.MONAI_LABEL_TRACKING_ENABLED else "")
+        tracking = request.get(
+            "tracking", "mlflow" if self.enable_tracking and settings.MONAI_LABEL_TRACKING_ENABLED else ""
+        )
         tracking = tracking[0] if isinstance(tracking, list) else tracking
         tracking_uri = request.get("tracking_uri")
         tracking_uri = tracking_uri if tracking_uri else settings.MONAI_LABEL_TRACKING_URI
