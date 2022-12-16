@@ -206,7 +206,7 @@ def main():
         app_dir,
         studies,
         {
-            "preload": "false",
+            "preload": "true",
             "models": "hovernet_nuclei",
             "use_pretrained_model": "false",
             "consep": "true",
@@ -214,7 +214,8 @@ def main():
     )
 
     # train_from_dataset(app, "nuclick", "Nuclei")
-    infer(app, "hovernet_nuclei")
+    # infer(app, "hovernet_nuclei")
+    train(app, "hovernet_nuclei")
 
 
 def train_from_dataset(app, model, postfix):
@@ -276,7 +277,7 @@ def train(app, model):
             "multi_gpu": False,
             "val_split": 0.2,
             "dataset_limit": 0,
-            "pretrained": False,
+            "pretrained": True,
         },
     )
 
