@@ -206,14 +206,16 @@ def main():
         app_dir,
         studies,
         {
-            "preload": "false",
-            "models": "segmentation_nuclei,nuclick,classification_nuclei",
+            "preload": "true",
+            "models": "hovernet_nuclei",
             "use_pretrained_model": "false",
             "consep": "true",
         },
     )
 
-    train_from_dataset(app, "nuclick", "Nuclei")
+    # train_from_dataset(app, "nuclick", "Nuclei")
+    # infer(app, "hovernet_nuclei")
+    train(app, "hovernet_nuclei")
 
 
 def train_from_dataset(app, model, postfix):
@@ -275,22 +277,21 @@ def train(app, model):
             "multi_gpu": False,
             "val_split": 0.2,
             "dataset_limit": 0,
-            "pretrained": False,
+            "pretrained": True,
         },
     )
 
 
-def infer_classify(app):
-    import json
+def infer(app, model):
+    # import json
 
     request = {
-        "model": "classification_nuclei",
-        "image": "/localhome/sachi/Dataset/Pathology/pannukeFFF/fold1_0000_1_0001.png",
-        "label": "/localhome/sachi/Dataset/Pathology/pannukeFFF/labels/final/fold1_0000_1_0001.png",
+        "model": model,
+        "image": "test_1",
         "output": "json",
     }
     res = app.infer(request)
-    print(json.dumps(res, indent=2))
+    # print(json.dumps(res, indent=2))
 
 
 def infer_nuclick(app, classify=True):
