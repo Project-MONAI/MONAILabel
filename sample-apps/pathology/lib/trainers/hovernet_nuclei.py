@@ -8,7 +8,7 @@
 # WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 # See the License for the specific language governing permissions and
 # limitations under the License.
-
+import copy
 import logging
 import os
 import pathlib
@@ -30,7 +30,7 @@ logger = logging.getLogger(__name__)
 
 class HovernetNuclei(BundleTrainTask):
     def __init__(self, path: str, conf: Dict[str, str], const: Optional[BundleConstants] = None):
-        super().__init__(path, conf, const)
+        super().__init__(path, conf, const, enable_tracking=True)
         self.tile_size = (1024, 1024)
         self.patch_size = (540, 540)
         self.step_size = (164, 164)
@@ -102,3 +102,36 @@ class HovernetNuclei(BundleTrainTask):
 
         logger.info(f"Final Records with hovernet patches: {len(ds_new)}")
         return ds_new
+
+    def _load_checkpoint(self, output_dir, pretrained, train_handlers):
+        pass
+
+    def run_single_gpu(self, request, overrides):
+        logger.info("+++++++++++ Running STAGE 0.........................")
+        overrides["stage"] = 0
+        overrides["network_def#freeze_encoder"] = True
+        pretrained = os.path.join(self.bundle_path, "models", "stage0", "model.pt")
+        if os.path.exists(pretrained):
+            overrides["network_def#pretrained_url"] = pathlib.Path(pretrained).as_uri()
+        super().run_single_gpu(request, overrides)
+
+        logger.info("+++++++++++ Running STAGE 1.........................")
+        overrides["stage"] = 1
+        overrides["network_def#freeze_encoder"] = False
+        overrides["network_def#pretrained_url"] = None
+        super().run_single_gpu(request, overrides)
+
+    def run_multi_gpu(self, request, cmd, env):
+        logger.info("+++++++++++ Running STAGE 0.........................")
+        cmd1 = copy.deepcopy(cmd)
+        cmd1.extend(["--stage", "0", "--network_def#freeze_encoder", "true"])
+        pretrained = os.path.join(self.bundle_path, "models", "stage0", "model.pt")
+        if os.path.exists(pretrained):
+            cmd1.extend(["--network_def#pretrained_url", pathlib.Path(pretrained).as_uri()])
+        super().run_multi_gpu(request, cmd1, env)
+
+        logger.info("+++++++++++ Running STAGE 1.........................")
+        cmd2 = copy.deepcopy(cmd)
+        cmd2.extend(["--stage", "1", "--network_def#freeze_encoder", "false"])
+        cmd2.extend(["--network_def#pretrained_url", "None"])
+        super().run_multi_gpu(request, cmd2, env)

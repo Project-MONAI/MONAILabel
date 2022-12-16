@@ -24,8 +24,8 @@ logger = logging.getLogger(__name__)
 
 
 class NuClick(BundleTrainTask):
-    def __init__(self, path: str, conf: Dict[str, str], const: Optional[BundleConstants] = None, enable_tracking=True):
-        super().__init__(path, conf, const, enable_tracking)
+    def __init__(self, path: str, conf: Dict[str, str], const: Optional[BundleConstants] = None):
+        super().__init__(path, conf, const, enable_tracking=True)
         self.tile_size = (256, 256)
 
     def _fetch_datalist(self, request, datastore: Datastore):

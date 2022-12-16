@@ -270,11 +270,11 @@ def train(app, model):
         request={
             "name": "train_01",
             "model": model,
-            "max_epochs": 5,
+            "max_epochs": 10,
             "dataset": "CacheDataset",  # PersistentDataset, CacheDataset
             "train_batch_size": 16,
             "val_batch_size": 16,
-            "multi_gpu": False,
+            "multi_gpu": True,
             "val_split": 0.2,
             "dataset_limit": 0,
             "pretrained": True,
