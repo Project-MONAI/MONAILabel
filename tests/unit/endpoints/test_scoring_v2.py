@@ -10,7 +10,7 @@
 # limitations under the License.
 
 import unittest
-
+import time
 import torch
 
 from .context import BasicBundleV2TestSuite
@@ -24,12 +24,15 @@ class EndPointBundleScoring(BasicBundleV2TestSuite):
 
         response = self.client.post("/scoring/spleen_ct_segmentation_v0.3.1?run_sync=true")
         assert response.status_code == 200
+        time.sleep(1)
 
     def test_status(self):
         self.client.get("/scoring/")
+        time.sleep(1)
 
     def test_stop(self):
         self.client.delete("/scoring/")
+        time.sleep(1)
 
 
 if __name__ == "__main__":

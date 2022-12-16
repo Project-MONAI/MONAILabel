@@ -11,7 +11,7 @@
 
 import json
 import unittest
-
+import time
 import torch
 
 from .context import BasicBundleTestSuite, BasicDetectionBundleTestSuite, BasicEndpointV2TestSuite
@@ -27,6 +27,7 @@ class EndPointInfer(BasicEndpointV2TestSuite):
 
         response = self.client.post(f"/infer/{model}?image={image}")
         assert response.status_code == 200
+        time.sleep(1)
 
     def test_deepgrow_pipeline(self):
         if not torch.cuda.is_available():
@@ -38,6 +39,7 @@ class EndPointInfer(BasicEndpointV2TestSuite):
 
         response = self.client.post(f"/infer/{model}?image={image}", data={"params": json.dumps(params)})
         assert response.status_code == 200
+        time.sleep(1)
 
 
 class TestBundleInferTask(BasicBundleTestSuite):
@@ -50,6 +52,7 @@ class TestBundleInferTask(BasicBundleTestSuite):
 
         response = self.client.post(f"/infer/{model}?image={image}")
         assert response.status_code == 200
+        time.sleep(1)
 
 
 class TestDetectionBundleInferTask(BasicDetectionBundleTestSuite):
@@ -62,6 +65,7 @@ class TestDetectionBundleInferTask(BasicDetectionBundleTestSuite):
 
         response = self.client.post(f"/infer/{model}?image={image}")
         assert response.status_code == 200
+        time.sleep(1)
 
 
 if __name__ == "__main__":
