@@ -9,29 +9,31 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
+import time
 import unittest
 
-from .context import BasicEndpointTestSuite
+import torch
+
+from .context import BasicBundleV2TestSuite
 
 
-class EndPointActiveLearning(BasicEndpointTestSuite):
-    def test_strategy_random(self):
-        response = self.client.post("/activelearning/random")
+class EndPointBundleScoring(BasicBundleV2TestSuite):
+    # test epistemic_v2
+    def test_bundle_epistemic(self):
+        if not torch.cuda.is_available():
+            return
+
+        response = self.client.post("/scoring/spleen_ct_segmentation_v0.3.1?run_sync=true")
         assert response.status_code == 200
+        time.sleep(1)
 
-        # check if following fields exist in the response
-        res = response.json()
-        for f in ["id", "name"]:
-            assert res[f]
+    def test_status(self):
+        self.client.get("/scoring/")
+        time.sleep(1)
 
-    def test_strategy_first(self):
-        response = self.client.post("/activelearning/first")
-        assert response.status_code == 200
-
-        # check if following fields exist in the response
-        res = response.json()
-        for f in ["id", "name"]:
-            assert res[f]
+    def test_stop(self):
+        self.client.delete("/scoring/")
+        time.sleep(1)
 
 
 if __name__ == "__main__":

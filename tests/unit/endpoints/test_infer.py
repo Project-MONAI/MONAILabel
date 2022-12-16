@@ -10,6 +10,7 @@
 # limitations under the License.
 
 import json
+import time
 import unittest
 
 import torch
@@ -27,6 +28,7 @@ class EndPointInfer(BasicEndpointTestSuite):
 
         response = self.client.post(f"/infer/{model}?image={image}")
         assert response.status_code == 200
+        time.sleep(1)
 
     def test_deepedit_no_clicks(self):
         if not torch.cuda.is_available():
@@ -38,6 +40,7 @@ class EndPointInfer(BasicEndpointTestSuite):
 
         response = self.client.post(f"/infer/{model}?image={image}", data={"params": json.dumps(params)})
         assert response.status_code == 200
+        time.sleep(1)
 
     def test_deepedit(self):
         if not torch.cuda.is_available():
@@ -49,6 +52,7 @@ class EndPointInfer(BasicEndpointTestSuite):
 
         response = self.client.post(f"/infer/{model}?image={image}", data={"params": json.dumps(params)})
         assert response.status_code == 200
+        time.sleep(1)
 
 
 if __name__ == "__main__":
