@@ -63,42 +63,5 @@ class TestHandlerTBImage(unittest.TestCase):
 
             self.assertTrue(len(glob.glob(tempdir)) > 0)
 
-
-@unittest.skipUnless(has_tb, "Requires SummaryWriter installation")
-class TestHandlerTB2DImage(unittest.TestCase):
-    @parameterized.expand(TEST_CASES)
-    def test_tb_2dimage_shape(self, shape):
-        with tempfile.TemporaryDirectory() as tempdir:
-
-            # set up engine
-            def _train_func(engine, batch):
-                engine.state.batch = batch
-
-                return [{"pred": torch.tensor(np.zeros((1, *shape)))}]
-
-            engine = Engine(_train_func)
-            # set up testing handler
-            stats_handler = TensorBoard2DImageHandler(log_dir=tempdir)
-
-            engine.add_event_handler(Events.ITERATION_COMPLETED, stats_handler, "iteration")
-
-            data = zip(
-                [
-                    {
-                        "image": torch.as_tensor(np.zeros((1, 3, *shape))),
-                        "image_meta_dict": {"filename_or_obj": "test_image1.nii.gz"},
-                        "label": torch.as_tensor(np.zeros((1, *shape))),
-                    },
-                    {
-                        "image": torch.as_tensor(np.zeros((1, 3, *shape))),
-                        "image_meta_dict": {"filename_or_obj": "test_image2.nii.gz"},
-                        "label": torch.as_tensor(np.zeros((1, *shape))),
-                    },
-                ]
-            )
-            engine.run(data, epoch_length=10, max_epochs=1)
-            self.assertTrue(len(glob.glob(tempdir)) > 0)
-
-
 if __name__ == "__main__":
     unittest.main()
