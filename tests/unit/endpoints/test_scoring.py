@@ -23,6 +23,8 @@ class EndPointScoring(BasicEndpointV3TestSuite):
         time.sleep(1)
 
     def test_sum(self):
+        time.sleep(5)
+
         response = self.client.post("/scoring/sum?run_sync=true")
         assert response.status_code == 200
         time.sleep(1)
@@ -33,7 +35,6 @@ class EndPointScoring(BasicEndpointV3TestSuite):
 
         response = self.client.post("/scoring/segmentation_spleen_epistemic?run_sync=true")
         assert response.status_code == 200
-        time.sleep(1)
 
     def test_strategy_epistemic(self):
         # test active larning epistemic strategy within this Test Suite
