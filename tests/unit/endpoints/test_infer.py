@@ -10,8 +10,9 @@
 # limitations under the License.
 
 import json
-import unittest
 import time
+import unittest
+
 import torch
 
 from .context import BasicEndpointTestSuite

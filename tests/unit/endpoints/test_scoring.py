@@ -9,8 +9,9 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-import unittest
 import time
+import unittest
+
 import torch
 
 from .context import BasicBundleV2TestSuite, BasicEndpointV3TestSuite

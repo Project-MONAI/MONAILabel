@@ -10,8 +10,9 @@
 # limitations under the License.
 
 import os
-import unittest
 import time
+import unittest
+
 from .context import BasicEndpointTestSuite
 
 
