@@ -50,7 +50,7 @@ class MyApp(MONAILabelApp):
 
         configs = {k: v for k, v in sorted(configs.items())}
 
-        models = conf.get("models", "segmentation_nuclei,nuclick,classification_nuclei")
+        models = conf.get("models", "all")
         if not models:
             print("")
             print("---------------------------------------------------------------------------------------")

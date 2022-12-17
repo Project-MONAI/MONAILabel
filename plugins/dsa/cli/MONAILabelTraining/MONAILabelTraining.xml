@@ -21,9 +21,9 @@
         <string datalist="{&quot;model_name&quot;: &quot;__datalist__&quot;}">
             <name>model_name</name>
             <label>Model Name</label>
-            <description>DeepLearning Model to Train/Finetune (For Example: deepedit_nuclei, segmentation_nuclei)</description>
+            <description>DeepLearning Model to Train/Finetune (For Example: hovernet_nuclei, segmentation_nuclei)</description>
             <longflag>model_name</longflag>
-            <default>deepedit_nuclei</default>
+            <default>segmentation_nuclei</default>
         </string>
         <string>
             <name>girderApiUrl</name>

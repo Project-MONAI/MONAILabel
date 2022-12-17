@@ -14,6 +14,7 @@ limitations under the License.
 package qupath.lib.extension.monailabel.commands;
 
 import java.awt.image.BufferedImage;
+import java.io.File;
 import java.io.FileOutputStream;
 import java.io.IOException;
 import java.nio.file.Path;
@@ -69,24 +70,31 @@ public class SubmitLabel implements Runnable {
 			String imageFile = Utils.getFileName(imageData.getServerPath());
 			String image = Utils.getNameWithoutExtension(imageFile);
 
+			String im = imageFile.toLowerCase();
+			boolean isWSI = (im.endsWith(".png") || im.endsWith(".jpg") || im.endsWith(".jpeg")) ? false : true;
+			logger.info("MONAILabel:: isWSI: " + isWSI + "; File: " + imageFile);
+
 			boolean validImage = MonaiLabelClient.imageExists(image);
 			logger.info("Image exist on Server: " + validImage);
 
 			if (validImage) {
-				var choice = Dialogs.showYesNoCancelDialog("MONAILabel",
+				var choice = isWSI ? Dialogs.showYesNoCancelDialog("MONAILabel",
 						"This will submit annotation to MONAI Label Server and override existing annotations for: '"
 								+ image + "'\n"
 								+ "\nDo you want to save Annotation for selected ROI instead of WSI Image?"
-								+ "  Click 'No' to save for WSI instead of ROI.");
+								+ "  Click 'No' to save for WSI instead of ROI.")
+						: Dialogs.showYesNoDialog("MONAILabel",
+								"This will submit annotation to MONAI Label Server and override existing annotations for: '"
+										+ image + "'\n");
 
-				if (choice == DialogButton.NO) {
+				if ((isWSI && choice == DialogButton.NO) || (!isWSI && choice == Boolean.TRUE)) {
 					annotationXML = getAnnotationsXml(image, imageData, new int[4]);
 					logger.info("Annotations XML: " + annotationXML);
 
 					MonaiLabelClient.saveLabel(image, annotationXML.toFile(), null, "{}");
 					Dialogs.showInfoNotification("MONALabel", "Label/Annotations saved in Server");
 					return;
-				} else if (choice == DialogButton.CANCEL) {
+				} else if (!isWSI || choice == DialogButton.CANCEL) {
 					return;
 				}
 			}
@@ -94,19 +102,24 @@ public class SubmitLabel implements Runnable {
 			var selected = imageData.getHierarchy().getSelectionModel().getSelectedObject();
 			var roi = selected != null ? selected.getROI() : null;
 			int[] bbox = Utils.getBBOX(roi);
-			if (bbox[2] <= 0 && bbox[3] <= 0) {
+			if (isWSI && bbox[2] <= 0 && bbox[3] <= 0) {
 				Dialogs.showWarningNotification("MONAILabel",
 						"Please select the Annotation ROI/Rectangle for submission");
 				return;
 			}
 
-			String patchName = image + String.format("-patch-%d_%d_%d_%d", bbox[0], bbox[1], bbox[2], bbox[3]);
+			String patchName = isWSI ? image + String.format("-patch-%d_%d_%d_%d", bbox[0], bbox[1], bbox[2], bbox[3])
+					: image;
 			ParameterList list = new ParameterList();
-			list.addStringParameter("Location", "Patch (x,y,w,h)", Arrays.toString(bbox));
-			list.addStringParameter("Patch", "Patch Name", patchName);
+			if (isWSI) {
+				list.addStringParameter("Location", "Patch (x,y,w,h)", Arrays.toString(bbox));
+				list.addStringParameter("Patch", "Patch Name", patchName);
+			} else {
+				list.addStringParameter("Patch", "Image/Patch Name", patchName);
+			}
 
 			if (Dialogs.showParameterDialog("MONAILabel - Save Patch + Label", list)) {
-				bbox = Utils.parseStringArray(list.getStringParameterValue("Location"));
+				bbox = isWSI ? Utils.parseStringArray(list.getStringParameterValue("Location")) : new int[4];
 				patchName = list.getStringParameterValue("Patch");
 				if (validImage || Dialogs.showYesNoDialog("MONAILabel",
 						"This will upload BOTH image patch + annotation to MONAI Label Server.\n\n"
@@ -115,13 +128,20 @@ public class SubmitLabel implements Runnable {
 					annotationXML = getAnnotationsXml(image, imageData, bbox);
 					logger.info("MONAILabel:: Annotations XML: " + annotationXML);
 
-					imagePatch = java.nio.file.Files.createTempFile("patch", ".png");
-					var requestROI = RegionRequest.createInstance(imageData.getServer().getPath(), 1, roi);
-					ImageWriterTools.writeImageRegion(imageData.getServer(), requestROI, imagePatch.toString());
+					if (isWSI) {
+						imagePatch = java.nio.file.Files.createTempFile("patch", ".png");
+						var requestROI = RegionRequest.createInstance(imageData.getServer().getPath(), 1, roi);
+						ImageWriterTools.writeImageRegion(imageData.getServer(), requestROI, imagePatch.toString());
+					} else {
+						imagePatch = new File(imageFile).toPath();
+					}
 
 					ImageInfo imageInfo = MonaiLabelClient.saveImage(patchName, imagePatch.toFile(), "{}");
 					logger.info("MONAILabel:: New Image ID => " + imageInfo.image);
 					Dialogs.showInfoNotification("MONALabel", "Image Patch uploaded to MONAILabel Server");
+					if (!isWSI) {
+						imagePatch = null;
+					}
 
 					MonaiLabelClient.saveLabel(imageInfo.image, annotationXML.toFile(), null, "{}");
 					Dialogs.showInfoNotification("MONALabel", "Label/Annotations saved in Server");

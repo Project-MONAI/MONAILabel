@@ -19,11 +19,17 @@ This is a reference app to run infer + train tasks to segment Nuclei. It comes w
 weights/model (UNET).
 
 - **Segmentation Nuclei** - This show-cases an example for multi-label segmentation. It tries segment following labels.
-    - Neoplastic cells
+
+| Dataset | Nuclei Type                                                                          |
+|---------|--------------------------------------------------------------------------------------|
+| PanNuke | Neoplastic cells, Inflammatory, Connective/Soft tissue cells, Dead Cells, Epithelial |
+| CoNSeP  | Other, Inflammatory, Epithelial, Spindle-Shaped                                      |
+
+- **Hovernet Nuclei** - This show-cases an example for segmentation and classification using HoVerNet. It tries segment and classify following labels.
+    - Other
     - Inflammatory
-    - Connective/Soft tissue cells
-    - Dead Cells
     - Epithelial
+    - Spindle-Shaped
 - **NuClick** - This is NuClick implementation (UNet model) as provided at: https://github.com/mostafajahanifar/nuclick_torch.
 - **Classification Nuclei** - It is a simple classification model which can be used along with NuClick model to classify Nuclei cells.
 
@@ -33,7 +39,7 @@ Above _Nuclei_ models are trained either on
  - [PanNuke Dataset for Nuclei Instance Segmentation and Classification](https://warwick.ac.uk/fac/cross_fac/tia/data/pannuke)
  - [CoNSeP Dataset](https://warwick.ac.uk/fac/cross_fac/tia/data/hovernet)
 
-Pass `--conf consep true` option while starting MONAILabel server to use models trained on CoNSeP Dataset
+Pass `--conf consep false` option while starting MONAILabel server to use model `Segmentation Nuclei` trained on PanNuke Dataset
 
 ### Inputs
 

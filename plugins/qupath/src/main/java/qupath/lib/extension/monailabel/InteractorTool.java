@@ -59,10 +59,17 @@ public class InteractorTool extends PointsTool {
 				model = names.get(0);
 			}
 
+			String imageFile = Utils.getFileName(viewer.getImageData().getServerPath());
+			String im = imageFile.toLowerCase();
+			boolean isWSI = (im.endsWith(".png") || im.endsWith(".jpg") || im.endsWith(".jpeg")) ? false : true;
+			logger.info("MONAILabel:: isWSI: " + isWSI + "; File: " + imageFile);
+
 			if (model == null || model.isEmpty()) {
 				ParameterList list = new ParameterList();
 				list.addChoiceParameter("Model", "Model Name", names.get(0), names);
-				list.addIntParameter("PatchSize", "PatchSize", patchSize);
+				if (isWSI) {
+					list.addIntParameter("PatchSize", "PatchSize", patchSize);
+				}
 				list.addBooleanParameter("RememberMe", "Remember My Choice", true);
 
 				if (!Dialogs.showParameterDialog("MONAILabel", list)) {
@@ -70,7 +77,7 @@ public class InteractorTool extends PointsTool {
 				}
 
 				model = (String) list.getChoiceParameterValue("Model");
-				patchSize = list.getIntParameterValue("PatchSize").intValue();
+				patchSize = isWSI ? list.getIntParameterValue("PatchSize").intValue() : patchSize;
 				if (list.getBooleanParameterValue("RememberMe").booleanValue()) {
 					selectedModel = model;
 					selectedPatchSize = patchSize;
@@ -79,7 +86,6 @@ public class InteractorTool extends PointsTool {
 					selectedPatchSize = 128;
 				}
 			}
-
 
 			int min_x = Integer.MAX_VALUE;
 			int min_y = Integer.MAX_VALUE;
@@ -100,7 +106,7 @@ public class InteractorTool extends PointsTool {
 			int y = Math.max(0, min_y + (max_y - min_y) / 2 - h / 2);
 			int[] bbox = { x, y, w, h };
 
-			RunInference.runInference(model, info, bbox, patchSize, viewer.getImageData());
+			RunInference.runInference(model, info, bbox, patchSize, viewer.getImageData(), imageFile, isWSI);
 			// currentObject.setROI(ROIs.createPointsROI(viewer.getImagePlane()));
 			viewer.getHierarchy().getSelectionModel().clearSelection();
 		} catch (Exception ex) {

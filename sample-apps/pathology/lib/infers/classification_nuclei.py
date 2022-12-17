@@ -39,6 +39,7 @@ class ClassificationNuclei(BundleInferTask):
             "Epithelial": (0, 0, 255),
             "Spindle-Shaped": (0, 255, 0),
         }
+        self._config["label_colors"] = self.label_colors
 
     def info(self) -> Dict[str, Any]:
         d = super().info()

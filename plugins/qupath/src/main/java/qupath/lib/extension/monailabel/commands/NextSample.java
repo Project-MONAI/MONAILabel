@@ -125,7 +125,8 @@ public class NextSample implements Runnable {
 							File o = new File(path.getPath() + File.separator + f.getName());
 							if (!o.exists()) {
 								logger.info("Image (" + sample.id + ") exists;  Will try to download it from Server");
-								//Dialogs.showInfoNotification("MONALabel", "Downloading Sample.  Please wait...");
+								// Dialogs.showInfoNotification("MONALabel", "Downloading Sample. Please
+								// wait...");
 								MonaiLabelClient.downloadImage(sample.id, o);
 							}
 							qupath.openImage(o.getAbsolutePath(), false, false);

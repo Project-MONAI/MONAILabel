@@ -39,7 +39,7 @@ version: '3'
 services:
   girder:
     environment:
-      SLICER_CLI_WEB_MONAI_LABEL_SERVER: http://monai.label.com:8020
+      SLICER_CLI_WEB_MONAI_LABEL_SERVER: http://monai.label.com:8000
 ```
 
 Upload new Task (under Slicer CLI Web Tasks) using the above docker image. This will add/enable MONAILabel under

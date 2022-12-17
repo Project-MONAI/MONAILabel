@@ -36,46 +36,47 @@ class LoadImagePatchd(MapTransform):
     def __call__(self, data):
         d = dict(data)
         for key in self.keys:
+            size = None
+            tile_size = None
+
             if not isinstance(d[key], str):
-                continue  # Support direct image in np (pass only transform)
-
-            name = d[key]
-            ext = pathlib.Path(name).suffix
-            if ext == ".npy":
-                d[key] = np.load(d[key])
-                continue
-
-            location = d.get("location", (0, 0))
-            level = d.get("level", 0)
-            size = d.get("size", None)
-
-            # Model input size
-            tile_size = d.get("tile_size", size)
-
-            if not ext or ext in (
-                ".bif",
-                ".mrxs",
-                ".ndpi",
-                ".scn",
-                ".svs",
-                ".svslide",
-                ".tif",
-                ".tiff",
-                ".vms",
-                ".vmu",
-            ):
-                slide = openslide.OpenSlide(name)
-                size = size if size else slide.dimensions
-                img = slide.read_region(location, level, size)
+                image_np = d[key]
             else:
-                img = Image.open(d[key])
-                d["location"] = [0, 0]
-                d["size"] = [0, 0]
+                name = d[key]
+                ext = pathlib.Path(name).suffix
+                if ext == ".npy":
+                    image_np = np.load(d[key])
+                else:
+                    location = d.get("location", (0, 0))
+                    level = d.get("level", 0)
+                    size = d.get("size", None)
 
-            img = img.convert(self.mode) if self.mode else img
-            image_np = np.array(img, dtype=self.dtype)
+                    # Model input size
+                    tile_size = d.get("tile_size", size)
+                    if not ext or ext in (
+                        ".bif",
+                        ".mrxs",
+                        ".ndpi",
+                        ".scn",
+                        ".svs",
+                        ".svslide",
+                        ".tif",
+                        ".tiff",
+                        ".vms",
+                        ".vmu",
+                    ):
+                        slide = openslide.OpenSlide(name)
+                        size = size if size else slide.dimensions
+                        img = slide.read_region(location, level, size)
+                    else:
+                        img = Image.open(d[key])
+                        d["location"] = [0, 0]
+                        d["size"] = [0, 0]
+
+                    img = img.convert(self.mode) if self.mode else img
+                    image_np = np.array(img, dtype=self.dtype)
+
             image_np = np.moveaxis(image_np, 0, 1)
-
             meta_dict_key = f"{key}_{PostFix.meta()}"
             meta_dict = d.get(meta_dict_key)
             if meta_dict is None:
@@ -144,14 +145,16 @@ class ConvertInteractiveClickSignals(MapTransform):
         data = dict(data)
         annotations = data.get("annotations", {})
         annotations = {} if annotations is None else annotations
+
+        logger.info(f"Annotations: {annotations.keys()}")
         for source_annotation_key, target_data_key in zip(self.source_annotation_keys, self.target_data_keys):
             if source_annotation_key in annotations:
                 points = annotations.get(source_annotation_key)["points"]
-                print(f"points={points}")
+                logger.info(f"Nuclick points={points}")
                 points = [coords[0:2] for coords in points]
                 data[target_data_key] = points
             elif not self.allow_missing_keys:
                 raise KeyError(
-                    f"source_annotation_key={source_annotation_key} not found in annotations.keys()={annotations.keys()}"
+                    f"source_annotation_key={source_annotation_key} not found in annotation keys={annotations.keys()}"
                 )
         return data
