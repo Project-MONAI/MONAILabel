@@ -46,6 +46,7 @@ class NuClick(BundleInferTask):
         # Override Labels
         self.labels = {"Nuclei": 1}
         self.label_colors = {"Nuclei": (0, 255, 255)}
+        self._config["label_colors"] = self.label_colors
         self.task_classification: Optional[BasicInferTask] = None
 
     def init_classification(self, task_classification: BasicInferTask):

@@ -53,6 +53,7 @@ class HovernetNuclei(BundleInferTask):
             "Epithelial": (0, 0, 255),
             "Spindle-Shaped": (0, 255, 0),
         }
+        self._config["label_colors"] = self.label_colors
 
     def pre_transforms(self, data=None) -> Sequence[Callable]:
         t = [LoadImagePatchd(keys="image", mode="RGB", dtype=np.uint8, padding=False)]

@@ -185,7 +185,7 @@ if __name__ == "__main__":
     #     "analysis_roi": [-1, -1, -1, -1],
     #     "analysis_tile_size": 1024.0,
     #     "min_fgnd_frac": 0.25,
-    #     "model_name": "deepedit_nuclei",
+    #     "model_name": "segmentation_nuclei",
     #     "extra_params": "{}",
     #     "num_threads_per_worker": 1,
     #     "num_workers": 0,

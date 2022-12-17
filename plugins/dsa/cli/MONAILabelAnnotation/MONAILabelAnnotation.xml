@@ -38,9 +38,9 @@
         <string datalist="{&quot;model_name&quot;: &quot;__datalist__&quot;, &quot;inputImageFile&quot;: &quot;skip&quot;, &quot;outputAnnotationFile&quot;: &quot;skip&quot;, &quot;outputAnnotationFile_folder&quot;: &quot;skip&quot;}">
             <name>model_name</name>
             <label>Model Name</label>
-            <description>DeepLearning Model to Infer (For Example: deepedit_nuclei, segmentation_nuclei)</description>
+            <description>DeepLearning Model to Infer (For Example: hovernet_nuclei, segmentation_nuclei)</description>
             <longflag>model_name</longflag>
-            <default>deepedit_nuclei</default>
+            <default>segmentation_nuclei</default>
         </string>
         <file fileExtensions=".anot" reference="inputImageFile">
             <name>outputAnnotationFile</name>
