@@ -76,8 +76,13 @@ public class RunInference implements Runnable {
 			var selected = imageData.getHierarchy().getSelectionModel().getSelectedObject();
 			var roi = selected != null ? selected.getROI() : null;
 
+			String imageFile = Utils.getFileName(viewer.getImageData().getServerPath());
+			String im = imageFile.toLowerCase();
+			boolean isWSI = (im.endsWith(".png") || im.endsWith(".jpg") || im.endsWith(".jpeg")) ? false : true;
+			logger.info("MONAILabel:: isWSI: " + isWSI + "; File: " + imageFile);
+
 			// Select first RectangleROI if not selected explicitly
-			if (roi == null || !(roi instanceof RectangleROI)) {
+			if (isWSI && (roi == null || !(roi instanceof RectangleROI))) {
 				List<PathObject> objs = imageData.getHierarchy().getFlattenedObjectList(null);
 				for (int i = 0; i < objs.size(); i++) {
 					var obj = objs.get(i);
@@ -94,7 +99,7 @@ public class RunInference implements Runnable {
 
 			int[] bbox = Utils.getBBOX(roi);
 			int tileSize = selectedTileSize;
-			if (bbox[2] == 0 && bbox[3] == 0 && selectedBBox != null) {
+			if (isWSI && bbox[2] == 0 && bbox[3] == 0 && selectedBBox != null) {
 				bbox = selectedBBox;
 			}
 
@@ -107,19 +112,26 @@ public class RunInference implements Runnable {
 
 			ParameterList list = new ParameterList();
 			list.addChoiceParameter("Model", "Model Name", selectedModel, names);
-			list.addStringParameter("Location", "Location (x,y,w,h)", Arrays.toString(bbox));
-			list.addIntParameter("TileSize", "TileSize", tileSize);
+			if (isWSI) {
+				list.addStringParameter("Location", "Location (x,y,w,h)", Arrays.toString(bbox));
+				list.addIntParameter("TileSize", "TileSize", tileSize);
+			}
 
 			if (Dialogs.showParameterDialog("MONAILabel", list)) {
 				String model = (String) list.getChoiceParameterValue("Model");
-				bbox = Utils.parseStringArray(list.getStringParameterValue("Location"));
-				tileSize = list.getIntParameterValue("TileSize").intValue();
+				if (isWSI) {
+					bbox = Utils.parseStringArray(list.getStringParameterValue("Location"));
+					tileSize = list.getIntParameterValue("TileSize").intValue();
+				} else {
+					bbox = new int[] { 0, 0, 0, 0 };
+					tileSize = selectedTileSize;
+				}
 
 				selectedModel = model;
 				selectedBBox = bbox;
 				selectedTileSize = tileSize;
 
-				runInference(model, info, bbox, tileSize, imageData);
+				runInference(model, info, bbox, tileSize, imageData, imageFile, isWSI);
 			}
 		} catch (Exception ex) {
 			ex.printStackTrace();
@@ -152,7 +164,7 @@ public class RunInference implements Runnable {
 	}
 
 	public static void runInference(String model, ResponseInfo info, int[] bbox, int tileSize,
-			ImageData<BufferedImage> imageData)
+			ImageData<BufferedImage> imageData, String imageFile, boolean isWSI)
 			throws SAXException, IOException, ParserConfigurationException, InterruptedException {
 		logger.info("MONAILabel:: Running Inference...; model = " + model);
 
@@ -174,8 +186,6 @@ public class RunInference implements Runnable {
 			req.tile_size[1] = tileSize;
 
 			ROI roi = ROIs.createRectangleROI(bbox[0], bbox[1], bbox[2], bbox[3], null);
-			String imageFile = Utils.getFileName(imageData.getServerPath());
-			logger.info("MONAILabel:: Image File: " + imageFile);
 
 			String image = Utils.getNameWithoutExtension(imageFile);
 			String sessionId = null;
@@ -198,6 +208,8 @@ public class RunInference implements Runnable {
 						&& new File(imageFile).exists()) {
 					logger.info("Simple Image.. will directly upload the same");
 					offsetX = offsetY = 0;
+					Dialogs.showWarningNotification("MONAILabel",
+							"Ignoring ROI; Running Inference over full non-wsi Image");
 				} else {
 					if (bbox[2] == 0 && bbox[3] == 0) {
 						Dialogs.showErrorMessage("MONAILabel",

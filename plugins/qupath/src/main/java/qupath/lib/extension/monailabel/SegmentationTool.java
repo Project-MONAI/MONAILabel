@@ -40,6 +40,11 @@ public class SegmentationTool extends RectangleTool {
 			return;
 
 		try {
+			String imageFile = Utils.getFileName(viewer.getImageData().getServerPath());
+			String im = imageFile.toLowerCase();
+			boolean isWSI = (im.endsWith(".png") || im.endsWith(".jpg") || im.endsWith(".jpeg")) ? false : true;
+			logger.info("MONAILabel:: isWSI: " + isWSI + "; File: " + imageFile);
+
 			if (info == null) {
 				info = MonaiLabelClient.info();
 				List<String> names = new ArrayList<String>();
@@ -60,14 +65,16 @@ public class SegmentationTool extends RectangleTool {
 				if (selectedModel == null || selectedModel.isEmpty()) {
 					ParameterList list = new ParameterList();
 					list.addChoiceParameter("Model", "Model Name", names.get(0), names);
-					list.addIntParameter("TileSize", "TileSize", tileSize);
+					if (isWSI) {
+						list.addIntParameter("TileSize", "TileSize", tileSize);
+					}
 
 					if (!Dialogs.showParameterDialog("MONAILabel", list)) {
 						return;
 					}
 
 					selectedModel = (String) list.getChoiceParameterValue("Model");
-					selectedTileSize = list.getIntParameterValue("TileSize").intValue();
+					selectedTileSize = isWSI ? list.getIntParameterValue("TileSize").intValue() : tileSize;
 				}
 			}
 
@@ -76,7 +83,8 @@ public class SegmentationTool extends RectangleTool {
 			}
 
 			int[] bbox = Utils.getBBOX(roi);
-			RunInference.runInference(selectedModel, info, bbox, selectedTileSize, viewer.getImageData());
+			RunInference.runInference(selectedModel, info, bbox, selectedTileSize, viewer.getImageData(), imageFile,
+					isWSI);
 		} catch (Exception ex) {
 			ex.printStackTrace();
 			Dialogs.showErrorMessage("MONAILabel", ex);
