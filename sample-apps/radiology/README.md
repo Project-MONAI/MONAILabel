@@ -77,7 +77,7 @@ monailabel start_server \
   --app workspace/radiology \
   --studies workspace/images \
   --conf models segmentation_spleen,segmentation \
-  --conf bundles spleen_ct_segmentation_v0.2.0,swin_unetr_btcv_segmentation_v0.2.0
+  --conf bundles spleen_ct_segmentation,swin_unetr_btcv_segmentation
 ```
 
 

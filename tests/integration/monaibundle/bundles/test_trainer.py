@@ -22,14 +22,14 @@ class EndPointSession(unittest.TestCase):
             return
 
         params = {
-            "model": "spleen_ct_segmentation_v0.1.0",
+            "model": "spleen_ct_segmentation",
             "max_epochs": 1,
             "name": "net_test_spleen_trainer_01",
             "val_split": 0.5,
             "multi_gpu": False,
         }
 
-        response = requests.post(f"{SERVER_URI}/train/spleen_ct_segmentation_v0.1.0?run_sync=True", json=params)
+        response = requests.post(f"{SERVER_URI}/train/spleen_ct_segmentation?run_sync=True", json=params)
         assert response.status_code == 200
 
     def test_multiorgan_segmentation_trainer(self):
@@ -37,14 +37,14 @@ class EndPointSession(unittest.TestCase):
             return
 
         params = {
-            "model": "swin_unetr_btcv_segmentation_v0.1.0",
+            "model": "swin_unetr_btcv_segmentation",
             "max_epochs": 1,
             "name": "net_test_multiorgan_trainer_01",
             "val_split": 0.5,
             "multi_gpu": False,
         }
 
-        response = requests.post(f"{SERVER_URI}/train/swin_unetr_btcv_segmentation_v0.1.0?run_sync=True", json=params)
+        response = requests.post(f"{SERVER_URI}/train/swin_unetr_btcv_segmentation?run_sync=True", json=params)
         assert response.status_code == 200
 
     def test_deepedit(self):
@@ -52,13 +52,13 @@ class EndPointSession(unittest.TestCase):
             return
 
         params = {
-            "model": "spleen_deepedit_annotation_v0.1.0",
+            "model": "spleen_deepedit_annotation",
             "max_epochs": 1,
             "name": "net_test_deepedit_trainer_01",
             "val_split": 0.5,
             "multi_gpu": False,
         }
-        response = requests.post(f"{SERVER_URI}/train/spleen_deepedit_annotation_v0.1.0?run_sync=True", json=params)
+        response = requests.post(f"{SERVER_URI}/train/spleen_deepedit_annotation?run_sync=True", json=params)
         assert response.status_code == 200
 
 

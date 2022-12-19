@@ -22,13 +22,13 @@ class EndPointSession(unittest.TestCase):
             return
 
         params = {
-            "model": "lung_nodule_ct_detection_v0.5.0",
+            "model": "lung_nodule_ct_detection",
             "max_epochs": 1,
             "name": "net_test_lung_nodule_detection_trainer_01",
             "val_split": 0.5,
             "multi_gpu": False,
         }
-        response = requests.post(f"{SERVER_URI}/train/lung_nodule_ct_detection_v0.5.0?run_sync=True", json=params)
+        response = requests.post(f"{SERVER_URI}/train/lung_nodule_ct_detection?run_sync=True", json=params)
         assert response.status_code == 200
 
 

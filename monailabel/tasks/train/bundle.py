@@ -114,9 +114,15 @@ class BundleTrainTask(TrainTask):
 
         super().__init__(metadata.get("description", ""))
         self.valid = True
+        self.version = metadata.get("version")
 
     def is_valid(self):
         return self.valid
+
+    def info(self):
+        i = super().info()
+        i["version"] = self.version
+        return i
 
     def config(self):
         return {

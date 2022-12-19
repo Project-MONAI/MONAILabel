@@ -9,6 +9,7 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
+import os
 from typing import Any, Dict, List, Optional
 
 from pydantic import AnyHttpUrl, BaseSettings
@@ -79,6 +80,10 @@ class Settings(BaseSettings):
     MONAI_LABEL_INFER_TIMEOUT: int = 600
     MONAI_LABEL_TRACKING_ENABLED: bool = True
     MONAI_LABEL_TRACKING_URI: str = ""
+
+    MONAI_ZOO_SOURCE: str = os.environ.get("BUNDLE_DOWNLOAD_SRC", "github")
+    MONAI_ZOO_REPO: str = "Project-MONAI/model-zoo/hosting_storage_v1"
+    MONAI_ZOO_AUTH_TOKEN: str = ""
 
     class Config:
         env_file = ".env"

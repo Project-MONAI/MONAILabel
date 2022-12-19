@@ -66,17 +66,17 @@ monailabel apps --download --name monaibundle --output workspace
 # List all available models from zoo
 monailabel start_server --app workspace/monaibundle --studies workspace/images
 
-# Pick spleen_ct_segmentation_v0.1.0 model
-monailabel start_server --app workspace/monaibundle --studies workspace/images --conf models spleen_ct_segmentation_v0.1.0
+# Pick spleen_ct_segmentation model
+monailabel start_server --app workspace/monaibundle --studies workspace/images --conf models spleen_ct_segmentation
 
-# Pick spleen_ct_segmentation_v0.1.0 model and preload
-monailabel start_server --app workspace/monaibundle --studies workspace/images --conf models spleen_ct_segmentation_v0.1.0 --conf preload true
+# Pick spleen_ct_segmentation model and preload
+monailabel start_server --app workspace/monaibundle --studies workspace/images --conf models spleen_ct_segmentation --conf preload true
 
 # Pick DeepEdit And Segmentation model (multiple models)
-monailabel start_server --app workspace/monaibundle --studies workspace/images --conf models "spleen_ct_segmentation_v0.1.0,spleen_deepedit_annotation_v0.1.0"
+monailabel start_server --app workspace/monaibundle --studies workspace/images --conf models "spleen_ct_segmentation,spleen_deepedit_annotation"
 
 # Skip Training Tasks or Infer only mode
-monailabel start_server --app workspace/monaibundle --studies workspace/images --conf models spleen_ct_segmentation_v0.1.0 --conf skip_trainers true
+monailabel start_server --app workspace/monaibundle --studies workspace/images --conf models spleen_ct_segmentation --conf skip_trainers true
 ```
 
 ### Epistemic Scoring for monaibundle app
@@ -86,13 +86,13 @@ If a valid scoring bundle model is provided with **--conf epistemic_model <bundl
 The loaded scoring bundle model can be either model-zoo models or local bundles, the network must support **dropout** argument.
 
 ```bash
-# Use the UNet in spleen_ct_segmentation_v0.2.0 bundle as epistemic scoring model.
+# Use the UNet in spleen_ct_segmentation bundle as epistemic scoring model.
 # Manual define epistemic scoring parameters
 monailabel start_server \
   --app workspace/monaibundle \
   --studies workspace/images \
-  --conf models spleen_ct_segmentation_v0.2.0,swin_unetr_btcv_segmentation_v0.2.0 \
-  --conf epistemic_model spleen_ct_segmentation_v0.2.0
+  --conf models spleen_ct_segmentation,swin_unetr_btcv_segmentation \
+  --conf epistemic_model spleen_ct_segmentation
   --conf epistemic_max_samples 0 \
   --conf epistemic_simulation_size 5
   --conf epistemic_dropout 0.2
@@ -168,14 +168,14 @@ All models, datasets, and plugins are ready, start the MONAI Label server and op
 
 ```bash
 # 1: Use LUNA16 sample data
-monailabel start_server --app apps/monaibundle --studies datasets/Task06_Lung/imagesTr --conf models lung_nodule_ct_detection_v0.5.0
+monailabel start_server --app apps/monaibundle --studies datasets/Task06_Lung/imagesTr --conf models lung_nodule_ct_detection
 # 2: Use Task06_Lung data for inference demonstration
-monailabel start_server --app apps/monaibundle --studies datasets/detection_dataset --conf models lung_nodule_ct_detection_v0.5.0
+monailabel start_server --app apps/monaibundle --studies datasets/detection_dataset --conf models lung_nodule_ct_detection
 ```
 
 #### Step 5: Modify Detection Parameters in the Bundle (Optional)
 
-The lung_nodule_ct_detection bundle can set the box prediction probability threshold. In `apps/monaibundle/model/lung_nodule_ct_detection_v0.5.0/configs/inference.json`, it's define here `score_thresh=0.02`:
+The lung_nodule_ct_detection bundle can set the box prediction probability threshold. In `apps/monaibundle/model/lung_nodule_ct_detection/configs/inference.json`, it's define here `score_thresh=0.02`:
 
 ```json
     "detector_ops": [
