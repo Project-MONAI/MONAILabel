@@ -24,6 +24,8 @@ jobs:
   docker_build:
     if: github.repository == 'Project-MONAI/MONAILabel'
     runs-on: ubuntu-latest
+    env:
+      MONAI_ZOO_AUTH_TOKEN: ${{ github.token }}
     steps:
       - uses: actions/checkout@v3
       - name: Set up Python 3.8
