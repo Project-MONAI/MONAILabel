@@ -120,9 +120,7 @@ function clean_py() {
 
   rm -rf sample-apps/*/logs
   rm -rf sample-apps/*/.venv
-  rm -rf sample-apps/*/model/*
   rm -rf sample-apps/*/bin
-  rm -rf tests/data/*
   rm -rf monailabel/endpoints/static/ohif
   rm -rf pytest.log
   rm -rf htmlcov
@@ -133,6 +131,12 @@ function clean_py() {
   rm -rf test-output.xml
   rm -rf .coverage
   rm -rf .env
+
+  find sample-apps/*/model -type f -not -name *.zip -not -name .gitignore -exec rm -rf "{}" +
+  find sample-apps/* -type d -empty -exec rm -rf "{}" +
+  find sample-apps/* -type d -empty -exec rm -rf "{}" +
+
+  rm -rf tests/data/*
 
   find ${TO_CLEAN} -type f -name "*.py[co]" -delete
   find ${TO_CLEAN} -type f -name "*.so" -delete
@@ -469,7 +473,7 @@ function run_integration_tests() {
 if [ $doNetTests = true ]; then
   run_integration_tests "radiology" "tests/data/dataset/local/spleen" "deepedit,segmentation_spleen,segmentation,deepgrow_2d,deepgrow_3d" "."
   run_integration_tests "pathology" "tests/data/pathology" "segmentation_nuclei,nuclick,classification_nuclei" "."
-  run_integration_tests "monaibundle" "tests/data/dataset/local/spleen" "spleen_ct_segmentation_v0.1.0,spleen_deepedit_annotation_v0.1.0,swin_unetr_btcv_segmentation_v0.1.0" "bundles"
+  run_integration_tests "monaibundle" "tests/data/dataset/local/spleen" "spleen_ct_segmentation,spleen_deepedit_annotation,swin_unetr_btcv_segmentation" "bundles"
   run_integration_tests "endoscopy" "tests/data/endoscopy" "tooltracking,inbody,deepedit" "."
-  run_integration_tests "monaibundle" "tests/data/detection" "lung_nodule_ct_detection_v0.5.0" "detection"
+  run_integration_tests "monaibundle" "tests/data/detection" "lung_nodule_ct_detection" "detection"
 fi

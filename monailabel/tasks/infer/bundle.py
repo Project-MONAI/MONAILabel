@@ -12,7 +12,7 @@
 import json
 import logging
 import os
-from typing import Callable, Dict, Optional, Sequence, Union
+from typing import Any, Callable, Dict, Optional, Sequence, Union
 
 from monai.bundle import ConfigItem, ConfigParser
 from monai.inferers import Inferer, SimpleInferer
@@ -141,9 +141,15 @@ class BundleInferTask(BasicInferTask):
             **kwargs,
         )
         self.valid = True
+        self.version = metadata.get("version")
 
     def is_valid(self) -> bool:
         return self.valid
+
+    def info(self) -> Dict[str, Any]:
+        i = super().info()
+        i["version"] = self.version
+        return i
 
     def pre_transforms(self, data=None) -> Sequence[Callable]:
         self._update_device(data)

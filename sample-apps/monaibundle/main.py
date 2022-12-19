@@ -147,7 +147,7 @@ def main():
     app_dir = os.path.dirname(__file__)
     studies = args.studies
 
-    app = MyApp(app_dir, studies, {"preload": "true", "models": "spleen_ct_segmentation_v0.1.0"})
+    app = MyApp(app_dir, studies, {"preload": "true", "models": "spleen_ct_segmentation"})
     train(app)
 
 
@@ -157,7 +157,7 @@ def infer(app):
 
     res = app.infer(
         request={
-            "model": "spleen_ct_segmentation_v0.1.0",
+            "model": "spleen_ct_segmentation",
             "image": "image",
         }
     )
@@ -170,7 +170,7 @@ def infer(app):
 def train(app):
     app.train(
         request={
-            "model": "spleen_ct_segmentation_v0.1.0",
+            "model": "spleen_ct_segmentation",
             "max_epochs": 2,
             "multi_gpu": False,
             "val_split": 0.1,

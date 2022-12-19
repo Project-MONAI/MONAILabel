@@ -378,7 +378,7 @@ On the local machine follow the commands listed below to install MONAI Label, an
 
   # start the bundle app in MONAI label server
   # and start annotating the images using bundle with the Swin UNETR bundle
-  monailabel start_server --app monaibundle --studies Task09_Spleen/imagesTr --conf models swin_unetr_btcv_segmentation_v0.1.0
+  monailabel start_server --app monaibundle --studies Task09_Spleen/imagesTr --conf models swin_unetr_btcv_segmentation
 
 
 * Step 2: Start 3D Slicer.
@@ -414,7 +414,7 @@ Now get the automatic inference of the trained SwinUNETR model!
 Use Case 2: Bundle with Customized Scripts for Renal Substructure Segmentation
 =================================================================================
 
-This use case (renalStructures_UNEST_segmentation_v0.2.0) provides an instruction on using bundle model with customized scripts.
+This use case (renalStructures_UNEST_segmentation) provides an instruction on using bundle model with customized scripts.
 
 Prerequisite: Check Model Zoo `Release <https://github.com/Project-MONAI/model-zoo/releases/tag/hosting_storage_v1>`_.
 
@@ -430,7 +430,7 @@ Prerequisite: Check Model Zoo `Release <https://github.com/Project-MONAI/model-z
   monailabel datasets --download --name Task09_Spleen --output .
 
   # Step 4: start the bundle app in MONAI label server
-  monailabel start_server --app monaibundle --studies Task09_Spleen/imagesTr --conf models renalStructures_UNEST_segmentation_v0.2.0
+  monailabel start_server --app monaibundle --studies Task09_Spleen/imagesTr --conf models renalStructures_UNEST_segmentation
 
 
 

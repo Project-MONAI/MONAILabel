@@ -183,7 +183,7 @@ class BasicDetectionBundleTestSuite(unittest.TestCase):
     def setUpClass(cls) -> None:
         sys.path.append(cls.app_dir)
         cls.client = create_client(
-            cls.app_dir, cls.studies, cls.data_dir, {"models": "lung_nodule_ct_detection_v0.5.0", "tracking": False}
+            cls.app_dir, cls.studies, cls.data_dir, {"models": "lung_nodule_ct_detection", "tracking": False}
         )
 
     @classmethod
@@ -203,7 +203,7 @@ class BasicBundleTestSuite(unittest.TestCase):
     @classmethod
     def setUpClass(cls) -> None:
         sys.path.append(cls.app_dir)
-        cls.client = create_client(cls.app_dir, cls.studies, cls.data_dir, {"models": "spleen_ct_segmentation_v0.3.1"})
+        cls.client = create_client(cls.app_dir, cls.studies, cls.data_dir, {"models": "spleen_ct_segmentation"})
 
     @classmethod
     def tearDownClass(cls) -> None:
@@ -222,11 +222,11 @@ class BasicBundleV2TestSuite(unittest.TestCase):
     @classmethod
     def setUpClass(cls) -> None:
         conf = {
-            "epistemic_model": "spleen_ct_segmentation_v0.3.1",
+            "epistemic_model": "spleen_ct_segmentation",
             "epistemic_max_samples": 0,
             "epistemic_simulation_size": 5,
             "epistemic_dropout": 0.2,
-            "models": "spleen_ct_segmentation_v0.3.1",
+            "models": "spleen_ct_segmentation",
         }
         sys.path.append(cls.app_dir)
         cls.client = create_client(cls.app_dir, cls.studies, cls.data_dir, conf=conf)

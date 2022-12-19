@@ -48,7 +48,7 @@ class TestBundleInferTask(BasicBundleTestSuite):
         if not torch.cuda.is_available():
             return
 
-        model = "spleen_ct_segmentation_v0.3.1"
+        model = "spleen_ct_segmentation"
         image = "spleen_8"
 
         response = self.client.post(f"/infer/{model}?image={image}")
@@ -61,7 +61,7 @@ class TestDetectionBundleInferTask(BasicDetectionBundleTestSuite):
         if not torch.cuda.is_available():
             return
 
-        model = "lung_nodule_ct_detection_v0.5.0"
+        model = "lung_nodule_ct_detection"
         image = "1.3.6.1.4.1.14519.5.2.1.6279.6001.188385286346390202873004762827"
 
         response = self.client.post(f"/infer/{model}?image={image}")
