@@ -19,7 +19,7 @@ from .context import BasicBundleV2TestSuite
 
 class EndPointBundleScoring(BasicBundleV2TestSuite):
     # test epistemic_v2
-    def x_test_bundle_epistemic(self):
+    def test_bundle_epistemic(self):
         if not torch.cuda.is_available():
             return
 
@@ -27,11 +27,11 @@ class EndPointBundleScoring(BasicBundleV2TestSuite):
         assert response.status_code == 200
         time.sleep(1)
 
-    def x_test_status(self):
+    def test_status(self):
         self.client.get("/scoring/")
         time.sleep(1)
 
-    def x_test_stop(self):
+    def test_stop(self):
         self.client.delete("/scoring/")
         time.sleep(1)
 
