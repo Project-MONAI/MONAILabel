@@ -136,9 +136,7 @@ function clean_py() {
   find sample-apps/* -type d -empty -exec rm -rf "{}" +
   find sample-apps/* -type d -empty -exec rm -rf "{}" +
 
-  find tests/data -type f -not -name *.zip -not -name .gitignore -exec rm -r "{}" +
-  find tests/data/ -type d -empty -exec rm -r "{}" +
-  find tests/data/ -type d -empty -exec rm -r "{}" +
+  rm -rf tests/data/*
 
   find ${TO_CLEAN} -type f -name "*.py[co]" -delete
   find ${TO_CLEAN} -type f -name "*.so" -delete
