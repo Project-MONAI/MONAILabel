@@ -27,6 +27,7 @@ from monai.apps import download_url
 from monai.bundle import download, get_bundle_versions
 from monai.bundle.scripts import get_all_bundles_list
 
+from monailabel.config import settings
 from monailabel.utils.others.modelzoo_list import MAINTAINED_BUNDLES
 
 logger = logging.getLogger(__name__)
@@ -245,14 +246,11 @@ def get_bundle_models(app_dir, conf, conf_key="models"):
     Returns:
         a dictionary that contains the available bundles.
     """
-    MONAI_ZOO_SOURCE = "github"
-    MONAI_ZOO_REPO = "Project-MONAI/model-zoo/hosting_storage_v1"
-
     model_dir = os.path.join(app_dir, "model")
 
-    zoo_source = conf.get("zoo_source", MONAI_ZOO_SOURCE)
-    zoo_repo = conf.get("zoo_repo", MONAI_ZOO_REPO)
-    auth_token = conf.get("auth_token", None)
+    zoo_source = conf.get("zoo_source", settings.MONAI_ZOO_SOURCE)
+    zoo_repo = conf.get("zoo_repo", settings.MONAI_ZOO_REPO)
+    auth_token = conf.get("auth_token", settings.MONAI_ZOO_AUTH_TOKEN)
     zoo_info = get_all_bundles_list(auth_token=auth_token)
 
     # filter model zoo bundle with MONAI Label supported bundles according to the maintaining list, return all version bundles list

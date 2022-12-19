@@ -80,6 +80,10 @@ class Settings(BaseSettings):
     MONAI_LABEL_TRACKING_ENABLED: bool = True
     MONAI_LABEL_TRACKING_URI: str = ""
 
+    MONAI_ZOO_SOURCE: str = "github"
+    MONAI_ZOO_REPO: str = "Project-MONAI/model-zoo/hosting_storage_v1"
+    MONAI_ZOO_AUTH_TOKEN: str = ""
+
     class Config:
         env_file = ".env"
         case_sensitive = True
