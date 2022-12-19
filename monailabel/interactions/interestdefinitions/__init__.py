@@ -1,0 +1,1 @@
+from interestdefinition import InterestDefinition
