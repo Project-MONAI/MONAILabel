@@ -33,20 +33,6 @@ jobs:
       - name: Install dependencies
         run: |
           python -m pip install --upgrade pip wheel
-      - name: Install Latest Docker
-        run: |
-          curl -fsSL https://download.docker.com/linux/ubuntu/gpg | sudo apt-key add -
-          sudo add-apt-repository "deb [arch=amd64] https://download.docker.com/linux/ubuntu  $(lsb_release -cs)  stable"
-          sudo apt-get update
-          sudo apt-get install docker-ce
       - name: Build
         run: |
-          cd plugins/dsa
-          docker system prune -f
-          DOCKER_BUILDKIT=1 docker build -t projectmonai/monailabel-dsa:${{ github.event.inputs.tag }} -f Dockerfile .
-      - name: Publish
-        run: |
-          echo "${{ secrets.DOCKER_PW }}" | docker login -u projectmonai --password-stdin
-          docker push projectmonai/monailabel-dsa:${{ github.event.inputs.tag }}
-          docker logout
-          docker image prune -f
+          ./runtests.sh --net

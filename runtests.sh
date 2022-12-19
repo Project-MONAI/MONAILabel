@@ -471,9 +471,12 @@ function run_integration_tests() {
 
 # network training/inference/eval integration tests
 if [ $doNetTests = true ]; then
-  run_integration_tests "radiology" "tests/data/dataset/local/spleen" "deepedit,segmentation_spleen,segmentation,deepgrow_2d,deepgrow_3d" "."
-  run_integration_tests "pathology" "tests/data/pathology" "segmentation_nuclei,nuclick,classification_nuclei" "."
-  run_integration_tests "monaibundle" "tests/data/dataset/local/spleen" "spleen_ct_segmentation,spleen_deepedit_annotation,swin_unetr_btcv_segmentation" "bundles"
-  run_integration_tests "endoscopy" "tests/data/endoscopy" "tooltracking,inbody,deepedit" "."
-  run_integration_tests "monaibundle" "tests/data/detection" "lung_nodule_ct_detection" "detection"
+  echo "All ENV variables..."
+  env
+  echo "MONAI_ZOO_AUTH_TOKEN = $MONAI_ZOO_AUTH_TOKEN"
+  #run_integration_tests "radiology" "tests/data/dataset/local/spleen" "deepedit,segmentation_spleen,segmentation,deepgrow_2d,deepgrow_3d" "."
+  #run_integration_tests "pathology" "tests/data/pathology" "segmentation_nuclei,nuclick,classification_nuclei" "."
+  #run_integration_tests "monaibundle" "tests/data/dataset/local/spleen" "spleen_ct_segmentation,spleen_deepedit_annotation,swin_unetr_btcv_segmentation" "bundles"
+  #run_integration_tests "endoscopy" "tests/data/endoscopy" "tooltracking,inbody,deepedit" "."
+  #run_integration_tests "monaibundle" "tests/data/detection" "lung_nodule_ct_detection" "detection"
 fi
