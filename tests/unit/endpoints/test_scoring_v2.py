@@ -19,19 +19,19 @@ from .context import BasicBundleV2TestSuite
 
 class EndPointBundleScoring(BasicBundleV2TestSuite):
     # test epistemic_v2
-    def test_bundle_epistemic(self):
+    def x_test_bundle_epistemic(self):
         if not torch.cuda.is_available():
             return
 
-        response = self.client.post("/scoring/spleen_ct_segmentation_v0.3.1?run_sync=true")
+        response = self.client.post("/scoring/spleen_ct_segmentation?run_sync=true")
         assert response.status_code == 200
         time.sleep(1)
 
-    def test_status(self):
+    def x_test_status(self):
         self.client.get("/scoring/")
         time.sleep(1)
 
-    def test_stop(self):
+    def x_test_stop(self):
         self.client.delete("/scoring/")
         time.sleep(1)
 

@@ -21,7 +21,7 @@ class EndPointInfer(unittest.TestCase):
         if not torch.cuda.is_available():
             return
 
-        model = "spleen_ct_segmentation_v0.1.0"
+        model = "spleen_ct_segmentation"
         image = "spleen_8"
 
         response = requests.post(f"{SERVER_URI}/infer/{model}?image={image}")
@@ -31,7 +31,7 @@ class EndPointInfer(unittest.TestCase):
         if not torch.cuda.is_available():
             return
 
-        model = "swin_unetr_btcv_segmentation_v0.1.0"
+        model = "swin_unetr_btcv_segmentation"
         image = "spleen_8"
 
         response = requests.post(f"{SERVER_URI}/infer/{model}?image={image}")
@@ -41,7 +41,7 @@ class EndPointInfer(unittest.TestCase):
         if not torch.cuda.is_available():
             return
 
-        model = "pancreas_ct_dints_segmentation_v0.1.0"
+        model = "pancreas_ct_dints_segmentation"
         image = "spleen_8"
 
         response = requests.post(f"{SERVER_URI}/infer/{model}?image={image}")
@@ -51,7 +51,7 @@ class EndPointInfer(unittest.TestCase):
         if not torch.cuda.is_available():
             return
 
-        model = "spleen_deepedit_annotation_v0.1.0"
+        model = "spleen_deepedit_annotation"
         image = "spleen_8"
 
         response = requests.post(f"{SERVER_URI}/infer/{model}?image={image}")

@@ -16,7 +16,6 @@ import logging
 import mimetypes
 import os
 import pathlib
-import re
 import shutil
 import subprocess
 import sys
@@ -25,8 +24,8 @@ from typing import Dict
 
 import torch
 from monai.apps import download_url
-from monai.bundle import download
-from monai.bundle.scripts import get_all_bundles_list, get_bundle_versions
+from monai.bundle import download, get_bundle_versions
+from monai.bundle.scripts import get_all_bundles_list
 
 from monailabel.utils.others.modelzoo_list import MAINTAINED_BUNDLES
 
@@ -257,12 +256,12 @@ def get_bundle_models(app_dir, conf, conf_key="models"):
     zoo_info = get_all_bundles_list(auth_token=auth_token)
 
     # filter model zoo bundle with MONAI Label supported bundles according to the maintaining list, return all version bundles list
-    available = [
-        i[0] + "_v" + v
-        for i in zoo_info
-        if i[0] in MAINTAINED_BUNDLES
-        for v in get_bundle_versions(i[0], auth_token=auth_token)["all_versions"]
-    ]
+    available = [i[0] for i in zoo_info if i[0] in MAINTAINED_BUNDLES]
+    available_with_version = {b: get_bundle_versions(b, auth_token=auth_token)["all_versions"] for b in available}
+    available_both = available + [k + "_v" + v for k, versions in available_with_version.items() for v in versions]
+
+    version_to_name = {k + "_v" + v: k for k, versions in available_with_version.items() for v in versions}
+    name_to_version = {k + "_v" + v: v for k, versions in available_with_version.items() for v in versions}
 
     models = conf.get(conf_key)
     if not models:
@@ -280,7 +279,7 @@ def get_bundle_models(app_dir, conf, conf_key="models"):
     models = [m.strip() for m in models]
     # First check whether the bundle model directory is available and in model-zoo, if no, check local bundle directory.
     # Use zoo bundle if both exist
-    invalid_zoo = [m for m in models if m not in available]
+    invalid_zoo = [m for m in models if m not in available_both]
 
     invalid = [m for m in invalid_zoo if not os.path.isdir(os.path.join(model_dir, m))]
 
@@ -290,7 +289,7 @@ def get_bundle_models(app_dir, conf, conf_key="models"):
         print("---------------------------------------------------------------------------------------")
         print(f"Invalid Model(s) are provided: {invalid}, either not in model zoo or not supported with MONAI Label")
         print("Following are the available models.  You can pass comma (,) separated names to pass multiple")
-        print("Available bunlde with latest tags:")
+        print("Available bundle with latest tags:")
         print(f"   -c {conf_key}")
         print("        {}".format(" \n        ".join(available)))
         print("Or provide valid local bundle directories")
@@ -301,15 +300,16 @@ def get_bundle_models(app_dir, conf, conf_key="models"):
     bundles: Dict[str, str] = {}
     for k in models:
         p = os.path.join(model_dir, k)
-        if k not in available:
+        if k not in available_both:
             logger.info(f"+++ Adding Bundle from Local: {k} => {p}")
         else:
             logger.info(f"+++ Adding Bundle from Zoo: {k} => {p}")
             if not os.path.exists(p):
-                download(name=k, bundle_dir=model_dir, source=zoo_source, repo=zoo_repo)
-                e = os.path.join(model_dir, re.sub(r"_v.*.zip", "", f"{k}.zip"))
-                if os.path.isdir(e):
-                    shutil.move(e, p)
+                name = k if k in available else version_to_name.get(k)
+                version = None if k in available else name_to_version.get(k)
+                download(name=name, version=version, bundle_dir=model_dir, source=zoo_source, repo=zoo_repo)
+                if version:
+                    shutil.move(os.path.join(model_dir, name), p)
         sys.path.append(p)
 
         bundles[k] = p

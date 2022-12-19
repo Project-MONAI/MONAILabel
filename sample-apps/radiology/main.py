@@ -95,7 +95,7 @@ class MyApp(MONAILabelApp):
                     self.models[k].init(k, self.model_dir, conf, self.planner)
         logger.info(f"+++ Using Models: {list(self.models.keys())}")
 
-        # Load models from bundle config files, local or released in Model-Zoo, e.g., --conf bundles <spleen_ct_segmentation_v0.1.0>
+        # Load models from bundle config files, local or released in Model-Zoo, e.g., --conf bundles <spleen_ct_segmentation>
         self.bundles = get_bundle_models(app_dir, conf, conf_key="bundles") if conf.get("bundles") else None
 
         super().__init__(

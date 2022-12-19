@@ -89,7 +89,7 @@ class TestBundleTrainTask(BasicBundleTestSuite):
             return
 
         params = {
-            "model": "spleen_ct_segmentation_v0.3.1",
+            "model": "spleen_ct_segmentation",
             "max_epochs": 1,
             "name": "net_test_spleen_bundle_trainer_01",
             "val_split": 0.5,
@@ -106,7 +106,7 @@ class TestDetectionBundleTrainTask(BasicDetectionBundleTestSuite):
             return
 
         params = {
-            "model": "lung_nodule_ct_detection_v0.5.0",
+            "model": "lung_nodule_ct_detection",
             "max_epochs": 1,
             "name": "net_test_lung_nodule_detection_trainer_01",
             "val_split": 0.5,
@@ -121,7 +121,7 @@ class TestDetectionBundleTrainTask(BasicDetectionBundleTestSuite):
             return
 
         params = {
-            "model": "lung_nodule_ct_detection_v0.5.0",
+            "model": "lung_nodule_ct_detection",
             "max_epochs": 2,
             "name": "net_test_bundle_train",
             "multi_gpu": False,
