@@ -118,11 +118,21 @@ class LocalizationSpine(BasicTrainTask):
             roi_size=self.roi_size, sw_batch_size=2, overlap=0.4, padding_mode="replicate", mode="gaussian"
         )
 
+    def norm_labels(self):
+        # This should be applied along with NormalizeLabelsInDatasetd transform
+        new_label_nums = {}
+        for idx, (key_label, val_label) in enumerate(self._labels.items(), start=1):
+            if key_label != "background":
+                new_label_nums[key_label] = idx
+            if key_label == "background":
+                new_label_nums["background"] = 0
+        return new_label_nums
+
     def train_key_metric(self, context: Context):
-        return region_wise_metrics(self._labels, "train_mean_dice", "train")
+        return region_wise_metrics(self.norm_labels(), "train_mean_dice", "train")
 
     def val_key_metric(self, context: Context):
-        return region_wise_metrics(self._labels, "val_mean_dice", "val")
+        return region_wise_metrics(self.norm_labels(), "val_mean_dice", "val")
 
     def train_handlers(self, context: Context):
         handlers = super().train_handlers(context)
