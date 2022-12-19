@@ -47,7 +47,7 @@ jobs:
   build:
     runs-on: ubuntu-latest
     env:
-      MONAI_ZOO_AUTH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+      MONAI_ZOO_AUTH_TOKEN: ${{ github.token }}
     strategy:
       matrix:
         python-version: ["3.8", "3.9"]
@@ -79,6 +79,8 @@ jobs:
 
   packaging:
     runs-on: ubuntu-latest
+    env:
+      MONAI_ZOO_AUTH_TOKEN: ${{ github.token }}
     strategy:
       matrix:
         python-version: ["3.8", "3.9"]
@@ -137,6 +139,8 @@ jobs:
 
   build-docs:
     runs-on: ubuntu-latest
+    env:
+      MONAI_ZOO_AUTH_TOKEN: ${{ github.token }}
     strategy:
       matrix:
         python-version: ["3.8", "3.9"]
