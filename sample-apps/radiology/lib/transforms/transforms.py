@@ -22,11 +22,7 @@ logger = logging.getLogger(__name__)
 
 
 class BinaryMaskd(MapTransform):
-    def __init__(
-        self,
-        keys: KeysCollection,
-        allow_missing_keys: bool = False,
-    ):
+    def __init__(self, keys: KeysCollection, allow_missing_keys: bool = False):
         """
         Convert to single label - This should actually create the heat map for the first stage
 
@@ -43,11 +39,7 @@ class BinaryMaskd(MapTransform):
 
 
 class SelectVertebraAndCroppingd(Randomizable, MapTransform):
-    def __init__(
-        self,
-        keys: KeysCollection,
-        allow_missing_keys: bool = False,
-    ):
+    def __init__(self, keys: KeysCollection, allow_missing_keys: bool = False):
         """
         Crop image and label
 
@@ -100,11 +92,7 @@ class SelectVertebraAndCroppingd(Randomizable, MapTransform):
 
             start, stop = cropper.compute_bounding_box(tmp_label)
 
-            slices_cropped = [
-                [start[-3], stop[-3]],
-                [start[-2], stop[-2]],
-                [start[-1], stop[-1]],
-            ]
+            slices_cropped = [[start[-3], stop[-3]], [start[-2], stop[-2]], [start[-1], stop[-1]]]
 
             d["slices_cropped"] = slices_cropped
 
@@ -118,12 +106,7 @@ class SelectVertebraAndCroppingd(Randomizable, MapTransform):
 
 
 class GetCentroidsd(MapTransform):
-    def __init__(
-        self,
-        keys: KeysCollection,
-        centroids_key: str = "centroids",
-        allow_missing_keys: bool = False,
-    ):
+    def __init__(self, keys: KeysCollection, centroids_key: str = "centroids", allow_missing_keys: bool = False):
         """
         Get centroids
 
@@ -161,12 +144,7 @@ class GetCentroidsd(MapTransform):
 
 
 class GaussianSmoothedCentroidd(MapTransform):
-    def __init__(
-        self,
-        keys: KeysCollection,
-        signal_key: str = "signal",
-        allow_missing_keys: bool = False,
-    ):
+    def __init__(self, keys: KeysCollection, signal_key: str = "signal", allow_missing_keys: bool = False):
         """
         Apply Gaussian to Centroid
 
@@ -208,11 +186,7 @@ class GaussianSmoothedCentroidd(MapTransform):
 
 
 class ConcatenateROId(MapTransform):
-    def __init__(
-        self,
-        keys: KeysCollection,
-        allow_missing_keys: bool = False,
-    ):
+    def __init__(self, keys: KeysCollection, allow_missing_keys: bool = False):
         """
         Add Gaussian smoothed centroid (signal) to cropped volume
 
@@ -230,11 +204,7 @@ class ConcatenateROId(MapTransform):
 
 
 class PlaceCroppedAread(MapTransform):
-    def __init__(
-        self,
-        keys: KeysCollection,
-        allow_missing_keys: bool = False,
-    ):
+    def __init__(self, keys: KeysCollection, allow_missing_keys: bool = False):
         """
         Place the ROI predicted in the full image
 
@@ -309,12 +279,7 @@ class VertHeatMap(MapTransform):
 
 
 class VertebraLocalizationPostProcessing(MapTransform):
-    def __init__(
-        self,
-        keys: KeysCollection,
-        result: str = "result",
-        allow_missing_keys: bool = False,
-    ):
+    def __init__(self, keys: KeysCollection, result: str = "result", allow_missing_keys: bool = False):
         """
         Postprocess Vertebra localization
 
@@ -347,12 +312,7 @@ class VertebraLocalizationPostProcessing(MapTransform):
 
 
 class VertebraLocalizationSegmentation(MapTransform):
-    def __init__(
-        self,
-        keys: KeysCollection,
-        result: str = "result",
-        allow_missing_keys: bool = False,
-    ):
+    def __init__(self, keys: KeysCollection, result: str = "result", allow_missing_keys: bool = False):
         """
         Postprocess Vertebra localization using segmentation task
 
@@ -406,12 +366,7 @@ class VertebraLocalizationSegmentation(MapTransform):
 
 
 class CropAndCreateSignald(MapTransform):
-    def __init__(
-        self,
-        keys: KeysCollection,
-        signal_key,
-        allow_missing_keys: bool = False,
-    ):
+    def __init__(self, keys: KeysCollection, signal_key, allow_missing_keys: bool = False):
         """
         Based on the centroids:
 
@@ -471,11 +426,7 @@ class CropAndCreateSignald(MapTransform):
 
 
 class GetOriginalInformation(MapTransform):
-    def __init__(
-        self,
-        keys: KeysCollection,
-        allow_missing_keys: bool = False,
-    ):
+    def __init__(self, keys: KeysCollection, allow_missing_keys: bool = False):
         """
         Get information from original image
 
@@ -530,10 +481,12 @@ class NormalizeLabelsInDatasetd(MapTransform):
             new_label_names = {}
             label = torch.zeros_like(d[key])
             # Making sure the range values and number of labels are the same
-            for idx, (key_label, val_label) in enumerate(self.label_names.items(), start=1):
+            idx = 1
+            for key_label, val_label in self.label_names.items():
                 if key_label != "background":
                     new_label_names[key_label] = idx
                     label[d[key] == val_label] = idx
+                    idx += 1
                 if key_label == "background":
                     new_label_names["background"] = 0
 
