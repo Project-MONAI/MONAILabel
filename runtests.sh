@@ -120,9 +120,7 @@ function clean_py() {
 
   rm -rf sample-apps/*/logs
   rm -rf sample-apps/*/.venv
-  rm -rf sample-apps/*/model/*
   rm -rf sample-apps/*/bin
-  rm -rf tests/data/*
   rm -rf monailabel/endpoints/static/ohif
   rm -rf pytest.log
   rm -rf htmlcov
@@ -133,6 +131,14 @@ function clean_py() {
   rm -rf test-output.xml
   rm -rf .coverage
   rm -rf .env
+
+  find sample-apps/*/model -type f -not -name *.zip -not -name .gitignore -exec rm -rf "{}" +
+  find sample-apps/* -type d -empty -exec rm -rf "{}" +
+  find sample-apps/* -type d -empty -exec rm -rf "{}" +
+
+  find tests/data -type f -not -name *.zip -not -name .gitignore -exec rm -r "{}" +
+  find tests/data/ -type d -empty -exec rm -r "{}" +
+  find tests/data/ -type d -empty -exec rm -r "{}" +
 
   find ${TO_CLEAN} -type f -name "*.py[co]" -delete
   find ${TO_CLEAN} -type f -name "*.so" -delete
