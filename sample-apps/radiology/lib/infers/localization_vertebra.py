@@ -9,13 +9,15 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-from typing import Any, Callable, Sequence, Tuple
+from typing import Any, Callable, Sequence, Tuple, Union
 
-from lib.transforms.transforms import VertebraLocalizationSegmentation
+import torch
+from lib.transforms.transforms import CacheObjectd, VertebraLocalizationSegmentation
 from monai.inferers import Inferer, SlidingWindowInferer
 from monai.transforms import (
     Activationsd,
     AsDiscreted,
+    CropForegroundd,
     EnsureChannelFirstd,
     EnsureTyped,
     GaussianSmoothd,
@@ -64,32 +66,46 @@ class LocalizationVertebra(BasicInferTask):
                 LoadImaged(keys="image", reader="ITKReader"),
                 EnsureTyped(keys="image", device=data.get("device") if data else None),
                 EnsureChannelFirstd(keys="image"),
-            ]
-        else:
-            t = []
-
-        t.extend(
-            [
-                Spacingd(keys="image", pixdim=self.target_spacing),
+                CacheObjectd(keys="image"),
+                Spacingd(keys="image", pixdim=self.target_spacing, allow_missing_keys=True),
                 ScaleIntensityRanged(keys="image", a_min=-1000, a_max=1900, b_min=0.0, b_max=1.0, clip=True),
                 GaussianSmoothd(keys="image", sigma=0.4),
                 ScaleIntensityd(keys="image", minv=-1.0, maxv=1.0),
             ]
-        )
+        else:
+            t = [
+                EnsureChannelFirstd(keys="label"),
+                CacheObjectd(keys="image"),
+                Spacingd(keys=("image", "label"), pixdim=self.target_spacing),
+                ScaleIntensityRanged(keys="image", a_min=-1000, a_max=1900, b_min=0.0, b_max=1.0, clip=True),
+                GaussianSmoothd(keys="image", sigma=0.4),
+                ScaleIntensityd(keys="image", minv=-1.0, maxv=1.0),
+                CropForegroundd(keys=("image", "label"), source_key="label", margin=10),
+            ]
+
         return t
 
     def inferer(self, data=None) -> Inferer:
         return SlidingWindowInferer(
-            roi_size=self.roi_size, sw_batch_size=2, overlap=0.4, padding_mode="replicate", mode="gaussian"
+            roi_size=self.roi_size,
+            sw_batch_size=2,
+            overlap=0.4,
+            padding_mode="replicate",
+            mode="gaussian",
+            device=torch.device("cpu"),  # Otherwise a rather big GPU (>45GB) is needed
         )
+
+    def inverse_transforms(self, data=None) -> Union[None, Sequence[Callable]]:
+        return []  # Self-determine from the list of pre-transforms provided
 
     def post_transforms(self, data=None) -> Sequence[Callable]:
         return [
-            EnsureTyped(keys="pred", device=data.get("device") if data else None),
+            # Otherwise a rather big GPU (>45GB) is needed
+            EnsureTyped(keys="pred", device=torch.device("cpu")),
             Activationsd(keys="pred", softmax=True),
             AsDiscreted(keys="pred", argmax=True),
             KeepLargestConnectedComponentd(keys="pred"),
-            Restored(keys="pred", ref_image="image"),
+            Restored(keys="pred", ref_image="image_cached"),
             VertebraLocalizationSegmentation(keys="pred", result="result"),
         ]
 
