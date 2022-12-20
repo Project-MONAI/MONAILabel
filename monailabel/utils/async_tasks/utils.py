@@ -46,6 +46,12 @@ def _task_func(task, method, callback=None):
         my_env["MASTER_ADDR"] = "127.0.0.1"
         my_env["MASTER_PORT"] = str(random.randint(1234, 1334))
 
+    logger.info("Before:: " + my_env["PYTHONPATH"])
+    bundle_path = request.get("bundle_path")
+    if bundle_path and os.path.exists(bundle_path):
+        my_env["PYTHONPATH"] = my_env.get("PYTHONPATH") + os.pathsep + bundle_path
+    logger.info("After:: " + my_env["PYTHONPATH"])
+
     cmd = [
         sys.executable,
         "-m",
