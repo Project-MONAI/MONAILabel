@@ -21,7 +21,7 @@ and supported visualization tools with latest release of MONAI Label. Weekly pre
 
 Current Milestone Release of MONAI Label:
 
-* `0.5.2 <https://pypi.org/project/monailabel/>`_
+* `0.6.0 <https://pypi.org/project/monailabel/>`_
 
 MONAI Label Supported Stable Visualization Tools:
 

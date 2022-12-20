@@ -15,6 +15,28 @@
 What's New
 ==========
 
+0.6.0
+=====
+
+- Pathology Improvements
+
+  - `NuClick annotation model <https://github.com/Project-MONAI/model-zoo/tree/dev/models/pathology_nuclick_annotation>`_
+  - `Nuclei classification model <https://github.com/Project-MONAI/model-zoo/tree/dev/models/pathology_nuclei_classification>`_
+  - `HoverNet model <https://github.com/Project-MONAI/model-zoo/tree/dev/models/pathology_nuclei_segmentation_classification>`_
+
+- QuPath Improvements
+
+  - User experience enhancements
+  - MONAI Label specific Toolbar actions
+  - Drag and Drop ROI to run auto-segmentation models
+  - Single click to run interaction models (NuClick)
+  - Support Next Sample/ROI for Active Learning
+
+- Experiment Management
+- 3D Slicer: Detection model support in MONAI Bundle App for Radiology use-case
+- Multi-GPU/Multi-Threaded support for Batch Inference
+
+
 0.5.2
 =====
 
