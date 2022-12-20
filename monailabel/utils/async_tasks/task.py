@@ -33,6 +33,11 @@ class AsyncTask:
         params = params if params is not None else {}
         request.update(params)
 
+        # Support bundle/scripts over windows
+        bundle_path = instance.bundle_path(request.get("model"))
+        if bundle_path:
+            request["bundle_path"] = bundle_path
+
         logger.info(f"{method.capitalize()} request: {request}")
         if force_sync:
             if method == "batch_infer":

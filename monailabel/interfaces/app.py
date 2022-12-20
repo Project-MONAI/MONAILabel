@@ -48,6 +48,7 @@ from monailabel.interfaces.tasks.strategy import Strategy
 from monailabel.interfaces.tasks.train import TrainTask
 from monailabel.interfaces.utils.wsi import create_infer_wsi_tasks
 from monailabel.tasks.activelearning.random import Random
+from monailabel.tasks.train.bundle import BundleTrainTask
 from monailabel.utils.async_tasks.task import AsyncTask
 from monailabel.utils.others.generic import (
     file_checksum,
@@ -764,6 +765,10 @@ class MONAILabelApp:
     def model_file(self, model):
         task = self._infers.get(model)
         return task.get_path() if task else None
+
+    def bundle_path(self, model):
+        task = self._trainers.get(model)
+        return task.bundle_path if isinstance(task, BundleTrainTask) else None
 
     def model_info(self, model):
         file = self.model_file(model)
