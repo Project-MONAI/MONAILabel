@@ -15,7 +15,7 @@ from typing import Any, Dict, Optional, Union
 
 import lib.infers
 import lib.trainers
-from monai.bundle import download
+from monai.bundle import download, get_bundle_versions
 
 from monailabel.interfaces.config import TaskConfig
 from monailabel.interfaces.tasks.infer_v2 import InferTask
@@ -29,7 +29,11 @@ class HovernetNuclei(TaskConfig):
         super().init(name, model_dir, conf, planner, **kwargs)
 
         bundle_name = "pathology_nuclei_segmentation_classification"
-        bundle_version = None
+        repo_owner, repo_name, tag_name = "Project-MONAI/model-zoo/hosting_storage_v1".split("/")
+        bundle_version = get_bundle_versions(bundle_name, repo=f"{repo_owner}/{repo_name}", tag=tag_name)[
+            "latest_version"
+        ]
+
         self.bundle_path = os.path.join(self.model_dir, bundle_name)
         if not os.path.exists(self.bundle_path):
             download(name=bundle_name, version=bundle_version, bundle_dir=self.model_dir)
