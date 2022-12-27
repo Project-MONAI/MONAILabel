@@ -1399,7 +1399,7 @@ class MONAILabelWidget(ScriptedLoadableModuleWidget, VTKObservationMixin):
             qt.QApplication.setOverrideCursor(qt.Qt.WaitCursor)
             model = self.ui.segmentationModelSelector.currentText
 
-            if self.models[model]["type"] == "detection":
+            if model and self.models[model]["type"] == "detection":
                 label_in, label_info = self.onGenerateJSONFromMulipltROIs()
                 self.reportProgress(30)
             else:
