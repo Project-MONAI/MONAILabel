@@ -78,10 +78,10 @@ class XNATDatastore(Datastore):
         ]
 
     def get_labels_by_image_id(self, image_id: str) -> Dict[str, str]:
-        pass
+        raise NotImplementedError
 
     def get_label_by_image_id(self, image_id: str, tag: str) -> str:
-        pass
+        raise NotImplementedError
 
     def get_image(self, image_id: str, params=None) -> Any:
         p = self._download_image(image_id, check_zip=True)
@@ -92,10 +92,10 @@ class XNATDatastore(Datastore):
         return self._download_image(image_id, check_zip=False)
 
     def get_label(self, label_id: str, label_tag: str, params=None) -> Any:
-        pass
+        raise NotImplementedError
 
     def get_label_uri(self, label_id: str, label_tag: str) -> str:
-        pass
+        raise NotImplementedError
 
     def get_image_info(self, image_id: str) -> Dict[str, Any]:
         info = {}
