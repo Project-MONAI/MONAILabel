@@ -15,11 +15,11 @@
 Quickstart
 ===========
 
-MONAI Label provide several end-to-end (E2E) tutorials for quickstart usage of sample apps, 3rd part viewer setup, plugin installation, and datastore.
-The E2E tutorials include basic functions of MONAI Label, such as auto-segmentation, active learning. Users can try start monailabel server within the notebooks. 
-For full experience, users can start monailabel server in local host machines.
+MONAI Label provides several end-to-end (E2E) tutorials for quickstart of sample apps, 3rd part viewer setup, plugin installation, and datastore.
+The E2E tutorials include basic functions of MONAI Label, such as auto-segmentation, active learning. Users can try monailabel server within the notebooks with these tutorials. 
+For full experience, it's recommended for users to start monailabel server in local host machines.
 
-Hone Pagae of `MONAI Label Tutorials <https://github.com/Project-MONAI/tutorials/tree/main/monailabel>`_ 
+Hone pagae of `MONAI Label Tutorials <https://github.com/Project-MONAI/tutorials/tree/main/monailabel>`_ 
 
 
 - **Radiology App**:
