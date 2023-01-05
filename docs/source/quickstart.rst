@@ -19,23 +19,22 @@ MONAI Label provide several end-to-end (E2E) tutorials for quickstart usage of s
 The E2E tutorials include basic functions of MONAI Label, such as auto-segmentation, active learning. Users can try start monailabel server within the notebooks. 
 For full experience, users can start monailabel server in local host machines.
 
-Hone Pagae of `MONAI Label Tutorials <https://github.com/Project-MONAI/tutorials/tree/main/monailabel>` 
+Hone Pagae of `MONAI Label Tutorials <https://github.com/Project-MONAI/tutorials/tree/main/monailabel>`_ 
 
-## Content
 
 - **Radiology App**:
-  - Viewer: `3D Slicer <https://www.slicer.org/>` | Datastore: Local | Task: Segmentation
-    - `MONAILabel: HelloWorld <https://github.com/Project-MONAI/tutorials/blob/main/monailabel/monailabel_HelloWorld_radiology_3dslicer.ipynb>`: Spleen segmentation with 3D Slicer setups.
+  - Viewer: `3D Slicer <https://www.slicer.org/>`_ | Datastore: Local | Task: Segmentation
+    - `MONAILabel: HelloWorld <https://github.com/Project-MONAI/tutorials/blob/main/monailabel/monailabel_HelloWorld_radiology_3dslicer.ipynb>`_: Spleen segmentation with 3D Slicer setups.
 - **MONAIBUNDLE App**:
-  - Viewer: `3D Slicer <https://www.slicer.org/>` | Datastore: Local | Task: Segmentation
-    - `MONAILabel: Pancreas Tumor Segmentation with 3D Slicer <https://github.com/Project-MONAI/tutorials/blob/main/monailabel/monailabel_pancreas_tumor_segmentation_3DSlicer.ipynb>`: Pancreas and tumor segmentation with CT scans in 3D Slicer.
-    - `MONAILabel: Multi-organ Segmentation with 3D Slicer <https://github.com/Project-MONAI/tutorials/blob/main/monailabel/monailabel_monaibundle_3dslicer_multiorgan_seg.ipynb>`: Multi-organ segmentation with CT scans in 3D Slicer.
+  - Viewer: `3D Slicer <https://www.slicer.org/>`_ | Datastore: Local | Task: Segmentation
+    - `MONAILabel: Pancreas Tumor Segmentation with 3D Slicer <https://github.com/Project-MONAI/tutorials/blob/main/monailabel/monailabel_pancreas_tumor_segmentation_3DSlicer.ipynb>`_: Pancreas and tumor segmentation with CT scans in 3D Slicer.
+    - `MONAILabel: Multi-organ Segmentation with 3D Slicer <https://github.com/Project-MONAI/tutorials/blob/main/monailabel/monailabel_monaibundle_3dslicer_multiorgan_seg.ipynb>`_: Multi-organ segmentation with CT scans in 3D Slicer.
 - **Pathology App**:
-  - Viewer: `QuPath <https://qupath.github.io/>` | Datastore: Local | Task: Segmentation
-    - `MONAILabel: Nuclei Segmentation with QuPath <https://github.com/Project-MONAI/tutorials/blob/main/monailabel/monailabel_pathology_nuclei_segmentation_QuPath.ipynb>` Nuclei segmentation with QuPath setup and Nuclick models.
+  - Viewer: `QuPath <https://qupath.github.io/>`_ | Datastore: Local | Task: Segmentation
+    - `MONAILabel: Nuclei Segmentation with QuPath <https://github.com/Project-MONAI/tutorials/blob/main/monailabel/monailabel_pathology_nuclei_segmentation_QuPath.ipynb>`_ Nuclei segmentation with QuPath setup and Nuclick models.
 - **Endoscopy App**:
-  - Viewer: `CVAT <https://github.com/opencv/cvat>` | Datastore: Local | Task: Segmentation
-    - `MONAILabel: Tooltracking with CVAT <https://github.com/Project-MONAI/tutorials/blob/main/monailabel/monailabel_endoscopy_cvat_tooltracking.ipynb>`: Surgical tool segmentation with CVAT/Nuclio setup.
+  - Viewer: `CVAT <https://github.com/opencv/cvat>`_ | Datastore: Local | Task: Segmentation
+    - `MONAILabel: Tooltracking with CVAT <https://github.com/Project-MONAI/tutorials/blob/main/monailabel/monailabel_endoscopy_cvat_tooltracking.ipynb>`_: Surgical tool segmentation with CVAT/Nuclio setup.
 
 In this page, users can follow some quick command lines for Radiology and monaibundle app. 
 
