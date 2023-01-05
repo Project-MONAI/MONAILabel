@@ -147,6 +147,7 @@ class SegmentationFullCT(TaskConfig):
         if strtobool(self.conf.get("use_pretrained_model", "false")):
             url = f"{self.conf.get('pretrained_path', self.PRE_TRAINED_PATH)}"
             url = f"{url}/radiology_segmentation_segresnet_full_CT_15mm.pt"
+            # url = f"{url}/radiology_segmentation_segresnet_full_CT_2mm.pt" # 2mm pretrained model
             download_file(url, self.path[0])
 
         self.target_spacing = (1.5, 1.5, 1.5)  # target space for image
