@@ -11,7 +11,6 @@
 import glob
 import os
 
-import numpy as np
 from monai.transforms import LoadImage
 
 source_labels = "/media/andres/disk-workspace/temp-TotalSegmentatorDataset/monailabel/labels/final"

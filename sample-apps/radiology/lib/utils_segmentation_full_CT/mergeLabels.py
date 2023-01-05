@@ -9,12 +9,11 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 import glob
-from pathlib import Path
 import os
-import numpy as np
-import nibabel as nib
-from multiprocessing import Pool
+from pathlib import Path
 
+import nibabel as nib
+import numpy as np
 
 class_map = {
     "total": {
@@ -121,12 +120,9 @@ class_map = {
         101: "autochthon_right",
         102: "iliopsoas_left",
         103: "iliopsoas_right",
-        104: "urinary_bladder"
+        104: "urinary_bladder",
     },
-    "lung_vessels": {
-        1: "lung_vessels",
-        2: "lung_trachea_bronchia"
-    },
+    "lung_vessels": {1: "lung_vessels", 2: "lung_trachea_bronchia"},
     "covid": {
         1: "lung_covid_infiltrate",
     },
@@ -163,9 +159,10 @@ class_map = {
         17: "tarsal",
         18: "tibia",
         19: "phalanges_feet",
-        20: "ulna"
-    }
+        20: "ulna",
+    },
 }
+
 
 def combine_masks_to_multilabel_file(masks_dir, multilabel_file):
     """
@@ -185,21 +182,19 @@ def combine_masks_to_multilabel_file(masks_dir, multilabel_file):
         else:
             print(f"Mask {mask} is missing. Filling with zeros.")
             img = np.zeros(ref_img.shape)
-        img_out[img > 0.5] = idx+1
+        img_out[img > 0.5] = idx + 1
 
     nib.save(nib.Nifti1Image(img_out, ref_img.affine), multilabel_file)
 
 
 data_dir = "/media/andres/disk-workspace/temp-TotalSegmentatorDataset/TotalSegmentatorDataset/Totalsegmentator_dataset/"
-output_folder_imgs = (
-    "/media/andres/disk-workspace/temp-TotalSegmentatorDataset/monailabel/"
-)
-output_folder_labels = (
-    "/media/andres/disk-workspace/temp-TotalSegmentatorDataset/monailabel/labels/final/"
-)
+output_folder_imgs = "/media/andres/disk-workspace/temp-TotalSegmentatorDataset/monailabel/"
+output_folder_labels = "/media/andres/disk-workspace/temp-TotalSegmentatorDataset/monailabel/labels/final/"
 
 all_folders = glob.glob(os.path.join(data_dir, "*/segmentations/"))
 for idx, image_path in enumerate(all_folders):
     img_name = image_path.split("/")[-3]
     print("Processing label: ", img_name + ".nii.gz")
-    combine_masks_to_multilabel_file(os.path.join(data_dir, img_name, "segmentations"), os.path.join(output_folder_labels, img_name + ".nii.gz"))
+    combine_masks_to_multilabel_file(
+        os.path.join(data_dir, img_name, "segmentations"), os.path.join(output_folder_labels, img_name + ".nii.gz")
+    )

@@ -9,7 +9,7 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-from typing import Any, Callable, Sequence, Tuple
+from typing import Any, Callable, Sequence, Tuple, Union
 
 import torch
 from monai.inferers import Inferer, SlidingWindowInferer
@@ -21,9 +21,10 @@ from monai.transforms import (
     GaussianSmoothd,
     KeepLargestConnectedComponentd,
     LoadImaged,
+    NormalizeIntensityd,
+    Orientationd,
     ScaleIntensityd,
     Spacingd,
-    NormalizeIntensityd,
 )
 
 from monailabel.interfaces.tasks.infer_v2 import InferType
@@ -63,6 +64,7 @@ class SegmentationFullCT(BasicInferTask):
             LoadImaged(keys="image"),
             EnsureTyped(keys="image", device=data.get("device") if data else None),
             EnsureChannelFirstd(keys="image"),
+            Orientationd(keys="image", axcodes="RAS"),
             Spacingd(keys="image", pixdim=self.target_spacing, allow_missing_keys=True),
             NormalizeIntensityd(keys="image", nonzero=True),
             # ScaleIntensityRanged(keys="image", a_min=-1000, a_max=1900, b_min=0.0, b_max=1.0, clip=True),
@@ -81,8 +83,8 @@ class SegmentationFullCT(BasicInferTask):
             device=torch.device("cpu"),  # Otherwise a rather big GPU (>45GB) is needed
         )
 
-    # def inverse_transforms(self, data=None) -> Union[None, Sequence[Callable]]:
-    #     return []  # Self-determine from the list of pre-transforms provided
+    def inverse_transforms(self, data=None) -> Union[None, Sequence[Callable]]:
+        return []  # Self-determine from the list of pre-transforms provided
 
     def post_transforms(self, data=None) -> Sequence[Callable]:
         return [

@@ -14,14 +14,11 @@ import os
 import shutil
 
 data_dir = "/media/andres/disk-workspace/temp-TotalSegmentatorDataset/TotalSegmentatorDataset/Totalsegmentator_dataset/"
-output_folder_imgs = (
-    "/media/andres/disk-workspace/temp-TotalSegmentatorDataset/monailabel/"
-)
+output_folder_imgs = "/media/andres/disk-workspace/temp-TotalSegmentatorDataset/monailabel/"
 
 all_folders = glob.glob(os.path.join(data_dir, "*/"))
-labels_d = []
 for idx, image_path in enumerate(all_folders):
     img_name = image_path.split("/")[-2]
     # Copying image
-    print(f'Moving image: {img_name} - {idx+1}/{len(all_folders)}')
+    print(f"Moving image: {img_name} - {idx+1}/{len(all_folders)}")
     shutil.move(os.path.join(image_path, "ct.nii.gz"), os.path.join(output_folder_imgs, img_name + ".nii.gz"))

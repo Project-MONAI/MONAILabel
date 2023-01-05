@@ -24,11 +24,12 @@ from monai.transforms import (
     EnsureTyped,
     GaussianSmoothd,
     LoadImaged,
+    NormalizeIntensityd,
+    Orientationd,
     RandSpatialCropd,
     ScaleIntensityd,
-    ScaleIntensityRanged,
     SelectItemsd,
-    Spacingd, NormalizeIntensityd,
+    Spacingd,
 )
 
 from monailabel.tasks.train.basic_train import BasicTrainTask, Context
@@ -75,6 +76,7 @@ class SegmentationFullCT(BasicTrainTask):
             NormalizeLabelsInDatasetd(keys="label", label_names=self._labels),  # Specially for missing labels
             EnsureChannelFirstd(keys=("image", "label")),
             EnsureTyped(keys=("image", "label"), device=context.device),
+            Orientationd(keys=("image", "label"), axcodes="RAS"),
             Spacingd(keys=("image", "label"), pixdim=self.target_spacing, mode=("bilinear", "nearest")),
             # ScaleIntensityRanged(keys="image", a_min=-1000, a_max=1900, b_min=0.0, b_max=1.0, clip=True),
             NormalizeIntensityd(keys="image", nonzero=True),
@@ -111,6 +113,7 @@ class SegmentationFullCT(BasicTrainTask):
             NormalizeLabelsInDatasetd(keys="label", label_names=self._labels),  # Specially for missing labels
             EnsureTyped(keys=("image", "label")),
             EnsureChannelFirstd(keys=("image", "label")),
+            Orientationd(keys=("image", "label"), axcodes="RAS"),
             Spacingd(keys=("image", "label"), pixdim=self.target_spacing, mode=("bilinear", "nearest")),
             NormalizeIntensityd(keys="image", nonzero=True),
             # ScaleIntensityRanged(keys="image", a_min=-1000, a_max=1900, b_min=0.0, b_max=1.0, clip=True),
