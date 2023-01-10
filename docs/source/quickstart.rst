@@ -15,6 +15,26 @@
 Quickstart
 ===========
 
+MONAI Label provides several end-to-end (E2E) tutorials for quickstart of sample apps, 3rd part viewer setup, plugin installation, and datastore.
+The E2E tutorials include basic functions of MONAI Label, such as auto-segmentation, active learning. Users can try monailabel server within the notebooks with these tutorials.
+For full experience, it's recommended for users to start monailabel server in local host machines.
+
+Hone pagae of `MONAI Label Tutorials <https://github.com/Project-MONAI/tutorials/tree/main/monailabel>`_
+
+
+- **Radiology App**:
+  - `MONAILabel: HelloWorld <https://github.com/Project-MONAI/tutorials/blob/main/monailabel/monailabel_HelloWorld_radiology_3dslicer.ipynb>`_: Spleen segmentation with 3D Slicer setups.
+  - `MONAILabel: Web-based OHIF Viewer and Orthanc DICOM-web  <https://github.com/Project-MONAI/tutorials/blob/main/monailabel/monailabel_radiology_spleen_segmentation_OHIF.ipynb>`_: OHIF and Orthanc DICOM-web server setup and installation.
+- **MONAIBUNDLE App**:
+  - `MONAILabel: Pancreas Tumor Segmentation with 3D Slicer <https://github.com/Project-MONAI/tutorials/blob/main/monailabel/monailabel_pancreas_tumor_segmentation_3DSlicer.ipynb>`_: Pancreas and tumor segmentation with CT scans in 3D Slicer.
+  - `MONAILabel: Multi-organ Segmentation with 3D Slicer <https://github.com/Project-MONAI/tutorials/blob/main/monailabel/monailabel_monaibundle_3dslicer_multiorgan_seg.ipynb>`_: Multi-organ segmentation with CT scans in 3D Slicer.
+- **Pathology App**:
+  - `MONAILabel: Nuclei Segmentation with QuPath <https://github.com/Project-MONAI/tutorials/blob/main/monailabel/monailabel_pathology_nuclei_segmentation_QuPath.ipynb>`_ Nuclei segmentation with QuPath setup and Nuclick models.
+- **Endoscopy App**:
+  - `MONAILabel: Tooltracking with CVAT <https://github.com/Project-MONAI/tutorials/blob/main/monailabel/monailabel_endoscopy_cvat_tooltracking.ipynb>`_: Surgical tool segmentation with CVAT/Nuclio setup.
+
+In this page, users can follow some quick command lines for Radiology and monaibundle app.
+
 Start Using MONAI Label with Sample Apps:
 
 1. `Tutorial 1 - Radiology`_
@@ -251,7 +271,7 @@ If you do not have access to DICOM data to upload to the DICOM server you can co
   monailabel datasets --download --name Task09_Spleen --output .
 
   # convert one of the NIFTI images to DICOM
-  plastimatch convert --patient-id patient1 --input Task09_Spleen/imagesTs/spleen_10.nii.gz --output-dicom dicom_output
+  plastimatch convert --patient-id patient1 --input Task09_Spleen/imagesTs/spleen_1.nii.gz --output-dicom dicom_output
 
 Now, we can upload the DICOM series in ``dicom_output`` using the `upload <http://127.0.0.1:8042/app/explorer.html#upload>`_ link in Orthanc.
 
@@ -275,12 +295,10 @@ endpoint of our DICOM server, which based on the last section is ``http://locaho
 
   # For MONAI Label version <=0.2.0, pass credentials and start the DeepEdit app in MONAI label server
   # and start annotating images in our DICOM server
-  monailabel start_server --app radiology --studies http://locahost:8042/dicom-web --conf models deepedit --username orthanc --password orthanc
+  monailabel start_server --app radiology --studies http://locahost:8042/dicom-web --conf models deepedit
 
   # For MONAI label version >=0.3.0, if you have authentication set for dicom-web then you can pass the credentials using environment
   #`variables <https://github.com/Project-MONAI/MONAILabel/blob/main/monailabel/config.py>`_ while running the server.
-  export MONAI_LABEL_DICOMWEB_USERNAME=xyz
-  export MONAI_LABEL_DICOMWEB_PASSWORD=abc
   monailabel start_server --app apps/radiology --studies http://127.0.0.1:8042/dicom-web --conf models deepedit
 
 At this point OHIF can be used to annotate the data in the DICOM server via the MONAI Label server ``/ohif`` endpoint
@@ -294,7 +312,6 @@ At this point OHIF can be used to annotate the data in the DICOM server via the 
 
 .. _Bundle:
 
-================================================
 Tutorial 2 - Bundle App Tutorial and Use Cases
 ================================================
 
@@ -377,6 +394,8 @@ On the local machine follow the commands listed below to install MONAI Label, an
   monailabel datasets --download --name Task09_Spleen --output .
 
   # start the bundle app in MONAI label server
+  # the MONAI Bundle app requires access to MODEL ZOO, please set the authentication token first.
+  export MONAI_ZOO_AUTH_TOKEN=<Your github auth token>
   # and start annotating the images using bundle with the Swin UNETR bundle
   monailabel start_server --app monaibundle --studies Task09_Spleen/imagesTr --conf models swin_unetr_btcv_segmentation
 
@@ -430,6 +449,8 @@ Prerequisite: Check Model Zoo `Release <https://github.com/Project-MONAI/model-z
   monailabel datasets --download --name Task09_Spleen --output .
 
   # Step 4: start the bundle app in MONAI label server
+  # the MONAI Bundle app requires access to MODEL ZOO, please set the authentication token first.
+  export MONAI_ZOO_AUTH_TOKEN=<Your github auth token>
   monailabel start_server --app monaibundle --studies Task09_Spleen/imagesTr --conf models renalStructures_UNEST_segmentation
 
 

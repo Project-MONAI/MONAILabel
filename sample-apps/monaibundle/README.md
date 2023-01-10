@@ -63,6 +63,9 @@ Set **--conf auth_token <github personal access token>** to increate rate limits
 # skip this if you have already downloaded the app or using github repository (dev mode)
 monailabel apps --download --name monaibundle --output workspace
 
+# the MONAI Bundle app requires access to MODEL ZOO, please set the authentication token first.
+export MONAI_ZOO_AUTH_TOKEN=<Your github auth token>
+
 # List all available models from zoo
 monailabel start_server --app workspace/monaibundle --studies workspace/images
 
@@ -86,6 +89,8 @@ If a valid scoring bundle model is provided with **--conf epistemic_model <bundl
 The loaded scoring bundle model can be either model-zoo models or local bundles, the network must support **dropout** argument.
 
 ```bash
+# the MONAI Bundle app requires access to MODEL ZOO, please set the authentication token first.
+export MONAI_ZOO_AUTH_TOKEN=<Your github auth token>
 # Use the UNet in spleen_ct_segmentation bundle as epistemic scoring model.
 # Manual define epistemic scoring parameters
 monailabel start_server \
@@ -167,6 +172,8 @@ monailabel datasets --download --name Task06_Lung --output datasets
 All models, datasets, and plugins are ready, start the MONAI Label server and open 3D Slicer to annotate!
 
 ```bash
+# the MONAI Bundle app requires access to MODEL ZOO, please set the authentication token first.
+export MONAI_ZOO_AUTH_TOKEN=<Your github auth token>
 # 1: Use LUNA16 sample data
 monailabel start_server --app apps/monaibundle --studies datasets/Task06_Lung/imagesTr --conf models lung_nodule_ct_detection
 # 2: Use Task06_Lung data for inference demonstration
