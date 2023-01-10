@@ -24,7 +24,7 @@ Hone pagae of `MONAI Label Tutorials <https://github.com/Project-MONAI/tutorials
 
 - **Radiology App**:
   - `MONAILabel: HelloWorld <https://github.com/Project-MONAI/tutorials/blob/main/monailabel/monailabel_HelloWorld_radiology_3dslicer.ipynb>`_: Spleen segmentation with 3D Slicer setups.
-  - `MONAILabel: Web-based OHIF Viewer and Orthanc dicom-web  <https://github.com/Project-MONAI/tutorials/blob/main/monailabel/monailabel_radiology_spleen_segmentation_OHIF.ipynb>`_: OHIF and Orthanc DICOM-web server setup and installation.
+  - `MONAILabel: Web-based OHIF Viewer and Orthanc DICOM-web  <https://github.com/Project-MONAI/tutorials/blob/main/monailabel/monailabel_radiology_spleen_segmentation_OHIF.ipynb>`_: OHIF and Orthanc DICOM-web server setup and installation.
 - **MONAIBUNDLE App**:
   - `MONAILabel: Pancreas Tumor Segmentation with 3D Slicer <https://github.com/Project-MONAI/tutorials/blob/main/monailabel/monailabel_pancreas_tumor_segmentation_3DSlicer.ipynb>`_: Pancreas and tumor segmentation with CT scans in 3D Slicer.
   - `MONAILabel: Multi-organ Segmentation with 3D Slicer <https://github.com/Project-MONAI/tutorials/blob/main/monailabel/monailabel_monaibundle_3dslicer_multiorgan_seg.ipynb>`_: Multi-organ segmentation with CT scans in 3D Slicer.
