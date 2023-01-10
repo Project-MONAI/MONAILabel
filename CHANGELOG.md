@@ -1,16 +1,3 @@
-<!--
-Copyright (c) MONAI Consortium
-Licensed under the Apache License, Version 2.0 (the "License");
-you may not use this file except in compliance with the License.
-You may obtain a copy of the License at
-    http://www.apache.org/licenses/LICENSE-2.0
-Unless required by applicable law or agreed to in writing, software
-distributed under the License is distributed on an "AS IS" BASIS,
-WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
-See the License for the specific language governing permissions and
-limitations under the License.
--->
-
 # Changelog
 All notable changes to MONAILabel are documented in this file.
 
@@ -190,3 +177,16 @@ The format is based on [Keep a Changelog](http://keepachangelog.com/en/1.0.0/).
 * Automated segmentation of left atrium, spleen
 * DeepGrow AI annotation of left atrium, spleen
 * DeepEdit AI annotation of left atrium, spleen
+
+[Unreleased]: https://github.com/Project-MONAI/MONAILabel/compare/0.6.0...HEAD
+[0.6.0]: https://github.com/Project-MONAI/MONAILabel/compare/0.5.2...0.6.0
+[0.5.2]: https://github.com/Project-MONAI/MONAILabel/compare/0.5.1...0.5.2
+[0.5.1]: https://github.com/Project-MONAI/MONAILabel/compare/0.4.2...0.5.1
+[0.4.2]: https://github.com/Project-MONAI/MONAILabel/compare/0.4.1...0.4.2
+[0.4.1]: https://github.com/Project-MONAI/MONAILabel/compare/0.4.0...0.4.1
+[0.4.0]: https://github.com/Project-MONAI/MONAILabel/compare/0.3.2...0.4.0
+[0.3.2]: https://github.com/Project-MONAI/MONAILabel/compare/0.3.1...0.3.2
+[0.3.1]: https://github.com/Project-MONAI/MONAILabel/compare/0.3.0...0.3.1
+[0.3.0]: https://github.com/Project-MONAI/MONAILabel/compare/0.2.0...0.3.0
+[0.2.0]: https://github.com/Project-MONAI/MONAILabel/compare/0.1.0...0.2.0
+[0.1.0]: https://github.com/Project-MONAI/MONAILabel/commits/0.1.0
