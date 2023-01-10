@@ -33,12 +33,10 @@ The format is based on [Keep a Changelog](http://keepachangelog.com/en/1.0.0/).
 * Experiment Management
 * 3D Slicer: Detection model support in MONAI Bundle App for Radiology use-case
 * Multi-GPU/Multi-Threaded support for Batch Inference
-
 ### Changed
-* Support latest version of bundles in MONAI Bundle App
+* Support the latest version of bundles in MONAI Bundle App
 * Upgrade vertebra pipeline
 * MONAI version >= 1.1.0
-
 ### Removed
 * DeepEdit model for Nuclei segmentation in Pathology
 
@@ -49,7 +47,6 @@ The format is based on [Keep a Changelog](http://keepachangelog.com/en/1.0.0/).
   * [InBody vs OutBody classification model](https://github.com/Project-MONAI/model-zoo/tree/dev/models/endoscopic_inbody_classification)
 * Rest APIs to download the latest trained model and stats
 * Interactive NuClick segmentation in DSA | [Demo](https://medicine.ai.uky.edu/wp-content/uploads/2022/10/interactive_cell_labeling_via_nucklick_in_dsa.mp4)
-
 ### Changed
 * Support for MONAI [1.0.1](https://github.com/Project-MONAI/MONAI/releases/tag/1.0.1)
 * Option to disable DICOM to NIFTI conversion for OHIF usecase
@@ -60,10 +57,8 @@ The format is based on [Keep a Changelog](http://keepachangelog.com/en/1.0.0/).
 * Improvements on MONAI Bundle App
   * support local bundles (pre-downloaded)
   * support customized scripts
-
 ### Fixed
 * Fixes for multi label output of `segmentation_nuclei` model (Pathology)
-
 ### Removed
 * Remove option to run ALL Training Tasks in 3D Slicer
 
@@ -75,7 +70,6 @@ The format is based on [Keep a Changelog](http://keepachangelog.com/en/1.0.0/).
   * DeepEdit interaction model
   * CVAT Integration to support automated workflow to run Active Learning Iterations
 * Multi Stage vertebra segmentation in Radiology App
-
 ### Changed
 * Improving performance for Radiology App
   * Support cache for pre-transforms in case repeated inference for interaction models
@@ -84,10 +78,8 @@ The format is based on [Keep a Changelog](http://keepachangelog.com/en/1.0.0/).
   * DICOM Proxy for wado/qido
 * Improvements for Epistemic (v2) active learning strategy
 * Support for MONAI 1.0.0 and above
-
 ### Fixed
 * Scribbles to support MetaTensor
-
 ### Deprecated
 * TTA Based active learning strategy is deprecated
 
@@ -97,7 +89,6 @@ The format is based on [Keep a Changelog](http://keepachangelog.com/en/1.0.0/).
   * spleen_ct_segmentation
   * spleen_deepedit_annotation
   * others
-
 ### Changed
 * Support for MONAI [0.9.1](https://github.com/Project-MONAI/MONAI/releases/tag/0.9.1)
 
@@ -112,21 +103,18 @@ The format is based on [Keep a Changelog](http://keepachangelog.com/en/1.0.0/).
   * Digital Slide Archive plugin | [Demo](https://drive.google.com/file/d/16HnQY81kAVEbD9TvhAp_hlLnfgHQgX8I/view)
   * QuPath plugin | [Demo](https://drive.google.com/file/d/18mQ5DXuThp9YxXcbR0f19yS2klhmZozG/view)
 * Histogram-based GraphCut and Gaussian Mixture Model (GMM) based methods for scribbles
-
 ### Changed
 * Support for MONAI (supports 0.9.0 and above)
 * Radiology Sample App (Aggregation of previous radiology models)
   * DeepEdit, Deepgrow, Segmentation, SegmentationSpleen models
 * NrrdWriter for multi-channel arrays
 * Static checks using pre-commit ci
-
 ### Fixed
 * 3D Slicer
   * Support Segmentation Editor and other UI enhancements
   * Improvements for Scribble Interactions
   * Support for _**.seg.nrrd**_ segmentation files
   * Support to pre-load existing label masks during image fetch/load
-
 ### Removed
 * SimpleCRF and dependent functions for scribbles
 
@@ -135,11 +123,9 @@ The format is based on [Keep a Changelog](http://keepachangelog.com/en/1.0.0/).
 * SSL and multiple worker options while starting MONAI Label server
 * Scribbles support for OHIF Viewer
 * Add Citation page
-
 ### Changed
 * Support for MONAI (supports 0.8.1 and above)
 * Upgrade PIP Dependencies
-
 ### Fixed
 * Load pretrained models for TTA and Epistemic Scoring
 * Load MMAR API for deepgrow/segmentation apps
@@ -148,10 +134,8 @@ The format is based on [Keep a Changelog](http://keepachangelog.com/en/1.0.0/).
 ## [0.3.1] - 2021-12-29
 ### Added
 * Flexible version support for MONAI (supports 0.8.* instead of 0.8.0)
-
 ### Changed
 * Strict Flag is set to False while loading pretrained models
-
 ### Fixed
 * Inverse transform for DeepEdit sample app
 * Documentation Fixes
@@ -176,10 +160,8 @@ The format is based on [Keep a Changelog](http://keepachangelog.com/en/1.0.0/).
   * Early Stopping
 * Strategy Improvements to support Multi User environment
 * Extensibility for Server APIs
-
 ### Changed
 * Operate histogram likelihood transform in both normalized and unnormalized modes for Scribbles
-
 ### Removed
 * DeepGrow Left-Atrium
 
@@ -191,14 +173,11 @@ The format is based on [Keep a Changelog](http://keepachangelog.com/en/1.0.0/).
   * Native support for scoring and image selection using Epistemic Uncertainty and Test-time Augmentations (Aleatoric Uncertainty)
 * Custom `ScoringMethod` and `Strategy` implementation documentation
 * Scribbles-based annotation support for all sample apps
-
 ### Changed
 * Previously named `generic` apps now have default functionality under `deepedit`, `deepgrow` and `segmentation`
 * Updated `Modules Overview` documentation to include interaction between `ScoringMethod` and `Strategy`
-
 ### Removed
 * All spleen segmentation sample apps (DeepGrow, DeepEdit, auto-segmentation)
-
 
 ## [0.1.0] - 2021-07-14
 ### Added
