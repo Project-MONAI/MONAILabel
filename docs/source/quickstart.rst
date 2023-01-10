@@ -16,10 +16,10 @@ Quickstart
 ===========
 
 MONAI Label provides several end-to-end (E2E) tutorials for quickstart of sample apps, 3rd part viewer setup, plugin installation, and datastore.
-The E2E tutorials include basic functions of MONAI Label, such as auto-segmentation, active learning. Users can try monailabel server within the notebooks with these tutorials. 
+The E2E tutorials include basic functions of MONAI Label, such as auto-segmentation, active learning. Users can try monailabel server within the notebooks with these tutorials.
 For full experience, it's recommended for users to start monailabel server in local host machines.
 
-Hone pagae of `MONAI Label Tutorials <https://github.com/Project-MONAI/tutorials/tree/main/monailabel>`_ 
+Hone pagae of `MONAI Label Tutorials <https://github.com/Project-MONAI/tutorials/tree/main/monailabel>`_
 
 
 - **Radiology App**:
@@ -33,7 +33,7 @@ Hone pagae of `MONAI Label Tutorials <https://github.com/Project-MONAI/tutorials
 - **Endoscopy App**:
   - `MONAILabel: Tooltracking with CVAT <https://github.com/Project-MONAI/tutorials/blob/main/monailabel/monailabel_endoscopy_cvat_tooltracking.ipynb>`_: Surgical tool segmentation with CVAT/Nuclio setup.
 
-In this page, users can follow some quick command lines for Radiology and monaibundle app. 
+In this page, users can follow some quick command lines for Radiology and monaibundle app.
 
 Start Using MONAI Label with Sample Apps:
 
