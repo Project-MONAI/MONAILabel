@@ -197,7 +197,6 @@ class BasicInferTask(InferTask):
         """
         return None
 
-
     def intermediate_transforms(self, data=None) -> Union[None, Sequence[Callable]]:
         """
         Provide List of intermediate-transforms.  They are normally subset of post-transforms.
