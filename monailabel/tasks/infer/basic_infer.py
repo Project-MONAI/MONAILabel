@@ -197,6 +197,21 @@ class BasicInferTask(InferTask):
         """
         return None
 
+
+    def intermediate_transforms(self, data=None) -> Union[None, Sequence[Callable]]:
+        """
+        Provide List of intermediate-transforms.  They are normally subset of post-transforms.
+        This task is performed on output_label (using the references from input_key)
+
+        :param data: current data dictionary/request which can be helpful to define the transforms per-request basis
+
+        Return one of the following.
+            - None: Return None to disable running any intermediate transforms (default behavior).
+            - Empty: Return [] to run all applicable pre-transforms which has inverse method
+
+        """
+        return None
+
     @abstractmethod
     def post_transforms(self, data=None) -> Sequence[Callable]:
         """
@@ -310,6 +325,10 @@ class BasicInferTask(InferTask):
         latency_inferer = time.time() - start
 
         start = time.time()
+        data = self.run_intermediate_transforms(data, self.intermediate_transforms(data))
+        latency_intermediate = time.time() - start
+
+        start = time.time()
         data = self.run_invert_transforms(data, pre_transforms, self.inverse_transforms(data))
         if callback_run_invert_transforms:
             data = callback_run_invert_transforms(data)
@@ -333,10 +352,11 @@ class BasicInferTask(InferTask):
         latency_total = time.time() - begin
         logger.info(
             "++ Latencies => Total: {:.4f}; "
-            "Pre: {:.4f}; Inferer: {:.4f}; Invert: {:.4f}; Post: {:.4f}; Write: {:.4f}".format(
+            "Pre: {:.4f}; Inferer: {:.4f}; Intermediate: {:.4f}; Invert: {:.4f}; Post: {:.4f}; Write: {:.4f}".format(
                 latency_total,
                 latency_pre,
                 latency_inferer,
+                latency_intermediate,
                 latency_invert,
                 latency_post,
                 latency_write,
@@ -347,6 +367,7 @@ class BasicInferTask(InferTask):
         result_json["latencies"] = {
             "pre": round(latency_pre, 2),
             "infer": round(latency_inferer, 2),
+            "intermediate": round(latency_intermediate, 2),
             "invert": round(latency_invert, 2),
             "post": round(latency_post, 2),
             "write": round(latency_write, 2),
@@ -411,6 +432,12 @@ class BasicInferTask(InferTask):
 
     def run_post_transforms(self, data: Dict[str, Any], transforms):
         return run_transforms(data, transforms, log_prefix="POST")
+
+    def run_intermediate_transforms(self, data: Dict[str, Any], transforms):
+        if transforms:
+            return run_transforms(data, transforms, log_prefix="INTER")
+        else:
+            return data
 
     def clear_cache(self):
         self._networks.clear()
