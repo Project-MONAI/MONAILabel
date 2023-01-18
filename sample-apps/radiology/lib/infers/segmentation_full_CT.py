@@ -30,6 +30,7 @@ from monai.transforms import (
 from monailabel.interfaces.tasks.infer_v2 import InferType
 from monailabel.tasks.infer.basic_infer import BasicInferTask
 from monailabel.transform.post import Restored
+from lib.transforms.transforms import RestoreOrientationd
 
 
 class SegmentationFullCT(BasicInferTask):
@@ -80,20 +81,19 @@ class SegmentationFullCT(BasicInferTask):
             overlap=0.4,
             padding_mode="replicate",
             mode="gaussian",
-            device=torch.device("cpu"),  # Otherwise a rather big GPU (>45GB) is needed
+            # device=torch.device("cpu"),  # Use this in case of using GPU smaller than 24GB
         )
-
-    def inverse_transforms(self, data=None) -> Union[None, Sequence[Callable]]:
-        return []  # Self-determine from the list of pre-transforms provided
 
     def post_transforms(self, data=None) -> Sequence[Callable]:
         return [
-            # Otherwise a rather big GPU (>45GB) is needed
-            EnsureTyped(keys="pred", device=torch.device("cpu")),
+            # EnsureTyped(keys="pred", device=torch.device("cpu")), # Use this in case of using GPU smaller than 24GB
+            EnsureTyped(keys="image", device=data.get("device") if data else None),
             Activationsd(keys="pred", softmax=True),
             AsDiscreted(keys="pred", argmax=True),
             KeepLargestConnectedComponentd(keys="pred"),
             Restored(keys="pred", ref_image="image"),
+            EnsureChannelFirstd(keys="pred"),
+            RestoreOrientationd(keys="pred", ref_image="image"),
         ]
 
     def writer(self, data, extension=None, dtype=None) -> Tuple[Any, Any]:

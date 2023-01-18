@@ -15,8 +15,11 @@ from typing import Dict, Hashable, Mapping
 import numpy as np
 import torch
 from monai.config import KeysCollection, NdarrayOrTensor
-from monai.transforms import CropForeground, GaussianSmooth, Randomizable, Resize, ScaleIntensity, SpatialCrop
+from monai.data import MetaTensor
+from monai.transforms import CropForeground, GaussianSmooth, Randomizable, Resize, ScaleIntensity, SpatialCrop, \
+    Orientation
 from monai.transforms.transform import MapTransform, Transform
+import nibabel as nib
 
 logger = logging.getLogger(__name__)
 
@@ -97,10 +100,10 @@ class SelectVertebraAndCroppingd(Randomizable, MapTransform):
             d["slices_cropped"] = slices_cropped
 
             # Cropping label
-            d["label"] = tmp_label[:, start[-3] : stop[-3], start[-2] : stop[-2], start[-1] : stop[-1]]
+            d["label"] = tmp_label[:, start[-3]: stop[-3], start[-2]: stop[-2], start[-1]: stop[-1]]
 
             # Cropping image
-            d["image"] = d["image"][:, start[-3] : stop[-3], start[-2] : stop[-2], start[-1] : stop[-1]]
+            d["image"] = d["image"][:, start[-3]: stop[-3], start[-2]: stop[-2], start[-1]: stop[-1]]
 
         return d
 
@@ -169,11 +172,11 @@ class GaussianSmoothedCentroidd(MapTransform):
         signal[:, x, y, z] = 1.0
 
         signal = signal[
-            :,
-            d["slices_cropped"][-3][0] : d["slices_cropped"][-3][1],
-            d["slices_cropped"][-2][0] : d["slices_cropped"][-2][1],
-            d["slices_cropped"][-1][0] : d["slices_cropped"][-1][1],
-        ]
+                 :,
+                 d["slices_cropped"][-3][0]: d["slices_cropped"][-3][1],
+                 d["slices_cropped"][-2][0]: d["slices_cropped"][-2][1],
+                 d["slices_cropped"][-1][0]: d["slices_cropped"][-1][1],
+                 ]
 
         sigma = 1.6 + (d["current_label"] - 1.0) * 0.1
 
@@ -222,10 +225,10 @@ class PlaceCroppedAread(MapTransform):
             #  Undo/invert the resize of d["pred"] #
             d["pred"] = Resize(spatial_size=d["cropped_size"], mode="nearest")(d["pred"])
             final_pred[
-                :,
-                d["slices_cropped"][-3][0] : d["slices_cropped"][-3][1],
-                d["slices_cropped"][-2][0] : d["slices_cropped"][-2][1],
-                d["slices_cropped"][-1][0] : d["slices_cropped"][-1][1],
+            :,
+            d["slices_cropped"][-3][0]: d["slices_cropped"][-3][1],
+            d["slices_cropped"][-2][0]: d["slices_cropped"][-2][1],
+            d["slices_cropped"][-1][0]: d["slices_cropped"][-1][1],
             ] = d["pred"]
             d["pred"] = final_pred * int(d["current_label"])
         return d
@@ -502,4 +505,43 @@ class CacheObjectd(MapTransform):
             cache_key = f"{key}_cached"
             if d.get(cache_key) is None:
                 d[cache_key] = copy.deepcopy(d[key])
+        return d
+
+
+class RestoreOrientationd(MapTransform):
+    def __init__(
+            self,
+            keys: KeysCollection,
+            ref_image: str,
+            has_channel: bool = True,
+            meta_key_postfix: str = "meta_dict",
+    ):
+        super().__init__(keys)
+        self.ref_image = ref_image
+        self.has_channel = has_channel
+        self.meta_key_postfix = meta_key_postfix
+
+    def __call__(self, data):
+        d = dict(data)
+        meta_dict = (
+            d[self.ref_image].meta
+            if d.get(self.ref_image) is not None and isinstance(d[self.ref_image], MetaTensor)
+            else d.get(f"{self.ref_image}_{self.meta_key_postfix}", {})
+        )
+
+        for idx, key in enumerate(self.keys):
+            result = d[key]
+            # Undo Orientation
+            orig_affine = meta_dict["original_affine"]
+            orig_axcodes = nib.orientations.aff2axcodes(orig_affine)
+            inverse_transform = Orientation(axcodes=orig_axcodes)
+            # Apply inverse
+            with inverse_transform.trace_transform(False):
+                result = inverse_transform(result)
+            d[key] = result if len(result.shape) <= 3 else result[0] if result.shape[0] == 1 else result
+            meta = d.get(f"{key}_{self.meta_key_postfix}")
+            if meta is None:
+                meta = dict()
+                d[f"{key}_{self.meta_key_postfix}"] = meta
+            meta["affine"] = meta_dict.get("original_affine")
         return d

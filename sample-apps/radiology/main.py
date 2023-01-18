@@ -283,11 +283,11 @@ def main():
     )
 
     home = str(Path.home())
-    studies = f"{home}/Dataset/Radiology"
+    studies = f"{home}/Downloads/test_mixedDataset/"
 
     parser = argparse.ArgumentParser()
     parser.add_argument("-s", "--studies", default=studies)
-    parser.add_argument("-m", "--model", default="localization_spine,localization_vertebra,segmentation_vertebra")
+    parser.add_argument("-m", "--model", default="segmentation_full_ct")
     parser.add_argument("-t", "--test", default="infer", choices=("train", "infer"))
     args = parser.parse_args()
 
@@ -310,7 +310,7 @@ def main():
         for device in device_list():
             # res = app.infer(request={"model": args.model, "image": image_id, "device": device})
             res = app.infer(
-                request={"model": "vertebra_pipeline", "image": image_id, "device": device, "slicer": False}
+                request={"model": "segmentation_full_ct", "image": image_id, "device": device, "slicer": False}
             )
             label = res["file"]
             label_json = res["params"]
