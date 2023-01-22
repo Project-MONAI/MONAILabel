@@ -9,7 +9,7 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-from typing import Callable, Sequence
+from typing import Any, Callable, Sequence, Tuple
 
 from monai.inferers import Inferer, SlidingWindowInferer
 from monai.transforms import (
@@ -17,9 +17,12 @@ from monai.transforms import (
     AsDiscreted,
     EnsureChannelFirstd,
     EnsureTyped,
+    GaussianSmoothd,
     KeepLargestConnectedComponentd,
     LoadImaged,
-    ScaleIntensityRanged,
+    NormalizeIntensityd,
+    Orientationd,
+    ScaleIntensityd,
     Spacingd,
 )
 
@@ -30,7 +33,7 @@ from monailabel.transform.post import Restored
 
 class Segmentation(BasicInferTask):
     """
-    This provides Inference Engine for pre-trained segmentation (UNet) model over MSD Dataset.
+    This provides Inference Engine for pre-trained vertebra localization (UNet) model.
     """
 
     def __init__(
@@ -41,7 +44,7 @@ class Segmentation(BasicInferTask):
         type=InferType.SEGMENTATION,
         labels=None,
         dimension=3,
-        description="A pre-trained model for volumetric (3D) segmentation over 3D Images",
+        description="A pre-trained model for volumetric (3D) vertebra localization from CT image",
         **kwargs,
     ):
         super().__init__(
@@ -56,25 +59,43 @@ class Segmentation(BasicInferTask):
         self.target_spacing = target_spacing
 
     def pre_transforms(self, data=None) -> Sequence[Callable]:
-        return [
-            LoadImaged(keys="image", reader="ITKReader"),
+        t = [
+            LoadImaged(keys="image"),
             EnsureTyped(keys="image", device=data.get("device") if data else None),
             EnsureChannelFirstd(keys="image"),
-            Spacingd(keys="image", pixdim=self.target_spacing),
-            ScaleIntensityRanged(keys="image", a_min=-175, a_max=250, b_min=0.0, b_max=1.0, clip=True),
+            Orientationd(keys="image", axcodes="RAS"),
+            Spacingd(keys="image", pixdim=self.target_spacing, allow_missing_keys=True),
+            NormalizeIntensityd(keys="image", nonzero=True),
+            # ScaleIntensityRanged(keys="image", a_min=-1000, a_max=1900, b_min=0.0, b_max=1.0, clip=True),
+            GaussianSmoothd(keys="image", sigma=0.4),
+            ScaleIntensityd(keys="image", minv=-1.0, maxv=1.0),
         ]
+        return t
 
     def inferer(self, data=None) -> Inferer:
-        return SlidingWindowInferer(roi_size=self.roi_size)
+        return SlidingWindowInferer(
+            roi_size=self.roi_size,
+            sw_batch_size=2,
+            overlap=0.4,
+            padding_mode="replicate",
+            mode="gaussian",
+        )
+
+    def inverse_transforms(self, data=None):
+        return []
 
     def post_transforms(self, data=None) -> Sequence[Callable]:
-        largest_cc = False if not data else data.get("largest_cc", False)
-        t = [
-            EnsureTyped(keys="pred", device=data.get("device") if data else None),
+        return [
+            EnsureTyped(keys="image", device=data.get("device") if data else None),
             Activationsd(keys="pred", softmax=True),
             AsDiscreted(keys="pred", argmax=True),
+            KeepLargestConnectedComponentd(keys="pred"),
+            Restored(keys="pred", ref_image="image"),
+            EnsureChannelFirstd(keys="pred"),
         ]
-        if largest_cc:
-            t.append(KeepLargestConnectedComponentd(keys="pred"))
-        t.append(Restored(keys="pred", ref_image="image"))
-        return t
+
+    def writer(self, data, extension=None, dtype=None) -> Tuple[Any, Any]:
+        if data.get("pipeline_mode", False):
+            return {"image": data["image"], "pred": data["pred"]}, data["result"]
+
+        return super().writer(data, extension, dtype)

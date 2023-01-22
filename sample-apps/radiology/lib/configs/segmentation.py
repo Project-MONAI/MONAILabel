@@ -15,7 +15,7 @@ from typing import Any, Dict, Optional, Union
 
 import lib.infers
 import lib.trainers
-from monai.networks.nets import UNet
+from monai.networks.nets import SegResNet
 
 from monailabel.interfaces.config import TaskConfig
 from monailabel.interfaces.tasks.infer_v2 import InferTask
@@ -29,25 +29,34 @@ class Segmentation(TaskConfig):
     def init(self, name: str, model_dir: str, conf: Dict[str, str], planner: Any, **kwargs):
         super().init(name, model_dir, conf, planner, **kwargs)
 
-        # Labels - DON'T INCLUDE BACKGROUND LABEL
+        # Labels
         self.labels = {
             "spleen": 1,
-            "right kidney": 2,
-            "left kidney": 3,
+            "kidney_right": 2,
+            "kidney_left": 3,
             "gallbladder": 4,
-            "esophagus": 5,
-            "liver": 6,
-            "stomach": 7,
-            "aorta": 8,
-            "inferior vena cava": 9,
-            "portal vein and splenic vein": 10,
-            "pancreas": 11,
-            "right adrenal gland": 12,
-            "left adrenal gland": 13,
+            "liver": 5,
+            "stomach": 6,
+            "aorta": 7,
+            "inferior_vena_cava": 8,
+            "portal_vein_and_splenic_vein": 9,
+            "pancreas": 10,
+            "adrenal_gland_right": 11,
+            "adrenal_gland_left": 12,
+            "lung_upper_lobe_left": 13,
+            "lung_lower_lobe_left": 14,
+            "lung_upper_lobe_right": 15,
+            "lung_middle_lobe_right": 16,
+            "lung_lower_lobe_right": 17,
+            "esophagus": 42,
+            "trachea": 43,
+            "heart_myocardium": 44,
+            "heart_atrium_left": 45,
+            "heart_ventricle_left": 46,
+            "heart_atrium_right": 47,
+            "heart_ventricle_right": 48,
+            "pulmonary_artery": 49,
         }
-
-        # Number of input channels - 4 for BRATS and 1 for spleen
-        self.number_intensity_ch = 1
 
         # Model Files
         self.path = [
@@ -56,24 +65,24 @@ class Segmentation(TaskConfig):
         ]
 
         # Download PreTrained Model
-        if strtobool(self.conf.get("use_pretrained_model", "true")):
+        if strtobool(self.conf.get("use_pretrained_model", "false")):
             url = f"{self.conf.get('pretrained_path', self.PRE_TRAINED_PATH)}"
             url = f"{url}/radiology_segmentation_unet_multilabel.pt"
             download_file(url, self.path[0])
 
-        self.target_spacing = (1.0, 1.0, 1.0)  # target space for image
-        # Setting ROI size should consider max width, height and depth of the images
-        self.roi_size = (128, 128, 128)  # sliding window size for train and infer
+        self.target_spacing = (1.5, 1.5, 1.5)  # target space for image
+        # Setting ROI size - This is for the image padding
+        self.roi_size = (96, 96, 96)
 
         # Network
-        self.network = UNet(
+        self.network = SegResNet(
             spatial_dims=3,
-            in_channels=self.number_intensity_ch,
-            out_channels=len(self.labels.keys()) + 1,  # All labels plus background
-            channels=[16, 32, 64, 128, 256],
-            strides=[2, 2, 2, 2],
-            num_res_units=2,
-            norm="batch",
+            in_channels=1,
+            out_channels=len(self.labels) + 1,  # labels plus background,
+            init_filters=32,
+            blocks_down=(1, 2, 2, 4),
+            blocks_up=(1, 1, 1),
+            dropout_prob=0.2,
         )
 
     def infer(self) -> Union[InferTask, Dict[str, InferTask]]:
@@ -84,7 +93,6 @@ class Segmentation(TaskConfig):
             target_spacing=self.target_spacing,
             labels=self.labels,
             preload=strtobool(self.conf.get("preload", "false")),
-            config={"largest_cc": True},
         )
         return task
 
@@ -99,8 +107,7 @@ class Segmentation(TaskConfig):
             target_spacing=self.target_spacing,
             load_path=load_path,
             publish_path=self.path[1],
-            description="Train Multilabel Segmentation Model",
+            description="Train Full Segmentation Model",
             labels=self.labels,
-            disable_meta_tracking=False,
         )
         return task
