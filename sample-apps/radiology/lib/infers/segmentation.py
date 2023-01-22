@@ -93,9 +93,3 @@ class Segmentation(BasicInferTask):
             Restored(keys="pred", ref_image="image"),
             EnsureChannelFirstd(keys="pred"),
         ]
-
-    def writer(self, data, extension=None, dtype=None) -> Tuple[Any, Any]:
-        if data.get("pipeline_mode", False):
-            return {"image": data["image"], "pred": data["pred"]}, data["result"]
-
-        return super().writer(data, extension, dtype)
