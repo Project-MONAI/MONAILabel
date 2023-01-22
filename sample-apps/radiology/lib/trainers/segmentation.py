@@ -38,7 +38,7 @@ from monailabel.tasks.train.utils import region_wise_metrics
 logger = logging.getLogger(__name__)
 
 
-class SegmentationFullCT(BasicTrainTask):
+class Segmentation(BasicTrainTask):
     def __init__(
         self,
         model_dir,

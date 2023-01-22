@@ -107,7 +107,7 @@ class Segmentation(TaskConfig):
             target_spacing=self.target_spacing,
             load_path=load_path,
             publish_path=self.path[1],
-            description="Train Full Segmentation Model",
+            description="Train Segmentation Model",
             labels=self.labels,
         )
         return task
