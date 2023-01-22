@@ -33,7 +33,7 @@ from monailabel.transform.post import Restored
 
 class Segmentation(BasicInferTask):
     """
-    This provides Inference Engine for pre-trained vertebra localization (UNet) model.
+    This provides Inference Engine for pre-trained Segmentation (SegResNet) model.
     """
 
     def __init__(
@@ -44,7 +44,7 @@ class Segmentation(BasicInferTask):
         type=InferType.SEGMENTATION,
         labels=None,
         dimension=3,
-        description="A pre-trained model for volumetric (3D) vertebra localization from CT image",
+        description="A pre-trained model for volumetric (3D) Segmentation from CT image",
         **kwargs,
     ):
         super().__init__(

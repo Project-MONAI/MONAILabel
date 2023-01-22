@@ -46,7 +46,7 @@ class SegmentationFullCT(BasicTrainTask):
         roi_size=(96, 96, 96),
         target_spacing=(1.0, 1.0, 1.0),
         num_samples=4,
-        description="Train vertebra localization model",
+        description="Train Segmentation model",
         **kwargs,
     ):
         self._network = network
