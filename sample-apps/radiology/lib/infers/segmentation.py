@@ -9,7 +9,7 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-from typing import Any, Callable, Sequence, Tuple
+from typing import Callable, Sequence
 
 from monai.inferers import Inferer, SlidingWindowInferer
 from monai.transforms import (
