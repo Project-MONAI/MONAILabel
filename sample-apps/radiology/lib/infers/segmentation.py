@@ -91,5 +91,4 @@ class Segmentation(BasicInferTask):
             AsDiscreted(keys="pred", argmax=True),
             KeepLargestConnectedComponentd(keys="pred"),
             Restored(keys="pred", ref_image="image"),
-            EnsureChannelFirstd(keys="pred"),
         ]
