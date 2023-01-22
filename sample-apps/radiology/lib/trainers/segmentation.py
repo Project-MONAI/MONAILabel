@@ -24,12 +24,12 @@ from monai.transforms import (
     EnsureTyped,
     GaussianSmoothd,
     LoadImaged,
+    NormalizeIntensityd,
     Orientationd,
     RandSpatialCropd,
     ScaleIntensityd,
-    ScaleIntensityRanged,
     SelectItemsd,
-    Spacingd, NormalizeIntensityd,
+    Spacingd,
 )
 
 from monailabel.tasks.train.basic_train import BasicTrainTask, Context
