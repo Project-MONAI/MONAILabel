@@ -16,11 +16,15 @@ from typing import Any, Dict, Optional, Union
 import lib.infers
 import lib.trainers
 from monai.networks.nets import SegResNet
+from monai.utils import optional_import
 
 from monailabel.interfaces.config import TaskConfig
 from monailabel.interfaces.tasks.infer_v2 import InferTask
 from monailabel.interfaces.tasks.train import TrainTask
 from monailabel.utils.others.generic import download_file, strtobool
+
+_, has_cp = optional_import("cupy")
+_, has_cucim = optional_import("cucim")
 
 logger = logging.getLogger(__name__)
 
@@ -93,6 +97,7 @@ class Segmentation(TaskConfig):
             target_spacing=self.target_spacing,
             labels=self.labels,
             preload=strtobool(self.conf.get("preload", "false")),
+            config={"largest_cc": True if has_cp and has_cucim else False},
         )
         return task
 

@@ -78,7 +78,6 @@ class Segmentation(BasicTrainTask):
             EnsureTyped(keys=("image", "label"), device=context.device),
             Orientationd(keys=("image", "label"), axcodes="RAS"),
             Spacingd(keys=("image", "label"), pixdim=self.target_spacing, mode=("bilinear", "nearest")),
-            # ScaleIntensityRanged(keys="image", a_min=-1000, a_max=1900, b_min=0.0, b_max=1.0, clip=True),
             NormalizeIntensityd(keys="image", nonzero=True),
             CropForegroundd(
                 keys=("image", "label"),

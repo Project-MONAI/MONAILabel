@@ -66,7 +66,6 @@ class Segmentation(BasicInferTask):
             Orientationd(keys="image", axcodes="RAS"),
             Spacingd(keys="image", pixdim=self.target_spacing, allow_missing_keys=True),
             NormalizeIntensityd(keys="image", nonzero=True),
-            # ScaleIntensityRanged(keys="image", a_min=-1000, a_max=1900, b_min=0.0, b_max=1.0, clip=True),
             GaussianSmoothd(keys="image", sigma=0.4),
             ScaleIntensityd(keys="image", minv=-1.0, maxv=1.0),
         ]
@@ -85,10 +84,13 @@ class Segmentation(BasicInferTask):
         return []
 
     def post_transforms(self, data=None) -> Sequence[Callable]:
-        return [
+        t = [
             EnsureTyped(keys="image", device=data.get("device") if data else None),
             Activationsd(keys="pred", softmax=True),
             AsDiscreted(keys="pred", argmax=True),
-            KeepLargestConnectedComponentd(keys="pred"),
-            Restored(keys="pred", ref_image="image"),
         ]
+
+        if data and data.get("largest_cc", False):
+            t.append(KeepLargestConnectedComponentd(keys="pred"))
+        t.append(Restored(keys="pred", ref_image="image"))
+        return t
