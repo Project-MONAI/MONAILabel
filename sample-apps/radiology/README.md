@@ -38,13 +38,13 @@ monailabel start_server --app /workspace/apps/radiology --studies /workspace/ima
 
 Following are the models which are currently added into Radiology App:
 
-| Name                                                                  | Description                                                                                                                                                                                |
-|-----------------------------------------------------------------------|--------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------|
-| [deepedit](#deepedit)                                                 | This model is based on DeepEdit: an algorithm that combines the capabilities of multiple models into one, allowing for both interactive and automated segmentation.                        |
-| [deepgrow](#deepgrow)                                                 | This model is based on [DeepGrow](https://arxiv.org/abs/1903.08205) which allows for an interactive segmentation.                                                                          |
-| [segmentation](#segmentation)                                         | A standard (non-interactive) [multilabel](https://www.synapse.org/#!Synapse:syn3193805/wiki/217789) *[spleen, kidney, liver, stomach, aorta, etc..]* model using UNET to label 3D volumes. |
-| [segmentation_spleen](#segmentation-spleen)                           | It uses pre-trained weights/model (UNET) from [NVIDIA Clara](https://catalog.ngc.nvidia.com/orgs/nvidia/teams/med/models/clara_pt_spleen_ct_segmentation) for spleen segmentation.         |
-| [Multistage Vertebra Segmentation](#multistage-vertebra-segmentation) | This is an example of a multistage approach for segmenting several structures on a CT image.                                                                                               |
+| Name                                                                  | Description                                                                                                                                                                                     |
+|-----------------------------------------------------------------------|-------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------|
+| [deepedit](#deepedit)                                                 | This model is based on DeepEdit: an algorithm that combines the capabilities of multiple models into one, allowing for both interactive and automated segmentation.                             |
+| [deepgrow](#deepgrow)                                                 | This model is based on [DeepGrow](https://arxiv.org/abs/1903.08205) which allows for an interactive segmentation.                                                                               |
+| [segmentation](#segmentation)                                         | A standard (non-interactive) [multilabel](https://www.synapse.org/#!Synapse:syn3193805/wiki/217789) *[spleen, kidney, liver, stomach, aorta, etc..]* model using SegResNet to label CT volumes. |
+| [segmentation_spleen](#segmentation-spleen)                           | It uses pre-trained weights/model (UNET) from [NVIDIA Clara](https://catalog.ngc.nvidia.com/orgs/nvidia/teams/med/models/clara_pt_spleen_ct_segmentation) for spleen segmentation.              |
+| [Multistage Vertebra Segmentation](#multistage-vertebra-segmentation) | This is an example of a multistage approach for segmenting several structures on a CT image.                                                                                                    |
 ### How To Use?
 
 ```bash
@@ -191,28 +191,40 @@ This model based on UNet for automated segmentation. This model works for single
 | use_pretrained_model | **true**, false    | Disable this NOT to load any pretrained weights                 |
 | preload              | true, **false**    | Preload model into GPU                                                                                |
 
-- Network: This model uses the [UNet](https://docs.monai.io/en/latest/networks.html#unet) as the default network. Researchers can define their own network or use one of the listed [here](https://docs.monai.io/en/latest/networks.html)
+- Network: This model uses the [SegResNet](https://docs.monai.io/en/latest/networks.html#segresnet) as the default network. Researchers can define their own network or use one of the listed [here](https://docs.monai.io/en/latest/networks.html)
 - Labels
   ```json
   {
     "spleen": 1,
-    "right kidney": 2,
-    "left kidney": 3,
+    "kidney_right": 2,
+    "kidney_left": 3,
     "gallbladder": 4,
-    "esophagus": 5,
-    "liver": 6,
-    "stomach": 7,
-    "aorta": 8,
-    "inferior vena cava": 9,
-    "portal vein and splenic vein": 10,
-    "pancreas": 11,
-    "right adrenal gland": 12,
-    "left adrenal gland": 13
+    "liver": 5,
+    "stomach": 6,
+    "aorta": 7,
+    "inferior_vena_cava": 8,
+    "portal_vein_and_splenic_vein": 9,
+    "pancreas": 10,
+    "adrenal_gland_right": 11,
+    "adrenal_gland_left": 12,
+    "lung_upper_lobe_left": 13,
+    "lung_lower_lobe_left": 14,
+    "lung_upper_lobe_right": 15,
+    "lung_middle_lobe_right": 16,
+    "lung_lower_lobe_right": 17,
+    "esophagus": 42,
+    "trachea": 43,
+    "heart_myocardium": 44,
+    "heart_atrium_left": 45,
+    "heart_ventricle_left": 46,
+    "heart_atrium_right": 47,
+    "heart_ventricle_right": 48,
+    "pulmonary_artery": 49,
   }
   ```
-- Dataset: The model is pre-trained over dataset: https://www.synapse.org/#!Synapse:syn3193805/wiki/217789
+- Dataset: The model is pre-trained on the Total Segmentator dataset: https://zenodo.org/record/6802614#.Y88qJhzP2Cg
 - Inputs: 1 channel for the image modality
-- Output: N channels representing the segmented organs/tumors/tissues
+- Output: N channels representing the segmented organs/bone/tissues
 
 #### [Segmentation Spleen](./lib/configs/segmentation_spleen.py)
 
