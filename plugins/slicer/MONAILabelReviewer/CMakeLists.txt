@@ -20,6 +20,7 @@ set(MODULE_PYTHON_SCRIPTS
   ${MODULE_NAME}Lib/ImageData.py
   ${MODULE_NAME}Lib/ImageDataController.py
   ${MODULE_NAME}Lib/ImageDataExtractor.py
+  ${MODULE_NAME}Lib/ImageDataStatistics.py
   ${MODULE_NAME}Lib/JsonParser.py
   ${MODULE_NAME}Lib/MONAILabelReviewerEnum.py
   ${MODULE_NAME}Lib/MonaiServerREST.py
