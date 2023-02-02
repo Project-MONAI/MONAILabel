@@ -582,7 +582,7 @@ class BasicTrainTask(TrainTask):
         early_stop_patience = int(context.request.get("early_stop_patience", 0))
         if early_stop_patience > 0 and context.evaluator:
             kw = self.val_key_metric(context)
-            metric_name = kw.keys()[0] if kw else None
+            metric_name = list(kw.keys())[0] if kw else None
             if metric_name:
                 early_stopper = EarlyStopping(
                     patience=early_stop_patience,
