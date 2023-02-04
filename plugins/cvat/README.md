@@ -86,4 +86,3 @@ Currently, following sample models are available for CVAT.
 > polygon mask.
 
 ![image](../../docs/images/cvat_interactor.jpeg)
-

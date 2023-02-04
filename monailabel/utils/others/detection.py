@@ -31,7 +31,6 @@ def create_slicer_detection_json(json_data, loglevel="INFO"):
         fp.write(' "markups": [\n')
 
         for idx, item in enumerate(json_data["box"]):
-
             center = item[0:3]
             size = item[3:]
             orientation = [-1.0, -0.0, -0.0, -0.0, -1.0, -0.0, 0.0, 0.0, 1.0]

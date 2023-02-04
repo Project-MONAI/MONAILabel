@@ -28,7 +28,6 @@ class ImageDataExtractorTest(unittest.TestCase):
 
     @classmethod
     def createImageData(self):
-
         # is segmented
         imageDataTest_1 = ImageData(
             name="imageId_1",
@@ -117,7 +116,6 @@ class ImageDataExtractorTest(unittest.TestCase):
         self.assertEqual(True, containsAll)
 
     def test_getClientIds(self):
-
         expectedClientIds = ["client_id_1"]
         clientIds = self.imageDataExtractor.getClientIds()
         self.assertEqual(len(expectedClientIds), len(clientIds))
@@ -187,7 +185,6 @@ class ImageDataExtractorTest(unittest.TestCase):
         self.assertEqual(True, self.areEqual(expectedImageData, imageDatas[0]))
 
     def test_getImageDataByClientId_approved_is_true(self):
-
         imageDataTest_4 = ImageData(
             name="imageId_4",
             fileName="fileName_4",

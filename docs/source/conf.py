@@ -158,7 +158,6 @@ def generate_apidocs(*args):
 
 
 class GenerateTagLinks(SphinxTransform):
-
     linkref_prefix = "LINKREF_"
     git_tag = "MONAILABEL_GIT_TAG"
     linkref_lut = {"LINKREF_GITHUB_MONAILABEL": f"https://github.com/Project-MONAI/MONAILabel/tree/{{{git_tag}}}"}
@@ -174,9 +173,7 @@ class GenerateTagLinks(SphinxTransform):
         return isinstance(obj, Text) and obj.startswith(GenerateTagLinks.linkref_prefix)
 
     def apply(self):
-
         for node in self.document.traverse(GenerateTagLinks.baseref):
-
             # find the entry for the link reference we want to substitute
             link_key = None
             for k in self.linkref_lut.keys():

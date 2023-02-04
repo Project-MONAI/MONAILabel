@@ -2004,7 +2004,6 @@ class MONAILabelWidget(ScriptedLoadableModuleWidget, VTKObservationMixin):
         self.ui.scribblesSelector.setCurrentIndex(0)
 
     def onResetScribbles(self):
-
         # reset scribbles mode
         self.scribblesMode = None
 

@@ -353,5 +353,3 @@ If you have `DSA <https://digitalslidearchive.github.io/digital_slide_archive/>`
   monailabel start_server --app apps/pathology --studies http://0.0.0.0:8080/api/v1
 
 Refer `DSA Plugin <https://github.com/Project-MONAI/MONAILabel/tree/main/plugins/dsa>`_ for running a sample pathology use-case in MONAILabel using DSA.
-
-

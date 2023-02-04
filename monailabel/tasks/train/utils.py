@@ -52,7 +52,6 @@ def from_engine_idx(keys: KeysCollection, idx, first: bool = False):
 
 
 def region_wise_rmse(regions, metric, prefix, keys=("pred", "label")):
-
     all_metrics = dict()
     all_metrics[metric] = RootMeanSquaredError(output_transform=from_engine(keys))
 

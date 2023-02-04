@@ -29,13 +29,11 @@ TRANSFORM_DATA = [{"pred": np.array([[[1, 0, 1, 0], [0, 0, 1, 0], [0, 0, 1, 0]]]
 class TestTransformUtils(unittest.TestCase):
     @parameterized.expand([SHAPE_DATA])
     def test_shape_info(self, data, keys, expected_output):
-
         res = shape_info(data, keys)
         self.assertEqual(res, expected_output)
 
     @parameterized.expand([TRANSFORM_DATA])
     def test_run_transforms(self, data, callables):
-
         res = run_transforms(data, callables)
         np.testing.assert_equal(res, data)
 

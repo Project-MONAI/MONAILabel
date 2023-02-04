@@ -9,9 +9,6 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-default_language_version:
-  python: python3.8
-
 ci:
   autofix_prs: true
   autoupdate_schedule: quarterly
@@ -20,34 +17,43 @@ repos:
 - repo: https://github.com/pre-commit/pre-commit-hooks
   rev: v4.4.0
   hooks:
+  - id: check-merge-conflict
   - id: trailing-whitespace
+  - id: check-yaml
+  - id: check-executables-have-shebangs
+  - id: check-toml
+  - id: check-case-conflict
   - id: check-added-large-files
     args: ['--maxkb=1024']
-  - id: check-case-conflict
-  - id: check-merge-conflict
+  - id: detect-private-key
+  - id: forbid-new-submodules
+  - id: pretty-format-json
+    args: ['--autofix', '--no-sort-keys', '--indent=4']
+  - id: end-of-file-fixer
+  - id: mixed-line-ending
 
 - repo: https://github.com/pycqa/isort
-  rev: 5.11.4
+  rev: 5.12.0
   hooks:
   - id: isort
     name: isort (python)
     args: ["--line-length=120", "--profile=black"]
 
 - repo: https://github.com/pycqa/isort
-  rev: 5.11.4
+  rev: 5.12.0
   hooks:
   - id: isort
     name: isort (python) (check)
     args: ["--line-length=120", "--profile=black", "--check"]
 
 - repo: https://github.com/psf/black
-  rev: 22.12.0
+  rev: 23.1.0
   hooks:
   - id: black
     args: ["--line-length=120"]
 
 - repo: https://github.com/psf/black
-  rev: 22.12.0
+  rev: 23.1.0
   hooks:
   - id: black
     name: black (check)

@@ -56,7 +56,6 @@ class MonaiServerRESTTest(unittest.TestCase):
         return data
 
     def test_requestDataStoreInfo(cls):
-
         client = MockServerFriendlyClient(cls.MOCK_SERVER_URL)
         urlToBeTested = "http://localhost:1080/datastore?output=all"
         client.expect(

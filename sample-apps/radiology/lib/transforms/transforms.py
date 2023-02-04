@@ -241,7 +241,6 @@ class VertHeatMap(MapTransform):
         self.gamma = gamma
 
     def __call__(self, data):
-
         for k in self.keys:
             i = data[k].long()
             # one hot if necessary
@@ -293,7 +292,6 @@ class VertebraLocalizationPostProcessing(MapTransform):
         d: Dict = dict(data)
         centroids = []
         for key in self.key_iterator(d):
-
             # Getting centroids
             for l in range(d[key].shape[0] - 1):
                 centroid = {}
@@ -387,7 +385,11 @@ class CropAndCreateSignald(MapTransform):
             ###########
             d["current_label"] = list(d["centroids"][0].values())[0][-4]
 
-            x, y, z, = (
+            (
+                x,
+                y,
+                z,
+            ) = (
                 list(d["centroids"][0].values())[0][-3],
                 list(d["centroids"][0].values())[0][-2],
                 list(d["centroids"][0].values())[0][-1],

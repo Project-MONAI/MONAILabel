@@ -178,7 +178,6 @@ class ImageDataTest(unittest.TestCase):
         self.assertTrue(isEqual)
 
     def test_isEqualSegmentationMeta_when_segmentationmetadata_does_not_exit_add(self):
-
         isEqual = self.parsedImageDataWithMultiVersions.isEqualSegmentationMeta(
             tag="version_4",
             status="self.status_4",
