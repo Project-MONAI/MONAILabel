@@ -23,7 +23,7 @@ import versioneer
 
 def recursive_files(directory, prefix):
     paths = []
-    for (path, _, filenames) in os.walk(directory):
+    for path, _, filenames in os.walk(directory):
         filenames = [f for f in filenames if f != ".gitignore"]
         for filename in filenames:
             paths.append(os.path.join(path, filename))

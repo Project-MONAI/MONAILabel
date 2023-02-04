@@ -91,6 +91,7 @@ class InteractiveSegmentationTransform(Transform):
 #######################################
 #######################################
 
+
 #########################################
 #  Add Background Scribbles from bbox ROI
 #########################################
@@ -159,6 +160,7 @@ class AddBackgroundScribblesFromROId(InteractiveSegmentationTransform):
 
 #########################################
 #########################################
+
 
 #############################
 #  Make Likelihood Transforms
@@ -276,6 +278,7 @@ class MakeLikelihoodFromScribblesGMMd(InteractiveSegmentationTransform):
 #############################
 #############################
 
+
 ############################
 #  Prob Softening Transforms
 ############################
@@ -313,6 +316,7 @@ class SoftenProbSoftmax(InteractiveSegmentationTransform):
 
 ############################
 ############################
+
 
 ########################
 #  Make Unary Transforms

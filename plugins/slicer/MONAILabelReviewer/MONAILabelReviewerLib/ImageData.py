@@ -113,7 +113,6 @@ class ImageData:
         return self.formatTimeStamp(self.timeStamp)
 
     def getTimeOfEditing(self, versionTag="final"):
-
         if self.isSegemented() is False or self.hasSegmentationMeta(tag=versionTag) is False:
             return ""
 
@@ -257,7 +256,6 @@ class ImageData:
         return segmentationMeta.getMeta()
 
     def hasSegmentationMeta(self, tag="final") -> bool:
-
         segmentationMeta = self.getSegmentationMetaByVersionTag(tag=tag)
         if segmentationMeta is None:
             return False
@@ -332,7 +330,6 @@ class ImageData:
             return [*self.segmentationMetaDict.keys()][0]
 
         for tag, segmentationMeta in self.segmentationMetaDict.items():
-
             if segmentationMeta.getStatus() == self.STATUS.APPROVED:
                 return tag
 
@@ -381,7 +378,6 @@ class ImageData:
         return self.prefixVersion + str(index)
 
     def deleteVersionName(self, versionTag: str):
-
         if versionTag not in self.versionNames:
             return
 

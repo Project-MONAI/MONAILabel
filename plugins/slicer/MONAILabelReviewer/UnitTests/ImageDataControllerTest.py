@@ -43,7 +43,6 @@ class ImageDataControllerTest(unittest.TestCase):
 
     @classmethod
     def createImageData(self):
-
         # is segmented
         imageDataTest_1 = ImageData(
             name="6667571",
@@ -104,7 +103,6 @@ class ImageDataControllerTest(unittest.TestCase):
             and imageData_1.getNodeName() == imageData_2.getNodeName()
             and imageData_1.isSegemented() == imageData_2.isSegemented()
         ):
-
             if imageData_1.isSegemented() is False:
                 return True
 

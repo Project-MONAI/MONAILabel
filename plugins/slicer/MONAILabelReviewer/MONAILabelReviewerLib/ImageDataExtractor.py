@@ -155,7 +155,6 @@ class ImageDataExtractor:
 
         selectedImageData = []
         for imagedata in self.nameToImageData.values():
-
             if notSegmented is True and segmented is False and imagedata.isSegemented() is False:
                 selectedImageData.append(imagedata)
                 continue
@@ -251,7 +250,6 @@ class ImageDataExtractor:
         filteredImageDataList = []
 
         for imageData in self.nameToImageData.values():
-
             if imageData.isSegemented() is False:
                 continue
             if approved and imageData.isApproved() is False:

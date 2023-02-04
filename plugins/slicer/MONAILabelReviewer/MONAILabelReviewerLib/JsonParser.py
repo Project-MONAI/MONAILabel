@@ -207,7 +207,6 @@ class JsonParser:
             self.mapIdToImageData[key] = imageData
 
     def jsonToImageData(self, key: str, value: dict) -> ImageData:
-
         imageData = ImageData(
             name=key,
             fileName=self.getFileName(value),

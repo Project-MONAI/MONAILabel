@@ -18,7 +18,6 @@ from monailabel.utils.others.planner import HeuristicPlanner
 
 class TestPlanner(unittest.TestCase):
     def run_planner(self):
-
         base_dir = os.path.realpath(os.path.dirname(os.path.dirname(os.path.dirname(os.path.dirname(__file__)))))
         data_dir = os.path.join(base_dir, "tests", "data")
         studies = os.path.join(data_dir, "dataset", "local", "spleen")

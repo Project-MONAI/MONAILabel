@@ -1,96 +1,96 @@
 {
-  "version": 1,
-  "disable_existing_loggers": false,
-  "formatters": {
-    "single": {
-      "format": "%(message)s"
+    "version": 1,
+    "disable_existing_loggers": false,
+    "formatters": {
+        "single": {
+            "format": "%(message)s"
+        },
+        "simple": {
+            "format": "[%(asctime)s] [%(process)s] [%(threadName)s] [%(levelname)s] (%(name)s:%(lineno)d) - %(message)s"
+        },
+        "debug": {
+            "format": "[%(asctime)s] [%(process)s] [%(threadName)s] [%(levelname)s] (%(name)s:%(lineno)d) - %(message)s"
+        }
     },
-    "simple": {
-      "format": "[%(asctime)s] [%(process)s] [%(threadName)s] [%(levelname)s] (%(name)s:%(lineno)d) - %(message)s"
+    "handlers": {
+        "console": {
+            "class": "logging.StreamHandler",
+            "formatter": "simple"
+        },
+        "task_console": {
+            "class": "logging.StreamHandler",
+            "formatter": "single"
+        },
+        "task_handler": {
+            "class": "logging.handlers.RotatingFileHandler",
+            "formatter": "single",
+            "filename": "${LOGFILE}",
+            "backupCount": 10,
+            "maxBytes": 10485760,
+            "encoding": "utf-8"
+        },
+        "file_handler": {
+            "class": "logging.handlers.RotatingFileHandler",
+            "formatter": "simple",
+            "filename": "${LOGFILE}",
+            "backupCount": 10,
+            "maxBytes": 10485760,
+            "encoding": "utf-8"
+        }
     },
-    "debug": {
-      "format": "[%(asctime)s] [%(process)s] [%(threadName)s] [%(levelname)s] (%(name)s:%(lineno)d) - %(message)s"
+    "root": {
+        "level": "INFO",
+        "propagate": false,
+        "handlers": [
+            "console",
+            "file_handler"
+        ]
+    },
+    "loggers": {
+        "task_train": {
+            "level": "INFO",
+            "propagate": false,
+            "handlers": [
+                "task_console",
+                "task_handler"
+            ]
+        },
+        "task_scoring": {
+            "level": "INFO",
+            "propagate": false,
+            "handlers": [
+                "task_console",
+                "task_handler"
+            ]
+        },
+        "task_batch_infer": {
+            "level": "INFO",
+            "propagate": false,
+            "handlers": [
+                "task_console",
+                "task_handler"
+            ]
+        },
+        "uvicorn": {
+            "level": "INFO",
+            "propagate": false,
+            "handlers": [
+                "console"
+            ]
+        },
+        "uvicorn.access": {
+            "level": "WARNING",
+            "propagate": false,
+            "handlers": [
+                "console"
+            ]
+        },
+        "urllib3.connectionpool": {
+            "level": "ERROR",
+            "propagate": false,
+            "handlers": [
+                "console"
+            ]
+        }
     }
-  },
-  "handlers": {
-    "console": {
-      "class": "logging.StreamHandler",
-      "formatter": "simple"
-    },
-    "task_console": {
-      "class": "logging.StreamHandler",
-      "formatter": "single"
-    },
-    "task_handler": {
-      "class": "logging.handlers.RotatingFileHandler",
-      "formatter": "single",
-      "filename": "${LOGFILE}",
-      "backupCount": 10,
-      "maxBytes": 10485760,
-      "encoding": "utf-8"
-    },
-    "file_handler": {
-      "class": "logging.handlers.RotatingFileHandler",
-      "formatter": "simple",
-      "filename": "${LOGFILE}",
-      "backupCount": 10,
-      "maxBytes": 10485760,
-      "encoding": "utf-8"
-    }
-  },
-  "root": {
-    "level": "INFO",
-    "propagate": false,
-    "handlers": [
-      "console",
-      "file_handler"
-    ]
-  },
-  "loggers": {
-    "task_train": {
-      "level": "INFO",
-      "propagate": false,
-      "handlers": [
-        "task_console",
-        "task_handler"
-      ]
-    },
-    "task_scoring": {
-      "level": "INFO",
-      "propagate": false,
-      "handlers": [
-        "task_console",
-        "task_handler"
-      ]
-    },
-    "task_batch_infer": {
-      "level": "INFO",
-      "propagate": false,
-      "handlers": [
-        "task_console",
-        "task_handler"
-      ]
-    },
-    "uvicorn": {
-      "level": "INFO",
-      "propagate": false,
-      "handlers": [
-        "console"
-      ]
-    },
-    "uvicorn.access": {
-      "level": "WARNING",
-      "propagate": false,
-      "handlers": [
-        "console"
-      ]
-    },
-    "urllib3.connectionpool": {
-      "level": "ERROR",
-      "propagate": false,
-      "handlers": [
-        "console"
-      ]
-    }
-  }
 }

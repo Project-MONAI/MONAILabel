@@ -1,48 +1,48 @@
 {
-  "admin": {
-    "username": "admin",
-    "full_name": "Admin",
-    "email": "admin@monailabel.com",
-    "hashed_password": "$2b$12$CexVjWGTX//w8kt.f3CbGuznFtnlHCVte1EUScwzDCRKMRmltGBDa",
-    "disabled": false,
-    "scopes": [
-      "admin",
-      "reviewer",
-      "annotator",
-      "user"
-    ]
-  },
-  "reviewer": {
-    "username": "reviewer",
-    "full_name": "Reviewer",
-    "email": "reviewer@monailabel.com",
-    "hashed_password": "$2b$12$KJzEvm8iQFOwiLLecBjxg./g/9XLt1VMIDBrEFqJnqEOonxaWZ1y2",
-    "disabled": false,
-    "scopes": [
-      "reviewer",
-      "annotator",
-      "user"
-    ]
-  },
-  "annotator": {
-    "username": "annotator",
-    "full_name": "Annotator",
-    "email": "annotator@monailabel.com",
-    "hashed_password": "$2b$12$6RPP.jL.8GZmP7DtJhWRLO.Exvh6LGUleXq.KLyBv9/leoV8KY8Pm",
-    "disabled": false,
-    "scopes": [
-      "annotator",
-      "user"
-    ]
-  },
-  "user": {
-    "username": "user",
-    "full_name": "User",
-    "email": "user@monailabel.com",
-    "hashed_password": "$2b$12$Py6rSaJyhJIYfgnEOmCzLuQ9Kz7FtMdzjRCimtPUmPspbIPbRH6Dq",
-    "disabled": false,
-    "scopes": [
-      "user"
-    ]
-  }
+    "admin": {
+        "username": "admin",
+        "full_name": "Admin",
+        "email": "admin@monailabel.com",
+        "hashed_password": "$2b$12$CexVjWGTX//w8kt.f3CbGuznFtnlHCVte1EUScwzDCRKMRmltGBDa",
+        "disabled": false,
+        "scopes": [
+            "admin",
+            "reviewer",
+            "annotator",
+            "user"
+        ]
+    },
+    "reviewer": {
+        "username": "reviewer",
+        "full_name": "Reviewer",
+        "email": "reviewer@monailabel.com",
+        "hashed_password": "$2b$12$KJzEvm8iQFOwiLLecBjxg./g/9XLt1VMIDBrEFqJnqEOonxaWZ1y2",
+        "disabled": false,
+        "scopes": [
+            "reviewer",
+            "annotator",
+            "user"
+        ]
+    },
+    "annotator": {
+        "username": "annotator",
+        "full_name": "Annotator",
+        "email": "annotator@monailabel.com",
+        "hashed_password": "$2b$12$6RPP.jL.8GZmP7DtJhWRLO.Exvh6LGUleXq.KLyBv9/leoV8KY8Pm",
+        "disabled": false,
+        "scopes": [
+            "annotator",
+            "user"
+        ]
+    },
+    "user": {
+        "username": "user",
+        "full_name": "User",
+        "email": "user@monailabel.com",
+        "hashed_password": "$2b$12$Py6rSaJyhJIYfgnEOmCzLuQ9Kz7FtMdzjRCimtPUmPspbIPbRH6Dq",
+        "disabled": false,
+        "scopes": [
+            "user"
+        ]
+    }
 }

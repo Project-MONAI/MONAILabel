@@ -21,7 +21,6 @@ Below please have a look on an example of such entry in datastore.json.
 
 class DataStoreKeys:
     def __init__(self):
-
         self.OBJECT = "objects"
         self.FINAL = "final"
         self.ORIGINAL = "original"

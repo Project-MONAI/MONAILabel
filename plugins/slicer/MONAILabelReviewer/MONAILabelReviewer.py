@@ -275,7 +275,6 @@ class MONAILabelReviewerWidget(ScriptedLoadableModuleWidget, VTKObservationMixin
         setToOverwrite = bool(self.ui.btn_overwrite_version.isChecked())
         self.ui.btn_update_version.enabled = True
         if setToOverwrite:
-
             self.ui.btn_save_new_version.setChecked(False)
             self.ui.btn_save_new_version.setStyleSheet(self.colorDarkGrayButton)
 
@@ -543,7 +542,6 @@ class MONAILabelReviewerWidget(ScriptedLoadableModuleWidget, VTKObservationMixin
             self.ui.comboBox_search_reviewer.addItem(str(reviewer))
 
     def cleanDicomStreamSection(self):
-
         self.setCurrentMetaStatus(status="")
         self.setCurrentMetaLevel(level="")
         self.setCurrentComment(comment="")
@@ -1151,7 +1149,6 @@ class MONAILabelReviewerWidget(ScriptedLoadableModuleWidget, VTKObservationMixin
             self.activateBtnApproved(False)
 
     def fillLineEditsWithSegmenationMeta(self, imageData: ImageData, currentLabelVersion: str):
-
         logging.info(f"==== currentLabelVersion: {currentLabelVersion}")
         logging.info(f"==== getName: {imageData.getName()}")
         logging.info(f"==== getClientId: {imageData.getClientId(currentLabelVersion)}")
@@ -1473,7 +1470,6 @@ class MONAILabelReviewerWidget(ScriptedLoadableModuleWidget, VTKObservationMixin
             self.persistEditedSegmentation(newVersionName=imageVersionTag)
 
         elif setToDelete:
-
             if (imageVersionTag == self.LABEL.FINAL) or (imageVersionTag == self.LABEL.ORIGINAL):
                 warningMessage: str = "Initial Segmentation with label 'final' or 'original' \ncannot be deleted."
                 slicer.util.warningDisplay(warningMessage)

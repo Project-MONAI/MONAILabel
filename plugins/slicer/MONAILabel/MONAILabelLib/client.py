@@ -382,12 +382,12 @@ class MONAILabelUtils:
     def encode_multipart_formdata(fields, files):
         limit = "----------lImIt_of_THE_fIle_eW_$"
         lines = []
-        for (key, value) in fields.items():
+        for key, value in fields.items():
             lines.append("--" + limit)
             lines.append('Content-Disposition: form-data; name="%s"' % key)
             lines.append("")
             lines.append(value)
-        for (key, filename) in files.items():
+        for key, filename in files.items():
             lines.append("--" + limit)
             lines.append(f'Content-Disposition: form-data; name="{key}"; filename="{filename}"')
             lines.append("Content-Type: %s" % MONAILabelUtils.get_content_type(filename))
