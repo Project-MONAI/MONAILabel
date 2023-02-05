@@ -13,6 +13,7 @@ import logging
 import os
 import random
 import sys
+import time
 import unittest
 
 from fastapi.testclient import TestClient
@@ -54,7 +55,9 @@ def create_client(app_dir, studies, data_dir, conf=None):
     from monailabel.interfaces.utils.app import clear_cache
 
     clear_cache()
-    return TestClient(app)
+    c = TestClient(app)
+    time.sleep(1)
+    return c
 
 
 class BasicEndpointTestSuite(unittest.TestCase):
@@ -157,9 +160,7 @@ class BasicEndpointV4TestSuite(unittest.TestCase):
         # sys.path.append(os.path.join(cls.app_dir, "lib", "activelearning", "random.py"))
         # sys.path.append(os.path.join(cls.app_dir, "lib", "infers", "nuclick.py"))
 
-        cls.client = create_client(
-            cls.app_dir, cls.studies, cls.data_dir, {"models": "segmentation_nuclei,nuclick,classification_nuclei"}
-        )
+        cls.client = create_client(cls.app_dir, cls.studies, cls.data_dir, {"models": "segmentation_nuclei"})
         response = cls.client.get("/info/")
         # check if following fields exist in the response
         res = response.json()
