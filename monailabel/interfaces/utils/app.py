@@ -13,7 +13,6 @@ import argparse
 import json
 import logging
 import os
-import sys
 from typing import Any, Dict
 
 from monailabel.config import settings
@@ -96,9 +95,6 @@ def run_main():
     studies = args.studies if args.studies else settings.MONAI_LABEL_STUDIES
     logger.debug(f"++ APP_DIR: {app_dir}")
     logger.debug(f"++ STUDIES: {studies}")
-
-    sys.path.append(app_dir)
-    sys.path.append(os.path.join(app_dir, "lib"))
 
     logging.basicConfig(
         level=(logging.DEBUG if args.debug else logging.INFO),

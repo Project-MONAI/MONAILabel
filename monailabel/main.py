@@ -295,8 +295,6 @@ class Main:
             if not os.path.exists(d):
                 os.makedirs(d)
 
-        sys.path.append(args.app)
-        sys.path.append(os.path.join(args.app, "lib"))
         os.environ["PATH"] += os.pathsep + os.path.join(args.app, "bin")
 
         if args.dryrun:

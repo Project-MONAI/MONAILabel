@@ -18,7 +18,6 @@ import os
 import pathlib
 import shutil
 import subprocess
-import sys
 import time
 from typing import Dict
 
@@ -308,7 +307,6 @@ def get_bundle_models(app_dir, conf, conf_key="models"):
                 download(name=name, version=version, bundle_dir=model_dir, source=zoo_source, repo=zoo_repo)
                 if version:
                     shutil.move(os.path.join(model_dir, name), p)
-        sys.path.append(p)
 
         bundles[k] = p
 

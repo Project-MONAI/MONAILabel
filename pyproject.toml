@@ -46,7 +46,7 @@ exclude = '''
 
 [tool.pytest.ini_options]
 log_cli = true
-log_cli_level = "ERROR"
+log_cli_level = "INFO"
 log_cli_format = "[%(threadName)s] [%(levelname)s] (%(name)s:%(lineno)d) %(message)s"
 
 #log_file = "pytest.log"

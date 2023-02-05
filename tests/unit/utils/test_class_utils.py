@@ -10,7 +10,6 @@
 # limitations under the License.
 
 import os
-import sys
 import unittest
 
 import monailabel.interfaces
@@ -52,6 +51,5 @@ class MyTestCase(unittest.TestCase):
         assert c
 
     def test_get_class_of_subclass_from_file(self):
-        sys.path.append(self.app_dir)
         c = get_class_of_subclass_from_file("main", os.path.join(self.app_dir, "main.py"), "MONAILabelApp")
         assert c

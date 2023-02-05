@@ -12,7 +12,6 @@ import json
 import logging
 import os
 import random
-import sys
 import time
 import unittest
 
@@ -71,12 +70,11 @@ class BasicEndpointTestSuite(unittest.TestCase):
 
     @classmethod
     def setUpClass(cls) -> None:
-        sys.path.append(cls.app_dir)
         cls.client = create_client(cls.app_dir, cls.studies, cls.data_dir)
 
     @classmethod
     def tearDownClass(cls) -> None:
-        sys.path.remove(cls.app_dir)
+        pass
 
 
 class DICOMWebEndpointTestSuite(unittest.TestCase):
@@ -91,12 +89,11 @@ class DICOMWebEndpointTestSuite(unittest.TestCase):
 
     @classmethod
     def setUpClass(cls) -> None:
-        sys.path.append(cls.app_dir)
         cls.client = create_client(cls.app_dir, cls.studies, cls.data_dir)
 
     @classmethod
     def tearDownClass(cls) -> None:
-        sys.path.remove(cls.app_dir)
+        pass
 
 
 class BasicEndpointV2TestSuite(unittest.TestCase):
@@ -110,14 +107,13 @@ class BasicEndpointV2TestSuite(unittest.TestCase):
 
     @classmethod
     def setUpClass(cls) -> None:
-        sys.path.append(cls.app_dir)
         cls.client = create_client(
             cls.app_dir, cls.studies, cls.data_dir, {"models": "deepgrow_2d,deepgrow_3d,segmentation_spleen,deepedit"}
         )
 
     @classmethod
     def tearDownClass(cls) -> None:
-        sys.path.remove(cls.app_dir)
+        pass
 
 
 class BasicEndpointV3TestSuite(unittest.TestCase):
@@ -138,12 +134,11 @@ class BasicEndpointV3TestSuite(unittest.TestCase):
             "skip_scoring": "false",
             "models": "segmentation_spleen",
         }
-        sys.path.append(cls.app_dir)
         cls.client = create_client(cls.app_dir, cls.studies, cls.data_dir, conf=conf)
 
     @classmethod
     def tearDownClass(cls) -> None:
-        sys.path.remove(cls.app_dir)
+        pass
 
 
 class BasicEndpointV4TestSuite(unittest.TestCase):
@@ -156,10 +151,6 @@ class BasicEndpointV4TestSuite(unittest.TestCase):
 
     @classmethod
     def setUpClass(cls) -> None:
-        sys.path.append(cls.app_dir)
-        # sys.path.append(os.path.join(cls.app_dir, "lib", "activelearning", "random.py"))
-        # sys.path.append(os.path.join(cls.app_dir, "lib", "infers", "nuclick.py"))
-
         cls.client = create_client(cls.app_dir, cls.studies, cls.data_dir, {"models": "segmentation_nuclei"})
         response = cls.client.get("/info/")
         # check if following fields exist in the response
@@ -168,7 +159,7 @@ class BasicEndpointV4TestSuite(unittest.TestCase):
 
     @classmethod
     def tearDownClass(cls) -> None:
-        sys.path.remove(cls.app_dir)
+        pass
 
 
 class BasicDetectionBundleTestSuite(unittest.TestCase):
@@ -182,14 +173,13 @@ class BasicDetectionBundleTestSuite(unittest.TestCase):
 
     @classmethod
     def setUpClass(cls) -> None:
-        sys.path.append(cls.app_dir)
         cls.client = create_client(
             cls.app_dir, cls.studies, cls.data_dir, {"models": "lung_nodule_ct_detection", "tracking": False}
         )
 
     @classmethod
     def tearDownClass(cls) -> None:
-        sys.path.remove(cls.app_dir)
+        pass
 
 
 class BasicBundleTestSuite(unittest.TestCase):
@@ -203,12 +193,11 @@ class BasicBundleTestSuite(unittest.TestCase):
 
     @classmethod
     def setUpClass(cls) -> None:
-        sys.path.append(cls.app_dir)
         cls.client = create_client(cls.app_dir, cls.studies, cls.data_dir, {"models": "spleen_ct_segmentation"})
 
     @classmethod
     def tearDownClass(cls) -> None:
-        sys.path.remove(cls.app_dir)
+        pass
 
 
 class BasicBundleV2TestSuite(unittest.TestCase):
@@ -229,9 +218,8 @@ class BasicBundleV2TestSuite(unittest.TestCase):
             "epistemic_dropout": 0.2,
             "models": "spleen_ct_segmentation",
         }
-        sys.path.append(cls.app_dir)
         cls.client = create_client(cls.app_dir, cls.studies, cls.data_dir, conf=conf)
 
     @classmethod
     def tearDownClass(cls) -> None:
-        sys.path.remove(cls.app_dir)
+        pass

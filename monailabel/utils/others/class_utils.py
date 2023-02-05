@@ -14,6 +14,8 @@ import importlib.util
 import inspect
 import logging
 import os
+import sys
+from distutils.util import strtobool
 from typing import List
 
 from monailabel.interfaces.exception import MONAILabelError, MONAILabelException
@@ -21,10 +23,28 @@ from monailabel.interfaces.exception import MONAILabelError, MONAILabelException
 logger = logging.getLogger(__name__)
 
 
+def unload_module(name):
+    modules = []
+    for m in sorted(sys.modules):
+        if m == name or m.startswith(f"{name}."):
+            modules.append(m)
+
+    if modules and strtobool(os.environ.get("MONAI_LABEL_RELOAD_APP_LIB", "true")):
+        logger.info(f"Remove/Reload previous Modules: {modules}")
+        for m in modules:
+            del sys.modules[m]
+
+
 def module_from_file(module_name, file_path):
+    app_dir = os.path.dirname(file_path)
+    sys.path.insert(0, app_dir)
+    unload_module("lib")
+
     spec = importlib.util.spec_from_file_location(module_name, file_path)
     module = importlib.util.module_from_spec(spec)
     spec.loader.exec_module(module)
+
+    sys.path.remove(app_dir)
     logger.debug(f"module: {module}")
     return module
 
