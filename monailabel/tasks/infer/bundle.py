@@ -12,6 +12,7 @@
 import json
 import logging
 import os
+import sys
 from typing import Any, Callable, Dict, Optional, Sequence, Union
 
 from monai.bundle import ConfigItem, ConfigParser
@@ -22,6 +23,7 @@ from monailabel.interfaces.tasks.infer_v2 import InferType
 from monailabel.tasks.infer.basic_infer import BasicInferTask
 from monailabel.transform.post import Restored
 from monailabel.transform.pre import LoadImageTensord
+from monailabel.utils.others.class_utils import unload_module
 from monailabel.utils.others.generic import strtobool
 
 logger = logging.getLogger(__name__)
@@ -96,6 +98,10 @@ class BundleInferTask(BasicInferTask):
             logger.warning(f"Ignore {path} as there is no infer config {self.const.configs()} exists")
             return
 
+        self.bundle_path = path
+        sys.path.insert(0, self.bundle_path)
+        unload_module("scripts")
+
         self.bundle_config = ConfigParser()
         self.bundle_config.read_config(os.path.join(path, "configs", config_paths[0]))
         self.bundle_config.config.update({self.const.key_bundle_root(): path})  # type: ignore
@@ -112,6 +118,7 @@ class BundleInferTask(BasicInferTask):
                 logger.warning(
                     f"Ignore {path} as neither {self.const.model_pytorch()} nor {self.const.model_torchscript()} exists"
                 )
+                sys.path.remove(self.bundle_path)
                 return
 
         # https://docs.monai.io/en/latest/mb_specification.html#metadata-json-file
@@ -142,6 +149,7 @@ class BundleInferTask(BasicInferTask):
         )
         self.valid = True
         self.version = metadata.get("version")
+        sys.path.remove(self.bundle_path)
 
     def is_valid(self) -> bool:
         return self.valid
@@ -152,6 +160,8 @@ class BundleInferTask(BasicInferTask):
         return i
 
     def pre_transforms(self, data=None) -> Sequence[Callable]:
+        sys.path.insert(0, self.bundle_path)
+        unload_module("scripts")
         self._update_device(data)
 
         pre = []
@@ -169,30 +179,47 @@ class BundleInferTask(BasicInferTask):
                 else:
                     res.append(t)
             pre = res
+
+        sys.path.remove(self.bundle_path)
         return pre
 
     def inferer(self, data=None) -> Inferer:
+        sys.path.insert(0, self.bundle_path)
+        unload_module("scripts")
         self._update_device(data)
 
+        i = None
         for k in self.const.key_inferer():
             if self.bundle_config.get(k):
-                return self.bundle_config.get_parsed_content(k, instantiate=True)  # type: ignore
-        return SimpleInferer()
+                i = self.bundle_config.get_parsed_content(k, instantiate=True)  # type: ignore
+                break
+
+        sys.path.remove(self.bundle_path)
+        return i if i is not None else SimpleInferer()
 
     def detector(self, data=None) -> Optional[Callable]:
+        sys.path.insert(0, self.bundle_path)
+        unload_module("scripts")
         self._update_device(data)
 
+        d = None
         for k in self.const.key_detector():
             if self.bundle_config.get(k):
                 detector = self.bundle_config.get_parsed_content(k, instantiate=True)  # type: ignore
                 for k in self.const.key_detector_ops():
                     self.bundle_config.get_parsed_content(k, instantiate=True)
+
                 if detector is None or callable(detector):
-                    return detector  # type: ignore
+                    d = detector  # type: ignore
+                    break
                 raise ValueError("Invalid Detector type;  It's not callable")
-        return None
+
+        sys.path.remove(self.bundle_path)
+        return d
 
     def post_transforms(self, data=None) -> Sequence[Callable]:
+        sys.path.insert(0, self.bundle_path)
+        unload_module("scripts")
         self._update_device(data)
 
         post = []
@@ -204,6 +231,8 @@ class BundleInferTask(BasicInferTask):
 
         if self.add_post_restore:
             post.append(Restored(keys=self.key_pred, ref_image=self.key_image))
+
+        sys.path.remove(self.bundle_path)
         return post
 
     def _get_type(self, name, type):

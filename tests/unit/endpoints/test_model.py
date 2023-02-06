@@ -9,4 +9,26 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-from .random import WSIRandom
+import time
+import unittest
+
+from .context import BasicEndpointTestSuite
+
+
+class EndPointModel(BasicEndpointTestSuite):
+    def test_info(self):
+        model = "deepedit"
+
+        response = self.client.get(f"/model/info/{model}")
+        assert response.status_code == 200
+
+    def test_download(self):
+        model = "deepedit"
+
+        response = self.client.get(f"/model/{model}")
+        assert response.status_code == 200
+        time.sleep(1)
+
+
+if __name__ == "__main__":
+    unittest.main()

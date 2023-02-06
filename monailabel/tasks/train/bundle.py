@@ -13,6 +13,7 @@ import json
 import logging
 import os
 import subprocess
+import sys
 from typing import Dict, Optional, Sequence
 
 import monai.bundle
@@ -24,6 +25,7 @@ from monai.handlers import CheckpointLoader
 from monailabel.config import settings
 from monailabel.interfaces.datastore import Datastore
 from monailabel.interfaces.tasks.train import TrainTask
+from monailabel.utils.others.class_utils import unload_module
 
 logger = logging.getLogger(__name__)
 
@@ -266,6 +268,9 @@ class BundleTrainTask(TrainTask):
                 self.bundle_config.set(v, k)
             ConfigParser.export_config_file(self.bundle_config.config, train_path, indent=2)  # type: ignore
 
+            sys.path.insert(0, self.bundle_path)
+            unload_module("scripts")
+
             env = os.environ.copy()
             env["CUDA_VISIBLE_DEVICES"] = ",".join([str(g) for g in gpus])
             logger.info(f"Using CUDA_VISIBLE_DEVICES: {env['CUDA_VISIBLE_DEVICES']}")
@@ -293,7 +298,12 @@ class BundleTrainTask(TrainTask):
 
             self.run_multi_gpu(request, cmd, env)
         else:
+            sys.path.insert(0, self.bundle_path)
+            unload_module("scripts")
+
             self.run_single_gpu(request, overrides)
+
+        sys.path.remove(self.bundle_path)
 
         logger.info("Training Finished....")
         return {}
