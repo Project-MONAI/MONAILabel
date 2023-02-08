@@ -13,6 +13,7 @@ import os
 import unittest
 
 import torch
+from parameterized import parameterized
 
 from monailabel.config import settings
 from monailabel.interfaces.app import MONAILabelApp
@@ -85,29 +86,15 @@ class TestApp(unittest.TestCase):
         except:
             pass
 
-    def test_init_xnat_datastores(self):
+    @parameterized.expand(["xnat", "dsa", ""])
+    def test_init_datastores(self, r):
         try:
-            settings.MONAI_LABEL_DATASTORE = "xnat"
+            settings.MONAI_LABEL_DATASTORE = r
             self.app.init_remote_datastore()
         except:
             pass
         finally:
             settings.MONAI_LABEL_DATASTORE = ""
-
-    def test_init_dsa_datastores(self):
-        try:
-            settings.MONAI_LABEL_DATASTORE = "dsa"
-            self.app.init_remote_datastore()
-        except:
-            pass
-        finally:
-            settings.MONAI_LABEL_DATASTORE = ""
-
-    def test_init_dicomweb_datastores(self):
-        try:
-            self.app.init_remote_datastore()
-        except:
-            pass
 
 
 if __name__ == "__main__":
