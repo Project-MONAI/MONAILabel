@@ -30,8 +30,7 @@ from dicomweb_client import DICOMwebClient
 # added to support connecting to DICOM Store Google Cloud
 from dicomweb_client.ext.gcp.session_utils import create_session_from_gcp_credentials
 from dicomweb_client.session_utils import create_session_from_user_pass
-from monai.apps import download_and_extract, download_url
-from monai.data import partition_dataset
+from monai.apps import download_and_extract
 from timeloop import Timeloop
 
 from monailabel.config import settings
@@ -387,12 +386,6 @@ class MONAILabelApp:
     def datastore(self) -> Datastore:
         return self._datastore
 
-    @staticmethod
-    def partition_datalist(datalist, val_split, shuffle=True):
-        if val_split > 0.0:
-            return partition_dataset(datalist, ratios=[(1 - val_split), val_split], shuffle=shuffle)
-        return datalist, []
-
     def train(self, request):
         """
         Run Training.  User APP has to implement this method to run training
@@ -594,18 +587,6 @@ class MONAILabelApp:
 
     def sessions(self):
         return self._sessions
-
-    @staticmethod
-    def download(resources):
-        if not resources:
-            return
-
-        for resource in resources:
-            if not os.path.exists(resource[0]):
-                os.makedirs(os.path.dirname(resource[0]), exist_ok=True)
-                logger.info(f"Downloading resource: {resource[0]} from {resource[1]}")
-                download_url(resource[1], resource[0])
-                time.sleep(1)
 
     def infer_wsi(self, request, datastore=None):
         model = request.get("model")

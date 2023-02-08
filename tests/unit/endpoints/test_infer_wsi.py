@@ -18,7 +18,7 @@ from .context import BasicEndpointV4TestSuite
 
 
 class EndPointWSIInfer(BasicEndpointV4TestSuite):
-    def test_segmentation(self):
+    def test_segmentation_asap(self):
         if not torch.cuda.is_available():
             return
 
@@ -27,6 +27,30 @@ class EndPointWSIInfer(BasicEndpointV4TestSuite):
         wsi = {"level": 0, "size": [2000, 2000], "pos": [2000, 4000]}
 
         response = self.client.post(f"/infer/wsi/{model}?image={image}&output=asap", json=wsi)
+        assert response.status_code == 200
+        time.sleep(1)
+
+    def test_segmentation_dsa(self):
+        if not torch.cuda.is_available():
+            return
+
+        model = "segmentation_nuclei"
+        image = "JP2K-33003-1"
+        wsi = {"level": 0, "size": [2000, 2000], "pos": [2000, 4000], "max_workers": 1}
+
+        response = self.client.post(f"/infer/wsi/{model}?image={image}&output=dsa", json=wsi)
+        assert response.status_code == 200
+        time.sleep(1)
+
+    def test_segmentation_json(self):
+        if not torch.cuda.is_available():
+            return
+
+        model = "segmentation_nuclei"
+        image = "JP2K-33003-1"
+        wsi = {"level": 0, "size": [2000, 2000], "pos": [2000, 4000]}
+
+        response = self.client.post(f"/infer/wsi/{model}?image={image}&output=json", json=wsi)
         assert response.status_code == 200
         time.sleep(1)
 
