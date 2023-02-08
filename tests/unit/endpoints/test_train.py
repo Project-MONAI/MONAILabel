@@ -17,7 +17,6 @@ import torch
 from .context import BasicBundleTestSuite, BasicDetectionBundleTestSuite, BasicEndpointV2TestSuite
 
 
-@unittest.skip
 class TestEndPointTrain(BasicEndpointV2TestSuite):
     def test_001_train(self):
         if not torch.cuda.is_available():
@@ -84,7 +83,6 @@ class TestEndPointTrain(BasicEndpointV2TestSuite):
         self.client.delete("/train/")
 
 
-@unittest.skip
 class TestBundleTrainTask(BasicBundleTestSuite):
     def test_spleen_bundle_train(self):
         if not torch.cuda.is_available():
