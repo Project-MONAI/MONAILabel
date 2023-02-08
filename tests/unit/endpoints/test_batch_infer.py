@@ -17,7 +17,7 @@ from .context import BasicEndpointTestSuite
 
 
 class EndPointScoring(BasicEndpointTestSuite):
-    def test_batch_infer(self):
+    def test_001_batch_infer(self):
         if not torch.cuda.is_available():
             return
 
@@ -26,11 +26,21 @@ class EndPointScoring(BasicEndpointTestSuite):
         response = self.client.post(f"/batch/infer/{model}?images={images}&run_sync=true")
         assert response.status_code == 200
 
-    def test_status(self):
+    def test_002_status(self):
         self.client.get("/batch/infer/")
 
-    def test_stop(self):
+    def test_003_stop(self):
         self.client.delete("/batch/infer/")
+
+    def test_004_batch_infer(self):
+        if not torch.cuda.is_available():
+            return
+
+        model = "deepedit_seg"
+        images = "all"
+        params = {"max_workers": 2}
+        response = self.client.post(f"/batch/infer/{model}?images={images}&run_sync=true", json=params)
+        assert response.status_code == 200
 
 
 if __name__ == "__main__":
