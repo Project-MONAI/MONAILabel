@@ -35,27 +35,32 @@ class TestApp(unittest.TestCase):
         settings.MONAI_LABEL_STUDIES = cls.studies
         settings.MONAI_LABEL_DATASTORE_AUTO_RELOAD = False
 
-        cls.app: MONAILabelApp = app_instance(
-            app_dir=cls.app_dir,
-            studies=cls.studies,
-            conf={
-                "preload": "true",
-                "models": "segmentation_spleen",
-            },
-        )
+        if torch.cuda.is_available():
+            cls.app: MONAILabelApp = app_instance(
+                app_dir=cls.app_dir,
+                studies=cls.studies,
+                conf={
+                    "preload": "true",
+                    "models": "segmentation_spleen",
+                },
+            )
 
     @classmethod
     def tearDownClass(cls) -> None:
         pass
 
     def test_app_init(self):
+        if not self.app:
+            return
         self.app.on_init_complete()
 
     def test_cleanup_sessions(self):
+        if not self.app:
+            return
         self.app.cleanup_sessions()
 
     def test_async_batch_infer(self):
-        if not torch.cuda.is_available():
+        if not self.app:
             return
 
         model = "segmentation_spleen"
@@ -71,7 +76,7 @@ class TestApp(unittest.TestCase):
             pass
 
     def test_async_train(self):
-        if not torch.cuda.is_available():
+        if not self.app:
             return
 
         model = "segmentation_spleen"
@@ -88,6 +93,9 @@ class TestApp(unittest.TestCase):
 
     @parameterized.expand(["xnat", "dsa", ""])
     def test_init_datastores(self, r):
+        if not self.app:
+            return
+
         try:
             settings.MONAI_LABEL_DATASTORE = r
             self.app.init_remote_datastore()
