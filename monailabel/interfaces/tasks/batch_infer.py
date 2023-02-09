@@ -55,7 +55,10 @@ class BatchInferTask:
     def __call__(self, request, datastore: Datastore, infer: Callable):
         image_ids = sorted(self.get_images(request, datastore))
         max_batch_size = request.get("max_batch_size", 0)
-        logger.info(f"Total number of images for batch inference: {len(image_ids)}; Max Batch Size: {max_batch_size}")
+        label_tag = request.get("label_tag", DefaultLabelTag.ORIGINAL)
+        logger.info(
+            f"Total number of images for batch inference: {len(image_ids)}; Max Batch Size: {max_batch_size}; Label Tag: {label_tag}"
+        )
 
         start = time.time()
         if max_batch_size > 0:
@@ -77,7 +80,7 @@ class BatchInferTask:
 
             req["image"] = image_id
             req["save_label"] = True
-            req["label_tag"] = DefaultLabelTag.ORIGINAL
+            req["label_tag"] = label_tag
             req["logging"] = request.get("logging", "INFO")
             req["device"] = device_ids[idx % len(device_ids)]
 
