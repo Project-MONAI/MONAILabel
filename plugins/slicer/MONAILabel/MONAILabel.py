@@ -1264,8 +1264,8 @@ class MONAILabelWidget(ScriptedLoadableModuleWidget, VTKObservationMixin):
                 try:
                     datastore = self.logic.datastore()
                     label_info = datastore["objects"][image_id]["labels"]["original"]["info"]
-                    labels = label_info.get ("params", {}).get("label_names", {})
-                    
+                    labels = label_info.get("params", {}).get("label_names", {})
+
                     if labels:
                         # labels are available in original label info
                         labels = labels.keys()
@@ -1273,7 +1273,7 @@ class MONAILabelWidget(ScriptedLoadableModuleWidget, VTKObservationMixin):
                         # labels not available
                         # assume labels in app info are valid for original label file
                         labels = self.logic.info().get("labels")
-                        
+
                     # ext = datastore['objects'][image_id]['labels']['original']['ext']
                     maskFile = self.logic.download_label(image_id, "original")
                     self.updateSegmentationMask(maskFile, list(labels))
