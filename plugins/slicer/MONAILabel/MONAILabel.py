@@ -1263,8 +1263,17 @@ class MONAILabelWidget(ScriptedLoadableModuleWidget, VTKObservationMixin):
             if slicer.util.settingsValue("MONAILabel/originalLabel", True, converter=slicer.util.toBool):
                 try:
                     datastore = self.logic.datastore()
-                    labels = datastore["objects"][image_id]["labels"]["original"]["info"]["params"]["label_names"]
-                    labels = labels.keys()
+                    label_info = datastore["objects"][image_id]["labels"]["original"]["info"]
+                    labels = label_info.get ("params", {}).get("label_names", {})
+                    
+                    if labels:
+                        # labels are available in original label info
+                        labels = labels.keys()
+                    else:
+                        # labels not available
+                        # assume labels in app info are valid for original label file
+                        labels = self.logic.info().get("labels")
+                        
                     # ext = datastore['objects'][image_id]['labels']['original']['ext']
                     maskFile = self.logic.download_label(image_id, "original")
                     self.updateSegmentationMask(maskFile, list(labels))
