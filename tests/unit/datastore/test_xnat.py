@@ -17,34 +17,22 @@ from monailabel.datastore.xnat import XNATDatastore
 base_dir = os.path.realpath(os.path.dirname(os.path.dirname(os.path.dirname(__file__))))
 
 
-class ProjectResponse():
+class ProjectResponse:
     def json(self):
-        return {
-            "ResultSet": {
-                "Result": [
-                    {"ID": "project1"}
-                ]
-            }
-        }
+        return {"ResultSet": {"Result": [{"ID": "project1"}]}}
 
 
-class ExperimentResponse():
+class ExperimentResponse:
     def json(self):
-        return {
-            "ResultSet": {
-                "Result": [
-                    {"ID": "experiment1"}
-                ]
-            }
-        }
+        return {"ResultSet": {"Result": [{"ID": "experiment1"}]}}
 
 
-xml_response = '''<?xml version="1.0" encoding="UTF-8" standalone="yes"?>
+xml_response = """<?xml version="1.0" encoding="UTF-8" standalone="yes"?>
 <xnat:MRSession xmlns:xnat="http://nrg.wustl.edu/xnat">
 <xnat:subject_ID>CENTRAL_S00358</xnat:subject_ID>
 <xnat:scan ID="3" type="AX FRFSE-XL T2"/>
 </xnat:MRSession>
-'''
+"""
 
 
 class XNATDatastorMocked(XNATDatastore):
@@ -58,7 +46,7 @@ class XNATDatastorMocked(XNATDatastore):
         if "experiment1?format=xml" in url:
             return argparse.Namespace(content=xml_response)
         if "format=zip" in url:
-            with open(os.path.join(base_dir, "downloads", "dicom.zip"), mode='rb') as file:
+            with open(os.path.join(base_dir, "downloads", "dicom.zip"), mode="rb") as file:
                 content = file.read()
             return argparse.Namespace(ok=True, content=content)
         if "format=xml" in url:
