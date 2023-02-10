@@ -284,7 +284,7 @@ class XNATDatastore(Datastore):
 
         # Log in to XNAT
         url = f"{self.api_url}/data/JSESSION?XNAT_CSRF={self.xnat_csrf}"
-        login_response = self.xnat_session.post(url, auth=self.auth, allow_redirects=True)
+        login_response = self._request_post(url)
         if not login_response.ok:
             logger.error("XNAT:: Could not log in to XNAT")
             raise Exception("Could not log in to XNAT")
@@ -293,6 +293,9 @@ class XNATDatastore(Datastore):
 
     def _request_get(self, url):
         return self.xnat_session.get(url, allow_redirects=True)
+
+    def _request_post(self, url):
+        return self.xnat_session.post(url, auth=self.auth, allow_redirects=True)
 
 
 def main():
