@@ -27,7 +27,7 @@ def run_main():
         extractall(filepath=downloaded_dataset_file, output_dir=TEST_DATA)
 
     downloaded_pathology_file = os.path.join(TEST_DIR, "downloads", "JP2K-33003-1.svs")
-    pathology_url = "https://demo.kitware.com/histomicstk/api/v1/item/5d5c07509114c049342b66f8/download"
+    pathology_url = "https://github.com/Project-MONAI/MONAILabel/releases/download/data/JP2K-33003-1.svs"
     if not os.path.exists(downloaded_pathology_file):
         download_url(url=pathology_url, filepath=downloaded_pathology_file)
     if not os.path.exists(os.path.join(TEST_DATA, "pathology")):
@@ -49,6 +49,11 @@ def run_main():
     if not os.path.exists(os.path.join(TEST_DATA, "detection")):
         os.makedirs(os.path.join(TEST_DATA, "detection"))
         extractall(filepath=downloaded_detection_file, output_dir=os.path.join(TEST_DATA, "detection"))
+
+    downloaded_dicom_file = os.path.join(TEST_DIR, "downloads", "dicom.zip")
+    dicom_url = "https://github.com/Project-MONAI/MONAILabel/releases/download/data/dicom.zip"
+    if not os.path.exists(downloaded_dicom_file):
+        download_url(url=dicom_url, filepath=downloaded_dicom_file)
 
 
 if __name__ == "__main__":

@@ -180,8 +180,9 @@ class CVATDatastore(LocalDatastore):
         return labelmap
 
     def download_from_cvat(self, max_retry_count=5, retry_wait_time=10):
-        if self.task_status() != "completed":
-            logger.info("No Tasks exists with completed status to refresh/download the final labels")
+        status = self.task_status()
+        if status != "completed":
+            logger.info(f"No Tasks with completed status (current: {status}) to refresh/download the final labels")
             return None
 
         project_id = self.get_cvat_project_id(create=False)
@@ -239,6 +240,7 @@ class CVATDatastore(LocalDatastore):
         return None
 
 
+"""
 def main():
     from pathlib import Path
 
@@ -285,3 +287,4 @@ def main():
 
 if __name__ == "__main__":
     main()
+"""

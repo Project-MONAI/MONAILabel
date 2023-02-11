@@ -298,6 +298,7 @@ class XNATDatastore(Datastore):
         return self.xnat_session.post(url, auth=self.auth, allow_redirects=True)
 
 
+"""
 def main():
     from monai.transforms import LoadImage
 
@@ -332,3 +333,4 @@ def main():
 
 if __name__ == "__main__":
     main()
+"""

@@ -252,6 +252,7 @@ class DSADatastore(Datastore):
         return self.datalist()
 
 
+"""
 def main():
     import json
 
@@ -316,3 +317,4 @@ def main():
 
 if __name__ == "__main__":
     main()
+"""
