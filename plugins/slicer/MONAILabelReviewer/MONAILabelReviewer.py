@@ -1294,7 +1294,7 @@ class MONAILabelReviewerWidget(ScriptedLoadableModuleWidget, VTKObservationMixin
 
     # Sub Section: Display version selection option
     def activateSegmentatorEditor(self, activated=False):
-        self.segmentEditorWidget.setMasterVolumeNodeSelectorVisible(activated)
+        self.segmentEditorWidget.setSourceVolumeNodeSelectorVisible(activated)
         self.segmentEditorWidget.setSegmentationNodeSelectorVisible(activated)
         self.segmentEditorWidget.setSwitchToSegmentationsButtonVisible(activated)
         self.segmentEditorWidget.unorderedEffectsVisible = activated
