@@ -9,13 +9,13 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
+import glob
 import json
 import logging
 import os
 import subprocess
 import sys
 from typing import Dict, Optional, Sequence
-import glob
 
 import monai.bundle
 import torch
@@ -83,6 +83,7 @@ class BundleConstants:
     def key_loadable_configs(self) -> Sequence[str]:
         return ["loadable_params"]
 
+
 class BundleTrainTask(TrainTask):
     def __init__(
         self,
@@ -146,11 +147,13 @@ class BundleTrainTask(TrainTask):
             else ["None", "mlflow"],
             "tracking_uri": settings.MONAI_LABEL_TRACKING_URI,
             "tracking_experiment_name": "",
-            "models": pytorch_models
+            "models": pytorch_models,
         }
 
         for k in self.const.key_loadable_configs():
-            loadable_configs = {p:self.bundle_config[p] for p in self.bundle_config[k]} if self.bundle_config.get(k) else {}
+            loadable_configs = (
+                {p: self.bundle_config[p] for p in self.bundle_config[k]} if self.bundle_config.get(k) else {}
+            )
             config_options.update(loadable_configs)
 
         return config_options
@@ -192,7 +195,6 @@ class BundleTrainTask(TrainTask):
         return train_datalist, val_datalist
 
     def _load_checkpoint(self, model_pytorch, pretrained, train_handlers):
-
         load_path = model_pytorch if pretrained else None
         if os.path.exists(load_path):
             logger.info(f"Add Checkpoint Loader for Path: {load_path}")
