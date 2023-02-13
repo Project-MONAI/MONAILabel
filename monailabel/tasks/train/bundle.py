@@ -130,7 +130,7 @@ class BundleTrainTask(TrainTask):
         return i
 
     def config(self):
-        # Add models and param optiom to infer option panel
+        # Add models and param optiom to train option panel
         pytorch_models = [os.path.basename(p) for p in glob.glob(os.path.join(self.bundle_path, "models", "*.pt"))]
         pytorch_models.sort(key=len)
 
@@ -150,7 +150,7 @@ class BundleTrainTask(TrainTask):
         }
 
         for k in self.const.key_loadable_configs():
-            loadable_configs = {p:self.bundle_config[p] for p in self.bundle_config["loadable_params"]} if self.bundle_config.get(k) else {}
+            loadable_configs = {p:self.bundle_config[p] for p in self.bundle_config[k]} if self.bundle_config.get(k) else {}
             config_options.update(loadable_configs)
 
         return config_options

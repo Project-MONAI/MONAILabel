@@ -151,11 +151,11 @@ class BundleInferTask(BasicInferTask):
             **kwargs,
         )
 
-        # Add models and param optiom to infer option panel
+        # Add models options if more than one model is provided by bundle.
         pytorch_models = [os.path.basename(p) for p in glob.glob(os.path.join(path, "models", "*.pt"))]
         pytorch_models.sort(key=len)
         self._config.update({"models": pytorch_models})
-        # Add bundle's loadable params to MONAI Label config
+        # Add bundle's loadable params to MONAI Label config, load exposed keys and params to options panel
         for k in self.const.key_loadable_configs():
             self.loadable_configs = {p:self.bundle_config[p] for p in self.bundle_config[k]} if self.bundle_config.get(k) else {}
             self._config.update(self.loadable_configs)
