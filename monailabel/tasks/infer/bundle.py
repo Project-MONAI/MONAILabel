@@ -14,6 +14,7 @@ import logging
 import os
 import sys
 from typing import Any, Callable, Dict, Optional, Sequence, Union
+import glob
 
 from monai.bundle import ConfigItem, ConfigParser
 from monai.inferers import Inferer, SimpleInferer
@@ -66,6 +67,8 @@ class BundleConstants:
     def key_detector_ops(self) -> Sequence[str]:
         return ["detector_ops"]
 
+    def key_loadable_configs(self) -> Sequence[str]:
+        return ["loadable_params"]
 
 class BundleInferTask(BasicInferTask):
     """
@@ -132,7 +135,7 @@ class BundleInferTask(BasicInferTask):
         description = metadata.get("description")
         spatial_shape = image.get("spatial_shape")
         dimension = len(spatial_shape) if spatial_shape else 3
-        type = self._get_type(os.path.basename(path), type)
+        type = self._get_type(os.path.basename(path), type) 
 
         # if detection task, set post restore to False by default.
         self.add_post_restore = False if type == "detection" else add_post_restore
@@ -147,6 +150,16 @@ class BundleInferTask(BasicInferTask):
             preload=strtobool(conf.get("preload", "false")),
             **kwargs,
         )
+
+        # Add models and param optiom to infer option panel
+        pytorch_models = [os.path.basename(p) for p in glob.glob(os.path.join(path, "models", "*.pt"))]
+        pytorch_models.sort(key=len)
+        self._config.update({"models": pytorch_models})
+        # Add bundle's loadable params to MONAI Label config
+        for k in self.const.key_loadable_configs():
+            self.loadable_configs = {p:self.bundle_config[p] for p in self.bundle_config[k]} if self.bundle_config.get(k) else {}
+            self._config.update(self.loadable_configs)
+
         self.valid = True
         self.version = metadata.get("version")
         sys.path.remove(self.bundle_path)
@@ -159,7 +172,10 @@ class BundleInferTask(BasicInferTask):
         i["version"] = self.version
         return i
 
-    def pre_transforms(self, data=None) -> Sequence[Callable]:
+    def pre_transforms(self, request, data=None) -> Sequence[Callable]:
+        # Update bundle parameters based on user's option
+        self.bundle_config.update({k:request[k] for k in self.loadable_configs.keys()}) 
+        
         sys.path.insert(0, self.bundle_path)
         unload_module("scripts")
         self._update_device(data)
