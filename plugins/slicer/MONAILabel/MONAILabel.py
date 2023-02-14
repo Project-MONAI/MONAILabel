@@ -358,7 +358,7 @@ class MONAILabelWidget(ScriptedLoadableModuleWidget, VTKObservationMixin):
         # embedded segment editor
         self.ui.embeddedSegmentEditorWidget.setMRMLScene(slicer.mrmlScene)
         self.ui.embeddedSegmentEditorWidget.setSegmentationNodeSelectorVisible(False)
-        self.ui.embeddedSegmentEditorWidget.setMasterVolumeNodeSelectorVisible(False)
+        self.ui.embeddedSegmentEditorWidget.setSourceVolumeNodeSelectorVisible(False)
         self.ui.embeddedSegmentEditorWidget.setMRMLSegmentEditorNode(self.logic.get_segment_editor_node())
 
         # options section
@@ -1303,7 +1303,7 @@ class MONAILabelWidget(ScriptedLoadableModuleWidget, VTKObservationMixin):
         # Create Empty Segments for all labels for this node
         self.createSegmentNode()
         self.ui.embeddedSegmentEditorWidget.setSegmentationNode(self._segmentNode)
-        self.ui.embeddedSegmentEditorWidget.setMasterVolumeNode(self._volumeNode)
+        self.ui.embeddedSegmentEditorWidget.setSourceVolumeNode(self._volumeNode)
 
         self.createScribblesROINode()
         self.ui.scribblesPlaceWidget.setCurrentNode(self._scribblesROINode)
@@ -1330,7 +1330,7 @@ class MONAILabelWidget(ScriptedLoadableModuleWidget, VTKObservationMixin):
 
     def getPermissionForImageDataUpload(self):
         return slicer.util.confirmOkCancelDisplay(
-            "Master volume - without any additional patient information -"
+            "Source volume - without any additional patient information -"
             " will be sent to remote data processing server: {}.\n\n"
             "Click 'OK' to proceed with the segmentation.\n"
             "Click 'Cancel' to not upload any data and cancel segmentation.\n".format(self.serverUrl()),
@@ -1740,7 +1740,7 @@ class MONAILabelWidget(ScriptedLoadableModuleWidget, VTKObservationMixin):
                 addedSegmentIds = [segmentation.GetNthSegmentID(existingCount + i) for i in range(addedCount)]
 
                 self.ui.embeddedSegmentEditorWidget.setSegmentationNode(segmentationNode)
-                self.ui.embeddedSegmentEditorWidget.setMasterVolumeNode(self._volumeNode)
+                self.ui.embeddedSegmentEditorWidget.setSourceVolumeNode(self._volumeNode)
 
                 for i, segmentId in enumerate(addedSegmentIds):
                     label = labels[i] if i < len(labels) else f"unknown {i}"
@@ -1856,7 +1856,7 @@ class MONAILabelWidget(ScriptedLoadableModuleWidget, VTKObservationMixin):
 
         # change segmentation display properties to "see through" the scribbles
         # further explanation at:
-        # https://apidocs.slicer.org/master/classvtkMRMLSegmentationDisplayNode.html
+        # https://apidocs.slicer.org/main/classvtkMRMLSegmentationDisplayNode.html
         segmentationDisplayNode = self._segmentNode.GetDisplayNode()
 
         # background
