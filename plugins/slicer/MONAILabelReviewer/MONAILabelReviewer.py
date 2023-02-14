@@ -1240,7 +1240,7 @@ class MONAILabelReviewerWidget(ScriptedLoadableModuleWidget, VTKObservationMixin
                                 which is required for rest request to monai server
                                 in order to get dicom and segmenation (.nrrd).
         """
-        #slicer.mrmlScene.Clear()
+        # slicer.mrmlScene.Clear()
         self.clearInformationFields()
 
         if tag == "":
@@ -1710,9 +1710,7 @@ class MONAILabelReviewerLogic(ScriptedLoadableModuleLogic):
 
     def requestDicomImage(self, image_id: str, image_name: str, node_name: str):
         download_uri = self.imageDataController.getDicomDownloadUri(image_id)
-        SampleData.SampleDataLogic().downloadFromURL(
-            nodeNames=node_name, fileNames=image_name, uris=download_uri
-        )
+        SampleData.SampleDataLogic().downloadFromURL(nodeNames=node_name, fileNames=image_name, uris=download_uri)
 
     def setTempFolderDir(self):
         """
