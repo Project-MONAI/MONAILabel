@@ -1383,6 +1383,7 @@ class MONAILabelReviewerWidget(ScriptedLoadableModuleWidget, VTKObservationMixin
     # Section: Display label
     def addSegmentator(self):
         self.segmentEditorWidget.setMRMLScene(slicer.mrmlScene)
+        self.selectParameterNode()
         self.segmentEditorWidget.setEffectNameOrder([])
 
     def displayLabelOfSegmentation(self):
