@@ -1240,7 +1240,7 @@ class MONAILabelReviewerWidget(ScriptedLoadableModuleWidget, VTKObservationMixin
                                 which is required for rest request to monai server
                                 in order to get dicom and segmenation (.nrrd).
         """
-        # slicer.mrmlScene.Clear()
+        slicer.mrmlScene.Clear()
         self.clearInformationFields()
 
         if tag == "":
