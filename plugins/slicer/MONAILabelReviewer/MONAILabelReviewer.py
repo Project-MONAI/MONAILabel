@@ -1240,7 +1240,7 @@ class MONAILabelReviewerWidget(ScriptedLoadableModuleWidget, VTKObservationMixin
                                 which is required for rest request to monai server
                                 in order to get dicom and segmenation (.nrrd).
         """
-        slicer.mrmlScene.Clear()
+        # slicer.mrmlScene.Clear()
         self.clearInformationFields()
 
         if tag == "":
@@ -1666,14 +1666,13 @@ class MONAILabelReviewerLogic(ScriptedLoadableModuleLogic):
         image_name = imageData.getFileName()
         image_id = imageData.getName()
         node_name = imageData.getNodeName()
-        checksum = imageData.getCheckSum()
         logging.info(
-            "{}: Request Data  image_name='{}', node_name='{}', image_id='{}', checksum='{}'".format(
-                self.getCurrentTime(), image_name, node_name, image_id, checksum
+            "{}: Request Data  image_name='{}', node_name='{}', image_id='{}'".format(
+                self.getCurrentTime(), image_name, node_name, image_id
             )
         )
 
-        self.requestDicomImage(image_id, image_name, node_name, checksum)
+        self.requestDicomImage(image_id, image_name, node_name)
         self.setTempFolderDir()
 
         # Request segmentation
@@ -1710,12 +1709,9 @@ class MONAILabelReviewerLogic(ScriptedLoadableModuleLogic):
         """
         segmentation = slicer.util.loadSegmentation(destination)
 
-    def requestDicomImage(self, image_id: str, image_name: str, node_name: str, checksum: str):
+    def requestDicomImage(self, image_id: str, image_name: str, node_name: str):
         download_uri = self.imageDataController.getDicomDownloadUri(image_id)
-        sampleDataLogic = SampleData.SampleDataLogic()
-        _volumeNode = sampleDataLogic.downloadFromURL(
-            nodeNames=node_name, fileNames=image_name, uris=download_uri, checksums=checksum
-        )[0]
+        SampleData.SampleDataLogic().downloadFromURL(nodeNames=node_name, fileNames=image_name, uris=download_uri)
 
     def setTempFolderDir(self):
         """

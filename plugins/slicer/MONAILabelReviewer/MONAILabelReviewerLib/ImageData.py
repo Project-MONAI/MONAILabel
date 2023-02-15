@@ -27,11 +27,10 @@ to persist the data in datastore_v2.json file.
 
 
 class ImageData:
-    def __init__(self, name, fileName, nodeName, checkSum, segmented, timeStamp, comment=""):
+    def __init__(self, name, fileName, nodeName, segmented, timeStamp, comment=""):
         self.name: str = name  # equals imageId
         self.fileName: str = fileName
         self.nodeName: str = nodeName
-        self.checkSum: str = checkSum
         self.segmented: bool = segmented
         self.timeStamp: int = timeStamp
         self.comment: str = comment
@@ -91,9 +90,6 @@ class ImageData:
 
     def getNodeName(self) -> str:
         return self.nodeName
-
-    def getCheckSum(self) -> str:
-        return self.checkSum
 
     def getsegmentationMetaDict(self) -> dict:
         return self.segmentationMetaDict
@@ -411,7 +407,6 @@ class ImageData:
         print("name: ", self.name)
         print("fileName: ", self.fileName)
         print("nodeName: ", self.nodeName)
-        print("checksum: ", self.checkSum)
         print("isSegmented: ", self.segmented)
         print("getTimeStamp: ", self.getTimeOfAnnotation())
         print("=== Version labels ====")
