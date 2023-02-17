@@ -101,7 +101,7 @@ def init_log_config(log_config, app_dir, log_file, root_level=None):
         os.makedirs(log_dir, exist_ok=True)
 
         # if not os.path.exists(log_config):
-        shutil.copy(default_config, log_config)
+        shutil.copyfile(default_config, log_config)
         with open(log_config) as f:
             c = f.read()
 
