@@ -29,7 +29,7 @@ from slicer.util import VTKObservationMixin
 
 class MONAILabelReviewer(ScriptedLoadableModule):
     """Uses ScriptedLoadableModule base class, available at:
-    https://github.com/Slicer/Slicer/blob/master/Base/Python/slicer/ScriptedLoadableModule.py
+    https://github.com/Slicer/Slicer/blob/main/Base/Python/slicer/ScriptedLoadableModule.py
     """
 
     def __init__(self, parent):
@@ -49,7 +49,7 @@ Developed by rAiDiance, and  funded by Berlin Institute of Health (BIH).
 
 class MONAILabelReviewerWidget(ScriptedLoadableModuleWidget, VTKObservationMixin):
     """Uses ScriptedLoadableModuleWidget base class, available at:
-    https://github.com/Slicer/Slicer/blob/master/Base/Python/slicer/ScriptedLoadableModule.py
+    https://github.com/Slicer/Slicer/blob/main/Base/Python/slicer/ScriptedLoadableModule.py
     """
 
     def __init__(self, parent=None):
@@ -1294,7 +1294,7 @@ class MONAILabelReviewerWidget(ScriptedLoadableModuleWidget, VTKObservationMixin
 
     # Sub Section: Display version selection option
     def activateSegmentatorEditor(self, activated=False):
-        self.segmentEditorWidget.setMasterVolumeNodeSelectorVisible(activated)
+        self.segmentEditorWidget.setSourceVolumeNodeSelectorVisible(activated)
         self.segmentEditorWidget.setSegmentationNodeSelectorVisible(activated)
         self.segmentEditorWidget.setSwitchToSegmentationsButtonVisible(activated)
         self.segmentEditorWidget.unorderedEffectsVisible = activated
@@ -1383,13 +1383,14 @@ class MONAILabelReviewerWidget(ScriptedLoadableModuleWidget, VTKObservationMixin
     # Section: Display label
     def addSegmentator(self):
         self.segmentEditorWidget.setMRMLScene(slicer.mrmlScene)
+        self.selectParameterNode()
         self.segmentEditorWidget.setEffectNameOrder([])
 
     def displayLabelOfSegmentation(self):
         self.selectParameterNode()
-        self.getDefaultMasterVolumeNodeID()
+        self.getDefaultSourceVolumeNodeID()
         self.segmentEditorWidget.SegmentationNodeComboBox.setCurrentNodeIndex(0)
-        self.segmentEditorWidget.MasterVolumeNodeComboBox.setCurrentNodeIndex(0)
+        self.segmentEditorWidget.SourceVolumeNodeComboBox.setCurrentNodeIndex(0)
 
     def selectParameterNode(self):
         # Select parameter set node if one is found in the scene, and create one otherwise
@@ -1402,7 +1403,7 @@ class MONAILabelReviewerWidget(ScriptedLoadableModuleWidget, VTKObservationMixin
             segmentEditorNode = slicer.mrmlScene.AddNode(segmentEditorNode)
         self.segmentEditorWidget.setMRMLSegmentEditorNode(segmentEditorNode)
 
-    def getDefaultMasterVolumeNodeID(self):
+    def getDefaultSourceVolumeNodeID(self):
         layoutManager = slicer.app.layoutManager()
         firstForegroundVolumeID = None
         # Use first background volume node in any of the displayed layouts.
@@ -1533,7 +1534,7 @@ class MONAILabelReviewerLogic(ScriptedLoadableModuleLogic):
     this class and make use of the functionality without
     requiring an instance of the Widget.
     Uses ScriptedLoadableModuleLogic base class, available at:
-    https://github.com/Slicer/Slicer/blob/master/Base/Python/slicer/ScriptedLoadableModule.py
+    https://github.com/Slicer/Slicer/blob/main/Base/Python/slicer/ScriptedLoadableModule.py
     """
 
     def __init__(self):
@@ -1665,14 +1666,13 @@ class MONAILabelReviewerLogic(ScriptedLoadableModuleLogic):
         image_name = imageData.getFileName()
         image_id = imageData.getName()
         node_name = imageData.getNodeName()
-        checksum = imageData.getCheckSum()
         logging.info(
-            "{}: Request Data  image_name='{}', node_name='{}', image_id='{}', checksum='{}'".format(
-                self.getCurrentTime(), image_name, node_name, image_id, checksum
+            "{}: Request Data  image_name='{}', node_name='{}', image_id='{}'".format(
+                self.getCurrentTime(), image_name, node_name, image_id
             )
         )
 
-        self.requestDicomImage(image_id, image_name, node_name, checksum)
+        self.requestDicomImage(image_id, image_name, node_name)
         self.setTempFolderDir()
 
         # Request segmentation
@@ -1709,12 +1709,9 @@ class MONAILabelReviewerLogic(ScriptedLoadableModuleLogic):
         """
         segmentation = slicer.util.loadSegmentation(destination)
 
-    def requestDicomImage(self, image_id: str, image_name: str, node_name: str, checksum: str):
+    def requestDicomImage(self, image_id: str, image_name: str, node_name: str):
         download_uri = self.imageDataController.getDicomDownloadUri(image_id)
-        sampleDataLogic = SampleData.SampleDataLogic()
-        _volumeNode = sampleDataLogic.downloadFromURL(
-            nodeNames=node_name, fileNames=image_name, uris=download_uri, checksums=checksum
-        )[0]
+        SampleData.SampleDataLogic().downloadFromURL(nodeNames=node_name, fileNames=image_name, uris=download_uri)
 
     def setTempFolderDir(self):
         """
@@ -1740,7 +1737,7 @@ class MONAILabelReviewerTest(ScriptedLoadableModuleTest):
     """
     This is the test case for your scripted module.
     Uses ScriptedLoadableModuleTest base class, available at:
-    https://github.com/Slicer/Slicer/blob/master/Base/Python/slicer/ScriptedLoadableModule.py
+    https://github.com/Slicer/Slicer/blob/main/Base/Python/slicer/ScriptedLoadableModule.py
     """
 
     def setUp(self):

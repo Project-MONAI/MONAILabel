@@ -35,11 +35,11 @@ jobs:
         with:
           fetch-depth: 0
       - name: Set up Python 3.8
-        uses: actions/setup-python@v3
+        uses: actions/setup-python@v4
         with:
           python-version: 3.8
       - name: Cache for pip
-        uses: actions/cache@v2
+        uses: actions/cache@v3
         id: cache
         with:
           path: |
@@ -80,7 +80,7 @@ jobs:
           shell: bash
 
       - name: Upload artifacts
-        uses: actions/upload-artifact@v1
+        uses: actions/upload-artifact@v3
         with:
           name: dist
           path: dist/
