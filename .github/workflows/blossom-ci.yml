@@ -82,7 +82,7 @@ jobs:
       #       echo detect.maven.included.scopes=compile >> application.properties
       - name: Setup blackduck properties
         run: |
-             echo detect.excluded.detector.types=PIP >> application.properties
+             echo detect.excluded.detector.types=PIP,NPM,GRADLE >> application.properties
 
       - name: Run blossom action
         uses: NVIDIA/blossom-action@main
