@@ -268,7 +268,7 @@ class BasicInferTask(InferTask):
         req.update(request)
 
         # model options
-        self.path.append(os.path.join(os.path.dirname(self.path[0]), req.get("models", "model.pt")))
+        self.path.append(os.path.join(os.path.dirname(self.path[0]), req.get("model_filename", "model.pt")))
 
         # device
         device = req.get("device", "cuda")

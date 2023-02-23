@@ -67,8 +67,8 @@ class BundleConstants:
     def key_detector_ops(self) -> Sequence[str]:
         return ["detector_ops"]
 
-    def key_loadable_configs(self) -> Sequence[str]:
-        return ["loadable_params"]
+    def key_displayable_configs(self) -> Sequence[str]:
+        return ["displayable_configs"]
 
 
 class BundleInferTask(BasicInferTask):
@@ -155,13 +155,12 @@ class BundleInferTask(BasicInferTask):
         # Add models options if more than one model is provided by bundle.
         pytorch_models = [os.path.basename(p) for p in glob.glob(os.path.join(path, "models", "*.pt"))]
         pytorch_models.sort(key=len)
-        self._config.update({"models": pytorch_models})
+        self._config.update({"model_filename": pytorch_models})
         # Add bundle's loadable params to MONAI Label config, load exposed keys and params to options panel
-        for k in self.const.key_loadable_configs():
-            self.loadable_configs = (
-                {p: self.bundle_config[p] for p in self.bundle_config[k]} if self.bundle_config.get(k) else {}
-            )
-            self._config.update(self.loadable_configs)
+        for k in self.const.key_displayable_configs():
+            if self.bundle_config.get(k):
+                self.displayable_configs = self.bundle_config.get_parsed_content(k, instantiate=True)  # type: ignore
+                self._config.update(self.displayable_configs)
 
         self.valid = True
         self.version = metadata.get("version")
@@ -175,9 +174,12 @@ class BundleInferTask(BasicInferTask):
         i["version"] = self.version
         return i
 
-    def pre_transforms(self, request, data=None) -> Sequence[Callable]:
+    def pre_transforms(self, data=None) -> Sequence[Callable]:
         # Update bundle parameters based on user's option
-        self.bundle_config.update({k: request[k] for k in self.loadable_configs.keys()})
+        for k in self.const.key_displayable_configs():
+            if self.bundle_config.get(k):
+                self.bundle_config[k].update({c: data[c] for c in self.displayable_configs.keys()})
+                self.bundle_config.parse()
 
         sys.path.insert(0, self.bundle_path)
         unload_module("scripts")

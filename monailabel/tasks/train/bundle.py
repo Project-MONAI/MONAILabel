@@ -80,8 +80,8 @@ class BundleConstants:
     def key_run_name(self) -> str:
         return "run_name"
 
-    def key_loadable_configs(self) -> Sequence[str]:
-        return ["loadable_params"]
+    def key_displayable_configs(self) -> Sequence[str]:
+        return ["displayable_configs"]
 
 
 class BundleTrainTask(TrainTask):
@@ -147,14 +147,12 @@ class BundleTrainTask(TrainTask):
             else ["None", "mlflow"],
             "tracking_uri": settings.MONAI_LABEL_TRACKING_URI,
             "tracking_experiment_name": "",
-            "models": pytorch_models,
+            "model_filename": pytorch_models,
         }
 
-        for k in self.const.key_loadable_configs():
-            loadable_configs = (
-                {p: self.bundle_config[p] for p in self.bundle_config[k]} if self.bundle_config.get(k) else {}
-            )
-            config_options.update(loadable_configs)
+        for k in self.const.key_displayable_configs():
+            if self.bundle_config.get(k):
+                config_options.update(self.bundle_config.get_parsed_content(k, instantiate=True))  # type: ignore
 
         return config_options
 
@@ -244,7 +242,7 @@ class BundleTrainTask(TrainTask):
 
         train_handlers = self.bundle_config.get(self.const.key_train_handlers(), [])
 
-        model_pytorch = os.path.join(self.bundle_path, "models", request.get("models", "model.pt"))
+        model_pytorch = os.path.join(self.bundle_path, "models", request.get("model_filename", "model.pt"))
         self._load_checkpoint(model_pytorch, pretrained, train_handlers)
 
         overrides = {
@@ -255,6 +253,13 @@ class BundleTrainTask(TrainTask):
             self.const.key_train_handlers(): train_handlers,
         }
 
+        # update config options from user
+        for k in self.const.key_displayable_configs():
+            if self.bundle_config.get(k):
+                displayable_configs = self.bundle_config.get_parsed_content(k, instantiate=True)
+                overrides[k] = {c: request[c] for c in displayable_configs.keys()}
+
+                
         if tracking and tracking.lower() != "none":
             overrides[self.const.key_tracking()] = tracking
             if tracking_uri:
@@ -328,6 +333,7 @@ class BundleTrainTask(TrainTask):
         return {}
 
     def run_single_gpu(self, request, overrides):
+        print("Train here: {}".format(overrides))
         monai.bundle.run(
             "training",
             meta_file=self.bundle_metadata_path,
