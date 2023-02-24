@@ -25,7 +25,8 @@ from typing import Any, Dict, List, Optional, Tuple
 from filelock import FileLock
 from pydantic import BaseModel
 from watchdog.events import PatternMatchingEventHandler
-from watchdog.observers import Observer, PollingObserver
+from watchdog.observers import Observer
+from watchdog.observers.polling import PollingObserver
 
 from monailabel.interfaces.datastore import Datastore, DefaultLabelTag
 from monailabel.interfaces.exception import ImageNotFoundException, LabelNotFoundException
