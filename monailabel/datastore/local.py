@@ -25,7 +25,7 @@ from typing import Any, Dict, List, Optional, Tuple
 from filelock import FileLock
 from pydantic import BaseModel
 from watchdog.events import PatternMatchingEventHandler
-from watchdog.observers import Observer
+from watchdog.observers import Observer, PollingObserver
 
 from monailabel.interfaces.datastore import Datastore, DefaultLabelTag
 from monailabel.interfaces.exception import ImageNotFoundException, LabelNotFoundException
@@ -169,7 +169,7 @@ class LocalDatastore(Datastore):
             try:
                 self._ignore_event_count = 0
                 self._ignore_event_config = False
-                self._observer = Observer()
+                self._observer = PollingObserver() if self._is_on_mount(self._datastore.image_path()) else Observer()
                 self._observer.schedule(self._handler, recursive=True, path=self._datastore_path)
                 self._observer.start()
             except OSError as e:
@@ -693,6 +693,14 @@ class LocalDatastore(Datastore):
             logger.debug("Released the Lock...")
         else:
             _write_to_file()
+
+    def _is_on_mount(path):
+        while True:
+            if path == os.path.dirname(path):
+                return False
+            elif os.path.ismount(path):
+                return True
+            path = os.path.dirname(path)
 
     def status(self) -> Dict[str, Any]:
         tags: dict = {}
