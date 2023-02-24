@@ -31,4 +31,5 @@ MAINTAINED_BUNDLES = [
     "swin_unetr_btcv_segmentation",  # 3D transformer model for multi-organ segmentation. Added Oct 2022
     "wholeBrainSeg_Large_UNEST_segmentation",  # whole brain segmentation for T1 MRI brain images. Added Oct 2022
     "lung_nodule_ct_detection",  # The first lung nodule detection task can be used for MONAI Label. Added Dec 2022
+    "wholeBody_ct_segmentation",  # The SegResNet trained TotalSegmentator dataset with 104 tissues. Added Feb 2023
 ]
