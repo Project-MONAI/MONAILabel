@@ -695,7 +695,7 @@ class LocalDatastore(Datastore):
         else:
             _write_to_file()
 
-    def _is_on_mount(path):
+    def _is_on_mount(self, path):
         while True:
             if path == os.path.dirname(path):
                 return False
