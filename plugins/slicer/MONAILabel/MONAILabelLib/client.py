@@ -19,7 +19,7 @@ import re
 import ssl
 import tempfile
 from pathlib import Path
-from urllib.parse import quote_plus, urlparse, unquote
+from urllib.parse import quote_plus, unquote, urlparse
 
 import requests
 
@@ -169,9 +169,9 @@ class MONAILabelClient:
             raise MONAILabelException(
                 MONAILabelError.SERVER_ERROR, f"Status: {status}; Response: {response}", status, response
             )
-        
+
         content_disposition = headers.get("content-disposition")
-        
+
         if not content_disposition:
             logging.warning("Filename not found. Fall back to no loaded labels")
         file_name = MONAILabelUtils.get_filename(content_disposition)
@@ -434,14 +434,14 @@ class MONAILabelUtils:
     @staticmethod
     def urllib_quote_plus(s):
         return quote_plus(s)
-    
+
     @staticmethod
     def get_filename(content_disposition):
-        file_name = re.findall("filename\*=([^;]+)", content_disposition, flags=re.IGNORECASE)
+        file_name = re.findall(r"filename\*=([^;]+)", content_disposition, flags=re.IGNORECASE)
         if not file_name:
             file_name = re.findall('filename="(.+)"', content_disposition, flags=re.IGNORECASE)
         if "utf-8''" in file_name[0].lower():
-            file_name = re.sub("utf-8''", '', file_name[0], flags=re.IGNORECASE)
+            file_name = re.sub("utf-8''", "", file_name[0], flags=re.IGNORECASE)
             file_name = unquote(file_name)
         else:
             file_name = file_name[0]
