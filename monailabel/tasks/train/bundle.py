@@ -333,7 +333,6 @@ class BundleTrainTask(TrainTask):
         return {}
 
     def run_single_gpu(self, request, overrides):
-        print("Train here: {}".format(overrides))
         monai.bundle.run(
             "training",
             meta_file=self.bundle_metadata_path,
