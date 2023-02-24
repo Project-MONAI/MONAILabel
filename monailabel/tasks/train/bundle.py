@@ -259,7 +259,6 @@ class BundleTrainTask(TrainTask):
                 displayable_configs = self.bundle_config.get_parsed_content(k, instantiate=True)
                 overrides[k] = {c: request[c] for c in displayable_configs.keys()}
 
-                
         if tracking and tracking.lower() != "none":
             overrides[self.const.key_tracking()] = tracking
             if tracking_uri:

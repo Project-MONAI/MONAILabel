@@ -269,7 +269,7 @@ class BasicInferTask(InferTask):
 
         # model options
         self.path.append(
-           os.path.join(os.path.dirname(self.path[0]), req.get("model_filename", "model.pt"))
+            os.path.join(os.path.dirname(self.path[0]), req.get("model_filename", "model.pt"))
         ) if self.path and isinstance(self.path, list) else self.path
 
         # device
