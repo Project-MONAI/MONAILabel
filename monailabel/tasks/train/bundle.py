@@ -9,6 +9,7 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
+import glob
 import json
 import logging
 import os
@@ -79,6 +80,9 @@ class BundleConstants:
     def key_run_name(self) -> str:
         return "run_name"
 
+    def key_displayable_configs(self) -> Sequence[str]:
+        return ["displayable_configs"]
+
 
 class BundleTrainTask(TrainTask):
     def __init__(
@@ -127,7 +131,11 @@ class BundleTrainTask(TrainTask):
         return i
 
     def config(self):
-        return {
+        # Add models and param optiom to train option panel
+        pytorch_models = [os.path.basename(p) for p in glob.glob(os.path.join(self.bundle_path, "models", "*.pt"))]
+        pytorch_models.sort(key=len)
+
+        config_options = {
             "device": "cuda",  # DEVICE
             "pretrained": True,  # USE EXISTING CHECKPOINT/PRETRAINED MODEL
             "max_epochs": 50,  # TOTAL EPOCHS TO RUN
@@ -139,7 +147,14 @@ class BundleTrainTask(TrainTask):
             else ["None", "mlflow"],
             "tracking_uri": settings.MONAI_LABEL_TRACKING_URI,
             "tracking_experiment_name": "",
+            "model_filename": pytorch_models,
         }
+
+        for k in self.const.key_displayable_configs():
+            if self.bundle_config.get(k):
+                config_options.update(self.bundle_config.get_parsed_content(k, instantiate=True))  # type: ignore
+
+        return config_options
 
     def _fetch_datalist(self, request, datastore: Datastore):
         datalist = datastore.datalist()
@@ -177,8 +192,8 @@ class BundleTrainTask(TrainTask):
         logger.info(f"Total Records for Validation: {len(val_datalist) if val_datalist else ''}")
         return train_datalist, val_datalist
 
-    def _load_checkpoint(self, output_dir, pretrained, train_handlers):
-        load_path = os.path.join(output_dir, self.const.model_pytorch()) if pretrained else None
+    def _load_checkpoint(self, model_pytorch, pretrained, train_handlers):
+        load_path = model_pytorch if pretrained else None
         if os.path.exists(load_path):
             logger.info(f"Add Checkpoint Loader for Path: {load_path}")
 
@@ -226,7 +241,9 @@ class BundleTrainTask(TrainTask):
         logger.info(f"(Experiment Management) Run Name: {tracking_run_name}")
 
         train_handlers = self.bundle_config.get(self.const.key_train_handlers(), [])
-        self._load_checkpoint(os.path.join(self.bundle_path, "models"), pretrained, train_handlers)
+
+        model_pytorch = os.path.join(self.bundle_path, "models", request.get("model_filename", "model.pt"))
+        self._load_checkpoint(model_pytorch, pretrained, train_handlers)
 
         overrides = {
             self.const.key_bundle_root(): self.bundle_path,
@@ -235,6 +252,12 @@ class BundleTrainTask(TrainTask):
             self.const.key_device(): device,
             self.const.key_train_handlers(): train_handlers,
         }
+
+        # update config options from user
+        for k in self.const.key_displayable_configs():
+            if self.bundle_config.get(k):
+                displayable_configs = self.bundle_config.get_parsed_content(k, instantiate=True)
+                overrides[k] = {c: request[c] for c in displayable_configs.keys()}
 
         if tracking and tracking.lower() != "none":
             overrides[self.const.key_tracking()] = tracking
