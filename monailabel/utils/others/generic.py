@@ -199,6 +199,7 @@ def device_list():
 
     return devices
 
+
 def device_list_gpu():
     devices = [] if torch.cuda.is_available() else ["cpu"]
     if torch.cuda.device_count():

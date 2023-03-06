@@ -152,7 +152,7 @@ class BasicTrainTask(TrainTask):
         """
         super().__init__(description)
 
-#f"{torch.cuda.get_device_name(0)}:{i}"
+        # f"{torch.cuda.get_device_name(0)}:{i}"
 
         self._model_dir = model_dir
         self._amp = amp

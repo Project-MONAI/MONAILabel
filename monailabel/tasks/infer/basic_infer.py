@@ -26,8 +26,7 @@ from monailabel.interfaces.tasks.infer_v2 import InferTask, InferType
 from monailabel.interfaces.utils.transform import dump_data, run_transforms
 from monailabel.transform.cache import CacheTransformDatad
 from monailabel.transform.writer import ClassificationWriter, DetectionWriter, Writer
-from monailabel.utils.others.generic import device_list
-from monailabel.utils.others.generic import device_list_gpu
+from monailabel.utils.others.generic import device_list, device_list_gpu
 
 logger = logging.getLogger(__name__)
 
