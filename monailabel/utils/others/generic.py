@@ -18,6 +18,7 @@ import os
 import pathlib
 import shutil
 import subprocess
+import sys
 import time
 from typing import Dict
 
@@ -101,7 +102,7 @@ def init_log_config(log_config, app_dir, log_file, root_level=None):
         os.makedirs(log_dir, exist_ok=True)
 
         # if not os.path.exists(log_config):
-        shutil.copyfile(default_config, log_config)
+        shutil.copy(default_config, log_config)
         with open(log_config) as f:
             c = f.read()
 
@@ -195,6 +196,16 @@ def device_list():
     if torch.cuda.device_count() > 1:
         for i in range(torch.cuda.device_count()):
             devices.append(f"cuda:{i}")
+
+    return devices
+
+def device_list_gpu():
+    devices = [] if torch.cuda.is_available() else ["cpu"]
+    if torch.cuda.device_count():
+        devices.append(torch.cuda.get_device_name(0))
+    if torch.cuda.device_count() > 1:
+        for i in range(torch.cuda.device_count()):
+            devices.append(f"{torch.cuda.get_device_name(0)}:{i}")
 
     return devices
 
@@ -307,6 +318,7 @@ def get_bundle_models(app_dir, conf, conf_key="models"):
                 download(name=name, version=version, bundle_dir=model_dir, source=zoo_source, repo=zoo_repo)
                 if version:
                     shutil.move(os.path.join(model_dir, name), p)
+        sys.path.append(p)
 
         bundles[k] = p
 

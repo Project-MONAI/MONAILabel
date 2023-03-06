@@ -152,12 +152,14 @@ class BasicTrainTask(TrainTask):
         """
         super().__init__(description)
 
+#f"{torch.cuda.get_device_name(0)}:{i}"
+
         self._model_dir = model_dir
         self._amp = amp
         self._config = {
             "name": "train_01",
             "pretrained": True,
-            "device": "cuda",
+            "device": f"{torch.cuda.get_device_name(0)}",
             "max_epochs": 50,
             "early_stop_patience": -1,
             "val_split": 0.2,
@@ -582,7 +584,7 @@ class BasicTrainTask(TrainTask):
         early_stop_patience = int(context.request.get("early_stop_patience", 0))
         if early_stop_patience > 0 and context.evaluator:
             kw = self.val_key_metric(context)
-            metric_name = list(kw.keys())[0] if kw else None
+            metric_name = kw.keys()[0] if kw else None
             if metric_name:
                 early_stopper = EarlyStopping(
                     patience=early_stop_patience,

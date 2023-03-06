@@ -27,6 +27,7 @@ from monailabel.interfaces.utils.transform import dump_data, run_transforms
 from monailabel.transform.cache import CacheTransformDatad
 from monailabel.transform.writer import ClassificationWriter, DetectionWriter, Writer
 from monailabel.utils.others.generic import device_list
+from monailabel.utils.others.generic import device_list_gpu
 
 logger = logging.getLogger(__name__)
 
@@ -99,7 +100,7 @@ class BasicInferTask(InferTask):
 
         self._config.update(
             {
-                "device": device_list(),
+                "device": device_list_gpu(),
                 # "result_extension": None,
                 # "result_dtype": None,
                 # "result_compress": False
@@ -113,7 +114,7 @@ class BasicInferTask(InferTask):
             self._config.update(config)
 
         if preload:
-            for device in ["cuda", *device_list()]:
+            for device in ["{torch.cuda.get_device_name(0)}", *device_list_gpu()]:
                 logger.info(f"Preload Network for device: {device}")
                 self._get_network(device)
 
@@ -267,12 +268,8 @@ class BasicInferTask(InferTask):
         req = copy.deepcopy(self._config)
         req.update(request)
 
-        # model options
-        self.path.append(
-            os.path.join(os.path.dirname(self.path[0]), req.get("model_filename", "model.pt"))
-        ) if self.path and isinstance(self.path, list) else self.path
-
         # device
+        req.update({"device": device_list()})
         device = req.get("device", "cuda")
         device = device if isinstance(device, str) else device[0]
         if device.startswith("cuda") and not torch.cuda.is_available():
