@@ -10,30 +10,16 @@
 # limitations under the License.
 
 import json
-import os
-from datetime import datetime, timedelta
-from typing import List, Union
+from typing import Any, Dict, List, Union
 
+import requests
 from fastapi import Depends, HTTPException, Security, status
-from fastapi.security import OAuth2PasswordBearer, SecurityScopes
+from fastapi.security import OAuth2PasswordBearer
 from jose import JWTError, jwt
 from passlib.context import CryptContext
-from pydantic import BaseModel, ValidationError
+from pydantic import BaseModel
 
-from monailabel.config import settings
-
-# openssl rand -hex 32
-SECRET_KEY = "c1d2508874b7774026272647cd1d2c0471a9e81d949a0f3a85abe413eb2a95a0"
-ALGORITHM = "HS256"
-ACCESS_TOKEN_EXPIRE_MINUTES = 30
-
-scopes = {
-    "admin": "Who can run training and everything...",
-    "reviewer": "Who can validate and modify saved annotations etc..",
-    "annotator": "Who can annotate and submit labels",
-    "user": "Annotator who cannot submit labels",
-}
-
+REALM_URI = "http://localhost:8080/realms/monailabel"
 pwd_context = CryptContext(schemes=["bcrypt"], deprecated="auto")
 oauth2_scheme = OAuth2PasswordBearer(tokenUrl="token")
 
@@ -43,127 +29,75 @@ class Token(BaseModel):
     token_type: str
 
 
-class TokenData(BaseModel):
-    username: str = ""
-    scopes: List[str] = []
+def public_key(realm_uri=REALM_URI, timeout=3) -> str:
+    r = requests.get(url=realm_uri, timeout=timeout)
+    r.raise_for_status()
+    j = r.json()
+
+    print(json.dumps(j, indent=2))
+    key = j["public_key"]
+    return f"-----BEGIN PUBLIC KEY-----\n{key}\n-----END PUBLIC KEY-----"
 
 
 class User(BaseModel):
     username: str
     email: Union[str, None] = None
-    full_name: Union[str, None] = None
-    disabled: Union[bool, None] = None
-    scopes: List[str] = []
+    name: Union[str, None] = None
+    roles: List[str] = []
 
 
-class UserInDB(User):
-    hashed_password: str
+def from_token(token: str):
+    options = {
+        "verify_signature": True,
+        "verify_aud": False,
+        "verify_exp": True,
+    }
+
+    key = public_key()
+    payload = jwt.decode(token, key, options=options)
+
+    username: str = payload.get("preferred_username")
+    email: str = payload.get("email")
+    name: str = payload.get("name")
+    realm_access: Dict[str, Any] = payload.get("realm_access")
+    roles = [] if not realm_access else realm_access.get("roles")
+
+    return User(username=username, email=email, name=name, roles=roles)
 
 
-def create_access_token(data: dict, expires_delta: Union[timedelta, None] = None):
-    to_encode = data.copy()
-    if expires_delta:
-        expire = datetime.utcnow() + expires_delta
-    else:
-        expire = datetime.utcnow() + timedelta(minutes=15)
-    to_encode.update({"exp": expire})
-    encoded_jwt = jwt.encode(to_encode, SECRET_KEY, algorithm=ALGORITHM)
-    return encoded_jwt
-
-
-async def get_current_user(
-    security_scopes: SecurityScopes, token: str = Depends(oauth2_scheme) if settings.MONAI_LABEL_AUTH_ENABLE else ""
-):
-    if not settings.MONAI_LABEL_AUTH_ENABLE:
-        return User(username="admin")
-
-    if security_scopes.scopes:
-        authenticate_value = f'Bearer scope="{security_scopes.scope_str}"'
-    else:
-        authenticate_value = "Bearer"
-
+async def get_current_user(token: str = Depends(oauth2_scheme)):
     credentials_exception = HTTPException(
         status_code=status.HTTP_401_UNAUTHORIZED,
         detail="Could not validate credentials",
-        headers={"WWW-Authenticate": authenticate_value},
+        headers={"WWW-Authenticate": "Bearer"},
     )
-
     try:
-        payload = jwt.decode(token, SECRET_KEY, algorithms=[ALGORITHM])
-        username: str = payload.get("sub")
-        if username is None:
-            raise credentials_exception
-        token_scopes = payload.get("scopes", [])
-        token_data = TokenData(scopes=token_scopes, username=username)
-    except (JWTError, ValidationError):
+        return from_token(token)
+    except JWTError as e:
+        print(e)
         raise credentials_exception
 
-    user = get_user(token_data.username)
-    if user is None:
-        raise credentials_exception
 
-    for scope in security_scopes.scopes:
-        if scope not in token_data.scopes:
-            raise HTTPException(
-                status_code=status.HTTP_401_UNAUTHORIZED,
-                detail="Not enough permissions",
-                headers={"WWW-Authenticate": authenticate_value},
-            )
+def _validate_role(user, role):
+    if role not in user.roles:
+        raise HTTPException(
+            status_code=status.HTTP_403_FORBIDDEN,
+            detail=f'Role "{role}" is required to perform this action',
+        )
     return user
 
 
-async def get_admin_user(current_user: User = Security(get_current_user, scopes=["admin"])):
-    if current_user.disabled:
-        raise HTTPException(status_code=400, detail="Inactive user")
-    return current_user
+async def get_admin_user(user: User = Security(get_current_user)):
+    return _validate_role(user, "monailabel-admin")
 
 
-async def get_reviwer_user(current_user: User = Security(get_current_user, scopes=["reviewer"])):
-    if current_user.disabled:
-        raise HTTPException(status_code=400, detail="Inactive user")
-    return current_user
+async def get_reviwer_user(user: User = Security(get_current_user)):
+    return _validate_role(user, "monailabel-reviewer")
 
 
-async def get_annotator_user(current_user: User = Security(get_current_user, scopes=["annotator"])):
-    if current_user.disabled:
-        raise HTTPException(status_code=400, detail="Inactive user")
-    return current_user
+async def get_annotator_user(user: User = Security(get_current_user)):
+    return _validate_role(user, "monailabel-annotator")
 
 
-async def get_basic_user(current_user: User = Security(get_current_user, scopes=["user"])):
-    if current_user.disabled:
-        raise HTTPException(status_code=400, detail="Inactive user")
-    return current_user
-
-
-def verify_password(plain_password, hashed_password):
-    return pwd_context.verify(plain_password, hashed_password)
-
-
-def get_password_hash(password):
-    return pwd_context.hash(password)
-
-
-def get_user(username: str):
-    f = settings.MONAI_LABEL_AUTH_DB
-    if not f:
-        f = os.path.join(os.path.dirname(os.path.realpath(__file__)), "users.json")
-
-    db = {}
-    if os.path.exists(f):
-        with open(f) as fp:
-            db = json.load(fp)
-
-    if username in db:
-        user_dict = db[username]
-        return UserInDB(**user_dict)
-    return None
-
-
-def authenticate_user(username: str, password: str):
-    user = get_user(username)
-    if not user:
-        return None
-    if not verify_password(password, user.hashed_password):
-        return None
-    return user
+async def get_basic_user(user: User = Security(get_current_user)):
+    return _validate_role(user, "monailabel-user")

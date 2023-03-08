@@ -10,12 +10,12 @@
 # limitations under the License.
 
 import logging
-from datetime import timedelta
 
-from fastapi import APIRouter, Depends, HTTPException
+import requests
+from fastapi import APIRouter, Depends
 from fastapi.security import OAuth2PasswordRequestForm
 
-from monailabel.endpoints.user.auth import ACCESS_TOKEN_EXPIRE_MINUTES, Token, authenticate_user, create_access_token
+from monailabel.endpoints.user.auth import Token
 
 logger = logging.getLogger(__name__)
 
@@ -28,18 +28,16 @@ router = APIRouter(
 
 @router.post("/token", response_model=Token)
 async def login_for_access_token(form_data: OAuth2PasswordRequestForm = Depends()):
-    user = authenticate_user(form_data.username, form_data.password)
-    if not user:
-        raise HTTPException(status_code=400, detail="Incorrect username or password")
+    token_uri = "http://localhost:8080/realms/monailabel/protocol/openid-connect/token"
+    headers = {"Content-Type": "application/x-www-form-urlencoded"}
+    data = {
+        "client_id": "monailabel-app",
+        "username": form_data.username,
+        "password": form_data.password,
+        "grant_type": "password",
+    }
+    timeout = 10
 
-    logger.info(f"User: {user.username}; Scopes: {user.scopes}")
-
-    access_token_expires = timedelta(minutes=ACCESS_TOKEN_EXPIRE_MINUTES)
-    access_token = create_access_token(
-        data={
-            "sub": user.username,
-            "scopes": user.scopes,
-        },
-        expires_delta=access_token_expires,
-    )
-    return {"access_token": access_token, "token_type": "bearer"}
+    response = requests.post(url=token_uri, headers=headers, data=data, timeout=timeout)
+    response.raise_for_status()
+    return response.json()
