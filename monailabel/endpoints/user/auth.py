@@ -8,7 +8,6 @@
 # WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 # See the License for the specific language governing permissions and
 # limitations under the License.
-
 import json
 from typing import Any, Dict, List, Union
 
@@ -20,6 +19,7 @@ from passlib.context import CryptContext
 from pydantic import BaseModel
 
 REALM_URI = "http://localhost:8080/realms/monailabel"
+TIMEOUT = 5
 pwd_context = CryptContext(schemes=["bcrypt"], deprecated="auto")
 oauth2_scheme = OAuth2PasswordBearer(tokenUrl="token")
 
@@ -29,7 +29,7 @@ class Token(BaseModel):
     token_type: str
 
 
-def public_key(realm_uri=REALM_URI, timeout=3) -> str:
+def public_key(realm_uri=REALM_URI, timeout=TIMEOUT) -> str:
     r = requests.get(url=realm_uri, timeout=timeout)
     r.raise_for_status()
     j = r.json()
@@ -37,6 +37,17 @@ def public_key(realm_uri=REALM_URI, timeout=3) -> str:
     print(json.dumps(j, indent=2))
     key = j["public_key"]
     return f"-----BEGIN PUBLIC KEY-----\n{key}\n-----END PUBLIC KEY-----"
+
+
+def open_id_configuration() -> dict:
+    response = requests.get(url=f"{REALM_URI}/.well-known/openid-configuration", timeout=TIMEOUT)
+    j = response.json()
+    print(json.dumps(j, indent=2))
+    return j
+
+
+def token_uri():
+    return open_id_configuration().get("token_endpoint")
 
 
 class User(BaseModel):

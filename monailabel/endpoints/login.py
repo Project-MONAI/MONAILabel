@@ -15,7 +15,7 @@ import requests
 from fastapi import APIRouter, Depends
 from fastapi.security import OAuth2PasswordRequestForm
 
-from monailabel.endpoints.user.auth import Token
+from monailabel.endpoints.user.auth import Token, token_uri
 
 logger = logging.getLogger(__name__)
 
@@ -28,7 +28,7 @@ router = APIRouter(
 
 @router.post("/token", response_model=Token)
 async def login_for_access_token(form_data: OAuth2PasswordRequestForm = Depends()):
-    token_uri = "http://localhost:8080/realms/monailabel/protocol/openid-connect/token"
+    url = token_uri()
     headers = {"Content-Type": "application/x-www-form-urlencoded"}
     data = {
         "client_id": "monailabel-app",
@@ -38,6 +38,6 @@ async def login_for_access_token(form_data: OAuth2PasswordRequestForm = Depends(
     }
     timeout = 10
 
-    response = requests.post(url=token_uri, headers=headers, data=data, timeout=timeout)
+    response = requests.post(url=url, headers=headers, data=data, timeout=timeout)
     response.raise_for_status()
     return response.json()
