@@ -15,6 +15,7 @@ import requests
 from fastapi import APIRouter, Depends
 from fastapi.security import OAuth2PasswordRequestForm
 
+from monailabel.config import settings
 from monailabel.endpoints.user.auth import Token, token_uri
 
 logger = logging.getLogger(__name__)
@@ -28,6 +29,9 @@ router = APIRouter(
 
 @router.post("/token", response_model=Token)
 async def login_for_access_token(form_data: OAuth2PasswordRequestForm = Depends()):
+    if not settings.MONAI_LABEL_AUTH_ENABLE:
+        return {"access_token": "NotApplicable", "token_type": "Bearer"}
+
     url = token_uri()
     headers = {"Content-Type": "application/x-www-form-urlencoded"}
     data = {

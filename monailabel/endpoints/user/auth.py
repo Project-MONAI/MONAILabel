@@ -8,7 +8,8 @@
 # WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 # See the License for the specific language governing permissions and
 # limitations under the License.
-import json
+import functools
+import logging
 from typing import Any, Dict, List, Union
 
 import requests
@@ -18,8 +19,10 @@ from jose import JWTError, jwt
 from passlib.context import CryptContext
 from pydantic import BaseModel
 
-REALM_URI = "http://localhost:8080/realms/monailabel"
-TIMEOUT = 5
+from monailabel.config import settings
+
+logger = logging.getLogger(__name__)
+
 pwd_context = CryptContext(schemes=["bcrypt"], deprecated="auto")
 oauth2_scheme = OAuth2PasswordBearer(tokenUrl="token")
 
@@ -29,25 +32,26 @@ class Token(BaseModel):
     token_type: str
 
 
-def public_key(realm_uri=REALM_URI, timeout=TIMEOUT) -> str:
-    r = requests.get(url=realm_uri, timeout=timeout)
+def public_key(realm_uri) -> str:
+    r = requests.get(url=realm_uri, timeout=settings.MONAI_LABEL_AUTH_TIMEOUT)
     r.raise_for_status()
     j = r.json()
 
-    print(json.dumps(j, indent=2))
     key = j["public_key"]
     return f"-----BEGIN PUBLIC KEY-----\n{key}\n-----END PUBLIC KEY-----"
 
 
-def open_id_configuration() -> dict:
-    response = requests.get(url=f"{REALM_URI}/.well-known/openid-configuration", timeout=TIMEOUT)
-    j = response.json()
-    print(json.dumps(j, indent=2))
-    return j
+@functools.cache
+def open_id_configuration(realm_uri):
+    response = requests.get(
+        url=f"{realm_uri}/.well-known/openid-configuration",
+        timeout=settings.MONAI_LABEL_AUTH_TIMEOUT,
+    )
+    return response.json()
 
 
 def token_uri():
-    return open_id_configuration().get("token_endpoint")
+    return open_id_configuration(settings.MONAI_LABEL_AUTH_REALM_URI).get("token_endpoint")
 
 
 class User(BaseModel):
@@ -57,26 +61,43 @@ class User(BaseModel):
     roles: List[str] = []
 
 
+DEFAULT_USER = User(
+    username="admin",
+    email="admin@monailabel.com",
+    name="UNK",
+    roles=[
+        settings.MONAI_LABEL_AUTH_ROLE_ADMIN,
+        settings.MONAI_LABEL_AUTH_ROLE_RESEARCHER,
+        settings.MONAI_LABEL_AUTH_ROLE_REVIEWER,
+        settings.MONAI_LABEL_AUTH_ROLE_ANNOTATOR,
+        settings.MONAI_LABEL_AUTH_ROLE_USER,
+    ],
+)
+
+
 def from_token(token: str):
+    if not settings.MONAI_LABEL_AUTH_ENABLE:
+        return DEFAULT_USER
+
     options = {
         "verify_signature": True,
         "verify_aud": False,
         "verify_exp": True,
     }
 
-    key = public_key()
+    key = public_key(settings.MONAI_LABEL_AUTH_REALM_URI)
     payload = jwt.decode(token, key, options=options)
 
-    username: str = payload.get("preferred_username")
-    email: str = payload.get("email")
-    name: str = payload.get("name")
-    realm_access: Dict[str, Any] = payload.get("realm_access")
-    roles = [] if not realm_access else realm_access.get("roles")
+    username: str = payload.get(settings.MONAI_LABEL_AUTH_TOKEN_USERNAME)
+    email: str = payload.get(settings.MONAI_LABEL_AUTH_TOKEN_EMAIL)
+    name: str = payload.get(settings.MONAI_LABEL_AUTH_TOKEN_NAME)
+    realm_access: Dict[str, Any] = payload.get(settings.MONAI_LABEL_AUTH_TOKEN_REALM_ACCESS)
+    roles = [] if not realm_access else realm_access.get(settings.MONAI_LABEL_AUTH_TOKEN_ROLES)
 
     return User(username=username, email=email, name=name, roles=roles)
 
 
-async def get_current_user(token: str = Depends(oauth2_scheme)):
+async def get_current_user(token: str = Depends(oauth2_scheme) if settings.MONAI_LABEL_AUTH_ENABLE else ""):
     credentials_exception = HTTPException(
         status_code=status.HTTP_401_UNAUTHORIZED,
         detail="Could not validate credentials",
@@ -85,11 +106,14 @@ async def get_current_user(token: str = Depends(oauth2_scheme)):
     try:
         return from_token(token)
     except JWTError as e:
-        print(e)
+        logger.error(e)
         raise credentials_exception
 
 
 def _validate_role(user, role):
+    if not settings.MONAI_LABEL_AUTH_ENABLE:
+        return user
+
     if role not in user.roles:
         raise HTTPException(
             status_code=status.HTTP_403_FORBIDDEN,
@@ -99,16 +123,20 @@ def _validate_role(user, role):
 
 
 async def get_admin_user(user: User = Security(get_current_user)):
-    return _validate_role(user, "monailabel-admin")
+    return _validate_role(user, settings.MONAI_LABEL_AUTH_ROLE_ADMIN)
+
+
+async def get_researcher_user(user: User = Security(get_current_user)):
+    return _validate_role(user, settings.MONAI_LABEL_AUTH_ROLE_RESEARCHER)
 
 
 async def get_reviwer_user(user: User = Security(get_current_user)):
-    return _validate_role(user, "monailabel-reviewer")
+    return _validate_role(user, settings.MONAI_LABEL_AUTH_ROLE_REVIEWER)
 
 
 async def get_annotator_user(user: User = Security(get_current_user)):
-    return _validate_role(user, "monailabel-annotator")
+    return _validate_role(user, settings.MONAI_LABEL_AUTH_ROLE_ANNOTATOR)
 
 
 async def get_basic_user(user: User = Security(get_current_user)):
-    return _validate_role(user, "monailabel-user")
+    return _validate_role(user, settings.MONAI_LABEL_AUTH_ROLE_USER)
