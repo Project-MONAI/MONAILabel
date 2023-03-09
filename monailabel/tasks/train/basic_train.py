@@ -157,7 +157,7 @@ class BasicTrainTask(TrainTask):
         self._config = {
             "name": "train_01",
             "pretrained": True,
-            "device": "cuda",
+            "device": f"{torch.cuda.get_device_name(0)}",
             "max_epochs": 50,
             "early_stop_patience": -1,
             "val_split": 0.2,

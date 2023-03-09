@@ -113,7 +113,7 @@ class BasicInferTask(InferTask):
             self._config.update(config)
 
         if preload:
-            for device in ["cuda", *device_list()]:
+            for device in ["{torch.cuda.get_device_name(0)}", *device_list()]:
                 logger.info(f"Preload Network for device: {device}")
                 self._get_network(device)
 
@@ -273,6 +273,7 @@ class BasicInferTask(InferTask):
         ) if self.path and isinstance(self.path, list) else self.path
 
         # device
+        req.update({"device": device_list()})
         device = req.get("device", "cuda")
         device = device if isinstance(device, str) else device[0]
         if device.startswith("cuda") and not torch.cuda.is_available():
