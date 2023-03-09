@@ -40,7 +40,7 @@ async def login_for_access_token(form_data: OAuth2PasswordRequestForm = Depends(
         "password": form_data.password,
         "grant_type": "password",
     }
-    timeout = 10
+    timeout = 30
 
     response = requests.post(url=url, headers=headers, data=data, timeout=timeout)
     response.raise_for_status()
