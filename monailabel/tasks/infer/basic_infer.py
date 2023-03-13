@@ -26,9 +26,7 @@ from monailabel.interfaces.tasks.infer_v2 import InferTask, InferType
 from monailabel.interfaces.utils.transform import dump_data, run_transforms
 from monailabel.transform.cache import CacheTransformDatad
 from monailabel.transform.writer import ClassificationWriter, DetectionWriter, Writer
-from monailabel.utils.others.generic import device_list
-from monailabel.utils.others.generic import device_displayname_list
-
+from monailabel.utils.others.generic import device_displayname_list, device_list
 
 logger = logging.getLogger(__name__)
 
@@ -228,8 +226,8 @@ class BasicInferTask(InferTask):
         roi_size = data.get("roi_size", self.roi_size) if data else self.roi_size
         sw_batch_size = data.get("sw_batch_size", 1) if data else 1
         sw_overlap = data.get("sw_overlap", 0.25) if data else 0.25
-        
-        #Update list of device Ids with "cuda" as it was  loaded with GPU marketing display name; monai core needs id to be "cuda"
+
+        # Update list of device Ids with "cuda" as it was  loaded with GPU marketing display name; monai core needs id to be "cuda"
         req.update({"device": device_list()})
 
         device = data.get("device")
@@ -279,7 +277,7 @@ class BasicInferTask(InferTask):
         ) if self.path and isinstance(self.path, list) else self.path
 
         # device
-        #Update list of device Ids with "cuda" as it was  loaded with GPU marketing display name; monai core needs id to be "cuda"
+        # Update list of device Ids with "cuda" as it was  loaded with GPU marketing display name; monai core needs id to be "cuda"
         req.update({"device": device_list()})
         device = req.get("device", "cuda")
         device = device if isinstance(device, str) else device[0]

@@ -56,8 +56,7 @@ from monailabel.config import settings
 from monailabel.interfaces.datastore import Datastore
 from monailabel.interfaces.tasks.train import TrainTask
 from monailabel.tasks.train.handler import PublishStatsAndModel, prepare_stats
-from monailabel.utils.others.generic import path_to_uri, remove_file
-from monailabel.utils.others.generic import device_displayname_list
+from monailabel.utils.others.generic import device_displayname_list, path_to_uri, remove_file
 
 logger = logging.getLogger(__name__)
 
