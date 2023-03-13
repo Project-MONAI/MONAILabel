@@ -191,6 +191,19 @@ def download_file(url, path, delay=1, skip_on_exists=True):
 def device_list():
     devices = [] if torch.cuda.is_available() else ["cpu"]
     if torch.cuda.device_count():
+        devices.append("cuda")
+    if torch.cuda.device_count() > 1:
+        for i in range(torch.cuda.device_count()):
+            devices.append(f"cuda:{i}")
+
+    return devices
+
+#We need a new device_list function that returns the marketing name for GPUs to display on UI plugin.
+#We will use this function to avoid hardcoded name "cuda" for any GPU device. Instead we can display marketng name such as "Tesla V100S-PCIE-32GB" for NVIDIA or for other vendors such as AMD "AMD Instinct MI100".
+#Monai core still requires to handle device Id as "cuda" so this is only for UI display.
+def device_displayname_list():
+    devices = [] if torch.cuda.is_available() else ["cpu"]
+    if torch.cuda.device_count():
         devices.append(torch.cuda.get_device_name(0))
     if torch.cuda.device_count() > 1:
         for i in range(torch.cuda.device_count()):

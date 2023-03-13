@@ -27,6 +27,8 @@ from monailabel.interfaces.utils.transform import dump_data, run_transforms
 from monailabel.transform.cache import CacheTransformDatad
 from monailabel.transform.writer import ClassificationWriter, DetectionWriter, Writer
 from monailabel.utils.others.generic import device_list
+from monailabel.utils.others.generic import device_displayname_list
+
 
 logger = logging.getLogger(__name__)
 
@@ -99,7 +101,7 @@ class BasicInferTask(InferTask):
 
         self._config.update(
             {
-                "device": device_list(),
+                "device": device_displayname_list(),
                 # "result_extension": None,
                 # "result_dtype": None,
                 # "result_compress": False
@@ -113,7 +115,7 @@ class BasicInferTask(InferTask):
             self._config.update(config)
 
         if preload:
-            for device in ["{torch.cuda.get_device_name(0)}", *device_list()]:
+            for device in device_list():
                 logger.info(f"Preload Network for device: {device}")
                 self._get_network(device)
 
@@ -226,6 +228,10 @@ class BasicInferTask(InferTask):
         roi_size = data.get("roi_size", self.roi_size) if data else self.roi_size
         sw_batch_size = data.get("sw_batch_size", 1) if data else 1
         sw_overlap = data.get("sw_overlap", 0.25) if data else 0.25
+        
+        #Update list of device Ids with "cuda" as it was  loaded with GPU marketing display name; monai core needs id to be "cuda"
+        req.update({"device": device_list()})
+
         device = data.get("device")
 
         sliding = False
@@ -273,6 +279,7 @@ class BasicInferTask(InferTask):
         ) if self.path and isinstance(self.path, list) else self.path
 
         # device
+        #Update list of device Ids with "cuda" as it was  loaded with GPU marketing display name; monai core needs id to be "cuda"
         req.update({"device": device_list()})
         device = req.get("device", "cuda")
         device = device if isinstance(device, str) else device[0]
