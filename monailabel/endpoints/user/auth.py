@@ -10,7 +10,7 @@
 # limitations under the License.
 import functools
 import logging
-from typing import Any, Dict, List, Union
+from typing import List, Union
 
 import requests
 from fastapi import Depends, HTTPException, Security, status
@@ -91,8 +91,17 @@ def from_token(token: str):
     username: str = payload.get(settings.MONAI_LABEL_AUTH_TOKEN_USERNAME)
     email: str = payload.get(settings.MONAI_LABEL_AUTH_TOKEN_EMAIL)
     name: str = payload.get(settings.MONAI_LABEL_AUTH_TOKEN_NAME)
-    realm_access: Dict[str, Any] = payload.get(settings.MONAI_LABEL_AUTH_TOKEN_REALM_ACCESS)
-    roles = [] if not realm_access else realm_access.get(settings.MONAI_LABEL_AUTH_TOKEN_ROLES)
+
+    kr = settings.MONAI_LABEL_AUTH_TOKEN_ROLES.split("#")
+    if len(kr) > 1:
+        p = payload
+        for r in kr:
+            roles = p.get(r)
+            p = roles
+    else:
+        roles = payload.get(kr[0])
+    roles = [] if not roles else roles
+    logger.info(f"User: {username}; Roles: {roles}")
 
     return User(username=username, email=email, name=name, roles=roles)
 

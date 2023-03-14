@@ -26,6 +26,9 @@ router = APIRouter(
     responses={404: {"description": "Not found"}},
 )
 
+# https://auth0.com/
+# https://www.keycloak.org/
+
 
 @router.post("/token", response_model=Token)
 async def login_for_access_token(form_data: OAuth2PasswordRequestForm = Depends()):

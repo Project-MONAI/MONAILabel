@@ -23,14 +23,13 @@ class Settings(BaseSettings):
     MONAI_LABEL_STUDIES: str = ""
     MONAI_LABEL_APP_CONF: Dict[str, str] = {}
 
-    MONAI_LABEL_AUTH_ENABLE: bool = True
+    MONAI_LABEL_AUTH_ENABLE: bool = False
     MONAI_LABEL_AUTH_REALM_URI: str = "http://localhost:8080/realms/monailabel"
     MONAI_LABEL_AUTH_TIMEOUT: int = 10
     MONAI_LABEL_AUTH_TOKEN_USERNAME: str = "preferred_username"
     MONAI_LABEL_AUTH_TOKEN_EMAIL: str = "email"
     MONAI_LABEL_AUTH_TOKEN_NAME: str = "name"
-    MONAI_LABEL_AUTH_TOKEN_REALM_ACCESS: str = "realm_access"
-    MONAI_LABEL_AUTH_TOKEN_ROLES: str = "roles"
+    MONAI_LABEL_AUTH_TOKEN_ROLES: str = "realm_access#roles"
 
     MONAI_LABEL_AUTH_ROLE_ADMIN: str = "monailabel-admin"
     MONAI_LABEL_AUTH_ROLE_RESEARCHER: str = "monailabel-researcher"
