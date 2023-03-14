@@ -8,11 +8,11 @@
 # WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 # See the License for the specific language governing permissions and
 # limitations under the License.
-import functools
 import logging
 from typing import List, Union
 
 import requests
+from cachetools import cached
 from fastapi import Depends, HTTPException, Security, status
 from fastapi.security import OAuth2PasswordBearer
 from jose import JWTError, jwt
@@ -41,7 +41,7 @@ def public_key(realm_uri) -> str:
     return f"-----BEGIN PUBLIC KEY-----\n{key}\n-----END PUBLIC KEY-----"
 
 
-@functools.cache
+@cached(cache={})
 def open_id_configuration(realm_uri):
     response = requests.get(
         url=f"{realm_uri}/.well-known/openid-configuration",
