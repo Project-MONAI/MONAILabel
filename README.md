@@ -33,17 +33,17 @@ with [MONAI](https://github.com/Project-MONAI). Refer to full [MONAI Label docum
   - [MONAI Label Server](#current-stable-version)
   - [Visualization Tools Guide](#visualization-tools)
   - [Plugin Guide](#plugins)
-- [MONAI Label Tutorials](https://github.com/Project-MONAI/tutorials/tree/main/monailabel)
+- [MONAI Label Integration Tutorials](https://github.com/Project-MONAI/tutorials/tree/main/monailabel)
 - [Contributing Guide and Communities](#contributing)
 
 ## Sample Apps in MONAILabel
 
 ![image](https://raw.githubusercontent.com/Project-MONAI/MONAILabel/main/docs/images/sampleApps_index.jpeg)
 
-[MONAI Label](https://youtu.be/m2rYorVwXk4) | [Demo Videos](https://www.youtube.com/c/ProjectMONAI)
+[MONAI Label](https://youtu.be/m2rYorVwXk4) | [Demo Videos](https://www.youtube.com/c/ProjectMONAI) | [Notebook Tutorials](https://github.com/Project-MONAI/tutorials/tree/main/monailabel)
 
 MONAI Label with visualization tools 3D Slicer, OHIF, DSA, QuPath, CVAT etc..
-![image](https://raw.githubusercontent.com/Project-MONAI/MONAILabel/main/docs/images/wholeBody.png)
+![image](https://raw.githubusercontent.com/Project-MONAI/MONAILabel/main/docs/images/demo.png)
 <table>
 <tr>
 <td><img src="https://raw.githubusercontent.com/Project-MONAI/MONAILabel/main/docs/images/ohif.png" alt="drawing" width="150"/></td>

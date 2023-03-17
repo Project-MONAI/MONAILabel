@@ -21,6 +21,9 @@ However the following constraints has to be met for any monai bundle to directly
 
 > By default models are picked from https://github.com/Project-MONAI/model-zoo/blob/dev/models/model_info.json
 
+<p align = "center"><img src="../../docs/images/wholeBody.png" alt="drawing" width="800"/></p>
+<p align = "center"><em>Whole body CT segmentation with 104 structures using TotalSegmentator Dataset</em></p>
+
 ### Structure of the App
 
 - **[lib/infers](./lib/infers)** is to define and activate inference task over monai-bundle.
