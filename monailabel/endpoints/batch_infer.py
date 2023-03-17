@@ -63,9 +63,7 @@ def stop():
 async def api_status(
     all: bool = False,
     check_if_running: bool = False,
-    user: User = Depends(
-        RBAC(settings.MONAI_LABEL_AUTH_ROLE_USER),
-    ),
+    user: User = Depends(RBAC(settings.MONAI_LABEL_AUTH_ROLE_USER)),
 ):
     return status(all, check_if_running)
 
