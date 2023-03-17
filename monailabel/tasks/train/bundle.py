@@ -242,7 +242,7 @@ class BundleTrainTask(TrainTask):
 
         train_handlers = self.bundle_config.get(self.const.key_train_handlers(), [])
 
-        model_filename = request.get("model_filename", "model.pt") 
+        model_filename = request.get("model_filename", "model.pt")
         model_filename = model_filename if isinstance(model_filename, str) else model_filename[0]
         model_pytorch = os.path.join(self.bundle_path, "models", model_filename)
 
