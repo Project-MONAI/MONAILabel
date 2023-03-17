@@ -43,7 +43,7 @@ with [MONAI](https://github.com/Project-MONAI). Refer to full [MONAI Label docum
 [MONAI Label](https://youtu.be/m2rYorVwXk4) | [Demo Videos](https://www.youtube.com/c/ProjectMONAI)
 
 MONAI Label with visualization tools 3D Slicer, OHIF, DSA, QuPath, CVAT etc..
-![image](https://raw.githubusercontent.com/Project-MONAI/MONAILabel/main/docs/images/demo.png)
+![image](https://raw.githubusercontent.com/Project-MONAI/MONAILabel/main/docs/images/wholeBody.png)
 <table>
 <tr>
 <td><img src="https://raw.githubusercontent.com/Project-MONAI/MONAILabel/main/docs/images/ohif.png" alt="drawing" width="150"/></td>
@@ -58,6 +58,7 @@ MONAI Label with visualization tools 3D Slicer, OHIF, DSA, QuPath, CVAT etc..
 > _The codebase is currently under active development._
 
 - Framework for developing and deploying MONAI Label Apps to train and infer AI models
+- Pre-trained models including whole body CT segmentation (104 structures) and whole brain MRI segmentation (131 tissues)
 - Compositional & portable APIs for ease of integration in existing workflows
 - Customizable labeling app design for varying user expertise
 - Annotation support via [3DSlicer](https://github.com/Project-MONAI/MONAILabel/tree/main/plugins/slicer)

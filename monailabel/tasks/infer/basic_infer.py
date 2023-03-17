@@ -267,9 +267,9 @@ class BasicInferTask(InferTask):
         req = copy.deepcopy(self._config)
         req.update(request)
 
-        # model options
+        model_filename = req.get("model_filename", "model.pt") if isinstance(req.get("model_filename", "model.pt"), str) else req.get("model_filename")[0]
         self.path.append(
-            os.path.join(os.path.dirname(self.path[0]), req.get("model_filename", "model.pt"))
+            os.path.join(os.path.dirname(self.path[0]), model_filename)
         ) if self.path and isinstance(self.path, list) else self.path
 
         # device
