@@ -311,7 +311,7 @@ class Main:
                     e = f"{export_key}{k}={v}"
                     f.write(e)
                     f.write(os.linesep)
-                    logger.info(e)
+                    logger.debug(e)
 
                 py_path = [os.environ.get("PYTHONPATH", "").rstrip(os.pathsep), args.app, os.path.join(args.app, "lib")]
                 py_path = [p for p in py_path if p]
