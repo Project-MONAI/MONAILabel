@@ -65,7 +65,9 @@ app.mount(
     name="static",
 )
 
-app.include_router(login.router, prefix=settings.MONAI_LABEL_API_STR)
+if settings.MONAI_LABEL_AUTH_ENABLE:
+    app.include_router(login.router, prefix=settings.MONAI_LABEL_API_STR)
+
 app.include_router(info.router, prefix=settings.MONAI_LABEL_API_STR)
 app.include_router(model.router, prefix=settings.MONAI_LABEL_API_STR)
 app.include_router(infer.router, prefix=settings.MONAI_LABEL_API_STR)

@@ -22,7 +22,8 @@ from fastapi import APIRouter, Depends, File, Form, HTTPException, UploadFile
 from fastapi.background import BackgroundTasks
 from fastapi.responses import FileResponse
 
-from monailabel.endpoints.user.auth import User, get_admin_user, get_annotator_user, get_basic_user, get_reviwer_user
+from monailabel.config import settings
+from monailabel.endpoints.user.auth import RBAC, User
 from monailabel.interfaces.app import MONAILabelApp
 from monailabel.interfaces.datastore import Datastore, DefaultLabelTag
 from monailabel.interfaces.utils.app import app_instance
@@ -195,93 +196,115 @@ def download_dataset(limit_cases: Optional[int] = None):
     return FileResponse(path, media_type=get_mime_type(path), filename="dataset.zip")
 
 
-@router.get("/", summary="Get All Images/Labels from datastore")
-async def api_datastore(output: Optional[ResultType] = None, user: User = Depends(get_basic_user)):
+@router.get("/", summary="|RBAC: user| - Get All Images/Labels from datastore")
+async def api_datastore(
+    output: Optional[ResultType] = None,
+    user: User = Depends(RBAC(settings.MONAI_LABEL_AUTH_ROLE_USER)),
+):
     return datastore(output)
 
 
-@router.put("/", summary="Upload new Image", deprecated=True)
-@router.put("/image", summary="Upload new Image")
+@router.put("/", summary="|RBAC: annotator| - Upload new Image", deprecated=True)
+@router.put("/image", summary="|RBAC: annotator| - Upload new Image")
 async def api_add_image(
     background_tasks: BackgroundTasks,
     image: Optional[str] = None,
     params: str = Form("{}"),
     file: UploadFile = File(...),
-    user: User = Depends(get_annotator_user),
+    user: User = Depends(RBAC(settings.MONAI_LABEL_AUTH_ROLE_ANNOTATOR)),
 ):
     return add_image(background_tasks, image, params, file, user.username)
 
 
-@router.delete("/", summary="Remove Image and corresponding labels", deprecated=True)
-@router.delete("/image", summary="Remove Image and corresponding labels")
-async def api_remove_image(id: str, user: User = Depends(get_admin_user)):
+@router.delete("/", summary="|RBAC: admin| - Remove Image and corresponding labels", deprecated=True)
+@router.delete("/image", summary="|RBAC: admin| - Remove Image and corresponding labels")
+async def api_remove_image(id: str, user: User = Depends(RBAC(settings.MONAI_LABEL_AUTH_ROLE_ADMIN))):
     return remove_image(id, user.username)
 
 
-@router.head("/image", summary="Check If Image Exists")
-async def api_check_image(image: str, check_sum: Optional[str] = None, user: User = Depends(get_basic_user)):
+@router.head("/image", summary="|RBAC: user| - Check If Image Exists")
+async def api_check_image(
+    image: str,
+    check_sum: Optional[str] = None,
+    user: User = Depends(RBAC(settings.MONAI_LABEL_AUTH_ROLE_USER)),
+):
     return download_image(image, check_only=True, check_sum=check_sum)
 
 
-@router.get("/image", summary="Download Image")
-async def api_download_image(image: str, user: User = Depends(get_basic_user)):
+@router.get("/image", summary="|RBAC: user| - Download Image")
+async def api_download_image(image: str, user: User = Depends(RBAC(settings.MONAI_LABEL_AUTH_ROLE_USER))):
     return download_image(image)
 
 
-@router.get("/image/info", summary="Get Image Info")
-async def api_get_image_info(image: str, user: User = Depends(get_basic_user)):
+@router.get("/image/info", summary="|RBAC: user| - Get Image Info")
+async def api_get_image_info(image: str, user: User = Depends(RBAC(settings.MONAI_LABEL_AUTH_ROLE_USER))):
     return get_image_info(image)
 
 
-@router.put("/image/info", summary="Update Image Info")
-async def api_put_image_info(image: str, info: str = Form("{}"), user: User = Depends(get_annotator_user)):
+@router.put("/image/info", summary="|RBAC: annotator| - Update Image Info")
+async def api_put_image_info(
+    image: str,
+    info: str = Form("{}"),
+    user: User = Depends(RBAC(settings.MONAI_LABEL_AUTH_ROLE_ANNOTATOR)),
+):
     return update_image_info(image, info, user.username)
 
 
-@router.put("/label", summary="Save Finished Label")
+@router.put("/label", summary="|RBAC: annotator| - Save Finished Label")
 async def api_save_label(
     background_tasks: BackgroundTasks,
     image: str,
     params: str = Form("{}"),
     tag: str = DefaultLabelTag.FINAL.value,
     label: UploadFile = File(...),
-    user: User = Depends(get_annotator_user),
+    user: User = Depends(RBAC(settings.MONAI_LABEL_AUTH_ROLE_ANNOTATOR)),
 ):
     return save_label(background_tasks, image, params, tag, label, user.username)
 
 
-@router.delete("/label", summary="Remove Label")
-async def api_remove_label(id: str, tag: str, user: User = Depends(get_reviwer_user)):
+@router.delete("/label", summary="|RBAC: admin| - Remove Label")
+async def api_remove_label(id: str, tag: str, user: User = Depends(RBAC(settings.MONAI_LABEL_AUTH_ROLE_ADMIN))):
     return remove_label(id, tag, user.username)
 
 
-@router.head("/label", summary="Check If Label Exists")
-async def api_check_label(image: str, tag: str, user: User = Depends(get_basic_user)):
+@router.head("/label", summary="|RBAC: user| - Check If Label Exists")
+async def api_check_label(image: str, tag: str, user: User = Depends(RBAC(settings.MONAI_LABEL_AUTH_ROLE_USER))):
     return download_label(image, tag, check_only=True)
 
 
-@router.get("/label", summary="Download Label")
-async def api_download_label(label: str, tag: str, user: User = Depends(get_basic_user)):
+@router.get("/label", summary="|RBAC: user| - Download Label")
+async def api_download_label(label: str, tag: str, user: User = Depends(RBAC(settings.MONAI_LABEL_AUTH_ROLE_USER))):
     return download_label(label, tag)
 
 
-@router.get("/label/info", summary="Get Label Info")
-async def api_get_label_info(label: str, tag: str, user: User = Depends(get_basic_user)):
+@router.get("/label/info", summary="|RBAC: user| - Get Label Info")
+async def api_get_label_info(label: str, tag: str, user: User = Depends(RBAC(settings.MONAI_LABEL_AUTH_ROLE_USER))):
     return get_label_info(label, tag)
 
 
-@router.put("/label/info", summary="Update Label Info")
-async def api_put_label_info(label: str, tag: str, info: str = Form("{}"), user: User = Depends(get_annotator_user)):
+@router.put("/label/info", summary="|RBAC: annotator| - Update Label Info")
+async def api_put_label_info(
+    label: str,
+    tag: str,
+    info: str = Form("{}"),
+    user: User = Depends(RBAC(settings.MONAI_LABEL_AUTH_ROLE_ANNOTATOR)),
+):
     return update_label_info(label, tag, info, user.username)
 
 
-@router.put("/updatelabelinfo", summary="Update label info", deprecated=True)
+@router.put("/updatelabelinfo", summary="|RBAC: annotator| - Update label info", deprecated=True)
 async def api_update_label_info(
-    label: str, tag: str, params: str = Form("{}"), user: User = Depends(get_annotator_user)
+    label: str,
+    tag: str,
+    params: str = Form("{}"),
+    user: User = Depends(RBAC(settings.MONAI_LABEL_AUTH_ROLE_ANNOTATOR)),
 ):
     return update_label_info(label, tag, params, user.username)
 
 
-@router.get("/dataset", summary="Download full dataset as ZIP archive")
-async def api_download_dataset(limit_cases: Optional[int] = None):
+@router.get("/dataset", summary="|RBAC: annotator| - Download full dataset as ZIP archive")
+async def api_download_dataset(
+    limit_cases: Optional[int] = None,
+    user: User = Depends(RBAC(settings.MONAI_LABEL_AUTH_ROLE_ANNOTATOR)),
+):
     return download_dataset(limit_cases)

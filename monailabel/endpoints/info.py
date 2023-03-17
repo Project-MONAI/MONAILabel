@@ -11,13 +11,14 @@
 
 from fastapi import APIRouter, Depends
 
-from monailabel.endpoints.user.auth import User, get_basic_user
+from monailabel.config import settings
+from monailabel.endpoints.user.auth import RBAC, User
 from monailabel.interfaces.app import MONAILabelApp
 from monailabel.interfaces.utils.app import app_instance
 
 router = APIRouter(
     prefix="/info",
-    tags=["AppService"],
+    tags=["App"],
     responses={404: {"description": "Not found"}},
 )
 
@@ -27,6 +28,6 @@ def app_info():
     return instance.info()
 
 
-@router.get("/", summary="Get App Info")
-async def api_app_info(user: User = Depends(get_basic_user)):
+@router.get("/", summary="|RBAC: user| - Get App Info")
+async def api_app_info(user: User = Depends(RBAC(settings.MONAI_LABEL_AUTH_ROLE_USER))):
     return app_info()

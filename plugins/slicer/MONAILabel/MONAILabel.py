@@ -274,7 +274,7 @@ class MONAILabelWidget(ScriptedLoadableModuleWidget, VTKObservationMixin):
         # Create logic class. Logic implements all computations that should be possible to run
         # in batch mode, without a graphical user interface.
         self.tmpdir = slicer.util.tempDirectory("slicer-monai-label")
-        self.logic = MONAILabelLogic(self.tmpdir)
+        self.logic = MONAILabelLogic(self.tmpdir, resourcePath=self.resourcePath)
 
         # Set icons and tune widget properties
         self.ui.serverComboBox.lineEdit().setPlaceholderText("enter server address or leave empty to use default")
@@ -2153,12 +2153,16 @@ class MONAILabelWidget(ScriptedLoadableModuleWidget, VTKObservationMixin):
 
 
 class MONAILabelLogic(ScriptedLoadableModuleLogic):
-    def __init__(self, tmpdir=None, server_url=None, progress_callback=None, client_id=None):
+    def __init__(self, tmpdir=None, server_url=None, progress_callback=None, client_id=None, resourcePath=None):
         ScriptedLoadableModuleLogic.__init__(self)
 
         self.server_url = server_url
         self.tmpdir = slicer.util.tempDirectory("slicer-monai-label") if tmpdir is None else tmpdir
         self.client_id = client_id
+        self.resourcePath = resourcePath
+        self.username = None
+        self.password = None
+        self.auth_token = None
 
         self.volumeToSessions = dict()
         self.progress_callback = progress_callback
@@ -2175,6 +2179,11 @@ class MONAILabelLogic(ScriptedLoadableModuleLogic):
         shutil.rmtree(self.tmpdir, ignore_errors=True)
 
     def setServer(self, server_url=None):
+        if self.server_url != server_url:
+            self.username = None
+            self.password = None
+            self.auth_token = None
+
         self.server_url = server_url if server_url else "http://127.0.0.1:8000"
 
     def setClientId(self, client_id):
@@ -2200,40 +2209,63 @@ class MONAILabelLogic(ScriptedLoadableModuleLogic):
             segmentEditorNode = slicer.mrmlScene.AddNode(segmentEditorNode)
         return segmentEditorNode
 
+    def _client(self):
+        mc = MONAILabelClient(self.server_url, self.tmpdir, self.client_id)
+        if mc.auth_enabled():
+            if not self.username or not self.password:
+                dlg = LoginDialog(username=self.client_id, password="", resourcePath=self.resourcePath)
+                dlg.exec()
+
+                self.username = dlg.ui.username.text
+                self.password = dlg.ui.password.text
+
+            if self.auth_token:
+                mc.update_auth(self.auth_token)
+
+            # TODO:: JWT token can be validated (with additional py dependencies) to avoid further calls to server
+            if not self.auth_token or not mc.auth_valid_token():
+                try:
+                    print(f"Fetching new Token for: {self.username}")
+                    self.auth_token = mc.auth_token(self.username, self.password)
+                    mc.update_auth(self.auth_token)
+                except:
+                    self.username = None
+                    self.password = None
+                    self.auth_token = None
+        return mc
+
     def info(self):
-        return MONAILabelClient(self.server_url, self.tmpdir, self.client_id).info()
+        return self._client().info()
 
     def datastore(self):
-        return MONAILabelClient(self.server_url, self.tmpdir, self.client_id).datastore()
+        return self._client().datastore()
 
     def download_label(self, label_id, tag):
-        return MONAILabelClient(self.server_url, self.tmpdir, self.client_id).download_label(label_id, tag)
+        return self._client().download_label(label_id, tag)
 
     def next_sample(self, strategy, params={}):
-        return MONAILabelClient(self.server_url, self.tmpdir, self.client_id).next_sample(strategy, params)
+        return self._client().next_sample(strategy, params)
 
     def create_session(self, image_in):
-        return MONAILabelClient(self.server_url, self.tmpdir, self.client_id).create_session(image_in)
+        return self._client().create_session(image_in)
 
     def get_session(self, session_id):
-        return MONAILabelClient(self.server_url, self.tmpdir, self.client_id).get_session(session_id)
+        return self._client().get_session(session_id)
 
     def remove_session(self, session_id):
-        return MONAILabelClient(self.server_url, self.tmpdir, self.client_id).remove_session(session_id)
+        return self._client().remove_session(session_id)
 
     def upload_image(self, image_in, image_id=None):
-        return MONAILabelClient(self.server_url, self.tmpdir, self.client_id).upload_image(image_in, image_id)
+        return self._client().upload_image(image_in, image_id)
 
     def save_label(self, image_in, label_in, params):
-        return MONAILabelClient(self.server_url, self.tmpdir, self.client_id).save_label(
-            image_in, label_in, params=params
-        )
+        return self._client().save_label(image_in, label_in, params=params)
 
     def infer(self, model, image_in, params={}, label_in=None, file=None, session_id=None):
         logging.debug("Preparing input data for segmentation")
         self.reportProgress(0)
 
-        client = MONAILabelClient(self.server_url, self.tmpdir, self.client_id)
+        client = self._client()
         params["result_extension"] = ".nrrd"  # expect .nrrd
         params["result_dtype"] = "uint8"
         result_file, params = client.infer(model, image_in, params, label_in, file, session_id)
@@ -2245,13 +2277,32 @@ class MONAILabelLogic(ScriptedLoadableModuleLogic):
         return result_file, params
 
     def train_start(self, model=None, params={}):
-        return MONAILabelClient(self.server_url, self.tmpdir, self.client_id).train_start(model, params)
+        return self._client().train_start(model, params)
 
     def train_status(self, check_if_running):
-        return MONAILabelClient(self.server_url, self.tmpdir, self.client_id).train_status(check_if_running)
+        return self._client().train_status(check_if_running)
 
     def train_stop(self):
-        return MONAILabelClient(self.server_url, self.tmpdir, self.client_id).train_stop()
+        return self._client().train_stop()
+
+
+class LoginDialog(qt.QDialog):
+    def __init__(self, username, password, resourcePath):
+        super().__init__()
+        self.setWindowTitle("User Login")
+
+        layout = qt.QVBoxLayout()
+        uiWidget = slicer.util.loadUI(resourcePath("UI/LoginDialog.ui"))
+        layout.addWidget(uiWidget)
+
+        self.ui = slicer.util.childWidgetVariables(uiWidget)
+        self.setLayout(layout)
+        self.ui.username.setText(username)
+        self.ui.password.setText(password if password else "")
+        self.ui.loginButton.connect("clicked(bool)", self.onLogin)
+
+    def onLogin(self):
+        self.close()
 
 
 class MONAILabelTest(ScriptedLoadableModuleTest):

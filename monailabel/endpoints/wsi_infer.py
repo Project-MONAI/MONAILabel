@@ -22,7 +22,8 @@ from fastapi.background import BackgroundTasks
 from fastapi.responses import FileResponse
 from pydantic import BaseModel, Field
 
-from monailabel.endpoints.user.auth import User, get_basic_user
+from monailabel.config import settings
+from monailabel.endpoints.user.auth import RBAC, User
 from monailabel.interfaces.app import MONAILabelApp
 from monailabel.interfaces.utils.app import app_instance
 from monailabel.utils.others.generic import get_mime_type, remove_file
@@ -113,7 +114,7 @@ def run_wsi_inference(
     return send_response(instance.datastore(), result, output, background_tasks)
 
 
-@router.post("/wsi/{model}", summary="Run WSI Inference for supported model", deprecated=True)
+@router.post("/wsi/{model}", summary="|RBAC: user| - Run WSI Inference for supported model", deprecated=True)
 async def api_run_wsi_inference(
     background_tasks: BackgroundTasks,
     model: str,
@@ -121,12 +122,12 @@ async def api_run_wsi_inference(
     session_id: str = "",
     wsi: WSIInput = WSIInput(),
     output: Optional[ResultType] = None,
-    user: User = Depends(get_basic_user),
+    user: User = Depends(RBAC(settings.MONAI_LABEL_AUTH_ROLE_USER)),
 ):
     return run_wsi_inference(background_tasks, model, image, session_id, None, wsi, output)
 
 
-@router.post("/wsi_v2/{model}", summary="Run WSI Inference for supported model")
+@router.post("/wsi_v2/{model}", summary="|RBAC: user| - Run WSI Inference for supported model")
 async def api_run_wsi_v2_inference(
     background_tasks: BackgroundTasks,
     model: str,
@@ -135,7 +136,7 @@ async def api_run_wsi_v2_inference(
     file: UploadFile = File(None),
     wsi: str = Form(WSIInput().json()),
     output: Optional[ResultType] = None,
-    user: User = Depends(get_basic_user),
+    user: User = Depends(RBAC(settings.MONAI_LABEL_AUTH_ROLE_USER)),
 ):
     w = WSIInput.parse_obj(json.loads(wsi))
     return run_wsi_inference(background_tasks, model, image, session_id, file, w, output)
