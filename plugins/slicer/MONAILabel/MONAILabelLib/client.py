@@ -54,9 +54,7 @@ class MONAILabelClient:
         selector = "/auth/"
         status, response, _, _ = MONAILabelUtils.http_method("GET", self._server_url, selector)
         if status != 200:
-            raise MONAILabelException(
-                MONAILabelError.SERVER_ERROR, f"Status: {status}; Response: {response}", status, response
-            )
+            return False
 
         response = response.decode("utf-8") if isinstance(response, bytes) else response
         logger.debug(f"Response: {response}")

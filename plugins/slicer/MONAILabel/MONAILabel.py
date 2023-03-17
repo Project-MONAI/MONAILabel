@@ -162,7 +162,7 @@ class _ui_MONAILabelSettingsPanel:
         )
 
         developerModeCheckBox = qt.QCheckBox()
-        developerModeCheckBox.checked = False
+        developerModeCheckBox.checked = True
         developerModeCheckBox.toolTip = "Enable this option to find options tab etc..."
         groupLayout.addRow("Developer Mode:", developerModeCheckBox)
         parent.registerProperty(
