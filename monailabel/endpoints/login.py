@@ -16,13 +16,13 @@ from fastapi import APIRouter, Depends
 from fastapi.security import OAuth2PasswordRequestForm
 
 from monailabel.config import settings
-from monailabel.endpoints.user.auth import Token, token_uri
+from monailabel.endpoints.user.auth import Token, User, get_current_user, token_uri
 
 logger = logging.getLogger(__name__)
 
 router = APIRouter(
-    prefix="",
-    tags=["AppService"],
+    prefix="/auth",
+    tags=["Auth"],
     responses={404: {"description": "Not found"}},
 )
 
@@ -30,15 +30,24 @@ router = APIRouter(
 # https://www.keycloak.org/
 
 
-@router.post("/token", response_model=Token)
-async def login_for_access_token(form_data: OAuth2PasswordRequestForm = Depends()):
+@router.get("/", summary="Check If Auth is Enabled")
+async def auth_enabled():
+    return {
+        "enabled": settings.MONAI_LABEL_AUTH_ENABLE,
+        "client_id": settings.MONAI_LABEL_AUTH_CLIENT_ID,
+        "realm": settings.MONAI_LABEL_AUTH_REALM_URI,
+    }
+
+
+@router.post("/token", response_model=Token, summary="Fetch new access code/token")
+async def access_token(form_data: OAuth2PasswordRequestForm = Depends()):
     if not settings.MONAI_LABEL_AUTH_ENABLE:
-        return {"access_token": "NotApplicable", "token_type": "Bearer"}
+        return {"access_token": None, "token_type": None}
 
     url = token_uri()
     headers = {"Content-Type": "application/x-www-form-urlencoded"}
     data = {
-        "client_id": "monailabel-app",
+        "client_id": settings.MONAI_LABEL_AUTH_CLIENT_ID,
         "username": form_data.username,
         "password": form_data.password,
         "grant_type": "password",
@@ -48,3 +57,8 @@ async def login_for_access_token(form_data: OAuth2PasswordRequestForm = Depends(
     response = requests.post(url=url, headers=headers, data=data, timeout=timeout)
     response.raise_for_status()
     return response.json()
+
+
+@router.get("/token/valid", summary="Check If current token is Valid")
+async def valid_token(user: User = Depends(get_current_user)):
+    return user.dict()

@@ -15,7 +15,8 @@ from typing import Optional
 import torch
 from fastapi import APIRouter, Depends, HTTPException
 
-from monailabel.endpoints.user.auth import User, get_admin_user, get_basic_user
+from monailabel.config import settings
+from monailabel.endpoints.user.auth import RBAC, User
 from monailabel.interfaces.app import MONAILabelApp
 from monailabel.interfaces.utils.app import app_instance
 from monailabel.utils.async_tasks.task import AsyncTask
@@ -67,35 +68,35 @@ def stop():
     return res
 
 
-@router.get("/", summary="Get Status of Training Task")
+@router.get("/", summary="|RBAC: user| - Get Status of Training Task")
 async def api_status(
     all: bool = False,
     check_if_running: bool = False,
-    user: User = Depends(get_basic_user),
+    user: User = Depends(RBAC(settings.MONAI_LABEL_AUTH_ROLE_USER)),
 ):
     return status(all, check_if_running)
 
 
-@router.post("/", summary="Run All Training Tasks", deprecated=True)
+@router.post("/", summary="|RBAC: admin| - Run All Training Tasks", deprecated=True)
 async def api_run(
     params: Optional[dict] = None,
     run_sync: Optional[bool] = False,
-    user: User = Depends(get_admin_user),
+    user: User = Depends(RBAC(settings.MONAI_LABEL_AUTH_ROLE_ADMIN)),
 ):
     return run(params, run_sync)
 
 
-@router.post("/{model}", summary="Run Training Task for specific model")
+@router.post("/{model}", summary="|RBAC: admin| - Run Training Task for specific model")
 async def api_run_model(
     model: str,
     params: Optional[dict] = None,
     run_sync: Optional[bool] = False,
     enqueue: Optional[bool] = False,
-    user: User = Depends(get_admin_user),
+    user: User = Depends(RBAC(settings.MONAI_LABEL_AUTH_ROLE_ADMIN)),
 ):
     return run_model(model, params, run_sync, enqueue)
 
 
-@router.delete("/", summary="Stop Training Task")
-async def api_stop(user: User = Depends(get_admin_user)):
+@router.delete("/", summary="|RBAC: admin| - Stop Training Task")
+async def api_stop(user: User = Depends(RBAC(settings.MONAI_LABEL_AUTH_ROLE_ADMIN))):
     return stop()

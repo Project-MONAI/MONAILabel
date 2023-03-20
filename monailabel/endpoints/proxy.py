@@ -18,7 +18,7 @@ from fastapi import APIRouter, Depends
 from fastapi.responses import Response
 
 from monailabel.config import settings
-from monailabel.endpoints.user.auth import User, get_basic_user
+from monailabel.endpoints.user.auth import RBAC, User
 
 logger = logging.getLogger(__name__)
 
@@ -86,21 +86,37 @@ async def proxy_dicom(op: str, path: str, response: Response):
 
 
 @router.get("/dicom/wado/{path:path}", include_in_schema=False)
-async def proxy_wado(path: str, response: Response, user: User = Depends(get_basic_user)):
+async def proxy_wado(
+    path: str,
+    response: Response,
+    user: User = Depends(RBAC(settings.MONAI_LABEL_AUTH_ROLE_USER)),
+):
     return await proxy_dicom("wado", path, response)
 
 
 @router.get("/dicom/qido/{path:path}", include_in_schema=False)
-async def proxy_qido(path: str, response: Response, user: User = Depends(get_basic_user)):
+async def proxy_qido(
+    path: str,
+    response: Response,
+    user: User = Depends(RBAC(settings.MONAI_LABEL_AUTH_ROLE_USER)),
+):
     return await proxy_dicom("qido", path, response)
 
 
 @router.get("/dicom/stow/{path:path}", include_in_schema=False)
-async def proxy_stow(path: str, response: Response, user: User = Depends(get_basic_user)):
+async def proxy_stow(
+    path: str,
+    response: Response,
+    user: User = Depends(RBAC(settings.MONAI_LABEL_AUTH_ROLE_USER)),
+):
     return await proxy_dicom("stow", path, response)
 
 
 # https://fastapi.tiangolo.com/tutorial/path-params/#order-matters
 @router.get("/dicom/{path:path}", include_in_schema=False)
-async def proxy(path: str, response: Response, user: User = Depends(get_basic_user)):
+async def proxy(
+    path: str,
+    response: Response,
+    user: User = Depends(RBAC(settings.MONAI_LABEL_AUTH_ROLE_USER)),
+):
     return await proxy_dicom("", path, response)

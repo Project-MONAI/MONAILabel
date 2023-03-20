@@ -30,9 +30,9 @@ class Settings(BaseSettings):
     MONAI_LABEL_AUTH_TOKEN_EMAIL: str = "email"
     MONAI_LABEL_AUTH_TOKEN_NAME: str = "name"
     MONAI_LABEL_AUTH_TOKEN_ROLES: str = "realm_access#roles"
+    MONAI_LABEL_AUTH_CLIENT_ID: str = "monailabel-app"
 
     MONAI_LABEL_AUTH_ROLE_ADMIN: str = "monailabel-admin"
-    MONAI_LABEL_AUTH_ROLE_RESEARCHER: str = "monailabel-researcher"
     MONAI_LABEL_AUTH_ROLE_REVIEWER: str = "monailabel-reviewer"
     MONAI_LABEL_AUTH_ROLE_ANNOTATOR: str = "monailabel-annotator"
     MONAI_LABEL_AUTH_ROLE_USER: str = "monailabel-user"
