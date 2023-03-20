@@ -1076,11 +1076,12 @@ class MONAILabelWidget(ScriptedLoadableModuleWidget, VTKObservationMixin):
                     detailedText=traceback.format_exc(),
                 )
                 return
-        except:
+        except BaseException as e:
+            msg = f"Message:: {e.msg}" if hasattr(e, "msg") else ""
             slicer.util.errorDisplay(
                 "Failed to fetch models from remote server. "
                 "Make sure server address is correct and <server_uri>/info/ "
-                "is accessible in browser",
+                f"is accessible in browser.\n{msg}",
                 detailedText=traceback.format_exc(),
             )
             return
@@ -1147,9 +1148,11 @@ class MONAILabelWidget(ScriptedLoadableModuleWidget, VTKObservationMixin):
 
             time.sleep(1)
             self.updateGUIFromParameterNode()
-        except:
+        except BaseException as e:
+            msg = f"Message:: {e.msg}" if hasattr(e, "msg") else ""
             slicer.util.errorDisplay(
-                "Failed to run training in MONAI Label Server", detailedText=traceback.format_exc()
+                f"Failed to run training in MONAI Label Server.\n{msg}",
+                detailedText=traceback.format_exc(),
             )
         finally:
             qt.QApplication.restoreOverrideCursor()
@@ -1177,8 +1180,12 @@ class MONAILabelWidget(ScriptedLoadableModuleWidget, VTKObservationMixin):
             qt.QApplication.setOverrideCursor(qt.Qt.WaitCursor)
             self.updateServerSettings()
             status = self.logic.train_stop()
-        except:
-            slicer.util.errorDisplay("Failed to stop Training Task", detailedText=traceback.format_exc())
+        except BaseException as e:
+            msg = f"Message:: {e.msg}" if hasattr(e, "msg") else ""
+            slicer.util.errorDisplay(
+                f"Failed to stop Training Task.\n{msg}",
+                detailedText=traceback.format_exc(),
+            )
         finally:
             qt.QApplication.restoreOverrideCursor()
 
@@ -1284,9 +1291,11 @@ class MONAILabelWidget(ScriptedLoadableModuleWidget, VTKObservationMixin):
 
             self.initSample(sample)
 
-        except:
+        except BaseException as e:
+            msg = f"Message:: {e.msg}" if hasattr(e, "msg") else ""
             slicer.util.errorDisplay(
-                "Failed to fetch Sample from MONAI Label Server", detailedText=traceback.format_exc()
+                f"Failed to fetch Sample from MONAI Label Server.\n{msg}",
+                detailedText=traceback.format_exc(),
             )
         finally:
             qt.QApplication.restoreOverrideCursor()
@@ -1368,7 +1377,8 @@ class MONAILabelWidget(ScriptedLoadableModuleWidget, VTKObservationMixin):
 
             self.updateGUIFromParameterNode()
             return True
-        except:
+        except BaseException as e:
+            msg = f"Message:: {e.msg}" if hasattr(e, "msg") else ""
             self.reportProgress(100)
             qt.QApplication.restoreOverrideCursor()
             if session:
@@ -1378,7 +1388,10 @@ class MONAILabelWidget(ScriptedLoadableModuleWidget, VTKObservationMixin):
                 )
                 self.current_sample["session"] = None
             else:
-                slicer.util.errorDisplay("Failed to upload volume to Server", detailedText=traceback.format_exc())
+                slicer.util.errorDisplay(
+                    f"Failed to upload volume to Server.\n{msg}",
+                    detailedText=traceback.format_exc(),
+                )
             return False
 
     def onImportLabel(self):
@@ -1459,8 +1472,12 @@ class MONAILabelWidget(ScriptedLoadableModuleWidget, VTKObservationMixin):
                 except:
                     logging.info("Failed to stop training; or already stopped")
                 self.onTraining()
-        except:
-            slicer.util.errorDisplay("Failed to save Label to MONAI Label Server", detailedText=traceback.format_exc())
+        except BaseException as e:
+            msg = f"Message:: {e.msg}" if hasattr(e, "msg") else ""
+            slicer.util.errorDisplay(
+                f"Failed to save Label to MONAI Label Server.\n{msg}",
+                detailedText=traceback.format_exc(),
+            )
         finally:
             qt.QApplication.restoreOverrideCursor()
             self.reportProgress(100)
@@ -1511,9 +1528,11 @@ class MONAILabelWidget(ScriptedLoadableModuleWidget, VTKObservationMixin):
             if labels and isinstance(labels, dict):
                 labels = [k for k, _ in sorted(labels.items(), key=lambda item: item[1])]
             self.updateSegmentationMask(result_file, labels)
-        except:
+        except BaseException as e:
+            msg = f"Message:: {e.msg}" if hasattr(e, "msg") else ""
             slicer.util.errorDisplay(
-                "Failed to run inference in MONAI Label Server", detailedText=traceback.format_exc()
+                f"Failed to run inference in MONAI Label Server.\n{msg}",
+                detailedText=traceback.format_exc(),
             )
         finally:
             qt.QApplication.restoreOverrideCursor()
@@ -1622,9 +1641,12 @@ class MONAILabelWidget(ScriptedLoadableModuleWidget, VTKObservationMixin):
 
             freeze = label if self.ui.freezeUpdateCheckBox.checked else None
             self.updateSegmentationMask(result_file, labels, None if deepgrow_3d else sliceIndex, freeze=freeze)
-        except:
-            logging.exception("Unknown Exception")
-            slicer.util.errorDisplay(operationDescription + " - unexpected error.", detailedText=traceback.format_exc())
+        except BaseException as e:
+            msg = f"Message:: {e.msg}" if hasattr(e, "msg") else ""
+            slicer.util.errorDisplay(
+                operationDescription + f" - unexpected error.\n{msg}",
+                detailedText=traceback.format_exc(),
+            )
         finally:
             qt.QApplication.restoreOverrideCursor()
 
@@ -1926,9 +1948,10 @@ class MONAILabelWidget(ScriptedLoadableModuleWidget, VTKObservationMixin):
             # display result from server
             self.reportProgress(90)
             self.updateSegmentationMask(result_file, [selected_label_name])
-        except:
+        except BaseException as e:
+            msg = f"Message:: {e.msg}" if hasattr(e, "msg") else ""
             slicer.util.errorDisplay(
-                f"Failed to post process label on MONAI Label Server using {scribblesMethod}",
+                f"Failed to post process label on MONAI Label Server using {scribblesMethod}.\n{msg}",
                 detailedText=traceback.format_exc(),
             )
         finally:

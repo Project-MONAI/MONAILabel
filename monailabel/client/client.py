@@ -26,6 +26,10 @@ import requests
 logger = logging.getLogger(__name__)
 
 
+def bytes_to_str(b):
+    return b.decode("utf-8") if isinstance(b, bytes) else b
+
+
 class MONAILabelClient:
     """
     Basic MONAILabel Client to invoke infer/train APIs over http/https
@@ -80,7 +84,7 @@ class MONAILabelClient:
         if status != 200:
             return False
 
-        response = response.decode("utf-8") if isinstance(response, bytes) else response
+        response = bytes_to_str(response)
         logger.debug(f"Response: {response}")
         enabled = json.loads(response).get("enabled", False)
         return True if enabled else False
@@ -99,10 +103,10 @@ class MONAILabelClient:
         )
         if status != 200:
             raise MONAILabelClientException(
-                MONAILabelError.SERVER_ERROR, f"Status: {status}; Response: {response}", status, response
+                MONAILabelError.SERVER_ERROR, f"Status: {status}; Response: {bytes_to_str(response)}", status, response
             )
 
-        response = response.decode("utf-8") if isinstance(response, bytes) else response
+        response = bytes_to_str(response)
         logger.debug(f"Response: {response}")
         return json.loads(response)
 
@@ -121,10 +125,10 @@ class MONAILabelClient:
         status, response, _, _ = MONAILabelUtils.http_method("GET", self._server_url, selector, headers=self._headers)
         if status != 200:
             raise MONAILabelClientException(
-                MONAILabelError.SERVER_ERROR, f"Status: {status}; Response: {response}", status, response
+                MONAILabelError.SERVER_ERROR, f"Status: {status}; Response: {bytes_to_str(response)}", status, response
             )
 
-        response = response.decode("utf-8") if isinstance(response, bytes) else response
+        response = bytes_to_str(response)
         logging.debug(f"Response: {response}")
         return json.loads(response)
 
@@ -143,10 +147,10 @@ class MONAILabelClient:
         )
         if status != 200:
             raise MONAILabelClientException(
-                MONAILabelError.SERVER_ERROR, f"Status: {status}; Response: {response}", status, response
+                MONAILabelError.SERVER_ERROR, f"Status: {status}; Response: {bytes_to_str(response)}", status, response
             )
 
-        response = response.decode("utf-8") if isinstance(response, bytes) else response
+        response = bytes_to_str(response)
         logging.debug(f"Response: {response}")
         return json.loads(response)
 
@@ -166,10 +170,10 @@ class MONAILabelClient:
         )
         if status != 200:
             raise MONAILabelClientException(
-                MONAILabelError.SERVER_ERROR, f"Status: {status}; Response: {response}", status, response
+                MONAILabelError.SERVER_ERROR, f"Status: {status}; Response: {bytes_to_str(response)}", status, response
             )
 
-        response = response.decode("utf-8") if isinstance(response, bytes) else response
+        response = bytes_to_str(response)
         logging.debug(f"Response: {response}")
         return json.loads(response)
 
@@ -184,10 +188,10 @@ class MONAILabelClient:
         status, response, _, _ = MONAILabelUtils.http_method("GET", self._server_url, selector, headers=self._headers)
         if status != 200:
             raise MONAILabelClientException(
-                MONAILabelError.SERVER_ERROR, f"Status: {status}; Response: {response}", status, response
+                MONAILabelError.SERVER_ERROR, f"Status: {status}; Response: {bytes_to_str(response)}", status, response
             )
 
-        response = response.decode("utf-8") if isinstance(response, bytes) else response
+        response = bytes_to_str(response)
         logging.debug(f"Response: {response}")
         return json.loads(response)
 
@@ -204,10 +208,10 @@ class MONAILabelClient:
         )
         if status != 200:
             raise MONAILabelClientException(
-                MONAILabelError.SERVER_ERROR, f"Status: {status}; Response: {response}", status, response
+                MONAILabelError.SERVER_ERROR, f"Status: {status}; Response: {bytes_to_str(response)}", status, response
             )
 
-        response = response.decode("utf-8") if isinstance(response, bytes) else response
+        response = bytes_to_str(response)
         logging.debug(f"Response: {response}")
         return json.loads(response)
 
@@ -232,10 +236,10 @@ class MONAILabelClient:
         if status != 200:
             raise MONAILabelClientException(
                 MONAILabelError.SERVER_ERROR,
-                f"Status: {status}; Response: {response}",
+                f"Status: {status}; Response: {bytes_to_str(response)}",
             )
 
-        response = response.decode("utf-8") if isinstance(response, bytes) else response
+        response = bytes_to_str(response)
         logging.debug(f"Response: {response}")
         return json.loads(response)
 
@@ -265,10 +269,10 @@ class MONAILabelClient:
         if status != 200:
             raise MONAILabelClientException(
                 MONAILabelError.SERVER_ERROR,
-                f"Status: {status}; Response: {response}",
+                f"Status: {status}; Response: {bytes_to_str(response)}",
             )
 
-        response = response.decode("utf-8") if isinstance(response, bytes) else response
+        response = bytes_to_str(response)
         logging.debug(f"Response: {response}")
         return json.loads(response)
 
@@ -277,10 +281,10 @@ class MONAILabelClient:
         status, response, _, _ = MONAILabelUtils.http_method("GET", self._server_url, selector, headers=self._headers)
         if status != 200:
             raise MONAILabelClientException(
-                MONAILabelError.SERVER_ERROR, f"Status: {status}; Response: {response}", status, response
+                MONAILabelError.SERVER_ERROR, f"Status: {status}; Response: {bytes_to_str(response)}", status, response
             )
 
-        response = response.decode("utf-8") if isinstance(response, bytes) else response
+        response = bytes_to_str(response)
         logging.debug(f"Response: {response}")
         return json.loads(response)
 
@@ -293,7 +297,7 @@ class MONAILabelClient:
         )
         if status != 200:
             raise MONAILabelClientException(
-                MONAILabelError.SERVER_ERROR, f"Status: {status}; Response: {response}", status, response
+                MONAILabelError.SERVER_ERROR, f"Status: {status}; Response: {bytes_to_str(response)}", status, response
             )
 
         content_disposition = headers.get("content-disposition")
@@ -339,7 +343,7 @@ class MONAILabelClient:
         if status != 200:
             raise MONAILabelClientException(
                 MONAILabelError.SERVER_ERROR,
-                f"Status: {status}; Response: {form}",
+                f"Status: {status}; Response: {bytes_to_str(form)}",
             )
 
         form = json.loads(form) if isinstance(form, str) else form
@@ -374,7 +378,7 @@ class MONAILabelClient:
         if status != 200:
             raise MONAILabelClientException(
                 MONAILabelError.SERVER_ERROR,
-                f"Status: {status}; Response: {form}",
+                f"Status: {status}; Response: {bytes_to_str(form)}",
             )
 
         return None, form
@@ -399,10 +403,10 @@ class MONAILabelClient:
         if status != 200:
             raise MONAILabelClientException(
                 MONAILabelError.SERVER_ERROR,
-                f"Status: {status}; Response: {response}",
+                f"Status: {status}; Response: {bytes_to_str(response)}",
             )
 
-        response = response.decode("utf-8") if isinstance(response, bytes) else response
+        response = bytes_to_str(response)
         logging.debug(f"Response: {response}")
         return json.loads(response)
 
@@ -419,10 +423,10 @@ class MONAILabelClient:
         if status != 200:
             raise MONAILabelClientException(
                 MONAILabelError.SERVER_ERROR,
-                f"Status: {status}; Response: {response}",
+                f"Status: {status}; Response: {bytes_to_str(response)}",
             )
 
-        response = response.decode("utf-8") if isinstance(response, bytes) else response
+        response = bytes_to_str(response)
         logging.debug(f"Response: {response}")
         return json.loads(response)
 
@@ -443,10 +447,10 @@ class MONAILabelClient:
         if status != 200:
             raise MONAILabelClientException(
                 MONAILabelError.SERVER_ERROR,
-                f"Status: {status}; Response: {response}",
+                f"Status: {status}; Response: {bytes_to_str(response)}",
             )
 
-        response = response.decode("utf-8") if isinstance(response, bytes) else response
+        response = bytes_to_str(response)
         logging.debug(f"Response: {response}")
         return json.loads(response)
 
