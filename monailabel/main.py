@@ -275,9 +275,15 @@ class Main:
         for arg in vars(args):
             logger.info(f"USING:: {arg} = {getattr(args, arg)}")
 
+        sensitive = [
+            "MONAI_LABEL_DICOMWEB_PASSWORD",
+            "MONAI_ZOO_AUTH_TOKEN",
+            "MONAI_LABEL_DATASTORE_PASSWORD",
+            "MONAI_LABEL_DATASTORE_API_KEY",
+        ]
         for k, v in settings.dict().items():
             v = f"'{json.dumps(v)}'" if isinstance(v, list) or isinstance(v, dict) else v
-            logger.info(f"ENV SETTINGS:: {k} = {'*' * len(v) if k == 'MONAI_LABEL_DICOMWEB_PASSWORD' else v}")
+            logger.debug(f"ENV SETTINGS:: {k} = {'*' * len(v) if k in sensitive else v}")
         logger.info("")
 
     def start_server_init_settings(self, args):
@@ -305,7 +311,7 @@ class Main:
                     e = f"{export_key}{k}={v}"
                     f.write(e)
                     f.write(os.linesep)
-                    logger.info(e)
+                    logger.debug(e)
 
                 py_path = [os.environ.get("PYTHONPATH", "").rstrip(os.pathsep), args.app, os.path.join(args.app, "lib")]
                 py_path = [p for p in py_path if p]

@@ -9,7 +9,7 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 import logging
-from typing import List, Union
+from typing import List, Sequence, Union
 
 import requests
 from cachetools import cached
@@ -24,7 +24,7 @@ from monailabel.config import settings
 logger = logging.getLogger(__name__)
 
 pwd_context = CryptContext(schemes=["bcrypt"], deprecated="auto")
-oauth2_scheme = OAuth2PasswordBearer(tokenUrl="token")
+oauth2_scheme = OAuth2PasswordBearer(tokenUrl="/auth/token")
 
 
 class Token(BaseModel):
@@ -32,7 +32,9 @@ class Token(BaseModel):
     token_type: str
 
 
-def public_key(realm_uri) -> str:
+@cached(cache={})
+def get_public_key(realm_uri) -> str:
+    logger.info(f"Fetching public key for: {realm_uri}")
     r = requests.get(url=realm_uri, timeout=settings.MONAI_LABEL_AUTH_TIMEOUT)
     r.raise_for_status()
     j = r.json()
@@ -67,7 +69,6 @@ DEFAULT_USER = User(
     name="UNK",
     roles=[
         settings.MONAI_LABEL_AUTH_ROLE_ADMIN,
-        settings.MONAI_LABEL_AUTH_ROLE_RESEARCHER,
         settings.MONAI_LABEL_AUTH_ROLE_REVIEWER,
         settings.MONAI_LABEL_AUTH_ROLE_ANNOTATOR,
         settings.MONAI_LABEL_AUTH_ROLE_USER,
@@ -85,7 +86,7 @@ def from_token(token: str):
         "verify_exp": True,
     }
 
-    key = public_key(settings.MONAI_LABEL_AUTH_REALM_URI)
+    key = get_public_key(settings.MONAI_LABEL_AUTH_REALM_URI)
     payload = jwt.decode(token, key, options=options)
 
     username: str = payload.get(settings.MONAI_LABEL_AUTH_TOKEN_USERNAME)
@@ -101,7 +102,6 @@ def from_token(token: str):
     else:
         roles = payload.get(kr[0])
     roles = [] if not roles else roles
-    logger.info(f"User: {username}; Roles: {roles}")
 
     return User(username=username, email=email, name=name, roles=roles)
 
@@ -119,33 +119,32 @@ async def get_current_user(token: str = Depends(oauth2_scheme) if settings.MONAI
         raise credentials_exception
 
 
-def _validate_role(user, role):
-    if not settings.MONAI_LABEL_AUTH_ENABLE:
-        return user
+class RBAC:
+    def __init__(self, roles: Union[str, Sequence[str]]):
+        self.roles = roles
 
-    if role not in user.roles:
+    async def __call__(self, user: User = Security(get_current_user)):
+        if not settings.MONAI_LABEL_AUTH_ENABLE:
+            return user
+
+        roles = self.roles
+        if isinstance(roles, str):
+            roles = (
+                [roles]
+                if roles != "*"
+                else [
+                    settings.MONAI_LABEL_AUTH_ROLE_ADMIN,
+                    settings.MONAI_LABEL_AUTH_ROLE_REVIEWER,
+                    settings.MONAI_LABEL_AUTH_ROLE_ANNOTATOR,
+                    settings.MONAI_LABEL_AUTH_ROLE_USER,
+                ]
+            )
+
+        for role in roles:
+            if role in user.roles:
+                return user
+
         raise HTTPException(
             status_code=status.HTTP_403_FORBIDDEN,
             detail=f'Role "{role}" is required to perform this action',
         )
-    return user
-
-
-async def get_admin_user(user: User = Security(get_current_user)):
-    return _validate_role(user, settings.MONAI_LABEL_AUTH_ROLE_ADMIN)
-
-
-async def get_researcher_user(user: User = Security(get_current_user)):
-    return _validate_role(user, settings.MONAI_LABEL_AUTH_ROLE_RESEARCHER)
-
-
-async def get_reviwer_user(user: User = Security(get_current_user)):
-    return _validate_role(user, settings.MONAI_LABEL_AUTH_ROLE_REVIEWER)
-
-
-async def get_annotator_user(user: User = Security(get_current_user)):
-    return _validate_role(user, settings.MONAI_LABEL_AUTH_ROLE_ANNOTATOR)
-
-
-async def get_basic_user(user: User = Security(get_current_user)):
-    return _validate_role(user, settings.MONAI_LABEL_AUTH_ROLE_USER)

@@ -19,7 +19,8 @@ from fastapi import APIRouter, Depends, File, HTTPException, UploadFile
 from fastapi.background import BackgroundTasks
 from fastapi.responses import FileResponse
 
-from monailabel.endpoints.user.auth import User, get_basic_user
+from monailabel.config import settings
+from monailabel.endpoints.user.auth import RBAC, User
 from monailabel.interfaces.app import MONAILabelApp
 from monailabel.interfaces.utils.app import app_instance
 from monailabel.utils.others.generic import get_basename, get_mime_type, remove_file
@@ -110,27 +111,30 @@ def remove_session(session_id: str):
     raise HTTPException(status_code=404, detail="Session Not Found")
 
 
-@router.get("/{session_id}", summary="Get Session ID")
+@router.get("/{session_id}", summary="|RBAC: user| - Get Session ID")
 async def api_get_session(
     session_id: str,
     update_ts: bool = False,
     image: bool = False,
-    user: User = Depends(get_basic_user),
+    user: User = Depends(RBAC(settings.MONAI_LABEL_AUTH_ROLE_USER)),
 ):
     return get_session(session_id, update_ts, image)
 
 
-@router.put("/", summary="Create new session with Image")
+@router.put("/", summary="|RBAC: user| - Create new session with Image")
 async def api_create_session(
     background_tasks: BackgroundTasks,
     uncompress: bool = False,
     expiry: int = 0,
     files: List[UploadFile] = File(...),
-    user: User = Depends(get_basic_user),
+    user: User = Depends(RBAC(settings.MONAI_LABEL_AUTH_ROLE_USER)),
 ):
     return create_session(background_tasks, uncompress, expiry, files)
 
 
-@router.delete("/{session_id}", summary="Delete Session")
-async def api_remove_session(session_id: str, user: User = Depends(get_basic_user)):
+@router.delete("/{session_id}", summary="|RBAC: user| - Delete Session")
+async def api_remove_session(
+    session_id: str,
+    user: User = Depends(RBAC(settings.MONAI_LABEL_AUTH_ROLE_USER)),
+):
     return remove_session(session_id)

@@ -15,7 +15,8 @@ import os
 from fastapi import APIRouter, Depends, HTTPException
 from fastapi.responses import FileResponse
 
-from monailabel.endpoints.user.auth import User, get_basic_user
+from monailabel.config import settings
+from monailabel.endpoints.user.auth import RBAC, User
 from monailabel.utils.others.generic import get_mime_type
 
 logger = logging.getLogger(__name__)
@@ -41,5 +42,5 @@ def get_ohif(path: str):
 
 
 @router.get("/{path:path}", include_in_schema=False)
-async def api_get_ohif(path: str, user: User = Depends(get_basic_user)):
+async def api_get_ohif(path: str, user: User = Depends(RBAC(settings.MONAI_LABEL_AUTH_ROLE_USER))):
     return get_ohif(path)
