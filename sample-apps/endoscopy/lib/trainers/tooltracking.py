@@ -20,8 +20,3 @@ logger = logging.getLogger(__name__)
 class ToolTracking(BundleTrainTask):
     def __init__(self, path: str, conf: Dict[str, str], const: Optional[BundleConstants] = None):
         super().__init__(path, conf, const, enable_tracking=True)
-
-    def _update_overrides(self, overrides):
-        overrides["network_def#pre_conv"] = None
-        overrides["ignore_none"] = False
-        return overrides
