@@ -15,7 +15,7 @@ import os
 from fastapi import APIRouter, Depends, HTTPException
 from fastapi.responses import FileResponse
 
-from monailabel.config import settings
+from monailabel.config import RBAC_ADMIN, settings
 from monailabel.endpoints.user.auth import RBAC, User
 from monailabel.interfaces.app import MONAILabelApp
 from monailabel.interfaces.utils.app import app_instance
@@ -50,17 +50,17 @@ def download_model(model: str):
     return FileResponse(file, media_type=get_mime_type(file), filename=filename)
 
 
-@router.get("/{model}", summary="|RBAC: user| - Download Latest Model Weights")
+@router.get("/{model}", summary=f"{RBAC_ADMIN}Download Latest Model Weights")
 async def api_download_model(
     model: str,
-    user: User = Depends(RBAC(settings.MONAI_LABEL_AUTH_ROLE_USER)),
+    user: User = Depends(RBAC(settings.MONAI_LABEL_AUTH_ROLE_ADMIN)),
 ):
     return download_model(model)
 
 
-@router.get("/info/{model}", summary="|RBAC: user| - Get CheckSum/Details for the Latest Model File")
+@router.get("/info/{model}", summary=f"{RBAC_ADMIN}Get CheckSum/Details for the Latest Model File")
 async def api_model_info(
     model: str,
-    user: User = Depends(RBAC(settings.MONAI_LABEL_AUTH_ROLE_USER)),
+    user: User = Depends(RBAC(settings.MONAI_LABEL_AUTH_ROLE_ADMIN)),
 ):
     return model_info(model)

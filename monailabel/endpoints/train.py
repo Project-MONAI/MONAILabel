@@ -15,7 +15,7 @@ from typing import Optional
 import torch
 from fastapi import APIRouter, Depends, HTTPException
 
-from monailabel.config import settings
+from monailabel.config import RBAC_ADMIN, RBAC_USER, settings
 from monailabel.endpoints.user.auth import RBAC, User
 from monailabel.interfaces.app import MONAILabelApp
 from monailabel.interfaces.utils.app import app_instance
@@ -68,7 +68,7 @@ def stop():
     return res
 
 
-@router.get("/", summary="|RBAC: user| - Get Status of Training Task")
+@router.get("/", summary=f"{RBAC_USER}Get Status of Training Task")
 async def api_status(
     all: bool = False,
     check_if_running: bool = False,
@@ -77,7 +77,7 @@ async def api_status(
     return status(all, check_if_running)
 
 
-@router.post("/", summary="|RBAC: admin| - Run All Training Tasks", deprecated=True)
+@router.post("/", summary=f"{RBAC_ADMIN}Run All Training Tasks", include_in_schema=False, deprecated=True)
 async def api_run(
     params: Optional[dict] = None,
     run_sync: Optional[bool] = False,
@@ -86,7 +86,7 @@ async def api_run(
     return run(params, run_sync)
 
 
-@router.post("/{model}", summary="|RBAC: admin| - Run Training Task for specific model")
+@router.post("/{model}", summary=f"{RBAC_ADMIN} Run Training Task for specific model")
 async def api_run_model(
     model: str,
     params: Optional[dict] = None,
@@ -97,6 +97,6 @@ async def api_run_model(
     return run_model(model, params, run_sync, enqueue)
 
 
-@router.delete("/", summary="|RBAC: admin| - Stop Training Task")
+@router.delete("/", summary=f"{RBAC_ADMIN}Stop Training Task")
 async def api_stop(user: User = Depends(RBAC(settings.MONAI_LABEL_AUTH_ROLE_ADMIN))):
     return stop()

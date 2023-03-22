@@ -20,8 +20,6 @@ from monai.networks.blocks import CRF
 from monai.transforms import Transform
 from scipy.special import softmax
 
-from monailabel.transform.writer import Writer
-
 from .utils import make_iseg_unary, make_likelihood_image_gmm, make_likelihood_image_histogram, maxflow
 
 logger = logging.getLogger(__name__)
@@ -606,26 +604,3 @@ class ApplyCRFOptimisationd(InteractiveSegmentationTransform):
 
 #######################
 #######################
-
-
-########################
-#  Logits Save Transform
-########################
-class WriteLogits(Transform):
-    def __init__(self, key, result="result"):
-        self.key = key
-        self.result = result
-
-    def __call__(self, data):
-        d = dict(data)
-        writer = Writer(label=self.key, nibabel=True)
-
-        file, _ = writer(d)
-        if data.get(self.result) is None:
-            d[self.result] = {}
-        d[self.result][self.key] = file
-        return d
-
-
-########################
-########################

@@ -9,7 +9,6 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-import os
 import unittest
 
 import numpy as np
@@ -25,7 +24,6 @@ from monailabel.scribbles.transforms import (
     MakeISegUnaryd,
     MakeLikelihoodFromScribblesHistogramd,
     SoftenProbSoftmax,
-    WriteLogits,
 )
 from monailabel.transform.writer import Writer
 
@@ -351,12 +349,6 @@ class TestScribblesTransforms(unittest.TestCase):
         # compare
         np.testing.assert_equal(expected_result, np.argmax(result["pred"], axis=0))
         self.assertTupleEqual(expected_shape, result["pred"].shape)
-
-    @parameterized.expand(TEST_CASE_ISEG_OPTIM_TX)
-    def test_writelogits(self, input_param, test_input, output, expected_shape):
-        test_input.update({"image_path": "./image.nii.gz"})
-        result = WriteLogits(key="image")(test_input)
-        self.assertEqual(os.path.exists(result["result"]["image"]), True)
 
     def test_interactive_seg_transforms(self):
         class MyInteractiveSeg(InteractiveSegmentationTransform):

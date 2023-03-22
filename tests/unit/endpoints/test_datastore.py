@@ -38,7 +38,7 @@ class EndPointDatastore(BasicEndpointTestSuite):
         assert self.image_id in self.client.get("/datastore/?output=all").text
         time.sleep(1)
 
-    def test_003_save_remvoe_label(self):
+    def test_003_save_remove_label(self):
         tag = "test"
         with open(os.path.join(self.studies, "labels", "final", "spleen_3.nii.gz"), "rb") as f:
             response = self.client.put(

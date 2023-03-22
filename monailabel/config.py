@@ -103,3 +103,7 @@ class Settings(BaseSettings):
 
 
 settings = Settings()
+RBAC_ADMIN = f"|RBAC: {settings.MONAI_LABEL_AUTH_ROLE_ADMIN}| - " if settings.MONAI_LABEL_AUTH_ENABLE else ""
+RBAC_REVIEWER = f"|RBAC: {settings.MONAI_LABEL_AUTH_ROLE_REVIEWER}| - " if settings.MONAI_LABEL_AUTH_ENABLE else ""
+RBAC_ANNOTATOR = f"|RBAC: {settings.MONAI_LABEL_AUTH_ROLE_ANNOTATOR}| - " if settings.MONAI_LABEL_AUTH_ENABLE else ""
+RBAC_USER = f"|RBAC: {settings.MONAI_LABEL_AUTH_ROLE_USER}| - " if settings.MONAI_LABEL_AUTH_ENABLE else ""
