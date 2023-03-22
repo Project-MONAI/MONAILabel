@@ -74,7 +74,7 @@ async def api_status(
     return status(all, check_if_running)
 
 
-@router.post("/", summary="|RBAC: annotator| - Run All Scoring Tasks", deprecated=True)
+@router.post("/", summary="|RBAC: annotator| - Run All Scoring Tasks", include_in_schema=False, deprecated=True)
 async def api_run(
     params: Optional[dict] = None,
     run_sync: Optional[bool] = False,

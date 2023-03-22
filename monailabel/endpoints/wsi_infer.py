@@ -114,7 +114,12 @@ def run_wsi_inference(
     return send_response(instance.datastore(), result, output, background_tasks)
 
 
-@router.post("/wsi/{model}", summary="|RBAC: user| - Run WSI Inference for supported model", deprecated=True)
+@router.post(
+    "/wsi/{model}",
+    summary="|RBAC: user| - Run WSI Inference for supported model",
+    include_in_schema=False,
+    deprecated=True,
+)
 async def api_run_wsi_inference(
     background_tasks: BackgroundTasks,
     model: str,

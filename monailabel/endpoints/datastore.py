@@ -204,7 +204,7 @@ async def api_datastore(
     return datastore(output)
 
 
-@router.put("/", summary="|RBAC: annotator| - Upload new Image", deprecated=True)
+@router.put("/", summary="|RBAC: annotator| - Upload new Image", include_in_schema=False, deprecated=True)
 @router.put("/image", summary="|RBAC: annotator| - Upload new Image")
 async def api_add_image(
     background_tasks: BackgroundTasks,
@@ -216,7 +216,9 @@ async def api_add_image(
     return add_image(background_tasks, image, params, file, user.username)
 
 
-@router.delete("/", summary="|RBAC: admin| - Remove Image and corresponding labels", deprecated=True)
+@router.delete(
+    "/", summary="|RBAC: admin| - Remove Image and corresponding labels", include_in_schema=False, deprecated=True
+)
 @router.delete("/image", summary="|RBAC: admin| - Remove Image and corresponding labels")
 async def api_remove_image(id: str, user: User = Depends(RBAC(settings.MONAI_LABEL_AUTH_ROLE_ADMIN))):
     return remove_image(id, user.username)
@@ -292,7 +294,9 @@ async def api_put_label_info(
     return update_label_info(label, tag, info, user.username)
 
 
-@router.put("/updatelabelinfo", summary="|RBAC: annotator| - Update label info", deprecated=True)
+@router.put(
+    "/updatelabelinfo", summary="|RBAC: annotator| - Update label info", include_in_schema=False, deprecated=True
+)
 async def api_update_label_info(
     label: str,
     tag: str,
