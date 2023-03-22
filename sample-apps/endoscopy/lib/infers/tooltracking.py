@@ -48,3 +48,4 @@ class ToolTracking(BundleInferTask):
     def writer(self, data, extension=None, dtype=None):
         writer = PolygonWriter(label=self.output_label_key, json=self.output_json_key)
         return writer(data)
+    
