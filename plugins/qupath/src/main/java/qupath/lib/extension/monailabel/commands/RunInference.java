@@ -293,7 +293,12 @@ public class RunInference implements Runnable {
 		for (int i = 0; i < annotation_list.getLength(); i++) {
 			Node annotation = annotation_list.item(i);
 			String annotationClass = annotation.getAttributes().getNamedItem("Name").getTextContent();
-			// logger.info("Annotation Class: " + annotationClass);
+			int color = Color.RED.getRGB();
+			Node colorNode = annotation.getAttributes().getNamedItem("Color");
+			if (colorNode != null) {
+				color = Integer.parseInt(colorNode.getTextContent().replaceFirst("#", ""), 16) ;
+			// logger.info("Annotation Class: " + annotationClass + " Annotation Color: " + colorNode.getTextContent());
+			}
 
 			NodeList coordinates_list = annotation.getChildNodes();
 			for (int j = 0; j < coordinates_list.getLength(); j++) {
@@ -324,7 +329,7 @@ public class RunInference implements Runnable {
 				ROI polyROI = ROIs.createPolygonROI(pointsList, plane);
 				PathObject annotationObject = PathObjects.createAnnotationObject(polyROI);
 
-				PathClass pclass = PathClassFactory.getPathClass(annotationClass, Color.RED.getRGB());
+				PathClass pclass = PathClassFactory.getPathClass(annotationClass, color );
 				annotationObject.setPathClass(pclass);
 
 				imageData.getHierarchy().addPathObjectWithoutUpdate(annotationObject);
