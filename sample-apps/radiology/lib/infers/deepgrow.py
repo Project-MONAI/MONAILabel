@@ -77,7 +77,7 @@ class Deepgrow(BasicInferTask):
         ]
 
         self.add_cache_transform(t, data)
-        t.append(AddGuidanceFromPointsd(ref_image="image", guidance="guidance", dimensions=self.dimension))
+        t.append(AddGuidanceFromPointsd(ref_image="image", guidance="guidance", spatial_dims=self.dimension))
 
         if self.dimension == 2:
             t.append(Fetch2DSliced(keys="image", guidance="guidance"))

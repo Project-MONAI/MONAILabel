@@ -90,7 +90,7 @@ class InferDeepgrowPipeline(BasicInferTask):
 
         t.extend(
             [
-                AddGuidanceFromPointsd(ref_image="image", guidance="guidance", dimensions=3),
+                AddGuidanceFromPointsd(ref_image="image", guidance="guidance", spatial_dims=3),
                 AddChanneld(keys="image"),
                 SpatialCropGuidanced(keys="image", guidance="guidance", spatial_size=self.spatial_size),
                 Resized(keys="image", spatial_size=self.model_size, mode="area"),

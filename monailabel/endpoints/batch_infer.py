@@ -15,7 +15,7 @@ from typing import Optional
 import torch
 from fastapi import APIRouter, Depends, HTTPException
 
-from monailabel.config import settings
+from monailabel.config import RBAC_ADMIN, RBAC_USER, settings
 from monailabel.endpoints.user.auth import RBAC, User
 from monailabel.interfaces.datastore import DefaultLabelTag
 from monailabel.interfaces.tasks.batch_infer import BatchInferImageType
@@ -59,7 +59,7 @@ def stop():
     return res
 
 
-@router.get("/infer", summary="|RBAC: user| - Get Status of Batch Inference Task")
+@router.get("/infer", summary=f"{RBAC_USER}Get Status of Batch Inference Task")
 async def api_status(
     all: bool = False,
     check_if_running: bool = False,
@@ -68,7 +68,7 @@ async def api_status(
     return status(all, check_if_running)
 
 
-@router.post("/infer/{model}", summary="|RBAC: admin| - Run Batch Inference Task")
+@router.post("/infer/{model}", summary=f"{RBAC_ADMIN}Run Batch Inference Task")
 async def api_run(
     model: str,
     images: Optional[BatchInferImageType] = BatchInferImageType.IMAGES_ALL,
@@ -88,6 +88,6 @@ async def api_run(
     return run(model, images, params, run_sync)
 
 
-@router.delete("/infer", summary="|RBAC: admin| - Stop Batch Inference Task")
+@router.delete("/infer", summary=f"{RBAC_ADMIN}Stop Batch Inference Task")
 async def api_stop(user: User = Depends(RBAC(settings.MONAI_LABEL_AUTH_ROLE_ADMIN))):
     return stop()

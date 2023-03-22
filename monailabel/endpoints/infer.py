@@ -23,7 +23,7 @@ from fastapi.background import BackgroundTasks
 from fastapi.responses import FileResponse, Response
 from requests_toolbelt import MultipartEncoder
 
-from monailabel.config import settings
+from monailabel.config import RBAC_USER, settings
 from monailabel.datastore.utils.convert import binary_to_image
 from monailabel.endpoints.user.auth import RBAC, User
 from monailabel.interfaces.app import MONAILabelApp
@@ -165,7 +165,7 @@ def run_inference(
     return send_response(instance.datastore(), result, output, background_tasks)
 
 
-@router.post("/{model}", summary="|RBAC: user| - Run Inference for supported model")
+@router.post("/{model}", summary=f"{RBAC_USER}Run Inference for supported model")
 async def api_run_inference(
     background_tasks: BackgroundTasks,
     model: str,

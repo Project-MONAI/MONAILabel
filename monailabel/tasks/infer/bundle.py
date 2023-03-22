@@ -102,13 +102,13 @@ class BundleInferTask(BasicInferTask):
             logger.warning(f"Ignore {path} as there is no infer config {self.const.configs()} exists")
             return
 
-        self.bundle_path = path
-        sys.path.insert(0, self.bundle_path)
+        sys.path.insert(0, path)
         unload_module("scripts")
 
-        self.bundle_config = ConfigParser()
-        self.bundle_config.read_config(os.path.join(path, "configs", config_paths[0]))
-        self.bundle_config.config.update({self.const.key_bundle_root(): path})  # type: ignore
+        self.bundle_path = path
+        self.bundle_config_path = os.path.join(path, "configs", config_paths[0])
+        self.bundle_config = self._load_bundle_config(self.bundle_path, self.bundle_config_path)
+
         if self.dropout > 0:
             self.bundle_config["network_def"]["dropout"] = self.dropout
 
@@ -293,3 +293,9 @@ class BundleInferTask(BasicInferTask):
             self.bundle_config.config.update({k_device: device})  # type: ignore
             if self.bundle_config.ref_resolver.items.get(k_device):
                 self.bundle_config.ref_resolver.items[k_device] = ConfigItem(config=device, id=k_device)
+
+    def _load_bundle_config(self, path, config):
+        bundle_config = ConfigParser()
+        bundle_config.read_config(config)
+        bundle_config.config.update({self.const.key_bundle_root(): path})  # type: ignore
+        return bundle_config

@@ -17,7 +17,8 @@ import itk
 import nrrd
 import numpy as np
 import torch
-from monai.data import MetaTensor, write_nifti
+from monai.data import MetaTensor
+from monai.data.image_writer import NibabelWriter
 
 from monailabel.utils.others.detection import create_slicer_detection_json
 from monailabel.utils.others.generic import file_ext
@@ -26,7 +27,13 @@ from monailabel.utils.others.pathology import create_asap_annotations_xml, creat
 logger = logging.getLogger(__name__)
 
 
-# TODO:: Move to MONAI ??
+def write_nifti(data, filename, affine=None, original_affine=None, output_dtype=np.float32):
+    writer = NibabelWriter(output_dtype=output_dtype)
+    writer.set_data_array(data, channel_dim=None, spatial_ndim=None)
+    writer.set_metadata({"affine": affine, "original_affine": original_affine})
+    writer.write(filename)
+
+
 def write_itk(image_np, output_file, affine, dtype, compress):
     if isinstance(image_np, torch.Tensor):
         image_np = image_np.numpy()
@@ -43,7 +50,7 @@ def write_itk(image_np, output_file, affine, dtype, compress):
     # https://github.com/RSIP-Vision/medio/blob/master/medio/metadata/affine.py#L108-L121
     if affine is not None:
         convert_aff_mat = np.diag([-1, -1, 1, 1])
-        if affine.shape[0] == 3:
+        if affine.shape[0] == 3:  # Handle RGB (2D Image)
             convert_aff_mat = np.diag([-1, -1, 1])
         affine = convert_aff_mat @ affine
 

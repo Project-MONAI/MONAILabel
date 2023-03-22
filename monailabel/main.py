@@ -302,6 +302,7 @@ class Main:
                 os.makedirs(d)
 
         os.environ["PATH"] += os.pathsep + os.path.join(args.app, "bin")
+        os.environ["PYTHONPATH"] = os.environ.get("PYTHONPATH", "") + os.pathsep + os.path.join(args.app)
 
         if args.dryrun:
             export_key = "set " if any(platform.win32_ver()) else "export "

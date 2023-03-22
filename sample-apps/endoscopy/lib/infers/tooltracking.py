@@ -48,3 +48,8 @@ class ToolTracking(BundleInferTask):
     def writer(self, data, extension=None, dtype=None):
         writer = PolygonWriter(label=self.output_label_key, json=self.output_json_key)
         return writer(data)
+
+    def _load_bundle_config(self, path, config):
+        bundle_config = super()._load_bundle_config(path, config)
+        bundle_config["network_def"]["pre_conv"] = None
+        return bundle_config

@@ -17,7 +17,7 @@ from typing import Optional
 from fastapi import APIRouter, Depends, HTTPException
 from fastapi.responses import FileResponse, Response
 
-from monailabel.config import settings
+from monailabel.config import RBAC_ADMIN, settings
 from monailabel.endpoints.user.auth import RBAC, User
 
 router = APIRouter(
@@ -88,18 +88,18 @@ def get_logs(logger_file, lines, html, text, refresh):
     return FileResponse(logger_file, media_type="text/plain")
 
 
-@router.get("/", summary="|RBAC: user| - Get Logs")
+@router.get("/", summary=f"{RBAC_ADMIN}Get Logs")
 async def api_get_logs(
     lines: Optional[int] = 300,
     html: Optional[bool] = True,
     text: Optional[bool] = False,
     refresh: Optional[int] = 0,
-    user: User = Depends(RBAC(settings.MONAI_LABEL_AUTH_ROLE_USER)),
+    user: User = Depends(RBAC(settings.MONAI_LABEL_AUTH_ROLE_ADMIN)),
 ):
     return get_logs(os.path.join(settings.MONAI_LABEL_APP_DIR, "logs", "app.log"), lines, html, text, refresh)
 
 
-@router.get("/gpu", summary="|RBAC: user| - Get GPU Info (nvidia-smi)")
-async def gpu_info(user: User = Depends(RBAC(settings.MONAI_LABEL_AUTH_ROLE_USER))):
+@router.get("/gpu", summary=f"{RBAC_ADMIN}Get GPU Info (nvidia-smi)")
+async def gpu_info(user: User = Depends(RBAC(settings.MONAI_LABEL_AUTH_ROLE_ADMIN))):
     response = subprocess.run(["nvidia-smi"], stdout=subprocess.PIPE).stdout.decode("utf-8")
     return Response(content=response, media_type="text/plain")
