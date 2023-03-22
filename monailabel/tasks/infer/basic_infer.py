@@ -228,6 +228,7 @@ class BasicInferTask(InferTask):
         sw_overlap = data.get("sw_overlap", 0.25) if data else 0.25
 
         # Update list of device Ids with "cuda" as it was  loaded with GPU marketing display name; monai core needs id to be "cuda"
+        req = copy.deepcopy(self._config)
         req.update({"device": device_list()})
 
         device = data.get("device")
