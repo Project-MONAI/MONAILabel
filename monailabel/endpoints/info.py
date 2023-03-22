@@ -11,7 +11,7 @@
 
 from fastapi import APIRouter, Depends
 
-from monailabel.config import settings
+from monailabel.config import RBAC_USER, settings
 from monailabel.endpoints.user.auth import RBAC, User
 from monailabel.interfaces.app import MONAILabelApp
 from monailabel.interfaces.utils.app import app_instance
@@ -28,6 +28,6 @@ def app_info():
     return instance.info()
 
 
-@router.get("/", summary="|RBAC: user| - Get App Info")
+@router.get("/", summary=f"{RBAC_USER}Get App Info")
 async def api_app_info(user: User = Depends(RBAC(settings.MONAI_LABEL_AUTH_ROLE_USER))):
     return app_info()

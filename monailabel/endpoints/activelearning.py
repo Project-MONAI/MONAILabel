@@ -15,7 +15,7 @@ from typing import Dict, Optional
 
 from fastapi import APIRouter, Depends
 
-from monailabel.config import settings
+from monailabel.config import RBAC_USER, settings
 from monailabel.endpoints.user.auth import RBAC, User
 from monailabel.interfaces.app import MONAILabelApp
 from monailabel.interfaces.utils.app import app_instance
@@ -61,7 +61,7 @@ def sample(strategy: str, params: Optional[dict] = None, user: Optional[str] = N
     return result
 
 
-@router.post("/{strategy}", summary="|RBAC: user| - Run Active Learning strategy to get next sample")
+@router.post("/{strategy}", summary=f"{RBAC_USER}Run Active Learning strategy to get next sample")
 async def api_sample(
     strategy: str,
     params: Optional[dict] = None,

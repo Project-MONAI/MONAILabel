@@ -22,7 +22,7 @@ from fastapi.background import BackgroundTasks
 from fastapi.responses import FileResponse
 from pydantic import BaseModel, Field
 
-from monailabel.config import settings
+from monailabel.config import RBAC_USER, settings
 from monailabel.endpoints.user.auth import RBAC, User
 from monailabel.interfaces.app import MONAILabelApp
 from monailabel.interfaces.utils.app import app_instance
@@ -116,7 +116,7 @@ def run_wsi_inference(
 
 @router.post(
     "/wsi/{model}",
-    summary="|RBAC: user| - Run WSI Inference for supported model",
+    summary=f"{RBAC_USER}Run WSI Inference for supported model",
     include_in_schema=False,
     deprecated=True,
 )
@@ -132,7 +132,7 @@ async def api_run_wsi_inference(
     return run_wsi_inference(background_tasks, model, image, session_id, None, wsi, output)
 
 
-@router.post("/wsi_v2/{model}", summary="|RBAC: user| - Run WSI Inference for supported model")
+@router.post("/wsi_v2/{model}", summary=f"{RBAC_USER}Run WSI Inference for supported model")
 async def api_run_wsi_v2_inference(
     background_tasks: BackgroundTasks,
     model: str,
