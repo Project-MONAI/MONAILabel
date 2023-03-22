@@ -108,10 +108,7 @@ class BundleTrainTask(TrainTask):
 
         self.bundle_path = path
         self.bundle_config_path = os.path.join(path, "configs", config_paths[0])
-
-        self.bundle_config = ConfigParser()
-        self.bundle_config.read_config(self.bundle_config_path)
-        self.bundle_config.config.update({self.const.key_bundle_root(): self.bundle_path})  # type: ignore
+        self.bundle_config = self._load_bundle_config(self.bundle_path, self.bundle_config_path)
 
         # https://docs.monai.io/en/latest/mb_specification.html#metadata-json-file
         self.bundle_metadata_path = os.path.join(path, "configs", "metadata.json")
@@ -275,6 +272,9 @@ class BundleTrainTask(TrainTask):
         if val_ds is not None:
             overrides[self.const.key_validate_dataset_data()] = val_ds
 
+        # allow derived class to update further overrides
+        self._update_overrides(overrides)
+
         if multi_gpu:
             config_paths = [
                 c
@@ -356,3 +356,12 @@ class BundleTrainTask(TrainTask):
 
         logger.info(f"Return code: {process.returncode}")
         process.stdout.close()
+
+    def _load_bundle_config(self, path, config):
+        bundle_config = ConfigParser()
+        bundle_config.read_config(config)
+        bundle_config.config.update({self.const.key_bundle_root(): path})  # type: ignore
+        return bundle_config
+
+    def _update_overrides(self, overrides):
+        return overrides
