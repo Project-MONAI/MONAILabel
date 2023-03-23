@@ -180,18 +180,20 @@ class Main:
     def _get_installed_dir(self, prefix, name):
         project_root_absolute = pathlib.Path(__file__).parent.parent.resolve()
         # add searched paths to include variant python installation options
-        # Specify --prefix for customized download path 
+        # Specify --prefix for customized download path
         installed_dirs = [
             os.path.join(project_root_absolute, name),
             os.path.join(prefix, "monailabel", name) if prefix else None,
             os.path.join(sys.prefix, "monailabel", name),
             os.path.join(sys.prefix, "local", "monailabel", name),
-            os.path.join(pathlib.Path.home(), ".local", "monailabel", name)
+            os.path.join(pathlib.Path.home(), ".local", "monailabel", name),
         ]
         for d in installed_dirs:
             if d and os.path.exists(d):
                 return d
-        raise ValueError(f"Cannot find MONAI Label installed: {name} installed directory. Add '--prefix' of installed path.")
+        raise ValueError(
+            f"Cannot find MONAI Label installed: {name} installed directory. Add '--prefix' of installed path."
+        )
 
     def _action_xyz(self, args, name, title, exclude, ignore):
         xyz_dir = self._get_installed_dir(args.prefix, name)
