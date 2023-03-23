@@ -56,7 +56,7 @@ from monailabel.config import settings
 from monailabel.interfaces.datastore import Datastore
 from monailabel.interfaces.tasks.train import TrainTask
 from monailabel.tasks.train.handler import PublishStatsAndModel, prepare_stats
-from monailabel.utils.others.generic import device_displayname_list, path_to_uri, remove_file
+from monailabel.utils.others.generic import device_displayname_list, device_list, path_to_uri, remove_file
 
 logger = logging.getLogger(__name__)
 
@@ -472,6 +472,9 @@ class BasicTrainTask(TrainTask):
 
     def train(self, rank, world_size, request, datalist):
         start_ts = time.time()
+
+        # Update list of device Ids with "cuda" as it was  loaded with GPU marketing display name; monai core needs id to be "cuda"
+        request.update({"device": device_list()[0]})
 
         context: Context = Context()
 
