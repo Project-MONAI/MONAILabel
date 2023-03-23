@@ -179,8 +179,6 @@ class Main:
 
     def _get_installed_dir(self, prefix, name):
         project_root_absolute = pathlib.Path(__file__).parent.parent.resolve()
-        d = os.path.join(project_root_absolute, name)
-
         # add searched paths to include variant python installation options
         # Specify --prefix for customized download path 
         installed_dirs = [
