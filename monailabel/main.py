@@ -191,7 +191,7 @@ class Main:
         for d in installed_dirs:
             if d and os.path.exists(d):
                 return d
-        raise ValueError(f"Cannot find MONAI Label App: {name} installed directory. Add '--prefix' of installed path.")
+        raise ValueError(f"Cannot find MONAI Label installed: {name} installed directory. Add '--prefix' of installed path.")
 
     def _action_xyz(self, args, name, title, exclude, ignore):
         xyz_dir = self._get_installed_dir(args.prefix, name)
