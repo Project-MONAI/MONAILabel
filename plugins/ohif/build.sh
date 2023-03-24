@@ -51,6 +51,7 @@ cd ..
 sed -i "s|let config = {};|import OHIFMONAILabelExtension from '@ohif/extension-monai-label';\nlet config = {};|g" ./platform/viewer/src/index.js
 sed -i "s|defaultExtensions: \[|defaultExtensions: \[OHIFMONAILabelExtension,|g" ./platform/viewer/src/index.js
 
+export NODE_OPTIONS="--openssl-legacy-provider --max-old-space-size=8192"
 yarn config set workspaces-experimental true
 yarn install
 
