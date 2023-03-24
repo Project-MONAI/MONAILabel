@@ -27,13 +27,14 @@ on:
 jobs:
   packaging:
     if: github.repository == 'Project-MONAI/MONAILabel'
-    runs-on: ubuntu-20.04
+    runs-on: ubuntu-latest
     env:
       MONAI_ZOO_AUTH_TOKEN: ${{ github.token }}
     steps:
       - uses: actions/checkout@v3
         with:
           fetch-depth: 0
+      - uses: actions/setup-node@v3
       - name: Set up Python 3.8
         uses: actions/setup-python@v4
         with:
