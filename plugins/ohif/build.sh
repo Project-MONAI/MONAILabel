@@ -53,7 +53,8 @@ sed -i "s|defaultExtensions: \[|defaultExtensions: \[OHIFMONAILabelExtension,|g"
 
 yarn config set workspaces-experimental true
 yarn install
-rm -rf ./Viewers/platform/viewer/dist
+
+rm -rf ./platform/viewer/dist
 QUICK_BUILD=true yarn run build
 
 # Reset if you want to run directly from yarn run dev:orthanc (without monailabel server)

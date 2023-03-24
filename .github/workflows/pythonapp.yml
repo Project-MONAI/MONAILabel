@@ -78,7 +78,7 @@ jobs:
           file: ./coverage.xml
 
   packaging:
-    runs-on: ubuntu-latest
+    runs-on: ubuntu-20.04
     env:
       MONAI_ZOO_AUTH_TOKEN: ${{ github.token }}
     strategy:
