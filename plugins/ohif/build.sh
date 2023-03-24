@@ -27,7 +27,7 @@ cd ${my_dir}
 rm -rf Viewers
 git clone https://github.com/OHIF/Viewers.git
 cd Viewers
-git checkout 460fdeb534cd94bff55892c8e3d7100ccf8957de
+git checkout 1178751ecfb3919ec3d26ba04161e0ea83a44e56
 
 # Viewers/platform/viewer/public/config/default.js
 #git checkout -- ./platform/viewer/public/config/default.js
@@ -51,9 +51,11 @@ cd ..
 sed -i "s|let config = {};|import OHIFMONAILabelExtension from '@ohif/extension-monai-label';\nlet config = {};|g" ./platform/viewer/src/index.js
 sed -i "s|defaultExtensions: \[|defaultExtensions: \[OHIFMONAILabelExtension,|g" ./platform/viewer/src/index.js
 
+export NODE_OPTIONS="--openssl-legacy-provider --max-old-space-size=8192"
 yarn config set workspaces-experimental true
 yarn install
-rm -rf ./Viewers/platform/viewer/dist
+
+rm -rf ./platform/viewer/dist
 QUICK_BUILD=true yarn run build
 
 # Reset if you want to run directly from yarn run dev:orthanc (without monailabel server)
