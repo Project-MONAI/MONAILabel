@@ -27,7 +27,7 @@ cd ${my_dir}
 rm -rf Viewers
 git clone https://github.com/OHIF/Viewers.git
 cd Viewers
-git checkout 460fdeb534cd94bff55892c8e3d7100ccf8957de
+git checkout 1178751ecfb3919ec3d26ba04161e0ea83a44e56
 
 # Viewers/platform/viewer/public/config/default.js
 #git checkout -- ./platform/viewer/public/config/default.js
