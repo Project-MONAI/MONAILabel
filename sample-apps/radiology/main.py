@@ -287,7 +287,7 @@ def main():
 
     parser = argparse.ArgumentParser()
     parser.add_argument("-s", "--studies", default=studies)
-    parser.add_argument("-m", "--model", default="localization_spine,localization_vertebra,segmentation_vertebra")
+    parser.add_argument("-m", "--model", default="segmentation_spleen")
     parser.add_argument("-t", "--test", default="infer", choices=("train", "infer"))
     args = parser.parse_args()
 
@@ -308,10 +308,10 @@ def main():
 
         # Run on all devices
         for device in device_list():
-            # res = app.infer(request={"model": args.model, "image": image_id, "device": device})
-            res = app.infer(
-                request={"model": "vertebra_pipeline", "image": image_id, "device": device, "slicer": False}
-            )
+            res = app.infer(request={"model": args.model, "image": image_id, "device": device})
+            # res = app.infer(
+            #     request={"model": "vertebra_pipeline", "image": image_id, "device": device, "slicer": False}
+            # )
             label = res["file"]
             label_json = res["params"]
             test_dir = os.path.join(args.studies, "test_labels")
