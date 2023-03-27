@@ -66,7 +66,7 @@ class DeepEdit(TaskConfig):
         ]
 
         # Download PreTrained Model
-        if strtobool(self.conf.get("use_pretrained_model", "false")):
+        if strtobool(self.conf.get("use_pretrained_model", "true")):
             url = f"{self.conf.get('pretrained_path', self.PRE_TRAINED_PATH)}"
             url = f"{url}/radiology_deepedit_segresnet_multilabel.pt"
             download_file(url, self.path[0])
