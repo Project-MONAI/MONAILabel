@@ -179,15 +179,21 @@ class Main:
 
     def _get_installed_dir(self, prefix, name):
         project_root_absolute = pathlib.Path(__file__).parent.parent.resolve()
-        d = os.path.join(project_root_absolute, name)
-        if not os.path.exists(d):
-            if prefix:
-                d = os.path.join(prefix, "monailabel", name)
-            else:
-                d = os.path.join(sys.prefix, "monailabel", name)
-                if not os.path.exists(d):
-                    d = os.path.join(pathlib.Path.home(), ".local", "monailabel", name)
-        return d
+        # add searched paths to include variant python installation options
+        # Specify --prefix for customized download path
+        installed_dirs = [
+            os.path.join(project_root_absolute, name),
+            os.path.join(prefix, "monailabel", name) if prefix else None,
+            os.path.join(sys.prefix, "monailabel", name),
+            os.path.join(sys.prefix, "local", "monailabel", name),
+            os.path.join(pathlib.Path.home(), ".local", "monailabel", name),
+        ]
+        for d in installed_dirs:
+            if d and os.path.exists(d):
+                return d
+        raise ValueError(
+            f"Cannot find MONAI Label installed: {name} installed directory. Add '--prefix' of installed path."
+        )
 
     def _action_xyz(self, args, name, title, exclude, ignore):
         xyz_dir = self._get_installed_dir(args.prefix, name)
@@ -275,9 +281,15 @@ class Main:
         for arg in vars(args):
             logger.info(f"USING:: {arg} = {getattr(args, arg)}")
 
+        sensitive = [
+            "MONAI_LABEL_DICOMWEB_PASSWORD",
+            "MONAI_ZOO_AUTH_TOKEN",
+            "MONAI_LABEL_DATASTORE_PASSWORD",
+            "MONAI_LABEL_DATASTORE_API_KEY",
+        ]
         for k, v in settings.dict().items():
             v = f"'{json.dumps(v)}'" if isinstance(v, list) or isinstance(v, dict) else v
-            logger.info(f"ENV SETTINGS:: {k} = {'*' * len(v) if k == 'MONAI_LABEL_DICOMWEB_PASSWORD' else v}")
+            logger.debug(f"ENV SETTINGS:: {k} = {'*' * len(v) if k in sensitive else v}")
         logger.info("")
 
     def start_server_init_settings(self, args):
@@ -296,6 +308,7 @@ class Main:
                 os.makedirs(d)
 
         os.environ["PATH"] += os.pathsep + os.path.join(args.app, "bin")
+        os.environ["PYTHONPATH"] = os.environ.get("PYTHONPATH", "") + os.pathsep + os.path.join(args.app)
 
         if args.dryrun:
             export_key = "set " if any(platform.win32_ver()) else "export "
@@ -305,7 +318,7 @@ class Main:
                     e = f"{export_key}{k}={v}"
                     f.write(e)
                     f.write(os.linesep)
-                    logger.info(e)
+                    logger.debug(e)
 
                 py_path = [os.environ.get("PYTHONPATH", "").rstrip(os.pathsep), args.app, os.path.join(args.app, "lib")]
                 py_path = [p for p in py_path if p]

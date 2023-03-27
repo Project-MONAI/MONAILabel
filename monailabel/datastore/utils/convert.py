@@ -20,7 +20,6 @@ import numpy as np
 import pydicom
 import pydicom_seg
 import SimpleITK
-from monai.data import write_nifti
 from monai.transforms import LoadImage
 from pydicom.filereader import dcmread
 
@@ -61,7 +60,7 @@ def dicom_to_nifti(series_dir, is_seg=False):
     return output_file
 
 
-def binary_to_image(reference_image, label, dtype=np.uint16, file_ext=".nii.gz", use_itk=True):
+def binary_to_image(reference_image, label, dtype=np.uint16, file_ext=".nii.gz"):
     start = time.time()
 
     image_np, meta_dict = LoadImage()(reference_image)
@@ -75,10 +74,7 @@ def binary_to_image(reference_image, label, dtype=np.uint16, file_ext=".nii.gz",
 
     output_file = tempfile.NamedTemporaryFile(suffix=file_ext).name
     affine = meta_dict.get("affine")
-    if use_itk:
-        write_itk(label_np, output_file, affine=affine, dtype=None, compress=True)
-    else:
-        write_nifti(label_np, output_file, affine=affine)
+    write_itk(label_np, output_file, affine=affine, dtype=None, compress=True)
 
     logger.info(f"binary_to_image latency : {time.time() - start} (sec)")
     return output_file

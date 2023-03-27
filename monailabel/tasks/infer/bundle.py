@@ -9,6 +9,7 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
+import glob
 import json
 import logging
 import os
@@ -66,6 +67,9 @@ class BundleConstants:
     def key_detector_ops(self) -> Sequence[str]:
         return ["detector_ops"]
 
+    def key_displayable_configs(self) -> Sequence[str]:
+        return ["displayable_configs"]
+
 
 class BundleInferTask(BasicInferTask):
     """
@@ -98,13 +102,13 @@ class BundleInferTask(BasicInferTask):
             logger.warning(f"Ignore {path} as there is no infer config {self.const.configs()} exists")
             return
 
-        self.bundle_path = path
-        sys.path.insert(0, self.bundle_path)
+        sys.path.insert(0, path)
         unload_module("scripts")
 
-        self.bundle_config = ConfigParser()
-        self.bundle_config.read_config(os.path.join(path, "configs", config_paths[0]))
-        self.bundle_config.config.update({self.const.key_bundle_root(): path})  # type: ignore
+        self.bundle_path = path
+        self.bundle_config_path = os.path.join(path, "configs", config_paths[0])
+        self.bundle_config = self._load_bundle_config(self.bundle_path, self.bundle_config_path)
+
         if self.dropout > 0:
             self.bundle_config["network_def"]["dropout"] = self.dropout
 
@@ -147,6 +151,17 @@ class BundleInferTask(BasicInferTask):
             preload=strtobool(conf.get("preload", "false")),
             **kwargs,
         )
+
+        # Add models options if more than one model is provided by bundle.
+        pytorch_models = [os.path.basename(p) for p in glob.glob(os.path.join(path, "models", "*.pt"))]
+        pytorch_models.sort(key=len)
+        self._config.update({"model_filename": pytorch_models})
+        # Add bundle's loadable params to MONAI Label config, load exposed keys and params to options panel
+        for k in self.const.key_displayable_configs():
+            if self.bundle_config.get(k):
+                self.displayable_configs = self.bundle_config.get_parsed_content(k, instantiate=True)  # type: ignore
+                self._config.update(self.displayable_configs)
+
         self.valid = True
         self.version = metadata.get("version")
         sys.path.remove(self.bundle_path)
@@ -160,6 +175,12 @@ class BundleInferTask(BasicInferTask):
         return i
 
     def pre_transforms(self, data=None) -> Sequence[Callable]:
+        # Update bundle parameters based on user's option
+        for k in self.const.key_displayable_configs():
+            if self.bundle_config.get(k):
+                self.bundle_config[k].update({c: data[c] for c in self.displayable_configs.keys()})
+                self.bundle_config.parse()
+
         sys.path.insert(0, self.bundle_path)
         unload_module("scripts")
         self._update_device(data)
@@ -272,3 +293,9 @@ class BundleInferTask(BasicInferTask):
             self.bundle_config.config.update({k_device: device})  # type: ignore
             if self.bundle_config.ref_resolver.items.get(k_device):
                 self.bundle_config.ref_resolver.items[k_device] = ConfigItem(config=device, id=k_device)
+
+    def _load_bundle_config(self, path, config):
+        bundle_config = ConfigParser()
+        bundle_config.read_config(config)
+        bundle_config.config.update({self.const.key_bundle_root(): path})  # type: ignore
+        return bundle_config

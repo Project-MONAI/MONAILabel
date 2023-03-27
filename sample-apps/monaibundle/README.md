@@ -21,6 +21,9 @@ However the following constraints has to be met for any monai bundle to directly
 
 > By default models are picked from https://github.com/Project-MONAI/model-zoo/blob/dev/models/model_info.json
 
+<p align = "center"><img src="../../docs/images/wholeBody.png" alt="drawing" width="800"/></p>
+<p align = "center"><em>Whole body CT segmentation with 104 structures using TotalSegmentator Dataset</em></p>
+
 ### Structure of the App
 
 - **[lib/infers](./lib/infers)** is to define and activate inference task over monai-bundle.
@@ -46,6 +49,7 @@ The Bundle App supports most labeling models in the Model Zoo, please see the ta
 | [wholeBrainSeg_UNEST_segmentation](https://github.com/Project-MONAI/model-zoo/tree/dev/models/wholeBrainSeg_Large_UNEST_segmentation) | UNesT | Whole Brain | MRI T1 |  A pre-trained for inference (3D) 133 whole brain structures segmentation |
 | [spleen_deepedit_annotation](https://github.com/Project-MONAI/model-zoo/tree/dev/models/spleen_deepedit_annotation) | DeepEdit | Spleen| CT | An interactive method for 3D spleen Segmentation |
 | [lung_nodule_ct_detection](https://github.com/Project-MONAI/model-zoo/tree/dev/models/lung_nodule_ct_detection) | RetinaNet | Lung Nodule| CT | The detection model for 3D CT images |
+| [wholeBody_ct_segmentation](https://github.com/Project-MONAI/model-zoo/tree/dev/models/wholeBody_ct_segmentation) | SegResNet | 104 body structures| CT | The segmentation model for 104 tissue from 3D CT images (TotalSegmentator Dataset) |
 
 Supported tasks update based on [Model-Zoo](https://github.com/Project-MONAI/model-zoo/tree/dev/models) release.
 

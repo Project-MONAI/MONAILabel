@@ -23,8 +23,9 @@ from fastapi.background import BackgroundTasks
 from fastapi.responses import FileResponse, Response
 from requests_toolbelt import MultipartEncoder
 
+from monailabel.config import RBAC_USER, settings
 from monailabel.datastore.utils.convert import binary_to_image
-from monailabel.endpoints.user.auth import User, get_basic_user
+from monailabel.endpoints.user.auth import RBAC, User
 from monailabel.interfaces.app import MONAILabelApp
 from monailabel.interfaces.utils.app import app_instance
 from monailabel.utils.others.generic import get_mime_type, remove_file
@@ -164,7 +165,7 @@ def run_inference(
     return send_response(instance.datastore(), result, output, background_tasks)
 
 
-@router.post("/{model}", summary="Run Inference for supported model")
+@router.post("/{model}", summary=f"{RBAC_USER}Run Inference for supported model")
 async def api_run_inference(
     background_tasks: BackgroundTasks,
     model: str,
@@ -174,6 +175,6 @@ async def api_run_inference(
     file: UploadFile = File(None),
     label: UploadFile = File(None),
     output: Optional[ResultType] = None,
-    user: User = Depends(get_basic_user),
+    user: User = Depends(RBAC(settings.MONAI_LABEL_AUTH_ROLE_USER)),
 ):
     return run_inference(background_tasks, model, image, session_id, params, file, label, output)

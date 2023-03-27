@@ -21,9 +21,21 @@ class Settings(BaseSettings):
 
     MONAI_LABEL_APP_DIR: str = ""
     MONAI_LABEL_STUDIES: str = ""
-    MONAI_LABEL_AUTH_ENABLE: bool = False
-    MONAI_LABEL_AUTH_DB: str = ""
     MONAI_LABEL_APP_CONF: Dict[str, str] = {}
+
+    MONAI_LABEL_AUTH_ENABLE: bool = False
+    MONAI_LABEL_AUTH_REALM_URI: str = "http://localhost:8080/realms/monailabel"
+    MONAI_LABEL_AUTH_TIMEOUT: int = 10
+    MONAI_LABEL_AUTH_TOKEN_USERNAME: str = "preferred_username"
+    MONAI_LABEL_AUTH_TOKEN_EMAIL: str = "email"
+    MONAI_LABEL_AUTH_TOKEN_NAME: str = "name"
+    MONAI_LABEL_AUTH_TOKEN_ROLES: str = "realm_access#roles"
+    MONAI_LABEL_AUTH_CLIENT_ID: str = "monailabel-app"
+
+    MONAI_LABEL_AUTH_ROLE_ADMIN: str = "monailabel-admin"
+    MONAI_LABEL_AUTH_ROLE_REVIEWER: str = "monailabel-reviewer"
+    MONAI_LABEL_AUTH_ROLE_ANNOTATOR: str = "monailabel-annotator"
+    MONAI_LABEL_AUTH_ROLE_USER: str = "monailabel-user"
 
     MONAI_LABEL_TASKS_TRAIN: bool = True
     MONAI_LABEL_TASKS_STRATEGY: bool = True
@@ -91,3 +103,7 @@ class Settings(BaseSettings):
 
 
 settings = Settings()
+RBAC_ADMIN = f"|RBAC: {settings.MONAI_LABEL_AUTH_ROLE_ADMIN}| - " if settings.MONAI_LABEL_AUTH_ENABLE else ""
+RBAC_REVIEWER = f"|RBAC: {settings.MONAI_LABEL_AUTH_ROLE_REVIEWER}| - " if settings.MONAI_LABEL_AUTH_ENABLE else ""
+RBAC_ANNOTATOR = f"|RBAC: {settings.MONAI_LABEL_AUTH_ROLE_ANNOTATOR}| - " if settings.MONAI_LABEL_AUTH_ENABLE else ""
+RBAC_USER = f"|RBAC: {settings.MONAI_LABEL_AUTH_ROLE_USER}| - " if settings.MONAI_LABEL_AUTH_ENABLE else ""
