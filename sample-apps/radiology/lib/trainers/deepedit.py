@@ -29,13 +29,12 @@ from monai.transforms import (
     Activationsd,
     AsDiscreted,
     EnsureChannelFirstd,
+    GaussianSmoothd,
     LoadImaged,
+    NormalizeIntensityd,
     Orientationd,
-    RandFlipd,
-    RandRotate90d,
-    RandShiftIntensityd,
     Resized,
-    ScaleIntensityRanged,
+    ScaleIntensityd,
     SelectItemsd,
     ToNumpyd,
     ToTensord,
@@ -100,17 +99,13 @@ class DeepEdit(BasicTrainTask):
 
     def train_pre_transforms(self, context: Context):
         return [
-            LoadImaged(keys=("image", "label"), reader="ITKReader"),
+            LoadImaged(keys=("image", "label")),
             EnsureChannelFirstd(keys=("image", "label")),
             NormalizeLabelsInDatasetd(keys="label", label_names=self._labels),
             Orientationd(keys=["image", "label"], axcodes="RAS"),
-            # This transform may not work well for MR images
-            ScaleIntensityRanged(keys="image", a_min=-175, a_max=250, b_min=0.0, b_max=1.0, clip=True),
-            RandFlipd(keys=("image", "label"), spatial_axis=[0], prob=0.10),
-            RandFlipd(keys=("image", "label"), spatial_axis=[1], prob=0.10),
-            RandFlipd(keys=("image", "label"), spatial_axis=[2], prob=0.10),
-            RandRotate90d(keys=("image", "label"), prob=0.10, max_k=3),
-            RandShiftIntensityd(keys="image", offsets=0.10, prob=0.50),
+            NormalizeIntensityd(keys="image", nonzero=True),
+            GaussianSmoothd(keys="image", sigma=0.4),
+            ScaleIntensityd(keys="image", minv=-1.0, maxv=1.0),
             Resized(keys=("image", "label"), spatial_size=self.spatial_size, mode=("area", "nearest")),
             # Transforms for click simulation
             FindAllValidSlicesMissingLabelsd(keys="label", sids="sids"),
@@ -134,12 +129,13 @@ class DeepEdit(BasicTrainTask):
 
     def val_pre_transforms(self, context: Context):
         return [
-            LoadImaged(keys=("image", "label"), reader="ITKReader"),
+            LoadImaged(keys=("image", "label")),
             EnsureChannelFirstd(keys=("image", "label")),
             NormalizeLabelsInDatasetd(keys="label", label_names=self._labels),
             Orientationd(keys=["image", "label"], axcodes="RAS"),
-            # This transform may not work well for MR images
-            ScaleIntensityRanged(keys=("image"), a_min=-175, a_max=250, b_min=0.0, b_max=1.0, clip=True),
+            NormalizeIntensityd(keys="image", nonzero=True),
+            GaussianSmoothd(keys="image", sigma=0.4),
+            ScaleIntensityd(keys="image", minv=-1.0, maxv=1.0),
             Resized(keys=("image", "label"), spatial_size=self.spatial_size, mode=("area", "nearest")),
             # Transforms for click simulation
             FindAllValidSlicesMissingLabelsd(keys="label", sids="sids"),
@@ -153,13 +149,23 @@ class DeepEdit(BasicTrainTask):
     def val_inferer(self, context: Context):
         return SimpleInferer()
 
+    def norm_labels(self):
+        # This should be applied along with NormalizeLabelsInDatasetd transform
+        new_label_nums = {}
+        for idx, (key_label, val_label) in enumerate(self._labels.items(), start=1):
+            if key_label != "background":
+                new_label_nums[key_label] = idx
+            if key_label == "background":
+                new_label_nums["background"] = 0
+        return new_label_nums
+
     def train_iteration_update(self, context: Context):
         return Interaction(
             deepgrow_probability=self.deepgrow_probability_train,
             transforms=self.get_click_transforms(context),
             click_probability_key="probability",
             train=True,
-            label_names=self._labels,
+            label_names=self.norm_labels(),
         )
 
     def val_iteration_update(self, context: Context):
@@ -168,13 +174,13 @@ class DeepEdit(BasicTrainTask):
             transforms=self.get_click_transforms(context),
             click_probability_key="probability",
             train=False,
-            label_names=self._labels,
+            label_names=self.norm_labels(),
         )
 
     def train_key_metric(self, context: Context):
         all_metrics = dict()
         all_metrics["train_dice"] = MeanDice(output_transform=from_engine(["pred", "label"]), include_background=False)
-        for key_label in self._labels:
+        for key_label in self.norm_labels():
             if key_label != "background":
                 all_metrics[key_label + "_dice"] = MeanDice(
                     output_transform=from_engine(["pred_" + key_label, "label_" + key_label]), include_background=False
@@ -186,7 +192,7 @@ class DeepEdit(BasicTrainTask):
         all_metrics["val_mean_dice"] = MeanDice(
             output_transform=from_engine(["pred", "label"]), include_background=False
         )
-        for key_label in self._labels:
+        for key_label in self.norm_labels():
             if key_label != "background":
                 all_metrics[key_label + "_dice"] = MeanDice(
                     output_transform=from_engine(["pred_" + key_label, "label_" + key_label]), include_background=False

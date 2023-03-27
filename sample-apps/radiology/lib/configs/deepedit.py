@@ -15,7 +15,7 @@ from typing import Any, Dict, Optional, Union
 
 import lib.infers
 import lib.trainers
-from monai.networks.nets import UNETR, DynUNet
+from monai.networks.nets import SegResNet
 
 from monailabel.interfaces.config import TaskConfig
 from monailabel.interfaces.tasks.infer_v2 import InferTask, InferType
@@ -41,12 +41,12 @@ class DeepEdit(TaskConfig):
         # Multilabel
         self.labels = {
             "spleen": 1,
-            "right kidney": 2,
-            "left kidney": 3,
-            "liver": 6,
-            "stomach": 7,
-            "aorta": 8,
-            "inferior vena cava": 9,
+            "kidney_right": 2,
+            "kidney_left": 3,
+            "liver": 5,
+            "stomach": 6,
+            "aorta": 7,
+            "inferior_vena_cava": 8,
             "background": 0,
         }
 
@@ -59,81 +59,34 @@ class DeepEdit(TaskConfig):
         # Number of input channels - 4 for BRATS and 1 for spleen
         self.number_intensity_ch = 1
 
-        network = self.conf.get("network", "dynunet")
-
         # Model Files
         self.path = [
-            os.path.join(self.model_dir, f"pretrained_{self.name}_{network}.pt"),  # pretrained
-            os.path.join(self.model_dir, f"{self.name}_{network}.pt"),  # published
+            os.path.join(self.model_dir, f"pretrained_{self.name}_segresnet.pt"),  # pretrained
+            os.path.join(self.model_dir, f"{self.name}_segresnet.pt"),  # published
         ]
 
         # Download PreTrained Model
-        if strtobool(self.conf.get("use_pretrained_model", "true")):
+        if strtobool(self.conf.get("use_pretrained_model", "false")):
             url = f"{self.conf.get('pretrained_path', self.PRE_TRAINED_PATH)}"
-            url = f"{url}/radiology_deepedit_{network}_multilabel.pt"
+            url = f"{url}/radiology_deepedit_segresnet_multilabel.pt"
             download_file(url, self.path[0])
 
         self.target_spacing = (1.0, 1.0, 1.0)  # target space for image
         self.spatial_size = (128, 128, 128)  # train input size
 
         # Network
-        self.network = (
-            UNETR(
-                spatial_dims=3,
-                in_channels=len(self.labels) + self.number_intensity_ch,
-                out_channels=len(self.labels),
-                img_size=self.spatial_size,
-                feature_size=64,
-                hidden_size=1536,
-                mlp_dim=3072,
-                num_heads=48,
-                pos_embed="conv",
-                norm_name="instance",
-                res_block=True,
-            )
-            if network == "unetr"
-            else DynUNet(
-                spatial_dims=3,
-                in_channels=len(self.labels) + self.number_intensity_ch,
-                out_channels=len(self.labels),
-                kernel_size=[3, 3, 3, 3, 3, 3],
-                strides=[1, 2, 2, 2, 2, [2, 2, 1]],
-                upsample_kernel_size=[2, 2, 2, 2, [2, 2, 1]],
-                norm_name="instance",
-                deep_supervision=False,
-                res_block=True,
-            )
+        self.network = SegResNet(
+            spatial_dims=3,
+            in_channels=len(self.labels) + self.number_intensity_ch,
+            out_channels=len(self.labels),
+            init_filters=32,
+            blocks_down=(1, 2, 2, 4),
+            blocks_up=(1, 1, 1),
+            norm="batch",
+            dropout_prob=0.2,
         )
 
-        self.network_with_dropout = (
-            UNETR(
-                spatial_dims=3,
-                in_channels=len(self.labels) + self.number_intensity_ch,
-                out_channels=len(self.labels),
-                img_size=self.spatial_size,
-                feature_size=64,
-                hidden_size=1536,
-                mlp_dim=3072,
-                num_heads=48,
-                pos_embed="conv",
-                norm_name="instance",
-                res_block=True,
-                dropout_rate=0.2,
-            )
-            if network == "unetr"
-            else DynUNet(
-                spatial_dims=3,
-                in_channels=len(self.labels) + self.number_intensity_ch,
-                out_channels=len(self.labels),
-                kernel_size=[3, 3, 3, 3, 3, 3],
-                strides=[1, 2, 2, 2, 2, [2, 2, 1]],
-                upsample_kernel_size=[2, 2, 2, 2, [2, 2, 1]],
-                norm_name="instance",
-                deep_supervision=False,
-                res_block=True,
-                dropout=0.2,
-            )
-        )
+        self.network_with_dropout = self.network
 
         # Others
         self.epistemic_enabled = strtobool(conf.get("epistemic_enabled", "false"))

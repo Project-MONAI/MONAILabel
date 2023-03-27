@@ -23,10 +23,13 @@ from monai.transforms import (
     AsDiscreted,
     EnsureChannelFirstd,
     EnsureTyped,
+    GaussianSmoothd,
+    KeepLargestConnectedComponentd,
     LoadImaged,
+    NormalizeIntensityd,
     Orientationd,
     Resized,
-    ScaleIntensityRanged,
+    ScaleIntensityd,
     SqueezeDimd,
     ToNumpyd,
 )
@@ -74,10 +77,12 @@ class DeepEdit(BasicInferTask):
 
     def pre_transforms(self, data=None):
         t = [
-            LoadImaged(keys="image", reader="ITKReader"),
+            LoadImaged(keys="image"),
             EnsureChannelFirstd(keys="image"),
             Orientationd(keys="image", axcodes="RAS"),
-            ScaleIntensityRanged(keys="image", a_min=-175, a_max=250, b_min=0.0, b_max=1.0, clip=True),
+            NormalizeIntensityd(keys="image", nonzero=True),
+            GaussianSmoothd(keys="image", sigma=0.4),
+            ScaleIntensityd(keys="image", minv=-1.0, maxv=1.0),
         ]
 
         self.add_cache_transform(t, data)
@@ -117,6 +122,7 @@ class DeepEdit(BasicInferTask):
             EnsureTyped(keys="pred", device=data.get("device") if data else None),
             Activationsd(keys="pred", softmax=True),
             AsDiscreted(keys="pred", argmax=True),
+            KeepLargestConnectedComponentd(keys="pred"),
             SqueezeDimd(keys="pred", dim=0),
             ToNumpyd(keys="pred"),
             Restored(keys="pred", ref_image="image"),
