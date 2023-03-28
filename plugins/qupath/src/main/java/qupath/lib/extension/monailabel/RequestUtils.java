@@ -89,9 +89,11 @@ public class RequestUtils {
 
 		gridPane.add(new Label("UserName"), 0, 0);
 		gridPane.add(usernameField, 1, 0);
+		usernameField.setPromptText("name");
 
 		gridPane.add(new Label("Password"), 0, 1);
 		gridPane.add(passwordField, 1, 1);
+		passwordField.setPromptText("password");
 
 		vbox.getChildren().add(gridPane);
 
@@ -252,7 +254,18 @@ public class RequestUtils {
 		String requestURI = monaiServer + uri;
 		logger.info("MONAILabel:: Download URL => " + requestURI);
 
-		ReadableByteChannel rbc = Channels.newChannel(new URL(requestURI).openStream());
+		var url = new URL(requestURI);
+		var conn = url.openConnection();
+		if (isAuthEnabled()) {
+			if (auth_token == null || !isValidToken()) {
+				auth_token = getAuthToken();
+			}
+			if (auth_token != null) {
+				conn.setRequestProperty("Authorization", auth_token.token_type + " " + auth_token.access_token);
+			}
+		}
+
+		ReadableByteChannel rbc = Channels.newChannel(conn.getInputStream());
 		FileOutputStream fos = new FileOutputStream(file);
 		fos.getChannel().transferFrom(rbc, 0, Long.MAX_VALUE);
 		fos.close();
