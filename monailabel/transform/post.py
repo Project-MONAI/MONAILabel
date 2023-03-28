@@ -140,7 +140,6 @@ class Restored(MapTransform):
                 orig_axcodes = nib.orientations.aff2axcodes(orig_affine)
                 inverse_transform = Orientation(axcodes=orig_axcodes)
                 # Apply inverse
-                logging.info(f"THIS IS THE SHAPEEE: {len(result.shape)}")
                 with inverse_transform.trace_transform(False):
                     result = inverse_transform(result)
 
