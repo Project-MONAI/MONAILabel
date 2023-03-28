@@ -28,6 +28,7 @@ jobs:
         with:
           ref: main
           fetch-depth: 0
+      - uses: actions/setup-node@v3
       - name: Set up Python 3.8
         uses: actions/setup-python@v4
         with:

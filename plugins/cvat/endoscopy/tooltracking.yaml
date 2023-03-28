@@ -34,11 +34,11 @@ spec:
     directives:
       preCopy:
         - kind: ENV
-          value: MONAI_LABEL_APP_DIR=/opt/conda/monailabel/sample-apps/endoscopy
+          value: MONAI_LABEL_APP_DIR=/usr/local/monailabel/sample-apps/endoscopy
         - kind: ENV
           value: MONAI_LABEL_MODELS=tooltracking
         - kind: ENV
-          value: PYTHONPATH=/opt/conda/monailabel/sample-apps/endoscopy
+          value: PYTHONPATH=/usr/local/monailabel/sample-apps/endoscopy
         - kind: ENV
           value: MONAI_PRETRAINED_PATH=https://github.com/Project-MONAI/MONAILabel/releases/download/data
 
