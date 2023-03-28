@@ -157,7 +157,7 @@ class BasicTrainTask(TrainTask):
         self._config = {
             "name": "train_01",
             "pretrained": True,
-            "device": device_displayname_list()[0],
+            "device": device_displayname_list(),
             "max_epochs": 50,
             "early_stop_patience": -1,
             "val_split": 0.2,
