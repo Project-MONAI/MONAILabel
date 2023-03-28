@@ -136,12 +136,15 @@ class Restored(MapTransform):
 
             if self.invert_orient:
                 # Undo Orientation
-                orig_affine = meta_dict["original_affine"]
-                orig_axcodes = nib.orientations.aff2axcodes(orig_affine)
-                inverse_transform = Orientation(axcodes=orig_axcodes)
-                # Apply inverse
-                with inverse_transform.trace_transform(False):
-                    result = inverse_transform(result)
+                orig_affine = meta_dict.get("original_affine", None)
+                if orig_affine:
+                    orig_axcodes = nib.orientations.aff2axcodes(orig_affine)
+                    inverse_transform = Orientation(axcodes=orig_axcodes)
+                    # Apply inverse
+                    with inverse_transform.trace_transform(False):
+                        result = inverse_transform(result)
+                else:
+                    logging.info("Failed invert orientation - original_affine is not on the image header")
 
             d[key] = result if len(result.shape) <= 3 else result[0] if result.shape[0] == 1 else result
 
