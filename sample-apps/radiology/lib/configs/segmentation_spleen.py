@@ -55,7 +55,7 @@ class SegmentationSpleen(TaskConfig):
         # Download PreTrained Model
         if strtobool(self.conf.get("use_pretrained_model", "true")):
             url = f"{self.conf.get('pretrained_path', self.PRE_TRAINED_PATH)}"
-            url = f"{url}/radiology_segmentation_unet_spleen_TotalSeg.pt"
+            url = f"{url}/radiology_segmentation_unet_spleen_total_seg.pt"
             download_file(url, self.path[0])
 
         self.target_spacing = (1.0, 1.0, 1.0)  # target space for image
