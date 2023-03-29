@@ -113,16 +113,16 @@ A command example to use active learning strategies with DeepEdit would be:
   ```json
   {
       "spleen": 1,
-      "right kidney": 2,
-      "left kidney": 3,
-      "liver": 6,
-      "stomach": 7,
-      "aorta": 8,
-      "inferior vena cava": 9,
+      "kidney_right": 2,
+      "kidney_left": 3,
+      "liver": 5,
+      "stomach": 6,
+      "aorta": 7,
+      "inferior_vena_cava": 8,
       "background": 0
   }
   ```
-- Dataset: The model is pre-trained over dataset: https://www.synapse.org/#!Synapse:syn3193805/wiki/217789
+- Dataset: The model is pre-trained over Total Segmentator dataset: https://zenodo.org/record/6802614#.ZCStTI7MKCg
 
 - Inputs
     - 1 channel for the image modality -> Automated mode
