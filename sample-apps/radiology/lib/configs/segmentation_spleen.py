@@ -55,12 +55,8 @@ class SegmentationSpleen(TaskConfig):
         # Download PreTrained Model
         if strtobool(self.conf.get("use_pretrained_model", "true")):
             url = f"{self.conf.get('pretrained_path', self.PRE_TRAINED_PATH)}"
-            url = f"{url}/radiology_segmentation_unet_spleen_total_seg.pt"
+            url = f"{url}/radiology_segmentation_unet_spleen.pt"
             download_file(url, self.path[0])
-
-        self.target_spacing = (1.0, 1.0, 1.0)  # target space for image
-        # Setting ROI size - This is for the image padding
-        self.roi_size = (96, 96, 96)
 
         # Network
         self.network = UNet(
@@ -82,8 +78,6 @@ class SegmentationSpleen(TaskConfig):
         task: InferTask = lib.infers.SegmentationSpleen(
             path=self.path,
             network=self.network,
-            roi_size=self.roi_size,
-            target_spacing=self.target_spacing,
             labels=self.labels,
             preload=strtobool(self.conf.get("preload", "false")),
         )
@@ -96,8 +90,6 @@ class SegmentationSpleen(TaskConfig):
         task: TrainTask = lib.trainers.SegmentationSpleen(
             model_dir=output_dir,
             network=self.network,
-            roi_size=self.roi_size,
-            target_spacing=self.target_spacing,
             description="Train Spleen Segmentation Model",
             load_path=load_path,
             publish_path=self.path[1],
