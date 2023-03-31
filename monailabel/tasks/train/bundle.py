@@ -144,6 +144,7 @@ class BundleTrainTask(TrainTask):
             else ["None", "mlflow"],
             "tracking_uri": settings.MONAI_LABEL_TRACKING_URI,
             "tracking_experiment_name": "",
+            "run_id": "", # bundle run id, if different from default
             "model_filename": pytorch_models,
         }
 
@@ -212,6 +213,8 @@ class BundleTrainTask(TrainTask):
         max_epochs = request.get("max_epochs", 50)
         pretrained = request.get("pretrained", True)
         multi_gpu = request.get("multi_gpu", True)
+        run_id = request.get("run_id", None)
+
         multi_gpu = multi_gpu if torch.cuda.device_count() > 1 else False
 
         gpus = request.get("gpus", "all")
@@ -308,7 +311,9 @@ class BundleTrainTask(TrainTask):
                 "-m",
                 "monai.bundle",
                 "run",
-                "training",
+                run_id, #run_id, user can pass the arg
+                None, #init_id
+                None,  #final_id
                 "--meta_file",
                 self.bundle_metadata_path,
                 "--config_file",
@@ -335,8 +340,11 @@ class BundleTrainTask(TrainTask):
         return {}
 
     def run_single_gpu(self, request, overrides):
+        run_id = request.get("run_id", None)
         monai.bundle.run(
-            "training",
+            run_id=run_id,
+            init_id=None,
+            final_id=None,            
             meta_file=self.bundle_metadata_path,
             config_file=self.bundle_config_path,
             **overrides,
