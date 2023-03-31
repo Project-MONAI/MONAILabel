@@ -254,7 +254,7 @@ A command example to use active learning strategies with segmentation_spleen wou
 
 - Network: This App uses the [UNet](https://docs.monai.io/en/latest/networks.html#unet) as the default network.
 - Labels: `{ "Spleen": 1 }`
-- Dataset: The model is pre-trained over dataset: http://medicaldecathlon.com/
+- Dataset: The model is pre-trained over the Total Segmentator dataset: https://zenodo.org/record/6802614#.ZCSvA47MKCh
 - Inputs: 1 channel for the image modality
 - Output: 1 channels representing the segmented spleen
 
