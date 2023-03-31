@@ -213,7 +213,7 @@ class BundleTrainTask(TrainTask):
         max_epochs = request.get("max_epochs", 50)
         pretrained = request.get("pretrained", True)
         multi_gpu = request.get("multi_gpu", True)
-        run_id = request.get("run_id", None)
+        run_id = request.get("run_id", "")
 
         multi_gpu = multi_gpu if torch.cuda.device_count() > 1 else False
 
@@ -312,8 +312,8 @@ class BundleTrainTask(TrainTask):
                 "monai.bundle",
                 "run",
                 run_id, #run_id, user can pass the arg
-                None, #init_id
-                None,  #final_id
+                # "", #init_id
+                # "",  #final_id
                 "--meta_file",
                 self.bundle_metadata_path,
                 "--config_file",
@@ -340,7 +340,7 @@ class BundleTrainTask(TrainTask):
         return {}
 
     def run_single_gpu(self, request, overrides):
-        run_id = request.get("run_id", None)
+        run_id = request.get("run_id", "")
         monai.bundle.run(
             run_id=run_id,
             init_id=None,
