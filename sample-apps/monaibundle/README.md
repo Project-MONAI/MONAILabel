@@ -86,6 +86,15 @@ monailabel start_server --app workspace/monaibundle --studies workspace/images -
 monailabel start_server --app workspace/monaibundle --studies workspace/images --conf models spleen_ct_segmentation --conf skip_trainers true
 ```
 
+**Specify bundle version** (Optional)
+Above command will download the latest bundles from Model-Zoo by default. If a specific or older bundle version is used, users can add version `_v` followed by the bundle name. Example:
+
+```bash
+monailabel start_server --app workspace/monaibundle --studies workspace/images --conf models spleen_ct_segmentation_v0.3.7
+```
+Note: bundles in Model-Zoo are continuously updated, we recommend users use the latest MONAI Label version for the best bundle compatibility experience.
+
+
 ### Epistemic Scoring for monaibundle app
 
 The monaibundle app supports epistemic scoring using bundles models. The monaibundle consumes **epistemic_model** as config parameter.
