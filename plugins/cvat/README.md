@@ -11,78 +11,66 @@ See the License for the specific language governing permissions and
 limitations under the License.
 -->
 
-# CVAT MONAILabel extension
+# MONAI Label Extension for CVAT
+CVAT is an interactive video and image annotation tool for computer vision. It provides a user-friendly interface for annotating images and videos, making it ideal for computer-assisted intervention applications. MONAI Label can deploy computer vision-related tasks with the CVAT viewer, such as endoscopy segmentation and tracking.
 
-## Requirement
+<img src="../../docs/images/cvat7.png" width=70% />
 
-Install CVAT and enable Semi-Automatic and Automatic Annotation
+### Table of Contents
+- [Supported Applications](#supported-applications)
+- [Installing CVAT](#installing-cvat)
 
-- https://opencv.github.io/cvat/docs/administration/basics/installation/
-- https://opencv.github.io/cvat/docs/administration/advanced/installation_automatic_annotation/
+### Supported Applications
+Supported applications can be found in the [sample-apps](../../sample-apps/endoscopy/) folder under the endoscopy section. These applications include models like DeepEdit, Tooltracking, and InBody/OutBody classification, which can be used to create and refine labels for various medical imaging tasks.
 
-> #### Reference Guide for installing CVAT
+### Installing CVAT
+To install CVAT and enable Semi-Automatic and Automatic Annotation, follow these steps:
 
 ```bash
 git clone https://github.com/opencv/cvat
 cd cvat
-git checkout v2.1.0
+git checkout v2.1.0 # MONAI Label requires tag v2.1.0
 
-# use real-ip instead of localhost if you want to share it on network
+# Use your external IP instead of localhost to make the CVAT projects sharable
 export CVAT_HOST=127.0.0.1
 export CVAT_VERSION=v2.1.0
 
+# Start CVAT from docker-compose, make sure the IP and port are available.
 docker-compose -f docker-compose.yml -f components/serverless/docker-compose.serverless.yml up -d
+
+# Create a CVAT superuser account
 docker exec -it cvat bash -ic 'python3 ~/manage.py createsuperuser'
 
+```
+**Note:** The setup process uses ports 8070, 8080, and 8090. If alternative ports are preferred, please refer to the [CVAT Guide](https://opencv.github.io/cvat/docs/administration/basics/installation/). For more information on installation steps, see the CVAT [Documentation for Semi-automatic and Automatic Annotation](https://opencv.github.io/cvat/docs/administration/advanced/installation_automatic_annotation/).
+
+After completing these steps, CVAT should be accessible via http://127.0.0.1:8080 in Chrome. Use the superuser account created during installation to log in.
+
+#### Setup Nuclio Container Platform
+```bash
+# Get Nuclio dashboard
 wget https://github.com/nuclio/nuclio/releases/download/1.5.16/nuctl-1.5.16-linux-amd64
 chmod +x nuctl-1.5.16-linux-amd64
-sudo mv nuctl-1.5.16-linux-amd64 /usr/bin/nuctl
+ln -sf $(pwd)/nuctl-1.5.16-linux-amd64 /usr/local/bin/nuctl
 ```
 
-## Installation
+#### Deployment of Endoscopy Models
+This step is to deploy MONAI Label plugin with endoscopic models using Nuclio tool.
 
-Run `./deploy.sh` to install all available models from MONAI Label into CVAT.
 ```bash
-# all functions (endoscopy, pathology)
-./deploy.sh
-
-# to deploy specific function
-./deploy.sh endoscopy
-
-# to deploy specific function and model
-./deploy.sh endoscopy tooltracking
+git clone https://github.com/Project-MONAI/MONAILabel.git
+# Deploy all endoscopy models
+./plugins/cvat/deploy.sh endoscopy
+# Or to deploy specific function and model, e.g., tooltracking
+./plugins/cvat/deploy.sh endoscopy tooltracking
 ```
 
-Currently, following sample models are available for CVAT.
+After model deployment, you can see the model names in the `Models` page of CVAT.
 
-### Endoscopy
-- [ToolTracking](https://github.com/Project-MONAI/MONAILabel/tree/main/sample-apps/endoscopy) ([Detector](https://opencv.github.io/cvat/docs/manual/advanced/ai-tools/#detectors))
-- [DeepEdit](https://github.com/Project-MONAI/MONAILabel/tree/main/sample-apps/endoscopy) ([Interactor](https://opencv.github.io/cvat/docs/manual/advanced/ai-tools/#interactors))
+<img src="../../docs/images/cvat2.png" width=70% />
 
-### Pathology
-- [Segmentation Nuclei](https://github.com/Project-MONAI/MONAILabel/tree/main/sample-apps/pathology#pathology-use-case) ([Detector](https://opencv.github.io/cvat/docs/manual/advanced/ai-tools/#detectors))
-- [Deepedit Nuclei](https://github.com/Project-MONAI/MONAILabel/tree/main/sample-apps/pathology#pathology-use-case) ([Detector](https://opencv.github.io/cvat/docs/manual/advanced/ai-tools/#detectors))
-- [NuClick](https://github.com/Project-MONAI/MONAILabel/tree/main/sample-apps/pathology#pathology-use-case) ([Interactor](https://opencv.github.io/cvat/docs/manual/advanced/ai-tools/#interactors))
+To check or monitor the status of deployed function containers, you can open the Nuclio platform at http://127.0.0.1:8070 (by default) and check whether the deployed models are running.
 
+<img src="../../docs/images/cvat7.png" width=70% />
 
-## Using Plugin
-
-> Currently we can use MONAI Label models only for annotation. Other features like ActiveLearning, Finetuning/Training
-> models is not supported.
->
-> Annotation functions are verified only on basic png/jpeg images in CVAT.
-
-### Models
-
-![image](../../docs/images/cvat_models.jpeg)
-
-### Detector
-
-![image](../../docs/images/cvat_detector.jpeg)
-
-### Interactor
-
-> Currently CVAT supports single polygon as result for Interactor. Hence, NuClick model in CVAT will return only one
-> polygon mask.
-
-![image](../../docs/images/cvat_interactor.jpeg)
+That's it! With these steps, you should have successfully installed CVAT with the MONAI Label extension and deployed endoscopic models using the Nuclio tool.
