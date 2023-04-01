@@ -17,12 +17,11 @@ from monai.transforms import (
     AsDiscreted,
     EnsureChannelFirstd,
     EnsureTyped,
-    GaussianSmoothd,
     KeepLargestConnectedComponentd,
     LoadImaged,
-    NormalizeIntensityd,
     Orientationd,
     ScaleIntensityd,
+    ScaleIntensityRanged,
     Spacingd,
 )
 
@@ -65,18 +64,15 @@ class SegmentationSpleen(BasicInferTask):
             EnsureChannelFirstd(keys="image"),
             Orientationd(keys="image", axcodes="RAS"),
             Spacingd(keys="image", pixdim=self.target_spacing, allow_missing_keys=True),
-            NormalizeIntensityd(keys="image", nonzero=True),
-            GaussianSmoothd(keys="image", sigma=0.4),
+            ScaleIntensityRanged(keys="image", a_min=-57, a_max=164, b_min=0.0, b_max=1.0, clip=True),
             ScaleIntensityd(keys="image", minv=-1.0, maxv=1.0),
         ]
 
     def inferer(self, data=None) -> Inferer:
         return SlidingWindowInferer(
-            roi_size=self.roi_size,
-            sw_batch_size=2,
-            overlap=0.4,
-            padding_mode="replicate",
-            mode="gaussian",
+            roi_size=[160, 160, 160],
+            sw_batch_size=1,
+            overlap=0.25,
         )
 
     def inverse_transforms(self, data=None):
