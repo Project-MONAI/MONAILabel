@@ -92,8 +92,8 @@ Above command will download the latest bundles from Model-Zoo by default. If a s
 ```bash
 monailabel start_server --app workspace/monaibundle --studies workspace/images --conf models spleen_ct_segmentation_v0.3.7
 ```
-Note: bundles in Model-Zoo are continuously updated, we recommend users use the latest MONAI Label version for the best bundle compatibility experience.
-
+Note: bundles in Model-Zoo are continuously updated, old bundles may contain deprecated API, we recommend using the latest realeased MONAI Label and bundle for the best 
+ experience.
 
 ### Epistemic Scoring for monaibundle app
 

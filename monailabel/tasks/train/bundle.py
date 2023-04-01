@@ -337,7 +337,7 @@ class BundleTrainTask(TrainTask):
         logger.info("Training Finished....")
         return {}
 
-    def run_single_gpu(self, request, overrides):
+    def run_single_gpu(self, request, overrides):        
         run_id = request.get("run_id", "")
         monai.bundle.run(
             run_id=run_id,
