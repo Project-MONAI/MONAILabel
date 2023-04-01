@@ -112,7 +112,7 @@ class TestDetectionBundleTrainTask(BasicDetectionBundleTestSuite):
             "val_split": 0.5,
             "multi_gpu": False,
             "dataset": "CacheDataset",
-            "run_id": "training"
+            "run_id": "training",
         }
         response = self.client.post("/train/?run_sync=True", json=params)
         assert response.status_code == 200
