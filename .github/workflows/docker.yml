@@ -35,14 +35,9 @@ jobs:
       - name: Install dependencies
         run: |
           python -m pip install --upgrade pip wheel
-      - name: Install Latest Docker
-        run: |
-          curl -fsSL https://download.docker.com/linux/ubuntu/gpg | sudo apt-key add -
-          sudo add-apt-repository "deb [arch=amd64] https://download.docker.com/linux/ubuntu  $(lsb_release -cs)  stable"
-          sudo apt-get update
-          sudo apt-get install docker-ce
       - name: Build
         run: |
+          docker --version
           ./runtests.sh --clean
           docker system prune -f
           DOCKER_BUILDKIT=1 docker build -t projectmonai/monailabel:${{ github.event.inputs.tag || 'latest'  }} -f Dockerfile .
