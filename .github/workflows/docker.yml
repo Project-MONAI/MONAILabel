@@ -29,7 +29,7 @@ jobs:
     runs-on: [self-hosted, linux, x64]
     container:
       image: nvcr.io/nvidia/pytorch:22.04-py3
-      options: --shm-size 8g --ipc host
+      options: --ipc host
     steps:
       - uses: actions/checkout@v3
       - name: Install dependencies
