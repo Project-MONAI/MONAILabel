@@ -19,6 +19,7 @@ CVAT is an interactive video and image annotation tool for computer vision. It p
 ### Table of Contents
 - [Supported Applications](#supported-applications)
 - [Installing CVAT](#installing-cvat)
+- [Publish Models to CVAT/Nuclio](#publish-latest-model-to-cvatnuclio)
 
 ### Supported Applications
 Supported applications can be found in the [sample-apps](../../sample-apps/endoscopy/) folder under the endoscopy section. These applications include models like DeepEdit, Tooltracking, and InBody/OutBody classification, which can be used to create and refine labels for various medical imaging tasks.
@@ -74,3 +75,17 @@ To check or monitor the status of deployed function containers, you can open the
 <img src="../../docs/images/cvat7.png" width=70% />
 
 That's it! With these steps, you should have successfully installed CVAT with the MONAI Label extension and deployed endoscopic models using the Nuclio tool.
+
+### Publish Latest Model to CVAT/Nuclio
+Once you've fine-tuned the model and confirmed that it meets all the necessary conditions, you can push the updated model to the CVAT/Nuclio function container. This will allow you to use the latest version of the model in your workflows and applications.
+
+```bash
+workspace/endoscopy/update_cvat_model.sh <FUNCTION_NAME>
+
+# Bundle Example: publish tool tracking bundle trained model (run this command on the node where cvat/nuclio containers are running)
+workspace/endoscopy/update_cvat_model.sh tootracking
+# Bundle Example: publish inbody trained model
+workspace/endoscopy/update_cvat_model.sh inbody
+# DeepEdit Example: publish deepedit trained model (Not from bundle)
+workspace/endoscopy/update_cvat_model.sh deepedit
+```
