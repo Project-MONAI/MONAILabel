@@ -115,7 +115,7 @@ class DeepEdit(TaskConfig):
         }
 
     def trainer(self) -> Optional[TrainTask]:
-        output_dir = os.path.join(self.model_dir, f"{self.name}_" + self.conf.get("network", "segresnet"))
+        output_dir = os.path.join(self.model_dir, f"{self.name}_segresnet")
         load_path = self.path[0] if os.path.exists(self.path[0]) else self.path[1]
 
         task: TrainTask = lib.trainers.DeepEdit(
