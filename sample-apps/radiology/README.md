@@ -17,15 +17,10 @@ This app has example models to do both interactive and automated segmentation ov
 
 ### Table of Contents
 - [Supported Viewers](#supported-viewers)
-- [Pretrained Models](#list-of-pretrained-models)
+- [Pretrained Models](#pretrained-models)
 - [How To Use the App](#how-to-use-the-app)
 - [Hybrid Radiology App with Models and Bundles](#hybrid-radiology-app-with-models-and-bundles)
-- [Model Details](#model-overview)
-  - [DeepEdit](#deepedit)
-  - [DeepGrow](#deepgrow)
-  - [Segmentation](#segmentation)
-  - [Segmentation Spleen](#segmentation-spleen)
-  - [Multistage Vertebra Segmentation](#multistage-vertebra-segmentation)
+- [Model Details](#model-details)
 
 ### Supported Viewers
 The Radiology Sample Application supports the following viewers:
@@ -33,7 +28,7 @@ The Radiology Sample Application supports the following viewers:
 - [3D Slicer](../../plugins/slicer/)
 - [OHIF](../../plugins/ohif/)
 
-For more information on each of the viewers, see the [plugin extension folder](../plugins) for the given viewer.
+For more information on each of the viewers, see the [plugin extension folder](../../plugins/) for the given viewer.
 
 ### Pretrained Models
 The following are the models which are currently added into Radiology App:
