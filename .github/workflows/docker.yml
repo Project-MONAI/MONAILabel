@@ -11,9 +11,6 @@
 
 name: docker
 on:
-  push:
-    branches:
-      - temp-test-docker
   schedule:
     - cron: "0 2 * * 0"  # 02:00 of every Sunday
   workflow_dispatch:
