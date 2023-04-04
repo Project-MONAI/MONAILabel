@@ -26,11 +26,11 @@ on:
 jobs:
   docker_build:
     if: github.repository == 'Project-MONAI/MONAILabel'
-    # runs-on: [self-hosted, linux, x64]
-    # container:
-    #   image: nvcr.io/nvidia/pytorch:22.04-py3
-    #   options: --shm-size 8g
-    runs-on: ubuntu-latest
+    runs-on: [self-hosted, linux, x64]
+    container:
+      image: nvcr.io/nvidia/pytorch:22.04-py3
+      options: --shm-size 8g
+    # runs-on: ubuntu-latest
     env:
       MONAI_ZOO_AUTH_TOKEN: ${{ github.token }}
     steps:
