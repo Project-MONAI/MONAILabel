@@ -11,100 +11,45 @@ See the License for the specific language governing permissions and
 limitations under the License.
 -->
 
-# DeepLearning models for Endoscopy use-case(s).
+# Endoscopy Sample Application
+This template includes example models for interactive and automated tool tracking segmentation and a classification model for InBody vs. OutBody images in endoscopy-related images.
 
-![image](../../docs/images/cvat_al_workflow.png)
+### Table of Contents
+- [Supported Viewers](#supported-viewers)
+- [Pretrained Models](#pretrained-models)
+- [How To Use the App](#how-to-use-the-app)
+- [Model Details](#model-overview)
+- [Active Learning Workflow](#active-learning-workflow)
+- [Performance Benchmarking](#performance-benchmarking)
 
+### Supported Viewers
+The Endoscopy Sample Application supports the following viewers:
 
-The App works best with [CVAT](https://github.com/opencv/cvat). Researchers/clinicians can place their studies in the local file folder.
-1. Start with N images (for example total 100 unlabeled images)
-2. MONAI Label computes the score and picks up the first batch of unlabeled images
-   - For example server recommends 10 out of 100 (based on active learning - epistemic scoring
-3. MONAI Label pushes and creates a project + task in CVAT for annotators to work upon
-   - Project: **MONAILABEL**,  Task: **ActiveLearning_Iteration_1**
-4. Annotator annotates and completes the task in CVAT
-5. MONAI Label periodically checks if the Task is completed in CVAT
-6. MONAI Label picks up those new samples and fine-tunes the existing model(s)
-7. MONAI Label re-computes the score using the latest trained model and picks the next batch
-   - For example server recommends another 10 of remaining 90 images
-8. MONAI Label pushes and creates next task in CVAT for annotators to work upon
-   - Project: **MONAILABEL**,  Task: **ActiveLearning_Iteration_2**
-9. Cycle (Step 3 to Step 8) continues until you get some good enough model
+- [CVAT](../../plugins/cvat/)
 
-#
-Following is the summary of Active Learning workflow tests carried over roughly 4,281 samples of 2D frames from
-multiple surgical videos. The dataset breakdown for the experiment is as follows:
-- Training: 3,217 samples (The samples were treated as unlabeled except for the initial pool, the selected samples as queries were added with their corresponding labels)
-- Validation: 400 samples
-- Testing: 664 samples
-- Total: 4,281 samples
+### Pretrained Models
 
-| Method         | Active Iterations | Samples Per Iteration | % of Data Used | Test IoU   |
-|----------------|-------------------|-----------------------|----------------|------------|
-| _Random_       | 8                 | 20                    | 5.6%           | 0.7446     |
-| _**Variance**_ | 8                 | 20                    | 5.6%           | 0.7617     |
-| _Random_       | 8                 | 50                    | 14%            | 0.7712     |
-| _**Variance**_ | 7                 | 50                    | **12.5%**      | **0.8028** |
-| _Random_       | 15                | 50                    | 25%            | 0.7900     |
-| _**Variance**_ | 15                | 50                    | **25%**        | **0.8311** |
-
-> Using Active Learning strategy there is tremendous potential to reduce the number of annotations required to train a
-> good model. The above table shows that only ~15% samples are good enough to get quite close to full dataset performance
-> and it is not necessary to label/annotate all 4K unlabeled data to train a high-performing model. With the right subset
-> of data a better performing model can be achieved with 25% data as compared to labeling all data with unverified quality
-> of labels.
-
-Following snapshot shows Iteration cycles and progress for each Active Learning cycle for two different strategies and
-also the outcome of random acquisition of data
-![image](../../docs/images/active_learning_endoscopy_results.png)
-
-Following snapshot shows Iteration cycles and progress for each Active Learning batch annotations in CVAT.
-![image](../../docs/images/cvat_active_learning.jpeg)
-> Once the model is fine-tuned you can publish the model back to CVAT manually using the script.
-
-### Structure of the App
-
-- **[lib/infers](./lib/infers)** is the module where researchers define the inference class (i.e. type of inferer, pre
-  transforms for inference, etc).
-- **[lib/trainers](./lib/trainers)** is the module to define the pre and post transforms to train the network/model.
-- **[lib/configs](./lib/configs)** is the module to define the image selection techniques.
-- **[lib/transforms](./lib/transforms)** is the module to define customised transformations to be used in the App.
-- **[lib/scoring](./lib/scoring)** is the module to define the image ranking techniques.
-- **[main.py](./main.py)** is the script to extend [MONAILabelApp](../../monailabel/interfaces/app.py) class
-
-Refer [How To Add New Model?](#how-to-add-new-model) section if you are looking to add your own model using this App as
-reference.
-
-### List of Pretrained Models
-
-```bash
-# List all the possible models
-monailabel start_server --app /workspace/apps/radiology --studies /workspace/images
-```
-
-Following are the models which are currently added into Endosocpy App:
+Below is a list of models that are currently available in the Endoscopy App:
 
 | Name                          | Description                                                                                                                                                                                                |
 |-------------------------------|------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------|
-| [deepedit](#deepedit)         | This model is based on DeepEdit: an algorithm that combines the capabilities of multiple models into one, allowing for both interactive and automated segmentation to label **Tool** among in-body images. |
+| [deepedit](#deepedit)         | This model combines the capabilities of multiple models into one, allowing for both interactive and automated segmentation to label **Tool** among in-body images. Based on the DeepEdit algorithm. |
 | [tooltracking](#tooltracking) | A standard (non-interactive) segmentation model to label **Tool** among in-body images.                                                                                                                    |
 | [inbody](#inbody)             | A standard (non-interactive) classification model to determine **InBody** or **OutBody** images.                                                                                                           |
 
-> If both models are enabled, then Active Learning strategy uses [tooltracking](#tooltracking) model to rank the images.
-
-### How To Use?
+### How To Use the App
 
 ```bash
-# skip this if you have already downloaded the app or using github repository (dev mode)
+# Download Endoscopy App (skip this if you have already downloaded the app or using the GitHub repository)
 monailabel apps --download --name endoscopy --output workspace
 
-# Pick DeepEdit model
+# Start MONAI Label Server with the DeepEdit model
 monailabel start_server --app workspace/endoscopy --studies workspace/images --conf models deepedit
 
-# Pick DeepEdit model + Preload into All GPU devices
+# Start MONAI Label Server with the DeepEdit model and repload on GPU
 monailabel start_server --app workspace/endoscopy --studies workspace/images --conf models deepedit --conf preload true
 
-# Pick DeepEdit (Skip Training Tasks or Infer only mode)
+# Start MONAI Label Server with DeepEdit in Inference Only mode
 monailabel start_server --app workspace/endoscopy --studies workspace/images --conf models deepedit --conf skip_trainers true
 ```
 
@@ -125,24 +70,9 @@ monailabel start_server \
   --conf auto_finetune_check_interval 30
 ```
 
-Note: the argument ```epistemic_top_k``` specifies the number of images to label in each iteration, provide a number above 5 if there is no externally provided validation data
-MONAI Label server will automatically split annotated data into train and validation by percentage. No external validation data and ```epistemic_top_k``` < 5 will lead to traning with no
-saved model.
+**Note:** The `epistemic_top_k` argument specifies the number of images to label in each iteration. If you do not have externally provided validation data, MONAI Label Server will automatically split the annotated data into train and validation sets by percentage. However, if you have no external validation data and set `epistemic_top_k` to a value less than 5, the model will be trained without being saved. To avoid this issue, provide a value for `epistemic_top_k` that is greater than or equal to 5, or supply your own validation data.
 
-#### Fetch and Publish latest model to CVAT/Nuclio
-After re-train the fine-tuned model meets all the conditions to be considered as a good model.  You can push the model to cvat/nuclio function container.
-```bash
-workspace/endoscopy/update_cvat_model.sh <FUNCTION_NAME>
-
-# Bundle Example: publish tool tracking bundle trained model (run this command on the node where cvat/nuclio containers are running)
-workspace/endoscopy/update_cvat_model.sh tootracking
-# Bundle Example: publish inbody trained model
-workspace/endoscopy/update_cvat_model.sh inbody
-# DeepEdit Example: publish deepedit trained model (Not from bundle)
-workspace/endoscopy/update_cvat_model.sh deepedit
-```
-
-Following are additional configs *(pass them as **--conf name value**) are useful when you use CVAT for Active Learning workflow.
+The following are additional configurations that can be useful when using CVAT for active learning workflows. To use these configurations, pass them as `--conf name value` when running the relevant commands:
 
 | Name                         | Values | Default                  | Description                                                                                               |
 |------------------------------|--------|--------------------------|-----------------------------------------------------------------------------------------------------------|
@@ -163,14 +93,12 @@ Following are additional configs *(pass them as **--conf name value**) are usefu
 
 ### Model Overview
 
-#### [DeepEdit](./lib/configs/deepedit.py)
-
-This model is based on DeepEdit. An algorithm that combines the capabilities of multiple models into one, allowing for both
+<details id="DeepEdit">
+  <summary>
+  <strong>DeepEdit</strong> is an algorithm that combines the capabilities of multiple models into one, allowing for both
 interactive and automated segmentation.
-
+  </summary>
 This model is currently trained to segment **Tool** from 2D in-body images.
-
-> monailabel start_server --app workspace/endoscopy --studies workspace/images --conf models deepedit
 
 - Network: This model uses the [BasicUNet](https://docs.monai.io/en/latest/networks.html#basicunet) as the default network.
 - Labels: `{ "Tool": 1 }`
@@ -179,69 +107,80 @@ This model is currently trained to segment **Tool** from 2D in-body images.
     - 1 channel for the image modality -> Automated mode
     - 2 channels (image modality + points for foreground and background clicks) -> Interactive mode
 - Output: 1 channel representing the segmented Tool
+</details>
 
-#### [ToolTracking](./lib/configs/tooltracking.py)
-
-This model is based on UNet for automated segmentation. This model works for single label segmentation tasks.
-> monailabel start_server --app workspace/endoscopy --studies workspace/images --conf models tooltracking
-
+<details id="ToolTracking">
+  <summary>
+  <strong>ToolTracking</strong> is based on UNet for automated segmentation. This model works for single label segmentation tasks.
+  </summary>
 - Network: This model uses the [FlexibleUNet](https://docs.monai.io/en/latest/networks.html#flexibleunet) as the default network.
 - Labels: `{ "Tool": 1 }`
 - Dataset: The model is pre-trained over few in-body Images related to Endoscopy
 - Inputs: 1 channel for the image modality
 - Output: 1 channel representing the segmented Tool
+</details>
 
-
-#### [InBody](./lib/configs/inbody.py)
-
-This model is based on SEResNet50 for classification. This model determines if tool is present or not (in-body vs out-body).
-> monailabel start_server --app workspace/endoscopy --studies workspace/images --conf models inbody
-
+<details id="InBody/OutBody">
+  <summary>
+  <strong>InBody/OutBody</strong> is based on SEResNet50 for classification. This model determines if tool is present or not (in-body vs out-body).
+  </summary>
 - Network: This model uses the [SEResNet50](https://docs.monai.io/en/latest/networks.html#seresnet50) as the default network.
 - Labels: `{ "InBody": 0, "OutBody": 1 }`
 - Dataset: The model is pre-trained over few in-body Images related to Endoscopy
 - Inputs: 1 channel for the image modality
 - Output: 2 classes (0: in_body, 1: out_body)
+</details>
 
 
-### How To Add New Model?
+### Active Learning Workflow
+![image](../../docs/images/cvat_al_workflow.png)
 
-Researches might want to define/add their own model(s). Or if there is a model as part of radiology use-case which is
-generic and helpful for larger community, then you can follow the below steps to add a new model and using the same.
 
-> As an example, you want to add new Segmentation model for **xyz**
+The MONAI Label app works best with CVAT. Researchers and clinicians can place their studies in the local file folder.
 
-- Create new TaskConfig **_segmentation_xyz.py_** in [lib/configs](./lib/configs).
-    - Refer: [tooltracking.py](./lib/configs/tooltracking.py)
-    - Fix attributes like network, labels, pretrained URL etc...
-    - Implement abstract classes. Following are important ones.
-        - `infer(self) -> Union[InferTask, Dict[str, InferTask]]` to return one or more Infer Task.
-        - `trainer(self) -> Optional[TrainTask]` to return TrainTask. Return `None` if you are looking for Infer only
-          model.
-    - You can accept any `--conf <name> <value>` and define the behavior of any function based on new conf.
-- Create new Infer Task **_segmentation_xyz.py_** in [lib/infers](./lib/infers).
-    - Refer: [tooltracking.py](./lib/infers/tooltracking.py)
-    - Importantly you will define pre/post transforms.
-- Create new Train Task **_segmentation_xyz.py_** in [lib/trainers](./lib/trainers).
-    - Refer: [tooltracking.py](./lib/trainers/tooltracking.py)
-    - Importantly you will define loss_function, optimizer and pre/post transforms for training/validation stages.
+1. Start with N unlabeled images (for example, 100 images in total).
+2. MONAI Label computes the score and selects the first batch of unlabeled images to label, for example 10 images out of 100, based on active learning with epistemic scoring.
+3. MONAI Label creates a project and task in CVAT for annotators to work on, with Project name `MONAILABEL` and Task name `ActiveLearning_Iteration_1`.
+4. Annotators complete the task in CVAT.
+5. MONAI Label periodically checks whether the task is complete in CVAT.
+6. MONAI Label fine-tunes the existing model(s) using the newly annotated data.
+7. MONAI Label recomputes the score using the latest trained model and selects the next batch of unlabeled images to label, for example another 10 images out of the remaining 90.
+8. MONAI Label creates the next task in CVAT for annotators to work on, with Project name `MONAILABEL` and Task name `ActiveLearning_Iteration_2`.
+9. This cycle (steps 3-8) continues until a good enough model is obtained.
 
-- Run the app using new model
-  > monailabel start_server --app workspace/endoscopy --studies workspace/images --conf models segmentation_xyz
+#### Active Learning Performance
+We conducted tests on an active learning workflow using roughly 4,281 samples of 2D frames from multiple surgical videos. The dataset breakdown for the experiment is as follows:
+- Training: 3,217 samples (the samples were treated as unlabeled, except for the initial pool of samples that were selected as queries and added with their corresponding labels)
+- Validation: 400 samples
+- Testing: 664 samples
+- Total: 4,281 samples
 
-For development or debugging purpose you can modify the **main()** function in [main.py](./main.py) and run train/infer
-tasks in headless mode.
 
-```bash
-export PYTHONPATH=workspace/endoscopy:$PYTHONPATH
-python workspace/endoscopy/main.py
-```
+The following table summarizes the results for different active learning strategies:
+
+| Method         | Active Iterations | Samples Per Iteration | % of Data Used | Test IoU   |
+|----------------|-------------------|-----------------------|----------------|------------|
+| _Random_       | 8                 | 20                    | 5.6%           | 0.7446     |
+| _**Variance**_ | 8                 | 20                    | 5.6%           | 0.7617     |
+| _Random_       | 8                 | 50                    | 14%            | 0.7712     |
+| _**Variance**_ | 7                 | 50                    | **12.5%**      | **0.8028** |
+| _Random_       | 15                | 50                    | 25%            | 0.7900     |
+| _**Variance**_ | 15                | 50                    | **25%**        | **0.8311** |
+
+By using an active learning strategy, it is possible to significantly reduce the number of annotations required to train a good model. As the table above shows, by selecting a small subset of samples (as little as 15% of the dataset), it is possible to achieve a model performance close to that of the full dataset. This means that it is not necessary to label all 4,281 unlabeled samples to train a high-performing model.
+
+By selecting the right subset of data, it is possible to achieve a better performing model with only 25% of the data, compared to labeling all the data with unverified quality of labels. This not only saves time and effort but also leads to a more efficient use of resources.
+
+The following snapshot shows the iteration cycles and progress for each active learning cycle for two different strategies, as well as the outcome of random acquisition of data:
+![image](../../docs/images/active_learning_endoscopy_results.png)
+
+The following snapshot shows the iteration cycles and progress for each active learning batch annotation in CVAT:
+![image](../../docs/images/cvat_active_learning.jpeg)
 
 
 ### Performance Benchmarking
 
-The performance benchmarking is done using MONAILabel server for endoscopy models.
-Following is summary of the same:
+The performance benchmarking of MONAILabel server for endoscopy models was carried out and summarized in the table below:
 
 | Model        | Pre | Infer | Post | Total | Remarks                                                               |
 |--------------|-----|-------|------|-------|-----------------------------------------------------------------------|
@@ -249,4 +188,4 @@ Following is summary of the same:
 | inbody       | 50  | 30    | 1    | 81    | **_(pre)_** Load Image: 35 ms                                         |
 | deepedit     | 38  | 28    | 40   | 106   | **_(pre)_** Load Image: 35 ms<br/>**_(post)_** Mask to Polygon: 32 ms |
 
-> Latencies are in **milliseconds (ms)**; <br/>Input Image size: **1920 x 1080**
+> Latencies are in **milliseconds (ms)**;  with Input Image size of **1920 x 1080**

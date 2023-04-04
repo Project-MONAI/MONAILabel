@@ -11,22 +11,20 @@
 
 import logging
 
+import torch
 from monai.apps.deepedit.transforms import NormalizeLabelsInDatasetd
 from monai.inferers import SlidingWindowInferer
 from monai.losses import DiceCELoss
-from monai.optimizers import Novograd
 from monai.transforms import (
     Activationsd,
     AsDiscreted,
-    CropForegroundd,
     EnsureChannelFirstd,
     EnsureTyped,
-    GaussianSmoothd,
     LoadImaged,
-    NormalizeIntensityd,
     Orientationd,
     RandSpatialCropd,
     ScaleIntensityd,
+    ScaleIntensityRanged,
     SelectItemsd,
     Spacingd,
     ToTensord,
@@ -56,7 +54,7 @@ class SegmentationSpleen(BasicTrainTask):
         return self._network
 
     def optimizer(self, context: Context):
-        return Novograd(context.network.parameters(), 0.0001)
+        return torch.optim.AdamW(context.network.parameters(), lr=1e-4, weight_decay=1e-5)
 
     def loss_function(self, context: Context):
         return DiceCELoss(to_onehot_y=True, softmax=True, squared_pred=True, batch=True)
@@ -69,14 +67,7 @@ class SegmentationSpleen(BasicTrainTask):
             EnsureTyped(keys=("image", "label"), device=context.device),
             Orientationd(keys=("image", "label"), axcodes="RAS"),
             Spacingd(keys=("image", "label"), pixdim=self.target_spacing, mode=("bilinear", "nearest")),
-            NormalizeIntensityd(keys="image", nonzero=True),
-            CropForegroundd(
-                keys=("image", "label"),
-                source_key="image",
-                margin=10,
-                k_divisible=[self.roi_size[0], self.roi_size[1], self.roi_size[2]],
-            ),
-            GaussianSmoothd(keys="image", sigma=0.4),
+            ScaleIntensityRanged(keys="image", a_min=-57, a_max=164, b_min=0.0, b_max=1.0, clip=True),
             ScaleIntensityd(keys="image", minv=-1.0, maxv=1.0),
             RandSpatialCropd(
                 keys=["image", "label"],
@@ -105,19 +96,10 @@ class SegmentationSpleen(BasicTrainTask):
             EnsureChannelFirstd(keys=("image", "label")),
             Orientationd(keys=("image", "label"), axcodes="RAS"),
             Spacingd(keys=("image", "label"), pixdim=self.target_spacing, mode=("bilinear", "nearest")),
-            NormalizeIntensityd(keys="image", nonzero=True),
-            CropForegroundd(
-                keys=("image", "label"),
-                source_key="image",
-                margin=10,
-                k_divisible=[self.roi_size[0], self.roi_size[1], self.roi_size[2]],
-            ),
-            GaussianSmoothd(keys="image", sigma=0.4),
+            ScaleIntensityRanged(keys="image", a_min=-57, a_max=164, b_min=0.0, b_max=1.0, clip=True),
             ScaleIntensityd(keys="image", minv=-1.0, maxv=1.0),
             SelectItemsd(keys=("image", "label")),
         ]
 
     def val_inferer(self, context: Context):
-        return SlidingWindowInferer(
-            roi_size=self.roi_size, sw_batch_size=2, overlap=0.4, padding_mode="replicate", mode="gaussian"
-        )
+        return SlidingWindowInferer(roi_size=[160, 160, 160], sw_batch_size=1, overlap=0.25)

@@ -11,65 +11,63 @@ See the License for the specific language governing permissions and
 limitations under the License.
 -->
 
-# DeepLearning models for Radiology use-case(s).
+# Radiology Sample Application
 
-The App works in both 3DSlicer plugin and OHIF viewer. Researchers/clinicians can also place their studies in either the
-file archive or a DICOMweb server (i.e. Orthanc).
+This app has example models to do both interactive and automated segmentation over radiology (3D) images. Including auto segmentation with the latest deep learning models (e.g., UNet, UNETR) for multiple abdominal organs. Interactive tools include DeepEdit and Deepgrow for actively improving trained models and deployment.
 
-### Structure of the App
+### Table of Contents
+- [Supported Viewers](#supported-viewers)
+- [Pretrained Models](#pretrained-models)
+- [How To Use the App](#how-to-use-the-app)
+- [Hybrid Radiology App with Models and Bundles](#hybrid-radiology-app-with-models-and-bundles)
+- [Model Details](#model-details)
 
-- **[lib/infers](./lib/infers)** is the module where researchers define the inference class (i.e. type of inferer, pre
-  transforms for inference, etc).
-- **[lib/trainers](./lib/trainers)** is the module to define the pre and post transforms to train the network/model.
-- **[lib/configs](./lib/configs)** is the module to define the image selection techniques.
-- **[lib/transforms](./lib/transforms)** is the module to define customised transformations to be used in the App.
-- **[lib/activelearning](./lib/activelearning)** is the module to define the image selection techniques.
-- **[main.py](./main.py)** is the script to extend [MONAILabelApp](../../monailabel/interfaces/app.py) class
+### Supported Viewers
+The Radiology Sample Application supports the following viewers:
 
-Refer [How To Add New Model?](#how-to-add-new-model) section if you are looking to add your own model using this App as
-reference.
+- [3D Slicer](../../plugins/slicer/)
+- [OHIF](../../plugins/ohif/)
 
-### List of Pretrained Models
+For more information on each of the viewers, see the [plugin extension folder](../../plugins/) for the given viewer.
 
-```bash
-# List all the possible models
-monailabel start_server --app /workspace/apps/radiology --studies /workspace/images
-```
+### Pretrained Models
+The following are the models which are currently added into Radiology App:
 
-Following are the models which are currently added into Radiology App:
+| Name | Description |
+|------|-------------|
+| [deepedit](#deepedit)| This model is based on DeepEdit: an algorithm that combines the capabilities of multiple models into one, allowing for both interactive and automated segmentation.
+| [deepgrow](#deepgrow) | This model is based on [DeepGrow](https://arxiv.org/abs/1903.08205) which allows for an interactive segmentation.
+| [segmentation](#segmentation) | A standard (non-interactive) [multilabel](https://www.synapse.org/#!Synapse:syn3193805/wiki/217789) *[spleen, kidney, liver, stomach, aorta, etc..]* model using UNET to label 3D volumes.
+| [segmentation_spleen](#segmentation_spleen) | It uses pre-trained weights/model (UNET) from [NVIDIA Clara](https://catalog.ngc.nvidia.com/orgs/nvidia/teams/med/models/clara_pt_spleen_ct_segmentation) for spleen segmentation.
+| [Multistage Vertebra Segmentation](#Multistage-Vertebra-Segmentation) | This is an example of a multistage approach for segmenting several structures on a CT image. |
 
-| Name                                                                  | Description                                                                                                                                                                                     |
-|-----------------------------------------------------------------------|-------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------|
-| [deepedit](#deepedit)                                                 | This model is based on DeepEdit: an algorithm that combines the capabilities of multiple models into one, allowing for both interactive and automated segmentation.                             |
-| [deepgrow](#deepgrow)                                                 | This model is based on [DeepGrow](https://arxiv.org/abs/1903.08205) which allows for an interactive segmentation.                                                                               |
-| [segmentation](#segmentation)                                         | A standard (non-interactive) [multilabel](https://www.synapse.org/#!Synapse:syn3193805/wiki/217789) *[spleen, kidney, liver, stomach, aorta, etc..]* model using SegResNet to label CT volumes. |
-| [segmentation_spleen](#segmentation-spleen)                           | It uses pre-trained weights/model (UNET) from [NVIDIA Clara](https://catalog.ngc.nvidia.com/orgs/nvidia/teams/med/models/clara_pt_spleen_ct_segmentation) for spleen segmentation.              |
-| [Multistage Vertebra Segmentation](#multistage-vertebra-segmentation) | This is an example of a multistage approach for segmenting several structures on a CT image.                                                                                                    |
-### How To Use?
+### How To Use the App
+The following commands are examples of how to start the Radiology Sample Application.  Make sure when you're running the command that you use the correct app and studies path for your system.
+
 
 ```bash
-# skip this if you have already downloaded the app or using github repository (dev mode)
+# Download Radiology App (skip this if you have already downloaded the app or using github repository (dev mode))
 monailabel apps --download --name radiology --output workspace
 
-# Pick DeepEdit model
+# Start MONAI Label Server with the DeepEdit model
 monailabel start_server --app workspace/radiology --studies workspace/images --conf models deepedit
 
-# Pick Deepgrow And Segmentation model (multiple models)
+# Start MONAI Label Server with multiple model
 monailabel start_server --app workspace/radiology --studies workspace/images --conf models "deepgrow_2d,deepgrow_3d,segmentation"
 
-# Pick all stages for vertebra segmentation
+# Start MONAI Label Server with all stages for vertebra segmentation
 monailabel start_server --app workspace/radiology --studies workspace/images --conf models "localization_spine,localization_vertebra,segmentation_vertebra"
 
-# Pick DeepEdit + Preload into All GPU devices
+# Start MONAI Label Server with DeepEdit model and preload on GPU
 monailabel start_server --app workspace/radiology --studies workspace/images --conf models deepedit --conf preload true
 
-# Pick DeepEdit (Skip Training Tasks or Infer only mode)
+# Start MONAI Label Server with DeepEdit in Inference Only mode
 monailabel start_server --app workspace/radiology --studies workspace/images --conf models deepedit --conf skip_trainers true
 ```
 
 ### Hybrid Radiology App with Models and Bundles
 
-Radiology app now supports loading models from local or from bundles in Model-Zoo
+Radiology app now supports loading models from local or from bundles in [MONAI Model Zoo](https://monai.io/model-zoo)
 
 ```bash
 # Example: Pick two models of spleen and multi-organ segmentation model, and two model-zoo bundles.
@@ -77,16 +75,16 @@ monailabel start_server \
   --app workspace/radiology \
   --studies workspace/images \
   --conf models segmentation_spleen,segmentation \
-  --conf bundles spleen_ct_segmentation,swin_unetr_btcv_segmentation
+  --conf bundles spleen_ct_segmentation_v0.2.0,swin_unetr_btcv_segmentation_v0.2.0
 ```
 
 
-### Model Overview
+### Model Details
 
-#### [DeepEdit](./lib/configs/deepedit.py)
-
-This model based on DeepEdit: an algorithm that combines the capabilities of multiple models into one, allowing for both
-interactive and automated segmentation.
+<details id="deepedit">
+<summary>
+  <strong>DeepEdit</strong> is an algorithm that combines the capabilities of multiple models into one, allowing for both interactive and automated segmentation.
+</summary>
 
 This model works for single and multiple label segmentation tasks.
 
@@ -129,13 +127,12 @@ A command example to use active learning strategies with DeepEdit would be:
     - 1+N channels (image modality + points for N labels including background) -> Interactive mode
 
 - Output: N channels representing the segmented organs/tumors/tissues
+</details>
 
-#### [Deepgrow](./lib/configs)
-
-This model based on Deepgrow: an algorithm that combines the capabilities of multiple models into one, allowing
-interactive segmentation based on foreground/background clicks (https://arxiv.org/abs/1903.08205). It uses pre-trained
-weights
-from [NVIDIA Clara](https://catalog.ngc.nvidia.com/models?filters=&orderBy=dateModifiedDESC&query=clara_pt_deepgrow).
+<details id="deepgrow">
+  <summary>
+    <strong>Deepgrow</strong> is an algorithm that combines the capabilities of multiple models into one, allowing interactive segmentation based on foreground/background clicks (https://arxiv.org/abs/1903.08205). It uses pre-trained weights from <a href="https://catalog.ngc.nvidia.com/models?filters=&orderBy=dateModifiedDESC&query=clara_pt_deepgrow">NVIDIA Clara</a>.
+    </summary>
 
 It provides both [2D](./lib/configs/deepgrow_2d.py) and [3D](./lib/configs/deepgrow_3d.py) version to annotate images.
 Additionally, it also provides [DeepgrowPipeline](lib/infers/deepgrow_pipeline.py) _(infer only)_ that
@@ -177,10 +174,12 @@ the model to learn on new organ.
 - Dataset: The model is pre-trained over dataset: https://www.synapse.org/#!Synapse:syn3193805/wiki/217789
 - Inputs: 3 channel that represents image + foreground clicks + background clicks
 - Output: 1 channel representing the segmented organs/tumors/tissues
+</details>
 
-#### [Segmentation](./lib/configs/segmentation.py)
-
-This model based on UNet for automated segmentation. This model works for single and multiple label segmentation tasks.
+<details id="segmentation">
+  <summary>
+    <strong>Segmentation</strong> is a model based on UNet for automated segmentation. This model works for single and multiple label segmentation tasks.
+  </summary>
 
 > monailabel start_server --app workspace/radiology --studies workspace/images --conf models segmentation
 
@@ -191,45 +190,35 @@ This model based on UNet for automated segmentation. This model works for single
 | use_pretrained_model | **true**, false    | Disable this NOT to load any pretrained weights                 |
 | preload              | true, **false**    | Preload model into GPU                                                                                |
 
-- Network: This model uses the [SegResNet](https://docs.monai.io/en/latest/networks.html#segresnet) as the default network. Researchers can define their own network or use one of the listed [here](https://docs.monai.io/en/latest/networks.html)
+- Network: This model uses the [UNet](https://docs.monai.io/en/latest/networks.html#unet) as the default network. Researchers can define their own network or use one of the listed [here](https://docs.monai.io/en/latest/networks.html)
 - Labels
   ```json
   {
     "spleen": 1,
-    "kidney_right": 2,
-    "kidney_left": 3,
+    "right kidney": 2,
+    "left kidney": 3,
     "gallbladder": 4,
-    "liver": 5,
-    "stomach": 6,
-    "aorta": 7,
-    "inferior_vena_cava": 8,
-    "portal_vein_and_splenic_vein": 9,
-    "pancreas": 10,
-    "adrenal_gland_right": 11,
-    "adrenal_gland_left": 12,
-    "lung_upper_lobe_left": 13,
-    "lung_lower_lobe_left": 14,
-    "lung_upper_lobe_right": 15,
-    "lung_middle_lobe_right": 16,
-    "lung_lower_lobe_right": 17,
-    "esophagus": 42,
-    "trachea": 43,
-    "heart_myocardium": 44,
-    "heart_atrium_left": 45,
-    "heart_ventricle_left": 46,
-    "heart_atrium_right": 47,
-    "heart_ventricle_right": 48,
-    "pulmonary_artery": 49,
+    "esophagus": 5,
+    "liver": 6,
+    "stomach": 7,
+    "aorta": 8,
+    "inferior vena cava": 9,
+    "portal vein and splenic vein": 10,
+    "pancreas": 11,
+    "right adrenal gland": 12,
+    "left adrenal gland": 13
   }
   ```
-- Dataset: The model is pre-trained on the Total Segmentator dataset: https://zenodo.org/record/6802614#.Y88qJhzP2Cg
+- Dataset: The model is pre-trained over dataset: https://www.synapse.org/#!Synapse:syn3193805/wiki/217789
 - Inputs: 1 channel for the image modality
-- Output: N channels representing the segmented organs/bone/tissues
+- Output: N channels representing the segmented organs/tumors/tissues
+</details>
 
-#### [Segmentation Spleen](./lib/configs/segmentation_spleen.py)
 
-This model based on UNet for automated segmentation for single label spleen. It uses pre-trained weights
-from [NVIDIA Clara](https://catalog.ngc.nvidia.com/models?filters=&orderBy=dateModifiedDESC&query=clara_pt_deepgrow).
+<details id="segmentation-spleen">
+  <summary>
+    <strong>Segmentation Spleen</strong> is a model based on UNet for automated segmentation for single label spleen. It uses pre-trained weights from <a href="https://catalog.ngc.nvidia.com/models?filters=&orderBy=dateModifiedDESC&query=clara_pt_deepgrow">NVIDIA Clara</a>.
+  </summary>
 
 > This is the simple reference for users to add their simple model to the Radiology App.
 
@@ -254,14 +243,16 @@ A command example to use active learning strategies with segmentation_spleen wou
 
 - Network: This App uses the [UNet](https://docs.monai.io/en/latest/networks.html#unet) as the default network.
 - Labels: `{ "Spleen": 1 }`
-- Dataset: The model is pre-trained over the Total Segmentator dataset: https://zenodo.org/record/6802614#.ZCSvA47MKCh
+- Dataset: The model is pre-trained over dataset: http://medicaldecathlon.com/
 - Inputs: 1 channel for the image modality
 - Output: 1 channels representing the segmented spleen
+</details>
 
 
-#### [Multistage Vertebra Segmentation](./lib/infers/vertebra_pipeline.py)
-
-This is an example of a multistage approach for segmenting several structures on a CT image. The model has three stages that can be use together or independently:
+<details id="multistage-vertebra-segmentation">
+  <summary>
+    <strong>Multistage Vertebra Segmentation</strong> is an example of a multistage approach for segmenting several structures on a CT image. The model has three stages that can be use together or independently.
+  </summary>
 
 **_Stage 1:_**  [Spine Localization](./lib/configs/localization_spine.py)
 
@@ -322,36 +313,4 @@ The difference between second and third stage is that third stage get a more fin
 - Inputs: 1 channel for the CT image
 - Output: N channels representing the segmented vertebras
 
-
-### How To Add New Model?
-
-Researches might want to define/add their own model(s). Or if there is a model as part of radiology use-case which is
-generic and helpful for larger community, then you can follow the below steps to add a new model and using the same.
-
-> As an example, you want to add new Segmentation model for **lung**
-
-- Create new TaskConfig **_segmentation_lung.py_** in [lib/configs](./lib/configs).
-    - Refer: [segmentation_spleen.py](./lib/configs/segmentation_spleen.py)
-    - Fix attributes like network, labels, pretrained URL etc...
-    - Implement abstract classes. Following are important ones.
-        - `infer(self) -> Union[InferTask, Dict[str, InferTask]]` to return one or more Infer Task.
-        - `trainer(self) -> Optional[TrainTask]` to return TrainTask. Return `None` if you are looking for Infer only
-          model.
-    - You can accept any `--conf <name> <value>` and define the behavior of any function based on new conf.
-- Create new Infer Task **_segmentation_lung.py_** in [lib/infers](./lib/infers).
-    - Refer: [segmentation_spleen.py](./lib/infers/segmentation_spleen.py)
-    - Importantly you will define pre/post transforms.
-- Create new Train Task **_segmentation_lung.py_** in [lib/trainers](./lib/trainers).
-    - Refer: [segmentation_spleen.py](./lib/trainers/segmentation_spleen.py)
-    - Importantly you will define loss_function, optimizer and pre/post transforms for training/validation stages.
-
-- Run the app using new model
-  > monailabel start_server --app workspace/radiology --studies workspace/images --conf models segmentation_lung
-
-For development or debugging purpose you can modify the **main()** function in [main.py](./main.py) and run train/infer
-tasks in headless mode.
-
-```bash
-export PYTHONPATH=workspace/radiology:$PYTHONPATH
-python workspace/radiology/main.py
-```
+</details>
