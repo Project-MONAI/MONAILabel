@@ -32,15 +32,13 @@ jobs:
         uses: actions/setup-python@v4
         with:
           python-version: 3.8
+      - name: clean up
+        run: |
+          sudo rm -rf /usr/share/dotnet
+          sudo rm -rf "$AGENT_TOOLSDIRECTORY"
       - name: Install dependencies
         run: |
           python -m pip install --upgrade pip wheel
-      - name: Install Latest Docker
-        run: |
-          curl -fsSL https://download.docker.com/linux/ubuntu/gpg | sudo apt-key add -
-          sudo add-apt-repository "deb [arch=amd64] https://download.docker.com/linux/ubuntu  $(lsb_release -cs)  stable"
-          sudo apt-get update
-          sudo apt-get install docker-ce
       - name: Build
         run: |
           ./runtests.sh --clean
