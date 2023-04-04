@@ -44,7 +44,7 @@ The MONAIBundle App currently supports most labeling models in the Model-Zoo. Yo
 
 **Note:** The MONAIBundle app uses the MONAI Bundle API to retrieve information about the latest models from the Model-Zoo. If you're encountering rate limiting issues while using the app, you can input your personal access token using the --conf auth_token command. For more information on rate limiting and how to generate an access token, please refer to the following link: https://docs.github.com/en/rest/overview/resources-in-the-rest-api#rate-limiting
 
-### How To Use?
+### How To Use the App
 
 ```bash
 # skip this if you have already downloaded the app or using github repository (dev mode)
