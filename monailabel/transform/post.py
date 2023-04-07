@@ -13,12 +13,20 @@ import logging
 from typing import Dict, Hashable, Mapping, Optional, Sequence, Union
 
 import cv2
+import nibabel as nib
 import numpy as np
 import skimage.measure as measure
 import torch
 from monai.config import KeysCollection, NdarrayOrTensor
 from monai.data import MetaTensor
-from monai.transforms import MapTransform, Resize, Transform, generate_spatial_bounding_box, get_extreme_points
+from monai.transforms import (
+    MapTransform,
+    Orientation,
+    Resize,
+    Transform,
+    generate_spatial_bounding_box,
+    get_extreme_points,
+)
 from monai.utils import InterpolateMode, convert_to_numpy, ensure_tuple_rep
 from shapely.geometry import Point, Polygon
 from torchvision.utils import make_grid, save_image
@@ -94,6 +102,7 @@ class Restored(MapTransform):
         keys: KeysCollection,
         ref_image: str,
         has_channel: bool = True,
+        invert_orient: bool = False,
         mode: str = InterpolateMode.NEAREST,
         align_corners: Union[Sequence[Optional[bool]], Optional[bool]] = None,
         meta_key_postfix: str = "meta_dict",
@@ -101,6 +110,7 @@ class Restored(MapTransform):
         super().__init__(keys)
         self.ref_image = ref_image
         self.has_channel = has_channel
+        self.invert_orient = invert_orient
         self.mode = ensure_tuple_rep(mode, len(self.keys))
         self.align_corners = ensure_tuple_rep(align_corners, len(self.keys))
         self.meta_key_postfix = meta_key_postfix
@@ -123,6 +133,18 @@ class Restored(MapTransform):
             if np.any(np.not_equal(current_size, spatial_size)):
                 resizer = Resize(spatial_size=spatial_size, mode=self.mode[idx])
                 result = resizer(result, mode=self.mode[idx], align_corners=self.align_corners[idx])
+
+            if self.invert_orient:
+                # Undo Orientation
+                orig_affine = meta_dict.get("original_affine", None)
+                if orig_affine is not None:
+                    orig_axcodes = nib.orientations.aff2axcodes(orig_affine)
+                    inverse_transform = Orientation(axcodes=orig_axcodes)
+                    # Apply inverse
+                    with inverse_transform.trace_transform(False):
+                        result = inverse_transform(result)
+                else:
+                    logging.info("Failed invert orientation - original_affine is not on the image header")
 
             d[key] = result if len(result.shape) <= 3 else result[0] if result.shape[0] == 1 else result
 

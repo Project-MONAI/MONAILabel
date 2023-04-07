@@ -1,38 +1,36 @@
-<!--
-Copyright (c) MONAI Consortium
-Licensed under the Apache License, Version 2.0 (the "License");
-you may not use this file except in compliance with the License.
-You may obtain a copy of the License at
-    http://www.apache.org/licenses/LICENSE-2.0
-Unless required by applicable law or agreed to in writing, software
-distributed under the License is distributed on an "AS IS" BASIS,
-WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
-See the License for the specific language governing permissions and
-limitations under the License.
--->
+# MONAI Bundle Sample Applications
 
-# Available MONAI Label Apps
+MONAI Label makes it easy to create labeling applications in a serverless way, enabling easy deployment through the MONAI Label server.
 
-### Overview
+### Table of Contents
+- [Using MONAI Label CLI to Pull Apps](#using-monai-label-cli-to-pull-apps)
+- [Available Template Applications](#available-template-applications)
+  - [Radiology](#radiology)
+  - [Pathology](#pathology)
+  - [Endoscopy](#endoscopy)
+  - [MONAI Bundle](#monai-bundle)
+- [Creating a Custom App](#creating-a-custom-app)
 
-In this folder you will find examples of the **three available paradigms** across Radiology and Pathology use-cases: Two interactive (DeepGrow, DeepEdit) and one for automated segmentation.
+### Using MONAI Label CLI to Pull Apps
+Currently, MONAI Label offers four template applications that can be used as-is or modified to meet specific needs. To download these templates using the MONAI Label CLI, use the following command:
 
-## [Radiology](./radiology)
+```
+monailabel apps --download --name <sample app name> --output <output folder>
+```
 
-This app has example models to do both interactive and automated segmentation over radiology (3D) images.
-If you are developing any examples related to radiology, you should refer this app.  It has examples for following 3 types of model.
+### Available Template Applications
+
+#### [Radiology](./radiology)
+The radiology template includes example models for interactive and automated segmentation of radiology (3D) images. It provides examples for the following three types of models:the following three types of models:
 - DeepEdit (Interactive + Auto Segmentation)
-  - Spleen, Liver, Kidney, etc...
+  - Spleen, Liver, Kidney, and others.
 - Deepgrow (Interactive)
-  - Any Organ/Tissue but pretrained to work well on Spleen, Liver, Kidney, etc...
+  - Any organ or tissue, but pre-trained to work well on Spleen, Liver, Kidney, and others.
 - Segmentation (Auto Segmentation)
-  - Spleen, Liver, Kidney, etc...
+  - Spleen, Liver, Kidney, and others.
 
-
-## [Pathology](./pathology)
-
-This app has example models to do both interactive and automated segmentation over pathology (WSI) images.
-If you are developing any examples related to pathology, you should refer this app.  It has examples for following 2 types of model.
+#### [Pathology](./pathology)
+The pathology template includes example models for interactive and automated segmentation of pathology (WSI) images. It provides examples for the following two types of models:
 - DeepEdit (Interactive + Auto Segmentation)
   - Nuclei Segmentation
 - Segmentation (Auto Segmentation)
@@ -43,8 +41,48 @@ If you are developing any examples related to pathology, you should refer this a
     - Dead Cells
     - Epithelial
 
+#### [Endoscopy](./endoscopy)
+The endoscopy template includes example models for interactive and automated tool tracking segmentation and a classification model for InBody vs. OutBody images in endoscopy-related images. It provides examples for the following three types of models:
+- DeepEdit (Interactive + Auto Segmentation)
+  - Tool Tracking
+- Segmentation (Auto Segmentation)
+  - Tool Tracking
+- Classification
+  - InBody vs. OutBody
 
-## [MONAI Bundle](./monaibundle)
 
-This app has example models to do both interactive and automated segmentation using monai-bundles defined in [MONAI ZOO](https://github.com/Project-MONAI/model-zoo/tree/dev/models).
-It can pull any bundle defined in the zoo if it is compatible and follows the checklist as defined [here](./monaibundle).
+#### [MONAI Bundle](./monaibundle)
+The MONAI Bundle format provides a portable description of deep learning models. This template includes example models for interactive and automated segmentation using MONAI bundles defined in the MONAI Model Zoo. It can pull any bundle defined in the MONAI Model Zoo that is compatible and meets the requirements specified on the [MONAI Bundle Apps page](./monaibundle/).
+
+### Creating a Custom App
+Researchers may want to define and add their own models. Follow the steps below to add a new segmentation model:
+
+1. Create a new TaskConfig file for the model in the `lib/configs` directory.
+    - Use an existing TaskConfig file (such as `segmentation_spleen.py` in the radiology app, `tooltracking.py` in the endoscopy app, or `segmentation_nuclei.py` in the pathology app) as a reference.
+     - In the new TaskConfig file, specify the model's network, labels, pretrained URL, and any other relevant attributes. Implement the following abstract classes:
+        - `infer(self) -> Union[InferTask, Dict[str, InferTask]]`: Returns one or more Infer Tasks.
+        - `trainer(self) -> Optional[TrainTask]`: Returns a TrainTask, or None if the model is an inference-only model. You can also accept any --conf <name> <value> and define the behavior of any function based on the new configuration.
+
+2. Create a new Infer Task file for the model in the `lib/infers` directory.
+    -  Use an existing Infer Task file (such as `segmentation_spleen.py`, `tooltracking.py`, or `segmentation_nuclei.py`) as a reference.
+    - In the new Infer Task file, define pre- and post-transforms for the model.
+
+3. Create a new Train Task file for the model in the `lib/trainers` directory.
+    - Use an existing Train Task file (such as `segmentation_spleen.py`, `tooltracking.py`, or `segmentation_nuclei.py`) as a reference.
+    - In the new Train Task file, define the loss function, optimizer, and pre- and post-transforms for the training and validation stages.
+
+4. Run the app using the new model:
+```bash
+monailabel start_server --app workspace/<app_name> --studies workspace/images --conf models <model_name>
+```
+
+5. Replace `<app_name>` with the name of the app that you want to use (such as `radiology`, `endoscopy`, or `pathology`) and `<model_name>` with the name of the new segmentation model.
+
+For development or debugging purposes, modify the `main()` function in `main.py` and run the train and infer tasks in headless mode:
+
+```bash
+export PYTHONPATH=workspace/<app_name>:$PYTHONPATH
+python workspace/<app_name>/main.py
+```
+
+That's it! With these steps, you can add a new segmentation model to any of the MONAI Label apps.
