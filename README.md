@@ -40,7 +40,7 @@ Refer to full [MONAI Label documentations](https://docs.monai.io/projects/label/
   - [Step 2. MONAI Label Sample Applications](#Step-2-MONAI-Label-Sample-Applications)
   - [Step 3. MONAI Label Supported Viewers](#Step-3-MONAI-Label-Supported-Viewers)
   - [Step 4. Data Preparation](#Step-4-Data-Preparation)
-  - [Step 5. Start MONAI Label Server and Start Annotating!](#Step-5-Start-MONAI-Label-Server-and-Start-Annotating!)
+  - [Step 5. Start MONAI Label Server and Start Annotating!](#Step-5-Start-MONAI-Label-Server-and-Start-Annotating)
 - [Cite MONAI Label](#Cite)
 - [Contributing](#Contributing)
 - [Community](#Community)
@@ -164,7 +164,7 @@ Here you can find a table of the various supported fields, modalities, viewers, 
 - Step 2: [Download a MONAI Label sample app or write your own custom app](#Step-2-MONAI-Label-Sample-Applications)
 - Step 3: [Install a compatible viewer and supported MONAI Label Plugin](#Step-3-MONAI-Label-Supported-Viewers)
 - Step 4: [Prepare your Data](#Step-4-Data-Preparation)
-- Step 5: [Launch MONAI Label Server and start Annotating!](#Step-5-Start-MONAI-Label-Server-and-Start-Annotating!)
+- Step 5: [Launch MONAI Label Server and start Annotating!](#Step-5-Start-MONAI-Label-Server-and-Start-Annotating)
 
 ## Step 1 Installation
 
@@ -300,7 +300,7 @@ monailabel start_server --app apps/radiology --studies http://127.0.0.1:8042/dic
 ```
 
 
-## Step 5 Start MONAI Label Server and Start Annotating!
+## Step 5 Start MONAI Label Server and Start Annotating
 You're now ready to start using MONAI Label.  Once you've configured your viewer, app, and datastore, you can launch the MONAI Label server with the relevant parameters. For simplicity, you can see an example where we download a Radiology sample app and dataset, then start the MONAI Label server below:
 
 ```
