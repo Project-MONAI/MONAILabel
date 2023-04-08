@@ -34,13 +34,13 @@ Refer to full [MONAI Label documentations](https://docs.monai.io/projects/label/
 ### Table of Contents
 - [Overview](#Overview)
   - [Highlights and Features](#Highlights-and-Features)
-  - [Supported Matrix](#Support-Matrix)
+  - [Supported Matrix](#Supported-Matrix)
 - [Getting Started with MONAI Label](#Getting-Started-with-MONAI-Label)
-  - [Step 1. Installation](#Step-1.-Installation)
-  - [Step 2. MONAI Label Sample Applications](#Step-2.-MONAI-Label-Sample-Applications)
-  - [Step 3. MONAI Label Supported Viewers](###Step-3.-MONAI-Label-Supported-Viewers)
-  - [Step 4. Data Preparation](#Step-4.-Data-Preparation)
-  - [Step 5. Start MONAI Label Server and Start Annotating!](#Step-5.-Start-MONAI-Label-Server-and-Start-Annotating!)
+  - [Step 1. Installation](#Step-1-Installation)
+  - [Step 2. MONAI Label Sample Applications](#Step-2-MONAI-Label-Sample-Applications)
+  - [Step 3. MONAI Label Supported Viewers](#Step-3-MONAI-Label-Supported-Viewers)
+  - [Step 4. Data Preparation](#Step-4-Data-Preparation)
+  - [Step 5. Start MONAI Label Server and Start Annotating!](#Step-5-Start-MONAI-Label-Server-and-Start-Annotating!)
 - [Cite MONAI Label](#Cite)
 - [Contributing](#Contributing)
 - [Community](#Community)
@@ -166,7 +166,7 @@ Here you can find a table of the various supported fields, modalities, viewers, 
 - Step 4: [Prepare your Data](#)
 - Step 5: [Launch MONAI Label Server and start Annotating!](#)
 
-## Step 1. Installation
+## Step 1 Installation
 
 ### Current Stable Version
 <a href="https://pypi.org/project/monailabel/#history"><img alt="GitHub release (latest SemVer)" src="https://img.shields.io/github/v/release/project-monai/monailabel"></a>
@@ -211,7 +211,7 @@ To install the _**latest features**_ using one of the following options:
   <pre>docker run --gpus all --rm -ti --ipc=host --net=host projectmonai/monailabel:latest bash</pre>
 </details>
 
-## Step 2. MONAI Label Sample Applications
+## Step 2 MONAI Label Sample Applications
 
 <h3>Radiology</h3>
 <p>This app has example models to do both interactive and automated segmentation over radiology (3D) images. Including auto segmentation with the latest deep learning models (e.g., UNet, UNETR) for multiple abdominal organs. Interactive tools include DeepEdit and Deepgrow for actively improving trained models and deployment.</p>
@@ -244,7 +244,7 @@ To install the _**latest features**_ using one of the following options:
 
 For a full list of supported bundles, see the <a href="https://github.com/Project-MONAI/MONAILabel/tree/main/sample-apps/monaibundle">MONAI Label Bundles README</a>.
 
-## Step 3. MONAI Label Supported Viewers
+## Step 3 MONAI Label Supported Viewers
 
 ### Radiology
 #### 3D Slicer
@@ -272,7 +272,7 @@ The Digital Slide Archive (DSA) is a platform that provides the ability to store
 CVAT is an interactive video and image annotation tool for computer vision.
 [CVAT Setup]()
 
-## Step 4. Data Preparation
+## Step 4 Data Preparation
 For data preparation, you have two options, you can use a local data store or any image archive tool that supports DICOMWeb.
 
 #### Local Datastore for the Radiology App on single modality images
@@ -300,7 +300,7 @@ monailabel start_server --app apps/radiology --studies http://127.0.0.1:8042/dic
 ```
 
 
-## Step 5. Start MONAI Label Server and Start Annotating!
+## Step 5 Start MONAI Label Server and Start Annotating!
 You're now ready to start using MONAI Label.  Once you've configured your viewer, app, and datastore, you can launch the MONAI Label server with the relevant parameters. For simplicity, you can see an example where we download a Radiology sample app and dataset, then start the MONAI Label server below:
 
 ```
