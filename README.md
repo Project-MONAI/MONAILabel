@@ -160,11 +160,11 @@ Here you can find a table of the various supported fields, modalities, viewers, 
 
 # Getting Started with MONAI Label
 ### MONAI Label requires a few steps to get started:
-- Step 1: [Install MONAI Label](#Step-1.-Installation)
-- Step 2: [Download a MONAI Label sample app or write your own custom app](#Step-2.-MONAI-Label-Sample-Applications)
-- Step 3: [Install a compatible viewer and supported MONAI Label Plugin](#)
-- Step 4: [Prepare your Data](#)
-- Step 5: [Launch MONAI Label Server and start Annotating!](#)
+- Step 1: [Install MONAI Label](#Step-1-Installation)
+- Step 2: [Download a MONAI Label sample app or write your own custom app](#Step-2-MONAI-Label-Sample-Applications)
+- Step 3: [Install a compatible viewer and supported MONAI Label Plugin](#Step-3-MONAI-Label-Supported-Viewers)
+- Step 4: [Prepare your Data](#Step-4-Data-Preparation)
+- Step 5: [Launch MONAI Label Server and start Annotating!](#Step-5-Start-MONAI-Label-Server-and-Start-Annotating!)
 
 ## Step 1 Installation
 
