@@ -19,7 +19,7 @@ export default class MonaiLabelClient {
   }
 
   async info() {
-    let url = new URL('info', this.server_url);
+    let url = new URL('info/', this.server_url);
     return await MonaiLabelClient.api_get(url.toString());
   }
 
@@ -81,7 +81,7 @@ export default class MonaiLabelClient {
   }
 
   async is_train_running() {
-    let url = new URL('train', this.server_url);
+    let url = new URL('train/', this.server_url);
     url.searchParams.append('check_if_running', 'true');
     url = url.toString();
 
@@ -92,12 +92,12 @@ export default class MonaiLabelClient {
   }
 
   async run_train(params) {
-    const url = new URL('train', this.server_url).toString();
+    const url = new URL('train/', this.server_url).toString();
     return await MonaiLabelClient.api_post(url, params, null, false, 'json');
   }
 
   async stop_train() {
-    const url = new URL('train', this.server_url).toString();
+    const url = new URL('train/', this.server_url).toString();
     return await MonaiLabelClient.api_delete(url);
   }
 
