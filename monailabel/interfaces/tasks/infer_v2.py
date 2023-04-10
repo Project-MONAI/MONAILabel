@@ -84,7 +84,7 @@ class InferTask(metaclass=ABCMeta):
     def config(self) -> Dict[str, Any]:
         return self._config
 
-    def get_path(self):
+    def get_path(self, validate=True):
         return None
 
     @abstractmethod

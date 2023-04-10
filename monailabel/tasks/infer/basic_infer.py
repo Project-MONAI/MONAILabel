@@ -115,7 +115,7 @@ class BasicInferTask(InferTask):
         if preload:
             for device in ["cuda", *device_list()]:
                 logger.info(f"Preload Network for device: {device}")
-                self._get_network(device)
+                self._get_network(device, None)
 
     def info(self) -> Dict[str, Any]:
         return {
@@ -139,14 +139,15 @@ class BasicInferTask(InferTask):
                 return True
         return False
 
-    def get_path(self):
+    def get_path(self, validate=True):
         if not self.path:
             return None
 
         paths = self.path
         for path in reversed(paths):
-            if path and os.path.exists(path):
-                return path
+            if path:
+                if not validate or os.path.exists(path):
+                    return path
         return None
 
     def add_cache_transform(self, t, data, keys=("image", "image_meta_dict"), hash_key=("image_path", "model")):
@@ -266,12 +267,6 @@ class BasicInferTask(InferTask):
         begin = time.time()
         req = copy.deepcopy(self._config)
         req.update(request)
-
-        model_filename = req.get("model_filename", "model.pt")
-        model_filename = model_filename if isinstance(model_filename, str) else model_filename[0]
-        self.path.append(os.path.join(os.path.dirname(self.path[0]), model_filename)) if self.path and isinstance(
-            self.path, list
-        ) else self.path
 
         # device
         device = req.get("device", "cuda")
@@ -421,9 +416,18 @@ class BasicInferTask(InferTask):
     def clear_cache(self):
         self._networks.clear()
 
-    def _get_network(self, device):
+    def _get_network(self, device, data):
         path = self.get_path()
         logger.info(f"Infer model path: {path}")
+
+        if data and self._config.get("model_filename"):
+            user_path = os.path.join(os.path.dirname(self.path[0]), data.get("model_filename"))
+            if user_path and os.path.exists(user_path):
+                path = user_path
+                logger.info(f"Using <User> provided model_file: {user_path}")
+            else:
+                logger.info(f"Ignoring <User> provided model_file (not valid): {user_path}")
+
         if not path and not self.network:
             if self.type == InferType.SCRIBBLES:
                 return None
@@ -476,7 +480,7 @@ class BasicInferTask(InferTask):
         inferer = self.inferer(data)
         logger.info(f"Inferer:: {device} => {inferer.__class__.__name__} => {inferer.__dict__}")
 
-        network = self._get_network(device)
+        network = self._get_network(device, data)
         if network:
             inputs = data[self.input_key]
             inputs = inputs if torch.is_tensor(inputs) else torch.from_numpy(inputs)
@@ -530,7 +534,7 @@ class BasicInferTask(InferTask):
                 f"Detector Inferer:: {device} => {detector.inferer.__class__.__name__} => {detector.inferer.__dict__}"  # type: ignore
             )
 
-        network = self._get_network(device)
+        network = self._get_network(device, data)
         if network:
             inputs = data[self.input_key]
             inputs = inputs if torch.is_tensor(inputs) else torch.from_numpy(inputs)
