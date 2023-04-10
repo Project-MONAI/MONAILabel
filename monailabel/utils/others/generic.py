@@ -249,8 +249,9 @@ def get_bundle_models(app_dir, conf, conf_key="models"):
 
     zoo_source = conf.get("zoo_source", settings.MONAI_ZOO_SOURCE)
     zoo_repo = conf.get("zoo_repo", settings.MONAI_ZOO_REPO)
-    auth_token = None if conf.get("auth_token", settings.MONAI_ZOO_AUTH_TOKEN) == "" else conf.get("auth_token", settings.MONAI_ZOO_AUTH_TOKEN)
-
+    auth_token = conf.get("auth_token", settings.MONAI_ZOO_AUTH_TOKEN)
+    auth_token = auth_token if auth_token else None
+    
     try:
         zoo_info = get_all_bundles_list(auth_token=auth_token)
     except:
