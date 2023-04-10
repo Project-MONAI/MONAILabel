@@ -20,7 +20,7 @@ from typing import Callable
 import torch
 
 from monailabel.interfaces.datastore import Datastore, DefaultLabelTag
-from monailabel.utils.others.generic import handle_torch_linalg_multithread, remove_file
+from monailabel.utils.others.generic import device_map, handle_torch_linalg_multithread, remove_file
 
 logger = logging.getLogger(__name__)
 
@@ -69,7 +69,9 @@ class BatchInferTask:
         gpus = (
             list(range(torch.cuda.device_count())) if not multi_gpus or multi_gpus == "all" else multi_gpus.split(",")
         )
-        device_ids = [f"cuda:{id}" for id in gpus] if multi_gpu else [request.get("device", "cuda")]
+        device = request.get("device", "cuda")
+        device = device_map().get(device, device)
+        device_ids = [f"cuda:{id}" for id in gpus] if multi_gpu else [device]
 
         result: dict = {}
         infer_tasks = []

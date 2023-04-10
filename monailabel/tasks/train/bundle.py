@@ -27,6 +27,7 @@ from monailabel.config import settings
 from monailabel.interfaces.datastore import Datastore
 from monailabel.interfaces.tasks.train import TrainTask
 from monailabel.utils.others.class_utils import unload_module
+from monailabel.utils.others.generic import device_list, device_map
 
 logger = logging.getLogger(__name__)
 
@@ -133,7 +134,7 @@ class BundleTrainTask(TrainTask):
         pytorch_models.sort(key=len)
 
         config_options = {
-            "device": "cuda",  # DEVICE
+            "device": device_list(),  # DEVICE
             "pretrained": True,  # USE EXISTING CHECKPOINT/PRETRAINED MODEL
             "max_epochs": 50,  # TOTAL EPOCHS TO RUN
             "val_split": 0.2,  # VALIDATION SPLIT; -1 TO USE DEFAULT FROM BUNDLE
@@ -224,6 +225,7 @@ class BundleTrainTask(TrainTask):
         logger.info(f"CUDA_VISIBLE_DEVICES: {os.environ.get('CUDA_VISIBLE_DEVICES')}")
 
         device = request.get("device", "cuda")
+        device = device_map().get(device, device)
         logger.info(f"Using device: {device}; Type: {type(device)}")
 
         tracking = request.get(

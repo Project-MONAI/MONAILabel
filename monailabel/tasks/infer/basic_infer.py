@@ -26,7 +26,7 @@ from monailabel.interfaces.tasks.infer_v2 import InferTask, InferType
 from monailabel.interfaces.utils.transform import dump_data, run_transforms
 from monailabel.transform.cache import CacheTransformDatad
 from monailabel.transform.writer import ClassificationWriter, DetectionWriter, Writer
-from monailabel.utils.others.generic import device_list
+from monailabel.utils.others.generic import device_list, device_map
 
 logger = logging.getLogger(__name__)
 
@@ -113,7 +113,7 @@ class BasicInferTask(InferTask):
             self._config.update(config)
 
         if preload:
-            for device in ["cuda", *device_list()]:
+            for device in device_map().values():
                 logger.info(f"Preload Network for device: {device}")
                 self._get_network(device, None)
 
@@ -273,6 +273,7 @@ class BasicInferTask(InferTask):
         device = device if isinstance(device, str) else device[0]
         if device.startswith("cuda") and not torch.cuda.is_available():
             device = "cpu"
+        device = device_map().get(device, device)
         req["device"] = device
 
         logger.setLevel(req.get("logging", "INFO").upper())

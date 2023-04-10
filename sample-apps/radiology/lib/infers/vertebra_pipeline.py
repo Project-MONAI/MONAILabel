@@ -21,6 +21,7 @@ from monailabel.interfaces.utils.transform import run_transforms
 from monailabel.tasks.infer.basic_infer import BasicInferTask
 from monailabel.transform.post import Restored
 from monailabel.transform.writer import Writer
+from monailabel.utils.others.generic import device_map
 
 logger = logging.getLogger(__name__)
 
@@ -134,6 +135,10 @@ class InferVertebraPipeline(BasicInferTask):
     def __call__(self, request):
         start = time.time()
         request.update({"image_path": request.get("image")})
+
+        device = request.get("device", "cuda")
+        device = device_map().get(device, device)
+        request["device"] = device
 
         # Run first stage
         d1, r1, l1 = self.locate_spine(request)

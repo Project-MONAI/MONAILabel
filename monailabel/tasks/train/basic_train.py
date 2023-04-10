@@ -56,7 +56,7 @@ from monailabel.config import settings
 from monailabel.interfaces.datastore import Datastore
 from monailabel.interfaces.tasks.train import TrainTask
 from monailabel.tasks.train.handler import PublishStatsAndModel, prepare_stats
-from monailabel.utils.others.generic import path_to_uri, remove_file
+from monailabel.utils.others.generic import device_list, device_map, path_to_uri, remove_file
 
 logger = logging.getLogger(__name__)
 
@@ -157,7 +157,7 @@ class BasicTrainTask(TrainTask):
         self._config = {
             "name": "train_01",
             "pretrained": True,
-            "device": "cuda",
+            "device": device_list(),
             "max_epochs": 50,
             "early_stop_patience": -1,
             "val_split": 0.2,
@@ -434,6 +434,10 @@ class BasicTrainTask(TrainTask):
         req = copy.deepcopy(self._config)
         req.update(copy.deepcopy(request))
         req["run_id"] = datetime.now().strftime("%Y%m%d_%H%M%S")
+
+        device = req.get("device", "cuda")
+        device = device_map().get(device, device)
+        req["device"] = device
 
         multi_gpu = req["multi_gpu"]
         multi_gpus = req.get("gpus", "all")
