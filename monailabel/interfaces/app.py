@@ -743,9 +743,9 @@ class MONAILabelApp:
         res = self.infer(req)
         return res.get("params", {})
 
-    def model_file(self, model):
+    def model_file(self, model, validate=True):
         task = self._infers.get(model)
-        return task.get_path() if task else None
+        return task.get_path(validate) if task else None
 
     def bundle_path(self, model):
         task = self._trainers.get(model)

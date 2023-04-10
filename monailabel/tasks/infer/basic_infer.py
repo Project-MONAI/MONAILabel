@@ -139,14 +139,15 @@ class BasicInferTask(InferTask):
                 return True
         return False
 
-    def get_path(self):
+    def get_path(self, validate=True):
         if not self.path:
             return None
 
         paths = self.path
         for path in reversed(paths):
-            if path and os.path.exists(path):
-                return path
+            if path:
+                if not validate or os.path.exists(path):
+                    return path
         return None
 
     def add_cache_transform(self, t, data, keys=("image", "image_meta_dict"), hash_key=("image_path", "model")):

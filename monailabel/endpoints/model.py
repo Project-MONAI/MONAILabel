@@ -11,15 +11,20 @@
 
 import logging
 import os
+import pathlib
+import shutil
+import tempfile
+from datetime import datetime
 
-from fastapi import APIRouter, Depends, HTTPException
+from fastapi import APIRouter, Depends, HTTPException, UploadFile
+from fastapi.background import BackgroundTasks
 from fastapi.responses import FileResponse
 
 from monailabel.config import RBAC_ADMIN, settings
 from monailabel.endpoints.user.auth import RBAC, User
 from monailabel.interfaces.app import MONAILabelApp
 from monailabel.interfaces.utils.app import app_instance
-from monailabel.utils.others.generic import file_ext, get_mime_type
+from monailabel.utils.others.generic import file_checksum, file_ext, get_mime_type, remove_file
 
 logger = logging.getLogger(__name__)
 
@@ -50,6 +55,43 @@ def download_model(model: str):
     return FileResponse(file, media_type=get_mime_type(file), filename=filename)
 
 
+def update_model(background_tasks: BackgroundTasks, model: str, file: UploadFile):
+    ext = "".join(pathlib.Path(file.filename).suffixes) if file.filename else ".pt"
+    model_file = tempfile.NamedTemporaryFile(suffix=ext).name
+
+    with open(model_file, "wb") as buffer:
+        shutil.copyfileobj(file.file, buffer)
+        background_tasks.add_task(remove_file, model_file)
+
+    instance: MONAILabelApp = app_instance()
+    file = instance.model_file(model, validate=False)
+    if not file:
+        raise HTTPException(status_code=500, detail=f"Model File Name NOT configured for {model}")
+
+    if not os.path.exists(file):
+        logger.info(f"Previous Model File NOT Found for {model}; Adding new one!")
+
+    filename = f"{model}{file_ext(file)}"
+    logger.info(f"Updating Model File for model: {model}; {model_file} => {filename}")
+    shutil.copy(model_file, filename)
+
+    s = os.stat(filename)
+    checksum = file_checksum(filename)
+    return {"checksum": checksum, "modified_time": int(s.st_mtime)}
+
+
+def delete_model(model: str):
+    logger.info(f"Delete model file for: {model}")
+
+    instance: MONAILabelApp = app_instance()
+    file = instance.model_file(model)
+    if not file or not os.path.exists(file):
+        raise HTTPException(status_code=404, detail=f"Model File NOT Found for {model}")
+
+    shutil.move(file, f"{file}.{datetime.now().strftime('%Y%m%d_%H%M%S')}.deleted")
+    return {}
+
+
 @router.get("/{model}", summary=f"{RBAC_ADMIN}Download Latest Model Weights")
 async def api_download_model(
     model: str,
@@ -64,3 +106,21 @@ async def api_model_info(
     user: User = Depends(RBAC(settings.MONAI_LABEL_AUTH_ROLE_ADMIN)),
 ):
     return model_info(model)
+
+
+@router.put("/{model}", summary=f"{RBAC_ADMIN}Upload/Update Model File")
+async def api_update_model(
+    background_tasks: BackgroundTasks,
+    model: str,
+    file: UploadFile,
+    user: User = Depends(RBAC(settings.MONAI_LABEL_AUTH_ROLE_ANNOTATOR)),
+):
+    return update_model(background_tasks, model, file)
+
+
+@router.delete("/{model}", summary=f"{RBAC_ADMIN}Delete Model File")
+async def api_delete_model(
+    model: str,
+    user: User = Depends(RBAC(settings.MONAI_LABEL_AUTH_ROLE_ANNOTATOR)),
+):
+    return delete_model(model)
