@@ -474,7 +474,11 @@ class BasicTrainTask(TrainTask):
         start_ts = time.time()
 
         # Update list of device Ids with "cuda" as it was  loaded with GPU marketing display name; monai core needs id to be "cuda"
-        request.update({"device": device_list()[0]})
+        if request["multi_gpu"]:
+            request.update({"device": device_list()[0]})
+        else:
+            devIndx = request["device"].split(":", 1)
+            request.update({"device": device_list()[int(devIndx[1]) + 1]})
 
         context: Context = Context()
 
