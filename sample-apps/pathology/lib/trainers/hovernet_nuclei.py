@@ -135,3 +135,7 @@ class HovernetNuclei(BundleTrainTask):
         cmd2.extend(["--stage", "1", "--network_def#freeze_encoder", "false"])
         cmd2.extend(["--network_def#pretrained_url", "None"])
         super().run_multi_gpu(request, cmd2, env)
+
+    def __call__(self, request, datastore: Datastore):
+        request["force_multi_gpu"] = True
+        return super().__call__(request, datastore)
