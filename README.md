@@ -203,13 +203,6 @@ To install the _**latest features**_ using one of the following options:
 </details>
 
 <details>
-  <summary><strong>Weekly Release</strong></summary>
-  <a href="https://badge.fury.io/py/monailabel-weekly"><img src="https://badge.fury.io/py/monailabel-weekly.svg" alt="PyPI version" height="18"></a>
-  <br>
-  <pre>pip install monailabel-weekly -U</pre>
-</details>
-
-<details>
   <summary><strong>Docker</strong></summary>
   <img alt="Docker Image Version (latest semver)" src="https://img.shields.io/docker/v/projectmonai/monailabel">
   <br>
@@ -255,27 +248,27 @@ For a full list of supported bundles, see the <a href="https://github.com/Projec
 #### 3D Slicer
 3D Slicer, a free and open-source platform for analyzing, visualizing and understanding medical image data. In MONAI Label, 3D Slicer is most tested with radiology studies and algorithms, develpoment and integration.
 
-[3D Slicer Setup](https://github.com/Project-MONAI/MONAILabel/tree/fix_doc_links/plugins/slicer)
+[3D Slicer Setup](https://github.com/Project-MONAI/MONAILabel/tree/main/plugins/slicer)
 
 #### OHIF
 The Open Health Imaging Foundation (OHIF) Viewer is an open source, web-based, medical imaging platform. It aims to provide a core framework for building complex imaging applications.
 
-[OHIF Setup](https://github.com/Project-MONAI/MONAILabel/tree/fix_doc_links/plugins/ohif)
+[OHIF Setup](https://github.com/Project-MONAI/MONAILabel/tree/main/plugins/ohif)
 
 ### Pathology
 #### QuPath
 Quantitative Pathology & Bioimage Analysis (QuPath) is an open, powerful, flexible, extensible software platform for bioimage analysis.
 
-[QuPath Setup](https://github.com/Project-MONAI/MONAILabel/tree/fix_doc_links/plugins/qupath)
+[QuPath Setup](https://github.com/Project-MONAI/MONAILabel/tree/main/plugins/qupath)
 
 #### Digital Slide Archive
 The Digital Slide Archive (DSA) is a platform that provides the ability to store, manage, visualize and annotate large imaging data sets.
-[Digital Slide Archive Setup](https://github.com/Project-MONAI/MONAILabel/tree/fix_doc_links/plugins/dsa)
+[Digital Slide Archive Setup](https://github.com/Project-MONAI/MONAILabel/tree/main/plugins/dsa)
 
 ### Video
 #### CVAT
 CVAT is an interactive video and image annotation tool for computer vision.
-[CVAT Setup](https://github.com/Project-MONAI/MONAILabel/tree/fix_doc_links/plugins/cvat)
+[CVAT Setup](https://github.com/Project-MONAI/MONAILabel/tree/main/plugins/cvat)
 
 ## Step 4 Data Preparation
 For data preparation, you have two options, you can use a local data store or any image archive tool that supports DICOMWeb.
@@ -401,7 +394,6 @@ on [MONAI Label's GitHub Discussions tab](https://github.com/Project-MONAI/MONAI
 - Wiki: https://github.com/Project-MONAI/MONAILabel/wiki
 - Test status: https://github.com/Project-MONAI/MONAILabel/actions
 - PyPI package: https://pypi.org/project/monailabel/
-- Weekly previews: https://pypi.org/project/monailabel-weekly/
 - Docker Hub: https://hub.docker.com/r/projectmonai/monailabel
 - Client API: https://www.youtube.com/watch?v=mPMYJyzSmyo
 - Demo Videos: https://www.youtube.com/c/ProjectMONAI
