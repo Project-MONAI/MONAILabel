@@ -64,19 +64,18 @@ def update_model(background_tasks: BackgroundTasks, model: str, file: UploadFile
         background_tasks.add_task(remove_file, model_file)
 
     instance: MONAILabelApp = app_instance()
-    file = instance.model_file(model, validate=False)
-    if not file:
+    prev_file = instance.model_file(model, validate=False)
+    if not prev_file:
         raise HTTPException(status_code=500, detail=f"Model File Name NOT configured for {model}")
 
-    if not os.path.exists(file):
+    if not os.path.exists(prev_file):
         logger.info(f"Previous Model File NOT Found for {model}; Adding new one!")
 
-    filename = f"{model}{file_ext(file)}"
-    logger.info(f"Updating Model File for model: {model}; {model_file} => {filename}")
-    shutil.copy(model_file, filename)
+    logger.info(f"Updating Model File for model: {model}; {model_file} => {prev_file}")
+    shutil.copy(model_file, prev_file)
 
-    s = os.stat(filename)
-    checksum = file_checksum(filename)
+    s = os.stat(prev_file)
+    checksum = file_checksum(prev_file)
     return {"checksum": checksum, "modified_time": int(s.st_mtime)}
 
 
