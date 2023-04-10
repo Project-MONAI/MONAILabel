@@ -249,8 +249,16 @@ def get_bundle_models(app_dir, conf, conf_key="models"):
 
     zoo_source = conf.get("zoo_source", settings.MONAI_ZOO_SOURCE)
     zoo_repo = conf.get("zoo_repo", settings.MONAI_ZOO_REPO)
-    auth_token = conf.get("auth_token", settings.MONAI_ZOO_AUTH_TOKEN)
-    zoo_info = get_all_bundles_list(auth_token=auth_token)
+    auth_token = None if conf.get("auth_token", settings.MONAI_ZOO_AUTH_TOKEN) == "" else conf.get("auth_token", settings.MONAI_ZOO_AUTH_TOKEN)
+
+    try:
+        zoo_info = get_all_bundles_list(auth_token=auth_token)
+    except:
+        print("")
+        print("---------------------------------------------------------------------------------------")
+        print("Github access rate limit reached, pleaes provide personal auth token by setting env MONAI_ZOO_AUTH_TOKEN")
+        print("or --conf auth_token <personal auth token>")
+        exit(-1)
 
     # filter model zoo bundle with MONAI Label supported bundles according to the maintaining list, return all version bundles list
     available = [i[0] for i in zoo_info if i[0] in MAINTAINED_BUNDLES]
