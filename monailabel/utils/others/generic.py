@@ -210,6 +210,14 @@ def device_map():
     return devices
 
 
+def name_to_device(device):
+    device = device if device else "cuda" if torch.cuda.is_available() else "cpu"
+    device = device if isinstance(device, str) else device[0]
+    if device.startswith("cuda") and not torch.cuda.is_available():
+        device = "cpu"
+    return device_map().get(device, device)
+
+
 def create_dataset_from_path(folder, image_dir="images", label_dir="labels", img_ext=".jpg", lab_ext=".png"):
     def _list_files(d, ext):
         files = [i for i in os.listdir(d) if i.endswith(ext)]

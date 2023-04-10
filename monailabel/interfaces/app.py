@@ -50,10 +50,10 @@ from monailabel.tasks.activelearning.random import Random
 from monailabel.tasks.train.bundle import BundleTrainTask
 from monailabel.utils.async_tasks.task import AsyncTask
 from monailabel.utils.others.generic import (
-    device_map,
     file_checksum,
     handle_torch_linalg_multithread,
     is_openslide_supported,
+    name_to_device,
     strtobool,
 )
 from monailabel.utils.others.pathology import create_asap_annotations_xml, create_dsa_annotations_json
@@ -652,8 +652,7 @@ class MONAILabelApp:
         gpus = (
             list(range(torch.cuda.device_count())) if not multi_gpus or multi_gpus == "all" else multi_gpus.split(",")
         )
-        device = request.get("device", "cuda")
-        device = device_map().get(device, device)
+        device = name_to_device(request.get("device", "cuda"))
         device_ids = [f"cuda:{id}" for id in gpus] if multi_gpu else [device]
 
         res_json = {"annotations": [None] * len(infer_tasks)}
