@@ -69,7 +69,7 @@ def update_model(background_tasks: BackgroundTasks, model: str, file: UploadFile
         raise HTTPException(status_code=500, detail=f"Model File Name NOT configured for {model}")
 
     if not os.path.exists(prev_file):
-        logger.info(f"Previous Model File NOT Found for {model}; Adding new one!")
+        logger.info(f"Previous Model File [{prev_file}] NOT Found for {model}; Adding new one!")
 
     logger.info(f"Updating Model File for model: {model}; {model_file} => {prev_file}")
     shutil.copy(model_file, prev_file)
