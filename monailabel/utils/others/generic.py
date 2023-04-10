@@ -251,13 +251,15 @@ def get_bundle_models(app_dir, conf, conf_key="models"):
     zoo_repo = conf.get("zoo_repo", settings.MONAI_ZOO_REPO)
     auth_token = conf.get("auth_token", settings.MONAI_ZOO_AUTH_TOKEN)
     auth_token = auth_token if auth_token else None
-    
+
     try:
         zoo_info = get_all_bundles_list(auth_token=auth_token)
     except:
         print("")
         print("---------------------------------------------------------------------------------------")
-        print("Github access rate limit reached, pleaes provide personal auth token by setting env MONAI_ZOO_AUTH_TOKEN")
+        print(
+            "Github access rate limit reached, pleaes provide personal auth token by setting env MONAI_ZOO_AUTH_TOKEN"
+        )
         print("or --conf auth_token <personal auth token>")
         exit(-1)
 
