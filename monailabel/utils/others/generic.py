@@ -190,13 +190,32 @@ def download_file(url, path, delay=1, skip_on_exists=True):
 
 def device_list():
     devices = [] if torch.cuda.is_available() else ["cpu"]
-    if torch.cuda.device_count():
-        devices.append("cuda")
-    if torch.cuda.device_count() > 1:
+    if torch.cuda.device_count() == 1:
+        devices.append(torch.cuda.get_device_name(0))
+    else:
         for i in range(torch.cuda.device_count()):
-            devices.append(f"cuda:{i}")
+            devices.append(f"{torch.cuda.get_device_name(i)}:{i}")
 
     return devices
+
+
+def device_map():
+    devices = {} if torch.cuda.is_available() else {"cpu": "cpu"}
+    if torch.cuda.device_count() == 1:
+        devices[torch.cuda.get_device_name(0)] = "cuda"
+    else:
+        for i in range(torch.cuda.device_count()):
+            devices[f"{torch.cuda.get_device_name(i)}:{i}"] = f"cuda:{i}"
+
+    return devices
+
+
+def name_to_device(device):
+    device = device if device else "cuda" if torch.cuda.is_available() else "cpu"
+    device = device if isinstance(device, str) else device[0]
+    if device.startswith("cuda") and not torch.cuda.is_available():
+        device = "cpu"
+    return device_map().get(device, device)
 
 
 def create_dataset_from_path(folder, image_dir="images", label_dir="labels", img_ext=".jpg", lab_ext=".png"):

@@ -26,7 +26,7 @@ from monailabel.interfaces.tasks.infer_v2 import InferTask, InferType
 from monailabel.interfaces.utils.transform import dump_data, run_transforms
 from monailabel.transform.cache import CacheTransformDatad
 from monailabel.transform.writer import ClassificationWriter, DetectionWriter, Writer
-from monailabel.utils.others.generic import device_list
+from monailabel.utils.others.generic import device_list, device_map, name_to_device
 
 logger = logging.getLogger(__name__)
 
@@ -113,7 +113,7 @@ class BasicInferTask(InferTask):
             self._config.update(config)
 
         if preload:
-            for device in ["cuda", *device_list()]:
+            for device in device_map().values():
                 logger.info(f"Preload Network for device: {device}")
                 self._get_network(device, None)
 
@@ -269,10 +269,7 @@ class BasicInferTask(InferTask):
         req.update(request)
 
         # device
-        device = req.get("device", "cuda")
-        device = device if isinstance(device, str) else device[0]
-        if device.startswith("cuda") and not torch.cuda.is_available():
-            device = "cpu"
+        device = name_to_device(req.get("device", "cuda"))
         req["device"] = device
 
         logger.setLevel(req.get("logging", "INFO").upper())
@@ -421,7 +418,9 @@ class BasicInferTask(InferTask):
         logger.info(f"Infer model path: {path}")
 
         if data and self._config.get("model_filename"):
-            user_path = os.path.join(os.path.dirname(self.path[0]), data.get("model_filename"))
+            model_filename = data.get("model_filename")
+            model_filename = model_filename if isinstance(model_filename, str) else model_filename[0]
+            user_path = os.path.join(os.path.dirname(self.path[0]), model_filename)
             if user_path and os.path.exists(user_path):
                 path = user_path
                 logger.info(f"Using <User> provided model_file: {user_path}")
