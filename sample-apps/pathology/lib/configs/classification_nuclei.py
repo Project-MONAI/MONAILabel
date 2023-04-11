@@ -26,7 +26,7 @@ logger = logging.getLogger(__name__)
 
 
 class ClassificationNuclei(TaskConfig):
-    def init(self, name: str, model_dir: str, conf: Dict[str, str], planner: Any, **kwargs):
+    def init(self, name: str, model_dir: str, conf: Dict[str, str], planner: Any, auth_token:Optional[str], **kwargs):
         super().init(name, model_dir, conf, planner, **kwargs)
 
         bundle_name = "pathology_nuclei_classification"
