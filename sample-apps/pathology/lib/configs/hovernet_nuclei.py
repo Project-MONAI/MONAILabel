@@ -34,7 +34,6 @@ class HovernetNuclei(TaskConfig):
 
         auth_token = conf.get("auth_token", settings.MONAI_ZOO_AUTH_TOKEN)
         auth_token = auth_token if auth_token else None
-        print("AUTHHHHHH TOKENNNNN: {}".format(auth_token))
         bundle_version = get_bundle_versions(bundle_name, repo=f"{repo_owner}/{repo_name}", tag=tag_name, auth_token=auth_token)[
             "latest_version"
         ]
