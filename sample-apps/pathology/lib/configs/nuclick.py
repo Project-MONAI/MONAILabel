@@ -17,10 +17,10 @@ import lib.infers
 import lib.trainers
 from monai.bundle import download, get_bundle_versions
 
+from monailabel.config import settings
 from monailabel.interfaces.config import TaskConfig
 from monailabel.interfaces.tasks.infer_v2 import InferTask
 from monailabel.interfaces.tasks.train import TrainTask
-from monailabel.config import settings
 
 logger = logging.getLogger(__name__)
 
@@ -31,10 +31,14 @@ class NuClick(TaskConfig):
 
         bundle_name = "pathology_nuclick_annotation"
         repo_owner, repo_name, tag_name = "Project-MONAI/model-zoo/hosting_storage_v1".split("/")
-        auth_token = conf.get("auth_token", settings.MONAI_ZOO_AUTH_TOKEN) if conf.get("auth_token", settings.MONAI_ZOO_AUTH_TOKEN) else None
-        bundle_version = get_bundle_versions(bundle_name, repo=f"{repo_owner}/{repo_name}", tag=tag_name, auth_token=auth_token)[
-            "latest_version"
-        ]
+        auth_token = (
+            conf.get("auth_token", settings.MONAI_ZOO_AUTH_TOKEN)
+            if conf.get("auth_token", settings.MONAI_ZOO_AUTH_TOKEN)
+            else None
+        )
+        bundle_version = get_bundle_versions(
+            bundle_name, repo=f"{repo_owner}/{repo_name}", tag=tag_name, auth_token=auth_token
+        )["latest_version"]
 
         self.bundle_path = os.path.join(self.model_dir, bundle_name)
         if not os.path.exists(self.bundle_path):
