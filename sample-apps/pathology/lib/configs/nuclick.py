@@ -20,6 +20,7 @@ from monai.bundle import download, get_bundle_versions
 from monailabel.interfaces.config import TaskConfig
 from monailabel.interfaces.tasks.infer_v2 import InferTask
 from monailabel.interfaces.tasks.train import TrainTask
+from monailabel.config import settings
 
 logger = logging.getLogger(__name__)
 
@@ -30,7 +31,9 @@ class NuClick(TaskConfig):
 
         bundle_name = "pathology_nuclick_annotation"
         repo_owner, repo_name, tag_name = "Project-MONAI/model-zoo/hosting_storage_v1".split("/")
-        bundle_version = get_bundle_versions(bundle_name, repo=f"{repo_owner}/{repo_name}", tag=tag_name)[
+        auth_token = conf.get("auth_token", settings.MONAI_ZOO_AUTH_TOKEN)
+        auth_token = auth_token if auth_token else None
+        bundle_version = get_bundle_versions(bundle_name, repo=f"{repo_owner}/{repo_name}", tag=tag_name, auth_token=auth_token)[
             "latest_version"
         ]
 
