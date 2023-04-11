@@ -26,14 +26,12 @@ logger = logging.getLogger(__name__)
 
 
 class HovernetNuclei(TaskConfig):
-    def init(self, name: str, model_dir: str, conf: Dict[str, str], planner: Any, auth_token:Optional[str], **kwargs):
+    def init(self, name: str, model_dir: str, conf: Dict[str, str], planner: Any, **kwargs):
         super().init(name, model_dir, conf, planner, **kwargs)
 
         bundle_name = "pathology_nuclei_segmentation_classification"
         repo_owner, repo_name, tag_name = "Project-MONAI/model-zoo/hosting_storage_v1".split("/")
-
-        auth_token = conf.get("auth_token", settings.MONAI_ZOO_AUTH_TOKEN)
-        auth_token = auth_token if auth_token else None
+        auth_token = conf.get("auth_token", settings.MONAI_ZOO_AUTH_TOKEN) if conf.get("auth_token", settings.MONAI_ZOO_AUTH_TOKEN) else None
         bundle_version = get_bundle_versions(bundle_name, repo=f"{repo_owner}/{repo_name}", tag=tag_name, auth_token=auth_token)[
             "latest_version"
         ]
