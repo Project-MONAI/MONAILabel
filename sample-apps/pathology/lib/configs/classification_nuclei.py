@@ -29,10 +29,7 @@ class ClassificationNuclei(TaskConfig):
         super().init(name, model_dir, conf, planner, **kwargs)
 
         bundle_name = "pathology_nuclei_classification"
-        repo_owner, repo_name, tag_name = "Project-MONAI/model-zoo/hosting_storage_v1".split("/")
-        bundle_version = get_bundle_versions(bundle_name, repo=f"{repo_owner}/{repo_name}", tag=tag_name)[
-            "latest_version"
-        ]
+        bundle_version = get_bundle_versions(bundle_name, auth_token=self.auth_token())["latest_version"]
 
         self.bundle_path = os.path.join(self.model_dir, bundle_name)
         if not os.path.exists(self.bundle_path):
