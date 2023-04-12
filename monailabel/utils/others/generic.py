@@ -249,6 +249,7 @@ def is_openslide_supported(name):
         return True
     return False
 
+
 def get_zoo_bundle(model_dir, conf, models, conf_key):
     zoo_repo = conf.get("zoo_repo", settings.MONAI_ZOO_REPO)
     auth_token = conf.get("auth_token", settings.MONAI_ZOO_AUTH_TOKEN)
@@ -342,9 +343,9 @@ def get_bundle_models(app_dir, conf, conf_key="models"):
     models = models.split(",")
     models = [m.strip() for m in models]
 
-    if zoo_source == "github": # if in github env, access model zoo
+    if zoo_source == "github":  # if in github env, access model zoo
         bundles = get_zoo_bundle(model_dir, conf, models, conf_key)
-    else: # if not in github env, no "model zoo" access, users either provide bundles locally, or auto download with latest
+    else:  # if not in github env, no "model zoo" access, users either provide bundles locally, or auto download with latest
         bundles: Dict[str, str] = {}
         for k in models:
             p = os.path.join(model_dir, k)
@@ -353,11 +354,12 @@ def get_bundle_models(app_dir, conf, conf_key="models"):
             else:
                 logger.info(f"+++ Adding Bundle from NGC: {k} => {p}")
                 download(name=k, bundle_dir=model_dir, source=zoo_source)
-                
+
             bundles[k] = p
 
     logger.info(f"+++ Using Bundle Models: {list(bundles.keys())}")
     return bundles
+
 
 def path_to_uri(path) -> str:
     return pathlib.Path(path).absolute().as_uri()

@@ -17,10 +17,10 @@ import lib.infers
 import lib.trainers
 from monai.bundle import download
 
+from monailabel.config import settings
 from monailabel.interfaces.config import TaskConfig
 from monailabel.interfaces.tasks.infer_v2 import InferTask
 from monailabel.interfaces.tasks.train import TrainTask
-from monailabel.config import settings
 
 logger = logging.getLogger(__name__)
 

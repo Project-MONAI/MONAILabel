@@ -18,6 +18,7 @@ import lib.trainers
 from lib.scoring.cvat import CVATEpistemicScoring
 from monai.bundle import download
 
+from monailabel.config import settings
 from monailabel.interfaces.config import TaskConfig
 from monailabel.interfaces.tasks.infer_v2 import InferTask
 from monailabel.interfaces.tasks.scoring import ScoringMethod
@@ -25,7 +26,6 @@ from monailabel.interfaces.tasks.strategy import Strategy
 from monailabel.interfaces.tasks.train import TrainTask
 from monailabel.tasks.activelearning.epistemic import Epistemic
 from monailabel.utils.others.generic import strtobool
-from monailabel.config import settings
 
 logger = logging.getLogger(__name__)
 
