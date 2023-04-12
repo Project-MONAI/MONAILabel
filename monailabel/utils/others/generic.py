@@ -27,7 +27,7 @@ from monai.bundle import download, get_bundle_versions
 from monai.bundle.scripts import get_all_bundles_list
 
 from monailabel.config import settings
-from monailabel.utils.others.modelzoo_list import MAINTAINED_BUNDLES
+from monailabel.utils.others.modelzoo_list import MAINTAINED_BUNDLES, NGC_BUNDLES
 
 logger = logging.getLogger(__name__)
 
@@ -249,6 +249,25 @@ def is_openslide_supported(name):
         return True
     return False
 
+def get_zoo_info(conf):
+    auth_token = conf.get("auth_token", settings.MONAI_ZOO_AUTH_TOKEN)
+    auth_token = auth_token if auth_token else None
+    try:
+        zoo_info = get_all_bundles_list(auth_token=auth_token)
+    except:
+        print("")
+        print("---------------------------------------------------------------------------------------")
+        print(
+            "Github access rate limit reached, pleaes provide personal auth token by setting env MONAI_ZOO_AUTH_TOKEN"
+        )
+        print("or --conf auth_token <personal auth token>")
+        exit(-1)
+
+    # filter model zoo bundle with MONAI Label supported bundles according to the maintaining list, return all version bundles list
+    available = [i[0] for i in zoo_info if i[0] in MAINTAINED_BUNDLES]
+    available_with_version = {b: get_bundle_versions(b, auth_token=auth_token)["all_versions"] for b in available}
+
+    return available, available_with_version
 
 def get_bundle_models(app_dir, conf, conf_key="models"):
     """
@@ -268,29 +287,21 @@ def get_bundle_models(app_dir, conf, conf_key="models"):
 
     zoo_source = conf.get("zoo_source", settings.MONAI_ZOO_SOURCE)
     zoo_repo = conf.get("zoo_repo", settings.MONAI_ZOO_REPO)
-    auth_token = conf.get("auth_token", settings.MONAI_ZOO_AUTH_TOKEN)
-    auth_token = auth_token if auth_token else None
 
-    try:
-        zoo_info = get_all_bundles_list(auth_token=auth_token)
-    except:
-        print("")
-        print("---------------------------------------------------------------------------------------")
-        print(
-            "Github access rate limit reached, pleaes provide personal auth token by setting env MONAI_ZOO_AUTH_TOKEN"
-        )
-        print("or --conf auth_token <personal auth token>")
-        exit(-1)
+    models = conf.get(conf_key)
+    models = models.split(",")
+    models = [m.strip() for m in models]
 
-    # filter model zoo bundle with MONAI Label supported bundles according to the maintaining list, return all version bundles list
-    available = [i[0] for i in zoo_info if i[0] in MAINTAINED_BUNDLES]
-    available_with_version = {b: get_bundle_versions(b, auth_token=auth_token)["all_versions"] for b in available}
+    bundles: Dict[str, str] = {}
+    if zoo_source == "github":
+        available, available_with_version = get_zoo_info(conf)
+    else:
+        available, available_with_version = [i for i in NGC_BUNDLES], NGC_BUNDLES
+
     available_both = available + [k + "_v" + v for k, versions in available_with_version.items() for v in versions]
 
     version_to_name = {k + "_v" + v: k for k, versions in available_with_version.items() for v in versions}
     name_to_version = {k + "_v" + v: v for k, versions in available_with_version.items() for v in versions}
-
-    models = conf.get(conf_key)
     if not models:
         print("")
         print("---------------------------------------------------------------------------------------")
@@ -302,15 +313,11 @@ def get_bundle_models(app_dir, conf, conf_key="models"):
         print("")
         exit(-1)
 
-    models = models.split(",")
-    models = [m.strip() for m in models]
     # First check whether the bundle model directory is available and in model-zoo, if no, check local bundle directory.
     # Use zoo bundle if both exist
     invalid_zoo = [m for m in models if m not in available_both]
 
     invalid = [m for m in invalid_zoo if not os.path.isdir(os.path.join(model_dir, m))]
-
-    # Exit if model is not in zoo and local directory
     if invalid:
         print("")
         print("---------------------------------------------------------------------------------------")
@@ -324,7 +331,6 @@ def get_bundle_models(app_dir, conf, conf_key="models"):
         print("")
         exit(-1)
 
-    bundles: Dict[str, str] = {}
     for k in models:
         p = os.path.join(model_dir, k)
         if k not in available_both:
@@ -337,8 +343,7 @@ def get_bundle_models(app_dir, conf, conf_key="models"):
                 download(name=name, version=version, bundle_dir=model_dir, source=zoo_source, repo=zoo_repo)
                 if version:
                     shutil.move(os.path.join(model_dir, name), p)
-
-        bundles[k] = p
+    bundles[k] = p
 
     logger.info(f"+++ Using Bundle Models: {list(bundles.keys())}")
 

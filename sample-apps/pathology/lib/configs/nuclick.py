@@ -20,6 +20,7 @@ from monai.bundle import download, get_bundle_versions
 from monailabel.interfaces.config import TaskConfig
 from monailabel.interfaces.tasks.infer_v2 import InferTask
 from monailabel.interfaces.tasks.train import TrainTask
+from monailabel.config import settings
 
 logger = logging.getLogger(__name__)
 
@@ -29,11 +30,11 @@ class NuClick(TaskConfig):
         super().init(name, model_dir, conf, planner, **kwargs)
 
         bundle_name = "pathology_nuclick_annotation"
-        bundle_version = get_bundle_versions(bundle_name, auth_token=self.auth_token())["latest_version"]
+        zoo_source = conf.get("zoo_source", settings.MONAI_ZOO_SOURCE)
 
         self.bundle_path = os.path.join(self.model_dir, bundle_name)
         if not os.path.exists(self.bundle_path):
-            download(name=bundle_name, version=bundle_version, bundle_dir=self.model_dir)
+            download(name=bundle_name, bundle_dir=self.model_dir, source=zoo_source)
 
     def infer(self) -> Union[InferTask, Dict[str, InferTask]]:
         task: InferTask = lib.infers.NuClick(self.bundle_path, self.conf)
