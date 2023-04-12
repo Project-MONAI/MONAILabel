@@ -16,7 +16,7 @@ from typing import Any, Dict, Optional, Union
 import lib.infers
 import lib.trainers
 from lib.scoring.cvat import CVATRandomScoring
-from monai.bundle import download, get_bundle_versions
+from monai.bundle import download
 
 from monailabel.interfaces.config import TaskConfig
 from monailabel.interfaces.tasks.infer_v2 import InferTask
