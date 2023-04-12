@@ -33,18 +33,3 @@ MAINTAINED_BUNDLES = [
     "lung_nodule_ct_detection",  # The first lung nodule detection task can be used for MONAI Label. Added Dec 2022
     "wholeBody_ct_segmentation",  # The SegResNet trained TotalSegmentator dataset with 104 tissues. Added Feb 2023
 ]
-
-NGC_BUNDLES = {
-    "lung_nodule_ct_detection": ["0.5.3"], 
-    "pancreas_ct_dints_segmentation": ["0.3.6"], 
-    "spleen_ct_segmentation": ["0.4.3"],
-    "spleen_deepedit_annotation": ["0.3.8"], 
-    "swin_unetr_btcv_segmentation": ["0.4.4"], 
-    "wholeBody_ct_segmentation": ["0.1.2"],
-    "pathology_nuclei_segmentation_classification": ["0.1.4"],
-    "pathology_nuclei_classification": ["0.0.6"],
-    "pathology_nuclick_annotation": ["0.0.7"],
-    "endoscopic_tool_segmentation": ["0.3.2"],
-    "endoscopic_inbody_classification": ["0.3.4"],
-}
-
