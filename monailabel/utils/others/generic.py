@@ -315,7 +315,7 @@ def get_zoo_bundle(model_dir, conf, models, conf_key):
                 download(name=name, version=version, bundle_dir=model_dir, source="github", repo=zoo_repo)
                 if version:
                     shutil.move(os.path.join(model_dir, name), p)
-    bundles[k] = p
+        bundles[k] = p
 
     return bundles
 
@@ -354,7 +354,7 @@ def get_bundle_models(app_dir, conf, conf_key="models"):
                 logger.info(f"+++ Adding Bundle from NGC: {k} => {p}")
                 download(name=k, bundle_dir=model_dir, source=zoo_source)
                 
-        bundles[k] = p
+            bundles[k] = p
 
     logger.info(f"+++ Using Bundle Models: {list(bundles.keys())}")
     return bundles
