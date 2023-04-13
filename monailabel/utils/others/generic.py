@@ -250,6 +250,77 @@ def is_openslide_supported(name):
     return False
 
 
+def get_zoo_bundle(model_dir, conf, models, conf_key):
+    zoo_repo = conf.get("zoo_repo", settings.MONAI_ZOO_REPO)
+    auth_token = conf.get("auth_token", settings.MONAI_ZOO_AUTH_TOKEN)
+    auth_token = auth_token if auth_token else None
+    try:
+        zoo_info = get_all_bundles_list(auth_token=auth_token)
+    except:
+        print("")
+        print("---------------------------------------------------------------------------------------")
+        print(
+            "Github access rate limit reached, pleaes provide personal auth token by setting env MONAI_ZOO_AUTH_TOKEN"
+        )
+        print("or --conf auth_token <personal auth token>")
+        exit(-1)
+
+    # filter model zoo bundle with MONAI Label supported bundles according to the maintaining list, return all version bundles list
+    available = [i[0] for i in zoo_info if i[0] in MAINTAINED_BUNDLES]
+    available_with_version = {b: get_bundle_versions(b, auth_token=auth_token)["all_versions"] for b in available}
+
+    available_both = available + [k + "_v" + v for k, versions in available_with_version.items() for v in versions]
+
+    version_to_name = {k + "_v" + v: k for k, versions in available_with_version.items() for v in versions}
+    name_to_version = {k + "_v" + v: v for k, versions in available_with_version.items() for v in versions}
+    if not models:
+        print("")
+        print("---------------------------------------------------------------------------------------")
+        print("Get models from bundle configs, Please provide --conf models <bundle name>")
+        print("Following are the available bundles.  You can pass comma (,) separated names to pass multiple")
+        print(f"   -c {conf_key}")
+        print("        {}".format(" \n        ".join(available)))
+        print("---------------------------------------------------------------------------------------")
+        print("")
+        exit(-1)
+
+    # First check whether the bundle model directory is available and in model-zoo, if no, check local bundle directory.
+    # Use zoo bundle if both exist
+    invalid_zoo = [m for m in models if m not in available_both]
+
+    invalid = [m for m in invalid_zoo if not os.path.isdir(os.path.join(model_dir, m))]
+    if invalid:
+        print("")
+        print("---------------------------------------------------------------------------------------")
+        print(f"Invalid Model(s) are provided: {invalid}, either not in model zoo or not supported with MONAI Label")
+        print("Following are the available models.  You can pass comma (,) separated names to pass multiple")
+        print("Available bundle with latest tags:")
+        print(f"   -c {conf_key}")
+        print("        {}".format(" \n        ".join(available)))
+        print("Or provide valid local bundle directories")
+        print("---------------------------------------------------------------------------------------")
+        print("")
+        exit(-1)
+
+    bundles: Dict[str, str] = {}
+
+    for k in models:
+        p = os.path.join(model_dir, k)
+        if k not in available_both:
+            logger.info(f"+++ Adding Bundle from Local: {k} => {p}")
+        else:
+            logger.info(f"+++ Adding Bundle from Zoo: {k} => {p}")
+            if not os.path.exists(p):
+                name = k if k in available else version_to_name.get(k)
+                version = None if k in available else name_to_version.get(k)
+                download(name=name, version=version, bundle_dir=model_dir, source="github", repo=zoo_repo)
+                if version:
+                    shutil.move(os.path.join(model_dir, name), p)
+        bundles[k] = p
+
+    return bundles
+
+
 def get_bundle_models(app_dir, conf, conf_key="models"):
     """
     The funtion to get bundle models either from available model zoo or local files.
@@ -267,81 +338,26 @@ def get_bundle_models(app_dir, conf, conf_key="models"):
     model_dir = os.path.join(app_dir, "model")
 
     zoo_source = conf.get("zoo_source", settings.MONAI_ZOO_SOURCE)
-    zoo_repo = conf.get("zoo_repo", settings.MONAI_ZOO_REPO)
-    auth_token = conf.get("auth_token", settings.MONAI_ZOO_AUTH_TOKEN)
-    auth_token = auth_token if auth_token else None
-
-    try:
-        zoo_info = get_all_bundles_list(auth_token=auth_token)
-    except:
-        print("")
-        print("---------------------------------------------------------------------------------------")
-        print(
-            "Github access rate limit reached, pleaes provide personal auth token by setting env MONAI_ZOO_AUTH_TOKEN"
-        )
-        print("or --conf auth_token <personal auth token>")
-        exit(-1)
-
-    # filter model zoo bundle with MONAI Label supported bundles according to the maintaining list, return all version bundles list
-    available = [i[0] for i in zoo_info if i[0] in MAINTAINED_BUNDLES]
-    available_with_version = {b: get_bundle_versions(b, auth_token=auth_token)["all_versions"] for b in available}
-    available_both = available + [k + "_v" + v for k, versions in available_with_version.items() for v in versions]
-
-    version_to_name = {k + "_v" + v: k for k, versions in available_with_version.items() for v in versions}
-    name_to_version = {k + "_v" + v: v for k, versions in available_with_version.items() for v in versions}
 
     models = conf.get(conf_key)
-    if not models:
-        print("")
-        print("---------------------------------------------------------------------------------------")
-        print("Get models from bundle configs, Please provide --conf models <bundle name>")
-        print("Following are the available bundles.  You can pass comma (,) separated names to pass multiple")
-        print(f"   -c {conf_key}")
-        print("        {}".format(" \n        ".join(available)))
-        print("---------------------------------------------------------------------------------------")
-        print("")
-        exit(-1)
-
     models = models.split(",")
     models = [m.strip() for m in models]
-    # First check whether the bundle model directory is available and in model-zoo, if no, check local bundle directory.
-    # Use zoo bundle if both exist
-    invalid_zoo = [m for m in models if m not in available_both]
 
-    invalid = [m for m in invalid_zoo if not os.path.isdir(os.path.join(model_dir, m))]
+    if zoo_source == "github":  # if in github env, access model zoo
+        bundles = get_zoo_bundle(model_dir, conf, models, conf_key)
+    else:  # if not in github env, no "model zoo" access, users either provide bundles locally, or auto download with latest
+        bundles: Dict[str, str] = {}
+        for k in models:
+            p = os.path.join(model_dir, k)
+            if os.path.isdir(p):
+                logger.info(f"+++ Adding Bundle from Local: {k} => {p}")
+            else:
+                logger.info(f"+++ Adding Bundle from NGC: {k} => {p}")
+                download(name=k, bundle_dir=model_dir, source=zoo_source)
 
-    # Exit if model is not in zoo and local directory
-    if invalid:
-        print("")
-        print("---------------------------------------------------------------------------------------")
-        print(f"Invalid Model(s) are provided: {invalid}, either not in model zoo or not supported with MONAI Label")
-        print("Following are the available models.  You can pass comma (,) separated names to pass multiple")
-        print("Available bundle with latest tags:")
-        print(f"   -c {conf_key}")
-        print("        {}".format(" \n        ".join(available)))
-        print("Or provide valid local bundle directories")
-        print("---------------------------------------------------------------------------------------")
-        print("")
-        exit(-1)
-
-    bundles: Dict[str, str] = {}
-    for k in models:
-        p = os.path.join(model_dir, k)
-        if k not in available_both:
-            logger.info(f"+++ Adding Bundle from Local: {k} => {p}")
-        else:
-            logger.info(f"+++ Adding Bundle from Zoo: {k} => {p}")
-            if not os.path.exists(p):
-                name = k if k in available else version_to_name.get(k)
-                version = None if k in available else name_to_version.get(k)
-                download(name=name, version=version, bundle_dir=model_dir, source=zoo_source, repo=zoo_repo)
-                if version:
-                    shutil.move(os.path.join(model_dir, name), p)
-
-        bundles[k] = p
+            bundles[k] = p
 
     logger.info(f"+++ Using Bundle Models: {list(bundles.keys())}")
-
     return bundles
 
 
