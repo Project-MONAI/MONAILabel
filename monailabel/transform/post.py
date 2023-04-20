@@ -65,7 +65,7 @@ class LargestCCd(MapTransform):
             try:
                 item_label = ndimage.label(item, connectivity=1)
                 if item_label.max() != 0:
-                    item_lcc = (item_label == ndimage.mode(item_label, axis=None)[0][0])
+                    item_lcc = item_label == ndimage.mode(item_label, axis=None)[0][0]
                 else:
                     item_lcc = np.zeros_like(item)
             except ValueError:
