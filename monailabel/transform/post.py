@@ -61,17 +61,11 @@ class LargestCCd(MapTransform):
             A numpy array of LCC images with the same shape as the input array.
         """
         largest_cc = np.zeros_like(label)
-        for item in label:
-            try:
-                item_label = ndimage.label(item, connectivity=1)
-                if item_label.max() != 0:
-                    item_lcc = item_label == ndimage.mode(item_label, axis=None)[0][0]
-                else:
-                    item_lcc = np.zeros_like(item)
-            except ValueError:
-                item_lcc = np.zeros_like(item)
-            largest_cc.append(item_lcc)
-        return np.stack(largest_cc)
+        for i, item in enumerate(label):
+            item = measure.label(item, connectivity=1)
+            if item.max() != 0:
+                largest_cc[i, ...] = item == (np.argmax(np.bincount(item.flat)[1:]) + 1)
+        return largest_cc
 
     def __call__(self, data):
         """
