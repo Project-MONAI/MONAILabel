@@ -15,6 +15,7 @@ from typing import Dict, Hashable, Mapping, Optional, Sequence, Union
 import cv2
 import nibabel as nib
 import numpy as np
+import skimage.measure as measure
 import torch
 from monai.config import KeysCollection, NdarrayOrTensor
 from monai.data import MetaTensor
@@ -26,7 +27,6 @@ from monai.transforms import (
     generate_spatial_bounding_box,
     get_extreme_points,
 )
-import skimage.measure as measure
 from monai.utils import InterpolateMode, convert_to_numpy, ensure_tuple_rep
 from shapely.geometry import Point, Polygon
 from torchvision.utils import make_grid, save_image
