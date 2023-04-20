@@ -83,6 +83,7 @@ class LargestCCd(MapTransform):
         Returns:
             A dictionary of transformed data with the same keys as the input data.
         """
+        data = dict()
         for key in self.keys:
             result = self.get_largest_cc(data[key] if self.has_channel else data[key][np.newaxis])
             data[key] = result if self.has_channel else result[0]
