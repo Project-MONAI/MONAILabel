@@ -39,11 +39,27 @@ logger = logging.getLogger(__name__)
 # TODO:: Move to MONAI ??
 class LargestCCd(MapTransform):
     def __init__(self, keys: KeysCollection, has_channel: bool = True):
+        """
+        MapTransform that applies the get_largest_cc function to label images in a data dictionary.
+
+        Args:
+            keys: keys of the data dictionary to be transformed.
+            has_channel: whether the data has channel dimension or not.
+        """
         super().__init__(keys)
         self.has_channel = has_channel
 
     @staticmethod
     def get_largest_cc(label):
+        """
+        Returns the largest connected component (LCC) of each label image in the input array.
+
+        Args:
+            label: a numpy array of label images with shape (num_images, height, width[, channels]).
+
+        Returns:
+            A numpy array of LCC images with the same shape as the input array.
+        """
         largest_cc = np.zeros_like(label)
         for item in label:
             try:
@@ -58,6 +74,15 @@ class LargestCCd(MapTransform):
         return np.stack(largest_cc)
 
     def __call__(self, data):
+        """
+        Transforms the input data dictionary by applying the get_largest_cc function to the label images.
+
+        Args:
+            data: a dictionary of input data.
+
+        Returns:
+            A dictionary of transformed data with the same keys as the input data.
+        """
         for key in self.keys:
             result = self.get_largest_cc(data[key] if self.has_channel else data[key][np.newaxis])
             data[key] = result if self.has_channel else result[0]
