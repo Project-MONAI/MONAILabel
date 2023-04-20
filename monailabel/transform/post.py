@@ -15,7 +15,7 @@ from typing import Dict, Hashable, Mapping, Optional, Sequence, Union
 import cv2
 import nibabel as nib
 import numpy as np
-import skimage.measure as measure
+from scipy import ndimage
 import torch
 from monai.config import KeysCollection, NdarrayOrTensor
 from monai.data import MetaTensor
