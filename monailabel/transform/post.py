@@ -83,11 +83,11 @@ class LargestCCd(MapTransform):
         Returns:
             A dictionary of transformed data with the same keys as the input data.
         """
-        data = dict()
+        d = dict(data)
         for key in self.keys:
-            result = self.get_largest_cc(data[key] if self.has_channel else data[key][np.newaxis])
-            data[key] = result if self.has_channel else result[0]
-        return data
+            result = self.get_largest_cc(d[key] if self.has_channel else d[key][np.newaxis])
+            d[key] = result if self.has_channel else result[0]
+        return d
 
 
 class ExtremePointsd(MapTransform):
