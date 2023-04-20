@@ -15,7 +15,6 @@ from typing import Dict, Hashable, Mapping, Optional, Sequence, Union
 import cv2
 import nibabel as nib
 import numpy as np
-from scipy import ndimage
 import torch
 from monai.config import KeysCollection, NdarrayOrTensor
 from monai.data import MetaTensor
@@ -28,6 +27,7 @@ from monai.transforms import (
     get_extreme_points,
 )
 from monai.utils import InterpolateMode, convert_to_numpy, ensure_tuple_rep
+from scipy import ndimage
 from shapely.geometry import Point, Polygon
 from torchvision.utils import make_grid, save_image
 
