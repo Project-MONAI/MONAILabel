@@ -37,8 +37,6 @@ logger = logging.getLogger(__name__)
 
 
 # TODO:: Move to MONAI ??
-
-
 class LargestCCd(MapTransform):
     def __init__(self, keys: KeysCollection, has_channel: bool = True):
         super().__init__(keys)
@@ -46,19 +44,24 @@ class LargestCCd(MapTransform):
 
     @staticmethod
     def get_largest_cc(label):
-        largest_cc = np.zeros(shape=label.shape, dtype=label.dtype)
-        for i, item in enumerate(label):
-            item = measure.label(item, connectivity=1)
-            if item.max() != 0:
-                largest_cc[i, ...] = item == (np.argmax(np.bincount(item.flat)[1:]) + 1)
-        return largest_cc
+        largest_cc = np.zeros_like(label)
+        for item in label:
+            try:
+                item_label = ndimage.label(item, connectivity=1)
+                if item_label.max() != 0:
+                    item_lcc = (item_label == ndimage.mode(item_label, axis=None)[0][0])
+                else:
+                    item_lcc = np.zeros_like(item)
+            except ValueError:
+                item_lcc = np.zeros_like(item)
+            largest_cc.append(item_lcc)
+        return np.stack(largest_cc)
 
     def __call__(self, data):
-        d = dict(data)
         for key in self.keys:
-            result = self.get_largest_cc(d[key] if self.has_channel else d[key][np.newaxis])
-            d[key] = result if self.has_channel else result[0]
-        return d
+            result = self.get_largest_cc(data[key] if self.has_channel else data[key][np.newaxis])
+            data[key] = result if self.has_channel else result[0]
+        return data
 
 
 class ExtremePointsd(MapTransform):
