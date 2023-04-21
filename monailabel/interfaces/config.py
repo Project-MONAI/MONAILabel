@@ -13,6 +13,7 @@ import logging
 from abc import ABCMeta, abstractmethod
 from typing import Any, Dict, Optional, Union
 
+from monailabel.config import settings
 from monailabel.interfaces.tasks.infer_v2 import InferTask
 from monailabel.interfaces.tasks.scoring import ScoringMethod
 from monailabel.interfaces.tasks.strategy import Strategy
@@ -58,3 +59,8 @@ class TaskConfig(metaclass=ABCMeta):
 
     def scoring_method(self) -> Union[None, ScoringMethod, Dict[str, ScoringMethod]]:
         return None
+
+    def auth_token(self):
+        token = self.conf.get("auth_token", settings.MONAI_ZOO_AUTH_TOKEN) if self.conf else None
+        token = token if token else None
+        return token

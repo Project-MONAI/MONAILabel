@@ -62,6 +62,8 @@ class Main:
         parser.add_argument("--workers", default=None, type=int, help="Number of worker processes")
         parser.add_argument("--limit_concurrency", default=None, type=int, help="Max concurrent connections")
         parser.add_argument("--access_log", action="store_true", help="Enable access log")
+        parser.add_argument("--root_path", default="/", help="Application root path")
+        parser.add_argument("--log_level", default="info", help="Log level")
 
         parser.add_argument("-l", "--log_config", default=None, type=str, help="Logging config")
         parser.add_argument("--dryrun", action="store_true", help="Dry run without starting server")
@@ -241,7 +243,8 @@ class Main:
             args.uvicorn_app,
             host=args.host,
             port=args.port,
-            log_level="info",
+            root_path=args.root_path,
+            log_level=args.log_level,
             log_config=log_config,
             use_colors=True,
             access_log=args.access_log,

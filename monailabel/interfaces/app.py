@@ -53,6 +53,7 @@ from monailabel.utils.others.generic import (
     file_checksum,
     handle_torch_linalg_multithread,
     is_openslide_supported,
+    name_to_device,
     strtobool,
 )
 from monailabel.utils.others.pathology import create_asap_annotations_xml, create_dsa_annotations_json
@@ -651,7 +652,8 @@ class MONAILabelApp:
         gpus = (
             list(range(torch.cuda.device_count())) if not multi_gpus or multi_gpus == "all" else multi_gpus.split(",")
         )
-        device_ids = [f"cuda:{id}" for id in gpus] if multi_gpu else [request.get("device", "cuda")]
+        device = name_to_device(request.get("device", "cuda"))
+        device_ids = [f"cuda:{id}" for id in gpus] if multi_gpu else [device]
 
         res_json = {"annotations": [None] * len(infer_tasks)}
         for idx, t in enumerate(infer_tasks):
@@ -743,9 +745,9 @@ class MONAILabelApp:
         res = self.infer(req)
         return res.get("params", {})
 
-    def model_file(self, model):
+    def model_file(self, model, validate=True):
         task = self._infers.get(model)
-        return task.get_path() if task else None
+        return task.get_path(validate) if task else None
 
     def bundle_path(self, model):
         task = self._trainers.get(model)

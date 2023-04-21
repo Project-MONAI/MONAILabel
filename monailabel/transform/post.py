@@ -137,7 +137,7 @@ class Restored(MapTransform):
             if self.invert_orient:
                 # Undo Orientation
                 orig_affine = meta_dict.get("original_affine", None)
-                if orig_affine:
+                if orig_affine is not None:
                     orig_axcodes = nib.orientations.aff2axcodes(orig_affine)
                     inverse_transform = Orientation(axcodes=orig_axcodes)
                     # Apply inverse
