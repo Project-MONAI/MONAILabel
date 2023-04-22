@@ -353,13 +353,13 @@ def get_bundle_models(app_dir, conf, conf_key="models"):
                 logger.info(f"+++ Adding Bundle from Local: {k} => {p}")
             else:
                 logger.info(f"+++ Adding Bundle from NGC: {k} => {p}")
-                download(name=k, bundle_dir=model_dir, source=zoo_source)
+                name, _, version = k.partition("_v") if "_v" in k else (k, None, None)
+                download(name=name, version=version, bundle_dir=model_dir, source=zoo_source)
 
             bundles[k] = p
 
     logger.info(f"+++ Using Bundle Models: {list(bundles.keys())}")
     return bundles
-
 
 def path_to_uri(path) -> str:
     return pathlib.Path(path).absolute().as_uri()
