@@ -27,7 +27,7 @@ The Pathology Sample Application supports the following viewers:
 - [QuPath](../../plugins/qupath/)
 - [Digital Slide Archive](../../plugins/dsa/)
 
-For more information on each of the viewers, see the [plugin extension folder](../plugins) for the given viewer.
+For more information on each of the viewers, see the [plugin extension folder](../../plugins) for the given viewer.
 
 ### Installation Requirements
 MONAI Label for Pathology requires an additional dependency of OpenSlide or CuCIM. Make sure that any .dll or .so files are in the system load path.

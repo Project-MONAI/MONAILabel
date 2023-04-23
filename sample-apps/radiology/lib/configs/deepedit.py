@@ -101,6 +101,7 @@ class DeepEdit(TaskConfig):
                 labels=self.labels,
                 preload=strtobool(self.conf.get("preload", "false")),
                 spatial_size=self.spatial_size,
+                target_spacing=self.target_spacing,
                 config={"cache_transforms": True, "cache_transforms_in_memory": True, "cache_transforms_ttl": 300},
             ),
             f"{self.name}_seg": lib.infers.DeepEdit(
@@ -109,6 +110,7 @@ class DeepEdit(TaskConfig):
                 labels=self.labels,
                 preload=strtobool(self.conf.get("preload", "false")),
                 spatial_size=self.spatial_size,
+                target_spacing=self.target_spacing,
                 number_intensity_ch=self.number_intensity_ch,
                 type=InferType.SEGMENTATION,
             ),
