@@ -84,7 +84,7 @@ def nifti_to_dicom_seg(series_dir, label, label_info, file_ext="*", use_itk=True
     start = time.time()
 
     label_np, meta_dict = LoadImage()(label)
-    unique_labels = np.unique(label_np.flatten()).astype(np.int)
+    unique_labels = np.unique(label_np.flatten()).astype(np.int_)
     unique_labels = unique_labels[unique_labels != 0]
 
     segment_attributes = []
