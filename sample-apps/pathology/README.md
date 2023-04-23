@@ -82,7 +82,7 @@ monailabel start_server --app workspace/pathology --studies datasets/wsi
 monailabel start_server --app workspace/pathology --studies datasets/wsi --conf hovernet_nuclei 0.1.8 --conf nuclick 0.1.0 --conf classification_nuclei 0.1.0
 
 # Start MONAI Label Server with HoVerNet Nuclei model
-monailabel start_server --app workspace/pathology --studies datasets/wsi --conf models hovernet_nuclei 
+monailabel start_server --app workspace/pathology --studies datasets/wsi --conf models hovernet_nuclei
 
 # Start MONAI Label Server with multiple models
 monailabel start_server --app workspace/pathology --studies datasets/wsi
@@ -100,7 +100,7 @@ git clone https://github.com/Project-MONAI/MONAILabel.git
 cd MONAILabel
 pip install -r requirements.txt
 ```
-Install Openslide: 
+Install Openslide:
 
 > Install [Openslide](https://openslide.org/) binaries manually and make sure .dll or .so files for openslide are in system load path.
 > - For windows, make sure **&lt;openslide_folder&gt;**/bin is added in PATH environment.
