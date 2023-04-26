@@ -75,8 +75,13 @@ The following commands are examples of how to start the Pathology Sample Applica
 # Download Pathology App (skip this if you have already downloaded the app or using github repository (dev mode))
 monailabel apps --download --name pathology --output workspace
 
+# Start MONAI Label Server with all models
+monailabel start_server --app workspace/pathology --studies datasets/wsi
+# Start MONAI Label Server with all models and use specific bundle versions
+monailabel start_server --app workspace/pathology --studies datasets/wsi --conf hovernet_nuclei 0.1.8 --conf nuclick 0.1.0 --conf classification_nuclei 0.1.0
+
 # Start MONAI Label Server with HoVerNet Nuclei model
-monailabel start_server --app workspace/pathology --studies datasets/wsi --conf hovernet_nuclei
+monailabel start_server --app workspace/pathology --studies datasets/wsi --conf models hovernet_nuclei
 
 # Start MONAI Label Server with multiple models
 monailabel start_server --app workspace/pathology --studies datasets/wsi
@@ -88,6 +93,30 @@ monailabel start_server --app workspace/pathology --studies datasets/wsi --conf 
 monailabel start_server --app workspace/pathology --studies datasets/wsi --conf models hovernet_nuclei --conf skip_trainers true
 ```
 
+### Usage (Development Mode)
+
+```bash
+git clone https://github.com/Project-MONAI/MONAILabel.git
+cd MONAILabel
+pip install -r requirements.txt
+```
+Install Openslide:
+
+> Install [Openslide](https://openslide.org/) binaries manually and make sure .dll or .so files for openslide are in system load path.
+> - For windows, make sure **&lt;openslide_folder&gt;**/bin is added in PATH environment.
+> - For ubuntu: `apt install openslide-tools`
+
+#### FileSystem as Datastore
+
+```bash
+# download sample wsi image (skip this if you already have some)
+mkdir sample_wsi
+cd sample_wsi
+wget https://demo.kitware.com/histomicstk/api/v1/item/5d5c07539114c049342b66fb/download
+cd -
+# run server
+./monailabel/scripts/monailabel start_server --app sample-apps/pathology --studies datasets/wsi
+```
 
 ### Performance Benchmarking
 
@@ -107,3 +136,36 @@ The following graph shows a summary of:
 <td><img src="../../docs/images/DSAPerf3.png"/></td>
 </tr>
 </table>
+
+#### Digital Slide Arhive (DSA) as Datastore
+
+###### DSA
+
+You need to install DSA and upload some test images.
+Refer: https://github.com/DigitalSlideArchive/digital_slide_archive/tree/master/devops/dsa
+
+##### MONAILabel Server
+
+Following are some config options:
+
+| Name                 | Description                                                                                                                 |
+|----------------------|-----------------------------------------------------------------------------------------------------------------------------|
+| preload              | Preload models into GPU. Default is False.                                                                                  |
+| roi_size             | Default ROI Size for inference in [x,y] format. Default is [1024,1024].                                                       |
+| dsa_folder           | Optional. Comma seperated DSA Folder IDs. Normally it is <folder_id> of a folder under Collections where Images are stored. |
+| dsa_api_key          | Optional. API Key helps to query asset store to fetch direct local path for WSI Images.                                     |
+| dsa_asset_store_path | Optional. It is the DSA assetstore path that can be shared with MONAI Label server to directly read WSI Images.             |
+
+```bash
+  # run server (Example: DSA API URL is http://0.0.0.0:8080/api/v1)
+  ./monailabel/scripts/monailabel start_server --app sample-apps/pathology \
+    --studies http://0.0.0.0:8080/api/v1 \
+
+  # run server (Advanced options)
+  ./monailabel/scripts/monailabel start_server --app sample-apps/pathology \
+    --studies http://0.0.0.0:8080/api/v1 \
+    --conf dsa_folder 621e94e2b6881a7a4bef5170 \
+    --conf dsa_api_key OJDE9hjuOIS6R8oEqhnVYHUpRpk18NfJABMt36dJ \
+    --conf dsa_asset_store_path digital_slide_archive/devops/dsa/assetstore
+
+```

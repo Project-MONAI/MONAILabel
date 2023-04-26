@@ -215,7 +215,7 @@ class BundleTrainTask(TrainTask):
         pretrained = request.get("pretrained", True)
         multi_gpu = request.get("multi_gpu", True)
         force_multi_gpu = request.get("force_multi_gpu", False)
-        run_id = request.get("run_id", "")
+        run_id = request.get("run_id", "run")
 
         multi_gpu = multi_gpu if torch.cuda.device_count() > 1 else False
 
@@ -340,7 +340,7 @@ class BundleTrainTask(TrainTask):
         return {}
 
     def run_single_gpu(self, request, overrides):
-        run_id = request.get("run_id", "")
+        run_id = request.get("run_id", "run")
         monai.bundle.run(
             run_id=run_id,
             init_id=None,
