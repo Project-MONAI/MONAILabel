@@ -55,3 +55,5 @@ gradle clean build
 2. Open a sample Whole Slide Image in QuPath (which is shared as studies for MONAILabel server).
 3. Add or select a rectangle ROI to run annotations using MONAI Label models.
 4. For interactive models (e.g. DeepEdit), you can choose to provide positive and negative points through the Annotation panel.
+
+![image](../../docs/images/qupath.jpg)
