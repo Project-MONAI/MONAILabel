@@ -16,11 +16,11 @@ import logging
 import mimetypes
 import os
 import pathlib
+import re
 import shutil
 import subprocess
 import time
 from typing import Dict
-import re
 
 import torch
 from monai.apps import download_url
