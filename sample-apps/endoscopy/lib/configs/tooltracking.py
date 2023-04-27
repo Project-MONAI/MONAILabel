@@ -35,12 +35,12 @@ class ToolTracking(TaskConfig):
         super().init(name, model_dir, conf, planner, **kwargs)
 
         bundle_name = "endoscopic_tool_segmentation"
-
+        version = conf.get("tooltracking")
         zoo_source = conf.get("zoo_source", settings.MONAI_ZOO_SOURCE)
 
         self.bundle_path = os.path.join(self.model_dir, bundle_name)
         if not os.path.exists(self.bundle_path):
-            download(name=bundle_name, bundle_dir=self.model_dir, source=zoo_source)
+            download(name=bundle_name, version=version, bundle_dir=self.model_dir, source=zoo_source)
 
         # Others
         self.epistemic_enabled = strtobool(conf.get("epistemic_enabled", "false"))

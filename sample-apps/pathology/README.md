@@ -77,6 +77,7 @@ monailabel apps --download --name pathology --output workspace
 
 # Start MONAI Label Server with all models
 monailabel start_server --app workspace/pathology --studies datasets/wsi
+
 # Start MONAI Label Server with all models and use specific bundle versions
 monailabel start_server --app workspace/pathology --studies datasets/wsi --conf hovernet_nuclei 0.1.8 --conf nuclick 0.1.0 --conf classification_nuclei 0.1.0
 
@@ -92,7 +93,6 @@ monailabel start_server --app workspace/pathology --studies datasets/wsi --conf 
 # Start MONAI Label Server with HoVerNet Nuclei in Inference Only mode
 monailabel start_server --app workspace/pathology --studies datasets/wsi --conf models hovernet_nuclei --conf skip_trainers true
 ```
-
 ### Usage (Development Mode)
 
 ```bash
@@ -114,6 +114,7 @@ mkdir sample_wsi
 cd sample_wsi
 wget https://demo.kitware.com/histomicstk/api/v1/item/5d5c07539114c049342b66fb/download
 cd -
+
 # run server
 ./monailabel/scripts/monailabel start_server --app sample-apps/pathology --studies datasets/wsi
 ```

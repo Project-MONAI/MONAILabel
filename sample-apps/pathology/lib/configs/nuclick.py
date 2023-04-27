@@ -31,10 +31,11 @@ class NuClick(TaskConfig):
 
         bundle_name = "pathology_nuclick_annotation"
         zoo_source = conf.get("zoo_source", settings.MONAI_ZOO_SOURCE)
+        version = conf.get("nuclick")
 
         self.bundle_path = os.path.join(self.model_dir, bundle_name)
         if not os.path.exists(self.bundle_path):
-            download(name=bundle_name, bundle_dir=self.model_dir, source=zoo_source)
+            download(name=bundle_name, version=version, bundle_dir=self.model_dir, source=zoo_source)
 
     def infer(self) -> Union[InferTask, Dict[str, InferTask]]:
         task: InferTask = lib.infers.NuClick(self.bundle_path, self.conf)

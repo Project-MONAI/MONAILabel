@@ -68,12 +68,14 @@ Following are some config options:
   # run server (Example: DSA API URL is http://0.0.0.0:8080/api/v1)
   ./monailabel/scripts/monailabel start_server --app sample-apps/pathology \
     --studies http://0.0.0.0:8080/api/v1 \
+
   # run server (Advanced options)
   ./monailabel/scripts/monailabel start_server --app sample-apps/pathology \
     --studies http://0.0.0.0:8080/api/v1 \
     --conf dsa_folder 621e94e2b6881a7a4bef5170 \
     --conf dsa_api_key OJDE9hjuOIS6R8oEqhnVYHUpRpk18NfJABMt36dJ \
     --conf dsa_asset_store_path digital_slide_archive/devops/dsa/assetstore
+
 ```
 
 ![image](https://user-images.githubusercontent.com/7339051/157100606-a281e038-5923-43a8-bb82-8fccae51fcff.png)
