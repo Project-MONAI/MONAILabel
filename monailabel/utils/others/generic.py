@@ -20,6 +20,7 @@ import shutil
 import subprocess
 import time
 from typing import Dict
+import re
 
 import torch
 from monai.apps import download_url
@@ -334,6 +335,10 @@ def get_bundle_models(app_dir, conf, conf_key="models"):
 
     Returns:
         a dictionary that contains the available bundles.
+
+    Example:
+        Bundle name: spleen_ct_segmentation, this will use latest version of the bundle.
+        BUndle name with specific version: spleen_ct_segmentation_v0.4.0, this will download the specified version.
     """
     model_dir = os.path.join(app_dir, "model")
 
@@ -353,7 +358,14 @@ def get_bundle_models(app_dir, conf, conf_key="models"):
                 logger.info(f"+++ Adding Bundle from Local: {k} => {p}")
             else:
                 logger.info(f"+++ Adding Bundle from NGC: {k} => {p}")
-                name, _, version = k.partition("_v") if "_v" in k else (k, None, None)
+                pattern = re.compile(r"(?P<name>.+)_v(?P<version>\d+\.\d+\.\d+)")
+                match = pattern.match(k)
+                if match:
+                    name = match.group("name")
+                    version = match.group("version") or None
+                else:
+                    name = k
+                    version = None
                 download(name=name, version=version, bundle_dir=model_dir, source=zoo_source)
 
             bundles[k] = p

@@ -24,7 +24,6 @@ from monailabel.interfaces.tasks.train import TrainTask
 
 logger = logging.getLogger(__name__)
 
-
 class ClassificationNuclei(TaskConfig):
     def init(self, name: str, model_dir: str, conf: Dict[str, str], planner: Any, **kwargs):
         super().init(name, model_dir, conf, planner, **kwargs)

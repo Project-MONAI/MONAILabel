@@ -49,7 +49,6 @@ gradle clean build
 3. The output extension jar will be located under `build/libs`.
 4. Drag the jar file onto QuPath to install the extension.
 
-
 ## Using the Plugin
 
 1. Make sure the MONAILabel Server URL is correctly set in the Preferences.
