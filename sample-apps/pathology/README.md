@@ -27,7 +27,7 @@ The Pathology Sample Application supports the following viewers:
 - [QuPath](../../plugins/qupath/)
 - [Digital Slide Archive](../../plugins/dsa/)
 
-For more information on each of the viewers, see the [plugin extension folder](../plugins) for the given viewer.
+For more information on each of the viewers, see the [plugin extension folder](../../plugins) for the given viewer.
 
 ### Installation Requirements
 MONAI Label for Pathology requires an additional dependency of OpenSlide or CuCIM. Make sure that any .dll or .so files are in the system load path.
@@ -137,3 +137,36 @@ The following graph shows a summary of:
 <td><img src="../../docs/images/DSAPerf3.png"/></td>
 </tr>
 </table>
+
+#### Digital Slide Arhive (DSA) as Datastore
+
+###### DSA
+
+You need to install DSA and upload some test images.
+Refer: https://github.com/DigitalSlideArchive/digital_slide_archive/tree/master/devops/dsa
+
+##### MONAILabel Server
+
+Following are some config options:
+
+| Name                 | Description                                                                                                                 |
+|----------------------|-----------------------------------------------------------------------------------------------------------------------------|
+| preload              | Preload models into GPU. Default is False.                                                                                  |
+| roi_size             | Default ROI Size for inference in [x,y] format. Default is [1024,1024].                                                       |
+| dsa_folder           | Optional. Comma seperated DSA Folder IDs. Normally it is <folder_id> of a folder under Collections where Images are stored. |
+| dsa_api_key          | Optional. API Key helps to query asset store to fetch direct local path for WSI Images.                                     |
+| dsa_asset_store_path | Optional. It is the DSA assetstore path that can be shared with MONAI Label server to directly read WSI Images.             |
+
+```bash
+  # run server (Example: DSA API URL is http://0.0.0.0:8080/api/v1)
+  ./monailabel/scripts/monailabel start_server --app sample-apps/pathology \
+    --studies http://0.0.0.0:8080/api/v1 \
+
+  # run server (Advanced options)
+  ./monailabel/scripts/monailabel start_server --app sample-apps/pathology \
+    --studies http://0.0.0.0:8080/api/v1 \
+    --conf dsa_folder 621e94e2b6881a7a4bef5170 \
+    --conf dsa_api_key OJDE9hjuOIS6R8oEqhnVYHUpRpk18NfJABMt36dJ \
+    --conf dsa_asset_store_path digital_slide_archive/devops/dsa/assetstore
+
+```

@@ -47,7 +47,6 @@ Analysis Page.
 
 ![image](../../docs/images/dsa.jpg)
 
-
 > **NOTE::** Provide
 > additional [options](https://github.com/Project-MONAI/MONAILabel/tree/main/sample-apps/pathology#digital-slide-arhive-dsa-as-datastore)
 > like `dsa_api_key` and `dsa_asset_store_path` while running the MONAILabel server for faster resource sharing between
