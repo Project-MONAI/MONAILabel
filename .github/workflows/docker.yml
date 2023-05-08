@@ -28,7 +28,6 @@ jobs:
       MONAI_ZOO_AUTH_TOKEN: ${{ github.token }}
     steps:
       - uses: actions/checkout@v3
-      - uses: actions/setup-node@v3
       - name: Set up Python 3.8
         uses: actions/setup-python@v4
         with:
@@ -40,16 +39,11 @@ jobs:
       - name: Install dependencies
         run: |
           python -m pip install --upgrade pip wheel
-      - name: Build OHIF
-        run: |
-          ./runtests.sh --clean
-          cd plugins/ohif
-          ./build.sh
-          cd -
       - name: Build
         run: |
+          ./runtests.sh --clean
           docker system prune -f
-          DOCKER_BUILDKIT=1 docker build --build-arg BUILD_OHIF=false -t projectmonai/monailabel:${{ github.event.inputs.tag || 'latest'  }} -f Dockerfile .
+          DOCKER_BUILDKIT=1 docker build -t projectmonai/monailabel:${{ github.event.inputs.tag || 'latest'  }} -f Dockerfile .
       - name: Verify
         run: |
           ./runtests.sh --clean
