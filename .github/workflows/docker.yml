@@ -40,11 +40,16 @@ jobs:
       - name: Install dependencies
         run: |
           python -m pip install --upgrade pip wheel
-      - name: Build
+      - name: Build OHIF
         run: |
           ./runtests.sh --clean
+          cd plugins/ohif
+          ./build.sh
+          cd -
+      - name: Build
+        run: |
           docker system prune -f
-          DOCKER_BUILDKIT=1 docker build -t projectmonai/monailabel:${{ github.event.inputs.tag || 'latest'  }} -f Dockerfile .
+          DOCKER_BUILDKIT=1 BUILD_OHIF=false docker build -t projectmonai/monailabel:${{ github.event.inputs.tag || 'latest'  }} -f Dockerfile .
       - name: Verify
         run: |
           ./runtests.sh --clean
