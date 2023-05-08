@@ -15,5 +15,5 @@ __pycache__
 
 Dockerfile
 sample-apps/**/model
-.node_modules
+node_modules
 .webpack
