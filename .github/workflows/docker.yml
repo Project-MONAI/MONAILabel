@@ -28,6 +28,7 @@ jobs:
       MONAI_ZOO_AUTH_TOKEN: ${{ github.token }}
     steps:
       - uses: actions/checkout@v3
+      - uses: actions/setup-node@v3
       - name: Set up Python 3.8
         uses: actions/setup-python@v4
         with:
