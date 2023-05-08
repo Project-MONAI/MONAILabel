@@ -25,7 +25,7 @@ FROM ${MONAI_IMAGE} as build
 LABEL maintainer="monai.contact@gmail.com"
 
 ADD . /opt/monailabel/
-COPY --from=ohifbuild /opt/monailabel/monailabel/endpoints/static/ohif /opt/monailabel/monailabel/endpoints/static/
+COPY --from=ohifbuild /opt/monailabel/monailabel/endpoints/static/ohif /opt/monailabel/monailabel/endpoints/static/ohif
 RUN python -m pip install --upgrade --no-cache-dir pip setuptools wheel twine \
     && cd /opt/monailabel \
     && BUILD_OHIF=false python setup.py sdist bdist_wheel --build-number $(date +'%Y%m%d%H%M')
