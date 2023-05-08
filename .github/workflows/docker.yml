@@ -49,7 +49,7 @@ jobs:
       - name: Build
         run: |
           docker system prune -f
-          DOCKER_BUILDKIT=1 BUILD_OHIF=false docker build -t projectmonai/monailabel:${{ github.event.inputs.tag || 'latest'  }} -f Dockerfile .
+          DOCKER_BUILDKIT=1 docker build --build-arg BUILD_OHIF=false -t projectmonai/monailabel:${{ github.event.inputs.tag || 'latest'  }} -f Dockerfile .
       - name: Verify
         run: |
           ./runtests.sh --clean
