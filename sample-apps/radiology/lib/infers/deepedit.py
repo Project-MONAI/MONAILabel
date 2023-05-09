@@ -119,5 +119,5 @@ class DeepEdit(BasicInferTask):
             AsDiscreted(keys="pred", argmax=True),
             SqueezeDimd(keys="pred", dim=0),
             ToNumpyd(keys="pred"),
-            Restored(keys="pred", ref_image="image"),
+            Restored(keys="pred", ref_image="image", config_labels=self.labels),
         ]

@@ -92,5 +92,5 @@ class Segmentation(BasicInferTask):
 
         if data and data.get("largest_cc", False):
             t.append(KeepLargestConnectedComponentd(keys="pred"))
-        t.append(Restored(keys="pred", ref_image="image"))
+        t.append(Restored(keys="pred", ref_image="image", config_labels=self.labels))
         return t
