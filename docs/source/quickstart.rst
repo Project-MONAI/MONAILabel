@@ -283,7 +283,7 @@ DeepEdit Annotation in OHIF
 ---------------------------
 
 We follow a very similar set of commands as in :ref:`Deploy MONAI Label Server`, however, we use the DICOMweb
-endpoint of our DICOM server, which based on the last section is ``http://locahost:8042/dicom-web``.
+endpoint of our DICOM server, which based on the last section is ``http://localhost:8042/dicom-web``.
 
 .. code-block:: bash
 
@@ -295,7 +295,7 @@ endpoint of our DICOM server, which based on the last section is ``http://locaho
 
   # For MONAI Label version <=0.2.0, pass credentials and start the DeepEdit app in MONAI label server
   # and start annotating images in our DICOM server
-  monailabel start_server --app radiology --studies http://locahost:8042/dicom-web --conf models deepedit
+  monailabel start_server --app radiology --studies http://localhost:8042/dicom-web --conf models deepedit
 
   # For MONAI label version >=0.3.0, if you have authentication set for dicom-web then you can pass the credentials using environment
   #`variables <https://github.com/Project-MONAI/MONAILabel/blob/main/monailabel/config.py>`_ while running the server.
