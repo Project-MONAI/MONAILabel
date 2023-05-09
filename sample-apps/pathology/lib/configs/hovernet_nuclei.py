@@ -31,7 +31,7 @@ class HovernetNuclei(TaskConfig):
 
         bundle_name = "pathology_nuclei_segmentation_classification"
         zoo_source = conf.get("zoo_source", settings.MONAI_ZOO_SOURCE)
-        version = conf.get("hovernet_nuclei")
+        version = conf.get("hovernet_nuclei", "0.1.8")
 
         self.bundle_path = os.path.join(self.model_dir, bundle_name)
         if not os.path.exists(self.bundle_path):
