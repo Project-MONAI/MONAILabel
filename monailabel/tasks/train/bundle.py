@@ -27,6 +27,7 @@ from monailabel.config import settings
 from monailabel.interfaces.datastore import Datastore
 from monailabel.interfaces.tasks.train import TrainTask
 from monailabel.utils.others.class_utils import unload_module
+from monailabel.utils.others.generic import device_list, name_to_device
 
 logger = logging.getLogger(__name__)
 
@@ -133,7 +134,7 @@ class BundleTrainTask(TrainTask):
         pytorch_models.sort(key=len)
 
         config_options = {
-            "device": "cuda",  # DEVICE
+            "device": device_list(),  # DEVICE
             "pretrained": True,  # USE EXISTING CHECKPOINT/PRETRAINED MODEL
             "max_epochs": 50,  # TOTAL EPOCHS TO RUN
             "val_split": 0.2,  # VALIDATION SPLIT; -1 TO USE DEFAULT FROM BUNDLE
@@ -213,17 +214,18 @@ class BundleTrainTask(TrainTask):
         max_epochs = request.get("max_epochs", 50)
         pretrained = request.get("pretrained", True)
         multi_gpu = request.get("multi_gpu", True)
-        run_id = request.get("run_id", "")
+        force_multi_gpu = request.get("force_multi_gpu", False)
+        run_id = request.get("run_id", "run")
 
         multi_gpu = multi_gpu if torch.cuda.device_count() > 1 else False
 
         gpus = request.get("gpus", "all")
         gpus = list(range(torch.cuda.device_count())) if gpus == "all" else [int(g) for g in gpus.split(",")]
-        multi_gpu = True if multi_gpu and len(gpus) > 1 else False
+        multi_gpu = True if force_multi_gpu or multi_gpu and len(gpus) > 1 else False
         logger.info(f"Using Multi GPU: {multi_gpu}; GPUS: {gpus}")
         logger.info(f"CUDA_VISIBLE_DEVICES: {os.environ.get('CUDA_VISIBLE_DEVICES')}")
 
-        device = request.get("device", "cuda")
+        device = name_to_device(request.get("device", "cuda"))
         logger.info(f"Using device: {device}; Type: {type(device)}")
 
         tracking = request.get(
@@ -338,7 +340,7 @@ class BundleTrainTask(TrainTask):
         return {}
 
     def run_single_gpu(self, request, overrides):
-        run_id = request.get("run_id", "")
+        run_id = request.get("run_id", "run")
         monai.bundle.run(
             run_id=run_id,
             init_id=None,

@@ -22,6 +22,7 @@ from monai.metrics.active_learning_metrics import VarianceMetric
 from monailabel.interfaces.datastore import Datastore
 from monailabel.interfaces.tasks.scoring import ScoringMethod
 from monailabel.tasks.infer.basic_infer import BasicInferTask
+from monailabel.utils.others.generic import name_to_device
 
 logger = logging.getLogger(__name__)
 
@@ -133,7 +134,8 @@ class EpistemicScoring(ScoringMethod):
         gpus = (
             list(range(torch.cuda.device_count())) if not multi_gpus or multi_gpus == "all" else multi_gpus.split(",")
         )
-        device_ids = [f"cuda:{id}" for id in gpus] if multi_gpu else [request.get("device", "cuda")]
+        device = name_to_device(request.get("device", "cuda"))
+        device_ids = [f"cuda:{id}" for id in gpus] if multi_gpu else [device]
 
         max_workers = max_workers if max_workers else max(1, multiprocessing.cpu_count() // 2)
         max_workers = min(max_workers, multiprocessing.cpu_count())

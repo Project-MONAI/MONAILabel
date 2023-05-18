@@ -63,3 +63,10 @@ class ClassificationNuclei(BundleTrainTask):
                 break
         logger.info(f"Final Records with nuclei split: {len(ds_new)}")
         return ds_new
+
+    def _update_overrides(self, overrides):
+        overrides = super()._update_overrides(overrides)
+
+        overrides["train_datalist"] = ""
+        overrides["val_datalist"] = ""
+        return overrides

@@ -104,6 +104,7 @@ class Restored(MapTransform):
         has_channel: bool = True,
         invert_orient: bool = False,
         mode: str = InterpolateMode.NEAREST,
+        config_labels=None,
         align_corners: Union[Sequence[Optional[bool]], Optional[bool]] = None,
         meta_key_postfix: str = "meta_dict",
     ):
@@ -111,6 +112,7 @@ class Restored(MapTransform):
         self.ref_image = ref_image
         self.has_channel = has_channel
         self.invert_orient = invert_orient
+        self.config_labels = config_labels
         self.mode = ensure_tuple_rep(mode, len(self.keys))
         self.align_corners = ensure_tuple_rep(align_corners, len(self.keys))
         self.meta_key_postfix = meta_key_postfix
@@ -137,7 +139,7 @@ class Restored(MapTransform):
             if self.invert_orient:
                 # Undo Orientation
                 orig_affine = meta_dict.get("original_affine", None)
-                if orig_affine:
+                if orig_affine is not None:
                     orig_axcodes = nib.orientations.aff2axcodes(orig_affine)
                     inverse_transform = Orientation(axcodes=orig_axcodes)
                     # Apply inverse
@@ -146,6 +148,15 @@ class Restored(MapTransform):
                 else:
                     logging.info("Failed invert orientation - original_affine is not on the image header")
 
+            # Converting label indexes to the ones originally defined in the config file
+            if self.config_labels is not None:
+                new_pred = result * 0.0
+                for j, (label_name, idx) in enumerate(self.config_labels.items(), 1):
+                    # Consider only labels different than background
+                    if label_name != "background":
+                        new_pred[result == j] = idx
+                result = new_pred
+
             d[key] = result if len(result.shape) <= 3 else result[0] if result.shape[0] == 1 else result
 
             meta = d.get(f"{key}_{self.meta_key_postfix}")
@@ -153,6 +164,7 @@ class Restored(MapTransform):
                 meta = dict()
                 d[f"{key}_{self.meta_key_postfix}"] = meta
             meta["affine"] = meta_dict.get("original_affine")
+
         return d
 
 

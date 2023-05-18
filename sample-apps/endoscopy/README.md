@@ -16,7 +16,7 @@ This template includes example models for interactive and automated tool trackin
 
 ### Table of Contents
 - [Supported Viewers](#supported-viewers)
-- [Pretrained Models](#list-of-pretrained-models)
+- [Pretrained Models](#pretrained-models)
 - [How To Use the App](#how-to-use-the-app)
 - [Model Details](#model-overview)
 - [Active Learning Workflow](#active-learning-workflow)
@@ -42,6 +42,12 @@ Below is a list of models that are currently available in the Endoscopy App:
 ```bash
 # Download Endoscopy App (skip this if you have already downloaded the app or using the GitHub repository)
 monailabel apps --download --name endoscopy --output workspace
+
+# Start MONAI Label Server with the tooltracking model, download latest bundle version by default
+monailabel start_server --app workspace/endoscopy --studies workspace/images --conf models tooltracking
+
+# Start MONAI Label Server with the tooltracking model, download specific bundle version
+monailabel start_server --app workspace/endoscopy --studies workspace/images --conf models tooltracking --conf tooltracking 0.4.8
 
 # Start MONAI Label Server with the DeepEdit model
 monailabel start_server --app workspace/endoscopy --studies workspace/images --conf models deepedit
@@ -177,19 +183,6 @@ The following snapshot shows the iteration cycles and progress for each active l
 The following snapshot shows the iteration cycles and progress for each active learning batch annotation in CVAT:
 ![image](../../docs/images/cvat_active_learning.jpeg)
 
-## Fetch and Publish Latest Model to CVAT/Nuclio
-Once you've fine-tuned the model and confirmed that it meets all the necessary conditions, you can push the updated model to the CVAT/Nuclio function container. This will allow you to use the latest version of the model in your workflows and applications.
-
-```bash
-workspace/endoscopy/update_cvat_model.sh <FUNCTION_NAME>
-
-# Bundle Example: publish tool tracking bundle trained model (run this command on the node where cvat/nuclio containers are running)
-workspace/endoscopy/update_cvat_model.sh tootracking
-# Bundle Example: publish inbody trained model
-workspace/endoscopy/update_cvat_model.sh inbody
-# DeepEdit Example: publish deepedit trained model (Not from bundle)
-workspace/endoscopy/update_cvat_model.sh deepedit
-```
 
 ### Performance Benchmarking
 

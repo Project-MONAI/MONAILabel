@@ -29,18 +29,19 @@ with [MONAI](https://github.com/Project-MONAI).
 
 Refer to full [MONAI Label documentations](https://docs.monai.io/projects/label/en/latest/index.html) for more details or check out our [MONAI Label Deep Dive videos series](https://www.youtube.com/playlist?list=PLtoSVSQ2XzyD4lc-lAacFBzOdv5Ou-9IA).
 
-
+Refer to [MONAI Label Tutorial](https://github.com/Project-MONAI/tutorials/tree/main/monailabel) series for application and viewer workflows with different medical image tasks. Notebook-like tutorials are created for detailed instructions.
 
 ### Table of Contents
 - [Overview](#Overview)
   - [Highlights and Features](#Highlights-and-Features)
-  - [Supported Matrix](#Support-Matrix)
+  - [Supported Matrix](#Supported-Matrix)
 - [Getting Started with MONAI Label](#Getting-Started-with-MONAI-Label)
-  - [Step 1. Installation](#Step-1.-Installation)
-  - [Step 2. MONAI Label Sample Applications](#Step-2.-MONAI-Label-Sample-Applications)
-  - [Step 3. MONAI Label Supported Viewers](###Step-3.-MONAI-Label-Supported-Viewers)
-  - [Step 4. Data Preparation](#Step-4.-Data-Preparation)
-  - [Step 5. Start MONAI Label Server and Start Annotating!](#Step-5.-Start-MONAI-Label-Server-and-Start-Annotating!)
+  - [Step 1. Installation](#Step-1-Installation)
+  - [Step 2. MONAI Label Sample Applications](#Step-2-MONAI-Label-Sample-Applications)
+  - [Step 3. MONAI Label Supported Viewers](#Step-3-MONAI-Label-Supported-Viewers)
+  - [Step 4. Data Preparation](#Step-4-Data-Preparation)
+  - [Step 5. Start MONAI Label Server and Start Annotating!](#Step-5-Start-MONAI-Label-Server-and-Start-Annotating)
+- [MONAI Label Tutorials](#MONAI-Label-Tutorials)
 - [Cite MONAI Label](#Cite)
 - [Contributing](#Contributing)
 - [Community](#Community)
@@ -64,7 +65,10 @@ MONAI Label aims to fill the gap between developers creating new annotation appl
 - Automated Active Learning workflow for endoscopy using [CVAT](https://github.com/Project-MONAI/MONAILabel/tree/main/plugins/cvat)
 
 #### Supported Matrix
-Here you can find a table of the various supported fields, modalities, viewers, and general data types.  However, these are only ones that we've explicitly test and that doesn't mean that your dataset or file type won't work with MONAI Label.  Try MONAI for your given task and if you're having issues, reach out through GitHub Issues.
+
+MONAI Label supports many state-of-the-art(SOTA) models in Model-Zoo, and their integration with viewers and monaibundle app. Please refer to [monaibundle](https://github.com/Project-MONAI/MONAILabel/tree/main/sample-apps/monaibundle) app page for supported models, including whole body segmentation, whole brain segmentation, lung nodule detection, tumor segmentation and many more.
+
+In addition, you can find a table of the basic supported fields, modalities, viewers, and general data types.  However, these are only ones that we've explicitly test and that doesn't mean that your dataset or file type won't work with MONAI Label.  Try MONAI for your given task and if you're having issues, reach out through GitHub Issues.
 <table>
 <tr>
   <th>Field</th>
@@ -108,6 +112,7 @@ Here you can find a table of the various supported fields, modalities, viewers, 
       <li>DeepEdit</li>
       <li>NuClick</li>
       <li>Segmentation</li>
+      <li>Classification</li>
     </ul>
   </td>
   <td>
@@ -160,13 +165,13 @@ Here you can find a table of the various supported fields, modalities, viewers, 
 
 # Getting Started with MONAI Label
 ### MONAI Label requires a few steps to get started:
-- Step 1: [Install MONAI Label](#Step-1.-Installation)
-- Step 2: [Download a MONAI Label sample app or write your own custom app](#Step-2.-MONAI-Label-Sample-Applications)
-- Step 3: [Install a compatible viewer and supported MONAI Label Plugin](#)
-- Step 4: [Prepare your Data](#)
-- Step 5: [Launch MONAI Label Server and start Annotating!](#)
+- Step 1: [Install MONAI Label](#Step-1-Installation)
+- Step 2: [Download a MONAI Label sample app or write your own custom app](#Step-2-MONAI-Label-Sample-Applications)
+- Step 3: [Install a compatible viewer and supported MONAI Label Plugin](#Step-3-MONAI-Label-Supported-Viewers)
+- Step 4: [Prepare your Data](#Step-4-Data-Preparation)
+- Step 5: [Launch MONAI Label Server and start Annotating!](#Step-5-Start-MONAI-Label-Server-and-Start-Annotating)
 
-## Step 1. Installation
+## Step 1 Installation
 
 ### Current Stable Version
 <a href="https://pypi.org/project/monailabel/#history"><img alt="GitHub release (latest SemVer)" src="https://img.shields.io/github/v/release/project-monai/monailabel"></a>
@@ -198,20 +203,13 @@ To install the _**latest features**_ using one of the following options:
 </details>
 
 <details>
-  <summary><strong>Weekly Release</strong></summary>
-  <a href="https://badge.fury.io/py/monailabel-weekly"><img src="https://badge.fury.io/py/monailabel-weekly.svg" alt="PyPI version" height="18"></a>
-  <br>
-  <pre>pip install monailabel-weekly -U</pre>
-</details>
-
-<details>
   <summary><strong>Docker</strong></summary>
   <img alt="Docker Image Version (latest semver)" src="https://img.shields.io/docker/v/projectmonai/monailabel">
   <br>
   <pre>docker run --gpus all --rm -ti --ipc=host --net=host projectmonai/monailabel:latest bash</pre>
 </details>
 
-## Step 2. MONAI Label Sample Applications
+## Step 2 MONAI Label Sample Applications
 
 <h3>Radiology</h3>
 <p>This app has example models to do both interactive and automated segmentation over radiology (3D) images. Including auto segmentation with the latest deep learning models (e.g., UNet, UNETR) for multiple abdominal organs. Interactive tools include DeepEdit and Deepgrow for actively improving trained models and deployment.</p>
@@ -244,35 +242,35 @@ To install the _**latest features**_ using one of the following options:
 
 For a full list of supported bundles, see the <a href="https://github.com/Project-MONAI/MONAILabel/tree/main/sample-apps/monaibundle">MONAI Label Bundles README</a>.
 
-## Step 3. MONAI Label Supported Viewers
+## Step 3 MONAI Label Supported Viewers
 
 ### Radiology
 #### 3D Slicer
 3D Slicer, a free and open-source platform for analyzing, visualizing and understanding medical image data. In MONAI Label, 3D Slicer is most tested with radiology studies and algorithms, develpoment and integration.
 
-[3D Slicer Setup]()
+[3D Slicer Setup](https://github.com/Project-MONAI/MONAILabel/tree/main/plugins/slicer)
 
 #### OHIF
 The Open Health Imaging Foundation (OHIF) Viewer is an open source, web-based, medical imaging platform. It aims to provide a core framework for building complex imaging applications.
 
-[OHIF Setup]()
+[OHIF Setup](https://github.com/Project-MONAI/MONAILabel/tree/main/plugins/ohif)
 
 ### Pathology
 #### QuPath
 Quantitative Pathology & Bioimage Analysis (QuPath) is an open, powerful, flexible, extensible software platform for bioimage analysis.
 
-[QuPath Setup]()
+[QuPath Setup](https://github.com/Project-MONAI/MONAILabel/tree/main/plugins/qupath)
 
 #### Digital Slide Archive
 The Digital Slide Archive (DSA) is a platform that provides the ability to store, manage, visualize and annotate large imaging data sets.
-[Digital Slide Archive Setup]()
+[Digital Slide Archive Setup](https://github.com/Project-MONAI/MONAILabel/tree/main/plugins/dsa)
 
 ### Video
 #### CVAT
 CVAT is an interactive video and image annotation tool for computer vision.
-[CVAT Setup]()
+[CVAT Setup](https://github.com/Project-MONAI/MONAILabel/tree/main/plugins/cvat)
 
-## Step 4. Data Preparation
+## Step 4 Data Preparation
 For data preparation, you have two options, you can use a local data store or any image archive tool that supports DICOMWeb.
 
 #### Local Datastore for the Radiology App on single modality images
@@ -299,8 +297,7 @@ If the viewer you're using supports DICOMweb standard, you can use that instead 
 monailabel start_server --app apps/radiology --studies http://127.0.0.1:8042/dicom-web --conf models segmentation
 ```
 
-
-## Step 5. Start MONAI Label Server and Start Annotating!
+## Step 5 Start MONAI Label Server and Start Annotating
 You're now ready to start using MONAI Label.  Once you've configured your viewer, app, and datastore, you can launch the MONAI Label server with the relevant parameters. For simplicity, you can see an example where we download a Radiology sample app and dataset, then start the MONAI Label server below:
 
 ```
@@ -310,6 +307,28 @@ monailabel start_server --app apps/radiology --studies datasets/Task09_Spleen/im
 ```
 
 **Note:** If you want to work on different labels than the ones proposed by default, change the configs file following the instructions here: https://youtu.be/KtPE8m0LvcQ?t=622
+
+## MONAI Label Tutorials
+
+**Content**
+
+- **Radiology App**:
+  - Viewer: [3D Slicer](https://www.slicer.org/) | Datastore: Local | Task: Segmentation
+    - [MONAILabel: HelloWorld](https://github.com/Project-MONAI/tutorials/blob/main/monailabel/monailabel_HelloWorld_radiology_3dslicer.ipynb): Spleen segmentation with 3D Slicer setups.
+  - Viewer: [OHIF](https://ohif.org/) | Datastore: Local | Task: Segmentation
+    - [MONAILabel: Web-based OHIF Viewer](https://github.com/Project-MONAI/tutorials/blob/main/monailabel/monailabel_radiology_spleen_segmentation_OHIF.ipynb): Spleen segmentation with OHIF setups.
+- **MONAIBUNDLE App**:
+  - Viewer: [3D Slicer](https://www.slicer.org/) | Datastore: Local | Task: Segmentation
+    - [MONAILabel: Pancreas Tumor Segmentation with 3D Slicer](https://github.com/Project-MONAI/tutorials/blob/main/monailabel/monailabel_bring_your_own_data.ipynb): Pancreas and tumor segmentation with CT scans in 3D Slicer.
+    - [MONAILabel: Multi-organ Segmentation with 3D Slicer](https://github.com/Project-MONAI/tutorials/blob/main/monailabel/monailabel_monaibundle_3dslicer_multiorgan_seg.ipynb): Multi-organ segmentation with CT scans in 3D Slicer.
+    - [MONAILabel: Whole Body CT Segmentation with 3D Slicer](https://github.com/Project-MONAI/tutorials/blob/main/monailabel/monailabel_wholebody_totalSegmentator_3dslicer.ipynb): Whole body (104 structures) segmentation with CT scans.
+    - [MONAILabel: Lung nodule CT Detection with 3D Slicer](https://github.com/Project-MONAI/tutorials/blob/main/monailabel/monailabel_monaibundle_3dslicer_lung_nodule_detection.ipynb): Lung nodule detection task with CT scans.
+- **Pathology App**:
+  - Viewer: [QuPath](https://qupath.github.io/) | Datastore: Local | Task: Segmentation
+    - [MONAILabel: Nuclei Segmentation with QuPath](https://github.com/Project-MONAI/tutorials/blob/main/monailabel/monailabel_pathology_nuclei_segmentation_QuPath.ipynb) Nuclei segmentation with QuPath setup and Nuclick models.
+- **Endoscopy App**:
+  - Viewer: [CVAT](https://github.com/opencv/cvat) | Datastore: Local | Task: Segmentation
+    - [MONAILabel: Tooltracking with CVAT](https://github.com/Project-MONAI/tutorials/blob/main/monailabel/monailabel_endoscopy_cvat_tooltracking.ipynb): Surgical tool segmentation with CVAT/Nuclio setup.
 
 ## Cite
 
@@ -375,7 +394,6 @@ on [MONAI Label's GitHub Discussions tab](https://github.com/Project-MONAI/MONAI
 - Wiki: https://github.com/Project-MONAI/MONAILabel/wiki
 - Test status: https://github.com/Project-MONAI/MONAILabel/actions
 - PyPI package: https://pypi.org/project/monailabel/
-- Weekly previews: https://pypi.org/project/monailabel-weekly/
 - Docker Hub: https://hub.docker.com/r/projectmonai/monailabel
 - Client API: https://www.youtube.com/watch?v=mPMYJyzSmyo
 - Demo Videos: https://www.youtube.com/c/ProjectMONAI
