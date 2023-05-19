@@ -144,7 +144,7 @@ You can start server using *monailabel* CLI
 
   # Run Deepedit Model.
   # Options can be (deepedit|deepgrow|segmentation|segmentation_spleen|all) in case of radiology app.
-  # You can also pass comma seperated models like --conf models deepedit,segmentation
+  # You can also pass comma separated models like --conf models deepedit,segmentation
 
   monailabel start_server --app apps/radiology --studies datasets/Task09_Spleen/imagesTr --conf models deepedit
 
