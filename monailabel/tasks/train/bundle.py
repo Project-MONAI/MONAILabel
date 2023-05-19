@@ -16,6 +16,7 @@ import os
 import subprocess
 import sys
 from typing import Dict, Optional, Sequence
+import resource
 
 import monai.bundle
 import torch
@@ -63,12 +64,18 @@ class BundleConstants:
     def key_train_dataset_data(self) -> str:
         return "train#dataset#data"
 
+    def key_train_partition_dataset(self) -> str:
+        return "train_partition_dataset"
+    
     def key_train_handlers(self) -> str:
         return "train#handlers"
 
     def key_validate_dataset_data(self) -> str:
         return "validate#dataset#data"
 
+    def key_val_partition_dataset(self) -> str:
+        return "val_partition_dataset"
+    
     def key_tracking(self) -> str:
         return "tracking"
 
@@ -110,6 +117,7 @@ class BundleTrainTask(TrainTask):
         self.bundle_path = path
         self.bundle_config_path = os.path.join(path, "configs", config_paths[0])
         self.bundle_config = self._load_bundle_config(self.bundle_path, self.bundle_config_path)
+
 
         # https://docs.monai.io/en/latest/mb_specification.html#metadata-json-file
         self.bundle_metadata_path = os.path.join(path, "configs", "metadata.json")
@@ -253,8 +261,6 @@ class BundleTrainTask(TrainTask):
         overrides = {
             self.const.key_bundle_root(): self.bundle_path,
             self.const.key_train_trainer_max_epochs(): max_epochs,
-            self.const.key_train_dataset_data(): train_ds,
-            self.const.key_device(): device,
             self.const.key_train_handlers(): train_handlers,
         }
 
@@ -273,12 +279,10 @@ class BundleTrainTask(TrainTask):
             if tracking_run_name:
                 overrides[self.const.key_run_name()] = tracking_run_name
 
-        # external validation datalist supported through bundle itself (pass -1 in the request to use the same)
-        if val_ds is not None:
-            overrides[self.const.key_validate_dataset_data()] = val_ds
-
         # allow derived class to update further overrides
         self._update_overrides(overrides)
+        rlimit = resource.getrlimit(resource.RLIMIT_NOFILE)
+        resource.setrlimit(resource.RLIMIT_NOFILE, (4096, rlimit[1]))
 
         if multi_gpu:
             config_paths = [
@@ -294,9 +298,16 @@ class BundleTrainTask(TrainTask):
 
             train_path = os.path.join(self.bundle_path, "configs", "monailabel_train.json")
             multi_gpu_train_path = os.path.join(self.bundle_path, "configs", config_paths[0])
+
+            # merge multi gpu config into train config, then override monailabel configs. Order matters.
+            self.bundle_config = self._load_bundle_config(self.bundle_path, [self.bundle_config_path, multi_gpu_train_path])
+
+            overrides = self._update_datalist(train_ds, val_ds, overrides, multi_gpu)
+
             logging_file = os.path.join(self.bundle_path, "configs", "logging.conf")
             for k, v in overrides.items():
                 self.bundle_config.set(v, k)
+
             ConfigParser.export_config_file(self.bundle_config.config, train_path, indent=2)  # type: ignore
 
             sys.path.insert(0, self.bundle_path)
@@ -316,8 +327,8 @@ class BundleTrainTask(TrainTask):
                 run_id,  # run_id, user can pass the arg
                 "--meta_file",
                 self.bundle_metadata_path,
-                "--config_file",
-                f"['{train_path}','{multi_gpu_train_path}']",
+                "--config_file", #                 f"['{train_path}','{multi_gpu_train_path}']", train_path,
+                train_path,
                 "--logging_file",
                 logging_file,
             ]
@@ -329,6 +340,8 @@ class BundleTrainTask(TrainTask):
 
             self.run_multi_gpu(request, cmd, env)
         else:
+            overrides = self._update_datalist(train_ds, val_ds, overrides, multi_gpu)
+            overrides[self.const.key_device()] = device
             sys.path.insert(0, self.bundle_path)
             unload_module("scripts")
 
@@ -372,4 +385,27 @@ class BundleTrainTask(TrainTask):
         return bundle_config
 
     def _update_overrides(self, overrides):
+        return overrides
+
+    def _update_datalist(self, train_ds, val_ds, overrides, multi_gpu):
+        """
+        MONAILabel supports both distributed sampler and partition dataset for multi gpu training. 
+        If bundle used parition dataset, override the data partition list with train_ds.
+        If distributed sampler is used, override the #dataset#data
+        """
+        overrides.update({k: "" for k, v in self.bundle_config.config.items() if isinstance(v, str) and ("load_decathlon_datalist" in v or "partition_dataset" in v)})
+
+        if multi_gpu and any("partition_dataset" in v for v in self.bundle_config.config.values() if isinstance(v, str)):
+            train_data_partition = f"$monai.data.partition_dataset(data={train_ds}, num_partitions=dist.get_world_size(), shuffle=True, even_divisible=True)[dist.get_rank()]"
+            val_data_partition = f"$monai.data.partition_dataset(data={val_ds}, num_partitions=dist.get_world_size(), shuffle=True, even_divisible=True)[dist.get_rank()]"
+            self.bundle_config.set(train_data_partition, self.const.key_train_partition_dataset())
+            self.bundle_config.set(val_data_partition, self.const.key_val_partition_dataset())
+            overrides[self.const.key_train_dataset_data()] = f"@{self.const.key_train_partition_dataset()}"
+            overrides[self.const.key_validate_dataset_data()] = f"@{self.const.key_val_partition_dataset()}"
+        else:
+            # external validation datalist supported through bundle itself (pass -1 in the request to use the same)
+            if val_ds is not None:
+                overrides[self.const.key_validate_dataset_data()] = val_ds
+            overrides[self.const.key_train_dataset_data()] = train_ds
+
         return overrides
