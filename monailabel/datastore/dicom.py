@@ -245,7 +245,6 @@ class DICOMWebDatastore(LocalDatastore):
                         str(seg["SeriesInstanceUID"].value)
                     )
                 )
-            )
 
         invalid = set(super().get_labeled_images()) - {image_label["image"] for image_label in image_labels}
         logger.info(f"Invalid Labels: {invalid}")
