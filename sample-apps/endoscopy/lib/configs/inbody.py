@@ -16,8 +16,9 @@ from typing import Any, Dict, Optional, Union
 import lib.infers
 import lib.trainers
 from lib.scoring.cvat import CVATRandomScoring
-from monai.bundle import download, get_bundle_versions
+from monai.bundle import download
 
+from monailabel.config import settings
 from monailabel.interfaces.config import TaskConfig
 from monailabel.interfaces.tasks.infer_v2 import InferTask
 from monailabel.interfaces.tasks.scoring import ScoringMethod
@@ -34,14 +35,12 @@ class InBody(TaskConfig):
         super().init(name, model_dir, conf, planner, **kwargs)
 
         bundle_name = "endoscopic_inbody_classification"
-        repo_owner, repo_name, tag_name = "Project-MONAI/model-zoo/hosting_storage_v1".split("/")
-        bundle_version = get_bundle_versions(bundle_name, repo=f"{repo_owner}/{repo_name}", tag=tag_name)[
-            "latest_version"
-        ]
+        version = conf.get("inbody", "0.3.7")
+        zoo_source = conf.get("zoo_source", settings.MONAI_ZOO_SOURCE)
 
         self.bundle_path = os.path.join(self.model_dir, bundle_name)
         if not os.path.exists(self.bundle_path):
-            download(name=bundle_name, version=bundle_version, bundle_dir=self.model_dir)
+            download(name=bundle_name, version=version, bundle_dir=self.model_dir, source=zoo_source)
 
         # Others
         self.epistemic_enabled = bool(strtobool(conf.get("epistemic_enabled", "false")))

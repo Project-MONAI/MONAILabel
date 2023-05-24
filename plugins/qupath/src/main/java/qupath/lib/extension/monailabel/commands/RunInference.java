@@ -329,7 +329,7 @@ public class RunInference implements Runnable {
 				ROI polyROI = ROIs.createPolygonROI(pointsList, plane);
 				PathObject annotationObject = PathObjects.createAnnotationObject(polyROI);
 
-				PathClass pclass = PathClassFactory.getPathClass(annotationClass, color );
+				PathClass pclass = PathClassFactory.getPathClass(annotationClass, color);
 				annotationObject.setPathClass(pclass);
 
 				imageData.getHierarchy().addPathObjectWithoutUpdate(annotationObject);

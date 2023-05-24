@@ -1235,7 +1235,8 @@ class MONAILabelWidget(ScriptedLoadableModuleWidget, VTKObservationMixin):
             logging.debug(sample)
             if not sample.get("id"):
                 slicer.util.warningDisplay(
-                    "Unlabled Samples/Images Not Found at server.  Instead you can load your own image."
+                    "Unlabeled samples or images not found at server.\n"
+                    "Instead please go to File -> Add Data to load image."
                 )
                 return
 

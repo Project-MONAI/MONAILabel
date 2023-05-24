@@ -11,36 +11,49 @@ See the License for the specific language governing permissions and
 limitations under the License.
 -->
 
-# QuPath MONAILabel extension
+# MONAI Label Plugin for QuPath
+QuPath is an open, flexible, extensible software platform for bioimage analysis. It is designed to support a wide range of tasks in digital pathology, including cell and nuclei detection, tissue classification, and biomarker quantification.
 
-Download QuPath from: https://qupath.github.io/ and then install monailabel plugin using one of the following methods.
+<img src="../../docs/images/qupath.jpg" width=70% />
 
-## From Binaries
+### Table of Contents
+- [Supported Applications](#supported-applications)
+- [Installing QuPath](#installing-qupath)
+- [Install MONAI Label Extension From Binaries](#install-monai-label-extension-from-binaries)
+- [Building MONAI Label Extension from source ](#building-monai-label-extension-from-source)
+- [Using the Plugin](#using-the-plugin)
 
-Download [qupath-extension-monailabel-0.3.1.jar](https://github.com/Project-MONAI/MONAILabel/releases/download/data/qupath-extension-monailabel-0.3.1.jar)
-and **drag the jar** on top of the running QuPath application window (black screen area) to install the extension.
-If you are have previously installed then make sure to **_remove/uninstall_** the extension before updating.
+### Supported Applications
+Users can find supported applications in the [sample-apps](../../sample-apps/radiology/) folder under the radiology section. They'll find models like DeepEdit, DeepGrow, Segmentation, and more. These applications can be used to create and refine labels for various medical imaging tasks.
 
-> Development in progress.  If you are using latest MONAI Label, please build from source **or** use _**latest**_ QuPath plugin available from [here](https://github.com/Project-MONAI/MONAILabel/releases/tag/data) and vice versa.
+### Installing QuPath
 
-## Building from source
+To use MONAILabel with QuPath, you first need to download QuPath from https://qupath.github.io/. Once you have QuPath installed, you can install the MONAILabel plugin using one of the following methods
 
-You can build the latest extension jar using [OpenJDK 11](https://openjdk.java.net/) or later
-with [gradle](https://gradle.org/install/)
+### Install MONAI Label Extension From Binaries
+1. Download  [qupath-extension-monailabel-0.3.0.jar](https://github.com/Project-MONAI/MONAILabel/releases/download/data/qupath-extension-monailabel-0.3.0.jar).
+2. Drag the jar file onto the running QuPath application window (black screen area) to install the extension.
 
+**Note:** If you have previously installed the MONAILabel plugin, make sure to remove/uninstall the extension before updating.
+
+### Building MONAI Label Extension from source
+
+To build the latest extension jar using [OpenJDK 11](https://openjdk.java.net/) or later
+with [gradle](https://gradle.org/install/), follow these steps:
+
+1. Navigate to the directory where you cloned the MONAILabel repository and then navigate to the `plugins/qupath` folder.
+2. Run the following command to build the jar file:
 ```bash
 gradle clean build
 ```
+3. The output extension jar will be located under `build/libs`.
+4. Drag the jar file onto QuPath to install the extension.
 
-The output extension jar will be under `build/libs`. You can **drag the jar** file on top of QuPath to install the
-extension.
+## Using the Plugin
 
-
-## Using Plugin
-
-- Make sure MONAILabel Server URL is correctly through `Preferences`.
-- Open Sample Whole Slide Image in QuPath (which is shared as studies for MONAILabel server)
-- Add/Select Rectangle ROI to run annotations using MONAI Label models.
-- For Interative model (e.g. DeepEdit) you can choose to provide `Positive` and `Negative` points through Annotation panel.
+1. Make sure the MONAILabel Server URL is correctly set in the Preferences.
+2. Open a sample Whole Slide Image in QuPath (which is shared as studies for MONAILabel server).
+3. Add or select a rectangle ROI to run annotations using MONAI Label models.
+4. For interactive models (e.g. DeepEdit), you can choose to provide positive and negative points through the Annotation panel.
 
 ![image](../../docs/images/qupath.jpg)

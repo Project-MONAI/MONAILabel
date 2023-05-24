@@ -16,6 +16,7 @@ import logging
 import mimetypes
 import os
 import pathlib
+import re
 import shutil
 import subprocess
 import time
@@ -190,13 +191,32 @@ def download_file(url, path, delay=1, skip_on_exists=True):
 
 def device_list():
     devices = [] if torch.cuda.is_available() else ["cpu"]
-    if torch.cuda.device_count():
-        devices.append("cuda")
-    if torch.cuda.device_count() > 1:
+    if torch.cuda.device_count() == 1:
+        devices.append(torch.cuda.get_device_name(0))
+    else:
         for i in range(torch.cuda.device_count()):
-            devices.append(f"cuda:{i}")
+            devices.append(f"{torch.cuda.get_device_name(i)}:{i}")
 
     return devices
+
+
+def device_map():
+    devices = {} if torch.cuda.is_available() else {"cpu": "cpu"}
+    if torch.cuda.device_count() == 1:
+        devices[torch.cuda.get_device_name(0)] = "cuda"
+    else:
+        for i in range(torch.cuda.device_count()):
+            devices[f"{torch.cuda.get_device_name(i)}:{i}"] = f"cuda:{i}"
+
+    return devices
+
+
+def name_to_device(device):
+    device = device if device else "cuda" if torch.cuda.is_available() else "cpu"
+    device = device if isinstance(device, str) else device[0]
+    if device.startswith("cuda") and not torch.cuda.is_available():
+        device = "cpu"
+    return device_map().get(device, device)
 
 
 def create_dataset_from_path(folder, image_dir="images", label_dir="labels", img_ext=".jpg", lab_ext=".png"):
@@ -231,36 +251,29 @@ def is_openslide_supported(name):
     return False
 
 
-def get_bundle_models(app_dir, conf, conf_key="models"):
-    """
-    The funtion to get bundle models either from available model zoo or local files.
-    MONAI Label maintains a list of supported bundles, non-labeling bundles are not supported.
-    This function will filter available bundles according to the maintaining list.
-
-    Args:
-        app_dir: the app directory path
-        conf: configs of start_server command
-        conf_key: default to "models" for monaibundle app, if radiology app wants to use bundle models, "--conf bundles <names>" is used.
-
-    Returns:
-        a dictionary that contains the available bundles.
-    """
-    model_dir = os.path.join(app_dir, "model")
-
-    zoo_source = conf.get("zoo_source", settings.MONAI_ZOO_SOURCE)
+def get_zoo_bundle(model_dir, conf, models, conf_key):
     zoo_repo = conf.get("zoo_repo", settings.MONAI_ZOO_REPO)
     auth_token = conf.get("auth_token", settings.MONAI_ZOO_AUTH_TOKEN)
-    zoo_info = get_all_bundles_list(auth_token=auth_token)
+    auth_token = auth_token if auth_token else None
+    try:
+        zoo_info = get_all_bundles_list(auth_token=auth_token)
+    except:
+        print("")
+        print("---------------------------------------------------------------------------------------")
+        print(
+            "Github access rate limit reached, pleaes provide personal auth token by setting env MONAI_ZOO_AUTH_TOKEN"
+        )
+        print("or --conf auth_token <personal auth token>")
+        exit(-1)
 
     # filter model zoo bundle with MONAI Label supported bundles according to the maintaining list, return all version bundles list
     available = [i[0] for i in zoo_info if i[0] in MAINTAINED_BUNDLES]
     available_with_version = {b: get_bundle_versions(b, auth_token=auth_token)["all_versions"] for b in available}
+
     available_both = available + [k + "_v" + v for k, versions in available_with_version.items() for v in versions]
 
     version_to_name = {k + "_v" + v: k for k, versions in available_with_version.items() for v in versions}
     name_to_version = {k + "_v" + v: v for k, versions in available_with_version.items() for v in versions}
-
-    models = conf.get(conf_key)
     if not models:
         print("")
         print("---------------------------------------------------------------------------------------")
@@ -272,15 +285,11 @@ def get_bundle_models(app_dir, conf, conf_key="models"):
         print("")
         exit(-1)
 
-    models = models.split(",")
-    models = [m.strip() for m in models]
     # First check whether the bundle model directory is available and in model-zoo, if no, check local bundle directory.
     # Use zoo bundle if both exist
     invalid_zoo = [m for m in models if m not in available_both]
 
     invalid = [m for m in invalid_zoo if not os.path.isdir(os.path.join(model_dir, m))]
-
-    # Exit if model is not in zoo and local directory
     if invalid:
         print("")
         print("---------------------------------------------------------------------------------------")
@@ -295,6 +304,7 @@ def get_bundle_models(app_dir, conf, conf_key="models"):
         exit(-1)
 
     bundles: Dict[str, str] = {}
+
     for k in models:
         p = os.path.join(model_dir, k)
         if k not in available_both:
@@ -304,14 +314,63 @@ def get_bundle_models(app_dir, conf, conf_key="models"):
             if not os.path.exists(p):
                 name = k if k in available else version_to_name.get(k)
                 version = None if k in available else name_to_version.get(k)
-                download(name=name, version=version, bundle_dir=model_dir, source=zoo_source, repo=zoo_repo)
+                download(name=name, version=version, bundle_dir=model_dir, source="github", repo=zoo_repo)
                 if version:
                     shutil.move(os.path.join(model_dir, name), p)
-
         bundles[k] = p
 
-    logger.info(f"+++ Using Bundle Models: {list(bundles.keys())}")
+    return bundles
 
+
+def get_bundle_models(app_dir, conf, conf_key="models"):
+    """
+    The funtion to get bundle models either from available model zoo or local files.
+    MONAI Label maintains a list of supported bundles, non-labeling bundles are not supported.
+    This function will filter available bundles according to the maintaining list.
+
+    Args:
+        app_dir: the app directory path
+        conf: configs of start_server command
+        conf_key: default to "models" for monaibundle app, if radiology app wants to use bundle models, "--conf bundles <names>" is used.
+
+    Returns:
+        a dictionary that contains the available bundles.
+
+    Example:
+        Bundle name: spleen_ct_segmentation, this will use latest version of the bundle.
+        BUndle name with specific version: spleen_ct_segmentation_v0.4.0, this will download the specified version.
+    """
+    model_dir = os.path.join(app_dir, "model")
+
+    zoo_source = conf.get("zoo_source", settings.MONAI_ZOO_SOURCE)
+
+    models = conf.get(conf_key)
+    models = models.split(",")
+    models = [m.strip() for m in models]
+
+    if zoo_source == "github":  # if in github env, access model zoo
+        bundles = get_zoo_bundle(model_dir, conf, models, conf_key)
+    else:  # if not in github env, no "model zoo" access, users either provide bundles locally, or auto download with latest
+        bundles: Dict[str, str] = {}
+        for k in models:
+            p = os.path.join(model_dir, k)
+            if os.path.isdir(p):
+                logger.info(f"+++ Adding Bundle from Local: {k} => {p}")
+            else:
+                logger.info(f"+++ Adding Bundle from NGC: {k} => {p}")
+                pattern = re.compile(r"(?P<name>.+)_v(?P<version>\d+\.\d+\.\d+)")
+                match = pattern.match(k)
+                if match:
+                    name = match.group("name")
+                    version = match.group("version") or None
+                else:
+                    name = k
+                    version = None
+                download(name=name, version=version, bundle_dir=model_dir, source=zoo_source)
+
+            bundles[k] = p
+
+    logger.info(f"+++ Using Bundle Models: {list(bundles.keys())}")
     return bundles
 
 

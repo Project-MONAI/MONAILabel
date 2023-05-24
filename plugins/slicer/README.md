@@ -11,25 +11,34 @@ See the License for the specific language governing permissions and
 limitations under the License.
 -->
 
-## MONAILabel Plugin for 3D Slicer
+## MONAI Label Plugin for 3D Slicer
 
-<img src="https://raw.githubusercontent.com/Project-MONAI/MONAILabel/main/plugins/slicer/MONAILabel/Screenshots/1.png" width="800"/>
+3D Slicer is a free, open-source software for visualization, processing, segmentation, registration, and other 3D images and meshes. MONAI Label supports 3D Slicer with radiology and monaibundle applications. With its advanced features, 3D Slicer is a mature and well-tested viewer for radiology studies and algorithms.
 
-## Installing MONAILabel Plugin
+<img src="./MONAILabel/Screenshots/1.png" width="70%"/>
 
-Pick one of the following options to install MONAILabel Plugin for 3D Slicer
+### Table of Contents
+- [Supported Applications](#supported-applications)
+- [Installing 3D Slicer](#installing-3d-slicer)
+- [Installing MONAI Label Plugin](#installing-monai-label-plugin)
+- [Plugin in Developer Mode](#plugin-in-developer-mode)
+- [Plugin Settings](#plugin-settings)
 
-### Install 3D Slicer Preview Version with in-built Plugin
+### Supported Applications
+Users can find supported applications in the [sample-apps](../../sample-apps/radiology/) folder under the radiology section. They'll find models like DeepEdit, DeepGrow, Segmentation, and more. These applications can be used to create and refine labels for various medical imaging tasks.
 
-- Download and Install [3D Slicer](https://download.slicer.org/) **Preview version**
+### Installing 3D Slicer
+To use MONAI Label with 3D Slicer, you'll need to download and install 3D Slicer. MONAI Label supports stable and preview versions of 3D Slicer, version 5.0 or higher. For more information on installing 3D Slicer, check out the [3D Slicer Documentation](https://slicer.readthedocs.io/en/latest/user_guide/getting_started.html#installing-3d-slicer)
+
+### Installing MONAI Label Plugin
+
 - Go to **View** -> **Extension Manager** -> **Active Learning** -> **MONAI Label**
 - Install MONAI Label plugin
 - _**Restart**_ 3D Slicer
 
-> To update the plugin to latest version, you have to uninstall existing 3D Slicer version and download + install
-> new preview version of 3D Slicer again.
+**Note:** To update the plugin to the latest version, you have to uninstall the existing 3D Slicer version and download and install the new preview version of 3D Slicer again
 
-### Install Plugin in Developer Mode
+### Plugin in Developer Mode
 
 - `git clone git@github.com:Project-MONAI/MONAILabel.git`
 - Open 3D Slicer: Go to **Edit** -> **Application Settings** -> **Modules** -> **Additional Module Paths**
@@ -37,7 +46,9 @@ Pick one of the following options to install MONAILabel Plugin for 3D Slicer
 - _**Restart**_ 3D Slicer
 
 ### Plugin Settings
+You can change some default behaviors for the MONAI Label plugin by following these steps:
 
-User can change some default behavior for the plugin.
-Go to **Edit** -> **Application Settings** -> **MONAI Label**
+1. Go to **Edit** -> **Application Settings** -> **MONAI Label**
+2. Customize the settings as per your requirement.
+
 <img src="https://raw.githubusercontent.com/Project-MONAI/MONAILabel/main/plugins/slicer/MONAILabel/Screenshots/3.png" width="400"/>

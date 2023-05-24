@@ -17,7 +17,10 @@ from monai.transforms import (
     AsDiscreted,
     EnsureChannelFirstd,
     EnsureTyped,
+    KeepLargestConnectedComponentd,
     LoadImaged,
+    Orientationd,
+    ScaleIntensityd,
     ScaleIntensityRanged,
     Spacingd,
 )
@@ -36,6 +39,7 @@ class SegmentationSpleen(BasicInferTask):
         self,
         path,
         network=None,
+        target_spacing=(1.0, 1.0, 1.0),
         type=InferType.SEGMENTATION,
         labels=None,
         dimension=3,
@@ -51,23 +55,34 @@ class SegmentationSpleen(BasicInferTask):
             description=description,
             **kwargs,
         )
+        self.target_spacing = target_spacing
 
     def pre_transforms(self, data=None) -> Sequence[Callable]:
         return [
             LoadImaged(keys="image"),
             EnsureTyped(keys="image", device=data.get("device") if data else None),
             EnsureChannelFirstd(keys="image"),
-            Spacingd(keys="image", pixdim=[1.0, 1.0, 1.0]),
+            Orientationd(keys="image", axcodes="RAS"),
+            Spacingd(keys="image", pixdim=self.target_spacing, allow_missing_keys=True),
             ScaleIntensityRanged(keys="image", a_min=-57, a_max=164, b_min=0.0, b_max=1.0, clip=True),
+            ScaleIntensityd(keys="image", minv=-1.0, maxv=1.0),
         ]
 
     def inferer(self, data=None) -> Inferer:
-        return SlidingWindowInferer(roi_size=(160, 160, 160))
+        return SlidingWindowInferer(
+            roi_size=[160, 160, 160],
+            sw_batch_size=1,
+            overlap=0.25,
+        )
+
+    def inverse_transforms(self, data=None):
+        return []
 
     def post_transforms(self, data=None) -> Sequence[Callable]:
         return [
             EnsureTyped(keys="pred", device=data.get("device") if data else None),
             Activationsd(keys="pred", softmax=True),
             AsDiscreted(keys="pred", argmax=True),
+            KeepLargestConnectedComponentd(keys="pred"),
             Restored(keys="pred", ref_image="image"),
         ]

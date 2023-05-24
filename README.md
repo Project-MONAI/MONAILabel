@@ -12,7 +12,6 @@ limitations under the License.
 -->
 
 # MONAI Label
-
 [![License](https://img.shields.io/badge/license-Apache%202.0-green.svg)](https://opensource.org/licenses/Apache-2.0)
 [![CI Build](https://github.com/Project-MONAI/MONAILabel/workflows/build/badge.svg?branch=main)](https://github.com/Project-MONAI/MONAILabel/commits/main)
 [![Documentation Status](https://readthedocs.org/projects/monailabel/badge/?version=latest)](https://docs.monai.io/projects/label/en/latest/?badge=latest)
@@ -21,261 +20,315 @@ limitations under the License.
 [![Azure DevOps coverage](https://img.shields.io/azure-devops/coverage/projectmonai/monai-label/10)](https://dev.azure.com/projectmonai/monai-label/_build?definitionId=10)
 [![codecov](https://codecov.io/gh/Project-MONAI/MONAILabel/branch/main/graph/badge.svg)](https://codecov.io/gh/Project-MONAI/MONAILabel)
 
+MONAI Label is an intelligent open source image labeling and learning tool that enables users to create annotated datasets and build AI annotation models for clinical evaluation. MONAI Label enables application developers to build labeling apps in a serverless way, where custom labeling apps are exposed as a service through the MONAI Label Server.
+
 MONAI Label is a server-client system that facilitates interactive medical image annotation by using AI. It is an
 open-source and easy-to-install ecosystem that can run locally on a machine with single or multiple GPUs. Both server
 and client work on the same/different machine. It shares the same principles
-with [MONAI](https://github.com/Project-MONAI). Refer to full [MONAI Label documentations](https://docs.monai.io/projects/label/en/latest/index.html) for more details.
+with [MONAI](https://github.com/Project-MONAI).
 
+Refer to full [MONAI Label documentations](https://docs.monai.io/projects/label/en/latest/index.html) for more details or check out our [MONAI Label Deep Dive videos series](https://www.youtube.com/playlist?list=PLtoSVSQ2XzyD4lc-lAacFBzOdv5Ou-9IA).
 
-- [MONAI Label Demo: Sample Apps](#sample-apps-in-monailabel)
-- [Highlights and Features](#hightlights-and-features)
-- [Installation and Usage](#installation)
-  - [MONAI Label Server](#current-stable-version)
-  - [Visualization Tools Guide](#visualization-tools)
-  - [Plugin Guide](#plugins)
-- [MONAI Label Integration Tutorials](https://github.com/Project-MONAI/tutorials/tree/main/monailabel)
-- [Contributing Guide and Communities](#contributing)
+Refer to [MONAI Label Tutorial](https://github.com/Project-MONAI/tutorials/tree/main/monailabel) series for application and viewer workflows with different medical image tasks. Notebook-like tutorials are created for detailed instructions.
 
-## Sample Apps in MONAILabel
+### Table of Contents
+- [Overview](#Overview)
+  - [Highlights and Features](#Highlights-and-Features)
+  - [Supported Matrix](#Supported-Matrix)
+- [Getting Started with MONAI Label](#Getting-Started-with-MONAI-Label)
+  - [Step 1. Installation](#Step-1-Installation)
+  - [Step 2. MONAI Label Sample Applications](#Step-2-MONAI-Label-Sample-Applications)
+  - [Step 3. MONAI Label Supported Viewers](#Step-3-MONAI-Label-Supported-Viewers)
+  - [Step 4. Data Preparation](#Step-4-Data-Preparation)
+  - [Step 5. Start MONAI Label Server and Start Annotating!](#Step-5-Start-MONAI-Label-Server-and-Start-Annotating)
+- [MONAI Label Tutorials](#MONAI-Label-Tutorials)
+- [Cite MONAI Label](#Cite)
+- [Contributing](#Contributing)
+- [Community](#Community)
+- [Additional Resources](#Additional-Resources)
 
-![image](https://raw.githubusercontent.com/Project-MONAI/MONAILabel/main/docs/images/sampleApps_index.jpeg)
+### Overview
+MONAI Label reduces the time and effort of annotating new datasets and enables the adaptation of AI to the task at hand by continuously learning from user interactions and data. MONAI Label allows researchers and developers to make continuous improvements to their apps by allowing them to interact with their apps at the user would. End-users (clinicians, technologists, and annotators in general) benefit from AI continuously learning and becoming better at understanding what the end-user is trying to annotate.
 
-[MONAI Label](https://youtu.be/m2rYorVwXk4) | [Demo Videos](https://www.youtube.com/c/ProjectMONAI) | [Notebook Tutorials](https://github.com/Project-MONAI/tutorials/tree/main/monailabel)
+MONAI Label aims to fill the gap between developers creating new annotation applications, and the end users which want to benefit from these innovations.
 
-MONAI Label with visualization tools 3D Slicer, OHIF, DSA, QuPath, CVAT etc..
-![image](https://raw.githubusercontent.com/Project-MONAI/MONAILabel/main/docs/images/demo.png)
-<table>
-<tr>
-<td><img src="https://raw.githubusercontent.com/Project-MONAI/MONAILabel/main/docs/images/ohif.png" alt="drawing" width="150"/></td>
-<td><img src="https://raw.githubusercontent.com/Project-MONAI/MONAILabel/main/docs/images/dsa.jpg" alt="drawing" width="150"/></td>
-<td><img src="https://raw.githubusercontent.com/Project-MONAI/MONAILabel/main/docs/images/qupath.jpg" alt="drawing" width="150"/></td>
-<td><img src="https://raw.githubusercontent.com/Project-MONAI/MONAILabel/main/docs/images/cvat_detector.jpeg" alt="drawing" width="150"/></td>
-</tr>
-</table>
-
-## Highlights and Features
-
-> _The codebase is currently under active development._
-
+#### Highlights and Features
 - Framework for developing and deploying MONAI Label Apps to train and infer AI models
-- Pre-trained models including whole body CT segmentation (104 structures) and whole brain MRI segmentation (131 tissues)
 - Compositional & portable APIs for ease of integration in existing workflows
 - Customizable labeling app design for varying user expertise
 - Annotation support via [3DSlicer](https://github.com/Project-MONAI/MONAILabel/tree/main/plugins/slicer)
   & [OHIF](https://github.com/Project-MONAI/MONAILabel/tree/main/plugins/ohif) for radiology
-- Annotation support via [QuPath](https://github.com/Project-MONAI/MONAILabel/tree/main/plugins/qupath)
-  , [Digital Slide Archive](https://github.com/Project-MONAI/MONAILabel/tree/main/plugins/dsa)
-  & [CVAT](https://github.com/Project-MONAI/MONAILabel/tree/main/plugins/cvat) for
+- Annotation support via [QuPath](https://github.com/Project-MONAI/MONAILabel/tree/main/plugins/qupath), [Digital Slide Archive](https://github.com/Project-MONAI/MONAILabel/tree/main/plugins/dsa), and [CVAT](https://github.com/Project-MONAI/MONAILabel/tree/main/plugins/cvat) for
   pathology
 - Annotation support via [CVAT](https://github.com/Project-MONAI/MONAILabel/tree/main/plugins/cvat) for Endoscopy
 - PACS connectivity via [DICOMWeb](https://www.dicomstandard.org/using/dicomweb)
 - Automated Active Learning workflow for endoscopy using [CVAT](https://github.com/Project-MONAI/MONAILabel/tree/main/plugins/cvat)
 
-**Radiology App**
-   This app has example models to do both interactive and automated segmentation over radiology (3D)
-   images. Including auto segmentation with the latest deep learning models (e.g., UNet, UNETR) for multiple abdominal
-   organs. Interactive tools include DeepEdit and Deepgrow for actively improving trained models and deployment.
+#### Supported Matrix
 
-**Pathology App**
-   This app has example models to do both interactive and automated segmentation over pathology (WSI)
-   images. Including nuclei multi-label segmentation for Neoplastic cells, Inflammatory, Connective/Soft tissue cells, Dead Cells, and
-   Epithelial. The app provides interactive tools including DeepEdits for interactive nuclei segmentation.
+MONAI Label supports many state-of-the-art(SOTA) models in Model-Zoo, and their integration with viewers and monaibundle app. Please refer to [monaibundle](https://github.com/Project-MONAI/MONAILabel/tree/main/sample-apps/monaibundle) app page for supported models, including whole body segmentation, whole brain segmentation, lung nodule detection, tumor segmentation and many more.
 
-**Bundle App**
-   The Bundle app enables users with customized models for inference, training or pre and post processing any target
-   anatomies. The specification for MONAILabel integration of the Bundle app links archived Model-Zoo for customized labeling
-   (e.g., the third-party transformer model for labeling renal cortex, medulla, and pelvicalyceal system. Interactive tools such as DeepEdits).
+In addition, you can find a table of the basic supported fields, modalities, viewers, and general data types.  However, these are only ones that we've explicitly test and that doesn't mean that your dataset or file type won't work with MONAI Label.  Try MONAI for your given task and if you're having issues, reach out through GitHub Issues.
+<table>
+<tr>
+  <th>Field</th>
+  <th>Models</th>
+  <th>Viewers</th>
+  <th>Data Types</th>
+  <th>Image Modalities/Target</th>
+</tr>
+  <td>Radiology</td>
+  <td>
+    <ul>
+      <li>Segmentation</li>
+      <li>DeepGrow</li>
+      <li>DeepEdit</li>
+    </ul>
+  </td>
+  <td>
+    <ul>
+      <li>3DSlicer</li>
+      <li>OHIF</li>
+    </ul>
+  </td>
+  <td>
+    <ul>
+      <li>NIfTI</li>
+      <li>NRRD</li>
+      <li>DICOM</li>
+    </ul>
+  </td>
+  <td>
+    <ul>
+      <li>CT</li>
+      <li>MRI</li>
+    </ul>
+  </td>
+<tr>
+</tr>
+  <td>Pathology</td>
+  <td>
+    <ul>
+      <li>DeepEdit</li>
+      <li>NuClick</li>
+      <li>Segmentation</li>
+      <li>Classification</li>
+    </ul>
+  </td>
+  <td>
+    <ul>
+      <li>Digital Slide Archive</li>
+      <li>QuPath</li>
+      <li>CVAT</li>
+    </ul>
+  </td>
+  <td>
+    <ul>
+      <li>TIFF</li>
+      <li>SVS</li>
+    </ul>
+  </td>
+  <td>
+    <ul>
+      <li>Nuclei Segmentation</li>
+      <li>Nuclei Classification</li>
+    </ul>
+  </td>
+<tr>
+</tr>
+  <td>Video</td>
+  <td>
+    <ul>
+      <li>DeepEdit</li>
+      <li>Tooltracking</li>
+      <li>InBody/OutBody</li>
+    </ul>
+  </td>
+  <td>
+    <ul>
+      <li>CVAT</li>
+    </ul>
+  </td>
+  <td>
+    <ul>
+      <li>JPG</li>
+      <li>3-channel Video Frames</li>
+    </ul>
+  </td>
+  <td>
+    <ul>
+      <li>Endoscopy</li>
+    </ul>
+  </td>
+<tr>
+</table>
 
-**Endoscopy App**
-   The Endoscopy app enables users to use interactive, automated segmentation and classification models over 2D images for endoscopy usecase.
-   Combined with CVAT, it will demonstrate the fully automated Active Learning workflow to train + fine-tune a model.
+# Getting Started with MONAI Label
+### MONAI Label requires a few steps to get started:
+- Step 1: [Install MONAI Label](#Step-1-Installation)
+- Step 2: [Download a MONAI Label sample app or write your own custom app](#Step-2-MONAI-Label-Sample-Applications)
+- Step 3: [Install a compatible viewer and supported MONAI Label Plugin](#Step-3-MONAI-Label-Supported-Viewers)
+- Step 4: [Prepare your Data](#Step-4-Data-Preparation)
+- Step 5: [Launch MONAI Label Server and start Annotating!](#Step-5-Start-MONAI-Label-Server-and-Start-Annotating)
 
-## Installation
+## Step 1 Installation
 
-Start using MONAI Label with just three steps:
-![image](https://raw.githubusercontent.com/Project-MONAI/MONAILabel/main/docs/images/install_steps.jpeg)
+### Current Stable Version
+<a href="https://pypi.org/project/monailabel/#history"><img alt="GitHub release (latest SemVer)" src="https://img.shields.io/github/v/release/project-monai/monailabel"></a>
+<pre>pip install -U monailabel</pre>
 
-MONAI Label supports following OS with **GPU/CUDA** enabled.
-- Ubuntu: Please see the [installation guide](https://docs.monai.io/projects/label/en/latest/installation.html).
+MONAI Label supports the following OS with **GPU/CUDA** enabled. For more details instruction, please see the installation guides.
+- [Ubuntu](https://docs.monai.io/projects/label/en/latest/installation.html)
 - [Windows](https://docs.monai.io/projects/label/en/latest/installation.html#windows)
 
-### [Current Stable Version](https://pypi.org/project/monailabel/#history)
-
-```bash
-pip install monailabel -U
-```
-
+### GPU Acceleration (Optional Dependencies)
+Following are the optional dependencies which can help you to accelerate some GPU based transforms from MONAI. These dependencies are enabled by default if you are using `projectmonai/monailabel` docker.
+- [CUCIM](https://pypi.org/project/cucim/)
+- [CUPY](https://docs.cupy.dev/en/stable/install.html#installing-cupy)
+- [CUDA Toolkit](https://developer.nvidia.com/cuda-downloads)
 
 ### Development version
 
 To install the _**latest features**_ using one of the following options:
 
-#### Git Checkout (developer mode)
+<details>
+  <summary><strong>Git Checkout (developer mode)</strong></summary>
+  <a href="https://github.com/Project-MONAI/MONAILabel"><img alt="GitHub tag (latest SemVer)" src="https://img.shields.io/github/v/tag/Project-MONAI/monailabel"></a>
+  <br>
+  <pre>
+  git clone https://github.com/Project-MONAI/MONAILabel
+  pip install -r MONAILabel/requirements.txt
+  export PATH=$PATH:`pwd`/MONAILabel/monailabel/scripts</pre>
+  <p>If you are using DICOM-Web + OHIF then you have to build OHIF package separate.  Please refer [here](https://github.com/Project-MONAI/MONAILabel/tree/main/plugins/ohif#development-setup).</p>
+</details>
 
-```bash
-git clone https://github.com/Project-MONAI/MONAILabel
-pip install -r MONAILabel/requirements.txt
-export PATH=$PATH:`pwd`/MONAILabel/monailabel/scripts
-```
-If you are using DICOM-Web + OHIF then you have to build OHIF package separate.  Please refer [here](https://github.com/Project-MONAI/MONAILabel/tree/main/plugins/ohif#development-setup).
+<details>
+  <summary><strong>Docker</strong></summary>
+  <img alt="Docker Image Version (latest semver)" src="https://img.shields.io/docker/v/projectmonai/monailabel">
+  <br>
+  <pre>docker run --gpus all --rm -ti --ipc=host --net=host projectmonai/monailabel:latest bash</pre>
+</details>
 
-#### [Weekly Release](https://pypi.org/project/monailabel-weekly/)
+## Step 2 MONAI Label Sample Applications
 
-```bash
-pip install monailabel-weekly -U
-```
+<h3>Radiology</h3>
+<p>This app has example models to do both interactive and automated segmentation over radiology (3D) images. Including auto segmentation with the latest deep learning models (e.g., UNet, UNETR) for multiple abdominal organs. Interactive tools include DeepEdit and Deepgrow for actively improving trained models and deployment.</p>
+<ul>
+  <li>Deepedit</li>
+  <li>Deepgrow</li>
+  <li>Segmentation</li>
+  <li>Spleen Segmentation</li>
+  <li>Multi-Stage Vertebra Segmentation</li>
+</ul>
 
-#### [Docker](https://hub.docker.com/r/projectmonai/monailabel/tags)
+<h3>Pathology</h3>
+<p>This app has example models to do both interactive and automated segmentation over pathology (WSI) images. Including nuclei multi-label segmentation for Neoplastic cells, Inflammatory, Connective/Soft tissue cells, Dead Cells, and Epithelial. The app provides interactive tools including DeepEdits for interactive nuclei segmentation.</p>
+<ul>
+  <li>Deepedit</li>
+  <li>Deepgrow</li>
+  <li>Segmentation</li>
+  <li>Spleen Segmentation</li>
+  <li>Multi-Stage Vertebra Segmentation</li>
+</ul>
+<h3>Video</h3>
+<p>The Endoscopy app enables users to use interactive, automated segmentation and classification models over 2D images for endoscopy usecase. Combined with CVAT, it will demonstrate the fully automated Active Learning workflow to train + fine-tune a model.</p>
+<ul>
+  <li>Deepedit</li>
+  <li>ToolTracking</li>
+  <li>InBody/OutBody</li>
+</ul>
+<h3>Bundles</h3>
+<p>The Bundle app enables users with customized models for inference, training or pre and post processing any target anatomies. The specification for MONAILabel integration of the Bundle app links archived Model-Zoo for customized labeling (e.g., the third-party transformer model for labeling renal cortex, medulla, and pelvicalyceal system. Interactive tools such as DeepEdits).</p>
 
-```bash
-docker run --gpus all --rm -ti --ipc=host --net=host projectmonai/monailabel:latest bash
-```
+For a full list of supported bundles, see the <a href="https://github.com/Project-MONAI/MONAILabel/tree/main/sample-apps/monaibundle">MONAI Label Bundles README</a>.
 
----
-Once the package is installed, you can download sample `radiology` or `pathology` app and start monailabel server.
+## Step 3 MONAI Label Supported Viewers
 
-```bash
-# download radiology app and sample dataset
-monailabel apps --download --name radiology --output apps
-monailabel datasets --download --name Task09_Spleen --output datasets
+### Radiology
+#### 3D Slicer
+3D Slicer, a free and open-source platform for analyzing, visualizing and understanding medical image data. In MONAI Label, 3D Slicer is most tested with radiology studies and algorithms, develpoment and integration.
 
-# start server using radiology app with deepedit model enabled
-monailabel start_server --app apps/radiology --studies datasets/Task09_Spleen/imagesTr --conf models deepedit
-```
+[3D Slicer Setup](https://github.com/Project-MONAI/MONAILabel/tree/main/plugins/slicer)
 
-More details refer docs: https://docs.monai.io/projects/label/en/stable/installation.html
+#### OHIF
+The Open Health Imaging Foundation (OHIF) Viewer is an open source, web-based, medical imaging platform. It aims to provide a core framework for building complex imaging applications.
 
-> If monailabel install path is not automatically determined, then you can provide explicit install path as:
-> `monailabel apps --prefix ~/.local`
+[OHIF Setup](https://github.com/Project-MONAI/MONAILabel/tree/main/plugins/ohif)
 
-For **_prerequisites_**, other installation methods (using the default GitHub branch, using Docker, etc.), please refer
-to the [installation guide](https://docs.monai.io/projects/label/en/latest/installation.html).
-
-> Once you start the MONAI Label Server, by default server will be up and serving at http://127.0.0.1:8000/. Open the
-> serving URL in browser. It will provide you the list of Rest APIs available. **For this, please make sure you use the
-HTTP protocol.** _You can provide ssl arguments to run server in **HTTPS mode** but this functionality is not fully
-verified across all clients._
-
-
-### Optional Dependencies
-Following are the optional dependencies which can help you to accelerate some GPU based transforms from MONAI.
-These dependencies are by-default available if you are using `projectmonai/monailabel` docker.
-- [CUCIM](https://pypi.org/project/cucim/)
-- [CUPY](https://docs.cupy.dev/en/stable/install.html#installing-cupy)
-- [CUDA Toolkit](https://developer.nvidia.com/cuda-downloads)
-
-## Visualization Tools
-
-MONAI Label supports the most adopted open-source viewers for Radiology,  Pathology, and Endoscopy images.
-
-### 3D Slicer
-
-3D Slicer, a free and open-source platform for analyzing, visualizing and understanding medical image data. In MONAI Label, 3D Slicer is most tested with radiology studies and
-algorithms, develpoment and integration.
-
-MONAI Label is most currently tested and supported with stable release of 3D Slicer every version. Preview version of 3D Slicer is not fully tested and supported.
-
-To install stable released version of 3D Slicer, see [3D Slicer installation](https://download.slicer.org/).
-Currently, Windows and Linux version are supported.
-
-### OHIF (Web-based)
-
-The Open Health Imaging Foundation (OHIF) Viewer is an open source, web-based, medical imaging platform.
-It aims to provide a core framework for building complex imaging applications.
-
-At this point OHIF can be used to annotate the data in the DICOM server via the MONAI Label server.
-To use OHIF web-based application, refer to [extensible web imaging platform](https://ohif.org/)
-
-### QuPath
-
+### Pathology
+#### QuPath
 Quantitative Pathology & Bioimage Analysis (QuPath) is an open, powerful, flexible, extensible software platform for bioimage analysis.
 
-To install stable released version of QuPath, see [QuPath installation](https://qupath.github.io/).
-Currently, Windows and Linux version are supported. Detailed documentation can be found [QuPath Doc](https://qupath.readthedocs.io/en/stable/).
+[QuPath Setup](https://github.com/Project-MONAI/MONAILabel/tree/main/plugins/qupath)
 
+#### Digital Slide Archive
+The Digital Slide Archive (DSA) is a platform that provides the ability to store, manage, visualize and annotate large imaging data sets.
+[Digital Slide Archive Setup](https://github.com/Project-MONAI/MONAILabel/tree/main/plugins/dsa)
 
-### CVAT
-
+### Video
+#### CVAT
 CVAT is an interactive video and image annotation tool for computer vision.
+[CVAT Setup](https://github.com/Project-MONAI/MONAILabel/tree/main/plugins/cvat)
 
-To install stable released version of CVAT, see [CVAT installation](https://github.com/opencv/cvat).
-Currently, Windows and Linux version are supported. Detailed documentation can be found [CVAT Doc](https://opencv.github.io/cvat/docs/).
+## Step 4 Data Preparation
+For data preparation, you have two options, you can use a local data store or any image archive tool that supports DICOMWeb.
 
-
-## Plugins
-
-### [3D Slicer](https://download.slicer.org/) (radiology)
-
-Download and install 3D Slicer with the [installation page](https://docs.monai.io/projects/label/en/latest/installation.html).
-Install MONAI Label plugin from Slicer Extension Manager.
-
-Refer [3D Slicer plugin](https://github.com/Project-MONAI/MONAILabel/tree/main/plugins/slicer) for other options to
-install and run MONAI Label plugin in 3D Slicer.
-> To avoid accidentally using an older Slicer version, you may want to _uninstall_ any previously installed 3D Slicer
-> package.
-
-### [OHIF](https://ohif.org/) (radiology)
-
-MONAI Label comes with [pre-built plugin](https://github.com/Project-MONAI/MONAILabel/tree/main/plugins/ohif)
-for [OHIF Viewer](https://github.com/OHIF/Viewers). To use OHIF
-Viewer, you need to provide **DICOMWeb** instead of FileSystem as _studies_ when you start the server.
-> Please install [Orthanc](https://www.orthanc-server.com/download.php) before using OHIF Viewer.
-> For Ubuntu 20.x, Orthanc can be installed as `apt-get install orthanc orthanc-dicomweb`. However, you have to
-> **upgrade to latest version** by following steps
-> mentioned [here](https://book.orthanc-server.com/users/debian-packages.html#replacing-the-package-from-the-service-by-the-lsb-binaries).
->
-> You can use [PlastiMatch](https://plastimatch.org/plastimatch.html#plastimatch-convert) to convert NIFTI to DICOM
-
-```bash
-  # start server using DICOMWeb
-  monailabel start_server --app apps/radiology --studies http://127.0.0.1:8042/dicom-web
-
-  # to disable DICOM to NIFTI conversion for faster performance
-  export MONAI_LABEL_DICOMWEB_CONVERT_TO_NIFTI=false
-  monailabel start_server --app apps/radiology --studies http://127.0.0.1:8042/dicom-web
+#### Local Datastore for the Radiology App on single modality images
+For a Datastore in a local file archive, there is a set folder structure that MONAI Label uses. Place your image data in a folder and if you have any segmentation files, create and place them in a subfolder called `labels/final`. You can see an example below:
 ```
-> NOTE:: 3D-Slicer is not supported without DICOM to NIFTI conversion
->
-> OHIF Viewer will be accessible at http://127.0.0.1:8000/ohif/
-
-![OHIF](https://raw.githubusercontent.com/Project-MONAI/MONAILabel/main/docs/images/ohif.png)
-
-> **NOTE:** OHIF does not yet support Multi-Label interaction for DeepEdit.  And you can still use 3D Slicer when MONAILabel is connected to DICOMWeb.
-
-### [QuPath](https://qupath.github.io/) (pathology)
-
-You can download sample whole slide images
-from [https://portal.gdc.cancer.gov/repository](https://portal.gdc.cancer.gov/repository?filters=%7B%22op%22%3A%22and%22%2C%22content%22%3A%5B%7B%22op%22%3A%22in%22%2C%22content%22%3A%7B%22field%22%3A%22files.data_type%22%2C%22value%22%3A%5B%22Slide%20Image%22%5D%7D%7D%5D%7D)
-
-```bash
-  # start server using pathology over downloaded whole slide images
-  monailabel start_server --app apps/pathology --studies wsi_images
+dataset
+│-- spleen_10.nii.gz
+│-- spleen_11.nii.gz
+│   ...
+└───labels
+    └─── final
+        │-- spleen_10.nii.gz
+        │-- spleen_11.nii.gz
+        │   ...
 ```
 
-Refer [QuPath](plugins/qupath) for installing and running MONAILabel plugin in QuPath.
+If you don't have labels, just place the images/volumes in the dataset folder.
 
-![image](https://raw.githubusercontent.com/Project-MONAI/MONAILabel/main/docs/images/qupath.jpg)
+#### DICOMWeb Support
+If the viewer you're using supports DICOMweb standard, you can use that instead of a local datastore to serve images to MONAI Label. When starting the MONAI Label server, we need to specify the URL of the DICOMweb service in the studies argument (and, optionally, the username and password for DICOM servers that require them). You can see an example of starting the MONAI Label server with a DICOMweb URL below:
 
-### [Digital Slide Archive (DSA)](https://digitalslidearchive.github.io/digital_slide_archive/) (pathology)
 
-Refer [Pathology](sample-apps/pathology) for running a sample pathology use-case in MONAILabel.
-> **NOTE:** The *DSA Plugin* is under *active development*.
+```
+monailabel start_server --app apps/radiology --studies http://127.0.0.1:8042/dicom-web --conf models segmentation
+```
 
-![image](https://raw.githubusercontent.com/Project-MONAI/MONAILabel/main/docs/images/dsa.jpg)
+## Step 5 Start MONAI Label Server and Start Annotating
+You're now ready to start using MONAI Label.  Once you've configured your viewer, app, and datastore, you can launch the MONAI Label server with the relevant parameters. For simplicity, you can see an example where we download a Radiology sample app and dataset, then start the MONAI Label server below:
 
-### [CVAT](plugins/cvat)
+```
+monailabel apps --download --name radiology --output apps
+monailabel datasets --download --name Task09_Spleen --output datasets
+monailabel start_server --app apps/radiology --studies datasets/Task09_Spleen/imagesTr --conf models segmentation
+```
 
-Install [CVAT](https://opencv.github.io/cvat/docs/administration/basics/installation/) and
-enable [Semi-Automatic and Automatic Annotation](https://opencv.github.io/cvat/docs/administration/advanced/installation_automatic_annotation/).
-Refer [CVAT Instructions](https://github.com/Project-MONAI/MONAILabel/tree/main/plugins/cvat) for deploying available MONAILabel
-pathology/endoscopy models into CVAT.
+**Note:** If you want to work on different labels than the ones proposed by default, change the configs file following the instructions here: https://youtu.be/KtPE8m0LvcQ?t=622
 
-<table>
-<tr>
-<td><img src="https://raw.githubusercontent.com/Project-MONAI/MONAILabel/main/docs/images/cvat_detector.jpeg" width="300"/></td>
-<td><img src="https://raw.githubusercontent.com/Project-MONAI/MONAILabel/main/docs/images/cvat_active_learning.jpeg" width="300"/></td>
-</tr>
-</table>
+## MONAI Label Tutorials
+
+**Content**
+
+- **Radiology App**:
+  - Viewer: [3D Slicer](https://www.slicer.org/) | Datastore: Local | Task: Segmentation
+    - [MONAILabel: HelloWorld](https://github.com/Project-MONAI/tutorials/blob/main/monailabel/monailabel_HelloWorld_radiology_3dslicer.ipynb): Spleen segmentation with 3D Slicer setups.
+  - Viewer: [OHIF](https://ohif.org/) | Datastore: Local | Task: Segmentation
+    - [MONAILabel: Web-based OHIF Viewer](https://github.com/Project-MONAI/tutorials/blob/main/monailabel/monailabel_radiology_spleen_segmentation_OHIF.ipynb): Spleen segmentation with OHIF setups.
+- **MONAIBUNDLE App**:
+  - Viewer: [3D Slicer](https://www.slicer.org/) | Datastore: Local | Task: Segmentation
+    - [MONAILabel: Pancreas Tumor Segmentation with 3D Slicer](https://github.com/Project-MONAI/tutorials/blob/main/monailabel/monailabel_bring_your_own_data.ipynb): Pancreas and tumor segmentation with CT scans in 3D Slicer.
+    - [MONAILabel: Multi-organ Segmentation with 3D Slicer](https://github.com/Project-MONAI/tutorials/blob/main/monailabel/monailabel_monaibundle_3dslicer_multiorgan_seg.ipynb): Multi-organ segmentation with CT scans in 3D Slicer.
+    - [MONAILabel: Whole Body CT Segmentation with 3D Slicer](https://github.com/Project-MONAI/tutorials/blob/main/monailabel/monailabel_wholebody_totalSegmentator_3dslicer.ipynb): Whole body (104 structures) segmentation with CT scans.
+    - [MONAILabel: Lung nodule CT Detection with 3D Slicer](https://github.com/Project-MONAI/tutorials/blob/main/monailabel/monailabel_monaibundle_3dslicer_lung_nodule_detection.ipynb): Lung nodule detection task with CT scans.
+- **Pathology App**:
+  - Viewer: [QuPath](https://qupath.github.io/) | Datastore: Local | Task: Segmentation
+    - [MONAILabel: Nuclei Segmentation with QuPath](https://github.com/Project-MONAI/tutorials/blob/main/monailabel/monailabel_pathology_nuclei_segmentation_QuPath.ipynb) Nuclei segmentation with QuPath setup and Nuclick models.
+- **Endoscopy App**:
+  - Viewer: [CVAT](https://github.com/opencv/cvat) | Datastore: Local | Task: Segmentation
+    - [MONAILabel: Tooltracking with CVAT](https://github.com/Project-MONAI/tutorials/blob/main/monailabel/monailabel_endoscopy_cvat_tooltracking.ipynb): Surgical tool segmentation with CVAT/Nuclio setup.
 
 ## Cite
 
@@ -331,7 +384,7 @@ our [Slack channel](https://projectmonai.slack.com/archives/C031QRE0M1C).
 Ask and answer questions over
 on [MONAI Label's GitHub Discussions tab](https://github.com/Project-MONAI/MONAILabel/discussions).
 
-## Links
+## Additional Resources
 
 - Website: https://monai.io/
 - API documentation: https://docs.monai.io/projects/label
@@ -341,7 +394,6 @@ on [MONAI Label's GitHub Discussions tab](https://github.com/Project-MONAI/MONAI
 - Wiki: https://github.com/Project-MONAI/MONAILabel/wiki
 - Test status: https://github.com/Project-MONAI/MONAILabel/actions
 - PyPI package: https://pypi.org/project/monailabel/
-- Weekly previews: https://pypi.org/project/monailabel-weekly/
 - Docker Hub: https://hub.docker.com/r/projectmonai/monailabel
 - Client API: https://www.youtube.com/watch?v=mPMYJyzSmyo
 - Demo Videos: https://www.youtube.com/c/ProjectMONAI
