@@ -339,6 +339,8 @@ class BundleTrainTask(TrainTask):
                 f"--nnodes={nnodes if multi_node else 1}",
                 f"--nproc_per_node={len(gpus)}",
                 f"--node_rank={node_rank}",
+                f"--master_addr=launcher-svc-{os.environ['NGC_JOB_ID']}",
+                "--master_port=11223",
                 "-m",
                 "monai.bundle",
                 "run",
