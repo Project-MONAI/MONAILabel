@@ -315,9 +315,6 @@ class BundleTrainTask(TrainTask):
             env = os.environ.copy()
             env["CUDA_VISIBLE_DEVICES"] = ",".join([str(g) for g in gpus])
 
-            master_addr = request.get("master_addr", os.environ.get("MASTER_ADDR"))
-            master_port = request.get("master_port", os.environ.get("MASTER_PORT"))
-
             if multi_node:
                 if request.get("master_node", True):
                     for idx, host in enumerate(settings.MONAI_LABEL_HOSTS):
@@ -329,8 +326,6 @@ class BundleTrainTask(TrainTask):
                         new_req["master_node"] = False
                         new_req["multi_node"] = True
                         new_req["nnodes"] = nnodes
-                        new_req["master_addr"] = master_addr
-                        new_req["master_port"] = master_port
                         new_req["node_rank"] = idx + 1
 
                         resp = requests.post(f"{host}/train/{model}", json=new_req).json()
@@ -343,8 +338,6 @@ class BundleTrainTask(TrainTask):
                 "torchrun",
                 f"--nnodes={nnodes if multi_node else 1}",
                 f"--nproc_per_node={len(gpus)}",
-                f"--master_addr={master_addr}",
-                f"--master_port={master_port}",
                 f"--node_rank={node_rank}",
                 "-m",
                 "monai.bundle",
