@@ -8,7 +8,7 @@
 # WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 # See the License for the specific language governing permissions and
 # limitations under the License.
-
+import requests
 from fastapi import APIRouter, Depends
 
 from monailabel.config import RBAC_USER, settings
@@ -31,3 +31,8 @@ def app_info():
 @router.get("/", summary=f"{RBAC_USER}Get App Info")
 async def api_app_info(user: User = Depends(RBAC(settings.MONAI_LABEL_AUTH_ROLE_USER))):
     return app_info()
+
+
+@router.get("/{hostname}", summary="Get App Info For Replica")
+async def api_app_info_host(hostname: str):
+    return requests.get(f"http://{hostname}:8000/info/").json()

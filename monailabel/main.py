@@ -114,6 +114,14 @@ class Main:
         return parser
 
     def run(self):
+        print("==================================================")
+        print("All Environment Variables.....")
+        print("==================================================")
+        for k in sorted(os.environ.keys()):
+            print(f"{k}={os.environ[k]}")
+        print("==================================================")
+        print("")
+
         parser = self.args_parser()
         args = parser.parse_args()
 

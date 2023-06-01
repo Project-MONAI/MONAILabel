@@ -119,6 +119,7 @@ class BundleTrainTask(TrainTask):
         super().__init__(metadata.get("description", ""))
         self.valid = True
         self.version = metadata.get("version")
+        self.nnodes = 1
 
     def is_valid(self):
         return self.valid
@@ -148,6 +149,11 @@ class BundleTrainTask(TrainTask):
             "run_id": "",  # bundle run id, if different from default
             "model_filename": pytorch_models,
         }
+        nnodes = os.environ.get("NGC_ARRAY_INDEX", "1")
+        nnodes = nnodes if nnodes else "1"
+        self.nnodes = max(1, int(nnodes))
+        if self.nnodes > 1:
+            config_options["multi_node"] = True
 
         for k in self.const.key_displayable_configs():
             if self.bundle_config.get(k):
@@ -304,11 +310,12 @@ class BundleTrainTask(TrainTask):
 
             env = os.environ.copy()
             env["CUDA_VISIBLE_DEVICES"] = ",".join([str(g) for g in gpus])
+            nnodes = 1 if not request.get("multi_node", False) else self.nnodes
             logger.info(f"Using CUDA_VISIBLE_DEVICES: {env['CUDA_VISIBLE_DEVICES']}")
             cmd = [
                 "torchrun",
                 "--standalone",
-                "--nnodes=1",
+                f"--nnodes={nnodes}",
                 f"--nproc_per_node={len(gpus)}",
                 "-m",
                 "monai.bundle",
