@@ -8,7 +8,7 @@
 # WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 # See the License for the specific language governing permissions and
 # limitations under the License.
-
+import copy
 import glob
 import json
 import logging
@@ -18,6 +18,7 @@ import sys
 from typing import Dict, Optional, Sequence
 
 import monai.bundle
+import requests
 import torch
 from monai.bundle import ConfigParser
 from monai.data import partition_dataset
@@ -119,7 +120,6 @@ class BundleTrainTask(TrainTask):
         super().__init__(metadata.get("description", ""))
         self.valid = True
         self.version = metadata.get("version")
-        self.nnodes = 1
 
     def is_valid(self):
         return self.valid
@@ -149,10 +149,9 @@ class BundleTrainTask(TrainTask):
             "run_id": "",  # bundle run id, if different from default
             "model_filename": pytorch_models,
         }
-        nnodes = os.environ.get("NGC_ARRAY_INDEX", "1")
-        nnodes = nnodes if nnodes else "1"
-        self.nnodes = max(1, int(nnodes))
-        if self.nnodes > 1:
+
+        nnodes = max(1, len(settings.MONAI_LABEL_HOSTS) + 1)
+        if nnodes > 1:
             config_options["multi_node"] = True
 
         for k in self.const.key_displayable_configs():
@@ -223,13 +222,18 @@ class BundleTrainTask(TrainTask):
         force_multi_gpu = request.get("force_multi_gpu", False)
         run_id = request.get("run_id", "run")
 
+        nnodes = max(1, len(settings.MONAI_LABEL_HOSTS) + 1)
+        nnodes = request.get("nnodes", nnodes)
+        multi_node = request.get("multi_node", True if nnodes > 1 else False)
+        node_rank = 0 if not multi_node else request.get("node_rank", 0)
+
         multi_gpu = multi_gpu if torch.cuda.device_count() > 1 else False
 
         gpus = request.get("gpus", "all")
         gpus = list(range(torch.cuda.device_count())) if gpus == "all" else [int(g) for g in gpus.split(",")]
-        multi_gpu = True if force_multi_gpu or multi_gpu and len(gpus) > 1 else False
-        logger.info(f"Using Multi GPU: {multi_gpu}; GPUS: {gpus}")
-        logger.info(f"CUDA_VISIBLE_DEVICES: {os.environ.get('CUDA_VISIBLE_DEVICES')}")
+        multi_gpu = True if multi_node or force_multi_gpu or multi_gpu and len(gpus) > 1 else False
+        logger.info(f"Using Multi-Node: {multi_node}; Multi-GPU: {multi_gpu}; nnodes:{nnodes}; GPUS: {gpus}")
+        logger.info(f"Node Rank:{node_rank}; CUDA_VISIBLE_DEVICES: {os.environ.get('CUDA_VISIBLE_DEVICES')}")
 
         device = name_to_device(request.get("device", "cuda"))
         logger.info(f"Using device: {device}; Type: {type(device)}")
@@ -310,13 +314,38 @@ class BundleTrainTask(TrainTask):
 
             env = os.environ.copy()
             env["CUDA_VISIBLE_DEVICES"] = ",".join([str(g) for g in gpus])
-            nnodes = 1 if not request.get("multi_node", False) else self.nnodes
+
+            master_addr = request.get("master_addr", os.environ.get("MASTER_ADDR"))
+            master_port = request.get("master_port", os.environ.get("MASTER_PORT"))
+
+            if multi_node:
+                if request.get("master_node", True):
+                    for idx, host in enumerate(settings.MONAI_LABEL_HOSTS):
+                        logger.info(f"Invoking Train Request for host: {host}")
+                        new_req = copy.deepcopy(request)
+                        model = new_req.pop("model")
+                        new_req.pop("bundle_path", None)
+
+                        new_req["master_node"] = False
+                        new_req["multi_node"] = True
+                        new_req["nnodes"] = nnodes
+                        new_req["master_addr"] = master_addr
+                        new_req["master_port"] = master_port
+                        new_req["node_rank"] = idx + 1
+
+                        resp = requests.post(f"{host}/train/{model}", json=new_req).json()
+                        logger.info(f"Response: {resp}")
+                else:
+                    logger.info("This is slave/replica node... No need to propagate trigger")
+
             logger.info(f"Using CUDA_VISIBLE_DEVICES: {env['CUDA_VISIBLE_DEVICES']}")
             cmd = [
                 "torchrun",
-                "--standalone",
-                f"--nnodes={nnodes}",
+                f"--nnodes={nnodes if multi_node else 1}",
                 f"--nproc_per_node={len(gpus)}",
+                f"--master_addr={master_addr}",
+                f"--master_port={master_port}",
+                f"--node_rank={node_rank}",
                 "-m",
                 "monai.bundle",
                 "run",
@@ -328,6 +357,9 @@ class BundleTrainTask(TrainTask):
                 "--logging_file",
                 logging_file,
             ]
+
+            if not multi_node:
+                cmd.insert(1, "--standalone")
 
             if tracking:
                 cmd.extend(["--tracking", tracking])

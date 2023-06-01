@@ -10,7 +10,7 @@
 # limitations under the License.
 
 import os
-from typing import Any, Dict, List, Optional
+from typing import Any, Dict, List, Optional, Set
 
 from pydantic import AnyHttpUrl, BaseSettings
 
@@ -96,6 +96,8 @@ class Settings(BaseSettings):
     MONAI_ZOO_SOURCE: str = os.environ.get("BUNDLE_DOWNLOAD_SRC", "github")
     MONAI_ZOO_REPO: str = "Project-MONAI/model-zoo/hosting_storage_v1"
     MONAI_ZOO_AUTH_TOKEN: str = ""
+
+    MONAI_LABEL_HOSTS: List[str] = []
 
     class Config:
         env_file = ".env"

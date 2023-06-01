@@ -24,6 +24,8 @@ from typing import Dict
 
 import psutil
 
+from monailabel.config import settings
+
 logger = logging.getLogger(__name__)
 
 background_tasks: Dict = {}
@@ -41,10 +43,11 @@ def _task_func(task, method, callback=None):
         my_env["CUDA_VISIBLE_DEVICES"] = gpus
     request["gpus"] = "all"
 
+    my_env["MONAI_LABEL_HOSTS"] = json.dumps(settings.MONAI_LABEL_HOSTS)
     if method == "train":
         my_env["MONAI_LABEL_DATASTORE_AUTO_RELOAD"] = "false"
-        my_env["MASTER_ADDR"] = "127.0.0.1"
-        my_env["MASTER_PORT"] = str(random.randint(1234, 1334))
+        my_env["MASTER_ADDR"] = os.environ.get("MASTER_ADDR", os.environ.get("NGC_MASTER_ADDR", "127.0.0.1"))
+        my_env["MASTER_PORT"] = os.environ.get("MASTER_PORT", str(random.randint(1234, 1334)))
 
     logger.info("Before:: " + my_env["PYTHONPATH"])
     bundle_path = request.get("bundle_path")

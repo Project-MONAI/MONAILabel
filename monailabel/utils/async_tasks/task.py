@@ -26,9 +26,7 @@ class AsyncTask:
             return None, description
 
         instance = app_instance()
-        config = instance.info().get("config", {}).get(method, {})
         request = request if request else {}
-        request.update(config)
 
         params = params if params is not None else {}
         request.update(params)

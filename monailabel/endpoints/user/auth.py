@@ -106,6 +106,10 @@ def from_token(token: str):
     return User(username=username, email=email, name=name, roles=roles)
 
 
+async def get_default_user():
+    return DEFAULT_USER
+
+
 async def get_current_user(token: str = Depends(oauth2_scheme) if settings.MONAI_LABEL_AUTH_ENABLE else ""):
     credentials_exception = HTTPException(
         status_code=status.HTTP_401_UNAUTHORIZED,
@@ -123,7 +127,10 @@ class RBAC:
     def __init__(self, roles: Union[str, Sequence[str]]):
         self.roles = roles
 
-    async def __call__(self, user: User = Security(get_current_user)):
+    async def __call__(
+        self,
+        user: User = Security(get_current_user if settings.MONAI_LABEL_AUTH_ENABLE else get_default_user),
+    ):
         if not settings.MONAI_LABEL_AUTH_ENABLE:
             return user
 
