@@ -35,14 +35,14 @@ from monailabel.tasks.train.basic_train import BasicTrainTask, Context
 logger = logging.getLogger(__name__)
 
 
-class SegmentationSpleen(BasicTrainTask):
+class SegmentationSamobject(BasicTrainTask):
     def __init__(
         self,
         model_dir,
         network,
         roi_size=(96, 96, 96),
         target_spacing=(1.0, 1.0, 1.0),
-        description="Train Segmentation model for spleen",
+        description="Train SAM model",
         **kwargs,
     ):
         self._network = network
