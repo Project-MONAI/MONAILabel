@@ -664,6 +664,7 @@ class MONAILabelWidget(ScriptedLoadableModuleWidget, VTKObservationMixin):
             self.ui.freezeUpdateCheckBox.show()
             self.ui.dgLabelForeground.setText("Landmarks:")
         else:
+            self.ui.dgLabelBackground.show()
             self.ui.dgNegativeControlPointPlacementWidget.show()
             self.ui.freezeUpdateCheckBox.hide()
             self.ui.dgLabelForeground.setText("Foreground:")
