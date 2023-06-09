@@ -20,31 +20,38 @@ What's New
 =====
 
 - Multi Users authentication and KeyCloak Integration
+
   - MONAI Label APIs with Keycloak integration for user authentication and role based access.
   - Login support for 3D Slicer via MONAILabel + KeyClock.
 
 - Whole Body CT segmentation
+
   - Segmenting 104 anatomies in 4 seconds!
   - `whole body CT segmentation <https://github.com/Project-MONAI/model-zoo/tree/dev/models/wholeBody_ct_segmentation>`_.
 
 - MONAI Bundle Support Improvements
+
   - Support visualization of bundle config option.
   - Enhancement of monai-zoo access.
   - Support bundle downloading from NGC.
   - Enhacement of multi-gpu training of bundles.
 
 - CI/CD and tests
+
   - blossom CI/CD and pre-merge pipeline enabled.
   - Increased Unit tests coverage to 80%.
 
 - Updated pretrained models:
+
   - segmentation
   - deepedit
 
 - New MONAI Label Tutorial Series
+
   - Quickstart tutorials and installation instructions in `notebooks <https://github.com/Project-MONAI/tutorials/tree/main/monailabel>`_.
 
 - Documentation enhancements
+
   - New look in main README, Sample App READMEs, and Plugin READMEs.
 
 
