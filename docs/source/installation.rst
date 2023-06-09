@@ -50,7 +50,7 @@ Prerequisites
 --------------------------
 MONAI Label supports both **Ubuntu** and **Windows** OS with GPU/CUDA enabled.
 
-Make sure you have python 3.7/3.8/3.9 version environment with PyTorch and CUDA installed.  MONAI Label features on other python version are not verified.
+Make sure you have python 3.8/3.9 version environment with PyTorch and CUDA installed.  MONAI Label features on other python version are not verified.
 
 - Install `Python <https://www.python.org/downloads/>`_
 - Install the following Python libraries
