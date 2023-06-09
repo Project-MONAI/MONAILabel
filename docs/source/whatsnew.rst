@@ -42,7 +42,7 @@ What's New
   - deepedit
 
 - New MONAI Label Tutorial Series
- - Quickstart tutorials and installation instructions in `notebooks<https://github.com/Project-MONAI/tutorials/tree/main/monailabel>`_.
+ - Quickstart tutorials and installation instructions in `notebooks <https://github.com/Project-MONAI/tutorials/tree/main/monailabel>`_.
 
 - Documentation enhancements
  - New look in main README, Sample App READMEs, and Plugin READMEs.
