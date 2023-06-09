@@ -24,14 +24,14 @@ What's New
   - Login support for 3D Slicer via MONAILabel + KeyClock.
 
 - Whole Body CT segmentation
- - Segmenting 104 anatomies in 4 seconds!
+  - Segmenting 104 anatomies in 4 seconds!
   - `whole body CT segmentation <https://github.com/Project-MONAI/model-zoo/tree/dev/models/wholeBody_ct_segmentation>`_.
 
 - MONAI Bundle Support Improvements
- - Support visualization of bundle config option.
- - Enhancement of monai-zoo access. 
- - Support bundle downloading from NGC.
- - Enhacement of multi-gpu training of bundles.
+  - Support visualization of bundle config option.
+  - Enhancement of monai-zoo access. 
+  - Support bundle downloading from NGC.
+  - Enhacement of multi-gpu training of bundles.
 
 - CI/CD and tests
   - blossom CI/CD and pre-merge pipeline enabled.
@@ -42,10 +42,10 @@ What's New
   - deepedit
 
 - New MONAI Label Tutorial Series
- - Quickstart tutorials and installation instructions in `notebooks <https://github.com/Project-MONAI/tutorials/tree/main/monailabel>`_.
+  - Quickstart tutorials and installation instructions in `notebooks <https://github.com/Project-MONAI/tutorials/tree/main/monailabel>`_.
 
 - Documentation enhancements
- - New look in main README, Sample App READMEs, and Plugin READMEs.
+  - New look in main README, Sample App READMEs, and Plugin READMEs.
 
 
 0.6.0
