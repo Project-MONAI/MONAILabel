@@ -29,7 +29,7 @@ What's New
 
 - MONAI Bundle Support Improvements
   - Support visualization of bundle config option.
-  - Enhancement of monai-zoo access. 
+  - Enhancement of monai-zoo access.
   - Support bundle downloading from NGC.
   - Enhacement of multi-gpu training of bundles.
 
