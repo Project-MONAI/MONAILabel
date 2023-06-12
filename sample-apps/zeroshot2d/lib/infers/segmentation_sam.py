@@ -11,23 +11,9 @@
 
 from typing import Callable, Sequence
 
-from monai.inferers import Inferer, SlidingWindowInferer
-from monai.transforms import (
-    Activationsd,
-    AsDiscreted,
-    EnsureChannelFirstd,
-    EnsureTyped,
-    KeepLargestConnectedComponentd,
-    LoadImaged,
-    Orientationd,
-    ScaleIntensityd,
-    ScaleIntensityRanged,
-    Spacingd,
-)
-
+from monai.inferers import Inferer, SimpleInferer
 from monailabel.interfaces.tasks.infer_v2 import InferType
 from monailabel.tasks.infer.basic_infer import BasicInferTask
-from monailabel.transform.post import Restored
 
 
 class SegmentationSamobject(BasicInferTask):
@@ -39,7 +25,6 @@ class SegmentationSamobject(BasicInferTask):
         self,
         path,
         network=None,
-        target_spacing=(1.0, 1.0, 1.0),
         type=InferType.SEGMENTATION,
         labels=None,
         dimension=2,
@@ -55,34 +40,17 @@ class SegmentationSamobject(BasicInferTask):
             description=description,
             **kwargs,
         )
-        self.target_spacing = target_spacing
 
     def pre_transforms(self, data=None) -> Sequence[Callable]:
+        # TODO: confirm this
         return [
-            LoadImaged(keys="image"),
-            EnsureTyped(keys="image", device=data.get("device") if data else None),
-            EnsureChannelFirstd(keys="image"),
-            Orientationd(keys="image", axcodes="RAS"),
-            Spacingd(keys="image", pixdim=self.target_spacing, allow_missing_keys=True),
-            ScaleIntensityRanged(keys="image", a_min=-57, a_max=164, b_min=0.0, b_max=1.0, clip=True),
-            ScaleIntensityd(keys="image", minv=-1.0, maxv=1.0),
         ]
 
     def inferer(self, data=None) -> Inferer:
-        return SlidingWindowInferer(
-            roi_size=[160, 160, 160],
-            sw_batch_size=1,
-            overlap=0.25,
-        )
+        return SimpleInferer()
 
     def inverse_transforms(self, data=None):
         return []
 
     def post_transforms(self, data=None) -> Sequence[Callable]:
-        return [
-            EnsureTyped(keys="pred", device=data.get("device") if data else None),
-            Activationsd(keys="pred", softmax=True),
-            AsDiscreted(keys="pred", argmax=True),
-            KeepLargestConnectedComponentd(keys="pred"),
-            Restored(keys="pred", ref_image="image"),
-        ]
+        return []

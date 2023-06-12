@@ -40,24 +40,20 @@ class SegmentationSamobject(BasicTrainTask):
         self,
         model_dir,
         network,
-        roi_size=(96, 96, 96),
-        target_spacing=(1.0, 1.0, 1.0),
         description="Train SAM model",
         **kwargs,
     ):
         self._network = network
-        self.roi_size = roi_size
-        self.target_spacing = target_spacing
         super().__init__(model_dir, description, **kwargs)
 
     def network(self, context: Context):
         return self._network
 
     def optimizer(self, context: Context):
-        return torch.optim.AdamW(context.network.parameters(), lr=1e-4, weight_decay=1e-5)
+        return torch.optim.Adam(self.network.mask_decoder.parameters(), lr=1e-5, weight_decay=0)
 
     def loss_function(self, context: Context):
-        return DiceCELoss(to_onehot_y=True, softmax=True, squared_pred=True, batch=True)
+        return DiceCELoss(sigmoid=True, squared_pred=True, reduction='mean')
 
     def train_pre_transforms(self, context: Context):
         return [
