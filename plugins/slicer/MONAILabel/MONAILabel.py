@@ -916,6 +916,8 @@ class MONAILabelWidget(ScriptedLoadableModuleWidget, VTKObservationMixin):
         self.ignorePointListNodeAddEvent = False
 
     def getControlPointsXYZ(self, pointListNode, name):
+        print('getControlPointsXYZ')
+        logging.info(f"getControlPointsXYZ => {name}")
         v = self._volumeNode
         RasToIjkMatrix = vtk.vtkMatrix4x4()
         v.GetRASToIJKMatrix(RasToIjkMatrix)
@@ -959,7 +961,8 @@ class MONAILabelWidget(ScriptedLoadableModuleWidget, VTKObservationMixin):
     def onEditControlPoints(self, pointListNode, tagName):
         if pointListNode is None:
             return
-
+        print('onEditControlPoints')
+        logging.info(f"onEditControlPoints => {tagName}")
         pointListNode.RemoveAllControlPoints()
         segmentId, segment = self.currentSegment()
         if segment and segmentId:
@@ -1310,8 +1313,6 @@ class MONAILabelWidget(ScriptedLoadableModuleWidget, VTKObservationMixin):
 
                     if not USE_PROXY_AS_VOLUME:
                         self._volumeNode = slicer.util.loadVolume(image_file)
-
-
                         self._volumeNode.SetName(node_name)
                     else:
                         self._volumeNode = self._sequenceBrowserNode.GetProxyNode(self._sequenceNode)
@@ -1351,7 +1352,9 @@ class MONAILabelWidget(ScriptedLoadableModuleWidget, VTKObservationMixin):
                     self._sequenceBrowserNode = slicer.util.getNode(self._sequenceNode.GetName() + " browser")
                     print(f"Sequence Browser Node Object Was Created \n: {self._sequenceBrowserNode}")
                     if USE_PROXY_AS_VOLUME:
-                        self._volumeNode = self._sequenceBrowserNode.GetProxyNode(self._sequenceNode)
+                        self._volumeNode = self._sequenceNode.GetNthDataNode(0) # How is this diffenrent from the proxy node?
+
+                        #self._volumeNode = self._sequenceBrowserNode.GetProxyNode(self._sequenceNode)
                         self._volumeNode.SetName(node_name)
 
 
@@ -2083,6 +2086,8 @@ class MONAILabelWidget(ScriptedLoadableModuleWidget, VTKObservationMixin):
                 os.unlink(result_file)
 
     def getROIPointsXYZ(self, roiNode):
+        print("getROIPointsXYZ")
+        logging.info("getROIPointsXYZ")
         if roiNode is None:
             return []
 
