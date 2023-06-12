@@ -213,8 +213,8 @@ class MONAILabelWidget(ScriptedLoadableModuleWidget, VTKObservationMixin):
 
         self.logic = None
         self._parameterNode = None
-        self._volumeNode = None
-        self._segmentNode = None
+        self._volumeNode = None #Volume node --Used for defining Spatial information
+        self._segmentNode = None #Segmentation node -Current Segmentation
         self._scribblesROINode = None
         self._volumeNodes = []
         self._updatingGUIFromParameterNode = False
@@ -223,7 +223,7 @@ class MONAILabelWidget(ScriptedLoadableModuleWidget, VTKObservationMixin):
         self.models = OrderedDict()
         self.trainers = OrderedDict()
         self.config = OrderedDict()
-        self.current_sample = None
+        self.current_sample = None #Dictionary of current sample(s)?
         self.samples = {}
         self.state = {
             "SegmentationModel": "",
@@ -1352,8 +1352,17 @@ class MONAILabelWidget(ScriptedLoadableModuleWidget, VTKObservationMixin):
                     self._sequenceBrowserNode = slicer.util.getNode(self._sequenceNode.GetName() + " browser")
                     print(f"Sequence Browser Node Object Was Created \n: {self._sequenceBrowserNode}")
                     if USE_PROXY_AS_VOLUME:
-                        self._volumeNode = self._sequenceNode.GetNthDataNode(0) # How is this diffenrent from the proxy node?
+                        ref_vol = sampleDataLogic.downloadFromURL(
+                            nodeNames=node_name, fileNames=image_name, uris=download_uri, checksums=checksum
+                        )[0]
+                        ref_vol.SetName("reference 4d volume")
 
+
+                        self._volumeNode = self._sequenceNode.GetNthDataNode(0) # How is this diffenrent from the proxy node?
+                        self._sequenceNode.SetIndexName("Chanel")
+
+                        self._sequenceNode.SetIndexType("Text")
+                        print(f"Sequence Index info{self._sequenceNode.CopySequenceIndex(self._volumeNode)}")
                         #self._volumeNode = self._sequenceBrowserNode.GetProxyNode(self._sequenceNode)
                         self._volumeNode.SetName(node_name)
 
@@ -1421,7 +1430,8 @@ class MONAILabelWidget(ScriptedLoadableModuleWidget, VTKObservationMixin):
         # Create Empty Segments for all labels for this node
         self.createSegmentNode()
         self.ui.embeddedSegmentEditorWidget.setSegmentationNode(self._segmentNode)
-        self.ui.embeddedSegmentEditorWidget.setSourceVolumeNode(self._volumeNode)
+        self.ui.embeddedSegmentEditorWidget.setSourceVolumeNode(self._volumeNode) # NOTE THIS IS WHERE THE MASTER VOLUME INFORMATION IS SET
+
 
         self.createScribblesROINode()
         self.ui.scribblesPlaceWidget.setCurrentNode(self._scribblesROINode)
@@ -2352,6 +2362,12 @@ class MONAILabelLogic(ScriptedLoadableModuleLogic):
         segmentEditorSingletonTag = "SegmentEditor"
         segmentEditorNode = slicer.mrmlScene.GetSingletonNode(segmentEditorSingletonTag, "vtkMRMLSegmentEditorNode")
         if segmentEditorNode is None:
+            # Parameter set node for the segment editor widget.
+            #
+            # Stores parameters for a segment editor widget (selected segmentation, segment, master volume), and all the editor effects.
+            # The effect parameters are stored as attributes with names EffectName.ParameterName.
+            # If a parameter is changed, the node Modified event is not emitted, but the custom EffectParameterModified event that triggers update of the effect options widget only.
+            print("Initialize segment editor node")
             segmentEditorNode = slicer.mrmlScene.CreateNodeByClass("vtkMRMLSegmentEditorNode")
             segmentEditorNode.UnRegister(None)
             segmentEditorNode.SetSingletonTag(segmentEditorSingletonTag)
