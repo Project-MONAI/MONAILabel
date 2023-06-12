@@ -8,6 +8,7 @@
 # WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 # See the License for the specific language governing permissions and
 # limitations under the License.
+import sys
 
 import json
 import logging
@@ -19,23 +20,24 @@ import traceback
 from collections import OrderedDict
 from urllib.parse import quote_plus
 
-import ctk
-import qt
 import SampleData
 import SimpleITK as sitk
+import ctk
+import qt
 import sitkUtils
 import slicer
 import vtk
 import vtkSegmentationCore
-from MONAILabelLib import GenericAnatomyColors, MONAILabelClient
 from slicer.ScriptedLoadableModule import *
 from slicer.util import VTKObservationMixin
+
+from MONAILabelLib import GenericAnatomyColors, MONAILabelClient
 
 
 class MONAILabel(ScriptedLoadableModule):
     def __init__(self, parent):
         ScriptedLoadableModule.__init__(self, parent)
-        self.parent.title = "MONAILabel"
+        self.parent.title = "SEQUENCE_MONAILabel"
         self.parent.categories = ["Active Learning"]
         self.parent.dependencies = []
         self.parent.contributors = ["NVIDIA, KCL"]
@@ -76,7 +78,7 @@ class _ui_MONAILabelSettingsPanel:
         )
 
         fileExtension = qt.QLineEdit()
-        fileExtension.setText(".nii.gz")
+        fileExtension.setText(".nrrd")
         fileExtension.toolTip = "Default extension for uploading images/labels"
         groupLayout.addRow("File Extension:", fileExtension)
         parent.registerProperty(
@@ -204,7 +206,7 @@ class MONAILabelSettingsPanel(ctk.ctkSettingsPanel):
 class MONAILabelWidget(ScriptedLoadableModuleWidget, VTKObservationMixin):
     def __init__(self, parent=None):
         """
-        Called when the user opens the module the first time and the widget is initialized.
+            Called when the user opens the module the first time and the widget is initialized.
         """
         ScriptedLoadableModuleWidget.__init__(self, parent)
         VTKObservationMixin.__init__(self)  # needed for parameter node observation
@@ -230,7 +232,7 @@ class MONAILabelWidget(ScriptedLoadableModuleWidget, VTKObservationMixin):
             "CurrentStrategy": "",
             "CurrentTrainer": "",
         }
-        self.file_ext = ".nii.gz"
+        self.file_ext = "seg.nrrd"
 
         self.dgPositivePointListNode = None
         self.dgPositivePointListNodeObservers = []
@@ -403,6 +405,8 @@ class MONAILabelWidget(ScriptedLoadableModuleWidget, VTKObservationMixin):
             "CurrentStrategy": self.ui.strategyBox.currentText,
             "CurrentTrainer": self.ui.trainerBox.currentText,
         }
+        self._sequenceNode = None
+        self._sequenceBrowserNode = None
 
         self._volumeNode = None
         self._segmentNode = None
@@ -502,12 +506,16 @@ class MONAILabelWidget(ScriptedLoadableModuleWidget, VTKObservationMixin):
         # Make sure GUI changes do not call updateParameterNodeFromGUI (it could cause infinite loop)
         self._updatingGUIFromParameterNode = True
 
-        file_ext = slicer.util.settingsValue("MONAILabel/fileExtension", self.file_ext)
+        file_ext = slicer.util.settingsValue("MONAILabel/fileExtension",
+                                             self.file_ext)  # Here is the file extention. Should this be changed from.nii.gz?
+        print("File extension: ", file_ext)
         self.file_ext = file_ext if file_ext else self.file_ext
 
         # Update node selectors and sliders
         self.ui.inputSelector.clear()
+        # print("\nVolume Nodes: ")
         for v in self._volumeNodes:
+            # print(f"\n{v.GetName()}")
             self.ui.inputSelector.addItem(v.GetName())
             self.ui.inputSelector.setToolTip(self.current_sample.get("name", "") if self.current_sample else "")
         if self._volumeNode:
@@ -516,8 +524,10 @@ class MONAILabelWidget(ScriptedLoadableModuleWidget, VTKObservationMixin):
 
         self.ui.uploadImageButton.setEnabled(False)
         if self.info and slicer.mrmlScene.GetFirstNodeByClass("vtkMRMLScalarVolumeNode") and self._volumeNode is None:
-            self._volumeNode = slicer.mrmlScene.GetFirstNodeByClass("vtkMRMLScalarVolumeNode")
-            self.initSample({"id": self._volumeNode.GetName(), "session": True}, autosegment=False)
+            self._volumeNode = slicer.mrmlScene.GetFirstNodeByClass(
+                "vtkMRMLScalarVolumeNode")  # This sets the volume node to the first volume node in the scene COuld be hazardous due to first volume node beind a Proxy
+            self.initSample({"id": self._volumeNode.GetName(), "session": True},
+                            autosegment=False)  # THis should be fine when we use the Sequence
             self.ui.inputSelector.setEnabled(False)
 
         self.ui.uploadImageButton.setEnabled(self.current_sample and self.current_sample.get("session"))
@@ -610,8 +620,8 @@ class MONAILabelWidget(ScriptedLoadableModuleWidget, VTKObservationMixin):
             currentTrainer = self._parameterNode.GetParameter("CurrentTrainer")
             currentTrainer = currentTrainer if currentTrainer else self.state["CurrentTrainer"]
             self.ui.trainerBox.setCurrentIndex(self.ui.trainerBox.findText(currentTrainer) if currentTrainer else 0)
-
-        developer_mode = slicer.util.settingsValue("MONAILabel/developerMode", True, converter=slicer.util.toBool)
+        # unsure what this is doing due to the fact I had to enable developer mode manually in the settings of Slicer
+        developer_mode = slicer.util.settingsValue("MONAILabel/developerMode", True, converter=slicer.util.toBool)  # ??
         self.ui.optionsCollapsibleButton.setVisible(developer_mode)
 
         # Enable/Disable
@@ -664,7 +674,6 @@ class MONAILabelWidget(ScriptedLoadableModuleWidget, VTKObservationMixin):
             self.ui.freezeUpdateCheckBox.show()
             self.ui.dgLabelForeground.setText("Landmarks:")
         else:
-            self.ui.dgLabelBackground.show()
             self.ui.dgNegativeControlPointPlacementWidget.show()
             self.ui.freezeUpdateCheckBox.hide()
             self.ui.dgLabelForeground.setText("Foreground:")
@@ -676,6 +685,8 @@ class MONAILabelWidget(ScriptedLoadableModuleWidget, VTKObservationMixin):
         self._updatingGUIFromParameterNode = False
 
     def updateParameterNodeFromGUI(self, caller=None, event=None):
+        # This function is called when the user makes changes in the GUI
+        # It should update the node parameters to reflect the current GUI state
         if self._parameterNode is None or self._updatingGUIFromParameterNode:
             return
 
@@ -719,6 +730,12 @@ class MONAILabelWidget(ScriptedLoadableModuleWidget, VTKObservationMixin):
         self._parameterNode.EndModify(wasModified)
 
     def updateSelector(self, selector, model_types, param, defaultIndex=0):
+        # What does this do?
+        # What are the models?
+        # What is the parameter node/ What does it do?
+        # Example Call : self.updateSelector(self.ui.deepgrowModelSelector, ["deepgrow", "deepedit"], "DeepgrowModel", 0)
+        # This should cause the model to be selected as "deepgrow" I belive
+
         wasSelectorBlocked = selector.blockSignals(True)
         selector.clear()
 
@@ -751,11 +768,13 @@ class MONAILabelWidget(ScriptedLoadableModuleWidget, VTKObservationMixin):
         return mapping.get(optionsSection)
 
     def getSelectedOptionName(self, index=-1):
+        print(f"\ngetSelectedOptionName: {index}")
         optionsNameIndex = index if index >= 0 else self.ui.optionsName.currentIndex
         optionsNameIndex = optionsNameIndex if optionsNameIndex > 0 else 0
         optionsName = self.ui.optionsName.itemText(optionsNameIndex)
 
         logging.info(f"Current Selection Options Name: {optionsName}")
+        print(f"Current Selection Options Name: {optionsName}")
         return optionsName
 
     def invalidateConfigTable(self, selection=-1, name=-1):
@@ -795,6 +814,7 @@ class MONAILabelWidget(ScriptedLoadableModuleWidget, VTKObservationMixin):
             self.info.get(section, {}).get(name, {}).get("config", {})[key] = value
 
     def updateConfigTable(self, refresh=True):
+        print("\nupdateConfigTable")
         logging.info(f"updateConfigTable => refresh:{refresh}")
         section = self.getSelectedOptionSection()
         sectionConfig = self.info.get(section, {})
@@ -837,7 +857,6 @@ class MONAILabelWidget(ScriptedLoadableModuleWidget, VTKObservationMixin):
                 table.setCellWidget(n, 1, checkbox)
             else:
                 table.setItem(n, 1, qt.QTableWidgetItem(str(val) if val else ""))
-
             logging.info(f"{n} => {section} => {name} => {key} => {val}")
             n = n + 1
 
@@ -862,6 +881,8 @@ class MONAILabelWidget(ScriptedLoadableModuleWidget, VTKObservationMixin):
         self.ui.accuracyProgressBar.setToolTip(f"Accuracy: {dice:.4f}")
 
     def getParamsFromConfig(self, section, name):
+        # This function is used to get the parameters from the config file for the selected option May need to update this
+        # Initaly im thinking that we may need to add the `Load Sequence` to the config file
         self.invalidateConfigTable()
 
         mapping = {"infer": "models", "train": "trainers", "activelearning": "strategies", "scoring": "scoring"}
@@ -918,6 +939,7 @@ class MONAILabelWidget(ScriptedLoadableModuleWidget, VTKObservationMixin):
         return point_set
 
     def getControlPointXYZ(self, pointListNode, index):
+        print(f"getControlPointXYZ: {index}")
         v = self._volumeNode
         RasToIjkMatrix = vtk.vtkMatrix4x4()
         v.GetRASToIJKMatrix(RasToIjkMatrix)
@@ -942,7 +964,7 @@ class MONAILabelWidget(ScriptedLoadableModuleWidget, VTKObservationMixin):
         segmentId, segment = self.currentSegment()
         if segment and segmentId:
             v = self._volumeNode
-            IjkToRasMatrix = vtk.vtkMatrix4x4()
+            IjkToRasMatrix = vtk.vtkMatrix4x4()  # If using Sequence Cant use this due to the fact that sequence doesnt have a
             v.GetIJKToRASMatrix(IjkToRasMatrix)
 
             fPosStr = vtk.mutable("")
@@ -992,6 +1014,7 @@ class MONAILabelWidget(ScriptedLoadableModuleWidget, VTKObservationMixin):
         self.updateConfigTable()
 
     def onSelectOptionsName(self, index, caller=None, event=None):
+        print("onSelectOptionsName")
         self.updateParameterNodeFromGUI(caller, event)
         logging.info(f"Options Name Selection Changed.... current:{index}; prev: {self.optionsNameIndex}")
 
@@ -1030,7 +1053,7 @@ class MONAILabelWidget(ScriptedLoadableModuleWidget, VTKObservationMixin):
     def serverUrl(self):
         serverUrl = self.ui.serverComboBox.currentText
         if not serverUrl:
-            serverUrl = "http://127.0.0.1:8000"
+            serverUrl = "http://127.0.0.1:8000"  # default Sever URL
         return serverUrl.rstrip("/")
 
     def saveServerUrl(self):
@@ -1164,7 +1187,8 @@ class MONAILabelWidget(ScriptedLoadableModuleWidget, VTKObservationMixin):
                 status.get("status"),
                 status.get("start_ts"),
             )
-            # slicer.util.infoDisplay(msg, detailedText=json.dumps(status, indent=2))
+
+            slicer.util.infoDisplay(msg, detailedText=json.dumps(status, indent=2))
             logging.info(msg)
 
         logging.info(f"Time consumed by training: {time.time() - start:3.1f}")
@@ -1209,14 +1233,23 @@ class MONAILabelWidget(ScriptedLoadableModuleWidget, VTKObservationMixin):
         self.updateServerSettings()
         return self.logic.train_status(check_only)
 
+    '''
+    NOTES:
+         When loading Sequence using the slicer.util.loadSequence(filePath) function, the sequence is loaded as a vtkMRMLSequenceNode
+         But it also Creates a Sequence Browser Node which is a vtkMRMLSequenceBrowserNode
+         It also Creates a ScalarVolumeNode which is a vtkMRMLScalarVolumeNode(Visual inspection shows that the sequence is loaded as a Scalar not a Vector??)
+         The ScalarVolumeNode is the one that is being displayed in the 3D view? I think? 
+         I think the reason ScalarVolume node only has "one Scalar" is because it is the "proxy node" for the SequencebrowserNode
+    '''
+
     def onNextSampleButton(self):
         if not self.logic:
             return
-
+        print("onNextSampleButton")
         if self._volumeNode or len(slicer.util.getNodesByClass("vtkMRMLScalarVolumeNode")):
             if not slicer.util.confirmOkCancelDisplay(
-                "This will close current scene.  Please make sure you have saved your current work.\n"
-                "Are you sure to continue?"
+                    "This will close current scene.  Please make sure you have saved your current work.\n"
+                    "Are you sure to continue?"
             ):
                 return
             self.onResetScribbles()
@@ -1231,17 +1264,20 @@ class MONAILabelWidget(ScriptedLoadableModuleWidget, VTKObservationMixin):
             if not strategy:
                 slicer.util.errorDisplay("No Strategy Found/Selected\t")
                 return
+            # This call will get the next sample from the server
+            # Can track the logic back to Client.py
 
-            sample = self.logic.next_sample(strategy, self.getParamsFromConfig("activelearning", strategy))
+            sample = self.logic.next_sample(strategy, self.getParamsFromConfig("activelearning",
+                                                                               strategy))  # I blive this is the Post?
             logging.debug(sample)
             if not sample.get("id"):
                 slicer.util.warningDisplay(
-                    "Unlabeled samples or images not found at server.\n"
-                    "Instead please go to File -> Add Data to load image."
+                    "Unlabeled Samples/Images Not Found at server.  Instead you can load your own image."
                 )
                 return
 
             if self.samples.get(sample["id"]) is not None:
+                print(f"Sample already loaded: {sample['id']}")
                 self.current_sample = self.samples[sample["id"]]
                 name = self.current_sample["VolumeNodeName"]
                 index = self.ui.inputSelector.findText(name)
@@ -1254,20 +1290,88 @@ class MONAILabelWidget(ScriptedLoadableModuleWidget, VTKObservationMixin):
             image_name = sample.get("name", image_id)
             node_name = sample.get("PatientID", sample.get("name", image_id))
             checksum = sample.get("checksum")
-            local_exists = image_file and os.path.exists(image_file)
+            print(f"Image ID: {image_id}")
+            print(f"Image File: {image_file}")
+            print(f"Image Name: {image_name}")
+            print(f"Node Name: {node_name}")
+            print(f"Checksum: {checksum}")
 
+            local_exists = image_file and os.path.exists(image_file)
+            print(f"Current Path for Image: {image_file} \t Exists Locally=> {local_exists}")
             logging.info(f"Check if file exists/shared locally: {image_file} => {local_exists}")
-            if local_exists:
-                self._volumeNode = slicer.util.loadVolume(image_file)
-                self._volumeNode.SetName(node_name)
+            FORCE_DOWNLOAD = True
+            USE_PROXY_AS_VOLUME = True
+            if local_exists and not FORCE_DOWNLOAD:
+                # Comprable CLI call to load the sequence of images :
+                # slicer.util.loadSequence('/home/iejohnson/Ivan_testing/monai_testing/prostate_testing/sub-DMI10502626_registered_scaled_vector.seq.nrrd')
+                if 'seq.nrrd' in image_file:  # TODO Make this more robust
+                    self._sequenceNode = slicer.util.loadSequence(
+                        image_file)  # I dont think we need to make these attributes of the class
+
+                    if not USE_PROXY_AS_VOLUME:
+                        self._volumeNode = slicer.util.loadVolume(image_file)
+
+
+                        self._volumeNode.SetName(node_name)
+                    else:
+                        self._volumeNode = self._sequenceBrowserNode.GetProxyNode(self._sequenceNode)
+                        self._volumeNode.SetName(node_name)
+                    self._sequenceBrowserNode = slicer.util.getNode(self._sequenceNode.GetName() + " browser")
+                    print(f"Sequence Node Object Was Created \n: {self._sequenceNode}")
+                    print(f"Sequence Browser Node Object Was Created \n: {self._sequenceBrowserNode}")
+
+                else:
+                    self._volumeNode = slicer.util.loadVolume(image_file)
+                    self._volumeNode.SetName(node_name)
+                    print(f"Volume Node Object: {self._volumeNode}")
+                    print(f"Volume Node: {self._volumeNode.GetName()}")
             else:
                 download_uri = f"{self.serverUrl()}/datastore/image?image={quote_plus(image_id)}"
                 logging.info(download_uri)
+                # TODO : Need to update the logic to be able to  load the sequence of images
 
                 sampleDataLogic = SampleData.SampleDataLogic()
-                self._volumeNode = sampleDataLogic.downloadFromURL(
-                    nodeNames=node_name, fileNames=image_name, uris=download_uri, checksums=checksum
-                )[0]
+                if 'seq.nrrd' in image_file:  # TODO Make this more robust
+                    print(f"image_id ={image_id}")
+                    print(f"image_file ={image_file}")
+                    print(f"image_name ={image_name}")
+                    print(f"node_name ={node_name}")
+                    print(f"download_uri ={download_uri}")
+                    print(f"checksum ={checksum}")
+                    if not USE_PROXY_AS_VOLUME:
+                        self._volumeNode = sampleDataLogic.downloadFromURL(
+                            nodeNames=node_name, fileNames=image_name, uris=download_uri, checksums=checksum
+                        )[0]
+                        self._volumeNode.SetName(node_name)
+                    #self._sequenceBrowserNode  = slicer.modules.sequences.logic().GetFirstBrowserNodeForSequenceNode(self._sequenceNode)
+                    # I dont think we need to make these attributes of the class
+                    self._sequenceNode = sampleDataLogic.downloadFromURL(nodeNames= node_name, fileNames= image_name, uris =download_uri, checksums=checksum, loadFileTypes='SequenceFile')[0]
+
+                    print(f"Sequence Node Object Was Created \n: {self._sequenceNode}")
+                    self._sequenceBrowserNode = slicer.util.getNode(self._sequenceNode.GetName() + " browser")
+                    print(f"Sequence Browser Node Object Was Created \n: {self._sequenceBrowserNode}")
+                    if USE_PROXY_AS_VOLUME:
+                        self._volumeNode = self._sequenceBrowserNode.GetProxyNode(self._sequenceNode)
+                        self._volumeNode.SetName(node_name)
+
+
+
+                else:
+                    print("DOWNLOADING AS VOLUME ONLY")
+                    self._volumeNode = sampleDataLogic.downloadFromURL(
+                    nodeNames=node_name, fileNames=image_name, uris=download_uri, checksums=checksum)[0]
+                logging.info(f"Image File Name is {image_name}")
+                logging.info(f"Image Node Name is {node_name}")
+                logging.info(f"Image Checksum is {checksum}")
+                logging.info(f"Image Download URI is {download_uri}")
+                print(f"Image File Name is {image_name}")
+
+                print(f"Volume Node Object: {self._volumeNode}")
+                print(f"Volume Node: {self._volumeNode.GetName()}")
+
+            # Unsure if we are using this-- Doubtfull but will leave for now
+            # I belive this is somthing that may need to be updated later if we want to use original labels for prostates
+            # TODO: Update this to work with prostate labels/ Update Prostate labels to save to this location so we can use them
 
             if slicer.util.settingsValue("MONAILabel/originalLabel", True, converter=slicer.util.toBool):
                 try:
@@ -1320,6 +1424,8 @@ class MONAILabelWidget(ScriptedLoadableModuleWidget, VTKObservationMixin):
         self.ui.scribblesPlaceWidget.setCurrentNode(self._scribblesROINode)
 
         # check if user allows overlapping segments
+        # NOTE : Currently we are not allowing overlapping segments but I think we will need to change this to allow for Multiple Labels to exist
+        #       in the same image
         if slicer.util.settingsValue("MONAILabel/allowOverlappingSegments", False, converter=slicer.util.toBool):
             # set segment editor to allow overlaps
             self.logic.get_segment_editor_node().SetOverwriteMode(slicer.vtkMRMLSegmentEditorNode.OverwriteNone)
@@ -1329,7 +1435,7 @@ class MONAILabelWidget(ScriptedLoadableModuleWidget, VTKObservationMixin):
 
         # Check if user wants to run auto-segmentation on new sample
         if autosegment and slicer.util.settingsValue(
-            "MONAILabel/autoRunSegmentationOnNextSample", True, converter=slicer.util.toBool
+                "MONAILabel/autoRunSegmentationOnNextSample", True, converter=slicer.util.toBool
         ):
             for label in self.info.get("labels", []):
                 for name, model in self.models.items():
@@ -1349,7 +1455,11 @@ class MONAILabelWidget(ScriptedLoadableModuleWidget, VTKObservationMixin):
         )
 
     def onUploadImage(self, init_sample=True, session=False):
-        volumeNode = slicer.mrmlScene.GetFirstNodeByClass("vtkMRMLScalarVolumeNode")
+        # Possibly add a check here to see if we are using a sequence or not
+        # If we are using a sequence we may need to do somthing different
+
+        volumeNode = slicer.mrmlScene.GetFirstNodeByClass(
+            "vtkMRMLScalarVolumeNode")  # This is scary since we are using sequences and they dont play nice with this
         image_id = volumeNode.GetName()
 
         if not self.getPermissionForImageDataUpload():
@@ -1455,8 +1565,11 @@ class MONAILabelWidget(ScriptedLoadableModuleWidget, VTKObservationMixin):
                 self.reportProgress(5)
 
                 if (
-                    slicer.util.settingsValue("MONAILabel/allowOverlappingSegments", True, converter=slicer.util.toBool)
-                    and slicer.util.settingsValue("MONAILabel/fileExtension", self.file_ext) == ".seg.nrrd"
+                        slicer.util.settingsValue("MONAILabel/allowOverlappingSegments", True,
+                                                  converter=slicer.util.toBool)
+                        and slicer.util.settingsValue("MONAILabel/fileExtension", self.file_ext) == ".seg.nrrd"
+                        # This is for allowing multiple segments in a single file
+                        # I belive we may need to save out segments like this for the sequence to work
                 ):
                     slicer.util.saveNode(segmentationNode, label_in)
                 else:
@@ -1701,6 +1814,8 @@ class MONAILabelWidget(ScriptedLoadableModuleWidget, VTKObservationMixin):
             return True
 
         if in_file.endswith(".seg.nrrd") and self.file_ext == ".seg.nrrd":
+            print("Update Segmentation Mask from: ", in_file)
+            logging.info("Update Segmentation Mask from: " + in_file)
             source_node = slicer.modules.segmentations.logic().LoadSegmentationFromFile(in_file, False)
             destination_node = segmentationNode
             destination_segmentations = destination_node.GetSegmentation()
@@ -1803,7 +1918,7 @@ class MONAILabelWidget(ScriptedLoadableModuleWidget, VTKObservationMixin):
                     segmentationNode.RemoveSegment(segmentId)
                     logging.info(f"Time consumed until Import Segment => {label}: {time.time() - start:3.1f}")
 
-        if slicer.util.settingsValue("MONAILabel/showSegmentsIn3D", False, converter=slicer.util.toBool):
+        if slicer.util.settingsValue("MONAILabel/showSegmentsIn3D", True, converter=slicer.util.toBool):
             self.showSegmentationsIn3D()
 
         logging.info(f"Time consumed by updateSegmentationMask: {time.time() - start:3.1f}")
@@ -2066,7 +2181,8 @@ class MONAILabelWidget(ScriptedLoadableModuleWidget, VTKObservationMixin):
         tool, layer = self.getToolAndLayerFromScribblesMode()
         if self.scribblesMode is not None:
             self.ensureScribblesLayersPresent()
-
+            print(f"scribbles mode: {self.scribblesMode}")
+            logging.info(f"scribbles mode: {self.scribblesMode}")
             # adding new scribbles can overwrite a new one-hot vector, hence erase any existing
             # labels - this is not a desired behaviour hence we swith to overlay mode that enables drawing
             # scribbles without changing existing labels. Further explanation at:
@@ -2121,6 +2237,8 @@ class MONAILabelWidget(ScriptedLoadableModuleWidget, VTKObservationMixin):
         self.updateScribToolLayerFromMode()
 
     def onSelectScribblesLabel(self):
+        print("onSelectScribblesLabel")
+        logging.info(f"onSelectScribblesLabel {self.ui.scribLabelComboBox.currentText}")
         if not self._segmentNode:
             return
 
@@ -2145,7 +2263,7 @@ class MONAILabelWidget(ScriptedLoadableModuleWidget, VTKObservationMixin):
 
     def onGenerateJSONFromMulipltROIs(self):
         """
-        The functon to generate output JSON label fils with multiple ROI nodes.
+        The functon to generate output JSON label files with multiple ROI nodes.
         """
         detectionROIs = slicer.mrmlScene.GetNodesByClass("vtkMRMLMarkupsROINode")
         numNodes = detectionROIs.GetNumberOfItems()
@@ -2181,7 +2299,7 @@ class MONAILabelLogic(ScriptedLoadableModuleLogic):
     def __init__(self, tmpdir=None, server_url=None, progress_callback=None, client_id=None, resourcePath=None):
         ScriptedLoadableModuleLogic.__init__(self)
 
-        self.server_url = server_url
+        self.server_url = server_url  # Currently not used but will be used in future
         self.tmpdir = slicer.util.tempDirectory("slicer-monai-label") if tmpdir is None else tmpdir
         self.client_id = client_id
         self.resourcePath = resourcePath
@@ -2225,6 +2343,7 @@ class MONAILabelLogic(ScriptedLoadableModuleLogic):
         # Use the Segment Editor module's parameter node for the embedded segment editor widget.
         # This ensures that if the user switches to the Segment Editor then the selected
         # segmentation node, volume node, etc. are the same.
+        print("get_segment_editor_node")
         segmentEditorSingletonTag = "SegmentEditor"
         segmentEditorNode = slicer.mrmlScene.GetSingletonNode(segmentEditorSingletonTag, "vtkMRMLSegmentEditorNode")
         if segmentEditorNode is None:
@@ -2340,3 +2459,4 @@ class MONAILabelTest(ScriptedLoadableModuleTest):
 
     def test_MONAILabel1(self):
         self.delayDisplay("Test passed")
+
