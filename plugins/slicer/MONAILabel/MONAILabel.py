@@ -1303,7 +1303,7 @@ class MONAILabelWidget(ScriptedLoadableModuleWidget, VTKObservationMixin):
             print(f"Current Path for Image: {image_file} \t Exists Locally=> {local_exists}")
             logging.info(f"Check if file exists/shared locally: {image_file} => {local_exists}")
             FORCE_DOWNLOAD = True
-            USE_PROXY_AS_VOLUME = True
+            USE_PROXY_AS_VOLUME = False
             if local_exists and not FORCE_DOWNLOAD:
                 # Comprable CLI call to load the sequence of images :
                 # slicer.util.loadSequence('/home/iejohnson/Ivan_testing/monai_testing/prostate_testing/sub-DMI10502626_registered_scaled_vector.seq.nrrd')
@@ -1352,10 +1352,10 @@ class MONAILabelWidget(ScriptedLoadableModuleWidget, VTKObservationMixin):
                     self._sequenceBrowserNode = slicer.util.getNode(self._sequenceNode.GetName() + " browser")
                     print(f"Sequence Browser Node Object Was Created \n: {self._sequenceBrowserNode}")
                     if USE_PROXY_AS_VOLUME:
-                        ref_vol = sampleDataLogic.downloadFromURL(
-                            nodeNames=node_name, fileNames=image_name, uris=download_uri, checksums=checksum
-                        )[0]
-                        ref_vol.SetName("reference 4d volume")
+                        # self._volumeNode = sampleDataLogic.downloadFromURL(
+                        #     nodeNames=node_name, fileNames=image_name, uris=download_uri, checksums=checksum
+                        # )[0]
+                        #
 
 
                         self._volumeNode = self._sequenceNode.GetNthDataNode(0) # How is this diffenrent from the proxy node?
