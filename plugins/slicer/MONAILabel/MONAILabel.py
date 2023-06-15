@@ -1359,10 +1359,7 @@ class MONAILabelWidget(ScriptedLoadableModuleWidget, VTKObservationMixin):
 
 
                         self._volumeNode = self._sequenceNode.GetNthDataNode(0) # How is this diffenrent from the proxy node?
-                        self._sequenceNode.SetIndexName("Chanel")
-
-                        self._sequenceNode.SetIndexType("Text")
-                        print(f"Sequence Index info{self._sequenceNode.CopySequenceIndex(self._volumeNode)}")
+                        self._volumeNode.SetName(node_name)
                         #self._volumeNode = self._sequenceBrowserNode.GetProxyNode(self._sequenceNode)
                         self._volumeNode.SetName(node_name)
 
