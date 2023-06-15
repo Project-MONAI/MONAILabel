@@ -16,7 +16,7 @@ from monailabel.interfaces.tasks.infer_v2 import InferType
 from monailabel.tasks.infer.basic_infer import BasicInferTask
 
 
-class SegmentationSamobject(BasicInferTask):
+class SegmentationSam(BasicInferTask):
     """
     This provides Inference Engine for pre-trained SAM segmentation.
     """
@@ -42,7 +42,7 @@ class SegmentationSamobject(BasicInferTask):
         )
 
     def pre_transforms(self, data=None) -> Sequence[Callable]:
-        # TODO: confirm this
+        # TODO: need data loader
         return [
         ]
 

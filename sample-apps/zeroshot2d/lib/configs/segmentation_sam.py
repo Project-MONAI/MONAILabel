@@ -30,7 +30,7 @@ from monailabel.utils.others.generic import download_file, strtobool
 logger = logging.getLogger(__name__)
 
 
-class SegmentationSamobject(TaskConfig):
+class SegmentationSam(TaskConfig):
     def __init__(self):
         super().__init__()
 
@@ -64,7 +64,7 @@ class SegmentationSamobject(TaskConfig):
         )
 
     def infer(self) -> Union[InferTask, Dict[str, InferTask]]:
-        task: InferTask = lib.infers.SegmentationSamobject(
+        task: InferTask = lib.infers.SegmentationSam(
             path=self.path,
             network=self.network,
             target_spacing=self.target_spacing,
@@ -76,7 +76,7 @@ class SegmentationSamobject(TaskConfig):
         output_dir = os.path.join(self.model_dir, self.name)
         load_path = self.path[0] if os.path.exists(self.path[0]) else self.path[1]
 
-        task: TrainTask = lib.trainers.SegmentationSamobject(
+        task: TrainTask = lib.trainers.SegmentationSam(
             model_dir=output_dir,
             network=self.network,
             description="Train SAM (single object) Segmentation Model",
@@ -85,31 +85,3 @@ class SegmentationSamobject(TaskConfig):
             labels=self.labels,
         )
         return task
-
-    def strategy(self) -> Union[None, Strategy, Dict[str, Strategy]]:
-        strategies: Dict[str, Strategy] = {}
-        return strategies
-
-    def scoring_method(self) -> Union[None, ScoringMethod, Dict[str, ScoringMethod]]:
-        methods: Dict[str, ScoringMethod] = {
-            "dice": Dice(),
-            "sum": Sum(),
-        }
-
-        if self.epistemic_enabled:
-            methods[f"{self.name}_epistemic"] = EpistemicScoring(
-                model=self.path,
-                network=SAM(
-                    spatial_dims=3,
-                    in_channels=1,
-                    out_channels=2,
-                    channels=[16, 32, 64, 128, 256],
-                    strides=[2, 2, 2, 2],
-                    num_res_units=2,
-                    norm="batch",
-                    dropout=0.2,
-                ),
-                transforms=lib.infers.SegmentationSpleen(None).pre_transforms(),
-                num_samples=self.epistemic_samples,
-            )
-        return methods
