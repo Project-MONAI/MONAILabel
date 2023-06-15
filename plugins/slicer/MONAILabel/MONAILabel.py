@@ -1245,6 +1245,8 @@ class MONAILabelWidget(ScriptedLoadableModuleWidget, VTKObservationMixin):
          I think the reason ScalarVolume node only has "one Scalar" is because it is the "proxy node" for the SequencebrowserNode
     '''
 
+
+
     def onNextSampleButton(self):
         if not self.logic:
             return
@@ -1303,7 +1305,8 @@ class MONAILabelWidget(ScriptedLoadableModuleWidget, VTKObservationMixin):
             print(f"Current Path for Image: {image_file} \t Exists Locally=> {local_exists}")
             logging.info(f"Check if file exists/shared locally: {image_file} => {local_exists}")
             FORCE_DOWNLOAD = True
-            USE_PROXY_AS_VOLUME = False
+            USE_PROXY_AS_VOLUME = True
+
             if local_exists and not FORCE_DOWNLOAD:
                 # Comprable CLI call to load the sequence of images :
                 # slicer.util.loadSequence('/home/iejohnson/Ivan_testing/monai_testing/prostate_testing/sub-DMI10502626_registered_scaled_vector.seq.nrrd')
@@ -1359,7 +1362,7 @@ class MONAILabelWidget(ScriptedLoadableModuleWidget, VTKObservationMixin):
 
 
                         self._volumeNode = self._sequenceNode.GetNthDataNode(0) # How is this diffenrent from the proxy node?
-                        self._volumeNode.SetName(node_name)
+
                         #self._volumeNode = self._sequenceBrowserNode.GetProxyNode(self._sequenceNode)
                         self._volumeNode.SetName(node_name)
 
@@ -1787,8 +1790,9 @@ class MONAILabelWidget(ScriptedLoadableModuleWidget, VTKObservationMixin):
         if self._segmentNode is None:
             name = "segmentation_" + self._volumeNode.GetName()
             self._segmentNode = slicer.mrmlScene.AddNewNodeByClass("vtkMRMLSegmentationNode")
-            self._segmentNode.SetReferenceImageGeometryParameterFromVolumeNode(self._volumeNode)
             self._segmentNode.SetName(name)
+        self._segmentNode.SetReferenceImageGeometryParameterFromVolumeNode(self._volumeNode)
+
 
     def createScribblesROINode(self):
         if self._volumeNode is None:
