@@ -72,6 +72,7 @@ class Settings(BaseSettings):
         "*.nii.gz",
         "*.nii",
         "*.nrrd",
+        "*.seq.nrrd",
         "*.jpg",
         "*.png",
         "*.tif",
