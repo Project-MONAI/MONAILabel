@@ -15,11 +15,11 @@ import json
 import logging
 import mimetypes
 import os
-import sys
 import pathlib
 import re
 import shutil
 import subprocess
+import sys
 import tempfile
 import time
 from typing import Dict
@@ -388,7 +388,7 @@ def handle_torch_linalg_multithread(req):
         pass
 
 
-def md5_digest(s:str) -> str:
+def md5_digest(s: str) -> str:
     if sys.version_info.minor < 9:
         return hashlib.md5(s.encode("utf-8")).hexdigest()
     return hashlib.md5(s.encode("utf-8"), usedforsecurity=False).hexdigest()

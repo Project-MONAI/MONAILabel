@@ -22,8 +22,8 @@ from monai.data import MetaTensor
 from monai.transforms import Transform
 from monai.utils import ensure_tuple
 
-from monailabel.utils.sessions import Sessions
 from monailabel.utils.others.generic import md5_digest
+from monailabel.utils.sessions import Sessions
 
 logger = logging.getLogger(__name__)
 

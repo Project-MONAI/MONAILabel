@@ -18,7 +18,7 @@ from dicomweb_client import DICOMwebClient
 from pydicom.dataset import Dataset
 from pydicom.filereader import dcmread
 
-from monailabel.utils.others.generic import run_command, md5_digest
+from monailabel.utils.others.generic import md5_digest, run_command
 
 logger = logging.getLogger(__name__)
 
