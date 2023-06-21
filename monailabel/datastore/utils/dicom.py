@@ -11,6 +11,7 @@
 
 import logging
 import os
+import sys
 import time
 from concurrent.futures import ThreadPoolExecutor
 from hashlib import md5
@@ -25,7 +26,12 @@ logger = logging.getLogger(__name__)
 
 
 def generate_key(patient_id: str, study_id: str, series_id: str):
-    return md5(f"{patient_id}+{study_id}+{series_id}".encode(), usedforsecurity=False).hexdigest()
+    key = ""
+    if sys.version_info.minor < 9:
+        key = md5(f"{patient_id}+{study_id}+{series_id}".encode()).hexdigest()
+    else:
+        key = md5(f"{patient_id}+{study_id}+{series_id}".encode(), usedforsecurity=False).hexdigest()
+    return key
 
 
 def get_scu(query, output_dir, query_level="SERIES", host="127.0.0.1", port="4242", aet="MONAILABEL"):
