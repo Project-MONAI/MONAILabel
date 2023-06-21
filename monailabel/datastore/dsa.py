@@ -35,7 +35,7 @@ class DSADatastore(Datastore):
         self.annotation_groups = [a.lower() if a else a for a in annotation_groups] if annotation_groups else []
         self.asset_store_path = asset_store_path
 
-        uri_hash = hashlib.md5(api_url.encode("utf-8")).hexdigest()
+        uri_hash = hashlib.md5(api_url.encode("utf-8"), usedforsecurity=False).hexdigest()
         self.cache_path = (
             os.path.join(cache_path, uri_hash)
             if cache_path
