@@ -190,7 +190,7 @@ class _ui_MONAILabelSettingsPanel:
         if slicer.util.settingsValue("MONAILabel/allowOverlappingSegments", True, converter=slicer.util.toBool):
             if slicer.util.settingsValue("MONAILabel/fileExtension", None) != ".seg.nrrd":
                 slicer.util.warningDisplay(
-                    "Overlapping segmentations are only availabel with the '.seg.nrrd' file extension! "
+                    "Overlapping segmentations are only available with the '.seg.nrrd' file extension! "
                     + "Consider changing MONAILabel file extension."
                 )
 
@@ -664,6 +664,7 @@ class MONAILabelWidget(ScriptedLoadableModuleWidget, VTKObservationMixin):
             self.ui.freezeUpdateCheckBox.show()
             self.ui.dgLabelForeground.setText("Landmarks:")
         else:
+            self.ui.dgLabelBackground.show()
             self.ui.dgNegativeControlPointPlacementWidget.show()
             self.ui.freezeUpdateCheckBox.hide()
             self.ui.dgLabelForeground.setText("Foreground:")

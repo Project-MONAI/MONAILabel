@@ -19,6 +19,8 @@ import pathlib
 import re
 import shutil
 import subprocess
+import sys
+import tempfile
 import time
 from typing import Dict
 
@@ -98,7 +100,7 @@ def init_log_config(log_config, app_dir, log_file, root_level=None):
         default_config = os.path.realpath(os.path.join(default_log_dir, "logging.json"))
 
         log_dir = os.path.join(app_dir, "logs")
-        log_config = os.path.join(log_dir, "logging.json")
+        log_config = tempfile.NamedTemporaryFile(suffix=".json").name
         os.makedirs(log_dir, exist_ok=True)
 
         # if not os.path.exists(log_config):
@@ -384,3 +386,9 @@ def handle_torch_linalg_multithread(req):
             torch.inverse(torch.eye(1, device=req.get("device") if req else None))
     except RuntimeError:
         pass
+
+
+def md5_digest(s: str) -> str:
+    if sys.version_info.minor < 9:
+        return hashlib.md5(s.encode("utf-8")).hexdigest()
+    return hashlib.md5(s.encode("utf-8"), usedforsecurity=False).hexdigest()
