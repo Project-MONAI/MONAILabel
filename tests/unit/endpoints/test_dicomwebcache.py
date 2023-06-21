@@ -64,7 +64,7 @@ class EndPointDICOMWebDatastore(DICOMWebEndpointTestSuite):
 
     @patch("monailabel.interfaces.app.DICOMwebClientX")
     def test_datastore_stats(self, dwc):
-        cache_path = os.path.join(self.data_dir, hashlib.md5(self.studies.encode("utf-8")).hexdigest())
+        cache_path = os.path.join(self.data_dir, hashlib.md5(self.studies.encode("utf-8"), usedforsecurity=False).hexdigest())
         dwc.return_value.base_url = self.studies
         dwc.return_value.search_for_series = lambda **kwargs: search_for_series(self.data_dir, **kwargs)
         dwc.return_value.retrieve_series_metadata = lambda *args, **kwargs: retrieve_series_metadata(
@@ -89,7 +89,7 @@ class EndPointDICOMWebDatastore(DICOMWebEndpointTestSuite):
     def test_datastore_all(self, dicom_web_download_series, dwc):
         dicom_web_download_series.return_value = lambda *args: None
 
-        cache_path = os.path.join(self.data_dir, hashlib.md5(self.studies.encode("utf-8")).hexdigest())
+        cache_path = os.path.join(self.data_dir, hashlib.md5(self.studies.encode("utf-8"), usedforsecurity=False).hexdigest())
         dwc.return_value.base_url = self.studies
         dwc.return_value.search_for_series = lambda **kwargs: search_for_series(self.data_dir, **kwargs)
         dwc.return_value.retrieve_series_metadata = lambda *args, **kwargs: retrieve_series_metadata(
@@ -116,7 +116,7 @@ class EndPointDICOMWebDatastore(DICOMWebEndpointTestSuite):
     def test_save_label(self, dicom_web_download_series, dwc):
         dicom_web_download_series.return_value = lambda *args: None
 
-        cache_path = os.path.join(self.data_dir, hashlib.md5(self.studies.encode("utf-8")).hexdigest())
+        cache_path = os.path.join(self.data_dir, hashlib.md5(self.studies.encode("utf-8"), usedforsecurity=False).hexdigest())
         dwc.return_value.base_url = self.studies
         dwc.return_value.search_for_series = lambda **kwargs: search_for_series(self.data_dir, **kwargs)
         dwc.return_value.retrieve_series_metadata = lambda *args, **kwargs: retrieve_series_metadata(
@@ -148,7 +148,7 @@ class EndPointDICOMWebDatastore(DICOMWebEndpointTestSuite):
     def test_datastore_train(self, dicom_web_download_series, dwc):
         dicom_web_download_series.return_value = lambda *args: None
 
-        cache_path = os.path.join(self.data_dir, hashlib.md5(self.studies.encode("utf-8")).hexdigest())
+        cache_path = os.path.join(self.data_dir, hashlib.md5(self.studies.encode("utf-8"), usedforsecurity=False).hexdigest())
         dwc.return_value.base_url = self.studies
         dwc.return_value.search_for_series = lambda **kwargs: search_for_series(self.data_dir, **kwargs)
         dwc.return_value.retrieve_series_metadata = lambda *args, **kwargs: retrieve_series_metadata(
