@@ -13,9 +13,9 @@ import hashlib
 import io
 import logging
 import os
-import sys
 import pathlib
 import shutil
+import sys
 import time
 from typing import Any, Dict, List, Optional
 from urllib.parse import quote_plus
@@ -41,7 +41,7 @@ class XNATDatastore(Datastore):
         self.projects = project.split(",") if project else []
         self.projects = {p.strip() for p in self.projects}
         self.asset_path = asset_path
-        
+
         uri_hash = ""
         if sys.version_info.minor < 9:
             uri_hash = hashlib.md5(api_url.encode("utf-8")).hexdigest()
