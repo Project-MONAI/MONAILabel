@@ -13,8 +13,8 @@ import copy
 import hashlib
 import logging
 import os
-import sys
 import pathlib
+import sys
 from typing import Hashable, Sequence, Tuple, Union
 
 import torch
@@ -68,12 +68,10 @@ class CacheTransformDatad(Transform):
 
     def load(self, data):
         d = dict(data)
-        
+
         hash_key_prefix = ""
         if sys.version_info.minor < 9:
-            hash_key_prefix = hashlib.md5(
-                "".join([d[k] for k in self.hash_key]).encode("utf-8")
-            ).hexdigest()
+            hash_key_prefix = hashlib.md5("".join([d[k] for k in self.hash_key]).encode("utf-8")).hexdigest()
         else:
             hash_key_prefix = hashlib.md5(
                 "".join([d[k] for k in self.hash_key]).encode("utf-8"), usedforsecurity=False
