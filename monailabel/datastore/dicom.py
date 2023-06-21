@@ -12,6 +12,7 @@
 import hashlib
 import logging
 import os
+import sys
 import pathlib
 import shutil
 from typing import Any, Dict, Iterator, List, Optional, Tuple
@@ -53,7 +54,11 @@ class DICOMWebDatastore(LocalDatastore):
         self._fetch_by_frame = fetch_by_frame
         self._convert_to_nifti = convert_to_nifti
 
-        uri_hash = hashlib.md5(self._client.base_url.encode("utf-8"), usedforsecurity=False).hexdigest()
+        uri_hash = ""
+        if sys.version_info.minor < 9:
+            uri_hash = hashlib.md5(self._client.base_url.encode("utf-8")).hexdigest()
+        else:
+            uri_hash = hashlib.md5(self._client.base_url.encode("utf-8"), usedforsecurity=False).hexdigest()
         datastore_path = (
             os.path.join(cache_path, uri_hash)
             if cache_path
