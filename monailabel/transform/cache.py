@@ -98,7 +98,12 @@ class CacheTransformDatad(Transform):
         d = dict(data)
 
         hash_keys = [d[k] for k in self.hash_key if d.get(k)]
-        hash_key_prefix = hashlib.md5("".join(hash_keys).encode("utf-8"), usedforsecurity=False).hexdigest()
+        hash_key_prefix = ""
+        if sys.version_info.minor < 9:
+            hash_key_prefix = hashlib.md5("".join(hash_keys).encode("utf-8")).hexdigest()
+        else:
+            hash_key_prefix = hashlib.md5("".join(hash_keys).encode("utf-8"), usedforsecurity=False).hexdigest()
+
         if len(hash_keys) != len(self.hash_key):
             logger.warning(f"Ignore caching; Missing hash keys;  Found: {hash_keys}; Expected: {self.hash_key}")
             return d
