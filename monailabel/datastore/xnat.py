@@ -13,6 +13,7 @@ import hashlib
 import io
 import logging
 import os
+import sys
 import pathlib
 import shutil
 import time
@@ -40,8 +41,12 @@ class XNATDatastore(Datastore):
         self.projects = project.split(",") if project else []
         self.projects = {p.strip() for p in self.projects}
         self.asset_path = asset_path
-
-        uri_hash = hashlib.md5(api_url.encode("utf-8"), usedforsecurity=False).hexdigest()
+        
+        uri_hash = ""
+        if sys.version_info.minor < 9:
+            uri_hash = hashlib.md5(api_url.encode("utf-8")).hexdigest()
+        else:
+            uri_hash = hashlib.md5(api_url.encode("utf-8"), usedforsecurity=False).hexdigest()
         cache_path = cache_path.strip() if cache_path else ""
         self.cache_path = (
             os.path.join(cache_path, uri_hash)
