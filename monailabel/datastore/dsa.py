@@ -12,8 +12,8 @@
 import hashlib
 import logging
 import os
-import sys
 import pathlib
+import sys
 from io import BytesIO
 from pathlib import Path
 from typing import Any, Dict, List, Optional
