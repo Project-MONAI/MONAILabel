@@ -53,7 +53,7 @@ class DICOMWebDatastore(LocalDatastore):
         self._fetch_by_frame = fetch_by_frame
         self._convert_to_nifti = convert_to_nifti
 
-        uri_hash = hashlib.md5(self._client.base_url.encode("utf-8")).hexdigest()
+        uri_hash = hashlib.md5(self._client.base_url.encode("utf-8"), usedforsecurity=False).hexdigest()
         datastore_path = (
             os.path.join(cache_path, uri_hash)
             if cache_path
