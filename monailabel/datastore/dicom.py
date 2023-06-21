@@ -222,18 +222,29 @@ class DICOMWebDatastore(LocalDatastore):
                 str(seg["StudyInstanceUID"].value), str(seg["SeriesInstanceUID"].value)
             )
             seg_meta = Dataset.from_json(meta[0])
-            if not seg_meta.get("ReferencedSeriesSequence"):
-                logger.warning(
-                    f"Label Ignored:: ReferencedSeriesSequence is NOT found: {str(seg['SeriesInstanceUID'].value)}"
+            if seg_meta.get("ReferencedSeriesSequence"):
+                referenced_series_instance_uid = str(
+                    seg_meta["ReferencedSeriesSequence"].value[0]["SeriesInstanceUID"].value
                 )
-                continue
-
-            image_labels.append(
-                {
-                    "image": str(seg_meta["ReferencedSeriesSequence"].value[0]["SeriesInstanceUID"].value),
-                    "label": str(seg["SeriesInstanceUID"].value),
-                }
-            )
+                if referenced_series_instance_uid in self.list_images():
+                    image_labels.append(
+                        {
+                            "image": str(seg_meta["ReferencedSeriesSequence"].value[0]["SeriesInstanceUID"].value),
+                            "label": str(seg["SeriesInstanceUID"].value),
+                        }
+                    )
+                else:
+                    logger.warning(
+                        "Label Ignored:: ReferencedSeriesSequence is NOT in filtered image list: {}".format(
+                            str(seg["SeriesInstanceUID"].value)
+                        )
+                    )
+            else:
+                logger.warning(
+                    "Label Ignored:: ReferencedSeriesSequence is NOT found: {}".format(
+                        str(seg["SeriesInstanceUID"].value)
+                    )
+                )
 
         invalid = set(super().get_labeled_images()) - {image_label["image"] for image_label in image_labels}
         logger.info(f"Invalid Labels: {invalid}")
