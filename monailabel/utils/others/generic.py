@@ -15,6 +15,7 @@ import json
 import logging
 import mimetypes
 import os
+import sys
 import pathlib
 import re
 import shutil
@@ -385,3 +386,9 @@ def handle_torch_linalg_multithread(req):
             torch.inverse(torch.eye(1, device=req.get("device") if req else None))
     except RuntimeError:
         pass
+
+
+def md5_digest(s:str) -> str:
+    if sys.version_info.minor < 9:
+        return hashlib.md5(s.encode("utf-8")).hexdigest()
+    return hashlib.md5(s.encode("utf-8"), usedforsecurity=False).hexdigest()

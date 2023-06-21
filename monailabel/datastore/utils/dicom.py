@@ -11,27 +11,20 @@
 
 import logging
 import os
-import sys
 import time
 from concurrent.futures import ThreadPoolExecutor
-from hashlib import md5
 
 from dicomweb_client import DICOMwebClient
 from pydicom.dataset import Dataset
 from pydicom.filereader import dcmread
 
-from monailabel.utils.others.generic import run_command
+from monailabel.utils.others.generic import run_command, md5_digest
 
 logger = logging.getLogger(__name__)
 
 
 def generate_key(patient_id: str, study_id: str, series_id: str):
-    key = ""
-    if sys.version_info.minor < 9:
-        key = md5(f"{patient_id}+{study_id}+{series_id}".encode()).hexdigest()
-    else:
-        key = md5(f"{patient_id}+{study_id}+{series_id}".encode(), usedforsecurity=False).hexdigest()
-    return key
+    return md5_digest(f"{patient_id}+{study_id}+{series_id}")
 
 
 def get_scu(query, output_dir, query_level="SERIES", host="127.0.0.1", port="4242", aet="MONAILABEL"):

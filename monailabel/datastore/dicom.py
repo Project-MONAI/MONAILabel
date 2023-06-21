@@ -9,12 +9,10 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-import hashlib
 import logging
 import os
 import pathlib
 import shutil
-import sys
 from typing import Any, Dict, Iterator, List, Optional, Tuple
 
 import requests
@@ -27,6 +25,7 @@ from monailabel.datastore.local import LocalDatastore
 from monailabel.datastore.utils.convert import binary_to_image, dicom_to_nifti, nifti_to_dicom_seg
 from monailabel.datastore.utils.dicom import dicom_web_download_series, dicom_web_upload_dcm
 from monailabel.interfaces.datastore import DefaultLabelTag
+from monailabel.utils.others.generic import md5_digest
 
 logger = logging.getLogger(__name__)
 
@@ -54,11 +53,7 @@ class DICOMWebDatastore(LocalDatastore):
         self._fetch_by_frame = fetch_by_frame
         self._convert_to_nifti = convert_to_nifti
 
-        uri_hash = ""
-        if sys.version_info.minor < 9:
-            uri_hash = hashlib.md5(self._client.base_url.encode("utf-8")).hexdigest()
-        else:
-            uri_hash = hashlib.md5(self._client.base_url.encode("utf-8"), usedforsecurity=False).hexdigest()
+        uri_hash = md5_digest(self._client.base_url)
         datastore_path = (
             os.path.join(cache_path, uri_hash)
             if cache_path
