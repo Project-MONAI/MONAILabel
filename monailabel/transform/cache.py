@@ -13,6 +13,7 @@ import copy
 import hashlib
 import logging
 import os
+import sys
 import pathlib
 from typing import Hashable, Sequence, Tuple, Union
 
@@ -67,9 +68,16 @@ class CacheTransformDatad(Transform):
 
     def load(self, data):
         d = dict(data)
-        hash_key_prefix = hashlib.md5(
-            "".join([d[k] for k in self.hash_key]).encode("utf-8"), usedforsecurity=False
-        ).hexdigest()
+        
+        hash_key_prefix = ""
+        if sys.version_info.minor < 9:
+            hash_key_prefix = hashlib.md5(
+                "".join([d[k] for k in self.hash_key]).encode("utf-8")
+            ).hexdigest()
+        else:
+            hash_key_prefix = hashlib.md5(
+                "".join([d[k] for k in self.hash_key]).encode("utf-8"), usedforsecurity=False
+            ).hexdigest()
 
         # full dictionary
         if not self.keys:
