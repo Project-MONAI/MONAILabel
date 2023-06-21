@@ -12,9 +12,9 @@
 import hashlib
 import logging
 import os
-import sys
 import pathlib
 import shutil
+import sys
 from typing import Any, Dict, Iterator, List, Optional, Tuple
 
 import requests
