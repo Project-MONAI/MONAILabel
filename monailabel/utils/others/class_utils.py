@@ -10,7 +10,6 @@
 # limitations under the License.
 
 import glob
-import hashlib
 import importlib.util
 import inspect
 import logging
