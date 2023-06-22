@@ -15,6 +15,9 @@ import torch
 from monai.apps.deepedit.transforms import NormalizeLabelsInDatasetd
 from monai.inferers import SimpleInferer
 from monai.losses import DiceCELoss
+from monai.transforms import (
+    LoadImaged
+)
 
 from monailabel.tasks.train.basic_train import BasicTrainTask, Context
 
@@ -42,8 +45,8 @@ class SegmentationSam(BasicTrainTask):
         return DiceCELoss(sigmoid=True, squared_pred=True, reduction='mean')
 
     def train_pre_transforms(self, context: Context):
-        # TODO: need data loader
         return [
+            LoadImaged(keys=("image", "label"))
         ]
 
     def train_post_transforms(self, context: Context):
@@ -52,6 +55,7 @@ class SegmentationSam(BasicTrainTask):
 
     def val_pre_transforms(self, context: Context):
         return [
+            LoadImaged(keys=("image", "label"))
         ]
 
     def val_inferer(self, context: Context):

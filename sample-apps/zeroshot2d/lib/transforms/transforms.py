@@ -8,3 +8,21 @@
 # WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 # See the License for the specific language governing permissions and
 # limitations under the License.
+
+from monai.transforms import (
+    Transform
+)
+
+class SAMTransform(Transform):
+    """
+    Resize longestside (from segment_anything.utils.transforms import ResizeLongestSide
+    ??? Looks like the transform is in preprocessing. Not needed in training and inferring
+    """
+    def __init__(self):
+        return
+
+    def __call__(self, filename):
+        """
+        filename: data path, containing npy_gts and npy_embs, following MedSAM convention
+        """
+        return

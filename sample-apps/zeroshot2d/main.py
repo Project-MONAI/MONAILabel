@@ -77,12 +77,6 @@ class MyApp(MONAILabelApp):
             print("")
             exit(-1)
 
-        # Use Heuristic Planner to determine target spacing and spatial size based on dataset+gpu
-        spatial_size = json.loads(conf.get("spatial_size", "[48, 48, 32]"))
-        target_spacing = json.loads(conf.get("target_spacing", "[1.0, 1.0, 1.0]"))
-        self.heuristic_planner = strtobool(conf.get("heuristic_planner", "false"))
-        self.planner = HeuristicPlanner(spatial_size=spatial_size, target_spacing=target_spacing)
-
         # app models
         self.models: Dict[str, TaskConfig] = {}
         for n in models:
@@ -106,11 +100,18 @@ class MyApp(MONAILabelApp):
             description="DeepLearning models for radiology",
             version=monailabel.__version__,
         )
+    
+    def SAM_data_preprocessing(self):
+        # TODO: embeddings
+        # TODO: do the ResizeLongestSide
+        return
 
     def init_datastore(self) -> Datastore:
+        
         datastore = super().init_datastore()
-        if self.heuristic_planner:
-            self.planner.run(datastore)
+        datastore.extensions=("*.nii.gz", "*.nii", "*.npz")
+        # TODO: do the ResizeLongestSide
+        self.SAM_data_preprocessing()
         return datastore
 
     def init_infers(self) -> Dict[str, InferTask]:

@@ -12,9 +12,12 @@
 from typing import Callable, Sequence
 
 from monai.inferers import Inferer, SimpleInferer
+from monai.transforms import (
+    LoadImaged
+)
 from monailabel.interfaces.tasks.infer_v2 import InferType
 from monailabel.tasks.infer.basic_infer import BasicInferTask
-
+from lib.transforms.transforms import SAMTransform
 
 class SegmentationSam(BasicInferTask):
     """
@@ -42,8 +45,8 @@ class SegmentationSam(BasicInferTask):
         )
 
     def pre_transforms(self, data=None) -> Sequence[Callable]:
-        # TODO: need data loader
         return [
+            LoadImaged(keys="image"),
         ]
 
     def inferer(self, data=None) -> Inferer:
