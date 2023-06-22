@@ -9,7 +9,6 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-import hashlib
 import io
 import logging
 import os
@@ -24,6 +23,7 @@ import requests
 from requests.auth import HTTPBasicAuth
 
 from monailabel.interfaces.datastore import Datastore
+from monailabel.utils.others.generic import md5_digest
 
 logger = logging.getLogger(__name__)
 xnat_ns = {"xnat": "http://nrg.wustl.edu/xnat"}
@@ -41,7 +41,7 @@ class XNATDatastore(Datastore):
         self.projects = {p.strip() for p in self.projects}
         self.asset_path = asset_path
 
-        uri_hash = hashlib.md5(api_url.encode("utf-8")).hexdigest()
+        uri_hash = md5_digest(api_url)
         cache_path = cache_path.strip() if cache_path else ""
         self.cache_path = (
             os.path.join(cache_path, uri_hash)

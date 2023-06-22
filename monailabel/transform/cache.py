@@ -10,7 +10,6 @@
 # limitations under the License.
 
 import copy
-import hashlib
 import logging
 import os
 import pathlib
@@ -23,6 +22,7 @@ from monai.data import MetaTensor
 from monai.transforms import Transform
 from monai.utils import ensure_tuple
 
+from monailabel.utils.others.generic import md5_digest
 from monailabel.utils.sessions import Sessions
 
 logger = logging.getLogger(__name__)
@@ -67,7 +67,8 @@ class CacheTransformDatad(Transform):
 
     def load(self, data):
         d = dict(data)
-        hash_key_prefix = hashlib.md5("".join([d[k] for k in self.hash_key]).encode("utf-8")).hexdigest()
+
+        hash_key_prefix = md5_digest("".join([d[k] for k in self.hash_key]))
 
         # full dictionary
         if not self.keys:
@@ -90,7 +91,8 @@ class CacheTransformDatad(Transform):
         d = dict(data)
 
         hash_keys = [d[k] for k in self.hash_key if d.get(k)]
-        hash_key_prefix = hashlib.md5("".join(hash_keys).encode("utf-8")).hexdigest()
+        hash_key_prefix = md5_digest("".join(hash_keys))
+
         if len(hash_keys) != len(self.hash_key):
             logger.warning(f"Ignore caching; Missing hash keys;  Found: {hash_keys}; Expected: {self.hash_key}")
             return d
