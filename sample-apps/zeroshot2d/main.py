@@ -38,6 +38,18 @@ from monailabel.utils.others.class_utils import get_class_names
 from monailabel.utils.others.generic import get_bundle_models, strtobool
 from monailabel.utils.others.planner import HeuristicPlanner
 
+# SAM processing
+import SimpleITK as sitk
+import numpy as np
+from skimage import transform
+from segment_anything.utils.transforms import ResizeLongestSide
+import torch
+# note: this import is only for preprocessing.
+# training and inferring use SAM class in MONAI
+# TODO: optimize
+from segment_anything import sam_model_registry 
+from tqdm import tqdm
+
 logger = logging.getLogger(__name__)
 
 
@@ -102,18 +114,17 @@ class MyApp(MONAILabelApp):
         )
     
     def SAM_data_preprocessing(self):
+
         # TODO: embeddings
+        # TODO: move to a lib class 
         def preprocess_ct(gt_path, nii_path, gt_name, image_name, label_id, image_size, sam_model, device):
-            gt_sitk = sitk.ReadImage(join(gt_path, gt_name))
+            gt_sitk = sitk.ReadImage(os.path.join(gt_path, gt_name))
             gt_data = sitk.GetArrayFromImage(gt_sitk)
             gt_data = np.uint8(gt_data==label_id)
-
             if np.sum(gt_data)>1000:
-                imgs = []
-                gts =  []
-                img_embeddings = []
+                imgs, gts, img_embeddings = [], [], []
                 assert np.max(gt_data)==1 and np.unique(gt_data).shape[0]==2, 'ground truth should be binary'
-                img_sitk = sitk.ReadImage(join(nii_path, image_name))
+                img_sitk = sitk.ReadImage(os.path.join(nii_path, image_name))
                 image_data = sitk.GetArrayFromImage(img_sitk)
                 # nii preprocess start
                 lower_bound = -500
@@ -122,10 +133,8 @@ class MyApp(MONAILabelApp):
                 image_data_pre = (image_data_pre - np.min(image_data_pre))/(np.max(image_data_pre)-np.min(image_data_pre))*255.0
                 image_data_pre[image_data==0] = 0
                 image_data_pre = np.uint8(image_data_pre)
-                
                 z_index, _, _ = np.where(gt_data>0)
                 z_min, z_max = np.min(z_index), np.max(z_index)
-                
                 for i in range(z_min, z_max):
                     gt_slice_i = gt_data[i,:,:]
                     gt_slice_i = transform.resize(gt_slice_i, (image_size, image_size), order=0, preserve_range=True, mode='constant', anti_aliasing=True)
@@ -153,14 +162,27 @@ class MyApp(MONAILabelApp):
                                 img_embeddings.append(embedding.cpu().numpy()[0])
             return imgs, gts, img_embeddings
         
-        #%% prepare the save path
-        save_path_tr = join(args.npz_path, prefix, 'train')
-        save_path_ts = join(args.npz_path, prefix, 'test')
+        # prepare the save path
+        # TODO: set path following monai label app convent
+        save_path_tr = os.path.join( ... ) # train
+        save_path_ts = os.path.join( ... ) # test
         os.makedirs(save_path_tr, exist_ok=True)
         os.makedirs(save_path_ts, exist_ok=True)
 
-        #%% set up the model
-        sam_model = sam_model_registry[args.model_type](checkpoint=args.checkpoint).to(args.device)
+        # set up the model
+        # TODO: set model type following monai label app convent
+        sam_model = sam_model_registry[ ... ](checkpoint= ... ).to( ... )
+
+        # TODO: follow monai label division. (if any? I didn't see)
+        # split names into training and testing
+        prefix = args.modality + '_' + args.anatomy
+        names = sorted(os.listdir(args.gt_path))
+        names = [name for name in names if not os.path.exists(join(args.npz_path, prefix + '_' + name.split('.nii.gz')[0]+'.npz'))]
+        names = [name for name in names if os.path.exists(join(args.nii_path, name.split('.nii.gz')[0] + args.img_name_suffix))]
+        np.random.seed( ... )
+        np.random.shuffle(names)
+        train_names = sorted(names[:int(len(names)*0.8)])
+        test_names = sorted(names[int(len(names)*0.8):])
 
         for name in tqdm(train_names):
             image_name = name.split('.nii.gz')[0] + args.img_name_suffix
@@ -172,7 +194,7 @@ class MyApp(MONAILabelApp):
                 imgs = np.stack(imgs, axis=0) # (n, 256, 256, 3)
                 gts = np.stack(gts, axis=0) # (n, 256, 256)
                 img_embeddings = np.stack(img_embeddings, axis=0) # (n, 1, 256, 64, 64)
-                np.savez_compressed(join(save_path_tr, prefix + '_' + gt_name.split('.nii.gz')[0]+'.npz'), imgs=imgs, gts=gts, img_embeddings=img_embeddings)
+                np.savez_compressed(os.path.join(save_path_tr, prefix + '_' + gt_name.split('.nii.gz')[0]+'.npz'), imgs=imgs, gts=gts, img_embeddings=img_embeddings)
                 # save an example image for sanity check
                 idx = np.random.randint(0, imgs.shape[0])
                 img_idx = imgs[idx,:,:,:]
@@ -191,7 +213,7 @@ class MyApp(MONAILabelApp):
                 imgs = np.stack(imgs, axis=0) # (n, 256, 256, 3)
                 gts = np.stack(gts, axis=0) # (n, 256, 256)
                 img_embeddings = np.stack(img_embeddings, axis=0) # (n, 1, 256, 64, 64)
-                np.savez_compressed(join(save_path_ts, prefix + '_' + gt_name.split('.nii.gz')[0]+'.npz'), imgs=imgs, gts=gts)
+                np.savez_compressed(os.path.join(save_path_ts, prefix + '_' + gt_name.split('.nii.gz')[0]+'.npz'), imgs=imgs, gts=gts)
                 # save an example image for sanity check
                 idx = np.random.randint(0, imgs.shape[0])
                 img_idx = imgs[idx,:,:,:]
@@ -200,7 +222,6 @@ class MyApp(MONAILabelApp):
                 img_idx[bd, :] = [255, 0, 0]
                 io.imsave(save_path_ts + '.png', img_idx, check_contrast=False)
 
-        # TODO: do the ResizeLongestSide
         return
 
     def init_datastore(self) -> Datastore:
