@@ -41,7 +41,7 @@ from monailabel.utils.others.planner import HeuristicPlanner
 # SAM processing
 import SimpleITK as sitk
 import numpy as np
-from skimage import transform
+from skimage import transform, segmentation
 from segment_anything.utils.transforms import ResizeLongestSide
 import torch
 # note: this import is only for preprocessing.
@@ -117,6 +117,7 @@ class MyApp(MONAILabelApp):
 
         # TODO: embeddings
         # TODO: move to a lib class 
+        # TODO: determine config location: pass in arguements, interface/config.py or use app config (Config class)
         def preprocess_ct(gt_path, nii_path, gt_name, image_name, label_id, image_size, sam_model, device):
             gt_sitk = sitk.ReadImage(os.path.join(gt_path, gt_name))
             gt_data = sitk.GetArrayFromImage(gt_sitk)
@@ -160,8 +161,11 @@ class MyApp(MONAILabelApp):
                             with torch.no_grad():
                                 embedding = sam_model.image_encoder(input_image)
                                 img_embeddings.append(embedding.cpu().numpy()[0])
-            return imgs, gts, img_embeddings
-        
+            if sam_model is not None:
+                return imgs, gts, img_embeddings
+            else:
+                return imgs, gts
+            
         # prepare the save path
         # TODO: set path following monai label app convent
         save_path_tr = os.path.join( ... ) # train
@@ -188,7 +192,7 @@ class MyApp(MONAILabelApp):
             image_name = name.split('.nii.gz')[0] + args.img_name_suffix
             gt_name = name 
             imgs, gts, img_embeddings = preprocess_ct(args.gt_path, args.nii_path, gt_name, image_name, args.label_id, args.image_size, sam_model, args.device)
-            #%% save to npz file
+            # save to npz file
             # stack the list to array
             if len(imgs)>1:
                 imgs = np.stack(imgs, axis=0) # (n, 256, 256, 3)
@@ -208,7 +212,7 @@ class MyApp(MONAILabelApp):
             image_name = name.split('.nii.gz')[0] + args.img_name_suffix
             gt_name = name 
             imgs, gts = preprocess_ct(args.gt_path, args.nii_path, gt_name, image_name, args.label_id, args.image_size, sam_model=None, device=args.device)
-            #%% save to npz file
+            # save to npz file
             if len(imgs)>1:
                 imgs = np.stack(imgs, axis=0) # (n, 256, 256, 3)
                 gts = np.stack(gts, axis=0) # (n, 256, 256)
