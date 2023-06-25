@@ -8,9 +8,11 @@
 # WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 # See the License for the specific language governing permissions and
 # limitations under the License.
+from typing import Dict
 
 from monai.transforms import (
-    Transform
+    Transform,
+    MapTransform
 )
 
 class SAMTransform(Transform):
@@ -26,3 +28,14 @@ class SAMTransform(Transform):
         filename: data path, containing npy_gts and npy_embs, following MedSAM convention
         """
         return
+
+class ToCheck(MapTransform):
+    """
+    Check dictionary
+
+    """
+
+    def __call__(self, data):
+        d: Dict = dict(data)
+        print('this is d')
+        return d

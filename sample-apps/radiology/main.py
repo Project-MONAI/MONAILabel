@@ -15,6 +15,7 @@ import os
 from typing import Dict
 
 import lib.configs
+from lib.configs.sam_embeddings import SAMEmbeddings
 from lib.activelearning import Last
 from lib.infers.deepgrow_pipeline import InferDeepgrowPipeline
 from lib.infers.vertebra_pipeline import InferVertebraPipeline
@@ -82,6 +83,7 @@ class MyApp(MONAILabelApp):
         target_spacing = json.loads(conf.get("target_spacing", "[1.0, 1.0, 1.0]"))
         self.heuristic_planner = strtobool(conf.get("heuristic_planner", "false"))
         self.planner = HeuristicPlanner(spatial_size=spatial_size, target_spacing=target_spacing)
+        self.sam_embeddings = SAMEmbeddings(checkpoint='/home/andres/Documents/workspace/disk-workspace/SAM/MONAILabel/sample-apps/radiology/model/sam/sam_vit_b_01ec64.pth')
 
         # app models
         self.models: Dict[str, TaskConfig] = {}
@@ -111,6 +113,8 @@ class MyApp(MONAILabelApp):
         datastore = super().init_datastore()
         if self.heuristic_planner:
             self.planner.run(datastore)
+        # Create SAM embeddings
+        self.sam_embeddings.run(datastore)
         return datastore
 
     def init_infers(self) -> Dict[str, InferTask]:
@@ -283,11 +287,11 @@ def main():
     )
 
     home = str(Path.home())
-    studies = f"{home}/Dataset/Radiology"
+    studies = "/home/andres/Downloads/sam-dataset/monailabel/"
 
     parser = argparse.ArgumentParser()
     parser.add_argument("-s", "--studies", default=studies)
-    parser.add_argument("-m", "--model", default="segmentation_spleen")
+    parser.add_argument("-m", "--model", default="segmentation")
     parser.add_argument("-t", "--test", default="infer", choices=("train", "infer"))
     args = parser.parse_args()
 
