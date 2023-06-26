@@ -10,7 +10,7 @@
 # limitations under the License.
 
 from typing import Callable, Sequence
-
+import os
 from monai.inferers import Inferer, SlidingWindowInferer
 from monai.transforms import (
     Activationsd,
@@ -29,6 +29,8 @@ from monai.transforms import (
 from monailabel.interfaces.tasks.infer_v2 import InferType
 from monailabel.tasks.infer.basic_infer import BasicInferTask
 from monailabel.transform.post import Restored
+from lib.transforms.transforms import SAMTransform, ToCheck
+from lib.segment_anything import sam_model_registry
 
 
 class Segmentation(BasicInferTask):
@@ -57,12 +59,17 @@ class Segmentation(BasicInferTask):
             **kwargs,
         )
         self.target_spacing = target_spacing
+        self.model_type = 'vit_b'
+        self.checkpoint = os.path.split(path[0])[0] + '/sam/sam_vit_b_01ec64.pth'
+        self.sam_model = sam_model_registry[self.model_type](checkpoint=self.checkpoint).to('cuda:0')
 
     def pre_transforms(self, data=None) -> Sequence[Callable]:
         t = [
             LoadImaged(keys="image"),
             EnsureTyped(keys="image", device=data.get("device") if data else None),
             EnsureChannelFirstd(keys="image"),
+            SAMTransform(keys="image", sam_model=self.sam_model, device=data.get("device") if data else None),
+            ToCheck(keys="image"),
             Orientationd(keys="image", axcodes="RAS"),
             Spacingd(keys="image", pixdim=self.target_spacing, allow_missing_keys=True),
             NormalizeIntensityd(keys="image", nonzero=True),

@@ -83,7 +83,7 @@ class MyApp(MONAILabelApp):
         target_spacing = json.loads(conf.get("target_spacing", "[1.0, 1.0, 1.0]"))
         self.heuristic_planner = strtobool(conf.get("heuristic_planner", "false"))
         self.planner = HeuristicPlanner(spatial_size=spatial_size, target_spacing=target_spacing)
-        self.sam_embeddings = SAMEmbeddings(checkpoint='/home/andres/Documents/workspace/disk-workspace/SAM/MONAILabel/sample-apps/radiology/model/sam/sam_vit_b_01ec64.pth')
+        self.sam_embeddings = SAMEmbeddings(checkpoint=os.path.join(app_dir, 'model/sam/sam_vit_b_01ec64.pth'))
 
         # app models
         self.models: Dict[str, TaskConfig] = {}
@@ -114,7 +114,7 @@ class MyApp(MONAILabelApp):
         if self.heuristic_planner:
             self.planner.run(datastore)
         # Create SAM embeddings
-        self.sam_embeddings.run(datastore)
+        self.sam_embeddings.run(datastore, label_id=5)
         return datastore
 
     def init_infers(self) -> Dict[str, InferTask]:
