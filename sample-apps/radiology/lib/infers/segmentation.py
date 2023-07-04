@@ -17,12 +17,10 @@ from monai.transforms import (
     AsDiscreted,
     EnsureChannelFirstd,
     EnsureTyped,
-    GaussianSmoothd,
     KeepLargestConnectedComponentd,
     LoadImaged,
-    NormalizeIntensityd,
     Orientationd,
-    ScaleIntensityd,
+    ScaleIntensityRanged,
     Spacingd,
 )
 
@@ -65,9 +63,10 @@ class Segmentation(BasicInferTask):
             EnsureChannelFirstd(keys="image"),
             Orientationd(keys="image", axcodes="RAS"),
             Spacingd(keys="image", pixdim=self.target_spacing, allow_missing_keys=True),
-            NormalizeIntensityd(keys="image", nonzero=True),
-            GaussianSmoothd(keys="image", sigma=0.4),
-            ScaleIntensityd(keys="image", minv=-1.0, maxv=1.0),
+            ScaleIntensityRanged(keys="image", a_min=-30, a_max=300, b_min=0.0, b_max=1.0, clip=True),
+            # NormalizeIntensityd(keys="image", nonzero=True),
+            # GaussianSmoothd(keys="image", sigma=0.4),
+            # ScaleIntensityd(keys="image", minv=-1.0, maxv=1.0),
         ]
         return t
 

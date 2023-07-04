@@ -15,7 +15,7 @@ from typing import Any, Dict, Optional, Union
 
 import lib.infers
 import lib.trainers
-from monai.networks.nets import SegResNet
+from monai.networks.nets import UNet
 from monai.utils import optional_import
 
 from monailabel.interfaces.config import TaskConfig
@@ -35,31 +35,8 @@ class Segmentation(TaskConfig):
 
         # Labels
         self.labels = {
-            "spleen": 1,
-            "kidney_right": 2,
-            "kidney_left": 3,
-            "gallbladder": 4,
-            "liver": 5,
-            "stomach": 6,
-            "aorta": 7,
-            "inferior_vena_cava": 8,
-            "portal_vein_and_splenic_vein": 9,
-            "pancreas": 10,
-            "adrenal_gland_right": 11,
-            "adrenal_gland_left": 12,
-            "lung_upper_lobe_left": 13,
-            "lung_lower_lobe_left": 14,
-            "lung_upper_lobe_right": 15,
-            "lung_middle_lobe_right": 16,
-            "lung_lower_lobe_right": 17,
-            "esophagus": 42,
-            "trachea": 43,
-            "heart_myocardium": 44,
-            "heart_atrium_left": 45,
-            "heart_ventricle_left": 46,
-            "heart_atrium_right": 47,
-            "heart_ventricle_right": 48,
-            "pulmonary_artery": 49,
+            "kidney": 1,
+            "kidney_tumor": 2,
         }
 
         # Model Files
@@ -69,24 +46,34 @@ class Segmentation(TaskConfig):
         ]
 
         # Download PreTrained Model
-        if strtobool(self.conf.get("use_pretrained_model", "true")):
+        if strtobool(self.conf.get("use_pretrained_model", "false")):
             url = f"{self.conf.get('pretrained_path', self.PRE_TRAINED_PATH)}"
             url = f"{url}/radiology_segmentation_segresnet_multilabel.pt"
             download_file(url, self.path[0])
 
-        self.target_spacing = (1.5, 1.5, 1.5)  # target space for image
+        self.target_spacing = (1.0, 1.0, 1.0)  # target space for image
         # Setting ROI size - This is for the image padding
-        self.roi_size = (96, 96, 96)
+        self.roi_size = (64, 64, 64)
 
         # Network
-        self.network = SegResNet(
+        # self.network = SegResNet(
+        #     spatial_dims=3,
+        #     in_channels=1,
+        #     out_channels=len(self.labels) + 1,  # labels plus background,
+        #     init_filters=32,
+        #     blocks_down=(1, 2, 2, 4),
+        #     blocks_up=(1, 1, 1),
+        #     dropout_prob=0.2,
+        # )
+
+        self.network = UNet(
             spatial_dims=3,
             in_channels=1,
-            out_channels=len(self.labels) + 1,  # labels plus background,
-            init_filters=32,
-            blocks_down=(1, 2, 2, 4),
-            blocks_up=(1, 1, 1),
-            dropout_prob=0.2,
+            out_channels=len(self.labels) + 1,  # labels plus background,,
+            channels=[16, 32, 64, 128, 256],
+            strides=[2, 2, 2, 2],
+            num_res_units=2,
+            norm="batch",
         )
 
     def infer(self) -> Union[InferTask, Dict[str, InferTask]]:
