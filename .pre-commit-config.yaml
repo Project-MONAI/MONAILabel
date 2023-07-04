@@ -66,14 +66,14 @@ repos:
     args: ["--count", "--statistics", "--config=setup.cfg"]
 
 - repo: https://github.com/pre-commit/mirrors-mypy
-  rev: v1.1.1
+  rev: v1.4.1
   hooks:
   - id: mypy
     exclude: (^tests/|^plugins/)
     additional_dependencies: [types-PyYAML,types-filelock,types-requests,types-docutils,types-cachetools]
 
 - repo: https://github.com/asottile/pyupgrade
-  rev: v3.3.1
+  rev: v3.8.0
   hooks:
   -   id: pyupgrade
       args: [--py37-plus]
