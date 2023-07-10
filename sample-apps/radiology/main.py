@@ -18,6 +18,7 @@ import lib.configs
 from lib.activelearning import Last
 from lib.infers.deepgrow_pipeline import InferDeepgrowPipeline
 from lib.infers.vertebra_pipeline import InferVertebraPipeline
+from lib.infers.kidney_pipeline import InferKidneyPipeline
 
 import monailabel
 from monailabel.interfaces.app import MONAILabelApp
@@ -188,6 +189,24 @@ class MyApp(MONAILabelApp):
                 task_seg_vertebra=infers["segmentation_vertebra"],  # third stage
                 description="Combines three stage for vertebra segmentation",
             )
+
+
+        #################################################
+        # Pipeline based on existing infers for kidney and kidney tumor segmentation
+        # Stages:
+        # 1/ whole body CT segmentation
+        # 2/ kidney tumor segmentation
+        #################################################
+        if (
+            infers.get("segmentation")
+            and infers.get("kidney_tumor_segmentation")
+        ):
+            infers["kidney_pipeline"] = InferKidneyPipeline(
+                task_seg=infers["segmentation"],  # first stage
+                task_seg_tumor=infers["kidney_tumor_segmentation"],  # second stage
+                description="Combines two stages for kidney and kidney tumor segmentation",
+            )
+
         logger.info(infers)
         return infers
 
@@ -283,11 +302,12 @@ def main():
     )
 
     home = str(Path.home())
-    studies = f"{home}/Dataset/Radiology"
+    # studies = "/home/andres/Documents/workspace/disk-workspace/DatasetsMore/kidneyData/kits19-master/monailabel/"
+    studies = "/home/andres/Documents/workspace/disk-workspace/DatasetsMore/kidneyData/kits19-master/smallSampleMONAILabel/"
 
     parser = argparse.ArgumentParser()
     parser.add_argument("-s", "--studies", default=studies)
-    parser.add_argument("-m", "--model", default="segmentation_spleen")
+    parser.add_argument("-m", "--model", default="segmentation,kidney_tumor_segmentation")
     parser.add_argument("-t", "--test", default="infer", choices=("train", "infer"))
     args = parser.parse_args()
 
@@ -308,10 +328,10 @@ def main():
 
         # Run on all devices
         for device in device_list():
-            res = app.infer(request={"model": args.model, "image": image_id, "device": device})
-            # res = app.infer(
-            #     request={"model": "vertebra_pipeline", "image": image_id, "device": device, "slicer": False}
-            # )
+            # res = app.infer(request={"model": args.model, "image": image_id, "device": device})
+            res = app.infer(
+                request={"model": "kidney_pipeline", "image": image_id, "device": device, "slicer": False}
+            )
             label = res["file"]
             label_json = res["params"]
             test_dir = os.path.join(args.studies, "test_labels")

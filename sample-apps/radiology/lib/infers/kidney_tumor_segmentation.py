@@ -9,23 +9,21 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-from typing import Callable, Sequence, Dict, Any
+from typing import Callable, Sequence
 
-import torch
-from lib.transforms.transforms import CacheObjectd
+from lib.transforms.transforms import KidneyLabels, CacheObjectd, ToCheck
 from monai.inferers import Inferer, SlidingWindowInferer
 from monai.transforms import (
     Activationsd,
     AsDiscreted,
     EnsureChannelFirstd,
     EnsureTyped,
-    GaussianSmoothd,
     KeepLargestConnectedComponentd,
     LoadImaged,
-    NormalizeIntensityd,
     Orientationd,
-    ScaleIntensityd,
     Spacingd,
+    CropForegroundd,
+    ScaleIntensityRanged,
 )
 
 from monailabel.interfaces.tasks.infer_v2 import InferType
@@ -33,7 +31,7 @@ from monailabel.tasks.infer.basic_infer import BasicInferTask
 from monailabel.transform.post import Restored
 
 
-class Segmentation(BasicInferTask):
+class KidneyTumorSeg(BasicInferTask):
     """
     This provides Inference Engine for pre-trained Segmentation (SegResNet) model.
     """
@@ -59,29 +57,33 @@ class Segmentation(BasicInferTask):
             **kwargs,
         )
         self.target_spacing = target_spacing
-        self.labels = labels
-
-    def info(self) -> Dict[str, Any]:
-        return {
-            "type": self.type,
-            "labels": {"kidneys": 1, "tumor": 2}, # This is to have only the kidney labels in Slicer
-            "dimension": self.dimension,
-            "description": self.description,
-            "config": self.config(),
-        }
 
     def pre_transforms(self, data=None) -> Sequence[Callable]:
-        t = [
-            LoadImaged(keys="image"),
-            EnsureTyped(keys="image", device=data.get("device") if data else None),
-            EnsureChannelFirstd(keys="image"),
-            CacheObjectd(keys="image"),
-            Orientationd(keys="image", axcodes="RAS"),
-            Spacingd(keys="image", pixdim=self.target_spacing, allow_missing_keys=True),
-            NormalizeIntensityd(keys="image", nonzero=True),
-            GaussianSmoothd(keys="image", sigma=0.4),
-            ScaleIntensityd(keys="image", minv=-1.0, maxv=1.0),
-        ]
+        if data and isinstance(data.get("image"), str):
+            t = [
+                LoadImaged(keys="image"),
+                EnsureTyped(keys="image", device=data.get("device") if data else None),
+                EnsureChannelFirstd(keys="image"),
+                Orientationd(keys="image", axcodes="RAS"),
+                Spacingd(keys="image", pixdim=(1.0, 1.0, 1.0), allow_missing_keys=True),
+                # NormalizeIntensityd(keys="image", nonzero=True),
+                ScaleIntensityRanged(keys="image", a_min=-1000, a_max=600, b_min=0.0, b_max=1.0, clip=True),
+                # GaussianSmoothd(keys="image", sigma=0.4),
+                # ScaleIntensityd(keys="image", minv=-1.0, maxv=1.0),
+            ]
+        else:
+            t = [
+                EnsureChannelFirstd(keys=("label")),
+                KidneyLabels(keys="label"),
+                # CacheObjectd(keys="label"),
+                Orientationd(keys=("image", "label"), axcodes="RAS"),
+                Spacingd(keys=("image", "label"), pixdim=self.target_spacing, allow_missing_keys=True),
+                # NormalizeIntensityd(keys="image", nonzero=True),
+                ScaleIntensityRanged(keys="image", a_min=-100, a_max=400, b_min=0.0, b_max=1.0, clip=True),
+                CropForegroundd(keys="image", source_key="label"),
+                # GaussianSmoothd(keys="image", sigma=0.4),
+                # ScaleIntensityd(keys="image", minv=-1.0, maxv=1.0),
+            ]
         return t
 
     def inferer(self, data=None) -> Inferer:
@@ -91,7 +93,6 @@ class Segmentation(BasicInferTask):
             overlap=0.4,
             padding_mode="replicate",
             mode="gaussian",
-            device=torch.device("cpu"),  # Otherwise a rather big GPU (>45GB) is needed
         )
 
     def inverse_transforms(self, data=None):
@@ -99,19 +100,15 @@ class Segmentation(BasicInferTask):
 
     def post_transforms(self, data=None) -> Sequence[Callable]:
         t = [
-            EnsureTyped(keys="pred", device=torch.device("cpu")),
-            # EnsureTyped(keys="image", device=data.get("device") if data else None),
+            EnsureTyped(keys="image", device=data.get("device") if data else None),
             Activationsd(keys="pred", softmax=True),
             AsDiscreted(keys="pred", argmax=True),
         ]
 
         if data and data.get("largest_cc", False):
             t.append(KeepLargestConnectedComponentd(keys="pred"))
-        t.append(Restored(keys="pred", ref_image="image", invert_orient=False, config_labels=self.labels))
+        t.extend([
+            # ToCheck(keys="label_cached"),
+            Restored(keys="pred", ref_image="image")
+        ])
         return t
-
-    def writer(self, data, extension=None, dtype=None):
-        if data.get("pipeline_mode", False):
-            return {"image": data["image_cached"], "pred": data["pred"]}, {}
-
-        return super().writer(data, extension, dtype)

@@ -16,3 +16,4 @@ from .localization_vertebra import LocalizationVertebra
 from .segmentation import Segmentation
 from .segmentation_spleen import SegmentationSpleen
 from .segmentation_vertebra import SegmentationVertebra
+from .kidney_tumor_segmentation import KidneyTumorSeg

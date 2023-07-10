@@ -505,3 +505,48 @@ class CacheObjectd(MapTransform):
             if d.get(cache_key) is None:
                 d[cache_key] = copy.deepcopy(d[key])
         return d
+
+
+class KidneyLabels(MapTransform):
+    def __init__(self, keys: KeysCollection, allow_missing_keys: bool = False):
+        """
+        Get the Kidney labels
+
+        :param keys: The ``keys`` parameter will be used to get and set the actual data item to transform
+
+        """
+        super().__init__(keys, allow_missing_keys)
+
+    def __call__(self, data):
+        d: Dict = dict(data)
+        for key in self.key_iterator(d):
+            # Labels for Kidneys
+            # "kidney_right": 2,
+            # "kidney_left": 3,
+
+            # Assigning 2 to both kidneys
+            d[key][d[key] == 3] = 2
+            # Discarding all labels bigger than 2
+            d[key][d[key] > 2] = 0
+            # Discarding label 1
+            d[key][d[key] == 1] = 0
+            # Assigning label 1 to kidney
+            d[key][d[key] > 1] = 1
+        return d
+
+class ToCheck(MapTransform):
+    def __init__(self, keys: KeysCollection, allow_missing_keys: bool = False):
+        """
+        Check label and image size
+
+        :param keys: The ``keys`` parameter will be used to get and set the actual data item to transform
+
+        """
+        super().__init__(keys, allow_missing_keys)
+
+    def __call__(self, data):
+        d: Dict = dict(data)
+        for key in self.key_iterator(d):
+            print('Checking label size')
+            d["pred"] = d['label_cached']
+        return d
