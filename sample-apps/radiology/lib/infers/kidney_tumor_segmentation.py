@@ -11,7 +11,7 @@
 
 from typing import Callable, Sequence
 
-from lib.transforms.transforms import KidneyLabels, CacheObjectd, ToCheck
+from lib.transforms.transforms import KidneyLabels
 from monai.inferers import Inferer, SlidingWindowInferer
 from monai.transforms import (
     Activationsd,
@@ -24,6 +24,7 @@ from monai.transforms import (
     Spacingd,
     CropForegroundd,
     ScaleIntensityRanged,
+    GaussianSmoothd,
 )
 
 from monailabel.interfaces.tasks.infer_v2 import InferType
@@ -66,23 +67,19 @@ class KidneyTumorSeg(BasicInferTask):
                 EnsureChannelFirstd(keys="image"),
                 Orientationd(keys="image", axcodes="RAS"),
                 Spacingd(keys="image", pixdim=(1.0, 1.0, 1.0), allow_missing_keys=True),
-                # NormalizeIntensityd(keys="image", nonzero=True),
                 ScaleIntensityRanged(keys="image", a_min=-1000, a_max=600, b_min=0.0, b_max=1.0, clip=True),
-                # GaussianSmoothd(keys="image", sigma=0.4),
-                # ScaleIntensityd(keys="image", minv=-1.0, maxv=1.0),
+                GaussianSmoothd(keys="image", sigma=0.2),
             ]
         else:
             t = [
-                EnsureChannelFirstd(keys=("label")),
+                EnsureChannelFirstd(keys="label"),
                 KidneyLabels(keys="label"),
-                # CacheObjectd(keys="label"),
                 Orientationd(keys=("image", "label"), axcodes="RAS"),
                 Spacingd(keys=("image", "label"), pixdim=self.target_spacing, allow_missing_keys=True),
                 # NormalizeIntensityd(keys="image", nonzero=True),
-                ScaleIntensityRanged(keys="image", a_min=-100, a_max=400, b_min=0.0, b_max=1.0, clip=True),
-                CropForegroundd(keys="image", source_key="label"),
-                # GaussianSmoothd(keys="image", sigma=0.4),
-                # ScaleIntensityd(keys="image", minv=-1.0, maxv=1.0),
+                ScaleIntensityRanged(keys="image", a_min=-1000, a_max=600, b_min=0.0, b_max=1.0, clip=True),
+                CropForegroundd(keys="image", source_key="label", margin=[100, 10, 50]), # Direction -> Sagittal, Coronal, Axial
+                GaussianSmoothd(keys="image", sigma=0.2),
             ]
         return t
 
@@ -108,7 +105,6 @@ class KidneyTumorSeg(BasicInferTask):
         if data and data.get("largest_cc", False):
             t.append(KeepLargestConnectedComponentd(keys="pred"))
         t.extend([
-            # ToCheck(keys="label_cached"),
             Restored(keys="pred", ref_image="image")
         ])
         return t

@@ -105,9 +105,12 @@ class Segmentation(BasicInferTask):
             AsDiscreted(keys="pred", argmax=True),
         ]
 
-        if data and data.get("largest_cc", False):
-            t.append(KeepLargestConnectedComponentd(keys="pred"))
-        t.append(Restored(keys="pred", ref_image="image", invert_orient=False, config_labels=self.labels))
+        # if data and data.get("largest_cc", False):
+        #     t.append(KeepLargestConnectedComponentd(keys="pred"))
+        t.extend([
+            KeepLargestConnectedComponentd(keys="pred"),
+            Restored(keys="pred", ref_image="image", invert_orient=False, config_labels=self.labels)
+        ])
         return t
 
     def writer(self, data, extension=None, dtype=None):

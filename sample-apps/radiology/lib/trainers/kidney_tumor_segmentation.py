@@ -79,7 +79,6 @@ class KidneyTumorSeg(BasicTrainTask):
             EnsureTyped(keys=("image", "label"), device=context.device),
             Orientationd(keys=("image", "label"), axcodes="RAS"),
             Spacingd(keys=("image", "label"), pixdim=self.target_spacing, mode=("bilinear", "nearest")),
-            # NormalizeIntensityd(keys="image", nonzero=True),
             ScaleIntensityRanged(keys="image", a_min=-1000, a_max=600, b_min=0.0, b_max=1.0, clip=True),
             CropForegroundd(
                 keys=("image", "label"),
@@ -87,7 +86,6 @@ class KidneyTumorSeg(BasicTrainTask):
                 k_divisible=[self.roi_size[0], self.roi_size[1], self.roi_size[2]],
             ),
             # GaussianSmoothd(keys="image", sigma=0.4),
-            # ScaleIntensityd(keys="image", minv=-1.0, maxv=1.0),
             RandScaleIntensityd(keys="image", factors=0.1, prob=1.0),
             RandShiftIntensityd(keys="image", offsets=0.1, prob=0.5),
             RandGaussianSmoothd(keys="image", sigma_x=(0.25, 1.5), sigma_y=(0.25, 1.5), sigma_z=(0.25, 1.5), prob=0.8),
@@ -118,7 +116,6 @@ class KidneyTumorSeg(BasicTrainTask):
             EnsureChannelFirstd(keys=("image", "label")),
             Orientationd(keys=("image", "label"), axcodes="RAS"),
             Spacingd(keys=("image", "label"), pixdim=self.target_spacing, mode=("bilinear", "nearest")),
-            # NormalizeIntensityd(keys="image", nonzero=True),
             ScaleIntensityRanged(keys="image", a_min=-1000, a_max=600, b_min=0.0, b_max=1.0, clip=True),
             CropForegroundd(
                 keys=("image", "label"),
@@ -126,7 +123,6 @@ class KidneyTumorSeg(BasicTrainTask):
                 k_divisible=[self.roi_size[0], self.roi_size[1], self.roi_size[2]],
             ),
             # GaussianSmoothd(keys="image", sigma=0.4),
-            # ScaleIntensityd(keys="image", minv=-1.0, maxv=1.0),
             RandScaleIntensityd(keys="image", factors=0.1, prob=1.0),
             RandShiftIntensityd(keys="image", offsets=0.1, prob=0.5),
             RandGaussianSmoothd(keys="image", sigma_x=(0.25, 1.5), sigma_y=(0.25, 1.5), sigma_z=(0.25, 1.5), prob=0.8),
