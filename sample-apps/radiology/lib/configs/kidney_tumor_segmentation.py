@@ -46,6 +46,7 @@ class KidneyTumorSeg(TaskConfig):
         ]
 
         # Download PreTrained Model
+        ## Link to the pre-trained model: https://drive.google.com/drive/folders/1Zs0o2u9WwSacjNYkdCYMckBeA6QLHUDA?usp=sharing
         if strtobool(self.conf.get("use_pretrained_model", "false")):
             url = f"{self.conf.get('pretrained_path', self.PRE_TRAINED_PATH)}"
             url = f"{url}/radiology_segmentation_segresnet_kidney.pt"
