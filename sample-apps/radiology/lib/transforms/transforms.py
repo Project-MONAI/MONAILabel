@@ -505,3 +505,11 @@ class CacheObjectd(MapTransform):
             if d.get(cache_key) is None:
                 d[cache_key] = copy.deepcopy(d[key])
         return d
+
+
+class ToCheck(MapTransform):
+    def __call__(self, data: Mapping[Hashable, NdarrayOrTensor]) -> Dict[Hashable, NdarrayOrTensor]:
+        d: Dict = dict(data)
+        for key in self.key_iterator(d):
+            logger.info(f'THIS IS THE IMAGE SHAPE: {d[key].shape}')
+        return d

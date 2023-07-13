@@ -53,7 +53,7 @@ class Segmentation(BasicTrainTask):
         self.roi_size = roi_size
         self.target_spacing = target_spacing
         self.num_samples = num_samples
-        super().__init__(model_dir, description, **kwargs)
+        super().__init__(model_dir, description, val_interval=50, **kwargs)
 
     def network(self, context: Context):
         return self._network
@@ -85,6 +85,7 @@ class Segmentation(BasicTrainTask):
                 margin=10,
                 k_divisible=[self.roi_size[0], self.roi_size[1], self.roi_size[2]],
             ),
+            # ToCheck(keys="image"),
             GaussianSmoothd(keys="image", sigma=0.4),
             ScaleIntensityd(keys="image", minv=-1.0, maxv=1.0),
             RandSpatialCropd(
@@ -118,7 +119,7 @@ class Segmentation(BasicTrainTask):
             # ScaleIntensityRanged(keys="image", a_min=-1000, a_max=1900, b_min=0.0, b_max=1.0, clip=True),
             CropForegroundd(
                 keys=("image", "label"),
-                source_key="label",
+                source_key="image",
                 margin=10,
                 k_divisible=[self.roi_size[0], self.roi_size[1], self.roi_size[2]],
             ),

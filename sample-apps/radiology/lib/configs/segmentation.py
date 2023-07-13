@@ -41,25 +41,7 @@ class Segmentation(TaskConfig):
             "gallbladder": 4,
             "liver": 5,
             "stomach": 6,
-            "aorta": 7,
-            "inferior_vena_cava": 8,
-            "portal_vein_and_splenic_vein": 9,
             "pancreas": 10,
-            "adrenal_gland_right": 11,
-            "adrenal_gland_left": 12,
-            "lung_upper_lobe_left": 13,
-            "lung_lower_lobe_left": 14,
-            "lung_upper_lobe_right": 15,
-            "lung_middle_lobe_right": 16,
-            "lung_lower_lobe_right": 17,
-            "esophagus": 42,
-            "trachea": 43,
-            "heart_myocardium": 44,
-            "heart_atrium_left": 45,
-            "heart_ventricle_left": 46,
-            "heart_atrium_right": 47,
-            "heart_ventricle_right": 48,
-            "pulmonary_artery": 49,
         }
 
         # Model Files
@@ -69,7 +51,8 @@ class Segmentation(TaskConfig):
         ]
 
         # Download PreTrained Model
-        if strtobool(self.conf.get("use_pretrained_model", "true")):
+        ## Link to the pre-trained model: https://drive.google.com/drive/folders/1cHkmoa704zYUolbE7tyPjkFEBcnEPQCg?usp=sharing
+        if strtobool(self.conf.get("use_pretrained_model", "false")):
             url = f"{self.conf.get('pretrained_path', self.PRE_TRAINED_PATH)}"
             url = f"{url}/radiology_segmentation_segresnet_multilabel.pt"
             download_file(url, self.path[0])
