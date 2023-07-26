@@ -28,6 +28,7 @@ from monai.transforms import (
     SelectItemsd,
     CropForegroundd,
     Spacingd,
+    KeepLargestConnectedComponentd,
 )
 
 from monailabel.tasks.train.basic_train import BasicTrainTask, Context
@@ -103,6 +104,7 @@ class VascSegmentation(BasicTrainTask):
                 argmax=(True, False),
                 to_onehot=(len(self._labels) + 1, len(self._labels) + 1),
             ),
+            KeepLargestConnectedComponentd(keys="pred", num_components=2),
         ]
 
     def val_pre_transforms(self, context: Context):

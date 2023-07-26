@@ -18,7 +18,10 @@ from monai.transforms import (
     EnsureTyped,
     LoadImaged,
     NormalizeIntensityd,
-    ToNumpyd, CropForegroundd, Spacingd,
+    ToNumpyd,
+    CropForegroundd,
+    Spacingd,
+    KeepLargestConnectedComponentd,
 )
 
 from monailabel.interfaces.tasks.infer import InferTask, InferType
@@ -100,6 +103,7 @@ class VascSegmentation(InferTask):
             EnsureTyped(keys="pred", device=data.get("device") if data else None),
             Activationsd(keys="pred", softmax=True),
             AsDiscreted(keys="pred", argmax=True),
+            KeepLargestConnectedComponentd(keys="pred", num_components=2),
             ToNumpyd(keys="pred"),
             Restored(keys="pred", ref_image="image"),
         ]
