@@ -1,12 +1,13 @@
 import os
 import pathlib as Path
-from typing import Union, List
+from typing import List, Union
+
 import SimpleITK as sitk
 
 
-
-def get_file_paths(folder: Union[str, Path], extension_tuple=('.nrrd'),
-                   pattern: str = None, ignore_folders: Union[List, str] = []) -> Union[List[str], List[Path]]:
+def get_file_paths(
+    folder: Union[str, Path], extension_tuple=(".nrrd"), pattern: str = None, ignore_folders: Union[List, str] = []
+) -> Union[List[str], List[Path]]:
     """
     Given a directory return all image paths within all sibdirectories.
 
@@ -33,19 +34,14 @@ def get_file_paths(folder: Union[str, Path], extension_tuple=('.nrrd'),
     if isinstance(ignore_folders, str):
         ignore_folders = [ignore_folders]
 
-
     for root, subfolders, files in os.walk(folder):
-
         for f in ignore_folders:
             if f in subfolders:
                 subfolders.remove(f)
 
         for filename in files:
-
-            if filename.lower().endswith(extension_tuple) and not filename.startswith('.'):
-
+            if filename.lower().endswith(extension_tuple) and not filename.startswith("."):
                 if pattern:
-
                     if pattern and pattern not in filename:
                         continue
 
@@ -56,15 +52,15 @@ def get_file_paths(folder: Union[str, Path], extension_tuple=('.nrrd'),
     else:
         return [Path(x) for x in paths]
 
+
 def initialise_spacing(target_dir):
-    '''
+    """
     output from MPI2/LAMA removes direction and orientation information, leaving them to be blank within headers.
     This function should initialise direction and orientation information
-    '''
+    """
     volpaths = get_file_paths(target_dir)
 
     for i, path in enumerate(volpaths):
-
         vol = sitk.ReadImage(path)
         # pa = sitk.PermuteAxesImageFilter()
         # pa.SetOrder([1,0,2])
@@ -72,5 +68,5 @@ def initialise_spacing(target_dir):
 
         # sets Direction and Origin
         vol.SetDirection([-1.0, 0.0, 0.0, 0.0, -1.0, 0.0, 0.0, 0.0, 1.0])
-        vol.SetOrigin([0.0,0.0,0.0])
+        vol.SetOrigin([0.0, 0.0, 0.0])
         sitk.WriteImage(vol, path, True)
