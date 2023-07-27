@@ -53,7 +53,7 @@ def get_file_paths(
         return [Path(x) for x in paths]
 
 
-def initialise_spacing(target_dir):
+def initialise_ori_and_info(target_dir):
     """
     output from MPI2/LAMA removes direction and orientation information, leaving them to be blank within headers.
     This function should initialise direction and orientation information
