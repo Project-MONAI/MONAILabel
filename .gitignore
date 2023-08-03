@@ -166,3 +166,6 @@ junit
 test-output.xml
 studies
 tests/data
+
+# Packages
+node_modules
