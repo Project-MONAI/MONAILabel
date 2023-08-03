@@ -1,5 +1,4 @@
 import React from 'react';
-import { WrappedPanelStudyBrowser, PanelMeasurementTable } from './Panels';
 import { LegacyButton, ButtonGroup } from '@ohif/ui';
 
 // TODO:
@@ -12,16 +11,6 @@ function getPanelModule({
   extensionManager,
   servicesManager,
 }) {
-  const wrappedMeasurementPanel = () => {
-    return (
-      <PanelMeasurementTable
-        commandsManager={commandsManager}
-        servicesManager={servicesManager}
-        extensionManager={extensionManager}
-      />
-    );
-  };
-
   const MonaiLabelPanel = () => {
     return (
       <React.Fragment>
@@ -36,25 +25,6 @@ function getPanelModule({
   };
 
   return [
-    {
-      name: 'seriesList',
-      iconName: 'group-layers',
-      iconLabel: 'Studies',
-      label: 'Studies',
-      component: WrappedPanelStudyBrowser.bind(null, {
-        commandsManager,
-        extensionManager,
-        servicesManager,
-      }),
-    },
-    {
-      name: 'measure',
-      iconName: 'tab-linear',
-      iconLabel: 'Measure',
-      label: 'Measurements',
-      secondaryLabel: 'Measurements',
-      component: wrappedMeasurementPanel,
-    },
     {
       name: 'monailabel',
       iconName: 'tab-linear',

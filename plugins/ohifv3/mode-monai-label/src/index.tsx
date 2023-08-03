@@ -1,17 +1,14 @@
 import { hotkeys } from '@ohif/core';
-// import toolbarButtons from './toolbarButtons.js';
+import toolbarButtons from './toolbarButtons.js';
 import { id } from './id.js';
-// import initToolGroups from './initToolGroups.js';
-import { initToolGroups, toolbarButtons } from '@ohif/mode-longitudinal';
+import initToolGroups from './initToolGroups.js';
 
 const ohif = {
   layout: '@ohif/extension-default.layoutTemplateModule.viewerLayout',
   sopClassHandler: '@ohif/extension-default.sopClassHandlerModule.stack',
   hangingProtocol: '@ohif/extension-default.hangingProtocolModule.default',
   leftPanel: '@ohif/extension-default.panelModule.seriesList',
-  // rightPanel: '@ohif/extension-default.panelModule.measure',
-  rightPanel: '@ohif/extension-default.panelModule.monailabel',
-  // rightPanel: '@ohif/extension-monai-label.panelModule.monailabel',
+  rightPanel: '@ohif/extension-monai-label.panelModule.monailabel',
 };
 
 const cornerstone = {
