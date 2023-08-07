@@ -57,7 +57,7 @@ class BasicInferTask(InferTask):
         output_label_key: str = "pred",
         output_json_key: str = "result",
         config: Union[None, Dict[str, Any]] = None,
-        load_strict: bool = False,
+        load_strict: bool = True,
         roi_size=None,
         preload=False,
         train_mode=False,
@@ -452,6 +452,13 @@ class BasicInferTask(InferTask):
 
                 if path:
                     checkpoint = torch.load(path, map_location=torch.device(device))
+                    for key in self.model_state_dict:
+                        if key not in checkpoint:
+                            logger.warning(
+                                f"Expected key {key} has not been found in the checkpoint keys: {checkpoint.keys()}"
+                            )
+                            logger.warning("The run will now continue unless load_strict is set to True")
+                            break
                     model_state_dict = checkpoint.get(self.model_state_dict, checkpoint)
                     network.load_state_dict(model_state_dict, strict=self.load_strict)
             else:
