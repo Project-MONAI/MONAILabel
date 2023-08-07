@@ -1,26 +1,16 @@
 import React from 'react';
-import { LegacyButton, ButtonGroup } from '@ohif/ui';
+import MonaiLabelPanel from './components/MonaiLabelPanel';
 
-// TODO:
-// - No loading UI exists yet
-// - cancel promises when component is destroyed
-// - show errors in UI for thumbnails if promise fails
 
-function getPanelModule({
+/* function getPanelModule({
   commandsManager,
   extensionManager,
   servicesManager,
 }) {
-  const MonaiLabelPanel = () => {
+
+  const WrappedMonaiLabelPanel = () => {
     return (
-      <React.Fragment>
-      <ButtonGroup color="black" size="inherit">
-        {/* TODO Revisit design of ButtonGroup later - for now use LegacyButton for its children.*/}
-        <LegacyButton className="px-2 py-2 text-base">
-          {'Hello MONAI Label'}
-        </LegacyButton>
-      </ButtonGroup>
-    </React.Fragment>
+      <MonaiLabelPanel/>
     );
   };
 
@@ -31,9 +21,28 @@ function getPanelModule({
       iconLabel: 'MONAI',
       label: 'MONAI Label',
       secondaryLabel: 'MONAI Label',
-      component: MonaiLabelPanel,
+      component: WrappedMonaiLabelPanel,
     },
   ];
 }
 
-export default getPanelModule;
+export default getPanelModule; */
+
+const WrappedMonaiLabelPanel = () => {
+  return [
+    {
+      name: 'monailabel',
+      // Select icon from this list: 
+      // https://github.com/OHIF/Viewers/blob/58d38495f097afc6333937b6fbaf60ae473957c0/platform/ui/src/components/Icon/getIcon.js#L279
+      iconName: 'tab-segmentation', 
+      iconLabel: 'MONAI',
+      label: 'MONAI Label',
+      secondaryLabel: 'MONAI Label',
+      component: MonaiLabelPanel,
+    },
+  ];
+};
+
+export default WrappedMonaiLabelPanel
+
+
