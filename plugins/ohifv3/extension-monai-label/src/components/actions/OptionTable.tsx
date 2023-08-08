@@ -17,8 +17,6 @@ import './OptionTable.styl';
 import BaseTab from './BaseTab';
 
 export default class OptionTable extends BaseTab {
-  state: { section: string; name: string; config: null; };
-  props: any;
   constructor(props) {
     super(props);
 
@@ -31,12 +29,12 @@ export default class OptionTable extends BaseTab {
 
   onChangeSection = evt => {
     this.state.section = evt.target.value;
-    this.state['section'] = evt.target.value;
+    this.setState({ section: evt.target.value });
   };
 
   onChangeName = evt => {
     this.state.name = evt.target.value;
-    this.state['name'] = evt.target.value;
+    this.setState({ name: evt.target.value });
   };
 
   onChangeConfig = (s, n, k, evt) => {
@@ -52,7 +50,7 @@ export default class OptionTable extends BaseTab {
           : parseFloat(evt.target.value);
       else c[s][n][k] = evt.target.value;
     }
-    this.state['config'] =  c;
+    this.setState({ config: c });
   };
 
   render() {
