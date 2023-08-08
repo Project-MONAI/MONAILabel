@@ -460,8 +460,8 @@ class BasicInferTask(InferTask):
                             f" but not in the other: {set(self.network.state_dict().keys()) ^ set(checkpoint.keys())}"
                         )
                         logger.warning(
-                                "The run will now continue unless load_strict is set to True. "
-                                "If loading fails or the network behaves abnormally, please check the loaded weights"
+                            "The run will now continue unless load_strict is set to True. "
+                            "If loading fails or the network behaves abnormally, please check the loaded weights"
                         )
                     network.load_state_dict(model_state_dict, strict=self.load_strict)
             else:
