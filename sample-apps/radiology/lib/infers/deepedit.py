@@ -71,6 +71,7 @@ class DeepEdit(BasicInferTask):
         self.spatial_size = spatial_size
         self.target_spacing = target_spacing
         self.number_intensity_ch = number_intensity_ch
+        self.load_strict = False
 
     def pre_transforms(self, data=None):
         t = [
