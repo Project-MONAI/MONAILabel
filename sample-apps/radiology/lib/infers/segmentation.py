@@ -92,7 +92,11 @@ class Segmentation(BasicInferTask):
 
         if data and data.get("largest_cc", False):
             t.append(KeepLargestConnectedComponentd(keys="pred"))
-        t.append(Restored(keys="pred",
-                          ref_image="image",
-                          config_labels=self.labels if data.get("client_id", None) == 'itk-snap' else None))
+        t.append(
+            Restored(
+                keys="pred",
+                ref_image="image",
+                config_labels=self.labels if data.get("client_id", None) == "itk-snap" else None,
+            )
+        )
         return t
