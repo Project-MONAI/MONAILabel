@@ -1,50 +1,48 @@
-
 import React, { Component } from 'react';
-import PropTypes from 'prop-types'; 
-import './MonaiLabelPanel.styl'; 
+import PropTypes from 'prop-types';
+import './MonaiLabelPanel.styl';
 import SettingsTable from './SettingsTable';
 import AutoSegmentation from './actions/AutoSegmentation';
-import OptionTable from './actions/OptionTable'; 
+import OptionTable from './actions/OptionTable';
 import MonaiLabelClient from '../services/MonaiLabelClient';
-
-
+import SegmentationReader from '../../../../ohif/monai-label/src/utils/SegmentationReader';
 
 export default class MonaiLabelPanel extends Component {
-
   static propTypes = {
     commandsManager: PropTypes.any,
     servicesManager: PropTypes.any,
     extensionManager: PropTypes.any,
   };
-  
+
   notification: any;
   settings: any;
-  state: { info: {}; action: {}; };
-  actions: { options: any; 
-    activelearning: any; 
-    segmentation: any; 
-  };
-  props: any;    
+  state: { info: {}; action: {} };
+  actions: { options: any; activelearning: any; segmentation: any };
+  props: any;
   SeriesInstanceUID: any;
   StudyInstanceUID: any;
 
   constructor(props) {
     super(props);
-    
-    const {
-      uiNotificationService,
-      viewportGridService,
-      displaySetService
-    } = props.servicesManager.services;
 
-    const { viewports, activeViewportIndex } = viewportGridService.getState();
-    const viewport = viewports[activeViewportIndex]
-    const displaySet = displaySetService.getDisplaySetByUID(viewport.displaySetInstanceUIDs[0])    
-    this.SeriesInstanceUID = displaySet.SeriesInstanceUID
-    this.StudyInstanceUID = displaySet.StudyInstanceUID
+    const { uiNotificationService, viewportGridService, displaySetService } =
+      props.servicesManager.services;
 
-    this.notification = uiNotificationService
-    this.settings = React.createRef();
+    // just for debugging
+    setTimeout(() => {
+      const { viewports, activeViewportIndex } = viewportGridService.getState();
+      const viewport = viewports[activeViewportIndex];
+      const displaySet = displaySetService.getDisplaySetByUID(
+        viewport.displaySetInstanceUIDs[0]
+      );
+
+      this.SeriesInstanceUID = displaySet.SeriesInstanceUID;
+      this.StudyInstanceUID = displaySet.StudyInstanceUID;
+      this.displaySetInstanceUID = displaySet.displaySetInstanceUID;
+
+      this.notification = uiNotificationService;
+      this.settings = React.createRef();
+    }, 1000);
 
     this.actions = {
       options: React.createRef(),
@@ -56,10 +54,7 @@ export default class MonaiLabelPanel extends Component {
       info: {},
       action: {},
     };
-
-
-  };
-
+  }
 
   async componentDidMount() {
     await this.onInfo();
@@ -76,7 +71,6 @@ export default class MonaiLabelPanel extends Component {
   };
 
   onInfo = async () => {
-
     this.notification.show({
       title: 'MONAI Label',
       message: 'Connecting to MONAI Label',
@@ -102,11 +96,10 @@ export default class MonaiLabelPanel extends Component {
       });
 
       this.setState({ info: response.data });
-      
     }
   };
 
-  onSelectActionTab = name => {
+  onSelectActionTab = (name) => {
     // Leave Event
     for (const action of Object.keys(this.actions)) {
       if (this.state.action === action) {
@@ -134,60 +127,98 @@ export default class MonaiLabelPanel extends Component {
 
   updateView = async (response, labels) => {
     // Process the obtained binary file from the MONAI Label server
-    console.info('These are the predicted labels')
-    console.info(labels)
-    /* debugger; */
+    console.info('These are the predicted labels');
+    console.info(labels);
+
+    // for debugging only, we should get the response from the server
   };
-  
+
+  handleSegLoad = async () => {
+    const response = await fetch('http://localhost:3000/pred.nrrd');
+    if (!response.ok) {
+      throw new Error('Network response was not ok');
+    }
+
+    const nrrd = await response.arrayBuffer();
+
+    const ret = SegmentationReader.parseNrrdData(nrrd);
+
+    if (!ret) {
+      throw new Error('Failed to parse NRRD data');
+    }
+
+    const { image: buffer, header } = ret;
+    const data = new Uint16Array(buffer);
+
+    const segmentations = [
+      {
+        id: '1',
+        label: 'Segmentation 1',
+        segments: [
+          {
+            segmentIndex: 1,
+            label: 'Segment 1',
+            color: [0, 255, 0],
+          },
+        ],
+        isActive: true,
+        activeSegmentIndex: 1,
+        scalarData: data,
+      },
+    ];
+    this.props.commandsManager.runCommand('loadSegmentationsForDisplaySet', {
+      displaySetInstanceUID: this.displaySetInstanceUID,
+      segmentations,
+    });
+  };
+
   render() {
     return (
       <>
-      <div className="monaiLabelPanel">
+        <div className="monaiLabelPanel">
+          <br style={{ margin: '3px' }} />
 
-        <br style={{ margin: '3px' }} />
+          <SettingsTable ref={this.settings} onInfo={this.onInfo} />
 
-        <SettingsTable 
-          ref={this.settings} 
-          onInfo={this.onInfo}
-          />
+          <hr className="separator" />
+          <button onClick={this.handleSegLoad}>Load SEG</button>
 
-        <hr className="separator" />
+          <p className="subtitle">{this.state.info.name}</p>
 
-        <p className="subtitle">{this.state.info.name}</p>
+          <div className="tabs scrollbar" id="style-3">
+            <OptionTable
+              ref={this.actions['options']}
+              tabIndex={1}
+              info={this.state.info}
+              viewConstants={{
+                SeriesInstanceUID: this.SeriesInstanceUID,
+                StudyInstanceUID: this.StudyInstanceUID,
+              }}
+              client={this.client}
+              notification={this.notification}
+              //updateView={this.updateView}
+              onSelectActionTab={this.onSelectActionTab}
+            />
 
-        <div className="tabs scrollbar" id="style-3">
-          <OptionTable
-            ref={this.actions['options']}
-            tabIndex={1}
-            info={this.state.info}
-            viewConstants={{'SeriesInstanceUID': this.SeriesInstanceUID, 
-                            'StudyInstanceUID': this.StudyInstanceUID
-                          }}
-            client={this.client}
-            notification={this.notification}
-            //updateView={this.updateView}
-            onSelectActionTab={this.onSelectActionTab}
-          />
+            <AutoSegmentation
+              ref={this.actions['segmentation']}
+              tabIndex={3}
+              info={this.state.info}
+              viewConstants={{
+                SeriesInstanceUID: this.SeriesInstanceUID,
+                StudyInstanceUID: this.StudyInstanceUID,
+              }}
+              client={this.client}
+              notification={this.notification}
+              updateView={this.updateView}
+              onSelectActionTab={this.onSelectActionTab}
+              onOptionsConfig={this.onOptionsConfig}
+            />
+          </div>
 
-          <AutoSegmentation
-            ref={this.actions['segmentation']}
-            tabIndex={3}
-            info={this.state.info}
-            viewConstants={{'SeriesInstanceUID': this.SeriesInstanceUID, 
-                            'StudyInstanceUID': this.StudyInstanceUID
-                            }}
-            client={this.client}
-            notification={this.notification}
-            updateView={this.updateView}
-            onSelectActionTab={this.onSelectActionTab}
-            onOptionsConfig={this.onOptionsConfig}
-          />
-
+          <p>&nbsp;</p>
         </div>
-
-        <p>&nbsp;</p>
-      </div>
       </>
-  );
+    );
   }
-};  
+}
