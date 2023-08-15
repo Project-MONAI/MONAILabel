@@ -4,7 +4,7 @@ function getImageIdsForDisplaySet(
   StudyInstanceUID,
   SeriesInstanceUID
 ) {
-  
+
   const study = studies.find(
     study => study.StudyInstanceUID === StudyInstanceUID
   );
