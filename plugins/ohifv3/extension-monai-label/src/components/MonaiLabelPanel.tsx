@@ -6,6 +6,7 @@ import AutoSegmentation from './actions/AutoSegmentation';
 import OptionTable from './actions/OptionTable';
 import MonaiLabelClient from '../services/MonaiLabelClient';
 import SegmentationReader from '../../../../ohif/monai-label/src/utils/SegmentationReader';
+import MonaiSegmentation from './MonaiSegmentation';
 
 export default class MonaiLabelPanel extends Component {
   static propTypes = {
@@ -16,8 +17,8 @@ export default class MonaiLabelPanel extends Component {
 
   notification: any;
   settings: any;
-  state: { info: {}; action: {} };
-  actions: { options: any; activelearning: any; segmentation: any };
+  state: { info: {}; action: {}; segmentations: [] };
+  actions: { options: any; activeLearning: any; segmentation: any };
   props: any;
   SeriesInstanceUID: any;
   StudyInstanceUID: any;
@@ -42,22 +43,48 @@ export default class MonaiLabelPanel extends Component {
 
       this.notification = uiNotificationService;
       this.settings = React.createRef();
-    }, 1000);
+    }, 2000);
 
     this.actions = {
       options: React.createRef(),
-      activelearning: React.createRef(),
+      activeLearning: React.createRef(),
       segmentation: React.createRef(),
     };
 
     this.state = {
       info: {},
       action: {},
+      segmentations: [],
     };
   }
 
   async componentDidMount() {
-    await this.onInfo();
+    const { segmentationService } = this.props.servicesManager.services;
+    const added = segmentationService.EVENTS.SEGMENTATION_ADDED;
+    const updated = segmentationService.EVENTS.SEGMENTATION_UPDATED;
+    const removed = segmentationService.EVENTS.SEGMENTATION_REMOVED;
+    const subscriptions = [];
+
+    [added, updated, removed].forEach((evt) => {
+      const { unsubscribe } = segmentationService.subscribe(evt, () => {
+        const segmentations = segmentationService.getSegmentations();
+
+        if (!segmentations?.length) {
+          return;
+        }
+
+        this.setState({ segmentations });
+      });
+      subscriptions.push(unsubscribe);
+    });
+
+    this.unsubscribe = () => {
+      subscriptions.forEach((unsubscribe) => unsubscribe());
+    };
+  }
+
+  async componentDidUnmount() {
+    this.unsubscribe();
   }
 
   client = () => {
@@ -139,6 +166,34 @@ export default class MonaiLabelPanel extends Component {
       throw new Error('Network response was not ok');
     }
 
+    const info = {
+      spleen: 1,
+      kidney_right: 2,
+      kidney_left: 3,
+      gallbladder: 4,
+      liver: 5,
+      stomach: 6,
+      aorta: 7,
+      inferior_vena_cava: 8,
+      portal_vein_and_splenic_vein: 9,
+      pancreas: 10,
+      adrenal_gland_right: 11,
+      adrenal_gland_left: 12,
+      lung_upper_lobe_left: 13,
+      lung_lower_lobe_left: 14,
+      lung_upper_lobe_right: 15,
+      lung_middle_lobe_right: 16,
+      lung_lower_lobe_right: 17,
+      esophagus: 42,
+      trachea: 43,
+      heart_myocardium: 44,
+      heart_atrium_left: 45,
+      heart_ventricle_left: 46,
+      heart_atrium_right: 47,
+      heart_ventricle_right: 48,
+      pulmonary_artery: 49,
+    };
+
     const nrrd = await response.arrayBuffer();
 
     const ret = SegmentationReader.parseNrrdData(nrrd);
@@ -150,17 +205,15 @@ export default class MonaiLabelPanel extends Component {
     const { image: buffer, header } = ret;
     const data = new Uint16Array(buffer);
 
+    debugger;
     const segmentations = [
       {
         id: '1',
         label: 'Segmentation 1',
-        segments: [
-          {
-            segmentIndex: 1,
-            label: 'Segment 1',
-            color: [0, 255, 0],
-          },
-        ],
+        segments: Object.keys(info).map((key) => ({
+          segmentIndex: info[key],
+          label: key,
+        })),
         isActive: true,
         activeSegmentIndex: 1,
         scalarData: data,
@@ -175,7 +228,10 @@ export default class MonaiLabelPanel extends Component {
   render() {
     return (
       <>
-        <div className="monaiLabelPanel">
+        <div
+          className="monaiLabelPanel"
+          style={{ backgroundColor: 'black', color: '#90CDF4' }}
+        >
           <br style={{ margin: '3px' }} />
 
           <SettingsTable ref={this.settings} onInfo={this.onInfo} />
@@ -217,6 +273,12 @@ export default class MonaiLabelPanel extends Component {
           </div>
 
           <p>&nbsp;</p>
+          {this.state.segmentations?.map((segmentation) => (
+            <MonaiSegmentation
+              segmentation={segmentation}
+              servicesManager={this.props.servicesManager}
+            />
+          ))}
         </div>
       </>
     );
