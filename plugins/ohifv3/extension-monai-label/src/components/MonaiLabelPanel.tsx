@@ -3,7 +3,8 @@ import PropTypes from 'prop-types';
 import './MonaiLabelPanel.styl';
 import SettingsTable from './SettingsTable';
 import AutoSegmentation from './actions/AutoSegmentation';
-import OptionTable from './actions/OptionTable';
+import SmartEdit from './actions/SmartEdit';
+import OptionTable from './actions/OptionTable'; 
 import MonaiLabelClient from '../services/MonaiLabelClient';
 import SegmentationReader from '../../../../ohif/monai-label/src/utils/SegmentationReader';
 import MonaiSegmentation from './MonaiSegmentation';
@@ -17,9 +18,13 @@ export default class MonaiLabelPanel extends Component {
 
   notification: any;
   settings: any;
-  state: { info: {}; action: {}; segmentations: [] };
-  actions: { options: any; activeLearning: any; segmentation: any };
-  props: any;
+  state: { info: {}; action: {}; };
+  actions: { options: any; 
+    activelearning: any; 
+    segmentation: any;
+    smartedit: any; 
+  };
+  props: any;    
   SeriesInstanceUID: any;
   StudyInstanceUID: any;
 
@@ -50,6 +55,7 @@ export default class MonaiLabelPanel extends Component {
       options: React.createRef(),
       activeLearning: React.createRef(),
       segmentation: React.createRef(),
+      smartedit: React.createRef(),
     };
 
     this.state = {
@@ -229,58 +235,70 @@ export default class MonaiLabelPanel extends Component {
   render() {
     return (
       <>
-        <div
-          className="monaiLabelPanel"
-          style={{ backgroundColor: 'black', color: '#90CDF4' }}
-        >
-          <br style={{ margin: '3px' }} />
+      <div className="monaiLabelPanel">
 
-          <SettingsTable ref={this.settings} onInfo={this.onInfo} />
+        <br style={{ margin: '3px' }} />
 
-          <hr className="separator" />
-          <button onClick={this.handleSegLoad}>Load SEG</button>
+        <SettingsTable 
+          ref={this.settings} 
+          onInfo={this.onInfo}
+          />
 
-          <p className="subtitle">{this.state.info.name}</p>
+        <hr className="separator" />
 
-          <div className="tabs scrollbar" id="style-3">
-            <OptionTable
-              ref={this.actions['options']}
-              tabIndex={1}
-              info={this.state.info}
-              viewConstants={{
-                SeriesInstanceUID: this.SeriesInstanceUID,
-                StudyInstanceUID: this.StudyInstanceUID,
-              }}
-              client={this.client}
-              notification={this.notification}
-              //updateView={this.updateView}
-              onSelectActionTab={this.onSelectActionTab}
-            />
+        <p className="subtitle">{this.state.info.name}</p>
 
-            <AutoSegmentation
-              ref={this.actions['segmentation']}
-              tabIndex={3}
-              info={this.state.info}
-              viewConstants={{
-                SeriesInstanceUID: this.SeriesInstanceUID,
-                StudyInstanceUID: this.StudyInstanceUID,
-              }}
-              client={this.client}
-              notification={this.notification}
-              updateView={this.updateView}
-              onSelectActionTab={this.onSelectActionTab}
-              onOptionsConfig={this.onOptionsConfig}
-            />
-          </div>
+        <div className="tabs scrollbar" id="style-3">
+          <OptionTable
+            ref={this.actions['options']}
+            tabIndex={1}
+            info={this.state.info}
+            viewConstants={{'SeriesInstanceUID': this.SeriesInstanceUID, 
+                            'StudyInstanceUID': this.StudyInstanceUID
+                          }}
+            client={this.client}
+            notification={this.notification}
+            //updateView={this.updateView}
+            onSelectActionTab={this.onSelectActionTab}
+          />
 
-          <p>&nbsp;</p>
+          <AutoSegmentation
+            ref={this.actions['segmentation']}
+            tabIndex={3}
+            info={this.state.info}
+            viewConstants={{'SeriesInstanceUID': this.SeriesInstanceUID, 
+                            'StudyInstanceUID': this.StudyInstanceUID
+                            }}
+            client={this.client}
+            notification={this.notification}
+            updateView={this.updateView}
+            onSelectActionTab={this.onSelectActionTab}
+            onOptionsConfig={this.onOptionsConfig}
+          />
+          <SmartEdit
+            ref={this.actions['smartedit']}
+            tabIndex={4}
+            servicesManager = {this.props.servicesManager}
+            commandsManager = {this.props.commandsManager}
+            info={this.state.info}
+            // Here we have to send element - In OHIF V2 - const element = cornerstone.getEnabledElements()[this.props.activeIndex].element;
+            viewConstants={{'SeriesInstanceUID': this.SeriesInstanceUID, 
+                          'StudyInstanceUID': this.StudyInstanceUID
+            }}
+            client={this.client}
+            notification={this.notification}
+            updateView={this.updateView}
+            onSelectActionTab={this.onSelectActionTab}
+            onOptionsConfig={this.onOptionsConfig}
+          />
+        </div>
+        <p>&nbsp;</p>
           {this.state.segmentations?.map((segmentation) => (
             <MonaiSegmentation
               segmentation={segmentation}
               servicesManager={this.props.servicesManager}
             />
           ))}
-        </div>
       </>
     );
   }
