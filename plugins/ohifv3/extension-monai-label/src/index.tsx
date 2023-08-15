@@ -8,7 +8,7 @@ export default {
     servicesManager,
     commandsManager,
     configuration = {},
-  }) => {}, 
+  }) => {},
 
   getPanelModule,
 

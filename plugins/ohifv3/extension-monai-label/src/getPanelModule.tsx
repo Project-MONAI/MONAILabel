@@ -31,5 +31,3 @@ function getPanelModule({
 }
 
 export default getPanelModule;
-
-
