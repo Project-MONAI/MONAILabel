@@ -7,7 +7,7 @@ function initDefaultToolGroup(
   const utilityModule = extensionManager.getModuleEntry(
     '@ohif/extension-cornerstone.utilityModule.tools'
   );
-
+  
   const { toolNames, Enums } = utilityModule.exports;
 
   const tools = {
@@ -41,6 +41,7 @@ function initDefaultToolGroup(
       { toolName: toolNames.Magnify },
       { toolName: toolNames.SegmentationDisplay },
       { toolName: toolNames.CalibrationLine },
+      { toolName: 'ProbeMONAILabel' },
     ],
     // enabled
     // disabled
@@ -62,6 +63,20 @@ function initDefaultToolGroup(
           eventDetails,
         }),
     },
+
+    ['ProbeMONAILabel']: {
+      getTextCallback: (callback, eventDetails) =>
+        commandsManager.runCommand('setToolActive', {
+          toolName: "ProbeMONAILabel"
+        }),
+
+      changeTextCallback: (data, eventDetails, callback) =>
+        commandsManager.runCommand('arrowTextCallback', {
+          callback,
+          data,
+          eventDetails,
+        }),
+    }, 
   };
 
   toolGroupService.createToolGroupAndAddTools(toolGroupId, tools, toolsConfig);
@@ -213,11 +228,12 @@ function initMPRToolGroup(extensionManager, toolGroupService, commandsManager) {
           data,
           eventDetails,
         }),
-    },
+    },   
   };
 
   toolGroupService.createToolGroupAndAddTools('mpr', tools, toolsConfig);
 }
+
 function initVolume3DToolGroup(extensionManager, toolGroupService) {
   const utilityModule = extensionManager.getModuleEntry(
     '@ohif/extension-cornerstone.utilityModule.tools'

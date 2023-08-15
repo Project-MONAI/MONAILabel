@@ -4,8 +4,6 @@ function getImageIdsForDisplaySet(
   StudyInstanceUID,
   SeriesInstanceUID
 ) {
-
-  debugger;
   
   const study = studies.find(
     study => study.StudyInstanceUID === StudyInstanceUID

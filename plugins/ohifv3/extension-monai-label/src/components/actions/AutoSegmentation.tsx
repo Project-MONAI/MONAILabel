@@ -1,5 +1,4 @@
 import React from 'react';
-
 import './AutoSegmentation.styl';
 import ModelSelector from '../ModelSelector';
 import BaseTab from './BaseTab';
@@ -100,7 +99,7 @@ export default class AutoSegmentation extends BaseTab {
             onSelectModel={this.onSelectModel}
             usage={
               <p style={{ fontSize: 'smaller' }}>
-                Fully automated segmentation <b>without any user input</b>. Just
+                Fully automated segmentation <b>without any user prompt</b>. Just
                 select a model and click to run
               </p>
             }

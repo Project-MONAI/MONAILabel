@@ -50,7 +50,7 @@ export default class SettingsTable extends Component {
             <td>
               <input
                 className="actionInput"
-                name="aiaaServerURL"
+                name="monailabelServerURL"
                 type="text"
                 defaultValue={this.state.url}
                 onBlur={this.onBlurSeverURL}

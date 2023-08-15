@@ -4,6 +4,7 @@ import PropTypes from 'prop-types';
 import './MonaiLabelPanel.styl'; 
 import SettingsTable from './SettingsTable';
 import AutoSegmentation from './actions/AutoSegmentation';
+import SmartEdit from './actions/SmartEdit';
 import OptionTable from './actions/OptionTable'; 
 import MonaiLabelClient from '../services/MonaiLabelClient';
 
@@ -22,7 +23,8 @@ export default class MonaiLabelPanel extends Component {
   state: { info: {}; action: {}; };
   actions: { options: any; 
     activelearning: any; 
-    segmentation: any; 
+    segmentation: any;
+    smartedit: any; 
   };
   props: any;    
   SeriesInstanceUID: any;
@@ -50,6 +52,7 @@ export default class MonaiLabelPanel extends Component {
       options: React.createRef(),
       activelearning: React.createRef(),
       segmentation: React.createRef(),
+      smartedit: React.createRef(),
     };
 
     this.state = {
@@ -176,6 +179,22 @@ export default class MonaiLabelPanel extends Component {
             viewConstants={{'SeriesInstanceUID': this.SeriesInstanceUID, 
                             'StudyInstanceUID': this.StudyInstanceUID
                             }}
+            client={this.client}
+            notification={this.notification}
+            updateView={this.updateView}
+            onSelectActionTab={this.onSelectActionTab}
+            onOptionsConfig={this.onOptionsConfig}
+          />
+          <SmartEdit
+            ref={this.actions['smartedit']}
+            tabIndex={4}
+            servicesManager = {this.props.servicesManager}
+            commandsManager = {this.props.commandsManager}
+            info={this.state.info}
+            // Here we have to send element - In OHIF V2 - const element = cornerstone.getEnabledElements()[this.props.activeIndex].element;
+            viewConstants={{'SeriesInstanceUID': this.SeriesInstanceUID, 
+                          'StudyInstanceUID': this.StudyInstanceUID
+            }}
             client={this.client}
             notification={this.notification}
             updateView={this.updateView}
