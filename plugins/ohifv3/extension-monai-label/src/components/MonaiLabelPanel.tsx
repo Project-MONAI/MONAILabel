@@ -39,6 +39,7 @@ export default class MonaiLabelPanel extends Component {
 
       this.SeriesInstanceUID = displaySet.SeriesInstanceUID;
       this.StudyInstanceUID = displaySet.StudyInstanceUID;
+      this.FrameOfReferenceUID = displaySet.instances[0].FrameOfReferenceUID;
       this.displaySetInstanceUID = displaySet.displaySetInstanceUID;
 
       this.notification = uiNotificationService;
@@ -205,7 +206,6 @@ export default class MonaiLabelPanel extends Component {
     const { image: buffer, header } = ret;
     const data = new Uint16Array(buffer);
 
-    debugger;
     const segmentations = [
       {
         id: '1',
@@ -217,6 +217,7 @@ export default class MonaiLabelPanel extends Component {
         isActive: true,
         activeSegmentIndex: 1,
         scalarData: data,
+        FrameOfReferenceUID: this.FrameOfReferenceUID,
       },
     ];
     this.props.commandsManager.runCommand('loadSegmentationsForDisplaySet', {
