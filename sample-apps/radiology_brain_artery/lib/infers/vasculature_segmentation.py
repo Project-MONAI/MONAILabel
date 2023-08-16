@@ -113,6 +113,6 @@ class VascSegmentation(InferTask):
         ]
         return t
 
-    def writer(self, data, extension=None, dtype=None):
-        writer = NRRDWriterBrain(label="pred", original_label_indexing=self.labels)
-        return writer(data)
+    # def writer(self, data, extension=None, dtype=None):
+    #     writer = NRRDWriterBrain(label="pred", original_label_indexing=self.labels)
+    #     return writer(data)

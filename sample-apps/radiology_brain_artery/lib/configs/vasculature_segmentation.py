@@ -50,7 +50,7 @@ class VascSegmentation(TaskConfig):
             download_file(url, self.path[0])
 
         # Network
-        self.spatial_size = json.loads(self.conf.get("spatial_size", "[128, 128, 128]"))
+        self.spatial_size = json.loads(self.conf.get("spatial_size", "[96, 96, 96]"))
         self.target_spacing = json.loads(self.conf.get("target_spacing", "[0.8, 0.8, 0.8]"))
 
         self.network = SegResNet(
