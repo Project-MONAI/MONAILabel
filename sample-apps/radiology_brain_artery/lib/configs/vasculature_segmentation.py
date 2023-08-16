@@ -50,17 +50,17 @@ class VascSegmentation(TaskConfig):
             download_file(url, self.path[0])
 
         # Network
-        self.spatial_size = json.loads(self.conf.get("spatial_size", "[96, 96, 96]"))
+        self.spatial_size = json.loads(self.conf.get("spatial_size", "[128, 128, 128]"))
         self.target_spacing = json.loads(self.conf.get("target_spacing", "[0.8, 0.8, 0.8]"))
 
         self.network = SegResNet(
             spatial_dims=3,
             in_channels=self.number_intensity_ch,
             out_channels=len(self.labels) + 1,  # labels plus background,
-            init_filters=32,
+            init_filters=64,
             blocks_down=(1, 2, 2, 4),
             blocks_up=(1, 1, 1),
-            dropout_prob=0.2,
+            dropout_prob=0.1,
         )
 
     def infer(self) -> Union[InferTask, Dict[str, InferTask]]:
