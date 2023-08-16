@@ -15,20 +15,12 @@ import React from 'react';
 import './BaseTab.styl';
 import ModelSelector from '../ModelSelector';
 import BaseTab from './BaseTab';
-import { getFirstSegmentId } from '../../utils/SegmentationUtils';
+/* import { getFirstSegmentId } from '../../utils/SegmentationUtils'; */
 
 
 export default class SmartEdit extends BaseTab {
   constructor(props) {
     super(props);
-
-    /* const {
-      MONAILabel
-    } = this.props.commandsManager;
-
-    this.MONAILabel = MONAILabel; */
-
-
 
     this.modelSelector = React.createRef();
 
@@ -121,7 +113,7 @@ export default class SmartEdit extends BaseTab {
     }
   };
 
-  deepgrowClickEventHandler = async evt => {
+  /* deepgrowClickEventHandler = async evt => {
     if (!evt || !evt.detail) {
       console.info('Not a valid event; So Ignore');
       return;
@@ -152,7 +144,7 @@ export default class SmartEdit extends BaseTab {
     const pointData = this.getPointData(evt);
     points.push(pointData);
     await this.onDeepgrow(this.state.model);
-  };
+  }; */
 
   getPointData = evt => {
     const { x, y, imageId } = evt.detail;

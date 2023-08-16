@@ -33,23 +33,21 @@ export default class MonaiLabelPanel extends Component {
 
     const { uiNotificationService, viewportGridService, displaySetService } =
       props.servicesManager.services;
+    
+    const { viewports, activeViewportIndex } = viewportGridService.getState();
+    const viewport = viewports[activeViewportIndex];
+    const displaySet = displaySetService.getDisplaySetByUID(
+      viewport.displaySetInstanceUIDs[0]
+    );
 
-    // just for debugging
-    setTimeout(() => {
-      const { viewports, activeViewportIndex } = viewportGridService.getState();
-      const viewport = viewports[activeViewportIndex];
-      const displaySet = displaySetService.getDisplaySetByUID(
-        viewport.displaySetInstanceUIDs[0]
-      );
+    this.SeriesInstanceUID = displaySet.SeriesInstanceUID;
+    this.StudyInstanceUID = displaySet.StudyInstanceUID;
+    this.FrameOfReferenceUID = displaySet.instances[0].FrameOfReferenceUID;
+    this.displaySetInstanceUID = displaySet.displaySetInstanceUID;
 
-      this.SeriesInstanceUID = displaySet.SeriesInstanceUID;
-      this.StudyInstanceUID = displaySet.StudyInstanceUID;
-      this.FrameOfReferenceUID = displaySet.instances[0].FrameOfReferenceUID;
-      this.displaySetInstanceUID = displaySet.displaySetInstanceUID;
-
-      this.notification = uiNotificationService;
-      this.settings = React.createRef();
-    }, 2000);
+    this.notification = uiNotificationService;
+    this.settings = React.createRef();
+    
 
     this.actions = {
       options: React.createRef(),
@@ -90,7 +88,8 @@ export default class MonaiLabelPanel extends Component {
     };
   }
 
-  async componentDidUnmount() {
+  // componentDidUnmount? Doesn't exist this method anymore in V3?
+  async componentWillUnmount() {
     this.unsubscribe();
   }
 
@@ -161,14 +160,76 @@ export default class MonaiLabelPanel extends Component {
 
   updateView = async (response, labels) => {
     // Process the obtained binary file from the MONAI Label server
+
     console.info('These are the predicted labels');
     console.info(labels);
 
-    // for debugging only, we should get the response from the server
+    const info = {
+      spleen: 1,
+      kidney_right: 2,
+      kidney_left: 3,
+      gallbladder: 4,
+      liver: 5,
+      stomach: 6,
+      aorta: 7,
+      inferior_vena_cava: 8,
+      portal_vein_and_splenic_vein: 9,
+      pancreas: 10,
+      adrenal_gland_right: 11,
+      adrenal_gland_left: 12,
+      lung_upper_lobe_left: 13,
+      lung_lower_lobe_left: 14,
+      lung_upper_lobe_right: 15,
+      lung_middle_lobe_right: 16,
+      lung_lower_lobe_right: 17,
+      esophagus: 42,
+      trachea: 43,
+      heart_myocardium: 44,
+      heart_atrium_left: 45,
+      heart_ventricle_left: 46,
+      heart_atrium_right: 47,
+      heart_ventricle_right: 48,
+      pulmonary_artery: 49,
+    };
+
+    const ret = SegmentationReader.parseNrrdData(response.data);
+  
+
+    /* const nrrd = await response.arrayBuffer();
+
+    const ret = SegmentationReader.parseNrrdData(nrrd); */
+
+    if (!ret) {
+      throw new Error('Failed to parse NRRD data');
+    }
+
+    const { image: buffer, header } = ret;
+    const data = new Uint16Array(buffer);
+
+    const segmentations = [
+      {
+        id: '1',
+        label: 'Segmentations',
+        segments: Object.keys(info).map((key) => ({
+          segmentIndex: info[key],
+          label: key,
+        })),
+        isActive: true,
+        activeSegmentIndex: 1,
+        scalarData: data,
+        FrameOfReferenceUID: this.FrameOfReferenceUID,
+      },
+    ];
+    this.props.commandsManager.runCommand('loadSegmentationsForDisplaySet', {
+      displaySetInstanceUID: this.displaySetInstanceUID,
+      segmentations,
+    }); 
   };
 
-  handleSegLoad = async () => {
+  /* handleSegLoad = async () => {
+
     const response = await fetch('http://localhost:3000/pred.nrrd');
+
     if (!response.ok) {
       throw new Error('Network response was not ok');
     }
@@ -230,7 +291,7 @@ export default class MonaiLabelPanel extends Component {
       displaySetInstanceUID: this.displaySetInstanceUID,
       segmentations,
     });
-  };
+  }; */
 
   render() {
     return (
