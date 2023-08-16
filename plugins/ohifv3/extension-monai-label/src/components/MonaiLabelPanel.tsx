@@ -6,7 +6,7 @@ import AutoSegmentation from './actions/AutoSegmentation';
 import SmartEdit from './actions/SmartEdit';
 import OptionTable from './actions/OptionTable'; 
 import MonaiLabelClient from '../services/MonaiLabelClient';
-import SegmentationReader from '../../../../ohif/monai-label/src/utils/SegmentationReader';
+import SegmentationReader from '../utils/SegmentationReader';
 import MonaiSegmentation from './MonaiSegmentation';
 
 export default class MonaiLabelPanel extends Component {
@@ -234,7 +234,6 @@ export default class MonaiLabelPanel extends Component {
 
   render() {
     return (
-      <>
       <div className="monaiLabelPanel">
 
         <br style={{ margin: '3px' }} />
@@ -299,7 +298,7 @@ export default class MonaiLabelPanel extends Component {
               servicesManager={this.props.servicesManager}
             />
           ))}
-      </>
+      </div>
     );
   }
 }
