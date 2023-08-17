@@ -158,46 +158,20 @@ export default class MonaiLabelPanel extends Component {
       : {};
   };
 
-  updateView = async (response, labels) => {
+  updateView = async (response, labelNames) => {
     // Process the obtained binary file from the MONAI Label server
 
     console.info('These are the predicted labels');
-    console.info(labels);
+    console.info(labelNames);
 
-    const info = {
-      spleen: 1,
-      kidney_right: 2,
-      kidney_left: 3,
-      gallbladder: 4,
-      liver: 5,
-      stomach: 6,
-      aorta: 7,
-      inferior_vena_cava: 8,
-      portal_vein_and_splenic_vein: 9,
-      pancreas: 10,
-      adrenal_gland_right: 11,
-      adrenal_gland_left: 12,
-      lung_upper_lobe_left: 13,
-      lung_lower_lobe_left: 14,
-      lung_upper_lobe_right: 15,
-      lung_middle_lobe_right: 16,
-      lung_lower_lobe_right: 17,
-      esophagus: 42,
-      trachea: 43,
-      heart_myocardium: 44,
-      heart_atrium_left: 45,
-      heart_ventricle_left: 46,
-      heart_atrium_right: 47,
-      heart_ventricle_right: 48,
-      pulmonary_artery: 49,
-    };
+    debugger;
+
+    if (labelNames.hasOwnProperty("background"))
+      delete labelNames.background;
+
+    /* debugger; */
 
     const ret = SegmentationReader.parseNrrdData(response.data);
-  
-
-    /* const nrrd = await response.arrayBuffer();
-
-    const ret = SegmentationReader.parseNrrdData(nrrd); */
 
     if (!ret) {
       throw new Error('Failed to parse NRRD data');
@@ -210,8 +184,8 @@ export default class MonaiLabelPanel extends Component {
       {
         id: '1',
         label: 'Segmentations',
-        segments: Object.keys(info).map((key) => ({
-          segmentIndex: info[key],
+        segments: Object.keys(labelNames).map((key) => ({
+          segmentIndex: labelNames[key],
           label: key,
         })),
         isActive: true,
@@ -220,78 +194,13 @@ export default class MonaiLabelPanel extends Component {
         FrameOfReferenceUID: this.FrameOfReferenceUID,
       },
     ];
+
     this.props.commandsManager.runCommand('loadSegmentationsForDisplaySet', {
       displaySetInstanceUID: this.displaySetInstanceUID,
       segmentations,
     }); 
+    
   };
-
-  /* handleSegLoad = async () => {
-
-    const response = await fetch('http://localhost:3000/pred.nrrd');
-
-    if (!response.ok) {
-      throw new Error('Network response was not ok');
-    }
-
-    const info = {
-      spleen: 1,
-      kidney_right: 2,
-      kidney_left: 3,
-      gallbladder: 4,
-      liver: 5,
-      stomach: 6,
-      aorta: 7,
-      inferior_vena_cava: 8,
-      portal_vein_and_splenic_vein: 9,
-      pancreas: 10,
-      adrenal_gland_right: 11,
-      adrenal_gland_left: 12,
-      lung_upper_lobe_left: 13,
-      lung_lower_lobe_left: 14,
-      lung_upper_lobe_right: 15,
-      lung_middle_lobe_right: 16,
-      lung_lower_lobe_right: 17,
-      esophagus: 42,
-      trachea: 43,
-      heart_myocardium: 44,
-      heart_atrium_left: 45,
-      heart_ventricle_left: 46,
-      heart_atrium_right: 47,
-      heart_ventricle_right: 48,
-      pulmonary_artery: 49,
-    };
-
-    const nrrd = await response.arrayBuffer();
-
-    const ret = SegmentationReader.parseNrrdData(nrrd);
-
-    if (!ret) {
-      throw new Error('Failed to parse NRRD data');
-    }
-
-    const { image: buffer, header } = ret;
-    const data = new Uint16Array(buffer);
-
-    const segmentations = [
-      {
-        id: '1',
-        label: 'Segmentation 1',
-        segments: Object.keys(info).map((key) => ({
-          segmentIndex: info[key],
-          label: key,
-        })),
-        isActive: true,
-        activeSegmentIndex: 1,
-        scalarData: data,
-        FrameOfReferenceUID: this.FrameOfReferenceUID,
-      },
-    ];
-    this.props.commandsManager.runCommand('loadSegmentationsForDisplaySet', {
-      displaySetInstanceUID: this.displaySetInstanceUID,
-      segmentations,
-    });
-  }; */
 
   render() {
     return (
@@ -352,7 +261,6 @@ export default class MonaiLabelPanel extends Component {
             onOptionsConfig={this.onOptionsConfig}
           />
         </div>
-        <p>&nbsp;</p>
           {this.state.segmentations?.map((segmentation) => (
             <MonaiSegmentation
               segmentation={segmentation}

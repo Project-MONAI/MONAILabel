@@ -8,8 +8,8 @@
 # WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 # See the License for the specific language governing permissions and
 # limitations under the License.
-
-from typing import Callable, Sequence, Union
+import logging
+from typing import Any, Callable, Sequence, Tuple, Union
 
 from monai.apps.deepedit.transforms import (
     AddGuidanceFromPointsDeepEditd,
@@ -34,6 +34,11 @@ from monai.transforms import (
 from monailabel.interfaces.tasks.infer_v2 import InferType
 from monailabel.tasks.infer.basic_infer import BasicInferTask
 from monailabel.transform.post import Restored
+from lib.transforms.transforms import GetCentroidsd
+
+from monailabel.transform.writer import Writer
+
+logger = logging.getLogger(__name__)
 
 
 class DeepEdit(BasicInferTask):
@@ -120,4 +125,14 @@ class DeepEdit(BasicInferTask):
             SqueezeDimd(keys="pred", dim=0),
             ToNumpyd(keys="pred"),
             Restored(keys="pred", ref_image="image"),
+            GetCentroidsd(keys="pred", centroids_key="centroids")
         ]
+
+    # def writer(self, data, extension=None, dtype=None) -> Tuple[Any, Any]:
+    #     logger.info(data['centroids'])
+    #     result_file, _ = Writer(label="pred")(data)
+    #     result_json = {
+    #         "label_names": self.labels,
+    #         "centroids": data['centroids'],
+    #     }
+    #     return result_file, result_json

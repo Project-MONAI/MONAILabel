@@ -15,6 +15,7 @@ import React from 'react';
 import './BaseTab.styl';
 import ModelSelector from '../ModelSelector';
 import BaseTab from './BaseTab';
+import * as cornerstoneTools from '@cornerstonejs/tools';
 /* import { getFirstSegmentId } from '../../utils/SegmentationUtils'; */
 
 
@@ -39,6 +40,7 @@ export default class SmartEdit extends BaseTab {
   };
 
   onDeepgrow = async () => {
+
     const { info, viewConstants } = this.props;
     const image = viewConstants.SeriesInstanceUID;
     const model = this.modelSelector.current.currentModel();
@@ -67,6 +69,18 @@ export default class SmartEdit extends BaseTab {
     this.state.deepgrowPoints.set('liver', [48, 49, 50]);
 
     /* const points = this.state.deepgrowPoints.get(segmentId); */
+
+    const viewPort = this.props.servicesManager.services.cornerstoneViewportService.getCornerstoneViewportByIndex(0)
+
+    const pts = cornerstoneTools.annotation.state.getAnnotations('ProbeMONAILabel', viewPort.element)
+
+    const pointsWorld = pts.map(pt => pt.data.handles.points[0])
+
+    const {imageData } = viewPort.getImageData()
+
+    const pointsIJK = pointsWorld.map(world => imageData.worldToIndex(world))
+    const roundPointsIJK = pointsIJK.map(ind => Math.round(ind))
+    debugger;
 
     points = this.state.deepgrowPoints.get(segmentId);
 
@@ -197,6 +211,8 @@ export default class SmartEdit extends BaseTab {
 
 
   clearPoints = id => {
+    cornerstoneTools.annotation.state.getAnnotationManager().removeAllAnnotations()
+    this.props.servicesManager.services.cornerstoneViewportService.getRenderingEngine().render()
     console.log('Clearing all points')
   }
 
@@ -235,6 +251,8 @@ export default class SmartEdit extends BaseTab {
     this.props.commandsManager.runCommand('setToolActive', {toolName: 'ProbeMONAILabel'})
     console.info('Here we activate the probe')
 
+    /* this.state.deepgrowPoints */
+
     /* cornerstoneTools.setToolActive('DeepgrowProbe', { mouseButtonMask: 1 });
     this.addEventListeners(
       'monailabel_deepgrow_probe_event',
@@ -243,6 +261,7 @@ export default class SmartEdit extends BaseTab {
   };
 
   onLeaveActionTab = () => {
+    
     this.props.commandsManager.runCommand('setToolDisable', {toolName: 'ProbeMONAILabel'})
     console.info('Here we deactivate the probe')
     /* cornerstoneTools.setToolDisabled('DeepgrowProbe', {});
