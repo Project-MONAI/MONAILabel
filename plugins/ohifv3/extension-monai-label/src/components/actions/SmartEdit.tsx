@@ -16,6 +16,7 @@ import './BaseTab.styl';
 import ModelSelector from '../ModelSelector';
 import BaseTab from './BaseTab';
 import * as cornerstoneTools from '@cornerstonejs/tools';
+import { vec3 } from 'gl-matrix';
 /* import { getFirstSegmentId } from '../../utils/SegmentationUtils'; */
 
 
@@ -65,10 +66,9 @@ export default class SmartEdit extends BaseTab {
       return;
     }
 
-  
-    this.state.deepgrowPoints.set('liver', [48, 49, 50]);
-
     /* const points = this.state.deepgrowPoints.get(segmentId); */
+
+    // Getting the clicks in IJK format
 
     const viewPort = this.props.servicesManager.services.cornerstoneViewportService.getCornerstoneViewportByIndex(0)
 
@@ -78,11 +78,15 @@ export default class SmartEdit extends BaseTab {
 
     const {imageData } = viewPort.getImageData()
 
-    const pointsIJK = pointsWorld.map(world => imageData.worldToIndex(world))
-    const roundPointsIJK = pointsIJK.map(ind => Math.round(ind))
-    debugger;
+    const ijk = vec3.fromValues(0, 0, 0);
 
-    points = this.state.deepgrowPoints.get(segmentId);
+    const pointsIJK = pointsWorld.map(world => imageData.worldToIndex(world, ijk))
+    
+    /* const roundPointsIJK = pointsIJK.map(ind => Math.round(ind)) */
+
+    this.state.deepgrowPoints.set('liver', pointsIJK);
+
+    const points = this.state.deepgrowPoints.get(segmentId);
 
     // Error as ctrlKey is part of the points?
 
@@ -91,24 +95,33 @@ export default class SmartEdit extends BaseTab {
     }
 
     const currentPoint = points[points.length - 1];
+
     const foreground = points
+    /* const foreground = points
       .filter(p => (is3D || p.z === currentPoint.z) && !p.data.ctrlKey)
-      .map(p => [p.x, p.y, p.z]);
-    const background = points
-      .filter(p => (is3D || p.z === currentPoint.z) && p.data.ctrlKey)
-      .map(p => [p.x, p.y, p.z]);
+      .map(p => [p.x, p.y, p.z]); */
+
+    
+    const background = []
+    /* const background = points
+    .filter(p => (is3D || p.z === currentPoint.z) && p.data.ctrlKey)
+    .map(p => [p.x, p.y, p.z]); */
 
     const config = this.props.onOptionsConfig();
 
     const params =
       config && config.infer && config.infer[model] ? config.infer[model] : {};
 
-    const cursor = viewConstants.element.style.cursor;
-    viewConstants.element.style.cursor = 'wait';
+    /* const cursor = viewConstants.element.style.cursor;
+    viewConstants.element.style.cursor = 'wait'; */
+    
     const response = await this.props
       .client()
       .deepgrow(model, image, foreground, background, params);
-    viewConstants.element.style.cursor = cursor;
+    
+    /* viewConstants.element.style.cursor = cursor; */
+
+    const labels = info.models[model].labels;
 
     if (response.status !== 200) {
       this.notification.show({
@@ -120,11 +133,15 @@ export default class SmartEdit extends BaseTab {
     } else {
       await this.props.updateView(
         response,
-        null,
+        labels,
         'override',
         is3D ? -1 : currentPoint.z
       );
     }
+
+    // Remove the segmentation and create a new one with a differen index
+    /* debugger;
+    this.props.servicesManager.services.segmentationService.remove('1') */
   };
 
   /* deepgrowClickEventHandler = async evt => {

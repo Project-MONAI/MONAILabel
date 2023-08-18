@@ -161,15 +161,14 @@ export default class MonaiLabelPanel extends Component {
   updateView = async (response, labelNames) => {
     // Process the obtained binary file from the MONAI Label server
 
+    /* const onInfoLabelNames = this.state.info.labels */
+    const onInfoLabelNames = labelNames
+
     console.info('These are the predicted labels');
-    console.info(labelNames);
+    console.info(onInfoLabelNames);
 
-    debugger;
-
-    if (labelNames.hasOwnProperty("background"))
-      delete labelNames.background;
-
-    /* debugger; */
+    if (onInfoLabelNames.hasOwnProperty("background"))
+      delete onInfoLabelNames.background;
 
     const ret = SegmentationReader.parseNrrdData(response.data);
 
@@ -184,8 +183,8 @@ export default class MonaiLabelPanel extends Component {
       {
         id: '1',
         label: 'Segmentations',
-        segments: Object.keys(labelNames).map((key) => ({
-          segmentIndex: labelNames[key],
+        segments: Object.keys(onInfoLabelNames).map((key) => ({
+          segmentIndex: onInfoLabelNames[key],
           label: key,
         })),
         isActive: true,
