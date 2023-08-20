@@ -55,8 +55,14 @@ class BundleConstants:
     def key_preprocessing(self) -> Sequence[str]:
         return ["preprocessing", "pre_transforms"]
 
+    def key_deepedit_preprocessing(self) -> Sequence[str]:
+        return "deepedit_preprocessing"
+
     def key_postprocessing(self) -> Sequence[str]:
         return ["postprocessing", "post_transforms"]
+
+    def deepedit_postprocessing(self) -> Sequence[str]:
+        return "deepedit_postprocessing"
 
     def key_inferer(self) -> Sequence[str]:
         return ["inferer"]
@@ -86,6 +92,7 @@ class BundleInferTask(BasicInferTask):
         post_filter: Optional[Sequence] = [SaveImaged],
         extend_load_image: bool = True,
         add_post_restore: bool = True,
+        deepedit: bool = False,
         dropout: float = 0.0,
         **kwargs,
     ):
@@ -95,6 +102,7 @@ class BundleInferTask(BasicInferTask):
         self.pre_filter = pre_filter
         self.post_filter = post_filter
         self.extend_load_image = extend_load_image
+        self.deepedit = deepedit
         self.dropout = dropout
 
         config_paths = [c for c in self.const.configs() if os.path.exists(os.path.join(path, "configs", c))]
@@ -132,7 +140,7 @@ class BundleInferTask(BasicInferTask):
         self.key_image, image = next(iter(metadata["network_data_format"]["inputs"].items()))
         self.key_pred, pred = next(iter(metadata["network_data_format"]["outputs"].items()))
 
-        labels = {v.lower(): int(k) for k, v in pred.get("channel_def", {}).items() if v.lower() != "background"}
+        labels = {v.lower(): int(k) for k, v in pred.get("channel_def", {}).items() if v.lower() != "background"} if not self.deepedit else pred.get("channel_def", {}).items()
         description = metadata.get("description")
         spatial_shape = image.get("spatial_shape")
         dimension = len(spatial_shape) if spatial_shape else 3
@@ -186,10 +194,19 @@ class BundleInferTask(BasicInferTask):
         self._update_device(data)
 
         pre = []
-        for k in self.const.key_preprocessing():
-            if self.bundle_config.get(k):
-                c = self.bundle_config.get_parsed_content(k, instantiate=True)
+        if not self.deepedit:
+            for k in self.const.key_preprocessing():
+                if self.bundle_config.get(k):
+                    c = self.bundle_config.get_parsed_content(k, instantiate=True)
+                    pre = list(c.transforms) if isinstance(c, Compose) else c
+        else:
+            key = self.const.key_deepedit_preprocessing()
+            if self.bundle_config.get(key):
+                c = self.bundle_config.get_parsed_content(key, instantiate=True)
                 pre = list(c.transforms) if isinstance(c, Compose) else c
+            else:
+                logging.error('DeepEdit pretransforms for inference are NOT defined')
+
         pre = self._filter_transforms(pre, self.pre_filter)
 
         if pre and self.extend_load_image:
@@ -244,10 +261,19 @@ class BundleInferTask(BasicInferTask):
         self._update_device(data)
 
         post = []
-        for k in self.const.key_postprocessing():
-            if self.bundle_config.get(k):
-                c = self.bundle_config.get_parsed_content(k, instantiate=True)
+        if not self.deepedit:
+            for k in self.const.key_postprocessing():
+                if self.bundle_config.get(k):
+                    c = self.bundle_config.get_parsed_content(k, instantiate=True)
+                    post = list(c.transforms) if isinstance(c, Compose) else c
+        else:
+            key = self.const.deepedit_postprocessing()
+            if self.bundle_config.get(key):
+                c = self.bundle_config.get_parsed_content(key, instantiate=True)
                 post = list(c.transforms) if isinstance(c, Compose) else c
+            else:
+                logging.error('DeepEdit post_transforms for inference are NOT defined')
+
         post = self._filter_transforms(post, self.post_filter)
 
         if self.add_post_restore:

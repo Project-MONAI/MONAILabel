@@ -58,10 +58,32 @@ class MyApp(MONAILabelApp):
         #################################################
         # Models
         #################################################
+
+        # Check if one of the models is deepedit in self.models.items()
+        # If yes, add an inner "for" loop to instantiate two infer models
+
+        # config={"cache_transforms": True, "cache_transforms_in_memory": True, "cache_transforms_ttl": 300}, for DeepEdit infer
+
+        # for n, b in self.models.items():
+        #     i = BundleInferTask(b, self.conf)
+        #     logger.info(f"+++ Adding Inferer:: {n} => {i}")
+        #     infers[n] = i
+
         for n, b in self.models.items():
-            i = BundleInferTask(b, self.conf)
-            logger.info(f"+++ Adding Inferer:: {n} => {i}")
-            infers[n] = i
+            if 'deepedit' in n:
+                # Adding inferer for managing clicks
+                i = BundleInferTask(b, self.conf, type='deepedit', deepedit=True)
+                logger.info(f"+++ Adding DeepEdit Inferer")
+                infers[n] = i
+                # Adding automatic inferer
+                i = BundleInferTask(b, self.conf, type='segmentation')
+                logger.info(f"+++ Adding Inferer:: {n}_seg => {i}")
+                infers[n + '_seg'] = i
+            else:
+                i = BundleInferTask(b, self.conf)
+                logger.info(f"+++ Adding Inferer:: {n} => {i}")
+                infers[n] = i
+
         return infers
 
     def init_trainers(self) -> Dict[str, TrainTask]:
@@ -138,7 +160,8 @@ def main():
     )
 
     home = str(Path.home())
-    studies = f"{home}/Datasets/Radiology"
+    # studies = f"{home}/Datasets/Radiology"
+    studies = "/tmp/testLiver_deepedit/"
 
     parser = argparse.ArgumentParser()
     parser.add_argument("-s", "--studies", default=studies)
@@ -147,8 +170,9 @@ def main():
     app_dir = os.path.dirname(__file__)
     studies = args.studies
 
-    app = MyApp(app_dir, studies, {"preload": "true", "models": "spleen_ct_segmentation"})
-    train(app)
+    app = MyApp(app_dir, studies, {"preload": "false", "models": "spleen_deepedit_annotation"})
+    # train(app)
+    infer(app)
 
 
 def infer(app):
@@ -157,7 +181,7 @@ def infer(app):
 
     res = app.infer(
         request={
-            "model": "spleen_ct_segmentation",
+            "model": "spleen_deepedit_annotation",
             "image": "image",
         }
     )
@@ -170,7 +194,7 @@ def infer(app):
 def train(app):
     app.train(
         request={
-            "model": "spleen_ct_segmentation",
+            "model": "spleen_deepedit_annotation",
             "max_epochs": 2,
             "multi_gpu": False,
             "val_split": 0.1,

@@ -263,7 +263,7 @@ def get_zoo_bundle(model_dir, conf, models, conf_key):
         print("")
         print("---------------------------------------------------------------------------------------")
         print(
-            "Github access rate limit reached, pleaes provide personal auth token by setting env MONAI_ZOO_AUTH_TOKEN"
+            "Github access rate limit reached, please provide personal auth token by setting env MONAI_ZOO_AUTH_TOKEN"
         )
         print("or --conf auth_token <personal auth token>")
         exit(-1)
