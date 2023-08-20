@@ -73,7 +73,7 @@ class MyApp(MONAILabelApp):
             if "deepedit" in n:
                 # Adding inferer for managing clicks
                 i = BundleInferTask(b, self.conf, type="deepedit", deepedit=True)
-                logger.info(f"+++ Adding DeepEdit Inferer")
+                logger.info("+++ Adding DeepEdit Inferer")
                 infers[n] = i
                 # Adding automatic inferer
                 i = BundleInferTask(b, self.conf, type="segmentation")
