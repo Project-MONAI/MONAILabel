@@ -140,7 +140,11 @@ class BundleInferTask(BasicInferTask):
         self.key_image, image = next(iter(metadata["network_data_format"]["inputs"].items()))
         self.key_pred, pred = next(iter(metadata["network_data_format"]["outputs"].items()))
 
-        labels = {v.lower(): int(k) for k, v in pred.get("channel_def", {}).items() if v.lower() != "background"} if not self.deepedit else pred.get("channel_def", {}).items()
+        labels = (
+            {v.lower(): int(k) for k, v in pred.get("channel_def", {}).items() if v.lower() != "background"}
+            if not self.deepedit
+            else pred.get("channel_def", {}).items()
+        )
         description = metadata.get("description")
         spatial_shape = image.get("spatial_shape")
         dimension = len(spatial_shape) if spatial_shape else 3
@@ -205,7 +209,7 @@ class BundleInferTask(BasicInferTask):
                 c = self.bundle_config.get_parsed_content(key, instantiate=True)
                 pre = list(c.transforms) if isinstance(c, Compose) else c
             else:
-                logging.error('DeepEdit pretransforms for inference are NOT defined')
+                logging.error("DeepEdit pretransforms for inference are NOT defined")
 
         pre = self._filter_transforms(pre, self.pre_filter)
 
@@ -272,7 +276,7 @@ class BundleInferTask(BasicInferTask):
                 c = self.bundle_config.get_parsed_content(key, instantiate=True)
                 post = list(c.transforms) if isinstance(c, Compose) else c
             else:
-                logging.error('DeepEdit post_transforms for inference are NOT defined')
+                logging.error("DeepEdit post_transforms for inference are NOT defined")
 
         post = self._filter_transforms(post, self.post_filter)
 

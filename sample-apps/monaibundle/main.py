@@ -70,15 +70,15 @@ class MyApp(MONAILabelApp):
         #     infers[n] = i
 
         for n, b in self.models.items():
-            if 'deepedit' in n:
+            if "deepedit" in n:
                 # Adding inferer for managing clicks
-                i = BundleInferTask(b, self.conf, type='deepedit', deepedit=True)
+                i = BundleInferTask(b, self.conf, type="deepedit", deepedit=True)
                 logger.info(f"+++ Adding DeepEdit Inferer")
                 infers[n] = i
                 # Adding automatic inferer
-                i = BundleInferTask(b, self.conf, type='segmentation')
+                i = BundleInferTask(b, self.conf, type="segmentation")
                 logger.info(f"+++ Adding Inferer:: {n}_seg => {i}")
-                infers[n + '_seg'] = i
+                infers[n + "_seg"] = i
             else:
                 i = BundleInferTask(b, self.conf)
                 logger.info(f"+++ Adding Inferer:: {n} => {i}")
