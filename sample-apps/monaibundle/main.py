@@ -59,26 +59,16 @@ class MyApp(MONAILabelApp):
         # Models
         #################################################
 
-        # Check if one of the models is deepedit in self.models.items()
-        # If yes, add an inner "for" loop to instantiate two infer models
-
-        # config={"cache_transforms": True, "cache_transforms_in_memory": True, "cache_transforms_ttl": 300}, for DeepEdit infer
-
-        # for n, b in self.models.items():
-        #     i = BundleInferTask(b, self.conf)
-        #     logger.info(f"+++ Adding Inferer:: {n} => {i}")
-        #     infers[n] = i
-
         for n, b in self.models.items():
             if "deepedit" in n:
-                # Adding inferer for managing clicks
-                i = BundleInferTask(b, self.conf, type="deepedit", deepedit=True)
-                logger.info("+++ Adding DeepEdit Inferer")
-                infers[n] = i
                 # Adding automatic inferer
                 i = BundleInferTask(b, self.conf, type="segmentation")
                 logger.info(f"+++ Adding Inferer:: {n}_seg => {i}")
                 infers[n + "_seg"] = i
+                # Adding inferer for managing clicks
+                i = BundleInferTask(b, self.conf, type="deepedit", deepedit=True)
+                logger.info("+++ Adding DeepEdit Inferer")
+                infers[n] = i
             else:
                 i = BundleInferTask(b, self.conf)
                 logger.info(f"+++ Adding Inferer:: {n} => {i}")

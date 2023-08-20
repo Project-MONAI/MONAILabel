@@ -140,11 +140,13 @@ class BundleInferTask(BasicInferTask):
         self.key_image, image = next(iter(metadata["network_data_format"]["inputs"].items()))
         self.key_pred, pred = next(iter(metadata["network_data_format"]["outputs"].items()))
 
-        labels = (
-            {v.lower(): int(k) for k, v in pred.get("channel_def", {}).items() if v.lower() != "background"}
-            if not self.deepedit
-            else pred.get("channel_def", {}).items()
-        )
+        # labels = ({v.lower(): int(k) for k, v in pred.get("channel_def", {}).items() if v.lower() != "background"})
+        labels = []
+        for k, v in pred.get("channel_def", {}).items():
+            if (not self.deepedit) and (v.lower() != "background"):
+                labels.append({v.lower(): int(k)})
+            else:
+                labels.append({v.lower(): int(k)})
         description = metadata.get("description")
         spatial_shape = image.get("spatial_shape")
         dimension = len(spatial_shape) if spatial_shape else 3
