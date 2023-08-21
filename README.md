@@ -32,7 +32,7 @@ Refer to full [MONAI Label documentations](https://docs.monai.io/projects/label/
 Refer to [MONAI Label Tutorial](https://github.com/Project-MONAI/tutorials/tree/main/monailabel) series for application and viewer workflows with different medical image tasks. Notebook-like tutorials are created for detailed instructions.
 
 ### Table of Contents
-- [Overview](https://github.com/Project-MONAI/MONAILabel#overview)
+- [Overview](#overview)
   - [Highlights and Features](https://github.com/Project-MONAI/MONAILabel#highlights-and-features)
   - [Supported Matrix](https://github.com/Project-MONAI/MONAILabel#supported-matrix)
 - [Getting Started with MONAI Label](https://github.com/Project-MONAI/MONAILabel#getting-started-with-monai-label)
@@ -45,7 +45,7 @@ Refer to [MONAI Label Tutorial](https://github.com/Project-MONAI/tutorials/tree/
 - [Cite MONAI Label](https://github.com/Project-MONAI/MONAILabel#cite)
 - [Contributing](https://github.com/Project-MONAI/MONAILabel#contributing)
 - [Community](https://github.com/Project-MONAI/MONAILabel#community)
-- [Additional Resources](https://github.com/Project-MONAI/MONAILabel#additional-resources)
+- [Additional Resources](#additional-resources)
 
 ### Overview
 MONAI Label reduces the time and effort of annotating new datasets and enables the adaptation of AI to the task at hand by continuously learning from user interactions and data. MONAI Label allows researchers and developers to make continuous improvements to their apps by allowing them to interact with their apps at the user would. End-users (clinicians, technologists, and annotators in general) benefit from AI continuously learning and becoming better at understanding what the end-user is trying to annotate.
