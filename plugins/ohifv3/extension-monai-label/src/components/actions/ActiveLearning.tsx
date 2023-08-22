@@ -251,6 +251,7 @@ export default class OptionTable extends BaseTab {
                 <td>
                   <button
                     className="actionInput"
+                    style={{backgroundColor:'lightgray'}}
                     onClick={this.onClickNextSample}
                   >
                     Next Sample
@@ -259,6 +260,7 @@ export default class OptionTable extends BaseTab {
                 <td>
                   <button
                     className="actionInput"
+                    style={{backgroundColor:'lightgray'}}
                     onClick={this.onClickUpdateModel}
                   >
                     {this.state.training ? 'Stop Training' : 'Update Model'}
@@ -268,6 +270,7 @@ export default class OptionTable extends BaseTab {
                 <td>
                   <button
                     className="actionInput"
+                    style={{backgroundColor:'lightgray'}}
                     onClick={this.onClickSubmitLabel}
                     disabled={!segmentId}
                   >

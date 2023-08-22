@@ -27,7 +27,6 @@ export default class NextSampleForm extends Component {
 
   onSubmit = () => {
     // TODO:: OHIF Doesn't support loading exact series in URI
-    debugger;
     let path = window.location.href.split('=');
     path[path.length - 1] = this.props.info.StudyInstanceUID;
 
