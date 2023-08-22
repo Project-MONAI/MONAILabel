@@ -5,6 +5,7 @@ import SettingsTable from './SettingsTable';
 import AutoSegmentation from './actions/AutoSegmentation';
 import SmartEdit from './actions/SmartEdit';
 import OptionTable from './actions/OptionTable'; 
+import ActiveLearning from './actions/ActiveLearning';
 import MonaiLabelClient from '../services/MonaiLabelClient';
 import SegmentationReader from '../utils/SegmentationReader';
 import MonaiSegmentation from './MonaiSegmentation';
@@ -228,6 +229,22 @@ export default class MonaiLabelPanel extends Component {
             notification={this.notification}
             //updateView={this.updateView}
             onSelectActionTab={this.onSelectActionTab}
+          />
+
+          <ActiveLearning
+            ref={this.actions['activelearning']}
+            tabIndex={2}
+            info={this.state.info}
+            viewConstants={{'SeriesInstanceUID': this.SeriesInstanceUID, 
+                          'StudyInstanceUID': this.StudyInstanceUID
+                          }}
+            client={this.client}
+            notification={this.notification}
+            /* updateView={this.updateView} */
+            onSelectActionTab={this.onSelectActionTab}
+            onOptionsConfig={this.onOptionsConfig}
+            // additional function - delete scribbles before submit
+            /* onDeleteSegmentByName={this.onDeleteSegmentByName} */
           />
 
           <AutoSegmentation
