@@ -151,7 +151,7 @@ def main():
 
     home = str(Path.home())
     # studies = f"{home}/Datasets/Radiology"
-    studies = "/tmp/testLiver_deepedit/"
+    studies = "/tmp/testLiver/imagesTs/"
 
     parser = argparse.ArgumentParser()
     parser.add_argument("-s", "--studies", default=studies)

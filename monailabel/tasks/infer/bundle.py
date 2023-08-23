@@ -55,14 +55,8 @@ class BundleConstants:
     def key_preprocessing(self) -> Sequence[str]:
         return ["preprocessing", "pre_transforms"]
 
-    def key_deepedit_preprocessing(self) -> Sequence[str]:
-        return "deepedit_preprocessing"
-
     def key_postprocessing(self) -> Sequence[str]:
         return ["postprocessing", "post_transforms"]
-
-    def deepedit_postprocessing(self) -> Sequence[str]:
-        return "deepedit_postprocessing"
 
     def key_inferer(self) -> Sequence[str]:
         return ["inferer"]
@@ -206,12 +200,11 @@ class BundleInferTask(BasicInferTask):
                     c = self.bundle_config.get_parsed_content(k, instantiate=True)
                     pre = list(c.transforms) if isinstance(c, Compose) else c
         else:
-            key = self.const.key_deepedit_preprocessing()
-            if self.bundle_config.get(key):
-                c = self.bundle_config.get_parsed_content(key, instantiate=True)
-                pre = list(c.transforms) if isinstance(c, Compose) else c
-            else:
-                logging.error("DeepEdit pretransforms for inference are NOT defined")
+            self.bundle_config.config['use_clicks'] = True
+            for k in self.const.key_preprocessing():
+                if self.bundle_config.get(k):
+                    c = self.bundle_config.get_parsed_content(k, instantiate=True)
+                    pre = list(c.transforms) if isinstance(c, Compose) else c
 
         pre = self._filter_transforms(pre, self.pre_filter)
 
@@ -273,12 +266,11 @@ class BundleInferTask(BasicInferTask):
                     c = self.bundle_config.get_parsed_content(k, instantiate=True)
                     post = list(c.transforms) if isinstance(c, Compose) else c
         else:
-            key = self.const.deepedit_postprocessing()
-            if self.bundle_config.get(key):
-                c = self.bundle_config.get_parsed_content(key, instantiate=True)
-                post = list(c.transforms) if isinstance(c, Compose) else c
-            else:
-                logging.error("DeepEdit post_transforms for inference are NOT defined")
+            self.bundle_config.config['use_clicks'] = True
+            for k in self.const.key_postprocessing():
+                if self.bundle_config.get(k):
+                    c = self.bundle_config.get_parsed_content(k, instantiate=True)
+                    post = list(c.transforms) if isinstance(c, Compose) else c
 
         post = self._filter_transforms(post, self.post_filter)
 
