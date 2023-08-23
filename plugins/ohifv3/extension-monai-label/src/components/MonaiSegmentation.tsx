@@ -2,7 +2,7 @@ import React from 'react';
 import { SegmentationGroup } from '@ohif/ui';
 
 function MonaiSegmentation({ servicesManager, segmentation }) {
-  const { segmentationService } = servicesManager.services;
+  const { segmentationService, toolGroupService } = servicesManager.services;
   const getToolGroupIds = (segmentationId) => {
     const toolGroupIds =
       segmentationService.getToolGroupIdsWithSegmentation(segmentationId);
@@ -31,6 +31,28 @@ function MonaiSegmentation({ servicesManager, segmentation }) {
     segmentationService.toggleSegmentationVisibility(segmentationId);
   };
 
+  const onSegmentClick = (segmentationId, segmentIndex) => {
+    segmentationService.setActiveSegmentForSegmentation(
+      segmentationId,
+      segmentIndex
+    );
+
+    const toolGroupIds = getToolGroupIds(segmentationId);
+
+    toolGroupIds.forEach((toolGroupId) => {
+      // const toolGroupId =
+      segmentationService.setActiveSegmentationForToolGroup(
+        segmentationId,
+        toolGroupId
+      );
+      segmentationService.jumpToSegmentCenter(
+        segmentationId,
+        segmentIndex,
+        toolGroupId
+      );
+    });
+  };
+
   return (
     <SegmentationGroup
       key={segmentation.id}
@@ -45,7 +67,7 @@ function MonaiSegmentation({ servicesManager, segmentation }) {
       onToggleSegmentVisibility={onToggleSegmentVisibility}
       onToggleSegmentationVisibility={onToggleSegmentationVisibility}
       showSegmentDelete={false}
-      // onSegmentClick={onSegmentationClick}
+      onSegmentClick={onSegmentClick}
       // isMinimized={segmentation.isMinimized}
       // onSegmentColorClick={onClickSegmentColor}
       // onSegmentationClick={onSegmentationClick}

@@ -36,17 +36,6 @@ export default class MonaiLabelPanel extends Component {
     const { uiNotificationService, viewportGridService, displaySetService } =
       props.servicesManager.services;
 
-    const { viewports, activeViewportIndex } = viewportGridService.getState();
-    const viewport = viewports[activeViewportIndex];
-    const displaySet = displaySetService.getDisplaySetByUID(
-      viewport.displaySetInstanceUIDs[0]
-    );
-
-    this.SeriesInstanceUID = displaySet.SeriesInstanceUID;
-    this.StudyInstanceUID = displaySet.StudyInstanceUID;
-    this.FrameOfReferenceUID = displaySet.instances[0].FrameOfReferenceUID;
-    this.displaySetInstanceUID = displaySet.displaySetInstanceUID;
-
     this.notification = uiNotificationService;
     this.settings = React.createRef();
 
@@ -62,10 +51,25 @@ export default class MonaiLabelPanel extends Component {
       action: {},
       segmentations: [],
     };
+
+    // Todo: fix this hack
+    setTimeout(() => {
+      const { viewports, activeViewportIndex } = viewportGridService.getState();
+      const viewport = viewports[activeViewportIndex];
+      const displaySet = displaySetService.getDisplaySetByUID(
+        viewport.displaySetInstanceUIDs[0]
+      );
+
+      this.SeriesInstanceUID = displaySet.SeriesInstanceUID;
+      this.StudyInstanceUID = displaySet.StudyInstanceUID;
+      this.FrameOfReferenceUID = displaySet.instances[0].FrameOfReferenceUID;
+      this.displaySetInstanceUID = displaySet.displaySetInstanceUID;
+    }, 3000);
   }
 
   async componentDidMount() {
-    const { segmentationService } = this.props.servicesManager.services;
+    const { segmentationService, displaySetService } =
+      this.props.servicesManager.services;
     const added = segmentationService.EVENTS.SEGMENTATION_ADDED;
     const updated = segmentationService.EVENTS.SEGMENTATION_UPDATED;
     const removed = segmentationService.EVENTS.SEGMENTATION_REMOVED;
@@ -159,7 +163,7 @@ export default class MonaiLabelPanel extends Component {
       : {};
   };
 
-  updateView = async (response, labelNames) => {
+  _update = async (response, labelNames) => {
     // Process the obtained binary file from the MONAI Label server
 
     /* const onInfoLabelNames = this.state.info.labels */
@@ -199,6 +203,46 @@ export default class MonaiLabelPanel extends Component {
       displaySetInstanceUID: this.displaySetInstanceUID,
       segmentations,
     });
+  };
+
+  _debug = async () => {
+    let nrrdFetch = await fetch('http://localhost:3000/pred2.nrrd');
+
+    const info = {
+      spleen: 1,
+      kidney_right: 2,
+      kidney_left: 3,
+      gallbladder: 4,
+      liver: 5,
+      stomach: 6,
+      aorta: 7,
+      inferior_vena_cava: 8,
+      portal_vein_and_splenic_vein: 9,
+      pancreas: 10,
+      adrenal_gland_right: 11,
+      adrenal_gland_left: 12,
+      lung_upper_lobe_left: 13,
+      lung_lower_lobe_left: 14,
+      lung_upper_lobe_right: 15,
+      lung_middle_lobe_right: 16,
+      lung_lower_lobe_right: 17,
+      esophagus: 42,
+      trachea: 43,
+      heart_myocardium: 44,
+      heart_atrium_left: 45,
+      heart_ventricle_left: 46,
+      heart_atrium_right: 47,
+      heart_ventricle_right: 48,
+      pulmonary_artery: 49,
+    };
+
+    const nrrd = await nrrdFetch.arrayBuffer();
+
+    this._update({ data: nrrd }, info);
+  };
+
+  updateView = async (response, labelNames) => {
+    this._update(response, labelNames);
   };
 
   render() {

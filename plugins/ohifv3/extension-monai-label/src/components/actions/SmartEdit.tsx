@@ -19,7 +19,6 @@ import * as cornerstoneTools from '@cornerstonejs/tools';
 import { vec3 } from 'gl-matrix';
 /* import { getFirstSegmentId } from '../../utils/SegmentationUtils'; */
 
-
 export default class SmartEdit extends BaseTab {
   constructor(props) {
     super(props);
@@ -33,15 +32,55 @@ export default class SmartEdit extends BaseTab {
       currentEvent: null,
       currentModel: null,
     };
-
   }
 
-  onSelectModel = model => {
+  componentDidMount() {
+    const { segmentationService, toolGroupService } =
+      this.props.servicesManager.services;
+
+    const added = segmentationService.EVENTS.SEGMENTATION_ADDED;
+    const updated = segmentationService.EVENTS.SEGMENTATION_UPDATED;
+    const removed = segmentationService.EVENTS.SEGMENTATION_REMOVED;
+    const subscriptions = [];
+
+    [added, updated, removed].forEach((evt) => {
+      const { unsubscribe } = segmentationService.subscribe(evt, () => {
+        const segmentations = segmentationService.getSegmentations();
+
+        if (!segmentations?.length) {
+          return;
+        }
+
+        // get the first segmentation Todo: fix this to be active
+        const segmentation = segmentations[0];
+        debugger;
+
+        const { segments, activeSegmentIndex } = segmentation;
+
+        const selectedSegment = segments[activeSegmentIndex];
+
+        const color = selectedSegment.color;
+        toolGroupService.setToolConfiguration('default', 'ProbeMONAILabel', {
+          customColor: `rgb(${color[0]}, ${color[1]}, ${color[2]})`,
+        });
+      });
+      subscriptions.push(unsubscribe);
+    });
+
+    this.unsubscribe = () => {
+      subscriptions.forEach((unsubscribe) => unsubscribe());
+    };
+  }
+
+  componentWillUnmount() {
+    this.unsubscribe();
+  }
+
+  onSelectModel = (model) => {
     this.setState({ currentModel: model });
   };
 
   onDeepgrow = async () => {
-
     const { info, viewConstants } = this.props;
     const image = viewConstants.SeriesInstanceUID;
     const model = this.modelSelector.current.currentModel();
@@ -49,8 +88,8 @@ export default class SmartEdit extends BaseTab {
       ? this.state.segmentId
       : getFirstSegmentId(viewConstants.element); */
 
-    // Hard coded labelId  
-    const segmentId = 'liver'
+    // Hard coded labelId
+    const segmentId = 'liver';
 
     if (segmentId && !this.state.segmentId) {
       this.onSegmentSelected(segmentId);
@@ -70,18 +109,26 @@ export default class SmartEdit extends BaseTab {
 
     // Getting the clicks in IJK format
 
-    const viewPort = this.props.servicesManager.services.cornerstoneViewportService.getCornerstoneViewportByIndex(0)
+    const viewPort =
+      this.props.servicesManager.services.cornerstoneViewportService.getCornerstoneViewportByIndex(
+        0
+      );
 
-    const pts = cornerstoneTools.annotation.state.getAnnotations('ProbeMONAILabel', viewPort.element)
+    const pts = cornerstoneTools.annotation.state.getAnnotations(
+      'ProbeMONAILabel',
+      viewPort.element
+    );
 
-    const pointsWorld = pts.map(pt => pt.data.handles.points[0])
+    const pointsWorld = pts.map((pt) => pt.data.handles.points[0]);
 
-    const {imageData } = viewPort.getImageData()
+    const { imageData } = viewPort.getImageData();
 
     const ijk = vec3.fromValues(0, 0, 0);
 
-    const pointsIJK = pointsWorld.map(world => imageData.worldToIndex(world, ijk))
-    
+    const pointsIJK = pointsWorld.map((world) =>
+      imageData.worldToIndex(world, ijk)
+    );
+
     /* const roundPointsIJK = pointsIJK.map(ind => Math.round(ind)) */
 
     this.state.deepgrowPoints.set('liver', pointsIJK);
@@ -96,13 +143,12 @@ export default class SmartEdit extends BaseTab {
 
     const currentPoint = points[points.length - 1];
 
-    const foreground = points
+    const foreground = points;
     /* const foreground = points
       .filter(p => (is3D || p.z === currentPoint.z) && !p.data.ctrlKey)
       .map(p => [p.x, p.y, p.z]); */
 
-    
-    const background = []
+    const background = [];
     /* const background = points
     .filter(p => (is3D || p.z === currentPoint.z) && p.data.ctrlKey)
     .map(p => [p.x, p.y, p.z]); */
@@ -114,11 +160,11 @@ export default class SmartEdit extends BaseTab {
 
     /* const cursor = viewConstants.element.style.cursor;
     viewConstants.element.style.cursor = 'wait'; */
-    
+
     const response = await this.props
       .client()
       .deepgrow(model, image, foreground, background, params);
-    
+
     /* viewConstants.element.style.cursor = cursor; */
 
     const labels = info.models[model].labels;
@@ -177,7 +223,7 @@ export default class SmartEdit extends BaseTab {
     await this.onDeepgrow(this.state.model);
   }; */
 
-  getPointData = evt => {
+  getPointData = (evt) => {
     const { x, y, imageId } = evt.detail;
     const z = this.props.viewConstants.imageIdsToIndex.get(imageId);
 
@@ -185,18 +231,18 @@ export default class SmartEdit extends BaseTab {
     return { x, y, z, data: evt.detail, imageId };
   };
 
-  onSegmentDeleted = id => {
+  onSegmentDeleted = (id) => {
     this.clearPoints(id);
     this.setState({ segmentId: null });
   };
-  onSegmentSelected = id => {
+  onSegmentSelected = (id) => {
     this.initPoints(id);
     this.setState({ segmentId: id });
   };
 
-  initPoints = id => {
-    console.log('Initializing points')
-  }
+  initPoints = (id) => {
+    console.log('Initializing points');
+  };
   /* initPoints = id => {
     const pointsAll = this.state.deepgrowPoints;
     const segmentId = !id ? this.state.segmentId : id;
@@ -226,12 +272,15 @@ export default class SmartEdit extends BaseTab {
     cornerstone.updateImage(element);
   }; */
 
-
-  clearPoints = id => {
-    cornerstoneTools.annotation.state.getAnnotationManager().removeAllAnnotations()
-    this.props.servicesManager.services.cornerstoneViewportService.getRenderingEngine().render()
-    console.log('Clearing all points')
-  }
+  clearPoints = (id) => {
+    cornerstoneTools.annotation.state
+      .getAnnotationManager()
+      .removeAllAnnotations();
+    this.props.servicesManager.services.cornerstoneViewportService
+      .getRenderingEngine()
+      .render();
+    console.log('Clearing all points');
+  };
 
   /* clearPoints = id => {
     const pointsAll = this.state.deepgrowPoints;
@@ -259,14 +308,15 @@ export default class SmartEdit extends BaseTab {
     pointsAll.delete(segmentId);
   }; */
 
-  onSelectActionTab = evt => {
+  onSelectActionTab = (evt) => {
     this.props.onSelectActionTab(evt.currentTarget.value);
   };
 
   onEnterActionTab = () => {
-    
-    this.props.commandsManager.runCommand('setToolActive', {toolName: 'ProbeMONAILabel'})
-    console.info('Here we activate the probe')
+    this.props.commandsManager.runCommand('setToolActive', {
+      toolName: 'ProbeMONAILabel',
+    });
+    console.info('Here we activate the probe');
 
     /* this.state.deepgrowPoints */
 
@@ -278,9 +328,10 @@ export default class SmartEdit extends BaseTab {
   };
 
   onLeaveActionTab = () => {
-    
-    this.props.commandsManager.runCommand('setToolDisable', {toolName: 'ProbeMONAILabel'})
-    console.info('Here we deactivate the probe')
+    this.props.commandsManager.runCommand('setToolDisable', {
+      toolName: 'ProbeMONAILabel',
+    });
+    console.info('Here we deactivate the probe');
     /* cornerstoneTools.setToolDisabled('DeepgrowProbe', {});
     this.removeEventListeners(); */
   };
@@ -309,7 +360,11 @@ export default class SmartEdit extends BaseTab {
     let models = [];
     if (this.props.info && this.props.info.models) {
       for (let [name, model] of Object.entries(this.props.info.models)) {
-        if (model.type === 'deepgrow' || model.type === 'deepedit' || model.type === 'vista') {
+        if (
+          model.type === 'deepgrow' ||
+          model.type === 'deepedit' ||
+          model.type === 'vista'
+        ) {
           models.push(name);
         }
       }
