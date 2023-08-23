@@ -200,7 +200,7 @@ class BundleInferTask(BasicInferTask):
                     c = self.bundle_config.get_parsed_content(k, instantiate=True)
                     pre = list(c.transforms) if isinstance(c, Compose) else c
         else:
-            self.bundle_config.config['use_clicks'] = True
+            self.bundle_config.config["use_clicks"] = True
             for k in self.const.key_preprocessing():
                 if self.bundle_config.get(k):
                     c = self.bundle_config.get_parsed_content(k, instantiate=True)
@@ -266,7 +266,7 @@ class BundleInferTask(BasicInferTask):
                     c = self.bundle_config.get_parsed_content(k, instantiate=True)
                     post = list(c.transforms) if isinstance(c, Compose) else c
         else:
-            self.bundle_config.config['use_clicks'] = True
+            self.bundle_config.config["use_clicks"] = True
             for k in self.const.key_postprocessing():
                 if self.bundle_config.get(k):
                     c = self.bundle_config.get_parsed_content(k, instantiate=True)
