@@ -352,6 +352,9 @@ class BasicInferTask(InferTask):
             "transform": data.get("latencies"),
         }
 
+        # Add Centroids to the result json to consume in OHIF v3
+        result_json["centroids"] = data.get("centroids", None)
+
         if result_file_name is not None and isinstance(result_file_name, str):
             logger.info(f"Result File: {result_file_name}")
         logger.info(f"Result Json Keys: {list(result_json.keys())}")

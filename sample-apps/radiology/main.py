@@ -283,11 +283,11 @@ def main():
     )
 
     home = str(Path.home())
-    studies = f"{home}/Dataset/Radiology"
+    studies = "/tmp/testLiver/imagesTs/"
 
     parser = argparse.ArgumentParser()
     parser.add_argument("-s", "--studies", default=studies)
-    parser.add_argument("-m", "--model", default="segmentation_spleen")
+    parser.add_argument("-m", "--model", default="deepedit")
     parser.add_argument("-t", "--test", default="infer", choices=("train", "infer"))
     args = parser.parse_args()
 
