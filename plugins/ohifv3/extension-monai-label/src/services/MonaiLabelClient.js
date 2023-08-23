@@ -26,6 +26,7 @@ export default class MonaiLabelClient {
   async infer(model, image, params, label = null, result_extension = '.nrrd') {
     let url = new URL('infer/' + encodeURIComponent(model), this.server_url);
     url.searchParams.append('image', image);
+    /* url.searchParams.append('output', 'all'); */
     url.searchParams.append('output', 'image');
     url = url.toString();
 
