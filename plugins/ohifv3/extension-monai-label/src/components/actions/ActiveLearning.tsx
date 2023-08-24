@@ -166,7 +166,7 @@ export default class OptionTable extends BaseTab {
       type: 'application/octet-stream',
     });
 
-    const params = { label_info: metadata };
+    const params = { label_info: null };
 
     const response = await this.props
       .client()
