@@ -29,7 +29,7 @@ export default class OptionTable extends BaseTab {
     this.state = {
       strategy: 'random',
       training: false,
-      segmentId: null,
+      segmentId: 'liver',
     };
   }
 
@@ -113,6 +113,81 @@ export default class OptionTable extends BaseTab {
       this.setState({ training: !training });
     }
   };
+
+  onClickSubmitLabel = async () => {
+
+
+    /* const { getters } = cornerstoneTools.getModule('segmentation');
+    const { labelmaps3D } = getters.labelmaps3D(
+      this.props.viewConstants.element
+    ); */
+
+    const labelmaps3D = cornerstone.cache.getVolume('1')
+
+    if (!labelmaps3D) {
+      console.info('LabelMap3D is empty.. so zero segments');
+      return;
+    }
+
+    this.notification.show({
+      title: 'MONAI Label',
+      message: 'Preparing the labelmap to submit',
+      type: 'info',
+      duration: 5000,
+    });
+
+    const metadata = labelmaps3D.metadata.data
+      ? labelmaps3D.metadata.data
+      : labelmaps3D.metadata;
+
+    if (!metadata || !metadata.length) {
+      console.warn('Missing Meta; so ignore');
+    }
+
+    console.debug(metadata);
+
+    /* const segments = flattenLabelmaps(
+      getLabelMaps(this.props.viewConstants.element)
+    );
+    
+    console.debug(segments); */
+
+    /* if (metadata.length !== segments.length + 1) {
+      console.warn('Segments and Metadata NOT matching; So Ignore');
+    } */
+
+    const image = this.props.viewConstants.SeriesInstanceUID;
+
+    /* debugger; */
+
+    // Convert label map to unit16 type!!
+
+    const label = new Blob([labelmaps3D.scalarData], {
+      type: 'application/octet-stream',
+    });
+
+    const params = { label_info: metadata };
+
+    const response = await this.props
+      .client()
+      .save_label(image, label, params);
+
+    if (response.status !== 200) {
+      this.notification.show({
+        title: 'MONAI Label',
+        message: 'Failed to save label',
+        type: 'error',
+        duration: 5000,
+      });
+    } else {
+      this.notification.show({
+        title: 'MONAI Label',
+        message: 'Label submitted to server',
+        type: 'success',
+        duration: 2000,
+      });
+    }
+  }; 
 
   /* onClickSubmitLabel = async () => {
     // delete any scribbles segments,

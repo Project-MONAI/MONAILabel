@@ -59,6 +59,8 @@ export default class MonaiLabelClient {
     url.searchParams.append('image', image);
     url = url.toString();
 
+    /* debugger; */
+
     const data = MonaiLabelClient.constructFormDataFromArray(
       params,
       label,
