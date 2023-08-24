@@ -110,6 +110,8 @@ class BundleInferTask(BasicInferTask):
         self.bundle_path = path
         self.bundle_config_path = os.path.join(path, "configs", config_paths[0])
         self.bundle_config = self._load_bundle_config(self.bundle_path, self.bundle_config_path)
+        # For deepedit inferer - allow the use of clicks
+        self.bundle_config.config["use_click"] = self.deepedit
 
         if self.dropout > 0:
             self.bundle_config["network_def"]["dropout"] = self.dropout
@@ -200,7 +202,6 @@ class BundleInferTask(BasicInferTask):
                     c = self.bundle_config.get_parsed_content(k, instantiate=True)
                     pre = list(c.transforms) if isinstance(c, Compose) else c
         else:
-            self.bundle_config.config["use_click"] = True
             for k in self.const.key_preprocessing():
                 if self.bundle_config.get(k):
                     c = self.bundle_config.get_parsed_content(k, instantiate=True)
@@ -266,7 +267,6 @@ class BundleInferTask(BasicInferTask):
                     c = self.bundle_config.get_parsed_content(k, instantiate=True)
                     post = list(c.transforms) if isinstance(c, Compose) else c
         else:
-            self.bundle_config.config["use_click"] = True
             for k in self.const.key_postprocessing():
                 if self.bundle_config.get(k):
                     c = self.bundle_config.get_parsed_content(k, instantiate=True)
