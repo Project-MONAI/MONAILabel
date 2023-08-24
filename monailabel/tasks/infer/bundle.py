@@ -196,16 +196,10 @@ class BundleInferTask(BasicInferTask):
         self._update_device(data)
 
         pre = []
-        if not self.deepedit:
-            for k in self.const.key_preprocessing():
-                if self.bundle_config.get(k):
-                    c = self.bundle_config.get_parsed_content(k, instantiate=True)
-                    pre = list(c.transforms) if isinstance(c, Compose) else c
-        else:
-            for k in self.const.key_preprocessing():
-                if self.bundle_config.get(k):
-                    c = self.bundle_config.get_parsed_content(k, instantiate=True)
-                    pre = list(c.transforms) if isinstance(c, Compose) else c
+        for k in self.const.key_preprocessing():
+            if self.bundle_config.get(k):
+                c = self.bundle_config.get_parsed_content(k, instantiate=True)
+                pre = list(c.transforms) if isinstance(c, Compose) else c
 
         pre = self._filter_transforms(pre, self.pre_filter)
 
@@ -261,16 +255,10 @@ class BundleInferTask(BasicInferTask):
         self._update_device(data)
 
         post = []
-        if not self.deepedit:
-            for k in self.const.key_postprocessing():
-                if self.bundle_config.get(k):
-                    c = self.bundle_config.get_parsed_content(k, instantiate=True)
-                    post = list(c.transforms) if isinstance(c, Compose) else c
-        else:
-            for k in self.const.key_postprocessing():
-                if self.bundle_config.get(k):
-                    c = self.bundle_config.get_parsed_content(k, instantiate=True)
-                    post = list(c.transforms) if isinstance(c, Compose) else c
+        for k in self.const.key_postprocessing():
+            if self.bundle_config.get(k):
+                c = self.bundle_config.get_parsed_content(k, instantiate=True)
+                post = list(c.transforms) if isinstance(c, Compose) else c
 
         post = self._filter_transforms(post, self.post_filter)
 
