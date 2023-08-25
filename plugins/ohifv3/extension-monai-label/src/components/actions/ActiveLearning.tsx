@@ -149,7 +149,7 @@ export default class OptionTable extends BaseTab {
     /* const segments = flattenLabelmaps(
       getLabelMaps(this.props.viewConstants.element)
     );
-    
+
     console.debug(segments); */
 
     /* if (metadata.length !== segments.length + 1) {
@@ -187,7 +187,7 @@ export default class OptionTable extends BaseTab {
         duration: 2000,
       });
     }
-  }; 
+  };
 
   /* onClickSubmitLabel = async () => {
     // delete any scribbles segments,

@@ -42,7 +42,7 @@ export default class MonaiLabelPanel extends Component {
     /* setTimeout(() => {
       this.viewConstants = this.getViewConstants(viewports, studies, activeIndex);
     }, 2000) */
-    
+
     this.viewConstants = this.getViewConstants(viewports, studies, activeIndex);
     console.debug(this.viewConstants);
 
