@@ -35,7 +35,7 @@ export default class SmartEdit extends BaseTab {
   }
 
   componentDidMount() {
-    const { segmentationService, toolGroupService } =
+    const { segmentationService, toolGroupService, viewportGridService } =
       this.props.servicesManager.services;
 
     const added = segmentationService.EVENTS.SEGMENTATION_ADDED;
@@ -53,14 +53,20 @@ export default class SmartEdit extends BaseTab {
 
         // get the first segmentation Todo: fix this to be active
         const segmentation = segmentations[0];
-        debugger;
-
         const { segments, activeSegmentIndex } = segmentation;
 
         const selectedSegment = segments[activeSegmentIndex];
 
         const color = selectedSegment.color;
-        toolGroupService.setToolConfiguration('default', 'ProbeMONAILabel', {
+
+        // get the active viewport toolGroup
+        const { viewports, activeViewportIndex } =
+          viewportGridService.getState();
+        const viewport = viewports[activeViewportIndex];
+        const { viewportOptions } = viewport;
+        const toolGroupId = viewportOptions.toolGroupId;
+
+        toolGroupService.setToolConfiguration(toolGroupId, 'ProbeMONAILabel', {
           customColor: `rgb(${color[0]}, ${color[1]}, ${color[2]})`,
         });
       });
@@ -81,15 +87,14 @@ export default class SmartEdit extends BaseTab {
   };
 
   onDeepgrow = async () => {
+    const { segmentationService, cornerstoneViewportService } =
+      this.props.servicesManager.services;
     const { info, viewConstants } = this.props;
     const image = viewConstants.SeriesInstanceUID;
     const model = this.modelSelector.current.currentModel();
-    /* const segmentId = this.state.segmentId
-      ? this.state.segmentId
-      : getFirstSegmentId(viewConstants.element); */
 
-    // Hard coded labelId
-    const segmentId = 'liver';
+    const activeSegment = segmentationService.getActiveSegment();
+    const segmentId = activeSegment.label;
 
     if (segmentId && !this.state.segmentId) {
       this.onSegmentSelected(segmentId);
@@ -110,9 +115,7 @@ export default class SmartEdit extends BaseTab {
     // Getting the clicks in IJK format
 
     const viewPort =
-      this.props.servicesManager.services.cornerstoneViewportService.getCornerstoneViewportByIndex(
-        0
-      );
+      cornerstoneViewportService.getCornerstoneViewportByIndex(0);
 
     const pts = cornerstoneTools.annotation.state.getAnnotations(
       'ProbeMONAILabel',
@@ -120,18 +123,16 @@ export default class SmartEdit extends BaseTab {
     );
 
     const pointsWorld = pts.map((pt) => pt.data.handles.points[0]);
-
     const { imageData } = viewPort.getImageData();
-
     const ijk = vec3.fromValues(0, 0, 0);
 
     const pointsIJK = pointsWorld.map((world) =>
-      imageData.worldToIndex(world, ijk)
+      Math.round(imageData.worldToIndex(world, ijk))
     );
 
     /* const roundPointsIJK = pointsIJK.map(ind => Math.round(ind)) */
 
-    this.state.deepgrowPoints.set('liver', pointsIJK);
+    this.state.deepgrowPoints.set(segmentId, pointsIJK);
 
     const points = this.state.deepgrowPoints.get(segmentId);
 

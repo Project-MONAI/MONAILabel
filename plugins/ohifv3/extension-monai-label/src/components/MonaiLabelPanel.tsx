@@ -1,5 +1,7 @@
 import React, { Component } from 'react';
 import PropTypes from 'prop-types';
+import { cache, triggerEvent, eventTarget } from '@cornerstonejs/core';
+import { Enums } from '@cornerstonejs/tools';
 import './MonaiLabelPanel.styl';
 import SettingsTable from './SettingsTable';
 import AutoSegmentation from './actions/AutoSegmentation';
@@ -64,12 +66,11 @@ export default class MonaiLabelPanel extends Component {
       this.StudyInstanceUID = displaySet.StudyInstanceUID;
       this.FrameOfReferenceUID = displaySet.instances[0].FrameOfReferenceUID;
       this.displaySetInstanceUID = displaySet.displaySetInstanceUID;
-    }, 3000);
+    }, 1000);
   }
 
   async componentDidMount() {
-    const { segmentationService, displaySetService } =
-      this.props.servicesManager.services;
+    const { segmentationService } = this.props.servicesManager.services;
     const added = segmentationService.EVENTS.SEGMENTATION_ADDED;
     const updated = segmentationService.EVENTS.SEGMENTATION_UPDATED;
     const removed = segmentationService.EVENTS.SEGMENTATION_REMOVED;
@@ -165,7 +166,6 @@ export default class MonaiLabelPanel extends Component {
 
   _update = async (response, labelNames) => {
     // Process the obtained binary file from the MONAI Label server
-
     /* const onInfoLabelNames = this.state.info.labels */
     const onInfoLabelNames = labelNames;
 
@@ -184,6 +184,14 @@ export default class MonaiLabelPanel extends Component {
     const { image: buffer, header } = ret;
     const data = new Uint16Array(buffer);
 
+    // reformat centroids
+    const centroidsIJK = new Map();
+    for (const [key, value] of Object.entries(response.centroids)) {
+      const segmentIndex = parseInt(value[0], 10);
+      const image = value.slice(1).map((v) => parseFloat(v));
+      centroidsIJK.set(segmentIndex, { image: image, world: [] });
+    }
+
     const segmentations = [
       {
         id: '1',
@@ -196,13 +204,25 @@ export default class MonaiLabelPanel extends Component {
         activeSegmentIndex: 1,
         scalarData: data,
         FrameOfReferenceUID: this.FrameOfReferenceUID,
+        centroidsIJK: centroidsIJK,
       },
     ];
 
-    this.props.commandsManager.runCommand('loadSegmentationsForDisplaySet', {
-      displaySetInstanceUID: this.displaySetInstanceUID,
-      segmentations,
-    });
+    // Todo: rename volumeId
+    const volumeLoadObject = cache.getVolume('1');
+    if (volumeLoadObject) {
+      const { scalarData } = volumeLoadObject;
+      scalarData.set(data);
+      triggerEvent(eventTarget, Enums.Events.SEGMENTATION_DATA_MODIFIED, {
+        segmentationId: '1',
+      });
+      console.debug("updated the segmentation's scalar data");
+    } else {
+      this.props.commandsManager.runCommand('loadSegmentationsForDisplaySet', {
+        displaySetInstanceUID: this.displaySetInstanceUID,
+        segmentations,
+      });
+    }
   };
 
   _debug = async () => {
@@ -210,30 +230,12 @@ export default class MonaiLabelPanel extends Component {
 
     const info = {
       spleen: 1,
-      kidney_right: 2,
-      kidney_left: 3,
-      gallbladder: 4,
-      liver: 5,
-      stomach: 6,
-      aorta: 7,
-      inferior_vena_cava: 8,
-      portal_vein_and_splenic_vein: 9,
-      pancreas: 10,
-      adrenal_gland_right: 11,
-      adrenal_gland_left: 12,
-      lung_upper_lobe_left: 13,
-      lung_lower_lobe_left: 14,
-      lung_upper_lobe_right: 15,
-      lung_middle_lobe_right: 16,
-      lung_lower_lobe_right: 17,
-      esophagus: 42,
-      trachea: 43,
-      heart_myocardium: 44,
-      heart_atrium_left: 45,
-      heart_ventricle_left: 46,
-      heart_atrium_right: 47,
-      heart_ventricle_right: 48,
-      pulmonary_artery: 49,
+      'right kidney': 2,
+      'left kidney': 3,
+      liver: 6,
+      stomach: 7,
+      aorta: 8,
+      'inferior vena cava': 9,
     };
 
     const nrrd = await nrrdFetch.arrayBuffer();
@@ -241,8 +243,49 @@ export default class MonaiLabelPanel extends Component {
     this._update({ data: nrrd }, info);
   };
 
+  parseResponse = (response) => {
+    const buffer = response.data;
+    const contentType = response.headers['content-type'];
+    const boundaryMatch = contentType.match(/boundary=([^;]+)/i);
+    const boundary = boundaryMatch ? boundaryMatch[1] : null;
+
+    const text = new TextDecoder().decode(buffer);
+    const parts = text
+      .split(`--${boundary}`)
+      .filter((part) => part.trim() !== '');
+
+    // Find the JSON part and NRRD part
+    const jsonPart = parts.find((part) =>
+      part.includes('Content-Type: application/json')
+    );
+    const nrrdPart = parts.find((part) =>
+      part.includes('Content-Type: application/octet-stream')
+    );
+
+    // Extract JSON data
+    const jsonStartIndex = jsonPart.indexOf('{');
+    const jsonEndIndex = jsonPart.lastIndexOf('}');
+    const jsonData = JSON.parse(
+      jsonPart.slice(jsonStartIndex, jsonEndIndex + 1)
+    );
+
+    // Extract NRRD data
+    const binaryData = nrrdPart.split('\r\n\r\n')[1];
+    const binaryDataEnd = binaryData.lastIndexOf('\r\n');
+
+    const nrrdArrayBuffer = new Uint8Array(
+      binaryData
+        .slice(0, binaryDataEnd)
+        .split('')
+        .map((c) => c.charCodeAt(0))
+    ).buffer;
+
+    return { data: nrrdArrayBuffer, centroids: jsonData.centroids };
+  };
+
   updateView = async (response, labelNames) => {
-    this._update(response, labelNames);
+    const { data, centroids } = this.parseResponse(response);
+    this._update({ data, centroids }, labelNames);
   };
 
   render() {
@@ -255,6 +298,8 @@ export default class MonaiLabelPanel extends Component {
         <hr className="separator" />
 
         <p className="subtitle">{this.state.info.name}</p>
+
+        {/* <button onClick={this._debug}> Read</button> */}
 
         <div className="tabs scrollbar" id="style-3">
           <OptionTable

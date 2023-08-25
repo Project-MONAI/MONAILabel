@@ -1,4 +1,3 @@
-
 import axios from 'axios';
 
 export default class MonaiLabelClient {
@@ -26,8 +25,8 @@ export default class MonaiLabelClient {
   async infer(model, image, params, label = null, result_extension = '.nrrd') {
     let url = new URL('infer/' + encodeURIComponent(model), this.server_url);
     url.searchParams.append('image', image);
-    /* url.searchParams.append('output', 'all'); */
-    url.searchParams.append('output', 'image');
+    url.searchParams.append('output', 'all');
+    // url.searchParams.append('output', 'image');
     url = url.toString();
 
     if (result_extension) {
@@ -120,28 +119,28 @@ export default class MonaiLabelClient {
     console.debug('GET:: ' + url);
     return axios
       .get(url)
-      .then(function(response) {
+      .then(function (response) {
         console.debug(response);
         return response;
       })
-      .catch(function(error) {
+      .catch(function (error) {
         return error;
       })
-      .finally(function() {});
+      .finally(function () {});
   }
 
   static api_delete(url) {
     console.debug('DELETE:: ' + url);
     return axios
       .delete(url)
-      .then(function(response) {
+      .then(function (response) {
         console.debug(response);
         return response;
       })
-      .catch(function(error) {
+      .catch(function (error) {
         return error;
       })
-      .finally(function() {});
+      .finally(function () {});
   }
 
   static api_post(
@@ -166,14 +165,14 @@ export default class MonaiLabelClient {
           accept: ['application/json', 'multipart/form-data'],
         },
       })
-      .then(function(response) {
+      .then(function (response) {
         console.debug(response);
         return response;
       })
-      .catch(function(error) {
+      .catch(function (error) {
         return error;
       })
-      .finally(function() {});
+      .finally(function () {});
   }
 
   static api_put(url, params, files, form = false, responseType = 'json') {
@@ -192,11 +191,11 @@ export default class MonaiLabelClient {
           accept: ['application/json', 'multipart/form-data'],
         },
       })
-      .then(function(response) {
+      .then(function (response) {
         console.debug(response);
         return response;
       })
-      .catch(function(error) {
+      .catch(function (error) {
         return error;
       });
   }

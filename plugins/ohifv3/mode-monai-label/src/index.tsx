@@ -15,6 +15,12 @@ const cornerstone = {
   viewport: '@ohif/extension-cornerstone.viewportModule.cornerstone',
 };
 
+const dicomSeg = {
+  sopClassHandler:
+    '@ohif/extension-cornerstone-dicom-seg.sopClassHandlerModule.dicom-seg',
+  viewport: '@ohif/extension-cornerstone-dicom-seg.viewportModule.dicom-seg',
+};
+
 /**
  * Just two dependencies to be able to render a viewport with panels in order
  * to make sure that the mode is working.
@@ -22,6 +28,7 @@ const cornerstone = {
 const extensionDependencies = {
   '@ohif/extension-default': '^3.0.0',
   '@ohif/extension-cornerstone': '^3.0.0',
+  '@ohif/extension-cornerstone-dicom-seg': '^3.0.0',
   '@ohif/extension-test': '^0.0.1',
   '@ohif/extension-monai-label': '^0.0.1',
 };
@@ -127,11 +134,10 @@ function modeFactory({ modeConfiguration }) {
      * A boolean return value that indicates whether the mode is valid for the
      * modalities of the selected studies. For instance a PET/CT mode should be
      */
-    isValidMode: function({ modalities }) {
+    isValidMode: function ({ modalities }) {
       const modalities_list = modalities.split('\\');
       const isValid =
-        modalities_list.includes('CT') ||
-        modalities_list.includes('MR')
+        modalities_list.includes('CT') || modalities_list.includes('MR');
       // Only CT or MR modalities
       return isValid;
     },
@@ -154,13 +160,17 @@ function modeFactory({ modeConfiguration }) {
           return {
             id: ohif.layout,
             props: {
-              rightPanelDefaultClosed: true,
+              rightPanelDefaultClosed: false,
               /* leftPanels: [ohif.leftPanel], */
               rightPanels: [ohif.rightPanel],
               viewports: [
                 {
                   namespace: cornerstone.viewport,
                   displaySetsToDisplay: [ohif.sopClassHandler],
+                },
+                {
+                  namespace: dicomSeg.viewport,
+                  displaySetsToDisplay: [dicomSeg.sopClassHandler],
                 },
               ],
             },
@@ -171,11 +181,13 @@ function modeFactory({ modeConfiguration }) {
     /** List of extensions that are used by the mode */
     extensions: extensionDependencies,
     /** HangingProtocol used by the mode */
-    hangingProtocol: 'default',
+    hangingProtocol: 'mpr',
     // hangingProtocol: [''],
     /** SopClassHandlers used by the mode */
-    sopClassHandlers: [ohif.sopClassHandler],
-    /** hotkeys for mode */
+    sopClassHandlers: [
+      dicomSeg.sopClassHandler,
+      ohif.sopClassHandler,
+    ] /** hotkeys for mode */,
     hotkeys: [...hotkeys.defaults.hotkeyBindings],
   };
 }
