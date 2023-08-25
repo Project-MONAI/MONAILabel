@@ -1,10 +1,12 @@
 import React, { Component } from 'react';
 import PropTypes from 'prop-types';
+import { cache, triggerEvent, eventTarget } from '@cornerstonejs/core';
+import { Enums } from '@cornerstonejs/tools';
 import './MonaiLabelPanel.styl';
 import SettingsTable from './SettingsTable';
 import AutoSegmentation from './actions/AutoSegmentation';
 import SmartEdit from './actions/SmartEdit';
-import OptionTable from './actions/OptionTable'; 
+import OptionTable from './actions/OptionTable';
 import ActiveLearning from './actions/ActiveLearning';
 import MonaiLabelClient from '../services/MonaiLabelClient';
 import SegmentationReader from '../utils/SegmentationReader';
@@ -19,13 +21,14 @@ export default class MonaiLabelPanel extends Component {
 
   notification: any;
   settings: any;
-  state: { info: {}; action: {}; };
-  actions: { options: any; 
-    activelearning: any; 
+  state: { info: {}; action: {} };
+  actions: {
+    options: any;
+    activelearning: any;
     segmentation: any;
-    smartedit: any; 
+    smartedit: any;
   };
-  props: any;    
+  props: any;
   SeriesInstanceUID: any;
   StudyInstanceUID: any;
 
@@ -34,21 +37,9 @@ export default class MonaiLabelPanel extends Component {
 
     const { uiNotificationService, viewportGridService, displaySetService } =
       props.servicesManager.services;
-    
-    const { viewports, activeViewportIndex } = viewportGridService.getState();
-    const viewport = viewports[activeViewportIndex];
-    const displaySet = displaySetService.getDisplaySetByUID(
-      viewport.displaySetInstanceUIDs[0]
-    );
-
-    this.SeriesInstanceUID = displaySet.SeriesInstanceUID;
-    this.StudyInstanceUID = displaySet.StudyInstanceUID;
-    this.FrameOfReferenceUID = displaySet.instances[0].FrameOfReferenceUID;
-    this.displaySetInstanceUID = displaySet.displaySetInstanceUID;
 
     this.notification = uiNotificationService;
     this.settings = React.createRef();
-    
 
     this.actions = {
       options: React.createRef(),
@@ -62,6 +53,20 @@ export default class MonaiLabelPanel extends Component {
       action: {},
       segmentations: [],
     };
+
+    // Todo: fix this hack
+    setTimeout(() => {
+      const { viewports, activeViewportIndex } = viewportGridService.getState();
+      const viewport = viewports[activeViewportIndex];
+      const displaySet = displaySetService.getDisplaySetByUID(
+        viewport.displaySetInstanceUIDs[0]
+      );
+
+      this.SeriesInstanceUID = displaySet.SeriesInstanceUID;
+      this.StudyInstanceUID = displaySet.StudyInstanceUID;
+      this.FrameOfReferenceUID = displaySet.instances[0].FrameOfReferenceUID;
+      this.displaySetInstanceUID = displaySet.displaySetInstanceUID;
+    }, 1000);
   }
 
   async componentDidMount() {
@@ -159,16 +164,15 @@ export default class MonaiLabelPanel extends Component {
       : {};
   };
 
-  updateView = async (response, labelNames) => {
+  _update = async (response, labelNames) => {
     // Process the obtained binary file from the MONAI Label server
-
     /* const onInfoLabelNames = this.state.info.labels */
-    const onInfoLabelNames = labelNames
+    const onInfoLabelNames = labelNames;
 
     console.info('These are the predicted labels');
     console.info(onInfoLabelNames);
 
-    if (onInfoLabelNames.hasOwnProperty("background"))
+    if (onInfoLabelNames.hasOwnProperty('background'))
       delete onInfoLabelNames.background;
 
     const ret = SegmentationReader.parseNrrdData(response.data);
@@ -179,6 +183,14 @@ export default class MonaiLabelPanel extends Component {
 
     const { image: buffer, header } = ret;
     const data = new Uint16Array(buffer);
+
+    // reformat centroids
+    const centroidsIJK = new Map();
+    for (const [key, value] of Object.entries(response.centroids)) {
+      const segmentIndex = parseInt(value[0], 10);
+      const image = value.slice(1).map((v) => parseFloat(v));
+      centroidsIJK.set(segmentIndex, { image: image, world: [] });
+    }
 
     const segmentations = [
       {
@@ -192,39 +204,112 @@ export default class MonaiLabelPanel extends Component {
         activeSegmentIndex: 1,
         scalarData: data,
         FrameOfReferenceUID: this.FrameOfReferenceUID,
+        centroidsIJK: centroidsIJK,
       },
     ];
 
-    this.props.commandsManager.runCommand('loadSegmentationsForDisplaySet', {
-      displaySetInstanceUID: this.displaySetInstanceUID,
-      segmentations,
-    }); 
-    
+    // Todo: rename volumeId
+    const volumeLoadObject = cache.getVolume('1');
+    if (volumeLoadObject) {
+      const { scalarData } = volumeLoadObject;
+      scalarData.set(data);
+      triggerEvent(eventTarget, Enums.Events.SEGMENTATION_DATA_MODIFIED, {
+        segmentationId: '1',
+      });
+      console.debug("updated the segmentation's scalar data");
+    } else {
+      this.props.commandsManager.runCommand('loadSegmentationsForDisplaySet', {
+        displaySetInstanceUID: this.displaySetInstanceUID,
+        segmentations,
+      });
+    }
+  };
+
+  _debug = async () => {
+    let nrrdFetch = await fetch('http://localhost:3000/pred2.nrrd');
+
+    const info = {
+      spleen: 1,
+      'right kidney': 2,
+      'left kidney': 3,
+      liver: 6,
+      stomach: 7,
+      aorta: 8,
+      'inferior vena cava': 9,
+    };
+
+    const nrrd = await nrrdFetch.arrayBuffer();
+
+    this._update({ data: nrrd }, info);
+  };
+
+  parseResponse = (response) => {
+    const buffer = response.data;
+    const contentType = response.headers['content-type'];
+    const boundaryMatch = contentType.match(/boundary=([^;]+)/i);
+    const boundary = boundaryMatch ? boundaryMatch[1] : null;
+
+    const text = new TextDecoder().decode(buffer);
+    const parts = text
+      .split(`--${boundary}`)
+      .filter((part) => part.trim() !== '');
+
+    // Find the JSON part and NRRD part
+    const jsonPart = parts.find((part) =>
+      part.includes('Content-Type: application/json')
+    );
+    const nrrdPart = parts.find((part) =>
+      part.includes('Content-Type: application/octet-stream')
+    );
+
+    // Extract JSON data
+    const jsonStartIndex = jsonPart.indexOf('{');
+    const jsonEndIndex = jsonPart.lastIndexOf('}');
+    const jsonData = JSON.parse(
+      jsonPart.slice(jsonStartIndex, jsonEndIndex + 1)
+    );
+
+    // Extract NRRD data
+    const binaryData = nrrdPart.split('\r\n\r\n')[1];
+    const binaryDataEnd = binaryData.lastIndexOf('\r\n');
+
+    const nrrdArrayBuffer = new Uint8Array(
+      binaryData
+        .slice(0, binaryDataEnd)
+        .split('')
+        .map((c) => c.charCodeAt(0))
+    ).buffer;
+
+    return { data: nrrdArrayBuffer, centroids: jsonData.centroids };
+  };
+
+  updateView = async (response, labelNames) => {
+    const { data, centroids } = this.parseResponse(response);
+    this._update({ data, centroids }, labelNames);
   };
 
   render() {
     return (
       <div className="monaiLabelPanel">
-
         <br style={{ margin: '3px' }} />
 
-        <SettingsTable 
-          ref={this.settings} 
-          onInfo={this.onInfo}
-          />
+        <SettingsTable ref={this.settings} onInfo={this.onInfo} />
 
         <hr className="separator" />
 
         <p className="subtitle">{this.state.info.name}</p>
+
+        {/* <button onClick={this._debug}> Read</button> */}
 
         <div className="tabs scrollbar" id="style-3">
           <OptionTable
             ref={this.actions['options']}
             tabIndex={1}
             info={this.state.info}
-            viewConstants={{'SeriesInstanceUID': this.SeriesInstanceUID, 
-                            'StudyInstanceUID': this.StudyInstanceUID
-                          }}
+            viewConstants={{
+              SeriesInstanceUID: this.SeriesInstanceUID,
+              StudyInstanceUID: this.StudyInstanceUID,
+            }}
             client={this.client}
             notification={this.notification}
             //updateView={this.updateView}
@@ -235,9 +320,10 @@ export default class MonaiLabelPanel extends Component {
             ref={this.actions['activelearning']}
             tabIndex={2}
             info={this.state.info}
-            viewConstants={{'SeriesInstanceUID': this.SeriesInstanceUID, 
-                          'StudyInstanceUID': this.StudyInstanceUID
-                          }}
+            viewConstants={{
+              SeriesInstanceUID: this.SeriesInstanceUID,
+              StudyInstanceUID: this.StudyInstanceUID,
+            }}
             client={this.client}
             notification={this.notification}
             /* updateView={this.updateView} */
@@ -251,9 +337,10 @@ export default class MonaiLabelPanel extends Component {
             ref={this.actions['segmentation']}
             tabIndex={3}
             info={this.state.info}
-            viewConstants={{'SeriesInstanceUID': this.SeriesInstanceUID, 
-                            'StudyInstanceUID': this.StudyInstanceUID
-                            }}
+            viewConstants={{
+              SeriesInstanceUID: this.SeriesInstanceUID,
+              StudyInstanceUID: this.StudyInstanceUID,
+            }}
             client={this.client}
             notification={this.notification}
             updateView={this.updateView}
@@ -263,12 +350,13 @@ export default class MonaiLabelPanel extends Component {
           <SmartEdit
             ref={this.actions['smartedit']}
             tabIndex={4}
-            servicesManager = {this.props.servicesManager}
-            commandsManager = {this.props.commandsManager}
+            servicesManager={this.props.servicesManager}
+            commandsManager={this.props.commandsManager}
             info={this.state.info}
             // Here we have to send element - In OHIF V2 - const element = cornerstone.getEnabledElements()[this.props.activeIndex].element;
-            viewConstants={{'SeriesInstanceUID': this.SeriesInstanceUID, 
-                          'StudyInstanceUID': this.StudyInstanceUID
+            viewConstants={{
+              SeriesInstanceUID: this.SeriesInstanceUID,
+              StudyInstanceUID: this.StudyInstanceUID,
             }}
             client={this.client}
             notification={this.notification}
@@ -277,12 +365,12 @@ export default class MonaiLabelPanel extends Component {
             onOptionsConfig={this.onOptionsConfig}
           />
         </div>
-          {this.state.segmentations?.map((segmentation) => (
-            <MonaiSegmentation
-              segmentation={segmentation}
-              servicesManager={this.props.servicesManager}
-            />
-          ))}
+        {this.state.segmentations?.map((segmentation) => (
+          <MonaiSegmentation
+            segmentation={segmentation}
+            servicesManager={this.props.servicesManager}
+          />
+        ))}
       </div>
     );
   }

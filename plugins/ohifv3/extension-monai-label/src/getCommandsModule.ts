@@ -21,8 +21,8 @@ export default function getCommandsModule({
   } = servicesManager.services;
 
   const actions = {
-    setToolActive: ({ toolName }) => {       
-     
+    setToolActive: ({ toolName }) => {
+
         uiNotificationService.show({
           title: 'MONAI Label probe',
           message:

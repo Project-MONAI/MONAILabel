@@ -51,7 +51,7 @@ yarn install
 echo "Linking extension and mode at: $(pwd)"
 yarn run cli link-extension ../extension-monai-label
 yarn run cli link-mode ../mode-monai-label
- 
+
 cd ../extension-monai-label
 
 echo "Running install again at: $(pwd)"

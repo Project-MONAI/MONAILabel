@@ -11,6 +11,7 @@
 
 from typing import Callable, Sequence
 
+from lib.transforms.transforms import GetCentroidsd
 from monai.inferers import Inferer, SlidingWindowInferer
 from monai.transforms import (
     Activationsd,
@@ -29,7 +30,6 @@ from monai.transforms import (
 from monailabel.interfaces.tasks.infer_v2 import InferType
 from monailabel.tasks.infer.basic_infer import BasicInferTask
 from monailabel.transform.post import Restored
-from lib.transforms.transforms import GetCentroidsd
 
 
 class Segmentation(BasicInferTask):
@@ -93,7 +93,5 @@ class Segmentation(BasicInferTask):
 
         if data and data.get("largest_cc", False):
             t.append(KeepLargestConnectedComponentd(keys="pred"))
-        t.extend([Restored(keys="pred", ref_image="image"),
-                  GetCentroidsd(keys="pred", centroids_key="centroids")
-                  ])
+        t.extend([Restored(keys="pred", ref_image="image"), GetCentroidsd(keys="pred", centroids_key="centroids")])
         return t

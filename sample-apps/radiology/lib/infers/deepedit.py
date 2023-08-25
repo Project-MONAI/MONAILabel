@@ -11,6 +11,7 @@
 import logging
 from typing import Any, Callable, Sequence, Tuple, Union
 
+from lib.transforms.transforms import GetCentroidsd
 from monai.apps.deepedit.transforms import (
     AddGuidanceFromPointsDeepEditd,
     AddGuidanceSignalDeepEditd,
@@ -34,8 +35,6 @@ from monai.transforms import (
 from monailabel.interfaces.tasks.infer_v2 import InferType
 from monailabel.tasks.infer.basic_infer import BasicInferTask
 from monailabel.transform.post import Restored
-from lib.transforms.transforms import GetCentroidsd
-
 from monailabel.transform.writer import Writer
 
 logger = logging.getLogger(__name__)
@@ -125,7 +124,7 @@ class DeepEdit(BasicInferTask):
             SqueezeDimd(keys="pred", dim=0),
             ToNumpyd(keys="pred"),
             Restored(keys="pred", ref_image="image"),
-            GetCentroidsd(keys="pred", centroids_key="centroids")
+            GetCentroidsd(keys="pred", centroids_key="centroids"),
         ]
 
     # def writer(self, data, extension=None, dtype=None) -> Tuple[Any, Any]:
