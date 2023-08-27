@@ -149,6 +149,7 @@ class BundleInferTask(BasicInferTask):
             dimension=dimension,
             description=description,
             preload=strtobool(conf.get("preload", "false")),
+            load_strict=False,
             **kwargs,
         )
 

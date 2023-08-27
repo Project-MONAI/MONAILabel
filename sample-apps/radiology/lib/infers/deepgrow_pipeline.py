@@ -68,6 +68,7 @@ class InferDeepgrowPipeline(BasicInferTask):
             dimension=dimension,
             description=description,
             config={"cache_transforms": True, "cache_transforms_in_memory": True, "cache_transforms_ttl": 300},
+            load_strict=False,
         )
         self.model_3d = model_3d
         self.spatial_size = spatial_size
@@ -78,6 +79,8 @@ class InferDeepgrowPipeline(BasicInferTask):
         self.max_random_points = max_random_points
         self.random_point_density = random_point_density
         self.output_largest_cc = output_largest_cc
+
+        self.load_strict = False
 
     def pre_transforms(self, data=None) -> Sequence[Callable]:
         t = [

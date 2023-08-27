@@ -41,6 +41,7 @@ class NuClick(BundleInferTask):
             **kwargs,
             pre_filter=[LoadImaged, SqueezeDimd],
             post_filter=[KeepLargestConnectedComponentd, SaveImaged],
+            load_strict=False,
         )
 
         # Override Labels

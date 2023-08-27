@@ -47,6 +47,7 @@ class InferVertebraPipeline(BasicInferTask):
             labels=task_seg_vertebra.labels,
             dimension=task_seg_vertebra.dimension,
             description=description,
+            load_strict=False,
             **kwargs,
         )
 

@@ -55,6 +55,7 @@ class DeepEdit(BasicInferTask):
             labels=labels,
             dimension=dimension,
             description=description,
+            load_strict=False,
             **kwargs,
         )
 

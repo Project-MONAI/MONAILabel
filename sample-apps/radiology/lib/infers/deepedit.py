@@ -65,6 +65,7 @@ class DeepEdit(BasicInferTask):
             input_key="image",
             output_label_key="pred",
             output_json_key="result",
+            load_strict=False,
             **kwargs,
         )
 
