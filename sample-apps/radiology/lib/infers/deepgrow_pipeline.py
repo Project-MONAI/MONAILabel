@@ -80,8 +80,6 @@ class InferDeepgrowPipeline(BasicInferTask):
         self.random_point_density = random_point_density
         self.output_largest_cc = output_largest_cc
 
-        self.load_strict = False
-
     def pre_transforms(self, data=None) -> Sequence[Callable]:
         t = [
             LoadImaged(keys="image"),
