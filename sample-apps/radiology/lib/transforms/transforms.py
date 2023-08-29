@@ -537,7 +537,6 @@ class OrientationGuidanceMultipleLabelDeepEditd(Transform):
                                                           np.linalg.inv(
                                                               d['image_meta_dict']['affine'].numpy()) @ d['image_meta_dict']['original_affine']
                                                           )
-                # logging.info(f'Converted clicks: {reoriented_points[0]}')
                 d[key_label] = reoriented_points[0]
         else:
             logging.error('This transform only applies to click_coordinates')
