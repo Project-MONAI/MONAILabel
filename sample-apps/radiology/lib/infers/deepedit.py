@@ -11,6 +11,7 @@
 
 from typing import Callable, Sequence, Union
 
+from lib.transforms.transforms import OrientationGuidanceMultipleLabelDeepEditd
 from monai.apps.deepedit.transforms import (
     AddGuidanceFromPointsDeepEditd,
     AddGuidanceSignalDeepEditd,
@@ -34,7 +35,6 @@ from monai.transforms import (
 from monailabel.interfaces.tasks.infer_v2 import InferType
 from monailabel.tasks.infer.basic_infer import BasicInferTask
 from monailabel.transform.post import Restored
-from lib.transforms.transforms import OrientationGuidanceMultipleLabelDeepEditd
 
 
 class DeepEdit(BasicInferTask):
@@ -87,7 +87,7 @@ class DeepEdit(BasicInferTask):
         if self.type == InferType.DEEPEDIT:
             t.extend(
                 [
-                    OrientationGuidanceMultipleLabelDeepEditd(key_click='click_coordinates', label_names=self.labels),
+                    OrientationGuidanceMultipleLabelDeepEditd(key_click="click_coordinates", label_names=self.labels),
                     AddGuidanceFromPointsDeepEditd(ref_image="image", guidance="guidance", label_names=self.labels),
                     Resized(keys="image", spatial_size=self.spatial_size, mode="area"),
                     ResizeGuidanceMultipleLabelDeepEditd(guidance="guidance", ref_image="image"),

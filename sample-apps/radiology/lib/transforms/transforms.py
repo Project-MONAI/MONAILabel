@@ -517,27 +517,28 @@ class OrientationGuidanceMultipleLabelDeepEditd(Transform):
         self.key_click = key_click
 
     def transform_points(self, point, affine):
-        """ transform point to the coordinates of the transformed image
+        """transform point to the coordinates of the transformed image
         point: numpy array [bs, N, 3]
         """
         bs, N = point.shape[:2]
-        point = np.concatenate((point,np.ones((bs, N,1))), axis=-1)
-        point = rearrange(point, 'b n d -> d (b n)')
+        point = np.concatenate((point, np.ones((bs, N, 1))), axis=-1)
+        point = rearrange(point, "b n d -> d (b n)")
         point = affine @ point
-        point = rearrange(point, 'd (b n)-> b n d', b=bs)[:,:,:3]
+        point = rearrange(point, "d (b n)-> b n d", b=bs)[:, :, :3]
         return point
+
     def __call__(self, data):
         d: Dict = dict(data)
-        if self.key_click == 'click_coordinates':
+        if self.key_click == "click_coordinates":
             for key_label, val_label in self.label_names.items():
                 points = d.get(key_label, [])
                 if len(points) < 1:
                     continue
-                reoriented_points = self.transform_points(np.array(points)[None],
-                                                          np.linalg.inv(
-                                                              d['image_meta_dict']['affine'].numpy()) @ d['image_meta_dict']['original_affine']
-                                                          )
+                reoriented_points = self.transform_points(
+                    np.array(points)[None],
+                    np.linalg.inv(d["image_meta_dict"]["affine"].numpy()) @ d["image_meta_dict"]["original_affine"],
+                )
                 d[key_label] = reoriented_points[0]
         else:
-            logging.error('This transform only applies to click_coordinates')
+            logging.error("This transform only applies to click_coordinates")
         return d
