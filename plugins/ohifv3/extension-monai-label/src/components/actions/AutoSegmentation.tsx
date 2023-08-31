@@ -86,7 +86,7 @@ export default class AutoSegmentation extends BaseTab {
           defaultChecked
         />
         <label htmlFor={this.tabId} className="tab-label">
-          Segmentation
+          Auto-Segmentation
         </label>
         <div className="tab-content">
           <ModelSelector
