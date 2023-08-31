@@ -38,6 +38,7 @@ class NuClick(BundleInferTask):
             conf,
             type=InferType.ANNOTATION,
             add_post_restore=False,
+            load_strict=False,
             **kwargs,
             pre_filter=[LoadImaged, SqueezeDimd],
             post_filter=[KeepLargestConnectedComponentd, SaveImaged],
