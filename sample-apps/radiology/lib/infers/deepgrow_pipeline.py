@@ -68,6 +68,7 @@ class InferDeepgrowPipeline(BasicInferTask):
             dimension=dimension,
             description=description,
             config={"cache_transforms": True, "cache_transforms_in_memory": True, "cache_transforms_ttl": 300},
+            load_strict=False,
         )
         self.model_3d = model_3d
         self.spatial_size = spatial_size

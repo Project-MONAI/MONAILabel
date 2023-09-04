@@ -54,6 +54,7 @@ class LocalizationSpine(BasicInferTask):
             labels=labels,
             dimension=dimension,
             description=description,
+            load_strict=False,
             **kwargs,
         )
         self.target_spacing = target_spacing
