@@ -110,7 +110,7 @@ class BundleInferTask(BasicInferTask):
         self.bundle_config_path = os.path.join(path, "configs", config_paths[0])
         self.bundle_config = self._load_bundle_config(self.bundle_path, self.bundle_config_path)
         # For deepedit inferer - allow the use of clicks
-        self.bundle_config.config["use_click"] = True if type.lower() == 'deepedit' else False
+        self.bundle_config.config["use_click"] = True if type.lower() == "deepedit" else False
 
         if self.dropout > 0:
             self.bundle_config["network_def"]["dropout"] = self.dropout
@@ -138,7 +138,7 @@ class BundleInferTask(BasicInferTask):
         # labels = ({v.lower(): int(k) for k, v in pred.get("channel_def", {}).items() if v.lower() != "background"})
         labels = {}
         for k, v in pred.get("channel_def", {}).items():
-            if (not type.lower() == 'deepedit') and (v.lower() != "background"):
+            if (not type.lower() == "deepedit") and (v.lower() != "background"):
                 labels[v.lower()] = int(k)
             else:
                 labels[v.lower()] = int(k)
