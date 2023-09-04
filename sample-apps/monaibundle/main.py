@@ -66,7 +66,7 @@ class MyApp(MONAILabelApp):
                 logger.info(f"+++ Adding Inferer:: {n}_seg => {i}")
                 infers[n + "_seg"] = i
                 # Adding inferer for managing clicks
-                i = BundleInferTask(b, self.conf, type="deepedit", deepedit=True)
+                i = BundleInferTask(b, self.conf, type="deepedit")
                 logger.info("+++ Adding DeepEdit Inferer")
                 infers[n] = i
             else:
@@ -150,8 +150,7 @@ def main():
     )
 
     home = str(Path.home())
-    # studies = f"{home}/Datasets/Radiology"
-    studies = "/tmp/testLiver/imagesTs/"
+    studies = f"{home}/Datasets/Radiology"
 
     parser = argparse.ArgumentParser()
     parser.add_argument("-s", "--studies", default=studies)

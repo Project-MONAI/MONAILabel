@@ -86,7 +86,6 @@ class BundleInferTask(BasicInferTask):
         post_filter: Optional[Sequence] = [SaveImaged],
         extend_load_image: bool = True,
         add_post_restore: bool = True,
-        deepedit: bool = False,
         dropout: float = 0.0,
         load_strict=False,
         **kwargs,
@@ -97,7 +96,6 @@ class BundleInferTask(BasicInferTask):
         self.pre_filter = pre_filter
         self.post_filter = post_filter
         self.extend_load_image = extend_load_image
-        self.deepedit = deepedit
         self.dropout = dropout
 
         config_paths = [c for c in self.const.configs() if os.path.exists(os.path.join(path, "configs", c))]
@@ -112,7 +110,7 @@ class BundleInferTask(BasicInferTask):
         self.bundle_config_path = os.path.join(path, "configs", config_paths[0])
         self.bundle_config = self._load_bundle_config(self.bundle_path, self.bundle_config_path)
         # For deepedit inferer - allow the use of clicks
-        self.bundle_config.config["use_click"] = self.deepedit
+        self.bundle_config.config["use_click"] = True if type.lower() == 'deepedit' else False
 
         if self.dropout > 0:
             self.bundle_config["network_def"]["dropout"] = self.dropout
@@ -140,7 +138,7 @@ class BundleInferTask(BasicInferTask):
         # labels = ({v.lower(): int(k) for k, v in pred.get("channel_def", {}).items() if v.lower() != "background"})
         labels = {}
         for k, v in pred.get("channel_def", {}).items():
-            if (not self.deepedit) and (v.lower() != "background"):
+            if (not type.lower() == 'deepedit') and (v.lower() != "background"):
                 labels[v.lower()] = int(k)
             else:
                 labels[v.lower()] = int(k)
