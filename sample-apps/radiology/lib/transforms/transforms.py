@@ -509,12 +509,11 @@ class CacheObjectd(MapTransform):
 
 
 class OrientationGuidanceMultipleLabelDeepEditd(Transform):
-    def __init__(self, key_click, label_names=None):
+    def __init__(self, label_names=None):
         """
         Convert the guidance to the RAS orientation
         """
         self.label_names = label_names
-        self.key_click = key_click
 
     def transform_points(self, point, affine):
         """transform point to the coordinates of the transformed image
@@ -529,16 +528,13 @@ class OrientationGuidanceMultipleLabelDeepEditd(Transform):
 
     def __call__(self, data):
         d: Dict = dict(data)
-        if self.key_click == "click_coordinates":
-            for key_label, val_label in self.label_names.items():
-                points = d.get(key_label, [])
-                if len(points) < 1:
-                    continue
-                reoriented_points = self.transform_points(
-                    np.array(points)[None],
-                    np.linalg.inv(d["image_meta_dict"]["affine"].numpy()) @ d["image_meta_dict"]["original_affine"],
-                )
-                d[key_label] = reoriented_points[0]
-        else:
-            logging.error("This transform only applies to click_coordinates")
+        for key_label, val_label in self.label_names.items():
+            points = d.get(key_label, [])
+            if len(points) < 1:
+                continue
+            reoriented_points = self.transform_points(
+                np.array(points)[None],
+                np.linalg.inv(d["image_meta_dict"]["affine"].numpy()) @ d["image_meta_dict"]["original_affine"],
+            )
+            d[key_label] = reoriented_points[0]
         return d
