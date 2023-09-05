@@ -528,13 +528,13 @@ class OrientationGuidanceMultipleLabelDeepEditd(Transform):
 
     def __call__(self, data):
         d: Dict = dict(data)
-        for key_label, val_label in self.label_names.items():
+        for key_label in self.label_names.keys():
             points = d.get(key_label, [])
             if len(points) < 1:
                 continue
             reoriented_points = self.transform_points(
                 np.array(points)[None],
-                np.linalg.inv(d["image_meta_dict"]["affine"].numpy()) @ d["image_meta_dict"]["original_affine"],
+                np.linalg.inv(d["image"].meta["affine"].numpy()) @ d["image"].meta["original_affine"],
             )
             d[key_label] = reoriented_points[0]
         return d
