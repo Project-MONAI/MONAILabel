@@ -27,10 +27,8 @@ cd ${my_dir}
 rm -rf Viewers
 git clone https://github.com/OHIF/Viewers.git
 cd Viewers
-git checkout a2ef2b0fcb0ae4a8c02ef07fd97dd6bd6607c509
+git checkout feat/monai-label
 
-
-# ARE WE SURE WE NEED THIS?
 
 # Viewers/platform/viewer/public/config/default.js
 #git checkout -- ./platform/viewer/public/config/default.js
@@ -58,12 +56,22 @@ echo "Running install again at: $(pwd)"
 
 yarn install
 
+echo "Moving nrrd-js and itk node modules to Viewersnode_modules/"
+
+mv ./node_modules/nrrd-js ../Viewers/node_modules/
+
+mv ./node_modules/itk ../Viewers/node_modules/
+
+echo "Moving to Viewers folder to build OHIF"
+
+cd ../Viewers
+
+echo "Viewers folder before building OHIF $(pwd)"
 
 QUICK_BUILD=true yarn run build
 
-
 rm -rf ${install_dir}
-mv ../Viewers/platform/app/ ${install_dir}
+mv ./platform/app/dist/ ${install_dir}
 echo "Copied OHIF to ${install_dir}"
 
 rm -rf ../Viewers
