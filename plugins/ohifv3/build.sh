@@ -30,16 +30,12 @@ cd Viewers
 git checkout feat/monai-label
 
 
-# Viewers/platform/viewer/public/config/default.js
-#git checkout -- ./platform/viewer/public/config/default.js
 sed -i "s|routerBasename: '/'|routerBasename: '/ohif/'|g" ./platform/app/public/config/default.js
 sed -i "s|name: 'aws'|name: 'Orthanc'|g" ./platform/app/public/config/default.js
 sed -i "s|wadoUriRoot: 'https://d33do7qe4w26qo.cloudfront.net/dicomweb'|wadoUriRoot: '/proxy/dicom/wado'|g" ./platform/app/public/config/default.js
 sed -i "s|wadoRoot: 'https://d33do7qe4w26qo.cloudfront.net/dicomweb'|wadoRoot: '/proxy/dicom/wado'|g" ./platform/app/public/config/default.js
 sed -i "s|qidoRoot: 'https://d33do7qe4w26qo.cloudfront.net/dicomweb'|qidoRoot: '/proxy/dicom/qido'|g" ./platform/app/public/config/default.js
 
-# Viewers/platform/viewer/.env
-#git checkout -- ./platform/viewer/.env
 sed -i "s|PUBLIC_URL=/|PUBLIC_URL=/ohif/|g" ./platform/app/.env
 
 
@@ -58,9 +54,9 @@ yarn install
 
 echo "Moving nrrd-js and itk node modules to Viewersnode_modules/"
 
-mv ./node_modules/nrrd-js ../Viewers/node_modules/
+cp -r ./node_modules/nrrd-js ../Viewers/node_modules/
 
-mv ./node_modules/itk ../Viewers/node_modules/
+cp -r ./node_modules/itk ../Viewers/node_modules/
 
 echo "Moving to Viewers folder to build OHIF"
 
@@ -75,6 +71,5 @@ mv ./platform/app/dist/ ${install_dir}
 echo "Copied OHIF to ${install_dir}"
 
 rm -rf ../Viewers
-#git restore Viewers
 
 cd ${curr_dir}
