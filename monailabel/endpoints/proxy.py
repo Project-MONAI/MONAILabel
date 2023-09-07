@@ -65,6 +65,10 @@ async def proxy_dicom(op: str, path: str, response: Response):
         )
 
         # some version of ohif requests metadata using qido so change it to wado
+        print(f"op {op}")
+        print(f"prefix {prefix}")
+        print(f"path {path}")
+        print(f"server {server}")
         if path.endswith("metadata") and op == "qido":
             prefix = settings.MONAI_LABEL_WADO_PREFIX
 
@@ -78,10 +82,16 @@ async def proxy_dicom(op: str, path: str, response: Response):
             settings.MONAI_LABEL_DICOMWEB_PROXY_TIMEOUT,
             read=settings.MONAI_LABEL_DICOMWEB_READ_TIMEOUT,
         )
+
+        print(f"This is the proxy path: {proxy_path}")
         proxy = await client.get(proxy_path, timeout=timeout)
 
     response.body = proxy.content
     response.status_code = proxy.status_code
+    response.headers["Cross-Origin-Opener-Policy"] = "same-origin"
+    response.headers["Cross-Origin-Embedder-Policy"] = "require-corp"
+    response.headers["Cross-Origin-Resource-Policy"] = "same-site"
+    # response.headers["Cross-Origin-Resource-Policy"] = "cross-origin"
     return response
 
 

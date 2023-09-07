@@ -32,9 +32,9 @@ git checkout feat/monai-label
 
 sed -i "s|routerBasename: '/'|routerBasename: '/ohif/'|g" ./platform/app/public/config/default.js
 sed -i "s|name: 'aws'|name: 'Orthanc'|g" ./platform/app/public/config/default.js
-sed -i "s|wadoUriRoot: 'https://d33do7qe4w26qo.cloudfront.net/dicomweb'|wadoUriRoot: '/proxy/dicom/wado'|g" ./platform/app/public/config/default.js
-sed -i "s|wadoRoot: 'https://d33do7qe4w26qo.cloudfront.net/dicomweb'|wadoRoot: '/proxy/dicom/wado'|g" ./platform/app/public/config/default.js
-sed -i "s|qidoRoot: 'https://d33do7qe4w26qo.cloudfront.net/dicomweb'|qidoRoot: '/proxy/dicom/qido'|g" ./platform/app/public/config/default.js
+sed -i "s|wadoUriRoot: 'https://d33do7qe4w26qo.cloudfront.net/dicomweb'|wadoUriRoot: 'http://localhost/dicom-web'|g" ./platform/app/public/config/default.js
+sed -i "s|wadoRoot: 'https://d33do7qe4w26qo.cloudfront.net/dicomweb'|wadoRoot: 'http://localhost/dicom-web'|g" ./platform/app/public/config/default.js
+sed -i "s|qidoRoot: 'https://d33do7qe4w26qo.cloudfront.net/dicomweb'|qidoRoot: 'http://localhost/dicom-web'|g" ./platform/app/public/config/default.js
 
 sed -i "s|PUBLIC_URL=/|PUBLIC_URL=/ohif/|g" ./platform/app/.env
 
