@@ -65,10 +65,7 @@ async def proxy_dicom(op: str, path: str, response: Response):
         )
 
         # some version of ohif requests metadata using qido so change it to wado
-        print(f"op {op}")
-        print(f"prefix {prefix}")
-        print(f"path {path}")
-        print(f"server {server}")
+        print(f"This is the server {server} - This is the op {op} - This is the prefix {prefix} - This is the path {path}")
         if path.endswith("metadata") and op == "qido":
             prefix = settings.MONAI_LABEL_WADO_PREFIX
 
