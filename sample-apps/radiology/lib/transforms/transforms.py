@@ -509,9 +509,7 @@ class CacheObjectd(MapTransform):
 
 
 class OrientationGuidanceMultipleLabelDeepEditd(Transform):
-    def __init__(self,
-                 ref_image: str,
-                 label_names=None):
+    def __init__(self, ref_image: str, label_names=None):
         """
         Convert the guidance to the RAS orientation
         """
