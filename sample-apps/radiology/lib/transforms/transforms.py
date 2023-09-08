@@ -509,10 +509,13 @@ class CacheObjectd(MapTransform):
 
 
 class OrientationGuidanceMultipleLabelDeepEditd(Transform):
-    def __init__(self, label_names=None):
+    def __init__(self,
+                 ref_image: str,
+                 label_names=None):
         """
         Convert the guidance to the RAS orientation
         """
+        self.ref_image = ref_image
         self.label_names = label_names
 
     def transform_points(self, point, affine):
@@ -534,7 +537,7 @@ class OrientationGuidanceMultipleLabelDeepEditd(Transform):
                 continue
             reoriented_points = self.transform_points(
                 np.array(points)[None],
-                np.linalg.inv(d["image"].meta["affine"].numpy()) @ d["image"].meta["original_affine"],
+                np.linalg.inv(d[self.ref_image].meta["affine"].numpy()) @ d[self.ref_image].meta["original_affine"],
             )
             d[key_label] = reoriented_points[0]
         return d
