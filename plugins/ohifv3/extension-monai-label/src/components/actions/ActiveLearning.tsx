@@ -289,7 +289,7 @@ export default class OptionTable extends BaseTab {
                   <div className="w3-round w3-light-grey w3-tiny">
                     <div
                       className="w3-round w3-container w3-blue w3-center"
-                      style={{ width: activelearning }}
+                      style={{ backgroundColor:'white' }}
                     >
                       {activelearning}
                     </div>
@@ -302,7 +302,7 @@ export default class OptionTable extends BaseTab {
                   <div className="w3-round w3-light-grey w3-tiny">
                     <div
                       className="w3-round w3-container w3-orange w3-center"
-                      style={{ width: training }}
+                      style={{ backgroundColor:'white' }}
                     >
                       {training}
                     </div>
@@ -315,7 +315,7 @@ export default class OptionTable extends BaseTab {
                   <div className="w3-round w3-light-grey w3-tiny">
                     <div
                       className="w3-round w3-container w3-green w3-center"
-                      style={{ width: accuracy }}
+                      style={{ backgroundColor:'white' }}
                     >
                       {accuracy}
                     </div>

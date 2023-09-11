@@ -309,11 +309,11 @@ export default class SmartEdit extends BaseTab {
             onClick={this.onDeepgrow}
             onSelectModel={this.onSelectModel}
             usage={
-              <div style={{ fontSize: 'smaller' }}>
+              <div style={{ fontSize: 'smaller'}}>
                 <p>
                   Create a label and annotate <b>any organ</b>.
                 </p>
-                <a href="#" onClick={() => this.clearPoints()}>
+                <a style={{ backgroundColor:'gray'}} href="#" onClick={() => this.clearPoints()}>
                   Clear Points
                 </a>
               </div>
