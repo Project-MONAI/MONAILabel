@@ -1,3 +1,21 @@
+const brushInstanceNames = {
+  CircularBrush: 'CircularBrush',
+  CircularEraser: 'CircularEraser',
+  SphereBrush: 'SphereBrush',
+  SphereEraser: 'SphereEraser',
+  ThresholdCircularBrush: 'ThresholdCircularBrush',
+  ThresholdSphereBrush: 'ThresholdSphereBrush',
+};
+
+const brushStrategies = {
+  [brushInstanceNames.CircularBrush]: 'FILL_INSIDE_CIRCLE',
+  [brushInstanceNames.CircularEraser]: 'ERASE_INSIDE_CIRCLE',
+  [brushInstanceNames.SphereBrush]: 'FILL_INSIDE_SPHERE',
+  [brushInstanceNames.SphereEraser]: 'ERASE_INSIDE_SPHERE',
+  [brushInstanceNames.ThresholdCircularBrush]: 'THRESHOLD_INSIDE_CIRCLE',
+  [brushInstanceNames.ThresholdSphereBrush]: 'THRESHOLD_INSIDE_SPHERE',
+};
+
 function initDefaultToolGroup(
   extensionManager,
   toolGroupService,
@@ -27,20 +45,54 @@ function initDefaultToolGroup(
       { toolName: toolNames.StackScrollMouseWheel, bindings: [] },
     ],
     passive: [
-      { toolName: toolNames.Length },
-      { toolName: toolNames.ArrowAnnotate },
-      { toolName: toolNames.Bidirectional },
-      { toolName: toolNames.DragProbe },
-      { toolName: toolNames.EllipticalROI },
-      { toolName: toolNames.CircleROI },
-      { toolName: toolNames.RectangleROI },
+      { toolName: toolNames.CircleScissors },
+      { toolName: toolNames.RectangleScissors },
+      { toolName: toolNames.SphereScissors },
+      {
+        toolName: brushInstanceNames.CircularBrush,
+        parentTool: 'Brush',
+        configuration: {
+          activeStrategy: brushStrategies.CircularBrush,
+        },
+      },
+      {
+        toolName: brushInstanceNames.CircularEraser,
+        parentTool: 'Brush',
+        configuration: {
+          activeStrategy: brushStrategies.CircularEraser,
+        },
+      },
+      {
+        toolName: brushInstanceNames.SphereEraser,
+        parentTool: 'Brush',
+        configuration: {
+          activeStrategy: brushStrategies.SphereEraser,
+        },
+      },
+      {
+        toolName: brushInstanceNames.SphereBrush,
+        parentTool: 'Brush',
+        configuration: {
+          activeStrategy: brushStrategies.SphereBrush,
+        },
+      },
+      {
+        toolName: brushInstanceNames.ThresholdCircularBrush,
+        parentTool: 'Brush',
+        configuration: {
+          activeStrategy: brushStrategies.ThresholdCircularBrush,
+        },
+      },
+      {
+        toolName: brushInstanceNames.ThresholdSphereBrush,
+        parentTool: 'Brush',
+        configuration: {
+          activeStrategy: brushStrategies.ThresholdSphereBrush,
+        },
+      },
       { toolName: toolNames.StackScroll },
-      { toolName: toolNames.Angle },
-      { toolName: toolNames.CobbAngle },
-      { toolName: toolNames.PlanarFreehandROI },
       { toolName: toolNames.Magnify },
       { toolName: toolNames.SegmentationDisplay },
-      { toolName: toolNames.CalibrationLine },
       { toolName: 'ProbeMONAILabel' },
     ],
     // enabled
@@ -48,38 +100,7 @@ function initDefaultToolGroup(
     disabled: [{ toolName: toolNames.ReferenceLines }],
   };
 
-  const toolsConfig = {
-    [toolNames.ArrowAnnotate]: {
-      getTextCallback: (callback, eventDetails) =>
-        commandsManager.runCommand('arrowTextCallback', {
-          callback,
-          eventDetails,
-        }),
-
-      changeTextCallback: (data, eventDetails, callback) =>
-        commandsManager.runCommand('arrowTextCallback', {
-          callback,
-          data,
-          eventDetails,
-        }),
-    },
-
-    ['ProbeMONAILabel']: {
-      getTextCallback: (callback, eventDetails) =>
-        commandsManager.runCommand('setToolActive', {
-          toolName: 'ProbeMONAILabel',
-        }),
-
-      changeTextCallback: (data, eventDetails, callback) =>
-        commandsManager.runCommand('arrowTextCallback', {
-          callback,
-          data,
-          eventDetails,
-        }),
-    },
-  };
-
-  toolGroupService.createToolGroupAndAddTools(toolGroupId, tools, toolsConfig);
+  toolGroupService.createToolGroupAndAddTools(toolGroupId, tools);
 }
 
 function initMPRToolGroup(extensionManager, toolGroupService, commandsManager) {
@@ -106,81 +127,72 @@ function initMPRToolGroup(extensionManager, toolGroupService, commandsManager) {
       { toolName: toolNames.StackScrollMouseWheel, bindings: [] },
     ],
     passive: [
-      { toolName: toolNames.Length },
-      { toolName: toolNames.ArrowAnnotate },
-      { toolName: toolNames.Bidirectional },
-      { toolName: toolNames.DragProbe },
-      { toolName: toolNames.EllipticalROI },
-      { toolName: toolNames.CircleROI },
-      { toolName: toolNames.RectangleROI },
-      { toolName: toolNames.StackScroll },
-      { toolName: toolNames.Angle },
-      { toolName: toolNames.CobbAngle },
-      { toolName: toolNames.PlanarFreehandROI },
+      { toolName: toolNames.CircleScissors },
+      { toolName: toolNames.RectangleScissors },
+      { toolName: toolNames.SphereScissors },
+      {
+        toolName: brushInstanceNames.CircularBrush,
+        parentTool: 'Brush',
+        configuration: {
+          activeStrategy: brushStrategies.CircularBrush,
+        },
+      },
+      {
+        toolName: brushInstanceNames.CircularEraser,
+        parentTool: 'Brush',
+        configuration: {
+          activeStrategy: brushStrategies.CircularEraser,
+        },
+      },
+      {
+        toolName: brushInstanceNames.SphereEraser,
+        parentTool: 'Brush',
+        configuration: {
+          activeStrategy: brushStrategies.SphereEraser,
+        },
+      },
+      {
+        toolName: brushInstanceNames.SphereBrush,
+        parentTool: 'Brush',
+        configuration: {
+          activeStrategy: brushStrategies.SphereBrush,
+        },
+      },
+      {
+        toolName: brushInstanceNames.ThresholdCircularBrush,
+        parentTool: 'Brush',
+        configuration: {
+          activeStrategy: brushStrategies.ThresholdCircularBrush,
+        },
+      },
+      {
+        toolName: brushInstanceNames.ThresholdSphereBrush,
+        parentTool: 'Brush',
+        configuration: {
+          activeStrategy: brushStrategies.ThresholdSphereBrush,
+        },
+      },
       { toolName: toolNames.SegmentationDisplay },
       { toolName: 'ProbeMONAILabel' },
     ],
     disabled: [
-      { toolName: toolNames.Crosshairs },
+      {
+        toolName: toolNames.Crosshairs,
+        configuration: {
+          viewportIndicators: false,
+          autoPan: {
+            enabled: false,
+            panSize: 10,
+          },
+        },
+      },
       { toolName: toolNames.ReferenceLines },
     ],
-
     // enabled
     // disabled
   };
 
-  const toolsConfig = {
-    [toolNames.Crosshairs]: {
-      viewportIndicators: false,
-      autoPan: {
-        enabled: false,
-        panSize: 10,
-      },
-    },
-    [toolNames.ArrowAnnotate]: {
-      getTextCallback: (callback, eventDetails) =>
-        commandsManager.runCommand('arrowTextCallback', {
-          callback,
-          eventDetails,
-        }),
-
-      changeTextCallback: (data, eventDetails, callback) =>
-        commandsManager.runCommand('arrowTextCallback', {
-          callback,
-          data,
-          eventDetails,
-        }),
-    },
-  };
-
-  toolGroupService.createToolGroupAndAddTools('mpr', tools, toolsConfig);
-}
-
-function initVolume3DToolGroup(extensionManager, toolGroupService) {
-  const utilityModule = extensionManager.getModuleEntry(
-    '@ohif/extension-cornerstone.utilityModule.tools'
-  );
-
-  const { toolNames, Enums } = utilityModule.exports;
-
-  const tools = {
-    active: [
-      {
-        toolName: toolNames.TrackballRotateTool,
-        bindings: [{ mouseButton: Enums.MouseBindings.Primary }],
-      },
-      {
-        toolName: toolNames.Zoom,
-        bindings: [{ mouseButton: Enums.MouseBindings.Secondary }],
-      },
-      {
-        toolName: toolNames.Pan,
-        bindings: [{ mouseButton: Enums.MouseBindings.Auxiliary }],
-      },
-    ],
-  };
-
-  toolGroupService.createToolGroupAndAddTools('volume3d', tools);
+  toolGroupService.createToolGroupAndAddTools('mpr', tools);
 }
 
 function initToolGroups(extensionManager, toolGroupService, commandsManager) {
@@ -190,9 +202,7 @@ function initToolGroups(extensionManager, toolGroupService, commandsManager) {
     commandsManager,
     'default'
   );
-  // initSRToolGroup(extensionManager, toolGroupService, commandsManager);
   initMPRToolGroup(extensionManager, toolGroupService, commandsManager);
-  initVolume3DToolGroup(extensionManager, toolGroupService);
 }
 
 export default initToolGroups;

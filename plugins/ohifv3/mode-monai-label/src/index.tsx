@@ -161,7 +161,7 @@ function modeFactory({ modeConfiguration }) {
             id: ohif.layout,
             props: {
               rightPanelDefaultClosed: false,
-              /* leftPanels: [ohif.leftPanel], */
+              leftPanels: [ohif.leftPanel],
               rightPanels: [ohif.rightPanel],
               viewports: [
                 {
