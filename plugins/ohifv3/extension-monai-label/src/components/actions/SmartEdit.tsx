@@ -60,9 +60,9 @@ export default class SmartEdit extends BaseTab {
         const color = selectedSegment.color;
 
         // get the active viewport toolGroup
-        const { viewports, activeViewportIndex } =
+        const { viewports, activeViewportId } =
           viewportGridService.getState();
-        const viewport = viewports[activeViewportIndex];
+        const viewport = viewports.get(activeViewportId);
         const { viewportOptions } = viewport;
         const toolGroupId = viewportOptions.toolGroupId;
 
