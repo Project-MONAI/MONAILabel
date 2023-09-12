@@ -8,8 +8,11 @@ const ohif = {
   sopClassHandler: '@ohif/extension-default.sopClassHandlerModule.stack',
   hangingProtocol: '@ohif/extension-default.hangingProtocolModule.default',
   leftPanel: '@ohif/extension-default.panelModule.seriesList',
-  rightPanel: '@ohif/extension-monai-label.panelModule.monailabel',
 };
+
+const monailabel = {
+  monaiLabel: '@ohif/extension-monai-label.panelModule.monailabel',
+}
 
 const cornerstone = {
   viewport: '@ohif/extension-cornerstone.viewportModule.cornerstone',
@@ -19,6 +22,7 @@ const dicomSeg = {
   sopClassHandler:
     '@ohif/extension-cornerstone-dicom-seg.sopClassHandlerModule.dicom-seg',
   viewport: '@ohif/extension-cornerstone-dicom-seg.viewportModule.dicom-seg',
+  panel: '@ohif/extension-cornerstone-dicom-seg.panelModule.panelSegmentation',
 };
 
 /**
@@ -160,9 +164,10 @@ function modeFactory({ modeConfiguration }) {
           return {
             id: ohif.layout,
             props: {
-              rightPanelDefaultClosed: false,
-              leftPanels: [ohif.leftPanel],
-              rightPanels: [ohif.rightPanel],
+              rightPanelDefaultClosed: true,
+              /* leftPanelDefaultClosed: true, */
+              leftPanels: [ohif.leftPanel], 
+              rightPanels: [dicomSeg.panel, monailabel.monaiLabel],
               viewports: [
                 {
                   namespace: cornerstone.viewport,

@@ -174,6 +174,7 @@ function initMPRToolGroup(extensionManager, toolGroupService, commandsManager) {
       },
       { toolName: toolNames.SegmentationDisplay },
       { toolName: 'ProbeMONAILabel' },
+      { toolName: 'ProbeMONAILabel' },
     ],
     disabled: [
       {

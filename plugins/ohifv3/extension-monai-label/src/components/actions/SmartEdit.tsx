@@ -60,9 +60,9 @@ export default class SmartEdit extends BaseTab {
         const color = selectedSegment.color;
 
         // get the active viewport toolGroup
-        const { viewports, activeViewportId } =
+        const { viewports, activeViewportIndex } =
           viewportGridService.getState();
-        const viewport = viewports.get(activeViewportId);
+        const viewport = viewports[activeViewportIndex];
         const { viewportOptions } = viewport;
         const toolGroupId = viewportOptions.toolGroupId;
 
@@ -126,49 +126,58 @@ export default class SmartEdit extends BaseTab {
     const { imageData } = viewPort.getImageData();
     const ijk = vec3.fromValues(0, 0, 0);
 
-    const pointsIJK = pointsWorld.map((world) =>
+    // Rounding is not working
+    /* const pointsIJK = pointsWorld.map((world) =>
       Math.round(imageData.worldToIndex(world, ijk))
+    ); */
+
+    const pointsIJK = pointsWorld.map((world) =>
+      imageData.worldToIndex(world, ijk)
     );
 
     /* const roundPointsIJK = pointsIJK.map(ind => Math.round(ind)) */
 
     this.state.deepgrowPoints.set(segmentId, pointsIJK);
 
+    // when changing label,  delete previous? or just keep track of all provided clicks per labels
     const points = this.state.deepgrowPoints.get(segmentId);
 
     // Error as ctrlKey is part of the points?
 
-    if (!points.length) {
+    /* if (!points.length) {
       return;
     }
-
-    const currentPoint = points[points.length - 1];
-
-    const foreground = points;
-    /* const foreground = points
-      .filter(p => (is3D || p.z === currentPoint.z) && !p.data.ctrlKey)
-      .map(p => [p.x, p.y, p.z]); */
-
-    const background = [];
-    /* const background = points
-    .filter(p => (is3D || p.z === currentPoint.z) && p.data.ctrlKey)
-    .map(p => [p.x, p.y, p.z]); */
+    
+    const currentPoint = points[points.length - 1]; */
 
     const config = this.props.onOptionsConfig();
+
+    const labels = info.models[model].labels;
 
     const params =
       config && config.infer && config.infer[model] ? config.infer[model] : {};
 
-    /* const cursor = viewConstants.element.style.cursor;
-    viewConstants.element.style.cursor = 'wait'; */
+    // block the cursor while waiting for MONAI Label response?
+
+    for (let l in labels){
+      if (l === segmentId) {
+        console.log('This is the segmentId')
+        let p = []
+        for (var i = 0; i < pointsIJK.length; i++) {
+          p.push(Array.from(pointsIJK[i]));
+          console.log(p[i]);
+        }        
+        params[l] = p;
+        continue;
+      };
+      console.log(l);
+      params[l] = [];
+    }
 
     const response = await this.props
       .client()
-      .deepgrow(model, image, foreground, background, params);
+      .infer(model, image, params);
 
-    /* viewConstants.element.style.cursor = cursor; */
-
-    const labels = info.models[model].labels;
 
     if (response.status !== 200) {
       this.notification.show({
@@ -191,39 +200,6 @@ export default class SmartEdit extends BaseTab {
     this.props.servicesManager.services.segmentationService.remove('1') */
   };
 
-  /* deepgrowClickEventHandler = async evt => {
-    if (!evt || !evt.detail) {
-      console.info('Not a valid event; So Ignore');
-      return;
-    }
-
-    const segmentId = this.state.segmentId
-      ? this.state.segmentId
-      : getFirstSegmentId(this.props.viewConstants.element);
-    if (segmentId && !this.state.segmentId) {
-      this.onSegmentSelected(segmentId);
-    }
-
-    if (!segmentId) {
-      this.notification.show({
-        title: 'MONAI Label',
-        message: 'Please create/select a label first',
-        type: 'warning',
-      });
-      return;
-    }
-
-    let points = this.state.deepgrowPoints.get(segmentId);
-    if (!points) {
-      points = [];
-      this.state.deepgrowPoints.set(segmentId, points);
-    }
-
-    const pointData = this.getPointData(evt);
-    points.push(pointData);
-    await this.onDeepgrow(this.state.model);
-  }; */
-
   getPointData = (evt) => {
     const { x, y, imageId } = evt.detail;
     const z = this.props.viewConstants.imageIdsToIndex.get(imageId);
@@ -244,34 +220,6 @@ export default class SmartEdit extends BaseTab {
   initPoints = (id) => {
     console.log('Initializing points');
   };
-  /* initPoints = id => {
-    const pointsAll = this.state.deepgrowPoints;
-    const segmentId = !id ? this.state.segmentId : id;
-    if (!segmentId) {
-      return;
-    }
-
-    const points = pointsAll.get(segmentId);
-    if (!points) {
-      return;
-    }
-
-    const { element } = this.props.viewConstants;
-    for (let i = 0; i < points.length; i++) {
-      const enabledElement = cornerstone.getEnabledElement(element);
-      const oldImageId = enabledElement.image.imageId;
-
-      for (let i = 0; i < points.length; ++i) {
-        let { imageId, data } = points[i];
-        enabledElement.image.imageId = imageId;
-        cornerstoneTools.addToolState(element, 'DeepgrowProbe', data);
-      }
-      enabledElement.image.imageId = oldImageId;
-    }
-
-    // Refresh
-    cornerstone.updateImage(element);
-  }; */
 
   clearPoints = (id) => {
     cornerstoneTools.annotation.state
@@ -283,32 +231,6 @@ export default class SmartEdit extends BaseTab {
     console.log('Clearing all points');
   };
 
-  /* clearPoints = id => {
-    const pointsAll = this.state.deepgrowPoints;
-    const segmentId = !id ? this.state.segmentId : id;
-    if (!segmentId) {
-      return;
-    }
-
-    const points = pointsAll.get(segmentId);
-    if (!points) {
-      return;
-    }
-
-    const { element } = this.props.viewConstants;
-    const enabledElement = cornerstone.getEnabledElement(element);
-    const oldImageId = enabledElement.image.imageId;
-
-    for (let i = 0; i < points.length; ++i) {
-      let { imageId } = points[i];
-      enabledElement.image.imageId = imageId;
-      cornerstoneTools.clearToolState(element, 'DeepgrowProbe');
-    }
-    enabledElement.image.imageId = oldImageId;
-    cornerstone.updateImage(element);
-    pointsAll.delete(segmentId);
-  }; */
-
   onSelectActionTab = (evt) => {
     this.props.onSelectActionTab(evt.currentTarget.value);
   };
@@ -319,13 +241,6 @@ export default class SmartEdit extends BaseTab {
     });
     console.info('Here we activate the probe');
 
-    /* this.state.deepgrowPoints */
-
-    /* cornerstoneTools.setToolActive('DeepgrowProbe', { mouseButtonMask: 1 });
-    this.addEventListeners(
-      'monailabel_deepgrow_probe_event',
-      this.deepgrowClickEventHandler
-    ); */
   };
 
   onLeaveActionTab = () => {
@@ -394,16 +309,11 @@ export default class SmartEdit extends BaseTab {
             onClick={this.onDeepgrow}
             onSelectModel={this.onSelectModel}
             usage={
-              <div style={{ fontSize: 'smaller' }}>
+              <div style={{ fontSize: 'smaller'}}>
                 <p>
-                  Create a label and annotate <b>any organ</b>. &nbsp;Use{' '}
-                  <i>Ctrl + Click</i> to add{' '}
-                  <b>
-                    <i>background</i>
-                  </b>{' '}
-                  points.
+                  Create a label and annotate <b>any organ</b>.
                 </p>
-                <a href="#" onClick={() => this.clearPoints()}>
+                <a style={{ backgroundColor:'gray'}} href="#" onClick={() => this.clearPoints()}>
                   Clear Points
                 </a>
               </div>

@@ -1,31 +1,57 @@
+import {
+  getLabelColor,
+} from './GenericUtils';
 
-function getImageIdsForDisplaySet(
-  studies,
-  StudyInstanceUID,
-  SeriesInstanceUID
+
+function createSegmentMetadata(
+  label,
+  segmentId,
+  description = '',
+  newLabelMap = false,
 ) {
 
-  const study = studies.find(
-    study => study.StudyInstanceUID === StudyInstanceUID
-  );
+  const labelMeta = {
+        SegmentedPropertyCategoryCodeSequence: {
+          CodeValue: 'T-D0050',
+          CodingSchemeDesignator: 'SRT',
+          CodeMeaning: 'Tissue',
+        },
+        SegmentNumber: 1,
+        SegmentLabel: label ? label : 'label-0-1',
+        SegmentDescription: description,
+        SegmentAlgorithmType: 'SEMIAUTOMATIC',
+        SegmentAlgorithmName: 'MONAI',
+        SegmentedPropertyTypeCodeSequence: {
+          CodeValue: 'T-D0050',
+          CodingSchemeDesignator: 'SRT',
+          CodeMeaning: 'Tissue',
+        },
+      };
 
-  const displaySets = study.displaySets.filter(displaySet => {
-    return displaySet.SeriesInstanceUID === SeriesInstanceUID;
-  });
-
-  if (displaySets.length > 1) {
-    console.warn(
-      'More than one display set with the same SeriesInstanceUID. This is not supported yet...'
-    );
-    // TODO -> We could make check the instance list and see if any match?
-    // Do we split the segmentation into two cornerstoneTools segmentations if there are images in both series?
-    // ^ Will that even happen?
+  if (newLabelMap) {
+    console.debug('Logic to create a new segment');
   }
 
-  const referencedDisplaySet = displaySets[0];
-  return referencedDisplaySet.images.map(image => image.getImageId());
+  const color = getLabelColor(label)
+
+  const rgbColor = [];
+  for (let key in color) {
+    rgbColor.push(color[key]);
+    }
+
+  rgbColor.push(255);
+
+  return {
+    id: '0+' + segmentId,
+    color: rgbColor,
+    labelmapIndex: 0,
+    name: label,
+    segmentIndex: segmentId,
+    description: description,
+    meta: labelMeta,
+  };
 }
 
 export {
-  getImageIdsForDisplaySet,
+  createSegmentMetadata,
 };

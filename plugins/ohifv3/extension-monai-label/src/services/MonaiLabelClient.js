@@ -29,11 +29,15 @@ export default class MonaiLabelClient {
     // url.searchParams.append('output', 'image');
     url = url.toString();
 
+
     if (result_extension) {
       params.result_extension = result_extension;
       params.result_dtype = 'uint16';
       params.result_compress = false;
     }
+
+    // return the indexes as defined in the config file
+    params.restore_label_idx = true
 
     return await MonaiLabelClient.api_post(
       url,

@@ -21,7 +21,7 @@ function getPanelModule({
   return [
     {
       name: 'monailabel',
-      iconName: 'tab-segmentation',
+      iconName: 'tab-patient-info',
       iconLabel: 'MONAI',
       label: 'MONAI Label',
       secondaryLabel: 'MONAI Label',

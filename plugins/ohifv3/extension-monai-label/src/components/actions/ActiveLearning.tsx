@@ -16,12 +16,9 @@ import React from 'react';
 import './OptionTable.styl';
 import BaseTab from './BaseTab';
 import NextSampleForm from './NextSampleForm';
-/* import cornerstoneTools from 'cornerstone-tools';
 import {
-  flattenLabelmaps,
-  getFirstSegmentId,
-  getLabelMaps,
-} from '../../utils/SegmentationUtils'; */
+  createSegmentMetadata,
+} from '../../utils/SegmentationUtils';
 
 export default class OptionTable extends BaseTab {
   constructor(props) {
@@ -116,12 +113,6 @@ export default class OptionTable extends BaseTab {
 
   onClickSubmitLabel = async () => {
 
-
-    /* const { getters } = cornerstoneTools.getModule('segmentation');
-    const { labelmaps3D } = getters.labelmaps3D(
-      this.props.viewConstants.element
-    ); */
-
     const labelmaps3D = cornerstone.cache.getVolume('1')
 
     if (!labelmaps3D) {
@@ -136,37 +127,28 @@ export default class OptionTable extends BaseTab {
       duration: 5000,
     });
 
-    const metadata = labelmaps3D.metadata.data
-      ? labelmaps3D.metadata.data
-      : labelmaps3D.metadata;
-
-    if (!metadata || !metadata.length) {
-      console.warn('Missing Meta; so ignore');
+    const labelNames = this.props.info.labels
+    const segments = [];
+    for (let i = 0; i < labelNames.length; i++) {
+      if (labelNames[i] === 'background') {
+        console.debug('Ignore Background...');
+        continue;
+      }
+      let segment  = createSegmentMetadata(
+        labelNames[i],
+        i,
+        ''
+      )
+      segments.push(segment) 
     }
 
-    console.debug(metadata);
-
-    /* const segments = flattenLabelmaps(
-      getLabelMaps(this.props.viewConstants.element)
-    );
-
-    console.debug(segments); */
-
-    /* if (metadata.length !== segments.length + 1) {
-      console.warn('Segments and Metadata NOT matching; So Ignore');
-    } */
+    const params = { label_info: segments };
 
     const image = this.props.viewConstants.SeriesInstanceUID;
-
-    /* debugger; */
-
-    // Convert label map to unit16 type!!
 
     const label = new Blob([labelmaps3D.scalarData], {
       type: 'application/octet-stream',
     });
-
-    const params = { label_info: null };
 
     const response = await this.props
       .client()
@@ -188,83 +170,6 @@ export default class OptionTable extends BaseTab {
       });
     }
   };
-
-  /* onClickSubmitLabel = async () => {
-    // delete any scribbles segments,
-    // they are not needed anymore since this is final label
-    this.props.onDeleteSegmentByName('main_scribbles');
-    this.props.onDeleteSegmentByName('background_scribbles');
-    this.props.onDeleteSegmentByName('foreground_scribbles');
-
-    const { getters } = cornerstoneTools.getModule('segmentation');
-    const { labelmaps3D } = getters.labelmaps3D(
-      this.props.viewConstants.element
-    );
-    if (!labelmaps3D) {
-      console.info('LabelMap3D is empty.. so zero segments');
-      return;
-    }
-
-    this.notification.show({
-      title: 'MONAI Label',
-      message: 'Preparing the labelmap to submit',
-      type: 'info',
-      duration: 5000,
-    });
-
-    for (let i = 0; i < labelmaps3D.length; i++) {
-      const labelmap3D = labelmaps3D[i];
-      if (!labelmap3D) {
-        console.warn('Missing Label; so ignore');
-        continue;
-      }
-
-      const metadata = labelmap3D.metadata.data
-        ? labelmap3D.metadata.data
-        : labelmap3D.metadata;
-      if (!metadata || !metadata.length) {
-        console.warn('Missing Meta; so ignore');
-        continue;
-      }
-
-      console.debug(metadata);
-
-      const segments = flattenLabelmaps(
-        getLabelMaps(this.props.viewConstants.element)
-      );
-      console.debug(segments);
-
-      if (metadata.length !== segments.length + 1) {
-        console.warn('Segments and Metadata NOT matching; So Ignore');
-      }
-
-      const image = this.props.viewConstants.SeriesInstanceUID;
-      const label = new Blob([labelmap3D.buffer], {
-        type: 'application/octet-stream',
-      });
-      const params = { label_info: segments };
-
-      const response = await this.props
-        .client()
-        .save_label(image, label, params);
-
-      if (response.status !== 200) {
-        this.notification.show({
-          title: 'MONAI Label',
-          message: 'Failed to save label',
-          type: 'error',
-          duration: 5000,
-        });
-      } else {
-        this.notification.show({
-          title: 'MONAI Label',
-          message: 'Label submitted to server',
-          type: 'success',
-          duration: 2000,
-        });
-      }
-    }
-  }; */
 
   async componentDidMount() {
     const training = await this.props.client().is_train_running();
@@ -384,7 +289,7 @@ export default class OptionTable extends BaseTab {
                   <div className="w3-round w3-light-grey w3-tiny">
                     <div
                       className="w3-round w3-container w3-blue w3-center"
-                      style={{ width: activelearning }}
+                      style={{ backgroundColor:'white' }}
                     >
                       {activelearning}
                     </div>
@@ -397,7 +302,7 @@ export default class OptionTable extends BaseTab {
                   <div className="w3-round w3-light-grey w3-tiny">
                     <div
                       className="w3-round w3-container w3-orange w3-center"
-                      style={{ width: training }}
+                      style={{ backgroundColor:'white' }}
                     >
                       {training}
                     </div>
@@ -410,7 +315,7 @@ export default class OptionTable extends BaseTab {
                   <div className="w3-round w3-light-grey w3-tiny">
                     <div
                       className="w3-round w3-container w3-green w3-center"
-                      style={{ width: accuracy }}
+                      style={{ backgroundColor:'white' }}
                     >
                       {accuracy}
                     </div>

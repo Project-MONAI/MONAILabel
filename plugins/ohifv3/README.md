@@ -14,7 +14,7 @@ limitations under the License.
 ## MONAI Label Plugin for OHIF Viewer
 The Open Health Imaging Foundation (OHIF) Viewer is an open-source, web-based platform for medical imaging. OHIF Viewer provides a framework for building complex imaging applications with user-friendly interfaces. MONAI Label supports the web-based OHIF viewer with connectivity to a remote DICOM server via DICOMweb.
 
-<!-- <img src="Screenshots/1.png" width=70% /> -->
+<img src="./images/ohifv3.png" width=90% />
 
 ### Table of Contents
 - [Supported Applications](#supported-applications)
