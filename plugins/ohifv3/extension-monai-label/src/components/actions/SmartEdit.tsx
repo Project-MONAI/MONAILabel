@@ -60,9 +60,9 @@ export default class SmartEdit extends BaseTab {
         const color = selectedSegment.color;
 
         // get the active viewport toolGroup
-        const { viewports, activeViewportIndex } =
+        const { viewports, activeViewportId } =
           viewportGridService.getState();
-        const viewport = viewports[activeViewportIndex];
+        const viewport = viewports.get(activeViewportId);
         const { viewportOptions } = viewport;
         const toolGroupId = viewportOptions.toolGroupId;
 
@@ -147,7 +147,7 @@ export default class SmartEdit extends BaseTab {
     /* if (!points.length) {
       return;
     }
-    
+
     const currentPoint = points[points.length - 1]; */
 
     const config = this.props.onOptionsConfig();
@@ -166,7 +166,7 @@ export default class SmartEdit extends BaseTab {
         for (var i = 0; i < pointsIJK.length; i++) {
           p.push(Array.from(pointsIJK[i]));
           console.log(p[i]);
-        }        
+        }
         params[l] = p;
         continue;
       };

@@ -11,6 +11,7 @@ import ActiveLearning from './actions/ActiveLearning';
 import MonaiLabelClient from '../services/MonaiLabelClient';
 import SegmentationReader from '../utils/SegmentationReader';
 import MonaiSegmentation from './MonaiSegmentation';
+import SegmentationToolbox from './SegmentationToolbox';
 
 export default class MonaiLabelPanel extends Component {
   static propTypes = {
@@ -56,8 +57,8 @@ export default class MonaiLabelPanel extends Component {
 
     // Todo: fix this hack
     setTimeout(() => {
-      const { viewports, activeViewportIndex } = viewportGridService.getState();
-      const viewport = viewports[activeViewportIndex];
+      const { viewports, activeViewportId } = viewportGridService.getState();
+      const viewport = viewports.get(activeViewportId);
       const displaySet = displaySetService.getDisplaySetByUID(
         viewport.displaySetInstanceUIDs[0]
       );
@@ -172,6 +173,7 @@ export default class MonaiLabelPanel extends Component {
     console.info('These are the predicted labels');
     console.info(onInfoLabelNames);
 
+    if (onInfoLabelNames.hasOwnProperty('background'))
     if (onInfoLabelNames.hasOwnProperty('background'))
       delete onInfoLabelNames.background;
 
@@ -300,12 +302,26 @@ export default class MonaiLabelPanel extends Component {
         <p className="subtitle">{this.state.info.name}</p>
 
         {/* <button onClick={this._debug}> Read</button> */}
-
+        {this.state.segmentations?.map((segmentation) => (
+          <>
+            <SegmentationToolbox
+              servicesManager = {this.props.servicesManager}
+            />
+            <MonaiSegmentation
+              segmentation={segmentation}
+              servicesManager={this.props.servicesManager}
+            />
+          </>
+        ))}
         <div className="tabs scrollbar" id="style-3">
           <OptionTable
             ref={this.actions['options']}
             tabIndex={1}
             info={this.state.info}
+            viewConstants={{
+              SeriesInstanceUID: this.SeriesInstanceUID,
+              StudyInstanceUID: this.StudyInstanceUID,
+            }}
             viewConstants={{
               SeriesInstanceUID: this.SeriesInstanceUID,
               StudyInstanceUID: this.StudyInstanceUID,
@@ -320,6 +336,10 @@ export default class MonaiLabelPanel extends Component {
             ref={this.actions['activelearning']}
             tabIndex={2}
             info={this.state.info}
+            viewConstants={{
+              SeriesInstanceUID: this.SeriesInstanceUID,
+              StudyInstanceUID: this.StudyInstanceUID,
+            }}
             viewConstants={{
               SeriesInstanceUID: this.SeriesInstanceUID,
               StudyInstanceUID: this.StudyInstanceUID,
@@ -365,12 +385,6 @@ export default class MonaiLabelPanel extends Component {
             onOptionsConfig={this.onOptionsConfig}
           />
         </div>
-        {this.state.segmentations?.map((segmentation) => (
-          <MonaiSegmentation
-            segmentation={segmentation}
-            servicesManager={this.props.servicesManager}
-          />
-        ))}
       </div>
     );
   }

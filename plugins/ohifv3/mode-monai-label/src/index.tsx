@@ -166,7 +166,7 @@ function modeFactory({ modeConfiguration }) {
             props: {
               rightPanelDefaultClosed: true,
               /* leftPanelDefaultClosed: true, */
-              leftPanels: [ohif.leftPanel], 
+              leftPanels: [ohif.leftPanel],
               rightPanels: [dicomSeg.panel, monailabel.monaiLabel],
               viewports: [
                 {
