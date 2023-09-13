@@ -166,7 +166,7 @@ function modeFactory({ modeConfiguration }) {
             props: {
               rightPanelDefaultClosed: false,
               /* leftPanelDefaultClosed: true, */
-              leftPanels: [ohif.leftPanel], 
+              leftPanels: [ohif.leftPanel],
               rightPanels: [monailabel.monaiLabel],
               viewports: [
                 {

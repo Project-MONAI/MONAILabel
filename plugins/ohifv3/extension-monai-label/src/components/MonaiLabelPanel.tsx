@@ -135,7 +135,7 @@ export default class MonaiLabelPanel extends Component {
         activeSegmentIndex: 1,
       },
     ];
-   
+
     this.props.commandsManager.runCommand('loadSegmentationsForViewport', {
       segmentations
     });
@@ -196,7 +196,7 @@ export default class MonaiLabelPanel extends Component {
     if (onInfoLabelNames.hasOwnProperty('background')){
 delete onInfoLabelNames.background;
     }
-      
+
 
     const ret = SegmentationReader.parseNrrdData(response.data);
 
