@@ -12,6 +12,7 @@ import MonaiLabelClient from '../services/MonaiLabelClient';
 import SegmentationReader from '../utils/SegmentationReader';
 import MonaiSegmentation from './MonaiSegmentation';
 import SegmentationToolbox from './SegmentationToolbox';
+import SegmentationToolbox from './SegmentationToolbox';
 
 export default class MonaiLabelPanel extends Component {
   static propTypes = {
@@ -57,6 +58,8 @@ export default class MonaiLabelPanel extends Component {
 
     // Todo: fix this hack
     setTimeout(() => {
+      const { viewports, activeViewportId } = viewportGridService.getState();
+      const viewport = viewports.get(activeViewportId);
       const { viewports, activeViewportId } = viewportGridService.getState();
       const viewport = viewports.get(activeViewportId);
       const displaySet = displaySetService.getDisplaySetByUID(
@@ -193,6 +196,7 @@ export default class MonaiLabelPanel extends Component {
     console.info('These are the predicted labels');
     console.info(onInfoLabelNames);
 
+    if (onInfoLabelNames.hasOwnProperty('background'))
     if (onInfoLabelNames.hasOwnProperty('background'))
     if (onInfoLabelNames.hasOwnProperty('background'))
       delete onInfoLabelNames.background;
@@ -334,6 +338,10 @@ export default class MonaiLabelPanel extends Component {
               SeriesInstanceUID: this.SeriesInstanceUID,
               StudyInstanceUID: this.StudyInstanceUID,
             }}
+            viewConstants={{
+              SeriesInstanceUID: this.SeriesInstanceUID,
+              StudyInstanceUID: this.StudyInstanceUID,
+            }}
             client={this.client}
             notification={this.notification}
             //updateView={this.updateView}
@@ -344,6 +352,10 @@ export default class MonaiLabelPanel extends Component {
             ref={this.actions['activelearning']}
             tabIndex={2}
             info={this.state.info}
+            viewConstants={{
+              SeriesInstanceUID: this.SeriesInstanceUID,
+              StudyInstanceUID: this.StudyInstanceUID,
+            }}
             viewConstants={{
               SeriesInstanceUID: this.SeriesInstanceUID,
               StudyInstanceUID: this.StudyInstanceUID,

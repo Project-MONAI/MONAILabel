@@ -139,7 +139,7 @@ export default class OptionTable extends BaseTab {
         i,
         ''
       )
-      segments.push(segment) 
+      segments.push(segment)
     }
 
     const params = { label_info: segments };
