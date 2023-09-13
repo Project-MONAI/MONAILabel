@@ -164,10 +164,10 @@ function modeFactory({ modeConfiguration }) {
           return {
             id: ohif.layout,
             props: {
-              rightPanelDefaultClosed: true,
+              rightPanelDefaultClosed: false,
               /* leftPanelDefaultClosed: true, */
               leftPanels: [ohif.leftPanel], 
-              rightPanels: [dicomSeg.panel, monailabel.monaiLabel],
+              rightPanels: [monailabel.monaiLabel],
               viewports: [
                 {
                   namespace: cornerstone.viewport,
