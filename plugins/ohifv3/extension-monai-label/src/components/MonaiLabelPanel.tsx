@@ -120,6 +120,26 @@ export default class MonaiLabelPanel extends Component {
 
     const response = await this.client().info();
 
+    // remove the background
+    const labels = response.data.labels.splice(1)
+
+    const segmentations = [
+      {
+        id: '1',
+        label: 'Segmentations',
+        segments: labels.map((label, index) => ({
+          segmentIndex: index + 1,
+          label
+        })),
+        isActive: true,
+        activeSegmentIndex: 1,
+      },
+    ];
+
+    this.props.commandsManager.runCommand('loadSegmentationsForViewport', {
+      segmentations
+    });
+
     if (response.status !== 200) {
       this.notification.show({
         title: 'MONAI Label',
@@ -173,9 +193,10 @@ export default class MonaiLabelPanel extends Component {
     console.info('These are the predicted labels');
     console.info(onInfoLabelNames);
 
-    if (onInfoLabelNames.hasOwnProperty('background'))
-    if (onInfoLabelNames.hasOwnProperty('background'))
-      delete onInfoLabelNames.background;
+    if (onInfoLabelNames.hasOwnProperty('background')){
+delete onInfoLabelNames.background;
+    }
+
 
     const ret = SegmentationReader.parseNrrdData(response.data);
 
@@ -220,8 +241,7 @@ export default class MonaiLabelPanel extends Component {
       });
       console.debug("updated the segmentation's scalar data");
     } else {
-      this.props.commandsManager.runCommand('loadSegmentationsForDisplaySet', {
-        displaySetInstanceUID: this.displaySetInstanceUID,
+      this.props.commandsManager.runCommand('hydrateSegmentationsForViewport', {
         segmentations,
       });
     }
@@ -302,26 +322,11 @@ export default class MonaiLabelPanel extends Component {
         <p className="subtitle">{this.state.info.name}</p>
 
         {/* <button onClick={this._debug}> Read</button> */}
-        {this.state.segmentations?.map((segmentation) => (
-          <>
-            <SegmentationToolbox
-              servicesManager = {this.props.servicesManager}
-            />
-            <MonaiSegmentation
-              segmentation={segmentation}
-              servicesManager={this.props.servicesManager}
-            />
-          </>
-        ))}
         <div className="tabs scrollbar" id="style-3">
           <OptionTable
             ref={this.actions['options']}
             tabIndex={1}
             info={this.state.info}
-            viewConstants={{
-              SeriesInstanceUID: this.SeriesInstanceUID,
-              StudyInstanceUID: this.StudyInstanceUID,
-            }}
             viewConstants={{
               SeriesInstanceUID: this.SeriesInstanceUID,
               StudyInstanceUID: this.StudyInstanceUID,
@@ -336,10 +341,6 @@ export default class MonaiLabelPanel extends Component {
             ref={this.actions['activelearning']}
             tabIndex={2}
             info={this.state.info}
-            viewConstants={{
-              SeriesInstanceUID: this.SeriesInstanceUID,
-              StudyInstanceUID: this.StudyInstanceUID,
-            }}
             viewConstants={{
               SeriesInstanceUID: this.SeriesInstanceUID,
               StudyInstanceUID: this.StudyInstanceUID,
@@ -385,6 +386,17 @@ export default class MonaiLabelPanel extends Component {
             onOptionsConfig={this.onOptionsConfig}
           />
         </div>
+
+        {this.state.segmentations?.map((segmentation) => (
+          <>
+            <SegmentationToolbox servicesManager={this.props.servicesManager} />
+            <MonaiSegmentation
+              servicesManager={this.props.servicesManager}
+              extensionManager={this.props.extensionManager}
+              commandsManager={this.props.commandsManager}
+            />
+          </>
+        ))}
       </div>
     );
   }
