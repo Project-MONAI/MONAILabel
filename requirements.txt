@@ -11,7 +11,7 @@
 
 monai[nibabel, skimage, pillow, tensorboard, gdown, ignite, torchvision, itk, tqdm, lmdb, psutil, openslide, fire, mlflow]>=1.2.0
 uvicorn==0.21.1
-pydantic>=1.10.7
+pydantic>=1.10.7,<2.0.0
 python-dotenv==1.0.0
 fastapi==0.95.0
 python-multipart==0.0.6
