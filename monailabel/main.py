@@ -61,6 +61,7 @@ class Main:
         parser.add_argument("--ssl_ca_certs", default=None, type=str, help="CA certificates file")
         parser.add_argument("--workers", default=None, type=int, help="Number of worker processes")
         parser.add_argument("--limit_concurrency", default=None, type=int, help="Max concurrent connections")
+        parser.add_argument("--reload", action="store_true", help="Whether to auto-reload uvicorn on source file changes")
         parser.add_argument("--access_log", action="store_true", help="Enable access log")
         parser.add_argument("--root_path", default="/", help="Application root path")
         parser.add_argument("--log_level", default="info", help="Log level")
@@ -254,6 +255,7 @@ class Main:
             ssl_ca_certs=args.ssl_ca_certs,
             workers=args.workers,
             limit_concurrency=args.limit_concurrency,
+            reload=args.reload,
         )
 
     def start_server_validate_args(self, args):
@@ -353,4 +355,8 @@ class Main:
 
 
 if __name__ == "__main__":
+    print("-" * 80)
+    print("Hello 4!")
+    print("Running monailabel.main")
+    print("-" * 80)
     Main().run()
