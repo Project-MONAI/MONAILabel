@@ -94,7 +94,6 @@ This model works for single and multiple label segmentation tasks.
 
 | Name                 | Values             | Description                                                        |
 |----------------------|--------------------|--------------------------------------------------------------------|
-| network              | **dynunet**, unetr | Using one of these network and corresponding pretrained weights    |
 | use_pretrained_model | **true**, false    | Disable this NOT to load any pretrained weights                    |
 | skip_scoring         | **true**, false    | Disable this to allow scoring methods to be used                   |
 | skip_strategies      | **true**, false    | Disable this to add active learning strategies                     |
@@ -106,21 +105,21 @@ A command example to use active learning strategies with DeepEdit would be:
 
 > monailabel start_server --app workspace/radiology --studies workspace/images --conf models deepedit --conf skip_scoring false --conf skip_strategies false --conf epistemic_enabled true
 
-- Network: This model uses the DynUNet as the default network. It also comes with pretrained model for [UNETR](https://docs.monai.io/en/latest/networks.html#unetr). Researchers can define their own network or use one of the listed [here](https://docs.monai.io/en/latest/networks.html)
+- Network: This model uses the SegResNet as the default network. Researchers can define their own network or use one of the listed [here](https://docs.monai.io/en/latest/networks.html)
 - Labels:
   ```json
   {
       "spleen": 1,
-      "right kidney": 2,
-      "left kidney": 3,
-      "liver": 6,
-      "stomach": 7,
-      "aorta": 8,
-      "inferior vena cava": 9,
+      "kidney_right": 2,
+      "kidney_left": 3,
+      "liver": 5,
+      "stomach": 6,
+      "aorta": 7,
+      "inferior_vena_cava": 8,
       "background": 0
   }
   ```
-- Dataset: The model is pre-trained over dataset: https://www.synapse.org/#!Synapse:syn3193805/wiki/217789
+- Dataset: The model is pre-trained over Total Segmentator dataset: https://zenodo.org/record/6802614#.ZCStTI7MKCg
 
 - Inputs
     - 1 channel for the image modality -> Automated mode
