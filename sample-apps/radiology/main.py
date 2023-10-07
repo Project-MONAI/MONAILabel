@@ -331,14 +331,16 @@ def main():
 
     # Batch Infer
     if args.test == "batch_infer":
-        app.batch_infer(request={"model": args.model,
-                               "multi_gpu": False,
-                               "save_label": True,
-                               "label_tag": "original",
-                               "max_workers": 1,
-                               "max_batch_size": 0
-                               }
-                      )
+        app.batch_infer(
+            request={
+                "model": args.model,
+                "multi_gpu": False,
+                "save_label": True,
+                "label_tag": "original",
+                "max_workers": 1,
+                "max_batch_size": 0,
+            }
+        )
 
         # app.batch_infer(request={"model": "pipeline",
         #                          "multi_gpu": False,
