@@ -261,7 +261,10 @@ class MyApp(MONAILabelApp):
 
 
 """
-Example to run train/infer/scoring task(s) locally without actually running MONAI Label Server
+Example to run train/infer/batch infer/scoring task(s) locally without actually running MONAI Label Server
+
+More about the available app methods, please check the interface monailabel/interfaces/app.py
+
 """
 
 
@@ -287,8 +290,8 @@ def main():
 
     parser = argparse.ArgumentParser()
     parser.add_argument("-s", "--studies", default=studies)
-    parser.add_argument("-m", "--model", default="segmentation_spleen")
-    parser.add_argument("-t", "--test", default="infer", choices=("train", "infer"))
+    parser.add_argument("-m", "--model", default="segmentation")
+    parser.add_argument("-t", "--test", default="batch_infer", choices=("train", "infer", "batch_infer"))
     args = parser.parse_args()
 
     app_dir = os.path.dirname(__file__)
@@ -324,6 +327,28 @@ def main():
             print(f"++++ Image File: {image_path}")
             print(f"++++ Label File: {label_file}")
             break
+        return
+
+    # Batch Infer
+    if args.test == "batch_infer":
+        app.batch_infer(request={"model": args.model,
+                               "multi_gpu": False,
+                               "save_label": True,
+                               "label_tag": "original",
+                               "max_workers": 1,
+                               "max_batch_size": 0
+                               }
+                      )
+
+        # app.batch_infer(request={"model": "pipeline",
+        #                          "multi_gpu": False,
+        #                          "save_label": True,
+        #                          "label_tag": "original",
+        #                          "max_workers": 1,
+        #                          "max_batch_size": 1
+        #                          }
+        #                 )
+
         return
 
     # Train
