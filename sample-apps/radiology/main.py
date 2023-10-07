@@ -342,14 +342,16 @@ def main():
             }
         )
 
-        # app.batch_infer(request={"model": "pipeline",
-        #                          "multi_gpu": False,
-        #                          "save_label": True,
-        #                          "label_tag": "original",
-        #                          "max_workers": 1,
-        #                          "max_batch_size": 1
-        #                          }
-        #                 )
+        # app.batch_infer(
+        #     request={
+        #         "model": "pipeline",
+        #         "multi_gpu": False,
+        #         "save_label": True,
+        #         "label_tag": "original",
+        #         "max_workers": 1,
+        #         "max_batch_size": 0,
+        #     }
+        # )
 
         return
 
