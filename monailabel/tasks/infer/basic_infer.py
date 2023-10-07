@@ -57,7 +57,7 @@ class BasicInferTask(InferTask):
         output_label_key: str = "pred",
         output_json_key: str = "result",
         config: Union[None, Dict[str, Any]] = None,
-        load_strict: bool = False,
+        load_strict: bool = True,
         roi_size=None,
         preload=False,
         train_mode=False,
@@ -453,6 +453,16 @@ class BasicInferTask(InferTask):
                 if path:
                     checkpoint = torch.load(path, map_location=torch.device(device))
                     model_state_dict = checkpoint.get(self.model_state_dict, checkpoint)
+
+                    if set(self.network.state_dict().keys()) != set(checkpoint.keys()):
+                        logger.warning(
+                            f"Checkpoint keys don't match network.state_dict()! Items that exist in only one dict"
+                            f" but not in the other: {set(self.network.state_dict().keys()) ^ set(checkpoint.keys())}"
+                        )
+                        logger.warning(
+                            "The run will now continue unless load_strict is set to True. "
+                            "If loading fails or the network behaves abnormally, please check the loaded weights"
+                        )
                     network.load_state_dict(model_state_dict, strict=self.load_strict)
             else:
                 network = torch.jit.load(path, map_location=torch.device(device))

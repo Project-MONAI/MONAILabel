@@ -9,7 +9,6 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-import hashlib
 import logging
 import os
 import pathlib
@@ -26,6 +25,7 @@ from monailabel.datastore.local import LocalDatastore
 from monailabel.datastore.utils.convert import binary_to_image, dicom_to_nifti, nifti_to_dicom_seg
 from monailabel.datastore.utils.dicom import dicom_web_download_series, dicom_web_upload_dcm
 from monailabel.interfaces.datastore import DefaultLabelTag
+from monailabel.utils.others.generic import md5_digest
 
 logger = logging.getLogger(__name__)
 
@@ -53,7 +53,7 @@ class DICOMWebDatastore(LocalDatastore):
         self._fetch_by_frame = fetch_by_frame
         self._convert_to_nifti = convert_to_nifti
 
-        uri_hash = hashlib.md5(self._client.base_url.encode("utf-8")).hexdigest()
+        uri_hash = md5_digest(self._client.base_url)
         datastore_path = (
             os.path.join(cache_path, uri_hash)
             if cache_path
@@ -222,18 +222,29 @@ class DICOMWebDatastore(LocalDatastore):
                 str(seg["StudyInstanceUID"].value), str(seg["SeriesInstanceUID"].value)
             )
             seg_meta = Dataset.from_json(meta[0])
-            if not seg_meta.get("ReferencedSeriesSequence"):
-                logger.warning(
-                    f"Label Ignored:: ReferencedSeriesSequence is NOT found: {str(seg['SeriesInstanceUID'].value)}"
+            if seg_meta.get("ReferencedSeriesSequence"):
+                referenced_series_instance_uid = str(
+                    seg_meta["ReferencedSeriesSequence"].value[0]["SeriesInstanceUID"].value
                 )
-                continue
-
-            image_labels.append(
-                {
-                    "image": str(seg_meta["ReferencedSeriesSequence"].value[0]["SeriesInstanceUID"].value),
-                    "label": str(seg["SeriesInstanceUID"].value),
-                }
-            )
+                if referenced_series_instance_uid in self.list_images():
+                    image_labels.append(
+                        {
+                            "image": str(seg_meta["ReferencedSeriesSequence"].value[0]["SeriesInstanceUID"].value),
+                            "label": str(seg["SeriesInstanceUID"].value),
+                        }
+                    )
+                else:
+                    logger.warning(
+                        "Label Ignored:: ReferencedSeriesSequence is NOT in filtered image list: {}".format(
+                            str(seg["SeriesInstanceUID"].value)
+                        )
+                    )
+            else:
+                logger.warning(
+                    "Label Ignored:: ReferencedSeriesSequence is NOT found: {}".format(
+                        str(seg["SeriesInstanceUID"].value)
+                    )
+                )
 
         invalid = set(super().get_labeled_images()) - {image_label["image"] for image_label in image_labels}
         logger.info(f"Invalid Labels: {invalid}")

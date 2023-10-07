@@ -43,6 +43,12 @@ Below is a list of models that are currently available in the Endoscopy App:
 # Download Endoscopy App (skip this if you have already downloaded the app or using the GitHub repository)
 monailabel apps --download --name endoscopy --output workspace
 
+# Start MONAI Label Server with the tooltracking model, download latest bundle version by default
+monailabel start_server --app workspace/endoscopy --studies workspace/images --conf models tooltracking
+
+# Start MONAI Label Server with the tooltracking model, download specific bundle version
+monailabel start_server --app workspace/endoscopy --studies workspace/images --conf models tooltracking --conf tooltracking 0.4.8
+
 # Start MONAI Label Server with the DeepEdit model
 monailabel start_server --app workspace/endoscopy --studies workspace/images --conf models deepedit
 

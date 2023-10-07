@@ -50,7 +50,7 @@ Prerequisites
 --------------------------
 MONAI Label supports both **Ubuntu** and **Windows** OS with GPU/CUDA enabled.
 
-Make sure you have python 3.7/3.8/3.9 version environment with PyTorch and CUDA installed.  MONAI Label features on other python version are not verified.
+Make sure you have python 3.8/3.9 version environment with PyTorch and CUDA installed.  MONAI Label features on other python version are not verified.
 
 - Install `Python <https://www.python.org/downloads/>`_
 - Install the following Python libraries
@@ -144,7 +144,7 @@ You can start server using *monailabel* CLI
 
   # Run Deepedit Model.
   # Options can be (deepedit|deepgrow|segmentation|segmentation_spleen|all) in case of radiology app.
-  # You can also pass comma seperated models like --conf models deepedit,segmentation
+  # You can also pass comma separated models like --conf models deepedit,segmentation
 
   monailabel start_server --app apps/radiology --studies datasets/Task09_Spleen/imagesTr --conf models deepedit
 

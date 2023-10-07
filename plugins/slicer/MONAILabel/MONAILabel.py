@@ -190,7 +190,7 @@ class _ui_MONAILabelSettingsPanel:
         if slicer.util.settingsValue("MONAILabel/allowOverlappingSegments", True, converter=slicer.util.toBool):
             if slicer.util.settingsValue("MONAILabel/fileExtension", None) != ".seg.nrrd":
                 slicer.util.warningDisplay(
-                    "Overlapping segmentations are only availabel with the '.seg.nrrd' file extension! "
+                    "Overlapping segmentations are only available with the '.seg.nrrd' file extension! "
                     + "Consider changing MONAILabel file extension."
                 )
 
@@ -664,6 +664,7 @@ class MONAILabelWidget(ScriptedLoadableModuleWidget, VTKObservationMixin):
             self.ui.freezeUpdateCheckBox.show()
             self.ui.dgLabelForeground.setText("Landmarks:")
         else:
+            self.ui.dgLabelBackground.show()
             self.ui.dgNegativeControlPointPlacementWidget.show()
             self.ui.freezeUpdateCheckBox.hide()
             self.ui.dgLabelForeground.setText("Foreground:")
@@ -1027,7 +1028,7 @@ class MONAILabelWidget(ScriptedLoadableModuleWidget, VTKObservationMixin):
         self.saveServerUrl()
 
     def serverUrl(self):
-        serverUrl = self.ui.serverComboBox.currentText
+        serverUrl = self.ui.serverComboBox.currentText.strip()
         if not serverUrl:
             serverUrl = "http://127.0.0.1:8000"
         return serverUrl.rstrip("/")
@@ -1235,7 +1236,8 @@ class MONAILabelWidget(ScriptedLoadableModuleWidget, VTKObservationMixin):
             logging.debug(sample)
             if not sample.get("id"):
                 slicer.util.warningDisplay(
-                    "Unlabled Samples/Images Not Found at server.  Instead you can load your own image."
+                    "Unlabeled samples or images not found at server.\n"
+                    "Instead please go to File -> Add Data to load image."
                 )
                 return
 

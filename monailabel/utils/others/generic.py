@@ -16,8 +16,11 @@ import logging
 import mimetypes
 import os
 import pathlib
+import re
 import shutil
 import subprocess
+import sys
+import tempfile
 import time
 from typing import Dict
 
@@ -97,7 +100,7 @@ def init_log_config(log_config, app_dir, log_file, root_level=None):
         default_config = os.path.realpath(os.path.join(default_log_dir, "logging.json"))
 
         log_dir = os.path.join(app_dir, "logs")
-        log_config = os.path.join(log_dir, "logging.json")
+        log_config = tempfile.NamedTemporaryFile(suffix=".json").name
         os.makedirs(log_dir, exist_ok=True)
 
         # if not os.path.exists(log_config):
@@ -334,6 +337,10 @@ def get_bundle_models(app_dir, conf, conf_key="models"):
 
     Returns:
         a dictionary that contains the available bundles.
+
+    Example:
+        Bundle name: spleen_ct_segmentation, this will use latest version of the bundle.
+        BUndle name with specific version: spleen_ct_segmentation_v0.4.0, this will download the specified version.
     """
     model_dir = os.path.join(app_dir, "model")
 
@@ -353,7 +360,15 @@ def get_bundle_models(app_dir, conf, conf_key="models"):
                 logger.info(f"+++ Adding Bundle from Local: {k} => {p}")
             else:
                 logger.info(f"+++ Adding Bundle from NGC: {k} => {p}")
-                download(name=k, bundle_dir=model_dir, source=zoo_source)
+                pattern = re.compile(r"(?P<name>.+)_v(?P<version>\d+\.\d+\.\d+)")
+                match = pattern.match(k)
+                if match:
+                    name = match.group("name")
+                    version = match.group("version") or None
+                else:
+                    name = k
+                    version = None
+                download(name=name, version=version, bundle_dir=model_dir, source=zoo_source)
 
             bundles[k] = p
 
@@ -371,3 +386,9 @@ def handle_torch_linalg_multithread(req):
             torch.inverse(torch.eye(1, device=req.get("device") if req else None))
     except RuntimeError:
         pass
+
+
+def md5_digest(s: str) -> str:
+    if sys.version_info.minor < 9:
+        return hashlib.md5(s.encode("utf-8")).hexdigest()
+    return hashlib.md5(s.encode("utf-8"), usedforsecurity=False).hexdigest()

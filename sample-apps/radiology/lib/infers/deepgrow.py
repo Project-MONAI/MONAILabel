@@ -63,6 +63,7 @@ class Deepgrow(BasicInferTask):
             labels=labels,
             dimension=dimension,
             description=description,
+            load_strict=False,
             **kwargs,
         )
 

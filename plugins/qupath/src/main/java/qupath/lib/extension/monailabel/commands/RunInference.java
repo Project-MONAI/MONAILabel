@@ -26,6 +26,7 @@ import java.util.Set;
 
 import javax.xml.parsers.ParserConfigurationException;
 
+import org.controlsfx.dialog.ProgressDialog;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.w3c.dom.Document;
@@ -33,6 +34,7 @@ import org.w3c.dom.Node;
 import org.w3c.dom.NodeList;
 import org.xml.sax.SAXException;
 
+import javafx.concurrent.Task;
 import qupath.lib.extension.monailabel.MonaiLabelClient;
 import qupath.lib.extension.monailabel.MonaiLabelClient.RequestInfer;
 import qupath.lib.extension.monailabel.MonaiLabelClient.ResponseInfo;
@@ -76,9 +78,15 @@ public class RunInference implements Runnable {
 			var selected = imageData.getHierarchy().getSelectionModel().getSelectedObject();
 			var roi = selected != null ? selected.getROI() : null;
 
+			if (roi == null || !(roi instanceof RectangleROI)) {
+				Dialogs.showPlainMessage("Please create and select ROI", "Please create and select a Rectangle ROI before " +
+						"running this method.\nThe \"Annotations\" function creates annotations within the selected rectangle.");
+				return;
+			}
+
 			String imageFile = Utils.getFileName(viewer.getImageData().getServerPath());
 			String im = imageFile.toLowerCase();
-			boolean isWSI = (im.endsWith(".png") || im.endsWith(".jpg") || im.endsWith(".jpeg")) ? false : true;
+			boolean isWSI = !im.endsWith(".png") && !im.endsWith(".jpg") && !im.endsWith(".jpeg");
 			logger.info("MONAILabel:: isWSI: " + isWSI + "; File: " + imageFile);
 
 			// Select first RectangleROI if not selected explicitly
@@ -112,6 +120,7 @@ public class RunInference implements Runnable {
 
 			ParameterList list = new ParameterList();
 			list.addChoiceParameter("Model", "Model Name", selectedModel, names);
+			list.addTitleParameter("Parameters of selected ROI:");
 			if (isWSI) {
 				list.addStringParameter("Location", "Location (x,y,w,h)", Arrays.toString(bbox));
 				list.addIntParameter("TileSize", "TileSize", tileSize);
@@ -131,8 +140,42 @@ public class RunInference implements Runnable {
 				selectedBBox = bbox;
 				selectedTileSize = tileSize;
 
-				runInference(model, info, bbox, tileSize, imageData, imageFile, isWSI);
+				// runInference(model, info, bbox, tileSize, imageData, imageFile, isWSI);
+				final int[] finalBbox = bbox;
+				final int finalTileSize = tileSize;
+
+				Task<Void> task = new Task<Void>() {
+					@Override
+					protected Void call() throws Exception {
+						runInference(model, info, finalBbox, finalTileSize, imageData, imageFile, isWSI);
+						return null;
+					}
+				};
+
+				ProgressDialog progressDialog = new ProgressDialog(task);
+				progressDialog.setTitle("MONAILabel");
+				progressDialog.setHeaderText("Server-side processing is in progress, please wait...");
+				progressDialog.setContentText("Annotations will be drawn immediately after the method ends.");
+				progressDialog.initOwner(qupath.getStage());
+
+				// Start the inference
+				new Thread(task).start();
+
+				task.setOnSucceeded(event -> {
+					progressDialog.close();
+				});
+				task.setOnFailed(event -> {
+					progressDialog.close();
+					Throwable ex = task.getException();
+					if (ex != null) {
+						ex.printStackTrace();
+						Dialogs.showErrorMessage("MONAILabel", ex);
+					}
+				});
 			}
+
+			imageData.getHierarchy().removeObject(imageData.getHierarchy().getSelectionModel().getSelectedObject(), true);
+			imageData.getHierarchy().getSelectionModel().clearSelection();
 		} catch (Exception ex) {
 			ex.printStackTrace();
 			Dialogs.showErrorMessage("MONAILabel", ex);
@@ -296,7 +339,7 @@ public class RunInference implements Runnable {
 			int color = Color.RED.getRGB();
 			Node colorNode = annotation.getAttributes().getNamedItem("Color");
 			if (colorNode != null) {
-				color = Integer.parseInt(colorNode.getTextContent().replaceFirst("#", ""), 16) ;
+				color = Integer.parseInt(colorNode.getTextContent().replaceFirst("#", ""), 16);
 			// logger.info("Annotation Class: " + annotationClass + " Annotation Color: " + colorNode.getTextContent());
 			}
 

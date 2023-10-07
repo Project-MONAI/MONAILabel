@@ -13,17 +13,22 @@
 # please run `./runtests.sh --clean && DOCKER_BUILDKIT=1 docker build -t projectmonai/monailabel:latest .`
 # to use different version of MONAI pass `--build-arg MONAI_IMAGE=...`
 
-ARG MONAI_IMAGE=projectmonai/monai:1.2.0rc3
+ARG MONAI_IMAGE=projectmonai/monai:1.2.0
+ARG NODE_IMAGE=node:slim
+
+FROM ${NODE_IMAGE} as ohifbuild
+ADD . /opt/monailabel
+RUN apt update -y && apt install -y git
+RUN cd /opt/monailabel/plugins/ohif && ./build.sh
 
 FROM ${MONAI_IMAGE} as build
 LABEL maintainer="monai.contact@gmail.com"
-ARG BUILD_OHIF=true
 
 ADD . /opt/monailabel/
-RUN apt update -y && apt install openslide-tools npm -y && npm install --global yarn
+COPY --from=ohifbuild /opt/monailabel/monailabel/endpoints/static/ohif /opt/monailabel/monailabel/endpoints/static/ohif
 RUN python -m pip install --upgrade --no-cache-dir pip setuptools wheel twine \
     && cd /opt/monailabel \
-    && BUILD_OHIF=${BUILD_OHIF} python setup.py sdist bdist_wheel --build-number $(date +'%Y%m%d%H%M')
+    && BUILD_OHIF=false python setup.py sdist bdist_wheel --build-number $(date +'%Y%m%d%H%M')
 
 FROM ${MONAI_IMAGE}
 LABEL maintainer="monai.contact@gmail.com"

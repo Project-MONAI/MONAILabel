@@ -28,7 +28,7 @@ class ToolTracking(BundleInferTask):
     """
 
     def __init__(self, path: str, conf: Dict[str, str], **kwargs):
-        super().__init__(path, conf, type=InferType.SEGMENTATION, **kwargs)
+        super().__init__(path, conf, type=InferType.SEGMENTATION, load_strict=False, **kwargs)
 
         # Override Labels
         self.labels = {"Tool": 1}
