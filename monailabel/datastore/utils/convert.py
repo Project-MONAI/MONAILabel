@@ -60,7 +60,7 @@ def dicom_to_nifti(series_dir, is_seg=False):
     return output_file
 
 
-def binary_to_image(reference_image, label, dtype=np.uint16, file_ext=".nii.gz"):
+def binary_to_image(reference_image, label, dtype=np.uint8, file_ext=".nii.gz"):
     start = time.time()
 
     image_np, meta_dict = LoadImage(image_only=False)(reference_image)
