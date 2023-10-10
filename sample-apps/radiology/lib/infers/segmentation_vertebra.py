@@ -94,10 +94,6 @@ class SegmentationVertebra(BasicInferTask):
                 ]
             )
 
-        # Support caching for deepgrow interactions from the client
-        if add_cache:
-            self.add_cache_transform(t, data)
-
         t.extend(
             [
                 CropAndCreateSignald(keys="image", signal_key="signal"),

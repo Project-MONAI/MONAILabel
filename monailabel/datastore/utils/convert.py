@@ -63,7 +63,7 @@ def dicom_to_nifti(series_dir, is_seg=False):
 def binary_to_image(reference_image, label, dtype=np.uint16, file_ext=".nii.gz"):
     start = time.time()
 
-    image_np, meta_dict = LoadImage()(reference_image)
+    image_np, meta_dict = LoadImage(image_only=False)(reference_image)
     label_np = np.fromfile(label, dtype=dtype)
 
     logger.info(f"Image: {image_np.shape}")
@@ -83,7 +83,7 @@ def binary_to_image(reference_image, label, dtype=np.uint16, file_ext=".nii.gz")
 def nifti_to_dicom_seg(series_dir, label, label_info, file_ext="*", use_itk=True):
     start = time.time()
 
-    label_np, meta_dict = LoadImage()(label)
+    label_np, meta_dict = LoadImage(image_only=False)(label)
     unique_labels = np.unique(label_np.flatten()).astype(np.int_)
     unique_labels = unique_labels[unique_labels != 0]
 

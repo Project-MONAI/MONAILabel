@@ -22,7 +22,6 @@ from monai.losses import DiceLoss
 from monai.metrics import MeanIoU
 from monai.transforms import (
     Activationsd,
-    AddChanneld,
     AsDiscreted,
     EnsureChannelFirstd,
     EnsureTyped,
@@ -88,9 +87,9 @@ class DeepEdit(BasicTrainTask):
 
     def train_pre_transforms(self, context: Context):
         return [
-            LoadImaged(keys=("image", "label"), dtype=np.uint8),
+            LoadImaged(keys=("image", "label"), dtype=np.uint8, image_only=False),
             EnsureChannelFirstd(keys="image"),
-            AddChanneld(keys="label"),
+            EnsureChannelFirstd(keys="label", channel_dim="no_channel"),
             Resized(keys=("image", "label"), spatial_size=self.roi_size, mode=("area", "nearest")),
             ToTensord(keys="image"),
             TorchVisiond(
