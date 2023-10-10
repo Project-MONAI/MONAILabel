@@ -87,9 +87,9 @@ async def proxy_dicom(op: str, path: str, response: Response):
 
     response.body = proxy.content
     response.status_code = proxy.status_code
-    response.headers["Cross-Origin-Opener-Policy"] = "same-origin"
-    response.headers["Cross-Origin-Embedder-Policy"] = "require-corp"
-    response.headers["Cross-Origin-Resource-Policy"] = "same-site"
+    # response.headers["Cross-Origin-Opener-Policy"] = "same-origin"
+    # response.headers["Cross-Origin-Embedder-Policy"] = "require-corp"
+    # response.headers["Cross-Origin-Resource-Policy"] = "same-site"
     # response.headers["Cross-Origin-Resource-Policy"] = "cross-origin"
     return response
 

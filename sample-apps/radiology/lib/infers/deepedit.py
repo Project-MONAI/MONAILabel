@@ -9,7 +9,7 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 import logging
-from typing import Any, Callable, Sequence, Tuple, Union
+from typing import Callable, Sequence, Union
 
 from lib.transforms.transforms import GetCentroidsd
 from monai.apps.deepedit.transforms import (
@@ -35,7 +35,6 @@ from monai.transforms import (
 from monailabel.interfaces.tasks.infer_v2 import InferType
 from monailabel.tasks.infer.basic_infer import BasicInferTask
 from monailabel.transform.post import Restored
-from monailabel.transform.writer import Writer
 
 logger = logging.getLogger(__name__)
 

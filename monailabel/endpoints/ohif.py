@@ -39,13 +39,15 @@ def get_ohif(path: str):
         logger.info(file)
         raise HTTPException(status_code=404, detail="Resource NOT Found")
 
-    headers = {
-        "Cross-Origin-Opener-Policy": "same-origin",
-        "Cross-Origin-Embedder-Policy": "require-corp",
-        "Cross-Origin-Resource-Policy": "same-site",
-    }
+    return FileResponse(file, media_type=get_mime_type(file))
 
-    return FileResponse(file, media_type=get_mime_type(file), headers=headers)
+    # headers = {
+    #     "Cross-Origin-Opener-Policy": "same-origin",
+    #     "Cross-Origin-Embedder-Policy": "require-corp",
+    #     "Cross-Origin-Resource-Policy": "same-site",
+    # }
+
+    # return FileResponse(file, media_type=get_mime_type(file), headers=headers)
 
 
 @router.get("/{path:path}", include_in_schema=False)
