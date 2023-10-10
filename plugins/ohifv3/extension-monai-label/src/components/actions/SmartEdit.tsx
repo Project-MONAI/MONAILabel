@@ -87,7 +87,7 @@ export default class SmartEdit extends BaseTab {
   };
 
   onDeepgrow = async () => {
-    const { segmentationService, cornerstoneViewportService } =
+    const { segmentationService, cornerstoneViewportService, viewportGridService } =
       this.props.servicesManager.services;
     const { info, viewConstants } = this.props;
     const image = viewConstants.SeriesInstanceUID;
@@ -114,8 +114,10 @@ export default class SmartEdit extends BaseTab {
 
     // Getting the clicks in IJK format
 
-    const viewPort =
-      cornerstoneViewportService.getCornerstoneViewportByIndex(0);
+    debugger;
+
+    const { activeViewportId } = viewportGridService.getState();
+    const viewPort = cornerstoneViewportService.getCornerstoneViewport(activeViewportId);
 
     const pts = cornerstoneTools.annotation.state.getAnnotations(
       'ProbeMONAILabel',
@@ -313,7 +315,7 @@ export default class SmartEdit extends BaseTab {
                 <p>
                   Create a label and annotate <b>any organ</b>.
                 </p>
-                <a style={{ backgroundColor:'gray'}} href="#" onClick={() => this.clearPoints()}>
+                <a style={{ backgroundColor:'lightgray'}} onClick={() => this.clearPoints()}>
                   Clear Points
                 </a>
               </div>

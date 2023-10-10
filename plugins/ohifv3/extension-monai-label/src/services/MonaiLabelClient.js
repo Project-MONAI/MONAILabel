@@ -37,7 +37,7 @@ export default class MonaiLabelClient {
     }
 
     // return the indexes as defined in the config file
-    params.restore_label_idx = true
+    params.restore_label_idx = false
 
     return await MonaiLabelClient.api_post(
       url,
