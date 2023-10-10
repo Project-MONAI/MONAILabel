@@ -35,7 +35,7 @@ class TestConvert(unittest.TestCase):
     def test_binary_to_image(self):
         reference_image = os.path.join(self.local_dataset, "labels", "final", "spleen_3.nii.gz")
         label = LoadImage(image_only=True)(reference_image)
-        label = label.astype(np.uint16)
+        label = label.astype(np.uint8)
         label = label.flatten(order="F")
 
         label_bin = tempfile.NamedTemporaryFile(suffix=".bin").name

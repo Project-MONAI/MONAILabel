@@ -43,7 +43,7 @@ export default class MonaiLabelClient {
 
     if (result_extension) {
       params.result_extension = result_extension;
-      params.result_dtype = 'uint8';
+      params.result_dtype = 'uint16';
       params.result_compress = false;
     }
 
