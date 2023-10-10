@@ -55,12 +55,13 @@ class DeepEdit(BasicInferTask):
             labels=labels,
             dimension=dimension,
             description=description,
+            load_strict=False,
             **kwargs,
         )
 
     def pre_transforms(self, data=None) -> Sequence[Callable]:
         return [
-            LoadImageExd(keys="image", dtype=np.uint8),
+            LoadImageExd(keys="image", dtype=np.uint8, image_only=False),
             EnsureTyped(keys="image", device=data.get("device") if data else None),
             EnsureChannelFirstd(keys="image"),
             Resized(keys="image", spatial_size=self.roi_size, mode="area"),

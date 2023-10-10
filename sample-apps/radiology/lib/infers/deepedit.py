@@ -69,22 +69,22 @@ class DeepEdit(BasicInferTask):
             input_key="image",
             output_label_key="pred",
             output_json_key="result",
+            load_strict=False,
             **kwargs,
         )
 
         self.spatial_size = spatial_size
         self.target_spacing = target_spacing
         self.number_intensity_ch = number_intensity_ch
+        self.load_strict = False
 
     def pre_transforms(self, data=None):
         t = [
-            LoadImaged(keys="image", reader="ITKReader"),
+            LoadImaged(keys="image", reader="ITKReader", image_only=False),
             EnsureChannelFirstd(keys="image"),
             Orientationd(keys="image", axcodes="RAS"),
             ScaleIntensityRanged(keys="image", a_min=-175, a_max=250, b_min=0.0, b_max=1.0, clip=True),
         ]
-
-        self.add_cache_transform(t, data)
 
         if self.type == InferType.DEEPEDIT:
             t.extend(
@@ -130,12 +130,3 @@ class DeepEdit(BasicInferTask):
             ),
             GetCentroidsd(keys="pred", centroids_key="centroids"),
         ]
-
-    # def writer(self, data, extension=None, dtype=None) -> Tuple[Any, Any]:
-    #     logger.info(data['centroids'])
-    #     result_file, _ = Writer(label="pred")(data)
-    #     result_json = {
-    #         "label_names": self.labels,
-    #         "centroids": data['centroids'],
-    #     }
-    #     return result_file, result_json

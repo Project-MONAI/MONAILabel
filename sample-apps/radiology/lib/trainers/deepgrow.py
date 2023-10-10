@@ -30,8 +30,8 @@ from monai.inferers import SimpleInferer
 from monai.losses import DiceLoss
 from monai.transforms import (
     Activationsd,
-    AddChanneld,
     AsDiscreted,
+    EnsureChannelFirstd,
     EnsureTyped,
     LoadImaged,
     NormalizeIntensityd,
@@ -115,8 +115,8 @@ class Deepgrow(BasicTrainTask):
     def train_pre_transforms(self, context: Context):
         # Dataset preparation
         t: List[Any] = [
-            LoadImaged(keys=("image", "label")),
-            AddChanneld(keys=("image", "label")),
+            LoadImaged(keys=("image", "label"), image_only=False),
+            EnsureChannelFirstd(keys=("image", "label")),
             SpatialCropForegroundd(keys=("image", "label"), source_key="label", spatial_size=self.roi_size),
             Resized(keys=("image", "label"), spatial_size=self.model_size, mode=("area", "nearest")),
             NormalizeIntensityd(keys="image", subtrahend=208.0, divisor=388.0),  # type: ignore

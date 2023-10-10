@@ -63,6 +63,7 @@ class SegmentationVertebra(BasicInferTask):
             labels=labels,
             dimension=dimension,
             description=description,
+            load_strict=False,
             **kwargs,
         )
         self.target_spacing = target_spacing
@@ -92,10 +93,6 @@ class SegmentationVertebra(BasicInferTask):
                     CacheObjectd(keys="image"),
                 ]
             )
-
-        # Support caching for deepgrow interactions from the client
-        if add_cache:
-            self.add_cache_transform(t, data)
 
         t.extend(
             [

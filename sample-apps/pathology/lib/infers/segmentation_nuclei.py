@@ -14,7 +14,7 @@ from typing import Any, Callable, Dict, Sequence
 
 import numpy as np
 from lib.transforms import LoadImagePatchd, PostFilterLabeld
-from monai.transforms import Activationsd, AsChannelFirstd, AsDiscreted, ScaleIntensityRangeD, SqueezeDimd
+from monai.transforms import Activationsd, AsDiscreted, ScaleIntensityRangeD, SqueezeDimd, Transposed
 
 from monailabel.interfaces.tasks.infer_v2 import InferType
 from monailabel.tasks.infer.basic_infer import BasicInferTask
@@ -48,6 +48,7 @@ class SegmentationNuclei(BasicInferTask):
             labels=labels,
             dimension=dimension,
             description=description,
+            load_strict=False,
             **kwargs,
         )
 
@@ -59,7 +60,7 @@ class SegmentationNuclei(BasicInferTask):
     def pre_transforms(self, data=None) -> Sequence[Callable]:
         return [
             LoadImagePatchd(keys="image", mode="RGB", dtype=np.uint8, padding=False),
-            AsChannelFirstd(keys="image"),
+            Transposed(keys="image", indices=[2, 0, 1]),
             ScaleIntensityRangeD(keys="image", a_min=0.0, a_max=255.0, b_min=-1.0, b_max=1.0),
         ]
 

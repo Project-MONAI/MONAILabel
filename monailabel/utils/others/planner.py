@@ -50,7 +50,7 @@ class HeuristicPlanner:
         pix_img_min = []
         pix_img_mean = []
         pix_img_std = []
-        loader = LoadImage()
+        loader = LoadImage(image_only=False)
         for n in tqdm(datastore_check):
             img, mtdt = loader(datastore.get_image_uri(n))
 

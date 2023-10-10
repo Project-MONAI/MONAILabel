@@ -22,16 +22,16 @@ from monai.apps.deepgrow.transforms import (
 from monai.inferers import Inferer, SimpleInferer
 from monai.transforms import (
     Activationsd,
-    AddChanneld,
-    AsChannelFirstd,
     AsChannelLastd,
     AsDiscreted,
+    EnsureChannelFirstd,
     EnsureTyped,
     LoadImaged,
     NormalizeIntensityd,
     Resized,
     Spacingd,
     ToNumpyd,
+    Transposed,
 )
 
 from monailabel.interfaces.tasks.infer_v2 import InferType
@@ -63,6 +63,7 @@ class Deepgrow(BasicInferTask):
             labels=labels,
             dimension=dimension,
             description=description,
+            load_strict=False,
             **kwargs,
         )
 
@@ -71,19 +72,17 @@ class Deepgrow(BasicInferTask):
 
     def pre_transforms(self, data=None) -> Sequence[Callable]:
         t = [
-            LoadImaged(keys="image"),
-            AsChannelFirstd(keys="image"),
+            LoadImaged(keys="image", image_only=False),
+            Transposed(keys="image", indices=[2, 0, 1]),
             Spacingd(keys="image", pixdim=[1.0] * self.dimension, mode="bilinear"),
+            AddGuidanceFromPointsd(ref_image="image", guidance="guidance", spatial_dims=self.dimension),
         ]
-
-        self.add_cache_transform(t, data)
-        t.append(AddGuidanceFromPointsd(ref_image="image", guidance="guidance", spatial_dims=self.dimension))
 
         if self.dimension == 2:
             t.append(Fetch2DSliced(keys="image", guidance="guidance"))
         t.extend(
             [
-                AddChanneld(keys="image"),
+                EnsureChannelFirstd(keys="image", channel_dim="no_channel"),
                 SpatialCropGuidanced(keys="image", guidance="guidance", spatial_size=self.spatial_size),
                 Resized(keys="image", spatial_size=self.model_size, mode="area"),
                 ResizeGuidanced(guidance="guidance", ref_image="image"),
