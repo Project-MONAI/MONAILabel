@@ -114,8 +114,6 @@ export default class SmartEdit extends BaseTab {
 
     // Getting the clicks in IJK format
 
-    debugger;
-
     const { activeViewportId } = viewportGridService.getState();
     const viewPort = cornerstoneViewportService.getCornerstoneViewport(activeViewportId);
 
