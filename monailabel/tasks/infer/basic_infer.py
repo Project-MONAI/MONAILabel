@@ -20,6 +20,7 @@ from typing import Any, Callable, Dict, List, Optional, Sequence, Tuple, Union
 import torch
 from monai.data import decollate_batch
 from monai.inferers import Inferer, SimpleInferer, SlidingWindowInferer
+from monai.utils import deprecated
 
 from monailabel.interfaces.exception import MONAILabelError, MONAILabelException
 from monailabel.interfaces.tasks.infer_v2 import InferTask, InferType
@@ -150,12 +151,14 @@ class BasicInferTask(InferTask):
                     return path
         return None
 
+    @deprecated(since="0.8.0", msg_suffix="This feature is not supported anymore")
     def add_cache_transform(self, t, data, keys=("image", "image_meta_dict"), hash_key=("image_path", "model")):
-        if data and data.get("cache_transforms", False):
-            in_memory = data.get("cache_transforms_in_memory", True)
-            ttl = data.get("cache_transforms_ttl", 300)
-
-            t.append(CacheTransformDatad(keys=keys, hash_key=hash_key, in_memory=in_memory, ttl=ttl))
+        pass
+        # if data and data.get("cache_transforms", False):
+        #     in_memory = data.get("cache_transforms_in_memory", True)
+        #     ttl = data.get("cache_transforms_ttl", 300)
+        #
+        #     t.append(CacheTransformDatad(keys=keys, hash_key=hash_key, in_memory=in_memory, ttl=ttl))
 
     @abstractmethod
     def pre_transforms(self, data=None) -> Sequence[Callable]:
@@ -168,7 +171,7 @@ class BasicInferTask(InferTask):
 
                 return [
                     monai.transforms.LoadImaged(keys='image'),
-                    monai.transforms.AddChanneld(keys='image'),
+                    monai.transforms.EnsureChannelFirstd(keys='image', channel_dim='no_channel'),
                     monai.transforms.Spacingd(keys='image', pixdim=[1.0, 1.0, 1.0]),
                     monai.transforms.ScaleIntensityRanged(keys='image',
                         a_min=-57, a_max=164, b_min=0.0, b_max=1.0, clip=True),
@@ -208,7 +211,7 @@ class BasicInferTask(InferTask):
             For Example::
 
                 return [
-                    monai.transforms.AddChanneld(keys='pred'),
+                    monai.transforms.EnsureChannelFirstd(keys='pred', channel_dim='no_channel'),
                     monai.transforms.Activationsd(keys='pred', softmax=True),
                     monai.transforms.AsDiscreted(keys='pred', argmax=True),
                     monai.transforms.SqueezeDimd(keys='pred', dim=0),

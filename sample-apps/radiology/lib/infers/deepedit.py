@@ -76,13 +76,11 @@ class DeepEdit(BasicInferTask):
 
     def pre_transforms(self, data=None):
         t = [
-            LoadImaged(keys="image", reader="ITKReader"),
+            LoadImaged(keys="image", reader="ITKReader", image_only=False),
             EnsureChannelFirstd(keys="image"),
             Orientationd(keys="image", axcodes="RAS"),
             ScaleIntensityRanged(keys="image", a_min=-175, a_max=250, b_min=0.0, b_max=1.0, clip=True),
         ]
-
-        self.add_cache_transform(t, data)
 
         if self.type == InferType.DEEPEDIT:
             t.extend(

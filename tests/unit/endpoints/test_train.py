@@ -101,6 +101,7 @@ class TestBundleTrainTask(BasicBundleTestSuite):
 
 
 class TestDetectionBundleTrainTask(BasicDetectionBundleTestSuite):
+    @unittest.skip("Bundle needs to be fixed for EnsureChannelFirstd init Arguments")
     def test_lung_nodule_detection_train(self):
         if not torch.cuda.is_available():
             return
@@ -117,6 +118,7 @@ class TestDetectionBundleTrainTask(BasicDetectionBundleTestSuite):
         response = self.client.post("/train/?run_sync=True", json=params)
         assert response.status_code == 200
 
+    @unittest.skip("Bundle needs to be fixed for EnsureChannelFirstd init Arguments")
     def test_bundle_stop(self):
         if not torch.cuda.is_available():
             return

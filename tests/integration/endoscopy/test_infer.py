@@ -27,6 +27,7 @@ class EndPointInfer(unittest.TestCase):
         response = requests.post(f"{SERVER_URI}/infer/{model}?image={image}")
         assert response.status_code == 200
 
+    @unittest.skip("Bundle needs to be fixed for AsChannelFirstd")
     def test_inbody(self):
         if not torch.cuda.is_available():
             return
