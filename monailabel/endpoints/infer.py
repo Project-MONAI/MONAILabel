@@ -24,6 +24,7 @@ from fastapi.responses import FileResponse, Response
 from requests_toolbelt import MultipartEncoder
 
 from monailabel.config import RBAC_USER, settings
+from monailabel.datastore.dicom import DICOMWebDatastore
 from monailabel.datastore.utils.convert import binary_to_image, nifti_to_dicom_seg
 from monailabel.endpoints.user.auth import RBAC, User
 from monailabel.interfaces.app import MONAILabelApp
@@ -173,14 +174,14 @@ def run_inference(
         raise HTTPException(status_code=500, detail="Failed to execute infer")
 
     # Dicom Seg Integration
-    if output == "dicom_seg" and image:
+    if output == "dicom_seg":
         dicom_seg_file = None
-        image_uri = instance.datastore().get_image_uri(image)
-        if not image_uri:
-            raise HTTPException(status_code=500, detail="Image not found")
+        if not isinstance(instance.datastore(), DICOMWebDatastore):
+            raise HTTPException(status_code=500, detail="DICOM SEG format is not supported in a non-DICOM datastore")
         elif p.get("label_info") is None:
-            raise HTTPException(status_code=404, detail="Parameters for DICOM Seg inference cannot be empty!")
+            raise HTTPException(status_code=404, detail="Parameters for DICOM SEG inference cannot be empty!")
         # Transform image uri to id (similar to _to_id in local datastore)
+        image_uri = instance.datastore().get_image_uri(image)
         suffixes = [".nii", ".nii.gz", ".nrrd"]
         image_path = [image_uri.replace(suffix, "") for suffix in suffixes if image_uri.endswith(suffix)][0]
         res_img = result.get("file") if result.get("file") else result.get("label")
