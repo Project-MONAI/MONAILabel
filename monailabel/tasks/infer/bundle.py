@@ -203,6 +203,10 @@ class BundleInferTask(BasicInferTask):
 
         pre = self._filter_transforms(pre, self.pre_filter)
 
+        for t in pre:
+            if isinstance(t, LoadImaged):
+                t._loader.image_only = False
+
         if pre and self.extend_load_image:
             res = []
             for t in pre:
