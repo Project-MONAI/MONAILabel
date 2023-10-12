@@ -25,15 +25,15 @@ from monai.apps.deepgrow.transforms import (
 )
 from monai.inferers import Inferer, SimpleInferer
 from monai.transforms import (
-    AddChanneld,
-    AsChannelFirst,
-    AsChannelFirstd,
     AsChannelLastd,
+    EnsureChannelFirstd,
     LoadImage,
     LoadImaged,
     NormalizeIntensityd,
     Resized,
     Spacingd,
+    Transpose,
+    Transposed,
 )
 
 from monailabel.interfaces.tasks.infer_v2 import InferTask, InferType
@@ -82,24 +82,17 @@ class InferDeepgrowPipeline(BasicInferTask):
 
     def pre_transforms(self, data=None) -> Sequence[Callable]:
         t = [
-            LoadImaged(keys="image"),
-            AsChannelFirstd(keys="image"),
+            LoadImaged(keys="image", image_only=False),
+            Transposed(keys="image", indices=[2, 0, 1]),
             Spacingd(keys="image", pixdim=[1.0, 1.0, 1.0], mode="bilinear"),
+            AddGuidanceFromPointsd(ref_image="image", guidance="guidance", spatial_dims=3),
+            EnsureChannelFirstd(keys="image", channel_dim="no_channel"),
+            SpatialCropGuidanced(keys="image", guidance="guidance", spatial_size=self.spatial_size),
+            Resized(keys="image", spatial_size=self.model_size, mode="area"),
+            ResizeGuidanced(guidance="guidance", ref_image="image"),
+            NormalizeIntensityd(keys="image", subtrahend=208, divisor=388),
+            AddGuidanceSignald(image="image", guidance="guidance"),
         ]
-
-        self.add_cache_transform(t, data)
-
-        t.extend(
-            [
-                AddGuidanceFromPointsd(ref_image="image", guidance="guidance", spatial_dims=3),
-                AddChanneld(keys="image"),
-                SpatialCropGuidanced(keys="image", guidance="guidance", spatial_size=self.spatial_size),
-                Resized(keys="image", spatial_size=self.model_size, mode="area"),
-                ResizeGuidanced(guidance="guidance", ref_image="image"),
-                NormalizeIntensityd(keys="image", subtrahend=208, divisor=388),
-                AddGuidanceSignald(image="image", guidance="guidance"),
-            ]
-        )
         return t
 
     def inferer(self, data=None) -> Inferer:
@@ -117,7 +110,7 @@ class InferDeepgrowPipeline(BasicInferTask):
         result_file, result_json = self.model_3d(request)
 
         label = LoadImage(image_only=True)(result_file)
-        label = AsChannelFirst()(label)
+        label = Transpose(indices=[2, 0, 1])(label)
         logger.debug(f"Label shape: {label.shape}")
 
         foreground, slices = self.get_slices_points(label, request.get("foreground", []))

@@ -20,13 +20,13 @@ from monai.data.utils import pad_list_data_collate
 from monai.losses import DiceLoss
 from monai.networks.nets import UNet
 from monai.transforms import (
-    AddChannel,
-    AddChanneld,
     Compose,
     CropForeground,
     CropForegroundd,
     DivisiblePad,
     DivisiblePadd,
+    EnsureChannelFirst,
+    EnsureChannelFirstd,
 )
 from monai.utils import set_determinism
 
@@ -70,7 +70,7 @@ class TestEpistemicScoring(unittest.TestCase):
 
         transforms = Compose(
             [
-                AddChanneld(keys),
+                EnsureChannelFirstd(keys, channel_dim="no_channel"),
                 CropForegroundd(keys, source_key="image"),
                 DivisiblePadd(keys, 4),
             ]
@@ -78,7 +78,7 @@ class TestEpistemicScoring(unittest.TestCase):
 
         infer_transforms = Compose(
             [
-                AddChannel(),
+                EnsureChannelFirst(channel_dim="no_channel"),
                 CropForeground(),
                 DivisiblePad(4),
             ]
