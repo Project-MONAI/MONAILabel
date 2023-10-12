@@ -21,6 +21,7 @@ import java.util.List;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
+import qupath.lib.common.GeneralTools;
 import qupath.lib.extension.monailabel.MonaiLabelClient;
 import qupath.lib.extension.monailabel.MonaiLabelClient.NextSampleInfo;
 import qupath.lib.extension.monailabel.MonaiLabelClient.ResponseInfo;
@@ -50,7 +51,12 @@ public class NextSample implements Runnable {
 		try {
 			var viewer = qupath.getViewer();
 			var imageData = viewer.getImageData();
-			String image = imageData != null ? Utils.getNameWithoutExtension(imageData.getServerPath()) : "";
+			String image = "";
+			if (imageData != null) {
+				var uris = imageData.getServer().getURIs();
+				File imageFile = GeneralTools.toPath(uris.iterator().next()).toFile();
+				image = GeneralTools.getNameWithoutExtension(imageFile);
+			}
 
 			ResponseInfo info = MonaiLabelClient.info();
 			List<String> names = new ArrayList<String>();

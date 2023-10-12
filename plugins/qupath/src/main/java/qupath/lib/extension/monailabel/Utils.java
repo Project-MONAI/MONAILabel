@@ -13,7 +13,6 @@ limitations under the License.
 
 package qupath.lib.extension.monailabel;
 
-import java.io.File;
 import java.io.IOException;
 import java.nio.file.Files;
 import java.nio.file.Path;
@@ -24,21 +23,6 @@ import qupath.lib.roi.RectangleROI;
 import qupath.lib.roi.interfaces.ROI;
 
 public class Utils {
-
-	public static String getFileName(String file) {
-		if (file.indexOf("file:/") >= 0)
-			file = file.substring(file.indexOf("file:/") + "file:/".length());
-
-		int pos = file.indexOf("[");
-		file = file.substring(0, pos > 0 ? pos : file.length());
-		return file;
-	}
-
-	public static String getNameWithoutExtension(String file) {
-		String fileName = new File(file).getName();
-		int dotIndex = fileName.lastIndexOf('.');
-		return (dotIndex == -1) ? fileName : fileName.substring(0, dotIndex);
-	}
 
 	public static int[] getBBOX(ROI roi) {
 		int x = 0, y = 0, w = 0, h = 0;
