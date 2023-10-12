@@ -13,7 +13,7 @@ import unittest
 
 import numpy as np
 from monai.data.meta_tensor import MetaTensor
-from monai.transforms import AddChanneld
+from monai.transforms import EnsureChannelFirstd
 from monai.utils import min_version, optional_import, set_determinism
 from monai.utils.enums import PostFix
 from parameterized import parameterized
@@ -181,7 +181,7 @@ class TestAddGuidanceSignald(unittest.TestCase):
 class TestSpatialCropForegroundd(unittest.TestCase):
     @parameterized.expand([SPATIALCROPFOREGROUNDD_DATA])
     def test_spatialcropforegroundd(self, arguments, input_data, expected_result):
-        add_ch = AddChanneld(keys=["image", "label"])(input_data)
+        add_ch = EnsureChannelFirstd(keys=["image", "label"], channel_dim="no_channel")(input_data)
         add_fn = SpatialCropForegroundd(**arguments)
         result = add_fn(add_ch)["label"].shape
         self.assertEqual(list(result), expected_result)
@@ -190,7 +190,7 @@ class TestSpatialCropForegroundd(unittest.TestCase):
 class TestSpatialCropGuidanced(unittest.TestCase):
     @parameterized.expand([SPATIALCROPGUIDANCED_DATA])
     def test_spatialcropguidanced(self, arguments, input_data, expected_result):
-        add_ch = AddChanneld(keys=["image", "label"])(input_data)
+        add_ch = EnsureChannelFirstd(keys=["image", "label"], channel_dim="no_channel")(input_data)
         add_fn = SpatialCropGuidanced(**arguments)
         result = add_fn(add_ch)["label"].shape
         self.assertEqual(list(result), expected_result)
@@ -199,7 +199,7 @@ class TestSpatialCropGuidanced(unittest.TestCase):
 class TestResizeGuidanced(unittest.TestCase):
     @parameterized.expand([RESIZEGUIDANCE_DATA])
     def test_resizeguidanced(self, arguments, input_data, expected_result):
-        add_ch = AddChanneld(keys=["image", "label"])(input_data)
+        add_ch = EnsureChannelFirstd(keys=["image", "label"], channel_dim="no_channel")(input_data)
         add_fn = ResizeGuidanced(**arguments)
         result = add_fn(add_ch)
         self.assertEqual(result["guidance"], expected_result)
@@ -208,7 +208,7 @@ class TestResizeGuidanced(unittest.TestCase):
 class TestRestoreLabeld(unittest.TestCase):
     @parameterized.expand([RESTORELABELD_DATA])
     def test_restorelabeld(self, arguments, input_data, expected_result):
-        add_ch = AddChanneld(keys=["image", "label"])(input_data)
+        add_ch = EnsureChannelFirstd(keys=["image", "label"], channel_dim="no_channel")(input_data)
         add_fn = RestoreLabeld(**arguments)
         result = add_fn(add_ch)
         self.assertEqual(result["label"].shape, expected_result)

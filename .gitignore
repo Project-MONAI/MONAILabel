@@ -166,3 +166,7 @@ junit
 test-output.xml
 studies
 tests/data
+yarn.lock
+# Packages
+node_modules
+yarn.lock
