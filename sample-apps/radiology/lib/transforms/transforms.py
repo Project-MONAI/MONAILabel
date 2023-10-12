@@ -132,7 +132,6 @@ class GetCentroidsd(MapTransform):
                 centre.append(avg_indices)
             c[f"label_{int(seg_class)}"] = [int(seg_class), centre[-3], centre[-2], centre[-1]]
             centroids.append(c)
-
         return centroids
 
     def __call__(self, data):
