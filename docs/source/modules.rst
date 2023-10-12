@@ -134,7 +134,7 @@ in this example they follow the default behavior in the base class.
     def train_pre_transforms(self, context: Context):
         return Compose([
             LoadImaged(keys=("image", "label")),
-            AsChannelFirstd(keys=("image", "label")),
+            EnsureChannelFirstd(keys=("image", "label")),
             SpatialCropForegroundd(keys=("image", "label"), source_key="label", spatial_size=(128, 128, 128)),
             NormalizeIntensityd(keys="image"),
         ])
@@ -148,7 +148,7 @@ in this example they follow the default behavior in the base class.
     def val_pre_transforms(self, context: Context):
         return Compose([
             LoadImaged(keys=("image", "label")),
-            AsChannelFirstd(keys=("image", "label")),
+            EnsureChannelFirstd(keys=("image", "label")),
             ScaleIntensityRanged(keys="image", a_min=-57, a_max=164, b_min=0.0, b_max=1.0, clip=True),
             CropForegroundd(keys=("image", "label"), source_key="image"),
             ToTensord(keys=("image", "label")),
