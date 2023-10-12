@@ -50,7 +50,7 @@ Prerequisites
 --------------------------
 MONAI Label supports both **Ubuntu** and **Windows** OS with GPU/CUDA enabled.
 
-Make sure you have python 3.8/3.9 version environment with PyTorch and CUDA installed.  MONAI Label features on other python version are not verified.
+Make sure you have python 3.8/3.9 version environment with PyTorch and CUDA installed. MONAI Label features on other python version are not verified.
 
 - Install `Python <https://www.python.org/downloads/>`_
 - Install the following Python libraries
@@ -64,6 +64,12 @@ Make sure you have python 3.8/3.9 version environment with PyTorch and CUDA inst
 
     # Check if cuda enabled
     python -c "import torch; print(torch.cuda.is_available())"
+
+On **Ubuntu** only, `python3-dev`, which contains the header files for the Python C API, is not bundled with Python and needs to be installed separately.
+
+.. code-block::
+
+    sudo apt install python3-dev
 
 Install From PyPI
 ------------------------
