@@ -109,6 +109,8 @@ class BundleInferTask(BasicInferTask):
         self.bundle_path = path
         self.bundle_config_path = os.path.join(path, "configs", config_paths[0])
         self.bundle_config = self._load_bundle_config(self.bundle_path, self.bundle_config_path)
+        # For deepedit inferer - allow the use of clicks
+        self.bundle_config.config["use_click"] = True if type.lower() == "deepedit" else False
 
         if self.dropout > 0:
             self.bundle_config["network_def"]["dropout"] = self.dropout
@@ -133,7 +135,13 @@ class BundleInferTask(BasicInferTask):
         self.key_image, image = next(iter(metadata["network_data_format"]["inputs"].items()))
         self.key_pred, pred = next(iter(metadata["network_data_format"]["outputs"].items()))
 
-        labels = {v.lower(): int(k) for k, v in pred.get("channel_def", {}).items() if v.lower() != "background"}
+        # labels = ({v.lower(): int(k) for k, v in pred.get("channel_def", {}).items() if v.lower() != "background"})
+        labels = {}
+        for k, v in pred.get("channel_def", {}).items():
+            if (not type.lower() == "deepedit") and (v.lower() != "background"):
+                labels[v.lower()] = int(k)
+            else:
+                labels[v.lower()] = int(k)
         description = metadata.get("description")
         spatial_shape = image.get("spatial_shape")
         dimension = len(spatial_shape) if spatial_shape else 3
@@ -192,6 +200,7 @@ class BundleInferTask(BasicInferTask):
             if self.bundle_config.get(k):
                 c = self.bundle_config.get_parsed_content(k, instantiate=True)
                 pre = list(c.transforms) if isinstance(c, Compose) else c
+
         pre = self._filter_transforms(pre, self.pre_filter)
 
         for t in pre:
@@ -254,6 +263,7 @@ class BundleInferTask(BasicInferTask):
             if self.bundle_config.get(k):
                 c = self.bundle_config.get_parsed_content(k, instantiate=True)
                 post = list(c.transforms) if isinstance(c, Compose) else c
+
         post = self._filter_transforms(post, self.post_filter)
 
         if self.add_post_restore:
