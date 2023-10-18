@@ -19,7 +19,7 @@ ARG NODE_IMAGE=node:slim
 FROM ${NODE_IMAGE} as ohifbuild
 ADD . /opt/monailabel
 RUN apt update -y && apt install -y git
-RUN cd /opt/monailabel/plugins/ohif && ./build.sh
+RUN cd /opt/monailabel/plugins/ohifv3 && ./build.sh
 
 FROM ${MONAI_IMAGE} as build
 LABEL maintainer="monai.contact@gmail.com"
