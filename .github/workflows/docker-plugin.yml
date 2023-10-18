@@ -39,6 +39,7 @@ jobs:
           python -m pip install --upgrade pip wheel
       - name: Build
         run: |
+          rm -rf /opt/hostedtoolcache
           docker --version
           cd plugins/dsa
           docker system prune -f

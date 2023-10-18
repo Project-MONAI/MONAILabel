@@ -16,7 +16,7 @@ Installation
 ========================
 
 Start using MONAI Label locally and run installlation with your familiar visualization tools. Stable version software represents the currently tested
-and supported visualization tools with latest release of MONAI Label. Weekly preview version is available if users want the latest feature, not fully tested.
+and supported visualization tools with latest release of MONAI Label.
 
 
 Current Milestone Release of MONAI Label:
@@ -85,15 +85,6 @@ To install the `current milestone release <https://pypi.org/project/monailabel/>
 The milestone versions are currently planned and released every few months.  As the
 codebase is under active development, you may want to install MONAI from GitHub
 for the latest features
-
-Weekly preview release
-**********************
-To install the `weekly preview release <https://pypi.org/project/monailabel-weekly/>`_:
-::
-
-    pip install monailabel-weekly
-
-The weekly build is released to PyPI every Sunday with a pre-release build number *dev[%y%U]*.
 
 From GitHub
 *********************
