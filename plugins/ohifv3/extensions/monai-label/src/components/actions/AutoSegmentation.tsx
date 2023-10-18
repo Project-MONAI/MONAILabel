@@ -1,5 +1,4 @@
 import React from 'react';
-import './AutoSegmentation.styl';
 import ModelSelector from '../ModelSelector';
 import BaseTab from './BaseTab';
 

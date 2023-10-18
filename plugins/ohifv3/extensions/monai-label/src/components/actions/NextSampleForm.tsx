@@ -13,7 +13,7 @@ limitations under the License.
 
 import React, { Component } from 'react';
 
-import './NextSampleForm.styl';
+import './NextSampleForm.css';
 import PropTypes from 'prop-types';
 
 export default class NextSampleForm extends Component {

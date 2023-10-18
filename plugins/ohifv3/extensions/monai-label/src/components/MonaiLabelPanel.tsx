@@ -2,7 +2,7 @@ import React, { Component } from 'react';
 import PropTypes from 'prop-types';
 import { cache, triggerEvent, eventTarget } from '@cornerstonejs/core';
 import { Enums } from '@cornerstonejs/tools';
-import './MonaiLabelPanel.styl';
+import './MonaiLabelPanel.css';
 import SettingsTable from './SettingsTable';
 import AutoSegmentation from './actions/AutoSegmentation';
 import SmartEdit from './actions/SmartEdit';

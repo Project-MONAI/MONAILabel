@@ -33,20 +33,16 @@ When installing MONAI Label with `pip install monailabel`, a version of OHIF tha
 #### Development setup
 
 To build the OHIF plugin for development, follow these steps:
-  ```bash
-  sudo sh requirements.sh # installs yarn
-  sh build.sh
-  ```
-
-To run Orthanc from the submodule and avoid building the OHIF package for every code change, use the following commands:
 ```bash
-cd plugins/ohif/Viewers
-
-yarn run dev:orthanc
-
-# OHIF will run at http://127.0.0.1:3000/
+sudo sh requirements.sh # installs yarn/ngnix
+sh build.sh
 ```
-You can then visit http://127.0.0.1:3000/ on your browser to see the running OHIF.
+
+To run the OHIF plugin, update DICOM and MONAI Server Endpoints in configs/nginx.conf
+```bash
+sh run.sh
+```
+You can then visit http://127.0.0.1:3000/ohif/ on your browser to see the running OHIF.
 
 ### Installing Orthanc (DICOMWeb)
 

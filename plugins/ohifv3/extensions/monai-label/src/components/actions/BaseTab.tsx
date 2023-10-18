@@ -2,7 +2,6 @@
 import { Component } from 'react';
 import PropTypes from 'prop-types';
 
-import './BaseTab.styl';
 import { UIModalService, UINotificationService } from '@ohif/core';
 
 export default class BaseTab extends Component {

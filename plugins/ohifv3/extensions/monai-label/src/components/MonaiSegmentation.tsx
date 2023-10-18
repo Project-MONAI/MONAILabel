@@ -202,6 +202,8 @@ export default function MonaiSegmentation({
     });
   };
 
+  const onSegmentationDownloadRTSS = (segmentationId) => {};
+
   const storeSegmentation = (segmentationId) => {
     const datasources = extensionManager.getActiveDataSource();
 
@@ -243,6 +245,7 @@ export default function MonaiSegmentation({
           onToggleSegmentationVisibility={onToggleSegmentationVisibility}
           showDeleteSegment={true}
           segmentationConfig={{ initialConfig: segmentationConfiguration }}
+          onSegmentationDownloadRTSS={onSegmentationDownloadRTSS}
           setRenderOutline={(value) =>
             _setSegmentationConfiguration(
               selectedSegmentationId,

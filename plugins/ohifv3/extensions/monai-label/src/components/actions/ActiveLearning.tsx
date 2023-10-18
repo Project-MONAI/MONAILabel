@@ -13,7 +13,7 @@ limitations under the License.
 
 import React from 'react';
 
-import './OptionTable.styl';
+import './ActiveLearning.css';
 import BaseTab from './BaseTab';
 import NextSampleForm from './NextSampleForm';
 import {
@@ -237,6 +237,7 @@ export default class OptionTable extends BaseTab {
                     Next Sample
                   </button>
                 </td>
+                <td>&nbsp;</td>
                 <td>
                   <button
                     className="actionInput"
@@ -246,23 +247,23 @@ export default class OptionTable extends BaseTab {
                     {this.state.training ? 'Stop Training' : 'Update Model'}
                   </button>
                 </td>
-                <td>&nbsp;</td>
-                <td>
-                  <button
-                    className="actionInput"
-                    style={{backgroundColor:'lightgray'}}
-                    onClick={this.onClickSubmitLabel}
-                    disabled={!segmentId}
-                  >
-                    Submit Label
-                  </button>
-                </td>
+                {/*<td>&nbsp;</td>*/}
+                {/*<td>*/}
+                {/*  <button*/}
+                {/*    className="actionInput"*/}
+                {/*    style={{backgroundColor:'lightgray'}}*/}
+                {/*    onClick={this.onClickSubmitLabel}*/}
+                {/*    disabled={!segmentId}*/}
+                {/*  >*/}
+                {/*    Submit Label*/}
+                {/*  </button>*/}
+                {/*</td>*/}
               </tr>
             </tbody>
           </table>
           <br />
 
-          <table className="actionInput">
+          <table className="optionsTable">
             <tbody>
               <tr>
                 <td>Strategy:</td>

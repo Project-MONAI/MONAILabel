@@ -11,18 +11,6 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-if which yarn >/dev/null; then
-  echo "node/yarn is already installed"
-else
-  echo "installing yarn..."
-  curl -sS https://dl.yarnpkg.com/debian/pubkey.gpg | apt-key add -
-  echo "deb https://dl.yarnpkg.com/debian/ stable main" | tee /etc/apt/sources.list.d/yarn.list
-  apt update
-  apt-get install yarn -y
-fi
-
-if which nginx >/dev/null; then
-  echo "nginx is already installed"
-else
-  apt-get install nginx -y
-fi
+mkdir -p logs
+cp -f config/monai_label.js Viewers/platform/app/dist/app-config.js
+nginx -p `pwd` -c config/nginx.conf -e logs/error.log
