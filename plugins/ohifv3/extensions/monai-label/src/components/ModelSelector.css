@@ -1,0 +1,33 @@
+.modelSelector .table {
+  border-collapse: collapse;
+  border: 0 solid;
+  width: 100%;
+}
+.modelSelector .table tr td {
+  border: 0 solid;
+}
+.modelSelector .selectBox {
+  width: 100%;
+}
+.modelSelector .actionButton {
+  border: 2px solid #000;
+  border-radius: 15px;
+  background-color: #add8e6;
+  color: var(--ui-gray-dark);
+  line-height: 25px;
+  padding: 0 15px;
+  outline: none;
+  cursor: pointer;
+}
+.modelSelector .actionButton:hover,
+.modelSelector .actionButton:active {
+  background-color: var(--ui-sky-blue);
+}
+.modelSelector .actionButton:disabled {
+  background-color: var(--ui-sky-blue);
+}
+.modelSelector .actionButton svg {
+  margin-right: 4px;
+  position: relative;
+  top: 2px;
+}

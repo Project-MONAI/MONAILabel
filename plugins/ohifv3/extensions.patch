@@ -1,0 +1,26 @@
+diff --git a/platform/app/pluginConfig.json b/platform/app/pluginConfig.json
+index 08a42deb0..69e5aa005 100644
+--- a/platform/app/pluginConfig.json
++++ b/platform/app/pluginConfig.json
+@@ -22,6 +22,11 @@
+       "default": false,
+       "version": "3.0.0"
+     },
++    {
++      "packageName": "@ohif/extension-monai-label",
++      "default": false,
++      "version": "0.0.1"
++    },
+     {
+       "packageName": "@ohif/extension-dicom-microscopy",
+       "default": false,
+@@ -60,6 +65,9 @@
+     {
+       "packageName": "@ohif/mode-segmentation"
+     },
++    {
++      "packageName": "@ohif/mode-monai-label"
++    },
+     {
+       "packageName": "@ohif/mode-tmtv"
+     },

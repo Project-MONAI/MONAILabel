@@ -14,7 +14,7 @@ limitations under the License.
 ## MONAI Label Plugin for OHIF Viewer
 The Open Health Imaging Foundation (OHIF) Viewer is an open-source, web-based platform for medical imaging. OHIF Viewer provides a framework for building complex imaging applications with user-friendly interfaces. MONAI Label supports the web-based OHIF viewer with connectivity to a remote DICOM server via DICOMweb.
 
-<img src="./images/ohifv3.png" width=90% />
+<img src="./images/ohifv3.jpg" width=90% />
 
 ### Table of Contents
 - [Supported Applications](#supported-applications)
@@ -33,20 +33,16 @@ When installing MONAI Label with `pip install monailabel`, a version of OHIF tha
 #### Development setup
 
 To build the OHIF plugin for development, follow these steps:
-  ```bash
-  sudo sh requirements.sh # installs yarn
-  sh build.sh
-  ```
-
-To run Orthanc from the submodule and avoid building the OHIF package for every code change, use the following commands:
 ```bash
-cd plugins/ohif/Viewers
-
-yarn run dev:orthanc
-
-# OHIF will run at http://127.0.0.1:3000/
+sudo sh requirements.sh # installs yarn/ngnix
+sh build.sh
 ```
-You can then visit http://127.0.0.1:3000/ on your browser to see the running OHIF.
+
+To run the OHIF plugin, update DICOM and MONAI Server Endpoints in configs/nginx.conf
+```bash
+sh run.sh
+```
+You can then visit http://127.0.0.1:3000/ohif/ on your browser to see the running OHIF.
 
 ### Installing Orthanc (DICOMWeb)
 

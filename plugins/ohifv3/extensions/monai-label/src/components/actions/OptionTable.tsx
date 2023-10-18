@@ -13,7 +13,7 @@ limitations under the License.
 
 import React from 'react';
 
-import './OptionTable.styl';
+import './OptionTable.css';
 import BaseTab from './BaseTab';
 
 export default class OptionTable extends BaseTab {
@@ -147,7 +147,7 @@ export default class OptionTable extends BaseTab {
               </tr>
             </tbody>
           </table>
-
+          <br/>
           <table className="optionsTable">
             <thead>
               <tr>

@@ -12,7 +12,6 @@ limitations under the License.
 */
 
 import React from 'react';
-import './SmartEdit.styl';
 import ModelSelector from '../ModelSelector';
 import BaseTab from './BaseTab';
 import * as cornerstoneTools from '@cornerstonejs/tools';

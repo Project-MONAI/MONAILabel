@@ -1,6 +1,6 @@
 import React, { Component } from 'react';
 
-import './MonaiLabelPanel.styl';
+import './SettingsTable.css';
 import { Icon } from '@ohif/ui';
 import { CookieUtils } from '../utils/GenericUtils';
 

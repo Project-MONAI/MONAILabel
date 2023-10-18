@@ -20,3 +20,9 @@ else
   apt update
   apt-get install yarn -y
 fi
+
+if which nginx >/dev/null; then
+  echo "nginx is already installed"
+else
+  apt-get install nginx -y
+fi

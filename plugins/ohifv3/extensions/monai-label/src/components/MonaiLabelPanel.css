@@ -1,0 +1,139 @@
+@import url("w3.css");
+
+.monaiLabelPanel {
+  background-color: #789;
+  height: 100%;
+  width: 100%;
+  display: flex;
+  flex-direction: column;
+  color: var(--text-primary-color);
+  padding: 2px;
+  overflow-y: scroll; /* Make the panel scrollable vertically */
+/* Accordion styles */
+}
+.monaiLabelPanel .subtitle {
+  font-size: 14px;
+  text-decoration: underline;
+  font-weight: 500;
+  color: #000;
+  margin: 1px;
+  text-align: center;
+}
+.monaiLabelPanel .tabs {
+  border-radius: 4px;
+  overflow: auto;
+  box-shadow: 0 4px 4px -2px rgba(0,0,0,0.5);
+  background: #000;
+  margin: 1rem 0;
+}
+.monaiLabelPanel .tab {
+  width: 100%;
+  color: #fff;
+  overflow: hidden;
+}
+.monaiLabelPanel .tab-switch {
+  position: absolute;
+  opacity: 0;
+  z-index: -1;
+}
+.monaiLabelPanel .tab-label {
+  display: flex;
+  justify-content: space-between;
+  padding: 0.4em;
+  background: #16202b;
+  border-right: 1px dotted #3c5d80;
+  color: #fff;
+  font-size: 12px;
+  font-weight: normal;
+  cursor: pointer;
+/* Icon */
+}
+.monaiLabelPanel .tab-label:hover {
+  background: #3e5975;
+}
+.monaiLabelPanel .tab-label::after {
+  content: "❯";
+  width: 1em;
+  height: 1em;
+  text-align: center;
+  transition: all 0.35s;
+}
+.monaiLabelPanel .tab-content {
+  max-height: 0;
+  padding: 0 1em;
+  background: #808080;
+  transition: all 0.35s;
+  width: 90%;
+  font-size: small;
+  color: #000;
+}
+.monaiLabelPanel .tab-close {
+  display: flex;
+  justify-content: flex-end;
+  padding: 1em;
+  font-size: 0.75em;
+  background: #2c3e50;
+  cursor: pointer;
+}
+.monaiLabelPanel .tab-close:hover {
+  background: #1a252f;
+}
+.monaiLabelPanel input:checked + .tab-label {
+  background: #000;
+}
+.monaiLabelPanel input:checked + .tab-label::after {
+  transform: rotate(90deg);
+}
+.monaiLabelPanel input:checked ~ .tab-content {
+  max-height: 100vh;
+  padding: 1em;
+}
+.monaiLabelPanel .separator {
+  border: 0.01em solid #44626f;
+  width: 100%;
+  margin-top: 3px;
+  margin-bottom: 3px;
+}
+.monaiLabelPanel .actionInput {
+  width: 100%;
+  padding: 1px;
+  border: 1px solid #000;
+  border-radius: 5px;
+  color: #000;
+}
+.monaiLabelPanel .actionButton {
+  border: 1px solid #000;
+  border-radius: 15px;
+  background-color: #add8e6;
+  color: #000;
+  line-height: 25px;
+  padding: 10px;
+  outline: none;
+  cursor: pointer;
+}
+.monaiLabelPanel .actionButton:hover,
+.monaiLabelPanel .actionButton:active {
+  background-color: var(--ui-sky-blue);
+}
+.monaiLabelPanel .actionButton:disabled {
+  background-color: var(--ui-sky-blue);
+}
+.monaiLabelPanel .actionButton svg {
+  margin-right: 4px;
+  position: relative;
+  top: 2px;
+}
+.scrollbar {
+  overflow-y: scroll;
+}
+#style-3::-webkit-scrollbar-track {
+  -webkit-box-shadow: inset 0 0 6px rgba(0,0,0,0.3);
+  background-color: #000;
+}
+#style-3::-webkit-scrollbar {
+  width: 6px;
+  background-color: #000;
+}
+#style-3::-webkit-scrollbar-thumb {
+  background-color: #f5f5f5;
+}

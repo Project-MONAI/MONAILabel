@@ -2,7 +2,7 @@
 import React, { Component } from 'react';
 import PropTypes from 'prop-types';
 
-import './ModelSelector.styl';
+import './ModelSelector.css';
 
 export default class ModelSelector extends Component {
   static propTypes = {
