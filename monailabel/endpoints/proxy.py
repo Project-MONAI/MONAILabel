@@ -94,7 +94,6 @@ async def proxy_dicom(request: Request, op: str, path: str):
     )
 
 
-
 @router.get("/dicom/wado/{path:path}", include_in_schema=False)
 @router.post("/dicom/wado/{path:path}", include_in_schema=False)
 async def proxy_wado(
