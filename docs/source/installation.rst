@@ -16,7 +16,7 @@ Installation
 ========================
 
 Start using MONAI Label locally and run installlation with your familiar visualization tools. Stable version software represents the currently tested
-and supported visualization tools with latest release of MONAI Label. Weekly preview version is available if users want the latest feature, not fully tested.
+and supported visualization tools with latest release of MONAI Label.
 
 
 Current Milestone Release of MONAI Label:
