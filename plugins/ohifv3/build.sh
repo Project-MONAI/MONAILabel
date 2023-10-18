@@ -30,8 +30,16 @@ cp -r ~/Projects/Viewers .
 cd Viewers
 git checkout 33f125940863607f8dba82c71b27a43f35431dd5
 
-cp -r ../extensions/monai-label extensions/
-cp -r ../modes/monai-label modes/monai-label
+#cp -r ../extensions/monai-label extensions/
+#cp -r ../modes/monai-label modes/monai-label
+cd extensions
+ln -s ../../extensions/monai-label monai-label
+cd ..
+
+cd modes
+ln -s ../../modes/monai-label monai-label
+cd ..
+
 git apply ../extensions.patch
 
 cp ../config/monai_label.js platform/app/public/config/monai_label.js
@@ -41,7 +49,7 @@ yarn install
 APP_CONFIG=config/monai_label.js PUBLIC_URL=/ohif/ QUICK_BUILD=true yarn run build
 
 rm -rf ${install_dir}
-mv ./platform/app/dist/ ${install_dir}
+cp -r platform/app/dist/ ${install_dir}
 echo "Copied OHIF to ${install_dir}"
 
 cd ${curr_dir}

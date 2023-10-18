@@ -12,5 +12,10 @@
 # limitations under the License.
 
 mkdir -p logs
-cp -f config/monai_label.js Viewers/platform/app/dist/app-config.js
+
+rm -rf www
+mkdir -p www/html
+cp -r Viewers/platform/app/dist www/html/ohif
+cp -f config/monai_label.js www/html/ohif/app-config.js
+
 nginx -p `pwd` -c config/nginx.conf -e logs/error.log
