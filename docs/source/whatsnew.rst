@@ -24,8 +24,11 @@ What's New
   .. image:: https://github.com/Project-MONAI/MONAILabel/blob/main/plugins/ohifv3/images/ohifv3.jpg?raw=true
     :alt: OHIF V3 + MONAI Label
     :width: 600
-..
+
+|
+
 - MONAI Core dependency updated to >= `0.13.0 <https://github.com/Project-MONAI/MONAI/releases/tag/1.3.0>`_
+
 - Bug Fixes and Documentation updates
 
 
