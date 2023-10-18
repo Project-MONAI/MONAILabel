@@ -86,15 +86,6 @@ The milestone versions are currently planned and released every few months.  As 
 codebase is under active development, you may want to install MONAI from GitHub
 for the latest features
 
-Weekly preview release
-**********************
-To install the `weekly preview release <https://pypi.org/project/monailabel-weekly/>`_:
-::
-
-    pip install monailabel-weekly
-
-The weekly build is released to PyPI every Sunday with a pre-release build number *dev[%y%U]*.
-
 From GitHub
 *********************
 To install latest from github main branch

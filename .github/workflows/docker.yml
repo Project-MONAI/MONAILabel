@@ -41,6 +41,7 @@ jobs:
           python -m pip install --upgrade pip wheel
       - name: Build
         run: |
+          rm -rf /opt/hostedtoolcache
           ./runtests.sh --clean
           docker system prune -f
           DOCKER_BUILDKIT=1 docker build -t projectmonai/monailabel:${{ github.event.inputs.tag || 'latest'  }} -f Dockerfile .
