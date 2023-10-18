@@ -16,6 +16,22 @@ What's New
 ==========
 
 
+0.8.0
+=====
+
+- `OHIF V3 <https://github.com/Project-MONAI/MONAILabel/tree/main/plugins/ohifv3>`_
+
+  .. image:: https://github.com/Project-MONAI/MONAILabel/blob/main/plugins/ohifv3/images/ohifv3.jpg?raw=true
+    :alt: OHIF V3 + MONAI Label
+    :width: 600
+
+|
+
+- MONAI Core dependency updated to >= `0.13.0 <https://github.com/Project-MONAI/MONAI/releases/tag/1.3.0>`_
+
+- Bug Fixes and Documentation updates
+
+
 0.7.0
 =====
 
