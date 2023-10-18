@@ -25,8 +25,7 @@ echo "Installing OHIF at: ${install_dir}"
 
 cd ${my_dir}
 rm -rf Viewers
-cp -r ~/Projects/Viewers .
-#git clone https://github.com/OHIF/Viewers.git
+git clone https://github.com/OHIF/Viewers.git
 cd Viewers
 git checkout 33f125940863607f8dba82c71b27a43f35431dd5
 
