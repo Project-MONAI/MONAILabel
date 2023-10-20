@@ -58,10 +58,22 @@ class MyApp(MONAILabelApp):
         #################################################
         # Models
         #################################################
+
         for n, b in self.models.items():
-            i = BundleInferTask(b, self.conf)
-            logger.info(f"+++ Adding Inferer:: {n} => {i}")
-            infers[n] = i
+            if "deepedit" in n:
+                # Adding automatic inferer
+                i = BundleInferTask(b, self.conf, type="segmentation")
+                logger.info(f"+++ Adding Inferer:: {n}_seg => {i}")
+                infers[n + "_seg"] = i
+                # Adding inferer for managing clicks
+                i = BundleInferTask(b, self.conf, type="deepedit")
+                logger.info("+++ Adding DeepEdit Inferer")
+                infers[n] = i
+            else:
+                i = BundleInferTask(b, self.conf)
+                logger.info(f"+++ Adding Inferer:: {n} => {i}")
+                infers[n] = i
+
         return infers
 
     def init_trainers(self) -> Dict[str, TrainTask]:
@@ -147,8 +159,9 @@ def main():
     app_dir = os.path.dirname(__file__)
     studies = args.studies
 
-    app = MyApp(app_dir, studies, {"preload": "true", "models": "spleen_ct_segmentation"})
-    train(app)
+    app = MyApp(app_dir, studies, {"preload": "false", "models": "spleen_deepedit_annotation"})
+    # train(app)
+    infer(app)
 
 
 def infer(app):
@@ -157,7 +170,7 @@ def infer(app):
 
     res = app.infer(
         request={
-            "model": "spleen_ct_segmentation",
+            "model": "spleen_deepedit_annotation",
             "image": "image",
         }
     )
@@ -170,7 +183,7 @@ def infer(app):
 def train(app):
     app.train(
         request={
-            "model": "spleen_ct_segmentation",
+            "model": "spleen_deepedit_annotation",
             "max_epochs": 2,
             "multi_gpu": False,
             "val_split": 0.1,

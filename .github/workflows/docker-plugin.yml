@@ -25,7 +25,7 @@ jobs:
     env:
       MONAI_ZOO_AUTH_TOKEN: ${{ github.token }}
     steps:
-      - uses: actions/checkout@v3
+      - uses: actions/checkout@v4
       - name: Set up Python 3.8
         uses: actions/setup-python@v4
         with:
@@ -39,6 +39,7 @@ jobs:
           python -m pip install --upgrade pip wheel
       - name: Build
         run: |
+          rm -rf /opt/hostedtoolcache
           docker --version
           cd plugins/dsa
           docker system prune -f

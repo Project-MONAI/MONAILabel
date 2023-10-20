@@ -7,6 +7,7 @@ import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 import javafx.scene.input.MouseEvent;
+import qupath.lib.common.GeneralTools;
 import qupath.lib.extension.monailabel.MonaiLabelClient.ResponseInfo;
 import qupath.lib.extension.monailabel.commands.RunInference;
 import qupath.lib.gui.dialogs.Dialogs;
@@ -40,9 +41,10 @@ public class SegmentationTool extends RectangleTool {
 			return;
 
 		try {
-			String imageFile = Utils.getFileName(viewer.getImageData().getServerPath());
-			String im = imageFile.toLowerCase();
-			boolean isWSI = (im.endsWith(".png") || im.endsWith(".jpg") || im.endsWith(".jpeg")) ? false : true;
+			var uris = viewer.getImageData().getServer().getURIs();
+			String imageFile = GeneralTools.toPath(uris.iterator().next()).toString();
+			String ext = GeneralTools.getExtension(imageFile).get().toLowerCase();
+			boolean isWSI = !(ext.equals(".png") || ext.equals(".jpg") || ext.equals(".png"));
 			logger.info("MONAILabel:: isWSI: " + isWSI + "; File: " + imageFile);
 
 			if (info == null) {

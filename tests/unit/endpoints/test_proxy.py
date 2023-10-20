@@ -10,32 +10,23 @@
 # limitations under the License.
 import unittest
 from types import SimpleNamespace
-from unittest.mock import MagicMock, patch
+from unittest.mock import patch
 
 from .context import BasicEndpointTestSuite
 
 
-class MockHttpClient(MagicMock):
-    def __init__(self, auth):
-        pass
-
-    async def get(self, url, **kwargs):
-        return SimpleNamespace(content=b"xyz", status_code=400)
-
-    async def __aenter__(self):
-        return self
-
-    async def __aexit__(self, *args):
-        pass
+class RawData:
+    def read(self):
+        return b"xyz"
 
 
-def mock_http_client(auth):
-    return MockHttpClient(auth)
+def mocked_requests_get(*args, **kwargs):
+    return SimpleNamespace(content=b"xyz", raw=RawData(), status_code=400, headers={})
 
 
-@patch("httpx.AsyncClient", new=mock_http_client)
+@patch("requests.get", side_effect=mocked_requests_get)
 class TestEndPointLogs(BasicEndpointTestSuite):
-    def test_proxy(self):
+    def test_proxy(self, mock_get):
         self.client.get("/proxy/dicom/studies")
 
 

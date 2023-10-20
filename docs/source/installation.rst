@@ -16,7 +16,7 @@ Installation
 ========================
 
 Start using MONAI Label locally and run installlation with your familiar visualization tools. Stable version software represents the currently tested
-and supported visualization tools with latest release of MONAI Label. Weekly preview version is available if users want the latest feature, not fully tested.
+and supported visualization tools with latest release of MONAI Label.
 
 
 Current Milestone Release of MONAI Label:
@@ -50,7 +50,7 @@ Prerequisites
 --------------------------
 MONAI Label supports both **Ubuntu** and **Windows** OS with GPU/CUDA enabled.
 
-Make sure you have python 3.8/3.9 version environment with PyTorch and CUDA installed.  MONAI Label features on other python version are not verified.
+Make sure you have python 3.8/3.9 version environment with PyTorch and CUDA installed. MONAI Label features on other python version are not verified.
 
 - Install `Python <https://www.python.org/downloads/>`_
 - Install the following Python libraries
@@ -64,6 +64,12 @@ Make sure you have python 3.8/3.9 version environment with PyTorch and CUDA inst
 
     # Check if cuda enabled
     python -c "import torch; print(torch.cuda.is_available())"
+
+On **Ubuntu** only, `python3-dev`, which contains the header files for the Python C API, is not bundled with Python and needs to be installed separately.
+
+.. code-block::
+
+    sudo apt install python3-dev
 
 Install From PyPI
 ------------------------
@@ -79,15 +85,6 @@ To install the `current milestone release <https://pypi.org/project/monailabel/>
 The milestone versions are currently planned and released every few months.  As the
 codebase is under active development, you may want to install MONAI from GitHub
 for the latest features
-
-Weekly preview release
-**********************
-To install the `weekly preview release <https://pypi.org/project/monailabel-weekly/>`_:
-::
-
-    pip install monailabel-weekly
-
-The weekly build is released to PyPI every Sunday with a pre-release build number *dev[%y%U]*.
 
 From GitHub
 *********************

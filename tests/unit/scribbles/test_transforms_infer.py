@@ -402,7 +402,7 @@ class TestScribblesInferers(unittest.TestCase):
 
         # run scribbles inferer and load results
         result_file, _ = HistogramBasedGraphCut()(test_input)
-        result = LoadImage()(result_file)[0]
+        result = LoadImage(image_only=True)(result_file)
 
         # can only check output shape due to non-deterministic results
         self.assertTupleEqual(expected_shape, result.shape)

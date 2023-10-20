@@ -9,21 +9,6 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-name: "Build & Test w/GPU"
-
-on:
-  push:
-    branches: [ main_disabled ]
-  workflow_dispatch:
-
-jobs:
-  build:
-    name: Call Azure GPU Build+Test Pipeline
-    runs-on: ubuntu-latest
-    steps:
-      - name: Azure Pipelines Action
-        uses: Azure/pipelines@v1
-        with:
-          azure-devops-project-url: https://dev.azure.com/projectmonai/monai-label
-          azure-pipeline-name: 'Manual GPU Test'
-          azure-devops-token: ${{ secrets.MONAI_LABEL_AZURE_TOKEN }}
+logs
+Viewers
+www
