@@ -25,11 +25,11 @@ import SampleData
 import SimpleITK as sitk
 import sitkUtils
 import slicer
-from slicer.i18n import tr as _
-from slicer.i18n import translate
 import vtk
 import vtkSegmentationCore
 from MONAILabelLib import GenericAnatomyColors, MONAILabelClient
+from slicer.i18n import tr as _
+from slicer.i18n import translate
 from slicer.ScriptedLoadableModule import *
 from slicer.util import VTKObservationMixin
 
@@ -38,16 +38,20 @@ class MONAILabel(ScriptedLoadableModule):
     def __init__(self, parent):
         ScriptedLoadableModule.__init__(self, parent)
         self.parent.title = _("MONAILabel")
-        self.parent.categories = [translate("qSlicerAbstractCoreModule","Active Learning")]
+        self.parent.categories = [translate("qSlicerAbstractCoreModule", "Active Learning")]
         self.parent.dependencies = []
         self.parent.contributors = ["NVIDIA, KCL"]
-        self.parent.helpText = _("""
+        self.parent.helpText = _(
+            """
 Active Learning solution.
 See more information in <a href="https://github.com/Project-MONAI/MONAILabel">module documentation</a>.
-""")
-        self.parent.acknowledgementText = _("""
+"""
+        )
+        self.parent.acknowledgementText = _(
+            """
 Developed by NVIDIA, KCL
-""")
+"""
+        )
 
         # Additional initialization step after application startup is complete
         slicer.app.connect("startupCompleted()", self.initializeAfterStartup)
@@ -93,8 +97,8 @@ class _ui_MONAILabelSettingsPanel:
 
         autoRunSegmentationCheckBox = qt.QCheckBox()
         autoRunSegmentationCheckBox.checked = False
-        autoRunSegmentationCheckBox.toolTip = (
-            _("Enable this option to auto run segmentation if pre-trained model exists when Next Sample is fetched")
+        autoRunSegmentationCheckBox.toolTip = _(
+            "Enable this option to auto run segmentation if pre-trained model exists when Next Sample is fetched"
         )
         groupLayout.addRow(_("Auto-Run Pre-Trained Model:"), autoRunSegmentationCheckBox)
         parent.registerProperty(
@@ -131,8 +135,8 @@ class _ui_MONAILabelSettingsPanel:
         askForUserNameCheckBox.toolTip = _(
             "Enable this option to ask for the user name every time the MONAILabel"
             "extension is loaded for the first time"
-            )
-        
+        )
+
         groupLayout.addRow(_("Ask For User Name:"), askForUserNameCheckBox)
         parent.registerProperty(
             "MONAILabel/askForUserName",
@@ -193,8 +197,10 @@ class _ui_MONAILabelSettingsPanel:
         if slicer.util.settingsValue("MONAILabel/allowOverlappingSegments", True, converter=slicer.util.toBool):
             if slicer.util.settingsValue("MONAILabel/fileExtension", None) != ".seg.nrrd":
                 slicer.util.warningDisplay(
-                    _("Overlapping segmentations are only available with the '.seg.nrrd' file extension!"
-                    "Consider changing MONAILabel file extension.")
+                    _(
+                        "Overlapping segmentations are only available with the '.seg.nrrd' file extension!"
+                        "Consider changing MONAILabel file extension."
+                    )
                 )
 
 
@@ -482,7 +488,9 @@ class MONAILabelWidget(ScriptedLoadableModuleWidget, VTKObservationMixin):
             percent = max(1, 100 * current / total)
             if self.ui.trainingProgressBar.value != percent:
                 self.ui.trainingProgressBar.setValue(percent)
-            self.ui.trainingProgressBar.setToolTip(_("{current}/{total} epoch is completed").format(current=current, total=total))
+            self.ui.trainingProgressBar.setToolTip(
+                _("{current}/{total} epoch is completed").format(current=current, total=total)
+            )
 
             dice = train_stats.get("best_metric", 0)
             self.updateAccuracyBar(dice)
@@ -492,7 +500,7 @@ class MONAILabelWidget(ScriptedLoadableModuleWidget, VTKObservationMixin):
         self.ui.trainingProgressBar.setValue(100)
         self.timer.stop()
         self.timer = None
-        self.ui.trainingProgressBar.setToolTip(_("Training: {status}").format(status=status.get('status', 'DONE')))
+        self.ui.trainingProgressBar.setToolTip(_("Training: {status}").format(status=status.get("status", "DONE")))
 
         self.ui.trainingButton.setEnabled(True)
         self.ui.stopTrainingButton.setEnabled(False)
@@ -590,7 +598,9 @@ class MONAILabelWidget(ScriptedLoadableModuleWidget, VTKObservationMixin):
         current = datastore_stats.get("completed", 0)
         total = datastore_stats.get("total", 0)
         self.ui.activeLearningProgressBar.setValue(current / max(total, 1) * 100)
-        self.ui.activeLearningProgressBar.setToolTip(_("{current}/{total} samples are labeled").format(current=current, total=total))
+        self.ui.activeLearningProgressBar.setToolTip(
+            _("{current}/{total} samples are labeled").format(current=current, total=total)
+        )
 
         train_stats = self.info.get("train_stats", {})
         train_stats = next(iter(train_stats.values())) if train_stats else train_stats
@@ -1083,9 +1093,11 @@ class MONAILabelWidget(ScriptedLoadableModuleWidget, VTKObservationMixin):
         except BaseException as e:
             msg = f"Message:: {e.msg}" if hasattr(e, "msg") else ""
             slicer.util.errorDisplay(
-                _("Failed to fetch models from remote server. "
-                "Make sure server address is correct and <server_uri>/info/ "
-                "is accessible in browser.\n{message}").format(message=msg),
+                _(
+                    "Failed to fetch models from remote server. "
+                    "Make sure server address is correct and <server_uri>/info/ "
+                    "is accessible in browser.\n{message}"
+                ).format(message=msg),
                 detailedText=traceback.format_exc(),
             )
             return
@@ -1218,8 +1230,10 @@ class MONAILabelWidget(ScriptedLoadableModuleWidget, VTKObservationMixin):
 
         if self._volumeNode or len(slicer.util.getNodesByClass("vtkMRMLScalarVolumeNode")):
             if not slicer.util.confirmOkCancelDisplay(
-                _("This will close current scene.  Please make sure you have saved your current work.\n"
-                "Are you sure to continue?")
+                _(
+                    "This will close current scene.  Please make sure you have saved your current work.\n"
+                    "Are you sure to continue?"
+                )
             ):
                 return
             self.onResetScribbles()
@@ -1239,8 +1253,10 @@ class MONAILabelWidget(ScriptedLoadableModuleWidget, VTKObservationMixin):
             logging.debug(sample)
             if not sample.get("id"):
                 slicer.util.warningDisplay(
-                    _("Unlabeled samples or images not found at server.\n"
-                    "Instead please go to File -> Add Data to load image.")
+                    _(
+                        "Unlabeled samples or images not found at server.\n"
+                        "Instead please go to File -> Add Data to load image."
+                    )
                 )
                 return
 
@@ -1344,10 +1360,12 @@ class MONAILabelWidget(ScriptedLoadableModuleWidget, VTKObservationMixin):
 
     def getPermissionForImageDataUpload(self):
         return slicer.util.confirmOkCancelDisplay(
-            _("Source volume - without any additional patient information -"
-            " will be sent to remote data processing server: {server_url}.\n\n"
-            "Click 'OK' to proceed with the segmentation.\n"
-            "Click 'Cancel' to not upload any data and cancel segmentation.\n").format(self.serverUrl()),
+            _(
+                "Source volume - without any additional patient information -"
+                " will be sent to remote data processing server: {server_url}.\n\n"
+                "Click 'OK' to proceed with the segmentation.\n"
+                "Click 'Cancel' to not upload any data and cancel segmentation.\n"
+            ).format(self.serverUrl()),
             dontShowAgainSettingsKey="MONAILabel/showImageDataSendWarning",
         )
 
@@ -1575,7 +1593,9 @@ class MONAILabelWidget(ScriptedLoadableModuleWidget, VTKObservationMixin):
         start = time.time()
 
         label = segment.GetName()
-        operationDescription = _("Run Deepgrow for segment: {label}; model: {model}; 3d {in3d}").format(label=label, model=model, in3d=_("enabled") if deepgrow_3d else _("disabled"))
+        operationDescription = _("Run Deepgrow for segment: {label}; model: {model}; 3d {in3d}").format(
+            label=label, model=model, in3d=_("enabled") if deepgrow_3d else _("disabled")
+        )
         logging.debug(operationDescription)
 
         if not current_point:
@@ -1956,7 +1976,9 @@ class MONAILabelWidget(ScriptedLoadableModuleWidget, VTKObservationMixin):
         except BaseException as e:
             msg = f"Message:: {e.msg}" if hasattr(e, "msg") else ""
             slicer.util.errorDisplay(
-                _("Failed to post process label on MONAI Label Server using {scribbles_method}.\n{message}").format(scribbles_method=scribblesMethod, message=msg),
+                _("Failed to post process label on MONAI Label Server using {scribbles_method}.\n{message}").format(
+                    scribbles_method=scribblesMethod, message=msg
+                ),
                 detailedText=traceback.format_exc(),
             )
         finally:
@@ -2345,7 +2367,7 @@ class MONAILabelTest(ScriptedLoadableModuleTest):
         self.delayDisplay("Test passed")
 
 
-INFER = 'INFER'
-TRAIN = 'TRAIN'
-ACTIVELEARNING = 'ACTIVELEARNING'
-SCORING = 'SCORING'
+INFER = "INFER"
+TRAIN = "TRAIN"
+ACTIVELEARNING = "ACTIVELEARNING"
+SCORING = "SCORING"
