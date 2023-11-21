@@ -66,6 +66,8 @@ class MyApp(MONAILabelApp):
 
         models = models.split(",")
         models = [m.strip() for m in models]
+        # Can be configured with --conf scribbles false or true
+        self.scribbles = conf.get("scribbles", "true") == "true"
         invalid = [m for m in models if m != "all" and not configs.get(m)]
         if invalid:
             print("")
@@ -138,26 +140,27 @@ class MyApp(MONAILabelApp):
         #################################################
         # Scribbles
         #################################################
-        infers.update(
-            {
-                "Histogram+GraphCut": HistogramBasedGraphCut(
-                    intensity_range=(-300, 200, 0.0, 1.0, True),
-                    pix_dim=(2.5, 2.5, 5.0),
-                    lamda=1.0,
-                    sigma=0.1,
-                    num_bins=64,
-                    labels=task_config.labels,
-                ),
-                "GMM+GraphCut": GMMBasedGraphCut(
-                    intensity_range=(-300, 200, 0.0, 1.0, True),
-                    pix_dim=(2.5, 2.5, 5.0),
-                    lamda=5.0,
-                    sigma=0.5,
-                    num_mixtures=20,
-                    labels=task_config.labels,
-                ),
-            }
-        )
+        if self.scribbles:
+            infers.update(
+                {
+                    "Histogram+GraphCut": HistogramBasedGraphCut(
+                        intensity_range=(-300, 200, 0.0, 1.0, True),
+                        pix_dim=(2.5, 2.5, 5.0),
+                        lamda=1.0,
+                        sigma=0.1,
+                        num_bins=64,
+                        labels=task_config.labels,
+                    ),
+                    "GMM+GraphCut": GMMBasedGraphCut(
+                        intensity_range=(-300, 200, 0.0, 1.0, True),
+                        pix_dim=(2.5, 2.5, 5.0),
+                        lamda=5.0,
+                        sigma=0.5,
+                        num_mixtures=20,
+                        labels=task_config.labels,
+                    ),
+                }
+            )
 
         #################################################
         # Pipeline based on existing infers

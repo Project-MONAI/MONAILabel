@@ -188,7 +188,8 @@ the model to learn on new organ.
 | Name                 | Values             | Description                                                     |
 |----------------------|--------------------|-----------------------------------------------------------------|
 | use_pretrained_model | **true**, false    | Disable this NOT to load any pretrained weights                 |
-| preload              | true, **false**    | Preload model into GPU                                                                                |
+| preload              | true, **false**    | Preload model into GPU                                          |
+| scribbles            | **true**, false    | Don't load the scribble models, useful for user studies         |
 
 - Network: This model uses the [UNet](https://docs.monai.io/en/latest/networks.html#unet) as the default network. Researchers can define their own network or use one of the listed [here](https://docs.monai.io/en/latest/networks.html)
 - Labels
