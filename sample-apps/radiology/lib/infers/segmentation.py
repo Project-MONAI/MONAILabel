@@ -24,7 +24,7 @@ from monai.transforms import (
     NormalizeIntensityd,
     Orientationd,
     ScaleIntensityd,
-    Spacingd,
+    Spacingd, ScaleIntensityRanged,
 )
 
 from monailabel.interfaces.tasks.infer_v2 import InferType
@@ -62,24 +62,22 @@ class Segmentation(BasicInferTask):
 
     def pre_transforms(self, data=None) -> Sequence[Callable]:
         t = [
-            LoadImaged(keys="image"),
+            LoadImaged(keys="image", reader='itkreader'),
             EnsureTyped(keys="image", device=data.get("device") if data else None),
             EnsureChannelFirstd(keys="image"),
-            Orientationd(keys="image", axcodes="RAS"),
             Spacingd(keys="image", pixdim=self.target_spacing, allow_missing_keys=True),
-            NormalizeIntensityd(keys="image", nonzero=True),
-            GaussianSmoothd(keys="image", sigma=0.4),
-            ScaleIntensityd(keys="image", minv=-1.0, maxv=1.0),
+            ScaleIntensityRanged(keys="image", a_min=1.1, a_max=103, b_min=-1, b_max=1, clip=True),
         ]
         return t
 
     def inferer(self, data=None) -> Inferer:
         return SlidingWindowInferer(
             roi_size=self.roi_size,
-            sw_batch_size=2,
-            overlap=0.4,
-            padding_mode="replicate",
+            sw_batch_size=1,
+            overlap=0.625,
             mode="gaussian",
+            cache_roi_weight_map=True,
+            progress=False
         )
 
     def inverse_transforms(self, data=None):

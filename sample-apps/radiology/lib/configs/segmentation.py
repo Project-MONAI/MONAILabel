@@ -15,7 +15,7 @@ from typing import Any, Dict, Optional, Union
 
 import lib.infers
 import lib.trainers
-from monai.networks.nets import SegResNet
+from monai.networks.nets import SegResNet, UNet, SegResNetDS
 from monai.utils import optional_import
 
 from monailabel.interfaces.config import TaskConfig
@@ -34,32 +34,38 @@ class Segmentation(TaskConfig):
         super().init(name, model_dir, conf, planner, **kwargs)
 
         # Labels
+
+        # # Consecutive indexes
+        # "Brain Parenchyma": 1,
+        # "Subarachnoid Spacee": 2,
+        # "Dural Folds/Venous Sinuses": 3,
+        # "Septum Pellucidum": 4,
+        # "Cerebellum": 5,
+        # "Caudate Nucleus": 6,
+        # "Lentiform Nucleus": 7,
+        # "Insular Cortex": 8,
+        # "Internal Capsule": 9,
+        # "Ventricular System": 10,
+        # "Lobar": 11,
+        # "Thalamus": 12,
+
         self.labels = {
-            "spleen": 1,
-            "kidney_right": 2,
-            "kidney_left": 3,
-            "gallbladder": 4,
-            "liver": 5,
-            "stomach": 6,
-            "aorta": 7,
-            "inferior_vena_cava": 8,
-            "portal_vein_and_splenic_vein": 9,
-            "pancreas": 10,
-            "adrenal_gland_right": 11,
-            "adrenal_gland_left": 12,
-            "lung_upper_lobe_left": 13,
-            "lung_lower_lobe_left": 14,
-            "lung_upper_lobe_right": 15,
-            "lung_middle_lobe_right": 16,
-            "lung_lower_lobe_right": 17,
-            "esophagus": 42,
-            "trachea": 43,
-            "heart_myocardium": 44,
-            "heart_atrium_left": 45,
-            "heart_ventricle_left": 46,
-            "heart_atrium_right": 47,
-            "heart_ventricle_right": 48,
-            "pulmonary_artery": 49,
+            "Brain Parenchyma": 1,
+            "Subarachnoid Spacee": 2,
+            "Dural Folds/Venous Sinuses": 3,
+            "Septum Pellucidum": 4,
+            "Cerebellum": 5,
+            "Caudate Nucleus": 6,
+            "Lentiform Nucleus": 7,
+            "Insular Cortex": 8,
+            "Internal Capsule": 9,
+            "Ventricular System": 10,
+            "Lobar": 12,
+            "Thalamus": 16,
+            "Intracerebral Haemorrhage": 101,
+            "Intraventricular Haemorrhage": 102,
+            "Subdural Haemorrhage": 103,
+            "Subarachnoid Haemorrhage": 104,
         }
 
         # Model Files
@@ -69,14 +75,14 @@ class Segmentation(TaskConfig):
         ]
 
         # Download PreTrained Model
-        if strtobool(self.conf.get("use_pretrained_model", "true")):
+        if strtobool(self.conf.get("use_pretrained_model", "false")):
             url = f"{self.conf.get('pretrained_path', self.PRE_TRAINED_PATH)}"
-            url = f"{url}/radiology_segmentation_segresnet_multilabel.pt"
+            url = f"{url}/radiology_segmentation_unet_multilabel.pt"
             download_file(url, self.path[0])
 
-        self.target_spacing = (1.5, 1.5, 1.5)  # target space for image
+        self.target_spacing = (0.468, 0.468, 4.67)  # target space for image
         # Setting ROI size - This is for the image padding
-        self.roi_size = (96, 96, 96)
+        self.roi_size = (128, 128, 32)
 
         # Network
         self.network = SegResNet(
@@ -88,6 +94,16 @@ class Segmentation(TaskConfig):
             blocks_up=(1, 1, 1),
             dropout_prob=0.2,
         )
+
+        # self.network = UNet(
+        #     spatial_dims=3,
+        #     in_channels=1,
+        #     out_channels=len(self.labels) + 1,  # labels plus background,
+        #     channels=[16, 32, 64, 128, 256],
+        #     strides=[2, 2, 2, 2],
+        #     num_res_units=2,
+        #     norm="batch",
+        # )
 
     def infer(self) -> Union[InferTask, Dict[str, InferTask]]:
         task: InferTask = lib.infers.Segmentation(

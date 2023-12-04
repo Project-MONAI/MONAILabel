@@ -13,6 +13,7 @@ import logging
 
 import torch
 from lib.transforms.transforms import NormalizeLabelsInDatasetd
+from monai.apps.auto3dseg.transforms import EnsureSameShaped
 from monai.handlers import TensorBoardImageHandler, from_engine
 from monai.inferers import SlidingWindowInferer
 from monai.losses import DiceCELoss
@@ -29,7 +30,8 @@ from monai.transforms import (
     RandSpatialCropd,
     ScaleIntensityd,
     SelectItemsd,
-    Spacingd,
+    Spacingd, ScaleIntensityRanged, RandAffined, RandGaussianSmoothd, RandScaleIntensityd, RandShiftIntensityd,
+    RandGaussianNoised,
 )
 
 from monailabel.tasks.train.basic_train import BasicTrainTask, Context
@@ -53,13 +55,13 @@ class Segmentation(BasicTrainTask):
         self.roi_size = roi_size
         self.target_spacing = target_spacing
         self.num_samples = num_samples
-        super().__init__(model_dir, description, **kwargs)
+        super().__init__(model_dir, description, val_interval=100, **kwargs)
 
     def network(self, context: Context):
         return self._network
 
     def optimizer(self, context: Context):
-        return torch.optim.AdamW(context.network.parameters(), lr=1e-4, weight_decay=1e-5)
+        return torch.optim.AdamW(context.network.parameters(), lr=2e-4, weight_decay=1e-5)
 
     def loss_function(self, context: Context):
         return DiceCELoss(to_onehot_y=True, softmax=True)
@@ -72,26 +74,40 @@ class Segmentation(BasicTrainTask):
 
     def train_pre_transforms(self, context: Context):
         return [
-            LoadImaged(keys=("image", "label")),
+            LoadImaged(keys=("image", "label"), reader='itkreader'),
             NormalizeLabelsInDatasetd(keys="label", label_names=self._labels),  # Specially for missing labels
             EnsureChannelFirstd(keys=("image", "label")),
             EnsureTyped(keys=("image", "label"), device=context.device),
-            Orientationd(keys=("image", "label"), axcodes="RAS"),
-            Spacingd(keys=("image", "label"), pixdim=self.target_spacing, mode=("bilinear", "nearest")),
-            NormalizeIntensityd(keys="image", nonzero=True),
             CropForegroundd(
                 keys=("image", "label"),
                 source_key="image",
                 margin=10,
                 k_divisible=[self.roi_size[0], self.roi_size[1], self.roi_size[2]],
             ),
-            GaussianSmoothd(keys="image", sigma=0.4),
-            ScaleIntensityd(keys="image", minv=-1.0, maxv=1.0),
+            Spacingd(keys=("image", "label"), pixdim=self.target_spacing, mode=("bilinear", "nearest")),
+            EnsureSameShaped(
+                keys="label", source_key="image", allow_missing_keys=True
+            ),
+            ScaleIntensityRanged(keys="image", a_min=1.1, a_max=103, b_min=-1, b_max=1, clip=True),
             RandSpatialCropd(
                 keys=["image", "label"],
                 roi_size=[self.roi_size[0], self.roi_size[1], self.roi_size[2]],
                 random_size=False,
             ),
+            RandAffined(
+                keys=("image", "label"),
+                prob=0.2,
+                rotate_range=[0.26, 0.26, 0.26],
+                scale_range=[0.2, 0.2, 0.2],
+                mode=["bilinear", "nearest"],
+                spatial_size=self.roi_size,
+                cache_grid=True,
+                padding_mode="border",
+            ),
+            RandGaussianSmoothd(keys="image", prob=0.2, sigma_x=[0.5, 1.0], sigma_y=[0.5, 1.0], sigma_z=[0.5, 1.0]),
+            RandScaleIntensityd(keys="image", prob=0.5, factors=0.3),
+            RandShiftIntensityd(keys="image", prob=0.5, offsets=0.1),
+            RandGaussianNoised(keys="image", prob=0.2, mean=0.0, std=0.1),
             SelectItemsd(keys=("image", "label")),
         ]
 
@@ -108,28 +124,37 @@ class Segmentation(BasicTrainTask):
 
     def val_pre_transforms(self, context: Context):
         return [
-            LoadImaged(keys=("image", "label")),
+            LoadImaged(keys=("image", "label"), reader='itkreader'),
             NormalizeLabelsInDatasetd(keys="label", label_names=self._labels),  # Specially for missing labels
             EnsureTyped(keys=("image", "label")),
             EnsureChannelFirstd(keys=("image", "label")),
-            Orientationd(keys=("image", "label"), axcodes="RAS"),
-            Spacingd(keys=("image", "label"), pixdim=self.target_spacing, mode=("bilinear", "nearest")),
-            NormalizeIntensityd(keys="image", nonzero=True),
-            # ScaleIntensityRanged(keys="image", a_min=-1000, a_max=1900, b_min=0.0, b_max=1.0, clip=True),
             CropForegroundd(
                 keys=("image", "label"),
-                source_key="label",
+                source_key="image",
                 margin=10,
                 k_divisible=[self.roi_size[0], self.roi_size[1], self.roi_size[2]],
             ),
-            GaussianSmoothd(keys="image", sigma=0.4),
-            ScaleIntensityd(keys="image", minv=-1.0, maxv=1.0),
+            Spacingd(keys=("image", "label"), pixdim=self.target_spacing, mode=("bilinear", "nearest")),
+            EnsureSameShaped(
+                keys="label", source_key="image", allow_missing_keys=True
+            ),
+            ScaleIntensityRanged(keys="image", a_min=1.1, a_max=103, b_min=-1, b_max=1, clip=True),
+            RandSpatialCropd(
+                keys=["image", "label"],
+                roi_size=[self.roi_size[0], self.roi_size[1], self.roi_size[2]],
+                random_size=False,
+            ),
             SelectItemsd(keys=("image", "label")),
         ]
 
     def val_inferer(self, context: Context):
         return SlidingWindowInferer(
-            roi_size=self.roi_size, sw_batch_size=2, overlap=0.4, padding_mode="replicate", mode="gaussian"
+            roi_size=self.roi_size,
+            sw_batch_size=1,
+            overlap=0.625,
+            mode="gaussian",
+            cache_roi_weight_map=True,
+            progress=False
         )
 
     def norm_labels(self):
