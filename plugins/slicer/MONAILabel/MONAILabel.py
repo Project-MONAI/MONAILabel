@@ -1365,7 +1365,7 @@ class MONAILabelWidget(ScriptedLoadableModuleWidget, VTKObservationMixin):
                 " will be sent to remote data processing server: {server_url}.\n\n"
                 "Click 'OK' to proceed with the segmentation.\n"
                 "Click 'Cancel' to not upload any data and cancel segmentation.\n"
-            ).format(self.serverUrl()),
+            ).format(server_url=self.serverUrl()),
             dontShowAgainSettingsKey="MONAILabel/showImageDataSendWarning",
         )
 
