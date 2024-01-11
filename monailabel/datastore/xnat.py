@@ -22,9 +22,9 @@ from xml.etree import ElementTree
 import requests
 from requests.auth import HTTPBasicAuth
 
+from monailabel.datastore.utils.convert import nifti_to_dicom_seg
 from monailabel.interfaces.datastore import Datastore
 from monailabel.utils.others.generic import md5_digest
-from monailabel.datastore.utils.convert import nifti_to_dicom_seg
 
 logger = logging.getLogger(__name__)
 xnat_ns = {"xnat": "http://nrg.wustl.edu/xnat"}
@@ -159,34 +159,33 @@ class XNATDatastore(Datastore):
     def remove_image(self, image_id: str) -> None:
         raise NotImplementedError
 
-    def __convert_nifti_to_dcmseg(self, series_dir, nii_seg_path, model_name, label_names)->str:
-        if not (nii_seg_path.endswith(".nii") or nii_seg_path.endswith(".nii.gz")):
-            logging.info(f"------------------ segmenation doesn't have right extension {nii_seg_path}")
-            return ""
-        label_info =[]
-        for i,lb in enumerate(label_names):
+    def __convert_nifti_to_dcmseg(self, series_dir, nii_seg_path, model_name, label_names) -> str:
+        label_info = []
+        for i, lb in enumerate(label_names):
             label_info.append(
-                    {"model_name": model_name, "name": str(i + 1) + '_' + lb , "description": "lb" + str(i + 1) + '_' + lb}
-                        )
-        dcmSegFile=nifti_to_dicom_seg(series_dir=series_dir, label=nii_seg_path, label_info=label_info)
+                {"model_name": model_name, "name": str(i + 1) + "_" + lb, "description": "lb" + str(i + 1) + "_" + lb}
+            )
+        dcmSegFile = nifti_to_dicom_seg(series_dir=series_dir, label=nii_seg_path, label_info=label_info)
         logging.info(f" converted nifit to dicom seg --- at {dcmSegFile}")
         return dcmSegFile
 
     def save_label(self, image_id: str, label_filename: str, label_tag: str, label_info: Dict[str, Any]) -> str:
-        aiaa_model_name = label_info.get('model', "NoModel")
-        label_names = label_info.get('params',{}).get('label_names',{})
+        aiaa_model_name = label_info.get("model", "NoModel")
+        label_names = label_info.get("params", {}).get("label_names", {})
 
-        ## save the nii.gz segmentation into Xnat
+        # save the nii.gz segmentation into Xnat
         project, subject, experiment, scan = self._id_to_fields(image_id)
-        nameAtXnat= f"pat_{subject}_exp_{experiment}_S_{scan}_AI_{aiaa_model_name}.nii.gz"
-        self._request_put_file(experiment, scan, name_at_xnat=nameAtXnat, file2send=label_filename, ai_model_name=aiaa_model_name)
-        ####### convert nii to dcm seg and upload to Xnat
-        series_dir = self._download_image(image_id)
-        tmp_dcm_segpath = self.__convert_nifti_to_dcmseg(series_dir, label_filename, aiaa_model_name, label_names)
-        self.__upload_assessment(aiaa_model_name, image_id, tmp_dcm_segpath, "SEG")
+        nameAtXnat = f"pat_{subject}_exp_{experiment}_S_{scan}_AI_{aiaa_model_name}.nii.gz"
+        self._request_put_file(
+            experiment, scan, name_at_xnat=nameAtXnat, file2send=label_filename, ai_model_name=aiaa_model_name
+        )
+        # convert nii to dcm seg and upload to Xnat
+        if label_filename.endswith(".nii") or label_filename.endswith(".nii.gz"):
+            series_dir = self._download_image(image_id)
+            tmp_dcm_segpath = self.__convert_nifti_to_dcmseg(series_dir, label_filename, aiaa_model_name, label_names)
+            self.__upload_assessment(aiaa_model_name, image_id, tmp_dcm_segpath, "SEG")
 
         return image_id
-
 
     def remove_label(self, label_id: str, label_tag: str) -> None:
         raise NotImplementedError
@@ -324,11 +323,14 @@ class XNATDatastore(Datastore):
     def _request_post(self, url):
         return self.xnat_session.post(url, auth=self.auth, allow_redirects=True)
 
-    def _request_put(self, url,data,type):
-        response = self.xnat_session.put(url, data=data,
-                                         params={"overwrite": "true", "type": type},
-                                         headers ={'Content-Type': "application/octet-stream"},
-                                         allow_redirects=True)
+    def _request_put(self, url, data, type):
+        response = self.xnat_session.put(
+            url,
+            data=data,
+            params={"overwrite": "true", "type": type},
+            headers={"Content-Type": "application/octet-stream"},
+            allow_redirects=True,
+        )
         if response.status_code != 200:  # failed call
             logger.error(f" xnat put call error status_code= {response.status_code}  text ={response.text}")
         else:
@@ -348,11 +350,10 @@ class XNATDatastore(Datastore):
             quote_plus(name_at_xnat),
         )
         data = open(file2send, "rb")
-        params = {"overwrite": "true"
-                 ,"description":name_at_xnat
-                 , "content": ai_model_name
-                 , "format":"nii"}
-        response = self.xnat_session.put(url, params=params, data=data, headers ={'Content-Type': "application/octet-stream"}, allow_redirects=True) # ,verify=False,
+        params = {"overwrite": "true", "description": name_at_xnat, "content": ai_model_name, "format": "nii"}
+        response = self.xnat_session.put(
+            url, params=params, data=data, headers={"Content-Type": "application/octet-stream"}, allow_redirects=True
+        )  # ,verify=False,
         if response.status_code != 200:  # failed call
             logger.error(f" put call error status_code= {response.status_code}  text ={response.text}")
         else:
@@ -383,7 +384,6 @@ class XNATDatastore(Datastore):
         )
 
         self._request_put(url, data, type=type)
-
 
 
 """
