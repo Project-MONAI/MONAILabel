@@ -80,12 +80,15 @@ def binary_to_image(reference_image, label, dtype=np.uint8, file_ext=".nii.gz"):
     return output_file
 
 
-def nifti_to_dicom_seg(series_dir, label, label_info, file_ext="*", use_itk=True):
+def nifti_to_dicom_seg(series_dir, label, label_info, file_ext="*", use_itk=True) -> str:
     start = time.time()
 
     label_np, meta_dict = LoadImage(image_only=False)(label)
     unique_labels = np.unique(label_np.flatten()).astype(np.int_)
     unique_labels = unique_labels[unique_labels != 0]
+
+    info = label_info[0] if label_info and 0 < len(label_info) else {}
+    model_name = info.get("model_name", "AIName")
 
     segment_attributes = []
     for i, idx in enumerate(unique_labels):
@@ -124,7 +127,7 @@ def nifti_to_dicom_seg(series_dir, label, label_info, file_ext="*", use_itk=True
         "ContentCreatorName": "Reader1",
         "ClinicalTrialSeriesID": "Session1",
         "ClinicalTrialTimePointID": "1",
-        "SeriesDescription": "Segmentation",
+        "SeriesDescription": model_name,
         "SeriesNumber": "300",
         "InstanceNumber": "1",
         "segmentAttributes": [segment_attributes],
@@ -137,7 +140,7 @@ def nifti_to_dicom_seg(series_dir, label, label_info, file_ext="*", use_itk=True
     logger.info(json.dumps(template, indent=2))
     if not segment_attributes:
         logger.error("Missing Attributes/Empty Label provided")
-        return None
+        return ""
 
     if use_itk:
         output_file = itk_image_to_dicom_seg(label, series_dir, template)
@@ -167,7 +170,7 @@ def nifti_to_dicom_seg(series_dir, label, label_info, file_ext="*", use_itk=True
     return output_file
 
 
-def itk_image_to_dicom_seg(label, series_dir, template):
+def itk_image_to_dicom_seg(label, series_dir, template) -> str:
     output_file = tempfile.NamedTemporaryFile(suffix=".dcm").name
     meta_data = tempfile.NamedTemporaryFile(suffix=".json").name
     with open(meta_data, "w") as fp:
