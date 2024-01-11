@@ -127,7 +127,7 @@ def nifti_to_dicom_seg(series_dir, label, label_info, file_ext="*", use_itk=True
         "ContentCreatorName": "Reader1",
         "ClinicalTrialSeriesID": "Session1",
         "ClinicalTrialTimePointID": "1",
-        "SeriesDescription": model_name ,
+        "SeriesDescription": model_name,
         "SeriesNumber": "300",
         "InstanceNumber": "1",
         "segmentAttributes": [segment_attributes],
