@@ -87,6 +87,9 @@ def nifti_to_dicom_seg(series_dir, label, label_info, file_ext="*", use_itk=True
     unique_labels = np.unique(label_np.flatten()).astype(np.int_)
     unique_labels = unique_labels[unique_labels != 0]
 
+    info = label_info[0] if label_info and 0 < len(label_info) else {}
+    model_name = info.get("model_name", "AIName")
+
     segment_attributes = []
     for i, idx in enumerate(unique_labels):
         info = label_info[i] if label_info and i < len(label_info) else {}
@@ -124,7 +127,7 @@ def nifti_to_dicom_seg(series_dir, label, label_info, file_ext="*", use_itk=True
         "ContentCreatorName": "Reader1",
         "ClinicalTrialSeriesID": "Session1",
         "ClinicalTrialTimePointID": "1",
-        "SeriesDescription": "Segmentation",
+        "SeriesDescription": model_name ,
         "SeriesNumber": "300",
         "InstanceNumber": "1",
         "segmentAttributes": [segment_attributes],
