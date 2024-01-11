@@ -22,9 +22,9 @@ from xml.etree import ElementTree
 import requests
 from requests.auth import HTTPBasicAuth
 
+from monailabel.datastore.utils.convert import nifti_to_dicom_seg
 from monailabel.interfaces.datastore import Datastore
 from monailabel.utils.others.generic import md5_digest
-from monailabel.datastore.utils.convert import nifti_to_dicom_seg
 
 logger = logging.getLogger(__name__)
 xnat_ns = {"xnat": "http://nrg.wustl.edu/xnat"}
@@ -163,7 +163,7 @@ class XNATDatastore(Datastore):
         label_info = []
         for i, lb in enumerate(label_names):
             label_info.append(
-                {"model_name": model_name, "name": str(i + 1) + "_" + lb , "description": "lb" + str(i + 1) + "_" + lb}
+                {"model_name": model_name, "name": str(i + 1) + "_" + lb, "description": "lb" + str(i + 1) + "_" + lb}
             )
         dcmSegFile = nifti_to_dicom_seg(series_dir=series_dir, label=nii_seg_path, label_info=label_info)
         logging.info(f" converted nifti to dicom seg --- at {dcmSegFile}")
