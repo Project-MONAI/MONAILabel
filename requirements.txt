@@ -42,5 +42,6 @@ requests
 requests-toolbelt
 scikit-learn
 scipy
+google-auth>=1.6.3
 
 #sudo apt-get install openslide-tools -y
