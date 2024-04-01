@@ -278,15 +278,19 @@ class BundleInferTask(BasicInferTask):
             (
                 InferType.DEEPEDIT
                 if "deepedit" in name
-                else InferType.DEEPGROW
-                if "deepgrow" in name
-                else InferType.DETECTION
-                if "detection" in name
-                else InferType.SEGMENTATION
-                if "segmentation" in name
-                else InferType.CLASSIFICATION
-                if "classification" in name
-                else InferType.SEGMENTATION
+                else (
+                    InferType.DEEPGROW
+                    if "deepgrow" in name
+                    else (
+                        InferType.DETECTION
+                        if "detection" in name
+                        else (
+                            InferType.SEGMENTATION
+                            if "segmentation" in name
+                            else InferType.CLASSIFICATION if "classification" in name else InferType.SEGMENTATION
+                        )
+                    )
+                )
             )
             if not type
             else type

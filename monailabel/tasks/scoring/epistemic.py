@@ -48,9 +48,7 @@ class EpistemicScoring(ScoringMethod):
         pre_transforms = (
             None
             if not self.transforms
-            else self.transforms
-            if isinstance(self.transforms, Compose)
-            else Compose(self.transforms)
+            else self.transforms if isinstance(self.transforms, Compose) else Compose(self.transforms)
         )
         # data = run_transforms(data, pre_transforms, log_prefix="EPISTEMIC-PRE") if pre_transforms else data
         if pre_transforms:

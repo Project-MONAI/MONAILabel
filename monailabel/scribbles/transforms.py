@@ -146,9 +146,9 @@ class AddBackgroundScribblesFromROId(InteractiveSegmentationTransform):
                 cz = int((selected_roi[4] + selected_roi[5]) / 2)
 
                 # add scribbles at center of roi
-                scribbles[
-                    :, cx - offset : cx + offset, cy - offset : cy + offset, cz - offset : cz + offset
-                ] = self.scribbles_fg_label
+                scribbles[:, cx - offset : cx + offset, cy - offset : cy + offset, cz - offset : cz + offset] = (
+                    self.scribbles_fg_label
+                )
 
         # return new scribbles
         d = self._save_data(d, self.scribbles, scribbles)
