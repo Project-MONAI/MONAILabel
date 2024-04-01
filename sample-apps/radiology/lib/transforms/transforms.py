@@ -384,11 +384,7 @@ class CropAndCreateSignald(MapTransform):
             ###########
             d["current_label"] = list(d["centroids"][0].values())[0][-4]
 
-            (
-                x,
-                y,
-                z,
-            ) = (
+            (x, y, z,) = (
                 list(d["centroids"][0].values())[0][-3],
                 list(d["centroids"][0].values())[0][-2],
                 list(d["centroids"][0].values())[0][-1],
