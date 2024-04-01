@@ -193,7 +193,9 @@ class _ui_MONAILabelSettingsPanel:
 
         includeDicomFilesCheckBox = qt.QCheckBox()
         includeDicomFilesCheckBox.checked = False
-        includeDicomFilesCheckBox.toolTip = _("Enable this option to include dicom files in server-client data exchange")
+        includeDicomFilesCheckBox.toolTip = _(
+            "Enable this option to include dicom files in server-client data exchange"
+        )
         groupLayout.addRow(_("Include DICOM files:"), includeDicomFilesCheckBox)
         parent.registerProperty(
             "MONAILabel/includeDicomFiles",
@@ -1383,7 +1385,7 @@ class MONAILabelWidget(ScriptedLoadableModuleWidget, VTKObservationMixin):
 
     def get_dicom_files(self):
         dicom_files = []
-        for path, _, files in os.walk(self.tmpdir):
+        for path, subdir, files in os.walk(self.tmpdir):
             for file in files:
                 if file[-3:] == "dcm":
                     dicom_files.append(os.path.join(path, file))
@@ -1430,9 +1432,7 @@ class MONAILabelWidget(ScriptedLoadableModuleWidget, VTKObservationMixin):
                 # if includeDicomFilesCheckBox is marked, save original dicom files on the client
                 if slicer.util.settingsValue("MONAILabel/includeDicomFiles", False, converter=slicer.util.toBool):
                     dcm_filenames = self.get_dicom_files()
-                    report_progress_increment = round(
-                        last_report_progress / len(dcm_filenames), 1
-                    )
+                    report_progress_increment = round(last_report_progress / len(dcm_filenames), 1)
                     for dcm_fullpath in dcm_filenames:
                         dcm_filename = dcm_fullpath.split("/")[-1]
                         dcm_filename = ".".join(dcm_filename.split(".")[:-1])
@@ -1588,7 +1588,7 @@ class MONAILabelWidget(ScriptedLoadableModuleWidget, VTKObservationMixin):
         if self.current_sample.get("session"):
             if not self.onUploadImage(init_sample=False):
                 return
-        
+
         start = time.time()
         result_file = None
         try:
