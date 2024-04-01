@@ -1585,6 +1585,10 @@ class MONAILabelWidget(ScriptedLoadableModuleWidget, VTKObservationMixin):
         if not self.current_sample:
             return
 
+        if self.current_sample.get("session"):
+            if not self.onUploadImage(init_sample=False):
+                return
+        
         start = time.time()
         result_file = None
         try:
