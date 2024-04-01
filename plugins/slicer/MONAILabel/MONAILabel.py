@@ -190,6 +190,17 @@ class _ui_MONAILabelSettingsPanel:
             str(qt.SIGNAL("valueAsIntChanged(int)")),
         )
 
+        includeDicomFilesCheckBox = qt.QCheckBox()
+        includeDicomFilesCheckBox.checked = False
+        includeDicomFilesCheckBox.toolTip = _("Enable this option to include dicom files in server-client data exchange")
+        groupLayout.addRow(_("Include DICOM files:"), includeDicomFilesCheckBox)
+        parent.registerProperty(
+            "MONAILabel/includeDicomFiles",
+            ctk.ctkBooleanMapper(includeDicomFilesCheckBox, "checked", str(qt.SIGNAL("toggled(bool)"))),
+            "valueAsInt",
+            str(qt.SIGNAL("valueAsIntChanged(int)")),
+        )
+
         vBoxLayout.addWidget(groupBox)
         vBoxLayout.addStretch(1)
 
