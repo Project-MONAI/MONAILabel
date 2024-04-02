@@ -140,9 +140,11 @@ class BundleTrainTask(TrainTask):
             "val_split": 0.2,  # VALIDATION SPLIT; -1 TO USE DEFAULT FROM BUNDLE
             "multi_gpu": True,  # USE MULTI-GPU
             "gpus": "all",  # COMMA SEPARATE DEVICE INDEX
-            "tracking": ["mlflow", "None"]
-            if self.enable_tracking and settings.MONAI_LABEL_TRACKING_ENABLED
-            else ["None", "mlflow"],
+            "tracking": (
+                ["mlflow", "None"]
+                if self.enable_tracking and settings.MONAI_LABEL_TRACKING_ENABLED
+                else ["None", "mlflow"]
+            ),
             "tracking_uri": settings.MONAI_LABEL_TRACKING_URI,
             "tracking_experiment_name": "",
             "run_id": "",  # bundle run id, if different from default
