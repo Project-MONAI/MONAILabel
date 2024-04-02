@@ -273,9 +273,9 @@ def add_scribbles_from_roi(scribbles, roi, scribbles_fg_label, scribbles_bg_labe
         cz = int((roi[4] + roi[5]) / 2)
 
         # add scribbles at center of roi
-        scribbles[
-            :, cx - offset : cx + offset, cy - offset : cy + offset, cz - offset : cz + offset
-        ] = scribbles_fg_label
+        scribbles[:, cx - offset : cx + offset, cy - offset : cy + offset, cz - offset : cz + offset] = (
+            scribbles_fg_label
+        )
 
     return scribbles
 

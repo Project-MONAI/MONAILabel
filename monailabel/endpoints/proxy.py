@@ -50,11 +50,11 @@ async def proxy_dicom(request: Request, op: str, path: str):
     prefix = (
         settings.MONAI_LABEL_WADO_PREFIX
         if op == "wado"
-        else settings.MONAI_LABEL_QIDO_PREFIX
-        if op == "qido"
-        else settings.MONAI_LABEL_STOW_PREFIX
-        if op == "stow"
-        else ""
+        else (
+            settings.MONAI_LABEL_QIDO_PREFIX
+            if op == "qido"
+            else settings.MONAI_LABEL_STOW_PREFIX if op == "stow" else ""
+        )
     )
 
     # some version of ohif requests metadata using qido so change it to wado

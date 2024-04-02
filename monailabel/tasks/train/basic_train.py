@@ -235,11 +235,15 @@ class BasicTrainTask(TrainTask):
         dataset = (
             CacheDataset(datalist, transforms)
             if context.dataset_type == "CacheDataset"
-            else SmartCacheDataset(datalist, transforms, replace_rate)
-            if context.dataset_type == "SmartCacheDataset"
-            else PersistentDataset(datalist, transforms, cache_dir=os.path.join(context.cache_dir, "pds"))
-            if context.dataset_type == "PersistentDataset"
-            else Dataset(datalist, transforms)
+            else (
+                SmartCacheDataset(datalist, transforms, replace_rate)
+                if context.dataset_type == "SmartCacheDataset"
+                else (
+                    PersistentDataset(datalist, transforms, cache_dir=os.path.join(context.cache_dir, "pds"))
+                    if context.dataset_type == "PersistentDataset"
+                    else Dataset(datalist, transforms)
+                )
+            )
         )
         return dataset, datalist
 
@@ -681,9 +685,9 @@ class BasicTrainTask(TrainTask):
                     save_final=True,
                     final_filename=self._final_filename,
                     save_key_metric=True,
-                    key_metric_filename=f"train_{self._key_metric_filename}"
-                    if context.evaluator
-                    else self._key_metric_filename,
+                    key_metric_filename=(
+                        f"train_{self._key_metric_filename}" if context.evaluator else self._key_metric_filename
+                    ),
                     n_saved=self._n_saved,
                 )
             )

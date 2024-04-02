@@ -17,7 +17,7 @@ fastapi==0.95.0
 python-multipart==0.0.6
 httpx==0.23.3
 schedule==1.1.0
-dicomweb-client==0.59.1
+dicomweb-client[gcp]==0.59.1
 timeloop==1.0.2
 expiringdict==1.2.2
 expiring_dict==1.1.0
