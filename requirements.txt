@@ -11,10 +11,10 @@
 
 monai[nibabel, skimage, pillow, tensorboard, gdown, ignite, torchvision, itk, tqdm, lmdb, psutil, openslide, fire, mlflow]>=1.3.0
 uvicorn==0.21.1
-pydantic>=1.10.7,<=2.5.3
+pydantic>=1.10.7,<2.0.0
 python-dotenv==1.0.0
-fastapi==0.95.0
-python-multipart==0.0.6
+fastapi==0.110.0
+python-multipart==0.0.9
 httpx==0.23.3
 schedule==1.1.0
 dicomweb-client[gcp]==0.59.1
@@ -42,5 +42,7 @@ requests
 requests-toolbelt
 scikit-learn
 scipy
+google-auth>=1.6.3
+
 
 #sudo apt-get install openslide-tools -y
