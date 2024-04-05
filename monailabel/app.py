@@ -18,6 +18,7 @@ from fastapi.middleware.cors import CORSMiddleware
 from fastapi.openapi.docs import get_swagger_ui_html
 from fastapi.responses import FileResponse, HTMLResponse
 from fastapi.staticfiles import StaticFiles
+from starlette.middleware.base import BaseHTTPMiddleware
 
 from monailabel.config import settings
 from monailabel.endpoints import (
@@ -37,20 +38,21 @@ from monailabel.endpoints import (
     wsi_infer,
 )
 from monailabel.interfaces.utils.app import app_instance, clear_cache
-from starlette.middleware.base import BaseHTTPMiddleware
+
 
 class TrailingSlashMiddleware(BaseHTTPMiddleware):
     async def dispatch(self, request: Request, call_next):
         path = str(request.url.path)
-        new_path = f"/{path}" if not path.startswith('//') else path
-        request.scope['path'] = new_path
+        new_path = f"/{path}" if not path.startswith("//") else path
+        request.scope["path"] = new_path
         response = await call_next(request)
 
         if response.status_code != 200 and new_path.startswith("//"):
             new_path = path
-            request.scope['path'] = new_path
+            request.scope["path"] = new_path
             response = await call_next(request)
         return response
+
 
 origins = [str(origin) for origin in settings.MONAI_LABEL_CORS_ORIGINS] if settings.MONAI_LABEL_CORS_ORIGINS else ["*"]
 print(f"Allow Origins: {origins}")
