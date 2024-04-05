@@ -45,6 +45,11 @@ class TrailingSlashMiddleware(BaseHTTPMiddleware):
         new_path = f"/{path}" if not path.startswith('//') else path
         request.scope['path'] = new_path
         response = await call_next(request)
+
+        if response.status_code != 200 and new_path.startswith("//"):
+            new_path = path
+            request.scope['path'] = new_path
+            response = await call_next(request)
         return response
 
 origins = [str(origin) for origin in settings.MONAI_LABEL_CORS_ORIGINS] if settings.MONAI_LABEL_CORS_ORIGINS else ["*"]

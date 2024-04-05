@@ -21,7 +21,7 @@ class EndPointScoring(BasicEndpointTestSuite):
         if not torch.cuda.is_available():
             return
 
-        model = "deepedit_seg"
+        model = "deepedit"
         images = "labeled"
         response = self.client.post(f"/batch/infer/{model}?images={images}&run_sync=true")
         assert response.status_code == 200
@@ -36,7 +36,7 @@ class EndPointScoring(BasicEndpointTestSuite):
         if not torch.cuda.is_available():
             return
 
-        model = "deepedit_seg"
+        model = "deepedit"
         images = "all"
         params = {"max_workers": 2}
         response = self.client.post(f"/batch/infer/{model}?images={images}&run_sync=true", json=params)
