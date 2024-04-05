@@ -12,7 +12,7 @@
 import os
 import pathlib
 
-from fastapi import FastAPI
+from fastapi import FastAPI, Request
 from fastapi.middleware import Middleware
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.openapi.docs import get_swagger_ui_html
@@ -37,6 +37,15 @@ from monailabel.endpoints import (
     wsi_infer,
 )
 from monailabel.interfaces.utils.app import app_instance, clear_cache
+from starlette.middleware.base import BaseHTTPMiddleware
+
+class TrailingSlashMiddleware(BaseHTTPMiddleware):
+    async def dispatch(self, request: Request, call_next):
+        path = str(request.url.path)
+        new_path = f"/{path}" if not path.startswith('//') else path
+        request.scope['path'] = new_path
+        response = await call_next(request)
+        return response
 
 origins = [str(origin) for origin in settings.MONAI_LABEL_CORS_ORIGINS] if settings.MONAI_LABEL_CORS_ORIGINS else ["*"]
 print(f"Allow Origins: {origins}")
@@ -56,6 +65,7 @@ app = FastAPI(
         )
     ],
 )
+app.add_middleware(TrailingSlashMiddleware)
 
 static_dir = os.path.join(os.path.dirname(os.path.realpath(__file__)), "endpoints", "static")
 project_root_absolute = pathlib.Path(__file__).parent.parent.resolve()
