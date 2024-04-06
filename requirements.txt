@@ -13,7 +13,7 @@ monai[nibabel, skimage, pillow, tensorboard, gdown, ignite, torchvision, itk, tq
 uvicorn==0.21.1
 pydantic>=1.10.7,<2.0.0
 python-dotenv==1.0.0
-fastapi==0.110.0
+fastapi==0.95.0
 python-multipart==0.0.9
 httpx==0.23.3
 schedule==1.1.0
