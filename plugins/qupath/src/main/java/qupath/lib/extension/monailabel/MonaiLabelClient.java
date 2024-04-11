@@ -19,6 +19,7 @@ import java.io.IOException;
 import java.io.InputStream;
 import java.lang.reflect.Type;
 import java.net.URLEncoder;
+import java.nio.charset.StandardCharsets;
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.HashMap;
@@ -190,7 +191,7 @@ public class MonaiLabelClient {
 
 		DocumentBuilderFactory factory = DocumentBuilderFactory.newInstance();
 		DocumentBuilder builder = factory.newDocumentBuilder();
-		InputStream inputStream = new ByteArrayInputStream(response.getBytes());
+		InputStream inputStream = new ByteArrayInputStream(response.getBytes(StandardCharsets.UTF_8));
 		Document dom = builder.parse(inputStream);
 		return dom;
 	}
