@@ -62,7 +62,7 @@ class Main:
         parser.add_argument("--workers", default=None, type=int, help="Number of worker processes")
         parser.add_argument("--limit_concurrency", default=None, type=int, help="Max concurrent connections")
         parser.add_argument("--access_log", action="store_true", help="Enable access log")
-        parser.add_argument("--root_path", default="/", help="Application root path")
+        parser.add_argument("--root_path", default="", help="Application root path")
         parser.add_argument("--log_level", default="info", help="Log level")
 
         parser.add_argument("-l", "--log_config", default=None, type=str, help="Logging config")
