@@ -121,7 +121,7 @@ function clean_py() {
   rm -rf monailabel/endpoints/static/ohif
   rm -rf pytest.log
   rm -rf htmlcov
-  rm -rf coverage.xml
+  rm -rf coverage.xml .coverage*
   rm -rf junit
   rm -rf docs/build/
   rm -rf docs/source/apidocs/
@@ -130,6 +130,7 @@ function clean_py() {
   rm -rf .env
 
   find sample-apps/*/model -type f -not -name *.zip -not -name .gitignore -exec rm -rf "{}" +
+  find sample-apps/* -type d -empty -exec rm -rf "{}" +
   find sample-apps/* -type d -empty -exec rm -rf "{}" +
   find sample-apps/* -type d -empty -exec rm -rf "{}" +
 
