@@ -15,12 +15,12 @@ project(MONAILabel)
 
 #-----------------------------------------------------------------------------
 # Extension meta-information
-set(EXTENSION_HOMEPAGE "https://github.com/Project-MONAI/MONAILabel/tree/main/plugins/slicer/MONAILabel")
+set(EXTENSION_HOMEPAGE "https://github.com/Project-MONAI/MONAILabel/tree/main/plugins/slicer")
 set(EXTENSION_CATEGORY "Active Learning")
-set(EXTENSION_CONTRIBUTORS "NVIDIA, KCL")
-set(EXTENSION_DESCRIPTION "This is Active Learning solution developed under project MONAILabel")
+set(EXTENSION_CONTRIBUTORS "Sachidanand Alle (NVIDIA), Andres Diaz-Pinto (KCL), Alvin Ihsani (NVIDIA), Fernando Perez-Garcia (UCL/KCL)")
+set(EXTENSION_DESCRIPTION "This extension offers Active Learning solution developed under project MONAILabel (Powered by the NVIDIA, KCL).")
 set(EXTENSION_ICONURL "https://github.com/Project-MONAI/MONAILabel/raw/main/plugins/slicer/MONAILabel/Resources/Icons/MONAILabel.png")
-set(EXTENSION_SCREENSHOTURLS "https://github.com/Project-MONAI/MONAILabel/raw/main/plugins/slicer/MONAILabel/Screenshots/1.png https://github.com/Project-MONAI/MONAILabel/raw/main/plugins/slicer/MONAILabel/Screenshots/2.png")
+set(EXTENSION_SCREENSHOTURLS "https://github.com/Project-MONAI/MONAILabel/raw/main/plugins/slicer/MONAILabel/Screenshots/1.png https://github.com/Project-MONAI/MONAILabel/raw/main/plugins/slicer/MONAILabel/Screenshots/2.png https://github.com/Project-MONAI/MONAILabel/raw/main/plugins/slicer/MONAILabel/Screenshots/3.png")
 set(EXTENSION_DEPENDS "NA") # Specified as a list or "NA" if no dependencies
 
 #-----------------------------------------------------------------------------
