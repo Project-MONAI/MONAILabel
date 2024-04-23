@@ -27,6 +27,7 @@ class EndPointInfer(unittest.TestCase):
         response = requests.post(f"{SERVER_URI}/infer/{model}?image={image}")
         assert response.status_code == 200
 
+    @unittest.skip("Skipped BTCV Bundle")
     def test_segmentation(self):
         if not torch.cuda.is_available():
             return
@@ -37,7 +38,8 @@ class EndPointInfer(unittest.TestCase):
         response = requests.post(f"{SERVER_URI}/infer/{model}?image={image}")
         assert response.status_code == 200
 
-    def disabled_test_segmentation_pancreas(self):
+    @unittest.skip("Skipped DINTS Bundle")
+    def test_segmentation_pancreas(self):
         if not torch.cuda.is_available():
             return
 
@@ -47,6 +49,7 @@ class EndPointInfer(unittest.TestCase):
         response = requests.post(f"{SERVER_URI}/infer/{model}?image={image}")
         assert response.status_code == 200
 
+    @unittest.skip("Skipped DeepEdit Bundle")
     def test_deepedit(self):
         if not torch.cuda.is_available():
             return

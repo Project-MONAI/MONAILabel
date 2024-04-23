@@ -44,7 +44,6 @@ The MONAIBundle App currently supports most labeling models in the Model-Zoo. Yo
 | [lung_nodule_ct_detection](https://github.com/Project-MONAI/model-zoo/tree/dev/models/lung_nodule_ct_detection) | RetinaNet | Lung Nodule| CT | The detection model for 3D CT images |
 | [wholeBody_ct_segmentation](https://github.com/Project-MONAI/model-zoo/tree/dev/models/wholeBody_ct_segmentation) | SegResNet | 104 body structures| CT | The segmentation model for 104 tissue from 3D CT images (TotalSegmentator Dataset) |
 
-**Note:** The MONAIBundle app uses the MONAI Bundle API to retrieve information about the latest models from the Model-Zoo. If you're encountering rate limiting issues while using the app, you can input your personal access token using the --conf auth_token command. For more information on rate limiting and how to generate an access token, please refer to the following link: https://docs.github.com/en/rest/overview/resources-in-the-rest-api#rate-limiting
 
 ### How To Use the App
 
@@ -162,8 +161,6 @@ monailabel datasets --download --name Task06_Lung --output datasets
 All models, datasets, and plugins are ready, start the MONAI Label server and open 3D Slicer to annotate!
 
 ```bash
-# the MONAI Bundle app requires access to MODEL ZOO, please set the authentication token first.
-export MONAI_ZOO_AUTH_TOKEN=<Your github auth token>
 # 1: Use LUNA16 sample data
 monailabel start_server --app apps/monaibundle --studies datasets/Task06_Lung/imagesTr --conf models lung_nodule_ct_detection
 # 2: Use Task06_Lung data for inference demonstration

@@ -61,4 +61,4 @@ async def access_token(form_data: OAuth2PasswordRequestForm = Depends()):
 
 @router.get("/token/valid", summary="Check If current token is Valid")
 async def valid_token(user: User = Depends(get_current_user)):
-    return user.dict()
+    return user.model_dump()
