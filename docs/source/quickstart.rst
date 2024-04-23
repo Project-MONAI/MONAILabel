@@ -394,8 +394,6 @@ On the local machine follow the commands listed below to install MONAI Label, an
   monailabel datasets --download --name Task09_Spleen --output .
 
   # start the bundle app in MONAI label server
-  # the MONAI Bundle app requires access to MODEL ZOO, please set the authentication token first.
-  export MONAI_ZOO_AUTH_TOKEN=<Your github auth token>
   # and start annotating the images using bundle with the Swin UNETR bundle
   monailabel start_server --app monaibundle --studies Task09_Spleen/imagesTr --conf models swin_unetr_btcv_segmentation
 
@@ -450,7 +448,6 @@ Prerequisite: Check Model Zoo `Release <https://github.com/Project-MONAI/model-z
 
   # Step 4: start the bundle app in MONAI label server
   # the MONAI Bundle app requires access to MODEL ZOO, please set the authentication token first.
-  export MONAI_ZOO_AUTH_TOKEN=<Your github auth token>
   monailabel start_server --app monaibundle --studies Task09_Spleen/imagesTr --conf models renalStructures_UNEST_segmentation
 
 
