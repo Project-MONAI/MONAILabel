@@ -38,7 +38,8 @@ passlib==1.7.4
 python-jose[cryptography]==3.3.0
 bcrypt==4.0.1
 shapely==2.0.1
-requests
+requests==2.31.0
+urllib3==1.26.11
 requests-toolbelt
 scikit-learn
 scipy

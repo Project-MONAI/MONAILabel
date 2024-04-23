@@ -255,22 +255,11 @@ def is_openslide_supported(name):
 
 def get_zoo_bundle(model_dir, conf, models, conf_key):
     zoo_repo = conf.get("zoo_repo", settings.MONAI_ZOO_REPO)
-    auth_token = conf.get("auth_token", settings.MONAI_ZOO_AUTH_TOKEN)
-    auth_token = auth_token if auth_token else None
-    try:
-        zoo_info = get_all_bundles_list(auth_token=auth_token)
-    except:
-        print("")
-        print("---------------------------------------------------------------------------------------")
-        print(
-            "Github access rate limit reached, please provide personal auth token by setting env MONAI_ZOO_AUTH_TOKEN"
-        )
-        print("or --conf auth_token <personal auth token>")
-        exit(-1)
+    zoo_info = get_all_bundles_list()
 
     # filter model zoo bundle with MONAI Label supported bundles according to the maintaining list, return all version bundles list
     available = [i[0] for i in zoo_info if i[0] in MAINTAINED_BUNDLES]
-    available_with_version = {b: get_bundle_versions(b, auth_token=auth_token)["all_versions"] for b in available}
+    available_with_version = {b: get_bundle_versions(b)["all_versions"] for b in available}
 
     available_both = available + [k + "_v" + v for k, versions in available_with_version.items() for v in versions]
 
@@ -316,7 +305,7 @@ def get_zoo_bundle(model_dir, conf, models, conf_key):
             if not os.path.exists(p):
                 name = k if k in available else version_to_name.get(k)
                 version = None if k in available else name_to_version.get(k)
-                download(name=name, version=version, bundle_dir=model_dir, source="github", repo=zoo_repo)
+                download(name=name, version=version, bundle_dir=model_dir, source="monaihosting", repo=zoo_repo)
                 if version:
                     shutil.move(os.path.join(model_dir, name), p)
         bundles[k] = p
@@ -350,7 +339,7 @@ def get_bundle_models(app_dir, conf, conf_key="models"):
     models = models.split(",")
     models = [m.strip() for m in models]
 
-    if zoo_source == "github":  # if in github env, access model zoo
+    if zoo_source == "monaihosting":  # if in github env, access model zoo
         bundles = get_zoo_bundle(model_dir, conf, models, conf_key)
     else:  # if not in github env, no "model zoo" access, users either provide bundles locally, or auto download with latest
         bundles: Dict[str, str] = {}
