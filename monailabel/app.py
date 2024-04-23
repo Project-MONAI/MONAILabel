@@ -11,6 +11,7 @@
 
 import os
 import pathlib
+from contextlib import asynccontextmanager
 
 from fastapi import FastAPI
 from fastapi.middleware import Middleware
@@ -41,11 +42,24 @@ from monailabel.interfaces.utils.app import app_instance, clear_cache
 origins = [str(origin) for origin in settings.MONAI_LABEL_CORS_ORIGINS] if settings.MONAI_LABEL_CORS_ORIGINS else ["*"]
 print(f"Allow Origins: {origins}")
 
+
+@asynccontextmanager
+async def lifespan(app: FastAPI):
+    print("App Init...")
+    instance = app_instance()
+    instance.server_mode(True)
+    instance.on_init_complete()
+
+    yield
+    print("App Shutdown...")
+
+
 app = FastAPI(
     title=settings.MONAI_LABEL_PROJECT_NAME,
     openapi_url="/openapi.json",
     docs_url=None,
     redoc_url="/docs",
+    lifespan=lifespan,
     middleware=[
         Middleware(
             CORSMiddleware,
@@ -101,10 +115,3 @@ async def favicon():
 def reload():
     clear_cache()
     return {}
-
-
-@app.on_event("startup")
-async def startup_event():
-    instance = app_instance()
-    instance.server_mode(True)
-    instance.on_init_complete()

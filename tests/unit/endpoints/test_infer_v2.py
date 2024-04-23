@@ -57,7 +57,6 @@ class TestBundleInferTask(BasicBundleTestSuite):
 
 
 class TestDetectionBundleInferTask(BasicDetectionBundleTestSuite):
-    @unittest.skip("Bundle needs to be fixed for EnsureChannelFirstd init Arguments")
     def test_lung_nodule_detector_infer(self):
         if not torch.cuda.is_available():
             return

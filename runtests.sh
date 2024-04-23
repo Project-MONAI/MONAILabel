@@ -115,16 +115,13 @@ function install_deps() {
 }
 
 function clean_py() {
-  TO_CLEAN="$(cd "$(dirname "${BASH_SOURCE[0]}")" >/dev/null 2>&1 && pwd)"
-  echo "Removing temporary files in ${TO_CLEAN}"
-
   rm -rf sample-apps/*/logs
   rm -rf sample-apps/*/.venv
   rm -rf sample-apps/*/bin
   rm -rf monailabel/endpoints/static/ohif
   rm -rf pytest.log
   rm -rf htmlcov
-  rm -rf coverage.xml
+  rm -rf coverage.xml .coverage*
   rm -rf junit
   rm -rf docs/build/
   rm -rf docs/source/apidocs/
@@ -135,26 +132,14 @@ function clean_py() {
   find sample-apps/*/model -type f -not -name *.zip -not -name .gitignore -exec rm -rf "{}" +
   find sample-apps/* -type d -empty -exec rm -rf "{}" +
   find sample-apps/* -type d -empty -exec rm -rf "{}" +
+  find sample-apps/* -type d -empty -exec rm -rf "{}" +
 
   rm -rf tests/data/*
+  rm -rf build
+  rm -rf dist
 
-  find ${TO_CLEAN} -type f -name "*.py[co]" -delete
-  find ${TO_CLEAN} -type f -name "*.so" -delete
-  find ${TO_CLEAN} -type d -name "__pycache__" -delete
-  find ${TO_CLEAN} -type d -name ".pytest_cache" -exec rm -r "{}" +
-  find ${TO_CLEAN} -maxdepth 1 -type f -name ".coverage.*" -delete
-
-  find ${TO_CLEAN} -type d -name "node_modules" -exec rm -rf "{}" +
-  find ${TO_CLEAN} -type d -name ".gradle" -exec rm -rf "{}" +
-
-  find ${TO_CLEAN} -depth -maxdepth 1 -type d -name ".eggs" -exec rm -r "{}" +
-  find ${TO_CLEAN} -depth -maxdepth 1 -type d -name "monailabel.egg-info" -exec rm -r "{}" +
-  find ${TO_CLEAN} -depth -maxdepth 1 -type d -name "build" -exec rm -r "{}" +
-  find ${TO_CLEAN} -depth -maxdepth 1 -type d -name "dist" -exec rm -r "{}" +
-  find ${TO_CLEAN} -depth -maxdepth 1 -type d -name ".mypy_cache" -exec rm -r "{}" +
-  find ${TO_CLEAN} -depth -maxdepth 1 -type d -name ".pytype" -exec rm -r "{}" +
-  find ${TO_CLEAN} -depth -maxdepth 1 -type d -name ".coverage" -exec rm -r "{}" +
-  find ${TO_CLEAN} -depth -maxdepth 1 -type d -name "__pycache__" -exec rm -r "{}" +
+  find sample-apps -type d -name "__pycache__" -exec rm -rf "{}" +
+  find monailabel  -type d -name "__pycache__" -exec rm -rf "{}" +
 }
 
 function torch_validate() {
@@ -473,7 +458,7 @@ function run_integration_tests() {
 if [ $doNetTests = true ]; then
   run_integration_tests "radiology" "tests/data/dataset/local/spleen" "deepedit,segmentation_spleen,segmentation,deepgrow_2d,deepgrow_3d" "."
   run_integration_tests "pathology" "tests/data/pathology" "segmentation_nuclei,nuclick,classification_nuclei" "."
-  #run_integration_tests "monaibundle" "tests/data/dataset/local/spleen" "spleen_ct_segmentation,spleen_deepedit_annotation,swin_unetr_btcv_segmentation" "bundles"
+  run_integration_tests "monaibundle" "tests/data/dataset/local/spleen" "spleen_ct_segmentation" "bundles"
   run_integration_tests "endoscopy" "tests/data/endoscopy" "tooltracking,inbody,deepedit" "."
-  #run_integration_tests "monaibundle" "tests/data/detection" "lung_nodule_ct_detection" "detection"
+  run_integration_tests "monaibundle" "tests/data/detection" "lung_nodule_ct_detection" "detection"
 fi
