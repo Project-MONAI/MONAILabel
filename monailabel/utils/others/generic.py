@@ -316,6 +316,14 @@ def get_zoo_bundle(model_dir, conf, models, conf_key):
             if not os.path.exists(p):
                 name = k if k in available else version_to_name.get(k)
                 version = None if k in available else name_to_version.get(k)
+                if not version:
+                    repo_owner, repo_name, tag_name = zoo_repo.split("/")
+                    version = get_bundle_versions(
+                        name,
+                        repo=f"{repo_owner}/{repo_name}",
+                        tag=tag_name,
+                        auth_token=auth_token,
+                    )["latest_version"]
                 download(name=name, version=version, bundle_dir=model_dir, source="github", repo=zoo_repo)
                 if version:
                     shutil.move(os.path.join(model_dir, name), p)

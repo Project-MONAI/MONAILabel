@@ -12,7 +12,8 @@
 import os
 from typing import Any, Dict, List, Optional
 
-from pydantic import AnyHttpUrl, BaseSettings
+from pydantic import AnyHttpUrl
+from pydantic_settings import BaseSettings
 
 
 class Settings(BaseSettings):
@@ -21,7 +22,7 @@ class Settings(BaseSettings):
 
     MONAI_LABEL_APP_DIR: str = ""
     MONAI_LABEL_STUDIES: str = ""
-    MONAI_LABEL_APP_CONF: Dict[str, str] = {}
+    MONAI_LABEL_APP_CONF: Dict[str, Any] = {}
 
     MONAI_LABEL_AUTH_ENABLE: bool = False
     MONAI_LABEL_AUTH_REALM_URI: str = "http://localhost:8080/realms/monailabel"
@@ -82,7 +83,7 @@ class Settings(BaseSettings):
     MONAI_LABEL_SERVER_PORT: int = 8000
     MONAI_LABEL_CORS_ORIGINS: List[AnyHttpUrl] = []
 
-    MONAI_LABEL_AUTO_UPDATE_SCORING = True
+    MONAI_LABEL_AUTO_UPDATE_SCORING: bool = True
 
     MONAI_LABEL_SESSIONS: bool = True
     MONAI_LABEL_SESSION_PATH: str = ""
@@ -100,6 +101,7 @@ class Settings(BaseSettings):
     class Config:
         env_file = ".env"
         case_sensitive = True
+        extra = "ignore"
 
 
 settings = Settings()

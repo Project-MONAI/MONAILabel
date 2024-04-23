@@ -115,9 +115,6 @@ function install_deps() {
 }
 
 function clean_py() {
-  TO_CLEAN="$(cd "$(dirname "${BASH_SOURCE[0]}")" >/dev/null 2>&1 && pwd)"
-  echo "Removing temporary files in ${TO_CLEAN}"
-
   rm -rf sample-apps/*/logs
   rm -rf sample-apps/*/.venv
   rm -rf sample-apps/*/bin
@@ -137,24 +134,11 @@ function clean_py() {
   find sample-apps/* -type d -empty -exec rm -rf "{}" +
 
   rm -rf tests/data/*
+  rm -rf build
+  rm -rf dist
 
-  find ${TO_CLEAN} -type f -name "*.py[co]" -delete
-  find ${TO_CLEAN} -type f -name "*.so" -delete
-  find ${TO_CLEAN} -type d -name "__pycache__" -delete
-  find ${TO_CLEAN} -type d -name ".pytest_cache" -exec rm -r "{}" +
-  find ${TO_CLEAN} -maxdepth 1 -type f -name ".coverage.*" -delete
-
-  find ${TO_CLEAN} -type d -name "node_modules" -exec rm -rf "{}" +
-  find ${TO_CLEAN} -type d -name ".gradle" -exec rm -rf "{}" +
-
-  find ${TO_CLEAN} -depth -maxdepth 1 -type d -name ".eggs" -exec rm -r "{}" +
-  find ${TO_CLEAN} -depth -maxdepth 1 -type d -name "monailabel.egg-info" -exec rm -r "{}" +
-  find ${TO_CLEAN} -depth -maxdepth 1 -type d -name "build" -exec rm -r "{}" +
-  find ${TO_CLEAN} -depth -maxdepth 1 -type d -name "dist" -exec rm -r "{}" +
-  find ${TO_CLEAN} -depth -maxdepth 1 -type d -name ".mypy_cache" -exec rm -r "{}" +
-  find ${TO_CLEAN} -depth -maxdepth 1 -type d -name ".pytype" -exec rm -r "{}" +
-  find ${TO_CLEAN} -depth -maxdepth 1 -type d -name ".coverage" -exec rm -r "{}" +
-  find ${TO_CLEAN} -depth -maxdepth 1 -type d -name "__pycache__" -exec rm -r "{}" +
+  find sample-apps -type d -name "__pycache__" -exec rm -rf "{}" +
+  find monailabel  -type d -name "__pycache__" -exec rm -rf "{}" +
 }
 
 function torch_validate() {
