@@ -42,11 +42,12 @@ shapely==2.0.4
 requests==2.31.0
 requests-toolbelt==1.0.0
 urllib3==2.2.1
-scikit-learn==1.4.2
-scipy==1.13.0
+scikit-learn
+scipy
 google-auth==2.29.0
 
 
+# scipy and scikit-learn latest packages are missing on python 3.8
 # sudo apt-get install openslide-tools -y
 
 # How to auto update versions?
