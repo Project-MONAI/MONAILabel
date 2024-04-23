@@ -458,7 +458,7 @@ function run_integration_tests() {
 if [ $doNetTests = true ]; then
   run_integration_tests "radiology" "tests/data/dataset/local/spleen" "deepedit,segmentation_spleen,segmentation,deepgrow_2d,deepgrow_3d" "."
   run_integration_tests "pathology" "tests/data/pathology" "segmentation_nuclei,nuclick,classification_nuclei" "."
-  #run_integration_tests "monaibundle" "tests/data/dataset/local/spleen" "spleen_ct_segmentation,spleen_deepedit_annotation,swin_unetr_btcv_segmentation" "bundles"
+  run_integration_tests "monaibundle" "tests/data/dataset/local/spleen" "spleen_ct_segmentation" "bundles"
   run_integration_tests "endoscopy" "tests/data/endoscopy" "tooltracking,inbody,deepedit" "."
-  #run_integration_tests "monaibundle" "tests/data/detection" "lung_nodule_ct_detection" "detection"
+  run_integration_tests "monaibundle" "tests/data/detection" "lung_nodule_ct_detection" "detection"
 fi

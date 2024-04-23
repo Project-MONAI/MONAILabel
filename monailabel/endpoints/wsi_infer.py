@@ -96,7 +96,7 @@ def run_wsi_inference(
 
     config = instance.info().get("config", {}).get("infer", {})
     request.update(config)
-    request.update(wsi.dict(exclude={"params"}))
+    request.update(wsi.model_dump(exclude={"params"}))
     if wsi.params:
         request.update(wsi.params)
 
@@ -139,7 +139,7 @@ async def api_run_wsi_v2_inference(
     image: str = "",
     session_id: str = "",
     file: UploadFile = File(None),
-    wsi: str = Form(WSIInput().json()),
+    wsi: str = Form(WSIInput().model_dump_json()),
     output: Optional[ResultType] = None,
     user: User = Depends(RBAC(settings.MONAI_LABEL_AUTH_ROLE_USER)),
 ):

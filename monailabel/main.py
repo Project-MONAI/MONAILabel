@@ -290,7 +290,7 @@ class Main:
             "MONAI_LABEL_DATASTORE_PASSWORD",
             "MONAI_LABEL_DATASTORE_API_KEY",
         ]
-        for k, v in settings.dict().items():
+        for k, v in settings.model_dump().items():
             v = f"'{json.dumps(v)}'" if isinstance(v, list) or isinstance(v, dict) else v
             logger.debug(f"ENV SETTINGS:: {k} = {'*' * len(v) if k in sensitive else v}")
         logger.info("")
@@ -316,7 +316,7 @@ class Main:
         if args.dryrun:
             export_key = "set " if any(platform.win32_ver()) else "export "
             with open("env.bat" if any(platform.win32_ver()) else ".env", "w") as f:
-                for k, v in settings.dict().items():
+                for k, v in settings.model_dump().items():
                     v = f"'{json.dumps(v)}'" if isinstance(v, list) or isinstance(v, dict) else v
                     e = f"{export_key}{k}={v}"
                     f.write(e)
@@ -338,7 +338,7 @@ class Main:
             logger.debug("**********************************************************")
             logger.debug("                  ENV VARIABLES/SETTINGS                  ")
             logger.debug("**********************************************************")
-            for k, v in settings.dict().items():
+            for k, v in settings.model_dump().items():
                 if isinstance(v, list) or isinstance(v, dict):
                     v = json.dumps(v)
                 elif v is not None:
