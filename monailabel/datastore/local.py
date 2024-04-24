@@ -398,7 +398,7 @@ class LocalDatastore(Datastore):
                         path = d[key]
                         archive.write(path, arcname=os.path.join(key, os.path.basename(path)))
                 # add metadata
-                datastore_metadata: str = self._datastore.json(exclude={"base_path"})
+                datastore_metadata: str = self._datastore.model_dump_json(exclude={"base_path"})
                 archive.writestr("metadata.json", datastore_metadata)
 
             assert archive.filename is not None, "ZIP archive could not be created"
@@ -670,7 +670,8 @@ class LocalDatastore(Datastore):
                     ts = os.stat(self._datastore_config_path).st_mtime
                     if self._config_ts != ts:
                         logger.debug(f"Reload Datastore; old ts: {self._config_ts}; new ts: {ts}")
-                        self._datastore = LocalDatastoreModel.parse_file(self._datastore_config_path)
+                        with open(self._datastore_config_path) as fp:
+                            self._datastore = LocalDatastoreModel.model_validate_json(fp.read())
                         self._datastore.base_path = self._datastore_path
                         self._config_ts = ts
             logger.debug("Release the Lock...")
@@ -684,7 +685,7 @@ class LocalDatastore(Datastore):
             logger.debug("+++ Datastore is updated...")
             self._ignore_event_config = True
             with open(self._datastore_config_path, "w") as f:
-                f.write(json.dumps(self._datastore.dict(exclude={"base_path"}), indent=2, default=str))
+                f.write(json.dumps(self._datastore.model_dump(exclude={"base_path"}), indent=2, default=str))
             self._config_ts = os.stat(self._datastore_config_path).st_mtime
 
         if lock:
@@ -716,4 +717,4 @@ class LocalDatastore(Datastore):
         }
 
     def json(self):
-        return self._datastore.dict(exclude={"base_path"})
+        return self._datastore.model_dump(exclude={"base_path"})
