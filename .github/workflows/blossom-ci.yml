@@ -45,7 +45,6 @@ jobs:
       diazandr3s,\
       tangy5,\
       wyli,\
-      pxLi,\
       YanxuanLiu,\
       ', format('{0},', github.actor)) && github.event.comment.body == '/build'
     steps:
