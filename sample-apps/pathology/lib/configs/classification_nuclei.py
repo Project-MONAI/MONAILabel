@@ -31,7 +31,7 @@ class ClassificationNuclei(TaskConfig):
 
         bundle_name = "pathology_nuclei_classification"
         zoo_source = conf.get("zoo_source", settings.MONAI_ZOO_SOURCE)
-        version = conf.get("classification_nuclei", "0.1.4")
+        version = conf.get("classification_nuclei", "0.1.7")
 
         self.bundle_path = os.path.join(self.model_dir, bundle_name)
         if not os.path.exists(self.bundle_path):
