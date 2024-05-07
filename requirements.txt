@@ -45,6 +45,7 @@ opencv
 scikit-learn
 scipy
 google-auth==2.29.0
+opencv-python-headless==4.9.0.80
 
 
 # scipy and scikit-learn latest packages are missing on python 3.8
