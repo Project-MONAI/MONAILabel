@@ -41,6 +41,7 @@ shapely==2.0.4
 requests==2.31.0
 requests-toolbelt==1.0.0
 urllib3==2.2.1
+opencv
 scikit-learn
 scipy
 google-auth==2.29.0
