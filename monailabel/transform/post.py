@@ -30,7 +30,6 @@ from monai.utils import InterpolateMode, convert_to_numpy, ensure_tuple_rep
 from shapely.geometry import Point, Polygon
 from skimage.measure import approximate_polygon, find_contours
 from torchvision.utils import make_grid, save_image
-from monai.utils import optional_import
 
 from monailabel.utils.others.label_colors import get_color
 
@@ -225,7 +224,12 @@ class FindContoursd(MapTransform):
                     continue
                 label_name = self.labels.get(label_idx, label_idx)
                 label_names.add(label_name)
-                cv2, has_cv2 = optional_import("cv2")
+                try:
+                    import cv2
+                    has_cv2 = True
+                except ImportError:
+                    has_cv2 = False
+                    print("cv2 is not installed. Proceeding with alternative methods.")
                 if has_cv2:
                     polygons = []
                     contours, _ = cv2.findContours(p, cv2.RETR_LIST, cv2.CHAIN_APPROX_SIMPLE)

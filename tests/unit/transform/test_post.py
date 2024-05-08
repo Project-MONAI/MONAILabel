@@ -57,7 +57,12 @@ RESTORED_DATA = [
     (1, 6, 6),
 ]
 
-cv2, has_cv2 = optional_import("cv2")
+try:
+    import cv2
+    has_cv2 = True
+except ImportError:
+    has_cv2 = False
+    print("cv2 is not installed. Proceeding with alternative methods.")
 
 if has_cv2:
     FINDCONTOURSD_DATA = [
@@ -130,7 +135,6 @@ class TestFindContoursd(unittest.TestCase):
     @parameterized.expand([FINDCONTOURSD_DATA])
     def test_result(self, args, input_data, expected_output):
         res = FindContoursd(**args)(input_data)
-        print(res)
         self.assertEqual(res["result"]["annotation"]["elements"][0]["contours"], expected_output)
 
 

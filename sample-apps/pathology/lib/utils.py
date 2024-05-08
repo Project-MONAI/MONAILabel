@@ -29,7 +29,6 @@ from monailabel.datastore.dsa import DSADatastore
 from monailabel.datastore.local import LocalDatastore
 from monailabel.interfaces.datastore import Datastore
 from monailabel.utils.others.generic import get_basename, get_basename_no_ext, is_openslide_supported
-from monai.utils import optional_import
 
 logger = logging.getLogger(__name__)
 
@@ -479,8 +478,13 @@ def split_nuclei_dataset(
     mask = Image.open(d["label"])
     mask_np = np.array(mask)
     
-    cv2, has_cv2 = optional_import("cv2")
-    
+    try:
+        import cv2
+        has_cv2 = True
+    except ImportError:
+        has_cv2 = False
+        print("cv2 is not installed. Proceeding with alternative methods.")
+        
     if has_cv2:
         numLabels, instances, stats, centroids = cv2.connectedComponentsWithStats(mask_np, 4, cv2.CV_32S)
     else:    
@@ -594,8 +598,13 @@ def fill_poly(image_size, polygons, color, mode='L'):
 
 def _to_roi(points, max_region, polygons, annotation_id):
     logger.info(f"Total Points: {len(points)}")
-    cv2, has_cv2 = optional_import("cv2")
-
+    try:
+        import cv2
+        has_cv2 = True
+    except ImportError:
+        has_cv2 = False
+        print("cv2 is not installed. Proceeding with alternative methods.")
+        
     if has_cv2:
         x, y, w, h = cv2.boundingRect(np.array(points))
     else:
@@ -624,8 +633,12 @@ def _to_dataset(item_id, x, y, w, h, img, tile_size, polygons, groups, output_di
     image_np = np.asarray(img, dtype=np.uint8)
     logger.debug(f"Image NP: {image_np.shape}; sum: {np.sum(image_np)}")
     tiled_images = _region_to_tiles(name, w, h, image_np, tile_size, output_dir, "Image")
-    cv2, has_cv2 = optional_import("cv2")
-
+    try:
+        import cv2
+        has_cv2 = True
+    except ImportError:
+        has_cv2 = False
+        print("cv2 is not installed. Proceeding with alternative methods.")
     if has_cv2:
         label_np = np.zeros((h, w), dtype=np.uint8)  # Transposed
         for group, contours in polygons.items():
