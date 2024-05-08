@@ -227,9 +227,8 @@ class FindContoursd(MapTransform):
                 label_name = self.labels.get(label_idx, label_idx)
                 label_names.add(label_name)
 
-                _, has_cv2 = optional_import("cv2")
+                cv2, has_cv2 = optional_import("cv2")
                 if has_cv2:
-                    import cv2
                     polygons = []
                     contours, _ = cv2.findContours(p, cv2.RETR_LIST, cv2.CHAIN_APPROX_SIMPLE)
                     for contour in contours:

@@ -479,9 +479,8 @@ def split_nuclei_dataset(
     mask = Image.open(d["label"])
     mask_np = np.array(mask)
     
-    _, has_cv2 = optional_import("cv2")
+    cv2, has_cv2 = optional_import("cv2")
     if has_cv2:
-        import cv2
         numLabels, instances, stats, centroids = cv2.connectedComponentsWithStats(mask_np, 4, cv2.CV_32S)
     else:    
         numLabels, instances = label(mask_np)
@@ -595,9 +594,8 @@ def fill_poly(image_size, polygons, color, mode='L'):
 def _to_roi(points, max_region, polygons, annotation_id):
     logger.info(f"Total Points: {len(points)}")
 
-    _, has_cv2 = optional_import("cv2")
+    cv2, has_cv2 = optional_import("cv2")
     if has_cv2:
-        import cv2
         x, y, w, h = cv2.boundingRect(np.array(points))
     else:
         x, y, w, h = calculate_bounding_rect(points)
@@ -627,9 +625,8 @@ def _to_dataset(item_id, x, y, w, h, img, tile_size, polygons, groups, output_di
     tiled_images = _region_to_tiles(name, w, h, image_np, tile_size, output_dir, "Image")
 
 
-    _, has_cv2 = optional_import("cv2")
+    cv2, has_cv2 = optional_import("cv2")
     if has_cv2:
-        import cv2
         label_np = np.zeros((h, w), dtype=np.uint8)  # Transposed
         for group, contours in polygons.items():
             color = groups.get(group, 1)

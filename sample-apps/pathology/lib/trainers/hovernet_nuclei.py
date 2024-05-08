@@ -76,9 +76,8 @@ class HovernetNuclei(BundleTrainTask):
             img = np.array(Image.open(d["image"]).convert("RGB"))
             ann_type = np.array(Image.open(d["label"]))
 
-            _, has_cv2 = optional_import("cv2")
+            cv2, has_cv2 = optional_import("cv2")
             if has_cv2:
-                import cv2
                 numLabels, ann_inst, _, _ = cv2.connectedComponentsWithStats(ann_type, 4, cv2.CV_32S)
             else:
                 ann_inst, numLabels = label(ann_type)
