@@ -14,7 +14,6 @@ import os
 import pathlib
 from typing import Dict, Optional
 
-import cv2
 import numpy as np
 from lib.hovernet import PatchExtractor
 from lib.utils import split_dataset
@@ -24,6 +23,9 @@ from tqdm import tqdm
 from monailabel.interfaces.datastore import Datastore
 from monailabel.tasks.train.bundle import BundleConstants, BundleTrainTask
 from monailabel.utils.others.generic import remove_file
+
+from scipy.ndimage import label
+import numpy as np
 
 logger = logging.getLogger(__name__)
 
@@ -36,7 +38,12 @@ class HovernetNuclei(BundleTrainTask):
         self.step_size = (164, 164)
         self.extract_type = "mirror"
 
-    def _fetch_datalist(self, request, datastore: Datastore):
+        
+    def remove_file(path):
+        if os.path.exists(path):
+            os.remove(path)
+
+    def _fetch_datalist(self, request, datastore):
         cache_dir = os.path.join(self.bundle_path, "cache", "train_ds")
         remove_file(cache_dir)
 
@@ -57,7 +64,7 @@ class HovernetNuclei(BundleTrainTask):
         logger.info(f"Split data (len: {len(ds)}) based on each nuclei")
 
         limit = request.get("dataset_limit", 0)
-        ds_new: list = []
+        ds_new = []
         xtractor = PatchExtractor(self.patch_size, self.step_size)
         out_dir = os.path.join(cache_dir, "nuclei_hovernet")
         os.makedirs(out_dir, exist_ok=True)
@@ -71,13 +78,14 @@ class HovernetNuclei(BundleTrainTask):
             img = np.array(Image.open(d["image"]).convert("RGB"))
             ann_type = np.array(Image.open(d["label"]))
 
-            numLabels, ann_inst, _, _ = cv2.connectedComponentsWithStats(ann_type, 4, cv2.CV_32S)
+            # Using scipy.ndimage to replace cv2.connectedComponentsWithStats
+            ann_inst, numLabels = label(ann_type)
             ann = np.dstack([ann_inst, ann_type])
 
             img = np.concatenate([img, ann], axis=-1)
             sub_patches = xtractor.extract(img, self.extract_type)
 
-            pbar_format = "Extracting  : |{bar}| {n_fmt}/{total_fmt}[{elapsed}<{remaining},{rate_fmt}]"
+            pbar_format = "Extracting: |{bar}| {n_fmt}/{total_fmt} [{elapsed}<{remaining}, {rate_fmt}]"
             pbar = tqdm(total=len(sub_patches), leave=False, bar_format=pbar_format, ascii=True, position=1)
 
             for idx, patch in enumerate(sub_patches):
