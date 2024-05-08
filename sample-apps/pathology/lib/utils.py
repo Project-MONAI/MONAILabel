@@ -33,7 +33,7 @@ from monailabel.utils.others.generic import get_basename, get_basename_no_ext, i
 import numpy as np
 import os
 from PIL import Image
-from scipy.ndimage import label, find_objects, center_of_mass, measurements
+from scipy.ndimage import label, find_objects, center_of_mass
 import logging
 from PIL import Image, ImageDraw
 from math import ceil
@@ -461,10 +461,6 @@ def _process_item(
     item["image"] = image_file
     item["label"] = label_file
     return item
-
-
-def get_basename_no_ext(path):
-    return os.path.splitext(os.path.basename(path))[0]
 
 def split_nuclei_dataset(
     d,
