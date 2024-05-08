@@ -26,7 +26,6 @@ from monailabel.transform.post import (
     RenameKeyd,
     Restored,
 )
-from monai.utils import optional_import
 
 CCD_DATA = [
     {"keys": ("pred",)},
@@ -60,6 +59,7 @@ RESTORED_DATA = [
 try:
     import cv2
     has_cv2 = True
+    print("OpenCV version:", cv2.__version__)
 except ImportError:
     has_cv2 = False
     print("cv2 is not installed. Proceeding with alternative methods.")
