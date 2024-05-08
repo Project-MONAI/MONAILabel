@@ -26,15 +26,12 @@ from monai.transforms import (
     generate_spatial_bounding_box,
     get_extreme_points,
 )
-from monai.utils import InterpolateMode, convert_to_numpy, ensure_tuple_rep
+from monai.utils import InterpolateMode, convert_to_numpy, ensure_tuple_rep, optional_import
 from shapely.geometry import Point, Polygon
 from skimage.measure import approximate_polygon, find_contours
 from torchvision.utils import make_grid, save_image
 
 from monailabel.utils.others.label_colors import get_color
-from monai.utils import optional_import
-
-
 
 logger = logging.getLogger(__name__)
 
@@ -215,13 +212,13 @@ class FindContoursd(MapTransform):
             p = d[key]
             if np.count_nonzero(p) < self.min_positive:
                 continue
-                
+
             labels = [label for label in np.unique(p).tolist() if label > 0]
             for label_idx in labels:
                 p = convert_to_numpy(d[key]) if isinstance(d[key], torch.Tensor) else d[key]
                 p = np.where(p == label_idx, 1, 0).astype(np.uint8)
                 p = np.moveaxis(p, 0, 1)
-                
+
                 if label_idx == 0:
                     continue
                 label_name = self.labels.get(label_idx, label_idx)
@@ -237,13 +234,13 @@ class FindContoursd(MapTransform):
 
                         contour = np.squeeze(contour)
                         area = cv2.contourArea(contour)
-                        if area < min_poly_area: 
+                        if area < min_poly_area:
                             continue
-                        if 0 < max_poly_area < area:  
+                        if 0 < max_poly_area < area:
                             continue
 
-                        contour[:, 0] += location[0]  
-                        contour[:, 1] += location[1] 
+                        contour[:, 0] += location[0]
+                        contour[:, 1] += location[1]
 
                         coords = contour.astype(int).tolist()
                         if foreground_points:
@@ -256,7 +253,7 @@ class FindContoursd(MapTransform):
 
                     if len(polygons):
                         logger.debug(f"+++++ {label_idx} => Total Polygons Found: {len(polygons)}")
-                        elements.append({"label": label_name, "contours": polygons})   
+                        elements.append({"label": label_name, "contours": polygons})
                 else:
                     contours = find_contours(p, 0.5)
                     contours = [np.round(contour).astype(int) for contour in contours]
@@ -266,14 +263,18 @@ class FindContoursd(MapTransform):
 
                         simplified_contour = approximate_polygon(contour, tolerance=0.5)
                         if len(simplified_contour) < 4:
-                            continue  
+                            continue
 
-                        simplified_contour = np.flip(simplified_contour, axis=1)  
-                        simplified_contour += location  
-                        simplified_contour = simplified_contour.astype(int)  
+                        simplified_contour = np.flip(simplified_contour, axis=1)
+                        simplified_contour += location
+                        simplified_contour = simplified_contour.astype(int)
 
                         polygon = Polygon(simplified_contour)
-                        if polygon.is_valid and polygon.area >= min_poly_area and (max_poly_area <= 0 or polygon.area <= max_poly_area):
+                        if (
+                            polygon.is_valid
+                            and polygon.area >= min_poly_area
+                            and (max_poly_area <= 0 or polygon.area <= max_poly_area)
+                        ):
                             formatted_contour = [simplified_contour.tolist()]
                             if foreground_points:
                                 if any(polygon.contains(point) for point in foreground_points):

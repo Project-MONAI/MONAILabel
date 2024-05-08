@@ -17,6 +17,7 @@ from typing import Dict, Optional
 import numpy as np
 from lib.hovernet import PatchExtractor
 from lib.utils import split_dataset
+from monai.utils import optional_import
 from PIL import Image
 from scipy.ndimage import label
 from tqdm import tqdm
@@ -24,7 +25,6 @@ from tqdm import tqdm
 from monailabel.interfaces.datastore import Datastore
 from monailabel.tasks.train.bundle import BundleConstants, BundleTrainTask
 from monailabel.utils.others.generic import remove_file
-from monai.utils import optional_import
 
 logger = logging.getLogger(__name__)
 
