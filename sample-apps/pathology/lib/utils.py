@@ -22,22 +22,14 @@ from math import ceil
 import numpy as np
 import openslide
 import scipy
-from PIL import Image
+from PIL import Image, ImageDraw
+from scipy.ndimage import center_of_mass, find_objects, label
 from tqdm import tqdm
 
 from monailabel.datastore.dsa import DSADatastore
 from monailabel.datastore.local import LocalDatastore
 from monailabel.interfaces.datastore import Datastore
 from monailabel.utils.others.generic import get_basename, get_basename_no_ext, is_openslide_supported
-
-import numpy as np
-import os
-from PIL import Image
-from scipy.ndimage import label, find_objects, center_of_mass
-import logging
-from PIL import Image, ImageDraw
-from math import ceil
-
 
 logger = logging.getLogger(__name__)
 
@@ -462,6 +454,7 @@ def _process_item(
     item["label"] = label_file
     return item
 
+
 def split_nuclei_dataset(
     d,
     output_dir,
@@ -496,7 +489,7 @@ def split_nuclei_dataset(
             dx, dy = slice_tuple
             area = (dx.stop - dx.start) * (dy.stop - dy.start)
             stats.append([dy.start, dx.start, dy.stop - dy.start, dx.stop - dx.start, area])
-    
+
     logger.info("-------------------------------------------------------------------------------")
     logger.info(f"Image/Label ========> {d['image']} =====> {d['label']}")
     logger.info(f"Total Labels: {numLabels}")
@@ -506,10 +499,10 @@ def split_nuclei_dataset(
     logger.info(f"Total Classes in Mask: {np.unique(mask_np)}")
 
     for nuclei_id, centroid in enumerate(centroids):
-        if nuclei_id == 0: 
+        if nuclei_id == 0:
             continue
 
-        x, y = int(centroid[1]), int(centroid[0]) 
+        x, y = int(centroid[1]), int(centroid[0])
 
         this_instance = np.where(instances == nuclei_id, mask_np, 0)
         class_id = int(np.max(this_instance))
@@ -574,24 +567,27 @@ def _group_item(groups, d, output_dir):
     os.makedirs(output_dir, exist_ok=True)
     return groups, item_id
 
+
 def calculate_bounding_rect(points):
-    points = np.array(points, dtype=int)  
+    points = np.array(points, dtype=int)
     x_min, y_min = np.min(points, axis=0)
     x_max, y_max = np.max(points, axis=0)
-    w = x_max - x_min + 1 
-    h = y_max - y_min + 1 
+    w = x_max - x_min + 1
+    h = y_max - y_min + 1
     return int(x_min), int(y_min), int(w), int(h)
 
-def fill_poly(image_size, polygons, color, mode='L'):
-    if mode.upper() == 'RGB':
-        img = Image.new('RGB', image_size, (0, 0, 0))  
+
+def fill_poly(image_size, polygons, color, mode="L"):
+    if mode.upper() == "RGB":
+        img = Image.new("RGB", image_size, (0, 0, 0))
     else:
-        img = Image.new('L', image_size, 0) 
+        img = Image.new("L", image_size, 0)
 
     draw = ImageDraw.Draw(img)
     for polygon in polygons:
         draw.polygon([tuple(p) for p in polygon], fill=color)
     return np.array(img)
+
 
 def _to_roi(points, max_region, polygons, annotation_id):
     logger.info(f"Total Points: {len(points)}")
@@ -605,6 +601,7 @@ def _to_roi(points, max_region, polygons, annotation_id):
         logger.warning(f"Reducing Region to Max-Height; h: {h}; max_h: {max_region[1]}")
         h = max_region[1]
     return x, y, w, h
+
 
 def _to_dataset(item_id, x, y, w, h, img, tile_size, polygons, groups, output_dir, debug=False):
     dataset_json = []
@@ -623,16 +620,16 @@ def _to_dataset(item_id, x, y, w, h, img, tile_size, polygons, groups, output_di
     # Create a new blank image for labels
     label_img = Image.new("L", (w, h), 0)
     draw = ImageDraw.Draw(label_img)
-    
+
     for group, contours in polygons.items():
         color = groups.get(group, 1)
         # Convert contours to PIL.ImageDraw polygon format and offset them
         pil_contours = [tuple((p[0] - x, p[1] - y) for p in contour) for contour in contours]
-        
+
         # Draw each polygon onto the label image
         for contour in pil_contours:
             draw.polygon(contour, outline=color, fill=color)
-        
+
         if debug:
             regions_dir = os.path.join(output_dir, "regions")
             label_path = os.path.realpath(os.path.join(regions_dir, "labels", group, f"{name}.png"))
@@ -641,8 +638,10 @@ def _to_dataset(item_id, x, y, w, h, img, tile_size, polygons, groups, output_di
 
     # Convert label image to numpy array for tiling
     label_np = np.array(label_img)
-    tiled_labels = _region_to_tiles(name, w, h, label_np, tile_size, os.path.join(output_dir, "labels", "final"), "Label")
-    
+    tiled_labels = _region_to_tiles(
+        name, w, h, label_np, tile_size, os.path.join(output_dir, "labels", "final"), "Label"
+    )
+
     for k in tiled_images:
         dataset_json.append({"image": tiled_images[k], "label": tiled_labels[k]})
 

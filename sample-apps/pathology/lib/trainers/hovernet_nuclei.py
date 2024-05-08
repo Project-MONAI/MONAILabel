@@ -18,14 +18,12 @@ import numpy as np
 from lib.hovernet import PatchExtractor
 from lib.utils import split_dataset
 from PIL import Image
+from scipy.ndimage import label
 from tqdm import tqdm
 
 from monailabel.interfaces.datastore import Datastore
 from monailabel.tasks.train.bundle import BundleConstants, BundleTrainTask
 from monailabel.utils.others.generic import remove_file
-
-from scipy.ndimage import label
-import numpy as np
 
 logger = logging.getLogger(__name__)
 
@@ -38,7 +36,6 @@ class HovernetNuclei(BundleTrainTask):
         self.step_size = (164, 164)
         self.extract_type = "mirror"
 
-        
     def remove_file(path):
         if os.path.exists(path):
             os.remove(path)
