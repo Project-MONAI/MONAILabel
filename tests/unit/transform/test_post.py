@@ -60,6 +60,8 @@ RESTORED_DATA = [
 _, has_cv2 = optional_import("cv2")
 if has_cv2:
     import cv2
+    print("OpenCV version:", cv2.__version__)
+
     FINDCONTOURSD_DATA = [
         {"keys": "pred", "labels": "Other", "min_positive": 4, "min_poly_area": 1},
         {
