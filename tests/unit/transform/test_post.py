@@ -26,6 +26,7 @@ from monailabel.transform.post import (
     RenameKeyd,
     Restored,
 )
+from monai.utils import optional_import
 
 CCD_DATA = [
     {"keys": ("pred",)},
@@ -56,15 +57,9 @@ RESTORED_DATA = [
     (1, 6, 6),
 ]
 
-try:
-    import cv2
-    has_cv2 = True
-    print("OpenCV version:", cv2.__version__)
-except ImportError:
-    has_cv2 = False
-    print("cv2 is not installed. Proceeding with alternative methods.")
-
+_, has_cv2 = optional_import("cv2")
 if has_cv2:
+    import cv2
     FINDCONTOURSD_DATA = [
         {"keys": "pred", "labels": "Other", "min_positive": 4, "min_poly_area": 1},
         {

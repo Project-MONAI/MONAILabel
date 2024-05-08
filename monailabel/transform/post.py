@@ -32,6 +32,8 @@ from skimage.measure import approximate_polygon, find_contours
 from torchvision.utils import make_grid, save_image
 
 from monailabel.utils.others.label_colors import get_color
+from monai.utils import optional_import
+
 
 
 logger = logging.getLogger(__name__)
@@ -201,7 +203,7 @@ class FindContoursd(MapTransform):
     def __call__(self, data):
         d = dict(data)
         location = d.get("location", [0, 0])
-        size = d.get("size", [100, 100])
+        size = d.get("size", [0, 0])
         min_poly_area = d.get("min_poly_area", self.min_poly_area)
         max_poly_area = d.get("max_poly_area", self.max_poly_area)
         color_map = d.get(self.key_label_colors) if self.colormap is None else self.colormap
@@ -224,13 +226,10 @@ class FindContoursd(MapTransform):
                     continue
                 label_name = self.labels.get(label_idx, label_idx)
                 label_names.add(label_name)
-                try:
-                    import cv2
-                    has_cv2 = True
-                except ImportError:
-                    has_cv2 = False
-                    print("cv2 is not installed. Proceeding with alternative methods.")
+
+                _, has_cv2 = optional_import("cv2")
                 if has_cv2:
+                    import cv2
                     polygons = []
                     contours, _ = cv2.findContours(p, cv2.RETR_LIST, cv2.CHAIN_APPROX_SIMPLE)
                     for contour in contours:

@@ -24,6 +24,7 @@ from tqdm import tqdm
 from monailabel.interfaces.datastore import Datastore
 from monailabel.tasks.train.bundle import BundleConstants, BundleTrainTask
 from monailabel.utils.others.generic import remove_file
+from monai.utils import optional_import
 
 logger = logging.getLogger(__name__)
 
@@ -61,7 +62,7 @@ class HovernetNuclei(BundleTrainTask):
         logger.info(f"Split data (len: {len(ds)}) based on each nuclei")
 
         limit = request.get("dataset_limit", 0)
-        ds_new = []
+        ds_new: list = []
         xtractor = PatchExtractor(self.patch_size, self.step_size)
         out_dir = os.path.join(cache_dir, "nuclei_hovernet")
         os.makedirs(out_dir, exist_ok=True)
@@ -75,13 +76,9 @@ class HovernetNuclei(BundleTrainTask):
             img = np.array(Image.open(d["image"]).convert("RGB"))
             ann_type = np.array(Image.open(d["label"]))
 
-            try:
-                import cv2
-                has_cv2 = True
-            except ImportError:
-                has_cv2 = False
-                print("cv2 is not installed. Proceeding with alternative methods.")
+            _, has_cv2 = optional_import("cv2")
             if has_cv2:
+                import cv2
                 numLabels, ann_inst, _, _ = cv2.connectedComponentsWithStats(ann_type, 4, cv2.CV_32S)
             else:
                 ann_inst, numLabels = label(ann_type)
