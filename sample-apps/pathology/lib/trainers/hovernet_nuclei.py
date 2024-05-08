@@ -14,11 +14,12 @@ import os
 import pathlib
 from typing import Dict, Optional
 
-import cv2
 import numpy as np
 from lib.hovernet import PatchExtractor
 from lib.utils import split_dataset
+from monai.utils import optional_import
 from PIL import Image
+from scipy.ndimage import label
 from tqdm import tqdm
 
 from monailabel.interfaces.datastore import Datastore
@@ -36,7 +37,11 @@ class HovernetNuclei(BundleTrainTask):
         self.step_size = (164, 164)
         self.extract_type = "mirror"
 
-    def _fetch_datalist(self, request, datastore: Datastore):
+    def remove_file(path):
+        if os.path.exists(path):
+            os.remove(path)
+
+    def _fetch_datalist(self, request, datastore):
         cache_dir = os.path.join(self.bundle_path, "cache", "train_ds")
         remove_file(cache_dir)
 
@@ -71,13 +76,18 @@ class HovernetNuclei(BundleTrainTask):
             img = np.array(Image.open(d["image"]).convert("RGB"))
             ann_type = np.array(Image.open(d["label"]))
 
-            numLabels, ann_inst, _, _ = cv2.connectedComponentsWithStats(ann_type, 4, cv2.CV_32S)
+            cv2, has_cv2 = optional_import("cv2")
+            if has_cv2:
+                numLabels, ann_inst, _, _ = cv2.connectedComponentsWithStats(ann_type, 4, cv2.CV_32S)
+            else:
+                ann_inst, numLabels = label(ann_type)
+
             ann = np.dstack([ann_inst, ann_type])
 
             img = np.concatenate([img, ann], axis=-1)
             sub_patches = xtractor.extract(img, self.extract_type)
 
-            pbar_format = "Extracting  : |{bar}| {n_fmt}/{total_fmt}[{elapsed}<{remaining},{rate_fmt}]"
+            pbar_format = "Extracting: |{bar}| {n_fmt}/{total_fmt} [{elapsed}<{remaining}, {rate_fmt}]"
             pbar = tqdm(total=len(sub_patches), leave=False, bar_format=pbar_format, ascii=True, position=1)
 
             for idx, patch in enumerate(sub_patches):

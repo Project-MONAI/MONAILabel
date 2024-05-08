@@ -12,7 +12,6 @@
 import logging
 from typing import Dict, Hashable, Mapping, Optional, Sequence, Union
 
-import cv2
 import nibabel as nib
 import numpy as np
 import skimage.measure as measure
@@ -27,16 +26,14 @@ from monai.transforms import (
     generate_spatial_bounding_box,
     get_extreme_points,
 )
-from monai.utils import InterpolateMode, convert_to_numpy, ensure_tuple_rep
+from monai.utils import InterpolateMode, convert_to_numpy, ensure_tuple_rep, optional_import
 from shapely.geometry import Point, Polygon
+from skimage.measure import approximate_polygon, find_contours
 from torchvision.utils import make_grid, save_image
 
 from monailabel.utils.others.label_colors import get_color
 
 logger = logging.getLogger(__name__)
-
-
-# TODO:: Move to MONAI ??
 
 
 class LargestCCd(MapTransform):
@@ -183,7 +180,6 @@ class FindContoursd(MapTransform):
         colormap=None,
     ):
         super().__init__(keys)
-
         self.min_positive = min_positive
         self.min_poly_area = min_poly_area
         self.max_poly_area = max_poly_area
@@ -208,9 +204,7 @@ class FindContoursd(MapTransform):
         min_poly_area = d.get("min_poly_area", self.min_poly_area)
         max_poly_area = d.get("max_poly_area", self.max_poly_area)
         color_map = d.get(self.key_label_colors) if self.colormap is None else self.colormap
-
-        foreground_points = d.get(self.key_foreground_points, []) if self.key_foreground_points else []
-        foreground_points = [Point(pt[0], pt[1]) for pt in foreground_points]  # polygons in (x, y) format
+        foreground_points = [Point(pt) for pt in d.get(self.key_foreground_points, [])]
 
         elements = []
         label_names = set()
@@ -220,43 +214,73 @@ class FindContoursd(MapTransform):
                 continue
 
             labels = [label for label in np.unique(p).tolist() if label > 0]
-            logger.debug(f"Total Unique Masks (excluding background): {labels}")
             for label_idx in labels:
                 p = convert_to_numpy(d[key]) if isinstance(d[key], torch.Tensor) else d[key]
                 p = np.where(p == label_idx, 1, 0).astype(np.uint8)
-                p = np.moveaxis(p, 0, 1)  # for cv2
+                p = np.moveaxis(p, 0, 1)
 
+                if label_idx == 0:
+                    continue
                 label_name = self.labels.get(label_idx, label_idx)
                 label_names.add(label_name)
 
-                polygons = []
-                contours, _ = cv2.findContours(p, cv2.RETR_LIST, cv2.CHAIN_APPROX_SIMPLE)
-                for contour in contours:
-                    if len(contour) < 3:
-                        continue
+                cv2, has_cv2 = optional_import("cv2")
+                if has_cv2:
+                    polygons = []
+                    contours, _ = cv2.findContours(p, cv2.RETR_LIST, cv2.CHAIN_APPROX_SIMPLE)
+                    for contour in contours:
+                        if len(contour) < 3:
+                            continue
 
-                    contour = np.squeeze(contour)
-                    area = cv2.contourArea(contour)
-                    if area < min_poly_area:  # Ignore poly with lesser area
-                        continue
-                    if 0 < max_poly_area < area:  # Ignore very large poly (e.g. in case of nuclei)
-                        continue
+                        contour = np.squeeze(contour)
+                        area = cv2.contourArea(contour)
+                        if area < min_poly_area:
+                            continue
+                        if 0 < max_poly_area < area:
+                            continue
 
-                    contour[:, 0] += location[0]  # X
-                    contour[:, 1] += location[1]  # Y
+                        contour[:, 0] += location[0]
+                        contour[:, 1] += location[1]
 
-                    coords = contour.astype(int).tolist()
-                    if foreground_points:
-                        for pt in foreground_points:
-                            if Polygon(coords).contains(pt):
-                                polygons.append(coords)
-                                break
-                    else:
-                        polygons.append(coords)
+                        coords = contour.astype(int).tolist()
+                        if foreground_points:
+                            for pt in foreground_points:
+                                if Polygon(coords).contains(pt):
+                                    polygons.append(coords)
+                                    break
+                        else:
+                            polygons.append(coords)
 
-                if len(polygons):
-                    logger.debug(f"+++++ {label_idx} => Total Polygons Found: {len(polygons)}")
-                    elements.append({"label": label_name, "contours": polygons})
+                    if len(polygons):
+                        logger.debug(f"+++++ {label_idx} => Total Polygons Found: {len(polygons)}")
+                        elements.append({"label": label_name, "contours": polygons})
+                else:
+                    contours = find_contours(p, 0.5)
+                    contours = [np.round(contour).astype(int) for contour in contours]
+                    for contour in contours:
+                        if not np.array_equal(contour[0], contour[-1]):
+                            contour = np.append(contour, [contour[0]], axis=0)
+
+                        simplified_contour = approximate_polygon(contour, tolerance=0.5)
+                        if len(simplified_contour) < 4:
+                            continue
+
+                        simplified_contour = np.flip(simplified_contour, axis=1)
+                        simplified_contour += location
+                        simplified_contour = simplified_contour.astype(int)
+
+                        polygon = Polygon(simplified_contour)
+                        if (
+                            polygon.is_valid
+                            and polygon.area >= min_poly_area
+                            and (max_poly_area <= 0 or polygon.area <= max_poly_area)
+                        ):
+                            formatted_contour = [simplified_contour.tolist()]
+                            if foreground_points:
+                                if any(polygon.contains(point) for point in foreground_points):
+                                    elements.append({"label": label_name, "contours": formatted_contour})
+                            else:
+                                elements.append({"label": label_name, "contours": formatted_contour})
 
         if elements:
             if d.get(self.result) is None:
