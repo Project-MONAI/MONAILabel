@@ -30,8 +30,10 @@ from monai.utils import InterpolateMode, convert_to_numpy, ensure_tuple_rep
 from shapely.geometry import Point, Polygon
 from skimage.measure import approximate_polygon, find_contours
 from torchvision.utils import make_grid, save_image
+from monai.utils import optional_import
 
 from monailabel.utils.others.label_colors import get_color
+
 
 logger = logging.getLogger(__name__)
 
@@ -168,7 +170,7 @@ class Restored(MapTransform):
 class FindContoursd(MapTransform):
     def __init__(
         self,
-        keys,
+        keys: KeysCollection,
         min_positive=10,
         min_poly_area=80,
         max_poly_area=0,
@@ -212,49 +214,74 @@ class FindContoursd(MapTransform):
             p = d[key]
             if np.count_nonzero(p) < self.min_positive:
                 continue
-
+                
             labels = [label for label in np.unique(p).tolist() if label > 0]
-
             for label_idx in labels:
                 p = convert_to_numpy(d[key]) if isinstance(d[key], torch.Tensor) else d[key]
                 p = np.where(p == label_idx, 1, 0).astype(np.uint8)
                 p = np.moveaxis(p, 0, 1)
-
+                
                 if label_idx == 0:
                     continue
                 label_name = self.labels.get(label_idx, label_idx)
                 label_names.add(label_name)
-                contours = find_contours(p, 0.5)  # note: skimage use subpixel interpolation for contours
-                contours = [np.round(contour).astype(int) for contour in contours]
+                cv2, has_cv2 = optional_import("cv2")
+                if has_cv2:
+                    polygons = []
+                    contours, _ = cv2.findContours(p, cv2.RETR_LIST, cv2.CHAIN_APPROX_SIMPLE)
+                    for contour in contours:
+                        if len(contour) < 3:
+                            continue
 
-                for contour in contours:
-                    if not np.array_equal(contour[0], contour[-1]):
-                        contour = np.append(contour, [contour[0]], axis=0)
+                        contour = np.squeeze(contour)
+                        area = cv2.contourArea(contour)
+                        if area < min_poly_area: 
+                            continue
+                        if 0 < max_poly_area < area:  
+                            continue
 
-                    simplified_contour = approximate_polygon(contour, tolerance=0.5)  # loose the contour by tolerance
-                    if len(simplified_contour) < 4:
-                        continue
+                        contour[:, 0] += location[0]  
+                        contour[:, 1] += location[1] 
 
-                    simplified_contour = np.flip(simplified_contour, axis=1)
-                    simplified_contour += location
-                    simplified_contour = simplified_contour.astype(int)
-
-                    polygon = Polygon(simplified_contour)
-                    if (
-                        polygon.is_valid
-                        and polygon.area >= min_poly_area
-                        and (max_poly_area <= 0 or polygon.area <= max_poly_area)
-                    ):
-                        formatted_contour = [simplified_contour.tolist()]
+                        coords = contour.astype(int).tolist()
                         if foreground_points:
-                            if any(polygon.contains(point) for point in foreground_points):
-                                elements.append({"label": label_name, "contours": formatted_contour})
+                            for pt in foreground_points:
+                                if Polygon(coords).contains(pt):
+                                    polygons.append(coords)
+                                    break
                         else:
-                            elements.append({"label": label_name, "contours": formatted_contour})
+                            polygons.append(coords)
+
+                    if len(polygons):
+                        logger.debug(f"+++++ {label_idx} => Total Polygons Found: {len(polygons)}")
+                        elements.append({"label": label_name, "contours": polygons})   
+                else:
+                    contours = find_contours(p, 0.5)
+                    contours = [np.round(contour).astype(int) for contour in contours]
+                    for contour in contours:
+                        if not np.array_equal(contour[0], contour[-1]):
+                            contour = np.append(contour, [contour[0]], axis=0)
+
+                        simplified_contour = approximate_polygon(contour, tolerance=0.5)
+                        if len(simplified_contour) < 4:
+                            continue  
+
+                        simplified_contour = np.flip(simplified_contour, axis=1)  
+                        simplified_contour += location  
+                        simplified_contour = simplified_contour.astype(int)  
+
+                        polygon = Polygon(simplified_contour)
+                        if polygon.is_valid and polygon.area >= min_poly_area and (max_poly_area <= 0 or polygon.area <= max_poly_area):
+                            formatted_contour = [simplified_contour.tolist()]
+                            if foreground_points:
+                                if any(polygon.contains(point) for point in foreground_points):
+                                    elements.append({"label": label_name, "contours": formatted_contour})
+                            else:
+                                elements.append({"label": label_name, "contours": formatted_contour})
+
         if elements:
             if d.get(self.result) is None:
                 d[self.result] = dict()
-
             d[self.result][self.result_output_key] = {
                 "location": location,
                 "size": size,
@@ -262,8 +289,6 @@ class FindContoursd(MapTransform):
                 "labels": {n: get_color(n, color_map) for n in label_names},
             }
             logger.debug(f"+++++ ALL => Total Annotation Elements Found: {len(elements)}")
-
-        print(elements)
         return d
 
 

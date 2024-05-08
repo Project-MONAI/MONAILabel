@@ -26,6 +26,7 @@ from monailabel.transform.post import (
     RenameKeyd,
     Restored,
 )
+from monai.utils import optional_import
 
 CCD_DATA = [
     {"keys": ("pred",)},
@@ -56,13 +57,24 @@ RESTORED_DATA = [
     (1, 6, 6),
 ]
 
-FINDCONTOURSD_DATA = [
-    {"keys": "pred", "labels": "Other", "min_positive": 4, "min_poly_area": 1},
-    {
-        "pred": np.array([[0, 0, 0, 0, 0], [0, 1, 1, 1, 0], [0, 1, 0, 1, 0], [0, 1, 1, 1, 0], [0, 0, 0, 0, 0]]),
-    },
-    [[[3, 4], [1, 4], [0, 3], [0, 1], [1, 0], [3, 0], [4, 1], [4, 3], [3, 4]]],
-]
+cv2, has_cv2 = optional_import("cv2")
+
+if has_cv2:
+    FINDCONTOURSD_DATA = [
+        {"keys": "pred", "labels": "Other", "min_positive": 4, "min_poly_area": 1},
+        {
+            "pred": np.array([[0, 0, 0, 0, 0], [0, 1, 1, 1, 0], [0, 1, 0, 1, 0], [0, 1, 1, 1, 0], [0, 0, 0, 0, 0]]),
+        },
+        [[[1, 2], [2, 1], [3, 2], [2, 3]], [[1, 1], [1, 3], [3, 3], [3, 1]]],
+    ]
+else:
+    FINDCONTOURSD_DATA = [
+        {"keys": "pred", "labels": "Other", "min_positive": 4, "min_poly_area": 1},
+        {
+            "pred": np.array([[0, 0, 0, 0, 0], [0, 1, 1, 1, 0], [0, 1, 0, 1, 0], [0, 1, 1, 1, 0], [0, 0, 0, 0, 0]]),
+        },
+        [[[3, 4], [1, 4], [0, 3], [0, 1], [1, 0], [3, 0], [4, 1], [4, 3], [3, 4]]],
+    ]
 
 DUMPIMAGEPREDICTION2DD_DATA = [
     {
@@ -118,6 +130,7 @@ class TestFindContoursd(unittest.TestCase):
     @parameterized.expand([FINDCONTOURSD_DATA])
     def test_result(self, args, input_data, expected_output):
         res = FindContoursd(**args)(input_data)
+        print(res)
         self.assertEqual(res["result"]["annotation"]["elements"][0]["contours"], expected_output)
 
 

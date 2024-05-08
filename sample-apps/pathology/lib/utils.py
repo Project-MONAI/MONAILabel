@@ -18,7 +18,6 @@ import xml.etree.ElementTree
 from io import BytesIO
 from math import ceil
 
-# import cv2
 import numpy as np
 import openslide
 import scipy
@@ -30,6 +29,7 @@ from monailabel.datastore.dsa import DSADatastore
 from monailabel.datastore.local import LocalDatastore
 from monailabel.interfaces.datastore import Datastore
 from monailabel.utils.others.generic import get_basename, get_basename_no_ext, is_openslide_supported
+from monai.utils import optional_import
 
 logger = logging.getLogger(__name__)
 
@@ -478,18 +478,23 @@ def split_nuclei_dataset(
 
     mask = Image.open(d["label"])
     mask_np = np.array(mask)
+    
+    cv2, has_cv2 = optional_import("cv2")
+    
+    if has_cv2:
+        numLabels, instances, stats, centroids = cv2.connectedComponentsWithStats(mask_np, 4, cv2.CV_32S)
+    else:    
+        numLabels, instances = label(mask_np)
+        stats = []
+        centroids = center_of_mass(mask_np, instances, range(numLabels))
 
-    numLabels, instances = label(mask_np)
-    stats = []
-    centroids = center_of_mass(mask_np, instances, range(numLabels))
-
-    objects = find_objects(instances)
-    for i, slice_tuple in enumerate(objects):
-        if slice_tuple is not None:
-            dx, dy = slice_tuple
-            area = (dx.stop - dx.start) * (dy.stop - dy.start)
-            stats.append([dy.start, dx.start, dy.stop - dy.start, dx.stop - dx.start, area])
-
+        objects = find_objects(instances)
+        for i, slice_tuple in enumerate(objects):
+            if slice_tuple is not None:
+                dx, dy = slice_tuple
+                area = (dx.stop - dx.start) * (dy.stop - dy.start)
+                stats.append([dy.start, dx.start, dy.stop - dy.start, dx.stop - dx.start, area])
+    
     logger.info("-------------------------------------------------------------------------------")
     logger.info(f"Image/Label ========> {d['image']} =====> {d['label']}")
     logger.info(f"Total Labels: {numLabels}")
@@ -499,10 +504,10 @@ def split_nuclei_dataset(
     logger.info(f"Total Classes in Mask: {np.unique(mask_np)}")
 
     for nuclei_id, centroid in enumerate(centroids):
-        if nuclei_id == 0:
+        if nuclei_id == 0: 
             continue
 
-        x, y = int(centroid[1]), int(centroid[0])
+        x, y = int(centroid[1]), int(centroid[0]) 
 
         this_instance = np.where(instances == nuclei_id, mask_np, 0)
         class_id = int(np.max(this_instance))
@@ -569,29 +574,33 @@ def _group_item(groups, d, output_dir):
 
 
 def calculate_bounding_rect(points):
-    points = np.array(points, dtype=int)
+    points = np.array(points, dtype=int)  
     x_min, y_min = np.min(points, axis=0)
     x_max, y_max = np.max(points, axis=0)
-    w = x_max - x_min + 1
-    h = y_max - y_min + 1
+    w = x_max - x_min + 1 
+    h = y_max - y_min + 1 
     return int(x_min), int(y_min), int(w), int(h)
 
-
-def fill_poly(image_size, polygons, color, mode="L"):
-    if mode.upper() == "RGB":
-        img = Image.new("RGB", image_size, (0, 0, 0))
+def fill_poly(image_size, polygons, color, mode='L'):
+    if mode.upper() == 'RGB':
+        img = Image.new('RGB', image_size, (0, 0, 0))  
     else:
-        img = Image.new("L", image_size, 0)
+        img = Image.new('L', image_size, 0) 
 
     draw = ImageDraw.Draw(img)
     for polygon in polygons:
         draw.polygon([tuple(p) for p in polygon], fill=color)
     return np.array(img)
 
-
 def _to_roi(points, max_region, polygons, annotation_id):
     logger.info(f"Total Points: {len(points)}")
-    x, y, w, h = calculate_bounding_rect(points)
+    cv2, has_cv2 = optional_import("cv2")
+
+    if has_cv2:
+        x, y, w, h = cv2.boundingRect(np.array(points))
+    else:
+        x, y, w, h = calculate_bounding_rect(points)
+        
     logger.info(f"ID: {annotation_id} => Groups: {polygons.keys()}; Location: ({x}, {y}); Size: {w} x {h}")
 
     if w > max_region[0]:
@@ -601,7 +610,6 @@ def _to_roi(points, max_region, polygons, annotation_id):
         logger.warning(f"Reducing Region to Max-Height; h: {h}; max_h: {max_region[1]}")
         h = max_region[1]
     return x, y, w, h
-
 
 def _to_dataset(item_id, x, y, w, h, img, tile_size, polygons, groups, output_dir, debug=False):
     dataset_json = []
@@ -616,32 +624,42 @@ def _to_dataset(item_id, x, y, w, h, img, tile_size, polygons, groups, output_di
     image_np = np.asarray(img, dtype=np.uint8)
     logger.debug(f"Image NP: {image_np.shape}; sum: {np.sum(image_np)}")
     tiled_images = _region_to_tiles(name, w, h, image_np, tile_size, output_dir, "Image")
+    cv2, has_cv2 = optional_import("cv2")
 
-    # Create a new blank image for labels
-    label_img = Image.new("L", (w, h), 0)
-    draw = ImageDraw.Draw(label_img)
+    if has_cv2:
+        label_np = np.zeros((h, w), dtype=np.uint8)  # Transposed
+        for group, contours in polygons.items():
+            color = groups.get(group, 1)
+            contours = [np.array([[p[0] - x, p[1] - y] for p in contour]) for contour in contours]
 
-    for group, contours in polygons.items():
-        color = groups.get(group, 1)
-        # Convert contours to PIL.ImageDraw polygon format and offset them
-        pil_contours = [tuple((p[0] - x, p[1] - y) for p in contour) for contour in contours]
+            cv2.fillPoly(label_np, pts=contours, color=color)
+            logger.info(f"{group} => p: {len(contours)}; c: {color}; unique: {np.unique(label_np, return_counts=True)}")
+            if debug:
+                regions_dir = os.path.join(output_dir, "regions")
+                label_path = os.path.realpath(os.path.join(regions_dir, "labels", group, f"{name}.png"))
+                os.makedirs(os.path.dirname(label_path), exist_ok=True)
+                cv2.imwrite(label_path, label_np)
+    else:
+        label_img = Image.new("L", (w, h), 0)
+        draw = ImageDraw.Draw(label_img)
+    
+        for group, contours in polygons.items():
+            color = groups.get(group, 1)
+            pil_contours = [tuple((p[0] - x, p[1] - y) for p in contour) for contour in contours]
 
-        # Draw each polygon onto the label image
-        for contour in pil_contours:
-            draw.polygon(contour, outline=color, fill=color)
+            for contour in pil_contours:
+                draw.polygon(contour, outline=color, fill=color)
 
-        if debug:
-            regions_dir = os.path.join(output_dir, "regions")
-            label_path = os.path.realpath(os.path.join(regions_dir, "labels", group, f"{name}.png"))
-            os.makedirs(os.path.dirname(label_path), exist_ok=True)
-            label_img.save(label_path)
+            if debug:
+                regions_dir = os.path.join(output_dir, "regions")
+                label_path = os.path.realpath(os.path.join(regions_dir, "labels", group, f"{name}.png"))
+                os.makedirs(os.path.dirname(label_path), exist_ok=True)
+                label_img.save(label_path)
 
-    # Convert label image to numpy array for tiling
-    label_np = np.array(label_img)
-    tiled_labels = _region_to_tiles(
-        name, w, h, label_np, tile_size, os.path.join(output_dir, "labels", "final"), "Label"
-    )
-
+        label_np = np.array(label_img)
+        
+    tiled_labels = _region_to_tiles(name, w, h, label_np, tile_size, os.path.join(output_dir, "labels", "final"), "Label")
+    
     for k in tiled_images:
         dataset_json.append({"image": tiled_images[k], "label": tiled_labels[k]})
 

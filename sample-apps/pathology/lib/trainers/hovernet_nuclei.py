@@ -24,6 +24,7 @@ from tqdm import tqdm
 from monailabel.interfaces.datastore import Datastore
 from monailabel.tasks.train.bundle import BundleConstants, BundleTrainTask
 from monailabel.utils.others.generic import remove_file
+from monai.utils import optional_import
 
 logger = logging.getLogger(__name__)
 
@@ -75,8 +76,12 @@ class HovernetNuclei(BundleTrainTask):
             img = np.array(Image.open(d["image"]).convert("RGB"))
             ann_type = np.array(Image.open(d["label"]))
 
-            # Using scipy.ndimage to replace cv2.connectedComponentsWithStats
-            ann_inst, numLabels = label(ann_type)
+            cv2, has_cv2 = optional_import("cv2")
+            if has_cv2:
+                numLabels, ann_inst, _, _ = cv2.connectedComponentsWithStats(ann_type, 4, cv2.CV_32S)
+            else:
+                ann_inst, numLabels = label(ann_type)
+                
             ann = np.dstack([ann_inst, ann_type])
 
             img = np.concatenate([img, ann], axis=-1)
