@@ -15,15 +15,14 @@ from typing import Any, Dict, Optional, Union
 
 import lib.infers
 import lib.trainers
+from monai.data import set_track_meta
 from monai.networks.nets import BasicUNet
+from monai.networks.nets.dynunet import DynUNet
 
 from monailabel.interfaces.config import TaskConfig
 from monailabel.interfaces.tasks.infer_v2 import InferTask, InferType
 from monailabel.interfaces.tasks.train import TrainTask
 from monailabel.utils.others.generic import download_file, strtobool
-
-from monai.networks.nets.dynunet import DynUNet
-from monai.data import set_track_meta
 
 # from sw_interactive_segmentation.api import (
 #     get_network,
@@ -41,8 +40,8 @@ class SWFastEditConfig(TaskConfig):
             "tumor",
             "background",
         ]
-        
-        self.label_names = {label:self.labels.index(label) for label in self.labels}
+
+        self.label_names = {label: self.labels.index(label) for label in self.labels}
         print(self.label_names)
         # Model Files
         self.path = [
@@ -73,35 +72,33 @@ class SWFastEditConfig(TaskConfig):
         )
 
         AUTOPET_SPACING = (2.03642011, 2.03642011, 3.0)
-        self.target_spacing = AUTOPET_SPACING # AutoPET default
+        self.target_spacing = AUTOPET_SPACING  # AutoPET default
         # Setting ROI size
         # self.sw_roi_size = (128, 128, 128)
 
         # set_track_meta(True)
-
-
 
     def infer(self) -> Union[InferTask, Dict[str, InferTask]]:
         inferer = lib.infers.SWFastEdit(
             path=self.path,
             network=self.network,
             labels=self.labels,
-            label_names=self.label_names, 
+            label_names=self.label_names,
             preload=strtobool(self.conf.get("preload", "false")),
             config={"cache_transforms": True, "cache_transforms_in_memory": True, "cache_transforms_ttl": 1200},
-            target_spacing=self.target_spacing
+            target_spacing=self.target_spacing,
         )
         # Reenable this for the Auto Segmentation support
         # seg_inferer = lib.infers.SWFastEdit(
         #     path=self.path,
         #     network=self.network,
         #     labels=self.labels,
-        #     label_names=self.label_names, 
+        #     label_names=self.label_names,
         #     preload=strtobool(self.conf.get("preload", "false")),
         #     target_spacing=self.target_spacing,
         #     type=InferType.SEGMENTATION,
         #     )
-        
+
         return {
             self.name: inferer,
             # f"{self.name}_seg": seg_inferer,

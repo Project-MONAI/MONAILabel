@@ -9,56 +9,48 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-from typing import Callable, Sequence, Union, Dict, Any
-import logging
-import shutil
 import json
-
-import torch
-import numpy as np
-import nibabel as nib
-import pkg_resources
+import logging
 import pathlib
+import shutil
+from typing import Any, Callable, Dict, Sequence, Union
 
+import nibabel as nib
+import numpy as np
+import pkg_resources
+import torch
+from lib.transforms.transforms import AddEmptySignalChannels, AddGuidanceSignal, NormalizeLabelsInDatasetd
 from monai.inferers import Inferer, SlidingWindowInferer
-from monai.transforms import (
-    Activationsd,
-    AsDiscreted,
-    EnsureTyped,
-    LoadImaged,
-    Spacingd,
-    SqueezeDimd,
-    Compose,
-)
+from monai.transforms import Activationsd, AsDiscreted, Compose, EnsureTyped, LoadImaged, Spacingd, SqueezeDimd
 
-from monailabel.interfaces.utils.transform import run_transforms
 from monailabel.interfaces.tasks.infer_v2 import InferType
+from monailabel.interfaces.utils.transform import run_transforms
 from monailabel.tasks.infer.basic_infer import BasicInferTask, CallBackTypes
 
-from lib.transforms.transforms import AddGuidanceSignal, AddEmptySignalChannels, NormalizeLabelsInDatasetd
-
 monai_version = pkg_resources.get_distribution("monai").version
-if not pkg_resources.parse_version(monai_version) >= pkg_resources.parse_version('1.3.0'):
+if not pkg_resources.parse_version(monai_version) >= pkg_resources.parse_version("1.3.0"):
     raise UserWarning("This code needs at least MONAI 1.3.0")
 
-from monai.transforms import SignalFillEmptyd
-#else:
-#    from sw_fastedit.utils.helper_transforms import SignalFillEmptyd
-
-from monai.utils import set_determinism
-from pathlib import Path
 import os
+from pathlib import Path
 
 from monai.transforms import (
-    LoadImaged,
-    Orientationd,
     CenterSpatialCropd,
     EnsureChannelFirstd,
-    ScaleIntensityRanged,
     Identityd,
+    LoadImaged,
+    Orientationd,
+    ScaleIntensityRanged,
+    SignalFillEmptyd,
 )
+from monai.utils import set_determinism
+
+# else:
+#    from sw_fastedit.utils.helper_transforms import SignalFillEmptyd
+
 
 logger = logging.getLogger(__name__)
+
 
 class SWFastEdit(BasicInferTask):
 
@@ -93,32 +85,30 @@ class SWFastEdit(BasicInferTask):
         # Either no crop with None or crop like (128,128,128), sliding window does not need this parameter unless
         # too much memory is used for the stitching of the output windows
         self.val_crop_size = None
-        
 
         # Inferer parameters
         # Increase the overlap for up to 1% more Dice, however the time and memory consumption increase a lot!
         self.sw_overlap = 0.25
         # Should be the same ROI size as it was trained on
-        self.sw_roi_size = (128,128,128)
-        
+        self.sw_roi_size = (128, 128, 128)
+
         # Reduce this if you run into OOMs
         self.train_sw_batch_size = 8
         # Reduce this if you run into OOMs
         self.val_sw_batch_size = 16
 
-    def __call__(self, request, callbacks= None):
+    def __call__(self, request, callbacks=None):
         if callbacks is None:
             callbacks = {}
         callbacks[CallBackTypes.POST_TRANSFORMS] = post_callback
-        
-        return super().__call__(request, callbacks)
 
+        return super().__call__(request, callbacks)
 
     def pre_transforms(self, data=None) -> Sequence[Callable]:
         # print("#########################################")
         # data['label_dict'] = self.label_names
-        data['label_names'] = self.label_names
-        
+        data["label_names"] = self.label_names
+
         # Make sure the click keys already exist
         for label in self.label_names:
             if not label in data:
@@ -128,8 +118,8 @@ class SWFastEdit(BasicInferTask):
         cpu_device = torch.device("cpu")
         device = data.get("device") if data else None
         loglevel = logging.DEBUG
-        input_keys=("image")
-        
+        input_keys = "image"
+
         t = []
         t_val_1 = [
             # InitLoggerd(loglevel=loglevel, no_log=True, log_dir=None),
@@ -153,9 +143,11 @@ class SWFastEdit(BasicInferTask):
             ),
             Orientationd(keys=input_keys, axcodes="RAS"),
             Spacingd(keys=input_keys, pixdim=self.target_spacing),
-            CenterSpatialCropd(keys=input_keys, roi_size=self.val_crop_size)
-            if self.val_crop_size is not None
-            else Identityd(keys=input_keys, allow_missing_keys=True),
+            (
+                CenterSpatialCropd(keys=input_keys, roi_size=self.val_crop_size)
+                if self.val_crop_size is not None
+                else Identityd(keys=input_keys, allow_missing_keys=True)
+            ),
             EnsureTyped(keys=input_keys, device=device),
         ]
         t.extend(t_val_2)
@@ -164,19 +156,15 @@ class SWFastEdit(BasicInferTask):
     def inferer(self, data=None) -> Inferer:
         sw_params = {
             "roi_size": self.sw_roi_size,
-            "mode":"gaussian",
+            "mode": "gaussian",
             "cache_roi_weight_map": False,
             "overlap": self.sw_overlap,
         }
-        eval_inferer = SlidingWindowInferer(
-            sw_batch_size=self.val_sw_batch_size,
-            **sw_params
-        )
+        eval_inferer = SlidingWindowInferer(sw_batch_size=self.val_sw_batch_size, **sw_params)
         return eval_inferer
 
     def inverse_transforms(self, data=None) -> Union[None, Sequence[Callable]]:
         return []  # Self-determine from the list of pre-transforms provided
-
 
     def post_transforms(self, data=None) -> Sequence[Callable]:
         device = data.get("device") if data else None
@@ -188,13 +176,14 @@ class SWFastEdit(BasicInferTask):
             EnsureTyped(keys="pred", device="cpu" if data else None, dtype=torch.uint8),
         ]
 
-def post_callback(data): 
+
+def post_callback(data):
     """
     Saves clicks in the same folder where the created labels are stored.
     Can also help debugging by providing a way of saving nifti files.
     """
     image_name = Path(os.path.basename(data["image_path"]))
-    true_image_name = image_name.name.removesuffix(''.join(image_name.suffixes))
+    true_image_name = image_name.name.removesuffix("".join(image_name.suffixes))
     image_folder = Path(data["image_path"]).parent
 
     labels_folder = os.path.join(image_folder, "labels", "final")
@@ -204,10 +193,10 @@ def post_callback(data):
 
     # Save the clicks
     clicks_per_label = {}
-    for key in data['label_names'].keys():
+    for key in data["label_names"].keys():
         clicks_per_label[key] = data[key]
         assert isinstance(data[key], list)
-    
+
     click_file_path = os.path.join(labels_folder, f"{true_image_name}_clicks.json")
     logger.info(f"Now dumping dict: {clicks_per_label} to file {click_file_path} ...")
     with open(click_file_path, "w") as clicks_file:
@@ -222,25 +211,19 @@ def post_callback(data):
         logger.info(f"sum of fgg is {torch.sum(inputs[1])}")
         logger.info(f"sum of bgg is {torch.sum(inputs[2])}")
         logger.info(f"Image path is {data['image_path']}, copying file")
-        shutil.copyfile(data['image_path'], f"{path}/im.nii.gz")
-        #save_nifti(f"{path}/im", inputs[0].cpu().detach().numpy())
-        save_nifti(
-            f"{path}/guidance_fgg", inputs[1].cpu().detach().numpy()
-        )
-        save_nifti(
-            f"{path}/guidance_bgg", inputs[2].cpu().detach().numpy()
-        )
+        shutil.copyfile(data["image_path"], f"{path}/im.nii.gz")
+        # save_nifti(f"{path}/im", inputs[0].cpu().detach().numpy())
+        save_nifti(f"{path}/guidance_fgg", inputs[1].cpu().detach().numpy())
+        save_nifti(f"{path}/guidance_bgg", inputs[2].cpu().detach().numpy())
         logger.info(f"pred.shape is {pred.shape}")
-        save_nifti(
-            f"{path}/pred", pred.cpu().detach().numpy()
-        )
+        save_nifti(f"{path}/pred", pred.cpu().detach().numpy())
     return data
 
+
 def save_nifti(name, im):
-    """ONLY FOR DEBUGGING """
+    """ONLY FOR DEBUGGING"""
     affine = np.eye(4)
     affine[0][0] = -1
     ni_img = nib.Nifti1Image(im, affine=affine)
     ni_img.header.get_xyzt_units()
     ni_img.to_filename(f"{name}.nii.gz")
-

@@ -519,6 +519,7 @@ def get_guidance_tensor_for_key_label(data, key_label, device) -> torch.Tensor:
     assert type(tmp_gui) is torch.Tensor or type(tmp_gui) is MetaTensor
     return tmp_gui
 
+
 class AddGuidanceSignal(MapTransform):
     """
     Add Guidance signal for input image.
@@ -661,6 +662,7 @@ class AddGuidanceSignal(MapTransform):
                 raise UserWarning("This transform only applies to image key")
         raise UserWarning("image key has not been been found")
 
+
 class AddEmptySignalChannels(MapTransform):
     def __init__(self, device, keys: KeysCollection = None):
         """
@@ -689,6 +691,7 @@ class AddEmptySignalChannels(MapTransform):
 
         return data
 
+
 class NormalizeLabelsInDatasetd(MapTransform):
     def __init__(
         self,
@@ -715,7 +718,7 @@ class NormalizeLabelsInDatasetd(MapTransform):
     def __call__(self, data: Mapping[Hashable, torch.Tensor]) -> Mapping[Hashable, torch.Tensor]:
         # Set the labels dict in case no labels were provided
         data[LABELS_KEY] = self.labels
-        
+
         for key in self.key_iterator(data):
             if key == "label":
                 try:
@@ -749,5 +752,3 @@ class NormalizeLabelsInDatasetd(MapTransform):
             else:
                 raise UserWarning("Only the key label is allowed here!")
         return data
-
-
