@@ -115,7 +115,7 @@ async def get_current_user(token: str = Depends(oauth2_scheme) if settings.MONAI
     )
     try:
         return from_token(token)
-    except InvalidTokenError as error:
+    except InvalidTokenError as e:
         logger.error(e)
         raise credentials_exception
 
