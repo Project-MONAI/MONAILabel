@@ -15,10 +15,8 @@ import requests
 from cachetools import cached
 from fastapi import Depends, HTTPException, Security, status
 from fastapi.security import OAuth2PasswordBearer
-
 import jwt
 from jwt import InvalidTokenError
-
 from passlib.context import CryptContext
 from pydantic import BaseModel
 
