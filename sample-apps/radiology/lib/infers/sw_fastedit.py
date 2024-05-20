@@ -11,37 +11,40 @@
 
 import json
 import logging
+import os
 import pathlib
 import shutil
+from pathlib import Path
 from typing import Callable, Sequence, Union
 
 import nibabel as nib
 import numpy as np
-import pkg_resources
 import torch
 from lib.transforms.transforms import AddEmptySignalChannels, AddGuidanceSignal
 from monai.inferers import Inferer, SlidingWindowInferer
-from monai.transforms import Activationsd, AsDiscreted, EnsureTyped, LoadImaged, Spacingd, SqueezeDimd
+from monai.transforms import (
+    Activationsd,
+    AsDiscreted,
+    CenterSpatialCropd,
+    EnsureChannelFirstd,
+    EnsureTyped,
+    Identityd,
+    LoadImaged,
+    Orientationd,
+    ScaleIntensityRangePercentilesd,
+    SignalFillEmptyd,
+    Spacingd,
+    SqueezeDimd,
+)
+from monai.utils import set_determinism
 
 from monailabel.interfaces.tasks.infer_v2 import InferType
 from monailabel.tasks.infer.basic_infer import BasicInferTask, CallBackTypes
 
-monai_version = pkg_resources.get_distribution("monai").version
-if not pkg_resources.parse_version(monai_version) >= pkg_resources.parse_version("1.3.0"):
-    raise UserWarning("This code needs at least MONAI 1.3.0")
+# monai_version = pkg_resources.get_distribution("monai").version
+# if not pkg_resources.parse_version(monai_version) >= pkg_resources.parse_version("1.3.0"):
+#     raise UserWarning("This code needs at least MONAI 1.3.0")
 
-import os
-from pathlib import Path
-
-from monai.transforms import (
-    CenterSpatialCropd,
-    EnsureChannelFirstd,
-    Identityd,
-    Orientationd,
-    ScaleIntensityRangePercentilesd,
-    SignalFillEmptyd,
-)
-from monai.utils import set_determinism
 
 logger = logging.getLogger(__name__)
 

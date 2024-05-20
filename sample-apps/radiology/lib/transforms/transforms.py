@@ -10,7 +10,7 @@
 # limitations under the License.
 import copy
 import logging
-from typing import Dict, Hashable, Mapping
+from typing import Any, Dict, Hashable, Mapping
 
 import numpy as np
 import torch
@@ -620,7 +620,7 @@ class AddGuidanceSignal(MapTransform):
                 print("[ERROR] Signal is None")
             return signal
 
-    def __call__(self, data: Mapping[Hashable, torch.Tensor]) -> Mapping[Hashable, torch.Tensor]:
+    def __call__(self, data: Dict[Hashable, torch.Tensor]) -> Dict[Hashable, Any]:
         for key in self.key_iterator(data):
             if key == "image":
                 image = data[key]
@@ -672,7 +672,7 @@ class AddEmptySignalChannels(MapTransform):
         super().__init__(keys)
         self.device = device
 
-    def __call__(self, data: Mapping[Hashable, torch.Tensor]) -> Mapping[Hashable, torch.Tensor]:
+    def __call__(self, data: Dict[Hashable, torch.Tensor]) -> Dict[Hashable, Any]:
         # Set up the initial batch data
         in_channels = 1 + len(data[LABELS_KEY])
         tmp_image = data[CommonKeys.IMAGE][0 : 0 + 1, ...]
