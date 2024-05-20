@@ -15,18 +15,12 @@ from typing import Any, Dict, Optional, Union
 
 import lib.infers
 import lib.trainers
-from monai.data import set_track_meta
-from monai.networks.nets import BasicUNet
 from monai.networks.nets.dynunet import DynUNet
 
 from monailabel.interfaces.config import TaskConfig
-from monailabel.interfaces.tasks.infer_v2 import InferTask, InferType
+from monailabel.interfaces.tasks.infer_v2 import InferTask
 from monailabel.interfaces.tasks.train import TrainTask
 from monailabel.utils.others.generic import download_file, strtobool
-
-# from sw_interactive_segmentation.api import (
-#     get_network,
-# )
 
 logger = logging.getLogger(__name__)
 
@@ -73,10 +67,6 @@ class SWFastEditConfig(TaskConfig):
 
         AUTOPET_SPACING = (2.03642011, 2.03642011, 3.0)
         self.target_spacing = AUTOPET_SPACING  # AutoPET default
-        # Setting ROI size
-        # self.sw_roi_size = (128, 128, 128)
-
-        # set_track_meta(True)
 
     def infer(self) -> Union[InferTask, Dict[str, InferTask]]:
         inferer = lib.infers.SWFastEdit(

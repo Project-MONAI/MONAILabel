@@ -13,18 +13,17 @@ import json
 import logging
 import pathlib
 import shutil
-from typing import Any, Callable, Dict, Sequence, Union
+from typing import Callable, Sequence, Union
 
 import nibabel as nib
 import numpy as np
 import pkg_resources
 import torch
-from lib.transforms.transforms import AddEmptySignalChannels, AddGuidanceSignal, NormalizeLabelsInDatasetd
+from lib.transforms.transforms import AddEmptySignalChannels, AddGuidanceSignal
 from monai.inferers import Inferer, SlidingWindowInferer
-from monai.transforms import Activationsd, AsDiscreted, Compose, EnsureTyped, LoadImaged, Spacingd, SqueezeDimd
+from monai.transforms import Activationsd, AsDiscreted, EnsureTyped, LoadImaged, Spacingd, SqueezeDimd
 
 from monailabel.interfaces.tasks.infer_v2 import InferType
-from monailabel.interfaces.utils.transform import run_transforms
 from monailabel.tasks.infer.basic_infer import BasicInferTask, CallBackTypes
 
 monai_version = pkg_resources.get_distribution("monai").version
@@ -38,16 +37,11 @@ from monai.transforms import (
     CenterSpatialCropd,
     EnsureChannelFirstd,
     Identityd,
-    LoadImaged,
     Orientationd,
-    ScaleIntensityRanged,
+    ScaleIntensityRangePercentilesd,
     SignalFillEmptyd,
 )
 from monai.utils import set_determinism
-
-# else:
-#    from sw_fastedit.utils.helper_transforms import SignalFillEmptyd
-
 
 logger = logging.getLogger(__name__)
 
@@ -111,7 +105,7 @@ class SWFastEdit(BasicInferTask):
 
         # Make sure the click keys already exist
         for label in self.label_names:
-            if not label in data:
+            if label not in data:
                 data[label] = []
         # data['click_path'] = self.click_path
 
@@ -122,13 +116,12 @@ class SWFastEdit(BasicInferTask):
 
         t = []
         t_val_1 = [
-            # InitLoggerd(loglevel=loglevel, no_log=True, log_dir=None),
             LoadImaged(keys=input_keys, reader="ITKReader", image_only=False),
             EnsureChannelFirstd(keys=input_keys),
-            # ScaleIntensityRangePercentilesd(
-            #     keys="image", lower=0.05, upper=99.95, b_min=0.0, b_max=1.0, clip=True, relative=False
-            # ),
-            ScaleIntensityRanged(keys="image", a_min=0, a_max=43, b_min=0.0, b_max=1.0, clip=True),
+            ScaleIntensityRangePercentilesd(
+                keys="image", lower=0.05, upper=99.95, b_min=0.0, b_max=1.0, clip=True, relative=False
+            ),
+            # ScaleIntensityRanged(keys="image", a_min=0, a_max=43, b_min=0.0, b_max=1.0, clip=True),
             SignalFillEmptyd(keys=input_keys),
         ]
         t.extend(t_val_1)
