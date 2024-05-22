@@ -136,11 +136,23 @@ class DSADatastore(Datastore):
     def _name_to_id(self, name):
         folders = self.folders if self.folders else self._get_all_folders()
         for folder in folders:
+            # First check if the name is directly present
+            data = self.gc.get("item", parameters={"folderId": folder, "name": name, "limit": 0})
+            for d in data:
+                if d.get("largeImage"):
+                    return d["_id"], d["name"]
+            # next check if the name is present in a stem form
             data = self.gc.get("item", parameters={"folderId": folder, "limit": 0})
             for d in data:
                 if d.get("largeImage") and d["name"] == name or Path(d["name"]).stem == name:
                     return d["_id"], d["name"]
-        return name
+        # Next check if the name is anywhere in the system
+        data = self.gc.get("item", parameters={"text": f'"{name}"' if '"' not in name else name, "limit": 0})
+        for d in data:
+            if d.get("largeImage") and d["name"] == name or Path(d["name"]).stem == name:
+                return d["_id"], d["name"]
+        # If we fail to find the item, the best we can do is return the name
+        return name, name
 
     def get_image_uri(self, image_id: str) -> str:
         try:
