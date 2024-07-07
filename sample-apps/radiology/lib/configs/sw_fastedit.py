@@ -47,7 +47,7 @@ class SWFastEditConfig(TaskConfig):
         # Model is pretrained on PET scans from the AutoPET dataset
         if strtobool(self.conf.get("use_pretrained_model", "true")):
             url = f"{self.conf.get('pretrained_path', self.PRE_TRAINED_PATH)}"
-            url = f"{url}/sw_fastedit_pet.pt"
+            url = f"{url}/radiology_segmentation_sw_fastedit_pet.pt"
             print(f"Downloading from {self.path[0]}")
             download_file(url, self.path[0])
 
