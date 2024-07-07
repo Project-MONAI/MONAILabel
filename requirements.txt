@@ -9,7 +9,7 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-monai[nibabel, skimage, pillow, tensorboard, gdown, ignite, torchvision, itk, tqdm, lmdb, psutil, openslide, fire, mlflow]>=1.3.0
+monai[nibabel, skimage, pillow, tensorboard, gdown, ignite, torchvision, itk, tqdm, lmdb, psutil, openslide, fire, mlflow]>=1.3.1
 uvicorn==0.29.0
 pydantic==2.7.0
 pydantic-settings==2.2.1
@@ -35,7 +35,7 @@ einops==0.7.0
 pyyaml==6.0.1
 filelock==3.11.0
 passlib==1.7.4
-python-jose[cryptography]==3.3.0
+pyjwt==2.8.0
 bcrypt==4.1.2
 shapely==2.0.4
 requests==2.31.0
