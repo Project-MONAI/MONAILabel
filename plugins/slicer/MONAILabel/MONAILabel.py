@@ -1415,8 +1415,8 @@ class MONAILabelWidget(ScriptedLoadableModuleWidget, VTKObservationMixin):
                 start = time.time()
                 shNode = slicer.vtkMRMLSubjectHierarchyNode.GetSubjectHierarchyNode(slicer.mrmlScene)
                 volumeShItemID = shNode.GetItemByDataNode(volumeNode)
-                
-                seriesInstanceUID = shNode.GetItemUID(volumeShItemID, 'DICOM')
+
+                seriesInstanceUID = shNode.GetItemUID(volumeShItemID, "DICOM")
                 instUids = slicer.dicomDatabase.instancesForSeries(seriesInstanceUID)
                 studyInstanceUID = slicer.dicomDatabase.instanceValue(instUids[0], "0020,000D")
 
@@ -1437,19 +1437,19 @@ class MONAILabelWidget(ScriptedLoadableModuleWidget, VTKObservationMixin):
                 # if includeDicomFilesCheckBox is marked, save original dicom files on the client
                 if slicer.util.settingsValue("MONAILabel/includeDicomFiles", False, converter=slicer.util.toBool):
                     dcm_filenames = self.get_dicom_files()
-                    
+
                     # send to server only the first slice due to transfer overhead
                     dcm_filenames.sort()
                     dcm_filenames = dcm_filenames[:1]
-                    
+
                     report_progress_increment = round(last_report_progress / len(dcm_filenames), 1)
                     for dcm_fullpath in dcm_filenames:
-                    	# set original study and series UIDs
+                        # set original study and series UIDs
                         dcm = dcmread(dcm_fullpath)
                         dcm.StudyInstanceUID = studyInstanceUID
                         dcm.SeriesInstanceUID = seriesInstanceUID
                         dcm.save_as(dcm_fullpath)
-                        
+
                         dcm_filename = dcm_fullpath.split("/")[-1]
                         dcm_filename = ".".join(dcm_filename.split(".")[:-1])
                         self.logic.upload_image(dcm_fullpath, dcm_filename)
