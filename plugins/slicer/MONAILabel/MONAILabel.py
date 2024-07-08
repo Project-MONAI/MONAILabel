@@ -29,6 +29,7 @@ import slicer
 import vtk
 import vtkSegmentationCore
 from MONAILabelLib import GenericAnatomyColors, MONAILabelClient
+from pydicom import dcmread
 from slicer.i18n import tr as _
 from slicer.i18n import translate
 from slicer.ScriptedLoadableModule import *
@@ -1414,6 +1415,10 @@ class MONAILabelWidget(ScriptedLoadableModuleWidget, VTKObservationMixin):
                 start = time.time()
                 shNode = slicer.vtkMRMLSubjectHierarchyNode.GetSubjectHierarchyNode(slicer.mrmlScene)
                 volumeShItemID = shNode.GetItemByDataNode(volumeNode)
+                
+                seriesInstanceUID = shNode.GetItemUID(volumeShItemID, 'DICOM')
+                instUids = slicer.dicomDatabase.instancesForSeries(seriesInstanceUID)
+                studyInstanceUID = slicer.dicomDatabase.instanceValue(instUids[0], "0020,000D")
 
                 exporter = DICOMScalarVolumePlugin.DICOMScalarVolumePluginClass()
                 exportables = exporter.examineForExport(volumeShItemID)
@@ -1434,6 +1439,12 @@ class MONAILabelWidget(ScriptedLoadableModuleWidget, VTKObservationMixin):
                     dcm_filenames = self.get_dicom_files()
                     report_progress_increment = round(last_report_progress / len(dcm_filenames), 1)
                     for dcm_fullpath in dcm_filenames:
+                    	# set original study and series UIDs
+                        dcm = dcmread(dcm_fullpath)
+                        dcm.StudyInstanceUID = studyInstanceUID
+                        dcm.SeriesInstanceUID = seriesInstanceUID
+                        dcm.save_as(dcm_fullpath)
+                        
                         dcm_filename = dcm_fullpath.split("/")[-1]
                         dcm_filename = ".".join(dcm_filename.split(".")[:-1])
                         self.logic.upload_image(dcm_fullpath, dcm_filename)
