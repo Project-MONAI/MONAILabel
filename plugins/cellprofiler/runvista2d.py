@@ -4,17 +4,27 @@
 #
 #################################
 
-import numpy
-import os
-import monai
-import skimage
 import importlib.metadata
-import subprocess
-import uuid
-import shutil
-import tempfile
 import logging
+import os
+import shutil
+import subprocess
 import sys
+import tempfile
+import uuid
+
+import monai
+import numpy
+import skimage
+from cellprofiler_core.image import Image
+from cellprofiler_core.module.image_segmentation import ImageSegmentation
+from cellprofiler_core.object import Objects
+from cellprofiler_core.preferences import get_default_output_directory
+from cellprofiler_core.setting import Binary, ValidationError
+from cellprofiler_core.setting.choice import Choice
+from cellprofiler_core.setting.do_something import DoSomething
+from cellprofiler_core.setting.subscriber import ImageSubscriber
+from cellprofiler_core.setting.text import Directory, Filename, Float, ImageName, Integer
 
 #################################
 #
@@ -22,21 +32,6 @@ import sys
 #
 ##################################
 
-from cellprofiler_core.image import Image
-from cellprofiler_core.module.image_segmentation import ImageSegmentation
-from cellprofiler_core.object import Objects
-from cellprofiler_core.setting import Binary, ValidationError
-from cellprofiler_core.setting.choice import Choice
-from cellprofiler_core.setting.do_something import DoSomething
-from cellprofiler_core.setting.subscriber import ImageSubscriber
-from cellprofiler_core.preferences import get_default_output_directory
-from cellprofiler_core.setting.text import (
-    Integer,
-    ImageName,
-    Directory,
-    Filename,
-    Float,
-)
 
 CUDA_LINK = "https://pytorch.org/get-started/locally/"
 Cellpose_link = " https://doi.org/10.1038/s41592-020-01018-x"
@@ -90,8 +85,24 @@ CELLPOSE_DOCKER_NO_PRETRAINED = "cellprofiler/runcellpose_no_pretrained:0.1"
 CELLPOSE_DOCKER_IMAGE_WITH_PRETRAINED = "cellprofiler/runcellpose_with_pretrained:0.1"
 
 "Detection mode"
-MODEL_NAMES = ['cyto','nuclei','tissuenet','livecell', 'cyto2', 'general',
-                'CP', 'CPx', 'TN1', 'TN2', 'TN3', 'LC1', 'LC2', 'LC3', 'LC4', 'custom']
+MODEL_NAMES = [
+    "cyto",
+    "nuclei",
+    "tissuenet",
+    "livecell",
+    "cyto2",
+    "general",
+    "CP",
+    "CPx",
+    "TN1",
+    "TN2",
+    "TN3",
+    "LC1",
+    "LC2",
+    "LC3",
+    "LC4",
+    "custom",
+]
 
 "Bundle save path"
 BUNDLE_PATH = os.path.join(tempfile.gettempdir(), "bundles")
@@ -112,7 +123,7 @@ class RunVISTA2D(ImageSegmentation):
     VISTA2D_BUNDLE_VERSION = "0.2.1"
 
     def create_settings(self):
-        super(RunVISTA2D, self).create_settings()
+        super().create_settings()
 
         self.docker_or_python = Choice(
             text="Run CellPose in docker or local python environment",
@@ -208,7 +219,7 @@ Second dimension size of the sliding window roi_size parameter, default to 256
             value=False,
             doc="""\
 Whether using multiple GPUs to perform the inference
-"""
+""",
         )
 
     def settings(self):
@@ -240,15 +251,14 @@ Whether using multiple GPUs to perform the inference
     def verify_bundle(self, pipeline):
         """If using custom model, validate the model file opens and works"""
         pass
-    
+
     @classmethod
     def download_vista2d(cls, save_path):
         if os.path.exists(save_path):
             return
-        
+
         os.makedirs(save_path)
         monai.bundle.download(name=cls.VISTA2D_BUNDLE_NAME, version=cls.VISTA2D_BUNDLE_VERSION, bundle_dir=save_path)
-
 
     def run(self, workspace):
         x_name = self.x_name.value
@@ -259,13 +269,12 @@ Whether using multiple GPUs to perform the inference
         x_data = x.pixel_data
         self.download_vista2d(BUNDLE_PATH)
         bundle_path = os.path.join(BUNDLE_PATH, self.VISTA2D_BUNDLE_NAME)
-        
 
         with tempfile.TemporaryDirectory() as temp_dir:
             temp_img_dir = os.path.join(temp_dir, "img")
-            temp_img_path = os.path.join(temp_img_dir, x_name+".tiff")
+            temp_img_path = os.path.join(temp_img_dir, x_name + ".tiff")
             temp_mask_dir = os.path.join(temp_dir, "mask")
-            temp_label_path = os.path.join(temp_mask_dir, y_name+".tif")
+            temp_label_path = os.path.join(temp_mask_dir, y_name + ".tif")
             skimage.io.imsave(temp_img_path, x_data)
             if self.docker_or_python.value == "Python":
                 if self.multigpu_infer:
@@ -276,7 +285,7 @@ Whether using multiple GPUs to perform the inference
                            --config_file configs/hyper_parameters.yaml\
                            --mode infer --pretrained_ckpt_name vista2d_v1.pt
                     """
-                
+
             elif self.docker_or_python.value == "Docker":
                 # Define how to call docker
                 docker_path = "docker" if sys.platform.lower().startswith("win") else "/usr/local/bin/docker"
@@ -285,11 +294,10 @@ Whether using multiple GPUs to perform the inference
                 # Directory that will be used to pass images to the docker container
                 temp_dir = os.path.join(get_default_output_directory(), ".cellprofiler_temp", unique_name)
                 temp_img_dir = os.path.join(temp_dir, "img")
-                
+
                 os.makedirs(temp_dir, exist_ok=True)
                 os.makedirs(temp_img_dir, exist_ok=True)
 
-                
                 if self.mode.value == "custom":
                     model_file = self.model_file_name.value
                     model_directory = self.model_directory.get_absolute_path()
@@ -327,18 +335,21 @@ Whether using multiple GPUs to perform the inference
 
                 try:
                     subprocess.run(cmd.split(), text=True)
-                    cellpose_output = numpy.load(os.path.join(temp_img_dir, unique_name + "_seg.npy"), allow_pickle=True).item()
+                    cellpose_output = numpy.load(
+                        os.path.join(temp_img_dir, unique_name + "_seg.npy"), allow_pickle=True
+                    ).item()
 
                     y_data = cellpose_output["masks"]
                     flows = cellpose_output["flows"]
-                finally:      
+                finally:
                     # Delete the temporary files
                     try:
                         shutil.rmtree(temp_dir)
                     except:
                         LOGGER.error("Unable to delete temporary directory, files may be in use by another program.")
-                        LOGGER.error("Temp folder is subfolder {tempdir} in your Default Output Folder.\nYou may need to remove it manually.")
-
+                        LOGGER.error(
+                            "Temp folder is subfolder {tempdir} in your Default Output Folder.\nYou may need to remove it manually."
+                        )
 
         y = Objects()
         y.segmented = y_data
@@ -375,9 +386,7 @@ Whether using multiple GPUs to perform the inference
         else:
             layout = (2, 1)
 
-        figure.set_subplots(
-            dimensions=workspace.display_data.dimensions, subplots=layout
-        )
+        figure.set_subplots(dimensions=workspace.display_data.dimensions, subplots=layout)
 
         figure.subplot_imshow(
             colormap="gray",
@@ -406,19 +415,18 @@ Whether using multiple GPUs to perform the inference
 
     def do_check_gpu(self):
         import importlib.util
-        torch_installed = importlib.util.find_spec('torch') is not None
-        self.cellpose_ver = importlib.metadata.version('cellpose')
-        #if the old version of cellpose <2.0, then use istorch kwarg
-        if float(self.cellpose_ver[0:3]) >= 0.7 and int(self.cellpose_ver[0])<2:
+
+        torch_installed = importlib.util.find_spec("torch") is not None
+        self.cellpose_ver = importlib.metadata.version("cellpose")
+        # if the old version of cellpose <2.0, then use istorch kwarg
+        if float(self.cellpose_ver[0:3]) >= 0.7 and int(self.cellpose_ver[0]) < 2:
             GPU_works = core.use_gpu(istorch=torch_installed)
         else:  # if new version of cellpose, use use_torch kwarg
             GPU_works = core.use_gpu(use_torch=torch_installed)
         if GPU_works:
             message = "GPU appears to be working correctly!"
         else:
-            message = (
-                "GPU test failed. There may be something wrong with your configuration."
-            )
+            message = "GPU test failed. There may be something wrong with your configuration."
         import wx
 
         wx.MessageBox(message, caption="GPU Test")
@@ -431,11 +439,11 @@ Whether using multiple GPUs to perform the inference
             setting_values = setting_values + ["0.0", False, "15", "1.0", False, False]
             variable_revision_number = 3
         if variable_revision_number == 3:
-            setting_values = [setting_values[0]] + ["Python",CELLPOSE_DOCKER_IMAGE_WITH_PRETRAINED] + setting_values[1:]
+            setting_values = (
+                [setting_values[0]] + ["Python", CELLPOSE_DOCKER_IMAGE_WITH_PRETRAINED] + setting_values[1:]
+            )
             variable_revision_number = 4
         if variable_revision_number == 4:
-            setting_values = [setting_values[0]] + ['No'] + setting_values[1:]
+            setting_values = [setting_values[0]] + ["No"] + setting_values[1:]
             variable_revision_number = 5
         return setting_values, variable_revision_number
-    
-
