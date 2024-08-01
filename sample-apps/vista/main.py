@@ -13,9 +13,9 @@ import logging
 import os
 from typing import Dict
 
+from lib.infers import VISTAInfer
 from monai.transforms import Invertd, SaveImaged
 
-from lib.infers import VISTAInfer
 import monailabel
 from monailabel.interfaces.app import MONAILabelApp
 from monailabel.interfaces.tasks.infer_v2 import InferTask
