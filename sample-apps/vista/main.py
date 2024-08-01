@@ -15,6 +15,7 @@ from typing import Dict
 
 from monai.transforms import Invertd, SaveImaged
 
+from lib.infers import VISTAInfer
 import monailabel
 from monailabel.interfaces.app import MONAILabelApp
 from monailabel.interfaces.tasks.infer_v2 import InferTask
@@ -60,7 +61,7 @@ class VISTAApp(MONAILabelApp):
         #################################################
 
         for n, b in self.models.items():
-            i = BundleInferTask(b, self.conf)
+            i = VISTAInfer(b, self.conf, model_state_dict="state_dict")
             logger.info(f"+++ Adding Inferer:: {n} => {i}")
             infers[n] = i
 
