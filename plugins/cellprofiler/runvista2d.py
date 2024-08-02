@@ -4,28 +4,36 @@
 #
 #################################
 
-import numpy
-import os
-import monai
-import skimage
-import importlib.metadata
-import subprocess
-import uuid
-import shutil
-import tempfile
-import logging
-import sys
-
 import cgi
 import http.client
+import importlib.metadata
 import json
+import logging
 import mimetypes
+import os
 import re
+import shutil
 import ssl
+import subprocess
+import sys
+import tempfile
+import uuid
 from pathlib import Path
 from urllib.parse import quote_plus, unquote, urlencode, urlparse
 
+import monai
+import numpy
 import requests
+import skimage
+from cellprofiler_core.image import Image
+from cellprofiler_core.module.image_segmentation import ImageSegmentation
+from cellprofiler_core.object import Objects
+from cellprofiler_core.preferences import get_default_output_directory
+from cellprofiler_core.setting import Binary, ValidationError
+from cellprofiler_core.setting.choice import Choice
+from cellprofiler_core.setting.do_something import DoSomething
+from cellprofiler_core.setting.subscriber import ImageSubscriber
+from cellprofiler_core.setting.text import URL, Text
 
 #################################
 #
@@ -33,15 +41,6 @@ import requests
 #
 ##################################
 
-from cellprofiler_core.image import Image
-from cellprofiler_core.module.image_segmentation import ImageSegmentation
-from cellprofiler_core.object import Objects
-from cellprofiler_core.setting import Binary, ValidationError
-from cellprofiler_core.setting.choice import Choice
-from cellprofiler_core.setting.do_something import DoSomething
-from cellprofiler_core.setting.subscriber import ImageSubscriber
-from cellprofiler_core.preferences import get_default_output_directory
-from cellprofiler_core.setting.text import Text, URL
 
 CUDA_LINK = "https://pytorch.org/get-started/locally/"
 Cellpose_link = " https://doi.org/10.1038/s41592-020-01018-x"
@@ -747,7 +746,7 @@ class RunVISTA2D(ImageSegmentation):
     }
 
     def create_settings(self):
-        super(RunVISTA2D, self).create_settings()
+        super().create_settings()
 
         self.server_address = URL(
             text="MONAI label server address",
@@ -762,8 +761,8 @@ Please set up the MONAI label server in local/cloud environment and fill the ser
             value="cell_vista_segmentation",
             doc="""
 Pick the model for running infernce. Now only VISTA2D is available.
-"""
-            )
+""",
+        )
 
     def settings(self):
         return [
@@ -772,7 +771,7 @@ Pick the model for running infernce. Now only VISTA2D is available.
             self.server_address,
             self.model_name,
         ]
-    
+
     def visible_settings(self):
         return [
             self.x_name,
@@ -792,24 +791,23 @@ Pick the model for running infernce. Now only VISTA2D is available.
         with tempfile.TemporaryDirectory() as temp_dir:
             temp_img_dir = os.path.join(temp_dir, "img")
             os.makedirs(temp_img_dir, exist_ok=True)
-            temp_img_path = os.path.join(temp_img_dir, x_name+".tiff")
+            temp_img_path = os.path.join(temp_img_dir, x_name + ".tiff")
             temp_mask_dir = os.path.join(temp_dir, "mask")
             os.makedirs(temp_mask_dir, exist_ok=True)
             skimage.io.imsave(temp_img_path, x_data)
             monailabel_client = MONAILabelClient(server_url=self.server_address.value, tmpdir=temp_mask_dir)
-            image_out, params = monailabel_client.infer(model=self.model_name.value, image_id="", params={}, file=temp_img_path)
+            image_out, params = monailabel_client.infer(
+                model=self.model_name.value, image_id="", params={}, file=temp_img_path
+            )
             print(f"Image out:\n{image_out}")
             print(f"Params:\n{params}")
             y_data = skimage.io.imread(image_out)
-            
-
 
         y = Objects()
         y.segmented = y_data
         y.parent_image = x.parent_image
         objects = workspace.object_set
         objects.add_objects(y, y_name)
-
 
         self.add_measurements(workspace)
 
@@ -820,9 +818,7 @@ Pick the model for running infernce. Now only VISTA2D is available.
 
     def display(self, workspace, figure):
         layout = (2, 1)
-        figure.set_subplots(
-            dimensions=workspace.display_data.dimensions, subplots=layout
-        )
+        figure.set_subplots(dimensions=workspace.display_data.dimensions, subplots=layout)
 
         figure.subplot_imshow(
             colormap="gray",
