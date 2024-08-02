@@ -4,27 +4,28 @@
 #
 #################################
 
-import importlib.metadata
-import logging
-import os
-import shutil
-import subprocess
-import sys
-import tempfile
-import uuid
-
-import monai
 import numpy
+import os
+import monai
 import skimage
-from cellprofiler_core.image import Image
-from cellprofiler_core.module.image_segmentation import ImageSegmentation
-from cellprofiler_core.object import Objects
-from cellprofiler_core.preferences import get_default_output_directory
-from cellprofiler_core.setting import Binary, ValidationError
-from cellprofiler_core.setting.choice import Choice
-from cellprofiler_core.setting.do_something import DoSomething
-from cellprofiler_core.setting.subscriber import ImageSubscriber
-from cellprofiler_core.setting.text import Directory, Filename, Float, ImageName, Integer
+import importlib.metadata
+import subprocess
+import uuid
+import shutil
+import tempfile
+import logging
+import sys
+
+import cgi
+import http.client
+import json
+import mimetypes
+import re
+import ssl
+from pathlib import Path
+from urllib.parse import quote_plus, unquote, urlencode, urlparse
+
+import requests
 
 #################################
 #
@@ -32,6 +33,15 @@ from cellprofiler_core.setting.text import Directory, Filename, Float, ImageName
 #
 ##################################
 
+from cellprofiler_core.image import Image
+from cellprofiler_core.module.image_segmentation import ImageSegmentation
+from cellprofiler_core.object import Objects
+from cellprofiler_core.setting import Binary, ValidationError
+from cellprofiler_core.setting.choice import Choice
+from cellprofiler_core.setting.do_something import DoSomething
+from cellprofiler_core.setting.subscriber import ImageSubscriber
+from cellprofiler_core.preferences import get_default_output_directory
+from cellprofiler_core.setting.text import Text, URL
 
 CUDA_LINK = "https://pytorch.org/get-started/locally/"
 Cellpose_link = " https://doi.org/10.1038/s41592-020-01018-x"
@@ -80,32 +90,649 @@ YES          YES          NO
 
 """
 
-"Select Cellpose Docker Image"
-CELLPOSE_DOCKER_NO_PRETRAINED = "cellprofiler/runcellpose_no_pretrained:0.1"
-CELLPOSE_DOCKER_IMAGE_WITH_PRETRAINED = "cellprofiler/runcellpose_with_pretrained:0.1"
 
-"Detection mode"
-MODEL_NAMES = [
-    "cyto",
-    "nuclei",
-    "tissuenet",
-    "livecell",
-    "cyto2",
-    "general",
-    "CP",
-    "CPx",
-    "TN1",
-    "TN2",
-    "TN3",
-    "LC1",
-    "LC2",
-    "LC3",
-    "LC4",
-    "custom",
-]
+def bytes_to_str(b):
+    return b.decode("utf-8") if isinstance(b, bytes) else b
 
-"Bundle save path"
-BUNDLE_PATH = os.path.join(tempfile.gettempdir(), "bundles")
+
+class MONAILabelClient:
+    """
+    Basic MONAILabel Client to invoke infer/train APIs over http/https
+    """
+
+    def __init__(self, server_url, tmpdir=None, client_id=None):
+        """
+        :param server_url: Server URL for MONAILabel (e.g. http://127.0.0.1:8000)
+        :param tmpdir: Temp directory to save temporary files.  If None then it uses tempfile.tempdir
+        :param client_id: Client ID that will be added for all basic requests
+        """
+
+        self._server_url = server_url.rstrip("/").strip()
+        self._tmpdir = tmpdir if tmpdir else tempfile.tempdir if tempfile.tempdir else "/tmp"
+        self._client_id = client_id
+        self._headers = {}
+
+    def _update_client_id(self, params):
+        if params:
+            params["client_id"] = self._client_id
+        else:
+            params = {"client_id": self._client_id}
+        return params
+
+    def update_auth(self, token):
+        if token:
+            self._headers["Authorization"] = f"{token['token_type']} {token['access_token']}"
+
+    def get_server_url(self):
+        """
+        Return server url
+
+        :return: the url for monailabel server
+        """
+        return self._server_url
+
+    def set_server_url(self, server_url):
+        """
+        Set url for monailabel server
+
+        :param server_url: server url for monailabel
+        """
+        self._server_url = server_url.rstrip("/").strip()
+
+    def auth_enabled(self) -> bool:
+        """
+        Check if Auth is enabled
+
+        """
+        selector = "/auth/"
+        status, response, _, _ = MONAILabelUtils.http_method("GET", self._server_url, selector)
+        if status != 200:
+            return False
+
+        response = bytes_to_str(response)
+        LOGGER.debug(f"Response: {response}")
+        enabled = json.loads(response).get("enabled", False)
+        return True if enabled else False
+
+    def auth_token(self, username, password):
+        """
+        Fetch Auth Token.  Currently only basic authentication is supported.
+
+        :param username: UserName for basic authentication
+        :param password: Password for basic authentication
+        """
+        selector = "/auth/token"
+        data = urlencode({"username": username, "password": password, "grant_type": "password"})
+        status, response, _, _ = MONAILabelUtils.http_method(
+            "POST", self._server_url, selector, data, None, "application/x-www-form-urlencoded"
+        )
+        if status != 200:
+            raise MONAILabelClientException(
+                MONAILabelError.SERVER_ERROR, f"Status: {status}; Response: {bytes_to_str(response)}", status, response
+            )
+
+        response = bytes_to_str(response)
+        LOGGER.debug(f"Response: {response}")
+        return json.loads(response)
+
+    def auth_valid_token(self) -> bool:
+        selector = "/auth/token/valid"
+        status, _, _, _ = MONAILabelUtils.http_method("GET", self._server_url, selector, headers=self._headers)
+        return True if status == 200 else False
+
+    def info(self):
+        """
+        Invoke /info/ request over MONAILabel Server
+
+        :return: json response
+        """
+        selector = "/info/"
+        status, response, _, _ = MONAILabelUtils.http_method("GET", self._server_url, selector, headers=self._headers)
+        if status != 200:
+            raise MONAILabelClientException(
+                MONAILabelError.SERVER_ERROR, f"Status: {status}; Response: {bytes_to_str(response)}", status, response
+            )
+
+        response = bytes_to_str(response)
+        logging.debug(f"Response: {response}")
+        return json.loads(response)
+
+    def next_sample(self, strategy, params):
+        """
+        Get Next sample
+
+        :param strategy: Name of strategy to be used for fetching next sample
+        :param params: Additional JSON params as part of strategy request
+        :return: json response which contains information about next image selected for annotation
+        """
+        params = self._update_client_id(params)
+        selector = f"/activelearning/{MONAILabelUtils.urllib_quote_plus(strategy)}"
+        status, response, _, _ = MONAILabelUtils.http_method(
+            "POST", self._server_url, selector, params, headers=self._headers
+        )
+        if status != 200:
+            raise MONAILabelClientException(
+                MONAILabelError.SERVER_ERROR, f"Status: {status}; Response: {bytes_to_str(response)}", status, response
+            )
+
+        response = bytes_to_str(response)
+        logging.debug(f"Response: {response}")
+        return json.loads(response)
+
+    def create_session(self, image_in, params=None):
+        """
+        Create New Session
+
+        :param image_in: filepath for image to be sent to server as part of session creation
+        :param params: additional JSON params as part of session reqeust
+        :return: json response which contains session id and other details
+        """
+        selector = "/session/"
+        params = self._update_client_id(params)
+
+        status, response, _ = MONAILabelUtils.http_upload(
+            "PUT", self._server_url, selector, params, [image_in], headers=self._headers
+        )
+        if status != 200:
+            raise MONAILabelClientException(
+                MONAILabelError.SERVER_ERROR, f"Status: {status}; Response: {bytes_to_str(response)}", status, response
+            )
+
+        response = bytes_to_str(response)
+        logging.debug(f"Response: {response}")
+        return json.loads(response)
+
+    def get_session(self, session_id):
+        """
+        Get Session
+
+        :param session_id: Session Id
+        :return: json response which contains more details about the session
+        """
+        selector = f"/session/{MONAILabelUtils.urllib_quote_plus(session_id)}"
+        status, response, _, _ = MONAILabelUtils.http_method("GET", self._server_url, selector, headers=self._headers)
+        if status != 200:
+            raise MONAILabelClientException(
+                MONAILabelError.SERVER_ERROR, f"Status: {status}; Response: {bytes_to_str(response)}", status, response
+            )
+
+        response = bytes_to_str(response)
+        logging.debug(f"Response: {response}")
+        return json.loads(response)
+
+    def remove_session(self, session_id):
+        """
+        Remove any existing Session
+
+        :param session_id: Session Id
+        :return: json response
+        """
+        selector = f"/session/{MONAILabelUtils.urllib_quote_plus(session_id)}"
+        status, response, _, _ = MONAILabelUtils.http_method(
+            "DELETE", self._server_url, selector, headers=self._headers
+        )
+        if status != 200:
+            raise MONAILabelClientException(
+                MONAILabelError.SERVER_ERROR, f"Status: {status}; Response: {bytes_to_str(response)}", status, response
+            )
+
+        response = bytes_to_str(response)
+        logging.debug(f"Response: {response}")
+        return json.loads(response)
+
+    def upload_image(self, image_in, image_id=None, params=None):
+        """
+        Upload New Image to MONAILabel Datastore
+
+        :param image_in: Image File Path
+        :param image_id: Force Image ID;  If not provided then Server it auto generate new Image ID
+        :param params: Additional JSON params
+        :return: json response which contains image id and other details
+        """
+        selector = f"/datastore/?image={MONAILabelUtils.urllib_quote_plus(image_id)}"
+
+        files = {"file": image_in}
+        params = self._update_client_id(params)
+        fields = {"params": json.dumps(params) if params else "{}"}
+
+        status, response, _, _ = MONAILabelUtils.http_multipart(
+            "PUT", self._server_url, selector, fields, files, headers=self._headers
+        )
+        if status != 200:
+            raise MONAILabelClientException(
+                MONAILabelError.SERVER_ERROR,
+                f"Status: {status}; Response: {bytes_to_str(response)}",
+            )
+
+        response = bytes_to_str(response)
+        logging.debug(f"Response: {response}")
+        return json.loads(response)
+
+    def save_label(self, image_id, label_in, tag="", params=None):
+        """
+        Save/Submit Label
+
+        :param image_id: Image Id for which label needs to saved/submitted
+        :param label_in: Label File path which shall be saved/submitted
+        :param tag: Save label against tag in datastore
+        :param params: Additional JSON params for the request
+        :return: json response
+        """
+        selector = f"/datastore/label?image={MONAILabelUtils.urllib_quote_plus(image_id)}"
+        if tag:
+            selector += f"&tag={MONAILabelUtils.urllib_quote_plus(tag)}"
+
+        params = self._update_client_id(params)
+        fields = {
+            "params": json.dumps(params),
+        }
+        files = {"label": label_in}
+
+        status, response, _, _ = MONAILabelUtils.http_multipart(
+            "PUT", self._server_url, selector, fields, files, headers=self._headers
+        )
+        if status != 200:
+            raise MONAILabelClientException(
+                MONAILabelError.SERVER_ERROR,
+                f"Status: {status}; Response: {bytes_to_str(response)}",
+            )
+
+        response = bytes_to_str(response)
+        logging.debug(f"Response: {response}")
+        return json.loads(response)
+
+    def datastore(self):
+        selector = "/datastore/?output=all"
+        status, response, _, _ = MONAILabelUtils.http_method("GET", self._server_url, selector, headers=self._headers)
+        if status != 200:
+            raise MONAILabelClientException(
+                MONAILabelError.SERVER_ERROR, f"Status: {status}; Response: {bytes_to_str(response)}", status, response
+            )
+
+        response = bytes_to_str(response)
+        logging.debug(f"Response: {response}")
+        return json.loads(response)
+
+    def download_label(self, label_id, tag):
+        selector = "/datastore/label?label={}&tag={}".format(
+            MONAILabelUtils.urllib_quote_plus(label_id), MONAILabelUtils.urllib_quote_plus(tag)
+        )
+        status, response, _, headers = MONAILabelUtils.http_method(
+            "GET", self._server_url, selector, headers=self._headers
+        )
+        if status != 200:
+            raise MONAILabelClientException(
+                MONAILabelError.SERVER_ERROR, f"Status: {status}; Response: {bytes_to_str(response)}", status, response
+            )
+
+        content_disposition = headers.get("content-disposition")
+
+        if not content_disposition:
+            logging.warning("Filename not found. Fall back to no loaded labels")
+        file_name = MONAILabelUtils.get_filename(content_disposition)
+
+        file_ext = "".join(Path(file_name).suffixes)
+        local_filename = tempfile.NamedTemporaryFile(dir=self._tmpdir, suffix=file_ext).name
+        with open(local_filename, "wb") as f:
+            f.write(response)
+
+        return local_filename
+
+    def infer(self, model, image_id, params, label_in=None, file=None, session_id=None):
+        """
+        Run Infer
+
+        :param model: Name of Model
+        :param image_id: Image Id
+        :param params: Additional configs/json params as part of Infer request
+        :param label_in: File path for label mask which is needed to run Inference (e.g. In case of Scribbles)
+        :param file: File path for Image (use raw image instead of image_id)
+        :param session_id: Session ID (use existing session id instead of image_id)
+        :return: response_file (label mask), response_body (json result/output params)
+        """
+        selector = "/infer/{}?image={}".format(
+            MONAILabelUtils.urllib_quote_plus(model),
+            MONAILabelUtils.urllib_quote_plus(image_id),
+        )
+        if session_id:
+            selector += f"&session_id={MONAILabelUtils.urllib_quote_plus(session_id)}"
+
+        params = self._update_client_id(params)
+        fields = {"params": json.dumps(params) if params else "{}"}
+        files = {"label": label_in} if label_in else {}
+        files.update({"file": file} if file and not session_id else {})
+
+        status, form, files, _ = MONAILabelUtils.http_multipart(
+            "POST", self._server_url, selector, fields, files, headers=self._headers
+        )
+        if status != 200:
+            raise MONAILabelClientException(
+                MONAILabelError.SERVER_ERROR,
+                f"Status: {status}; Response: {bytes_to_str(form)}",
+            )
+
+        form = json.loads(form) if isinstance(form, str) else form
+        params = form.get("params") if files else form
+        params = json.loads(params) if isinstance(params, str) else params
+
+        image_out = MONAILabelUtils.save_result(files, self._tmpdir)
+        return image_out, params
+
+    def wsi_infer(self, model, image_id, body=None, output="dsa", session_id=None):
+        """
+        Run WSI Infer in case of Pathology App
+
+        :param model: Name of Model
+        :param image_id: Image Id
+        :param body: Additional configs/json params as part of Infer request
+        :param output: Output File format (dsa|asap|json)
+        :param session_id: Session ID (use existing session id instead of image_id)
+        :return: response_file (None), response_body
+        """
+        selector = "/infer/wsi/{}?image={}".format(
+            MONAILabelUtils.urllib_quote_plus(model),
+            MONAILabelUtils.urllib_quote_plus(image_id),
+        )
+        if session_id:
+            selector += f"&session_id={MONAILabelUtils.urllib_quote_plus(session_id)}"
+        if output:
+            selector += f"&output={MONAILabelUtils.urllib_quote_plus(output)}"
+
+        body = self._update_client_id(body if body else {})
+        status, form, _, _ = MONAILabelUtils.http_method("POST", self._server_url, selector, body)
+        if status != 200:
+            raise MONAILabelClientException(
+                MONAILabelError.SERVER_ERROR,
+                f"Status: {status}; Response: {bytes_to_str(form)}",
+            )
+
+        return None, form
+
+    def train_start(self, model, params):
+        """
+        Run Train Task
+
+        :param model: Name of Model
+        :param params: Additional configs/json params as part of Train request
+        :return: json response
+        """
+        params = self._update_client_id(params)
+
+        selector = "/train/"
+        if model:
+            selector += MONAILabelUtils.urllib_quote_plus(model)
+
+        status, response, _, _ = MONAILabelUtils.http_method(
+            "POST", self._server_url, selector, params, headers=self._headers
+        )
+        if status != 200:
+            raise MONAILabelClientException(
+                MONAILabelError.SERVER_ERROR,
+                f"Status: {status}; Response: {bytes_to_str(response)}",
+            )
+
+        response = bytes_to_str(response)
+        logging.debug(f"Response: {response}")
+        return json.loads(response)
+
+    def train_stop(self):
+        """
+        Stop any running Train Task(s)
+
+        :return: json response
+        """
+        selector = "/train/"
+        status, response, _, _ = MONAILabelUtils.http_method(
+            "DELETE", self._server_url, selector, headers=self._headers
+        )
+        if status != 200:
+            raise MONAILabelClientException(
+                MONAILabelError.SERVER_ERROR,
+                f"Status: {status}; Response: {bytes_to_str(response)}",
+            )
+
+        response = bytes_to_str(response)
+        logging.debug(f"Response: {response}")
+        return json.loads(response)
+
+    def train_status(self, check_if_running=False):
+        """
+        Check Train Task Status
+
+        :param check_if_running: Fast mode.  Only check if training is Running
+        :return: boolean if check_if_running is enabled; else json response that contains of full details
+        """
+        selector = "/train/"
+        if check_if_running:
+            selector += "?check_if_running=true"
+        status, response, _, _ = MONAILabelUtils.http_method("GET", self._server_url, selector, headers=self._headers)
+        if check_if_running:
+            return status == 200
+
+        if status != 200:
+            raise MONAILabelClientException(
+                MONAILabelError.SERVER_ERROR,
+                f"Status: {status}; Response: {bytes_to_str(response)}",
+            )
+
+        response = bytes_to_str(response)
+        logging.debug(f"Response: {response}")
+        return json.loads(response)
+
+
+class MONAILabelError:
+    """
+    Type of Inference Model
+
+    Attributes:
+        SERVER_ERROR -           Server Error
+        SESSION_EXPIRED -        Session Expired
+        UNKNOWN -                Unknown Error
+    """
+
+    SERVER_ERROR = 1
+    SESSION_EXPIRED = 2
+    UNKNOWN = 3
+
+
+class MONAILabelClientException(Exception):
+    """
+    MONAILabel Client Exception
+    """
+
+    __slots__ = ["error", "msg"]
+
+    def __init__(self, error, msg, status_code=None, response=None):
+        """
+        :param error: Error code represented by MONAILabelError
+        :param msg: Error message
+        :param status_code: HTTP Response code
+        :param response: HTTP Response
+        """
+        self.error = error
+        self.msg = msg
+        self.status_code = status_code
+        self.response = response
+
+
+class MONAILabelUtils:
+    @staticmethod
+    def http_method(method, server_url, selector, body=None, headers=None, content_type=None):
+        logging.debug(f"{method} {server_url}{selector}")
+
+        parsed = urlparse(server_url)
+        path = parsed.path.rstrip("/")
+        selector = path + "/" + selector.lstrip("/")
+        logging.debug(f"URI Path: {selector}")
+
+        parsed = urlparse(server_url)
+        if parsed.scheme == "https":
+            LOGGER.debug("Using HTTPS mode")
+            # noinspection PyProtectedMember
+            conn = http.client.HTTPSConnection(parsed.hostname, parsed.port, context=ssl._create_unverified_context())
+        else:
+            conn = http.client.HTTPConnection(parsed.hostname, parsed.port)
+
+        headers = headers if headers else {}
+        if body:
+            if not content_type:
+                if isinstance(body, dict):
+                    body = json.dumps(body)
+                    content_type = "application/json"
+                else:
+                    content_type = "text/plain"
+            headers.update({"content-type": content_type, "content-length": str(len(body))})
+
+        conn.request(method, selector, body=body, headers=headers)
+        return MONAILabelUtils.send_response(conn)
+
+    @staticmethod
+    def http_upload(method, server_url, selector, fields, files, headers=None):
+        logging.debug(f"{method} {server_url}{selector}")
+
+        url = server_url.rstrip("/") + "/" + selector.lstrip("/")
+        logging.debug(f"URL: {url}")
+
+        files = [("files", (os.path.basename(f), open(f, "rb"))) for f in files]
+        headers = headers if headers else {}
+        response = (
+            requests.post(url, files=files, headers=headers)
+            if method == "POST"
+            else requests.put(url, files=files, data=fields, headers=headers)
+        )
+        return response.status_code, response.text, None
+
+    @staticmethod
+    def http_multipart(method, server_url, selector, fields, files, headers={}):
+        logging.debug(f"{method} {server_url}{selector}")
+
+        content_type, body = MONAILabelUtils.encode_multipart_formdata(fields, files)
+        headers = headers if headers else {}
+        headers.update({"content-type": content_type, "content-length": str(len(body))})
+
+        parsed = urlparse(server_url)
+        path = parsed.path.rstrip("/")
+        selector = path + "/" + selector.lstrip("/")
+        logging.debug(f"URI Path: {selector}")
+
+        if parsed.scheme == "https":
+            LOGGER.debug("Using HTTPS mode")
+            # noinspection PyProtectedMember
+            conn = http.client.HTTPSConnection(parsed.hostname, parsed.port, context=ssl._create_unverified_context())
+        else:
+            conn = http.client.HTTPConnection(parsed.hostname, parsed.port)
+
+        conn.request(method, selector, body, headers)
+        return MONAILabelUtils.send_response(conn, content_type)
+
+    @staticmethod
+    def send_response(conn, content_type="application/json"):
+        response = conn.getresponse()
+        logging.debug(f"HTTP Response Code: {response.status}")
+        logging.debug(f"HTTP Response Message: {response.reason}")
+        logging.debug(f"HTTP Response Headers: {response.getheaders()}")
+
+        response_content_type = response.getheader("content-type", content_type)
+        logging.debug(f"HTTP Response Content-Type: {response_content_type}")
+
+        if "multipart" in response_content_type:
+            if response.status == 200:
+                form, files = MONAILabelUtils.parse_multipart(response.fp if response.fp else response, response.msg)
+                logging.debug(f"Response FORM: {form}")
+                logging.debug(f"Response FILES: {files.keys()}")
+                return response.status, form, files, response.headers
+            else:
+                return response.status, response.read(), None, response.headers
+
+        logging.debug("Reading status/content from simple response!")
+        return response.status, response.read(), None, response.headers
+
+    @staticmethod
+    def save_result(files, tmpdir):
+        for name in files:
+            data = files[name]
+            result_file = os.path.join(tmpdir, name)
+
+            logging.debug(f"Saving {name} to {result_file}; Size: {len(data)}")
+            dir_path = os.path.dirname(os.path.realpath(result_file))
+            if not os.path.exists(dir_path):
+                os.makedirs(dir_path)
+
+            with open(result_file, "wb") as f:
+                if isinstance(data, bytes):
+                    f.write(data)
+                else:
+                    f.write(data.encode("utf-8"))
+
+            # Currently only one file per response supported
+            return result_file
+
+    @staticmethod
+    def encode_multipart_formdata(fields, files):
+        limit = "----------lImIt_of_THE_fIle_eW_$"
+        lines = []
+        for key, value in fields.items():
+            lines.append("--" + limit)
+            lines.append('Content-Disposition: form-data; name="%s"' % key)
+            lines.append("")
+            lines.append(value)
+        for key, filename in files.items():
+            lines.append("--" + limit)
+            lines.append(f'Content-Disposition: form-data; name="{key}"; filename="{filename}"')
+            lines.append("Content-Type: %s" % MONAILabelUtils.get_content_type(filename))
+            lines.append("")
+            with open(filename, mode="rb") as f:
+                data = f.read()
+                lines.append(data)
+        lines.append("--" + limit + "--")
+        lines.append("")
+
+        body = bytearray()
+        for line in lines:
+            body.extend(line if isinstance(line, bytes) else line.encode("utf-8"))
+            body.extend(b"\r\n")
+
+        content_type = "multipart/form-data; boundary=%s" % limit
+        return content_type, body
+
+    @staticmethod
+    def get_content_type(filename):
+        return mimetypes.guess_type(filename)[0] or "application/octet-stream"
+
+    @staticmethod
+    def parse_multipart(fp, headers):
+        fs = cgi.FieldStorage(
+            fp=fp,
+            environ={"REQUEST_METHOD": "POST"},
+            headers=headers,
+            keep_blank_values=True,
+        )
+        form = {}
+        files = {}
+        if hasattr(fs, "list") and isinstance(fs.list, list):
+            for f in fs.list:
+                LOGGER.debug(f"FILE-NAME: {f.filename}; NAME: {f.name}; SIZE: {len(f.value)}")
+                if f.filename:
+                    files[f.filename] = f.value
+                else:
+                    form[f.name] = f.value
+        return form, files
+
+    @staticmethod
+    def urllib_quote_plus(s):
+        return quote_plus(s)
+
+    @staticmethod
+    def get_filename(content_disposition):
+        file_name = re.findall(r"filename\*=([^;]+)", content_disposition, flags=re.IGNORECASE)
+        if not file_name:
+            file_name = re.findall('filename="(.+)"', content_disposition, flags=re.IGNORECASE)
+        if "utf-8''" in file_name[0].lower():
+            file_name = re.sub("utf-8''", "", file_name[0], flags=re.IGNORECASE)
+            file_name = unquote(file_name)
+        else:
+            file_name = file_name[0]
+        return file_name
 
 
 class RunVISTA2D(ImageSegmentation):
@@ -119,146 +746,40 @@ class RunVISTA2D(ImageSegmentation):
         "Please cite the following when using RunVISTA2D:": "https://doi.org/10.48550/arXiv.2406.05285",
     }
 
-    VISTA2D_BUNDLE_NAME = "cell_vista_segmentation"
-    VISTA2D_BUNDLE_VERSION = "0.2.1"
-
     def create_settings(self):
-        super().create_settings()
+        super(RunVISTA2D, self).create_settings()
 
-        self.docker_or_python = Choice(
-            text="Run CellPose in docker or local python environment",
-            choices=["Docker", "Python"],
-            value="Docker",
+        self.server_address = URL(
+            text="MONAI label server address",
             doc="""\
-If Docker is selected, ensure that Docker Desktop is open and running on your
-computer. On first run of the RunCellpose plugin, the Docker container will be
-downloaded. However, this slow downloading process will only have to happen
-once.
-
-If Python is selected, the Python environment in which CellProfiler and Cellpose
-are installed will be used.
+Please set up the MONAI label server in local/cloud environment and fill the server address here.
 """,
         )
 
-        self.use_gpu = Binary(
-            text="Use GPU",
-            value=False,
-            doc=f"""\
-If enabled, Cellpose will attempt to run detection on your system's graphics card (GPU).
-Note that you will need a CUDA-compatible GPU and correctly configured PyTorch version, see this link for details:
-{CUDA_LINK}
-
-If disabled or incorrectly configured, Cellpose will run on your CPU instead. This is much slower but more compatible
-with different hardware setups.
-
-Note that, particularly when in 3D mode, lack of GPU memory can become a limitation. If a model crashes you may need to
-re-start CellProfiler to release GPU memory. Resizing large images prior to running them through the model can free up
-GPU memory.
-""",
-        )
-
-        self.model_directory = Directory(
-            "Location of the pre-trained model file",
-            doc=f"""\
-*(Used only when using a custom pre-trained model)*
-Select the location of the pre-trained CellPose model file that will be used for detection.""",
-        )
-
-        def get_directory_fn():
-            """Get the directory for the rules file name"""
-            return self.model_directory.get_absolute_path()
-
-        def set_directory_fn(path):
-            dir_choice, custom_path = self.model_directory.get_parts_from_path(path)
-
-            self.model_directory.join_parts(dir_choice, custom_path)
-
-        self.model_file_name = Filename(
-            "Pre-trained model file name",
-            "cyto_0",
-            get_directory_fn=get_directory_fn,
-            set_directory_fn=set_directory_fn,
-            doc=f"""\
-*(Used only when using a custom pre-trained model)*
-This file can be generated by training a custom model withing the CellPose GUI or command line applications.""",
-        )
-
-        self.gpu_test = DoSomething(
-            "",
-            "Test GPU",
-            self.do_check_gpu,
-            doc=f"""\
-Press this button to check whether a GPU is correctly configured.
-
-If you have a dedicated GPU, a failed test usually means that either your GPU does not support deep learning or the
-required dependencies are not installed.
-If you have multiple GPUs on your system, this button will only test the first one.
-""",
-        )
-
-        self.sliding_window_size_0 = Integer(
-            text="First dimension of the MONAI SlidingWindowInferer roi_size parameter",
-            value=256,
-            minval=128,
-            doc="""\
-First dimension size of the sliding window roi_size parameter, default to 256
-""",
-        )
-
-        self.sliding_window_size_1 = Integer(
-            text="Second dimension of the MONAI SlidingWindowInferer roi_size parameter",
-            value=256,
-            minval=128,
-            doc="""\
-Second dimension size of the sliding window roi_size parameter, default to 256
-""",
-        )
-
-        self.multigpu_infer = Binary(
-            text="Whether using multi-GPU to perform the inference",
-            value=False,
-            doc="""\
-Whether using multiple GPUs to perform the inference
-""",
-        )
+        self.model_name = Choice(
+            text="The model for running the inference",
+            choices=["cell_vista_segmentation"],
+            value="cell_vista_segmentation",
+            doc="""
+Pick the model for running infernce. Now only VISTA2D is available.
+"""
+            )
 
     def settings(self):
         return [
             self.x_name,
-            self.docker_or_python,
             self.y_name,
-            self.use_gpu,
-            self.model_directory,
-            self.model_file_name,
-            self.sliding_window_size_0,
-            self.sliding_window_size_1,
-            self.multigpu_infer,
+            self.server_address,
+            self.model_name,
         ]
-
+    
     def visible_settings(self):
         return [
             self.x_name,
-            self.docker_or_python,
             self.y_name,
-            self.use_gpu,
-            self.model_directory,
-            self.model_file_name,
-            self.sliding_window_size_0,
-            self.sliding_window_size_1,
-            self.multigpu_infer,
+            self.server_address,
+            self.model_name,
         ]
-
-    def verify_bundle(self, pipeline):
-        """If using custom model, validate the model file opens and works"""
-        pass
-
-    @classmethod
-    def download_vista2d(cls, save_path):
-        if os.path.exists(save_path):
-            return
-
-        os.makedirs(save_path)
-        monai.bundle.download(name=cls.VISTA2D_BUNDLE_NAME, version=cls.VISTA2D_BUNDLE_VERSION, bundle_dir=save_path)
 
     def run(self, workspace):
         x_name = self.x_name.value
@@ -267,89 +788,21 @@ Whether using multiple GPUs to perform the inference
         x = images.get_image(x_name)
         dimensions = x.dimensions
         x_data = x.pixel_data
-        self.download_vista2d(BUNDLE_PATH)
-        bundle_path = os.path.join(BUNDLE_PATH, self.VISTA2D_BUNDLE_NAME)
 
         with tempfile.TemporaryDirectory() as temp_dir:
             temp_img_dir = os.path.join(temp_dir, "img")
-            temp_img_path = os.path.join(temp_img_dir, x_name + ".tiff")
+            os.makedirs(temp_img_dir, exist_ok=True)
+            temp_img_path = os.path.join(temp_img_dir, x_name+".tiff")
             temp_mask_dir = os.path.join(temp_dir, "mask")
-            temp_label_path = os.path.join(temp_mask_dir, y_name + ".tif")
+            os.makedirs(temp_mask_dir, exist_ok=True)
             skimage.io.imsave(temp_img_path, x_data)
-            if self.docker_or_python.value == "Python":
-                if self.multigpu_infer:
-                    pass
-                else:
-                    cmd = f"""cd {bundle_path};
-                    python -m monai.bundle run_workflow "scripts.workflow.VistaCell"\
-                           --config_file configs/hyper_parameters.yaml\
-                           --mode infer --pretrained_ckpt_name vista2d_v1.pt
-                    """
+            monailabel_client = MONAILabelClient(server_url=self.server_address.value, tmpdir=temp_mask_dir)
+            image_out, params = monailabel_client.infer(model=self.model_name.value, image_id="", params={}, file=temp_img_path)
+            print(f"Image out:\n{image_out}")
+            print(f"Params:\n{params}")
+            y_data = skimage.io.imread(image_out)
+            
 
-            elif self.docker_or_python.value == "Docker":
-                # Define how to call docker
-                docker_path = "docker" if sys.platform.lower().startswith("win") else "/usr/local/bin/docker"
-                # Create a UUID for this run
-                unique_name = str(uuid.uuid4())
-                # Directory that will be used to pass images to the docker container
-                temp_dir = os.path.join(get_default_output_directory(), ".cellprofiler_temp", unique_name)
-                temp_img_dir = os.path.join(temp_dir, "img")
-
-                os.makedirs(temp_dir, exist_ok=True)
-                os.makedirs(temp_img_dir, exist_ok=True)
-
-                if self.mode.value == "custom":
-                    model_file = self.model_file_name.value
-                    model_directory = self.model_directory.get_absolute_path()
-                    model_path = os.path.join(model_directory, model_file)
-                    temp_model_dir = os.path.join(temp_dir, "model")
-
-                    os.makedirs(temp_model_dir, exist_ok=True)
-                    # Copy the model
-                    shutil.copy(model_path, os.path.join(temp_model_dir, model_file))
-
-                # Save the image to the Docker mounted directory
-                skimage.io.imsave(temp_img_path, x_data)
-
-                cmd = f"""
-                {docker_path} run --rm -v {temp_dir}:/data
-                {self.docker_image.value}
-                {'--gpus all' if self.use_gpu.value else ''}
-                cellpose
-                --dir /data/img
-                {'--pretrained_model ' + self.mode.value if self.mode.value != 'custom' else '--pretrained_model /data/model/' + model_file}
-                --chan {channels[0]}
-                --chan2 {channels[1]}
-                --diameter {diam}
-                {'--net_avg' if self.use_averaging.value else ''}
-                {'--do_3D' if self.do_3D.value else ''}
-                --anisotropy {anisotropy}
-                --flow_threshold {self.flow_threshold.value}
-                --cellprob_threshold {self.cellprob_threshold.value}
-                --stitch_threshold {self.stitch_threshold.value}
-                --min_size {self.min_size.value}
-                {'--invert' if self.invert.value else ''}
-                {'--exclude_on_edges' if self.remove_edge_masks.value else ''}
-                --verbose
-                """
-
-                try:
-                    subprocess.run(cmd.split(), text=True)
-                    cellpose_output = numpy.load(
-                        os.path.join(temp_img_dir, unique_name + "_seg.npy"), allow_pickle=True
-                    ).item()
-
-                    y_data = cellpose_output["masks"]
-                    flows = cellpose_output["flows"]
-                finally:
-                    # Delete the temporary files
-                    try:
-                        shutil.rmtree(temp_dir)
-                    except:
-                        LOGGER.error("Unable to delete temporary directory, files may be in use by another program.")
-                        LOGGER.error(
-                            "Temp folder is subfolder {tempdir} in your Default Output Folder.\nYou may need to remove it manually."
-                        )
 
         y = Objects()
         y.segmented = y_data
@@ -357,21 +810,6 @@ Whether using multiple GPUs to perform the inference
         objects = workspace.object_set
         objects.add_objects(y, y_name)
 
-        if self.save_probabilities.value:
-            # Flows come out sized relative to CellPose's inbuilt model size.
-            # We need to slightly resize to match the original image.
-            size_corrected = skimage.transform.resize(flows[2], y_data.shape)
-            prob_image = Image(
-                size_corrected,
-                parent_image=x.parent_image,
-                convert=False,
-                dimensions=len(size_corrected.shape),
-            )
-
-            workspace.image_set.add(self.probabilities_name.value, prob_image)
-
-            if self.show_window:
-                workspace.display_data.probabilities = size_corrected
 
         self.add_measurements(workspace)
 
@@ -381,12 +819,10 @@ Whether using multiple GPUs to perform the inference
             workspace.display_data.dimensions = dimensions
 
     def display(self, workspace, figure):
-        if self.save_probabilities.value:
-            layout = (2, 2)
-        else:
-            layout = (2, 1)
-
-        figure.set_subplots(dimensions=workspace.display_data.dimensions, subplots=layout)
+        layout = (2, 1)
+        figure.set_subplots(
+            dimensions=workspace.display_data.dimensions, subplots=layout
+        )
 
         figure.subplot_imshow(
             colormap="gray",
@@ -403,47 +839,6 @@ Whether using multiple GPUs to perform the inference
             x=1,
             y=0,
         )
-        if self.save_probabilities.value:
-            figure.subplot_imshow(
-                colormap="gray",
-                image=workspace.display_data.probabilities,
-                sharexy=figure.subplot(0, 0),
-                title=self.probabilities_name.value,
-                x=0,
-                y=1,
-            )
 
-    def do_check_gpu(self):
-        import importlib.util
-
-        torch_installed = importlib.util.find_spec("torch") is not None
-        self.cellpose_ver = importlib.metadata.version("cellpose")
-        # if the old version of cellpose <2.0, then use istorch kwarg
-        if float(self.cellpose_ver[0:3]) >= 0.7 and int(self.cellpose_ver[0]) < 2:
-            GPU_works = core.use_gpu(istorch=torch_installed)
-        else:  # if new version of cellpose, use use_torch kwarg
-            GPU_works = core.use_gpu(use_torch=torch_installed)
-        if GPU_works:
-            message = "GPU appears to be working correctly!"
-        else:
-            message = "GPU test failed. There may be something wrong with your configuration."
-        import wx
-
-        wx.MessageBox(message, caption="GPU Test")
-
-    def upgrade_settings(self, setting_values, variable_revision_number, module_name):
-        if variable_revision_number == 1:
-            setting_values = setting_values + ["0.4", "0.0"]
-            variable_revision_number = 2
-        if variable_revision_number == 2:
-            setting_values = setting_values + ["0.0", False, "15", "1.0", False, False]
-            variable_revision_number = 3
-        if variable_revision_number == 3:
-            setting_values = (
-                [setting_values[0]] + ["Python", CELLPOSE_DOCKER_IMAGE_WITH_PRETRAINED] + setting_values[1:]
-            )
-            variable_revision_number = 4
-        if variable_revision_number == 4:
-            setting_values = [setting_values[0]] + ["No"] + setting_values[1:]
-            variable_revision_number = 5
-        return setting_values, variable_revision_number
+    # def upgrade_settings(self, setting_values, variable_revision_number, module_name):
+    #     ...
