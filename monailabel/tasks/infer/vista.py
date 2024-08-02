@@ -1,4 +1,4 @@
-    def writer(self, data: Dict[str, Any], extension=None, dtype=None) -> Tuple[Any, Any]:
+def writer(self, data: Dict[str, Any], extension=None, dtype=None) -> Tuple[Any, Any]:
         d = dict(data)
         output_dir = d.get("output_dir", "")
         output_ext = d.get("output_ext", "")

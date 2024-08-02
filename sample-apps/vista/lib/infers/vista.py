@@ -1,8 +1,9 @@
-import os
 import logging
+import os
 from typing import Any, Dict, Tuple
 
 from monai.utils import ImageMetaKey
+
 from monailabel.tasks.infer.bundle import BundleInferTask
 
 logger = logging.getLogger(__name__)
@@ -12,6 +13,7 @@ class VISTAInfer(BundleInferTask):
     """
     This provides Inference Engine for pre-trained VISTA segmentation model.
     """
+
     def writer(self, data: Dict[str, Any], extension=None, dtype=None) -> Tuple[Any, Any]:
         d = dict(data)
         output_dir = self.bundle_config.get_parsed_content("output_dir", instantiate=True)
