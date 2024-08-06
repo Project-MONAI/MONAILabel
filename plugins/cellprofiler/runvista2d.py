@@ -746,7 +746,7 @@ class RunVISTA2D(ImageSegmentation):
     }
 
     def create_settings(self):
-        super(RunVISTA2D, self).create_settings()
+        super().create_settings()
 
         self.server_address = URL(
             text="MONAI label server address",
