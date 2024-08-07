@@ -42,49 +42,33 @@ from cellprofiler_core.setting.text import URL, Text
 ##################################
 
 
-CUDA_LINK = "https://pytorch.org/get-started/locally/"
-Cellpose_link = " https://doi.org/10.1038/s41592-020-01018-x"
-Omnipose_link = "https://doi.org/10.1101/2021.11.03.467199"
+VISTA_link = "https://doi.org/10.48550/arXiv.2406.05285"
 LOGGER = logging.getLogger(__name__)
 
 __doc__ = f"""\
-RunCellpose
+RunVISTA2D
 ===========
 
-**RunCellpose** uses a pre-trained machine learning model (Cellpose) to detect cells or nuclei in an image.
+**RunVISTA2D** uses a pre-trained VISTA2D model to detect cells in an image.
 
 This module is useful for automating simple segmentation tasks in CellProfiler.
-The module accepts greyscale input images and produces an object set. Probabilities can also be captured as an image.
+The module accepts tiff input images and produces an object set.
 
-Loading in a model will take slightly longer the first time you run it each session. When evaluating
-performance you may want to consider the time taken to predict subsequent images.
-
-This module now also supports Ominpose. Omnipose builds on Cellpose, for the purpose of **RunCellpose** it adds 2 additional
-features: additional models; bact-omni and cyto2-omni which were trained using the Omnipose architechture, and bact
-and the mask reconstruction algorithm for Omnipose that was created to solve over-segemnation of large cells; useful for bacterial cells,
-but can be used for other arbitrary and anisotropic shapes. You can mix and match Omnipose models with Cellpose style masking or vice versa.
-
-The module has been updated to be compatible with the latest release of Cellpose. From the old version of the module the 'cells' model corresponds to 'cyto2' model.
+This module is a client/frontend of a MONAI Label server. A VISTA2D based MONAI Label server needs to be set up and the address of the server needs to be passed to
+this module, before running.
 
 Installation:
 
-It is necessary that you have installed Cellpose version >= 1.0.2
+This module has no external dependencies other than the python(>3.8) build-in dependencies.
 
-You'll want to run `pip install cellpose` on your CellProfiler Python environment to setup Cellpose. If you have an older version of Cellpose
-run 'python -m pip install cellpose --upgrade'.
+You'll need to set up the VISTA2D based MONAI Label server based on the tutorial https://github.com/Project-MONAI/MONAILabel/tree/main/plugins/cellprofiler. After setting up the server, please
+provide the server address to this plugin.s
 
-To use Omnipose models, and mask reconstruction method you'll want to install Omnipose 'pip install omnipose' and Cellpose version 1.0.2 'pip install cellpose==1.0.2'.
-
-On the first time loading into CellProfiler, Cellpose will need to download some model files from the internet. This
-may take some time. If you want to use a GPU to run the model, you'll need a compatible version of PyTorch and a
-supported GPU. Instructions are avaiable at this link: {CUDA_LINK}
-
-Stringer, C., Wang, T., Michaelos, M. et al. Cellpose: a generalist algorithm for cellular segmentation. Nat Methods 18, 100–106 (2021). {Cellpose_link}
-Kevin J. Cutler, Carsen Stringer, Paul A. Wiggins, Joseph D. Mougous. Omnipose: a high-precision morphology-independent solution for bacterial cell segmentation. bioRxiv 2021.11.03.467199. {Omnipose_link}
+Yufan He, Pengfei Guo, Yucheng Tang, Andriy Myronenko, Vishwesh Nath, Ziyue Xu, Dong Yang, Can Zhao, Benjamin Simon, Mason Belue, Stephanie Harmon, Baris Turkbey, Daguang Xu, & Wenqi Li. (2024). VISTA3D: Versatile Imaging SegmenTation and Annotation model for 3D Computed Tomography.{VISTA_link}
 ============ ============ ===============
 Supports 2D? Supports 3D? Respects masks?
 ============ ============ ===============
-YES          YES          NO
+YES          No           NO
 ============ ============ ===============
 
 """
