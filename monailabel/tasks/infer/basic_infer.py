@@ -467,11 +467,10 @@ class BasicInferTask(InferTask):
                 if path:
                     checkpoint = torch.load(path, map_location=torch.device(device))
                     model_state_dict = checkpoint.get(self.model_state_dict, checkpoint)
-
-                    if set(self.network.state_dict().keys()) != set(checkpoint.keys()):
+                    if set(self.network.state_dict().keys()) != set(model_state_dict.keys()):
                         logger.warning(
                             f"Checkpoint keys don't match network.state_dict()! Items that exist in only one dict"
-                            f" but not in the other: {set(self.network.state_dict().keys()) ^ set(checkpoint.keys())}"
+                            f" but not in the other: {set(self.network.state_dict().keys()) ^ set(model_state_dict.keys())}"
                         )
                         logger.warning(
                             "The run will now continue unless load_strict is set to True. "
