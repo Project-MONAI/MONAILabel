@@ -6,33 +6,21 @@
 
 import cgi
 import http.client
-import importlib.metadata
 import json
 import logging
 import mimetypes
 import os
 import re
-import shutil
 import ssl
-import subprocess
-import sys
 import tempfile
-import uuid
 from pathlib import Path
 from urllib.parse import quote_plus, unquote, urlencode, urlparse
 
-import monai
-import numpy
 import requests
 import skimage
-from cellprofiler_core.image import Image
 from cellprofiler_core.module.image_segmentation import ImageSegmentation
 from cellprofiler_core.object import Objects
-from cellprofiler_core.preferences import get_default_output_directory
-from cellprofiler_core.setting import Binary, ValidationError
 from cellprofiler_core.setting.choice import Choice
-from cellprofiler_core.setting.do_something import DoSomething
-from cellprofiler_core.setting.subscriber import ImageSubscriber
 from cellprofiler_core.setting.text import URL, Text
 
 #################################
