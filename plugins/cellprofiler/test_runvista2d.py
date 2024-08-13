@@ -5,12 +5,23 @@ import cellprofiler_core.pipeline
 import cellprofiler_core.setting
 import cellprofiler_core.workspace
 import numpy
-from runvista2d import RunVISTA2D
+import os
+import pytest
+from active_plugins.runvista2d import RunVISTA2D, MONAILabelClient
 
 IMAGE_NAME = "my_image"
 OBJECTS_NAME = "my_objects"
 MODEL_NAME = "cell_vista_segmentation"
 SERVER_ADDRESS = "http://127.0.0.1:8000"
+
+
+class MockResponse:
+    @staticmethod
+    def infer(*args, **kwargs):
+        filepath = os.path.abspath(__file__)
+        dir = os.path.dirname(filepath)
+        image = os.path.join(dir, "resources", "vista2d_test.tiff")
+        return image, {}
 
 
 def test_mock_successful():
@@ -28,6 +39,8 @@ def test_mock_successful():
     object_set = cellprofiler_core.object.ObjectSet()
     measurements = cellprofiler_core.measurement.Measurements()
     pipeline = cellprofiler_core.pipeline.Pipeline()
+
+    pytest.MonkeyPatch.setattr(MONAILabelClient, "infer", MockResponse.infer)
     x.run(cellprofiler_core.workspace.Workspace(pipeline, x, image_set, object_set, measurements, None))
     assert len(object_set.object_names) == 1
     assert "my_object" in object_set.object_names
