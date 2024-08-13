@@ -1,3 +1,5 @@
+import os
+
 import cellprofiler_core.image
 import cellprofiler_core.measurement
 import cellprofiler_core.object
@@ -5,9 +7,8 @@ import cellprofiler_core.pipeline
 import cellprofiler_core.setting
 import cellprofiler_core.workspace
 import numpy
-import os
 import pytest
-from active_plugins.runvista2d import RunVISTA2D, MONAILabelClient
+from active_plugins.runvista2d import MONAILabelClient, RunVISTA2D
 
 IMAGE_NAME = "my_image"
 OBJECTS_NAME = "my_objects"
