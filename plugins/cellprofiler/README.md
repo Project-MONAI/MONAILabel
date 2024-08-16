@@ -25,7 +25,7 @@ CellProfiler is designed to serve biologists as well as bioimage analysts who wa
 - [Using the Plugin](#using-the-plugin)
 
 ### Supported Applications
-Users can find supported applications in the [sample-apps](../../sample-apps/monaibundle/) folder and use the cell_vista_segmentation bundle. Currently, only this bundle can be used to create and refine labels for various medical imaging tasks in CellProfiler.
+Users can find supported applications in the [sample-apps](../../sample-apps/monaibundle/) folder and use the cell_vista_segmentation bundle. Currently, only this bundle can be used to create and refine labels for medical imaging tasks in CellProfiler.
 
 ### Installing CellProfiler
 
@@ -33,16 +33,19 @@ To use MONAILabel with CellProfiler, you first need to install CellProfiler from
 
 Please note these tips when installing the software:
 1. After cloned the source code, you must switch to a specific version tag of the repo to start installation.
-1. For Macbook with Apple Silicon, please note [this issue](https://github.com/CellProfiler/CellProfiler/issues/4932) before you start to install.
+1. For Macbooks with Apple Silicon, please note [this issue](https://github.com/CellProfiler/CellProfiler/issues/4932) before you start to install.
 1. Before actually running the command `pip install -e .`, you may need to install numpy if it doesn't exist in your environment.
 
 ### Install MONAI Label Extension
 1. Save the runvista2d.py file to a local path.
-1. Open the File-->preferences option and fill in the `CellProfiler plugin directory` parameter with your local path.
+1. Start CellProfiler from CLI, open the `File-->preferences` option and fill in the `CellProfiler plugin directory` parameter with your local path.
 
 ## Using the Plugin
 
 1. Start the MONAI Label server with cell_vista_segmentation bundle.
+1. Add the `RunVISTA2D` module to your pipeline for object processing.
 1. Make sure the MONAILabel Server URL is correctly set in the plugin input.
 1. Click the `Analyse Images` or `Start Test Mode` button to execute the pipeline.
 1. Update masks and perform the sequential modules to get measurement results.
+
+<img src="../../docs/images/cellprofiler_plugin.png" width=70% />
