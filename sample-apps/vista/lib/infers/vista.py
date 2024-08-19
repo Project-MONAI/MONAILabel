@@ -3,7 +3,6 @@ import os
 from typing import Any, Dict, Tuple
 
 from monai.utils import ImageMetaKey
-
 from monailabel.tasks.infer.bundle import BundleInferTask
 
 logger = logging.getLogger(__name__)
@@ -30,4 +29,4 @@ class VISTAInfer(BundleInferTask):
             logger.info(f"Reusing the bundle output {output_filepath}.")
             return output_filepath, {}
         else:
-            super().writer(data=data, extension=extension, dtype=dtype)
+            return super().writer(data=data, extension=extension, dtype=dtype)
