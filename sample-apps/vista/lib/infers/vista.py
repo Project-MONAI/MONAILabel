@@ -3,6 +3,7 @@ import os
 from typing import Any, Dict, Tuple
 
 from monai.utils import ImageMetaKey
+
 from monailabel.tasks.infer.bundle import BundleInferTask
 
 logger = logging.getLogger(__name__)
