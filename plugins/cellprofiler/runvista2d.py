@@ -21,7 +21,7 @@ import skimage
 from cellprofiler_core.module.image_segmentation import ImageSegmentation
 from cellprofiler_core.object import Objects
 from cellprofiler_core.setting.choice import Choice
-from cellprofiler_core.setting.text import URL, Text
+from cellprofiler_core.setting.text import Text
 
 #################################
 #
@@ -720,8 +720,9 @@ class RunVISTA2D(ImageSegmentation):
     def create_settings(self):
         super().create_settings()
 
-        self.server_address = URL(
+        self.server_address = Text(
             text="MONAI label server address",
+            value="http://127.0.0.1:8000",
             doc="""\
 Please set up the MONAI label server in local/cloud environment and fill the server address here.
 """,
