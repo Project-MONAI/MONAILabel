@@ -66,4 +66,3 @@ Above command will download the latest bundles from Model-Zoo by default. If a s
 ```bash
 monailabel start_server --app apps/vista --studies datasets --conf models cell_vista_segmentation_v0.2.0 --conf preload true --conf skip_trainers true
 ```
-
