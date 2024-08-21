@@ -11,7 +11,7 @@ See the License for the specific language governing permissions and
 limitations under the License.
 -->
 
-# VISTA Application
+# VISTA2D Application
 A reference app to run the inference task to segment cells. This app works in CellProfiler for now. All samples in the CellProfiler are provided from local path.
 
 ### Table of Contents
@@ -21,7 +21,7 @@ A reference app to run the inference task to segment cells. This app works in Ce
 
 ### Supported Viewers
 
-The VISTA Application supports the following viewer:
+The VISTA2D Application supports the following viewer:
 
 - [CellProfiler](../../plugins/cellprofiler/)
 
@@ -54,15 +54,15 @@ Segmentation Masks
 
 ```bash
 # skip this if you have already downloaded the app or using github repository (dev mode)
-monailabel apps --download --name vista --output apps
+monailabel apps --download --name vista2d --output apps
 
 # Start server with cell_vista_segmentation_v0.2.0 model
-monailabel start_server --app apps/vista --studies datasets --conf models cell_vista_segmentation --conf preload true --conf skip_trainers true
+monailabel start_server --app apps/vista2d --studies datasets --conf models cell_vista_segmentation --conf preload true --conf skip_trainers true
 ```
 
 **Specify bundle version** (Optional)
 Above command will download the latest bundles from Model-Zoo by default. If a specific or older bundle version is used, users can add version `_v` followed by the bundle name. Example:
 
 ```bash
-monailabel start_server --app apps/vista --studies datasets --conf models cell_vista_segmentation_v0.2.0 --conf preload true --conf skip_trainers true
+monailabel start_server --app apps/vista2d --studies datasets --conf models cell_vista_segmentation_v0.2.0 --conf preload true --conf skip_trainers true
 ```
