@@ -9,4 +9,4 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-from .vista import VISTAInfer
+from .vista2d import VISTA2DInfer

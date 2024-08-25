@@ -13,7 +13,7 @@ import logging
 import os
 from typing import Dict
 
-from lib.infers import VISTAInfer
+from lib.infers import VISTA2DInfer
 from monai.transforms import Invertd, SaveImaged
 
 import monailabel
@@ -32,7 +32,7 @@ from monailabel.utils.others.generic import get_bundle_models, strtobool
 logger = logging.getLogger(__name__)
 
 
-class VISTAApp(MONAILabelApp):
+class VISTA2DApp(MONAILabelApp):
     def __init__(self, app_dir, studies, conf):
         self.models = get_bundle_models(app_dir, conf)
         # Add Epistemic model for scoring
@@ -61,7 +61,7 @@ class VISTAApp(MONAILabelApp):
         #################################################
 
         for n, b in self.models.items():
-            i = VISTAInfer(b, self.conf, model_state_dict="state_dict")
+            i = VISTA2DInfer(b, self.conf, model_state_dict="state_dict")
             logger.info(f"+++ Adding Inferer:: {n} => {i}")
             infers[n] = i
 
@@ -155,7 +155,7 @@ def main():
         "preload": "false",
     }
 
-    app = VISTAApp(app_dir, studies, conf)
+    app = VISTA2DApp(app_dir, studies, conf)
 
     # Infer
     if args.test == "infer":

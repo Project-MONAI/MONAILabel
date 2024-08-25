@@ -9,7 +9,7 @@ from monailabel.tasks.infer.bundle import BundleInferTask
 logger = logging.getLogger(__name__)
 
 
-class VISTAInfer(BundleInferTask):
+class VISTA2DInfer(BundleInferTask):
     """
     This provides Inference Engine for pre-trained VISTA segmentation model.
     """
