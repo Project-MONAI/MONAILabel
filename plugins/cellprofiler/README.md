@@ -25,7 +25,7 @@ CellProfiler is designed to serve biologists as well as bioimage analysts who wa
 - [Using the Plugin](#using-the-plugin)
 
 ### Supported Applications
-Users can find supported applications in the [sample-apps](../../sample-apps/monaibundle/) folder and use the cell_vista_segmentation bundle. Currently, only this bundle can be used to create and refine labels for medical imaging tasks in CellProfiler.
+Users can find supported applications in the [sample-apps](../../sample-apps/vista2d/) folder and use the vista2d bundle. Currently, only this bundle can be used to create and refine labels for medical imaging tasks in CellProfiler.
 
 ### Installing CellProfiler
 
@@ -42,7 +42,7 @@ Please note these tips when installing the software:
 
 ## Using the Plugin
 
-1. Start the MONAI Label server with cell_vista_segmentation bundle.
+1. Start the MONAI Label server with vista2d bundle.
 1. Add the `RunVISTA2D` module to your pipeline for object processing.
 1. Make sure the MONAILabel Server URL is correctly set in the plugin input.
 1. Click the `Analyse Images` or `Start Test Mode` button to execute the pipeline.

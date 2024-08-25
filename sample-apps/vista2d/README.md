@@ -57,12 +57,12 @@ Segmentation Masks
 monailabel apps --download --name vista2d --output apps
 
 # Start server with cell_vista_segmentation_v0.2.0 model
-monailabel start_server --app apps/vista2d --studies datasets --conf models cell_vista_segmentation --conf preload true --conf skip_trainers true
+monailabel start_server --app apps/vista2d --studies datasets --conf models vista2d --conf preload true --conf skip_trainers true
 ```
 
 **Specify bundle version** (Optional)
 Above command will download the latest bundles from Model-Zoo by default. If a specific or older bundle version is used, users can add version `_v` followed by the bundle name. Example:
 
 ```bash
-monailabel start_server --app apps/vista2d --studies datasets --conf models cell_vista_segmentation_v0.2.0 --conf preload true --conf skip_trainers true
+monailabel start_server --app apps/vista2d --studies datasets --conf models vista2d_v0.2.1 --conf preload true --conf skip_trainers true
 ```

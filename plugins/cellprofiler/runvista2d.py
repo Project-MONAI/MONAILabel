@@ -730,8 +730,8 @@ Please set up the MONAI label server in local/cloud environment and fill the ser
 
         self.model_name = Choice(
             text="The model for running the inference",
-            choices=["cell_vista_segmentation"],
-            value="cell_vista_segmentation",
+            choices=["vista2d"],
+            value="vista2d",
             doc="""
 Pick the model for running infernce. Now only VISTA2D is available.
 """,

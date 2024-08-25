@@ -12,7 +12,7 @@ from runvista2d import MONAILabelClient, MONAILabelClientException, MONAILabelUt
 
 IMAGE_NAME = "my_image"
 OBJECTS_NAME = "my_objects"
-MODEL_NAME = "cell_vista_segmentation"
+MODEL_NAME = "vista2d"
 SERVER_ADDRESS = "http://127.0.0.1:8000"
 
 
