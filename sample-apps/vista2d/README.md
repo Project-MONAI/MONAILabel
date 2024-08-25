@@ -31,7 +31,7 @@ The following are the models which are currently added into Pathology App:
 
 | Name | Description |
 |------|-------------|
-| Cell VISTA Segmentation | An example of instance segmentation for the cell segmentation. |
+| VISTA2D | An example of instance segmentation for the cell segmentation. |
 
 <details>
     <summary><strong>Model Details (dataset, input, outputs)</strong></summary>
@@ -56,7 +56,7 @@ Segmentation Masks
 # skip this if you have already downloaded the app or using github repository (dev mode)
 monailabel apps --download --name vista2d --output apps
 
-# Start server with cell_vista_segmentation_v0.2.0 model
+# Start server with vista2d model
 monailabel start_server --app apps/vista2d --studies datasets --conf models vista2d --conf preload true --conf skip_trainers true
 ```
 
