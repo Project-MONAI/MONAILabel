@@ -21,7 +21,7 @@ CellProfiler is designed to serve biologists as well as bioimage analysts who wa
 ### Table of Contents
 - [Supported Applications](#supported-applications)
 - [Installing CellProfiler](#installing-cellprofiler)
-- [Install MONAI Label Extension From Binaries](#install-monai-label-extension)
+- [Install MONAI Label Extension](#install-monai-label-extension)
 - [Using the Plugin](#using-the-plugin)
 
 ### Supported Applications
