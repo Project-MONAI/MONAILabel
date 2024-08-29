@@ -16,7 +16,7 @@ import numpy as np
 import torch
 from monai.apps.deepgrow.transforms import AddRandomGuidanced, FindDiscrepancyRegionsd
 from monai.handlers import MeanDice, from_engine
-from monai.handlers.ignite_metric import IgniteMetric
+from monai.handlers.ignite_metric import IgniteMetricHandler
 from monai.inferers import SimpleInferer
 from monai.losses import DiceLoss
 from monai.metrics import MeanIoU
@@ -149,7 +149,7 @@ class DeepEdit(BasicTrainTask):
         )
 
 
-class MeanIoUMetric(IgniteMetric):
+class MeanIoUMetric(IgniteMetricHandler):
     def __init__(
         self,
         include_background: bool = True,
