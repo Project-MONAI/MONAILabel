@@ -12,6 +12,7 @@
 import os
 import tempfile
 import unittest
+import importlib.util
 
 import numpy as np
 from parameterized import parameterized
@@ -56,12 +57,20 @@ RESTORED_DATA = [
     (1, 6, 6),
 ]
 
-FINDCONTOURSD_DATA = [
+FINDCONTOURSD_DATA_NO_OPENCV = [
     {"keys": "pred", "labels": "Other", "min_positive": 4, "min_poly_area": 1},
     {
         "pred": np.array([[0, 0, 0, 0, 0], [0, 1, 1, 1, 0], [0, 1, 0, 1, 0], [0, 1, 1, 1, 0], [0, 0, 0, 0, 0]]),
     },
     [[[3, 4], [1, 4], [0, 3], [0, 1], [1, 0], [3, 0], [4, 1], [4, 3], [3, 4]]],
+]
+
+FINDCONTOURSD_DATA_OPENCV = [
+    {"keys": "pred", "labels": "Other", "min_positive": 4, "min_poly_area": 1},
+    {
+        "pred": np.array([[0, 0, 0, 0, 0], [0, 1, 1, 1, 0], [0, 1, 0, 1, 0], [0, 1, 1, 1, 0], [0, 0, 0, 0, 0]]),
+    },
+    [[[1, 2], [2, 1], [3, 2], [2, 3]], [[1, 1], [1, 3], [3, 3], [3, 1]]],
 ]
 
 DUMPIMAGEPREDICTION2DD_DATA = [
@@ -114,12 +123,16 @@ class TestRestored(unittest.TestCase):
         self.assertEqual(res["pred"].shape, expected_shape)
 
 
+def is_opencv_installed():
+    return importlib.util.find_spec("cv2") is not None
+
 class TestFindContoursd(unittest.TestCase):
-    @parameterized.expand([FINDCONTOURSD_DATA])
+    @parameterized.expand(
+        [FINDCONTOURSD_DATA_OPENCV if is_opencv_installed() else FINDCONTOURSD_DATA_NO_OPENCV]
+    )
     def test_result(self, args, input_data, expected_output):
         res = FindContoursd(**args)(input_data)
         self.assertEqual(res["result"]["annotation"]["elements"][0]["contours"], expected_output)
-
 
 class TestDumpImagePrediction2Dd(unittest.TestCase):
     @parameterized.expand([DUMPIMAGEPREDICTION2DD_DATA])
