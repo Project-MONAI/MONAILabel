@@ -9,10 +9,10 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
+import importlib.util
 import os
 import tempfile
 import unittest
-import importlib.util
 
 import numpy as np
 from parameterized import parameterized
@@ -126,13 +126,13 @@ class TestRestored(unittest.TestCase):
 def is_opencv_installed():
     return importlib.util.find_spec("cv2") is not None
 
+
 class TestFindContoursd(unittest.TestCase):
-    @parameterized.expand(
-        [FINDCONTOURSD_DATA_OPENCV if is_opencv_installed() else FINDCONTOURSD_DATA_NO_OPENCV]
-    )
+    @parameterized.expand([FINDCONTOURSD_DATA_OPENCV if is_opencv_installed() else FINDCONTOURSD_DATA_NO_OPENCV])
     def test_result(self, args, input_data, expected_output):
         res = FindContoursd(**args)(input_data)
         self.assertEqual(res["result"]["annotation"]["elements"][0]["contours"], expected_output)
+
 
 class TestDumpImagePrediction2Dd(unittest.TestCase):
     @parameterized.expand([DUMPIMAGEPREDICTION2DD_DATA])
