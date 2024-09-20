@@ -8,19 +8,7 @@
 # WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND either express or implied.
 # See the License for the specific language governing permissions and
 # limitations under the License.
-einops==0.7.0
-scikit-image==0.23.2
-cucim-cu12==24.6.0
-gdown==5.2.0
-fire==0.6.0
-pyyaml==6.0.1
-tensorboard==2.17.0
-numba==0.59.1
-torchvision==0.19.0
 cellpose==3.0.8
 natsort==8.4.0
 roifile==2024.5.24
-tifffile==2024.7.2
 fastremap==1.15.0
-imagecodecs==2024.6.1
-segment_anything==1.0
