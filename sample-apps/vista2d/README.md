@@ -56,11 +56,35 @@ Segmentation Masks
 # skip this if you have already downloaded the app or using github repository (dev mode)
 monailabel apps --download --name vista2d --output apps
 
+# install the dependencies
+pip install -r ./apps/vista2d/requirements.txt
+
 # Start server with vista2d model
 monailabel start_server --app apps/vista2d --studies datasets --conf models vista2d --conf preload true --conf skip_trainers true
 ```
 
+**Important Note**
+
+If your environment already contains OpenCV, installing `cellpose` may lead to conflicts and produce errors such as:
+
+```
+AttributeError: partially initialized module 'cv2' has no attribute 'dnn' (most likely due to a circular import)
+```
+
+when executing. To resolve this issue, please uninstall OpenCV and then re-install `cellpose` with a command like:
+
+```Bash
+pip uninstall -y opencv && rm /usr/local/lib/python3.x/dist-packages/cv2
+```
+
+Alternatively, you can use the following command to install `cellpose` without its dependencies:
+
+```
+pip install --no-deps cellpose
+```
+
 **Specify bundle version** (Optional)
+
 Above command will download the latest bundles from Model-Zoo by default. If a specific or older bundle version is used, users can add version `_v` followed by the bundle name. Example:
 
 ```bash
