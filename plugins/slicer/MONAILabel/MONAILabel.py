@@ -804,7 +804,7 @@ class MONAILabelWidget(ScriptedLoadableModuleWidget, VTKObservationMixin):
                 v.insert(0, value)
                 value = v
 
-            logging.info(f"Invalidate:: {section} => {name} => {key} => {value} => {type(v)}")
+            logging.info(f"Invalidate: {section} => {name} => {key} => {value} => {type(v)}")
             self.info.get(section, {}).get(name, {}).get("config", {})[key] = value
 
     def updateConfigTable(self, refresh=True):
@@ -1091,7 +1091,7 @@ class MONAILabelWidget(ScriptedLoadableModuleWidget, VTKObservationMixin):
                 )
                 return
         except BaseException as e:
-            msg = f"Message:: {e.msg}" if hasattr(e, "msg") else ""
+            msg = f"Message: {e.msg}" if hasattr(e, "msg") else ""
             slicer.util.errorDisplay(
                 _(
                     "Failed to fetch models from remote server. "
@@ -1165,7 +1165,7 @@ class MONAILabelWidget(ScriptedLoadableModuleWidget, VTKObservationMixin):
             time.sleep(1)
             self.updateGUIFromParameterNode()
         except BaseException as e:
-            msg = f"Message:: {e.msg}" if hasattr(e, "msg") else ""
+            msg = f"Message: {e.msg}" if hasattr(e, "msg") else ""
             slicer.util.errorDisplay(
                 _("Failed to run training in MONAI Label Server.\n{message}").format(message=msg),
                 detailedText=traceback.format_exc(),
@@ -1197,7 +1197,7 @@ class MONAILabelWidget(ScriptedLoadableModuleWidget, VTKObservationMixin):
             self.updateServerSettings()
             status = self.logic.train_stop()
         except BaseException as e:
-            msg = f"Message:: {e.msg}" if hasattr(e, "msg") else ""
+            msg = f"Message: {e.msg}" if hasattr(e, "msg") else ""
             slicer.util.errorDisplay(
                 _("Failed to stop Training Task.\n{message}").format(message=msg),
                 detailedText=traceback.format_exc(),
@@ -1313,7 +1313,7 @@ class MONAILabelWidget(ScriptedLoadableModuleWidget, VTKObservationMixin):
             self.initSample(sample)
 
         except BaseException as e:
-            msg = f"Message:: {e.msg}" if hasattr(e, "msg") else ""
+            msg = f"Message: {e.msg}" if hasattr(e, "msg") else ""
             slicer.util.errorDisplay(
                 _("Failed to fetch Sample from MONAI Label Server.\n{message}").format(message=msg),
                 detailedText=traceback.format_exc(),
@@ -1401,12 +1401,12 @@ class MONAILabelWidget(ScriptedLoadableModuleWidget, VTKObservationMixin):
             self.updateGUIFromParameterNode()
             return True
         except BaseException as e:
-            msg = f"Message:: {e.msg}" if hasattr(e, "msg") else ""
+            msg = f"Message: {e.msg}" if hasattr(e, "msg") else ""
             self.reportProgress(100)
             qt.QApplication.restoreOverrideCursor()
             if session:
                 slicer.util.errorDisplay(
-                    _("Server Error:: Session creation Failed\nPlease upgrade to latest monailabel version (> 0.2.0)"),
+                    _("Server Error: Session creation Failed\nPlease upgrade to latest monailabel version (> 0.2.0)"),
                     detailedText=traceback.format_exc(),
                 )
                 self.current_sample["session"] = None
@@ -1496,7 +1496,7 @@ class MONAILabelWidget(ScriptedLoadableModuleWidget, VTKObservationMixin):
                     logging.info("Failed to stop training; or already stopped")
                 self.onTraining()
         except BaseException as e:
-            msg = f"Message:: {e.msg}" if hasattr(e, "msg") else ""
+            msg = f"Message: {e.msg}" if hasattr(e, "msg") else ""
             slicer.util.errorDisplay(
                 _("Failed to save Label to MONAI Label Server.\n{message}").format(message=msg),
                 detailedText=traceback.format_exc(),
@@ -1552,7 +1552,7 @@ class MONAILabelWidget(ScriptedLoadableModuleWidget, VTKObservationMixin):
                 labels = [k for k, _ in sorted(labels.items(), key=lambda item: item[1])]
             self.updateSegmentationMask(result_file, labels)
         except BaseException as e:
-            msg = f"Message:: {e.msg}" if hasattr(e, "msg") else ""
+            msg = f"Message: {e.msg}" if hasattr(e, "msg") else ""
             slicer.util.errorDisplay(
                 _("Failed to run inference in MONAI Label Server.\n{message}").format(message=msg),
                 detailedText=traceback.format_exc(),
@@ -1667,7 +1667,7 @@ class MONAILabelWidget(ScriptedLoadableModuleWidget, VTKObservationMixin):
             freeze = label if self.ui.freezeUpdateCheckBox.checked else None
             self.updateSegmentationMask(result_file, labels, None if deepgrow_3d else sliceIndex, freeze=freeze)
         except BaseException as e:
-            msg = f"Message:: {e.msg}" if hasattr(e, "msg") else ""
+            msg = f"Message: {e.msg}" if hasattr(e, "msg") else ""
             slicer.util.errorDisplay(
                 operationDescription + f" - unexpected error.\n{msg}",
                 detailedText=traceback.format_exc(),
@@ -1708,7 +1708,7 @@ class MONAILabelWidget(ScriptedLoadableModuleWidget, VTKObservationMixin):
         return [c / 255.0 for c in color] if color else None
 
     def updateSegmentationMask(self, in_file, labels, sliceIndex=None, freeze=None):
-        # TODO:: Add ROI Node (for Bounding Box if provided in the result)
+        # TODO: Add ROI Node (for Bounding Box if provided in the result)
         start = time.time()
         logging.debug(f"Update Segmentation Mask from: {in_file}")
         if in_file and not os.path.exists(in_file):
@@ -1974,7 +1974,7 @@ class MONAILabelWidget(ScriptedLoadableModuleWidget, VTKObservationMixin):
             self.reportProgress(90)
             self.updateSegmentationMask(result_file, [selected_label_name])
         except BaseException as e:
-            msg = f"Message:: {e.msg}" if hasattr(e, "msg") else ""
+            msg = f"Message: {e.msg}" if hasattr(e, "msg") else ""
             slicer.util.errorDisplay(
                 _("Failed to post process label on MONAI Label Server using {scribbles_method}.\n{message}").format(
                     scribbles_method=scribblesMethod, message=msg
@@ -2272,7 +2272,7 @@ class MONAILabelLogic(ScriptedLoadableModuleLogic):
             if self.auth_token:
                 mc.update_auth(self.auth_token)
 
-            # TODO:: JWT token can be validated (with additional py dependencies) to avoid further calls to server
+            # TODO: JWT token can be validated (with additional py dependencies) to avoid further calls to server
             if not self.auth_token or not mc.auth_valid_token():
                 try:
                     print(f"Fetching new Token for: {self.username}")

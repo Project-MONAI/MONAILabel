@@ -32,4 +32,5 @@ MAINTAINED_BUNDLES = [
     "wholeBrainSeg_Large_UNEST_segmentation",  # whole brain segmentation for T1 MRI brain images. Added Oct 2022
     "lung_nodule_ct_detection",  # The first lung nodule detection task can be used for MONAI Label. Added Dec 2022
     "wholeBody_ct_segmentation",  # The SegResNet trained TotalSegmentator dataset with 104 tissues. Added Feb 2023
+    "vista2d",  # The VISTA segmentation trained on a collection of 15K public microscopy images. Added Aug 2024
 ]
