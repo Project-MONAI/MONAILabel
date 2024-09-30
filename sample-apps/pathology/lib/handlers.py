@@ -18,7 +18,7 @@ import numpy as np
 import torch
 import torch.distributed
 from monai.metrics import compute_dice
-from monai.utils import min_version, optional_import, IgniteInfo
+from monai.utils import IgniteInfo, min_version, optional_import
 
 Events, _ = optional_import("ignite.engine", IgniteInfo.OPT_IMPORT_VERSION, min_version, "Events")
 make_grid, _ = optional_import("torchvision.utils", name="make_grid")
