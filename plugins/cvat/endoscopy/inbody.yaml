@@ -24,7 +24,7 @@ metadata:
 
 spec:
   description: A pre-trained classification model for Endoscopy to flag if image follows InBody or OutBody
-  runtime: 'python:3.8'
+  runtime: 'python:3.9'
   handler: main:handler
   eventTimeout: 30s
 
