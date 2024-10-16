@@ -21,16 +21,13 @@ The Medical Imaging Interaction Toolkit (MITK) is a free open-source software fo
 - [Supported Applications](#supported-applications)
 - [Installing MITK Workbench](#installing-mitk)
 - [Segmentation using MONAI Label](#segmentation-using-MONAI-Label)
-- [Perferences](#perferences)
 
 ### Supported Applications
 Users can find supported applications in the [sample-apps](../../sample-apps/radiology/) folder under the radiology section. They'll find models like DeepEdit, DeepGrow, Segmentation, and more. These applications can be used to create and refine labels for various medical imaging tasks.
 
 ### Installing MITK
-To use MONAI Label with 3D Slicer, you'll need to download and install 3D Slicer. MONAI Label supports stable and preview versions of 3D Slicer, version 5.0 or higher. For more information on installing 3D Slicer, check out the [3D Slicer Documentation](https://slicer.readthedocs.io/en/latest/user_guide/getting_started.html#installing-3d-slicer)
+To use MONAI Label with MITK, you'll need to download and install the MITK Workbench. MONAI Label tool in MITK is tested against version 0.8 or higher. For more information on installing MITK Workbench, check out the [MITK Documentation](https://www.mitk.org/wiki/The_Medical_Imaging_Interaction_Toolkit_(MITK))
+The MONAI Label tool needs no separate installation. It is included in the MITK's installer.
 
 ### Segmentation using MONAI Label
-coming soon
-
-### Perferences
-coming soon
+MONAI Label tool interface can be found in both MITK's Segmentation View > 2D tools and also in Segmentation View > 3D tools. As the the name indicates, the hosted MONAI Label app's 2D models are featured in 2D tools and vice versa. For details usage refer to [MITK Documentation](https://docs.mitk.org/nightly/org_mitk_views_segmentation.html#org_mitk_views_segmentationMonaiLabel3D)
