@@ -171,7 +171,7 @@ class MyApp(MONAILabelApp):
         #################################################
         if self.sam:
             infers["sam_2d"] = Sam2InferTask(model_dir=self.model_dir, dimension=2)
-            infers["sam_3d"] = Sam2InferTask(model_dir=self.model_dir, dimension=3)
+            # infers["sam_3d"] = Sam2InferTask(model_dir=self.model_dir, dimension=3)
 
         #################################################
         # Pipeline based on existing infers

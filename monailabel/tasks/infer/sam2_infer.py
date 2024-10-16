@@ -11,6 +11,7 @@
 
 import logging
 import os
+from time import time
 from typing import Any, Dict, Tuple, Union
 
 import numpy as np
@@ -22,7 +23,7 @@ from sam2.sam2_image_predictor import SAM2ImagePredictor
 
 from monailabel.interfaces.tasks.infer_v2 import InferTask, InferType
 from monailabel.transform.writer import Writer
-from monailabel.utils.others.generic import download_file
+from monailabel.utils.others.generic import download_file, name_to_device
 
 logger = logging.getLogger(__name__)
 
@@ -45,30 +46,30 @@ class Sam2InferTask(InferTask):
         download_file(url, self.path)
 
         self.config_path = "configs/sam2.1/sam2.1_hiera_l.yaml"
-
-        if torch.cuda.is_available():
-            device = torch.device("cuda")
-        elif torch.backends.mps.is_available():
-            device = torch.device("mps")
-        else:
-            device = torch.device("cpu")
-        logger.info(f"Using Device: {device}")
-
-        if device.type == "cuda":
-            torch.autocast("cuda", dtype=torch.bfloat16).__enter__()
-            if torch.cuda.get_device_properties(0).major >= 8:
-                torch.backends.cuda.matmul.allow_tf32 = True
-                torch.backends.cudnn.allow_tf32 = True
-
-        logger.info(f"Using Config: {self.config_path}")
-        sam2_model = build_sam2(self.config_path, self.path, device=device)
-        self.predictor = SAM2ImagePredictor(sam2_model)
+        self.predictors = {}
         self.image_cache = {}
 
     def is_valid(self) -> bool:
         return True
 
     def __call__(self, request, debug=False) -> Union[Dict, Tuple[str, Dict[str, Any]]]:
+        start_ts = time()
+        device = name_to_device(request.get("device", "cuda"))
+        predictor = self.predictors.get(device)
+        if predictor is None:
+            logger.info(f"Using Device: {device}")
+
+            device_t = torch.device(device)
+            if device_t.type == "cuda":
+                torch.autocast("cuda", dtype=torch.bfloat16).__enter__()
+                if torch.cuda.get_device_properties(0).major >= 8:
+                    torch.backends.cuda.matmul.allow_tf32 = True
+                    torch.backends.cudnn.allow_tf32 = True
+
+            sam2_model = build_sam2(self.config_path, self.path, device=device)
+            predictor = SAM2ImagePredictor(sam2_model)
+            self.predictors[device] = predictor
+
         logger.info(f"Infer Request: {request}")
         image_path = request["image"]
         image_tensor = self.image_cache.get(image_path)
@@ -93,7 +94,7 @@ class Sam2InferTask(InferTask):
             slice_img.save("slice.jpg")
 
         slice_rgb_np = np.array(slice_img)
-        self.predictor.set_image(slice_rgb_np)
+        predictor.set_image(slice_rgb_np)
 
         fp = [[p[1], p[0]] for p in request["foreground"]]
         bp = [[p[1], p[0]] for p in request["background"]]
@@ -112,7 +113,7 @@ class Sam2InferTask(InferTask):
         logger.info(f"Point Coords: {point_coords.tolist()}")
         logger.info(f"Point Labels: {point_labels.tolist()}")
 
-        masks, scores, logits = self.predictor.predict(
+        masks, scores, logits = predictor.predict(
             point_coords=point_coords,
             point_labels=point_labels,
             multimask_output=False,
@@ -128,8 +129,7 @@ class Sam2InferTask(InferTask):
 
         writer = Writer(ref_image="image")
         mask_file, result_json = writer({"image_path": request["image"], "pred": pred, "image": image_tensor})
-        logger.info(f"Mask File: {mask_file}; Result JSON: {result_json}")
-
+        logger.info(f"Mask File: {mask_file}; Latency: {round(time() - start_ts, 4)} sec")
         return mask_file, result_json
 
 
