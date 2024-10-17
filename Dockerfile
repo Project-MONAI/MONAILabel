@@ -14,6 +14,7 @@
 # to use different version of MONAI pass `--build-arg MONAI_IMAGE=...`
 
 ARG MONAI_IMAGE=projectmonai/monai:1.4.0
+
 ARG NODE_IMAGE=node:slim
 
 FROM ${NODE_IMAGE} as ohifbuild
