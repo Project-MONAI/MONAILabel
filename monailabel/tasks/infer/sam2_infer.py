@@ -11,6 +11,7 @@
 
 import logging
 import os
+import shutil
 from time import time
 from typing import Any, Dict, Tuple, Union
 
@@ -18,12 +19,13 @@ import numpy as np
 import torch
 from monai.transforms import LoadImage
 from PIL import Image
-from sam2.build_sam import build_sam2
+from sam2.build_sam import build_sam2, build_sam2_video_predictor
 from sam2.sam2_image_predictor import SAM2ImagePredictor
+from tqdm import tqdm
 
 from monailabel.interfaces.tasks.infer_v2 import InferTask, InferType
 from monailabel.transform.writer import Writer
-from monailabel.utils.others.generic import download_file, name_to_device
+from monailabel.utils.others.generic import download_file, get_basename_no_ext, name_to_device
 
 logger = logging.getLogger(__name__)
 
@@ -48,11 +50,12 @@ class Sam2InferTask(InferTask):
         self.config_path = "configs/sam2.1/sam2.1_hiera_l.yaml"
         self.predictors = {}
         self.image_cache = {}
+        self.inference_state = None
 
     def is_valid(self) -> bool:
         return True
 
-    def __call__(self, request, debug=False) -> Union[Dict, Tuple[str, Dict[str, Any]]]:
+    def run2d(self, request, debug=False) -> Union[Dict, Tuple[str, Dict[str, Any]]]:
         start_ts = time()
         device = name_to_device(request.get("device", "cuda"))
         predictor = self.predictors.get(device)
@@ -132,6 +135,95 @@ class Sam2InferTask(InferTask):
         logger.info(f"Mask File: {mask_file}; Latency: {round(time() - start_ts, 4)} sec")
         return mask_file, result_json
 
+    def run_3d(self, request, debug=False) -> Union[Dict, Tuple[str, Dict[str, Any]]]:
+        start_ts = time()
+        device = name_to_device(request.get("device", "cuda"))
+        predictor = self.predictors.get(device)
+        if predictor is None:
+            logger.info(f"Using Device: {device}")
+
+            device_t = torch.device(device)
+            if device_t.type == "cuda":
+                torch.autocast("cuda", dtype=torch.bfloat16).__enter__()
+                if torch.cuda.get_device_properties(0).major >= 8:
+                    torch.backends.cuda.matmul.allow_tf32 = True
+                    torch.backends.cudnn.allow_tf32 = True
+
+            predictor = build_sam2_video_predictor(self.config_path, self.path, device=device)
+            self.predictors[device] = predictor
+
+        logger.info(f"Infer Request: {request}")
+        image_path = request["image"]
+        image_tensor = self.image_cache.get(image_path)
+        if image_tensor is None:
+            # TODO:: Fix this to cache more than one image session
+            if self.inference_state is not None:
+                predictor.reset_state(self.inference_state)
+
+            self.image_cache.clear()
+            video_dir = f"tmp_images/{get_basename_no_ext(image_path)}"
+
+            image_tensor = LoadImage()(image_path)
+            self.image_cache[image_path] = image_tensor
+
+            if not os.path.isdir(video_dir):
+                os.makedirs(video_dir, exist_ok=True)
+                for slice_idx in tqdm(range(image_tensor.shape[-1])):
+                    slice_np = image_tensor[:, :, slice_idx].numpy()
+                    slice_img = Image.fromarray(slice_np).convert("RGB")
+                    slice_img.save(os.path.join(video_dir, f"{str(slice_idx).zfill(5)}.jpg"))
+                logger.info(f"Image (Flattened): {image_tensor.shape[-1]} slices")
+
+            self.inference_state = predictor.init_state(video_path=video_dir)
+
+        logger.info(f"Image Shape: {image_tensor.shape}")
+        fps: dict[int, Any] = {}
+        bps: dict[int, Any] = {}
+        sids = set()
+        for key in {"foreground", "background"}:
+            for p in request[key]:
+                sid = p[2]
+                sids.add(sid)
+                kps = fps if key == "foreground" else bps
+                if kps.get(sid):
+                    kps[sid].append([p[1], p[0]])
+                else:
+                    kps[sid] = [[p[1], p[0]]]
+
+        pred = np.zeros(tuple(image_tensor.shape))
+        for sid in sids:
+            fp = fps.get(sid, [])
+            bp = bps.get(sid, [])
+
+            point_coords = np.array([fp + bp])
+            point_labels = np.array([[1] * len(fp) + [0] * len(bp)])
+            # logger.info(f"{sid} - Point Coords: {point_coords.tolist()}")
+            # logger.info(f"{sid} - Point Labels: {point_labels.tolist()}")
+
+            o_frame_ids, o_obj_ids, o_mask_logits = predictor.add_new_points_or_box(
+                inference_state=self.inference_state,
+                frame_idx=sid,
+                obj_id=1,
+                points=point_coords,
+                labels=point_labels,
+            )
+            logger.info(f"{sid} - mask_logits: {o_mask_logits.shape}; frame_ids: {o_frame_ids}; obj_ids: {o_obj_ids}")
+            pred[:, :, sid] = (o_mask_logits[0][0] > 0.0).cpu().numpy()
+
+        for out_frame_idx, out_obj_ids, out_mask_logits in predictor.propagate_in_video(self.inference_state):
+            # logger.info(f"propagate: {out_frame_idx} - mask_logits: {out_mask_logits.shape}; obj_ids: {out_obj_ids}")
+            pred[:, :, out_frame_idx] = (out_mask_logits[0][0] > 0.0).cpu().numpy()
+
+        writer = Writer(ref_image="image")
+        mask_file, result_json = writer({"image_path": request["image"], "pred": pred, "image": image_tensor})
+        logger.info(f"Mask File: {mask_file}; Latency: {round(time() - start_ts, 4)} sec")
+        return mask_file, result_json
+
+    def __call__(self, request, debug=False) -> Union[Dict, Tuple[str, Dict[str, Any]]]:
+        if self.dimension == 2:
+            return self.run2d(request, debug)
+        return self.run_3d(request, debug)
+
 
 def main():
     logging.basicConfig(
@@ -146,14 +238,13 @@ def main():
     logger.info(f"Model Dir: {model_dir}")
     task = Sam2InferTask(model_dir)
 
-    sid = 45
     request = {
         "image": "/home/sachi/Datasets/SAM2/spleen_16.nii.gz",
-        "foreground": [[129, 199, sid]],
-        "background": [[199, 129, sid], [399, 129, sid]],
+        "foreground": [[129, 199, 45], [129, 199, 47], [100, 200, 41]],
+        "background": [[199, 129, 45], [399, 129, 45]],
     }
     result = task(request, debug=True)
-    print(result)
+    shutil.move(result[0], "/home/sachi/mask.nii.gz")
 
 
 if __name__ == "__main__":
