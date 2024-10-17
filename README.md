@@ -88,8 +88,8 @@ In addition, you can find a table of the basic supported fields, modalities, vie
   <td>
     <ul>
       <li>3DSlicer</li>
-      <li>OHIF</li>
       <li>MITK</li>
+      <li>OHIF</li>
     </ul>
   </td>
   <td>
