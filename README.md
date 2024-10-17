@@ -88,6 +88,7 @@ In addition, you can find a table of the basic supported fields, modalities, vie
   <td>
     <ul>
       <li>3DSlicer</li>
+      <li>MITK</li>
       <li>OHIF</li>
     </ul>
   </td>
@@ -249,6 +250,11 @@ For a full list of supported bundles, see the <a href="https://github.com/Projec
 3D Slicer, a free and open-source platform for analyzing, visualizing and understanding medical image data. In MONAI Label, 3D Slicer is most tested with radiology studies and algorithms, develpoment and integration.
 
 [3D Slicer Setup](https://github.com/Project-MONAI/MONAILabel/tree/main/plugins/slicer)
+
+#### MITK
+The Medical imaging Interaction ToolKit (MITK) is an open source, standalone, medical imaging platform. MONAI Label is partially integrated to MITK Workbench, a powerful and free application to view, process, and segment medical images. The MONAI Label tool in MITK is mostly tested for inferencing using radiology and bundle apps allowing for Auto and Click-based interactive models.
+
+[MITK Setup](https://github.com/Project-MONAI/MONAILabel/tree/main/plugins/mitk)
 
 #### OHIF
 The Open Health Imaging Foundation (OHIF) Viewer is an open source, web-based, medical imaging platform. It aims to provide a core framework for building complex imaging applications.
