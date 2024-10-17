@@ -17,7 +17,7 @@ The Medical Imaging Interaction Toolkit (MITK) is a free open-source software fo
 
 <figure>
 <img src="./Screenshots/mitk_monailabel.png" width="90%"/>
-<figcaption>Segmentation generated for a 3D image loaded in MITK using “segmentation” model from the Radiology app</figcaption>
+<figcaption><i>Segmentation generated for a 3D image loaded in MITK using “segmentation” model from the Radiology app</i></figcaption>
 </figure>
 
 ### Table of Contents
@@ -41,5 +41,5 @@ MONAI Label tool interface can be found in both MITK's Segmentation View > 2D to
 2. Automatic 3D interpolation: On 3D images, sparse 2D label segmentations generated using MONAI 2D models can be interpolated on the fly to create 3D segmentations of specific structures with fewer interactions needed.
 <figure>
 <img src="./Screenshots/mitk_monailabel_2d.png" width="90%"/>
-<figcaption>Segmentation generated for a 3D image using “deepgrow_2d” model from the Radiology app and the 3D interpolation feature of MITK</figcaption>
+<figcaption><i>Segmentation generated for a 3D image using “deepgrow_2d” model from the Radiology app and the 3D interpolation feature of MITK</i></figcaption>
 </figure>
