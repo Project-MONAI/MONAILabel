@@ -5,11 +5,11 @@ MONAI Label supports various viewers for different domains, including radiology,
 #### 3D Slicer
 3D Slicer is a free, open-source software for visualization, processing, segmentation, registration, and other 3D images and meshes. MONAI Label supports 3D Slicer with radiology and monaibundle applications. With its advanced features, 3D Slicer is a mature and well-tested viewer for radiology studies and algorithms.
 
-#### OHIF
-The Open Health Imaging Foundation (OHIF) Viewer is an open-source, web-based platform for medical imaging. OHIF Viewer provides a framework for building complex imaging applications with user-friendly interfaces. MONAI Label supports the web-based OHIF viewer with connectivity to a remote DICOM server via DICOMweb.
-
 #### MITK
 The Medical imaging Interaction ToolKit (MITK) is an open source, standalone, medical imaging platform. MONAI Label is partially integrated to MITK Workbench, a powerful and free application to view, process, and segment medical images. The MONAI Label tool in MITK is mostly tested for inferencing using radiology and bundle apps allowing for Auto and Click-based interactive models.
+
+#### OHIF
+The Open Health Imaging Foundation (OHIF) Viewer is an open-source, web-based platform for medical imaging. OHIF Viewer provides a framework for building complex imaging applications with user-friendly interfaces. MONAI Label supports the web-based OHIF viewer with connectivity to a remote DICOM server via DICOMweb.
 
 ## Pathology
 #### QuPath
