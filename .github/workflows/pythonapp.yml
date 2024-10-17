@@ -32,7 +32,7 @@ jobs:
     strategy:
       matrix:
         os: [windows-latest, ubuntu-latest]
-        python-version: ["3.8", "3.9", "3.10", "3.11"]
+        python-version: ["3.9", "3.10", "3.11"]
     steps:
       - uses: actions/checkout@v4
       - name: Set up Python
@@ -50,7 +50,7 @@ jobs:
       MONAI_ZOO_AUTH_TOKEN: ${{ github.token }}
     strategy:
       matrix:
-        python-version: ["3.8", "3.9", "3.10", "3.11"]
+        python-version: ["3.9", "3.10", "3.11"]
     steps:
       - uses: actions/checkout@v4
       - name: Set up Python
@@ -83,7 +83,7 @@ jobs:
       MONAI_ZOO_AUTH_TOKEN: ${{ github.token }}
     strategy:
       matrix:
-        python-version: ["3.8", "3.9", "3.10", "3.11"]
+        python-version: ["3.9", "3.10", "3.11"]
     steps:
       - uses: actions/checkout@v4
         with:
@@ -144,7 +144,7 @@ jobs:
       MONAI_ZOO_AUTH_TOKEN: ${{ github.token }}
     strategy:
       matrix:
-        python-version: ["3.8", "3.9"]
+        python-version: ["3.9"]
     steps:
       - uses: actions/checkout@v4
       - name: Set up Python
