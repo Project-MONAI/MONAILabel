@@ -27,12 +27,12 @@ from monailabel.interfaces.tasks.infer_v2 import InferTask
 from monailabel.interfaces.tasks.scoring import ScoringMethod
 from monailabel.interfaces.tasks.strategy import Strategy
 from monailabel.interfaces.tasks.train import TrainTask
+from monailabel.sam2.infer import Sam2InferTask
 from monailabel.tasks.activelearning.first import First
 from monailabel.tasks.activelearning.random import Random
 
 # bundle
 from monailabel.tasks.infer.bundle import BundleInferTask
-from monailabel.tasks.infer.sam2_infer import Sam2InferTask
 from monailabel.tasks.train.bundle import BundleTrainTask
 from monailabel.utils.others.class_utils import get_class_names
 from monailabel.utils.others.generic import get_bundle_models, strtobool

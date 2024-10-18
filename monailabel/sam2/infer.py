@@ -11,6 +11,7 @@
 
 import logging
 import os
+import pathlib
 import shutil
 from time import time
 from typing import Any, Dict, Tuple, Union
@@ -23,9 +24,10 @@ from sam2.build_sam import build_sam2, build_sam2_video_predictor
 from sam2.sam2_image_predictor import SAM2ImagePredictor
 from tqdm import tqdm
 
+from monailabel.config import settings
 from monailabel.interfaces.tasks.infer_v2 import InferTask, InferType
 from monailabel.transform.writer import Writer
-from monailabel.utils.others.generic import download_file, get_basename_no_ext, name_to_device
+from monailabel.utils.others.generic import device_list, download_file, get_basename_no_ext, name_to_device
 
 logger = logging.getLogger(__name__)
 
@@ -36,8 +38,8 @@ class Sam2InferTask(InferTask):
             type=InferType.DEEPGROW,
             labels=None,
             dimension=dimension,
-            description="SAM V2",
-            config=None,
+            description="SAM2 (Segment Anything Model)",
+            config={"device": device_list()},
         )
 
         # Download PreTrained Model
@@ -52,16 +54,21 @@ class Sam2InferTask(InferTask):
         self.image_cache = {}
         self.inference_state = None
 
+        cache_path = settings.MONAI_LABEL_DATASTORE_CACHE_PATH
+        self.cache_path = (
+            os.path.join(cache_path, "sam2")
+            if cache_path
+            else os.path.join(pathlib.Path.home(), ".cache", "monailabel", "sam2")
+        )
+
     def is_valid(self) -> bool:
         return True
 
-    def run2d(self, request, debug=False) -> Union[Dict, Tuple[str, Dict[str, Any]]]:
-        start_ts = time()
+    def run2d(self, image_tensor, request, debug=False) -> Union[Dict, Tuple[str, Dict[str, Any]]]:
         device = name_to_device(request.get("device", "cuda"))
         predictor = self.predictors.get(device)
         if predictor is None:
             logger.info(f"Using Device: {device}")
-
             device_t = torch.device(device)
             if device_t.type == "cuda":
                 torch.autocast("cuda", dtype=torch.bfloat16).__enter__()
@@ -72,19 +79,6 @@ class Sam2InferTask(InferTask):
             sam2_model = build_sam2(self.config_path, self.path, device=device)
             predictor = SAM2ImagePredictor(sam2_model)
             self.predictors[device] = predictor
-
-        logger.info(f"Infer Request: {request}")
-        image_path = request["image"]
-        image_tensor = self.image_cache.get(image_path)
-        if image_tensor is None:
-            # TODO:: Fix this to cache more than one image session
-            self.image_cache.clear()
-
-            image_tensor = LoadImage()(image_path)
-            self.image_cache[image_path] = image_tensor
-
-        spatial_shape = image_tensor.shape
-        logger.info(f"Image Shape: {spatial_shape}")
 
         slice_idx = request["foreground"][0][2]
         logger.info(f"Slice Index: {slice_idx}")
@@ -97,6 +91,7 @@ class Sam2InferTask(InferTask):
             slice_img.save("slice.jpg")
 
         slice_rgb_np = np.array(slice_img)
+        predictor.reset_predictor()
         predictor.set_image(slice_rgb_np)
 
         fp = [[p[1], p[0]] for p in request["foreground"]]
@@ -123,7 +118,7 @@ class Sam2InferTask(InferTask):
         )
 
         logger.info(f"Masks Shape: {masks.shape}; Scores: {scores}")
-        pred = np.zeros(tuple(spatial_shape))
+        pred = np.zeros(tuple(image_tensor.shape))
         pred[:, :, slice_idx] = masks[0]
 
         if debug:
@@ -131,17 +126,13 @@ class Sam2InferTask(InferTask):
             Image.fromarray(masks[0] > 0).save("mask.jpg")
 
         writer = Writer(ref_image="image")
-        mask_file, result_json = writer({"image_path": request["image"], "pred": pred, "image": image_tensor})
-        logger.info(f"Mask File: {mask_file}; Latency: {round(time() - start_ts, 4)} sec")
-        return mask_file, result_json
+        return writer({"image_path": request["image"], "pred": pred, "image": image_tensor})
 
-    def run_3d(self, request, debug=False) -> Union[Dict, Tuple[str, Dict[str, Any]]]:
-        start_ts = time()
+    def run_3d(self, image_tensor, set_image_state, request) -> Union[Dict, Tuple[str, Dict[str, Any]]]:
         device = name_to_device(request.get("device", "cuda"))
         predictor = self.predictors.get(device)
         if predictor is None:
             logger.info(f"Using Device: {device}")
-
             device_t = torch.device(device)
             if device_t.type == "cuda":
                 torch.autocast("cuda", dtype=torch.bfloat16).__enter__()
@@ -152,28 +143,11 @@ class Sam2InferTask(InferTask):
             predictor = build_sam2_video_predictor(self.config_path, self.path, device=device)
             self.predictors[device] = predictor
 
-        logger.info(f"Infer Request: {request}")
-        image_path = request["image"]
-        image_tensor = self.image_cache.get(image_path)
-        if image_tensor is None:
-            # TODO:: Fix this to cache more than one image session
-            if self.inference_state is not None:
+        if set_image_state:
+            if self.inference_state:
                 predictor.reset_state(self.inference_state)
-
-            self.image_cache.clear()
-            video_dir = f"tmp_images/{get_basename_no_ext(image_path)}"
-
-            image_tensor = LoadImage()(image_path)
-            self.image_cache[image_path] = image_tensor
-
-            if not os.path.isdir(video_dir):
-                os.makedirs(video_dir, exist_ok=True)
-                for slice_idx in tqdm(range(image_tensor.shape[-1])):
-                    slice_np = image_tensor[:, :, slice_idx].numpy()
-                    slice_img = Image.fromarray(slice_np).convert("RGB")
-                    slice_img.save(os.path.join(video_dir, f"{str(slice_idx).zfill(5)}.jpg"))
-                logger.info(f"Image (Flattened): {image_tensor.shape[-1]} slices")
-
+            image_path = request["image"]
+            video_dir = os.path.join(self.cache_path, get_basename_no_ext(image_path))
             self.inference_state = predictor.init_state(video_path=video_dir)
 
         logger.info(f"Image Shape: {image_tensor.shape}")
@@ -215,14 +189,39 @@ class Sam2InferTask(InferTask):
             pred[:, :, out_frame_idx] = (out_mask_logits[0][0] > 0.0).cpu().numpy()
 
         writer = Writer(ref_image="image")
-        mask_file, result_json = writer({"image_path": request["image"], "pred": pred, "image": image_tensor})
-        logger.info(f"Mask File: {mask_file}; Latency: {round(time() - start_ts, 4)} sec")
-        return mask_file, result_json
+        return writer({"image_path": request["image"], "pred": pred, "image": image_tensor})
 
     def __call__(self, request, debug=False) -> Union[Dict, Tuple[str, Dict[str, Any]]]:
+        start_ts = time()
+
+        logger.info(f"Infer Request: {request}")
+        image_path = request["image"]
+        image_tensor = self.image_cache.get(image_path)
+        set_image_state = False
+        if image_tensor is None:
+            # TODO:: Fix this to cache more than one image session
+            self.image_cache.clear()
+            image_tensor = LoadImage()(image_path)
+            self.image_cache[image_path] = image_tensor
+            set_image_state = True
+
+            video_dir = os.path.join(self.cache_path, get_basename_no_ext(image_path))
+            if self.dimension == 3 and not os.path.isdir(video_dir):
+                os.makedirs(video_dir, exist_ok=True)
+                for slice_idx in tqdm(range(image_tensor.shape[-1])):
+                    slice_np = image_tensor[:, :, slice_idx].numpy()
+                    slice_img = Image.fromarray(slice_np).convert("RGB")
+                    slice_img.save(os.path.join(video_dir, f"{str(slice_idx).zfill(5)}.jpg"))
+                logger.info(f"Image (Flattened): {image_tensor.shape[-1]} slices")
+
+        logger.info(f"Image Shape: {image_tensor.shape}")
         if self.dimension == 2:
-            return self.run2d(request, debug)
-        return self.run_3d(request, debug)
+            mask_file, result_json = self.run2d(image_tensor, request, debug)
+        else:
+            mask_file, result_json = self.run_3d(image_tensor, set_image_state, request)
+
+        logger.info(f"Mask File: {mask_file}; Latency: {round(time() - start_ts, 4)} sec")
+        return mask_file, result_json
 
 
 def main():

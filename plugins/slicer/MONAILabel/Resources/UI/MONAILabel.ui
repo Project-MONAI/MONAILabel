@@ -386,7 +386,7 @@
    <item>
     <widget class="ctkCollapsibleButton" name="deepgrowCollapsibleButton">
      <property name="text">
-      <string>SmartEdit / Deepgrow</string>
+      <string>SmartEdit / Deepgrow / SAM</string>
      </property>
      <property name="collapsed">
       <bool>true</bool>
