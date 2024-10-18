@@ -27,7 +27,7 @@ metadata:
 
 spec:
   description: A pre-trained semantic segmentation model for Pathology
-  runtime: 'python:3.8'
+  runtime: 'python:3.9'
   handler: main:handler
   eventTimeout: 30s
 
