@@ -241,8 +241,8 @@ def create_dataset_from_path(folder, image_dir="images", label_dir="labels", img
     ]
 
 
-def strtobool(str):
-    return bool(distutils.util.strtobool(str))
+def strtobool(s):
+    return False if s is None else s if isinstance(s, bool) else bool(distutils.util.strtobool(s))
 
 
 def is_openslide_supported(name):

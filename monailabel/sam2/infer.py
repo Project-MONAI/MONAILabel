@@ -27,7 +27,7 @@ from tqdm import tqdm
 from monailabel.config import settings
 from monailabel.interfaces.tasks.infer_v2 import InferTask, InferType
 from monailabel.transform.writer import Writer
-from monailabel.utils.others.generic import device_list, download_file, get_basename_no_ext, name_to_device
+from monailabel.utils.others.generic import device_list, download_file, get_basename_no_ext, name_to_device, strtobool
 
 logger = logging.getLogger(__name__)
 
@@ -39,7 +39,7 @@ class Sam2InferTask(InferTask):
             labels=None,
             dimension=dimension,
             description="SAM2 (Segment Anything Model)",
-            config={"device": device_list()},
+            config={"device": device_list(), "reset_state": False},
         )
 
         # Download PreTrained Model
@@ -130,6 +130,7 @@ class Sam2InferTask(InferTask):
 
     def run_3d(self, image_tensor, set_image_state, request) -> Union[Dict, Tuple[str, Dict[str, Any]]]:
         device = name_to_device(request.get("device", "cuda"))
+        reset_state = strtobool(request.get("reset_state", "false"))
         predictor = self.predictors.get(device)
         if predictor is None:
             logger.info(f"Using Device: {device}")
@@ -143,7 +144,7 @@ class Sam2InferTask(InferTask):
             predictor = build_sam2_video_predictor(self.config_path, self.path, device=device)
             self.predictors[device] = predictor
 
-        if set_image_state:
+        if reset_state or set_image_state:
             if self.inference_state:
                 predictor.reset_state(self.inference_state)
             image_path = request["image"]
