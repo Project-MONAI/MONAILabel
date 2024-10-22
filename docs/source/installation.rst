@@ -27,7 +27,7 @@ MONAI Label Supported Stable Visualization Tools:
 
 * 3D Slicer: `Stable and Preview Version >= 5.0 <https://download.slicer.org/>`_
 
-* MITK: `Version >= 2024.06.2 <https://www.mitk.org/wiki/Downloads>`_ 
+* MITK: `Version >= 2024.06.2 <https://www.mitk.org/wiki/Downloads>`_
 
 * OHIF: `Version >= 3.1 <https://ohif.org/>`_
 
@@ -226,8 +226,8 @@ Currently, Windows and Linux version are supported.
 MITK
 -----------------------
 
-The Medical imaging Interaction ToolKit (MITK) is an open source, standalone, medical imaging platform. MONAI Label is partially integrated to MITK Workbench, 
-a powerful and free application to view, process, and segment medical images. The MONAI Label tool in MITK is mostly tested for inferencing using radiology and bundle apps 
+The Medical imaging Interaction ToolKit (MITK) is an open source, standalone, medical imaging platform. MONAI Label is partially integrated to MITK Workbench,
+a powerful and free application to view, process, and segment medical images. The MONAI Label tool in MITK is mostly tested for inferencing using radiology and bundle apps
 allowing for Auto and Click-based interactive models.
 
 To install MITK, see `MITK download <https://www.mitk.org/wiki/Downloads>`_.
@@ -301,7 +301,7 @@ Refer `3D Slicer plugin <https://github.com/Project-MONAI/MONAILabel/tree/main/p
 
 MITK Plugin
 ----------------------
-MITK comes pre-built with the MONAI Label plugin. The tool interface can be found in both MITK's Segmentation View > 2D tools and also in Segmentation View > 3D tools. 
+MITK comes pre-built with the MONAI Label plugin. The tool interface can be found in both MITK's Segmentation View > 2D tools and also in Segmentation View > 3D tools.
 As the the name suggests, the hosted MONAI Label app's 2D models are featured in 2D tools and vice versa. Refer `MITK Documentation <https://github.com/Project-MONAI/MONAILabel/tree/main/plugins/mitk>`_
 to know more using MONAI Label in MITK.
 
