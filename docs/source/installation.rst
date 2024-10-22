@@ -302,7 +302,7 @@ Refer `3D Slicer plugin <https://github.com/Project-MONAI/MONAILabel/tree/main/p
 MITK Plugin
 ----------------------
 MITK comes pre-built with the MONAI Label plugin. The tool interface can be found in both MITK's Segmentation View > 2D tools and also in Segmentation View > 3D tools. 
-As the the name suggests, the hosted MONAI Label app's 2D models are featured in 2D tools and vice versa. Refer `MITK Documentation <https://github.com/ASHISRAVINDRAN/MONAILabel/tree/main/plugins/mitk>`
+As the the name suggests, the hosted MONAI Label app's 2D models are featured in 2D tools and vice versa. Refer `MITK Documentation <https://github.com/Project-MONAI/MONAILabel/tree/main/plugins/mitk>`_
 to know more using MONAI Label in MITK.
 
 OHIF Plugin
