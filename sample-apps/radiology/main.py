@@ -100,8 +100,7 @@ class MyApp(MONAILabelApp):
         # Load models from bundle config files, local or released in Model-Zoo, e.g., --conf bundles <spleen_ct_segmentation>
         self.bundles = get_bundle_models(app_dir, conf, conf_key="bundles") if conf.get("bundles") else None
 
-        self.sam = conf.get("sam", "true") == "true"
-
+        self.sam = strtobool(conf.get("sam", "true"))
         super().__init__(
             app_dir=app_dir,
             studies=studies,

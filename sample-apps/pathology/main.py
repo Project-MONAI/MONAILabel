@@ -90,8 +90,7 @@ class MyApp(MONAILabelApp):
 
         logger.info(f"+++ Using Models: {list(self.models.keys())}")
 
-        self.sam = conf.get("sam", "true") == "true"
-
+        self.sam = strtobool(conf.get("sam", "true"))
         super().__init__(
             app_dir=app_dir,
             studies=studies,

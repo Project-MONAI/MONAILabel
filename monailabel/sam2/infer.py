@@ -103,8 +103,11 @@ class Sam2InferTask(InferTask):
             predictor = SAM2ImagePredictor(sam2_model)
             self.predictors[device] = predictor
 
-        slice_idx = request["foreground"][0][2] if request["foreground"] and len(request["foreground"][0]) > 3 else -1
-        logger.info(f"Slice Index: {slice_idx}")
+        slices = {p[2] for p in request["foreground"] if len(p) > 2}
+        slices.update({p[2] for p in request["background"] if len(p) > 2})
+        slices = list(slices)
+        slice_idx = slices[0] if len(slices) else -1
+        logger.info(f"Slices: {slices}; Slice Index: {slice_idx}")
 
         if slice_idx < 0:
             slice_rgb_np = image_tensor.cpu().numpy()

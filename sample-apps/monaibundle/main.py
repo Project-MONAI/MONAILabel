@@ -21,6 +21,7 @@ from monailabel.interfaces.tasks.infer_v2 import InferTask
 from monailabel.interfaces.tasks.scoring import ScoringMethod
 from monailabel.interfaces.tasks.strategy import Strategy
 from monailabel.interfaces.tasks.train import TrainTask
+from monailabel.sam2.infer import Sam2InferTask
 from monailabel.tasks.activelearning.first import First
 from monailabel.tasks.activelearning.random import Random
 from monailabel.tasks.infer.bundle import BundleInferTask
@@ -33,6 +34,7 @@ logger = logging.getLogger(__name__)
 
 class MyApp(MONAILabelApp):
     def __init__(self, app_dir, studies, conf):
+        self.model_dir = os.path.join(app_dir, "model")
         self.models = get_bundle_models(app_dir, conf)
         # Add Epistemic model for scoring
         self.epistemic_models = (
@@ -44,6 +46,7 @@ class MyApp(MONAILabelApp):
             self.epistemic_simulation_size = int(conf.get("epistemic_simulation_size", "5"))
             self.epistemic_dropout = float(conf.get("epistemic_dropout", "0.2"))
 
+        self.sam = strtobool(conf.get("sam", "true"))
         super().__init__(
             app_dir=app_dir,
             studies=studies,
@@ -74,6 +77,12 @@ class MyApp(MONAILabelApp):
                 logger.info(f"+++ Adding Inferer:: {n} => {i}")
                 infers[n] = i
 
+        #################################################
+        # SAM
+        #################################################
+        if self.sam:
+            infers["sam_2d"] = Sam2InferTask(model_dir=self.model_dir, dimension=2)
+            infers["sam_3d"] = Sam2InferTask(model_dir=self.model_dir, dimension=3)
         return infers
 
     def init_trainers(self) -> Dict[str, TrainTask]:

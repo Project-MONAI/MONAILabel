@@ -336,7 +336,7 @@ def get_bundle_models(app_dir, conf, conf_key="models"):
     zoo_source = conf.get("zoo_source", settings.MONAI_ZOO_SOURCE)
 
     models = conf.get(conf_key)
-    models = models.split(",")
+    models = models.split(",") if models else []
     models = [m.strip() for m in models]
 
     if zoo_source == "monaihosting":  # if in github env, access model zoo
