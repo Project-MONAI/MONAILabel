@@ -8,17 +8,16 @@
 # WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 # See the License for the specific language governing permissions and
 # limitations under the License.
-
+import copy
 import logging
 import os
 import pathlib
-import shutil
 from time import time
 from typing import Any, Dict, Tuple, Union
 
 import numpy as np
 import torch
-from monai.transforms import LoadImage
+from monai.transforms import LoadImaged
 from PIL import Image
 from sam2.build_sam import build_sam2, build_sam2_video_predictor
 from sam2.sam2_image_predictor import SAM2ImagePredictor
@@ -26,6 +25,7 @@ from tqdm import tqdm
 
 from monailabel.config import settings
 from monailabel.interfaces.tasks.infer_v2 import InferTask, InferType
+from monailabel.interfaces.utils.transform import run_transforms
 from monailabel.transform.writer import Writer
 from monailabel.utils.others.generic import device_list, download_file, get_basename_no_ext, name_to_device, strtobool
 
@@ -33,14 +33,31 @@ logger = logging.getLogger(__name__)
 
 
 class Sam2InferTask(InferTask):
-    def __init__(self, model_dir, dimension=2):
+    def __init__(
+        self,
+        model_dir,
+        type=InferType.DEEPGROW,
+        dimension=2,
+        labels=None,
+        additional_info=None,
+        image_loader=LoadImaged(keys="image"),
+        post_trans=None,
+        writer=Writer(ref_image="image"),
+        config=None,
+    ):
         super().__init__(
-            type=InferType.DEEPGROW,
-            labels=None,
+            type=type,
             dimension=dimension,
+            labels=labels,
             description="SAM2 (Segment Anything Model)",
             config={"device": device_list(), "reset_state": False},
         )
+        self.additional_info = additional_info
+        self.image_loader = image_loader
+        self.post_trans = post_trans
+        self.writer = writer
+        if config:
+            self._config.update(config)
 
         # Download PreTrained Model
         # https://github.com/facebookresearch/sam2?tab=readme-ov-file#model-description
@@ -61,10 +78,16 @@ class Sam2InferTask(InferTask):
             else os.path.join(pathlib.Path.home(), ".cache", "monailabel", "sam2")
         )
 
+    def info(self) -> Dict[str, Any]:
+        d = super().info()
+        if self.additional_info:
+            d.update(self.additional_info)
+        return d
+
     def is_valid(self) -> bool:
         return True
 
-    def run2d(self, image_tensor, request, debug=False) -> Union[Dict, Tuple[str, Dict[str, Any]]]:
+    def run2d(self, image_tensor, request, debug=False):
         device = name_to_device(request.get("device", "cuda"))
         predictor = self.predictors.get(device)
         if predictor is None:
@@ -80,22 +103,26 @@ class Sam2InferTask(InferTask):
             predictor = SAM2ImagePredictor(sam2_model)
             self.predictors[device] = predictor
 
-        slice_idx = request["foreground"][0][2]
+        slice_idx = request["foreground"][0][2] if request["foreground"] and len(request["foreground"][0]) > 3 else -1
         logger.info(f"Slice Index: {slice_idx}")
 
-        slice_np = image_tensor[:, :, slice_idx].numpy()
-        logger.info(f"Image Slice Shape: {slice_np.shape}")
-        slice_img = Image.fromarray(slice_np).convert("RGB")
+        if slice_idx < 0:
+            slice_rgb_np = image_tensor.cpu().numpy()
+        else:
+            slice_np = image_tensor[:, :, slice_idx].cpu().numpy()
+            logger.info(f"Image Slice Shape: {slice_np.shape}")
+            slice_img = Image.fromarray(slice_np).convert("RGB")
+            if debug:
+                slice_img.save("slice.jpg")
+            slice_rgb_np = np.array(slice_img)
 
-        if debug:
-            slice_img.save("slice.jpg")
-
-        slice_rgb_np = np.array(slice_img)
         predictor.reset_predictor()
         predictor.set_image(slice_rgb_np)
 
-        fp = [[p[1], p[0]] for p in request["foreground"]]
-        bp = [[p[1], p[0]] for p in request["background"]]
+        location = request.get("location", (0, 0))
+        tx, ty = location[0], location[1]
+        fp = [[p[1] - ty, p[0] - tx] for p in request["foreground"]]
+        bp = [[p[1] - ty, p[0] - tx] for p in request["background"]]
 
         if debug:
             slice_rgb_np_p = np.copy(slice_rgb_np)
@@ -118,17 +145,23 @@ class Sam2InferTask(InferTask):
         )
 
         logger.info(f"Masks Shape: {masks.shape}; Scores: {scores}")
-        pred = np.zeros(tuple(image_tensor.shape))
-        pred[:, :, slice_idx] = masks[0]
+        if self.post_trans is None:
+            pred = np.zeros(tuple(image_tensor.shape))
+            pred[:, :, slice_idx] = masks[0]
+            data = copy.copy(request)
+            data.update({"image_path": request["image"], "pred": pred, "image": image_tensor})
+        else:
+            data = copy.copy(request)
+            data.update({"image_path": request["image"], "pred": masks[0], "image": image_tensor})
+            data = run_transforms(data, self.post_trans, log_prefix="POST", use_compose=False)
 
         if debug:
             # pylab.imsave("mask.jpg", masks[0], format="jpg", cmap="Greys_r")
             Image.fromarray(masks[0] > 0).save("mask.jpg")
 
-        writer = Writer(ref_image="image")
-        return writer({"image_path": request["image"], "pred": pred, "image": image_tensor})
+        return self.writer(data)
 
-    def run_3d(self, image_tensor, set_image_state, request) -> Union[Dict, Tuple[str, Dict[str, Any]]]:
+    def run_3d(self, image_tensor, set_image_state, request):
         device = name_to_device(request.get("device", "cuda"))
         reset_state = strtobool(request.get("reset_state", "false"))
         predictor = self.predictors.get(device)
@@ -190,7 +223,9 @@ class Sam2InferTask(InferTask):
             pred[:, :, out_frame_idx] = (out_mask_logits[0][0] > 0.0).cpu().numpy()
 
         writer = Writer(ref_image="image")
-        return writer({"image_path": request["image"], "pred": pred, "image": image_tensor})
+        data = copy.copy(request)
+        data.update({"image_path": request["image"], "pred": pred, "image": image_tensor})
+        return writer(data)
 
     def __call__(self, request, debug=False) -> Union[Dict, Tuple[str, Dict[str, Any]]]:
         start_ts = time()
@@ -199,10 +234,11 @@ class Sam2InferTask(InferTask):
         image_path = request["image"]
         image_tensor = self.image_cache.get(image_path)
         set_image_state = False
-        if image_tensor is None:
+        cache_image = request.get("cache_image", True)
+        if not cache_image or image_tensor is None:
             # TODO:: Fix this to cache more than one image session
             self.image_cache.clear()
-            image_tensor = LoadImage()(image_path)
+            image_tensor = self.image_loader(request)["image"]
             self.image_cache[image_path] = image_tensor
             set_image_state = True
 
@@ -215,17 +251,28 @@ class Sam2InferTask(InferTask):
                     slice_img.save(os.path.join(video_dir, f"{str(slice_idx).zfill(5)}.jpg"))
                 logger.info(f"Image (Flattened): {image_tensor.shape[-1]} slices")
 
-        logger.info(f"Image Shape: {image_tensor.shape}")
+        logger.info(f"Image Shape: {image_tensor.shape}; cached: {cache_image}")
         if self.dimension == 2:
             mask_file, result_json = self.run2d(image_tensor, request, debug)
         else:
             mask_file, result_json = self.run_3d(image_tensor, set_image_state, request)
 
         logger.info(f"Mask File: {mask_file}; Latency: {round(time() - start_ts, 4)} sec")
+        result_json["latencies"] = {
+            "pre": 0,
+            "infer": 0,
+            "invert": 0,
+            "post": 0,
+            "write": 0,
+            "total": round(time() - start_ts, 2),
+            "transform": None,
+        }
         return mask_file, result_json
 
 
 def main():
+    import shutil
+
     logging.basicConfig(
         level=logging.INFO,
         format="[%(asctime)s] [%(process)s] [%(threadName)s] [%(levelname)s] (%(name)s:%(lineno)d) - %(message)s",
@@ -233,18 +280,54 @@ def main():
         force=True,
     )
 
-    app_dir = os.path.abspath(os.path.join(os.path.dirname(__file__), "..", "..", "..", "sample-apps", "radiology"))
+    app_name = "pathology"
+    app_dir = os.path.abspath(os.path.join(os.path.dirname(__file__), "..", "..", "..", "sample-apps", app_name))
     model_dir = os.path.join(app_dir, "model")
     logger.info(f"Model Dir: {model_dir}")
-    task = Sam2InferTask(model_dir)
+    if app_name == "pathology":
+        from lib.transforms import LoadImagePatchd
 
-    request = {
-        "image": "/home/sachi/Datasets/SAM2/spleen_16.nii.gz",
-        "foreground": [[129, 199, 45], [129, 199, 47], [100, 200, 41]],
-        "background": [[199, 129, 45], [399, 129, 45]],
-    }
+        from monailabel.transform.post import FindContoursd
+        from monailabel.transform.writer import PolygonWriter
+
+        task = Sam2InferTask(
+            model_dir=model_dir,
+            dimension=2,
+            additional_info={"nuclick": True, "pathology": True},
+            image_loader=LoadImagePatchd(keys="image", padding=False),
+            post_trans=[FindContoursd(keys="pred")],
+            writer=PolygonWriter(),
+        )
+        request = {
+            "device": "cuda:1",
+            "reset_state": False,
+            "model": "sam2",
+            "image": "/home/sachi/Datasets/wsi/JP2K-33003-1.svs",
+            "output": "asap",
+            "level": 0,
+            "location": (2183, 4873),
+            "size": (128, 128),
+            "tile_size": [128, 128],
+            "min_poly_area": 30,
+            "foreground": [[2247, 4937]],
+            "background": [],
+            "max_workers": 1,
+            "id": 0,
+            "logging": "INFO",
+            "result_write_to_file": False,
+            "description": "SAM2 (Segment Anything Model)",
+            "save_label": False,
+        }
+    else:
+        task = Sam2InferTask(model_dir)
+        request = {
+            "image": "/home/sachi/Datasets/SAM2/spleen_16.nii.gz",
+            "foreground": [[129, 199, 45], [129, 199, 47], [100, 200, 41]],
+            "background": [[199, 129, 45], [399, 129, 45]],
+        }
+
     result = task(request, debug=True)
-    shutil.move(result[0], "/home/sachi/mask.nii.gz")
+    shutil.move(result[0], "/home/sachi/" + "mask.xml" if app_name == "pathology" else "mask.nii.gz")
 
 
 if __name__ == "__main__":
