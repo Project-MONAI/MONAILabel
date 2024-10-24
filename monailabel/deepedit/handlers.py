@@ -13,8 +13,7 @@ from typing import TYPE_CHECKING, Any, Callable, Dict, Optional
 
 import numpy as np
 import torch
-from monai.config import IgniteInfo
-from monai.utils import min_version, optional_import
+from monai.utils import IgniteInfo, min_version, optional_import
 from monai.visualize import plot_2d_or_3d_image
 from torch import distributed as dist
 from torchvision.utils import make_grid
