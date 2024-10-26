@@ -35,13 +35,11 @@ spec:
     directives:
       preCopy:
         - kind: ENV
-          value: MONAI_LABEL_APP_DIR=/usr/local/monailabel/sample-apps/endoscopy
+          value: MONAI_LABEL_SERVER=http://10.117.9.63:8000
         - kind: ENV
-          value: MONAI_LABEL_MODELS=inbody
+          value: MONAI_LABEL_MODEL=inbody
         - kind: ENV
-          value: PYTHONPATH=/usr/local/monailabel/sample-apps/endoscopy
-        - kind: ENV
-          value: MONAI_PRETRAINED_PATH=https://github.com/Project-MONAI/MONAILabel/releases/download/data
+          value: MONAI_LABEL_OUTPUT_TYPE=json
 
   triggers:
     myHttpTrigger:
@@ -50,11 +48,6 @@ spec:
       workerAvailabilityTimeoutMilliseconds: 10000
       attributes:
         maxRequestBodySize: 33554432 # 32MB
-        port: 8901
-
-  resources:
-    limits:
-      nvidia.com/gpu: 1
 
   platform:
     attributes:

@@ -10,25 +10,25 @@
 # limitations under the License.
 
 metadata:
-  name: monailabel.endoscopy.deepedit
+  name: monailabel.endoscopy.sam2
   namespace: cvat
   annotations:
-    name: DeepEdit
+    name: SAM2
     version: 2
     type: interactor
     spec:
     min_pos_points: 1
     min_neg_points: 0
-    help_message: The interactor allows to annotate a Tool using pre-trained DeepEdit model
+    help_message: The interactor allows to annotate a Tool using pre-trained SAM2 model
 
 spec:
-  description: A pre-trained DeepEdit model for interactive model for Endoscopy
+  description: A pre-trained SAM2 model for interactive model for Endoscopy
   runtime: 'python:3.8'
   handler: main:handler
   eventTimeout: 30s
 
   build:
-    image: cvat/monailabel.endoscopy.deepedit
+    image: cvat/monailabel.endoscopy.sam2
     baseImage: projectmonai/monailabel:latest
 
     directives:
@@ -36,7 +36,7 @@ spec:
         - kind: ENV
           value: MONAI_LABEL_SERVER=http://10.117.9.63:8000
         - kind: ENV
-          value: MONAI_LABEL_MODEL=deepedit
+          value: MONAI_LABEL_MODEL=sam2
         - kind: ENV
           value: MONAI_LABEL_OUTPUT_TYPE=mask
         - kind: ENV

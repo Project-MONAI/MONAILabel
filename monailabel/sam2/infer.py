@@ -12,6 +12,7 @@ import copy
 import logging
 import os
 import pathlib
+import shutil
 from time import time
 from typing import Any, Dict, Tuple, Union
 
@@ -21,6 +22,7 @@ from monai.transforms import LoadImaged
 from PIL import Image
 from sam2.build_sam import build_sam2, build_sam2_video_predictor
 from sam2.sam2_image_predictor import SAM2ImagePredictor
+from skimage.util import img_as_ubyte
 from tqdm import tqdm
 
 from monailabel.config import settings
@@ -110,14 +112,18 @@ class Sam2InferTask(InferTask):
         logger.info(f"Slices: {slices}; Slice Index: {slice_idx}")
 
         if slice_idx < 0:
-            slice_rgb_np = image_tensor.cpu().numpy()
+            slice_np = image_tensor.cpu().numpy()
+            slice_rgb_np = slice_np.astype(np.uint8) if np.max(slice_np) > 1 else img_as_ubyte(slice_np)
         else:
             slice_np = image_tensor[:, :, slice_idx].cpu().numpy()
-            logger.info(f"Image Slice Shape: {slice_np.shape}")
-            slice_img = Image.fromarray(slice_np).convert("RGB")
-            if debug:
-                slice_img.save("slice.jpg")
-            slice_rgb_np = np.array(slice_img)
+            slice_rgb_np = np.array(Image.fromarray(slice_np).convert("RGB"))
+
+        logger.info(f"Slice Index:{slice_idx}; (Image) Slice Shape: {slice_np.shape}")
+        print(f"Slice: Type: {slice_np.dtype}; Max: {np.max(slice_np)}")
+        print(f"Slice RGB: Type: {slice_rgb_np.dtype}; Max: {np.max(slice_rgb_np)}")
+        if debug:
+            shutil.copy(image_tensor.meta["filename_or_obj"], "image.jpg")
+            Image.fromarray(slice_rgb_np).save("slice.jpg")
 
         predictor.reset_predictor()
         predictor.set_image(slice_rgb_np)
@@ -149,8 +155,12 @@ class Sam2InferTask(InferTask):
 
         logger.info(f"Masks Shape: {masks.shape}; Scores: {scores}")
         if self.post_trans is None:
-            pred = np.zeros(tuple(image_tensor.shape))
-            pred[:, :, slice_idx] = masks[0]
+            if slice_idx < 0:
+                pred = masks[0]
+            else:
+                pred = np.zeros(tuple(image_tensor.shape))
+                pred[:, :, slice_idx] = masks[0]
+
             data = copy.copy(request)
             data.update({"image_path": request["image"], "pred": pred, "image": image_tensor})
         else:
@@ -230,7 +240,7 @@ class Sam2InferTask(InferTask):
         data.update({"image_path": request["image"], "pred": pred, "image": image_tensor})
         return writer(data)
 
-    def __call__(self, request, debug=False) -> Union[Dict, Tuple[str, Dict[str, Any]]]:
+    def __call__(self, request, debug=False) -> Tuple[Union[str, None], Dict]:
         start_ts = time()
 
         logger.info(f"Infer Request: {request}")
@@ -238,10 +248,21 @@ class Sam2InferTask(InferTask):
         image_tensor = self.image_cache.get(image_path)
         set_image_state = False
         cache_image = request.get("cache_image", True)
+
+        if "foreground" not in request:
+            request["foreground"] = []
+        if "background" not in request:
+            request["background"] = []
+
+        if request.get("flip_points", False):
+            request["foreground"] = [[p[1], p[0]] + p[2:] for p in request["foreground"]]
+            request["background"] = [[p[1], p[0]] + p[2:] for p in request["background"]]
+
         if not cache_image or image_tensor is None:
             # TODO:: Fix this to cache more than one image session
             self.image_cache.clear()
             image_tensor = self.image_loader(request)["image"]
+            logger.info(f"Image Meta: {image_tensor.meta}")
             self.image_cache[image_path] = image_tensor
             set_image_state = True
 
@@ -250,8 +271,10 @@ class Sam2InferTask(InferTask):
                 os.makedirs(video_dir, exist_ok=True)
                 for slice_idx in tqdm(range(image_tensor.shape[-1])):
                     slice_np = image_tensor[:, :, slice_idx].numpy()
-                    slice_img = Image.fromarray(slice_np).convert("RGB")
-                    slice_img.save(os.path.join(video_dir, f"{str(slice_idx).zfill(5)}.jpg"))
+                    slice_file = os.path.join(video_dir, f"{str(slice_idx).zfill(5)}.jpg")
+
+                    # pylab.imsave(slice_file, slice_np, format="jpg", cmap="Greys_r")
+                    Image.fromarray(slice_np).convert("RGB").save(slice_file)
                 logger.info(f"Image (Flattened): {image_tensor.shape[-1]} slices")
 
         logger.info(f"Image Shape: {image_tensor.shape}; cached: {cache_image}")
@@ -273,6 +296,7 @@ class Sam2InferTask(InferTask):
         return mask_file, result_json
 
 
+"""
 def main():
     import shutil
 
@@ -335,3 +359,4 @@ def main():
 
 if __name__ == "__main__":
     main()
+"""

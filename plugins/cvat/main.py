@@ -14,12 +14,13 @@ import io
 import json
 import logging
 import os
-from distutils.util import strtobool
+import tempfile
 
 import numpy as np
 from PIL import Image
 
-from monailabel.interfaces.utils.app import app_instance
+from monailabel.client import MONAILabelClient
+from monailabel.utils.others.generic import strtobool
 
 logging.basicConfig(
     level=logging.INFO,
@@ -31,22 +32,17 @@ logging.basicConfig(
 def init_context(context):
     context.logger.info("Init context...  0%")
 
-    app_dir = os.environ.get("MONAI_LABEL_APP_DIR", "/opt/conda/monailabel/sample-apps/pathology")
-    studies = os.environ.get("MONAI_LABEL_STUDIES", "/opt/monailabel/studies")
-    model = os.environ.get("MONAI_LABEL_MODELS", "segmentation_nuclei")
-    pretrained_path = os.environ.get(
-        "MONAI_PRETRAINED_PATH", "https://github.com/Project-MONAI/MONAILabel/releases/download/data"
-    )
-    conf = {"preload": "true", "models": model, "pretrained_path": pretrained_path}
+    server = os.environ.get("MONAI_LABEL_SERVER", "http://0.0.0.0:8000")
+    model = os.environ.get("MONAI_LABEL_MODEL", "deepedit")
+    client = MONAILabelClient(server)
 
-    root_dir = os.path.dirname(os.path.dirname(os.path.dirname(__file__)))
-    app_dir = app_dir if os.path.exists(app_dir) else os.path.join(root_dir, "sample-apps", "pathology")
-    studies = studies if os.path.exists(os.path.dirname(studies)) else os.path.join(root_dir, "studies")
-
-    app = app_instance(app_dir, studies, conf)
+    info = client.info()
+    model_info = info["models"][model] if info and info["models"] else None
+    context.logger.info(f"Monai Label Info: {model_info}")
+    assert model_info
 
     context.user_data.model = model
-    context.user_data.model_handler = app
+    context.user_data.model_handler = client
     context.logger.info("Init context...100%")
 
 
@@ -55,41 +51,48 @@ def handler(context, event):
     data = event.body
 
     image = Image.open(io.BytesIO(base64.b64decode(data["image"])))
-    image_np = np.asarray(image.convert("RGB"), dtype=np.uint8)
+    foreground = data.get("pos_points")
+    background = data.get("neg_points")
+    context.logger.info(f"Image: {image.size}; Foreground: {foreground}; Background: {background}")
 
-    flip_image = strtobool(os.environ.get("MONAI_LABEL_FLIP_INPUT_IMAGE", "true"))
-    flip_points = strtobool(os.environ.get("MONAI_LABEL_FLIP_INPUT_POINTS", "true"))
-    flip_output = strtobool(os.environ.get("MONAI_LABEL_FLIP_OUTPUT_POINTS", "false"))
+    image_file = tempfile.NamedTemporaryFile(suffix=".jpg").name
+    image.save(image_file)
 
-    if flip_image:
-        image_np = np.moveaxis(image_np, 0, 1)
+    server = os.environ.get("MONAI_LABEL_SERVER", "http://0.0.0.0:8000")
+    model = os.environ.get("MONAI_LABEL_MODEL", "inbody")
+    output = os.environ.get("MONAI_LABEL_OUTPUT_TYPE", "mask")
 
-    pos_points = data.get("pos_points")
-    neg_points = data.get("neg_points")
-    if flip_points:
-        foreground = np.flip(np.array(pos_points, int), 1).tolist() if pos_points else pos_points
-        background = np.flip(np.array(neg_points, int), 1).tolist() if neg_points else neg_points
-    else:
-        foreground = np.array(pos_points, int).tolist() if pos_points else pos_points
-        background = np.array(neg_points, int).tolist() if neg_points else neg_points
+    client = MONAILabelClient(server)
+    params = {
+        "output": output,
+        "foreground": np.asarray(foreground, dtype=int).tolist() if foreground else [],
+        "background": np.asarray(background, dtype=int).tolist() if background else [],
+    }
 
-    context.logger.info(f"Image: {image_np.shape}; Foreground: {foreground}; Background: {background}")
+    output_mask, output_json = client.infer(model=model, image_id="", file=image_file, params=params)
+    if isinstance(output_json, str) or isinstance(output_json, bytes):
+        output_json = json.loads(output_json)
+    # context.logger.info(f"Mask: {output_mask}; Output JSON: {output_json}")
 
-    json_data = context.user_data.model_handler.infer(
-        request={
-            "model": context.user_data.model,
-            "image": image_np,
-            "foreground": foreground,
-            "background": background,
-            "output": "json",
-        }
-    )
+    interactor = strtobool(os.environ.get("INTERACTOR_MODEL", "false"))
+    if interactor:
+        mask_np = np.array(Image.open(output_mask)).astype(np.uint8)
+        context.logger.info(f"Mask: {mask_np.shape}")
+        os.remove(output_mask)
+
+        resp = {"mask": mask_np.tolist()}
+        context.logger.info(f"Image: {image.size}; Mask: {mask_np.shape}; JSON: {output_json}")
+        return context.Response(
+            body=json.dumps(resp),
+            headers={},
+            content_type="application/json",
+            status_code=200,
+        )
 
     results = []
-    prediction = json_data["params"].get("prediction")
+    prediction = output_json.get("prediction")
     if prediction:
         context.logger.info(f"(Classification) Prediction: {prediction}")
-
         # CVAT Limitation:: tag is not yet supported https://github.com/opencv/cvat/issues/4212
         # CVAT Limitation:: select highest score and create bbox to represent as tag
         e = None
@@ -105,13 +108,12 @@ def handler(context, event):
                     "label": e["label"],
                     "confidence": e["score"],
                     "type": "rectangle",
-                    "points": [0, 0, image_np.shape[0] - 1, image_np.shape[1] - 1],
+                    "points": [0, 0, image.size[0] - 1, image.size[1] - 1],
                 }
             )
         context.logger.info(f"(Classification) Results: {results}")
     else:
-        interactor = strtobool(os.environ.get("INTERACTOR_MODEL", "false"))
-        annotations = json_data["params"].get("annotations")
+        annotations = output_json.get("annotations")
         for a in annotations:
             annotation = a.get("annotation", {})
             if not annotation:
@@ -123,18 +125,6 @@ def handler(context, event):
                 contours = element["contours"]
                 for contour in contours:
                     points = np.array(contour, int)
-                    if flip_output:
-                        points = np.flip(points, axis=None)
-
-                    # CVAT limitation:: only one polygon result for interactor
-                    if interactor and contour:
-                        return context.Response(
-                            body=json.dumps(points.tolist()),
-                            headers={},
-                            content_type="application/json",
-                            status_code=200,
-                        )
-
                     results.append(
                         {
                             "label": label,
@@ -151,7 +141,6 @@ def handler(context, event):
     )
 
 
-"""
 if __name__ == "__main__":
     import logging
     from argparse import Namespace
@@ -168,12 +157,13 @@ if __name__ == "__main__":
     }
     context = Namespace(**context)
 
-    with open("test.jpg", "rb") as fp:
+    with open("/home/sachi/Datasets/endo/frame001.jpg", "rb") as fp:
         image = base64.b64encode(fp.read())
 
     event = {
         "body": {
             "image": image,
+            "pos_points": [[1209, 493]],
         }
     }
     event = Namespace(**event)
@@ -181,4 +171,3 @@ if __name__ == "__main__":
     init_context(context)
     response = handler(context, event)
     print(response)
-"""
