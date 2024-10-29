@@ -153,11 +153,9 @@ class Sam2InferTask(InferTask):
             slice_rgb_np_p = np.copy(slice_rgb_np)
             if bbox:
                 slice_rgb_np_p[box[0] : box[2], box[1] : box[3], 2] = 255
-
             for k, ps in {1: fp, 0: bp}.items():
                 for p in ps:
                     slice_rgb_np_p[p[0] - 2 : p[0] + 2, p[1] - 2 : p[1] + 2, k] = 255
-
             Image.fromarray(slice_rgb_np_p).save("slice_p.jpg")
 
         point_coords = fp + bp
@@ -240,7 +238,7 @@ class Sam2InferTask(InferTask):
                     kps[sid] = [[p[1], p[0]]]
 
         pred = np.zeros(tuple(image_tensor.shape))
-        for sid in sids:
+        for sid in sorted(sids):
             fp = fps.get(sid, [])
             bp = bps.get(sid, [])
 

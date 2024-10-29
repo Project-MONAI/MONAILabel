@@ -62,6 +62,7 @@ def handler(context, event):
         "output": "mask",
         "foreground": np.asarray(foreground, dtype=int).tolist() if foreground else [],
         "background": np.asarray(background, dtype=int).tolist() if background else [],
+        # "largest_cc": True,
     }
     output_mask, output_json = client.infer(model=model, image_id="", file=image_file, params=params)
     if isinstance(output_json, str) or isinstance(output_json, bytes):
