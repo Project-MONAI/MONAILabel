@@ -35,10 +35,10 @@ jobs:
         with:
           fetch-depth: 0
       - uses: actions/setup-node@v4
-      - name: Set up Python 3.9
+      - name: Set up Python 3.8
         uses: actions/setup-python@v5
         with:
-          python-version: 3.9
+          python-version: 3.8
       - name: Cache for pip
         uses: actions/cache@v4
         id: cache

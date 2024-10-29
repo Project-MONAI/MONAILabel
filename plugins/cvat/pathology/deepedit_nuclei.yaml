@@ -23,7 +23,7 @@ metadata:
 
 spec:
   description: A pre-trained interaction/deepedit model for Pathology
-  runtime: 'python:3.9'
+  runtime: 'python:3.8'
   handler: main:handler
   eventTimeout: 30s
 

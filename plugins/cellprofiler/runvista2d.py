@@ -47,7 +47,7 @@ this module, before running.
 
 Installation:
 
-This module has no external dependencies other than the python(>3.9) build-in dependencies.
+This module has no external dependencies other than the python(>3.8) build-in dependencies.
 
 You'll need to set up the VISTA2D based MONAI Label server based on the tutorial https://github.com/Project-MONAI/MONAILabel/tree/main/plugins/cellprofiler. After setting up the server, please
 provide the server address to this plugin.s
