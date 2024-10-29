@@ -26,7 +26,7 @@ metadata:
 spec:
   description: A pre-trained NuClick model for interactive cell segmentation for Pathology
   runtime: 'python:3.8'
-  handler: main:handler
+  handler: interactor:handler
   eventTimeout: 30s
 
   build:
@@ -39,10 +39,6 @@ spec:
           value: MONAI_LABEL_SERVER=http://10.117.9.63:8000
         - kind: ENV
           value: MONAI_LABEL_MODEL=nuclick
-        - kind: ENV
-          value: MONAI_LABEL_OUTPUT_TYPE=mask
-        - kind: ENV
-          value: INTERACTOR_MODEL=true
 
   triggers:
     myHttpTrigger:

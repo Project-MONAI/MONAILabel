@@ -28,7 +28,7 @@ metadata:
 spec:
   description: A pre-trained semantic segmentation model for Pathology
   runtime: 'python:3.8'
-  handler: main:handler
+  handler: detector:handler
   eventTimeout: 30s
 
   build:
@@ -41,8 +41,6 @@ spec:
           value: MONAI_LABEL_SERVER=http://10.117.9.63:8000
         - kind: ENV
           value: MONAI_LABEL_MODEL=segmentation_nuclei
-        - kind: ENV
-          value: MONAI_LABEL_OUTPUT_TYPE=json
 
   triggers:
     myHttpTrigger:

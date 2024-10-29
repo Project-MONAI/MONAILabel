@@ -24,7 +24,7 @@ metadata:
 spec:
   description: A pre-trained DeepEdit model for interactive model for Endoscopy
   runtime: 'python:3.8'
-  handler: main:handler
+  handler: interactor:handler
   eventTimeout: 30s
 
   build:
@@ -37,10 +37,6 @@ spec:
           value: MONAI_LABEL_SERVER=http://10.117.9.63:8000
         - kind: ENV
           value: MONAI_LABEL_MODEL=deepedit
-        - kind: ENV
-          value: MONAI_LABEL_OUTPUT_TYPE=mask
-        - kind: ENV
-          value: INTERACTOR_MODEL=true
 
   triggers:
     myHttpTrigger:

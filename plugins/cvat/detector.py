@@ -20,7 +20,6 @@ import numpy as np
 from PIL import Image
 
 from monailabel.client import MONAILabelClient
-from monailabel.utils.others.generic import strtobool
 
 logging.basicConfig(
     level=logging.INFO,
@@ -31,9 +30,8 @@ logging.basicConfig(
 
 def init_context(context):
     context.logger.info("Init context...  0%")
-
     server = os.environ.get("MONAI_LABEL_SERVER", "http://0.0.0.0:8000")
-    model = os.environ.get("MONAI_LABEL_MODEL", "deepedit")
+    model = os.environ.get("MONAI_LABEL_MODEL", "tooltracking")
     client = MONAILabelClient(server)
 
     info = client.info()
@@ -47,47 +45,21 @@ def init_context(context):
 
 
 def handler(context, event):
-    context.logger.info(f"Run model: {context.user_data.model}")
-    data = event.body
+    model: str = context.user_data.model
+    client: MONAILabelClient = context.user_data.model_handler
+    context.logger.info(f"Run model: {model}")
 
+    data = event.body
     image = Image.open(io.BytesIO(base64.b64decode(data["image"])))
-    foreground = data.get("pos_points")
-    background = data.get("neg_points")
-    context.logger.info(f"Image: {image.size}; Foreground: {foreground}; Background: {background}")
+    context.logger.info(f"Image: {image.size}")
 
     image_file = tempfile.NamedTemporaryFile(suffix=".jpg").name
     image.save(image_file)
 
-    server = os.environ.get("MONAI_LABEL_SERVER", "http://0.0.0.0:8000")
-    model = os.environ.get("MONAI_LABEL_MODEL", "inbody")
-    output = os.environ.get("MONAI_LABEL_OUTPUT_TYPE", "mask")
-
-    client = MONAILabelClient(server)
-    params = {
-        "output": output,
-        "foreground": np.asarray(foreground, dtype=int).tolist() if foreground else [],
-        "background": np.asarray(background, dtype=int).tolist() if background else [],
-    }
-
-    output_mask, output_json = client.infer(model=model, image_id="", file=image_file, params=params)
+    params = {"output": "json"}
+    _, output_json = client.infer(model=model, image_id="", file=image_file, params=params)
     if isinstance(output_json, str) or isinstance(output_json, bytes):
         output_json = json.loads(output_json)
-    # context.logger.info(f"Mask: {output_mask}; Output JSON: {output_json}")
-
-    interactor = strtobool(os.environ.get("INTERACTOR_MODEL", "false"))
-    if interactor:
-        mask_np = np.array(Image.open(output_mask)).astype(np.uint8)
-        context.logger.info(f"Mask: {mask_np.shape}")
-        os.remove(output_mask)
-
-        resp = {"mask": mask_np.tolist()}
-        context.logger.info(f"Image: {image.size}; Mask: {mask_np.shape}; JSON: {output_json}")
-        return context.Response(
-            body=json.dumps(resp),
-            headers={},
-            content_type="application/json",
-            status_code=200,
-        )
 
     results = []
     prediction = output_json.get("prediction")
@@ -151,23 +123,22 @@ if __name__ == "__main__":
         datefmt="%Y-%m-%d %H:%M:%S",
     )
 
-    context = {
-        "logger": logging.getLogger(__name__),
-        "user_data": Namespace(**{"model": None, "model_handler": None}),
-    }
-    context = Namespace(**context)
+    def print_all(*args, **kwargs):
+        return {"args": args, **kwargs}
 
     with open("/home/sachi/Datasets/endo/frame001.jpg", "rb") as fp:
         image = base64.b64encode(fp.read())
 
-    event = {
-        "body": {
-            "image": image,
-            "pos_points": [[1209, 493]],
-        }
-    }
+    event = {"body": {"image": image}}
     event = Namespace(**event)
 
+    context = Namespace(
+        **{
+            "logger": logging.getLogger(__name__),
+            "user_data": Namespace(**{"model": None, "model_handler": None}),
+            "Response": print_all,
+        }
+    )
     init_context(context)
     response = handler(context, event)
-    print(response)
+    logging.info(response)

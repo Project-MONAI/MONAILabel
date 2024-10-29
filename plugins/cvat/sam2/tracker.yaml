@@ -10,25 +10,21 @@
 # limitations under the License.
 
 metadata:
-  name: monailabel.pathology.deepedit_nuclei
+  name: monailabel.endoscopy.sam2T
   namespace: cvat
   annotations:
-    name: Deepedit Nuclei
-    type: detector
-    framework: pytorch
-    spec: |
-      [
-        { "id": 1, "name": "Nuclei" }
-      ]
+    name: SAM2T
+    type: tracker
+    spec:
 
 spec:
-  description: A pre-trained interaction/deepedit model for Pathology
+  description: A pre-trained SAM2 model for tracking model
   runtime: 'python:3.8'
-  handler: detector:handler
+  handler: tracker:handler
   eventTimeout: 30s
 
   build:
-    image: cvat/monailabel.pathology.deepedit_nuclei
+    image: cvat/monailabel.endoscopy.sam2T
     baseImage: projectmonai/monailabel:latest
 
     directives:
@@ -36,7 +32,7 @@ spec:
         - kind: ENV
           value: MONAI_LABEL_SERVER=http://10.117.9.63:8000
         - kind: ENV
-          value: MONAI_LABEL_MODEL=deepedit_nuclei
+          value: MONAI_LABEL_MODEL=sam2T
 
   triggers:
     myHttpTrigger:
@@ -52,3 +48,4 @@ spec:
         name: always
         maximumRetryCount: 1
       mountMode: volume
+      network: cvat_cvat

@@ -25,7 +25,7 @@ metadata:
 spec:
   description: A pre-trained classification model for Endoscopy to flag if image follows InBody or OutBody
   runtime: 'python:3.8'
-  handler: main:handler
+  handler: detector:handler
   eventTimeout: 30s
 
   build:
@@ -38,8 +38,6 @@ spec:
           value: MONAI_LABEL_SERVER=http://10.117.9.63:8000
         - kind: ENV
           value: MONAI_LABEL_MODEL=inbody
-        - kind: ENV
-          value: MONAI_LABEL_OUTPUT_TYPE=json
 
   triggers:
     myHttpTrigger:
