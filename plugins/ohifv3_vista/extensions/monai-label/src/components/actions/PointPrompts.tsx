@@ -50,12 +50,12 @@ export default class PointPrompts extends BaseTab {
 
     if (this.props.viewConstants.SupportedClasses) {
       const labels = this.props.viewConstants.SupportedClasses
-      let labelIndex = 1; 
+      let labelIndex = 1;
 
       for (const key in labels) {
         const organName = labels[key];
         if (organName.toLowerCase() !== 'background') {
-          const hexColor = segmentColors[labelIndex] || '#000000'; 
+          const hexColor = segmentColors[labelIndex] || '#000000';
           selectedOrgans[organName] = { checked: false, color: hexColor };
           labelIndex++;
         }
@@ -107,7 +107,7 @@ export default class PointPrompts extends BaseTab {
     const config = this.props.onOptionsConfig();
     const params =
       config && config.infer && config.infer[model] ? config.infer[model] : {};
-      
+
 
     // let seriesInstanceUID = viewConstants.SeriesInstanceUID;
 
@@ -299,13 +299,13 @@ export default class PointPrompts extends BaseTab {
 
   onChangeOrgans = (organ, evt) => {
     this.setState((prevState) => {
-      const selectedOrgans = { ...prevState.selectedOrgans }; 
+      const selectedOrgans = { ...prevState.selectedOrgans };
 
       selectedOrgans[organ] = {
         ...selectedOrgans[organ],
         checked: evt.target.checked,
       };
-  
+
       return { selectedOrgans };
     });
   };
@@ -465,7 +465,7 @@ export default class PointPrompts extends BaseTab {
                 </tr>
 
                 {Object.entries(this.state.selectedOrgans).map(([organ, { color, checked }]) => (
-                  
+
                 <tr
                   key={organ}
                   className='clickable-row'

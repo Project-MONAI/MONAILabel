@@ -26,13 +26,13 @@ export default class AutoSegmentation extends BaseTab {
 
     if (this.props.viewConstants.SupportedClasses) {
       const labels = this.props.viewConstants.SupportedClasses
-      let labelIndex = 1; 
+      let labelIndex = 1;
 
       for (const key in labels) {
         const organName = labels[key];
         console.log(organName)
         if (organName.toLowerCase() !== 'background') {
-          const hexColor = segmentColors[labelIndex] || '#000000'; 
+          const hexColor = segmentColors[labelIndex] || '#000000';
 
           selectedOrgans[organName] = { checked: false, color: hexColor };
           labelIndex++;
@@ -107,13 +107,13 @@ export default class AutoSegmentation extends BaseTab {
 
   onChangeOrgans = (organ, evt) => {
     this.setState((prevState) => {
-      const selectedOrgans = { ...prevState.selectedOrgans }; 
+      const selectedOrgans = { ...prevState.selectedOrgans };
 
       selectedOrgans[organ] = {
         ...selectedOrgans[organ],
         checked: evt.target.checked,
       };
-  
+
       return { selectedOrgans };
     });
   };

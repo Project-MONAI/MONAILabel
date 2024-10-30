@@ -12,11 +12,13 @@
 import copy
 import logging
 import os
+import shutil
 import time
 from abc import abstractmethod
 from enum import Enum
 from typing import Any, Callable, Dict, List, Optional, Sequence, Tuple, Union
 
+import numpy as np
 import torch
 from monai.data import decollate_batch
 from monai.inferers import Inferer, SimpleInferer, SlidingWindowInferer
@@ -25,13 +27,10 @@ from monai.utils import deprecated, optional_import
 from monailabel.interfaces.exception import MONAILabelError, MONAILabelException
 from monailabel.interfaces.tasks.infer_v2 import InferTask, InferType
 from monailabel.interfaces.utils.transform import dump_data, run_transforms
+from monailabel.tasks.infer.prompt_utils import check_prompts_format, prompt_run_inferer
 from monailabel.transform.cache import CacheTransformDatad
 from monailabel.transform.writer import ClassificationWriter, DetectionWriter, Writer
 from monailabel.utils.others.generic import device_list, device_map, name_to_device
-from monailabel.tasks.infer.prompt_utils import prompt_run_inferer, check_prompts_format
-
-import shutil
-import numpy as np
 
 rearrange, _ = optional_import("einops", name="rearrange")
 
@@ -404,7 +403,7 @@ class BasicInferTask(InferTask):
             if d is None:
                 return run_transforms(data, transforms, log_prefix="PRE", use_compose=False)
             return run_transforms(d, post_cache, log_prefix="PRE", use_compose=False) if post_cache else d
-        print('Finddddddddddd data pathhhhhhhhhhhhh:', data)
+        print("Finddddddddddd data pathhhhhhhhhhhhh:", data)
         return run_transforms(data, transforms, log_prefix="PRE", use_compose=False)
 
     def run_invert_transforms(self, data: Dict[str, Any], pre_transforms, names):
@@ -513,8 +512,15 @@ class BasicInferTask(InferTask):
         network = self._get_network(device, data)
         modelname = data.get("model", None)
         if network:
-            if "vista" in modelname: 
-                return prompt_run_inferer(data, inferer, network, input_key=self.input_key, output_label_key=self.output_label_key, device=device)
+            if "vista" in modelname:
+                return prompt_run_inferer(
+                    data,
+                    inferer,
+                    network,
+                    input_key=self.input_key,
+                    output_label_key=self.output_label_key,
+                    device=device,
+                )
             else:
                 inputs = data[self.input_key]
                 inputs = inputs if torch.is_tensor(inputs) else torch.from_numpy(inputs)
@@ -523,7 +529,7 @@ class BasicInferTask(InferTask):
 
                 with torch.no_grad():
                     outputs = inferer(
-                        inputs, 
+                        inputs,
                         network,
                     )
 

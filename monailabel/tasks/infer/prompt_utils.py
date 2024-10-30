@@ -2,12 +2,13 @@
 
 import os
 import shutil
-import torch
-import numpy as np
-from monai.utils import optional_import
-from monai.data import decollate_batch
 from typing import Any, Dict
+
+import numpy as np
+import torch
 from einops import rearrange
+from monai.data import decollate_batch
+from monai.utils import optional_import
 
 rearrange, _ = optional_import("einops", name="rearrange")
 
@@ -20,6 +21,7 @@ def transform_points(point, affine):
     point = rearrange(point, "d (b n)-> b n d", b=bs)[:, :, :3]
     return point
 
+
 def check_prompts_format(label_prompt, points, point_labels):
     """check the format of user prompts
     label_prompt: [1,2,3,4,...,B] List of tensors
@@ -28,7 +30,9 @@ def check_prompts_format(label_prompt, points, point_labels):
     """
     # check prompt is given
     if label_prompt is None and points is None:
-        everything_labels = list(set([i+1 for i in range(132)]) - set([2,16,18,20,21,23,24,25,26,27,128,129,130,131,132]))
+        everything_labels = list(
+            {i + 1 for i in range(132)} - {2, 16, 18, 20, 21, 23, 24, 25, 26, 27, 128, 129, 130, 131, 132}
+        )
         if everything_labels is not None:
             label_prompt = [torch.tensor(_) for _ in everything_labels]
 
@@ -68,7 +72,16 @@ def check_prompts_format(label_prompt, points, point_labels):
             raise ValueError("Points must be given if point labels are given.")
     return label_prompt, points, point_labels
 
-def prompt_run_inferer(data: Dict[str, Any], inferer, network, input_key="image", output_label_key="pred", device="cuda", convert_to_batch=True):
+
+def prompt_run_inferer(
+    data: Dict[str, Any],
+    inferer,
+    network,
+    input_key="image",
+    output_label_key="pred",
+    device="cuda",
+    convert_to_batch=True,
+):
     # Retrieve label_prompt, points, and point_labels
     label_prompt, points, point_labels = (
         data.get("label_prompt", None),
@@ -95,7 +108,7 @@ def prompt_run_inferer(data: Dict[str, Any], inferer, network, input_key="image"
     if points is not None:
         points = torch.as_tensor([points])
 
-        original_spatial_shape = np.array(data['image_meta_dict']['spatial_shape'])
+        original_spatial_shape = np.array(data["image_meta_dict"]["spatial_shape"])
         resized_spatial_shape = np.array(data[input_key].shape[1:])
         scaling_factors = resized_spatial_shape / original_spatial_shape
         transformed_point = points * scaling_factors
@@ -111,10 +124,8 @@ def prompt_run_inferer(data: Dict[str, Any], inferer, network, input_key="image"
     inputs = inputs[None].to(torch.device(device))
     inputs = inputs.to(torch.device(device))
 
-
     with torch.no_grad():
         outputs = inferer(inputs, network, point_coords=points, point_labels=point_labels, class_vector=label_prompt)
-
 
     if device.startswith("cuda"):
         torch.cuda.empty_cache()
