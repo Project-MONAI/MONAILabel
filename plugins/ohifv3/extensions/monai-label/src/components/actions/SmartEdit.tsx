@@ -296,13 +296,13 @@ export default class SmartEdit extends BaseTab {
           onClick={this.onSelectActionTab}
         />
         <label htmlFor={this.tabId} className="tab-label">
-          SmartEdit
+          Interactive Segmentation
         </label>
         <div className="tab-content">
           <ModelSelector
             ref={this.modelSelector}
             name="smartedit"
-            title="SmartEdit"
+            title="Interactive Segmentation"
             models={models}
             currentModel={this.state.currentModel}
             onClick={this.onDeepgrow}

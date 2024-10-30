@@ -1,12 +1,12 @@
 @import url("w3.css");
 
 .monaiLabelPanel {
-  background-color: #789;
+  background-color: rgb(0, 0, 0);
   height: 100%;
   width: 100%;
   display: flex;
   flex-direction: column;
-  color: var(--text-primary-color);
+  color: #fff;
   padding: 2px;
   overflow-y: scroll; /* Make the panel scrollable vertically */
 /* Accordion styles */
@@ -15,7 +15,7 @@
   font-size: 14px;
   text-decoration: underline;
   font-weight: 500;
-  color: #000;
+  color: #ffffff;
   margin: 1px;
   text-align: center;
 }
@@ -40,7 +40,7 @@
   display: flex;
   justify-content: space-between;
   padding: 0.4em;
-  background: #16202b;
+  background: #3e5975;
   border-right: 1px dotted #3c5d80;
   color: #fff;
   font-size: 12px;
@@ -61,11 +61,11 @@
 .monaiLabelPanel .tab-content {
   max-height: 0;
   padding: 0 1em;
-  background: #808080;
+  background: #000000;
   transition: all 0.35s;
   width: 90%;
   font-size: small;
-  color: #000;
+  color: #fff;
 }
 .monaiLabelPanel .tab-close {
   display: flex;
@@ -76,10 +76,10 @@
   cursor: pointer;
 }
 .monaiLabelPanel .tab-close:hover {
-  background: #1a252f;
+  background: #3e5975;
 }
 .monaiLabelPanel input:checked + .tab-label {
-  background: #000;
+  background: #009bd1;
 }
 .monaiLabelPanel input:checked + .tab-label::after {
   transform: rotate(90deg);

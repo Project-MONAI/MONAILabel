@@ -8,12 +8,13 @@
 }
 .modelSelector .selectBox {
   width: 100%;
+  color: #000;
 }
 .modelSelector .actionButton {
   border: 2px solid #000;
   border-radius: 15px;
   background-color: #add8e6;
-  color: var(--ui-gray-dark);
+  color: #000;
   line-height: 25px;
   padding: 0 15px;
   outline: none;

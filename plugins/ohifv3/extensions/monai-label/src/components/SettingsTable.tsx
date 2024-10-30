@@ -9,7 +9,10 @@ export default class SettingsTable extends Component {
     super(props);
 
     const onInfo = props.onInfo
+    const onDeleteAllMasks = props.onDeleteAllMasks
+
     this.onInfo = onInfo
+    this.onDeleteAllMasks = onDeleteAllMasks
 
     this.state = this.getSettings();
   }
@@ -81,6 +84,10 @@ export default class SettingsTable extends Component {
               >
                 Logs
               </a>
+              <b>&nbsp;&nbsp;|&nbsp;&nbsp;</b>
+              <button onClick={this.onDeleteAllMasks}>
+                Delete masks
+              </button>
             </td>
           </tr>
         </tbody>

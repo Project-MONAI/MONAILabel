@@ -18,7 +18,7 @@ from typing import Any, Callable, Dict, Optional, Sequence, Union
 
 from monai.bundle import ConfigItem, ConfigParser
 from monai.inferers import Inferer, SimpleInferer
-from monai.transforms import Compose, LoadImaged, SaveImaged
+from monai.transforms import Compose, LoadImaged, SaveImaged, Invertd
 
 from monailabel.interfaces.tasks.infer_v2 import InferType
 from monailabel.tasks.infer.basic_infer import BasicInferTask
@@ -83,7 +83,7 @@ class BundleInferTask(BasicInferTask):
         const: Optional[BundleConstants] = None,
         type: Union[str, InferType] = "",
         pre_filter: Optional[Sequence] = None,
-        post_filter: Optional[Sequence] = [SaveImaged],
+        post_filter: Optional[Sequence] = [SaveImaged, Invertd],
         extend_load_image: bool = True,
         add_post_restore: bool = True,
         dropout: float = 0.0,

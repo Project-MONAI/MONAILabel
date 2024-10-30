@@ -12,6 +12,8 @@ import MonaiLabelClient from '../services/MonaiLabelClient';
 import SegmentationReader from '../utils/SegmentationReader';
 import MonaiSegmentation from './MonaiSegmentation';
 import SegmentationToolbox from './SegmentationToolbox';
+import PointPrompts from './actions/PointPrompts';
+
 
 export default class MonaiLabelPanel extends Component {
   static propTypes = {
@@ -32,6 +34,7 @@ export default class MonaiLabelPanel extends Component {
   props: any;
   SeriesInstanceUID: any;
   StudyInstanceUID: any;
+  SupportedClasses: any;
 
   constructor(props) {
     super(props);
@@ -47,12 +50,16 @@ export default class MonaiLabelPanel extends Component {
       activeLearning: React.createRef(),
       segmentation: React.createRef(),
       smartedit: React.createRef(),
+      pointprompts: React.createRef(),
     };
 
     this.state = {
       info: {},
       action: {},
       segmentations: [],
+      isDataReady: false,
+      isSmartedit: false,
+      isInteractiveSeg: false,
     };
 
     // Todo: fix this hack
@@ -120,8 +127,18 @@ export default class MonaiLabelPanel extends Component {
 
     const response = await this.client().info();
 
+    const modelnames = Object.keys(response.data.models);
+    if (modelnames.includes("deepedit") || modelnames.includes("deepgrow")) {
+      this.setState({ isSmartedit: true });
+    }
+    if (modelnames.includes("vista3d")) {
+      this.setState({ isInteractiveSeg: true });
+    }
+
     // remove the background
     const labels = response.data.labels.splice(1)
+    this.SupportedClasses = labels
+    window.ScalarDataBuffer = null;
 
     const segmentations = [
       {
@@ -156,6 +173,7 @@ export default class MonaiLabelPanel extends Component {
       });
 
       this.setState({ info: response.data });
+      this.setState({ isDataReady: true }); // Mark as ready
     }
   };
 
@@ -185,7 +203,24 @@ export default class MonaiLabelPanel extends Component {
       : {};
   };
 
-  _update = async (response, labelNames) => {
+  onDeleteAllMasks = async () => {
+    // const manager = annotation.state.getAnnotationManager();
+    // manager.removeAllAnnotations();
+
+    console.log('delete masks')
+    const segmentationVolume = cache.getVolume('1');
+
+    if (segmentationVolume) {
+      const scalarData = segmentationVolume.getScalarData();
+      scalarData.fill(0);
+    }
+    triggerEvent(eventTarget, Enums.Events.SEGMENTATION_DATA_MODIFIED, {
+      segmentationId: '1',
+    });
+    window.ScalarDataBuffer = null;
+  };
+
+  _update = async (response, labelNames, supportedClassPoint) => {
     // Process the obtained binary file from the MONAI Label server
     /* const onInfoLabelNames = this.state.info.labels */
     const onInfoLabelNames = labelNames;
@@ -194,7 +229,7 @@ export default class MonaiLabelPanel extends Component {
     console.info(onInfoLabelNames);
 
     if (onInfoLabelNames.hasOwnProperty('background')){
-delete onInfoLabelNames.background;
+      delete onInfoLabelNames.background;
     }
 
 
@@ -205,46 +240,90 @@ delete onInfoLabelNames.background;
     }
 
     const { image: buffer, header } = ret;
-    const data = new Uint16Array(buffer);
+    // const data = new Uint16Array(buffer);
+
+    const uint16Data = new Uint16Array(buffer); // assuming you already have the buffer
+
+    const uint8Data = new Uint8Array(uint16Data.length);
+
+    for (let i = 0; i < uint16Data.length; i++) {
+      uint8Data[i] = uint16Data[i] & 0xFF; // Keep only the lower 8 bits
+    }
+    const data = uint8Data
 
     // reformat centroids
-    const centroidsIJK = new Map();
-    for (const [key, value] of Object.entries(response.centroids)) {
-      const segmentIndex = parseInt(value[0], 10);
-      const image = value.slice(1).map((v) => parseFloat(v));
-      centroidsIJK.set(segmentIndex, { image: image, world: [] });
-    }
+    // const centroidsIJK = new Map();
+    // for (const [key, value] of Object.entries(response.centroids)) {
+    //   const segmentIndex = parseInt(value[0], 10);
+    //   const image = value.slice(1).map((v) => parseFloat(v));
+    //   centroidsIJK.set(segmentIndex, { image: image, world: [] });
+    // }
 
-    const segmentations = [
-      {
-        id: '1',
-        label: 'Segmentations',
-        segments: Object.keys(onInfoLabelNames).map((key) => ({
-          segmentIndex: onInfoLabelNames[key],
-          label: key,
-        })),
-        isActive: true,
-        activeSegmentIndex: 1,
-        scalarData: data,
-        FrameOfReferenceUID: this.FrameOfReferenceUID,
-        centroidsIJK: centroidsIJK,
-      },
-    ];
+    // const segmentations = [
+    //   {
+    //     id: '1',
+    //     label: 'Segmentations',
+    //     segments: Object.keys(onInfoLabelNames).map((key) => ({
+    //       segmentIndex: onInfoLabelNames[key],
+    //       label: key,
+    //     })),
+    //     isActive: true,
+    //     activeSegmentIndex: 1,
+    //     scalarData: data,
+    //     // FrameOfReferenceUID: this.FrameOfReferenceUID,
+    //     // centroidsIJK: centroidsIJK,
+    //   },
+    // ];
+
 
     // Todo: rename volumeId
     const volumeLoadObject = cache.getVolume('1');
-    if (volumeLoadObject) {
-      const { scalarData } = volumeLoadObject;
-      scalarData.set(data);
-      triggerEvent(eventTarget, Enums.Events.SEGMENTATION_DATA_MODIFIED, {
-        segmentationId: '1',
-      });
+
+    if (this.state.action === 'pointprompts') {
+      const newValue = supportedClassPoint+1 || 131;
+      console.log(newValue)
+      for (let i = 0; i < data.length; i++) {
+        if (data[i] === 1) {
+          data[i] = newValue;
+        }
+      }
+    }
+    const { scalarData } = volumeLoadObject;
+
+    if (window.ScalarDataBuffer) {
+      const scalarDataRecover = new Uint8Array(window.ScalarDataBuffer.length);
+      scalarDataRecover.set(window.ScalarDataBuffer);
+      const updateTargets = new Set(data);
+      console.log(updateTargets)
+
+      for (let i = 0; i < scalarData.length; i++) {
+        if (
+          data[i] !== 253 &&
+          updateTargets.has(scalarDataRecover[i])
+        ) {
+          scalarDataRecover[i] = data[i];
+        }
+      }
+      scalarData.set(scalarDataRecover);
+
       console.debug("updated the segmentation's scalar data");
     } else {
-      this.props.commandsManager.runCommand('hydrateSegmentationsForViewport', {
-        segmentations,
-      });
+      const updateTargets = new Set(data);
+      for (let i = 0; i < scalarData.length; i++) {
+        if (data[i] === 253) {
+          data[i] = 0;
+        }
+      }
+
+
+      scalarData.set(data);
     }
+    triggerEvent(eventTarget, Enums.Events.SEGMENTATION_DATA_MODIFIED, {
+      segmentationId: '1',
+    });
+    const currentSegArray = new Uint8Array(scalarData.length);
+    currentSegArray.set(scalarData);
+    window.ScalarDataBuffer = currentSegArray;
   };
 
   _debug = async () => {
@@ -305,17 +384,19 @@ delete onInfoLabelNames.background;
     return { data: nrrdArrayBuffer, centroids: jsonData.centroids };
   };
 
-  updateView = async (response, labelNames) => {
+  updateView = async (response, labelNames, supportedClassPoint=0) => {
     const { data, centroids } = this.parseResponse(response);
-    this._update({ data, centroids }, labelNames);
+    this._update({ data, centroids }, labelNames, supportedClassPoint);
   };
 
   render() {
+    const { isDataReady, isSmartedit, isInteractiveSeg } = this.state;
+
     return (
       <div className="monaiLabelPanel">
         <br style={{ margin: '3px' }} />
 
-        <SettingsTable ref={this.settings} onInfo={this.onInfo} />
+        <SettingsTable ref={this.settings} onInfo={this.onInfo} onDeleteAllMasks={this.onDeleteAllMasks}/>
 
         <hr className="separator" />
 
@@ -353,38 +434,61 @@ delete onInfoLabelNames.background;
             // additional function - delete scribbles before submit
             /* onDeleteSegmentByName={this.onDeleteSegmentByName} */
           />
-
-          <AutoSegmentation
-            ref={this.actions['segmentation']}
-            tabIndex={3}
-            info={this.state.info}
-            viewConstants={{
-              SeriesInstanceUID: this.SeriesInstanceUID,
-              StudyInstanceUID: this.StudyInstanceUID,
-            }}
-            client={this.client}
-            notification={this.notification}
-            updateView={this.updateView}
-            onSelectActionTab={this.onSelectActionTab}
-            onOptionsConfig={this.onOptionsConfig}
-          />
-          <SmartEdit
-            ref={this.actions['smartedit']}
-            tabIndex={4}
-            servicesManager={this.props.servicesManager}
-            commandsManager={this.props.commandsManager}
-            info={this.state.info}
-            // Here we have to send element - In OHIF V2 - const element = cornerstone.getEnabledElements()[this.props.activeIndex].element;
-            viewConstants={{
-              SeriesInstanceUID: this.SeriesInstanceUID,
-              StudyInstanceUID: this.StudyInstanceUID,
-            }}
-            client={this.client}
-            notification={this.notification}
-            updateView={this.updateView}
-            onSelectActionTab={this.onSelectActionTab}
-            onOptionsConfig={this.onOptionsConfig}
-          />
+          {isDataReady && (
+            <AutoSegmentation
+              ref={this.actions['segmentation']}
+              tabIndex={3}
+              info={this.state.info}
+              viewConstants={{
+                SeriesInstanceUID: this.SeriesInstanceUID,
+                StudyInstanceUID: this.StudyInstanceUID,
+                SupportedClasses: this.SupportedClasses,
+              }}
+              client={this.client}
+              notification={this.notification}
+              updateView={this.updateView}
+              onSelectActionTab={this.onSelectActionTab}
+              onOptionsConfig={this.onOptionsConfig}
+            />
+          )}
+          {isDataReady && isInteractiveSeg && (
+            <PointPrompts
+              ref={this.actions['pointprompts']}
+              tabIndex={4}
+              servicesManager={this.props.servicesManager}
+              commandsManager={this.props.commandsManager}
+              info={this.state.info}
+              viewConstants={{
+                SeriesInstanceUID: this.SeriesInstanceUID,
+                StudyInstanceUID: this.StudyInstanceUID,
+                SupportedClasses: this.SupportedClasses,
+              }}
+              client={this.client}
+              notification={this.notification}
+              updateView={this.updateView}
+              onSelectActionTab={this.onSelectActionTab}
+              onOptionsConfig={this.onOptionsConfig}
+            />
+          )}
+          {isDataReady && isSmartedit && (
+            <SmartEdit
+              ref={this.actions['smartedit']}
+              tabIndex={4}
+              servicesManager={this.props.servicesManager}
+              commandsManager={this.props.commandsManager}
+              info={this.state.info}
+              // Here we have to send element - In OHIF V2 - const element = cornerstone.getEnabledElements()[this.props.activeIndex].element;
+              viewConstants={{
+                SeriesInstanceUID: this.SeriesInstanceUID,
+                StudyInstanceUID: this.StudyInstanceUID,
+              }}
+              client={this.client}
+              notification={this.notification}
+              updateView={this.updateView}
+              onSelectActionTab={this.onSelectActionTab}
+              onOptionsConfig={this.onOptionsConfig}
+            />
+          )}
         </div>
 
         {this.state.segmentations?.map((segmentation) => (
