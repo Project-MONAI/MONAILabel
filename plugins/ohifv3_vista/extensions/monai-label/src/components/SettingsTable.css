@@ -1,0 +1,47 @@
+.settingsTable {
+  border-collapse: collapse;
+  border: 0 solid;
+  width: 100%;
+  font-size: small;
+}
+.settingsTable tr td {
+  border: 0 solid;
+}
+.settings_active,
+.settings_header {
+  background-color: #000;
+  color: #fff;
+  cursor: pointer;
+  padding: 5px;
+  width: 100%;
+  border: none;
+  text-align: left;
+  outline: none;
+}
+.settings_active {
+  background-color: #403f3d;
+}
+.settings_header:hover {
+  background-color: #2b2a28;
+}
+.settings_header:after {
+  content: '\002B';
+  color: #fff;
+  font-weight: bold;
+  float: right;
+  margin-left: 5px;
+}
+.settings_active:after {
+  content: '\2212';
+  color: #fff;
+  font-weight: bold;
+  float: right;
+  margin-left: 5px;
+}
+.settings_content {
+  cursor: pointer;
+  color: #fff;
+  background-color: #2b2a28;
+  padding: 10px;
+  font-size: smaller;
+}

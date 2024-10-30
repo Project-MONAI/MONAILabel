@@ -20,7 +20,7 @@ from typing import Any, Callable, Dict, List, Optional, Sequence, Tuple, Union
 import torch
 from monai.data import decollate_batch
 from monai.inferers import Inferer, SimpleInferer, SlidingWindowInferer
-from monai.utils import deprecated
+from monai.utils import deprecated, optional_import
 
 from monailabel.interfaces.exception import MONAILabelError, MONAILabelException
 from monailabel.interfaces.tasks.infer_v2 import InferTask, InferType
@@ -28,6 +28,13 @@ from monailabel.interfaces.utils.transform import dump_data, run_transforms
 from monailabel.transform.cache import CacheTransformDatad
 from monailabel.transform.writer import ClassificationWriter, DetectionWriter, Writer
 from monailabel.utils.others.generic import device_list, device_map, name_to_device
+from monailabel.tasks.infer.prompt_utils import prompt_run_inferer, check_prompts_format
+
+import shutil
+import numpy as np
+
+rearrange, _ = optional_import("einops", name="rearrange")
+
 
 logger = logging.getLogger(__name__)
 
@@ -368,6 +375,7 @@ class BasicInferTask(InferTask):
 
         if result_file_name is not None and isinstance(result_file_name, str):
             logger.info(f"Result File: {result_file_name}")
+
         logger.info(f"Result Json Keys: {list(result_json.keys())}")
         return result_file_name, result_json
 
@@ -396,7 +404,7 @@ class BasicInferTask(InferTask):
             if d is None:
                 return run_transforms(data, transforms, log_prefix="PRE", use_compose=False)
             return run_transforms(d, post_cache, log_prefix="PRE", use_compose=False) if post_cache else d
-
+        print('Finddddddddddd data pathhhhhhhhhhhhh:', data)
         return run_transforms(data, transforms, log_prefix="PRE", use_compose=False)
 
     def run_invert_transforms(self, data: Dict[str, Any], pre_transforms, names):
@@ -503,26 +511,34 @@ class BasicInferTask(InferTask):
         logger.info(f"Inferer:: {device} => {inferer.__class__.__name__} => {inferer.__dict__}")
 
         network = self._get_network(device, data)
+        modelname = data.get("model", None)
         if network:
-            inputs = data[self.input_key]
-            inputs = inputs if torch.is_tensor(inputs) else torch.from_numpy(inputs)
-            inputs = inputs[None] if convert_to_batch else inputs
-            inputs = inputs.to(torch.device(device))
+            if "vista" in modelname: 
+                return prompt_run_inferer(data, inferer, network, input_key=self.input_key, output_label_key=self.output_label_key, device=device)
+            else:
+                inputs = data[self.input_key]
+                inputs = inputs if torch.is_tensor(inputs) else torch.from_numpy(inputs)
+                inputs = inputs[None] if convert_to_batch else inputs
+                inputs = inputs.to(torch.device(device))
 
-            with torch.no_grad():
-                outputs = inferer(inputs, network)
+                with torch.no_grad():
+                    outputs = inferer(
+                        inputs, 
+                        network,
+                    )
 
-            if device.startswith("cuda"):
-                torch.cuda.empty_cache()
+                if device.startswith("cuda"):
+                    torch.cuda.empty_cache()
 
-            if convert_to_batch:
-                if isinstance(outputs, dict):
-                    outputs_d = decollate_batch(outputs)
-                    outputs = outputs_d[0]
-                else:
-                    outputs = outputs[0]
+                if convert_to_batch:
+                    if isinstance(outputs, dict):
+                        outputs_d = decollate_batch(outputs)
+                        outputs = outputs_d[0]
+                    else:
+                        outputs = outputs[0]
 
-            data[self.output_label_key] = outputs
+                data[self.output_label_key] = outputs
+
         else:
             # consider them as callable transforms
             data = run_transforms(data, inferer, log_prefix="INF", log_name="Inferer")
