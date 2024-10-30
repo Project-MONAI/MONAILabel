@@ -18,7 +18,7 @@ from typing import Any, Callable, Dict, Optional, Sequence, Union
 
 from monai.bundle import ConfigItem, ConfigParser
 from monai.inferers import Inferer, SimpleInferer
-from monai.transforms import Compose, LoadImaged, SaveImaged, Invertd
+from monai.transforms import Compose, Invertd, LoadImaged, SaveImaged
 
 from monailabel.interfaces.tasks.infer_v2 import InferType
 from monailabel.tasks.infer.basic_infer import BasicInferTask
