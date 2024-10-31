@@ -58,11 +58,11 @@ You can then visit http://127.0.0.1:3000/ohif/ on your browser to see the runnin
 ### VISTA Interactive Models example
 
 ```bash
-# use local monialbel build if monailabel is not the latest tagged. 
+# use local monialbel build if monailabel is not the latest tagged.
 
 # git clone https://github.com/Project-MONAI/MONAILabel.git
 
-# git switch to the branch neede. 
+# git switch to the branch neede.
 
 # command to start monailabel server with vista3d
 'path/to/MONAILabel/monailabel/scripts/monailabel'  start_server --app sample-apps/monaibundle --studies http://127.0.0.1:8042/dicom-web --conf models vista3d

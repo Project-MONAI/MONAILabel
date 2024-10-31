@@ -48,12 +48,12 @@ export default class PointPrompts extends BaseTab {
 
     if (this.props.viewConstants.SupportedClasses) {
       const labels = this.props.viewConstants.SupportedClasses
-      let labelIndex = 1; 
+      let labelIndex = 1;
 
       for (const key in labels) {
         const organName = labels[key];
         if (organName.toLowerCase() !== 'background') {
-          const hexColor = segmentColors[labelIndex] || '#000000'; 
+          const hexColor = segmentColors[labelIndex] || '#000000';
           selectedOrgans[organName] = { checked: false, color: hexColor };
           labelIndex++;
         }
@@ -104,7 +104,7 @@ export default class PointPrompts extends BaseTab {
             annotation.data.label === ""
           ) {
             annotation.data.label = currentLabel
-            clickPoints[label][annotationGroupKey].ProbeMONAILabel.push(annotation);         
+            clickPoints[label][annotationGroupKey].ProbeMONAILabel.push(annotation);
           }
         });
       }
@@ -126,7 +126,7 @@ export default class PointPrompts extends BaseTab {
     const config = this.props.onOptionsConfig();
     const params =
       config && config.infer && config.infer[model] ? config.infer[model] : {};
-      
+
 
     const { cornerstoneViewportService, viewportGridService} = this.props.servicesManager.services;
     const viewPort = cornerstoneViewportService.viewportsById.get('mpr-axial');
@@ -181,8 +181,8 @@ export default class PointPrompts extends BaseTab {
 
 
     const updatedParams = {
-      ...params,   
-      ...data      
+      ...params,
+      ...data
     };
     const labels = info.models[model].labels;
 
@@ -214,13 +214,13 @@ export default class PointPrompts extends BaseTab {
 
   onChangeOrgans = (organ, evt) => {
     this.setState((prevState) => {
-      const selectedOrgans = { ...prevState.selectedOrgans }; 
+      const selectedOrgans = { ...prevState.selectedOrgans };
 
       selectedOrgans[organ] = {
         ...selectedOrgans[organ],
         checked: evt.target.checked,
       };
-  
+
       return { selectedOrgans };
     });
   };
@@ -308,7 +308,7 @@ export default class PointPrompts extends BaseTab {
               annotation.data.label === ""
             ) {
               annotation.data.label = prev
-              clickPoints[label][annotationGroupKey].ProbeMONAILabel.push(annotation);         
+              clickPoints[label][annotationGroupKey].ProbeMONAILabel.push(annotation);
             }
           });
         }
@@ -399,7 +399,7 @@ export default class PointPrompts extends BaseTab {
                 </tr>
 
                 {Object.entries(this.state.selectedOrgans).map(([organ, { color, checked }]) => (
-                  
+
                 <tr
                   key={organ}
                   className='clickable-row'
