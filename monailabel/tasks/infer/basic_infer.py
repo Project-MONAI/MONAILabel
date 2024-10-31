@@ -12,13 +12,11 @@
 import copy
 import logging
 import os
-import shutil
 import time
 from abc import abstractmethod
 from enum import Enum
 from typing import Any, Callable, Dict, List, Optional, Sequence, Tuple, Union
 
-import numpy as np
 import torch
 from monai.data import decollate_batch
 from monai.inferers import Inferer, SimpleInferer, SlidingWindowInferer
@@ -27,7 +25,7 @@ from monai.utils import deprecated, optional_import
 from monailabel.interfaces.exception import MONAILabelError, MONAILabelException
 from monailabel.interfaces.tasks.infer_v2 import InferTask, InferType
 from monailabel.interfaces.utils.transform import dump_data, run_transforms
-from monailabel.tasks.infer.prompt_utils import check_prompts_format, prompt_run_inferer
+from monailabel.tasks.infer.prompt_utils import prompt_run_inferer
 from monailabel.transform.cache import CacheTransformDatad
 from monailabel.transform.writer import ClassificationWriter, DetectionWriter, Writer
 from monailabel.utils.others.generic import device_list, device_map, name_to_device
