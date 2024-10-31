@@ -403,7 +403,6 @@ class BasicInferTask(InferTask):
             if d is None:
                 return run_transforms(data, transforms, log_prefix="PRE", use_compose=False)
             return run_transforms(d, post_cache, log_prefix="PRE", use_compose=False) if post_cache else d
-        print("Finddddddddddd data pathhhhhhhhhhhhh:", data)
         return run_transforms(data, transforms, log_prefix="PRE", use_compose=False)
 
     def run_invert_transforms(self, data: Dict[str, Any], pre_transforms, names):

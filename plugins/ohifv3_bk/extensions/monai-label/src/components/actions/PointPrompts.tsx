@@ -162,6 +162,17 @@ export default class PointPrompts extends BaseTab {
         pointPrompts[label] = coordinates;
       }
     }
+    // if (points['background'] && points['background'].length > 0) {
+    //   for (let i = 0; i < points['background'].length; i++) {
+    //     pointPrompts.negative_label = points['background'];
+
+    //     // pointPrompts['point_labels'].push(0);
+    //   }
+    // }
+
+    // const supportedClassPointLabel = supportedClassPoint
+    // ? supportedClassPoint.label + 1
+    // : 119;
 
     const data = {
       label_prompt: [parseInt(supportedClassPoint)+1], // Converts to an integer
@@ -363,7 +374,7 @@ export default class PointPrompts extends BaseTab {
                 <p>
                   Create a label and annotate <b>any organ</b>.
                 </p>
-                <a style={{ backgroundColor:'lightgray'}} onClick={() => this.clearAllPoints()}>
+                <a style={{ backgroundColor:'lightgray'}} onClick={() => this.clearPoints()}>
                   Clear Points
                 </a>
               </div>

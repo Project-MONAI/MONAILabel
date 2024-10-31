@@ -33,4 +33,5 @@ MAINTAINED_BUNDLES = [
     "lung_nodule_ct_detection",  # The first lung nodule detection task can be used for MONAI Label. Added Dec 2022
     "wholeBody_ct_segmentation",  # The SegResNet trained TotalSegmentator dataset with 104 tissues. Added Feb 2023
     "vista2d",  # The VISTA segmentation trained on a collection of 15K public microscopy images. Added Aug 2024
+    "vista3d",
 ]

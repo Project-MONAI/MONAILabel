@@ -11,13 +11,18 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-mkdir -p logs
+if which yarn >/dev/null; then
+  echo "node/yarn is already installed"
+else
+  echo "installing yarn..."
+  curl -sS https://dl.yarnpkg.com/debian/pubkey.gpg | apt-key add -
+  echo "deb https://dl.yarnpkg.com/debian/ stable main" | tee /etc/apt/sources.list.d/yarn.list
+  apt update
+  apt-get install yarn -y
+fi
 
-rm -rf www
-mkdir -p www/html
-
-cp -r ../../monailabel/endpoints/static/ohif www/html/ohif
-cp -f config/monai_label.js www/html/ohif/app-config.js
-
-# nginx -p `pwd` -c config/nginx.conf -e logs/error.log
-nginx -p `pwd` -c config/nginx.conf 
+if which nginx >/dev/null; then
+  echo "nginx is already installed"
+else
+  apt-get install nginx -y
+fi
