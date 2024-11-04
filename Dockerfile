@@ -14,19 +14,18 @@
 # to use different version of MONAI pass `--build-arg MONAI_IMAGE=...`
 
 ARG MONAI_IMAGE=projectmonai/monai:1.4.0
-
 ARG NODE_IMAGE=node:slim
 
-FROM ${NODE_IMAGE} as ohifbuild
-ADD . /opt/monailabel
+FROM ${NODE_IMAGE} AS ohifbuild
+ADD ./plugins/ohifv3 /opt/ohifv3
 RUN apt update -y && apt install -y git
-RUN cd /opt/monailabel/plugins/ohifv3 && ./build.sh
+RUN cd /opt/ohifv3 && ./build.sh /opt/ohifv3/release
 
-FROM ${MONAI_IMAGE} as build
+FROM ${MONAI_IMAGE} AS build
 LABEL maintainer="monai.contact@gmail.com"
 
 ADD . /opt/monailabel/
-COPY --from=ohifbuild /opt/monailabel/monailabel/endpoints/static/ohif /opt/monailabel/monailabel/endpoints/static/ohif
+COPY --from=ohifbuild /opt/ohifv3/release /opt/monailabel/monailabel/endpoints/static/ohif
 RUN python -m pip install --upgrade --no-cache-dir pip setuptools wheel twine \
     && cd /opt/monailabel \
     && BUILD_OHIF=false python setup.py sdist bdist_wheel --build-number $(date +'%Y%m%d%H%M')

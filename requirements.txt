@@ -28,7 +28,7 @@ pydicom==2.4.4
 pydicom-seg==0.4.1
 pynetdicom==2.0.2
 pynrrd==1.0.0
-numpymaxflow==0.0.6
+numpymaxflow==0.0.7
 girder-client==3.2.3
 ninja==1.11.1.1
 einops==0.7.0
