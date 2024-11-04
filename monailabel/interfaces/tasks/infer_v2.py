@@ -92,5 +92,5 @@ class InferTask(metaclass=ABCMeta):
         pass
 
     @abstractmethod
-    def __call__(self, request) -> Union[Dict, Tuple[str, Dict[str, Any]]]:
+    def __call__(self, request) -> Tuple[Union[str, None], Dict]:
         pass

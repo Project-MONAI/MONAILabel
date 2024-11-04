@@ -120,6 +120,8 @@ venv/
 ENV/
 env.bak/
 venv.bak/
+.venv/
+ubuntu_venv/
 
 # Spyder project settings
 .spyderproject
@@ -138,12 +140,6 @@ dmypy.json
 
 # Pyre type checker
 .pyre/
-
-# virtualenv
-.venv/
-venv/
-ENV/
-ubuntu_venv/
 
 # IDE
 .idea/
@@ -166,7 +162,7 @@ junit
 test-output.xml
 studies
 tests/data
-yarn.lock
+
 # Packages
 node_modules
 yarn.lock

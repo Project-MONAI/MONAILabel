@@ -14,6 +14,38 @@ __pycache__
 .vscode
 
 Dockerfile
-sample-apps/**/model
-node_modules
 .webpack
+
+# Environments
+.env
+.venv
+env/
+venv/
+ENV/
+env.bak/
+venv.bak/
+.venv/
+ubuntu_venv/
+
+# apps
+sample-apps/*/logs
+sample-apps/*/train
+sample-apps/*/model
+
+# docs build
+docs/build
+docs/source/apidocs
+
+# MONAI-label
+*.nii.gz
+.DS_Store
+*.DS_Store
+bin
+junit
+test-output.xml
+studies
+tests/data
+
+# Packages
+node_modules
+yarn.lock
