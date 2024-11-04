@@ -146,6 +146,9 @@ export default class OptionTable extends BaseTab {
 
     const image = this.props.viewConstants.SeriesInstanceUID;
 
+    debugger
+    const scalarData = labelmaps3D
+
     const label = new Blob([labelmaps3D.scalarData], {
       type: 'application/octet-stream',
     });

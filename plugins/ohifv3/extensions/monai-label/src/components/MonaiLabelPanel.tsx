@@ -2,6 +2,7 @@ import React, { Component } from 'react';
 import PropTypes from 'prop-types';
 import { cache, triggerEvent, eventTarget } from '@cornerstonejs/core';
 import { Enums } from '@cornerstonejs/tools';
+import { Toolbox } from '@ohif/ui-next';
 import './MonaiLabelPanel.css';
 import SettingsTable from './SettingsTable';
 import AutoSegmentation from './actions/AutoSegmentation';
@@ -10,7 +11,7 @@ import OptionTable from './actions/OptionTable';
 import ActiveLearning from './actions/ActiveLearning';
 import MonaiLabelClient from '../services/MonaiLabelClient';
 import SegmentationReader from '../utils/SegmentationReader';
-import { PanelSegmentation, } from '@ohif/extension-cornerstone'
+import { PanelSegmentation } from '@ohif/extension-cornerstone';
 
 export default class MonaiLabelPanel extends Component {
   static propTypes = {
@@ -54,24 +55,27 @@ export default class MonaiLabelPanel extends Component {
       segmentations: [],
     };
 
-    // Todo: fix this hack
-    setTimeout(() => {
-      const { viewports, activeViewportId } = viewportGridService.getState();
-      const viewport = viewports.get(activeViewportId);
+    viewportGridService.subscribe(
+      viewportGridService.EVENTS.GRID_SIZE_CHANGED,
+      () => {
+        const { viewports, activeViewportId } = viewportGridService.getState();
+        const viewport = viewports.get(activeViewportId);
 
-      if (!viewport) {
-        return;
+
+        if (!viewport) {
+          return;
+        }
+
+        const displaySet = displaySetService.getDisplaySetByUID(
+          viewport.displaySetInstanceUIDs[0]
+        );
+
+        this.SeriesInstanceUID = displaySet.SeriesInstanceUID;
+        this.StudyInstanceUID = displaySet.StudyInstanceUID;
+        this.FrameOfReferenceUID = displaySet.instances[0].FrameOfReferenceUID;
+        this.displaySetInstanceUID = displaySet.displaySetInstanceUID;
       }
-
-      const displaySet = displaySetService.getDisplaySetByUID(
-        viewport.displaySetInstanceUIDs[0]
-      );
-
-      this.SeriesInstanceUID = displaySet.SeriesInstanceUID;
-      this.StudyInstanceUID = displaySet.StudyInstanceUID;
-      this.FrameOfReferenceUID = displaySet.instances[0].FrameOfReferenceUID;
-      this.displaySetInstanceUID = displaySet.displaySetInstanceUID;
-    }, 1000);
+    );
   }
 
   async componentDidMount() {
@@ -125,28 +129,30 @@ export default class MonaiLabelPanel extends Component {
     const response = await this.client().info();
 
     // remove the background
-    const labels = response.data.labels.splice(1)
+    const labels = response.data.labels.splice(1);
 
-    const segmentations = [{
-      segmentationId: '1',
-      representation: {
-        type: Enums.SegmentationRepresentations.Labelmap,
+    const segmentations = [
+      {
+        segmentationId: '1',
+        representation: {
+          type: Enums.SegmentationRepresentations.Labelmap,
+        },
+        config: {
+          label: 'Segmentations',
+          segments: labels.reduce((acc, label, index) => {
+            acc[index + 1] = {
+              label,
+              active: index === 0, // First segment is active
+              locked: false,
+            };
+            return acc;
+          }, {}),
+        },
       },
-      config: {
-        label: 'Segmentations',
-        segments: labels.reduce((acc, label, index) => {
-          acc[index + 1] = {
-            label,
-            active: index === 0, // First segment is active
-            locked: false
-          };
-          return acc;
-        }, {})
-      }
-    }];
+    ];
 
     this.props.commandsManager.runCommand('loadSegmentationsForViewport', {
-      segmentations
+      segmentations,
     });
 
     if (response.status !== 200) {
@@ -202,10 +208,9 @@ export default class MonaiLabelPanel extends Component {
     console.info('These are the predicted labels');
     console.info(onInfoLabelNames);
 
-    if (onInfoLabelNames.hasOwnProperty('background')){
-delete onInfoLabelNames.background;
+    if (onInfoLabelNames.hasOwnProperty('background')) {
+      delete onInfoLabelNames.background;
     }
-
 
     const ret = SegmentationReader.parseNrrdData(response.data);
 
@@ -224,6 +229,7 @@ delete onInfoLabelNames.background;
       centroidsIJK.set(segmentIndex, { image: image, world: [] });
     }
 
+    debugger;
     const segmentations = [
       {
         id: '1',
@@ -396,7 +402,22 @@ delete onInfoLabelNames.background;
           />
         </div>
 
-          <PanelSegmentation servicesManager={this.props.servicesManager} commandsManager={this.props.commandsManager} />
+        <div className="bg-black">
+          <Toolbox
+            commandsManager={this.props.commandsManager}
+            servicesManager={this.props.servicesManager}
+            extensionManager={this.props.extensionManager}
+            buttonSectionId="segmentationToolbox"
+            title="Segmentation Tools"
+            configuration={{
+              ...this.state.configuration,
+            }}
+          />
+          <PanelSegmentation
+            servicesManager={this.props.servicesManager}
+            commandsManager={this.props.commandsManager}
+          />
+        </div>
       </div>
     );
   }

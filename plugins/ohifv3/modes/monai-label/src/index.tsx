@@ -91,6 +91,13 @@ function modeFactory({ modeConfiguration }) {
         'Crosshairs',
         'MoreTools',
       ]);
+
+      toolbarService.createButtonSection('segmentationToolbox', [
+        'BrushTools',
+        'Shapes',
+      ]);
+
+
     },
     onModeExit: ({ servicesManager }) => {
       const {
