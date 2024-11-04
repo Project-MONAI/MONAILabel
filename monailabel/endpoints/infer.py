@@ -91,10 +91,8 @@ def send_response(datastore, result, output, background_tasks):
     if output == "json":
         return res_json
 
-    m_type = get_mime_type(res_img)
-
     if output == "image":
-        return FileResponse(res_img, media_type=m_type, filename=os.path.basename(res_img))
+        return FileResponse(res_img, media_type=get_mime_type(res_img), filename=os.path.basename(res_img))
 
     if output == "dicom_seg":
         res_dicom_seg = result.get("dicom_seg")
@@ -106,7 +104,7 @@ def send_response(datastore, result, output, background_tasks):
     res_fields = dict()
     res_fields["params"] = (None, json.dumps(res_json), "application/json")
     if res_img and os.path.exists(res_img):
-        res_fields["image"] = (os.path.basename(res_img), open(res_img, "rb"), m_type)
+        res_fields["image"] = (os.path.basename(res_img), open(res_img, "rb"), get_mime_type(res_img))
     else:
         logger.info(f"Return only Result Json as Result Image is not available: {res_img}")
         return res_json

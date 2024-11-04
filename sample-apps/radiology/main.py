@@ -27,7 +27,6 @@ from monailabel.interfaces.tasks.infer_v2 import InferTask
 from monailabel.interfaces.tasks.scoring import ScoringMethod
 from monailabel.interfaces.tasks.strategy import Strategy
 from monailabel.interfaces.tasks.train import TrainTask
-from monailabel.scribbles.infer import GMMBasedGraphCut, HistogramBasedGraphCut
 from monailabel.tasks.activelearning.first import First
 from monailabel.tasks.activelearning.random import Random
 
@@ -141,6 +140,8 @@ class MyApp(MONAILabelApp):
         # Scribbles
         #################################################
         if self.scribbles:
+            from monailabel.scribbles.infer import GMMBasedGraphCut, HistogramBasedGraphCut
+
             infers.update(
                 {
                     "Histogram+GraphCut": HistogramBasedGraphCut(

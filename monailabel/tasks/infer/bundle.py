@@ -137,15 +137,14 @@ class BundleInferTask(BasicInferTask):
 
         # labels = ({v.lower(): int(k) for k, v in pred.get("channel_def", {}).items() if v.lower() != "background"})
         labels = {}
+        type = self._get_type(os.path.basename(path), type)
         for k, v in pred.get("channel_def", {}).items():
-            if (not type.lower() == "deepedit") and (v.lower() != "background"):
-                labels[v.lower()] = int(k)
-            else:
+            logger.info(f"Model: {os.path.basename(path)}; Type: {type}; Label: {v} => {k}")
+            if v.lower() != "background" or type.lower() == "deepedit":
                 labels[v.lower()] = int(k)
         description = metadata.get("description")
         spatial_shape = image.get("spatial_shape")
         dimension = len(spatial_shape) if spatial_shape else 3
-        type = self._get_type(os.path.basename(path), type)
 
         # if detection task, set post restore to False by default.
         self.add_post_restore = False if type == "detection" else add_post_restore
@@ -273,28 +272,21 @@ class BundleInferTask(BasicInferTask):
         return post
 
     def _get_type(self, name, type):
+        if type:
+            return type
+
         name = name.lower() if name else ""
-        return (
-            (
-                InferType.DEEPEDIT
-                if "deepedit" in name
-                else (
-                    InferType.DEEPGROW
-                    if "deepgrow" in name
-                    else (
-                        InferType.DETECTION
-                        if "detection" in name
-                        else (
-                            InferType.SEGMENTATION
-                            if "segmentation" in name
-                            else InferType.CLASSIFICATION if "classification" in name else InferType.SEGMENTATION
-                        )
-                    )
-                )
-            )
-            if not type
-            else type
-        )
+        if "deepedit" in name:
+            return InferType.DEEPEDIT
+        if "deepgrow" in name:
+            return InferType.DEEPGROW
+        if "detection" in name:
+            return InferType.DETECTION
+        if "segmentation" in name:
+            return InferType.SEGMENTATION
+        if "classification" in name:
+            return InferType.CLASSIFICATION
+        return InferType.SEGMENTATION
 
     def _filter_transforms(self, transforms, filters):
         if not filters or not transforms:
