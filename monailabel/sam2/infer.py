@@ -20,8 +20,10 @@ from typing import Any, Dict, Tuple, Union
 import numpy as np
 import pylab
 import torch
+from monai.transforms import KeepLargestConnectedComponent, LoadImaged
 from PIL import Image
-from monai.transforms import LoadImaged, KeepLargestConnectedComponent
+from sam2.build_sam import build_sam2, build_sam2_video_predictor
+from sam2.sam2_image_predictor import SAM2ImagePredictor
 from skimage.util import img_as_ubyte
 from tqdm import tqdm
 
@@ -29,10 +31,14 @@ from monailabel.config import settings
 from monailabel.interfaces.tasks.infer_v2 import InferTask, InferType
 from monailabel.interfaces.utils.transform import run_transforms
 from monailabel.transform.writer import Writer
-from monailabel.utils.others.generic import device_list, download_file, get_basename_no_ext, name_to_device, strtobool, \
-    remove_file
-from sam2.build_sam import build_sam2, build_sam2_video_predictor
-from sam2.sam2_image_predictor import SAM2ImagePredictor
+from monailabel.utils.others.generic import (
+    device_list,
+    download_file,
+    get_basename_no_ext,
+    name_to_device,
+    remove_file,
+    strtobool,
+)
 
 logger = logging.getLogger(__name__)
 
@@ -132,7 +138,7 @@ class Sam2InferTask(InferTask):
         if debug:
             logger.info(f"Slice {slice_np.shape} Type: {slice_np.dtype}; Max: {np.max(slice_np)}")
             logger.info(f"Slice RGB {slice_rgb_np.shape} Type: {slice_rgb_np.dtype}; Max: {np.max(slice_rgb_np)}")
-            if slice_idx < 0:
+            if slice_idx < 0 and image_tensor.meta.get("filename_or_obj"):
                 shutil.copy(image_tensor.meta["filename_or_obj"], "image.jpg")
             else:
                 pylab.imsave("image.jpg", slice_np, format="jpg", cmap="Greys_r")
@@ -143,24 +149,23 @@ class Sam2InferTask(InferTask):
 
         location = request.get("location", (0, 0))
         tx, ty = location[0], location[1]
-        fp = [[p[0] - tx, p[1] - tx] for p in request["foreground"]]
+        fp = [[p[0] - tx, p[1] - ty] for p in request["foreground"]]
         bp = [[p[0] - tx, p[1] - ty] for p in request["background"]]
-        bbox = request.get("bbox")
-        bbox = [bbox[0] - tx, bbox[1] - ty, bbox[2], bbox[3]] if bbox else None
-        box = [bbox[0], bbox[1], bbox[0] + bbox[2], bbox[1] + bbox[3]] if bbox else None
+        roi = request.get("roi")
+        roi = [roi[0] - tx, roi[1] - ty, roi[2] - tx, roi[3] - ty] if roi else None
 
         if debug:
             slice_rgb_np_p = np.copy(slice_rgb_np)
-            if bbox:
-                slice_rgb_np_p[box[0] : box[2], box[1] : box[3], 2] = 255
+            if roi:
+                slice_rgb_np_p[roi[0] : roi[2], roi[1] : roi[3], 2] = 255
             for k, ps in {1: fp, 0: bp}.items():
                 for p in ps:
                     slice_rgb_np_p[p[0] - 2 : p[0] + 2, p[1] - 2 : p[1] + 2, k] = 255
             Image.fromarray(slice_rgb_np_p).save("slice_p.jpg")
 
         point_coords = fp + bp
-        point_coords = [[p[1], p[0]] for p in point_coords] # Flip x,y => y,x
-        box = [box[1], box[0], box[3], box[2]] if box else None
+        point_coords = [[p[1], p[0]] for p in point_coords]  # Flip x,y => y,x
+        box = [roi[1], roi[0], roi[3], roi[2]] if roi else None
 
         point_labels = [1] * len(fp) + [0] * len(bp)
         logger.info(f"Point Coords: {point_coords}")
@@ -279,8 +284,8 @@ class Sam2InferTask(InferTask):
             request["foreground"] = []
         if "background" not in request:
             request["background"] = []
-        if "bbox" not in request:
-            request["bbox"] = []
+        if "roi" not in request:
+            request["roi"] = []
 
         if not cache_image or image_tensor is None:
             # TODO:: Fix this to cache more than one image session
@@ -331,7 +336,7 @@ def main():
         force=True,
     )
 
-    app_name = "radiology"
+    app_name = "pathology"
     app_dir = os.path.abspath(os.path.join(os.path.dirname(__file__), "..", "..", "..", "sample-apps", app_name))
     model_dir = os.path.join(app_dir, "model")
     logger.info(f"Model Dir: {model_dir}")
@@ -362,6 +367,7 @@ def main():
             "min_poly_area": 30,
             "foreground": [[2247, 4937]],
             "background": [],
+            # "roi": [2220, 4900, 2320, 5000],
             "max_workers": 1,
             "id": 0,
             "logging": "INFO",
@@ -375,12 +381,15 @@ def main():
             "image": "/home/sachi/Datasets/SAM2/image.nii.gz",
             "foreground": [[71, 175, 105]],  # [199, 129, 47], [200, 100, 41]],
             # "background": [[286, 175, 105]],
-            "bbox": [40, 115, 70, 120],
+            "roi": [44, 110, 113, 239, 72, 178],
             "largest_cc": True,
         }
 
     result = task(request, debug=True)
-    shutil.move(result[0], "/home/sachi/" + "mask.xml" if app_name == "pathology" else "mask.nii.gz")
+    if app_name == "pathology":
+        print(result)
+    else:
+        shutil.move(result[0], "mask.nii.gz")
 
 
 if __name__ == "__main__":

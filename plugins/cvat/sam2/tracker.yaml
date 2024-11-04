@@ -10,7 +10,7 @@
 # limitations under the License.
 
 metadata:
-  name: monailabel.endoscopy.sam2T
+  name: monailabel.sam2.tracker
   namespace: cvat
   annotations:
     name: SAM2T
@@ -24,7 +24,7 @@ spec:
   eventTimeout: 30s
 
   build:
-    image: cvat/monailabel.endoscopy.sam2T
+    image: cvat/monailabel.sam2.tracker
     baseImage: projectmonai/monailabel:latest
 
     directives:
@@ -32,7 +32,7 @@ spec:
         - kind: ENV
           value: MONAI_LABEL_SERVER=http://10.117.9.63:8000
         - kind: ENV
-          value: MONAI_LABEL_MODEL=sam2T
+          value: MONAI_LABEL_MODEL=sam2
 
   triggers:
     myHttpTrigger:

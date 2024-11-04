@@ -69,12 +69,13 @@ def handler(context, event):
         output_json = json.loads(output_json)
     # context.logger.info(f"Mask File: {output_mask}")
 
-    mask_np = np.array(Image.open(output_mask)).astype(np.uint8)
+    mask_im = Image.open(output_mask)
+    mask_np = np.array(mask_im).astype(np.uint8)
     os.remove(output_mask)
     os.remove(image_file)
 
     resp = {"mask": mask_np.tolist()}
-    context.logger.info(f"Image: {image.size}; Mask: {mask_np.shape}; JSON: {output_json}")
+    context.logger.info(f"Image: {image.size}; Mask: {mask_im.size} vs {mask_np.shape}; JSON: {output_json}")
     return context.Response(
         body=json.dumps(resp),
         headers={},
@@ -96,8 +97,7 @@ if __name__ == "__main__":
     with open("/home/sachi/Datasets/endo/frame001.jpg", "rb") as fp:
         image = base64.b64encode(fp.read())
 
-    event = {"body": {"image": image, "pos_points": [[1209, 493]]}}
-    event = Namespace(**event)
+    event = Namespace(**{"body": {"image": image, "pos_points": [[1209, 493]]}})
 
     def print_all(*args, **kwargs):
         return {"args": args, **kwargs}

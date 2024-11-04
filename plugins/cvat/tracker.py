@@ -16,9 +16,11 @@ import logging
 import os
 import tempfile
 
+import numpy as np
 from PIL import Image
 
 from monailabel.client import MONAILabelClient
+from monailabel.transform.post import FindContoursd
 
 logging.basicConfig(
     level=logging.INFO,
@@ -62,30 +64,42 @@ def handler(context, event):
     states = data.get("states")
     context.logger.info(f"States: {states}")
 
-    # server = os.environ.get("MONAI_LABEL_SERVER", "http://0.0.0.0:8000")
-    # model = os.environ.get("MONAI_LABEL_MODEL", "sam2T")
+    results = {"shapes": [], "states": []}
+    bboxes = []
+    for i, shape in enumerate(shapes):
+        context.logger.info(f"{i} => Shape: {shape}")
 
-    # client = MONAILabelClient(server)
-    # params = {"output": "mask"}
+        def bounding_box(pts):
+            x, y = zip(*pts)
+            return [min(x), min(y), max(x), max(y)]
 
-    # output_mask, output_json = client.infer(model=model, image_id="", file=image_file, params=params)
-    # if isinstance(output_json, str) or isinstance(output_json, bytes):
-    #     output_json = json.loads(output_json)
-    # context.logger.info(f"Mask: {output_mask}; Output JSON: {output_json}")
+        bbox = bounding_box(np.array(shape).astype(int).reshape(-1, 2).tolist())
+        context.logger.info(f"bbox: {bbox}")
+        bboxes.append(bbox)
 
-    # mask_np = np.array(Image.open(output_mask)).astype(np.uint8)
-    # context.logger.info(f"Mask: {mask_np.shape}")
-    # os.remove(output_mask)
+    bbox = bboxes[-1]  # Pick the last
+    params = {"output": "json", "largest_cc": True, "bbox": bbox}
+    output_mask, output_json = client.infer(model=model, image_id="", file=image_file, params=params)
+    if isinstance(output_json, str) or isinstance(output_json, bytes):
+        output_json = json.loads(output_json)
+    context.logger.info(f"Mask: {output_mask}; Output JSON: {output_json}")
+
+    mask_np = np.array(Image.open(output_mask)).astype(np.uint8)
+    os.remove(output_mask)
     os.remove(image_file)
 
-    results = {"shapes": [], "states": []}
-    for i, shape in enumerate(shapes):
-        # shape, state = context.user_data.model.infer(image, shape, states[i] if i < len(states) else None)
-        # results['shapes'].append(shape)
-        # results['states'].append(state)
-        print(i, shape)
+    context.logger.info(f"Image: {image.size}; Mask: {mask_np.shape}; JSON: {output_json}")
 
-    # context.logger.info(f"Image: {image.size}; Mask: {mask_np.shape}; JSON: {output_json}")
+    d = FindContoursd(keys="pred")({"pred": mask_np})
+    annotation = d.get("result", {}).get("annotation")
+    for element in annotation.get("elements", []):
+        contours = element["contours"]
+        for contour in contours:
+            points = np.flip(np.array(contour, int))
+            shape = points.flatten().tolist()
+            results["shapes"].append(shape)
+            break
+
     return context.Response(
         body=json.dumps(results),
         headers={},
@@ -104,17 +118,29 @@ if __name__ == "__main__":
         datefmt="%Y-%m-%d %H:%M:%S",
     )
 
-    context = {
-        "logger": logging.getLogger(__name__),
-        "user_data": Namespace(**{"model": None, "model_handler": None}),
-    }
-    context = Namespace(**context)
-
     with open("/home/sachi/Datasets/endo/frame001.jpg", "rb") as fp:
         image = base64.b64encode(fp.read())
 
-    event = {"body": {"image": image}}
-    event = Namespace(**event)
+    event = Namespace(
+        **{
+            "body": {
+                "image": image,
+                "shapes": [[327, 352, 1152, 803]],
+                "states": [],
+            }
+        }
+    )
+
+    def print_all(*args, **kwargs):
+        return {"args": args, **kwargs}
+
+    context = Namespace(
+        **{
+            "logger": logging.getLogger(__name__),
+            "user_data": Namespace(**{"model": None, "model_handler": None}),
+            "Response": print_all,
+        }
+    )
 
     init_context(context)
     response = handler(context, event)
