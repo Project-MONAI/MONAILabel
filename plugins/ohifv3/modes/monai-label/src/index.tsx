@@ -3,27 +3,33 @@ import toolbarButtons from './toolbarButtons.js';
 import { id } from './id.js';
 import initToolGroups from './initToolGroups.js';
 
-const ohif = {
-  layout: '@ohif/extension-default.layoutTemplateModule.viewerLayout',
-  sopClassHandler: '@ohif/extension-default.sopClassHandlerModule.stack',
-  hangingProtocol: '@ohif/extension-default.hangingProtocolModule.default',
-  leftPanel: '@ohif/extension-default.panelModule.seriesList',
-};
 
 const monailabel = {
   monaiLabel: '@ohif/extension-monai-label.panelModule.monailabel',
 }
 
-const cornerstone = {
-  viewport: '@ohif/extension-cornerstone.viewportModule.cornerstone',
+
+const ohif = {
+  layout: '@ohif/extension-default.layoutTemplateModule.viewerLayout',
+  sopClassHandler: '@ohif/extension-default.sopClassHandlerModule.stack',
+  hangingProtocol: '@ohif/extension-default.hangingProtocolModule.default',
+  leftPanel: '@ohif/extension-default.panelModule.seriesList',
+  rightPanel: '@ohif/extension-default.panelModule.measure',
 };
 
-const dicomSeg = {
+const cornerstone = {
+  viewport: '@ohif/extension-cornerstone.viewportModule.cornerstone',
+  panelTool:
+    '@ohif/extension-cornerstone.panelModule.panelSegmentationWithTools',
+};
+
+const segmentation = {
   sopClassHandler:
     '@ohif/extension-cornerstone-dicom-seg.sopClassHandlerModule.dicom-seg',
   viewport: '@ohif/extension-cornerstone-dicom-seg.viewportModule.dicom-seg',
-  panel: '@ohif/extension-cornerstone-dicom-seg.panelModule.panelSegmentation',
 };
+
+
 
 /**
  * Just two dependencies to be able to render a viewport with panels in order
@@ -67,40 +73,11 @@ function modeFactory({ modeConfiguration }) {
       // Init Default and SR ToolGroups
       initToolGroups(extensionManager, toolGroupService, commandsManager);
 
+      toolbarService.addButtons(toolbarButtons);
       // init customizations
       customizationService.addModeCustomizations([
         '@ohif/extension-test.customizationModule.custom-context-menu',
       ]);
-
-      let unsubscribe;
-
-      const activateTool = () => {
-        toolbarService.recordInteraction({
-          groupId: 'WindowLevel',
-          itemId: 'WindowLevel',
-          interactionType: 'tool',
-          commands: [
-            {
-              commandName: 'setToolActive',
-              commandOptions: {
-                toolName: 'WindowLevel',
-              },
-              context: 'CORNERSTONE',
-            },
-          ],
-        });
-
-        // We don't need to reset the active tool whenever a viewport is getting
-        // added to the toolGroup.
-        unsubscribe();
-      };
-
-      // Since we only have one viewport for the basic cs3d mode and it has
-      // only one hanging protocol, we can just use the first viewport
-      ({ unsubscribe } = toolGroupService.subscribe(
-        toolGroupService.EVENTS.VIEWPORT_ADDED,
-        activateTool
-      ));
 
       toolbarService.addButtons(toolbarButtons);
       toolbarService.createButtonSection('primary', [
@@ -121,8 +98,12 @@ function modeFactory({ modeConfiguration }) {
         syncGroupService,
         segmentationService,
         cornerstoneViewportService,
+        uiDialogService,
+        uiModalService,
       } = servicesManager.services;
 
+      uiDialogService.dismissAll();
+      uiModalService.hide();
       toolGroupService.destroy();
       syncGroupService.destroy();
       segmentationService.destroy();
@@ -140,7 +121,7 @@ function modeFactory({ modeConfiguration }) {
     isValidMode: function ({ modalities }) {
       const modalities_list = modalities.split('\\');
       const isValid =
-        modalities_list.includes('CT') || modalities_list.includes('MR');
+      modalities_list.includes('CT') || modalities_list.includes('MR');
       // Only CT or MR modalities
       return isValid;
     },
@@ -173,8 +154,8 @@ function modeFactory({ modeConfiguration }) {
                   displaySetsToDisplay: [ohif.sopClassHandler],
                 },
                 {
-                  namespace: dicomSeg.viewport,
-                  displaySetsToDisplay: [dicomSeg.sopClassHandler],
+                  namespace: segmentation.viewport,
+                  displaySetsToDisplay: [segmentation.sopClassHandler],
                 },
               ],
             },
@@ -189,7 +170,7 @@ function modeFactory({ modeConfiguration }) {
     // hangingProtocol: [''],
     /** SopClassHandlers used by the mode */
     sopClassHandlers: [
-      dicomSeg.sopClassHandler,
+      segmentation.sopClassHandler,
       ohif.sopClassHandler,
     ] /** hotkeys for mode */,
     hotkeys: [...hotkeys.defaults.hotkeyBindings],

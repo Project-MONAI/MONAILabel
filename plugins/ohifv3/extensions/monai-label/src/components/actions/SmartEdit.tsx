@@ -10,7 +10,6 @@ WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 See the License for the specific language governing permissions and
 limitations under the License.
 */
-
 import React from 'react';
 import ModelSelector from '../ModelSelector';
 import BaseTab from './BaseTab';
@@ -38,7 +37,7 @@ export default class SmartEdit extends BaseTab {
       this.props.servicesManager.services;
 
     const added = segmentationService.EVENTS.SEGMENTATION_ADDED;
-    const updated = segmentationService.EVENTS.SEGMENTATION_UPDATED;
+    const updated = segmentationService.EVENTS.SEGMENTATION_MODIFIED;
     const removed = segmentationService.EVENTS.SEGMENTATION_REMOVED;
     const subscriptions = [];
 
@@ -52,17 +51,28 @@ export default class SmartEdit extends BaseTab {
 
         // get the first segmentation Todo: fix this to be active
         const segmentation = segmentations[0];
-        const { segments, activeSegmentIndex } = segmentation;
+        const { segmentationId } = segmentation;
 
-        const selectedSegment = segments[activeSegmentIndex];
+        // const selectedSegment = segments.find((segment) => segment.active);
+        const activeSegmentIndex= cornerstoneTools.segmentation.segmentIndex.getActiveSegmentIndex(segmentationId)
 
-        const color = selectedSegment.color;
 
-        // get the active viewport toolGroup
-        const { viewports, activeViewportId } =
-          viewportGridService.getState();
-        const viewport = viewports.get(activeViewportId);
-        const { viewportOptions } = viewport;
+        if (!activeSegmentIndex) {
+          return;
+        }
+
+   
+        const viewport = this.getActiveViewportInfo();
+        const { viewportOptions, viewportId } = viewport;
+
+        // const color = selectedSegment.color;
+        const color =
+          cornerstoneTools.segmentation.config.color.getSegmentIndexColor(
+            viewportId,
+            segmentationId,
+            activeSegmentIndex
+          ) || [0, 0, 0];
+
         const toolGroupId = viewportOptions.toolGroupId;
 
         toolGroupService.setToolConfiguration(toolGroupId, 'ProbeMONAILabel', {
@@ -75,6 +85,13 @@ export default class SmartEdit extends BaseTab {
     this.unsubscribe = () => {
       subscriptions.forEach((unsubscribe) => unsubscribe());
     };
+  }
+
+  getActiveViewportInfo = () => {
+    const { viewportGridService } = this.props.servicesManager.services;
+    const { viewports, activeViewportId } = viewportGridService.getState();
+    const viewport = viewports.get(activeViewportId);
+    return viewport;
   }
 
   componentWillUnmount() {
@@ -92,7 +109,10 @@ export default class SmartEdit extends BaseTab {
     const image = viewConstants.SeriesInstanceUID;
     const model = this.modelSelector.current.currentModel();
 
-    const activeSegment = segmentationService.getActiveSegment();
+    const viewport = this.getActiveViewportInfo();
+    const { viewportId } = viewport;
+
+    const activeSegment = segmentationService.getActiveSegment(viewportId);
     const segmentId = activeSegment.label;
 
     if (segmentId && !this.state.segmentId) {

@@ -1,4 +1,3 @@
-import { Types, metaData, utilities as csUtils } from '@cornerstonejs/core';
 import { ProbeTool, annotation, drawing } from '@cornerstonejs/tools';
 
 const { getAnnotations } = annotation.state;
@@ -37,18 +36,15 @@ export default class ProbeMONAILabelTool extends ProbeTool {
       return renderStatus;
     }
 
-    const targetId = this.getTargetId(viewport);
-    const renderingEngine = viewport.getRenderingEngine();
-
-    const styleSpecifier: StyleSpecifier = {
+    const styleSpecifier = {
       toolGroupId: this.toolGroupId,
       toolName: this.getToolName(),
       viewportId: enabledElement.viewport.id,
     };
 
     for (let i = 0; i < annotations.length; i++) {
-      const annotation = annotations[i] as ProbeAnnotation;
-      const annotationUID = annotation.annotationUID;
+      const annotation = annotations[i];
+      const annotationUID = annotation.annotationUID as string;
       const data = annotation.data;
       const point = data.handles.points[0];
       const canvasCoordinates = viewport.worldToCanvas(point);

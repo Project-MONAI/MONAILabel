@@ -10,8 +10,7 @@ import OptionTable from './actions/OptionTable';
 import ActiveLearning from './actions/ActiveLearning';
 import MonaiLabelClient from '../services/MonaiLabelClient';
 import SegmentationReader from '../utils/SegmentationReader';
-import MonaiSegmentation from './MonaiSegmentation';
-import SegmentationToolbox from './SegmentationToolbox';
+import { PanelSegmentation, } from '@ohif/extension-cornerstone'
 
 export default class MonaiLabelPanel extends Component {
   static propTypes = {
@@ -59,6 +58,11 @@ export default class MonaiLabelPanel extends Component {
     setTimeout(() => {
       const { viewports, activeViewportId } = viewportGridService.getState();
       const viewport = viewports.get(activeViewportId);
+
+      if (!viewport) {
+        return;
+      }
+
       const displaySet = displaySetService.getDisplaySetByUID(
         viewport.displaySetInstanceUIDs[0]
       );
@@ -73,7 +77,7 @@ export default class MonaiLabelPanel extends Component {
   async componentDidMount() {
     const { segmentationService } = this.props.servicesManager.services;
     const added = segmentationService.EVENTS.SEGMENTATION_ADDED;
-    const updated = segmentationService.EVENTS.SEGMENTATION_UPDATED;
+    const updated = segmentationService.EVENTS.SEGMENTATION_MODIFIED;
     const removed = segmentationService.EVENTS.SEGMENTATION_REMOVED;
     const subscriptions = [];
 
@@ -123,18 +127,23 @@ export default class MonaiLabelPanel extends Component {
     // remove the background
     const labels = response.data.labels.splice(1)
 
-    const segmentations = [
-      {
-        id: '1',
-        label: 'Segmentations',
-        segments: labels.map((label, index) => ({
-          segmentIndex: index + 1,
-          label
-        })),
-        isActive: true,
-        activeSegmentIndex: 1,
+    const segmentations = [{
+      segmentationId: '1',
+      representation: {
+        type: Enums.SegmentationRepresentations.Labelmap,
       },
-    ];
+      config: {
+        label: 'Segmentations',
+        segments: labels.reduce((acc, label, index) => {
+          acc[index + 1] = {
+            label,
+            active: index === 0, // First segment is active
+            locked: false
+          };
+          return acc;
+        }, {})
+      }
+    }];
 
     this.props.commandsManager.runCommand('loadSegmentationsForViewport', {
       segmentations
@@ -387,16 +396,7 @@ delete onInfoLabelNames.background;
           />
         </div>
 
-        {this.state.segmentations?.map((segmentation) => (
-          <>
-            <SegmentationToolbox servicesManager={this.props.servicesManager} />
-            <MonaiSegmentation
-              servicesManager={this.props.servicesManager}
-              extensionManager={this.props.extensionManager}
-              commandsManager={this.props.commandsManager}
-            />
-          </>
-        ))}
+          <PanelSegmentation servicesManager={this.props.servicesManager} commandsManager={this.props.commandsManager} />
       </div>
     );
   }
