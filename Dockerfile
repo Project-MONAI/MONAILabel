@@ -30,7 +30,6 @@ RUN python -m pip install --upgrade --no-cache-dir pip setuptools wheel twine \
     && cd /opt/monailabel \
     && BUILD_OHIF=false python setup.py sdist bdist_wheel --build-number $(date +'%Y%m%d%H%M')
 
-
 FROM ${MONAI_IMAGE}
 LABEL maintainer="monai.contact@gmail.com"
 
