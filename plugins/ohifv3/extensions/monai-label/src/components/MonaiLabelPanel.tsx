@@ -61,7 +61,6 @@ export default class MonaiLabelPanel extends Component {
         const { viewports, activeViewportId } = viewportGridService.getState();
         const viewport = viewports.get(activeViewportId);
 
-
         if (!viewport) {
           return;
         }
@@ -201,6 +200,7 @@ export default class MonaiLabelPanel extends Component {
   };
 
   _update = async (response, labelNames) => {
+    const { segmentationService } = this.props.servicesManager.services;
     // Process the obtained binary file from the MONAI Label server
     /* const onInfoLabelNames = this.state.info.labels */
     const onInfoLabelNames = labelNames;
@@ -229,37 +229,40 @@ export default class MonaiLabelPanel extends Component {
       centroidsIJK.set(segmentIndex, { image: image, world: [] });
     }
 
-    debugger;
-    const segmentations = [
+
+    const segmentationsNew = [
       {
-        id: '1',
-        label: 'Segmentations',
-        segments: Object.keys(onInfoLabelNames).map((key) => ({
-          segmentIndex: onInfoLabelNames[key],
-          label: key,
-        })),
-        isActive: true,
-        activeSegmentIndex: 1,
-        scalarData: data,
-        FrameOfReferenceUID: this.FrameOfReferenceUID,
+        segmentationId: '1',
+        representation: {
+          type: Enums.SegmentationRepresentations.Labelmap,
+        },
+        config: {
+          FrameOfReferenceUID: this.FrameOfReferenceUID,
+          label: 'Segmentations',
+          segments: Object.keys(onInfoLabelNames).reduce((acc, key) => {
+            const segmentIndex = onInfoLabelNames[key];
+            acc[segmentIndex] = {
+              label: key,
+              active: segmentIndex === 1, // First segment is active
+              locked: false,
+            };
+            return acc;
+          }, {}),
+        },
         centroidsIJK: centroidsIJK,
       },
     ];
 
+    const volume = segmentationService.getLabelmapVolume('1');
     // Todo: rename volumeId
-    const volumeLoadObject = cache.getVolume('1');
-    if (volumeLoadObject) {
-      const { scalarData } = volumeLoadObject;
-      scalarData.set(data);
+    if (volume) {
+      const { voxelManager } = volume;
+      voxelManager?.setCompleteScalarDataArray(data);
       triggerEvent(eventTarget, Enums.Events.SEGMENTATION_DATA_MODIFIED, {
         segmentationId: '1',
       });
       console.debug("updated the segmentation's scalar data");
-    } else {
-      this.props.commandsManager.runCommand('hydrateSegmentationsForViewport', {
-        segmentations,
-      });
-    }
+    } 
   };
 
   _debug = async () => {
