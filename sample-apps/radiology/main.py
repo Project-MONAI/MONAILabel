@@ -23,7 +23,7 @@ import monailabel
 from monailabel.interfaces.app import MONAILabelApp
 from monailabel.interfaces.config import TaskConfig
 from monailabel.interfaces.datastore import Datastore
-from monailabel.interfaces.tasks.infer_v2 import InferTask
+from monailabel.interfaces.tasks.infer_v2 import InferTask, InferType
 from monailabel.interfaces.tasks.scoring import ScoringMethod
 from monailabel.interfaces.tasks.strategy import Strategy
 from monailabel.interfaces.tasks.train import TrainTask
@@ -171,8 +171,8 @@ class MyApp(MONAILabelApp):
         if is_sam2_module_available() and self.sam:
             from monailabel.sam2.infer import Sam2InferTask
 
-            infers["sam_2d"] = Sam2InferTask(model_dir=self.model_dir, dimension=2)
-            infers["sam_3d"] = Sam2InferTask(model_dir=self.model_dir, dimension=3)
+            infers["sam_2d"] = Sam2InferTask(model_dir=self.model_dir, type=InferType.DEEPGROW, dimension=2)
+            infers["sam_3d"] = Sam2InferTask(model_dir=self.model_dir, type=InferType.DEEPGROW, dimension=3)
 
         #################################################
         # Pipeline based on existing infers

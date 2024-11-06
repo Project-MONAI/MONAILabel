@@ -90,7 +90,7 @@ class Sam2InferTask(InferTask):
     def __init__(
         self,
         model_dir,
-        type=InferType.DEEPGROW,
+        type=InferType.ANNOTATION,
         dimension=2,
         labels=None,
         additional_info=None,

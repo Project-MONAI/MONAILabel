@@ -17,8 +17,9 @@ metadata:
     version: 2
     type: interactor
     spec:
-    min_pos_points: 1
+    min_pos_points: 0
     min_neg_points: 0
+    startswith_box_optional: true
     help_message: The interactor allows to annotate a Tool using SAM2 model
 
 spec:
