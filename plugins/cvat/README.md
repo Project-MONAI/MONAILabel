@@ -30,13 +30,12 @@ To install CVAT and enable Semi-Automatic and Automatic Annotation, follow these
 ```bash
 git clone https://github.com/opencv/cvat
 cd cvat
-git checkout v2.1.0 # MONAI Label requires tag v2.1.0
 
 # Use your external IP instead of localhost to make the CVAT projects sharable
 export CVAT_HOST=127.0.0.1
-export CVAT_VERSION=v2.1.0
 
 # Start CVAT from docker-compose, make sure the IP and port are available.
+# Refer: https://docs.cvat.ai/docs/administration/advanced/installation_automatic_annotation/
 docker-compose -f docker-compose.yml -f components/serverless/docker-compose.serverless.yml up -d
 
 # Create a CVAT superuser account
@@ -47,12 +46,15 @@ docker exec -it cvat bash -ic 'python3 ~/manage.py createsuperuser'
 
 After completing these steps, CVAT should be accessible via http://127.0.0.1:8080 in Chrome. Use the superuser account created during installation to log in.
 
+
+
 #### Setup Nuclio Container Platform
 ```bash
 # Get Nuclio dashboard
-wget https://github.com/nuclio/nuclio/releases/download/1.5.16/nuctl-1.5.16-linux-amd64
-chmod +x nuctl-1.5.16-linux-amd64
-ln -sf $(pwd)/nuctl-1.5.16-linux-amd64 /usr/local/bin/nuctl
+export NUCLIO_VERSION=1.13.0
+wget https://github.com/nuclio/nuclio/releases/download/$NUCLIO_VERSION/nuctl-$NUCLIO_VERSION-linux-amd64
+chmod +x nuctl-$NUCLIO_VERSION-linux-amd64
+ln -sf $(pwd)/nuctl-$NUCLIO_VERSION-linux-amd64 /usr/local/bin/nuctl
 ```
 
 #### Deployment of Endoscopy Models
