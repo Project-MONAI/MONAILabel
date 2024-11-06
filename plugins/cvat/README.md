@@ -59,7 +59,11 @@ ln -sf $(pwd)/nuctl-1.5.16-linux-amd64 /usr/local/bin/nuctl
 This step is to deploy MONAI Label plugin with endoscopic models using Nuclio tool.
 
 ```bash
+# Run MONAI Label Server (Make sure this Host/IP is accessible inside a docker)
+export MONAI_LABEL_SERVER=http://`hostname -I | awk '{print $1}'`:8000
+
 git clone https://github.com/Project-MONAI/MONAILabel.git
+
 # Deploy all endoscopy models
 ./plugins/cvat/deploy.sh endoscopy
 # Or to deploy specific function and model, e.g., tooltracking
@@ -77,15 +81,4 @@ To check or monitor the status of deployed function containers, you can open the
 That's it! With these steps, you should have successfully installed CVAT with the MONAI Label extension and deployed endoscopic models using the Nuclio tool.
 
 ### Publish Latest Model to CVAT/Nuclio
-Once you've fine-tuned the model and confirmed that it meets all the necessary conditions, you can push the updated model to the CVAT/Nuclio function container. This will allow you to use the latest version of the model in your workflows and applications.
-
-```bash
-workspace/endoscopy/update_cvat_model.sh <FUNCTION_NAME>
-
-# Bundle Example: publish tool tracking bundle trained model (run this command on the node where cvat/nuclio containers are running)
-workspace/endoscopy/update_cvat_model.sh tootracking
-# Bundle Example: publish inbody trained model
-workspace/endoscopy/update_cvat_model.sh inbody
-# DeepEdit Example: publish deepedit trained model (Not from bundle)
-workspace/endoscopy/update_cvat_model.sh deepedit
-```
+> Not Needed to publish the model to CVAT.  Model is always served via MONAI Label.

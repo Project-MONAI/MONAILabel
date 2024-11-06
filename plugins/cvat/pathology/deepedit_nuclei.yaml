@@ -24,7 +24,7 @@ metadata:
 spec:
   description: A pre-trained interaction/deepedit model for Pathology
   runtime: 'python:3.8'
-  handler: main:handler
+  handler: detector:handler
   eventTimeout: 30s
 
   build:
@@ -34,13 +34,9 @@ spec:
     directives:
       preCopy:
         - kind: ENV
-          value: MONAI_LABEL_APP_DIR=/opt/conda/monailabel/sample-apps/pathology
+          value: MONAI_LABEL_SERVER=http://10.117.9.63:8000
         - kind: ENV
-          value: MONAI_LABEL_MODELS=deepedit_nuclei
-        - kind: ENV
-          value: PYTHONPATH=/opt/conda/monailabel/sample-apps/pathology
-        - kind: ENV
-          value: MONAI_PRETRAINED_PATH=https://github.com/Project-MONAI/MONAILabel/releases/download/data
+          value: MONAI_LABEL_MODEL=deepedit_nuclei
 
   triggers:
     myHttpTrigger:
@@ -49,10 +45,6 @@ spec:
       workerAvailabilityTimeoutMilliseconds: 10000
       attributes:
         maxRequestBodySize: 33554432 # 32MB
-
-  resources:
-    limits:
-      nvidia.com/gpu: 1
 
   platform:
     attributes:
