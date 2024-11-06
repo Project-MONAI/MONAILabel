@@ -27,6 +27,7 @@ from monailabel.interfaces.tasks.infer_v2 import InferTask
 from monailabel.interfaces.tasks.scoring import ScoringMethod
 from monailabel.interfaces.tasks.strategy import Strategy
 from monailabel.interfaces.tasks.train import TrainTask
+from monailabel.sam2.infer import Sam2InferTask
 from monailabel.tasks.activelearning.first import First
 from monailabel.tasks.activelearning.random import Random
 
@@ -99,6 +100,7 @@ class MyApp(MONAILabelApp):
         # Load models from bundle config files, local or released in Model-Zoo, e.g., --conf bundles <spleen_ct_segmentation>
         self.bundles = get_bundle_models(app_dir, conf, conf_key="bundles") if conf.get("bundles") else None
 
+        self.sam = strtobool(conf.get("sam", "true"))
         super().__init__(
             app_dir=app_dir,
             studies=studies,
@@ -162,6 +164,13 @@ class MyApp(MONAILabelApp):
                     ),
                 }
             )
+
+        #################################################
+        # SAM
+        #################################################
+        if self.sam:
+            infers["sam_2d"] = Sam2InferTask(model_dir=self.model_dir, dimension=2)
+            infers["sam_3d"] = Sam2InferTask(model_dir=self.model_dir, dimension=3)
 
         #################################################
         # Pipeline based on existing infers

@@ -42,6 +42,32 @@ class EndPointInfer(BasicEndpointV2TestSuite):
         assert response.status_code == 200
         time.sleep(1)
 
+    def test_sam_2d(self):
+        if not torch.cuda.is_available():
+            return
+
+        model = "sam_2d"
+        image = "spleen_3"
+        params = {"foreground": [[140, 210, 28]], "background": []}
+
+        response = self.client.post(f"/infer/{model}?image={image}", data={"params": json.dumps(params)})
+        assert response.status_code == 200
+        time.sleep(1)
+
+
+    def test_sam_3d(self):
+        if not torch.cuda.is_available():
+            return
+
+        model = "sam_3d"
+        image = "spleen_3"
+        params = {"foreground": [[140, 210, 28]], "background": []}
+
+        response = self.client.post(f"/infer/{model}?image={image}", data={"params": json.dumps(params)})
+        assert response.status_code == 200
+        time.sleep(1)
+
+
 
 class TestBundleInferTask(BasicBundleTestSuite):
     def test_spleen_bundle_infer(self):
