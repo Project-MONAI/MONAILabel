@@ -381,7 +381,8 @@ class Sam2InferTask(InferTask):
         }
         return mask_file, result_json
 
-'''
+
+"""
 def main():
     import shutil
 
@@ -450,4 +451,4 @@ def main():
 
 if __name__ == "__main__":
     main()
-'''
+"""

@@ -54,7 +54,6 @@ class EndPointInfer(BasicEndpointV2TestSuite):
         assert response.status_code == 200
         time.sleep(1)
 
-
     def test_sam_3d(self):
         if not torch.cuda.is_available():
             return
@@ -66,7 +65,6 @@ class EndPointInfer(BasicEndpointV2TestSuite):
         response = self.client.post(f"/infer/{model}?image={image}", data={"params": json.dumps(params)})
         assert response.status_code == 200
         time.sleep(1)
-
 
 
 class TestBundleInferTask(BasicBundleTestSuite):
