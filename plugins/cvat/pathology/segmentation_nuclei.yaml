@@ -38,7 +38,7 @@ spec:
     directives:
       preCopy:
         - kind: ENV
-          value: MONAI_LABEL_SERVER=http://10.117.9.63:8000
+          value: MONAI_LABEL_SERVER=http://monailabel.com
         - kind: ENV
           value: MONAI_LABEL_MODEL=segmentation_nuclei
 

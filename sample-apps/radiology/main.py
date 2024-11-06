@@ -27,7 +27,7 @@ from monailabel.interfaces.tasks.infer_v2 import InferTask
 from monailabel.interfaces.tasks.scoring import ScoringMethod
 from monailabel.interfaces.tasks.strategy import Strategy
 from monailabel.interfaces.tasks.train import TrainTask
-from monailabel.sam2.infer import Sam2InferTask
+from monailabel.sam2.utils import is_sam2_module_available
 from monailabel.tasks.activelearning.first import First
 from monailabel.tasks.activelearning.random import Random
 
@@ -168,7 +168,9 @@ class MyApp(MONAILabelApp):
         #################################################
         # SAM
         #################################################
-        if self.sam:
+        if is_sam2_module_available() and self.sam:
+            from monailabel.sam2.infer import Sam2InferTask
+
             infers["sam_2d"] = Sam2InferTask(model_dir=self.model_dir, dimension=2)
             infers["sam_3d"] = Sam2InferTask(model_dir=self.model_dir, dimension=3)
 

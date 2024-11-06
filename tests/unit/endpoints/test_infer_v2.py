@@ -15,6 +15,8 @@ import unittest
 
 import torch
 
+from monailabel.sam2.utils import is_sam2_module_available
+
 from .context import BasicBundleTestSuite, BasicDetectionBundleTestSuite, BasicEndpointV2TestSuite
 
 
@@ -43,7 +45,7 @@ class EndPointInfer(BasicEndpointV2TestSuite):
         time.sleep(1)
 
     def test_sam_2d(self):
-        if not torch.cuda.is_available():
+        if not is_sam2_module_available() or not torch.cuda.is_available():
             return
 
         model = "sam_2d"
@@ -55,7 +57,7 @@ class EndPointInfer(BasicEndpointV2TestSuite):
         time.sleep(1)
 
     def test_sam_3d(self):
-        if not torch.cuda.is_available():
+        if not is_sam2_module_available or not torch.cuda.is_available():
             return
 
         model = "sam_3d"

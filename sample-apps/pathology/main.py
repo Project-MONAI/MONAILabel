@@ -28,7 +28,7 @@ from monailabel.interfaces.datastore import Datastore
 from monailabel.interfaces.tasks.infer_v2 import InferTask, InferType
 from monailabel.interfaces.tasks.strategy import Strategy
 from monailabel.interfaces.tasks.train import TrainTask
-from monailabel.sam2.infer import Sam2InferTask
+from monailabel.sam2.utils import is_sam2_module_available
 from monailabel.tasks.infer.basic_infer import BasicInferTask
 from monailabel.transform.post import FindContoursd
 from monailabel.transform.writer import PolygonWriter
@@ -146,8 +146,10 @@ class MyApp(MONAILabelApp):
         #################################################
         # SAM
         #################################################
-        if self.sam:
-            infers["sam2"] = Sam2InferTask(
+        if is_sam2_module_available() and self.sam:
+            from monailabel.sam2.infer import Sam2InferTask
+
+            infers["sam_2d"] = Sam2InferTask(
                 model_dir=self.model_dir,
                 type=InferType.ANNOTATION,
                 dimension=2,
