@@ -1621,10 +1621,20 @@ class MONAILabelWidget(ScriptedLoadableModuleWidget, VTKObservationMixin):
         print(f"Selected ROI: {selected_roi} => {not selected_roi}")
 
         if not current_point:
-            if not foreground_all and not is_3d:
+            if not foreground_all and not is_3d and not selected_roi:
                 slicer.util.warningDisplay(operationDescription + " - points/roi not added")
                 return
-            current_point = foreground_all[-1] if foreground_all else background_all[-1] if background_all else None
+
+            if not is_3d and selected_roi:
+                layoutManager = slicer.app.layoutManager()
+                current_point = [
+                    selected_roi[1] + (selected_roi[1] - selected_roi[0]) // 2,
+                    selected_roi[3] + (selected_roi[3] - selected_roi[2]) // 2,
+                    round(abs(layoutManager.sliceWidget("Red").sliceLogic().GetSliceOffset())),
+                ]
+            else:
+                current_point = foreground_all[-1] if foreground_all else background_all[-1] if background_all else None
+            print(f"(updated) Current Point: {current_point}")
 
         try:
             qt.QApplication.setOverrideCursor(qt.Qt.WaitCursor)
@@ -1674,6 +1684,8 @@ class MONAILabelWidget(ScriptedLoadableModuleWidget, VTKObservationMixin):
             params.update(self.getParamsFromConfig("infer", model))
             if selected_roi:
                 params["roi"] = selected_roi
+            if not is_3d:
+                params["slice"] = sliceIndex
             print(f"Request Params for Inference: {params}")
 
             image_file = self.current_sample["id"]

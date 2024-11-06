@@ -14,17 +14,20 @@ import os
 import pathlib
 import shutil
 import tempfile
+from datetime import timedelta
 from time import time
 from typing import Any, Dict, Tuple, Union
 
 import numpy as np
 import pylab
+import schedule
 import torch
 from monai.transforms import KeepLargestConnectedComponent, LoadImaged
 from PIL import Image
 from sam2.build_sam import build_sam2, build_sam2_video_predictor
 from sam2.sam2_image_predictor import SAM2ImagePredictor
 from skimage.util import img_as_ubyte
+from timeloop import Timeloop
 from tqdm import tqdm
 
 from monailabel.config import settings
@@ -35,12 +38,52 @@ from monailabel.utils.others.generic import (
     device_list,
     download_file,
     get_basename_no_ext,
+    md5_digest,
     name_to_device,
     remove_file,
     strtobool,
 )
 
 logger = logging.getLogger(__name__)
+
+
+class ImageCache:
+    def __init__(self):
+        cache_path = settings.MONAI_LABEL_DATASTORE_CACHE_PATH
+        self.cache_path = (
+            os.path.join(cache_path, "sam2")
+            if cache_path
+            else os.path.join(pathlib.Path.home(), ".cache", "monailabel", "sam2")
+        )
+        self.cached_dirs = {}
+        self.cache_expiry_sec = 10 * 60
+
+        remove_file(self.cache_path)
+        os.makedirs(self.cache_path, exist_ok=True)
+        logger.info(f"Image Cache Initialized: {self.cache_path}")
+
+    def cleanup(self):
+        ts = time()
+        expired = {k: v for k, v in self.cached_dirs.items() if v < ts}
+        for k, v in expired.items():
+            self.cached_dirs.pop(k)
+            logger.info(f"Remove Expired Image: {k}; ExpiryTs: {v}; CurrentTs: {ts}")
+            remove_file(k)
+
+    def monitor(self):
+        self.cleanup()
+        time_loop = Timeloop()
+        schedule.every(1).minutes.do(self.cleanup)
+
+        @time_loop.job(interval=timedelta(seconds=60))
+        def run_scheduler():
+            schedule.run_pending()
+
+        time_loop.start(block=False)
+
+
+image_cache = ImageCache()
+image_cache.monitor()
 
 
 class Sam2InferTask(InferTask):
@@ -61,7 +104,7 @@ class Sam2InferTask(InferTask):
             dimension=dimension,
             labels=labels,
             description="SAM2 (Segment Anything Model)",
-            config={"device": device_list(), "reset_state": False, "largest_cc": False},
+            config={"device": device_list(), "reset_state": False, "largest_cc": False, "pylab": False},
         )
         self.additional_info = additional_info
         self.image_loader = image_loader
@@ -81,13 +124,6 @@ class Sam2InferTask(InferTask):
         self.predictors = {}
         self.image_cache = {}
         self.inference_state = None
-
-        cache_path = settings.MONAI_LABEL_DATASTORE_CACHE_PATH
-        self.cache_path = (
-            os.path.join(cache_path, "sam2")
-            if cache_path
-            else os.path.join(pathlib.Path.home(), ".cache", "monailabel", "sam2")
-        )
 
     def info(self) -> Dict[str, Any]:
         d = super().info()
@@ -114,10 +150,18 @@ class Sam2InferTask(InferTask):
             predictor = SAM2ImagePredictor(sam2_model)
             self.predictors[device] = predictor
 
-        slices = {p[2] for p in request["foreground"] if len(p) > 2}
-        slices.update({p[2] for p in request["background"] if len(p) > 2})
-        slices = list(slices)
-        slice_idx = slices[0] if len(slices) else -1
+        slice_idx = request.get("slice")
+        if slice_idx is None or slice_idx < 0:
+            slices = {p[2] for p in request["foreground"] if len(p) > 2}
+            slices.update({p[2] for p in request["background"] if len(p) > 2})
+            slices = list(slices)
+            slice_idx = slices[0] if len(slices) else -1
+        else:
+            slices = {slice_idx}
+
+        if slice_idx < 0 and len(request["roi"]) == 6:
+            slice_idx = round(request["roi"][4] + (request["roi"][5] - request["roi"][4]) // 2)
+            slices = {slice_idx}
         logger.info(f"Slices: {slices}; Slice Index: {slice_idx}")
 
         if slice_idx < 0:
@@ -126,13 +170,13 @@ class Sam2InferTask(InferTask):
         else:
             slice_np = image_tensor[:, :, slice_idx].cpu().numpy()
 
-            slice_rgb_file = tempfile.NamedTemporaryFile(suffix=".jpg").name
-            pylab.imsave(slice_rgb_file, slice_np, format="jpg", cmap="Greys_r")
-            slice_rgb_np = np.array(Image.open(slice_rgb_file))
-            remove_file(slice_rgb_file)
-
-            # slice_rgb_np = np.array(Image.fromarray(slice_np).convert("RGB"))
-            # print(f"Are Numpy Equal {np.unique(np.equal(slice_rgb_np, slice_rgb_np_1), return_counts=True)}")
+            if strtobool(request.get("pylab")):
+                slice_rgb_file = tempfile.NamedTemporaryFile(suffix=".jpg").name
+                pylab.imsave(slice_rgb_file, slice_np, format="jpg", cmap="Greys_r")
+                slice_rgb_np = np.array(Image.open(slice_rgb_file))
+                remove_file(slice_rgb_file)
+            else:
+                slice_rgb_np = np.array(Image.fromarray(slice_np).convert("RGB"))
 
         logger.info(f"Slice Index:{slice_idx}; (Image) Slice Shape: {slice_np.shape}")
         if debug:
@@ -168,9 +212,7 @@ class Sam2InferTask(InferTask):
         box = [roi[1], roi[0], roi[3], roi[2]] if roi else None
 
         point_labels = [1] * len(fp) + [0] * len(bp)
-        logger.info(f"Point Coords: {point_coords}")
-        logger.info(f"Point Labels: {point_labels}")
-        logger.info(f"Box: {box}")
+        logger.info(f"Coords: {point_coords}; Labels: {point_labels}; Box: {box}")
 
         masks, scores, _ = predictor.predict(
             point_coords=np.array(point_coords) if point_coords else None,
@@ -205,7 +247,7 @@ class Sam2InferTask(InferTask):
 
         return self.writer(data)
 
-    def run_3d(self, image_tensor, set_image_state, request):
+    def run_3d(self, image_tensor, set_image_state, request, debug=False):
         device = name_to_device(request.get("device", "cuda"))
         reset_state = strtobool(request.get("reset_state", "false"))
         predictor = self.predictors.get(device)
@@ -221,11 +263,28 @@ class Sam2InferTask(InferTask):
             predictor = build_sam2_video_predictor(self.config_path, self.path, device=device)
             self.predictors[device] = predictor
 
+        image_path = request["image"]
+        video_dir = os.path.join(
+            image_cache.cache_path, get_basename_no_ext(image_path) if debug else md5_digest(image_path)
+        )
+        if not os.path.isdir(video_dir):
+            os.makedirs(video_dir, exist_ok=True)
+            for slice_idx in tqdm(range(image_tensor.shape[-1])):
+                slice_np = image_tensor[:, :, slice_idx].numpy()
+                slice_file = os.path.join(video_dir, f"{str(slice_idx).zfill(5)}.jpg")
+
+                if strtobool(request.get("pylab")):
+                    pylab.imsave(slice_file, slice_np, format="jpg", cmap="Greys_r")
+                else:
+                    Image.fromarray(slice_np).convert("RGB").save(slice_file)
+            logger.info(f"Image (Flattened): {image_tensor.shape[-1]} slices; {video_dir}")
+
+        # Set Expiry Time
+        image_cache.cached_dirs[video_dir] = time() + image_cache.cache_expiry_sec
+
         if reset_state or set_image_state:
             if self.inference_state:
                 predictor.reset_state(self.inference_state)
-            image_path = request["image"]
-            video_dir = os.path.join(self.cache_path, get_basename_no_ext(image_path))
             self.inference_state = predictor.init_state(video_path=video_dir)
 
         logger.info(f"Image Shape: {image_tensor.shape}")
@@ -238,28 +297,36 @@ class Sam2InferTask(InferTask):
                 sids.add(sid)
                 kps = fps if key == "foreground" else bps
                 if kps.get(sid):
-                    kps[sid].append([p[1], p[0]])
+                    kps[sid].append([p[0], p[1]])
                 else:
-                    kps[sid] = [[p[1], p[0]]]
+                    kps[sid] = [[p[0], p[1]]]
+
+        box = None
+        roi = request.get("roi")
+        if roi:
+            box = [roi[1], roi[0], roi[3], roi[2]]
+            sids.update([i for i in range(roi[4], roi[5])])
 
         pred = np.zeros(tuple(image_tensor.shape))
         for sid in sorted(sids):
             fp = fps.get(sid, [])
             bp = bps.get(sid, [])
 
-            point_coords = np.array([fp + bp])
-            point_labels = np.array([[1] * len(fp) + [0] * len(bp)])
-            # logger.info(f"{sid} - Point Coords: {point_coords.tolist()}")
-            # logger.info(f"{sid} - Point Labels: {point_labels.tolist()}")
+            point_coords = fp + bp
+            point_coords = [[p[1], p[0]] for p in point_coords]  # Flip x,y => y,x
+            point_labels = [1] * len(fp) + [0] * len(bp)
+            # logger.info(f"{sid} - Coords: {point_coords}; Labels: {point_labels}; Box: {box}")
 
             o_frame_ids, o_obj_ids, o_mask_logits = predictor.add_new_points_or_box(
                 inference_state=self.inference_state,
                 frame_idx=sid,
                 obj_id=1,
-                points=point_coords,
-                labels=point_labels,
+                points=np.array(point_coords) if point_coords else None,
+                labels=np.array(point_labels) if point_labels else None,
+                box=np.array(box) if box else None,
             )
-            logger.info(f"{sid} - mask_logits: {o_mask_logits.shape}; frame_ids: {o_frame_ids}; obj_ids: {o_obj_ids}")
+
+            # logger.info(f"{sid} - mask_logits: {o_mask_logits.shape}; frame_ids: {o_frame_ids}; obj_ids: {o_obj_ids}")
             pred[:, :, sid] = (o_mask_logits[0][0] > 0.0).cpu().numpy()
 
         for out_frame_idx, out_obj_ids, out_mask_logits in predictor.propagate_in_video(self.inference_state):
@@ -295,17 +362,6 @@ class Sam2InferTask(InferTask):
                 logger.info(f"Image Meta: {image_tensor.meta}")
             self.image_cache[image_path] = image_tensor
             set_image_state = True
-
-            video_dir = os.path.join(self.cache_path, get_basename_no_ext(image_path))
-            if self.dimension == 3 and not os.path.isdir(video_dir):
-                os.makedirs(video_dir, exist_ok=True)
-                for slice_idx in tqdm(range(image_tensor.shape[-1])):
-                    slice_np = image_tensor[:, :, slice_idx].numpy()
-                    slice_file = os.path.join(video_dir, f"{str(slice_idx).zfill(5)}.jpg")
-
-                    pylab.imsave(slice_file, slice_np, format="jpg", cmap="Greys_r")
-                    # Image.fromarray(slice_np).convert("RGB").save(slice_file)
-                logger.info(f"Image (Flattened): {image_tensor.shape[-1]} slices")
 
         logger.info(f"Image Shape: {image_tensor.shape}; cached: {cache_image}")
         if self.dimension == 2:
