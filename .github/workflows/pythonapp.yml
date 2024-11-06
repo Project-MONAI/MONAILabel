@@ -144,7 +144,7 @@ jobs:
       MONAI_ZOO_AUTH_TOKEN: ${{ github.token }}
     strategy:
       matrix:
-        python-version: ["3.9"]
+        python-version: ["3.10"]
     steps:
       - uses: actions/checkout@v4
       - name: Set up Python
