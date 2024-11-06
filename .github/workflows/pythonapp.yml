@@ -41,6 +41,7 @@ jobs:
           python-version: ${{ matrix.python-version }}
       - name: Install dependencies
         run: |
+          rm -rf /opt/hostedtoolcache
           python -m pip install --upgrade pip wheel
           pip install -r requirements.txt
 
@@ -59,6 +60,7 @@ jobs:
           python-version: ${{ matrix.python-version }}
       - name: Install dependencies
         run: |
+          rm -rf /opt/hostedtoolcache
           sudo apt-get install openslide-tools -y
           python -m pip install --upgrade pip wheel
           pip install -r requirements-dev.txt
@@ -107,9 +109,10 @@ jobs:
           key: ${{ runner.os }}-pip-${{ steps.pip-cache.outputs.datew }}
       - name: Install dependencies
         run: |
+          rm -rf /opt/hostedtoolcache
           sudo apt-get install openslide-tools -y
           python -m pip install --user --upgrade pip setuptools wheel
-          python -m pip install torch>=1.7 torchvision
+          python -m pip install torch torchvision
       - name: Build Package
         run: |
           ./runtests.sh --clean
@@ -165,6 +168,7 @@ jobs:
           key: ${{ runner.os }}-pip-${{ steps.pip-cache.outputs.datew }}
       - name: Install dependencies
         run: |
+          rm -rf /opt/hostedtoolcache
           sudo apt-get install openslide-tools -y
           python -m pip install --upgrade pip wheel
           python -m pip install -r docs/requirements.txt
