@@ -28,6 +28,10 @@ jobs:
       MONAI_ZOO_AUTH_TOKEN: ${{ github.token }}
     steps:
       - uses: actions/checkout@v4
+      - name: Set up Python 3.9
+        uses: actions/setup-python@v5
+        with:
+          python-version: 3.9
       - name: Cleanup
         run: |
           echo Before Cleanup...
@@ -40,6 +44,9 @@ jobs:
           cd -
           echo After Cleanup...
           df -h
+      - name: Install dependencies
+        run: |
+          python -m pip install --upgrade pip wheel pytest
       - name: Build
         run: |
           docker build -t projectmonai/monailabel:${{ github.event.inputs.tag || 'latest'  }} -f Dockerfile .
