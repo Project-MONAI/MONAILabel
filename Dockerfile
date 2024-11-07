@@ -17,20 +17,21 @@ ARG MONAI_IMAGE=projectmonai/monai:1.4.0
 ARG BUILD_IMAGE=python:3.10
 ARG NODE_IMAGE=node:slim
 
+# Phase1: Build OHIF Viewer
 FROM ${NODE_IMAGE} AS ohifbuild
-ADD ./plugins/ohifv3 /opt/ohifv3
+COPY plugins/ohifv3 /opt/ohifv3
 RUN apt update -y && apt install -y git
 RUN cd /opt/ohifv3 && ./build.sh /opt/ohifv3/release
 
+# Phase2: Build MONAI Label Package
 FROM ${BUILD_IMAGE} AS build
 ADD . /opt/monailabel/
 COPY --from=ohifbuild /opt/ohifv3/release /opt/monailabel/monailabel/endpoints/static/ohif
 RUN python -m pip install pip setuptools wheel twine
 RUN cd /opt/monailabel && BUILD_OHIF=false python setup.py sdist bdist_wheel --build-number $(date +'%Y%m%d%H%M')
 
+# Phase3: Build Final Docker based on MONAI
 FROM ${MONAI_IMAGE}
 LABEL maintainer="monai.contact@gmail.com"
-
 COPY --from=build /opt/monailabel/dist/monailabel* /opt/monailabel/dist/
-COPY requirements.txt /tmp/requirements.txt
-RUN python -m pip install /opt/monailabel/dist/monailabel*.whl
+RUN SAM2_BUILD_CUDA=0 python -m pip install /opt/monailabel/dist/monailabel*.whl

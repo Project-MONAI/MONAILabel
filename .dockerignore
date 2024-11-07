@@ -12,11 +12,8 @@
 __pycache__
 .idea
 .vscode
-
-Dockerfile
-.dockerignore
 .webpack
-.github
+node_modules/
 
 # Environments
 .env
@@ -28,26 +25,3 @@ env.bak/
 venv.bak/
 .venv/
 ubuntu_venv/
-
-# apps
-sample-apps/*/logs
-sample-apps/*/train
-sample-apps/*/model
-
-# not part of package
-docs
-tests
-
-# MONAI-label
-*.nii.gz
-.DS_Store
-*.DS_Store
-bin
-junit
-test-output.xml
-studies
-tests/data
-
-# Packages
-node_modules
-yarn.lock
