@@ -13,7 +13,7 @@
 # please run `./runtests.sh --clean && DOCKER_BUILDKIT=1 docker build -t projectmonai/monailabel:latest .`
 # to use different version of MONAI pass `--build-arg FINAL_IMAGE=...`
 
-ARG FINAL_IMAGE=pytorch/pytorch:2.5.1-cuda12.4-cudnn9-devel
+ARG FINAL_IMAGE=pytorch/pytorch:2.5.1-cuda12.4-cudnn9-runtime
 ARG BUILD_IMAGE=python:3.10
 ARG NODE_IMAGE=node:slim
 
@@ -35,6 +35,6 @@ RUN BUILD_OHIF=false python setup.py bdist_wheel --build-number $(date +'%Y%m%d%
 FROM ${FINAL_IMAGE}
 LABEL maintainer="monai.contact@gmail.com"
 WORKDIR /opt/monailabel
-COPY --from=build /opt/monailabel/dist/monailabel* /opt/monailabel/dist/
 RUN apt update -y && apt install -y git curl
+COPY --from=build /opt/monailabel/dist/monailabel* /opt/monailabel/dist/
 RUN python -m pip install -v /opt/monailabel/dist/monailabel*.whl
