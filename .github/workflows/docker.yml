@@ -31,7 +31,6 @@ jobs:
       - name: Build
         run: |
           rm -rf /opt/hostedtoolcache
-          docker system prune -f
           DOCKER_BUILDKIT=1 docker build -t projectmonai/monailabel:${{ github.event.inputs.tag || 'latest'  }} -f Dockerfile .
       - name: Verify
         run: |

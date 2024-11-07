@@ -14,7 +14,9 @@ __pycache__
 .vscode
 
 Dockerfile
+.dockerignore
 .webpack
+.github
 
 # Environments
 .env
@@ -32,9 +34,9 @@ sample-apps/*/logs
 sample-apps/*/train
 sample-apps/*/model
 
-# docs build
-docs/build
-docs/source/apidocs
+# not part of package
+docs
+tests
 
 # MONAI-label
 *.nii.gz
