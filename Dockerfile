@@ -37,4 +37,4 @@ LABEL maintainer="monai.contact@gmail.com"
 WORKDIR /opt/monailabel
 RUN apt update -y && apt install -y git curl
 COPY --from=build /opt/monailabel/dist/monailabel* /opt/monailabel/dist/
-RUN python -m pip install -v /opt/monailabel/dist/monailabel*.whl
+RUN python -m pip install -v pytest /opt/monailabel/dist/monailabel*.whl
