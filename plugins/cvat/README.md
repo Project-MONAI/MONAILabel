@@ -57,8 +57,9 @@ chmod +x nuctl-$NUCLIO_VERSION-linux-amd64
 ln -sf $(pwd)/nuctl-$NUCLIO_VERSION-linux-amd64 /usr/local/bin/nuctl
 ```
 
-#### Deployment of Endoscopy Models
+#### Deployment of Endoscopy/SAM2 Models
 This step is to deploy MONAI Label plugin with endoscopic models using Nuclio tool.
+> **Prerequisite:** MONAI Label Server is up and running for _**endoscopy**_ app.
 
 ```bash
 # Run MONAI Label Server (Make sure this Host/IP is accessible inside a docker)
@@ -68,8 +69,13 @@ git clone https://github.com/Project-MONAI/MONAILabel.git
 
 # Deploy all endoscopy models
 ./plugins/cvat/deploy.sh endoscopy
+
 # Or to deploy specific function and model, e.g., tooltracking
 ./plugins/cvat/deploy.sh endoscopy tooltracking
+
+# Deploy SAM2 Interactor
+./plugins/cvat/deploy.sh sam2 interactor
+
 ```
 
 After model deployment, you can see the model names in the `Models` page of CVAT.

@@ -49,6 +49,7 @@ def handler(context, event):
     model: str = context.user_data.model
     client: MONAILabelClient = context.user_data.model_handler
     context.logger.info(f"Run model: {model}")
+    # TODO:: This is not really a tracker;  Need to accumulate previous images + rois and do actual SAM2 Propagation.
 
     data = event.body
     image = Image.open(io.BytesIO(base64.b64decode(data["image"])))
@@ -59,47 +60,48 @@ def handler(context, event):
     image.save(image_file)
 
     shapes = data.get("shapes")
-    context.logger.info(f"Shapes: {shapes}")
-
     states = data.get("states")
-    context.logger.info(f"States: {states}")
+    context.logger.info(f"Shapes: {shapes}; States: {states}")
+
+    rois = []
+    for i, shape in enumerate(shapes):
+        roi = np.array(shape).astype(int).tolist()
+        context.logger.info(f"{i} => Shape: {shape}; roi: {roi}")
+        rois.append(roi)
+
+    roi = rois[-1]  # Pick the last
+    params = {"output": "json", "roi": roi}
+
+    # context.logger.info(f"Model:{model}; Params: {params}")
+    output_mask, output_json = client.infer(model=model, image_id="", file=image_file, params=params)
+    if isinstance(output_json, str) or isinstance(output_json, bytes):
+        output_json = json.loads(output_json)
+    # context.logger.info(f"Mask: {output_mask}; Output JSON: {output_json}")
+
+    mask_np = np.array(Image.open(output_mask)).astype(np.uint8)
+    os.remove(output_mask)
+    os.remove(image_file)
+    context.logger.info(f"Image: {image.size}; Mask: {mask_np.shape}; JSON: {output_json}")
 
     results = {"shapes": [], "states": []}
-    bboxes = []
-    for i, shape in enumerate(shapes):
-        context.logger.info(f"{i} => Shape: {shape}")
+    d = FindContoursd(keys="pred")({"pred": mask_np})
+    annotation = d.get("result", {}).get("annotation")
+    for element in annotation.get("elements", []):
+        contours = element["contours"]
+        all_points = []
+        for contour in contours:
+            points = np.flip(np.array(contour, int))
+            all_points.append(points.flatten().tolist())
 
         def bounding_box(pts):
             x, y = zip(*pts)
             return [min(x), min(y), max(x), max(y)]
 
-        bbox = bounding_box(np.array(shape).astype(int).reshape(-1, 2).tolist())
-        context.logger.info(f"bbox: {bbox}")
-        bboxes.append(bbox)
+        bbox = bounding_box(np.array(all_points).astype(int).reshape(-1, 2).tolist())
+        context.logger.info(f"Input Box: {roi}; Output Box: {bbox}")
+        results["shapes"].append(bbox)
 
-    bbox = bboxes[-1]  # Pick the last
-    params = {"output": "json", "largest_cc": True, "bbox": bbox}
-    output_mask, output_json = client.infer(model=model, image_id="", file=image_file, params=params)
-    if isinstance(output_json, str) or isinstance(output_json, bytes):
-        output_json = json.loads(output_json)
-    context.logger.info(f"Mask: {output_mask}; Output JSON: {output_json}")
-
-    mask_np = np.array(Image.open(output_mask)).astype(np.uint8)
-    os.remove(output_mask)
-    os.remove(image_file)
-
-    context.logger.info(f"Image: {image.size}; Mask: {mask_np.shape}; JSON: {output_json}")
-
-    d = FindContoursd(keys="pred")({"pred": mask_np})
-    annotation = d.get("result", {}).get("annotation")
-    for element in annotation.get("elements", []):
-        contours = element["contours"]
-        for contour in contours:
-            points = np.flip(np.array(contour, int))
-            shape = points.flatten().tolist()
-            results["shapes"].append(shape)
-            break
-
+    context.logger.info("=============================================================================\n")
     return context.Response(
         body=json.dumps(results),
         headers={},

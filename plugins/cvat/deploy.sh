@@ -30,9 +30,9 @@ do
   echo "Using MONAI Label Server: $MONAI_LABEL_SERVER"
   cp $func_config ${func_config}.bak
   sed -i "s|http://monailabel.com|$MONAI_LABEL_SERVER|g" $func_config
-  mv ${func_config}.bak $func_config
   echo "Deploying $func_config..."
   nuctl deploy --project-name cvat --path "$func_root" --file "$func_config" --platform local
+  mv ${func_config}.bak $func_config
 done
 
 nuctl get function

@@ -44,6 +44,7 @@ urllib3==2.2.2
 scikit-learn
 scipy
 google-auth==2.29.0
+SAM-2 @ git+https://github.com/facebookresearch/sam2.git@c2ec8e14a185632b0a5d8b161928ceb50197eddc ; python_version >= '3.10'
 
 
 # scipy and scikit-learn latest packages are missing on python 3.8

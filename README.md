@@ -83,6 +83,7 @@ In addition, you can find a table of the basic supported fields, modalities, vie
       <li>Segmentation</li>
       <li>DeepGrow</li>
       <li>DeepEdit</li>
+      <li>SAM2 (2D/3D)</li>
     </ul>
   </td>
   <td>
@@ -114,6 +115,7 @@ In addition, you can find a table of the basic supported fields, modalities, vie
       <li>NuClick</li>
       <li>Segmentation</li>
       <li>Classification</li>
+      <li>SAM2 (2D)</li>
     </ul>
   </td>
   <td>
@@ -143,6 +145,7 @@ In addition, you can find a table of the basic supported fields, modalities, vie
       <li>DeepEdit</li>
       <li>Tooltracking</li>
       <li>InBody/OutBody</li>
+      <li>SAM2 (2D)</li>
     </ul>
   </td>
   <td>
@@ -163,6 +166,12 @@ In addition, you can find a table of the basic supported fields, modalities, vie
   </td>
 <tr>
 </table>
+
+> [**SAM2**](https://github.com/facebookresearch/sam2/)
+>
+> By default, SAM2 is included for all the above Apps only when **_python >= 3.10_**
+>  - **sam_2d**: for any organ or tissue and others over a given slice/2D image.
+>  - **sam_3d**: to support SAM2 propagation over multiple slices (Radiology/MONAI-Bundle).
 
 # Getting Started with MONAI Label
 ### MONAI Label requires a few steps to get started:

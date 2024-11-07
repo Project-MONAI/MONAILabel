@@ -140,6 +140,7 @@ function clean_py() {
 
   find sample-apps -type d -name "__pycache__" -exec rm -rf "{}" +
   find monailabel  -type d -name "__pycache__" -exec rm -rf "{}" +
+  find plugins  -type d -name "node_modules" -exec rm -rf "{}" +
 }
 
 function torch_validate() {

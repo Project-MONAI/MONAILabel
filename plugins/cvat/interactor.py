@@ -53,6 +53,7 @@ def handler(context, event):
     image = Image.open(io.BytesIO(base64.b64decode(data["image"])))
     foreground = data.get("pos_points")
     background = data.get("neg_points")
+    roi = data.get("obj_bbox", None)
     context.logger.info(f"Image: {image.size}; Foreground: {foreground}; Background: {background}")
 
     image_file = tempfile.NamedTemporaryFile(suffix=".jpg").name
@@ -64,6 +65,11 @@ def handler(context, event):
         "background": np.asarray(background, dtype=int).tolist() if background else [],
         # "largest_cc": True,
     }
+    if roi:
+        roi = np.asarray(roi, dtype=int).flatten().tolist()
+        params["roi"] = roi
+
+    context.logger.info(f"Model:{model}; Params: {params}")
     output_mask, output_json = client.infer(model=model, image_id="", file=image_file, params=params)
     if isinstance(output_json, str) or isinstance(output_json, bytes):
         output_json = json.loads(output_json)
@@ -76,6 +82,8 @@ def handler(context, event):
 
     resp = {"mask": mask_np.tolist()}
     context.logger.info(f"Image: {image.size}; Mask: {mask_im.size} vs {mask_np.shape}; JSON: {output_json}")
+
+    context.logger.info("=============================================================================\n")
     return context.Response(
         body=json.dumps(resp),
         headers={},
