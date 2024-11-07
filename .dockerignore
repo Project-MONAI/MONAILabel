@@ -12,9 +12,8 @@
 __pycache__
 .idea
 .vscode
-
-Dockerfile
 .webpack
+node_modules/
 
 # Environments
 .env
@@ -31,21 +30,5 @@ ubuntu_venv/
 sample-apps/*/logs
 sample-apps/*/train
 sample-apps/*/model
-
-# docs build
 docs/build
 docs/source/apidocs
-
-# MONAI-label
-*.nii.gz
-.DS_Store
-*.DS_Store
-bin
-junit
-test-output.xml
-studies
-tests/data
-
-# Packages
-node_modules
-yarn.lock
