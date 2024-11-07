@@ -49,7 +49,7 @@ jobs:
           python -m pip install --upgrade pip wheel pytest
       - name: Build
         run: |
-          docker build -t projectmonai/monailabel:${{ github.event.inputs.tag || 'latest'  }} -f Dockerfile .
+          DOCKER_BUILDKIT=0 docker build -t projectmonai/monailabel:${{ github.event.inputs.tag || 'latest'  }} -f Dockerfile .
       - name: Verify
         run: |
           docker run --rm -i --ipc=host --net=host -v $(pwd):/workspace projectmonai/monailabel:${{ github.event.inputs.tag || 'latest'  }} /workspace/runtests.sh --net
