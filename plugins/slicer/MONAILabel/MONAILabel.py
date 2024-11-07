@@ -255,6 +255,7 @@ class MONAILabelWidget(ScriptedLoadableModuleWidget, VTKObservationMixin):
         self.scribblesMode = None
         self.ignoreScribblesLabelChangeEvent = False
         self.deepedit_multi_label = False
+        self.resetLabelState = False
 
         self.optionsSectionIndex = 0
         self.optionsNameIndex = 0
@@ -722,6 +723,10 @@ class MONAILabelWidget(ScriptedLoadableModuleWidget, VTKObservationMixin):
         currentLabelIndex = self.ui.labelComboBox.currentIndex
         if currentLabelIndex >= 0:
             currentLabel = self.ui.labelComboBox.itemText(currentLabelIndex)
+            oldLabel = self._parameterNode.GetParameter("CurrentLabel")
+            if oldLabel and oldLabel != currentLabel:
+                print(f"Old Label: {oldLabel}; New Label: {currentLabel}")
+                self.resetLabelState = True
             self._parameterNode.SetParameter("CurrentLabel", currentLabel)
 
         currentScribLabelIndex = self.ui.scribLabelComboBox.currentIndex
@@ -1686,6 +1691,10 @@ class MONAILabelWidget(ScriptedLoadableModuleWidget, VTKObservationMixin):
                 params["roi"] = selected_roi
             if not is_3d:
                 params["slice"] = sliceIndex
+            if not params.get("reset_state") and self.resetLabelState:
+                print(f"Override State: {params.get('reset_state')} vs {self.resetLabelState}")
+                params["reset_state"] = True
+                self.resetLabelState = False
             print(f"Request Params for Inference: {params}")
 
             image_file = self.current_sample["id"]

@@ -57,9 +57,9 @@ The MONAI Bundle format provides a portable description of deep learning models.
 ----
 > [**SAM2**](https://github.com/facebookresearch/sam2/)
 >
-> By default, SAM2 is available **_(python >= 3.10)_** for all the above Apps
->  - **sam_2d**: for any organ or tissue and others.
->  - **sam_3d**: in case of Radiology/MonaiBundle apps to support SAM2 propagation over multiple slices.
+> By default, SAM2 is included for all the above Apps only when **_python >= 3.10_**
+>  - **sam_2d**: for any organ or tissue and others over a given slice/2D image.
+>  - **sam_3d**: to support SAM2 propagation over multiple slices (Radiology/MONAI-Bundle).
 
 
 ### Creating a Custom App

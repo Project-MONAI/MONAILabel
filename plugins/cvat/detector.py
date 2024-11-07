@@ -105,6 +105,7 @@ def handler(context, event):
                         }
                     )
 
+    context.logger.info("=============================================================================\n")
     return context.Response(
         body=json.dumps(results),
         headers={},
