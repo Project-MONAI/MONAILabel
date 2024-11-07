@@ -37,7 +37,6 @@ FROM ${FINAL_IMAGE}
 LABEL maintainer="monai.contact@gmail.com"
 WORKDIR /opt/monailabel
 RUN apt update -y && apt install -y git curl openslide-tools python3 python-is-python3 python3-pip
-RUN python -m pip install pytest torch torchvision torchaudio
+RUN python -m pip install --no-cache-dir pytest torch torchvision torchaudio
 COPY --from=build /opt/monailabel/dist/monailabel* /opt/monailabel/dist/
-RUN python -m pip install -v /opt/monailabel/dist/monailabel*.whl
-RUN rm -rf /root/.cache/pip
+RUN python -m pip install --no-cache-dir /opt/monailabel/dist/monailabel*.whl
