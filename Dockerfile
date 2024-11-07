@@ -14,6 +14,7 @@
 # to use different version of MONAI pass `--build-arg FINAL_IMAGE=...`
 
 ARG FINAL_IMAGE=pytorch/pytorch:2.5.1-cuda12.4-cudnn9-runtime
+#ARG FINAL_IMAGE=ubuntu:22.04
 ARG BUILD_IMAGE=python:3.10
 ARG NODE_IMAGE=node:slim
 
@@ -35,6 +36,7 @@ RUN BUILD_OHIF=false python setup.py bdist_wheel --build-number $(date +'%Y%m%d%
 FROM ${FINAL_IMAGE}
 LABEL maintainer="monai.contact@gmail.com"
 WORKDIR /opt/monailabel
-RUN apt update -y && apt install -y git curl
+RUN apt update -y && apt install -y git curl openslide-tools # python3 python-is-python3 python3-pip
+RUN python -m pip install pytest # torch torchvision torchaudio
 COPY --from=build /opt/monailabel/dist/monailabel* /opt/monailabel/dist/
-RUN python -m pip install -v pytest /opt/monailabel/dist/monailabel*.whl
+RUN python -m pip install -v /opt/monailabel/dist/monailabel*.whl
