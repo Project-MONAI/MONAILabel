@@ -13,7 +13,7 @@
 # please run `./runtests.sh --clean && DOCKER_BUILDKIT=1 docker build -t projectmonai/monailabel:latest .`
 # to use different version of MONAI pass `--build-arg MONAI_IMAGE=...`
 
-ARG FINAL_IMAGE=nvcr.io/nvidia/pytorch:24.08-py3
+ARG FINAL_IMAGE=pytorch/pytorch:2.5.1-cuda12.4-cudnn9-runtime
 ARG BUILD_IMAGE=python:3.10
 ARG NODE_IMAGE=node:slim
 
@@ -25,13 +25,15 @@ RUN cd /opt/ohifv3 && ./build.sh /opt/ohifv3/release
 
 # Phase2: Build MONAI Label Package
 FROM ${BUILD_IMAGE} AS build
+RUN python -m pip install pip setuptools wheel twine
 ADD . /opt/monailabel/
 COPY --from=ohifbuild /opt/ohifv3/release /opt/monailabel/monailabel/endpoints/static/ohif
-RUN python -m pip install pip setuptools wheel twine
-RUN cd /opt/monailabel && BUILD_OHIF=false python setup.py sdist bdist_wheel --build-number $(date +'%Y%m%d%H%M')
+RUN cd /opt/monailabel && BUILD_OHIF=false python setup.py bdist_wheel --build-number $(date +'%Y%m%d%H%M')
 
 # Phase3: Build Final Docker
 FROM ${FINAL_IMAGE}
 LABEL maintainer="monai.contact@gmail.com"
+WORKDIR /opt/monailabel
 COPY --from=build /opt/monailabel/dist/monailabel* /opt/monailabel/dist/
+RUN apt update -y && apt install -y git
 RUN python -m pip install /opt/monailabel/dist/monailabel*.whl

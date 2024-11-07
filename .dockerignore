@@ -25,3 +25,10 @@ env.bak/
 venv.bak/
 .venv/
 ubuntu_venv/
+
+# apps
+sample-apps/*/logs
+sample-apps/*/train
+sample-apps/*/model
+docs/build
+docs/source/apidocs
