@@ -116,15 +116,8 @@ class Sam2InferTask(InferTask):
             self._config.update(config)
 
         # Download PreTrained Model
-        # https://github.com/facebookresearch/sam2?tab=readme-ov-file#model-description
-        # https://huggingface.co/facebook/sam2-hiera-large
-
-        pt_url = "https://huggingface.co/facebook/sam2.1-hiera-large/resolve/main/sam2.1_hiera_large.pt"
-        conf_url = "https://huggingface.co/facebook/sam2.1-hiera-large/resolve/main/sam2.1_hiera_l.yaml"
-
-        # pt_url = "https://huggingface.co/facebook/sam2-hiera-large/resolve/main/sam2_hiera_large.pt"
-        # conf_url = "https://huggingface.co/facebook/sam2-hiera-large/resolve/main/sam2_hiera_l.yaml"
-
+        pt_url = settings.MONAI_SAM_MODEL_PT
+        conf_url = settings.MONAI_SAM_MODEL_CFG
         sam_pt = pt_url.split("/")[-1]
         sam_conf = conf_url.split("/")[-1]
 
