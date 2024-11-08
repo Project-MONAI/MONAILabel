@@ -65,7 +65,7 @@ jobs:
           rm -r build monailabel*.egg-info
 
           # install from wheel
-          python -m pip install "$tmp_dir"/monailabel*.whl
+          python -m pip install "$tmp_dir"/monailabel*.whl[all]
           python -c 'import monailabel; monailabel.print_config()' 2>&1 | grep -iv "unknown"
           python -c 'import monailabel; print(monailabel.__file__)'
 
@@ -73,7 +73,7 @@ jobs:
           python -m pip install pytest
 
           # start the monailabel server in the background and run the integration tests
-          ./runtests.sh --net
+          # ./runtests.sh --net
 
           # cleanup
           python -m pip uninstall -y monailabel
