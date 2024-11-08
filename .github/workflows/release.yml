@@ -52,11 +52,11 @@ jobs:
           rm -rf /opt/hostedtoolcache
           sudo apt-get install openslide-tools -y
           python -m pip install --user --upgrade pip setuptools wheel
-          #python -m pip install torch torchvision
+          python -m pip install torch torchvision
       - name: Build Package
         run: |
           ./runtests.sh --clean
-          BUILD_OHIF=false python setup.py sdist bdist_wheel --build-number $(date +'%Y%m%d%H%M')
+          BUILD_OHIF=true python setup.py sdist bdist_wheel --build-number $(date +'%Y%m%d%H%M')
           ls -l dist
       - name: Verify Package
         run: |
@@ -65,7 +65,7 @@ jobs:
           rm -r build monailabel*.egg-info
 
           # install from wheel
-          python -m pip install `ls "$tmp_dir"/monailabel*.whl`[all] 
+          python -m pip install `ls "$tmp_dir"/monailabel*.whl`[all]
           python -c 'import monailabel; monailabel.print_config()' 2>&1 | grep -iv "unknown"
           python -c 'import monailabel; print(monailabel.__file__)'
 
@@ -73,7 +73,7 @@ jobs:
           python -m pip install pytest
 
           # start the monailabel server in the background and run the integration tests
-          # ./runtests.sh --net
+          ./runtests.sh --net
 
           # cleanup
           python -m pip uninstall -y monailabel
@@ -91,7 +91,7 @@ jobs:
         run: |
           rm dist/monai*.tar.gz
 
-      - name: Publish distribution to Test PyPI
+      - name: Publish distribution to Test
         if: ${{ github.event.inputs.test_py == 'true' }}
         uses: pypa/gh-action-pypi-publish@master
         with:
