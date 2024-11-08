@@ -104,12 +104,12 @@ class Settings(BaseSettings):
 
     # Refer: https://github.com/facebookresearch/sam2?tab=readme-ov-file#model-description
     # Refer: https://huggingface.co/facebook/sam2-hiera-large
-    MONAI_SAM_MODEL_PT = (
+    MONAI_SAM_MODEL_PT: str = (
         "https://huggingface.co/facebook/sam2.1-hiera-large/resolve/main/sam2.1_hiera_large.pt"
         if is_package_installed("SAM-2")
         else "https://huggingface.co/facebook/sam2-hiera-large/resolve/main/sam2_hiera_large.pt"
     )
-    MONAI_SAM_MODEL_CFG = (
+    MONAI_SAM_MODEL_CFG: str = (
         "https://huggingface.co/facebook/sam2.1-hiera-large/resolve/main/sam2.1_hiera_l.yaml"
         if is_package_installed("SAM-2")
         else "https://huggingface.co/facebook/sam2-hiera-large/resolve/main/sam2_hiera_l.yaml"
