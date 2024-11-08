@@ -91,7 +91,7 @@ jobs:
         run: |
           rm dist/monai*.tar.gz
 
-      - name: Publish distribution to Test PyPI
+      - name: Publish distribution to Test
         if: ${{ github.event.inputs.test_py == 'true' }}
         uses: pypa/gh-action-pypi-publish@master
         with:

@@ -46,7 +46,7 @@ class MyApp(MONAILabelApp):
             self.epistemic_simulation_size = int(conf.get("epistemic_simulation_size", "5"))
             self.epistemic_dropout = float(conf.get("epistemic_dropout", "0.2"))
 
-        self.sam = strtobool(conf.get("sam", "true"))
+        self.sam = strtobool(conf.get("sam2", "true"))
         super().__init__(
             app_dir=app_dir,
             studies=studies,
