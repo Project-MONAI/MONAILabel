@@ -22,6 +22,8 @@ import numpy as np
 import pylab
 import schedule
 import torch
+from hydra import initialize_config_dir
+from hydra.core.global_hydra import GlobalHydra
 from monai.transforms import KeepLargestConnectedComponent, LoadImaged
 from PIL import Image
 from sam2.build_sam import build_sam2, build_sam2_video_predictor
@@ -115,12 +117,27 @@ class Sam2InferTask(InferTask):
 
         # Download PreTrained Model
         # https://github.com/facebookresearch/sam2?tab=readme-ov-file#model-description
-        pt = "sam2.1_hiera_large.pt"
-        url = f"https://dl.fbaipublicfiles.com/segment_anything_2/092824/{pt}"
-        self.path = os.path.join(model_dir, f"pretrained_{pt}")
-        download_file(url, self.path)
+        # https://huggingface.co/facebook/sam2-hiera-large
 
-        self.config_path = "configs/sam2.1/sam2.1_hiera_l.yaml"
+        pt_url = "https://huggingface.co/facebook/sam2.1-hiera-large/resolve/main/sam2.1_hiera_large.pt"
+        conf_url = "https://huggingface.co/facebook/sam2.1-hiera-large/resolve/main/sam2.1_hiera_l.yaml"
+
+        # pt_url = "https://huggingface.co/facebook/sam2-hiera-large/resolve/main/sam2_hiera_large.pt"
+        # conf_url = "https://huggingface.co/facebook/sam2-hiera-large/resolve/main/sam2_hiera_l.yaml"
+
+        sam_pt = pt_url.split("/")[-1]
+        sam_conf = conf_url.split("/")[-1]
+
+        self.path = os.path.join(model_dir, sam_pt)
+        self.config_path = os.path.join(model_dir, sam_conf)
+
+        GlobalHydra.instance().clear()
+        initialize_config_dir(config_dir=model_dir)
+
+        download_file(pt_url, self.path)
+        download_file(conf_url, self.config_path)
+        self.config_path = sam_conf
+
         self.predictors = {}
         self.image_cache = {}
         self.inference_state = None
@@ -393,8 +410,8 @@ def main():
         force=True,
     )
 
-    app_name = "pathology"
-    app_dir = os.path.abspath(os.path.join(os.path.dirname(__file__), "..", "..", "..", "sample-apps", app_name))
+    app_name = "radiology"
+    app_dir = os.path.abspath(os.path.join(os.path.dirname(__file__), "..", "..", "sample-apps", app_name))
     model_dir = os.path.join(app_dir, "model")
     logger.info(f"Model Dir: {model_dir}")
     if app_name == "pathology":

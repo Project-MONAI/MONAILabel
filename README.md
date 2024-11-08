@@ -185,7 +185,7 @@ In addition, you can find a table of the basic supported fields, modalities, vie
 
 ### Current Stable Version
 <a href="https://pypi.org/project/monailabel/#history"><img alt="GitHub release (latest SemVer)" src="https://img.shields.io/github/v/release/project-monai/monailabel"></a>
-<pre>pip install -U monailabel</pre>
+<pre>pip install -U monailabel[all]</pre>
 
 MONAI Label supports the following OS with **GPU/CUDA** enabled. For more details instruction, please see the installation guides.
 - [Ubuntu](https://docs.monai.io/projects/label/en/latest/installation.html)
