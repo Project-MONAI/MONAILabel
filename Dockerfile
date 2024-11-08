@@ -36,7 +36,12 @@ RUN BUILD_OHIF=false python setup.py bdist_wheel --build-number $(date +'%Y%m%d%
 FROM ${FINAL_IMAGE}
 LABEL maintainer="monai.contact@gmail.com"
 WORKDIR /opt/monailabel
+COPY requirements.txt /opt/monailabel/requirements.txt
+
 RUN apt update -y && apt install -y git curl openslide-tools python3 python-is-python3 python3-pip
 RUN python -m pip install --no-cache-dir pytest torch torchvision torchaudio
+
 COPY --from=build /opt/monailabel/dist/monailabel* /opt/monailabel/dist/
-RUN python -m pip install --no-cache-dir /opt/monailabel/dist/monailabel*.whl
+RUN python -m pip install -v --no-cache-dir /opt/monailabel/dist/monailabel*.whl
+RUN python -m pip uninstall sam2 -y
+RUN python -m pip install -v --no-cache-dir -r /opt/monailabel/requirements.txt

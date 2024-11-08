@@ -54,7 +54,7 @@ class MyApp(MONAILabelApp):
 
         configs = {k: v for k, v in sorted(configs.items())}
 
-        models = conf.get("models", "all")
+        models = conf.get("models")
         if not models:
             print("")
             print("---------------------------------------------------------------------------------------")
@@ -63,9 +63,9 @@ class MyApp(MONAILabelApp):
             print(f"    all, {', '.join(configs.keys())}")
             print("---------------------------------------------------------------------------------------")
             print("")
-            exit(-1)
+            # exit(-1)
 
-        models = models.split(",")
+        models = models.split(",") if models else []
         models = [m.strip() for m in models]
         invalid = [m for m in models if m != "all" and not configs.get(m)]
         if invalid:
@@ -90,7 +90,7 @@ class MyApp(MONAILabelApp):
 
         logger.info(f"+++ Using Models: {list(self.models.keys())}")
 
-        self.sam = strtobool(conf.get("sam", "true"))
+        self.sam = strtobool(conf.get("sam2", "true"))
         super().__init__(
             app_dir=app_dir,
             studies=studies,
