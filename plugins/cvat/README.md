@@ -32,15 +32,14 @@ git clone https://github.com/opencv/cvat
 cd cvat
 
 # Use your external IP instead of localhost to make the CVAT projects sharable
-export CVAT_HOST=127.0.0.1
+export CVAT_HOST=`hostname -I | awk '{print $1}'`
 
 # Start CVAT from docker-compose, make sure the IP and port are available.
 # Refer: https://docs.cvat.ai/docs/administration/advanced/installation_automatic_annotation/
 docker-compose -f docker-compose.yml -f components/serverless/docker-compose.serverless.yml up -d
 
 # Create a CVAT superuser account
-docker exec -it cvat bash -ic 'python3 ~/manage.py createsuperuser'
-
+docker exec -it cvat_server bash -ic 'python3 ~/manage.py createsuperuser'
 ```
 **Note:** The setup process uses ports 8070, 8080, and 8090. If alternative ports are preferred, please refer to the [CVAT Guide](https://opencv.github.io/cvat/docs/administration/basics/installation/). For more information on installation steps, see the CVAT [Documentation for Semi-automatic and Automatic Annotation](https://opencv.github.io/cvat/docs/administration/advanced/installation_automatic_annotation/).
 
