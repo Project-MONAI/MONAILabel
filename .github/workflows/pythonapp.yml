@@ -128,7 +128,7 @@ jobs:
           rm -r build monailabel*.egg-info
 
           # install from wheel
-          python -m pip install "$tmp_dir"/monailabel*.whl[all]
+          python -m pip install `ls "$tmp_dir"/monailabel*.whl`[all]
           python -c 'import monailabel; monailabel.print_config()' 2>&1 | grep -iv "unknown"
           python -c 'import monailabel; print(monailabel.__file__)'
 
