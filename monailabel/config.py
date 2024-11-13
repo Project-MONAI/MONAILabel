@@ -9,7 +9,7 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 import os
-from importlib.util import find_spec
+from importlib.metadata import distributions
 from typing import Any, Dict, List, Optional
 
 from pydantic import AnyHttpUrl
@@ -17,7 +17,7 @@ from pydantic_settings import BaseSettings, SettingsConfigDict
 
 
 def is_package_installed(name):
-    return False if find_spec(name) is None else True
+    return name in sorted(x.name for x in distributions())
 
 
 class Settings(BaseSettings):
