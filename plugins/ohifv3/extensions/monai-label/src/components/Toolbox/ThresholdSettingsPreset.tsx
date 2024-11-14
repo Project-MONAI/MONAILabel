@@ -33,16 +33,19 @@ function ThresholdSettings({ onRangeChange }) {
   const [options, setOptions] = useState(defaultOptions);
   const [selectedPreset, setSelectedPreset] = useState(defaultOptions[0].value);
 
-  const handleRangeChange = newRange => {
-    const selectedOption = options.find(o => o.value === selectedPreset);
+  const handleRangeChange = (newRange) => {
+    const selectedOption = options.find((o) => o.value === selectedPreset);
 
-    if (newRange[0] === selectedOption.range[0] && newRange[1] === selectedOption.range[1]) {
+    if (
+      newRange[0] === selectedOption.range[0] &&
+      newRange[1] === selectedOption.range[1]
+    ) {
       return;
     }
 
     onRangeChange(newRange);
 
-    const updatedOptions = options.map(o => {
+    const updatedOptions = options.map((o) => {
       if (o.value === selectedPreset) {
         return {
           ...o,
@@ -55,19 +58,21 @@ function ThresholdSettings({ onRangeChange }) {
     setOptions(updatedOptions);
   };
 
-  const selectedPresetRange = options.find(ds => ds.value === selectedPreset).range;
+  const selectedPresetRange = options.find(
+    (ds) => ds.value === selectedPreset
+  ).range;
 
   return (
     <div>
-      <div className='bg-secondary-light h-[1px]'></div>
-      <div className='mt-1 text-[13px] text-white'>Threshold</div>
-      <div className='mt-1 w-1/2'>
+      <div className="bg-secondary-light h-[1px]"></div>
+      <div className="mt-1 text-[13px] text-white">Threshold</div>
+      <div className="mt-1 w-1/2">
         <Select
           isClearable={false}
           onChange={handlePresetChange}
           options={options}
-          value={options.find(ds => ds.value === selectedPreset)}
-          className='text-white'
+          value={options.find((ds) => ds.value === selectedPreset)}
+          className="text-white"
           isSearchable={false}
         />
       </div>

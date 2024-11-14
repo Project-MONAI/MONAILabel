@@ -19,7 +19,4 @@ function currentSegmentsInfo(segmentationService) {
   return { info, indices };
 }
 
-
-export {
-  currentSegmentsInfo,
-};
+export { currentSegmentsInfo };

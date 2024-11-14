@@ -11,54 +11,46 @@ export default {
   getPanelModule,
 
   getViewportModule: ({
-                        servicesManager,
-                        commandsManager,
-                        extensionManager,
-                      }) => {
-  },
+    servicesManager,
+    commandsManager,
+    extensionManager,
+  }) => {},
 
   getToolbarModule: ({
-                       servicesManager,
-                       commandsManager,
-                       extensionManager,
-                     }) => {
-  },
+    servicesManager,
+    commandsManager,
+    extensionManager,
+  }) => {},
 
   getLayoutTemplateModule: ({
-                              servicesManager,
-                              commandsManager,
-                              extensionManager,
-                            }) => {
-  },
+    servicesManager,
+    commandsManager,
+    extensionManager,
+  }) => {},
 
   getSopClassHandlerModule: ({
-                               servicesManager,
-                               commandsManager,
-                               extensionManager,
-                             }) => {
-  },
+    servicesManager,
+    commandsManager,
+    extensionManager,
+  }) => {},
 
   getHangingProtocolModule: ({
-                               servicesManager,
-                               commandsManager,
-                               extensionManager,
-                             }) => {
-  },
+    servicesManager,
+    commandsManager,
+    extensionManager,
+  }) => {},
 
   getCommandsModule,
 
   getContextModule: ({
-                       servicesManager,
-                       commandsManager,
-                       extensionManager,
-                     }) => {
-  },
+    servicesManager,
+    commandsManager,
+    extensionManager,
+  }) => {},
 
   getDataSourcesModule: ({
-                           servicesManager,
-                           commandsManager,
-                           extensionManager,
-                         }) => {
-  },
-
+    servicesManager,
+    commandsManager,
+    extensionManager,
+  }) => {},
 };

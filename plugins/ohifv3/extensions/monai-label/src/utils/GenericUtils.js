@@ -33,10 +33,10 @@ function hexToRgb(hex) {
   const result = /^#?([a-f\d]{2})([a-f\d]{2})([a-f\d]{2})$/i.exec(hex);
   return result
     ? {
-      r: parseInt(result[1], 16),
-      g: parseInt(result[2], 16),
-      b: parseInt(result[3], 16),
-    }
+        r: parseInt(result[1], 16),
+        g: parseInt(result[2], 16),
+        b: parseInt(result[3], 16),
+      }
     : null;
 }
 
@@ -71,18 +71,27 @@ export class CookieUtils {
       let expires = new Date(exp_y, exp_m, exp_d);
       cookie_string += '; expires=' + expires.toGMTString();
     }
-    if (path) cookie_string += '; path=' + escape(path);
-    if (domain) cookie_string += '; domain=' + escape(domain);
-    if (secure) cookie_string += '; secure';
+    if (path) {
+      cookie_string += '; path=' + escape(path);
+    }
+    if (domain) {
+      cookie_string += '; domain=' + escape(domain);
+    }
+    if (secure) {
+      cookie_string += '; secure';
+    }
     document.cookie = cookie_string;
   }
 
   static getCookie(cookie_name) {
     let results = document.cookie.match(
-      '(^|;) ?' + cookie_name + '=([^;]*)(;|$)',
+      '(^|;) ?' + cookie_name + '=([^;]*)(;|$)'
     );
-    if (results) return unescape(results[2]);
-    else return null;
+    if (results) {
+      return unescape(results[2]);
+    } else {
+      return null;
+    }
   }
 
   static getCookieString(name, defaultVal = '') {

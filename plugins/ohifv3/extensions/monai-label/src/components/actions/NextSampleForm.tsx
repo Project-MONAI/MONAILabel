@@ -14,15 +14,17 @@ export default class NextSampleForm extends Component {
 
   onSubmit = () => {
     // TODO:: OHIF Doesn't support loading exact series in URI
-    let path = window.location.href.split('=');
+    const path = window.location.href.split('=');
     path[path.length - 1] = this.props.info.StudyInstanceUID;
 
     const pathname = path.join('=');
     console.info(pathname);
 
-    let msg =
+    const msg =
       'This action will reload current page.  Are you sure to continue?';
-    if (!window.confirm(msg)) return;
+    if (!window.confirm(msg)) {
+      return;
+    }
     window.location.href = pathname;
   };
 
@@ -37,39 +39,39 @@ export default class NextSampleForm extends Component {
     };
     return (
       <div>
-        <table className='optionsTable'>
+        <table className="optionsTable">
           <thead>
-          <tr>
-            <th style={{ width: '30%' }}>Field</th>
-            <th>Value</th>
-          </tr>
+            <tr>
+              <th style={{ width: '30%' }}>Field</th>
+              <th>Value</th>
+            </tr>
           </thead>
           <tbody>
-          {Object.keys(fields).map(field => (
-            <tr key={field}>
-              <td>{fields[field]}</td>
-              {field === 'SeriesInstanceUID' ? (
-                <td>
-                  <a
-                    rel='noreferrer noopener'
-                    target='_blank'
-                    href={this.props.info['RetrieveURL']}
-                  >
-                    {this.props.info[field]}
-                  </a>
-                </td>
-              ) : (
-                <td>{this.props.info[field]}</td>
-              )}
-            </tr>
-          ))}
+            {Object.keys(fields).map((field) => (
+              <tr key={field}>
+                <td>{fields[field]}</td>
+                {field === 'SeriesInstanceUID' ? (
+                  <td>
+                    <a
+                      rel="noreferrer noopener"
+                      target="_blank"
+                      href={this.props.info['RetrieveURL']}
+                    >
+                      {this.props.info[field]}
+                    </a>
+                  </td>
+                ) : (
+                  <td>{this.props.info[field]}</td>
+                )}
+              </tr>
+            ))}
           </tbody>
         </table>
         <br />
-        <div className='mb-3 text-right'>
+        <div className="mb-3 text-right">
           <button
-            className='actionButton'
-            type='submit'
+            className="actionButton"
+            type="submit"
             onClick={this.onSubmit}
           >
             OK

@@ -1,7 +1,6 @@
 import nrrd from 'nrrd-js';
 import pako from 'pako';
 
-
 export default class SegmentationReader {
   static parseNrrdData(data) {
     let nrrdfile = nrrd.parse(data);

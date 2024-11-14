@@ -20,8 +20,8 @@ export default class ModelSelector extends Component {
     const currentModel = props.currentModel
       ? props.currentModel
       : props.models.length > 0
-        ? props.models[0]
-        : '';
+      ? props.models[0]
+      : '';
     this.state = {
       models: props.models,
       currentModel: currentModel,
@@ -39,9 +39,11 @@ export default class ModelSelector extends Component {
     return null;
   }
 
-  onChangeModel = evt => {
+  onChangeModel = (evt) => {
     this.setState({ currentModel: evt.target.value });
-    if (this.props.onSelectModel) this.props.onSelectModel(evt.target.value);
+    if (this.props.onSelectModel) {
+      this.props.onSelectModel(evt.target.value);
+    }
   };
 
   currentModel = () => {
@@ -69,41 +71,41 @@ export default class ModelSelector extends Component {
   render() {
     const currentModel = this.currentModel();
     return (
-      <div className='modelSelector'>
+      <div className="modelSelector">
         <table>
           <tbody>
-          <tr>
-            <td colSpan='3'>Models:</td>
-          </tr>
-          <tr>
-            <td width='80%'>
-              <select
-                className='selectBox'
-                onChange={this.onChangeModel}
-                value={currentModel}
-              >
-                {this.props.models.map(model => (
-                  <option key={model} name={model} value={model}>
-                    {`${model} `}
-                  </option>
-                ))}
-              </select>
-            </td>
-            <td width='2%'>&nbsp;</td>
-            <td width='18%'>
-              <button
-                className='actionButton'
-                onClick={this.onClickBtn}
-                title={'Run ' + this.props.title}
-                disabled={
-                  this.state.isButtonDisabled || !this.props.models.length
-                }
-                style={{ display: this.props.onClick ? 'block' : 'none' }}
-              >
-                Run
-              </button>
-            </td>
-          </tr>
+            <tr>
+              <td colSpan="3">Models:</td>
+            </tr>
+            <tr>
+              <td width="80%">
+                <select
+                  className="selectBox"
+                  onChange={this.onChangeModel}
+                  value={currentModel}
+                >
+                  {this.props.models.map((model) => (
+                    <option key={model} name={model} value={model}>
+                      {`${model} `}
+                    </option>
+                  ))}
+                </select>
+              </td>
+              <td width="2%">&nbsp;</td>
+              <td width="18%">
+                <button
+                  className="actionButton"
+                  onClick={this.onClickBtn}
+                  title={'Run ' + this.props.title}
+                  disabled={
+                    this.state.isButtonDisabled || !this.props.models.length
+                  }
+                  style={{ display: this.props.onClick ? 'block' : 'none' }}
+                >
+                  Run
+                </button>
+              </td>
+            </tr>
           </tbody>
         </table>
         <br />

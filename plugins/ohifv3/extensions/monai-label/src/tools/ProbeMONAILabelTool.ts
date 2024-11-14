@@ -11,7 +11,7 @@ export default class ProbeMONAILabelTool extends ProbeTool {
       configuration: {
         customColor: undefined,
       },
-    },
+    }
   ) {
     super(toolProps, defaultToolProps);
   }
@@ -29,7 +29,7 @@ export default class ProbeMONAILabelTool extends ProbeTool {
 
     annotations = this.filterInteractableAnnotationsForElement(
       element,
-      annotations,
+      annotations
     );
 
     if (!annotations?.length) {
@@ -71,7 +71,7 @@ export default class ProbeMONAILabelTool extends ProbeTool {
         annotationUID,
         handleGroupUID,
         [canvasCoordinates],
-        { color },
+        { color }
       );
 
       renderStatus = true;

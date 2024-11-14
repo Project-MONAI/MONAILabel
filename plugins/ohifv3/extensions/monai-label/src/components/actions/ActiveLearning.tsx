@@ -18,7 +18,7 @@ export default class ActiveLearning extends BaseTab {
     });
 
     const response = await this.props.client().next_image();
-    console.log(response.data)
+    console.log(response.data);
 
     if (!nid) {
       window.snackbar.hideAll();
@@ -57,7 +57,7 @@ export default class ActiveLearning extends BaseTab {
     const scalarDataRecover = window.ScalarDataBuffer;
     const volumeLoadObject = cache.getVolume('1');
 
-    console.log(volumeLoadObject)
+    console.log(volumeLoadObject);
 
     if (volumeLoadObject) {
       const { scalarData } = volumeLoadObject;
@@ -65,7 +65,7 @@ export default class ActiveLearning extends BaseTab {
       triggerEvent(eventTarget, Enums.Events.SEGMENTATION_DATA_MODIFIED, {
         segmentationId: '1',
       });
-      console.debug('updated the segmentation\'s scalar data');
+      console.debug("updated the segmentation's scalar data");
     } else {
       this.notification.show({
         title: 'MONAI Label',
@@ -73,36 +73,33 @@ export default class ActiveLearning extends BaseTab {
         type: 'error',
         duration: 6000,
       });
-      return
+      return;
     }
   };
 
-
-  onClickNotifyServer = async () => { 
+  onClickNotifyServer = async () => {
     const { displaySetService } = this.props.servicesManager.services;
-    const activeDisplaySets = displaySetService.activeDisplaySets
-
-
+    const activeDisplaySets = displaySetService.activeDisplaySets;
 
     // iterate all display sets and check if SEG exists, get series IDs
     let segCount = 0;
     let latestLabelSeriesTimestamp = 0;
-    let latestLabelSeriesInstanceUID = "";
-    let latestImageSeriesInstanceUID = "";
+    let latestLabelSeriesInstanceUID = '';
+    let latestImageSeriesInstanceUID = '';
 
-    for (const item of activeDisplaySets){
-      if (item.Modality === "SEG"){
-        segCount++
+    for (const item of activeDisplaySets) {
+      if (item.Modality === 'SEG') {
+        segCount++;
         const curLabelTimestamp = `${item.SeriesDate}${item.instance.SeriesTime}`;
         if (curLabelTimestamp > latestLabelSeriesTimestamp) {
           latestLabelSeriesTimestamp = curLabelTimestamp;
           latestLabelSeriesInstanceUID = item.SeriesInstanceUID;
         }
-      } else if (item.Modality === "CT"){ //TODO: if image modality is other than CT, add others
+      } else if (item.Modality === 'CT') {
+        //TODO: if image modality is other than CT, add others
         latestImageSeriesInstanceUID = item.SeriesInstanceUID;
       }
-    } 
-
+    }
 
     if (segCount === 0) {
       this.notification.show({
@@ -116,18 +113,17 @@ export default class ActiveLearning extends BaseTab {
     const data = {
       added: [],
       updated: [],
-      removed: []
+      removed: [],
     };
 
-    data[segCount > 1 ? "updated" : "added"].push({
-      "image": latestImageSeriesInstanceUID,
-      "label": latestLabelSeriesInstanceUID
+    data[segCount > 1 ? 'updated' : 'added'].push({
+      image: latestImageSeriesInstanceUID,
+      label: latestLabelSeriesInstanceUID,
     });
-    
 
     const response = await this.props.client().notify(data);
 
-    console.log(response.data)
+    console.log(response.data);
     if (response.status !== 201) {
       this.notification.show({
         title: 'MONAI Label',
@@ -144,53 +140,68 @@ export default class ActiveLearning extends BaseTab {
       type: 'success',
       duration: 2000,
     });
-
   };
 
   render() {
     return (
-      <div className='tab'>
+      <div className="tab">
         <input
-          className='tab-switch'
-          type='checkbox'
+          className="tab-switch"
+          type="checkbox"
           id={this.tabId}
-          name='activelearning'
-          value='activelearning'
+          name="activelearning"
+          value="activelearning"
           defaultChecked
         />
-        <label className='tab-label' htmlFor={this.tabId}>
+        <label className="tab-label" htmlFor={this.tabId}>
           Active Learning
         </label>
-        <div className='tab-content'>
+        <div className="tab-content">
           <table style={{ fontSize: 'smaller', width: '100%' }}>
             <tbody>
-            <tr>
-              <td>
-                <button
-                  className='actionInput'
-                  style={{ backgroundColor: 'lightgray', padding: '1px 1px', borderRadius: '2px', border: 'none' }}
-                  onClick={this.onClickNextSample}
-                >
-                  Next Sample
-                </button>
-              </td>
-            </tr>
-            <tr>
-              <td>
-                <button
-                  className='actionInput'
-                  style={{ backgroundColor: 'lightgray', padding: '1px 1px', borderRadius: '2px', border: 'none'  }}
-                  onClick={this.onClickNotifyServer}
-                >
-                  Notify Server
-                </button>
-              </td>
-            </tr>
+              <tr>
+                <td>
+                  <button
+                    className="actionInput"
+                    style={{
+                      backgroundColor: 'lightgray',
+                      padding: '1px 1px',
+                      borderRadius: '2px',
+                      border: 'none',
+                    }}
+                    onClick={this.onClickNextSample}
+                  >
+                    Next Sample
+                  </button>
+                </td>
+              </tr>
+              <tr>
+                <td>
+                  <button
+                    className="actionInput"
+                    style={{
+                      backgroundColor: 'lightgray',
+                      padding: '1px 1px',
+                      borderRadius: '2px',
+                      border: 'none',
+                    }}
+                    onClick={this.onClickNotifyServer}
+                  >
+                    Notify Server
+                  </button>
+                </td>
+              </tr>
             </tbody>
           </table>
           <br />
           <u>
-            <a href='#' style={{ color: 'lightyellow', fontSize: 'smaller' }} onClick={() => this.onClickRecoverSeg()}>Recover Seg</a>
+            <a
+              href="#"
+              style={{ color: 'lightyellow', fontSize: 'smaller' }}
+              onClick={() => this.onClickRecoverSeg()}
+            >
+              Recover Seg
+            </a>
           </u>
         </div>
       </div>
