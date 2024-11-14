@@ -59,15 +59,15 @@ function ThresholdSettings({ onRangeChange }) {
 
   return (
     <div>
-      <div className="bg-secondary-light h-[1px]"></div>
-      <div className="mt-1 text-[13px] text-white">Threshold</div>
-      <div className="mt-1 w-1/2">
+      <div className='bg-secondary-light h-[1px]'></div>
+      <div className='mt-1 text-[13px] text-white'>Threshold</div>
+      <div className='mt-1 w-1/2'>
         <Select
           isClearable={false}
           onChange={handlePresetChange}
           options={options}
           value={options.find(ds => ds.value === selectedPreset)}
-          className="text-white"
+          className='text-white'
           isSearchable={false}
         />
       </div>

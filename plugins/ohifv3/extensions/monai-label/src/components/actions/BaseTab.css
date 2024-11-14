@@ -1,0 +1,41 @@
+.optionsTable {
+  font-family: arial, sans-serif;
+  border-collapse: collapse;
+  width: 100%;
+  font-size: smaller;
+}
+.optionsTable th {
+  border: 1px solid #070303;
+  text-align: left;
+  background-color: #789;
+}
+.optionsTable td {
+  border: 1px solid #070202;
+  text-align: left;
+}
+.optionsInput {
+  width: 100%;
+}
+.bodyTableContainer {
+  max-height: 300px;
+  overflow-y: auto;
+}
+.segColor {
+  height: 15px;
+  width: 15px;
+  background-color: #bbb;
+  border-radius: 50%;
+  display: inline-block;
+}
+.clickable-row {
+  cursor: pointer;
+}
+.clickable-row:hover {
+  background: #add8e6 !important;
+}
+.actionInput {
+  padding: '8px 16px';
+  borderRadius: '4px';
+  border: '2px';
+  cursor: 'pointer';
+}

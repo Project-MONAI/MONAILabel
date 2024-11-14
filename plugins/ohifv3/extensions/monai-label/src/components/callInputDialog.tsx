@@ -36,11 +36,11 @@ function callInputDialog(uiDialogService, label, callback) {
         body: ({ value, setValue }) => {
           return (
             <Input
-              label="Enter the segment label"
-              labelClassName="text-white text-[14px] leading-[1.2]"
+              label='Enter the segment label'
+              labelClassName='text-white text-[14px] leading-[1.2]'
               autoFocus
-              className="border-primary-main bg-black"
-              type="text"
+              className='border-primary-main bg-black'
+              type='text'
               value={value.label}
               onChange={event => {
                 event.persist();

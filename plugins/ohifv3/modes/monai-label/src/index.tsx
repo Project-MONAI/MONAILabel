@@ -12,7 +12,7 @@ const ohif = {
 
 const monailabel = {
   monaiLabel: '@ohif/extension-monai-label.panelModule.monailabel',
-}
+};
 
 const cornerstone = {
   viewport: '@ohif/extension-cornerstone.viewportModule.cornerstone',
@@ -22,7 +22,7 @@ const dicomSeg = {
   sopClassHandler:
     '@ohif/extension-cornerstone-dicom-seg.sopClassHandlerModule.dicom-seg',
   viewport: '@ohif/extension-cornerstone-dicom-seg.viewportModule.dicom-seg',
-  panel: '@ohif/extension-cornerstone-dicom-seg.panelModule.panelSegmentation',
+  panel: '@ohif/extension-cornerstone-dicom-seg.panelModule.panelSegmentationWithTools',
 };
 
 /**
@@ -99,9 +99,10 @@ function modeFactory({ modeConfiguration }) {
       // only one hanging protocol, we can just use the first viewport
       ({ unsubscribe } = toolGroupService.subscribe(
         toolGroupService.EVENTS.VIEWPORT_ADDED,
-        activateTool
+        activateTool,
       ));
 
+      toolbarService.init(extensionManager);
       toolbarService.addButtons(toolbarButtons);
       toolbarService.createButtonSection('primary', [
         'MeasurementTools',
@@ -137,7 +138,7 @@ function modeFactory({ modeConfiguration }) {
      * A boolean return value that indicates whether the mode is valid for the
      * modalities of the selected studies. For instance a PET/CT mode should be
      */
-    isValidMode: function ({ modalities }) {
+    isValidMode: function({ modalities }) {
       const modalities_list = modalities.split('\\');
       const isValid =
         modalities_list.includes('CT') || modalities_list.includes('MR');
@@ -163,10 +164,10 @@ function modeFactory({ modeConfiguration }) {
           return {
             id: ohif.layout,
             props: {
-              rightPanelDefaultClosed: false,
+              rightPanelDefaultClosed: true,
               /* leftPanelDefaultClosed: true, */
               leftPanels: [ohif.leftPanel],
-              rightPanels: [monailabel.monaiLabel],
+              rightPanels: [dicomSeg.panel, monailabel.monaiLabel],
               viewports: [
                 {
                   namespace: cornerstone.viewport,

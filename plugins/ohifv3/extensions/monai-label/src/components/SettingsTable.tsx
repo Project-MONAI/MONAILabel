@@ -8,9 +8,7 @@ export default class SettingsTable extends Component {
   constructor(props) {
     super(props);
 
-    const onInfo = props.onInfo
-    this.onInfo = onInfo
-
+    this.onInfo = props.onInfo;
     this.state = this.getSettings();
   }
 

@@ -2,7 +2,7 @@
     "name": "@ohif/extension-monai-label",
     "version": "0.0.1",
     "description": "OHIFv3 extension for MONAI Label",
-    "author": "OHIF,NVIDIA,KCL",
+    "author": "OHIF,MONAI",
     "license": "MIT",
     "main": "dist/umd/extension-monai-label/index.umd.js",
     "files": [
@@ -53,10 +53,10 @@
         "react-color": "^2.19.3",
         "bootstrap": "^5.0.2",
         "react-select": "^4.3.1",
-        "chroma-js": "^2.1.2",
-        "itk": "^14.1.1"
+        "chroma-js": "^2.1.2"
     },
     "devDependencies": {
+        "@cornerstonejs/tools": "^1.16.0",
         "@babel/runtime": "^7.20.13",
         "@cornerstonejs/tools": "^1.16.4",
         "react-color": "^2.19.3"

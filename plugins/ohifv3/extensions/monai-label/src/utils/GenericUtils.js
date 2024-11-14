@@ -1,4 +1,3 @@
-
 import { GenericAnatomyColors, GenericNames } from './GenericAnatomyColors';
 
 function getRandomInt(min, max) {
@@ -7,11 +6,14 @@ function getRandomInt(min, max) {
   return Math.floor(Math.random() * (max - min) + min); //The maximum is exclusive and the minimum is inclusive
 }
 
-function randomRGB() {
+function randomRGB(toHex = false) {
   const o = Math.round,
     r = Math.random,
     s = 255;
-  return rgbToHex(o(r() * s), o(r() * s), o(r() * s));
+  const x = o(r() * s);
+  const y = o(r() * s);
+  const z = o(r() * s);
+  return toHex ? rgbToHex(x, y, z) : { r: x, g: y, b: z };
 }
 
 function randomName() {
@@ -31,21 +33,35 @@ function hexToRgb(hex) {
   const result = /^#?([a-f\d]{2})([a-f\d]{2})([a-f\d]{2})$/i.exec(hex);
   return result
     ? {
-        r: parseInt(result[1], 16),
-        g: parseInt(result[2], 16),
-        b: parseInt(result[3], 16),
-      }
+      r: parseInt(result[1], 16),
+      g: parseInt(result[2], 16),
+      b: parseInt(result[3], 16),
+    }
     : null;
 }
 
-function getLabelColor(label, rgb = true) {
+function getLabelColor(label, rgb = true, random = true) {
   const name = label.toLowerCase();
   for (const i of GenericAnatomyColors) {
     if (i.label === name) {
       return rgb ? hexToRgb(i.value) : i.value;
     }
   }
+  if (random) {
+    const o = Math.round,
+      r = Math.random,
+      s = 255;
+    return randomRGB(!rgb);
+  }
   return null;
+}
+
+function hideNotification(nid, notification) {
+  if (!nid) {
+    window.snackbar.hideAll();
+  } else {
+    notification.hide(nid);
+  }
 }
 
 export class CookieUtils {
@@ -63,7 +79,7 @@ export class CookieUtils {
 
   static getCookie(cookie_name) {
     let results = document.cookie.match(
-      '(^|;) ?' + cookie_name + '=([^;]*)(;|$)'
+      '(^|;) ?' + cookie_name + '=([^;]*)(;|$)',
     );
     if (results) return unescape(results[2]);
     else return null;
@@ -97,4 +113,5 @@ export {
   rgbToHex,
   hexToRgb,
   getLabelColor,
+  hideNotification,
 };

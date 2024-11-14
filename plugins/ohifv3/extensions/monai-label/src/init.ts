@@ -8,8 +8,8 @@ import ProbeMONAILabelTool from './tools/ProbeMONAILabelTool';
  * @param {object} configuration
  */
 export default function init({
-  servicesManager,
-  configuration = {},
-}: Types.Extensions.ExtensionParams): void {
+                               servicesManager,
+                               configuration = {},
+                             }: Types.Extensions.ExtensionParams): void {
   addTool(ProbeMONAILabelTool);
 }

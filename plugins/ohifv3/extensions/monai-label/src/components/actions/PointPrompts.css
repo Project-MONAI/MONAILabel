@@ -1,0 +1,22 @@
+.tmpActionButton {
+  border: 2px solid #000;
+  border-radius: 15px;
+  background-color: #00a4d9;
+  color: var(--ui-gray-dark);
+  line-height: 25px;
+  padding: 0 15px;
+  outline: none;
+  cursor: pointer;
+}
+.tmpActionButton:hover,
+.tmpActionButton:active {
+  background-color: #00a4d9;
+}
+.tmpActionButton:disabled {
+  background-color: #00a4d9;
+}
+.tmpActionButton svg {
+  margin-right: 4px;
+  position: relative;
+  top: 2px;
+}

@@ -1,4 +1,3 @@
-
 import React, { Component } from 'react';
 import PropTypes from 'prop-types';
 
@@ -13,7 +12,6 @@ export default class ModelSelector extends Component {
     usage: PropTypes.any,
     onClick: PropTypes.func,
     onSelectModel: PropTypes.func,
-    scribblesSelector: PropTypes.any,
   };
 
   constructor(props) {
@@ -22,8 +20,8 @@ export default class ModelSelector extends Component {
     const currentModel = props.currentModel
       ? props.currentModel
       : props.models.length > 0
-      ? props.models[0]
-      : '';
+        ? props.models[0]
+        : '';
     this.state = {
       models: props.models,
       currentModel: currentModel,
@@ -71,45 +69,46 @@ export default class ModelSelector extends Component {
   render() {
     const currentModel = this.currentModel();
     return (
-      <div className="modelSelector">
+      <div className='modelSelector'>
         <table>
           <tbody>
-            <tr>
-              <td colSpan="3">Models:</td>
-            </tr>
-            <tr>
-              <td width="80%">
-                <select
-                  className="selectBox"
-                  onChange={this.onChangeModel}
-                  value={currentModel}
-                >
-                  {this.props.models.map(model => (
-                    <option key={model} name={model} value={model}>
-                      {`${model} `}
-                    </option>
-                  ))}
-                </select>
-              </td>
-              <td width="2%">&nbsp;</td>
-              <td width="18%">
-                <button
-                  className="actionButton"
-                  onClick={this.onClickBtn}
-                  title={'Run ' + this.props.title}
-                  disabled={
-                    this.state.isButtonDisabled || !this.props.models.length
-                  }
-                  style={{ display: this.props.onClick ? 'block' : 'none' }}
-                >
-                  Run
-                </button>
-              </td>
-            </tr>
-            {this.props.scribblesSelector}
+          <tr>
+            <td colSpan='3'>Models:</td>
+          </tr>
+          <tr>
+            <td width='80%'>
+              <select
+                className='selectBox'
+                onChange={this.onChangeModel}
+                value={currentModel}
+              >
+                {this.props.models.map(model => (
+                  <option key={model} name={model} value={model}>
+                    {`${model} `}
+                  </option>
+                ))}
+              </select>
+            </td>
+            <td width='2%'>&nbsp;</td>
+            <td width='18%'>
+              <button
+                className='actionButton'
+                onClick={this.onClickBtn}
+                title={'Run ' + this.props.title}
+                disabled={
+                  this.state.isButtonDisabled || !this.props.models.length
+                }
+                style={{ display: this.props.onClick ? 'block' : 'none' }}
+              >
+                Run
+              </button>
+            </td>
+          </tr>
           </tbody>
         </table>
+        <br />
         {this.props.usage}
+        <br />
       </div>
     );
   }

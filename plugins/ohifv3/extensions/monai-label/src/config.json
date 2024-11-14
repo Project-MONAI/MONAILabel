@@ -1,0 +1,6 @@
+{
+  "MONAI_LABEL_API_ENDPOINT": "http://localhost:8000",
+  "MONAI_LABEL_USER_ID": "9967f4fc-5a63-11ee-8c99-0242ac120002",
+  "MONAI_LABEL_ACCESS_TOKEN": ""
+}
+

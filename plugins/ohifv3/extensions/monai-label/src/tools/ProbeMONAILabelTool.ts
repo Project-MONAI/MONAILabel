@@ -1,4 +1,3 @@
-import { Types, metaData, utilities as csUtils } from '@cornerstonejs/core';
 import { ProbeTool, annotation, drawing } from '@cornerstonejs/tools';
 
 const { getAnnotations } = annotation.state;
@@ -12,7 +11,7 @@ export default class ProbeMONAILabelTool extends ProbeTool {
       configuration: {
         customColor: undefined,
       },
-    }
+    },
   ) {
     super(toolProps, defaultToolProps);
   }
@@ -30,7 +29,7 @@ export default class ProbeMONAILabelTool extends ProbeTool {
 
     annotations = this.filterInteractableAnnotationsForElement(
       element,
-      annotations
+      annotations,
     );
 
     if (!annotations?.length) {
@@ -72,7 +71,7 @@ export default class ProbeMONAILabelTool extends ProbeTool {
         annotationUID,
         handleGroupUID,
         [canvasCoordinates],
-        { color }
+        { color },
       );
 
       renderStatus = true;

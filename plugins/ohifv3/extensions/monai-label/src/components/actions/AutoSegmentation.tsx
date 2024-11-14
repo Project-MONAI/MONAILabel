@@ -1,8 +1,11 @@
 import React from 'react';
 import ModelSelector from '../ModelSelector';
 import BaseTab from './BaseTab';
+import { hideNotification } from '../../utils/GenericUtils';
 
 export default class AutoSegmentation extends BaseTab {
+  modelSelector: any;
+
   constructor(props) {
     super(props);
 
@@ -12,67 +15,102 @@ export default class AutoSegmentation extends BaseTab {
     };
   }
 
-  onSelectModel = model => {
+  onSelectModel = (model) => {
+    console.log('Selecting  Auto Segmentation Model...');
+    console.log(model);
     this.setState({ currentModel: model });
   };
 
+  getModels() {
+    const { info } = this.props;
+    const models = Object.keys(info.data.models).filter(
+      (m) =>
+        info.data.models[m].type === 'segmentation' ||
+        info.data.models[m].type === 'vista3d'
+    );
+    return models;
+  }
+
   onSegmentation = async () => {
+    const { currentModel, currentLabel, clickPoints } = this.state;
+    const { info, viewConstants } = this.props;
+
+    const models = this.getModels();
+    let selectedModel = 0;
+    for (const model of models) {
+      if (!currentModel || model === currentModel) {
+        break;
+      }
+      selectedModel++;
+    }
+
+    const model = models.length > 0 ? models[selectedModel] : null;
+    if (!model) {
+      this.notification.show({
+        title: 'MONAI Label',
+        message: 'Something went wrong: Model is not selected',
+        type: 'error',
+        duration: 10000,
+      });
+      return;
+    }
+
     const nid = this.notification.show({
-      title: 'MONAI Label',
+      title: 'MONAI Label - ' + model,
       message: 'Running Auto-Segmentation...',
       type: 'info',
-      duration: 60000,
+      duration: 7000,
     });
 
-    // TODO:: Fix Image ID...
-    const { info, viewConstants } = this.props;
-    const image = viewConstants.SeriesInstanceUID;
-    const model = this.modelSelector.current.currentModel();
-    const config = this.props.onOptionsConfig();
-    const params =
-      config && config.infer && config.infer[model] ? config.infer[model] : {};
+    const params = {};
+    const label_names = info.modelLabelNames[model];
+    const label_classes = info.modelLabelIndices[model];
+    if (info.data.models[model].type === 'vista3d') {
+      const bodyComponents = [
+        'kidney',
+        'lung',
+        'bone',
+        'lung tumor',
+        'uterus',
+        'postcava',
+      ];
+      const exclusionValues = bodyComponents.map(
+        (cls_name) => info.modelLabelToIdxMap[model][cls_name]
+      );
+      const filteredLabelClasses = label_classes.filter(
+        (value) => !exclusionValues.includes(value)
+      );
+      params['label_prompt'] = filteredLabelClasses;
+    }
 
-    const labels = info.models[model].labels;
     const response = await this.props
       .client()
-      .segmentation(model, image, params);
+      .infer(model, viewConstants.SeriesInstanceUID, params);
+    console.log(response);
 
-    // Bug:: Notification Service on show doesn't return id
-    if (!nid) {
-      window.snackbar.hideAll();
-    } else {
-      this.notification.hide(nid);
-    }
-
+    hideNotification(nid, this.notification);
     if (response.status !== 200) {
       this.notification.show({
-        title: 'MONAI Label',
+        title: 'MONAI Label - ' + model,
         message: 'Failed to Run Segmentation',
         type: 'error',
-        duration: 5000,
+        duration: 6000,
       });
-    } else {
-      this.notification.show({
-        title: 'MONAI Label',
-        message: 'Run Segmentation - Successful',
-        type: 'success',
-        duration: 2000,
-      });
-
-      await this.props.updateView(response, labels);
+      return;
     }
+
+    this.notification.show({
+      title: 'MONAI Label - ' + model,
+      message: 'Running Segmentation - Successful',
+      type: 'success',
+      duration: 4000,
+    });
+
+    this.props.updateView(response, model, label_names);
   };
 
   render() {
-    let models = [];
-    if (this.props.info && this.props.info.models) {
-      for (let [name, model] of Object.entries(this.props.info.models)) {
-        if (model.type === 'segmentation') {
-          models.push(name);
-        }
-      }
-    }
-
+    const models = this.getModels();
     return (
       <div className="tab">
         <input
@@ -98,8 +136,8 @@ export default class AutoSegmentation extends BaseTab {
             onSelectModel={this.onSelectModel}
             usage={
               <p style={{ fontSize: 'smaller' }}>
-                Fully automated segmentation <b>without any user prompt</b>. Just
-                select a model and click to run
+                Experience fully automated segmentation for <b>everything</b>{' '}
+                from the pre-trained model.
               </p>
             }
           />
