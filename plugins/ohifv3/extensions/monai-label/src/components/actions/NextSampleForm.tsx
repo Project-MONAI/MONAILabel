@@ -27,15 +27,17 @@ export default class NextSampleForm extends Component {
 
   onSubmit = () => {
     // TODO:: OHIF Doesn't support loading exact series in URI
-    let path = window.location.href.split('=');
+    const path = window.location.href.split('=');
     path[path.length - 1] = this.props.info.StudyInstanceUID;
 
     const pathname = path.join('=');
     console.info(pathname);
 
-    let msg =
+    const msg =
       'This action will reload current page.  Are you sure to continue?';
-    if (!window.confirm(msg)) return;
+    if (!window.confirm(msg)) {
+      return;
+    }
     window.location.href = pathname;
   };
 
@@ -59,7 +61,7 @@ export default class NextSampleForm extends Component {
             </tr>
           </thead>
           <tbody>
-            {Object.keys(fields).map(field => (
+            {Object.keys(fields).map((field) => (
               <tr key={field}>
                 <td>{fields[field]}</td>
                 {field === 'SeriesInstanceUID' ? (

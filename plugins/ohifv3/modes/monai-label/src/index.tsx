@@ -12,7 +12,7 @@ const ohif = {
 
 const monailabel = {
   monaiLabel: '@ohif/extension-monai-label.panelModule.monailabel',
-}
+};
 
 const cornerstone = {
   viewport: '@ohif/extension-cornerstone.viewportModule.cornerstone',

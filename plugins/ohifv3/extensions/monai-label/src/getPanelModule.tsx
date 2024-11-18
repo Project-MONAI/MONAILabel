@@ -1,19 +1,17 @@
 import React from 'react';
 import MonaiLabelPanel from './components/MonaiLabelPanel';
 
-
 function getPanelModule({
   commandsManager,
   extensionManager,
   servicesManager,
 }) {
-
   const WrappedMonaiLabelPanel = () => {
     return (
       <MonaiLabelPanel
-      commandsManager={commandsManager}
-      servicesManager={servicesManager}
-      extensionManager={extensionManager}
+        commandsManager={commandsManager}
+        servicesManager={servicesManager}
+        extensionManager={extensionManager}
       />
     );
   };

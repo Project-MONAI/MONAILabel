@@ -53,5 +53,4 @@ export default {
     commandsManager,
     extensionManager,
   }) => {},
-
 };

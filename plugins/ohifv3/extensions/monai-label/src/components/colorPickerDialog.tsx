@@ -37,7 +37,7 @@ function callColorPickerDialog(uiDialogService, rgbaColor, callback) {
         ],
         onSubmit: onSubmitHandler,
         body: ({ value, setValue }) => {
-          const handleChange = color => {
+          const handleChange = (color) => {
             setValue({ rgbaColor: color.rgb });
           };
 

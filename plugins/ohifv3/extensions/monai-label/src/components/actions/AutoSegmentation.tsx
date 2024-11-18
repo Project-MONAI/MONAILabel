@@ -12,7 +12,7 @@ export default class AutoSegmentation extends BaseTab {
     };
   }
 
-  onSelectModel = model => {
+  onSelectModel = (model) => {
     this.setState({ currentModel: model });
   };
 
@@ -64,9 +64,9 @@ export default class AutoSegmentation extends BaseTab {
   };
 
   render() {
-    let models = [];
+    const models = [];
     if (this.props.info && this.props.info.models) {
-      for (let [name, model] of Object.entries(this.props.info.models)) {
+      for (const [name, model] of Object.entries(this.props.info.models)) {
         if (model.type === 'segmentation') {
           models.push(name);
         }
@@ -98,8 +98,8 @@ export default class AutoSegmentation extends BaseTab {
             onSelectModel={this.onSelectModel}
             usage={
               <p style={{ fontSize: 'smaller' }}>
-                Fully automated segmentation <b>without any user prompt</b>. Just
-                select a model and click to run
+                Fully automated segmentation <b>without any user prompt</b>.
+                Just select a model and click to run
               </p>
             }
           />

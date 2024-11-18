@@ -59,8 +59,7 @@ export default class SmartEdit extends BaseTab {
         const color = selectedSegment.color;
 
         // get the active viewport toolGroup
-        const { viewports, activeViewportId } =
-          viewportGridService.getState();
+        const { viewports, activeViewportId } = viewportGridService.getState();
         const viewport = viewports.get(activeViewportId);
         const { viewportOptions } = viewport;
         const toolGroupId = viewportOptions.toolGroupId;
@@ -86,8 +85,11 @@ export default class SmartEdit extends BaseTab {
   };
 
   onDeepgrow = async () => {
-    const { segmentationService, cornerstoneViewportService, viewportGridService } =
-      this.props.servicesManager.services;
+    const {
+      segmentationService,
+      cornerstoneViewportService,
+      viewportGridService,
+    } = this.props.servicesManager.services;
     const { info, viewConstants } = this.props;
     const image = viewConstants.SeriesInstanceUID;
     const model = this.modelSelector.current.currentModel();
@@ -114,7 +116,8 @@ export default class SmartEdit extends BaseTab {
     // Getting the clicks in IJK format
 
     const { activeViewportId } = viewportGridService.getState();
-    const viewPort = cornerstoneViewportService.getCornerstoneViewport(activeViewportId);
+    const viewPort =
+      cornerstoneViewportService.getCornerstoneViewport(activeViewportId);
 
     const pts = cornerstoneTools.annotation.state.getAnnotations(
       'ProbeMONAILabel',
@@ -158,25 +161,22 @@ export default class SmartEdit extends BaseTab {
 
     // block the cursor while waiting for MONAI Label response?
 
-    for (let l in labels){
+    for (const l in labels) {
       if (l === segmentId) {
-        console.log('This is the segmentId')
-        let p = []
-        for (var i = 0; i < pointsIJK.length; i++) {
+        console.log('This is the segmentId');
+        const p = [];
+        for (let i = 0; i < pointsIJK.length; i++) {
           p.push(Array.from(pointsIJK[i]));
           console.log(p[i]);
         }
         params[l] = p;
         continue;
-      };
+      }
       console.log(l);
       params[l] = [];
     }
 
-    const response = await this.props
-      .client()
-      .infer(model, image, params);
-
+    const response = await this.props.client().infer(model, image, params);
 
     if (response.status !== 200) {
       this.notification.show({
@@ -239,7 +239,6 @@ export default class SmartEdit extends BaseTab {
       toolName: 'ProbeMONAILabel',
     });
     console.info('Here we activate the probe');
-
   };
 
   onLeaveActionTab = () => {
@@ -272,9 +271,9 @@ export default class SmartEdit extends BaseTab {
   };
 
   render() {
-    let models = [];
+    const models = [];
     if (this.props.info && this.props.info.models) {
-      for (let [name, model] of Object.entries(this.props.info.models)) {
+      for (const [name, model] of Object.entries(this.props.info.models)) {
         if (
           model.type === 'deepgrow' ||
           model.type === 'deepedit' ||
@@ -308,11 +307,14 @@ export default class SmartEdit extends BaseTab {
             onClick={this.onDeepgrow}
             onSelectModel={this.onSelectModel}
             usage={
-              <div style={{ fontSize: 'smaller'}}>
+              <div style={{ fontSize: 'smaller' }}>
                 <p>
                   Create a label and annotate <b>any organ</b>.
                 </p>
-                <a style={{ backgroundColor:'lightgray'}} onClick={() => this.clearPoints()}>
+                <a
+                  style={{ backgroundColor: 'lightgray' }}
+                  onClick={() => this.clearPoints()}
+                >
                   Clear Points
                 </a>
               </div>
