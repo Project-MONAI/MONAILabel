@@ -1,17 +1,18 @@
 import React, { Component } from 'react';
 import PropTypes from 'prop-types';
-import { cache, triggerEvent, eventTarget } from '@cornerstonejs/core';
-import { Enums } from '@cornerstonejs/tools';
 import './MonaiLabelPanel.css';
-import SettingsTable from './SettingsTable';
-import AutoSegmentation from './actions/AutoSegmentation';
-import SmartEdit from './actions/SmartEdit';
-import OptionTable from './actions/OptionTable';
 import ActiveLearning from './actions/ActiveLearning';
+import AutoSegmentation from './actions/AutoSegmentation';
+import PointPrompts from './actions/PointPrompts';
+import ClassPrompts from './actions/ClassPrompts';
 import MonaiLabelClient from '../services/MonaiLabelClient';
+import { hideNotification, getLabelColor } from '../utils/GenericUtils';
+import { Enums } from '@cornerstonejs/tools';
+import { cache, triggerEvent, eventTarget } from '@cornerstonejs/core';
 import SegmentationReader from '../utils/SegmentationReader';
-import MonaiSegmentation from './MonaiSegmentation';
-import SegmentationToolbox from './SegmentationToolbox';
+import { currentSegmentsInfo } from '../utils/SegUtils';
+import SettingsTable from './SettingsTable';
+import * as cornerstoneTools from '@cornerstonejs/tools';
 
 export default class MonaiLabelPanel extends Component {
   static propTypes = {
@@ -24,14 +25,16 @@ export default class MonaiLabelPanel extends Component {
   settings: any;
   state: { info: {}; action: {} };
   actions: {
-    options: any;
     activelearning: any;
     segmentation: any;
-    smartedit: any;
+    pointprompts: any;
+    classprompts: any;
   };
   props: any;
   SeriesInstanceUID: any;
   StudyInstanceUID: any;
+  FrameOfReferenceUID: any;
+  displaySetInstanceUID: any;
 
   constructor(props) {
     super(props);
@@ -40,64 +43,38 @@ export default class MonaiLabelPanel extends Component {
       props.servicesManager.services;
 
     this.notification = uiNotificationService;
-    this.settings = React.createRef();
-
     this.actions = {
-      options: React.createRef(),
-      activeLearning: React.createRef(),
+      activelearning: React.createRef(),
       segmentation: React.createRef(),
-      smartedit: React.createRef(),
+      pointprompts: React.createRef(),
+      classprompts: React.createRef(),
     };
 
     this.state = {
-      info: {},
+      info: { models: [], datasets: [] },
       action: {},
-      segmentations: [],
     };
 
-    // Todo: fix this hack
-    setTimeout(() => {
-      const { viewports, activeViewportId } = viewportGridService.getState();
-      const viewport = viewports.get(activeViewportId);
-      const displaySet = displaySetService.getDisplaySetByUID(
-        viewport.displaySetInstanceUIDs[0]
-      );
+    viewportGridService.subscribe(
+      viewportGridService.EVENTS.GRID_SIZE_CHANGED,
+      () => {
+        const { viewports, activeViewportId } = viewportGridService.getState();
+        const viewport = viewports.get(activeViewportId);
 
-      this.SeriesInstanceUID = displaySet.SeriesInstanceUID;
-      this.StudyInstanceUID = displaySet.StudyInstanceUID;
-      this.FrameOfReferenceUID = displaySet.instances[0].FrameOfReferenceUID;
-      this.displaySetInstanceUID = displaySet.displaySetInstanceUID;
-    }, 1000);
-  }
-
-  async componentDidMount() {
-    const { segmentationService } = this.props.servicesManager.services;
-    const added = segmentationService.EVENTS.SEGMENTATION_ADDED;
-    const updated = segmentationService.EVENTS.SEGMENTATION_UPDATED;
-    const removed = segmentationService.EVENTS.SEGMENTATION_REMOVED;
-    const subscriptions = [];
-
-    [added, updated, removed].forEach((evt) => {
-      const { unsubscribe } = segmentationService.subscribe(evt, () => {
-        const segmentations = segmentationService.getSegmentations();
-
-        if (!segmentations?.length) {
+        if (!viewport) {
           return;
         }
 
-        this.setState({ segmentations });
-      });
-      subscriptions.push(unsubscribe);
-    });
+        const displaySet = displaySetService.getDisplaySetByUID(
+          viewport.displaySetInstanceUIDs[0]
+        );
 
-    this.unsubscribe = () => {
-      subscriptions.forEach((unsubscribe) => unsubscribe());
-    };
-  }
-
-  // componentDidUnmount? Doesn't exist this method anymore in V3?
-  async componentWillUnmount() {
-    this.unsubscribe();
+        this.SeriesInstanceUID = displaySet.SeriesInstanceUID;
+        this.StudyInstanceUID = displaySet.StudyInstanceUID;
+        this.FrameOfReferenceUID = displaySet.instances[0].FrameOfReferenceUID;
+        this.displaySetInstanceUID = displaySet.displaySetInstanceUID;
+      }
+    );
   }
 
   client = () => {
@@ -110,57 +87,164 @@ export default class MonaiLabelPanel extends Component {
     );
   };
 
+  segmentColor(label) {
+    const color = getLabelColor(label);
+    const rgbColor = [];
+    for (const key in color) {
+      rgbColor.push(color[key]);
+    }
+    rgbColor.push(255);
+    return rgbColor;
+  }
+
+  getActiveViewportInfo = () => {
+    const { viewportGridService } = this.props.servicesManager.services;
+    const { viewports, activeViewportId } = viewportGridService.getState();
+    const viewport = viewports.get(activeViewportId);
+    return viewport;
+  }
+
   onInfo = async () => {
-    this.notification.show({
+    const nid = this.notification.show({
       title: 'MONAI Label',
       message: 'Connecting to MONAI Label',
       type: 'info',
-      duration: 3000,
+      duration: 2000,
     });
 
     const response = await this.client().info();
+    console.log(response.data);
 
-    // remove the background
-    const labels = response.data.labels.splice(1);
-
-    const segmentations = [
-      {
-        id: '1',
-        label: 'Segmentations',
-        segments: labels.map((label, index) => ({
-          segmentIndex: index + 1,
-          label,
-        })),
-        isActive: true,
-        activeSegmentIndex: 1,
-      },
-    ];
-
-    this.props.commandsManager.runCommand('loadSegmentationsForViewport', {
-      segmentations,
-    });
-
+    hideNotification(nid, this.notification);
     if (response.status !== 200) {
       this.notification.show({
         title: 'MONAI Label',
-        message: 'Failed to Connect to MONAI Label Server',
+        message: 'Failed to Connect to MONAI Label',
         type: 'error',
         duration: 5000,
       });
-    } else {
-      this.notification.show({
-        title: 'MONAI Label',
-        message: 'Connected to MONAI Label Server - Successful',
-        type: 'success',
-        duration: 2000,
+      return;
+    }
+
+    this.notification.show({
+      title: 'MONAI Label',
+      message: 'Connected to MONAI Label - Successful',
+      type: 'success',
+      duration: 2000,
+    });
+
+    const all_models = response.data.models;
+    const all_model_names = Object.keys(all_models);
+    const deepgrow_models = all_model_names.filter(
+      (m) => all_models[m].type === 'deepgrow'
+    );
+    const deepedit_models = all_model_names.filter(
+      (m) => all_models[m].type === 'deepedit'
+    );
+    const vista3d_models = all_model_names.filter(
+      (m) => all_models[m].type === 'vista3d'
+    );
+    const segmentation_models = all_model_names.filter(
+      (m) => all_models[m].type === 'segmentation'
+    );
+    const models = deepgrow_models
+      .concat(deepedit_models)
+      .concat(vista3d_models)
+      .concat(segmentation_models);
+    const all_labels = response.data.labels;
+
+    const modelLabelToIdxMap = {};
+    const modelIdxToLabelMap = {};
+    const modelLabelNames = {};
+    const modelLabelIndices = {};
+    for (const model of models) {
+      const labels = all_models[model]['labels'];
+      modelLabelToIdxMap[model] = {};
+      modelIdxToLabelMap[model] = {};
+      if (Array.isArray(labels)) {
+        for (let label_idx = 1; label_idx <= labels.length; label_idx++) {
+          const label = labels[label_idx-1];
+          all_labels.push(label);
+          modelLabelToIdxMap[model][label] = label_idx;
+          modelIdxToLabelMap[model][label_idx] = label;
+        }
+      } else {
+        for (const label of Object.keys(labels)) {
+          const label_idx = labels[label];
+          all_labels.push(label);
+          modelLabelToIdxMap[model][label] = label_idx;
+          modelIdxToLabelMap[model][label_idx] = label;
+        }
+      }
+      modelLabelNames[model] = [
+        ...Object.keys(modelLabelToIdxMap[model]),
+      ].sort();
+      modelLabelIndices[model] = [...Object.keys(modelIdxToLabelMap[model])]
+        .sort()
+        .map(Number);
+    }
+
+    const labelsOrdered = [...new Set(all_labels)].sort();
+    const segmentations = [
+      {
+        segmentationId: '1',
+        representation: {
+          type: Enums.SegmentationRepresentations.Labelmap,
+        },
+        config: {
+          label: 'Segmentations',
+          segments: labelsOrdered.reduce((acc, label, index) => {
+            acc[index + 1] = {
+              segmentIndex: index + 1,
+              label: label,
+              active: index === 0, // First segment is active
+              locked: false,
+              color: this.segmentColor(label),
+            };
+            return acc;
+          }, {}),
+        },
+      },
+    ];
+
+    const initialSegs = segmentations[0].config.segments;
+    const volumeLoadObject = cache.getVolume('1');
+    if (!volumeLoadObject) {
+      this.props.commandsManager.runCommand('loadSegmentationsForViewport', {
+        segmentations,
       });
 
-      this.setState({ info: response.data });
+      // Wait for Above Segmentations to be added/available
+      setTimeout(() => {
+        const { viewportId } = this.getActiveViewportInfo();
+        for (const segmentIndex of Object.keys(initialSegs)) {
+          cornerstoneTools.segmentation.config.color.setSegmentIndexColor(
+            viewportId,
+            '1',
+            initialSegs[segmentIndex].segmentIndex,
+            initialSegs[segmentIndex].color,
+          );
+        }
+      }, 1000);
     }
+
+    const info = {
+      models: models,
+      labels: labelsOrdered,
+      data: response.data,
+      modelLabelToIdxMap: modelLabelToIdxMap,
+      modelIdxToLabelMap: modelIdxToLabelMap,
+      modelLabelNames: modelLabelNames,
+      modelLabelIndices: modelLabelIndices,
+      initialSegs: initialSegs,
+    };
+
+    console.log(info);
+    this.setState({ info: info });
+    this.setState({ isDataReady: true }); // Mark as ready
   };
 
   onSelectActionTab = (name) => {
-    // Leave Event
     for (const action of Object.keys(this.actions)) {
       if (this.state.action === action) {
         if (this.actions[action].current) {
@@ -169,7 +253,6 @@ export default class MonaiLabelPanel extends Component {
       }
     }
 
-    // Enter Event
     for (const action of Object.keys(this.actions)) {
       if (name === action) {
         if (this.actions[action].current) {
@@ -180,224 +263,161 @@ export default class MonaiLabelPanel extends Component {
     this.setState({ action: name });
   };
 
-  onOptionsConfig = () => {
-    return this.actions['options'].current &&
-      this.actions['options'].current.state
-      ? this.actions['options'].current.state.config
-      : {};
-  };
-
-  _update = async (response, labelNames) => {
-    // Process the obtained binary file from the MONAI Label server
-    /* const onInfoLabelNames = this.state.info.labels */
-    const onInfoLabelNames = labelNames;
-
-    console.info('These are the predicted labels');
-    console.info(onInfoLabelNames);
-
-    if (onInfoLabelNames.hasOwnProperty('background')) {
-      delete onInfoLabelNames.background;
-    }
-
+  updateView = async (response, model_id, labels, override = false, point_prompts = false) => {
+    console.log('Update View: ', model_id, labels, override);
     const ret = SegmentationReader.parseNrrdData(response.data);
-
     if (!ret) {
       throw new Error('Failed to parse NRRD data');
     }
 
-    const { image: buffer, header } = ret;
-    const data = new Uint16Array(buffer);
+    const labelNames = {};
+    const currentSegs = currentSegmentsInfo(
+      this.props.servicesManager.services.segmentationService
+    );
+    const modelToSegMapping = {};
+    modelToSegMapping[0] = 0;
 
-    // reformat centroids
-    const centroidsIJK = new Map();
-    for (const [key, value] of Object.entries(response.centroids)) {
-      const segmentIndex = parseInt(value[0], 10);
-      const image = value.slice(1).map((v) => parseFloat(v));
-      centroidsIJK.set(segmentIndex, { image: image, world: [] });
+    let tmp_model_seg_idx = 1;
+    for (const label of labels) {
+      const s = currentSegs.info[label];
+      if (!s) {
+        for (let i = 1; i <= 255; i++) {
+          if (!currentSegs.indices.has(i)) {
+            labelNames[label] = i;
+            currentSegs.indices.add(i);
+            break;
+          }
+        }
+      } else {
+        labelNames[label] = s.segmentIndex;
+      }
+
+      const seg_idx = labelNames[label];
+      let model_seg_idx = this.state.info.modelLabelToIdxMap[model_id][label];
+      model_seg_idx = model_seg_idx ? model_seg_idx : tmp_model_seg_idx;
+      modelToSegMapping[model_seg_idx] = 0xff & seg_idx;
+      tmp_model_seg_idx++;
     }
 
-    const segmentations = [
-      {
-        id: '1',
-        label: 'Segmentations',
-        segments: Object.keys(onInfoLabelNames).map((key) => ({
-          segmentIndex: onInfoLabelNames[key],
-          label: key,
-        })),
-        isActive: true,
-        activeSegmentIndex: 1,
-        scalarData: data,
-        FrameOfReferenceUID: this.FrameOfReferenceUID,
-        centroidsIJK: centroidsIJK,
-      },
-    ];
+    console.log('Index Remap', labels, modelToSegMapping);
+    const data = new Uint8Array(ret.image);
 
-    // Todo: rename volumeId
-    const volumeLoadObject = cache.getVolume('1');
+    const { segmentationService } = this.props.servicesManager.services;
+    const volumeLoadObject = segmentationService.getLabelmapVolume('1');
     if (volumeLoadObject) {
-      const { scalarData } = volumeLoadObject;
-      scalarData.set(data);
+      console.log('Volume Object is In Cache....');
+      let convertedData = data;
+      for (let i = 0; i < convertedData.length; i++) {
+        const midx = convertedData[i];
+        const sidx = modelToSegMapping[midx];
+        if (midx && sidx) {
+          convertedData[i] = sidx;
+        } else if (override && point_prompts && labels.length === 1) {
+          convertedData[i] = midx ? labelNames[labels[0]] : 0;
+        } else if (labels.length > 0) {
+          convertedData[i] = 0;
+        }
+      }
+
+      if (override === true) {
+        const { segmentationService } = this.props.servicesManager.services;
+        const volumeLoadObject = segmentationService.getLabelmapVolume('1');
+        const { voxelManager } = volumeLoadObject;
+        const scalarData = voxelManager?.getCompleteScalarDataArray()
+
+        // console.log('Current ScalarData: ', scalarData);
+        const currentSegArray = new Uint8Array(scalarData.length);
+        currentSegArray.set(scalarData);
+
+        // get unique values to determine which organs to update, keep rest
+        const updateTargets = new Set(convertedData);
+        for (let i = 0; i < convertedData.length; i++) {
+          if (
+            convertedData[i] !== 255 &&
+            updateTargets.has(currentSegArray[i])
+          ) {
+            currentSegArray[i] = convertedData[i];
+          }
+        }
+        convertedData = currentSegArray;
+      }
+      const { voxelManager } = volumeLoadObject;
+      voxelManager?.setCompleteScalarDataArray(convertedData);
       triggerEvent(eventTarget, Enums.Events.SEGMENTATION_DATA_MODIFIED, {
         segmentationId: '1',
       });
-      console.debug("updated the segmentation's scalar data");
+      console.log("updated the segmentation's scalar data");
     } else {
-      this.props.commandsManager.runCommand('hydrateSegmentationsForViewport', {
-        segmentations,
-      });
+      console.log('TODO:: Volume Object is NOT In Cache....');
     }
   };
 
-  _debug = async () => {
-    const nrrdFetch = await fetch('http://localhost:3000/pred2.nrrd');
+  async componentDidMount() {
+    if (this.state.isDataReady) {
+      return;
+    }
 
-    const info = {
-      spleen: 1,
-      'right kidney': 2,
-      'left kidney': 3,
-      liver: 6,
-      stomach: 7,
-      aorta: 8,
-      'inferior vena cava': 9,
-    };
-
-    const nrrd = await nrrdFetch.arrayBuffer();
-
-    this._update({ data: nrrd }, info);
-  };
-
-  parseResponse = (response) => {
-    const buffer = response.data;
-    const contentType = response.headers['content-type'];
-    const boundaryMatch = contentType.match(/boundary=([^;]+)/i);
-    const boundary = boundaryMatch ? boundaryMatch[1] : null;
-
-    const text = new TextDecoder().decode(buffer);
-    const parts = text
-      .split(`--${boundary}`)
-      .filter((part) => part.trim() !== '');
-
-    // Find the JSON part and NRRD part
-    const jsonPart = parts.find((part) =>
-      part.includes('Content-Type: application/json')
-    );
-    const nrrdPart = parts.find((part) =>
-      part.includes('Content-Type: application/octet-stream')
-    );
-
-    // Extract JSON data
-    const jsonStartIndex = jsonPart.indexOf('{');
-    const jsonEndIndex = jsonPart.lastIndexOf('}');
-    const jsonData = JSON.parse(
-      jsonPart.slice(jsonStartIndex, jsonEndIndex + 1)
-    );
-
-    // Extract NRRD data
-    const binaryData = nrrdPart.split('\r\n\r\n')[1];
-    const binaryDataEnd = binaryData.lastIndexOf('\r\n');
-
-    const nrrdArrayBuffer = new Uint8Array(
-      binaryData
-        .slice(0, binaryDataEnd)
-        .split('')
-        .map((c) => c.charCodeAt(0))
-    ).buffer;
-
-    return { data: nrrdArrayBuffer, centroids: jsonData.centroids };
-  };
-
-  updateView = async (response, labelNames) => {
-    const { data, centroids } = this.parseResponse(response);
-    this._update({ data, centroids }, labelNames);
-  };
+    console.log('(Component Mounted) Connect to MONAI Server...');
+    // await this.onInfo();
+  }
 
   render() {
+    const { isDataReady, isInteractiveSeg } = this.state;
     return (
       <div className="monaiLabelPanel">
         <br style={{ margin: '3px' }} />
 
         <SettingsTable ref={this.settings} onInfo={this.onInfo} />
-
         <hr className="separator" />
-
         <p className="subtitle">{this.state.info.name}</p>
 
-        {/* <button onClick={this._debug}> Read</button> */}
-        <div className="tabs scrollbar" id="style-3">
-          <OptionTable
-            ref={this.actions['options']}
-            tabIndex={1}
-            info={this.state.info}
-            viewConstants={{
-              SeriesInstanceUID: this.SeriesInstanceUID,
-              StudyInstanceUID: this.StudyInstanceUID,
-            }}
-            client={this.client}
-            notification={this.notification}
-            //updateView={this.updateView}
-            onSelectActionTab={this.onSelectActionTab}
-          />
-
-          <ActiveLearning
-            ref={this.actions['activelearning']}
-            tabIndex={2}
-            info={this.state.info}
-            viewConstants={{
-              SeriesInstanceUID: this.SeriesInstanceUID,
-              StudyInstanceUID: this.StudyInstanceUID,
-            }}
-            client={this.client}
-            notification={this.notification}
-            /* updateView={this.updateView} */
-            onSelectActionTab={this.onSelectActionTab}
-            onOptionsConfig={this.onOptionsConfig}
-            // additional function - delete scribbles before submit
-            /* onDeleteSegmentByName={this.onDeleteSegmentByName} */
-          />
-
-          <AutoSegmentation
-            ref={this.actions['segmentation']}
-            tabIndex={3}
-            info={this.state.info}
-            viewConstants={{
-              SeriesInstanceUID: this.SeriesInstanceUID,
-              StudyInstanceUID: this.StudyInstanceUID,
-            }}
-            client={this.client}
-            notification={this.notification}
-            updateView={this.updateView}
-            onSelectActionTab={this.onSelectActionTab}
-            onOptionsConfig={this.onOptionsConfig}
-          />
-          <SmartEdit
-            ref={this.actions['smartedit']}
-            tabIndex={4}
-            servicesManager={this.props.servicesManager}
-            commandsManager={this.props.commandsManager}
-            info={this.state.info}
-            // Here we have to send element - In OHIF V2 - const element = cornerstone.getEnabledElements()[this.props.activeIndex].element;
-            viewConstants={{
-              SeriesInstanceUID: this.SeriesInstanceUID,
-              StudyInstanceUID: this.StudyInstanceUID,
-            }}
-            client={this.client}
-            notification={this.notification}
-            updateView={this.updateView}
-            onSelectActionTab={this.onSelectActionTab}
-            onOptionsConfig={this.onOptionsConfig}
-          />
-        </div>
-
-        {this.state.segmentations?.map((segmentation) => (
-          <>
-            <SegmentationToolbox servicesManager={this.props.servicesManager} />
-            <MonaiSegmentation
-              servicesManager={this.props.servicesManager}
-              extensionManager={this.props.extensionManager}
-              commandsManager={this.props.commandsManager}
+        {isDataReady && (
+          <div className="tabs scrollbar" id="style-3">
+            <AutoSegmentation
+              ref={this.actions['segmentation']}
+              tabIndex={2}
+              info={this.state.info}
+              viewConstants={{
+                SeriesInstanceUID: this.SeriesInstanceUID,
+                StudyInstanceUID: this.StudyInstanceUID,
+              }}
+              client={this.client}
+              notification={this.notification}
+              updateView={this.updateView}
+              onSelectActionTab={this.onSelectActionTab}
             />
-          </>
-        ))}
+            <PointPrompts
+              ref={this.actions['pointprompts']}
+              tabIndex={3}
+              servicesManager={this.props.servicesManager}
+              commandsManager={this.props.commandsManager}
+              info={this.state.info}
+              viewConstants={{
+                SeriesInstanceUID: this.SeriesInstanceUID,
+                StudyInstanceUID: this.StudyInstanceUID,
+              }}
+              client={this.client}
+              notification={this.notification}
+              updateView={this.updateView}
+              onSelectActionTab={this.onSelectActionTab}
+            />
+            <ClassPrompts
+              ref={this.actions['classprompts']}
+              tabIndex={4}
+              servicesManager={this.props.servicesManager}
+              commandsManager={this.props.commandsManager}
+              info={this.state.info}
+              viewConstants={{
+                SeriesInstanceUID: this.SeriesInstanceUID,
+                StudyInstanceUID: this.StudyInstanceUID,
+              }}
+              client={this.client}
+              notification={this.notification}
+              updateView={this.updateView}
+              onSelectActionTab={this.onSelectActionTab}
+            />
+          </div>
+        )}
       </div>
     );
   }

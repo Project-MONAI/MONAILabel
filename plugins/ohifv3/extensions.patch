@@ -9,7 +9,7 @@ index 08a42deb0..69e5aa005 100644
 +    {
 +      "packageName": "@ohif/extension-monai-label",
 +      "default": false,
-+      "version": "0.0.1"
++      "version": "3.0.0"
 +    },
      {
        "packageName": "@ohif/extension-dicom-microscopy",
@@ -20,6 +20,7 @@ index 08a42deb0..69e5aa005 100644
      },
 +    {
 +      "packageName": "@ohif/mode-monai-label"
++      "version": "3.0.0"
 +    },
      {
        "packageName": "@ohif/mode-tmtv"

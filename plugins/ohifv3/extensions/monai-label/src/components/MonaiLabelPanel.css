@@ -1,14 +1,12 @@
 @import url("w3.css");
 
 .monaiLabelPanel {
-  background-color: #789;
+  background-color: #000;
   height: 100%;
   width: 100%;
-  display: flex;
   flex-direction: column;
   color: var(--text-primary-color);
   padding: 2px;
-  overflow-y: scroll; /* Make the panel scrollable vertically */
 /* Accordion styles */
 }
 .monaiLabelPanel .subtitle {
@@ -23,7 +21,7 @@
   border-radius: 4px;
   overflow: auto;
   box-shadow: 0 4px 4px -2px rgba(0,0,0,0.5);
-  background: #000;
+  background: #91b9cd;
   margin: 1rem 0;
 }
 .monaiLabelPanel .tab {
@@ -61,11 +59,11 @@
 .monaiLabelPanel .tab-content {
   max-height: 0;
   padding: 0 1em;
-  background: #808080;
+  background: #000;
   transition: all 0.35s;
   width: 90%;
   font-size: small;
-  color: #000;
+  color: #fff;
 }
 .monaiLabelPanel .tab-close {
   display: flex;
@@ -79,7 +77,7 @@
   background: #1a252f;
 }
 .monaiLabelPanel input:checked + .tab-label {
-  background: #000;
+  background: #00a4d9;
 }
 .monaiLabelPanel input:checked + .tab-label::after {
   transform: rotate(90deg);
@@ -98,22 +96,21 @@
   width: 100%;
   padding: 1px;
   border: 1px solid #000;
-  border-radius: 5px;
   color: #000;
 }
 .monaiLabelPanel .actionButton {
   border: 1px solid #000;
   border-radius: 15px;
-  background-color: #add8e6;
+  background-color: #00a4d9;
   color: #000;
   line-height: 25px;
-  padding: 10px;
+  padding: 10px 20px;
   outline: none;
   cursor: pointer;
 }
 .monaiLabelPanel .actionButton:hover,
 .monaiLabelPanel .actionButton:active {
-  background-color: var(--ui-sky-blue);
+  background-color: #00a4d9;
 }
 .monaiLabelPanel .actionButton:disabled {
   background-color: var(--ui-sky-blue);
@@ -122,6 +119,7 @@
   margin-right: 4px;
   position: relative;
   top: 2px;
+  bottom: 2px;
 }
 .scrollbar {
   overflow-y: scroll;

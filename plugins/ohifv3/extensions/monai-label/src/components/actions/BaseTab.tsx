@@ -1,7 +1,9 @@
 import { Component } from 'react';
 import PropTypes from 'prop-types';
 
+import './BaseTab.css';
 import { UIModalService, UINotificationService } from '@ohif/core';
+import { currentSegmentsInfo } from '../../utils/SegUtils';
 
 export default class BaseTab extends Component {
   static propTypes = {
@@ -12,8 +14,11 @@ export default class BaseTab extends Component {
     client: PropTypes.func,
     updateView: PropTypes.func,
     onSelectActionTab: PropTypes.func,
-    onOptionsConfig: PropTypes.func,
   };
+
+  notification: any;
+  uiModelService: any;
+  tabId: string;
 
   constructor(props) {
     super(props);
@@ -25,13 +30,17 @@ export default class BaseTab extends Component {
   onSelectActionTab = (evt) => {
     this.props.onSelectActionTab(evt.currentTarget.value);
   };
-
   onEnterActionTab = () => {};
   onLeaveActionTab = () => {};
-
   onSegmentCreated = (id) => {};
   onSegmentUpdated = (id) => {};
   onSegmentDeleted = (id) => {};
   onSegmentSelected = (id) => {};
   onSelectModel = (model) => {};
+
+  segmentInfo = () => {
+    return currentSegmentsInfo(
+      this.props.servicesManager.services.segmentationService
+    ).info;
+  };
 }

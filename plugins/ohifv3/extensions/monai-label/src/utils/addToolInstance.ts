@@ -8,5 +8,6 @@ export default function addToolInstance(
   class InstanceClass extends toolClass {
     static toolName = name;
   }
+
   addTool(InstanceClass);
 }

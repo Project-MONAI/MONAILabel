@@ -1,4 +1,3 @@
-import { Types, metaData, utilities as csUtils } from '@cornerstonejs/core';
 import { ProbeTool, annotation, drawing } from '@cornerstonejs/tools';
 
 const { getAnnotations } = annotation.state;
