@@ -13,9 +13,9 @@ export default function getCommandsModule({ servicesManager }) {
   };
 
   const definitions = {
-    setToolActive: {
-      commandFn: actions.setToolActive,
-    },
+    // setToolActive: {
+    //   commandFn: actions.setToolActive,
+    // },
   };
 
   return {
