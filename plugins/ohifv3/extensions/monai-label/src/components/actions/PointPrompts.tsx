@@ -128,11 +128,15 @@ export default class PointPrompts extends BaseTab {
         params[label] = points[label];
       }
     } else {
-      params['background'] = [];
-      params['foreground'] = points[currentLabel];
-      if (points['background'] && points['background'].length > 0) {
-        params['background'] = points['background'];
+      let bg = points['background'] && points['background'].length ? points['background'] : [];
+      let fg = points[currentLabel];
+      if (info.data.models[model].dimension === 2) {
+        const sidx = fg.length ? fg[fg.length - 1][2] : bg.length ? bg[bg.length - 1][2] : -1;
+        fg = fg.filter(p => p[2] === sidx);
+        bg = bg.filter(p => p[2] === sidx);
       }
+      params['foreground'] = fg;
+      params['background'] = bg;
       label_names = [currentLabel];
     }
 

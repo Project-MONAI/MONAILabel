@@ -42,10 +42,6 @@ export default class MonaiLabelPanel extends Component {
     const { uiNotificationService, viewportGridService, displaySetService } =
       props.servicesManager.services;
 
-    this.SeriesInstanceUID =
-      displaySetService.activeDisplaySets[0].SeriesInstanceUID;
-    this.StudyInstanceUID =
-      displaySetService.activeDisplaySets[0].StudyInstanceUID;
     this.notification = uiNotificationService;
     this.actions = {
       activelearning: React.createRef(),
@@ -73,7 +69,6 @@ export default class MonaiLabelPanel extends Component {
           viewport.displaySetInstanceUIDs[0]
         );
 
-        console.log(viewport);
         this.SeriesInstanceUID = displaySet.SeriesInstanceUID;
         this.StudyInstanceUID = displaySet.StudyInstanceUID;
         this.FrameOfReferenceUID = displaySet.instances[0].FrameOfReferenceUID;
@@ -363,7 +358,7 @@ export default class MonaiLabelPanel extends Component {
     }
 
     console.log('(Component Mounted) Connect to MONAI Server...');
-    await this.onInfo();
+    // await this.onInfo();
   }
 
   render() {

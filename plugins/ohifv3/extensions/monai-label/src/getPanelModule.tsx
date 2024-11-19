@@ -1,19 +1,11 @@
 import React from 'react';
 import MonaiLabelPanel from './components/MonaiLabelPanel';
-import { ServicesManager, CommandsManager, ExtensionManager } from '@ohif/core';
 
 function getPanelModule({
-  servicesManager,
   commandsManager,
   extensionManager,
-}: {
-  servicesManager: ServicesManager;
-  commandsManager: CommandsManager;
-  extensionManager: ExtensionManager;
+  servicesManager,
 }) {
-  const { uiNotificationService, viewportGridService, displaySetService } =
-    servicesManager.services;
-
   const WrappedMonaiLabelPanel = () => {
     return (
       <MonaiLabelPanel
