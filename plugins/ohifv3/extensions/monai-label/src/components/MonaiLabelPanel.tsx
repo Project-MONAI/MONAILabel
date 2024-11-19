@@ -35,6 +35,7 @@ export default class MonaiLabelPanel extends Component {
   StudyInstanceUID: any;
   FrameOfReferenceUID: any;
   displaySetInstanceUID: any;
+  serverURI = 'http://127.0.0.1:8000'
 
   constructor(props) {
     super(props);
@@ -83,7 +84,7 @@ export default class MonaiLabelPanel extends Component {
         ? this.settings.current.state
         : null;
     return new MonaiLabelClient(
-      settings ? settings.url : 'http://127.0.0.1:8000'
+      settings ? settings.url : this.serverURI
     );
   };
 
@@ -104,7 +105,7 @@ export default class MonaiLabelPanel extends Component {
     return viewport;
   }
 
-  onInfo = async () => {
+  onInfo = async (serverURI) => {
     const nid = this.notification.show({
       title: 'MONAI Label',
       message: 'Connecting to MONAI Label',
@@ -112,6 +113,7 @@ export default class MonaiLabelPanel extends Component {
       duration: 2000,
     });
 
+    this.serverURI = serverURI;
     const response = await this.client().info();
     console.log(response.data);
 
@@ -362,7 +364,7 @@ export default class MonaiLabelPanel extends Component {
   }
 
   render() {
-    const { isDataReady, isInteractiveSeg } = this.state;
+    const { isDataReady } = this.state;
     return (
       <div className="monaiLabelPanel">
         <br style={{ margin: '3px' }} />

@@ -37,7 +37,16 @@ export default class SettingsTable extends Component {
     const url = evt.target.value;
     this.setState({ url: url });
     CookieUtils.setCookie('MONAILABEL_SERVER_URL', url);
+    console.log("Settings onBlurSeverURL", url);
   };
+
+  onConnect = ()=> {
+    const url = document.getElementById("monailabelServerURL").value;
+    this.setState({ url: url });
+    CookieUtils.setCookie('MONAILABEL_SERVER_URL', url);
+    console.log("Connecting Server", url);
+    this.onInfo(url);
+  }
 
   render() {
     return (
@@ -47,6 +56,7 @@ export default class SettingsTable extends Component {
             <td>Server:</td>
             <td>
               <input
+                id="monailabelServerURL"
                 className="actionInput"
                 name="monailabelServerURL"
                 type="text"
@@ -56,7 +66,7 @@ export default class SettingsTable extends Component {
             </td>
             <td>&nbsp;</td>
             <td>
-              <button className="actionButton" onClick={this.onInfo}>
+              <button className="actionButton" onClick={this.onConnect}>
                 <Icon name="tool-reset" width="12px" height="12px" />
               </button>
             </td>
