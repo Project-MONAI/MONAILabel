@@ -77,7 +77,7 @@ jobs:
         run: |
           $(pwd)/runtests.sh --unittests
       - name: Upload coverage
-        uses: codecov/codecov-action@v4
+        uses: codecov/codecov-action@v5
         with:
           fail_ci_if_error: false
           file: ./coverage.xml
