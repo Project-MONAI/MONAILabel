@@ -22,7 +22,7 @@ const dicomSeg = {
   sopClassHandler:
     '@ohif/extension-cornerstone-dicom-seg.sopClassHandlerModule.dicom-seg',
   viewport: '@ohif/extension-cornerstone-dicom-seg.viewportModule.dicom-seg',
-  panel: '@ohif/extension-cornerstone-dicom-seg.panelModule.panelSegmentationWithTools',
+  panel: '@ohif/extension-cornerstone.panelModule.panelSegmentationWithTools',
 };
 
 /**
@@ -102,7 +102,6 @@ function modeFactory({ modeConfiguration }) {
         activateTool,
       ));
 
-      toolbarService.init(extensionManager);
       toolbarService.addButtons(toolbarButtons);
       toolbarService.createButtonSection('primary', [
         'MeasurementTools',

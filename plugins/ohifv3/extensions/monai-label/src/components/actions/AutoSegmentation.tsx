@@ -135,10 +135,11 @@ export default class AutoSegmentation extends BaseTab {
             onClick={this.onSegmentation}
             onSelectModel={this.onSelectModel}
             usage={
-              <p style={{ fontSize: 'smaller' }}>
-                Experience fully automated segmentation for <b>everything</b>{' '}
-                from the pre-trained model.
-              </p>
+              <div style={{ fontSize: 'smaller' }}>
+                <br/>
+                <p>Experience fully automated segmentation for <b>everything</b>{' '}
+                  from the pre-trained model.</p>
+              </div>
             }
           />
         </div>

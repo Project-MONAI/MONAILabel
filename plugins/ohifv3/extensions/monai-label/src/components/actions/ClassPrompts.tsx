@@ -133,7 +133,7 @@ export default class ClassPrompts extends BaseTab {
       duration: 4000,
     });
 
-    this.props.updateView(response, model, label_names);
+    this.props.updateView(response, model, label_names, true);
   };
 
   segColorToRgb(s) {
@@ -333,9 +333,10 @@ export default class ClassPrompts extends BaseTab {
             onClick={this.onRunInference}
             onSelectModel={this.onSelectModel}
             usage={
-              <p style={{ fontSize: 'smaller' }}>
-                <strong>Quick Prompts</strong> - Choose structures
-              </p>
+              <div style={{ fontSize: 'smaller' }}>
+                <br/>
+                <p>Choose following structures or individual classes</p>
+              </div>
             }
           />
           <button
@@ -386,12 +387,6 @@ export default class ClassPrompts extends BaseTab {
           </button>
 
           <br />
-          <br />
-          <p style={{ fontSize: 'smaller' }}>
-            Select anatomies and click the "Run"
-          </p>
-          <br />
-
           <div className="optionsTableContainer">
             <hr />
             <p>Selected Organ(s):</p>

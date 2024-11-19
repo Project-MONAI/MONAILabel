@@ -12,6 +12,7 @@ import { cache, triggerEvent, eventTarget } from '@cornerstonejs/core';
 import SegmentationReader from '../utils/SegmentationReader';
 import { currentSegmentsInfo } from '../utils/SegUtils';
 import SettingsTable from './SettingsTable';
+import * as cornerstoneTools from '@cornerstonejs/tools';
 
 export default class MonaiLabelPanel extends Component {
   static propTypes = {
@@ -38,7 +39,7 @@ export default class MonaiLabelPanel extends Component {
   constructor(props) {
     super(props);
 
-    const { uiNotificationService, displaySetService } =
+    const { uiNotificationService, viewportGridService, displaySetService } =
       props.servicesManager.services;
 
     this.SeriesInstanceUID =
@@ -58,14 +59,27 @@ export default class MonaiLabelPanel extends Component {
       action: {},
     };
 
-    // Todo: fix this hack
-    setTimeout(() => {
-      const displaySet = displaySetService.activeDisplaySets[0];
-      this.SeriesInstanceUID = displaySet.SeriesInstanceUID;
-      this.StudyInstanceUID = displaySet.StudyInstanceUID;
-      this.FrameOfReferenceUID = displaySet.instances[0].FrameOfReferenceUID;
-      this.displaySetInstanceUID = displaySet.displaySetInstanceUID;
-    }, 1000);
+    viewportGridService.subscribe(
+      viewportGridService.EVENTS.GRID_SIZE_CHANGED,
+      () => {
+        const { viewports, activeViewportId } = viewportGridService.getState();
+        const viewport = viewports.get(activeViewportId);
+
+        if (!viewport) {
+          return;
+        }
+
+        const displaySet = displaySetService.getDisplaySetByUID(
+          viewport.displaySetInstanceUIDs[0]
+        );
+
+        console.log(viewport);
+        this.SeriesInstanceUID = displaySet.SeriesInstanceUID;
+        this.StudyInstanceUID = displaySet.StudyInstanceUID;
+        this.FrameOfReferenceUID = displaySet.instances[0].FrameOfReferenceUID;
+        this.displaySetInstanceUID = displaySet.displaySetInstanceUID;
+      }
+    );
   }
 
   client = () => {
@@ -86,6 +100,13 @@ export default class MonaiLabelPanel extends Component {
     }
     rgbColor.push(255);
     return rgbColor;
+  }
+
+  getActiveViewportInfo = () => {
+    const { viewportGridService } = this.props.servicesManager.services;
+    const { viewports, activeViewportId } = viewportGridService.getState();
+    const viewport = viewports.get(activeViewportId);
+    return viewport;
   }
 
   onInfo = async () => {
@@ -145,11 +166,20 @@ export default class MonaiLabelPanel extends Component {
       const labels = all_models[model]['labels'];
       modelLabelToIdxMap[model] = {};
       modelIdxToLabelMap[model] = {};
-      for (const label of Object.keys(labels)) {
-        const label_idx = labels[label];
-        all_labels.push(label);
-        modelLabelToIdxMap[model][label] = label_idx;
-        modelIdxToLabelMap[model][label_idx] = label;
+      if (Array.isArray(labels)) {
+        for (let label_idx = 1; label_idx <= labels.length; label_idx++) {
+          const label = labels[label_idx-1];
+          all_labels.push(label);
+          modelLabelToIdxMap[model][label] = label_idx;
+          modelIdxToLabelMap[model][label_idx] = label;
+        }
+      } else {
+        for (const label of Object.keys(labels)) {
+          const label_idx = labels[label];
+          all_labels.push(label);
+          modelLabelToIdxMap[model][label] = label_idx;
+          modelIdxToLabelMap[model][label_idx] = label;
+        }
       }
       modelLabelNames[model] = [
         ...Object.keys(modelLabelToIdxMap[model]),
@@ -162,23 +192,45 @@ export default class MonaiLabelPanel extends Component {
     const labelsOrdered = [...new Set(all_labels)].sort();
     const segmentations = [
       {
-        id: '1',
-        label: 'Segmentations',
-        segments: labelsOrdered.map((label, index) => ({
-          segmentIndex: index + 1,
-          label: label,
-          color: this.segmentColor(label),
-        })),
-        isActive: true,
-        activeSegmentIndex: 1,
+        segmentationId: '1',
+        representation: {
+          type: Enums.SegmentationRepresentations.Labelmap,
+        },
+        config: {
+          label: 'Segmentations',
+          segments: labelsOrdered.reduce((acc, label, index) => {
+            acc[index + 1] = {
+              segmentIndex: index + 1,
+              label: label,
+              active: index === 0, // First segment is active
+              locked: false,
+              color: this.segmentColor(label),
+            };
+            return acc;
+          }, {}),
+        },
       },
     ];
-    const initialSegs = segmentations[0].segments;
+
+    const initialSegs = segmentations[0].config.segments;
     const volumeLoadObject = cache.getVolume('1');
     if (!volumeLoadObject) {
       this.props.commandsManager.runCommand('loadSegmentationsForViewport', {
         segmentations,
       });
+
+      // Wait for Above Segmentations to be added/available
+      setTimeout(() => {
+        const { viewportId } = this.getActiveViewportInfo();
+        for (const segmentIndex of Object.keys(initialSegs)) {
+          cornerstoneTools.segmentation.config.color.setSegmentIndexColor(
+            viewportId,
+            '1',
+            initialSegs[segmentIndex].segmentIndex,
+            initialSegs[segmentIndex].color,
+          );
+        }
+      }, 1000);
     }
 
     const info = {
@@ -216,7 +268,7 @@ export default class MonaiLabelPanel extends Component {
     this.setState({ action: name });
   };
 
-  updateView = async (response, model_id, labels, override = false) => {
+  updateView = async (response, model_id, labels, override = false, point_prompts = false) => {
     console.log('Update View: ', model_id, labels, override);
     const ret = SegmentationReader.parseNrrdData(response.data);
     if (!ret) {
@@ -255,73 +307,53 @@ export default class MonaiLabelPanel extends Component {
     console.log('Index Remap', labels, modelToSegMapping);
     const data = new Uint8Array(ret.image);
 
-    // Todo: rename volumeId
-    const volumeLoadObject = cache.getVolume('1');
+    const { segmentationService } = this.props.servicesManager.services;
+    const volumeLoadObject = segmentationService.getLabelmapVolume('1');
     if (volumeLoadObject) {
       console.log('Volume Object is In Cache....');
-      const { scalarData } = volumeLoadObject;
-      // console.log('scalarData', scalarData);
-
-      // Model Idx to Segment Idx conversion (merge for multiple models with different label idx for the same name)
-      const convertedData = data;
+      let convertedData = data;
       for (let i = 0; i < convertedData.length; i++) {
         const midx = convertedData[i];
         const sidx = modelToSegMapping[midx];
         if (midx && sidx) {
           convertedData[i] = sidx;
+        } else if (override && point_prompts && labels.length === 1) {
+          convertedData[i] = midx ? labelNames[labels[0]] : 0;
         } else if (labels.length > 0) {
-          convertedData[i] = 0; // Ignore unknown label idx
+          convertedData[i] = 0;
         }
       }
 
       if (override === true) {
-        const scalarDataRecover = new Uint8Array(
-          window.ScalarDataBuffer.length
-        );
-        scalarDataRecover.set(window.ScalarDataBuffer);
+        const { segmentationService } = this.props.servicesManager.services;
+        const volumeLoadObject = segmentationService.getLabelmapVolume('1');
+        const { voxelManager } = volumeLoadObject;
+        const scalarData = voxelManager?.getCompleteScalarDataArray()
+
+        // console.log('Current ScalarData: ', scalarData);
+        const currentSegArray = new Uint8Array(scalarData.length);
+        currentSegArray.set(scalarData);
 
         // get unique values to determine which organs to update, keep rest
         const updateTargets = new Set(convertedData);
         for (let i = 0; i < convertedData.length; i++) {
           if (
             convertedData[i] !== 255 &&
-            updateTargets.has(scalarDataRecover[i])
+            updateTargets.has(currentSegArray[i])
           ) {
-            scalarDataRecover[i] = convertedData[i];
+            currentSegArray[i] = convertedData[i];
           }
         }
-        scalarData.set(scalarDataRecover);
-      } else {
-        scalarData.set(convertedData);
+        convertedData = currentSegArray;
       }
-
+      const { voxelManager } = volumeLoadObject;
+      voxelManager?.setCompleteScalarDataArray(convertedData);
       triggerEvent(eventTarget, Enums.Events.SEGMENTATION_DATA_MODIFIED, {
         segmentationId: '1',
       });
-      console.debug("updated the segmentation's scalar data");
+      console.log("updated the segmentation's scalar data");
     } else {
-      // TODO:: Remap Index here as well...
-      console.log('Volume Object is NOT In Cache....');
-      const segmentations = [
-        {
-          id: '1',
-          label: 'Segmentations',
-          segments: Object.entries(labelNames).map(([k, v]) => ({
-            segmentIndex: v,
-            label: k,
-            color: this.segmentColor(k),
-          })),
-          isActive: true,
-          activeSegmentIndex: 1,
-          scalarData: data,
-          FrameOfReferenceUID: this.FrameOfReferenceUID,
-        },
-      ];
-
-      this.props.commandsManager.runCommand('loadSegmentationsForDisplaySet', {
-        displaySetInstanceUID: this.displaySetInstanceUID,
-        segmentations,
-      });
+      console.log('TODO:: Volume Object is NOT In Cache....');
     }
   };
 

@@ -20,8 +20,8 @@ export default class ModelSelector extends Component {
     const currentModel = props.currentModel
       ? props.currentModel
       : props.models.length > 0
-      ? props.models[0]
-      : '';
+        ? props.models[0]
+        : '';
     this.state = {
       models: props.models,
       currentModel: currentModel,
@@ -108,9 +108,7 @@ export default class ModelSelector extends Component {
             </tr>
           </tbody>
         </table>
-        <br />
         {this.props.usage}
-        <br />
       </div>
     );
   }

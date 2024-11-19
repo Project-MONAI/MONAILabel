@@ -1,7 +1,7 @@
 .optionsTable {
   font-family: arial, sans-serif;
   border-collapse: collapse;
-  width: 100%;
+  width: 99%;
   font-size: smaller;
 }
 .optionsTable th {
@@ -38,4 +38,7 @@
   borderRadius: '4px';
   border: '2px';
   cursor: 'pointer';
+}
+hr {
+  margin-top: 6px;
 }

@@ -22,7 +22,7 @@ export default class PointPrompts extends BaseTab {
   }
 
   onSelectModel = (model) => {
-    console.log('Selecting  (Point) Interaction Model...');
+    // console.log('Selecting  (Point) Interaction Model...');
     const currentLabel = null;
     const clickPoints = new Map();
     this.setState({
@@ -39,7 +39,7 @@ export default class PointPrompts extends BaseTab {
     this.props.commandsManager.runCommand('setToolActive', {
       toolName: 'ProbeMONAILabel',
     });
-    console.info('Here we activate the probe');
+    // console.info('Here we activate the probe');
   };
 
   onLeaveActionTab = () => {
@@ -47,8 +47,7 @@ export default class PointPrompts extends BaseTab {
     this.props.commandsManager.runCommand('setToolDisable', {
       toolName: 'ProbeMONAILabel',
     });
-
-    console.info('Here we deactivate the probe');
+    // console.info('Here we deactivate the probe');
   };
 
   onRunInference = async () => {
@@ -129,6 +128,7 @@ export default class PointPrompts extends BaseTab {
         params[label] = points[label];
       }
     } else {
+      params['background'] = [];
       params['foreground'] = points[currentLabel];
       if (points['background'] && points['background'].length > 0) {
         params['background'] = points['background'];
@@ -139,7 +139,6 @@ export default class PointPrompts extends BaseTab {
     const response = await this.props
       .client()
       .infer(model, viewConstants.SeriesInstanceUID, params);
-    console.log(response.data);
 
     hideNotification(nid, this.notification);
     if (response.status !== 200) {
@@ -149,7 +148,6 @@ export default class PointPrompts extends BaseTab {
         type: 'error',
         duration: 6000,
       });
-      console.log(response.data);
       return;
     }
 
@@ -160,12 +158,8 @@ export default class PointPrompts extends BaseTab {
       duration: 4000,
     });
 
-    const segVolumeObject = cache.getVolume('1');
-    const currentSegArray = new Uint8Array(segVolumeObject.scalarData.length);
-
-    currentSegArray.set(segVolumeObject.scalarData);
-    window.ScalarDataBuffer = currentSegArray;
-    this.props.updateView(response, model, label_names, true);
+    console.log("Target Labels to update: ", label_names)
+    this.props.updateView(response, model, label_names, true, true);
   };
 
   initPoints = () => {
@@ -267,7 +261,7 @@ export default class PointPrompts extends BaseTab {
       selectedModel++;
     }
     const model = models.length > 0 ? models[selectedModel] : null;
-    console.log('Selected Model: ', model);
+    // console.log('Selected Model: ', model);
     if (!model) {
       console.log('Something went error..');
       return null;
@@ -305,8 +299,14 @@ export default class PointPrompts extends BaseTab {
             onSelectModel={this.onSelectModel}
             usage={
               <div style={{ fontSize: 'smaller' }}>
-                <p>Select an anatomy from the segments menu above.</p>
-                <p>To guide the inference, use foreground (target) clicks:</p>
+                {/*<p>*/}
+                {/*  <input id="autorun" type="checkbox" />&nbsp;*/}
+                {/*  <span style={{ color: 'green' }}>Auto Run</span> on every*/}
+                {/*  click*/}
+                {/*</p>*/}
+                <br/>
+                <p>Select an anatomy from the segments menu below.</p>
+                <p>To guide the inference, add foreground clicks:</p>
                 <u>
                   <a
                     style={{ color: 'red', cursor: 'pointer' }}
