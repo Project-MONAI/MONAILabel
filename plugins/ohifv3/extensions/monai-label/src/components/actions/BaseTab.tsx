@@ -1,4 +1,3 @@
-
 import { Component } from 'react';
 import PropTypes from 'prop-types';
 
@@ -23,16 +22,16 @@ export default class BaseTab extends Component {
     this.tabId = 'tab-' + this.props.tabIndex;
   }
 
-  onSelectActionTab = evt => {
+  onSelectActionTab = (evt) => {
     this.props.onSelectActionTab(evt.currentTarget.value);
   };
 
   onEnterActionTab = () => {};
   onLeaveActionTab = () => {};
 
-  onSegmentCreated = id => {};
-  onSegmentUpdated = id => {};
-  onSegmentDeleted = id => {};
-  onSegmentSelected = id => {};
-  onSelectModel = model => {};
+  onSegmentCreated = (id) => {};
+  onSegmentUpdated = (id) => {};
+  onSegmentDeleted = (id) => {};
+  onSegmentSelected = (id) => {};
+  onSelectModel = (model) => {};
 }

@@ -27,12 +27,12 @@ export default class OptionTable extends BaseTab {
     };
   }
 
-  onChangeSection = evt => {
+  onChangeSection = (evt) => {
     this.state.section = evt.target.value;
     this.setState({ section: evt.target.value });
   };
 
-  onChangeName = evt => {
+  onChangeName = (evt) => {
     this.state.name = evt.target.value;
     this.setState({ name: evt.target.value });
   };
@@ -44,17 +44,19 @@ export default class OptionTable extends BaseTab {
     if (typeof c[s][n][k] === 'boolean') {
       c[s][n][k] = !!evt.target.checked;
     } else {
-      if (typeof c[s][n][k] === 'number')
+      if (typeof c[s][n][k] === 'number') {
         c[s][n][k] = Number.isInteger(c[s][n][k])
           ? parseInt(evt.target.value)
           : parseFloat(evt.target.value);
-      else c[s][n][k] = evt.target.value;
+      } else {
+        c[s][n][k] = evt.target.value;
+      }
     }
     this.setState({ config: c });
   };
 
   render() {
-    let config = this.state.config ? this.state.config : {};
+    const config = this.state.config ? this.state.config : {};
     if (!Object.keys(config).length) {
       const info = this.props.info;
       const mapping = {
@@ -66,7 +68,9 @@ export default class OptionTable extends BaseTab {
       for (const [m, n] of Object.entries(mapping)) {
         for (const [k, v] of Object.entries(info && info[n] ? info[n] : {})) {
           if (v && v.config && Object.keys(v.config).length) {
-            if (!config[m]) config[m] = {};
+            if (!config[m]) {
+              config[m] = {};
+            }
             config[m][k] = v.config;
           }
         }
@@ -120,7 +124,7 @@ export default class OptionTable extends BaseTab {
                     onChange={this.onChangeSection}
                     value={this.state.section}
                   >
-                    {Object.keys(config).map(k => (
+                    {Object.keys(config).map((k) => (
                       <option key={k} value={k}>
                         {`${k} `}
                       </option>
@@ -137,7 +141,7 @@ export default class OptionTable extends BaseTab {
                     onChange={this.onChangeName}
                     value={this.state.name}
                   >
-                    {Object.keys(section_map).map(k => (
+                    {Object.keys(section_map).map((k) => (
                       <option key={k} value={k}>
                         {`${k} `}
                       </option>
@@ -147,7 +151,7 @@ export default class OptionTable extends BaseTab {
               </tr>
             </tbody>
           </table>
-          <br/>
+          <br />
           <table className="optionsTable">
             <thead>
               <tr>
@@ -164,7 +168,7 @@ export default class OptionTable extends BaseTab {
                       <input
                         type="checkbox"
                         defaultChecked={v}
-                        onChange={e =>
+                        onChange={(e) =>
                           this.onChangeConfig(
                             this.state.section,
                             this.state.name,
@@ -176,7 +180,7 @@ export default class OptionTable extends BaseTab {
                     ) : v !== null && typeof v === 'object' ? (
                       <select
                         className="optionsInput"
-                        onChange={e =>
+                        onChange={(e) =>
                           this.onChangeConfig(
                             this.state.section,
                             this.state.name,
@@ -185,7 +189,7 @@ export default class OptionTable extends BaseTab {
                           )
                         }
                       >
-                        {Object.keys(v).map(a => (
+                        {Object.keys(v).map((a) => (
                           <option key={a} name={a} value={a}>
                             {a}
                           </option>
@@ -196,7 +200,7 @@ export default class OptionTable extends BaseTab {
                         type="text"
                         defaultValue={v ? v : ''}
                         className="optionsInput"
-                        onChange={e =>
+                        onChange={(e) =>
                           this.onChangeConfig(
                             this.state.section,
                             this.state.name,

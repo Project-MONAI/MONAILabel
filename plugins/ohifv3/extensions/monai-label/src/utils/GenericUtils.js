@@ -1,4 +1,3 @@
-
 import { GenericAnatomyColors, GenericNames } from './GenericAnatomyColors';
 
 function getRandomInt(min, max) {
@@ -55,9 +54,15 @@ export class CookieUtils {
       let expires = new Date(exp_y, exp_m, exp_d);
       cookie_string += '; expires=' + expires.toGMTString();
     }
-    if (path) cookie_string += '; path=' + escape(path);
-    if (domain) cookie_string += '; domain=' + escape(domain);
-    if (secure) cookie_string += '; secure';
+    if (path) {
+      cookie_string += '; path=' + escape(path);
+    }
+    if (domain) {
+      cookie_string += '; domain=' + escape(domain);
+    }
+    if (secure) {
+      cookie_string += '; secure';
+    }
     document.cookie = cookie_string;
   }
 
@@ -65,8 +70,11 @@ export class CookieUtils {
     let results = document.cookie.match(
       '(^|;) ?' + cookie_name + '=([^;]*)(;|$)'
     );
-    if (results) return unescape(results[2]);
-    else return null;
+    if (results) {
+      return unescape(results[2]);
+    } else {
+      return null;
+    }
   }
 
   static getCookieString(name, defaultVal = '') {
