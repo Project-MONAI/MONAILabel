@@ -1,7 +1,6 @@
 import React, { Component } from 'react';
 import PropTypes from 'prop-types';
 import './MonaiLabelPanel.css';
-import ActiveLearning from './actions/ActiveLearning';
 import AutoSegmentation from './actions/AutoSegmentation';
 import PointPrompts from './actions/PointPrompts';
 import ClassPrompts from './actions/ClassPrompts';
@@ -13,6 +12,7 @@ import SegmentationReader from '../utils/SegmentationReader';
 import { currentSegmentsInfo } from '../utils/SegUtils';
 import SettingsTable from './SettingsTable';
 import * as cornerstoneTools from '@cornerstonejs/tools';
+import optionsInputDialog from './OptionsInputDialog';
 
 export default class MonaiLabelPanel extends Component {
   static propTypes = {
@@ -23,8 +23,9 @@ export default class MonaiLabelPanel extends Component {
 
   notification: any;
   settings: any;
-  state: { info: {}; action: {} };
+  state: { info: {}; action: {}; options: {} };
   actions: {
+    options: any;
     activelearning: any;
     segmentation: any;
     pointprompts: any;
@@ -35,7 +36,8 @@ export default class MonaiLabelPanel extends Component {
   StudyInstanceUID: any;
   FrameOfReferenceUID: any;
   displaySetInstanceUID: any;
-  serverURI = 'http://127.0.0.1:8000'
+  numberOfFrames: any;
+  serverURI = 'http://127.0.0.1:8000';
 
   constructor(props) {
     super(props);
@@ -44,7 +46,9 @@ export default class MonaiLabelPanel extends Component {
       props.servicesManager.services;
 
     this.notification = uiNotificationService;
+    this.settings = React.createRef();
     this.actions = {
+      options: React.createRef(),
       activelearning: React.createRef(),
       segmentation: React.createRef(),
       pointprompts: React.createRef(),
@@ -74,6 +78,7 @@ export default class MonaiLabelPanel extends Component {
         this.StudyInstanceUID = displaySet.StudyInstanceUID;
         this.FrameOfReferenceUID = displaySet.instances[0].FrameOfReferenceUID;
         this.displaySetInstanceUID = displaySet.displaySetInstanceUID;
+        this.numberOfFrames = displaySet.instances.length;
       }
     );
   }
@@ -83,9 +88,7 @@ export default class MonaiLabelPanel extends Component {
       this.settings && this.settings.current && this.settings.current.state
         ? this.settings.current.state
         : null;
-    return new MonaiLabelClient(
-      settings ? settings.url : this.serverURI
-    );
+    return new MonaiLabelClient(settings ? settings.url : this.serverURI);
   };
 
   segmentColor(label) {
@@ -103,7 +106,7 @@ export default class MonaiLabelPanel extends Component {
     const { viewports, activeViewportId } = viewportGridService.getState();
     const viewport = viewports.get(activeViewportId);
     return viewport;
-  }
+  };
 
   onInfo = async (serverURI) => {
     const nid = this.notification.show({
@@ -165,7 +168,7 @@ export default class MonaiLabelPanel extends Component {
       modelIdxToLabelMap[model] = {};
       if (Array.isArray(labels)) {
         for (let label_idx = 1; label_idx <= labels.length; label_idx++) {
-          const label = labels[label_idx-1];
+          const label = labels[label_idx - 1];
           all_labels.push(label);
           modelLabelToIdxMap[model][label] = label_idx;
           modelIdxToLabelMap[model][label_idx] = label;
@@ -224,7 +227,7 @@ export default class MonaiLabelPanel extends Component {
             viewportId,
             '1',
             initialSegs[segmentIndex].segmentIndex,
-            initialSegs[segmentIndex].color,
+            initialSegs[segmentIndex].color
           );
         }
       }, 1000);
@@ -244,6 +247,7 @@ export default class MonaiLabelPanel extends Component {
     console.log(info);
     this.setState({ info: info });
     this.setState({ isDataReady: true }); // Mark as ready
+    this.setState({ options: {} });
   };
 
   onSelectActionTab = (name) => {
@@ -265,8 +269,21 @@ export default class MonaiLabelPanel extends Component {
     this.setState({ action: name });
   };
 
-  updateView = async (response, model_id, labels, override = false, point_prompts = false) => {
-    console.log('Update View: ', model_id, labels, override);
+  updateView = async (
+    response,
+    model_id,
+    labels,
+    override = false,
+    label_class_unknown = false,
+    sidx = -1
+  ) => {
+    console.log('UpdateView: ', {
+      model_id,
+      labels,
+      override,
+      label_class_unknown,
+      sidx,
+    });
     const ret = SegmentationReader.parseNrrdData(response.data);
     if (!ret) {
       throw new Error('Failed to parse NRRD data');
@@ -307,14 +324,14 @@ export default class MonaiLabelPanel extends Component {
     const { segmentationService } = this.props.servicesManager.services;
     const volumeLoadObject = segmentationService.getLabelmapVolume('1');
     if (volumeLoadObject) {
-      console.log('Volume Object is In Cache....');
+      // console.log('Volume Object is In Cache....');
       let convertedData = data;
       for (let i = 0; i < convertedData.length; i++) {
         const midx = convertedData[i];
         const sidx = modelToSegMapping[midx];
         if (midx && sidx) {
           convertedData[i] = sidx;
-        } else if (override && point_prompts && labels.length === 1) {
+        } else if (override && label_class_unknown && labels.length === 1) {
           convertedData[i] = midx ? labelNames[labels[0]] : 0;
         } else if (labels.length > 0) {
           convertedData[i] = 0;
@@ -325,7 +342,7 @@ export default class MonaiLabelPanel extends Component {
         const { segmentationService } = this.props.servicesManager.services;
         const volumeLoadObject = segmentationService.getLabelmapVolume('1');
         const { voxelManager } = volumeLoadObject;
-        const scalarData = voxelManager?.getCompleteScalarDataArray()
+        const scalarData = voxelManager?.getCompleteScalarDataArray();
 
         // console.log('Current ScalarData: ', scalarData);
         const currentSegArray = new Uint8Array(scalarData.length);
@@ -333,7 +350,15 @@ export default class MonaiLabelPanel extends Component {
 
         // get unique values to determine which organs to update, keep rest
         const updateTargets = new Set(convertedData);
+        const sliceLength = scalarData.length / this.numberOfFrames;
+        const sliceBegin = sliceLength * sidx;
+        const sliceEnd = sliceBegin + sliceLength;
+
         for (let i = 0; i < convertedData.length; i++) {
+          if (sidx >= 0 && (i < sliceBegin || i >= sliceEnd)) {
+            continue;
+          }
+
           if (
             convertedData[i] !== 255 &&
             updateTargets.has(currentSegArray[i])
@@ -354,14 +379,34 @@ export default class MonaiLabelPanel extends Component {
     }
   };
 
+  openConfigurations = (e) => {
+    e.preventDefault();
+
+    const { uiDialogService } = this.props.servicesManager.services;
+    optionsInputDialog(
+      uiDialogService,
+      this.state.options,
+      this.state.info,
+      (options, actionId) => {
+        if (actionId === 'save' || actionId == 'reset') {
+          this.setState({ options: options });
+        }
+      }
+    );
+  };
+
   async componentDidMount() {
     if (this.state.isDataReady) {
       return;
     }
 
-    console.log('(Component Mounted) Connect to MONAI Server...');
+    console.log('(Component Mounted) Ready to Connect to MONAI Server...');
     // await this.onInfo();
   }
+
+  onOptionsConfig = () => {
+    return this.state.options;
+  };
 
   render() {
     const { isDataReady } = this.state;
@@ -370,9 +415,17 @@ export default class MonaiLabelPanel extends Component {
         <br style={{ margin: '3px' }} />
 
         <SettingsTable ref={this.settings} onInfo={this.onInfo} />
-        <hr className="separator" />
-        <p className="subtitle">{this.state.info.name}</p>
-
+        {isDataReady && (
+          <div style={{ color: 'white' }}>
+            <p className="subtitle">{this.state.info.data.name}</p>
+            <br />
+            <hr className="separator" />
+            <a href="#" onClick={this.openConfigurations}>
+              Options / Configurations
+            </a>
+            <hr className="separator" />
+          </div>
+        )}
         {isDataReady && (
           <div className="tabs scrollbar" id="style-3">
             <AutoSegmentation
@@ -387,6 +440,7 @@ export default class MonaiLabelPanel extends Component {
               notification={this.notification}
               updateView={this.updateView}
               onSelectActionTab={this.onSelectActionTab}
+              onOptionsConfig={this.onOptionsConfig}
             />
             <PointPrompts
               ref={this.actions['pointprompts']}
@@ -402,6 +456,7 @@ export default class MonaiLabelPanel extends Component {
               notification={this.notification}
               updateView={this.updateView}
               onSelectActionTab={this.onSelectActionTab}
+              onOptionsConfig={this.onOptionsConfig}
             />
             <ClassPrompts
               ref={this.actions['classprompts']}
@@ -417,6 +472,7 @@ export default class MonaiLabelPanel extends Component {
               notification={this.notification}
               updateView={this.updateView}
               onSelectActionTab={this.onSelectActionTab}
+              onOptionsConfig={this.onOptionsConfig}
             />
           </div>
         )}

@@ -1,4 +1,4 @@
-@import url("w3.css");
+/*@import url("w3.css");*/
 
 .monaiLabelPanel {
   background-color: #000;
@@ -10,10 +10,10 @@
 /* Accordion styles */
 }
 .monaiLabelPanel .subtitle {
-  font-size: 14px;
+  font-size: 9px;
   text-decoration: underline;
   font-weight: 500;
-  color: #000;
+  color: aqua;
   margin: 1px;
   text-align: center;
 }
@@ -21,12 +21,11 @@
   border-radius: 4px;
   overflow: auto;
   box-shadow: 0 4px 4px -2px rgba(0,0,0,0.5);
-  background: #91b9cd;
   margin: 1rem 0;
 }
 .monaiLabelPanel .tab {
   width: 100%;
-  color: #fff;
+  /*color: #fff;*/
   overflow: hidden;
 }
 .monaiLabelPanel .tab-switch {

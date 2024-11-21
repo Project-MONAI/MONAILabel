@@ -65,7 +65,7 @@ const toolGroupIds = ['default', 'mpr', 'SRToolGroup'];
  * @returns {Array} an array of 'setToolActive' commands
  */
 function _createSetToolActiveCommands(toolName) {
-  const temp = toolGroupIds.map(toolGroupId => ({
+  const temp = toolGroupIds.map((toolGroupId) => ({
     commandName: 'setToolActive',
     commandOptions: {
       toolGroupId,
@@ -107,7 +107,7 @@ const toolbarButtons = [
             context: 'CORNERSTONE',
           },
         ],
-        'Length',
+        'Length'
       ),
       secondary: {
         icon: 'chevron-down',
@@ -138,7 +138,7 @@ const toolbarButtons = [
               context: 'CORNERSTONE',
             },
           ],
-          'Length Tool',
+          'Length Tool'
         ),
         _createToolButton(
           'Bidirectional',
@@ -161,7 +161,7 @@ const toolbarButtons = [
               context: 'CORNERSTONE',
             },
           ],
-          'Bidirectional Tool',
+          'Bidirectional Tool'
         ),
         _createToolButton(
           'ArrowAnnotate',
@@ -184,7 +184,7 @@ const toolbarButtons = [
               context: 'CORNERSTONE',
             },
           ],
-          'Arrow Annotate',
+          'Arrow Annotate'
         ),
         _createToolButton(
           'EllipticalROI',
@@ -207,7 +207,7 @@ const toolbarButtons = [
               context: 'CORNERSTONE',
             },
           ],
-          'Ellipse Tool',
+          'Ellipse Tool'
         ),
         _createToolButton(
           'CircleROI',
@@ -230,7 +230,7 @@ const toolbarButtons = [
               context: 'CORNERSTONE',
             },
           ],
-          'Circle Tool',
+          'Circle Tool'
         ),
       ],
     },
@@ -265,7 +265,7 @@ const toolbarButtons = [
             context: 'CORNERSTONE',
           },
         ],
-        'Window Level',
+        'Window Level'
       ),
       secondary: {
         icon: 'chevron-down',
@@ -374,7 +374,7 @@ const toolbarButtons = [
             context: 'CORNERSTONE',
           },
         ],
-        'Reset',
+        'Reset'
       ),
       secondary: {
         icon: 'chevron-down',
@@ -394,7 +394,7 @@ const toolbarButtons = [
               context: 'CORNERSTONE',
             },
           ],
-          'Reset',
+          'Reset'
         ),
         _createActionButton(
           'rotate-right',
@@ -407,7 +407,7 @@ const toolbarButtons = [
               context: 'CORNERSTONE',
             },
           ],
-          'Rotate +90',
+          'Rotate +90'
         ),
         _createActionButton(
           'flip-horizontal',
@@ -420,7 +420,7 @@ const toolbarButtons = [
               context: 'CORNERSTONE',
             },
           ],
-          'Flip Horizontal',
+          'Flip Horizontal'
         ),
         _createToggleButton('StackImageSync', 'link', 'Stack Image Sync', [
           {
@@ -439,7 +439,7 @@ const toolbarButtons = [
               commandOptions: {},
               context: 'CORNERSTONE',
             },
-          ],
+          ]
         ),
         _createToolButton(
           'StackScroll',
@@ -454,7 +454,7 @@ const toolbarButtons = [
               context: 'CORNERSTONE',
             },
           ],
-          'Stack Scroll',
+          'Stack Scroll'
         ),
         _createActionButton(
           'invert',
@@ -467,7 +467,7 @@ const toolbarButtons = [
               context: 'CORNERSTONE',
             },
           ],
-          'Invert Colors',
+          'Invert Colors'
         ),
         _createToolButton(
           'Probe',
@@ -482,7 +482,7 @@ const toolbarButtons = [
               context: 'CORNERSTONE',
             },
           ],
-          'Probe',
+          'Probe'
         ),
         _createToggleButton(
           'cine',
@@ -494,7 +494,7 @@ const toolbarButtons = [
               context: 'CORNERSTONE',
             },
           ],
-          'Cine',
+          'Cine'
         ),
         _createToolButton(
           'Angle',
@@ -509,7 +509,7 @@ const toolbarButtons = [
               context: 'CORNERSTONE',
             },
           ],
-          'Angle',
+          'Angle'
         ),
 
         // Next two tools can be added once icons are added
@@ -556,7 +556,7 @@ const toolbarButtons = [
               context: 'CORNERSTONE',
             },
           ],
-          'Magnify',
+          'Magnify'
         ),
         _createToolButton(
           'Rectangle',
@@ -571,7 +571,7 @@ const toolbarButtons = [
               context: 'CORNERSTONE',
             },
           ],
-          'Rectangle',
+          'Rectangle'
         ),
         _createToolButton(
           'CalibrationLine',
@@ -586,7 +586,7 @@ const toolbarButtons = [
               context: 'CORNERSTONE',
             },
           ],
-          'Calibration Line',
+          'Calibration Line'
         ),
         _createActionButton(
           'TagBrowser',
@@ -599,7 +599,7 @@ const toolbarButtons = [
               context: 'DEFAULT',
             },
           ],
-          'Dicom Tag Browser',
+          'Dicom Tag Browser'
         ),
       ],
     },

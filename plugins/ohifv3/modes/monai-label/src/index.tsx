@@ -3,11 +3,9 @@ import toolbarButtons from './toolbarButtons.js';
 import { id } from './id.js';
 import initToolGroups from './initToolGroups.js';
 
-
 const monailabel = {
   monaiLabel: '@ohif/extension-monai-label.panelModule.monailabel',
-}
-
+};
 
 const ohif = {
   layout: '@ohif/extension-default.layoutTemplateModule.viewerLayout',
@@ -28,8 +26,6 @@ const segmentation = {
     '@ohif/extension-cornerstone-dicom-seg.sopClassHandlerModule.dicom-seg',
   viewport: '@ohif/extension-cornerstone-dicom-seg.viewportModule.dicom-seg',
 };
-
-
 
 /**
  * Just two dependencies to be able to render a viewport with panels in order
@@ -96,8 +92,6 @@ function modeFactory({ modeConfiguration }) {
         'BrushTools',
         'Shapes',
       ]);
-
-
     },
     onModeExit: ({ servicesManager }) => {
       const {

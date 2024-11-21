@@ -105,9 +105,10 @@ export default class ClassPrompts extends BaseTab {
       }
     }
 
-    const params = {
-      label_prompt: label_classes,
-    };
+    const config = this.props.onOptionsConfig();
+    const params =
+      config && config.infer && config.infer[model] ? config.infer[model] : {};
+    params['label_prompt'] = label_classes;
 
     const response = await this.props
       .client()
@@ -334,7 +335,7 @@ export default class ClassPrompts extends BaseTab {
             onSelectModel={this.onSelectModel}
             usage={
               <div style={{ fontSize: 'smaller' }}>
-                <br/>
+                <br />
                 <p>Choose following structures or individual classes</p>
               </div>
             }

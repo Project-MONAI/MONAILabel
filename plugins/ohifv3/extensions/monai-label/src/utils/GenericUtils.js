@@ -42,16 +42,17 @@ function hexToRgb(hex) {
 
 function fixedRGBForLabel(str, toHex = false) {
   const r = generateIntForString(str);
-  const x = 2*r % 256;
-  const y = 3*r % 256;
-  const z = 5*r % 256;
+  const x = (2 * r) % 256;
+  const y = (3 * r) % 256;
+  const z = (5 * r) % 256;
   return toHex ? rgbToHex(x, y, z) : { r: x, g: y, b: z };
 }
 
 function generateIntForString(str) {
   let hash = str.length * 4;
-  for (let i = 0; i < str.length; ++i)
+  for (let i = 0; i < str.length; ++i) {
     hash += str.charCodeAt(i);
+  }
   return hash;
 }
 

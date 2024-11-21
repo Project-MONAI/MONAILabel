@@ -14,6 +14,7 @@ export default class BaseTab extends Component {
     client: PropTypes.func,
     updateView: PropTypes.func,
     onSelectActionTab: PropTypes.func,
+    onOptionsConfig: PropTypes.func,
   };
 
   notification: any;

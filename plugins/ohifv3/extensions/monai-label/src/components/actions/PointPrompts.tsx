@@ -109,7 +109,10 @@ export default class PointPrompts extends BaseTab {
       label_names.push(label);
     }
 
-    const params = {};
+    const config = this.props.onOptionsConfig();
+    const params =
+      config && config.infer && config.infer[model] ? config.infer[model] : {};
+    let sidx = -1;
     if (info.data.models[model].type === 'vista3d') {
       params['points'] = points[currentLabel];
       params['point_labels'] = new Array(params['points'].length).fill(1);
@@ -128,12 +131,19 @@ export default class PointPrompts extends BaseTab {
         params[label] = points[label];
       }
     } else {
-      let bg = points['background'] && points['background'].length ? points['background'] : [];
+      let bg =
+        points['background'] && points['background'].length
+          ? points['background']
+          : [];
       let fg = points[currentLabel];
       if (info.data.models[model].dimension === 2) {
-        const sidx = fg.length ? fg[fg.length - 1][2] : bg.length ? bg[bg.length - 1][2] : -1;
-        fg = fg.filter(p => p[2] === sidx);
-        bg = bg.filter(p => p[2] === sidx);
+        sidx = fg.length
+          ? fg[fg.length - 1][2]
+          : bg.length
+            ? bg[bg.length - 1][2]
+            : -1;
+        fg = fg.filter((p) => p[2] === sidx);
+        bg = bg.filter((p) => p[2] === sidx);
       }
       params['foreground'] = fg;
       params['background'] = bg;
@@ -162,8 +172,16 @@ export default class PointPrompts extends BaseTab {
       duration: 4000,
     });
 
-    console.log("Target Labels to update: ", label_names)
-    this.props.updateView(response, model, label_names, true, true);
+    const label_class_unknown = info.data.models[model].type === 'deepgrow';
+    console.log('Target Labels to update: ', label_names, label_class_unknown);
+    this.props.updateView(
+      response,
+      model,
+      label_names,
+      true,
+      label_class_unknown,
+      sidx
+    );
   };
 
   initPoints = () => {
@@ -308,7 +326,7 @@ export default class PointPrompts extends BaseTab {
                 {/*  <span style={{ color: 'green' }}>Auto Run</span> on every*/}
                 {/*  click*/}
                 {/*</p>*/}
-                <br/>
+                <br />
                 <p>Select an anatomy from the segments menu below.</p>
                 <p>To guide the inference, add foreground clicks:</p>
                 <u>

@@ -62,7 +62,9 @@ export default class AutoSegmentation extends BaseTab {
       duration: 7000,
     });
 
-    const params = {};
+    const config = this.props.onOptionsConfig();
+    const params =
+      config && config.infer && config.infer[model] ? config.infer[model] : {};
     const label_names = info.modelLabelNames[model];
     const label_classes = info.modelLabelIndices[model];
     if (info.data.models[model].type === 'vista3d') {
@@ -136,9 +138,11 @@ export default class AutoSegmentation extends BaseTab {
             onSelectModel={this.onSelectModel}
             usage={
               <div style={{ fontSize: 'smaller' }}>
-                <br/>
-                <p>Experience fully automated segmentation for <b>everything</b>{' '}
-                  from the pre-trained model.</p>
+                <br />
+                <p>
+                  Experience fully automated segmentation for <b>everything</b>{' '}
+                  from the pre-trained model.
+                </p>
               </div>
             }
           />
