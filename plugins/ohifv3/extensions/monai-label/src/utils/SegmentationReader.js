@@ -69,14 +69,14 @@ export default class SegmentationReader {
     const nrrdBuffer = SegmentationReader.serializeNrrd(header, image);
 
     const reader = readImageArrayBuffer(null, nrrdBuffer, 'temp.nrrd');
-    reader.then(function(response) {
+    reader.then(function (response) {
       const writer = writeArrayBuffer(
         response.webWorker,
         true,
         response.image,
         filename
       );
-      writer.then(function(response) {
+      writer.then(function (response) {
         SegmentationReader.saveFile(new Blob([response.arrayBuffer]), filename);
         console.debug('File downloaded: ' + filename);
       });

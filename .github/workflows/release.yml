@@ -49,12 +49,12 @@ jobs:
           key: ${{ runner.os }}-pip-${{ steps.pip-cache.outputs.datew }}
       - name: Install dependencies
         run: |
+          rm -rf /opt/hostedtoolcache
           sudo apt-get install openslide-tools -y
           python -m pip install --user --upgrade pip setuptools wheel
-          python -m pip install torch>=1.7 torchvision
+          python -m pip install torch torchvision
       - name: Build Package
         run: |
-          rm -rf /opt/hostedtoolcache
           ./runtests.sh --clean
           BUILD_OHIF=true python setup.py sdist bdist_wheel --build-number $(date +'%Y%m%d%H%M')
           ls -l dist
@@ -91,7 +91,7 @@ jobs:
         run: |
           rm dist/monai*.tar.gz
 
-      - name: Publish distribution to Test PyPI
+      - name: Publish distribution to Test
         if: ${{ github.event.inputs.test_py == 'true' }}
         uses: pypa/gh-action-pypi-publish@master
         with:

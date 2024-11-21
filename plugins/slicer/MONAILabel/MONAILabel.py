@@ -223,6 +223,7 @@ class MONAILabelWidget(ScriptedLoadableModuleWidget, VTKObservationMixin):
         self._volumeNode = None
         self._segmentNode = None
         self._scribblesROINode = None
+        self._sam2ROINode = None
         self._volumeNodes = []
         self._updatingGUIFromParameterNode = False
 
@@ -254,6 +255,7 @@ class MONAILabelWidget(ScriptedLoadableModuleWidget, VTKObservationMixin):
         self.scribblesMode = None
         self.ignoreScribblesLabelChangeEvent = False
         self.deepedit_multi_label = False
+        self.resetLabelState = False
 
         self.optionsSectionIndex = 0
         self.optionsNameIndex = 0
@@ -308,6 +310,13 @@ class MONAILabelWidget(ScriptedLoadableModuleWidget, VTKObservationMixin):
         self.ui.dgNegativeControlPointPlacementWidget.placeButton().show()
         self.ui.dgNegativeControlPointPlacementWidget.deleteButton().show()
 
+        # ROI placement for SAM2
+        self.ui.sam2PlaceWidget.setMRMLScene(slicer.mrmlScene)
+        self.ui.sam2PlaceWidget.placeButton().toolTip = _("ROI/BBOX Prompt")
+        self.ui.sam2PlaceWidget.buttonsVisible = False
+        self.ui.sam2PlaceWidget.placeButton().show()
+        self.ui.sam2PlaceWidget.deleteButton().show()
+
         self.ui.dgUpdateButton.setIcon(self.icon("segment.png"))
 
         # Connections
@@ -325,7 +334,7 @@ class MONAILabelWidget(ScriptedLoadableModuleWidget, VTKObservationMixin):
         self.ui.labelComboBox.connect("currentIndexChanged(int)", self.onSelectLabel)
         self.ui.scribLabelComboBox.connect("currentIndexChanged(int)", self.onSelectScribLabel)
         self.ui.dgUpdateButton.connect("clicked(bool)", self.onUpdateDeepgrow)
-        self.ui.dgUpdateCheckBox.setStyleSheet("padding-left: 10px;")
+        self.ui.dgUpdateCheckBox.setStyleSheet("padding-left: 10px; padding-top: 10px;")
         self.ui.optionsSection.connect("currentIndexChanged(int)", self.onSelectOptionsSection)
         self.ui.optionsName.connect("currentIndexChanged(int)", self.onSelectOptionsName)
 
@@ -420,6 +429,7 @@ class MONAILabelWidget(ScriptedLoadableModuleWidget, VTKObservationMixin):
         self.current_sample = None
         self.samples.clear()
         self._scribblesROINode = None
+        self._sam2ROINode = None
 
         self.resetPointList(
             self.ui.dgPositiveControlPointPlacementWidget,
@@ -434,6 +444,7 @@ class MONAILabelWidget(ScriptedLoadableModuleWidget, VTKObservationMixin):
         )
         self.dgNegativePointListNode = None
         self.onResetScribbles()
+        self.resetSam2ROI()
 
     def resetPointList(self, markupsPlaceWidget, pointListNode, pointListNodeObservers):
         if markupsPlaceWidget.placeModeEnabled:
@@ -712,6 +723,10 @@ class MONAILabelWidget(ScriptedLoadableModuleWidget, VTKObservationMixin):
         currentLabelIndex = self.ui.labelComboBox.currentIndex
         if currentLabelIndex >= 0:
             currentLabel = self.ui.labelComboBox.itemText(currentLabelIndex)
+            oldLabel = self._parameterNode.GetParameter("CurrentLabel")
+            if oldLabel and oldLabel != currentLabel:
+                print(f"Old Label: {oldLabel}; New Label: {currentLabel}")
+                self.resetLabelState = True
             self._parameterNode.SetParameter("CurrentLabel", currentLabel)
 
         currentScribLabelIndex = self.ui.scribLabelComboBox.currentIndex
@@ -1237,6 +1252,7 @@ class MONAILabelWidget(ScriptedLoadableModuleWidget, VTKObservationMixin):
             ):
                 return
             self.onResetScribbles()
+            self.resetSam2ROI()
             slicer.mrmlScene.Clear(0)
 
         start = time.time()
@@ -1338,6 +1354,9 @@ class MONAILabelWidget(ScriptedLoadableModuleWidget, VTKObservationMixin):
         self.createScribblesROINode()
         self.ui.scribblesPlaceWidget.setCurrentNode(self._scribblesROINode)
 
+        self.createSam2ROINode()
+        self.ui.sam2PlaceWidget.setCurrentNode(self._sam2ROINode)
+
         # check if user allows overlapping segments
         if slicer.util.settingsValue("MONAILabel/allowOverlappingSegments", False, converter=slicer.util.toBool):
             # set segment editor to allow overlaps
@@ -1435,6 +1454,7 @@ class MONAILabelWidget(ScriptedLoadableModuleWidget, VTKObservationMixin):
         labelmapVolumeNode = None
         result = None
         self.onResetScribbles()
+        self.resetSam2ROI()
 
         if self.current_sample.get("session"):
             if not self.onUploadImage(init_sample=False):
@@ -1571,12 +1591,12 @@ class MONAILabelWidget(ScriptedLoadableModuleWidget, VTKObservationMixin):
     def onClickDeepgrow(self, current_point, skip_infer=False):
         model = self.ui.deepgrowModelSelector.currentText
         if not model:
-            slicer.util.warningDisplay(_("Please select a deepgrow model"))
+            slicer.util.warningDisplay(_("Please select a model"))
             return
 
         segment_id, segment = self.currentSegment()
         if not segment:
-            slicer.util.warningDisplay(_("Please add the required label to run deepgrow"))
+            slicer.util.warningDisplay(_("Please add the required label to run interactive model"))
             return
 
         foreground_all = self.getControlPointsXYZ(self.dgPositivePointListNode, "foreground")
@@ -1587,22 +1607,39 @@ class MONAILabelWidget(ScriptedLoadableModuleWidget, VTKObservationMixin):
         if skip_infer:
             return
 
-        # use model info "deepgrow" to determine
-        deepgrow_3d = False if self.models[model].get("dimension", 3) == 2 else True
-        print(f"Is DeepGrow 3D: {deepgrow_3d}")
+        # use model info to determine
+        is_3d = False if self.models[model].get("dimension", 3) == 2 else True
+        print(f"Is 3D Model: {is_3d}")
         start = time.time()
 
         label = segment.GetName()
-        operationDescription = _("Run Deepgrow for segment: {label}; model: {model}; 3d {in3d}").format(
-            label=label, model=model, in3d=_("enabled") if deepgrow_3d else _("disabled")
+        operationDescription = _("Run Inference for segment: {label}; model: {model}; 3d {in3d}").format(
+            label=label, model=model, in3d=_("enabled") if is_3d else _("disabled")
         )
         logging.debug(operationDescription)
 
+        # try to get roi if placed
+        roiNode = self.ui.sam2PlaceWidget.currentNode()
+        selected_roi = []
+        if roiNode and roiNode.GetControlPointPlacementComplete():
+            selected_roi = self.getROIPointsXYZ(roiNode)
+        print(f"Selected ROI: {selected_roi} => {not selected_roi}")
+
         if not current_point:
-            if not foreground_all and not deepgrow_3d:
-                slicer.util.warningDisplay(operationDescription + " - points not added")
+            if not foreground_all and not is_3d and not selected_roi:
+                slicer.util.warningDisplay(operationDescription + " - points/roi not added")
                 return
-            current_point = foreground_all[-1] if foreground_all else background_all[-1] if background_all else None
+
+            if not is_3d and selected_roi:
+                layoutManager = slicer.app.layoutManager()
+                current_point = [
+                    selected_roi[1] + (selected_roi[1] - selected_roi[0]) // 2,
+                    selected_roi[3] + (selected_roi[3] - selected_roi[2]) // 2,
+                    round(abs(layoutManager.sliceWidget("Red").sliceLogic().GetSliceOffset())),
+                ]
+            else:
+                current_point = foreground_all[-1] if foreground_all else background_all[-1] if background_all else None
+            print(f"(updated) Current Point: {current_point}")
 
         try:
             qt.QApplication.setOverrideCursor(qt.Qt.WaitCursor)
@@ -1630,7 +1667,7 @@ class MONAILabelWidget(ScriptedLoadableModuleWidget, VTKObservationMixin):
                 sliceIndex = current_point[2] if current_point else None
                 print(f"Slice Index: {sliceIndex}")
 
-                if deepgrow_3d or not sliceIndex:
+                if is_3d or not sliceIndex:
                     foreground = foreground_all
                     background = background_all
                 else:
@@ -1650,11 +1687,19 @@ class MONAILabelWidget(ScriptedLoadableModuleWidget, VTKObservationMixin):
 
             params["label"] = label
             params.update(self.getParamsFromConfig("infer", model))
-            print(f"Request Params for Deepgrow/Deepedit: {params}")
+            if selected_roi:
+                params["roi"] = selected_roi
+            if not is_3d:
+                params["slice"] = sliceIndex
+            if not params.get("reset_state") and self.resetLabelState:
+                print(f"Override State: {params.get('reset_state')} vs {self.resetLabelState}")
+                params["reset_state"] = True
+                self.resetLabelState = False
+            print(f"Request Params for Inference: {params}")
 
             image_file = self.current_sample["id"]
             result_file, params = self.logic.infer(model, image_file, params, session_id=self.getSessionId())
-            print(f"Result Params for Deepgrow/Deepedit: {params}")
+            print(f"Result Params for Inference: {params}")
             if labels is None:
                 labels = (
                     params.get("label_names")
@@ -1665,7 +1710,7 @@ class MONAILabelWidget(ScriptedLoadableModuleWidget, VTKObservationMixin):
                     labels = [k for k, _ in sorted(labels.items(), key=lambda item: item[1])]
 
             freeze = label if self.ui.freezeUpdateCheckBox.checked else None
-            self.updateSegmentationMask(result_file, labels, None if deepgrow_3d else sliceIndex, freeze=freeze)
+            self.updateSegmentationMask(result_file, labels, None if is_3d else sliceIndex, freeze=freeze)
         except BaseException as e:
             msg = f"Message: {e.msg}" if hasattr(e, "msg") else ""
             slicer.util.errorDisplay(
@@ -1702,6 +1747,19 @@ class MONAILabelWidget(ScriptedLoadableModuleWidget, VTKObservationMixin):
             scribblesROINode.GetDisplayNode().SetColor(1, 1, 1)
             scribblesROINode.GetDisplayNode().SetActiveColor(1, 1, 1)
             self._scribblesROINode = scribblesROINode
+
+    def createSam2ROINode(self):
+        if self._volumeNode is None:
+            return
+        if self._sam2ROINode is None:
+            sam2ROINode = slicer.mrmlScene.AddNewNodeByClass("vtkMRMLMarkupsROINode")
+            sam2ROINode.SetName("SAM2 ROI")
+            sam2ROINode.CreateDefaultDisplayNodes()
+            sam2ROINode.GetDisplayNode().SetFillOpacity(0.4)
+            sam2ROINode.GetDisplayNode().SetSelectedColor(1, 1, 1)
+            sam2ROINode.GetDisplayNode().SetColor(1, 1, 1)
+            sam2ROINode.GetDisplayNode().SetActiveColor(1, 1, 1)
+            self._sam2ROINode = sam2ROINode
 
     def getLabelColor(self, name):
         color = GenericAnatomyColors.get(name.lower())
@@ -2049,6 +2107,10 @@ class MONAILabelWidget(ScriptedLoadableModuleWidget, VTKObservationMixin):
     def resetScribblesROI(self):
         if self._scribblesROINode:
             self._scribblesROINode.RemoveAllControlPoints()
+
+    def resetSam2ROI(self):
+        if self._sam2ROINode:
+            self._sam2ROINode.RemoveAllControlPoints()
 
     def onClearScribbles(self):
         # for clearing scribbles and resetting tools to default

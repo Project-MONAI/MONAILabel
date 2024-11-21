@@ -8,8 +8,8 @@ export default class SettingsTable extends Component {
   constructor(props) {
     super(props);
 
-    const onInfo = props.onInfo
-    this.onInfo = onInfo
+    const onInfo = props.onInfo;
+    this.onInfo = onInfo;
 
     this.state = this.getSettings();
   }
@@ -35,8 +35,8 @@ export default class SettingsTable extends Component {
     };
   };
 
-  onBlurSeverURL = evt => {
-    let url = evt.target.value;
+  onBlurSeverURL = (evt) => {
+    const url = evt.target.value;
     this.setState({ url: url });
     CookieUtils.setCookie('MONAILABEL_SERVER_URL', url);
   };

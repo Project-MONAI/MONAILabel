@@ -10,25 +10,26 @@
 # limitations under the License.
 
 metadata:
-  name: monailabel.endoscopy.tooltracking
+  name: monailabel.sam2.interactor
   namespace: cvat
   annotations:
-    name: ToolTracking
-    type: detector
-    framework: pytorch
-    spec: |
-      [
-        { "id": 1, "name": "Tool" }
-      ]
+    name: SAM2
+    version: 2
+    type: interactor
+    spec:
+    min_pos_points: 0
+    min_neg_points: 0
+    startswith_box_optional: true
+    help_message: The interactor allows to annotate a Tool using SAM2 model
 
 spec:
-  description: A pre-trained tool tracking model for Endoscopy
+  description: A pre-trained SAM2 model for interactive model
   runtime: 'python:3.8'
-  handler: detector:handler
+  handler: interactor:handler
   eventTimeout: 30s
 
   build:
-    image: cvat/monailabel.endoscopy.tooltracking
+    image: cvat/monailabel.sam2.interactor
     baseImage: projectmonai/monailabel:latest
 
     directives:
@@ -36,7 +37,7 @@ spec:
         - kind: ENV
           value: MONAI_LABEL_SERVER=http://monailabel.com
         - kind: ENV
-          value: MONAI_LABEL_MODEL=tooltracking
+          value: MONAI_LABEL_MODEL=sam_2d
 
   triggers:
     myHttpTrigger:

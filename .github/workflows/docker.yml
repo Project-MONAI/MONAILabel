@@ -28,26 +28,23 @@ jobs:
       MONAI_ZOO_AUTH_TOKEN: ${{ github.token }}
     steps:
       - uses: actions/checkout@v4
-      - name: Set up Python 3.9
-        uses: actions/setup-python@v5
-        with:
-          python-version: 3.9
-      - name: clean up
+      - name: Cleanup
         run: |
-          sudo rm -rf /usr/share/dotnet
+          echo Before Cleanup...
+          df -h
           sudo rm -rf "$AGENT_TOOLSDIRECTORY"
-      - name: Install dependencies
-        run: |
-          python -m pip install --upgrade pip wheel
+          rm -rf /opt/hostedtoolcache
+          rm -rf /usr/share/dotnet/
+          cd /opt
+          find . -maxdepth 1 -mindepth 1 '!' -path ./containerd '!' -path ./actionarchivecache '!' -path ./runner '!' -path ./runner-cache -exec rm -rf '{}' ';'
+          cd -
+          echo After Cleanup...
+          df -h
       - name: Build
         run: |
-          rm -rf /opt/hostedtoolcache
-          ./runtests.sh --clean
-          docker system prune -f
-          DOCKER_BUILDKIT=1 docker build -t projectmonai/monailabel:${{ github.event.inputs.tag || 'latest'  }} -f Dockerfile .
+          DOCKER_BUILDKIT=0 docker build -t projectmonai/monailabel:${{ github.event.inputs.tag || 'latest'  }} -f Dockerfile .
       - name: Verify
         run: |
-          ./runtests.sh --clean
           docker run --rm -i --ipc=host --net=host -v $(pwd):/workspace projectmonai/monailabel:${{ github.event.inputs.tag || 'latest'  }} /workspace/runtests.sh --net
       - name: Publish
         run: |

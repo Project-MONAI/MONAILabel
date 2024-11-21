@@ -121,7 +121,7 @@ export default class MonaiLabelPanel extends Component {
     const response = await this.client().info();
 
     // remove the background
-    const labels = response.data.labels.splice(1)
+    const labels = response.data.labels.splice(1);
 
     const segmentations = [
       {
@@ -129,7 +129,7 @@ export default class MonaiLabelPanel extends Component {
         label: 'Segmentations',
         segments: labels.map((label, index) => ({
           segmentIndex: index + 1,
-          label
+          label,
         })),
         isActive: true,
         activeSegmentIndex: 1,
@@ -137,7 +137,7 @@ export default class MonaiLabelPanel extends Component {
     ];
 
     this.props.commandsManager.runCommand('loadSegmentationsForViewport', {
-      segmentations
+      segmentations,
     });
 
     if (response.status !== 200) {
@@ -163,16 +163,18 @@ export default class MonaiLabelPanel extends Component {
     // Leave Event
     for (const action of Object.keys(this.actions)) {
       if (this.state.action === action) {
-        if (this.actions[action].current)
+        if (this.actions[action].current) {
           this.actions[action].current.onLeaveActionTab();
+        }
       }
     }
 
     // Enter Event
     for (const action of Object.keys(this.actions)) {
       if (name === action) {
-        if (this.actions[action].current)
+        if (this.actions[action].current) {
           this.actions[action].current.onEnterActionTab();
+        }
       }
     }
     this.setState({ action: name });
@@ -193,10 +195,9 @@ export default class MonaiLabelPanel extends Component {
     console.info('These are the predicted labels');
     console.info(onInfoLabelNames);
 
-    if (onInfoLabelNames.hasOwnProperty('background')){
-delete onInfoLabelNames.background;
+    if (onInfoLabelNames.hasOwnProperty('background')) {
+      delete onInfoLabelNames.background;
     }
-
 
     const ret = SegmentationReader.parseNrrdData(response.data);
 
@@ -248,7 +249,7 @@ delete onInfoLabelNames.background;
   };
 
   _debug = async () => {
-    let nrrdFetch = await fetch('http://localhost:3000/pred2.nrrd');
+    const nrrdFetch = await fetch('http://localhost:3000/pred2.nrrd');
 
     const info = {
       spleen: 1,

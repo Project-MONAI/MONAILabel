@@ -1,7 +1,5 @@
 import { ServicesManager, CommandsManager, ExtensionManager } from '@ohif/core';
-import {
-  Enums,
-} from '@cornerstonejs/tools';
+import { Enums } from '@cornerstonejs/tools';
 
 export default function getCommandsModule({
   servicesManager,
@@ -22,14 +20,12 @@ export default function getCommandsModule({
 
   const actions = {
     setToolActive: ({ toolName }) => {
-
-        uiNotificationService.show({
-          title: 'MONAI Label probe',
-          message:
-            'MONAI Label Probe Activated.',
-          type: 'info',
-          duration: 3000,
-        });
+      uiNotificationService.show({
+        title: 'MONAI Label probe',
+        message: 'MONAI Label Probe Activated.',
+        type: 'info',
+        duration: 3000,
+      });
     },
   };
 

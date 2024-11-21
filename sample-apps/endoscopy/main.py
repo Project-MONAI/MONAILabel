@@ -15,7 +15,9 @@ from datetime import timedelta
 from typing import Dict
 
 import lib.configs
+import numpy as np
 import schedule
+from monai.transforms import ToNumpyd
 from timeloop import Timeloop
 
 import monailabel
@@ -24,10 +26,11 @@ from monailabel.datastore.cvat import CVATDatastore
 from monailabel.interfaces.app import MONAILabelApp
 from monailabel.interfaces.config import TaskConfig
 from monailabel.interfaces.datastore import Datastore
-from monailabel.interfaces.tasks.infer_v2 import InferTask
+from monailabel.interfaces.tasks.infer_v2 import InferTask, InferType
 from monailabel.interfaces.tasks.scoring import ScoringMethod
 from monailabel.interfaces.tasks.strategy import Strategy
 from monailabel.interfaces.tasks.train import TrainTask
+from monailabel.sam2.utils import is_sam2_module_available
 from monailabel.tasks.activelearning.random import Random
 from monailabel.utils.others.class_utils import get_class_names
 from monailabel.utils.others.generic import create_dataset_from_path, strtobool
@@ -55,9 +58,9 @@ class MyApp(MONAILabelApp):
             print(f"    all, {', '.join(configs.keys())}")
             print("---------------------------------------------------------------------------------------")
             print("")
-            exit(-1)
+            # exit(-1)
 
-        models = models.split(",")
+        models = models.split(",") if models else []
         models = [m.strip() for m in models]
         invalid = [m for m in models if m != "all" and not configs.get(m)]
         if invalid:
@@ -82,6 +85,7 @@ class MyApp(MONAILabelApp):
 
         logger.info(f"+++ Using Models: {list(self.models.keys())}")
 
+        self.sam = strtobool(conf.get("sam2", "true"))
         super().__init__(
             app_dir=app_dir,
             studies=studies,
@@ -123,6 +127,21 @@ class MyApp(MONAILabelApp):
             for k, v in c.items():
                 logger.info(f"+++ Adding Inferer:: {k} => {v}")
                 infers[k] = v
+
+        #################################################
+        # SAM
+        #################################################
+        if is_sam2_module_available() and self.sam:
+            from monailabel.sam2.infer import Sam2InferTask
+
+            infers["sam_2d"] = Sam2InferTask(
+                model_dir=self.model_dir,
+                type=InferType.ANNOTATION,
+                dimension=2,
+                post_trans=[ToNumpyd(keys="pred", dtype=np.uint8)],
+                config={"cache_image": False, "reset_state": True},
+            )
+
         return infers
 
     def init_trainers(self) -> Dict[str, TrainTask]:

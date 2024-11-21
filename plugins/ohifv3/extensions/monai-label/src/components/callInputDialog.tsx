@@ -42,11 +42,11 @@ function callInputDialog(uiDialogService, label, callback) {
               className="border-primary-main bg-black"
               type="text"
               value={value.label}
-              onChange={event => {
+              onChange={(event) => {
                 event.persist();
-                setValue(value => ({ ...value, label: event.target.value }));
+                setValue((value) => ({ ...value, label: event.target.value }));
               }}
-              onKeyPress={event => {
+              onKeyPress={(event) => {
                 if (event.key === 'Enter') {
                   onSubmitHandler({ value, action: { id: 'save' } });
                 }

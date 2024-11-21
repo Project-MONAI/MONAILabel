@@ -1,6 +1,4 @@
-import {
-  addTool,
-} from '@cornerstonejs/tools';
+import { addTool } from '@cornerstonejs/tools';
 import { Types } from '@ohif/core';
 import ProbeMONAILabelTool from './tools/ProbeMONAILabelTool';
 

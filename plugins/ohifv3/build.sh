@@ -50,6 +50,9 @@ APP_CONFIG=config/monai_label.js PUBLIC_URL=/ohif/ QUICK_BUILD=true yarn run bui
 rm -rf ${install_dir}
 cp -r platform/app/dist/ ${install_dir}
 echo "Copied OHIF to ${install_dir}"
-rm -rf ../Viewers
+
+cd ..
+rm -rf Viewers
+find .  -type d -name "node_modules" -exec rm -rf "{}" +
 
 cd ${curr_dir}

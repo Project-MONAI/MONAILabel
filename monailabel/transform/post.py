@@ -129,7 +129,7 @@ class Restored(MapTransform):
             spatial_size = spatial_shape[-len(current_size) :]
 
             # Undo Spacing
-            if torch.any(torch.Tensor(np.not_equal(current_size, spatial_size))):
+            if np.any(np.not_equal(current_size, spatial_size)):
                 resizer = Resize(spatial_size=spatial_size, mode=self.mode[idx])
                 result = resizer(result, mode=self.mode[idx], align_corners=self.align_corners[idx])
 

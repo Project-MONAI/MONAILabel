@@ -23,11 +23,11 @@ import monailabel
 from monailabel.interfaces.app import MONAILabelApp
 from monailabel.interfaces.config import TaskConfig
 from monailabel.interfaces.datastore import Datastore
-from monailabel.interfaces.tasks.infer_v2 import InferTask
+from monailabel.interfaces.tasks.infer_v2 import InferTask, InferType
 from monailabel.interfaces.tasks.scoring import ScoringMethod
 from monailabel.interfaces.tasks.strategy import Strategy
 from monailabel.interfaces.tasks.train import TrainTask
-from monailabel.scribbles.infer import GMMBasedGraphCut, HistogramBasedGraphCut
+from monailabel.sam2.utils import is_sam2_module_available
 from monailabel.tasks.activelearning.first import First
 from monailabel.tasks.activelearning.random import Random
 
@@ -64,7 +64,7 @@ class MyApp(MONAILabelApp):
             print("")
             exit(-1)
 
-        models = models.split(",")
+        models = models.split(",") if models else []
         models = [m.strip() for m in models]
         # Can be configured with --conf scribbles false or true
         self.scribbles = conf.get("scribbles", "true") == "true"
@@ -100,6 +100,7 @@ class MyApp(MONAILabelApp):
         # Load models from bundle config files, local or released in Model-Zoo, e.g., --conf bundles <spleen_ct_segmentation>
         self.bundles = get_bundle_models(app_dir, conf, conf_key="bundles") if conf.get("bundles") else None
 
+        self.sam = strtobool(conf.get("sam2", "true"))
         super().__init__(
             app_dir=app_dir,
             studies=studies,
@@ -141,6 +142,8 @@ class MyApp(MONAILabelApp):
         # Scribbles
         #################################################
         if self.scribbles:
+            from monailabel.scribbles.infer import GMMBasedGraphCut, HistogramBasedGraphCut
+
             infers.update(
                 {
                     "Histogram+GraphCut": HistogramBasedGraphCut(
@@ -161,6 +164,15 @@ class MyApp(MONAILabelApp):
                     ),
                 }
             )
+
+        #################################################
+        # SAM
+        #################################################
+        if is_sam2_module_available() and self.sam:
+            from monailabel.sam2.infer import Sam2InferTask
+
+            infers["sam_2d"] = Sam2InferTask(model_dir=self.model_dir, type=InferType.DEEPGROW, dimension=2)
+            infers["sam_3d"] = Sam2InferTask(model_dir=self.model_dir, type=InferType.DEEPGROW, dimension=3)
 
         #################################################
         # Pipeline based on existing infers

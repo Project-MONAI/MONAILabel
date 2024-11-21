@@ -1,4 +1,3 @@
-
 import React, { Component } from 'react';
 import PropTypes from 'prop-types';
 
@@ -41,9 +40,11 @@ export default class ModelSelector extends Component {
     return null;
   }
 
-  onChangeModel = evt => {
+  onChangeModel = (evt) => {
     this.setState({ currentModel: evt.target.value });
-    if (this.props.onSelectModel) this.props.onSelectModel(evt.target.value);
+    if (this.props.onSelectModel) {
+      this.props.onSelectModel(evt.target.value);
+    }
   };
 
   currentModel = () => {
@@ -84,7 +85,7 @@ export default class ModelSelector extends Component {
                   onChange={this.onChangeModel}
                   value={currentModel}
                 >
-                  {this.props.models.map(model => (
+                  {this.props.models.map((model) => (
                     <option key={model} name={model} value={model}>
                       {`${model} `}
                     </option>

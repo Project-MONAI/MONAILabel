@@ -137,9 +137,12 @@ function clean_py() {
   rm -rf tests/data/*
   rm -rf build
   rm -rf dist
+  rm -rf monailabel.egg-info
+  rm -rf .eggs
+  rm -rf .mypy_cache
 
-  find sample-apps -type d -name "__pycache__" -exec rm -rf "{}" +
-  find monailabel  -type d -name "__pycache__" -exec rm -rf "{}" +
+  find . -type d -name "__pycache__" -exec rm -rf "{}" +
+  find plugins  -type d -name "node_modules" -exec rm -rf "{}" +
 }
 
 function torch_validate() {
