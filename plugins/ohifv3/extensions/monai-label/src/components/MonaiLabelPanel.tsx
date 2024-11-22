@@ -22,34 +22,21 @@ export default class MonaiLabelPanel extends Component {
   };
 
   notification: any;
-  settings: any;
-  state: { info: {}; action: {}; options: {} };
+  settings;
   actions: {
-    options: any;
-    activelearning: any;
     segmentation: any;
     pointprompts: any;
     classprompts: any;
   };
-  props: any;
-  SeriesInstanceUID: any;
-  StudyInstanceUID: any;
-  FrameOfReferenceUID: any;
-  displaySetInstanceUID: any;
-  numberOfFrames: any;
   serverURI = 'http://127.0.0.1:8000';
 
   constructor(props) {
     super(props);
 
-    const { uiNotificationService, viewportGridService, displaySetService } =
-      props.servicesManager.services;
-
+    const { uiNotificationService } = props.servicesManager.services;
     this.notification = uiNotificationService;
     this.settings = React.createRef();
     this.actions = {
-      options: React.createRef(),
-      activelearning: React.createRef(),
       segmentation: React.createRef(),
       pointprompts: React.createRef(),
       classprompts: React.createRef(),
@@ -58,29 +45,8 @@ export default class MonaiLabelPanel extends Component {
     this.state = {
       info: { models: [], datasets: [] },
       action: {},
+      options: {},
     };
-
-    viewportGridService.subscribe(
-      viewportGridService.EVENTS.GRID_SIZE_CHANGED,
-      () => {
-        const { viewports, activeViewportId } = viewportGridService.getState();
-        const viewport = viewports.get(activeViewportId);
-
-        if (!viewport) {
-          return;
-        }
-
-        const displaySet = displaySetService.getDisplaySetByUID(
-          viewport.displaySetInstanceUIDs[0]
-        );
-
-        this.SeriesInstanceUID = displaySet.SeriesInstanceUID;
-        this.StudyInstanceUID = displaySet.StudyInstanceUID;
-        this.FrameOfReferenceUID = displaySet.instances[0].FrameOfReferenceUID;
-        this.displaySetInstanceUID = displaySet.displaySetInstanceUID;
-        this.numberOfFrames = displaySet.instances.length;
-      }
-    );
   }
 
   client = () => {
@@ -102,10 +68,21 @@ export default class MonaiLabelPanel extends Component {
   }
 
   getActiveViewportInfo = () => {
-    const { viewportGridService } = this.props.servicesManager.services;
+    const { viewportGridService, displaySetService } =
+      this.props.servicesManager.services;
     const { viewports, activeViewportId } = viewportGridService.getState();
     const viewport = viewports.get(activeViewportId);
-    return viewport;
+    const displaySet = displaySetService.getDisplaySetByUID(
+      viewport.displaySetInstanceUIDs[0]
+    );
+
+    // viewportId = viewport.viewportId
+    // SeriesInstanceUID = displaySet.SeriesInstanceUID;
+    // StudyInstanceUID = displaySet.StudyInstanceUID;
+    // FrameOfReferenceUID = displaySet.instances[0].FrameOfReferenceUID;
+    // displaySetInstanceUID = displaySet.displaySetInstanceUID;
+    // numImageFrames = displaySet.numImageFrames;
+    return { viewport, displaySet };
   };
 
   onInfo = async (serverURI) => {
@@ -221,10 +198,10 @@ export default class MonaiLabelPanel extends Component {
 
       // Wait for Above Segmentations to be added/available
       setTimeout(() => {
-        const { viewportId } = this.getActiveViewportInfo();
+        const { viewport } = this.getActiveViewportInfo();
         for (const segmentIndex of Object.keys(initialSegs)) {
           cornerstoneTools.segmentation.config.color.setSegmentIndexColor(
-            viewportId,
+            viewport.viewportId,
             '1',
             initialSegs[segmentIndex].segmentIndex,
             initialSegs[segmentIndex].color
@@ -350,7 +327,9 @@ export default class MonaiLabelPanel extends Component {
 
         // get unique values to determine which organs to update, keep rest
         const updateTargets = new Set(convertedData);
-        const sliceLength = scalarData.length / this.numberOfFrames;
+        const numImageFrames =
+          this.getActiveViewportInfo().displaySet.numImageFrames;
+        const sliceLength = scalarData.length / numImageFrames;
         const sliceBegin = sliceLength * sidx;
         const sliceEnd = sliceBegin + sliceLength;
 
@@ -432,47 +411,35 @@ export default class MonaiLabelPanel extends Component {
               ref={this.actions['segmentation']}
               tabIndex={2}
               info={this.state.info}
-              viewConstants={{
-                SeriesInstanceUID: this.SeriesInstanceUID,
-                StudyInstanceUID: this.StudyInstanceUID,
-              }}
               client={this.client}
-              notification={this.notification}
               updateView={this.updateView}
               onSelectActionTab={this.onSelectActionTab}
               onOptionsConfig={this.onOptionsConfig}
+              getActiveViewportInfo={this.getActiveViewportInfo}
             />
             <PointPrompts
               ref={this.actions['pointprompts']}
               tabIndex={3}
-              servicesManager={this.props.servicesManager}
-              commandsManager={this.props.commandsManager}
               info={this.state.info}
-              viewConstants={{
-                SeriesInstanceUID: this.SeriesInstanceUID,
-                StudyInstanceUID: this.StudyInstanceUID,
-              }}
               client={this.client}
-              notification={this.notification}
               updateView={this.updateView}
               onSelectActionTab={this.onSelectActionTab}
               onOptionsConfig={this.onOptionsConfig}
+              getActiveViewportInfo={this.getActiveViewportInfo}
+              servicesManager={this.props.servicesManager}
+              commandsManager={this.props.commandsManager}
             />
             <ClassPrompts
               ref={this.actions['classprompts']}
               tabIndex={4}
-              servicesManager={this.props.servicesManager}
-              commandsManager={this.props.commandsManager}
               info={this.state.info}
-              viewConstants={{
-                SeriesInstanceUID: this.SeriesInstanceUID,
-                StudyInstanceUID: this.StudyInstanceUID,
-              }}
               client={this.client}
-              notification={this.notification}
               updateView={this.updateView}
               onSelectActionTab={this.onSelectActionTab}
               onOptionsConfig={this.onOptionsConfig}
+              getActiveViewportInfo={this.getActiveViewportInfo}
+              servicesManager={this.props.servicesManager}
+              commandsManager={this.props.commandsManager}
             />
           </div>
         )}

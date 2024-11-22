@@ -33,7 +33,8 @@ export default class AutoSegmentation extends BaseTab {
 
   onSegmentation = async () => {
     const { currentModel, currentLabel, clickPoints } = this.state;
-    const { info, viewConstants } = this.props;
+    const { info } = this.props;
+    const { displaySet } = this.props.getActiveViewportInfo();
 
     const models = this.getModels();
     let selectedModel = 0;
@@ -87,8 +88,8 @@ export default class AutoSegmentation extends BaseTab {
 
     const response = await this.props
       .client()
-      .infer(model, viewConstants.SeriesInstanceUID, params);
-    console.log(response);
+      .infer(model, displaySet.SeriesInstanceUID, params);
+    // console.log(response);
 
     hideNotification(nid, this.notification);
     if (response.status !== 200) {

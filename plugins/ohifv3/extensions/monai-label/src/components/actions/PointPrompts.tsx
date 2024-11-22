@@ -52,7 +52,8 @@ export default class PointPrompts extends BaseTab {
 
   onRunInference = async () => {
     const { currentModel, currentLabel, clickPoints } = this.state;
-    const { info, viewConstants } = this.props;
+    const { info } = this.props;
+    const { viewport, displaySet } = this.props.getActiveViewportInfo();
 
     const models = this.getModels();
     let selectedModel = 0;
@@ -82,11 +83,11 @@ export default class PointPrompts extends BaseTab {
     });
 
     const { cornerstoneViewportService } = this.props.servicesManager.services;
-    const viewPort = cornerstoneViewportService.viewportsById.get('mpr-axial');
-    const { worldToIndex } = viewPort.viewportData.data[0].volume.imageData;
+    const viewportInfo = cornerstoneViewportService.getViewportInfo(
+      viewport.viewportId
+    );
+    const { worldToIndex } = viewportInfo.viewportData.data[0].volume.imageData;
 
-    // console.log(seriesInstanceUID);
-    // console.log(viewPort);
     const manager = cornerstoneTools.annotation.state.getAnnotationManager();
     clickPoints[currentLabel] = manager.saveAnnotations(
       null,
@@ -152,7 +153,8 @@ export default class PointPrompts extends BaseTab {
 
     const response = await this.props
       .client()
-      .infer(model, viewConstants.SeriesInstanceUID, params);
+      .infer(model, displaySet.SeriesInstanceUID, params);
+    // console.log(response);
 
     hideNotification(nid, this.notification);
     if (response.status !== 200) {

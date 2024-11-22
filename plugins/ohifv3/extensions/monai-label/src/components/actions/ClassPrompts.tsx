@@ -58,7 +58,8 @@ export default class ClassPrompts extends BaseTab {
 
   onRunInference = async () => {
     const { currentModel, currentLabel, clickPoints } = this.state;
-    const { info, viewConstants } = this.props;
+    const { info } = this.props;
+    const { displaySet } = this.props.getActiveViewportInfo();
 
     const models = this.getModels();
     let selectedModel = 0;
@@ -112,8 +113,8 @@ export default class ClassPrompts extends BaseTab {
 
     const response = await this.props
       .client()
-      .infer(model, viewConstants.SeriesInstanceUID, params);
-    console.log(response.data);
+      .infer(model, displaySet.SeriesInstanceUID, params);
+    // console.log(response.data);
 
     hideNotification(nid, this.notification);
     if (response.status !== 200) {

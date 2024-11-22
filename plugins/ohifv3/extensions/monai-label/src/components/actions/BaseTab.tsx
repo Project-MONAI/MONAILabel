@@ -9,12 +9,13 @@ export default class BaseTab extends Component {
   static propTypes = {
     tabIndex: PropTypes.number,
     info: PropTypes.any,
-    segmentId: PropTypes.string,
-    viewConstants: PropTypes.any,
     client: PropTypes.func,
     updateView: PropTypes.func,
     onSelectActionTab: PropTypes.func,
     onOptionsConfig: PropTypes.func,
+    getActiveViewportInfo: PropTypes.func,
+    servicesManager: PropTypes.any,
+    commandsManager: PropTypes.any,
   };
 
   notification: any;
