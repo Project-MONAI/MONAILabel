@@ -306,7 +306,7 @@ export default class PointPrompts extends BaseTab {
           name="rd"
           id={this.tabId}
           className="tab-switch"
-          value="pointprompts"
+          defaultValue="pointprompts"
           onClick={this.onSelectActionTab}
         />
         <label htmlFor={this.tabId} className="tab-label">

@@ -319,7 +319,7 @@ export default class ClassPrompts extends BaseTab {
           name="rd"
           id={this.tabId}
           className="tab-switch"
-          value="segmentation"
+          defaultValue="segmentation"
           onClick={this.onSelectActionTab}
         />
         <label htmlFor={this.tabId} className="tab-label">

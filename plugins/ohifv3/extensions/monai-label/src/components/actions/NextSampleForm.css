@@ -1,5 +1,4 @@
 .nextSampleForm {
-  width: 750px;
 }
 .nextSampleForm .actionButton {
   border: 1px solid var(--ui-border-color-active);
@@ -28,6 +27,8 @@
   border-collapse: collapse;
   width: 100%;
   font-size: smaller;
+  background-color: azure;
+  color: black;
 }
 .nextSampleForm .optionsTable th {
   border: 1px solid #ddd;

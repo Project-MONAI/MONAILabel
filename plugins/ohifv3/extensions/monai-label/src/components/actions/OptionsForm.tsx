@@ -166,7 +166,7 @@ export default class OptionsForm extends Component {
                   className="selectBox"
                   name="selectSection"
                   onChange={this.onChangeSection}
-                  value={section}
+                  defaultValue={section}
                 >
                   {Object.keys(config).map((k) => (
                     <option key={k} value={k}>
@@ -183,7 +183,7 @@ export default class OptionsForm extends Component {
                   className="selectBox"
                   name="selectName"
                   onChange={this.onChangeName}
-                  value={name}
+                  defaultValue={name}
                 >
                   {Object.keys(section_map).map((k) => (
                     <option key={k} value={k}>

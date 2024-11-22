@@ -95,7 +95,7 @@ export default class OptionTable extends Component {
                     <input
                       id={section + name + k}
                       type="text"
-                      defaultValue={v ? v : ''}
+                      defaultValue={v ? '' + v : ''}
                       className="optionsInput"
                       onChange={(e) =>
                         this.props.onChangeConfig(section, name, k, e)

@@ -82,7 +82,7 @@ export default class ModelSelector extends Component {
                 <select
                   className="selectBox"
                   onChange={this.onChangeModel}
-                  value={currentModel}
+                  defaultValue={currentModel}
                 >
                   {this.props.models.map((model) => (
                     <option key={model} name={model} value={model}>

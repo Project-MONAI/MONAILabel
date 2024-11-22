@@ -4,6 +4,7 @@ import './MonaiLabelPanel.css';
 import AutoSegmentation from './actions/AutoSegmentation';
 import PointPrompts from './actions/PointPrompts';
 import ClassPrompts from './actions/ClassPrompts';
+import ActiveLearning from './actions/ActiveLearning';
 import MonaiLabelClient from '../services/MonaiLabelClient';
 import { hideNotification, getLabelColor } from '../utils/GenericUtils';
 import { Enums } from '@cornerstonejs/tools';
@@ -24,6 +25,7 @@ export default class MonaiLabelPanel extends Component {
   notification: any;
   settings;
   actions: {
+    activelearning: any;
     segmentation: any;
     pointprompts: any;
     classprompts: any;
@@ -37,6 +39,7 @@ export default class MonaiLabelPanel extends Component {
     this.notification = uiNotificationService;
     this.settings = React.createRef();
     this.actions = {
+      activelearning: React.createRef(),
       segmentation: React.createRef(),
       pointprompts: React.createRef(),
       classprompts: React.createRef(),
@@ -407,6 +410,16 @@ export default class MonaiLabelPanel extends Component {
         )}
         {isDataReady && (
           <div className="tabs scrollbar" id="style-3">
+            <ActiveLearning
+              ref={this.actions['activelearning']}
+              tabIndex={1}
+              info={this.state.info}
+              client={this.client}
+              updateView={this.updateView}
+              onSelectActionTab={this.onSelectActionTab}
+              onOptionsConfig={this.onOptionsConfig}
+              getActiveViewportInfo={this.getActiveViewportInfo}
+            />
             <AutoSegmentation
               ref={this.actions['segmentation']}
               tabIndex={2}

@@ -38,7 +38,7 @@ export default class NextSampleForm extends Component {
       SeriesInstanceUID: 'Series Instance UID',
     };
     return (
-      <div>
+      <div className="nextSampleForm">
         <table className="optionsTable">
           <thead>
             <tr>

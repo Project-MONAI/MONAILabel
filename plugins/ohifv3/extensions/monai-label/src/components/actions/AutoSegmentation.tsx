@@ -121,7 +121,7 @@ export default class AutoSegmentation extends BaseTab {
           name="rd"
           id={this.tabId}
           className="tab-switch"
-          value="segmentation"
+          defaultValue="segmentation"
           onClick={this.onSelectActionTab}
           defaultChecked
         />
