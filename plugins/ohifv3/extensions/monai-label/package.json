@@ -51,7 +51,6 @@
         "@cornerstonejs/core": "^2.2.3",
         "@kitware/vtk.js": "32.1.0",
         "react-color": "^2.19.3",
-
         "md5.js": "^1.3.5",
         "axios": "^0.21.1",
         "arraybuffer-concat": "^0.0.1",
