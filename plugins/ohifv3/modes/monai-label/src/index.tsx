@@ -1,7 +1,7 @@
 import { hotkeys } from '@ohif/core';
-import toolbarButtons from './toolbarButtons.js';
-import { id } from './id.js';
-import initToolGroups from './initToolGroups.js';
+import { id } from './id';
+import toolbarButtons from './toolbarButtons';
+import initToolGroups from './initToolGroups';
 
 const monailabel = {
   monaiLabel: '@ohif/extension-monai-label.panelModule.monailabel',
@@ -17,13 +17,11 @@ const ohif = {
 
 const cornerstone = {
   viewport: '@ohif/extension-cornerstone.viewportModule.cornerstone',
-  panelTool:
-    '@ohif/extension-cornerstone.panelModule.panelSegmentationWithTools',
+  panelTool: '@ohif/extension-cornerstone.panelModule.panelSegmentationWithTools',
 };
 
 const segmentation = {
-  sopClassHandler:
-    '@ohif/extension-cornerstone-dicom-seg.sopClassHandlerModule.dicom-seg',
+  sopClassHandler: '@ohif/extension-cornerstone-dicom-seg.sopClassHandlerModule.dicom-seg',
   viewport: '@ohif/extension-cornerstone-dicom-seg.viewportModule.dicom-seg',
 };
 
@@ -35,7 +33,6 @@ const extensionDependencies = {
   '@ohif/extension-default': '^3.0.0',
   '@ohif/extension-cornerstone': '^3.0.0',
   '@ohif/extension-cornerstone-dicom-seg': '^3.0.0',
-  '@ohif/extension-test': '^0.0.1',
   '@ohif/extension-monai-label': '^3.0.0',
 };
 
@@ -56,13 +53,8 @@ function modeFactory({ modeConfiguration }) {
      * Runs when the Mode Route is mounted to the DOM. Usually used to initialize
      * Services and other resources.
      */
-    onModeEnter: ({ servicesManager, extensionManager, commandsManager }) => {
-      const {
-        measurementService,
-        toolbarService,
-        toolGroupService,
-        customizationService,
-      } = servicesManager.services;
+    onModeEnter: ({ servicesManager, extensionManager, commandsManager }: withAppTypes) => {
+      const { measurementService, toolbarService, toolGroupService } = servicesManager.services;
 
       measurementService.clearMeasurements();
 
@@ -70,30 +62,22 @@ function modeFactory({ modeConfiguration }) {
       initToolGroups(extensionManager, toolGroupService, commandsManager);
 
       toolbarService.addButtons(toolbarButtons);
-      // init customizations
-      customizationService.addModeCustomizations([
-        '@ohif/extension-test.customizationModule.custom-context-menu',
-      ]);
+      // toolbarService.addButtons(segmentationButtons);
 
-      toolbarService.addButtons(toolbarButtons);
       toolbarService.createButtonSection('primary', [
-        'MeasurementTools',
-        'Zoom',
         'WindowLevel',
         'Pan',
+        'Zoom',
+        'TrackballRotate',
         'Capture',
         'Layout',
         'MPR',
         'Crosshairs',
         'MoreTools',
       ]);
-
-      toolbarService.createButtonSection('segmentationToolbox', [
-        'BrushTools',
-        'Shapes',
-      ]);
+      toolbarService.createButtonSection('segmentationToolbox', ['BrushTools', 'Shapes']);
     },
-    onModeExit: ({ servicesManager }) => {
+    onModeExit: ({ servicesManager }: withAppTypes) => {
       const {
         toolGroupService,
         syncGroupService,
@@ -117,14 +101,18 @@ function modeFactory({ modeConfiguration }) {
     },
     /**
      * A boolean return value that indicates whether the mode is valid for the
-     * modalities of the selected studies. For instance a PET/CT mode should be
+     * modalities of the selected studies. Currently we don't have stack viewport
+     * segmentations and we should exclude them
      */
-    isValidMode: function ({ modalities }) {
-      const modalities_list = modalities.split('\\');
-      const isValid =
-        modalities_list.includes('CT') || modalities_list.includes('MR');
-      // Only CT or MR modalities
-      return isValid;
+    isValidMode: ({ modalities }) => {
+      // Don't show the mode if the selected studies have only one modality
+      // that is not supported by the mode
+      const modalitiesArray = modalities.split('\\');
+      return {
+        valid: modalitiesArray.includes('CT') || modalitiesArray.includes('MR'),
+        description:
+          'The mode does not support studies that ONLY include the following modalities: SM, OT, DOC',
+      };
     },
     /**
      * Mode Routes are used to define the mode's behavior. A list of Mode Route
@@ -170,10 +158,8 @@ function modeFactory({ modeConfiguration }) {
     hangingProtocol: 'mpr',
     // hangingProtocol: [''],
     /** SopClassHandlers used by the mode */
-    sopClassHandlers: [
-      segmentation.sopClassHandler,
-      ohif.sopClassHandler,
-    ] /** hotkeys for mode */,
+    sopClassHandlers: [ohif.sopClassHandler, segmentation.sopClassHandler],
+    /** hotkeys for mode */
     hotkeys: [...hotkeys.defaults.hotkeyBindings],
   };
 }
