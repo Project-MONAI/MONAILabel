@@ -10,8 +10,8 @@ WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 See the License for the specific language governing permissions and
 limitations under the License.
 */
+
 .nextSampleForm {
-  width: 750px;
 }
 .nextSampleForm .actionButton {
   border: 1px solid var(--ui-border-color-active);
@@ -40,6 +40,8 @@ limitations under the License.
   border-collapse: collapse;
   width: 100%;
   font-size: smaller;
+  background-color: azure;
+  color: black;
 }
 .nextSampleForm .optionsTable th {
   border: 1px solid #ddd;

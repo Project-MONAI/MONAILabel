@@ -1,3 +1,16 @@
+/*
+Copyright (c) MONAI Consortium
+Licensed under the Apache License, Version 2.0 (the "License");
+you may not use this file except in compliance with the License.
+You may obtain a copy of the License at
+    http://www.apache.org/licenses/LICENSE-2.0
+Unless required by applicable law or agreed to in writing, software
+distributed under the License is distributed on an "AS IS" BASIS,
+WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+See the License for the specific language governing permissions and
+limitations under the License.
+*/
+
 function componentToHex(c) {
   const hex = c.toString(16);
   return hex.length === 1 ? '0' + hex : hex;
@@ -407,6 +420,8 @@ export const GenericAnatomyColors = [
   { label: 'thorax', value: rgbToHex(177, 122, 101) },
   { label: 'trachea', value: rgbToHex(182, 228, 255) },
   { label: 'bronchi', value: rgbToHex(175, 216, 244) },
+  { label: 'lung', value: rgbToHex(197, 165, 145) },
+  { label: 'lung tumor', value: rgbToHex(144, 238, 144) },
   { label: 'right lung', value: rgbToHex(197, 165, 145) },
   { label: 'left lung', value: rgbToHex(197, 165, 145) },
   { label: 'superior lobe of right lung', value: rgbToHex(172, 138, 115) },
@@ -452,11 +467,15 @@ export const GenericAnatomyColors = [
   { label: 'colon', value: rgbToHex(204, 168, 143) },
   { label: 'anus', value: rgbToHex(255, 224, 199) },
   { label: 'liver', value: rgbToHex(221, 130, 101) },
+  { label: 'liver tumor', value: rgbToHex(144, 238, 144) },
   { label: 'biliary tree', value: rgbToHex(0, 145, 30) },
   { label: 'gallbladder', value: rgbToHex(139, 150, 98) },
   { label: 'pancreas', value: rgbToHex(249, 180, 111) },
+  { label: 'pancreatic tumor', value: rgbToHex(144, 238, 144) },
   { label: 'spleen', value: rgbToHex(157, 108, 162) },
   { label: 'urinary system', value: rgbToHex(203, 136, 116) },
+  { label: 'kidney', value: rgbToHex(185, 102, 83) },
+  { label: 'kidney tumor', value: rgbToHex(144, 238, 144) },
   { label: 'right kidney', value: rgbToHex(185, 102, 83) },
   { label: 'left kidney', value: rgbToHex(185, 102, 83) },
   { label: 'right ureter', value: rgbToHex(247, 182, 164) },

@@ -63,7 +63,7 @@ export default class SettingsTable extends Component {
                 name="aiaaServerURL"
                 type="text"
                 defaultValue={this.state.url}
-                onBlur={this.onBlurSeverURL}
+                onChange={this.onBlurSeverURL}
               />
             </td>
             <td>&nbsp;</td>

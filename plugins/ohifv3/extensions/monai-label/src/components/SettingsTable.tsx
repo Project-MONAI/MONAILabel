@@ -1,3 +1,16 @@
+/*
+Copyright (c) MONAI Consortium
+Licensed under the Apache License, Version 2.0 (the "License");
+you may not use this file except in compliance with the License.
+You may obtain a copy of the License at
+    http://www.apache.org/licenses/LICENSE-2.0
+Unless required by applicable law or agreed to in writing, software
+distributed under the License is distributed on an "AS IS" BASIS,
+WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+See the License for the specific language governing permissions and
+limitations under the License.
+*/
+
 import React, { Component } from 'react';
 
 import './SettingsTable.css';
@@ -5,16 +18,12 @@ import { Icon } from '@ohif/ui';
 import { CookieUtils } from '../utils/GenericUtils';
 
 export default class SettingsTable extends Component {
+  onInfo: any;
+
   constructor(props) {
     super(props);
+    this.onInfo = props.onInfo;
 
-    const onInfo = props.onInfo;
-    this.onInfo = onInfo;
-
-    this.state = this.getSettings();
-  }
-
-  getSettings = () => {
     const url = CookieUtils.getCookieString(
       'MONAILABEL_SERVER_URL',
       'http://' + window.location.host.split(':')[0] + ':8000/'
@@ -28,17 +37,27 @@ export default class SettingsTable extends Component {
       'NRRD'
     );
 
-    return {
+    this.state = {
       url: url,
       overlap_segments: overlap_segments,
       export_format: export_format,
     };
-  };
+  }
+
 
   onBlurSeverURL = (evt) => {
     const url = evt.target.value;
     this.setState({ url: url });
     CookieUtils.setCookie('MONAILABEL_SERVER_URL', url);
+    console.log('Settings onBlurSeverURL', url);
+  };
+
+  onConnect = () => {
+    const url = document.getElementById('monailabelServerURL').value;
+    this.setState({ url: url });
+    CookieUtils.setCookie('MONAILABEL_SERVER_URL', url);
+    console.log('Connecting Server', url);
+    this.onInfo(url);
   };
 
   render() {
@@ -46,9 +65,12 @@ export default class SettingsTable extends Component {
       <table className="settingsTable">
         <tbody>
           <tr>
-            <td>Server:</td>
+            <td colSpan={3}>Server:</td>
+          </tr>
+          <tr>
             <td>
               <input
+                id="monailabelServerURL"
                 className="actionInput"
                 name="monailabelServerURL"
                 type="text"
@@ -58,14 +80,13 @@ export default class SettingsTable extends Component {
             </td>
             <td>&nbsp;</td>
             <td>
-              <button className="actionButton" onClick={this.onInfo}>
+              <button className="actionButton" onClick={this.onConnect}>
                 <Icon name="tool-reset" width="12px" height="12px" />
               </button>
             </td>
           </tr>
           <tr style={{ fontSize: 'smaller' }}>
-            <td>&nbsp;</td>
-            <td colSpan="4">
+            <td colSpan={3}>
               <a
                 href={new URL(this.state.url).toString() + 'info/'}
                 target="_blank"

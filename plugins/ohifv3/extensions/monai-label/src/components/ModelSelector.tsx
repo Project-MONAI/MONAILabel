@@ -1,3 +1,16 @@
+/*
+Copyright (c) MONAI Consortium
+Licensed under the Apache License, Version 2.0 (the "License");
+you may not use this file except in compliance with the License.
+You may obtain a copy of the License at
+    http://www.apache.org/licenses/LICENSE-2.0
+Unless required by applicable law or agreed to in writing, software
+distributed under the License is distributed on an "AS IS" BASIS,
+WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+See the License for the specific language governing permissions and
+limitations under the License.
+*/
+
 import React, { Component } from 'react';
 import PropTypes from 'prop-types';
 
@@ -12,7 +25,6 @@ export default class ModelSelector extends Component {
     usage: PropTypes.any,
     onClick: PropTypes.func,
     onSelectModel: PropTypes.func,
-    scribblesSelector: PropTypes.any,
   };
 
   constructor(props) {
@@ -21,8 +33,8 @@ export default class ModelSelector extends Component {
     const currentModel = props.currentModel
       ? props.currentModel
       : props.models.length > 0
-      ? props.models[0]
-      : '';
+        ? props.models[0]
+        : '';
     this.state = {
       models: props.models,
       currentModel: currentModel,
@@ -83,7 +95,7 @@ export default class ModelSelector extends Component {
                 <select
                   className="selectBox"
                   onChange={this.onChangeModel}
-                  value={currentModel}
+                  defaultValue={currentModel}
                 >
                   {this.props.models.map((model) => (
                     <option key={model} name={model} value={model}>
@@ -107,7 +119,6 @@ export default class ModelSelector extends Component {
                 </button>
               </td>
             </tr>
-            {this.props.scribblesSelector}
           </tbody>
         </table>
         {this.props.usage}

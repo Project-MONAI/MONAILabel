@@ -11,211 +11,102 @@ See the License for the specific language governing permissions and
 limitations under the License.
 */
 
-import React from 'react';
+import React, { Component } from 'react';
 
-import './OptionTable.css';
-import BaseTab from './BaseTab';
+import PropTypes from 'prop-types';
 
-export default class OptionTable extends BaseTab {
-  constructor(props) {
-    super(props);
+export default class OptionTable extends Component {
+  static propTypes = {
+    section: PropTypes.string,
+    name: PropTypes.string,
+    name_map: PropTypes.any,
+    update_map: PropTypes.any,
+    onChangeConfig: PropTypes.func,
+  };
 
-    this.state = {
-      section: '',
-      name: '',
-      config: null,
-    };
+  state = {
+    seed: 0,
+  };
+
+  componentDidUpdate(prevProps, prevState) {
+    if (prevProps.update_map !== this.props.update_map) {
+      // console.log('update_map - Prop changed!');
+      if (!Object.keys(this.props.update_map).length) {
+        // console.log('Forcing the update.');
+        this.setState({ seed: Math.random() });
+        return;
+      }
+
+      Object.entries(this.props.update_map).map(([k, v]) => {
+        const e = document.getElementById(
+          this.props.section + this.props.name + k
+        );
+        if (e.type === 'checkbox') {
+          e.checked = v;
+        } else {
+          e.value = v;
+        }
+      });
+    }
   }
 
-  onChangeSection = (evt) => {
-    this.state.section = evt.target.value;
-    this.setState({ section: evt.target.value });
-  };
-
-  onChangeName = (evt) => {
-    this.state.name = evt.target.value;
-    this.setState({ name: evt.target.value });
-  };
-
-  onChangeConfig = (s, n, k, evt) => {
-    console.debug(s + ' => ' + n + ' => ' + k);
-
-    const c = this.state.config;
-    if (typeof c[s][n][k] === 'boolean') {
-      c[s][n][k] = !!evt.target.checked;
-    } else {
-      if (typeof c[s][n][k] === 'number') {
-        c[s][n][k] = Number.isInteger(c[s][n][k])
-          ? parseInt(evt.target.value)
-          : parseFloat(evt.target.value);
-      } else {
-        c[s][n][k] = evt.target.value;
-      }
-    }
-    this.setState({ config: c });
-  };
-
   render() {
-    const config = this.state.config ? this.state.config : {};
-    if (!Object.keys(config).length) {
-      const info = this.props.info;
-      const mapping = {
-        infer: 'models',
-        train: 'trainers',
-        activelearning: 'strategies',
-        scoring: 'scoring',
-      };
-      for (const [m, n] of Object.entries(mapping)) {
-        for (const [k, v] of Object.entries(info && info[n] ? info[n] : {})) {
-          if (v && v.config && Object.keys(v.config).length) {
-            if (!config[m]) {
-              config[m] = {};
-            }
-            config[m][k] = v.config;
-          }
-        }
-      }
-
-      this.state.config = config;
-    }
-
-    const section =
-      this.state.section.length && config[this.state.section]
-        ? this.state.section
-        : Object.keys(config).length
-        ? Object.keys(config)[0]
-        : '';
-    this.state.section = section;
-    const section_map = config[section] ? config[section] : {};
-
-    const name =
-      this.state.name.length && section_map[this.state.name]
-        ? this.state.name
-        : Object.keys(section_map).length
-        ? Object.keys(section_map)[0]
-        : '';
-    this.state.name = name;
-    const name_map = section_map[name] ? section_map[name] : {};
-
-    //console.log('Section: ' + section + '; Name: ' + name);
-    //console.log(name_map);
-
+    const { section, name, name_map } = this.props;
+    const { seed } = this.state;
+    // console.log('Render Table Object: ' + seed);
     return (
-      <div className="tab">
-        <input
-          className="tab-switch"
-          type="checkbox"
-          id={this.tabId}
-          name="options"
-          value="options"
-        />
-        <label className="tab-label" htmlFor={this.tabId}>
-          Options
-        </label>
-        <div className="tab-content">
-          <table>
-            <tbody>
-              <tr>
-                <td>Section:</td>
+      <div className="optionsConfig">
+        <table className="optionsConfigTable">
+          <thead>
+            <tr>
+              <th>Key</th>
+              <th>Value</th>
+            </tr>
+          </thead>
+          <tbody>
+            {Object.entries(name_map).map(([k, v]) => (
+              <tr key={seed + section + name + k}>
+                <td>{k}</td>
                 <td>
-                  <select
-                    className="selectBox"
-                    name="selectSection"
-                    onChange={this.onChangeSection}
-                    value={this.state.section}
-                  >
-                    {Object.keys(config).map((k) => (
-                      <option key={k} value={k}>
-                        {`${k} `}
-                      </option>
-                    ))}
-                  </select>
+                  {v !== null && typeof v === 'boolean' ? (
+                    <input
+                      id={section + name + k}
+                      type="checkbox"
+                      defaultChecked={v}
+                      onChange={(e) =>
+                        this.props.onChangeConfig(section, name, k, e)
+                      }
+                    />
+                  ) : v !== null && typeof v === 'object' ? (
+                    <select
+                      id={section + name + k}
+                      className="optionsInput"
+                      onChange={(e) =>
+                        this.props.onChangeConfig(section, name, k, e)
+                      }
+                    >
+                      {Object.entries(v).map(([a, b]) => (
+                        <option key={a} name={a} value={b}>
+                          {b}
+                        </option>
+                      ))}
+                    </select>
+                  ) : (
+                    <input
+                      id={section + name + k}
+                      type="text"
+                      defaultValue={v ? '' + v : ''}
+                      className="optionsInput"
+                      onChange={(e) =>
+                        this.props.onChangeConfig(section, name, k, e)
+                      }
+                    />
+                  )}
                 </td>
               </tr>
-              <tr>
-                <td>Name:</td>
-                <td>
-                  <select
-                    className="selectBox"
-                    name="selectName"
-                    onChange={this.onChangeName}
-                    value={this.state.name}
-                  >
-                    {Object.keys(section_map).map((k) => (
-                      <option key={k} value={k}>
-                        {`${k} `}
-                      </option>
-                    ))}
-                  </select>
-                </td>
-              </tr>
-            </tbody>
-          </table>
-          <br />
-          <table className="optionsTable">
-            <thead>
-              <tr>
-                <th>Key</th>
-                <th>Value</th>
-              </tr>
-            </thead>
-            <tbody>
-              {Object.entries(name_map).map(([k, v]) => (
-                <tr key={this.state.section + this.state.name + k}>
-                  <td>{k}</td>
-                  <td>
-                    {v !== null && typeof v === 'boolean' ? (
-                      <input
-                        type="checkbox"
-                        defaultChecked={v}
-                        onChange={(e) =>
-                          this.onChangeConfig(
-                            this.state.section,
-                            this.state.name,
-                            k,
-                            e
-                          )
-                        }
-                      />
-                    ) : v !== null && typeof v === 'object' ? (
-                      <select
-                        className="optionsInput"
-                        onChange={(e) =>
-                          this.onChangeConfig(
-                            this.state.section,
-                            this.state.name,
-                            k,
-                            e
-                          )
-                        }
-                      >
-                        {Object.keys(v).map((a) => (
-                          <option key={a} name={a} value={a}>
-                            {a}
-                          </option>
-                        ))}
-                      </select>
-                    ) : (
-                      <input
-                        type="text"
-                        defaultValue={v ? v : ''}
-                        className="optionsInput"
-                        onChange={(e) =>
-                          this.onChangeConfig(
-                            this.state.section,
-                            this.state.name,
-                            k,
-                            e
-                          )
-                        }
-                      />
-                    )}
-                  </td>
-                </tr>
-              ))}
-            </tbody>
-          </table>
-        </div>
+            ))}
+          </tbody>
+        </table>
       </div>
     );
   }

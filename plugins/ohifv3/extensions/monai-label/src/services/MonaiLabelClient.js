@@ -1,3 +1,16 @@
+/*
+Copyright (c) MONAI Consortium
+Licensed under the Apache License, Version 2.0 (the "License");
+you may not use this file except in compliance with the License.
+You may obtain a copy of the License at
+    http://www.apache.org/licenses/LICENSE-2.0
+Unless required by applicable law or agreed to in writing, software
+distributed under the License is distributed on an "AS IS" BASIS,
+WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+See the License for the specific language governing permissions and
+limitations under the License.
+*/
+
 import axios from 'axios';
 
 export default class MonaiLabelClient {
@@ -10,28 +23,17 @@ export default class MonaiLabelClient {
     return await MonaiLabelClient.api_get(url.toString());
   }
 
-  async segmentation(model, image, params = {}, label = null) {
-    // label is used to send label volumes, e.g. scribbles,
-    // that are to be used during segmentation
-    return this.infer(model, image, params, label);
-  }
+  async infer(model, image, params, label = null, result_extension = '.nrrd', output='image') {
+    console.log('Running Infer for: ', { model, image, params, result_extension, output });
 
-  async deepgrow(model, image, foreground, background, params = {}) {
-    params['foreground'] = foreground;
-    params['background'] = background;
-    return this.infer(model, image, params);
-  }
-
-  async infer(model, image, params, label = null, result_extension = '.nrrd') {
     let url = new URL('infer/' + encodeURIComponent(model), this.server_url);
     url.searchParams.append('image', image);
-    url.searchParams.append('output', 'all');
-    // url.searchParams.append('output', 'image');
+    url.searchParams.append('output', output);
     url = url.toString();
 
     if (result_extension) {
       params.result_extension = result_extension;
-      params.result_dtype = 'uint16';
+      params.result_dtype = 'uint8';
       params.result_compress = false;
     }
 

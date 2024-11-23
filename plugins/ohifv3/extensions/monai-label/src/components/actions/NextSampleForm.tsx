@@ -43,7 +43,6 @@ export default class NextSampleForm extends Component {
 
   render() {
     const fields = {
-      id: 'Image ID (MONAILabel)',
       Modality: 'Modality',
       StudyDate: 'Study Date',
       StudyTime: 'Study Time',
@@ -52,7 +51,7 @@ export default class NextSampleForm extends Component {
       SeriesInstanceUID: 'Series Instance UID',
     };
     return (
-      <div>
+      <div className="nextSampleForm">
         <table className="optionsTable">
           <thead>
             <tr>

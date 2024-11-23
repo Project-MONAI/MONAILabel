@@ -428,7 +428,7 @@ function run_integration_tests() {
   echo "$1 - Starting MONAILabel server..."
   rm -rf tests/data/apps
   monailabel apps -n $1 -o tests/data/apps -d
-  monailabel start_server -a tests/data/apps/$1 -c models "$3" -s $2 -p ${MONAILABEL_SERVER_PORT:-8000} &
+  monailabel start_server -a tests/data/apps/$1 -c models "$3" -s $2 -p ${MONAILABEL_SERVER_PORT:-8000} -c sam2 $5 &
 
   wait_time=0
   server_is_up=0
@@ -459,9 +459,9 @@ function run_integration_tests() {
 
 # network training/inference/eval integration tests
 if [ $doNetTests = true ]; then
-  run_integration_tests "radiology" "tests/data/dataset/local/spleen" "deepedit,segmentation_spleen,segmentation,deepgrow_2d,deepgrow_3d" "."
-  run_integration_tests "pathology" "tests/data/pathology" "segmentation_nuclei,nuclick,classification_nuclei" "."
-  run_integration_tests "monaibundle" "tests/data/dataset/local/spleen" "spleen_ct_segmentation" "bundles"
-  run_integration_tests "endoscopy" "tests/data/endoscopy" "tooltracking,inbody,deepedit" "."
-  run_integration_tests "monaibundle" "tests/data/detection" "lung_nodule_ct_detection" "detection"
+  run_integration_tests "radiology" "tests/data/dataset/local/spleen" "deepedit,segmentation_spleen,segmentation,deepgrow_2d,deepgrow_3d" "." true
+  run_integration_tests "pathology" "tests/data/pathology" "segmentation_nuclei,nuclick,classification_nuclei" "." false
+  run_integration_tests "monaibundle" "tests/data/dataset/local/spleen" "spleen_ct_segmentation" "bundles" false
+  run_integration_tests "endoscopy" "tests/data/endoscopy" "tooltracking,inbody,deepedit" "." false
+  run_integration_tests "monaibundle" "tests/data/detection" "lung_nodule_ct_detection" "detection" false
 fi

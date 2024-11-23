@@ -10,21 +10,26 @@ WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 See the License for the specific language governing permissions and
 limitations under the License.
 */
-.optionsTable {
-  font-family: arial, sans-serif;
-  border-collapse: collapse;
-  width: 100%;
-  font-size: smaller;
+
+.tmpActionButton {
+  border: 2px solid #000;
+  border-radius: 15px;
+  background-color: #00a4d9;
+  color: var(--ui-gray-dark);
+  line-height: 25px;
+  padding: 0 15px;
+  outline: none;
+  cursor: pointer;
 }
-.optionsTable th {
-  border: 1px solid #070303;
-  text-align: left;
-  background-color: #789;
+.tmpActionButton:hover,
+.tmpActionButton:active {
+  background-color: #00a4d9;
 }
-.optionsTable td {
-  border: 1px solid #070202;
-  text-align: left;
+.tmpActionButton:disabled {
+  background-color: #00a4d9;
 }
-.optionsInput {
-  width: 100%;
+.tmpActionButton svg {
+  margin-right: 4px;
+  position: relative;
+  top: 2px;
 }

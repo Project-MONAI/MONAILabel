@@ -1,28 +1,28 @@
 import { hotkeys } from '@ohif/core';
-import toolbarButtons from './toolbarButtons.js';
-import { id } from './id.js';
-import initToolGroups from './initToolGroups.js';
+import { id } from './id';
+import toolbarButtons from './toolbarButtons';
+import initToolGroups from './initToolGroups';
+
+const monailabel = {
+  monaiLabel: '@ohif/extension-monai-label.panelModule.monailabel',
+};
 
 const ohif = {
   layout: '@ohif/extension-default.layoutTemplateModule.viewerLayout',
   sopClassHandler: '@ohif/extension-default.sopClassHandlerModule.stack',
   hangingProtocol: '@ohif/extension-default.hangingProtocolModule.default',
   leftPanel: '@ohif/extension-default.panelModule.seriesList',
-};
-
-const monailabel = {
-  monaiLabel: '@ohif/extension-monai-label.panelModule.monailabel',
+  rightPanel: '@ohif/extension-default.panelModule.measure',
 };
 
 const cornerstone = {
   viewport: '@ohif/extension-cornerstone.viewportModule.cornerstone',
+  panelTool: '@ohif/extension-cornerstone.panelModule.panelSegmentationWithTools',
 };
 
-const dicomSeg = {
-  sopClassHandler:
-    '@ohif/extension-cornerstone-dicom-seg.sopClassHandlerModule.dicom-seg',
+const segmentation = {
+  sopClassHandler: '@ohif/extension-cornerstone-dicom-seg.sopClassHandlerModule.dicom-seg',
   viewport: '@ohif/extension-cornerstone-dicom-seg.viewportModule.dicom-seg',
-  panel: '@ohif/extension-cornerstone-dicom-seg.panelModule.panelSegmentation',
 };
 
 /**
@@ -33,8 +33,7 @@ const extensionDependencies = {
   '@ohif/extension-default': '^3.0.0',
   '@ohif/extension-cornerstone': '^3.0.0',
   '@ohif/extension-cornerstone-dicom-seg': '^3.0.0',
-  '@ohif/extension-test': '^0.0.1',
-  '@ohif/extension-monai-label': '^0.0.1',
+  '@ohif/extension-monai-label': '^3.0.0',
 };
 
 function modeFactory({ modeConfiguration }) {
@@ -54,75 +53,42 @@ function modeFactory({ modeConfiguration }) {
      * Runs when the Mode Route is mounted to the DOM. Usually used to initialize
      * Services and other resources.
      */
-    onModeEnter: ({ servicesManager, extensionManager, commandsManager }) => {
-      const {
-        measurementService,
-        toolbarService,
-        toolGroupService,
-        customizationService,
-      } = servicesManager.services;
+    onModeEnter: ({ servicesManager, extensionManager, commandsManager }: withAppTypes) => {
+      const { measurementService, toolbarService, toolGroupService } = servicesManager.services;
 
       measurementService.clearMeasurements();
 
       // Init Default and SR ToolGroups
       initToolGroups(extensionManager, toolGroupService, commandsManager);
 
-      // init customizations
-      customizationService.addModeCustomizations([
-        '@ohif/extension-test.customizationModule.custom-context-menu',
-      ]);
-
-      let unsubscribe;
-
-      const activateTool = () => {
-        toolbarService.recordInteraction({
-          groupId: 'WindowLevel',
-          itemId: 'WindowLevel',
-          interactionType: 'tool',
-          commands: [
-            {
-              commandName: 'setToolActive',
-              commandOptions: {
-                toolName: 'WindowLevel',
-              },
-              context: 'CORNERSTONE',
-            },
-          ],
-        });
-
-        // We don't need to reset the active tool whenever a viewport is getting
-        // added to the toolGroup.
-        unsubscribe();
-      };
-
-      // Since we only have one viewport for the basic cs3d mode and it has
-      // only one hanging protocol, we can just use the first viewport
-      ({ unsubscribe } = toolGroupService.subscribe(
-        toolGroupService.EVENTS.VIEWPORT_ADDED,
-        activateTool
-      ));
-
       toolbarService.addButtons(toolbarButtons);
+      // toolbarService.addButtons(segmentationButtons);
+
       toolbarService.createButtonSection('primary', [
-        'MeasurementTools',
-        'Zoom',
         'WindowLevel',
         'Pan',
+        'Zoom',
+        'TrackballRotate',
         'Capture',
         'Layout',
         'MPR',
         'Crosshairs',
         'MoreTools',
       ]);
+      toolbarService.createButtonSection('segmentationToolbox', ['BrushTools', 'Shapes']);
     },
-    onModeExit: ({ servicesManager }) => {
+    onModeExit: ({ servicesManager }: withAppTypes) => {
       const {
         toolGroupService,
         syncGroupService,
         segmentationService,
         cornerstoneViewportService,
+        uiDialogService,
+        uiModalService,
       } = servicesManager.services;
 
+      uiDialogService.dismissAll();
+      uiModalService.hide();
       toolGroupService.destroy();
       syncGroupService.destroy();
       segmentationService.destroy();
@@ -135,14 +101,18 @@ function modeFactory({ modeConfiguration }) {
     },
     /**
      * A boolean return value that indicates whether the mode is valid for the
-     * modalities of the selected studies. For instance a PET/CT mode should be
+     * modalities of the selected studies. Currently we don't have stack viewport
+     * segmentations and we should exclude them
      */
-    isValidMode: function ({ modalities }) {
-      const modalities_list = modalities.split('\\');
-      const isValid =
-        modalities_list.includes('CT') || modalities_list.includes('MR');
-      // Only CT or MR modalities
-      return isValid;
+    isValidMode: ({ modalities }) => {
+      // Don't show the mode if the selected studies have only one modality
+      // that is not supported by the mode
+      const modalitiesArray = modalities.split('\\');
+      return {
+        valid: modalitiesArray.includes('CT') || modalitiesArray.includes('MR'),
+        description:
+          'The mode does not support studies that ONLY include the following modalities: SM, OT, DOC',
+      };
     },
     /**
      * Mode Routes are used to define the mode's behavior. A list of Mode Route
@@ -173,8 +143,8 @@ function modeFactory({ modeConfiguration }) {
                   displaySetsToDisplay: [ohif.sopClassHandler],
                 },
                 {
-                  namespace: dicomSeg.viewport,
-                  displaySetsToDisplay: [dicomSeg.sopClassHandler],
+                  namespace: segmentation.viewport,
+                  displaySetsToDisplay: [segmentation.sopClassHandler],
                 },
               ],
             },
@@ -188,10 +158,8 @@ function modeFactory({ modeConfiguration }) {
     hangingProtocol: 'mpr',
     // hangingProtocol: [''],
     /** SopClassHandlers used by the mode */
-    sopClassHandlers: [
-      dicomSeg.sopClassHandler,
-      ohif.sopClassHandler,
-    ] /** hotkeys for mode */,
+    sopClassHandlers: [ohif.sopClassHandler, segmentation.sopClassHandler],
+    /** hotkeys for mode */
     hotkeys: [...hotkeys.defaults.hotkeyBindings],
   };
 }
