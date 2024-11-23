@@ -23,13 +23,12 @@ export default class MonaiLabelClient {
     return await MonaiLabelClient.api_get(url.toString());
   }
 
-  async infer(model, image, params, label = null, result_extension = '.nrrd') {
-    console.log('Running Infer for: ', model, image, params);
+  async infer(model, image, params, label = null, result_extension = '.nrrd', output='image') {
+    console.log('Running Infer for: ', { model, image, params, result_extension, output });
 
     let url = new URL('infer/' + encodeURIComponent(model), this.server_url);
     url.searchParams.append('image', image);
-    // url.searchParams.append('output', 'all');
-    url.searchParams.append('output', 'image');
+    url.searchParams.append('output', output);
     url = url.toString();
 
     if (result_extension) {

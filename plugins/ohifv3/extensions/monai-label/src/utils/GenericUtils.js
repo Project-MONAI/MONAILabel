@@ -113,6 +113,7 @@ export class CookieUtils {
     let results = document.cookie.match(
       '(^|;) ?' + cookie_name + '=([^;]*)(;|$)'
     );
+    // console.log('Cookie results: ', results);
     if (results) {
       return unescape(results[2]);
     } else {
@@ -122,8 +123,8 @@ export class CookieUtils {
 
   static getCookieString(name, defaultVal = '') {
     const val = CookieUtils.getCookie(name);
-    console.debug(name + ' = ' + val + ' (default: ' + defaultVal + ' )');
-    if (!val) {
+    // console.log(name + ' = ' + val + ' (default: ' + defaultVal + ' )');
+    if (!val || val === 'undefined' || val === 'null' || val === '') {
       CookieUtils.setCookie(name, defaultVal);
       return defaultVal;
     }
@@ -131,12 +132,12 @@ export class CookieUtils {
   }
 
   static getCookieBool(name, defaultVal = false) {
-    const val = CookieUtils.getCookie(name, defaultVal);
+    const val = CookieUtils.getCookieString(name, defaultVal);
     return !!JSON.parse(String(val).toLowerCase());
   }
 
   static getCookieNumber(name, defaultVal = 0) {
-    const val = CookieUtils.getCookie(name, defaultVal);
+    const val = CookieUtils.getCookieString(name, defaultVal);
     return Number(val);
   }
 }

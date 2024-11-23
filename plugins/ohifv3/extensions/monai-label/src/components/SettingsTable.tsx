@@ -18,14 +18,12 @@ import { Icon } from '@ohif/ui';
 import { CookieUtils } from '../utils/GenericUtils';
 
 export default class SettingsTable extends Component {
+  onInfo: any;
+
   constructor(props) {
     super(props);
-
     this.onInfo = props.onInfo;
-    this.state = this.getSettings();
-  }
 
-  getSettings = () => {
     const url = CookieUtils.getCookieString(
       'MONAILABEL_SERVER_URL',
       'http://' + window.location.host.split(':')[0] + ':8000/'
@@ -39,12 +37,13 @@ export default class SettingsTable extends Component {
       'NRRD'
     );
 
-    return {
+    this.state = {
       url: url,
       overlap_segments: overlap_segments,
       export_format: export_format,
     };
-  };
+  }
+
 
   onBlurSeverURL = (evt) => {
     const url = evt.target.value;

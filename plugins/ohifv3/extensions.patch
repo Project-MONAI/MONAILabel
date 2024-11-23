@@ -1,27 +1,26 @@
 diff --git a/platform/app/pluginConfig.json b/platform/app/pluginConfig.json
-index 08a42deb0..69e5aa005 100644
+index 06ae62e55..d0be6b022 100644
 --- a/platform/app/pluginConfig.json
 +++ b/platform/app/pluginConfig.json
-@@ -22,6 +22,11 @@
+@@ -57,6 +57,10 @@
        "default": false,
        "version": "3.0.0"
      },
 +    {
 +      "packageName": "@ohif/extension-monai-label",
-+      "default": false,
 +      "version": "3.0.0"
 +    },
      {
-       "packageName": "@ohif/extension-dicom-microscopy",
+       "packageName": "@ohif/extension-cornerstone-dicom-rt",
        "default": false,
-@@ -60,6 +65,9 @@
-     {
-       "packageName": "@ohif/mode-segmentation"
+@@ -84,6 +88,10 @@
+       "default": false,
+       "version": "3.0.0"
      },
 +    {
-+      "packageName": "@ohif/mode-monai-label"
++      "packageName": "@ohif/mode-monai-label",
 +      "version": "3.0.0"
 +    },
      {
-       "packageName": "@ohif/mode-tmtv"
-     },
+       "packageName": "@ohif/mode-basic-dev-mode",
+       "default": false,
