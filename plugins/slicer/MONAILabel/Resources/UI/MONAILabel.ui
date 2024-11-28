@@ -209,8 +209,29 @@
        </widget>
       </item>
       <item row="8" column="0" colspan="2">
-       <widget class="QWidget" name="trainWidget">
+       <widget class="QFrame" name="trainWidget">
+        <property name="frameShape">
+         <enum>QFrame::NoFrame</enum>
+        </property>
+        <property name="frameShadow">
+         <enum>QFrame::Plain</enum>
+        </property>
         <layout class="QGridLayout" name="gridLayout_5">
+         <property name="leftMargin">
+          <number>3</number>
+         </property>
+         <property name="topMargin">
+          <number>3</number>
+         </property>
+         <property name="rightMargin">
+          <number>3</number>
+         </property>
+         <property name="bottomMargin">
+          <number>3</number>
+         </property>
+         <property name="spacing">
+          <number>3</number>
+         </property>
          <item row="1" column="0">
           <widget class="QLabel" name="label_9">
            <property name="text">
@@ -277,8 +298,8 @@
            </item>
           </layout>
          </item>
-       </layout>
-      </widget>
+        </layout>
+       </widget>
       </item>
       <item row="4" column="1">
        <widget class="QPushButton" name="saveLabelButton">
@@ -540,17 +561,17 @@
             <property name="placeMultipleMarkups">
              <enum>qSlicerMarkupsPlaceWidget::ForcePlaceSingleMarkup</enum>
             </property>
-            <property name="sizePolicy">
+          <property name="sizePolicy">
               <sizepolicy hsizetype="Expanding" vsizetype="Preferred">
-              <horstretch>0</horstretch>
-              <verstretch>0</verstretch>
-              </sizepolicy>
-            </property>
-           </widget>
-          </item>
-         </layout>
+            <horstretch>0</horstretch>
+            <verstretch>0</verstretch>
+           </sizepolicy>
+          </property>
+         </widget>
         </item>
        </layout>
+      </item>
+     </layout>
       </item>
      </layout>
     </widget>
@@ -714,10 +735,10 @@
              <enum>qSlicerMarkupsPlaceWidget::ForcePlaceSingleMarkup</enum>
             </property>
             <property name="sizePolicy">
-              <sizepolicy hsizetype="Expanding" vsizetype="Preferred">
+             <sizepolicy hsizetype="Expanding" vsizetype="Preferred">
               <horstretch>0</horstretch>
               <verstretch>0</verstretch>
-              </sizepolicy>
+             </sizepolicy>
             </property>
            </widget>
           </item>
