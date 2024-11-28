@@ -1823,9 +1823,23 @@ class MONAILabelWidget(ScriptedLoadableModuleWidget, VTKObservationMixin):
                     segmentIds.InsertNextValue(label)
 
                 # faster import (based on selected segmentIds)
+
+                # ImportLabelmapToSegmentationNode overwrites segments, which removes all non-source representations.
+                # We remember if closed surface representation was present and restore it after import.
+                segmentationRepresentationNames = []
+                segmentationNode.GetSegmentation().GetContainedRepresentationNames(segmentationRepresentationNames)
+                hasClosedSurfaceRepresentation = (
+                    slicer.vtkSegmentationConverter.GetSegmentationClosedSurfaceRepresentationName()
+                    in segmentationRepresentationNames
+                )
+
                 slicer.modules.segmentations.logic().ImportLabelmapToSegmentationNode(
                     labelmapVolumeNode, segmentationNode, segmentIds
                 )
+
+                if hasClosedSurfaceRepresentation:
+                    segmentationNode.CreateClosedSurfaceRepresentation()
+
                 slicer.mrmlScene.RemoveNode(labelmapVolumeNode)
             else:
                 existingCount = segmentation.GetNumberOfSegments()
