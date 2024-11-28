@@ -1828,7 +1828,10 @@ class MONAILabelWidget(ScriptedLoadableModuleWidget, VTKObservationMixin):
                 # We remember if closed surface representation was present and restore it after import.
                 segmentationRepresentationNames = []
                 segmentationNode.GetSegmentation().GetContainedRepresentationNames(segmentationRepresentationNames)
-                hasClosedSurfaceRepresentation = slicer.vtkSegmentationConverter.GetSegmentationClosedSurfaceRepresentationName() in segmentationRepresentationNames
+                hasClosedSurfaceRepresentation = (
+                    slicer.vtkSegmentationConverter.GetSegmentationClosedSurfaceRepresentationName()
+                    in segmentationRepresentationNames
+                )
 
                 slicer.modules.segmentations.logic().ImportLabelmapToSegmentationNode(
                     labelmapVolumeNode, segmentationNode, segmentIds
