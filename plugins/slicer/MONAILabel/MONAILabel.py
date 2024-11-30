@@ -20,6 +20,7 @@ from collections import OrderedDict
 from urllib.parse import quote_plus
 
 import ctk
+import DICOMScalarVolumePlugin
 import qt
 import SampleData
 import SimpleITK as sitk
@@ -28,6 +29,7 @@ import slicer
 import vtk
 import vtkSegmentationCore
 from MONAILabelLib import GenericAnatomyColors, MONAILabelClient
+from pydicom import dcmread
 from slicer.i18n import tr as _
 from slicer.i18n import translate
 from slicer.ScriptedLoadableModule import *
@@ -186,6 +188,19 @@ class _ui_MONAILabelSettingsPanel:
         parent.registerProperty(
             "MONAILabel/showSegmentsIn3D",
             ctk.ctkBooleanMapper(showSegmentsIn3DCheckBox, "checked", str(qt.SIGNAL("toggled(bool)"))),
+            "valueAsInt",
+            str(qt.SIGNAL("valueAsIntChanged(int)")),
+        )
+
+        includeDicomFilesCheckBox = qt.QCheckBox()
+        includeDicomFilesCheckBox.checked = False
+        includeDicomFilesCheckBox.toolTip = _(
+            "Enable this option to include dicom files in server-client data exchange"
+        )
+        groupLayout.addRow(_("Include DICOM files:"), includeDicomFilesCheckBox)
+        parent.registerProperty(
+            "MONAILabel/includeDicomFiles",
+            ctk.ctkBooleanMapper(includeDicomFilesCheckBox, "checked", str(qt.SIGNAL("toggled(bool)"))),
             "valueAsInt",
             str(qt.SIGNAL("valueAsIntChanged(int)")),
         )
@@ -1388,6 +1403,14 @@ class MONAILabelWidget(ScriptedLoadableModuleWidget, VTKObservationMixin):
             dontShowAgainSettingsKey="MONAILabel/showImageDataSendWarning",
         )
 
+    def get_dicom_files(self):
+        dicom_files = []
+        for path, subdir, files in os.walk(self.tmpdir):
+            for file in files:
+                if file[-3:] == "dcm":
+                    dicom_files.append(os.path.join(path, file))
+        return dicom_files
+
     def onUploadImage(self, init_sample=True, session=False):
         volumeNode = slicer.mrmlScene.GetFirstNodeByClass("vtkMRMLScalarVolumeNode")
         image_id = volumeNode.GetName()
@@ -1403,12 +1426,55 @@ class MONAILabelWidget(ScriptedLoadableModuleWidget, VTKObservationMixin):
             start = time.time()
             slicer.util.saveNode(volumeNode, in_file)
             logging.info(f"Saved Input Node into {in_file} in {time.time() - start:3.1f}s")
-            self.reportProgress(30)
+            last_report_progress = 30
+            self.reportProgress(last_report_progress)
+
+            # if includeDicomFilesCheckBox is marked, save original dicom files on the server
+            if slicer.util.settingsValue("MONAILabel/includeDicomFiles", False, converter=slicer.util.toBool):
+                start = time.time()
+                shNode = slicer.vtkMRMLSubjectHierarchyNode.GetSubjectHierarchyNode(slicer.mrmlScene)
+                volumeShItemID = shNode.GetItemByDataNode(volumeNode)
+
+                seriesInstanceUID = shNode.GetItemUID(volumeShItemID, "DICOM")
+                instUids = slicer.dicomDatabase.instancesForSeries(seriesInstanceUID)
+                studyInstanceUID = slicer.dicomDatabase.instanceValue(instUids[0], "0020,000D")
+
+                exporter = DICOMScalarVolumePlugin.DICOMScalarVolumePluginClass()
+                exportables = exporter.examineForExport(volumeShItemID)
+                for exp in exportables:
+                    exp.directory = self.tmpdir
+                exporter.export(exportables)
+                logging.info(f"Saved dicom files in {time.time() - start:3.1f}s")
+                last_report_progress = 50
+                self.reportProgress(last_report_progress)
 
             if session:
                 self.current_sample["session_id"] = self.logic.create_session(in_file)["session_id"]
             else:
                 self.logic.upload_image(in_file, image_id)
+
+                # if includeDicomFilesCheckBox is marked, save original dicom files on the client
+                if slicer.util.settingsValue("MONAILabel/includeDicomFiles", False, converter=slicer.util.toBool):
+                    dcm_filenames = self.get_dicom_files()
+
+                    # send to server only the first slice due to transfer overhead
+                    dcm_filenames.sort()
+                    dcm_filenames = dcm_filenames[:1]
+
+                    report_progress_increment = round(last_report_progress / len(dcm_filenames), 1)
+                    for dcm_fullpath in dcm_filenames:
+                        # set original study and series UIDs
+                        dcm = dcmread(dcm_fullpath)
+                        dcm.StudyInstanceUID = studyInstanceUID
+                        dcm.SeriesInstanceUID = seriesInstanceUID
+                        dcm.save_as(dcm_fullpath)
+
+                        dcm_filename = dcm_fullpath.split("/")[-1]
+                        dcm_filename = ".".join(dcm_filename.split(".")[:-1])
+                        self.logic.upload_image(dcm_fullpath, dcm_filename)
+                        last_report_progress += report_progress_increment
+                        self.reportProgress(last_report_progress)
+
                 self.current_sample["session"] = False
             self.reportProgress(100)
 
@@ -1505,7 +1571,11 @@ class MONAILabelWidget(ScriptedLoadableModuleWidget, VTKObservationMixin):
                 self.reportProgress(30)
 
             self.updateServerSettings()
-            result = self.logic.save_label(self.current_sample["id"], label_in, {"label_info": label_info})
+            result = self.logic.save_label(
+                self.current_sample["id"],
+                label_in,
+                {"label_info": label_info, "model": model},
+            )
             self.fetchInfo()
 
             if slicer.util.settingsValue("MONAILabel/autoUpdateModelV2", False, converter=slicer.util.toBool):
@@ -1550,6 +1620,10 @@ class MONAILabelWidget(ScriptedLoadableModuleWidget, VTKObservationMixin):
     def onClickSegmentation(self):
         if not self.current_sample:
             return
+
+        if self.current_sample.get("session"):
+            if not self.onUploadImage(init_sample=False):
+                return
 
         start = time.time()
         result_file = None
