@@ -189,7 +189,46 @@ class CVATDatastore(LocalDatastore):
         task_id, task_name = self.get_cvat_task_id(project_id, create=False)
         logger.info(f"Preparing to download/update final labels from: {project_id} => {task_id} => {task_name}")
 
-        download_url = f"{self.api_url}/api/tasks/{task_id}/annotations?action=download&format=Segmentation+mask+1.1"
+        # Step 1: Initiate export process
+        export_url = f"{self.api_url}/api/tasks/{task_id}/dataset/export?format=Segmentation+mask+1.1&location=local&save_images=false"
+        try:
+            response = requests.post(export_url, auth=self.auth)
+            if response.status_code not in [200, 202]:
+                logger.error(f"Failed to initiate export process: {response.status_code}, {response.text}")
+                return None
+
+            rq_id = response.json().get("rq_id")
+            if not rq_id:
+                logger.error("Export process did not return a request ID (rq_id).")
+                return None
+            logger.info(f"Export process initiated successfully with request ID: {rq_id}")
+        except Exception as e:
+            logger.exception(f"Error while initiating export process: {e}")
+            return None
+
+        # Step 2: Poll export status
+        status_url = f"{self.api_url}/api/requests/{rq_id}"
+        for _ in range(max_retry_count):
+            try:
+                status_response = requests.get(status_url, auth=self.auth)
+                status = status_response.json().get("status")
+                if status == "finished":
+                    logger.info("Export process completed successfully.")
+                    break
+                elif status == "failed":
+                    logger.error(f"Export process failed: {status_response.json()}")
+                    return None
+                logger.info(f"Export in progress... Retrying in {retry_wait_time} seconds.")
+                time.sleep(retry_wait_time)
+            except Exception as e:
+                logger.exception(f"Error checking export status: {e}")
+            time.sleep(retry_wait_time)
+        else:
+            logger.error("Export process did not complete within the maximum retries.")
+            return None
+
+        # Step 3: Download the dataset
+        download_url = f"{self.api_url}/api/tasks/{task_id}/annotations?format=Segmentation+mask+1.1&location=local&save_images=false&action=download"
         tmp_folder = tempfile.TemporaryDirectory().name
         os.makedirs(tmp_folder, exist_ok=True)
 
@@ -197,8 +236,8 @@ class CVATDatastore(LocalDatastore):
         retry_count = 0
         for retry in range(max_retry_count):
             try:
+                logger.info(f"Downloading exported dataset from: {download_url}")
                 r = requests.get(download_url, allow_redirects=True, auth=self.auth)
-                time.sleep(retry_wait_time)
 
                 with open(tmp_zip, "wb") as fp:
                     fp.write(r.content)
@@ -227,7 +266,7 @@ class CVATDatastore(LocalDatastore):
                             Image.open(label).save(dest)
                             logger.info(f"Copy Final Label: {label} to {dest}")
 
-                # Rename after consuming/downloading the labels
+                # Rename task after consuming/downloading the labels
                 patch_url = f"{self.api_url}/api/tasks/{task_id}"
                 body = {"name": f"{self.done_prefix}_{task_name}"}
                 requests.patch(patch_url, allow_redirects=True, auth=self.auth, json=body)
