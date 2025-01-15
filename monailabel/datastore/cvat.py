@@ -136,15 +136,51 @@ class CVATDatastore(LocalDatastore):
         return task_id, task_name
 
     def task_status(self):
+        """
+        Fetches the status of a CVAT task based on the state of its jobs.
+        Returns:
+        - "completed" if all jobs are completed.
+        - "in_progress" if at least one job is not completed.
+        - None if an error occurs or the task does not exist.
+        """
+        # Get the project and task IDs
         project_id = self.get_cvat_project_id(create=False)
         if project_id is None:
             return None
+
         task_id, _ = self.get_cvat_task_id(project_id, create=False)
         if task_id is None:
             return None
 
-        r = requests.get(f"{self.api_url}/api/tasks/{task_id}", auth=self.auth).json()
-        return r.get("status")
+        # Fetch task details
+        task_url = f"{self.api_url}/api/tasks/{task_id}"
+        task_response = requests.get(task_url, auth=self.auth)
+
+        if task_response.status_code != 200:
+            return None  # Task could not be fetched
+
+        task_data = task_response.json()
+
+        # Get the jobs URL from the task details
+        jobs_url = task_data.get("jobs", {}).get("url")
+        if not jobs_url:
+            return None  # No jobs URL found for the task
+
+        # Fetch jobs for the task
+        jobs_response = requests.get(jobs_url, auth=self.auth)
+        if jobs_response.status_code != 200:
+            return None  # Jobs could not be fetched
+
+        # Parse jobs and check their states
+        jobs = jobs_response.json().get("results", [])
+        if not jobs:
+            return None  # No jobs found for the task
+
+        # Check if all jobs have state "completed"
+        all_completed = all(job.get("state") == "completed" for job in jobs)
+
+        # Return "completed" if all jobs are completed; otherwise "in_progress"
+        return "completed" if all_completed else "in_progress"
 
     def upload_to_cvat(self, samples):
         project_id = self.get_cvat_project_id(create=True)
