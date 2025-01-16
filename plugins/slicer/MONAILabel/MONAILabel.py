@@ -1059,6 +1059,10 @@ class MONAILabelWidget(ScriptedLoadableModuleWidget, VTKObservationMixin):
         serverUrl = self.ui.serverComboBox.currentText.strip()
         if not serverUrl:
             serverUrl = "http://127.0.0.1:8000"
+        elif not serverUrl.startswith(("http://", "https://")):
+            serverUrl = "http://" + serverUrl
+        elif serverUrl.startswith(":") or serverUrl.isdigit():
+            serverUrl = "http://0.0.0.0:" + serverUrl.lstrip(":")
         return serverUrl.rstrip("/")
 
     def saveServerUrl(self):
