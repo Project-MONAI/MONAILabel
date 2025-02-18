@@ -29,16 +29,19 @@ Users can find supported applications in the [sample-apps](../../sample-apps/vis
 
 ### Installing CellProfiler
 
-To use MONAILabel with CellProfiler, you first need to install CellProfiler from source code following the installation part of [CellProfiler WiKi](https://github.com/CellProfiler/CellProfiler/wiki). Once you have CellProfiler installed, you can install the MONAILabel plugin as shown in the `Install MONAI Label Extension` part.
+Since this plugin does not require any external dependencies, except those already available in CellProfiler itself, users may choose to download and use a pre-built version, [available here](https://cellprofiler.org/releases).
 
-Please note these tips when installing the software:
-1. After cloned the source code, you must switch to a specific version tag of the repo to start installation.
-1. For Macbooks with Apple Silicon, please note [this issue](https://github.com/CellProfiler/CellProfiler/issues/4932) before you start to install.
-1. Before actually running the command `pip install -e .`, you may need to install numpy if it doesn't exist in your environment.
+Alternatively, you may install CellProfiler from source code following the installation part of [CellProfiler WiKi](https://github.com/CellProfiler/CellProfiler/wiki).
+
+Once you have CellProfiler installed, you can install the MONAILabel plugin as shown in the `Install MONAI Label Extension` part.
 
 ### Install MONAI Label Extension
-1. Save the runvista2d.py file to a local path.
-1. Start CellProfiler from CLI, open the `File-->preferences` option and fill in the `CellProfiler plugin directory` parameter with your local path.
+1. Save the `runvista2d.py` file to a local path.
+1. Start CellProfiler by opening the application or .exe (if using pre-built) or by launching from CLI (if installed from source), open the `File-->preferences` option and fill in the `CellProfiler plugin directory` parameter with your local path.
+
+Alternatively,
+1. Download/Clone the official CellProfiler-plugins repository [available here](https://github.com/CellProfiler/CellProfiler-plugins), which contains `runvista2d.py`.
+1. Start CellProfiler by opening the application or .exe (if using pre-built) or by launching from CLI (if installed from source), open the `File-->preferences` option and fill in the `CellProfiler plugin directory` parameter with the path to the `<path>/<to>/CellProfiler-Plugins/active_plugins`.
 
 ## Using the Plugin
 
