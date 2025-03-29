@@ -98,11 +98,11 @@ class MyApp(MONAILabelApp):
 
     def read_labels_from_file(self, file_path: str) -> List[Dict[str, Union[str, int, list]]]:
         labels = []
-        
+
         try:
-            with open(file_path, mode='r') as csvfile:
+            with open(file_path) as csvfile:
                 reader = csv.DictReader(csvfile)
-                
+
                 for row in reader:
                     # Check for required fields
                     if "name" in row and "id" in row and "color" in row:
@@ -113,26 +113,26 @@ class MyApp(MONAILabelApp):
                                 attributes = json.loads(row["attributes"].strip())
                             except json.JSONDecodeError as e:
                                 logger.warning(f"Could not parse attributes JSON for row {row}: {e}")
-                        
+
                         entry = {
                             "name": row["name"],
                             "id": int(row["id"]),
                             "color": row["color"],
                             "type": "any",
-                            "attributes": attributes
+                            "attributes": attributes,
                         }
                         labels.append(entry)
                     else:
                         logger.warning(f"Skipping row due to missing fields: {row}")
-                        
+
                 logger.info(f"Loaded {len(labels)} labels from {file_path}")
         except FileNotFoundError:
             logger.error(f"Label file {file_path} not found!")
         except Exception as e:
             logger.error(f"Error reading label file {file_path}: {e}")
-        
+
         return labels
-        
+
     def init_datastore(self) -> Datastore:
         if settings.MONAI_LABEL_DATASTORE_URL and settings.MONAI_LABEL_DATASTORE.lower() == "cvat":
             logger.info(f"Using CVAT: {self.studies}")
