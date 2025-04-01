@@ -247,9 +247,42 @@ export default class MonaiLabelPanel extends Component {
     const uint8Data = new Uint8Array(uint16Data.length);
 
     for (let i = 0; i < uint16Data.length; i++) {
-      uint8Data[i] = uint16Data[i] & 0xFF; // Keep only the lower 8 bits
+      uint8Data[i] = uint16Data[i] & 0xFF; 
     }
-    const data = uint8Data
+    let data = uint8Data
+
+    const volumeLoadObject = cache.getVolume('1');
+    const dimensions = volumeLoadObject.dimensions;
+    const direction = volumeLoadObject.direction;
+
+    const flipX = direction[0] === 1;  
+    const flipY = direction[4] === 1;  
+    const flipZ = false;               
+  
+    if (dimensions && dimensions.length >= 2) {
+      const [width, height, depth] = dimensions;
+      
+      if (flipX || flipY || flipZ) {
+        const flippedData = new Uint8Array(data.length);
+        
+        for (let z = 0; z < depth; z++) {
+          const zIndex = flipZ ? depth - 1 - z : z;
+          for (let y = 0; y < height; y++) {
+            const yIndex = flipY ? height - 1 - y : y;
+            for (let x = 0; x < width; x++) {
+              const xIndex = flipX ? width - 1 - x : x;
+              
+              const originalIndex = z * width * height + y * width + x;
+              const flippedIndex = zIndex * width * height + yIndex * width + xIndex;
+              
+              flippedData[originalIndex] = data[flippedIndex];
+            }
+          }
+        }
+        
+        data = flippedData;
+      }
+    }
 
     // reformat centroids
     // const centroidsIJK = new Map();
@@ -277,7 +310,7 @@ export default class MonaiLabelPanel extends Component {
 
 
     // Todo: rename volumeId
-    const volumeLoadObject = cache.getVolume('1');
+    // const volumeLoadObject = cache.getVolume('1');
 
     if (this.state.action === 'pointprompts') {
       const newValue = supportedClassPoint+1 || 131;
@@ -320,6 +353,10 @@ export default class MonaiLabelPanel extends Component {
     }
     triggerEvent(eventTarget, Enums.Events.SEGMENTATION_DATA_MODIFIED, {
       segmentationId: '1',
+      // viewportOptions: {
+      //   orientation: Enums.OrientationAxis.AXIAL, // or CORONAL/SAGITTAL
+      //   invert: false, // explicitly set to false
+      // }
     });
     const currentSegArray = new Uint8Array(scalarData.length);
     currentSegArray.set(scalarData);
