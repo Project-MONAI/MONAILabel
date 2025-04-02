@@ -138,8 +138,9 @@ class MyApp(MONAILabelApp):
     def init_datastore(self) -> Datastore:
         if settings.MONAI_LABEL_DATASTORE_URL and settings.MONAI_LABEL_DATASTORE.lower() == "cvat":
             logger.info(f"Using CVAT: {self.studies}")
-            # First try to get labels directly from the configuration
-            labels = self.conf.get("cvat_labels")
+
+            labels: List[Dict[str, Union[str, int, list]]] = []
+
             # If cvat_labels_file is specified and not null, read labels from that file
             cvat_labels_file = self.conf.get("cvat_labels_file")
             if cvat_labels_file:
@@ -147,6 +148,14 @@ class MyApp(MONAILabelApp):
                     labels = self.read_labels_from_file(cvat_labels_file)
                 except Exception as e:
                     logger.error(f"Error reading CVAT labels file {cvat_labels_file}: {e}")
+            else:
+                label_str = self.conf.get("cvat_labels")
+                if label_str:
+                    try:
+                        labels = json.loads(label_str)
+                    except Exception as e:
+                        logger.error(f"Error parsing cvat_labels config: {e}")
+
             return CVATDatastore(
                 datastore_path=self.studies,
                 api_url=settings.MONAI_LABEL_DATASTORE_URL,
