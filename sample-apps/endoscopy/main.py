@@ -9,12 +9,12 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-import logging
-import os
 import csv
 import json
+import logging
+import os
 from datetime import timedelta
-from typing import List, Dict, Union
+from typing import Dict, List, Union
 
 import lib.configs
 import numpy as np
