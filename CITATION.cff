@@ -4,38 +4,6 @@ message: >-
   If you use this software, please cite it using the
   metadata from this file.
 type: software
-authors:
-  - given-names: Andres
-    family-names: Diaz-Pinto
-  - given-names: Sachidanand
-    family-names: Alle
-  - given-names: Alvin
-    family-names: Ihsani
-  - given-names: Muhammad
-    family-names: Asad
-  - given-names: Vishwesh
-    family-names: Nath
-  - given-names: Fernando
-    family-names: Pérez-García
-    orcid: 'https://orcid.org/0000-0001-9090-3024'
-  - given-names: Pritesh
-    family-names: Mehta
-  - given-names: Wenqi
-    family-names: Li
-  - given-names: Holger R.
-    family-names: Roth
-  - given-names: Tom
-    family-names: Vercauteren
-  - given-names: Daguang
-    family-names: Xu
-  - given-names: Prerna
-    family-names: Dogra
-  - given-names: Sebastien
-    family-names: Ourselin
-  - given-names: Andrew
-    family-names: Feng
-  - given-names: M. Jorge
-    family-names: Cardoso
 identifiers:
   - type: doi
     value: 10.1016/j.media.2024.103207
@@ -43,3 +11,42 @@ identifiers:
 repository-code: 'https://github.com/Project-MONAI/MONAILabel'
 url: 'https://docs.monai.io/projects/label/'
 license: Apache-2.0
+preferred-citation:
+  type: article
+  authors:
+    - given-names: Andres
+      family-names: Diaz-Pinto
+    - given-names: Sachidanand
+      family-names: Alle
+    - given-names: Alvin
+      family-names: Ihsani
+    - given-names: Muhammad
+      family-names: Asad
+    - given-names: Vishwesh
+      family-names: Nath
+    - given-names: Fernando
+      family-names: Pérez-García
+      orcid: 'https://orcid.org/0000-0001-9090-3024'
+    - given-names: Pritesh
+      family-names: Mehta
+    - given-names: Wenqi
+      family-names: Li
+    - given-names: Holger R.
+      family-names: Roth
+    - given-names: Tom
+      family-names: Vercauteren
+    - given-names: Daguang
+      family-names: Xu
+    - given-names: Prerna
+      family-names: Dogra
+    - given-names: Sebastien
+      family-names: Ourselin
+    - given-names: Andrew
+      family-names: Feng
+    - given-names: M. Jorge
+      family-names: Cardoso
+  doi: "10.1016/j.media.2024.103207"
+  journal: "Medical Image Analysis"
+  title: "MONAI Label: A framework for AI-assisted interactive labeling of 3D medical images"
+  volume: 95
+  year: 2024
