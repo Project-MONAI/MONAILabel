@@ -9,10 +9,12 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
+import csv
+import json
 import logging
 import os
 from datetime import timedelta
-from typing import Dict
+from typing import Dict, List, Union
 
 import lib.configs
 import numpy as np
@@ -96,9 +98,64 @@ class MyApp(MONAILabelApp):
         )
         self.downloading = False
 
+    def read_labels_from_file(self, file_path: str) -> List[Dict[str, Union[str, int, list]]]:
+        labels = []
+
+        try:
+            with open(file_path) as csvfile:
+                reader = csv.DictReader(csvfile)
+
+                for row in reader:
+                    # Check for required fields
+                    if "name" in row and "id" in row and "color" in row:
+                        attributes = []
+                        # Process the attributes if they exist and are not empty
+                        if "attributes" in row and row["attributes"].strip():
+                            try:
+                                attributes = json.loads(row["attributes"].strip())
+                            except json.JSONDecodeError as e:
+                                logger.warning(f"Could not parse attributes JSON for row {row}: {e}")
+
+                        entry = {
+                            "name": row["name"],
+                            "id": int(row["id"]),
+                            "color": row["color"],
+                            "type": "any",
+                            "attributes": attributes,
+                        }
+                        labels.append(entry)
+                    else:
+                        logger.warning(f"Skipping row due to missing fields: {row}")
+
+                logger.info(f"Loaded {len(labels)} labels from {file_path}")
+        except FileNotFoundError:
+            logger.error(f"Label file {file_path} not found!")
+        except Exception as e:
+            logger.error(f"Error reading label file {file_path}: {e}")
+
+        return labels
+
     def init_datastore(self) -> Datastore:
         if settings.MONAI_LABEL_DATASTORE_URL and settings.MONAI_LABEL_DATASTORE.lower() == "cvat":
             logger.info(f"Using CVAT: {self.studies}")
+
+            labels: List[Dict[str, Union[str, int, list]]] = []
+
+            # If cvat_labels_file is specified and not null, read labels from that file
+            cvat_labels_file = self.conf.get("cvat_labels_file")
+            if cvat_labels_file:
+                try:
+                    labels = self.read_labels_from_file(cvat_labels_file)
+                except Exception as e:
+                    logger.error(f"Error reading CVAT labels file {cvat_labels_file}: {e}")
+            else:
+                label_str = self.conf.get("cvat_labels")
+                if label_str:
+                    try:
+                        labels = json.loads(label_str)
+                    except Exception as e:
+                        logger.error(f"Error parsing cvat_labels config: {e}")
+
             return CVATDatastore(
                 datastore_path=self.studies,
                 api_url=settings.MONAI_LABEL_DATASTORE_URL,
@@ -107,7 +164,7 @@ class MyApp(MONAILabelApp):
                 project=self.conf.get("cvat_project", "MONAILabel"),
                 task_prefix=self.conf.get("cvat_task_prefix", "ActiveLearning_Iteration"),
                 image_quality=int(self.conf.get("cvat_image_quality", "70")),
-                labels=self.conf.get("cvat_labels"),
+                labels=labels,
                 normalize_label=strtobool(self.conf.get("cvat_normalize_label", "true")),
                 segment_size=int(self.conf.get("cvat_segment_size", "1")),
                 extensions=settings.MONAI_LABEL_DATASTORE_FILE_EXT,
