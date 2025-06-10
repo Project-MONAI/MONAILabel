@@ -40,7 +40,7 @@ passlib==1.7.4
 pyjwt==2.8.0
 bcrypt==4.1.2
 shapely==2.0.4
-requests==2.32.2
+requests==2.32.4
 requests-toolbelt==1.0.0
 urllib3==2.2.2
 scikit-learn
