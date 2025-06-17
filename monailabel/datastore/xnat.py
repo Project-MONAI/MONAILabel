@@ -318,7 +318,7 @@ class XNATDatastore(Datastore):
         logger.info("XNAT:: Logged in XNAT")
 
     def _request_get(self, url):
-        return self.xnat_session.get(url, allow_redirects=True)
+        return self.xnat_session.get(url, auth=self.auth, allow_redirects=True)
 
     def _request_post(self, url):
         return self.xnat_session.post(url, auth=self.auth, allow_redirects=True)
@@ -329,6 +329,7 @@ class XNATDatastore(Datastore):
             data=data,
             params={"overwrite": "true", "type": type},
             headers={"Content-Type": "application/octet-stream"},
+            auth=self.auth,
             allow_redirects=True,
         )
         if response.status_code != 200:  # failed call
