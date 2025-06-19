@@ -42,7 +42,7 @@ bcrypt==4.1.2
 shapely==2.0.4
 requests==2.32.4
 requests-toolbelt==1.0.0
-urllib3==2.2.2
+urllib3==2.5.0
 scikit-learn
 scipy
 google-auth==2.29.0
