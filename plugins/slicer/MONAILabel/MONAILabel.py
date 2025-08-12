@@ -28,6 +28,8 @@ import slicer
 import vtk
 import vtkSegmentationCore
 from MONAILabelLib import GenericAnatomyColors, MONAILabelClient
+from slicer.i18n import tr as _
+from slicer.i18n import translate
 from slicer.ScriptedLoadableModule import *
 from slicer.util import VTKObservationMixin
 
@@ -35,17 +37,21 @@ from slicer.util import VTKObservationMixin
 class MONAILabel(ScriptedLoadableModule):
     def __init__(self, parent):
         ScriptedLoadableModule.__init__(self, parent)
-        self.parent.title = "MONAILabel"
-        self.parent.categories = ["Active Learning"]
+        self.parent.title = _("MONAILabel")
+        self.parent.categories = [translate("qSlicerAbstractCoreModule", "Active Learning")]
         self.parent.dependencies = []
         self.parent.contributors = ["NVIDIA, KCL"]
-        self.parent.helpText = """
+        self.parent.helpText = _(
+            """
 Active Learning solution.
 See more information in <a href="https://github.com/Project-MONAI/MONAILabel">module documentation</a>.
 """
-        self.parent.acknowledgementText = """
+        )
+        self.parent.acknowledgementText = _(
+            """
 Developed by NVIDIA, KCL
 """
+        )
 
         # Additional initialization step after application startup is complete
         slicer.app.connect("startupCompleted()", self.initializeAfterStartup)
@@ -62,39 +68,39 @@ class _ui_MONAILabelSettingsPanel:
 
         # settings
         groupBox = ctk.ctkCollapsibleGroupBox()
-        groupBox.title = "MONAI Label Server"
+        groupBox.title = _("MONAI Label Server")
         groupLayout = qt.QFormLayout(groupBox)
 
         serverUrl = qt.QLineEdit()
-        groupLayout.addRow("Server address:", serverUrl)
+        groupLayout.addRow(_("Server address:"), serverUrl)
         parent.registerProperty("MONAILabel/serverUrl", serverUrl, "text", str(qt.SIGNAL("textChanged(QString)")))
 
         serverUrlHistory = qt.QLineEdit()
-        groupLayout.addRow("Server address history:", serverUrlHistory)
+        groupLayout.addRow(_("Server address history:"), serverUrlHistory)
         parent.registerProperty(
             "MONAILabel/serverUrlHistory", serverUrlHistory, "text", str(qt.SIGNAL("textChanged(QString)"))
         )
 
         fileExtension = qt.QLineEdit()
         fileExtension.setText(".nii.gz")
-        fileExtension.toolTip = "Default extension for uploading images/labels"
-        groupLayout.addRow("File Extension:", fileExtension)
+        fileExtension.toolTip = _("Default extension for uploading images/labels")
+        groupLayout.addRow(_("File Extension:"), fileExtension)
         parent.registerProperty(
             "MONAILabel/fileExtension", fileExtension, "text", str(qt.SIGNAL("textChanged(QString)"))
         )
 
         clientId = qt.QLineEdit()
-        clientId.setText("user-xyz")
-        clientId.toolTip = "Client/User ID that will be sent to MONAI Label server for reference"
-        groupLayout.addRow("Client/User-ID:", clientId)
+        clientId.setText(_("user-xyz"))
+        clientId.toolTip = _("Client/User ID that will be sent to MONAI Label server for reference")
+        groupLayout.addRow(_("Client/User-ID:"), clientId)
         parent.registerProperty("MONAILabel/clientId", clientId, "text", str(qt.SIGNAL("textChanged(QString)")))
 
         autoRunSegmentationCheckBox = qt.QCheckBox()
         autoRunSegmentationCheckBox.checked = False
-        autoRunSegmentationCheckBox.toolTip = (
+        autoRunSegmentationCheckBox.toolTip = _(
             "Enable this option to auto run segmentation if pre-trained model exists when Next Sample is fetched"
         )
-        groupLayout.addRow("Auto-Run Pre-Trained Model:", autoRunSegmentationCheckBox)
+        groupLayout.addRow(_("Auto-Run Pre-Trained Model:"), autoRunSegmentationCheckBox)
         parent.registerProperty(
             "MONAILabel/autoRunSegmentationOnNextSample",
             ctk.ctkBooleanMapper(autoRunSegmentationCheckBox, "checked", str(qt.SIGNAL("toggled(bool)"))),
@@ -104,8 +110,8 @@ class _ui_MONAILabelSettingsPanel:
 
         autoFetchNextSampleCheckBox = qt.QCheckBox()
         autoFetchNextSampleCheckBox.checked = False
-        autoFetchNextSampleCheckBox.toolTip = "Enable this option to fetch Next Sample after saving the label"
-        groupLayout.addRow("Auto-Fetch Next Sample:", autoFetchNextSampleCheckBox)
+        autoFetchNextSampleCheckBox.toolTip = _("Enable this option to fetch Next Sample after saving the label")
+        groupLayout.addRow(_("Auto-Fetch Next Sample:"), autoFetchNextSampleCheckBox)
         parent.registerProperty(
             "MONAILabel/autoFetchNextSample",
             ctk.ctkBooleanMapper(autoFetchNextSampleCheckBox, "checked", str(qt.SIGNAL("toggled(bool)"))),
@@ -115,8 +121,8 @@ class _ui_MONAILabelSettingsPanel:
 
         autoUpdateModelCheckBox = qt.QCheckBox()
         autoUpdateModelCheckBox.checked = False
-        autoUpdateModelCheckBox.toolTip = "Enable this option to auto update model after submitting the label"
-        groupLayout.addRow("Auto-Update Model:", autoUpdateModelCheckBox)
+        autoUpdateModelCheckBox.toolTip = _("Enable this option to auto update model after submitting the label")
+        groupLayout.addRow(_("Auto-Update Model:"), autoUpdateModelCheckBox)
         parent.registerProperty(
             "MONAILabel/autoUpdateModelV2",
             ctk.ctkBooleanMapper(autoUpdateModelCheckBox, "checked", str(qt.SIGNAL("toggled(bool)"))),
@@ -126,11 +132,12 @@ class _ui_MONAILabelSettingsPanel:
 
         askForUserNameCheckBox = qt.QCheckBox()
         askForUserNameCheckBox.checked = False
-        askForUserNameCheckBox.toolTip = (
-            "Enable this option to ask for the user name every time the MONAILabel "
-            + "extension is loaded for the first time"
+        askForUserNameCheckBox.toolTip = _(
+            "Enable this option to ask for the user name every time the MONAILabel"
+            "extension is loaded for the first time"
         )
-        groupLayout.addRow("Ask For User Name:", askForUserNameCheckBox)
+
+        groupLayout.addRow(_("Ask For User Name:"), askForUserNameCheckBox)
         parent.registerProperty(
             "MONAILabel/askForUserName",
             ctk.ctkBooleanMapper(askForUserNameCheckBox, "checked", str(qt.SIGNAL("toggled(bool)"))),
@@ -140,8 +147,8 @@ class _ui_MONAILabelSettingsPanel:
 
         allowOverlapCheckBox = qt.QCheckBox()
         allowOverlapCheckBox.checked = False
-        allowOverlapCheckBox.toolTip = "Enable this option to allow overlapping segmentations"
-        groupLayout.addRow("Allow Overlapping Segmentations:", allowOverlapCheckBox)
+        allowOverlapCheckBox.toolTip = _("Enable this option to allow overlapping segmentations")
+        groupLayout.addRow(_("Allow Overlapping Segmentations:"), allowOverlapCheckBox)
         parent.registerProperty(
             "MONAILabel/allowOverlappingSegments",
             ctk.ctkBooleanMapper(allowOverlapCheckBox, "checked", str(qt.SIGNAL("toggled(bool)"))),
@@ -152,8 +159,8 @@ class _ui_MONAILabelSettingsPanel:
 
         originalLabelCheckBox = qt.QCheckBox()
         originalLabelCheckBox.checked = True
-        originalLabelCheckBox.toolTip = "Enable this option to first read original label (predictions)"
-        groupLayout.addRow("Original Labels:", originalLabelCheckBox)
+        originalLabelCheckBox.toolTip = _("Enable this option to first read original label (predictions)")
+        groupLayout.addRow(_("Original Labels:"), originalLabelCheckBox)
         parent.registerProperty(
             "MONAILabel/originalLabel",
             ctk.ctkBooleanMapper(originalLabelCheckBox, "checked", str(qt.SIGNAL("toggled(bool)"))),
@@ -163,8 +170,8 @@ class _ui_MONAILabelSettingsPanel:
 
         developerModeCheckBox = qt.QCheckBox()
         developerModeCheckBox.checked = True
-        developerModeCheckBox.toolTip = "Enable this option to find options tab etc..."
-        groupLayout.addRow("Developer Mode:", developerModeCheckBox)
+        developerModeCheckBox.toolTip = _("Enable this option to find options tab etc...")
+        groupLayout.addRow(_("Developer Mode:"), developerModeCheckBox)
         parent.registerProperty(
             "MONAILabel/developerMode",
             ctk.ctkBooleanMapper(developerModeCheckBox, "checked", str(qt.SIGNAL("toggled(bool)"))),
@@ -174,8 +181,8 @@ class _ui_MONAILabelSettingsPanel:
 
         showSegmentsIn3DCheckBox = qt.QCheckBox()
         showSegmentsIn3DCheckBox.checked = False
-        showSegmentsIn3DCheckBox.toolTip = "Enable this option to show segments in 3D (slow) after mask update..."
-        groupLayout.addRow("Show Segments In 3D:", showSegmentsIn3DCheckBox)
+        showSegmentsIn3DCheckBox.toolTip = _("Enable this option to show segments in 3D (slow) after mask update...")
+        groupLayout.addRow(_("Show Segments In 3D:"), showSegmentsIn3DCheckBox)
         parent.registerProperty(
             "MONAILabel/showSegmentsIn3D",
             ctk.ctkBooleanMapper(showSegmentsIn3DCheckBox, "checked", str(qt.SIGNAL("toggled(bool)"))),
@@ -190,8 +197,10 @@ class _ui_MONAILabelSettingsPanel:
         if slicer.util.settingsValue("MONAILabel/allowOverlappingSegments", True, converter=slicer.util.toBool):
             if slicer.util.settingsValue("MONAILabel/fileExtension", None) != ".seg.nrrd":
                 slicer.util.warningDisplay(
-                    "Overlapping segmentations are only available with the '.seg.nrrd' file extension! "
-                    + "Consider changing MONAILabel file extension."
+                    _(
+                        "Overlapping segmentations are only available with the '.seg.nrrd' file extension!"
+                        "Consider changing MONAILabel file extension."
+                    )
                 )
 
 
@@ -214,6 +223,7 @@ class MONAILabelWidget(ScriptedLoadableModuleWidget, VTKObservationMixin):
         self._volumeNode = None
         self._segmentNode = None
         self._scribblesROINode = None
+        self._sam2ROINode = None
         self._volumeNodes = []
         self._updatingGUIFromParameterNode = False
 
@@ -245,6 +255,7 @@ class MONAILabelWidget(ScriptedLoadableModuleWidget, VTKObservationMixin):
         self.scribblesMode = None
         self.ignoreScribblesLabelChangeEvent = False
         self.deepedit_multi_label = False
+        self.resetLabelState = False
 
         self.optionsSectionIndex = 0
         self.optionsNameIndex = 0
@@ -288,16 +299,23 @@ class MONAILabelWidget(ScriptedLoadableModuleWidget, VTKObservationMixin):
         self.ui.importLabelButton.setIcon(self.icon("download.png"))
 
         self.ui.dgPositiveControlPointPlacementWidget.setMRMLScene(slicer.mrmlScene)
-        self.ui.dgPositiveControlPointPlacementWidget.placeButton().toolTip = "Select +ve points"
+        self.ui.dgPositiveControlPointPlacementWidget.placeButton().toolTip = _("Select positive points")
         self.ui.dgPositiveControlPointPlacementWidget.buttonsVisible = False
         self.ui.dgPositiveControlPointPlacementWidget.placeButton().show()
         self.ui.dgPositiveControlPointPlacementWidget.deleteButton().show()
 
         self.ui.dgNegativeControlPointPlacementWidget.setMRMLScene(slicer.mrmlScene)
-        self.ui.dgNegativeControlPointPlacementWidget.placeButton().toolTip = "Select -ve points"
+        self.ui.dgNegativeControlPointPlacementWidget.placeButton().toolTip = _("Select negative points")
         self.ui.dgNegativeControlPointPlacementWidget.buttonsVisible = False
         self.ui.dgNegativeControlPointPlacementWidget.placeButton().show()
         self.ui.dgNegativeControlPointPlacementWidget.deleteButton().show()
+
+        # ROI placement for SAM2
+        self.ui.sam2PlaceWidget.setMRMLScene(slicer.mrmlScene)
+        self.ui.sam2PlaceWidget.placeButton().toolTip = _("ROI/BBOX Prompt")
+        self.ui.sam2PlaceWidget.buttonsVisible = False
+        self.ui.sam2PlaceWidget.placeButton().show()
+        self.ui.sam2PlaceWidget.deleteButton().show()
 
         self.ui.dgUpdateButton.setIcon(self.icon("segment.png"))
 
@@ -316,7 +334,7 @@ class MONAILabelWidget(ScriptedLoadableModuleWidget, VTKObservationMixin):
         self.ui.labelComboBox.connect("currentIndexChanged(int)", self.onSelectLabel)
         self.ui.scribLabelComboBox.connect("currentIndexChanged(int)", self.onSelectScribLabel)
         self.ui.dgUpdateButton.connect("clicked(bool)", self.onUpdateDeepgrow)
-        self.ui.dgUpdateCheckBox.setStyleSheet("padding-left: 10px;")
+        self.ui.dgUpdateCheckBox.setStyleSheet("padding-left: 10px; padding-top: 10px;")
         self.ui.optionsSection.connect("currentIndexChanged(int)", self.onSelectOptionsSection)
         self.ui.optionsName.connect("currentIndexChanged(int)", self.onSelectOptionsName)
 
@@ -324,18 +342,18 @@ class MONAILabelWidget(ScriptedLoadableModuleWidget, VTKObservationMixin):
         # brush and eraser icon from: https://tablericons.com/
         self.ui.scribblesMethodSelector.connect("currentIndexChanged(int)", self.updateParameterNodeFromGUI)
         self.ui.paintScribblesButton.setIcon(self.icon("paint.png"))
-        self.ui.paintScribblesButton.setToolTip("Paint scribbles for selected scribble layer")
+        self.ui.paintScribblesButton.setToolTip(_("Paint scribbles for selected scribble layer"))
         self.ui.eraseScribblesButton.setIcon(self.icon("eraser.png"))
-        self.ui.eraseScribblesButton.setToolTip("Erase scribbles for selected scribble layer")
+        self.ui.eraseScribblesButton.setToolTip(_("Erase scribbles for selected scribble layer"))
         self.ui.updateScribblesButton.setIcon(self.icon("segment.png"))
         self.ui.updateScribblesButton.setToolTip(
-            "Update label by sending scribbles to server to apply selected post processing method"
+            _("Update label by sending scribbles to server to apply selected post processing method")
         )
 
         self.ui.brushSizeSlider.connect("valueChanged(double)", self.updateBrushSize)
-        self.ui.brushSizeSlider.setToolTip("Change brush size for scribbles tool")
+        self.ui.brushSizeSlider.setToolTip(_("Change brush size for scribbles tool"))
         self.ui.brush3dCheckbox.stateChanged.connect(self.on3dBrushCheckbox)
-        self.ui.brush3dCheckbox.setToolTip("Use 3D brush to paint/erase in multiple slices in 3D")
+        self.ui.brush3dCheckbox.setToolTip(_("Use 3D brush to paint/erase in multiple slices in 3D"))
         self.ui.updateScribblesButton.clicked.connect(self.onUpdateScribbles)
         self.ui.paintScribblesButton.clicked.connect(self.onPaintScribbles)
         self.ui.eraseScribblesButton.clicked.connect(self.onEraseScribbles)
@@ -362,10 +380,10 @@ class MONAILabelWidget(ScriptedLoadableModuleWidget, VTKObservationMixin):
         self.ui.embeddedSegmentEditorWidget.setMRMLSegmentEditorNode(self.logic.get_segment_editor_node())
 
         # options section
-        self.ui.optionsSection.addItem("infer")
-        self.ui.optionsSection.addItem("train")
-        self.ui.optionsSection.addItem("activelearning")
-        self.ui.optionsSection.addItem("scoring")
+        self.ui.optionsSection.addItem(_("infer"), INFER)
+        self.ui.optionsSection.addItem(_("train"), TRAIN)
+        self.ui.optionsSection.addItem(_("activelearning"), ACTIVELEARNING)
+        self.ui.optionsSection.addItem(_("scoring"), SCORING)
 
         self.initializeParameterNode()
         self.updateServerUrlGUIFromSettings()
@@ -374,8 +392,8 @@ class MONAILabelWidget(ScriptedLoadableModuleWidget, VTKObservationMixin):
         if slicer.util.settingsValue("MONAILabel/askForUserName", False, converter=slicer.util.toBool):
             text = qt.QInputDialog().getText(
                 self.parent,
-                "User Name",
-                "Please enter your name:",
+                _("User Name"),
+                _("Please enter your name:"),
                 qt.QLineEdit.Normal,
                 slicer.util.settingsValue("MONAILabel/clientId", None),
             )
@@ -411,6 +429,7 @@ class MONAILabelWidget(ScriptedLoadableModuleWidget, VTKObservationMixin):
         self.current_sample = None
         self.samples.clear()
         self._scribblesROINode = None
+        self._sam2ROINode = None
 
         self.resetPointList(
             self.ui.dgPositiveControlPointPlacementWidget,
@@ -425,6 +444,7 @@ class MONAILabelWidget(ScriptedLoadableModuleWidget, VTKObservationMixin):
         )
         self.dgNegativePointListNode = None
         self.onResetScribbles()
+        self.resetSam2ROI()
 
     def resetPointList(self, markupsPlaceWidget, pointListNode, pointListNodeObservers):
         if markupsPlaceWidget.placeModeEnabled:
@@ -479,7 +499,9 @@ class MONAILabelWidget(ScriptedLoadableModuleWidget, VTKObservationMixin):
             percent = max(1, 100 * current / total)
             if self.ui.trainingProgressBar.value != percent:
                 self.ui.trainingProgressBar.setValue(percent)
-            self.ui.trainingProgressBar.setToolTip(f"{current}/{total} epoch is completed")
+            self.ui.trainingProgressBar.setToolTip(
+                _("{current}/{total} epoch is completed").format(current=current, total=total)
+            )
 
             dice = train_stats.get("best_metric", 0)
             self.updateAccuracyBar(dice)
@@ -489,7 +511,7 @@ class MONAILabelWidget(ScriptedLoadableModuleWidget, VTKObservationMixin):
         self.ui.trainingProgressBar.setValue(100)
         self.timer.stop()
         self.timer = None
-        self.ui.trainingProgressBar.setToolTip(f"Training: {status.get('status', 'DONE')}")
+        self.ui.trainingProgressBar.setToolTip(_("Training: {status}").format(status=status.get("status", "DONE")))
 
         self.ui.trainingButton.setEnabled(True)
         self.ui.stopTrainingButton.setEnabled(False)
@@ -587,7 +609,9 @@ class MONAILabelWidget(ScriptedLoadableModuleWidget, VTKObservationMixin):
         current = datastore_stats.get("completed", 0)
         total = datastore_stats.get("total", 0)
         self.ui.activeLearningProgressBar.setValue(current / max(total, 1) * 100)
-        self.ui.activeLearningProgressBar.setToolTip(f"{current}/{total} samples are labeled")
+        self.ui.activeLearningProgressBar.setToolTip(
+            _("{current}/{total} samples are labeled").format(current=current, total=total)
+        )
 
         train_stats = self.info.get("train_stats", {})
         train_stats = next(iter(train_stats.values())) if train_stats else train_stats
@@ -699,6 +723,10 @@ class MONAILabelWidget(ScriptedLoadableModuleWidget, VTKObservationMixin):
         currentLabelIndex = self.ui.labelComboBox.currentIndex
         if currentLabelIndex >= 0:
             currentLabel = self.ui.labelComboBox.itemText(currentLabelIndex)
+            oldLabel = self._parameterNode.GetParameter("CurrentLabel")
+            if oldLabel and oldLabel != currentLabel:
+                print(f"Old Label: {oldLabel}; New Label: {currentLabel}")
+                self.resetLabelState = True
             self._parameterNode.SetParameter("CurrentLabel", currentLabel)
 
         currentScribLabelIndex = self.ui.scribLabelComboBox.currentIndex
@@ -791,7 +819,7 @@ class MONAILabelWidget(ScriptedLoadableModuleWidget, VTKObservationMixin):
                 v.insert(0, value)
                 value = v
 
-            logging.info(f"Invalidate:: {section} => {name} => {key} => {value} => {type(v)}")
+            logging.info(f"Invalidate: {section} => {name} => {key} => {value} => {type(v)}")
             self.info.get(section, {}).get(name, {}).get("config", {})[key] = value
 
     def updateConfigTable(self, refresh=True):
@@ -859,7 +887,7 @@ class MONAILabelWidget(ScriptedLoadableModuleWidget, VTKObservationMixin):
             "QProgressBar::chunk {background-color: "
             "qlineargradient(x0: 0, x2: 1, " + ",".join(css) + ")}"
         )
-        self.ui.accuracyProgressBar.setToolTip(f"Accuracy: {dice:.4f}")
+        self.ui.accuracyProgressBar.setToolTip(_("Accuracy: {value}").format(value=f"{dice:.4f}"))
 
     def getParamsFromConfig(self, section, name):
         self.invalidateConfigTable()
@@ -1002,7 +1030,7 @@ class MONAILabelWidget(ScriptedLoadableModuleWidget, VTKObservationMixin):
     def onSelectScribLabel(self, caller=None, event=None):
         if self.scribblesLayersPresent() and not self.ignoreScribblesLabelChangeEvent:
             if not slicer.util.confirmOkCancelDisplay(
-                "This will clear current scribbles session.\n" "Are you sure to continue?"
+                _("This will clear current scribbles session.\n" "Are you sure to continue?")
             ):
                 # undo changes to combobox
                 currentScribLabel = self._parameterNode.GetParameter("CurrentScribLabel")
@@ -1031,6 +1059,10 @@ class MONAILabelWidget(ScriptedLoadableModuleWidget, VTKObservationMixin):
         serverUrl = self.ui.serverComboBox.currentText.strip()
         if not serverUrl:
             serverUrl = "http://127.0.0.1:8000"
+        elif not serverUrl.startswith(("http://", "https://")):
+            serverUrl = "http://" + serverUrl
+        elif serverUrl.startswith(":") or serverUrl.isdigit():
+            serverUrl = "http://0.0.0.0:" + serverUrl.lstrip(":")
         return serverUrl.rstrip("/")
 
     def saveServerUrl(self):
@@ -1073,16 +1105,18 @@ class MONAILabelWidget(ScriptedLoadableModuleWidget, VTKObservationMixin):
             self.info = info
             if self.info.get("config"):
                 slicer.util.errorDisplay(
-                    "Please upgrade the monai server to latest version",
+                    _("Please upgrade the monai server to latest version"),
                     detailedText=traceback.format_exc(),
                 )
                 return
         except BaseException as e:
-            msg = f"Message:: {e.msg}" if hasattr(e, "msg") else ""
+            msg = f"Message: {e.msg}" if hasattr(e, "msg") else ""
             slicer.util.errorDisplay(
-                "Failed to fetch models from remote server. "
-                "Make sure server address is correct and <server_uri>/info/ "
-                f"is accessible in browser.\n{msg}",
+                _(
+                    "Failed to fetch models from remote server. "
+                    "Make sure server address is correct and <server_uri>/info/ "
+                    "is accessible in browser.\n{message}"
+                ).format(message=msg),
                 detailedText=traceback.format_exc(),
             )
             return
@@ -1116,12 +1150,12 @@ class MONAILabelWidget(ScriptedLoadableModuleWidget, VTKObservationMixin):
 
     def setProgressBarLabelText(self, label):
         if not self.progressBar:
-            self.progressBar = slicer.util.createProgressDialog(windowTitle="Wait...", maximum=100)
+            self.progressBar = slicer.util.createProgressDialog(windowTitle=_("Wait..."), maximum=100)
         self.progressBar.labelText = label
 
     def reportProgress(self, progressPercentage):
         if not self.progressBar:
-            self.progressBar = slicer.util.createProgressDialog(windowTitle="Wait...", maximum=100)
+            self.progressBar = slicer.util.createProgressDialog(windowTitle=_("Wait..."), maximum=100)
         self.progressBar.show()
         self.progressBar.activateWindow()
         self.progressBar.setValue(progressPercentage)
@@ -1137,7 +1171,7 @@ class MONAILabelWidget(ScriptedLoadableModuleWidget, VTKObservationMixin):
             model = self.ui.trainerBox.currentText
             if not model:
                 slicer.util.errorDisplay(
-                    "No Model selected is to run the training", detailedText=traceback.format_exc()
+                    _("No Model selected is to run the training"), detailedText=traceback.format_exc()
                 )
                 return
 
@@ -1145,24 +1179,24 @@ class MONAILabelWidget(ScriptedLoadableModuleWidget, VTKObservationMixin):
             status = self.logic.train_start(model, params)
 
             self.ui.trainingProgressBar.setValue(1)
-            self.ui.trainingProgressBar.setToolTip("Training: STARTED")
+            self.ui.trainingProgressBar.setToolTip(_("Training: STARTED"))
 
             time.sleep(1)
             self.updateGUIFromParameterNode()
         except BaseException as e:
-            msg = f"Message:: {e.msg}" if hasattr(e, "msg") else ""
+            msg = f"Message: {e.msg}" if hasattr(e, "msg") else ""
             slicer.util.errorDisplay(
-                f"Failed to run training in MONAI Label Server.\n{msg}",
+                _("Failed to run training in MONAI Label Server.\n{message}").format(message=msg),
                 detailedText=traceback.format_exc(),
             )
         finally:
             qt.QApplication.restoreOverrideCursor()
 
         if status:
-            msg = "ID: {}\nStatus: {}\nStart Time: {}\n".format(
-                status.get("id"),
-                status.get("status"),
-                status.get("start_ts"),
+            msg = _("ID: {id}\nStatus: {status}\nStart Time: {start_time}\n").format(
+                id=status.get("id"),
+                status=status.get("status"),
+                start_time=status.get("start_ts"),
             )
             # slicer.util.infoDisplay(msg, detailedText=json.dumps(status, indent=2))
             logging.info(msg)
@@ -1173,7 +1207,7 @@ class MONAILabelWidget(ScriptedLoadableModuleWidget, VTKObservationMixin):
         start = time.time()
         status = None
         if not slicer.util.confirmOkCancelDisplay(
-            "This will kill/stop current Training task.  Are you sure to continue?"
+            _("This will kill/stop current Training task.  Are you sure to continue?")
         ):
             return
 
@@ -1182,20 +1216,20 @@ class MONAILabelWidget(ScriptedLoadableModuleWidget, VTKObservationMixin):
             self.updateServerSettings()
             status = self.logic.train_stop()
         except BaseException as e:
-            msg = f"Message:: {e.msg}" if hasattr(e, "msg") else ""
+            msg = f"Message: {e.msg}" if hasattr(e, "msg") else ""
             slicer.util.errorDisplay(
-                f"Failed to stop Training Task.\n{msg}",
+                _("Failed to stop Training Task.\n{message}").format(message=msg),
                 detailedText=traceback.format_exc(),
             )
         finally:
             qt.QApplication.restoreOverrideCursor()
 
         if status:
-            msg = "Status: {}\nStart Time: {}\nEnd Time: {}\nResult: {}".format(
-                status.get("status"),
-                status.get("start_ts"),
-                status.get("end_ts"),
-                status.get("result", status.get("details", [])[-1]),
+            msg = _("Status: {status}\nStart Time: {start_time}\nEnd Time: {end_time}\nResult: {result}").format(
+                status=status.get("status"),
+                start_time=status.get("start_ts"),
+                end_time=status.get("end_ts"),
+                result=status.get("result", status.get("details", [])[-1]),
             )
             # slicer.util.infoDisplay(msg, detailedText=json.dumps(status, indent=2))
             logging.info(msg)
@@ -1215,11 +1249,14 @@ class MONAILabelWidget(ScriptedLoadableModuleWidget, VTKObservationMixin):
 
         if self._volumeNode or len(slicer.util.getNodesByClass("vtkMRMLScalarVolumeNode")):
             if not slicer.util.confirmOkCancelDisplay(
-                "This will close current scene.  Please make sure you have saved your current work.\n"
-                "Are you sure to continue?"
+                _(
+                    "This will close current scene.  Please make sure you have saved your current work.\n"
+                    "Are you sure to continue?"
+                )
             ):
                 return
             self.onResetScribbles()
+            self.resetSam2ROI()
             slicer.mrmlScene.Clear(0)
 
         start = time.time()
@@ -1229,15 +1266,17 @@ class MONAILabelWidget(ScriptedLoadableModuleWidget, VTKObservationMixin):
             self.updateServerSettings()
             strategy = self.ui.strategyBox.currentText
             if not strategy:
-                slicer.util.errorDisplay("No Strategy Found/Selected\t")
+                slicer.util.errorDisplay(_("No Strategy Found/Selected"))
                 return
 
             sample = self.logic.next_sample(strategy, self.getParamsFromConfig("activelearning", strategy))
             logging.debug(sample)
             if not sample.get("id"):
                 slicer.util.warningDisplay(
-                    "Unlabeled samples or images not found at server.\n"
-                    "Instead please go to File -> Add Data to load image."
+                    _(
+                        "Unlabeled samples or images not found at server.\n"
+                        "Instead please go to File -> Add Data to load image."
+                    )
                 )
                 return
 
@@ -1294,9 +1333,9 @@ class MONAILabelWidget(ScriptedLoadableModuleWidget, VTKObservationMixin):
             self.initSample(sample)
 
         except BaseException as e:
-            msg = f"Message:: {e.msg}" if hasattr(e, "msg") else ""
+            msg = f"Message: {e.msg}" if hasattr(e, "msg") else ""
             slicer.util.errorDisplay(
-                f"Failed to fetch Sample from MONAI Label Server.\n{msg}",
+                _("Failed to fetch Sample from MONAI Label Server.\n{message}").format(message=msg),
                 detailedText=traceback.format_exc(),
             )
         finally:
@@ -1318,6 +1357,9 @@ class MONAILabelWidget(ScriptedLoadableModuleWidget, VTKObservationMixin):
 
         self.createScribblesROINode()
         self.ui.scribblesPlaceWidget.setCurrentNode(self._scribblesROINode)
+
+        self.createSam2ROINode()
+        self.ui.sam2PlaceWidget.setCurrentNode(self._sam2ROINode)
 
         # check if user allows overlapping segments
         if slicer.util.settingsValue("MONAILabel/allowOverlappingSegments", False, converter=slicer.util.toBool):
@@ -1341,10 +1383,12 @@ class MONAILabelWidget(ScriptedLoadableModuleWidget, VTKObservationMixin):
 
     def getPermissionForImageDataUpload(self):
         return slicer.util.confirmOkCancelDisplay(
-            "Source volume - without any additional patient information -"
-            " will be sent to remote data processing server: {}.\n\n"
-            "Click 'OK' to proceed with the segmentation.\n"
-            "Click 'Cancel' to not upload any data and cancel segmentation.\n".format(self.serverUrl()),
+            _(
+                "Source volume - without any additional patient information -"
+                " will be sent to remote data processing server: {server_url}.\n\n"
+                "Click 'OK' to proceed with the segmentation.\n"
+                "Click 'Cancel' to not upload any data and cancel segmentation.\n"
+            ).format(server_url=self.serverUrl()),
             dontShowAgainSettingsKey="MONAILabel/showImageDataSendWarning",
         )
 
@@ -1380,25 +1424,25 @@ class MONAILabelWidget(ScriptedLoadableModuleWidget, VTKObservationMixin):
             self.updateGUIFromParameterNode()
             return True
         except BaseException as e:
-            msg = f"Message:: {e.msg}" if hasattr(e, "msg") else ""
+            msg = f"Message: {e.msg}" if hasattr(e, "msg") else ""
             self.reportProgress(100)
             qt.QApplication.restoreOverrideCursor()
             if session:
                 slicer.util.errorDisplay(
-                    "Server Error:: Session creation Failed\nPlease upgrade to latest monailable version (> 0.2.0)",
+                    _("Server Error: Session creation Failed\nPlease upgrade to latest monailabel version (> 0.2.0)"),
                     detailedText=traceback.format_exc(),
                 )
                 self.current_sample["session"] = None
             else:
                 slicer.util.errorDisplay(
-                    f"Failed to upload volume to Server.\n{msg}",
+                    _("Failed to upload volume to Server.\n{message}").format(message=msg),
                     detailedText=traceback.format_exc(),
                 )
             return False
 
     def onImportLabel(self):
         if not self.ui.labelPathLineEdit.currentPath or not os.path.exists(self.ui.labelPathLineEdit.currentPath):
-            slicer.util.warningDisplay("Label File not selected")
+            slicer.util.warningDisplay(_("Label File not selected"))
             return
 
         try:
@@ -1407,13 +1451,14 @@ class MONAILabelWidget(ScriptedLoadableModuleWidget, VTKObservationMixin):
             qt.QApplication.restoreOverrideCursor()
         except:
             qt.QApplication.restoreOverrideCursor()
-            slicer.util.errorDisplay("Failed to import label", detailedText=traceback.format_exc())
+            slicer.util.errorDisplay(_("Failed to import label"), detailedText=traceback.format_exc())
 
     def onSaveLabel(self):
         start = time.time()
         labelmapVolumeNode = None
         result = None
         self.onResetScribbles()
+        self.resetSam2ROI()
 
         if self.current_sample.get("session"):
             if not self.onUploadImage(init_sample=False):
@@ -1475,9 +1520,9 @@ class MONAILabelWidget(ScriptedLoadableModuleWidget, VTKObservationMixin):
                     logging.info("Failed to stop training; or already stopped")
                 self.onTraining()
         except BaseException as e:
-            msg = f"Message:: {e.msg}" if hasattr(e, "msg") else ""
+            msg = f"Message: {e.msg}" if hasattr(e, "msg") else ""
             slicer.util.errorDisplay(
-                f"Failed to save Label to MONAI Label Server.\n{msg}",
+                _("Failed to save Label to MONAI Label Server.\n{message}").format(message=msg),
                 detailedText=traceback.format_exc(),
             )
         finally:
@@ -1488,7 +1533,7 @@ class MONAILabelWidget(ScriptedLoadableModuleWidget, VTKObservationMixin):
                 slicer.mrmlScene.RemoveNode(labelmapVolumeNode)
             if result:
                 slicer.util.infoDisplay(
-                    "Label-Mask saved into MONAI Label Server\t\t", detailedText=json.dumps(result, indent=2)
+                    _("Label-Mask saved into MONAI Label Server"), detailedText=json.dumps(result, indent=2)
                 )
 
                 if slicer.util.settingsValue("MONAILabel/autoFetchNextSample", False, converter=slicer.util.toBool):
@@ -1531,9 +1576,9 @@ class MONAILabelWidget(ScriptedLoadableModuleWidget, VTKObservationMixin):
                 labels = [k for k, _ in sorted(labels.items(), key=lambda item: item[1])]
             self.updateSegmentationMask(result_file, labels)
         except BaseException as e:
-            msg = f"Message:: {e.msg}" if hasattr(e, "msg") else ""
+            msg = f"Message: {e.msg}" if hasattr(e, "msg") else ""
             slicer.util.errorDisplay(
-                f"Failed to run inference in MONAI Label Server.\n{msg}",
+                _("Failed to run inference in MONAI Label Server.\n{message}").format(message=msg),
                 detailedText=traceback.format_exc(),
             )
         finally:
@@ -1550,12 +1595,12 @@ class MONAILabelWidget(ScriptedLoadableModuleWidget, VTKObservationMixin):
     def onClickDeepgrow(self, current_point, skip_infer=False):
         model = self.ui.deepgrowModelSelector.currentText
         if not model:
-            slicer.util.warningDisplay("Please select a deepgrow model")
+            slicer.util.warningDisplay(_("Please select a model"))
             return
 
-        _, segment = self.currentSegment()
+        segment_id, segment = self.currentSegment()
         if not segment:
-            slicer.util.warningDisplay("Please add the required label to run deepgrow")
+            slicer.util.warningDisplay(_("Please add the required label to run interactive model"))
             return
 
         foreground_all = self.getControlPointsXYZ(self.dgPositivePointListNode, "foreground")
@@ -1566,20 +1611,39 @@ class MONAILabelWidget(ScriptedLoadableModuleWidget, VTKObservationMixin):
         if skip_infer:
             return
 
-        # use model info "deepgrow" to determine
-        deepgrow_3d = False if self.models[model].get("dimension", 3) == 2 else True
-        print(f"Is DeepGrow 3D: {deepgrow_3d}")
+        # use model info to determine
+        is_3d = False if self.models[model].get("dimension", 3) == 2 else True
+        print(f"Is 3D Model: {is_3d}")
         start = time.time()
 
         label = segment.GetName()
-        operationDescription = f"Run Deepgrow for segment: {label}; model: {model}; 3d {deepgrow_3d}"
+        operationDescription = _("Run Inference for segment: {label}; model: {model}; 3d {in3d}").format(
+            label=label, model=model, in3d=_("enabled") if is_3d else _("disabled")
+        )
         logging.debug(operationDescription)
 
+        # try to get roi if placed
+        roiNode = self.ui.sam2PlaceWidget.currentNode()
+        selected_roi = []
+        if roiNode and roiNode.GetControlPointPlacementComplete():
+            selected_roi = self.getROIPointsXYZ(roiNode)
+        print(f"Selected ROI: {selected_roi} => {not selected_roi}")
+
         if not current_point:
-            if not foreground_all and not deepgrow_3d:
-                slicer.util.warningDisplay(operationDescription + " - points not added")
+            if not foreground_all and not is_3d and not selected_roi:
+                slicer.util.warningDisplay(operationDescription + " - points/roi not added")
                 return
-            current_point = foreground_all[-1] if foreground_all else background_all[-1] if background_all else None
+
+            if not is_3d and selected_roi:
+                layoutManager = slicer.app.layoutManager()
+                current_point = [
+                    selected_roi[1] + (selected_roi[1] - selected_roi[0]) // 2,
+                    selected_roi[3] + (selected_roi[3] - selected_roi[2]) // 2,
+                    round(abs(layoutManager.sliceWidget("Red").sliceLogic().GetSliceOffset())),
+                ]
+            else:
+                current_point = foreground_all[-1] if foreground_all else background_all[-1] if background_all else None
+            print(f"(updated) Current Point: {current_point}")
 
         try:
             qt.QApplication.setOverrideCursor(qt.Qt.WaitCursor)
@@ -1607,7 +1671,7 @@ class MONAILabelWidget(ScriptedLoadableModuleWidget, VTKObservationMixin):
                 sliceIndex = current_point[2] if current_point else None
                 print(f"Slice Index: {sliceIndex}")
 
-                if deepgrow_3d or not sliceIndex:
+                if is_3d or not sliceIndex:
                     foreground = foreground_all
                     background = background_all
                 else:
@@ -1627,11 +1691,19 @@ class MONAILabelWidget(ScriptedLoadableModuleWidget, VTKObservationMixin):
 
             params["label"] = label
             params.update(self.getParamsFromConfig("infer", model))
-            print(f"Request Params for Deepgrow/Deepedit: {params}")
+            if selected_roi:
+                params["roi"] = selected_roi
+            if not is_3d:
+                params["slice"] = sliceIndex
+            if not params.get("reset_state") and self.resetLabelState:
+                print(f"Override State: {params.get('reset_state')} vs {self.resetLabelState}")
+                params["reset_state"] = True
+                self.resetLabelState = False
+            print(f"Request Params for Inference: {params}")
 
             image_file = self.current_sample["id"]
             result_file, params = self.logic.infer(model, image_file, params, session_id=self.getSessionId())
-            print(f"Result Params for Deepgrow/Deepedit: {params}")
+            print(f"Result Params for Inference: {params}")
             if labels is None:
                 labels = (
                     params.get("label_names")
@@ -1642,9 +1714,9 @@ class MONAILabelWidget(ScriptedLoadableModuleWidget, VTKObservationMixin):
                     labels = [k for k, _ in sorted(labels.items(), key=lambda item: item[1])]
 
             freeze = label if self.ui.freezeUpdateCheckBox.checked else None
-            self.updateSegmentationMask(result_file, labels, None if deepgrow_3d else sliceIndex, freeze=freeze)
+            self.updateSegmentationMask(result_file, labels, None if is_3d else sliceIndex, freeze=freeze)
         except BaseException as e:
-            msg = f"Message:: {e.msg}" if hasattr(e, "msg") else ""
+            msg = f"Message: {e.msg}" if hasattr(e, "msg") else ""
             slicer.util.errorDisplay(
                 operationDescription + f" - unexpected error.\n{msg}",
                 detailedText=traceback.format_exc(),
@@ -1680,12 +1752,25 @@ class MONAILabelWidget(ScriptedLoadableModuleWidget, VTKObservationMixin):
             scribblesROINode.GetDisplayNode().SetActiveColor(1, 1, 1)
             self._scribblesROINode = scribblesROINode
 
+    def createSam2ROINode(self):
+        if self._volumeNode is None:
+            return
+        if self._sam2ROINode is None:
+            sam2ROINode = slicer.mrmlScene.AddNewNodeByClass("vtkMRMLMarkupsROINode")
+            sam2ROINode.SetName("SAM2 ROI")
+            sam2ROINode.CreateDefaultDisplayNodes()
+            sam2ROINode.GetDisplayNode().SetFillOpacity(0.4)
+            sam2ROINode.GetDisplayNode().SetSelectedColor(1, 1, 1)
+            sam2ROINode.GetDisplayNode().SetColor(1, 1, 1)
+            sam2ROINode.GetDisplayNode().SetActiveColor(1, 1, 1)
+            self._sam2ROINode = sam2ROINode
+
     def getLabelColor(self, name):
         color = GenericAnatomyColors.get(name.lower())
         return [c / 255.0 for c in color] if color else None
 
     def updateSegmentationMask(self, in_file, labels, sliceIndex=None, freeze=None):
-        # TODO:: Add ROI Node (for Bounding Box if provided in the result)
+        # TODO: Add ROI Node (for Bounding Box if provided in the result)
         start = time.time()
         logging.debug(f"Update Segmentation Mask from: {in_file}")
         if in_file and not os.path.exists(in_file):
@@ -1742,9 +1827,23 @@ class MONAILabelWidget(ScriptedLoadableModuleWidget, VTKObservationMixin):
                     segmentIds.InsertNextValue(label)
 
                 # faster import (based on selected segmentIds)
+
+                # ImportLabelmapToSegmentationNode overwrites segments, which removes all non-source representations.
+                # We remember if closed surface representation was present and restore it after import.
+                segmentationRepresentationNames = []
+                segmentationNode.GetSegmentation().GetContainedRepresentationNames(segmentationRepresentationNames)
+                hasClosedSurfaceRepresentation = (
+                    slicer.vtkSegmentationConverter.GetSegmentationClosedSurfaceRepresentationName()
+                    in segmentationRepresentationNames
+                )
+
                 slicer.modules.segmentations.logic().ImportLabelmapToSegmentationNode(
                     labelmapVolumeNode, segmentationNode, segmentIds
                 )
+
+                if hasClosedSurfaceRepresentation:
+                    segmentationNode.CreateClosedSurfaceRepresentation()
+
                 slicer.mrmlScene.RemoveNode(labelmapVolumeNode)
             else:
                 existingCount = segmentation.GetNumberOfSegments()
@@ -1938,7 +2037,7 @@ class MONAILabelWidget(ScriptedLoadableModuleWidget, VTKObservationMixin):
             params = self.getParamsFromConfig("infer", scribblesMethod)
             params.update({"roi": selected_roi})
             params.update({"label_info": label_info})
-            _, segment = self.currentScribSegment()
+            segment_id, segment = self.currentScribSegment()
             selected_label_name = segment.GetName()
             params.update({"selected_label_name": selected_label_name})
 
@@ -1951,9 +2050,11 @@ class MONAILabelWidget(ScriptedLoadableModuleWidget, VTKObservationMixin):
             self.reportProgress(90)
             self.updateSegmentationMask(result_file, [selected_label_name])
         except BaseException as e:
-            msg = f"Message:: {e.msg}" if hasattr(e, "msg") else ""
+            msg = f"Message: {e.msg}" if hasattr(e, "msg") else ""
             slicer.util.errorDisplay(
-                f"Failed to post process label on MONAI Label Server using {scribblesMethod}.\n{msg}",
+                _("Failed to post process label on MONAI Label Server using {scribbles_method}.\n{message}").format(
+                    scribbles_method=scribblesMethod, message=msg
+                ),
                 detailedText=traceback.format_exc(),
             )
         finally:
@@ -2024,6 +2125,10 @@ class MONAILabelWidget(ScriptedLoadableModuleWidget, VTKObservationMixin):
     def resetScribblesROI(self):
         if self._scribblesROINode:
             self._scribblesROINode.RemoveAllControlPoints()
+
+    def resetSam2ROI(self):
+        if self._sam2ROINode:
+            self._sam2ROINode.RemoveAllControlPoints()
 
     def onClearScribbles(self):
         # for clearing scribbles and resetting tools to default
@@ -2247,7 +2352,7 @@ class MONAILabelLogic(ScriptedLoadableModuleLogic):
             if self.auth_token:
                 mc.update_auth(self.auth_token)
 
-            # TODO:: JWT token can be validated (with additional py dependencies) to avoid further calls to server
+            # TODO: JWT token can be validated (with additional py dependencies) to avoid further calls to server
             if not self.auth_token or not mc.auth_valid_token():
                 try:
                     print(f"Fetching new Token for: {self.username}")
@@ -2314,7 +2419,7 @@ class MONAILabelLogic(ScriptedLoadableModuleLogic):
 class LoginDialog(qt.QDialog):
     def __init__(self, username, password, resourcePath):
         super().__init__()
-        self.setWindowTitle("User Login")
+        self.setWindowTitle(_("User Login"))
 
         layout = qt.QVBoxLayout()
         uiWidget = slicer.util.loadUI(resourcePath("UI/LoginDialog.ui"))
@@ -2340,3 +2445,9 @@ class MONAILabelTest(ScriptedLoadableModuleTest):
 
     def test_MONAILabel1(self):
         self.delayDisplay("Test passed")
+
+
+INFER = "INFER"
+TRAIN = "TRAIN"
+ACTIVELEARNING = "ACTIVELEARNING"
+SCORING = "SCORING"

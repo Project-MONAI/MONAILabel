@@ -11,28 +11,37 @@
 
 # To build with a different base image
 # please run `./runtests.sh --clean && DOCKER_BUILDKIT=1 docker build -t projectmonai/monailabel:latest .`
-# to use different version of MONAI pass `--build-arg MONAI_IMAGE=...`
+# to use different version of MONAI pass `--build-arg FINAL_IMAGE=...`
 
-ARG MONAI_IMAGE=projectmonai/monai:1.2.0
+#ARG FINAL_IMAGE=pytorch/pytorch:2.5.1-cuda12.4-cudnn9-runtime
+ARG FINAL_IMAGE=ubuntu:22.04
+ARG BUILD_IMAGE=python:3.10
 ARG NODE_IMAGE=node:slim
 
-FROM ${NODE_IMAGE} as ohifbuild
-ADD . /opt/monailabel
+# Phase1: Build OHIF Viewer
+FROM ${NODE_IMAGE} AS ohifbuild
+COPY plugins/ohifv3 /opt/ohifv3
 RUN apt update -y && apt install -y git
-RUN cd /opt/monailabel/plugins/ohif && ./build.sh
+RUN cd /opt/ohifv3 && ./build.sh /opt/ohifv3/release
 
-FROM ${MONAI_IMAGE} as build
-LABEL maintainer="monai.contact@gmail.com"
-
+# Phase2: Build MONAI Label Package
+FROM ${BUILD_IMAGE} AS build
+WORKDIR /opt/monailabel
+RUN python -m pip install pip setuptools wheel twine
 ADD . /opt/monailabel/
-COPY --from=ohifbuild /opt/monailabel/monailabel/endpoints/static/ohif /opt/monailabel/monailabel/endpoints/static/ohif
-RUN python -m pip install --upgrade --no-cache-dir pip setuptools wheel twine \
-    && cd /opt/monailabel \
-    && BUILD_OHIF=false python setup.py sdist bdist_wheel --build-number $(date +'%Y%m%d%H%M')
+COPY --from=ohifbuild /opt/ohifv3/release /opt/monailabel/monailabel/endpoints/static/ohif
+RUN BUILD_OHIF=false python setup.py bdist_wheel --build-number $(date +'%Y%m%d%H%M')
 
-FROM ${MONAI_IMAGE}
+# Phase3: Build Final Docker
+FROM ${FINAL_IMAGE}
 LABEL maintainer="monai.contact@gmail.com"
+WORKDIR /opt/monailabel
+COPY requirements.txt /opt/monailabel/requirements.txt
+
+RUN apt update -y && apt install -y git curl openslide-tools python3 python-is-python3 python3-pip
+RUN python -m pip install --no-cache-dir pytest torch torchvision torchaudio
 
 COPY --from=build /opt/monailabel/dist/monailabel* /opt/monailabel/dist/
-RUN python -m pip install --upgrade --no-cache-dir pip \
-    && python -m pip install /opt/monailabel/dist/monailabel*.whl
+RUN python -m pip install -v --no-cache-dir /opt/monailabel/dist/monailabel*.whl
+RUN python -m pip uninstall sam2 -y
+RUN python -m pip install -v --no-cache-dir -r /opt/monailabel/requirements.txt

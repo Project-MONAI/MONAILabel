@@ -27,12 +27,14 @@ def recursive_files(directory, prefix):
         filenames = [f for f in filenames if f != ".gitignore"]
         for filename in filenames:
             paths.append(os.path.join(path, filename))
+    print(f"Total Items in path: {directory} are {len(paths)}")
     return [(os.path.dirname(prefix + os.path.sep + p), [p]) for p in paths]
 
 
 data_files = [("logconfig", ["monailabel/logging.json"])]
 data_files.extend(recursive_files("sample-apps", "monailabel"))
 data_files.extend(recursive_files("plugins", "monailabel"))
+print(f"Total Data Files: {len(data_files)}")
 
 # Build OHIF Plugin
 build_ohif_s = os.environ.get("BUILD_OHIF", "false")
@@ -41,7 +43,7 @@ build_ohif = bool(strtobool(build_ohif_s)) if build_ohif_s else False
 if build_ohif:
     print("Building OHIF...")
     script = "build.bat" if any(platform.win32_ver()) else "build.sh"
-    command = os.path.realpath(os.path.join(os.path.dirname(__file__), "plugins", "ohif", script))
+    command = os.path.realpath(os.path.join(os.path.dirname(__file__), "plugins", "ohifv3", script))
     if os.path.exists(command):
         subprocess.call(["sh", command])
 else:

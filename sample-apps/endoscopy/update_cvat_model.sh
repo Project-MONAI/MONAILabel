@@ -38,13 +38,13 @@ fi
 if [ $FUNC_NAME == "deepedit" ];then
     MODEL_PATH="$APP_ROOT/model/$FUNC_NAME.pt"
     # Replace prior pretrained model with lastest model as current pre-trained model
-    MODEL_CONTAINER="/opt/conda/monailabel/sample-apps/endoscopy/model/pretrained_$FUNC_NAME.pt" # default model path at function container
+    MODEL_CONTAINER="/usr/local/monailabel/sample-apps/endoscopy/model/pretrained_$FUNC_NAME.pt" # default model path at function container
 else
     # if bundle is used, get bundle name and fetch the model
     BUNDLE_NAME=${BUNDLENAMES[$FUNC_NAME]}
     MODEL_PATH="$APP_ROOT/model/$BUNDLE_NAME/models/model.pt"
     # Update to bundle nuclio container
-    MODEL_CONTAINER="/opt/conda/monailabel/sample-apps/endoscopy/model/$BUNDLE_NAME/models/model.pt" # default model path at function container
+    MODEL_CONTAINER="/usr/local/monailabel/sample-apps/endoscopy/model/$BUNDLE_NAME/models/model.pt" # default model path at function container
 fi
 
 # Check if latest  model checkpoint is done and saved.

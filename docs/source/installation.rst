@@ -16,7 +16,7 @@ Installation
 ========================
 
 Start using MONAI Label locally and run installlation with your familiar visualization tools. Stable version software represents the currently tested
-and supported visualization tools with latest release of MONAI Label. Weekly preview version is available if users want the latest feature, not fully tested.
+and supported visualization tools with latest release of MONAI Label.
 
 
 Current Milestone Release of MONAI Label:
@@ -26,6 +26,8 @@ Current Milestone Release of MONAI Label:
 MONAI Label Supported Stable Visualization Tools:
 
 * 3D Slicer: `Stable and Preview Version >= 5.0 <https://download.slicer.org/>`_
+
+* MITK: `Version >= 2024.06.2 <https://www.mitk.org/wiki/Downloads>`_
 
 * OHIF: `Version >= 3.1 <https://ohif.org/>`_
 
@@ -50,7 +52,7 @@ Prerequisites
 --------------------------
 MONAI Label supports both **Ubuntu** and **Windows** OS with GPU/CUDA enabled.
 
-Make sure you have python 3.8/3.9 version environment with PyTorch and CUDA installed.  MONAI Label features on other python version are not verified.
+Make sure you have python 3.8/3.9 version environment with PyTorch and CUDA installed. MONAI Label features on other python version are not verified.
 
 - Install `Python <https://www.python.org/downloads/>`_
 - Install the following Python libraries
@@ -64,6 +66,12 @@ Make sure you have python 3.8/3.9 version environment with PyTorch and CUDA inst
 
     # Check if cuda enabled
     python -c "import torch; print(torch.cuda.is_available())"
+
+On **Ubuntu** only, `python3-dev`, which contains the header files for the Python C API, is not bundled with Python and needs to be installed separately.
+
+.. code-block::
+
+    sudo apt install python3-dev
 
 Install From PyPI
 ------------------------
@@ -79,15 +87,6 @@ To install the `current milestone release <https://pypi.org/project/monailabel/>
 The milestone versions are currently planned and released every few months.  As the
 codebase is under active development, you may want to install MONAI from GitHub
 for the latest features
-
-Weekly preview release
-**********************
-To install the `weekly preview release <https://pypi.org/project/monailabel-weekly/>`_:
-::
-
-    pip install monailabel-weekly
-
-The weekly build is released to PyPI every Sunday with a pre-release build number *dev[%y%U]*.
 
 From GitHub
 *********************
@@ -224,6 +223,16 @@ To install stable released version of 3D Slicer, see `3D Slicer installation <ht
 
 Currently, Windows and Linux version are supported.
 
+MITK
+-----------------------
+
+The Medical imaging Interaction ToolKit (MITK) is an open source, standalone, medical imaging platform. MONAI Label is partially integrated to MITK Workbench,
+a powerful and free application to view, process, and segment medical images. The MONAI Label tool in MITK is mostly tested for inferencing using radiology and bundle apps
+allowing for Auto and Click-based interactive models.
+
+To install MITK, see `MITK download <https://www.mitk.org/wiki/Downloads>`_.
+
+
 OHIF (Web-based)
 -----------------------
 
@@ -290,6 +299,11 @@ To add the MONAI Label icon shortcut on the 3DSlicer toolbar
 
 Refer `3D Slicer plugin <https://github.com/Project-MONAI/MONAILabel/tree/main/plugins/slicer>`_ for other options to install and run MONAI Label plugin in 3D Slicer.
 
+MITK Plugin
+----------------------
+MITK comes pre-built with the MONAI Label plugin. The tool interface can be found in both MITK's Segmentation View > 2D tools and also in Segmentation View > 3D tools.
+As the the name suggests, the hosted MONAI Label app's 2D models are featured in 2D tools and vice versa. Refer `MITK Documentation <https://github.com/Project-MONAI/MONAILabel/tree/main/plugins/mitk>`_
+to know more using MONAI Label in MITK.
 
 OHIF Plugin
 ----------------------

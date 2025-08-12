@@ -23,11 +23,11 @@ import monailabel
 from monailabel.interfaces.app import MONAILabelApp
 from monailabel.interfaces.config import TaskConfig
 from monailabel.interfaces.datastore import Datastore
-from monailabel.interfaces.tasks.infer_v2 import InferTask
+from monailabel.interfaces.tasks.infer_v2 import InferTask, InferType
 from monailabel.interfaces.tasks.scoring import ScoringMethod
 from monailabel.interfaces.tasks.strategy import Strategy
 from monailabel.interfaces.tasks.train import TrainTask
-from monailabel.scribbles.infer import GMMBasedGraphCut, HistogramBasedGraphCut
+from monailabel.sam2.utils import is_sam2_module_available
 from monailabel.tasks.activelearning.first import First
 from monailabel.tasks.activelearning.random import Random
 
@@ -64,8 +64,10 @@ class MyApp(MONAILabelApp):
             print("")
             exit(-1)
 
-        models = models.split(",")
+        models = models.split(",") if models else []
         models = [m.strip() for m in models]
+        # Can be configured with --conf scribbles false or true
+        self.scribbles = conf.get("scribbles", "true") == "true"
         invalid = [m for m in models if m != "all" and not configs.get(m)]
         if invalid:
             print("")
@@ -98,6 +100,7 @@ class MyApp(MONAILabelApp):
         # Load models from bundle config files, local or released in Model-Zoo, e.g., --conf bundles <spleen_ct_segmentation>
         self.bundles = get_bundle_models(app_dir, conf, conf_key="bundles") if conf.get("bundles") else None
 
+        self.sam = strtobool(conf.get("sam2", "true"))
         super().__init__(
             app_dir=app_dir,
             studies=studies,
@@ -138,26 +141,38 @@ class MyApp(MONAILabelApp):
         #################################################
         # Scribbles
         #################################################
-        infers.update(
-            {
-                "Histogram+GraphCut": HistogramBasedGraphCut(
-                    intensity_range=(-300, 200, 0.0, 1.0, True),
-                    pix_dim=(2.5, 2.5, 5.0),
-                    lamda=1.0,
-                    sigma=0.1,
-                    num_bins=64,
-                    labels=task_config.labels,
-                ),
-                "GMM+GraphCut": GMMBasedGraphCut(
-                    intensity_range=(-300, 200, 0.0, 1.0, True),
-                    pix_dim=(2.5, 2.5, 5.0),
-                    lamda=5.0,
-                    sigma=0.5,
-                    num_mixtures=20,
-                    labels=task_config.labels,
-                ),
-            }
-        )
+        if self.scribbles:
+            from monailabel.scribbles.infer import GMMBasedGraphCut, HistogramBasedGraphCut
+
+            infers.update(
+                {
+                    "Histogram+GraphCut": HistogramBasedGraphCut(
+                        intensity_range=(-300, 200, 0.0, 1.0, True),
+                        pix_dim=(2.5, 2.5, 5.0),
+                        lamda=1.0,
+                        sigma=0.1,
+                        num_bins=64,
+                        labels=task_config.labels,
+                    ),
+                    "GMM+GraphCut": GMMBasedGraphCut(
+                        intensity_range=(-300, 200, 0.0, 1.0, True),
+                        pix_dim=(2.5, 2.5, 5.0),
+                        lamda=5.0,
+                        sigma=0.5,
+                        num_mixtures=20,
+                        labels=task_config.labels,
+                    ),
+                }
+            )
+
+        #################################################
+        # SAM
+        #################################################
+        if is_sam2_module_available() and self.sam:
+            from monailabel.sam2.infer import Sam2InferTask
+
+            infers["sam_2d"] = Sam2InferTask(model_dir=self.model_dir, type=InferType.DEEPGROW, dimension=2)
+            infers["sam_3d"] = Sam2InferTask(model_dir=self.model_dir, type=InferType.DEEPGROW, dimension=3)
 
         #################################################
         # Pipeline based on existing infers
@@ -261,7 +276,10 @@ class MyApp(MONAILabelApp):
 
 
 """
-Example to run train/infer/scoring task(s) locally without actually running MONAI Label Server
+Example to run train/infer/batch infer/scoring task(s) locally without actually running MONAI Label Server
+
+More about the available app methods, please check the interface monailabel/interfaces/app.py
+
 """
 
 
@@ -287,8 +305,8 @@ def main():
 
     parser = argparse.ArgumentParser()
     parser.add_argument("-s", "--studies", default=studies)
-    parser.add_argument("-m", "--model", default="deepedit")
-    parser.add_argument("-t", "--test", default="infer", choices=("train", "infer"))
+    parser.add_argument("-m", "--model", default="segmentation")
+    parser.add_argument("-t", "--test", default="batch_infer", choices=("train", "infer", "batch_infer"))
     args = parser.parse_args()
 
     app_dir = os.path.dirname(__file__)
@@ -308,9 +326,7 @@ def main():
 
         # Run on all devices
         for device in device_list():
-            res = app.infer(
-                request={"model": args.model, "image": image_id, "device": device, "spleen": [[6, 6, 6], [9, 9, 9]]}
-            )
+            res = app.infer(request={"model": args.model, "image": image_id, "device": device})
             # res = app.infer(
             #     request={"model": "vertebra_pipeline", "image": image_id, "device": device, "slicer": False}
             # )
@@ -326,6 +342,32 @@ def main():
             print(f"++++ Image File: {image_path}")
             print(f"++++ Label File: {label_file}")
             break
+        return
+
+    # Batch Infer
+    if args.test == "batch_infer":
+        app.batch_infer(
+            request={
+                "model": args.model,
+                "multi_gpu": False,
+                "save_label": True,
+                "label_tag": "original",
+                "max_workers": 1,
+                "max_batch_size": 0,
+            }
+        )
+
+        # app.batch_infer(
+        #     request={
+        #         "model": "pipeline",
+        #         "multi_gpu": False,
+        #         "save_label": True,
+        #         "label_tag": "original",
+        #         "max_workers": 1,
+        #         "max_batch_size": 0,
+        #     }
+        # )
+
         return
 
     # Train

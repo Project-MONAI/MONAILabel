@@ -35,7 +35,7 @@ class InBody(TaskConfig):
         super().init(name, model_dir, conf, planner, **kwargs)
 
         bundle_name = "endoscopic_inbody_classification"
-        version = conf.get("inbody", "0.3.7")
+        version = conf.get("inbody", "0.4.9")
         zoo_source = conf.get("zoo_source", settings.MONAI_ZOO_SOURCE)
 
         self.bundle_path = os.path.join(self.model_dir, bundle_name)

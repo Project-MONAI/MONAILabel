@@ -28,11 +28,11 @@ def dump_data(data, level=logging.DEBUG):
                 level,
                 "Data key: {} = {}".format(
                     k,
-                    v.shape
-                    if hasattr(v, "shape")
-                    else v
-                    if type(v) in (int, float, bool, str, dict, tuple, list)
-                    else type(v),
+                    (
+                        v.shape
+                        if hasattr(v, "shape")
+                        else v if type(v) in (int, float, bool, str, dict, tuple, list) else type(v)
+                    ),
                 ),
             )
         logger.log(level, "******************************************************************************")

@@ -10,14 +10,19 @@
 # limitations under the License.
 import copy
 import logging
-from typing import Dict, Hashable, Mapping
+from typing import Any, Dict, Hashable, Mapping
 
 import numpy as np
 import torch
 from einops import rearrange
 from monai.config import KeysCollection, NdarrayOrTensor
+from monai.data import MetaTensor
+from monai.networks.layers import GaussianFilter
 from monai.transforms import CropForeground, GaussianSmooth, Randomizable, Resize, ScaleIntensity, SpatialCrop
 from monai.transforms.transform import MapTransform, Transform
+from monai.utils.enums import CommonKeys
+
+LABELS_KEY = "label_names"
 
 logger = logging.getLogger(__name__)
 
@@ -133,7 +138,6 @@ class GetCentroidsd(MapTransform):
                 centre.append(avg_indices)
             c[f"label_{int(seg_class)}"] = [int(seg_class), centre[-3], centre[-2], centre[-1]]
             centroids.append(c)
-
         return centroids
 
     def __call__(self, data):
@@ -539,3 +543,184 @@ class OrientationGuidanceMultipleLabelDeepEditd(Transform):
             )
             d[key_label] = reoriented_points[0]
         return d
+    
+    
+def get_guidance_tensor_for_key_label(data, key_label, device) -> torch.Tensor:
+    """Makes sure the guidance is in a tensor format."""
+    tmp_gui = data.get(key_label, torch.tensor([], dtype=torch.int32, device=device))
+    if isinstance(tmp_gui, list):
+        tmp_gui = torch.tensor(tmp_gui, dtype=torch.int32, device=device)
+    assert type(tmp_gui) is torch.Tensor or type(tmp_gui) is MetaTensor
+    return tmp_gui
+
+
+class AddGuidanceSignal(MapTransform):
+    """
+    Add Guidance signal for input image.
+
+    Based on the "guidance" points, apply Gaussian to them and add them as new channel for input image.
+
+    Args:
+        sigma: standard deviation for Gaussian kernel.
+        number_intensity_ch: channel index.
+        disks: This paraemters fill spheres with a radius of sigma centered around each click.
+        device: device this transform shall run on.
+    """
+
+    def __init__(
+        self,
+        keys: KeysCollection,
+        sigma: int = 1,
+        number_intensity_ch: int = 1,
+        allow_missing_keys: bool = False,
+        disks: bool = False,
+        device=None,
+    ):
+        super().__init__(keys, allow_missing_keys)
+        self.sigma = sigma
+        self.number_intensity_ch = number_intensity_ch
+        self.disks = disks
+        self.device = device
+
+    def _get_corrective_signal(self, image, guidance, key_label):
+        dimensions = 3 if len(image.shape) > 3 else 2
+        assert (
+            type(guidance) is torch.Tensor or type(guidance) is MetaTensor
+        ), f"guidance is {type(guidance)}, value {guidance}"
+
+        if guidance.size()[0]:
+            first_point_size = guidance[0].numel()
+            if dimensions == 3:
+                # Assume channel is first and depth is last CHWD
+                # Assuming the guidance has either shape (1, x, y , z) or (x, y, z)
+                assert (
+                    first_point_size == 4 or first_point_size == 3
+                ), f"first_point_size is {first_point_size}, first_point is {guidance[0]}"
+                signal = torch.zeros(
+                    (1, image.shape[-3], image.shape[-2], image.shape[-1]),
+                    device=self.device,
+                )
+            else:
+                assert first_point_size == 3, f"first_point_size is {first_point_size}, first_point is {guidance[0]}"
+                signal = torch.zeros((1, image.shape[-2], image.shape[-1]), device=self.device)
+
+            sshape = signal.shape
+
+            for point in guidance:
+                if torch.any(point < 0):
+                    continue
+                if dimensions == 3:
+                    # Making sure points fall inside the image dimension
+                    p1 = max(0, min(int(point[-3]), sshape[-3] - 1))
+                    p2 = max(0, min(int(point[-2]), sshape[-2] - 1))
+                    p3 = max(0, min(int(point[-1]), sshape[-1] - 1))
+                    signal[:, p1, p2, p3] = 1.0
+                else:
+                    p1 = max(0, min(int(point[-2]), sshape[-2] - 1))
+                    p2 = max(0, min(int(point[-1]), sshape[-1] - 1))
+                    signal[:, p1, p2] = 1.0
+
+            # Apply a Gaussian filter to the signal
+            if torch.max(signal[0]) > 0:
+                signal_tensor = signal[0]
+                if self.sigma != 0:
+                    pt_gaussian = GaussianFilter(len(signal_tensor.shape), sigma=self.sigma)
+                    signal_tensor = pt_gaussian(signal_tensor.unsqueeze(0).unsqueeze(0))
+                    signal_tensor = signal_tensor.squeeze(0).squeeze(0)
+
+                signal[0] = signal_tensor
+                signal[0] = (signal[0] - torch.min(signal[0])) / (torch.max(signal[0]) - torch.min(signal[0]))
+                if self.disks:
+                    signal[0] = (signal[0] > 0.1) * 1.0  # 0.1 with sigma=1 --> radius = 3, otherwise it is a cube
+
+            if not (torch.min(signal[0]).item() >= 0 and torch.max(signal[0]).item() <= 1.0):
+                raise UserWarning(
+                    "[WARNING] Bad signal values",
+                    torch.min(signal[0]),
+                    torch.max(signal[0]),
+                )
+            if signal is None:
+                raise UserWarning("[ERROR] Signal is None")
+            return signal
+        else:
+            if dimensions == 3:
+                signal = torch.zeros(
+                    (1, image.shape[-3], image.shape[-2], image.shape[-1]),
+                    device=self.device,
+                )
+            else:
+                signal = torch.zeros((1, image.shape[-2], image.shape[-1]), device=self.device)
+            if signal is None:
+                print("[ERROR] Signal is None")
+            return signal
+
+    def __call__(self, data: Dict[Hashable, torch.Tensor]) -> Dict[Hashable, Any]:
+        for key in self.key_iterator(data):
+            if key == "image":
+                image = data[key]
+                assert image.is_cuda
+                tmp_image = image[0 : 0 + self.number_intensity_ch, ...]
+
+                # e.g. {'spleen': '[[1, 202, 190, 192], [2, 224, 212, 192], [1, 242, 202, 192], [1, 256, 184, 192], [2.0, 258, 198, 118]]',
+                # 'background': '[[257, 0, 98, 118], [1.0, 223, 303, 86]]'}
+
+                for _, (label_key, _) in enumerate(data[LABELS_KEY].items()):
+                    # label_guidance = data[label_key]
+                    label_guidance = get_guidance_tensor_for_key_label(data, label_key, self.device)
+                    logger.debug(f"Converting guidance for label {label_key}:{label_guidance} into a guidance signal..")
+
+                    if label_guidance is not None and label_guidance.numel():
+                        signal = self._get_corrective_signal(
+                            image,
+                            label_guidance.to(device=self.device),
+                            key_label=label_key,
+                        )
+                        assert torch.sum(signal) > 0
+                    else:
+                        # TODO can speed this up here
+                        signal = self._get_corrective_signal(
+                            image,
+                            torch.Tensor([]).to(device=self.device),
+                            key_label=label_key,
+                        )
+
+                    assert signal.is_cuda
+                    assert tmp_image.is_cuda
+                    tmp_image = torch.cat([tmp_image, signal], dim=0)
+                    if isinstance(data[key], MetaTensor):
+                        data[key].array = tmp_image
+                    else:
+                        data[key] = tmp_image
+                return data
+            else:
+                raise UserWarning("This transform only applies to image key")
+        raise UserWarning("image key has not been been found")
+
+
+class AddEmptySignalChannels(MapTransform):
+    def __init__(self, device, keys: KeysCollection = None):
+        """
+        Adds empty channels to the signal which will be filled with the guidance signal later.
+        E.g. for two labels: 1x192x192x256 -> 3x192x192x256
+        """
+        super().__init__(keys)
+        self.device = device
+
+    def __call__(self, data: Dict[Hashable, torch.Tensor]) -> Dict[Hashable, Any]:
+        # Set up the initial batch data
+        in_channels = 1 + len(data[LABELS_KEY])
+        tmp_image = data[CommonKeys.IMAGE][0 : 0 + 1, ...]
+        assert len(tmp_image.shape) == 4
+        new_shape = list(tmp_image.shape)
+        new_shape[0] = in_channels
+        # Set the signal to 0 for all input images
+        # image is on channel 0 of e.g. (1,128,128,128) and the signals get appended, so
+        # e.g. (3,128,128,128) for two labels
+        inputs = torch.zeros(new_shape, device=self.device)
+        inputs[0] = data[CommonKeys.IMAGE][0]
+        if isinstance(data[CommonKeys.IMAGE], MetaTensor):
+            data[CommonKeys.IMAGE].array = inputs
+        else:
+            data[CommonKeys.IMAGE] = inputs
+
+        return data

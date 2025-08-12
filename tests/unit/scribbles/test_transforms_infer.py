@@ -273,9 +273,9 @@ def add_scribbles_from_roi(scribbles, roi, scribbles_fg_label, scribbles_bg_labe
         cz = int((roi[4] + roi[5]) / 2)
 
         # add scribbles at center of roi
-        scribbles[
-            :, cx - offset : cx + offset, cy - offset : cy + offset, cz - offset : cz + offset
-        ] = scribbles_fg_label
+        scribbles[:, cx - offset : cx + offset, cy - offset : cy + offset, cz - offset : cz + offset] = (
+            scribbles_fg_label
+        )
 
     return scribbles
 
@@ -402,7 +402,7 @@ class TestScribblesInferers(unittest.TestCase):
 
         # run scribbles inferer and load results
         result_file, _ = HistogramBasedGraphCut()(test_input)
-        result = LoadImage()(result_file)[0]
+        result = LoadImage(image_only=True)(result_file)
 
         # can only check output shape due to non-deterministic results
         self.assertTupleEqual(expected_shape, result.shape)

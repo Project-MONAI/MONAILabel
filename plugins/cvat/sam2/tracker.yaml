@@ -1,0 +1,51 @@
+# Copyright (c) MONAI Consortium
+# Licensed under the Apache License, Version 2.0 (the "License");
+# you may not use this file except in compliance with the License.
+# You may obtain a copy of the License at
+#     http://www.apache.org/licenses/LICENSE-2.0
+# Unless required by applicable law or agreed to in writing, software
+# distributed under the License is distributed on an "AS IS" BASIS,
+# WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+# See the License for the specific language governing permissions and
+# limitations under the License.
+
+metadata:
+  name: monailabel.sam2.tracker
+  namespace: cvat
+  annotations:
+    name: SAM2T
+    type: tracker
+    spec:
+
+spec:
+  description: A pre-trained SAM2 model for tracking model
+  runtime: 'python:3.8'
+  handler: tracker:handler
+  eventTimeout: 30s
+
+  build:
+    image: cvat/monailabel.sam2.tracker
+    baseImage: projectmonai/monailabel:latest
+
+    directives:
+      preCopy:
+        - kind: ENV
+          value: MONAI_LABEL_SERVER=http://monailabel.com
+        - kind: ENV
+          value: MONAI_LABEL_MODEL=sam_2d
+
+  triggers:
+    myHttpTrigger:
+      maxWorkers: 1
+      kind: 'http'
+      workerAvailabilityTimeoutMilliseconds: 10000
+      attributes:
+        maxRequestBodySize: 33554432 # 32MB
+
+  platform:
+    attributes:
+      restartPolicy:
+        name: always
+        maximumRetryCount: 1
+      mountMode: volume
+      network: cvat_cvat

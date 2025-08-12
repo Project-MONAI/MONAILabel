@@ -12,8 +12,24 @@
 __pycache__
 .idea
 .vscode
-
-Dockerfile
-sample-apps/**/model
-node_modules
 .webpack
+node_modules/
+*.log
+
+# Environments
+.env
+.venv
+env/
+venv/
+ENV/
+env.bak/
+venv.bak/
+.venv/
+ubuntu_venv/
+
+# apps
+sample-apps/*/logs
+sample-apps/*/train
+sample-apps/*/model
+docs/build
+docs/source/apidocs

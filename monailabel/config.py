@@ -8,11 +8,16 @@
 # WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 # See the License for the specific language governing permissions and
 # limitations under the License.
-
 import os
+from importlib.metadata import distributions
 from typing import Any, Dict, List, Optional
 
-from pydantic import AnyHttpUrl, BaseSettings
+from pydantic import AnyHttpUrl
+from pydantic_settings import BaseSettings, SettingsConfigDict
+
+
+def is_package_installed(name):
+    return name in (x.metadata.get("Name") for x in distributions())
 
 
 class Settings(BaseSettings):
@@ -21,7 +26,7 @@ class Settings(BaseSettings):
 
     MONAI_LABEL_APP_DIR: str = ""
     MONAI_LABEL_STUDIES: str = ""
-    MONAI_LABEL_APP_CONF: Dict[str, str] = {}
+    MONAI_LABEL_APP_CONF: Dict[str, Any] = {}
 
     MONAI_LABEL_AUTH_ENABLE: bool = False
     MONAI_LABEL_AUTH_REALM_URI: str = "http://localhost:8080/realms/monailabel"
@@ -62,7 +67,7 @@ class Settings(BaseSettings):
     MONAI_LABEL_DICOMWEB_FETCH_BY_FRAME: bool = False
     MONAI_LABEL_DICOMWEB_CONVERT_TO_NIFTI: bool = True
     MONAI_LABEL_DICOMWEB_SEARCH_FILTER: Dict[str, Any] = {"Modality": "CT"}
-    MONAI_LABEL_DICOMWEB_CACHE_EXPIRY: int = 180
+    MONAI_LABEL_DICOMWEB_CACHE_EXPIRY: int = 7200
     MONAI_LABEL_DICOMWEB_PROXY_TIMEOUT: float = 30.0
     MONAI_LABEL_DICOMWEB_READ_TIMEOUT: float = 5.0
 
@@ -82,7 +87,7 @@ class Settings(BaseSettings):
     MONAI_LABEL_SERVER_PORT: int = 8000
     MONAI_LABEL_CORS_ORIGINS: List[AnyHttpUrl] = []
 
-    MONAI_LABEL_AUTO_UPDATE_SCORING = True
+    MONAI_LABEL_AUTO_UPDATE_SCORING: bool = True
 
     MONAI_LABEL_SESSIONS: bool = True
     MONAI_LABEL_SESSION_PATH: str = ""
@@ -93,13 +98,28 @@ class Settings(BaseSettings):
     MONAI_LABEL_TRACKING_ENABLED: bool = True
     MONAI_LABEL_TRACKING_URI: str = ""
 
-    MONAI_ZOO_SOURCE: str = os.environ.get("BUNDLE_DOWNLOAD_SRC", "github")
+    MONAI_ZOO_SOURCE: str = os.environ.get("BUNDLE_DOWNLOAD_SRC", "monaihosting")
     MONAI_ZOO_REPO: str = "Project-MONAI/model-zoo/hosting_storage_v1"
     MONAI_ZOO_AUTH_TOKEN: str = ""
 
-    class Config:
-        env_file = ".env"
-        case_sensitive = True
+    # Refer: https://github.com/facebookresearch/sam2?tab=readme-ov-file#model-description
+    # Refer: https://huggingface.co/facebook/sam2-hiera-large
+    MONAI_SAM_MODEL_PT: str = (
+        "https://huggingface.co/facebook/sam2.1-hiera-large/resolve/main/sam2.1_hiera_large.pt"
+        if is_package_installed("SAM-2")
+        else "https://huggingface.co/facebook/sam2-hiera-large/resolve/main/sam2_hiera_large.pt"
+    )
+    MONAI_SAM_MODEL_CFG: str = (
+        "https://huggingface.co/facebook/sam2.1-hiera-large/resolve/main/sam2.1_hiera_l.yaml"
+        if is_package_installed("SAM-2")
+        else "https://huggingface.co/facebook/sam2-hiera-large/resolve/main/sam2_hiera_l.yaml"
+    )
+
+    model_config = SettingsConfigDict(
+        env_file=".env",
+        case_sensitive=True,
+        extra="ignore",
+    )
 
 
 settings = Settings()

@@ -115,16 +115,13 @@ function install_deps() {
 }
 
 function clean_py() {
-  TO_CLEAN="$(cd "$(dirname "${BASH_SOURCE[0]}")" >/dev/null 2>&1 && pwd)"
-  echo "Removing temporary files in ${TO_CLEAN}"
-
   rm -rf sample-apps/*/logs
   rm -rf sample-apps/*/.venv
   rm -rf sample-apps/*/bin
   rm -rf monailabel/endpoints/static/ohif
   rm -rf pytest.log
   rm -rf htmlcov
-  rm -rf coverage.xml
+  rm -rf coverage.xml .coverage*
   rm -rf junit
   rm -rf docs/build/
   rm -rf docs/source/apidocs/
@@ -135,26 +132,17 @@ function clean_py() {
   find sample-apps/*/model -type f -not -name *.zip -not -name .gitignore -exec rm -rf "{}" +
   find sample-apps/* -type d -empty -exec rm -rf "{}" +
   find sample-apps/* -type d -empty -exec rm -rf "{}" +
+  find sample-apps/* -type d -empty -exec rm -rf "{}" +
 
   rm -rf tests/data/*
+  rm -rf build
+  rm -rf dist
+  rm -rf monailabel.egg-info
+  rm -rf .eggs
+  rm -rf .mypy_cache
 
-  find ${TO_CLEAN} -type f -name "*.py[co]" -delete
-  find ${TO_CLEAN} -type f -name "*.so" -delete
-  find ${TO_CLEAN} -type d -name "__pycache__" -delete
-  find ${TO_CLEAN} -type d -name ".pytest_cache" -exec rm -r "{}" +
-  find ${TO_CLEAN} -maxdepth 1 -type f -name ".coverage.*" -delete
-
-  find ${TO_CLEAN} -type d -name "node_modules" -exec rm -rf "{}" +
-  find ${TO_CLEAN} -type d -name ".gradle" -exec rm -rf "{}" +
-
-  find ${TO_CLEAN} -depth -maxdepth 1 -type d -name ".eggs" -exec rm -r "{}" +
-  find ${TO_CLEAN} -depth -maxdepth 1 -type d -name "monailabel.egg-info" -exec rm -r "{}" +
-  find ${TO_CLEAN} -depth -maxdepth 1 -type d -name "build" -exec rm -r "{}" +
-  find ${TO_CLEAN} -depth -maxdepth 1 -type d -name "dist" -exec rm -r "{}" +
-  find ${TO_CLEAN} -depth -maxdepth 1 -type d -name ".mypy_cache" -exec rm -r "{}" +
-  find ${TO_CLEAN} -depth -maxdepth 1 -type d -name ".pytype" -exec rm -r "{}" +
-  find ${TO_CLEAN} -depth -maxdepth 1 -type d -name ".coverage" -exec rm -r "{}" +
-  find ${TO_CLEAN} -depth -maxdepth 1 -type d -name "__pycache__" -exec rm -r "{}" +
+  find . -type d -name "__pycache__" -exec rm -rf "{}" +
+  find plugins  -type d -name "node_modules" -exec rm -rf "{}" +
 }
 
 function torch_validate() {
@@ -440,7 +428,7 @@ function run_integration_tests() {
   echo "$1 - Starting MONAILabel server..."
   rm -rf tests/data/apps
   monailabel apps -n $1 -o tests/data/apps -d
-  monailabel start_server -a tests/data/apps/$1 -c models "$3" -s $2 -p ${MONAILABEL_SERVER_PORT:-8000} &
+  monailabel start_server -a tests/data/apps/$1 -c models "$3" -s $2 -p ${MONAILABEL_SERVER_PORT:-8000} -c sam2 $5 &
 
   wait_time=0
   server_is_up=0
@@ -471,9 +459,9 @@ function run_integration_tests() {
 
 # network training/inference/eval integration tests
 if [ $doNetTests = true ]; then
-  run_integration_tests "radiology" "tests/data/dataset/local/spleen" "deepedit,segmentation_spleen,segmentation,deepgrow_2d,deepgrow_3d" "."
-  run_integration_tests "pathology" "tests/data/pathology" "segmentation_nuclei,nuclick,classification_nuclei" "."
-  #run_integration_tests "monaibundle" "tests/data/dataset/local/spleen" "spleen_ct_segmentation,spleen_deepedit_annotation,swin_unetr_btcv_segmentation" "bundles"
-  run_integration_tests "endoscopy" "tests/data/endoscopy" "tooltracking,inbody,deepedit" "."
-  #run_integration_tests "monaibundle" "tests/data/detection" "lung_nodule_ct_detection" "detection"
+  run_integration_tests "radiology" "tests/data/dataset/local/spleen" "deepedit,segmentation_spleen,segmentation,deepgrow_2d,deepgrow_3d" "." true
+  run_integration_tests "pathology" "tests/data/pathology" "segmentation_nuclei,nuclick,classification_nuclei" "." false
+  run_integration_tests "monaibundle" "tests/data/dataset/local/spleen" "spleen_ct_segmentation" "bundles" false
+  run_integration_tests "endoscopy" "tests/data/endoscopy" "tooltracking,inbody,deepedit" "." false
+  run_integration_tests "monaibundle" "tests/data/detection" "lung_nodule_ct_detection" "detection" false
 fi

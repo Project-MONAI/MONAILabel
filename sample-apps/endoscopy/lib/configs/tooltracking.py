@@ -35,7 +35,7 @@ class ToolTracking(TaskConfig):
         super().init(name, model_dir, conf, planner, **kwargs)
 
         bundle_name = "endoscopic_tool_segmentation"
-        version = conf.get("tooltracking", "0.4.4")
+        version = conf.get("tooltracking", "0.6.0")
         zoo_source = conf.get("zoo_source", settings.MONAI_ZOO_SOURCE)
 
         self.bundle_path = os.path.join(self.model_dir, bundle_name)
