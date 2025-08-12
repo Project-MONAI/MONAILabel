@@ -18,16 +18,20 @@ from typing import Dict
 import lib.configs
 from lib.activelearning.random import WSIRandom
 from lib.infers import NuClick
+from lib.transforms import LoadImagePatchd
 
 import monailabel
 from monailabel.datastore.dsa import DSADatastore
 from monailabel.interfaces.app import MONAILabelApp
 from monailabel.interfaces.config import TaskConfig
 from monailabel.interfaces.datastore import Datastore
-from monailabel.interfaces.tasks.infer_v2 import InferTask
+from monailabel.interfaces.tasks.infer_v2 import InferTask, InferType
 from monailabel.interfaces.tasks.strategy import Strategy
 from monailabel.interfaces.tasks.train import TrainTask
+from monailabel.sam2.utils import is_sam2_module_available
 from monailabel.tasks.infer.basic_infer import BasicInferTask
+from monailabel.transform.post import FindContoursd
+from monailabel.transform.writer import PolygonWriter
 from monailabel.utils.others.class_utils import get_class_names
 from monailabel.utils.others.generic import strtobool
 
@@ -50,7 +54,7 @@ class MyApp(MONAILabelApp):
 
         configs = {k: v for k, v in sorted(configs.items())}
 
-        models = conf.get("models", "all")
+        models = conf.get("models")
         if not models:
             print("")
             print("---------------------------------------------------------------------------------------")
@@ -59,9 +63,9 @@ class MyApp(MONAILabelApp):
             print(f"    all, {', '.join(configs.keys())}")
             print("---------------------------------------------------------------------------------------")
             print("")
-            exit(-1)
+            # exit(-1)
 
-        models = models.split(",")
+        models = models.split(",") if models else []
         models = [m.strip() for m in models]
         invalid = [m for m in models if m != "all" and not configs.get(m)]
         if invalid:
@@ -86,6 +90,7 @@ class MyApp(MONAILabelApp):
 
         logger.info(f"+++ Using Models: {list(self.models.keys())}")
 
+        self.sam = strtobool(conf.get("sam2", "true"))
         super().__init__(
             app_dir=app_dir,
             studies=studies,
@@ -137,6 +142,23 @@ class MyApp(MONAILabelApp):
             c = infers["classification_nuclei"]
             if isinstance(p, NuClick) and isinstance(c, BasicInferTask):
                 p.init_classification(c)
+
+        #################################################
+        # SAM
+        #################################################
+        if is_sam2_module_available() and self.sam:
+            from monailabel.sam2.infer import Sam2InferTask
+
+            infers["sam_2d"] = Sam2InferTask(
+                model_dir=self.model_dir,
+                type=InferType.ANNOTATION,
+                dimension=2,
+                additional_info={"nuclick": True, "pathology": True},
+                image_loader=LoadImagePatchd(keys="image", padding=False),
+                post_trans=[FindContoursd(keys="pred")],
+                writer=PolygonWriter(),
+                config={"cache_image": False, "reset_state": True},
+            )
 
         return infers
 

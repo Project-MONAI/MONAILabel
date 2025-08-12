@@ -109,6 +109,8 @@ class BundleInferTask(BasicInferTask):
         self.bundle_path = path
         self.bundle_config_path = os.path.join(path, "configs", config_paths[0])
         self.bundle_config = self._load_bundle_config(self.bundle_path, self.bundle_config_path)
+        # For deepedit inferer - allow the use of clicks
+        self.bundle_config.config["use_click"] = True if type.lower() == "deepedit" else False
 
         if self.dropout > 0:
             self.bundle_config["network_def"]["dropout"] = self.dropout
@@ -133,11 +135,16 @@ class BundleInferTask(BasicInferTask):
         self.key_image, image = next(iter(metadata["network_data_format"]["inputs"].items()))
         self.key_pred, pred = next(iter(metadata["network_data_format"]["outputs"].items()))
 
-        labels = {v.lower(): int(k) for k, v in pred.get("channel_def", {}).items() if v.lower() != "background"}
+        # labels = ({v.lower(): int(k) for k, v in pred.get("channel_def", {}).items() if v.lower() != "background"})
+        labels = {}
+        type = self._get_type(os.path.basename(path), type)
+        for k, v in pred.get("channel_def", {}).items():
+            logger.info(f"Model: {os.path.basename(path)}; Type: {type}; Label: {v} => {k}")
+            if v.lower() != "background" or type.lower() == "deepedit":
+                labels[v.lower()] = int(k)
         description = metadata.get("description")
         spatial_shape = image.get("spatial_shape")
         dimension = len(spatial_shape) if spatial_shape else 3
-        type = self._get_type(os.path.basename(path), type)
 
         # if detection task, set post restore to False by default.
         self.add_post_restore = False if type == "detection" else add_post_restore
@@ -192,7 +199,12 @@ class BundleInferTask(BasicInferTask):
             if self.bundle_config.get(k):
                 c = self.bundle_config.get_parsed_content(k, instantiate=True)
                 pre = list(c.transforms) if isinstance(c, Compose) else c
+
         pre = self._filter_transforms(pre, self.pre_filter)
+
+        for t in pre:
+            if isinstance(t, LoadImaged):
+                t._loader.image_only = False
 
         if pre and self.extend_load_image:
             res = []
@@ -250,6 +262,7 @@ class BundleInferTask(BasicInferTask):
             if self.bundle_config.get(k):
                 c = self.bundle_config.get_parsed_content(k, instantiate=True)
                 post = list(c.transforms) if isinstance(c, Compose) else c
+
         post = self._filter_transforms(post, self.post_filter)
 
         if self.add_post_restore:
@@ -259,24 +272,21 @@ class BundleInferTask(BasicInferTask):
         return post
 
     def _get_type(self, name, type):
+        if type:
+            return type
+
         name = name.lower() if name else ""
-        return (
-            (
-                InferType.DEEPEDIT
-                if "deepedit" in name
-                else InferType.DEEPGROW
-                if "deepgrow" in name
-                else InferType.DETECTION
-                if "detection" in name
-                else InferType.SEGMENTATION
-                if "segmentation" in name
-                else InferType.CLASSIFICATION
-                if "classification" in name
-                else InferType.SEGMENTATION
-            )
-            if not type
-            else type
-        )
+        if "deepedit" in name:
+            return InferType.DEEPEDIT
+        if "deepgrow" in name:
+            return InferType.DEEPGROW
+        if "detection" in name:
+            return InferType.DETECTION
+        if "segmentation" in name:
+            return InferType.SEGMENTATION
+        if "classification" in name:
+            return InferType.CLASSIFICATION
+        return InferType.SEGMENTATION
 
     def _filter_transforms(self, transforms, filters):
         if not filters or not transforms:

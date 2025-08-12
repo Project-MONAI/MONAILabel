@@ -61,7 +61,7 @@ class DeepEdit(BasicInferTask):
 
     def pre_transforms(self, data=None) -> Sequence[Callable]:
         return [
-            LoadImageExd(keys="image", dtype=np.uint8),
+            LoadImageExd(keys="image", dtype=np.uint8, image_only=False),
             EnsureTyped(keys="image", device=data.get("device") if data else None),
             EnsureChannelFirstd(keys="image"),
             Resized(keys="image", spatial_size=self.roi_size, mode="area"),
@@ -75,16 +75,21 @@ class DeepEdit(BasicInferTask):
         return SimpleInferer()
 
     def post_transforms(self, data=None) -> Sequence[Callable]:
-        return [
+        t = [
             EnsureTyped(keys="pred", device=data.get("device") if data else None),
             Activationsd(keys="pred", sigmoid=True),
             AsDiscreted(keys="pred", threshold=0.5),
             Restored(keys="pred", ref_image="image"),
             SqueezeDimd(keys="pred"),
             ToNumpyd(keys="pred", dtype=np.uint8),
-            FindContoursd(keys="pred", labels=self.labels, key_foreground_points="foreground"),
         ]
+        if data and data.get("output") == "mask":
+            return t
+        t.append(FindContoursd(keys="pred", labels=self.labels, key_foreground_points="foreground"))
+        return t
 
     def writer(self, data, extension=None, dtype=None):
+        if data and data.get("output") == "mask":
+            return super().writer(data, extension=extension, dtype=dtype)
         writer = PolygonWriter(label=self.output_label_key, json=self.output_json_key)
         return writer(data)

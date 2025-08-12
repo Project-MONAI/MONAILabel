@@ -37,6 +37,7 @@ import org.slf4j.LoggerFactory;
 import org.w3c.dom.Document;
 import org.w3c.dom.Element;
 
+import qupath.lib.common.GeneralTools;
 import qupath.lib.extension.monailabel.MonaiLabelClient;
 import qupath.lib.extension.monailabel.MonaiLabelClient.ImageInfo;
 import qupath.lib.extension.monailabel.Utils;
@@ -67,11 +68,11 @@ public class SubmitLabel implements Runnable {
 		try {
 			var viewer = qupath.getViewer();
 			var imageData = viewer.getImageData();
-			String imageFile = Utils.getFileName(imageData.getServerPath());
-			String image = Utils.getNameWithoutExtension(imageFile);
-
-			String im = imageFile.toLowerCase();
-			boolean isWSI = (im.endsWith(".png") || im.endsWith(".jpg") || im.endsWith(".jpeg")) ? false : true;
+			var uris = imageData.getServer().getURIs();
+			String imageFile = GeneralTools.toPath(uris.iterator().next()).toString();
+			String image = GeneralTools.getNameWithoutExtension(new File(imageFile));
+			String ext = GeneralTools.getExtension(imageFile).get().toLowerCase();
+			boolean isWSI = !(ext.equals(".png") || ext.equals(".jpg") || ext.equals(".png"));
 			logger.info("MONAILabel:: isWSI: " + isWSI + "; File: " + imageFile);
 
 			boolean validImage = MonaiLabelClient.imageExists(image);

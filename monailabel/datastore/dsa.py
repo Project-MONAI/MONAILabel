@@ -84,7 +84,7 @@ class DSADatastore(Datastore):
     def get_annotations_by_image_id(self, image_id: str) -> Dict[str, Dict[str, List]]:
         image_id, name = self._name_to_id(image_id)
 
-        data = self.gc.get("annotation", parameters={"limit": 0})
+        data = self.gc.get(f"annotation/item/{image_id}", parameters={"limit": 0})
         result: Dict[str, Dict[str, List]] = {}
 
         # TODO(avirodov): probably can request only annotation for a given image_id, need to check how.
@@ -136,26 +136,40 @@ class DSADatastore(Datastore):
     def _name_to_id(self, name):
         folders = self.folders if self.folders else self._get_all_folders()
         for folder in folders:
+            # First check if the name is directly present
+            data = self.gc.get("item", parameters={"folderId": folder, "name": name, "limit": 0})
+            for d in data:
+                if d.get("largeImage"):
+                    return d["_id"], d["name"]
+            # next check if the name is present in a stem form
             data = self.gc.get("item", parameters={"folderId": folder, "limit": 0})
             for d in data:
                 if d.get("largeImage") and d["name"] == name or Path(d["name"]).stem == name:
                     return d["_id"], d["name"]
-        return name
+        # Next check if the name is anywhere in the system
+        data = self.gc.get("item", parameters={"text": f'"{name}"' if '"' not in name else name, "limit": 0})
+        for d in data:
+            if d.get("largeImage") and d["name"] == name or Path(d["name"]).stem == name:
+                return d["_id"], d["name"]
+        # If we fail to find the item, the best we can do is return the name
+        return name, name
 
     def get_image_uri(self, image_id: str) -> str:
         try:
-            name = self.get_image_info(image_id)["name"]
+            info = self.get_image_info(image_id)
+            name = info["name"]
+            file_id = info.get("largeImage", {}).get("fileId")
         except girder_client.HttpError:
             image_id, name = self._name_to_id(image_id)
+            file_id = None
 
         if self.asset_store_path:
-            data = self.gc.get(f"item/{image_id}/files", parameters={"limit": 0})
-            assets = [d["assetstoreId"] for d in data]
-            for asset in assets:
-                files = self.gc.get(f"assetstore/{asset}/files", parameters={"limit": 0})
-                for f in files:
-                    if f["itemId"] == image_id:
-                        return str(os.path.join(self.asset_store_path, f["path"]))
+            if file_id is None:
+                data = self.gc.get(f"item/{image_id}/files", parameters={"limit": 0})
+                file_id = data[0]["_id"]
+            f = self.gc.get(f"resource/{file_id}?type=file")
+            if "path" in f and os.path.exists(os.path.join(self.asset_store_path, f["path"])):
+                return str(os.path.join(self.asset_store_path, f["path"]))
         else:
             cached = os.path.join(self.cache_path, name)
             if os.path.exists(cached):
@@ -243,9 +257,14 @@ class DSADatastore(Datastore):
         raise NotImplementedError
 
     def status(self) -> Dict[str, Any]:
+        # This is a very costly query, disable it for now
+        # return {
+        #     "total": len(self.list_images()),
+        #     "completed": len(self.get_labeled_images()),
+        # }
         return {
-            "total": len(self.list_images()),
-            "completed": len(self.get_labeled_images()),
+            "total": 0,
+            "completed": 0,
         }
 
     def json(self):

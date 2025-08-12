@@ -54,6 +54,14 @@ The endoscopy template includes example models for interactive and automated too
 #### [MONAI Bundle](./monaibundle)
 The MONAI Bundle format provides a portable description of deep learning models. This template includes example models for interactive and automated segmentation using MONAI bundles defined in the MONAI Model Zoo. It can pull any bundle defined in the MONAI Model Zoo that is compatible and meets the requirements specified on the [MONAI Bundle Apps page](./monaibundle/).
 
+----
+> [**SAM2**](https://github.com/facebookresearch/sam2/)
+>
+> By default, SAM2 is included for all the above Apps only when **_python >= 3.10_**
+>  - **sam_2d**: for any organ or tissue and others over a given slice/2D image.
+>  - **sam_3d**: to support SAM2 propagation over multiple slices (Radiology/MONAI-Bundle).
+
+
 ### Creating a Custom App
 Researchers may want to define and add their own models. Follow the steps below to add a new segmentation model:
 

@@ -83,11 +83,13 @@ In addition, you can find a table of the basic supported fields, modalities, vie
       <li>Segmentation</li>
       <li>DeepGrow</li>
       <li>DeepEdit</li>
+      <li>SAM2 (2D/3D)</li>
     </ul>
   </td>
   <td>
     <ul>
       <li>3DSlicer</li>
+      <li>MITK</li>
       <li>OHIF</li>
     </ul>
   </td>
@@ -113,6 +115,7 @@ In addition, you can find a table of the basic supported fields, modalities, vie
       <li>NuClick</li>
       <li>Segmentation</li>
       <li>Classification</li>
+      <li>SAM2 (2D)</li>
     </ul>
   </td>
   <td>
@@ -142,6 +145,7 @@ In addition, you can find a table of the basic supported fields, modalities, vie
       <li>DeepEdit</li>
       <li>Tooltracking</li>
       <li>InBody/OutBody</li>
+      <li>SAM2 (2D)</li>
     </ul>
   </td>
   <td>
@@ -209,6 +213,19 @@ To install the _**latest features**_ using one of the following options:
   <pre>docker run --gpus all --rm -ti --ipc=host --net=host projectmonai/monailabel:latest bash</pre>
 </details>
 
+### SAM-2
+
+> By default, [**SAM2**](https://github.com/facebookresearch/sam2/) model is included for all the Apps when **_python >= 3.10_**
+>  - **sam_2d**: for any organ or tissue and others over a given slice/2D image.
+>  - **sam_3d**: to support SAM2 propagation over multiple slices (Radiology/MONAI-Bundle).
+
+If you are using `pip install monailabel` by default it uses [SAM-2](https://huggingface.co/facebook/sam2-hiera-large) models.
+<br/>
+To use [SAM-2.1](https://huggingface.co/facebook/sam2.1-hiera-large) use one of following options.
+ - Use monailabel [Docker](https://hub.docker.com/r/projectmonai/monailabel) instead of pip package
+ - Run monailabel in dev mode (git checkout)
+ - If you have installed monailabel via pip then uninstall **_sam2_** package `pip uninstall sam2` and then run `pip install -r requirements.txt` or install latest **SAM-2** from it's [github](https://github.com/facebookresearch/sam2/tree/main?tab=readme-ov-file#installation).
+
 ## Step 2 MONAI Label Sample Applications
 
 <h3>Radiology</h3>
@@ -249,6 +266,11 @@ For a full list of supported bundles, see the <a href="https://github.com/Projec
 3D Slicer, a free and open-source platform for analyzing, visualizing and understanding medical image data. In MONAI Label, 3D Slicer is most tested with radiology studies and algorithms, develpoment and integration.
 
 [3D Slicer Setup](https://github.com/Project-MONAI/MONAILabel/tree/main/plugins/slicer)
+
+#### MITK
+The Medical imaging Interaction ToolKit (MITK) is an open source, standalone, medical imaging platform. MONAI Label is partially integrated to MITK Workbench, a powerful and free application to view, process, and segment medical images. The MONAI Label tool in MITK is mostly tested for inferencing using radiology and bundle apps allowing for Auto and Click-based interactive models.
+
+[MITK Setup](https://github.com/Project-MONAI/MONAILabel/tree/main/plugins/mitk)
 
 #### OHIF
 The Open Health Imaging Foundation (OHIF) Viewer is an open source, web-based, medical imaging platform. It aims to provide a core framework for building complex imaging applications.

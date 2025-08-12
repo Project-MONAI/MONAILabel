@@ -84,7 +84,7 @@ class TestEndPointTrain(BasicEndpointV2TestSuite):
 
 
 class TestBundleTrainTask(BasicBundleTestSuite):
-    def test_spleen_bundle_train(self):
+    def test_006_spleen_bundle_train(self):
         if not torch.cuda.is_available():
             return
 
@@ -101,7 +101,7 @@ class TestBundleTrainTask(BasicBundleTestSuite):
 
 
 class TestDetectionBundleTrainTask(BasicDetectionBundleTestSuite):
-    def test_lung_nodule_detection_train(self):
+    def test_007_lung_nodule_detection_train(self):
         if not torch.cuda.is_available():
             return
 
@@ -117,7 +117,7 @@ class TestDetectionBundleTrainTask(BasicDetectionBundleTestSuite):
         response = self.client.post("/train/?run_sync=True", json=params)
         assert response.status_code == 200
 
-    def test_bundle_stop(self):
+    def test_008_bundle_stop(self):
         if not torch.cuda.is_available():
             return
 

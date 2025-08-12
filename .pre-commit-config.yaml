@@ -15,7 +15,7 @@ ci:
 
 repos:
 - repo: https://github.com/pre-commit/pre-commit-hooks
-  rev: v4.4.0
+  rev: v4.6.0
   hooks:
   - id: check-merge-conflict
   - id: trailing-whitespace
@@ -33,47 +33,47 @@ repos:
   - id: mixed-line-ending
 
 - repo: https://github.com/pycqa/isort
-  rev: 5.12.0
+  rev: 5.13.2
   hooks:
   - id: isort
     name: isort (python)
     args: ["--line-length=120", "--profile=black"]
 
 - repo: https://github.com/pycqa/isort
-  rev: 5.12.0
+  rev: 5.13.2
   hooks:
   - id: isort
     name: isort (python) (check)
     args: ["--line-length=120", "--profile=black", "--check"]
 
 - repo: https://github.com/psf/black
-  rev: 23.3.0
+  rev: 24.4.2
   hooks:
   - id: black
     args: ["--line-length=120"]
 
 - repo: https://github.com/psf/black
-  rev: 23.3.0
+  rev: 24.4.2
   hooks:
   - id: black
     name: black (check)
     args: ["--line-length=120", "--check"]
 
 - repo: https://github.com/PyCQA/flake8
-  rev: 6.0.0
+  rev: 7.1.0
   hooks:
   - id: flake8
     args: ["--count", "--statistics", "--config=setup.cfg"]
 
 - repo: https://github.com/pre-commit/mirrors-mypy
-  rev: v1.4.1
+  rev: v1.10.1
   hooks:
   - id: mypy
     exclude: (^tests/|^plugins/)
     additional_dependencies: [types-PyYAML,types-filelock,types-requests,types-docutils,types-cachetools]
 
 - repo: https://github.com/asottile/pyupgrade
-  rev: v3.8.0
+  rev: v3.16.0
   hooks:
   -   id: pyupgrade
       args: [--py37-plus]

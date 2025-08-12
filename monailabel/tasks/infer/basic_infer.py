@@ -20,13 +20,14 @@ from typing import Any, Callable, Dict, List, Optional, Sequence, Tuple, Union
 import torch
 from monai.data import decollate_batch
 from monai.inferers import Inferer, SimpleInferer, SlidingWindowInferer
+from monai.utils import deprecated
 
 from monailabel.interfaces.exception import MONAILabelError, MONAILabelException
 from monailabel.interfaces.tasks.infer_v2 import InferTask, InferType
 from monailabel.interfaces.utils.transform import dump_data, run_transforms
 from monailabel.transform.cache import CacheTransformDatad
 from monailabel.transform.writer import ClassificationWriter, DetectionWriter, Writer
-from monailabel.utils.others.generic import device_list, device_map, name_to_device
+from monailabel.utils.others.generic import device_list, device_map, name_to_device, strtobool
 
 logger = logging.getLogger(__name__)
 
@@ -150,12 +151,14 @@ class BasicInferTask(InferTask):
                     return path
         return None
 
+    @deprecated(since="0.8.0", msg_suffix="This feature is not supported anymore")
     def add_cache_transform(self, t, data, keys=("image", "image_meta_dict"), hash_key=("image_path", "model")):
-        if data and data.get("cache_transforms", False):
-            in_memory = data.get("cache_transforms_in_memory", True)
-            ttl = data.get("cache_transforms_ttl", 300)
-
-            t.append(CacheTransformDatad(keys=keys, hash_key=hash_key, in_memory=in_memory, ttl=ttl))
+        pass
+        # if data and data.get("cache_transforms", False):
+        #     in_memory = data.get("cache_transforms_in_memory", True)
+        #     ttl = data.get("cache_transforms_ttl", 300)
+        #
+        #     t.append(CacheTransformDatad(keys=keys, hash_key=hash_key, in_memory=in_memory, ttl=ttl))
 
     @abstractmethod
     def pre_transforms(self, data=None) -> Sequence[Callable]:
@@ -168,7 +171,7 @@ class BasicInferTask(InferTask):
 
                 return [
                     monai.transforms.LoadImaged(keys='image'),
-                    monai.transforms.AddChanneld(keys='image'),
+                    monai.transforms.EnsureChannelFirstd(keys='image', channel_dim='no_channel'),
                     monai.transforms.Spacingd(keys='image', pixdim=[1.0, 1.0, 1.0]),
                     monai.transforms.ScaleIntensityRanged(keys='image',
                         a_min=-57, a_max=164, b_min=0.0, b_max=1.0, clip=True),
@@ -208,7 +211,7 @@ class BasicInferTask(InferTask):
             For Example::
 
                 return [
-                    monai.transforms.AddChanneld(keys='pred'),
+                    monai.transforms.EnsureChannelFirstd(keys='pred', channel_dim='no_channel'),
                     monai.transforms.Activationsd(keys='pred', softmax=True),
                     monai.transforms.AsDiscreted(keys='pred', argmax=True),
                     monai.transforms.SqueezeDimd(keys='pred', dim=0),
@@ -250,7 +253,7 @@ class BasicInferTask(InferTask):
 
     def __call__(
         self, request, callbacks: Union[Dict[CallBackTypes, Any], None] = None
-    ) -> Union[Dict, Tuple[str, Dict[str, Any]]]:
+    ) -> Tuple[Union[str, None], Dict]:
         """
         It provides basic implementation to run the following in order
             - Run Pre Transforms
@@ -319,8 +322,8 @@ class BasicInferTask(InferTask):
             data = callback_run_post_transforms(data)
         latency_post = time.time() - start
 
-        if self.skip_writer:
-            return dict(data)
+        if self.skip_writer or strtobool(data.get("skip_writer")):
+            return None, dict(data)
 
         start = time.time()
         result_file_name, result_json = self.writer(data)
@@ -351,6 +354,17 @@ class BasicInferTask(InferTask):
             "total": round(latency_total, 2),
             "transform": data.get("latencies"),
         }
+
+        # Add Centroids to the result json to consume in OHIF v3
+        centroids = data.get("centroids", None)
+        if centroids is not None:
+            centroids_dict = dict()
+            for c in centroids:
+                all_items = list(c.items())
+                centroids_dict[all_items[0][0]] = [str(i) for i in all_items[0][1]]  # making it json compatible
+            result_json["centroids"] = centroids_dict
+        else:
+            result_json["centroids"] = dict()
 
         if result_file_name is not None and isinstance(result_file_name, str):
             logger.info(f"Result File: {result_file_name}")
@@ -453,11 +467,10 @@ class BasicInferTask(InferTask):
                 if path:
                     checkpoint = torch.load(path, map_location=torch.device(device))
                     model_state_dict = checkpoint.get(self.model_state_dict, checkpoint)
-
-                    if set(self.network.state_dict().keys()) != set(checkpoint.keys()):
+                    if set(self.network.state_dict().keys()) != set(model_state_dict.keys()):
                         logger.warning(
                             f"Checkpoint keys don't match network.state_dict()! Items that exist in only one dict"
-                            f" but not in the other: {set(self.network.state_dict().keys()) ^ set(checkpoint.keys())}"
+                            f" but not in the other: {set(self.network.state_dict().keys()) ^ set(model_state_dict.keys())}"
                         )
                         logger.warning(
                             "The run will now continue unless load_strict is set to True. "

@@ -35,6 +35,7 @@ import org.w3c.dom.NodeList;
 import org.xml.sax.SAXException;
 
 import javafx.concurrent.Task;
+import qupath.lib.common.GeneralTools;
 import qupath.lib.extension.monailabel.MonaiLabelClient;
 import qupath.lib.extension.monailabel.MonaiLabelClient.RequestInfer;
 import qupath.lib.extension.monailabel.MonaiLabelClient.ResponseInfo;
@@ -84,9 +85,10 @@ public class RunInference implements Runnable {
 				return;
 			}
 
-			String imageFile = Utils.getFileName(viewer.getImageData().getServerPath());
-			String im = imageFile.toLowerCase();
-			boolean isWSI = !im.endsWith(".png") && !im.endsWith(".jpg") && !im.endsWith(".jpeg");
+			var uris = imageData.getServer().getURIs();
+			String imageFile = GeneralTools.toPath(uris.iterator().next()).toString();
+			String ext = GeneralTools.getExtension(imageFile).get().toLowerCase();
+			boolean isWSI = !(ext.equals(".png") || ext.equals(".jpg") || ext.equals(".png"));
 			logger.info("MONAILabel:: isWSI: " + isWSI + "; File: " + imageFile);
 
 			// Select first RectangleROI if not selected explicitly
@@ -230,7 +232,7 @@ public class RunInference implements Runnable {
 
 			ROI roi = ROIs.createRectangleROI(bbox[0], bbox[1], bbox[2], bbox[3], null);
 
-			String image = Utils.getNameWithoutExtension(imageFile);
+			String image = GeneralTools.getNameWithoutExtension(new File(imageFile));
 			String sessionId = null;
 			int offsetX = 0;
 			int offsetY = 0;

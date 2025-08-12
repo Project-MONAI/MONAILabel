@@ -32,16 +32,20 @@ jobs:
     strategy:
       matrix:
         os: [windows-latest, ubuntu-latest]
-        python-version: ["3.8", "3.9"]
+        python-version: ["3.9", "3.10", "3.11", "3.12"]
     steps:
-      - uses: actions/checkout@v3
+      - uses: actions/checkout@v4
       - name: Set up Python
-        uses: actions/setup-python@v4
+        uses: actions/setup-python@v5
         with:
           python-version: ${{ matrix.python-version }}
+      - if: runner.os == 'Linux'
+        name: Cleanup (Linux only)
+        run: |
+          rm -rf /opt/hostedtoolcache
       - name: Install dependencies
         run: |
-          python -m pip install --upgrade pip wheel
+          python -m pip install --upgrade pip setuptools wheel
           pip install -r requirements.txt
 
   build:
@@ -50,15 +54,16 @@ jobs:
       MONAI_ZOO_AUTH_TOKEN: ${{ github.token }}
     strategy:
       matrix:
-        python-version: ["3.8", "3.9"]
+        python-version: ["3.9", "3.10", "3.11", "3.12"]
     steps:
-      - uses: actions/checkout@v3
+      - uses: actions/checkout@v4
       - name: Set up Python
-        uses: actions/setup-python@v4
+        uses: actions/setup-python@v5
         with:
           python-version: ${{ matrix.python-version }}
       - name: Install dependencies
         run: |
+          rm -rf /opt/hostedtoolcache
           sudo apt-get install openslide-tools -y
           python -m pip install --upgrade pip wheel
           pip install -r requirements-dev.txt
@@ -72,7 +77,7 @@ jobs:
         run: |
           $(pwd)/runtests.sh --unittests
       - name: Upload coverage
-        uses: codecov/codecov-action@v3
+        uses: codecov/codecov-action@v5
         with:
           fail_ci_if_error: false
           file: ./coverage.xml
@@ -83,14 +88,14 @@ jobs:
       MONAI_ZOO_AUTH_TOKEN: ${{ github.token }}
     strategy:
       matrix:
-        python-version: ["3.8", "3.9"]
+        python-version: ["3.9", "3.10", "3.11", "3.12"]
     steps:
-      - uses: actions/checkout@v3
+      - uses: actions/checkout@v4
         with:
           fetch-depth: 0
-      - uses: actions/setup-node@v3
+      - uses: actions/setup-node@v4
       - name: Set up Python
-        uses: actions/setup-python@v4
+        uses: actions/setup-python@v5
         with:
           python-version: ${{ matrix.python-version }}
       - name: cache weekly timestamp
@@ -98,7 +103,7 @@ jobs:
         run: |
           echo "datew=$(date '+%Y-%V')" >> $GITHUB_OUTPUT
       - name: cache for pip
-        uses: actions/cache@v3
+        uses: actions/cache@v4
         id: cache
         with:
           path: |
@@ -107,9 +112,10 @@ jobs:
           key: ${{ runner.os }}-pip-${{ steps.pip-cache.outputs.datew }}
       - name: Install dependencies
         run: |
+          rm -rf /opt/hostedtoolcache
           sudo apt-get install openslide-tools -y
           python -m pip install --user --upgrade pip setuptools wheel
-          python -m pip install torch>=1.7 torchvision
+          python -m pip install torch torchvision
       - name: Build Package
         run: |
           ./runtests.sh --clean
@@ -144,11 +150,11 @@ jobs:
       MONAI_ZOO_AUTH_TOKEN: ${{ github.token }}
     strategy:
       matrix:
-        python-version: ["3.8", "3.9"]
+        python-version: ["3.10"]
     steps:
-      - uses: actions/checkout@v3
+      - uses: actions/checkout@v4
       - name: Set up Python
-        uses: actions/setup-python@v4
+        uses: actions/setup-python@v5
         with:
           python-version: ${{ matrix.python-version }}
       - name: cache weekly timestamp
@@ -156,7 +162,7 @@ jobs:
         run: |
           echo "datew=$(date '+%Y-%V')" >> $GITHUB_OUTPUT
       - name: cache for pip
-        uses: actions/cache@v3
+        uses: actions/cache@v4
         id: cache
         with:
           path: |
@@ -165,6 +171,7 @@ jobs:
           key: ${{ runner.os }}-pip-${{ steps.pip-cache.outputs.datew }}
       - name: Install dependencies
         run: |
+          rm -rf /opt/hostedtoolcache
           sudo apt-get install openslide-tools -y
           python -m pip install --upgrade pip wheel
           python -m pip install -r docs/requirements.txt

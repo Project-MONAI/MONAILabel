@@ -17,10 +17,11 @@ from monai.transforms import Invertd, SaveImaged
 
 import monailabel
 from monailabel.interfaces.app import MONAILabelApp
-from monailabel.interfaces.tasks.infer_v2 import InferTask
+from monailabel.interfaces.tasks.infer_v2 import InferTask, InferType
 from monailabel.interfaces.tasks.scoring import ScoringMethod
 from monailabel.interfaces.tasks.strategy import Strategy
 from monailabel.interfaces.tasks.train import TrainTask
+from monailabel.sam2.utils import is_sam2_module_available
 from monailabel.tasks.activelearning.first import First
 from monailabel.tasks.activelearning.random import Random
 from monailabel.tasks.infer.bundle import BundleInferTask
@@ -33,6 +34,7 @@ logger = logging.getLogger(__name__)
 
 class MyApp(MONAILabelApp):
     def __init__(self, app_dir, studies, conf):
+        self.model_dir = os.path.join(app_dir, "model")
         self.models = get_bundle_models(app_dir, conf)
         # Add Epistemic model for scoring
         self.epistemic_models = (
@@ -44,6 +46,7 @@ class MyApp(MONAILabelApp):
             self.epistemic_simulation_size = int(conf.get("epistemic_simulation_size", "5"))
             self.epistemic_dropout = float(conf.get("epistemic_dropout", "0.2"))
 
+        self.sam = strtobool(conf.get("sam2", "true"))
         super().__init__(
             app_dir=app_dir,
             studies=studies,
@@ -58,10 +61,30 @@ class MyApp(MONAILabelApp):
         #################################################
         # Models
         #################################################
+
         for n, b in self.models.items():
-            i = BundleInferTask(b, self.conf)
-            logger.info(f"+++ Adding Inferer:: {n} => {i}")
-            infers[n] = i
+            if "deepedit" in n:
+                # Adding automatic inferer
+                i = BundleInferTask(b, self.conf, type="segmentation")
+                logger.info(f"+++ Adding Inferer:: {n}_seg => {i}")
+                infers[n + "_seg"] = i
+                # Adding inferer for managing clicks
+                i = BundleInferTask(b, self.conf, type="deepedit")
+                logger.info("+++ Adding DeepEdit Inferer")
+                infers[n] = i
+            else:
+                i = BundleInferTask(b, self.conf)
+                logger.info(f"+++ Adding Inferer:: {n} => {i}")
+                infers[n] = i
+
+        #################################################
+        # SAM
+        #################################################
+        if is_sam2_module_available() and self.sam:
+            from monailabel.sam2.infer import Sam2InferTask
+
+            infers["sam_2d"] = Sam2InferTask(model_dir=self.model_dir, type=InferType.DEEPGROW, dimension=2)
+            infers["sam_3d"] = Sam2InferTask(model_dir=self.model_dir, type=InferType.DEEPGROW, dimension=3)
         return infers
 
     def init_trainers(self) -> Dict[str, TrainTask]:
@@ -121,12 +144,11 @@ Example to run train/infer/scoring task(s) locally without actually running MONA
 
 def main():
     import argparse
+    import shutil
     from pathlib import Path
 
-    from monailabel.config import settings
+    from monailabel.utils.others.generic import device_list, file_ext
 
-    settings.MONAI_LABEL_DATASTORE_AUTO_RELOAD = False
-    settings.MONAI_LABEL_DATASTORE_FILE_EXT = ["*.png", "*.jpg", "*.jpeg", ".nii", ".nii.gz"]
     os.putenv("MASTER_ADDR", "127.0.0.1")
     os.putenv("MASTER_PORT", "1234")
 
@@ -142,42 +164,71 @@ def main():
 
     parser = argparse.ArgumentParser()
     parser.add_argument("-s", "--studies", default=studies)
+    parser.add_argument("-m", "--model", default="wholeBody_ct_segmentation")
+    parser.add_argument("-t", "--test", default="infer", choices=("train", "infer", "batch_infer"))
     args = parser.parse_args()
 
     app_dir = os.path.dirname(__file__)
     studies = args.studies
+    conf = {
+        "models": args.model,
+        "preload": "false",
+    }
 
-    app = MyApp(app_dir, studies, {"preload": "true", "models": "spleen_ct_segmentation"})
-    train(app)
+    app = MyApp(app_dir, studies, conf)
 
+    # Infer
+    if args.test == "infer":
+        sample = app.next_sample(request={"strategy": "first"})
+        image_id = sample["id"]
+        image_path = sample["path"]
 
-def infer(app):
-    import json
-    import shutil
+        # Run on all devices
+        for device in device_list():
+            res = app.infer(request={"model": args.model, "image": image_id, "device": device})
+            label = res["file"]
+            label_json = res["params"]
+            test_dir = os.path.join(args.studies, "test_labels")
+            os.makedirs(test_dir, exist_ok=True)
 
-    res = app.infer(
-        request={
-            "model": "spleen_ct_segmentation",
-            "image": "image",
-        }
-    )
+            label_file = os.path.join(test_dir, image_id + file_ext(image_path))
+            shutil.move(label, label_file)
 
-    print(json.dumps(res, indent=2))
-    shutil.move(res["label"], os.path.join(app.studies, "test"))
-    logger.info("All Done!")
+            print(label_json)
+            print(f"++++ Image File: {image_path}")
+            print(f"++++ Label File: {label_file}")
+            break
+        return
 
+    # Batch Infer
+    if args.test == "batch_infer":
+        app.batch_infer(
+            request={
+                "model": args.model,
+                "multi_gpu": False,
+                "save_label": True,
+                "label_tag": "original",
+                "max_workers": 1,
+                "max_batch_size": 0,
+            }
+        )
+        return
 
-def train(app):
+    # Train
     app.train(
         request={
-            "model": "spleen_ct_segmentation",
-            "max_epochs": 2,
+            "model": args.model,
+            "max_epochs": 10,
+            "dataset": "Dataset",  # PersistentDataset, CacheDataset
+            "train_batch_size": 1,
+            "val_batch_size": 1,
             "multi_gpu": False,
             "val_split": 0.1,
-            "val_interval": 1,
         },
     )
 
 
 if __name__ == "__main__":
+    # export PYTHONPATH=~/Projects/MONAILabel:`pwd`
+    # python main.py
     main()

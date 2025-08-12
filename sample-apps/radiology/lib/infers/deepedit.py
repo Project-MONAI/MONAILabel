@@ -8,10 +8,11 @@
 # WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 # See the License for the specific language governing permissions and
 # limitations under the License.
-
+import logging
 from typing import Callable, Sequence, Union
 
-from lib.transforms.transforms import OrientationGuidanceMultipleLabelDeepEditd
+from lib.transforms.transforms import GetCentroidsd, OrientationGuidanceMultipleLabelDeepEditd
+
 from monai.apps.deepedit.transforms import (
     AddGuidanceFromPointsDeepEditd,
     AddGuidanceSignalDeepEditd,
@@ -35,6 +36,8 @@ from monai.transforms import (
 from monailabel.interfaces.tasks.infer_v2 import InferType
 from monailabel.tasks.infer.basic_infer import BasicInferTask
 from monailabel.transform.post import Restored
+
+logger = logging.getLogger(__name__)
 
 
 class DeepEdit(BasicInferTask):
@@ -77,13 +80,11 @@ class DeepEdit(BasicInferTask):
 
     def pre_transforms(self, data=None):
         t = [
-            LoadImaged(keys="image", reader="ITKReader"),
+            LoadImaged(keys="image", reader="ITKReader", image_only=False),
             EnsureChannelFirstd(keys="image"),
             Orientationd(keys="image", axcodes="RAS"),
             ScaleIntensityRanged(keys="image", a_min=-175, a_max=250, b_min=0.0, b_max=1.0, clip=True),
         ]
-
-        self.add_cache_transform(t, data)
 
         if self.type == InferType.DEEPEDIT:
             t.extend(
@@ -128,4 +129,5 @@ class DeepEdit(BasicInferTask):
                 ref_image="image",
                 config_labels=self.labels if data.get("restore_label_idx", False) else None,
             ),
+            GetCentroidsd(keys="pred", centroids_key="centroids"),
         ]

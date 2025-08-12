@@ -416,7 +416,7 @@ class MONAILabelApp:
         if not task:
             raise MONAILabelException(
                 MONAILabelError.INVALID_INPUT,
-                f"Train Task is not Initialized. There is no model '{model}' available",
+                f"Train Task is not Initialized. There is no model '{model}' available; {request}",
             )
 
         request = copy.deepcopy(request)

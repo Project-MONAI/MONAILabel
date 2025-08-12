@@ -88,7 +88,7 @@ def run_main():
     logger.debug("------------------------------------------------------")
     logger.debug("SETTINGS")
     logger.debug("------------------------------------------------------")
-    logger.debug(json.dumps(settings.dict(), indent=2))
+    logger.debug(json.dumps(settings.model_dump(), indent=2))
     logger.debug("")
 
     app_dir = args.app if args.app else settings.MONAI_LABEL_APP_DIR

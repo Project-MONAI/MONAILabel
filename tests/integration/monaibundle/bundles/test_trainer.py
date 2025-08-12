@@ -32,6 +32,7 @@ class EndPointSession(unittest.TestCase):
         response = requests.post(f"{SERVER_URI}/train/spleen_ct_segmentation?run_sync=True", json=params)
         assert response.status_code == 200
 
+    @unittest.skip("Skipped BTCV Bundle")
     def test_multiorgan_segmentation_trainer(self):
         if not torch.cuda.is_available():
             return
@@ -47,6 +48,7 @@ class EndPointSession(unittest.TestCase):
         response = requests.post(f"{SERVER_URI}/train/swin_unetr_btcv_segmentation?run_sync=True", json=params)
         assert response.status_code == 200
 
+    @unittest.skip("Skipped DeepEdit Bundle")
     def test_deepedit(self):
         if not torch.cuda.is_available():
             return

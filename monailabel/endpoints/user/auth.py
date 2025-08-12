@@ -11,11 +11,12 @@
 import logging
 from typing import List, Sequence, Union
 
+import jwt
 import requests
 from cachetools import cached
 from fastapi import Depends, HTTPException, Security, status
 from fastapi.security import OAuth2PasswordBearer
-from jose import JWTError, jwt
+from jwt import InvalidTokenError
 from passlib.context import CryptContext
 from pydantic import BaseModel
 
@@ -114,7 +115,7 @@ async def get_current_user(token: str = Depends(oauth2_scheme) if settings.MONAI
     )
     try:
         return from_token(token)
-    except JWTError as e:
+    except InvalidTokenError as e:
         logger.error(e)
         raise credentials_exception
 
