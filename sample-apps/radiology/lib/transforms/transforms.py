@@ -543,8 +543,8 @@ class OrientationGuidanceMultipleLabelDeepEditd(Transform):
             )
             d[key_label] = reoriented_points[0]
         return d
-    
-    
+
+
 def get_guidance_tensor_for_key_label(data, key_label, device) -> torch.Tensor:
     """Makes sure the guidance is in a tensor format."""
     tmp_gui = data.get(key_label, torch.tensor([], dtype=torch.int32, device=device))
