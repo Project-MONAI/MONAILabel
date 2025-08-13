@@ -115,6 +115,8 @@ class Settings(BaseSettings):
         else "https://huggingface.co/facebook/sam2-hiera-large/resolve/main/sam2_hiera_l.yaml"
     )
 
+    MONAI_LABEL_USE_ITK_FOR_DICOM_SEG: bool = os.environ.get("MONAI_LABEL_USE_ITK_FOR_DICOM_SEG", True)
+
     model_config = SettingsConfigDict(
         env_file=".env",
         case_sensitive=True,
