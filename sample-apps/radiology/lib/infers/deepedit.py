@@ -11,7 +11,7 @@
 import logging
 from typing import Callable, Sequence, Union
 
-from lib.transforms.transforms import GetCentroidsd
+from lib.transforms.transforms import GetCentroidsd, OrientationGuidanceMultipleLabelDeepEditd
 from monai.apps.deepedit.transforms import (
     AddGuidanceFromPointsDeepEditd,
     AddGuidanceSignalDeepEditd,
@@ -88,6 +88,7 @@ class DeepEdit(BasicInferTask):
         if self.type == InferType.DEEPEDIT:
             t.extend(
                 [
+                    OrientationGuidanceMultipleLabelDeepEditd(ref_image="image", label_names=self.labels),
                     AddGuidanceFromPointsDeepEditd(ref_image="image", guidance="guidance", label_names=self.labels),
                     Resized(keys="image", spatial_size=self.spatial_size, mode="area"),
                     ResizeGuidanceMultipleLabelDeepEditd(guidance="guidance", ref_image="image"),
