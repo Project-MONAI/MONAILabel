@@ -9,6 +9,7 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 import os
+from distutils.util import strtobool
 from importlib.metadata import distributions
 from typing import Any, Dict, List, Optional
 
@@ -113,6 +114,10 @@ class Settings(BaseSettings):
         "https://huggingface.co/facebook/sam2.1-hiera-large/resolve/main/sam2.1_hiera_l.yaml"
         if is_package_installed("SAM-2")
         else "https://huggingface.co/facebook/sam2-hiera-large/resolve/main/sam2_hiera_l.yaml"
+    )
+
+    MONAI_LABEL_USE_ITK_FOR_DICOM_SEG: bool = bool(
+        strtobool(os.environ.get("MONAI_LABEL_USE_ITK_FOR_DICOM_SEG", "True"))
     )
 
     model_config = SettingsConfigDict(

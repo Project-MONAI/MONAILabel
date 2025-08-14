@@ -183,7 +183,7 @@ def run_inference(
         suffixes = [".nii", ".nii.gz", ".nrrd"]
         image_path = [image_uri.replace(suffix, "") for suffix in suffixes if image_uri.endswith(suffix)][0]
         res_img = result.get("file") if result.get("file") else result.get("label")
-        dicom_seg_file = nifti_to_dicom_seg(image_path, res_img, p.get("label_info"), use_itk=True)
+        dicom_seg_file = nifti_to_dicom_seg(image_path, res_img, p.get("label_info"))
         result["dicom_seg"] = dicom_seg_file
 
     return send_response(instance.datastore(), result, output, background_tasks)

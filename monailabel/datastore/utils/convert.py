@@ -23,6 +23,7 @@ import SimpleITK
 from monai.transforms import LoadImage
 from pydicom.filereader import dcmread
 
+from monailabel.config import settings
 from monailabel.datastore.utils.colors import GENERIC_ANATOMY_COLORS
 from monailabel.transform.writer import write_itk
 from monailabel.utils.others.generic import run_command
@@ -80,7 +81,12 @@ def binary_to_image(reference_image, label, dtype=np.uint8, file_ext=".nii.gz"):
     return output_file
 
 
-def nifti_to_dicom_seg(series_dir, label, label_info, file_ext="*", use_itk=True) -> str:
+def nifti_to_dicom_seg(series_dir, label, label_info, file_ext="*", use_itk=None) -> str:
+
+    # Only use config if no explicit override
+    if use_itk is None:
+        use_itk = settings.MONAI_LABEL_USE_ITK_FOR_DICOM_SEG
+
     start = time.time()
 
     label_np, meta_dict = LoadImage(image_only=False)(label)
