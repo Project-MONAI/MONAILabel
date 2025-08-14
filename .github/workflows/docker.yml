@@ -27,7 +27,7 @@ jobs:
     env:
       MONAI_ZOO_AUTH_TOKEN: ${{ github.token }}
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v5
       - name: Cleanup
         run: |
           echo Before Cleanup...
