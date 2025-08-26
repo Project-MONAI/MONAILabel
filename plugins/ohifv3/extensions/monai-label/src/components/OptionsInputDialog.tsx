@@ -42,11 +42,11 @@ function OptionsInputDialogComponent({ config, info, callback, hide }) {
         <DialogHeader>
           <DialogTitle>Options / Configurations</DialogTitle>
         </DialogHeader>
-        
+
         <div className="py-4">
           <OptionsForm ref={optionsRef} config={config} info={info} />
         </div>
-        
+
         <DialogFooter className="flex gap-2">
           <Button variant="outline" onClick={handleReset}>
             Reset

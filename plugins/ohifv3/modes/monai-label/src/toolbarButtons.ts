@@ -92,7 +92,7 @@ const toolbarButtons: Button[] = [
     },
   },
   {
-    id: 'WindowLevel', 
+    id: 'WindowLevel',
     uiType: 'ohif.toolButton',
     props: {
       icon: 'tool-window-level',
@@ -112,7 +112,7 @@ const toolbarButtons: Button[] = [
     },
   },
   {
-    id: 'TrackballRotate', 
+    id: 'TrackballRotate',
     uiType: 'ohif.toolButton',
     props: {
       type: 'tool',
@@ -177,7 +177,7 @@ const toolbarButtons: Button[] = [
     },
   },
   {
-    id: 'Reset', 
+    id: 'Reset',
     uiType: 'ohif.toolButton',
     props: {
       icon: 'tool-reset',
@@ -310,7 +310,7 @@ const toolbarButtons: Button[] = [
     },
   },
   {
-    id: 'RectangleROI', 
+    id: 'RectangleROI',
     uiType: 'ohif.toolButton',
     props: {
       icon: 'tool-rectangle',
@@ -338,7 +338,7 @@ const toolbarButtons: Button[] = [
     },
   },
   {
-    id: 'TagBrowser', 
+    id: 'TagBrowser',
     uiType: 'ohif.toolButton',
     props: {
       icon: 'dicom-tag-browser',
@@ -365,7 +365,7 @@ const toolbarButtons: Button[] = [
     },
   },
   {
-    id: 'UltrasoundDirectionalTool', 
+    id: 'UltrasoundDirectionalTool',
     uiType: 'ohif.toolButton',
     props: {
       icon: 'icon-tool-ultrasound-bidirectional',
@@ -382,7 +382,7 @@ const toolbarButtons: Button[] = [
     },
   },
   {
-    id: 'WindowLevelRegion', 
+    id: 'WindowLevelRegion',
     uiType: 'ohif.toolButton',
     props: {
       icon: 'icon-tool-window-region',
