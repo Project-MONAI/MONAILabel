@@ -4,7 +4,7 @@
     "description": "OHIFv3 mode for MONAI Label",
     "author": "OHIF,NVIDIA,KCL",
     "license": "MIT",
-    "main": "dist/umd/mode-monai-label/index.umd.js",
+    "main": "dist/ohif-mode-monai-label.umd.js",
     "files": [
         "dist/**",
         "public/**",
@@ -35,7 +35,7 @@
         "test:unit:ci": "jest --ci --runInBand --collectCoverage --passWithNoTests"
     },
     "peerDependencies": {
-        "@ohif/core": "3.10.0-beta.5"
+        "@ohif/core": "3.11.0"
     },
     "dependencies": {
         "@babel/runtime": "^7.20.13",
@@ -63,7 +63,7 @@
         "dotenv": "^14.1.0",
         "eslint": "^8.39.0",
         "eslint-loader": "^2.0.0",
-        "webpack": "5.94.0",
+        "webpack": "5.95.0",
         "webpack-cli": "^4.7.2",
         "webpack-merge": "^5.7.3"
     }

@@ -61,21 +61,53 @@ function modeFactory({ modeConfiguration }) {
       // Init Default and SR ToolGroups
       initToolGroups(extensionManager, toolGroupService, commandsManager);
 
-      toolbarService.addButtons(toolbarButtons);
-      // toolbarService.addButtons(segmentationButtons);
+      toolbarService.register(toolbarButtons);
 
-      toolbarService.createButtonSection('primary', [
+      toolbarService.updateSection(toolbarService.sections.primary, [
         'WindowLevel',
         'Pan',
         'Zoom',
         'TrackballRotate',
         'Capture',
         'Layout',
-        'MPR',
         'Crosshairs',
         'MoreTools',
       ]);
-      toolbarService.createButtonSection('segmentationToolbox', ['BrushTools', 'Shapes']);
+
+      toolbarService.updateSection(toolbarService.sections.viewportActionMenu.topLeft, [
+        'orientationMenu',
+        'dataOverlayMenu',
+      ]);
+
+      toolbarService.updateSection(toolbarService.sections.viewportActionMenu.topRight, [
+        'modalityLoadBadge',
+        'trackingStatus',
+        'navigationComponent',
+      ]);
+
+      toolbarService.updateSection(toolbarService.sections.viewportActionMenu.bottomLeft, [
+        'windowLevelMenu',
+      ]);
+
+      toolbarService.updateSection('MoreTools', [
+        'Reset',
+        'rotate-right',
+        'flipHorizontal',
+        'ReferenceLines',
+        'ImageOverlayViewer',
+        'StackScroll',
+        'invert',
+        'Probe',
+        'Cine',
+        'Angle',
+        'Magnify',
+        'RectangleROI',
+        'CalibrationLine',
+        'TagBrowser',
+        'AdvancedMagnify',
+        'UltrasoundDirectionalTool',
+        'WindowLevelRegion',
+      ]);
     },
     onModeExit: ({ servicesManager }: withAppTypes) => {
       const {
@@ -87,7 +119,7 @@ function modeFactory({ modeConfiguration }) {
         uiModalService,
       } = servicesManager.services;
 
-      uiDialogService.dismissAll();
+      uiDialogService.hideAll();
       uiModalService.hide();
       toolGroupService.destroy();
       syncGroupService.destroy();

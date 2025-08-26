@@ -14,7 +14,7 @@ limitations under the License.
 import React, { Component } from 'react';
 
 import './SettingsTable.css';
-import { Icon } from '@ohif/ui';
+import { Icons } from '@ohif/ui-next';
 import { CookieUtils } from '../utils/GenericUtils';
 
 export default class SettingsTable extends Component {
@@ -81,7 +81,7 @@ export default class SettingsTable extends Component {
             <td>&nbsp;</td>
             <td>
               <button className="actionButton" onClick={this.onConnect}>
-                <Icon name="tool-reset" width="12px" height="12px" />
+                <Icons.ByName name="tool-reset" width="12px" height="12px" />
               </button>
             </td>
           </tr>
