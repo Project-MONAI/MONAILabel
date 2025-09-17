@@ -80,6 +80,7 @@ Table of Contents
    whatsnew
    installation
    quickstart
+   tutorials
    modules
    appdeployment
    apis
