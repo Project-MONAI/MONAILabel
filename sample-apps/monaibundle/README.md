@@ -43,6 +43,7 @@ The MONAIBundle App currently supports most labeling models in the Model-Zoo. Yo
 | [spleen_deepedit_annotation](https://github.com/Project-MONAI/model-zoo/tree/dev/models/spleen_deepedit_annotation) | DeepEdit | Spleen| CT | An interactive method for 3D spleen Segmentation |
 | [lung_nodule_ct_detection](https://github.com/Project-MONAI/model-zoo/tree/dev/models/lung_nodule_ct_detection) | RetinaNet | Lung Nodule| CT | The detection model for 3D CT images |
 | [wholeBody_ct_segmentation](https://github.com/Project-MONAI/model-zoo/tree/dev/models/wholeBody_ct_segmentation) | SegResNet | 104 body structures| CT | The segmentation model for 104 tissue from 3D CT images (TotalSegmentator Dataset) |
+| [vista3d](https://github.com/Project-MONAI/model-zoo/tree/dev/models/vista3d) | VISTA3D | 117+ anatomical structures | CT | Universal foundation model for 3D CT segmentation with interactive prompting and multi-organ support |
 
 
 ### How To Use the App
@@ -65,6 +66,12 @@ monailabel start_server --app workspace/monaibundle --studies workspace/images -
 
 # Skip Training Tasks or Infer only mode
 monailabel start_server --app workspace/monaibundle --studies workspace/images --conf models spleen_ct_segmentation_v0.1.0 --conf skip_trainers true
+
+# Use VISTA3D for universal multi-organ segmentation
+monailabel start_server --app workspace/monaibundle --studies workspace/images --conf models vista3d --conf preload true
+
+# Use VISTA3D with interactive prompting enabled
+monailabel start_server --app workspace/monaibundle --studies workspace/images --conf models vista3d --conf vista3d_prompting true
 ```
 
 **Specify bundle version** (Optional)
@@ -197,4 +204,8 @@ To set configuration parameters for MONAI Label Server, use the `--conf <name> <
 | skip_trainers             | true, **false** | Skip adding training tasks (Run in Infer mode only)                                         |
 | epistemic_max_samples     | int             | _Default value:_ 0    ;  Epistemic scoring parameters                                       |
 | epistemic_simulation_size | int             | _Default value:_ 5    ;  Epistemic simulation size parameters                               |
-| epistemic_dropout         | float           | _Default value:_ 0.2  ;  Epistemic scoring parameters: Dropout rate for scoring models      |                               |
+| epistemic_dropout         | float           | _Default value:_ 0.2  ;  Epistemic scoring parameters: Dropout rate for scoring models      |
+| vista3d_prompting         | true, **false** | Enable interactive point and class prompting for VISTA3D                                   |
+| vista3d_patch_size        | array           | _Default value:_ [96,96,96]  ;  Patch size for VISTA3D inference                           |
+| vista3d_overlap           | float           | _Default value:_ 0.25  ;  Sliding window overlap for VISTA3D                              |
+| vista3d_cpu_fallback      | true, **false** | Use CPU inference when GPU memory is insufficient                                          |                               |

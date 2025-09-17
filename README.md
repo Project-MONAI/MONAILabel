@@ -83,6 +83,7 @@ In addition, you can find a table of the basic supported fields, modalities, vie
       <li>Segmentation</li>
       <li>DeepGrow</li>
       <li>DeepEdit</li>
+      <li>VISTA3D (Universal)</li>
       <li>SAM2 (2D/3D)</li>
     </ul>
   </td>
@@ -345,6 +346,11 @@ monailabel start_server --app apps/radiology --studies datasets/Task09_Spleen/im
     - [MONAILabel: Multi-organ Segmentation with 3D Slicer](https://github.com/Project-MONAI/tutorials/blob/main/monailabel/monailabel_monaibundle_3dslicer_multiorgan_seg.ipynb): Multi-organ segmentation with CT scans in 3D Slicer.
     - [MONAILabel: Whole Body CT Segmentation with 3D Slicer](https://github.com/Project-MONAI/tutorials/blob/main/monailabel/monailabel_wholebody_totalSegmentator_3dslicer.ipynb): Whole body (104 structures) segmentation with CT scans.
     - [MONAILabel: Lung nodule CT Detection with 3D Slicer](https://github.com/Project-MONAI/tutorials/blob/main/monailabel/monailabel_monaibundle_3dslicer_lung_nodule_detection.ipynb): Lung nodule detection task with CT scans.
+- **VISTA3D App**:
+  - Viewer: [OHIF](https://ohif.org/) | [3D Slicer](https://www.slicer.org/) | Datastore: Local/DICOM Web | Task: Multi-organ Segmentation
+    - [MONAILabel: VISTA3D Quick Start](docs/source/tutorials/vista3d_quickstart.md): Fast setup guide for VISTA3D universal segmentation model.
+    - [MONAILabel: VISTA3D Complete Tutorial](docs/source/tutorials/vista3d_tutorial.md): Comprehensive tutorial for VISTA3D model setup, interactive prompting, and multi-organ segmentation workflows with 117+ anatomical structures.
+    - [MONAILabel: VISTA3D Configuration Examples](docs/source/tutorials/vista3d_configurations.md): Sample configurations for different VISTA3D deployment scenarios.
 - **Pathology App**:
   - Viewer: [QuPath](https://qupath.github.io/) | Datastore: Local | Task: Segmentation
     - [MONAILabel: Nuclei Segmentation with QuPath](https://github.com/Project-MONAI/tutorials/blob/main/monailabel/monailabel_pathology_nuclei_segmentation_QuPath.ipynb) Nuclei segmentation with QuPath setup and Nuclick models.
