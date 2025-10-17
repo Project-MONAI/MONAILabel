@@ -40,6 +40,7 @@ from monai.utils import set_determinism
 
 from monailabel.interfaces.tasks.infer_v2 import InferType
 from monailabel.tasks.infer.basic_infer import BasicInferTask, CallBackTypes
+from monailabel.transform.reader import NvDicomReader
 
 # monai_version = pkg_resources.get_distribution("monai").version
 # if not pkg_resources.parse_version(monai_version) >= pkg_resources.parse_version("1.3.0"):
@@ -119,7 +120,7 @@ class SWFastEdit(BasicInferTask):
 
         t = []
         t_val_1 = [
-            LoadImaged(keys=input_keys, reader="ITKReader", image_only=False),
+            LoadImaged(keys=input_keys, reader=["ITKReader", NvDicomReader()], image_only=False),
             EnsureChannelFirstd(keys=input_keys),
             ScaleIntensityRangePercentilesd(
                 keys="image", lower=0.05, upper=99.95, b_min=0.0, b_max=1.0, clip=True, relative=False

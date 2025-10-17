@@ -133,8 +133,10 @@ def remove_label(id: str, tag: str, user: Optional[str] = None):
 def download_image(image: str, check_only=False, check_sum=None):
     instance: MONAILabelApp = app_instance()
     image = instance.datastore().get_image_uri(image)
+
     if not os.path.isfile(image):
-        raise HTTPException(status_code=404, detail="Image NOT Found")
+        logger.error(f"Image NOT Found or is a directory: {image}")
+        raise HTTPException(status_code=404, detail="Image NOT Found or is a directory")
 
     if check_only:
         if check_sum:
@@ -151,7 +153,8 @@ def download_label(label: str, tag: str, check_only=False):
     instance: MONAILabelApp = app_instance()
     label = instance.datastore().get_label_uri(label, tag)
     if not os.path.isfile(label):
-        raise HTTPException(status_code=404, detail="Label NOT Found")
+        logger.error(f"Label NOT Found or is a directory: {label}")
+        raise HTTPException(status_code=404, detail="Label NOT Found or is a directory")
 
     if check_only:
         return {}

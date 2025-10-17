@@ -38,6 +38,7 @@ from monai.transforms import (
 from monailabel.interfaces.tasks.infer_v2 import InferType
 from monailabel.tasks.infer.basic_infer import BasicInferTask
 from monailabel.transform.post import Restored
+from monailabel.transform.reader import NvDicomReader
 
 
 class SegmentationVertebra(BasicInferTask):
@@ -75,7 +76,7 @@ class SegmentationVertebra(BasicInferTask):
             add_cache = True
             t.extend(
                 [
-                    LoadImaged(keys="image", reader="ITKReader"),
+                    LoadImaged(keys="image", reader=["ITKReader", NvDicomReader()]),
                     EnsureTyped(keys="image", device=data.get("device") if data else None),
                     EnsureChannelFirstd(keys="image"),
                     GetOriginalInformation(keys="image"),

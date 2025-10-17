@@ -18,7 +18,7 @@ from pydantic_settings import BaseSettings, SettingsConfigDict
 
 
 def is_package_installed(name):
-    return name in (x.metadata.get("Name") for x in distributions())
+    return name in (x.metadata.get("Name") for x in distributions() if x.metadata is not None)
 
 
 class Settings(BaseSettings):

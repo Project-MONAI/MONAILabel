@@ -38,6 +38,7 @@ from monai.transforms import (
 
 from monailabel.tasks.train.basic_train import BasicTrainTask, Context
 from monailabel.tasks.train.utils import region_wise_metrics
+from monailabel.transform.reader import NvDicomReader
 
 logger = logging.getLogger(__name__)
 
@@ -76,7 +77,7 @@ class SegmentationVertebra(BasicTrainTask):
 
     def train_pre_transforms(self, context: Context):
         return [
-            LoadImaged(keys=("image", "label"), reader="ITKReader"),
+            LoadImaged(keys=("image", "label"), reader=["ITKReader", NvDicomReader()]),
             EnsureChannelFirstd(keys=("image", "label")),
             # NormalizeIntensityd(keys="image", divisor=2048.0),
             ScaleIntensityRanged(keys="image", a_min=-1000, a_max=1900, b_min=0.0, b_max=1.0, clip=True),
@@ -107,7 +108,7 @@ class SegmentationVertebra(BasicTrainTask):
 
     def val_pre_transforms(self, context: Context):
         return [
-            LoadImaged(keys=("image", "label"), reader="ITKReader"),
+            LoadImaged(keys=("image", "label"), reader=["ITKReader", NvDicomReader()]),
             EnsureChannelFirstd(keys=("image", "label")),
             # NormalizeIntensityd(keys="image", divisor=2048.0),
             ScaleIntensityRanged(keys="image", a_min=-1000, a_max=1900, b_min=0.0, b_max=1.0, clip=True),

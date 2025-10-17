@@ -31,6 +31,7 @@ from monai.transforms import (
 )
 
 from monailabel.tasks.train.basic_train import BasicTrainTask, Context
+from monailabel.transform.reader import NvDicomReader
 
 logger = logging.getLogger(__name__)
 
@@ -61,7 +62,7 @@ class SegmentationSpleen(BasicTrainTask):
 
     def train_pre_transforms(self, context: Context):
         return [
-            LoadImaged(keys=("image", "label")),
+            LoadImaged(keys=("image", "label"), reader=["ITKReader", NvDicomReader()]),
             NormalizeLabelsInDatasetd(keys="label", label_names=self._labels),  # Specially for missing labels
             EnsureChannelFirstd(keys=("image", "label")),
             EnsureTyped(keys=("image", "label"), device=context.device),
@@ -90,7 +91,7 @@ class SegmentationSpleen(BasicTrainTask):
 
     def val_pre_transforms(self, context: Context):
         return [
-            LoadImaged(keys=("image", "label")),
+            LoadImaged(keys=("image", "label"), reader=["ITKReader", NvDicomReader()]),
             NormalizeLabelsInDatasetd(keys="label", label_names=self._labels),  # Specially for missing labels
             EnsureTyped(keys=("image", "label")),
             EnsureChannelFirstd(keys=("image", "label")),

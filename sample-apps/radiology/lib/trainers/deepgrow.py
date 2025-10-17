@@ -43,6 +43,7 @@ from monai.transforms import (
 
 from monailabel.interfaces.datastore import Datastore
 from monailabel.tasks.train.basic_train import BasicTrainTask, Context
+from monailabel.transform.reader import NvDicomReader
 
 logger = logging.getLogger(__name__)
 
@@ -115,7 +116,7 @@ class Deepgrow(BasicTrainTask):
     def train_pre_transforms(self, context: Context):
         # Dataset preparation
         t: List[Any] = [
-            LoadImaged(keys=("image", "label"), image_only=False),
+            LoadImaged(keys=("image", "label"), reader=["ITKReader", NvDicomReader()], image_only=False),
             EnsureChannelFirstd(keys=("image", "label")),
             SpatialCropForegroundd(keys=("image", "label"), source_key="label", spatial_size=self.roi_size),
             Resized(keys=("image", "label"), spatial_size=self.model_size, mode=("area", "nearest")),

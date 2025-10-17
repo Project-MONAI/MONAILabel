@@ -31,6 +31,7 @@ from monai.transforms import (
 from monailabel.interfaces.tasks.infer_v2 import InferType
 from monailabel.tasks.infer.basic_infer import BasicInferTask
 from monailabel.transform.post import Restored
+from monailabel.transform.reader import NvDicomReader
 
 
 class LocalizationVertebra(BasicInferTask):
@@ -64,7 +65,7 @@ class LocalizationVertebra(BasicInferTask):
     def pre_transforms(self, data=None) -> Sequence[Callable]:
         if data and isinstance(data.get("image"), str):
             t = [
-                LoadImaged(keys="image", reader="ITKReader"),
+                LoadImaged(keys="image", reader=["ITKReader", NvDicomReader()]),
                 EnsureTyped(keys="image", device=data.get("device") if data else None),
                 EnsureChannelFirstd(keys="image"),
                 CacheObjectd(keys="image"),

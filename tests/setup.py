@@ -9,13 +9,18 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
+import logging
 import os
 import shutil
+import tempfile
+from pathlib import Path
 
 from monai.apps import download_url, extractall
 
 TEST_DIR = os.path.realpath(os.path.dirname(__file__))
 TEST_DATA = os.path.join(TEST_DIR, "data")
+
+logger = logging.getLogger(__name__)
 
 
 def run_main():
@@ -50,11 +55,28 @@ def run_main():
         os.makedirs(os.path.join(TEST_DATA, "detection"))
         extractall(filepath=downloaded_detection_file, output_dir=os.path.join(TEST_DATA, "detection"))
 
-    downloaded_dicom_file = os.path.join(TEST_DIR, "downloads", "dicom.zip")
-    dicom_url = "https://github.com/Project-MONAI/MONAILabel/releases/download/data/dicom.zip"
-    if not os.path.exists(downloaded_dicom_file):
-        download_url(url=dicom_url, filepath=downloaded_dicom_file)
+    # Create HTJ2K-encoded versions of dicomweb test data if nvimgcodec is available
+    try:
+        import sys
+
+        sys.path.insert(0, TEST_DIR)
+        from prepare_htj2k_test_data import create_htj2k_data
+
+        create_htj2k_data(TEST_DATA)
+    except ImportError as e:
+        if "nvidia" in str(e).lower() or "nvimgcodec" in str(e).lower():
+            logger.info("Note: nvidia-nvimgcodec not installed. HTJ2K test data will not be created.")
+            logger.info("To enable HTJ2K support, install the package matching your CUDA version:")
+            logger.info("  pip install nvidia-nvimgcodec-cu{XX}[all]")
+            logger.info("  (Replace {XX} with your CUDA major version, e.g., cu13 for CUDA 13.x)")
+            logger.info("Installation guide: https://docs.nvidia.com/cuda/nvimagecodec/installation.html")
+        else:
+            logger.warning(f"Could not import HTJ2K creation module: {e}")
+    except Exception as e:
+        logger.warning(f"HTJ2K test data creation failed: {e}")
+        logger.info("You can manually run: python tests/prepare_htj2k_test_data.py")
 
 
 if __name__ == "__main__":
+    logging.basicConfig(level=logging.INFO, format="%(levelname)s: %(message)s")
     run_main()
