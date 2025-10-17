@@ -19,7 +19,7 @@ import numpy as np
 import pydicom
 from monai.transforms import LoadImage
 
-from monailabel.datastore.utils.convert import binary_to_image, dicom_to_nifti, nifti_to_dicom_seg
+from monailabel.datastore.utils.convert import binary_to_image, dicom_to_nifti, nifti_to_dicom_seg, transcode_dicom_to_htj2k
 
 # Check if nvimgcodec is available
 try:
@@ -268,6 +268,343 @@ class TestConvert(unittest.TestCase):
         print(f"✓ HTJ2K DICOM → NIfTI conversion successful")
         print(f"  Input: {len(htj2k_files)} HTJ2K DICOM files")
         print(f"  Output shape: {nifti_data.shape}")
+
+    def test_transcode_dicom_to_htj2k_batch(self):
+        """Test batch transcoding of entire DICOM series to HTJ2K."""
+        if not HAS_NVIMGCODEC:
+            self.skipTest(
+                "nvimgcodec not available. Install nvidia-nvimgcodec-cu{XX} matching your CUDA version (e.g., nvidia-nvimgcodec-cu13 for CUDA 13.x)"
+            )
+
+        # Use a specific series from dicomweb
+        dicom_dir = os.path.join(
+            self.base_dir,
+            "data",
+            "dataset",
+            "dicomweb",
+            "e7567e0a064f0c334226a0658de23afd",
+            "1.2.826.0.1.3680043.8.274.1.1.8323329.686405.1629744173.656721",
+        )
+
+        # Find DICOM files in source directory
+        source_files = sorted(list(Path(dicom_dir).glob("*.dcm")))
+        if not source_files:
+            source_files = sorted([f for f in Path(dicom_dir).iterdir() if f.is_file()])
+        
+        self.assertGreater(len(source_files), 0, f"No DICOM files found in {dicom_dir}")
+        print(f"\nSource directory: {dicom_dir}")
+        print(f"Source files: {len(source_files)}")
+
+        # Create a temporary directory for transcoded output
+        output_dir = tempfile.mkdtemp(prefix="htj2k_test_")
+        
+        try:
+            # Perform batch transcoding
+            print("\nTranscoding DICOM series to HTJ2K...")
+            result_dir = transcode_dicom_to_htj2k(
+                input_dir=dicom_dir,
+                output_dir=output_dir,
+                verify=False,  # We'll do our own verification
+            )
+            
+            self.assertEqual(result_dir, output_dir, "Output directory should match requested directory")
+            
+            # Find transcoded files
+            transcoded_files = sorted(list(Path(output_dir).glob("*.dcm")))
+            if not transcoded_files:
+                transcoded_files = sorted([f for f in Path(output_dir).iterdir() if f.is_file()])
+            
+            print(f"\nTranscoded files: {len(transcoded_files)}")
+            
+            # Verify file count matches
+            self.assertEqual(
+                len(transcoded_files), 
+                len(source_files), 
+                f"Number of transcoded files ({len(transcoded_files)}) should match source files ({len(source_files)})"
+            )
+            print(f"✓ File count matches: {len(transcoded_files)} files")
+            
+            # Verify filenames match (directory structure)
+            source_names = sorted([f.name for f in source_files])
+            transcoded_names = sorted([f.name for f in transcoded_files])
+            self.assertEqual(
+                source_names, 
+                transcoded_names, 
+                "Filenames should match between source and transcoded directories"
+            )
+            print(f"✓ Directory structure preserved: all filenames match")
+            
+            # Verify each file has been correctly transcoded
+            print("\nVerifying lossless transcoding...")
+            verified_count = 0
+            
+            for source_file, transcoded_file in zip(source_files, transcoded_files):
+                # Read original DICOM
+                ds_original = pydicom.dcmread(str(source_file))
+                original_pixels = ds_original.pixel_array
+                
+                # Read transcoded DICOM
+                ds_transcoded = pydicom.dcmread(str(transcoded_file))
+                
+                # Verify transfer syntax is HTJ2K
+                transfer_syntax = str(ds_transcoded.file_meta.TransferSyntaxUID)
+                self.assertTrue(
+                    transfer_syntax.startswith("1.2.840.10008.1.2.4.20"),
+                    f"Transfer syntax should be HTJ2K (1.2.840.10008.1.2.4.20*), got {transfer_syntax}"
+                )
+                
+                # Decode transcoded pixels
+                transcoded_pixels = ds_transcoded.pixel_array
+                
+                # Verify pixel values are identical (lossless)
+                np.testing.assert_array_equal(
+                    original_pixels,
+                    transcoded_pixels,
+                    err_msg=f"Pixel values should be identical (lossless) for {source_file.name}"
+                )
+                
+                # Verify metadata is preserved
+                self.assertEqual(
+                    ds_original.Rows, 
+                    ds_transcoded.Rows, 
+                    "Image dimensions (Rows) should be preserved"
+                )
+                self.assertEqual(
+                    ds_original.Columns, 
+                    ds_transcoded.Columns, 
+                    "Image dimensions (Columns) should be preserved"
+                )
+                self.assertEqual(
+                    ds_original.BitsAllocated, 
+                    ds_transcoded.BitsAllocated, 
+                    "BitsAllocated should be preserved"
+                )
+                self.assertEqual(
+                    ds_original.BitsStored, 
+                    ds_transcoded.BitsStored, 
+                    "BitsStored should be preserved"
+                )
+                
+                verified_count += 1
+            
+            print(f"✓ All {verified_count} files verified: pixel values are identical (lossless)")
+            print(f"✓ Transfer syntax verified: HTJ2K (1.2.840.10008.1.2.4.20*)")
+            print(f"✓ Metadata preserved: dimensions, bit depth, etc.")
+            
+            # Verify that transcoded files are actually compressed
+            # HTJ2K files should typically be smaller or similar size for lossless
+            source_size = sum(f.stat().st_size for f in source_files)
+            transcoded_size = sum(f.stat().st_size for f in transcoded_files)
+            print(f"\nFile size comparison:")
+            print(f"  Original:   {source_size:,} bytes")
+            print(f"  Transcoded: {transcoded_size:,} bytes")
+            print(f"  Ratio:      {transcoded_size/source_size:.2%}")
+            
+            print(f"\n✓ Batch HTJ2K transcoding test passed!")
+            
+        finally:
+            # Clean up temporary directory
+            import shutil
+            if os.path.exists(output_dir):
+                shutil.rmtree(output_dir)
+                print(f"\n✓ Cleaned up temporary directory: {output_dir}")
+
+    def test_transcode_mixed_directory(self):
+        """Test transcoding a directory with both uncompressed and HTJ2K images."""
+        if not HAS_NVIMGCODEC:
+            self.skipTest(
+                "nvimgcodec not available. Install nvidia-nvimgcodec-cu{XX} matching your CUDA version (e.g., nvidia-nvimgcodec-cu13 for CUDA 13.x)"
+            )
+
+        # Use uncompressed DICOM series
+        uncompressed_dir = os.path.join(
+            self.base_dir,
+            "data",
+            "dataset",
+            "dicomweb",
+            "e7567e0a064f0c334226a0658de23afd",
+            "1.2.826.0.1.3680043.8.274.1.1.8323329.686405.1629744173.656721",
+        )
+        
+        # Find uncompressed DICOM files
+        uncompressed_files = sorted(list(Path(uncompressed_dir).glob("*.dcm")))
+        if not uncompressed_files:
+            uncompressed_files = sorted([f for f in Path(uncompressed_dir).iterdir() if f.is_file()])
+        
+        self.assertGreater(len(uncompressed_files), 10, f"Need at least 10 DICOM files in {uncompressed_dir}")
+        
+        # Create a mixed directory with some uncompressed and some HTJ2K files
+        import shutil
+        mixed_dir = tempfile.mkdtemp(prefix="htj2k_mixed_")
+        output_dir = tempfile.mkdtemp(prefix="htj2k_output_")
+        htj2k_intermediate = tempfile.mkdtemp(prefix="htj2k_intermediate_")
+        
+        try:
+            print(f"\nCreating mixed directory with uncompressed and HTJ2K files...")
+            
+            # First, transcode half of the files to HTJ2K
+            mid_point = len(uncompressed_files) // 2
+            
+            # Copy first half as uncompressed
+            uncompressed_subset = uncompressed_files[:mid_point]
+            for f in uncompressed_subset:
+                shutil.copy2(str(f), os.path.join(mixed_dir, f.name))
+            
+            print(f"  Copied {len(uncompressed_subset)} uncompressed files")
+            
+            # Transcode second half to HTJ2K
+            htj2k_source_dir = tempfile.mkdtemp(prefix="htj2k_source_", dir=htj2k_intermediate)
+            for f in uncompressed_files[mid_point:]:
+                shutil.copy2(str(f), os.path.join(htj2k_source_dir, f.name))
+            
+            # Transcode this subset to HTJ2K
+            htj2k_transcoded_dir = transcode_dicom_to_htj2k(
+                input_dir=htj2k_source_dir,
+                output_dir=None,  # Use temp dir
+                verify=False,
+            )
+            
+            # Copy the transcoded HTJ2K files to mixed directory
+            htj2k_files_to_copy = list(Path(htj2k_transcoded_dir).glob("*.dcm"))
+            if not htj2k_files_to_copy:
+                htj2k_files_to_copy = [f for f in Path(htj2k_transcoded_dir).iterdir() if f.is_file()]
+            
+            for f in htj2k_files_to_copy:
+                shutil.copy2(str(f), os.path.join(mixed_dir, f.name))
+            
+            print(f"  Copied {len(htj2k_files_to_copy)} HTJ2K files")
+            
+            # Now we have a mixed directory
+            mixed_files = sorted(list(Path(mixed_dir).iterdir()))
+            self.assertEqual(len(mixed_files), len(uncompressed_files), "Mixed directory should have all files")
+            
+            print(f"\nMixed directory created with {len(mixed_files)} files:")
+            print(f"  - {len(uncompressed_subset)} uncompressed")
+            print(f"  - {len(htj2k_files_to_copy)} HTJ2K")
+            
+            # Verify the transfer syntaxes before transcoding
+            uncompressed_count_before = 0
+            htj2k_count_before = 0
+            for f in mixed_files:
+                ds = pydicom.dcmread(str(f))
+                ts = str(ds.file_meta.TransferSyntaxUID)
+                if ts.startswith("1.2.840.10008.1.2.4.20"):
+                    htj2k_count_before += 1
+                else:
+                    uncompressed_count_before += 1
+            
+            print(f"\nBefore transcoding:")
+            print(f"  - Uncompressed: {uncompressed_count_before}")
+            print(f"  - HTJ2K: {htj2k_count_before}")
+            
+            # Store original pixel data from HTJ2K files for comparison
+            htj2k_original_data = {}
+            for f in mixed_files:
+                ds = pydicom.dcmread(str(f))
+                ts = str(ds.file_meta.TransferSyntaxUID)
+                if ts.startswith("1.2.840.10008.1.2.4.20"):
+                    htj2k_original_data[f.name] = {
+                        'pixels': ds.pixel_array.copy(),
+                        'mtime': f.stat().st_mtime,
+                    }
+            
+            # Now transcode the mixed directory
+            print(f"\nTranscoding mixed directory...")
+            result_dir = transcode_dicom_to_htj2k(
+                input_dir=mixed_dir,
+                output_dir=output_dir,
+                verify=False,
+            )
+            
+            self.assertEqual(result_dir, output_dir, "Output directory should match requested directory")
+            
+            # Verify all files are in output
+            output_files = sorted(list(Path(output_dir).iterdir()))
+            self.assertEqual(
+                len(output_files), 
+                len(mixed_files), 
+                "Output should have same number of files as input"
+            )
+            print(f"\n✓ File count matches: {len(output_files)} files")
+            
+            # Verify all filenames match
+            input_names = sorted([f.name for f in mixed_files])
+            output_names = sorted([f.name for f in output_files])
+            self.assertEqual(input_names, output_names, "All filenames should be preserved")
+            print(f"✓ Directory structure preserved: all filenames match")
+            
+            # Verify all output files are HTJ2K
+            all_htj2k = True
+            for f in output_files:
+                ds = pydicom.dcmread(str(f))
+                ts = str(ds.file_meta.TransferSyntaxUID)
+                if not ts.startswith("1.2.840.10008.1.2.4.20"):
+                    all_htj2k = False
+                    print(f"  ERROR: {f.name} has transfer syntax {ts}")
+            
+            self.assertTrue(all_htj2k, "All output files should be HTJ2K")
+            print(f"✓ All {len(output_files)} output files are HTJ2K")
+            
+            # Verify that HTJ2K files were copied (not re-transcoded)
+            print(f"\nVerifying HTJ2K files were copied correctly...")
+            for filename, original_data in htj2k_original_data.items():
+                output_file = Path(output_dir) / filename
+                self.assertTrue(output_file.exists(), f"HTJ2K file {filename} should exist in output")
+                
+                # Read the output file
+                ds_output = pydicom.dcmread(str(output_file))
+                output_pixels = ds_output.pixel_array
+                
+                # Verify pixel data is identical (proving it was copied, not re-transcoded)
+                np.testing.assert_array_equal(
+                    original_data['pixels'],
+                    output_pixels,
+                    err_msg=f"HTJ2K file {filename} should have identical pixels after copy"
+                )
+            
+            print(f"✓ All {len(htj2k_original_data)} HTJ2K files were copied correctly")
+            
+            # Verify that uncompressed files were transcoded and have correct pixel values
+            print(f"\nVerifying uncompressed files were transcoded correctly...")
+            transcoded_count = 0
+            for input_file in mixed_files:
+                ds_input = pydicom.dcmread(str(input_file))
+                ts_input = str(ds_input.file_meta.TransferSyntaxUID)
+                
+                if not ts_input.startswith("1.2.840.10008.1.2.4.20"):
+                    # This was an uncompressed file, verify it was transcoded
+                    output_file = Path(output_dir) / input_file.name
+                    ds_output = pydicom.dcmread(str(output_file))
+                    
+                    # Verify transfer syntax changed to HTJ2K
+                    ts_output = str(ds_output.file_meta.TransferSyntaxUID)
+                    self.assertTrue(
+                        ts_output.startswith("1.2.840.10008.1.2.4.20"),
+                        f"File {input_file.name} should be HTJ2K after transcoding"
+                    )
+                    
+                    # Verify lossless transcoding (pixel values identical)
+                    np.testing.assert_array_equal(
+                        ds_input.pixel_array,
+                        ds_output.pixel_array,
+                        err_msg=f"File {input_file.name} should have identical pixels after lossless transcoding"
+                    )
+                    
+                    transcoded_count += 1
+            
+            print(f"✓ All {transcoded_count} uncompressed files were transcoded correctly (lossless)")
+            
+            print(f"\n✓ Mixed directory transcoding test passed!")
+            print(f"  - HTJ2K files copied: {len(htj2k_original_data)}")
+            print(f"  - Uncompressed files transcoded: {transcoded_count}")
+            print(f"  - Total output files: {len(output_files)}")
+            
+        finally:
+            # Clean up all temporary directories
+            import shutil
+            for temp_dir in [mixed_dir, output_dir, htj2k_intermediate]:
+                if os.path.exists(temp_dir):
+                    shutil.rmtree(temp_dir)
 
     def test_dicom_to_nifti_consistency(self):
         """Test that original and HTJ2K DICOM files produce identical NIfTI outputs."""

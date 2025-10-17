@@ -13,6 +13,7 @@ from __future__ import annotations
 
 import logging
 import os
+import threading
 import warnings
 from collections.abc import Sequence
 from typing import TYPE_CHECKING, Any
@@ -44,6 +45,22 @@ else:
 logger = logging.getLogger(__name__)
 
 __all__ = ["NvDicomReader"]
+
+# Thread-local storage for nvimgcodec decoder
+# Each thread gets its own decoder instance for thread safety
+_thread_local = threading.local()
+
+
+def _get_nvimgcodec_decoder():
+    """Get or create a thread-local nvimgcodec decoder singleton."""
+    if not has_nvimgcodec:
+        raise RuntimeError("nvimgcodec is not available. Cannot create decoder.")
+    
+    if not hasattr(_thread_local, 'decoder') or _thread_local.decoder is None:
+        _thread_local.decoder = nvimgcodec.Decoder()
+        logger.debug(f"Initialized thread-local nvimgcodec.Decoder for thread {threading.current_thread().name}")
+    
+    return _thread_local.decoder
 
 
 def _copy_compatible_dict(from_dict: dict, to_dict: dict):
@@ -173,13 +190,12 @@ class NvDicomReader(ImageReader):
         self.use_nvimgcodec = use_nvimgcodec
         self.prefer_gpu_output = prefer_gpu_output
         self.allow_fallback_decode = allow_fallback_decode
-        # Initialize nvImageCodec decoder if needed
+        # Initialize decode params for nvImageCodec if needed
         if self.use_nvimgcodec:
             if not has_nvimgcodec:
                 warnings.warn("NvDicomReader: nvImageCodec not installed, will use pydicom for decoding.")
                 self.use_nvimgcodec = False
             else:
-                self._nvimgcodec_decoder = nvimgcodec.Decoder()
                 self.decode_params = nvimgcodec.DecodeParams(
                     allow_any_depth=True, color_spec=nvimgcodec.ColorSpec.UNCHANGED
                 )
@@ -314,7 +330,8 @@ class NvDicomReader(ImageReader):
             if fragment and fragment != b"\x00\x00\x00\x00"
         ]
         logger.info(f"NvDicomReader: Decoding {len(data_sequence)} fragment(s) with nvImageCodec")
-        decoded_data = self._nvimgcodec_decoder.decode(data_sequence, params=self.decode_params)
+        decoder = _get_nvimgcodec_decoder()
+        decoded_data = decoder.decode(data_sequence, params=self.decode_params)
 
         # Check if decode succeeded (nvImageCodec returns None on failure)
         if not decoded_data or decoded_data[0] is None:
@@ -637,7 +654,8 @@ class NvDicomReader(ImageReader):
                     all_frames.extend(frames)
 
                 # Decode all frames at once
-                decoded_data = self._nvimgcodec_decoder.decode(all_frames, params=self.decode_params)
+                decoder = _get_nvimgcodec_decoder()
+                decoded_data = decoder.decode(all_frames, params=self.decode_params)
 
                 if not decoded_data or any(d is None for d in decoded_data):
                     raise ValueError("nvImageCodec batch decode failed")

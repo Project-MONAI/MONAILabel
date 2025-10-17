@@ -27,155 +27,20 @@ This script can be run:
 """
 
 import os
-import shutil
 import sys
 from pathlib import Path
 
-import numpy as np
-import pydicom
-
 # Add parent directory to path for imports
-sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
+sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 
 # Import the download/extract functions from setup.py
 from monai.apps import download_url, extractall
 
+# Import the transcode function from monailabel
+from monailabel.datastore.utils.convert import transcode_dicom_to_htj2k
+
 TEST_DIR = os.path.realpath(os.path.dirname(__file__))
 TEST_DATA = os.path.join(TEST_DIR, "data")
-
-# Persistent (singleton style) getter for nvimgcodec Decoder and Encoder
-_decoder_instance = None
-_encoder_instance = None
-
-
-def get_nvimgcodec_decoder():
-    """
-    Return a persistent nvimgcodec.Decoder instance.
-
-    Returns:
-        nvimgcodec.Decoder: Persistent decoder instance (singleton).
-    """
-    global _decoder_instance
-    if _decoder_instance is None:
-        from nvidia import nvimgcodec
-
-        _decoder_instance = nvimgcodec.Decoder()
-    return _decoder_instance
-
-
-def get_nvimgcodec_encoder():
-    """
-    Return a persistent nvimgcodec.Encoder instance.
-
-    Returns:
-        nvimgcodec.Encoder: Persistent encoder instance (singleton).
-    """
-    global _encoder_instance
-    if _encoder_instance is None:
-        from nvidia import nvimgcodec
-
-        _encoder_instance = nvimgcodec.Encoder()
-    return _encoder_instance
-
-
-def transcode_to_htj2k(source_path, dest_path, verify=False):
-    """
-    Transcode a DICOM file to HTJ2K encoding.
-
-    Args:
-        source_path (str or Path): Path to the DICOM (.dcm) file to encode.
-        dest_path (str or Path): Output file path.
-        verify (bool): If True, decode output for correctness verification.
-
-    Returns:
-        str: Path to the output file containing the HTJ2K-encoded DICOM.
-    """
-    from nvidia import nvimgcodec
-
-    ds = pydicom.dcmread(source_path)
-
-    # Use pydicom's pixel_array to decode the source image
-    # This way we make sure we cover all transfer syntaxes.
-    source_pixel_array = ds.pixel_array
-
-    # Ensure it's a numpy array (not a memoryview or other type)
-    if not isinstance(source_pixel_array, np.ndarray):
-        source_pixel_array = np.array(source_pixel_array)
-
-    # Add channel dimension if needed (nvImageCodec expects shape like (H, W, C))
-    if source_pixel_array.ndim == 2:
-        source_pixel_array = source_pixel_array[:, :, np.newaxis]
-
-    # nvImageCodec expects a list of images
-    decoded_images = [source_pixel_array]
-
-    # Encode to htj2k
-    jpeg2k_encode_params = nvimgcodec.Jpeg2kEncodeParams()
-    jpeg2k_encode_params.num_resolutions = 6
-    jpeg2k_encode_params.code_block_size = (64, 64)
-    jpeg2k_encode_params.bitstream_type = nvimgcodec.Jpeg2kBitstreamType.JP2
-    jpeg2k_encode_params.prog_order = nvimgcodec.Jpeg2kProgOrder.LRCP
-    jpeg2k_encode_params.ht = True
-
-    encoded_htj2k_images = get_nvimgcodec_encoder().encode(
-        decoded_images,
-        codec="jpeg2k",
-        params=nvimgcodec.EncodeParams(
-            quality_type=nvimgcodec.QualityType.LOSSLESS,
-            jpeg2k_encode_params=jpeg2k_encode_params,
-        ),
-    )
-
-    # Save to file using pydicom
-    new_encoded_frames = [bytes(code_stream) for code_stream in encoded_htj2k_images]
-    encapsulated_pixel_data = pydicom.encaps.encapsulate(new_encoded_frames)
-    ds.PixelData = encapsulated_pixel_data
-
-    # HTJ2K Lossless Only Transfer Syntax UID
-    ds.file_meta.TransferSyntaxUID = pydicom.uid.UID("1.2.840.10008.1.2.4.201")
-
-    # Ensure destination directory exists
-    Path(dest_path).parent.mkdir(parents=True, exist_ok=True)
-    ds.save_as(dest_path)
-
-    if verify:
-        # Decode htj2k to verify correctness
-        ds_verify = pydicom.dcmread(dest_path)
-        pixel_data = ds_verify.PixelData
-        data_sequence = pydicom.encaps.decode_data_sequence(pixel_data)
-        images_verify = get_nvimgcodec_decoder().decode(
-            data_sequence,
-            params=nvimgcodec.DecodeParams(allow_any_depth=True, color_spec=nvimgcodec.ColorSpec.UNCHANGED),
-        )
-        assert len(images_verify) == 1
-        image = np.array(images_verify[0].cpu()).squeeze()  # Remove extra dimension
-        assert (
-            image.shape == ds_verify.pixel_array.shape
-        ), f"Shape mismatch: {image.shape} vs {ds_verify.pixel_array.shape}"
-        assert (
-            image.dtype == ds_verify.pixel_array.dtype
-        ), f"Dtype mismatch: {image.dtype} vs {ds_verify.pixel_array.dtype}"
-        assert np.allclose(image, ds_verify.pixel_array), "Pixel values don't match"
-
-    # Print stats
-    source_size = os.path.getsize(source_path)
-    target_size = os.path.getsize(dest_path)
-
-    def human_readable_size(size, decimal_places=2):
-        for unit in ["bytes", "KB", "MB", "GB", "TB"]:
-            if size < 1024.0 or unit == "TB":
-                return f"{size:.{decimal_places}f} {unit}"
-            size /= 1024.0
-
-    print(f"  Encoded: {Path(source_path).name} -> {Path(dest_path).name}")
-    print(f"    Original: {human_readable_size(source_size)} | HTJ2K: {human_readable_size(target_size)}", end="")
-    size_diff = target_size - source_size
-    if size_diff < 0:
-        print(f" | Saved: {abs(size_diff)/source_size*100:.1f}%")
-    else:
-        print(f" | Larger: {size_diff/source_size*100:.1f}%")
-
-    return dest_path
 
 
 def download_and_extract_dicom_data():
@@ -214,6 +79,9 @@ def create_htj2k_data(test_data_dir):
     This function checks if nvimgcodec is available and creates HTJ2K-encoded
     versions of the dicomweb DICOM files for testing NvDicomReader with HTJ2K compression.
     The HTJ2K files are placed in a parallel dicomweb_htj2k directory structure.
+    
+    Uses the batch transcoding function from monailabel.datastore.utils.convert for
+    improved performance.
 
     Args:
         test_data_dir: Path to the tests/data directory
@@ -233,8 +101,6 @@ def create_htj2k_data(test_data_dir):
 
     # Check if nvimgcodec is available
     try:
-        import numpy as np
-        import pydicom
         from nvidia import nvimgcodec
     except ImportError as e:
         logger.info("Note: nvidia-nvimgcodec not installed. HTJ2K test data will not be created.")
@@ -249,46 +115,69 @@ def create_htj2k_data(test_data_dir):
         logger.warning(f"Source DICOM directory not found: {source_base_dir}")
         return
 
-    # Find all DICOM files recursively in dicomweb directory
-    source_dcm_files = list(source_base_dir.rglob("*.dcm"))
-    if not source_dcm_files:
-        logger.warning(f"No source DICOM files found in {source_base_dir}, skipping HTJ2K creation")
+    logger.info(f"Creating HTJ2K test data from dicomweb DICOM files...")
+    logger.info(f"Source: {source_base_dir}")
+    logger.info(f"Destination: {htj2k_base_dir}")
+
+    # Process each series directory separately to preserve structure
+    series_dirs = [d for d in source_base_dir.rglob("*") if d.is_dir() and any(d.glob("*.dcm"))]
+    
+    if not series_dirs:
+        logger.warning(f"No DICOM series directories found in {source_base_dir}")
         return
-
-    logger.info(f"Creating HTJ2K test data from {len(source_dcm_files)} dicomweb DICOM files...")
-
-    n_encoded = 0
-    n_failed = 0
-
-    for src_file in source_dcm_files:
-        # Preserve the exact directory structure from dicomweb
-        rel_path = src_file.relative_to(source_base_dir)
-        dest_file = htj2k_base_dir / rel_path
-
-        # Create subdirectory if needed
-        dest_file.parent.mkdir(parents=True, exist_ok=True)
-
-        # Skip if already exists
-        if dest_file.exists():
-            continue
-
+    
+    logger.info(f"Found {len(series_dirs)} DICOM series directories to process")
+    
+    total_transcoded = 0
+    total_failed = 0
+    
+    for series_dir in series_dirs:
         try:
-            transcode_to_htj2k(str(src_file), str(dest_file), verify=False)
-            n_encoded += 1
+            # Calculate relative path and output directory
+            rel_path = series_dir.relative_to(source_base_dir)
+            output_series_dir = htj2k_base_dir / rel_path
+            
+            # Skip if already processed
+            if output_series_dir.exists() and any(output_series_dir.glob("*.dcm")):
+                logger.debug(f"Skipping already processed: {rel_path}")
+                continue
+            
+            logger.info(f"Processing series: {rel_path}")
+            
+            # Use batch transcoding function
+            transcode_dicom_to_htj2k(
+                input_dir=str(series_dir),
+                output_dir=str(output_series_dir),
+                num_resolutions=6,
+                code_block_size=(64, 64),
+                verify=False,
+            )
+            
+            # Count transcoded files
+            transcoded_count = len(list(output_series_dir.glob("*.dcm")))
+            total_transcoded += transcoded_count
+            logger.info(f"  ✓ Transcoded {transcoded_count} files")
+            
         except Exception as e:
-            logger.warning(f"Failed to encode {src_file.name}: {e}")
-            n_failed += 1
+            logger.warning(f"Failed to process {series_dir.name}: {e}")
+            total_failed += 1
 
-    if n_encoded > 0:
-        logger.info(f"Created {n_encoded} HTJ2K test files in {htj2k_base_dir}")
-    if n_failed > 0:
-        logger.warning(f"Failed to create {n_failed} HTJ2K files")
+    logger.info(f"\nHTJ2K test data creation complete:")
+    logger.info(f"  Successfully processed: {len(series_dirs) - total_failed} series")
+    logger.info(f"  Total files transcoded: {total_transcoded}")
+    logger.info(f"  Failed: {total_failed}")
+    logger.info(f"  Output directory: {htj2k_base_dir}")
 
 
 def create_htj2k_dataset():
-    """Transcode all DICOM files to HTJ2K encoding."""
+    """
+    Transcode all DICOM files to HTJ2K encoding.
+    
+    This is an alternative function for batch transcoding entire datasets.
+    For the main test data creation, use create_htj2k_data() instead.
+    """
     print("\n" + "=" * 80)
-    print("Step 2: Creating HTJ2K-encoded versions")
+    print("Step 2: Creating HTJ2K-encoded versions (full dataset)")
     print("=" * 80)
 
     # Check if nvimgcodec is available
@@ -309,7 +198,7 @@ def create_htj2k_dataset():
         print("=" * 80 + "\n")
         return False
 
-    source_base = Path(TEST_DATA)
+    source_base = Path(TEST_DATA) / "dataset" / "dicomweb"
     dest_base = Path(TEST_DATA) / "dataset" / "dicom_htj2k"
 
     if not source_base.exists():
@@ -317,40 +206,58 @@ def create_htj2k_dataset():
         print("Run this script first to download the data.")
         return False
 
-    # Find all DICOM files recursively
-    dcm_files = list(source_base.rglob("*.dcm"))
-    if not dcm_files:
-        print(f"ERROR: No DICOM files found in: {source_base}")
+    # Find all series directories with DICOM files
+    series_dirs = [d for d in source_base.rglob("*") if d.is_dir() and any(d.glob("*.dcm"))]
+    
+    if not series_dirs:
+        print(f"ERROR: No DICOM series found in: {source_base}")
         return False
 
-    print(f"Found {len(dcm_files)} DICOM files to transcode")
+    print(f"Found {len(series_dirs)} DICOM series to transcode")
 
-    n_encoded = 0
-    n_skipped = 0
-    n_failed = 0
+    n_series_encoded = 0
+    n_series_skipped = 0
+    n_series_failed = 0
+    total_files = 0
 
-    for src_file in dcm_files:
-        # Preserve directory structure
-        rel_path = src_file.relative_to(source_base)
-        dest_file = dest_base / rel_path
-
-        # Only encode if target doesn't exist
-        if dest_file.exists():
-            n_skipped += 1
-            continue
-
+    for series_dir in series_dirs:
         try:
-            transcode_to_htj2k(str(src_file), str(dest_file), verify=True)
-            n_encoded += 1
+            # Calculate relative path and output directory
+            rel_path = series_dir.relative_to(source_base)
+            output_series_dir = dest_base / rel_path
+            
+            # Skip if already processed
+            if output_series_dir.exists() and any(output_series_dir.glob("*.dcm")):
+                n_series_skipped += 1
+                continue
+            
+            print(f"\nProcessing series: {rel_path}")
+            
+            # Use batch transcoding function with verification
+            transcode_dicom_to_htj2k(
+                input_dir=str(series_dir),
+                output_dir=str(output_series_dir),
+                num_resolutions=6,
+                code_block_size=(64, 64),
+                verify=True,  # Enable verification for this function
+            )
+            
+            # Count transcoded files
+            file_count = len(list(output_series_dir.glob("*.dcm")))
+            total_files += file_count
+            n_series_encoded += 1
+            print(f"  ✓ Success: {file_count} files")
+            
         except Exception as e:
-            print(f"  ERROR encoding {src_file.name}: {e}")
-            n_failed += 1
+            print(f"  ✗ ERROR processing {series_dir.name}: {e}")
+            n_series_failed += 1
 
     print(f"\n{'='*80}")
     print(f"HTJ2K encoding complete!")
-    print(f"  Encoded: {n_encoded} files")
-    print(f"  Skipped (already exist): {n_skipped} files")
-    print(f"  Failed: {n_failed} files")
+    print(f"  Series encoded: {n_series_encoded}")
+    print(f"  Series skipped (already exist): {n_series_skipped}")
+    print(f"  Series failed: {n_series_failed}")
+    print(f"  Total files transcoded: {total_files}")
     print(f"  Output directory: {dest_base}")
     print(f"{'='*80}")
 
