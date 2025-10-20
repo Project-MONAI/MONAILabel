@@ -21,6 +21,7 @@ from random import randint
 import numpy as np
 import pydicom
 import SimpleITK
+from monai.transforms import LoadImage
 from pydicom.filereader import dcmread
 from pydicom.sr.codedict import codes
 
@@ -37,6 +38,7 @@ except ImportError:
 from monailabel import __version__
 from monailabel.config import settings
 from monailabel.datastore.utils.colors import GENERIC_ANATOMY_COLORS
+from monailabel.transform.writer import write_itk
 
 logger = logging.getLogger(__name__)
 
@@ -208,12 +210,10 @@ def dicom_to_nifti(series_dir, is_seg=False):
         logger.info(f"dicom_to_nifti: Converting DICOM from {series_dir} using NvDicomReader")
 
         try:
-            from monai.transforms import LoadImage
             from monailabel.transform.reader import NvDicomReader
-            from monailabel.transform.writer import write_itk
             
             # Use NvDicomReader with LoadImage
-            reader = NvDicomReader(reverse_indexing=True, use_nvimgcodec=True)
+            reader = NvDicomReader(reverse_indexing=True)
             loader = LoadImage(reader=reader, image_only=False)
 
             # Load the DICOM (supports both directories and single files)
@@ -867,7 +867,7 @@ def transcode_dicom_to_htj2k(
             if verify:
                 ds_verify = pydicom.dcmread(output_file)
                 pixel_data = ds_verify.PixelData
-                data_sequence = pydicom.encaps.decode_data_sequence(pixel_data)
+                data_sequence = [fragment for fragment in pydicom.encaps.generate_frames(pixel_data)]
                 images_verify = decoder.decode(
                     data_sequence,
                     params=nvimgcodec.DecodeParams(

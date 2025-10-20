@@ -17,10 +17,11 @@ import threading
 import warnings
 from collections.abc import Sequence
 from typing import TYPE_CHECKING, Any
-
+from packaging import version
 import numpy as np
 from monai.config import PathLike
 from monai.data import ImageReader
+from monai.data.image_reader import _copy_compatible_dict, _stack_images
 from monai.data.utils import orientation_ras_lps
 from monai.utils import MetaKeys, SpaceKeys, TraceKeys, ensure_tuple, optional_import, require_pkg
 from torch.utils.data._utils.collate import np_str_obj_array_pattern
@@ -61,46 +62,6 @@ def _get_nvimgcodec_decoder():
         logger.debug(f"Initialized thread-local nvimgcodec.Decoder for thread {threading.current_thread().name}")
     
     return _thread_local.decoder
-
-
-def _copy_compatible_dict(from_dict: dict, to_dict: dict):
-    if not isinstance(to_dict, dict):
-        raise ValueError(f"to_dict must be a Dict, got {type(to_dict)}.")
-    if not to_dict:
-        for key in from_dict:
-            datum = from_dict[key]
-            if isinstance(datum, np.ndarray) and np_str_obj_array_pattern.search(datum.dtype.str) is not None:
-                continue
-            to_dict[key] = str(TraceKeys.NONE) if datum is None else datum  # NoneType to string for default_collate
-    else:
-        affine_key, shape_key = MetaKeys.AFFINE, MetaKeys.SPATIAL_SHAPE
-        if affine_key in from_dict and not np.allclose(from_dict[affine_key], to_dict[affine_key]):
-            raise RuntimeError(
-                "affine matrix of all images should be the same for channel-wise concatenation. "
-                f"Got {from_dict[affine_key]} and {to_dict[affine_key]}."
-            )
-        if shape_key in from_dict and not np.allclose(from_dict[shape_key], to_dict[shape_key]):
-            raise RuntimeError(
-                "spatial_shape of all images should be the same for channel-wise concatenation. "
-                f"Got {from_dict[shape_key]} and {to_dict[shape_key]}."
-            )
-
-
-def _stack_images(image_list: list, meta_dict: dict, to_cupy: bool = False):
-    from monai.data.utils import is_no_channel
-
-    if len(image_list) <= 1:
-        return image_list[0]
-    if not is_no_channel(meta_dict.get(MetaKeys.ORIGINAL_CHANNEL_DIM, None)):
-        channel_dim = int(meta_dict[MetaKeys.ORIGINAL_CHANNEL_DIM])
-        if to_cupy and has_cp:
-            return cp.concatenate(image_list, axis=channel_dim)
-        return np.concatenate(image_list, axis=channel_dim)
-    # stack at a new first dim as the channel dim, if `'original_channel_dim'` is unspecified
-    meta_dict[MetaKeys.ORIGINAL_CHANNEL_DIM] = 0
-    if to_cupy and has_cp:
-        return cp.stack(image_list, axis=0)
-    return np.stack(image_list, axis=0)
 
 
 @require_pkg(pkg_name="pydicom")
@@ -251,6 +212,51 @@ class NvDicomReader(ImageReader):
                 return False
         return True
 
+    def _apply_rescale_and_dtype(self, pixel_data, ds, original_dtype):
+        """
+        Apply DICOM rescale slope/intercept and handle dtype preservation.
+        
+        Args:
+            pixel_data: numpy or cupy array of pixel data
+            ds: pydicom dataset containing RescaleSlope/RescaleIntercept tags
+            original_dtype: original dtype before any processing
+            
+        Returns:
+            Processed pixel data array (potentially rescaled and dtype converted)
+        """
+        # Detect array library (numpy or cupy)
+        xp = cp if hasattr(pixel_data, "__cuda_array_interface__") else np
+        
+        # Check if rescaling is needed
+        has_rescale = hasattr(ds, "RescaleSlope") and hasattr(ds, "RescaleIntercept")
+        
+        if has_rescale:
+            slope = float(ds.RescaleSlope)
+            intercept = float(ds.RescaleIntercept)
+            slope = xp.asarray(slope, dtype=xp.float32)
+            intercept = xp.asarray(intercept, dtype=xp.float32)
+            pixel_data = pixel_data.astype(xp.float32) * slope + intercept
+            
+            # Convert back to original dtype if requested (matching ITK behavior)
+            if self.preserve_dtype:
+                # Determine target dtype based on original and rescale
+                # ITK converts to a dtype that can hold the rescaled values
+                # Handle both numpy and cupy dtypes
+                orig_dtype_str = str(original_dtype)
+                if "uint16" in orig_dtype_str:
+                    # uint16 with rescale typically goes to int32 in ITK
+                    target_dtype = xp.int32
+                elif "int16" in orig_dtype_str:
+                    target_dtype = xp.int32
+                elif "uint8" in orig_dtype_str:
+                    target_dtype = xp.int32
+                else:
+                    # Preserve original dtype for other types
+                    target_dtype = original_dtype
+                pixel_data = pixel_data.astype(target_dtype)
+        
+        return pixel_data
+
     def _is_nvimgcodec_supported_syntax(self, img):
         """
         Check if the DICOM transfer syntax is supported by nvImageCodec.
@@ -285,28 +291,25 @@ class NvDicomReader(ImageReader):
             "1.2.840.10008.1.2.4.203",  # High-Throughput JPEG 2000 Image Compression
         ]
 
-        # JPEG transfer syntaxes
-        # TODO(janton): Re-enable JPEG Lossless, Non-Hierarchical (Process 14) and JPEG Lossless, Non-Hierarchical, First-Order Prediction
-        # when nvImageCodec supports them.
-        jpeg_syntaxes = [
+        # JPEG transfer syntaxes (lossy)
+        jpeg_lossy_syntaxes = [
             "1.2.840.10008.1.2.4.50",  # JPEG Baseline (Process 1)
             "1.2.840.10008.1.2.4.51",  # JPEG Extended (Process 2 & 4)
-            # TODO(janton): Not yet supported
-            # '1.2.840.10008.1.2.4.57',  # JPEG Lossless, Non-Hierarchical (Process 14)
-            # '1.2.840.10008.1.2.4.70',  # JPEG Lossless, Non-Hierarchical, First-Order Prediction
         ]
 
-        supported_syntaxes = jpeg2000_syntaxes + htj2k_syntaxes + jpeg_syntaxes
+        jpeg_lossless_syntaxes = [
+            '1.2.840.10008.1.2.4.57',  # JPEG Lossless, Non-Hierarchical (Process 14)
+            '1.2.840.10008.1.2.4.70',  # JPEG Lossless, Non-Hierarchical, First-Order Prediction
+        ]
 
-        return str(transfer_syntax) in supported_syntaxes
+        return str(transfer_syntax) in jpeg2000_syntaxes + htj2k_syntaxes + jpeg_lossy_syntaxes + jpeg_lossless_syntaxes
 
-    def _nvimgcodec_decode(self, img, filename):
+    def _nvimgcodec_decode(self, img):
         """
         Decode pixel data using nvImageCodec for supported transfer syntaxes.
 
         Args:
             img: a Pydicom dataset object.
-            filename: the file path of the image.
 
         Returns:
             numpy or cupy array: Decoded pixel data.
@@ -314,39 +317,28 @@ class NvDicomReader(ImageReader):
         Raises:
             ValueError: If pixel data is missing or decoding fails.
         """
-        logger.info(f"NvDicomReader: Starting nvImageCodec decoding for {filename}")
+        logger.info(f"NvDicomReader: Starting nvImageCodec decoding")
 
         # Get raw pixel data
         if not hasattr(img, "PixelData") or img.PixelData is None:
-            raise ValueError(f"dicom data: {filename} does not have pixel_array.")
+            raise ValueError(f"dicom data: does not have a PixelData member.")
 
         pixel_data = img.PixelData
 
         # Decode the pixel data
-        # equivalent to data_sequence = pydicom.encaps.decode_data_sequence(pixel_data), which is deprecated
-        data_sequence = [
-            fragment
-            for fragment in pydicom.encaps.generate_fragments(pixel_data)
-            if fragment and fragment != b"\x00\x00\x00\x00"
-        ]
+        data_sequence = [fragment for fragment in pydicom.encaps.generate_frames(pixel_data)]
         logger.info(f"NvDicomReader: Decoding {len(data_sequence)} fragment(s) with nvImageCodec")
         decoder = _get_nvimgcodec_decoder()
-        decoded_data = decoder.decode(data_sequence, params=self.decode_params)
+        decoder_output = decoder.decode(data_sequence, params=self.decode_params)
+        if decoder_output is None:
+            raise ValueError(f"nvImageCodec failed to decode")
 
-        # Check if decode succeeded (nvImageCodec returns None on failure)
-        if not decoded_data or decoded_data[0] is None:
-            raise ValueError(f"nvImageCodec failed to decode {filename}")
+        # Not all fragments are images, so we need to filter out None images
+        decoded_data = [img for img in decoder_output if img is not None]
+        if len(decoded_data) == 0:
+            raise ValueError(f"nvImageCodec failed to decode or no valid images were found in the decoded data")
 
         buffer_kind_enum = decoded_data[0].buffer_kind
-
-        # Determine buffer location (GPU or CPU)
-        # If cupy is not available, force CPU even if data is on GPU
-        if buffer_kind_enum == nvimgcodec.ImageBufferKind.STRIDED_DEVICE:
-            buffer_kind = "gpu" if has_cp else "cpu"
-        elif buffer_kind_enum == nvimgcodec.ImageBufferKind.STRIDED_HOST:
-            buffer_kind = "cpu"
-        else:
-            raise ValueError(f"Unknown buffer kind: {buffer_kind_enum}")
 
         # Concatenate all images into a volume if number_of_frames > 1 and multiple images are present
         number_of_frames = getattr(img, "NumberOfFrames", 1)
@@ -355,21 +347,21 @@ class NvDicomReader(ImageReader):
                 raise ValueError(
                     f"Number of frames in the image ({number_of_frames}) does not match the number of decoded images ({len(decoded_data)})."
                 )
-            if buffer_kind == "gpu":
+            if buffer_kind_enum == nvimgcodec.ImageBufferKind.STRIDED_DEVICE:
                 decoded_array = cp.concatenate([cp.array(d.gpu()) for d in decoded_data], axis=0)
-            elif buffer_kind == "cpu":
+            elif buffer_kind_enum == nvimgcodec.ImageBufferKind.STRIDED_HOST:
                 # Use .cpu() to get data from either GPU or CPU buffer
                 decoded_array = np.concatenate([np.array(d.cpu()) for d in decoded_data], axis=0)
             else:
-                raise ValueError(f"Unknown buffer kind: {buffer_kind}")
+                raise ValueError(f"Unknown buffer kind: {buffer_kind_enum}")
         else:
-            if buffer_kind == "gpu":
+            if buffer_kind_enum == nvimgcodec.ImageBufferKind.STRIDED_DEVICE:
                 decoded_array = cp.array(decoded_data[0].cuda())
-            elif buffer_kind == "cpu":
+            elif buffer_kind_enum == nvimgcodec.ImageBufferKind.STRIDED_HOST:
                 # Use .cpu() to get data from either GPU or CPU buffer
                 decoded_array = np.array(decoded_data[0].cpu())
             else:
-                raise ValueError(f"Unknown buffer kind: {buffer_kind}")
+                raise ValueError(f"Unknown buffer kind: {buffer_kind_enum}")
 
         # Reshape based on DICOM parameters
         rows = getattr(img, "Rows", None)
@@ -534,8 +526,18 @@ class NvDicomReader(ImageReader):
                         slices_no_pos.append((inst_num, fp, ds))
                     slices_no_pos.sort(key=lambda s: s[0])
                     sorted_filepaths = [fp for _, fp, _ in slices_no_pos]
-                img_.append(sorted_filepaths)
-                self.filenames.append(sorted_filepaths)
+                
+                # Read all DICOM files for the series and store as a list of Datasets
+                # This allows _process_dicom_series() to handle the series as a whole
+                logger.info(f"NvDicomReader: Series contains {len(sorted_filepaths)} slices")
+                series_datasets = []
+                for fpath in sorted_filepaths:
+                    ds = pydicom.dcmread(fpath, **kwargs_)
+                    series_datasets.append(ds)
+                
+                # Append the list of datasets as a single series
+                img_.append(series_datasets)
+                self.filenames.extend(sorted_filepaths)
             else:
                 # Single file
                 logger.info(f"NvDicomReader: Parsing single DICOM file with pydicom: {name}")
@@ -543,7 +545,9 @@ class NvDicomReader(ImageReader):
                 img_.append(ds)
                 self.filenames.append(name)
 
-        return img_ if len(filenames) > 1 else img_[0]
+        if len(filenames) == 1:
+            return img_[0]
+        return img_
 
     def get_data(self, img) -> tuple[np.ndarray, dict]:
         """
@@ -567,22 +571,26 @@ class NvDicomReader(ImageReader):
         compatible_meta: dict = {}
 
         # Handle single dataset or list of datasets
-        datasets = ensure_tuple(img) if not isinstance(img, list) else [img]
+        if isinstance(img, pydicom.Dataset):
+            datasets = [img]
+        elif isinstance(img, list):
+            # Check if this is a list of Dataset objects from a DICOM series
+            if img and isinstance(img[0], pydicom.Dataset):
+                # This is a DICOM series - wrap it so it's processed as one unit
+                datasets = [img]
+            else:
+                # This is a list of something else (shouldn't happen normally)
+                datasets = img
+        else:
+            datasets = ensure_tuple(img)
 
         for idx, ds_or_list in enumerate(datasets):
-            # Check if it's a series (list of file paths) or single dataset
+            # Check if it's a series (list of datasets) or single dataset
             if isinstance(ds_or_list, list):
-                # Check if list contains strings (file paths) or datasets
-                if ds_or_list and isinstance(ds_or_list[0], str):
-                    # List of file paths - process as series
-                    data_array, metadata = self._process_dicom_series(ds_or_list)
-                else:
-                    # List of datasets (shouldn't happen with current implementation)
-                    raise ValueError("Expected list of file paths, got list of datasets")
-            else:
-                # Single DICOM dataset - get filename if available
-                filename = self.filenames[idx] if idx < len(self.filenames) else None
-                data_array = self._get_array_data(ds_or_list, filename)
+                # List of datasets - process as series
+                data_array, metadata = self._process_dicom_series(ds_or_list)
+            elif isinstance(ds_or_list, pydicom.Dataset):
+                data_array = self._get_array_data(ds_or_list)
                 metadata = self._get_meta_dict(ds_or_list)
                 metadata[MetaKeys.SPATIAL_SHAPE] = np.asarray(data_array.shape)
 
@@ -602,9 +610,9 @@ class NvDicomReader(ImageReader):
 
         return _stack_images(img_array, compatible_meta), compatible_meta
 
-    def _process_dicom_series(self, file_paths: list) -> tuple[np.ndarray, dict]:
+    def _process_dicom_series(self, datasets: list) -> tuple[np.ndarray, dict]:
         """
-        Process a list of sorted DICOM file paths into a 3D volume.
+        Process a list of sorted DICOM Dataset objects into a 3D volume.
 
         This method implements batch decoding optimization: when all files use
         nvImageCodec-supported transfer syntaxes, all frames are decoded in a
@@ -612,16 +620,13 @@ class NvDicomReader(ImageReader):
         frame-by-frame decoding if batch decode fails or is not applicable.
 
         Args:
-            file_paths: list of DICOM file paths (already sorted by spatial position)
+            datasets: list of pydicom Dataset objects (already sorted by spatial position)
 
         Returns:
             tuple: (3D numpy array, metadata dict)
         """
-        if not file_paths:
-            raise ValueError("Empty file path list")
-
-        # Read all datasets with pixel data
-        datasets = [pydicom.dcmread(fp) for fp in file_paths]
+        if not datasets:
+            raise ValueError("Empty dataset list")
 
         first_ds = datasets[0]
         needs_rescale = hasattr(first_ds, "RescaleSlope") and hasattr(first_ds, "RescaleIntercept")
@@ -646,11 +651,7 @@ class NvDicomReader(ImageReader):
                         raise ValueError("DICOM data does not have pixel data")
                     pixel_data = ds.PixelData
                     # Extract compressed frame(s) from this DICOM file
-                    frames = [
-                        fragment
-                        for fragment in pydicom.encaps.generate_fragments(pixel_data)
-                        if fragment and fragment != b"\x00\x00\x00\x00"
-                    ]
+                    frames = [fragment for fragment in pydicom.encaps.generate_frames(pixel_data)]
                     all_frames.extend(frames)
 
                 # Decode all frames at once
@@ -662,20 +663,16 @@ class NvDicomReader(ImageReader):
 
                 # Determine buffer location (GPU or CPU)
                 buffer_kind_enum = decoded_data[0].buffer_kind
-                if buffer_kind_enum == nvimgcodec.ImageBufferKind.STRIDED_DEVICE:
-                    buffer_kind = "gpu" if has_cp else "cpu"
-                elif buffer_kind_enum == nvimgcodec.ImageBufferKind.STRIDED_HOST:
-                    buffer_kind = "cpu"
-                else:
-                    raise ValueError(f"Unknown buffer kind: {buffer_kind_enum}")
 
                 # Convert all decoded frames to numpy/cupy arrays
-                if buffer_kind == "gpu":
+                if buffer_kind_enum == nvimgcodec.ImageBufferKind.STRIDED_DEVICE:
                     xp = cp
                     decoded_arrays = [cp.array(d.cuda()) for d in decoded_data]
-                else:
+                elif buffer_kind_enum == nvimgcodec.ImageBufferKind.STRIDED_HOST:
                     xp = np
                     decoded_arrays = [np.array(d.cpu()) for d in decoded_data]
+                else:
+                    raise ValueError(f"Unknown buffer kind: {buffer_kind_enum}")
 
                 original_dtype = decoded_arrays[0].dtype
                 dtype_vol = xp.float32 if needs_rescale else original_dtype
@@ -742,30 +739,8 @@ class NvDicomReader(ImageReader):
             # Get dtype from first pixel array if not already set
             original_dtype = first_ds.pixel_array.dtype
 
-        if needs_rescale:
-            slope = float(first_ds.RescaleSlope)
-            intercept = float(first_ds.RescaleIntercept)
-            slope = xp.asarray(slope, dtype=xp.float32)
-            intercept = xp.asarray(intercept, dtype=xp.float32)
-            volume = volume.astype(xp.float32) * slope + intercept
-
-            # Convert back to original dtype if requested (matching ITK behavior)
-            if self.preserve_dtype:
-                # Determine target dtype based on original and rescale
-                # ITK converts to a dtype that can hold the rescaled values
-                # Handle both numpy and cupy dtypes
-                orig_dtype_str = str(original_dtype)
-                if "uint16" in orig_dtype_str:
-                    # uint16 with rescale typically goes to int32 in ITK
-                    target_dtype = xp.int32
-                elif "int16" in orig_dtype_str:
-                    target_dtype = xp.int32
-                elif "uint8" in orig_dtype_str:
-                    target_dtype = xp.int32
-                else:
-                    # Preserve original dtype for other types
-                    target_dtype = original_dtype
-                volume = volume.astype(target_dtype)
+        # Apply rescaling and dtype conversion using common helper
+        volume = self._apply_rescale_and_dtype(volume, first_ds, original_dtype)
 
         # Calculate spacing
         pixel_spacing = first_ds.PixelSpacing if hasattr(first_ds, "PixelSpacing") else [1.0, 1.0]
@@ -805,26 +780,25 @@ class NvDicomReader(ImageReader):
 
         return volume, metadata
 
-    def _get_array_data(self, ds, filename=None):
+    def _get_array_data(self, ds):
         """
         Get pixel array from a single DICOM dataset.
 
         Args:
             ds: pydicom dataset object
-            filename: path to DICOM file (optional, needed for nvImageCodec/GPU loading)
 
         Returns:
             numpy or cupy array of pixel data
         """
         # Get pixel array using nvImageCodec or GPU loading if enabled and filename available
-        if filename and self.use_nvimgcodec and self._is_nvimgcodec_supported_syntax(ds):
+        if self.use_nvimgcodec and self._is_nvimgcodec_supported_syntax(ds):
             try:
-                pixel_array = self._nvimgcodec_decode(ds, filename)
+                pixel_array = self._nvimgcodec_decode(ds)
                 original_dtype = pixel_array.dtype
                 logger.info(f"NvDicomReader: Successfully decoded with nvImageCodec")
             except Exception as e:
                 logger.warning(
-                    f"NvDicomReader: nvImageCodec decoding failed for {filename}: {e}, falling back to pydicom"
+                    f"NvDicomReader: nvImageCodec decoding failed: {e}, falling back to pydicom"
                 )
                 pixel_array = ds.pixel_array
                 original_dtype = pixel_array.dtype
@@ -833,32 +807,8 @@ class NvDicomReader(ImageReader):
             pixel_array = ds.pixel_array
             original_dtype = pixel_array.dtype
 
-        # Convert to float32 for rescaling
-        xp = cp if hasattr(pixel_array, "__cuda_array_interface__") else np
-        pixel_array = pixel_array.astype(xp.float32)
-
-        # Apply rescale if present
-        if hasattr(ds, "RescaleSlope") and hasattr(ds, "RescaleIntercept"):
-            slope = float(ds.RescaleSlope)
-            intercept = float(ds.RescaleIntercept)
-            # Determine array library (numpy or cupy)
-            xp = cp if hasattr(pixel_array, "__cuda_array_interface__") else np
-            slope = xp.asarray(slope, dtype=xp.float32)
-            intercept = xp.asarray(intercept, dtype=xp.float32)
-            pixel_array = pixel_array * slope + intercept
-
-        # Convert back to original dtype if requested (matching ITK behavior)
-        if self.preserve_dtype:
-            orig_dtype_str = str(original_dtype)
-            if "uint16" in orig_dtype_str:
-                target_dtype = xp.int32
-            elif "int16" in orig_dtype_str:
-                target_dtype = xp.int32
-            elif "uint8" in orig_dtype_str:
-                target_dtype = xp.int32
-            else:
-                target_dtype = original_dtype
-            pixel_array = pixel_array.astype(target_dtype)
+        # Apply rescaling and dtype conversion using common helper
+        pixel_array = self._apply_rescale_and_dtype(pixel_array, ds, original_dtype)
 
         return pixel_array
 
