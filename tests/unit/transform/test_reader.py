@@ -88,12 +88,12 @@ class TestNvDicomReader(unittest.TestCase):
         if not self._check_test_data(self.original_series_dir, "original DICOM"):
             self.skipTest(f"Original DICOM test data not found at {self.original_series_dir}")
 
-        # Load with NvDicomReader (use reverse_indexing=True to match NIfTI W,H,D layout)
-        reader = NvDicomReader(reverse_indexing=True)
+        # Load with NvDicomReader (default depth_last=True matches NIfTI W,H,D layout)
+        reader = NvDicomReader()
         img_obj = reader.read(self.original_series_dir)
         volume, metadata = reader.get_data(img_obj)
 
-        # Verify shape (should be W, H, D with reverse_indexing=True)
+        # Verify shape (should be W, H, D with depth_last=True, the default)
         self.assertEqual(volume.shape, (512, 512, 77), f"Expected shape (512, 512, 77), got {volume.shape}")
 
         # Load reference NIfTI for comparison
@@ -139,12 +139,12 @@ class TestNvDicomReader(unittest.TestCase):
         if str(transfer_syntax) not in htj2k_syntaxes:
             self.skipTest(f"DICOM files are not HTJ2K encoded (Transfer Syntax: {transfer_syntax})")
 
-        # Load with NvDicomReader (use reverse_indexing=True to match NIfTI W,H,D layout)
-        reader = NvDicomReader(use_nvimgcodec=True, prefer_gpu_output=False, reverse_indexing=True)
+        # Load with NvDicomReader (default depth_last=True matches NIfTI W,H,D layout)
+        reader = NvDicomReader(use_nvimgcodec=True, prefer_gpu_output=False)
         img_obj = reader.read(self.htj2k_series_dir)
         volume, metadata = reader.get_data(img_obj)
 
-        # Verify shape (should be W, H, D with reverse_indexing=True)
+        # Verify shape (should be W, H, D with depth_last=True, the default)
         self.assertEqual(volume.shape, (512, 512, 77), f"Expected shape (512, 512, 77), got {volume.shape}")
 
         # Load reference NIfTI for comparison
@@ -187,13 +187,13 @@ class TestNvDicomReader(unittest.TestCase):
             if not self._check_test_data(self.htj2k_series_dir, "HTJ2K DICOM"):
                 self.skipTest(f"HTJ2K DICOM files not found at {self.htj2k_series_dir}")
 
-        # Load original series (use reverse_indexing=True for W,H,D layout)
-        reader_original = NvDicomReader(use_nvimgcodec=False, reverse_indexing=True)  # Force pydicom for original
+        # Load original series (default depth_last=True for W,H,D layout)
+        reader_original = NvDicomReader(use_nvimgcodec=False)  # Force pydicom for original
         img_obj_orig = reader_original.read(self.original_series_dir)
         volume_orig, metadata_orig = reader_original.get_data(img_obj_orig)
 
-        # Load HTJ2K series with nvImageCodec (use reverse_indexing=True for W,H,D layout)
-        reader_htj2k = NvDicomReader(use_nvimgcodec=True, prefer_gpu_output=False, reverse_indexing=True)
+        # Load HTJ2K series with nvImageCodec (default depth_last=True for W,H,D layout)
+        reader_htj2k = NvDicomReader(use_nvimgcodec=True, prefer_gpu_output=False)
         img_obj_htj2k = reader_htj2k.read(self.htj2k_series_dir)
         volume_htj2k, metadata_htj2k = reader_htj2k.get_data(img_obj_htj2k)
 
@@ -231,7 +231,7 @@ class TestNvDicomReader(unittest.TestCase):
         if not self._check_test_data(self.original_series_dir):
             self.skipTest(f"Original DICOM test data not found at {self.original_series_dir}")
 
-        reader = NvDicomReader(reverse_indexing=True)
+        reader = NvDicomReader()  # default depth_last=True
         img_obj = reader.read(self.original_series_dir)
         volume, metadata = reader.get_data(img_obj)
 
@@ -253,34 +253,34 @@ class TestNvDicomReader(unittest.TestCase):
 
         print(f"✓ NvDicomReader metadata test passed")
 
-    def test_nvdicomreader_reverse_indexing(self):
-        """Test NvDicomReader with reverse_indexing=True (ITK-style layout)."""
+    def test_nvdicomreader_depth_last(self):
+        """Test NvDicomReader with depth_last option (ITK-style vs NumPy-style layout)."""
         if not self._check_test_data(self.original_series_dir):
             self.skipTest(f"Original DICOM test data not found at {self.original_series_dir}")
 
-        # Default: reverse_indexing=False -> (depth, height, width)
-        reader_default = NvDicomReader(reverse_indexing=False)
-        img_obj_default = reader_default.read(self.original_series_dir)
-        volume_default, _ = reader_default.get_data(img_obj_default)
+        # NumPy-style: depth_last=False -> (depth, height, width)
+        reader_numpy = NvDicomReader(depth_last=False)
+        img_obj_numpy = reader_numpy.read(self.original_series_dir)
+        volume_numpy, _ = reader_numpy.get_data(img_obj_numpy)
 
-        # ITK-style: reverse_indexing=True -> (width, height, depth)
-        reader_itk = NvDicomReader(reverse_indexing=True)
+        # ITK-style (default): depth_last=True -> (width, height, depth)
+        reader_itk = NvDicomReader(depth_last=True)
         img_obj_itk = reader_itk.read(self.original_series_dir)
         volume_itk, _ = reader_itk.get_data(img_obj_itk)
 
         # Verify shapes are transposed correctly
-        self.assertEqual(volume_default.shape, (77, 512, 512))
+        self.assertEqual(volume_numpy.shape, (77, 512, 512))
         self.assertEqual(volume_itk.shape, (512, 512, 77))
 
         # Verify data is the same (just transposed)
         np.testing.assert_allclose(
-            volume_default.transpose(2, 1, 0),
+            volume_numpy.transpose(2, 1, 0),
             volume_itk,
             rtol=1e-6,
-            err_msg="Reverse indexing should produce transposed volume",
+            err_msg="depth_last should produce transposed volume",
         )
 
-        print(f"✓ NvDicomReader reverse_indexing test passed")
+        print(f"✓ NvDicomReader depth_last test passed")
 
 
 @unittest.skipIf(not HAS_NVIMGCODEC, "nvimgcodec not available")

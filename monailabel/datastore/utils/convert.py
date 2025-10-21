@@ -213,7 +213,7 @@ def dicom_to_nifti(series_dir, is_seg=False):
             from monailabel.transform.reader import NvDicomReader
             
             # Use NvDicomReader with LoadImage
-            reader = NvDicomReader(reverse_indexing=True)
+            reader = NvDicomReader()
             loader = LoadImage(reader=reader, image_only=False)
 
             # Load the DICOM (supports both directories and single files)
@@ -644,43 +644,78 @@ def transcode_dicom_to_htj2k(
     output_dir: str = None,
     num_resolutions: int = 6,
     code_block_size: tuple = (64, 64),
-    verify: bool = False,
+    max_batch_size: int = 256,
 ) -> str:
     """
     Transcode DICOM files to HTJ2K (High Throughput JPEG 2000) lossless compression.
     
     HTJ2K is a faster variant of JPEG 2000 that provides better compression performance
-    for medical imaging applications. This function uses nvidia-nvimgcodec for encoding
-    with batch processing for improved performance. All transcoding is performed using
-    lossless compression to preserve image quality.
+    for medical imaging applications. This function uses nvidia-nvimgcodec for hardware-
+    accelerated decoding and encoding with batch processing for optimal performance.
+    All transcoding is performed using lossless compression to preserve image quality.
     
-    The function operates in three phases:
-    1. Load all DICOM files and prepare pixel arrays
-    2. Batch encode all images to HTJ2K in parallel
-    3. Save encoded data back to DICOM files
+    The function processes files in configurable batches:
+    1. Categorizes files by transfer syntax (HTJ2K/JPEG2000/JPEG/uncompressed)
+    2. Uses nvimgcodec decoder for compressed files (JPEG2000, JPEG)
+    3. Falls back to pydicom pixel_array for uncompressed files
+    4. Batch encodes all images to HTJ2K using nvimgcodec
+    5. Saves transcoded files with updated transfer syntax
+    6. Copies already-HTJ2K files directly (no re-encoding)
+    
+    Supported source transfer syntaxes:
+    - JPEG 2000 (lossless and lossy)
+    - JPEG (baseline, extended, lossless)
+    - Uncompressed (Explicit/Implicit VR Little/Big Endian)
+    - Already HTJ2K files are copied without re-encoding
+
+    Typical compression ratios of 60-70% with lossless quality.
+    Processing speed depends on batch size and GPU capabilities.
     
     Args:
         input_dir: Path to directory containing DICOM files to transcode
         output_dir: Path to output directory for transcoded files. If None, creates temp directory
-        num_resolutions: Number of resolution levels (default: 6)
+        num_resolutions: Number of wavelet decomposition levels (default: 6)
+                        Higher values = better compression but slower encoding
         code_block_size: Code block size as (height, width) tuple (default: (64, 64))
-        verify: If True, decode output to verify correctness (default: False)
+                        Must be powers of 2. Common values: (32,32), (64,64), (128,128)
+        max_batch_size: Maximum number of DICOM files to process in each batch (default: 256)
+                       Lower values reduce memory usage, higher values may improve speed
         
     Returns:
-        Path to output directory containing transcoded DICOM files
+        str: Path to output directory containing transcoded DICOM files
         
     Raises:
-        ImportError: If nvidia-nvimgcodec or pydicom are not available
-        ValueError: If input directory doesn't exist or contains no DICOM files
+        ImportError: If nvidia-nvimgcodec is not available
+        ValueError: If input directory doesn't exist or contains no valid DICOM files
+        ValueError: If DICOM files are missing required attributes (TransferSyntaxUID, PixelData)
         
     Example:
+        >>> # Basic usage with default settings
         >>> output_dir = transcode_dicom_to_htj2k("/path/to/dicoms")
-        >>> # Transcoded files are now in output_dir with lossless HTJ2K compression
+        >>> print(f"Transcoded files saved to: {output_dir}")
+        
+        >>> # Custom output directory and batch size
+        >>> output_dir = transcode_dicom_to_htj2k(
+        ...     input_dir="/path/to/dicoms",
+        ...     output_dir="/path/to/output",
+        ...     max_batch_size=50,
+        ...     num_resolutions=5
+        ... )
+        
+        >>> # Process with smaller code blocks for memory efficiency
+        >>> output_dir = transcode_dicom_to_htj2k(
+        ...     input_dir="/path/to/dicoms",
+        ...     code_block_size=(32, 32),
+        ...     max_batch_size=5
+        ... )
         
     Note:
         Requires nvidia-nvimgcodec to be installed:
             pip install nvidia-nvimgcodec-cu{XX}[all]
         Replace {XX} with your CUDA version (e.g., cu13 for CUDA 13.x)
+        
+        The function preserves all DICOM metadata including Patient, Study, and Series
+        information. Only the transfer syntax and pixel data encoding are modified.
     """
     import glob
     import shutil
@@ -735,7 +770,7 @@ def transcode_dicom_to_htj2k(
     
     # Create encoder and decoder instances (reused for all files)
     encoder = _get_nvimgcodec_encoder()
-    decoder = _get_nvimgcodec_decoder() if verify else None
+    decoder = _get_nvimgcodec_decoder()  # Always needed for decoding input DICOM images
     
     # HTJ2K Transfer Syntax UID - Lossless Only
     # 1.2.840.10008.1.2.4.201 = HTJ2K Lossless Only
@@ -755,153 +790,124 @@ def transcode_dicom_to_htj2k(
         quality_type=quality_type,
         jpeg2k_encode_params=jpeg2k_encode_params,
     )
+
+    decode_params = nvimgcodec.DecodeParams(
+        allow_any_depth=True,
+        color_spec=nvimgcodec.ColorSpec.UNCHANGED,
+    )
+    
+    # Define transfer syntax constants (use frozenset for O(1) membership testing)
+    JPEG2000_SYNTAXES = frozenset([
+        "1.2.840.10008.1.2.4.90",  # JPEG 2000 Image Compression (Lossless Only)
+        "1.2.840.10008.1.2.4.91",  # JPEG 2000 Image Compression
+    ])
+    
+    HTJ2K_SYNTAXES = frozenset([
+        "1.2.840.10008.1.2.4.201",  # High-Throughput JPEG 2000 Image Compression (Lossless Only)
+        "1.2.840.10008.1.2.4.202",  # High-Throughput JPEG 2000 with RPCL Options Image Compression (Lossless Only)
+        "1.2.840.10008.1.2.4.203",  # High-Throughput JPEG 2000 Image Compression
+    ])
+    
+    JPEG_SYNTAXES = frozenset([
+        "1.2.840.10008.1.2.4.50",  # JPEG Baseline (Process 1)
+        "1.2.840.10008.1.2.4.51",  # JPEG Extended (Process 2 & 4)
+        "1.2.840.10008.1.2.4.57",  # JPEG Lossless, Non-Hierarchical (Process 14)
+        "1.2.840.10008.1.2.4.70",  # JPEG Lossless, Non-Hierarchical, First-Order Prediction
+    ])
+    
+    # Pre-compute combined set for nvimgcodec-compatible formats
+    NVIMGCODEC_SYNTAXES = JPEG2000_SYNTAXES | JPEG_SYNTAXES
     
     start_time = time.time()
     transcoded_count = 0
     skipped_count = 0
-    failed_count = 0
     
-    # Phase 1: Load all DICOM files and prepare pixel arrays for batch encoding
-    logger.info("Phase 1: Loading DICOM files and preparing pixel arrays...")
-    dicom_datasets = []
-    pixel_arrays = []
-    files_to_encode = []
+    # Calculate batch info for logging
+    total_files = len(valid_dicom_files)
+    total_batches = (total_files + max_batch_size - 1) // max_batch_size
     
-    for i, input_file in enumerate(valid_dicom_files, 1):
-        try:
-            # Read DICOM
-            ds = pydicom.dcmread(input_file)
-            
-            # Check if already HTJ2K
+    for batch_start in range(0, total_files, max_batch_size):
+        batch_end = min(batch_start + max_batch_size, total_files)
+        current_batch = batch_start // max_batch_size + 1
+        logger.info(f"[{batch_start}..{batch_end}] Processing batch {current_batch}/{total_batches}")
+        batch_files = valid_dicom_files[batch_start:batch_end]
+        batch_datasets = [pydicom.dcmread(file) for file in batch_files]
+        nvimgcodec_batch = []
+        pydicom_batch = []
+        copy_batch = []
+        for idx, ds in enumerate(batch_datasets):
             current_ts = getattr(ds, 'file_meta', {}).get('TransferSyntaxUID', None)
-            if current_ts and str(current_ts).startswith('1.2.840.10008.1.2.4.20'):
-                logger.debug(f"[{i}/{len(valid_dicom_files)}] Already HTJ2K: {os.path.basename(input_file)}")
-                # Just copy the file
-                output_file = os.path.join(output_dir, os.path.basename(input_file))
-                shutil.copy2(input_file, output_file)
-                skipped_count += 1
-                continue
+            if current_ts is None:
+                raise ValueError(f"DICOM file {os.path.basename(batch_files[idx])} does not have a Transfer Syntax UID")
             
-            # Use pydicom's pixel_array to decode the source image
-            # This handles all transfer syntaxes automatically
-            source_pixel_array = ds.pixel_array
+            ts_str = str(current_ts)
+            if ts_str in NVIMGCODEC_SYNTAXES:
+                if not hasattr(ds, "PixelData") or ds.PixelData is None:
+                    raise ValueError(f"DICOM file {os.path.basename(batch_files[idx])} does not have a PixelData member")
+                nvimgcodec_batch.append(idx)
+            elif ts_str in HTJ2K_SYNTAXES:
+                copy_batch.append(idx)
+            else:
+                pydicom_batch.append(idx)
+
+        if copy_batch:
+            for idx in copy_batch:
+                output_file = os.path.join(output_dir, os.path.basename(batch_files[idx]))
+                shutil.copy2(batch_files[idx], output_file)
+            skipped_count += len(copy_batch)
+
+        data_sequence = []
+        decoded_data = []
+        num_frames = []
+        
+        # Decode using nvimgcodec for compressed formats
+        if nvimgcodec_batch:
+            for idx in nvimgcodec_batch:
+                frames = [fragment for fragment in pydicom.encaps.generate_frames(batch_datasets[idx].PixelData)]
+                num_frames.append(len(frames))
+                data_sequence.extend(frames)
+            decoder_output = decoder.decode(data_sequence, params=decode_params)
+            decoded_data.extend(decoder_output)
+
+        # Decode using pydicom for uncompressed formats
+        if pydicom_batch:
+            for idx in pydicom_batch:
+                source_pixel_array = batch_datasets[idx].pixel_array
+                if not isinstance(source_pixel_array, np.ndarray):
+                    source_pixel_array = np.array(source_pixel_array)
+                if source_pixel_array.ndim == 2:
+                    source_pixel_array = source_pixel_array[:, :, np.newaxis]
+                for frame_idx in range(source_pixel_array.shape[-1]):
+                    decoded_data.append(source_pixel_array[:, :, frame_idx])
+                num_frames.append(source_pixel_array.shape[-1])
+
+        # Encode all frames to HTJ2K
+        encoded_data = encoder.encode(decoded_data, codec="jpeg2k", params=encode_params)
+
+        # Reassemble and save transcoded files
+        frame_offset = 0
+        files_to_process = nvimgcodec_batch + pydicom_batch
+        
+        for list_idx, dataset_idx in enumerate(files_to_process):
+            nframes = num_frames[list_idx]
+            encoded_frames = [bytes(enc) for enc in encoded_data[frame_offset:frame_offset + nframes]]
+            frame_offset += nframes
             
-            # Ensure it's a numpy array
-            if not isinstance(source_pixel_array, np.ndarray):
-                source_pixel_array = np.array(source_pixel_array)
+            # Update dataset with HTJ2K encoded data
+            batch_datasets[dataset_idx].PixelData = pydicom.encaps.encapsulate(encoded_frames)
+            batch_datasets[dataset_idx].file_meta.TransferSyntaxUID = pydicom.uid.UID(target_transfer_syntax)
             
-            # Add channel dimension if needed (nvimgcodec expects shape like (H, W, C))
-            if source_pixel_array.ndim == 2:
-                source_pixel_array = source_pixel_array[:, :, np.newaxis]
-            
-            # Store for batch encoding
-            dicom_datasets.append(ds)
-            pixel_arrays.append(source_pixel_array)
-            files_to_encode.append(input_file)
-            
-            if i % 50 == 0 or i == len(valid_dicom_files):
-                logger.info(f"Loading progress: {i}/{len(valid_dicom_files)} files loaded")
-                
-        except Exception as e:
-            logger.error(f"[{i}/{len(valid_dicom_files)}] Error loading {os.path.basename(input_file)}: {e}")
-            failed_count += 1
-            continue
-    
-    if not pixel_arrays:
-        logger.warning("No images to encode")
-        return output_dir
-    
-    # Phase 2: Batch encode all images to HTJ2K
-    logger.info(f"Phase 2: Batch encoding {len(pixel_arrays)} images to HTJ2K...")
-    encode_start = time.time()
-    
-    try:
-        encoded_htj2k_images = encoder.encode(
-            pixel_arrays,
-            codec="jpeg2k",
-            params=encode_params,
-        )
-        encode_time = time.time() - encode_start
-        logger.info(f"Batch encoding completed in {encode_time:.2f} seconds ({len(pixel_arrays)/encode_time:.1f} images/sec)")
-    except Exception as e:
-        logger.error(f"Batch encoding failed: {e}")
-        # Fall back to individual encoding
-        logger.warning("Falling back to individual encoding...")
-        encoded_htj2k_images = []
-        for idx, pixel_array in enumerate(pixel_arrays):
-            try:
-                encoded_image = encoder.encode(
-                    [pixel_array],
-                    codec="jpeg2k",
-                    params=encode_params,
-                )
-                encoded_htj2k_images.extend(encoded_image)
-            except Exception as e2:
-                logger.error(f"Failed to encode image {idx}: {e2}")
-                encoded_htj2k_images.append(None)
-    
-    # Phase 3: Save encoded data back to DICOM files
-    logger.info("Phase 3: Saving encoded DICOM files...")
-    save_start = time.time()
-    
-    for idx, (ds, encoded_data, input_file) in enumerate(zip(dicom_datasets, encoded_htj2k_images, files_to_encode)):
-        try:
-            if encoded_data is None:
-                logger.error(f"Skipping {os.path.basename(input_file)} - encoding failed")
-                failed_count += 1
-                continue
-            
-            # Encapsulate encoded frames for DICOM
-            new_encoded_frames = [bytes(encoded_data)]
-            encapsulated_pixel_data = pydicom.encaps.encapsulate(new_encoded_frames)
-            ds.PixelData = encapsulated_pixel_data
-            
-            # Update transfer syntax UID
-            ds.file_meta.TransferSyntaxUID = pydicom.uid.UID(target_transfer_syntax)
-            
-            # Save to output directory
-            output_file = os.path.join(output_dir, os.path.basename(input_file))
-            ds.save_as(output_file)
-            
-            # Verify if requested
-            if verify:
-                ds_verify = pydicom.dcmread(output_file)
-                pixel_data = ds_verify.PixelData
-                data_sequence = [fragment for fragment in pydicom.encaps.generate_frames(pixel_data)]
-                images_verify = decoder.decode(
-                    data_sequence,
-                    params=nvimgcodec.DecodeParams(
-                        allow_any_depth=True,
-                        color_spec=nvimgcodec.ColorSpec.UNCHANGED
-                    ),
-                )
-                image_verify = np.array(images_verify[0].cpu()).squeeze()
-                
-                if not np.allclose(image_verify, ds_verify.pixel_array):
-                    logger.warning(f"Verification failed for {os.path.basename(input_file)}")
-                    failed_count += 1
-                    continue
-            
+            # Save transcoded file
+            output_file = os.path.join(output_dir, os.path.basename(batch_files[dataset_idx]))
+            batch_datasets[dataset_idx].save_as(output_file)
             transcoded_count += 1
-            
-            if (idx + 1) % 50 == 0 or (idx + 1) == len(dicom_datasets):
-                logger.info(f"Saving progress: {idx + 1}/{len(dicom_datasets)} files saved")
-                
-        except Exception as e:
-            logger.error(f"Error saving {os.path.basename(input_file)}: {e}")
-            failed_count += 1
-            continue
-    
-    save_time = time.time() - save_start
-    logger.info(f"Saving completed in {save_time:.2f} seconds")
     
     elapsed_time = time.time() - start_time
-    
+
     logger.info(f"Transcoding complete:")
     logger.info(f"  Total files: {len(valid_dicom_files)}")
     logger.info(f"  Successfully transcoded: {transcoded_count}")
     logger.info(f"  Already HTJ2K (copied): {skipped_count}")
-    logger.info(f"  Failed: {failed_count}")
     logger.info(f"  Time elapsed: {elapsed_time:.2f} seconds")
     logger.info(f"  Output directory: {output_dir}")
     

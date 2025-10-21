@@ -304,7 +304,6 @@ class TestConvert(unittest.TestCase):
             result_dir = transcode_dicom_to_htj2k(
                 input_dir=dicom_dir,
                 output_dir=output_dir,
-                verify=False,  # We'll do our own verification
             )
             
             self.assertEqual(result_dir, output_dir, "Output directory should match requested directory")
@@ -461,7 +460,6 @@ class TestConvert(unittest.TestCase):
             htj2k_transcoded_dir = transcode_dicom_to_htj2k(
                 input_dir=htj2k_source_dir,
                 output_dir=None,  # Use temp dir
-                verify=False,
             )
             
             # Copy the transcoded HTJ2K files to mixed directory
@@ -513,7 +511,6 @@ class TestConvert(unittest.TestCase):
             result_dir = transcode_dicom_to_htj2k(
                 input_dir=mixed_dir,
                 output_dir=output_dir,
-                verify=False,
             )
             
             self.assertEqual(result_dir, output_dir, "Output directory should match requested directory")

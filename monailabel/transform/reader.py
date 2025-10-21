@@ -84,9 +84,9 @@ class NvDicomReader(ImageReader):
         series_meta: whether to load series metadata (currently unused).
         affine_lps_to_ras: whether to convert the affine matrix from "LPS" to "RAS".
             Defaults to ``True``. Set to ``True`` to be consistent with ``NibabelReader``.
-        reverse_indexing: whether to use a reversed spatial indexing convention for the returned data array.
-            If ``False`` (default), returns shape (depth, height, width) following NumPy convention.
-            If ``True``, returns shape (width, height, depth) similar to ITK's layout.
+        depth_last: whether to place depth dimension last in the returned data array.
+            If ``True`` (default), returns shape (width, height, depth) similar to ITK's layout.
+            If ``False``, returns shape (depth, height, width) following NumPy convention.
             This option does not affect the metadata.
         preserve_dtype: whether to preserve the original DICOM pixel data type after applying rescale.
             If ``True`` (default), converts back to original dtype (matching ITK behavior).
@@ -98,17 +98,17 @@ class NvDicomReader(ImageReader):
         kwargs: additional args for `pydicom.dcmread` API.
 
     Example:
-        >>> # Read first series from directory (default: depth first)
+        >>> # Read first series from directory (default: depth last, ITK-style)
         >>> reader = NvDicomReader()
         >>> img = reader.read("path/to/dicom/dir")
         >>> volume, metadata = reader.get_data(img)
-        >>> volume.shape  # (173, 512, 512) = (depth, height, width)
+        >>> volume.shape  # (512, 512, 173) = (width, height, depth)
         >>>
-        >>> # Read with ITK-style layout (depth last)
-        >>> reader = NvDicomReader(reverse_indexing=True)
+        >>> # Read with NumPy-style layout (depth first)
+        >>> reader = NvDicomReader(depth_last=False)
         >>> img = reader.read("path/to/dicom/dir")
         >>> volume, metadata = reader.get_data(img)
-        >>> volume.shape  # (512, 512, 173) = (width, height, depth)
+        >>> volume.shape  # (173, 512, 512) = (depth, height, width)
         >>>
         >>> # Output float32 instead of preserving original dtype
         >>> reader = NvDicomReader(preserve_dtype=False)
@@ -133,7 +133,7 @@ class NvDicomReader(ImageReader):
         series_name: str = "",
         series_meta: bool = False,
         affine_lps_to_ras: bool = True,
-        reverse_indexing: bool = False,
+        depth_last: bool = True,
         preserve_dtype: bool = True,
         prefer_gpu_output: bool = True,
         use_nvimgcodec: bool = True,
@@ -146,7 +146,7 @@ class NvDicomReader(ImageReader):
         self.series_name = series_name
         self.series_meta = series_meta
         self.affine_lps_to_ras = affine_lps_to_ras
-        self.reverse_indexing = reverse_indexing
+        self.depth_last = depth_last
         self.preserve_dtype = preserve_dtype
         self.use_nvimgcodec = use_nvimgcodec
         self.prefer_gpu_output = prefer_gpu_output
@@ -678,8 +678,8 @@ class NvDicomReader(ImageReader):
                 dtype_vol = xp.float32 if needs_rescale else original_dtype
 
                 # Build 3D volume (use float32 for rescaling to avoid overflow)
-                # Shape depends on reverse_indexing
-                if self.reverse_indexing:
+                # Shape depends on depth_last
+                if self.depth_last:
                     volume = xp.zeros((cols, rows, depth), dtype=dtype_vol)
                 else:
                     volume = xp.zeros((depth, rows, cols), dtype=dtype_vol)
@@ -689,7 +689,7 @@ class NvDicomReader(ImageReader):
                     if frame_array.shape != (rows, cols):
                         frame_array = frame_array.reshape(rows, cols)
 
-                    if self.reverse_indexing:
+                    if self.depth_last:
                         volume[:, :, frame_idx] = frame_array.T
                     else:
                         volume[frame_idx, :, :] = frame_array
@@ -712,8 +712,8 @@ class NvDicomReader(ImageReader):
             xp = cp if hasattr(first_pixel_array, "__cuda_array_interface__") else np
             dtype_vol = xp.float32 if needs_rescale else original_dtype
 
-            # Shape depends on reverse_indexing
-            if self.reverse_indexing:
+            # Shape depends on depth_last
+            if self.depth_last:
                 volume = xp.zeros((cols, rows, depth), dtype=dtype_vol)
             else:
                 volume = xp.zeros((depth, rows, cols), dtype=dtype_vol)
@@ -726,7 +726,7 @@ class NvDicomReader(ImageReader):
                 else:
                     frame_array = np.asarray(frame_array)
 
-                if self.reverse_indexing:
+                if self.depth_last:
                     volume[:, :, frame_idx] = frame_array.T
                 else:
                     volume[frame_idx, :, :] = frame_array
@@ -905,12 +905,12 @@ class NvDicomReader(ImageReader):
         affine[:3, 1] = col_cosine * spacing[1]
 
         # Calculate slice direction
-        # Determine the depth dimension (handle reverse_indexing)
+        # Determine the depth dimension (handle depth_last)
         spatial_shape = metadata[MetaKeys.SPATIAL_SHAPE]
         if len(spatial_shape) == 3:
             # Find which dimension is the depth (smallest for typical medical images)
-            # When reverse_indexing=True: shape is (W, H, D), depth is at index 2
-            # When reverse_indexing=False: shape is (D, H, W), depth is at index 0
+            # When depth_last=True: shape is (W, H, D), depth is at index 2
+            # When depth_last=False: shape is (D, H, W), depth is at index 0
             depth_idx = np.argmin(spatial_shape)
             n_slices = spatial_shape[depth_idx]
 
