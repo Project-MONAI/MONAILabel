@@ -148,7 +148,7 @@ export default class ClassPrompts extends BaseTab {
       duration: 4000,
     });
 
-    this.props.updateView(response, model, label_names, true);
+    this.props.updateView(response, model, label_names, true, false, -1, displaySet.SeriesInstanceUID);
   };
 
   segColorToRgb(s) {

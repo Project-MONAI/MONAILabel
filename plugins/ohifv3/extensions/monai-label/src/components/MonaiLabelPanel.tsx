@@ -62,6 +62,7 @@ export default class MonaiLabelPanel extends Component {
       info: { models: [], datasets: [] },
       action: {},
       options: {},
+      segmentationSeriesUID: null,  // Track which series the segmentation belongs to
     };
   }
 
@@ -214,7 +215,7 @@ export default class MonaiLabelPanel extends Component {
 
       // Wait for Above Segmentations to be added/available
       setTimeout(() => {
-        const { viewport } = this.getActiveViewportInfo();
+        const { viewport, displaySet } = this.getActiveViewportInfo();
         for (const segmentIndex of Object.keys(initialSegs)) {
           cornerstoneTools.segmentation.config.color.setSegmentIndexColor(
             viewport.viewportId,
@@ -223,6 +224,8 @@ export default class MonaiLabelPanel extends Component {
             initialSegs[segmentIndex].color
           );
         }
+        // Store the series UID for the initial segmentation
+        this.setState({ segmentationSeriesUID: displaySet?.SeriesInstanceUID });
       }, 1000);
     }
 
@@ -268,7 +271,8 @@ export default class MonaiLabelPanel extends Component {
     labels,
     override = false,
     label_class_unknown = false,
-    sidx = -1
+    sidx = -1,
+    inferenceSeriesUID = null
   ) => {
     console.log('UpdateView: ', {
       model_id,
@@ -314,63 +318,205 @@ export default class MonaiLabelPanel extends Component {
     console.log('Index Remap', labels, modelToSegMapping);
     const data = new Uint8Array(ret.image);
 
-    const { segmentationService } = this.props.servicesManager.services;
-    const volumeLoadObject = segmentationService.getLabelmapVolume('1');
-    if (volumeLoadObject) {
-      // console.log('Volume Object is In Cache....');
-      let convertedData = data;
-      for (let i = 0; i < convertedData.length; i++) {
-        const midx = convertedData[i];
-        const sidx = modelToSegMapping[midx];
-        if (midx && sidx) {
-          convertedData[i] = sidx;
-        } else if (override && label_class_unknown && labels.length === 1) {
-          convertedData[i] = midx ? labelNames[labels[0]] : 0;
-        } else if (labels.length > 0) {
-          convertedData[i] = 0;
-        }
-      }
-
-      if (override === true) {
-        const { segmentationService } = this.props.servicesManager.services;
-        const volumeLoadObject = segmentationService.getLabelmapVolume('1');
-        const { voxelManager } = volumeLoadObject;
-        const scalarData = voxelManager?.getCompleteScalarDataArray();
-
-        // console.log('Current ScalarData: ', scalarData);
-        const currentSegArray = new Uint8Array(scalarData.length);
-        currentSegArray.set(scalarData);
-
-        // get unique values to determine which organs to update, keep rest
-        const updateTargets = new Set(convertedData);
-        const numImageFrames =
-          this.getActiveViewportInfo().displaySet.numImageFrames;
-        const sliceLength = scalarData.length / numImageFrames;
-        const sliceBegin = sliceLength * sidx;
-        const sliceEnd = sliceBegin + sliceLength;
-
-        for (let i = 0; i < convertedData.length; i++) {
-          if (sidx >= 0 && (i < sliceBegin || i >= sliceEnd)) {
-            continue;
-          }
-
-          if (
-            convertedData[i] !== 255 &&
-            updateTargets.has(currentSegArray[i])
-          ) {
-            currentSegArray[i] = convertedData[i];
-          }
-        }
-        convertedData = currentSegArray;
-      }
-      const { voxelManager } = volumeLoadObject;
-      voxelManager?.setCompleteScalarDataArray(convertedData);
-      triggerEvent(eventTarget, Enums.Events.SEGMENTATION_DATA_MODIFIED, {
-        segmentationId: '1',
+    const { segmentationService, viewportGridService } = this.props.servicesManager.services;
+    let volumeLoadObject = segmentationService.getLabelmapVolume('1');
+    const { displaySet } = this.getActiveViewportInfo();
+    const currentSeriesUID = displaySet?.SeriesInstanceUID;
+    
+    // If inferenceSeriesUID is not provided, assume it's for the current series
+    if (!inferenceSeriesUID) {
+      inferenceSeriesUID = currentSeriesUID;
+    }
+    
+    // Validate inference was run on the current series
+    if (currentSeriesUID !== inferenceSeriesUID) {
+      this.notification.show({
+        title: 'MONAI Label - Series Mismatch',
+        message: 'Please run inference on the current series',
+        type: 'error',
+        duration: 5000,
       });
-      console.log("updated the segmentation's scalar data");
+      return;
+    }
+    
+    // Check if we have a stored series UID for the existing segmentation
+    const storedSeriesUID = this.state.segmentationSeriesUID;
+    
+    if (volumeLoadObject) {
+      const { voxelManager } = volumeLoadObject;
+      const existingData = voxelManager?.getCompleteScalarDataArray();
+      const dimensionsMatch = existingData?.length === data.length;
+      const seriesMatch = storedSeriesUID === currentSeriesUID;
+      
+      // If series don't match OR dimensions don't match, this is a different series - need to recreate segmentation
+      // BUT: if storedSeriesUID is null, this is the first inference, so don't recreate
+      if (storedSeriesUID !== null && (!seriesMatch || !dimensionsMatch)) {
+        // Remove the old segmentation
+        try {
+          segmentationService.remove('1');
+          this.setState({ segmentationSeriesUID: null });
+        } catch (e) {
+          return;
+        }
+        
+        // Create a new segmentation for the current series
+        if (!this.state.info || !this.state.info.initialSegs) {
+          return;
+        }
+        
+        const segmentations = [
+          {
+            segmentationId: '1',
+            representation: {
+              type: Enums.SegmentationRepresentations.Labelmap,
+            },
+            config: {
+              label: 'Segmentations',
+              segments: this.state.info.initialSegs,
+            },
+          },
+        ];
+        
+        this.props.commandsManager.runCommand('loadSegmentationsForViewport', {
+          segmentations,
+        });
+        
+        const responseData = response.data;
+        setTimeout(() => {
+          const { viewport } = this.getActiveViewportInfo();
+          const initialSegs = this.state.info.initialSegs;
+          
+          for (const segmentIndex of Object.keys(initialSegs)) {
+            cornerstoneTools.segmentation.config.color.setSegmentIndexColor(
+              viewport.viewportId,
+              '1',
+              initialSegs[segmentIndex].segmentIndex,
+              initialSegs[segmentIndex].color
+            );
+          }
+          
+          // Recursively call updateView to populate the newly created segmentation
+          this.updateView(
+            { data: responseData },
+            model_id,
+            labels,
+            override,
+            label_class_unknown,
+            sidx,
+            currentSeriesUID
+          );
+        }, 1000);
+        return;
+      }
+      
+      if (volumeLoadObject) {
+        // console.log('Volume Object is In Cache....');
+        let convertedData = data;
+        for (let i = 0; i < convertedData.length; i++) {
+          const midx = convertedData[i];
+          const sidx = modelToSegMapping[midx];
+          if (midx && sidx) {
+            convertedData[i] = sidx;
+          } else if (override && label_class_unknown && labels.length === 1) {
+            convertedData[i] = midx ? labelNames[labels[0]] : 0;
+          } else if (labels.length > 0) {
+            convertedData[i] = 0;
+          }
+        }
+
+        if (override === true) {
+          const { segmentationService } = this.props.servicesManager.services;
+          const volumeLoadObject = segmentationService.getLabelmapVolume('1');
+          const { voxelManager } = volumeLoadObject;
+          const scalarData = voxelManager?.getCompleteScalarDataArray();
+
+          // console.log('Current ScalarData: ', scalarData);
+          const currentSegArray = new Uint8Array(scalarData.length);
+          currentSegArray.set(scalarData);
+
+          // get unique values to determine which organs to update, keep rest
+          const updateTargets = new Set(convertedData);
+          const numImageFrames =
+            this.getActiveViewportInfo().displaySet.numImageFrames;
+          const sliceLength = scalarData.length / numImageFrames;
+          const sliceBegin = sliceLength * sidx;
+          const sliceEnd = sliceBegin + sliceLength;
+
+          for (let i = 0; i < convertedData.length; i++) {
+            if (sidx >= 0 && (i < sliceBegin || i >= sliceEnd)) {
+              continue;
+            }
+
+            if (
+              convertedData[i] !== 255 &&
+              updateTargets.has(currentSegArray[i])
+            ) {
+              currentSegArray[i] = convertedData[i];
+            }
+          }
+          convertedData = currentSegArray;
+        }
+        // voxelManager already declared above
+        voxelManager?.setCompleteScalarDataArray(convertedData);
+        triggerEvent(eventTarget, Enums.Events.SEGMENTATION_DATA_MODIFIED, {
+          segmentationId: '1',
+        });
+        console.log("updated the segmentation's scalar data");
+        
+        // Store the series UID for this segmentation
+        this.setState({ segmentationSeriesUID: currentSeriesUID });
+      }
     } else {
-      console.log('TODO:: Volume Object is NOT In Cache....');
+      // Create new segmentation
+      if (!this.state.info || !this.state.info.initialSegs) {
+        return;
+      }
+      
+      const segmentations = [
+        {
+          segmentationId: '1',
+          representation: {
+            type: Enums.SegmentationRepresentations.Labelmap,
+          },
+          config: {
+            label: 'Segmentations',
+            segments: this.state.info.initialSegs,
+          },
+        },
+      ];
+      
+      // Create the segmentation for this viewport
+      this.props.commandsManager.runCommand('loadSegmentationsForViewport', {
+        segmentations,
+      });
+      
+      // Wait for segmentation to be created, then populate it with inference data
+      const responseData = response.data;
+      setTimeout(() => {
+        const { viewport } = this.getActiveViewportInfo();
+        const initialSegs = this.state.info.initialSegs;
+        
+        // Set colors
+        for (const segmentIndex of Object.keys(initialSegs)) {
+          cornerstoneTools.segmentation.config.color.setSegmentIndexColor(
+            viewport.viewportId,
+            '1',
+            initialSegs[segmentIndex].segmentIndex,
+            initialSegs[segmentIndex].color
+          );
+        }
+        
+        // Recursively call updateView to populate the newly created segmentation
+        this.updateView(
+          { data: responseData },
+          model_id,
+          labels,
+          override,
+          label_class_unknown,
+          sidx,
+          currentSeriesUID  // Pass the series UID
+        );
+      }, 1000);
     }
   };
 

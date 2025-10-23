@@ -14,6 +14,23 @@
 curr_dir="$(pwd)"
 my_dir="$(dirname "$(readlink -f "$0")")"
 
+# Load nvm and ensure Node.js 18 is available
+export NVM_DIR="$HOME/.nvm"
+if [ -s "$NVM_DIR/nvm.sh" ]; then
+  echo "Loading nvm..."
+  . "$NVM_DIR/nvm.sh"
+  nvm use 18 2>/dev/null || nvm install 18
+  echo "Using Node.js $(node --version)"
+else
+  echo "WARNING: nvm not found. Checking Node.js version..."
+  NODE_VERSION=$(node --version 2>/dev/null | cut -d'v' -f2 | cut -d'.' -f1)
+  if [ -z "$NODE_VERSION" ] || [ "$NODE_VERSION" -lt 18 ]; then
+    echo "ERROR: Node.js >= 18 is required. Current version: $(node --version 2>/dev/null || echo 'not installed')"
+    echo "Please install Node.js 18 or higher, or install nvm."
+    exit 1
+  fi
+fi
+
 echo "Installing requirements..."
 sh $my_dir/requirements.sh
 

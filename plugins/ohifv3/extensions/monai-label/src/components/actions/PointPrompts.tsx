@@ -195,7 +195,8 @@ export default class PointPrompts extends BaseTab {
       label_names,
       true,
       label_class_unknown,
-      sidx
+      sidx,
+      displaySet.SeriesInstanceUID
     );
   };
 
