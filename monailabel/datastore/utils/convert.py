@@ -639,12 +639,110 @@ def dicom_seg_to_itk_image(label, output_ext=".seg.nrrd"):
     return output_file
 
 
+def _setup_htj2k_decode_params():
+    """
+    Create nvimgcodec decoding parameters for DICOM images.
+    
+    Returns:
+        nvimgcodec.DecodeParams: Decode parameters configured for DICOM
+    """
+    from nvidia import nvimgcodec
+    
+    decode_params = nvimgcodec.DecodeParams(
+        allow_any_depth=True,
+        color_spec=nvimgcodec.ColorSpec.UNCHANGED,
+    )
+    
+    return decode_params
+
+
+def _setup_htj2k_encode_params(num_resolutions: int = 6, code_block_size: tuple = (64, 64)):
+    """
+    Create nvimgcodec encoding parameters for HTJ2K lossless compression.
+    
+    Args:
+        num_resolutions: Number of wavelet decomposition levels
+        code_block_size: Code block size as (height, width) tuple
+        
+    Returns:
+        tuple: (encode_params, target_transfer_syntax)
+    """
+    from nvidia import nvimgcodec
+    
+    target_transfer_syntax = "1.2.840.10008.1.2.4.202"  # HTJ2K with RPCL Options (Lossless)
+    quality_type = nvimgcodec.QualityType.LOSSLESS
+    
+    # Configure JPEG2K encoding parameters
+    jpeg2k_encode_params = nvimgcodec.Jpeg2kEncodeParams()
+    jpeg2k_encode_params.num_resolutions = num_resolutions
+    jpeg2k_encode_params.code_block_size = code_block_size
+    jpeg2k_encode_params.bitstream_type = nvimgcodec.Jpeg2kBitstreamType.JP2
+    jpeg2k_encode_params.prog_order = nvimgcodec.Jpeg2kProgOrder.LRCP
+    jpeg2k_encode_params.ht = True  # Enable High Throughput mode
+    
+    encode_params = nvimgcodec.EncodeParams(
+        quality_type=quality_type,
+        jpeg2k_encode_params=jpeg2k_encode_params,
+    )
+    
+    return encode_params, target_transfer_syntax
+
+
+def _get_transfer_syntax_constants():
+    """
+    Get transfer syntax UID constants for categorizing DICOM files.
+    
+    Returns:
+        dict: Dictionary with keys 'JPEG2000', 'HTJ2K', 'JPEG', 'NVIMGCODEC' (combined set)
+    """
+    JPEG2000_SYNTAXES = frozenset([
+        "1.2.840.10008.1.2.4.90",  # JPEG 2000 Image Compression (Lossless Only)
+        "1.2.840.10008.1.2.4.91",  # JPEG 2000 Image Compression
+    ])
+    
+    HTJ2K_SYNTAXES = frozenset([
+        "1.2.840.10008.1.2.4.201",  # High-Throughput JPEG 2000 Image Compression (Lossless Only)
+        "1.2.840.10008.1.2.4.202",  # High-Throughput JPEG 2000 with RPCL Options Image Compression (Lossless Only)
+        "1.2.840.10008.1.2.4.203",  # High-Throughput JPEG 2000 Image Compression
+    ])
+    
+    JPEG_SYNTAXES = frozenset([
+        "1.2.840.10008.1.2.4.50",  # JPEG Baseline (Process 1)
+        "1.2.840.10008.1.2.4.51",  # JPEG Extended (Process 2 & 4)
+        "1.2.840.10008.1.2.4.57",  # JPEG Lossless, Non-Hierarchical (Process 14)
+        "1.2.840.10008.1.2.4.70",  # JPEG Lossless, Non-Hierarchical, First-Order Prediction
+    ])
+    
+    return {
+        'JPEG2000': JPEG2000_SYNTAXES,
+        'HTJ2K': HTJ2K_SYNTAXES,
+        'JPEG': JPEG_SYNTAXES,
+        'NVIMGCODEC': JPEG2000_SYNTAXES | HTJ2K_SYNTAXES | JPEG_SYNTAXES
+    }
+
+
+def _create_basic_offset_table_pixel_data(encoded_frames: list) -> bytes:
+    """
+    Create encapsulated pixel data with Basic Offset Table for multi-frame DICOM.
+    
+    Uses pydicom's encapsulate() function to ensure 100% standard compliance.
+    
+    Args:
+        encoded_frames: List of encoded frame byte strings
+        
+    Returns:
+        bytes: Encapsulated pixel data with Basic Offset Table per DICOM Part 5 Section A.4
+    """
+    return pydicom.encaps.encapsulate(encoded_frames, has_bot=True)
+
+
 def transcode_dicom_to_htj2k(
     input_dir: str,
     output_dir: str = None,
     num_resolutions: int = 6,
     code_block_size: tuple = (64, 64),
     max_batch_size: int = 256,
+    add_basic_offset_table: bool = True,
 ) -> str:
     """
     Transcode DICOM files to HTJ2K (High Throughput JPEG 2000) lossless compression.
@@ -656,17 +754,16 @@ def transcode_dicom_to_htj2k(
     
     The function processes files in configurable batches:
     1. Categorizes files by transfer syntax (HTJ2K/JPEG2000/JPEG/uncompressed)
-    2. Uses nvimgcodec decoder for compressed files (JPEG2000, JPEG)
+    2. Uses nvimgcodec decoder for compressed files (HTJ2K, JPEG2000, JPEG)
     3. Falls back to pydicom pixel_array for uncompressed files
     4. Batch encodes all images to HTJ2K using nvimgcodec
-    5. Saves transcoded files with updated transfer syntax
-    6. Copies already-HTJ2K files directly (no re-encoding)
+    5. Saves transcoded files with updated transfer syntax and optional Basic Offset Table
     
     Supported source transfer syntaxes:
+    - HTJ2K (High-Throughput JPEG 2000) - decoded and re-encoded to add BOT if needed
     - JPEG 2000 (lossless and lossy)
     - JPEG (baseline, extended, lossless)
     - Uncompressed (Explicit/Implicit VR Little/Big Endian)
-    - Already HTJ2K files are copied without re-encoding
 
     Typical compression ratios of 60-70% with lossless quality.
     Processing speed depends on batch size and GPU capabilities.
@@ -680,6 +777,9 @@ def transcode_dicom_to_htj2k(
                         Must be powers of 2. Common values: (32,32), (64,64), (128,128)
         max_batch_size: Maximum number of DICOM files to process in each batch (default: 256)
                        Lower values reduce memory usage, higher values may improve speed
+        add_basic_offset_table: If True, creates Basic Offset Table for multi-frame DICOMs (default: True)
+                               BOT enables O(1) frame access without parsing entire pixel data stream
+                               Per DICOM Part 5 Section A.4. Only affects multi-frame files.
         
     Returns:
         str: Path to output directory containing transcoded DICOM files
@@ -772,55 +872,20 @@ def transcode_dicom_to_htj2k(
     encoder = _get_nvimgcodec_encoder()
     decoder = _get_nvimgcodec_decoder()  # Always needed for decoding input DICOM images
     
-    # HTJ2K Transfer Syntax UID - Lossless Only
-    # 1.2.840.10008.1.2.4.201 = HTJ2K Lossless Only
-    target_transfer_syntax = "1.2.840.10008.1.2.4.201"
-    quality_type = nvimgcodec.QualityType.LOSSLESS
+    # Setup HTJ2K encoding and decoding parameters
+    encode_params, target_transfer_syntax = _setup_htj2k_encode_params(
+        num_resolutions=num_resolutions,
+        code_block_size=code_block_size
+    )
+    decode_params = _setup_htj2k_decode_params()
     logger.info("Using lossless HTJ2K compression")
     
-    # Configure JPEG2K encoding parameters
-    jpeg2k_encode_params = nvimgcodec.Jpeg2kEncodeParams()
-    jpeg2k_encode_params.num_resolutions = num_resolutions
-    jpeg2k_encode_params.code_block_size = code_block_size
-    jpeg2k_encode_params.bitstream_type = nvimgcodec.Jpeg2kBitstreamType.JP2
-    jpeg2k_encode_params.prog_order = nvimgcodec.Jpeg2kProgOrder.LRCP
-    jpeg2k_encode_params.ht = True  # Enable High Throughput mode
-    
-    encode_params = nvimgcodec.EncodeParams(
-        quality_type=quality_type,
-        jpeg2k_encode_params=jpeg2k_encode_params,
-    )
-
-    decode_params = nvimgcodec.DecodeParams(
-        allow_any_depth=True,
-        color_spec=nvimgcodec.ColorSpec.UNCHANGED,
-    )
-    
-    # Define transfer syntax constants (use frozenset for O(1) membership testing)
-    JPEG2000_SYNTAXES = frozenset([
-        "1.2.840.10008.1.2.4.90",  # JPEG 2000 Image Compression (Lossless Only)
-        "1.2.840.10008.1.2.4.91",  # JPEG 2000 Image Compression
-    ])
-    
-    HTJ2K_SYNTAXES = frozenset([
-        "1.2.840.10008.1.2.4.201",  # High-Throughput JPEG 2000 Image Compression (Lossless Only)
-        "1.2.840.10008.1.2.4.202",  # High-Throughput JPEG 2000 with RPCL Options Image Compression (Lossless Only)
-        "1.2.840.10008.1.2.4.203",  # High-Throughput JPEG 2000 Image Compression
-    ])
-    
-    JPEG_SYNTAXES = frozenset([
-        "1.2.840.10008.1.2.4.50",  # JPEG Baseline (Process 1)
-        "1.2.840.10008.1.2.4.51",  # JPEG Extended (Process 2 & 4)
-        "1.2.840.10008.1.2.4.57",  # JPEG Lossless, Non-Hierarchical (Process 14)
-        "1.2.840.10008.1.2.4.70",  # JPEG Lossless, Non-Hierarchical, First-Order Prediction
-    ])
-    
-    # Pre-compute combined set for nvimgcodec-compatible formats
-    NVIMGCODEC_SYNTAXES = JPEG2000_SYNTAXES | JPEG_SYNTAXES
+    # Get transfer syntax constants
+    ts_constants = _get_transfer_syntax_constants()
+    NVIMGCODEC_SYNTAXES = ts_constants['NVIMGCODEC']
     
     start_time = time.time()
     transcoded_count = 0
-    skipped_count = 0
     
     # Calculate batch info for logging
     total_files = len(valid_dicom_files)
@@ -834,7 +899,7 @@ def transcode_dicom_to_htj2k(
         batch_datasets = [pydicom.dcmread(file) for file in batch_files]
         nvimgcodec_batch = []
         pydicom_batch = []
-        copy_batch = []
+        
         for idx, ds in enumerate(batch_datasets):
             current_ts = getattr(ds, 'file_meta', {}).get('TransferSyntaxUID', None)
             if current_ts is None:
@@ -845,17 +910,10 @@ def transcode_dicom_to_htj2k(
                 if not hasattr(ds, "PixelData") or ds.PixelData is None:
                     raise ValueError(f"DICOM file {os.path.basename(batch_files[idx])} does not have a PixelData member")
                 nvimgcodec_batch.append(idx)
-            elif ts_str in HTJ2K_SYNTAXES:
-                copy_batch.append(idx)
+
             else:
                 pydicom_batch.append(idx)
-
-        if copy_batch:
-            for idx in copy_batch:
-                output_file = os.path.join(output_dir, os.path.basename(batch_files[idx]))
-                shutil.copy2(batch_files[idx], output_file)
-            skipped_count += len(copy_batch)
-
+        
         data_sequence = []
         decoded_data = []
         num_frames = []
@@ -894,7 +952,13 @@ def transcode_dicom_to_htj2k(
             frame_offset += nframes
             
             # Update dataset with HTJ2K encoded data
-            batch_datasets[dataset_idx].PixelData = pydicom.encaps.encapsulate(encoded_frames)
+            # Create Basic Offset Table for multi-frame files if requested
+            if add_basic_offset_table and nframes > 1:
+                batch_datasets[dataset_idx].PixelData = _create_basic_offset_table_pixel_data(encoded_frames)
+                logger.debug(f"Created Basic Offset Table for {os.path.basename(batch_files[dataset_idx])} ({nframes} frames)")
+            else:
+                batch_datasets[dataset_idx].PixelData = pydicom.encaps.encapsulate(encoded_frames)
+
             batch_datasets[dataset_idx].file_meta.TransferSyntaxUID = pydicom.uid.UID(target_transfer_syntax)
             
             # Save transcoded file
@@ -907,7 +971,415 @@ def transcode_dicom_to_htj2k(
     logger.info(f"Transcoding complete:")
     logger.info(f"  Total files: {len(valid_dicom_files)}")
     logger.info(f"  Successfully transcoded: {transcoded_count}")
-    logger.info(f"  Already HTJ2K (copied): {skipped_count}")
+    logger.info(f"  Time elapsed: {elapsed_time:.2f} seconds")
+    logger.info(f"  Output directory: {output_dir}")
+    
+    return output_dir
+
+
+def transcode_dicom_to_htj2k_multiframe(
+    input_dir: str,
+    output_dir: str = None,
+    num_resolutions: int = 6,
+    code_block_size: tuple = (64, 64),
+) -> str:
+    """
+    Transcode DICOM files to HTJ2K and combine all frames from the same series into single multi-frame files.
+    
+    This function groups DICOM files by SeriesInstanceUID and combines all frames from each series
+    into a single multi-frame DICOM file with HTJ2K compression. This is useful for:
+    - Reducing file count (one file per series instead of many)
+    - Improving storage efficiency
+    - Enabling more efficient frame-level access patterns
+    
+    The function:
+    1. Scans input directory recursively for DICOM files
+    2. Groups files by StudyInstanceUID and SeriesInstanceUID
+    3. For each series, decodes all frames and combines them
+    4. Encodes combined frames to HTJ2K
+    5. Creates a Basic Offset Table for efficient frame access (per DICOM Part 5 Section A.4)
+    6. Saves as a single multi-frame DICOM file per series
+    
+    Args:
+        input_dir: Path to directory containing DICOM files (will scan recursively)
+        output_dir: Path to output directory for transcoded files. If None, creates temp directory
+        num_resolutions: Number of wavelet decomposition levels (default: 6)
+        code_block_size: Code block size as (height, width) tuple (default: (64, 64))
+        
+    Returns:
+        str: Path to output directory containing transcoded multi-frame DICOM files
+        
+    Raises:
+        ImportError: If nvidia-nvimgcodec is not available
+        ValueError: If input directory doesn't exist or contains no valid DICOM files
+        
+    Example:
+        >>> # Combine series and transcode to HTJ2K
+        >>> output_dir = transcode_dicom_to_htj2k_multiframe("/path/to/dicoms")
+        >>> print(f"Multi-frame files saved to: {output_dir}")
+        
+    Note:
+        Each output file is named using the SeriesInstanceUID:
+        <StudyUID>/<SeriesUID>.dcm
+        
+        The NumberOfFrames tag is set to the total frame count.
+        All other DICOM metadata is preserved from the first instance in each series.
+        
+        Basic Offset Table:
+        A Basic Offset Table is automatically created containing byte offsets to each frame.
+        This allows DICOM readers to quickly locate and extract individual frames without
+        parsing the entire encapsulated pixel data stream. The offsets are 32-bit unsigned
+        integers measured from the first byte of the first Item Tag following the BOT.
+    """
+    import glob
+    import shutil
+    import tempfile
+    from collections import defaultdict
+    from pathlib import Path
+    
+    # Check for nvidia-nvimgcodec
+    try:
+        from nvidia import nvimgcodec
+    except ImportError:
+        raise ImportError(
+            "nvidia-nvimgcodec is required for HTJ2K transcoding. "
+            "Install it with: pip install nvidia-nvimgcodec-cu{XX}[all] "
+            "(replace {XX} with your CUDA version, e.g., cu13)"
+        )
+    
+    import pydicom
+    import numpy as np
+    import time
+    
+    # Validate input
+    if not os.path.exists(input_dir):
+        raise ValueError(f"Input directory does not exist: {input_dir}")
+    
+    if not os.path.isdir(input_dir):
+        raise ValueError(f"Input path is not a directory: {input_dir}")
+    
+    # Get all DICOM files recursively
+    dicom_files = []
+    for root, dirs, files in os.walk(input_dir):
+        for file in files:
+            if file.endswith('.dcm') or file.endswith('.DCM'):
+                dicom_files.append(os.path.join(root, file))
+    
+    # Also check for files without extension
+    for pattern in ["*"]:
+        found_files = glob.glob(os.path.join(input_dir, "**", pattern), recursive=True)
+        for file_path in found_files:
+            if os.path.isfile(file_path) and file_path not in dicom_files:
+                try:
+                    with open(file_path, 'rb') as f:
+                        f.seek(128)
+                        magic = f.read(4)
+                        if magic == b'DICM':
+                            dicom_files.append(file_path)
+                except Exception:
+                    continue
+    
+    if not dicom_files:
+        raise ValueError(f"No valid DICOM files found in {input_dir}")
+    
+    logger.info(f"Found {len(dicom_files)} DICOM files to process")
+    
+    # Group files by study and series
+    series_groups = defaultdict(list)  # Key: (StudyUID, SeriesUID), Value: list of file paths
+    
+    logger.info("Grouping DICOM files by series...")
+    for file_path in dicom_files:
+        try:
+            ds = pydicom.dcmread(file_path, stop_before_pixels=True)
+            study_uid = str(ds.StudyInstanceUID)
+            series_uid = str(ds.SeriesInstanceUID)
+            instance_number = int(getattr(ds, 'InstanceNumber', 0))
+            series_groups[(study_uid, series_uid)].append((instance_number, file_path))
+        except Exception as e:
+            logger.warning(f"Failed to read metadata from {file_path}: {e}")
+            continue
+    
+    # Sort files within each series by InstanceNumber
+    for key in series_groups:
+        series_groups[key].sort(key=lambda x: x[0])  # Sort by instance number
+    
+    logger.info(f"Found {len(series_groups)} unique series")
+    
+    # Create output directory
+    if output_dir is None:
+        output_dir = tempfile.mkdtemp(prefix="htj2k_multiframe_")
+    else:
+        os.makedirs(output_dir, exist_ok=True)
+    
+    # Create encoder and decoder instances
+    encoder = _get_nvimgcodec_encoder()
+    decoder = _get_nvimgcodec_decoder()
+    
+    # Setup HTJ2K encoding and decoding parameters
+    encode_params, target_transfer_syntax = _setup_htj2k_encode_params(
+        num_resolutions=num_resolutions,
+        code_block_size=code_block_size
+    )
+    decode_params = _setup_htj2k_decode_params()
+    
+    # Get transfer syntax constants
+    ts_constants = _get_transfer_syntax_constants()
+    NVIMGCODEC_SYNTAXES = ts_constants['NVIMGCODEC']
+    
+    start_time = time.time()
+    processed_series = 0
+    total_frames = 0
+    
+    # Process each series
+    for (study_uid, series_uid), file_list in series_groups.items():
+        try:
+            logger.info(f"Processing series {series_uid} ({len(file_list)} instances)")
+            
+            # Load all datasets for this series
+            file_paths = [fp for _, fp in file_list]
+            datasets = [pydicom.dcmread(fp) for fp in file_paths]
+            
+            # CRITICAL: Sort datasets by ImagePositionPatient Z-coordinate
+            # This ensures Frame[0] is the first slice, Frame[N] is the last slice
+            if all(hasattr(ds, 'ImagePositionPatient') for ds in datasets):
+                # Sort by Z coordinate (3rd element of ImagePositionPatient)
+                datasets.sort(key=lambda ds: float(ds.ImagePositionPatient[2]))
+                logger.info(f"  ✓ Sorted {len(datasets)} frames by ImagePositionPatient Z-coordinate")
+                logger.info(f"    First frame Z: {datasets[0].ImagePositionPatient[2]}")
+                logger.info(f"    Last frame Z:  {datasets[-1].ImagePositionPatient[2]}")
+                
+                # NOTE: We keep anatomically correct order (Z-ascending)
+                # Cornerstone3D should use per-frame ImagePositionPatient from PerFrameFunctionalGroupsSequence
+                # We provide complete per-frame metadata (PlanePositionSequence + PlaneOrientationSequence)
+                logger.info(f"  ✓ Frames in anatomical order (lowest Z first)")
+                logger.info(f"    Cornerstone3D should use per-frame ImagePositionPatient for correct volume reconstruction")
+            else:
+                logger.warning(f"  ⚠️  Some frames missing ImagePositionPatient, using file order")
+            
+            # Use first dataset as template
+            template_ds = datasets[0]
+            
+            # Collect all frames from all instances
+            all_decoded_frames = []
+            
+            for ds in datasets:
+                current_ts = str(getattr(ds.file_meta, 'TransferSyntaxUID', None))
+                
+                if current_ts in NVIMGCODEC_SYNTAXES:
+                    # Compressed format - use nvimgcodec decoder
+                    frames = [fragment for fragment in pydicom.encaps.generate_frames(ds.PixelData)]
+                    decoded = decoder.decode(frames, params=decode_params)
+                    all_decoded_frames.extend(decoded)
+                else:
+                    # Uncompressed format - use pydicom
+                    pixel_array = ds.pixel_array
+                    if not isinstance(pixel_array, np.ndarray):
+                        pixel_array = np.array(pixel_array)
+                    
+                    # Handle single frame vs multi-frame
+                    if pixel_array.ndim == 2:
+                        # Single frame
+                        pixel_array = pixel_array[:, :, np.newaxis]
+                        all_decoded_frames.append(pixel_array)
+                    elif pixel_array.ndim == 3:
+                        # Multi-frame (frames are first dimension)
+                        for frame_idx in range(pixel_array.shape[0]):
+                            frame_2d = pixel_array[frame_idx, :, :]
+                            if frame_2d.ndim == 2:
+                                frame_2d = frame_2d[:, :, np.newaxis]
+                            all_decoded_frames.append(frame_2d)
+            
+            total_frame_count = len(all_decoded_frames)
+            logger.info(f"  Total frames in series: {total_frame_count}")
+            
+            # Encode all frames to HTJ2K
+            logger.info(f"  Encoding {total_frame_count} frames to HTJ2K...")
+            encoded_frames = encoder.encode(all_decoded_frames, codec="jpeg2k", params=encode_params)
+            
+            # Convert to bytes
+            encoded_frames_bytes = [bytes(enc) for enc in encoded_frames]
+            
+            # Create SIMPLE multi-frame DICOM file (like the user's example)
+            # Use first dataset as template, keeping its metadata
+            logger.info(f"  Creating simple multi-frame DICOM from {total_frame_count} frames...")
+            output_ds = datasets[0].copy()  # Start from first dataset
+            
+            # Update pixel data with all HTJ2K encoded frames + Basic Offset Table
+            output_ds.PixelData = _create_basic_offset_table_pixel_data(encoded_frames_bytes)
+            output_ds.file_meta.TransferSyntaxUID = pydicom.uid.UID(target_transfer_syntax)
+            
+            # Set NumberOfFrames (critical!)
+            output_ds.NumberOfFrames = total_frame_count
+            
+            # DICOM Multi-frame Module (C.7.6.6) - Mandatory attributes
+            
+            # FrameIncrementPointer - REQUIRED to tell viewers how frames are ordered
+            # Points to ImagePositionPatient (0020,0032) which varies per frame
+            output_ds.FrameIncrementPointer = 0x00200032
+            logger.info(f"  ✓ Set FrameIncrementPointer to ImagePositionPatient")
+            
+            # Ensure all Image Pixel Module attributes are present (C.7.6.3)
+            # These should be inherited from first frame, but verify:
+            required_pixel_attrs = [
+                ('SamplesPerPixel', 1),
+                ('PhotometricInterpretation', 'MONOCHROME2'),
+                ('Rows', 512),
+                ('Columns', 512),
+            ]
+            
+            for attr, default in required_pixel_attrs:
+                if not hasattr(output_ds, attr):
+                    setattr(output_ds, attr, default)
+                    logger.warning(f"  ⚠️  Added missing {attr} = {default}")
+            
+            # Keep first frame's spatial attributes as top-level (represents volume origin)
+            if hasattr(datasets[0], 'ImagePositionPatient'):
+                output_ds.ImagePositionPatient = datasets[0].ImagePositionPatient
+                logger.info(f"  ✓ Top-level ImagePositionPatient: {output_ds.ImagePositionPatient}")
+                logger.info(f"    (This is Frame[0], the FIRST slice in Z-order)")
+            
+            if hasattr(datasets[0], 'ImageOrientationPatient'):
+                output_ds.ImageOrientationPatient = datasets[0].ImageOrientationPatient
+                logger.info(f"  ✓ ImageOrientationPatient: {output_ds.ImageOrientationPatient}")
+            
+            # Keep pixel spacing and slice thickness
+            if hasattr(datasets[0], 'PixelSpacing'):
+                output_ds.PixelSpacing = datasets[0].PixelSpacing
+                logger.info(f"  ✓ PixelSpacing: {output_ds.PixelSpacing}")
+            
+            if hasattr(datasets[0], 'SliceThickness'):
+                output_ds.SliceThickness = datasets[0].SliceThickness
+                logger.info(f"  ✓ SliceThickness: {output_ds.SliceThickness}")
+            
+            # Fix InstanceNumber (should be >= 1)
+            output_ds.InstanceNumber = 1
+            
+            # Ensure SeriesNumber is present
+            if not hasattr(output_ds, 'SeriesNumber'):
+                output_ds.SeriesNumber = 1
+            
+            # Remove per-frame tags that conflict with multi-frame
+            if hasattr(output_ds, 'SliceLocation'):
+                delattr(output_ds, 'SliceLocation')
+                logger.info(f"  ✓ Removed SliceLocation (per-frame tag)")
+            
+            # Add SpacingBetweenSlices
+            if len(datasets) > 1:
+                pos0 = datasets[0].ImagePositionPatient if hasattr(datasets[0], 'ImagePositionPatient') else None
+                pos1 = datasets[1].ImagePositionPatient if hasattr(datasets[1], 'ImagePositionPatient') else None
+                
+                if pos0 and pos1:
+                    # Calculate spacing as distance between consecutive slices
+                    import math
+                    spacing = math.sqrt(sum((float(pos1[i]) - float(pos0[i]))**2 for i in range(3)))
+                    output_ds.SpacingBetweenSlices = spacing
+                    logger.info(f"  ✓ Added SpacingBetweenSlices: {spacing:.6f} mm")
+            
+            # Add minimal PerFrameFunctionalGroupsSequence for OHIF compatibility
+            # OHIF's cornerstone3D expects this even for simple multi-frame CT
+            logger.info(f"  Adding minimal per-frame functional groups for OHIF compatibility...")
+            from pydicom.sequence import Sequence
+            from pydicom.dataset import Dataset as DicomDataset
+            
+            per_frame_seq = []
+            for frame_idx, ds_frame in enumerate(datasets):
+                frame_item = DicomDataset()
+                
+                # PlanePositionSequence - ImagePositionPatient for this frame
+                # CRITICAL: Best defense against Cornerstone3D bugs
+                if hasattr(ds_frame, 'ImagePositionPatient'):
+                    plane_pos_item = DicomDataset()
+                    plane_pos_item.ImagePositionPatient = ds_frame.ImagePositionPatient
+                    frame_item.PlanePositionSequence = Sequence([plane_pos_item])
+                
+                # PlaneOrientationSequence - ImageOrientationPatient for this frame
+                # CRITICAL: Best defense against Cornerstone3D bugs
+                if hasattr(ds_frame, 'ImageOrientationPatient'):
+                    plane_orient_item = DicomDataset()
+                    plane_orient_item.ImageOrientationPatient = ds_frame.ImageOrientationPatient
+                    frame_item.PlaneOrientationSequence = Sequence([plane_orient_item])
+                
+                # FrameContentSequence - helps with frame identification
+                frame_content_item = DicomDataset()
+                frame_content_item.StackID = "1"
+                frame_content_item.InStackPositionNumber = frame_idx + 1
+                frame_content_item.DimensionIndexValues = [1, frame_idx + 1]
+                frame_item.FrameContentSequence = Sequence([frame_content_item])
+                
+                per_frame_seq.append(frame_item)
+            
+            output_ds.PerFrameFunctionalGroupsSequence = Sequence(per_frame_seq)
+            logger.info(f"  ✓ Added PerFrameFunctionalGroupsSequence with {len(per_frame_seq)} frame items")
+            logger.info(f"    Each frame includes: PlanePositionSequence + PlaneOrientationSequence")
+            
+            # Add SharedFunctionalGroupsSequence for additional Cornerstone3D compatibility
+            # This defines attributes that are common to ALL frames
+            shared_item = DicomDataset()
+            
+            # PlaneOrientationSequence - same for all frames
+            if hasattr(datasets[0], 'ImageOrientationPatient'):
+                shared_orient_item = DicomDataset()
+                shared_orient_item.ImageOrientationPatient = datasets[0].ImageOrientationPatient
+                shared_item.PlaneOrientationSequence = Sequence([shared_orient_item])
+            
+            # PixelMeasuresSequence - pixel spacing and slice thickness
+            if hasattr(datasets[0], 'PixelSpacing') or hasattr(datasets[0], 'SliceThickness'):
+                pixel_measures_item = DicomDataset()
+                if hasattr(datasets[0], 'PixelSpacing'):
+                    pixel_measures_item.PixelSpacing = datasets[0].PixelSpacing
+                if hasattr(datasets[0], 'SliceThickness'):
+                    pixel_measures_item.SliceThickness = datasets[0].SliceThickness
+                if hasattr(output_ds, 'SpacingBetweenSlices'):
+                    pixel_measures_item.SpacingBetweenSlices = output_ds.SpacingBetweenSlices
+                shared_item.PixelMeasuresSequence = Sequence([pixel_measures_item])
+            
+            output_ds.SharedFunctionalGroupsSequence = Sequence([shared_item])
+            logger.info(f"  ✓ Added SharedFunctionalGroupsSequence (common attributes for all frames)")
+            logger.info(f"    (Additional defense against Cornerstone3D < v2.0 bugs)")
+            
+            # Verify frame ordering
+            if len(per_frame_seq) > 0:
+                first_frame_pos = per_frame_seq[0].PlanePositionSequence[0].ImagePositionPatient if hasattr(per_frame_seq[0], 'PlanePositionSequence') else None
+                last_frame_pos = per_frame_seq[-1].PlanePositionSequence[0].ImagePositionPatient if hasattr(per_frame_seq[-1], 'PlanePositionSequence') else None
+                
+                if first_frame_pos and last_frame_pos:
+                    logger.info(f"  ✓ Frame ordering verification:")
+                    logger.info(f"    Frame[0] Z = {first_frame_pos[2]} (should match top-level)")
+                    logger.info(f"    Frame[{len(per_frame_seq)-1}] Z = {last_frame_pos[2]} (last slice)")
+                    
+                    # Verify top-level matches Frame[0]
+                    if hasattr(output_ds, 'ImagePositionPatient'):
+                        if abs(float(output_ds.ImagePositionPatient[2]) - float(first_frame_pos[2])) < 0.001:
+                            logger.info(f"    ✅ Top-level ImagePositionPatient matches Frame[0]")
+                        else:
+                            logger.error(f"    ❌ MISMATCH: Top-level Z={output_ds.ImagePositionPatient[2]} != Frame[0] Z={first_frame_pos[2]}")
+            
+            logger.info(f"  ✓ Created multi-frame with {total_frame_count} frames (OHIF-compatible)")
+            logger.info(f"  ✓ Basic Offset Table included for efficient frame access")
+            
+            # Create output directory structure
+            study_output_dir = os.path.join(output_dir, study_uid)
+            os.makedirs(study_output_dir, exist_ok=True)
+            
+            # Save as single multi-frame file
+            output_file = os.path.join(study_output_dir, f"{series_uid}.dcm")
+            output_ds.save_as(output_file, write_like_original=False)
+            
+            logger.info(f"  ✓ Saved multi-frame file: {output_file}")
+            processed_series += 1
+            total_frames += total_frame_count
+            
+        except Exception as e:
+            logger.error(f"Failed to process series {series_uid}: {e}")
+            import traceback
+            traceback.print_exc()
+            continue
+    
+    elapsed_time = time.time() - start_time
+    
+    logger.info(f"\nMulti-frame HTJ2K transcoding complete:")
+    logger.info(f"  Total series processed: {processed_series}")
+    logger.info(f"  Total frames encoded: {total_frames}")
     logger.info(f"  Time elapsed: {elapsed_time:.2f} seconds")
     logger.info(f"  Output directory: {output_dir}")
     

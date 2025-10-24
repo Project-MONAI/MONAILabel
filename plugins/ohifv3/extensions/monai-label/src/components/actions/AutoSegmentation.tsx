@@ -122,7 +122,7 @@ export default class AutoSegmentation extends BaseTab {
       duration: 4000,
     });
 
-    this.props.updateView(response, model, label_names, false, false, -1, displaySet.SeriesInstanceUID);
+    this.props.updateView(response, model, label_names);
   };
 
   render() {

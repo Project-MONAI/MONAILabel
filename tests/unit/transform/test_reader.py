@@ -315,16 +315,283 @@ class TestNvDicomReaderHTJ2KPerformance(unittest.TestCase):
         if transfer_syntax not in htj2k_syntaxes:
             self.skipTest(f"DICOM files are not HTJ2K encoded")
 
-        # Load with batch decode enabled
+        # Load with batch decode enabled (default depth_last=True gives W,H,D layout)
         reader = NvDicomReader(use_nvimgcodec=True, prefer_gpu_output=False)
         img_obj = reader.read(self.htj2k_series_dir)
         volume, metadata = reader.get_data(img_obj)
 
         # Verify successful decode
         self.assertIsNotNone(volume, "Volume should be decoded successfully")
-        self.assertEqual(volume.shape[0], len(htj2k_files), f"Volume should have {len(htj2k_files)} slices")
+        # With depth_last=True (default), shape is (W, H, D), so depth is at index 2
+        self.assertEqual(volume.shape[2], len(htj2k_files), f"Volume should have {len(htj2k_files)} slices")
 
         print(f"✓ Batch decode optimization test passed ({len(htj2k_files)} slices)")
+
+
+@unittest.skipIf(not HAS_NVDICOMREADER, "NvDicomReader not available")
+@unittest.skipIf(not HAS_PYDICOM, "pydicom not available")
+class TestNvDicomReaderMultiFrame(unittest.TestCase):
+    """Test suite for NvDicomReader with multi-frame DICOM files."""
+
+    base_dir = os.path.realpath(os.path.dirname(os.path.dirname(os.path.dirname(__file__))))
+    
+    # Single-frame series paths
+    dicom_dataset = os.path.join(base_dir, "data", "dataset", "dicomweb", "e7567e0a064f0c334226a0658de23afd")
+    htj2k_single_base = os.path.join(base_dir, "data", "dataset", "dicomweb_htj2k", "e7567e0a064f0c334226a0658de23afd")
+    
+    # Multi-frame paths (organized by study UID directly)
+    htj2k_multiframe_base = os.path.join(base_dir, "data", "dataset", "dicomweb_htj2k_multiframe")
+    
+    # Test series UIDs
+    test_study_uid = "1.2.826.0.1.3680043.8.274.1.1.8323329.686405.1629744173.656706"
+    test_series_uid = "1.2.826.0.1.3680043.8.274.1.1.8323329.686405.1629744173.656721"
+
+    def setUp(self):
+        """Set up test fixtures."""
+        self.original_series_dir = os.path.join(self.dicom_dataset, self.test_series_uid)
+        self.htj2k_series_dir = os.path.join(self.htj2k_single_base, self.test_series_uid)
+        self.multiframe_file = os.path.join(self.htj2k_multiframe_base, self.test_study_uid, f"{self.test_series_uid}.dcm")
+
+    def _check_multiframe_data(self):
+        """Check if multi-frame test data exists."""
+        if not os.path.exists(self.multiframe_file):
+            return False
+        return True
+
+    def _check_single_frame_data(self):
+        """Check if single-frame test data exists."""
+        if not os.path.exists(self.original_series_dir):
+            return False
+        dcm_files = list(Path(self.original_series_dir).glob("*.dcm"))
+        if len(dcm_files) == 0:
+            return False
+        return True
+
+    @unittest.skipIf(not HAS_NVIMGCODEC, "nvimgcodec not available for HTJ2K decoding")
+    def test_multiframe_basic_read(self):
+        """Test that multi-frame DICOM can be read successfully."""
+        if not self._check_multiframe_data():
+            self.skipTest(f"Multi-frame DICOM not found at {self.multiframe_file}")
+
+        # Read multi-frame DICOM
+        reader = NvDicomReader(use_nvimgcodec=True, prefer_gpu_output=False)
+        img_obj = reader.read(self.multiframe_file)
+        volume, metadata = reader.get_data(img_obj)
+
+        # Convert to numpy if cupy array
+        if hasattr(volume, "__cuda_array_interface__"):
+            import cupy as cp
+            volume = cp.asnumpy(volume)
+
+        # Verify shape (should be W, H, D with depth_last=True)
+        self.assertEqual(len(volume.shape), 3, f"Volume should be 3D, got shape {volume.shape}")
+        self.assertEqual(volume.shape[2], 77, f"Expected 77 slices, got {volume.shape[2]}")
+        
+        # Verify metadata
+        self.assertIn("affine", metadata, "Metadata should contain affine matrix")
+        self.assertIn("spacing", metadata, "Metadata should contain spacing")
+        self.assertIn("ImagePositionPatient", metadata, "Metadata should contain ImagePositionPatient")
+        
+        print(f"✓ Multi-frame basic read test passed - shape: {volume.shape}")
+
+    @unittest.skipIf(not HAS_NVIMGCODEC, "nvimgcodec not available for HTJ2K decoding")
+    def test_multiframe_vs_singleframe_consistency(self):
+        """Test that multi-frame DICOM produces identical results to single-frame series."""
+        if not self._check_multiframe_data():
+            self.skipTest(f"Multi-frame DICOM not found at {self.multiframe_file}")
+        
+        if not self._check_single_frame_data():
+            self.skipTest(f"Single-frame series not found at {self.original_series_dir}")
+
+        # Read single-frame series
+        reader_single = NvDicomReader(use_nvimgcodec=False, prefer_gpu_output=False)
+        img_obj_single = reader_single.read(self.original_series_dir)
+        volume_single, metadata_single = reader_single.get_data(img_obj_single)
+
+        # Read multi-frame DICOM
+        reader_multi = NvDicomReader(use_nvimgcodec=True, prefer_gpu_output=False)
+        img_obj_multi = reader_multi.read(self.multiframe_file)
+        volume_multi, metadata_multi = reader_multi.get_data(img_obj_multi)
+
+        # Convert to numpy if needed
+        if hasattr(volume_single, "__cuda_array_interface__"):
+            import cupy as cp
+            volume_single = cp.asnumpy(volume_single)
+        if hasattr(volume_multi, "__cuda_array_interface__"):
+            import cupy as cp
+            volume_multi = cp.asnumpy(volume_multi)
+
+        # Verify shapes match
+        self.assertEqual(
+            volume_single.shape,
+            volume_multi.shape,
+            f"Single-frame and multi-frame volumes should have same shape. Single: {volume_single.shape}, Multi: {volume_multi.shape}"
+        )
+
+        # Compare pixel data (HTJ2K lossless should be identical)
+        np.testing.assert_allclose(
+            volume_single,
+            volume_multi,
+            rtol=1e-5,
+            atol=1e-3,
+            err_msg="Multi-frame DICOM pixel data differs from single-frame series"
+        )
+
+        # Compare spacing
+        np.testing.assert_allclose(
+            metadata_single["spacing"],
+            metadata_multi["spacing"],
+            rtol=1e-6,
+            err_msg="Spacing should be identical"
+        )
+
+        # Compare affine matrices
+        np.testing.assert_allclose(
+            metadata_single["affine"],
+            metadata_multi["affine"],
+            rtol=1e-6,
+            atol=1e-3,
+            err_msg="Affine matrices should be identical"
+        )
+
+        print(f"✓ Multi-frame vs single-frame consistency test passed")
+        print(f"  Shape: {volume_multi.shape}")
+        print(f"  Spacing: {metadata_multi['spacing']}")
+        print(f"  Affine origin: {metadata_multi['affine'][:3, 3]}")
+
+    @unittest.skipIf(not HAS_NVIMGCODEC, "nvimgcodec not available")
+    def test_multiframe_per_frame_metadata(self):
+        """Test that per-frame metadata is correctly extracted from PerFrameFunctionalGroupsSequence."""
+        if not self._check_multiframe_data():
+            self.skipTest(f"Multi-frame DICOM not found at {self.multiframe_file}")
+
+        # Read the DICOM file directly with pydicom to check PerFrameFunctionalGroupsSequence
+        ds = pydicom.dcmread(self.multiframe_file)
+        
+        # Verify it's actually multi-frame
+        self.assertTrue(hasattr(ds, "NumberOfFrames"), "Should have NumberOfFrames attribute")
+        self.assertGreater(ds.NumberOfFrames, 1, "Should have multiple frames")
+        
+        # Verify PerFrameFunctionalGroupsSequence exists
+        self.assertTrue(
+            hasattr(ds, "PerFrameFunctionalGroupsSequence"),
+            "Multi-frame DICOM should have PerFrameFunctionalGroupsSequence"
+        )
+        
+        # Verify first frame has PlanePositionSequence
+        first_frame = ds.PerFrameFunctionalGroupsSequence[0]
+        self.assertTrue(
+            hasattr(first_frame, "PlanePositionSequence"),
+            "First frame should have PlanePositionSequence"
+        )
+        
+        first_pos = first_frame.PlanePositionSequence[0].ImagePositionPatient
+        self.assertEqual(len(first_pos), 3, "ImagePositionPatient should have 3 coordinates")
+        
+        # Now read with NvDicomReader and verify metadata is extracted
+        reader = NvDicomReader(use_nvimgcodec=True, prefer_gpu_output=False)
+        img_obj = reader.read(self.multiframe_file)
+        volume, metadata = reader.get_data(img_obj)
+        
+        # Verify ImagePositionPatient was extracted from per-frame metadata
+        self.assertIn("ImagePositionPatient", metadata, "Should have ImagePositionPatient in metadata")
+        
+        extracted_pos = metadata["ImagePositionPatient"]
+        self.assertEqual(len(extracted_pos), 3, "Extracted ImagePositionPatient should have 3 coordinates")
+        
+        # Verify it matches the first frame position
+        np.testing.assert_allclose(
+            extracted_pos,
+            first_pos,
+            rtol=1e-6,
+            err_msg="Extracted ImagePositionPatient should match first frame"
+        )
+        
+        print(f"✓ Multi-frame per-frame metadata test passed")
+        print(f"  NumberOfFrames: {ds.NumberOfFrames}")
+        print(f"  First frame ImagePositionPatient: {first_pos}")
+
+    @unittest.skipIf(not HAS_NVIMGCODEC, "nvimgcodec not available")
+    def test_multiframe_affine_origin(self):
+        """Test that affine matrix origin is correctly extracted from multi-frame per-frame metadata."""
+        if not self._check_multiframe_data():
+            self.skipTest(f"Multi-frame DICOM not found at {self.multiframe_file}")
+
+        # Read with pydicom to get expected origin
+        ds = pydicom.dcmread(self.multiframe_file)
+        first_frame = ds.PerFrameFunctionalGroupsSequence[0]
+        expected_origin = np.array(first_frame.PlanePositionSequence[0].ImagePositionPatient)
+        
+        # Read with NvDicomReader
+        reader = NvDicomReader(use_nvimgcodec=True, prefer_gpu_output=False, affine_lps_to_ras=True)
+        img_obj = reader.read(self.multiframe_file)
+        volume, metadata = reader.get_data(img_obj)
+        
+        # Extract origin from affine matrix (after LPS->RAS conversion)
+        # RAS affine has origin in last column, first 3 rows
+        affine_origin_ras = metadata["affine"][:3, 3]
+        
+        # Convert expected_origin from LPS to RAS for comparison
+        # LPS to RAS: negate X and Y
+        expected_origin_ras = expected_origin.copy()
+        expected_origin_ras[0] = -expected_origin_ras[0]
+        expected_origin_ras[1] = -expected_origin_ras[1]
+        
+        # Verify affine origin matches the first frame's ImagePositionPatient (in RAS)
+        np.testing.assert_allclose(
+            affine_origin_ras,
+            expected_origin_ras,
+            rtol=1e-6,
+            atol=1e-3,
+            err_msg=f"Affine origin should match first frame ImagePositionPatient. Got {affine_origin_ras}, expected {expected_origin_ras}"
+        )
+        
+        print(f"✓ Multi-frame affine origin test passed")
+        print(f"  ImagePositionPatient (LPS): {expected_origin}")
+        print(f"  Affine origin (RAS): {affine_origin_ras}")
+
+    @unittest.skipIf(not HAS_NVIMGCODEC, "nvimgcodec not available")
+    def test_multiframe_slice_spacing(self):
+        """Test that slice spacing is correctly calculated for multi-frame DICOMs."""
+        if not self._check_multiframe_data():
+            self.skipTest(f"Multi-frame DICOM not found at {self.multiframe_file}")
+
+        # Read with pydicom to get first and last frame positions
+        ds = pydicom.dcmread(self.multiframe_file)
+        num_frames = ds.NumberOfFrames
+        
+        first_frame = ds.PerFrameFunctionalGroupsSequence[0]
+        last_frame = ds.PerFrameFunctionalGroupsSequence[num_frames - 1]
+        
+        first_pos = np.array(first_frame.PlanePositionSequence[0].ImagePositionPatient)
+        last_pos = np.array(last_frame.PlanePositionSequence[0].ImagePositionPatient)
+        
+        # Calculate expected slice spacing
+        # Distance between first and last divided by (number of slices - 1)
+        distance = np.linalg.norm(last_pos - first_pos)
+        expected_spacing = distance / (num_frames - 1)
+        
+        # Read with NvDicomReader
+        reader = NvDicomReader(use_nvimgcodec=True, prefer_gpu_output=False)
+        img_obj = reader.read(self.multiframe_file)
+        volume, metadata = reader.get_data(img_obj)
+        
+        # Get slice spacing (Z spacing, index 2)
+        slice_spacing = metadata["spacing"][2]
+        
+        # Verify it matches expected
+        self.assertAlmostEqual(
+            slice_spacing,
+            expected_spacing,
+            delta=0.1,
+            msg=f"Slice spacing should be ~{expected_spacing:.2f}mm, got {slice_spacing:.2f}mm"
+        )
+        
+        print(f"✓ Multi-frame slice spacing test passed")
+        print(f"  Number of frames: {num_frames}")
+        print(f"  First position: {first_pos}")
+        print(f"  Last position: {last_pos}")
+        print(f"  Calculated spacing: {slice_spacing:.4f}mm (expected: {expected_spacing:.4f}mm)")
 
 
 if __name__ == "__main__":

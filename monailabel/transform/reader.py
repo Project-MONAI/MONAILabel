@@ -590,9 +590,22 @@ class NvDicomReader(ImageReader):
                 # List of datasets - process as series
                 data_array, metadata = self._process_dicom_series(ds_or_list)
             elif isinstance(ds_or_list, pydicom.Dataset):
-                data_array = self._get_array_data(ds_or_list)
-                metadata = self._get_meta_dict(ds_or_list)
-                metadata[MetaKeys.SPATIAL_SHAPE] = np.asarray(data_array.shape)
+                # Single multi-frame DICOM - process as a series with one dataset
+                # This ensures proper depth_last handling and metadata calculation
+                is_multiframe = hasattr(ds_or_list, "NumberOfFrames") and ds_or_list.NumberOfFrames > 1
+                if is_multiframe:
+                    # Process as a series to get proper spacing, depth_last handling, etc.
+                    data_array, metadata = self._process_dicom_series([ds_or_list])
+                else:
+                    # Single-frame DICOM - process directly
+                    data_array = self._get_array_data(ds_or_list)
+                    metadata = self._get_meta_dict(ds_or_list)
+                    metadata[MetaKeys.SPATIAL_SHAPE] = np.asarray(data_array.shape)
+                    
+                    # Calculate spacing for single-frame images
+                    pixel_spacing = ds_or_list.PixelSpacing if hasattr(ds_or_list, "PixelSpacing") else [1.0, 1.0]
+                    slice_spacing = float(ds_or_list.SliceThickness) if hasattr(ds_or_list, "SliceThickness") else 1.0
+                    metadata["spacing"] = np.array([float(pixel_spacing[1]), float(pixel_spacing[0]), slice_spacing])
 
             img_array.append(data_array)
             metadata[MetaKeys.ORIGINAL_AFFINE] = self._get_affine(metadata, self.affine_lps_to_ras)
@@ -632,7 +645,13 @@ class NvDicomReader(ImageReader):
         needs_rescale = hasattr(first_ds, "RescaleSlope") and hasattr(first_ds, "RescaleIntercept")
         rows = first_ds.Rows
         cols = first_ds.Columns
-        depth = len(datasets)
+        
+        # For multi-frame DICOMs, depth is the total number of frames, not the number of files
+        # For single-frame DICOMs, depth is the number of files
+        depth = 0
+        for ds in datasets:
+            num_frames = getattr(ds, "NumberOfFrames", 1)
+            depth += num_frames
 
         # Check if we can use nvImageCodec on the whole series
         can_use_nvimgcodec = self.use_nvimgcodec and all(self._is_nvimgcodec_supported_syntax(ds) for ds in datasets)
@@ -718,18 +737,36 @@ class NvDicomReader(ImageReader):
             else:
                 volume = xp.zeros((depth, rows, cols), dtype=dtype_vol)
 
-            for frame_idx, ds in enumerate(datasets):
-                frame_array = ds.pixel_array
+            # Handle both single-frame series and multi-frame DICOMs
+            frame_idx = 0
+            if len(datasets) == 1 and getattr(datasets[0], "NumberOfFrames", 1) > 1:
+                # Multi-frame DICOM: all frames in a single dataset
+                ds = datasets[0]
+                pixel_array = ds.pixel_array
                 # Ensure correct array type
-                if hasattr(frame_array, "__cuda_array_interface__"):
-                    frame_array = cp.asarray(frame_array)
+                if hasattr(pixel_array, "__cuda_array_interface__"):
+                    pixel_array = cp.asarray(pixel_array)
                 else:
-                    frame_array = np.asarray(frame_array)
-
-                if self.depth_last:
-                    volume[:, :, frame_idx] = frame_array.T
+                    pixel_array = np.asarray(pixel_array)
+                num_frames = getattr(ds, "NumberOfFrames", 1)
+                if not self.depth_last:
+                    # Depth-first: copy whole volume at once
+                    volume[:, :, :] = pixel_array
                 else:
-                    volume[frame_idx, :, :] = frame_array
+                    # Depth-last: assign using transpose for the whole volume
+                    volume[:, :, :num_frames] = pixel_array.transpose(2, 1, 0)
+            else:
+                # Single-frame DICOMs: each dataset is a single slice
+                for frame_idx, ds in enumerate(datasets):
+                    pixel_array = ds.pixel_array
+                    if hasattr(pixel_array, "__cuda_array_interface__"):
+                        pixel_array = cp.asarray(pixel_array)
+                    else:
+                        pixel_array = np.asarray(pixel_array)
+                    if self.depth_last:
+                        volume[:, :, frame_idx] = pixel_array.T
+                    else:
+                        volume[frame_idx, :, :] = pixel_array
 
         # Ensure xp is defined for subsequent operations
         xp = cp if hasattr(volume, "__cuda_array_interface__") else np
@@ -747,11 +784,50 @@ class NvDicomReader(ImageReader):
 
         # Calculate slice spacing
         if depth > 1:
-            # Prioritize calculating from actual slice positions (more accurate than SliceThickness tag)
-            # This matches ITKReader behavior and handles cases where SliceThickness != actual spacing
-            if hasattr(first_ds, "ImagePositionPatient"):
-                # Calculate average distance between consecutive slices using z-coordinate
-                # This matches ITKReader's approach (see lines 595-612)
+            # For multi-frame DICOM, calculate spacing from per-frame positions
+            is_multiframe = len(datasets) == 1 and hasattr(first_ds, "NumberOfFrames") and first_ds.NumberOfFrames > 1
+            
+            if is_multiframe and hasattr(first_ds, "PerFrameFunctionalGroupsSequence"):
+                # Multi-frame DICOM: extract positions from PerFrameFunctionalGroupsSequence
+                average_distance = 0.0
+                positions = []
+                
+                try:
+                    # Extract all frame positions
+                    for frame_idx, frame in enumerate(first_ds.PerFrameFunctionalGroupsSequence):
+                        # Try to get PlanePositionSequence
+                        plane_pos_seq = None
+                        if hasattr(frame, "PlanePositionSequence"):
+                            plane_pos_seq = frame.PlanePositionSequence
+                        elif hasattr(frame, 'get'):
+                            plane_pos_seq = frame.get("PlanePositionSequence")
+                        
+                        if plane_pos_seq and len(plane_pos_seq) > 0:
+                            plane_pos_item = plane_pos_seq[0]
+                            if hasattr(plane_pos_item, "ImagePositionPatient"):
+                                ipp = plane_pos_item.ImagePositionPatient
+                                z_pos = float(ipp[2])
+                                positions.append(z_pos)
+                    
+                    # Calculate average distance between consecutive positions
+                    if len(positions) > 1:
+                        for i in range(1, len(positions)):
+                            average_distance += abs(positions[i] - positions[i-1])
+                        slice_spacing = average_distance / (len(positions) - 1)
+                    else:
+                        logger.warning(f"NvDicomReader: Only found {len(positions)} positions, cannot calculate spacing")
+                        slice_spacing = 1.0
+                        
+                except Exception as e:
+                    logger.warning(f"NvDicomReader: Failed to calculate spacing from per-frame positions: {e}")
+                    # Fallback to SliceThickness or default
+                    if hasattr(first_ds, "SliceThickness"):
+                        slice_spacing = float(first_ds.SliceThickness)
+                    else:
+                        slice_spacing = 1.0
+                        
+            elif len(datasets) > 1 and hasattr(first_ds, "ImagePositionPatient"):
+                # Multiple single-frame DICOMs: calculate from dataset positions
                 average_distance = 0.0
                 prev_pos = np.array(datasets[0].ImagePositionPatient)[2]
                 for i in range(1, len(datasets)):
@@ -760,23 +836,51 @@ class NvDicomReader(ImageReader):
                         average_distance += abs(curr_pos - prev_pos)
                         prev_pos = curr_pos
                 slice_spacing = average_distance / (len(datasets) - 1)
+                logger.info(f"NvDicomReader: Calculated slice spacing from {len(datasets)} datasets: {slice_spacing:.4f}")
+                
             elif hasattr(first_ds, "SliceThickness"):
                 # Fallback to SliceThickness tag if positions unavailable
                 slice_spacing = float(first_ds.SliceThickness)
+                logger.info(f"NvDicomReader: Using SliceThickness: {slice_spacing}")
             else:
                 slice_spacing = 1.0
+                logger.warning(f"NvDicomReader: No position data available, using default spacing: 1.0")
         else:
             slice_spacing = 1.0
 
         # Build metadata
         metadata = self._get_meta_dict(first_ds)
+        
         metadata["spacing"] = np.array([float(pixel_spacing[1]), float(pixel_spacing[0]), slice_spacing])
         # Metadata should always use numpy arrays, even if data is on GPU
         metadata[MetaKeys.SPATIAL_SHAPE] = np.asarray(volume.shape)
 
         # Store last position for affine calculation
-        if hasattr(datasets[-1], "ImagePositionPatient"):
-            metadata["lastImagePositionPatient"] = np.array(datasets[-1].ImagePositionPatient)
+        last_ds = datasets[-1]
+        
+        # For multi-frame DICOM, try to get the last frame's position from PerFrameFunctionalGroupsSequence
+        is_multiframe = hasattr(last_ds, "NumberOfFrames") and last_ds.NumberOfFrames > 1
+        if is_multiframe and hasattr(last_ds, "PerFrameFunctionalGroupsSequence"):
+            try:
+                last_frame_idx = last_ds.NumberOfFrames - 1
+                last_frame = last_ds.PerFrameFunctionalGroupsSequence[last_frame_idx]
+                if hasattr(last_frame, "PlanePositionSequence") and len(last_frame.PlanePositionSequence) > 0:
+                    last_ipp = last_frame.PlanePositionSequence[0].ImagePositionPatient
+                    metadata["lastImagePositionPatient"] = np.array(last_ipp)
+                    logger.info(f"[DICOM Reader] Multi-frame: extracted last frame IPP: {last_ipp}")
+            except Exception as e:
+                logger.warning(f"NvDicomReader: Failed to extract last frame position: {e}")
+        elif hasattr(last_ds, "ImagePositionPatient"):
+            metadata["lastImagePositionPatient"] = np.array(last_ds.ImagePositionPatient)
+
+        # Log extracted DICOM metadata for debugging
+        logger.info(f"[DICOM Reader] Extracted metadata for {len(datasets)} slices")
+        logger.info(f"[DICOM Reader] Volume shape: {volume.shape}")
+        logger.info(f"[DICOM Reader] ImagePositionPatient (first): {metadata.get('ImagePositionPatient')}")
+        logger.info(f"[DICOM Reader] ImagePositionPatient (last): {metadata.get('lastImagePositionPatient')}")
+        logger.info(f"[DICOM Reader] ImageOrientationPatient: {metadata.get('ImageOrientationPatient')}")
+        logger.info(f"[DICOM Reader] Spacing: {metadata.get('spacing')}")
+        logger.info(f"[DICOM Reader] Is multi-frame: {is_multiframe}")
 
         return volume, metadata
 
@@ -861,11 +965,69 @@ class NvDicomReader(ImageReader):
 
         # Also store essential spatial tags with readable names
         # (for convenience and backward compatibility)
-        if hasattr(ds, "ImageOrientationPatient"):
+        
+        # For multi-frame (Enhanced) DICOM, extract per-frame metadata from the first frame
+        is_multiframe = hasattr(ds, "NumberOfFrames") and ds.NumberOfFrames > 1
+        if is_multiframe and hasattr(ds, "PerFrameFunctionalGroupsSequence"):
+            try:
+                first_frame = ds.PerFrameFunctionalGroupsSequence[0]
+                
+                # Helper function to safely access sequence items (handles both attribute and dict access)
+                def get_sequence_item(obj, seq_name, item_idx=0):
+                    """Get item from a sequence, handling both attribute and dict access."""
+                    seq = None
+                    # Try attribute access
+                    if hasattr(obj, seq_name):
+                        seq = getattr(obj, seq_name, None)
+                    # Try dict-style access
+                    elif hasattr(obj, 'get'):
+                        seq = obj.get(seq_name)
+                    elif hasattr(obj, '__getitem__'):
+                        try:
+                            seq = obj[seq_name]
+                        except (KeyError, TypeError):
+                            pass
+                    
+                    if seq and len(seq) > item_idx:
+                        return seq[item_idx]
+                    return None
+                
+                # Extract ImageOrientationPatient from per-frame sequence
+                plane_orient_item = get_sequence_item(first_frame, "PlaneOrientationSequence")
+                if plane_orient_item and hasattr(plane_orient_item, "ImageOrientationPatient"):
+                    iop = plane_orient_item.ImageOrientationPatient
+                    metadata["ImageOrientationPatient"] = list(iop)
+                
+                # Extract ImagePositionPatient from per-frame sequence
+                plane_pos_item = get_sequence_item(first_frame, "PlanePositionSequence")
+                if plane_pos_item and hasattr(plane_pos_item, "ImagePositionPatient"):
+                    ipp = plane_pos_item.ImagePositionPatient
+                    metadata["ImagePositionPatient"] = list(ipp)
+                else:
+                    logger.warning(f"NvDicomReader: PlanePositionSequence not found or empty")
+                
+                # Extract PixelSpacing from per-frame sequence
+                pixel_measures_item = get_sequence_item(first_frame, "PixelMeasuresSequence")
+                if pixel_measures_item and hasattr(pixel_measures_item, "PixelSpacing"):
+                    ps = pixel_measures_item.PixelSpacing
+                    metadata["PixelSpacing"] = list(ps)
+                
+                # Also check SliceThickness from PixelMeasuresSequence
+                if pixel_measures_item and hasattr(pixel_measures_item, "SliceThickness"):
+                    st = pixel_measures_item.SliceThickness
+                    metadata["SliceThickness"] = float(st)
+                    
+            except Exception as e:
+                logger.warning(f"NvDicomReader: Failed to extract per-frame metadata: {e}, falling back to top-level")
+                import traceback
+                logger.warning(f"NvDicomReader: Traceback: {traceback.format_exc()}")
+        
+        # Fall back to top-level attributes if not extracted from per-frame sequence
+        if hasattr(ds, "ImageOrientationPatient") and "ImageOrientationPatient" not in metadata:
             metadata["ImageOrientationPatient"] = list(ds.ImageOrientationPatient)
-        if hasattr(ds, "ImagePositionPatient"):
+        if hasattr(ds, "ImagePositionPatient") and "ImagePositionPatient" not in metadata:
             metadata["ImagePositionPatient"] = list(ds.ImagePositionPatient)
-        if hasattr(ds, "PixelSpacing"):
+        if hasattr(ds, "PixelSpacing") and "PixelSpacing" not in metadata:
             metadata["PixelSpacing"] = list(ds.PixelSpacing)
 
         return metadata
@@ -931,8 +1093,19 @@ class NvDicomReader(ImageReader):
         # Translation
         affine[:3, 3] = ipp
 
+        # Log affine construction details
+        logger.info(f"[DICOM Reader] Affine matrix construction:")
+        logger.info(f"[DICOM Reader]   Origin (IPP): {ipp}")
+        logger.info(f"[DICOM Reader]   Spacing: {spacing}")
+        logger.info(f"[DICOM Reader]   Spatial shape: {spatial_shape}")
+        if len(spatial_shape) == 3 and "lastImagePositionPatient" in metadata:
+            logger.info(f"[DICOM Reader]   Last IPP: {metadata['lastImagePositionPatient']}")
+            logger.info(f"[DICOM Reader]   Slice vector: {affine[:3, 2]}")
+        logger.info(f"[DICOM Reader]   Affine (before LPS->RAS):\n{affine}")
+
         # Convert LPS to RAS if requested
         if lps_to_ras:
             affine = orientation_ras_lps(affine)
+            logger.info(f"[DICOM Reader]   Affine (after LPS->RAS):\n{affine}")
 
         return affine

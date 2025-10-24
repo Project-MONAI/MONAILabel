@@ -60,9 +60,46 @@ def run_main():
         import sys
 
         sys.path.insert(0, TEST_DIR)
-        from prepare_htj2k_test_data import create_htj2k_data
+        from monailabel.datastore.utils.convert import transcode_dicom_to_htj2k, transcode_dicom_to_htj2k_multiframe
 
-        create_htj2k_data(TEST_DATA)
+        # Create regular HTJ2K files (preserving file structure)
+        logger.info("Creating HTJ2K test data (single-frame per file)...")
+        source_base_dir = Path(TEST_DATA) / "dataset" / "dicomweb"
+        htj2k_base_dir = Path(TEST_DATA) / "dataset" / "dicomweb_htj2k"
+        
+        if source_base_dir.exists() and not (htj2k_base_dir.exists() and any(htj2k_base_dir.rglob("*.dcm"))):
+            series_dirs = [d for d in source_base_dir.rglob("*") if d.is_dir() and any(d.glob("*.dcm"))]
+            for series_dir in series_dirs:
+                rel_path = series_dir.relative_to(source_base_dir)
+                output_series_dir = htj2k_base_dir / rel_path
+                if not (output_series_dir.exists() and any(output_series_dir.glob("*.dcm"))):
+                    logger.info(f"  Processing series: {rel_path}")
+                    transcode_dicom_to_htj2k(
+                        input_dir=str(series_dir),
+                        output_dir=str(output_series_dir),
+                        num_resolutions=6,
+                        code_block_size=(64, 64),
+                        add_basic_offset_table=False,
+                    )
+            logger.info(f"✓ HTJ2K test data created at: {htj2k_base_dir}")
+        else:
+            logger.info("HTJ2K test data already exists, skipping.")
+
+        # Create multi-frame HTJ2K files (one file per series)
+        logger.info("Creating multi-frame HTJ2K test data...")
+        htj2k_multiframe_dir = Path(TEST_DATA) / "dataset" / "dicomweb_htj2k_multiframe"
+        
+        if source_base_dir.exists() and not (htj2k_multiframe_dir.exists() and any(htj2k_multiframe_dir.rglob("*.dcm"))):
+            transcode_dicom_to_htj2k_multiframe(
+                input_dir=str(source_base_dir),
+                output_dir=str(htj2k_multiframe_dir),
+                num_resolutions=6,
+                code_block_size=(64, 64),
+            )
+            logger.info(f"✓ Multi-frame HTJ2K test data created at: {htj2k_multiframe_dir}")
+        else:
+            logger.info("Multi-frame HTJ2K test data already exists, skipping.")
+            
     except ImportError as e:
         if "nvidia" in str(e).lower() or "nvimgcodec" in str(e).lower():
             logger.info("Note: nvidia-nvimgcodec not installed. HTJ2K test data will not be created.")
