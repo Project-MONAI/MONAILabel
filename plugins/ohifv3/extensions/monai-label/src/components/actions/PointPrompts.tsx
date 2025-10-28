@@ -53,12 +53,6 @@ export default class PointPrompts extends BaseTab {
       toolName: 'ProbeMONAILabel',
     });
     // console.info('Here we activate the probe');
-    
-    // Check and apply origin correction when entering this tab
-    // This ensures existing segmentations are properly aligned when switching series
-    if (this.props.ensureOriginCorrectionForCurrentSeries) {
-      this.props.ensureOriginCorrectionForCurrentSeries();
-    }
   };
 
   onLeaveActionTab = () => {
@@ -70,12 +64,6 @@ export default class PointPrompts extends BaseTab {
   };
 
   onRunInference = async () => {
-    // Ensure origin correction is applied for the current series before running inference
-    // This handles the case where user switches back to a series with existing segmentation
-    if (this.props.ensureOriginCorrectionForCurrentSeries) {
-      this.props.ensureOriginCorrectionForCurrentSeries();
-    }
-    
     const { currentModel, currentLabel, clickPoints } = this.state;
     const { info } = this.props;
     const { viewport, displaySet } = this.props.getActiveViewportInfo();
