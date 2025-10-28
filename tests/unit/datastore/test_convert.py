@@ -19,7 +19,13 @@ import numpy as np
 import pydicom
 from monai.transforms import LoadImage
 
-from monailabel.datastore.utils.convert import binary_to_image, dicom_to_nifti, nifti_to_dicom_seg, transcode_dicom_to_htj2k
+from monailabel.datastore.utils.convert import (
+    binary_to_image,
+    dicom_to_nifti,
+    nifti_to_dicom_seg,
+    transcode_dicom_to_htj2k,
+    transcode_dicom_to_htj2k_multiframe,
+)
 
 # Check if nvimgcodec is available
 try:
@@ -29,6 +35,13 @@ try:
 except ImportError:
     HAS_NVIMGCODEC = False
     nvimgcodec = None
+
+# HTJ2K Transfer Syntax UIDs
+HTJ2K_TRANSFER_SYNTAXES = frozenset([
+    "1.2.840.10008.1.2.4.201",  # High-Throughput JPEG 2000 Image Compression (Lossless Only)
+    "1.2.840.10008.1.2.4.202",  # High-Throughput JPEG 2000 with RPCL Options Image Compression (Lossless Only)
+    "1.2.840.10008.1.2.4.203",  # High-Throughput JPEG 2000 Image Compression
+])
 
 
 class TestConvert(unittest.TestCase):
@@ -347,9 +360,10 @@ class TestConvert(unittest.TestCase):
                 
                 # Verify transfer syntax is HTJ2K
                 transfer_syntax = str(ds_transcoded.file_meta.TransferSyntaxUID)
-                self.assertTrue(
-                    transfer_syntax.startswith("1.2.840.10008.1.2.4.20"),
-                    f"Transfer syntax should be HTJ2K (1.2.840.10008.1.2.4.20*), got {transfer_syntax}"
+                self.assertIn(
+                    transfer_syntax,
+                    HTJ2K_TRANSFER_SYNTAXES,
+                    f"Transfer syntax should be HTJ2K, got {transfer_syntax}"
                 )
                 
                 # Decode transcoded pixels
@@ -486,7 +500,7 @@ class TestConvert(unittest.TestCase):
             for f in mixed_files:
                 ds = pydicom.dcmread(str(f))
                 ts = str(ds.file_meta.TransferSyntaxUID)
-                if ts.startswith("1.2.840.10008.1.2.4.20"):
+                if ts in HTJ2K_TRANSFER_SYNTAXES:
                     htj2k_count_before += 1
                 else:
                     uncompressed_count_before += 1
@@ -500,7 +514,7 @@ class TestConvert(unittest.TestCase):
             for f in mixed_files:
                 ds = pydicom.dcmread(str(f))
                 ts = str(ds.file_meta.TransferSyntaxUID)
-                if ts.startswith("1.2.840.10008.1.2.4.20"):
+                if ts in HTJ2K_TRANSFER_SYNTAXES:
                     htj2k_original_data[f.name] = {
                         'pixels': ds.pixel_array.copy(),
                         'mtime': f.stat().st_mtime,
@@ -535,7 +549,7 @@ class TestConvert(unittest.TestCase):
             for f in output_files:
                 ds = pydicom.dcmread(str(f))
                 ts = str(ds.file_meta.TransferSyntaxUID)
-                if not ts.startswith("1.2.840.10008.1.2.4.20"):
+                if ts not in HTJ2K_TRANSFER_SYNTAXES:
                     all_htj2k = False
                     print(f"  ERROR: {f.name} has transfer syntax {ts}")
             
@@ -568,15 +582,16 @@ class TestConvert(unittest.TestCase):
                 ds_input = pydicom.dcmread(str(input_file))
                 ts_input = str(ds_input.file_meta.TransferSyntaxUID)
                 
-                if not ts_input.startswith("1.2.840.10008.1.2.4.20"):
+                if ts_input not in HTJ2K_TRANSFER_SYNTAXES:
                     # This was an uncompressed file, verify it was transcoded
                     output_file = Path(output_dir) / input_file.name
                     ds_output = pydicom.dcmread(str(output_file))
                     
                     # Verify transfer syntax changed to HTJ2K
                     ts_output = str(ds_output.file_meta.TransferSyntaxUID)
-                    self.assertTrue(
-                        ts_output.startswith("1.2.840.10008.1.2.4.20"),
+                    self.assertIn(
+                        ts_output,
+                        HTJ2K_TRANSFER_SYNTAXES,
                         f"File {input_file.name} should be HTJ2K after transcoding"
                     )
                     
@@ -678,6 +693,404 @@ class TestConvert(unittest.TestCase):
                 os.unlink(result_original)
             if os.path.exists(result_htj2k):
                 os.unlink(result_htj2k)
+
+
+    def test_transcode_dicom_to_htj2k_multiframe_metadata(self):
+        """Test that multi-frame HTJ2K files preserve correct DICOM metadata from original files."""
+        if not HAS_NVIMGCODEC:
+            self.skipTest(
+                "nvimgcodec not available. Install nvidia-nvimgcodec-cu{XX} matching your CUDA version (e.g., nvidia-nvimgcodec-cu13 for CUDA 13.x)"
+            )
+
+        # Use a specific series from dicomweb
+        dicom_dir = os.path.join(
+            self.base_dir,
+            "data",
+            "dataset",
+            "dicomweb",
+            "e7567e0a064f0c334226a0658de23afd",
+            "1.2.826.0.1.3680043.8.274.1.1.8323329.686405.1629744173.656721",
+        )
+
+        # Load original DICOM files and sort by Z-coordinate (same as transcode function does)
+        source_files = sorted(list(Path(dicom_dir).glob("*.dcm")))
+        if not source_files:
+            source_files = sorted([f for f in Path(dicom_dir).iterdir() if f.is_file()])
+
+        print(f"\nLoading {len(source_files)} original DICOM files...")
+        original_datasets = []
+        for source_file in source_files:
+            ds = pydicom.dcmread(str(source_file))
+            z_pos = float(ds.ImagePositionPatient[2]) if hasattr(ds, "ImagePositionPatient") else 0
+            original_datasets.append((z_pos, ds))
+
+        # Sort by Z position (same as transcode_dicom_to_htj2k_multiframe does)
+        original_datasets.sort(key=lambda x: x[0])
+        original_datasets = [ds for _, ds in original_datasets]
+        print(f"✓ Original files loaded and sorted by Z-coordinate")
+
+        # Create temporary output directory
+        output_dir = tempfile.mkdtemp(prefix="htj2k_multiframe_metadata_")
+
+        try:
+            # Transcode to multi-frame
+            result_dir = transcode_dicom_to_htj2k_multiframe(
+                input_dir=dicom_dir,
+                output_dir=output_dir,
+            )
+
+            # Find the multi-frame file
+            multiframe_files = list(Path(output_dir).rglob("*.dcm"))
+            self.assertEqual(len(multiframe_files), 1, "Should have one multi-frame file")
+
+            # Load the multi-frame file
+            ds_multiframe = pydicom.dcmread(str(multiframe_files[0]))
+
+            print(f"\nVerifying multi-frame metadata against original files...")
+
+            # Check NumberOfFrames matches source file count
+            self.assertTrue(hasattr(ds_multiframe, "NumberOfFrames"), "Should have NumberOfFrames")
+            num_frames = int(ds_multiframe.NumberOfFrames)
+            self.assertEqual(num_frames, len(original_datasets), "NumberOfFrames should match source file count")
+            print(f"✓ NumberOfFrames: {num_frames} (matches source)")
+
+            # Check FrameIncrementPointer (required for multi-frame)
+            self.assertTrue(hasattr(ds_multiframe, "FrameIncrementPointer"), "Should have FrameIncrementPointer")
+            self.assertEqual(ds_multiframe.FrameIncrementPointer, 0x00200032, "Should point to ImagePositionPatient")
+            print(f"✓ FrameIncrementPointer: {hex(ds_multiframe.FrameIncrementPointer)} (ImagePositionPatient)")
+
+            # Verify top-level metadata matches first frame
+            first_original = original_datasets[0]
+
+            # Check ImagePositionPatient (top-level should match first frame)
+            self.assertTrue(hasattr(ds_multiframe, "ImagePositionPatient"), "Should have ImagePositionPatient")
+            np.testing.assert_array_almost_equal(
+                np.array([float(x) for x in ds_multiframe.ImagePositionPatient]),
+                np.array([float(x) for x in first_original.ImagePositionPatient]),
+                decimal=6,
+                err_msg="Top-level ImagePositionPatient should match first original file"
+            )
+            print(f"✓ ImagePositionPatient matches first frame: {ds_multiframe.ImagePositionPatient}")
+
+            # Check ImageOrientationPatient
+            self.assertTrue(hasattr(ds_multiframe, "ImageOrientationPatient"), "Should have ImageOrientationPatient")
+            np.testing.assert_array_almost_equal(
+                np.array([float(x) for x in ds_multiframe.ImageOrientationPatient]),
+                np.array([float(x) for x in first_original.ImageOrientationPatient]),
+                decimal=6,
+                err_msg="ImageOrientationPatient should match original"
+            )
+            print(f"✓ ImageOrientationPatient matches original: {ds_multiframe.ImageOrientationPatient}")
+
+            # Check PixelSpacing
+            self.assertTrue(hasattr(ds_multiframe, "PixelSpacing"), "Should have PixelSpacing")
+            np.testing.assert_array_almost_equal(
+                np.array([float(x) for x in ds_multiframe.PixelSpacing]),
+                np.array([float(x) for x in first_original.PixelSpacing]),
+                decimal=6,
+                err_msg="PixelSpacing should match original"
+            )
+            print(f"✓ PixelSpacing matches original: {ds_multiframe.PixelSpacing}")
+
+            # Check SliceThickness
+            if hasattr(first_original, "SliceThickness"):
+                self.assertTrue(hasattr(ds_multiframe, "SliceThickness"), "Should have SliceThickness")
+                self.assertAlmostEqual(
+                    float(ds_multiframe.SliceThickness),
+                    float(first_original.SliceThickness),
+                    places=6,
+                    msg="SliceThickness should match original"
+                )
+                print(f"✓ SliceThickness matches original: {ds_multiframe.SliceThickness}")
+
+            # Check for PerFrameFunctionalGroupsSequence
+            self.assertTrue(
+                hasattr(ds_multiframe, "PerFrameFunctionalGroupsSequence"),
+                "Should have PerFrameFunctionalGroupsSequence"
+            )
+            per_frame_seq = ds_multiframe.PerFrameFunctionalGroupsSequence
+            self.assertEqual(
+                len(per_frame_seq),
+                num_frames,
+                f"PerFrameFunctionalGroupsSequence should have {num_frames} items"
+            )
+            print(f"✓ PerFrameFunctionalGroupsSequence: {len(per_frame_seq)} frames")
+
+            # Verify each frame's metadata matches corresponding original file
+            print(f"\nVerifying per-frame metadata...")
+            mismatches = []
+            for frame_idx in range(num_frames):
+                frame_item = per_frame_seq[frame_idx]
+                original_ds = original_datasets[frame_idx]
+
+                # Check PlanePositionSequence
+                self.assertTrue(
+                    hasattr(frame_item, "PlanePositionSequence"),
+                    f"Frame {frame_idx} should have PlanePositionSequence"
+                )
+                plane_pos = frame_item.PlanePositionSequence[0]
+                self.assertTrue(
+                    hasattr(plane_pos, "ImagePositionPatient"),
+                    f"Frame {frame_idx} should have ImagePositionPatient in PlanePositionSequence"
+                )
+
+                # Verify ImagePositionPatient matches original
+                multiframe_ipp = np.array([float(x) for x in plane_pos.ImagePositionPatient])
+                original_ipp = np.array([float(x) for x in original_ds.ImagePositionPatient])
+                
+                try:
+                    np.testing.assert_array_almost_equal(
+                        multiframe_ipp,
+                        original_ipp,
+                        decimal=6,
+                        err_msg=f"Frame {frame_idx} ImagePositionPatient should match original"
+                    )
+                except AssertionError as e:
+                    mismatches.append(f"Frame {frame_idx}: {e}")
+
+                # Check PlaneOrientationSequence
+                self.assertTrue(
+                    hasattr(frame_item, "PlaneOrientationSequence"),
+                    f"Frame {frame_idx} should have PlaneOrientationSequence"
+                )
+                plane_orient = frame_item.PlaneOrientationSequence[0]
+                self.assertTrue(
+                    hasattr(plane_orient, "ImageOrientationPatient"),
+                    f"Frame {frame_idx} should have ImageOrientationPatient in PlaneOrientationSequence"
+                )
+
+                # Verify ImageOrientationPatient matches original
+                multiframe_iop = np.array([float(x) for x in plane_orient.ImageOrientationPatient])
+                original_iop = np.array([float(x) for x in original_ds.ImageOrientationPatient])
+                
+                try:
+                    np.testing.assert_array_almost_equal(
+                        multiframe_iop,
+                        original_iop,
+                        decimal=6,
+                        err_msg=f"Frame {frame_idx} ImageOrientationPatient should match original"
+                    )
+                except AssertionError as e:
+                    mismatches.append(f"Frame {frame_idx}: {e}")
+
+            # Report any mismatches
+            if mismatches:
+                self.fail(f"Per-frame metadata mismatches:\n" + "\n".join(mismatches))
+
+            print(f"✓ All {num_frames} frames have metadata matching original files")
+
+            # Verify frame ordering (first and last frame positions)
+            first_frame_pos = per_frame_seq[0].PlanePositionSequence[0].ImagePositionPatient
+            last_frame_pos = per_frame_seq[-1].PlanePositionSequence[0].ImagePositionPatient
+
+            first_original_pos = original_datasets[0].ImagePositionPatient
+            last_original_pos = original_datasets[-1].ImagePositionPatient
+
+            print(f"\nFrame ordering verification:")
+            print(f"  First frame Z: {first_frame_pos[2]} (original: {first_original_pos[2]})")
+            print(f"  Last frame Z:  {last_frame_pos[2]} (original: {last_original_pos[2]})")
+
+            # Verify positions match originals
+            self.assertAlmostEqual(
+                float(first_frame_pos[2]),
+                float(first_original_pos[2]),
+                places=6,
+                msg="First frame Z should match first original"
+            )
+            self.assertAlmostEqual(
+                float(last_frame_pos[2]),
+                float(last_original_pos[2]),
+                places=6,
+                msg="Last frame Z should match last original"
+            )
+            print(f"✓ Frame ordering matches original files")
+
+            print(f"\n✓ Multi-frame metadata test passed - all metadata preserved correctly!")
+
+        finally:
+            # Clean up
+            import shutil
+            if os.path.exists(output_dir):
+                shutil.rmtree(output_dir)
+
+    def test_transcode_dicom_to_htj2k_multiframe_lossless(self):
+        """Test that multi-frame HTJ2K transcoding is lossless."""
+        if not HAS_NVIMGCODEC:
+            self.skipTest(
+                "nvimgcodec not available. Install nvidia-nvimgcodec-cu{XX} matching your CUDA version (e.g., nvidia-nvimgcodec-cu13 for CUDA 13.x)"
+            )
+
+        # Use a specific series from dicomweb
+        dicom_dir = os.path.join(
+            self.base_dir,
+            "data",
+            "dataset",
+            "dicomweb",
+            "e7567e0a064f0c334226a0658de23afd",
+            "1.2.826.0.1.3680043.8.274.1.1.8323329.686405.1629744173.656721",
+        )
+
+        # Load original files
+        source_files = sorted(list(Path(dicom_dir).glob("*.dcm")))
+        if not source_files:
+            source_files = sorted([f for f in Path(dicom_dir).iterdir() if f.is_file()])
+
+        print(f"\nLoading {len(source_files)} original DICOM files...")
+
+        # Read original pixel data and sort by ImagePositionPatient Z-coordinate
+        original_frames = []
+        for source_file in source_files:
+            ds = pydicom.dcmread(str(source_file))
+            z_pos = float(ds.ImagePositionPatient[2]) if hasattr(ds, "ImagePositionPatient") else 0
+            original_frames.append((z_pos, ds.pixel_array.copy()))
+
+        # Sort by Z position (same as transcode_dicom_to_htj2k_multiframe does)
+        original_frames.sort(key=lambda x: x[0])
+        original_pixel_stack = np.stack([frame for _, frame in original_frames], axis=0)
+
+        print(f"✓ Original pixel data loaded: {original_pixel_stack.shape}")
+
+        # Create temporary output directory
+        output_dir = tempfile.mkdtemp(prefix="htj2k_multiframe_lossless_")
+
+        try:
+            # Transcode to multi-frame HTJ2K
+            print(f"\nTranscoding to multi-frame HTJ2K...")
+            result_dir = transcode_dicom_to_htj2k_multiframe(
+                input_dir=dicom_dir,
+                output_dir=output_dir,
+            )
+
+            # Find the multi-frame file
+            multiframe_files = list(Path(output_dir).rglob("*.dcm"))
+            self.assertEqual(len(multiframe_files), 1, "Should have one multi-frame file")
+
+            # Load the multi-frame file
+            ds_multiframe = pydicom.dcmread(str(multiframe_files[0]))
+            multiframe_pixels = ds_multiframe.pixel_array
+
+            print(f"✓ Multi-frame pixel data loaded: {multiframe_pixels.shape}")
+
+            # Verify shapes match
+            self.assertEqual(
+                multiframe_pixels.shape,
+                original_pixel_stack.shape,
+                "Multi-frame shape should match original stacked shape"
+            )
+
+            # Verify pixel values are identical (lossless)
+            print(f"\nVerifying lossless transcoding...")
+            np.testing.assert_array_equal(
+                original_pixel_stack,
+                multiframe_pixels,
+                err_msg="Multi-frame pixel values should be identical to original (lossless)"
+            )
+
+            print(f"✓ All {len(source_files)} frames are identical (lossless compression verified)")
+
+            # Verify each frame individually
+            for frame_idx in range(len(source_files)):
+                np.testing.assert_array_equal(
+                    original_pixel_stack[frame_idx],
+                    multiframe_pixels[frame_idx],
+                    err_msg=f"Frame {frame_idx} should be identical"
+                )
+
+            print(f"✓ Individual frame verification passed for all {len(source_files)} frames")
+
+            print(f"\n✓ Lossless multi-frame HTJ2K transcoding test passed!")
+
+        finally:
+            # Clean up
+            import shutil
+            if os.path.exists(output_dir):
+                shutil.rmtree(output_dir)
+
+    def test_transcode_dicom_to_htj2k_multiframe_nifti_consistency(self):
+        """Test that multi-frame HTJ2K produces same NIfTI output as original series."""
+        if not HAS_NVIMGCODEC:
+            self.skipTest(
+                "nvimgcodec not available. Install nvidia-nvimgcodec-cu{XX} matching your CUDA version (e.g., nvidia-nvimgcodec-cu13 for CUDA 13.x)"
+            )
+
+        # Use a specific series from dicomweb
+        dicom_dir = os.path.join(
+            self.base_dir,
+            "data",
+            "dataset",
+            "dicomweb",
+            "e7567e0a064f0c334226a0658de23afd",
+            "1.2.826.0.1.3680043.8.274.1.1.8323329.686405.1629744173.656721",
+        )
+
+        print(f"\nConverting original DICOM series to NIfTI...")
+        nifti_from_original = dicom_to_nifti(dicom_dir)
+
+        # Create temporary output directory for multi-frame
+        output_dir = tempfile.mkdtemp(prefix="htj2k_multiframe_nifti_")
+
+        try:
+            # Transcode to multi-frame HTJ2K
+            print(f"\nTranscoding to multi-frame HTJ2K...")
+            result_dir = transcode_dicom_to_htj2k_multiframe(
+                input_dir=dicom_dir,
+                output_dir=output_dir,
+            )
+
+            # Find the multi-frame file
+            multiframe_files = list(Path(output_dir).rglob("*.dcm"))
+            self.assertEqual(len(multiframe_files), 1, "Should have one multi-frame file")
+            multiframe_dir = multiframe_files[0].parent
+
+            # Convert multi-frame to NIfTI
+            print(f"\nConverting multi-frame HTJ2K to NIfTI...")
+            nifti_from_multiframe = dicom_to_nifti(str(multiframe_dir))
+
+            # Load both NIfTI files
+            data_original = LoadImage(image_only=True)(nifti_from_original)
+            data_multiframe = LoadImage(image_only=True)(nifti_from_multiframe)
+
+            print(f"\nComparing NIfTI outputs...")
+            print(f"  Original shape:    {data_original.shape}")
+            print(f"  Multi-frame shape: {data_multiframe.shape}")
+
+            # Verify shapes match
+            self.assertEqual(
+                data_original.shape,
+                data_multiframe.shape,
+                "Original and multi-frame should produce same NIfTI shape"
+            )
+
+            # Verify data types match
+            self.assertEqual(
+                data_original.dtype,
+                data_multiframe.dtype,
+                "Original and multi-frame should produce same NIfTI data type"
+            )
+
+            # Verify pixel values are identical
+            np.testing.assert_array_equal(
+                data_original,
+                data_multiframe,
+                err_msg="Original and multi-frame should produce identical NIfTI pixel values"
+            )
+
+            print(f"✓ NIfTI outputs are identical")
+            print(f"  Shape: {data_original.shape}")
+            print(f"  Data type: {data_original.dtype}")
+            print(f"  Pixel values: Identical")
+
+            print(f"\n✓ Multi-frame HTJ2K NIfTI consistency test passed!")
+
+        finally:
+            # Clean up
+            import shutil
+            if os.path.exists(output_dir):
+                shutil.rmtree(output_dir)
+            if os.path.exists(nifti_from_original):
+                os.unlink(nifti_from_original)
+            if os.path.exists(nifti_from_multiframe):
+                os.unlink(nifti_from_multiframe)
 
 
 if __name__ == "__main__":

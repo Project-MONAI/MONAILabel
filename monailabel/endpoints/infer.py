@@ -92,20 +92,6 @@ def send_response(datastore, result, output, background_tasks):
         return res_json
 
     if output == "image":
-        # Log NRRD metadata before sending response
-        try:
-            import nrrd
-            if res_img and os.path.exists(res_img) and (res_img.endswith('.nrrd') or res_img.endswith('.nrrd.gz')):
-                _, header = nrrd.read(res_img, index_order='C')
-                logger.info(f"[NRRD Geometry] File: {os.path.basename(res_img)}")
-                logger.info(f"[NRRD Geometry] Dimensions: {header.get('sizes')}")
-                logger.info(f"[NRRD Geometry] Space Origin: {header.get('space origin')}")
-                logger.info(f"[NRRD Geometry] Space Directions: {header.get('space directions')}")
-                logger.info(f"[NRRD Geometry] Space: {header.get('space')}")
-                logger.info(f"[NRRD Geometry] Type: {header.get('type')}")
-                logger.info(f"[NRRD Geometry] Encoding: {header.get('encoding')}")
-        except Exception as e:
-            logger.warning(f"Failed to read NRRD metadata: {e}")
         return FileResponse(res_img, media_type=get_mime_type(res_img), filename=os.path.basename(res_img))
 
     if output == "dicom_seg":

@@ -639,6 +639,22 @@ def dicom_seg_to_itk_image(label, output_ext=".seg.nrrd"):
     return output_file
 
 
+def _create_basic_offset_table_pixel_data(encoded_frames: list) -> bytes:
+    """
+    Create encapsulated pixel data with Basic Offset Table for multi-frame DICOM.
+    
+    Uses pydicom's encapsulate() function to ensure 100% standard compliance.
+    
+    Args:
+        encoded_frames: List of encoded frame byte strings
+        
+    Returns:
+        bytes: Encapsulated pixel data with Basic Offset Table per DICOM Part 5 Section A.4
+    """
+    return pydicom.encaps.encapsulate(encoded_frames, has_bot=True)
+
+
+
 def _setup_htj2k_decode_params():
     """
     Create nvimgcodec decoding parameters for DICOM images.
