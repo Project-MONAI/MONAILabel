@@ -639,22 +639,6 @@ def dicom_seg_to_itk_image(label, output_ext=".seg.nrrd"):
     return output_file
 
 
-def _create_basic_offset_table_pixel_data(encoded_frames: list) -> bytes:
-    """
-    Create encapsulated pixel data with Basic Offset Table for multi-frame DICOM.
-    
-    Uses pydicom's encapsulate() function to ensure 100% standard compliance.
-    
-    Args:
-        encoded_frames: List of encoded frame byte strings
-        
-    Returns:
-        bytes: Encapsulated pixel data with Basic Offset Table per DICOM Part 5 Section A.4
-    """
-    return pydicom.encaps.encapsulate(encoded_frames, has_bot=True)
-
-
-
 def _setup_htj2k_decode_params():
     """
     Create nvimgcodec decoding parameters for DICOM images.
@@ -735,21 +719,6 @@ def _get_transfer_syntax_constants():
         'JPEG': JPEG_SYNTAXES,
         'NVIMGCODEC': JPEG2000_SYNTAXES | HTJ2K_SYNTAXES | JPEG_SYNTAXES
     }
-
-
-def _create_basic_offset_table_pixel_data(encoded_frames: list) -> bytes:
-    """
-    Create encapsulated pixel data with Basic Offset Table for multi-frame DICOM.
-    
-    Uses pydicom's encapsulate() function to ensure 100% standard compliance.
-    
-    Args:
-        encoded_frames: List of encoded frame byte strings
-        
-    Returns:
-        bytes: Encapsulated pixel data with Basic Offset Table per DICOM Part 5 Section A.4
-    """
-    return pydicom.encaps.encapsulate(encoded_frames, has_bot=True)
 
 
 def transcode_dicom_to_htj2k(
@@ -926,10 +895,9 @@ def transcode_dicom_to_htj2k(
                 if not hasattr(ds, "PixelData") or ds.PixelData is None:
                     raise ValueError(f"DICOM file {os.path.basename(batch_files[idx])} does not have a PixelData member")
                 nvimgcodec_batch.append(idx)
-
             else:
                 pydicom_batch.append(idx)
-        
+
         data_sequence = []
         decoded_data = []
         num_frames = []
@@ -970,8 +938,8 @@ def transcode_dicom_to_htj2k(
             # Update dataset with HTJ2K encoded data
             # Create Basic Offset Table for multi-frame files if requested
             if add_basic_offset_table and nframes > 1:
-                batch_datasets[dataset_idx].PixelData = _create_basic_offset_table_pixel_data(encoded_frames)
-                logger.debug(f"Created Basic Offset Table for {os.path.basename(batch_files[dataset_idx])} ({nframes} frames)")
+                batch_datasets[dataset_idx].PixelData = pydicom.encaps.encapsulate(encoded_frames, has_bot=True)
+                logger.info(f"  ✓ Basic Offset Table included for efficient frame access")
             else:
                 batch_datasets[dataset_idx].PixelData = pydicom.encaps.encapsulate(encoded_frames)
 
@@ -993,17 +961,19 @@ def transcode_dicom_to_htj2k(
     return output_dir
 
 
-def transcode_dicom_to_htj2k_multiframe(
+def convert_single_frame_dicom_series_to_multiframe(
     input_dir: str,
     output_dir: str = None,
+    convert_to_htj2k: bool = False,
     num_resolutions: int = 6,
     code_block_size: tuple = (64, 64),
+    add_basic_offset_table: bool = True,
 ) -> str:
     """
-    Transcode DICOM files to HTJ2K and combine all frames from the same series into single multi-frame files.
+    Convert single-frame DICOM series to multi-frame DICOM files, optionally with HTJ2K compression.
     
     This function groups DICOM files by SeriesInstanceUID and combines all frames from each series
-    into a single multi-frame DICOM file with HTJ2K compression. This is useful for:
+    into a single multi-frame DICOM file. This is useful for:
     - Reducing file count (one file per series instead of many)
     - Improving storage efficiency
     - Enabling more efficient frame-level access patterns
@@ -1012,27 +982,37 @@ def transcode_dicom_to_htj2k_multiframe(
     1. Scans input directory recursively for DICOM files
     2. Groups files by StudyInstanceUID and SeriesInstanceUID
     3. For each series, decodes all frames and combines them
-    4. Encodes combined frames to HTJ2K
+    4. Optionally encodes combined frames to HTJ2K (if convert_to_htj2k=True)
     5. Creates a Basic Offset Table for efficient frame access (per DICOM Part 5 Section A.4)
     6. Saves as a single multi-frame DICOM file per series
     
     Args:
         input_dir: Path to directory containing DICOM files (will scan recursively)
         output_dir: Path to output directory for transcoded files. If None, creates temp directory
-        num_resolutions: Number of wavelet decomposition levels (default: 6)
-        code_block_size: Code block size as (height, width) tuple (default: (64, 64))
+        convert_to_htj2k: If True, convert frames to HTJ2K compression; if False, use uncompressed format (default: False)
+        num_resolutions: Number of wavelet decomposition levels (default: 6, only used if convert_to_htj2k=True)
+        code_block_size: Code block size as (height, width) tuple (default: (64, 64), only used if convert_to_htj2k=True)
+        add_basic_offset_table: If True, creates Basic Offset Table for multi-frame DICOMs (default: True)
+                               BOT enables O(1) frame access without parsing entire pixel data stream
+                               Per DICOM Part 5 Section A.4. Only affects multi-frame files.
         
     Returns:
-        str: Path to output directory containing transcoded multi-frame DICOM files
+        str: Path to output directory containing multi-frame DICOM files
         
     Raises:
-        ImportError: If nvidia-nvimgcodec is not available
+        ImportError: If nvidia-nvimgcodec is not available and convert_to_htj2k=True
         ValueError: If input directory doesn't exist or contains no valid DICOM files
         
     Example:
-        >>> # Combine series and transcode to HTJ2K
-        >>> output_dir = transcode_dicom_to_htj2k_multiframe("/path/to/dicoms")
+        >>> # Combine series without HTJ2K conversion (uncompressed)
+        >>> output_dir = convert_single_frame_dicom_series_to_multiframe("/path/to/dicoms")
         >>> print(f"Multi-frame files saved to: {output_dir}")
+        
+        >>> # Combine series with HTJ2K conversion
+        >>> output_dir = convert_single_frame_dicom_series_to_multiframe(
+        ...     "/path/to/dicoms",
+        ...     convert_to_htj2k=True
+        ... )
         
     Note:
         Each output file is named using the SeriesInstanceUID:
@@ -1053,15 +1033,16 @@ def transcode_dicom_to_htj2k_multiframe(
     from collections import defaultdict
     from pathlib import Path
     
-    # Check for nvidia-nvimgcodec
-    try:
-        from nvidia import nvimgcodec
-    except ImportError:
-        raise ImportError(
-            "nvidia-nvimgcodec is required for HTJ2K transcoding. "
-            "Install it with: pip install nvidia-nvimgcodec-cu{XX}[all] "
-            "(replace {XX} with your CUDA version, e.g., cu13)"
-        )
+    # Check for nvidia-nvimgcodec only if HTJ2K conversion is requested
+    if convert_to_htj2k:
+        try:
+            from nvidia import nvimgcodec
+        except ImportError:
+            raise ImportError(
+                "nvidia-nvimgcodec is required for HTJ2K transcoding. "
+                "Install it with: pip install nvidia-nvimgcodec-cu{XX}[all] "
+                "(replace {XX} with your CUDA version, e.g., cu13)"
+            )
     
     import pydicom
     import numpy as np
@@ -1123,20 +1104,32 @@ def transcode_dicom_to_htj2k_multiframe(
     
     # Create output directory
     if output_dir is None:
-        output_dir = tempfile.mkdtemp(prefix="htj2k_multiframe_")
+        prefix = "htj2k_multiframe_" if convert_to_htj2k else "multiframe_"
+        output_dir = tempfile.mkdtemp(prefix=prefix)
     else:
         os.makedirs(output_dir, exist_ok=True)
     
-    # Create encoder and decoder instances
-    encoder = _get_nvimgcodec_encoder()
-    decoder = _get_nvimgcodec_decoder()
-    
-    # Setup HTJ2K encoding and decoding parameters
-    encode_params, target_transfer_syntax = _setup_htj2k_encode_params(
-        num_resolutions=num_resolutions,
-        code_block_size=code_block_size
-    )
-    decode_params = _setup_htj2k_decode_params()
+    # Setup encoder/decoder and parameters based on conversion mode
+    if convert_to_htj2k:
+        # Create encoder and decoder instances for HTJ2K
+        encoder = _get_nvimgcodec_encoder()
+        decoder = _get_nvimgcodec_decoder()
+        
+        # Setup HTJ2K encoding and decoding parameters
+        encode_params, target_transfer_syntax = _setup_htj2k_encode_params(
+            num_resolutions=num_resolutions,
+            code_block_size=code_block_size
+        )
+        decode_params = _setup_htj2k_decode_params()
+        logger.info("HTJ2K conversion enabled")
+    else:
+        # No conversion - preserve original transfer syntax
+        encoder = None
+        decoder = None
+        encode_params = None
+        decode_params = None
+        target_transfer_syntax = None  # Will be determined from first dataset
+        logger.info("Preserving original transfer syntax (no HTJ2K conversion)")
     
     # Get transfer syntax constants
     ts_constants = _get_transfer_syntax_constants()
@@ -1175,53 +1168,122 @@ def transcode_dicom_to_htj2k_multiframe(
             # Use first dataset as template
             template_ds = datasets[0]
             
+            # Determine transfer syntax from first dataset
+            if target_transfer_syntax is None:
+                target_transfer_syntax = str(getattr(template_ds.file_meta, 'TransferSyntaxUID', '1.2.840.10008.1.2.1'))
+                logger.info(f"  Using original transfer syntax: {target_transfer_syntax}")
+            
+            # Check if we're dealing with encapsulated (compressed) data
+            is_encapsulated = hasattr(template_ds, 'PixelData') and template_ds.file_meta.TransferSyntaxUID != pydicom.uid.ExplicitVRLittleEndian
+            
             # Collect all frames from all instances
-            all_decoded_frames = []
+            all_frames = []  # Will contain either numpy arrays (for HTJ2K) or bytes (for preserving)
             
-            for ds in datasets:
-                current_ts = str(getattr(ds.file_meta, 'TransferSyntaxUID', None))
-                
-                if current_ts in NVIMGCODEC_SYNTAXES:
-                    # Compressed format - use nvimgcodec decoder
-                    frames = [fragment for fragment in pydicom.encaps.generate_frames(ds.PixelData)]
-                    decoded = decoder.decode(frames, params=decode_params)
-                    all_decoded_frames.extend(decoded)
-                else:
-                    # Uncompressed format - use pydicom
-                    pixel_array = ds.pixel_array
-                    if not isinstance(pixel_array, np.ndarray):
-                        pixel_array = np.array(pixel_array)
+            if convert_to_htj2k:
+                # HTJ2K mode: decode all frames
+                for ds in datasets:
+                    current_ts = str(getattr(ds.file_meta, 'TransferSyntaxUID', None))
                     
-                    # Handle single frame vs multi-frame
-                    if pixel_array.ndim == 2:
-                        # Single frame
-                        pixel_array = pixel_array[:, :, np.newaxis]
-                        all_decoded_frames.append(pixel_array)
-                    elif pixel_array.ndim == 3:
-                        # Multi-frame (frames are first dimension)
-                        for frame_idx in range(pixel_array.shape[0]):
-                            frame_2d = pixel_array[frame_idx, :, :]
-                            if frame_2d.ndim == 2:
-                                frame_2d = frame_2d[:, :, np.newaxis]
-                            all_decoded_frames.append(frame_2d)
+                    if current_ts in NVIMGCODEC_SYNTAXES:
+                        # Compressed format - use nvimgcodec decoder
+                        frames = [fragment for fragment in pydicom.encaps.generate_frames(ds.PixelData)]
+                        decoded = decoder.decode(frames, params=decode_params)
+                        all_frames.extend(decoded)
+                    else:
+                        # Uncompressed format - use pydicom
+                        pixel_array = ds.pixel_array
+                        if not isinstance(pixel_array, np.ndarray):
+                            pixel_array = np.array(pixel_array)
+                        
+                        # Handle single frame vs multi-frame
+                        if pixel_array.ndim == 2:
+                            all_frames.append(pixel_array)
+                        elif pixel_array.ndim == 3:
+                            for frame_idx in range(pixel_array.shape[0]):
+                                all_frames.append(pixel_array[frame_idx, :, :])
+            else:
+                # Preserve original encoding: extract frames without decoding
+                first_ts = str(getattr(datasets[0].file_meta, 'TransferSyntaxUID', None))
+                
+                if first_ts in NVIMGCODEC_SYNTAXES or pydicom.encaps.encapsulate_extended:
+                    # Encapsulated data - extract compressed frames
+                    for ds in datasets:
+                        if hasattr(ds, 'PixelData'):
+                            try:
+                                # Extract compressed frames
+                                frames = [fragment for fragment in pydicom.encaps.generate_frames(ds.PixelData)]
+                                all_frames.extend(frames)
+                            except:
+                                # Fall back to pixel_array for uncompressed
+                                pixel_array = ds.pixel_array
+                                if not isinstance(pixel_array, np.ndarray):
+                                    pixel_array = np.array(pixel_array)
+                                if pixel_array.ndim == 2:
+                                    all_frames.append(pixel_array)
+                                elif pixel_array.ndim == 3:
+                                    for frame_idx in range(pixel_array.shape[0]):
+                                        all_frames.append(pixel_array[frame_idx, :, :])
+                else:
+                    # Uncompressed data - use pixel arrays
+                    for ds in datasets:
+                        pixel_array = ds.pixel_array
+                        if not isinstance(pixel_array, np.ndarray):
+                            pixel_array = np.array(pixel_array)
+                        if pixel_array.ndim == 2:
+                            all_frames.append(pixel_array)
+                        elif pixel_array.ndim == 3:
+                            for frame_idx in range(pixel_array.shape[0]):
+                                all_frames.append(pixel_array[frame_idx, :, :])
             
-            total_frame_count = len(all_decoded_frames)
+            total_frame_count = len(all_frames)
             logger.info(f"  Total frames in series: {total_frame_count}")
             
-            # Encode all frames to HTJ2K
-            logger.info(f"  Encoding {total_frame_count} frames to HTJ2K...")
-            encoded_frames = encoder.encode(all_decoded_frames, codec="jpeg2k", params=encode_params)
-            
-            # Convert to bytes
-            encoded_frames_bytes = [bytes(enc) for enc in encoded_frames]
+            # Encode frames based on conversion mode
+            if convert_to_htj2k:
+                logger.info(f"  Encoding {total_frame_count} frames to HTJ2K...")
+                # Ensure frames have channel dimension for encoder
+                frames_for_encoding = []
+                for frame in all_frames:
+                    if frame.ndim == 2:
+                        frame = frame[:, :, np.newaxis]
+                    frames_for_encoding.append(frame)
+                encoded_frames = encoder.encode(frames_for_encoding, codec="jpeg2k", params=encode_params)
+                # Convert to bytes
+                encoded_frames_bytes = [bytes(enc) for enc in encoded_frames]
+            else:
+                logger.info(f"  Preserving original encoding for {total_frame_count} frames...")
+                # Check if frames are already bytes (encapsulated) or numpy arrays (uncompressed)
+                if len(all_frames) > 0 and isinstance(all_frames[0], bytes):
+                    # Already encapsulated - use as-is
+                    encoded_frames_bytes = all_frames
+                else:
+                    # Uncompressed numpy arrays
+                    encoded_frames_bytes = None
             
             # Create SIMPLE multi-frame DICOM file (like the user's example)
             # Use first dataset as template, keeping its metadata
             logger.info(f"  Creating simple multi-frame DICOM from {total_frame_count} frames...")
             output_ds = datasets[0].copy()  # Start from first dataset
             
-            # Update pixel data with all HTJ2K encoded frames + Basic Offset Table
-            output_ds.PixelData = _create_basic_offset_table_pixel_data(encoded_frames_bytes)
+            # CRITICAL: Set SOP Instance UID to match the SeriesInstanceUID (which will be the filename)
+            # This ensures the file's internal SOP Instance UID matches its filename
+            output_ds.SOPInstanceUID = series_uid
+            
+            # Update pixel data based on conversion mode
+            if encoded_frames_bytes is not None:
+                # Encapsulated data (HTJ2K or preserved compressed format)
+                # Use Basic Offset Table for multi-frame efficiency
+                if add_basic_offset_table:
+                    output_ds.PixelData = pydicom.encaps.encapsulate(encoded_frames_bytes, has_bot=True)
+                    logger.info(f"  ✓ Basic Offset Table included for efficient frame access")
+                else:
+                    output_ds.PixelData = pydicom.encaps.encapsulate(encoded_frames_bytes)
+            else:
+                # Uncompressed mode: combine all frames into a 3D array
+                # Stack frames: (frames, rows, cols)
+                combined_pixel_array = np.stack(all_frames, axis=0)
+                output_ds.PixelData = combined_pixel_array.tobytes()
+            
             output_ds.file_meta.TransferSyntaxUID = pydicom.uid.UID(target_transfer_syntax)
             
             # Set NumberOfFrames (critical!)
@@ -1371,7 +1433,8 @@ def transcode_dicom_to_htj2k_multiframe(
                             logger.error(f"    ❌ MISMATCH: Top-level Z={output_ds.ImagePositionPatient[2]} != Frame[0] Z={first_frame_pos[2]}")
             
             logger.info(f"  ✓ Created multi-frame with {total_frame_count} frames (OHIF-compatible)")
-            logger.info(f"  ✓ Basic Offset Table included for efficient frame access")
+            if encoded_frames_bytes is not None:
+                logger.info(f"  ✓ Basic Offset Table included for efficient frame access")
             
             # Create output directory structure
             study_output_dir = os.path.join(output_dir, study_uid)
@@ -1393,9 +1456,16 @@ def transcode_dicom_to_htj2k_multiframe(
     
     elapsed_time = time.time() - start_time
     
-    logger.info(f"\nMulti-frame HTJ2K transcoding complete:")
+    if convert_to_htj2k:
+        logger.info(f"\nMulti-frame HTJ2K conversion complete:")
+    else:
+        logger.info(f"\nMulti-frame DICOM conversion complete:")
     logger.info(f"  Total series processed: {processed_series}")
-    logger.info(f"  Total frames encoded: {total_frames}")
+    logger.info(f"  Total frames combined: {total_frames}")
+    if convert_to_htj2k:
+        logger.info(f"  Format: HTJ2K compressed")
+    else:
+        logger.info(f"  Format: Original transfer syntax preserved")
     logger.info(f"  Time elapsed: {elapsed_time:.2f} seconds")
     logger.info(f"  Output directory: {output_dir}")
     

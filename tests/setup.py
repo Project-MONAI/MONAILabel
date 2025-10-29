@@ -60,7 +60,7 @@ def run_main():
         import sys
 
         sys.path.insert(0, TEST_DIR)
-        from monailabel.datastore.utils.convert import transcode_dicom_to_htj2k, transcode_dicom_to_htj2k_multiframe
+        from monailabel.datastore.utils.convert import transcode_dicom_to_htj2k, convert_single_frame_dicom_series_to_multiframe
 
         # Create regular HTJ2K files (preserving file structure)
         logger.info("Creating HTJ2K test data (single-frame per file)...")
@@ -90,9 +90,10 @@ def run_main():
         htj2k_multiframe_dir = Path(TEST_DATA) / "dataset" / "dicomweb_htj2k_multiframe"
         
         if source_base_dir.exists() and not (htj2k_multiframe_dir.exists() and any(htj2k_multiframe_dir.rglob("*.dcm"))):
-            transcode_dicom_to_htj2k_multiframe(
+            convert_single_frame_dicom_series_to_multiframe(
                 input_dir=str(source_base_dir),
                 output_dir=str(htj2k_multiframe_dir),
+                convert_to_htj2k=True,
                 num_resolutions=6,
                 code_block_size=(64, 64),
             )
