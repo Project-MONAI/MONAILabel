@@ -45,6 +45,355 @@ class TestConvertHTJ2K(unittest.TestCase):
     base_dir = os.path.realpath(os.path.dirname(os.path.dirname(os.path.dirname(__file__))))
     dicom_dataset = os.path.join(base_dir, "data", "dataset", "dicomweb", "e7567e0a064f0c334226a0658de23afd")
 
+    def test_transcode_multiframe_jpeg_ybr_to_htj2k(self):
+        """Test transcoding multi-frame JPEG with YCbCr color space to HTJ2K."""
+        if not HAS_NVIMGCODEC:
+            self.skipTest(
+                "nvimgcodec not available. Install nvidia-nvimgcodec-cu{XX} matching your CUDA version (e.g., nvidia-nvimgcodec-cu13 for CUDA 13.x)"
+            )
+        
+        # Use pydicom's built-in YBR color multi-frame JPEG example
+        import pydicom.data
+        
+        try:
+            source_file = pydicom.data.get_testdata_file("examples_ybr_color.dcm")
+        except Exception as e:
+            self.skipTest(f"Could not load pydicom test data: {e}")
+        
+        print(f"\nSource file: {source_file}")
+        
+        # Create temporary directories
+        input_dir = tempfile.mkdtemp(prefix="htj2k_multiframe_input_")
+        output_dir = tempfile.mkdtemp(prefix="htj2k_multiframe_output_")
+        
+        try:
+            # Copy file to input directory
+            import shutil
+            test_filename = "multiframe_ybr.dcm"
+            shutil.copy2(source_file, os.path.join(input_dir, test_filename))
+            
+            # Read original DICOM
+            ds_original = pydicom.dcmread(source_file)
+            original_pixels = ds_original.pixel_array.copy()
+            original_transfer_syntax = str(ds_original.file_meta.TransferSyntaxUID)
+            num_frames = int(ds_original.NumberOfFrames) if hasattr(ds_original, 'NumberOfFrames') else 1
+            
+            print(f"\nOriginal file:")
+            print(f"  Transfer Syntax: {original_transfer_syntax}")
+            print(f"  Transfer Syntax Name: {ds_original.file_meta.TransferSyntaxUID.name}")
+            print(f"  PhotometricInterpretation: {ds_original.PhotometricInterpretation}")
+            print(f"  Number of Frames: {num_frames}")
+            print(f"  Dimensions: {ds_original.Rows} x {ds_original.Columns}")
+            print(f"  Samples Per Pixel: {ds_original.SamplesPerPixel}")
+            print(f"  Pixel shape: {original_pixels.shape}")
+            print(f"  File size: {os.path.getsize(source_file):,} bytes")
+            
+            # Perform transcoding
+            print(f"\nTranscoding multi-frame YBR JPEG to HTJ2K...")
+            import time
+            start_time = time.time()
+            
+            result_dir = transcode_dicom_to_htj2k(
+                input_dir=input_dir,
+                output_dir=output_dir,
+            )
+            
+            elapsed_time = time.time() - start_time
+            print(f"Transcoding completed in {elapsed_time:.2f} seconds")
+            
+            self.assertEqual(result_dir, output_dir, "Output directory should match requested directory")
+            
+            # Find transcoded file
+            transcoded_file = os.path.join(output_dir, test_filename)
+            self.assertTrue(os.path.exists(transcoded_file), f"Transcoded file should exist: {transcoded_file}")
+            
+            # Read transcoded DICOM
+            ds_transcoded = pydicom.dcmread(transcoded_file)
+            transcoded_pixels = ds_transcoded.pixel_array
+            transcoded_transfer_syntax = str(ds_transcoded.file_meta.TransferSyntaxUID)
+            
+            print(f"\nTranscoded file:")
+            print(f"  Transfer Syntax: {transcoded_transfer_syntax}")
+            print(f"  PhotometricInterpretation: {ds_transcoded.PhotometricInterpretation}")
+            print(f"  Pixel shape: {transcoded_pixels.shape}")
+            print(f"  File size: {os.path.getsize(transcoded_file):,} bytes")
+            
+            # Verify transfer syntax is HTJ2K
+            self.assertIn(
+                transcoded_transfer_syntax,
+                HTJ2K_TRANSFER_SYNTAXES,
+                f"Transfer syntax should be HTJ2K, got {transcoded_transfer_syntax}"
+            )
+            print(f"✓ Transfer syntax is HTJ2K: {transcoded_transfer_syntax}")
+            
+            # Verify PhotometricInterpretation was updated to RGB
+            self.assertEqual(
+                ds_transcoded.PhotometricInterpretation,
+                'RGB',
+                "PhotometricInterpretation should be updated to RGB after YCbCr conversion"
+            )
+            print(f"✓ PhotometricInterpretation updated: {ds_original.PhotometricInterpretation} -> {ds_transcoded.PhotometricInterpretation}")
+            
+            # Verify shapes match
+            self.assertEqual(
+                original_pixels.shape,
+                transcoded_pixels.shape,
+                "Pixel array shapes should match"
+            )
+            print(f"✓ Shapes match: {original_pixels.shape}")
+            
+            # Verify pixel values are close (allowing small differences due to color space conversions)
+            # Use allclose with tolerance since YCbCr->RGB conversion may have rounding differences
+            # between pydicom and nvimgcodec (atol=5 allows for typical conversion differences)
+            max_diff = np.abs(original_pixels.astype(np.float32) - transcoded_pixels.astype(np.float32)).max()
+            mean_diff = np.abs(original_pixels.astype(np.float32) - transcoded_pixels.astype(np.float32)).mean()
+            print(f"  Pixel differences: max={max_diff}, mean={mean_diff:.3f}")
+            
+            if not np.allclose(original_pixels, transcoded_pixels, atol=5, rtol=0):
+                print(f"✗ Pixel values differ beyond tolerance")
+                self.fail(f"Pixel values should be close (atol=5), but max diff is {max_diff}")
+            
+            print(f"✓ Pixel values match within tolerance (atol=5, max_diff={max_diff})")
+            
+            # Verify metadata is preserved
+            self.assertEqual(ds_original.Rows, ds_transcoded.Rows, "Rows should be preserved")
+            self.assertEqual(ds_original.Columns, ds_transcoded.Columns, "Columns should be preserved")
+            self.assertEqual(ds_original.NumberOfFrames, ds_transcoded.NumberOfFrames, "NumberOfFrames should be preserved")
+            print(f"✓ Metadata preserved: {num_frames} frames, {ds_original.Rows}x{ds_original.Columns}")
+            
+            # Compare file sizes
+            size_ratio = os.path.getsize(transcoded_file) / os.path.getsize(source_file)
+            print(f"\nCompression ratio: {size_ratio:.2%}")
+            
+            print(f"\n✓ Multi-frame YBR JPEG to HTJ2K transcoding test passed!")
+            
+        finally:
+            # Clean up temporary directories
+            import shutil
+            for temp_dir in [input_dir, output_dir]:
+                if os.path.exists(temp_dir):
+                    shutil.rmtree(temp_dir)
+
+    def test_transcode_ct_example_to_htj2k(self):
+        """Test transcoding uncompressed CT grayscale image to HTJ2K."""
+        if not HAS_NVIMGCODEC:
+            self.skipTest("nvimgcodec not available")
+        
+        import pydicom.examples as examples
+        import shutil
+        
+        source_file = str(examples.get_path('ct'))
+        print(f"\nSource: {source_file}")
+        
+        # Create temp directories
+        input_dir = tempfile.mkdtemp(prefix="htj2k_ct_input_")
+        output_dir = tempfile.mkdtemp(prefix="htj2k_ct_output_")
+        
+        try:
+            test_filename = "ct_small.dcm"
+            shutil.copy2(source_file, os.path.join(input_dir, test_filename))
+            
+            # Read original
+            ds_original = pydicom.dcmread(source_file)
+            original_pixels = ds_original.pixel_array.copy()
+            
+            print(f"Original: {ds_original.file_meta.TransferSyntaxUID.name}")
+            print(f"  PhotometricInterpretation: {ds_original.PhotometricInterpretation}")
+            print(f"  Shape: {original_pixels.shape}")
+            
+            # Transcode
+            result_dir = transcode_dicom_to_htj2k(input_dir=input_dir, output_dir=output_dir)
+            self.assertEqual(result_dir, output_dir)
+            
+            # Read transcoded
+            transcoded_file = os.path.join(output_dir, test_filename)
+            self.assertTrue(os.path.exists(transcoded_file))
+            
+            ds_transcoded = pydicom.dcmread(transcoded_file)
+            transcoded_pixels = ds_transcoded.pixel_array
+            
+            print(f"Transcoded: {ds_transcoded.file_meta.TransferSyntaxUID.name}")
+            print(f"  PhotometricInterpretation: {ds_transcoded.PhotometricInterpretation}")
+            
+            # Verify HTJ2K
+            self.assertIn(str(ds_transcoded.file_meta.TransferSyntaxUID), HTJ2K_TRANSFER_SYNTAXES)
+            
+            # Verify lossless (grayscale should be exact)
+            np.testing.assert_array_equal(original_pixels, transcoded_pixels)
+            print("✓ CT grayscale lossless transcoding verified")
+            
+        finally:
+            shutil.rmtree(input_dir, ignore_errors=True)
+            shutil.rmtree(output_dir, ignore_errors=True)
+
+    def test_transcode_mr_example_to_htj2k(self):
+        """Test transcoding uncompressed MR grayscale image to HTJ2K."""
+        if not HAS_NVIMGCODEC:
+            self.skipTest("nvimgcodec not available")
+        
+        import pydicom.examples as examples
+        import shutil
+        
+        source_file = str(examples.get_path('mr'))
+        print(f"\nSource: {source_file}")
+        
+        # Create temp directories
+        input_dir = tempfile.mkdtemp(prefix="htj2k_mr_input_")
+        output_dir = tempfile.mkdtemp(prefix="htj2k_mr_output_")
+        
+        try:
+            test_filename = "mr_small.dcm"
+            shutil.copy2(source_file, os.path.join(input_dir, test_filename))
+            
+            # Read original
+            ds_original = pydicom.dcmread(source_file)
+            original_pixels = ds_original.pixel_array.copy()
+            
+            print(f"Original: {ds_original.file_meta.TransferSyntaxUID.name}")
+            print(f"  PhotometricInterpretation: {ds_original.PhotometricInterpretation}")
+            print(f"  Shape: {original_pixels.shape}")
+            
+            # Transcode
+            result_dir = transcode_dicom_to_htj2k(input_dir=input_dir, output_dir=output_dir)
+            self.assertEqual(result_dir, output_dir)
+            
+            # Read transcoded
+            transcoded_file = os.path.join(output_dir, test_filename)
+            self.assertTrue(os.path.exists(transcoded_file))
+            
+            ds_transcoded = pydicom.dcmread(transcoded_file)
+            transcoded_pixels = ds_transcoded.pixel_array
+            
+            print(f"Transcoded: {ds_transcoded.file_meta.TransferSyntaxUID.name}")
+            print(f"  PhotometricInterpretation: {ds_transcoded.PhotometricInterpretation}")
+            
+            # Verify HTJ2K
+            self.assertIn(str(ds_transcoded.file_meta.TransferSyntaxUID), HTJ2K_TRANSFER_SYNTAXES)
+            
+            # Verify lossless (grayscale should be exact)
+            np.testing.assert_array_equal(original_pixels, transcoded_pixels)
+            print("✓ MR grayscale lossless transcoding verified")
+            
+        finally:
+            shutil.rmtree(input_dir, ignore_errors=True)
+            shutil.rmtree(output_dir, ignore_errors=True)
+
+    def test_transcode_rgb_color_example_to_htj2k(self):
+        """Test transcoding uncompressed RGB color image to HTJ2K."""
+        if not HAS_NVIMGCODEC:
+            self.skipTest("nvimgcodec not available")
+        
+        import pydicom.examples as examples
+        import shutil
+        
+        source_file = str(examples.get_path('rgb_color'))
+        print(f"\nSource: {source_file}")
+        
+        # Create temp directories
+        input_dir = tempfile.mkdtemp(prefix="htj2k_rgb_input_")
+        output_dir = tempfile.mkdtemp(prefix="htj2k_rgb_output_")
+        
+        try:
+            test_filename = "rgb_color.dcm"
+            shutil.copy2(source_file, os.path.join(input_dir, test_filename))
+            
+            # Read original
+            ds_original = pydicom.dcmread(source_file)
+            original_pixels = ds_original.pixel_array.copy()
+            
+            print(f"Original: {ds_original.file_meta.TransferSyntaxUID.name}")
+            print(f"  PhotometricInterpretation: {ds_original.PhotometricInterpretation}")
+            print(f"  Shape: {original_pixels.shape}")
+            
+            # Transcode
+            result_dir = transcode_dicom_to_htj2k(input_dir=input_dir, output_dir=output_dir)
+            self.assertEqual(result_dir, output_dir)
+            
+            # Read transcoded
+            transcoded_file = os.path.join(output_dir, test_filename)
+            self.assertTrue(os.path.exists(transcoded_file))
+            
+            ds_transcoded = pydicom.dcmread(transcoded_file)
+            transcoded_pixels = ds_transcoded.pixel_array
+            
+            print(f"Transcoded: {ds_transcoded.file_meta.TransferSyntaxUID.name}")
+            print(f"  PhotometricInterpretation: {ds_transcoded.PhotometricInterpretation}")
+            
+            # Verify HTJ2K
+            self.assertIn(str(ds_transcoded.file_meta.TransferSyntaxUID), HTJ2K_TRANSFER_SYNTAXES)
+            
+            # Verify PhotometricInterpretation stays RGB
+            self.assertEqual(ds_transcoded.PhotometricInterpretation, 'RGB')
+            
+            # Verify lossless (RGB uncompressed should be exact)
+            np.testing.assert_array_equal(original_pixels, transcoded_pixels)
+            print("✓ RGB color lossless transcoding verified")
+            
+        finally:
+            shutil.rmtree(input_dir, ignore_errors=True)
+            shutil.rmtree(output_dir, ignore_errors=True)
+
+    def test_transcode_jpeg2k_example_to_htj2k(self):
+        """Test transcoding JPEG 2000 (YBR_RCT) color image to HTJ2K."""
+        if not HAS_NVIMGCODEC:
+            self.skipTest("nvimgcodec not available")
+        
+        import pydicom.examples as examples
+        import shutil
+        
+        source_file = str(examples.get_path('jpeg2k'))
+        print(f"\nSource: {source_file}")
+        
+        # Create temp directories
+        input_dir = tempfile.mkdtemp(prefix="htj2k_jpeg2k_input_")
+        output_dir = tempfile.mkdtemp(prefix="htj2k_jpeg2k_output_")
+        
+        try:
+            test_filename = "jpeg2k.dcm"
+            shutil.copy2(source_file, os.path.join(input_dir, test_filename))
+            
+            # Read original
+            ds_original = pydicom.dcmread(source_file)
+            original_pixels = ds_original.pixel_array.copy()
+            
+            print(f"Original: {ds_original.file_meta.TransferSyntaxUID.name}")
+            print(f"  PhotometricInterpretation: {ds_original.PhotometricInterpretation}")
+            print(f"  Shape: {original_pixels.shape}")
+            
+            # Transcode
+            result_dir = transcode_dicom_to_htj2k(input_dir=input_dir, output_dir=output_dir)
+            self.assertEqual(result_dir, output_dir)
+            
+            # Read transcoded
+            transcoded_file = os.path.join(output_dir, test_filename)
+            self.assertTrue(os.path.exists(transcoded_file))
+            
+            ds_transcoded = pydicom.dcmread(transcoded_file)
+            transcoded_pixels = ds_transcoded.pixel_array
+            
+            print(f"Transcoded: {ds_transcoded.file_meta.TransferSyntaxUID.name}")
+            print(f"  PhotometricInterpretation: {ds_transcoded.PhotometricInterpretation}")
+            
+            # Verify HTJ2K
+            self.assertIn(str(ds_transcoded.file_meta.TransferSyntaxUID), HTJ2K_TRANSFER_SYNTAXES)
+            
+            # Verify PhotometricInterpretation updated to RGB (from YBR_RCT)
+            self.assertEqual(ds_transcoded.PhotometricInterpretation, 'RGB')
+            print(f"✓ PhotometricInterpretation updated: {ds_original.PhotometricInterpretation} -> RGB")
+            
+            # Verify pixels match within tolerance (color space conversion may have small differences)
+            max_diff = np.abs(original_pixels.astype(np.float32) - transcoded_pixels.astype(np.float32)).max()
+            mean_diff = np.abs(original_pixels.astype(np.float32) - transcoded_pixels.astype(np.float32)).mean()
+            print(f"  Pixel differences: max={max_diff}, mean={mean_diff:.3f}")
+            
+            # YBR_RCT is reversible, so differences should be minimal
+            self.assertTrue(np.allclose(original_pixels, transcoded_pixels, atol=5, rtol=0))
+            print(f"✓ JPEG2K (YBR_RCT) to HTJ2K transcoding verified (max_diff={max_diff})")
+            
+        finally:
+            shutil.rmtree(input_dir, ignore_errors=True)
+            shutil.rmtree(output_dir, ignore_errors=True)
+
     def test_transcode_dicom_to_htj2k_batch(self):
         """Test batch transcoding of entire DICOM series to HTJ2K."""
         if not HAS_NVIMGCODEC:

@@ -29,7 +29,7 @@ def _get_nvimgcodec_decoder():
     global _NVIMGCODEC_DECODER
     if _NVIMGCODEC_DECODER is None:
         from nvidia import nvimgcodec
-        _NVIMGCODEC_DECODER = nvimgcodec.Decoder()
+        _NVIMGCODEC_DECODER = nvimgcodec.Decoder(options=':fancy_upsampling=1')
     return _NVIMGCODEC_DECODER
 
 
@@ -41,12 +41,10 @@ def _setup_htj2k_decode_params():
         nvimgcodec.DecodeParams: Decode parameters configured for DICOM
     """
     from nvidia import nvimgcodec
-    
     decode_params = nvimgcodec.DecodeParams(
         allow_any_depth=True,
         color_spec=nvimgcodec.ColorSpec.UNCHANGED,
     )
-    
     return decode_params
 
 
@@ -80,6 +78,106 @@ def _setup_htj2k_encode_params(num_resolutions: int = 6, code_block_size: tuple 
     )
     
     return encode_params, target_transfer_syntax
+
+
+def _extract_frames_from_compressed(ds, number_of_frames=None):
+    """
+    Extract frames from encapsulated (compressed) DICOM pixel data.
+    
+    Args:
+        ds: pydicom Dataset with encapsulated PixelData
+        number_of_frames: Expected number of frames (from NumberOfFrames tag)
+        
+    Returns:
+        list: List of compressed frame data (bytes)
+    """
+    # Default to 1 frame if not specified (for single-frame images without NumberOfFrames tag)
+    if number_of_frames is None:
+        number_of_frames = 1
+    
+    frames = list(pydicom.encaps.generate_frames(ds.PixelData, number_of_frames=number_of_frames))
+    return frames
+
+
+def _extract_frames_from_uncompressed(pixel_array, num_frames_tag):
+    """
+    Extract individual frames from uncompressed pixel array.
+    
+    Handles different array shapes:
+    - 2D (H, W): single frame grayscale
+    - 3D (N, H, W): multi-frame grayscale OR (H, W, C): single frame color
+    - 4D (N, H, W, C): multi-frame color
+    
+    Args:
+        pixel_array: Numpy array of pixel data
+        num_frames_tag: NumberOfFrames value from DICOM tag
+        
+    Returns:
+        list: List of frame arrays
+    """
+    if not isinstance(pixel_array, np.ndarray):
+        pixel_array = np.array(pixel_array)
+    
+    # 2D: single frame grayscale
+    if pixel_array.ndim == 2:
+        return [pixel_array]
+    
+    # 3D: multi-frame grayscale OR single-frame color
+    if pixel_array.ndim == 3:
+        if num_frames_tag > 1 or pixel_array.shape[0] == num_frames_tag:
+            # Multi-frame grayscale: (N, H, W)
+            return [pixel_array[i] for i in range(pixel_array.shape[0])]
+        # Single-frame color: (H, W, C)
+        return [pixel_array]
+    
+    # 4D: multi-frame color
+    if pixel_array.ndim == 4:
+        return [pixel_array[i] for i in range(pixel_array.shape[0])]
+    
+    raise ValueError(f"Unexpected pixel array dimensions: {pixel_array.ndim}")
+
+
+def _validate_frames(frames, context_msg="Frame"):
+    """
+    Check for None values in decoded/encoded frames.
+    
+    Args:
+        frames: List of frames to validate
+        context_msg: Context message for error reporting
+        
+    Raises:
+        ValueError: If any frame is None
+    """
+    for idx, frame in enumerate(frames):
+        if frame is None:
+            raise ValueError(f"{context_msg} {idx} failed (returned None)")
+
+
+def _find_dicom_files(input_dir):
+    """
+    Recursively find all valid DICOM files in a directory.
+    
+    Args:
+        input_dir: Directory to search
+        
+    Returns:
+        list: Sorted list of DICOM file paths
+    """
+    valid_dicom_files = []
+    for root, dirs, files in os.walk(input_dir):
+        for f in files:
+            file_path = os.path.join(root, f)
+            if os.path.isfile(file_path):
+                try:
+                    with open(file_path, "rb") as fp:
+                        fp.seek(128)
+                        if fp.read(4) == b"DICM":
+                            valid_dicom_files.append(file_path)
+                except Exception:
+                    continue
+    
+    valid_dicom_files.sort()  # For reproducible processing order
+    return valid_dicom_files
 
 
 def _get_transfer_syntax_constants():
@@ -131,12 +229,17 @@ def transcode_dicom_to_htj2k(
     accelerated decoding and encoding with batch processing for optimal performance.
     All transcoding is performed using lossless compression to preserve image quality.
     
-    The function processes files in configurable batches:
+    The function processes files with streaming decode-encode batches:
     1. Categorizes files by transfer syntax (HTJ2K/JPEG2000/JPEG/uncompressed)
-    2. Uses nvimgcodec decoder for compressed files (HTJ2K, JPEG2000, JPEG)
-    3. Falls back to pydicom pixel_array for uncompressed files
-    4. Batch encodes all images to HTJ2K using nvimgcodec
-    5. Saves transcoded files with updated transfer syntax and optional Basic Offset Table
+    2. Extracts all frames from source files
+    3. Processes frames in batches of max_batch_size:
+       - Decodes batch using nvimgcodec (compressed) or pydicom (uncompressed)
+       - Immediately encodes batch to HTJ2K
+       - Discards decoded frames to save memory (streaming)
+    4. Saves transcoded files with updated transfer syntax and optional Basic Offset Table
+    
+    This streaming approach minimizes memory usage by never holding all decoded frames
+    in memory simultaneously.
     
     Supported source transfer syntaxes:
     - HTJ2K (High-Throughput JPEG 2000) - decoded and re-encoded to add BOT if needed
@@ -217,21 +320,8 @@ def transcode_dicom_to_htj2k(
     if not os.path.isdir(input_dir):
         raise ValueError(f"Input path is not a directory: {input_dir}")
 
-    # Recursively find all files under input_dir that have the DICOM magic bytes at offset 128
-    valid_dicom_files = []
-    for root, dirs, files in os.walk(input_dir):
-        for f in files:
-            file_path = os.path.join(root, f)
-            if os.path.isfile(file_path):
-                try:
-                    with open(file_path, "rb") as fp:
-                        fp.seek(128)
-                        magic = fp.read(4)
-                        if magic == b"DICM":
-                            valid_dicom_files.append(file_path)
-                except Exception:
-                    continue
-
+    # Find all valid DICOM files
+    valid_dicom_files = _find_dicom_files(input_dir)
     if not valid_dicom_files:
         raise ValueError(f"No valid DICOM files found in {input_dir}")
     
@@ -288,33 +378,76 @@ def transcode_dicom_to_htj2k(
             else:
                 pydicom_batch.append(idx)
 
-        data_sequence = []
-        decoded_data = []
         num_frames = []
+        encoded_data = []
         
-        # Decode using nvimgcodec for compressed formats
+        # Process nvimgcodec_batch: extract frames, decode, encode in streaming batches
         if nvimgcodec_batch:
+            # First, extract all compressed frames from all files
+            all_compressed_frames = []
+            
+            logger.info(f"  Extracting frames from {len(nvimgcodec_batch)} nvimgcodec files:")
             for idx in nvimgcodec_batch:
-                frames = [fragment for fragment in pydicom.encaps.generate_frames(batch_datasets[idx].PixelData)]
+                ds = batch_datasets[idx]
+                number_of_frames = int(ds.NumberOfFrames) if hasattr(ds, 'NumberOfFrames') else None
+                frames = _extract_frames_from_compressed(ds, number_of_frames)
+                logger.info(f"    File idx={idx} ({os.path.basename(batch_files[idx])}): extracted {len(frames)} frames (expected: {number_of_frames})")
                 num_frames.append(len(frames))
-                data_sequence.extend(frames)
-            decoder_output = decoder.decode(data_sequence, params=decode_params)
-            decoded_data.extend(decoder_output)
+                all_compressed_frames.extend(frames)
+            
+            # Now decode and encode in batches (streaming to reduce memory)
+            total_frames = len(all_compressed_frames)
+            logger.info(f"  Processing {total_frames} frames from {len(nvimgcodec_batch)} files in batches of {max_batch_size}")
+            
+            for frame_batch_start in range(0, total_frames, max_batch_size):
+                frame_batch_end = min(frame_batch_start + max_batch_size, total_frames)
+                compressed_batch = all_compressed_frames[frame_batch_start:frame_batch_end]
+                
+                if total_frames > max_batch_size:
+                    logger.info(f"    Processing frames [{frame_batch_start}..{frame_batch_end}) of {total_frames}")
+                
+                # Decode batch
+                decoded_batch = decoder.decode(compressed_batch, params=decode_params)
+                _validate_frames(decoded_batch, f"Decoded frame [{frame_batch_start}+")
+                
+                # Encode batch immediately (streaming - no need to keep decoded data)
+                encoded_batch = encoder.encode(decoded_batch, codec="jpeg2k", params=encode_params)
+                _validate_frames(encoded_batch, f"Encoded frame [{frame_batch_start}+")
+                
+                # Store encoded frames and discard decoded frames to save memory
+                encoded_data.extend(encoded_batch)
+                # decoded_batch is automatically freed here
 
-        # Decode using pydicom for uncompressed formats
+        # Process pydicom_batch: extract frames and encode in streaming batches
         if pydicom_batch:
+            # Extract all frames from uncompressed files
+            all_decoded_frames = []
+            
             for idx in pydicom_batch:
-                source_pixel_array = batch_datasets[idx].pixel_array
-                if not isinstance(source_pixel_array, np.ndarray):
-                    source_pixel_array = np.array(source_pixel_array)
-                if source_pixel_array.ndim == 2:
-                    source_pixel_array = source_pixel_array[:, :, np.newaxis]
-                for frame_idx in range(source_pixel_array.shape[-1]):
-                    decoded_data.append(source_pixel_array[:, :, frame_idx])
-                num_frames.append(source_pixel_array.shape[-1])
-
-        # Encode all frames to HTJ2K
-        encoded_data = encoder.encode(decoded_data, codec="jpeg2k", params=encode_params)
+                ds = batch_datasets[idx]
+                num_frames_tag = int(ds.NumberOfFrames) if hasattr(ds, 'NumberOfFrames') else 1
+                frames = _extract_frames_from_uncompressed(ds.pixel_array, num_frames_tag)
+                all_decoded_frames.extend(frames)
+                num_frames.append(len(frames))
+            
+            # Encode in batches (streaming)
+            total_frames = len(all_decoded_frames)
+            if total_frames > 0:
+                logger.info(f"  Encoding {total_frames} uncompressed frames in batches of {max_batch_size}")
+                
+                for frame_batch_start in range(0, total_frames, max_batch_size):
+                    frame_batch_end = min(frame_batch_start + max_batch_size, total_frames)
+                    decoded_batch = all_decoded_frames[frame_batch_start:frame_batch_end]
+                    
+                    if total_frames > max_batch_size:
+                        logger.info(f"    Encoding frames [{frame_batch_start}..{frame_batch_end}) of {total_frames}")
+                    
+                    # Encode batch
+                    encoded_batch = encoder.encode(decoded_batch, codec="jpeg2k", params=encode_params)
+                    _validate_frames(encoded_batch, f"Encoded frame [{frame_batch_start}+")
+                    
+                    # Store encoded frames
+                    encoded_data.extend(encoded_batch)
 
         # Reassemble and save transcoded files
         frame_offset = 0
@@ -334,7 +467,16 @@ def transcode_dicom_to_htj2k(
                 batch_datasets[dataset_idx].PixelData = pydicom.encaps.encapsulate(encoded_frames)
 
             batch_datasets[dataset_idx].file_meta.TransferSyntaxUID = pydicom.uid.UID(target_transfer_syntax)
-            
+
+            # Update PhotometricInterpretation to RGB since we decoded with SRGB color_spec
+            # The pixel data is now in RGB color space, so the metadata must reflect this
+            # to prevent double conversion by DICOM readers
+            if hasattr(batch_datasets[dataset_idx], 'PhotometricInterpretation'):
+                original_pi = batch_datasets[dataset_idx].PhotometricInterpretation
+                if original_pi.startswith('YBR'):
+                    batch_datasets[dataset_idx].PhotometricInterpretation = 'RGB'
+                    logger.info(f"  Updated PhotometricInterpretation: {original_pi} -> RGB")
+
             # Save transcoded file
             output_file = os.path.join(output_dir, os.path.basename(batch_files[dataset_idx]))
             batch_datasets[dataset_idx].save_as(output_file)
