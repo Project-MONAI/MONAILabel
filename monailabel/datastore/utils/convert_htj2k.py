@@ -33,17 +33,22 @@ def _get_nvimgcodec_decoder():
     return _NVIMGCODEC_DECODER
 
 
-def _setup_htj2k_decode_params():
+def _setup_htj2k_decode_params(color_spec=None):
     """
     Create nvimgcodec decoding parameters for DICOM images.
+    
+    Args:
+        color_spec: Color specification to use. If None, defaults to UNCHANGED.
     
     Returns:
         nvimgcodec.DecodeParams: Decode parameters configured for DICOM
     """
     from nvidia import nvimgcodec
+    if color_spec is None:
+        color_spec = nvimgcodec.ColorSpec.UNCHANGED
     decode_params = nvimgcodec.DecodeParams(
         allow_any_depth=True,
-        color_spec=nvimgcodec.ColorSpec.UNCHANGED,
+        color_spec=color_spec,
     )
     return decode_params
 
@@ -337,12 +342,12 @@ def transcode_dicom_to_htj2k(
     encoder = _get_nvimgcodec_encoder()
     decoder = _get_nvimgcodec_decoder()  # Always needed for decoding input DICOM images
     
-    # Setup HTJ2K encoding and decoding parameters
+    # Setup HTJ2K encoding parameters
     encode_params, target_transfer_syntax = _setup_htj2k_encode_params(
         num_resolutions=num_resolutions,
         code_block_size=code_block_size
     )
-    decode_params = _setup_htj2k_decode_params()
+    # Note: decode_params is created per-PhotometricInterpretation group in the batch processing
     logger.info("Using lossless HTJ2K compression")
     
     # Get transfer syntax constants
@@ -383,8 +388,11 @@ def transcode_dicom_to_htj2k(
         
         # Process nvimgcodec_batch: extract frames, decode, encode in streaming batches
         if nvimgcodec_batch:
-            # First, extract all compressed frames from all files
-            all_compressed_frames = []
+            from collections import defaultdict
+            
+            # First, extract all compressed frames and group by PhotometricInterpretation
+            grouped_frames = defaultdict(list)  # Key: PhotometricInterpretation, Value: list of (file_idx, frame_data)
+            frame_counts = {}  # Track number of frames per file
             
             logger.info(f"  Extracting frames from {len(nvimgcodec_batch)} nvimgcodec files:")
             for idx in nvimgcodec_batch:
@@ -392,31 +400,66 @@ def transcode_dicom_to_htj2k(
                 number_of_frames = int(ds.NumberOfFrames) if hasattr(ds, 'NumberOfFrames') else None
                 frames = _extract_frames_from_compressed(ds, number_of_frames)
                 logger.info(f"    File idx={idx} ({os.path.basename(batch_files[idx])}): extracted {len(frames)} frames (expected: {number_of_frames})")
+                
+                # Get PhotometricInterpretation for this file
+                photometric = getattr(ds, 'PhotometricInterpretation', 'UNKNOWN')
+                
+                # Store frames grouped by PhotometricInterpretation
+                for frame in frames:
+                    grouped_frames[photometric].append((idx, frame))
+                
+                frame_counts[idx] = len(frames)
                 num_frames.append(len(frames))
-                all_compressed_frames.extend(frames)
             
-            # Now decode and encode in batches (streaming to reduce memory)
-            total_frames = len(all_compressed_frames)
-            logger.info(f"  Processing {total_frames} frames from {len(nvimgcodec_batch)} files in batches of {max_batch_size}")
+            # Process each PhotometricInterpretation group separately
+            logger.info(f"  Found {len(grouped_frames)} unique PhotometricInterpretation groups")
             
-            for frame_batch_start in range(0, total_frames, max_batch_size):
-                frame_batch_end = min(frame_batch_start + max_batch_size, total_frames)
-                compressed_batch = all_compressed_frames[frame_batch_start:frame_batch_end]
+            # Track encoded frames per file to maintain order
+            encoded_frames_by_file = {idx: [] for idx in nvimgcodec_batch}
+            
+            for photometric, frame_list in grouped_frames.items():
+                # Determine color_spec based on PhotometricInterpretation
+                if photometric.startswith('YBR'):
+                    color_spec = nvimgcodec.ColorSpec.RGB
+                    logger.info(f"  Processing {len(frame_list)} frames with PhotometricInterpretation={photometric} using color_spec=RGB")
+                else:
+                    color_spec = nvimgcodec.ColorSpec.UNCHANGED
+                    logger.info(f"  Processing {len(frame_list)} frames with PhotometricInterpretation={photometric} using color_spec=UNCHANGED")
                 
-                if total_frames > max_batch_size:
-                    logger.info(f"    Processing frames [{frame_batch_start}..{frame_batch_end}) of {total_frames}")
+                # Create decode params for this group
+                group_decode_params = _setup_htj2k_decode_params(color_spec=color_spec)
                 
-                # Decode batch
-                decoded_batch = decoder.decode(compressed_batch, params=decode_params)
-                _validate_frames(decoded_batch, f"Decoded frame [{frame_batch_start}+")
+                # Extract just the frame data (without file index)
+                compressed_frames = [frame_data for _, frame_data in frame_list]
                 
-                # Encode batch immediately (streaming - no need to keep decoded data)
-                encoded_batch = encoder.encode(decoded_batch, codec="jpeg2k", params=encode_params)
-                _validate_frames(encoded_batch, f"Encoded frame [{frame_batch_start}+")
+                # Decode and encode in batches (streaming to reduce memory)
+                total_frames = len(compressed_frames)
                 
-                # Store encoded frames and discard decoded frames to save memory
-                encoded_data.extend(encoded_batch)
-                # decoded_batch is automatically freed here
+                for frame_batch_start in range(0, total_frames, max_batch_size):
+                    frame_batch_end = min(frame_batch_start + max_batch_size, total_frames)
+                    compressed_batch = compressed_frames[frame_batch_start:frame_batch_end]
+                    file_indices_batch = [file_idx for file_idx, _ in frame_list[frame_batch_start:frame_batch_end]]
+                    
+                    if total_frames > max_batch_size:
+                        logger.info(f"    Processing frames [{frame_batch_start}..{frame_batch_end}) of {total_frames} for {photometric}")
+                    
+                    # Decode batch with appropriate color_spec
+                    decoded_batch = decoder.decode(compressed_batch, params=group_decode_params)
+                    _validate_frames(decoded_batch, f"Decoded frame [{frame_batch_start}+")
+                    
+                    # Encode batch immediately (streaming - no need to keep decoded data)
+                    encoded_batch = encoder.encode(decoded_batch, codec="jpeg2k", params=encode_params)
+                    _validate_frames(encoded_batch, f"Encoded frame [{frame_batch_start}+")
+                    
+                    # Store encoded frames by file index to maintain order
+                    for file_idx, encoded_frame in zip(file_indices_batch, encoded_batch):
+                        encoded_frames_by_file[file_idx].append(encoded_frame)
+                    
+                    # decoded_batch is automatically freed here
+            
+            # Reconstruct encoded_data in original file order
+            for idx in nvimgcodec_batch:
+                encoded_data.extend(encoded_frames_by_file[idx])
 
         # Process pydicom_batch: extract frames and encode in streaming batches
         if pydicom_batch:
@@ -468,7 +511,7 @@ def transcode_dicom_to_htj2k(
 
             batch_datasets[dataset_idx].file_meta.TransferSyntaxUID = pydicom.uid.UID(target_transfer_syntax)
 
-            # Update PhotometricInterpretation to RGB since we decoded with SRGB color_spec
+            # Update PhotometricInterpretation to RGB for YBR images since we decoded with RGB color_spec
             # The pixel data is now in RGB color space, so the metadata must reflect this
             # to prevent double conversion by DICOM readers
             if hasattr(batch_datasets[dataset_idx], 'PhotometricInterpretation'):
@@ -647,19 +690,18 @@ def convert_single_frame_dicom_series_to_multiframe(
         encoder = _get_nvimgcodec_encoder()
         decoder = _get_nvimgcodec_decoder()
         
-        # Setup HTJ2K encoding and decoding parameters
+        # Setup HTJ2K encoding parameters
         encode_params, target_transfer_syntax = _setup_htj2k_encode_params(
             num_resolutions=num_resolutions,
             code_block_size=code_block_size
         )
-        decode_params = _setup_htj2k_decode_params()
+        # Note: decode_params is created per-series based on PhotometricInterpretation
         logger.info("HTJ2K conversion enabled")
     else:
         # No conversion - preserve original transfer syntax
         encoder = None
         decoder = None
         encode_params = None
-        decode_params = None
         target_transfer_syntax = None  # Will be determined from first dataset
         logger.info("Preserving original transfer syntax (no HTJ2K conversion)")
     
@@ -708,6 +750,17 @@ def convert_single_frame_dicom_series_to_multiframe(
             # Check if we're dealing with encapsulated (compressed) data
             is_encapsulated = hasattr(template_ds, 'PixelData') and template_ds.file_meta.TransferSyntaxUID != pydicom.uid.ExplicitVRLittleEndian
             
+            # Determine color_spec for this series based on PhotometricInterpretation
+            if convert_to_htj2k:
+                photometric = getattr(template_ds, 'PhotometricInterpretation', 'UNKNOWN')
+                if photometric.startswith('YBR'):
+                    series_color_spec = nvimgcodec.ColorSpec.RGB
+                    logger.info(f"  Series PhotometricInterpretation={photometric}, using color_spec=RGB")
+                else:
+                    series_color_spec = nvimgcodec.ColorSpec.UNCHANGED
+                    logger.info(f"  Series PhotometricInterpretation={photometric}, using color_spec=UNCHANGED")
+                series_decode_params = _setup_htj2k_decode_params(color_spec=series_color_spec)
+            
             # Collect all frames from all instances
             all_frames = []  # Will contain either numpy arrays (for HTJ2K) or bytes (for preserving)
             
@@ -719,7 +772,7 @@ def convert_single_frame_dicom_series_to_multiframe(
                     if current_ts in NVIMGCODEC_SYNTAXES:
                         # Compressed format - use nvimgcodec decoder
                         frames = [fragment for fragment in pydicom.encaps.generate_frames(ds.PixelData)]
-                        decoded = decoder.decode(frames, params=decode_params)
+                        decoded = decoder.decode(frames, params=series_decode_params)
                         all_frames.extend(decoded)
                     else:
                         # Uncompressed format - use pydicom
@@ -817,6 +870,13 @@ def convert_single_frame_dicom_series_to_multiframe(
                 output_ds.PixelData = combined_pixel_array.tobytes()
             
             output_ds.file_meta.TransferSyntaxUID = pydicom.uid.UID(target_transfer_syntax)
+            
+            # Update PhotometricInterpretation if we converted from YBR to RGB
+            if convert_to_htj2k and hasattr(output_ds, 'PhotometricInterpretation'):
+                original_pi = output_ds.PhotometricInterpretation
+                if original_pi.startswith('YBR'):
+                    output_ds.PhotometricInterpretation = 'RGB'
+                    logger.info(f"  Updated PhotometricInterpretation: {original_pi} -> RGB")
             
             # Set NumberOfFrames (critical!)
             output_ds.NumberOfFrames = total_frame_count
