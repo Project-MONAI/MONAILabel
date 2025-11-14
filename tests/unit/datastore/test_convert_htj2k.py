@@ -93,9 +93,11 @@ class TestConvertHTJ2K(unittest.TestCase):
             import time
             start_time = time.time()
             
+            # Override default skip list to force transcoding of JPEG files
             result_dir = transcode_dicom_to_htj2k(
                 input_dir=input_dir,
                 output_dir=output_dir,
+                skip_transfer_syntaxes=None  # Override default to test JPEG transcoding
             )
             
             elapsed_time = time.time() - start_time
@@ -1280,10 +1282,12 @@ class TestConvertHTJ2K(unittest.TestCase):
                     original_pi = ds_original.PhotometricInterpretation
                     
                     # Transcode with specific progression order
+                    # Override default skip list to force transcoding of JPEG files
                     result_dir = transcode_dicom_to_htj2k(
                         input_dir=input_dir,
                         output_dir=output_dir,
-                        progression_order=prog_order
+                        progression_order=prog_order,
+                        skip_transfer_syntaxes=None  # Override default to test JPEG transcoding
                     )
                     
                     # Read transcoded
