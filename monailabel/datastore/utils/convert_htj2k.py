@@ -53,28 +53,60 @@ def _setup_htj2k_decode_params(color_spec=None):
     return decode_params
 
 
-def _setup_htj2k_encode_params(num_resolutions: int = 6, code_block_size: tuple = (64, 64)):
+def _setup_htj2k_encode_params(
+    num_resolutions: int = 6,
+    code_block_size: tuple = (64, 64),
+    progression_order: str = "RPCL"
+):
     """
     Create nvimgcodec encoding parameters for HTJ2K lossless compression.
     
     Args:
         num_resolutions: Number of wavelet decomposition levels
         code_block_size: Code block size as (height, width) tuple
+        progression_order: Progression order for encoding. Must be one of:
+            - "LRCP": Layer-Resolution-Component-Position (quality scalability)
+            - "RLCP": Resolution-Layer-Component-Position (resolution scalability)
+            - "RPCL": Resolution-Position-Component-Layer (progressive by resolution)
+            - "PCRL": Position-Component-Resolution-Layer (progressive by spatial area)
+            - "CPRL": Component-Position-Resolution-Layer (component scalability)
         
     Returns:
         tuple: (encode_params, target_transfer_syntax)
+    
+    Raises:
+        ValueError: If progression_order is not one of the valid values
     """
     from nvidia import nvimgcodec
     
-    target_transfer_syntax = "1.2.840.10008.1.2.4.202"  # HTJ2K with RPCL Options (Lossless)
+    # Valid progression orders and their mappings
+    VALID_PROG_ORDERS = {
+        "LRCP": (nvimgcodec.Jpeg2kProgOrder.LRCP, "1.2.840.10008.1.2.4.201"),  # HTJ2K (Lossless Only)
+        "RLCP": (nvimgcodec.Jpeg2kProgOrder.RLCP, "1.2.840.10008.1.2.4.201"),  # HTJ2K (Lossless Only)
+        "RPCL": (nvimgcodec.Jpeg2kProgOrder.RPCL, "1.2.840.10008.1.2.4.202"),  # HTJ2K with RPCL Options
+        "PCRL": (nvimgcodec.Jpeg2kProgOrder.PCRL, "1.2.840.10008.1.2.4.201"),  # HTJ2K (Lossless Only)
+        "CPRL": (nvimgcodec.Jpeg2kProgOrder.CPRL, "1.2.840.10008.1.2.4.201"),  # HTJ2K (Lossless Only)
+    }
+    
+    # Validate progression order
+    if progression_order not in VALID_PROG_ORDERS:
+        valid_orders = ", ".join(f"'{o}'" for o in VALID_PROG_ORDERS.keys())
+        raise ValueError(
+            f"Invalid progression_order '{progression_order}'. "
+            f"Must be one of: {valid_orders}"
+        )
+    
+    # Get progression order enum and transfer syntax
+    prog_order_enum, target_transfer_syntax = VALID_PROG_ORDERS[progression_order]
+    
     quality_type = nvimgcodec.QualityType.LOSSLESS
     
     # Configure JPEG2K encoding parameters
     jpeg2k_encode_params = nvimgcodec.Jpeg2kEncodeParams()
     jpeg2k_encode_params.num_resolutions = num_resolutions
     jpeg2k_encode_params.code_block_size = code_block_size
-    jpeg2k_encode_params.bitstream_type = nvimgcodec.Jpeg2kBitstreamType.JP2
-    jpeg2k_encode_params.prog_order = nvimgcodec.Jpeg2kProgOrder.LRCP
+    jpeg2k_encode_params.bitstream_type = nvimgcodec.Jpeg2kBitstreamType.J2K
+    jpeg2k_encode_params.prog_order = prog_order_enum
     jpeg2k_encode_params.ht = True  # Enable High Throughput mode
     
     encode_params = nvimgcodec.EncodeParams(
@@ -223,6 +255,7 @@ def transcode_dicom_to_htj2k(
     output_dir: str = None,
     num_resolutions: int = 6,
     code_block_size: tuple = (64, 64),
+    progression_order: str = "RPCL",
     max_batch_size: int = 256,
     add_basic_offset_table: bool = True,
 ) -> str:
@@ -262,6 +295,13 @@ def transcode_dicom_to_htj2k(
                         Higher values = better compression but slower encoding
         code_block_size: Code block size as (height, width) tuple (default: (64, 64))
                         Must be powers of 2. Common values: (32,32), (64,64), (128,128)
+        progression_order: Progression order for HTJ2K encoding (default: "RPCL")
+                          Must be one of: "LRCP", "RLCP", "RPCL", "PCRL", "CPRL"
+                          - "LRCP": Layer-Resolution-Component-Position (quality scalability)
+                          - "RLCP": Resolution-Layer-Component-Position (resolution scalability)
+                          - "RPCL": Resolution-Position-Component-Layer (progressive by resolution)
+                          - "PCRL": Position-Component-Resolution-Layer (progressive by spatial area)
+                          - "CPRL": Component-Position-Resolution-Layer (component scalability)
         max_batch_size: Maximum number of DICOM files to process in each batch (default: 256)
                        Lower values reduce memory usage, higher values may improve speed
         add_basic_offset_table: If True, creates Basic Offset Table for multi-frame DICOMs (default: True)
@@ -275,6 +315,7 @@ def transcode_dicom_to_htj2k(
         ImportError: If nvidia-nvimgcodec is not available
         ValueError: If input directory doesn't exist or contains no valid DICOM files
         ValueError: If DICOM files are missing required attributes (TransferSyntaxUID, PixelData)
+        ValueError: If progression_order is not one of: "LRCP", "RLCP", "RPCL", "PCRL", "CPRL"
         
     Example:
         >>> # Basic usage with default settings
@@ -345,7 +386,8 @@ def transcode_dicom_to_htj2k(
     # Setup HTJ2K encoding parameters
     encode_params, target_transfer_syntax = _setup_htj2k_encode_params(
         num_resolutions=num_resolutions,
-        code_block_size=code_block_size
+        code_block_size=code_block_size,
+        progression_order=progression_order
     )
     # Note: decode_params is created per-PhotometricInterpretation group in the batch processing
     logger.info("Using lossless HTJ2K compression")
@@ -542,6 +584,7 @@ def convert_single_frame_dicom_series_to_multiframe(
     convert_to_htj2k: bool = False,
     num_resolutions: int = 6,
     code_block_size: tuple = (64, 64),
+    progression_order: str = "RPCL",
     add_basic_offset_table: bool = True,
 ) -> str:
     """
@@ -567,6 +610,13 @@ def convert_single_frame_dicom_series_to_multiframe(
         convert_to_htj2k: If True, convert frames to HTJ2K compression; if False, use uncompressed format (default: False)
         num_resolutions: Number of wavelet decomposition levels (default: 6, only used if convert_to_htj2k=True)
         code_block_size: Code block size as (height, width) tuple (default: (64, 64), only used if convert_to_htj2k=True)
+        progression_order: Progression order for HTJ2K encoding (default: "RPCL", only used if convert_to_htj2k=True)
+                          Must be one of: "LRCP", "RLCP", "RPCL", "PCRL", "CPRL"
+                          - "LRCP": Layer-Resolution-Component-Position (quality scalability)
+                          - "RLCP": Resolution-Layer-Component-Position (resolution scalability)
+                          - "RPCL": Resolution-Position-Component-Layer (progressive by resolution)
+                          - "PCRL": Position-Component-Resolution-Layer (progressive by spatial area)
+                          - "CPRL": Component-Position-Resolution-Layer (component scalability)
         add_basic_offset_table: If True, creates Basic Offset Table for multi-frame DICOMs (default: True)
                                BOT enables O(1) frame access without parsing entire pixel data stream
                                Per DICOM Part 5 Section A.4. Only affects multi-frame files.
@@ -577,6 +627,7 @@ def convert_single_frame_dicom_series_to_multiframe(
     Raises:
         ImportError: If nvidia-nvimgcodec is not available and convert_to_htj2k=True
         ValueError: If input directory doesn't exist or contains no valid DICOM files
+        ValueError: If progression_order is not one of: "LRCP", "RLCP", "RPCL", "PCRL", "CPRL"
         
     Example:
         >>> # Combine series without HTJ2K conversion (uncompressed)
@@ -693,7 +744,8 @@ def convert_single_frame_dicom_series_to_multiframe(
         # Setup HTJ2K encoding parameters
         encode_params, target_transfer_syntax = _setup_htj2k_encode_params(
             num_resolutions=num_resolutions,
-            code_block_size=code_block_size
+            code_block_size=code_block_size,
+            progression_order=progression_order
         )
         # Note: decode_params is created per-series based on PhotometricInterpretation
         logger.info("HTJ2K conversion enabled")

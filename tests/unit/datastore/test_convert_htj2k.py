@@ -1131,6 +1131,357 @@ class TestConvertHTJ2K(unittest.TestCase):
                 os.unlink(nifti_from_multiframe)
 
 
+    def test_default_progression_order(self):
+        """Test that the default progression order is RPCL."""
+        if not HAS_NVIMGCODEC:
+            self.skipTest("nvimgcodec not available")
+        
+        import pydicom.examples as examples
+        import shutil
+        
+        source_file = str(examples.get_path('ct'))
+        
+        # Create temp directories
+        input_dir = tempfile.mkdtemp(prefix="htj2k_default_input_")
+        output_dir = tempfile.mkdtemp(prefix="htj2k_default_output_")
+        
+        try:
+            test_filename = "ct_small.dcm"
+            shutil.copy2(source_file, os.path.join(input_dir, test_filename))
+            
+            # Transcode WITHOUT specifying progression_order (should default to RPCL)
+            result_dir = transcode_dicom_to_htj2k(
+                input_dir=input_dir,
+                output_dir=output_dir
+            )
+            
+            # Read transcoded
+            transcoded_file = os.path.join(output_dir, test_filename)
+            ds_transcoded = pydicom.dcmread(transcoded_file)
+            transcoded_ts = str(ds_transcoded.file_meta.TransferSyntaxUID)
+            
+            # Default should be RPCL which uses transfer syntax 1.2.840.10008.1.2.4.202
+            expected_ts = "1.2.840.10008.1.2.4.202"
+            self.assertEqual(
+                transcoded_ts,
+                expected_ts,
+                f"Default progression order should produce transfer syntax {expected_ts} (RPCL)"
+            )
+            print(f"✓ Default progression order is RPCL (transfer syntax: {transcoded_ts})")
+            
+        finally:
+            shutil.rmtree(input_dir, ignore_errors=True)
+            shutil.rmtree(output_dir, ignore_errors=True)
+
+    def test_progression_order_options(self):
+        """Test that all 5 progression orders work correctly with grayscale images."""
+        if not HAS_NVIMGCODEC:
+            self.skipTest("nvimgcodec not available")
+        
+        import pydicom.examples as examples
+        import shutil
+        
+        source_file = str(examples.get_path('ct'))
+        
+        # Test all 5 progression orders
+        progression_orders = [
+            ("LRCP", "1.2.840.10008.1.2.4.201"),  # HTJ2K (Lossless Only) - quality scalability
+            ("RLCP", "1.2.840.10008.1.2.4.201"),  # HTJ2K (Lossless Only) - resolution scalability
+            ("RPCL", "1.2.840.10008.1.2.4.202"),  # HTJ2K with RPCL Options - progressive by resolution
+            ("PCRL", "1.2.840.10008.1.2.4.201"),  # HTJ2K (Lossless Only) - progressive by spatial area
+            ("CPRL", "1.2.840.10008.1.2.4.201"),  # HTJ2K (Lossless Only) - component scalability
+        ]
+        
+        for prog_order, expected_ts in progression_orders:
+            with self.subTest(progression_order=prog_order):
+                print(f"\nTesting progression_order={prog_order}")
+                
+                # Create temp directories
+                input_dir = tempfile.mkdtemp(prefix=f"htj2k_{prog_order.lower()}_input_")
+                output_dir = tempfile.mkdtemp(prefix=f"htj2k_{prog_order.lower()}_output_")
+                
+                try:
+                    test_filename = "ct_small.dcm"
+                    shutil.copy2(source_file, os.path.join(input_dir, test_filename))
+                    
+                    # Read original
+                    ds_original = pydicom.dcmread(source_file)
+                    original_pixels = ds_original.pixel_array.copy()
+                    
+                    # Transcode with specific progression order
+                    result_dir = transcode_dicom_to_htj2k(
+                        input_dir=input_dir,
+                        output_dir=output_dir,
+                        progression_order=prog_order
+                    )
+                    self.assertEqual(result_dir, output_dir)
+                    
+                    # Read transcoded
+                    transcoded_file = os.path.join(output_dir, test_filename)
+                    self.assertTrue(os.path.exists(transcoded_file))
+                    
+                    ds_transcoded = pydicom.dcmread(transcoded_file)
+                    transcoded_pixels = ds_transcoded.pixel_array
+                    transcoded_ts = str(ds_transcoded.file_meta.TransferSyntaxUID)
+                    
+                    print(f"  Transfer Syntax: {transcoded_ts}")
+                    print(f"  Expected: {expected_ts}")
+                    
+                    # Verify correct transfer syntax for progression order
+                    self.assertEqual(
+                        transcoded_ts,
+                        expected_ts,
+                        f"Transfer syntax should be {expected_ts} for {prog_order}"
+                    )
+                    
+                    # Verify lossless (grayscale should be exact)
+                    np.testing.assert_array_equal(original_pixels, transcoded_pixels)
+                    print(f"✓ {prog_order} progression order works correctly")
+                    
+                finally:
+                    shutil.rmtree(input_dir, ignore_errors=True)
+                    shutil.rmtree(output_dir, ignore_errors=True)
+
+    def test_progression_order_with_ybr_color(self):
+        """Test progression orders work correctly with YBR color space conversion."""
+        if not HAS_NVIMGCODEC:
+            self.skipTest("nvimgcodec not available")
+        
+        import pydicom.data
+        
+        try:
+            source_file = pydicom.data.get_testdata_file("examples_ybr_color.dcm")
+        except Exception as e:
+            self.skipTest(f"Could not load pydicom test data: {e}")
+        
+        # Test a subset of progression orders with color images
+        # (testing all 5 would take too long, so we test RPCL, LRCP, and RLCP)
+        progression_orders = [
+            ("RPCL", "1.2.840.10008.1.2.4.202"),  # Default
+            ("LRCP", "1.2.840.10008.1.2.4.201"),  # Quality scalability
+            ("RLCP", "1.2.840.10008.1.2.4.201"),  # Resolution scalability
+        ]
+        
+        for prog_order, expected_ts in progression_orders:
+            with self.subTest(progression_order=prog_order):
+                print(f"\nTesting YBR color with progression_order={prog_order}")
+                
+                import shutil
+                input_dir = tempfile.mkdtemp(prefix=f"htj2k_ybr_{prog_order.lower()}_input_")
+                output_dir = tempfile.mkdtemp(prefix=f"htj2k_ybr_{prog_order.lower()}_output_")
+                
+                try:
+                    test_filename = "ybr_color.dcm"
+                    shutil.copy2(source_file, os.path.join(input_dir, test_filename))
+                    
+                    # Read original
+                    ds_original = pydicom.dcmread(source_file)
+                    original_pixels = ds_original.pixel_array.copy()
+                    original_pi = ds_original.PhotometricInterpretation
+                    
+                    # Transcode with specific progression order
+                    result_dir = transcode_dicom_to_htj2k(
+                        input_dir=input_dir,
+                        output_dir=output_dir,
+                        progression_order=prog_order
+                    )
+                    
+                    # Read transcoded
+                    transcoded_file = os.path.join(output_dir, test_filename)
+                    ds_transcoded = pydicom.dcmread(transcoded_file)
+                    transcoded_pixels = ds_transcoded.pixel_array
+                    transcoded_ts = str(ds_transcoded.file_meta.TransferSyntaxUID)
+                    
+                    print(f"  Original PI: {original_pi}")
+                    print(f"  Transcoded PI: {ds_transcoded.PhotometricInterpretation}")
+                    print(f"  Transfer Syntax: {transcoded_ts}")
+                    
+                    # Verify transfer syntax matches progression order
+                    self.assertEqual(transcoded_ts, expected_ts)
+                    
+                    # Verify PhotometricInterpretation was updated to RGB (from YBR)
+                    self.assertEqual(ds_transcoded.PhotometricInterpretation, 'RGB')
+                    
+                    # Verify pixels match within tolerance (color conversion)
+                    max_diff = np.abs(original_pixels.astype(np.float32) - transcoded_pixels.astype(np.float32)).max()
+                    self.assertTrue(
+                        np.allclose(original_pixels, transcoded_pixels, atol=5, rtol=0),
+                        f"Pixels should match within tolerance, max_diff={max_diff}"
+                    )
+                    print(f"✓ {prog_order} works with YBR color conversion (max_diff={max_diff})")
+                    
+                finally:
+                    shutil.rmtree(input_dir, ignore_errors=True)
+                    shutil.rmtree(output_dir, ignore_errors=True)
+
+    def test_progression_order_with_rgb_color(self):
+        """Test progression orders work correctly with RGB color images."""
+        if not HAS_NVIMGCODEC:
+            self.skipTest("nvimgcodec not available")
+        
+        import pydicom.examples as examples
+        import shutil
+        
+        source_file = str(examples.get_path('rgb_color'))
+        
+        # Test a subset of progression orders with RGB images
+        progression_orders = [
+            ("RPCL", "1.2.840.10008.1.2.4.202"),
+            ("PCRL", "1.2.840.10008.1.2.4.201"),  # Position-Component (good for spatial access)
+            ("CPRL", "1.2.840.10008.1.2.4.201"),  # Component-Position (good for component access)
+        ]
+        
+        for prog_order, expected_ts in progression_orders:
+            with self.subTest(progression_order=prog_order):
+                print(f"\nTesting RGB color with progression_order={prog_order}")
+                
+                input_dir = tempfile.mkdtemp(prefix=f"htj2k_rgb_{prog_order.lower()}_input_")
+                output_dir = tempfile.mkdtemp(prefix=f"htj2k_rgb_{prog_order.lower()}_output_")
+                
+                try:
+                    test_filename = "rgb_color.dcm"
+                    shutil.copy2(source_file, os.path.join(input_dir, test_filename))
+                    
+                    # Read original
+                    ds_original = pydicom.dcmread(source_file)
+                    original_pixels = ds_original.pixel_array.copy()
+                    
+                    # Transcode with specific progression order
+                    result_dir = transcode_dicom_to_htj2k(
+                        input_dir=input_dir,
+                        output_dir=output_dir,
+                        progression_order=prog_order
+                    )
+                    
+                    # Read transcoded
+                    transcoded_file = os.path.join(output_dir, test_filename)
+                    ds_transcoded = pydicom.dcmread(transcoded_file)
+                    transcoded_pixels = ds_transcoded.pixel_array
+                    transcoded_ts = str(ds_transcoded.file_meta.TransferSyntaxUID)
+                    
+                    # Verify transfer syntax matches progression order
+                    self.assertEqual(transcoded_ts, expected_ts)
+                    
+                    # Verify PhotometricInterpretation stays RGB
+                    self.assertEqual(ds_transcoded.PhotometricInterpretation, 'RGB')
+                    
+                    # Verify lossless (RGB uncompressed should be exact)
+                    np.testing.assert_array_equal(original_pixels, transcoded_pixels)
+                    print(f"✓ {prog_order} works with RGB color images (lossless)")
+                    
+                finally:
+                    shutil.rmtree(input_dir, ignore_errors=True)
+                    shutil.rmtree(output_dir, ignore_errors=True)
+
+    def test_invalid_progression_order(self):
+        """Test that invalid progression orders raise ValueError."""
+        if not HAS_NVIMGCODEC:
+            self.skipTest("nvimgcodec not available")
+        
+        import pydicom.examples as examples
+        import shutil
+        
+        source_file = str(examples.get_path('ct'))
+        
+        # Create temp directories
+        input_dir = tempfile.mkdtemp(prefix="htj2k_invalid_input_")
+        output_dir = tempfile.mkdtemp(prefix="htj2k_invalid_output_")
+        
+        try:
+            test_filename = "ct_small.dcm"
+            shutil.copy2(source_file, os.path.join(input_dir, test_filename))
+            
+            # Test various invalid progression orders (lowercase, mixed case, or completely invalid)
+            invalid_orders = ["invalid", "rpcl", "lrcp", "rlcp", "pcrl", "cprl", "ABCD", ""]
+            
+            for invalid_order in invalid_orders:
+                with self.subTest(invalid_progression_order=invalid_order):
+                    print(f"\nTesting invalid progression_order={repr(invalid_order)}")
+                    
+                    with self.assertRaises(ValueError) as context:
+                        transcode_dicom_to_htj2k(
+                            input_dir=input_dir,
+                            output_dir=output_dir,
+                            progression_order=invalid_order
+                        )
+                    
+                    # Verify error message is helpful and lists all valid options
+                    error_msg = str(context.exception)
+                    self.assertIn("progression_order", error_msg.lower())
+                    # Check that all valid progression orders are mentioned in the error
+                    for valid_order in ["LRCP", "RLCP", "RPCL", "PCRL", "CPRL"]:
+                        self.assertIn(valid_order, error_msg)
+                    print(f"✓ Correctly raised ValueError: {error_msg}")
+            
+        finally:
+            shutil.rmtree(input_dir, ignore_errors=True)
+            shutil.rmtree(output_dir, ignore_errors=True)
+
+    def test_progression_order_multiframe_conversion(self):
+        """Test progression orders work with multiframe conversion."""
+        if not HAS_NVIMGCODEC:
+            self.skipTest("nvimgcodec not available")
+        
+        # Use a specific series from dicomweb
+        dicom_dir = os.path.join(
+            self.base_dir,
+            "data",
+            "dataset",
+            "dicomweb",
+            "e7567e0a064f0c334226a0658de23afd",
+            "1.2.826.0.1.3680043.8.274.1.1.8323329.686405.1629744173.656721",
+        )
+        
+        # Test all 5 progression orders
+        progression_orders = [
+            ("LRCP", "1.2.840.10008.1.2.4.201"),
+            ("RLCP", "1.2.840.10008.1.2.4.201"),
+            ("RPCL", "1.2.840.10008.1.2.4.202"),
+            ("PCRL", "1.2.840.10008.1.2.4.201"),
+            ("CPRL", "1.2.840.10008.1.2.4.201"),
+        ]
+        
+        for prog_order, expected_ts in progression_orders:
+            with self.subTest(progression_order=prog_order):
+                print(f"\nTesting multiframe conversion with progression_order={prog_order}")
+                
+                output_dir = tempfile.mkdtemp(prefix=f"htj2k_multiframe_{prog_order.lower()}_")
+                
+                try:
+                    # Convert to multiframe with specific progression order
+                    result_dir = convert_single_frame_dicom_series_to_multiframe(
+                        input_dir=dicom_dir,
+                        output_dir=output_dir,
+                        convert_to_htj2k=True,
+                        progression_order=prog_order
+                    )
+                    
+                    # Find the multi-frame file
+                    multiframe_files = list(Path(output_dir).rglob("*.dcm"))
+                    self.assertEqual(len(multiframe_files), 1, "Should have one multi-frame file")
+                    
+                    # Load and verify
+                    ds_multiframe = pydicom.dcmread(str(multiframe_files[0]))
+                    transcoded_ts = str(ds_multiframe.file_meta.TransferSyntaxUID)
+                    
+                    print(f"  Transfer Syntax: {transcoded_ts}")
+                    print(f"  Expected: {expected_ts}")
+                    
+                    # Verify correct transfer syntax
+                    self.assertEqual(
+                        transcoded_ts,
+                        expected_ts,
+                        f"Transfer syntax should be {expected_ts} for {prog_order}"
+                    )
+                    
+                    print(f"✓ Multiframe conversion with {prog_order} works correctly")
+                    
+                finally:
+                    import shutil
+                    if os.path.exists(output_dir):
+                        shutil.rmtree(output_dir)
+
+
 if __name__ == "__main__":
     unittest.main()
 
